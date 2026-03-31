@@ -1,0 +1,23 @@
+{
+  "name": "stellarshenson-marketplace",
+  "owner": {
+    "name": "Stellars Henson",
+    "email": "stellarshenson@gmail.com"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for autonomous development workflows",
+    "version": "1.0.0",
+    "author": "stellarshenson"
+  },
+  "plugins": [
+    {
+      "name": "auto-build-claw",
+      "source": "./auto-build-claw",
+      "version": "1.0.0",
+      "description": "Autonomous build iteration orchestrator with multi-agent review, FSM-driven lifecycle, and YAML-configured workflows",
+      "keywords": ["orchestrator", "iteration", "multi-agent", "review", "fsm", "build"],
+      "category": "development",
+      "tags": ["autonomous", "quality", "workflow", "agents"]
+    }
+  ]
+}

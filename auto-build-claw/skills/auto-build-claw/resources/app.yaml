@@ -1,0 +1,354 @@
+# ──────────────────────────────────────────────────────────────────
+# app.yaml - Application display text and CLI strings
+# ──────────────────────────────────────────────────────────────────
+#
+# PURPOSE: Contains ALL user-facing display text for the orchestrator.
+# The Python engine (_msg(), _cli(), _banner(), _footer()) loads these
+# templates and renders them with str.format_map(). This separation
+# means you can build a completely different skill by editing only
+# the YAML resource files - zero Python changes needed.
+#
+# TEMPLATE VARIABLES: Use {variable_name} for dynamic substitution.
+# The engine provides these via _build_context():
+#   {cmd}            - CLI command path (from app.cmd below)
+#   {phase}          - current phase name (RESEARCH, IMPLEMENT, etc.)
+#   {iteration}      - current iteration number
+#   {itype}          - iteration type (full, gc, hotfix)
+#   {objective}      - user-provided objective text
+#   {separator_line} - decorative separator (built from display config)
+#   {header_line}    - decorative header (built from display config)
+#
+# Missing variables render as empty string (safe format_map).
+#
+# TO CUSTOMIZE: Edit any value to change what the CLI displays.
+# To add a new message: add a key under messages:, then call
+# _msg("your_key", var=value) in the Python engine.
+# ──────────────────────────────────────────────────────────────────
+
+# Application identity - change these to rebrand the orchestrator
+app:
+  name: "Auto Build Claw"
+  description: "YAML-driven build iteration orchestrator"
+  # cmd: the CLI command path shown in all help text and instructions.
+  # Must match the actual script location relative to project root.
+  cmd: "python .claude/skills/auto-build-claw/orchestrate.py"
+  artifacts_dir: ".auto-build-claw"
+
+# Display formatting - controls visual separators in CLI output
+# Example: separator_width=70 with separator="─" produces:
+#   ──────────────────────────────────────────────────────────────────────
+display:
+  separator: "\u2500"      # Unicode box-drawing horizontal line
+  separator_width: 70
+  header_char: "="         # Used for major section headers (banner, reject)
+  header_width: 70
+
+# Banner - displayed at the top of every phase entry/exit
+# Shows iteration progress, current phase, and objective
+banner:
+  header: |
+    {header_line}
+      ITERATION {iter_label} ({itype}) | {action} PHASE {phase_idx}/{total}: {phase}{reject_info}
+      OBJECTIVE: {objective}
+    {header_line}
+
+    {progress}
+
+  # Progress bar markers - how completed/current phases appear in the
+  # phase progress line. Example: ~~RESEARCH~~ -> **HYPOTHESIS** -> PLAN
+  progress_current: "**{p}**"
+  progress_done: "~~{p}~~"
+
+# Footer - displayed at the bottom of phase instructions
+# Three variants: start (entering phase), end (phase completed), final (last phase)
+footer:
+  # Shown after phase START instructions - reminds agent what to do next
+  # Note: leading \n ensures blank line before footer in output
+  start: "\n  REMINDER: This phase's instructions above are AUTHORITATIVE.\n\
+    \  Follow them exactly. Do NOT work from memory or skip steps.\n\
+    {separator_line}\n\
+    \  Iteration {iteration} ({itype}) | Phase: {phase}\n\
+    \  FIRST: {cmd} start --understanding \"brief summary (under 200 chars)\"\n\
+    \  WHEN DONE: {cmd} end --evidence \"brief report\" --agents \"a,b,c\" --output-file\
+    \ \"path\"\n{separator_line}"
+
+  # Shown after phase END - directs agent to next phase
+  end: "\n{separator_line}\n\
+    \  Iteration {iteration} ({itype}) | {phase} -> {nxt}\n\
+    \  PROCEED IMMEDIATELY: run `{cmd} start --understanding \"...\"`\n\
+    \  (or REJECT: `{cmd} reject --reason \"...\"`)\n\
+    \  Proceed autonomously unless user explicitly asked to pause.\n\
+    {separator_line}"
+
+  # Shown when the last phase completes - no next phase available
+  final: "\n{separator_line}\n\
+    \  Iteration {iteration} ({itype}) | {phase} (FINAL)\n\
+    \  NEW ITERATION: run `{cmd} new --type {itype}`\n\
+    {separator_line}"
+
+# Messages - all user-facing output text, grouped by feature area
+# Each key maps to a template string rendered via _msg(key, **kwargs)
+messages:
+
+  # ── Readback gate ──
+  # Readback validates agent understanding BEFORE phase execution.
+  # Runs at cmd_start via claude -p (independent session).
+  readback_separator: "{separator_line}"
+  readback_validating: "  READBACK: validating understanding of {phase}..."
+  readback_pass: "READBACK PASSED for {phase}."
+  readback_fail: "READBACK FAILED for {phase}. Phase stays PENDING."
+  readback_fail_reason: "Reason: {reason}"
+  readback_retry: |
+    Re-read the instructions and retry:
+      {cmd} start --understanding "corrected summary"
+
+  # ── Gatekeeper gate ──
+  # Gatekeeper validates phase execution quality AFTER phase completion.
+  # Runs at cmd_end via claude -p. ASK response = BLOCK (not pass).
+  gatekeeper_separator: "{separator_line}"
+  gatekeeper_evaluating: "  GATEKEEPER: evaluating {phase} execution..."
+  gatekeeper_pass: "GATEKEEPER PASSED for {phase}."
+  gatekeeper_fail: "GATEKEEPER FAILED for {phase}."
+  gatekeeper_fail_reason: "Reason: {reason}"
+  gatekeeper_fail_retry: |
+    Phase NOT completed. Fix the issues and run `{cmd} end --evidence "..."` again.
+  gatekeeper_question: "GATEKEEPER QUESTION: {explanation}"
+
+  # Gatekeeper skip evaluation - when agent requests to skip a phase
+  gatekeeper_skip_separator: "{separator_line}"
+  gatekeeper_skip_evaluating: "  GATEKEEPER: evaluating {label} request for {phase}..."
+  gatekeeper_skip_denied: "SKIP DENIED by gatekeeper for {phase}."
+  gatekeeper_skip_denied_reason: "Reason: {reason}"
+  gatekeeper_skip_denied_retry: 'Phase must be executed. Run: `{cmd} start --understanding "..."`'
+  gatekeeper_skip_approved: "SKIP APPROVED for {phase}."
+
+  # ── TEST phase automation ──
+  # TEST phase runs make test + make lint automatically on cmd_end.
+  # Failure auto-rejects back to IMPLEMENT.
+  tests_pass: "All automated checks passed."
+  tests_fail: "TESTS FAILED. Returning to {target}."
+  tests_fail_run: 'Run: `{cmd} start --understanding "..."`'
+
+  # ── Phase lifecycle ──
+  # Shown in the executive summary after each phase completes
+  phase_complete: "  PHASE {phase} COMPLETE"
+  phase_output: "  Output: {output}..."
+  phase_agents: "  Agents: {agents}"
+  phase_readback: "  Readback: {status}"
+  phase_gatekeeper: "  Gatekeeper: {status}"
+
+  # ── Iteration lifecycle ──
+  # Shown when a new iteration starts (cmd_new output)
+  iteration_started: "## Iteration {iter_label} started ({itype}: {description})"
+  iteration_started_short: "## Iteration {iter_label} started ({itype})"
+  iteration_objective: "Objective: {objective}"
+  iteration_requested: "Iterations requested: {total}"
+  iteration_phases: "Phases: {phases}"
+  iteration_required: "Required: {required}"
+  iteration_skippable: "Skippable: {skippable}"
+  dependency_banner: "**Dependency workflow.** {description}"
+  dependency_purpose: "{description}"
+  dependency_blocked: "Cannot invoke dependency workflow '{itype}' directly. It runs automatically when a parent workflow depends on it."
+  iteration_n_banner: "**Implementation iteration {iteration}/{total}.** Implement the scope defined in the iteration plan from the planning iteration."
+  iteration_begin: |
+    To begin, run:
+    ```
+    {cmd} start --understanding "brief summary"
+    ```
+  iteration_begin_short: |
+    To begin, run:
+    ```
+    {cmd} start --understanding "..."
+    ```
+  iteration_complete: "All {total} iterations complete. Start a new request with:"
+  iteration_new_cmd: '  {cmd} new --type {itype} --objective "..."'
+  iteration_plan_header: "**Iteration plan from planning phase**:"
+  iteration_plan_content: "  {plan}..."
+  iteration_remaining: "Remaining: {remaining}"
+
+  # ── Prior failures context ──
+  # Shown in cmd_new and _run_next_iteration when prior failures exist
+  prior_failures_header: "Prior iteration had {count} logged failure(s):"
+  prior_failures_header_short: "Prior iteration had {count} failure(s):"
+  prior_failure_item: "  - [{mode}] {description}"
+  prior_failure_item_full: "  - {mode}: {description}"
+
+  # ── State/error messages ──
+  # Shown when commands encounter invalid state
+  no_active: "No active iteration."
+  no_active_start: "No active iteration. Start one with:"
+  no_active_add_iteration: "No active iteration to extend."
+  add_iteration_success: "Added {count} iteration(s). Total: {old} -> {new}."
+  dry_run_valid: "Model validation: PASS"
+  dry_run_complete: "\nDry-run complete. No state files created."
+  no_active_start_cmd: "  {cmd} new --type full"
+  no_active_start_full: |
+    Start one with:
+      {cmd} new --type full
+  available_types: "Available types:"
+  available_type_item: "  {name}: {description}"
+  phase_not_started: "Phase {phase} not started. Run:"
+  phase_not_started_cmd: '  {cmd} start --understanding "..."'
+  phase_in_progress: "Phase {phase} already in progress. Complete it with:"
+  phase_in_progress_cmd: '  {cmd} end --evidence "..."'
+  understanding_required: "ERROR: --understanding is required for start."
+  understanding_required_cmd: '  {cmd} start --understanding "brief summary (under 200 chars)"'
+  cleaned: "Cleaned artifacts from prior runs."
+  plan_saved: "Iteration plan saved to {path}"
+  summary_written: "Summary written to {path}"
+  output_file_missing: "ERROR: --output-file does not exist: {path}"
+  missing_agents: "ERROR: missing REQUIRED agents for {phase}: {missing}"
+  missing_agents_required: "Required: {required}"
+  requires_agents: "ERROR: {phase} requires agents: {required}"
+  requires_agents_provide: 'Provide via: --agents "{required}"'
+
+  # ── Reject (cmd_reject) ──
+  # Shown when a reviewer rejects the current phase
+  reject_header: |
+    {header_line}
+      REJECTED: {phase} -> returning to {target}
+    {header_line}
+  reject_reason: "**Reason**: {reason}"
+  reject_count: "**Rejection count**: {count}"
+  reject_fix: |
+    Fix the issues and re-run through the phases.
+    Run: `{cmd} start --understanding "..."`
+
+  # ── Skip (cmd_skip) ──
+  # Shown when agent requests to skip a phase
+  skip_blocked: "BLOCKED: Phase {phase} is REQUIRED for {itype} iterations."
+  skip_blocked_required: "Required: {required}"
+  skip_blocked_force: |
+    Use --force to request skipping a required phase (gatekeeper will evaluate).
+  skip_approved_msg: "Skipped {phase}: {reason}"
+  skip_next: "Next phase: {nxt}"
+  skip_next_cmd: 'Run: `{cmd} start --understanding "..."`'
+  skip_iteration_complete: "Iteration complete."
+
+  # ── Context (cmd_context) ──
+  # User guidance injection - broadcast to all agents in a phase
+  context_cleared: "Cleared user context for {phase}."
+  context_none: "No user context set for any phase."
+  context_item: "  {phase}: {text}"
+  context_set: "User context set for {phase}:"
+  context_message: "  {message}"
+  context_in_progress: |
+    Phase is already in progress. Context will be visible to agents when they read the state. Re-run `{cmd} start --understanding "..."` to see it in instructions.
+  context_will_show: "Context will be shown when {phase} starts."
+
+  # ── Failure logging (cmd_log_failure, cmd_failures) ──
+  failure_logged: "Logged: [{mode}] {desc}"
+  no_failures: "No failures logged."
+  failure_iteration_header: "## Iteration {iteration}"
+  failure_item: "  [{mode}] ({phase}) {desc}  [{ts}]"
+
+  # ── Hypothesis catalogue (cmd_hypotheses) ──
+  no_hypotheses: "No hypotheses logged."
+  hypothesis_item: "  {hid} ({avg}/5, {status}): {hyp}  [{ts}]"
+
+  # ── Hypothesis GC (auto-action after HYPOTHESIS phase) ──
+  # Archives DONE/REMOVED hypotheses to keep the active catalogue clean
+  hypothesis_gc_none: "No hypotheses to GC."
+  hypothesis_gc_no_archive: "No DONE/REMOVED hypotheses to archive. {count} active."
+  hypothesis_gc_archived: "Archived {count} hypotheses (DONE/REMOVED) to {path}"
+  hypothesis_gc_active: "Active catalogue: {count} hypotheses remaining"
+  hypothesis_gc_item: "  {hid} ({status}): {hyp}"
+
+  # ── Auto-actions ──
+  # Triggered automatically at phase boundaries (not user-initiated)
+  auto_hypothesis_warn: '  WARN: hypothesis {hid} missing fields: {missing}'
+  auto_hypothesis_wrote: '  Auto-wrote {count} hypothesis entries to hypotheses.yaml'
+  validate_success: "Model valid: 0 issues found."
+  validate_issues: "Model has {count} issue(s):"
+  validate_item: "  {num}. {issue}"
+  dry_run_error: "  ERROR: {issue}"
+  dry_run_planning_iter: "\nIteration 0 ({wtype}):"
+  dry_run_impl_iter: "\nIteration {num} ({wtype}):"
+  dry_run_phase_line: "  {phase} ({tag}) -> agents: {agents} | readback: {rb} | gatekeeper: {gk}"
+  auto_separator: "{separator_line}"
+  auto_hypothesis_gc: "  AUTO-ACTION: running hypothesis-gc..."
+  auto_summary: "  AUTO-ACTION: generating iteration summary..."
+  auto_next: "  AUTO-ACTION: starting NEXT phase inline..."
+  auto_autonomous: "  PROCEED IMMEDIATELY to next iteration unless user explicitly asked to pause."
+
+  # ── User guidance banner ──
+  # Displayed in phase instructions when user has injected context
+  user_guidance_header_line: "{header_line}"
+  user_guidance_header: "  USER GUIDANCE FOR THIS PHASE (broadcast to ALL agents)"
+  user_guidance_instruction: |
+    **This guidance comes from the user and MUST be considered by every agent
+    spawned in this phase. Incorporate it into your research, hypotheses,
+    plans, or implementation as appropriate.**
+
+  # ── Status display (cmd_status) ──
+  status_header: "## Iteration {iter_label} ({itype})"
+  status_objective: "Objective: {objective}"
+  status_started: "Started: {started}"
+  status_current: "Current: {phase} ({status})"
+  status_rejections: "Rejections: {count}"
+  status_last_reject: "  Last: {from_phase} - {reason}"
+  status_phase_item: "  {marker} {p}{req}"
+  status_agents_header: "Agents recorded:"
+  status_agent_item: "  {phase}: {agents}"
+  status_failures_header: "Failures logged: {count}"
+  status_failure_item: "  [{mode}] {desc}"
+  status_required_note: "* = required"
+  status_next_start: 'Next: `{cmd} start --understanding "..."`'
+  status_next_end: 'Next: `{cmd} end --evidence "..."`'
+
+# CLI help strings - used by argparse for --help output
+# Change these to customize the CLI documentation
+cli:
+  description: "Auto Build Claw - YAML-driven build iteration orchestrator."
+  epilog: |
+    Commands (10 total):
+      {cmd} new --type full --objective "..." --iterations N
+      {cmd} start --understanding "brief summary"
+      {cmd} end --evidence "..." [--agents "a,b"] [--output-file path]
+      {cmd} status
+      {cmd} reject --reason "..."
+      {cmd} skip --reason "..." [--force]
+      {cmd} context --message "..." [--phase P] [--clear]
+      {cmd} log-failure --mode X --desc Y
+      {cmd} failures
+      {cmd} hypotheses
+
+  # Per-command help text (shown in `--help` output)
+  commands:
+    new: "Start new iteration request (cleans prior state)"
+    start: "Enter current phase (BLOCKING readback)"
+    end: "Complete current phase (gatekeeper evaluates)"
+    status: "Show current state"
+    reject: "Critic rejects, return to IMPLEMENT"
+    skip: "Skip optional phase"
+    context: "Provide user guidance for a phase"
+    log_failure: "Log a failure mode"
+    failures: "Show failure log"
+    hypotheses: "Show hypothesis catalogue"
+    add_iteration: "Add iterations to an active cycle"
+
+  # Per-argument help text
+  args:
+    type: "Iteration type"
+    objective: "What these iterations aim to achieve"
+    iterations: "Number of iterations to run (default: 1)"
+    benchmark: |
+      Benchmark command to run during TEST phase.
+      Must output a numeric score to stdout. Lower is better.
+    clean: "Clean artifacts from prior runs (default: true)"
+    no_clean: "Preserve artifacts from prior runs"
+    dry_run: "Validate configuration and print execution plan without running"
+    count: "Number of iterations to add"
+    understanding: "Agent's understanding of the phase (under 200 chars)"
+    evidence: "Brief execution report for gatekeeper"
+    agents: "Comma-separated agent names spawned in this phase"
+    output_file: "Path to file with phase output (resolved to absolute)"
+    reason: "What needs fixing"
+    skip_reason: "Why skipping"
+    force: "Force-skip a REQUIRED phase (conservative gatekeeper)"
+    message: "Guidance text for agents"
+    phase: "Target phase (default: current)"
+    clear: "Clear context for phase"
+    mode: "Failure mode ID (e.g. FM-DEAD-CODE)"
+    desc: "Description"
+    add_objective: "Updated objective text (optional)"

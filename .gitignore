@@ -1,0 +1,3 @@
+.auto-build-claw/
+__pycache__/
+*.pyc

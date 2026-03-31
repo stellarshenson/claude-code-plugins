@@ -1,0 +1,595 @@
+# Phase instruction templates for auto-build-claw
+# Each phase has start (instructions) and end (exit criteria) templates.
+# Templates use {variable} placeholders resolved at runtime via str.format().
+# Conditional templates use suffixed keys (start_continue, start_final, etc.).
+#
+# Variables: {objective}, {iteration}, {iteration_purpose}, {prior_context},
+#   {plan_context}, {prior_hyp}, {CMD}, {checklist}, {benchmark_info},
+#   {remaining}, {total}, {agents_instructions}
+#
+# IMPORTANT: The guardian checklist contains a literal {description} that is
+# injected via the {checklist} variable. In this file, {checklist} is the
+# format variable - the {{description}} escaping is handled in guardian.yaml.
+#
+# Agent definitions (prompts, names, numbers) live in agents.yaml.
+# The {agents_instructions} placeholder is populated from agents.yaml at runtime.
+
+FULL::RESEARCH:
+  auto_actions:
+    on_complete: []
+  start: |
+    ## Phase: RESEARCH
+
+    **Objective**: {objective}
+    **Iteration**: {iteration}
+    {iteration_purpose}
+    {prior_context}{plan_context}
+    **Goal**: understand the problem space BEFORE forming hypotheses. Gather evidence,
+    read code, check prior results, understand what exists and what's missing.
+
+    {spawn_instruction}
+    Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
+
+    {agents_instructions}
+
+    **CRITICAL: This phase is READ-ONLY.** Do NOT modify any project files.
+    Do NOT use Edit, Write, or any tool that changes files. Only gather information.
+    Show your reasoning for each decision and finding.
+    The output feeds directly into HYPOTHESIS where agents debate what to do with it.
+
+    **AFTER all agents return**, write merged findings to a file, then:
+    ```
+    {CMD} end --evidence "summary of what was researched" --agents "researcher,architect,product_manager" --output-file "path/to/research.md"
+    ```
+
+    **Output**: research findings document summarising what was learned, ready for hypothesis generation.
+
+  end: |
+    ## Phase: RESEARCH (exit criteria)
+
+    **Verify ALL**:
+    - [ ] THREE separate agents spawned (researcher, architect, product_manager)
+    - [ ] Agents provided on end: `--agents "researcher,architect,product_manager"`
+    - [ ] Research findings written to file and provided via `--output-file`
+    - [ ] Specific files read with line numbers cited in findings
+    - [ ] Concrete findings documented (not "read the code" - actual observations)
+    - [ ] Evidence with metrics or counts where applicable
+    - [ ] Reasoning provided for why each finding matters (not just facts)
+    - [ ] Items categorised by status: done, needs work, blocked, deferred
+    - [ ] Prior iteration results reviewed (what worked, what didn't)
+    - [ ] Acceptance criteria from objective documents understood
+
+    **BLOCKING**: phase cannot complete without --agents and --output-file on end.
+
+FULL::HYPOTHESIS:
+  auto_actions:
+    on_complete: [hypothesis_autowrite, hypothesis_gc]
+  start: |
+    ## Phase: HYPOTHESIS
+
+    **Objective**: {objective}
+    **Iteration**: {iteration}
+    {iteration_purpose}
+    {prior_hyp}
+    **CRITICAL: This phase is READ-ONLY.** Do NOT modify any project files.
+    Do NOT use Edit, Write, or any tool that changes files.
+    Show your reasoning for each decision and finding.
+
+    **Goal**: review, refine, and evolve the hypothesis backlog informed by RESEARCH findings.
+    Four agents with different perspectives each review the EXISTING hypothesis list,
+    propose additions, flag removals, and suggest re-ordering.
+
+    {spawn_instruction}
+    Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
+    Give each agent: (1) research findings, (2) the prior hypothesis list shown above.
+
+    Each agent MUST:
+    1. **Rate** each existing hypothesis with stars (1-5): how valuable is it from this perspective?
+    2. **Review** each - is it still valid? Already addressed? Obsolete?
+    3. **Propose** 1-3 new hypotheses from their perspective
+    4. **Flag** any existing hypotheses for removal (with reason)
+    5. **Return** a re-ordered list: most important first, with star ratings
+
+    {agents_instructions}
+
+    ### Merging hypotheses
+
+    After all 4 agents return, merge their proposals:
+    1. Compile the full hypothesis list (existing + new proposals)
+    2. Remove hypotheses flagged by 2+ agents
+    3. Average star ratings across agents (total stars / 4 agents = hypothesis score)
+    4. Rank by star average (highest first), break ties by: evidence x impact x risk
+    5. Select top 1-3 for THIS iteration
+    6. Write each hypothesis as a RICH, self-contained description that anyone can understand
+       without context. Include: what the problem is, why it exists (root cause), what
+       specifically to change (files, functions), what measurable outcome to expect, and
+       what could go wrong. Format:
+       ```
+       ID: H0NN
+       HYPOTHESIS: 2-3 sentence problem statement with root cause analysis
+       WHAT TO DO: specific files and functions to modify, concrete changes
+       PREDICT: measurable outcome (metric from X to Y, or count from N to M)
+       EVIDENCE: data points, benchmark scores, code references supporting this
+       RISK: what could break, regressions to watch, complexity concerns
+       STARS: avg/5 (contrarian: N, optimist: N, pessimist: N, scientist: N)
+       ```
+
+    **AFTER all agents return**, write merged hypotheses to a file, then:
+    ```
+    {CMD} end --evidence "summary of hypothesis debate" --agents "contrarian,optimist,pessimist,scientist" --output-file "path/to/hypotheses.md"
+    ```
+
+    **Output**: updated, ranked hypothesis backlog with top 1-3 selected for PLAN phase.
+
+  end: |
+    ## Phase: HYPOTHESIS (exit criteria)
+
+    **Verify ALL**:
+    - [ ] FOUR separate agents spawned (contrarian, optimist, pessimist, scientist)
+    - [ ] Agents provided on end: `--agents "contrarian,optimist,pessimist,scientist"`
+    - [ ] Each agent received research findings as context
+    - [ ] Hypotheses merged, ranked, written to file and provided via `--output-file`
+    - [ ] Top 1-3 selected with predictions and evidence
+    - [ ] Each hypothesis has a measurable prediction (from X to Y)
+
+    **BLOCKING**: phase cannot complete without --agents and --output-file on end.
+
+    **HYPOTHESIS GC**: runs automatically after gatekeeper passes.
+    Archives DONE and REMOVED hypotheses to `hypotheses_archive.yaml`.
+
+FULL::PLAN:
+  auto_actions:
+    on_complete: []
+  start: |
+    ## Phase: PLAN
+
+    **Objective**: {objective}
+    **Iteration**: {iteration}
+    {prior_context}
+
+    **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
+    You MUST use `EnterPlanMode` and follow planning mode rules.
+    Do NOT use Edit, Write, or any tool that modifies files (except the plan file).
+
+    **Execution** (MANDATORY):
+    1. Call `EnterPlanMode` to enter planning mode
+    2. Read context: recent git log, failure log (`{CMD} failures`), prior results
+    3. Spawn **Explore agents** (up to 3 in parallel) to investigate the codebase
+    4. Based on exploration results, write the plan to the plan file
+    5. Call `ExitPlanMode` when plan is complete
+
+    **Plan must contain**:
+    - What specifically needs to change and why (root causes)
+    - Hypotheses with predictions (from X to Y)
+    - Specific files and functions to modify
+    - Acceptance criteria for each change
+    - Risk assessment and planned impact
+
+    **Why agents**: planning quality depends on SEEING the code, not guessing.
+    Explore agents search broadly and return findings. Without them, plans are
+    shallow and miss existing code that could be reused.
+
+    **Output**: plan file with hypotheses, predictions, and file paths.
+
+  end: |
+    ## Phase: PLAN (exit criteria)
+
+    **Verify ALL before proceeding**:
+    - [ ] Context reviewed (prior results, current state)
+    - [ ] Targets identified with root causes
+    - [ ] Predictions written down (quantitative where possible)
+    - [ ] Plan documented
+
+    **Plan depth validation** - the plan MUST contain:
+    - [ ] **Specific files** to modify (not just "update the module")
+    - [ ] **Concrete changes** per file (not just "improve X" - what exactly changes?)
+    - [ ] **Root cause** identified for each target (why does this problem exist?)
+    - [ ] **Acceptance criteria** that can be verified after implementation
+    - [ ] **Risk assessment** - what could go wrong, what regressions to watch for
+    - [ ] **Planned impact** - what measurable outcome does each change produce? (benchmark score delta, test coverage, error reduction)
+    - [ ] **Dependencies** between changes (ordering constraints)
+    If any of these are missing or vague, the plan is NOT deep enough. Revise before spawning reviewers.
+
+    {spawn_instruction_plan}
+    Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
+
+    After agents return, write merged review to a file, then:
+    ```
+    {CMD} end --evidence "plan reviewed by 3 agents" --agents "architect,critic,guardian" --output-file "path/to/plan.md"
+    ```
+
+    {agents_instructions}
+
+    If any agent flags issues, revise the plan before proceeding.
+
+# ── GC workflow PLAN phase ──────────────────────────────────────
+# Simpler than FULL::PLAN: no research/hypothesis phases precede it,
+# scope is cleanup/refactoring, no explore agents needed.
+
+GC::PLAN:
+  auto_actions:
+    on_complete: []
+  start: |
+    ## Phase: PLAN (GC)
+
+    **Objective**: {objective}
+    **Iteration**: {iteration}
+    {prior_context}
+
+    **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
+    You MUST use `EnterPlanMode` and follow planning mode rules.
+    Do NOT use Edit, Write, or any tool that modifies files (except the plan file).
+
+    **Goal**: scope the garbage collection / cleanup work. GC plans are simpler
+    than full iteration plans - no research or hypothesis phases precede this,
+    so focus on identifying what to clean and why.
+
+    **Execution** (MANDATORY):
+    1. Call `EnterPlanMode` to enter planning mode
+    2. Identify cleanup targets: dead code, stale references, duplicate logic
+    3. For each target, state what to remove/change and why
+    4. Call `ExitPlanMode` when the plan is complete
+
+    **Output**: plan file listing cleanup targets with rationale.
+
+  end: |
+    ## Phase: PLAN (exit criteria - GC)
+
+    **Verify ALL before proceeding**:
+    - [ ] Cleanup targets identified with rationale
+    - [ ] Each target has specific files and what to change
+    - [ ] No scope creep - GC should clean, not add features
+    - [ ] Risk assessment - what could removing this code break?
+
+    {spawn_instruction_plan}
+    Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
+
+    After agents return, write merged review to a file, then:
+    ```
+    {CMD} end --evidence "GC plan reviewed" --agents "architect,critic,guardian" --output-file "path/to/plan.md"
+    ```
+
+    {agents_instructions}
+
+    If any agent flags issues, revise the plan before proceeding.
+
+FULL::IMPLEMENT:
+  auto_actions:
+    on_complete: []
+  start: |
+    ## Phase: IMPLEMENT
+
+    **Do NOT evaluate the benchmark.** Write code only. Benchmark evaluation
+    happens in TEST phase.
+
+    **Goal**: make code changes with internal hypothesis loop.
+
+    **Per change**:
+    1. PREDICT: what will change in the output?
+    2. IMPLEMENT: make the change
+    3. VERIFY: does output match prediction? If not: diagnose, retry
+    4. REFLECT: ROOT_CAUSE_FIXED / PARTIAL / WRONG / NEW_DEFECT
+
+    **Spawn worker agents** for multi-file changes (use Agent tool):
+    - Each agent gets DISJOINT file ownership (no two agents edit the same file)
+    - Each agent gets: files to modify, acceptance criteria from plan, predict/verify loop
+    - Launch agents IN PARALLEL when their file sets don't overlap
+    - Agent results are merged by the orchestrating session
+
+    **Single-file changes**: make directly, no agent needed.
+
+    **Rules**:
+    - Follow the plan from PLAN phase - don't add features beyond what was planned
+    - Don't "improve" unrelated code (scope creep)
+    - Each change must have predict/verify reflection
+
+    **WHEN DONE**: write summary of changes to a file, then:
+    ```
+    {CMD} end --evidence "implemented N changes per plan" --output-file "path/to/impl.md"
+    ```
+
+    **Output**: code changes ready for testing.
+
+  end: |
+    ## Phase: IMPLEMENT (exit criteria)
+
+    **Verify ALL**:
+    - [ ] Changes match the plan (nothing extra, nothing missing)
+    - [ ] Each change has predict/verify reflection
+    - [ ] No unrelated modifications introduced
+
+    **Critic question**: do the changes match the stated plan, or did scope creep occur?
+
+FULL::TEST:
+  auto_actions:
+    on_complete: []
+  reject_to:
+    phase: IMPLEMENT
+    condition: "test failure requires fixing implementation"
+  start: |
+    ## Phase: TEST
+
+    **CRITICAL: This phase is READ-ONLY.** Do NOT modify any project files.
+    Do NOT use Edit, Write, or any tool that changes files.
+
+    **This is where benchmark evaluation happens.** The benchmark instruction below
+    is for YOU to follow. Read the referenced file, evaluate each item, update
+    checkmarks, and report the violation count.
+
+    **Goal**: automated verification. Tests, lint, and benchmark MUST pass.
+
+    **Actions** (the orchestrator runs these automatically on `end`):
+    1. `make test` - all tests pass
+    2. `make lint` - no lint errors
+    3. Benchmark (if configured) - runs and records score
+    {benchmark_info}
+
+    If tests fail: auto-reject back to IMPLEMENT. Do not proceed with failing tests.
+    Benchmark failure is NOT blocking (score is tracked, not gated).
+
+    **Log failures**: if you find failure modes during testing, log them:
+    ```
+    {CMD} log-failure --mode "FM-NAME" --desc "description"
+    ```
+
+    **WHEN DONE**:
+    ```
+    {CMD} end --evidence "tests pass, lint clean, benchmark score: N"
+    ```
+
+    **Output**: green tests, clean lint, benchmark score (if configured).
+
+  end: |
+    ## Phase: TEST (exit criteria)
+
+    **Automated checks** (ran by orchestrator):
+
+FULL::REVIEW:
+  auto_actions:
+    on_complete: []
+  reject_to:
+    phase: IMPLEMENT
+    condition: "reviewer rejects implementation back to IMPLEMENT"
+  start: |
+    ## Phase: REVIEW
+
+    **CRITICAL: This phase is READ-ONLY.** Do NOT modify any project files.
+    Do NOT use Edit, Write, or any tool that changes files.
+    Show your reasoning for each decision and finding.
+    **Do NOT re-evaluate the benchmark.** Review code and benchmark results only.
+
+    **Goal**: four agents review the work IN PARALLEL. This is NOT a rubber stamp.
+
+    {spawn_instruction}
+    Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
+
+    {agents_instructions}
+
+    ### Merging verdicts
+
+    All four agents return their findings. Merge:
+    - All APPROVE -> proceed to RECORD
+    - Any has issues -> REJECT with combined feedback:
+      ```
+      {CMD} reject --reason "critic: X; architect: Y; guardian: Z; forensicist: W"
+      ```
+    - Guardian says ASK -> ask user before proceeding (use AskUserQuestion)
+
+    **AFTER all agents return**, write merged verdicts to a file, then:
+    ```
+    {CMD} end --evidence "4 agents reviewed, all approve" --agents "critic,architect,guardian,forensicist" --output-file "path/to/review.md"
+    ```
+
+    **Output**: merged verdict from all four agents + forensicist's failure analysis for next iteration.
+
+  end: |
+    ## Phase: REVIEW (exit criteria)
+
+    **Verify ALL**:
+    - [ ] FOUR separate agents spawned (critic, architect, guardian, forensicist)
+    - [ ] Agents provided on end: `--agents "critic,architect,guardian,forensicist"`
+    - [ ] All four ran as SEPARATE agents (not self-review)
+    - [ ] Verdicts merged: all approve OR rejection logged
+    - [ ] If guardian flagged overfit: user asked and confirmed (or rejected)
+    - [ ] Code references with file:line numbers for each verdict
+    - [ ] Each verdict includes reasoning (not just APPROVE/REJECT)
+    - [ ] Regression analysis: what could break, regressions to watch
+
+    **BLOCKING**: phase cannot complete without --agents on end.
+
+    **If REJECT**: run `{CMD} reject --reason "..."`
+    This returns to IMPLEMENT with the combined feedback.
+
+RECORD:
+  auto_actions:
+    on_complete: [iteration_summary]
+  start: |
+    ## Phase: RECORD
+
+    **Goal**: journal, commit, push, generate iteration summary.
+
+    **Actions**:
+    1. Append entry to `.claude/JOURNAL.md` (ALWAYS at end, NEVER insert)
+       - Format: `N. **Task - <short>**: description<br>\n    **Result**: rich paragraph`
+    2. Stage relevant files: `git add` (specific files, not -A)
+    3. Commit with descriptive message following project conventions
+    4. Push to remote
+    5. Verify push succeeded
+
+    **WHEN DONE**:
+    ```
+    {CMD} end --evidence "journal updated, committed, pushed"
+    ```
+
+    **Output**: iteration summary written, journal updated, changes committed and pushed.
+
+  end: |
+    ## Phase: RECORD (exit criteria)
+
+    **Verify ALL**:
+    - [ ] Journal entry appended
+    - [ ] Git commit with descriptive message
+    - [ ] Push to remote succeeded
+
+NEXT:
+  auto_actions:
+    on_complete: [iteration_advance]
+  start_continue: |
+    ## Phase: NEXT
+
+    **{remaining} iteration(s) remaining** in this request (iteration {iteration} of {total}).
+
+    **Review failure log** for this iteration:
+    ```
+    {CMD} failures
+    ```
+
+    **PROCEED IMMEDIATELY to the next iteration** unless user explicitly asked to pause.
+    The user requested {total} iterations - execute all of them autonomously.
+
+    **Stop early ONLY if**: all targets met, all hypotheses exhausted, or context critically low.
+
+  start_final: |
+    ## Phase: NEXT
+
+    **Final iteration complete.** All requested iterations done.
+
+    **Review failure log**:
+    ```
+    {CMD} failures
+    ```
+
+    **Report final status to user.** Start a new request with:
+    ```
+    {CMD} new --type full --objective "..." --iterations N
+    ```
+
+  end_continue: |
+    ## Phase: NEXT (exit criteria)
+
+    **{remaining} iteration(s) remaining.**
+    Auto-increment will advance to next iteration.
+
+  end_final: |
+    ## Phase: NEXT (exit criteria)
+
+    **All iterations complete.** Report status to user.
+
+# ── PLANNING workflow phases ──────────────────────────────────────
+# These are used by the planning dependency workflow. They have
+# different goals from FULL:: phases: problem decomposition and
+# work breakdown rather than code investigation and implementation.
+
+PLANNING::RESEARCH:
+  auto_actions:
+    on_complete: []
+  start: |
+    ## Phase: RESEARCH (Planning)
+
+    **Objective**: {objective}
+
+    **This is the PLANNING iteration.** Research goal: understand the problem space
+    and gather evidence for breaking down the objective into implementation iterations.
+    Focus on problem decomposition, not code-level investigation.
+
+    {spawn_instruction}
+    Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
+
+    {agents_instructions}
+
+    **CRITICAL: This phase is READ-ONLY.** Do NOT modify any project files.
+
+    **AFTER all agents return**, write merged findings to a file, then:
+    ```
+    {CMD} end --evidence "summary" --agents "researcher,architect,product_manager" --output-file "path/to/research.md"
+    ```
+
+  end: |
+    ## Phase: RESEARCH (exit criteria)
+
+    **Verify ALL**:
+    - [ ] THREE separate agents spawned
+    - [ ] Research findings written to file
+    - [ ] Problem space understood for work breakdown
+    - [ ] Scope estimated for iteration planning
+
+PLANNING::HYPOTHESIS:
+  auto_actions:
+    on_complete: [hypothesis_autowrite, hypothesis_gc]
+  start: |
+    ## Phase: HYPOTHESIS (Planning)
+
+    **Objective**: {objective}
+    {prior_hyp}
+
+    **This is the PLANNING iteration.** Hypothesis goal: debate how to decompose
+    the objective into implementation iterations. Focus on scope sizing, ordering,
+    and risk rather than code-level hypotheses.
+
+    {spawn_instruction}
+    Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
+
+    {agents_instructions}
+
+    **CRITICAL: This phase is READ-ONLY.** Do NOT modify any project files.
+
+    **AFTER all agents return**, write merged hypotheses to a file, then:
+    ```
+    {CMD} end --evidence "summary" --agents "contrarian,optimist,pessimist,scientist" --output-file "path/to/hypotheses.md"
+    ```
+
+  end: |
+    ## Phase: HYPOTHESIS (exit criteria)
+
+    **Verify ALL**:
+    - [ ] FOUR separate agents spawned
+    - [ ] Hypotheses merged and ranked
+    - [ ] Top 1-3 selected for planning
+
+    **HYPOTHESIS GC**: runs automatically after gatekeeper passes.
+
+PLANNING::PLAN:
+  auto_actions:
+    on_complete: [plan_save]
+  start: |
+    ## Phase: PLAN (Work Breakdown)
+
+    **Objective**: {objective}
+    **Planned iterations**: {total}
+
+    **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
+    You MUST use `EnterPlanMode` and follow planning mode rules.
+    Call `ExitPlanMode` when the plan is complete.
+
+    **Goal**: Break down the objective into {total} iterations. For each iteration, define:
+    1. **Scope**: which specific items/tasks this iteration will address
+    2. **Files**: which files will be modified
+    3. **Acceptance criteria**: how to verify the iteration succeeded
+    4. **Dependencies**: what must be done before this iteration can start
+
+    **Important**: Be honest about what fits in {total} iterations. If the objective
+    is too large, say so and prioritise the most impactful items first.
+
+    **Format the plan as**:
+    ```
+    ITERATION 1: <title>
+      Scope: <what this iteration does>
+      Files: <which files change>
+      Acceptance: <how to verify>
+    ```
+
+    Write the plan to a file, then:
+    ```
+    {CMD} end --evidence "plan breakdown complete" --output-file "path/to/plan.md"
+    ```
+
+  end: |
+    ## Phase: PLAN (exit criteria)
+
+    **Verify ALL**:
+    - [ ] Work broken down into {total} iterations
+    - [ ] Each iteration has scope, files, acceptance criteria
+    - [ ] Dependencies between iterations identified
+    - [ ] Deferred items listed if scope too large
+    - [ ] Reasoning provided for iteration scope boundaries
+    - [ ] Deferred items include justification for why they require additional iterations

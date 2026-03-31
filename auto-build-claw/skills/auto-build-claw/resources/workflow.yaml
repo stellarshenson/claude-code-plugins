@@ -1,0 +1,81 @@
+# ──────────────────────────────────────────────────────────────────
+# workflow.yaml - Iteration type definitions
+# ──────────────────────────────────────────────────────────────────
+#
+# PURPOSE: Defines the available iteration types and their phase
+# sequences. Each type is a named workflow that determines which
+# phases run and in what order.
+#
+# HOW IT WORKS: The Python engine loads this at startup and derives
+# ITERATION_TYPES dict with flat phases/required/skippable lists.
+# The `new` command's --type flag selects which workflow to use.
+#
+# PHASE STRUCTURE: Each phase is a dict with a `name` field and an
+# optional `skippable: true` flag. Phases are REQUIRED by default -
+# the gatekeeper will deny skip requests for required phases unless
+# --force is used with a compelling reason.
+#
+# TO CUSTOMIZE: Add a new iteration type by adding a top-level key
+# with description and phases list. Example:
+#
+#   review_only:
+#     description: "Review existing work without new implementation"
+#     phases:
+#       - name: RESEARCH
+#       - name: REVIEW
+#       - name: RECORD
+#       - name: NEXT
+#         skippable: true
+# ──────────────────────────────────────────────────────────────────
+
+# Planning - dependency workflow that auto-chains before full workflow.
+# Cannot be invoked directly via --type. Breaks down the objective into
+# N implementation iterations with scope, files, and acceptance criteria.
+planning:
+  description: "Planning iteration: research, hypothesise, break down work into implementation iterations"
+  dependency: true
+  phases:
+    - name: RESEARCH
+    - name: HYPOTHESIS
+    - name: PLAN           # resolves to PLANNING::PLAN (work breakdown)
+    - name: RECORD
+    - name: NEXT
+      skippable: true
+
+# Full iteration - the complete research-driven improvement cycle.
+# Used for feature work, improvements, and research-driven changes.
+# Depends on planning workflow (auto-runs before first iteration).
+full:
+  depends_on: planning
+  description: "Full iteration: research, hypothesise, plan, implement, test, review, record"
+  phases:
+    - name: RESEARCH       # Gather evidence, read code, understand problem space
+    - name: HYPOTHESIS     # Debate approaches with 4 agents, rank by star rating
+    - name: PLAN           # Design implementation with 3-agent review
+    - name: IMPLEMENT      # Make code changes with predict/verify loop
+    - name: TEST           # Automated: make test + make lint + benchmark
+    - name: REVIEW         # 4-agent independent review (critic/architect/guardian/forensicist)
+    - name: RECORD         # Journal, commit, push
+    - name: NEXT           # Advance to next iteration or report completion
+      skippable: true      # NEXT is optional - controls iteration advance
+
+# Garbage collection - cleanup, dead code removal, refactoring.
+# Skips research and hypothesis phases since scope is usually clear.
+gc:
+  description: "Garbage collection / cleanup"
+  phases:
+    - name: PLAN
+    - name: IMPLEMENT
+    - name: TEST
+    - name: RECORD
+    - name: NEXT
+      skippable: true
+
+# Hotfix - targeted bug fix with minimal ceremony.
+# No planning iteration, no review agents - just fix, test, record.
+hotfix:
+  description: "Targeted fix, minimal ceremony"
+  phases:
+    - name: IMPLEMENT
+    - name: TEST
+    - name: RECORD

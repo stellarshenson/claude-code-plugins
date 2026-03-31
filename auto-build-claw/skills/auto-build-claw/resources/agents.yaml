@@ -1,0 +1,667 @@
+# ──────────────────────────────────────────────────────────────────
+# agents.yaml - Agent definitions and per-phase gate prompts
+# ──────────────────────────────────────────────────────────────────
+#
+# PURPOSE: Single source of truth for all agent definitions AND gate
+# prompts. Every WORKFLOW::PHASE declares its own readback and
+# gatekeeper gates. No generic fallback - missing gate = validation
+# error. Skip-related gates are shared in shared_gates section.
+#
+# PHASE AGENTS: Grouped by phase key (FULL::RESEARCH, etc.).
+# The Python engine derives PHASE_AGENTS (flat name lists) from this
+# and generates "### Agent N: NAME" formatted instructions from it.
+# Agent count and spawn instructions are derived from list length.
+#
+# FIELDS PER AGENT:
+#   name          - identifier used in --agents CLI flag
+#   number        - display order in phase instructions (### Agent N)
+#   display_name  - heading label (### Agent N: DISPLAY_NAME)
+#   prompt        - per-phase instructions (what the agent should do)
+#   mode          - execution mode (omit for default parallel via Agent tool)
+#                   standalone_session = runs via `claude -p` subprocess
+#   checklist     - optional quality gate checklist appended to prompt
+#                   (any agent can have one, not just guardian)
+#
+# PER-PHASE GATES: Each phase section has a `gates:` subsection with
+# readback and gatekeeper prompts. The engine stores these with
+# namespaced keys (FULL::RESEARCH::readback, FULL::RESEARCH::gatekeeper).
+# Gates run via claude -p for independent validation at phase boundaries.
+#
+# SHARED GATES: Skip-related gates (gatekeeper_skip, gatekeeper_force_skip)
+# are in the shared_gates section. They evaluate skip decisions, not
+# phase-specific work, so they apply to any phase.
+#
+# TEMPLATE VARIABLES IN PROMPTS:
+#   {checklist} - resolved at runtime from the agent's checklist field
+#   {description} - literal placeholder for the AI (not a Python variable)
+#
+# TO ADD AN AGENT: Add an entry to the appropriate phase with name,
+# number, display_name, and prompt. The engine picks it up automatically.
+#
+# TO ADD A CHECKLIST: Add a `checklist:` field to any agent. Use YAML
+# anchors (&name / *name) to share checklists across phases.
+# ──────────────────────────────────────────────────────────────────
+
+# ── FULL::RESEARCH ─────────────────────────────────────────────────
+# Three agents explore the problem space in parallel before any
+# hypotheses are formed. Their findings feed into HYPOTHESIS phase.
+
+FULL::RESEARCH:
+  agents:
+    - name: researcher
+      number: 1
+      display_name: RESEARCHER
+      prompt: |
+        Deep-dives into code, prior results, and history:
+        - Read the files most relevant to the objective
+        - Read recent git log, benchmark reports, failure logs
+        - What was tried before? What worked? What failed and why?
+        - Find existing functions, patterns, tests that relate to the objective
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: architect
+      number: 2
+      display_name: ARCHITECT
+      prompt: |
+        Analyses the system design and technical landscape:
+        - Understand current architecture and how the objective fits
+        - Identify structural constraints, dependencies, integration points
+        - Find existing patterns that should be reused vs areas that need redesign
+        - Assess technical feasibility and complexity of addressing the objective
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: product_manager
+      number: 3
+      display_name: PRODUCT MANAGER
+      prompt: |
+        Clarifies requirements and acceptance criteria:
+        - Read objective documents, specs, checklists referenced in the objective
+        - What exactly needs to be achieved? What does "done" look like?
+        - Prioritise: what's must-have vs nice-to-have for this iteration?
+        - Identify stakeholder concerns and success metrics
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: spawning 3 separate agents AND read-only constraint.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EXIT CRITERIA: {exit_criteria}
+        AGENTS: required={required_agents} | recorded={recorded_agents}
+        OUTPUT: {output_status} | READBACK: {readback_status}
+        EVIDENCE: {evidence}
+        Check: 3 agents spawned separately, findings contain specific
+        file references and concrete observations (not vague summaries).
+        Evaluate evidence QUALITY: are findings specific enough to act on? Vague summaries = FAIL.
+
+# ── FULL::HYPOTHESIS ───────────────────────────────────────────────
+# Four agents with contrasting perspectives debate which hypotheses
+# to pursue. Each rates existing hypotheses 1-5 stars and proposes new ones.
+# The orchestrating agent merges their proposals by star average.
+
+FULL::HYPOTHESIS:
+  agents:
+    - name: contrarian
+      number: 1
+      display_name: CONTRARIAN
+      prompt: |
+        "What if the obvious approach is wrong? What are we NOT seeing?"
+        - Challenges assumptions in existing hypotheses
+        - Proposes hypotheses that question the premise
+        - Flags hypotheses that chase symptoms instead of root causes
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: optimist
+      number: 2
+      display_name: OPTIMIST
+      prompt: |
+        "What's the highest-impact change we could make?"
+        - Proposes hypotheses targeting the biggest wins
+        - Focuses on leverage points where small changes have large effects
+        - Flags hypotheses with low expected impact for removal
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: pessimist
+      number: 3
+      display_name: PESSIMIST
+      prompt: |
+        "What could go wrong? What will we break?"
+        - Proposes hypotheses about risks and regressions
+        - Flags hypotheses that are too risky or too complex
+        - Warns about hypotheses that sound good but will fail in practice
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: scientist
+      number: 4
+      display_name: SCIENTIST
+      prompt: |
+        "What can we measure? What's the evidence?"
+        - Proposes hypotheses with clear, measurable predictions
+        - Flags hypotheses that cannot be tested or measured
+        - Demands: current metric -> target metric for every hypothesis
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: 4 separate agents AND hypothesis ranking process.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EXIT CRITERIA: {exit_criteria}
+        AGENTS: required={required_agents} | recorded={recorded_agents}
+        OUTPUT: {output_status} | READBACK: {readback_status}
+        EVIDENCE: {evidence}
+        Check: 4 agents spawned separately, hypotheses merged with
+        star ratings, top 1-3 selected with measurable predictions.
+        Evaluate hypothesis QUALITY: each must have root cause, prediction, and evidence. Generic hypotheses without specifics = FAIL.
+
+# ── FULL::PLAN ─────────────────────────────────────────────────────
+# Three review agents evaluate the plan at PLAN end. PLAN start has
+# no agents (uses EnterPlanMode + Explore). The agents_instructions
+# template variable only appears in the PLAN end template in phases.yaml,
+# so these agents are naturally used only at exit review time.
+
+FULL::PLAN:
+  agents:
+    - name: architect
+      number: 1
+      display_name: ARCHITECT
+      prompt: |
+        Reviews the plan for technical feasibility and design quality:
+        - Is the plan specific enough to verify after implementation?
+        - Are the right files identified? Are there dependencies missed?
+        - Is the approach the simplest that could work?
+        - Are there existing functions/patterns that should be reused instead of reinventing?
+        - Could the proposed changes introduce regressions?
+        If the plan is vague ("improve code quality"), REJECT it.
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: critic
+      number: 2
+      display_name: CRITIC
+      prompt: |
+        Reviews the plan for quality and completeness:
+        - Is the plan specific enough to verify after implementation?
+        - Are there gaps - things the hypotheses demand but the plan doesn't address?
+        - Is the scope right - not too large (won't finish), not too small (won't matter)?
+        - Does the plan address the ROOT CAUSE or just the symptom?
+        If the plan is vague ("improve code quality"), REJECT it.
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: guardian
+      number: 3
+      display_name: GUARDIAN
+      mode: standalone_session  # runs via claude -p for independent evaluation
+      prompt: |
+        Reviews the plan for overfit risk. The guardian is the quality gate
+        that prevents changes from gaming tests, benchmarks, or scenarios
+        instead of genuinely improving the system. Apply the checklist below
+        to every proposed change. If uncertain whether a change is overfit
+        or intentional specialisation, ASK the user - never silently approve.
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+      checklist: &guardian_checklist |
+        GUARDIAN CHECKLIST (apply ALL):
+        1. TEST OVERFITTING: do changes game specific test assertions rather than
+           fixing underlying behaviour?
+           - BAD: `if input == test_value: return expected` (hardcoded for test)
+           - BAD: relaxing assertion threshold just to make it pass
+           - BAD: adding mocks that hide real integration issues
+           - GOOD: fixing the algorithm so the test passes naturally
+
+        2. BENCHMARK OVERFITTING: do changes target specific benchmark scenarios
+           rather than improving general capability?
+           - BAD: "use font-size 9" (games a size>=10 evaluator check)
+           - BAD: type-specific templates (`if type == X then...`)
+           - BAD: hardcoded thresholds matching benchmark data
+           - GOOD: design-intent rules that work for any input
+
+        3. SCENARIO OVERFITTING: do changes assume a specific dataset, document,
+           or use case that won't generalise?
+           - BAD: hardcoded paths, filenames, content specific to one dataset
+           - BAD: logic that only works for the test/demo scenario
+           - GOOD: parameterised, configurable, works with any input
+
+        4. INTENTIONAL SPECIALISATION: if something LOOKS like overfitting but
+           was explicitly requested by the user, it is OK. The guardian MUST ASK:
+           "This change targets a specific scenario: {description}.
+            Was this intentional? If yes, proceed. If no, reject."
+           Use AskUserQuestion if uncertain. Never silently allow suspected overfit.
+
+        VERDICTS: CLEAN / WARN (log) / BLOCK (reject) / ASK (ask user)
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: EnterPlanMode (or planning mode) AND read-only.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EXIT CRITERIA: {exit_criteria}
+        AGENTS: required={required_agents} | recorded={recorded_agents}
+        OUTPUT: {output_status} | READBACK: {readback_status}
+        EVIDENCE: {evidence}
+        Check: plan contains specific files, concrete changes per file,
+        root causes, acceptance criteria, and risk assessment.
+        Vague plans ("improve X", "fix issues") = FAIL.
+        Evaluate plan DEPTH: must include specific files, concrete changes, and reasoning for each. Shallow bullet lists = FAIL.
+
+# ── FULL::IMPLEMENT ────────────────────────────────────────────────
+# No agents - implementation is done by the orchestrating session.
+# Gates validate that changes follow the plan.
+
+FULL::IMPLEMENT:
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: predict/verify loop AND following the plan.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EXIT CRITERIA: {exit_criteria}
+        OUTPUT: {output_status} | READBACK: {readback_status}
+        EVIDENCE: {evidence}
+        Check: changes match plan (no scope creep), predict/verify
+        reflection documented for each change.
+        Evaluate implementation THOROUGHNESS: each change must show what was predicted vs what happened. Missing reflections = FAIL.
+
+# ── FULL::TEST ─────────────────────────────────────────────────────
+# No agents - test automation is run by the orchestrator.
+# Gatekeeper demands concrete benchmark evidence when configured.
+
+FULL::TEST:
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: running tests AND benchmark evaluation (if applicable).
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EXIT CRITERIA: {exit_criteria}
+        READBACK: {readback_status}
+        BENCHMARK CONFIGURED: {benchmark_configured}
+        EVIDENCE: {evidence}
+        Check: tests pass, lint clean.
+        BENCHMARK RULE: if benchmark is configured (shows "yes"), the
+        evidence MUST contain concrete execution proof - specific scores,
+        file update confirmation, or item counts. A claim like "benchmark
+        evaluated" without numbers or counts = FAIL with "no benchmark
+        execution evidence provided". If benchmark shows "no", ignore.
+        Evaluate test COMPLETENESS: all planned changes must be covered by test results.
+
+# ── FULL::REVIEW ───────────────────────────────────────────────────
+# Four agents review the completed implementation in parallel.
+# This is NOT a rubber stamp - agents should reject if quality is poor.
+# Guardian uses the same checklist as FULL::PLAN (YAML anchor).
+# Forensicist's output feeds directly into the next iteration's RESEARCH.
+
+FULL::REVIEW:
+  agents:
+    - name: critic
+      number: 1
+      display_name: CRITIC
+      prompt: |
+        Checks implementation quality and plan alignment:
+        1. **Plan alignment**: do the changes match the PLAN? Any scope creep?
+        2. **Quality**: are changes clean, minimal, correct?
+        3. **Regressions**: could these changes break anything not covered by tests?
+        4. **Completeness**: is anything from the plan left undone?
+
+        The critic must be SPECIFIC: "code quality is poor" is not actionable.
+        "Function X at line Y duplicates logic from Z" is actionable.
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: architect
+      number: 2
+      display_name: ARCHITECT
+      prompt: |
+        Checks architectural soundness of the implementation:
+        1. **Design fit**: do changes fit the existing architecture or fight against it?
+        2. **Abstraction level**: right level of abstraction? No premature generalisation?
+        3. **Dependencies**: are new dependencies justified? Any circular references introduced?
+        4. **Patterns**: do changes follow established project patterns or diverge without reason?
+        5. **Simplicity**: is this the simplest approach that could work?
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: guardian
+      number: 3
+      display_name: GUARDIAN
+      mode: standalone_session  # runs via claude -p for independent evaluation
+      prompt: |
+        Reviews the implementation for overfit risk. Examine every code
+        change against the checklist below. Look for patterns where changes
+        target specific test cases, benchmark scenarios, or datasets rather
+        than genuinely improving the system. Compare implementation against
+        the stated plan - did scope creep introduce overfit patterns?
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+      checklist: *guardian_checklist
+    - name: forensicist
+      number: 4
+      display_name: FORENSICIST
+      prompt: |
+        Analyses failure modes and feeds insights into the NEXT iteration:
+        1. **What failed in this iteration?** Read test results, benchmark scores, checker outputs
+        2. **Root cause classification**: for each failure, classify as:
+           - GENERATIVE: the LLM produced wrong output (prompt/brief issue)
+           - PROGRAMMATIC: code calculated wrong values (algorithm/logic issue)
+           - ARCHITECTURAL: the system design doesn't support what's needed
+        3. **Failure patterns**: are the same failures repeating across iterations? If so, why
+           haven't previous fixes worked?
+        4. **Input for next iteration**: what specific hypotheses should the NEXT iteration test?
+           What files/functions are the root cause? What measurable improvement to target?
+
+        The forensicist's output is critical - it feeds directly into the RESEARCH phase of the
+        next iteration as prior context. Be specific: name files, line numbers, error messages.
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: 4 separate agents AND independent review.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EXIT CRITERIA: {exit_criteria}
+        AGENTS: required={required_agents} | recorded={recorded_agents}
+        OUTPUT: {output_status} | READBACK: {readback_status}
+        EVIDENCE: {evidence}
+        Check: 4 agents spawned separately, verdicts merged,
+        guardian overfit assessment completed.
+        Evaluate verdict DEPTH: each agent must provide reasoning, not just APPROVE/REJECT. Missing reasoning = FAIL.
+
+# ── RECORD (shared) ───────────────────────────────────────────────
+# Shared phase - used by all workflows. Journal, commit, push.
+
+RECORD:
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: journal entry AND git commit.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EVIDENCE: {evidence}
+        Check: journal entry appended, git commit created,
+        push to remote succeeded.
+        Evaluate record QUALITY: journal entry must be substantive (not just "done"), commit message must follow conventions.
+
+# ── NEXT (shared) ─────────────────────────────────────────────────
+# Shared phase - used by all workflows. Advance or report completion.
+
+NEXT:
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: iteration advance or completion reporting.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EVIDENCE: {evidence}
+        Check: iteration advanced correctly or final status reported.
+
+# ── PLANNING workflow agents and gates ─────────────────────────────
+# Planning-specific agents focus on problem decomposition and work
+# breakdown rather than code investigation.
+
+PLANNING::RESEARCH:
+  agents:
+    - name: researcher
+      number: 1
+      display_name: RESEARCHER
+      prompt: |
+        Investigate the problem space for work breakdown planning:
+        - Read objective documents and specs
+        - Assess overall scope and complexity
+        - Identify major work areas and dependencies
+        - Estimate effort per area
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: architect
+      number: 2
+      display_name: ARCHITECT
+      prompt: |
+        Analyse architecture for iteration planning:
+        - Map file dependencies and change impact
+        - Identify which changes must come first
+        - Assess risk per area (high/medium/low)
+        - Recommend iteration ordering
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: product_manager
+      number: 3
+      display_name: PRODUCT MANAGER
+      prompt: |
+        Clarify scope and priorities for iteration planning:
+        - What is must-have vs nice-to-have?
+        - How many iterations are realistic?
+        - What are the acceptance criteria per iteration?
+        - What should be deferred if time runs out?
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: problem decomposition AND work breakdown focus.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EXIT CRITERIA: {exit_criteria}
+        AGENTS: required={required_agents} | recorded={recorded_agents}
+        OUTPUT: {output_status} | READBACK: {readback_status}
+        EVIDENCE: {evidence}
+        Check: 3 agents spawned, scope assessed for iteration planning.
+
+PLANNING::HYPOTHESIS:
+  agents:
+    - name: contrarian
+      number: 1
+      display_name: CONTRARIAN
+      prompt: |
+        Challenge the proposed work breakdown:
+        - Is the iteration ordering wrong?
+        - Are we underestimating complexity?
+        - What dependencies are we missing?
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: optimist
+      number: 2
+      display_name: OPTIMIST
+      prompt: |
+        Find the highest-leverage iteration grouping:
+        - Which items naturally cluster?
+        - What gives the biggest early wins?
+        - How to maximise progress per iteration?
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: pessimist
+      number: 3
+      display_name: PESSIMIST
+      prompt: |
+        Identify risks in the work breakdown:
+        - Which iteration is most likely to fail?
+        - What happens if iteration 1 takes longer than expected?
+        - Are there hidden dependencies?
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+    - name: scientist
+      number: 4
+      display_name: SCIENTIST
+      prompt: |
+        Demand measurable predictions for each iteration:
+        - How many benchmark checks per iteration?
+        - What is the expected score trajectory?
+        - How to verify each iteration succeeded?
+
+        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: iteration decomposition debate AND scope sizing.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EXIT CRITERIA: {exit_criteria}
+        AGENTS: required={required_agents} | recorded={recorded_agents}
+        OUTPUT: {output_status} | READBACK: {readback_status}
+        EVIDENCE: {evidence}
+        Check: 4 agents spawned, work breakdown hypotheses ranked.
+
+PLANNING::PLAN:
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: EnterPlanMode AND iteration-level work breakdown.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EXIT CRITERIA: {exit_criteria}
+        OUTPUT: {output_status} | READBACK: {readback_status}
+        EVIDENCE: {evidence}
+        Check: work broken down into iterations with scope, files,
+        and acceptance criteria per iteration.
+
+# ── GC::PLAN ──────────────────────────────────────────────────────
+# GC planning is simpler - no research/hypothesis precedes it.
+# Uses same review agents as FULL::PLAN (fallback) but gc-specific gates.
+
+GC::PLAN:
+  gates:
+    readback:
+      prompt: |
+        Reply PASS or FAIL + one-line reason. No tools. No files.
+        PHASE: {phase} | OBJECTIVE: {objective}
+        INSTRUCTIONS: {instructions}
+        UNDERSTANDING: {understanding}
+        Must mention: cleanup scope AND read-only planning.
+        Be lenient on phrasing.
+    gatekeeper:
+      prompt: |
+        Reply PASS or FAIL + brief reason. No tools.
+        PHASE: {phase}
+        EXIT CRITERIA: {exit_criteria}
+        AGENTS: required={required_agents} | recorded={recorded_agents}
+        OUTPUT: {output_status} | READBACK: {readback_status}
+        EVIDENCE: {evidence}
+        Check: cleanup targets identified with rationale, specific
+        files listed, no feature additions disguised as cleanup.
+
+# ── Shared skip gates ─────────────────────────────────────────────
+# Skip decisions are not phase-specific - they evaluate whether
+# skipping any phase is justified. Shared across all workflows.
+
+shared_gates:
+  gatekeeper_skip:
+    mode: standalone_session
+    description: "Evaluates whether skipping an optional phase is justified"
+    prompt: |
+      Reply with ONLY APPROVE or DENY followed by a one-line reason.
+      Do NOT use any tools.
+
+      An AI agent wants to SKIP phase {phase} in iteration
+      {iteration} ({itype}).
+      OBJECTIVE: {objective}
+      PHASE PURPOSE: {phase_purpose}
+      SKIP REASON: {reason}
+
+      Is skipping justified? A skip is OK if:
+      - The phase work was already done in a prior step
+      - The phase is genuinely not applicable to this iteration's scope
+      - The changes are trivially small and the phase would add no value
+      A skip is NOT OK if:
+      - The agent is cutting corners to save time
+      - The phase would catch issues the agent might miss
+      - Required agents would provide independent validation
+
+  gatekeeper_force_skip:
+    mode: standalone_session
+    description: "Very conservative evaluation for force-skipping required phases"
+    prompt: |
+      Reply with ONLY APPROVE or DENY followed by a one-line reason.
+      Do NOT use any tools.
+
+      An AI agent wants to FORCE-SKIP a REQUIRED phase.
+      PHASE: {phase} (REQUIRED - normally cannot be skipped)
+      ITERATION: {iteration}
+      COMPLETED PHASES: {completed_phases}
+      SKIP REASON: {reason}
+
+      Be VERY CONSERVATIVE. A force-skip is exceptional.
+      ONLY approve if:
+      - The iteration is stopping early and remaining phases are truly meaningless
+      - The phase's purpose was already fulfilled by a prior step
+      - An external constraint makes execution impossible
+      DENY if:
+      - The agent is cutting corners or saving time
+      - The phase provides independent validation that hasn't occurred
+      - Skipping would reduce quality assurance
+      - The reason is vague or doesn't explain why the phase is unnecessary
+      Default to DENY unless the reason is compelling.
