@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stellars_claude_code_plugins"
+version = "0.1.0"
+description = "Claude Code plugins for autonomous development workflows"
+authors = [
+    { name = "Stellars Henson" },
+]
+license = "MIT"
+readme = "README.md"
+requires-python = "~=3.12.0"
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+    "loguru",
+    "pyyaml",
+    "typer",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build",
+    "ipython",
+    "pip",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["stellars_claude_code_plugins*"]
+exclude = ["tests*"]
+
+[tool.ruff]
+line-length = 99
+src = ["stellars_claude_code_plugins"]
+include = ["pyproject.toml", "stellars_claude_code_plugins/**/*.py"]
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["stellars_claude_code_plugins"]
+force-sort-within-sections = true
