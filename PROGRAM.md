@@ -1,173 +1,166 @@
-# Program: Gate Architecture Refactor and Action Definitions
+# Program: Workflow FQN and YAML File Consolidation
 
 ## Objective
 
-Refactor the gate and auto-action architecture so that YAML configuration fully describes which gates run at which lifecycle points, and auto-actions have explicit definitions in YAML rather than being hardcoded name-to-function mappings. Currently the orchestrator hardcodes that readback runs at start and gatekeeper runs at end - this knowledge should live in the YAML.
+Harmonise all naming across the YAML model into one consistent pattern. Every entity - workflows, phases, agents, gates, actions - must follow the same FQN convention. Currently workflows use bare lowercase (`full`), phases use `WORKFLOW::PHASE` (`FULL::RESEARCH`), agents duplicate phase keys, and actions use bare lowercase (`plan_save`). After this program, everything uses `NAMESPACE::NAME` with a `cli_name` for human-facing flags. Consolidate agents.yaml into phases.yaml since they describe the same 11 phase keys.
 
-## Current State
+## Naming Harmony Rules
 
-### Gates
+Every entity in the model MUST follow:
 
-Gates are `claude -p` subprocess calls that validate phase transitions. Currently 4 gate types exist, all hardcoded in orchestrator.py:
+| Entity | FQN Pattern | Example | cli_name |
+|--------|-------------|---------|----------|
+| Workflow | `WORKFLOW::NAME` | `WORKFLOW::FULL` | `full` |
+| Phase | `WORKFLOW::PHASE` | `FULL::RESEARCH` | - |
+| Shared phase | `PHASE` (bare) | `RECORD`, `NEXT` | - |
+| Agent | nested under phase | `FULL::RESEARCH.agents[0]` | - |
+| Gate | `PHASE::GATE_TYPE` | `FULL::RESEARCH::readback` | - |
+| Shared gate | bare under `shared_gates` | `gatekeeper_skip` | - |
+| Action | `ACTION::NAME` | `ACTION::PLAN_SAVE` | `plan_save` |
 
-| Gate | When | Where hardcoded | Purpose |
-|------|------|-----------------|---------|
-| readback | cmd_start (phase entry) | `_readback_validate()` called in cmd_start | Validates agent understanding before work begins |
-| gatekeeper | cmd_end (phase exit) | `_gatekeeper_validate()` called in cmd_end | Validates phase completion quality |
-| gatekeeper_skip | cmd_skip (skip request) | `_gatekeeper_evaluate_skip()` | Decides if optional phase skip is justified |
-| gatekeeper_force_skip | cmd_skip --force | `_gatekeeper_evaluate_force_skip()` | Conservative gate for required phase force-skip |
+The FQN prefix acts as a namespace. `cli_name` is the short form for user-facing flags. Internal references always use FQN. Resolution fallback chain: `WORKFLOW::PHASE` -> bare `PHASE` -> `FULL::PHASE` (unchanged).
 
-In agents.yaml, gates are nested under each phase:
-```yaml
-FULL::RESEARCH:
-  agents: [...]
-  gates:
-    readback:
-      prompt: "..."
-    gatekeeper:
-      prompt: "..."
-```
+## Baseline Metrics
 
-The orchestrator knows `readback` = start gate and `gatekeeper` = end gate. This is implicit.
-
-### Auto-Actions
-
-Auto-actions are Python functions triggered after phase completion. Currently 5 registered:
-
-| Action | Definition | Type |
-|--------|-----------|------|
-| hypothesis_autowrite | _action_hypothesis_autowrite (in orchestrator.py) | Programmatic - parses output, writes YAML |
-| hypothesis_gc | _action_hypothesis_gc (in orchestrator.py) | Programmatic - archives done hypotheses |
-| plan_save | _action_plan_save (in orchestrator.py) | Programmatic - saves plan to plan.yaml |
-| iteration_summary | _action_iteration_summary (in orchestrator.py) | Programmatic - writes iteration_N.md summary |
-| iteration_advance | _action_iteration_advance (in orchestrator.py) | Programmatic - advances to next iteration |
-
-All 5 are programmatic (Python code). None are generative (Claude instructions). Action names in phases.yaml map to hardcoded Python functions via _AUTO_ACTION_REGISTRY.
+| Metric | Current | Target |
+|--------|---------|--------|
+| YAML resource files | 4 (workflow, phases, agents, app) | 3 (workflow, phases, app) |
+| Workflow names | bare lowercase (full, gc) | FQN WORKFLOW::FULL |
+| Action names | bare lowercase (plan_save) | FQN ACTION::PLAN_SAVE |
+| Phase keys | 11 duplicated across phases.yaml and agents.yaml | 11 in phases.yaml only |
+| Hardcoded "full" defaults in orchestrator | 2 | 0 |
+| Hardcoded "FULL::" fallback in model | 1 | 0 (model-derived) |
+| Tests | 131 | >=131 |
 
 ## Work Items
 
-### Split gates into explicit start/end sections in YAML (high)
-- Scope: agents.yaml, engine/model.py, engine/orchestrator.py
-- Currently gates are `readback` and `gatekeeper` nested under one `gates:` key
-- Split into `start_gates:` and `end_gates:` (or similar) so the YAML explicitly says which gate runs when
-- Move `gatekeeper_skip` and `gatekeeper_force_skip` from `shared_gates` into a `skip_gates:` section
-- Update model.py Gate dataclass and _build_agents_and_gates to load the new structure
-- Update orchestrator.py _resolve_gate to use the new key structure
-- Acceptance: YAML declares gate-to-lifecycle-point mapping, orchestrator reads it instead of hardcoding
+- **Add FQN format and cli_name to workflows** (high)
+  - Scope: workflow.yaml, engine/model.py, engine/orchestrator.py
+  - Workflows currently use bare lowercase names: `full:`, `gc:`, `planning:`
+  - Phases use `FULL::RESEARCH`, agents use `FULL::RESEARCH` - workflows should match
+  - New format in workflow.yaml:
+    ```yaml
+    WORKFLOW::FULL:
+      cli_name: full
+      description: "Full iteration: research, hypothesise, plan, implement, test, review, record"
+      depends_on: WORKFLOW::PLANNING
+      phases:
+        - name: RESEARCH
+        - name: HYPOTHESIS
+        ...
+    ```
+  - Add `cli_name: str` field to WorkflowType dataclass
+  - `_build_workflow_types` parses cli_name from YAML
+  - ITERATION_TYPES keyed by cli_name for --type flag compatibility
+  - Internal model stores workflows by FQN key (WORKFLOW::FULL)
+  - `depends_on` references FQN: `depends_on: WORKFLOW::PLANNING`
+  - `_resolve_key` fallback chain currently has `FULL::` hardcoded as fallback - update to use the FQN of the default workflow from model
+  - The two hardcoded `"full"` defaults in orchestrator.py (L223, L397) must use model metadata instead
+  - Acceptance: workflow.yaml uses FQN, --type full/gc/hotfix/fast still works via cli_name, orchestrate validate passes, dry-run works for all types
 
-### Add action definitions to YAML (medium)
-- Scope: new `actions:` section in workflow.yaml (or separate actions.yaml), engine/model.py, engine/orchestrator.py
-- Currently phases.yaml has `auto_actions: {on_complete: [action_name]}` with no definition
-- Add an `actions:` section that defines each action with type and description:
+- **Merge agents.yaml into phases.yaml** (high)
+  - Scope: agents.yaml, phases.yaml, engine/model.py, engine/orchestrator.py
+  - Both files define the exact same 11 phase keys (verified: FULL::RESEARCH, FULL::HYPOTHESIS, FULL::PLAN, FULL::IMPLEMENT, FULL::TEST, FULL::REVIEW, RECORD, NEXT, PLANNING::RESEARCH, PLANNING::PLAN, GC::PLAN)
+  - Agents are already lifecycle-bound under on_start/on_end in agents.yaml
+  - Phases.yaml has phase templates (start/end text)
+  - Combine: each phase entry in phases.yaml gains the agents and gates from agents.yaml
+  - Merged format per phase:
+    ```yaml
+    FULL::RESEARCH:
+      auto_actions:
+        on_complete: []
+      start: |
+        ## Phase: RESEARCH
+        ...
+      end: |
+        ## Phase: RESEARCH (exit criteria)
+        ...
+      gates:
+        on_start:
+          readback:
+            prompt: "..."
+        on_end:
+          agents:
+            - name: researcher
+              display_name: RESEARCHER
+              prompt: "..."
+          gatekeeper:
+            prompt: "..."
+    ```
+  - Move `shared_gates` section into phases.yaml (at top, before phase entries)
+  - Delete agents.yaml
+  - Update `load_model` to load agents/gates from phases.yaml (same raw dict) instead of separate agents.yaml
+  - `_build_agents_and_gates` receives the phases raw dict and extracts from `gates:` subsections
+  - `_build_phases` already receives the same dict - both builders share input
+  - Acceptance: agents.yaml deleted, phases.yaml is single source for phases+agents+gates, load_model reads 3 files, orchestrate validate passes, all tests pass
 
-```yaml
-actions:
-  # Programmatic actions - Python handler, documented here
-  plan_save:
-    type: programmatic
-    description: "Save PLAN output to plan.yaml for dependency workflows"
-  iteration_summary:
-    type: programmatic
-    description: "Write iteration_N.md executive summary from phase outputs"
-  iteration_advance:
-    type: programmatic
-    description: "Advance to next iteration, reset phase state"
+- **Harmonise action names to FQN** (medium)
+  - Scope: workflow.yaml actions section, phases.yaml auto_actions references, engine/model.py, engine/orchestrator.py _AUTO_ACTION_REGISTRY
+  - Currently actions use bare lowercase: `plan_save`, `iteration_summary`, `hypothesis_autowrite`
+  - New format: `ACTION::PLAN_SAVE` with `cli_name: plan_save` for backward compat in phases.yaml references
+  - Actually - actions referenced in phases.yaml `auto_actions: {on_complete: [plan_save]}` are the user-facing names. Since phases.yaml is the consumer and actions are defined in workflow.yaml, the simplest harmonisation is to keep the existing names but namespace them in the definition:
+    ```yaml
+    actions:
+      ACTION::PLAN_SAVE:
+        cli_name: plan_save
+        type: programmatic
+        description: "Save PLAN output to plan.yaml"
+    ```
+  - phases.yaml references by cli_name: `on_complete: [plan_save]`
+  - Model resolves cli_name to FQN internally
+  - Acceptance: action definitions use FQN, phases.yaml references still work, validate passes
 
-  # Generative actions - prompt executed via claude -p
-  hypothesis_autowrite:
-    type: generative
-    description: "Extract structured hypotheses from phase output"
-    prompt: |
-      Read the hypothesis output below and extract structured entries.
-      For each hypothesis write: ID, HYPOTHESIS, PREDICT, EVIDENCE, RISK, STARS.
-      Write to {artifacts_dir}/hypotheses.yaml in YAML list format.
-      OUTPUT: {phase_output}
-  hypothesis_gc:
-    type: generative
-    description: "Archive DONE/REMOVED hypotheses"
-    prompt: |
-      Read {artifacts_dir}/hypotheses.yaml. Move entries with status
-      DONE or REMOVED to {artifacts_dir}/hypotheses_archive.yaml.
-      Keep only active hypotheses in the main file.
-```
+- **Update model.py for FQN everywhere** (high)
+  - Scope: engine/model.py
+  - WorkflowType: add `cli_name: str = ""`, parse from YAML
+  - ActionDef: add `cli_name: str = ""` for backward-compat references in phases.yaml
+  - `_build_workflow_types`: strip `WORKFLOW::` prefix for key storage if needed, or store with prefix - decide canonical form
+  - `_build_actions`: strip `ACTION::` prefix or store with it
+  - Build cli_name -> FQN lookup maps for both workflows and actions
+  - `_WORKFLOW_RESERVED_KEYS`: update for any new reserved keys
+  - `load_model`: load 3 files (workflow.yaml, phases.yaml, app.yaml), pass phases raw to both `_build_phases` and `_build_agents_and_gates`
+  - `_resolve_key` fallback: replace hardcoded `"FULL::"` with model-derived default workflow name
+  - `validate_model`: check FQN format on workflow and action keys, check cli_name uniqueness
+  - Acceptance: model loads correctly from 3 files, FQN used internally, cli_names resolve
 
-- Programmatic actions keep their Python handlers - the YAML just documents what they do
-- Generative actions are executed by the orchestrator via `claude -p` using the YAML prompt template - no Python handler needed
-- The orchestrator checks action type: if `programmatic`, call the Python handler; if `generative`, run `_claude_evaluate(prompt)`
-- Acceptance: every action has a YAML definition, generative actions work from prompts without Python code
+- **Update orchestrator.py** (medium)
+  - Scope: engine/orchestrator.py
+  - `_initialize`: build ITERATION_TYPES keyed by cli_name, store FQN->cli_name mapping
+  - `_build_cli_parser`: --type choices from cli_names
+  - `cmd_new`: resolve cli_name to FQN for state storage
+  - `_current_workflow_type`: returns cli_name (or FQN, decide which is canonical in state)
+  - Remove hardcoded `"full"` defaults at L223 and L397 - use first independent workflow from model
+  - Acceptance: all commands work with cli_name, internal state uses consistent format
 
-### Remove hypothesis auto-actions from _KNOWN_AUTO_ACTIONS (low)
-- Scope: engine/model.py
-- hypothesis_autowrite and hypothesis_gc are in _KNOWN_AUTO_ACTIONS with "retained for YAML compat" comment
-- If they're still used in FULL::HYPOTHESIS phases.yaml, keep them. If not, remove
-- Acceptance: no dead references in _KNOWN_AUTO_ACTIONS
-
-### Remove hardcoded resolution - use YAML identifiers (high)
-- Scope: engine/orchestrator.py
-- The orchestrator hardcodes gate type names ("readback", "gatekeeper", "gatekeeper_skip", "gatekeeper_force_skip") in _resolve_gate calls and skip evaluation functions
-- Instead: the orchestrator should discover gate names from the YAML lifecycle sections (on_start, on_end, on_skip) and resolve by lifecycle point
-- Same for agent resolution: don't assume agent names, read them from the model
-- Acceptance: grep for hardcoded "readback", "gatekeeper" in orchestrator logic returns 0 results (excluding log event names which are audit trail labels)
-
-### Add overfit scoring to benchmark (medium)
-- Scope: BENCHMARK.md
-- Every hardcoded value in orchestrator.py that should come from YAML is a benchmark violation
-- Score formula should penalize: hardcoded gate names, hardcoded agent names, hardcoded phase names
-- Acceptance: benchmark explicitly tracks overfit count
-
-### Add agents to on_start/on_end gate sections (high)
-- Scope: agents.yaml, engine/model.py
-- Currently agents are defined at the phase level alongside gates. But the `on_start` and `on_end` sections only contain gate prompts, no agent definitions
-- Move agents into the lifecycle sections to keep format consistent: `on_start:` has agents spawned at phase entry (currently just readback gate), `on_end:` has agents spawned at phase completion (review agents + gatekeeper gate)
-- This makes it explicit which agents run at which lifecycle point
-- The orchestrator already knows agents are spawned at end (via agent_instructions in phases.yaml) - this makes it structural
-- Acceptance: agents.yaml has agents under on_start or on_end per phase, model loads them correctly
-
-### Update tests (high)
-- Scope: tests/test_model.py, tests/test_orchestrator.py
-- Tests must verify new YAML gate structure loads correctly
-- Tests must verify action definitions are loaded
-- Tests must verify orchestrator uses YAML gate mapping not hardcoded names
-- Acceptance: all tests pass, new structure covered
-
-### Force auto-progression in prompts (high)
-- Scope: phases.yaml, SKILL.md
-- Every phase start/end template must include explicit instruction to proceed immediately to the next phase
-- No "shall I continue?" or "ready for next?" questions - just proceed
-- The autonomous execution instruction in SKILL.md must be reinforced in every phase template
-- Acceptance: grep phases.yaml for "proceed immediately" or equivalent in every phase end template
-
-### Smarter planning phase with creative ideation (medium)
-- Scope: phases.yaml (PLANNING::PLAN and FULL::PLAN start templates), agents.yaml (add contrarian to PLANNING::PLAN)
-- The PLAN phase currently just creates a technical plan. Make it smarter by incorporating creative ideation - exploring alternative approaches before locking in
-- Add a contrarian agent to the PLANNING::PLAN phase that challenges the proposed approach and suggests alternatives
-- The plan start template should include: "Before creating the plan, explore 2-3 alternative approaches. Have the contrarian challenge each. Then select the best approach with justification."
-- Acceptance: PLANNING::PLAN has contrarian agent, plan template includes ideation step
-
-### Add 'fast' workflow type (medium)
-- Scope: workflow.yaml, phases.yaml (if new phase entries needed), agents.yaml (if new gate entries needed)
-- Add a `fast` workflow: PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT
-- No RESEARCH, no HYPOTHESIS, no planning dependency workflow before it
-- Uses the same agents and gate constructions as full (FULL::PLAN agents, FULL::IMPLEMENT gates, etc. via fallback chain)
-- Good for when the objective is clear and research/hypothesis is unnecessary
-- `independent: true` (default, omit field)
-- Acceptance: `orchestrate new --type fast --objective "..." --iterations 1 --dry-run` succeeds, validate passes
-
-## Constraints
-
-- Do NOT change gate behavior - readback still blocks at start, gatekeeper still blocks at end
-- Do NOT remove any existing gates or auto-actions
-- Maintain backward compatibility: old YAML format should still work (or migration should be documented)
-- Keep `shared_gates` working for skip gates unless moved to a better location
+- **Update conftest.py and tests** (high)
+  - Scope: tests/conftest.py, tests/test_model.py, tests/test_orchestrator.py
+  - Minimal fixtures: merge agent definitions into phases YAML, use FQN workflow names
+  - Test workflow loading with cli_name
+  - Test that agents load from merged phases file
+  - Remove any references to agents.yaml in test fixtures
+  - Acceptance: all tests pass with new YAML structure
 
 ## Exit Conditions
 
-Iterations stop when ALL conditions are met:
-1. YAML explicitly declares which gates run at start vs end vs skip
-2. Auto-actions have definitions in YAML (type, description, prompt for generative)
-3. Orchestrator reads gate mapping from YAML, not hardcoded
-4. All tests pass with 0 failures
-5. `make lint` passes clean
-6. `orchestrate validate` passes
-7. Benchmark score = 0 (all checklist items in BENCHMARK.md are [x])
-8. No further optimisation possible - code is clean, no dead references, no hardcoded gate names remain
+Iterations stop when ANY of these is true:
+1. Benchmark score = 0 (all checklist items met)
+2. No score improvement for 2 consecutive iterations (plateau)
+3. All work items have acceptance criteria met
+
+Additionally, ALL of these must hold:
+- make test passes with 0 failures
+- make lint passes clean
+- orchestrate validate passes
+- `orchestrate new --type full --objective "test" --iterations 1 --dry-run` succeeds
+- `orchestrate new --type fast --objective "test" --iterations 1 --dry-run` succeeds
+- `orchestrate new --type gc --objective "test" --iterations 1 --dry-run` succeeds
+- `orchestrate new --type hotfix --objective "test" --iterations 1 --dry-run` succeeds
+
+## Constraints
+
+- Do NOT change phase template content (start/end instruction text)
+- Do NOT change gate prompt content
+- Do NOT change agent prompts or agent definitions
+- Do NOT change app.yaml
+- Preserve --type flag backward compatibility (full, gc, hotfix, fast still work)
+- The `_resolve_key` FULL:: fallback pattern must still work for gc/hotfix workflows that reuse full's phases
