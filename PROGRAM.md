@@ -128,7 +128,26 @@ Components that fail any test are **unjustified** and must be removed or merged.
 - Total engine lines reduced from 3113 baseline
 - All tests still passing after removals
 
-## Workstream D - Run-Until-Complete Mode
+## Workstream D1 - Independent Workflow Flag
+
+Replace the `dependency: true/false` field in workflow.yaml with a clearer `independent: true/false` flag that defines whether a workflow can be started directly via `--type`.
+
+### Behavior
+
+- Remove `dependency: true` field entirely from workflow.yaml and model.py
+- Add `independent: false` only on workflows that cannot be started directly (e.g., planning)
+- The field is implicit - if not present, the workflow is independent (can be invoked via `--type`)
+- If `independent: false` is set and the orchestrator tries to run this workflow directly, it fails with an error
+- Only workflows referenced via `depends_on` from another workflow can have `independent: false`
+
+### Files to Modify
+
+- `auto-build-claw/skills/auto-build-claw/resources/workflow.yaml` - remove `dependency: true` from planning, add `independent: false`
+- `stellars_claude_code_plugins/engine/model.py` - remove `WorkflowType.dependency` field, add `independent: bool = True`, update `_build_workflow_types` to read `independent` (default True), update `validate_model`
+- `stellars_claude_code_plugins/engine/orchestrator.py` - replace all `wf_def.dependency` checks with `not wf_def.independent`
+- `tests/` - update tests referencing dependency field
+
+## Workstream D2 - Run-Until-Complete Mode
 
 Add a new execution mode to the orchestrator that runs iterations indefinitely until the benchmark score reaches 0 (all conditions met).
 
@@ -207,7 +226,8 @@ Tests additionally require a "why not trivial" column explaining why the test is
 
 1. **Workstream B first** (hypothesis removal) - simplest, reduces code surface before other work
 2. **Workstream A second** (FSM migration) - independent from hypothesis removal
-3. **Workstream D third** (run-until-complete) - builds on existing benchmark infrastructure
+3. **Workstream D1 third** (independent flag) - rename dependency to independent
+4. **Workstream D2 fourth** (run-until-complete) - builds on existing benchmark infrastructure
 4. **Workstream E fourth** (justifications) - audit all remaining code and tests
 5. **Workstream C last** (tree-sitter analysis) - final complexity and dead code sweep on cleaned codebase
 

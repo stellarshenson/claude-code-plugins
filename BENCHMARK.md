@@ -167,7 +167,17 @@ Tests that fail this audit are **unjustified** and count in the benchmark score 
 - [ ] No component exists in code that is missing from CODE_JUSTIFICATIONS.md
 - [ ] No test exists in code that is missing from CODE_JUSTIFICATIONS.md
 
-## Section 5: Run-Until-Complete Mode
+## Section 5: Independent Workflow Flag
+
+- [ ] No `dependency` field anywhere in codebase (workflow.yaml, model.py, orchestrator.py)
+- [ ] `independent: bool = True` on WorkflowType dataclass
+- [ ] Planning workflow has `independent: false` in workflow.yaml
+- [ ] Full, gc, hotfix workflows omit `independent` (implicitly true)
+- [ ] `cmd_new` fails with error when `--type` targets a workflow with `independent: false`
+- [ ] Orchestrator uses `wf_def.independent` everywhere (not `wf_def.dependency`)
+- [ ] Tests verify: independent workflows start, non-independent workflows fail on direct invocation
+
+## Section 6: Run-Until-Complete Mode
 
 - [ ] `--iterations 0` accepted by `orchestrate new` without error
 - [ ] `total_iterations = 0` stored in state.yaml as sentinel for unlimited
