@@ -106,3 +106,4 @@ Iterations stop when ALL conditions are met:
 |-----------|------|-------|--------------|-----------------|-------|
 | baseline  | -    | 34    | 0            | 34              | before any work |
 | iter 1    | 2026-04-01 | 9 | 0 | 9 | YAML restructure done, model loads on_start/on_end/on_skip, actions defined, 6 new tests |
+| iter 1 test | 2026-04-01 | 52 | 0 | 22 + 15 overfit*2 | added overfit + agent integrity sections, score jumps due to new requirements |
