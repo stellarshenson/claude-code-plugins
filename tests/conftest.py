@@ -13,12 +13,23 @@ def auto_build_claw_resources():
 
 @pytest.fixture
 def minimal_resources(tmp_path):
-    """Create minimal YAML resource files for testing."""
+    """Create minimal YAML resource files for testing.
+
+    Uses FQN workflow names (WORKFLOW::TEST_WORKFLOW) and merged
+    phases format (agents/gates inline in phases.yaml, no agents.yaml).
+    """
     resources = tmp_path / "resources"
     resources.mkdir()
 
     (resources / "workflow.yaml").write_text("""
-test_workflow:
+actions:
+  ACTION::TEST_ACTION:
+    cli_name: test_action
+    type: programmatic
+    description: "A test action"
+
+WORKFLOW::TEST_WORKFLOW:
+  cli_name: test_workflow
   description: "A test workflow"
   phases:
     - name: ALPHA
@@ -30,20 +41,6 @@ test_workflow:
 """)
 
     (resources / "phases.yaml").write_text("""
-ALPHA:
-  start: "Start alpha phase. Objective: {objective}"
-  end: "End alpha phase. Evidence: {evidence}"
-
-BETA:
-  start: "Start beta phase."
-  end: "End beta phase."
-
-GAMMA:
-  start: "Start gamma phase."
-  end: "End gamma phase."
-""")
-
-    (resources / "agents.yaml").write_text("""
 shared_gates:
   on_skip:
     gatekeeper_skip:
@@ -56,6 +53,8 @@ shared_gates:
       prompt: "Evaluate force-skip for {phase} in iteration {iteration}: {reason}"
 
 ALPHA:
+  start: "Start alpha phase. Objective: {objective}"
+  end: "End alpha phase. Evidence: {evidence}"
   gates:
     on_start:
       readback:
@@ -73,6 +72,8 @@ ALPHA:
         prompt: "Phase {phase}: {evidence}"
 
 BETA:
+  start: "Start beta phase."
+  end: "End beta phase."
   gates:
     on_start:
       readback:
@@ -90,6 +91,8 @@ BETA:
         prompt: "Phase {phase}: {evidence}"
 
 GAMMA:
+  start: "Start gamma phase."
+  end: "End gamma phase."
   gates:
     on_start:
       readback:

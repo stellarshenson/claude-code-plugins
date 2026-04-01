@@ -473,7 +473,7 @@ class TestIndependentWorkflow:
     def test_non_independent_workflow_fails(self, minimal_resources, tmp_path):
         orch._initialize(minimal_resources)
         # Mark test_workflow as non-independent
-        orch._MODEL.workflow_types["test_workflow"].independent = False
+        orch._MODEL.workflow_types["WORKFLOW::TEST_WORKFLOW"].independent = False
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
         args = argparse.Namespace(

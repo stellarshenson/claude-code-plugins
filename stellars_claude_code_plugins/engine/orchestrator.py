@@ -35,7 +35,6 @@ from stellars_claude_code_plugins.engine.fsm import (
     SKIP,
     START,
     build_phase_lifecycle_fsm,
-    resolve_phase_key,
 )
 from stellars_claude_code_plugins.engine.fsm import (
     ALL_STATES as _FSM_ALL_STATES,
@@ -44,8 +43,8 @@ from stellars_claude_code_plugins.engine.model import (
     _KNOWN_VARS as _KNOWN_TEMPLATE_VARS,
 )
 from stellars_claude_code_plugins.engine.model import (
-    _resolve_key,
     load_model,
+    resolve_phase_key,
     validate_model,
 )
 
@@ -67,6 +66,8 @@ _HDR_WIDTH = None
 _PHASE_FSM = None
 _FSM_STATE_VALUES = None
 ITERATION_TYPES = {}
+_CLI_TO_FQN = {}  # cli_name -> FQN workflow key (e.g., "full" -> "WORKFLOW::FULL")
+_DEFAULT_CLI_NAME = ""  # first independent workflow's cli_name
 PHASE_AGENTS = {}
 _PHASE_START = {}
 _PHASE_END = {}
@@ -86,7 +87,8 @@ def _initialize(resources_dir: Path) -> None:
     global _MODEL, DEFAULT_ARTIFACTS_DIR, STATE_FILE, LOG_FILE, FAILURES_FILE
     global CONTEXT_FILE, CMD, _SEP_CHAR, _SEP_WIDTH
     global _HDR_CHAR, _HDR_WIDTH, _PHASE_FSM, _FSM_STATE_VALUES
-    global ITERATION_TYPES, PHASE_AGENTS, _PHASE_START, _PHASE_END
+    global ITERATION_TYPES, _CLI_TO_FQN, _DEFAULT_CLI_NAME
+    global PHASE_AGENTS, _PHASE_START, _PHASE_END
     global _AUTO_ACTION_REGISTRY, _initialized
 
     _MODEL = load_model(resources_dir)
@@ -105,19 +107,24 @@ def _initialize(resources_dir: Path) -> None:
     _PHASE_FSM = build_phase_lifecycle_fsm()
     _FSM_STATE_VALUES = set(_FSM_ALL_STATES)
 
-    # Build ITERATION_TYPES from model.workflow_types
+    # Build ITERATION_TYPES keyed by cli_name, and cli_name -> FQN mapping
     ITERATION_TYPES.clear()
-    ITERATION_TYPES.update(
-        {
-            name: {
-                "description": wt.description,
-                "phases": wt.phase_names,
-                "required": wt.required,
-                "skippable": wt.skippable,
-            }
-            for name, wt in _MODEL.workflow_types.items()
+    _CLI_TO_FQN.clear()
+    for fqn, wt in _MODEL.workflow_types.items():
+        cli = wt.cli_name or fqn  # fallback to FQN if no cli_name
+        _CLI_TO_FQN[cli] = fqn
+        ITERATION_TYPES[cli] = {
+            "description": wt.description,
+            "phases": wt.phase_names,
+            "required": wt.required,
+            "skippable": wt.skippable,
         }
-    )
+    # Derive default cli_name from first independent workflow
+    _DEFAULT_CLI_NAME = ""
+    for fqn, wt in _MODEL.workflow_types.items():
+        if wt.independent and wt.cli_name:
+            _DEFAULT_CLI_NAME = wt.cli_name
+            break
 
     # Extract flat agent name lists from model.agents
     PHASE_AGENTS.clear()
@@ -218,33 +225,50 @@ def _guardian_checklist() -> str:
 
 
 def _current_workflow_type() -> str:
-    """Get current workflow type from state, defaulting to 'full'."""
+    """Get current workflow type (cli_name) from state."""
     state = _load_state()
-    return (state or {}).get("type", "full")
+    return (state or {}).get("type", _DEFAULT_CLI_NAME)
+
+
+def _workflow_prefix(cli_name: str = "") -> str:
+    """Get the workflow prefix from cli_name for phase resolution.
+
+    Maps cli_name -> FQN -> prefix. E.g., "full" -> "WORKFLOW::FULL" -> "FULL".
+    """
+    cli = cli_name or _current_workflow_type()
+    fqn = _CLI_TO_FQN.get(cli, cli)
+    return fqn.split("::", 1)[1] if "::" in fqn else fqn
 
 
 def _resolve_phase(phase: str) -> str:
     """Resolve a phase name to its namespaced key in phases.yaml."""
-    return resolve_phase_key(_current_workflow_type(), phase, _MODEL.phases)
+    return resolve_phase_key(_workflow_prefix(), phase, set(_MODEL.phases.keys()))
 
 
 def _resolve_agents(phase: str) -> str:
-    """Resolve a phase name to its namespaced key in agents.yaml."""
-    return resolve_phase_key(_current_workflow_type(), phase, _MODEL.agents)
+    """Resolve a phase name to its namespaced key for agent lookup.
+
+    Returns the resolved key if agents exist, or bare phase name if not.
+    Not all phases have agents, so missing is not an error.
+    """
+    try:
+        return resolve_phase_key(_workflow_prefix(), phase, set(_MODEL.agents.keys()))
+    except KeyError:
+        return phase  # phase has no agents defined - not an error
 
 
 def _resolve_gate(phase: str, gate_type: str) -> str:
-    """Resolve a gate key for a phase using the :: fallback chain.
+    """Resolve a gate key for a phase. Strict lookup, no fallback.
 
     Gate keys are namespaced: FULL::RESEARCH::readback, FULL::TEST::gatekeeper.
-    Resolution follows the same WORKFLOW::PHASE -> PHASE -> FULL::PHASE chain.
+    Resolution: WORKFLOW::PHASE -> bare PHASE. Missing = KeyError.
     """
     gate_phases = {
         k.rsplit("::", 1)[0]
         for k in _MODEL.gates
         if "::" in k and k.rsplit("::", 1)[1] == gate_type
     }
-    resolved = _resolve_key(_current_workflow_type(), phase, gate_phases)
+    resolved = resolve_phase_key(_workflow_prefix(), phase, gate_phases)
     return f"{resolved}::{gate_type}"
 
 
@@ -394,9 +418,10 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
     # Iteration purpose - explains what this iteration is about
     iteration = s.get("iteration", 1)
     total_iters = s.get("total_iterations", 1)
-    itype = s.get("type", "full")
+    itype = s.get("type", _DEFAULT_CLI_NAME)
     iteration_plan = s.get("iteration_plan", "")
-    wf_def = _MODEL.workflow_types.get(itype)
+    wf_fqn = _CLI_TO_FQN.get(itype, itype)
+    wf_def = _MODEL.workflow_types.get(wf_fqn)
     if wf_def and not wf_def.independent:
         iteration_purpose = "\n" + _msg("dependency_banner", description=wf_def.description) + "\n"
     elif iteration > 0 and iteration_plan:
@@ -497,7 +522,8 @@ def _action_iteration_advance(state: dict, phase: str):
 
 def _action_plan_save(state: dict, phase: str):
     """Save PLAN output as plan.yaml for dependency workflows."""
-    wf_def = _MODEL.workflow_types.get(state.get("type", ""))
+    wf_fqn = _CLI_TO_FQN.get(state.get("type", ""), "")
+    wf_def = _MODEL.workflow_types.get(wf_fqn)
     if not wf_def or wf_def.independent:
         return
     output_content = state.get("phase_outputs", {}).get(phase, "")
@@ -534,8 +560,14 @@ def _run_auto_actions(phase: str, state: dict) -> bool:
             if result == "return":
                 return True
             continue
-        # Try generative action from model
-        action_def = _MODEL.actions.get(action_name)
+        # Try generative action from model (lookup by cli_name)
+        action_def = None
+        for adef in _MODEL.actions.values():
+            if adef.cli_name == action_name:
+                action_def = adef
+                break
+        if action_def is None:
+            action_def = _MODEL.actions.get(action_name)
         if action_def and action_def.type == "generative" and action_def.prompt:
             _claude_evaluate(action_def.prompt, timeout=120)
     return False
@@ -728,11 +760,14 @@ def _prev_implementable(state: dict) -> str:
     # Walk backward looking for a phase that is a rejection target
     itype = ITERATION_TYPES[state["type"]]
     phases = itype["phases"]
-    wf_type = state["type"]
+    wf_prefix = _workflow_prefix(state["type"])
     # Build set of phases that are reject_to targets in this workflow
     reject_targets: set[str] = set()
     for p in phases:
-        p_resolved = _resolve_key(wf_type.upper(), p, set(_MODEL.phases.keys()))
+        try:
+            p_resolved = resolve_phase_key(wf_prefix, p, set(_MODEL.phases.keys()))
+        except KeyError:
+            continue
         p_obj = _MODEL.phases.get(p_resolved)
         if p_obj and p_obj.reject_to:
             reject_targets.add(p_obj.reject_to.get("phase", ""))
@@ -1115,7 +1150,8 @@ def _banner(phase: str, action: str, state: dict) -> str:
     reject_info = f" | REJECTED {rejected}x" if rejected else ""
     objective = state.get("objective", "")
     total_iters = state.get("total_iterations", 1)
-    wf_def = _MODEL.workflow_types.get(itype)
+    wf_fqn = _CLI_TO_FQN.get(itype, itype)
+    wf_def = _MODEL.workflow_types.get(wf_fqn)
     if wf_def and not wf_def.independent:
         iter_label = itype.upper()
     elif total_iters == 0:
@@ -1288,7 +1324,8 @@ def _run_next_iteration(state: dict) -> None:
     # Switch from dependency workflow to parent workflow after planning iteration completes
     parent = state.get("parent_type", "")
     if parent and parent != state["type"]:
-        wf_def = _MODEL.workflow_types.get(state["type"])
+        wf_fqn = _CLI_TO_FQN.get(state["type"], state["type"])
+        wf_def = _MODEL.workflow_types.get(wf_fqn)
         if wf_def and not wf_def.independent:
             state["type"] = parent
             state.pop("parent_type", None)
@@ -1378,7 +1415,8 @@ def cmd_new(args) -> None:
         sys.exit(1)
 
     # Block dependency workflows from direct invocation
-    wf_def = _MODEL.workflow_types.get(itype)
+    wf_fqn = _CLI_TO_FQN.get(itype, itype)
+    wf_def = _MODEL.workflow_types.get(wf_fqn)
     if wf_def and not wf_def.independent:
         print(_msg("dependency_blocked", itype=itype), file=sys.stderr)
         sys.exit(1)
@@ -1410,7 +1448,7 @@ def cmd_new(args) -> None:
         dep_wf = _MODEL.workflow_types.get(wf_def.depends_on)
         if dep_wf:
             iteration = 0
-            run_type = wf_def.depends_on
+            run_type = dep_wf.cli_name or wf_def.depends_on
 
     type_info = ITERATION_TYPES[run_type]
     first_phase = type_info["phases"][0]
@@ -1446,7 +1484,8 @@ def cmd_new(args) -> None:
         }
     )
 
-    run_wf = _MODEL.workflow_types.get(run_type)
+    run_fqn = _CLI_TO_FQN.get(run_type, run_type)
+    run_wf = _MODEL.workflow_types.get(run_fqn)
     if run_wf and not run_wf.independent:
         iter_label = f"{run_type.upper()} (before {total_iterations} iterations)"
     elif total_iterations > 1:
@@ -1905,7 +1944,8 @@ def cmd_status(args) -> None:
     total_iters = state.get("total_iterations", 1)
     iteration = state.get("iteration", "?")
 
-    wf_def = _MODEL.workflow_types.get(wf_type)
+    wf_fqn = _CLI_TO_FQN.get(wf_type, wf_type)
+    wf_def = _MODEL.workflow_types.get(wf_fqn)
     if wf_def and not wf_def.independent:
         iter_label = wf_type.upper()
     elif total_iters == 0:
@@ -2245,20 +2285,31 @@ def cmd_validate(args) -> None:
 def _dry_run_phase(workflow: str, phase_name: str) -> list[str]:
     """Print expected agents and gates for one phase. Returns list of issues."""
     issues: list[str] = []
-    phase_key = _resolve_key(workflow, phase_name, set(_MODEL.phases.keys()))
-    agent_key = _resolve_key(workflow, phase_name, set(_MODEL.agents.keys()))
+    # workflow is cli_name here, convert to prefix
+    wf_prefix = _workflow_prefix(workflow)
+    try:
+        phase_key = resolve_phase_key(wf_prefix, phase_name, set(_MODEL.phases.keys()))
+    except KeyError as e:
+        issues.append(str(e))
+        phase_key = phase_name
+    try:
+        agent_key = resolve_phase_key(wf_prefix, phase_name, set(_MODEL.agents.keys()))
+    except KeyError:
+        agent_key = phase_name
     agents = _MODEL.agents.get(agent_key, [])
 
     gate_phases = {k.rsplit("::", 1)[0] for k in _MODEL.gates if "::" in k}
-    gate_key = _resolve_key(workflow, phase_name, gate_phases)
+    try:
+        gate_key = resolve_phase_key(wf_prefix, phase_name, gate_phases)
+    except KeyError:
+        gate_key = phase_name
     # Check for start/end gates using lifecycle metadata from the model
     has_rb = any(f"{gate_key}::{gt}" in _MODEL.gates for gt in _MODEL.start_gate_types)
     has_gk = any(f"{gate_key}::{gt}" in _MODEL.gates for gt in _MODEL.end_gate_types)
 
+    wf_fqn = _CLI_TO_FQN.get(workflow, workflow)
     skippable = any(
-        p.get("skippable")
-        for p in _MODEL.workflow_types[workflow].phases
-        if p["name"] == phase_name
+        p.get("skippable") for p in _MODEL.workflow_types[wf_fqn].phases if p["name"] == phase_name
     )
     tag = "skip" if skippable else "req"
     agent_names = ", ".join(a.name for a in agents) if agents else "none"
@@ -2298,14 +2349,16 @@ def _dry_run(itype: str, total_iterations: int) -> None:
         sys.exit(1)
     print(_msg("dry_run_valid"))
 
-    wf = _MODEL.workflow_types[itype]
+    wf_fqn = _CLI_TO_FQN.get(itype, itype)
+    wf = _MODEL.workflow_types[wf_fqn]
     dep_wf = _MODEL.workflow_types.get(wf.depends_on) if wf.depends_on else None
     template_issues: list[str] = []
 
     if dep_wf and total_iterations > 1:
-        print(_msg("dry_run_planning_iter", wtype=wf.depends_on))
+        dep_cli = dep_wf.cli_name or wf.depends_on
+        print(_msg("dry_run_planning_iter", wtype=dep_cli))
         for p in dep_wf.phases:
-            template_issues.extend(_dry_run_phase(wf.depends_on, p["name"]))
+            template_issues.extend(_dry_run_phase(dep_cli, p["name"]))
 
     for i in range(1, total_iterations + 1):
         print(_msg("dry_run_impl_iter", num=i, wtype=itype))

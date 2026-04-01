@@ -10,8 +10,8 @@ from stellars_claude_code_plugins.engine.model import (
     Model,
     Phase,
     WorkflowType,
-    _resolve_key,
     load_model,
+    resolve_phase_key,
     validate_model,
 )
 
@@ -25,14 +25,15 @@ class TestLoadModel:
 
     def test_workflow_types_loaded(self, minimal_resources):
         model = load_model(minimal_resources)
-        assert "test_workflow" in model.workflow_types
-        wf = model.workflow_types["test_workflow"]
+        assert "WORKFLOW::TEST_WORKFLOW" in model.workflow_types
+        wf = model.workflow_types["WORKFLOW::TEST_WORKFLOW"]
         assert wf.description == "A test workflow"
+        assert wf.cli_name == "test_workflow"
         assert wf.phase_names == ["ALPHA", "BETA", "GAMMA"]
 
     def test_workflow_required_skippable(self, minimal_resources):
         model = load_model(minimal_resources)
-        wf = model.workflow_types["test_workflow"]
+        wf = model.workflow_types["WORKFLOW::TEST_WORKFLOW"]
         assert "ALPHA" in wf.required
         assert "GAMMA" in wf.required
         assert "BETA" in wf.skippable
@@ -111,10 +112,13 @@ class TestLoadModel:
         assert "no_active" in model.app.messages
         assert "validate_success" in model.app.messages
 
-    def test_actions_default_empty(self, minimal_resources):
-        """Actions default to empty dict when not in workflow.yaml."""
+    def test_actions_loaded_with_fqn(self, minimal_resources):
+        """Actions loaded with FQN keys and cli_name."""
         model = load_model(minimal_resources)
-        assert model.actions == {}
+        assert "ACTION::TEST_ACTION" in model.actions
+        action = model.actions["ACTION::TEST_ACTION"]
+        assert action.cli_name == "test_action"
+        assert action.type == "programmatic"
 
 
 class TestLoadModelErrors:
@@ -129,7 +133,6 @@ class TestLoadModelErrors:
         resources.mkdir()
         (resources / "workflow.yaml").write_text(": invalid: yaml: [")
         (resources / "phases.yaml").write_text("{}")
-        (resources / "agents.yaml").write_text("{}")
         (resources / "app.yaml").write_text("{}")
         with pytest.raises(ValueError, match="Malformed YAML"):
             load_model(resources)
@@ -144,11 +147,30 @@ class TestLoadAutoBuildClaw:
 
     def test_real_workflow_types(self, auto_build_claw_resources):
         model = load_model(auto_build_claw_resources)
-        assert "full" in model.workflow_types
-        wf = model.workflow_types["full"]
+        assert "WORKFLOW::FULL" in model.workflow_types
+        wf = model.workflow_types["WORKFLOW::FULL"]
+        assert wf.cli_name == "full"
         assert len(wf.phase_names) > 0
         assert "IMPLEMENT" in wf.phase_names
         assert "TEST" in wf.phase_names
+
+    def test_real_workflow_cli_names(self, auto_build_claw_resources):
+        """All workflows have cli_name set."""
+        model = load_model(auto_build_claw_resources)
+        for wf_name, wf in model.workflow_types.items():
+            assert wf.cli_name, f"Workflow {wf_name} missing cli_name"
+
+    def test_real_workflow_fqn_format(self, auto_build_claw_resources):
+        """All workflows use WORKFLOW::NAME FQN format."""
+        model = load_model(auto_build_claw_resources)
+        for wf_name in model.workflow_types:
+            assert wf_name.startswith("WORKFLOW::"), f"Workflow {wf_name} not FQN"
+
+    def test_real_depends_on_fqn(self, auto_build_claw_resources):
+        """depends_on uses FQN format."""
+        model = load_model(auto_build_claw_resources)
+        wf = model.workflow_types["WORKFLOW::FULL"]
+        assert wf.depends_on == "WORKFLOW::PLANNING"
 
     def test_real_phases_have_templates(self, auto_build_claw_resources):
         model = load_model(auto_build_claw_resources)
@@ -169,11 +191,12 @@ class TestLoadAutoBuildClaw:
 
     def test_real_actions_loaded(self, auto_build_claw_resources):
         model = load_model(auto_build_claw_resources)
-        assert "plan_save" in model.actions
-        assert model.actions["plan_save"].type == "programmatic"
-        assert "hypothesis_autowrite" in model.actions
-        assert model.actions["hypothesis_autowrite"].type == "generative"
-        assert model.actions["hypothesis_autowrite"].prompt != ""
+        assert "ACTION::PLAN_SAVE" in model.actions
+        assert model.actions["ACTION::PLAN_SAVE"].type == "programmatic"
+        assert model.actions["ACTION::PLAN_SAVE"].cli_name == "plan_save"
+        assert "ACTION::HYPOTHESIS_AUTOWRITE" in model.actions
+        assert model.actions["ACTION::HYPOTHESIS_AUTOWRITE"].type == "generative"
+        assert model.actions["ACTION::HYPOTHESIS_AUTOWRITE"].prompt != ""
 
     def test_real_gate_lifecycle_metadata(self, auto_build_claw_resources):
         """Real model has gate lifecycle metadata populated."""
@@ -185,7 +208,7 @@ class TestLoadAutoBuildClaw:
     def test_real_auto_verify_on_test(self, auto_build_claw_resources):
         """Real FULL::TEST phase has auto_verify set."""
         model = load_model(auto_build_claw_resources)
-        test_phase = model.phases.get("FULL::TEST")
+        test_phase = model.phases.get("TEST")
         assert test_phase is not None
         assert test_phase.auto_verify is True
 
@@ -193,6 +216,25 @@ class TestLoadAutoBuildClaw:
         model = load_model(auto_build_claw_resources)
         issues = validate_model(model)
         assert issues == [], f"Validation issues: {issues}"
+
+    def test_agents_loaded_from_phases(self, auto_build_claw_resources):
+        """Agents are loaded from phases.yaml (no agents.yaml)."""
+        model = load_model(auto_build_claw_resources)
+        assert "FULL::RESEARCH" in model.agents
+        assert len(model.agents["FULL::RESEARCH"]) == 3
+        names = [a.name for a in model.agents["FULL::RESEARCH"]]
+        assert "researcher" in names
+        assert "architect" in names
+        assert "product_manager" in names
+
+    def test_three_files_loaded(self, auto_build_claw_resources):
+        """Only 3 resource files needed (no agents.yaml)."""
+        import os
+        files = os.listdir(auto_build_claw_resources)
+        assert "agents.yaml" not in files
+        assert "workflow.yaml" in files
+        assert "phases.yaml" in files
+        assert "app.yaml" in files
 
 
 class TestValidateModel:
@@ -207,12 +249,12 @@ class TestValidateModel:
         resources = tmp_path / "resources"
         resources.mkdir()
         (resources / "workflow.yaml").write_text("""
-bad_workflow:
+WORKFLOW::BAD:
+  cli_name: bad
   phases:
     - name: ALPHA
 """)
-        (resources / "phases.yaml").write_text("ALPHA:\n  start: 'hello'\n  end: 'bye'")
-        (resources / "agents.yaml").write_text("""
+        (resources / "phases.yaml").write_text("""
 shared_gates:
   on_skip:
     gatekeeper_skip:
@@ -220,6 +262,8 @@ shared_gates:
     gatekeeper_force_skip:
       prompt: "{phase} {iteration} {reason}"
 ALPHA:
+  start: 'hello'
+  end: 'bye'
   gates:
     on_start:
       readback:
@@ -262,6 +306,79 @@ ALPHA:
         issues = validate_model(model)
         assert any("app.cmd" in i for i in issues)
 
+    def test_validate_fqn_workflow_format(self, tmp_path):
+        """Workflows without WORKFLOW:: prefix are flagged."""
+        resources = tmp_path / "resources"
+        resources.mkdir()
+        (resources / "workflow.yaml").write_text("""
+bad_name:
+  cli_name: bad
+  description: "not FQN"
+  phases:
+    - name: ALPHA
+""")
+        (resources / "phases.yaml").write_text("""
+shared_gates:
+  on_skip:
+    gatekeeper_skip:
+      prompt: "{phase} {iteration} {itype} {objective} {reason}"
+    gatekeeper_force_skip:
+      prompt: "{phase} {iteration} {reason}"
+ALPHA:
+  start: 'hello'
+  end: 'bye'
+  gates:
+    on_start:
+      readback:
+        prompt: "{understanding}"
+    on_end:
+      gatekeeper:
+        prompt: "{evidence}"
+""")
+        (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
+        model = load_model(resources)
+        issues = validate_model(model)
+        assert any("FQN format" in i for i in issues)
+
+    def test_validate_cli_name_uniqueness(self, tmp_path):
+        """Duplicate cli_names are flagged."""
+        resources = tmp_path / "resources"
+        resources.mkdir()
+        (resources / "workflow.yaml").write_text("""
+WORKFLOW::A:
+  cli_name: same
+  description: "first"
+  phases:
+    - name: ALPHA
+WORKFLOW::B:
+  cli_name: same
+  description: "second"
+  phases:
+    - name: ALPHA
+""")
+        (resources / "phases.yaml").write_text("""
+shared_gates:
+  on_skip:
+    gatekeeper_skip:
+      prompt: "{phase} {iteration} {itype} {objective} {reason}"
+    gatekeeper_force_skip:
+      prompt: "{phase} {iteration} {reason}"
+ALPHA:
+  start: 'hello'
+  end: 'bye'
+  gates:
+    on_start:
+      readback:
+        prompt: "{understanding}"
+    on_end:
+      gatekeeper:
+        prompt: "{evidence}"
+""")
+        (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
+        model = load_model(resources)
+        issues = validate_model(model)
+        assert any("conflicts" in i for i in issues)
+
 
 class TestValidateModelActions:
     """Tests for action validation in validate_model."""
@@ -272,22 +389,17 @@ class TestValidateModelActions:
         resources.mkdir()
         (resources / "workflow.yaml").write_text("""
 actions:
-  real_action:
+  ACTION::REAL:
+    cli_name: real_action
     type: programmatic
     description: "exists"
-act_workflow:
+WORKFLOW::ACT:
+  cli_name: act
   description: "Workflow with bad action ref"
   phases:
     - name: STEP
 """)
         (resources / "phases.yaml").write_text("""
-STEP:
-  auto_actions:
-    on_complete: [real_action, nonexistent_action]
-  start: "Start"
-  end: "End"
-""")
-        (resources / "agents.yaml").write_text("""
 shared_gates:
   on_skip:
     gatekeeper_skip:
@@ -295,6 +407,10 @@ shared_gates:
     gatekeeper_force_skip:
       prompt: "{phase} {iteration} {reason}"
 STEP:
+  auto_actions:
+    on_complete: [real_action, nonexistent_action]
+  start: "Start"
+  end: "End"
   gates:
     on_start:
       readback:
@@ -311,37 +427,77 @@ STEP:
         model = load_model(resources)
         issues = validate_model(model)
         assert any("nonexistent_action" in i for i in issues)
-        # real_action is known, so it should not be flagged as unknown
+        # real_action is known via cli_name, so it should not be flagged
         assert not any("unknown action 'real_action'" in i for i in issues)
 
+    def test_validate_action_fqn_format(self, tmp_path):
+        """Actions without ACTION:: prefix are flagged."""
+        resources = tmp_path / "resources"
+        resources.mkdir()
+        (resources / "workflow.yaml").write_text("""
+actions:
+  bad_action:
+    type: programmatic
+    description: "not FQN"
+WORKFLOW::WF:
+  cli_name: wf
+  description: "test"
+  phases:
+    - name: STEP
+""")
+        (resources / "phases.yaml").write_text("""
+shared_gates:
+  on_skip:
+    gatekeeper_skip:
+      prompt: "{phase} {iteration} {itype} {objective} {reason}"
+    gatekeeper_force_skip:
+      prompt: "{phase} {iteration} {reason}"
+STEP:
+  start: "Start"
+  end: "End"
+  gates:
+    on_start:
+      readback:
+        prompt: "{understanding}"
+    on_end:
+      gatekeeper:
+        prompt: "{evidence}"
+""")
+        (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
+        model = load_model(resources)
+        issues = validate_model(model)
+        assert any("ACTION::" in i for i in issues)
 
-class TestResolveKey:
-    """Tests for _resolve_key namespace resolution with FULL fallback."""
+
+class TestResolvePhaseKey:
+    """Tests for resolve_phase_key strict namespace resolution."""
 
     def test_namespaced_match(self):
         registry = {"FULL::RESEARCH", "RESEARCH"}
-        assert _resolve_key("full", "RESEARCH", registry) == "FULL::RESEARCH"
+        assert resolve_phase_key("FULL", "RESEARCH", registry) == "FULL::RESEARCH"
 
     def test_bare_fallback(self):
         registry = {"RECORD"}
-        assert _resolve_key("full", "RECORD", registry) == "RECORD"
+        assert resolve_phase_key("FULL", "RECORD", registry) == "RECORD"
 
-    def test_full_fallback(self):
+    def test_missing_raises_keyerror(self):
         registry = {"FULL::IMPLEMENT"}
-        assert _resolve_key("gc", "IMPLEMENT", registry) == "FULL::IMPLEMENT"
+        with pytest.raises(KeyError, match="not found"):
+            resolve_phase_key("GC", "IMPLEMENT", registry)
 
-    def test_no_match_returns_bare(self):
+    def test_no_match_raises_keyerror(self):
         registry = {"OTHER"}
-        assert _resolve_key("full", "MISSING", registry) == "MISSING"
+        with pytest.raises(KeyError, match="not found"):
+            resolve_phase_key("FULL", "MISSING", registry)
 
     def test_namespaced_preferred_over_bare(self):
         registry = {"GC::PLAN", "PLAN", "FULL::PLAN"}
-        assert _resolve_key("gc", "PLAN", registry) == "GC::PLAN"
+        assert resolve_phase_key("GC", "PLAN", registry) == "GC::PLAN"
 
-    def test_full_fallback_over_bare(self):
-        """When workflow has no namespaced key, FULL:: is tried before bare."""
-        registry = {"FULL::PLAN"}
-        assert _resolve_key("hotfix", "PLAN", registry) == "FULL::PLAN"
+    def test_bare_used_when_no_namespace(self):
+        """When no workflow-specific key exists, bare name is used."""
+        registry = {"PLAN", "FULL::PLAN"}
+        assert resolve_phase_key("HOTFIX", "PLAN", registry) == "PLAN"
 
 
 class TestWorkflowType:
@@ -365,6 +521,10 @@ class TestWorkflowType:
         wf = WorkflowType(description="test", phases=[])
         assert wf.depends_on == ""
         assert wf.independent is True
+
+    def test_cli_name_field(self):
+        wf = WorkflowType(description="test", phases=[], cli_name="full")
+        assert wf.cli_name == "full"
 
 
 class TestPhaseDataclass:
@@ -394,8 +554,13 @@ class TestActionDef:
         a = ActionDef(type="programmatic", description="test")
         assert a.type == "programmatic"
         assert a.prompt == ""
+        assert a.cli_name == ""
 
     def test_generative_with_prompt(self):
         a = ActionDef(type="generative", description="test", prompt="do something")
         assert a.type == "generative"
         assert a.prompt == "do something"
+
+    def test_cli_name_field(self):
+        a = ActionDef(type="programmatic", description="test", cli_name="plan_save")
+        assert a.cli_name == "plan_save"

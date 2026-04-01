@@ -6,9 +6,14 @@
 # sequences. Each type is a named workflow that determines which
 # phases run and in what order.
 #
+# NAMING: Every workflow uses Fully Qualified Names (FQN) with the
+# pattern WORKFLOW::NAME. The cli_name attribute is the short form
+# used for the --type flag. Internal references always use FQN.
+# There is NO fallback chain - every reference must resolve exactly.
+#
 # HOW IT WORKS: The Python engine loads this at startup and derives
-# ITERATION_TYPES dict with flat phases/required/skippable lists.
-# The `new` command's --type flag selects which workflow to use.
+# ITERATION_TYPES dict keyed by cli_name. The `new` command's
+# --type flag selects which workflow via cli_name.
 #
 # PHASE STRUCTURE: Each phase is a dict with a `name` field and an
 # optional `skippable: true` flag. Phases are REQUIRED by default -
@@ -16,9 +21,10 @@
 # --force is used with a compelling reason.
 #
 # TO CUSTOMIZE: Add a new iteration type by adding a top-level key
-# with description and phases list. Example:
+# with FQN, cli_name, description and phases list. Example:
 #
-#   review_only:
+#   WORKFLOW::REVIEW_ONLY:
+#     cli_name: review_only
 #     description: "Review existing work without new implementation"
 #     phases:
 #       - name: RESEARCH
@@ -30,27 +36,31 @@
 
 # ── Actions ────────────────────────────────────────────────────────
 # Named actions referenced by phases.yaml auto_actions. Each action
-# is either programmatic (handled by Python registry) or generative
-# (executed via claude -p with the provided prompt).
+# uses FQN ACTION::NAME with cli_name for phases.yaml references.
 
 actions:
-  plan_save:
+  ACTION::PLAN_SAVE:
+    cli_name: plan_save
     type: programmatic
     description: "Save PLAN output to plan.yaml for dependency workflows"
-  iteration_summary:
+  ACTION::ITERATION_SUMMARY:
+    cli_name: iteration_summary
     type: programmatic
     description: "Write iteration_N.md executive summary from phase outputs"
-  iteration_advance:
+  ACTION::ITERATION_ADVANCE:
+    cli_name: iteration_advance
     type: programmatic
     description: "Advance to next iteration, reset phase state"
-  hypothesis_autowrite:
+  ACTION::HYPOTHESIS_AUTOWRITE:
+    cli_name: hypothesis_autowrite
     type: generative
     description: "Extract structured hypotheses from phase output"
     prompt: |
       Read the hypothesis output and extract structured entries.
       For each hypothesis write: ID, HYPOTHESIS, PREDICT, EVIDENCE, RISK, STARS.
       Write entries to hypotheses.yaml in YAML list format.
-  hypothesis_gc:
+  ACTION::HYPOTHESIS_GC:
+    cli_name: hypothesis_gc
     type: generative
     description: "Archive DONE/REMOVED hypotheses to archive file"
     prompt: |
@@ -60,7 +70,8 @@ actions:
 # Planning - non-independent workflow that auto-chains before full workflow.
 # Cannot be invoked directly via --type. Breaks down the objective into
 # N implementation iterations with scope, files, and acceptance criteria.
-planning:
+WORKFLOW::PLANNING:
+  cli_name: planning
   description: "Planning iteration: research, break down work into implementation iterations"
   independent: false
   phases:
@@ -73,8 +84,9 @@ planning:
 # Full iteration - the complete research-driven improvement cycle.
 # Used for feature work, improvements, and research-driven changes.
 # Depends on planning workflow (auto-runs before first iteration).
-full:
-  depends_on: planning
+WORKFLOW::FULL:
+  cli_name: full
+  depends_on: WORKFLOW::PLANNING
   description: "Full iteration: research, hypothesise, plan, implement, test, review, record"
   phases:
     - name: RESEARCH       # Gather evidence, read code, understand problem space
@@ -89,7 +101,8 @@ full:
 
 # Garbage collection - cleanup, dead code removal, refactoring.
 # Skips research and hypothesis phases since scope is usually clear.
-gc:
+WORKFLOW::GC:
+  cli_name: gc
   description: "Garbage collection / cleanup"
   phases:
     - name: PLAN
@@ -101,7 +114,8 @@ gc:
 
 # Hotfix - targeted bug fix with minimal ceremony.
 # No planning iteration, no review agents - just fix, test, record.
-hotfix:
+WORKFLOW::HOTFIX:
+  cli_name: hotfix
   description: "Targeted fix, minimal ceremony"
   phases:
     - name: IMPLEMENT
@@ -110,7 +124,8 @@ hotfix:
 
 # Fast iteration - skips research and hypothesis. For when the objective
 # is clear and no exploration is needed. No planning dependency.
-fast:
+WORKFLOW::FAST:
+  cli_name: fast
   description: "Fast iteration: plan, implement, test, review, record"
   phases:
     - name: PLAN

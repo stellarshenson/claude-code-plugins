@@ -1,18 +1,100 @@
-# Phase instruction templates for auto-build-claw
-# Each phase has start (instructions) and end (exit criteria) templates.
-# Templates use {variable} placeholders resolved at runtime via str.format().
-# Conditional templates use suffixed keys (start_continue, start_final, etc.).
+# ──────────────────────────────────────────────────────────────────
+# phases.yaml - Phase definitions with agents and gates
+# ──────────────────────────────────────────────────────────────────
 #
-# Variables: {objective}, {iteration}, {iteration_purpose}, {prior_context},
+# PURPOSE: Single source of truth for all phase templates, agent
+# definitions, and gate prompts. Every WORKFLOW::PHASE declares its
+# own readback and gatekeeper gates inline. No separate agents.yaml.
+#
+# NAMING: Phase keys use FQN WORKFLOW::PHASE for workflow-specific
+# phases and bare PHASE for shared phases. There is NO fallback
+# chain - every reference must resolve exactly or fail.
+#
+# STRUCTURE PER PHASE:
+#   auto_actions  - actions to run on phase completion
+#   auto_verify   - run make test/lint automatically on end
+#   reject_to     - backward transition target on failure
+#   start/end     - instruction templates with {variable} placeholders
+#   gates         - lifecycle gates:
+#     on_start    - readback gate
+#     on_end      - agents list + gatekeeper gate
+#
+# SHARED GATES: Skip-related gates (gatekeeper_skip, gatekeeper_force_skip)
+# are in shared_gates section under on_skip. They evaluate skip
+# decisions, not phase-specific work, so they apply to any phase.
+#
+# AGENT FIELDS:
+#   name          - identifier used in --agents CLI flag
+#   display_name  - heading label (### Agent N: DISPLAY_NAME)
+#   prompt        - per-phase instructions
+#   mode          - execution mode (omit for default parallel via Agent tool)
+#                   standalone_session = runs via `claude -p` subprocess
+#   checklist     - optional quality gate checklist appended to prompt
+#
+# TEMPLATE VARIABLES:
+#   {objective}, {iteration}, {iteration_purpose}, {prior_context},
 #   {plan_context}, {prior_hyp}, {CMD}, {checklist}, {benchmark_info},
-#   {remaining}, {total}, {agents_instructions}
-#
-# IMPORTANT: The guardian checklist contains a literal {description} that is
-# injected via the {checklist} variable. In this file, {checklist} is the
-# format variable - the {{description}} escaping is handled in guardian.yaml.
-#
-# Agent definitions (prompts, names, numbers) live in agents.yaml.
-# The {agents_instructions} placeholder is populated from agents.yaml at runtime.
+#   {remaining}, {total}, {agents_instructions}, {spawn_instruction},
+#   {spawn_instruction_plan}, {phase}, {understanding}, {exit_criteria},
+#   {required_agents}, {recorded_agents}, {output_status},
+#   {readback_status}, {evidence}, {reason}, {description},
+#   {benchmark_configured}, {completed_phases}, {phase_purpose}
+# ──────────────────────────────────────────────────────────────────
+
+# ── Shared skip gates ─────────────────────────────────────────────
+# Skip decisions are not phase-specific - they evaluate whether
+# skipping any phase is justified. Shared across all workflows.
+
+shared_gates:
+  on_skip:
+    gatekeeper_skip:
+      mode: standalone_session
+      description: "Evaluates whether skipping an optional phase is justified"
+      prompt: |
+        Reply with ONLY APPROVE or DENY followed by a one-line reason.
+        Do NOT use any tools.
+
+        An AI agent wants to SKIP phase {phase} in iteration
+        {iteration} ({itype}).
+        OBJECTIVE: {objective}
+        PHASE PURPOSE: {phase_purpose}
+        SKIP REASON: {reason}
+
+        Is skipping justified? A skip is OK if:
+        - The phase work was already done in a prior step
+        - The phase is genuinely not applicable to this iteration's scope
+        - The changes are trivially small and the phase would add no value
+        A skip is NOT OK if:
+        - The agent is cutting corners to save time
+        - The phase would catch issues the agent might miss
+        - Required agents would provide independent validation
+
+    gatekeeper_force_skip:
+      mode: standalone_session
+      description: "Very conservative evaluation for force-skipping required phases"
+      prompt: |
+        Reply with ONLY APPROVE or DENY followed by a one-line reason.
+        Do NOT use any tools.
+
+        An AI agent wants to FORCE-SKIP a REQUIRED phase.
+        PHASE: {phase} (REQUIRED - normally cannot be skipped)
+        ITERATION: {iteration}
+        COMPLETED PHASES: {completed_phases}
+        SKIP REASON: {reason}
+
+        Be VERY CONSERVATIVE. A force-skip is exceptional.
+        ONLY approve if:
+        - The iteration is stopping early and remaining phases are truly meaningless
+        - The phase's purpose was already fulfilled by a prior step
+        - An external constraint makes execution impossible
+        DENY if:
+        - The agent is cutting corners or saving time
+        - The phase provides independent validation that hasn't occurred
+        - Skipping would reduce quality assurance
+        - The reason is vague or doesn't explain why the phase is unnecessary
+        Default to DENY unless the reason is compelling.
+
+# ── FULL::RESEARCH ─────────────────────────────────────────────────
 
 FULL::RESEARCH:
   auto_actions:
@@ -60,6 +142,62 @@ FULL::RESEARCH:
     - [ ] Acceptance criteria from objective documents understood
 
     **BLOCKING**: phase cannot complete without --agents and --output-file on end.
+
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: spawning 3 separate agents AND read-only constraint.
+          Be lenient on phrasing.
+    on_end:
+      agents:
+        - name: researcher
+          display_name: RESEARCHER
+          prompt: |
+            Deep-dives into code, prior results, and history:
+            - Read the files most relevant to the objective
+            - Read recent git log, benchmark reports, failure logs
+            - What was tried before? What worked? What failed and why?
+            - Find existing functions, patterns, tests that relate to the objective
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: architect
+          display_name: ARCHITECT
+          prompt: |
+            Analyses the system design and technical landscape:
+            - Understand current architecture and how the objective fits
+            - Identify structural constraints, dependencies, integration points
+            - Find existing patterns that should be reused vs areas that need redesign
+            - Assess technical feasibility and complexity of addressing the objective
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: product_manager
+          display_name: PRODUCT MANAGER
+          prompt: |
+            Clarifies requirements and acceptance criteria:
+            - Read objective documents, specs, checklists referenced in the objective
+            - What exactly needs to be achieved? What does "done" look like?
+            - Prioritise: what's must-have vs nice-to-have for this iteration?
+            - Identify stakeholder concerns and success metrics
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: 3 agents spawned separately, findings contain specific
+          file references and concrete observations (not vague summaries).
+          Evaluate evidence QUALITY: are findings specific enough to act on? Vague summaries = FAIL.
+
+# ── FULL::HYPOTHESIS ───────────────────────────────────────────────
 
 FULL::HYPOTHESIS:
   auto_actions:
@@ -137,7 +275,71 @@ FULL::HYPOTHESIS:
     **HYPOTHESIS GC**: runs automatically after gatekeeper passes.
     Archives DONE and REMOVED hypotheses to `hypotheses_archive.yaml`.
 
-FULL::PLAN:
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: 4 separate agents AND hypothesis ranking process.
+          Be lenient on phrasing.
+    on_end:
+      agents:
+        - name: contrarian
+          display_name: CONTRARIAN
+          prompt: |
+            "What if the obvious approach is wrong? What are we NOT seeing?"
+            - Challenges assumptions in existing hypotheses
+            - Proposes hypotheses that question the premise
+            - Flags hypotheses that chase symptoms instead of root causes
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: optimist
+          display_name: OPTIMIST
+          prompt: |
+            "What's the highest-impact change we could make?"
+            - Proposes hypotheses targeting the biggest wins
+            - Focuses on leverage points where small changes have large effects
+            - Flags hypotheses with low expected impact for removal
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: pessimist
+          display_name: PESSIMIST
+          prompt: |
+            "What could go wrong? What will we break?"
+            - Proposes hypotheses about risks and regressions
+            - Flags hypotheses that are too risky or too complex
+            - Warns about hypotheses that sound good but will fail in practice
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: scientist
+          display_name: SCIENTIST
+          prompt: |
+            "What can we measure? What's the evidence?"
+            - Proposes hypotheses with clear, measurable predictions
+            - Flags hypotheses that cannot be tested or measured
+            - Demands: current metric -> target metric for every hypothesis
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: 4 agents spawned separately, hypotheses merged with
+          star ratings, top 1-3 selected with measurable predictions.
+          Evaluate hypothesis QUALITY: each must have root cause, prediction, and evidence. Generic hypotheses without specifics = FAIL.
+
+# ── PLAN (shared) ──────────────────────────────────────────────────
+# Default implementation planning phase used by FULL, FAST workflows.
+# GC has its own GC::PLAN, PLANNING has PLANNING::PLAN.
+
+PLAN:
   auto_actions:
     on_complete: []
   start: |
@@ -202,58 +404,98 @@ FULL::PLAN:
 
     If any agent flags issues, revise the plan before proceeding.
 
-# ── GC workflow PLAN phase ──────────────────────────────────────
-# Simpler than FULL::PLAN: no research/hypothesis phases precede it,
-# scope is cleanup/refactoring, no explore agents needed.
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: EnterPlanMode (or planning mode) AND read-only.
+          Be lenient on phrasing.
+    on_end:
+      agents:
+        - name: architect
+          display_name: ARCHITECT
+          prompt: |
+            Reviews the plan for technical feasibility and design quality:
+            - Is the plan specific enough to verify after implementation?
+            - Are the right files identified? Are there dependencies missed?
+            - Is the approach the simplest that could work?
+            - Are there existing functions/patterns that should be reused instead of reinventing?
+            - Could the proposed changes introduce regressions?
+            If the plan is vague ("improve code quality"), REJECT it.
 
-GC::PLAN:
-  auto_actions:
-    on_complete: []
-  start: |
-    ## Phase: PLAN (GC)
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: critic
+          display_name: CRITIC
+          prompt: |
+            Reviews the plan for quality and completeness:
+            - Is the plan specific enough to verify after implementation?
+            - Are there gaps - things the hypotheses demand but the plan doesn't address?
+            - Is the scope right - not too large (won't finish), not too small (won't matter)?
+            - Does the plan address the ROOT CAUSE or just the symptom?
+            If the plan is vague ("improve code quality"), REJECT it.
 
-    **Objective**: {objective}
-    **Iteration**: {iteration}
-    {prior_context}
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: guardian
+          display_name: GUARDIAN
+          prompt: |
+            Reviews the plan for overfit risk. READ THE ACTUAL CODE to verify claims.
+            Do not trust evidence text alone - use Read, Grep, Glob to check files.
+            The guardian is the quality gate
+            that prevents changes from gaming tests, benchmarks, or scenarios
+            instead of genuinely improving the system. Apply the checklist below
+            to every proposed change. If uncertain whether a change is overfit
+            or intentional specialisation, ASK the user - never silently approve.
 
-    **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
-    You MUST use `EnterPlanMode` and follow planning mode rules.
-    Do NOT use Edit, Write, or any tool that modifies files (except the plan file).
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+          checklist: &guardian_checklist |
+            GUARDIAN CHECKLIST (apply ALL):
+            1. TEST OVERFITTING: do changes game specific test assertions rather than
+               fixing underlying behaviour?
+               - BAD: `if input == test_value: return expected` (hardcoded for test)
+               - BAD: relaxing assertion threshold just to make it pass
+               - BAD: adding mocks that hide real integration issues
+               - GOOD: fixing the algorithm so the test passes naturally
 
-    **Goal**: scope the garbage collection / cleanup work. GC plans are simpler
-    than full iteration plans - no research or hypothesis phases precede this,
-    so focus on identifying what to clean and why.
+            2. BENCHMARK OVERFITTING: do changes target specific benchmark scenarios
+               rather than improving general capability?
+               - BAD: "use font-size 9" (games a size>=10 evaluator check)
+               - BAD: type-specific templates (`if type == X then...`)
+               - BAD: hardcoded thresholds matching benchmark data
+               - GOOD: design-intent rules that work for any input
 
-    **Execution** (MANDATORY):
-    1. Call `EnterPlanMode` to enter planning mode
-    2. Identify cleanup targets: dead code, stale references, duplicate logic
-    3. For each target, state what to remove/change and why
-    4. Call `ExitPlanMode` when the plan is complete
+            3. SCENARIO OVERFITTING: do changes assume a specific dataset, document,
+               or use case that won't generalise?
+               - BAD: hardcoded paths, filenames, content specific to one dataset
+               - BAD: logic that only works for the test/demo scenario
+               - GOOD: parameterised, configurable, works with any input
 
-    **Output**: plan file listing cleanup targets with rationale.
+            4. INTENTIONAL SPECIALISATION: if something LOOKS like overfitting but
+               was explicitly requested by the user, it is OK. The guardian MUST ASK:
+               "This change targets a specific scenario: {description}.
+                Was this intentional? If yes, proceed. If no, reject."
+               Use AskUserQuestion if uncertain. Never silently allow suspected overfit.
 
-  end: |
-    ## Phase: PLAN (exit criteria - GC)
+            VERDICTS: CLEAN / WARN (log) / BLOCK (reject) / ASK (ask user)
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: plan contains specific files, concrete changes per file,
+          root causes, acceptance criteria, and risk assessment.
+          Vague plans ("improve X", "fix issues") = FAIL.
+          Evaluate plan DEPTH: must include specific files, concrete changes, and reasoning for each. Shallow bullet lists = FAIL.
 
-    **Verify ALL before proceeding**:
-    - [ ] Cleanup targets identified with rationale
-    - [ ] Each target has specific files and what to change
-    - [ ] No scope creep - GC should clean, not add features
-    - [ ] Risk assessment - what could removing this code break?
+# ── IMPLEMENT (shared) ────────────────────────────────────────────────
 
-    {spawn_instruction_plan}
-    Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
-
-    After agents return, write merged review to a file, then:
-    ```
-    {CMD} end --evidence "GC plan reviewed" --agents "architect,critic,guardian" --output-file "path/to/plan.md"
-    ```
-
-    {agents_instructions}
-
-    If any agent flags issues, revise the plan before proceeding.
-
-FULL::IMPLEMENT:
+IMPLEMENT:
   auto_actions:
     on_complete: []
   start: |
@@ -300,7 +542,31 @@ FULL::IMPLEMENT:
 
     **Critic question**: do the changes match the stated plan, or did scope creep occur?
 
-FULL::TEST:
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: predict/verify loop AND following the plan.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: changes match plan (no scope creep), predict/verify
+          reflection documented for each change.
+          Evaluate implementation THOROUGHNESS: each change must show what was predicted vs what happened. Missing reflections = FAIL.
+
+# ── TEST (shared) ─────────────────────────────────────────────────────
+
+TEST:
   auto_actions:
     on_complete: []
   auto_verify: true
@@ -350,7 +616,53 @@ FULL::TEST:
     - [ ] If benchmark configured: Score Tracking table UPDATED with this iteration's results
     - [ ] Evidence contains specific score numbers (not just "benchmark evaluated")
 
-FULL::REVIEW:
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: running tests AND benchmark evaluation (if applicable).
+          Be lenient on phrasing.
+    on_end:
+      agents:
+        - name: benchmark_evaluator
+          display_name: BENCHMARK EVALUATOR
+          prompt: |
+            Evaluate the project benchmark and update the score tracking:
+            1. Read BENCHMARK.md from the project root
+            2. For each checklist item, evaluate whether it is satisfied
+            3. Check the item if satisfied, uncheck if not - edit BENCHMARK.md directly
+            4. Count unchecked items and compute the benchmark score
+            5. Update the Score Tracking table at the bottom of BENCHMARK.md
+               with the current iteration results (iteration number, score, summary)
+            6. Report the final score as your output
+
+            **IMPORTANT**: You MUST edit BENCHMARK.md - reading without editing = failure.
+            The benchmark score formula is defined in BENCHMARK.md itself.
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          READBACK: {readback_status}
+          BENCHMARK CONFIGURED: {benchmark_configured}
+          EVIDENCE: {evidence}
+          Check: tests pass, lint clean.
+          BENCHMARK RULE: if benchmark is configured (shows "yes"):
+          1. Evidence MUST contain specific score numbers (e.g., "score: 17", "unchecked: 5")
+          2. Evidence MUST confirm BENCHMARK.md file was EDITED (not just read)
+          3. Evidence MUST confirm Score Tracking table was UPDATED with iteration results
+          4. A claim like "benchmark evaluated" without numbers or file edit = FAIL
+          5. FAIL message: "benchmark configured but Score Tracking not updated"
+          If benchmark shows "no", ignore benchmark checks.
+          Evaluate test COMPLETENESS: all planned changes must be covered by test results.
+
+# ── REVIEW (shared) ───────────────────────────────────────────────────
+
+REVIEW:
   auto_actions:
     on_complete: []
   reject_to:
@@ -406,6 +718,87 @@ FULL::REVIEW:
     **If REJECT**: run `{CMD} reject --reason "..."`
     This returns to IMPLEMENT with the combined feedback.
 
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: 4 separate agents AND independent review.
+          Be lenient on phrasing.
+    on_end:
+      agents:
+        - name: critic
+          display_name: CRITIC
+          prompt: |
+            Checks implementation quality and plan alignment:
+            1. **Plan alignment**: do the changes match the PLAN? Any scope creep?
+            2. **Quality**: are changes clean, minimal, correct?
+            3. **Regressions**: could these changes break anything not covered by tests?
+            4. **Completeness**: is anything from the plan left undone?
+
+            The critic must be SPECIFIC: "code quality is poor" is not actionable.
+            "Function X at line Y duplicates logic from Z" is actionable.
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: architect
+          display_name: ARCHITECT
+          prompt: |
+            Checks architectural soundness of the implementation:
+            1. **Design fit**: do changes fit the existing architecture or fight against it?
+            2. **Abstraction level**: right level of abstraction? No premature generalisation?
+            3. **Dependencies**: are new dependencies justified? Any circular references introduced?
+            4. **Patterns**: do changes follow established project patterns or diverge without reason?
+            5. **Simplicity**: is this the simplest approach that could work?
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: guardian
+          display_name: GUARDIAN
+          prompt: |
+            Reviews the implementation for overfit risk. READ THE ACTUAL CODE
+            using Read, Grep, Glob tools - do not trust evidence text alone.
+            Examine every code change against the checklist below. Look for
+            patterns where changes target specific test cases, benchmark
+            scenarios, or datasets rather
+            than genuinely improving the system. Compare implementation against
+            the stated plan - did scope creep introduce overfit patterns?
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+          checklist: *guardian_checklist
+        - name: forensicist
+          display_name: FORENSICIST
+          prompt: |
+            Analyses failure modes and feeds insights into the NEXT iteration:
+            1. **What failed in this iteration?** Read test results, benchmark scores, checker outputs
+            2. **Root cause classification**: for each failure, classify as:
+               - GENERATIVE: the LLM produced wrong output (prompt/brief issue)
+               - PROGRAMMATIC: code calculated wrong values (algorithm/logic issue)
+               - ARCHITECTURAL: the system design doesn't support what's needed
+            3. **Failure patterns**: are the same failures repeating across iterations? If so, why
+               haven't previous fixes worked?
+            4. **Input for next iteration**: what specific hypotheses should the NEXT iteration test?
+               What files/functions are the root cause? What measurable improvement to target?
+
+            The forensicist's output is critical - it feeds directly into the RESEARCH phase of the
+            next iteration as prior context. Be specific: name files, line numbers, error messages.
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: 4 agents spawned separately, verdicts merged,
+          guardian overfit assessment completed.
+          Evaluate verdict DEPTH: each agent must provide reasoning, not just APPROVE/REJECT. Missing reasoning = FAIL.
+
+# ── RECORD (shared) ───────────────────────────────────────────────
+
 RECORD:
   auto_actions:
     on_complete: [iteration_summary]
@@ -436,6 +829,28 @@ RECORD:
     - [ ] Journal entry appended
     - [ ] Git commit with descriptive message
     - [ ] Push to remote succeeded
+
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: journal entry AND git commit.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EVIDENCE: {evidence}
+          Check: journal entry appended, git commit created,
+          push to remote succeeded.
+          Evaluate record QUALITY: journal entry must be substantive (not just "done"), commit message must follow conventions.
+
+# ── NEXT (shared) ─────────────────────────────────────────────────
 
 NEXT:
   auto_actions:
@@ -481,10 +896,25 @@ NEXT:
 
     **All iterations complete.** Report status to user.
 
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: iteration advance or completion reporting.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EVIDENCE: {evidence}
+          Check: iteration advanced correctly or final status reported.
+
 # ── PLANNING workflow phases ──────────────────────────────────────
-# These are used by the planning dependency workflow. They have
-# different goals from FULL:: phases: problem decomposition and
-# work breakdown rather than code investigation and implementation.
 
 PLANNING::RESEARCH:
   auto_actions:
@@ -518,6 +948,58 @@ PLANNING::RESEARCH:
     - [ ] Research findings written to file
     - [ ] Problem space understood for work breakdown
     - [ ] Scope estimated for iteration planning
+
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: problem decomposition AND work breakdown focus.
+          Be lenient on phrasing.
+    on_end:
+      agents:
+        - name: researcher
+          display_name: RESEARCHER
+          prompt: |
+            Investigate the problem space for work breakdown planning:
+            - Read objective documents and specs
+            - Assess overall scope and complexity
+            - Identify major work areas and dependencies
+            - Estimate effort per area
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: architect
+          display_name: ARCHITECT
+          prompt: |
+            Analyse architecture for iteration planning:
+            - Map file dependencies and change impact
+            - Identify which changes must come first
+            - Assess risk per area (high/medium/low)
+            - Recommend iteration ordering
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+        - name: product_manager
+          display_name: PRODUCT MANAGER
+          prompt: |
+            Clarify scope and priorities for iteration planning:
+            - What is must-have vs nice-to-have?
+            - How many iterations are realistic?
+            - What are the acceptance criteria per iteration?
+            - What should be deferred if time runs out?
+
+            **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: 3 agents spawned, scope assessed for iteration planning.
 
 PLANNING::PLAN:
   auto_actions:
@@ -567,3 +1049,104 @@ PLANNING::PLAN:
     - [ ] Deferred items listed if scope too large
     - [ ] Reasoning provided for iteration scope boundaries
     - [ ] Deferred items include justification for why they require additional iterations
+
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: EnterPlanMode AND iteration-level work breakdown.
+          Be lenient on phrasing.
+    on_end:
+      agents:
+        - name: contrarian
+          display_name: CONTRARIAN
+          prompt: |
+            Challenge the proposed iteration plan:
+            - Are there better alternative approaches not considered?
+            - Is the iteration ordering optimal?
+            - What assumptions are being made without evidence?
+
+            **READ-ONLY**: Do NOT modify any files.
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: work broken down into iterations with scope, files,
+          and acceptance criteria per iteration.
+
+# ── GC::PLAN ──────────────────────────────────────────────────────
+
+GC::PLAN:
+  auto_actions:
+    on_complete: []
+  start: |
+    ## Phase: PLAN (GC)
+
+    **Objective**: {objective}
+    **Iteration**: {iteration}
+    {prior_context}
+
+    **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
+    You MUST use `EnterPlanMode` and follow planning mode rules.
+    Do NOT use Edit, Write, or any tool that modifies files (except the plan file).
+
+    **Goal**: scope the garbage collection / cleanup work. GC plans are simpler
+    than full iteration plans - no research or hypothesis phases precede this,
+    so focus on identifying what to clean and why.
+
+    **Execution** (MANDATORY):
+    1. Call `EnterPlanMode` to enter planning mode
+    2. Identify cleanup targets: dead code, stale references, duplicate logic
+    3. For each target, state what to remove/change and why
+    4. Call `ExitPlanMode` when the plan is complete
+
+    **Output**: plan file listing cleanup targets with rationale.
+
+  end: |
+    ## Phase: PLAN (exit criteria - GC)
+
+    **Verify ALL before proceeding**:
+    - [ ] Cleanup targets identified with rationale
+    - [ ] Each target has specific files and what to change
+    - [ ] No scope creep - GC should clean, not add features
+    - [ ] Risk assessment - what could removing this code break?
+
+    {spawn_instruction_plan}
+    Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
+
+    After agents return, write merged review to a file, then:
+    ```
+    {CMD} end --evidence "GC plan reviewed" --agents "architect,critic,guardian" --output-file "path/to/plan.md"
+    ```
+
+    {agents_instructions}
+
+    If any agent flags issues, revise the plan before proceeding.
+
+  gates:
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: cleanup scope AND read-only planning.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: cleanup targets identified with rationale, specific
+          files listed, no feature additions disguised as cleanup.
