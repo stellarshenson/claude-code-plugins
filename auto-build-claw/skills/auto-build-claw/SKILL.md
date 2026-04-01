@@ -42,6 +42,19 @@ Both paths use the same engine - the entrypoint passes the skill's `resources/` 
 - **Benchmark** (optional): ASK the user: "Do you have a benchmark I should evaluate after each iteration? (1) No benchmark - just tests and lint, (2) Yes - please provide the instruction and what it measures." If provided, pass via `--benchmark "instruction"` on `new`. The `--benchmark` value is always a **generative instruction string** - text that tells the orchestrating Claude what to evaluate during the TEST phase. It is NOT a shell command. The instruction typically references a file containing the checklist, e.g., `--benchmark "Read MODEL_BENCHMARK.md and evaluate each [ ] item. Mark [x] if passing. Report remaining [ ] count as violation score."` The benchmark runs during TEST phase only - IMPLEMENT and REVIEW phases must NOT evaluate the benchmark
 - **Objective** can reference files for full context: e.g., `--objective "Implement the program defined in PROGRAM.md (read .claude/skills/auto-build-claw/PROGRAM.md)"`. This avoids cramming long objectives into command-line arguments. Use `PROGRAM.md` for complex objectives and `MODEL_BENCHMARK.md` (or any `*_BENCHMARK.md`) for benchmark checklists
 
+## Program execution
+
+For complex multi-iteration objectives, define the full program in a `PROGRAM.md` file and the evaluation checklist in a `BENCHMARK.md` file, then run:
+
+```bash
+orchestrate new --type full \
+  --objective "Implement the program defined in PROGRAM.md (read PROGRAM.md)" \
+  --iterations 3 \
+  --benchmark "Read BENCHMARK.md and evaluate each [ ] item. Mark [x] if passing. Report remaining [ ] count as violation score."
+```
+
+This gives the orchestrator a structured objective it can read in full at each phase, and a measurable benchmark that tracks progress across iterations. The benchmark is evaluated generatively during the TEST phase - the orchestrating agent reads the checklist, verifies each item against the codebase, and reports the violation count as the score to optimize.
+
 ## How it works
 
 Every phase follows the same 2-call pattern:
