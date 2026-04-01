@@ -105,6 +105,19 @@ Lower is better. Target: 0.
 - [ ] Test count >= 100 (maintained coverage after refactoring)
 - [ ] No test file imports removed functions or classes
 
+## Section 4: Run-Until-Complete Mode
+
+- [ ] `--iterations 0` accepted by `orchestrate new` without error
+- [ ] `total_iterations = 0` stored in state.yaml as sentinel for unlimited
+- [ ] `_run_next_iteration()` checks benchmark score when total_iterations is 0
+- [ ] Iteration continues automatically when benchmark score > 0
+- [ ] Iteration stops when benchmark score = 0
+- [ ] Safety cap at 20 iterations warns and pauses
+- [ ] Status display shows "until benchmark complete" for unlimited mode
+- [ ] Banner shows "benchmark-driven iteration N" instead of "N/total"
+- [ ] Display messages for benchmark-driven mode in app.yaml
+- [ ] Tests cover run-until-complete: auto-continue, stop-on-zero, safety cap
+
 ---
 
 ## Completion Conditions

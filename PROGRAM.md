@@ -116,11 +116,68 @@ Run tree-sitter-python parsing on all engine modules:
 - Total engine lines reduced from 3113 baseline
 - All tests still passing after removals
 
+## Workstream D - Run-Until-Complete Mode
+
+Add a new execution mode to the orchestrator that runs iterations indefinitely until the benchmark score reaches 0 (all conditions met).
+
+### Behavior
+
+When `--iterations 0` is passed to `orchestrate new`, the orchestrator enters run-until-complete mode:
+- `total_iterations` is set to 0 (sentinel for unlimited)
+- `_run_next_iteration()` checks the benchmark score instead of a fixed iteration count
+- If benchmark score > 0: automatically start the next iteration
+- If benchmark score = 0: stop and report completion
+- The NEXT phase displays "benchmark-driven iteration N" instead of "N/total"
+- Status display shows "until benchmark complete" instead of iteration count
+- Safety cap: after 20 iterations without reaching score 0, warn and pause for user confirmation
+
+### Implementation
+
+The benchmark score is already tracked in `state["benchmark_scores"]` when `--benchmark` is provided. The change is in `_run_next_iteration()`:
+
+```python
+# Current: stops when remaining <= 0
+remaining = total - current
+if remaining <= 0:
+    print("All iterations complete")
+    return
+
+# New: when total == 0, check last benchmark score instead
+if total == 0:
+    scores = state.get("benchmark_scores", [])
+    last_score = scores[-1]["score"] if scores else None
+    if last_score is not None and last_score == 0:
+        print("Benchmark conditions met - all iterations complete")
+        return
+    # Safety cap
+    if current >= 20:
+        print("WARNING: 20 iterations without benchmark completion")
+        return
+```
+
+### Files to Modify
+
+- `stellars_claude_code_plugins/engine/orchestrator.py` - modify `_run_next_iteration()`, `cmd_new()`, `cmd_status()`, `_banner()`
+- `auto-build-claw/skills/auto-build-claw/resources/app.yaml` - add display messages for benchmark-driven mode
+- `tests/test_orchestrator.py` - add tests for run-until-complete mode
+
+### Usage
+
+```bash
+orchestrate new --type full \
+  --objective "Implement the program defined in PROGRAM.md (read PROGRAM.md)" \
+  --iterations 0 \
+  --benchmark "Read BENCHMARK.md and evaluate each [ ] item. Mark [x] if passing. Report remaining [ ] count as violation score."
+```
+
+`--iterations 0` means: keep iterating until the benchmark score reaches 0.
+
 ## Execution Order
 
 1. **Workstream B first** (hypothesis removal) - simplest, reduces code surface before other work
 2. **Workstream A second** (FSM migration) - independent from hypothesis removal
-3. **Workstream C last** (tree-sitter analysis) - runs on the already-cleaned codebase
+3. **Workstream D third** (run-until-complete) - builds on existing benchmark infrastructure
+4. **Workstream C last** (tree-sitter analysis) - runs on the already-cleaned codebase
 
 ## Completion Conditions
 
@@ -134,5 +191,4 @@ Iterations continue until ALL of the following are met:
 6. **No custom FSM classes remain** - only `transitions.Machine` based implementation
 7. **No hypothesis code remains** - zero references in engine, YAML, and tests
 8. **Total engine lines < 2800** - meaningful reduction from 3113 baseline
-
-Use `orchestrate add-iteration --count 1` to extend iterations if conditions are not yet met. Do NOT stop while any condition above is unmet.
+9. **Run-until-complete mode works** - `--iterations 0` runs until benchmark score = 0

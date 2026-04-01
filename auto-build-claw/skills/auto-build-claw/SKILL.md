@@ -47,13 +47,22 @@ Both paths use the same engine - the entrypoint passes the skill's `resources/` 
 For complex multi-iteration objectives, define the full program in a `PROGRAM.md` file and the evaluation checklist in a `BENCHMARK.md` file, then run:
 
 ```bash
+# Fixed number of iterations
 orchestrate new --type full \
   --objective "Implement the program defined in PROGRAM.md (read PROGRAM.md)" \
   --iterations 3 \
   --benchmark "Read BENCHMARK.md and evaluate each [ ] item. Mark [x] if passing. Report remaining [ ] count as violation score."
+
+# Run until benchmark conditions are met (--iterations 0 = unlimited)
+orchestrate new --type full \
+  --objective "Implement the program defined in PROGRAM.md (read PROGRAM.md)" \
+  --iterations 0 \
+  --benchmark "Read BENCHMARK.md and evaluate each [ ] item. Mark [x] if passing. Report remaining [ ] count as violation score."
 ```
 
 This gives the orchestrator a structured objective it can read in full at each phase, and a measurable benchmark that tracks progress across iterations. The benchmark is evaluated generatively during the TEST phase - the orchestrating agent reads the checklist, verifies each item against the codebase, and reports the violation count as the score to optimize.
+
+With `--iterations 0`, the orchestrator runs indefinitely until the benchmark score reaches 0 (all checklist conditions met). A safety cap of 20 iterations prevents runaway execution.
 
 ## How it works
 
