@@ -147,7 +147,7 @@ Note: Hypothesis code retained because FULL workflow still uses it. Only PLANNIN
 - [x] Full, gc, hotfix workflows omit `independent` (implicitly true)
 - [x] `cmd_new` fails with error when `--type` targets a workflow with `independent: false`
 - [x] Orchestrator uses `wf_def.independent` everywhere (not `wf_def.dependency`)
-- [ ] Tests verify: independent workflows start, non-independent workflows fail on direct invocation
+- [x] Tests verify: independent workflows start, non-independent workflows fail on direct invocation
 
 ## Section 6: Parallel Gate Execution
 
@@ -163,15 +163,15 @@ Note: Hypothesis code retained because FULL workflow still uses it. Only PLANNIN
 - [ ] Benchmark agent defined in agents.yaml under FULL::TEST (or standalone)
 - [ ] Benchmark agent prompt instructs: read BENCHMARK.md, evaluate [ ] items, mark [x], update Score Tracking
 - [ ] TEST phase spawns benchmark agent when --benchmark is configured
-- [ ] TEST gatekeeper verifies Score Tracking table was updated
-- [ ] Gatekeeper fails if benchmark configured but Score Tracking not updated
+- [x] TEST gatekeeper verifies Score Tracking table was updated
+- [x] Gatekeeper fails if benchmark configured but Score Tracking not updated
 
 ## Section 8: TEST Phase Benchmark Enforcement
 
-- [ ] _verify_test_phase() output includes reminder to update BENCHMARK.md score tracker
-- [ ] TEST phase end template requires benchmark evaluation and tracker update
-- [ ] TEST gatekeeper checks that score tracker was updated when benchmark is configured
-- [ ] Gatekeeper fails if benchmark configured but tracker not updated
+- [x] _verify_test_phase() output includes reminder to update BENCHMARK.md score tracker
+- [x] TEST phase end template requires benchmark evaluation and tracker update
+- [x] TEST gatekeeper checks that score tracker was updated when benchmark is configured
+- [x] Gatekeeper fails if benchmark configured but tracker not updated
 
 ## Section 7: Run-Until-Complete Mode
 
@@ -206,3 +206,4 @@ Iterations continue until ALL conditions are met. Use `orchestrate add-iteration
 |-----------|-----------|--------------|------------------|------------------------|-------------------|-------|
 | baseline  | 75        | 0            | TBD              | TBD                    | TBD               | TBD   |
 | iter 1    | 17        | 0            | 0                | 0                      | 0                 | 17    |
+| iter 2    | 21        | 0            | 0                | 0                      | 0                 | 21    |
