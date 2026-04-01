@@ -415,6 +415,36 @@ class TestCmdLogFailure:
         assert failures[0]["description"] == "something broke"
 
 
+class TestIndependentWorkflow:
+    """Tests for independent workflow flag."""
+
+    def test_independent_workflow_starts(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        args = argparse.Namespace(
+            type="test_workflow", objective="test", iterations=1,
+            benchmark="", clean=False, dry_run=False,
+        )
+        orch.cmd_new(args)
+        state = orch._load_state()
+        assert state is not None
+        assert state["type"] == "test_workflow"
+
+    def test_non_independent_workflow_fails(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        # Mark test_workflow as non-independent
+        orch._MODEL.workflow_types["test_workflow"].independent = False
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        args = argparse.Namespace(
+            type="test_workflow", objective="test", iterations=1,
+            benchmark="", clean=False, dry_run=False,
+        )
+        with pytest.raises(SystemExit):
+            orch.cmd_new(args)
+
+
 class TestRunUntilComplete:
     """Tests for --iterations 0 (run-until-complete) mode."""
 

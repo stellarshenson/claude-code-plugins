@@ -148,7 +148,16 @@ Note: Hypothesis code retained because FULL workflow still uses it. Only PLANNIN
 - [x] Orchestrator uses `wf_def.independent` everywhere (not `wf_def.dependency`)
 - [ ] Tests verify: independent workflows start, non-independent workflows fail on direct invocation
 
-## Section 6: TEST Phase Benchmark Enforcement
+## Section 6: Parallel Gate Execution
+
+- [ ] `--next-understanding` optional argument on `cmd_end`
+- [ ] Gatekeeper and next readback run in parallel via subprocess.Popen
+- [ ] If gatekeeper passes + readback passes: next phase starts in IN_PROGRESS
+- [ ] If gatekeeper fails: readback result ignored, stay in current phase
+- [ ] If gatekeeper passes + readback fails: next phase in PENDING (retry)
+- [ ] Tests cover parallel gate scenarios
+
+## Section 7: TEST Phase Benchmark Enforcement
 
 - [ ] _verify_test_phase() output includes reminder to update BENCHMARK.md score tracker
 - [ ] TEST phase end template requires benchmark evaluation and tracker update

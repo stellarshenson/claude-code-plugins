@@ -200,6 +200,28 @@ orchestrate new --type full \
 
 `--iterations 0` means: keep iterating until the benchmark score reaches 0.
 
+## Workstream G - Parallel Gate Execution
+
+The readback (at start) and gatekeeper (at end) each spawn a `claude -p` subprocess. When advancing between phases, `cmd_end` runs the gatekeeper and then the agent calls `cmd_start` which runs the next readback. These two gates could run in parallel.
+
+### Approach: cmd_end accepts --next-understanding
+
+Add `--next-understanding` optional argument to `cmd_end`. When provided:
+1. Fire gatekeeper subprocess for current phase
+2. Simultaneously fire readback subprocess for the next phase
+3. Both run as `subprocess.Popen` in parallel, then `.wait()` for both
+4. If gatekeeper passes AND readback passes: advance to next phase already in IN_PROGRESS
+5. If gatekeeper fails: ignore readback result, stay in current phase
+6. If gatekeeper passes but readback fails: advance to next phase in PENDING (normal retry)
+
+This saves ~60s per phase transition (one gate's worth of latency eliminated).
+
+### Files to Modify
+
+- `stellars_claude_code_plugins/engine/orchestrator.py` - add --next-understanding to cmd_end argparse, run gatekeeper + readback in parallel via Popen
+- `auto-build-claw/skills/auto-build-claw/resources/app.yaml` - add CLI arg help
+- `tests/test_orchestrator.py` - test parallel gate execution
+
 ## Workstream F - TEST Phase Benchmark Enforcement
 
 The TEST phase must ensure that when a benchmark is configured, it is always evaluated and the score tracking table in BENCHMARK.md is updated.
