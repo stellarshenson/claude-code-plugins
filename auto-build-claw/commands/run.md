@@ -22,3 +22,5 @@ Load and execute the auto-build-claw skill for autonomous iteration orchestratio
 ```
 
 When invoked, load the auto-build-claw skill and pass the arguments to the orchestrator.
+
+**MANDATORY**: ALL work MUST go through the orchestrator. No code changes outside IMPLEMENT phase. No commits outside RECORD phase. No benchmark evaluation outside TEST phase. No exceptions.

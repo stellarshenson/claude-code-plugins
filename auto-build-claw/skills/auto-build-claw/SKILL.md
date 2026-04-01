@@ -64,6 +64,26 @@ This gives the orchestrator a structured objective it can read in full at each p
 
 With `--iterations 0`, the orchestrator runs indefinitely until the benchmark score reaches 0 (all checklist conditions met). A safety cap of 20 iterations prevents runaway execution.
 
+## MANDATORY: All work goes through the orchestrator
+
+**NO EXCEPTIONS.** Every code change, every file edit, every commit MUST happen within an orchestrator phase. Do NOT:
+
+- Edit files outside of an IMPLEMENT phase
+- Skip phases or do work "directly" to save time
+- Make changes between orchestrator commands
+- Commit without going through RECORD phase
+- Evaluate benchmarks outside of TEST phase
+
+The orchestrator exists to enforce quality gates (readback + gatekeeper). Bypassing it means bypassing quality control. If the orchestrator ceremony feels slow, that's the cost of not shipping broken code.
+
+**Phase discipline**:
+- RESEARCH, HYPOTHESIS, PLAN, REVIEW - READ-ONLY. No file modifications
+- IMPLEMENT - the ONLY phase where code changes are allowed
+- TEST - run tests and evaluate benchmarks. Edit BENCHMARK.md only
+- RECORD - journal, commit, push. No code changes
+
+If you find yourself wanting to "just quickly fix something" outside the orchestrator - DON'T. Start a phase, do it properly, end the phase.
+
 ## How it works
 
 Every phase follows the same 2-call pattern:
