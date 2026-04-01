@@ -273,6 +273,45 @@ class TestPhaseCallables:
         assert "End alpha phase" in result
 
 
+class TestLifecycleGateResolution:
+    """Tests for _resolve_lifecycle_gate discovering gate names from model metadata."""
+
+    def test_resolve_start_gate(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        orch.STATE_FILE = tmp_path / "state.yaml"
+        state = {"type": "test_workflow", "current_phase": "ALPHA"}
+        orch._save_state(state)
+        gate_key = orch._resolve_lifecycle_gate("ALPHA", "start")
+        assert "readback" in gate_key  # discovers readback from start_gate_types
+
+    def test_resolve_end_gate(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        orch.STATE_FILE = tmp_path / "state.yaml"
+        state = {"type": "test_workflow", "current_phase": "ALPHA"}
+        orch._save_state(state)
+        gate_key = orch._resolve_lifecycle_gate("ALPHA", "end")
+        assert "gatekeeper" in gate_key  # discovers gatekeeper from end_gate_types
+
+    def test_resolve_unknown_lifecycle_fallback(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        orch.STATE_FILE = tmp_path / "state.yaml"
+        state = {"type": "test_workflow", "current_phase": "ALPHA"}
+        orch._save_state(state)
+        gate_key = orch._resolve_lifecycle_gate("ALPHA", "unknown")
+        assert gate_key == "ALPHA::unknown"
+
+
+class TestPrevImplementable:
+    """Tests for _prev_implementable using reject_to from model."""
+
+    def test_fallback_to_first_phase(self, minimal_resources):
+        """Without reject_to in any phase, falls back to first phase."""
+        orch._initialize(minimal_resources)
+        state = {"type": "test_workflow", "current_phase": "GAMMA"}
+        result = orch._prev_implementable(state)
+        assert result == "ALPHA"  # first phase in workflow
+
+
 class TestAutoActions:
     """Tests for auto-action dispatch."""
 

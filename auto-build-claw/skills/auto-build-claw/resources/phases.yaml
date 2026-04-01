@@ -303,6 +303,7 @@ FULL::IMPLEMENT:
 FULL::TEST:
   auto_actions:
     on_complete: []
+  auto_verify: true
   reject_to:
     phase: IMPLEMENT
     condition: "test failure requires fixing implementation"

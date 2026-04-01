@@ -45,6 +45,7 @@ class Phase:
     auto_actions: Optional[dict] = (
         None  # {on_complete: [action_name, ...]} - actions after phase completes
     )
+    auto_verify: bool = False  # if True, run programmatic verification (make test/lint) on end
 
 
 @dataclass
@@ -115,6 +116,11 @@ class Model:
     gates: dict[str, Gate]  # readback, gatekeeper, gatekeeper_skip, gatekeeper_force_skip
     app: AppConfig
     actions: dict[str, ActionDef] = field(default_factory=dict)
+    # Gate lifecycle metadata: which gate types belong to which lifecycle point
+    # Populated during model loading from on_start/on_end/on_skip YAML structure
+    start_gate_types: set[str] = field(default_factory=set)
+    end_gate_types: set[str] = field(default_factory=set)
+    skip_gate_types: set[str] = field(default_factory=set)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -157,9 +163,20 @@ def _build_phases(raw: dict) -> dict[str, Phase]:
     }
 
 
-def _build_agents_and_gates(raw: dict) -> tuple[dict[str, list[Agent]], dict[str, Gate]]:
+def _build_agents_and_gates(
+    raw: dict,
+) -> tuple[dict[str, list[Agent]], dict[str, Gate], set[str], set[str], set[str]]:
+    """Build agent lists and gate definitions from agents.yaml.
+
+    Returns (agents, gates, start_gate_types, end_gate_types, skip_gate_types).
+    The gate type sets record which gate types appear under each lifecycle point
+    (on_start, on_end, on_skip) so the orchestrator can discover gate names from
+    the model instead of hardcoding them.
+    """
     agents: dict[str, list[Agent]] = {}
     gates: dict[str, Gate] = {}
+    _LIFECYCLE_MAP = {"on_start": "start", "on_end": "end", "on_skip": "skip"}
+    gate_type_sets: dict[str, set[str]] = {"start": set(), "end": set(), "skip": set()}
     for phase_key, section in raw.items():
         if not isinstance(section, dict):
             continue
@@ -168,6 +185,7 @@ def _build_agents_and_gates(raw: dict) -> tuple[dict[str, list[Agent]], dict[str
             for lifecycle, subsection in section.items():
                 if not isinstance(subsection, dict):
                     continue
+                bucket = _LIFECYCLE_MAP.get(lifecycle, lifecycle)
                 for gk, gv in subsection.items():
                     if not isinstance(gv, dict):
                         continue
@@ -176,6 +194,7 @@ def _build_agents_and_gates(raw: dict) -> tuple[dict[str, list[Agent]], dict[str
                         description=gv.get("description", ""),
                         prompt=gv.get("prompt", ""),
                     )
+                    gate_type_sets.get(bucket, set()).add(gk)
         else:
             agent_list = section.get("agents", [])
             if agent_list:
@@ -193,6 +212,7 @@ def _build_agents_and_gates(raw: dict) -> tuple[dict[str, list[Agent]], dict[str
             for lifecycle, subsection in section.get("gates", {}).items():
                 if not isinstance(subsection, dict):
                     continue
+                bucket = _LIFECYCLE_MAP.get(lifecycle, lifecycle)
                 for gate_type, gate_def in subsection.items():
                     if isinstance(gate_def, dict):
                         gates[f"{phase_key}::{gate_type}"] = Gate(
@@ -200,7 +220,8 @@ def _build_agents_and_gates(raw: dict) -> tuple[dict[str, list[Agent]], dict[str
                             description=gate_def.get("description", ""),
                             prompt=gate_def.get("prompt", ""),
                         )
-    return agents, gates
+                        gate_type_sets.get(bucket, set()).add(gate_type)
+    return agents, gates, gate_type_sets["start"], gate_type_sets["end"], gate_type_sets["skip"]
 
 
 def _build_app(raw: dict) -> AppConfig:
@@ -263,7 +284,7 @@ def load_model(resources_dir: str | Path) -> Model:
     ph_raw = _load_yaml(base / "phases.yaml")
     ag_raw = _load_yaml(base / "agents.yaml")
     app_raw = _load_yaml(base / "app.yaml")
-    agents, gates = _build_agents_and_gates(ag_raw)
+    agents, gates, start_gates, end_gates, skip_gates = _build_agents_and_gates(ag_raw)
 
     return Model(
         workflow_types=_build_workflow_types(wf_raw),
@@ -272,6 +293,9 @@ def load_model(resources_dir: str | Path) -> Model:
         gates=gates,
         app=_build_app(app_raw),
         actions=_build_actions(wf_raw),
+        start_gate_types=start_gates,
+        end_gate_types=end_gates,
+        skip_gate_types=skip_gates,
     )
 
 
@@ -477,18 +501,21 @@ def validate_model(model: Model) -> list[str]:
                     "Fix: add it to the gate prompt template."
                 )
 
-    # gates: every workflow phase must resolve to both readback and gatekeeper
+    # gates: every workflow phase must resolve to both start and end gate types
+    # Gate types are discovered from lifecycle metadata (on_start/on_end) rather
+    # than hardcoded, making validation match whatever gate types the YAML defines
+    required_gate_types = model.start_gate_types | model.end_gate_types
     gate_phase_keys = set()
     for gk in model.gates:
         parts = gk.rsplit("::", 1)
-        if len(parts) == 2 and parts[1] in ("readback", "gatekeeper"):
+        if len(parts) == 2 and parts[1] in required_gate_types:
             gate_phase_keys.add(parts[0])
     for wf_name, wf in model.workflow_types.items():
         for p in wf.phases:
             if not isinstance(p, dict) or "name" not in p:
                 continue
             resolved = _resolve_key(wf_name, p["name"], gate_phase_keys)
-            for gate_type in ("readback", "gatekeeper"):
+            for gate_type in required_gate_types:
                 gate_key = f"{resolved}::{gate_type}"
                 if gate_key not in model.gates:
                     issues.append(

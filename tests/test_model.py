@@ -77,6 +77,14 @@ class TestLoadModel:
         force = model.gates["gatekeeper_force_skip"]
         assert "force-skip" in force.prompt
 
+    def test_gate_lifecycle_metadata(self, minimal_resources):
+        """Gate lifecycle sets are populated from on_start/on_end/on_skip structure."""
+        model = load_model(minimal_resources)
+        assert "readback" in model.start_gate_types
+        assert "gatekeeper" in model.end_gate_types
+        assert "gatekeeper_skip" in model.skip_gate_types
+        assert "gatekeeper_force_skip" in model.skip_gate_types
+
     def test_app_config_loaded(self, minimal_resources):
         model = load_model(minimal_resources)
         assert model.app.name == "test-plugin"
@@ -166,6 +174,20 @@ class TestLoadAutoBuildClaw:
         assert "hypothesis_autowrite" in model.actions
         assert model.actions["hypothesis_autowrite"].type == "generative"
         assert model.actions["hypothesis_autowrite"].prompt != ""
+
+    def test_real_gate_lifecycle_metadata(self, auto_build_claw_resources):
+        """Real model has gate lifecycle metadata populated."""
+        model = load_model(auto_build_claw_resources)
+        assert len(model.start_gate_types) > 0
+        assert len(model.end_gate_types) > 0
+        assert len(model.skip_gate_types) > 0
+
+    def test_real_auto_verify_on_test(self, auto_build_claw_resources):
+        """Real FULL::TEST phase has auto_verify set."""
+        model = load_model(auto_build_claw_resources)
+        test_phase = model.phases.get("FULL::TEST")
+        assert test_phase is not None
+        assert test_phase.auto_verify is True
 
     def test_real_model_validates(self, auto_build_claw_resources):
         model = load_model(auto_build_claw_resources)
@@ -302,6 +324,7 @@ class TestPhaseDataclass:
         assert p.end == ""
         assert p.reject_to is None
         assert p.auto_actions is None
+        assert p.auto_verify is False
 
     def test_with_reject_to(self):
         p = Phase(reject_to={"phase": "IMPLEMENT", "condition": "always"})

@@ -248,6 +248,29 @@ def _resolve_gate(phase: str, gate_type: str) -> str:
     return f"{resolved}::{gate_type}"
 
 
+def _resolve_lifecycle_gate(phase: str, lifecycle: str) -> str:
+    """Resolve the gate key for a phase at a lifecycle point.
+
+    Discovers the gate type from the model's lifecycle metadata instead of
+    requiring a hardcoded gate name. For example, lifecycle='start' finds
+    the gate type registered under on_start (e.g. 'readback'), then resolves
+    the full namespaced key via _resolve_gate.
+
+    Args:
+        phase: phase name (e.g. 'RESEARCH', 'TEST')
+        lifecycle: 'start' or 'end'
+    """
+    gate_types = {
+        "start": _MODEL.start_gate_types,
+        "end": _MODEL.end_gate_types,
+    }.get(lifecycle, set())
+    if not gate_types:
+        return f"{phase}::{lifecycle}"
+    # Use the first (typically only) gate type for this lifecycle point
+    gate_type = next(iter(gate_types))
+    return _resolve_gate(phase, gate_type)
+
+
 def _build_agent_instructions(phase: str, ctx: dict | None = None) -> str:
     """Generate formatted agent instructions from model agents for a phase.
 
@@ -425,15 +448,17 @@ def _make_phase_callable(phase: str, event: str) -> object:
         """Load state, build context, render the model Phase template for this phase/event."""
         state = _load_state()
         ctx = _build_context(state, phase=phase, event=event)
-        # Handle conditional templates (NEXT has remaining/final variants)
+        resolved_phase = _resolve_phase(phase)
+        # Handle conditional templates: phases with start_continue/start_final
+        # variants use remaining-count logic to select the right template
         key = event
-        if phase == "NEXT":
+        _phase_obj = _MODEL.phases.get(resolved_phase)
+        if _phase_obj and _phase_obj.start_continue:
             remaining = ctx["remaining"]
             if event == "start":
                 key = "start_continue" if remaining > 0 else "start_final"
             elif event == "end":
                 key = "end_continue" if remaining > 0 else "end_final"
-        resolved_phase = _resolve_phase(phase)
         phase_obj = _MODEL.phases.get(resolved_phase)
         template = getattr(phase_obj, key, "") if phase_obj else ""
         if not template:
@@ -452,13 +477,17 @@ def _action_iteration_summary(state: dict, phase: str):
     print(_msg("auto_separator"))
     _run_summary(state)
     nxt = _next_phase(state)
-    if nxt == "NEXT":
-        print("\n" + _msg("auto_separator"))
-        print(_msg("auto_next"))
-        print(_msg("auto_autonomous"))
-        print(_msg("auto_separator"))
-        next_instructions = _PHASE_START.get("NEXT", lambda: "")()
-        print(next_instructions)
+    if nxt:
+        # Check if the next phase has conditional templates (iteration advance)
+        resolved_nxt = _resolve_phase(nxt)
+        nxt_obj = _MODEL.phases.get(resolved_nxt)
+        if nxt_obj and nxt_obj.start_continue:
+            print("\n" + _msg("auto_separator"))
+            print(_msg("auto_next"))
+            print(_msg("auto_autonomous"))
+            print(_msg("auto_separator"))
+            next_instructions = _PHASE_START.get(nxt, lambda: "")()
+            print(next_instructions)
 
 
 def _action_iteration_advance(state: dict, phase: str):
@@ -681,16 +710,37 @@ def _next_phase(state: dict) -> str | None:
 def _prev_implementable(state: dict) -> str:
     """Find the phase to return to when a reviewer rejects.
 
-    Walks backward through the phase sequence looking for IMPLEMENT.
-    Used by cmd_reject and the TEST auto-reject to determine which
-    phase to roll back to.
+    Checks the current phase's reject_to declaration first. If not defined,
+    walks backward through the phase sequence looking for the first phase
+    that is a reject_to target of any phase in the workflow (i.e., a phase
+    that other phases point back to on rejection). Falls back to the first
+    phase in the workflow.
     """
+    current = state["current_phase"]
+    # Check current phase's reject_to first
+    resolved = _resolve_phase(current)
+    phase_obj = _MODEL.phases.get(resolved)
+    if phase_obj and phase_obj.reject_to:
+        target = phase_obj.reject_to.get("phase", "")
+        if target:
+            return target
+
+    # Walk backward looking for a phase that is a rejection target
     itype = ITERATION_TYPES[state["type"]]
     phases = itype["phases"]
-    idx = phases.index(state["current_phase"])
+    wf_type = state["type"]
+    # Build set of phases that are reject_to targets in this workflow
+    reject_targets: set[str] = set()
+    for p in phases:
+        p_resolved = _resolve_key(wf_type.upper(), p, set(_MODEL.phases.keys()))
+        p_obj = _MODEL.phases.get(p_resolved)
+        if p_obj and p_obj.reject_to:
+            reject_targets.add(p_obj.reject_to.get("phase", ""))
+
+    idx = phases.index(current)
     for i in range(idx - 1, -1, -1):
-        if phases[i] == "IMPLEMENT":
-            return "IMPLEMENT"
+        if phases[i] in reject_targets:
+            return phases[i]
     return phases[0]
 
 
@@ -888,7 +938,7 @@ def _readback_validate(
             action_part = instructions[idx:]
             break
     action_abbrev = action_part[:500].replace("\n", " ").strip()
-    gate_key = _resolve_gate(phase, "readback")
+    gate_key = _resolve_lifecycle_gate(phase, "start")
     gate_template = _MODEL.gates.get(gate_key)
     prompt = (gate_template.prompt if gate_template else "").format_map(
         collections.defaultdict(
@@ -926,7 +976,7 @@ def _gatekeeper_validate(
     exit_fn = _PHASE_END.get(phase)
     exit_criteria = exit_fn() if exit_fn else f"No exit criteria defined for {phase}"
 
-    gate_key = _resolve_gate(phase, "gatekeeper")
+    gate_key = _resolve_lifecycle_gate(phase, "end")
     gate_template = _MODEL.gates.get(gate_key)
     prompt = (gate_template.prompt if gate_template else "").format_map(
         collections.defaultdict(
@@ -1152,37 +1202,7 @@ def _run_summary(state: dict) -> None:
         "",
     ]
 
-    if "RESEARCH" in outputs:
-        lines.append("## Research Findings")
-        lines.append("")
-        for line in outputs["RESEARCH"].split("\n"):
-            if line.strip() and not line.startswith(("#", "-", "|")):
-                lines.append(f"{line}<br>")
-            else:
-                lines.append(line)
-        lines.append("")
-
-    if "HYPOTHESIS" in outputs:
-        lines.append("## Hypotheses")
-        lines.append("")
-        for line in outputs["HYPOTHESIS"].split("\n"):
-            if line.strip() and not line.startswith(("#", "-", "|")):
-                lines.append(f"{line}<br>")
-            else:
-                lines.append(line)
-        lines.append("")
-
-    if "PLAN" in outputs:
-        lines.append("## Plan")
-        lines.append("")
-        for line in outputs["PLAN"].split("\n"):
-            if line.strip() and not line.startswith(("#", "-", "|")):
-                lines.append(f"{line}<br>")
-            else:
-                lines.append(line)
-        lines.append("")
-
-    for phase_name in ["IMPLEMENT", "TEST", "REVIEW"]:
+    for phase_name in completed:
         if phase_name in outputs:
             lines.append(f"## {phase_name.title()}")
             lines.append("")
@@ -1267,9 +1287,21 @@ def _run_next_iteration(state: dict) -> None:
     first_phase = itype_info["phases"][0]
 
     # Preserve iteration_plan from iteration 0
-    iteration_plan = state.get("iteration_plan", "") or state.get("phase_outputs", {}).get(
-        "PLAN", ""
-    )
+    # Look for plan output: first check iteration_plan state key (set by plan_save action),
+    # then fall back to finding phase output from any phase with plan_save auto_action
+    iteration_plan = state.get("iteration_plan", "")
+    if not iteration_plan:
+        phase_outputs = state.get("phase_outputs", {})
+        for p_name, p_output in phase_outputs.items():
+            p_resolved = _resolve_phase(p_name)
+            p_obj = _MODEL.phases.get(p_resolved)
+            if (
+                p_obj
+                and p_obj.auto_actions
+                and "plan_save" in p_obj.auto_actions.get("on_complete", [])
+            ):
+                iteration_plan = p_output
+                break
 
     state["iteration"] = new_iteration
     state["current_phase"] = first_phase
@@ -1805,8 +1837,10 @@ def cmd_end(args) -> None:
 
     header = _banner(phase, "COMPLETING", state)
 
-    # ── TEST phase: run automated verification ──
-    if phase == "TEST":
+    # ── Auto-verify phase: run programmatic verification (make test/lint) ──
+    resolved_phase = _resolve_phase(phase)
+    phase_obj = _MODEL.phases.get(resolved_phase)
+    if phase_obj and phase_obj.auto_verify:
         print(header)
         body = _PHASE_END.get(phase, lambda: "")()
         print(body)
@@ -2207,8 +2241,9 @@ def _dry_run_phase(workflow: str, phase_name: str) -> list[str]:
 
     gate_phases = {k.rsplit("::", 1)[0] for k in _MODEL.gates if "::" in k}
     gate_key = _resolve_key(workflow, phase_name, gate_phases)
-    has_rb = f"{gate_key}::readback" in _MODEL.gates
-    has_gk = f"{gate_key}::gatekeeper" in _MODEL.gates
+    # Check for start/end gates using lifecycle metadata from the model
+    has_rb = any(f"{gate_key}::{gt}" in _MODEL.gates for gt in _MODEL.start_gate_types)
+    has_gk = any(f"{gate_key}::{gt}" in _MODEL.gates for gt in _MODEL.end_gate_types)
 
     skippable = any(
         p.get("skippable")
