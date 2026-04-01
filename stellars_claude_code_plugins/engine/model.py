@@ -12,9 +12,9 @@ import yaml
 @dataclass
 class Agent:
     name: str
-    number: int
     display_name: str
     prompt: str
+    number: int = 0                   # auto-derived from list position in _build_agents_and_gates
     mode: str = ""                    # "" = parallel via Agent tool; "standalone_session" = claude -p
     checklist: Optional[str] = None
 
@@ -157,10 +157,10 @@ def _build_agents_and_gates(raw: dict) -> tuple[dict[str, list[Agent]], dict[str
             agent_list = section.get("agents", [])
             if agent_list:
                 agents[phase_key] = [
-                    Agent(name=a["name"], number=a["number"], display_name=a["display_name"],
-                          prompt=a.get("prompt", ""), mode=a.get("mode", ""),
-                          checklist=a.get("checklist"))
-                    for a in agent_list
+                    Agent(name=a["name"], display_name=a["display_name"],
+                          prompt=a.get("prompt", ""), number=a.get("number", i + 1),
+                          mode=a.get("mode", ""), checklist=a.get("checklist"))
+                    for i, a in enumerate(agent_list)
                 ]
             for gate_type, gate_def in section.get("gates", {}).items():
                 if isinstance(gate_def, dict):
@@ -267,12 +267,8 @@ def validate_model(model: Model) -> list[str]:
             issues.append(f"[agents.yaml] section '{phase_key}' has no matching phase in phases.yaml. "
                           "Fix: rename to match a phases.yaml key or use WORKFLOW::PHASE notation.")
 
-    # agents: mode values, sequential numbers, unique names, required fields
+    # agents: mode values, unique names, required fields
     for phase_key, agent_list in model.agents.items():
-        numbers = [a.number for a in agent_list]
-        if numbers != list(range(1, len(agent_list) + 1)):
-            issues.append(f"[agents.yaml] '{phase_key}': agent numbers {numbers} not sequential. "
-                          "Fix: number agents 1, 2, 3... in order.")
         seen_names: set[str] = set()
         for agent in agent_list:
             if agent.mode not in _VALID_MODES:

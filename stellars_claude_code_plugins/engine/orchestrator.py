@@ -988,6 +988,8 @@ def _banner(phase: str, action: str, state: dict) -> str:
     wf_def = _MODEL.workflow_types.get(itype)
     if wf_def and not wf_def.independent:
         iter_label = itype.upper()
+    elif total_iters == 0:
+        iter_label = f"benchmark-driven {iteration}"
     elif total_iters > 1:
         iter_label = f"{iteration}/{total_iters}"
     else:
@@ -1162,12 +1164,24 @@ def _run_next_iteration(state: dict) -> None:
     """
     total = state.get("total_iterations", 1)
     current = state["iteration"]
-    remaining = total - current
 
-    if remaining <= 0:
-        print("\n" + _msg("iteration_complete", total=total))
-        print(_msg("iteration_new_cmd", cmd=CMD, itype=state["type"]))
-        return
+    # Run-until-complete mode: total == 0 means iterate until benchmark score reaches 0
+    if total == 0:
+        scores = state.get("benchmark_scores", [])
+        last_score = scores[-1]["score"] if scores else None
+        if last_score is not None and last_score == 0:
+            print("\n" + _msg("iteration_complete", total=current))
+            print("Benchmark conditions met - all iterations complete.")
+            return
+        if current >= 20:
+            print("\nWARNING: 20 iterations without benchmark completion. Pausing.")
+            return
+    else:
+        remaining = total - current
+        if remaining <= 0:
+            print("\n" + _msg("iteration_complete", total=total))
+            print(_msg("iteration_new_cmd", cmd=CMD, itype=state["type"]))
+            return
 
     new_iteration = current + 1
 
@@ -1716,6 +1730,8 @@ def cmd_status(args) -> None:
     wf_def = _MODEL.workflow_types.get(wf_type)
     if wf_def and not wf_def.independent:
         iter_label = wf_type.upper()
+    elif total_iters == 0:
+        iter_label = f"until benchmark complete (iteration {iteration})"
     elif total_iters > 1:
         iter_label = f"{iteration}/{total_iters}"
     else:

@@ -49,8 +49,8 @@ class TestLoadModel:
         assert len(model.agents["ALPHA"]) == 1
         agent = model.agents["ALPHA"][0]
         assert agent.name == "researcher"
-        assert agent.number == 1
         assert agent.display_name == "Researcher"
+        assert agent.number == 1  # auto-derived from list position
 
     def test_gates_loaded(self, minimal_resources):
         model = load_model(minimal_resources)
@@ -124,13 +124,13 @@ class TestLoadAutoBuildClaw:
         for name, phase in model.phases.items():
             assert phase.start or phase.start_continue, f"Phase {name} has no start template"
 
-    def test_real_agents_sequential_numbers(self, auto_build_claw_resources):
+    def test_real_agents_auto_numbered(self, auto_build_claw_resources):
         model = load_model(auto_build_claw_resources)
         for phase_key, agents in model.agents.items():
-            numbers = [a.number for a in agents]
-            assert numbers == list(range(1, len(agents) + 1)), (
-                f"Agents in {phase_key} not sequential: {numbers}"
-            )
+            for i, agent in enumerate(agents):
+                assert agent.number == i + 1, (
+                    f"Agent {agent.name} in {phase_key} has number {agent.number}, expected {i + 1}"
+                )
 
     def test_real_gates_have_prompts(self, auto_build_claw_resources):
         model = load_model(auto_build_claw_resources)
@@ -195,12 +195,6 @@ ALPHA:
         model.agents["ALPHA"].append(dup)
         issues = validate_model(model)
         assert any("duplicate agent name" in i for i in issues)
-
-    def test_non_sequential_agent_numbers(self, minimal_resources):
-        model = load_model(minimal_resources)
-        model.agents["ALPHA"][0].number = 5
-        issues = validate_model(model)
-        assert any("not sequential" in i for i in issues)
 
     def test_missing_app_name(self, minimal_resources):
         model = load_model(minimal_resources)

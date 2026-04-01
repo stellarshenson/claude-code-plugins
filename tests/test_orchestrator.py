@@ -415,6 +415,62 @@ class TestCmdLogFailure:
         assert failures[0]["description"] == "something broke"
 
 
+class TestRunUntilComplete:
+    """Tests for --iterations 0 (run-until-complete) mode."""
+
+    def test_next_iteration_continues_when_score_nonzero(self, minimal_resources, tmp_path, capsys):
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+
+        state = {
+            "iteration": 1, "total_iterations": 0, "type": "test_workflow",
+            "objective": "test", "current_phase": "GAMMA",
+            "phase_status": "complete", "completed_phases": ["ALPHA", "BETA", "GAMMA"],
+            "skipped_phases": [], "rejected_count": 0, "started_at": "2026-01-01",
+            "phase_outputs": {}, "phase_agents": {},
+            "benchmark_scores": [{"score": 5}],
+        }
+        orch._save_state(state)
+        orch._run_next_iteration(state)
+        assert state["iteration"] == 2  # advanced to next
+
+    def test_next_iteration_stops_when_score_zero(self, minimal_resources, tmp_path, capsys):
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+
+        state = {
+            "iteration": 3, "total_iterations": 0, "type": "test_workflow",
+            "objective": "test", "current_phase": "GAMMA",
+            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
+            "started_at": "2026-01-01", "phase_outputs": {}, "phase_agents": {},
+            "benchmark_scores": [{"score": 5}, {"score": 2}, {"score": 0}],
+        }
+        orch._save_state(state)
+        orch._run_next_iteration(state)
+        captured = capsys.readouterr()
+        assert "Benchmark conditions met" in captured.out
+        assert state["iteration"] == 3  # did NOT advance
+
+    def test_safety_cap_at_20(self, minimal_resources, tmp_path, capsys):
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+
+        state = {
+            "iteration": 20, "total_iterations": 0, "type": "test_workflow",
+            "objective": "test", "current_phase": "GAMMA",
+            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
+            "started_at": "2026-01-01", "phase_outputs": {}, "phase_agents": {},
+            "benchmark_scores": [{"score": 3}],
+        }
+        orch._save_state(state)
+        orch._run_next_iteration(state)
+        captured = capsys.readouterr()
+        assert "20 iterations" in captured.out
+
+
 class TestPluginEntrypoint:
     """Tests that the plugin entrypoint resolves correctly."""
 

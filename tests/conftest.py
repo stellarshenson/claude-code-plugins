@@ -57,7 +57,6 @@ shared_gates:
 ALPHA:
   agents:
     - name: researcher
-      number: 1
       display_name: Researcher
       prompt: "Research the topic"
   gates:
@@ -73,7 +72,6 @@ ALPHA:
 BETA:
   agents:
     - name: planner
-      number: 1
       display_name: Planner
       prompt: "Plan the work"
   gates:
@@ -89,7 +87,6 @@ BETA:
 GAMMA:
   agents:
     - name: executor
-      number: 1
       display_name: Executor
       prompt: "Execute the work"
   gates:
