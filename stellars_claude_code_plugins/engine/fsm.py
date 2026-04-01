@@ -18,6 +18,7 @@ from transitions import Machine, MachineError
 
 class State(str, Enum):
     """Phase lifecycle states."""
+
     PENDING = "pending"
     READBACK = "readback"
     IN_PROGRESS = "in_progress"
@@ -29,6 +30,7 @@ class State(str, Enum):
 
 class Event(str, Enum):
     """Events that trigger state transitions."""
+
     START = "start"
     READBACK_PASS = "readback_pass"
     READBACK_FAIL = "readback_fail"
@@ -75,8 +77,11 @@ class FSM:
                 conditions.append(lambda evt, g=guard: self._evaluate_guard(g, self._context))
 
             after = []
-            after.append(lambda evt, s=source, tr=trigger, d=dest, g=guard, a=action:
-                         self._log_transition(s, tr, d, g, a))
+            after.append(
+                lambda evt, s=source, tr=trigger, d=dest, g=guard, a=action: self._log_transition(
+                    s, tr, d, g, a
+                )
+            )
             if action:
                 after.append(lambda evt, a=action: self._execute_action(a, self._context))
 
@@ -108,8 +113,9 @@ class FSM:
         """Check if an event can fire in the current state."""
         event_str = event.value if isinstance(event, Event) else event
         self._context = context
-        return self._machine.get_triggers(self.state).__contains__(event_str) and \
-            self._try_conditions(event_str)
+        return self._machine.get_triggers(self.state).__contains__(
+            event_str
+        ) and self._try_conditions(event_str)
 
     def fire(self, event: str | Event, **context) -> State:
         """Fire an event, executing the matching transition.
@@ -127,8 +133,7 @@ class FSM:
         # transitions silently stays in state when all conditions fail
         if self.state == old_state and len(self._log) == log_len:
             raise ValueError(
-                f"All guards failed for transition from '{old_state}' "
-                f"on event '{event_str}'."
+                f"All guards failed for transition from '{old_state}' on event '{event_str}'."
             )
         return self.current_state
 
@@ -157,16 +162,23 @@ class FSM:
                 report = {"phase": phase, "transitions": [], "valid": True}
                 self.reset(State.PENDING)
 
-                for event in [Event.START, Event.READBACK_PASS, Event.END,
-                              Event.GATE_PASS, Event.ADVANCE]:
+                for event in [
+                    Event.START,
+                    Event.READBACK_PASS,
+                    Event.END,
+                    Event.GATE_PASS,
+                    Event.ADVANCE,
+                ]:
                     try:
                         old = self.state
                         self.fire(event, phase=phase, **context)
-                        report["transitions"].append({
-                            "event": event.value,
-                            "from": old,
-                            "to": self.state,
-                        })
+                        report["transitions"].append(
+                            {
+                                "event": event.value,
+                                "from": old,
+                                "to": self.state,
+                            }
+                        )
                     except ValueError as e:
                         report["valid"] = False
                         report["error"] = str(e)
@@ -181,9 +193,7 @@ class FSM:
 
     def _try_conditions(self, event_str: str) -> bool:
         """Check if any transition for this event passes its conditions."""
-        transitions = self._machine.get_transitions(
-            trigger=event_str, source=self.state
-        )
+        transitions = self._machine.get_transitions(trigger=event_str, source=self.state)
         for t in transitions:
             if not t.conditions:
                 return True
@@ -191,31 +201,36 @@ class FSM:
                 return True
         return False
 
-    def _log_transition(self, source: str, trigger: str, dest: str,
-                        guard: str, action: str) -> None:
+    def _log_transition(
+        self, source: str, trigger: str, dest: str, guard: str, action: str
+    ) -> None:
         """Record a transition in the audit log."""
-        self._log.append({
-            "from": source,
-            "event": trigger,
-            "to": dest,
-            "guard": guard,
-            "action": action,
-        })
+        self._log.append(
+            {
+                "from": source,
+                "event": trigger,
+                "to": dest,
+                "guard": guard,
+                "action": action,
+            }
+        )
 
     def _evaluate_guard(self, guard_name: str, context: dict) -> bool:
         """Evaluate a named guard with the given context."""
         guard_fn = self._guards.get(guard_name)
         if guard_fn is None:
-            raise ValueError(f"Unknown guard: '{guard_name}'. "
-                           f"Registered: {list(self._guards.keys())}")
+            raise ValueError(
+                f"Unknown guard: '{guard_name}'. Registered: {list(self._guards.keys())}"
+            )
         return guard_fn(**context)
 
     def _execute_action(self, action_name: str, context: dict) -> None:
         """Execute a named action with the given context."""
         action_fn = self._actions.get(action_name)
         if action_fn is None:
-            raise ValueError(f"Unknown action: '{action_name}'. "
-                           f"Registered: {list(self._actions.keys())}")
+            raise ValueError(
+                f"Unknown action: '{action_name}'. Registered: {list(self._actions.keys())}"
+            )
         action_fn(**context)
 
 

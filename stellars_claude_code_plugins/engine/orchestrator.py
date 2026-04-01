@@ -100,22 +100,23 @@ def _initialize(resources_dir: Path) -> None:
 
     # Build ITERATION_TYPES from model.workflow_types
     ITERATION_TYPES.clear()
-    ITERATION_TYPES.update({
-        name: {
-            "description": wt.description,
-            "phases": wt.phase_names,
-            "required": wt.required,
-            "skippable": wt.skippable,
+    ITERATION_TYPES.update(
+        {
+            name: {
+                "description": wt.description,
+                "phases": wt.phase_names,
+                "required": wt.required,
+                "skippable": wt.skippable,
+            }
+            for name, wt in _MODEL.workflow_types.items()
         }
-        for name, wt in _MODEL.workflow_types.items()
-    })
+    )
 
     # Extract flat agent name lists from model.agents
     PHASE_AGENTS.clear()
-    PHASE_AGENTS.update({
-        phase: [a.name for a in agents]
-        for phase, agents in _MODEL.agents.items()
-    })
+    PHASE_AGENTS.update(
+        {phase: [a.name for a in agents] for phase, agents in _MODEL.agents.items()}
+    )
 
     # Populate _PHASE_START and _PHASE_END from model.phases
     _PHASE_START.clear()
@@ -126,11 +127,13 @@ def _initialize(resources_dir: Path) -> None:
 
     # Auto-action registry
     _AUTO_ACTION_REGISTRY.clear()
-    _AUTO_ACTION_REGISTRY.update({
-        "plan_save": _action_plan_save,
-        "iteration_summary": _action_iteration_summary,
-        "iteration_advance": _action_iteration_advance,
-    })
+    _AUTO_ACTION_REGISTRY.update(
+        {
+            "plan_save": _action_plan_save,
+            "iteration_summary": _action_iteration_summary,
+            "iteration_advance": _action_iteration_advance,
+        }
+    )
 
     _initialized = True
 
@@ -145,7 +148,9 @@ def _fire_fsm(event: FSMEvent, state: dict) -> FSMState:
     All phase_status mutations go through this function.
     """
     status = state.get("phase_status", "pending")
-    _PHASE_FSM.current_state = FSMState(status) if status in _FSM_STATE_VALUES else FSMState.PENDING
+    _PHASE_FSM.current_state = (
+        FSMState(status) if status in _FSM_STATE_VALUES else FSMState.PENDING
+    )
     new_state = _PHASE_FSM.fire(event)
     state["phase_status"] = new_state.value
     return new_state
@@ -163,7 +168,11 @@ def _msg(key: str, **kwargs) -> str:
     empty strings instead of raising KeyError.
     """
     template = _MODEL.app.messages.get(key, key)
-    ctx = {"cmd": CMD, "separator_line": _SEP_CHAR * _SEP_WIDTH, "header_line": _HDR_CHAR * _HDR_WIDTH}
+    ctx = {
+        "cmd": CMD,
+        "separator_line": _SEP_CHAR * _SEP_WIDTH,
+        "header_line": _HDR_CHAR * _HDR_WIDTH,
+    }
     ctx.update(kwargs)
     return template.format_map(collections.defaultdict(str, ctx))
 
@@ -361,13 +370,11 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
     iteration_plan = s.get("iteration_plan", "")
     wf_def = _MODEL.workflow_types.get(itype)
     if wf_def and not wf_def.independent:
-        iteration_purpose = "\n" + _msg(
-            "dependency_banner", description=wf_def.description
-        ) + "\n"
+        iteration_purpose = "\n" + _msg("dependency_banner", description=wf_def.description) + "\n"
     elif iteration > 0 and iteration_plan:
-        iteration_purpose = "\n" + _msg(
-            "iteration_n_banner", iteration=iteration, total=total_iters
-        ) + "\n"
+        iteration_purpose = (
+            "\n" + _msg("iteration_n_banner", iteration=iteration, total=total_iters) + "\n"
+        )
     else:
         iteration_purpose = ""
 
@@ -448,9 +455,11 @@ def _action_iteration_summary(state: dict, phase: str):
         next_instructions = _PHASE_START.get("NEXT", lambda: "")()
         print(next_instructions)
 
+
 def _action_iteration_advance(state: dict, phase: str):
     _run_next_iteration(state)
     return "return"
+
 
 def _action_plan_save(state: dict, phase: str):
     """Save PLAN output as plan.yaml for dependency workflows."""
@@ -765,14 +774,10 @@ def _verify_test_phase(state: dict | None = None) -> tuple[bool, str]:
     benchmark_cmd = (state or {}).get("benchmark_cmd", "")
     if benchmark_cmd:
         results.append(f"benchmark (generative): {benchmark_cmd}")
-        results.append(
-            "  INSTRUCTION: Read the benchmark file, evaluate each [ ] item,")
-        results.append(
-            "  update [ ] -> [x] for passing items, add new [ ] items if discovered,")
-        results.append(
-            "  then report the count of remaining [ ] items as the violation score.")
-        results.append(
-            "  The orchestrating agent MUST follow this instruction before proceeding.")
+        results.append("  INSTRUCTION: Read the benchmark file, evaluate each [ ] item,")
+        results.append("  update [ ] -> [x] for passing items, add new [ ] items if discovered,")
+        results.append("  then report the count of remaining [ ] items as the violation score.")
+        results.append("  The orchestrating agent MUST follow this instruction before proceeding.")
 
     return True, "\n".join(results)
 
@@ -863,12 +868,17 @@ def _readback_validate(
     action_abbrev = action_part[:500].replace("\n", " ").strip()
     gate_key = _resolve_gate(phase, "readback")
     gate_template = _MODEL.gates.get(gate_key)
-    prompt = (gate_template.prompt if gate_template else "").format_map(collections.defaultdict(str, {
-        "phase": phase,
-        "objective": obj_line,
-        "instructions": action_abbrev,
-        "understanding": understanding,
-    }))
+    prompt = (gate_template.prompt if gate_template else "").format_map(
+        collections.defaultdict(
+            str,
+            {
+                "phase": phase,
+                "objective": obj_line,
+                "instructions": action_abbrev,
+                "understanding": understanding,
+            },
+        )
+    )
     return _claude_evaluate(prompt)
 
 
@@ -896,16 +906,23 @@ def _gatekeeper_validate(
 
     gate_key = _resolve_gate(phase, "gatekeeper")
     gate_template = _MODEL.gates.get(gate_key)
-    prompt = (gate_template.prompt if gate_template else "").format_map(collections.defaultdict(str, {
-        "phase": phase,
-        "exit_criteria": exit_criteria[:400],
-        "required_agents": ", ".join(required_agents) if required_agents else "none",
-        "recorded_agents": ", ".join(agents) if agents else "NONE",
-        "output_status": f"yes ({len(output)} chars)" if output else "no",
-        "readback_status": "PASS" if readback.get("passed") else ("FAIL" if readback else "not done"),
-        "benchmark_configured": "yes" if state.get("benchmark_cmd") else "no",
-        "evidence": evidence if evidence else "(no report provided)",
-    }))
+    prompt = (gate_template.prompt if gate_template else "").format_map(
+        collections.defaultdict(
+            str,
+            {
+                "phase": phase,
+                "exit_criteria": exit_criteria[:400],
+                "required_agents": ", ".join(required_agents) if required_agents else "none",
+                "recorded_agents": ", ".join(agents) if agents else "NONE",
+                "output_status": f"yes ({len(output)} chars)" if output else "no",
+                "readback_status": "PASS"
+                if readback.get("passed")
+                else ("FAIL" if readback else "not done"),
+                "benchmark_configured": "yes" if state.get("benchmark_cmd") else "no",
+                "evidence": evidence if evidence else "(no report provided)",
+            },
+        )
+    )
     passed, explanation = _claude_evaluate(prompt)
 
     # ASK response = BLOCK (not pass)
@@ -932,14 +949,19 @@ def _gatekeeper_evaluate_skip(
     abbrev = instructions[:300].replace("\n", " ").strip()
 
     gate_template = _MODEL.gates.get("gatekeeper_skip", None)
-    prompt = (gate_template.prompt if gate_template else "").format_map(collections.defaultdict(str, {
-        "phase": phase,
-        "iteration": str(iteration),
-        "itype": itype,
-        "objective": objective[:150],
-        "phase_purpose": abbrev,
-        "reason": reason,
-    }))
+    prompt = (gate_template.prompt if gate_template else "").format_map(
+        collections.defaultdict(
+            str,
+            {
+                "phase": phase,
+                "iteration": str(iteration),
+                "itype": itype,
+                "objective": objective[:150],
+                "phase_purpose": abbrev,
+                "reason": reason,
+            },
+        )
+    )
     passed, output = _claude_evaluate(prompt)
     first_line = output.split("\n")[0].strip("*#> ").strip().upper() if output else ""
     approved = first_line.startswith("APPROVE")
@@ -963,12 +985,17 @@ def _gatekeeper_evaluate_force_skip(
     completed = state.get("completed_phases", [])
 
     gate_template = _MODEL.gates.get("gatekeeper_force_skip", None)
-    prompt = (gate_template.prompt if gate_template else "").format_map(collections.defaultdict(str, {
-        "phase": phase,
-        "iteration": str(iteration),
-        "completed_phases": ", ".join(completed) if completed else "none",
-        "reason": reason,
-    }))
+    prompt = (gate_template.prompt if gate_template else "").format_map(
+        collections.defaultdict(
+            str,
+            {
+                "phase": phase,
+                "iteration": str(iteration),
+                "completed_phases": ", ".join(completed) if completed else "none",
+                "reason": reason,
+            },
+        )
+    )
     passed, output = _claude_evaluate(prompt)
     first_line = output.split("\n")[0].strip("*#> ").strip().upper() if output else ""
     approved = first_line.startswith("APPROVE")
@@ -1256,7 +1283,13 @@ def _run_next_iteration(state: dict) -> None:
     if prior_failures:
         print("\n" + _msg("prior_failures_header_short", count=len(prior_failures)))
         for f in prior_failures[-3:]:
-            print(_msg("prior_failure_item", mode=f.get("mode", "?"), description=f.get("description", "?")))
+            print(
+                _msg(
+                    "prior_failure_item",
+                    mode=f.get("mode", "?"),
+                    description=f.get("description", "?"),
+                )
+            )
 
     print("\n" + _msg("iteration_begin_short", cmd=CMD))
 
@@ -1356,7 +1389,14 @@ def cmd_new(args) -> None:
         iter_label = f"{iteration} of {total_iterations}"
     else:
         iter_label = str(iteration)
-    print(_msg("iteration_started", iter_label=iter_label, itype=run_type, description=type_info["description"]))
+    print(
+        _msg(
+            "iteration_started",
+            iter_label=iter_label,
+            itype=run_type,
+            description=type_info["description"],
+        )
+    )
     print("\n" + _msg("iteration_objective", objective=objective))
     if total_iterations > 1:
         print(_msg("iteration_requested", total=total_iterations))
@@ -1373,7 +1413,13 @@ def cmd_new(args) -> None:
         if prior_failures:
             print("\n" + _msg("prior_failures_header", count=len(prior_failures)))
             for f in prior_failures[-3:]:
-                print(_msg("prior_failure_item_full", mode=f.get("mode", "?"), description=f.get("description", "?")))
+                print(
+                    _msg(
+                        "prior_failure_item_full",
+                        mode=f.get("mode", "?"),
+                        description=f.get("description", "?"),
+                    )
+                )
 
     print("\n" + _msg("iteration_begin", cmd=CMD))
 
@@ -1519,17 +1565,25 @@ def _validate_end_inputs(args, phase: str, state: dict) -> tuple:
         missing = [r for r in required_agents if r not in agents]
         if missing:
             print(_msg("missing_agents", phase=phase, missing=", ".join(missing)), file=sys.stderr)
-            print(_msg("missing_agents_required", required=", ".join(required_agents)), file=sys.stderr)
+            print(
+                _msg("missing_agents_required", required=", ".join(required_agents)),
+                file=sys.stderr,
+            )
             sys.exit(1)
     elif required_agents and not agents:
-        print(_msg("requires_agents", phase=phase, required=", ".join(required_agents)), file=sys.stderr)
+        print(
+            _msg("requires_agents", phase=phase, required=", ".join(required_agents)),
+            file=sys.stderr,
+        )
         print(_msg("requires_agents_provide", required=",".join(required_agents)), file=sys.stderr)
         sys.exit(1)
 
     return evidence, agents, output_file_path, output_content
 
 
-def _record_phase_outputs(state: dict, phase: str, agents: list, output_file_path, output_content: str, evidence: str) -> None:
+def _record_phase_outputs(
+    state: dict, phase: str, agents: list, output_file_path, output_content: str, evidence: str
+) -> None:
     """Record agents and output file content into state, then save."""
     if agents:
         if "phase_agents" not in state:
@@ -1573,10 +1627,10 @@ def _record_phase_outputs(state: dict, phase: str, agents: list, output_file_pat
 def _handle_test_failure(state: dict, phase: str, output: str) -> None:
     """Handle TEST phase auto-reject: FSM transitions, log failure, print messages."""
     target = _prev_implementable(state)
-    _fire_fsm(FSMEvent.END, state)      # in_progress -> gatekeeper
-    _fire_fsm(FSMEvent.GATE_FAIL, state) # gatekeeper -> in_progress
-    _fire_fsm(FSMEvent.REJECT, state)    # in_progress -> rejected
-    _fire_fsm(FSMEvent.ADVANCE, state)   # rejected -> pending
+    _fire_fsm(FSMEvent.END, state)  # in_progress -> gatekeeper
+    _fire_fsm(FSMEvent.GATE_FAIL, state)  # gatekeeper -> in_progress
+    _fire_fsm(FSMEvent.REJECT, state)  # in_progress -> rejected
+    _fire_fsm(FSMEvent.ADVANCE, state)  # rejected -> pending
     state["current_phase"] = target
     state["rejected_count"] = state.get("rejected_count", 0) + 1
     state.pop("phase_started_at", None)
@@ -1698,7 +1752,9 @@ def _print_phase_summary(state: dict, phase: str) -> None:
         summary_lines.append(_msg("phase_readback", status="PASS" if rb.get("passed") else "FAIL"))
     if phase in gatekeepers:
         gk = gatekeepers[phase]
-        summary_lines.append(_msg("phase_gatekeeper", status="PASS" if gk.get("passed") else "FAIL"))
+        summary_lines.append(
+            _msg("phase_gatekeeper", status="PASS" if gk.get("passed") else "FAIL")
+        )
     print("\n".join(summary_lines))
 
 
@@ -1802,7 +1858,13 @@ def cmd_status(args) -> None:
         print(_msg("status_rejections", count=rejected))
         lr = state.get("last_rejection", {})
         if lr:
-            print(_msg("status_last_reject", from_phase=lr.get("from", "?"), reason=lr.get("reason", "?")))
+            print(
+                _msg(
+                    "status_last_reject",
+                    from_phase=lr.get("from", "?"),
+                    reason=lr.get("reason", "?"),
+                )
+            )
     print()
 
     for p in phases:
@@ -1829,7 +1891,13 @@ def cmd_status(args) -> None:
     if failures:
         print("\n" + _msg("status_failures_header", count=len(failures)))
         for f in failures:
-            print(_msg("status_failure_item", mode=f.get("mode", "?"), desc=f.get("description", "?")[:60]))
+            print(
+                _msg(
+                    "status_failure_item",
+                    mode=f.get("mode", "?"),
+                    desc=f.get("description", "?")[:60],
+                )
+            )
 
     print("\n" + _msg("status_required_note"))
     if state["phase_status"] == "pending":
@@ -1862,7 +1930,7 @@ def cmd_reject(args) -> None:
         target = _prev_implementable(state)
 
     # FSM: reject current phase and advance to target
-    _fire_fsm(FSMEvent.REJECT, state)   # in_progress -> rejected
+    _fire_fsm(FSMEvent.REJECT, state)  # in_progress -> rejected
     _fire_fsm(FSMEvent.ADVANCE, state)  # rejected -> pending
     state["current_phase"] = target
     state["rejected_count"] = state.get("rejected_count", 0) + 1
@@ -1908,7 +1976,9 @@ def cmd_skip(args) -> None:
 
     if phase in itype["required"] and not force:
         print(_msg("skip_blocked", phase=phase, itype=state["type"]), file=sys.stderr)
-        print(_msg("skip_blocked_required", required=", ".join(itype["required"])), file=sys.stderr)
+        print(
+            _msg("skip_blocked_required", required=", ".join(itype["required"])), file=sys.stderr
+        )
         print("\n" + _msg("skip_blocked_force"), file=sys.stderr)
         sys.exit(1)
 
@@ -1953,7 +2023,7 @@ def cmd_skip(args) -> None:
     state["skipped_phases"].append({"phase": phase, "reason": reason})
 
     # FSM: skip and advance
-    _fire_fsm(FSMEvent.SKIP, state)     # pending -> skipped
+    _fire_fsm(FSMEvent.SKIP, state)  # pending -> skipped
     nxt = _next_phase(state)
     if nxt:
         _fire_fsm(FSMEvent.ADVANCE, state)  # skipped -> pending
@@ -2119,7 +2189,8 @@ def _dry_run_phase(workflow: str, phase_name: str) -> list[str]:
     has_gk = f"{gate_key}::gatekeeper" in _MODEL.gates
 
     skippable = any(
-        p.get("skippable") for p in _MODEL.workflow_types[workflow].phases
+        p.get("skippable")
+        for p in _MODEL.workflow_types[workflow].phases
         if p["name"] == phase_name
     )
     tag = "skip" if skippable else "req"
@@ -2129,8 +2200,10 @@ def _dry_run_phase(workflow: str, phase_name: str) -> list[str]:
 
     # Report resolution path
     resolved_display = phase_key if phase_key != phase_name else phase_name
-    print(_msg("dry_run_phase_line", phase=phase_name, tag=tag, agents=agent_names, rb=rb, gk=gk)
-          + f"  [{resolved_display}]")
+    print(
+        _msg("dry_run_phase_line", phase=phase_name, tag=tag, agents=agent_names, rb=rb, gk=gk)
+        + f"  [{resolved_display}]"
+    )
 
     # Test template rendering with dummy context
     phase_obj = _MODEL.phases.get(phase_key)
@@ -2142,7 +2215,9 @@ def _dry_run_phase(workflow: str, phase_name: str) -> list[str]:
                 try:
                     text.format_map(dummy_ctx)
                 except (KeyError, ValueError, IndexError) as exc:
-                    issues.append(f"[phases.yaml] '{phase_key}.{attr}': template render error: {exc}")
+                    issues.append(
+                        f"[phases.yaml] '{phase_key}.{attr}': template render error: {exc}"
+                    )
 
     return issues
 
@@ -2181,13 +2256,23 @@ def _dry_run(itype: str, total_iterations: int) -> None:
         dep_reports = _PHASE_FSM.simulate([p["name"] for p in dep_wf.phases])
         for r in dep_reports:
             if not r["valid"]:
-                print(_msg("dry_run_error", issue=f"FSM simulation failed for {r['phase']}: {r.get('error', '')}"))
+                print(
+                    _msg(
+                        "dry_run_error",
+                        issue=f"FSM simulation failed for {r['phase']}: {r.get('error', '')}",
+                    )
+                )
                 sys.exit(1)
 
     reports = _PHASE_FSM.simulate([p["name"] for p in wf.phases])
     for r in reports:
         if not r["valid"]:
-            print(_msg("dry_run_error", issue=f"FSM simulation failed for {r['phase']}: {r.get('error', '')}"))
+            print(
+                _msg(
+                    "dry_run_error",
+                    issue=f"FSM simulation failed for {r['phase']}: {r.get('error', '')}",
+                )
+            )
             sys.exit(1)
 
     print(_msg("dry_run_complete"))
@@ -2246,8 +2331,12 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     p_new.add_argument("--iterations", type=int, default=1, help=_cli("args", "iterations"))
     p_new.add_argument("--benchmark", default="", help=_cli("args", "benchmark"))
     p_new.add_argument("--clean", action="store_true", default=True, help=_cli("args", "clean"))
-    p_new.add_argument("--no-clean", action="store_false", dest="clean", help=_cli("args", "no_clean"))
-    p_new.add_argument("--dry-run", action="store_true", default=False, help=_cli("args", "dry_run"))
+    p_new.add_argument(
+        "--no-clean", action="store_false", dest="clean", help=_cli("args", "no_clean")
+    )
+    p_new.add_argument(
+        "--dry-run", action="store_true", default=False, help=_cli("args", "dry_run")
+    )
 
     # ── start ──
     p_start = sub.add_parser("start", help=_cli("commands", "start"))
