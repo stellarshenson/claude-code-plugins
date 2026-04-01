@@ -45,14 +45,15 @@ GAMMA:
 
     (resources / "agents.yaml").write_text("""
 shared_gates:
-  gatekeeper_skip:
-    mode: standalone_session
-    description: "Skip gatekeeper"
-    prompt: "Evaluate skip for {phase} in iteration {iteration} type {itype} objective {objective}: {reason}"
-  gatekeeper_force_skip:
-    mode: standalone_session
-    description: "Force-skip gatekeeper"
-    prompt: "Evaluate force-skip for {phase} in iteration {iteration}: {reason}"
+  on_skip:
+    gatekeeper_skip:
+      mode: standalone_session
+      description: "Skip gatekeeper"
+      prompt: "Evaluate skip for {phase} in iteration {iteration} type {itype} objective {objective}: {reason}"
+    gatekeeper_force_skip:
+      mode: standalone_session
+      description: "Force-skip gatekeeper"
+      prompt: "Evaluate force-skip for {phase} in iteration {iteration}: {reason}"
 
 ALPHA:
   agents:
@@ -60,14 +61,16 @@ ALPHA:
       display_name: Researcher
       prompt: "Research the topic"
   gates:
-    readback:
-      mode: standalone_session
-      description: "Validate understanding"
-      prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
-    gatekeeper:
-      mode: standalone_session
-      description: "Validate completion"
-      prompt: "Phase {phase}: {evidence}"
+    on_start:
+      readback:
+        mode: standalone_session
+        description: "Validate understanding"
+        prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
+    on_end:
+      gatekeeper:
+        mode: standalone_session
+        description: "Validate completion"
+        prompt: "Phase {phase}: {evidence}"
 
 BETA:
   agents:
@@ -75,14 +78,16 @@ BETA:
       display_name: Planner
       prompt: "Plan the work"
   gates:
-    readback:
-      mode: standalone_session
-      description: "Validate understanding"
-      prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
-    gatekeeper:
-      mode: standalone_session
-      description: "Validate completion"
-      prompt: "Phase {phase}: {evidence}"
+    on_start:
+      readback:
+        mode: standalone_session
+        description: "Validate understanding"
+        prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
+    on_end:
+      gatekeeper:
+        mode: standalone_session
+        description: "Validate completion"
+        prompt: "Phase {phase}: {evidence}"
 
 GAMMA:
   agents:
@@ -90,14 +95,16 @@ GAMMA:
       display_name: Executor
       prompt: "Execute the work"
   gates:
-    readback:
-      mode: standalone_session
-      description: "Validate understanding"
-      prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
-    gatekeeper:
-      mode: standalone_session
-      description: "Validate completion"
-      prompt: "Phase {phase}: {evidence}"
+    on_start:
+      readback:
+        mode: standalone_session
+        description: "Validate understanding"
+        prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
+    on_end:
+      gatekeeper:
+        mode: standalone_session
+        description: "Validate completion"
+        prompt: "Phase {phase}: {evidence}"
 """)
 
     (resources / "app.yaml").write_text("""

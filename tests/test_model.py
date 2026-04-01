@@ -3,6 +3,7 @@
 import pytest
 
 from stellars_claude_code_plugins.engine.model import (
+    ActionDef,
     Agent,
     AppConfig,
     Gate,
@@ -58,6 +59,24 @@ class TestLoadModel:
         assert "gatekeeper_skip" in model.gates
         assert "gatekeeper_force_skip" in model.gates
 
+    def test_gates_from_on_start_on_end(self, minimal_resources):
+        """Gates under on_start/on_end are extracted correctly."""
+        model = load_model(minimal_resources)
+        # on_start -> readback
+        rb = model.gates["ALPHA::readback"]
+        assert "understanding" in rb.prompt
+        # on_end -> gatekeeper
+        gk = model.gates["ALPHA::gatekeeper"]
+        assert "evidence" in gk.prompt
+
+    def test_shared_gates_from_on_skip(self, minimal_resources):
+        """Shared gates under on_skip are extracted correctly."""
+        model = load_model(minimal_resources)
+        skip = model.gates["gatekeeper_skip"]
+        assert "phase" in skip.prompt
+        force = model.gates["gatekeeper_force_skip"]
+        assert "force-skip" in force.prompt
+
     def test_app_config_loaded(self, minimal_resources):
         model = load_model(minimal_resources)
         assert model.app.name == "test-plugin"
@@ -83,6 +102,11 @@ class TestLoadModel:
         model = load_model(minimal_resources)
         assert "no_active" in model.app.messages
         assert "validate_success" in model.app.messages
+
+    def test_actions_default_empty(self, minimal_resources):
+        """Actions default to empty dict when not in workflow.yaml."""
+        model = load_model(minimal_resources)
+        assert model.actions == {}
 
 
 class TestLoadModelErrors:
@@ -135,6 +159,14 @@ class TestLoadAutoBuildClaw:
         for gate_key, gate in model.gates.items():
             assert gate.prompt, f"Gate {gate_key} has empty prompt"
 
+    def test_real_actions_loaded(self, auto_build_claw_resources):
+        model = load_model(auto_build_claw_resources)
+        assert "plan_save" in model.actions
+        assert model.actions["plan_save"].type == "programmatic"
+        assert "hypothesis_autowrite" in model.actions
+        assert model.actions["hypothesis_autowrite"].type == "generative"
+        assert model.actions["hypothesis_autowrite"].prompt != ""
+
     def test_real_model_validates(self, auto_build_claw_resources):
         model = load_model(auto_build_claw_resources)
         issues = validate_model(model)
@@ -160,20 +192,23 @@ bad_workflow:
         (resources / "phases.yaml").write_text("ALPHA:\n  start: 'hello'\n  end: 'bye'")
         (resources / "agents.yaml").write_text("""
 shared_gates:
-  gatekeeper_skip:
-    prompt: "{phase} {iteration} {itype} {objective} {reason}"
-  gatekeeper_force_skip:
-    prompt: "{phase} {iteration} {reason}"
+  on_skip:
+    gatekeeper_skip:
+      prompt: "{phase} {iteration} {itype} {objective} {reason}"
+    gatekeeper_force_skip:
+      prompt: "{phase} {iteration} {reason}"
 ALPHA:
   agents:
     - name: a
       display_name: A
       prompt: do
   gates:
-    readback:
-      prompt: "{understanding}"
-    gatekeeper:
-      prompt: "{evidence}"
+    on_start:
+      readback:
+        prompt: "{understanding}"
+    on_end:
+      gatekeeper:
+        prompt: "{evidence}"
 """)
         (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
         model = load_model(resources)
@@ -275,3 +310,17 @@ class TestPhaseDataclass:
     def test_with_auto_actions(self):
         p = Phase(auto_actions={"on_complete": ["plan_save"]})
         assert "plan_save" in p.auto_actions["on_complete"]
+
+
+class TestActionDef:
+    """Tests for ActionDef dataclass."""
+
+    def test_programmatic_defaults(self):
+        a = ActionDef(type="programmatic", description="test")
+        assert a.type == "programmatic"
+        assert a.prompt == ""
+
+    def test_generative_with_prompt(self):
+        a = ActionDef(type="generative", description="test", prompt="do something")
+        assert a.type == "generative"
+        assert a.prompt == "do something"

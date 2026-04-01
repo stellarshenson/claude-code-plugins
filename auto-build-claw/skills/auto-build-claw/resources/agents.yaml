@@ -22,13 +22,14 @@
 #                   (any agent can have one, not just guardian)
 #
 # PER-PHASE GATES: Each phase section has a `gates:` subsection with
-# readback and gatekeeper prompts. The engine stores these with
-# namespaced keys (FULL::RESEARCH::readback, FULL::RESEARCH::gatekeeper).
+# lifecycle subsections: on_start (readback), on_end (gatekeeper).
+# The engine stores these with namespaced keys
+# (FULL::RESEARCH::readback, FULL::RESEARCH::gatekeeper).
 # Gates run via claude -p for independent validation at phase boundaries.
 #
 # SHARED GATES: Skip-related gates (gatekeeper_skip, gatekeeper_force_skip)
-# are in the shared_gates section. They evaluate skip decisions, not
-# phase-specific work, so they apply to any phase.
+# are in the shared_gates section under on_skip. They evaluate skip
+# decisions, not phase-specific work, so they apply to any phase.
 #
 # TEMPLATE VARIABLES IN PROMPTS:
 #   {checklist} - resolved at runtime from the agent's checklist field
@@ -82,25 +83,27 @@ FULL::RESEARCH:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: spawning 3 separate agents AND read-only constraint.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EXIT CRITERIA: {exit_criteria}
-        AGENTS: required={required_agents} | recorded={recorded_agents}
-        OUTPUT: {output_status} | READBACK: {readback_status}
-        EVIDENCE: {evidence}
-        Check: 3 agents spawned separately, findings contain specific
-        file references and concrete observations (not vague summaries).
-        Evaluate evidence QUALITY: are findings specific enough to act on? Vague summaries = FAIL.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: spawning 3 separate agents AND read-only constraint.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: 3 agents spawned separately, findings contain specific
+          file references and concrete observations (not vague summaries).
+          Evaluate evidence QUALITY: are findings specific enough to act on? Vague summaries = FAIL.
 
 # ── FULL::HYPOTHESIS ───────────────────────────────────────────────
 # Four agents with contrasting perspectives debate which hypotheses
@@ -150,25 +153,27 @@ FULL::HYPOTHESIS:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: 4 separate agents AND hypothesis ranking process.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EXIT CRITERIA: {exit_criteria}
-        AGENTS: required={required_agents} | recorded={recorded_agents}
-        OUTPUT: {output_status} | READBACK: {readback_status}
-        EVIDENCE: {evidence}
-        Check: 4 agents spawned separately, hypotheses merged with
-        star ratings, top 1-3 selected with measurable predictions.
-        Evaluate hypothesis QUALITY: each must have root cause, prediction, and evidence. Generic hypotheses without specifics = FAIL.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: 4 separate agents AND hypothesis ranking process.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: 4 agents spawned separately, hypotheses merged with
+          star ratings, top 1-3 selected with measurable predictions.
+          Evaluate hypothesis QUALITY: each must have root cause, prediction, and evidence. Generic hypotheses without specifics = FAIL.
 
 # ── FULL::PLAN ─────────────────────────────────────────────────────
 # Three review agents evaluate the plan at PLAN end. PLAN start has
@@ -246,26 +251,28 @@ FULL::PLAN:
 
         VERDICTS: CLEAN / WARN (log) / BLOCK (reject) / ASK (ask user)
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: EnterPlanMode (or planning mode) AND read-only.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EXIT CRITERIA: {exit_criteria}
-        AGENTS: required={required_agents} | recorded={recorded_agents}
-        OUTPUT: {output_status} | READBACK: {readback_status}
-        EVIDENCE: {evidence}
-        Check: plan contains specific files, concrete changes per file,
-        root causes, acceptance criteria, and risk assessment.
-        Vague plans ("improve X", "fix issues") = FAIL.
-        Evaluate plan DEPTH: must include specific files, concrete changes, and reasoning for each. Shallow bullet lists = FAIL.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: EnterPlanMode (or planning mode) AND read-only.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: plan contains specific files, concrete changes per file,
+          root causes, acceptance criteria, and risk assessment.
+          Vague plans ("improve X", "fix issues") = FAIL.
+          Evaluate plan DEPTH: must include specific files, concrete changes, and reasoning for each. Shallow bullet lists = FAIL.
 
 # ── FULL::IMPLEMENT ────────────────────────────────────────────────
 # No agents - implementation is done by the orchestrating session.
@@ -273,24 +280,26 @@ FULL::PLAN:
 
 FULL::IMPLEMENT:
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: predict/verify loop AND following the plan.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EXIT CRITERIA: {exit_criteria}
-        OUTPUT: {output_status} | READBACK: {readback_status}
-        EVIDENCE: {evidence}
-        Check: changes match plan (no scope creep), predict/verify
-        reflection documented for each change.
-        Evaluate implementation THOROUGHNESS: each change must show what was predicted vs what happened. Missing reflections = FAIL.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: predict/verify loop AND following the plan.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: changes match plan (no scope creep), predict/verify
+          reflection documented for each change.
+          Evaluate implementation THOROUGHNESS: each change must show what was predicted vs what happened. Missing reflections = FAIL.
 
 # ── FULL::TEST ─────────────────────────────────────────────────────
 # Benchmark evaluator agent runs when benchmark is configured.
@@ -313,31 +322,33 @@ FULL::TEST:
         **IMPORTANT**: You MUST edit BENCHMARK.md - reading without editing = failure.
         The benchmark score formula is defined in BENCHMARK.md itself.
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: running tests AND benchmark evaluation (if applicable).
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EXIT CRITERIA: {exit_criteria}
-        READBACK: {readback_status}
-        BENCHMARK CONFIGURED: {benchmark_configured}
-        EVIDENCE: {evidence}
-        Check: tests pass, lint clean.
-        BENCHMARK RULE: if benchmark is configured (shows "yes"):
-        1. Evidence MUST contain specific score numbers (e.g., "score: 17", "unchecked: 5")
-        2. Evidence MUST confirm BENCHMARK.md file was EDITED (not just read)
-        3. Evidence MUST confirm Score Tracking table was UPDATED with iteration results
-        4. A claim like "benchmark evaluated" without numbers or file edit = FAIL
-        5. FAIL message: "benchmark configured but Score Tracking not updated"
-        If benchmark shows "no", ignore benchmark checks.
-        Evaluate test COMPLETENESS: all planned changes must be covered by test results.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: running tests AND benchmark evaluation (if applicable).
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          READBACK: {readback_status}
+          BENCHMARK CONFIGURED: {benchmark_configured}
+          EVIDENCE: {evidence}
+          Check: tests pass, lint clean.
+          BENCHMARK RULE: if benchmark is configured (shows "yes"):
+          1. Evidence MUST contain specific score numbers (e.g., "score: 17", "unchecked: 5")
+          2. Evidence MUST confirm BENCHMARK.md file was EDITED (not just read)
+          3. Evidence MUST confirm Score Tracking table was UPDATED with iteration results
+          4. A claim like "benchmark evaluated" without numbers or file edit = FAIL
+          5. FAIL message: "benchmark configured but Score Tracking not updated"
+          If benchmark shows "no", ignore benchmark checks.
+          Evaluate test COMPLETENESS: all planned changes must be covered by test results.
 
 # ── FULL::REVIEW ───────────────────────────────────────────────────
 # Four agents review the completed implementation in parallel.
@@ -407,67 +418,73 @@ FULL::REVIEW:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: 4 separate agents AND independent review.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EXIT CRITERIA: {exit_criteria}
-        AGENTS: required={required_agents} | recorded={recorded_agents}
-        OUTPUT: {output_status} | READBACK: {readback_status}
-        EVIDENCE: {evidence}
-        Check: 4 agents spawned separately, verdicts merged,
-        guardian overfit assessment completed.
-        Evaluate verdict DEPTH: each agent must provide reasoning, not just APPROVE/REJECT. Missing reasoning = FAIL.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: 4 separate agents AND independent review.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: 4 agents spawned separately, verdicts merged,
+          guardian overfit assessment completed.
+          Evaluate verdict DEPTH: each agent must provide reasoning, not just APPROVE/REJECT. Missing reasoning = FAIL.
 
 # ── RECORD (shared) ───────────────────────────────────────────────
 # Shared phase - used by all workflows. Journal, commit, push.
 
 RECORD:
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: journal entry AND git commit.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EVIDENCE: {evidence}
-        Check: journal entry appended, git commit created,
-        push to remote succeeded.
-        Evaluate record QUALITY: journal entry must be substantive (not just "done"), commit message must follow conventions.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: journal entry AND git commit.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EVIDENCE: {evidence}
+          Check: journal entry appended, git commit created,
+          push to remote succeeded.
+          Evaluate record QUALITY: journal entry must be substantive (not just "done"), commit message must follow conventions.
 
 # ── NEXT (shared) ─────────────────────────────────────────────────
 # Shared phase - used by all workflows. Advance or report completion.
 
 NEXT:
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: iteration advance or completion reporting.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EVIDENCE: {evidence}
-        Check: iteration advanced correctly or final status reported.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: iteration advance or completion reporting.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EVIDENCE: {evidence}
+          Check: iteration advanced correctly or final status reported.
 
 # ── PLANNING workflow agents and gates ─────────────────────────────
 # Planning-specific agents focus on problem decomposition and work
@@ -509,43 +526,47 @@ PLANNING::RESEARCH:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: problem decomposition AND work breakdown focus.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EXIT CRITERIA: {exit_criteria}
-        AGENTS: required={required_agents} | recorded={recorded_agents}
-        OUTPUT: {output_status} | READBACK: {readback_status}
-        EVIDENCE: {evidence}
-        Check: 3 agents spawned, scope assessed for iteration planning.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: problem decomposition AND work breakdown focus.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: 3 agents spawned, scope assessed for iteration planning.
 
 PLANNING::PLAN:
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: EnterPlanMode AND iteration-level work breakdown.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EXIT CRITERIA: {exit_criteria}
-        OUTPUT: {output_status} | READBACK: {readback_status}
-        EVIDENCE: {evidence}
-        Check: work broken down into iterations with scope, files,
-        and acceptance criteria per iteration.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: EnterPlanMode AND iteration-level work breakdown.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: work broken down into iterations with scope, files,
+          and acceptance criteria per iteration.
 
 # ── GC::PLAN ──────────────────────────────────────────────────────
 # GC planning is simpler - no research/hypothesis precedes it.
@@ -553,73 +574,76 @@ PLANNING::PLAN:
 
 GC::PLAN:
   gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: cleanup scope AND read-only planning.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EXIT CRITERIA: {exit_criteria}
-        AGENTS: required={required_agents} | recorded={recorded_agents}
-        OUTPUT: {output_status} | READBACK: {readback_status}
-        EVIDENCE: {evidence}
-        Check: cleanup targets identified with rationale, specific
-        files listed, no feature additions disguised as cleanup.
+    on_start:
+      readback:
+        prompt: |
+          Reply PASS or FAIL + one-line reason. No tools. No files.
+          PHASE: {phase} | OBJECTIVE: {objective}
+          INSTRUCTIONS: {instructions}
+          UNDERSTANDING: {understanding}
+          Must mention: cleanup scope AND read-only planning.
+          Be lenient on phrasing.
+    on_end:
+      gatekeeper:
+        prompt: |
+          Reply PASS or FAIL + brief reason. No tools.
+          PHASE: {phase}
+          EXIT CRITERIA: {exit_criteria}
+          AGENTS: required={required_agents} | recorded={recorded_agents}
+          OUTPUT: {output_status} | READBACK: {readback_status}
+          EVIDENCE: {evidence}
+          Check: cleanup targets identified with rationale, specific
+          files listed, no feature additions disguised as cleanup.
 
 # ── Shared skip gates ─────────────────────────────────────────────
 # Skip decisions are not phase-specific - they evaluate whether
 # skipping any phase is justified. Shared across all workflows.
 
 shared_gates:
-  gatekeeper_skip:
-    mode: standalone_session
-    description: "Evaluates whether skipping an optional phase is justified"
-    prompt: |
-      Reply with ONLY APPROVE or DENY followed by a one-line reason.
-      Do NOT use any tools.
+  on_skip:
+    gatekeeper_skip:
+      mode: standalone_session
+      description: "Evaluates whether skipping an optional phase is justified"
+      prompt: |
+        Reply with ONLY APPROVE or DENY followed by a one-line reason.
+        Do NOT use any tools.
 
-      An AI agent wants to SKIP phase {phase} in iteration
-      {iteration} ({itype}).
-      OBJECTIVE: {objective}
-      PHASE PURPOSE: {phase_purpose}
-      SKIP REASON: {reason}
+        An AI agent wants to SKIP phase {phase} in iteration
+        {iteration} ({itype}).
+        OBJECTIVE: {objective}
+        PHASE PURPOSE: {phase_purpose}
+        SKIP REASON: {reason}
 
-      Is skipping justified? A skip is OK if:
-      - The phase work was already done in a prior step
-      - The phase is genuinely not applicable to this iteration's scope
-      - The changes are trivially small and the phase would add no value
-      A skip is NOT OK if:
-      - The agent is cutting corners to save time
-      - The phase would catch issues the agent might miss
-      - Required agents would provide independent validation
+        Is skipping justified? A skip is OK if:
+        - The phase work was already done in a prior step
+        - The phase is genuinely not applicable to this iteration's scope
+        - The changes are trivially small and the phase would add no value
+        A skip is NOT OK if:
+        - The agent is cutting corners to save time
+        - The phase would catch issues the agent might miss
+        - Required agents would provide independent validation
 
-  gatekeeper_force_skip:
-    mode: standalone_session
-    description: "Very conservative evaluation for force-skipping required phases"
-    prompt: |
-      Reply with ONLY APPROVE or DENY followed by a one-line reason.
-      Do NOT use any tools.
+    gatekeeper_force_skip:
+      mode: standalone_session
+      description: "Very conservative evaluation for force-skipping required phases"
+      prompt: |
+        Reply with ONLY APPROVE or DENY followed by a one-line reason.
+        Do NOT use any tools.
 
-      An AI agent wants to FORCE-SKIP a REQUIRED phase.
-      PHASE: {phase} (REQUIRED - normally cannot be skipped)
-      ITERATION: {iteration}
-      COMPLETED PHASES: {completed_phases}
-      SKIP REASON: {reason}
+        An AI agent wants to FORCE-SKIP a REQUIRED phase.
+        PHASE: {phase} (REQUIRED - normally cannot be skipped)
+        ITERATION: {iteration}
+        COMPLETED PHASES: {completed_phases}
+        SKIP REASON: {reason}
 
-      Be VERY CONSERVATIVE. A force-skip is exceptional.
-      ONLY approve if:
-      - The iteration is stopping early and remaining phases are truly meaningless
-      - The phase's purpose was already fulfilled by a prior step
-      - An external constraint makes execution impossible
-      DENY if:
-      - The agent is cutting corners or saving time
-      - The phase provides independent validation that hasn't occurred
-      - Skipping would reduce quality assurance
-      - The reason is vague or doesn't explain why the phase is unnecessary
-      Default to DENY unless the reason is compelling.
+        Be VERY CONSERVATIVE. A force-skip is exceptional.
+        ONLY approve if:
+        - The iteration is stopping early and remaining phases are truly meaningless
+        - The phase's purpose was already fulfilled by a prior step
+        - An external constraint makes execution impossible
+        DENY if:
+        - The agent is cutting corners or saving time
+        - The phase provides independent validation that hasn't occurred
+        - Skipping would reduce quality assurance
+        - The reason is vague or doesn't explain why the phase is unnecessary
+        Default to DENY unless the reason is compelling.

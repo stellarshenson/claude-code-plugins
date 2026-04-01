@@ -486,18 +486,29 @@ def _action_plan_save(state: dict, phase: str):
 
 
 def _run_auto_actions(phase: str, state: dict) -> bool:
-    """Run auto_actions.on_complete for the resolved phase. Returns True if handler signalled early return."""
+    """Run auto_actions.on_complete for the resolved phase. Returns True if handler signalled early return.
+
+    Actions are resolved in this order:
+    1. Python handler in _AUTO_ACTION_REGISTRY (programmatic actions)
+    2. Generative action definition in _MODEL.actions (runs via claude -p)
+    """
     resolved = _resolve_phase(phase)
     phase_obj = _MODEL.phases.get(resolved)
     if not phase_obj or not phase_obj.auto_actions:
         return False
     actions = phase_obj.auto_actions.get("on_complete", [])
     for action_name in actions:
+        # Try programmatic handler first
         handler = _AUTO_ACTION_REGISTRY.get(action_name)
         if handler:
             result = handler(state, phase)
             if result == "return":
                 return True
+            continue
+        # Try generative action from model
+        action_def = _MODEL.actions.get(action_name)
+        if action_def and action_def.type == "generative" and action_def.prompt:
+            _claude_evaluate(action_def.prompt, timeout=120)
     return False
 
 

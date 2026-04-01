@@ -27,6 +27,13 @@ class Gate:
 
 
 @dataclass
+class ActionDef:
+    type: str  # "programmatic" or "generative"
+    description: str
+    prompt: str = ""  # only for generative actions
+
+
+@dataclass
 class Phase:
     start: str = ""
     end: str = ""
@@ -107,6 +114,7 @@ class Model:
     agents: dict[str, list[Agent]]  # phase key -> agents (FULL::RESEARCH, FULL::HYPOTHESIS, etc.)
     gates: dict[str, Gate]  # readback, gatekeeper, gatekeeper_skip, gatekeeper_force_skip
     app: AppConfig
+    actions: dict[str, ActionDef] = field(default_factory=dict)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -125,6 +133,9 @@ def _load_yaml(path: Path) -> dict:
 # ── Builder functions ─────────────────────────────────────────────────────────
 
 
+_WORKFLOW_RESERVED_KEYS = {"actions"}
+
+
 def _build_workflow_types(raw: dict) -> dict[str, WorkflowType]:
     return {
         key: WorkflowType(
@@ -134,7 +145,7 @@ def _build_workflow_types(raw: dict) -> dict[str, WorkflowType]:
             independent=val.get("independent", True),
         )
         for key, val in raw.items()
-        if isinstance(val, dict)
+        if isinstance(val, dict) and key not in _WORKFLOW_RESERVED_KEYS
     }
 
 
@@ -153,12 +164,18 @@ def _build_agents_and_gates(raw: dict) -> tuple[dict[str, list[Agent]], dict[str
         if not isinstance(section, dict):
             continue
         if phase_key == "shared_gates":
-            for gk, gv in section.items():
-                gates[gk] = Gate(
-                    mode=gv.get("mode", "standalone_session"),
-                    description=gv.get("description", ""),
-                    prompt=gv.get("prompt", ""),
-                )
+            # Shared gates live under lifecycle subsections (on_skip)
+            for lifecycle, subsection in section.items():
+                if not isinstance(subsection, dict):
+                    continue
+                for gk, gv in subsection.items():
+                    if not isinstance(gv, dict):
+                        continue
+                    gates[gk] = Gate(
+                        mode=gv.get("mode", "standalone_session"),
+                        description=gv.get("description", ""),
+                        prompt=gv.get("prompt", ""),
+                    )
         else:
             agent_list = section.get("agents", [])
             if agent_list:
@@ -172,13 +189,17 @@ def _build_agents_and_gates(raw: dict) -> tuple[dict[str, list[Agent]], dict[str
                     )
                     for a in agent_list
                 ]
-            for gate_type, gate_def in section.get("gates", {}).items():
-                if isinstance(gate_def, dict):
-                    gates[f"{phase_key}::{gate_type}"] = Gate(
-                        mode=gate_def.get("mode", "standalone_session"),
-                        description=gate_def.get("description", ""),
-                        prompt=gate_def.get("prompt", ""),
-                    )
+            # Gates live under lifecycle subsections (on_start, on_end)
+            for lifecycle, subsection in section.get("gates", {}).items():
+                if not isinstance(subsection, dict):
+                    continue
+                for gate_type, gate_def in subsection.items():
+                    if isinstance(gate_def, dict):
+                        gates[f"{phase_key}::{gate_type}"] = Gate(
+                            mode=gate_def.get("mode", "standalone_session"),
+                            description=gate_def.get("description", ""),
+                            prompt=gate_def.get("prompt", ""),
+                        )
     return agents, gates
 
 
@@ -215,6 +236,23 @@ def _build_app(raw: dict) -> AppConfig:
     )
 
 
+def _build_actions(raw: dict) -> dict[str, ActionDef]:
+    """Build action definitions from workflow.yaml's optional actions section."""
+    actions_raw = raw.get("actions", {})
+    if not isinstance(actions_raw, dict):
+        return {}
+    result: dict[str, ActionDef] = {}
+    for name, defn in actions_raw.items():
+        if not isinstance(defn, dict):
+            continue
+        result[name] = ActionDef(
+            type=defn.get("type", "programmatic"),
+            description=defn.get("description", ""),
+            prompt=defn.get("prompt", ""),
+        )
+    return result
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 
@@ -233,6 +271,7 @@ def load_model(resources_dir: str | Path) -> Model:
         agents=agents,
         gates=gates,
         app=_build_app(app_raw),
+        actions=_build_actions(wf_raw),
     )
 
 
