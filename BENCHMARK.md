@@ -5,8 +5,10 @@
 **Direction**: MINIMIZE (target: 0)
 
 ```
-score = unchecked_items + failed_tests
+score = unchecked_items + failed_tests + (hardcoded_overfit * 2)
 ```
+
+`hardcoded_overfit` = count of gate/agent/phase names hardcoded in orchestrator.py that should come from YAML. Each carries 2x penalty.
 
 ## Evaluation
 
@@ -50,6 +52,18 @@ score = unchecked_items + failed_tests
 - [x] orchestrator.py dispatches generative actions via `_claude_evaluate(prompt)` from YAML
 - [x] orchestrator.py dispatches programmatic actions via Python handler (existing behavior)
 - [ ] validate_model checks action definitions match phases.yaml references
+
+## Section 2b: Overfit - Hardcoded Values
+
+Every gate/agent/phase name hardcoded in orchestrator.py that should come from YAML is an overfit violation (2x penalty).
+
+- [ ] No hardcoded "readback" in _resolve_gate or _readback_validate (should discover from on_start)
+- [ ] No hardcoded "gatekeeper" in _resolve_gate or _gatekeeper_validate (should discover from on_end)
+- [ ] No hardcoded "gatekeeper_skip" in _gatekeeper_evaluate_skip (should discover from on_skip)
+- [ ] No hardcoded "gatekeeper_force_skip" in _gatekeeper_evaluate_force_skip (should discover from on_skip)
+- [ ] No hardcoded "IMPLEMENT" in _prev_implementable (should be configurable per workflow)
+- [ ] No hardcoded "TEST" phase check in cmd_end (should check phase property not name)
+- [ ] No hardcoded "NEXT" phase check in _action_iteration_summary (should check phase property)
 
 ## Section 3: Cleanup
 

@@ -102,6 +102,19 @@ actions:
 - If they're still used in FULL::HYPOTHESIS phases.yaml, keep them. If not, remove
 - Acceptance: no dead references in _KNOWN_AUTO_ACTIONS
 
+### Remove hardcoded resolution - use YAML identifiers (high)
+- Scope: engine/orchestrator.py
+- The orchestrator hardcodes gate type names ("readback", "gatekeeper", "gatekeeper_skip", "gatekeeper_force_skip") in _resolve_gate calls and skip evaluation functions
+- Instead: the orchestrator should discover gate names from the YAML lifecycle sections (on_start, on_end, on_skip) and resolve by lifecycle point
+- Same for agent resolution: don't assume agent names, read them from the model
+- Acceptance: grep for hardcoded "readback", "gatekeeper" in orchestrator logic returns 0 results (excluding log event names which are audit trail labels)
+
+### Add overfit scoring to benchmark (medium)
+- Scope: BENCHMARK.md
+- Every hardcoded value in orchestrator.py that should come from YAML is a benchmark violation
+- Score formula should penalize: hardcoded gate names, hardcoded agent names, hardcoded phase names
+- Acceptance: benchmark explicitly tracks overfit count
+
 ### Update tests (high)
 - Scope: tests/test_model.py, tests/test_orchestrator.py
 - Tests must verify new YAML gate structure loads correctly
