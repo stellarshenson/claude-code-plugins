@@ -56,16 +56,34 @@ Each work item has:
 
 ### 4. Exit Conditions
 
-When to stop iterating. Required when using `--iterations 0` (run until done).
+**MANDATORY section.** Every program MUST define when to stop. Required for `--iterations 0` (run until done), recommended even for fixed iteration counts.
+
+Default exit condition (use unless the program has a better one):
 
 ```markdown
 ## Exit Conditions
 
-Iterations stop when ALL conditions are met:
-1. All work items have acceptance criteria met
-2. Benchmark score = 0
-3. make test passes with 0 failures
-4. make lint passes clean
+Iterations stop when ANY of these is true:
+1. Benchmark score = 0 (all checklist items met)
+2. No score improvement for 2 consecutive iterations (plateau - no further optimisation possible)
+3. All work items have acceptance criteria met
+
+Additionally, ALL of these must hold:
+- make test passes with 0 failures
+- make lint passes clean
+```
+
+The **plateau condition** (no score improvement for 2 iterations) is the default safety valve. If the score stops improving, further iterations are wasted effort. The orchestrator should stop and report what remains unresolved.
+
+For programs with a programmatic score (loss, accuracy), the exit condition should reference the metric directly:
+
+```markdown
+## Exit Conditions
+
+Iterations stop when ANY of these is true:
+1. val_bpb < 0.95 (target reached)
+2. No val_bpb improvement > 0.001 for 3 consecutive iterations (plateau)
+3. 20 iterations completed (safety cap)
 ```
 
 ### 5. Constraints (optional)
