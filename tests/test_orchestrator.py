@@ -736,18 +736,12 @@ class TestPluginEntrypoint:
 
         assert callable(main)
 
-    def test_entrypoint_file_exists(self):
-        """Verify the plugin entrypoint script exists."""
-        entrypoint = (
-            Path(__file__).resolve().parent.parent
-            / "auto-build-claw"
-            / "skills"
-            / "auto-build-claw"
-            / "orchestrate.py"
-        )
-        assert entrypoint.exists()
-        content = entrypoint.read_text()
-        assert "from stellars_claude_code_plugins.engine.orchestrator import main" in content
+    def test_cli_entrypoint_registered(self):
+        """Verify the orchestrate CLI entrypoint is registered in pyproject.toml."""
+        pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+        content = pyproject.read_text()
+        assert "orchestrate" in content
+        assert "stellars_claude_code_plugins.engine.orchestrator:main" in content
 
     def test_bundled_resources_exist(self):
         """Verify YAML resources are bundled in the engine module."""
