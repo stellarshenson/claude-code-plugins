@@ -137,6 +137,22 @@ actions:
 - The autonomous execution instruction in SKILL.md must be reinforced in every phase template
 - Acceptance: grep phases.yaml for "proceed immediately" or equivalent in every phase end template
 
+### Smarter planning phase with creative ideation (medium)
+- Scope: phases.yaml (PLANNING::PLAN and FULL::PLAN start templates), agents.yaml (add contrarian to PLANNING::PLAN)
+- The PLAN phase currently just creates a technical plan. Make it smarter by incorporating creative ideation - exploring alternative approaches before locking in
+- Add a contrarian agent to the PLANNING::PLAN phase that challenges the proposed approach and suggests alternatives
+- The plan start template should include: "Before creating the plan, explore 2-3 alternative approaches. Have the contrarian challenge each. Then select the best approach with justification."
+- Acceptance: PLANNING::PLAN has contrarian agent, plan template includes ideation step
+
+### Add 'fast' workflow type (medium)
+- Scope: workflow.yaml, phases.yaml (if new phase entries needed), agents.yaml (if new gate entries needed)
+- Add a `fast` workflow: PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT
+- No RESEARCH, no HYPOTHESIS, no planning dependency workflow before it
+- Uses the same agents and gate constructions as full (FULL::PLAN agents, FULL::IMPLEMENT gates, etc. via fallback chain)
+- Good for when the objective is clear and research/hypothesis is unnecessary
+- `independent: true` (default, omit field)
+- Acceptance: `orchestrate new --type fast --objective "..." --iterations 1 --dry-run` succeeds, validate passes
+
 ## Constraints
 
 - Do NOT change gate behavior - readback still blocks at start, gatekeeper still blocks at end

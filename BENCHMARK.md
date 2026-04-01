@@ -97,6 +97,15 @@ Every gate/agent/phase name hardcoded in orchestrator.py that should come from Y
 - [x] `make test` passes with 0 failures (121 tests)
 - [x] `make lint` passes clean
 
+## Section 4b: Fast Workflow
+
+- [ ] `fast` workflow defined in workflow.yaml
+- [ ] fast phases: PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT
+- [ ] No depends_on (no planning dependency)
+- [ ] `orchestrate new --type fast --objective "test" --iterations 1 --dry-run` succeeds
+- [ ] Fast workflow reuses FULL:: agents/gates via fallback chain
+- [ ] `orchestrate validate` passes with fast workflow
+
 ## Section 5: YAML Model Consistency (0-10 scale)
 
 Grade the YAML model design consistency from 0 (completely inconsistent) to 10 (perfectly consistent). Residuals (10 - grade) add to the benchmark score.
