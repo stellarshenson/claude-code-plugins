@@ -774,10 +774,14 @@ def _verify_test_phase(state: dict | None = None) -> tuple[bool, str]:
     benchmark_cmd = (state or {}).get("benchmark_cmd", "")
     if benchmark_cmd:
         results.append(f"benchmark (generative): {benchmark_cmd}")
-        results.append("  INSTRUCTION: Read the benchmark file, evaluate each [ ] item,")
-        results.append("  update [ ] -> [x] for passing items, add new [ ] items if discovered,")
-        results.append("  then report the count of remaining [ ] items as the violation score.")
-        results.append("  The orchestrating agent MUST follow this instruction before proceeding.")
+        results.append("  MANDATORY BENCHMARK EVALUATION:")
+        results.append("  1. Read the benchmark file and evaluate EVERY [ ] item against the codebase")
+        results.append("  2. Mark [x] for passing items, leave [ ] for failing items")
+        results.append("  3. EDIT the benchmark file with updated marks")
+        results.append("  4. UPDATE the Score Tracking table with this iteration's results")
+        results.append("  5. Report: unchecked count, failed tests, composite score")
+        results.append("  The orchestrating agent MUST edit the benchmark file before proceeding.")
+        results.append("  FAILURE TO UPDATE THE FILE IS A BENCHMARK VIOLATION.")
 
     return True, "\n".join(results)
 

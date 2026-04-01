@@ -343,6 +343,11 @@ FULL::TEST:
     ## Phase: TEST (exit criteria)
 
     **Automated checks** (ran by orchestrator):
+    - [ ] `make test` passes with 0 failures
+    - [ ] `make lint` passes clean
+    - [ ] If benchmark configured: BENCHMARK.md file EDITED with [x]/[ ] marks
+    - [ ] If benchmark configured: Score Tracking table UPDATED with this iteration's results
+    - [ ] Evidence contains specific score numbers (not just "benchmark evaluated")
 
 FULL::REVIEW:
   auto_actions:

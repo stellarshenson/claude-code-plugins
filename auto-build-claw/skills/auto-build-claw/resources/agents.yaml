@@ -314,11 +314,13 @@ FULL::TEST:
         BENCHMARK CONFIGURED: {benchmark_configured}
         EVIDENCE: {evidence}
         Check: tests pass, lint clean.
-        BENCHMARK RULE: if benchmark is configured (shows "yes"), the
-        evidence MUST contain concrete execution proof - specific scores,
-        file update confirmation, or item counts. A claim like "benchmark
-        evaluated" without numbers or counts = FAIL with "no benchmark
-        execution evidence provided". If benchmark shows "no", ignore.
+        BENCHMARK RULE: if benchmark is configured (shows "yes"):
+        1. Evidence MUST contain specific score numbers (e.g., "score: 17", "unchecked: 5")
+        2. Evidence MUST confirm BENCHMARK.md file was EDITED (not just read)
+        3. Evidence MUST confirm Score Tracking table was UPDATED with iteration results
+        4. A claim like "benchmark evaluated" without numbers or file edit = FAIL
+        5. FAIL message: "benchmark configured but Score Tracking not updated"
+        If benchmark shows "no", ignore benchmark checks.
         Evaluate test COMPLETENESS: all planned changes must be covered by test results.
 
 # ── FULL::REVIEW ───────────────────────────────────────────────────
