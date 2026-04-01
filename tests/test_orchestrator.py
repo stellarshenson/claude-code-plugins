@@ -540,6 +540,143 @@ class TestRunUntilComplete:
         assert "20 iterations" in captured.out
 
 
+class TestGenerativeActionDispatch:
+    """Tests for generative action dispatch via _claude_evaluate."""
+
+    def test_generative_action_dispatch(self, tmp_path):
+        """Verify generative actions dispatch via _claude_evaluate."""
+        # Build minimal resources with a generative action wired to a phase
+        resources = tmp_path / "resources"
+        resources.mkdir()
+
+        (resources / "workflow.yaml").write_text("""
+actions:
+  gen_action:
+    type: generative
+    description: "A generative action"
+    prompt: "Do generative work"
+
+gen_workflow:
+  description: "Workflow with generative action"
+  phases:
+    - name: STEP
+""")
+
+        (resources / "phases.yaml").write_text("""
+STEP:
+  auto_actions:
+    on_complete: [gen_action]
+  start: "Start step. Objective: {objective}"
+  end: "End step."
+""")
+
+        (resources / "agents.yaml").write_text("""
+shared_gates:
+  on_skip:
+    gatekeeper_skip:
+      mode: standalone_session
+      prompt: "Skip {phase} {iteration} {itype} {objective}: {reason}"
+    gatekeeper_force_skip:
+      mode: standalone_session
+      prompt: "Force-skip {phase} {iteration}: {reason}"
+STEP:
+  agents:
+    - name: worker
+      display_name: Worker
+      prompt: "Do work"
+  gates:
+    on_start:
+      readback:
+        mode: standalone_session
+        prompt: "Phase {phase}: {understanding}"
+    on_end:
+      gatekeeper:
+        mode: standalone_session
+        prompt: "Phase {phase}: {evidence}"
+""")
+
+        (resources / "app.yaml").write_text("""
+app:
+  name: gen-test
+  description: "Generative test"
+  cmd: "python orchestrate.py"
+  artifacts_dir: ".gen-test"
+display:
+  separator: "-"
+  separator_width: 40
+  header_char: "="
+  header_width: 40
+banner:
+  header: "{header_line}\\n{iter_label}\\n{header_line}\\n"
+  progress_current: "**{p}**"
+  progress_done: "~~{p}~~"
+footer:
+  start: "\\n{separator_line}\\n"
+  end: "\\n{separator_line}\\n"
+  final: "\\n{separator_line}\\n"
+messages:
+  no_active: "No active iteration."
+  validate_success: "OK"
+  validate_issues: "{count} issues"
+  validate_item: "  {num}. {issue}"
+  benchmark_driven_label: "benchmark-driven {iteration}"
+  benchmark_complete: "Benchmark conditions met."
+  benchmark_safety_cap: "WARNING: {count} iterations."
+cli:
+  description: "Gen test CLI"
+  epilog: "Usage: {cmd}"
+  commands:
+    new: "New"
+    start: "Start"
+    end: "End"
+    status: "Status"
+  args:
+    objective: "Objective"
+    iterations: "Iterations"
+""")
+
+        orch._initialize(resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch.STATE_FILE = tmp_path / "state.yaml"
+        state = {"type": "gen_workflow", "current_phase": "STEP",
+                 "iteration": 1, "total_iterations": 1}
+        orch._save_state(state)
+
+        with patch.object(orch, "_claude_evaluate", return_value=(True, "PASS")) as mock_eval:
+            result = orch._run_auto_actions("STEP", state)
+            mock_eval.assert_called_once_with("Do generative work", timeout=120)
+        assert result is False  # generative actions don't signal early return
+
+
+class TestDryRunFastWorkflow:
+    """Tests for dry-run with the fast workflow type using real resources."""
+
+    def test_dry_run_fast_workflow(self, auto_build_claw_resources, tmp_path, capsys):
+        """Verify dry-run with type=fast produces valid output."""
+        orch._initialize(auto_build_claw_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+
+        args = argparse.Namespace(
+            type="fast",
+            objective="test fast workflow",
+            iterations=1,
+            benchmark="",
+            clean=False,
+            dry_run=True,
+        )
+        orch.cmd_new(args)
+        captured = capsys.readouterr()
+        assert "PLAN" in captured.out
+        assert "IMPLEMENT" in captured.out
+        assert "TEST" in captured.out
+        assert "REVIEW" in captured.out
+        assert "RECORD" in captured.out
+        assert "NEXT" in captured.out
+        # fast has no RESEARCH or HYPOTHESIS
+        assert "RESEARCH" not in captured.out
+        assert "HYPOTHESIS" not in captured.out
+
+
 class TestPluginEntrypoint:
     """Tests that the plugin entrypoint resolves correctly."""
 

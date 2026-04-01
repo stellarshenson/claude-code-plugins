@@ -263,6 +263,58 @@ ALPHA:
         assert any("app.cmd" in i for i in issues)
 
 
+class TestValidateModelActions:
+    """Tests for action validation in validate_model."""
+
+    def test_validate_catches_missing_action_definition(self, tmp_path):
+        """validate_model flags auto_actions that reference undefined actions."""
+        resources = tmp_path / "resources"
+        resources.mkdir()
+        (resources / "workflow.yaml").write_text("""
+actions:
+  real_action:
+    type: programmatic
+    description: "exists"
+act_workflow:
+  description: "Workflow with bad action ref"
+  phases:
+    - name: STEP
+""")
+        (resources / "phases.yaml").write_text("""
+STEP:
+  auto_actions:
+    on_complete: [real_action, nonexistent_action]
+  start: "Start"
+  end: "End"
+""")
+        (resources / "agents.yaml").write_text("""
+shared_gates:
+  on_skip:
+    gatekeeper_skip:
+      prompt: "{phase} {iteration} {itype} {objective} {reason}"
+    gatekeeper_force_skip:
+      prompt: "{phase} {iteration} {reason}"
+STEP:
+  agents:
+    - name: a
+      display_name: A
+      prompt: do
+  gates:
+    on_start:
+      readback:
+        prompt: "{understanding}"
+    on_end:
+      gatekeeper:
+        prompt: "{evidence}"
+""")
+        (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
+        model = load_model(resources)
+        issues = validate_model(model)
+        assert any("nonexistent_action" in i for i in issues)
+        # real_action is known, so it should not be flagged as unknown
+        assert not any("unknown action 'real_action'" in i for i in issues)
+
+
 class TestResolveKey:
     """Tests for _resolve_key namespace resolution with FULL fallback."""
 

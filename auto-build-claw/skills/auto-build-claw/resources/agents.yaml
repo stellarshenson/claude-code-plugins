@@ -547,6 +547,16 @@ PLANNING::RESEARCH:
           Check: 3 agents spawned, scope assessed for iteration planning.
 
 PLANNING::PLAN:
+  agents:
+    - name: contrarian
+      display_name: CONTRARIAN
+      prompt: |
+        Challenge the proposed iteration plan:
+        - Are there better alternative approaches not considered?
+        - Is the iteration ordering optimal?
+        - What assumptions are being made without evidence?
+
+        **READ-ONLY**: Do NOT modify any files.
   gates:
     on_start:
       readback:

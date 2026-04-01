@@ -528,6 +528,9 @@ PLANNING::PLAN:
     **Objective**: {objective}
     **Planned iterations**: {total}
 
+    Before creating the final plan, explore 2-3 alternative approaches to decomposing the work.
+    Have the contrarian agent challenge each approach. Select the best with justification.
+
     **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
     You MUST use `EnterPlanMode` and follow planning mode rules.
     Call `ExitPlanMode` when the plan is complete.

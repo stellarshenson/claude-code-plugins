@@ -107,3 +107,16 @@ hotfix:
     - name: IMPLEMENT
     - name: TEST
     - name: RECORD
+
+# Fast iteration - skips research and hypothesis. For when the objective
+# is clear and no exploration is needed. No planning dependency.
+fast:
+  description: "Fast iteration: plan, implement, test, review, record"
+  phases:
+    - name: PLAN
+    - name: IMPLEMENT
+    - name: TEST
+    - name: REVIEW
+    - name: RECORD
+    - name: NEXT
+      skippable: true
