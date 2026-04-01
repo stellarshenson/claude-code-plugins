@@ -29,6 +29,31 @@ score = unchecked_items + failed_tests + (complexity_violations * 2)
 ```
 ```
 
+### Fuzzy Items (graded 0-10)
+
+Not all quality measures are binary. For subjective or continuous measures, use **graded items** scored 0-10 where the **residual** (10 - grade) adds to the benchmark score.
+
+```markdown
+## Section N: Code Consistency (0-10 scale)
+
+Grade from 0 (inconsistent) to 10 (perfectly consistent). Residual adds to score.
+
+Consistency rules:
+- Every module follows the same patterns
+- No mixed conventions
+- All similar things structured the same way
+
+Current grade: [ ] /10
+Residual: [ ] (10 - grade)
+```
+
+Graded items are useful for:
+- Design consistency (are all YAML sections structured the same?)
+- Code quality (how well-factored is the codebase?)
+- Documentation completeness (how thorough are the docstrings?)
+
+The evaluator assigns the grade and computes the residual. Include the grading criteria explicitly so different evaluations produce consistent scores.
+
 Three benchmark types:
 
 - **Generative** - Claude reads the checklist and evaluates each item against the codebase. Marks [x] or [ ]. Score = count of unchecked items
