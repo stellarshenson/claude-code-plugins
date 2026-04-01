@@ -65,6 +65,12 @@ Every gate/agent/phase name hardcoded in orchestrator.py that should come from Y
 - [ ] No hardcoded "TEST" phase check in cmd_end (should check phase property not name)
 - [ ] No hardcoded "NEXT" phase check in _action_iteration_summary (should check phase property)
 
+## Section 2c: Agent Name Integrity
+
+- [ ] validate_model checks that every agent name referenced in phases.yaml templates exists in agents.yaml
+- [ ] validate_model checks that --agents requirement in gates matches agents defined for that phase
+- [ ] No agent name appears in orchestrator.py as a hardcoded string (all from YAML)
+
 ## Section 3: Cleanup
 
 - [ ] No hardcoded gate type names ("readback", "gatekeeper") in orchestrator.py logic -- 4 occurrences remain in _resolve_gate calls
