@@ -24,14 +24,21 @@ import sys
 import yaml
 
 from stellars_claude_code_plugins.engine.fsm import (
-    Event as FSMEvent,
-)
-from stellars_claude_code_plugins.engine.fsm import (
-    State as FSMState,
-)
-from stellars_claude_code_plugins.engine.fsm import (
+    ADVANCE,
+    END,
+    GATE_FAIL,
+    GATE_PASS,
+    PENDING,
+    READBACK_FAIL,
+    READBACK_PASS,
+    REJECT,
+    SKIP,
+    START,
     build_phase_lifecycle_fsm,
     resolve_phase_key,
+)
+from stellars_claude_code_plugins.engine.fsm import (
+    ALL_STATES as _FSM_ALL_STATES,
 )
 from stellars_claude_code_plugins.engine.model import (
     _KNOWN_VARS as _KNOWN_TEMPLATE_VARS,
@@ -96,7 +103,7 @@ def _initialize(resources_dir: Path) -> None:
     _HDR_WIDTH = _MODEL.app.display.header_width
 
     _PHASE_FSM = build_phase_lifecycle_fsm()
-    _FSM_STATE_VALUES = {s.value for s in FSMState}
+    _FSM_STATE_VALUES = set(_FSM_ALL_STATES)
 
     # Build ITERATION_TYPES from model.workflow_types
     ITERATION_TYPES.clear()
@@ -141,18 +148,16 @@ def _initialize(resources_dir: Path) -> None:
 # ── FSM helpers ─────────────────────────────────────────────────────
 
 
-def _fire_fsm(event: FSMEvent, state: dict) -> FSMState:
+def _fire_fsm(event: str, state: dict) -> str:
     """Fire FSM event and sync phase_status to state dict.
 
     Syncs FSM from persisted state before firing, then writes back.
     All phase_status mutations go through this function.
     """
     status = state.get("phase_status", "pending")
-    _PHASE_FSM.current_state = (
-        FSMState(status) if status in _FSM_STATE_VALUES else FSMState.PENDING
-    )
+    _PHASE_FSM.current_state = status if status in _FSM_STATE_VALUES else PENDING
     new_state = _PHASE_FSM.fire(event)
-    state["phase_status"] = new_state.value
+    state["phase_status"] = new_state
     return new_state
 
 
@@ -259,7 +264,7 @@ def _build_agent_instructions(phase: str, ctx: dict | None = None) -> str:
         return ""
 
     lines = []
-    for agent in agents:
+    for i, agent in enumerate(agents, start=1):
         prompt = agent.prompt
         checklist = agent.checklist or ""
         # Append checklist to prompt if agent has one
@@ -268,7 +273,7 @@ def _build_agent_instructions(phase: str, ctx: dict | None = None) -> str:
         # Resolve any template variables in the prompt (e.g., {checklist})
         if ctx and "{" in prompt:
             prompt = prompt.format_map(collections.defaultdict(str, ctx))
-        lines.append(f"### Agent {agent.number}: {agent.display_name}")
+        lines.append(f"### Agent {i}: {agent.display_name}")
         lines.append(prompt.rstrip())
         lines.append("")
     return "\n".join(lines).rstrip()
@@ -1043,7 +1048,7 @@ def _banner(phase: str, action: str, state: dict) -> str:
     if wf_def and not wf_def.independent:
         iter_label = itype.upper()
     elif total_iters == 0:
-        iter_label = f"benchmark-driven {iteration}"
+        iter_label = _msg("benchmark_driven_label", iteration=iteration)
     elif total_iters > 1:
         iter_label = f"{iteration}/{total_iters}"
     else:
@@ -1225,10 +1230,10 @@ def _run_next_iteration(state: dict) -> None:
         last_score = scores[-1]["score"] if scores else None
         if last_score is not None and last_score == 0:
             print("\n" + _msg("iteration_complete", total=current))
-            print("Benchmark conditions met - all iterations complete.")
+            print(_msg("benchmark_complete"))
             return
         if current >= 20:
-            print("\nWARNING: 20 iterations without benchmark completion. Pausing.")
+            print("\n" + _msg("benchmark_safety_cap", count=current))
             return
     else:
         remaining = total - current
@@ -1448,7 +1453,7 @@ def cmd_start(args) -> None:
 
     # FSM guards against starting from in_progress (raises ValueError)
     try:
-        _fire_fsm(FSMEvent.START, state)  # pending -> readback
+        _fire_fsm(START, state)  # pending -> readback
     except ValueError:
         print(_msg("phase_in_progress", phase=phase), file=sys.stderr)
         print(_msg("phase_in_progress_cmd", cmd=CMD), file=sys.stderr)
@@ -1501,7 +1506,7 @@ def cmd_start(args) -> None:
 
     if not passed:
         # Readback failed - return to pending
-        _fire_fsm(FSMEvent.READBACK_FAIL, state)  # readback -> pending
+        _fire_fsm(READBACK_FAIL, state)  # readback -> pending
         _save_state(state)
         print("\n" + _msg("readback_fail", phase=phase))
         print(_msg("readback_fail_reason", reason=explanation[:200]))
@@ -1511,7 +1516,7 @@ def cmd_start(args) -> None:
     print(_msg("readback_pass", phase=phase) + "\n")
 
     # Readback passed - advance to in_progress via FSM
-    _fire_fsm(FSMEvent.READBACK_PASS, state)  # readback -> in_progress
+    _fire_fsm(READBACK_PASS, state)  # readback -> in_progress
     state["phase_started_at"] = _now()
     _save_state(state)
     _append_log(
@@ -1633,10 +1638,10 @@ def _record_phase_outputs(
 def _handle_test_failure(state: dict, phase: str, output: str) -> None:
     """Handle TEST phase auto-reject: FSM transitions, log failure, print messages."""
     target = _prev_implementable(state)
-    _fire_fsm(FSMEvent.END, state)  # in_progress -> gatekeeper
-    _fire_fsm(FSMEvent.GATE_FAIL, state)  # gatekeeper -> in_progress
-    _fire_fsm(FSMEvent.REJECT, state)  # in_progress -> rejected
-    _fire_fsm(FSMEvent.ADVANCE, state)  # rejected -> pending
+    _fire_fsm(END, state)  # in_progress -> gatekeeper
+    _fire_fsm(GATE_FAIL, state)  # gatekeeper -> in_progress
+    _fire_fsm(REJECT, state)  # in_progress -> rejected
+    _fire_fsm(ADVANCE, state)  # rejected -> pending
     state["current_phase"] = target
     state["rejected_count"] = state.get("rejected_count", 0) + 1
     state.pop("phase_started_at", None)
@@ -1667,7 +1672,7 @@ def _run_end_gatekeeper(phase: str, state: dict, evidence: str) -> tuple[bool, s
 
     Returns (gk_passed, gk_output). On failure, prints messages and saves state.
     """
-    _fire_fsm(FSMEvent.END, state)  # in_progress -> gatekeeper
+    _fire_fsm(END, state)  # in_progress -> gatekeeper
     print("\n" + _msg("gatekeeper_separator"))
     print(_msg("gatekeeper_evaluating", phase=phase))
     print(_msg("gatekeeper_separator"))
@@ -1705,7 +1710,7 @@ def _run_end_gatekeeper(phase: str, state: dict, evidence: str) -> tuple[bool, s
     )
 
     if not gk_passed:
-        _fire_fsm(FSMEvent.GATE_FAIL, state)  # gatekeeper -> in_progress (retry)
+        _fire_fsm(GATE_FAIL, state)  # gatekeeper -> in_progress (retry)
         _save_state(state)
         print("\n" + _msg("gatekeeper_fail", phase=phase))
         print(_msg("gatekeeper_fail_reason", reason=gk_output[:300]))
@@ -1716,7 +1721,7 @@ def _run_end_gatekeeper(phase: str, state: dict, evidence: str) -> tuple[bool, s
 
 def _advance_phase(state: dict, phase: str) -> None:
     """Mark phase complete, advance FSM to next phase or iteration_complete."""
-    _fire_fsm(FSMEvent.GATE_PASS, state)  # gatekeeper -> complete
+    _fire_fsm(GATE_PASS, state)  # gatekeeper -> complete
     print(_msg("gatekeeper_pass", phase=phase))
 
     state["completed_phases"].append(phase)
@@ -1724,7 +1729,7 @@ def _advance_phase(state: dict, phase: str) -> None:
 
     nxt = _next_phase(state)
     if nxt:
-        _fire_fsm(FSMEvent.ADVANCE, state)  # complete -> pending
+        _fire_fsm(ADVANCE, state)  # complete -> pending
         state["current_phase"] = nxt
     else:
         state["phase_status"] = "iteration_complete"
@@ -1936,8 +1941,8 @@ def cmd_reject(args) -> None:
         target = _prev_implementable(state)
 
     # FSM: reject current phase and advance to target
-    _fire_fsm(FSMEvent.REJECT, state)  # in_progress -> rejected
-    _fire_fsm(FSMEvent.ADVANCE, state)  # rejected -> pending
+    _fire_fsm(REJECT, state)  # in_progress -> rejected
+    _fire_fsm(ADVANCE, state)  # rejected -> pending
     state["current_phase"] = target
     state["rejected_count"] = state.get("rejected_count", 0) + 1
     state["last_rejection"] = {
@@ -2029,10 +2034,10 @@ def cmd_skip(args) -> None:
     state["skipped_phases"].append({"phase": phase, "reason": reason})
 
     # FSM: skip and advance
-    _fire_fsm(FSMEvent.SKIP, state)  # pending -> skipped
+    _fire_fsm(SKIP, state)  # pending -> skipped
     nxt = _next_phase(state)
     if nxt:
-        _fire_fsm(FSMEvent.ADVANCE, state)  # skipped -> pending
+        _fire_fsm(ADVANCE, state)  # skipped -> pending
         state["current_phase"] = nxt
     else:
         state["phase_status"] = "iteration_complete"

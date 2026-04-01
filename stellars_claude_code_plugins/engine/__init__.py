@@ -6,8 +6,6 @@ gate validation, and multi-agent orchestration.
 
 from stellars_claude_code_plugins.engine.fsm import (
     FSM,
-    Event,
-    State,
     build_phase_lifecycle_fsm,
     resolve_phase_key,
 )
@@ -19,10 +17,8 @@ from stellars_claude_code_plugins.engine.model import (
 from stellars_claude_code_plugins.engine.orchestrator import main
 
 __all__ = [
-    "Event",
     "FSM",
     "Model",
-    "State",
     "build_phase_lifecycle_fsm",
     "load_model",
     "main",

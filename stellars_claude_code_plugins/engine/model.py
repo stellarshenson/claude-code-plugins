@@ -15,7 +15,6 @@ class Agent:
     name: str
     display_name: str
     prompt: str
-    number: int = 0  # auto-derived from list position in _build_agents_and_gates
     mode: str = ""  # "" = parallel via Agent tool; "standalone_session" = claude -p
     checklist: Optional[str] = None
 
@@ -168,11 +167,10 @@ def _build_agents_and_gates(raw: dict) -> tuple[dict[str, list[Agent]], dict[str
                         name=a["name"],
                         display_name=a["display_name"],
                         prompt=a.get("prompt", ""),
-                        number=a.get("number", i + 1),
                         mode=a.get("mode", ""),
                         checklist=a.get("checklist"),
                     )
-                    for i, a in enumerate(agent_list)
+                    for a in agent_list
                 ]
             for gate_type, gate_def in section.get("gates", {}).items():
                 if isinstance(gate_def, dict):

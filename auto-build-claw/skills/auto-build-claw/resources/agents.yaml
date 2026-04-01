@@ -14,7 +14,6 @@
 #
 # FIELDS PER AGENT:
 #   name          - identifier used in --agents CLI flag
-#   number        - display order in phase instructions (### Agent N)
 #   display_name  - heading label (### Agent N: DISPLAY_NAME)
 #   prompt        - per-phase instructions (what the agent should do)
 #   mode          - execution mode (omit for default parallel via Agent tool)
@@ -36,7 +35,8 @@
 #   {description} - literal placeholder for the AI (not a Python variable)
 #
 # TO ADD AN AGENT: Add an entry to the appropriate phase with name,
-# number, display_name, and prompt. The engine picks it up automatically.
+# display_name, and prompt. The engine picks it up automatically.
+# Agent number is auto-derived from list position (1-based).
 #
 # TO ADD A CHECKLIST: Add a `checklist:` field to any agent. Use YAML
 # anchors (&name / *name) to share checklists across phases.
@@ -49,7 +49,7 @@
 FULL::RESEARCH:
   agents:
     - name: researcher
-      number: 1
+
       display_name: RESEARCHER
       prompt: |
         Deep-dives into code, prior results, and history:
@@ -60,7 +60,7 @@ FULL::RESEARCH:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: architect
-      number: 2
+
       display_name: ARCHITECT
       prompt: |
         Analyses the system design and technical landscape:
@@ -71,7 +71,7 @@ FULL::RESEARCH:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: product_manager
-      number: 3
+
       display_name: PRODUCT MANAGER
       prompt: |
         Clarifies requirements and acceptance criteria:
@@ -110,7 +110,7 @@ FULL::RESEARCH:
 FULL::HYPOTHESIS:
   agents:
     - name: contrarian
-      number: 1
+
       display_name: CONTRARIAN
       prompt: |
         "What if the obvious approach is wrong? What are we NOT seeing?"
@@ -120,7 +120,7 @@ FULL::HYPOTHESIS:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: optimist
-      number: 2
+
       display_name: OPTIMIST
       prompt: |
         "What's the highest-impact change we could make?"
@@ -130,7 +130,7 @@ FULL::HYPOTHESIS:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: pessimist
-      number: 3
+
       display_name: PESSIMIST
       prompt: |
         "What could go wrong? What will we break?"
@@ -140,7 +140,7 @@ FULL::HYPOTHESIS:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: scientist
-      number: 4
+
       display_name: SCIENTIST
       prompt: |
         "What can we measure? What's the evidence?"
@@ -179,7 +179,7 @@ FULL::HYPOTHESIS:
 FULL::PLAN:
   agents:
     - name: architect
-      number: 1
+
       display_name: ARCHITECT
       prompt: |
         Reviews the plan for technical feasibility and design quality:
@@ -192,7 +192,7 @@ FULL::PLAN:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: critic
-      number: 2
+
       display_name: CRITIC
       prompt: |
         Reviews the plan for quality and completeness:
@@ -204,7 +204,7 @@ FULL::PLAN:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: guardian
-      number: 3
+
       display_name: GUARDIAN
       mode: standalone_session  # runs via claude -p for independent evaluation
       prompt: |
@@ -292,10 +292,25 @@ FULL::IMPLEMENT:
         Evaluate implementation THOROUGHNESS: each change must show what was predicted vs what happened. Missing reflections = FAIL.
 
 # ── FULL::TEST ─────────────────────────────────────────────────────
-# No agents - test automation is run by the orchestrator.
+# Benchmark evaluator agent runs when benchmark is configured.
 # Gatekeeper demands concrete benchmark evidence when configured.
 
 FULL::TEST:
+  agents:
+    - name: benchmark_evaluator
+      display_name: BENCHMARK EVALUATOR
+      prompt: |
+        Evaluate the project benchmark and update the score tracking:
+        1. Read BENCHMARK.md from the project root
+        2. For each checklist item, evaluate whether it is satisfied
+        3. Check the item if satisfied, uncheck if not - edit BENCHMARK.md directly
+        4. Count unchecked items and compute the benchmark score
+        5. Update the Score Tracking table at the bottom of BENCHMARK.md
+           with the current iteration results (iteration number, score, summary)
+        6. Report the final score as your output
+
+        **IMPORTANT**: You MUST edit BENCHMARK.md - reading without editing = failure.
+        The benchmark score formula is defined in BENCHMARK.md itself.
   gates:
     readback:
       prompt: |
@@ -332,7 +347,7 @@ FULL::TEST:
 FULL::REVIEW:
   agents:
     - name: critic
-      number: 1
+
       display_name: CRITIC
       prompt: |
         Checks implementation quality and plan alignment:
@@ -346,7 +361,7 @@ FULL::REVIEW:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: architect
-      number: 2
+
       display_name: ARCHITECT
       prompt: |
         Checks architectural soundness of the implementation:
@@ -358,7 +373,7 @@ FULL::REVIEW:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: guardian
-      number: 3
+
       display_name: GUARDIAN
       mode: standalone_session  # runs via claude -p for independent evaluation
       prompt: |
@@ -371,7 +386,7 @@ FULL::REVIEW:
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
       checklist: *guardian_checklist
     - name: forensicist
-      number: 4
+
       display_name: FORENSICIST
       prompt: |
         Analyses failure modes and feeds insights into the NEXT iteration:
@@ -459,7 +474,7 @@ NEXT:
 PLANNING::RESEARCH:
   agents:
     - name: researcher
-      number: 1
+
       display_name: RESEARCHER
       prompt: |
         Investigate the problem space for work breakdown planning:
@@ -470,7 +485,7 @@ PLANNING::RESEARCH:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: architect
-      number: 2
+
       display_name: ARCHITECT
       prompt: |
         Analyse architecture for iteration planning:
@@ -481,7 +496,7 @@ PLANNING::RESEARCH:
 
         **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
     - name: product_manager
-      number: 3
+
       display_name: PRODUCT MANAGER
       prompt: |
         Clarify scope and priorities for iteration planning:

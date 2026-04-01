@@ -10,36 +10,43 @@ Actions are side effects triggered after a transition completes.
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import Any, Callable
 
 from transitions import Machine, MachineError
 
+# ── State constants ──────────────────────────────────────────────────
+PENDING = "pending"
+READBACK = "readback"
+IN_PROGRESS = "in_progress"
+GATEKEEPER = "gatekeeper"
+COMPLETE = "complete"
+SKIPPED = "skipped"
+REJECTED = "rejected"
 
-class State(str, Enum):
-    """Phase lifecycle states."""
+ALL_STATES = [PENDING, READBACK, IN_PROGRESS, GATEKEEPER, COMPLETE, SKIPPED, REJECTED]
 
-    PENDING = "pending"
-    READBACK = "readback"
-    IN_PROGRESS = "in_progress"
-    GATEKEEPER = "gatekeeper"
-    COMPLETE = "complete"
-    SKIPPED = "skipped"
-    REJECTED = "rejected"
+# ── Event constants ──────────────────────────────────────────────────
+START = "start"
+READBACK_PASS = "readback_pass"
+READBACK_FAIL = "readback_fail"
+END = "end"
+GATE_PASS = "gate_pass"
+GATE_FAIL = "gate_fail"
+REJECT = "reject"
+SKIP = "skip"
+ADVANCE = "advance"
 
-
-class Event(str, Enum):
-    """Events that trigger state transitions."""
-
-    START = "start"
-    READBACK_PASS = "readback_pass"
-    READBACK_FAIL = "readback_fail"
-    END = "end"
-    GATE_PASS = "gate_pass"
-    GATE_FAIL = "gate_fail"
-    REJECT = "reject"
-    SKIP = "skip"
-    ADVANCE = "advance"
+ALL_EVENTS = [
+    START,
+    READBACK_PASS,
+    READBACK_FAIL,
+    END,
+    GATE_PASS,
+    GATE_FAIL,
+    REJECT,
+    SKIP,
+    ADVANCE,
+]
 
 
 class FSM:
@@ -56,11 +63,10 @@ class FSM:
         self._log: list[dict] = []
         self._context: dict = {}
 
-        states = [s.value for s in State]
         self._machine = Machine(
             model=self,
-            states=states,
-            initial=State.PENDING.value,
+            states=ALL_STATES,
+            initial=PENDING,
             auto_transitions=False,
             send_event=True,
         )
@@ -94,12 +100,12 @@ class FSM:
             )
 
     @property
-    def current_state(self) -> State:
-        return State(self.state)
+    def current_state(self) -> str:
+        return self.state
 
     @current_state.setter
-    def current_state(self, state: State) -> None:
-        self._machine.set_state(state.value if isinstance(state, State) else state)
+    def current_state(self, state: str) -> None:
+        self._machine.set_state(state)
 
     def register_guard(self, name: str, fn: Callable[..., bool]) -> None:
         """Register a named guard function."""
@@ -109,35 +115,33 @@ class FSM:
         """Register a named action function."""
         self._actions[name] = fn
 
-    def can_fire(self, event: str | Event, **context) -> bool:
+    def can_fire(self, event: str, **context) -> bool:
         """Check if an event can fire in the current state."""
-        event_str = event.value if isinstance(event, Event) else event
         self._context = context
-        return self._machine.get_triggers(self.state).__contains__(
-            event_str
-        ) and self._try_conditions(event_str)
+        return self._machine.get_triggers(self.state).__contains__(event) and self._try_conditions(
+            event
+        )
 
-    def fire(self, event: str | Event, **context) -> State:
+    def fire(self, event: str, **context) -> str:
         """Fire an event, executing the matching transition.
 
         Raises ValueError if no valid transition exists or all guards fail.
         """
-        event_str = event.value if isinstance(event, Event) else event
         self._context = context
         old_state = self.state
         log_len = len(self._log)
         try:
-            self.trigger(event_str)
+            self.trigger(event)
         except (MachineError, AttributeError) as e:
             raise ValueError(str(e)) from e
         # transitions silently stays in state when all conditions fail
         if self.state == old_state and len(self._log) == log_len:
             raise ValueError(
-                f"All guards failed for transition from '{old_state}' on event '{event_str}'."
+                f"All guards failed for transition from '{old_state}' on event '{event}'."
             )
         return self.current_state
 
-    def reset(self, state: State = State.PENDING) -> None:
+    def reset(self, state: str = PENDING) -> None:
         """Reset FSM to a given state."""
         self.current_state = state
 
@@ -160,21 +164,15 @@ class FSM:
         try:
             for phase in workflow_phases:
                 report = {"phase": phase, "transitions": [], "valid": True}
-                self.reset(State.PENDING)
+                self.reset(PENDING)
 
-                for event in [
-                    Event.START,
-                    Event.READBACK_PASS,
-                    Event.END,
-                    Event.GATE_PASS,
-                    Event.ADVANCE,
-                ]:
+                for event in [START, READBACK_PASS, END, GATE_PASS, ADVANCE]:
                     try:
                         old = self.state
                         self.fire(event, phase=phase, **context)
                         report["transitions"].append(
                             {
-                                "event": event.value,
+                                "event": event,
                                 "from": old,
                                 "to": self.state,
                             }

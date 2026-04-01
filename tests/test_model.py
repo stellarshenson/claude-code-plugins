@@ -50,7 +50,6 @@ class TestLoadModel:
         agent = model.agents["ALPHA"][0]
         assert agent.name == "researcher"
         assert agent.display_name == "Researcher"
-        assert agent.number == 1  # auto-derived from list position
 
     def test_gates_loaded(self, minimal_resources):
         model = load_model(minimal_resources)
@@ -124,13 +123,12 @@ class TestLoadAutoBuildClaw:
         for name, phase in model.phases.items():
             assert phase.start or phase.start_continue, f"Phase {name} has no start template"
 
-    def test_real_agents_auto_numbered(self, auto_build_claw_resources):
+    def test_real_agents_have_names(self, auto_build_claw_resources):
         model = load_model(auto_build_claw_resources)
         for phase_key, agents in model.agents.items():
-            for i, agent in enumerate(agents):
-                assert agent.number == i + 1, (
-                    f"Agent {agent.name} in {phase_key} has number {agent.number}, expected {i + 1}"
-                )
+            for agent in agents:
+                assert agent.name, f"Agent in {phase_key} has empty name"
+                assert agent.display_name, f"Agent {agent.name} in {phase_key} has empty display_name"
 
     def test_real_gates_have_prompts(self, auto_build_claw_resources):
         model = load_model(auto_build_claw_resources)
@@ -169,7 +167,6 @@ shared_gates:
 ALPHA:
   agents:
     - name: a
-      number: 1
       display_name: A
       prompt: do
   gates:
@@ -191,7 +188,7 @@ ALPHA:
 
     def test_duplicate_agent_names(self, minimal_resources):
         model = load_model(minimal_resources)
-        dup = Agent(name="researcher", number=2, display_name="Dup", prompt="x")
+        dup = Agent(name="researcher", display_name="Dup", prompt="x")
         model.agents["ALPHA"].append(dup)
         issues = validate_model(model)
         assert any("duplicate agent name" in i for i in issues)

@@ -166,6 +166,12 @@ messages:
   iteration_plan_content: "  {plan}..."
   iteration_remaining: "Remaining: {remaining}"
 
+  # ── Benchmark-driven mode ──
+  # Shown in run-until-complete mode (--iterations 0)
+  benchmark_driven_label: "benchmark-driven {iteration}"
+  benchmark_complete: "Benchmark conditions met - all iterations complete."
+  benchmark_safety_cap: "WARNING: {count} iterations without benchmark completion. Pausing."
+
   # ── Prior failures context ──
   # Shown in cmd_new and _run_next_iteration when prior failures exist
   prior_failures_header: "Prior iteration had {count} logged failure(s):"

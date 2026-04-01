@@ -128,6 +128,9 @@ messages:
   validate_success: "Model validation: OK"
   validate_issues: "{count} issue(s) found:"
   validate_item: "  {num}. {issue}"
+  benchmark_driven_label: "benchmark-driven {iteration}"
+  benchmark_complete: "Benchmark conditions met - all iterations complete."
+  benchmark_safety_cap: "WARNING: {count} iterations without benchmark completion. Pausing."
 
 cli:
   description: "Test orchestration CLI"
