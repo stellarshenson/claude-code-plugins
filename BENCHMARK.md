@@ -149,16 +149,7 @@ Note: Hypothesis code retained because FULL workflow still uses it. Only PLANNIN
 - [x] Orchestrator uses `wf_def.independent` everywhere (not `wf_def.dependency`)
 - [x] Tests verify: independent workflows start, non-independent workflows fail on direct invocation
 
-## Section 6: Parallel Gate Execution
-
-- [x] `--next-understanding` optional argument on `cmd_end`
-- [x] Gatekeeper and next readback run in parallel via ThreadPoolExecutor
-- [x] If gatekeeper passes + readback passes: readback stored in state with parallel marker
-- [x] If gatekeeper fails: readback result ignored, stay in current phase
-- [x] If gatekeeper passes + readback fails: next phase in PENDING (retry)
-- [x] Tests cover parallel gate scenarios (9 tests)
-
-## Section 7: Benchmark Agent
+## Section 6: Benchmark Agent
 
 - [ ] Benchmark agent defined in agents.yaml under FULL::TEST (or standalone)
 - [ ] Benchmark agent prompt instructs: read BENCHMARK.md, evaluate [ ] items, mark [x], update Score Tracking
@@ -166,7 +157,7 @@ Note: Hypothesis code retained because FULL workflow still uses it. Only PLANNIN
 - [x] TEST gatekeeper verifies Score Tracking table was updated
 - [x] Gatekeeper fails if benchmark configured but Score Tracking not updated
 
-## Section 8: TEST Phase Benchmark Enforcement
+## Section 7: TEST Phase Benchmark Enforcement
 
 - [x] _verify_test_phase() output includes reminder to update BENCHMARK.md score tracker
 - [x] TEST phase end template requires benchmark evaluation and tracker update
@@ -208,3 +199,4 @@ Iterations continue until ALL conditions are met. Use `orchestrate add-iteration
 | iter 1    | 17        | 0            | 0                | 0                      | 0                 | 17    |
 | iter 2    | 21        | 0            | 0                | 0                      | 0                 | 21    |
 | iter 3    | 15        | 0            | 0                | 0                      | 0                 | 15    |
+| iter 3rev | 15        | 0            | 0                | 0                      | 0                 | 15    |
