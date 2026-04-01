@@ -7,7 +7,7 @@ are mocked since they require the claude CLI.
 
 import argparse
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
@@ -499,6 +499,211 @@ class TestRunUntilComplete:
         orch._run_next_iteration(state)
         captured = capsys.readouterr()
         assert "20 iterations" in captured.out
+
+
+class TestParallelGateExecution:
+    """Tests for --next-understanding parallel gate execution (Workstream G)."""
+
+    def test_next_understanding_arg_parsed(self, minimal_resources):
+        """Verify --next-understanding is accepted by the end subcommand parser."""
+        orch._initialize(minimal_resources)
+        parser = orch._build_cli_parser(minimal_resources)
+        args = parser.parse_args([
+            "end", "--evidence", "done", "--next-understanding", "I will test things"
+        ])
+        assert args.next_understanding == "I will test things"
+
+    def test_next_understanding_arg_default_empty(self, minimal_resources):
+        """Verify --next-understanding defaults to empty string."""
+        orch._initialize(minimal_resources)
+        parser = orch._build_cli_parser(minimal_resources)
+        args = parser.parse_args(["end", "--evidence", "done"])
+        assert args.next_understanding == ""
+
+    def test_run_end_gatekeeper_accepts_next_understanding(self, minimal_resources, tmp_path):
+        """Verify _run_end_gatekeeper accepts the next_understanding parameter."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+
+        state = {
+            "iteration": 1, "total_iterations": 1, "type": "test_workflow",
+            "current_phase": "ALPHA", "phase_status": "in_progress",
+            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
+            "started_at": "2026-01-01", "phase_outputs": {}, "phase_agents": {},
+            "readbacks": {},
+        }
+        orch._save_state(state)
+
+        with patch.object(orch, "_fire_fsm"), \
+             patch.object(orch, "_gatekeeper_validate", return_value=(True, "looks good")), \
+             patch.object(orch, "_readback_validate", return_value=(True, "understood")):
+            passed, output = orch._run_end_gatekeeper(
+                "ALPHA", state, "evidence here", next_understanding="I will plan"
+            )
+            assert passed is True
+            assert output == "looks good"
+
+    def test_parallel_stores_readback_on_double_pass(self, minimal_resources, tmp_path):
+        """When gatekeeper AND readback both pass, readback stored in state."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+
+        state = {
+            "iteration": 1, "total_iterations": 1, "type": "test_workflow",
+            "current_phase": "ALPHA", "phase_status": "in_progress",
+            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
+            "started_at": "2026-01-01", "phase_outputs": {}, "phase_agents": {},
+            "readbacks": {},
+        }
+        orch._save_state(state)
+
+        with patch.object(orch, "_fire_fsm"), \
+             patch.object(orch, "_gatekeeper_validate", return_value=(True, "pass")), \
+             patch.object(orch, "_readback_validate", return_value=(True, "understood")):
+            orch._run_end_gatekeeper("ALPHA", state, "evidence", next_understanding="I plan")
+
+        # Readback for next phase (BETA) should be stored
+        assert "BETA" in state.get("readbacks", {})
+        rb = state["readbacks"]["BETA"]
+        assert rb["passed"] is True
+        assert rb["parallel"] is True
+        assert rb["understanding"] == "I plan"
+
+    def test_parallel_discards_readback_on_gatekeeper_fail(self, minimal_resources, tmp_path):
+        """When gatekeeper fails, readback result is discarded."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+
+        state = {
+            "iteration": 1, "total_iterations": 1, "type": "test_workflow",
+            "current_phase": "ALPHA", "phase_status": "in_progress",
+            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
+            "started_at": "2026-01-01", "phase_outputs": {}, "phase_agents": {},
+            "readbacks": {},
+        }
+        orch._save_state(state)
+
+        with patch.object(orch, "_fire_fsm"), \
+             patch.object(orch, "_gatekeeper_validate", return_value=(False, "not ready")), \
+             patch.object(orch, "_readback_validate", return_value=(True, "understood")):
+            passed, _ = orch._run_end_gatekeeper(
+                "ALPHA", state, "evidence", next_understanding="I plan"
+            )
+
+        assert passed is False
+        # No readback stored for BETA since gatekeeper failed
+        assert "BETA" not in state.get("readbacks", {})
+
+    def test_parallel_skips_readback_on_readback_fail(self, minimal_resources, tmp_path):
+        """When gatekeeper passes but readback fails, no readback stored."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+
+        state = {
+            "iteration": 1, "total_iterations": 1, "type": "test_workflow",
+            "current_phase": "ALPHA", "phase_status": "in_progress",
+            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
+            "started_at": "2026-01-01", "phase_outputs": {}, "phase_agents": {},
+            "readbacks": {},
+        }
+        orch._save_state(state)
+
+        with patch.object(orch, "_fire_fsm"), \
+             patch.object(orch, "_gatekeeper_validate", return_value=(True, "pass")), \
+             patch.object(orch, "_readback_validate", return_value=(False, "unclear")):
+            passed, _ = orch._run_end_gatekeeper(
+                "ALPHA", state, "evidence", next_understanding="I plan"
+            )
+
+        assert passed is True
+        # Readback failed, so not stored
+        assert "BETA" not in state.get("readbacks", {})
+
+    def test_no_parallel_when_no_next_phase(self, minimal_resources, tmp_path):
+        """When current phase is last, no parallel readback even with --next-understanding."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+
+        state = {
+            "iteration": 1, "total_iterations": 1, "type": "test_workflow",
+            "current_phase": "GAMMA", "phase_status": "in_progress",
+            "completed_phases": ["ALPHA", "BETA"], "skipped_phases": [],
+            "rejected_count": 0, "started_at": "2026-01-01",
+            "phase_outputs": {}, "phase_agents": {}, "readbacks": {},
+        }
+        orch._save_state(state)
+
+        with patch.object(orch, "_fire_fsm"), \
+             patch.object(orch, "_gatekeeper_validate", return_value=(True, "pass")) as gk_mock, \
+             patch.object(orch, "_readback_validate") as rb_mock:
+            passed, _ = orch._run_end_gatekeeper(
+                "GAMMA", state, "evidence", next_understanding="I will do next"
+            )
+
+        assert passed is True
+        # _readback_validate should NOT have been called (no next phase)
+        rb_mock.assert_not_called()
+
+    def test_no_parallel_when_understanding_empty(self, minimal_resources, tmp_path):
+        """When --next-understanding is empty, existing sequential behavior preserved."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+
+        state = {
+            "iteration": 1, "total_iterations": 1, "type": "test_workflow",
+            "current_phase": "ALPHA", "phase_status": "in_progress",
+            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
+            "started_at": "2026-01-01", "phase_outputs": {}, "phase_agents": {},
+            "readbacks": {},
+        }
+        orch._save_state(state)
+
+        with patch.object(orch, "_fire_fsm"), \
+             patch.object(orch, "_gatekeeper_validate", return_value=(True, "pass")) as gk_mock, \
+             patch.object(orch, "_readback_validate") as rb_mock:
+            passed, _ = orch._run_end_gatekeeper("ALPHA", state, "evidence")
+
+        assert passed is True
+        # No parallel readback when understanding not provided
+        rb_mock.assert_not_called()
+
+    def test_cmd_end_extracts_next_understanding(self, minimal_resources, tmp_path):
+        """Verify cmd_end reads --next-understanding from args and passes it through."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+
+        state = {
+            "iteration": 1, "total_iterations": 1, "type": "test_workflow",
+            "current_phase": "ALPHA", "phase_status": "in_progress",
+            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
+            "started_at": "2026-01-01", "phase_outputs": {}, "phase_agents": {},
+            "readbacks": {},
+        }
+        orch._save_state(state)
+
+        args = argparse.Namespace(
+            evidence="done", agents="researcher", output_file="",
+            next_understanding="I will plan the beta"
+        )
+
+        with patch.object(orch, "_run_end_gatekeeper", return_value=(True, "pass")) as gk_mock, \
+             patch.object(orch, "_advance_phase"), \
+             patch.object(orch, "_print_phase_summary"), \
+             patch.object(orch, "_run_auto_actions", return_value=False):
+            orch.cmd_end(args)
+            # Verify next_understanding was passed to _run_end_gatekeeper
+            gk_mock.assert_called_once()
+            call_args = gk_mock.call_args
+            assert call_args[0][3] == "I will plan the beta" or \
+                call_args[1].get("next_understanding") == "I will plan the beta" or \
+                (len(call_args[0]) >= 4 and call_args[0][3] == "I will plan the beta")
 
 
 class TestPluginEntrypoint:
