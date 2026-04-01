@@ -775,7 +775,9 @@ def _verify_test_phase(state: dict | None = None) -> tuple[bool, str]:
     if benchmark_cmd:
         results.append(f"benchmark (generative): {benchmark_cmd}")
         results.append("  MANDATORY BENCHMARK EVALUATION:")
-        results.append("  1. Read the benchmark file and evaluate EVERY [ ] item against the codebase")
+        results.append(
+            "  1. Read the benchmark file and evaluate EVERY [ ] item against the codebase"
+        )
         results.append("  2. Mark [x] for passing items, leave [ ] for failing items")
         results.append("  3. EDIT the benchmark file with updated marks")
         results.append("  4. UPDATE the Score Tracking table with this iteration's results")
