@@ -184,19 +184,39 @@ orchestrate new --type full \
 
 `--iterations 0` means: keep iterating until the benchmark score reaches 0.
 
+## Workstream E - Code Justifications Document
+
+Create and maintain `CODE_JUSTIFICATIONS.md` in the project root. Every function, class, and test must have an entry defending its existence.
+
+### Format
+
+Three sections - one per engine module, one per test file. Each entry has: component name, type, justification (why it exists), and the failure point it addresses (what breaks if removed).
+
+Tests additionally require a "why not trivial" column explaining why the test is not simply asserting an obvious truth.
+
+### Process
+
+1. Use tree-sitter to enumerate all functions/classes in engine modules
+2. Use tree-sitter to enumerate all test functions in test files
+3. For each component, write a one-line justification and identify the failure point
+4. Remove components that cannot be justified - they are dead code
+5. Remove tests that are trivial or redundant - they waste CI time and obscure real gaps
+6. Components or tests missing from CODE_JUSTIFICATIONS.md are automatically unjustified and inflate the benchmark score at 3x weight
+
 ## Execution Order
 
 1. **Workstream B first** (hypothesis removal) - simplest, reduces code surface before other work
 2. **Workstream A second** (FSM migration) - independent from hypothesis removal
 3. **Workstream D third** (run-until-complete) - builds on existing benchmark infrastructure
-4. **Workstream C last** (tree-sitter analysis) - runs on the already-cleaned codebase
+4. **Workstream E fourth** (justifications) - audit all remaining code and tests
+5. **Workstream C last** (tree-sitter analysis) - final complexity and dead code sweep on cleaned codebase
 
 ## Completion Conditions
 
 Iterations continue until ALL of the following are met:
 
-1. **Benchmark score = 0** - every checklist item in BENCHMARK.md is `[x]`, zero test failures, zero functions over complexity 10
-2. **`make test` passes** with 0 failures and test count >= 100
+1. **Benchmark score = 0** - every checklist item in BENCHMARK.md is `[x]`, zero test failures, zero complexity violations, zero unjustified components, zero unjustified tests
+2. **`make test` passes** with 0 failures and test count >= 80
 3. **`make lint` passes** clean
 4. **`orchestrate validate` passes** with real auto-build-claw YAML resources
 5. **`orchestrate new --type full --objective "test" --iterations 1 --dry-run` succeeds**
@@ -204,3 +224,4 @@ Iterations continue until ALL of the following are met:
 7. **No hypothesis code remains** - zero references in engine, YAML, and tests
 8. **Total engine lines < 2800** - meaningful reduction from 3113 baseline
 9. **Run-until-complete mode works** - `--iterations 0` runs until benchmark score = 0
+10. **CODE_JUSTIFICATIONS.md complete** - every function, class, and test has an entry with justification and failure point

@@ -5,10 +5,10 @@
 This benchmark is evaluated generatively. Read each checklist item below, verify it against the current codebase, and mark `[x]` for passing items. Add new `[ ]` items if you discover additional violations during evaluation. The benchmark score is:
 
 ```
-score = unchecked_items + failed_tests + (functions_over_complexity_10 * 2) + (unjustified_components * 3)
+score = unchecked_items + failed_tests + (functions_over_complexity_10 * 2) + (unjustified_components * 3) + (unjustified_tests * 3)
 ```
 
-Lower is better. Target: 0. Unjustified components carry heavy weight (3x) because dead code is technical debt that compounds.
+Lower is better. Target: 0. Unjustified components and tests carry heavy weight (3x) because dead code and trivial tests are technical debt that compounds.
 
 ### Evaluation Steps
 
@@ -16,15 +16,42 @@ Lower is better. Target: 0. Unjustified components carry heavy weight (3x) becau
 2. Run `make test` and count failed tests
 3. Run `make lint` and verify clean
 4. Run tree-sitter complexity analysis: `python -c "import ast, sys; [print(f'{n.name}: {getattr(n, 'col_offset', 0)}') for f in sys.argv[1:] for n in ast.walk(ast.parse(open(f).read())) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]" stellars_claude_code_plugins/engine/*.py` to list all functions, then evaluate complexity
-5. Mark `[x]` for passing items, leave `[ ]` for failing items
-6. Report: violations count, failed tests, functions over complexity 10, composite score
+5. Audit CODE_JUSTIFICATIONS.md - verify every function, class, and test has an entry with its justification and the failure point it addresses
+6. Mark `[x]` for passing items, leave `[ ]` for failing items
+7. Report: violations count, failed tests, functions over complexity 10, unjustified components, unjustified tests, composite score
+
+### CODE_JUSTIFICATIONS.md
+
+As part of the benchmark process, create and maintain `CODE_JUSTIFICATIONS.md` in the project root. This document lists every function, class, and test with its justification. Format:
+
+```markdown
+## Engine Modules
+
+### engine/fsm.py
+
+- **build_phase_lifecycle_fsm** (function) - creates the standard phase FSM used by every orchestrator command. Failure point: phase transitions would not work
+- **resolve_phase_key** (function) - resolves WORKFLOW::PHASE namespace with fallback chain. Failure point: agents and gates would not resolve for gc/hotfix workflows
+
+### engine/orchestrator.py
+
+- **_fire_fsm** (function) - syncs persisted state with FSM before firing events. Failure point: phase status would desync between state.yaml and FSM
+- ...
+
+## Tests
+
+### tests/test_fsm.py
+
+- **test_gate_fail_returns_to_in_progress** - failure point: gate retry loop breaks if transition missing. Not trivial: regression caught real bug in v0.7
+- ...
+```
+
+Components or tests missing from CODE_JUSTIFICATIONS.md are automatically unjustified.
 
 ---
 
 ## Section 1: FSM Migration
 
 - [ ] `transitions` package listed in pyproject.toml `[project] dependencies`
-- [ ] `transitions` package listed in pyproject.toml `[build-system] requires` if needed
 - [ ] engine/fsm.py uses `transitions.Machine` as the FSM engine
 - [ ] No custom `State(str, Enum)` class in fsm.py (replaced by transitions states)
 - [ ] No custom `Event(str, Enum)` class in fsm.py (replaced by transitions triggers)
@@ -105,16 +132,42 @@ Every function and class must defend its existence. Run tree-sitter to list all 
 - [ ] Total engine lines < 3113 (baseline)
 - [ ] Hypothesis code (141 lines) fully removed
 
-### Test Health
+### Test Health and Justification
+
+Every test must defend its existence. Trivial tests that assert obvious truths (e.g., `assert True`, `assert 1 == 1`, checking a constructor sets a field) waste CI time and obscure real coverage gaps. Each test must target a specific failure point - a condition that could realistically break.
+
+For each test, verify:
+1. **It targets a failure point** - tests a condition that could actually fail in production or during refactoring
+2. **It is not trivial** - removing the code under test would cause the test to fail meaningfully
+3. **It is not redundant** - no other test already covers the same failure point
+
+Tests that fail this audit are **unjustified** and count in the benchmark score at 3x weight.
 
 - [ ] `make test` passes with 0 failures
 - [ ] `make lint` passes clean
 - [ ] `orchestrate validate` passes with auto-build-claw YAML resources
 - [ ] `orchestrate new --type full --objective "test" --iterations 1 --dry-run` succeeds
-- [ ] Test count >= 100 (maintained coverage after refactoring)
+- [ ] Test count >= 80 (quality over quantity after removing trivial tests)
 - [ ] No test file imports removed functions or classes
+- [ ] No trivial tests (asserting constructor defaults, enum values, type checks on constants)
+- [ ] Every test targets a specific failure point documented in CODE_JUSTIFICATIONS.md
+- [ ] No redundant tests covering the same failure point
+- [ ] Unjustified test count = 0
 
-## Section 4: Run-Until-Complete Mode
+## Section 4: Code Justifications Document
+
+- [ ] CODE_JUSTIFICATIONS.md exists in project root
+- [ ] Every function in engine/fsm.py listed with justification and failure point
+- [ ] Every function in engine/model.py listed with justification and failure point
+- [ ] Every function in engine/orchestrator.py listed with justification and failure point
+- [ ] Every dataclass in engine/model.py listed with justification
+- [ ] Every test in tests/test_fsm.py listed with failure point and why-not-trivial
+- [ ] Every test in tests/test_model.py listed with failure point and why-not-trivial
+- [ ] Every test in tests/test_orchestrator.py listed with failure point and why-not-trivial
+- [ ] No component exists in code that is missing from CODE_JUSTIFICATIONS.md
+- [ ] No test exists in code that is missing from CODE_JUSTIFICATIONS.md
+
+## Section 5: Run-Until-Complete Mode
 
 - [ ] `--iterations 0` accepted by `orchestrate new` without error
 - [ ] `total_iterations = 0` stored in state.yaml as sentinel for unlimited
@@ -133,13 +186,8 @@ Every function and class must defend its existence. Run tree-sitter to list all 
 
 Iterations continue until ALL conditions are met. Use `orchestrate add-iteration --count 1` if iterations run out before completion.
 
-- [ ] Benchmark score = 0 (all items above checked, no failures, no complexity violations)
-- [ ] `make test` passes with 0 failures and test count >= 100
-- [ ] `make lint` passes clean
-- [ ] `orchestrate validate` passes with auto-build-claw YAML resources
-- [ ] `orchestrate new --type full --objective "test" --iterations 1 --dry-run` succeeds
-- [ ] No custom FSM classes remain (only transitions.Machine)
-- [ ] No hypothesis code remains (zero references in engine, YAML, tests)
+- [ ] All Section 1-5 checklist items are `[x]` (benchmark score = 0)
+- [ ] CODE_JUSTIFICATIONS.md complete with zero unjustified components and zero unjustified tests
 - [ ] Total engine lines < 2800 (reduced from 3113 baseline)
 
 **Do NOT stop while any condition above is unmet.**
@@ -148,6 +196,6 @@ Iterations continue until ALL conditions are met. Use `orchestrate add-iteration
 
 ## Score Tracking
 
-| Iteration | Unchecked | Failed Tests | Complexity > 10 | Score |
-|-----------|-----------|--------------|------------------|-------|
-| baseline  | (all)     | 0            | TBD              | TBD   |
+| Iteration | Unchecked | Failed Tests | Complexity > 10 | Unjustified Components | Unjustified Tests | Score |
+|-----------|-----------|--------------|------------------|------------------------|-------------------|-------|
+| baseline  | (all)     | 0            | TBD              | TBD                    | TBD               | TBD   |
