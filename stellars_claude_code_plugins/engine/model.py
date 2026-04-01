@@ -196,7 +196,26 @@ def _build_agents_and_gates(
                     )
                     gate_type_sets.get(bucket, set()).add(gk)
         else:
+            # Backward compat: agents at phase level
             agent_list = section.get("agents", [])
+            # Gates live under lifecycle subsections (on_start, on_end)
+            for lifecycle, subsection in section.get("gates", {}).items():
+                if not isinstance(subsection, dict):
+                    continue
+                bucket = _LIFECYCLE_MAP.get(lifecycle, lifecycle)
+                # Agents inside on_end take precedence over phase-level
+                if lifecycle == "on_end" and "agents" in subsection:
+                    agent_list = subsection["agents"]
+                for gate_type, gate_def in subsection.items():
+                    if gate_type == "agents":
+                        continue  # agents list, not a gate
+                    if isinstance(gate_def, dict):
+                        gates[f"{phase_key}::{gate_type}"] = Gate(
+                            mode=gate_def.get("mode", "standalone_session"),
+                            description=gate_def.get("description", ""),
+                            prompt=gate_def.get("prompt", ""),
+                        )
+                        gate_type_sets.get(bucket, set()).add(gate_type)
             if agent_list:
                 agents[phase_key] = [
                     Agent(
@@ -208,19 +227,6 @@ def _build_agents_and_gates(
                     )
                     for a in agent_list
                 ]
-            # Gates live under lifecycle subsections (on_start, on_end)
-            for lifecycle, subsection in section.get("gates", {}).items():
-                if not isinstance(subsection, dict):
-                    continue
-                bucket = _LIFECYCLE_MAP.get(lifecycle, lifecycle)
-                for gate_type, gate_def in subsection.items():
-                    if isinstance(gate_def, dict):
-                        gates[f"{phase_key}::{gate_type}"] = Gate(
-                            mode=gate_def.get("mode", "standalone_session"),
-                            description=gate_def.get("description", ""),
-                            prompt=gate_def.get("prompt", ""),
-                        )
-                        gate_type_sets.get(bucket, set()).add(gate_type)
     return agents, gates, gate_type_sets["start"], gate_type_sets["end"], gate_type_sets["skip"]
 
 
@@ -528,6 +534,37 @@ def validate_model(model: Model) -> list[str]:
                         f"'{p['name']}::{gate_type}', 'FULL::{p['name']}::{gate_type}'). "
                         f"Fix: add gates.{gate_type} to the phase section in agents.yaml."
                     )
+
+    # gates: agent name references must match actual agents for the phase
+    # If a gate prompt uses {required_agents}, the phase must have agents defined
+    # (directly or via fallback chain: WORKFLOW::PHASE -> bare PHASE -> FULL::PHASE)
+    agent_keys = set(model.agents.keys())
+    for gate_key, gate in model.gates.items():
+        if "{required_agents}" not in gate.prompt:
+            continue
+        # Extract phase key from namespaced gate key: "FULL::RESEARCH::gatekeeper" -> "FULL::RESEARCH"
+        parts = gate_key.rsplit("::", 1)
+        if len(parts) < 2:
+            continue
+        phase_key = parts[0]
+        # Check direct match first, then use fallback chain
+        if phase_key in agent_keys:
+            continue
+        # Try fallback: extract workflow and phase from "WORKFLOW::PHASE"
+        wf_parts = phase_key.split("::", 1)
+        if len(wf_parts) == 2:
+            resolved = _resolve_key(wf_parts[0], wf_parts[1], agent_keys)
+            if resolved in agent_keys:
+                continue
+        # Also try bare phase name
+        bare = wf_parts[-1] if len(wf_parts) == 2 else phase_key
+        if bare in agent_keys:
+            continue
+        issues.append(
+            f"[agents.yaml] '{gate_key}': prompt references {{required_agents}} "
+            f"but phase '{phase_key}' has no agents defined (checked fallback chain). "
+            "Fix: add agents to the phase or remove the {{required_agents}} placeholder."
+        )
 
     # app: required fields
     for field_name, val in (("name", model.app.name), ("cmd", model.app.cmd)):

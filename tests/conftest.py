@@ -56,10 +56,6 @@ shared_gates:
       prompt: "Evaluate force-skip for {phase} in iteration {iteration}: {reason}"
 
 ALPHA:
-  agents:
-    - name: researcher
-      display_name: Researcher
-      prompt: "Research the topic"
   gates:
     on_start:
       readback:
@@ -67,16 +63,16 @@ ALPHA:
         description: "Validate understanding"
         prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
     on_end:
+      agents:
+        - name: researcher
+          display_name: Researcher
+          prompt: "Research the topic"
       gatekeeper:
         mode: standalone_session
         description: "Validate completion"
         prompt: "Phase {phase}: {evidence}"
 
 BETA:
-  agents:
-    - name: planner
-      display_name: Planner
-      prompt: "Plan the work"
   gates:
     on_start:
       readback:
@@ -84,16 +80,16 @@ BETA:
         description: "Validate understanding"
         prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
     on_end:
+      agents:
+        - name: planner
+          display_name: Planner
+          prompt: "Plan the work"
       gatekeeper:
         mode: standalone_session
         description: "Validate completion"
         prompt: "Phase {phase}: {evidence}"
 
 GAMMA:
-  agents:
-    - name: executor
-      display_name: Executor
-      prompt: "Execute the work"
   gates:
     on_start:
       readback:
@@ -101,6 +97,10 @@ GAMMA:
         description: "Validate understanding"
         prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
     on_end:
+      agents:
+        - name: executor
+          display_name: Executor
+          prompt: "Execute the work"
       gatekeeper:
         mode: standalone_session
         description: "Validate completion"

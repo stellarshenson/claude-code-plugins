@@ -580,16 +580,16 @@ shared_gates:
       mode: standalone_session
       prompt: "Force-skip {phase} {iteration}: {reason}"
 STEP:
-  agents:
-    - name: worker
-      display_name: Worker
-      prompt: "Do work"
   gates:
     on_start:
       readback:
         mode: standalone_session
         prompt: "Phase {phase}: {understanding}"
     on_end:
+      agents:
+        - name: worker
+          display_name: Worker
+          prompt: "Do work"
       gatekeeper:
         mode: standalone_session
         prompt: "Phase {phase}: {evidence}"

@@ -220,15 +220,15 @@ shared_gates:
     gatekeeper_force_skip:
       prompt: "{phase} {iteration} {reason}"
 ALPHA:
-  agents:
-    - name: a
-      display_name: A
-      prompt: do
   gates:
     on_start:
       readback:
         prompt: "{understanding}"
     on_end:
+      agents:
+        - name: a
+          display_name: A
+          prompt: do
       gatekeeper:
         prompt: "{evidence}"
 """)
@@ -295,15 +295,15 @@ shared_gates:
     gatekeeper_force_skip:
       prompt: "{phase} {iteration} {reason}"
 STEP:
-  agents:
-    - name: a
-      display_name: A
-      prompt: do
   gates:
     on_start:
       readback:
         prompt: "{understanding}"
     on_end:
+      agents:
+        - name: a
+          display_name: A
+          prompt: do
       gatekeeper:
         prompt: "{evidence}"
 """)
