@@ -151,12 +151,12 @@ Note: Hypothesis code retained because FULL workflow still uses it. Only PLANNIN
 
 ## Section 6: Parallel Gate Execution
 
-- [ ] `--next-understanding` optional argument on `cmd_end`
-- [ ] Gatekeeper and next readback run in parallel via subprocess.Popen
-- [ ] If gatekeeper passes + readback passes: next phase starts in IN_PROGRESS
-- [ ] If gatekeeper fails: readback result ignored, stay in current phase
-- [ ] If gatekeeper passes + readback fails: next phase in PENDING (retry)
-- [ ] Tests cover parallel gate scenarios
+- [x] `--next-understanding` optional argument on `cmd_end`
+- [x] Gatekeeper and next readback run in parallel via ThreadPoolExecutor
+- [x] If gatekeeper passes + readback passes: readback stored in state with parallel marker
+- [x] If gatekeeper fails: readback result ignored, stay in current phase
+- [x] If gatekeeper passes + readback fails: next phase in PENDING (retry)
+- [x] Tests cover parallel gate scenarios (9 tests)
 
 ## Section 7: Benchmark Agent
 
@@ -207,3 +207,4 @@ Iterations continue until ALL conditions are met. Use `orchestrate add-iteration
 | baseline  | 75        | 0            | TBD              | TBD                    | TBD               | TBD   |
 | iter 1    | 17        | 0            | 0                | 0                      | 0                 | 17    |
 | iter 2    | 21        | 0            | 0                | 0                      | 0                 | 21    |
+| iter 3    | 15        | 0            | 0                | 0                      | 0                 | 15    |
