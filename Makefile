@@ -116,14 +116,14 @@ remove_environment:
 	@echo "$(OK_STYLE)>>> Environment removed$(NO_STYLE)"
 
 ## Install src modules (editable)
-install: create_environment requirements clean
+install: create_environment requirements clean increment_version_number
 
 	@echo "$(MSG_PREFIX) installing $(MODULE_NAME) in editable mode"
 	@uv $(UV_OPTS) pip install -q --python $(PROJECT_DIR)/.venv -e .
 	@echo "$(OK_STYLE)>>> $(MODULE_NAME) installed$(NO_STYLE)"
 
 ## Build package
-build: clean install test increment_version_number
+build: clean install test
 	@echo "$(MSG_PREFIX) building $(MODULE_NAME)"
 	$(PROJECT_DIR)/.venv/bin/python -m build --wheel
 
