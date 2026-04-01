@@ -1,4 +1,4 @@
-.PHONY: clean lint format requirements upgrade build test install create_environment remove_environment preflight
+.PHONY: clean lint format requirements upgrade build publish test install create_environment remove_environment preflight
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -126,6 +126,12 @@ install: create_environment requirements clean
 build: clean install test increment_version_number
 	@echo "$(MSG_PREFIX) building $(MODULE_NAME)"
 	$(PROJECT_DIR)/.venv/bin/python -m build --wheel
+
+## Publish package to PyPI
+publish: build
+	@echo "$(MSG_PREFIX) publishing $(MODULE_NAME) to PyPI"
+	$(PROJECT_DIR)/.venv/bin/twine upload dist/*
+	@echo "$(OK_STYLE)>>> $(MODULE_NAME) published$(NO_STYLE)"
 
 ## Increment build number
 increment_version_number:
