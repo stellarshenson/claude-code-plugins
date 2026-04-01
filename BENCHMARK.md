@@ -52,7 +52,7 @@ score = unchecked_items + failed_tests + (hardcoded_overfit * 2) + consistency_r
 - [x] model.py ActionDef dataclass loads action definitions from YAML
 - [x] orchestrator.py dispatches generative actions via `_claude_evaluate(prompt)` from YAML
 - [x] orchestrator.py dispatches programmatic actions via Python handler (existing behavior)
-- [ ] validate_model checks action definitions match phases.yaml references
+- [x] validate_model checks action definitions match phases.yaml references
 
 ## Section 1b: Agents in Gate Sections
 
@@ -77,7 +77,7 @@ Every gate/agent/phase name hardcoded in orchestrator.py that should come from Y
 
 - [ ] validate_model checks that every agent name referenced in phases.yaml templates exists in agents.yaml
 - [ ] validate_model checks that --agents requirement in gates matches agents defined for that phase
-- [ ] No agent name appears in orchestrator.py as a hardcoded string (all from YAML)
+- [x] No agent name appears in orchestrator.py as a hardcoded string (all from YAML)
 
 ## Section 3: Cleanup
 
@@ -89,22 +89,22 @@ Every gate/agent/phase name hardcoded in orchestrator.py that should come from Y
 
 - [x] test_model.py: new gate structure loads correctly from minimal fixtures
 - [x] test_model.py: action definitions load correctly
-- [ ] test_model.py: validate_model catches missing action definitions
-- [ ] test_orchestrator.py: cmd_start resolves start gate from model
-- [ ] test_orchestrator.py: cmd_end resolves end gate from model
-- [ ] test_orchestrator.py: generative action dispatches via _claude_evaluate
+- [x] test_model.py: validate_model catches missing action definitions
+- [x] test_orchestrator.py: cmd_start resolves start gate from model (test_resolve_start_gate)
+- [x] test_orchestrator.py: cmd_end resolves end gate from model (test_resolve_end_gate)
+- [x] test_orchestrator.py: generative action dispatches via _claude_evaluate (test_generative_action_dispatch)
 - [x] All existing tests still pass
 - [x] `make test` passes with 0 failures (121 tests)
 - [x] `make lint` passes clean
 
 ## Section 4b: Fast Workflow
 
-- [ ] `fast` workflow defined in workflow.yaml
-- [ ] fast phases: PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT
-- [ ] No depends_on (no planning dependency)
-- [ ] `orchestrate new --type fast --objective "test" --iterations 1 --dry-run` succeeds
-- [ ] Fast workflow reuses FULL:: agents/gates via fallback chain
-- [ ] `orchestrate validate` passes with fast workflow
+- [x] `fast` workflow defined in workflow.yaml
+- [x] fast phases: PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT
+- [x] No depends_on (no planning dependency)
+- [x] `orchestrate new --type fast --objective "test" --iterations 1 --dry-run` succeeds
+- [x] Fast workflow reuses FULL:: agents/gates via fallback chain
+- [x] `orchestrate validate` passes with fast workflow
 
 ## Section 5: YAML Model Consistency (0-10 scale)
 
@@ -142,3 +142,4 @@ Iterations stop when ALL conditions are met:
 | iter 1    | 2026-04-01 | 9 | 0 | 9 | YAML restructure done, model loads on_start/on_end/on_skip, actions defined, 6 new tests |
 | iter 1 test | 2026-04-01 | 52 | 0 | 22 + 15 overfit*2 | added overfit + agent integrity sections, score jumps due to new requirements |
 | iter 2      | 2026-04-01 | 13+R | 0 | 13 + consistency residual | overfit eliminated, added agents-in-gates + consistency sections |
+| iter 3      | 2026-04-01 | 7+R  | 0 | 7 + consistency residual | fast workflow, contrarian planning, tests added, 11 items resolved |
