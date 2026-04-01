@@ -43,7 +43,7 @@ class WorkflowType:
     description: str
     phases: list[dict]                # raw list [{name: X, skippable?: bool}]
     depends_on: str = ""              # prerequisite workflow (auto-chains before this one)
-    dependency: bool = False          # if True, cannot be invoked directly via --type
+    independent: bool = True           # if False, cannot be invoked directly via --type
     required: list[str] = field(default_factory=list)
     skippable: list[str] = field(default_factory=list)
     phase_names: list[str] = field(default_factory=list)
@@ -127,7 +127,7 @@ def _build_workflow_types(raw: dict) -> dict[str, WorkflowType]:
             description=val.get("description", ""),
             phases=val.get("phases", []),
             depends_on=val.get("depends_on", ""),
-            dependency=val.get("dependency", False),
+            independent=val.get("independent", True),
         )
         for key, val in raw.items()
         if isinstance(val, dict)
@@ -317,7 +317,7 @@ def validate_model(model: Model) -> list[str]:
 
     # phases: auto_action names should be documented (warn if unknown)
     _KNOWN_AUTO_ACTIONS = {
-        "hypothesis_autowrite", "hypothesis_gc",
+        "hypothesis_autowrite", "hypothesis_gc",  # retained for YAML compat (no-op in engine)
         "plan_save", "iteration_summary", "iteration_advance",
     }
     for phase_name, phase in model.phases.items():

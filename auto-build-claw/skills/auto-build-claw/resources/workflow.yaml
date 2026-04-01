@@ -28,15 +28,14 @@
 #         skippable: true
 # ──────────────────────────────────────────────────────────────────
 
-# Planning - dependency workflow that auto-chains before full workflow.
+# Planning - non-independent workflow that auto-chains before full workflow.
 # Cannot be invoked directly via --type. Breaks down the objective into
 # N implementation iterations with scope, files, and acceptance criteria.
 planning:
-  description: "Planning iteration: research, hypothesise, break down work into implementation iterations"
-  dependency: true
+  description: "Planning iteration: research, break down work into implementation iterations"
+  independent: false
   phases:
     - name: RESEARCH
-    - name: HYPOTHESIS
     - name: PLAN           # resolves to PLANNING::PLAN (work breakdown)
     - name: RECORD
     - name: NEXT

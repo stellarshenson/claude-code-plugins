@@ -11,7 +11,6 @@ Stateful phases, agent review, automated testing, independent gatekeeper.
 State: <artifacts_dir>/state.yaml
 Audit: <artifacts_dir>/log.yaml
 Failures: <artifacts_dir>/failures.yaml
-Hypotheses: <artifacts_dir>/hypotheses.yaml
 """
 
 import argparse
@@ -47,7 +46,6 @@ DEFAULT_ARTIFACTS_DIR = None
 STATE_FILE = None
 LOG_FILE = None
 FAILURES_FILE = None
-HYPOTHESES_FILE = None
 CONTEXT_FILE = None
 CMD = None
 _SEP_CHAR = None
@@ -74,7 +72,7 @@ def _initialize(resources_dir: Path) -> None:
     a specific resources directory.
     """
     global _MODEL, DEFAULT_ARTIFACTS_DIR, STATE_FILE, LOG_FILE, FAILURES_FILE
-    global HYPOTHESES_FILE, CONTEXT_FILE, CMD, _SEP_CHAR, _SEP_WIDTH
+    global CONTEXT_FILE, CMD, _SEP_CHAR, _SEP_WIDTH
     global _HDR_CHAR, _HDR_WIDTH, _PHASE_FSM, _FSM_STATE_VALUES
     global ITERATION_TYPES, PHASE_AGENTS, _PHASE_START, _PHASE_END
     global _AUTO_ACTION_REGISTRY, _initialized
@@ -85,7 +83,6 @@ def _initialize(resources_dir: Path) -> None:
     STATE_FILE = DEFAULT_ARTIFACTS_DIR / "state.yaml"
     LOG_FILE = DEFAULT_ARTIFACTS_DIR / "log.yaml"
     FAILURES_FILE = DEFAULT_ARTIFACTS_DIR / "failures.yaml"
-    HYPOTHESES_FILE = DEFAULT_ARTIFACTS_DIR / "hypotheses.yaml"
     CONTEXT_FILE = DEFAULT_ARTIFACTS_DIR / "context.yaml"
     CMD = _MODEL.app.cmd or "python orchestrate.py"
     _SEP_CHAR = _MODEL.app.display.separator
@@ -125,8 +122,6 @@ def _initialize(resources_dir: Path) -> None:
     # Auto-action registry
     _AUTO_ACTION_REGISTRY.clear()
     _AUTO_ACTION_REGISTRY.update({
-        "hypothesis_autowrite": _action_hypothesis_autowrite,
-        "hypothesis_gc": _action_hypothesis_gc,
         "plan_save": _action_plan_save,
         "iteration_summary": _action_iteration_summary,
         "iteration_advance": _action_iteration_advance,
@@ -273,9 +268,9 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
 
     This is the central factory that every phase callable uses to
     assemble the context dict for str.format_map(). Computes dynamic
-    content from iteration state: prior failures, hypothesis catalogue,
-    benchmark info, iteration plan. Also generates spawn instructions
-    and agent instructions from agents.yaml.
+    content from iteration state: prior failures, benchmark info,
+    iteration plan. Also generates spawn instructions and agent
+    instructions from agents.yaml.
 
     Args:
         state: current iteration state from state.yaml
@@ -305,12 +300,6 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
             f"\n**Iteration plan** (from planning iteration 0):\n{iteration_plan[:300]}\n"
         )
 
-    # Hypothesis catalogue summary
-    prior_hyp = ""
-    catalogue = _hypothesis_catalogue_summary()
-    if catalogue and catalogue != "(no hypotheses yet)":
-        prior_hyp = f"\n**Hypothesis catalogue** (rate, review, evolve this list):\n{catalogue}\n"
-
     # Benchmark info
     benchmark_info = ""
     benchmark_cmd = s.get("benchmark_cmd", "")
@@ -332,7 +321,7 @@ value. This score will be tracked across iterations - lower is better."""
     total_iters = s.get("total_iterations", 1)
     itype = s.get("type", "full")
     wf_def = _MODEL.workflow_types.get(itype)
-    if wf_def and wf_def.dependency:
+    if wf_def and not wf_def.independent:
         iteration_purpose = "\n" + _msg(
             "dependency_banner", description=wf_def.description
         ) + "\n"
@@ -352,7 +341,6 @@ value. This score will be tracked across iterations - lower is better."""
         "remaining": total_iters - iteration,
         "prior_context": prior_context,
         "plan_context": plan_context,
-        "prior_hyp": prior_hyp,
         "checklist": _guardian_checklist(),
         "benchmark_info": benchmark_info,
     }
@@ -425,17 +413,6 @@ def _make_phase_callable(phase: str, event: str) -> object:
 # ── Auto-action handlers ──────────────────────────────────────────
 
 
-def _action_hypothesis_autowrite(state: dict, phase: str):
-    output_content = state.get("phase_outputs", {}).get(phase, "")
-    if output_content:
-        _auto_write_hypotheses(output_content, state.get("iteration", 0))
-
-def _action_hypothesis_gc(state: dict, phase: str):
-    print("\n" + _msg("auto_separator"))
-    print(_msg("auto_hypothesis_gc"))
-    print(_msg("auto_separator"))
-    _run_hypothesis_gc()
-
 def _action_iteration_summary(state: dict, phase: str):
     print("\n" + _msg("auto_separator"))
     print(_msg("auto_summary"))
@@ -457,7 +434,7 @@ def _action_iteration_advance(state: dict, phase: str):
 def _action_plan_save(state: dict, phase: str):
     """Save PLAN output as plan.yaml for dependency workflows."""
     wf_def = _MODEL.workflow_types.get(state.get("type", ""))
-    if not (wf_def and wf_def.dependency):
+    if not wf_def or wf_def.independent:
         return
     output_content = state.get("phase_outputs", {}).get(phase, "")
     if not output_content:
@@ -609,72 +586,6 @@ def _append_failure(entry: dict) -> None:
     _append_yaml_entry(FAILURES_FILE, entry)
 
 
-def _append_hypothesis(entry: dict) -> None:
-    """Add or update hypothesis in the catalogue.
-
-    The catalogue is a persistent list of ALL hypotheses across iterations,
-    not per-iteration snapshots. Each entry has: id, hypothesis, predict,
-    evidence, risk, status, votes, avg_score.
-    """
-    entry["timestamp"] = _now()
-    _append_yaml_entry(HYPOTHESES_FILE, entry)
-
-
-def _auto_write_hypotheses(output_content: str, iteration: int) -> None:
-    """Extract structured hypothesis entries from HYPOTHESIS phase output.
-
-    Splits the output on ID: boundaries and parses each block for
-    structured fields (ID/HYPOTHESIS/PREDICT/EVIDENCE/RISK/STARS).
-    Writes valid entries to hypotheses.yaml. Entries missing required
-    fields are skipped with a warning.
-    """
-    required_fields = {"id", "hypothesis", "predict", "evidence", "risk"}
-    fields_to_parse = ["ID", "HYPOTHESIS", "PREDICT", "EVIDENCE", "RISK",
-                        "STARS", "WHAT TO DO", "STATUS"]
-
-    # Split on ID: boundaries to isolate each hypothesis block
-    blocks = re.split(r"(?=^ID:\s)", output_content, flags=re.MULTILINE)
-
-    entries = []
-    for block in blocks:
-        if not block.strip():
-            continue
-        entry: dict = {}
-        for line in block.split("\n"):
-            stripped = line.strip()
-            for field in fields_to_parse:
-                if stripped.upper().startswith(field + ":"):
-                    value = stripped[len(field) + 1:].strip()
-                    key = field.lower().replace(" ", "_")
-                    if key == "stars":
-                        try:
-                            entry["avg_score"] = float(value.split("/")[0])
-                        except (ValueError, IndexError):
-                            entry["avg_score"] = 0.0
-                        entry["votes"] = value
-                    else:
-                        entry[key] = value
-                    break
-        if entry.get("id"):
-            entries.append(entry)
-
-    written = 0
-    for entry in entries:
-        missing = required_fields - set(entry.keys())
-        if missing:
-            print(_msg("auto_hypothesis_warn", hid=entry.get("id", "?"), missing=str(missing)))
-            continue
-        entry.setdefault("status", "proposed")
-        entry.setdefault("votes", "")
-        entry.setdefault("avg_score", 0.0)
-        entry["iteration"] = iteration
-        _append_hypothesis(entry)
-        written += 1
-
-    if written:
-        print(_msg("auto_hypothesis_wrote", count=written))
-
-
 def _load_context() -> dict:
     """Load context messages from context.yaml.
 
@@ -690,26 +601,6 @@ def _load_context() -> dict:
 def _save_context(ctx: dict) -> None:
     """Save context messages to context.yaml."""
     CONTEXT_FILE.write_text(_yaml_dump(ctx))
-
-
-def _load_prior_hypotheses() -> list[dict]:
-    """Load the full hypothesis catalogue for agents to review."""
-    return _load_yaml_list(HYPOTHESES_FILE)
-
-
-def _hypothesis_catalogue_summary() -> str:
-    """Format hypothesis catalogue for agent context."""
-    hyps = _load_prior_hypotheses()
-    if not hyps:
-        return "(no hypotheses yet)"
-    lines = []
-    for h in hyps:
-        hid = h.get("id", "?")
-        text = h.get("hypothesis", "?")[:100]
-        status = h.get("status", "?")
-        avg = h.get("avg_score", "?")
-        lines.append(f"  {hid} ({avg}/5, {status}): {text}")
-    return "\n".join(lines)
 
 
 def _phase_dir(state: dict) -> Path:
@@ -765,17 +656,16 @@ def _count_iteration_failures(iteration: int) -> list[dict]:
 def _init_artifacts_dir(artifacts_dir: Path | None = None) -> None:
     """Initialise the artifacts directory and set global path variables.
 
-    Mutates module-level STATE_FILE, LOG_FILE, FAILURES_FILE, and
-    HYPOTHESES_FILE to point to the correct artifacts directory.
-    Called once in main() before any command handler runs.
+    Mutates module-level STATE_FILE, LOG_FILE, FAILURES_FILE to point
+    to the correct artifacts directory. Called once in main() before
+    any command handler runs.
     """
-    global STATE_FILE, LOG_FILE, FAILURES_FILE, HYPOTHESES_FILE, CONTEXT_FILE  # noqa: PLW0603
+    global STATE_FILE, LOG_FILE, FAILURES_FILE, CONTEXT_FILE  # noqa: PLW0603
     d = artifacts_dir or DEFAULT_ARTIFACTS_DIR
     d.mkdir(parents=True, exist_ok=True)
     STATE_FILE = d / "state.yaml"
     LOG_FILE = d / "log.yaml"
     FAILURES_FILE = d / "failures.yaml"
-    HYPOTHESES_FILE = d / "hypotheses.yaml"
     CONTEXT_FILE = d / "context.yaml"
 
 
@@ -794,14 +684,14 @@ def _read_last_iteration(artifacts_dir: Path | None = None) -> int:
 def _clean_artifacts_dir(artifacts_dir: Path | None = None) -> None:
     """Clean artifacts directory for fresh run.
 
-    Preserves hypotheses*.yaml, hypotheses_archive.yaml, and context.yaml.
+    Preserves context.yaml across clean operations.
     """
     d = artifacts_dir or DEFAULT_ARTIFACTS_DIR
     if d.exists():
         for f in d.iterdir():
             if f.is_file():
-                # Preserve hypothesis and context files across clean
-                if f.name.startswith("hypotheses") or f.name == "context.yaml":
+                # Preserve context files across clean
+                if f.name == "context.yaml":
                     continue
                 f.unlink()
             elif f.is_dir():
@@ -1096,7 +986,7 @@ def _banner(phase: str, action: str, state: dict) -> str:
     objective = state.get("objective", "")
     total_iters = state.get("total_iterations", 1)
     wf_def = _MODEL.workflow_types.get(itype)
-    if wf_def and wf_def.dependency:
+    if wf_def and not wf_def.independent:
         iter_label = itype.upper()
     elif total_iters > 1:
         iter_label = f"{iteration}/{total_iters}"
@@ -1150,45 +1040,6 @@ def _footer(phase: str, status: str, state: dict) -> str:
 
 
 # ── Auto-action helpers ──────────────────────────────────────────────
-
-
-def _run_hypothesis_gc() -> None:
-    """Archive DONE and REMOVED hypotheses after HYPOTHESIS phase.
-
-    Auto-action triggered when HYPOTHESIS phase gatekeeper passes.
-    Moves hypotheses with status DONE or REMOVED from the active
-    catalogue to hypotheses_archive.yaml, keeping the working list
-    clean for future iterations.
-    """
-    hyps = _load_yaml_list(HYPOTHESES_FILE)
-    if not hyps:
-        print(_msg("hypothesis_gc_none"))
-        return
-
-    active = []
-    archived = []
-    for h in hyps:
-        status = h.get("status", "").upper()
-        if status in ("DONE", "REMOVED"):
-            archived.append(h)
-        else:
-            active.append(h)
-
-    if not archived:
-        print(_msg("hypothesis_gc_no_archive", count=len(active)))
-        return
-
-    archive_path = DEFAULT_ARTIFACTS_DIR / "hypotheses_archive.yaml"
-    existing_archive = _load_yaml_list(archive_path)
-    existing_archive.extend(archived)
-    archive_path.write_text(_yaml_dump(existing_archive))
-
-    HYPOTHESES_FILE.write_text(_yaml_dump(active))
-
-    print(_msg("hypothesis_gc_archived", count=len(archived), path=archive_path.name))
-    print(_msg("hypothesis_gc_active", count=len(active)))
-    for h in active:
-        print(_msg("hypothesis_gc_item", hid=h.get("id", "?"), status=h.get("status", "?"), hyp=h.get("hypothesis", "?")[:80]))
 
 
 def _run_summary(state: dict) -> None:
@@ -1305,9 +1156,9 @@ def _run_next_iteration(state: dict) -> None:
     """Advance to the next iteration after NEXT phase completes.
 
     Resets phase_outputs and phase_agents for the new iteration,
-    preserves hypothesis catalogue and failure log, increments the
-    iteration counter, and displays the new iteration info.
-    If all requested iterations are done, reports completion.
+    preserves failure log, increments the iteration counter, and
+    displays the new iteration info. If all requested iterations
+    are done, reports completion.
     """
     total = state.get("total_iterations", 1)
     current = state["iteration"]
@@ -1324,7 +1175,7 @@ def _run_next_iteration(state: dict) -> None:
     parent = state.get("parent_type", "")
     if parent and parent != state["type"]:
         wf_def = _MODEL.workflow_types.get(state["type"])
-        if wf_def and wf_def.dependency:
+        if wf_def and not wf_def.independent:
             state["type"] = parent
             state.pop("parent_type", None)
 
@@ -1384,7 +1235,7 @@ def cmd_new(args) -> None:
     Creates initial state with objective, iteration count, type, and
     optional benchmark command. Auto-starts iteration 0 (planning)
     when multiple iterations are requested with 'full' type.
-    Cleans prior artifacts by default (preserves hypotheses).
+    Cleans prior artifacts by default.
     """
     itype = args.type
     if itype not in ITERATION_TYPES:
@@ -1396,7 +1247,7 @@ def cmd_new(args) -> None:
 
     # Block dependency workflows from direct invocation
     wf_def = _MODEL.workflow_types.get(itype)
-    if wf_def and wf_def.dependency:
+    if wf_def and not wf_def.independent:
         print(_msg("dependency_blocked", itype=itype), file=sys.stderr)
         sys.exit(1)
 
@@ -1464,7 +1315,7 @@ def cmd_new(args) -> None:
     )
 
     run_wf = _MODEL.workflow_types.get(run_type)
-    if run_wf and run_wf.dependency:
+    if run_wf and not run_wf.independent:
         iter_label = f"{run_type.upper()} (before {total_iterations} iterations)"
     elif total_iterations > 1:
         iter_label = f"{iteration} of {total_iterations}"
@@ -1474,7 +1325,7 @@ def cmd_new(args) -> None:
     print("\n" + _msg("iteration_objective", objective=objective))
     if total_iterations > 1:
         print(_msg("iteration_requested", total=total_iterations))
-    if run_wf and run_wf.dependency:
+    if run_wf and not run_wf.independent:
         print("\n" + _msg("dependency_purpose", description=run_wf.description))
     print("\n" + _msg("iteration_phases", phases=" -> ".join(type_info["phases"])))
     print(_msg("iteration_required", required=", ".join(type_info["required"])))
@@ -1609,8 +1460,8 @@ def cmd_end(args) -> None:
     Validates --agents against required agents from agents.yaml,
     records output file content, runs TEST automation if in TEST phase,
     runs gatekeeper gate for quality validation, then advances to
-    next phase. Auto-actions: hypothesis-gc after HYPOTHESIS,
-    summary after RECORD, inline NEXT display after RECORD.
+    next phase. Auto-actions: summary after RECORD, inline NEXT
+    display after RECORD.
     """
     state = _load_state()
     if not state:
@@ -1863,7 +1714,7 @@ def cmd_status(args) -> None:
     iteration = state.get("iteration", "?")
 
     wf_def = _MODEL.workflow_types.get(wf_type)
-    if wf_def and wf_def.dependency:
+    if wf_def and not wf_def.independent:
         iter_label = wf_type.upper()
     elif total_iters > 1:
         iter_label = f"{iteration}/{total_iters}"
@@ -2166,27 +2017,6 @@ def cmd_failures(args) -> None:
             print(_msg("failure_item", mode=mode, phase=phase, desc=desc, ts=ts))
 
 
-def cmd_hypotheses(args) -> None:
-    """Display the hypothesis catalogue across all iterations.
-
-    Shows hypothesis ID, star rating average, status, and text.
-    The catalogue persists across iterations - hypotheses marked
-    DONE or REMOVED are archived by hypothesis-gc.
-    """
-    entries = _load_prior_hypotheses()
-    if not entries:
-        print(_msg("no_hypotheses"))
-        return
-
-    for e in entries:
-        hid = e.get("id", "?")
-        status = e.get("status", "?")
-        avg = e.get("avg_score", "?")
-        hyp = e.get("hypothesis", "?")
-        ts = e.get("timestamp", "?")
-        print("\n" + _msg("hypothesis_item", hid=hid, avg=avg, status=status, hyp=hyp[:200], ts=ts))
-
-
 def cmd_validate(args) -> None:
     """Run model validation and report any issues found.
 
@@ -2404,9 +2234,6 @@ def main(resources_dir: Path | None = None):
     # ── failures ──
     sub.add_parser("failures", help=_cli("commands", "failures"))
 
-    # ── hypotheses ──
-    sub.add_parser("hypotheses", help=_cli("commands", "hypotheses"))
-
     # ── add-iteration ──
     p_add = sub.add_parser("add-iteration", help=_cli("commands", "add_iteration"))
     p_add.add_argument("--count", type=int, required=True, help=_cli("args", "count"))
@@ -2433,7 +2260,6 @@ def main(resources_dir: Path | None = None):
         "context": cmd_context,
         "log-failure": cmd_log_failure,
         "failures": cmd_failures,
-        "hypotheses": cmd_hypotheses,
         "add-iteration": cmd_add_iteration,
         "validate": cmd_validate,
     }

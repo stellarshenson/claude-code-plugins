@@ -264,7 +264,7 @@ class TestWorkflowType:
     def test_depends_on_default(self):
         wf = WorkflowType(description="test", phases=[])
         assert wf.depends_on == ""
-        assert wf.dependency is False
+        assert wf.independent is True
 
 
 class TestPhaseDataclass:

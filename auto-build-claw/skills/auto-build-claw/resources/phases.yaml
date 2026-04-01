@@ -513,41 +513,6 @@ PLANNING::RESEARCH:
     - [ ] Problem space understood for work breakdown
     - [ ] Scope estimated for iteration planning
 
-PLANNING::HYPOTHESIS:
-  auto_actions:
-    on_complete: [hypothesis_autowrite, hypothesis_gc]
-  start: |
-    ## Phase: HYPOTHESIS (Planning)
-
-    **Objective**: {objective}
-    {prior_hyp}
-
-    **This is the PLANNING iteration.** Hypothesis goal: debate how to decompose
-    the objective into implementation iterations. Focus on scope sizing, ordering,
-    and risk rather than code-level hypotheses.
-
-    {spawn_instruction}
-    Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
-
-    {agents_instructions}
-
-    **CRITICAL: This phase is READ-ONLY.** Do NOT modify any project files.
-
-    **AFTER all agents return**, write merged hypotheses to a file, then:
-    ```
-    {CMD} end --evidence "summary" --agents "contrarian,optimist,pessimist,scientist" --output-file "path/to/hypotheses.md"
-    ```
-
-  end: |
-    ## Phase: HYPOTHESIS (exit criteria)
-
-    **Verify ALL**:
-    - [ ] FOUR separate agents spawned
-    - [ ] Hypotheses merged and ranked
-    - [ ] Top 1-3 selected for planning
-
-    **HYPOTHESIS GC**: runs automatically after gatekeeper passes.
-
 PLANNING::PLAN:
   auto_actions:
     on_complete: [plan_save]
