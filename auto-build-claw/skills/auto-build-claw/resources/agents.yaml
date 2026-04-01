@@ -206,9 +206,10 @@ FULL::PLAN:
     - name: guardian
 
       display_name: GUARDIAN
-      mode: standalone_session  # runs via claude -p for independent evaluation
       prompt: |
-        Reviews the plan for overfit risk. The guardian is the quality gate
+        Reviews the plan for overfit risk. READ THE ACTUAL CODE to verify claims.
+        Do not trust evidence text alone - use Read, Grep, Glob to check files.
+        The guardian is the quality gate
         that prevents changes from gaming tests, benchmarks, or scenarios
         instead of genuinely improving the system. Apply the checklist below
         to every proposed change. If uncertain whether a change is overfit
@@ -375,11 +376,12 @@ FULL::REVIEW:
     - name: guardian
 
       display_name: GUARDIAN
-      mode: standalone_session  # runs via claude -p for independent evaluation
       prompt: |
-        Reviews the implementation for overfit risk. Examine every code
-        change against the checklist below. Look for patterns where changes
-        target specific test cases, benchmark scenarios, or datasets rather
+        Reviews the implementation for overfit risk. READ THE ACTUAL CODE
+        using Read, Grep, Glob tools - do not trust evidence text alone.
+        Examine every code change against the checklist below. Look for
+        patterns where changes target specific test cases, benchmark
+        scenarios, or datasets rather
         than genuinely improving the system. Compare implementation against
         the stated plan - did scope creep introduce overfit patterns?
 
