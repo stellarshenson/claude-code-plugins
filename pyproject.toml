@@ -17,10 +17,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "loguru",
     "pyyaml",
-    "typer",
-    "python-dotenv",
 ]
 
 [project.optional-dependencies]
