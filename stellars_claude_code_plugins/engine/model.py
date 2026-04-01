@@ -461,20 +461,24 @@ def validate_model(model: Model) -> list[str]:
                     )
 
     # phases: auto_action names should be documented (warn if unknown)
-    _KNOWN_AUTO_ACTIONS = {
-        "hypothesis_autowrite",
-        "hypothesis_gc",  # retained for YAML compat (no-op in engine)
-        "plan_save",
-        "iteration_summary",
-        "iteration_advance",
-    }
+    known_actions = (
+        set(model.actions.keys())
+        if model.actions
+        else {
+            "plan_save",
+            "iteration_summary",
+            "iteration_advance",
+            "hypothesis_autowrite",
+            "hypothesis_gc",
+        }
+    )
     for phase_name, phase in model.phases.items():
         if phase.auto_actions:
             for action in phase.auto_actions.get("on_complete", []):
-                if action not in _KNOWN_AUTO_ACTIONS:
+                if action not in known_actions:
                     issues.append(
                         f"[phases.yaml] '{phase_name}.auto_actions': unknown action '{action}'. "
-                        f"Known: {', '.join(sorted(_KNOWN_AUTO_ACTIONS))}."
+                        f"Known: {', '.join(sorted(known_actions))}."
                     )
 
     # planning workflow: verify PLANNING::PLAN resolves distinctly (not silently to FULL::PLAN)

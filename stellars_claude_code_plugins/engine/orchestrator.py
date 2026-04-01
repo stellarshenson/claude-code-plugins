@@ -212,7 +212,7 @@ def _guardian_checklist() -> str:
     """
     for agent_list in _MODEL.agents.values():
         for agent in agent_list:
-            if agent.name == "guardian" and agent.checklist:
+            if agent.checklist:
                 return agent.checklist
     return ""
 
@@ -1020,7 +1020,8 @@ def _gatekeeper_evaluate_skip(
     instructions = instructions_fn() if instructions_fn else f"Phase {phase}"
     abbrev = instructions[:300].replace("\n", " ").strip()
 
-    gate_template = _MODEL.gates.get("gatekeeper_skip", None)
+    skip_gate_name = next(iter(_MODEL.skip_gate_types), "gatekeeper_skip")
+    gate_template = _MODEL.gates.get(skip_gate_name, None)
     prompt = (gate_template.prompt if gate_template else "").format_map(
         collections.defaultdict(
             str,
@@ -1056,7 +1057,16 @@ def _gatekeeper_evaluate_force_skip(
     iteration = state.get("iteration", "?")
     completed = state.get("completed_phases", [])
 
-    gate_template = _MODEL.gates.get("gatekeeper_force_skip", None)
+    # Use the second skip gate type (force variant) or fall back
+    skip_gates = sorted(_MODEL.skip_gate_types)
+    force_skip_name = (
+        skip_gates[1]
+        if len(skip_gates) > 1
+        else skip_gates[0]
+        if skip_gates
+        else "gatekeeper_force_skip"
+    )
+    gate_template = _MODEL.gates.get(force_skip_name, None)
     prompt = (gate_template.prompt if gate_template else "").format_map(
         collections.defaultdict(
             str,

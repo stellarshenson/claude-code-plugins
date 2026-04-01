@@ -98,7 +98,22 @@ orchestrate end --evidence "done" --agents "a,b,c" --output-file "path"
 
 The CLI guides you through each phase with full instructions, agent definitions, and exit criteria. Run `start` to see what to do, then `end` when done.
 
-**AUTONOMOUS EXECUTION**: Run ALL iterations and ALL phases continuously without pausing for user approval between phases or iterations. Move from one phase to the next immediately after `end` succeeds. Move from one iteration to the next immediately after NEXT completes. Do NOT ask "shall I continue?" or "ready for the next phase?" - just proceed. Only stop if: the user explicitly asked to pause, a gate FAILS and needs fixing, or all iterations are complete.
+**FULLY AUTONOMOUS EXECUTION - NO HUMAN IN THE LOOP**:
+
+The orchestrator eliminates the human as a bottleneck. The human's role is limited to:
+1. Writing the objective (PROGRAM.md)
+2. Defining the benchmark (BENCHMARK.md)
+3. Choosing workflow type and iteration count
+
+Everything else runs autonomously:
+- Move from phase to phase IMMEDIATELY after `end` succeeds. No pause. No questions.
+- Move from iteration to iteration IMMEDIATELY after NEXT completes. No pause.
+- Do NOT ask "shall I continue?", "ready for next phase?", "want to checkpoint?" - NEVER.
+- Do NOT summarize what you just did and wait for approval - just proceed to the next phase.
+- Do NOT offer choices between approaches mid-run - the PLAN phase already decided.
+- The ONLY reasons to stop: (1) user explicitly asked to pause, (2) a gate FAILS and needs fixing, (3) exit conditions met, (4) context limit reached (auto-compaction handles this).
+
+The quality gates (readback + gatekeeper) are the quality control mechanism - not human review. Trust the gates.
 
 | Type | Use when |
 |------|----------|
