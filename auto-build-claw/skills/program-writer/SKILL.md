@@ -1,0 +1,89 @@
+---
+name: program-writer
+description: Write a PROGRAM.md file defining objectives, work items, acceptance criteria, and exit conditions for auto-build-claw iterations. Use when user wants to define a structured improvement program before running the orchestrator. Invoked before workflow execution.
+---
+
+# Program Writer
+
+Write a `PROGRAM.md` that drives auto-build-claw iterations. The program defines WHAT to achieve, not HOW to break it into iterations - the orchestrator handles iteration planning.
+
+## When to Use
+
+Before running `orchestrate new`. The user describes what they want to improve, and this skill produces a structured PROGRAM.md that the orchestrator consumes via `--objective "Implement the program defined in PROGRAM.md (read PROGRAM.md)"`.
+
+## Structure
+
+PROGRAM.md has these sections:
+
+### 1. Objective (1-3 sentences)
+
+What the program aims to achieve. Concise, measurable, grounded.
+
+**Good**: "Migrate the custom FSM implementation to the transitions Python package while preserving the existing public API."
+**Bad**: "Make the code better and more modern."
+
+### 2. Baseline Metrics
+
+Current state numbers the benchmark will measure against. Table format:
+
+```markdown
+| Metric | Current | Target |
+|--------|---------|--------|
+| engine lines | 3113 | <2800 |
+| test count | 115 | >=100 |
+| functions >50L | 14 | 0 |
+```
+
+### 3. Work Items
+
+A flat list of concrete work items with acceptance criteria. NOT iterations - the orchestrator decides how to group work into iterations.
+
+Each work item has:
+- **Title** - what to do
+- **Scope** - files to modify, functions to change
+- **Acceptance criteria** - measurable conditions for done
+- **Priority** - high/medium/low
+
+```markdown
+- **Migrate FSM to transitions package** (high)
+  - Scope: engine/fsm.py, tests/test_fsm.py, pyproject.toml
+  - Acceptance: transitions.Machine wraps FSM, all tests pass, no orchestrator changes needed
+
+- **Remove hypothesis from planning workflow** (medium)
+  - Scope: workflow.yaml, phases.yaml, agents.yaml
+  - Acceptance: PLANNING workflow has no HYPOTHESIS phase, FULL still has it, validate passes
+```
+
+### 4. Exit Conditions
+
+When to stop iterating. Required when using `--iterations 0` (run until done).
+
+```markdown
+## Exit Conditions
+
+Iterations stop when ALL conditions are met:
+1. All work items have acceptance criteria met
+2. Benchmark score = 0
+3. make test passes with 0 failures
+4. make lint passes clean
+```
+
+### 5. Constraints (optional)
+
+What NOT to change. Files that are off-limits. Behaviors to preserve.
+
+## Best Practices (from Karpathy autoresearch)
+
+- **Single metric to optimize** - the benchmark produces ONE number. Lower or higher is better. No ambiguity
+- **Fixed evaluation** - the metric computation doesn't change between iterations. Only the code under test changes
+- **Simplicity criterion** - all else being equal, simpler is better. Removing code for same results = win
+- **Fair comparison** - every iteration runs the same evaluation, making results directly comparable
+- **Concise program** - the program fits on one screen. Dense, specific, no fluff
+- **Scope boundaries** - explicitly state what CAN and CANNOT be modified
+
+## What NOT to Include
+
+- Iteration breakdown (orchestrator handles this in PLANNING phase)
+- Implementation details (RESEARCH and PLAN phases handle this)
+- Timeline estimates
+- Agent assignments
