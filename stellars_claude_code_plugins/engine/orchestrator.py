@@ -18,23 +18,28 @@ import collections
 from datetime import datetime, timezone
 import os
 from pathlib import Path
-import re
 import subprocess
 import sys
 
 import yaml
 
-from stellars_claude_code_plugins.engine.model import (
-    load_model,
-    validate_model,
-    _resolve_key,
-    _KNOWN_VARS as _KNOWN_TEMPLATE_VARS,
+from stellars_claude_code_plugins.engine.fsm import (
+    Event as FSMEvent,
 )
 from stellars_claude_code_plugins.engine.fsm import (
-    resolve_phase_key,
-    build_phase_lifecycle_fsm,
     State as FSMState,
-    Event as FSMEvent,
+)
+from stellars_claude_code_plugins.engine.fsm import (
+    build_phase_lifecycle_fsm,
+    resolve_phase_key,
+)
+from stellars_claude_code_plugins.engine.model import (
+    _KNOWN_VARS as _KNOWN_TEMPLATE_VARS,
+)
+from stellars_claude_code_plugins.engine.model import (
+    _resolve_key,
+    load_model,
+    validate_model,
 )
 
 # ── Module-level state (set by _initialize) ────────────────────────

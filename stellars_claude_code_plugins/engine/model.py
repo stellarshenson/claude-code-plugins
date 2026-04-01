@@ -1,9 +1,9 @@
 """Typed object model for auto-build-claw. Loads from 4 YAML resource files."""
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
+import re
 from typing import Optional
 
 import yaml
@@ -242,7 +242,6 @@ def validate_model(model: Model) -> list[str]:
     """Return list of issues found in the model. Empty list = valid."""
     issues: list[str] = []
     known_phases = set(model.phases.keys())
-    known_agents = set(model.agents.keys())
 
     # workflow_types: required fields and phase names resolve (namespaced or bare)
     for wf_name, wf in model.workflow_types.items():

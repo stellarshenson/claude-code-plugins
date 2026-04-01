@@ -200,6 +200,26 @@ orchestrate new --type full \
 
 `--iterations 0` means: keep iterating until the benchmark score reaches 0.
 
+## Workstream F - TEST Phase Benchmark Enforcement
+
+The TEST phase must ensure that when a benchmark is configured, it is always evaluated and the score tracking table in BENCHMARK.md is updated.
+
+### Behavior
+
+- When `--benchmark` is set, the TEST phase gatekeeper must verify that:
+  1. The benchmark was evaluated (checklist items marked [x] or [ ])
+  2. The Score Tracking table at the bottom of BENCHMARK.md was updated with the current iteration's results
+  3. The composite score was computed using the formula
+- The gatekeeper should FAIL if benchmark is configured but tracker was not updated
+- `_verify_test_phase()` should remind the orchestrating agent to update the tracker
+- The BENCHMARK.md score tracking table must always reflect the latest evaluation
+
+### Files to Modify
+
+- `stellars_claude_code_plugins/engine/orchestrator.py` - update `_verify_test_phase()` to include benchmark tracker update reminder in output
+- `auto-build-claw/skills/auto-build-claw/resources/phases.yaml` - update FULL::TEST end template to require benchmark tracker update
+- `auto-build-claw/skills/auto-build-claw/resources/agents.yaml` - update TEST gatekeeper to verify tracker was updated
+
 ## Workstream E - Code Justifications Document
 
 Create and maintain `CODE_JUSTIFICATIONS.md` in the project root. Every function, class, and test must have an entry defending its existence.
