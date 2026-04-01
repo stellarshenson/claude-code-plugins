@@ -268,6 +268,72 @@ def _build_agent_instructions(phase: str, ctx: dict | None = None) -> str:
 # ── Build context for template rendering ────────────────────────────
 
 
+def _build_failures_context() -> str:
+    """Build prior failures context string from failures.yaml."""
+    all_failures = _load_yaml_list(FAILURES_FILE)
+    if not all_failures:
+        return ""
+    prior_context = f"\n**Prior failures** ({len(all_failures)} total):\n"
+    for f in all_failures[-5:]:
+        prior_context += (
+            f"  - [{f.get('mode', '?')}] "
+            f"(iter {f.get('iteration', '?')}) "
+            f"{f.get('description', '?')}\n"
+        )
+    return prior_context
+
+
+def _build_plan_context(state: dict) -> str:
+    """Build iteration plan context string from state."""
+    iteration_plan = state.get("iteration_plan", "")
+    iteration = state.get("iteration", 1)
+    if iteration_plan and iteration > 0:
+        return f"\n**Iteration plan** (from planning iteration 0):\n{iteration_plan[:300]}\n"
+    return ""
+
+
+def _build_benchmark_context(state: dict) -> str:
+    """Build benchmark info string from state."""
+    benchmark_cmd = state.get("benchmark_cmd", "")
+    if not benchmark_cmd:
+        return ""
+    scores = state.get("benchmark_scores", [])
+    if scores:
+        last = scores[-1]["score"]
+        return f"""
+**Benchmark**: `{benchmark_cmd}` (last score: {last})
+The benchmark runs automatically after tests pass. Score is tracked across
+iterations - lower is better. The trend is shown in the output."""
+    return f"""
+**Benchmark**: `{benchmark_cmd}` (no prior score - first run)
+The benchmark runs automatically after tests pass. It must output a numeric
+value. This score will be tracked across iterations - lower is better."""
+
+
+def _build_spawn_instruction(agent_phase_key: str) -> tuple[str, str]:
+    """Build spawn_instruction and spawn_instruction_plan from agent count.
+
+    Returns (spawn_instruction, spawn_instruction_plan).
+    """
+    _NUM_WORDS = {1: "ONE", 2: "TWO", 3: "THREE", 4: "FOUR", 5: "FIVE", 6: "SIX"}
+    agent_count = len(_MODEL.agents.get(agent_phase_key, []))
+    spawn_mode = "PARALLEL"  # all agents spawn in parallel
+    if agent_count > 0:
+        word = _NUM_WORDS.get(agent_count, str(agent_count))
+        spawn_instruction = (
+            f"**MANDATORY: Spawn {word} SEPARATE agents IN {spawn_mode}** "
+            f"(single message, {word} Agent tool calls)."
+        )
+        spawn_instruction_plan = (
+            f"**MANDATORY: Spawn {word} SEPARATE agents IN {spawn_mode} "
+            f"to review the plan** (single message, {word} Agent tool calls)."
+        )
+    else:
+        spawn_instruction = ""
+        spawn_instruction_plan = ""
+    return spawn_instruction, spawn_instruction_plan
+
+
 def _build_context(state: dict | None = None, phase: str = "", event: str = "") -> dict:
     """Compute all template variables from state for phase rendering.
 
@@ -284,47 +350,15 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
     """
     s = state or {}
 
-    # Prior failures context
-    prior_context = ""
-    all_failures = _load_yaml_list(FAILURES_FILE)
-    if all_failures:
-        prior_context = f"\n**Prior failures** ({len(all_failures)} total):\n"
-        for f in all_failures[-5:]:
-            prior_context += (
-                f"  - [{f.get('mode', '?')}] "
-                f"(iter {f.get('iteration', '?')}) "
-                f"{f.get('description', '?')}\n"
-            )
-
-    # Plan context from iteration 0
-    plan_context = ""
-    iteration_plan = s.get("iteration_plan", "")
-    iteration = s.get("iteration", 1)
-    if iteration_plan and iteration > 0:
-        plan_context = (
-            f"\n**Iteration plan** (from planning iteration 0):\n{iteration_plan[:300]}\n"
-        )
-
-    # Benchmark info
-    benchmark_info = ""
-    benchmark_cmd = s.get("benchmark_cmd", "")
-    if benchmark_cmd:
-        scores = s.get("benchmark_scores", [])
-        if scores:
-            last = scores[-1]["score"]
-            benchmark_info = f"""
-**Benchmark**: `{benchmark_cmd}` (last score: {last})
-The benchmark runs automatically after tests pass. Score is tracked across
-iterations - lower is better. The trend is shown in the output."""
-        else:
-            benchmark_info = f"""
-**Benchmark**: `{benchmark_cmd}` (no prior score - first run)
-The benchmark runs automatically after tests pass. It must output a numeric
-value. This score will be tracked across iterations - lower is better."""
+    prior_context = _build_failures_context()
+    plan_context = _build_plan_context(s)
+    benchmark_info = _build_benchmark_context(s)
 
     # Iteration purpose - explains what this iteration is about
+    iteration = s.get("iteration", 1)
     total_iters = s.get("total_iterations", 1)
     itype = s.get("type", "full")
+    iteration_plan = s.get("iteration_plan", "")
     wf_def = _MODEL.workflow_types.get(itype)
     if wf_def and not wf_def.independent:
         iteration_purpose = "\n" + _msg(
@@ -353,28 +387,10 @@ value. This score will be tracked across iterations - lower is better."""
     agent_phase_key = _resolve_agents(phase or s.get("current_phase", ""))
     ctx["agents_instructions"] = _build_agent_instructions(agent_phase_key, ctx)
 
-    # Spawn instruction - derived from agent count
-    _NUM_WORDS = {1: "ONE", 2: "TWO", 3: "THREE", 4: "FOUR", 5: "FIVE", 6: "SIX"}
-    agent_count = len(_MODEL.agents.get(agent_phase_key, []))
-    spawn_mode = "PARALLEL"  # all agents spawn in parallel
-    if agent_count > 0:
-        word = _NUM_WORDS.get(agent_count, str(agent_count))
-        ctx["spawn_instruction"] = (
-            f"**MANDATORY: Spawn {word} SEPARATE agents IN {spawn_mode}** "
-            f"(single message, {word} Agent tool calls)."
-        )
-    else:
-        ctx["spawn_instruction"] = ""
-
-    # PLAN end variant with "to review the plan" suffix
-    if agent_count > 0:
-        word = _NUM_WORDS.get(agent_count, str(agent_count))
-        ctx["spawn_instruction_plan"] = (
-            f"**MANDATORY: Spawn {word} SEPARATE agents IN {spawn_mode} "
-            f"to review the plan** (single message, {word} Agent tool calls)."
-        )
-    else:
-        ctx["spawn_instruction_plan"] = ""
+    # Spawn instructions - derived from agent count
+    spawn, spawn_plan = _build_spawn_instruction(agent_phase_key)
+    ctx["spawn_instruction"] = spawn
+    ctx["spawn_instruction_plan"] = spawn_plan
 
     return ctx
 
@@ -1473,27 +1489,12 @@ def cmd_start(args) -> None:
     print(header + body + foot)
 
 
-def cmd_end(args) -> None:
-    """Complete current phase with gatekeeper validation.
+def _validate_end_inputs(args, phase: str, state: dict) -> tuple:
+    """Parse and validate cmd_end inputs: evidence, agents, output file.
 
-    Validates --agents against required agents from agents.yaml,
-    records output file content, runs TEST automation if in TEST phase,
-    runs gatekeeper gate for quality validation, then advances to
-    next phase. Auto-actions: summary after RECORD, inline NEXT
-    display after RECORD.
+    Returns (evidence, agents, output_file_path, output_content).
+    Exits with error if validation fails.
     """
-    state = _load_state()
-    if not state:
-        print(_msg("no_active"), file=sys.stderr)
-        sys.exit(1)
-
-    phase = state["current_phase"]
-    if state["phase_status"] != "in_progress":
-        print(_msg("phase_not_started", phase=phase), file=sys.stderr)
-        print(_msg("phase_not_started_cmd", cmd=CMD), file=sys.stderr)
-        sys.exit(1)
-
-    # ── Fail-fast: validate ALL inputs at top ──
     evidence = getattr(args, "evidence", "") or ""
     agents_str = getattr(args, "agents", "") or ""
     output_file_str = getattr(args, "output_file", "") or ""
@@ -1525,13 +1526,16 @@ def cmd_end(args) -> None:
         print(_msg("requires_agents_provide", required=",".join(required_agents)), file=sys.stderr)
         sys.exit(1)
 
-    # ── Record agents BEFORE gatekeeper (so gatekeeper sees them) ──
+    return evidence, agents, output_file_path, output_content
+
+
+def _record_phase_outputs(state: dict, phase: str, agents: list, output_file_path, output_content: str, evidence: str) -> None:
+    """Record agents and output file content into state, then save."""
     if agents:
         if "phase_agents" not in state:
             state["phase_agents"] = {}
         state["phase_agents"][phase] = agents
 
-    # ── Record output-file (OVERWRITE phase_outputs) ──
     if output_file_path:
         if "phase_outputs" not in state:
             state["phase_outputs"] = {}
@@ -1565,55 +1569,44 @@ def cmd_end(args) -> None:
 
     _save_state(state)
 
-    header = _banner(phase, "COMPLETING", state)
 
-    # ── TEST phase: run automated verification ──
-    if phase == "TEST":
-        print(header)
-        body = _PHASE_END.get(phase, lambda: "")()
-        print(body)
+def _handle_test_failure(state: dict, phase: str, output: str) -> None:
+    """Handle TEST phase auto-reject: FSM transitions, log failure, print messages."""
+    target = _prev_implementable(state)
+    _fire_fsm(FSMEvent.END, state)      # in_progress -> gatekeeper
+    _fire_fsm(FSMEvent.GATE_FAIL, state) # gatekeeper -> in_progress
+    _fire_fsm(FSMEvent.REJECT, state)    # in_progress -> rejected
+    _fire_fsm(FSMEvent.ADVANCE, state)   # rejected -> pending
+    state["current_phase"] = target
+    state["rejected_count"] = state.get("rejected_count", 0) + 1
+    state.pop("phase_started_at", None)
+    _save_state(state)
+    _append_log(
+        {
+            "iteration": state["iteration"],
+            "phase": phase,
+            "event": "auto_reject",
+            "reason": "tests/lint failed",
+            "target": target,
+        }
+    )
+    _append_failure(
+        {
+            "iteration": state["iteration"],
+            "phase": phase,
+            "mode": "FM-TEST-FAIL",
+            "description": output[:200],
+        }
+    )
+    print("\n" + _msg("tests_fail", target=target))
+    print(_msg("tests_fail_run", cmd=CMD))
 
-        passed, output = _verify_test_phase(state)
-        print(output)
 
-        if not passed:
-            target = _prev_implementable(state)
-            _fire_fsm(FSMEvent.END, state)      # in_progress -> gatekeeper
-            _fire_fsm(FSMEvent.GATE_FAIL, state) # gatekeeper -> in_progress
-            _fire_fsm(FSMEvent.REJECT, state)    # in_progress -> rejected
-            _fire_fsm(FSMEvent.ADVANCE, state)   # rejected -> pending
-            state["current_phase"] = target
-            state["rejected_count"] = state.get("rejected_count", 0) + 1
-            state.pop("phase_started_at", None)
-            _save_state(state)
-            _append_log(
-                {
-                    "iteration": state["iteration"],
-                    "phase": phase,
-                    "event": "auto_reject",
-                    "reason": "tests/lint failed",
-                    "target": target,
-                }
-            )
-            _append_failure(
-                {
-                    "iteration": state["iteration"],
-                    "phase": phase,
-                    "mode": "FM-TEST-FAIL",
-                    "description": output[:200],
-                }
-            )
-            print("\n" + _msg("tests_fail", target=target))
-            print(_msg("tests_fail_run", cmd=CMD))
-            return
+def _run_end_gatekeeper(phase: str, state: dict, evidence: str) -> tuple[bool, str]:
+    """Fire FSM END event, run gatekeeper validation, save artifact, handle pass/fail.
 
-        print("\n" + _msg("tests_pass"))
-
-    else:
-        body = _PHASE_END.get(phase, lambda: "")()
-        print(header + body)
-
-    # ── Gatekeeper: per-phase generative validation ──
+    Returns (gk_passed, gk_output). On failure, prints messages and saves state.
+    """
     _fire_fsm(FSMEvent.END, state)  # in_progress -> gatekeeper
     print("\n" + _msg("gatekeeper_separator"))
     print(_msg("gatekeeper_evaluating", phase=phase))
@@ -1657,12 +1650,15 @@ def cmd_end(args) -> None:
         print("\n" + _msg("gatekeeper_fail", phase=phase))
         print(_msg("gatekeeper_fail_reason", reason=gk_output[:300]))
         print("\n" + _msg("gatekeeper_fail_retry", cmd=CMD))
-        return
 
+    return gk_passed, gk_output
+
+
+def _advance_phase(state: dict, phase: str) -> None:
+    """Mark phase complete, advance FSM to next phase or iteration_complete."""
     _fire_fsm(FSMEvent.GATE_PASS, state)  # gatekeeper -> complete
     print(_msg("gatekeeper_pass", phase=phase))
 
-    # Mark phase complete and advance
     state["completed_phases"].append(phase)
     started_at = state.get("phase_started_at", "")
 
@@ -1684,7 +1680,9 @@ def cmd_end(args) -> None:
         }
     )
 
-    # Phase-end executive summary
+
+def _print_phase_summary(state: dict, phase: str) -> None:
+    """Print executive summary of completed phase."""
     outputs = state.get("phase_outputs", {})
     agents_map = state.get("phase_agents", {})
     readbacks = state.get("readbacks", {})
@@ -1702,6 +1700,59 @@ def cmd_end(args) -> None:
         gk = gatekeepers[phase]
         summary_lines.append(_msg("phase_gatekeeper", status="PASS" if gk.get("passed") else "FAIL"))
     print("\n".join(summary_lines))
+
+
+def cmd_end(args) -> None:
+    """Complete current phase with gatekeeper validation.
+
+    Validates --agents against required agents from agents.yaml,
+    records output file content, runs TEST automation if in TEST phase,
+    runs gatekeeper gate for quality validation, then advances to
+    next phase. Auto-actions: summary after RECORD, inline NEXT
+    display after RECORD.
+    """
+    state = _load_state()
+    if not state:
+        print(_msg("no_active"), file=sys.stderr)
+        sys.exit(1)
+
+    phase = state["current_phase"]
+    if state["phase_status"] != "in_progress":
+        print(_msg("phase_not_started", phase=phase), file=sys.stderr)
+        print(_msg("phase_not_started_cmd", cmd=CMD), file=sys.stderr)
+        sys.exit(1)
+
+    evidence, agents, output_file_path, output_content = _validate_end_inputs(args, phase, state)
+    _record_phase_outputs(state, phase, agents, output_file_path, output_content, evidence)
+
+    header = _banner(phase, "COMPLETING", state)
+
+    # ── TEST phase: run automated verification ──
+    if phase == "TEST":
+        print(header)
+        body = _PHASE_END.get(phase, lambda: "")()
+        print(body)
+
+        passed, output = _verify_test_phase(state)
+        print(output)
+
+        if not passed:
+            _handle_test_failure(state, phase, output)
+            return
+
+        print("\n" + _msg("tests_pass"))
+
+    else:
+        body = _PHASE_END.get(phase, lambda: "")()
+        print(header + body)
+
+    # ── Gatekeeper: per-phase generative validation ──
+    gk_passed, _gk_output = _run_end_gatekeeper(phase, state, evidence)
+    if not gk_passed:
+        return
+
+    _advance_phase(state, phase)
+    _print_phase_summary(state, phase)
 
     # ── Auto-actions from phases.yaml auto_actions.on_complete ──
     if _run_auto_actions(phase, state):
@@ -2170,29 +2221,8 @@ def cmd_add_iteration(args) -> None:
 # ── Main ─────────────────────────────────────────────────────────────
 
 
-def main(resources_dir: Path | None = None):
-    """CLI entry point. Parses arguments and dispatches to command handlers.
-
-    Args:
-        resources_dir: Path to YAML resource files directory. If None,
-            checks --resources-dir CLI argument, then falls back to
-            a 'resources' subdirectory next to this file.
-    """
-    # Resolve resources_dir: explicit arg > CLI --resources-dir > default
-    if resources_dir is None:
-        # Pre-parse --resources-dir before full argparse (it needs _initialize first)
-        for i, arg in enumerate(sys.argv[1:]):
-            if arg == "--resources-dir" and i + 1 < len(sys.argv) - 1:
-                resources_dir = Path(sys.argv[i + 2])
-                break
-            if arg.startswith("--resources-dir="):
-                resources_dir = Path(arg.split("=", 1)[1])
-                break
-    if resources_dir is None:
-        resources_dir = Path(__file__).parent / "resources"
-
-    _initialize(resources_dir)
-
+def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
+    """Build the argparse parser with all subcommands and arguments."""
     parser = argparse.ArgumentParser(
         description=_cli("description", ""),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -2263,6 +2293,33 @@ def main(resources_dir: Path | None = None):
     # ── validate ──
     sub.add_parser("validate", help="Validate YAML resources against the model schema")
 
+    return parser
+
+
+def main(resources_dir: Path | None = None):
+    """CLI entry point. Parses arguments and dispatches to command handlers.
+
+    Args:
+        resources_dir: Path to YAML resource files directory. If None,
+            checks --resources-dir CLI argument, then falls back to
+            a 'resources' subdirectory next to this file.
+    """
+    # Resolve resources_dir: explicit arg > CLI --resources-dir > default
+    if resources_dir is None:
+        # Pre-parse --resources-dir before full argparse (it needs _initialize first)
+        for i, arg in enumerate(sys.argv[1:]):
+            if arg == "--resources-dir" and i + 1 < len(sys.argv) - 1:
+                resources_dir = Path(sys.argv[i + 2])
+                break
+            if arg.startswith("--resources-dir="):
+                resources_dir = Path(arg.split("=", 1)[1])
+                break
+    if resources_dir is None:
+        resources_dir = Path(__file__).parent / "resources"
+
+    _initialize(resources_dir)
+
+    parser = _build_cli_parser(resources_dir)
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
