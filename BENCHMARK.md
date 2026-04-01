@@ -5,10 +5,10 @@
 This benchmark is evaluated generatively. Read each checklist item below, verify it against the current codebase, and mark `[x]` for passing items. Add new `[ ]` items if you discover additional violations during evaluation. The benchmark score is:
 
 ```
-score = unchecked_items + failed_tests + (functions_over_complexity_10 * 2)
+score = unchecked_items + failed_tests + (functions_over_complexity_10 * 2) + (unjustified_components * 3)
 ```
 
-Lower is better. Target: 0.
+Lower is better. Target: 0. Unjustified components carry heavy weight (3x) because dead code is technical debt that compounds.
 
 ### Evaluation Steps
 
@@ -81,7 +81,9 @@ Lower is better. Target: 0.
 - [ ] No function has cyclomatic complexity > 10
 - [ ] Functions exceeding limits have been refactored or justified with comment
 
-### Dead Code
+### Dead Code and Justification
+
+Every function and class must defend its existence. Run tree-sitter to list all functions and classes, then for each one verify it is: (a) called by another function or exported, AND (b) serves a distinct purpose not duplicated elsewhere. Components that fail this test are **unjustified** and must be removed or merged. Count of unjustified components inflates the benchmark score.
 
 - [ ] No unreachable code paths detected
 - [ ] No unused imports in engine/fsm.py
@@ -89,6 +91,13 @@ Lower is better. Target: 0.
 - [ ] No unused imports in engine/orchestrator.py
 - [ ] No unused functions (every function called or exported)
 - [ ] No duplicate or near-duplicate code blocks (>10 lines similar)
+- [ ] Every function in fsm.py has a caller or is exported in __init__.py
+- [ ] Every function in model.py has a caller or is exported in __init__.py
+- [ ] Every function in orchestrator.py has a caller or is registered in a dispatch dict
+- [ ] Every dataclass in model.py is instantiated by load_model or used in type annotations
+- [ ] No wrapper functions that just forward to another function without adding logic
+- [ ] No utility functions used only once (inline them)
+- [ ] Unjustified component count = 0
 
 ### Size Reduction
 

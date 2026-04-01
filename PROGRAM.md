@@ -106,6 +106,17 @@ Run tree-sitter-python parsing on all engine modules:
 - **Unreachable code** - dead branches, unused return paths
 - **Unused imports** - imports not referenced in the module
 - **Duplicate code** - near-identical blocks that could be consolidated
+- **Unjustified components** - functions or classes that have no caller, serve no distinct purpose, or duplicate another component's responsibility
+
+### Justification Audit
+
+Every function and class must defend its existence. Use tree-sitter to enumerate all functions and classes across engine modules, then for each one verify:
+
+1. **It has a caller** - another function calls it, or it's exported in `__init__.py`, or it's registered in a dispatch dict (CLI commands, auto-actions)
+2. **It serves a distinct purpose** - it does something no other function does
+3. **It earns its weight** - wrapper functions that just forward to another function without adding logic should be inlined. Utility functions used only once should be inlined at the call site
+
+Components that fail any test are **unjustified** and must be removed or merged. Unjustified components carry 3x weight in the benchmark score because dead code compounds as technical debt.
 
 ### Quality Targets
 
@@ -113,6 +124,7 @@ Run tree-sitter-python parsing on all engine modules:
 - No function has cyclomatic complexity > 10
 - No unreachable code detected
 - No unused imports
+- Zero unjustified components
 - Total engine lines reduced from 3113 baseline
 - All tests still passing after removals
 
