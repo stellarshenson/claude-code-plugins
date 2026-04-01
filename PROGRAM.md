@@ -115,6 +115,14 @@ actions:
 - Score formula should penalize: hardcoded gate names, hardcoded agent names, hardcoded phase names
 - Acceptance: benchmark explicitly tracks overfit count
 
+### Add agents to on_start/on_end gate sections (high)
+- Scope: agents.yaml, engine/model.py
+- Currently agents are defined at the phase level alongside gates. But the `on_start` and `on_end` sections only contain gate prompts, no agent definitions
+- Move agents into the lifecycle sections to keep format consistent: `on_start:` has agents spawned at phase entry (currently just readback gate), `on_end:` has agents spawned at phase completion (review agents + gatekeeper gate)
+- This makes it explicit which agents run at which lifecycle point
+- The orchestrator already knows agents are spawned at end (via agent_instructions in phases.yaml) - this makes it structural
+- Acceptance: agents.yaml has agents under on_start or on_end per phase, model loads them correctly
+
 ### Update tests (high)
 - Scope: tests/test_model.py, tests/test_orchestrator.py
 - Tests must verify new YAML gate structure loads correctly

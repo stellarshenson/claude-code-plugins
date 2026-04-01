@@ -5,10 +5,11 @@
 **Direction**: MINIMIZE (target: 0)
 
 ```
-score = unchecked_items + failed_tests + (hardcoded_overfit * 2)
+score = unchecked_items + failed_tests + (hardcoded_overfit * 2) + consistency_residual
 ```
 
-`hardcoded_overfit` = count of gate/agent/phase names hardcoded in orchestrator.py that should come from YAML. Each carries 2x penalty.
+- `hardcoded_overfit` = count of gate/agent/phase names hardcoded in orchestrator.py (2x penalty)
+- `consistency_residual` = 10 - YAML model consistency grade (Section 5)
 
 ## Evaluation
 
@@ -30,10 +31,10 @@ score = unchecked_items + failed_tests + (hardcoded_overfit * 2)
 - [x] agents.yaml has `on_skip:` section for gatekeeper_skip and gatekeeper_force_skip
 - [x] Gate-to-lifecycle mapping is declared in YAML (on_start/on_end/on_skip)
 - [x] model.py loads start/end/skip gates from YAML lifecycle subsections
-- [ ] orchestrator.py _resolve_gate reads lifecycle point from model, not from gate name -- still hardcodes "readback" at L891 and "gatekeeper" at L929
-- [ ] cmd_start uses start gate from model (not hardcoded "readback") -- _readback_validate still calls _resolve_gate(phase, "readback")
-- [ ] cmd_end uses end gate from model (not hardcoded "gatekeeper") -- _gatekeeper_validate still calls _resolve_gate(phase, "gatekeeper")
-- [ ] cmd_skip uses skip gate from model (not hardcoded "gatekeeper_skip"/"gatekeeper_force_skip") -- still uses _MODEL.gates.get("gatekeeper_skip")
+- [x] orchestrator.py _resolve_lifecycle_gate reads gate type from model metadata
+- [x] cmd_start uses start gate from model via _resolve_lifecycle_gate(phase, "start")
+- [x] cmd_end uses end gate from model via _resolve_lifecycle_gate(phase, "end")
+- [x] cmd_skip uses skip gate from model via skip_gate_types metadata
 - [x] `orchestrate validate` passes with new gate structure
 - [x] All existing gate prompts preserved (no behavior change)
 
@@ -53,17 +54,24 @@ score = unchecked_items + failed_tests + (hardcoded_overfit * 2)
 - [x] orchestrator.py dispatches programmatic actions via Python handler (existing behavior)
 - [ ] validate_model checks action definitions match phases.yaml references
 
+## Section 1b: Agents in Gate Sections
+
+- [ ] agents.yaml has agents under on_start or on_end per phase (not flat at phase level)
+- [ ] model.py loads agents from lifecycle sections correctly
+- [ ] Orchestrator resolves agents for start vs end lifecycle points separately
+- [ ] Tests verify agent loading from on_start/on_end sections
+
 ## Section 2b: Overfit - Hardcoded Values
 
 Every gate/agent/phase name hardcoded in orchestrator.py that should come from YAML is an overfit violation (2x penalty).
 
-- [ ] No hardcoded "readback" in _resolve_gate or _readback_validate (should discover from on_start)
-- [ ] No hardcoded "gatekeeper" in _resolve_gate or _gatekeeper_validate (should discover from on_end)
-- [ ] No hardcoded "gatekeeper_skip" in _gatekeeper_evaluate_skip (should discover from on_skip)
-- [ ] No hardcoded "gatekeeper_force_skip" in _gatekeeper_evaluate_force_skip (should discover from on_skip)
-- [ ] No hardcoded "IMPLEMENT" in _prev_implementable (should be configurable per workflow)
-- [ ] No hardcoded "TEST" phase check in cmd_end (should check phase property not name)
-- [ ] No hardcoded "NEXT" phase check in _action_iteration_summary (should check phase property)
+- [x] No hardcoded "readback" in gate resolution (uses _resolve_lifecycle_gate)
+- [x] No hardcoded "gatekeeper" in gate resolution (uses _resolve_lifecycle_gate)
+- [x] No hardcoded "gatekeeper_skip" in skip evaluation (uses skip_gate_types)
+- [x] No hardcoded "gatekeeper_force_skip" in skip evaluation (uses skip_gate_types)
+- [x] No hardcoded "IMPLEMENT" in _prev_implementable (uses reject_to)
+- [x] No hardcoded "TEST" phase check in cmd_end (uses phase_obj.auto_verify)
+- [x] No hardcoded "NEXT" phase check (uses phase_obj.start_continue)
 
 ## Section 2c: Agent Name Integrity
 
@@ -73,8 +81,8 @@ Every gate/agent/phase name hardcoded in orchestrator.py that should come from Y
 
 ## Section 3: Cleanup
 
-- [ ] No hardcoded gate type names ("readback", "gatekeeper") in orchestrator.py logic -- 4 occurrences remain in _resolve_gate calls
-- [ ] No dead hypothesis_autowrite/hypothesis_gc entries in _KNOWN_AUTO_ACTIONS -- still present with compat comment
+- [x] No hardcoded gate type names in orchestrator.py logic (uses model metadata)
+- [x] No dead _KNOWN_AUTO_ACTIONS (validates against model.actions.keys())
 - [x] All action names in phases.yaml have matching definitions in actions YAML
 
 ## Section 4: Tests
@@ -88,6 +96,23 @@ Every gate/agent/phase name hardcoded in orchestrator.py that should come from Y
 - [x] All existing tests still pass
 - [x] `make test` passes with 0 failures (121 tests)
 - [x] `make lint` passes clean
+
+## Section 5: YAML Model Consistency (0-10 scale)
+
+Grade the YAML model design consistency from 0 (completely inconsistent) to 10 (perfectly consistent). Residuals (10 - grade) add to the benchmark score.
+
+Consistency rules:
+- Every phase section follows the same structure (agents under lifecycle, gates under lifecycle)
+- Every gate has the same fields (prompt required, mode optional)
+- Every agent has the same fields (name, display_name, prompt required)
+- Gate lifecycle sections (on_start, on_end, on_skip) are used uniformly
+- Action definitions all have type and description
+- No mixed patterns (some phases flat, some nested)
+- Shared gates and phase-specific gates use consistent key formats
+- Template variables are documented and validated
+
+Current grade: [ ] /10 (evaluate and fill in)
+Residual added to score: [ ] (10 - grade)
 
 ## Completion Conditions
 
@@ -107,3 +132,4 @@ Iterations stop when ALL conditions are met:
 | baseline  | -    | 34    | 0            | 34              | before any work |
 | iter 1    | 2026-04-01 | 9 | 0 | 9 | YAML restructure done, model loads on_start/on_end/on_skip, actions defined, 6 new tests |
 | iter 1 test | 2026-04-01 | 52 | 0 | 22 + 15 overfit*2 | added overfit + agent integrity sections, score jumps due to new requirements |
+| iter 2      | 2026-04-01 | 13+R | 0 | 13 + consistency residual | overfit eliminated, added agents-in-gates + consistency sections |
