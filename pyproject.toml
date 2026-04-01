@@ -38,6 +38,9 @@ orchestrate = "stellars_claude_code_plugins.engine.orchestrator:main"
 [tool.setuptools]
 include-package-data = true
 
+[tool.setuptools.package-data]
+"stellars_claude_code_plugins.engine" = ["resources/*.yaml"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["stellars_claude_code_plugins*"]

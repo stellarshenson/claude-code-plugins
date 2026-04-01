@@ -18,6 +18,7 @@ import collections
 from datetime import datetime, timezone
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -812,22 +813,26 @@ def _read_last_iteration(artifacts_dir: Path | None = None) -> int:
     return 0
 
 
+_CLEAN_PRESERVE = {"context.yaml"}  # files preserved across clean
+_CLEAN_PRESERVE_DIRS = {"resources"}  # directories preserved across clean
+
+
 def _clean_artifacts_dir(artifacts_dir: Path | None = None) -> None:
     """Clean artifacts directory for fresh run.
 
-    Preserves context.yaml across clean operations.
+    Preserves context.yaml and resources/ across clean operations.
+    Project-local resources contain user customizations that must survive.
     """
     d = artifacts_dir or DEFAULT_ARTIFACTS_DIR
     if d.exists():
         for f in d.iterdir():
             if f.is_file():
-                # Preserve context files across clean
-                if f.name == "context.yaml":
+                if f.name in _CLEAN_PRESERVE:
                     continue
                 f.unlink()
             elif f.is_dir():
-                import shutil
-
+                if f.name in _CLEAN_PRESERVE_DIRS:
+                    continue
                 shutil.rmtree(f)
     d.mkdir(parents=True, exist_ok=True)
 
@@ -2505,15 +2510,35 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     return parser
 
 
+_BUNDLED_RESOURCES = Path(__file__).parent / "resources"
+_RESOURCE_FILES = ("workflow.yaml", "phases.yaml", "app.yaml")
+
+
+def _ensure_project_resources(project_resources: Path) -> Path:
+    """Ensure project-local resources exist, copying defaults from module if needed.
+
+    Returns the project resources directory path. If any YAML file is missing,
+    copies the default from the module's bundled resources.
+    """
+    project_resources.mkdir(parents=True, exist_ok=True)
+    for fname in _RESOURCE_FILES:
+        dest = project_resources / fname
+        if not dest.exists():
+            src = _BUNDLED_RESOURCES / fname
+            if src.exists():
+                shutil.copy2(src, dest)
+    return project_resources
+
+
 def main(resources_dir: Path | None = None):
     """CLI entry point. Parses arguments and dispatches to command handlers.
 
     Args:
         resources_dir: Path to YAML resource files directory. If None,
-            checks --resources-dir CLI argument, then falls back to
-            a 'resources' subdirectory next to this file.
+            uses resolution chain: --resources-dir CLI arg > project-local
+            resources > bundled module resources.
     """
-    # Resolve resources_dir: explicit arg > CLI --resources-dir > default
+    # Resolve resources_dir: explicit arg > CLI --resources-dir > project-local > bundled
     if resources_dir is None:
         # Pre-parse --resources-dir before full argparse (it needs _initialize first)
         for i, arg in enumerate(sys.argv[1:]):
@@ -2524,7 +2549,14 @@ def main(resources_dir: Path | None = None):
                 resources_dir = Path(arg.split("=", 1)[1])
                 break
     if resources_dir is None:
-        resources_dir = Path(__file__).parent / "resources"
+        # Try project-local resources first, copy defaults if missing
+        project_resources = PROJECT_ROOT / ".auto-build-claw" / "resources"
+        if _BUNDLED_RESOURCES.exists():
+            resources_dir = _ensure_project_resources(project_resources)
+        elif project_resources.exists():
+            resources_dir = project_resources
+        else:
+            resources_dir = _BUNDLED_RESOURCES
 
     _initialize(resources_dir)
 

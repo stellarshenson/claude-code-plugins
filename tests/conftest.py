@@ -7,8 +7,8 @@ import pytest
 
 @pytest.fixture
 def auto_build_claw_resources():
-    """Path to auto-build-claw's YAML resource files (real plugin data)."""
-    return Path(__file__).resolve().parent.parent / "auto-build-claw" / "skills" / "auto-build-claw" / "resources"
+    """Path to bundled YAML resource files in the engine module."""
+    return Path(__file__).resolve().parent.parent / "stellars_claude_code_plugins" / "engine" / "resources"
 
 
 @pytest.fixture

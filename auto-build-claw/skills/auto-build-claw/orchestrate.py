@@ -2,7 +2,8 @@
 """Auto Build Claw - thin entrypoint.
 
 Delegates to the shared orchestration engine in stellars_claude_code_plugins.
-All content is defined in the YAML resource files in the resources/ directory.
+Resources are bundled in the module and auto-copied to .auto-build-claw/resources/
+on first use. No resources_dir needed.
 """
 
 import sys
@@ -16,4 +17,4 @@ except ImportError:
     from stellars_claude_code_plugins.engine.orchestrator import main
 
 if __name__ == "__main__":
-    main(resources_dir=Path(__file__).parent / "resources")
+    main()

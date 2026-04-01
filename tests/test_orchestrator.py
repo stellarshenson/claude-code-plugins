@@ -748,4 +748,70 @@ class TestPluginEntrypoint:
         assert entrypoint.exists()
         content = entrypoint.read_text()
         assert "from stellars_claude_code_plugins.engine.orchestrator import main" in content
-        assert "resources_dir" in content
+
+    def test_bundled_resources_exist(self):
+        """Verify YAML resources are bundled in the engine module."""
+        resources = (
+            Path(__file__).resolve().parent.parent
+            / "stellars_claude_code_plugins"
+            / "engine"
+            / "resources"
+        )
+        assert resources.exists()
+        assert (resources / "workflow.yaml").exists()
+        assert (resources / "phases.yaml").exists()
+        assert (resources / "app.yaml").exists()
+
+
+class TestEnsureProjectResources:
+    """Tests for _ensure_project_resources auto-copy behavior."""
+
+    def test_copies_missing_resources(self, tmp_path):
+        """Resources are copied from module to project dir when missing."""
+        project_resources = tmp_path / ".auto-build-claw" / "resources"
+        result = orch._ensure_project_resources(project_resources)
+        assert result == project_resources
+        assert (project_resources / "workflow.yaml").exists()
+        assert (project_resources / "phases.yaml").exists()
+        assert (project_resources / "app.yaml").exists()
+
+    def test_does_not_overwrite_existing(self, tmp_path):
+        """Existing project resources are not overwritten."""
+        project_resources = tmp_path / ".auto-build-claw" / "resources"
+        project_resources.mkdir(parents=True)
+        custom_content = "# custom workflow"
+        (project_resources / "workflow.yaml").write_text(custom_content)
+        orch._ensure_project_resources(project_resources)
+        assert (project_resources / "workflow.yaml").read_text() == custom_content
+        # But missing files are still copied
+        assert (project_resources / "phases.yaml").exists()
+        assert (project_resources / "app.yaml").exists()
+
+    def test_loads_from_project_resources(self, tmp_path):
+        """Orchestrator loads from project-local resources after copy."""
+        project_resources = tmp_path / ".auto-build-claw" / "resources"
+        orch._ensure_project_resources(project_resources)
+        model = orch.load_model(project_resources)
+        assert model.app.name != ""
+        assert len(model.workflow_types) > 0
+
+    def test_clean_preserves_resources(self, tmp_path):
+        """_clean_artifacts_dir preserves resources/ subdirectory."""
+        artifacts = tmp_path / ".auto-build-claw"
+        resources = artifacts / "resources"
+        resources.mkdir(parents=True)
+        custom = "# custom workflow"
+        (resources / "workflow.yaml").write_text(custom)
+        # Create a non-preserved file and dir
+        (artifacts / "state.yaml").write_text("iteration: 1")
+        phase_dir = artifacts / "phase_01_plan"
+        phase_dir.mkdir()
+        (phase_dir / "output.md").write_text("plan")
+        # Clean
+        orch._clean_artifacts_dir(artifacts)
+        # resources/ preserved
+        assert resources.exists()
+        assert (resources / "workflow.yaml").read_text() == custom
+        # other artifacts removed
+        assert not (artifacts / "state.yaml").exists()
+        assert not phase_dir.exists()
