@@ -1,6 +1,6 @@
 ---
 name: benchmark-writer
-description: Write a BENCHMARK.md file with evaluation checklist, score formula, and tracking table for auto-build-claw iterations. Use when user needs a benchmark to measure progress against PROGRAM.md work items. Invoked before workflow execution.
+description: Write a BENCHMARK.md file with evaluation checklist, score formula, and iteration tracking table for auto-build-claw iterations. Use when user needs a benchmark to measure progress against PROGRAM.md work items. Invoked before workflow execution.
 ---
 
 # Benchmark Writer
@@ -13,7 +13,7 @@ After PROGRAM.md exists. The benchmark is derived from the program's work items 
 
 ## Structure
 
-BENCHMARK.md has these sections:
+BENCHMARK.md has these sections in order:
 
 ### 1. Score Formula and Direction
 
@@ -22,11 +22,11 @@ The benchmark MUST produce a single composite number and state whether to MINIMI
 ```markdown
 ## Score
 
+**Direction**: MINIMIZE (target: 0)
+
 ```
 score = unchecked_items + failed_tests + (complexity_violations * 2)
 ```
-
-**Direction**: MINIMIZE (target: 0)
 ```
 
 Three benchmark types:
@@ -47,7 +47,7 @@ How the evaluator (Claude or script) should execute the benchmark. Step by step.
 3. Read each [ ] item below and verify against codebase
 4. Mark [x] for passing, leave [ ] for failing
 5. EDIT this file with updated marks
-6. UPDATE Score Tracking table
+6. UPDATE the Iteration Log below with this iteration's results
 7. Report composite score
 ```
 
@@ -72,21 +72,45 @@ Rules for good checklist items:
 - [ ] All test_fsm.py tests passing
 ```
 
-### 4. Score Tracking Table
+### 4. Completion Conditions
 
-Updated by the evaluator after each iteration. Shows score trajectory.
+When to stop iterating. Links back to PROGRAM.md exit conditions.
 
 ```markdown
-## Score Tracking
+## Completion Conditions
 
-| Iteration | Score | Failed Tests | Details |
-|-----------|-------|--------------|---------|
-| baseline  | TBD   | 0            | -       |
+Iterations stop when ALL conditions are met:
+- [ ] All checklist items above are [x] (score = 0)
+- [ ] make test passes with 0 failures
+- [ ] make lint passes clean
+
+**Do NOT stop while any condition above is unmet.**
 ```
 
-### 5. Exit Condition Reference
+### 5. Iteration Log
 
-Links back to PROGRAM.md exit conditions. When score reaches target, iterations stop.
+**MANDATORY section.** Tracks every evaluation across iterations. Updated by the evaluator during each TEST phase. Shows score trajectory so you can see if iterations are improving.
+
+```markdown
+## Iteration Log
+
+| Iteration | Date | Score | Failed Tests | Unchecked Items | Notes |
+|-----------|------|-------|--------------|-----------------|-------|
+| baseline  | -    | TBD   | 0            | (all)           | before any work |
+```
+
+After each evaluation, the evaluator appends a new row:
+
+```markdown
+| iter 1    | 2026-04-01 | 12 | 0 | 12 | FSM migration complete, hypothesis removal done |
+| iter 2    | 2026-04-01 | 5  | 0 | 5  | complexity refactoring, benchmark enforcement |
+| iter 3    | 2026-04-02 | 0  | 0 | 0  | all conditions met |
+```
+
+The iteration log serves three purposes:
+1. **Progress tracking** - score should decrease (for MINIMIZE) or increase (for MAXIMIZE) over iterations
+2. **Regression detection** - if score goes up, something broke
+3. **Completion proof** - final row shows target reached
 
 ## Benchmark Types Guide
 
@@ -111,7 +135,7 @@ Links back to PROGRAM.md exit conditions. When score reaches target, iterations 
 - **Direction is explicit** - MINIMIZE or MAXIMIZE, stated at the top
 - **Fixed evaluation** - the evaluation method doesn't change between iterations. Add checklist items if discovered, but don't change the formula
 - **Fair comparison** - every iteration evaluated the same way
-- **Score tracks progress** - the Score Tracking table shows if iterations are actually improving
+- **Iteration log tracks progress** - the table shows if iterations are actually improving. Score going up = regression
 - **Programmatic when possible** - `val_bpb` in autoresearch is computed by code, not by Claude judging quality. Use commands and tools when you can measure, generative when you can't
 - **Simplicity bonus** - if the benchmark can reward code simplification (fewer lines, lower complexity), include it
 
