@@ -1,0 +1,187 @@
+<!--
+  05-full-workflow-agents.svg - Simple horizontal flow of 8 phase cards
+  Shows: 8 phase cards in a row with agent counts inside, reject arc from REVIEW to IMPLEMENT
+  Intent: overview of the complete iteration cycle and where agents contribute
+  Theme: Stellars-Tech - teal/cyan primary, orange accent
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 230">
+  <style>
+    .fg-1 { fill: #1a5a6e; } .fg-2 { fill: #24697e; } .fg-3 { fill: #236a74; }
+    .accent-cyan { fill: #0096d1; } .accent-orange { fill: #da8230; }
+    .accent-gold { fill: #d4a04a; } .accent-deep { fill: #005f7a; }
+    .accent-teal { fill: #236a74; }
+    .card-bg { fill-opacity: 0.04; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; } .fg-2 { fill: #8fd4e6; } .fg-3 { fill: #5aafc5; }
+      .accent-cyan { fill: #5cc8e0; } .accent-orange { fill: #d4a04a; }
+      .accent-gold { fill: #d4a04a; } .accent-deep { fill: #4099b3; }
+      .accent-teal { fill: #5aafc5; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox 800x200
+    Title: y=18, Subtitle: y=30
+    8 cards in a row: w=82, h=60, gap=12
+    Card x positions: 20, 114, 208, 302, 396, 490, 584, 678
+    Card top: y=42, Card bottom: y=102
+    Arrow tips between cards at y=72 (vertical midpoint)
+    Reject arc: curves below cards from REVIEW (card 6) to IMPLEMENT (card 4), apex y=160
+    All cards: flat-top rounded-bottom with r=3
+    Each card: accent bar 5px, phase name 9px bold, description 7px, agent count 7px
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    row: [RESEARCH, HYPOTHESIS, PLAN, IMPLEMENT, TEST, REVIEW, RECORD, NEXT]
+    cards: uniform 82x60, flat-top rounded-bottom
+    accents: RESEARCH/HYPOTHESIS/PLAN=#0096d1, IMPLEMENT=#da8230, TEST=#d4a04a, REVIEW=#005f7a, RECORD/NEXT=#236a74
+    arrows: 7 forward arrows in 12px gaps between cards, cyan #0096d1
+    reject: dashed orange arc REVIEW bottom -> IMPLEMENT bottom curving below at y=160
+    agents: text inside cards (3, 4, 3, 0, 0, 4, 0, 0)
+  === -->
+
+  <!-- Title -->
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">FULL ITERATION - 8 PHASES, 14 INDEPENDENT AGENTS</text>
+  <text x="400" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Every arrow is a gate. Every gate runs as an independent ACP subprocess.</text>
+
+  <!-- ═══ PHASE CARDS ═══ -->
+
+  <!-- Phase 1: RESEARCH (3 agents) x=20 -->
+  <g id="phase-research">
+    <path d="M20,42 H102 V99 Q102,102 99,102 H23 Q20,102 20,99 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M20,42 H102 V99 Q102,102 99,102 H23 Q20,102 20,99 Z" fill="none" stroke="#0096d1" stroke-width="0.8"/>
+    <rect x="20" y="42" width="82" height="5" fill="#0096d1" opacity="0.5"/>
+    <text x="61" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">RESEARCH</text>
+    <text x="61" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Gather evidence</text>
+    <text x="61" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-cyan" text-anchor="middle">3 agents</text>
+  </g>
+
+  <!-- Arrow 1->2 tip at x=114 -->
+  <g transform="translate(114, 72) rotate(0)">
+    <line x1="-8" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/>
+  </g>
+
+  <!-- Phase 2: HYPOTHESIS (4 agents) x=114 -->
+  <g id="phase-hypothesis">
+    <path d="M114,42 H196 V99 Q196,102 193,102 H117 Q114,102 114,99 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M114,42 H196 V99 Q196,102 193,102 H117 Q114,102 114,99 Z" fill="none" stroke="#0096d1" stroke-width="0.8"/>
+    <rect x="114" y="42" width="82" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="155" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">HYPOTHESIS</text>
+    <text x="155" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Debate approaches</text>
+    <text x="155" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-cyan" text-anchor="middle">4 agents</text>
+  </g>
+
+  <!-- Arrow 2->3 tip at x=208 -->
+  <g transform="translate(208, 72) rotate(0)">
+    <line x1="-8" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/>
+  </g>
+
+  <!-- Phase 3: PLAN (3 agents) x=208 -->
+  <g id="phase-plan">
+    <path d="M208,42 H290 V99 Q290,102 287,102 H211 Q208,102 208,99 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M208,42 H290 V99 Q290,102 287,102 H211 Q208,102 208,99 Z" fill="none" stroke="#0096d1" stroke-width="0.8"/>
+    <rect x="208" y="42" width="82" height="5" fill="#0096d1" opacity="0.5"/>
+    <text x="249" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">PLAN</text>
+    <text x="249" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Design with review</text>
+    <text x="249" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-cyan" text-anchor="middle">3 agents</text>
+  </g>
+
+  <!-- Arrow 3->4 tip at x=302 -->
+  <g transform="translate(302, 72) rotate(0)">
+    <line x1="-8" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/>
+  </g>
+
+  <!-- Phase 4: IMPLEMENT (0 agents) x=302 -->
+  <g id="phase-implement">
+    <path d="M302,42 H384 V99 Q384,102 381,102 H305 Q302,102 302,99 Z" class="card-bg" fill="#da8230"/>
+    <path d="M302,42 H384 V99 Q384,102 381,102 H305 Q302,102 302,99 Z" fill="none" stroke="#da8230" stroke-width="0.8"/>
+    <rect x="302" y="42" width="82" height="5" fill="#da8230" opacity="0.5"/>
+    <text x="343" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">IMPLEMENT</text>
+    <text x="343" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Code only</text>
+    <text x="343" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-orange" text-anchor="middle">0 agents</text>
+  </g>
+
+  <!-- Arrow 4->5 tip at x=396 -->
+  <g transform="translate(396, 72) rotate(0)">
+    <line x1="-8" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/>
+  </g>
+
+  <!-- Phase 5: TEST (0 agents) x=396 -->
+  <g id="phase-test">
+    <path d="M396,42 H478 V99 Q478,102 475,102 H399 Q396,102 396,99 Z" class="card-bg" fill="#d4a04a"/>
+    <path d="M396,42 H478 V99 Q478,102 475,102 H399 Q396,102 396,99 Z" fill="none" stroke="#d4a04a" stroke-width="0.8"/>
+    <rect x="396" y="42" width="82" height="5" fill="#d4a04a" opacity="0.5"/>
+    <text x="437" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">TEST</text>
+    <text x="437" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">make test + bench</text>
+    <text x="437" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-gold" text-anchor="middle">0 agents</text>
+  </g>
+
+  <!-- Arrow 5->6 tip at x=490 -->
+  <g transform="translate(490, 72) rotate(0)">
+    <line x1="-8" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/>
+  </g>
+
+  <!-- Phase 6: REVIEW (4 agents) x=490 -->
+  <g id="phase-review">
+    <path d="M490,42 H572 V99 Q572,102 569,102 H493 Q490,102 490,99 Z" class="card-bg" fill="#005f7a"/>
+    <path d="M490,42 H572 V99 Q572,102 569,102 H493 Q490,102 490,99 Z" fill="none" stroke="#005f7a" stroke-width="1"/>
+    <rect x="490" y="42" width="82" height="5" fill="#005f7a" opacity="0.5"/>
+    <text x="531" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">REVIEW</text>
+    <text x="531" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">4-panel + guardian</text>
+    <text x="531" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-deep" text-anchor="middle">4 agents</text>
+  </g>
+
+  <!-- Arrow 6->7 tip at x=584 -->
+  <g transform="translate(584, 72) rotate(0)">
+    <line x1="-8" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/>
+  </g>
+
+  <!-- Phase 7: RECORD (0 agents) x=584 -->
+  <g id="phase-record">
+    <path d="M584,42 H666 V99 Q666,102 663,102 H587 Q584,102 584,99 Z" class="card-bg" fill="#236a74"/>
+    <path d="M584,42 H666 V99 Q666,102 663,102 H587 Q584,102 584,99 Z" fill="none" stroke="#236a74" stroke-width="0.8"/>
+    <rect x="584" y="42" width="82" height="5" fill="#236a74" opacity="0.4"/>
+    <text x="625" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">RECORD</text>
+    <text x="625" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Journal, commit</text>
+    <text x="625" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-teal" text-anchor="middle">0 agents</text>
+  </g>
+
+  <!-- Arrow 7->8 tip at x=678 -->
+  <g transform="translate(678, 72) rotate(0)">
+    <line x1="-8" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/>
+  </g>
+
+  <!-- Phase 8: NEXT (0 agents) x=678 -->
+  <g id="phase-next">
+    <path d="M678,42 H760 V99 Q760,102 757,102 H681 Q678,102 678,99 Z" class="card-bg" fill="#236a74"/>
+    <path d="M678,42 H760 V99 Q760,102 757,102 H681 Q678,102 678,99 Z" fill="none" stroke="#236a74" stroke-width="0.8"/>
+    <rect x="678" y="42" width="82" height="5" fill="#236a74" opacity="0.4"/>
+    <text x="719" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">NEXT</text>
+    <text x="719" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Advance or done</text>
+    <text x="719" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-teal" text-anchor="middle">0 agents</text>
+  </g>
+
+  <!-- ═══ REJECT: REVIEW -> IMPLEMENT (L-shaped connector) ═══ -->
+  <!-- Down from REVIEW bottom (531,102) to y=140, left to IMPLEMENT (343), up to arrowhead back -->
+  <path d="M531,102 L531,140 L343,140 L343,114" fill="none" stroke="#da8230" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <!-- Arrowhead pointing up into IMPLEMENT card bottom (tip at y=104, back at y=114) -->
+  <g transform="translate(343, 104) rotate(-90)">
+    <polygon points="0,0 -10,-5 -10,5" fill="#da8230" opacity="0.8"/>
+  </g>
+  <!-- Label 8px below connector horizontal segment -->
+  <rect x="410" y="148" width="54" height="14" rx="4" fill="#da8230" fill-opacity="0.1" stroke="#da8230" stroke-width="0.6"/>
+  <text x="437" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" fill="#da8230" text-anchor="middle">reject</text>
+
+  <!-- Bottom annotations -->
+  <text x="400" y="182" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">REVIEW panel: critic + architect + guardian (isolated) + forensicist. IMPLEMENT gets no agents - only code.</text>
+  <rect x="170" y="190" width="460" height="14" rx="4" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.5"/>
+  <text x="400" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-cyan" text-anchor="middle">Phases, agents, and gates declared in YAML - modified independently from the Python orchestrator</text>
+
+</svg>

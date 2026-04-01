@@ -1,0 +1,162 @@
+<!--
+  03-guardian-anti-overfit.svg - Guardian subprocess with anti-overfit barrier
+  Shows: main session (warm/orange) separated by dramatic barrier from guardian (cool/cyan)
+  Intent: visualise process isolation and the 4-point checklist with verdict badges
+  Theme: Stellars-Tech - teal/cyan primary, orange accent
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <!-- viewBox 800x400 accommodates verdict return at y=350 + label at y=362 + annotation at y=390 -->
+  <style>
+    .fg-1 { fill: #1a5a6e; } .fg-2 { fill: #24697e; } .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #0096d1; } .accent-2 { fill: #005f7a; }
+    .accent-cyan { fill: #0096d1; } .accent-orange { fill: #da8230; }
+    .accent-yellow { fill: #d4a04a; }
+    .on-fill { fill: #1a5a6e; }
+    .card-bg { fill-opacity: 0.04; } .connector { stroke-width: 1.5; }
+    .arrow-head { opacity: 0.85; } .icon-stroke { stroke-width: 2; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; } .fg-2 { fill: #8fd4e6; } .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; } .accent-2 { fill: #4099b3; }
+      .accent-cyan { fill: #5cc8e0; } .accent-orange { fill: #d4a04a; }
+      .accent-yellow { fill: #d4a04a; }
+      .on-fill { fill: #b8e4f0; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox 800x400, H=40px margin
+    Left zone (Main Session): x=40..300
+    Barrier: x=316..354 (dramatic layered stripes)
+    Right zone (Guardian): x=370..760
+    Title: y=32
+    Content: y=56..340
+    Verdict badges: y=310..340
+    Bottom annotation: y=380
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: [main-session-zone, barrier, guardian-zone]
+    main-session: v-stack [context layers, evidence packet]
+    barrier: layered vertical stripes + rotated label
+    guardian: v-stack [4 numbered checks, verdict row]
+    flow: evidence -> barrier -> guardian, verdict <- barrier <- guardian
+  === -->
+
+  <!-- Title -->
+  <text x="400" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">GUARDIAN ANTI-OVERFIT - ISOLATED PROCESS</text>
+
+  <!-- ═══ LEFT ZONE: MAIN SESSION ═══ -->
+  <rect x="40" y="48" width="260" height="296" rx="6" fill="#da8230" fill-opacity="0.03" stroke="#da8230" stroke-width="0.5" stroke-dasharray="6,3"/>
+  <text x="170" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="accent-orange" text-anchor="middle">MAIN SESSION</text>
+  <text x="170" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Full context, memory, reasoning history</text>
+
+  <!-- Context layers (stacked to show heavy context) -->
+  <rect x="56" y="96" width="228" height="22" rx="3" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.5"/>
+  <text x="170" y="111" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Conversation history + tool outputs</text>
+
+  <rect x="56" y="124" width="228" height="22" rx="3" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="0.5"/>
+  <text x="170" y="139" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Planning decisions + reasoning chain</text>
+
+  <rect x="56" y="152" width="228" height="22" rx="3" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="0.5"/>
+  <text x="170" y="167" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Code changes + test results</text>
+
+  <!-- Evidence packet card -->
+  <g id="evidence-packet">
+    <path d="M56,192 H284 V274 Q284,280 281,280 H59 Q56,280 56,274 Z" class="card-bg" fill="#da8230"/>
+    <path d="M56,192 H284 V274 Q284,280 281,280 H59 Q56,280 56,274 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="56" y="192" width="228" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="170" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-1" text-anchor="middle">Evidence Packet</text>
+    <text x="170" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Structured claims + file diffs</text>
+    <text x="170" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Agent count + output artefacts</text>
+    <text x="170" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Test results + benchmark delta</text>
+  </g>
+
+  <!-- Arrow: evidence crossing to barrier -->
+  <g transform="translate(316, 236) rotate(0)">
+    <line x1="-28" y1="0" x2="-10" y2="0" stroke="#da8230" class="connector" opacity="0.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#da8230" class="arrow-head"/>
+  </g>
+
+  <!-- ═══ BARRIER: PROCESS BOUNDARY ═══ -->
+  <rect x="316" y="48" width="4" height="296" fill="#236a74" opacity="0.25"/>
+  <rect x="322" y="48" width="6" height="296" fill="#005f7a" opacity="0.35"/>
+  <rect x="330" y="48" width="8" height="296" fill="#0096d1" opacity="0.2"/>
+  <rect x="340" y="48" width="6" height="296" fill="#005f7a" opacity="0.35"/>
+  <rect x="348" y="48" width="4" height="296" fill="#236a74" opacity="0.25"/>
+
+  <text x="335" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="accent-2" text-anchor="middle" transform="rotate(-90, 335, 200)" letter-spacing="2">PROCESS BOUNDARY</text>
+
+  <!-- Arrow: evidence entering guardian zone (tip at x=394, inside container) -->
+  <g transform="translate(394, 236) rotate(0)">
+    <line x1="-34" y1="0" x2="-10" y2="0" stroke="#0096d1" class="connector" opacity="0.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1" class="arrow-head"/>
+  </g>
+
+  <!-- ═══ RIGHT ZONE: GUARDIAN ═══ -->
+  <rect x="370" y="48" width="390" height="296" rx="6" fill="#0096d1" fill-opacity="0.02" stroke="#0096d1" stroke-width="0.5" stroke-dasharray="6,3"/>
+  <text x="565" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="accent-cyan" text-anchor="middle">GUARDIAN - ISOLATED SUBPROCESS</text>
+  <text x="565" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">No shared context. Only sees structured evidence.</text>
+
+  <!-- 4-point checklist with numbered circles -->
+
+  <!-- Check 1 -->
+  <g id="check-1" transform="translate(410, 108)">
+    <circle cx="0" cy="0" r="14" fill="#0096d1" fill-opacity="0.1" stroke="#0096d1" stroke-width="1"/>
+    <text x="0" y="4" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1" text-anchor="middle">1</text>
+    <text x="28" y="-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-1" text-anchor="start">Test Overfitting?</text>
+    <text x="28" y="12" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="start">Games assertions? if input == test_value?</text>
+  </g>
+
+  <!-- Check 2 -->
+  <g id="check-2" transform="translate(410, 158)">
+    <circle cx="0" cy="0" r="14" fill="#0096d1" fill-opacity="0.1" stroke="#0096d1" stroke-width="1"/>
+    <text x="0" y="4" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1" text-anchor="middle">2</text>
+    <text x="28" y="-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-1" text-anchor="start">Benchmark Overfitting?</text>
+    <text x="28" y="12" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="start">Type-specific templates? Hardcoded thresholds?</text>
+  </g>
+
+  <!-- Check 3 -->
+  <g id="check-3" transform="translate(410, 208)">
+    <circle cx="0" cy="0" r="14" fill="#0096d1" fill-opacity="0.1" stroke="#0096d1" stroke-width="1"/>
+    <text x="0" y="4" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1" text-anchor="middle">3</text>
+    <text x="28" y="-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-1" text-anchor="start">Scenario Overfitting?</text>
+    <text x="28" y="12" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="start">Assumes specific dataset? Only works for demo?</text>
+  </g>
+
+  <!-- Check 4 -->
+  <g id="check-4" transform="translate(410, 258)">
+    <circle cx="0" cy="0" r="14" fill="#0096d1" fill-opacity="0.1" stroke="#0096d1" stroke-width="1"/>
+    <text x="0" y="4" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1" text-anchor="middle">4</text>
+    <text x="28" y="-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-1" text-anchor="start">Intentional Specialisation?</text>
+    <text x="28" y="12" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="start">Looks like overfit but was requested? -> ASK</text>
+  </g>
+
+  <!-- Verdict badges -->
+  <text x="565" y="298" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">VERDICT</text>
+
+  <rect x="400" y="306" width="64" height="22" rx="4" fill="#0096d1" fill-opacity="0.15" stroke="#0096d1" stroke-width="0.8"/>
+  <text x="432" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="accent-cyan" text-anchor="middle">CLEAN</text>
+
+  <rect x="476" y="306" width="56" height="22" rx="4" fill="#d4a04a" fill-opacity="0.15" stroke="#d4a04a" stroke-width="0.8"/>
+  <text x="504" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="accent-yellow" text-anchor="middle">WARN</text>
+
+  <rect x="544" y="306" width="60" height="22" rx="4" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="0.8"/>
+  <text x="574" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="accent-orange" text-anchor="middle">BLOCK</text>
+
+  <rect x="616" y="306" width="50" height="22" rx="4" fill="#236a74" fill-opacity="0.15" stroke="#236a74" stroke-width="0.8"/>
+  <text x="641" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-3" text-anchor="middle">ASK</text>
+
+  <!-- Return arrow: angled line from verdict area to Evidence Packet card centre bottom -->
+  <!-- Diagonal from verdict left (398, 316) through barrier to just below card centre (170, 286) -->
+  <line x1="398" y1="316" x2="176" y2="286" stroke="#0096d1" stroke-width="2" opacity="0.6"/>
+  <!-- Arrowhead aligned to line angle: dx=398-176=222, dy=316-286=30, angle=atan2(-30,-222)=~187deg -->
+  <g transform="translate(176, 286) rotate(187.7)">
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1" opacity="0.85"/>
+  </g>
+  <!-- Label below the line midpoint -->
+  <text x="260" y="312" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-1" text-anchor="middle">verdict returned</text>
+
+  <!-- Bottom annotation -->
+  <text x="400" y="390" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">No shared memory. No loyalty to agent's narrative. Independent evaluation only.</text>
+
+</svg>

@@ -1,0 +1,73 @@
+<!--
+  06-five-failure-modes.svg - Five failure modes as numbered horizontal cards
+  Shows: 5 stacked cards with numbered circles, color-coded left stripes, and descriptions
+  Intent: clean readable list of the problem space
+  Theme: Stellars-Tech
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 330">
+  <style>
+    .fg-1 { fill: #1a5a6e; } .fg-2 { fill: #24697e; } .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #0096d1; } .accent-2 { fill: #005f7a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; } .fg-2 { fill: #8fd4e6; } .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; } .accent-2 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- === GRID === viewBox 800x330. 5 cards at x=40, w=720, h=48, gap=8. y starts at 42. === -->
+  <!-- === LAYOUT TOPOLOGY === v-stack: [card-1..5]. Each has left accent stripe + number + title + desc. === -->
+
+  <text x="400" y="22" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">FIVE FAILURE MODES OF AUTONOMOUS AI AGENTS</text>
+
+  <!-- Subtle decorative background -->
+  <rect x="40" y="36" width="720" height="286" rx="6" fill="#236a74" fill-opacity="0.01"/>
+
+  <!-- Card 1: Shallow Execution -->
+  <path d="M40,42 H760 V86 Q760,90 757,90 H43 Q40,90 40,86 Z" fill="#da8230" fill-opacity="0.04"/>
+  <path d="M40,42 H760 V86 Q760,90 757,90 H43 Q40,90 40,86 Z" fill="none" stroke="#da8230" stroke-width="0.8"/>
+  <rect x="40" y="42" width="6" height="48" fill="#da8230" opacity="0.7"/>
+  <circle cx="72" cy="66" r="12" fill="#da8230" fill-opacity="0.12" stroke="#da8230" stroke-width="0.8"/>
+  <text x="72" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#da8230" text-anchor="middle">1</text>
+  <text x="96" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shallow Execution</text>
+  <text x="96" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Reads first sentence of instructions, skips research and planning, jumps straight to code</text>
+
+  <!-- Card 2: Self-Review Theatre -->
+  <path d="M40,98 H760 V142 Q760,146 757,146 H43 Q40,146 40,142 Z" fill="#7a4a15" fill-opacity="0.04"/>
+  <path d="M40,98 H760 V142 Q760,146 757,146 H43 Q40,146 40,142 Z" fill="none" stroke="#7a4a15" stroke-width="0.8"/>
+  <rect x="40" y="98" width="6" height="48" fill="#7a4a15" opacity="0.6"/>
+  <circle cx="72" cy="122" r="12" fill="#7a4a15" fill-opacity="0.12" stroke="#7a4a15" stroke-width="0.8"/>
+  <text x="72" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#7a4a15" text-anchor="middle">2</text>
+  <text x="96" y="118" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Self-Review Theatre</text>
+  <text x="96" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Same model reviews its own work - rationalisations carry from writing to review</text>
+
+  <!-- Card 3: Process Erosion -->
+  <path d="M40,154 H760 V198 Q760,202 757,202 H43 Q40,202 40,198 Z" fill="#d4a04a" fill-opacity="0.04"/>
+  <path d="M40,154 H760 V198 Q760,202 757,202 H43 Q40,202 40,198 Z" fill="none" stroke="#d4a04a" stroke-width="0.8"/>
+  <rect x="40" y="154" width="6" height="48" fill="#d4a04a" opacity="0.6"/>
+  <circle cx="72" cy="178" r="12" fill="#d4a04a" fill-opacity="0.12" stroke="#d4a04a" stroke-width="0.8"/>
+  <text x="72" y="182" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#d4a04a" text-anchor="middle">3</text>
+  <text x="96" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Process Erosion</text>
+  <text x="96" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Follows 8-phase workflow on iteration 1, by iteration 3 it's merging and skipping phases</text>
+
+  <!-- Card 4: Knowledge Loss -->
+  <path d="M40,210 H760 V254 Q760,258 757,258 H43 Q40,258 40,254 Z" fill="#da8230" fill-opacity="0.04"/>
+  <path d="M40,210 H760 V254 Q760,258 757,258 H43 Q40,258 40,254 Z" fill="none" stroke="#da8230" stroke-width="0.8"/>
+  <rect x="40" y="210" width="6" height="48" fill="#da8230" opacity="0.7"/>
+  <circle cx="72" cy="234" r="12" fill="#da8230" fill-opacity="0.12" stroke="#da8230" stroke-width="0.8"/>
+  <text x="72" y="238" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#da8230" text-anchor="middle">4</text>
+  <text x="96" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Knowledge Loss</text>
+  <text x="96" y="246" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Each iteration starts from zero - hypotheses not accumulated, failure patterns not tracked</text>
+
+  <!-- Card 5: Benchmark Gaming (emphasized) -->
+  <path d="M40,266 H760 V310 Q760,314 757,314 H43 Q40,314 40,310 Z" fill="#7a4a15" fill-opacity="0.04"/>
+  <path d="M40,266 H760 V310 Q760,314 757,314 H43 Q40,314 40,310 Z" fill="none" stroke="#7a4a15" stroke-width="1.2"/>
+  <rect x="40" y="266" width="6" height="48" fill="#7a4a15" opacity="0.7"/>
+  <circle cx="72" cy="290" r="12" fill="#7a4a15" fill-opacity="0.15" stroke="#7a4a15" stroke-width="1"/>
+  <text x="72" y="294" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#7a4a15" text-anchor="middle">5</text>
+  <text x="96" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Benchmark Gaming</text>
+  <text x="96" y="302" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Optimises the score, not the system - hardcodes thresholds, adds type-specific templates</text>
+  <!-- Callout -->
+  <rect x="658" y="280" width="88" height="16" rx="4" fill="#7a4a15" fill-opacity="0.1" stroke="#7a4a15" stroke-width="0.6"/>
+  <text x="702" y="291" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" fill="#7a4a15" text-anchor="middle">most insidious</text>
+
+</svg>

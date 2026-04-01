@@ -1,0 +1,93 @@
+<!--
+  08-acp-subprocess.svg - ACP subprocess isolation as vertical funnel
+  Shows: wide context at top narrows to structured evidence, then to single verdict line
+  Intent: visual weight contrast - massive context filtered to tiny structured packet
+  Theme: Stellars-Tech
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320">
+  <style>
+    .fg-1 { fill: #1a5a6e; } .fg-2 { fill: #24697e; } .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #0096d1; } .accent-2 { fill: #005f7a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; } .fg-2 { fill: #8fd4e6; } .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; } .accent-2 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- === GRID === viewBox 800x320. Top section y=42..150 (wide). Funnel y=150..180. Centre y=180..220. Arrow y=220..244. Bottom y=244..278. === -->
+  <!-- === LAYOUT TOPOLOGY === v-stack: [main-session(wide), funnel, evidence-packet(narrow), arrow, verdict(narrowest)]. Annotation on right. === -->
+
+  <text x="400" y="22" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">ACP SUBPROCESS - CONTEXT FILTERED TO STRUCTURED EVIDENCE</text>
+
+  <!-- ═══ TOP: MAIN SESSION (wide, heavy, orange) ═══ -->
+  <path d="M40,42 H760 V144 Q760,150 757,150 H43 Q40,150 40,144 Z" fill="#da8230" fill-opacity="0.04"/>
+  <path d="M40,42 H760 V144 Q760,150 757,150 H43 Q40,150 40,144 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+  <rect x="40" y="42" width="720" height="5" fill="#da8230" opacity="0.6"/>
+
+  <text x="400" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">MAIN CLAUDE CODE SESSION</text>
+
+  <!-- Context layer lines (showing density) -->
+  <line x1="60" y1="76" x2="740" y2="76" stroke="#da8230" stroke-width="0.5" opacity="0.15"/>
+  <text x="70" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">CLAUDE.md + JOURNAL.md + system prompt</text>
+
+  <line x1="60" y1="90" x2="740" y2="90" stroke="#da8230" stroke-width="0.5" opacity="0.12"/>
+  <text x="70" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Conversation history - 50+ tool calls, file reads, agent outputs</text>
+
+  <line x1="60" y1="104" x2="740" y2="104" stroke="#da8230" stroke-width="0.5" opacity="0.10"/>
+  <text x="70" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Planning reasoning chain + implementation decisions + predict/verify reflections</text>
+
+  <line x1="60" y1="118" x2="740" y2="118" stroke="#da8230" stroke-width="0.5" opacity="0.08"/>
+  <text x="70" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Accumulated rationalisations + sunk cost + emotional investment in approach</text>
+
+  <line x1="60" y1="132" x2="740" y2="132" stroke="#da8230" stroke-width="0.5" opacity="0.06"/>
+  <text x="70" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Shortcuts taken, steps skipped, corners cut - all in context window</text>
+
+  <!-- 100K label -->
+  <rect x="580" y="134" width="150" height="14" rx="4" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5"/>
+  <text x="655" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" fill="#da8230" text-anchor="middle">100K+ tokens of context</text>
+
+  <!-- ═══ FUNNEL: converging lines ═══ -->
+  <line x1="40" y1="150" x2="260" y2="180" stroke="#0096d1" stroke-width="1" opacity="0.3"/>
+  <line x1="760" y1="150" x2="540" y2="180" stroke="#0096d1" stroke-width="1" opacity="0.3"/>
+
+  <!-- Process boundary label in funnel -->
+  <rect x="330" y="156" width="140" height="16" rx="4" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.6"/>
+  <text x="400" y="167" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1" text-anchor="middle">PROCESS BOUNDARY</text>
+
+  <!-- ═══ CENTRE: EVIDENCE PACKET (narrow, cyan) ═══ -->
+  <path d="M260,180 H540 V216 Q540,220 537,220 H263 Q260,220 260,216 Z" fill="#0096d1" fill-opacity="0.04"/>
+  <path d="M260,180 H540 V216 Q540,220 537,220 H263 Q260,220 260,216 Z" fill="none" stroke="#0096d1" stroke-width="1.2"/>
+  <rect x="260" y="180" width="280" height="5" fill="#0096d1" opacity="0.6"/>
+
+  <text x="400" y="198" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-1" text-anchor="middle">Structured Evidence Packet</text>
+  <text x="400" y="212" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Exit criteria + agent claims + output status + file diffs (no reasoning chain)</text>
+
+  <!-- 2K label -->
+  <rect x="550" y="192" width="150" height="14" rx="4" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.5"/>
+  <text x="625" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" fill="#0096d1" text-anchor="middle">~2K tokens structured</text>
+
+  <!-- Arrow down to verdict -->
+  <g transform="translate(400, 240) rotate(90)">
+    <line x1="-16" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1" opacity="0.8"/>
+  </g>
+
+  <!-- Right annotation: separate process -->
+  <text x="560" y="236" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2">Separate process evaluates cold.</text>
+  <text x="560" y="248" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">No shared memory. No rationalisations.</text>
+
+  <!-- ═══ BOTTOM: VERDICT (narrowest, strong cyan) ═══ -->
+  <path d="M320,250 H480 V280 Q480,284 477,284 H323 Q320,284 320,280 Z" fill="#0096d1" fill-opacity="0.06"/>
+  <path d="M320,250 H480 V280 Q480,284 477,284 H323 Q320,284 320,284 Z" fill="none" stroke="#0096d1" stroke-width="1.2"/>
+  <rect x="320" y="250" width="160" height="5" fill="#0096d1" opacity="0.6"/>
+
+  <text x="400" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1" text-anchor="middle">PASS / FAIL / ASK</text>
+
+  <!-- Single line label -->
+  <rect x="490" y="260" width="110" height="14" rx="4" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.5"/>
+  <text x="545" y="270" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" fill="#0096d1" text-anchor="middle">single-line verdict</text>
+
+  <!-- Bottom annotation -->
+  <text x="400" y="308" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">100K tokens of bias on one side. 2K tokens of structured evidence on the other. The gatekeeper sees only the evidence.</text>
+
+</svg>

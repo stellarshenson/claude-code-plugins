@@ -1,0 +1,125 @@
+<!--
+  02-phase-lifecycle.svg - FSM lifecycle with two gates per phase
+  Shows: clear horizontal flow with prominent gate checkpoints and reject paths
+  Intent: readable state machine showing pending->readback->in_progress->gatekeeper->complete
+  Theme: Stellars-Tech
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 260">
+  <style>
+    .fg-1 { fill: #1a5a6e; } .fg-2 { fill: #24697e; } .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #0096d1; } .accent-2 { fill: #005f7a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; } .fg-2 { fill: #8fd4e6; } .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; } .accent-2 { fill: #4099b3; }
+    }
+  </style>
+
+  <!-- === GRID === viewBox 800x260. 5 state cards horizontal at y=70 h=64. Arrows 24px gaps. Reject arcs below y=150. === -->
+  <!-- === LAYOUT TOPOLOGY === h-stack: [PENDING, READBACK, IN_PROGRESS, GATEKEEPER, COMPLETE]. reject arcs below. === -->
+
+  <text x="400" y="22" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">PHASE LIFECYCLE - TWO GATES PER PHASE</text>
+
+  <!-- ACP labels above gate states -->
+  <rect x="182" y="40" width="90" height="16" rx="4" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.5"/>
+  <text x="227" y="51" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-1" text-anchor="middle">ACP subprocess</text>
+  <line x1="227" y1="56" x2="227" y2="70" stroke="#0096d1" stroke-width="0.6" stroke-dasharray="2,2" opacity="0.4"/>
+
+  <rect x="505" y="40" width="90" height="16" rx="4" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.5"/>
+  <text x="550" y="51" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-1" text-anchor="middle">ACP subprocess</text>
+  <line x1="550" y1="56" x2="550" y2="70" stroke="#0096d1" stroke-width="0.6" stroke-dasharray="2,2" opacity="0.4"/>
+
+  <!-- State 1: PENDING -->
+  <path d="M20,70 H130 V128 Q130,134 127,134 H23 Q20,134 20,128 Z" fill="#236a74" fill-opacity="0.04"/>
+  <path d="M20,70 H130 V128 Q130,134 127,134 H23 Q20,134 20,128 Z" fill="none" stroke="#236a74" stroke-width="1"/>
+  <rect x="20" y="70" width="110" height="5" fill="#236a74" opacity="0.4"/>
+  <text x="75" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">PENDING</text>
+  <text x="75" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Agent calls start</text>
+  <text x="75" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">--understanding</text>
+
+  <!-- Arrow 1->2 -->
+  <g transform="translate(158, 102) rotate(0)">
+    <line x1="-28" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5" opacity="0.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1" opacity="0.8"/>
+  </g>
+
+  <!-- State 2: READBACK (Gate 1) -->
+  <path d="M162,70 H292 V128 Q292,134 289,134 H165 Q162,134 162,128 Z" fill="#0096d1" fill-opacity="0.04"/>
+  <path d="M162,70 H292 V128 Q292,134 289,134 H165 Q162,134 162,128 Z" fill="none" stroke="#0096d1" stroke-width="1.2"/>
+  <rect x="162" y="70" width="130" height="5" fill="#0096d1" opacity="0.6"/>
+  <text x="227" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">READBACK</text>
+  <text x="227" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Does agent understand?</text>
+  <rect x="200" y="116" width="54" height="12" rx="3" fill="#0096d1" fill-opacity="0.12" stroke="#0096d1" stroke-width="0.6"/>
+  <text x="227" y="125" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1" text-anchor="middle">GATE 1</text>
+
+  <!-- Arrow 2->3 (PASS) -->
+  <g transform="translate(320, 102) rotate(0)">
+    <line x1="-28" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5" opacity="0.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1" opacity="0.8"/>
+  </g>
+  <text x="308" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" fill="#0096d1" text-anchor="middle">PASS</text>
+
+  <!-- State 3: IN PROGRESS -->
+  <path d="M324,70 H478 V128 Q478,134 475,134 H327 Q324,134 324,128 Z" fill="#005f7a" fill-opacity="0.04"/>
+  <path d="M324,70 H478 V128 Q478,134 475,134 H327 Q324,134 324,128 Z" fill="none" stroke="#005f7a" stroke-width="1"/>
+  <rect x="324" y="70" width="154" height="5" fill="#005f7a" opacity="0.5"/>
+  <text x="401" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">IN PROGRESS</text>
+  <text x="401" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Agent does the work</text>
+  <text x="401" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">end --evidence --agents</text>
+
+  <!-- Arrow 3->4 -->
+  <g transform="translate(506, 102) rotate(0)">
+    <line x1="-28" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5" opacity="0.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1" opacity="0.8"/>
+  </g>
+
+  <!-- State 4: GATEKEEPER (Gate 2) -->
+  <path d="M510,70 H640 V128 Q640,134 637,134 H513 Q510,134 510,128 Z" fill="#0096d1" fill-opacity="0.04"/>
+  <path d="M510,70 H640 V128 Q640,134 637,134 H513 Q510,134 510,128 Z" fill="none" stroke="#0096d1" stroke-width="1.2"/>
+  <rect x="510" y="70" width="130" height="5" fill="#0096d1" opacity="0.6"/>
+  <text x="575" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">GATEKEEPER</text>
+  <text x="575" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Program vs agent claims</text>
+  <rect x="548" y="116" width="54" height="12" rx="3" fill="#0096d1" fill-opacity="0.12" stroke="#0096d1" stroke-width="0.6"/>
+  <text x="575" y="125" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1" text-anchor="middle">GATE 2</text>
+
+  <!-- Arrow 4->5 (PASS) -->
+  <g transform="translate(668, 102) rotate(0)">
+    <line x1="-28" y1="0" x2="-10" y2="0" stroke="#0096d1" stroke-width="1.5" opacity="0.5"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#0096d1" opacity="0.8"/>
+  </g>
+  <text x="656" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" fill="#0096d1" text-anchor="middle">PASS</text>
+
+  <!-- State 5: COMPLETE -->
+  <path d="M672,70 H780 V128 Q780,134 777,134 H675 Q672,134 672,128 Z" fill="#0096d1" fill-opacity="0.06"/>
+  <path d="M672,70 H780 V128 Q780,134 777,134 H675 Q672,134 672,128 Z" fill="none" stroke="#0096d1" stroke-width="1.2"/>
+  <rect x="672" y="70" width="108" height="5" fill="#0096d1" opacity="0.6"/>
+  <text x="726" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">COMPLETE</text>
+  <text x="726" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Advance to</text>
+  <text x="726" y="124" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">next phase</text>
+
+  <!-- ═══ REJECT PATHS (both at y=170, pills below with 8px clearance) ═══ -->
+
+  <!-- Readback FAIL -> back to PENDING (L-route: down, left, up) -->
+  <path d="M227,134 L227,170 L75,170 L75,134" fill="none" stroke="#da8230" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <g transform="translate(75, 138) rotate(-90)">
+    <polygon points="0,0 -8,-4 -8,4" fill="#da8230" opacity="0.7"/>
+  </g>
+  <!-- Label 8px below connector at y=170 -->
+  <rect x="118" y="178" width="68" height="14" rx="3" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5"/>
+  <text x="152" y="188" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" fill="#da8230" text-anchor="middle">FAIL: retry</text>
+
+  <!-- Gatekeeper FAIL -> back to IN PROGRESS (L-route: down, left, up - same y=170) -->
+  <path d="M575,134 L575,170 L401,170 L401,134" fill="none" stroke="#da8230" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <g transform="translate(401, 138) rotate(-90)">
+    <polygon points="0,0 -8,-4 -8,4" fill="#da8230" opacity="0.7"/>
+  </g>
+  <!-- Label 8px below connector at y=170 -->
+  <rect x="448" y="178" width="80" height="14" rx="3" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5"/>
+  <text x="488" y="188" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" fill="#da8230" text-anchor="middle">FAIL: fix + retry</text>
+
+  <!-- Bottom annotation -->
+  <rect x="150" y="208" width="500" height="42" rx="6" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.5" stroke-dasharray="6,3"/>
+  <text x="400" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-1" text-anchor="middle">Checks and Balances: gatekeeper knows program inputs, compares against agent claims</text>
+  <text x="400" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Separate process with no shared context - cannot be swayed by rationalisations</text>
+  <text x="400" y="246" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-1" text-anchor="middle">Entire lifecycle fully customisable via YAML - states, gates, agents, exit criteria</text>
+
+</svg>

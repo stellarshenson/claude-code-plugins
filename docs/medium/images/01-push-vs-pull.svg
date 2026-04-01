@@ -1,0 +1,266 @@
+<!--
+  01-push-vs-pull.svg - Push vs Pull workflow comparison
+  Shows: chaotic push model (tilted cards, broken connectors) vs orderly pull model (aligned, gated)
+  Intent: visual contrast of chaos vs order to convey inversion of control
+  Theme: Stellars-Tech - teal/cyan primary, orange accent
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 440">
+  <style>
+    .fg-1 { fill: #1a5a6e; } .fg-2 { fill: #24697e; } .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #0096d1; } .accent-2 { fill: #005f7a; }
+    .accent-cyan { fill: #0096d1; } .accent-orange { fill: #da8230; }
+    .on-fill { fill: #1a5a6e; }
+    .card-bg { fill-opacity: 0.04; } .connector { stroke-width: 1.5; }
+    .arrow-head { opacity: 0.85; } .icon-stroke { stroke-width: 2; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; } .fg-2 { fill: #8fd4e6; } .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; } .accent-2 { fill: #4099b3; }
+      .accent-cyan { fill: #5cc8e0; } .accent-orange { fill: #d4a04a; }
+      .on-fill { fill: #b8e4f0; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox 800x440, H=40px margin top/bottom/sides
+    Left column (PUSH):  x=40..368, centre=204
+    Divider: x=400
+    Right column (PULL): x=432..760, centre=596
+    Title: y=32
+    Column headers: y=60
+    Cards: w=280, h=60, M=24px gap between cards
+    Card 1: y=80..140
+    Gap: y=140..164  (24px)
+    Card 2: y=164..224
+    Gap: y=224..248
+    Card 3: y=248..308
+    Gap: y=308..332
+    Card 4: y=332..392
+    Bottom annotation: y=410
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: [push-column, divider, pull-column]
+    push-column: v-stack [4 tilted cards with broken connectors, skip arrow]
+    pull-column: v-stack [4 aligned cards with shield gates between]
+    contrast: visual chaos (left) vs visual order (right)
+  === -->
+
+  <!-- Title -->
+  <text x="400" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">PUSH MODEL vs PULL MODEL</text>
+
+  <!-- Divider -->
+  <line x1="400" y1="48" x2="400" y2="400" stroke="#236a74" stroke-width="0.8" stroke-dasharray="4,4" opacity="0.35"/>
+
+  <!-- ═══ LEFT COLUMN: PUSH MODEL (chaotic) ═══ -->
+  <text x="204" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-orange" text-anchor="middle">PUSH - Agent Decides</text>
+
+  <!-- Chaos noise -->
+  <circle cx="60" cy="110" r="1.5" fill="#da8230" opacity="0.15"/>
+  <circle cx="350" cy="180" r="2" fill="#da8230" opacity="0.12"/>
+  <circle cx="85" cy="290" r="1.8" fill="#da8230" opacity="0.1"/>
+  <circle cx="320" cy="360" r="1.2" fill="#da8230" opacity="0.18"/>
+
+  <!-- Card 1: Plan - tilted 2deg -->
+  <g id="push-plan" transform="translate(204, 110) rotate(2)">
+    <path d="M-140,-30 H140 V24 Q140,30 137,30 H-137 Q-140,30 -140,24 Z" class="card-bg" fill="#da8230"/>
+    <path d="M-140,-30 H140 V24 Q140,30 137,30 H-137 Q-140,30 -140,24 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="-140" y="-30" width="280" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="0" y="-10" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1" text-anchor="middle">Plan</text>
+    <text x="0" y="6" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">"I'll plan, then code, then test"</text>
+    <text x="0" y="20" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Agent decides its own workflow</text>
+  </g>
+
+  <!-- Broken connector 1->2: fading, dashed -->
+  <line x1="204" y1="142" x2="204" y2="152" stroke="#da8230" stroke-width="1.2" opacity="0.25" stroke-dasharray="2,3"/>
+
+  <!-- SKIP arrow: curved path from Plan area to Self-Review area -->
+  <path d="M324,115 Q360,200 300,275" fill="none" stroke="#da8230" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.5"/>
+  <!-- Arrowhead aligned to curve tangent at endpoint (angle ~129deg from control(360,200)->end(300,275)) -->
+  <g transform="translate(300, 275) rotate(129)">
+    <polygon points="0,0 -10,-5 -10,5" fill="#da8230" opacity="0.7"/>
+  </g>
+  <!-- SKIP label 8px right of curve midpoint -->
+  <rect x="338" y="182" width="42" height="16" rx="4" fill="#da8230" fill-opacity="0.12" stroke="#da8230" stroke-width="0.6"/>
+  <text x="359" y="193" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" fill="#da8230" text-anchor="middle">SKIP!</text>
+
+  <!-- Card 2: Research - tilted -3deg, faded (skipped) -->
+  <g id="push-research" transform="translate(200, 194) rotate(-3)" opacity="0.35">
+    <path d="M-140,-30 H140 V24 Q140,30 137,30 H-137 Q-140,30 -140,24 Z" class="card-bg" fill="#da8230"/>
+    <path d="M-140,-30 H140 V24 Q140,30 137,30 H-137 Q-140,30 -140,24 Z" fill="none" stroke="#da8230" stroke-width="1" stroke-dasharray="4,2"/>
+    <rect x="-140" y="-30" width="280" height="5" fill="#da8230" opacity="0.4"/>
+    <text x="0" y="-10" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1" text-anchor="middle">Research</text>
+    <text x="0" y="6" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">"Planning looks good enough, skip"</text>
+    <line x1="-110" y1="-2" x2="110" y2="-2" stroke="#da8230" stroke-width="1.5" opacity="0.8"/>
+  </g>
+  <text x="358" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-orange" text-anchor="middle">skipped</text>
+
+  <!-- Broken connector 2->3 -->
+  <line x1="200" y1="226" x2="198" y2="240" stroke="#da8230" stroke-width="1" opacity="0.2" stroke-dasharray="1,4"/>
+
+  <!-- Card 3: Self-Review - tilted 1.5deg -->
+  <g id="push-review" transform="translate(208, 278) rotate(1.5)">
+    <path d="M-140,-30 H140 V24 Q140,30 137,30 H-137 Q-140,30 -140,24 Z" class="card-bg" fill="#da8230"/>
+    <path d="M-140,-30 H140 V24 Q140,30 137,30 H-137 Q-140,30 -140,24 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="-140" y="-30" width="280" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="0" y="-10" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1" text-anchor="middle">Self-Review</text>
+    <text x="0" y="6" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">"Tests pass, looks fine to me"</text>
+    <text x="0" y="20" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Same model reviews its own rationalisations</text>
+  </g>
+  <text x="358" y="264" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-orange" text-anchor="middle">biased</text>
+
+  <!-- Arrow 3->4 (down, stem from Self-Review bottom to Commit top) -->
+  <g transform="translate(208, 328) rotate(90)">
+    <line x1="-20" y1="0" x2="-10" y2="0" stroke="#da8230" stroke-width="1.5" opacity="0.35"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#da8230" opacity="0.7"/>
+  </g>
+
+  <!-- Card 4: Commit - tilted -1deg -->
+  <g id="push-commit" transform="translate(200, 362) rotate(-1)">
+    <path d="M-140,-30 H140 V24 Q140,30 137,30 H-137 Q-140,30 -140,24 Z" class="card-bg" fill="#da8230"/>
+    <path d="M-140,-30 H140 V24 Q140,30 137,30 H-137 Q-140,30 -140,24 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="-140" y="-30" width="280" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="0" y="-10" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1" text-anchor="middle">Commit</text>
+    <text x="0" y="6" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">Unchecked, unverified</text>
+  </g>
+
+  <!-- Warning icon (Lucide alert-triangle, ISC License) next to Commit card -->
+  <g transform="translate(78, 350) scale(0.55)" fill="none" stroke="#da8230" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+    <line x1="12" y1="9" x2="12" y2="13"/>
+    <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </g>
+
+  <!-- ═══ RIGHT COLUMN: PULL MODEL (orderly) ═══ -->
+  <text x="596" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-cyan" text-anchor="middle">PULL - Orchestrator Controls</text>
+
+  <!-- Subtle vertical guide lines -->
+  <line x1="432" y1="72" x2="432" y2="400" stroke="#0096d1" stroke-width="0.3" opacity="0.1"/>
+  <line x1="760" y1="72" x2="760" y2="400" stroke="#0096d1" stroke-width="0.3" opacity="0.1"/>
+
+  <!-- Card 1: Research (gated) -->
+  <g id="pull-research">
+    <path d="M456,80 H736 V134 Q736,140 733,140 H459 Q456,140 456,134 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M456,80 H736 V134 Q736,140 733,140 H459 Q456,140 456,134 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="456" y="80" width="280" height="5" fill="#0096d1" opacity="0.6"/>
+    <!-- Lucide search icon -->
+    <g transform="translate(470, 96)" fill="none" stroke="#0096d1" stroke-width="1.5" stroke-linecap="round" opacity="0.6">
+      <circle cx="7" cy="7" r="5"/>
+      <line x1="11" y1="11" x2="14" y2="14"/>
+    </g>
+    <text x="596" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1" text-anchor="middle">Research</text>
+    <text x="596" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">3 agents gather evidence, findings merged</text>
+    <text x="596" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Cannot skip - orchestrator requires output file</text>
+  </g>
+
+  <!-- Verified badge -->
+  <g transform="translate(700, 108)">
+    <rect x="-22" y="-7" width="44" height="14" rx="3" fill="#0096d1" fill-opacity="0.08"/>
+    <text x="0" y="3" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-cyan" text-anchor="middle">verified</text>
+  </g>
+
+  <!-- Shield gate 1 -->
+  <g id="gate-1" transform="translate(596, 152)">
+    <rect x="-22" y="-6" width="44" height="16" rx="4" fill="#0096d1" fill-opacity="0.12" stroke="#0096d1" stroke-width="0.8"/>
+    <g transform="translate(-12, -3)" fill="none" stroke="#0096d1" stroke-width="1.2" stroke-linecap="round" opacity="0.7">
+      <path d="M6 1L1 3.5V7c0 3.5 5 5.5 5 5.5s5-2 5-5.5V3.5L6 1z" transform="scale(0.65)"/>
+      <polyline points="3,6 5,8 9,4" transform="scale(0.65)"/>
+    </g>
+    <text x="8" y="7" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1" text-anchor="middle">GATE</text>
+  </g>
+  <line x1="596" y1="140" x2="596" y2="146" stroke="#0096d1" stroke-width="1" opacity="0.4"/>
+  <line x1="596" y1="164" x2="596" y2="170" stroke="#0096d1" stroke-width="1" opacity="0.4"/>
+
+  <!-- Card 2: Plan (gated) -->
+  <g id="pull-plan">
+    <path d="M456,172 H736 V226 Q736,232 733,232 H459 Q456,232 456,226 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M456,172 H736 V226 Q736,232 733,232 H459 Q456,232 456,226 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="456" y="172" width="280" height="5" fill="#0096d1" opacity="0.6"/>
+    <!-- Lucide file-text icon -->
+    <g transform="translate(470, 188)" fill="none" stroke="#0096d1" stroke-width="1.5" stroke-linecap="round" opacity="0.6">
+      <path d="M2 0h7l3 3v9a1 1 0 01-1 1H2a1 1 0 01-1-1V1a1 1 0 011-1z" transform="scale(0.7)"/>
+      <line x1="5" y1="7" x2="9" y2="7" transform="scale(0.7)"/>
+    </g>
+    <text x="596" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1" text-anchor="middle">Plan</text>
+    <text x="596" y="208" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">Readback validates understanding, 3 agents review</text>
+    <text x="596" y="224" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Must prove comprehension before coding</text>
+  </g>
+
+  <!-- Verified badge -->
+  <g transform="translate(700, 200)">
+    <rect x="-22" y="-7" width="44" height="14" rx="3" fill="#0096d1" fill-opacity="0.08"/>
+    <text x="0" y="3" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-cyan" text-anchor="middle">verified</text>
+  </g>
+
+  <!-- Shield gate 2 -->
+  <g id="gate-2" transform="translate(596, 244)">
+    <rect x="-22" y="-6" width="44" height="16" rx="4" fill="#0096d1" fill-opacity="0.12" stroke="#0096d1" stroke-width="0.8"/>
+    <g transform="translate(-12, -3)" fill="none" stroke="#0096d1" stroke-width="1.2" stroke-linecap="round" opacity="0.7">
+      <path d="M6 1L1 3.5V7c0 3.5 5 5.5 5 5.5s5-2 5-5.5V3.5L6 1z" transform="scale(0.65)"/>
+      <polyline points="3,6 5,8 9,4" transform="scale(0.65)"/>
+    </g>
+    <text x="8" y="7" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1" text-anchor="middle">GATE</text>
+  </g>
+  <line x1="596" y1="232" x2="596" y2="238" stroke="#0096d1" stroke-width="1" opacity="0.4"/>
+  <line x1="596" y1="256" x2="596" y2="262" stroke="#0096d1" stroke-width="1" opacity="0.4"/>
+
+  <!-- Card 3: Implement + Test -->
+  <g id="pull-implement">
+    <path d="M456,264 H736 V318 Q736,324 733,324 H459 Q456,324 456,318 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M456,264 H736 V318 Q736,324 733,324 H459 Q456,324 456,318 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="456" y="264" width="280" height="5" fill="#0096d1" opacity="0.6"/>
+    <!-- Lucide code icon -->
+    <g transform="translate(470, 280)" fill="none" stroke="#0096d1" stroke-width="1.5" stroke-linecap="round" opacity="0.6">
+      <polyline points="4,1 1,5 4,9" transform="scale(0.7)"/>
+      <polyline points="8,1 11,5 8,9" transform="scale(0.7)"/>
+    </g>
+    <text x="596" y="284" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1" text-anchor="middle">Implement + Test</text>
+    <text x="596" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">Auto-reject on failure, benchmark tracked</text>
+    <text x="596" y="316" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Tests run automatically, failures bounce back</text>
+  </g>
+
+  <!-- Verified badge -->
+  <g transform="translate(700, 292)">
+    <rect x="-22" y="-7" width="44" height="14" rx="3" fill="#0096d1" fill-opacity="0.08"/>
+    <text x="0" y="3" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-cyan" text-anchor="middle">verified</text>
+  </g>
+
+  <!-- Shield gate 3 -->
+  <g id="gate-3" transform="translate(596, 336)">
+    <rect x="-22" y="-6" width="44" height="16" rx="4" fill="#0096d1" fill-opacity="0.12" stroke="#0096d1" stroke-width="0.8"/>
+    <g transform="translate(-12, -3)" fill="none" stroke="#0096d1" stroke-width="1.2" stroke-linecap="round" opacity="0.7">
+      <path d="M6 1L1 3.5V7c0 3.5 5 5.5 5 5.5s5-2 5-5.5V3.5L6 1z" transform="scale(0.65)"/>
+      <polyline points="3,6 5,8 9,4" transform="scale(0.65)"/>
+    </g>
+    <text x="8" y="7" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1" text-anchor="middle">GATE</text>
+  </g>
+  <line x1="596" y1="324" x2="596" y2="330" stroke="#0096d1" stroke-width="1" opacity="0.4"/>
+  <line x1="596" y1="348" x2="596" y2="354" stroke="#0096d1" stroke-width="1" opacity="0.4"/>
+
+  <!-- Card 4: Review -->
+  <g id="pull-review">
+    <path d="M456,356 H736 V394 Q736,400 733,400 H459 Q456,400 456,394 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M456,356 H736 V394 Q736,400 733,400 H459 Q456,400 456,394 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="456" y="356" width="280" height="5" fill="#0096d1" opacity="0.6"/>
+    <!-- Lucide eye icon -->
+    <g transform="translate(470, 370)" fill="none" stroke="#0096d1" stroke-width="1.5" stroke-linecap="round" opacity="0.6">
+      <path d="M1 6s3-5 7-5 7 5 7 5-3 5-7 5-7-5-7-5z" transform="scale(0.65)"/>
+      <circle cx="5.2" cy="3.9" r="1.5"/>
+    </g>
+    <text x="596" y="376" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1" text-anchor="middle">Review</text>
+    <text x="596" y="392" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">4 independent agents, guardian in isolated process</text>
+  </g>
+
+  <!-- Verified badge -->
+  <g transform="translate(700, 380)">
+    <rect x="-22" y="-7" width="44" height="14" rx="3" fill="#0096d1" fill-opacity="0.08"/>
+    <text x="0" y="3" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-cyan" text-anchor="middle">verified</text>
+  </g>
+
+  <!-- Bottom callout annotations -->
+  <rect x="72" y="414" width="264" height="16" rx="4" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.5"/>
+  <text x="204" y="425" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-orange" text-anchor="middle">agent controls the process</text>
+
+  <rect x="464" y="414" width="264" height="16" rx="4" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.5"/>
+  <text x="596" y="425" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-cyan" text-anchor="middle">orchestrator controls the process</text>
+
+</svg>
