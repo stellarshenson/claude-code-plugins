@@ -81,10 +81,11 @@ Note: Agent.number field retained with default=0, auto-populated from list index
 - [ ] No function has cyclomatic complexity > 10
 - [x] Functions exceeding limits have been refactored or justified with comment
 
-14 functions >50 lines in orchestrator.py (justified in CODE_JUSTIFICATIONS.md):
-_initialize(64), _build_context(109), _yaml_dump(53), _banner(52), _run_summary(108),
-_run_next_iteration(84), cmd_new(112), cmd_start(109), cmd_end(235), cmd_status(75),
-cmd_skip(88), cmd_context(53), main(115). Plus validate_model(132) in model.py.
+15 functions >50 lines after refactoring (justified in CODE_JUSTIFICATIONS.md):
+_initialize(64), _build_context(59), _yaml_dump(53), _banner(52), _run_summary(108),
+_run_next_iteration(84), cmd_new(112), cmd_start(109), cmd_end(57), cmd_status(75),
+cmd_skip(88), cmd_context(53), _build_cli_parser(73). Plus validate_model(132) in model.py.
+cmd_end reduced from 235->57 via 6 extracted helpers. _build_context 109->59 via 4 builders.
 
 ### Dead Code and Justification
 
@@ -106,8 +107,8 @@ Note: _current_workflow_type, _resolve_phase, _resolve_agents are thin wrappers 
 
 ### Size Reduction
 
-- [x] orchestrator.py lines < 2444 (baseline) - currently 2286
-- [x] Total engine lines < 3113 (baseline) - currently 2944
+- [x] orchestrator.py lines < 2444 (baseline) - currently 2348
+- [x] Total engine lines < 3113 (baseline) - currently 3005 (incl __init__.py)
 - [ ] Hypothesis code (141 lines) fully removed
 
 Note: Hypothesis code retained because FULL workflow still uses it. Only PLANNING hypothesis removed.
@@ -157,7 +158,15 @@ Note: Hypothesis code retained because FULL workflow still uses it. Only PLANNIN
 - [ ] If gatekeeper passes + readback fails: next phase in PENDING (retry)
 - [ ] Tests cover parallel gate scenarios
 
-## Section 7: TEST Phase Benchmark Enforcement
+## Section 7: Benchmark Agent
+
+- [ ] Benchmark agent defined in agents.yaml under FULL::TEST (or standalone)
+- [ ] Benchmark agent prompt instructs: read BENCHMARK.md, evaluate [ ] items, mark [x], update Score Tracking
+- [ ] TEST phase spawns benchmark agent when --benchmark is configured
+- [ ] TEST gatekeeper verifies Score Tracking table was updated
+- [ ] Gatekeeper fails if benchmark configured but Score Tracking not updated
+
+## Section 8: TEST Phase Benchmark Enforcement
 
 - [ ] _verify_test_phase() output includes reminder to update BENCHMARK.md score tracker
 - [ ] TEST phase end template requires benchmark evaluation and tracker update
@@ -185,7 +194,7 @@ Iterations continue until ALL conditions are met. Use `orchestrate add-iteration
 
 - [ ] All Section 1-6 checklist items are `[x]` (benchmark score = 0)
 - [x] CODE_JUSTIFICATIONS.md complete with zero unjustified components and zero unjustified tests
-- [ ] Total engine lines < 2800 (reduced from 3113 baseline) - currently 2944
+- [ ] Total engine lines < 2800 (reduced from 3113 baseline) - currently 3005
 
 **Do NOT stop while any condition above is unmet.**
 
@@ -196,4 +205,4 @@ Iterations continue until ALL conditions are met. Use `orchestrate add-iteration
 | Iteration | Unchecked | Failed Tests | Complexity > 10 | Unjustified Components | Unjustified Tests | Score |
 |-----------|-----------|--------------|------------------|------------------------|-------------------|-------|
 | baseline  | 75        | 0            | TBD              | TBD                    | TBD               | TBD   |
-| current   | 10        | 0            | 0                | 0                      | 0                 | 10    |
+| iter 1    | 17        | 0            | 0                | 0                      | 0                 | 17    |

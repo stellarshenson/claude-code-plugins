@@ -222,6 +222,33 @@ This saves ~60s per phase transition (one gate's worth of latency eliminated).
 - `auto-build-claw/skills/auto-build-claw/resources/app.yaml` - add CLI arg help
 - `tests/test_orchestrator.py` - test parallel gate execution
 
+## Workstream H - Benchmark Agent
+
+Add an explicit benchmark agent that is responsible for evaluating and updating BENCHMARK.md during the TEST phase. This agent runs as part of the TEST phase's agent panel.
+
+### Behavior
+
+When `--benchmark` is configured:
+1. The TEST phase spawns a **benchmark agent** alongside test/lint execution
+2. The benchmark agent reads BENCHMARK.md, evaluates every `[ ]` item against the codebase
+3. Marks `[x]` for passing items, leaves `[ ]` for failing
+4. Updates the Score Tracking table with the current iteration's results
+5. Computes the composite score using the formula
+6. The gatekeeper verifies the Score Tracking table was updated
+
+### Implementation
+
+- Add a benchmark agent definition to agents.yaml under FULL::TEST (or as a standalone agent)
+- The agent's prompt instructs it to read BENCHMARK.md, evaluate items, edit the file, report score
+- The TEST gatekeeper checks evidence for "Score Tracking updated" or similar confirmation
+- `_verify_test_phase()` returns the benchmark instruction as part of its output so the orchestrating agent knows to spawn the benchmark agent
+
+### Files to Modify
+
+- `auto-build-claw/skills/auto-build-claw/resources/agents.yaml` - add benchmark agent to TEST phase
+- `auto-build-claw/skills/auto-build-claw/resources/phases.yaml` - update TEST end criteria to require benchmark update
+- `stellars_claude_code_plugins/engine/orchestrator.py` - update _verify_test_phase to include benchmark agent instruction
+
 ## Workstream F - TEST Phase Benchmark Enforcement
 
 The TEST phase must ensure that when a benchmark is configured, it is always evaluated and the score tracking table in BENCHMARK.md is updated.
