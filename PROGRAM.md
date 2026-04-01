@@ -122,6 +122,13 @@ actions:
 - Tests must verify orchestrator uses YAML gate mapping not hardcoded names
 - Acceptance: all tests pass, new structure covered
 
+### Force auto-progression in prompts (high)
+- Scope: phases.yaml, SKILL.md
+- Every phase start/end template must include explicit instruction to proceed immediately to the next phase
+- No "shall I continue?" or "ready for next?" questions - just proceed
+- The autonomous execution instruction in SKILL.md must be reinforced in every phase template
+- Acceptance: grep phases.yaml for "proceed immediately" or equivalent in every phase end template
+
 ## Constraints
 
 - Do NOT change gate behavior - readback still blocks at start, gatekeeper still blocks at end
