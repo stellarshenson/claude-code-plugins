@@ -107,6 +107,23 @@ Lower is better. Target: 0.
 
 ---
 
+## Completion Conditions
+
+Iterations continue until ALL conditions are met. Use `orchestrate add-iteration --count 1` if iterations run out before completion.
+
+- [ ] Benchmark score = 0 (all items above checked, no failures, no complexity violations)
+- [ ] `make test` passes with 0 failures and test count >= 100
+- [ ] `make lint` passes clean
+- [ ] `orchestrate validate` passes with auto-build-claw YAML resources
+- [ ] `orchestrate new --type full --objective "test" --iterations 1 --dry-run` succeeds
+- [ ] No custom FSM classes remain (only transitions.Machine)
+- [ ] No hypothesis code remains (zero references in engine, YAML, tests)
+- [ ] Total engine lines < 2800 (reduced from 3113 baseline)
+
+**Do NOT stop while any condition above is unmet.**
+
+---
+
 ## Score Tracking
 
 | Iteration | Unchecked | Failed Tests | Complexity > 10 | Score |

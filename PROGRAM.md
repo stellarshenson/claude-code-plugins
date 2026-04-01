@@ -122,10 +122,17 @@ Run tree-sitter-python parsing on all engine modules:
 2. **Workstream A second** (FSM migration) - independent from hypothesis removal
 3. **Workstream C last** (tree-sitter analysis) - runs on the already-cleaned codebase
 
-## Success Criteria
+## Completion Conditions
 
-- All `make test` passes (115+ tests)
-- All `make lint` passes
-- `orchestrate validate` passes with real auto-build-claw YAML resources
-- `orchestrate new --type full --objective "test" --iterations 1 --dry-run` succeeds
-- Benchmark score of 0 (all checklist items checked, no test failures, no complex functions)
+Iterations continue until ALL of the following are met:
+
+1. **Benchmark score = 0** - every checklist item in BENCHMARK.md is `[x]`, zero test failures, zero functions over complexity 10
+2. **`make test` passes** with 0 failures and test count >= 100
+3. **`make lint` passes** clean
+4. **`orchestrate validate` passes** with real auto-build-claw YAML resources
+5. **`orchestrate new --type full --objective "test" --iterations 1 --dry-run` succeeds**
+6. **No custom FSM classes remain** - only `transitions.Machine` based implementation
+7. **No hypothesis code remains** - zero references in engine, YAML, and tests
+8. **Total engine lines < 2800** - meaningful reduction from 3113 baseline
+
+Use `orchestrate add-iteration --count 1` to extend iterations if conditions are not yet met. Do NOT stop while any condition above is unmet.
