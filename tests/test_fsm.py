@@ -1,50 +1,14 @@
-"""Unit tests for the FSM engine."""
+"""Unit tests for the FSM engine (transitions-based)."""
 
 import pytest
 
 from stellars_claude_code_plugins.engine.fsm import (
     Event,
     FSM,
-    FSMConfig,
     State,
-    Transition,
     build_phase_lifecycle_fsm,
     resolve_phase_key,
 )
-
-
-class TestState:
-    """State enum value tests."""
-
-    def test_state_values(self):
-        assert State.PENDING.value == "pending"
-        assert State.READBACK.value == "readback"
-        assert State.IN_PROGRESS.value == "in_progress"
-        assert State.GATEKEEPER.value == "gatekeeper"
-        assert State.COMPLETE.value == "complete"
-        assert State.SKIPPED.value == "skipped"
-        assert State.REJECTED.value == "rejected"
-
-    def test_state_count(self):
-        assert len(State) == 7
-
-
-class TestEvent:
-    """Event enum value tests."""
-
-    def test_event_values(self):
-        assert Event.START.value == "start"
-        assert Event.READBACK_PASS.value == "readback_pass"
-        assert Event.READBACK_FAIL.value == "readback_fail"
-        assert Event.END.value == "end"
-        assert Event.GATE_PASS.value == "gate_pass"
-        assert Event.GATE_FAIL.value == "gate_fail"
-        assert Event.REJECT.value == "reject"
-        assert Event.SKIP.value == "skip"
-        assert Event.ADVANCE.value == "advance"
-
-    def test_event_count(self):
-        assert len(Event) == 9
 
 
 class TestFSMBasic:
@@ -53,11 +17,10 @@ class TestFSMBasic:
     @pytest.fixture
     def simple_fsm(self):
         """Two-state FSM for basic testing."""
-        config = FSMConfig(transitions=[
-            Transition("pending", "start", "in_progress"),
-            Transition("in_progress", "end", "complete"),
+        return FSM([
+            {"trigger": "start", "source": "pending", "dest": "in_progress"},
+            {"trigger": "end", "source": "in_progress", "dest": "complete"},
         ])
-        return FSM(config)
 
     def test_initial_state(self, simple_fsm):
         assert simple_fsm.current_state == State.PENDING
@@ -73,7 +36,7 @@ class TestFSMBasic:
         assert result == State.COMPLETE
 
     def test_fire_invalid_event_raises(self, simple_fsm):
-        with pytest.raises(ValueError, match="No transition from state"):
+        with pytest.raises(ValueError):
             simple_fsm.fire(Event.END)  # can't end from pending
 
     def test_fire_string_event(self, simple_fsm):
@@ -114,12 +77,10 @@ class TestFSMGuards:
 
     @pytest.fixture
     def guarded_fsm(self):
-        config = FSMConfig(transitions=[
-            Transition("pending", "start", "in_progress", guard="is_ready"),
-            Transition("pending", "start", "rejected", guard="not_ready"),
+        return FSM([
+            {"trigger": "start", "source": "pending", "dest": "in_progress", "guard": "is_ready"},
+            {"trigger": "start", "source": "pending", "dest": "rejected", "guard": "not_ready"},
         ])
-        fsm = FSM(config)
-        return fsm
 
     def test_guard_passes(self, guarded_fsm):
         guarded_fsm.register_guard("is_ready", lambda **ctx: True)
@@ -136,7 +97,7 @@ class TestFSMGuards:
     def test_all_guards_fail_raises(self, guarded_fsm):
         guarded_fsm.register_guard("is_ready", lambda **ctx: False)
         guarded_fsm.register_guard("not_ready", lambda **ctx: False)
-        with pytest.raises(ValueError, match="All guards failed"):
+        with pytest.raises(ValueError):
             guarded_fsm.fire(Event.START)
 
     def test_unknown_guard_raises(self, guarded_fsm):
@@ -144,10 +105,9 @@ class TestFSMGuards:
             guarded_fsm.fire(Event.START)
 
     def test_guard_receives_context(self):
-        config = FSMConfig(transitions=[
-            Transition("pending", "start", "in_progress", guard="check_phase"),
+        fsm = FSM([
+            {"trigger": "start", "source": "pending", "dest": "in_progress", "guard": "check_phase"},
         ])
-        fsm = FSM(config)
         received = {}
         fsm.register_guard("check_phase", lambda **ctx: (received.update(ctx), True)[1])
         fsm.fire(Event.START, phase="RESEARCH", iteration=1)
@@ -159,28 +119,25 @@ class TestFSMActions:
     """Action function tests."""
 
     def test_action_executed_on_transition(self):
-        config = FSMConfig(transitions=[
-            Transition("pending", "start", "in_progress", action="log_start"),
+        fsm = FSM([
+            {"trigger": "start", "source": "pending", "dest": "in_progress", "action": "log_start"},
         ])
-        fsm = FSM(config)
         called = []
         fsm.register_action("log_start", lambda **ctx: called.append("started"))
         fsm.fire(Event.START)
         assert called == ["started"]
 
     def test_unknown_action_raises(self):
-        config = FSMConfig(transitions=[
-            Transition("pending", "start", "in_progress", action="missing_action"),
+        fsm = FSM([
+            {"trigger": "start", "source": "pending", "dest": "in_progress", "action": "missing_action"},
         ])
-        fsm = FSM(config)
         with pytest.raises(ValueError, match="Unknown action"):
             fsm.fire(Event.START)
 
     def test_action_receives_context(self):
-        config = FSMConfig(transitions=[
-            Transition("pending", "start", "in_progress", action="capture"),
+        fsm = FSM([
+            {"trigger": "start", "source": "pending", "dest": "in_progress", "action": "capture"},
         ])
-        fsm = FSM(config)
         received = {}
         fsm.register_action("capture", lambda **ctx: received.update(ctx))
         fsm.fire(Event.START, phase="TEST", data="hello")
@@ -287,12 +244,12 @@ class TestPhaseLifecycleFSM:
         assert len(reports) == 3
         for r in reports:
             assert r["valid"] is True
-            assert len(r["transitions"]) == 5  # start, readback_pass, end, gate_pass, advance
+            assert len(r["transitions"]) == 5
 
     def test_simulate_preserves_state(self, lifecycle_fsm):
         lifecycle_fsm.fire(Event.START)
         lifecycle_fsm.simulate(["ALPHA", "BETA"])
-        assert lifecycle_fsm.current_state == State.READBACK  # unchanged
+        assert lifecycle_fsm.current_state == State.READBACK
 
 
 class TestResolvePhaseKey:

@@ -18,6 +18,7 @@ classifiers = [
 
 dependencies = [
     "pyyaml",
+    "transitions",
 ]
 
 [project.optional-dependencies]
