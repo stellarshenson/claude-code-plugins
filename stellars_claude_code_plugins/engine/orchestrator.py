@@ -15,7 +15,6 @@ Failures: <artifacts_dir>/failures.yaml
 
 import argparse
 import collections
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import os
 from pathlib import Path
@@ -1663,16 +1662,8 @@ def _handle_test_failure(state: dict, phase: str, output: str) -> None:
     print(_msg("tests_fail_run", cmd=CMD))
 
 
-def _run_end_gatekeeper(
-    phase: str, state: dict, evidence: str, next_understanding: str = ""
-) -> tuple[bool, str]:
+def _run_end_gatekeeper(phase: str, state: dict, evidence: str) -> tuple[bool, str]:
     """Fire FSM END event, run gatekeeper validation, save artifact, handle pass/fail.
-
-    When next_understanding is provided and there is a next phase, runs
-    gatekeeper and readback validation concurrently via ThreadPoolExecutor.
-    If both pass, stores readback result in state so cmd_start can skip it.
-    If gatekeeper passes but readback fails, readback is retried in cmd_start.
-    If gatekeeper fails, readback result is discarded.
 
     Returns (gk_passed, gk_output). On failure, prints messages and saves state.
     """
@@ -1680,24 +1671,11 @@ def _run_end_gatekeeper(
     print("\n" + _msg("gatekeeper_separator"))
     print(_msg("gatekeeper_evaluating", phase=phase))
     print(_msg("gatekeeper_separator"))
-
-    # Determine if parallel readback is possible
-    nxt = _next_phase(state)
-    run_parallel = bool(next_understanding and nxt)
-
-    if run_parallel:
-        # Get next phase instructions for readback validation
-        instructions_fn = _PHASE_START.get(nxt)
-        instructions = instructions_fn() if instructions_fn else f"Phase {nxt}"
-
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            gk_future = executor.submit(_gatekeeper_validate, phase, state, evidence)
-            rb_future = executor.submit(_readback_validate, nxt, next_understanding, instructions)
-            gk_passed, gk_output = gk_future.result()
-            rb_passed, _rb_explanation = rb_future.result()
-    else:
-        gk_passed, gk_output = _gatekeeper_validate(phase, state, evidence)
-        rb_passed = False
+    gk_passed, gk_output = _gatekeeper_validate(
+        phase,
+        state,
+        evidence,
+    )
 
     # Save gatekeeper result to phase subfolder
     pdir = _phase_dir(state)
@@ -1716,27 +1694,6 @@ def _run_end_gatekeeper(
         "passed": gk_passed,
         "at": _now(),
     }
-
-    # Store parallel readback result if gatekeeper passed and readback passed
-    if run_parallel and gk_passed and rb_passed:
-        if "readbacks" not in state:
-            state["readbacks"] = {}
-        state["readbacks"][nxt] = {
-            "passed": True,
-            "at": _now(),
-            "parallel": True,
-            "understanding": next_understanding,
-        }
-        _append_log(
-            {
-                "iteration": state["iteration"],
-                "phase": nxt,
-                "event": "readback_parallel",
-                "passed": True,
-            }
-        )
-        print(_msg("readback_pass", phase=nxt) + " (parallel)")
-
     _save_state(state)
     _append_log(
         {
@@ -1827,7 +1784,6 @@ def cmd_end(args) -> None:
         print(_msg("phase_not_started_cmd", cmd=CMD), file=sys.stderr)
         sys.exit(1)
 
-    next_understanding = getattr(args, "next_understanding", "") or ""
     evidence, agents, output_file_path, output_content = _validate_end_inputs(args, phase, state)
     _record_phase_outputs(state, phase, agents, output_file_path, output_content, evidence)
 
@@ -1853,7 +1809,7 @@ def cmd_end(args) -> None:
         print(header + body)
 
     # ── Gatekeeper: per-phase generative validation ──
-    gk_passed, _gk_output = _run_end_gatekeeper(phase, state, evidence, next_understanding)
+    gk_passed, _gk_output = _run_end_gatekeeper(phase, state, evidence)
     if not gk_passed:
         return
 
@@ -2397,11 +2353,6 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     p_end.add_argument("--evidence", default="", help=_cli("args", "evidence"))
     p_end.add_argument("--agents", default="", help=_cli("args", "agents"))
     p_end.add_argument("--output-file", default="", help=_cli("args", "output_file"))
-    p_end.add_argument(
-        "--next-understanding",
-        default="",
-        help="Pre-compute next phase readback in parallel with gatekeeper",
-    )
 
     # ── status ──
     sub.add_parser("status", help=_cli("commands", "status"))
