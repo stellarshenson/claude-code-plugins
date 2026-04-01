@@ -55,38 +55,35 @@ States: pending, readback, in_progress, gatekeeper, complete, skipped, rejected
 
 Events: start, readback_pass, readback_fail, end, gate_pass, gate_fail, reject, skip, advance
 
-## Workstream B - Remove Hypothesis Stage
+## Workstream B - Remove Hypothesis from Planning Workflow
 
-Remove the HYPOTHESIS phase from all workflows, along with all supporting code.
+Remove the HYPOTHESIS phase from the PLANNING workflow only. The FULL workflow retains HYPOTHESIS - it is valuable for implementation iterations. All hypothesis Python code stays since FULL still uses it.
 
 ### YAML Changes
 
-- `workflow.yaml` - remove HYPOTHESIS from FULL workflow phases (RESEARCH -> ~~HYPOTHESIS~~ -> PLAN -> ...) and PLANNING workflow phases
-- `phases.yaml` - remove FULL::HYPOTHESIS and PLANNING::HYPOTHESIS entries
-- `agents.yaml` - remove FULL::HYPOTHESIS and PLANNING::HYPOTHESIS agent definitions (4 agents each: contrarian, optimist, pessimist, scientist) and their readback/gatekeeper gates
+- `workflow.yaml` - remove HYPOTHESIS from PLANNING workflow phases only (RESEARCH -> ~~HYPOTHESIS~~ -> PLAN -> RECORD -> NEXT)
+- `phases.yaml` - remove PLANNING::HYPOTHESIS entry only (keep FULL::HYPOTHESIS)
+- `agents.yaml` - remove PLANNING::HYPOTHESIS agent/gate section only (keep FULL::HYPOTHESIS)
 
-### Orchestrator Code to Remove (141 lines across 8 functions)
+## Workstream B2 - Remove Agent Number Attribute
 
-| Function | Lines | Purpose |
-|----------|-------|---------|
-| `_action_hypothesis_autowrite` | 4 | Auto-action trigger |
-| `_action_hypothesis_gc` | 4 | Auto-action trigger |
-| `_append_hypothesis` | 8 | Write hypothesis entry |
-| `_auto_write_hypotheses` | 54 | Parse structured output |
-| `_load_prior_hypotheses` | 2 | Load catalogue |
-| `_hypothesis_catalogue_summary` | 12 | Format for context |
-| `_run_hypothesis_gc` | 37 | Archive completed hypotheses |
-| `cmd_hypotheses` | 20 | CLI display command |
+The `number` field on agents in agents.yaml is redundant - it can be derived from list position. Remove it from the YAML schema, the Agent dataclass, and auto-derive from list index.
 
-### Additional Cleanup
+### Current Usage
 
-- Remove `hypothesis_autowrite` and `hypothesis_gc` from `_AUTO_ACTION_REGISTRY`
-- Remove `cmd_hypotheses` from CLI subcommand registration in `main()`
-- Remove `prior_hyp` variable from `_build_context()`
-- Remove `HYPOTHESES_FILE` global and all references
-- Update `_clean_artifacts_dir()` to stop preserving `hypotheses*.yaml`
-- Remove `_KNOWN_AUTO_ACTIONS` hypothesis entries from `validate_model()` in model.py
-- Update tests to remove hypothesis-related assertions
+- `Agent.number` field in model.py dataclass
+- `agent.number` used in orchestrator.py for display: `### Agent {number}: {display_name}`
+- Sequential numbering validation in `validate_model()`
+- Every agent entry in agents.yaml has `number: N`
+
+### Target
+
+- Remove `number` field from Agent dataclass in model.py
+- Auto-derive number from list position (1-indexed) in `_build_agents_and_gates()`
+- Update `_build_agent_instructions()` in orchestrator.py to use enumerate
+- Remove sequential numbering validation from `validate_model()` (no longer needed)
+- Remove `number:` lines from all agent entries in agents.yaml
+- Update tests
 
 ## Workstream C - Code Analysis and Dead Code Removal
 

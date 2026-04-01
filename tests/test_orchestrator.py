@@ -64,7 +64,7 @@ class TestInitialize:
 
     def test_initialize_builds_auto_action_registry(self, minimal_resources):
         orch._initialize(minimal_resources)
-        assert "hypothesis_autowrite" in orch._AUTO_ACTION_REGISTRY
+        assert "plan_save" in orch._AUTO_ACTION_REGISTRY
         assert "iteration_advance" in orch._AUTO_ACTION_REGISTRY
 
     def test_initialize_real_resources(self, auto_build_claw_resources):
@@ -165,18 +165,16 @@ class TestStateManagement:
         assert orch.STATE_FILE == artifacts / "state.yaml"
         assert orch.LOG_FILE == artifacts / "log.yaml"
 
-    def test_clean_artifacts_dir_preserves_hypotheses(self, tmp_path):
+    def test_clean_artifacts_dir_preserves_context(self, tmp_path):
         artifacts = tmp_path / "artifacts"
         artifacts.mkdir()
         (artifacts / "state.yaml").write_text("test")
-        (artifacts / "hypotheses.yaml").write_text("test")
         (artifacts / "context.yaml").write_text("test")
         (artifacts / "other.yaml").write_text("test")
         orch.DEFAULT_ARTIFACTS_DIR = artifacts
         orch._clean_artifacts_dir(artifacts)
         assert not (artifacts / "state.yaml").exists()
         assert not (artifacts / "other.yaml").exists()
-        assert (artifacts / "hypotheses.yaml").exists()
         assert (artifacts / "context.yaml").exists()
 
 
@@ -209,7 +207,7 @@ class TestBuildContext:
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch.FAILURES_FILE = tmp_path / "failures.yaml"
-        orch.HYPOTHESES_FILE = tmp_path / "hypotheses.yaml"
+
         orch.STATE_FILE = tmp_path / "state.yaml"
 
         state = {
@@ -230,7 +228,7 @@ class TestBuildContext:
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch.FAILURES_FILE = tmp_path / "failures.yaml"
-        orch.HYPOTHESES_FILE = tmp_path / "hypotheses.yaml"
+
         orch.STATE_FILE = tmp_path / "state.yaml"
 
         failures = [{"mode": "FM-1", "iteration": 1, "description": "test failure"}]
@@ -250,7 +248,7 @@ class TestPhaseCallables:
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch.STATE_FILE = tmp_path / "state.yaml"
         orch.FAILURES_FILE = tmp_path / "failures.yaml"
-        orch.HYPOTHESES_FILE = tmp_path / "hypotheses.yaml"
+
 
         state = {"iteration": 1, "total_iterations": 1, "type": "test_workflow",
                  "current_phase": "ALPHA", "objective": "build something"}
@@ -265,7 +263,7 @@ class TestPhaseCallables:
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch.STATE_FILE = tmp_path / "state.yaml"
         orch.FAILURES_FILE = tmp_path / "failures.yaml"
-        orch.HYPOTHESES_FILE = tmp_path / "hypotheses.yaml"
+
 
         state = {"iteration": 1, "total_iterations": 1, "type": "test_workflow",
                  "current_phase": "ALPHA", "objective": "test"}

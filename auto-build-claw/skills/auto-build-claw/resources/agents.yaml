@@ -508,67 +508,6 @@ PLANNING::RESEARCH:
         EVIDENCE: {evidence}
         Check: 3 agents spawned, scope assessed for iteration planning.
 
-PLANNING::HYPOTHESIS:
-  agents:
-    - name: contrarian
-      number: 1
-      display_name: CONTRARIAN
-      prompt: |
-        Challenge the proposed work breakdown:
-        - Is the iteration ordering wrong?
-        - Are we underestimating complexity?
-        - What dependencies are we missing?
-
-        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
-    - name: optimist
-      number: 2
-      display_name: OPTIMIST
-      prompt: |
-        Find the highest-leverage iteration grouping:
-        - Which items naturally cluster?
-        - What gives the biggest early wins?
-        - How to maximise progress per iteration?
-
-        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
-    - name: pessimist
-      number: 3
-      display_name: PESSIMIST
-      prompt: |
-        Identify risks in the work breakdown:
-        - Which iteration is most likely to fail?
-        - What happens if iteration 1 takes longer than expected?
-        - Are there hidden dependencies?
-
-        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
-    - name: scientist
-      number: 4
-      display_name: SCIENTIST
-      prompt: |
-        Demand measurable predictions for each iteration:
-        - How many benchmark checks per iteration?
-        - What is the expected score trajectory?
-        - How to verify each iteration succeeded?
-
-        **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
-  gates:
-    readback:
-      prompt: |
-        Reply PASS or FAIL + one-line reason. No tools. No files.
-        PHASE: {phase} | OBJECTIVE: {objective}
-        INSTRUCTIONS: {instructions}
-        UNDERSTANDING: {understanding}
-        Must mention: iteration decomposition debate AND scope sizing.
-        Be lenient on phrasing.
-    gatekeeper:
-      prompt: |
-        Reply PASS or FAIL + brief reason. No tools.
-        PHASE: {phase}
-        EXIT CRITERIA: {exit_criteria}
-        AGENTS: required={required_agents} | recorded={recorded_agents}
-        OUTPUT: {output_status} | READBACK: {readback_status}
-        EVIDENCE: {evidence}
-        Check: 4 agents spawned, work breakdown hypotheses ranked.
-
 PLANNING::PLAN:
   gates:
     readback:

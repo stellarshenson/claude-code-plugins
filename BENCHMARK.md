@@ -70,31 +70,27 @@ Components or tests missing from CODE_JUSTIFICATIONS.md are automatically unjust
 - [ ] All test_fsm.py tests passing
 - [ ] No regression in orchestrator phase lifecycle (start/end/reject/skip all work)
 
-## Section 2: Hypothesis Removal
+## Section 2: Hypothesis Removal from Planning Workflow
 
-- [ ] HYPOTHESIS not in FULL workflow phases in workflow.yaml
+HYPOTHESIS stays in FULL workflow (valuable for implementation). Only removed from PLANNING.
+
 - [ ] HYPOTHESIS not in PLANNING workflow phases in workflow.yaml
-- [ ] No FULL::HYPOTHESIS entry in phases.yaml
+- [ ] HYPOTHESIS still present in FULL workflow phases in workflow.yaml
 - [ ] No PLANNING::HYPOTHESIS entry in phases.yaml
-- [ ] No FULL::HYPOTHESIS section in agents.yaml (agents + gates)
-- [ ] No PLANNING::HYPOTHESIS section in agents.yaml (agents + gates)
-- [ ] No `_action_hypothesis_autowrite` function in orchestrator.py
-- [ ] No `_action_hypothesis_gc` function in orchestrator.py
-- [ ] No `_append_hypothesis` function in orchestrator.py
-- [ ] No `_auto_write_hypotheses` function in orchestrator.py
-- [ ] No `_load_prior_hypotheses` function in orchestrator.py
-- [ ] No `_hypothesis_catalogue_summary` function in orchestrator.py
-- [ ] No `_run_hypothesis_gc` function in orchestrator.py
-- [ ] No `cmd_hypotheses` function in orchestrator.py
-- [ ] No `hypothesis_autowrite` in _AUTO_ACTION_REGISTRY
-- [ ] No `hypothesis_gc` in _AUTO_ACTION_REGISTRY
-- [ ] No `hypotheses` subcommand in CLI argument parser
-- [ ] No `HYPOTHESES_FILE` global variable in orchestrator.py
-- [ ] No `prior_hyp` variable in `_build_context()`
-- [ ] `_clean_artifacts_dir()` does not preserve hypotheses*.yaml files
-- [ ] No `hypothesis` entries in `_KNOWN_AUTO_ACTIONS` in model.py
-- [ ] No hypothesis-related test assertions in test files
+- [ ] FULL::HYPOTHESIS entry still present in phases.yaml
+- [ ] No PLANNING::HYPOTHESIS section in agents.yaml
+- [ ] FULL::HYPOTHESIS section still present in agents.yaml
+- [ ] All hypothesis Python code preserved (orchestrator.py functions, _AUTO_ACTION_REGISTRY, cmd_hypotheses)
 - [ ] `orchestrate validate` passes (no missing phase references)
+
+## Section 2b: Agent Number Removal
+
+- [ ] No `number` field on Agent dataclass in model.py
+- [ ] Agent number auto-derived from list position in _build_agents_and_gates
+- [ ] _build_agent_instructions uses enumerate for numbering
+- [ ] No sequential numbering validation in validate_model
+- [ ] No `number:` lines in agents.yaml entries
+- [ ] All tests updated and passing
 
 ## Section 3: Code Quality (tree-sitter + complexity analysis)
 

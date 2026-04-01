@@ -282,5 +282,5 @@ class TestPhaseDataclass:
         assert p.reject_to["phase"] == "IMPLEMENT"
 
     def test_with_auto_actions(self):
-        p = Phase(auto_actions={"on_complete": ["hypothesis_gc"]})
-        assert "hypothesis_gc" in p.auto_actions["on_complete"]
+        p = Phase(auto_actions={"on_complete": ["plan_save"]})
+        assert "plan_save" in p.auto_actions["on_complete"]
