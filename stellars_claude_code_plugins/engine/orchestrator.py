@@ -402,7 +402,7 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
     assemble the context dict for str.format_map(). Computes dynamic
     content from iteration state: prior failures, benchmark info,
     iteration plan. Also generates spawn instructions and agent
-    instructions from agents.yaml.
+    instructions from phases.yaml.
 
     Args:
         state: current iteration state from state.yaml
@@ -955,7 +955,7 @@ def _readback_validate(
     understanding of what the phase requires, and an independent Claude
     session evaluates whether it captures the essential requirements.
     If readback fails, the phase stays PENDING until retried.
-    Prompt template loaded from agents.yaml gates.readback.
+    Prompt template loaded from phases.yaml gates.readback.
     """
     obj_line = ""
     action_part = instructions
@@ -1000,7 +1000,7 @@ def _gatekeeper_validate(
     evaluates whether the agent's evidence satisfies the phase's exit
     criteria. ASK response is treated as BLOCK (not pass) - the agent
     must retry with better evidence.
-    Prompt template loaded from agents.yaml gates.gatekeeper.
+    Prompt template loaded from phases.yaml gates.gatekeeper.
     """
     agents = state.get("phase_agents", {}).get(phase, [])
     output = state.get("phase_outputs", {}).get(phase, "")
@@ -1864,7 +1864,7 @@ def _print_phase_summary(state: dict, phase: str) -> None:
 def cmd_end(args) -> None:
     """Complete current phase with gatekeeper validation.
 
-    Validates --agents against required agents from agents.yaml,
+    Validates --agents against required agents from phases.yaml,
     records output file content, runs TEST automation if in TEST phase,
     runs gatekeeper gate for quality validation, then advances to
     next phase. Auto-actions: summary after RECORD, inline NEXT

@@ -21,7 +21,6 @@ from stellars_claude_code_plugins.engine.fsm import (
     SKIPPED,
     START,
     build_phase_lifecycle_fsm,
-    resolve_phase_key,
 )
 
 
@@ -31,10 +30,12 @@ class TestFSMBasic:
     @pytest.fixture
     def simple_fsm(self):
         """Two-state FSM for basic testing."""
-        return FSM([
-            {"trigger": "start", "source": "pending", "dest": "in_progress"},
-            {"trigger": "end", "source": "in_progress", "dest": "complete"},
-        ])
+        return FSM(
+            [
+                {"trigger": "start", "source": "pending", "dest": "in_progress"},
+                {"trigger": "end", "source": "in_progress", "dest": "complete"},
+            ]
+        )
 
     def test_initial_state(self, simple_fsm):
         assert simple_fsm.current_state == PENDING
@@ -91,10 +92,22 @@ class TestFSMGuards:
 
     @pytest.fixture
     def guarded_fsm(self):
-        return FSM([
-            {"trigger": "start", "source": "pending", "dest": "in_progress", "guard": "is_ready"},
-            {"trigger": "start", "source": "pending", "dest": "rejected", "guard": "not_ready"},
-        ])
+        return FSM(
+            [
+                {
+                    "trigger": "start",
+                    "source": "pending",
+                    "dest": "in_progress",
+                    "guard": "is_ready",
+                },
+                {
+                    "trigger": "start",
+                    "source": "pending",
+                    "dest": "rejected",
+                    "guard": "not_ready",
+                },
+            ]
+        )
 
     def test_guard_passes(self, guarded_fsm):
         guarded_fsm.register_guard("is_ready", lambda **ctx: True)
@@ -119,9 +132,16 @@ class TestFSMGuards:
             guarded_fsm.fire(START)
 
     def test_guard_receives_context(self):
-        fsm = FSM([
-            {"trigger": "start", "source": "pending", "dest": "in_progress", "guard": "check_phase"},
-        ])
+        fsm = FSM(
+            [
+                {
+                    "trigger": "start",
+                    "source": "pending",
+                    "dest": "in_progress",
+                    "guard": "check_phase",
+                },
+            ]
+        )
         received = {}
         fsm.register_guard("check_phase", lambda **ctx: (received.update(ctx), True)[1])
         fsm.fire(START, phase="RESEARCH", iteration=1)
@@ -133,25 +153,46 @@ class TestFSMActions:
     """Action function tests."""
 
     def test_action_executed_on_transition(self):
-        fsm = FSM([
-            {"trigger": "start", "source": "pending", "dest": "in_progress", "action": "log_start"},
-        ])
+        fsm = FSM(
+            [
+                {
+                    "trigger": "start",
+                    "source": "pending",
+                    "dest": "in_progress",
+                    "action": "log_start",
+                },
+            ]
+        )
         called = []
         fsm.register_action("log_start", lambda **ctx: called.append("started"))
         fsm.fire(START)
         assert called == ["started"]
 
     def test_unknown_action_raises(self):
-        fsm = FSM([
-            {"trigger": "start", "source": "pending", "dest": "in_progress", "action": "missing_action"},
-        ])
+        fsm = FSM(
+            [
+                {
+                    "trigger": "start",
+                    "source": "pending",
+                    "dest": "in_progress",
+                    "action": "missing_action",
+                },
+            ]
+        )
         with pytest.raises(ValueError, match="Unknown action"):
             fsm.fire(START)
 
     def test_action_receives_context(self):
-        fsm = FSM([
-            {"trigger": "start", "source": "pending", "dest": "in_progress", "action": "capture"},
-        ])
+        fsm = FSM(
+            [
+                {
+                    "trigger": "start",
+                    "source": "pending",
+                    "dest": "in_progress",
+                    "action": "capture",
+                },
+            ]
+        )
         received = {}
         fsm.register_action("capture", lambda **ctx: received.update(ctx))
         fsm.fire(START, phase="TEST", data="hello")
@@ -264,23 +305,3 @@ class TestPhaseLifecycleFSM:
         lifecycle_fsm.fire(START)
         lifecycle_fsm.simulate(["ALPHA", "BETA"])
         assert lifecycle_fsm.current_state == READBACK
-
-
-class TestResolvePhaseKey:
-    """Tests for resolve_phase_key namespace resolution."""
-
-    def test_namespaced_match(self):
-        registry = {"FULL::RESEARCH": "x", "RESEARCH": "y"}
-        assert resolve_phase_key("full", "RESEARCH", registry) == "FULL::RESEARCH"
-
-    def test_bare_fallback(self):
-        registry = {"RECORD": "x"}
-        assert resolve_phase_key("full", "RECORD", registry) == "RECORD"
-
-    def test_no_match_returns_bare(self):
-        registry = {"OTHER": "x"}
-        assert resolve_phase_key("full", "MISSING", registry) == "MISSING"
-
-    def test_case_insensitive_workflow(self):
-        registry = {"HOTFIX::FIX": "x"}
-        assert resolve_phase_key("hotfix", "FIX", registry) == "HOTFIX::FIX"

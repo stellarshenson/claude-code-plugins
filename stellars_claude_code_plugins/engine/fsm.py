@@ -254,15 +254,3 @@ def build_phase_lifecycle_fsm() -> FSM:
         {"trigger": "advance", "source": "skipped", "dest": "pending"},
     ]
     return FSM(transitions)
-
-
-def resolve_phase_key(workflow_type: str, phase_name: str, registry: dict) -> str:
-    """Resolve a namespaced phase key with fallback to bare name.
-
-    Tries WORKFLOW::PHASE first (e.g., FULL::RESEARCH), then falls back
-    to bare PHASE (e.g., RESEARCH) for shared phases like RECORD/NEXT.
-    """
-    namespaced = f"{workflow_type.upper()}::{phase_name}"
-    if namespaced in registry:
-        return namespaced
-    return phase_name

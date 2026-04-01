@@ -234,8 +234,13 @@ class TestBuildContext:
         failures = [{"mode": "FM-1", "iteration": 1, "description": "test failure"}]
         orch.FAILURES_FILE.write_text(yaml.dump(failures))
 
-        state = {"iteration": 1, "total_iterations": 1, "type": "test_workflow",
-                 "current_phase": "ALPHA", "objective": "test"}
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "current_phase": "ALPHA",
+            "objective": "test",
+        }
         ctx = orch._build_context(state, phase="ALPHA")
         assert "Prior failures" in ctx["prior_context"]
 
@@ -249,9 +254,13 @@ class TestPhaseCallables:
         orch.STATE_FILE = tmp_path / "state.yaml"
         orch.FAILURES_FILE = tmp_path / "failures.yaml"
 
-
-        state = {"iteration": 1, "total_iterations": 1, "type": "test_workflow",
-                 "current_phase": "ALPHA", "objective": "build something"}
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "current_phase": "ALPHA",
+            "objective": "build something",
+        }
         orch._save_state(state)
 
         result = orch._PHASE_START["ALPHA"]()
@@ -264,9 +273,13 @@ class TestPhaseCallables:
         orch.STATE_FILE = tmp_path / "state.yaml"
         orch.FAILURES_FILE = tmp_path / "failures.yaml"
 
-
-        state = {"iteration": 1, "total_iterations": 1, "type": "test_workflow",
-                 "current_phase": "ALPHA", "objective": "test"}
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "current_phase": "ALPHA",
+            "objective": "test",
+        }
         orch._save_state(state)
 
         result = orch._PHASE_END["ALPHA"]()
@@ -441,8 +454,12 @@ class TestCmdLogFailure:
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
 
-        state = {"iteration": 1, "type": "test_workflow", "current_phase": "ALPHA",
-                 "phase_status": "in_progress"}
+        state = {
+            "iteration": 1,
+            "type": "test_workflow",
+            "current_phase": "ALPHA",
+            "phase_status": "in_progress",
+        }
         orch._save_state(state)
 
         args = argparse.Namespace(mode="FM-TEST", desc="something broke")
@@ -462,8 +479,12 @@ class TestIndependentWorkflow:
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
         args = argparse.Namespace(
-            type="test_workflow", objective="test", iterations=1,
-            benchmark="", clean=False, dry_run=False,
+            type="test_workflow",
+            objective="test",
+            iterations=1,
+            benchmark="",
+            clean=False,
+            dry_run=False,
         )
         orch.cmd_new(args)
         state = orch._load_state()
@@ -477,8 +498,12 @@ class TestIndependentWorkflow:
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
         args = argparse.Namespace(
-            type="test_workflow", objective="test", iterations=1,
-            benchmark="", clean=False, dry_run=False,
+            type="test_workflow",
+            objective="test",
+            iterations=1,
+            benchmark="",
+            clean=False,
+            dry_run=False,
         )
         with pytest.raises(SystemExit):
             orch.cmd_new(args)
@@ -487,17 +512,26 @@ class TestIndependentWorkflow:
 class TestRunUntilComplete:
     """Tests for --iterations 0 (run-until-complete) mode."""
 
-    def test_next_iteration_continues_when_score_nonzero(self, minimal_resources, tmp_path, capsys):
+    def test_next_iteration_continues_when_score_nonzero(
+        self, minimal_resources, tmp_path, capsys
+    ):
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
 
         state = {
-            "iteration": 1, "total_iterations": 0, "type": "test_workflow",
-            "objective": "test", "current_phase": "GAMMA",
-            "phase_status": "complete", "completed_phases": ["ALPHA", "BETA", "GAMMA"],
-            "skipped_phases": [], "rejected_count": 0, "started_at": "2026-01-01",
-            "phase_outputs": {}, "phase_agents": {},
+            "iteration": 1,
+            "total_iterations": 0,
+            "type": "test_workflow",
+            "objective": "test",
+            "current_phase": "GAMMA",
+            "phase_status": "complete",
+            "completed_phases": ["ALPHA", "BETA", "GAMMA"],
+            "skipped_phases": [],
+            "rejected_count": 0,
+            "started_at": "2026-01-01",
+            "phase_outputs": {},
+            "phase_agents": {},
             "benchmark_scores": [{"score": 5}],
         }
         orch._save_state(state)
@@ -510,10 +544,17 @@ class TestRunUntilComplete:
         orch._init_artifacts_dir(tmp_path)
 
         state = {
-            "iteration": 3, "total_iterations": 0, "type": "test_workflow",
-            "objective": "test", "current_phase": "GAMMA",
-            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
-            "started_at": "2026-01-01", "phase_outputs": {}, "phase_agents": {},
+            "iteration": 3,
+            "total_iterations": 0,
+            "type": "test_workflow",
+            "objective": "test",
+            "current_phase": "GAMMA",
+            "completed_phases": [],
+            "skipped_phases": [],
+            "rejected_count": 0,
+            "started_at": "2026-01-01",
+            "phase_outputs": {},
+            "phase_agents": {},
             "benchmark_scores": [{"score": 5}, {"score": 2}, {"score": 0}],
         }
         orch._save_state(state)
@@ -528,10 +569,17 @@ class TestRunUntilComplete:
         orch._init_artifacts_dir(tmp_path)
 
         state = {
-            "iteration": 20, "total_iterations": 0, "type": "test_workflow",
-            "objective": "test", "current_phase": "GAMMA",
-            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
-            "started_at": "2026-01-01", "phase_outputs": {}, "phase_agents": {},
+            "iteration": 20,
+            "total_iterations": 0,
+            "type": "test_workflow",
+            "objective": "test",
+            "current_phase": "GAMMA",
+            "completed_phases": [],
+            "skipped_phases": [],
+            "rejected_count": 0,
+            "started_at": "2026-01-01",
+            "phase_outputs": {},
+            "phase_agents": {},
             "benchmark_scores": [{"score": 3}],
         }
         orch._save_state(state)
@@ -551,26 +599,20 @@ class TestGenerativeActionDispatch:
 
         (resources / "workflow.yaml").write_text("""
 actions:
-  gen_action:
+  ACTION::GEN_ACTION:
+    cli_name: gen_action
     type: generative
     description: "A generative action"
     prompt: "Do generative work"
 
-gen_workflow:
+WORKFLOW::GEN:
+  cli_name: gen_workflow
   description: "Workflow with generative action"
   phases:
     - name: STEP
 """)
 
         (resources / "phases.yaml").write_text("""
-STEP:
-  auto_actions:
-    on_complete: [gen_action]
-  start: "Start step. Objective: {objective}"
-  end: "End step."
-""")
-
-        (resources / "agents.yaml").write_text("""
 shared_gates:
   on_skip:
     gatekeeper_skip:
@@ -580,6 +622,10 @@ shared_gates:
       mode: standalone_session
       prompt: "Force-skip {phase} {iteration}: {reason}"
 STEP:
+  auto_actions:
+    on_complete: [gen_action]
+  start: "Start step. Objective: {objective}"
+  end: "End step."
   gates:
     on_start:
       readback:
@@ -638,8 +684,12 @@ cli:
         orch._initialize(resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch.STATE_FILE = tmp_path / "state.yaml"
-        state = {"type": "gen_workflow", "current_phase": "STEP",
-                 "iteration": 1, "total_iterations": 1}
+        state = {
+            "type": "gen_workflow",
+            "current_phase": "STEP",
+            "iteration": 1,
+            "total_iterations": 1,
+        }
         orch._save_state(state)
 
         with patch.object(orch, "_claude_evaluate", return_value=(True, "PASS")) as mock_eval:
@@ -683,13 +733,17 @@ class TestPluginEntrypoint:
     def test_entrypoint_import(self):
         """Verify the engine can be imported from the package."""
         from stellars_claude_code_plugins.engine.orchestrator import main
+
         assert callable(main)
 
     def test_entrypoint_file_exists(self):
         """Verify the plugin entrypoint script exists."""
         entrypoint = (
             Path(__file__).resolve().parent.parent
-            / "auto-build-claw" / "skills" / "auto-build-claw" / "orchestrate.py"
+            / "auto-build-claw"
+            / "skills"
+            / "auto-build-claw"
+            / "orchestrate.py"
         )
         assert entrypoint.exists()
         content = entrypoint.read_text()
