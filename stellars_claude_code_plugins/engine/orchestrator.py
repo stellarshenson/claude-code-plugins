@@ -2324,9 +2324,19 @@ def main(resources_dir: Path | None = None):
 
     Args:
         resources_dir: Path to YAML resource files directory. If None,
-            defaults to a 'resources' subdirectory next to this file
-            (for backward compatibility with direct invocation).
+            checks --resources-dir CLI argument, then falls back to
+            a 'resources' subdirectory next to this file.
     """
+    # Resolve resources_dir: explicit arg > CLI --resources-dir > default
+    if resources_dir is None:
+        # Pre-parse --resources-dir before full argparse (it needs _initialize first)
+        for i, arg in enumerate(sys.argv[1:]):
+            if arg == "--resources-dir" and i + 1 < len(sys.argv) - 1:
+                resources_dir = Path(sys.argv[i + 2])
+                break
+            if arg.startswith("--resources-dir="):
+                resources_dir = Path(arg.split("=", 1)[1])
+                break
     if resources_dir is None:
         resources_dir = Path(__file__).parent / "resources"
 
@@ -2336,6 +2346,11 @@ def main(resources_dir: Path | None = None):
         description=_cli("description", ""),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=_cli("epilog", ""),
+    )
+    parser.add_argument(
+        "--resources-dir",
+        default=str(resources_dir),
+        help="Path to YAML resource files directory",
     )
     sub = parser.add_subparsers(dest="command")
 

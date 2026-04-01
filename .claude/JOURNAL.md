@@ -1,0 +1,17 @@
+# Claude Code Journal
+
+This journal tracks substantive work on documents, diagrams, and documentation content.
+
+---
+
+1. **Task - GitHub repo creation** (v0.1.0): Created GitHub repository stellarshenson/claude-code-plugins and pushed existing 3 commits (auto-build-claw plugin, docs, gitignore fixes)<br>
+    **Result**: Repository live at https://github.com/stellarshenson/claude-code-plugins using git skill and vault skill for token retrieval from `~/.git-credentials`. Remote origin configured and tracking main branch.
+
+2. **Task - Project scaffolding** (v0.1.0): Added Python project scaffolding from copier-data-science template, keeping only essentials for a plugins project - python module, tests, references, pyproject.toml, Makefile<br>
+    **Result**: Generated scaffold via `copier copy` with uv/ruff/pytest tooling. Created `stellars_claude_code_plugins/` module with config/logging, `tests/` with pytest examples, `references/` directory. Makefile targets: install, test, lint, format, build. Stripped notebooks, data, reports, models, docker. Added MIT LICENSE, comprehensive .gitignore. Removed tracked .ipynb_checkpoints from history.
+
+3. **Task - Architecture refactor plan** (v0.1.0): Evaluated whether central Python module + individual plugins architecture is viable, concluded it's the right structure but code didn't reflect it - the reusable 3020-line orchestration engine was buried inside auto-build-claw<br>
+    **Result**: Designed extraction plan. Key insight: orchestrator is entirely YAML-driven so no subclassing needed - the whole engine belongs in the shared module, each plugin just provides YAML resources and a thin entrypoint. Deferred PyPI publishing until 2+ plugins exist.
+
+4. **Task - Engine extraction and tests** (v0.1.0): Extracted orchestration engine from auto-build-claw into `stellars_claude_code_plugins/engine/` and wrote comprehensive test suite<br>
+    **Result**: Moved `fsm.py` (258 lines), `model.py` (376 lines) to `engine/`. Created `engine/orchestrator.py` (2429 lines) with deferred initialization via `_initialize(resources_dir)` - model loading happens at `main()` call, not import time. Plugin's `orchestrate.py` reduced from 2386 lines to 18-line entrypoint that imports `main()` from engine and passes `resources_dir`. Removed dead `config.py` scaffolding, trimmed pyproject.toml deps to just pyyaml. Test suite: 115 tests total - `test_fsm.py` (39 tests: transitions, guards, actions, lifecycle paths, simulation, namespace resolution), `test_model.py` (37 tests: YAML loading, validation, error handling, real auto-build-claw resources, dataclass behavior), `test_orchestrator.py` (39 tests: initialization, display helpers, state persistence, phase navigation, context building, template rendering, command functions, plugin entrypoint verification). All passing in 0.61s.

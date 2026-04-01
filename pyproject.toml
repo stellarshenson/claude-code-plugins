@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "0.1.0"
+version = "0.8.43"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
-    { name = "Stellars Henson" },
+    { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
 ]
 license = "MIT"
 readme = "README.md"
@@ -28,7 +28,11 @@ dev = [
     "pytest",
     "pytest-cov",
     "ruff",
+    "twine",
 ]
+
+[project.scripts]
+orchestrate = "stellars_claude_code_plugins.engine.orchestrator:main"
 
 [tool.setuptools]
 include-package-data = true
