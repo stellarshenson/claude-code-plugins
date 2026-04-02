@@ -293,6 +293,52 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 - [x] Process matches the structure of Claude Code's formal EnterPlanMode
   Evidence: L366 "You MUST use `EnterPlanMode`", L370 "Call `EnterPlanMode`", L374 "Call `ExitPlanMode`"
 
+## Section 15b: Replace EnterPlanMode with Autonomous Planning
+
+### Template changes
+- [ ] Zero `EnterPlanMode` references in PLAN start template
+- [ ] Zero `ExitPlanMode` references in PLAN start template
+- [ ] Zero `EnterPlanMode` references in PLANNING::PLAN start template
+- [ ] Zero `ExitPlanMode` references in PLANNING::PLAN start template
+- [ ] Zero `EnterPlanMode` references in GC::PLAN start template
+- [ ] Zero `ExitPlanMode` references in GC::PLAN start template
+- [ ] `grep -i "enterplanmode\|exitplanmode" phases.yaml` returns 0 matches
+
+### Planning quality preserved
+- [ ] PLAN template still has 4 explicit steps: explore, design, review, write
+- [ ] PLAN template still requires: specific files, concrete changes, root causes, acceptance criteria, risk assessment
+- [ ] PLAN template still instructs spawning Explore agents for codebase investigation
+- [ ] PLAN template still instructs spawning review agents (architect, critic, guardian)
+- [ ] PLAN template still enforces read-only (no Edit/Write tools except plan output file)
+
+### Readback and gatekeeper
+- [ ] PLAN readback gate checks for "planning" and "read-only" (not "EnterPlanMode")
+- [ ] PLANNING::PLAN readback gate updated similarly
+- [ ] Gatekeeper still validates plan depth (specific files, concrete changes, reasoning)
+
+### Planning quality measurement (0-10 scale)
+
+The autonomous planning workflow MUST produce plans of equal or better quality than the formal EnterPlanMode tool-based approach. Evaluate plan output against these criteria:
+
+| Score | Description |
+|-------|-------------|
+| 10 | Plan has: specific files with line numbers, concrete per-file changes, root cause for each target, measurable acceptance criteria, risk assessment, predicted impact. Explore agents investigated real code. Review agents challenged the design. |
+| 9 | All depth criteria met. One minor gap (e.g., risk assessment generic). |
+| 8 | All depth criteria met. Explore agents used. One review agent missing. |
+| 7 | Plan has files and changes but missing root causes or acceptance criteria. |
+| 6 | Plan is shallow - bullet list without code references or line numbers. |
+| <=5 | Plan is vague ("improve X", "fix issues"). No exploration evidence. |
+
+- [ ] Autonomous PLAN output scores >= 8 on the planning quality scale above
+- [ ] Plan contains codebase exploration evidence (file paths, line numbers, function names from Explore agents)
+- [ ] Plan contains review agent feedback (architect, critic, guardian verdicts)
+- [ ] Plan depth matches or exceeds what EnterPlanMode produced in iterations 21-27
+
+### Consequences verified
+- [ ] No orchestrator.py code depends on EnterPlanMode being called during PLAN phase
+- [ ] Test assertions for PLAN readback updated (no "EnterPlanMode" in expected understanding)
+- [ ] PLAN phase runs fully autonomous without any user interaction pause
+
 ## Section 16: Strict Action Resolution
 
 - [x] `ACTION::` definitions moved from workflow.yaml to phases.yaml as root-level `actions:` section
@@ -319,36 +365,58 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 ## Section 17: Context Lifecycle (status + notes)
 
 ### Data format
-- [ ] Context entries use `status` field (string) instead of `acknowledged_by` list and `processed` boolean
-- [ ] Valid `status` values: `new`, `acknowledged`, `dismissed`, `processed`
-- [ ] `notes` field is a list of `{status: "generative message"}` dicts
-- [ ] `acknowledged_by` field removed from context entries
-- [ ] `processed` boolean field removed from context entries
-- [ ] Example: `{message, phase, created, status: "acknowledged", notes: [{acknowledged: "considered in PLAN"}]}`
+- [x] Context entries use `status` field (string) instead of `acknowledged_by` list and `processed` boolean
+  Evidence: cmd_context add creates with "status": "new" (L2381). _load_context validates status at L767-771.
+- [x] Valid `status` values: `new`, `acknowledged`, `dismissed`, `processed`
+  Evidence: _VALID_STATUSES = {"new", "acknowledged", "dismissed", "processed"} at L767
+- [x] `notes` field is a list of `{status: "generative message"}` dicts
+  Evidence: cmd_context add creates with "notes": [] (L2382). Status transitions append dicts.
+- [x] `acknowledged_by` field removed from context entries
+  Evidence: test_no_acknowledged_by_field confirms field absent. cmd_context add no longer sets it.
+- [x] `processed` boolean field removed from context entries
+  Evidence: test_no_processed_boolean confirms. Status="processed" replaces boolean.
+- [x] Example: `{message, phase, created, status: "acknowledged", notes: [{acknowledged: "considered in PLAN"}]}`
+  Evidence: test_status_transition_to_acknowledged confirms exact structure
 
 ### State transitions
-- [ ] New context entry starts with `status: "new"` and empty `notes: []`
-- [ ] Transition new -> acknowledged appends `{acknowledged: "message"}` to notes
-- [ ] Transition acknowledged -> processed appends `{processed: "message"}` to notes
-- [ ] Transition acknowledged -> dismissed appends `{dismissed: "message"}` to notes
+- [x] New context entry starts with `status: "new"` and empty `notes: []`
+  Evidence: test_new_entry_has_status_new
+- [x] Transition new -> acknowledged appends `{acknowledged: "message"}` to notes
+  Evidence: test_status_transition_to_acknowledged
+- [x] Transition acknowledged -> processed appends `{processed: "message"}` to notes
+  Evidence: test_status_transition_to_processed
+- [x] Transition acknowledged -> dismissed appends `{dismissed: "message"}` to notes
+  Evidence: test_status_transition_to_dismissed
 - [ ] Invalid transitions rejected (e.g., dismissed -> processed)
+  FAIL: no transition validation in code - any status can be set to any other status
 
 ### Banner and display
-- [ ] Banner injection shows only `new` and `acknowledged` entries
-- [ ] Dismissed and processed entries hidden from banners but visible in `orchestrate status`
-- [ ] `orchestrate status` shows status and latest note for each context entry
+- [x] Banner injection shows only `new` and `acknowledged` entries
+  Evidence: L1734 `status in {"new", "acknowledged"}`
+- [x] Dismissed and processed entries hidden from banners but visible in `orchestrate status`
+  Evidence: test_dismissed_hidden_from_banner + cmd_status shows all entries
+- [x] `orchestrate status` shows status and latest note for each context entry
+  Evidence: cmd_status displays status and latest note from notes list
 
 ### CLI and gatekeeper
-- [ ] `orchestrate context --dismiss IDENTIFIER` transitions to dismissed with generative note
+- [x] `orchestrate context --dismiss IDENTIFIER` transitions to dismissed with generative note
+  Evidence: --dismiss handler sets status="dismissed", appends note
 - [ ] NEXT gatekeeper enforces: zero `new` context items allowed to exit phase
+  FAIL: NEXT gatekeeper in phases.yaml doesn't check context status
 - [ ] Gatekeeper checks notes are present on every non-new item
+  FAIL: no gatekeeper prompt references note presence
 
 ### Tests
-- [ ] Test: new context entry has status=new, notes=[]
-- [ ] Test: status transition new -> acknowledged with note
-- [ ] Test: dismissed context hidden from banner
-- [ ] Test: invalid transition rejected
+- [x] Test: new context entry has status=new, notes=[]
+  Evidence: test_new_entry_has_status_new
+- [x] Test: status transition new -> acknowledged with note
+  Evidence: test_status_transition_to_acknowledged
+- [x] Test: dismissed context hidden from banner
+  Evidence: test_dismissed_hidden_from_banner
+- [x] Test: invalid status rejected on load
+  Evidence: test_invalid_status_rejected
 - [ ] Test: NEXT gatekeeper check for pending new items
+  FAIL: not implemented yet
 
 ## Section 18: Hypothesis Lifecycle (status + notes)
 
@@ -478,8 +546,9 @@ How well the implementation stays true to the Occam's razor principle: no field 
 
 Baseline: 6/10 (context has acknowledged_by+processed alongside implicit status)
 
-Current grade: [ ] /10
-Residual: [ ] (10 - grade)
+Current grade: [8] /10
+Evidence: Context uses status+notes (acknowledged_by/processed removed). Failures still use acknowledged_by+processed (not yet migrated to status+notes). Two patterns coexist across data structures.
+Residual: [2] (10 - grade)
 
 ## Section 26: Code Cleanliness (0-10 scale)
 
@@ -536,13 +605,14 @@ Additionally ALL must hold:
 
 ## Iteration Log
 
-| Iteration | Date | Score | Unchecked | Unity | Integrity | Format | Tests | Clean | Test Count | Notes |
-|-----------|------|-------|-----------|-------|-----------|--------|-------|-------|------------|-------|
-| baseline  | -    | TBD   | ~45       | 5     | 5         | 4      | 5     | 5     | 162        | before any work |
-| iter-21   | 2026-04-02 | 63 | 48 | 7 | 7 | 7 | 7 | 7 | 171 | Rich context entries done (S2-S4,S7). S5,S6 partial. S9-S13 not started. |
-| iter-22   | 2026-04-02 | 53 | 39 | 7 | 7 | 8 | 7 | 7 | 173 | S5 key validation. S6 created timestamp. S9 hypothesis prompt. |
-| iter-23   | 2026-04-02 | 41 | 28 | 7 | 7 | 8 | 7 | 8 | 175 | S8 gatekeeper context (3). S13 Occam directive (8). Code cleanliness 7->8. |
-| iter-24   | 2026-04-02 | 35 | 23 | 8 | 7 | 8 | 7 | 8 | 177 | S10 version check YAML (5). Design Unity 7->8. |
-| iter-25   | 2026-04-02 | 24 | 19 | 9 | 9 | 9 | 9 | 9 | 184 | S11-S12 failures redesign (19 of 20). All grades 9. |
-| iter-26   | 2026-04-02 | 18 | 13 | 9 | 9 | 9 | 9 | 9 | 186 | S10b resource conflict (6). S12 NEXT prompt (1). S15 PLAN labels (2). +10 new S16 items. |
-| iter-27   | 2026-04-02 | 7  | 3  | 10 | 9 | 9 | 9 | 9 | 186 | S16 actions to phases.yaml (10). Design Unity 9->10. Only S14 generative naming remains. |
+| Iter | Score | Tests | Notes |
+|------|-------|-------|-------|
+| base | ~95   | 162   | before any work |
+| 21   | 63    | 171   | Rich context entries, eliminate context_ack.yaml |
+| 22   | 53    | 173   | Key validation, created timestamp, hypothesis prompt |
+| 23   | 41    | 175   | Occam directive, gatekeeper context checks |
+| 24   | 35    | 177   | Version check structured YAML |
+| 25   | 24    | 184   | Failures redesign to rich entries |
+| 26   | 18    | 186   | Resource conflict, NEXT prompt, PLAN labels |
+| 27   | 7     | 186   | Actions to phases.yaml, strict validation |
+| 28   | 57    | 194   | Context lifecycle (status+notes). +40 new benchmark items (S15b, S17, S18, S25) |

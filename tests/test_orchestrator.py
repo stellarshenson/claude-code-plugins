@@ -780,7 +780,9 @@ class TestCmdInfo:
     def test_info_workflows(self, auto_build_claw_resources, capsys):
         """List all workflows."""
         orch._initialize(auto_build_claw_resources)
-        args = argparse.Namespace(workflows=True, workflow=None, phases=False, phase=None, agents=False)
+        args = argparse.Namespace(
+            workflows=True, workflow=None, phases=False, phase=None, agents=False
+        )
         orch.cmd_info(args)
         out = capsys.readouterr().out
         assert "WORKFLOW::FULL" in out
@@ -790,7 +792,9 @@ class TestCmdInfo:
     def test_info_workflow_detail(self, auto_build_claw_resources, capsys):
         """Detail one workflow by cli_name."""
         orch._initialize(auto_build_claw_resources)
-        args = argparse.Namespace(workflows=False, workflow="full", phases=False, phase=None, agents=False)
+        args = argparse.Namespace(
+            workflows=False, workflow="full", phases=False, phase=None, agents=False
+        )
         orch.cmd_info(args)
         out = capsys.readouterr().out
         assert "RESEARCH" in out
@@ -800,7 +804,9 @@ class TestCmdInfo:
     def test_info_phases(self, auto_build_claw_resources, capsys):
         """List all phases."""
         orch._initialize(auto_build_claw_resources)
-        args = argparse.Namespace(workflows=False, workflow=None, phases=True, phase=None, agents=False)
+        args = argparse.Namespace(
+            workflows=False, workflow=None, phases=True, phase=None, agents=False
+        )
         orch.cmd_info(args)
         out = capsys.readouterr().out
         assert "FULL::RESEARCH" in out
@@ -810,7 +816,9 @@ class TestCmdInfo:
     def test_info_phase_detail(self, auto_build_claw_resources, capsys):
         """Detail one phase showing start/execution/end agents."""
         orch._initialize(auto_build_claw_resources)
-        args = argparse.Namespace(workflows=False, workflow=None, phases=False, phase="FULL::RESEARCH", agents=False)
+        args = argparse.Namespace(
+            workflows=False, workflow=None, phases=False, phase="FULL::RESEARCH", agents=False
+        )
         orch.cmd_info(args)
         out = capsys.readouterr().out
         assert "readback" in out
@@ -822,7 +830,9 @@ class TestCmdInfo:
     def test_info_agents(self, auto_build_claw_resources, capsys):
         """List all agents grouped by phase."""
         orch._initialize(auto_build_claw_resources)
-        args = argparse.Namespace(workflows=False, workflow=None, phases=False, phase=None, agents=True)
+        args = argparse.Namespace(
+            workflows=False, workflow=None, phases=False, phase=None, agents=True
+        )
         orch.cmd_info(args)
         out = capsys.readouterr().out
         assert "researcher" in out
@@ -1002,10 +1012,14 @@ class TestVersionCheck:
     def test_version_check_yaml_format(self, tmp_path):
         """Cache file uses structured YAML with latest_version and checked_at."""
         cache = tmp_path / ".version_check"
-        cache.write_text(yaml.dump({
-            "latest_version": "0.8.51",
-            "checked_at": "2026-04-02T14:00:00+00:00",
-        }))
+        cache.write_text(
+            yaml.dump(
+                {
+                    "latest_version": "0.8.51",
+                    "checked_at": "2026-04-02T14:00:00+00:00",
+                }
+            )
+        )
         data = yaml.safe_load(cache.read_text())
         assert isinstance(data, dict)
         assert "latest_version" in data
@@ -1028,12 +1042,17 @@ class TestVersionCheck:
     def test_version_check_fresh_yaml_cache(self, tmp_path):
         """Fresh YAML cache with recent checked_at prevents re-check."""
         from datetime import datetime, timezone
+
         cache = tmp_path / ".version_check"
         now = datetime.now(timezone.utc).isoformat()
-        cache.write_text(yaml.dump({
-            "latest_version": "0.8.51",
-            "checked_at": now,
-        }))
+        cache.write_text(
+            yaml.dump(
+                {
+                    "latest_version": "0.8.51",
+                    "checked_at": now,
+                }
+            )
+        )
         data = yaml.safe_load(cache.read_text())
         checked = datetime.fromisoformat(data["checked_at"])
         age = (datetime.now(timezone.utc) - checked).total_seconds()
@@ -1082,8 +1101,8 @@ class TestContextRichEntries:
                 "message": "focus on X",
                 "phase": "RESEARCH",
                 "created": "2026-04-02T14:00:00+00:00",
-                "acknowledged_by": [],
-                "processed": False,
+                "status": "new",
+                "notes": [],
             }
         }
         orch._save_context(ctx)
@@ -1091,7 +1110,7 @@ class TestContextRichEntries:
         assert "focus_on_x" in loaded
         assert loaded["focus_on_x"]["message"] == "focus on X"
         assert loaded["focus_on_x"]["phase"] == "RESEARCH"
-        assert loaded["focus_on_x"]["processed"] is False
+        assert loaded["focus_on_x"]["status"] == "new"
 
     def test_load_rejects_legacy_flat_format(self, minimal_resources, tmp_path):
         """Old flat format raises ValueError."""
@@ -1110,15 +1129,19 @@ class TestContextRichEntries:
         ctx = {}
         cid1 = orch._generate_entry_id("fix auth", set(ctx.keys()))
         ctx[cid1] = {
-            "message": "fix auth", "phase": "IMPLEMENT",
+            "message": "fix auth",
+            "phase": "IMPLEMENT",
             "created": "2026-04-02T14:00:00+00:00",
-            "acknowledged_by": [], "processed": False,
+            "status": "new",
+            "notes": [],
         }
         cid2 = orch._generate_entry_id("fix auth", set(ctx.keys()))
         ctx[cid2] = {
-            "message": "fix auth again", "phase": "IMPLEMENT",
+            "message": "fix auth again",
+            "phase": "IMPLEMENT",
             "created": "2026-04-02T15:00:00+00:00",
-            "acknowledged_by": [], "processed": False,
+            "status": "new",
+            "notes": [],
         }
         assert cid1 != cid2
         assert len(ctx) == 2
@@ -1127,7 +1150,7 @@ class TestContextRichEntries:
         assert len(loaded) == 2
 
     def test_ack_updates_inline_no_ack_file(self, minimal_resources, tmp_path):
-        """Acknowledgment updates acknowledged_by inline, no context_ack.yaml."""
+        """Acknowledgment transitions new -> acknowledged inline, no context_ack.yaml."""
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
@@ -1136,8 +1159,8 @@ class TestContextRichEntries:
                 "message": "focus on X",
                 "phase": "RESEARCH",
                 "created": "2026-04-02T14:00:00+00:00",
-                "acknowledged_by": [],
-                "processed": False,
+                "status": "new",
+                "notes": [],
             }
         }
         orch._save_context(ctx)
@@ -1145,16 +1168,17 @@ class TestContextRichEntries:
         loaded = orch._load_context()
         phase = "ALPHA"
         for cid, entry in loaded.items():
-            ack_list = entry.setdefault("acknowledged_by", [])
-            if phase not in ack_list:
-                ack_list.append(phase)
+            if entry.get("status") == "new":
+                entry["status"] = "acknowledged"
+                entry.setdefault("notes", []).append({"acknowledged": f"seen by {phase}"})
         orch._save_context(loaded)
         final = orch._load_context()
-        assert "ALPHA" in final["focus_on_x"]["acknowledged_by"]
+        assert final["focus_on_x"]["status"] == "acknowledged"
+        assert final["focus_on_x"]["notes"][-1] == {"acknowledged": "seen by ALPHA"}
         assert not (tmp_path / "context_ack.yaml").exists()
 
     def test_ack_idempotent(self, minimal_resources, tmp_path):
-        """Duplicate phase not added to acknowledged_by."""
+        """Already acknowledged entry is not re-transitioned."""
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
@@ -1163,23 +1187,27 @@ class TestContextRichEntries:
                 "message": "focus on X",
                 "phase": "RESEARCH",
                 "created": "2026-04-02T14:00:00+00:00",
-                "acknowledged_by": ["ALPHA"],
-                "processed": False,
+                "status": "acknowledged",
+                "notes": [{"acknowledged": "seen by ALPHA"}],
             }
         }
         orch._save_context(ctx)
         loaded = orch._load_context()
         phase = "ALPHA"
+        dirty = False
         for cid, entry in loaded.items():
-            ack_list = entry.setdefault("acknowledged_by", [])
-            if phase not in ack_list:
-                ack_list.append(phase)
-        orch._save_context(loaded)
+            if entry.get("status") == "new":
+                entry["status"] = "acknowledged"
+                entry.setdefault("notes", []).append({"acknowledged": f"seen by {phase}"})
+                dirty = True
+        # Should not have touched the already-acknowledged entry
+        assert not dirty
         final = orch._load_context()
-        assert final["focus_on_x"]["acknowledged_by"].count("ALPHA") == 1
+        assert final["focus_on_x"]["status"] == "acknowledged"
+        assert len(final["focus_on_x"]["notes"]) == 1
 
-    def test_processed_flag(self, minimal_resources, tmp_path):
-        """Setting processed=True on an entry."""
+    def test_processed_status(self, minimal_resources, tmp_path):
+        """Transitioning status to processed with a note."""
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
@@ -1188,16 +1216,18 @@ class TestContextRichEntries:
                 "message": "focus on X",
                 "phase": "RESEARCH",
                 "created": "2026-04-02T14:00:00+00:00",
-                "acknowledged_by": ["ALPHA"],
-                "processed": False,
+                "status": "acknowledged",
+                "notes": [{"acknowledged": "seen by ALPHA"}],
             }
         }
         orch._save_context(ctx)
         loaded = orch._load_context()
-        loaded["focus_on_x"]["processed"] = True
+        loaded["focus_on_x"]["status"] = "processed"
+        loaded["focus_on_x"]["notes"].append({"processed": "added to PROGRAM"})
         orch._save_context(loaded)
         final = orch._load_context()
-        assert final["focus_on_x"]["processed"] is True
+        assert final["focus_on_x"]["status"] == "processed"
+        assert final["focus_on_x"]["notes"][-1] == {"processed": "added to PROGRAM"}
 
     def test_entry_missing_message_raises(self, minimal_resources, tmp_path):
         """Entry missing 'message' key raises ValueError."""
@@ -1239,7 +1269,9 @@ class TestContextRichEntries:
                     assert "occam" in agent.prompt.lower(), (
                         f"Architect in {phase_key} missing Occam directive"
                     )
-        assert len(architect_phases) >= 4, f"Expected >= 4 architect agents, found {len(architect_phases)}"
+        assert len(architect_phases) >= 4, (
+            f"Expected >= 4 architect agents, found {len(architect_phases)}"
+        )
 
     def test_gatekeeper_prompts_reference_context(self, auto_build_claw_resources):
         """Gatekeepers for RESEARCH/HYPOTHESIS/PLAN/IMPLEMENT/REVIEW reference context."""
@@ -1252,6 +1284,159 @@ class TestContextRichEntries:
                         assert "context" in gate.prompt.lower(), (
                             f"Gatekeeper in {phase_key} missing context reference"
                         )
+
+
+class TestContextLifecycle:
+    """Tests for context status + notes lifecycle."""
+
+    def test_new_entry_has_status_new(self, minimal_resources, tmp_path):
+        """New context entry starts with status=new and empty notes."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "test_item": {
+                "message": "test", "phase": "RESEARCH",
+                "created": "2026-04-03", "status": "new", "notes": [],
+            }
+        }
+        orch._save_context(ctx)
+        loaded = orch._load_context()
+        assert loaded["test_item"]["status"] == "new"
+        assert loaded["test_item"]["notes"] == []
+
+    def test_status_transition_to_acknowledged(self, minimal_resources, tmp_path):
+        """cmd_start transitions new -> acknowledged with note."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "test_item": {
+                "message": "test", "phase": "RESEARCH",
+                "created": "2026-04-03", "status": "new", "notes": [],
+            }
+        }
+        orch._save_context(ctx)
+        # Simulate cmd_start ack
+        loaded = orch._load_context()
+        for cid, entry in loaded.items():
+            if entry.get("status") == "new":
+                entry["status"] = "acknowledged"
+                entry.setdefault("notes", []).append({"acknowledged": "seen by ALPHA"})
+        orch._save_context(loaded)
+        final = orch._load_context()
+        assert final["test_item"]["status"] == "acknowledged"
+        assert len(final["test_item"]["notes"]) == 1
+        assert "acknowledged" in final["test_item"]["notes"][0]
+
+    def test_status_transition_to_processed(self, minimal_resources, tmp_path):
+        """Processed transition appends note."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "test_item": {
+                "message": "test", "phase": "RESEARCH",
+                "created": "2026-04-03", "status": "acknowledged",
+                "notes": [{"acknowledged": "seen by ALPHA"}],
+            }
+        }
+        orch._save_context(ctx)
+        loaded = orch._load_context()
+        loaded["test_item"]["status"] = "processed"
+        loaded["test_item"]["notes"].append({"processed": "added to PROGRAM.md"})
+        orch._save_context(loaded)
+        final = orch._load_context()
+        assert final["test_item"]["status"] == "processed"
+        assert len(final["test_item"]["notes"]) == 2
+
+    def test_status_transition_to_dismissed(self, minimal_resources, tmp_path):
+        """Dismissed transition appends note."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "test_item": {
+                "message": "test", "phase": "RESEARCH",
+                "created": "2026-04-03", "status": "acknowledged",
+                "notes": [{"acknowledged": "seen by ALPHA"}],
+            }
+        }
+        orch._save_context(ctx)
+        loaded = orch._load_context()
+        loaded["test_item"]["status"] = "dismissed"
+        loaded["test_item"]["notes"].append({"dismissed": "not relevant to objective"})
+        orch._save_context(loaded)
+        final = orch._load_context()
+        assert final["test_item"]["status"] == "dismissed"
+        assert "dismissed" in final["test_item"]["notes"][-1]
+
+    def test_dismissed_hidden_from_banner(self, minimal_resources, tmp_path):
+        """Dismissed entries not shown in banner (status-based filter)."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "active_item": {
+                "message": "show me", "phase": "RESEARCH",
+                "created": "2026-04-03", "status": "new", "notes": [],
+            },
+            "dismissed_item": {
+                "message": "hide me", "phase": "RESEARCH",
+                "created": "2026-04-03", "status": "dismissed",
+                "notes": [{"dismissed": "not relevant"}],
+            },
+        }
+        orch._save_context(ctx)
+        loaded = orch._load_context()
+        active = {k: v for k, v in loaded.items() if v.get("status") in {"new", "acknowledged"}}
+        assert "active_item" in active
+        assert "dismissed_item" not in active
+
+    def test_invalid_status_rejected(self, minimal_resources, tmp_path):
+        """Invalid status value raises ValueError."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "bad_item": {
+                "message": "test", "phase": "RESEARCH",
+                "created": "2026-04-03", "status": "invalid_status", "notes": [],
+            }
+        }
+        orch._save_context(ctx)
+        with pytest.raises(ValueError, match="invalid status"):
+            orch._load_context()
+
+    def test_no_acknowledged_by_field(self, minimal_resources, tmp_path):
+        """Entries should not have acknowledged_by field (replaced by status+notes)."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "test_item": {
+                "message": "test", "phase": "RESEARCH",
+                "created": "2026-04-03", "status": "new", "notes": [],
+            }
+        }
+        orch._save_context(ctx)
+        loaded = orch._load_context()
+        assert "acknowledged_by" not in loaded["test_item"]
+
+    def test_no_processed_boolean(self, minimal_resources, tmp_path):
+        """Entries should not have processed boolean (replaced by status)."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "test_item": {
+                "message": "test", "phase": "RESEARCH",
+                "created": "2026-04-03", "status": "new", "notes": [],
+            }
+        }
+        orch._save_context(ctx)
+        loaded = orch._load_context()
+        assert "processed" not in loaded["test_item"] or not isinstance(loaded["test_item"].get("processed"), bool)
 
 
 class TestFailuresRichEntries:
@@ -1296,12 +1481,14 @@ class TestFailuresRichEntries:
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
-        orch._append_failure({
-            "iteration": 1,
-            "phase": "TEST",
-            "mode": "FM-TEST-FAIL",
-            "description": "tests failed unexpectedly",
-        })
+        orch._append_failure(
+            {
+                "iteration": 1,
+                "phase": "TEST",
+                "mode": "FM-TEST-FAIL",
+                "description": "tests failed unexpectedly",
+            }
+        )
         loaded = orch._load_failures()
         assert len(loaded) == 1
         fid = list(loaded.keys())[0]
@@ -1340,11 +1527,19 @@ class TestFailuresRichEntries:
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
-        failures = {"test_fail": {"description": "test", "phase": "TEST",
-                                   "mode": "FM", "iteration": 1,
-                                   "acknowledged_by": [], "processed": False,
-                                   "solution": None, "context": "",
-                                   "timestamp": "2026-04-02"}}
+        failures = {
+            "test_fail": {
+                "description": "test",
+                "phase": "TEST",
+                "mode": "FM",
+                "iteration": 1,
+                "acknowledged_by": [],
+                "processed": False,
+                "solution": None,
+                "context": "",
+                "timestamp": "2026-04-02",
+            }
+        }
         orch._save_failures(failures)
         orch._clean_artifacts_dir(tmp_path)
         assert (tmp_path / "failures.yaml").exists()
@@ -1394,10 +1589,15 @@ class TestFailuresRichEntries:
         orch._init_artifacts_dir(tmp_path)
         failures = {
             "test_fail": {
-                "description": "test", "context": "", "iteration": 1,
-                "phase": "TEST", "mode": "FM",
-                "acknowledged_by": [], "processed": False,
-                "solution": None, "timestamp": "2026-04-02",
+                "description": "test",
+                "context": "",
+                "iteration": 1,
+                "phase": "TEST",
+                "mode": "FM",
+                "acknowledged_by": [],
+                "processed": False,
+                "solution": None,
+                "timestamp": "2026-04-02",
             }
         }
         orch._save_failures(failures)

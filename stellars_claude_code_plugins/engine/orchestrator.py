@@ -757,12 +757,18 @@ def _load_context() -> dict:
                 "Delete context.yaml and re-add entries with: "
                 "orchestrate context --message '...' --phase PHASE"
             )
-        required = {"message", "phase"}
+        required = {"message", "phase", "status"}
         missing = required - entry.keys()
         if missing:
             raise ValueError(
                 f"context.yaml entry '{key}' missing required keys: {missing}. "
                 "Delete context.yaml and re-add entries."
+            )
+        _VALID_STATUSES = {"new", "acknowledged", "dismissed", "processed"}
+        if entry["status"] not in _VALID_STATUSES:
+            raise ValueError(
+                f"context.yaml entry '{key}' has invalid status '{entry['status']}'. "
+                f"Must be one of: {sorted(_VALID_STATUSES)}"
             )
     return data
 
@@ -1731,7 +1737,9 @@ def cmd_start(args) -> None:
     body = instructions
     all_ctx = _load_context()
     if all_ctx:
-        active_ctx = {cid: e for cid, e in all_ctx.items() if not e.get("processed", False)}
+        active_ctx = {
+            cid: e for cid, e in all_ctx.items() if e.get("status") in {"new", "acknowledged"}
+        }
         if active_ctx:
             count = len(active_ctx)
             body += f"\n\n{count} context message(s) active:\n"
@@ -1742,12 +1750,12 @@ def cmd_start(args) -> None:
                 body += f"**[{cid}]**: {entry['message']}\n\n"
             body += _msg("user_guidance_instruction")
 
-        # Update acknowledged_by inline
+        # Transition new -> acknowledged
         dirty = False
         for cid, entry in all_ctx.items():
-            ack_list = entry.setdefault("acknowledged_by", [])
-            if phase not in ack_list:
-                ack_list.append(phase)
+            if entry.get("status") == "new":
+                entry["status"] = "acknowledged"
+                entry.setdefault("notes", []).append({"acknowledged": f"seen by {phase}"})
                 dirty = True
         if dirty:
             _save_context(all_ctx)
@@ -2130,7 +2138,7 @@ def cmd_status(args) -> None:
             solved = " [SOLVED]" if f.get("solution") else ""
             print(f"  [{fid}] {f.get('mode', '?')}: {f.get('description', '?')[:60]}{solved}")
 
-    # Show context messages with inline acknowledgment
+    # Show context messages with status and latest note
     all_ctx = _load_context()
     if all_ctx:
         print("\nContext messages:")
@@ -2138,14 +2146,18 @@ def cmd_status(args) -> None:
             msg = entry.get("message", "")
             p = entry.get("phase", "?")
             created = entry.get("created", "?")[:10]
-            seen_by = entry.get("acknowledged_by", [])
-            proc = entry.get("processed", False)
-            ack_str = f"ack: {', '.join(seen_by)}" if seen_by else "ack: none"
-            proc_str = " [PROCESSED]" if proc else ""
+            status = entry.get("status", "?")
+            notes = entry.get("notes", [])
+            latest_note = ""
+            if notes:
+                last = notes[-1]
+                latest_note = (
+                    next(iter(last.values()), "") if isinstance(last, dict) else str(last)
+                )
             truncated = msg[:60]
             ellipsis = "..." if len(msg) > 60 else ""
             print(
-                f"  [{cid}] ({p}): {truncated}{ellipsis} (created: {created}, {ack_str}){proc_str}"
+                f"  [{cid}] ({p}): {truncated}{ellipsis} (created: {created}, status: {status}) {latest_note[:40]}"
             )
 
     print("\n" + _msg("status_required_note"))
@@ -2347,9 +2359,32 @@ def cmd_context(args) -> None:
         if identifier not in ctx:
             print(f"Context identifier '{identifier}' not found.", file=sys.stderr)
             sys.exit(1)
-        ctx[identifier]["processed"] = True
+        note_text = getattr(args, "note", "") or "marked processed"
+        ctx[identifier]["status"] = "processed"
+        ctx[identifier].setdefault("notes", []).append({"processed": note_text})
         _save_context(ctx)
         print(f"Context '{identifier}' marked as processed.")
+        return
+
+    # Dismiss context entry by identifier
+    dismiss = getattr(args, "dismiss", False)
+    if dismiss:
+        identifier = (args.message or "").strip()
+        if not identifier:
+            print(
+                "--dismiss requires an identifier (pass via --message IDENTIFIER)",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        ctx = _load_context()
+        if identifier not in ctx:
+            print(f"Context identifier '{identifier}' not found.", file=sys.stderr)
+            sys.exit(1)
+        note_text = getattr(args, "note", "") or "dismissed"
+        ctx[identifier]["status"] = "dismissed"
+        ctx[identifier].setdefault("notes", []).append({"dismissed": note_text})
+        _save_context(ctx)
+        print(f"Context '{identifier}' dismissed.")
         return
 
     # List all context entries
@@ -2362,13 +2397,15 @@ def cmd_context(args) -> None:
             for cid, entry in ctx.items():
                 msg = entry.get("message", "")
                 p = entry.get("phase", "?")
-                ack = entry.get("acknowledged_by", [])
-                proc = entry.get("processed", False)
+                status = entry.get("status", "?")
+                notes = entry.get("notes", [])
+                latest = ""
+                if notes:
+                    last = notes[-1]
+                    latest = next(iter(last.values()), "")
                 truncated = msg[:80]
                 ellipsis = "..." if len(msg) > 80 else ""
-                ack_str = ", ".join(ack) if ack else "none"
-                proc_str = "processed" if proc else "active"
-                print(f"  [{cid}] ({p}): {truncated}{ellipsis}  (ack: {ack_str}, {proc_str})")
+                print(f"  [{cid}] ({p}): {truncated}{ellipsis}  (status: {status}) {latest[:40]}")
         return
 
     # Add new context entry
@@ -2378,8 +2415,8 @@ def cmd_context(args) -> None:
         "message": message,
         "phase": phase,
         "created": _now(),
-        "acknowledged_by": [],
-        "processed": False,
+        "status": "new",
+        "notes": [],
     }
     _save_context(ctx)
     _append_log(
@@ -2854,6 +2891,17 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Mark context entry as processed (pass identifier via --message)",
+    )
+    p_ctx.add_argument(
+        "--dismiss",
+        action="store_true",
+        default=False,
+        help="Dismiss context entry (pass identifier via --message)",
+    )
+    p_ctx.add_argument(
+        "--note",
+        default="",
+        help="Note for --processed or --dismiss transitions",
     )
 
     # ── log-failure ──

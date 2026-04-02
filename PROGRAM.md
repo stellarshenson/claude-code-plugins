@@ -72,6 +72,25 @@ Implement the 2 remaining unfinished items identified in the executive summary, 
   - Notes are generative: `[{deferred: "not relevant for context refactor"}, {processed: "selected for iter 23, timeout is root cause"}]`
   - Acceptance: hypotheses.yaml uses identifier-keyed entries with status+notes, gatekeeper enforces classification
 
+- **Replace EnterPlanMode with autonomous planning workflow** (high)
+  - Scope: phases.yaml PLAN, PLANNING::PLAN, GC::PLAN start templates, readback gates, end criteria
+  - Problem: PLAN template instructs "Call EnterPlanMode" and "Call ExitPlanMode" - these are Claude Code built-in tools requiring user approval. This breaks autonomous iteration.
+  - The planning APPROACH must remain equally meticulous - same 4-step explore/design/review/write workflow, same depth requirements
+  - What changes: the tool calls (EnterPlanMode/ExitPlanMode) are removed, replaced with explicit autonomous instructions
+  - What stays: read-only constraint, explore agents, plan depth requirements, review agents, output file
+  - PLAN template must explicitly instruct:
+    1. **Explore**: spawn Explore agents to investigate codebase (same as EnterPlanMode Phase 1)
+    2. **Design**: design implementation approach with specific files, changes, acceptance criteria (same as EnterPlanMode Phase 2-3)
+    3. **Review**: spawn Plan agents to review the design (same as EnterPlanMode Phase 3)
+    4. **Write**: write plan to output file (same as EnterPlanMode Phase 4)
+  - The gatekeeper validates plan quality instead of user approval - same gate criteria
+  - PLANNING::PLAN and GC::PLAN get the same treatment (no EnterPlanMode, same depth)
+  - Readback gate: check for "planning" and "read-only" (not "EnterPlanMode")
+  - Consequences: orchestrator code that handles EnterPlanMode in cmd_start may need review
+  - Consequences: if EnterPlanMode is called during PLAN phase, it pauses for user - this MUST NOT happen
+  - Consequences: tests that verify PLAN phase readback mentions "EnterPlanMode" need updating
+  - Acceptance: zero EnterPlanMode/ExitPlanMode references in phases.yaml, planning quality unchanged
+
 - **RESEARCH phase failure investigation** (medium)
   - Scope: phases.yaml FULL::RESEARCH start template
   - `_build_failures_context()` surfaces unsolved failures but RESEARCH template should more explicitly instruct agents to investigate them as root causes
