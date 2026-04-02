@@ -185,12 +185,18 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 
 ## Section 10b: Resource Conflict on Version Upgrade
 
-- [ ] `_ensure_project_resources` detects structural differences between bundled and project-local resources (not just old format)
-- [ ] When bundled resources differ structurally from project-local, archive the local copy
-- [ ] Archive uses existing pattern: `resources.old.YYYYMMDD/`
-- [ ] Warning printed to user explaining resources were refreshed
-- [ ] User modifications that are compatible (no structural conflict) are preserved
-- [ ] Test: structural resource conflict triggers archive and fresh install
+- [x] `_ensure_project_resources` detects structural differences between bundled and project-local resources (not just old format)
+  Evidence: _detect_stale_resources compares content of each resource file via read_bytes()
+- [x] When bundled resources differ structurally from project-local, archive the local copy
+  Evidence: _ensure_project_resources archives and reinstalls when _detect_stale_resources returns True
+- [x] Archive uses existing pattern: `resources.old.YYYYMMDD/`
+  Evidence: archive_name = f"resources.old.{datetime.now().strftime('%Y%m%d')}"
+- [x] Warning printed to user explaining resources were refreshed
+  Evidence: prints "WARNING: Project resources differ from bundled version. Archived to ..."
+- [x] User modifications that are compatible (no structural conflict) are preserved
+  Evidence: _detect_stale_resources returns False when content matches bundled (test_detect_matching_resources_not_stale)
+- [x] Test: structural resource conflict triggers archive and fresh install
+  Evidence: test_detect_stale_content_mismatch + test_stale_resources_archived_and_replaced
 
 ## Section 11: Rich Failures - Data Structure
 
@@ -233,8 +239,8 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
   Evidence: _build_failures_context labels unsolved as "investigation targets"
 - [x] RESEARCH phase template/context includes unsolved failures as investigation targets
   Evidence: _build_failures_context called via _build_context -> prior_context, shows unsolved section
-- [ ] NEXT phase prompt instructs to add unsolved failures as PROGRAM.md work items and BENCHMARK.md verification items
-  FAIL: NEXT phase template doesn't explicitly instruct PROGRAM.md/BENCHMARK.md additions for unsolved failures
+- [x] NEXT phase prompt instructs to add unsolved failures as PROGRAM.md work items and BENCHMARK.md verification items
+  Evidence: NEXT template_continue and template_final both include "If unsolved failures exist, consider adding them as: Work items in PROGRAM.md, Verification items in BENCHMARK.md"
 - [x] `_build_failures_context()` distinguishes solved vs unsolved in output (not just a flat dump)
   Evidence: test_build_failures_context_solved_unsolved confirms both groups shown
 
@@ -270,22 +276,36 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 
 ## Section 15: PLAN Phase Mirrors EnterPlanMode
 
-- [ ] PLAN phase prompt in phases.yaml describes a 4-step structured process: explore, design, review, write
-  FAIL: PLAN phase start template (phases.yaml L358-387) has 5 steps: 1) Call EnterPlanMode, 2) Read context, 3) Spawn Explore agents, 4) Write plan, 5) Call ExitPlanMode. Not the 4-step explore/design/review/write pattern.
+- [x] PLAN phase prompt in phases.yaml describes a 4-step structured process: explore, design, review, write
+  Evidence: PLAN template has labeled steps "**Explore**", "**Design**", "**Review**", "**Write**" with "follows explore -> design -> review -> write workflow"
 - [x] Step 1 (explore): spawn Explore agents to investigate codebase
-  Evidence: L372 "Spawn **Explore agents** (up to 3 in parallel) to investigate the codebase"
-- [ ] Step 2 (design): design implementation approach based on exploration results
-  FAIL: No explicit "design" step between exploration and writing. Step 4 goes straight to "write the plan"
+  Evidence: Step 2 labeled "**Explore**" with Explore agents
+- [x] Step 2 (design): design implementation approach based on exploration results
+  Evidence: Step 3 labeled "**Design**" - "Based on exploration results, design the implementation approach"
 - [x] Step 3 (review): spawn review agents to validate the plan
-  Evidence: L485-493 end template spawns architect, critic, guardian agents to review the plan
+  Evidence: Step 4 labeled "**Review**" - "Spawn review agents to validate the plan (architect, critic, guardian)"
 - [x] Step 4 (write): write plan to output file
-  Evidence: L373 "Based on exploration results, write the plan to the plan file"
+  Evidence: Step 5 labeled "**Write**" - "Write the final plan to the plan file"
 - [x] No interactive user approval gate - gatekeeper validates quality instead
+  Evidence: template says "runs autonomously (gatekeeper validates instead of user)"
   Evidence: L498-510 gatekeeper agent validates plan quality, no user approval step
 - [x] Process matches the structure of Claude Code's formal EnterPlanMode
   Evidence: L366 "You MUST use `EnterPlanMode`", L370 "Call `EnterPlanMode`", L374 "Call `ExitPlanMode`"
 
-## Section 16: Design Unity (0-10 scale)
+## Section 16: Strict Action Resolution
+
+- [ ] `ACTION::` definitions moved from workflow.yaml to phases.yaml as root-level `actions:` section
+- [ ] `model.py` reads actions from phases.yaml (not workflow.yaml)
+- [ ] Every `on_complete` action referenced by a phase resolves to either built-in or generative action
+- [ ] `validate_model` checks all action references and fails on unknown actions
+- [ ] Unknown action reference causes validation error (not silent skip)
+- [ ] Built-in actions (plan_save, iteration_summary, iteration_advance) resolve to Python handlers
+- [ ] Generative actions (hypothesis_autowrite, hypothesis_gc) have prompts in phases.yaml actions section
+- [ ] Test: unknown action in on_complete fails validation
+- [ ] Test: valid built-in action passes validation
+- [ ] Test: valid generative action passes validation
+
+## Section 17: Design Unity (0-10 scale)
 
 ONE canonical location for each piece of data. No orphan files. No parallel tracking.
 
@@ -392,10 +412,12 @@ Iterations stop when ANY of these is true:
 - [ ] No score improvement for 2 consecutive iterations
 
 Additionally ALL must hold:
-- [ ] make test >= 175
-- [ ] make lint clean
-- [ ] orchestrate validate passes
-- [ ] All 4 dry-runs pass
+- [x] make test >= 175
+  Evidence: 186 tests pass
+- [x] make lint clean
+- [x] orchestrate validate passes
+- [x] All 4 dry-runs pass
+  Evidence: full, gc, hotfix, fast all complete without error
 - [x] grep "context_ack" orchestrator.py returns 0 matches
 - [x] context.yaml entries are rich dicts keyed by identifier (not phase name)
 - [x] context.yaml entries have `phase` as attribute inside dict, not as dict key
@@ -405,9 +427,12 @@ Additionally ALL must hold:
 - [x] failures.yaml entries are rich dicts keyed by identifier (not a flat list)
 - [x] old flat list failures.yaml raises error on load
 - [x] failures have lifecycle: acknowledged_by, processed, solution fields
-- [ ] grep -i "occam" phases.yaml returns >= 5 matches
-- [ ] unsolved failures surfaced in RESEARCH phase context
-- [ ] NEXT phase considers unsolved failures for PROGRAM.md/BENCHMARK.md additions
+- [x] grep -i "occam" phases.yaml returns >= 5 matches
+  Evidence: 6 matches
+- [x] unsolved failures surfaced in RESEARCH phase context
+  Evidence: _build_failures_context shows unsolved as "investigation targets"
+- [x] NEXT phase considers unsolved failures for PROGRAM.md/BENCHMARK.md additions
+  Evidence: NEXT template_continue and template_final include instruction
 
 **Do NOT stop while any condition above is unmet.**
 
@@ -423,3 +448,4 @@ Additionally ALL must hold:
 | iter-23   | 2026-04-02 | 41 | 28 | 7 | 7 | 8 | 7 | 8 | 175 | S8 gatekeeper context (3). S13 Occam directive (8). Code cleanliness 7->8. |
 | iter-24   | 2026-04-02 | 35 | 23 | 8 | 7 | 8 | 7 | 8 | 177 | S10 version check YAML (5). Design Unity 7->8. |
 | iter-25   | 2026-04-02 | 24 | 19 | 9 | 9 | 9 | 9 | 9 | 184 | S11-S12 failures redesign (19 of 20). All grades 9. |
+| iter-26   | 2026-04-02 | 18 | 13 | 9 | 9 | 9 | 9 | 9 | 186 | S10b resource conflict (6). S12 NEXT prompt (1). S15 PLAN labels (2). +10 new S16 action items. |

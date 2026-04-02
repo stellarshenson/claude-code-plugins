@@ -379,12 +379,14 @@ PLAN:
       You MUST use `EnterPlanMode` and follow planning mode rules.
       Do NOT use Edit, Write, or any tool that modifies files (except the plan file).
 
-      **Execution** (MANDATORY):
+      **Execution** (MANDATORY - follows explore -> design -> review -> write workflow):
+      This mirrors EnterPlanMode but runs autonomously (gatekeeper validates instead of user).
       1. Call `EnterPlanMode` to enter planning mode
-      2. Read context: recent git log, failure log (`{CMD} failures`), prior results
-      3. Spawn **Explore agents** (up to 3 in parallel) to investigate the codebase
-      4. Based on exploration results, write the plan to the plan file
-      5. Call `ExitPlanMode` when plan is complete
+      2. **Explore**: Read context (git log, failure log `{CMD} failures`, prior results). Spawn **Explore agents** (up to 3 in parallel) to investigate the codebase
+      3. **Design**: Based on exploration results, design the implementation approach
+      4. **Review**: Spawn review agents to validate the plan (architect, critic, guardian)
+      5. **Write**: Write the final plan to the plan file
+      6. Call `ExitPlanMode` when plan is complete
 
       **Plan must contain**:
       - What specifically needs to change and why (root causes)
@@ -916,6 +918,10 @@ NEXT:
       {CMD} failures
       ```
 
+      If unsolved failures exist, consider adding them as:
+      - Work items in PROGRAM.md
+      - Verification items in BENCHMARK.md
+
       **PROCEED IMMEDIATELY to the next iteration** unless user explicitly asked to pause.
       The user requested {total} iterations - execute all of them autonomously.
 
@@ -930,6 +936,10 @@ NEXT:
       ```
       {CMD} failures
       ```
+
+      If unsolved failures exist, consider adding them as:
+      - Work items in PROGRAM.md
+      - Verification items in BENCHMARK.md
 
       **Report final status to user.** Start a new request with:
       ```

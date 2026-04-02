@@ -108,6 +108,18 @@ Implement the 2 remaining unfinished items identified in the executive summary, 
   - No interactive user approval gate - the gatekeeper validates plan quality instead
   - Acceptance: PLAN phase prompt describes the explore-design-review-write workflow matching EnterPlanMode structure
 
+- **Strict action resolution with documentation** (high)
+  - Scope: `orchestrator.py` `_run_auto_actions`, `model.py` `validate_model`, `phases.yaml`
+  - All standard `on_complete` actions must be documented in phases.yaml as action definitions with identifier, description, and prompt (for generative) or just identifier and description (for built-in)
+  - Engine model loading must verify all action references: every `on_complete` action referenced by a phase must resolve to either a built-in programmatic action OR a generative action defined in workflow.yaml
+  - If an action is referenced but not found in either built-in registry or generative actions, validation MUST fail (no fallback, no silent skip)
+  - Move `ACTION::` definitions from workflow.yaml to phases.yaml as a root-level `actions:` section - centralizes all phase-related definitions in one file
+  - Actions are either: built-in (Python handler in `_AUTO_ACTION_REGISTRY`) or generative (with prompt in the action definition)
+  - `model.py` `load_model` / `_build_actions` must read actions from phases.yaml instead of workflow.yaml
+  - `validate_model` must check: every phase's `on_complete` action list references only valid actions
+  - Tests: unknown action fails validation, known built-in resolves, known generative resolves
+  - Acceptance: unknown action reference causes validation error, all existing actions documented and verified
+
 - **Tests for new features** (high)
   - test_context_rich_format: new context entries have message, phase, created, acknowledged_by, processed
   - test_context_identifier_key: entries keyed by identifier not phase name

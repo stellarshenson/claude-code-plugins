@@ -2894,14 +2894,28 @@ _BUNDLED_RESOURCES = Path(__file__).parent / "resources"
 _RESOURCE_FILES = ("workflow.yaml", "phases.yaml", "app.yaml")
 
 
-def _detect_old_format(resources_dir: Path) -> bool:
-    """Check if project resources use old gates: format."""
+def _detect_stale_resources(resources_dir: Path) -> bool:
+    """Check if project resources are stale (old format or differ from bundled).
+
+    Detects two cases:
+    1. Legacy gates: format (pre-start/execution/end lifecycle)
+    2. Content differs from bundled resources (version upgrade)
+    """
     phases_file = resources_dir / "phases.yaml"
     if not phases_file.exists():
         return False
     content = phases_file.read_text()
-    # Old format has gates: key at phase level; new format has start:/execution:/end:
-    return "  gates:" in content and "  start:" not in content
+    # Old format: gates: key at phase level without start: key
+    if "  gates:" in content and "  start:" not in content:
+        return True
+    # Version upgrade: bundled resources differ from project-local
+    for fname in _RESOURCE_FILES:
+        local = resources_dir / fname
+        bundled = _BUNDLED_RESOURCES / fname
+        if local.exists() and bundled.exists():
+            if local.read_bytes() != bundled.read_bytes():
+                return True
+    return False
 
 
 def _ensure_project_resources(project_resources: Path) -> Path:
@@ -2909,7 +2923,7 @@ def _ensure_project_resources(project_resources: Path) -> Path:
 
     Returns the project resources directory path. If any YAML file is missing,
     copies the default from the module's bundled resources. Detects and archives
-    old-format resources that use the legacy gates: structure.
+    stale resources (old format or version mismatch).
     """
     project_resources.mkdir(parents=True, exist_ok=True)
     for fname in _RESOURCE_FILES:
@@ -2919,18 +2933,22 @@ def _ensure_project_resources(project_resources: Path) -> Path:
             if src.exists():
                 shutil.copy2(src, dest)
 
-    # Detect and archive stale old-format resources
-    if _detect_old_format(project_resources):
+    # Detect and archive stale resources (old format or version upgrade)
+    if _detect_stale_resources(project_resources):
         archive_name = f"resources.old.{datetime.now().strftime('%Y%m%d')}"
         archive_path = project_resources.parent / archive_name
-        project_resources.rename(archive_path)
-        print(f"WARNING: Project resources had old format. Archived to {archive_name}/")
-        project_resources.mkdir(parents=True, exist_ok=True)
-        for fname in _RESOURCE_FILES:
-            src = _BUNDLED_RESOURCES / fname
-            if src.exists():
-                shutil.copy2(src, project_resources / fname)
-        print("Fresh resources installed from module.")
+        if not archive_path.exists():
+            project_resources.rename(archive_path)
+            print(
+                f"WARNING: Project resources differ from bundled version. "
+                f"Archived to {archive_name}/"
+            )
+            project_resources.mkdir(parents=True, exist_ok=True)
+            for fname in _RESOURCE_FILES:
+                src = _BUNDLED_RESOURCES / fname
+                if src.exists():
+                    shutil.copy2(src, project_resources / fname)
+            print("Fresh resources installed from module.")
 
     return project_resources
 
