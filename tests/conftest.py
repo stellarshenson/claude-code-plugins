@@ -17,6 +17,7 @@ def minimal_resources(tmp_path):
 
     Uses FQN workflow names (WORKFLOW::TEST_WORKFLOW) and merged
     phases format (agents/gates inline in phases.yaml, no agents.yaml).
+    Uses the start/execution/end lifecycle structure.
     """
     resources = tmp_path / "resources"
     resources.mkdir()
@@ -42,7 +43,7 @@ WORKFLOW::TEST_WORKFLOW:
 
     (resources / "phases.yaml").write_text("""
 shared_gates:
-  on_skip:
+  skip:
     gatekeeper_skip:
       mode: standalone_session
       description: "Skip gatekeeper"
@@ -53,58 +54,70 @@ shared_gates:
       prompt: "Evaluate force-skip for {phase} in iteration {iteration}: {reason}"
 
 ALPHA:
-  start: "Start alpha phase. Objective: {objective}"
-  end: "End alpha phase. Evidence: {evidence}"
-  gates:
-    on_start:
-      readback:
+  auto_actions:
+    on_complete: []
+  start:
+    template: "Start alpha phase. Objective: {objective}"
+    agents:
+      - name: readback
         mode: standalone_session
         description: "Validate understanding"
         prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
-    on_end:
-      agents:
-        - name: researcher
-          display_name: Researcher
-          prompt: "Research the topic"
-      gatekeeper:
+  execution:
+    agents:
+      - name: researcher
+        display_name: Researcher
+        prompt: "Research the topic"
+  end:
+    template: "End alpha phase. Evidence: {evidence}"
+    agents:
+      - name: gatekeeper
         mode: standalone_session
         description: "Validate completion"
         prompt: "Phase {phase}: {evidence}"
 
 BETA:
-  start: "Start beta phase."
-  end: "End beta phase."
-  gates:
-    on_start:
-      readback:
+  auto_actions:
+    on_complete: []
+  start:
+    template: "Start beta phase."
+    agents:
+      - name: readback
         mode: standalone_session
         description: "Validate understanding"
         prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
-    on_end:
-      agents:
-        - name: planner
-          display_name: Planner
-          prompt: "Plan the work"
-      gatekeeper:
+  execution:
+    agents:
+      - name: planner
+        display_name: Planner
+        prompt: "Plan the work"
+  end:
+    template: "End beta phase."
+    agents:
+      - name: gatekeeper
         mode: standalone_session
         description: "Validate completion"
         prompt: "Phase {phase}: {evidence}"
 
 GAMMA:
-  start: "Start gamma phase."
-  end: "End gamma phase."
-  gates:
-    on_start:
-      readback:
+  auto_actions:
+    on_complete: []
+  start:
+    template: "Start gamma phase."
+    agents:
+      - name: readback
         mode: standalone_session
         description: "Validate understanding"
         prompt: "Phase {phase}: does '{understanding}' capture the requirements?"
-    on_end:
-      agents:
-        - name: executor
-          display_name: Executor
-          prompt: "Execute the work"
-      gatekeeper:
+  execution:
+    agents:
+      - name: executor
+        display_name: Executor
+        prompt: "Execute the work"
+  end:
+    template: "End gamma phase."
+    agents:
+      - name: gatekeeper
         mode: standalone_session
         description: "Validate completion"
         prompt: "Phase {phase}: {evidence}"

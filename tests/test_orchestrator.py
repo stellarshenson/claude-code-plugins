@@ -614,7 +614,7 @@ WORKFLOW::GEN:
 
         (resources / "phases.yaml").write_text("""
 shared_gates:
-  on_skip:
+  skip:
     gatekeeper_skip:
       mode: standalone_session
       prompt: "Skip {phase} {iteration} {itype} {objective}: {reason}"
@@ -624,19 +624,21 @@ shared_gates:
 STEP:
   auto_actions:
     on_complete: [gen_action]
-  start: "Start step. Objective: {objective}"
-  end: "End step."
-  gates:
-    on_start:
-      readback:
+  start:
+    template: "Start step. Objective: {objective}"
+    agents:
+      - name: readback
         mode: standalone_session
         prompt: "Phase {phase}: {understanding}"
-    on_end:
-      agents:
-        - name: worker
-          display_name: Worker
-          prompt: "Do work"
-      gatekeeper:
+  execution:
+    agents:
+      - name: worker
+        display_name: Worker
+        prompt: "Do work"
+  end:
+    template: "End step."
+    agents:
+      - name: gatekeeper
         mode: standalone_session
         prompt: "Phase {phase}: {evidence}"
 """)

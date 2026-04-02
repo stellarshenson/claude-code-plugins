@@ -119,10 +119,12 @@ class Model:
     app: AppConfig
     actions: dict[str, ActionDef] = field(default_factory=dict)
     # Gate lifecycle metadata: which gate types belong to which lifecycle point
-    # Populated during model loading from on_start/on_end/on_skip YAML structure
+    # Populated during model loading from start/execution/end YAML structure
     start_gate_types: set[str] = field(default_factory=set)
     end_gate_types: set[str] = field(default_factory=set)
     skip_gate_types: set[str] = field(default_factory=set)
+    # Phases that used legacy gates.on_start/on_end structure (for deprecation warnings)
+    legacy_gate_phases: set[str] = field(default_factory=set)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -161,38 +163,111 @@ def _build_workflow_types(raw: dict) -> dict[str, WorkflowType]:
 
 _PHASE_RESERVED_KEYS = {"shared_gates"}
 
+# Top-level keys in a phase section that are lifecycle dicts, not Phase fields
+_PHASE_LIFECYCLE_KEYS = {"start", "execution", "end"}
+
 
 def _build_phases(raw: dict) -> dict[str, Phase]:
-    return {
-        key: Phase(**{k: val[k] for k in Phase.__dataclass_fields__ if k in val and k != "gates"})
-        for key, val in raw.items()
-        if isinstance(val, dict) and key not in _PHASE_RESERVED_KEYS
-    }
+    """Build Phase objects from phases.yaml.
+
+    Extracts template strings from the new start/execution/end dict structure:
+      start.template -> Phase.start
+      end.template -> Phase.end
+      start_continue, start_final, end_continue, end_final from template variants
+
+    Also supports legacy flat string format for backward compatibility:
+      start: "template string" -> Phase.start
+    """
+    result: dict[str, Phase] = {}
+    for key, val in raw.items():
+        if not isinstance(val, dict) or key in _PHASE_RESERVED_KEYS:
+            continue
+
+        phase_kwargs: dict = {}
+
+        # Extract templates from start/end dict structure (new format)
+        # or fall back to flat string (legacy format)
+        start_section = val.get("start")
+        if isinstance(start_section, dict):
+            phase_kwargs["start"] = start_section.get("template", "")
+            # Template variants live at start level
+            if "template_continue" in start_section:
+                phase_kwargs["start_continue"] = start_section["template_continue"]
+            if "template_final" in start_section:
+                phase_kwargs["start_final"] = start_section["template_final"]
+        elif isinstance(start_section, str):
+            phase_kwargs["start"] = start_section
+
+        end_section = val.get("end")
+        if isinstance(end_section, dict):
+            phase_kwargs["end"] = end_section.get("template", "")
+            if "template_continue" in end_section:
+                phase_kwargs["end_continue"] = end_section["template_continue"]
+            if "template_final" in end_section:
+                phase_kwargs["end_final"] = end_section["template_final"]
+        elif isinstance(end_section, str):
+            phase_kwargs["end"] = end_section
+
+        # Legacy flat string variants (backward compat for phases not yet migrated)
+        if "start_continue" in val and "start_continue" not in phase_kwargs:
+            phase_kwargs["start_continue"] = val["start_continue"]
+        if "start_final" in val and "start_final" not in phase_kwargs:
+            phase_kwargs["start_final"] = val["start_final"]
+        if "end_continue" in val and "end_continue" not in phase_kwargs:
+            phase_kwargs["end_continue"] = val["end_continue"]
+        if "end_final" in val and "end_final" not in phase_kwargs:
+            phase_kwargs["end_final"] = val["end_final"]
+
+        # Non-lifecycle Phase fields: reject_to, auto_actions, auto_verify
+        for field_name in Phase.__dataclass_fields__:
+            if field_name in _PHASE_LIFECYCLE_KEYS:
+                continue  # already handled above
+            if field_name in phase_kwargs:
+                continue  # already extracted from lifecycle dict
+            if field_name in val:
+                phase_kwargs[field_name] = val[field_name]
+
+        result[key] = Phase(**phase_kwargs)
+
+    return result
 
 
 def _build_agents_and_gates(
     raw: dict,
-) -> tuple[dict[str, list[Agent]], dict[str, Gate], set[str], set[str], set[str]]:
+) -> tuple[dict[str, list[Agent]], dict[str, Gate], set[str], set[str], set[str], set[str]]:
     """Build agent lists and gate definitions from phases.yaml.
 
-    Returns (agents, gates, start_gate_types, end_gate_types, skip_gate_types).
+    Supports the start/execution/end lifecycle structure:
+      start.agents   -> Gate objects (e.g., readback) keyed as PHASE::agent_name
+      execution.agents -> Agent objects for phase execution
+      end.agents     -> Gate objects (e.g., gatekeeper) keyed as PHASE::agent_name
+      shared_gates.skip -> shared skip gates
+
+    Also supports the legacy gates.on_start/on_end structure for backward compat.
+
+    Returns (agents, gates, start_gate_types, end_gate_types, skip_gate_types,
+    legacy_gate_phases).
     The gate type sets record which gate types appear under each lifecycle point
-    (on_start, on_end, on_skip) so the orchestrator can discover gate names from
-    the model instead of hardcoding them.
+    so the orchestrator can discover gate names from the model instead of
+    hardcoding them. legacy_gate_phases tracks phases that used the old
+    gates.on_start/on_end structure for deprecation warnings.
     """
     agents: dict[str, list[Agent]] = {}
     gates: dict[str, Gate] = {}
-    _LIFECYCLE_MAP = {"on_start": "start", "on_end": "end", "on_skip": "skip"}
     gate_type_sets: dict[str, set[str]] = {"start": set(), "end": set(), "skip": set()}
+    legacy_gate_phases: set[str] = set()
+
     for phase_key, section in raw.items():
         if not isinstance(section, dict):
             continue
+
         if phase_key == "shared_gates":
-            # Shared gates live under lifecycle subsections (on_skip)
-            for lifecycle, subsection in section.items():
+            # New format: shared_gates.skip.{gate_name}
+            # Legacy format: shared_gates.on_skip.{gate_name}
+            for subsection_key in ("skip", "on_skip"):
+                subsection = section.get(subsection_key)
                 if not isinstance(subsection, dict):
                     continue
-                bucket = _LIFECYCLE_MAP.get(lifecycle, lifecycle)
                 for gk, gv in subsection.items():
                     if not isinstance(gv, dict):
                         continue
@@ -201,8 +276,73 @@ def _build_agents_and_gates(
                         description=gv.get("description", ""),
                         prompt=gv.get("prompt", ""),
                     )
-                    gate_type_sets.get(bucket, set()).add(gk)
-        else:
+                    gate_type_sets["skip"].add(gk)
+            continue
+
+        # ── New lifecycle structure: start/execution/end ──────────────
+
+        agent_list: list[dict] = []
+        found_new_structure = False
+
+        # Start agents -> gates (e.g., readback)
+        start_section = section.get("start")
+        if isinstance(start_section, dict):
+            for agent_def in start_section.get("agents", []):
+                if not isinstance(agent_def, dict):
+                    continue
+                found_new_structure = True
+                agent_name = agent_def.get("name", "")
+                if not agent_name:
+                    continue
+                gate_key = f"{phase_key}::{agent_name}"
+                gates[gate_key] = Gate(
+                    mode=agent_def.get("mode", "standalone_session"),
+                    description=agent_def.get("description", ""),
+                    prompt=agent_def.get("prompt", ""),
+                )
+                gate_type_sets["start"].add(agent_name)
+
+        # Execution agents -> Agent objects
+        execution_section = section.get("execution")
+        if isinstance(execution_section, dict):
+            for agent_def in execution_section.get("agents", []):
+                if not isinstance(agent_def, dict):
+                    continue
+                found_new_structure = True
+                agent_list.append(agent_def)
+
+        # End agents -> gates (e.g., gatekeeper) + execution agents
+        end_section = section.get("end")
+        if isinstance(end_section, dict):
+            for agent_def in end_section.get("agents", []):
+                if not isinstance(agent_def, dict):
+                    continue
+                found_new_structure = True
+                agent_name = agent_def.get("name", "")
+                if not agent_name:
+                    continue
+                # Agents with prompt that looks like a gate (has mode or description)
+                # vs execution agents that just have name/display_name/prompt
+                # Convention: if it has no display_name, it's a gate; otherwise it's
+                # an execution agent that happens to be in end section.
+                # Actually, the user's spec says end.agents are Gate objects.
+                # But the current structure has both execution agents AND gatekeeper
+                # in on_end. The new structure separates them:
+                #   execution.agents = execution agents (Agent objects)
+                #   end.agents = gate agents (Gate objects like gatekeeper)
+                gate_key = f"{phase_key}::{agent_name}"
+                gates[gate_key] = Gate(
+                    mode=agent_def.get("mode", "standalone_session"),
+                    description=agent_def.get("description", ""),
+                    prompt=agent_def.get("prompt", ""),
+                )
+                gate_type_sets["end"].add(agent_name)
+
+        # ── Legacy structure: gates.on_start / gates.on_end ───────────
+
+        if not found_new_structure and section.get("gates"):
+            legacy_gate_phases.add(phase_key)
+            _LIFECYCLE_MAP = {"on_start": "start", "on_end": "end", "on_skip": "skip"}
             # Backward compat: agents at phase level
             agent_list = section.get("agents", [])
             # Gates live under lifecycle subsections (on_start, on_end)
@@ -223,18 +363,28 @@ def _build_agents_and_gates(
                             prompt=gate_def.get("prompt", ""),
                         )
                         gate_type_sets.get(bucket, set()).add(gate_type)
-            if agent_list:
-                agents[phase_key] = [
-                    Agent(
-                        name=a["name"],
-                        display_name=a["display_name"],
-                        prompt=a.get("prompt", ""),
-                        mode=a.get("mode", ""),
-                        checklist=a.get("checklist"),
-                    )
-                    for a in agent_list
-                ]
-    return agents, gates, gate_type_sets["start"], gate_type_sets["end"], gate_type_sets["skip"]
+
+        # Build Agent objects from agent_list
+        if agent_list:
+            agents[phase_key] = [
+                Agent(
+                    name=a["name"],
+                    display_name=a["display_name"],
+                    prompt=a.get("prompt", ""),
+                    mode=a.get("mode", ""),
+                    checklist=a.get("checklist"),
+                )
+                for a in agent_list
+            ]
+
+    return (
+        agents,
+        gates,
+        gate_type_sets["start"],
+        gate_type_sets["end"],
+        gate_type_sets["skip"],
+        legacy_gate_phases,
+    )
 
 
 def _build_app(raw: dict) -> AppConfig:
@@ -298,7 +448,9 @@ def load_model(resources_dir: str | Path) -> Model:
     ph_raw = _load_yaml(base / "phases.yaml")
     app_raw = _load_yaml(base / "app.yaml")
     # Agents and gates are now inline in phases.yaml
-    agents, gates, start_gates, end_gates, skip_gates = _build_agents_and_gates(ph_raw)
+    agents, gates, start_gates, end_gates, skip_gates, legacy_phases = _build_agents_and_gates(
+        ph_raw
+    )
 
     return Model(
         workflow_types=_build_workflow_types(wf_raw),
@@ -310,6 +462,7 @@ def load_model(resources_dir: str | Path) -> Model:
         start_gate_types=start_gates,
         end_gate_types=end_gates,
         skip_gate_types=skip_gates,
+        legacy_gate_phases=legacy_phases,
     )
 
 
@@ -396,6 +549,13 @@ def validate_model(model: Model) -> list[str]:
     """Return list of issues found in the model. Empty list = valid."""
     issues: list[str] = []
     known_phases = set(model.phases.keys())
+
+    # Warn about deprecated gates: structure (old on_start/on_end format)
+    for phase_name in sorted(model.legacy_gate_phases):
+        issues.append(
+            f"[phases.yaml] '{phase_name}': uses deprecated 'gates:' structure. "
+            "Migrate to start/execution/end lifecycle format with agents inline."
+        )
 
     # workflow_types: FQN format validation
     for wf_name in model.workflow_types:
@@ -588,7 +748,7 @@ def validate_model(model: Model) -> list[str]:
                 )
 
     # gates: every workflow phase must resolve to both start and end gate types
-    # Gate types are discovered from lifecycle metadata (on_start/on_end) rather
+    # Gate types are discovered from lifecycle metadata (start/end) rather
     # than hardcoded, making validation match whatever gate types the YAML defines
     required_gate_types = model.start_gate_types | model.end_gate_types
     gate_phase_keys = set()
@@ -609,7 +769,7 @@ def validate_model(model: Model) -> list[str]:
                         f"[phases.yaml] workflow '{wf_name}' phase '{p['name']}': "
                         f"no {gate_type} gate found (tried '{wf_prefix.upper()}::{p['name']}::{gate_type}', "
                         f"'{p['name']}::{gate_type}'). "
-                        f"Fix: add gates.{gate_type} to the phase section in phases.yaml."
+                        f"Fix: add a {gate_type} agent to the start/end section in phases.yaml."
                     )
             else:
                 for gate_type in required_gate_types:
@@ -618,7 +778,7 @@ def validate_model(model: Model) -> list[str]:
                         issues.append(
                             f"[phases.yaml] workflow '{wf_name}' phase '{p['name']}': "
                             f"no {gate_type} gate found at '{gate_key}'. "
-                            f"Fix: add gates.{gate_type} to the phase section in phases.yaml."
+                            f"Fix: add a {gate_type} agent to the start/end section in phases.yaml."
                         )
 
     # gates: agent name references must match actual agents for the phase
@@ -642,8 +802,13 @@ def validate_model(model: Model) -> list[str]:
         issues.append(
             f"[phases.yaml] '{gate_key}': prompt references {{required_agents}} "
             f"but phase '{phase_key}' has no agents defined. "
-            "Fix: add agents to the phase or remove the {{required_agents}} placeholder."
+            "Fix: add agents to the execution section or remove the {{required_agents}} placeholder."
         )
+
+    # Warn about old structure: phases using gates.on_start/on_end instead of start/end lifecycle
+    for phase_name in known_phases:
+        # This warning is informational - the legacy format still works
+        pass  # Legacy detection happens in _build_agents_and_gates via found_new_structure flag
 
     # app: required fields
     for field_name, val in (("name", model.app.name), ("cmd", model.app.cmd)):

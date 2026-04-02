@@ -1,5 +1,7 @@
 """Unit tests for the YAML model loader and validator."""
 
+import warnings
+
 import pytest
 
 from stellars_claude_code_plugins.engine.model import (
@@ -60,18 +62,18 @@ class TestLoadModel:
         assert "gatekeeper_skip" in model.gates
         assert "gatekeeper_force_skip" in model.gates
 
-    def test_gates_from_on_start_on_end(self, minimal_resources):
-        """Gates under on_start/on_end are extracted correctly."""
+    def test_gates_from_start_end(self, minimal_resources):
+        """Gates under start.agents/end.agents are extracted correctly."""
         model = load_model(minimal_resources)
-        # on_start -> readback
+        # start -> readback
         rb = model.gates["ALPHA::readback"]
         assert "understanding" in rb.prompt
-        # on_end -> gatekeeper
+        # end -> gatekeeper
         gk = model.gates["ALPHA::gatekeeper"]
         assert "evidence" in gk.prompt
 
-    def test_shared_gates_from_on_skip(self, minimal_resources):
-        """Shared gates under on_skip are extracted correctly."""
+    def test_shared_gates_from_skip(self, minimal_resources):
+        """Shared gates under skip are extracted correctly."""
         model = load_model(minimal_resources)
         skip = model.gates["gatekeeper_skip"]
         assert "phase" in skip.prompt
@@ -79,7 +81,7 @@ class TestLoadModel:
         assert "force-skip" in force.prompt
 
     def test_gate_lifecycle_metadata(self, minimal_resources):
-        """Gate lifecycle sets are populated from on_start/on_end/on_skip structure."""
+        """Gate lifecycle sets are populated from start/end/skip structure."""
         model = load_model(minimal_resources)
         assert "readback" in model.start_gate_types
         assert "gatekeeper" in model.end_gate_types
@@ -256,24 +258,28 @@ WORKFLOW::BAD:
 """)
         (resources / "phases.yaml").write_text("""
 shared_gates:
-  on_skip:
+  skip:
     gatekeeper_skip:
       prompt: "{phase} {iteration} {itype} {objective} {reason}"
     gatekeeper_force_skip:
       prompt: "{phase} {iteration} {reason}"
 ALPHA:
-  start: 'hello'
-  end: 'bye'
-  gates:
-    on_start:
-      readback:
+  auto_actions:
+    on_complete: []
+  start:
+    template: 'hello'
+    agents:
+      - name: readback
         prompt: "{understanding}"
-    on_end:
-      agents:
-        - name: a
-          display_name: A
-          prompt: do
-      gatekeeper:
+  execution:
+    agents:
+      - name: a
+        display_name: A
+        prompt: do
+  end:
+    template: 'bye'
+    agents:
+      - name: gatekeeper
         prompt: "{evidence}"
 """)
         (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
@@ -319,20 +325,25 @@ bad_name:
 """)
         (resources / "phases.yaml").write_text("""
 shared_gates:
-  on_skip:
+  skip:
     gatekeeper_skip:
       prompt: "{phase} {iteration} {itype} {objective} {reason}"
     gatekeeper_force_skip:
       prompt: "{phase} {iteration} {reason}"
 ALPHA:
-  start: 'hello'
-  end: 'bye'
-  gates:
-    on_start:
-      readback:
+  auto_actions:
+    on_complete: []
+  start:
+    template: 'hello'
+    agents:
+      - name: readback
         prompt: "{understanding}"
-    on_end:
-      gatekeeper:
+  execution:
+    agents: []
+  end:
+    template: 'bye'
+    agents:
+      - name: gatekeeper
         prompt: "{evidence}"
 """)
         (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
@@ -358,12 +369,51 @@ WORKFLOW::B:
 """)
         (resources / "phases.yaml").write_text("""
 shared_gates:
-  on_skip:
+  skip:
     gatekeeper_skip:
       prompt: "{phase} {iteration} {itype} {objective} {reason}"
     gatekeeper_force_skip:
       prompt: "{phase} {iteration} {reason}"
 ALPHA:
+  auto_actions:
+    on_complete: []
+  start:
+    template: 'hello'
+    agents:
+      - name: readback
+        prompt: "{understanding}"
+  execution:
+    agents: []
+  end:
+    template: 'bye'
+    agents:
+      - name: gatekeeper
+        prompt: "{evidence}"
+""")
+        (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
+        model = load_model(resources)
+        issues = validate_model(model)
+        assert any("conflicts" in i for i in issues)
+
+    def test_validate_warns_old_gates_structure(self, tmp_path):
+        """Phases using old gates: key produce a validation warning."""
+        resources = tmp_path / "resources"
+        resources.mkdir()
+        (resources / "workflow.yaml").write_text("""
+WORKFLOW::OLD:
+  cli_name: old
+  description: "old structure"
+  phases:
+    - name: LEGACY
+""")
+        (resources / "phases.yaml").write_text("""
+shared_gates:
+  skip:
+    gatekeeper_skip:
+      prompt: "{phase} {iteration} {itype} {objective} {reason}"
+    gatekeeper_force_skip:
+      prompt: "{phase} {iteration} {reason}"
+LEGACY:
   start: 'hello'
   end: 'bye'
   gates:
@@ -371,13 +421,19 @@ ALPHA:
       readback:
         prompt: "{understanding}"
     on_end:
+      agents:
+        - name: a
+          display_name: A
+          prompt: do
       gatekeeper:
         prompt: "{evidence}"
 """)
         (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
         model = load_model(resources)
         issues = validate_model(model)
-        assert any("conflicts" in i for i in issues)
+        assert any("gates:" in i and "deprecated" in i.lower() for i in issues), (
+            f"Expected deprecation warning for old 'gates:' structure, got: {issues}"
+        )
 
 
 class TestValidateModelActions:
@@ -401,7 +457,7 @@ WORKFLOW::ACT:
 """)
         (resources / "phases.yaml").write_text("""
 shared_gates:
-  on_skip:
+  skip:
     gatekeeper_skip:
       prompt: "{phase} {iteration} {itype} {objective} {reason}"
     gatekeeper_force_skip:
@@ -409,18 +465,20 @@ shared_gates:
 STEP:
   auto_actions:
     on_complete: [real_action, nonexistent_action]
-  start: "Start"
-  end: "End"
-  gates:
-    on_start:
-      readback:
+  start:
+    template: "Start"
+    agents:
+      - name: readback
         prompt: "{understanding}"
-    on_end:
-      agents:
-        - name: a
-          display_name: A
-          prompt: do
-      gatekeeper:
+  execution:
+    agents:
+      - name: a
+        display_name: A
+        prompt: do
+  end:
+    template: "End"
+    agents:
+      - name: gatekeeper
         prompt: "{evidence}"
 """)
         (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
@@ -447,20 +505,25 @@ WORKFLOW::WF:
 """)
         (resources / "phases.yaml").write_text("""
 shared_gates:
-  on_skip:
+  skip:
     gatekeeper_skip:
       prompt: "{phase} {iteration} {itype} {objective} {reason}"
     gatekeeper_force_skip:
       prompt: "{phase} {iteration} {reason}"
 STEP:
-  start: "Start"
-  end: "End"
-  gates:
-    on_start:
-      readback:
+  auto_actions:
+    on_complete: []
+  start:
+    template: "Start"
+    agents:
+      - name: readback
         prompt: "{understanding}"
-    on_end:
-      gatekeeper:
+  execution:
+    agents: []
+  end:
+    template: "End"
+    agents:
+      - name: gatekeeper
         prompt: "{evidence}"
 """)
         (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
