@@ -139,7 +139,7 @@ The pull-based pattern isn't ad hoc engineering - it addresses known failure mod
 
 **Objective function convergence.** The generate-feedback-refine loop yields measurable improvement when driven by a consistent scalar metric [5]. The benchmark is the objective function. Each iteration is a gradient-free optimization step toward score = 0.
 
-*References: [1] Liu et al. "Lost in the Middle" (2023). [2] Han et al. "LLM Multi-Agent Systems" (2024). [3] Deng et al. "Rephrase and Respond" (2023). [4] Ye et al. "Justice or Prejudice?" (2024). [5] Madaan et al. "Self-Refine" (NeurIPS 2023). Papers available in `references/`.*
+*References: [1] Liu et al. "Lost in the Middle" (2023). [2] Han et al. "LLM Multi-Agent Systems" (2024). [3] Deng et al. "Rephrase and Respond" (2023). [4] Ye et al. "Justice or Prejudice?" (2024). [5] Madaan et al. "Self-Refine" (NeurIPS 2023).*
 
 ## Content/engine separation
 
