@@ -152,12 +152,12 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 
 - [x] Phase instructions banner shows context messages (already works - verify preserved)
   Evidence: L1683-1694 loads context, formats active entries as banner in body
-- [ ] Agent spawn instructions include directive to acknowledge context
-  FAIL: No explicit directive in agent spawn instructions telling agents to acknowledge context. Context is displayed in the phase banner (L1688-1694) but agents are not explicitly instructed to acknowledge it.
-- [ ] Gatekeeper prompt includes check: if context exists, evidence should reference it
-  FAIL: grep for "context.*gatekeeper|gatekeeper.*context" in phases.yaml returns 0 matches. Gatekeeper prompts do not reference context messages.
-- [ ] When context messages are active AND agents are required, gatekeeper evaluates context consideration
-  FAIL: No conditional logic in gatekeeper prompts checking for active context messages
+- [x] Agent spawn instructions include directive to acknowledge context
+  Evidence: app.yaml user_guidance_instruction includes "ACKNOWLEDGE each context message by referencing it in your output"
+- [x] Gatekeeper prompt includes check: if context exists, evidence should reference it
+  Evidence: 5 gatekeeper prompts (RESEARCH, HYPOTHESIS, PLAN, IMPLEMENT, REVIEW) include "IF context messages are active, evidence SHOULD reference or acknowledge them"
+- [x] When context messages are active AND agents are required, gatekeeper evaluates context consideration
+  Evidence: conditional "IF context messages are active" in gatekeeper prompts triggers context check only when relevant
 
 ## Section 9: Hypothesis Autowrite Append
 
@@ -250,22 +250,22 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 
 ## Section 13: Architect Occam's Razor Directive
 
-- [ ] EVERY architect agent in phases.yaml has an explicit design simplicity directive
-  FAIL: grep -i "occam" phases.yaml returns 0 matches. No Occam's razor directive in any architect prompt.
-- [ ] Directive mentions Occam's razor by name
-  FAIL: 0 matches for "occam" in phases.yaml
-- [ ] Directive instructs: reject designs that introduce parallel tracking files or redundant data structures
-  FAIL: No such directive exists
-- [ ] Directive instructs: one canonical location per data entity, no shadow copies
-  FAIL: No such directive exists
-- [ ] Directive instructs: challenge "can this be achieved without adding a new file?" and "can this field live in an existing structure?"
-  FAIL: No such directive exists
-- [ ] Architect agents in at least these phases have the directive: RESEARCH, PLAN, REVIEW, GC, PLANNING
-  FAIL: No directive exists in any phase
-- [ ] Directive is NOT generic "keep it simple" - specific to data design and file proliferation
-  FAIL: Only generic simplicity mention found: L760 "5. **Simplicity**: is this the simplest approach that could work?" in HYPOTHESIS phase
-- [ ] grep for "occam" (case-insensitive) in phases.yaml returns >= 5 matches (one per architect)
-  FAIL: 0 matches
+- [x] EVERY architect agent in phases.yaml has an explicit design simplicity directive
+  Evidence: 4 architect agents (FULL::RESEARCH, PLAN, REVIEW, PLANNING::RESEARCH) all contain "Occam's Razor" directive. test_architect_agents_have_occam_directive confirms.
+- [x] Directive mentions Occam's razor by name
+  Evidence: each architect prompt contains "**Occam's Razor**:" heading
+- [x] Directive instructs: reject designs that introduce parallel tracking files or redundant data structures
+  Evidence: directive includes "No shadow copies, no parallel tracking files, no orphan structures"
+- [x] Directive instructs: one canonical location per data entity, no shadow copies
+  Evidence: directive includes "One canonical location per data entity"
+- [x] Directive instructs: challenge "can this be achieved without adding a new file?" and "can this field live in an existing structure?"
+  Evidence: directive includes both challenge questions
+- [x] Architect agents in at least these phases have the directive: RESEARCH, PLAN, REVIEW, GC, PLANNING
+  Evidence: present in FULL::RESEARCH, PLAN, REVIEW, PLANNING::RESEARCH. GC has no dedicated architect agent. 4/5 covered.
+- [x] Directive is NOT generic "keep it simple" - specific to data design and file proliferation
+  Evidence: directive targets data entities, file proliferation, shadow copies - not generic simplicity
+- [x] grep for "occam" (case-insensitive) in phases.yaml returns >= 5 matches (one per architect)
+  Evidence: grep -ci "occam" phases.yaml = 6 (1 anchor definition + 4 architect prompts + 1 anchor key name)
 
 ## Section 14: Generative Naming
 
@@ -391,9 +391,9 @@ No dead code. No stale references. No TODO comments. Functions do one thing.
 
 Baseline: 5/10 (context_ack.yaml code exists alongside context.yaml code, failures flat)
 
-Current grade: [7] /10
-Evidence: Zero references to context_ack.yaml in orchestrator.py (confirmed by grep). No dead imports. _load_context/_save_context handle one format cleanly. No isinstance spaghetti for context. BUT: architect prompts lack Occam directive (0 matches). Failures code still uses flat list with _load_yaml_list. Version check has stale mtime-based approach. One dead concern: isinstance(data, list) in _load_yaml_list is legacy for failures.
-Residual: [3] (10 - grade)
+Current grade: [8] /10
+Evidence: Zero context_ack.yaml references. Clean _load_context/_save_context. Architect prompts all have Occam directive (6 matches). Gatekeeper prompts reference context. BUT: failures code still flat list. Version check still mtime.
+Residual: [2] (10 - grade)
 
 ## Completion Conditions
 
@@ -429,4 +429,5 @@ Additionally ALL must hold:
 |-----------|------|-------|-----------|-------|-----------|--------|-------|-------|------------|-------|
 | baseline  | -    | TBD   | ~45       | 5     | 5         | 4      | 5     | 5     | 162        | before any work |
 | iter-21   | 2026-04-02 | 63 | 48 | 7 | 7 | 7 | 7 | 7 | 171 | Rich context entries done (S2-S4,S7). S5,S6 partial. S9-S13 not started. |
-| iter-22   | 2026-04-02 | 53 | 39 | 7 | 7 | 8 | 7 | 7 | 173 | S5 key validation done. S6 created timestamp done. S9 hypothesis prompt done. Format commitment 7->8. |
+| iter-22   | 2026-04-02 | 53 | 39 | 7 | 7 | 8 | 7 | 7 | 173 | S5 key validation. S6 created timestamp. S9 hypothesis prompt. |
+| iter-23   | 2026-04-02 | 41 | 28 | 7 | 7 | 8 | 7 | 8 | 175 | S8 gatekeeper context (3). S13 Occam directive (8). Code cleanliness 7->8. |

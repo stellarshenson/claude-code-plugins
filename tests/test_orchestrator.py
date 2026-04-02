@@ -1147,6 +1147,31 @@ class TestContextRichEntries:
         assert "APPEND" in prompt or "append" in prompt
         assert "do NOT overwrite" in prompt.lower() or "do not overwrite" in prompt.lower()
 
+    def test_architect_agents_have_occam_directive(self, auto_build_claw_resources):
+        """All architect agents have Occam's razor directive."""
+        orch._initialize(auto_build_claw_resources)
+        architect_phases = []
+        for phase_key, agents in orch._MODEL.agents.items():
+            for agent in agents:
+                if agent.name == "architect":
+                    architect_phases.append(phase_key)
+                    assert "occam" in agent.prompt.lower(), (
+                        f"Architect in {phase_key} missing Occam directive"
+                    )
+        assert len(architect_phases) >= 4, f"Expected >= 4 architect agents, found {len(architect_phases)}"
+
+    def test_gatekeeper_prompts_reference_context(self, auto_build_claw_resources):
+        """Gatekeepers for RESEARCH/HYPOTHESIS/PLAN/IMPLEMENT/REVIEW reference context."""
+        orch._initialize(auto_build_claw_resources)
+        check_phases = {"FULL::RESEARCH", "FULL::HYPOTHESIS", "PLAN", "IMPLEMENT", "REVIEW"}
+        for phase_key, gates in orch._MODEL.gates.items():
+            if phase_key in check_phases:
+                for gate in gates:
+                    if gate.name == "gatekeeper":
+                        assert "context" in gate.prompt.lower(), (
+                            f"Gatekeeper in {phase_key} missing context reference"
+                        )
+
 
 class TestHypothesisContext:
     """Tests for prior hypothesis injection into build context."""

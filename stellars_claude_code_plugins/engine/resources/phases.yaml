@@ -45,6 +45,15 @@
 #   {benchmark_configured}, {completed_phases}, {phase_purpose}
 # ──────────────────────────────────────────────────────────────────
 
+# ── Shared directives ─────────────────────────────────────────────
+
+occam_directive: &occam_directive |
+  **Occam's Razor**: Guard against unnecessary complexity in every design decision:
+  - Can this be achieved without adding a new file? One canonical location per data entity.
+  - Can this field live in an existing structure? No shadow copies, no parallel tracking.
+  - Does this need a separate tracking mechanism? No orphan files, no redundant structures.
+  Reject designs that introduce speculative abstractions or file proliferation.
+
 # ── Shared skip gates ─────────────────────────────────────────────
 # Skip decisions are not phase-specific - they evaluate whether
 # skipping any phase is justified. Shared across all workflows.
@@ -162,6 +171,8 @@ FULL::RESEARCH:
           - Find existing patterns that should be reused vs areas that need redesign
           - Assess technical feasibility and complexity of addressing the objective
 
+          **Occam's Razor**: Guard against unnecessary complexity. One canonical location per data entity. No shadow copies, no parallel tracking files, no orphan structures. Challenge: can this be achieved without adding a new file? Can this field live in an existing structure? Reject speculative abstractions.
+
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
       - name: product_manager
         display_name: PRODUCT MANAGER
@@ -204,6 +215,7 @@ FULL::RESEARCH:
           Check: 3 agents spawned separately, findings contain specific
           file references and concrete observations (not vague summaries).
           Evaluate evidence QUALITY: are findings specific enough to act on? Vague summaries = FAIL.
+          IF context messages are active, evidence SHOULD reference or acknowledge them.
 
 # ── FULL::HYPOTHESIS ───────────────────────────────────────────────
 
@@ -346,6 +358,7 @@ FULL::HYPOTHESIS:
           Check: 4 agents spawned separately, hypotheses merged with
           star ratings, top 1-3 selected with measurable predictions.
           Evaluate hypothesis QUALITY: each must have root cause, prediction, and evidence. Generic hypotheses without specifics = FAIL.
+          IF context messages are active, evidence SHOULD reference or acknowledge them.
 
 # ── PLAN (shared) ──────────────────────────────────────────────────
 # Default implementation planning phase used by FULL, FAST workflows.
@@ -408,6 +421,8 @@ PLAN:
           - Are there existing functions/patterns that should be reused instead of reinventing?
           - Could the proposed changes introduce regressions?
           If the plan is vague ("improve code quality"), REJECT it.
+
+          **Occam's Razor**: Guard against unnecessary complexity. One canonical location per data entity. No shadow copies, no parallel tracking files, no orphan structures. Challenge: can this be achieved without adding a new file? Can this field live in an existing structure? Reject speculative abstractions.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
       - name: critic
@@ -508,6 +523,7 @@ PLAN:
           root causes, acceptance criteria, and risk assessment.
           Vague plans ("improve X", "fix issues") = FAIL.
           Evaluate plan DEPTH: must include specific files, concrete changes, and reasoning for each. Shallow bullet lists = FAIL.
+          IF context messages are active, evidence SHOULD reference or acknowledge them.
 
 # ── IMPLEMENT (shared) ────────────────────────────────────────────────
 
@@ -582,6 +598,7 @@ IMPLEMENT:
           Check: changes match plan (no scope creep), predict/verify
           reflection documented for each change.
           Evaluate implementation THOROUGHNESS: each change must show what was predicted vs what happened. Missing reflections = FAIL.
+          IF context messages are active, evidence SHOULD reference or acknowledge them.
 
 # ── TEST (shared) ─────────────────────────────────────────────────────
 
@@ -759,6 +776,8 @@ REVIEW:
           4. **Patterns**: do changes follow established project patterns or diverge without reason?
           5. **Simplicity**: is this the simplest approach that could work?
 
+          **Occam's Razor**: Guard against unnecessary complexity. One canonical location per data entity. No shadow copies, no parallel tracking files, no orphan structures. Challenge: can this be achieved without adding a new file? Can this field live in an existing structure? Reject speculative abstractions.
+
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
       - name: guardian
         display_name: GUARDIAN
@@ -823,6 +842,7 @@ REVIEW:
           Check: 4 agents spawned separately, verdicts merged,
           guardian overfit assessment completed.
           Evaluate verdict DEPTH: each agent must provide reasoning, not just APPROVE/REJECT. Missing reasoning = FAIL.
+          IF context messages are active, evidence SHOULD reference or acknowledge them.
 
 # ── RECORD (shared) ───────────────────────────────────────────────
 
@@ -1004,6 +1024,8 @@ PLANNING::RESEARCH:
           - Identify which changes must come first
           - Assess risk per area (high/medium/low)
           - Recommend iteration ordering
+
+          **Occam's Razor**: Guard against unnecessary complexity. One canonical location per data entity. No shadow copies, no parallel tracking files, no orphan structures. Challenge: can this be achieved without adding a new file? Can this field live in an existing structure? Reject speculative abstractions.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
       - name: product_manager

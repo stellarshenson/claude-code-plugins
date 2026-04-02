@@ -283,7 +283,8 @@ messages:
   user_guidance_header: "  USER GUIDANCE FOR THIS PHASE (broadcast to ALL agents)"
   user_guidance_instruction: |
     **This guidance comes from the user and MUST be considered by every agent
-    spawned in this phase. Incorporate it into your research, hypotheses,
+    spawned in this phase. ACKNOWLEDGE each context message by referencing it
+    in your output. Incorporate it into your research, hypotheses,
     plans, or implementation as appropriate.**
 
   # ── Status display (cmd_status) ──
