@@ -338,31 +338,9 @@ def _build_agents_and_gates(
                 )
                 gate_type_sets["end"].add(agent_name)
 
-        # ── Legacy structure: gates.on_start / gates.on_end ───────────
-
+        # Detect old gates: structure and record for warning
         if not found_new_structure and section.get("gates"):
             legacy_gate_phases.add(phase_key)
-            _LIFECYCLE_MAP = {"on_start": "start", "on_end": "end", "on_skip": "skip"}
-            # Backward compat: agents at phase level
-            agent_list = section.get("agents", [])
-            # Gates live under lifecycle subsections (on_start, on_end)
-            for lifecycle, subsection in section.get("gates", {}).items():
-                if not isinstance(subsection, dict):
-                    continue
-                bucket = _LIFECYCLE_MAP.get(lifecycle, lifecycle)
-                # Agents inside on_end take precedence over phase-level
-                if lifecycle == "on_end" and "agents" in subsection:
-                    agent_list = subsection["agents"]
-                for gate_type, gate_def in subsection.items():
-                    if gate_type == "agents":
-                        continue  # agents list, not a gate
-                    if isinstance(gate_def, dict):
-                        gates[f"{phase_key}::{gate_type}"] = Gate(
-                            mode=gate_def.get("mode", "standalone_session"),
-                            description=gate_def.get("description", ""),
-                            prompt=gate_def.get("prompt", ""),
-                        )
-                        gate_type_sets.get(bucket, set()).add(gate_type)
 
         # Build Agent objects from agent_list
         if agent_list:
