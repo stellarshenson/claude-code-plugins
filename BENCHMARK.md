@@ -1,4 +1,4 @@
-# Benchmark: Deferred Features Implementation
+# Benchmark: Remaining Features
 
 ## Score
 
@@ -8,7 +8,7 @@
 score = unchecked_items + completeness_residual
 ```
 
-- `completeness_residual` = 10 - completeness grade (Section 6, graded 0-10)
+- `completeness_residual` = 10 - completeness grade (Section 10, graded 0-10)
 
 ## Evaluation
 
@@ -19,117 +19,108 @@ score = unchecked_items + completeness_residual
 
 ---
 
-## Section 1: Resource Conflict Handling
+## Section 1: Resource Conflict Handling (v0.8.51 - DONE)
 
-- [ ] `_ensure_project_resources` detects old format (has `gates:` key in phases.yaml)
-- [ ] Old resources archived to `resources.old.YYYYMMDD/` (not deleted)
-- [ ] Fresh resources copied from bundled module
-- [ ] Warning printed to user about refresh
-- [ ] Test: old-format detection triggers archive + refresh
+- [x] `_ensure_project_resources` detects old format (has `gates:` key in phases.yaml)
+- [x] Old resources archived to `resources.old.YYYYMMDD/` (not deleted)
+- [x] Fresh resources copied from bundled module
+- [x] Warning printed to user about refresh
+- [x] Test: old-format detection triggers archive + refresh
 
-## Section 2: Version Check
+## Section 2: Version Check (v0.8.51 - DONE)
 
-- [ ] `main()` checks installed vs PyPI version on startup
-- [ ] Check uses 2s timeout (non-blocking)
-- [ ] Result cached in `.auto-build-claw/.version_check` for 24h
-- [ ] If newer available, prints upgrade suggestion
-- [ ] Fails silently on network errors
-- [ ] `--no-version-check` flag suppresses check
-- [ ] Test: version check with cache behavior
+- [x] `main()` checks installed vs PyPI version on startup
+- [x] Check uses 2s timeout (non-blocking)
+- [x] Result cached in `.auto-build-claw/.version_check` for 24h
+- [x] If newer available, prints upgrade suggestion
+- [x] Fails silently on network errors
+- [x] `--no-version-check` flag suppresses check
+- [x] Test: version check with cache behavior
 
-## Section 3: Context Acknowledgment
+## Section 3: Context Acknowledgment (v0.8.51 - DONE)
 
-- [ ] Context entries in context.yaml have `acknowledged_by` field
-- [ ] `orchestrate start` marks current phase as having seen context
-- [ ] `orchestrate status` shows acknowledged vs pending contexts
-- [ ] Test: context acknowledgment tracking
+- [x] `orchestrate start` marks current phase as having seen context in context_ack.yaml
+- [x] `orchestrate status` shows acknowledged vs pending contexts
+- [x] Test: context acknowledgment tracking
 
-## Section 4: Hypothesis Refinement
+## Section 4: Hypothesis Refinement (v0.8.51 - DONE)
 
-- [ ] HYPOTHESIS start template explicitly instructs agents to READ and RATE existing hypotheses
-- [ ] `{prior_hyp}` variable injects prior hypothesis backlog
-- [ ] hypothesis_autowrite action updates/appends (not overwrites)
-- [ ] HYPOTHESIS phase instructions mention: rate 1-5 stars, propose additions, flag removals
-- [ ] Test or verification: hypothesis template contains refinement instructions
+- [x] HYPOTHESIS start template explicitly instructs agents to READ and RATE existing hypotheses
+- [x] `{prior_hyp}` variable injects prior hypothesis backlog from hypotheses.yaml
+- [x] HYPOTHESIS phase instructions mention: rate 1-5 stars, propose additions, flag removals
+- [x] Test: hypothesis context loading from file
 
-## Section 5: Tests
+## Section 5: Rich Context Entries (NEW)
 
-- [ ] All existing tests pass (>= 150)
-- [ ] New tests for resource conflict handling
-- [ ] New test for version check cache
-- [ ] New test for context acknowledgment
-- [ ] make lint clean
-- [ ] Total tests >= 155
+- [ ] Context entries stored as `{phase: {message, created, acknowledged_by, processed}}` dicts
+- [ ] `created` is ISO8601 timestamp set on `orchestrate context --message`
+- [ ] `acknowledged_by` is list of phases, appended on each `orchestrate start`
+- [ ] `processed` is boolean, settable via `orchestrate context --processed PHASE_NAME`
+- [ ] Legacy plain-string entries auto-migrate to rich format on first access
+- [ ] `orchestrate status` shows each context with timestamp, acknowledged_by, processed status
+- [ ] No separate `context_ack.yaml` file - all metadata in `context.yaml`
+- [ ] Agent instructions include "ACKNOWLEDGE each context message"
+- [ ] Gatekeeper verifies context was considered in evidence
+- [ ] Test: rich format creation with all fields
+- [ ] Test: legacy migration from plain string
+- [ ] Test: acknowledged_by appended on start
+- [ ] Test: processed flag
 
-## Section 6: Completeness (0-10 scale)
+## Section 6: Auto-Reinstall on Version Mismatch (NEW)
+
+- [ ] `_check_version` offers auto-upgrade for patch versions
+- [ ] Detection of plugin context (CLAUDECODE env or similar)
+- [ ] Safety: only auto-upgrade patch (0.8.X), prompt for minor/major
+- [ ] Test: version comparison logic (patch vs minor vs major)
+
+## Section 7: Hypothesis Autowrite Append (NEW)
+
+- [ ] ACTION::HYPOTHESIS_AUTOWRITE prompt says "Read existing first, APPEND new, UPDATE existing by ID"
+- [ ] Prompt does NOT say "Write entries" without qualifying append/update
+- [ ] Test or verification: prompt text contains "append" or "update" and "existing"
+
+## Section 8: Context Timestamps (MERGED into Section 5)
+
+(Merged into Section 5 - rich context entries include timestamps)
+
+## Section 9: Prior Features Preserved
+
+**Info command:**
+- [x] `orchestrate info --workflows` lists all 5 workflows
+- [x] `orchestrate info --phases` lists all 11 phases with start/execution/end
+- [x] `orchestrate info --phase FULL::RESEARCH` shows readback, 3 execution agents, gatekeeper
+- [x] `orchestrate info --agents` lists all agents grouped by phase
+- [x] TestCmdInfo: 7 tests verify structure compliance and agent counts
+
+**Per-phase lifecycle (start/execution/end):**
+- [x] All 11 phases use start/execution/end structure
+- [x] All 4 dry-runs pass (full, fast, gc, hotfix)
+- [x] validate_model warns on deprecated gates: structure
+- [x] 143+ lifecycle and info tests pass
+
+## Section 10: Completeness (0-10 scale)
 
 | Score | Description |
 |-------|-------------|
-| 10 | All 5 features fully implemented, tested, integrated. No half-measures. |
-| 8 | 4 of 5 features complete. One partial. |
-| 6 | 3 of 5 features complete. |
-| 4 | 2 of 5. |
-| <=2 | 1 or fewer. |
+| 10 | All 4 new features fully implemented and tested. All prior features preserved. Zero deferred items. |
+| 8 | 3 of 4 new features complete. One partial. All prior preserved. |
+| 6 | 2 of 4 new features complete. |
+| 4 | 1 of 4. |
+| <=2 | Nothing new implemented. |
 
 Current grade: [ ] /10
 Residual: [ ] (10 - grade)
 
-## Section 7: Info Command (prior iteration - verify preserved)
-
-- [x] `orchestrate info --workflows` lists all 5 workflows with FQN, cli_name, phase count, agent count
-- [x] `orchestrate info --workflow full` shows 8 phases with required/skippable, depends_on
-- [x] `orchestrate info --phases` lists all 11 phases with start/execution/end agents
-- [x] `orchestrate info --phase FULL::RESEARCH` shows readback in start, researcher/architect/product_manager in execution, gatekeeper in end
-- [x] `orchestrate info --phase IMPLEMENT` shows readback in start, NO execution agents, gatekeeper in end
-- [x] `orchestrate info --agents` lists all 19 execution agents grouped by phase
-- [x] `orchestrate info` with no flags prints help or summary
-- [x] TestCmdInfo class exists with 7 tests
-- [x] test_info_workflows: verifies all 5 workflows listed
-- [x] test_info_workflow_detail: verifies phase list for full workflow
-- [x] test_info_phases: verifies all 11 phases listed
-- [x] test_info_phase_detail: verifies start/execution/end agents for FULL::RESEARCH
-- [x] test_info_agents: verifies agents grouped by phase
-- [x] test_info_structure_compliance: every phase has readback + gatekeeper
-- [x] test_info_execution_agents_match: agent counts match expected per phase
-
-## Section 7b: Per-Phase Structure (prior iteration - verify preserved)
-
-- [x] FULL::RESEARCH: start=[readback], execution=[researcher,architect,product_manager], end=[gatekeeper]
-- [x] FULL::HYPOTHESIS: start=[readback], execution=[contrarian,optimist,pessimist,scientist], end=[gatekeeper]
-- [x] PLAN: start=[readback], execution=[architect,critic,guardian], end=[gatekeeper]
-- [x] IMPLEMENT: start=[readback], execution=[], end=[gatekeeper]
-- [x] TEST: start=[readback], execution=[benchmark_evaluator], end=[gatekeeper]
-- [x] REVIEW: start=[readback], execution=[critic,architect,guardian,forensicist], end=[gatekeeper]
-- [x] RECORD: start=[readback], execution=[], end=[gatekeeper]
-- [x] NEXT: start=[readback], execution=[], end=[gatekeeper]
-- [x] PLANNING::RESEARCH: start=[readback], execution=[researcher,architect,product_manager], end=[gatekeeper]
-- [x] PLANNING::PLAN: start=[readback], execution=[contrarian], end=[gatekeeper]
-- [x] GC::PLAN: start=[readback], execution=[], end=[gatekeeper]
-
-## Section 7c: Per-Workflow Dry-Run (prior iteration - verify preserved)
-
-- [x] full: 8 phases, 15 execution agents, readback=yes gatekeeper=yes all phases
-- [x] fast: 6 phases (PLAN,IMPLEMENT,TEST,REVIEW,RECORD,NEXT), all gates present
-- [x] gc: 5 phases (PLAN,IMPLEMENT,TEST,RECORD,NEXT), GC::PLAN resolves correctly
-- [x] hotfix: 3 phases (IMPLEMENT,TEST,RECORD), all gates present
-- [x] planning: 4 phases (RESEARCH,PLAN,RECORD,NEXT), independent=false
-
-## Section 8: Context Messages Addressed
-
-Check context.yaml for active markers and verify each is tracked:
-
-- [x] Version check feature: now a work item in PROGRAM.md (no longer deferred)
-- [x] Context acknowledgment feature: now a work item in PROGRAM.md (no longer deferred)
-- [x] Hypothesis refinement feature: now a work item in PROGRAM.md (no longer deferred)
-- [x] Resource conflict handling: now a work item in PROGRAM.md (no longer deferred)
-- [x] Process rule for context handling: documented in PROGRAM.md or orchestrator context
-- [ ] Every context message in .auto-build-claw/context.yaml has a corresponding entry in PROGRAM.md
-- [ ] No orphan context messages - all accounted for
-
 ## Completion Conditions
 
-- [ ] All Section 1-8 items [x] AND completeness >= 8
+- [ ] All Section 5-8 items [x] AND completeness >= 8
 - [ ] No score improvement for 2 consecutive iterations
+
+Additionally ALL must hold:
+- [ ] make test >= 165
+- [ ] make lint clean
+- [ ] orchestrate validate passes
+- [ ] All 4 dry-runs pass
 
 ---
 
@@ -137,4 +128,4 @@ Check context.yaml for active markers and verify each is tracked:
 
 | Iteration | Date | Score | Unchecked | Completeness | Tests | Notes |
 |-----------|------|-------|-----------|--------------|-------|-------|
-| baseline  | -    | TBD   | (all)     | 0            | 150   | no features implemented |
+| baseline  | -    | TBD   | ~13       | 0            | 162   | 4 new features to implement |
