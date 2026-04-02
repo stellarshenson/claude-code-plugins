@@ -737,6 +737,13 @@ def _load_context() -> dict:
                 "Delete context.yaml and re-add entries with: "
                 "orchestrate context --message '...' --phase PHASE"
             )
+        required = {"message", "phase"}
+        missing = required - entry.keys()
+        if missing:
+            raise ValueError(
+                f"context.yaml entry '{key}' missing required keys: {missing}. "
+                "Delete context.yaml and re-add entries."
+            )
     return data
 
 
@@ -2081,11 +2088,16 @@ def cmd_status(args) -> None:
         for cid, entry in all_ctx.items():
             msg = entry.get("message", "")
             p = entry.get("phase", "?")
+            created = entry.get("created", "?")[:10]
             seen_by = entry.get("acknowledged_by", [])
             proc = entry.get("processed", False)
-            status = f"seen by: {', '.join(seen_by)}" if seen_by else "NOT YET SEEN"
+            ack_str = f"ack: {', '.join(seen_by)}" if seen_by else "ack: none"
             proc_str = " [PROCESSED]" if proc else ""
-            print(f"  [{cid}] ({p}): {msg[:60]}... ({status}){proc_str}")
+            truncated = msg[:60]
+            ellipsis = "..." if len(msg) > 60 else ""
+            print(
+                f"  [{cid}] ({p}): {truncated}{ellipsis} (created: {created}, {ack_str}){proc_str}"
+            )
 
     print("\n" + _msg("status_required_note"))
     if state["phase_status"] == "pending":

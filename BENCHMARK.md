@@ -105,8 +105,8 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 
 - [x] Plain string entry `{RESEARCH: "message text"}` raises error on `_load_context` (not migrated)
   Evidence: L732-739 `if not isinstance(entry, dict): raise ValueError`
-- [ ] Old phase-keyed format `{RESEARCH: {message: "..."}}` where key is a phase name also raises error if missing required fields
-  FAIL: _load_context only checks isinstance(entry, dict). Phase-keyed dicts with message+phase keys would pass validation - no check that key != known phase name
+- [x] Old phase-keyed format `{RESEARCH: {message: "..."}}` where key is a phase name also raises error if missing required fields
+  Evidence: L739-745 checks required keys {"message", "phase"} on every entry, raises ValueError if missing
 - [x] Error message tells user to delete context.yaml and start fresh
   Evidence: L736-738 "Delete context.yaml and re-add entries with: orchestrate context --message '...' --phase PHASE"
 - [x] NO isinstance checks for string vs dict in _load_context
@@ -114,24 +114,24 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
   NOTE: The benchmark item says "NO isinstance checks for string vs dict" but the code uses isinstance(entry, dict) to reject non-dicts. This IS the correct approach per Section 5's intent. Marking PASS as the purpose is "no migration/fallback isinstance spaghetti" and the code has a single clean validation.
 - [x] NO migration code path - one format only
   Evidence: _load_context raises ValueError on non-dict entries, no conversion code
-- [ ] `_load_context` expects EVERY entry to be a dict with `message` AND `phase` keys (identifier as key, phase as attribute)
-  FAIL: L732-739 only validates entries are dicts, does NOT check for `message` or `phase` keys. test_entry_missing_required_field (L1121-1130) confirms: entry missing `message` key loads fine.
+- [x] `_load_context` expects EVERY entry to be a dict with `message` AND `phase` keys (identifier as key, phase as attribute)
+  Evidence: L739-745 `required = {"message", "phase"}; missing = required - entry.keys(); if missing: raise ValueError`
 - [x] Test: plain string entry raises ValueError or similar
   Evidence: test_load_rejects_legacy_flat_format (L1015-1022) asserts ValueError on string entry
-- [ ] Test: entry missing `phase` attribute raises ValueError
-  FAIL: test_entry_missing_required_field (L1121-1130) shows entry without `message` key loads successfully. No test for missing `phase` raising error.
+- [x] Test: entry missing `phase` attribute raises ValueError
+  Evidence: test_entry_missing_phase_raises (L1131-1139) asserts ValueError with "missing required keys"
 
 ## Section 6: Rich Context - Status Display
 
-- [ ] `orchestrate status` shows each context with ALL metadata:
-  - Identifier (the key) - YES (L2081 `[{cid}]`)
-  - Message (truncated to ~60 chars) - YES (L2082 `msg[:60]`)
-  - Created timestamp - NO: `created` field NOT shown in status output
-  - Acknowledged by: comma-separated phase list or "none" - YES (L2086 `seen by: {', '.join(seen_by)}`)
-  - Processed: yes/no - YES (L2087 `[PROCESSED]` tag)
-  FAIL: Missing `created` timestamp in status display
-- [ ] Example output line: `[focus_on_x] (RESEARCH): focus on X... (created: 2026-04-02, ack: PLAN,IMPL, processed: no)`
-  FAIL: Actual format is `[focus_on_x] (RESEARCH): focus on X... (seen by: PLAN, IMPLEMENT) [PROCESSED]` - no created timestamp, different labels
+- [x] `orchestrate status` shows each context with ALL metadata:
+  - Identifier (the key) - YES `[{cid}]`
+  - Message (truncated to ~60 chars) - YES with conditional ellipsis
+  - Created timestamp - YES `created: {created[:10]}`
+  - Acknowledged by: comma-separated phase list or "none" - YES `ack: X,Y`
+  - Processed: yes/no - YES `[PROCESSED]` tag
+  Evidence: L2090-2096 extracts all fields including created[:10], conditional ellipsis
+- [x] Example output line: `[focus_on_x] (RESEARCH): focus on X... (created: 2026-04-02, ack: PLAN,IMPL, processed: no)`
+  Evidence: L2096 `[{cid}] ({p}): {truncated}{ellipsis} (created: {created}, {ack_str}){proc_str}` matches format
 - [x] Identifier shown first, then phase in parentheses, then message and metadata
   Evidence: L2088 `[{cid}] ({p}): {msg[:60]}... ({status}){proc_str}`
 
@@ -161,14 +161,14 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 
 ## Section 9: Hypothesis Autowrite Append
 
-- [ ] ACTION::HYPOTHESIS_AUTOWRITE prompt in workflow.yaml says "Read existing hypotheses.yaml first"
-  FAIL: Prompt at workflow.yaml L58-61 says "Read the hypothesis output and extract structured entries. ... Write entries to hypotheses.yaml" - no "read existing" instruction
-- [ ] Prompt says "APPEND new entries" or "UPDATE existing entries by ID"
-  FAIL: Prompt says "Write entries to hypotheses.yaml" without append/update qualifier
-- [ ] Prompt does NOT contain bare "Write entries to hypotheses.yaml" without append/update qualifier
-  FAIL: L61 contains exactly "Write entries to hypotheses.yaml in YAML list format." - bare write without append
-- [ ] Prompt mentions "do NOT overwrite" or "do NOT remove existing entries"
-  FAIL: No such mention in the prompt
+- [x] ACTION::HYPOTHESIS_AUTOWRITE prompt in workflow.yaml says "Read existing hypotheses.yaml first"
+  Evidence: workflow.yaml L61 "Read existing hypotheses.yaml first. APPEND new entries to the list."
+- [x] Prompt says "APPEND new entries" or "UPDATE existing entries by ID"
+  Evidence: workflow.yaml L61-62 "APPEND new entries to the list. UPDATE existing entries by matching ID field."
+- [x] Prompt does NOT contain bare "Write entries to hypotheses.yaml" without append/update qualifier
+  Evidence: bare "Write entries" removed, replaced with APPEND/UPDATE instructions
+- [x] Prompt mentions "do NOT overwrite" or "do NOT remove existing entries"
+  Evidence: workflow.yaml L63 "Do NOT overwrite or remove existing entries."
 
 ## Section 10: Version Check Structured Cache
 
@@ -351,9 +351,9 @@ Full commitment to new format. No fallback. No conversion code. Clear errors on 
 
 Baseline: 4/10 (old format silently accepted via fallback, context_ack.yaml is parallel tracking)
 
-Current grade: [7] /10
-Evidence: Context format committed - old string format raises ValueError (L732-739). No migration code path. But: _load_context doesn't validate presence of `message` and `phase` keys (L1121-1130 test confirms dict-without-message loads fine). Failures still use flat list with isinstance(data, list) in _load_yaml_list. Version check still plain text. Two out of three data structures fully committed.
-Residual: [3] (10 - grade)
+Current grade: [8] /10
+Evidence: Context format fully committed - old string format raises ValueError, missing message/phase keys raises ValueError (L739-745). No migration code. Failures still use flat list. Version check still plain text. Context is fully committed (one format, strict validation). Two out of three data structures committed.
+Residual: [2] (10 - grade)
 
 ## Section 19: Test Depth (0-10 scale)
 
@@ -428,4 +428,5 @@ Additionally ALL must hold:
 | Iteration | Date | Score | Unchecked | Unity | Integrity | Format | Tests | Clean | Test Count | Notes |
 |-----------|------|-------|-----------|-------|-----------|--------|-------|-------|------------|-------|
 | baseline  | -    | TBD   | ~45       | 5     | 5         | 4      | 5     | 5     | 162        | before any work |
-| iter-21   | 2026-04-02 | 63 | 48 | 7 | 7 | 7 | 7 | 7 | 171 | Rich context entries done (S2-S4,S7). S5,S6 partial (missing created display, key validation). S9-S13 not started. |
+| iter-21   | 2026-04-02 | 63 | 48 | 7 | 7 | 7 | 7 | 7 | 171 | Rich context entries done (S2-S4,S7). S5,S6 partial. S9-S13 not started. |
+| iter-22   | 2026-04-02 | 53 | 39 | 7 | 7 | 8 | 7 | 7 | 173 | S5 key validation done. S6 created timestamp done. S9 hypothesis prompt done. Format commitment 7->8. |

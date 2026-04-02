@@ -1118,16 +1118,34 @@ class TestContextRichEntries:
         final = orch._load_context()
         assert final["focus_on_x"]["processed"] is True
 
-    def test_entry_missing_required_field(self, minimal_resources, tmp_path):
-        """Entry that is a dict but missing message key still loads (partial)."""
+    def test_entry_missing_message_raises(self, minimal_resources, tmp_path):
+        """Entry missing 'message' key raises ValueError."""
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
-        # A dict entry passes validation (it's not a string)
         ctx = {"test_entry": {"phase": "RESEARCH", "created": "2026-04-02"}}
         orch._save_context(ctx)
-        loaded = orch._load_context()
-        assert "test_entry" in loaded
+        with pytest.raises(ValueError, match="missing required keys"):
+            orch._load_context()
+
+    def test_entry_missing_phase_raises(self, minimal_resources, tmp_path):
+        """Entry missing 'phase' key raises ValueError."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {"test_entry": {"message": "test", "created": "2026-04-02"}}
+        orch._save_context(ctx)
+        with pytest.raises(ValueError, match="missing required keys"):
+            orch._load_context()
+
+    def test_hypothesis_autowrite_prompt_says_append(self, auto_build_claw_resources):
+        """Hypothesis autowrite prompt says APPEND, not bare Write."""
+        orch._initialize(auto_build_claw_resources)
+        action = orch._MODEL.actions.get("ACTION::HYPOTHESIS_AUTOWRITE")
+        assert action is not None, "ACTION::HYPOTHESIS_AUTOWRITE not found in model"
+        prompt = action.prompt
+        assert "APPEND" in prompt or "append" in prompt
+        assert "do NOT overwrite" in prompt.lower() or "do not overwrite" in prompt.lower()
 
 
 class TestHypothesisContext:

@@ -58,7 +58,9 @@ actions:
     prompt: |
       Read the hypothesis output and extract structured entries.
       For each hypothesis write: ID, HYPOTHESIS, PREDICT, EVIDENCE, RISK, STARS.
-      Write entries to hypotheses.yaml in YAML list format.
+      Read existing hypotheses.yaml first. APPEND new entries to the list.
+      UPDATE existing entries by matching ID field.
+      Do NOT overwrite or remove existing entries.
   ACTION::HYPOTHESIS_GC:
     cli_name: hypothesis_gc
     type: generative
