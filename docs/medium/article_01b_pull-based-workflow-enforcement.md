@@ -123,9 +123,11 @@ orchestrate new --type full \
 
 ## Content/engine separation
 
-The engine is a generic YAML-driven state machine. Three files define everything: `workflow.yaml` (phase sequences, actions), `phases.yaml` (instructions, agents, gates inline), `app.yaml` (display text). Resources are bundled in the plugin and auto-copied to the project on first use. Users customise the local copy. Five workflow types: `full` (8 phases, 15 agents), `fast`, `gc`, `hotfix`, `planning`.
+What the agent does and how the orchestrator works are completely separate. Three YAML files define phases, agents, gates, and workflow sequences. The engine loads them, builds a typed model, validates it, and runs. Change the YAML, change the process. The Python never changes. Install the plugin (`/install-plugin stellarshenson/claude-code-plugins`) and the resources auto-copy to your project for customisation.
 
 ![Content/engine separation](images/04-content-engine-separation.svg)
+
+The full workflow runs 15 independent agents across 8 phases. Shorter workflows (`gc`, `hotfix`, `fast`) use subsets of the same phases - the engine handles all identically.
 
 ![Full 8-phase workflow with agents](images/05-full-workflow-agents.svg)
 
@@ -134,8 +136,6 @@ The engine is a generic YAML-driven state machine. Three files define everything
 The skip-denial transcript at the top of this article is real. Here is another, from a different failure class:
 
 ### Multi-agent review catches what critics miss
-
-![Four agents, four defect classes](images/09-multi-agent-defect-detection.svg)
 
 During a review of a new feature (auto-copying bundled resources to project directory), four agents reviewed independently:
 
@@ -153,6 +153,8 @@ F1 is a real defect - rejecting back to IMPLEMENT to fix it.
 ```
 
 The **critic** approved - the implementation matched the plan. The **forensicist** found a critical defect: a pre-existing function would silently destroy user-customised resources on every `new --clean`. The critic checks plan alignment. The forensicist traces failure modes across iterations. Pre-existing code interacting destructively with new features is the class of defect that plan-alignment reviewers miss but failure-mode analysts catch.
+
+![Four agents, four defect classes](images/09-multi-agent-defect-detection.svg)
 
 ## Limitations
 
