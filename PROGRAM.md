@@ -36,6 +36,14 @@ Implement the 2 remaining unfinished items identified in the executive summary, 
   - Safety: only auto-upgrade patch versions (0.8.X -> 0.8.Y), prompt for minor/major
   - Acceptance: auto-upgrade works for patch versions in plugin context
 
+- **Convert .version_check to structured YAML** (low)
+  - Scope: `_check_version` in orchestrator.py
+  - Current: plain text file with version string, uses mtime for 24h cache
+  - New: `{latest_version: str, checked_at: ISO8601}` YAML file
+  - Self-describing - no mtime dependency, survives file copy
+  - Devil's advocate concern #2: orphan plain text file with no schema
+  - Acceptance: version check uses structured YAML, cache logic uses checked_at field
+
 - **Polish: hypothesis_autowrite should append not overwrite** (medium)
   - Scope: workflow.yaml ACTION::HYPOTHESIS_AUTOWRITE prompt
   - Current prompt says "Write entries to hypotheses.yaml in YAML list format" - ambiguous about append vs overwrite

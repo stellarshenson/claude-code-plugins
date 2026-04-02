@@ -79,9 +79,12 @@ score = unchecked_items + completeness_residual
 - [ ] Prompt does NOT say "Write entries" without qualifying append/update
 - [ ] Test or verification: prompt text contains "append" or "update" and "existing"
 
-## Section 8: Context Timestamps (MERGED into Section 5)
+## Section 8: Version Check Structured Cache (NEW)
 
-(Merged into Section 5 - rich context entries include timestamps)
+- [ ] `.version_check` stores `{latest_version: str, checked_at: ISO8601}` YAML (not plain text)
+- [ ] Cache expiry uses `checked_at` field, not file mtime
+- [ ] File is self-describing - no external mtime dependency
+- [ ] Test: structured cache read/write with checked_at expiry
 
 ## Section 9: Prior Features Preserved
 

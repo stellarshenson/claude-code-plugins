@@ -1,49 +1,45 @@
-# Fact Repository - Agent Lifecycle Architecture
+# Fact Repository - Remaining Features
 
-Verified claims sourced from codebase, PROGRAM.md, and user input.
+Verified claims sourced from codebase analysis.
 No interpretation - just facts.
 
-## User-provided facts
-- The correct FSM lifecycle pattern is: phase entry (on_start), phase execution (execution), phase end (on_end) where phase end predicates transition
-- Agents like contrarian/optimist/pessimist/scientist are EXECUTION agents, not end gates
-- The gatekeeper is the only true end-gate component
-- Workflow architect wants harmony and consistency in definitions
-- Source: user input, 2026-04-02
+## Current data files in .auto-build-claw/
 
-## Codebase facts - phases.yaml structure
-- 7 phases have agents under `gates.on_end.agents`: FULL::RESEARCH (3), FULL::HYPOTHESIS (4), PLAN (3), TEST (1), REVIEW (4), PLANNING::RESEARCH (3), PLANNING::PLAN (1)
-- 4 phases have NO agents: IMPLEMENT, RECORD, NEXT, GC::PLAN
-- NO phase has a top-level `agents` key - all agents are under `gates.on_end.agents`
-- Every phase has `gates.on_start.readback` (comprehension gate)
-- Every phase has `gates.on_end.gatekeeper` (completion gate)
-- shared_gates section has `on_skip` with gatekeeper_skip and gatekeeper_force_skip
-- Source: stellars_claude_code_plugins/engine/resources/phases.yaml
+- `state.yaml` - iteration state (type, phase, objective, agents, benchmark scores)
+- `log.yaml` - audit trail of all events
+- `context.yaml` - user context messages: `{phase_name: message_string}` format
+- `context_ack.yaml` - acknowledgment tracking: `{phase_name: [seen_by_phases]}` format (SEPARATE FILE)
+- `.version_check` - plain text file containing latest PyPI version string (uses mtime for 24h cache)
+- `hypotheses.yaml` - hypothesis backlog: YAML list of `{id, hypothesis, stars}` dicts
+- `failures.yaml` - failure catalogue
+- `resources/` - project-local YAML resources (preserved across clean)
+- Source: orchestrator.py lines 95-101, 1666, 2787
 
-## Codebase facts - model.py agent extraction
-- `_build_agents_and_gates` receives phases raw dict (line 173)
-- Line 207: first tries phase-level `section.get("agents", [])` (backward compat)
-- Lines 214-215: if `on_end` has `agents` key, those OVERRIDE phase-level agents
-- Gate keys built as `f"{phase_key}::{gate_type}"` (e.g., FULL::RESEARCH::readback)
-- Lifecycle map: on_start -> "start", on_end -> "end", on_skip -> "skip"
-- `_PHASE_RESERVED_KEYS = {"shared_gates"}` - skipped during phase building
-- `_build_phases` skips `gates` key: `k != "gates"` filter at line 167
-- Source: stellars_claude_code_plugins/engine/model.py
+## Context handling facts
 
-## Codebase facts - orchestrator.py agent usage
-- PHASE_AGENTS stores flat name lists: `{phase: [a.name for ...]}` (line 131-134)
-- `_build_agent_instructions` renders agent prompts into `{agents_instructions}` template var (line 299)
-- This template var is injected into the START template (line 449) - agents described during phase START
-- `_validate_end_inputs` checks `--agents` flag against PHASE_AGENTS on END (line 1670-1687)
-- Missing agents on END = error, incomplete agents = error
-- Source: stellars_claude_code_plugins/engine/orchestrator.py
+- context.yaml format: `{phase_name: message_string}` (flat, no metadata)
+- context_ack.yaml format: `{context_phase: [list_of_phases_that_saw_it]}` (separate file)
+- context.yaml IS in _CLEAN_PRESERVE (survives clean)
+- context_ack.yaml is NOT in _CLEAN_PRESERVE (wiped on clean)
+- Context injected into phase instructions as markdown banner with full message text
+- cmd_context stores plain string, no timestamp
+- Source: orchestrator.py lines 719-733, 1666-1675, 2248-2250
 
-## Codebase facts - test fixtures
-- conftest.py minimal fixture: agents under `gates.on_end.agents` (lines 66-68)
-- test_orchestrator.py TestGenerativeActionDispatch: agents under `gates.on_end.agents`
-- Source: tests/conftest.py, tests/test_orchestrator.py
+## Version check facts
 
-## Critical observation
-- model.py line 207 already has backward compat for phase-level agents: `agent_list = section.get("agents", [])`
-- Line 214-215 OVERRIDES with on_end agents if present
-- This means moving agents to phase level requires REVERSING the priority: phase-level agents should be primary, on_end agents should be fallback
-- Source: model.py lines 207, 214-215
+- _check_version at lines 2776-2808
+- Cache: `.auto-build-claw/.version_check` plain text, mtime-based 24h expiry
+- PyPI URL: `https://pypi.org/pypi/stellars-claude-code-plugins/json`
+- Timeout: 2s via urllib
+- Currently prints warning only, no auto-reinstall
+- --no-version-check flag pre-parsed in main()
+- Source: orchestrator.py lines 2776-2822
+
+## Hypothesis facts
+
+- hypotheses.yaml read by _build_hypothesis_context at line 436
+- Expected format: YAML list of `{id, hypothesis, stars}` dicts
+- Injected as `{prior_hyp}` template variable
+- hypothesis_autowrite prompt says "Write entries to hypotheses.yaml" (ambiguous - write vs append)
+- hypothesis_gc prompt says "Move entries with status DONE or REMOVED to archive"
+- Source: orchestrator.py lines 435-454, workflow.yaml lines 54-68
