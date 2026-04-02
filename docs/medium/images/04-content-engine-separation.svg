@@ -1,10 +1,11 @@
 <!--
   04-content-engine-separation.svg - Content/Engine separation
-  Shows: YAML content (left), typed model bridge (centre), Python engine (right)
+  Shows: 3 YAML content files (left), typed model bridge (centre), Python engine (right)
   Intent: swap one side, keep the other - clean separation via typed contract
   Theme: Stellars-Tech - teal/cyan primary, orange accent
+  Updated: 3 YAML files (no agents.yaml), FQN naming
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280">
   <style>
     .fg-1 { fill: #1a5a6e; } .fg-2 { fill: #24697e; } .fg-3 { fill: #236a74; }
     .accent-cyan { fill: #0096d1; } .accent-orange { fill: #da8230; }
@@ -21,209 +22,148 @@
   </style>
 
   <!-- === GRID ===
-    viewBox: 800 x 300
-    H=40px margin (left/right gutters)
-    M=24px gap between cards vertically
-    L=12px internal padding
+    viewBox: 800 x 280
+    Left column:   x=20..290   w=270   (3 YAML cards, orange accent)
+    Centre model:  x=310..490  w=180   (Typed Model bridge card)
+    Right column:  x=510..780  w=270   (2 Python cards, cyan accent)
 
-    Left container:   x=20..290   w=270   (4 YAML cards, orange accent)
-    Centre model:     x=310..490  w=180   (Typed Model bridge card)
-    Right container:  x=510..780  w=270   (3 Python cards, cyan accent)
+    Left cards (h=58, gap=14):
+      Card 1 (phases.yaml):    y=50..108
+      Card 2 (workflow.yaml):  y=122..180
+      Card 3 (app.yaml):      y=194..252
 
-    Title row:        y=18
-    Subtitle row:     y=38
-    Card zone:        y=50..288
+    Centre model card: y=50..252 (full height bridge)
 
-    Left cards (h=48, gap=12):
-      Card 1: y=50..98
-      Card 2: y=110..158
-      Card 3: y=170..218
-      Card 4: y=230..278
-
-    Centre model card: y=50..278  (full height bridge)
-
-    Right cards (h=62, gap=16):
-      Card 1: y=50..112
-      Card 2: y=128..190
-      Card 3: y=206..268
-  === -->
-
-  <!-- === LAYOUT TOPOLOGY ===
-    h-stack: [yaml-column, arrows-left, typed-model, arrows-right, python-column]
-    yaml-column: v-stack [phases.yaml, workflow.yaml, agents.yaml, app.yaml]
-    python-column: v-stack [orchestrate.py, fsm.py, acp_gate_runner.py]
-    centre: typed model bridge card with class names
-    connectors: left arrows (yaml -> model), right arrows (model -> python)
-    NO puzzle pieces, NO tab extensions, NO overlapping elements
+    Right cards (h=88, gap=14):
+      Card 1 (orchestrator.py): y=50..138
+      Card 2 (fsm.py):          y=152..240
   === -->
 
   <!-- Title -->
   <text x="400" y="18" font-size="11" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">CONTENT / ENGINE SEPARATION</text>
 
   <!-- Subtitle labels -->
-  <text x="155" y="38" font-size="9" font-weight="700" class="accent-orange" text-anchor="middle">CONTENT (YAML)</text>
-  <text x="645" y="38" font-size="9" font-weight="700" class="accent-cyan" text-anchor="middle">ENGINE (Python)</text>
+  <text x="155" y="38" font-size="9" font-weight="700" class="accent-orange" text-anchor="middle">CONTENT (3 YAML files)</text>
+  <text x="645" y="38" font-size="9" font-weight="700" class="accent-cyan" text-anchor="middle">ENGINE (Python package)</text>
 
   <!-- ═══ LEFT COLUMN: YAML CONTENT (orange accent) ═══ -->
 
-  <!-- YAML Card 1: phases.yaml  y=50..98  -->
+  <!-- YAML Card 1: phases.yaml  y=50..108 -->
   <g id="yaml-phases">
     <rect x="20" y="50" width="270" height="5" rx="0" fill="#da8230" opacity="0.6"/>
-    <path d="M20,50 H290 V95 Q290,98 287,98 H23 Q20,98 20,95 Z" class="card-bg" fill="#da8230"/>
-    <path d="M20,50 H290 V95 Q290,98 287,98 H23 Q20,98 20,95 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <path d="M20,50 H290 V105 Q290,108 287,108 H23 Q20,108 20,105 Z" class="card-bg" fill="#da8230"/>
+    <path d="M20,50 H290 V105 Q290,108 287,108 H23 Q20,108 20,105 Z" fill="none" stroke="#da8230" stroke-width="1"/>
     <text x="32" y="68" font-size="9" font-weight="600" class="fg-1">phases.yaml</text>
-    <text x="32" y="82" font-size="7" class="fg-3">Instructions, exit criteria, templates</text>
-    <text x="32" y="93" font-size="7" class="fg-3">What to do at each stage</text>
+    <text x="32" y="82" font-size="7" class="fg-3">Instructions, agents, gates - all inline per phase</text>
+    <text x="32" y="93" font-size="7" class="fg-3">Single source of truth for phase lifecycle</text>
+    <text x="32" y="104" font-size="7" class="fg-3">FQN keys: FULL::RESEARCH, GC::PLAN, RECORD</text>
   </g>
 
-  <!-- YAML Card 2: workflow.yaml  y=110..158  -->
+  <!-- YAML Card 2: workflow.yaml  y=122..180 -->
   <g id="yaml-workflow">
-    <rect x="20" y="110" width="270" height="5" rx="0" fill="#da8230" opacity="0.55"/>
-    <path d="M20,110 H290 V155 Q290,158 287,158 H23 Q20,158 20,155 Z" class="card-bg" fill="#da8230"/>
-    <path d="M20,110 H290 V155 Q290,158 287,158 H23 Q20,158 20,155 Z" fill="none" stroke="#da8230" stroke-width="1"/>
-    <text x="32" y="128" font-size="9" font-weight="600" class="fg-1">workflow.yaml</text>
-    <text x="32" y="142" font-size="7" class="fg-3">Phase sequences: full, gc, hotfix</text>
-    <text x="32" y="153" font-size="7" class="fg-3">How phases connect and flow</text>
+    <rect x="20" y="122" width="270" height="5" rx="0" fill="#da8230" opacity="0.55"/>
+    <path d="M20,122 H290 V177 Q290,180 287,180 H23 Q20,180 20,177 Z" class="card-bg" fill="#da8230"/>
+    <path d="M20,122 H290 V177 Q290,180 287,180 H23 Q20,180 20,177 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <text x="32" y="140" font-size="9" font-weight="600" class="fg-1">workflow.yaml</text>
+    <text x="32" y="154" font-size="7" class="fg-3">WORKFLOW::FULL (cli_name: full), GC, HOTFIX, FAST</text>
+    <text x="32" y="165" font-size="7" class="fg-3">Phase sequences, actions (ACTION::PLAN_SAVE)</text>
+    <text x="32" y="176" font-size="7" class="fg-3">Dependencies: WORKFLOW::FULL depends_on PLANNING</text>
   </g>
 
-  <!-- YAML Card 3: agents.yaml  y=170..218  -->
-  <g id="yaml-agents">
-    <rect x="20" y="170" width="270" height="5" rx="0" fill="#da8230" opacity="0.5"/>
-    <path d="M20,170 H290 V215 Q290,218 287,218 H23 Q20,218 20,215 Z" class="card-bg" fill="#da8230"/>
-    <path d="M20,170 H290 V215 Q290,218 287,218 H23 Q20,218 20,215 Z" fill="none" stroke="#da8230" stroke-width="1"/>
-    <text x="32" y="188" font-size="9" font-weight="600" class="fg-1">agents.yaml</text>
-    <text x="32" y="202" font-size="7" class="fg-3">Agent roles, prompts, guardian checklist</text>
-    <text x="32" y="213" font-size="7" class="fg-3">Who reviews and how</text>
-  </g>
-
-  <!-- YAML Card 4: app.yaml  y=230..278  -->
+  <!-- YAML Card 3: app.yaml  y=194..252 -->
   <g id="yaml-app">
-    <rect x="20" y="230" width="270" height="5" rx="0" fill="#da8230" opacity="0.45"/>
-    <path d="M20,230 H290 V275 Q290,278 287,278 H23 Q20,278 20,275 Z" class="card-bg" fill="#da8230"/>
-    <path d="M20,230 H290 V275 Q290,278 287,278 H23 Q20,278 20,275 Z" fill="none" stroke="#da8230" stroke-width="1"/>
-    <text x="32" y="248" font-size="9" font-weight="600" class="fg-1">app.yaml</text>
-    <text x="32" y="262" font-size="7" class="fg-3">~120 display messages, CLI text</text>
-    <text x="32" y="273" font-size="7" class="fg-3">All user-facing strings</text>
+    <rect x="20" y="194" width="270" height="5" rx="0" fill="#da8230" opacity="0.5"/>
+    <path d="M20,194 H290 V249 Q290,252 287,252 H23 Q20,252 20,249 Z" class="card-bg" fill="#da8230"/>
+    <path d="M20,194 H290 V249 Q290,252 287,252 H23 Q20,252 20,249 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <text x="32" y="212" font-size="9" font-weight="600" class="fg-1">app.yaml</text>
+    <text x="32" y="226" font-size="7" class="fg-3">~120 display messages, CLI text</text>
+    <text x="32" y="237" font-size="7" class="fg-3">All user-facing strings</text>
+    <text x="32" y="248" font-size="7" class="fg-3">Banner, footer, error templates</text>
   </g>
 
   <!-- ═══ LEFT ARROWS: YAML -> Model ═══ -->
 
-  <!-- Arrow from phases.yaml (y=74) to model -->
   <g>
-    <line x1="290" y1="74" x2="306" y2="74" stroke="#da8230" stroke-width="1.5" class="connector"/>
-    <g transform="translate(310,74) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#da8230"/></g>
+    <line x1="290" y1="79" x2="306" y2="79" stroke="#da8230" stroke-width="1.5" class="connector"/>
+    <g transform="translate(310,79) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#da8230"/></g>
   </g>
-
-  <!-- Arrow from workflow.yaml (y=134) to model -->
   <g>
-    <line x1="290" y1="134" x2="306" y2="134" stroke="#da8230" stroke-width="1.5" class="connector"/>
-    <g transform="translate(310,134) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#da8230"/></g>
+    <line x1="290" y1="151" x2="306" y2="151" stroke="#da8230" stroke-width="1.5" class="connector"/>
+    <g transform="translate(310,151) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#da8230"/></g>
   </g>
-
-  <!-- Arrow from agents.yaml (y=194) to model -->
   <g>
-    <line x1="290" y1="194" x2="306" y2="194" stroke="#da8230" stroke-width="1.5" class="connector"/>
-    <g transform="translate(310,194) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#da8230"/></g>
-  </g>
-
-  <!-- Arrow from app.yaml (y=254) to model -->
-  <g>
-    <line x1="290" y1="254" x2="306" y2="254" stroke="#da8230" stroke-width="1.5" class="connector"/>
-    <g transform="translate(310,254) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#da8230"/></g>
+    <line x1="290" y1="223" x2="306" y2="223" stroke="#da8230" stroke-width="1.5" class="connector"/>
+    <g transform="translate(310,223) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#da8230"/></g>
   </g>
 
   <!-- ═══ CENTRE: TYPED MODEL BRIDGE ═══ -->
 
   <g id="typed-model">
-    <!-- Accent bar -->
     <rect x="310" y="50" width="180" height="5" rx="0" fill="#005f7a" opacity="0.5"/>
-    <!-- Card body: flat-top, rounded-bottom -->
-    <path d="M310,50 H490 V275 Q490,278 487,278 H313 Q310,278 310,275 Z" class="card-bg" fill="#005f7a"/>
-    <path d="M310,50 H490 V275 Q490,278 487,278 H313 Q310,278 310,275 Z" fill="none" stroke="#005f7a" stroke-width="1.5"/>
+    <path d="M310,50 H490 V249 Q490,252 487,252 H313 Q310,252 310,249 Z" class="card-bg" fill="#005f7a"/>
+    <path d="M310,50 H490 V249 Q490,252 487,252 H313 Q310,252 310,249 Z" fill="none" stroke="#005f7a" stroke-width="1.5"/>
 
-    <!-- Header -->
     <text x="400" y="76" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">Typed Model</text>
-    <text x="400" y="92" font-size="7" class="fg-3" text-anchor="middle">model.py</text>
+    <text x="400" y="92" font-size="7" class="fg-3" text-anchor="middle">model.py - loads 3 files</text>
 
-    <!-- Divider -->
     <line x1="326" y1="100" x2="474" y2="100" stroke="#005f7a" stroke-width="0.5" opacity="0.3"/>
 
-    <!-- Class list -->
-    <text x="326" y="118" font-size="8" class="fg-2">WorkflowType</text>
-    <text x="326" y="134" font-size="8" class="fg-2">Phase</text>
-    <text x="326" y="150" font-size="8" class="fg-2">Agent</text>
+    <text x="326" y="118" font-size="8" class="fg-2">WorkflowType (cli_name)</text>
+    <text x="326" y="134" font-size="8" class="fg-2">Phase (agents, gates inline)</text>
+    <text x="326" y="150" font-size="8" class="fg-2">ActionDef (cli_name)</text>
     <text x="326" y="166" font-size="8" class="fg-2">Gate</text>
     <text x="326" y="182" font-size="8" class="fg-2">AppConfig</text>
 
-    <!-- Divider -->
     <line x1="326" y1="192" x2="474" y2="192" stroke="#005f7a" stroke-width="0.5" opacity="0.3"/>
 
-    <!-- Functions -->
-    <text x="326" y="210" font-size="7" class="accent-bridge">validate_model()</text>
-    <text x="326" y="226" font-size="7" class="accent-bridge">load_model()</text>
+    <text x="326" y="210" font-size="7" class="accent-bridge">validate_model() - FQN + cli_name checks</text>
+    <text x="326" y="226" font-size="7" class="accent-bridge">resolve_phase_key() - strict, no fallback</text>
 
-    <!-- Contract callout -->
-    <rect x="334" y="248" width="132" height="18" rx="4" fill="#005f7a" fill-opacity="0.08" stroke="#005f7a" stroke-width="0.6"/>
-    <text x="400" y="261" font-size="7" font-weight="600" class="accent-bridge" text-anchor="middle">Contract between sides</text>
+    <rect x="334" y="234" width="132" height="14" rx="4" fill="#005f7a" fill-opacity="0.08" stroke="#005f7a" stroke-width="0.6"/>
+    <text x="400" y="244" font-size="7" font-weight="600" class="accent-bridge" text-anchor="middle">Contract between sides</text>
   </g>
 
   <!-- ═══ RIGHT ARROWS: Model -> Python ═══ -->
 
-  <!-- Arrow to orchestrate.py (y=81) -->
   <g>
-    <line x1="490" y1="81" x2="506" y2="81" stroke="#0096d1" stroke-width="1.5" class="connector"/>
-    <g transform="translate(510,81) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/></g>
+    <line x1="490" y1="94" x2="506" y2="94" stroke="#0096d1" stroke-width="1.5" class="connector"/>
+    <g transform="translate(510,94) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/></g>
   </g>
-
-  <!-- Arrow to fsm.py (y=159) -->
   <g>
-    <line x1="490" y1="159" x2="506" y2="159" stroke="#0096d1" stroke-width="1.5" class="connector"/>
-    <g transform="translate(510,159) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/></g>
-  </g>
-
-  <!-- Arrow to acp gate runner (y=237) -->
-  <g>
-    <line x1="490" y1="237" x2="506" y2="237" stroke="#0096d1" stroke-width="1.5" class="connector"/>
-    <g transform="translate(510,237) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/></g>
+    <line x1="490" y1="196" x2="506" y2="196" stroke="#0096d1" stroke-width="1.5" class="connector"/>
+    <g transform="translate(510,196) rotate(0)" class="arrow-head"><polygon points="0,0 -10,-5 -10,5" fill="#0096d1"/></g>
   </g>
 
   <!-- ═══ RIGHT COLUMN: PYTHON ENGINE (cyan accent) ═══ -->
 
-  <!-- Python Card 1: orchestrate.py  y=50..112  -->
+  <!-- Python Card 1: orchestrator.py  y=50..138 -->
   <g id="py-orchestrate">
     <rect x="510" y="50" width="270" height="5" rx="0" fill="#0096d1" opacity="0.6"/>
-    <path d="M510,50 H780 V109 Q780,112 777,112 H513 Q510,112 510,109 Z" class="card-bg" fill="#0096d1"/>
-    <path d="M510,50 H780 V109 Q780,112 777,112 H513 Q510,112 510,109 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
-    <text x="522" y="68" font-size="9" font-weight="600" class="fg-1">orchestrate.py</text>
-    <text x="522" y="82" font-size="7" class="fg-3">10-command CLI, state management</text>
-    <text x="522" y="93" font-size="7" class="fg-3">Zero domain knowledge in Python</text>
+    <path d="M510,50 H780 V135 Q780,138 777,138 H513 Q510,138 510,135 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M510,50 H780 V135 Q780,138 777,138 H513 Q510,138 510,135 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <text x="522" y="68" font-size="9" font-weight="600" class="fg-1">orchestrator.py</text>
+    <text x="522" y="82" font-size="7" class="fg-3">11-command CLI, state management</text>
+    <text x="522" y="93" font-size="7" class="fg-3">ACP gate runner (claude -p subprocess)</text>
     <text x="522" y="104" font-size="7" class="fg-3">Phase advancement and error handling</text>
+    <text x="522" y="115" font-size="7" class="fg-3">Auto-copy bundled resources to project</text>
+    <text x="522" y="126" font-size="7" class="fg-3">Zero domain knowledge in Python</text>
   </g>
 
-  <!-- Python Card 2: fsm.py  y=128..190  -->
+  <!-- Python Card 2: fsm.py  y=152..240 -->
   <g id="py-fsm">
-    <rect x="510" y="128" width="270" height="5" rx="0" fill="#0096d1" opacity="0.5"/>
-    <path d="M510,128 H780 V187 Q780,190 777,190 H513 Q510,190 510,187 Z" class="card-bg" fill="#0096d1"/>
-    <path d="M510,128 H780 V187 Q780,190 777,190 H513 Q510,190 510,187 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
-    <text x="522" y="146" font-size="9" font-weight="600" class="fg-1">fsm.py</text>
-    <text x="522" y="160" font-size="7" class="fg-3">State machine, transitions, guards</text>
-    <text x="522" y="171" font-size="7" class="fg-3">Enforces gates, prevents skips</text>
-    <text x="522" y="182" font-size="7" class="fg-3">YAML-driven transition table</text>
-  </g>
-
-  <!-- Python Card 3: ACP Gate Runner  y=206..268  -->
-  <g id="py-acp">
-    <rect x="510" y="206" width="270" height="5" rx="0" fill="#0096d1" opacity="0.45"/>
-    <path d="M510,206 H780 V265 Q780,268 777,268 H513 Q510,268 510,265 Z" class="card-bg" fill="#0096d1"/>
-    <path d="M510,206 H780 V265 Q780,268 777,268 H513 Q510,268 510,265 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
-    <text x="522" y="224" font-size="9" font-weight="600" class="fg-1">ACP Gate Runner</text>
-    <text x="522" y="238" font-size="7" class="fg-3">Subprocess spawn, readback, gatekeeper</text>
-    <text x="522" y="249" font-size="7" class="fg-3">Agent Claude Protocol execution</text>
-    <text x="522" y="260" font-size="7" class="fg-3">Pass/fail enforcement per phase</text>
+    <rect x="510" y="152" width="270" height="5" rx="0" fill="#0096d1" opacity="0.5"/>
+    <path d="M510,152 H780 V237 Q780,240 777,240 H513 Q510,240 510,237 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M510,152 H780 V237 Q780,240 777,240 H513 Q510,240 510,237 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <text x="522" y="170" font-size="9" font-weight="600" class="fg-1">fsm.py</text>
+    <text x="522" y="184" font-size="7" class="fg-3">Finite state machine (transitions package)</text>
+    <text x="522" y="195" font-size="7" class="fg-3">Enforces: pending -> readback -> in_progress</text>
+    <text x="522" y="206" font-size="7" class="fg-3">  -> gatekeeper -> complete</text>
+    <text x="522" y="217" font-size="7" class="fg-3">Guards, actions, simulation</text>
+    <text x="522" y="228" font-size="7" class="fg-3">Deterministic - no prompt-based skips</text>
   </g>
 
   <!-- Bottom callout -->
-  <rect x="240" y="284" width="320" height="14" rx="5" fill="#005f7a" fill-opacity="0.06" stroke="#005f7a" stroke-width="0.6"/>
-  <text x="400" y="294" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">Swap one side, keep the other. Typed model is the contract.</text>
+  <rect x="240" y="260" width="320" height="14" rx="5" fill="#005f7a" fill-opacity="0.06" stroke="#005f7a" stroke-width="0.6"/>
+  <text x="400" y="270" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">Swap one side, keep the other. Typed model is the contract.</text>
 
 </svg>

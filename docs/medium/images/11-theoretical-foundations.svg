@@ -1,0 +1,136 @@
+<!--
+  11-theoretical-foundations.svg - Five theoretical concepts underlying pull-based enforcement
+  Shows: 5 concept cards with academic backing
+  Theme: Stellars-Tech - teal/cyan primary, orange accent
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280">
+  <style>
+    .fg-1 { fill: #1a5a6e; } .fg-2 { fill: #24697e; } .fg-3 { fill: #236a74; }
+    .accent-cyan { fill: #0096d1; } .accent-orange { fill: #da8230; }
+    .accent-deep { fill: #005f7a; } .accent-teal { fill: #236a74; }
+    .accent-gold { fill: #d4a04a; } .accent-green { fill: #2a8a4a; }
+    .card-bg { fill-opacity: 0.04; }
+    text { font-family: "Segoe UI", Arial, sans-serif; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; } .fg-2 { fill: #8fd4e6; } .fg-3 { fill: #5aafc5; }
+      .accent-cyan { fill: #5cc8e0; } .accent-orange { fill: #d4a04a; }
+      .accent-deep { fill: #4099b3; } .accent-teal { fill: #5aafc5; }
+      .accent-gold { fill: #d4a04a; } .accent-green { fill: #5ac47a; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x280
+    5 columns: w=144, gap=12
+    Col 1: x=16..160  Col 2: x=172..316  Col 3: x=328..472  Col 4: x=484..628  Col 5: x=640..784
+    Cards: y=44..240
+  === -->
+
+  <text x="400" y="18" font-size="11" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">THEORETICAL FOUNDATIONS</text>
+  <text x="400" y="32" font-size="7" class="fg-3" text-anchor="middle">Each design choice addresses a known transformer failure mode, backed by research</text>
+
+  <!-- ═══ 1: CONTEXT COHERENCE ═══ -->
+  <g>
+    <rect x="16" y="44" width="144" height="5" fill="#0096d1" opacity="0.6"/>
+    <path d="M16,44 H160 V237 Q160,240 157,240 H19 Q16,240 16,237 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M16,44 H160 V237 Q160,240 157,240 H19 Q16,240 16,237 Z" fill="none" stroke="#0096d1" stroke-width="0.8"/>
+    <text x="88" y="64" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">CONTEXT</text>
+    <text x="88" y="76" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">COHERENCE</text>
+    <line x1="28" y1="84" x2="148" y2="84" stroke="#0096d1" stroke-width="0.4" opacity="0.3"/>
+    <text x="88" y="98" font-size="7" class="fg-3" text-anchor="middle">Compact, phase-scoped</text>
+    <text x="88" y="112" font-size="7" class="fg-3" text-anchor="middle">instructions prevent</text>
+    <text x="88" y="126" font-size="7" class="fg-3" text-anchor="middle">attention dilution in</text>
+    <text x="88" y="140" font-size="7" class="fg-3" text-anchor="middle">long contexts</text>
+    <line x1="28" y1="152" x2="148" y2="152" stroke="#0096d1" stroke-width="0.4" opacity="0.3"/>
+    <text x="88" y="168" font-size="6" class="accent-cyan" text-anchor="middle">ADDRESSES:</text>
+    <text x="88" y="182" font-size="6" class="fg-3" text-anchor="middle">Lost-in-the-middle</text>
+    <text x="88" y="194" font-size="6" class="fg-3" text-anchor="middle">Selective compliance</text>
+    <rect x="28" y="210" width="116" height="20" rx="3" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.5"/>
+    <text x="88" y="222" font-size="6" font-weight="600" class="accent-cyan" text-anchor="middle">[1] Liu et al. 2023</text>
+  </g>
+
+  <!-- ═══ 2: PHASE REINFORCEMENT ═══ -->
+  <g>
+    <rect x="172" y="44" width="144" height="5" fill="#005f7a" opacity="0.6"/>
+    <path d="M172,44 H316 V237 Q316,240 313,240 H175 Q172,240 172,237 Z" class="card-bg" fill="#005f7a"/>
+    <path d="M172,44 H316 V237 Q316,240 313,240 H175 Q172,240 172,237 Z" fill="none" stroke="#005f7a" stroke-width="0.8"/>
+    <text x="244" y="64" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">PHASE-BOUNDARY</text>
+    <text x="244" y="76" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">REINFORCEMENT</text>
+    <line x1="184" y1="84" x2="304" y2="84" stroke="#005f7a" stroke-width="0.4" opacity="0.3"/>
+    <text x="244" y="98" font-size="7" class="fg-3" text-anchor="middle">Each phase needs a</text>
+    <text x="244" y="112" font-size="7" class="fg-3" text-anchor="middle">different reasoning mode.</text>
+    <text x="244" y="126" font-size="7" class="fg-3" text-anchor="middle">Re-inject instructions</text>
+    <text x="244" y="140" font-size="7" class="fg-3" text-anchor="middle">at transitions</text>
+    <line x1="184" y1="152" x2="304" y2="152" stroke="#005f7a" stroke-width="0.4" opacity="0.3"/>
+    <text x="244" y="168" font-size="6" class="accent-deep" text-anchor="middle">ADDRESSES:</text>
+    <text x="244" y="182" font-size="6" class="fg-3" text-anchor="middle">Process erosion</text>
+    <text x="244" y="194" font-size="6" class="fg-3" text-anchor="middle">Mode carry-over</text>
+    <rect x="184" y="210" width="116" height="20" rx="3" fill="#005f7a" fill-opacity="0.08" stroke="#005f7a" stroke-width="0.5"/>
+    <text x="244" y="222" font-size="6" font-weight="600" class="accent-deep" text-anchor="middle">[2] Han et al. 2024</text>
+  </g>
+
+  <!-- ═══ 3: READBACK CORRECTION ═══ -->
+  <g>
+    <rect x="328" y="44" width="144" height="5" fill="#da8230" opacity="0.6"/>
+    <path d="M328,44 H472 V237 Q472,240 469,240 H331 Q328,240 328,237 Z" class="card-bg" fill="#da8230"/>
+    <path d="M328,44 H472 V237 Q472,240 469,240 H331 Q328,240 328,237 Z" fill="none" stroke="#da8230" stroke-width="0.8"/>
+    <text x="400" y="64" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">READBACK AS</text>
+    <text x="400" y="76" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">COURSE CORRECTION</text>
+    <line x1="340" y1="84" x2="460" y2="84" stroke="#da8230" stroke-width="0.4" opacity="0.3"/>
+    <text x="400" y="98" font-size="7" class="fg-3" text-anchor="middle">Rephrase instructions</text>
+    <text x="400" y="112" font-size="7" class="fg-3" text-anchor="middle">before acting. Forces</text>
+    <text x="400" y="126" font-size="7" class="fg-3" text-anchor="middle">re-focus on relevant</text>
+    <text x="400" y="140" font-size="7" class="fg-3" text-anchor="middle">context subset</text>
+    <line x1="340" y1="152" x2="460" y2="152" stroke="#da8230" stroke-width="0.4" opacity="0.3"/>
+    <text x="400" y="168" font-size="6" class="accent-orange" text-anchor="middle">ADDRESSES:</text>
+    <text x="400" y="182" font-size="6" class="fg-3" text-anchor="middle">Shallow execution</text>
+    <text x="400" y="194" font-size="6" class="fg-3" text-anchor="middle">Primacy/recency bias</text>
+    <rect x="340" y="210" width="116" height="20" rx="3" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.5"/>
+    <text x="400" y="222" font-size="6" font-weight="600" class="accent-orange" text-anchor="middle">[3] Deng et al. 2023</text>
+  </g>
+
+  <!-- ═══ 4: INDEPENDENT EVAL ═══ -->
+  <g>
+    <rect x="484" y="44" width="144" height="5" fill="#d4a04a" opacity="0.6"/>
+    <path d="M484,44 H628 V237 Q628,240 625,240 H487 Q484,240 484,237 Z" class="card-bg" fill="#d4a04a"/>
+    <path d="M484,44 H628 V237 Q628,240 625,240 H487 Q484,240 484,237 Z" fill="none" stroke="#d4a04a" stroke-width="0.8"/>
+    <text x="556" y="64" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">INDEPENDENT</text>
+    <text x="556" y="76" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">EVALUATION</text>
+    <line x1="496" y1="84" x2="616" y2="84" stroke="#d4a04a" stroke-width="0.4" opacity="0.3"/>
+    <text x="556" y="98" font-size="7" class="fg-3" text-anchor="middle">Separate subprocess</text>
+    <text x="556" y="112" font-size="7" class="fg-3" text-anchor="middle">with no shared chain.</text>
+    <text x="556" y="126" font-size="7" class="fg-3" text-anchor="middle">Unbiased classifier</text>
+    <text x="556" y="140" font-size="7" class="fg-3" text-anchor="middle">without confirmation bias</text>
+    <line x1="496" y1="152" x2="616" y2="152" stroke="#d4a04a" stroke-width="0.4" opacity="0.3"/>
+    <text x="556" y="168" font-size="6" class="accent-gold" text-anchor="middle">ADDRESSES:</text>
+    <text x="556" y="182" font-size="6" class="fg-3" text-anchor="middle">Self-review theatre</text>
+    <text x="556" y="194" font-size="6" class="fg-3" text-anchor="middle">Self-enhancement bias</text>
+    <rect x="496" y="210" width="116" height="20" rx="3" fill="#d4a04a" fill-opacity="0.08" stroke="#d4a04a" stroke-width="0.5"/>
+    <text x="556" y="222" font-size="6" font-weight="600" class="accent-gold" text-anchor="middle">[4] Ye et al. 2024</text>
+  </g>
+
+  <!-- ═══ 5: CONVERGENCE ═══ -->
+  <g>
+    <rect x="640" y="44" width="144" height="5" fill="#2a8a4a" opacity="0.6"/>
+    <path d="M640,44 H784 V237 Q784,240 781,240 H643 Q640,240 640,237 Z" class="card-bg" fill="#2a8a4a"/>
+    <path d="M640,44 H784 V237 Q784,240 781,240 H643 Q640,240 640,237 Z" fill="none" stroke="#2a8a4a" stroke-width="0.8"/>
+    <text x="712" y="64" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">OBJECTIVE</text>
+    <text x="712" y="76" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">CONVERGENCE</text>
+    <line x1="652" y1="84" x2="772" y2="84" stroke="#2a8a4a" stroke-width="0.4" opacity="0.3"/>
+    <text x="712" y="98" font-size="7" class="fg-3" text-anchor="middle">Single scalar metric.</text>
+    <text x="712" y="112" font-size="7" class="fg-3" text-anchor="middle">Fixed evaluation.</text>
+    <text x="712" y="126" font-size="7" class="fg-3" text-anchor="middle">Iterate until score</text>
+    <text x="712" y="140" font-size="7" class="fg-3" text-anchor="middle">converges or plateaus</text>
+    <line x1="652" y1="152" x2="772" y2="152" stroke="#2a8a4a" stroke-width="0.4" opacity="0.3"/>
+    <text x="712" y="168" font-size="6" class="accent-green" text-anchor="middle">ADDRESSES:</text>
+    <text x="712" y="182" font-size="6" class="fg-3" text-anchor="middle">Aimless iteration</text>
+    <text x="712" y="194" font-size="6" class="fg-3" text-anchor="middle">No stopping criterion</text>
+    <rect x="652" y="210" width="116" height="20" rx="3" fill="#2a8a4a" fill-opacity="0.08" stroke="#2a8a4a" stroke-width="0.5"/>
+    <text x="712" y="222" font-size="6" font-weight="600" class="accent-green" text-anchor="middle">[5] Madaan et al. 2023</text>
+  </g>
+
+  <!-- Bottom -->
+  <rect x="150" y="250" width="500" height="16" rx="5" fill="#005f7a" fill-opacity="0.06" stroke="#005f7a" stroke-width="0.5"/>
+  <text x="400" y="261" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">Each concept maps to a failure mode. Each failure mode has a design countermeasure.</text>
+
+</svg>

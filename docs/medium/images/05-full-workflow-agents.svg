@@ -37,11 +37,11 @@
     accents: RESEARCH/HYPOTHESIS/PLAN=#0096d1, IMPLEMENT=#da8230, TEST=#d4a04a, REVIEW=#005f7a, RECORD/NEXT=#236a74
     arrows: 7 forward arrows in 12px gaps between cards, cyan #0096d1
     reject: dashed orange arc REVIEW bottom -> IMPLEMENT bottom curving below at y=160
-    agents: text inside cards (3, 4, 3, 0, 0, 4, 0, 0)
+    agents: text inside cards (3, 4, 3, 0, 1, 4, 0, 0)
   === -->
 
   <!-- Title -->
-  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">FULL ITERATION - 8 PHASES, 14 INDEPENDENT AGENTS</text>
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">FULL ITERATION - 8 PHASES, 15 INDEPENDENT AGENTS</text>
   <text x="400" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Every arrow is a gate. Every gate runs as an independent ACP subprocess.</text>
 
   <!-- ═══ PHASE CARDS ═══ -->
@@ -116,8 +116,8 @@
     <path d="M396,42 H478 V99 Q478,102 475,102 H399 Q396,102 396,99 Z" fill="none" stroke="#d4a04a" stroke-width="0.8"/>
     <rect x="396" y="42" width="82" height="5" fill="#d4a04a" opacity="0.5"/>
     <text x="437" y="59" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">TEST</text>
-    <text x="437" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">make test + bench</text>
-    <text x="437" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-gold" text-anchor="middle">0 agents</text>
+    <text x="437" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">test + benchmark</text>
+    <text x="437" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="accent-gold" text-anchor="middle">1 agent</text>
   </g>
 
   <!-- Arrow 5->6 tip at x=490 -->
@@ -180,7 +180,7 @@
   <text x="437" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" fill="#da8230" text-anchor="middle">reject</text>
 
   <!-- Bottom annotations -->
-  <text x="400" y="182" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">REVIEW panel: critic + architect + guardian (isolated) + forensicist. IMPLEMENT gets no agents - only code.</text>
+  <text x="400" y="182" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">REVIEW: critic + architect + guardian (isolated) + forensicist. TEST: benchmark evaluator. IMPLEMENT: code only.</text>
   <rect x="170" y="190" width="460" height="14" rx="4" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.5"/>
   <text x="400" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-cyan" text-anchor="middle">Phases, agents, and gates declared in YAML - modified independently from the Python orchestrator</text>
 

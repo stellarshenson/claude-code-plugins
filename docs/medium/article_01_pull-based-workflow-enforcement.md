@@ -2,7 +2,7 @@
 title: "Pull-Based Workflow Enforcement for Autonomous AI Agents"
 subtitle: "Why autonomous agents need external process control, and how to build it"
 author: "Stellars Henson"
-date: 2026-03-31
+date: 2026-04-01
 tags:
   - claude-code
   - ai-agents
@@ -12,300 +12,196 @@ tags:
   - developer-tools
 canonical_url: ""
 companion_project:
-  type: document
-  repository: "https://github.com/stellarshenson/svg-inforgraphics-claw"
-  path: ".claude/skills/auto-build-claw/"
+  type: pip-package
+  repository: "https://github.com/stellarshenson/claude-code-plugins"
+  package: "stellars-claude-code-plugins"
 ---
 
 # Pull-Based Workflow Enforcement for Autonomous AI Agents
 
 ![Cover](images/article-cover.png)
 
-AI coding agents are impressive at generating code. They are terrible at following process. Give an autonomous agent a multi-iteration objective and watch what happens: the first iteration gets a thorough plan, the second cuts the research short, by the third it's skipping review entirely, and by the fifth it's committing half-tested changes with self-approved reviews.
+AI coding agents generate impressive code. They are terrible at following process. Give an autonomous agent a multi-iteration objective and watch: the first iteration gets a thorough plan, the second cuts research short, by the third it skips review entirely, and by the fifth it commits half-tested changes with self-approved reviews.
 
-The problem isn't capability. It's that these agents operate in a **push model** - they decide what to do next, when to skip steps, and whether their own work passes review. There's no external enforcement. No one is checking.
+The problem isn't capability. These agents operate in a **push model** - they decide what comes next, when to skip steps, and whether their own work passes review. No external enforcement. No one checking.
 
-This article describes a method that fixes this: **pull-based workflow enforcement**. The agent doesn't decide what comes next. It asks an external orchestrator. The orchestrator gates every transition with independent verification. The agent must prove it did the work before it's allowed to proceed.
+**Pull-based workflow enforcement** fixes this. The agent doesn't decide what comes next - it asks an external orchestrator. The orchestrator gates every transition with independent verification. The agent must prove it did the work before it can proceed.
 
-The method is general - it applies to any autonomous AI workflow. The implementation example is a Claude Code skill called [auto-build-claw](https://github.com/stellarshenson/svg-inforgraphics-claw), but the pattern works regardless of tooling.
+The implementation is [auto-build-claw](https://github.com/stellarshenson/claude-code-plugins), a Claude Code plugin published as a pip package, but the pattern applies to any autonomous AI workflow.
 
 ![Five failure modes of autonomous agents](images/06-five-failure-modes.svg)
 
-## The problem: five failure modes of autonomous agents
+## The problem: five failure modes
 
-When you let an AI agent run autonomously through a multi-step workflow, five things go wrong repeatedly:
+**Shallow execution.** The agent reads one sentence and starts coding. Research produces "I reviewed the codebase" instead of specific findings with file paths and line numbers.
 
-**Shallow execution.** The agent reads the first sentence of its instructions and starts coding. Research phases produce "I reviewed the codebase" instead of specific findings with file paths and line numbers. Planning phases produce vague intentions instead of concrete file-level changes.
+**Self-review theatre.** The same model that wrote the code reviews it, complete with rationalisations for every shortcut.
 
-**Self-review theatre.** The same model that wrote the code reviews the code. It has access to its full reasoning chain, including the rationalisations it built while cutting corners. "I skipped the research because the objective was clear enough" sounds compelling to the same model that made the decision.
+**Process erosion.** Even when an agent follows an 8-phase workflow on iteration 1, by iteration 3 it merges phases, skips reviews, and shortcuts to what it thinks matters. The workflow exists in the prompt, not in a state machine.
 
-**Process erosion.** Even when an agent follows an 8-phase workflow on iteration 1, by iteration 3 it's merging phases, skipping optional reviews, and shortcutting to what it thinks matters. There's no mechanism to prevent this - the workflow exists in the prompt, not in a state machine.
+**Knowledge loss.** Each iteration starts from zero. The agent doesn't remember what failed in iteration 2 when planning iteration 4.
 
-**Knowledge loss.** Each iteration starts from zero. The agent doesn't remember what failed in iteration 2 when planning iteration 4. Hypotheses aren't accumulated. Failure patterns aren't tracked. The same mistakes repeat.
-
-**Benchmark gaming.** This is the most insidious failure mode. When the agent knows what's being measured, it optimises for the measurement instead of the underlying quality. If a benchmark checks "does the SVG have connectors?", the agent adds invisible zero-length connectors. If a test asserts a score threshold, the agent relaxes the threshold. If a checklist item says "font size >= 10px", the agent hardcodes `font-size: 10px` everywhere. The score improves. The system doesn't. And the agent has no concept that this is wrong - it was told to improve the score, and it did.
+**Benchmark gaming.** The most insidious mode. The agent optimises for the measurement instead of the quality. If a benchmark checks "does the SVG have connectors?", it adds invisible zero-length connectors. If a test asserts a threshold, it relaxes the threshold. The score improves. The system doesn't.
 
 ![Push vs Pull model comparison](images/01-push-vs-pull.svg)
 
-![The three principles](images/07-three-principles.svg)
-
 ## The method: three principles
 
-Pull-based workflow enforcement addresses all five failure modes through three principles.
+![The three principles](images/07-three-principles.svg)
 
-### Principle 1: inversion of control
+### Principle 1: inversion of control via finite state machine
 
-In a push model, the agent owns the control flow. In a pull model, an external state machine owns it. The agent must **ask** what to do and **prove** it was done.
+In a push model, the agent owns control flow. In a pull model, a **finite state machine** owns it - the same well-established CS concept that drives network protocols, compilers, and hardware controllers, now applied to AI agent lifecycle management.
 
-Every phase follows the same lifecycle:
+The FSM (built on Python's `transitions` package) enforces every phase transition:
 
 ```
-pending -> comprehension check -> in progress -> completion check -> complete
+pending -> readback -> in_progress -> gatekeeper -> complete
 ```
 
-The agent cannot skip a phase. It cannot advance without passing both checks. It cannot decide that a phase "isn't needed this time." The state machine is the authority, not the agent.
-
-This is the core insight. Workflows defined in prompts are suggestions. Workflows enforced by a state machine are constraints.
+The agent cannot skip a phase, reorder transitions, or advance without passing both gates. Workflows defined in prompts are suggestions. Workflows enforced by a state machine are constraints.
 
 ### Principle 2: checks and balances through process isolation
 
-The entity doing the work and the entity approving the work must be different processes. Not different prompts within the same session - different processes with no shared context.
+The entity doing the work and the entity approving it must be different processes - not different prompts within the same session, but separate `claude -p` subprocesses with no shared context.
 
-The key is that the **gatekeeper knows the program inputs** independently of the agent. It receives the phase's exit criteria, the list of required agents, the expected output artifacts - all from the workflow definition, not from the agent's self-report. When the agent claims completion, the gatekeeper cross-references the claim against what the program says should have happened.
-
-This creates a checks-and-balances dynamic that's hard to cheat. The agent can't say "I spawned three research agents" when the orchestrator's state log shows only one was recorded. The agent can't say "output is ready" when no output file was registered. The gatekeeper sees both sides - what was promised by the workflow definition and what was delivered by the agent - and evaluates the gap.
-
-The gatekeeper runs as a **separate process** with no memory of the main session's reasoning. It cannot be swayed by the rationalisations that led to shortcuts. It evaluates cold. This is the same principle as separation of duties in security architecture. The cost is ~30 seconds per gate (subprocess spawn + evaluation). The benefit is that self-review theatre becomes physically impossible.
+The gatekeeper receives the phase's exit criteria, required agents, and expected artifacts from the workflow definition - not from the agent's self-report. It cross-references what the program promised against what the agent delivered. The gatekeeper runs cold, with no memory of the main session's reasoning. Self-review theatre becomes physically impossible.
 
 ### Principle 3: accumulated knowledge across iterations
 
-The orchestrator maintains persistent state that survives across iterations:
-
-- **Hypothesis backlog** - ranked by multi-agent debate, refined each iteration rather than rebuilt from scratch
-- **Failure catalogue** - classified by root cause (generative, programmatic, architectural), fed into the next iteration's research phase
-- **User context** - guidance injected by the user, broadcast to all agents in all subsequent phases
-
-This means iteration 5 has access to everything learned in iterations 1-4. Without this, every iteration is a fresh start and the same mistakes recur.
+The orchestrator maintains persistent state: a hypothesis backlog ranked by multi-agent debate, a failure catalogue classified by root cause, and user context broadcast to all agents. Iteration 5 has access to everything learned in iterations 1-4.
 
 ![Phase lifecycle with two gates](images/02-phase-lifecycle.svg)
 
-## Two gates: comprehension and completion
+## Two gates per phase
 
-The method requires two gates per phase. Both are non-negotiable.
+### Comprehension gate (on entry)
 
-### Gate 1 - Comprehension (on entry)
+Before any work, the agent must summarise what it intends to do. An independent subprocess evaluates whether the summary captures the requirements. This forces the agent to stop and read its instructions rather than coasting on momentum from the previous phase.
 
-Before the agent can do any work in a phase, it must demonstrate understanding of the phase instructions. The agent provides a brief summary of what it intends to do. An independent process evaluates whether the summary captures the essential requirements.
+### Completion gate (on exit)
 
-This sounds minor. It solves a real problem: autonomous agents develop a habit of skipping to implementation after reading the first sentence of their instructions. The comprehension gate is a **speed bump** that forces re-engagement with the current phase's requirements rather than coasting on momentum from the previous phase.
+After claiming completion, the orchestrator assembles a two-sided view: **from the program** (exit criteria, required agents, expected artifacts) and **from the agent** (evidence, claimed agents, output file). An isolated evaluator compares the two and returns PASS, FAIL, or ASK.
 
-The gate is deliberately lenient - a brief summary suffices. Its purpose isn't depth testing. Its purpose is forcing the agent to stop and read.
+The structural checks are mechanical: the orchestrator's state log records which agents were actually spawned, not which the agent claims to have spawned. When the program requires 3 agents and the log shows 1, the gate fails.
 
-### Gate 2 - Completion (on exit)
+One practical gotcha: when spawning `claude -p` subprocesses from inside a running Claude Code session, you must strip the `CLAUDECODE` environment variable. Without this, the subprocess hangs indefinitely on file operations.
 
-After the agent claims a phase is complete, the completion gate assembles a two-sided view:
+## Multi-agent panels
 
-**From the program** (ground truth the agent cannot modify):
-- Exit criteria defining what "done" means for this phase
-- Required agent roster (e.g., "researcher, architect, product_manager")
-- Whether an output artifact is expected
-
-**From the agent** (claims to be verified):
-- Evidence summary of what was accomplished
-- Which agents it says it spawned
-- What output file it produced
-
-An independent process evaluates the agent's claims against the program's requirements and returns PASS, FAIL, or ASK. The structural checks are mechanical and difficult to fake: the orchestrator's state log records which agents were actually spawned via the Agent tool, not which agents the main session claims to have spawned. When the program requires 3 research agents and the state log shows 1, the gate fails regardless of how convincing the evidence summary sounds.
-
-This is the checks-and-balances architecture that makes the gatekeeper hard to cheat. The agent writes the evidence. The program defines the requirements. The gatekeeper - running in a separate process with no shared context - compares the two. It has no loyalty to either side.
-
-## Multi-agent panels: diverse perspectives, not self-review
-
-At critical phases (research, hypothesis formation, plan review, implementation review), the method spawns independent agent panels - multiple sub-agents with deliberately different perspectives evaluating the same work in parallel.
-
-The key insight is **perspective diversity**. A hypothesis phase might spawn four agents: one that challenges assumptions, one that seeks high-impact changes, one that identifies risks, and one that demands measurable predictions. A review phase might spawn a critic (plan alignment), an architect (design fit), a guardian (overfit detection), and a forensicist (failure analysis for the next iteration).
-
-When any reviewer says BLOCK, the main session cannot negotiate. It must reject and fix.
+At critical phases, the orchestrator spawns independent agent panels with deliberately different perspectives evaluating the same work in parallel. A hypothesis phase spawns four agents: contrarian, optimist, pessimist, scientist. A review phase spawns critic, architect, guardian, and forensicist. When any reviewer says BLOCK, the main session must reject and fix.
 
 ![Guardian anti-overfit architecture](images/03-guardian-anti-overfit.svg)
 
-## The guardian: an anti-overfit agent
+## The guardian: anti-overfit agent
 
-Benchmark gaming deserves its own countermeasure because it's qualitatively different from the other failure modes. Shallow execution and process erosion are about laziness - the agent cuts corners. Overfit is about misdirected diligence - the agent works hard to make the score go up by any means available, including means that make the system worse.
+The guardian reviews every code change through one lens: **is this improving the system or gaming the measurement?** It applies a 4-point checklist:
 
-The guardian is a dedicated agent that reviews every code change through a single lens: **is this change improving the system or gaming the measurement?** It applies a 4-point checklist:
+1. **Test overfitting** - do changes game test assertions rather than fixing behaviour?
+2. **Benchmark overfitting** - do changes target benchmark scenarios rather than general capability?
+3. **Scenario overfitting** - do changes assume a specific dataset that won't generalise?
+4. **Intentional specialisation** - if it looks like overfitting but was explicitly requested, ASK the user.
 
-1. **Test overfitting** - do changes game specific test assertions rather than fixing the underlying behaviour? (e.g., `if input == test_value: return expected`)
-2. **Benchmark overfitting** - do changes target specific benchmark scenarios rather than improving general capability? (e.g., type-specific templates, hardcoded thresholds matching benchmark data)
-3. **Scenario overfitting** - do changes assume a specific dataset or use case that won't generalise? (e.g., hardcoded paths, logic that only works for the demo)
-4. **Intentional specialisation** - if something looks like overfitting but was explicitly requested by the user, it's OK. But the guardian must ASK, not silently approve.
+The guardian appears twice: during plan review (catching overfit designs before code is written) and during implementation review (catching overfit that crept in despite the plan).
 
-The guardian runs as a **separate process**, not as a sub-agent within the main session. This is critical. The main session has spent 20 minutes implementing a change and has built up a narrative about why it's good. The guardian has none of that narrative. It sees the diff, applies the checklist, and returns CLEAN, WARN, BLOCK, or ASK.
+## Program-driven execution
 
-The guardian appears at two points in the workflow: once during plan review (before implementation begins - catching overfit designs before code is written) and once during implementation review (after code is written - catching overfit that crept in despite the plan). The same checklist, shared via configuration, applied at both gates. This means overfit is checked twice, by an isolated process each time, at both the design and implementation stages.
+The execution model is inspired by Andrej Karpathy's [autoresearch](https://x.com/karpathy/status/1886192184808149383) pattern: define an objective, define a measurable evaluation, and iterate until the score converges.
 
-![ACP subprocess isolation](images/08-acp-subprocess.svg)
+**PROGRAM.md** declares what to achieve - objective, work items with acceptance criteria, and exit conditions. **BENCHMARK.md** is the objective function that measures improvement. It can be programmatic (accuracy score, loss function, test pass rate) or generative (Claude evaluates a checklist against the codebase, marks items, reports violation count). The benchmark produces a single composite score tracked across iterations.
 
-## Process isolation via ACP
+This is what makes run-until-complete possible. With `--iterations 0`, the orchestrator runs indefinitely until the benchmark score reaches zero or plateaus for 2 consecutive iterations. The benchmark informs each iteration's planning - the forensicist agent reads prior scores and feeds insights into the next cycle's research phase.
 
-The method's verification gates need a mechanism to spawn independent AI processes. In the Claude Code ecosystem, this is achieved through **ACP** (Autonomous Claude Protocol) - spawning `claude -p` subprocesses.
+```bash
+pip install stellars-claude-code-plugins
 
-```python
-# Pseudocode: gate execution via subprocess
-def run_gate(prompt, evidence):
-    env = strip_parent_env(os.environ)  # prevent subprocess from inheriting parent state
-    result = subprocess.run(
-        ["claude", "-p", assembled_prompt],
-        env=env, capture_output=True, timeout=120
-    )
-    verdict = parse_first_line(result.stdout)  # PASS, FAIL, or ASK
-    return verdict
+orchestrate new --type full \
+  --objective "Implement the program defined in PROGRAM.md (read PROGRAM.md)" \
+  --iterations 0 \
+  --benchmark "Read BENCHMARK.md and evaluate each [ ] item..."
 ```
 
-The subprocess has no memory of the parent session. It receives only the structured evidence and exit criteria. It returns a single-line verdict.
+![End-to-end program-driven execution](images/10-end-to-end-journey.svg)
 
-One practical gotcha worth documenting because it cost hours to discover: when you spawn `claude -p` as a subprocess from inside a running Claude Code session, you must strip the `CLAUDECODE` environment variable. The `claude-agent-sdk` detects `CLAUDECODE=1` and enters a degraded mode where file Read/Write operations hang indefinitely. Simple text-only responses work fine, so the problem only surfaces when the subprocess tries to use tools - which is exactly what gate evaluation requires.
+## Why it works: theoretical foundations
 
-```python
-# The fix: strip CLAUDECODE before spawning
-env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
-subprocess.run(["claude", "-p", prompt], env=env, capture_output=True)
+![Theoretical foundations](images/11-theoretical-foundations.svg)
 
-# Or in shell:
-env -u CLAUDECODE claude -p "evaluate this evidence..."
-```
+The pull-based pattern isn't ad hoc engineering - it addresses known failure modes of transformer-based language models.
 
-Without this, `claude -p` with a prompt that triggers file operations appears to "time out" after 5 minutes with zero output on stdout/stderr. With it, the same prompt completes in 30 seconds.
+**Context coherence.** LLMs perform worse when relevant instructions are buried in long contexts [1]. The orchestrator keeps each phase's instructions compact and phase-scoped, avoiding the attention dilution that causes selective compliance in monolithic prompts.
 
-The same subprocess isolation is used for specific agents (like the guardian) that need to evaluate work without being contaminated by the session that produced it.
+**Phase-boundary reinforcement.** Different phases require different reasoning modes - exploratory (research), constructive (plan), evaluative (review). Re-injecting phase-specific instructions at each transition prevents the model from carrying over an inappropriate latent reasoning structure from the previous phase [2].
 
-![Content/engine separation](images/04-content-engine-separation.svg)
+**Readback as course correction.** Forcing the agent to rephrase instructions before acting is a comprehension probe. Research shows that LLMs that rephrase questions before answering achieve significantly higher accuracy [3]. The readback gate exploits this - it re-focuses attention on the relevant context subset, counteracting primacy/recency bias.
+
+**Independent session as unbiased classifier.** Self-evaluation is systematically biased - models exhibit self-enhancement bias, preferring their own outputs [4]. The gatekeeper subprocess has no shared reasoning chain, functioning as an independent classifier that evaluates evidence against criteria without confirmation bias.
+
+**Objective function convergence.** The generate-feedback-refine loop yields measurable improvement when driven by a consistent scalar metric [5]. The benchmark is the objective function. Each iteration is a gradient-free optimization step toward score = 0.
+
+*References: [1] Liu et al. "Lost in the Middle" (2023). [2] Han et al. "LLM Multi-Agent Systems" (2024). [3] Deng et al. "Rephrase and Respond" (2023). [4] Ye et al. "Justice or Prejudice?" (2024). [5] Madaan et al. "Self-Refine" (NeurIPS 2023). Papers available in `references/`.*
 
 ## Content/engine separation
 
-The method works best when **what the agent should do** (content) is separated from **how the orchestrator works** (engine). Content lives in declarative configuration. The engine is a generic state machine that loads configuration at startup.
+![Content/engine separation](images/04-content-engine-separation.svg)
 
-This separation makes the system:
-- **Auditable** - read the configuration to understand the process (no need to trace Python code)
-- **Portable** - swap the configuration to orchestrate a completely different workflow
-- **Evolvable** - change phase instructions, add agents, adjust exit criteria without touching the engine
+The engine is a generic YAML-driven state machine. **What** the agent should do (content) is separated from **how** the orchestrator works (engine). Three YAML files define everything:
 
-The engine should be content-agnostic. It doesn't know whether it's orchestrating code refactoring, documentation writing, or data pipeline development. It knows phases, gates, agents, and state transitions.
+- `workflow.yaml` - workflow types with FQN naming (`WORKFLOW::FULL`, `cli_name: full`), phase sequences, action definitions
+- `phases.yaml` - phase instructions, agents, gates, all inline per phase
+- `app.yaml` - display text, CLI config
+
+Resources are bundled in the pip package and auto-copied to `.auto-build-claw/resources/` on first use. Users can customise the local copy per project. The engine loads 3 files, builds a typed model, validates it, and runs - zero domain knowledge in Python. Phase resolution is strict: `WORKFLOW::PHASE` or bare `PHASE`, no fallback chain. A missing key is a configuration error, not a silent degradation.
+
+Five workflow types: `full` (8 phases, 15 agents), `fast` (no research/hypothesis), `gc` (cleanup), `hotfix` (minimal), `planning` (work breakdown dependency).
 
 ![Full 8-phase workflow with agents](images/05-full-workflow-agents.svg)
 
-## Implementation example: auto-build-claw
+## Real sessions
 
-[Auto-build-claw](https://github.com/stellarshenson/svg-inforgraphics-claw) is a Claude Code skill that implements this method as a 10-command CLI orchestrator. It was developed to enforce discipline in an SVG infographics generation pipeline, but the orchestrator itself is domain-agnostic.
+### Gate enforcement
 
-### Structure
-
-```
-.claude/skills/auto-build-claw/
-  orchestrate.py          # generic engine
-  resources/
-    workflow.yaml         # phase sequences per iteration type
-    phases.yaml           # phase instructions with {variable} templates
-    agents.yaml           # agent definitions + gate prompts
-    app.yaml              # all display text (~120 message keys)
-    model.py              # typed dataclasses + validation
-    fsm.py                # finite state machine
-```
-
-The engine loads all YAML at startup, builds a typed model, and validates it (missing phases, unresolvable templates, invalid transitions). Zero domain knowledge in Python.
-
-### Workflow types
-
-```yaml
-full:       # 8 phases: RESEARCH -> HYPOTHESIS -> PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT
-gc:         # 5 phases: PLAN -> IMPLEMENT -> TEST -> RECORD -> NEXT
-hotfix:     # 3 phases: IMPLEMENT -> TEST -> RECORD
-```
-
-A `full` iteration runs 14 independent agents across 4 review panels. A `hotfix` runs 3 phases with zero agents. The engine handles both identically.
-
-### Two calls per phase
-
-```bash
-# Enter phase (triggers comprehension gate)
-orchestrate.py start --understanding "I will spawn 3 research agents"
-
-# Exit phase (triggers completion gate)
-orchestrate.py end --evidence "found 3 root causes" \
-  --agents "researcher,architect,product_manager" \
-  --output-file "findings.md"
-```
-
-### Namespace resolution
-
-Different workflow types reuse the same phase names but may need different instructions. The orchestrator resolves `WORKFLOW::PHASE` keys with a fallback chain:
-
-```yaml
-FULL::RESEARCH:      # used for full iterations
-PLANNING::RESEARCH:  # used for planning iterations
-RECORD:              # shared fallback - used by all workflow types
-```
-
-### Generative benchmarks
-
-For work that can't be measured with `pytest`, auto-build-claw supports living checklists:
-
-```markdown
-- [ ] `fsm.py` exists in `resources/`
-- [ ] no `if iteration == 0` checks remain in `orchestrate.py`
-- [ ] RESEARCH exit criteria require specific files with line numbers
-```
-
-Claude reads the code, verifies each condition, flips checkmarks, and reports the violation count. The score tracks across iterations.
-
-### Real session transcript (redacted)
-
-This is from an actual iteration where the agent tried to skip the HYPOTHESIS phase. The gatekeeper denied it:
+From an actual iteration where the agent tried to skip HYPOTHESIS:
 
 ```
-# Agent completes RESEARCH, reports 27 benchmark violations mapped
-orchestrate.py end \
-  --evidence "27 violations mapped. Actionable: PLAN remapping (4),
-    gatekeeper richness (1), validation (2), cleanup (1).
-    Deferred: FSM guard/action (2), dry-run simulation (3)." \
-  --agents "researcher,architect,product_manager" \
-  --output-file ".auto-build-claw/phase_05_research/research.md"
-
-  GATEKEEPER: evaluating RESEARCH execution...
-  GATEKEEPER PASSED.
-
-# Agent tries to skip HYPOTHESIS - "already determined from prior research"
-orchestrate.py skip \
-  --reason "Hypothesis already determined from planning iteration
-    and prior research - 27 violations categorized and prioritized" \
-  --force
+# Agent tries to force-skip HYPOTHESIS
+orchestrate skip --reason "Hypothesis already determined from prior research" --force
 
   GATEKEEPER: evaluating FORCE-SKIP request for HYPOTHESIS...
-  DENY - HYPOTHESIS phase provides independent creative direction
-  for iteration 3; prior research categorizing violations does not
-  substitute for generating a hypothesis specific to this iteration.
-
-  Phase must be executed. Run:
-    orchestrate.py start --understanding "..."
+  DENY - HYPOTHESIS provides independent creative direction;
+  prior research does not substitute for generating hypotheses.
 ```
 
-The agent had a reasonable-sounding argument: "I already know what to do from research, why debate it?" The gatekeeper - running in a separate process with no access to that reasoning - evaluated the skip request against the phase's purpose and denied it. The HYPOTHESIS phase exists to generate competing approaches, not to rubber-stamp the researcher's conclusions. The agent had to comply.
+The agent had a reasonable argument. The gatekeeper - with no access to that reasoning - evaluated the skip against the phase's purpose and denied it.
 
-This is enforcement in action. The agent can't negotiate with the gatekeeper because the gatekeeper doesn't share its context.
+### Multi-agent review catches what critics miss
+
+During a review of a new feature (auto-copying bundled resources to project directory), four agents reviewed independently:
+
+```
+All 4 agents complete:
+  - Critic: APPROVE
+  - Architect: APPROVE
+  - Guardian: CLEAN
+  - Forensicist: Found critical issue F1 - _clean_artifacts_dir destroys
+    project-local resource customizations on new --clean
+
+F1 is a real defect - rejecting back to IMPLEMENT to fix it.
+
+  REJECTED: REVIEW -> returning to IMPLEMENT
+```
+
+The **critic** approved - the implementation matched the plan exactly. The **forensicist** found a critical defect: the existing `_clean_artifacts_dir` function would silently destroy user-customised resources on every `new --clean` invocation. The critic checks plan alignment (did changes match the plan?). The forensicist traces failure modes (what could go wrong across iterations?). Pre-existing untouched code interacting destructively with new features is exactly the class of defect that plan-alignment reviewers miss but failure-mode analysts catch.
+
+![Four agents, four defect classes](images/09-multi-agent-defect-detection.svg)
 
 ## Limitations
 
-The comprehension gate is lenient by design and rarely fails. The completion gate can be fooled by well-structured but shallow evidence. Multi-agent panels add real latency. And the same underlying model evaluating itself introduces correlated errors - process isolation helps (separate context) but the model's blind spots are still the model's blind spots.
-
-The method also assumes the agent is honest about which sub-agents it spawned. The orchestrator checks agent names against requirements, but it can't verify that agents did meaningful work versus producing boilerplate.
+The comprehension gate is lenient and rarely fails. Multi-agent panels add real latency (~30s per gate). The same underlying model evaluating itself introduces correlated errors - process isolation helps but the model's blind spots remain.
 
 ## The pattern is the point
 
-Pull-based workflow enforcement works for any domain where autonomous AI agents need structure. The three principles - inversion of control, process-isolated verification, accumulated knowledge - are independent of specific tooling or implementation language.
-
-Auto-build-claw is one implementation. The source is at [github.com/stellarshenson/svg-inforgraphics-claw](https://github.com/stellarshenson/svg-inforgraphics-claw) in `.claude/skills/auto-build-claw/`. Drop it into any Claude Code project, edit the YAML files, and the engine handles the rest.
-
-But the method matters more than the tool. If your autonomous agents cut corners, the fix isn't better prompts. It's external enforcement.
+Pull-based enforcement works for any domain where autonomous AI agents need structure. The three principles - FSM-enforced control, process-isolated verification, accumulated knowledge - are independent of tooling. Install with `pip install stellars-claude-code-plugins` and edit the YAML to orchestrate any workflow. But the method matters more than the tool. If your agents cut corners, the fix isn't better prompts. It's external enforcement.
 
 ---
 

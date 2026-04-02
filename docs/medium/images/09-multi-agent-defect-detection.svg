@@ -1,0 +1,132 @@
+<!--
+  09-multi-agent-defect-detection.svg - Four review agents catching different defect classes
+  Shows: 4 agent columns, each with scope and what they catch/miss
+  Intent: demonstrate why perspective diversity matters in AI code review
+  Theme: Stellars-Tech - teal/cyan primary, orange accent
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320">
+  <style>
+    .fg-1 { fill: #1a5a6e; } .fg-2 { fill: #24697e; } .fg-3 { fill: #236a74; }
+    .accent-cyan { fill: #0096d1; } .accent-orange { fill: #da8230; }
+    .accent-deep { fill: #005f7a; } .accent-teal { fill: #236a74; }
+    .accent-green { fill: #2a8a4a; } .accent-red { fill: #c44040; }
+    .card-bg { fill-opacity: 0.04; }
+    text { font-family: "Segoe UI", Arial, sans-serif; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; } .fg-2 { fill: #8fd4e6; } .fg-3 { fill: #5aafc5; }
+      .accent-cyan { fill: #5cc8e0; } .accent-orange { fill: #d4a04a; }
+      .accent-deep { fill: #4099b3; } .accent-teal { fill: #5aafc5; }
+      .accent-green { fill: #5ac47a; } .accent-red { fill: #e06060; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 800x320
+    4 columns: w=178, gap=16
+    Col 1 (Critic): x=20..198
+    Col 2 (Architect): x=214..392
+    Col 3 (Guardian): x=408..586
+    Col 4 (Forensicist): x=602..780
+    Cards: y=44..274
+  === -->
+
+  <text x="400" y="18" font-size="11" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">FOUR AGENTS, FOUR DEFECT CLASSES</text>
+  <text x="400" y="32" font-size="7" class="fg-3" text-anchor="middle">Each agent catches what the others miss. Perspective diversity is the point.</text>
+
+  <!-- ═══ CRITIC ═══ -->
+  <g>
+    <rect x="20" y="44" width="178" height="5" fill="#0096d1" opacity="0.6"/>
+    <path d="M20,44 H198 V271 Q198,274 195,274 H23 Q20,274 20,271 Z" class="card-bg" fill="#0096d1"/>
+    <path d="M20,44 H198 V271 Q198,274 195,274 H23 Q20,274 20,271 Z" fill="none" stroke="#0096d1" stroke-width="0.8"/>
+    <text x="109" y="64" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">CRITIC</text>
+    <text x="109" y="80" font-size="7" class="accent-cyan" text-anchor="middle">Plan alignment</text>
+    <line x1="32" y1="90" x2="186" y2="90" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+
+    <text x="32" y="108" font-size="7" font-weight="600" class="accent-green">CATCHES:</text>
+    <text x="32" y="124" font-size="7" class="fg-3">Scope creep beyond plan</text>
+    <text x="32" y="140" font-size="7" class="fg-3">Missing plan items</text>
+    <text x="32" y="156" font-size="7" class="fg-3">Quality gaps in changes</text>
+    <text x="32" y="172" font-size="7" class="fg-3">Incomplete implementation</text>
+
+    <text x="32" y="196" font-size="7" font-weight="600" class="accent-red">MISSES:</text>
+    <text x="32" y="212" font-size="7" class="fg-3">Cross-function interactions</text>
+    <text x="32" y="228" font-size="7" class="fg-3">Pre-existing code conflicts</text>
+
+    <rect x="32" y="244" width="154" height="18" rx="4" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.6"/>
+    <text x="109" y="256" font-size="7" font-weight="600" class="accent-cyan" text-anchor="middle">"Did it match the plan?"</text>
+  </g>
+
+  <!-- ═══ ARCHITECT ═══ -->
+  <g>
+    <rect x="214" y="44" width="178" height="5" fill="#005f7a" opacity="0.6"/>
+    <path d="M214,44 H392 V271 Q392,274 389,274 H217 Q214,274 214,271 Z" class="card-bg" fill="#005f7a"/>
+    <path d="M214,44 H392 V271 Q392,274 389,274 H217 Q214,274 214,271 Z" fill="none" stroke="#005f7a" stroke-width="0.8"/>
+    <text x="303" y="64" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">ARCHITECT</text>
+    <text x="303" y="80" font-size="7" class="accent-deep" text-anchor="middle">Design soundness</text>
+    <line x1="226" y1="90" x2="380" y2="90" stroke="#005f7a" stroke-width="0.5" opacity="0.3"/>
+
+    <text x="226" y="108" font-size="7" font-weight="600" class="accent-green">CATCHES:</text>
+    <text x="226" y="124" font-size="7" class="fg-3">Pattern violations</text>
+    <text x="226" y="140" font-size="7" class="fg-3">Abstraction mismatches</text>
+    <text x="226" y="156" font-size="7" class="fg-3">Circular dependencies</text>
+    <text x="226" y="172" font-size="7" class="fg-3">Unnecessary complexity</text>
+
+    <text x="226" y="196" font-size="7" font-weight="600" class="accent-red">MISSES:</text>
+    <text x="226" y="212" font-size="7" class="fg-3">Benchmark gaming</text>
+    <text x="226" y="228" font-size="7" class="fg-3">Runtime failure modes</text>
+
+    <rect x="226" y="244" width="154" height="18" rx="4" fill="#005f7a" fill-opacity="0.08" stroke="#005f7a" stroke-width="0.6"/>
+    <text x="303" y="256" font-size="7" font-weight="600" class="accent-deep" text-anchor="middle">"Does it fit the architecture?"</text>
+  </g>
+
+  <!-- ═══ GUARDIAN ═══ -->
+  <g>
+    <rect x="408" y="44" width="178" height="5" fill="#da8230" opacity="0.6"/>
+    <path d="M408,44 H586 V271 Q586,274 583,274 H411 Q408,274 408,271 Z" class="card-bg" fill="#da8230"/>
+    <path d="M408,44 H586 V271 Q586,274 583,274 H411 Q408,274 408,271 Z" fill="none" stroke="#da8230" stroke-width="0.8"/>
+    <text x="497" y="64" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">GUARDIAN</text>
+    <text x="497" y="80" font-size="7" class="accent-orange" text-anchor="middle">Overfit detection</text>
+    <line x1="420" y1="90" x2="574" y2="90" stroke="#da8230" stroke-width="0.5" opacity="0.3"/>
+
+    <text x="420" y="108" font-size="7" font-weight="600" class="accent-green">CATCHES:</text>
+    <text x="420" y="124" font-size="7" class="fg-3">Test gaming</text>
+    <text x="420" y="140" font-size="7" class="fg-3">Benchmark manipulation</text>
+    <text x="420" y="156" font-size="7" class="fg-3">Scenario-specific hacks</text>
+    <text x="420" y="172" font-size="7" class="fg-3">Hardcoded thresholds</text>
+
+    <text x="420" y="196" font-size="7" font-weight="600" class="accent-red">MISSES:</text>
+    <text x="420" y="212" font-size="7" class="fg-3">Plan alignment issues</text>
+    <text x="420" y="228" font-size="7" class="fg-3">Architectural debt</text>
+
+    <rect x="420" y="244" width="154" height="18" rx="4" fill="#da8230" fill-opacity="0.08" stroke="#da8230" stroke-width="0.6"/>
+    <text x="497" y="256" font-size="7" font-weight="600" class="accent-orange" text-anchor="middle">"Is it gaming the score?"</text>
+  </g>
+
+  <!-- ═══ FORENSICIST ═══ -->
+  <g>
+    <rect x="602" y="44" width="178" height="5" fill="#236a74" opacity="0.6"/>
+    <path d="M602,44 H780 V271 Q780,274 777,274 H605 Q602,274 602,271 Z" class="card-bg" fill="#236a74"/>
+    <path d="M602,44 H780 V271 Q780,274 777,274 H605 Q602,274 602,271 Z" fill="none" stroke="#236a74" stroke-width="0.8"/>
+    <text x="691" y="64" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">FORENSICIST</text>
+    <text x="691" y="80" font-size="7" class="accent-teal" text-anchor="middle">Failure mode analysis</text>
+    <line x1="614" y1="90" x2="768" y2="90" stroke="#236a74" stroke-width="0.5" opacity="0.3"/>
+
+    <text x="614" y="108" font-size="7" font-weight="600" class="accent-green">CATCHES:</text>
+    <text x="614" y="124" font-size="7" class="fg-3">Cross-function conflicts</text>
+    <text x="614" y="140" font-size="7" class="fg-3">Pre-existing code interactions</text>
+    <text x="614" y="156" font-size="7" class="fg-3">Lifecycle edge cases</text>
+    <text x="614" y="172" font-size="7" class="fg-3">Repeating failure patterns</text>
+
+    <text x="614" y="196" font-size="7" font-weight="600" class="accent-red">MISSES:</text>
+    <text x="614" y="212" font-size="7" class="fg-3">Style/quality nits</text>
+    <text x="614" y="228" font-size="7" class="fg-3">Design aesthetics</text>
+
+    <rect x="614" y="244" width="154" height="18" rx="4" fill="#236a74" fill-opacity="0.08" stroke="#236a74" stroke-width="0.6"/>
+    <text x="691" y="256" font-size="7" font-weight="600" class="accent-teal" text-anchor="middle">"What could go wrong?"</text>
+  </g>
+
+  <!-- Bottom annotation -->
+  <rect x="170" y="284" width="460" height="18" rx="5" fill="#005f7a" fill-opacity="0.06" stroke="#005f7a" stroke-width="0.5"/>
+  <text x="400" y="296" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">Real example: Critic approved a feature. Forensicist found pre-existing code would destroy it on next clean.</text>
+
+</svg>
