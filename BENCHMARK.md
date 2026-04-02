@@ -68,13 +68,14 @@ Maximum: ~45 checklist items + 50 graded = ~95. Target: < 10.
 - [ ] Processed entries still displayed to agents (not filtered) but marked as processed in status
 - [ ] Unprocessed entries show as actionable in status (clear visual distinction)
 
-## Section 5: Rich Context - Legacy Migration
+## Section 5: Rich Context - No Legacy, No Fallback
 
-- [ ] Plain string entry `{RESEARCH: "message text"}` auto-migrated on `_load_context`
-- [ ] Migration produces `{RESEARCH: {message: "message text", created: "", acknowledged_by: [], processed: false}}`
-- [ ] Migration is transparent - no error, no warning, just works
-- [ ] After migration, `_save_context` writes rich format (old format never written back)
-- [ ] Mixed format (some rich, some plain string) handled correctly
+- [ ] Plain string entry `{RESEARCH: "message text"}` raises error on `_load_context` (not migrated)
+- [ ] Error message tells user to delete context.yaml and start fresh
+- [ ] NO isinstance checks for string vs dict in _load_context
+- [ ] NO migration code path - one format only
+- [ ] `_load_context` expects EVERY entry to be a dict with `message` key
+- [ ] Test: plain string entry raises ValueError or similar
 
 ## Section 6: Rich Context - Status Display
 
@@ -154,21 +155,21 @@ Baseline: 5/10 (context_ack.yaml wiped on clean, losing acknowledgment tracking)
 Current grade: [ ] /10
 Residual: [ ] (10 - grade)
 
-## Section 13: Backward Compatibility (0-10 scale)
+## Section 13: Format Commitment (0-10 scale)
 
-Old format -> new format without breakage. No "update your config" manual steps.
+Full commitment to new format. No fallback. No conversion code. Clear errors on old format.
 
 | Score | Description |
 |-------|-------------|
-| 10 | All legacy formats auto-migrate silently. Plain string context entries become rich. Plain text .version_check becomes YAML. No user intervention. Mixed old+new entries in same file handled. |
-| 9 | All migrations work. One edge case requires manual intervention. |
-| 8 | Most migrations work. One format not auto-detected. |
-| 7 | Main migration (context) works. Version check migration missing. |
-| 6 | Migration exists but lossy (some fields default to empty). |
-| 5 | No migration - old format causes error. |
-| <=4 | Old format breaks the system. |
+| 10 | ONE format per file. Old format raises clear error with fix instructions. Zero isinstance checks for format detection. Zero migration code paths. Clean, single-path loading. |
+| 9 | One format. Clear error on old. One minor isinstance check surviving. |
+| 8 | One format enforced. Error message exists but unclear about fix. |
+| 7 | One format primary but old format silently ignored (not errored). |
+| 6 | Dual-path with primary/fallback. Old format still loads. |
+| 5 | Silent migration - old format auto-converted. Dead conversion code. |
+| <=4 | Both formats accepted without warning. No commitment. |
 
-Baseline: 6/10 (context.yaml has no migration path since it's adding new fields; .version_check has no migration)
+Baseline: 4/10 (old format silently accepted via fallback, context_ack.yaml is parallel tracking)
 
 Current grade: [ ] /10
 Residual: [ ] (10 - grade)
@@ -224,6 +225,8 @@ Additionally ALL must hold:
 - [ ] All 4 dry-runs pass
 - [ ] grep "context_ack" orchestrator.py returns 0 matches
 - [ ] context.yaml entries are rich dicts (not plain strings)
+- [ ] plain string entries in context.yaml raise error (no silent migration)
+- [ ] zero isinstance(entry, str) checks in context loading code
 
 **Do NOT stop while any condition above is unmet.**
 

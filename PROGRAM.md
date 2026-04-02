@@ -23,7 +23,7 @@ Implement the 2 remaining unfinished items identified in the executive summary, 
   - Remove separate `context_ack.yaml` - everything in one file
   - `orchestrate status` shows each context with created timestamp, acknowledged_by list, processed status
   - `orchestrate context --processed PHASE_NAME` marks a context entry as processed
-  - Backward compat: if entry is a plain string, auto-migrate to new format on first access
+  - NO backward compat: old plain-string format is BROKEN. If context.yaml has plain strings, delete the file and start fresh. No migration code. No isinstance checks. One format only.
   - Add to agent spawn instructions: "ACKNOWLEDGE each context message by referencing it"
   - Add to gatekeeper: verify context was considered in evidence
   - Acceptance: context.yaml has rich entries, no separate ack file, status shows full metadata
@@ -52,7 +52,7 @@ Implement the 2 remaining unfinished items identified in the executive summary, 
 
 - **Tests for new features** (high)
   - test_context_rich_format: new context entries have message, created, acknowledged_by, processed
-  - test_context_legacy_migration: plain string entries auto-migrate to rich format
+  - test_context_rejects_legacy: plain string entries raise error, not silently migrated
   - test_context_acknowledgment_on_start: orchestrate start appends phase to acknowledged_by
   - test_context_processed_flag: marking context as processed works
   - test_hypothesis_autowrite_prompt: verify prompt says append/update
@@ -70,5 +70,6 @@ Iterations stop when ALL hold:
 ## Constraints
 
 - Auto-reinstall: patch versions only, never auto-upgrade minor/major
-- Context backward compat: plain string entries still work
+- NO backward compat for context: plain string entries are rejected with error
+- NO migration code: one format, fully committed, no isinstance conversion paths
 - No changes to FSM or gate logic
