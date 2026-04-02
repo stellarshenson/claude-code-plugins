@@ -1,103 +1,137 @@
-# Program: Tighten Article 01b from 7.5 to 9/10
+# Program: Agent Lifecycle Architecture - Phase-Level Agents
 
 ## Objective
 
-Tighten `docs/medium/article_01b_pull-based-workflow-enforcement.md` from a 7.5/10 internal design note into a 9/10 public article. The core thesis is strong - agents cannot be trusted with their own process control. The delivery is uneven. Cut repetition, restructure the arc, sharpen opening and closing.
+Restructure the phase lifecycle in YAML from `gates: { on_start, on_end }` to three clear sections: `start` (entry gate), `execution` (agents), `end` (exit gate). This reverses journal entry #16's decision to put agents inside `on_end` and also flattens the `gates` wrapper which added indirection without value. The standard FSM lifecycle is start/execution/end - the YAML should mirror this directly.
 
-## Article Arc
+No backward compatibility fallback. One structure. Commit fully.
 
-The article has two halves with a clear transition:
+## Why This Reverses Entry #16
 
-**First half** (problem + pattern): failure modes, pull vs push, three principles stated concisely. Accessible, visceral. Technical detail minimal - the FSM code block and `claude -p` detail move to second half.
+Entry #16 moved agents into `gates.on_end` to co-locate them with the gatekeeper. The reasoning was lifecycle binding - agents and gatekeeper both relate to phase completion. This was wrong because:
 
-**Second half** (proof + depth): gates mechanics, multi-agent panels, guardian checklist, theoretical foundations, implementation proof (transcripts), program-driven execution, content/engine separation. Technical, specific, earned.
+1. Agent instructions are injected into the START template via `{agents_instructions}` - they describe what to do DURING the phase
+2. The gatekeeper evaluates AFTER agents complete - it's the exit gate, not the execution context
+3. In the standard FSM lifecycle (on_start / execution / on_end), agents are execution, not on_end
+4. Co-locating execution agents with the exit gate made the YAML lie about when agents run
 
-**Section-to-half mapping**:
-- FIRST HALF: Opening, Five failure modes, Push vs Pull SVG, Three principles (stated as concepts, no code)
-- TRANSITION: Phase lifecycle SVG bridges to mechanics
-- SECOND HALF: Two gates (with FSM code), Multi-agent panels, Guardian, Theoretical foundations, Program-driven execution, Content/engine separation, Real sessions, Limitations, Closing
+## Target Architecture
+
+```yaml
+FULL::RESEARCH:
+  start:
+    agents:
+      - name: readback
+        prompt: "..."                   # Entry agent: comprehension check
+  execution:
+    agents:
+      - name: researcher
+      - name: architect
+      - name: product_manager           # Work agents: do the phase's work
+  end:
+    agents:
+      - name: gatekeeper
+        prompt: "..."                   # Exit agent: completion validation
+```
+
+Three lifecycle sections per phase, all using the same `agents` schema:
+- `start` -> entry agents (readback validates understanding)
+- `execution` -> work agents (instructions from `{agents_instructions}`)
+- `end` -> exit agents (gatekeeper validates completion, predicates transition)
+
+Harmonious schema: every lifecycle point has `agents` with `name` and `prompt`. Readback is an agent. Gatekeeper is an agent. The distinction is which lifecycle point they belong to, not their data structure.
+
+## Baseline Metrics
+
+| Metric | Current | Target |
+|--------|---------|--------|
+| Agents under gates.on_end | 7 phases (19 agents total) | 0 |
+| Agents at phase level | 0 | 7 phases (19 agents total) |
+| `if gate_type == "agents": continue` dead code in model.py | 1 | 0 (removed) |
+| Validation warning for on_end agents | none | warning emitted |
+| Tests | 142 | >= 142 |
 
 ## Work Items
 
-- **Rewrite opening to show, not tell** (high)
-  - Scope: first 3-4 paragraphs of article_01b
-  - Current opening TELLS about failure abstractly: "the first iteration gets a thorough plan, the second cuts research short"
-  - New opening SHOWS failure: use a real or realistic transcript snippet of an agent rationalising a skip, then pull back to "this is what happens without enforcement"
-  - The pull-based framing comes AFTER the reader has seen the agent break discipline
-  - BEFORE: "AI coding agents generate impressive code. They are terrible at following process."
-  - AFTER: [agent transcript of deterioration] -> "This is what happens when the agent owns the control flow."
-  - Acceptance: first 2 sentences are not declarative statements about AI - they show a specific moment of failure
+- **Restructure phases.yaml to start/execution/end** (high)
+  - Scope: `stellars_claude_code_plugins/engine/resources/phases.yaml`
+  - Replace `gates: { on_start: { readback }, on_end: { agents, gatekeeper } }` with:
+    - `start: { readback: { prompt } }` - entry gate
+    - `execution: { agents: [...] }` - work agents (only for 7 phases that have them)
+    - `end: { gatekeeper: { prompt } }` - exit gate
+  - Remove the `gates` wrapper entirely - `start`/`execution`/`end` are top-level under each phase
+  - Phases with agents: FULL::RESEARCH (3), FULL::HYPOTHESIS (4), PLAN (3), TEST (1), REVIEW (4), PLANNING::RESEARCH (3), PLANNING::PLAN (1)
+  - Phases without agents: IMPLEMENT, RECORD, NEXT, GC::PLAN - have `start` and `end` only, no `execution`
+  - shared_gates: rename `on_skip` to just `skip` for consistency
+  - GC::PLAN borrows agents from bare PLAN via `_resolve_agents` - verify this still works
+  - Guardian YAML anchor `&guardian_checklist` / `*guardian_checklist` must survive
+  - Acceptance: every phase uses start/execution/end, zero `gates:` wrappers, validate passes
 
-- **Eliminate concept restatement** (high)
-  - Scope: full article
-  - These synonyms currently appear - consolidate to ONE canonical phrasing per concept:
-    - "external enforcement" / "external control" / "external orchestrator" / "external process control" -> keep "external enforcement" once
-    - "separate process" / "process isolation" / "independent subprocess" / "isolated evaluator" / "no shared context" -> keep "process isolation" once in Principle 2, then use "the gate" or "the gatekeeper" as shorthand
-    - "the agent cannot skip" / "cannot advance" / "cannot decide" / "cannot override" -> state once in Principle 1
-  - Each section after the principles adds NEW mechanism or proof, never restates
-  - Acceptance: grep for each synonym cluster shows exactly 1 canonical usage
+- **Update model.py for unified agent schema** (high)
+  - Scope: `stellars_claude_code_plugins/engine/model.py` lines 173-237
+  - All three lifecycle sections now have the same `agents` schema
+  - `start.agents` -> readback agent(s) -> stored as gates with mode standalone_session
+  - `execution.agents` -> work agents -> stored in Model.agents dict
+  - `end.agents` -> gatekeeper agent(s) -> stored as gates with mode standalone_session
+  - The lifecycle map simplifies: no need for `on_start`/`on_end` -> `start`/`end` mapping
+  - Remove: `gates` wrapper navigation, on_end agents override, `if gate_type == "agents": continue`
+  - Start/end agents (readback, gatekeeper) are still stored as Gate objects (they're subprocess gates)
+  - Execution agents are still stored as Agent objects (they're spawned by the orchestrating session)
+  - The distinction is lifecycle point, not data structure of the YAML - but model storage differs because readback/gatekeeper run as `claude -p` (Gate) while execution agents run via Agent tool (Agent)
+  - Add validation warning: if phase still has `gates` key, warn about old structure
+  - Preserve: `_resolve_agents(phase)` -> `_build_agent_instructions(key)` -> `{agents_instructions}` chain
+  - Acceptance: model loads from start/execution/end, unified schema in YAML, correct model types
 
-- **Propose new title and subtitle** (high)
-  - Scope: frontmatter and H1
-  - Current: "Pull-Based Workflow Enforcement for Autonomous AI Agents" - reads like a paper abstract
-  - Title should name the tension (agents vs discipline) not the solution pattern
-  - Subtitle should telegraph the two-part arc (why + how)
-  - BAD: "I Gave an AI Agent Full Autonomy. Here's What Broke." (clickbait)
-  - BAD: "A Novel Approach to Agent Process Management" (academic)
-  - GOOD DIRECTION: names the problem in the agent's voice, implies the solution exists
-  - Acceptance: title hooks an AI engineer, subtitle previews the article structure
+- **Update validate_model in model.py** (medium)
+  - Scope: `stellars_claude_code_plugins/engine/model.py` validate_model function
+  - Add check: if any phase section has `gates.on_end.agents`, emit warning "agents should be at phase level, not under gates.on_end"
+  - Error messages reference "phases.yaml phase-level agents" not "gates.on_end"
+  - Acceptance: validate warns on stale on_end agents, error messages correct
 
-- **Tighten the middle - specific cuts** (high)
-  - Scope: three principles, two gates, multi-agent, guardian sections
-  - Three principles: state each as 2-3 sentences of concept ONLY (no code, no implementation detail). Move FSM code block and `transitions` package mention to Two Gates section. Move `claude -p` detail to Two Gates.
-  - Two gates: this becomes the first technical section. Combine comprehension + completion gates with FSM mechanics. The CLAUDECODE gotcha stays here.
-  - Multi-agent panels: currently 3 sentences. Keep as-is - already tight.
-  - Guardian: keep 4-point checklist verbatim. Cut the surrounding "appears twice" explanation to 1 sentence.
-  - Theoretical foundations: compress to a single paragraph with inline citations. Currently 5 separate bold paragraphs = 130 words of restating principles + citations. Target: 60-80 words that add the academic layer without restating.
-  - Content/engine: cut FQN naming detail, strict-lookup detail, `cli_name` detail. These are README material. Keep: 3 files, YAML-driven, plugin install (`/install-plugin stellarshenson/claude-code-plugins`), 5 workflow types. NOT pip install - the plugin handles installation automatically in Claude Code.
-  - Acceptance: no section restates a concept from the principles; theoretical section is 1 paragraph
+- **Update _build_phases exclusion** (low)
+  - Scope: `stellars_claude_code_plugins/engine/model.py` _build_phases function
+  - Note: `_build_phases` filters by `Phase.__dataclass_fields__` intersection, so phase-level `agents` key is already silently ignored - no change needed
+  - Verify this is the case and document it
+  - Acceptance: _build_phases works without modification
 
-- **Rewrite closing as doctrine** (high)
-  - Scope: last 2-3 paragraphs + italic postscript
-  - Current closing: "the method matters more than the tool" + polite install instructions + humble self-reference
-  - New closing builds to: "Agents do not need better prompts. They need constraints they cannot override."
-  - The italic postscript ("built through its own process") is the proof-by-construction payoff - keep it, but make it earn its place after the doctrine line
-  - Acceptance: final non-italic sentence is doctrine, not suggestion
+- **Update all test fixtures** (high)
+  - Scope: `tests/conftest.py`, `tests/test_model.py`, `tests/test_orchestrator.py`
+  - Move agents from `gates.on_end.agents` to phase-level in ALL inline YAML:
+    - conftest.py minimal_resources: ALPHA, BETA, GAMMA
+    - test_model.py: test_missing_workflow_description, test_validate_fqn_workflow_format, test_validate_cli_name_uniqueness, test_validate_catches_missing_action_definition
+    - test_orchestrator.py: TestGenerativeActionDispatch
+  - Verification step: temporarily REMOVE the old on_end extraction code, run tests, confirm all pass from phase-level only. Then the dead code stays dead.
+  - Add test: validate_model warns when agents found under on_end
+  - Acceptance: all 142+ tests pass with phase-level agents, no silent fallback
 
-- **Reduce SVG density** (medium)
-  - Scope: image references in article
-  - Currently 11 SVGs in ~1700 words = 1 per 155 words. Too many for Medium.
-  - Remove SVGs that illustrate text already clear without them:
-    - `06-five-failure-modes.svg` - the enumerated list IS the visualization
-    - `07-three-principles.svg` - principles are immediately explained in prose
-  - Keep SVGs that show things text cannot: lifecycle FSM, guardian architecture, agent defect matrix, end-to-end flow, content/engine separation, push vs pull
-  - Target: 7-8 SVGs max
-  - Acceptance: no SVG precedes text that fully explains the same content
+## Invariants to Preserve
 
-- **Address the Limitations section** (low)
-  - Scope: limitations paragraph
-  - Current: 2 sentences that quietly concede the architecture doesn't fully solve the problem
-  - Expand to 3-4 sentences: honest about correlated errors, honest about latency cost, but frame as known trade-offs not fatal flaws
-  - Acceptance: limitations feel like earned honesty, not undermining
+- `_resolve_agents(phase)` resolves phase key in `_MODEL.agents` dict - keys unchanged (still phase names like "FULL::RESEARCH")
+- `_build_agent_instructions(key)` renders agent prompts into `{agents_instructions}` - input unchanged (still reads from `_MODEL.agents`)
+- `PHASE_AGENTS` stores flat name lists per phase - source unchanged (`_MODEL.agents`)
+- `_validate_end_inputs` checks `--agents` against `PHASE_AGENTS` - unchanged
+- GC::PLAN borrows agents from bare PLAN via `_resolve_agents` resolution chain - must still work
+- Guardian YAML anchor `&guardian_checklist` / `*guardian_checklist` - must survive the move
 
 ## Exit Conditions
 
 Iterations stop when ANY of these is true:
-1. Article editorial grade >= 9/10 AND all work items met
+1. All work items have acceptance criteria met
 2. No improvement for 2 consecutive iterations (plateau)
 
 Additionally ALL must hold:
-- Opening shows failure, not tells about it
-- Closing ends with doctrine
-- Each synonym cluster appears exactly once
-- No section restates a concept from the principles
+- make test passes with 0 failures (>= 142)
+- make lint passes clean
+- orchestrate validate passes (with new warning for on_end agents)
+- All 4 dry-runs pass (full, fast, gc, hotfix)
+- GC::PLAN agent resolution still works
+- Zero agents under gates.on_end in production YAML
 
 ## Constraints
 
-- Work ONLY on article_01b (not article_01)
-- Preserve ALL distinct ideas - cut restatements, not concepts
-- Preserve: both real session transcripts in full terminal-output form
-- Preserve: voice and register (authoritative, direct, punchy short sentences mixed with technical precision)
-- Preserve: concrete specificity (package names, function names, agent counts, timing)
-- Preserve: proof-by-construction postscript
-- Do NOT change SVG content - only adjust which SVGs are included and placement
+- No backward compatibility fallback - one location only
+- Do NOT change agent prompts, names, display_names, or checklist content
+- Do NOT change gate prompts
+- Do NOT change phase template content (start/end text)
+- Do NOT change orchestrator agent injection or validation logic
+- Preserve YAML anchor references (&guardian_checklist / *guardian_checklist)
