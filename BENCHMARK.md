@@ -49,10 +49,10 @@ Not just "does it start with failure" - does it SHOW failure?
 
 Verify by searching for each synonym cluster. Quote any remaining duplicates.
 
-- [ ] "External enforcement/control/orchestrator/process control" - canonical phrasing appears ONCE, no synonyms elsewhere
-  > PARTIAL: "enforcement" appears 4 times: opening line 15 ("without this enforcement"), line 19 ("Pull-based workflow enforcement"), line 115 ("Gate enforcement" heading), line 117 ("This is enforcement in action"). "Orchestrator" appears 6 times across different sections. The term is used functionally (not as synonym padding) but "enforcement" recurs more than once beyond the canonical introduction.
-- [ ] "Separate process/process isolation/independent subprocess/isolated evaluator/no shared context" - established ONCE in Principle 2, then shorthand ("the gate/gatekeeper") used thereafter
-  > FAIL: "separate process" in opening (line 32) AND "no shared context" in Principle 2 (line 43) AND "process isolation" in Limitations (line 161). The concept is introduced in the opening narration before Principle 2 establishes it canonically. "Process isolation" reappears in Limitations.
+- [x] "External enforcement/control/orchestrator/process control" - canonical phrasing appears ONCE, no synonyms elsewhere
+  > PASS: "enforcement" as a noun appears once in body text (line 38 "Pull-based workflow enforcement" - the canonical introduction). Elsewhere only verb forms: "enforces" (line 58, FSM mechanically enforces transitions), "enforced by" (line 58, prompts vs state machine contrast), "enforcing" (line 159, limitations clause). The "Gate enforcement" subsection heading from iteration 1 is gone. "Orchestrator" appears 6 times but names the component, not a synonym for enforcement. No synonym padding.
+- [x] "Separate process/process isolation/independent subprocess/isolated evaluator/no shared context" - established ONCE in Principle 2, then shorthand ("the gate/gatekeeper") used thereafter
+  > PASS: Canonical establishment in Principle 2 heading (line 60 "process isolation") and body (line 62 "separate `claude -p` subprocesses with no shared context"). One shorthand back-reference in Limitations (line 159 "subprocess separation reduces but does not eliminate this"). The opening no longer mentions "separate process" - that was removed. Two locations: canonical + one compressed shorthand. The concept is not restated or re-explained in Limitations, just referenced.
 - [x] "Cannot skip/advance/decide/override" - stated ONCE in Principle 1
   > "cannot skip a phase, reorder transitions, or advance" in Principle 1 only. Closing uses "cannot override" but that is a distinct doctrinal statement, not a restatement.
 - [x] No paragraph that restates a concept already established in the principles (theoretical section adds citations, not restatements)
@@ -117,7 +117,7 @@ Criteria for evaluator:
 Current grade: [8] /10
 Residual: [2] (10 - grade)
 
-**Evidence**: Opening hooks with terminal transcript - genuinely grabs. Each section earns its place - no section could be deleted without losing a mechanism. The theoretical section is now a single dense paragraph (major improvement over original's 5-paragraph restatement). The middle holds attention: failure modes -> principles -> gates -> panels -> guardian -> theory -> program -> content/engine -> real sessions -> limitations. Two minor drags: (1) the "Gate enforcement" subsection under "Real sessions" partially restates the opening transcript ("The transcript at the top of this article is real") rather than adding new evidence, (2) content/engine section remains slightly README-level. Closing "Agents do not need better prompts. They need constraints they cannot override" is quotable and earned. Overall reads as a public article by a practitioner. The reduction from ~1644 to ~1380 words removed genuine fat without losing substance.
+**Evidence**: Opening hooks with terminal transcript - genuinely grabs. Each section earns its place. The theoretical section is a single dense paragraph (major improvement over original). The middle holds attention through the full sequence: failure modes -> principles -> gates -> panels -> guardian -> theory -> program -> content/engine -> real sessions -> limitations. The "Gate enforcement" subsection from iteration 1 is gone - "Real sessions" now opens with a brief bridge sentence ("The skip-denial transcript at the top of this article is real. Here is another, from a different failure class:") and moves directly to the F1 example. One remaining drag: content/engine section remains slightly flat/README-level ("Three files define everything... Resources are bundled... Users customise the local copy"). Closing "Agents do not need better prompts. They need constraints they cannot override" is quotable and earned. Reads as a public article by a practitioner. ~1380 words.
 
 ## Section 5: Article Arc (0-10 scale)
 
@@ -166,7 +166,7 @@ Baseline (article_01): 8/10 - strong voice, punchy sentences present, high speci
 Current grade: [8] /10
 Residual: [2] (10 - grade)
 
-**Evidence**: Punchy short sentences preserved: "The score improves. The system doesn't." "The agent had to comply." "No one is checking." "Self-review theatre becomes physically impossible." Concrete specificity maintained throughout: `transitions` package, `_clean_artifacts_dir`, `CLAUDECODE` environment variable, ~30s per gate, 15 agents, `pending -> readback -> in_progress -> gatekeeper -> complete`. Register is consistent authoritative practitioner throughout. Rhythm varies well between short punchy lines and longer technical sentences. Two moments of slight tech-blog blandness: "This is enforcement in action" (telling) and "The implementation is auto-build-claw, a Claude Code plugin, but the pattern applies to any autonomous AI workflow" (slightly promotional). Voice is strong and consistent otherwise.
+**Evidence**: Punchy short sentences preserved: "The score improves. The system doesn't." "The agent had to comply." "No one is checking." "Self-review theatre becomes physically impossible." Concrete specificity maintained throughout: `transitions` package, `_clean_artifacts_dir`, `CLAUDECODE` environment variable, ~30s per gate, 15 agents, `pending -> readback -> in_progress -> gatekeeper -> complete`. Register is consistent authoritative practitioner throughout. Rhythm varies well between short punchy lines and longer technical sentences. "This is enforcement in action" (a telling moment from iteration 1) is now gone with the gate enforcement subsection removal. One remaining moment of slight tech-blog blandness: "The implementation is auto-build-claw, a Claude Code plugin, but the pattern applies to any autonomous AI workflow" (slightly promotional). Voice is strong and consistent.
 
 ## Section 7: Title and Subtitle
 
@@ -184,9 +184,9 @@ Residual: [2] (10 - grade)
 - [x] No more than 9 SVGs in article (currently 11 - at least 2 removed)
   > 7 SVGs + 1 PNG cover = 8 total images. Reduced from 10 SVGs to 7 SVGs. Removed: 06-five-failure-modes.svg, 07-three-principles.svg, 11-theoretical-foundations.svg (3 removed).
 - [ ] No SVG precedes text that fully explains the same content without the image
-  > PARTIAL FAIL: Line 122 `10-end-to-end-journey.svg` appears after the code block but before the "Content/engine separation" section. The image is an end-to-end journey that relates to program-driven execution above it, which is acceptable. However, line 126 `04-content-engine-separation.svg` appears immediately after the section header and before the text paragraph, acting as a lead-in that the text then explains fully.
+  > PARTIAL: Line 122 `10-end-to-end-journey.svg` follows the code block (acceptable - illustrates program-driven execution above). Line 128 `04-content-engine-separation.svg` follows the text paragraph (line 126) that explains it - text-then-image, acceptable. But line 138 `09-multi-agent-defect-detection.svg` precedes the terminal output and explanation text (lines 140-155) that fully describes the four-agent review. The SVG acts as a lead-in for content the reader has not yet encountered.
 - [ ] No back-to-back SVGs without text between them
-  > Lines 122 and 126: end-to-end SVG, then section header "Content/engine separation", then content/engine SVG. Only a heading between them - no body text separates them.
+  > Lines 128 and 130: `04-content-engine-separation.svg` then `05-full-workflow-agents.svg` with only a blank line between them. No body text separates the two images.
 - [x] Each remaining SVG earns its place (shows what text cannot)
   > 01-push-vs-pull (visual comparison), 02-phase-lifecycle (state diagram), 03-guardian-anti-overfit (architecture), 10-end-to-end-journey (full flow), 04-content-engine-separation (architecture), 05-full-workflow-agents (agent mapping), 09-multi-agent-defect-detection (4-agent review). Each shows a relationship or architecture that text alone would not convey as efficiently.
 
@@ -229,10 +229,10 @@ Does the reader's attention survive the middle? The middle is where articles die
 
 Baseline (article_01): 5/10 - principles section restates in multiple ways, theoretical section partially restates principles with citations, content/engine section has README-level detail.
 
-Current grade: [7] /10
-Residual: [3] (10 - grade)
+Current grade: [8] /10
+Residual: [2] (10 - grade)
 
-**Evidence**: Good forward motion through the middle. Each section adds a new mechanism: failure modes -> principles -> gates -> panels -> guardian -> theory -> program -> content/engine -> real sessions. The theoretical section is now a single dense paragraph with citations rather than a 5-paragraph restatement - major improvement. However, two issues drag this below 8: (1) "Gate enforcement" subsection under "Real sessions" explicitly says "The transcript at the top of this article is real" and recaps the skip-denial scenario - the reader already saw this and already understood it. This is an "I already understood this" moment. (2) Content/engine section remains somewhat flat and README-level ("Three files define everything... Resources are bundled... Users customise the local copy"). Reader could skim this without missing a mechanism. One concept partially restated: process isolation appears in the opening, Principle 2, and Limitations.
+**Evidence**: Good forward motion through the middle. Each section adds a new mechanism: failure modes -> principles -> gates -> panels -> guardian -> theory -> program -> content/engine -> real sessions. The theoretical section is a single dense paragraph with citations - major improvement over original. The "Gate enforcement" subsection is gone. "Real sessions" now opens with a brief bridge sentence ("The skip-denial transcript at the top of this article is real. Here is another, from a different failure class:") rather than a full subsection that recapped the skip-denial. This eliminates the main "I already understood this" moment from iteration 1. The bridge sentence is minimal - one sentence vs the prior heading + paragraph + repeated code block. One remaining drag: content/engine section remains somewhat flat and README-level. Reader could skim it without missing a mechanism. Process isolation cluster consolidated: canonical in Principle 2, one shorthand in Limitations, no longer in opening.
 
 ## Section 11: Closing Power (0-10 scale)
 
@@ -282,17 +282,17 @@ Residual: [1] (10 - grade)
 
 Iterations stop when ANY of these is true:
 - [ ] All Section 1-8 items [x] AND editorial >= 9 AND arc >= 8 AND voice >= 8 AND opening >= 8 AND middle >= 8 AND closing >= 8 AND specificity >= 8
-  > NOT MET: 2 unchecked in Section 2 (synonym clusters), 2 unchecked in Section 8 (SVG placement). Editorial=8 (needs 9). Middle=7 (needs 8).
+  > NOT MET: 2 unchecked in Section 8 (SVG precedes text, back-to-back SVGs). Editorial=8 (needs 9). Section 2 synonym clusters now both pass. Middle upgraded to 8.
 - [ ] No score improvement for 2 consecutive iterations (plateau)
-  > N/A - first iteration.
+  > NOT MET - score improved from 18 to 15 (iteration 1 -> 14).
 
 Additionally ALL must hold:
 - [x] Opening shows failure, not tells
   > Terminal transcript shows the agent's attempt and gatekeeper denial. Reader sees it happen.
 - [x] Closing ends with doctrine
   > "Agents do not need better prompts. They need constraints they cannot override."
-- [ ] Each synonym cluster appears once
-  > FAIL: "process isolation" / "separate process" / "no shared context" appears in opening, Principle 2, AND Limitations (3 locations).
+- [x] Each synonym cluster appears once
+  > PASS: "enforcement" noun 1x in body (line 38). "Process isolation" canonical in Principle 2, one shorthand back-reference ("subprocess separation") in Limitations. "Cannot skip/advance/override" stated in Principle 1, closing uses "cannot override" as distinct doctrine. No cluster restated.
 - [x] Transcripts preserved as terminal output
   > Skip-denial: code block with `orchestrate skip...GATEKEEPER...DENY`. F1 defect: code block with `Forensicist: Found critical issue F1...`
 
@@ -306,3 +306,4 @@ Additionally ALL must hold:
 |-----------|------|-------|-----------|-----------|-----|-------|---------|--------|---------|-------------|-------|-------|
 | baseline  | -    | TBD   | (all)     | 7.5       | 6   | 8     | 5       | 5      | 4       | 9           | ~1644 | article_01 before edits |
 | 1         | 2026-04-01 | 18   | 4         | 8         | 8   | 8     | 8       | 7      | 8       | 9           | ~1380 | article_01b: transcript opening, compressed theory, quotable closing, 3 SVGs removed. Remaining issues: synonym cluster repetition (process isolation x3), back-to-back SVGs in content/engine, gate enforcement restates opening, middle momentum drag from content/engine section |
+| 14        | 2026-04-01 | 15   | 2         | 8         | 8   | 8     | 8       | 8      | 8       | 9           | ~1380 | "enforcement" noun reduced to 1x body, process-isolation consolidated to Principle 2 + one shorthand in Limitations, gate-enforcement subsection removed, "Real sessions" now bridges with one sentence to F1 example. Remaining: back-to-back SVGs (lines 128/130), 09-SVG precedes its explanatory text, editorial not yet 9 (content/engine section flat) |

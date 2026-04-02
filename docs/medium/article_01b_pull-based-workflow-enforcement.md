@@ -29,9 +29,9 @@ orchestrate skip --reason "Hypothesis already determined from prior research" --
   prior research does not substitute for generating hypotheses.
 ```
 
-This is iteration three. The agent had a reasonable argument - it already knew what to do from prior research, why debate it? An independent gatekeeper, running in a separate process with no access to that reasoning, evaluated the skip request against the phase's purpose and denied it. The agent had to comply.
+This is iteration three. The agent had a reasonable argument - it already knew what to do from prior research, why debate it? A gatekeeper with no access to that reasoning evaluated the skip request against the phase's purpose and denied it. The agent had to comply.
 
-By iteration five, without this enforcement, it would be committing half-tested changes with self-approved reviews. Give an autonomous agent a multi-iteration objective and watch: the first iteration follows the process. The third cuts research. The fifth ships broken code.
+By iteration five, without this constraint, it would be committing half-tested changes with self-approved reviews. Give an autonomous agent a multi-iteration objective and watch: the first iteration follows the process. The third cuts research. The fifth ships broken code.
 
 The problem isn't capability. It's that agents operate in a **push model** - they decide what comes next, when to skip steps, and whether their own work passes review. No one is checking.
 
@@ -123,17 +123,15 @@ orchestrate new --type full \
 
 ## Content/engine separation
 
-![Content/engine separation](images/04-content-engine-separation.svg)
-
 The engine is a generic YAML-driven state machine. Three files define everything: `workflow.yaml` (phase sequences, actions), `phases.yaml` (instructions, agents, gates inline), `app.yaml` (display text). Resources are bundled in the plugin and auto-copied to the project on first use. Users customise the local copy. Five workflow types: `full` (8 phases, 15 agents), `fast`, `gc`, `hotfix`, `planning`.
+
+![Content/engine separation](images/04-content-engine-separation.svg)
 
 ![Full 8-phase workflow with agents](images/05-full-workflow-agents.svg)
 
 ## Real sessions
 
-### Gate enforcement
-
-The transcript at the top of this article is real. The agent tried to force-skip HYPOTHESIS with a reasonable argument. The gatekeeper - with no access to that reasoning - denied it. The agent had to comply. This is enforcement in action.
+The skip-denial transcript at the top of this article is real. Here is another, from a different failure class:
 
 ### Multi-agent review catches what critics miss
 
@@ -158,7 +156,7 @@ The **critic** approved - the implementation matched the plan. The **forensicist
 
 ## Limitations
 
-The comprehension gate is lenient and rarely fails. Multi-agent panels add real latency (~30s per gate). The same underlying model evaluating itself introduces correlated errors - process isolation reduces but does not eliminate this. The method catches process failures, not capability failures. If the model cannot solve a problem, enforcing structure around it will not help. But most autonomous agent failures are process failures, not capability failures.
+The comprehension gate is lenient and rarely fails. Multi-agent panels add real latency (~30s per gate). The same underlying model evaluating itself introduces correlated errors - subprocess separation reduces but does not eliminate this. The method catches process failures, not capability failures. If the model cannot solve a problem, enforcing structure around it will not help. But most autonomous agent failures are process failures, not capability failures.
 
 ---
 
