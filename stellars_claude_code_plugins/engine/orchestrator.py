@@ -2270,6 +2270,162 @@ def cmd_failures(args) -> None:
             print(_msg("failure_item", mode=mode, phase=phase, desc=desc, ts=ts))
 
 
+def cmd_info(args) -> None:
+    """Query model information: workflows, phases, agents.
+
+    Reads from the loaded _MODEL to display structured information about
+    the orchestration configuration. Supports five query modes via flags:
+    --workflows, --workflow <name>, --phases, --phase <name>, --agents.
+    """
+    if args.workflows:
+        # Table: FQN | cli_name | description | phases | agent_count
+        print(f"{'FQN':<25} {'cli_name':<12} {'description':<55} {'phases':>6} {'agents':>6}")
+        print("-" * 110)
+        for fqn, wt in _MODEL.workflow_types.items():
+            # Count agents across all phases in this workflow
+            prefix = fqn.split("::", 1)[1] if "::" in fqn else fqn
+            agent_count = 0
+            for phase_name in wt.phase_names:
+                # Check namespaced first, then bare
+                for key in [f"{prefix}::{phase_name}", phase_name]:
+                    if key in _MODEL.agents:
+                        agent_count += len(_MODEL.agents[key])
+                        break
+            print(
+                f"{fqn:<25} {wt.cli_name:<12} {wt.description[:55]:<55} "
+                f"{len(wt.phase_names):>6} {agent_count:>6}"
+            )
+        return
+
+    if args.workflow:
+        # Find workflow by cli_name
+        fqn = _CLI_TO_FQN.get(args.workflow)
+        if not fqn:
+            print(f"Unknown workflow cli_name: {args.workflow}")
+            return
+        wt = _MODEL.workflow_types[fqn]
+        prefix = fqn.split("::", 1)[1] if "::" in fqn else fqn
+        print(f"Workflow: {fqn} (cli_name: {wt.cli_name})")
+        print(f"Description: {wt.description}")
+        if wt.depends_on:
+            print(f"Depends on: {wt.depends_on}")
+        print(f"Independent: {wt.independent}")
+        print(f"{len(wt.phase_names)} phases:")
+        for phase_name in wt.phase_names:
+            req = "required" if phase_name in wt.required else "skippable"
+            # Resolve agents for this phase
+            agents = []
+            for key in [f"{prefix}::{phase_name}", phase_name]:
+                if key in _MODEL.agents:
+                    agents = [a.name for a in _MODEL.agents[key]]
+                    break
+            # Check depends_on in phase definition
+            phase_key = None
+            for key in [f"{prefix}::{phase_name}", phase_name]:
+                if key in _MODEL.phases:
+                    phase_key = key
+                    break
+            agent_str = f"  agents: {', '.join(agents)}" if agents else ""
+            print(f"  {phase_name} ({req}){agent_str}")
+        return
+
+    if args.phases:
+        # Table: name | start_agents | execution_agents | end_agents
+        print(f"{'phase':<25} {'start_agents':<20} {'execution_agents':<30} {'end_agents':<20}")
+        print("-" * 100)
+        for phase_name in _MODEL.phases:
+            # Start agents (gates): find readback etc.
+            start_agents = []
+            for gk, gv in _MODEL.gates.items():
+                if (
+                    gk.startswith(f"{phase_name}::")
+                    and gk.rsplit("::", 1)[1] in _MODEL.start_gate_types
+                ):
+                    start_agents.append(gk.rsplit("::", 1)[1])
+            # Execution agents
+            exec_agents = [a.name for a in _MODEL.agents.get(phase_name, [])]
+            # End agents (gates): find gatekeeper etc.
+            end_agents = []
+            for gk, gv in _MODEL.gates.items():
+                if (
+                    gk.startswith(f"{phase_name}::")
+                    and gk.rsplit("::", 1)[1] in _MODEL.end_gate_types
+                ):
+                    end_agents.append(gk.rsplit("::", 1)[1])
+            print(
+                f"{phase_name:<25} {', '.join(start_agents):<20} "
+                f"{', '.join(exec_agents):<30} {', '.join(end_agents):<20}"
+            )
+        return
+
+    if args.phase:
+        phase_name = args.phase
+        if phase_name not in _MODEL.phases:
+            print(f"Unknown phase: {phase_name}")
+            return
+        phase = _MODEL.phases[phase_name]
+        print(f"Phase: {phase_name}")
+        # Start agents
+        print("  Start agents:")
+        for gk, gv in _MODEL.gates.items():
+            if (
+                gk.startswith(f"{phase_name}::")
+                and gk.rsplit("::", 1)[1] in _MODEL.start_gate_types
+            ):
+                gate_type = gk.rsplit("::", 1)[1]
+                prompt_preview = gv.prompt[:100] if gv.prompt else ""
+                print(f"    {gate_type}: {prompt_preview}")
+        # Execution agents
+        exec_agents = _MODEL.agents.get(phase_name, [])
+        if exec_agents:
+            print("  Execution agents:")
+            for a in exec_agents:
+                print(f"    {a.name} ({a.display_name})")
+        else:
+            print("  Execution agents: (none)")
+        # End agents
+        print("  End agents:")
+        for gk, gv in _MODEL.gates.items():
+            if gk.startswith(f"{phase_name}::") and gk.rsplit("::", 1)[1] in _MODEL.end_gate_types:
+                gate_type = gk.rsplit("::", 1)[1]
+                prompt_preview = gv.prompt[:100] if gv.prompt else ""
+                print(f"    {gate_type}: {prompt_preview}")
+        # Template preview
+        if phase.start:
+            print(f"  Start template: {phase.start[:100]}")
+        if phase.end:
+            print(f"  End template: {phase.end[:100]}")
+        return
+
+    if args.agents:
+        # All agents grouped by phase
+        # Execution agents from PHASE_AGENTS
+        for phase_key in sorted(_MODEL.phases.keys()):
+            agents_info = []
+            # Start gate agents
+            for gk in sorted(_MODEL.gates.keys()):
+                if (
+                    gk.startswith(f"{phase_key}::")
+                    and gk.rsplit("::", 1)[1] in _MODEL.start_gate_types
+                ):
+                    agents_info.append(f"{gk.rsplit('::', 1)[1]} (start)")
+            # Execution agents
+            for a in _MODEL.agents.get(phase_key, []):
+                agents_info.append(f"{a.name} (execution)")
+            # End gate agents
+            for gk in sorted(_MODEL.gates.keys()):
+                if (
+                    gk.startswith(f"{phase_key}::")
+                    and gk.rsplit("::", 1)[1] in _MODEL.end_gate_types
+                ):
+                    agents_info.append(f"{gk.rsplit('::', 1)[1]} (end)")
+            if agents_info:
+                print(f"{phase_key}: {', '.join(agents_info)}")
+        return
+
+    print("Use --workflows, --workflow <name>, --phases, --phase <name>, or --agents")
+
+
 def cmd_validate(args) -> None:
     """Run model validation and report any issues found.
 
@@ -2504,6 +2660,14 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     p_add.add_argument("--count", type=int, required=True, help=_cli("args", "count"))
     p_add.add_argument("--objective", default="", help=_cli("args", "add_objective"))
 
+    # ── info ──
+    p_info = sub.add_parser("info", help="Query model information")
+    p_info.add_argument("--workflows", action="store_true")
+    p_info.add_argument("--workflow", type=str)
+    p_info.add_argument("--phases", action="store_true")
+    p_info.add_argument("--phase", type=str)
+    p_info.add_argument("--agents", action="store_true")
+
     # ── validate ──
     sub.add_parser("validate", help="Validate YAML resources against the model schema")
 
@@ -2580,6 +2744,7 @@ def main(resources_dir: Path | None = None):
         "log-failure": cmd_log_failure,
         "failures": cmd_failures,
         "add-iteration": cmd_add_iteration,
+        "info": cmd_info,
         "validate": cmd_validate,
     }
     cmds[args.command](args)

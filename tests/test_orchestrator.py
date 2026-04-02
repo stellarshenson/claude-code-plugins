@@ -759,6 +759,93 @@ class TestPluginEntrypoint:
         assert (resources / "app.yaml").exists()
 
 
+class TestCmdInfo:
+    """Tests for the info command - model introspection."""
+
+    def test_info_workflows(self, auto_build_claw_resources, capsys):
+        """List all workflows."""
+        orch._initialize(auto_build_claw_resources)
+        args = argparse.Namespace(workflows=True, workflow=None, phases=False, phase=None, agents=False)
+        orch.cmd_info(args)
+        out = capsys.readouterr().out
+        assert "WORKFLOW::FULL" in out
+        assert "full" in out  # cli_name
+        assert "WORKFLOW::FAST" in out
+
+    def test_info_workflow_detail(self, auto_build_claw_resources, capsys):
+        """Detail one workflow by cli_name."""
+        orch._initialize(auto_build_claw_resources)
+        args = argparse.Namespace(workflows=False, workflow="full", phases=False, phase=None, agents=False)
+        orch.cmd_info(args)
+        out = capsys.readouterr().out
+        assert "RESEARCH" in out
+        assert "HYPOTHESIS" in out
+        assert "8 phases" in out or "NEXT" in out
+
+    def test_info_phases(self, auto_build_claw_resources, capsys):
+        """List all phases."""
+        orch._initialize(auto_build_claw_resources)
+        args = argparse.Namespace(workflows=False, workflow=None, phases=True, phase=None, agents=False)
+        orch.cmd_info(args)
+        out = capsys.readouterr().out
+        assert "FULL::RESEARCH" in out
+        assert "IMPLEMENT" in out
+        assert "GC::PLAN" in out
+
+    def test_info_phase_detail(self, auto_build_claw_resources, capsys):
+        """Detail one phase showing start/execution/end agents."""
+        orch._initialize(auto_build_claw_resources)
+        args = argparse.Namespace(workflows=False, workflow=None, phases=False, phase="FULL::RESEARCH", agents=False)
+        orch.cmd_info(args)
+        out = capsys.readouterr().out
+        assert "readback" in out
+        assert "researcher" in out
+        assert "architect" in out
+        assert "product_manager" in out
+        assert "gatekeeper" in out
+
+    def test_info_agents(self, auto_build_claw_resources, capsys):
+        """List all agents grouped by phase."""
+        orch._initialize(auto_build_claw_resources)
+        args = argparse.Namespace(workflows=False, workflow=None, phases=False, phase=None, agents=True)
+        orch.cmd_info(args)
+        out = capsys.readouterr().out
+        assert "researcher" in out
+        assert "contrarian" in out
+        assert "guardian" in out
+        assert "benchmark_evaluator" in out
+
+    def test_info_structure_compliance(self, auto_build_claw_resources, capsys):
+        """Every phase has readback in start and gatekeeper in end."""
+        orch._initialize(auto_build_claw_resources)
+        for phase_name in orch._MODEL.phases:
+            # Every phase should have readback gate
+            rb_key = f"{phase_name}::readback"
+            assert rb_key in orch._MODEL.gates, f"{phase_name} missing readback in start"
+            # Every phase should have gatekeeper gate
+            gk_key = f"{phase_name}::gatekeeper"
+            assert gk_key in orch._MODEL.gates, f"{phase_name} missing gatekeeper in end"
+
+    def test_info_execution_agents_match(self, auto_build_claw_resources):
+        """Agent counts match expected per phase."""
+        orch._initialize(auto_build_claw_resources)
+        expected = {
+            "FULL::RESEARCH": 3,
+            "FULL::HYPOTHESIS": 4,
+            "PLAN": 3,
+            "TEST": 1,
+            "REVIEW": 4,
+            "PLANNING::RESEARCH": 3,
+            "PLANNING::PLAN": 1,
+        }
+        for phase, count in expected.items():
+            agents = orch._MODEL.agents.get(phase, [])
+            assert len(agents) == count, f"{phase}: expected {count} agents, got {len(agents)}"
+        # Phases without agents
+        for phase in ["IMPLEMENT", "RECORD", "NEXT", "GC::PLAN"]:
+            assert phase not in orch._MODEL.agents or len(orch._MODEL.agents[phase]) == 0
+
+
 class TestEnsureProjectResources:
     """Tests for _ensure_project_resources auto-copy behavior."""
 
