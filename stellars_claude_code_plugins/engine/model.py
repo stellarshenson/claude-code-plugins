@@ -143,7 +143,7 @@ def _load_yaml(path: Path) -> dict:
 # ── Builder functions ─────────────────────────────────────────────────────────
 
 
-_WORKFLOW_RESERVED_KEYS = {"actions"}
+_WORKFLOW_RESERVED_KEYS: set[str] = set()
 
 
 def _build_workflow_types(raw: dict) -> dict[str, WorkflowType]:
@@ -161,7 +161,8 @@ def _build_workflow_types(raw: dict) -> dict[str, WorkflowType]:
     return result
 
 
-_PHASE_RESERVED_KEYS = {"shared_gates"}
+_PHASES_RESERVED_KEYS = {"shared_gates", "actions", "occam_directive"}
+_PHASE_RESERVED_KEYS = _PHASES_RESERVED_KEYS
 
 # Top-level keys in a phase section that are lifecycle dicts, not Phase fields
 _PHASE_LIFECYCLE_KEYS = {"start", "execution", "end"}
@@ -259,6 +260,9 @@ def _build_agents_and_gates(
 
     for phase_key, section in raw.items():
         if not isinstance(section, dict):
+            continue
+
+        if phase_key in _PHASES_RESERVED_KEYS and phase_key != "shared_gates":
             continue
 
         if phase_key == "shared_gates":
@@ -399,7 +403,7 @@ def _build_app(raw: dict) -> AppConfig:
 
 
 def _build_actions(raw: dict) -> dict[str, ActionDef]:
-    """Build action definitions from workflow.yaml's optional actions section."""
+    """Build action definitions from phases.yaml's optional actions section."""
     actions_raw = raw.get("actions", {})
     if not isinstance(actions_raw, dict):
         return {}
@@ -436,7 +440,7 @@ def load_model(resources_dir: str | Path) -> Model:
         agents=agents,
         gates=gates,
         app=_build_app(app_raw),
-        actions=_build_actions(wf_raw),
+        actions=_build_actions(ph_raw),
         start_gate_types=start_gates,
         end_gate_types=end_gates,
         skip_gate_types=skip_gates,
@@ -694,7 +698,7 @@ def validate_model(model: Model) -> list[str]:
     for action_name in model.actions:
         if not action_name.startswith("ACTION::"):
             issues.append(
-                f"[workflow.yaml] action '{action_name}': must use FQN format 'ACTION::NAME'. "
+                f"[phases.yaml] action '{action_name}': must use FQN format 'ACTION::NAME'. "
                 f"Fix: rename to 'ACTION::{action_name.upper()}'."
             )
 
@@ -703,12 +707,12 @@ def validate_model(model: Model) -> list[str]:
     for action_name, action_def in model.actions.items():
         if not action_def.cli_name:
             issues.append(
-                f"[workflow.yaml] action '{action_name}': missing 'cli_name'. "
+                f"[phases.yaml] action '{action_name}': missing 'cli_name'. "
                 "Fix: add 'cli_name: ...' to the action definition."
             )
         elif action_def.cli_name in action_cli_map:
             issues.append(
-                f"[workflow.yaml] action '{action_name}': cli_name '{action_def.cli_name}' "
+                f"[phases.yaml] action '{action_name}': cli_name '{action_def.cli_name}' "
                 f"conflicts with '{action_cli_map[action_def.cli_name]}'. Fix: use unique cli_names."
             )
         else:

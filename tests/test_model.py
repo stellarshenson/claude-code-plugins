@@ -444,11 +444,6 @@ class TestValidateModelActions:
         resources = tmp_path / "resources"
         resources.mkdir()
         (resources / "workflow.yaml").write_text("""
-actions:
-  ACTION::REAL:
-    cli_name: real_action
-    type: programmatic
-    description: "exists"
 WORKFLOW::ACT:
   cli_name: act
   description: "Workflow with bad action ref"
@@ -456,6 +451,11 @@ WORKFLOW::ACT:
     - name: STEP
 """)
         (resources / "phases.yaml").write_text("""
+actions:
+  ACTION::REAL:
+    cli_name: real_action
+    type: programmatic
+    description: "exists"
 shared_gates:
   skip:
     gatekeeper_skip:
@@ -493,10 +493,6 @@ STEP:
         resources = tmp_path / "resources"
         resources.mkdir()
         (resources / "workflow.yaml").write_text("""
-actions:
-  bad_action:
-    type: programmatic
-    description: "not FQN"
 WORKFLOW::WF:
   cli_name: wf
   description: "test"
@@ -504,6 +500,10 @@ WORKFLOW::WF:
     - name: STEP
 """)
         (resources / "phases.yaml").write_text("""
+actions:
+  bad_action:
+    type: programmatic
+    description: "not FQN"
 shared_gates:
   skip:
     gatekeeper_skip:

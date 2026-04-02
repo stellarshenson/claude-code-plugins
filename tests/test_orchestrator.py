@@ -613,13 +613,6 @@ class TestGenerativeActionDispatch:
         resources.mkdir()
 
         (resources / "workflow.yaml").write_text("""
-actions:
-  ACTION::GEN_ACTION:
-    cli_name: gen_action
-    type: generative
-    description: "A generative action"
-    prompt: "Do generative work"
-
 WORKFLOW::GEN:
   cli_name: gen_workflow
   description: "Workflow with generative action"
@@ -628,6 +621,13 @@ WORKFLOW::GEN:
 """)
 
         (resources / "phases.yaml").write_text("""
+actions:
+  ACTION::GEN_ACTION:
+    cli_name: gen_action
+    type: generative
+    description: "A generative action"
+    prompt: "Do generative work"
+
 shared_gates:
   skip:
     gatekeeper_skip:

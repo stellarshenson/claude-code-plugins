@@ -34,41 +34,6 @@
 #         skippable: true
 # ──────────────────────────────────────────────────────────────────
 
-# ── Actions ────────────────────────────────────────────────────────
-# Named actions referenced by phases.yaml auto_actions. Each action
-# uses FQN ACTION::NAME with cli_name for phases.yaml references.
-
-actions:
-  ACTION::PLAN_SAVE:
-    cli_name: plan_save
-    type: programmatic
-    description: "Save PLAN output to plan.yaml for dependency workflows"
-  ACTION::ITERATION_SUMMARY:
-    cli_name: iteration_summary
-    type: programmatic
-    description: "Write iteration_N.md executive summary from phase outputs"
-  ACTION::ITERATION_ADVANCE:
-    cli_name: iteration_advance
-    type: programmatic
-    description: "Advance to next iteration, reset phase state"
-  ACTION::HYPOTHESIS_AUTOWRITE:
-    cli_name: hypothesis_autowrite
-    type: generative
-    description: "Extract structured hypotheses from phase output"
-    prompt: |
-      Read the hypothesis output and extract structured entries.
-      For each hypothesis write: ID, HYPOTHESIS, PREDICT, EVIDENCE, RISK, STARS.
-      Read existing hypotheses.yaml first. APPEND new entries to the list.
-      UPDATE existing entries by matching ID field.
-      Do NOT overwrite or remove existing entries.
-  ACTION::HYPOTHESIS_GC:
-    cli_name: hypothesis_gc
-    type: generative
-    description: "Archive DONE/REMOVED hypotheses to archive file"
-    prompt: |
-      Read hypotheses.yaml. Move entries with status DONE or REMOVED
-      to hypotheses_archive.yaml. Keep only active hypotheses in main file.
-
 # Planning - non-independent workflow that auto-chains before full workflow.
 # Cannot be invoked directly via --type. Breaks down the objective into
 # N implementation iterations with scope, files, and acceptance criteria.

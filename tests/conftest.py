@@ -23,12 +23,6 @@ def minimal_resources(tmp_path):
     resources.mkdir()
 
     (resources / "workflow.yaml").write_text("""
-actions:
-  ACTION::TEST_ACTION:
-    cli_name: test_action
-    type: programmatic
-    description: "A test action"
-
 WORKFLOW::TEST_WORKFLOW:
   cli_name: test_workflow
   description: "A test workflow"
@@ -42,6 +36,12 @@ WORKFLOW::TEST_WORKFLOW:
 """)
 
     (resources / "phases.yaml").write_text("""
+actions:
+  ACTION::TEST_ACTION:
+    cli_name: test_action
+    type: programmatic
+    description: "A test action"
+
 shared_gates:
   skip:
     gatekeeper_skip:
