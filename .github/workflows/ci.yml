@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: |
+          uv venv .venv
+          uv pip install --python .venv -e ".[dev]"
+
+      - name: Lint
+        run: |
+          uvx ruff format --check
+          uvx ruff check
+
+      - name: Test
+        run: |
+          .venv/bin/pytest tests/ -v --tb=short
+
+      - name: Validate model
+        run: |
+          .venv/bin/python -c "
+          from stellars_claude_code_plugins.engine.model import load_model, validate_model
+          from pathlib import Path
+          model = load_model(Path('stellars_claude_code_plugins/engine/resources'))
+          issues = validate_model(model)
+          assert not issues, f'Validation failed: {issues}'
+          print('Model validation: OK')
+          "
+
+      - name: Build wheel
+        run: |
+          uv pip install --python .venv build
+          .venv/bin/python -m build --wheel
