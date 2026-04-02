@@ -39,6 +39,7 @@ These were raised during earlier iterations and must be addressed or explicitly 
 - **Auto-reinstall in skill** (context from iter 16 PLAN): Auto-reinstall if newer version detected. Status: DEFERRED - coupled with version check
 - **Context acknowledgment** (context from iter 16 TEST): Agents should acknowledge context messages. Status: DEFERRED to separate iteration - requires changes to agent spawning protocol
 - **Hypothesis refinement** (context from iter 16 TEST): Hypothesis agents should refine existing backlog, not generate from scratch. Status: DEFERRED - requires hypothesis persistence changes
+- **Resource conflict handling** (context from iter 18 TEST): When project-local YAML resources have old format, archive them and copy fresh from module with warning. Status: DEFERRED to separate iteration - requires format version detection logic
 
 ## Constraints
 

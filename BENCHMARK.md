@@ -129,11 +129,16 @@ Residual: [ ] (10 - grade)
 
 ## Section 6: Context Messages Addressed
 
+Check context.yaml for active markers and verify each is tracked:
+
 - [ ] Version check feature: addressed in PROGRAM.md (deferred with reason)
 - [ ] Auto-reinstall feature: addressed in PROGRAM.md (deferred with reason)
 - [ ] Context acknowledgment feature: addressed in PROGRAM.md (deferred with reason)
 - [ ] Hypothesis refinement feature: addressed in PROGRAM.md (deferred with reason)
+- [ ] Resource conflict handling: addressed in PROGRAM.md (deferred with reason)
 - [ ] Process rule for context handling: documented in PROGRAM.md or orchestrator context
+- [ ] Every context message in .auto-build-claw/context.yaml has a corresponding entry in PROGRAM.md (either as work item or deferred)
+- [ ] No orphan context messages - all accounted for
 
 ## Completion Conditions
 
