@@ -1,79 +1,103 @@
-# Program: Medium Article Update - Pull-Based Workflow Enforcement
+# Program: Tighten Article 01b from 7.5 to 9/10
 
 ## Objective
 
-Update the Medium article `docs/medium/article_01_pull-based-workflow-enforcement.md` and its SVG illustrations to reflect the current architecture of the auto-build-claw orchestrator. The article was written before FQN naming, bundled resources, program/benchmark workflow, and the 3-file YAML model. It needs to explain how program and benchmark drive iterations and why benchmark-driven execution matters. The article should be shortened for easier reading while preserving technical depth.
+Tighten `docs/medium/article_01b_pull-based-workflow-enforcement.md` from a 7.5/10 internal design note into a 9/10 public article. The core thesis is strong - agents cannot be trusted with their own process control. The delivery is uneven. Cut repetition, restructure the arc, sharpen opening and closing.
 
-## Baseline Metrics
+## Article Arc
 
-| Metric | Current | Target |
-|--------|---------|--------|
-| Article word count | ~2400 | ~1200-2000 |
-| Outdated references | 8+ (agents.yaml, 4-file model, bare names, old structure, wrong repo URL) | 0 |
-| Program/benchmark coverage | 0 sections | 1-2 sections |
-| SVG files | 9 (may have stale content) | 9 (updated to match current architecture) |
+The article has two halves with a clear transition:
+
+**First half** (problem + pattern): failure modes, pull vs push, three principles stated concisely. Accessible, visceral. Technical detail minimal - the FSM code block and `claude -p` detail move to second half.
+
+**Second half** (proof + depth): gates mechanics, multi-agent panels, guardian checklist, theoretical foundations, implementation proof (transcripts), program-driven execution, content/engine separation. Technical, specific, earned.
+
+**Section-to-half mapping**:
+- FIRST HALF: Opening, Five failure modes, Push vs Pull SVG, Three principles (stated as concepts, no code)
+- TRANSITION: Phase lifecycle SVG bridges to mechanics
+- SECOND HALF: Two gates (with FSM code), Multi-agent panels, Guardian, Theoretical foundations, Program-driven execution, Content/engine separation, Real sessions, Limitations, Closing
 
 ## Work Items
 
-- **Update article technical content** (high)
-  - Scope: `docs/medium/article_01_pull-based-workflow-enforcement.md`
-  - Fix repository URL from `svg-inforgraphics-claw` to `claude-code-plugins`
-  - Update "Implementation example" section: 3 YAML files (not 4), FQN workflow names (`WORKFLOW::FULL`), `cli_name`, bundled resources in pip package, `orchestrate` CLI (not `orchestrate.py`)
-  - Update code snippets: workflow.yaml shows FQN keys, no agents.yaml reference
-  - Update namespace resolution section: strict lookup (no FULL:: fallback), shared phases vs workflow-specific
-  - Add section on program-driven execution: PROGRAM.md defines objective + work items, BENCHMARK.md defines measurable evaluation, orchestrator runs iterations until benchmark score = 0
-  - Explain why benchmark matters: single composite score, iteration tracking, plateau detection, prevents aimless iteration
-  - Acceptance: no references to agents.yaml, correct repo URL, FQN examples, program/benchmark explained
+- **Rewrite opening to show, not tell** (high)
+  - Scope: first 3-4 paragraphs of article_01b
+  - Current opening TELLS about failure abstractly: "the first iteration gets a thorough plan, the second cuts research short"
+  - New opening SHOWS failure: use a real or realistic transcript snippet of an agent rationalising a skip, then pull back to "this is what happens without enforcement"
+  - The pull-based framing comes AFTER the reader has seen the agent break discipline
+  - BEFORE: "AI coding agents generate impressive code. They are terrible at following process."
+  - AFTER: [agent transcript of deterioration] -> "This is what happens when the agent owns the control flow."
+  - Acceptance: first 2 sentences are not declarative statements about AI - they show a specific moment of failure
 
-- **Shorten article text** (high)
-  - Scope: `docs/medium/article_01_pull-based-workflow-enforcement.md`
-  - Reduce word count to 1200-2000 range without losing technical substance
-  - Tighten verbose paragraphs - say the same thing in fewer words
-  - Remove redundant explanations (the article repeats "separate process" concept several times)
-  - Merge the ACP subprocess section into the gates section (it's implementation detail, not a principle)
-  - Acceptance: word count 1800-2000, no key concepts lost
+- **Eliminate concept restatement** (high)
+  - Scope: full article
+  - These synonyms currently appear - consolidate to ONE canonical phrasing per concept:
+    - "external enforcement" / "external control" / "external orchestrator" / "external process control" -> keep "external enforcement" once
+    - "separate process" / "process isolation" / "independent subprocess" / "isolated evaluator" / "no shared context" -> keep "process isolation" once in Principle 2, then use "the gate" or "the gatekeeper" as shorthand
+    - "the agent cannot skip" / "cannot advance" / "cannot decide" / "cannot override" -> state once in Principle 1
+  - Each section after the principles adds NEW mechanism or proof, never restates
+  - Acceptance: grep for each synonym cluster shows exactly 1 canonical usage
 
-- **Review and update SVG illustrations** (medium)
-  - Scope: `docs/medium/images/*.svg`
-  - Use svg-infographics skill from `/home/lab/workspace/.claude/skills/svg-infographics/SKILL.md`
-  - Review each SVG for accuracy against current architecture
-  - Update `04-content-engine-separation.svg` to show 3 files (not 4), FQN naming
-  - Update `05-full-workflow-agents.svg` if agent counts or phase names changed
-  - Add or update SVG showing program/benchmark workflow if needed
-  - Render SVGs to PNG via Playwright
-  - Acceptance: all SVGs accurate, PNGs generated
+- **Propose new title and subtitle** (high)
+  - Scope: frontmatter and H1
+  - Current: "Pull-Based Workflow Enforcement for Autonomous AI Agents" - reads like a paper abstract
+  - Title should name the tension (agents vs discipline) not the solution pattern
+  - Subtitle should telegraph the two-part arc (why + how)
+  - BAD: "I Gave an AI Agent Full Autonomy. Here's What Broke." (clickbait)
+  - BAD: "A Novel Approach to Agent Process Management" (academic)
+  - GOOD DIRECTION: names the problem in the agent's voice, implies the solution exists
+  - Acceptance: title hooks an AI engineer, subtitle previews the article structure
 
-- **Add theoretical foundations section** (high)
-  - Scope: `docs/medium/article_01_pull-based-workflow-enforcement.md`, new SVG, `references/` folder
-  - New section grounding the method in established concepts:
-    - **Context coherence**: keeping instructions compact (ideally < 200 tokens of directives) so the LLM follows without divergence. Larger instruction sets cause attention dilution and selective compliance
-    - **Phase-boundary reinforcement**: each phase introduces a different latent reasoning structure (research = exploratory, plan = constructive, review = evaluative). Re-injecting phase-specific instructions at transitions prevents the model from carrying over the wrong reasoning mode
-    - **Readback as course correction**: forcing the agent to paraphrase instructions before acting is a comprehension probe - it re-focuses attention on the relevant subset of context, counteracting the primacy/recency bias in long contexts
-    - **Independent session as unbiased classifier**: the gatekeeper subprocess has no shared reasoning chain, so it functions as an independent classifier evaluating evidence against criteria without confirmation bias from the generating session
-    - **Objective function convergence**: Karpathy's autoresearch pattern - single scalar metric, fixed evaluation, iterate until convergence or plateau. This is gradient-free optimization where each iteration is a step
-    - Additional concepts as discovered during research (attention sink, lost-in-the-middle, instruction hierarchy)
-  - Find 2-5 academic papers that justify these statements
-  - Download papers to `references/` folder in project root
-  - Create SVG infographic for the theoretical section using svg-infographics skill
-  - Keep language consistent with rest of article (brief, technical, no fluff)
-  - Acceptance: section present with concepts explained, papers cited, SVG created, papers in references/
+- **Tighten the middle - specific cuts** (high)
+  - Scope: three principles, two gates, multi-agent, guardian sections
+  - Three principles: state each as 2-3 sentences of concept ONLY (no code, no implementation detail). Move FSM code block and `transitions` package mention to Two Gates section. Move `claude -p` detail to Two Gates.
+  - Two gates: this becomes the first technical section. Combine comprehension + completion gates with FSM mechanics. The CLAUDECODE gotcha stays here.
+  - Multi-agent panels: currently 3 sentences. Keep as-is - already tight.
+  - Guardian: keep 4-point checklist verbatim. Cut the surrounding "appears twice" explanation to 1 sentence.
+  - Theoretical foundations: compress to a single paragraph with inline citations. Currently 5 separate bold paragraphs = 130 words of restating principles + citations. Target: 60-80 words that add the academic layer without restating.
+  - Content/engine: cut FQN naming detail, strict-lookup detail, `cli_name` detail. These are README material. Keep: 3 files, YAML-driven, plugin install (`/install-plugin stellarshenson/claude-code-plugins`), 5 workflow types. NOT pip install - the plugin handles installation automatically in Claude Code.
+  - Acceptance: no section restates a concept from the principles; theoretical section is 1 paragraph
+
+- **Rewrite closing as doctrine** (high)
+  - Scope: last 2-3 paragraphs + italic postscript
+  - Current closing: "the method matters more than the tool" + polite install instructions + humble self-reference
+  - New closing builds to: "Agents do not need better prompts. They need constraints they cannot override."
+  - The italic postscript ("built through its own process") is the proof-by-construction payoff - keep it, but make it earn its place after the doctrine line
+  - Acceptance: final non-italic sentence is doctrine, not suggestion
+
+- **Reduce SVG density** (medium)
+  - Scope: image references in article
+  - Currently 11 SVGs in ~1700 words = 1 per 155 words. Too many for Medium.
+  - Remove SVGs that illustrate text already clear without them:
+    - `06-five-failure-modes.svg` - the enumerated list IS the visualization
+    - `07-three-principles.svg` - principles are immediately explained in prose
+  - Keep SVGs that show things text cannot: lifecycle FSM, guardian architecture, agent defect matrix, end-to-end flow, content/engine separation, push vs pull
+  - Target: 7-8 SVGs max
+  - Acceptance: no SVG precedes text that fully explains the same content
+
+- **Address the Limitations section** (low)
+  - Scope: limitations paragraph
+  - Current: 2 sentences that quietly concede the architecture doesn't fully solve the problem
+  - Expand to 3-4 sentences: honest about correlated errors, honest about latency cost, but frame as known trade-offs not fatal flaws
+  - Acceptance: limitations feel like earned honesty, not undermining
 
 ## Exit Conditions
 
 Iterations stop when ANY of these is true:
-1. All work items have acceptance criteria met
+1. Article editorial grade >= 9/10 AND all work items met
 2. No improvement for 2 consecutive iterations (plateau)
 
 Additionally ALL must hold:
-- Article has 0 references to agents.yaml
-- Article has correct repo URL (claude-code-plugins)
-- Article explains program + benchmark workflow
-- Word count between 1200-2000
+- Opening shows failure, not tells about it
+- Closing ends with doctrine
+- Each synonym cluster appears exactly once
+- No section restates a concept from the principles
 
 ## Constraints
 
-- Do NOT change the article's core thesis (pull-based enforcement, three principles)
-- Do NOT change the overall article structure (problem, method, implementation, limitations)
-- Do NOT remove the real session transcript example
-- Preserve the five failure modes section
-- SVGs must follow svg-infographics skill standards from workspace
+- Work ONLY on article_01b (not article_01)
+- Preserve ALL distinct ideas - cut restatements, not concepts
+- Preserve: both real session transcripts in full terminal-output form
+- Preserve: voice and register (authoritative, direct, punchy short sentences mixed with technical precision)
+- Preserve: concrete specificity (package names, function names, agent counts, timing)
+- Preserve: proof-by-construction postscript
+- Do NOT change SVG content - only adjust which SVGs are included and placement
