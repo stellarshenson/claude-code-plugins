@@ -333,17 +333,24 @@ def _build_agent_instructions(phase: str, ctx: dict | None = None) -> str:
 
 def _build_failures_context() -> str:
     """Build prior failures context string from failures.yaml."""
-    all_failures = _load_yaml_list(FAILURES_FILE)
+    all_failures = _load_failures()
     if not all_failures:
         return ""
-    prior_context = f"\n**Prior failures** ({len(all_failures)} total):\n"
-    for f in all_failures[-5:]:
-        prior_context += (
-            f"  - [{f.get('mode', '?')}] "
-            f"(iter {f.get('iteration', '?')}) "
-            f"{f.get('description', '?')}\n"
-        )
-    return prior_context
+    unsolved = {fid: f for fid, f in all_failures.items() if not f.get("solution")}
+    solved = {fid: f for fid, f in all_failures.items() if f.get("solution")}
+    parts = [f"\n**Prior failures** ({len(all_failures)} total, {len(unsolved)} unsolved):\n"]
+    if unsolved:
+        parts.append("Unsolved (investigation targets):\n")
+        for fid, f in list(unsolved.items())[-5:]:
+            parts.append(
+                f"  - [{fid}] ({f.get('mode', '?')}) iter {f.get('iteration', '?')}: "
+                f"{f.get('description', '?')}\n"
+            )
+    if solved:
+        parts.append(f"Solved ({len(solved)}):\n")
+        for fid, f in list(solved.items())[-3:]:
+            parts.append(f"  - [{fid}] SOLVED: {f.get('solution', '?')}\n")
+    return "".join(parts)
 
 
 def _build_plan_context(state: dict) -> str:
@@ -712,9 +719,22 @@ def _append_log(entry: dict) -> None:
 
 
 def _append_failure(entry: dict) -> None:
-    """Append a timestamped failure entry to the failures log."""
-    entry["timestamp"] = _now()
-    _append_yaml_entry(FAILURES_FILE, entry)
+    """Append a failure entry with auto-generated identifier."""
+    failures = _load_failures()
+    desc = entry.get("description", entry.get("mode", "failure"))
+    fid = _generate_entry_id(desc, set(failures.keys()))
+    failures[fid] = {
+        "description": entry.get("description", ""),
+        "context": entry.get("context", ""),
+        "iteration": entry.get("iteration", 0),
+        "phase": entry.get("phase", "unknown"),
+        "mode": entry.get("mode", "?"),
+        "acknowledged_by": [],
+        "processed": False,
+        "solution": None,
+        "timestamp": _now(),
+    }
+    _save_failures(failures)
 
 
 def _load_context() -> dict:
@@ -752,8 +772,30 @@ def _save_context(ctx: dict) -> None:
     CONTEXT_FILE.write_text(_yaml_dump(ctx))
 
 
-def _generate_context_id(message: str, existing_ids: set) -> str:
-    """Generate a short identifier from a context message.
+def _load_failures() -> dict:
+    """Load failures from failures.yaml as identifier-keyed dicts.
+    Raises ValueError if file contains legacy flat list format.
+    """
+    if not FAILURES_FILE.exists():
+        return {}
+    data = yaml.safe_load(FAILURES_FILE.read_text())
+    if not isinstance(data, dict):
+        if isinstance(data, list):
+            raise ValueError(
+                "failures.yaml contains legacy flat list format. "
+                "Delete failures.yaml and re-log failures."
+            )
+        return {}
+    return data
+
+
+def _save_failures(failures: dict) -> None:
+    """Save failures to failures.yaml."""
+    FAILURES_FILE.write_text(_yaml_dump(failures))
+
+
+def _generate_entry_id(message: str, existing_ids: set) -> str:
+    """Generate a short identifier from a message string.
 
     Slugifies the message to lowercase alphanumeric + underscores,
     truncated to 37 chars. Falls back to 'ctx' for empty slugs.
@@ -839,9 +881,9 @@ def _prev_implementable(state: dict) -> str:
     return phases[0]
 
 
-def _count_iteration_failures(iteration: int) -> list[dict]:
-    """Read failure log entries for a specific iteration."""
-    return [e for e in _load_yaml_list(FAILURES_FILE) if e.get("iteration") == iteration]
+def _count_iteration_failures(iteration: int) -> list[tuple[str, dict]]:
+    """Return (fid, entry) pairs for a specific iteration."""
+    return [(fid, e) for fid, e in _load_failures().items() if e.get("iteration") == iteration]
 
 
 def _init_artifacts_dir(artifacts_dir: Path | None = None) -> None:
@@ -872,7 +914,7 @@ def _read_last_iteration(artifacts_dir: Path | None = None) -> int:
     return 0
 
 
-_CLEAN_PRESERVE = {"context.yaml"}  # files preserved across clean
+_CLEAN_PRESERVE = {"context.yaml", "failures.yaml"}  # files preserved across clean
 _CLEAN_PRESERVE_DIRS = {"resources"}  # directories preserved across clean
 
 
@@ -1345,8 +1387,8 @@ def _run_summary(state: dict) -> None:
     if failures:
         lines.append("## Failures")
         lines.append("")
-        for f in failures:
-            lines.append(f"- [{f.get('mode', '?')}] {f.get('description', '?')}")
+        for fid, f in failures:
+            lines.append(f"- [{fid}] {f.get('mode', '?')}: {f.get('description', '?')}")
         lines.append("")
 
     summary_path = DEFAULT_ARTIFACTS_DIR / f"iteration_{iteration}.md"
@@ -1447,7 +1489,7 @@ def _run_next_iteration(state: dict) -> None:
     prior_failures = _count_iteration_failures(current)
     if prior_failures:
         print("\n" + _msg("prior_failures_header_short", count=len(prior_failures)))
-        for f in prior_failures[-3:]:
+        for fid, f in prior_failures[-3:]:
             print(
                 _msg(
                     "prior_failure_item",
@@ -1579,7 +1621,7 @@ def cmd_new(args) -> None:
         prior_failures = _count_iteration_failures(old_state["iteration"])
         if prior_failures:
             print("\n" + _msg("prior_failures_header", count=len(prior_failures)))
-            for f in prior_failures[-3:]:
+            for fid, f in prior_failures[-3:]:
                 print(
                     _msg(
                         "prior_failure_item_full",
@@ -1709,6 +1751,18 @@ def cmd_start(args) -> None:
                 dirty = True
         if dirty:
             _save_context(all_ctx)
+
+    # Update failure acknowledged_by inline
+    all_failures = _load_failures()
+    if all_failures:
+        dirty_f = False
+        for fid, entry in all_failures.items():
+            ack_list = entry.setdefault("acknowledged_by", [])
+            if phase not in ack_list:
+                ack_list.append(phase)
+                dirty_f = True
+        if dirty_f:
+            _save_failures(all_failures)
 
     foot = _footer(phase, "start", state)
     print(header + body + foot)
@@ -2072,14 +2126,9 @@ def cmd_status(args) -> None:
     failures = _count_iteration_failures(state["iteration"])
     if failures:
         print("\n" + _msg("status_failures_header", count=len(failures)))
-        for f in failures:
-            print(
-                _msg(
-                    "status_failure_item",
-                    mode=f.get("mode", "?"),
-                    desc=f.get("description", "?")[:60],
-                )
-            )
+        for fid, f in failures:
+            solved = " [SOLVED]" if f.get("solution") else ""
+            print(f"  [{fid}] {f.get('mode', '?')}: {f.get('description', '?')[:60]}{solved}")
 
     # Show context messages with inline acknowledgment
     all_ctx = _load_context()
@@ -2324,7 +2373,7 @@ def cmd_context(args) -> None:
 
     # Add new context entry
     ctx = _load_context()
-    cid = _generate_context_id(message, set(ctx.keys()))
+    cid = _generate_entry_id(message, set(ctx.keys()))
     ctx[cid] = {
         "message": message,
         "phase": phase,
@@ -2355,54 +2404,67 @@ def cmd_log_failure(args) -> None:
     """Log a failure mode found during the iteration.
 
     Appends to failures.yaml with mode ID, description, iteration,
-    and phase. Failure modes accumulate across iterations and feed
-    into RESEARCH phase context for the next iteration.
+    phase, and optional context. Failure modes accumulate across
+    iterations and feed into RESEARCH phase context for the next iteration.
     """
     state = _load_state()
     iteration = state["iteration"] if state else 0
     phase = state["current_phase"] if state else "unknown"
-
+    context_str = getattr(args, "context", "") or ""
     _append_failure(
         {
             "iteration": iteration,
             "phase": phase,
             "mode": args.mode,
             "description": args.desc,
+            "context": context_str,
         }
     )
     print(_msg("failure_logged", mode=args.mode, desc=args.desc))
 
 
 def cmd_failures(args) -> None:
-    """Display the failure log grouped by iteration.
+    """Display the failure log grouped by iteration, or mark as processed.
 
-    Shows all logged failure modes with their mode ID, phase,
-    description, and timestamp. Used to review what went wrong
-    across iterations.
+    Shows all logged failure modes with their identifier, mode ID, phase,
+    description, and solution status. Supports --processed to mark a failure
+    as addressed and --solution to record the fix.
     """
-    if not FAILURES_FILE.exists():
-        print(_msg("no_failures"))
+    processed_id = getattr(args, "processed", "") or ""
+    solution_text = getattr(args, "solution", "") or ""
+
+    if processed_id:
+        failures = _load_failures()
+        if processed_id not in failures:
+            print(f"Failure '{processed_id}' not found.", file=sys.stderr)
+            sys.exit(1)
+        failures[processed_id]["processed"] = True
+        if solution_text:
+            failures[processed_id]["solution"] = solution_text
+        _save_failures(failures)
+        print(f"Failure '{processed_id}' marked as processed.")
         return
 
-    entries = _load_yaml_list(FAILURES_FILE)
-
-    if not entries:
+    failures = _load_failures()
+    if not failures:
         print(_msg("no_failures"))
         return
 
     by_iter: dict[int, list] = {}
-    for e in entries:
+    for fid, e in failures.items():
         it = e.get("iteration", 0)
-        by_iter.setdefault(it, []).append(e)
+        by_iter.setdefault(it, []).append((fid, e))
 
     for it in sorted(by_iter.keys()):
         print("\n" + _msg("failure_iteration_header", iteration=it))
-        for e in by_iter[it]:
+        for fid, e in by_iter[it]:
             mode = e.get("mode", "?")
             desc = e.get("description", "?")
             phase = e.get("phase", "?")
-            ts = e.get("timestamp", "?")
-            print(_msg("failure_item", mode=mode, phase=phase, desc=desc, ts=ts))
+            solved = e.get("solution")
+            proc = " [PROCESSED]" if e.get("processed") else ""
+            sol = f" SOLUTION: {solved}" if solved else ""
+            print(f"  [{fid}] ({mode}) {phase}: {desc[:60]}{proc}{sol}")
 
 
 def cmd_info(args) -> None:
@@ -2798,9 +2860,16 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     p_fail = sub.add_parser("log-failure", help=_cli("commands", "log_failure"))
     p_fail.add_argument("--mode", required=True, help=_cli("args", "mode"))
     p_fail.add_argument("--desc", required=True, help=_cli("args", "desc"))
+    p_fail.add_argument("--context", default="", help="Context of when failure occurred")
 
     # ── failures ──
-    sub.add_parser("failures", help=_cli("commands", "failures"))
+    p_failures = sub.add_parser("failures", help=_cli("commands", "failures"))
+    p_failures.add_argument(
+        "--processed", default="", help="Mark failure as processed (pass identifier)"
+    )
+    p_failures.add_argument(
+        "--solution", default="", help="Solution description (use with --processed)"
+    )
 
     # ── add-iteration ──
     p_add = sub.add_parser("add-iteration", help=_cli("commands", "add_iteration"))

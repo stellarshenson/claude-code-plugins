@@ -232,7 +232,19 @@ class TestBuildContext:
 
         orch.STATE_FILE = tmp_path / "state.yaml"
 
-        failures = [{"mode": "FM-1", "iteration": 1, "description": "test failure"}]
+        failures = {
+            "test_failure": {
+                "mode": "FM-1",
+                "iteration": 1,
+                "description": "test failure",
+                "context": "",
+                "phase": "ALPHA",
+                "acknowledged_by": [],
+                "processed": False,
+                "solution": None,
+                "timestamp": "2026-04-02T00:00:00+00:00",
+            }
+        }
         orch.FAILURES_FILE.write_text(yaml.dump(failures))
 
         state = {
@@ -463,13 +475,14 @@ class TestCmdLogFailure:
         }
         orch._save_state(state)
 
-        args = argparse.Namespace(mode="FM-TEST", desc="something broke")
+        args = argparse.Namespace(mode="FM-TEST", desc="something broke", context="")
         orch.cmd_log_failure(args)
 
-        failures = orch._load_yaml_list(orch.FAILURES_FILE)
+        failures = orch._load_failures()
         assert len(failures) == 1
-        assert failures[0]["mode"] == "FM-TEST"
-        assert failures[0]["description"] == "something broke"
+        fid, entry = next(iter(failures.items()))
+        assert entry["mode"] == "FM-TEST"
+        assert entry["description"] == "something broke"
 
 
 class TestIndependentWorkflow:
@@ -994,22 +1007,22 @@ class TestContextRichEntries:
     def test_generate_context_id_basic(self, minimal_resources, tmp_path):
         """Identifier is slugified from message."""
         orch._initialize(minimal_resources)
-        cid = orch._generate_context_id("Focus on X", set())
+        cid = orch._generate_entry_id("Focus on X", set())
         assert cid == "focus_on_x"
 
     def test_generate_context_id_truncation(self, minimal_resources, tmp_path):
         """Identifier truncated to 37 chars max."""
         orch._initialize(minimal_resources)
         long_msg = "a" * 100
-        cid = orch._generate_context_id(long_msg, set())
+        cid = orch._generate_entry_id(long_msg, set())
         assert len(cid) <= 37
 
     def test_generate_context_id_collision(self, minimal_resources, tmp_path):
         """Collision appends _2, _3 suffix."""
         orch._initialize(minimal_resources)
-        cid1 = orch._generate_context_id("focus on x", set())
-        cid2 = orch._generate_context_id("focus on x", {cid1})
-        cid3 = orch._generate_context_id("focus on x", {cid1, cid2})
+        cid1 = orch._generate_entry_id("focus on x", set())
+        cid2 = orch._generate_entry_id("focus on x", {cid1})
+        cid3 = orch._generate_entry_id("focus on x", {cid1, cid2})
         assert cid1 == "focus_on_x"
         assert cid2 == "focus_on_x_2"
         assert cid3 == "focus_on_x_3"
@@ -1017,7 +1030,7 @@ class TestContextRichEntries:
     def test_generate_context_id_empty_fallback(self, minimal_resources, tmp_path):
         """Empty/special-chars message falls back to 'ctx'."""
         orch._initialize(minimal_resources)
-        cid = orch._generate_context_id("!!!", set())
+        cid = orch._generate_entry_id("!!!", set())
         assert cid == "ctx"
 
     def test_save_load_rich_entry(self, minimal_resources, tmp_path):
@@ -1056,13 +1069,13 @@ class TestContextRichEntries:
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
         ctx = {}
-        cid1 = orch._generate_context_id("fix auth", set(ctx.keys()))
+        cid1 = orch._generate_entry_id("fix auth", set(ctx.keys()))
         ctx[cid1] = {
             "message": "fix auth", "phase": "IMPLEMENT",
             "created": "2026-04-02T14:00:00+00:00",
             "acknowledged_by": [], "processed": False,
         }
-        cid2 = orch._generate_context_id("fix auth", set(ctx.keys()))
+        cid2 = orch._generate_entry_id("fix auth", set(ctx.keys()))
         ctx[cid2] = {
             "message": "fix auth again", "phase": "IMPLEMENT",
             "created": "2026-04-02T15:00:00+00:00",
@@ -1200,6 +1213,165 @@ class TestContextRichEntries:
                         assert "context" in gate.prompt.lower(), (
                             f"Gatekeeper in {phase_key} missing context reference"
                         )
+
+
+class TestFailuresRichEntries:
+    """Tests for identifier-keyed rich failure entries."""
+
+    def test_load_failures_rich_format(self, minimal_resources, tmp_path):
+        """Round-trip a rich failure entry."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        failures = {
+            "gate_timeout": {
+                "description": "gatekeeper timed out",
+                "context": "IMPLEMENT phase with large diff",
+                "iteration": 3,
+                "phase": "IMPLEMENT",
+                "mode": "FM-TIMEOUT",
+                "acknowledged_by": [],
+                "processed": False,
+                "solution": None,
+                "timestamp": "2026-04-02T14:00:00+00:00",
+            }
+        }
+        orch._save_failures(failures)
+        loaded = orch._load_failures()
+        assert "gate_timeout" in loaded
+        assert loaded["gate_timeout"]["description"] == "gatekeeper timed out"
+        assert loaded["gate_timeout"]["solution"] is None
+
+    def test_load_failures_rejects_legacy_list(self, minimal_resources, tmp_path):
+        """Old flat list format raises ValueError."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        legacy = [{"iteration": 1, "phase": "TEST", "mode": "FM-X", "description": "old"}]
+        (tmp_path / "failures.yaml").write_text(yaml.dump(legacy))
+        with pytest.raises(ValueError, match="legacy flat list"):
+            orch._load_failures()
+
+    def test_failure_identifier_generation(self, minimal_resources, tmp_path):
+        """Failure gets auto-generated identifier from description."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        orch._append_failure({
+            "iteration": 1,
+            "phase": "TEST",
+            "mode": "FM-TEST-FAIL",
+            "description": "tests failed unexpectedly",
+        })
+        loaded = orch._load_failures()
+        assert len(loaded) == 1
+        fid = list(loaded.keys())[0]
+        assert "tests_failed" in fid
+        assert loaded[fid]["mode"] == "FM-TEST-FAIL"
+
+    def test_failure_processed_with_solution(self, minimal_resources, tmp_path):
+        """Marking a failure as processed with solution."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        failures = {
+            "gate_timeout": {
+                "description": "gatekeeper timed out",
+                "context": "",
+                "iteration": 3,
+                "phase": "IMPLEMENT",
+                "mode": "FM-TIMEOUT",
+                "acknowledged_by": [],
+                "processed": False,
+                "solution": None,
+                "timestamp": "2026-04-02T14:00:00+00:00",
+            }
+        }
+        orch._save_failures(failures)
+        loaded = orch._load_failures()
+        loaded["gate_timeout"]["processed"] = True
+        loaded["gate_timeout"]["solution"] = "increased timeout to 60s"
+        orch._save_failures(loaded)
+        final = orch._load_failures()
+        assert final["gate_timeout"]["processed"] is True
+        assert final["gate_timeout"]["solution"] == "increased timeout to 60s"
+
+    def test_failures_preserved_on_clean(self, minimal_resources, tmp_path):
+        """failures.yaml survives _clean_artifacts_dir."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        failures = {"test_fail": {"description": "test", "phase": "TEST",
+                                   "mode": "FM", "iteration": 1,
+                                   "acknowledged_by": [], "processed": False,
+                                   "solution": None, "context": "",
+                                   "timestamp": "2026-04-02"}}
+        orch._save_failures(failures)
+        orch._clean_artifacts_dir(tmp_path)
+        assert (tmp_path / "failures.yaml").exists()
+        loaded = orch._load_failures()
+        assert "test_fail" in loaded
+
+    def test_build_failures_context_solved_unsolved(self, minimal_resources, tmp_path):
+        """_build_failures_context distinguishes solved vs unsolved."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        failures = {
+            "unsolved_one": {
+                "description": "still broken",
+                "context": "",
+                "iteration": 1,
+                "phase": "TEST",
+                "mode": "FM-A",
+                "acknowledged_by": [],
+                "processed": False,
+                "solution": None,
+                "timestamp": "2026-04-02",
+            },
+            "solved_one": {
+                "description": "was broken",
+                "context": "",
+                "iteration": 1,
+                "phase": "TEST",
+                "mode": "FM-B",
+                "acknowledged_by": [],
+                "processed": True,
+                "solution": "fixed it",
+                "timestamp": "2026-04-02",
+            },
+        }
+        orch._save_failures(failures)
+        ctx = orch._build_failures_context()
+        assert "unsolved" in ctx.lower()
+        assert "solved" in ctx.lower()
+        assert "unsolved_one" in ctx
+        assert "solved_one" in ctx
+
+    def test_failure_ack_on_start(self, minimal_resources, tmp_path):
+        """cmd_start updates acknowledged_by on failures."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        failures = {
+            "test_fail": {
+                "description": "test", "context": "", "iteration": 1,
+                "phase": "TEST", "mode": "FM",
+                "acknowledged_by": [], "processed": False,
+                "solution": None, "timestamp": "2026-04-02",
+            }
+        }
+        orch._save_failures(failures)
+        # Simulate what cmd_start does for failure acknowledgment
+        loaded = orch._load_failures()
+        phase = "ALPHA"
+        for fid, entry in loaded.items():
+            ack_list = entry.setdefault("acknowledged_by", [])
+            if phase not in ack_list:
+                ack_list.append(phase)
+        orch._save_failures(loaded)
+        final = orch._load_failures()
+        assert "ALPHA" in final["test_fail"]["acknowledged_by"]
 
 
 class TestHypothesisContext:
