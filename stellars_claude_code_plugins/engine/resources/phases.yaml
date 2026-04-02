@@ -77,17 +77,22 @@ actions:
     description: "Extract structured hypotheses from phase output"
     prompt: |
       Read the hypothesis output and extract structured entries.
-      For each hypothesis write: ID, HYPOTHESIS, PREDICT, EVIDENCE, RISK, STARS.
-      Read existing hypotheses.yaml first. APPEND new entries to the list.
-      UPDATE existing entries by matching ID field.
+      Read existing hypotheses.yaml first.
+      Format: identifier-keyed YAML dict. Each entry has:
+        hypothesis, prediction, evidence, stars, status, iteration_created, notes
+      New hypotheses get status: "new" and empty notes: [].
+      APPEND new entries with auto-generated identifier keys.
+      UPDATE existing entries by matching identifier.
       Do NOT overwrite or remove existing entries.
+      Do NOT change status of existing entries.
   ACTION::HYPOTHESIS_GC:
     cli_name: hypothesis_gc
     type: generative
-    description: "Archive DONE/REMOVED hypotheses to archive file"
+    description: "Archive dismissed hypotheses to archive file"
     prompt: |
-      Read hypotheses.yaml. Move entries with status DONE or REMOVED
-      to hypotheses_archive.yaml. Keep only active hypotheses in main file.
+      Read hypotheses.yaml. Move entries with status "dismissed"
+      to hypotheses_archive.yaml. Keep entries with status "new",
+      "deferred", or "processed" in the main file.
 
 # ── Shared skip gates ─────────────────────────────────────────────
 # Skip decisions are not phase-specific - they evaluate whether
@@ -393,6 +398,7 @@ FULL::HYPOTHESIS:
           Check: 4 agents spawned separately, hypotheses merged with
           star ratings, top 1-3 selected with measurable predictions.
           Evaluate hypothesis QUALITY: each must have root cause, prediction, and evidence. Generic hypotheses without specifics = FAIL.
+          Every hypothesis must be classified: status must be processed, dismissed, or deferred. Zero hypotheses with status "new" allowed to exit.
           IF context messages are active, evidence SHOULD reference or acknowledge them.
 
 # ── PLAN (shared) ──────────────────────────────────────────────────

@@ -441,24 +441,24 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
         iteration_purpose = ""
 
     # Build hypothesis context for {prior_hyp}
-    hyp_file = DEFAULT_ARTIFACTS_DIR / "hypotheses.yaml" if DEFAULT_ARTIFACTS_DIR else None
-    if hyp_file and hyp_file.exists():
-        try:
-            hyp_data = yaml.safe_load(hyp_file.read_text())
-            if isinstance(hyp_data, list) and hyp_data:
+    try:
+        all_hyp = _load_hypotheses()
+        if all_hyp:
+            # Show deferred and new hypotheses (not dismissed/processed)
+            active = {k: v for k, v in all_hyp.items() if v.get("status") in {"new", "deferred"}}
+            if active:
                 hyp_lines = ["\n**Prior hypotheses:**\n"]
-                for h in hyp_data:
-                    if isinstance(h, dict):
-                        hid = h.get("id", "?")
-                        text = h.get("hypothesis", h.get("HYPOTHESIS", ""))
-                        stars = h.get("stars", h.get("STARS", ""))
-                        hyp_lines.append(f"- **{hid}**: {text} (stars: {stars})")
+                for hid, h in active.items():
+                    text = h.get("hypothesis", "")
+                    stars = h.get("stars", "")
+                    status = h.get("status", "?")
+                    hyp_lines.append(f"- **{hid}** [{status}]: {text} (stars: {stars})")
                 prior_hyp = "\n".join(hyp_lines) + "\n"
             else:
                 prior_hyp = ""
-        except Exception:
+        else:
             prior_hyp = ""
-    else:
+    except Exception:
         prior_hyp = ""
 
     ctx = {
@@ -800,6 +800,40 @@ def _save_failures(failures: dict) -> None:
     FAILURES_FILE.write_text(_yaml_dump(failures))
 
 
+def _load_hypotheses() -> dict:
+    """Load hypotheses from hypotheses.yaml as identifier-keyed dicts.
+    Raises ValueError if file contains legacy flat list format.
+    """
+    hyp_file = DEFAULT_ARTIFACTS_DIR / "hypotheses.yaml" if DEFAULT_ARTIFACTS_DIR else None
+    if not hyp_file or not hyp_file.exists():
+        return {}
+    data = yaml.safe_load(hyp_file.read_text())
+    if not isinstance(data, dict):
+        if isinstance(data, list):
+            raise ValueError(
+                "hypotheses.yaml contains legacy flat list format. "
+                "Delete hypotheses.yaml and let the HYPOTHESIS phase regenerate."
+            )
+        return {}
+    _VALID_HYP_STATUSES = {"new", "dismissed", "processed", "deferred"}
+    for key, entry in data.items():
+        if not isinstance(entry, dict):
+            raise ValueError(f"hypotheses.yaml entry '{key}' is not a dict.")
+        status = entry.get("status", "")
+        if status and status not in _VALID_HYP_STATUSES:
+            raise ValueError(
+                f"hypotheses.yaml entry '{key}' has invalid status '{status}'. "
+                f"Must be one of: {sorted(_VALID_HYP_STATUSES)}"
+            )
+    return data
+
+
+def _save_hypotheses(hypotheses: dict) -> None:
+    """Save hypotheses to hypotheses.yaml."""
+    hyp_file = DEFAULT_ARTIFACTS_DIR / "hypotheses.yaml"
+    hyp_file.write_text(_yaml_dump(hypotheses))
+
+
 def _generate_entry_id(message: str, existing_ids: set) -> str:
     """Generate a short identifier from a message string.
 
@@ -920,8 +954,12 @@ def _read_last_iteration(artifacts_dir: Path | None = None) -> int:
     return 0
 
 
-_CLEAN_PRESERVE = {"context.yaml", "failures.yaml"}  # files preserved across clean
-_CLEAN_PRESERVE_DIRS = {"resources"}  # directories preserved across clean
+_CLEAN_PRESERVE = {
+    "context.yaml",
+    "failures.yaml",
+    "hypotheses.yaml",
+}  # files preserved across clean
+_CLEAN_PRESERVE_DIRS = {"resources", "iterations"}  # directories preserved across clean
 
 
 def _clean_artifacts_dir(artifacts_dir: Path | None = None) -> None:

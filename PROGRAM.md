@@ -57,6 +57,14 @@ Implement the 2 remaining unfinished items identified in the executive summary, 
 
 - **Strict action resolution with documentation** (high) [DONE]
 
+- **Architect agent: clarity directive** (medium)
+  - Scope: phases.yaml architect agent prompts (FULL::RESEARCH, PLAN, REVIEW, PLANNING::RESEARCH)
+  - Alongside Occam's razor, architect must also aim for clarity - designs should be immediately understandable
+  - Code and data structures should be self-documenting: naming reveals intent, structure reveals relationships
+  - If a design requires explanation to understand, it's too complex
+  - This extends the Occam directive: not just minimal fields, but minimal cognitive load
+  - Acceptance: all architect agents include clarity directive alongside Occam's razor
+
 - **Hypothesis lifecycle** (high)
   - Scope: `orchestrator.py` hypothesis system, `phases.yaml` HYPOTHESIS phase
   - Current: hypotheses.yaml is a flat list of `{id, hypothesis, stars}` dicts loaded by `_build_hypothesis_context`
@@ -90,6 +98,18 @@ Implement the 2 remaining unfinished items identified in the executive summary, 
   - Consequences: if EnterPlanMode is called during PLAN phase, it pauses for user - this MUST NOT happen
   - Consequences: tests that verify PLAN phase readback mentions "EnterPlanMode" need updating
   - Acceptance: zero EnterPlanMode/ExitPlanMode references in phases.yaml, planning quality unchanged
+
+- **Orchestrator: continue vs fresh session** (high)
+  - Scope: `orchestrator.py`, auto-build-claw skill run prompt
+  - Two paths:
+  - **Continue** (`orchestrate start`): picks up at next pending phase. No `new` needed. NEXT phase already advanced the iteration counter. Context/failures/hypotheses accumulate.
+  - **Fresh** (`orchestrate new`): creates new state, cleans artifacts, starts from iteration 0. Used only when starting a completely new program.
+  - The auto-build-claw skill MUST:
+    1. Check if state.yaml exists with active/completed iterations
+    2. If yes: ask "Continue existing session or start fresh?"
+    3. If continue: just `orchestrate start` - no `new`
+    4. If fresh: `orchestrate new` (cleans and starts over)
+  - Acceptance: skill distinguishes continue vs fresh, never calls `new` when continuing
 
 - **RESEARCH phase failure investigation** (medium)
   - Scope: phases.yaml FULL::RESEARCH start template

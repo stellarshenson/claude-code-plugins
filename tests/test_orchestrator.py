@@ -1614,25 +1614,35 @@ class TestFailuresRichEntries:
 
 
 class TestHypothesisContext:
-    """Tests for prior hypothesis injection into build context."""
+    """Tests for hypothesis lifecycle with status+notes."""
 
     def test_prior_hyp_from_file(self, minimal_resources, tmp_path):
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
-        # Create hypotheses.yaml
-        hyp = [{"id": "H001", "hypothesis": "Test hypothesis", "stars": "4/5"}]
-        (tmp_path / "hypotheses.yaml").write_text(yaml.dump(hyp))
-        state = {
+        hyp = {
+            "fix_timeout": {
+                "hypothesis": "Test hypothesis",
+                "prediction": "errors drop to 0",
+                "evidence": "L100 shows timeout",
+                "stars": 4,
+                "status": "deferred",
+                "iteration_created": 1,
+                "notes": [{"deferred": "not relevant yet"}],
+            }
+        }
+        orch._save_hypotheses(hyp)
+        state = orch._load_state() or {
             "iteration": 1,
-            "total_iterations": 1,
             "type": "test_workflow",
-            "current_phase": "ALPHA",
             "objective": "test",
+            "total_iterations": 1,
+            "current_phase": "ALPHA",
+            "phase_status": "pending",
         }
         orch._save_state(state)
-        ctx = orch._build_context(state, phase="ALPHA")
-        assert "H001" in ctx.get("prior_hyp", "")
+        ctx = orch._build_context(state)
+        assert "fix_timeout" in ctx.get("prior_hyp", "")
         assert "Test hypothesis" in ctx.get("prior_hyp", "")
 
     def test_prior_hyp_empty_when_no_file(self, minimal_resources, tmp_path):
@@ -1641,51 +1651,106 @@ class TestHypothesisContext:
         orch._init_artifacts_dir(tmp_path)
         state = {
             "iteration": 1,
-            "total_iterations": 1,
             "type": "test_workflow",
-            "current_phase": "ALPHA",
             "objective": "test",
+            "total_iterations": 1,
+            "current_phase": "ALPHA",
+            "phase_status": "pending",
         }
         orch._save_state(state)
-        ctx = orch._build_context(state, phase="ALPHA")
+        ctx = orch._build_context(state)
         assert ctx.get("prior_hyp", "") == ""
 
-    def test_prior_hyp_multiple_entries(self, minimal_resources, tmp_path):
+    def test_prior_hyp_filters_dismissed(self, minimal_resources, tmp_path):
+        """Dismissed hypotheses not shown in prior_hyp."""
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
-        hyp = [
-            {"id": "H001", "hypothesis": "First hypothesis", "stars": "3/5"},
-            {"id": "H002", "hypothesis": "Second hypothesis", "stars": "5/5"},
-        ]
-        (tmp_path / "hypotheses.yaml").write_text(yaml.dump(hyp))
+        hyp = {
+            "active_one": {
+                "hypothesis": "Active hyp",
+                "stars": 3,
+                "status": "deferred",
+                "prediction": "",
+                "evidence": "",
+                "iteration_created": 1,
+                "notes": [],
+            },
+            "dismissed_one": {
+                "hypothesis": "Dismissed hyp",
+                "stars": 2,
+                "status": "dismissed",
+                "prediction": "",
+                "evidence": "",
+                "iteration_created": 1,
+                "notes": [{"dismissed": "not relevant"}],
+            },
+        }
+        orch._save_hypotheses(hyp)
         state = {
             "iteration": 1,
-            "total_iterations": 1,
             "type": "test_workflow",
-            "current_phase": "ALPHA",
             "objective": "test",
+            "total_iterations": 1,
+            "current_phase": "ALPHA",
+            "phase_status": "pending",
         }
         orch._save_state(state)
-        ctx = orch._build_context(state, phase="ALPHA")
-        assert "H001" in ctx["prior_hyp"]
-        assert "H002" in ctx["prior_hyp"]
-        assert "First hypothesis" in ctx["prior_hyp"]
-        assert "Second hypothesis" in ctx["prior_hyp"]
+        ctx = orch._build_context(state)
+        assert "active_one" in ctx.get("prior_hyp", "")
+        assert "dismissed_one" not in ctx.get("prior_hyp", "")
 
-    def test_prior_hyp_malformed_yaml(self, minimal_resources, tmp_path):
+    def test_load_hypotheses_rejects_legacy_list(self, minimal_resources, tmp_path):
+        """Old flat list format raises ValueError."""
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
-        # Write a string instead of list
-        (tmp_path / "hypotheses.yaml").write_text("just a string")
-        state = {
-            "iteration": 1,
-            "total_iterations": 1,
-            "type": "test_workflow",
-            "current_phase": "ALPHA",
-            "objective": "test",
+        legacy = [{"id": "H001", "hypothesis": "old", "stars": "3/5"}]
+        (tmp_path / "hypotheses.yaml").write_text(yaml.dump(legacy))
+        with pytest.raises(ValueError, match="legacy flat list"):
+            orch._load_hypotheses()
+
+    def test_hypothesis_status_transitions(self, minimal_resources, tmp_path):
+        """Hypothesis status can transition with notes."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        hyp = {
+            "test_hyp": {
+                "hypothesis": "test",
+                "prediction": "",
+                "evidence": "",
+                "stars": 3,
+                "status": "new",
+                "iteration_created": 1,
+                "notes": [],
+            }
         }
-        orch._save_state(state)
-        ctx = orch._build_context(state, phase="ALPHA")
-        assert ctx.get("prior_hyp", "") == ""
+        orch._save_hypotheses(hyp)
+        loaded = orch._load_hypotheses()
+        loaded["test_hyp"]["status"] = "processed"
+        loaded["test_hyp"]["notes"].append({"processed": "selected for iter 1"})
+        orch._save_hypotheses(loaded)
+        final = orch._load_hypotheses()
+        assert final["test_hyp"]["status"] == "processed"
+        assert len(final["test_hyp"]["notes"]) == 1
+
+    def test_hypotheses_preserved_on_clean(self, minimal_resources, tmp_path):
+        """hypotheses.yaml survives _clean_artifacts_dir."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        hyp = {
+            "test": {
+                "hypothesis": "t",
+                "status": "new",
+                "stars": 1,
+                "prediction": "",
+                "evidence": "",
+                "iteration_created": 1,
+                "notes": [],
+            }
+        }
+        orch._save_hypotheses(hyp)
+        orch._clean_artifacts_dir(tmp_path)
+        assert (tmp_path / "hypotheses.yaml").exists()

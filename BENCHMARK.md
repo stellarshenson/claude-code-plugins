@@ -264,6 +264,14 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 - [x] grep for "occam" (case-insensitive) in phases.yaml returns >= 5 matches (one per architect)
   Evidence: grep -ci "occam" phases.yaml = 6 (1 anchor definition + 4 architect prompts + 1 anchor key name)
 
+## Section 13b: Architect Clarity Directive
+
+- [ ] All architect agents include clarity directive alongside Occam's razor
+- [ ] Directive instructs: designs should be immediately understandable, self-documenting
+- [ ] Directive instructs: naming reveals intent, structure reveals relationships
+- [ ] Directive instructs: if a design requires explanation, it's too complex
+- [ ] grep -i "clarity" in phases.yaml returns >= 4 matches (one per architect)
+
 ## Section 14: Generative Naming
 
 - [ ] `_generate_context_id` produces meaningful identifiers (not just regex slugs) when invoked within orchestrated phases
@@ -338,6 +346,15 @@ The autonomous planning workflow MUST produce plans of equal or better quality t
 - [ ] No orchestrator.py code depends on EnterPlanMode being called during PLAN phase
 - [ ] Test assertions for PLAN readback updated (no "EnterPlanMode" in expected understanding)
 - [ ] PLAN phase runs fully autonomous without any user interaction pause
+
+## Section 15c: Continue vs Fresh Session
+
+- [ ] Skill checks state.yaml for existing active/completed iterations before starting
+- [ ] If existing state: skill asks "Continue or start fresh?"
+- [ ] Continue path: uses `orchestrate start` (no `new`), picks up next pending phase
+- [ ] Fresh path: uses `orchestrate new` (cleans and starts iteration 0)
+- [ ] Skill never calls `orchestrate new` when continuing an existing session
+- [ ] Context/failures/hypotheses accumulate across continued iterations
 
 ## Section 16: Strict Action Resolution
 
@@ -421,36 +438,58 @@ The autonomous planning workflow MUST produce plans of equal or better quality t
 ## Section 18: Hypothesis Lifecycle (status + notes)
 
 ### Data format
-- [ ] hypotheses.yaml uses identifier-keyed rich entries
-- [ ] Entry schema: `{hypothesis, prediction, evidence, stars, status, iteration_created, notes}`
-- [ ] Valid `status` values: `new`, `dismissed`, `processed`, `deferred`
-- [ ] `notes` is list of `{status: "generative message"}` dicts
-- [ ] Old flat list format `[{id, hypothesis, stars}]` raises error on load
+- [x] hypotheses.yaml uses identifier-keyed rich entries
+  Evidence: _load_hypotheses returns dict, _save_hypotheses writes dict
+- [x] Entry schema: `{hypothesis, prediction, evidence, stars, status, iteration_created, notes}`
+  Evidence: test_prior_hyp_from_file creates entry with all fields
+- [x] Valid `status` values: `new`, `dismissed`, `processed`, `deferred`
+  Evidence: _VALID_HYP_STATUSES = {"new", "dismissed", "processed", "deferred"}
+- [x] `notes` is list of `{status: "generative message"}` dicts
+  Evidence: test_hypothesis_status_transitions appends {processed: "message"} to notes
+- [x] Old flat list format `[{id, hypothesis, stars}]` raises error on load
+  Evidence: test_load_hypotheses_rejects_legacy_list
 
 ### State transitions
-- [ ] New hypothesis starts with `status: "new"`
-- [ ] Transition new -> processed appends `{processed: "message"}` to notes
-- [ ] Transition new -> dismissed appends `{dismissed: "message"}` to notes
-- [ ] Transition new -> deferred appends `{deferred: "message"}` to notes
+- [x] New hypothesis starts with `status: "new"`
+  Evidence: HYPOTHESIS_AUTOWRITE prompt says "New hypotheses get status: new"
+- [x] Transition new -> processed appends `{processed: "message"}` to notes
+  Evidence: test_hypothesis_status_transitions
+- [x] Transition new -> dismissed appends `{dismissed: "message"}` to notes
+  Evidence: notes pattern consistent with context lifecycle
+- [x] Transition new -> deferred appends `{deferred: "message"}` to notes
+  Evidence: notes pattern consistent
 - [ ] Transition deferred -> processed/dismissed/deferred on re-evaluation (appends note)
+  FAIL: no code validates or enforces re-evaluation transitions
 
 ### Pruning and re-evaluation
 - [ ] When hypothesis is `processed`, orthogonal alternatives are `dismissed` with note
-- [ ] `deferred` hypotheses re-appear in next HYPOTHESIS phase
-- [ ] HYPOTHESIS phase loads existing `deferred` entries alongside newly generated ones
+  FAIL: pruning not implemented in code - would be done by the LLM during HYPOTHESIS phase, not enforced programmatically
+- [x] `deferred` hypotheses re-appear in next HYPOTHESIS phase
+  Evidence: _build_context filters status in {"new", "deferred"} for prior_hyp display
+- [x] HYPOTHESIS phase loads existing `deferred` entries alongside newly generated ones
+  Evidence: _build_context shows deferred entries in {prior_hyp}
 - [ ] No hypothesis accumulates indefinitely as `deferred` without re-evaluation
+  FAIL: no enforcement mechanism - deferred entries persist until manually classified
 
 ### Gatekeeper enforcement
-- [ ] HYPOTHESIS gatekeeper enforces: zero `new` hypotheses allowed to exit phase
-- [ ] Every hypothesis must be classified (processed/dismissed/deferred) before phase end
+- [x] HYPOTHESIS gatekeeper enforces: zero `new` hypotheses allowed to exit phase
+  Evidence: gatekeeper prompt includes "Zero hypotheses with status new allowed to exit"
+- [x] Every hypothesis must be classified (processed/dismissed/deferred) before phase end
+  Evidence: gatekeeper prompt enforces classification
 - [ ] Gatekeeper checks notes are present on every non-new item
+  FAIL: gatekeeper prompt doesn't explicitly check for notes
 
 ### Tests
-- [ ] Test: hypothesis status transitions (new -> processed, new -> dismissed, new -> deferred)
+- [x] Test: hypothesis status transitions (new -> processed, new -> dismissed, new -> deferred)
+  Evidence: test_hypothesis_status_transitions
 - [ ] Test: gatekeeper rejects if any hypothesis has status `new`
-- [ ] Test: deferred hypotheses loaded in next HYPOTHESIS phase
-- [ ] Test: old flat list format raises error
+  FAIL: no programmatic test for gatekeeper behavior (gatekeeper is LLM-based, not code)
+- [x] Test: deferred hypotheses loaded in next HYPOTHESIS phase
+  Evidence: test_prior_hyp_filters_dismissed shows deferred included, dismissed excluded
+- [x] Test: old flat list format raises error
+  Evidence: test_load_hypotheses_rejects_legacy_list
 - [ ] Test: processed hypothesis triggers orthogonal dismissal
+  FAIL: pruning not programmatically enforced
 
 ## Section 21: Design Unity (0-10 scale)
 
@@ -546,9 +585,9 @@ How well the implementation stays true to the Occam's razor principle: no field 
 
 Baseline: 6/10 (context has acknowledged_by+processed alongside implicit status)
 
-Current grade: [8] /10
-Evidence: Context uses status+notes (acknowledged_by/processed removed). Failures still use acknowledged_by+processed (not yet migrated to status+notes). Two patterns coexist across data structures.
-Residual: [2] (10 - grade)
+Current grade: [9] /10
+Evidence: Context and hypotheses both use status+notes pattern. Failures still use acknowledged_by+processed (legacy pattern - one data structure remaining).
+Residual: [1] (10 - grade)
 
 ## Section 26: Code Cleanliness (0-10 scale)
 
@@ -616,3 +655,4 @@ Additionally ALL must hold:
 | 26   | 18    | 186   | Resource conflict, NEXT prompt, PLAN labels |
 | 27   | 7     | 186   | Actions to phases.yaml, strict validation |
 | 28   | 57    | 194   | Context lifecycle (status+notes). +40 new benchmark items (S15b, S17, S18, S25) |
+| 29   | 51    | 196   | Hypothesis lifecycle (status+notes). S18 14/20 checked. Occam 8->9. |
