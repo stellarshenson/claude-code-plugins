@@ -1,134 +1,236 @@
-# Benchmark: Remaining Features
+# Benchmark: Remaining Features - Meticulous Quality Measurement
 
 ## Score
 
 **Direction**: MINIMIZE (target: 0)
 
 ```
-score = unchecked_items + completeness_residual
+score = unchecked_items + design_unity_residual + data_integrity_residual + backward_compat_residual + test_depth_residual + code_cleanliness_residual
 ```
 
-- `completeness_residual` = 10 - completeness grade (Section 10, graded 0-10)
+- `design_unity_residual` = 10 - design unity grade (Section 11, graded 0-10)
+- `data_integrity_residual` = 10 - data integrity grade (Section 12, graded 0-10)
+- `backward_compat_residual` = 10 - backward compat grade (Section 13, graded 0-10)
+- `test_depth_residual` = 10 - test depth grade (Section 14, graded 0-10)
+- `code_cleanliness_residual` = 10 - code cleanliness grade (Section 15, graded 0-10)
+
+Maximum: ~45 checklist items + 50 graded = ~95. Target: < 10.
 
 ## Evaluation
 
-1. Read code and verify each [ ] item
-2. Run `make test`, `make lint`, `orchestrate validate`
-3. Grade completeness
-4. EDIT this file, UPDATE Iteration Log, report score
+1. Read ALL modified code - quote specific lines as evidence
+2. Run `make test`, `make lint`, `orchestrate validate`, all 4 dry-runs
+3. For each [ ] item, verify against actual code, not claims
+4. Grade all 5 fuzzy scales using anchored rubrics
+5. EDIT this file with marks, evidence quotes, grades
+6. UPDATE Iteration Log
+7. Report composite score
 
 ---
 
-## Section 1: Resource Conflict Handling (v0.8.51 - DONE)
+## Section 1: Prior Features (v0.8.51 - DONE, verify preserved)
 
-- [x] `_ensure_project_resources` detects old format (has `gates:` key in phases.yaml)
-- [x] Old resources archived to `resources.old.YYYYMMDD/` (not deleted)
-- [x] Fresh resources copied from bundled module
-- [x] Warning printed to user about refresh
-- [x] Test: old-format detection triggers archive + refresh
+- [x] Resource conflict: `_detect_old_format` + archive + fresh copy
+- [x] Version check: PyPI query, 2s timeout, 24h cache, --no-version-check
+- [x] Context ack: orchestrate start tracks seen-by in context_ack.yaml
+- [x] Hypothesis: `{prior_hyp}` loads from hypotheses.yaml
+- [x] Info command: --workflows, --phases, --phase, --agents all work
+- [x] Lifecycle: all 11 phases use start/execution/end
+- [x] All 4 dry-runs pass
+- [x] 162 tests pass baseline
 
-## Section 2: Version Check (v0.8.51 - DONE)
+## Section 2: Rich Context Entries - Data Structure
 
-- [x] `main()` checks installed vs PyPI version on startup
-- [x] Check uses 2s timeout (non-blocking)
-- [x] Result cached in `.auto-build-claw/.version_check` for 24h
-- [x] If newer available, prints upgrade suggestion
-- [x] Fails silently on network errors
-- [x] `--no-version-check` flag suppresses check
-- [x] Test: version check with cache behavior
+- [ ] `_load_context` returns entries as dicts: `{message: str, created: str, acknowledged_by: list, processed: bool}`
+- [ ] `_save_context` writes rich entries preserving all fields
+- [ ] `cmd_context --message` stores new entry with `created` = current ISO8601 timestamp
+- [ ] `cmd_context --message` sets `acknowledged_by` = empty list, `processed` = false
+- [ ] Rich entry example in context.yaml matches:
+  ```yaml
+  RESEARCH:
+    message: "focus on X"
+    created: "2026-04-02T14:00:00+00:00"
+    acknowledged_by: [PLAN, IMPLEMENT]
+    processed: false
+  ```
 
-## Section 3: Context Acknowledgment (v0.8.51 - DONE)
+## Section 3: Rich Context - Acknowledgment
 
-- [x] `orchestrate start` marks current phase as having seen context in context_ack.yaml
-- [x] `orchestrate status` shows acknowledged vs pending contexts
-- [x] Test: context acknowledgment tracking
+- [ ] `cmd_start` appends current phase name to `acknowledged_by` list of EVERY active context entry
+- [ ] Duplicate phases NOT added to acknowledged_by (idempotent)
+- [ ] `acknowledged_by` persists across orchestrator restarts (saved to disk)
+- [ ] After RESEARCH start + PLAN start, context entry shows `acknowledged_by: [RESEARCH, PLAN]`
 
-## Section 4: Hypothesis Refinement (v0.8.51 - DONE)
+## Section 4: Rich Context - Processed Flag
 
-- [x] HYPOTHESIS start template explicitly instructs agents to READ and RATE existing hypotheses
-- [x] `{prior_hyp}` variable injects prior hypothesis backlog from hypotheses.yaml
-- [x] HYPOTHESIS phase instructions mention: rate 1-5 stars, propose additions, flag removals
-- [x] Test: hypothesis context loading from file
+- [ ] `orchestrate context --processed PHASE_NAME` sets `processed: true` for that entry
+- [ ] `processed` flag visible in `orchestrate status` output
+- [ ] Processed entries still displayed to agents (not filtered) but marked as processed in status
+- [ ] Unprocessed entries show as actionable in status (clear visual distinction)
 
-## Section 5: Rich Context Entries (NEW)
+## Section 5: Rich Context - Legacy Migration
 
-- [ ] Context entries stored as `{phase: {message, created, acknowledged_by, processed}}` dicts
-- [ ] `created` is ISO8601 timestamp set on `orchestrate context --message`
-- [ ] `acknowledged_by` is list of phases, appended on each `orchestrate start`
-- [ ] `processed` is boolean, settable via `orchestrate context --processed PHASE_NAME`
-- [ ] Legacy plain-string entries auto-migrate to rich format on first access
-- [ ] `orchestrate status` shows each context with timestamp, acknowledged_by, processed status
-- [ ] No separate `context_ack.yaml` file - all metadata in `context.yaml`
-- [ ] Agent instructions include "ACKNOWLEDGE each context message"
-- [ ] Gatekeeper verifies context was considered in evidence
-- [ ] Test: rich format creation with all fields
-- [ ] Test: legacy migration from plain string
-- [ ] Test: acknowledged_by appended on start
-- [ ] Test: processed flag
+- [ ] Plain string entry `{RESEARCH: "message text"}` auto-migrated on `_load_context`
+- [ ] Migration produces `{RESEARCH: {message: "message text", created: "", acknowledged_by: [], processed: false}}`
+- [ ] Migration is transparent - no error, no warning, just works
+- [ ] After migration, `_save_context` writes rich format (old format never written back)
+- [ ] Mixed format (some rich, some plain string) handled correctly
 
-## Section 6: Auto-Reinstall on Version Mismatch (NEW)
+## Section 6: Rich Context - Status Display
 
-- [ ] `_check_version` offers auto-upgrade for patch versions
-- [ ] Detection of plugin context (CLAUDECODE env or similar)
-- [ ] Safety: only auto-upgrade patch (0.8.X), prompt for minor/major
-- [ ] Test: version comparison logic (patch vs minor vs major)
+- [ ] `orchestrate status` shows each context with ALL metadata:
+  - Phase name
+  - Message (truncated to ~60 chars)
+  - Created timestamp (or "legacy" if migrated without timestamp)
+  - Acknowledged by: comma-separated phase list or "none"
+  - Processed: yes/no
+- [ ] Example output line: `[RESEARCH]: focus on X... (created: 2026-04-02, ack: PLAN,IMPL, processed: no)`
 
-## Section 7: Hypothesis Autowrite Append (NEW)
+## Section 7: Rich Context - Consolidation
 
-- [ ] ACTION::HYPOTHESIS_AUTOWRITE prompt says "Read existing first, APPEND new, UPDATE existing by ID"
-- [ ] Prompt does NOT say "Write entries" without qualifying append/update
-- [ ] Test or verification: prompt text contains "append" or "update" and "existing"
+- [ ] `context_ack.yaml` file is NO LONGER created or read
+- [ ] All acknowledgment data lives in `context.yaml` under `acknowledged_by` field
+- [ ] Old `context_ack.yaml` references removed from `cmd_start`
+- [ ] Old `context_ack.yaml` references removed from `cmd_status`
+- [ ] grep for `context_ack` in orchestrator.py returns 0 matches
 
-## Section 8: Version Check Structured Cache (NEW)
+## Section 8: Rich Context - Agent & Gatekeeper Integration
 
-- [ ] `.version_check` stores `{latest_version: str, checked_at: ISO8601}` YAML (not plain text)
-- [ ] Cache expiry uses `checked_at` field, not file mtime
-- [ ] File is self-describing - no external mtime dependency
-- [ ] Test: structured cache read/write with checked_at expiry
+- [ ] Phase instructions banner shows context messages (already works - verify preserved)
+- [ ] Agent spawn instructions include directive to acknowledge context
+- [ ] Gatekeeper prompt includes check: if context exists, evidence should reference it
+- [ ] When context messages are active AND agents are required, gatekeeper evaluates context consideration
 
-## Section 9: Prior Features Preserved
+## Section 9: Hypothesis Autowrite Append
 
-**Info command:**
-- [x] `orchestrate info --workflows` lists all 5 workflows
-- [x] `orchestrate info --phases` lists all 11 phases with start/execution/end
-- [x] `orchestrate info --phase FULL::RESEARCH` shows readback, 3 execution agents, gatekeeper
-- [x] `orchestrate info --agents` lists all agents grouped by phase
-- [x] TestCmdInfo: 7 tests verify structure compliance and agent counts
+- [ ] ACTION::HYPOTHESIS_AUTOWRITE prompt in workflow.yaml says "Read existing hypotheses.yaml first"
+- [ ] Prompt says "APPEND new entries" or "UPDATE existing entries by ID"
+- [ ] Prompt does NOT contain bare "Write entries to hypotheses.yaml" without append/update qualifier
+- [ ] Prompt mentions "do NOT overwrite" or "do NOT remove existing entries"
 
-**Per-phase lifecycle (start/execution/end):**
-- [x] All 11 phases use start/execution/end structure
-- [x] All 4 dry-runs pass (full, fast, gc, hotfix)
-- [x] validate_model warns on deprecated gates: structure
-- [x] 143+ lifecycle and info tests pass
+## Section 10: Version Check Structured Cache
 
-## Section 10: Completeness (0-10 scale)
+- [ ] `.version_check` file contains YAML: `{latest_version: str, checked_at: ISO8601}`
+- [ ] `_check_version` reads `checked_at` field for 24h cache expiry (not file mtime)
+- [ ] `_check_version` writes structured YAML on successful check
+- [ ] Cache file survives file copy without losing expiry information
+- [ ] Legacy plain-text `.version_check` handled gracefully (read as version string, rewrite as YAML)
+
+## Section 11: Design Unity (0-10 scale)
+
+ONE canonical location for each piece of data. No orphan files. No parallel tracking.
 
 | Score | Description |
 |-------|-------------|
-| 10 | All 4 new features fully implemented and tested. All prior features preserved. Zero deferred items. |
-| 8 | 3 of 4 new features complete. One partial. All prior preserved. |
-| 6 | 2 of 4 new features complete. |
-| 4 | 1 of 4. |
-| <=2 | Nothing new implemented. |
+| 10 | Every data entity has exactly one canonical file. context.yaml has all context metadata. No context_ack.yaml. .version_check is structured YAML. No plain-text orphans. Every file has a clear schema. |
+| 9 | All data consolidated. One minor format inconsistency (e.g., .version_check still uses mtime). |
+| 8 | Context consolidated. One other file still has dual-path or orphan pattern. |
+| 7 | Context mostly consolidated but context_ack.yaml still read as fallback. |
+| 6 | Context partially consolidated. Some metadata in context.yaml, some in context_ack.yaml. |
+| 5 | Same as v0.8.51 - two files for context data. |
+| <=4 | Regression - more files or more split than before. |
+
+Baseline: 5/10 (context.yaml + context_ack.yaml split, .version_check plain text)
+
+Current grade: [ ] /10
+Residual: [ ] (10 - grade)
+
+## Section 12: Data Integrity (0-10 scale)
+
+Data survives clean, restart, migration. No silent data loss.
+
+| Score | Description |
+|-------|-------------|
+| 10 | context.yaml survives `new --clean`. Legacy entries auto-migrate without data loss. acknowledged_by accumulates correctly across phases. No race conditions. .version_check survives file operations. |
+| 9 | All data survives. One edge case not handled (e.g., concurrent writes). |
+| 8 | Core data survives. Migration works. One minor field lost on edge case. |
+| 7 | Data mostly survives. Legacy migration works but loses created timestamp. |
+| 6 | Core data survives clean. Legacy migration partial. |
+| 5 | Data survives but acknowledgment data lost on clean (current state). |
+| <=4 | Data loss on normal operations. |
+
+Baseline: 5/10 (context_ack.yaml wiped on clean, losing acknowledgment tracking)
+
+Current grade: [ ] /10
+Residual: [ ] (10 - grade)
+
+## Section 13: Backward Compatibility (0-10 scale)
+
+Old format -> new format without breakage. No "update your config" manual steps.
+
+| Score | Description |
+|-------|-------------|
+| 10 | All legacy formats auto-migrate silently. Plain string context entries become rich. Plain text .version_check becomes YAML. No user intervention. Mixed old+new entries in same file handled. |
+| 9 | All migrations work. One edge case requires manual intervention. |
+| 8 | Most migrations work. One format not auto-detected. |
+| 7 | Main migration (context) works. Version check migration missing. |
+| 6 | Migration exists but lossy (some fields default to empty). |
+| 5 | No migration - old format causes error. |
+| <=4 | Old format breaks the system. |
+
+Baseline: 6/10 (context.yaml has no migration path since it's adding new fields; .version_check has no migration)
+
+Current grade: [ ] /10
+Residual: [ ] (10 - grade)
+
+## Section 14: Test Depth (0-10 scale)
+
+Tests verify behavior, not just presence. Negative cases. Edge cases. Migration paths.
+
+| Score | Description |
+|-------|-------------|
+| 10 | Every feature has: happy path, legacy migration, edge case (empty/missing/malformed), interaction test (e.g., clean then reload preserves context). Tests verify DATA CONTENT not just file existence. |
+| 9 | All features tested with happy path + migration. One missing edge case. |
+| 8 | All features tested. Migration tested. One interaction untested. |
+| 7 | All features have happy-path tests. Migration tests exist. No edge cases. |
+| 6 | Most features tested. One feature has no migration test. |
+| 5 | Basic tests only. No migration or edge case coverage. |
+| <=4 | Incomplete test coverage. Some features untested. |
+
+Baseline: 5/10 (basic tests exist for v0.8.51 features, no migration or edge case tests)
+
+Current grade: [ ] /10
+Residual: [ ] (10 - grade)
+
+## Section 15: Code Cleanliness (0-10 scale)
+
+No dead code. No stale references. No TODO comments. Functions do one thing.
+
+| Score | Description |
+|-------|-------------|
+| 10 | Zero references to context_ack.yaml in code. No dead imports. No stale comments referencing old format. _load_context/_save_context handle one format cleanly. No isinstance spaghetti. |
+| 9 | Clean. One stale comment surviving from old format. |
+| 8 | Clean. One dead variable or unused path. |
+| 7 | Mostly clean. Migration code is inline but clear. |
+| 6 | Some dead code. Old context_ack.yaml references still present but unreachable. |
+| 5 | Dual-path code for old and new format with conditional branching. |
+| <=4 | Messy. Multiple code paths, unclear which is canonical. |
+
+Baseline: 5/10 (context_ack.yaml code exists alongside context.yaml code)
 
 Current grade: [ ] /10
 Residual: [ ] (10 - grade)
 
 ## Completion Conditions
 
-- [ ] All Section 5-8 items [x] AND completeness >= 8
+Iterations stop when ANY of these is true:
+- [ ] All Section 2-10 items [x] AND all 5 grades >= 8
 - [ ] No score improvement for 2 consecutive iterations
 
 Additionally ALL must hold:
-- [ ] make test >= 165
+- [ ] make test >= 170
 - [ ] make lint clean
 - [ ] orchestrate validate passes
 - [ ] All 4 dry-runs pass
+- [ ] grep "context_ack" orchestrator.py returns 0 matches
+- [ ] context.yaml entries are rich dicts (not plain strings)
+
+**Do NOT stop while any condition above is unmet.**
 
 ---
 
 ## Iteration Log
 
-| Iteration | Date | Score | Unchecked | Completeness | Tests | Notes |
-|-----------|------|-------|-----------|--------------|-------|-------|
-| baseline  | -    | TBD   | ~13       | 0            | 162   | 4 new features to implement |
+| Iteration | Date | Score | Unchecked | Unity | Integrity | Compat | Tests | Clean | Test Count | Notes |
+|-----------|------|-------|-----------|-------|-----------|--------|-------|-------|------------|-------|
+| baseline  | -    | TBD   | ~45       | 5     | 5         | 6      | 5     | 5     | 162        | before any work |
