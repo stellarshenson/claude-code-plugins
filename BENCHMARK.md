@@ -5,14 +5,15 @@
 **Direction**: MINIMIZE (target: 0)
 
 ```
-score = unchecked_items + design_unity_residual + data_integrity_residual + format_commit_residual + test_depth_residual + code_cleanliness_residual
+score = unchecked_items + design_unity_residual + data_integrity_residual + format_commit_residual + test_depth_residual + occam_residual + code_cleanliness_residual
 ```
 
-- `design_unity_residual` = 10 - design unity grade (Section 16, graded 0-10)
-- `data_integrity_residual` = 10 - data integrity grade (Section 17, graded 0-10)
-- `format_commit_residual` = 10 - format commitment grade (Section 18, graded 0-10)
-- `test_depth_residual` = 10 - test depth grade (Section 19, graded 0-10)
-- `code_cleanliness_residual` = 10 - code cleanliness grade (Section 20, graded 0-10)
+- `design_unity_residual` = 10 - design unity grade (Section 21, graded 0-10)
+- `data_integrity_residual` = 10 - data integrity grade (Section 22, graded 0-10)
+- `format_commit_residual` = 10 - format commitment grade (Section 23, graded 0-10)
+- `test_depth_residual` = 10 - test depth grade (Section 24, graded 0-10)
+- `occam_residual` = 10 - Occam's razor adherence grade (Section 25, graded 0-10)
+- `code_cleanliness_residual` = 10 - code cleanliness grade (Section 26, graded 0-10)
 
 Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 
@@ -315,7 +316,75 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 - [x] Test: valid generative action passes validation
   Evidence: test_generative_action_dispatch in test_orchestrator.py validates generative action execution
 
-## Section 17: Design Unity (0-10 scale)
+## Section 17: Context Lifecycle (status + notes)
+
+### Data format
+- [ ] Context entries use `status` field (string) instead of `acknowledged_by` list and `processed` boolean
+- [ ] Valid `status` values: `new`, `acknowledged`, `dismissed`, `processed`
+- [ ] `notes` field is a list of `{status: "generative message"}` dicts
+- [ ] `acknowledged_by` field removed from context entries
+- [ ] `processed` boolean field removed from context entries
+- [ ] Example: `{message, phase, created, status: "acknowledged", notes: [{acknowledged: "considered in PLAN"}]}`
+
+### State transitions
+- [ ] New context entry starts with `status: "new"` and empty `notes: []`
+- [ ] Transition new -> acknowledged appends `{acknowledged: "message"}` to notes
+- [ ] Transition acknowledged -> processed appends `{processed: "message"}` to notes
+- [ ] Transition acknowledged -> dismissed appends `{dismissed: "message"}` to notes
+- [ ] Invalid transitions rejected (e.g., dismissed -> processed)
+
+### Banner and display
+- [ ] Banner injection shows only `new` and `acknowledged` entries
+- [ ] Dismissed and processed entries hidden from banners but visible in `orchestrate status`
+- [ ] `orchestrate status` shows status and latest note for each context entry
+
+### CLI and gatekeeper
+- [ ] `orchestrate context --dismiss IDENTIFIER` transitions to dismissed with generative note
+- [ ] NEXT gatekeeper enforces: zero `new` context items allowed to exit phase
+- [ ] Gatekeeper checks notes are present on every non-new item
+
+### Tests
+- [ ] Test: new context entry has status=new, notes=[]
+- [ ] Test: status transition new -> acknowledged with note
+- [ ] Test: dismissed context hidden from banner
+- [ ] Test: invalid transition rejected
+- [ ] Test: NEXT gatekeeper check for pending new items
+
+## Section 18: Hypothesis Lifecycle (status + notes)
+
+### Data format
+- [ ] hypotheses.yaml uses identifier-keyed rich entries
+- [ ] Entry schema: `{hypothesis, prediction, evidence, stars, status, iteration_created, notes}`
+- [ ] Valid `status` values: `new`, `dismissed`, `processed`, `deferred`
+- [ ] `notes` is list of `{status: "generative message"}` dicts
+- [ ] Old flat list format `[{id, hypothesis, stars}]` raises error on load
+
+### State transitions
+- [ ] New hypothesis starts with `status: "new"`
+- [ ] Transition new -> processed appends `{processed: "message"}` to notes
+- [ ] Transition new -> dismissed appends `{dismissed: "message"}` to notes
+- [ ] Transition new -> deferred appends `{deferred: "message"}` to notes
+- [ ] Transition deferred -> processed/dismissed/deferred on re-evaluation (appends note)
+
+### Pruning and re-evaluation
+- [ ] When hypothesis is `processed`, orthogonal alternatives are `dismissed` with note
+- [ ] `deferred` hypotheses re-appear in next HYPOTHESIS phase
+- [ ] HYPOTHESIS phase loads existing `deferred` entries alongside newly generated ones
+- [ ] No hypothesis accumulates indefinitely as `deferred` without re-evaluation
+
+### Gatekeeper enforcement
+- [ ] HYPOTHESIS gatekeeper enforces: zero `new` hypotheses allowed to exit phase
+- [ ] Every hypothesis must be classified (processed/dismissed/deferred) before phase end
+- [ ] Gatekeeper checks notes are present on every non-new item
+
+### Tests
+- [ ] Test: hypothesis status transitions (new -> processed, new -> dismissed, new -> deferred)
+- [ ] Test: gatekeeper rejects if any hypothesis has status `new`
+- [ ] Test: deferred hypotheses loaded in next HYPOTHESIS phase
+- [ ] Test: old flat list format raises error
+- [ ] Test: processed hypothesis triggers orthogonal dismissal
+
+## Section 21: Design Unity (0-10 scale)
 
 ONE canonical location for each piece of data. No orphan files. No parallel tracking.
 
@@ -335,7 +404,7 @@ Current grade: [10] /10
 Evidence: All data entities consolidated. Actions moved from workflow.yaml to phases.yaml (declaration next to usage). Context, failures, version check all rich format. No orphan files. Every file has clear schema.
 Residual: [0] (10 - grade)
 
-## Section 17: Data Integrity (0-10 scale)
+## Section 22: Data Integrity (0-10 scale)
 
 Data survives clean, restart, migration. No silent data loss.
 
@@ -355,7 +424,7 @@ Current grade: [9] /10
 Evidence: context.yaml and failures.yaml both survive --clean (_CLEAN_PRESERVE has both). acknowledged_by accumulates for both context and failures. Solutions persist. Version check uses checked_at (no mtime). One edge case: concurrent writes not handled (not relevant for CLI tool).
 Residual: [1] (10 - grade)
 
-## Section 18: Format Commitment (0-10 scale)
+## Section 23: Format Commitment (0-10 scale)
 
 Full commitment to new format. No fallback. No conversion code. Clear errors on old format.
 
@@ -375,7 +444,7 @@ Current grade: [9] /10
 Evidence: All three data structures fully committed. Context: ValueError on legacy strings + missing keys. Failures: ValueError on legacy flat list. Version check: structured YAML with checked_at. One minor: version check does silent migration (treats plain text as expired) rather than raising error - pragmatic for cache file.
 Residual: [1] (10 - grade)
 
-## Section 19: Test Depth (0-10 scale)
+## Section 24: Test Depth (0-10 scale)
 
 Tests verify behavior, not just presence. Negative cases. Edge cases. Lifecycle paths.
 
@@ -395,7 +464,24 @@ Current grade: [9] /10
 Evidence: Context has 12 tests (happy path, legacy rejection, collision, empty fallback, ack, processed, two-same-phase, key validation). Failures have 7 tests (rich format, legacy rejection, identifier gen, processed+solution, preserved on clean, solved/unsolved context, ack on start). Version check has 4 tests. All features have rejection tests. One missing: NEXT phase prompt for unsolved failures.
 Residual: [1] (10 - grade)
 
-## Section 20: Code Cleanliness (0-10 scale)
+## Section 25: Occam's Razor Adherence (0-10 scale)
+
+How well the implementation stays true to the Occam's razor principle: no field without a consumer, no file without a purpose, no abstraction without a hypothesis that it's needed.
+
+| Score | Description |
+|-------|-------------|
+| 10 | Every field has a code consumer. No redundant fields (like acknowledged_by alongside status). Status+notes pattern used consistently. No speculative abstractions. |
+| 9 | One minor redundant field surviving from prior iteration. |
+| 8 | Pattern mostly consistent. One data structure with both old and new fields coexisting. |
+| 7 | Two data structures use different patterns (one has status+notes, one has booleans). |
+| <=6 | Inconsistent patterns. Multiple redundant fields. Speculative abstractions. |
+
+Baseline: 6/10 (context has acknowledged_by+processed alongside implicit status)
+
+Current grade: [ ] /10
+Residual: [ ] (10 - grade)
+
+## Section 26: Code Cleanliness (0-10 scale)
 
 No dead code. No stale references. No TODO comments. Functions do one thing.
 
@@ -418,7 +504,7 @@ Residual: [1] (10 - grade)
 ## Completion Conditions
 
 Iterations stop when ANY of these is true:
-- [ ] All Section 2-15 items [x] AND all 5 grades >= 8
+- [ ] All Section 2-18 items [x] AND all 6 grades >= 8
 - [ ] No score improvement for 2 consecutive iterations
 
 Additionally ALL must hold:
