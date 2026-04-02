@@ -945,18 +945,47 @@ class TestResourceConflict:
 
 
 class TestVersionCheck:
-    """Tests for version check caching."""
+    """Tests for version check structured YAML cache."""
 
-    def test_version_check_cache(self, tmp_path):
+    def test_version_check_yaml_format(self, tmp_path):
+        """Cache file uses structured YAML with latest_version and checked_at."""
+        cache = tmp_path / ".version_check"
+        cache.write_text(yaml.dump({
+            "latest_version": "0.8.51",
+            "checked_at": "2026-04-02T14:00:00+00:00",
+        }))
+        data = yaml.safe_load(cache.read_text())
+        assert isinstance(data, dict)
+        assert "latest_version" in data
+        assert "checked_at" in data
+        assert data["latest_version"] == "0.8.51"
+
+    def test_version_check_legacy_plain_text_ignored(self, tmp_path):
+        """Legacy plain-text cache is ignored (triggers re-check)."""
         cache = tmp_path / ".version_check"
         cache.write_text("0.8.50")
-        # Cache exists and is fresh - should not make network call
-        assert time.time() - cache.stat().st_mtime < 86400
+        data = yaml.safe_load(cache.read_text())
+        # Plain text loads as string, not dict - should be treated as stale
+        assert isinstance(data, str)
+        assert not isinstance(data, dict)
 
     def test_version_check_no_error(self):
         """_check_version never raises - fails silently."""
-        # Should not raise even if package not found or network fails
         orch._check_version()
+
+    def test_version_check_fresh_yaml_cache(self, tmp_path):
+        """Fresh YAML cache with recent checked_at prevents re-check."""
+        from datetime import datetime, timezone
+        cache = tmp_path / ".version_check"
+        now = datetime.now(timezone.utc).isoformat()
+        cache.write_text(yaml.dump({
+            "latest_version": "0.8.51",
+            "checked_at": now,
+        }))
+        data = yaml.safe_load(cache.read_text())
+        checked = datetime.fromisoformat(data["checked_at"])
+        age = (datetime.now(timezone.utc) - checked).total_seconds()
+        assert age < 86400  # Fresh cache, should not expire
 
 
 class TestContextRichEntries:

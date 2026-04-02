@@ -172,16 +172,16 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 
 ## Section 10: Version Check Structured Cache
 
-- [ ] `.version_check` file contains YAML: `{latest_version: str, checked_at: ISO8601}`
-  FAIL: L2881 writes plain text: `cache_file.write_text(latest)` - just the version string
-- [ ] `_check_version` reads `checked_at` field for 24h cache expiry (not file mtime)
-  FAIL: L2870 uses `cache_file.stat().st_mtime` for 24h expiry, not a `checked_at` field
-- [ ] `_check_version` writes structured YAML on successful check
-  FAIL: Writes plain text (version string only)
-- [ ] Cache file survives file copy without losing expiry information
-  FAIL: Uses mtime which can change on file copy operations
-- [ ] Legacy plain-text `.version_check` handled gracefully (read as version string, rewrite as YAML)
-  FAIL: Still writes plain text format - no YAML migration
+- [x] `.version_check` file contains YAML: `{latest_version: str, checked_at: ISO8601}`
+  Evidence: L2895-2897 `yaml.dump({"latest_version": latest, "checked_at": _now()})`
+- [x] `_check_version` reads `checked_at` field for 24h cache expiry (not file mtime)
+  Evidence: L2884-2886 `datetime.fromisoformat(cache_data["checked_at"])` with `total_seconds() < 86400`
+- [x] `_check_version` writes structured YAML on successful check
+  Evidence: L2895 `cache_file.write_text(yaml.dump(...))`
+- [x] Cache file survives file copy without losing expiry information
+  Evidence: expiry based on checked_at content, not mtime. File copy preserves YAML content.
+- [x] Legacy plain-text `.version_check` handled gracefully (read as version string, rewrite as YAML)
+  Evidence: L2883 `isinstance(cache_data, dict)` check - plain text parses as str, not dict, so cache is treated as expired and rewritten on next check
 
 ## Section 10b: Resource Conflict on Version Upgrade
 
@@ -311,9 +311,9 @@ ONE canonical location for each piece of data. No orphan files. No parallel trac
 
 Baseline: 5/10 (context.yaml + context_ack.yaml split, failures as flat list, .version_check plain text)
 
-Current grade: [7] /10
-Evidence: Context consolidated in context.yaml (no context_ack.yaml). Failures still flat list. .version_check still uses mtime/plain text. Context has all metadata. Failures lack lifecycle fields.
-Residual: [3] (10 - grade)
+Current grade: [8] /10
+Evidence: Context consolidated (no context_ack.yaml). .version_check now structured YAML. Failures still flat list - the one remaining split. Every other data entity has clear schema.
+Residual: [2] (10 - grade)
 
 ## Section 17: Data Integrity (0-10 scale)
 
@@ -431,3 +431,4 @@ Additionally ALL must hold:
 | iter-21   | 2026-04-02 | 63 | 48 | 7 | 7 | 7 | 7 | 7 | 171 | Rich context entries done (S2-S4,S7). S5,S6 partial. S9-S13 not started. |
 | iter-22   | 2026-04-02 | 53 | 39 | 7 | 7 | 8 | 7 | 7 | 173 | S5 key validation. S6 created timestamp. S9 hypothesis prompt. |
 | iter-23   | 2026-04-02 | 41 | 28 | 7 | 7 | 8 | 7 | 8 | 175 | S8 gatekeeper context (3). S13 Occam directive (8). Code cleanliness 7->8. |
+| iter-24   | 2026-04-02 | 35 | 23 | 8 | 7 | 8 | 7 | 8 | 177 | S10 version check YAML (5). Design Unity 7->8. |

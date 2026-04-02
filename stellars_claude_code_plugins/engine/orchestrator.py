@@ -2867,30 +2867,36 @@ def _ensure_project_resources(project_resources: Path) -> Path:
 
 
 def _check_version() -> None:
-    """Check if a newer version is available on PyPI. Non-blocking, 2s timeout."""
+    """Check if a newer version is available on PyPI. Non-blocking, 2s timeout.
+
+    Cache stored as YAML: {latest_version: str, checked_at: ISO8601}.
+    Uses checked_at for 24h expiry instead of file mtime.
+    Legacy plain-text cache is silently migrated on next check.
+    """
     try:
         import importlib.metadata
         import json
-        import time
         from urllib.request import urlopen
 
         installed = importlib.metadata.version("stellars-claude-code-plugins")
 
-        # Check cache
+        # Check cache - structured YAML with checked_at timestamp
         cache_file = PROJECT_ROOT / ".auto-build-claw" / ".version_check"
         if cache_file.exists():
-            age = time.time() - cache_file.stat().st_mtime
-            if age < 86400:  # 24 hours
-                return
+            cache_data = yaml.safe_load(cache_file.read_text())
+            if isinstance(cache_data, dict) and "checked_at" in cache_data:
+                checked = datetime.fromisoformat(cache_data["checked_at"])
+                if (datetime.now(timezone.utc) - checked).total_seconds() < 86400:
+                    return
 
         url = "https://pypi.org/pypi/stellars-claude-code-plugins/json"
         resp = urlopen(url, timeout=2)  # noqa: S310
         data = json.loads(resp.read())
         latest = data["info"]["version"]
 
-        # Update cache
+        # Update cache as structured YAML
         cache_file.parent.mkdir(parents=True, exist_ok=True)
-        cache_file.write_text(latest)
+        cache_file.write_text(yaml.dump({"latest_version": latest, "checked_at": _now()}))
 
         if latest != installed:
             print(
