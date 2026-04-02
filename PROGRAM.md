@@ -1,48 +1,65 @@
-# Program: Model Introspection CLI (orchestrate info)
+# Program: Implement All Deferred Features
 
 ## Objective
 
-Add `orchestrate info` command to query the model programmatically. Currently the only introspection is `validate` (pass/fail) and `--dry-run` (phase list). Engineers need to query specific workflows, phases, agents, and gates for debugging, testing, and verifying the start/execution/end lifecycle structure. The info command makes the model queryable.
+Implement 5 deferred features from prior iterations. Each was raised as a context message, tracked, and deferred with reason. Now implementing all.
 
 ## Work Items
 
-- **Add cmd_info to orchestrator.py** (high)
-  - Scope: `stellars_claude_code_plugins/engine/orchestrator.py`
-  - 5 query flags: `--workflows`, `--workflow <cli_name>`, `--phases`, `--phase <name>`, `--agents`
-  - Structured text output suitable for grep and human reading
-  - Reads from `_MODEL` (already initialized by main)
-  - Add `info` subparser in `_build_cli_parser`, `cmd_info` in cmds dict
-  - Acceptance: `orchestrate info --phases` lists all 11 phases with lifecycle info
+- **Resource conflict handling** (high)
+  - Scope: `stellars_claude_code_plugins/engine/orchestrator.py` `_ensure_project_resources`
+  - When project-local YAML has old format (no `start:` section, has `gates:` key), archive to `.old` and copy fresh from module
+  - Detect old format: check if phases.yaml contains `gates:` key at phase level
+  - Archive: rename `resources/` to `resources.old.YYYYMMDD/`
+  - Copy fresh from bundled module resources
+  - Print warning: "Project resources had old format. Archived to resources.old.YYYYMMDD/, fresh copy installed."
+  - Add test: verify old-format detection and archive behavior
+  - Acceptance: stale project resources auto-refreshed with warning
 
-- **Add TestCmdInfo tests** (high)
-  - Scope: `tests/test_orchestrator.py`
-  - 7+ tests using `auto_build_claw_resources` fixture
-  - Tests verify: all workflows listed, workflow detail shows phases, all phases listed, phase detail shows start/execution/end agents, agents grouped by phase
-  - Structure compliance test: every phase has readback in start, gatekeeper in end
-  - Agent count test: execution agent counts match expected per phase
-  - Acceptance: all tests pass, structure compliance verified programmatically
+- **Version check on startup** (medium)
+  - Scope: `stellars_claude_code_plugins/engine/orchestrator.py` `main()`
+  - On startup, check installed version vs PyPI latest (non-blocking, timeout 2s)
+  - Use `importlib.metadata.version()` for installed, `urllib.request` for PyPI JSON API
+  - If newer available: print "Update available: {installed} -> {latest}. Run: pip install --upgrade stellars-claude-code-plugins"
+  - Cache check result for 24h in `.auto-build-claw/.version_check`
+  - Fail silently on network errors (no crash, no delay beyond 2s)
+  - Add `--no-version-check` flag to suppress
+  - Acceptance: version check works, doesn't add noticeable latency, fails silently
+
+- **Context acknowledgment tracking** (medium)
+  - Scope: `stellars_claude_code_plugins/engine/orchestrator.py` context system
+  - When context messages are displayed to agents, record which phase saw them
+  - Add `acknowledged_by` field to each context entry in context.yaml
+  - On `orchestrate start`, mark current phase as having seen the context
+  - `orchestrate status` shows which contexts are acknowledged vs pending
+  - Acceptance: context.yaml tracks acknowledgment, status shows it
+
+- **Hypothesis refinement** (medium)
+  - Scope: phases.yaml HYPOTHESIS phase template, orchestrator hypothesis handling
+  - HYPOTHESIS phase start template should instruct agents to READ existing hypotheses.yaml
+  - The `{prior_hyp}` template variable already injects prior hypotheses
+  - Verify that hypothesis_autowrite action APPENDS/UPDATES rather than overwrites
+  - Verify hypothesis_gc action properly archives DONE/REMOVED entries
+  - Add to HYPOTHESIS start template: explicit instruction to RATE and REFINE existing, not regenerate
+  - Acceptance: hypothesis agents receive prior backlog, rate existing, propose new
+
+- **Tests for all features** (high)
+  - test_resource_conflict_detection: old format triggers archive + refresh
+  - test_version_check_cache: check result cached for 24h
+  - test_context_acknowledgment: context entries track which phases saw them
+  - Acceptance: >= 155 tests pass
 
 ## Exit Conditions
 
 Iterations stop when ALL hold:
-- `orchestrate info --phases` lists all 11 phases
-- `orchestrate info --phase FULL::RESEARCH` shows readback, 3 execution agents, gatekeeper
-- `orchestrate info --agents` lists all agents grouped by phase
-- All tests pass (>= 150)
+- All 5 features implemented with tests
+- make test >= 155
 - make lint clean
-
-## Outstanding Context Messages (from prior iterations)
-
-These were raised during earlier iterations and must be addressed or explicitly deferred:
-
-- **Version check on startup** (context from iter 16 PLAN): Check if newer version of stellars-claude-code-plugins available on PyPI, warn user. Status: DEFERRED to separate iteration - requires network access during CLI startup which adds latency
-- **Auto-reinstall in skill** (context from iter 16 PLAN): Auto-reinstall if newer version detected. Status: DEFERRED - coupled with version check
-- **Context acknowledgment** (context from iter 16 TEST): Agents should acknowledge context messages. Status: DEFERRED to separate iteration - requires changes to agent spawning protocol
-- **Hypothesis refinement** (context from iter 16 TEST): Hypothesis agents should refine existing backlog, not generate from scratch. Status: DEFERRED - requires hypothesis persistence changes
-- **Resource conflict handling** (context from iter 18 TEST): When project-local YAML resources have old format, archive them and copy fresh from module with warning. Status: DEFERRED to separate iteration - requires format version detection logic
+- orchestrate validate passes
+- All 4 dry-runs pass
 
 ## Constraints
 
-- Additive only - no existing code modified
-- Output is plain text, not JSON (human-readable)
-- Tests use real auto_build_claw_resources fixture (not mocks)
+- Version check must not add > 2s latency (timeout + cache)
+- Resource conflict handling must not lose user customizations (archive, not delete)
+- No changes to orchestrator FSM or gate logic

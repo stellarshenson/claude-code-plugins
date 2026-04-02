@@ -432,6 +432,27 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
     else:
         iteration_purpose = ""
 
+    # Build hypothesis context for {prior_hyp}
+    hyp_file = DEFAULT_ARTIFACTS_DIR / "hypotheses.yaml" if DEFAULT_ARTIFACTS_DIR else None
+    if hyp_file and hyp_file.exists():
+        try:
+            hyp_data = yaml.safe_load(hyp_file.read_text())
+            if isinstance(hyp_data, list) and hyp_data:
+                hyp_lines = ["\n**Prior hypotheses:**\n"]
+                for h in hyp_data:
+                    if isinstance(h, dict):
+                        hid = h.get("id", "?")
+                        text = h.get("hypothesis", h.get("HYPOTHESIS", ""))
+                        stars = h.get("stars", h.get("STARS", ""))
+                        hyp_lines.append(f"- **{hid}**: {text} (stars: {stars})")
+                prior_hyp = "\n".join(hyp_lines) + "\n"
+            else:
+                prior_hyp = ""
+        except Exception:
+            prior_hyp = ""
+    else:
+        prior_hyp = ""
+
     ctx = {
         "CMD": CMD,
         "objective": s.get("objective", "not set"),
@@ -443,6 +464,7 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
         "plan_context": plan_context,
         "checklist": _guardian_checklist(),
         "benchmark_info": benchmark_info,
+        "prior_hyp": prior_hyp,
     }
     # Agent instructions - resolve via :: namespace (FULL::PLAN has agents for end review)
     agent_phase_key = _resolve_agents(phase or s.get("current_phase", ""))
@@ -1639,6 +1661,19 @@ def cmd_start(args) -> None:
             body += f"**[{ctx_phase}]**: {ctx_msg}\n\n"
         body += _msg("user_guidance_instruction")
 
+    # Track context acknowledgment
+    if all_ctx:
+        ack_file = DEFAULT_ARTIFACTS_DIR / "context_ack.yaml"
+        acks = yaml.safe_load(ack_file.read_text()) if ack_file.exists() else {}
+        if not isinstance(acks, dict):
+            acks = {}
+        for ctx_phase in all_ctx:
+            if ctx_phase not in acks:
+                acks[ctx_phase] = []
+            if phase not in acks[ctx_phase]:
+                acks[ctx_phase].append(phase)
+        ack_file.write_text(_yaml_dump(acks))
+
     foot = _footer(phase, "start", state)
     print(header + body + foot)
 
@@ -2009,6 +2044,19 @@ def cmd_status(args) -> None:
                     desc=f.get("description", "?")[:60],
                 )
             )
+
+    # Show context acknowledgment
+    ack_file = DEFAULT_ARTIFACTS_DIR / "context_ack.yaml"
+    if ack_file.exists():
+        acks = yaml.safe_load(ack_file.read_text()) or {}
+        all_ctx = _load_context()
+        if all_ctx:
+            print("\nContext messages:")
+            for ctx_phase, msg in all_ctx.items():
+                seen_by = acks.get(ctx_phase, [])
+                status = f"seen by: {', '.join(seen_by)}" if seen_by else "NOT YET SEEN"
+                msg_str = str(msg)
+                print(f"  [{ctx_phase}]: {msg_str[:60]}... ({status})")
 
     print("\n" + _msg("status_required_note"))
     if state["phase_status"] == "pending":
@@ -2599,6 +2647,12 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
         default=str(resources_dir),
         help="Path to YAML resource files directory",
     )
+    parser.add_argument(
+        "--no-version-check",
+        action="store_true",
+        default=False,
+        help="Skip PyPI version check on startup",
+    )
     sub = parser.add_subparsers(dest="command")
 
     # ── new ──
@@ -2678,11 +2732,22 @@ _BUNDLED_RESOURCES = Path(__file__).parent / "resources"
 _RESOURCE_FILES = ("workflow.yaml", "phases.yaml", "app.yaml")
 
 
+def _detect_old_format(resources_dir: Path) -> bool:
+    """Check if project resources use old gates: format."""
+    phases_file = resources_dir / "phases.yaml"
+    if not phases_file.exists():
+        return False
+    content = phases_file.read_text()
+    # Old format has gates: key at phase level; new format has start:/execution:/end:
+    return "  gates:" in content and "  start:" not in content
+
+
 def _ensure_project_resources(project_resources: Path) -> Path:
     """Ensure project-local resources exist, copying defaults from module if needed.
 
     Returns the project resources directory path. If any YAML file is missing,
-    copies the default from the module's bundled resources.
+    copies the default from the module's bundled resources. Detects and archives
+    old-format resources that use the legacy gates: structure.
     """
     project_resources.mkdir(parents=True, exist_ok=True)
     for fname in _RESOURCE_FILES:
@@ -2691,7 +2756,56 @@ def _ensure_project_resources(project_resources: Path) -> Path:
             src = _BUNDLED_RESOURCES / fname
             if src.exists():
                 shutil.copy2(src, dest)
+
+    # Detect and archive stale old-format resources
+    if _detect_old_format(project_resources):
+        archive_name = f"resources.old.{datetime.now().strftime('%Y%m%d')}"
+        archive_path = project_resources.parent / archive_name
+        project_resources.rename(archive_path)
+        print(f"WARNING: Project resources had old format. Archived to {archive_name}/")
+        project_resources.mkdir(parents=True, exist_ok=True)
+        for fname in _RESOURCE_FILES:
+            src = _BUNDLED_RESOURCES / fname
+            if src.exists():
+                shutil.copy2(src, project_resources / fname)
+        print("Fresh resources installed from module.")
+
     return project_resources
+
+
+def _check_version() -> None:
+    """Check if a newer version is available on PyPI. Non-blocking, 2s timeout."""
+    try:
+        import importlib.metadata
+        import json
+        import time
+        from urllib.request import urlopen
+
+        installed = importlib.metadata.version("stellars-claude-code-plugins")
+
+        # Check cache
+        cache_file = PROJECT_ROOT / ".auto-build-claw" / ".version_check"
+        if cache_file.exists():
+            age = time.time() - cache_file.stat().st_mtime
+            if age < 86400:  # 24 hours
+                return
+
+        url = "https://pypi.org/pypi/stellars-claude-code-plugins/json"
+        resp = urlopen(url, timeout=2)  # noqa: S310
+        data = json.loads(resp.read())
+        latest = data["info"]["version"]
+
+        # Update cache
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.write_text(latest)
+
+        if latest != installed:
+            print(
+                f"Update available: {installed} -> {latest}. "
+                f"Run: pip install --upgrade stellars-claude-code-plugins"
+            )
+    except Exception:
+        pass  # Fail silently
 
 
 def main(resources_dir: Path | None = None):
@@ -2702,6 +2816,11 @@ def main(resources_dir: Path | None = None):
             uses resolution chain: --resources-dir CLI arg > project-local
             resources > bundled module resources.
     """
+    # Version check (before _initialize, non-blocking)
+    no_version_check = "--no-version-check" in sys.argv
+    if not no_version_check:
+        _check_version()
+
     # Resolve resources_dir: explicit arg > CLI --resources-dir > project-local > bundled
     if resources_dir is None:
         # Pre-parse --resources-dir before full argparse (it needs _initialize first)

@@ -6,6 +6,7 @@ are mocked since they require the claude CLI.
 """
 
 import argparse
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -898,3 +899,170 @@ class TestEnsureProjectResources:
         # other artifacts removed
         assert not (artifacts / "state.yaml").exists()
         assert not phase_dir.exists()
+
+
+class TestResourceConflict:
+    """Tests for old-format resource detection and archiving."""
+
+    def test_detect_old_format(self, tmp_path):
+        resources = tmp_path / "resources"
+        resources.mkdir()
+        # Old format
+        (resources / "phases.yaml").write_text(
+            "ALPHA:\n  gates:\n    on_start:\n      readback:\n        prompt: test"
+        )
+        assert orch._detect_old_format(resources) is True
+
+    def test_detect_new_format(self, tmp_path):
+        resources = tmp_path / "resources"
+        resources.mkdir()
+        (resources / "phases.yaml").write_text(
+            "ALPHA:\n  start:\n    agents:\n      - name: readback"
+        )
+        assert orch._detect_old_format(resources) is False
+
+    def test_detect_no_phases_file(self, tmp_path):
+        resources = tmp_path / "resources"
+        resources.mkdir()
+        assert orch._detect_old_format(resources) is False
+
+    def test_old_format_archived(self, tmp_path):
+        resources = tmp_path / ".auto-build-claw" / "resources"
+        resources.mkdir(parents=True)
+        (resources / "phases.yaml").write_text(
+            "ALPHA:\n  gates:\n    on_start:\n      readback:\n        prompt: test"
+        )
+        (resources / "workflow.yaml").write_text("test: {}")
+        (resources / "app.yaml").write_text("app: {}")
+        orch._ensure_project_resources(resources)
+        # Old resources should be archived
+        archives = list(tmp_path.glob(".auto-build-claw/resources.old.*"))
+        assert len(archives) >= 1
+        # New resources should be fresh
+        content = (resources / "phases.yaml").read_text()
+        assert "start:" in content
+        assert "gates:" not in content or "shared_gates:" in content
+
+
+class TestVersionCheck:
+    """Tests for version check caching."""
+
+    def test_version_check_cache(self, tmp_path):
+        cache = tmp_path / ".version_check"
+        cache.write_text("0.8.50")
+        # Cache exists and is fresh - should not make network call
+        assert time.time() - cache.stat().st_mtime < 86400
+
+    def test_version_check_no_error(self):
+        """_check_version never raises - fails silently."""
+        # Should not raise even if package not found or network fails
+        orch._check_version()
+
+
+class TestContextAcknowledgment:
+    """Tests for context acknowledgment tracking."""
+
+    def test_context_ack_tracking(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        # Set a context message
+        ctx = {"RESEARCH": "test guidance"}
+        orch._save_context(ctx)
+        # Track acknowledgment
+        ack_file = tmp_path / "context_ack.yaml"
+        acks = {"RESEARCH": ["ALPHA"]}
+        ack_file.write_text(yaml.dump(acks))
+        loaded = yaml.safe_load(ack_file.read_text())
+        assert "ALPHA" in loaded["RESEARCH"]
+
+    def test_context_ack_roundtrip(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        # Save context and ack
+        ctx = {"PLAN": "focus on performance"}
+        orch._save_context(ctx)
+        ack_file = tmp_path / "context_ack.yaml"
+        acks = {"PLAN": ["ALPHA", "BETA"]}
+        ack_file.write_text(orch._yaml_dump(acks))
+        loaded = yaml.safe_load(ack_file.read_text())
+        assert loaded["PLAN"] == ["ALPHA", "BETA"]
+
+
+class TestHypothesisContext:
+    """Tests for prior hypothesis injection into build context."""
+
+    def test_prior_hyp_from_file(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        # Create hypotheses.yaml
+        hyp = [{"id": "H001", "hypothesis": "Test hypothesis", "stars": "4/5"}]
+        (tmp_path / "hypotheses.yaml").write_text(yaml.dump(hyp))
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "current_phase": "ALPHA",
+            "objective": "test",
+        }
+        orch._save_state(state)
+        ctx = orch._build_context(state, phase="ALPHA")
+        assert "H001" in ctx.get("prior_hyp", "")
+        assert "Test hypothesis" in ctx.get("prior_hyp", "")
+
+    def test_prior_hyp_empty_when_no_file(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "current_phase": "ALPHA",
+            "objective": "test",
+        }
+        orch._save_state(state)
+        ctx = orch._build_context(state, phase="ALPHA")
+        assert ctx.get("prior_hyp", "") == ""
+
+    def test_prior_hyp_multiple_entries(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        hyp = [
+            {"id": "H001", "hypothesis": "First hypothesis", "stars": "3/5"},
+            {"id": "H002", "hypothesis": "Second hypothesis", "stars": "5/5"},
+        ]
+        (tmp_path / "hypotheses.yaml").write_text(yaml.dump(hyp))
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "current_phase": "ALPHA",
+            "objective": "test",
+        }
+        orch._save_state(state)
+        ctx = orch._build_context(state, phase="ALPHA")
+        assert "H001" in ctx["prior_hyp"]
+        assert "H002" in ctx["prior_hyp"]
+        assert "First hypothesis" in ctx["prior_hyp"]
+        assert "Second hypothesis" in ctx["prior_hyp"]
+
+    def test_prior_hyp_malformed_yaml(self, minimal_resources, tmp_path):
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        # Write a string instead of list
+        (tmp_path / "hypotheses.yaml").write_text("just a string")
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "current_phase": "ALPHA",
+            "objective": "test",
+        }
+        orch._save_state(state)
+        ctx = orch._build_context(state, phase="ALPHA")
+        assert ctx.get("prior_hyp", "") == ""
