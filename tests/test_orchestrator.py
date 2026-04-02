@@ -959,35 +959,175 @@ class TestVersionCheck:
         orch._check_version()
 
 
-class TestContextAcknowledgment:
-    """Tests for context acknowledgment tracking."""
+class TestContextRichEntries:
+    """Tests for identifier-keyed rich context entries."""
 
-    def test_context_ack_tracking(self, minimal_resources, tmp_path):
+    def test_generate_context_id_basic(self, minimal_resources, tmp_path):
+        """Identifier is slugified from message."""
+        orch._initialize(minimal_resources)
+        cid = orch._generate_context_id("Focus on X", set())
+        assert cid == "focus_on_x"
+
+    def test_generate_context_id_truncation(self, minimal_resources, tmp_path):
+        """Identifier truncated to 37 chars max."""
+        orch._initialize(minimal_resources)
+        long_msg = "a" * 100
+        cid = orch._generate_context_id(long_msg, set())
+        assert len(cid) <= 37
+
+    def test_generate_context_id_collision(self, minimal_resources, tmp_path):
+        """Collision appends _2, _3 suffix."""
+        orch._initialize(minimal_resources)
+        cid1 = orch._generate_context_id("focus on x", set())
+        cid2 = orch._generate_context_id("focus on x", {cid1})
+        cid3 = orch._generate_context_id("focus on x", {cid1, cid2})
+        assert cid1 == "focus_on_x"
+        assert cid2 == "focus_on_x_2"
+        assert cid3 == "focus_on_x_3"
+
+    def test_generate_context_id_empty_fallback(self, minimal_resources, tmp_path):
+        """Empty/special-chars message falls back to 'ctx'."""
+        orch._initialize(minimal_resources)
+        cid = orch._generate_context_id("!!!", set())
+        assert cid == "ctx"
+
+    def test_save_load_rich_entry(self, minimal_resources, tmp_path):
+        """Round-trip a rich context entry."""
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
-        # Set a context message
-        ctx = {"RESEARCH": "test guidance"}
+        ctx = {
+            "focus_on_x": {
+                "message": "focus on X",
+                "phase": "RESEARCH",
+                "created": "2026-04-02T14:00:00+00:00",
+                "acknowledged_by": [],
+                "processed": False,
+            }
+        }
         orch._save_context(ctx)
-        # Track acknowledgment
-        ack_file = tmp_path / "context_ack.yaml"
-        acks = {"RESEARCH": ["ALPHA"]}
-        ack_file.write_text(yaml.dump(acks))
-        loaded = yaml.safe_load(ack_file.read_text())
-        assert "ALPHA" in loaded["RESEARCH"]
+        loaded = orch._load_context()
+        assert "focus_on_x" in loaded
+        assert loaded["focus_on_x"]["message"] == "focus on X"
+        assert loaded["focus_on_x"]["phase"] == "RESEARCH"
+        assert loaded["focus_on_x"]["processed"] is False
 
-    def test_context_ack_roundtrip(self, minimal_resources, tmp_path):
+    def test_load_rejects_legacy_flat_format(self, minimal_resources, tmp_path):
+        """Old flat format raises ValueError."""
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
-        # Save context and ack
-        ctx = {"PLAN": "focus on performance"}
+        (tmp_path / "context.yaml").write_text("RESEARCH: 'test guidance'\n")
+        with pytest.raises(ValueError, match="legacy flat format"):
+            orch._load_context()
+
+    def test_two_messages_same_phase_different_ids(self, minimal_resources, tmp_path):
+        """Two messages for same phase get different identifiers."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {}
+        cid1 = orch._generate_context_id("fix auth", set(ctx.keys()))
+        ctx[cid1] = {
+            "message": "fix auth", "phase": "IMPLEMENT",
+            "created": "2026-04-02T14:00:00+00:00",
+            "acknowledged_by": [], "processed": False,
+        }
+        cid2 = orch._generate_context_id("fix auth", set(ctx.keys()))
+        ctx[cid2] = {
+            "message": "fix auth again", "phase": "IMPLEMENT",
+            "created": "2026-04-02T15:00:00+00:00",
+            "acknowledged_by": [], "processed": False,
+        }
+        assert cid1 != cid2
+        assert len(ctx) == 2
         orch._save_context(ctx)
-        ack_file = tmp_path / "context_ack.yaml"
-        acks = {"PLAN": ["ALPHA", "BETA"]}
-        ack_file.write_text(orch._yaml_dump(acks))
-        loaded = yaml.safe_load(ack_file.read_text())
-        assert loaded["PLAN"] == ["ALPHA", "BETA"]
+        loaded = orch._load_context()
+        assert len(loaded) == 2
+
+    def test_ack_updates_inline_no_ack_file(self, minimal_resources, tmp_path):
+        """Acknowledgment updates acknowledged_by inline, no context_ack.yaml."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "focus_on_x": {
+                "message": "focus on X",
+                "phase": "RESEARCH",
+                "created": "2026-04-02T14:00:00+00:00",
+                "acknowledged_by": [],
+                "processed": False,
+            }
+        }
+        orch._save_context(ctx)
+        # Simulate what cmd_start does for acknowledgment
+        loaded = orch._load_context()
+        phase = "ALPHA"
+        for cid, entry in loaded.items():
+            ack_list = entry.setdefault("acknowledged_by", [])
+            if phase not in ack_list:
+                ack_list.append(phase)
+        orch._save_context(loaded)
+        final = orch._load_context()
+        assert "ALPHA" in final["focus_on_x"]["acknowledged_by"]
+        assert not (tmp_path / "context_ack.yaml").exists()
+
+    def test_ack_idempotent(self, minimal_resources, tmp_path):
+        """Duplicate phase not added to acknowledged_by."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "focus_on_x": {
+                "message": "focus on X",
+                "phase": "RESEARCH",
+                "created": "2026-04-02T14:00:00+00:00",
+                "acknowledged_by": ["ALPHA"],
+                "processed": False,
+            }
+        }
+        orch._save_context(ctx)
+        loaded = orch._load_context()
+        phase = "ALPHA"
+        for cid, entry in loaded.items():
+            ack_list = entry.setdefault("acknowledged_by", [])
+            if phase not in ack_list:
+                ack_list.append(phase)
+        orch._save_context(loaded)
+        final = orch._load_context()
+        assert final["focus_on_x"]["acknowledged_by"].count("ALPHA") == 1
+
+    def test_processed_flag(self, minimal_resources, tmp_path):
+        """Setting processed=True on an entry."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "focus_on_x": {
+                "message": "focus on X",
+                "phase": "RESEARCH",
+                "created": "2026-04-02T14:00:00+00:00",
+                "acknowledged_by": ["ALPHA"],
+                "processed": False,
+            }
+        }
+        orch._save_context(ctx)
+        loaded = orch._load_context()
+        loaded["focus_on_x"]["processed"] = True
+        orch._save_context(loaded)
+        final = orch._load_context()
+        assert final["focus_on_x"]["processed"] is True
+
+    def test_entry_missing_required_field(self, minimal_resources, tmp_path):
+        """Entry that is a dict but missing message key still loads (partial)."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        # A dict entry passes validation (it's not a string)
+        ctx = {"test_entry": {"phase": "RESEARCH", "created": "2026-04-02"}}
+        orch._save_context(ctx)
+        loaded = orch._load_context()
+        assert "test_entry" in loaded
 
 
 class TestHypothesisContext:

@@ -233,10 +233,10 @@ messages:
 
   # ── Context (cmd_context) ──
   # User guidance injection - broadcast to all agents in a phase
-  context_cleared: "Cleared user context for {phase}."
-  context_none: "No user context set for any phase."
-  context_item: "  {phase}: {text}"
-  context_set: "User context set for {phase}:"
+  context_cleared: "Cleared context entry '{phase}'."
+  context_none: "No context entries."
+  context_item: "  [{phase}]: {text}"
+  context_set: "Context added for {phase}:"
   context_message: "  {message}"
   context_in_progress: |
     Phase is already in progress. Context will be visible to agents when they read the state. Re-run `{cmd} start --understanding "..."` to see it in instructions.

@@ -18,6 +18,7 @@ import collections
 from datetime import datetime, timezone
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -719,18 +720,47 @@ def _append_failure(entry: dict) -> None:
 def _load_context() -> dict:
     """Load context messages from context.yaml.
 
-    Returns a dict mapping phase names to message strings. Returns empty
-    dict if file doesn't exist (first run or never set).
+    Returns a dict mapping identifiers to rich entry dicts. Each entry
+    contains: message, phase, created, acknowledged_by, processed.
+    Raises ValueError if the file contains the old flat format.
     """
     if not CONTEXT_FILE.exists():
         return {}
     data = yaml.safe_load(CONTEXT_FILE.read_text())
-    return data if isinstance(data, dict) else {}
+    if not isinstance(data, dict):
+        return {}
+    for key, entry in data.items():
+        if not isinstance(entry, dict):
+            raise ValueError(
+                f"context.yaml contains legacy flat format (key '{key}' maps to "
+                f"{type(entry).__name__}, expected dict). "
+                "Delete context.yaml and re-add entries with: "
+                "orchestrate context --message '...' --phase PHASE"
+            )
+    return data
 
 
 def _save_context(ctx: dict) -> None:
     """Save context messages to context.yaml."""
     CONTEXT_FILE.write_text(_yaml_dump(ctx))
+
+
+def _generate_context_id(message: str, existing_ids: set) -> str:
+    """Generate a short identifier from a context message.
+
+    Slugifies the message to lowercase alphanumeric + underscores,
+    truncated to 37 chars. Falls back to 'ctx' for empty slugs.
+    Appends _2, _3, ... on collision with existing_ids.
+    """
+    slug = re.sub(r"[^a-z0-9]+", "_", message.lower()).strip("_")[:37]
+    if not slug:
+        slug = "ctx"
+    candidate = slug
+    counter = 2
+    while candidate in existing_ids:
+        candidate = f"{slug}_{counter}"
+        counter += 1
+    return candidate
 
 
 def _phase_dir(state: dict) -> Path:
@@ -1652,27 +1682,26 @@ def cmd_start(args) -> None:
     body = instructions
     all_ctx = _load_context()
     if all_ctx:
-        count = len(all_ctx)
-        body += f"\n\n{count} context message(s) active:\n"
-        body += _msg("user_guidance_header_line") + "\n"
-        body += _msg("user_guidance_header") + "\n"
-        body += _msg("user_guidance_header_line") + "\n\n"
-        for ctx_phase, ctx_msg in all_ctx.items():
-            body += f"**[{ctx_phase}]**: {ctx_msg}\n\n"
-        body += _msg("user_guidance_instruction")
+        active_ctx = {cid: e for cid, e in all_ctx.items() if not e.get("processed", False)}
+        if active_ctx:
+            count = len(active_ctx)
+            body += f"\n\n{count} context message(s) active:\n"
+            body += _msg("user_guidance_header_line") + "\n"
+            body += _msg("user_guidance_header") + "\n"
+            body += _msg("user_guidance_header_line") + "\n\n"
+            for cid, entry in active_ctx.items():
+                body += f"**[{cid}]**: {entry['message']}\n\n"
+            body += _msg("user_guidance_instruction")
 
-    # Track context acknowledgment
-    if all_ctx:
-        ack_file = DEFAULT_ARTIFACTS_DIR / "context_ack.yaml"
-        acks = yaml.safe_load(ack_file.read_text()) if ack_file.exists() else {}
-        if not isinstance(acks, dict):
-            acks = {}
-        for ctx_phase in all_ctx:
-            if ctx_phase not in acks:
-                acks[ctx_phase] = []
-            if phase not in acks[ctx_phase]:
-                acks[ctx_phase].append(phase)
-        ack_file.write_text(_yaml_dump(acks))
+        # Update acknowledged_by inline
+        dirty = False
+        for cid, entry in all_ctx.items():
+            ack_list = entry.setdefault("acknowledged_by", [])
+            if phase not in ack_list:
+                ack_list.append(phase)
+                dirty = True
+        if dirty:
+            _save_context(all_ctx)
 
     foot = _footer(phase, "start", state)
     print(header + body + foot)
@@ -2045,18 +2074,18 @@ def cmd_status(args) -> None:
                 )
             )
 
-    # Show context acknowledgment
-    ack_file = DEFAULT_ARTIFACTS_DIR / "context_ack.yaml"
-    if ack_file.exists():
-        acks = yaml.safe_load(ack_file.read_text()) or {}
-        all_ctx = _load_context()
-        if all_ctx:
-            print("\nContext messages:")
-            for ctx_phase, msg in all_ctx.items():
-                seen_by = acks.get(ctx_phase, [])
-                status = f"seen by: {', '.join(seen_by)}" if seen_by else "NOT YET SEEN"
-                msg_str = str(msg)
-                print(f"  [{ctx_phase}]: {msg_str[:60]}... ({status})")
+    # Show context messages with inline acknowledgment
+    all_ctx = _load_context()
+    if all_ctx:
+        print("\nContext messages:")
+        for cid, entry in all_ctx.items():
+            msg = entry.get("message", "")
+            p = entry.get("phase", "?")
+            seen_by = entry.get("acknowledged_by", [])
+            proc = entry.get("processed", False)
+            status = f"seen by: {', '.join(seen_by)}" if seen_by else "NOT YET SEEN"
+            proc_str = " [PROCESSED]" if proc else ""
+            print(f"  [{cid}] ({p}): {msg[:60]}... ({status}){proc_str}")
 
     print("\n" + _msg("status_required_note"))
     if state["phase_status"] == "pending":
@@ -2212,10 +2241,10 @@ def cmd_skip(args) -> None:
 def cmd_context(args) -> None:
     """Inject user guidance into a phase, broadcast to all agents.
 
-    Stores the user's message in context.yaml (persistent across --clean).
-    Displays as a prominent banner in phase instructions. All agents
-    spawned in any phase receive the guidance. Can target a specific
-    phase or the current one.
+    Stores the user's message in context.yaml as a rich entry keyed
+    by auto-generated identifier. Displays as a prominent banner in
+    phase instructions. All agents spawned in any phase receive the
+    guidance.
     """
     state = _load_state()
     if not state:
@@ -2225,38 +2254,84 @@ def cmd_context(args) -> None:
     phase = getattr(args, "phase", "") or state["current_phase"]
     phase = phase.upper()
     clear = getattr(args, "clear", False)
+    processed = getattr(args, "processed", False)
 
+    # Clear by identifier
     if clear:
+        identifier = (args.message or "").strip()
+        if not identifier:
+            print(
+                "--clear requires an identifier (pass via --message IDENTIFIER)", file=sys.stderr
+            )
+            sys.exit(1)
         ctx = _load_context()
-        ctx.pop(phase, None)
+        if identifier not in ctx:
+            print(f"Context identifier '{identifier}' not found.", file=sys.stderr)
+            sys.exit(1)
+        ctx.pop(identifier)
         _save_context(ctx)
-        print(_msg("context_cleared", phase=phase))
+        print(_msg("context_cleared", phase=identifier))
         return
 
+    # Mark processed by identifier
+    if processed:
+        identifier = (args.message or "").strip()
+        if not identifier:
+            print(
+                "--processed requires an identifier (pass via --message IDENTIFIER)",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        ctx = _load_context()
+        if identifier not in ctx:
+            print(f"Context identifier '{identifier}' not found.", file=sys.stderr)
+            sys.exit(1)
+        ctx[identifier]["processed"] = True
+        _save_context(ctx)
+        print(f"Context '{identifier}' marked as processed.")
+        return
+
+    # List all context entries
     message = args.message
     if not message:
         ctx = _load_context()
         if not ctx:
             print(_msg("context_none"))
         else:
-            for p, msg in ctx.items():
-                truncated = msg[:100]
-                ellipsis = "..." if len(msg) > 100 else ""
-                print(_msg("context_item", phase=p, text=truncated + ellipsis))
+            for cid, entry in ctx.items():
+                msg = entry.get("message", "")
+                p = entry.get("phase", "?")
+                ack = entry.get("acknowledged_by", [])
+                proc = entry.get("processed", False)
+                truncated = msg[:80]
+                ellipsis = "..." if len(msg) > 80 else ""
+                ack_str = ", ".join(ack) if ack else "none"
+                proc_str = "processed" if proc else "active"
+                print(f"  [{cid}] ({p}): {truncated}{ellipsis}  (ack: {ack_str}, {proc_str})")
         return
 
+    # Add new context entry
     ctx = _load_context()
-    ctx[phase] = message
+    cid = _generate_context_id(message, set(ctx.keys()))
+    ctx[cid] = {
+        "message": message,
+        "phase": phase,
+        "created": _now(),
+        "acknowledged_by": [],
+        "processed": False,
+    }
     _save_context(ctx)
     _append_log(
         {
             "iteration": state["iteration"],
             "phase": phase,
             "event": "user_context",
+            "identifier": cid,
             "message": message[:200],
         }
     )
     print(_msg("context_set", phase=phase))
+    print(f"  identifier: {cid}")
     print(_msg("context_message", message=message))
     if state["phase_status"] == "in_progress" and state["current_phase"] == phase:
         print("\n" + _msg("context_in_progress", cmd=CMD))
@@ -2700,6 +2775,12 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     p_ctx.add_argument("--message", default="", help=_cli("args", "message"))
     p_ctx.add_argument("--phase", default="", help=_cli("args", "phase"))
     p_ctx.add_argument("--clear", action="store_true", default=False, help=_cli("args", "clear"))
+    p_ctx.add_argument(
+        "--processed",
+        action="store_true",
+        default=False,
+        help="Mark context entry as processed (pass identifier via --message)",
+    )
 
     # ── log-failure ──
     p_fail = sub.add_parser("log-failure", help=_cli("commands", "log_failure"))

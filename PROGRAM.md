@@ -17,16 +17,31 @@ Implement the 2 remaining unfinished items identified in the executive summary, 
 - **Refactor context.yaml to rich entries with acknowledgment** (high)
   - Scope: `stellars_claude_code_plugins/engine/orchestrator.py` context system
   - Current format: `{phase_name: message_string}` - flat, no metadata
-  - New format per entry: `{phase_name: {message: str, created: ISO8601, acknowledged_by: [phase_list], processed: bool}}`
+  - New format per entry: `{identifier: {message: str, phase: str, created: ISO8601, acknowledged_by: [phase_list], processed: bool}}`
+  - Each context entry keyed by a short human-readable identifier (e.g., `focus_routing`, `fix_auth_leak`), NOT by phase name
+  - `phase` is an attribute inside the entry (the target phase this context applies to), not the dict key
+  - Identifier generated from the message content - currently slugified (regex), but should be generatively created by the orchestrating LLM for more meaningful names. Slugification is the interim approach; generative naming is the target when the context is created by an agent (e.g., during `orchestrate context` from a phase prompt). Max 40 chars, unique within context.yaml
+  - `orchestrate context --message "..." --phase RESEARCH` stores entry with auto-generated identifier as key and `phase: RESEARCH` inside
+  - `orchestrate context --clear IDENTIFIER` removes entry by identifier
+  - `orchestrate context --processed IDENTIFIER` marks a specific entry as processed
   - `acknowledged_by`: list of phases that have seen this context (appended on `orchestrate start`)
   - `processed`: boolean, set to true when the context item has been incorporated into PROGRAM.md or BENCHMARK.md
   - Remove separate `context_ack.yaml` - everything in one file
-  - `orchestrate status` shows each context with created timestamp, acknowledged_by list, processed status
-  - `orchestrate context --processed PHASE_NAME` marks a context entry as processed
+  - `orchestrate status` shows each context with identifier, created timestamp, acknowledged_by list, processed status
   - NO backward compat: old plain-string format is BROKEN. If context.yaml has plain strings, delete the file and start fresh. No migration code. No isinstance checks. One format only.
   - Add to agent spawn instructions: "ACKNOWLEDGE each context message by referencing it"
   - Add to gatekeeper: verify context was considered in evidence
-  - Acceptance: context.yaml has rich entries, no separate ack file, status shows full metadata
+  - Acceptance: context.yaml has rich entries keyed by identifier, no separate ack file, status shows full metadata
+
+- **Resource conflict: archive user-modified YAMLs on version upgrade** (medium)
+  - Scope: `stellars_claude_code_plugins/engine/orchestrator.py` `_ensure_project_resources` and `_detect_old_format`
+  - Current: only detects old format (pre-FQN `gates:` key) and archives
+  - Enhancement: when bundled resources (from module) differ from project-local resources AND local resources have been modified by the user, archive the local copy and install fresh from module
+  - Detection: compare file content hash or key structural markers between bundled and project-local
+  - Archive pattern: rename to `resources.old.YYYYMMDD/` (already implemented for old format)
+  - Warning: print clear message that resources were refreshed due to version upgrade
+  - User modifications that are compatible should be preserved; only structural conflicts trigger archive
+  - Acceptance: version upgrade with structural resource changes archives old, installs new, warns user
 
 - **Auto-reinstall on version mismatch** (low)
   - Scope: `stellars_claude_code_plugins/engine/orchestrator.py` `_check_version`
@@ -50,13 +65,61 @@ Implement the 2 remaining unfinished items identified in the executive summary, 
   - Change to: "Read existing hypotheses.yaml first. APPEND new entries, UPDATE existing entries by ID, do NOT overwrite the file"
   - Acceptance: prompt explicitly says append/update, not overwrite
 
+- **Redesign failures.yaml to rich named entries** (medium)
+  - Scope: `stellars_claude_code_plugins/engine/orchestrator.py` failure system
+  - Current format: flat YAML list of `{iteration, phase, mode, description}` dicts - unnamed, no lifecycle tracking
+  - New format per entry: `{identifier: {description: str, context: str, iteration: int, phase: str, acknowledged_by: [phase_list], processed: bool, solution: str|null}}`
+  - Each failure keyed by a short human-readable identifier (e.g., `gate_timeout`, `resource_conflict`)
+  - `context`: what was happening when the failure occurred - broader than description
+  - `acknowledged_by`: phases that have seen this failure (same pattern as context entries)
+  - `processed`: whether the failure has been addressed in a subsequent iteration
+  - `solution`: null until fixed, then a brief description of how it was resolved
+  - `orchestrate log-failure --mode ID --desc "..." --context "..."` stores with auto-generated identifier
+  - `orchestrate failures` displays with full metadata: identifier, description, context, acknowledged, processed, solution
+  - `orchestrate failures --processed IDENTIFIER --solution "description"` marks resolved
+  - `_build_failures_context()` updated to show rich entries with solution status
+  - RESEARCH phase: `_build_failures_context()` surfaces unsolved failures (solution is null) as investigation targets
+  - NEXT phase: unsolved failures considered for additive updates to PROGRAM.md work items and BENCHMARK.md checklist items
+  - NEXT phase prompt instructs: "if unsolved failures exist, add them as work items to PROGRAM.md and verification items to BENCHMARK.md"
+  - Acceptance: failures.yaml has named rich entries with lifecycle tracking, old flat list format rejected, unsolved failures flow into RESEARCH and NEXT
+
+- **Architect agent prompt: Occam's razor directive** (medium)
+  - Scope: `stellars_claude_code_plugins/engine/resources/phases.yaml` architect agent prompts
+  - Every architect agent (RESEARCH, PLAN, REVIEW, GC, PLANNING) gets an explicit design simplicity directive
+  - Directive: guard against unnecessary complexity - reject designs that introduce parallel tracking files, redundant data structures, or speculative abstractions
+  - Occam's razor: the simplest design that solves the problem is the correct one. Fewer files, fewer fields, fewer code paths
+  - Architect must challenge: "can this be achieved without adding a new file?", "can this field live in an existing structure?", "does this need a separate tracking mechanism?"
+  - NOT a generic "keep it simple" - specific to data design: one canonical location per data entity, no shadow copies, no orphan files
+  - Acceptance: all architect agents in phases.yaml include the Occam's razor directive in their prompt
+
+- **Generative naming for context and failure identifiers** (medium)
+  - Scope: `stellars_claude_code_plugins/engine/orchestrator.py` `_generate_context_id`
+  - Current: regex slugification (`re.sub`) produces mechanical identifiers like `focus_on_x`
+  - Target: when context is created by an agent within a phase prompt, the identifier should be generatively created - meaningful, descriptive, not just mechanical word extraction
+  - Approach: the orchestrating LLM (Claude) generates the identifier as part of the context creation command, not computed by regex
+  - Fallback: slugification remains for non-generative contexts (direct CLI usage)
+  - Acceptance: identifiers are more meaningful than regex slugs when created within orchestrated phases
+
+- **PLAN phase prompt mirrors EnterPlanMode design** (medium)
+  - Scope: `stellars_claude_code_plugins/engine/resources/phases.yaml` PLAN phase prompt
+  - The PLAN phase should follow the same structured approach as Claude Code's formal EnterPlanMode - but without user intervention (autonomous)
+  - Phases: (1) explore codebase with agents, (2) design implementation approach, (3) review the plan with agents, (4) write plan to file
+  - The PLAN phase prompt should explicitly describe this 4-step process
+  - No interactive user approval gate - the gatekeeper validates plan quality instead
+  - Acceptance: PLAN phase prompt describes the explore-design-review-write workflow matching EnterPlanMode structure
+
 - **Tests for new features** (high)
-  - test_context_rich_format: new context entries have message, created, acknowledged_by, processed
+  - test_context_rich_format: new context entries have message, phase, created, acknowledged_by, processed
+  - test_context_identifier_key: entries keyed by identifier not phase name
   - test_context_rejects_legacy: plain string entries raise error, not silently migrated
   - test_context_acknowledgment_on_start: orchestrate start appends phase to acknowledged_by
   - test_context_processed_flag: marking context as processed works
+  - test_failures_rich_format: failure entries have identifier, description, context, acknowledged_by, processed, solution
+  - test_failures_rejects_legacy: old flat list format raises error
+  - test_failures_solution_marking: marking failure as processed with solution works
   - test_hypothesis_autowrite_prompt: verify prompt says append/update
-  - Acceptance: >= 168 tests pass
+  - test_architect_occam_directive: all architect agents have simplicity directive in prompt
+  - Acceptance: >= 175 tests pass
 
 ## Exit Conditions
 
@@ -71,5 +134,7 @@ Iterations stop when ALL hold:
 
 - Auto-reinstall: patch versions only, never auto-upgrade minor/major
 - NO backward compat for context: plain string entries are rejected with error
-- NO migration code: one format, fully committed, no isinstance conversion paths
+- NO backward compat for failures: old flat list format is rejected with error
+- NO migration code: one format per file, fully committed, no isinstance conversion paths
 - No changes to FSM or gate logic
+- Occam's razor applies to all design decisions: one canonical location per data entity, no parallel tracking, no speculative abstractions
