@@ -91,6 +91,8 @@ See [devils-advocate/README.md](devils-advocate/) for scoring formula details, a
 
 ## Install
 
+Current version: **0.8.59**
+
 ```bash
 pip install stellars-claude-code-plugins
 ```
@@ -109,42 +111,43 @@ stellars_claude_code_plugins/          # Shared engine (pip installable)
     fsm.py                             # Phase lifecycle state machine
     model.py                           # Typed YAML model loader + validator
     orchestrator.py                    # Complete orchestration engine
+    resources/
+      workflow.yaml                    # Default iteration types and phase sequences
+      phases.yaml                      # Default phase templates, agents, gates
+      app.yaml                         # Default display text and CLI config
 
 auto-build-claw/                       # Plugin: autonomous build iterations
+  .claude-plugin/plugin.json           # Plugin registration
   skills/
-    auto-build-claw/
-      orchestrate.py                   # Thin entrypoint
-      resources/
-        workflow.yaml                  # Iteration types and phase sequences
-        phases.yaml                    # Phase templates, agents, gates
-        app.yaml                       # Display text and CLI config
-    program-writer/SKILL.md
-    benchmark-writer/SKILL.md
+    auto-build-claw/SKILL.md           # Orchestrator skill definition
+    program-writer/SKILL.md            # Program definition skill
+    benchmark-writer/SKILL.md          # Benchmark definition skill
 
 devils-advocate/                       # Plugin: critical document analysis
+  .claude-plugin/plugin.json           # Plugin registration
   skills/
-    setup/SKILL.md
-    evaluate/SKILL.md
-    iterate/SKILL.md
-    run/SKILL.md
+    setup/SKILL.md                     # Build persona + fact repository
+    evaluate/SKILL.md                  # Concern catalogue + scorecard
+    iterate/SKILL.md                   # Apply corrections, re-score
+    run/SKILL.md                       # Full workflow end-to-end
+
+.claude-plugin/marketplace.json        # Plugin marketplace registry
 ```
 
 ## Building a new plugin
 
-Create a directory with YAML resource files and a thin entrypoint:
+Plugins are pure configuration - no Python code required. Create a directory with skills and register it in the marketplace:
 
-```python
-#!/usr/bin/env python3
-from pathlib import Path
-from stellars_claude_code_plugins.engine.orchestrator import main
-
-if __name__ == "__main__":
-    main(resources_dir=Path(__file__).parent / "resources")
+```
+my-plugin/
+  .claude-plugin/plugin.json           # Plugin registration and skill triggers
+  skills/
+    my-skill/SKILL.md                  # Skill definition with description and instructions
 ```
 
-Define your workflow phases, agent prompts, gate templates, and display text in the YAML files. The engine handles everything else - state management, FSM transitions, CLI parsing, gate execution, and audit logging.
+The `plugin.json` registers your skills with Claude Code, defining when they trigger and what tools they have access to. Each `SKILL.md` contains the instructions Claude follows when the skill is invoked. The shared orchestration engine (`pip install stellars-claude-code-plugins`) provides the `orchestrate` CLI command that handles state management, FSM transitions, gate execution, and audit logging.
 
-Register in the marketplace by adding a `plugin.json` to your plugin's `.claude-plugin/` directory.
+Register your plugin in the marketplace by adding an entry to `.claude-plugin/marketplace.json`.
 
 ## Development
 
