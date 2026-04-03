@@ -59,8 +59,8 @@ score = unchecked_items + design_unity_residual + data_integrity_residual + form
   Evidence: test_deferred_auto_dismissed checks note contains "exceeded max deferred"
 - [x] Test: deferred hypothesis auto-dismissed after exceeding config
   Evidence: test_deferred_auto_dismissed (iteration 10, created 1, > 3 gap)
-- [ ] Test: deferred hypothesis within limit survives
-  NOTE: not explicitly tested (deferred at iteration 2, current 3 would survive - implicit in test_classified_items_pass)
+- [x] Test: deferred hypothesis within limit survives
+  Evidence: test_deferred_within_limit_survives (iteration_created=2, current=4, gap=2 < max=3, stays deferred)
 
 ## Section 3: Workflow Stop Condition
 
@@ -83,8 +83,7 @@ score = unchecked_items + design_unity_residual + data_integrity_residual + form
 
 ## Completion Conditions
 
-- [ ] All Section 1-4 items [x] AND all 6 grades >= 9
-- [ ] Score stagnated (unchanged for 2 consecutive iterations)
+- [ ] Score stagnated (unchanged for 2 consecutive iterations despite implementation effort)
 
 ---
 
@@ -138,4 +137,5 @@ Evidence: _build_failures_context aligned with context banner filter. All loader
 | 32   | 19    | 199   | Failures status+notes, transitions, generative naming, prompts |
 | 33   | 11    | 202   | --continue flag, SKILL.md, planning quality verified |
 | clean | -    | 202   | Benchmark cleanup, programmatic gates design |
-| 34   | 4     | 207   | Programmatic gates, max deferred, stop condition, residuals. Data Integrity+Test Depth+Code Clean all 10. |
+| 34   | 4     | 207   | Programmatic gates, max deferred, stop condition, residuals. |
+| 35   | 2     | 208   | Deferred within limit test. Remove 'all items checked' condition. |

@@ -1996,6 +1996,26 @@ class TestLifecycleCompliance:
         assert loaded["old_deferred"]["status"] == "dismissed"
         assert "exceeded max deferred" in str(loaded["old_deferred"]["notes"][-1])
 
+    def test_deferred_within_limit_survives(self, minimal_resources, tmp_path):
+        """Deferred hypothesis within max iterations limit survives."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        hyps = {
+            "recent_deferred": {
+                "hypothesis": "recent", "status": "deferred",
+                "stars": 3, "prediction": "", "evidence": "",
+                "iteration_created": 2,
+                "notes": [{"deferred": "revisit next"}],
+            }
+        }
+        orch._save_hypotheses(hyps)
+        state = {"iteration": 4, "current_phase": "FULL::HYPOTHESIS"}
+        # Gap is 2, max is 3 - should survive
+        orch._check_lifecycle_compliance("FULL::HYPOTHESIS", state)
+        loaded = orch._load_hypotheses()
+        assert loaded["recent_deferred"]["status"] == "deferred"
+
     def test_classified_items_pass(self, minimal_resources, tmp_path):
         """All classified context items pass compliance check."""
         orch._initialize(minimal_resources)
