@@ -81,8 +81,9 @@ Do NOT proceed to benchmark-writer or the orchestrator without explicit approval
 
 - **Comprehensive** - the program can be as long as needed to fully capture the intention. Don't compress for brevity at the cost of clarity
 - **Intention over implementation** - work items describe WHAT to achieve and WHY, not HOW to do it. "Migrate FSM to transitions package" is intention. "Replace FSMConfig with transitions.Machine, update 15 call sites in orchestrator.py" is implementation detail that belongs in PLAN phase
-- **Implementation details only when user specifies** - if the user explicitly says "use this approach" or "change this specific function", include it. Otherwise, let RESEARCH and PLAN phases figure out the how
+- **Capture expert knowledge** - if the user provides architectural constraints, design decisions, technology choices, or domain insights, these MUST be captured in the program. The user is the domain expert. "Use SimPy resources for connection pools" or "the config must compose in 3 layers" is expert guidance that the orchestrator needs. This is not implementation detail - it's architectural direction
+- **Let RESEARCH/PLAN figure out the how** - unless the user provides specific guidance, don't prescribe implementation approach. The orchestrator's RESEARCH phase investigates the codebase and PLAN designs the implementation
 - **Scope boundaries explicit** - what CAN and CANNOT be modified
 - **Single metric** - the program should enable ONE number to optimize
-- **No iteration breakdown** - the orchestrator handles iteration planning
+- **No iteration breakdown** - the program is a flat list of work items, NOT divided into iterations. The orchestrator's PLANNING phase decides how to group work into iterations based on dependencies and scope
 - **Every work item has measurable acceptance** - "improve X" is not a work item, "reduce X from 14 to 0" is
