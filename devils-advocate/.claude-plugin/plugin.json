@@ -1,0 +1,20 @@
+{
+  "name": "devils-advocate",
+  "description": "Critical document analysis with persona-driven risk scoring, iterative scorecard evaluation, and versioned corrections.",
+  "version": "1.0.0",
+  "license": "MIT",
+  "author": {
+    "name": "Stellars Henson",
+    "email": "stellarshenson@gmail.com"
+  },
+  "keywords": [
+    "critique",
+    "analysis",
+    "scorecard",
+    "risk",
+    "devil",
+    "advocate",
+    "persona",
+    "evaluation"
+  ]
+}

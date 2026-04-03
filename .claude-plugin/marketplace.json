@@ -18,6 +18,15 @@
       "keywords": ["orchestrator", "iteration", "multi-agent", "review", "fsm", "build"],
       "category": "development",
       "tags": ["autonomous", "quality", "workflow", "agents"]
+    },
+    {
+      "name": "devils-advocate",
+      "source": "./devils-advocate",
+      "version": "1.0.0",
+      "description": "Critical document analysis with persona-driven risk scoring, iterative scorecard evaluation, and versioned corrections",
+      "keywords": ["critique", "analysis", "scorecard", "risk", "devil", "advocate"],
+      "category": "documentation",
+      "tags": ["review", "quality", "persona", "evaluation"]
     }
   ]
 }
