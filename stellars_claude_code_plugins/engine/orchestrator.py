@@ -1487,7 +1487,10 @@ def _run_next_iteration(state: dict) -> None:
             print("\n" + _msg("iteration_complete", total=current))
             print(_msg("benchmark_complete"))
             return
-        if current >= 20:
+        safety_cap = 20
+        if _MODEL and hasattr(_MODEL.app, "config"):
+            safety_cap = _MODEL.app.config.get("safety_cap_iterations", 20)
+        if current >= safety_cap:
             print("\n" + _msg("benchmark_safety_cap", count=current))
             return
     else:
@@ -1584,6 +1587,8 @@ def cmd_new(args) -> None:
     when multiple iterations are requested with 'full' type.
     Fresh start cleans prior artifacts. --continue preserves context,
     failures, hypotheses, and benchmark scores from the existing session.
+    --restart preserves data like --continue but keeps the same iteration
+    number (resets phases to beginning of that iteration).
     """
     itype = args.type
     if itype not in ITERATION_TYPES:
@@ -1608,22 +1613,38 @@ def cmd_new(args) -> None:
         return
 
     continue_session = getattr(args, "continue_session", False)
+    restart_session = getattr(args, "restart_session", False)
 
-    if continue_session:
-        # Continue: preserve data, load existing state
+    if continue_session or restart_session:
+        # Continue/Restart: preserve data, load existing state
         old_state = _load_state()
         if not old_state:
+            action = "continue" if continue_session else "restart"
             print(
-                "No existing session to continue. Use 'orchestrate new' without --continue.",
+                f"No existing session to {action}. Use 'orchestrate new' without flags.",
                 file=sys.stderr,
             )
             sys.exit(1)
-        iteration = old_state["iteration"] + 1
+        if restart_session:
+            iteration = old_state["iteration"]  # Same iteration
+            print(
+                f"Restarting iteration {iteration} from beginning."
+                " Preserving context/failures/hypotheses.\n"
+            )
+        else:
+            iteration = old_state["iteration"] + 1
+            print(
+                f"Continuing from iteration {old_state['iteration']}."
+                " Preserving context/failures/hypotheses.\n"
+            )
         benchmark_scores = old_state.get("benchmark_scores", [])
-        print(
-            f"Continuing from iteration {old_state['iteration']}."
-            " Preserving context/failures/hypotheses.\n"
-        )
+        # Optionally update objective/benchmark/iterations from args
+        if not args.objective or args.objective == old_state.get("objective", ""):
+            args.objective = old_state.get("objective", args.objective)
+        if not getattr(args, "benchmark", ""):
+            args.benchmark = old_state.get("benchmark_cmd", "")
+        if total_iterations == 1:  # Default value - use old
+            total_iterations = old_state.get("total_iterations", total_iterations)
     else:
         # Fresh start: clean and reset
         last_iteration = _read_last_iteration()
@@ -3034,6 +3055,13 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help=_cli("args", "continue_session"),
+    )
+    p_new.add_argument(
+        "--restart",
+        dest="restart_session",
+        action="store_true",
+        default=False,
+        help="Restart current iteration from beginning (optionally update objective/benchmark/iterations)",
     )
     p_new.add_argument(
         "--dry-run", action="store_true", default=False, help=_cli("args", "dry_run")

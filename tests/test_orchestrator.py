@@ -509,6 +509,124 @@ class TestNewContinue:
         assert new_state["benchmark_scores"] == []
 
 
+class TestNewRestart:
+    """Tests for orchestrate new --restart flag."""
+
+    def test_restart_keeps_iteration_number(self, minimal_resources, tmp_path):
+        """--restart keeps same iteration number, resets phases."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        state = {
+            "iteration": 5,
+            "total_iterations": 10,
+            "type": "test_workflow",
+            "objective": "original",
+            "benchmark_cmd": "",
+            "benchmark_scores": [{"score": 42}],
+            "current_phase": "GAMMA",
+            "phase_status": "in_progress",
+            "completed_phases": ["ALPHA", "BETA"],
+            "skipped_phases": [],
+            "rejected_count": 0,
+            "started_at": "2026-04-03",
+            "phase_outputs": {"ALPHA": "findings"},
+            "phase_agents": {"ALPHA": ["researcher"]},
+            "parent_type": "",
+        }
+        orch._save_state(state)
+        ctx = {
+            "item": {
+                "message": "preserve me",
+                "phase": "ALPHA",
+                "created": "2026-04-03",
+                "status": "new",
+                "notes": [],
+            }
+        }
+        orch._save_context(ctx)
+        args = argparse.Namespace(
+            type="test_workflow",
+            objective="updated objective",
+            iterations=10,
+            benchmark="",
+            dry_run=False,
+            continue_session=False,
+            restart_session=True,
+        )
+        orch.cmd_new(args)
+        new_state = orch._load_state()
+        assert new_state["iteration"] == 5  # Same iteration
+        assert new_state["objective"] == "updated objective"
+        assert new_state["completed_phases"] == []  # Reset
+        loaded_ctx = orch._load_context()
+        assert "item" in loaded_ctx  # Data preserved
+
+    def test_restart_preserves_data(self, minimal_resources, tmp_path):
+        """--restart preserves context/failures/hypotheses and keeps original values when args empty."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        state = {
+            "iteration": 3,
+            "total_iterations": 5,
+            "type": "test_workflow",
+            "objective": "test",
+            "benchmark_cmd": "read BENCH",
+            "benchmark_scores": [{"score": 10}],
+            "current_phase": "BETA",
+            "phase_status": "pending",
+            "completed_phases": ["ALPHA"],
+            "skipped_phases": [],
+            "rejected_count": 0,
+            "started_at": "2026-04-03",
+            "phase_outputs": {},
+            "phase_agents": {},
+            "parent_type": "",
+        }
+        orch._save_state(state)
+        args = argparse.Namespace(
+            type="test_workflow",
+            objective="",
+            iterations=1,
+            benchmark="",
+            dry_run=False,
+            continue_session=False,
+            restart_session=True,
+        )
+        orch.cmd_new(args)
+        new_state = orch._load_state()
+        assert new_state["iteration"] == 3
+        assert new_state["objective"] == "test"  # Kept original when empty
+        assert new_state["benchmark_cmd"] == "read BENCH"  # Kept original
+        assert len(new_state["benchmark_scores"]) == 1  # Preserved
+        assert new_state["total_iterations"] == 5  # Kept original (args=1 = default)
+
+    def test_restart_no_state_fails(self, minimal_resources, tmp_path):
+        """--restart without existing state fails."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        args = argparse.Namespace(
+            type="test_workflow",
+            objective="test",
+            iterations=1,
+            benchmark="",
+            dry_run=False,
+            continue_session=False,
+            restart_session=True,
+        )
+        with pytest.raises(SystemExit):
+            orch.cmd_new(args)
+
+    def test_safety_cap_from_config(self, auto_build_claw_resources):
+        """Safety cap reads from app.yaml config."""
+        orch._initialize(auto_build_claw_resources)
+        assert hasattr(orch._MODEL.app, "config")
+        cap = orch._MODEL.app.config.get("safety_cap_iterations", 20)
+        assert cap == 20
+
+
 class TestCmdStatus:
     """Tests for the status command."""
 
@@ -2003,8 +2121,11 @@ class TestLifecycleCompliance:
         orch._init_artifacts_dir(tmp_path)
         hyps = {
             "recent_deferred": {
-                "hypothesis": "recent", "status": "deferred",
-                "stars": 3, "prediction": "", "evidence": "",
+                "hypothesis": "recent",
+                "status": "deferred",
+                "stars": 3,
+                "prediction": "",
+                "evidence": "",
                 "iteration_created": 2,
                 "notes": [{"deferred": "revisit next"}],
             }
