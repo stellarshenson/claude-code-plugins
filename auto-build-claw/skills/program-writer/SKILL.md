@@ -85,5 +85,5 @@ Do NOT proceed to benchmark-writer or the orchestrator without explicit approval
 - **Let RESEARCH/PLAN figure out the how** - unless the user provides specific guidance, don't prescribe implementation approach. The orchestrator's RESEARCH phase investigates the codebase and PLAN designs the implementation
 - **Scope boundaries explicit** - what CAN and CANNOT be modified
 - **Single metric** - the program should enable ONE number to optimize
-- **No iteration breakdown** - the program is a flat list of work items, NOT divided into iterations. The orchestrator's PLANNING phase decides how to group work into iterations based on dependencies and scope
+- **Logical grouping, not iteration breakdown** - work items should be grouped by logical category (e.g. "Framework extraction", "Config system", "Testing") when applicable, but NOT divided into iterations. The orchestrator's PLANNING phase decides iteration sequencing based on dependencies and scope
 - **Every work item has measurable acceptance** - "improve X" is not a work item, "reduce X from 14 to 0" is
