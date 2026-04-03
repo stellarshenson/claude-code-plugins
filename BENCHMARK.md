@@ -1,111 +1,109 @@
-# Benchmark: Research & Hypothesis Output Quality + File Organization
+# Benchmark: Fix Real Gaps
 
 ## Score
 
 **Direction**: MINIMIZE (target: 0)
 
 ```
-score = unchecked_items + research_richness_residual + hypothesis_richness_residual + organization_residual + test_depth_residual
+score = (broken_items * 3) + missing_enforcement_items + test_depth_residual
 ```
+
+Broken items weighted 3x because they cause runtime failures.
 
 ## Evaluation
 
 **Programmatic checks**:
-1. `make test` >= 228
+1. `make test` >= 236
 2. `make lint` clean
+3. `grep -c "AUTO-ACTION (agent)" stellars_claude_code_plugins/engine/orchestrator.py` = 0 (no stdout printing)
+4. `grep -c "execution" stellars_claude_code_plugins/engine/model.py` = 0 for ActionDef execution field
 
 **Generative checks**:
-3. For each [ ] item, verify against actual code. Mark [x] with evidence
-4. Grade all 4 fuzzy scales (research richness, hypothesis richness, file organization, test depth)
-5. EDIT this file, UPDATE Iteration Log, report score
+4. For each [ ] item, verify against actual code AND runtime behavior. Mark [x] with evidence
+5. Grade fuzzy scale
+6. EDIT this file, UPDATE Iteration Log
 
 ---
 
-## Section 1: Research Output Depth
+## Section 1: Broken Code (weight: 3x)
 
-- [x] RESEARCH template specifies structured finding format: FINDING, EVIDENCE, IMPACT, FILES
-  Evidence: phases.yaml "MANDATORY output structure" block with 4 sections + per-finding format
-- [x] RESEARCH template requires minimum 5 findings per agent
-  Evidence: phases.yaml template instructs structured findings with minimum expectations
-- [x] RESEARCH template requires merged output with: current state, gap analysis, file inventory, risk assessment
-  Evidence: phases.yaml 4-section structure: Current State Summary, Gap Analysis, File Inventory, Risk Assessment
-- [x] RESEARCH gatekeeper checks for structural elements (not just "specific enough")
-  Evidence: phases.yaml "STRUCTURAL CHECKS" block with explicit FAIL conditions per section
-- [x] RESEARCH gatekeeper prompt explicitly lists what constitutes a passing output
-  Evidence: gatekeeper lists all 4 sections + "FAIL if ANY structural section is missing"
-- [x] Test: RESEARCH gatekeeper prompt contains structural check instructions
-  Evidence: test_research_gatekeeper_structural_checks passes (230 total)
+- [ ] _claude_evaluate retries on rate limit responses (up to 3 attempts with backoff)
+  Evidence: code detects "hit your limit" pattern and retries instead of returning FAIL
+- [ ] RECORD readback prompt acknowledges CLAUDE.md overrides phase instructions
+  Evidence: readback prompt contains instruction that agent adapting to CLAUDE.md is PASS not FAIL
+- [ ] RECORD template says git operations conditional on project policy (not mandatory)
+  Evidence: template text mentions CLAUDE.md / project policy as override
+- [ ] RECORD readback only requires "iteration summary" - git is conditional
+  Evidence: readback prompt "Must mention: iteration summary" without requiring git
+- [ ] Output file path does not double when {phase_dir} resolves to absolute path
+  Test: create file at absolute phase_dir path, pass as --output-file, verify it reads correctly
+- [ ] HYPOTHESIS end template instructs agent to write hypotheses.yaml before calling end
+  Evidence: phases.yaml HYPOTHESIS end template contains write instructions with {artifacts_dir}
+- [ ] HYPOTHESIS compliance check: hypotheses.yaml exists, loads, has entries, all pass richness
+  Evidence: _check_lifecycle_compliance loads hypotheses.yaml and runs richness validation
+- [ ] `execution` field removed from ActionDef (no more agent/standalone distinction)
+  Evidence: model.py ActionDef has no `execution` field
+- [ ] stdout print "--- AUTO-ACTION (agent)" removed from _run_auto_actions
+  Evidence: grep returns 0 matches
 
-## Section 2: Hypothesis Entry Richness
+## Section 2: Missing Enforcement
 
-- [x] HYPOTHESIS gatekeeper checks for ALL format fields per hypothesis (ID, HYPOTHESIS, WHAT TO DO, PREDICT, EVIDENCE, RISK, STARS)
-  Evidence: phases.yaml "FORMAT CHECK" block lists all 7 fields with "FAIL if ANY selected hypothesis is missing ANY required field"
-- [x] HYPOTHESIS gatekeeper FAILS if any hypothesis is missing required fields
-  Evidence: explicit FAIL instruction in gatekeeper prompt
-- [x] ACTION::HYPOTHESIS_AUTOWRITE prompt extracts ALL format fields, not just hypothesis + stars
-  Evidence: AUTOWRITE prompt specifies dict format, valid statuses, "processed" not "selected"
-- [x] Test: HYPOTHESIS gatekeeper prompt contains format field check
-  Evidence: test_hypothesis_gatekeeper_checks_format_fields passes
-- [x] _load_hypotheses validates notes are list of dicts with status key (not plain strings)
-  Evidence: orchestrator.py notes validation raises ValueError on plain string notes
-- [x] _load_hypotheses validates status against valid set (new, dismissed, processed, deferred)
-  Evidence: orchestrator.py L840 status validation (existing) + notes status validation (new)
-- [x] HYPOTHESIS_AUTOWRITE prompt specifies notes dict format: [{status: "message"}]
-  Evidence: AUTOWRITE prompt includes "dict format" instruction
-- [x] HYPOTHESIS template instructs selected hypotheses get status "processed" not "selected"
-  Evidence: AUTOWRITE prompt specifies valid statuses, "processed" for selected
-- [x] Test: _load_hypotheses crashes on plain string notes
-  Evidence: test_hypothesis_plain_string_notes_crash passes
-- [x] Test: _load_hypotheses crashes on invalid status "selected"
-  Evidence: test_hypothesis_invalid_status_selected_crash passes
+- [ ] cmd_end checks acknowledged entries gained new notes during phase
+  Evidence: code in cmd_end or _check_lifecycle_compliance counts notes before/after
+- [ ] Phase end fails if acknowledged context has no new notes from this phase
+  Test: acknowledged entry with 0 notes added during phase -> SystemExit
+- [ ] Phase end passes if acknowledged context has new notes added
+  Test: acknowledged entry with note added -> no error
+- [ ] RESEARCH output validated: 4 required section headers present (case-insensitive)
+  Evidence: code scans for "current state", "gap analysis", "file inventory", "risk assessment"
+- [ ] RESEARCH output validated: >= 500 chars total length
+  Evidence: code checks len(output) >= 500
+- [ ] RESEARCH output validated: >= 3 file path references (contains / or .py or .yaml)
+  Evidence: code counts path-like patterns
+- [ ] RESEARCH output validated: each section has >= 50 chars of content
+  Evidence: code measures content between headers
+- [ ] RESEARCH phase end fails programmatically if ANY validation fails
+  Test: output without "Gap Analysis" -> SystemExit
+- [ ] RESEARCH validation error names the specific failing check
+  Evidence: error message says "missing section: Gap Analysis" or "output too short: 120 chars < 500"
+- [ ] Hypothesis richness: `hypothesis` field >= 20 chars per entry
+  Evidence: code checks len(entry["hypothesis"]) >= 20
+- [ ] Hypothesis richness: `prediction` field >= 10 chars AND contains number or comparison word
+  Evidence: code checks length + regex for digits or from/to/increase/decrease/reduce
+- [ ] Hypothesis richness: `evidence` field >= 10 chars (not empty, not "TBD")
+  Evidence: code checks len + content
+- [ ] Hypothesis richness: `stars` field is int 1-5
+  Evidence: code validates type and range
+- [ ] HYPOTHESIS phase end fails programmatically if ANY entry fails richness
+  Test: hypothesis with prediction="" -> SystemExit with "prediction too short: 0 chars < 10"
+- [ ] Richness error names the entry and failing field with actual vs minimum
+  Evidence: error message format includes identifier, field name, actual length
 
-## Section 3: Output File Placement
+## Section 3: Tests
 
-- [x] cmd_end resolves relative --output-file paths against phase_dir, not CWD
-  Evidence: orchestrator.py is_absolute() check, relative resolves against _phase_dir(state)
-- [x] Phase template instructions use {phase_dir} placeholder for --output-file paths
-  Evidence: 8 occurrences of {phase_dir} in phases.yaml, 0 occurrences of "path/to/"
-- [x] {phase_dir} added to template context resolution (_build_context or equivalent)
-  Evidence: orchestrator.py _build_context has "phase_dir": str(_phase_dir(s))
-- [x] RESEARCH template uses `--output-file "{phase_dir}/research.md"`
-  Evidence: phases.yaml RESEARCH template
-- [x] HYPOTHESIS template uses `--output-file "{phase_dir}/hypotheses.md"`
-  Evidence: phases.yaml HYPOTHESIS template
-- [x] PLAN template uses `--output-file "{phase_dir}/plan.md"`
-  Evidence: phases.yaml PLAN template
-- [x] REVIEW template uses `--output-file "{phase_dir}/review.md"`
-  Evidence: phases.yaml REVIEW template
-- [x] Test: relative output-file resolves to phase directory
-  Evidence: test_output_file_resolves_to_phase_dir passes
+- [ ] Test: readback subprocess not influenced by CLAUDE.md
+- [ ] Test: output-file absolute path works without doubling
+- [ ] Test: HYPOTHESIS gatekeeper/compliance check validates hypotheses.yaml
+- [ ] Test: note-count enforcement blocks empty notes
+- [ ] Test: note-count enforcement passes with notes
+- [ ] Test: RESEARCH validation catches missing section header
+- [ ] Test: RESEARCH validation catches output < 500 chars
+- [ ] Test: RESEARCH validation catches < 3 file references
+- [ ] Test: HYPOTHESIS richness catches short hypothesis (< 20 chars)
+- [ ] Test: HYPOTHESIS richness catches empty prediction
+- [ ] Test: HYPOTHESIS richness catches empty evidence
+- [ ] Test: HYPOTHESIS richness passes with valid rich entries
 
 ---
 
 ## Fuzzy Scales
 
-### Scale 1: Research Richness (0-10)
+### Scale 1: Test Depth (0-10)
 
-Current grade: [10] /10. Residual: [0]
+Current grade: [0] /10. Residual: [10]
 
-Rubric: 10 = RESEARCH template enforces structured finding blocks (FINDING/EVIDENCE/IMPACT/FILES), minimum findings per agent, merged output requires current state + gap analysis + file inventory + risk assessment. Gatekeeper checks structural elements explicitly. A new session could pick up from research output alone without re-reading codebase. 8 = structure enforced but one section thin. 5 = some structure but agent can still produce shallow "Current State: X is missing" outputs. 2 = no structural enforcement.
-
-### Scale 2: Hypothesis Richness (0-10)
-
-Current grade: [10] /10. Residual: [0]
-
-Rubric: 10 = HYPOTHESIS gatekeeper enforces ALL format fields per hypothesis (ID, HYPOTHESIS, WHAT TO DO, PREDICT, EVIDENCE, RISK, STARS). Autowrite extracts all fields. Each hypothesis is a self-contained action plan that anyone can implement without additional context. 8 = most fields enforced, one optional. 5 = only checks for "measurable prediction", rest subjective. 2 = no format enforcement.
-
-### Scale 3: File Organization (0-10)
-
-Current grade: [10] /10. Residual: [0]
-
-Rubric: 10 = all output files in phase directories, no stray files in root. 8 = most files correct, 1-2 in wrong place. 5 = mixed placement. 2 = all in root.
-
-### Scale 4: Test Depth (0-10)
-
-Current grade: [10] /10. Residual: [0]
-
-Rubric: 10 = every rule has test. 8 = main paths tested. 5 = gaps. 2 = minimal.
-Note: 6 new tests cover structural checks, format fields, file resolution, notes validation, status validation, context var.
+Rubric: 10 = every enforcement rule has test covering happy path + rejection + edge case. 8 = main paths tested. 5 = gaps. 2 = minimal.
+Why not programmatic: test coverage percentage doesn't capture whether the RIGHT things are tested.
 
 ---
 
@@ -113,5 +111,4 @@ Note: 6 new tests cover structural checks, format fields, file resolution, notes
 
 | Iter | Score | Tests | Notes |
 |------|-------|-------|-------|
-| base | ~56   | 224   | thin research, thin hypotheses, placeholder paths |
-| 6    | 0     | 230   | All items pass. Structured findings, format field enforcement, phase_dir resolution, notes validation. |
+| base | ~45   | 230   | path doubling, agent no-op, no note enforcement, no richness validation |
