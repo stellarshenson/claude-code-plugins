@@ -51,20 +51,11 @@ Runs structured multi-iteration development cycles where each iteration passes t
 ### Usage
 
 ```bash
-# Simplest: describe what you want - the plugin writes PROGRAM.md and BENCHMARK.md,
-# asks you to approve, then runs the orchestrator
+# Describe what you want - the plugin handles the rest
 /auto-build-claw improve error handling in the API layer
-
-# Direct usage if PROGRAM.md and BENCHMARK.md already exist
-/auto-build-claw:run new --type full --objective "Implement PROGRAM.md" --iterations 3 \
-  --benchmark "Read BENCHMARK.md and evaluate each [ ] item"
-
-# Continue from previous session (preserves context, failures, hypotheses)
-/auto-build-claw:run new --continue --type gc --objective "clean up dead code"
-
-# Check progress
-/auto-build-claw:run status
 ```
+
+The plugin writes PROGRAM.md and BENCHMARK.md from your prompt, asks you to approve, then runs the orchestrator autonomously.
 
 See [auto-build-claw/README.md](auto-build-claw/) for the full phase lifecycle, agent architecture, and configuration details.
 
