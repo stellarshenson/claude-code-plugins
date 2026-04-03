@@ -461,6 +461,13 @@ PLAN:
       **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
       Do NOT use Edit, Write, or any tool that modifies files (except the plan output file).
 
+      **The plan MUST be grounded in the hypotheses from the HYPOTHESIS phase.**
+      Each selected hypothesis should map to specific plan items with files, changes, and acceptance criteria.
+      If no hypotheses exist, the plan must explain its own reasoning from scratch.
+
+      Before creating the final plan, explore 2-3 alternative approaches to decomposing the work.
+      Have the contrarian agent challenge each approach. Select the best with justification.
+
       **Execution** (MANDATORY - explore -> design -> review -> write):
       1. **Explore**: Read context (git log, failure log `{CMD} failures`, prior results). Spawn **Explore agents** (up to 3 in parallel) to investigate the codebase
       2. **Design**: Based on exploration results, design the implementation approach with specific files, changes, and acceptance criteria
@@ -607,10 +614,16 @@ PLAN:
           AGENTS: required={required_agents} | recorded={recorded_agents}
           OUTPUT: {output_status} | READBACK: {readback_status}
           EVIDENCE: {evidence}
-          Check: plan contains specific files, concrete changes per file,
-          root causes, acceptance criteria, and risk assessment.
-          Vague plans ("improve X", "fix issues") = FAIL.
-          Evaluate plan DEPTH: must include specific files, concrete changes, and reasoning for each. Shallow bullet lists = FAIL.
+
+          PLAN QUALITY CHECKLIST (ALL must pass):
+          - Plan names specific files to modify (not "update the module")
+          - Each change has root cause identified (why this problem exists)
+          - Each change has acceptance criteria (verifiable after implementation)
+          - Risk assessment present (what could go wrong, regressions to watch)
+          - Predictions with metrics (from X to Y, or count from N to M)
+          - 2-3 alternative approaches explored, best selected with justification
+          - Review agents (architect, critic, guardian) challenged the plan
+          FAIL if ANY item is missing or vague. "Improve code quality" is not a plan.
           IF context messages are active, evidence MUST reference or acknowledge them.
 
 # ── IMPLEMENT (shared) ────────────────────────────────────────────────

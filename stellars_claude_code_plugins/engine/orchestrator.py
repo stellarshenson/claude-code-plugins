@@ -24,6 +24,7 @@ import subprocess
 import sys
 import time
 
+import tiktoken
 import yaml
 
 from stellars_claude_code_plugins.engine.fsm import (
@@ -640,6 +641,15 @@ _REQUIRED_STATE_KEYS = {
     "phase_status",
     "record_instructions",
 }
+
+# ── Token counting ───────────────────────────────────────────────────
+
+_TOKENIZER = tiktoken.get_encoding("cl100k_base")
+
+
+def _count_tokens(text: str) -> int:
+    """Count tokens using tiktoken cl100k_base encoding."""
+    return len(_TOKENIZER.encode(text))
 
 
 def _load_state() -> dict | None:
@@ -2327,16 +2337,16 @@ def _check_lifecycle_compliance(phase: str, state: dict) -> None:
 
 
 def _validate_research_output(output_content: str) -> list[str]:
-    """Validate research output for required sections, length, and file refs.
+    """Validate research output for required sections, token count, and file refs.
 
-    Checks:
-    - 4 section headers present (case-insensitive)
-    - Total length >= 500 chars
-    - >= 3 file path references (pattern: word/word.ext)
-    - Each section has >= 50 chars content between headers
-
+    Thresholds loaded from app.yaml config (quality floors).
     Returns list of error strings (empty = valid).
     """
+    cfg = _MODEL.app.config if _MODEL else {}
+    min_tokens = cfg.get("research_min_tokens", 500)
+    section_min_tokens = cfg.get("research_section_min_tokens", 50)
+    min_file_refs = cfg.get("research_min_file_refs", 5)
+
     errors = []
     required_sections = ["current state", "gap analysis", "file inventory", "risk assessment"]
     output_lower = output_content.lower()
@@ -2346,16 +2356,17 @@ def _validate_research_output(output_content: str) -> list[str]:
         if section not in output_lower:
             errors.append(f"Missing required section: {section}")
 
-    # Check total length
-    if len(output_content) < 500:
-        errors.append(f"Research output too short ({len(output_content)} chars, minimum 500)")
+    # Check total token count
+    total_tokens = _count_tokens(output_content)
+    if total_tokens < min_tokens:
+        errors.append(f"Research output too short ({total_tokens} tokens, minimum {min_tokens})")
 
     # Check file path references (word/word.ext pattern)
     file_refs = re.findall(r"[\w/]+\.\w+", output_content)
-    if len(file_refs) < 3:
-        errors.append(f"Too few file path references ({len(file_refs)}, minimum 3)")
+    if len(file_refs) < min_file_refs:
+        errors.append(f"Too few file path references ({len(file_refs)}, minimum {min_file_refs})")
 
-    # Check each section has >= 50 chars content
+    # Check each section has >= 50 tokens content
     section_positions = []
     for section in required_sections:
         idx = output_lower.find(section)
@@ -2373,8 +2384,11 @@ def _validate_research_output(output_content: str) -> list[str]:
         else:
             content_end = len(output_content)
         section_content = output_content[content_start:content_end].strip()
-        if len(section_content) < 50:
-            errors.append(f"Section '{name}' too short ({len(section_content)} chars, minimum 50)")
+        section_tokens = _count_tokens(section_content)
+        if section_tokens < section_min_tokens:
+            errors.append(
+                f"Section '{name}' too short ({section_tokens} tokens, minimum {section_min_tokens})"
+            )
 
     return errors
 
@@ -2388,31 +2402,49 @@ def _validate_hypothesis_richness(hypotheses: dict) -> list[str]:
     """Validate hypothesis entries for field richness.
 
     Per entry (skipping dismissed and deferred):
-    - hypothesis field >= 20 chars
-    - prediction field >= 10 chars AND contains digit or comparison word
-    - evidence field >= 10 chars
+    - hypothesis field >= hypothesis_min_tokens (from app.yaml, default 25)
+    - prediction field >= prediction_min_tokens (from app.yaml, default 15) + contains number/comparison
+    - evidence field >= evidence_min_tokens (from app.yaml, default 15)
     - stars is int 1-5
 
+    Thresholds loaded from app.yaml config (quality floors only, no ceiling).
     Returns list of error strings (empty = valid).
     """
+    cfg = _MODEL.app.config if _MODEL else {}
+    hyp_min = cfg.get("hypothesis_min_tokens", 25)
+    pred_min = cfg.get("prediction_min_tokens", 15)
+    evidence_min = cfg.get("evidence_min_tokens", 15)
+
     errors = []
     for hid, entry in hypotheses.items():
         if entry.get("status") in {"dismissed", "deferred"}:
             continue
         hyp_text = entry.get("hypothesis", "")
-        if len(hyp_text) < 20:
-            errors.append(f"Hypothesis '{hid}': hypothesis text too short ({len(hyp_text)} chars)")
+        hyp_tokens = _count_tokens(hyp_text)
+        if hyp_tokens < hyp_min:
+            errors.append(
+                f"Hypothesis '{hid}': hypothesis too short ({hyp_tokens} tokens, minimum {hyp_min}). "
+                f"A hypothesis must be a real problem statement with root cause analysis."
+            )
         pred_text = entry.get("prediction", "")
-        if len(pred_text) < 10:
-            errors.append(f"Hypothesis '{hid}': prediction too short ({len(pred_text)} chars)")
+        pred_tokens = _count_tokens(pred_text)
+        if pred_tokens < pred_min:
+            errors.append(
+                f"Hypothesis '{hid}': prediction too short ({pred_tokens} tokens, minimum {pred_min}). "
+                f"Must be a specific measurable outcome."
+            )
         elif not _PREDICTION_COMPARISON_PATTERN.search(pred_text):
             errors.append(
                 f"Hypothesis '{hid}': prediction must contain a digit or comparison word "
                 f"(from/to/increase/decrease/reduce)"
             )
         evidence_text = entry.get("evidence", "")
-        if len(evidence_text) < 10:
-            errors.append(f"Hypothesis '{hid}': evidence too short ({len(evidence_text)} chars)")
+        evidence_tokens = _count_tokens(evidence_text)
+        if evidence_tokens < evidence_min:
+            errors.append(
+                f"Hypothesis '{hid}': evidence too short ({evidence_tokens} tokens, minimum {evidence_min}). "
+                f"Must reference concrete data points or code."
+            )
         stars = entry.get("stars")
         if not isinstance(stars, int) or stars < 1 or stars > 5:
             errors.append(f"Hypothesis '{hid}': stars must be int 1-5 (got {stars!r})")

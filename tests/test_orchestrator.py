@@ -2813,9 +2813,9 @@ class TestRealGaps:
         orch._initialize(minimal_resources)
         hyps = {
             "good_hyp": {
-                "hypothesis": "Migrate the FSM implementation to use the transitions package for better maintainability",
-                "prediction": "Reduce FSM code from 258 lines to approximately 100 lines",
-                "evidence": "Current FSM at engine/fsm.py has 258 lines with custom state machine",
+                "hypothesis": "The custom FSM implementation in engine/fsm.py has 258 lines of hand-written state machine code with 15 call sites in orchestrator.py. Migrating to the transitions package would reduce complexity and improve maintainability by leveraging a well-tested library instead of custom code that needs to handle edge cases manually.",
+                "prediction": "Reduce FSM code from 258 lines to approximately 100 lines while maintaining all 15 call sites. Test count should remain stable at 115 or increase slightly due to simpler assertions against transitions.Machine API.",
+                "evidence": "engine/fsm.py currently has 258 lines with custom FSMConfig dataclass, 6 state definitions, and manual transition validation. The transitions package provides Machine class with declarative state/transition definitions that would replace all of this. grep shows 15 _fire_fsm call sites in orchestrator.py.",
                 "stars": 4,
                 "status": "new",
                 "iteration_created": 1,

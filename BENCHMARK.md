@@ -56,10 +56,16 @@ Broken items weighted 3x because they cause runtime failures.
 
 ## Section 2b: Plan Quality Gatekeeper Checklist
 
-- [ ] PLAN gatekeeper prompt has explicit checklist: specific files, root causes, acceptance criteria, risk, predictions, dependencies
-- [ ] PLAN gatekeeper FAIL instruction for missing/vague items (not just "evaluate quality")
-- [ ] PLAN gatekeeper checks that plan depth matches what EnterPlanMode would produce: explore alternatives, have contrarian challenge, justify selected approach
-- [ ] PLAN template instructs: explore 2-3 approaches, have review agents challenge, select with justification (same rigor as EnterPlanMode without the interactive mode)
+- [x] PLAN gatekeeper prompt has explicit checklist: specific files, root causes, acceptance criteria, risk, predictions, dependencies
+  Evidence: gatekeeper has 7-item PLAN QUALITY CHECKLIST with FAIL instruction
+- [x] PLAN gatekeeper FAIL instruction for missing/vague items (not just "evaluate quality")
+  Evidence: "FAIL if ANY item is missing or vague. 'Improve code quality' is not a plan."
+- [x] PLAN gatekeeper checks that plan depth matches what EnterPlanMode would produce: explore alternatives, have contrarian challenge, justify selected approach
+  Evidence: checklist includes "2-3 alternative approaches explored, best selected with justification"
+- [x] PLAN template instructs: explore 2-3 approaches, have review agents challenge, select with justification (same rigor as EnterPlanMode without the interactive mode)
+  Evidence: shared PLAN template has "explore 2-3 alternative approaches" + "have contrarian agent challenge"
+- [x] PLAN template instructs: plan must be grounded in hypotheses from HYPOTHESIS phase
+  Evidence: "The plan MUST be grounded in the hypotheses from the HYPOTHESIS phase"
 
 ## Section 3: Missing Enforcement
 
@@ -125,3 +131,4 @@ Note: 6 new tests cover main paths. Missing: rate limit retry test (needs subpro
 | base | ~45   | 230   | path doubling, agent no-op, no note enforcement, no richness validation |
 | 1    | 7     | 236   | 2 unchecked (compliance wiring + section content) + 1 deferred (note count) + 2 test residual. Path doubling fixed. Rate limit retry. CLAUDE.md readback. |
 | 2    | 2     | 236   | Compliance wired. Section content already done. 1 deferred (note count) + 1 test residual. Missing: PLAN output quality enforcement. |
+| 3    | 1     | 236   | PLAN gatekeeper checklist + explore alternatives + hypothesis grounding. 1 test residual remaining. |
