@@ -28,21 +28,23 @@ The user provides a seed document (evaluation, review, critique) alongside the t
 
 ### Source B: User describes the persona
 
-Ask:
+Ask ALL of these in ONE message (do not ask one at a time):
 
-1. **Who is the reader?** (title, role, seniority)
-2. **What do they care about most?** (cost, risk, timeline, reputation, compliance, technical quality)
-3. **What is their communication style?** (data-driven, gut-feel, political, legalistic)
-4. **What is their default bias?** (skeptical, risk-averse, cost-focused, detail-oriented)
-5. **What triggers them?** (blame-shifting, excuses, missing numbers, verbose language)
-6. **What decision power do they have?** (approve/reject, recommend, escalate, negotiate)
+"Describe the toughest reader for this document:
+1. Who are they? (role, seniority)
+2. What do they care about most? (cost, risk, timeline, compliance, quality)
+3. Style? (data-driven, gut-feel, political, legalistic)
+4. Default bias? (skeptical, risk-averse, cost-focused)
+5. What triggers them? (blame-shifting, excuses, missing numbers)
+6. What can they do? (approve, reject, escalate)"
 
 ### Source C: No seed or persona
 
-**You must ask.** Do not proceed with generic concerns. Offer:
+**You must ask.** Do not proceed with generic concerns. Ask in ONE message:
 
-1. **Single persona** - "Who is the toughest reader?"
-2. **Group of personas** - "List 2-4 reader roles for a composite devil"
+"No persona provided. Please either:
+(a) Describe the toughest reader (role, priorities, biases) in a few sentences, OR
+(b) List 2-4 reader roles and I'll build a composite devil from their combined concerns"
 
 For groups: merge priorities (union), take harshest bias from each, weight likelihood by which persona raises each concern.
 

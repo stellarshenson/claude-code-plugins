@@ -1,19 +1,25 @@
 ---
 name: iterate
-description: Apply corrections to the target document and re-score. Each iteration produces a versioned copy with embedded scorecard. Run after evaluate to improve the document score.
+description: Re-evaluate document after corrections (auto or user-made) and produce updated scorecard. Can apply corrections autonomously or simply re-score a document the user has already modified.
 ---
 
 # Devil's Advocate - Iterate
 
-Apply corrections from the evaluation and re-score. Each call produces one versioned correction pass.
+Re-evaluate the document and produce an updated scorecard. Two modes:
 
-**Prerequisites**: `devils_advocate.md` must contain a scorecard with options. If not, tell the user to run `/devils-advocate:evaluate` first.
+1. **Auto-correct**: Claude applies corrections from the scorecard's recommended options, then re-scores
+2. **Re-score only**: User has already made corrections - just re-evaluate against the existing concern catalogue
 
-## Step 1: Read context
+**Prerequisites**: `devils_advocate.md` must contain a scorecard. If not, run `/devils-advocate:evaluate` first.
 
-Read the target document (or latest versioned copy), `devils_advocate.md` (scorecard + options), and `fact_repository.md`.
+## FIRST: Ask the user
 
-## Step 2: Apply corrections
+"Did you make corrections yourself, or should I apply corrections from the scorecard?"
+
+- **User made corrections**: skip to Step 2 (re-evaluate). The user points to the updated document.
+- **Auto-correct**: proceed with Step 1 (apply corrections) then Step 2 (re-evaluate).
+
+## Step 1: Apply corrections (auto-correct mode only)
 
 1. **Copy** current version as `<name>_v<NN+1>.md` (working copy)
 2. **Apply** the recommended options from the scorecard's top gaps
@@ -22,16 +28,17 @@ Read the target document (or latest versioned copy), `devils_advocate.md` (score
    - Adding evidence may increase verbosity
    - Stronger language may worsen tone
 
-## Step 3: Re-evaluate
+## Step 2: Re-evaluate
 
-1. **Re-read** the updated document in full
-2. **Re-score** each concern against the new text
-3. **Document score changes**: "Score changed from X% to Y% because [specific change]"
-4. **Identify new concerns** introduced by changes - add to catalogue
-5. **Recalculate overall score**
-6. **Rename** working copy to `<name>_v<NN+1>_<score>.md`
+Read the updated document (auto-corrected or user-modified) in full.
 
-## Step 4: Embed scorecard
+1. **Re-score** each concern against the new text
+2. **Document score changes**: "Score changed from X% to Y% because [specific change]"
+3. **Identify new concerns** introduced by changes - add to catalogue
+4. **Recalculate overall score**
+5. If auto-correct mode: **rename** working copy to `<name>_v<NN+1>_<score>.md`
+
+## Step 3: Embed scorecard
 
 **MANDATORY**: Every versioned document ends with an embedded scorecard:
 
@@ -48,11 +55,11 @@ Read the target document (or latest versioned copy), `devils_advocate.md` (score
 | 1 | [name] | [risk] | [0-100%] | [residual] | [specific text reference] |
 ```
 
-## Step 5: Update devils_advocate.md
+## Step 4: Update devils_advocate.md
 
 Append new scorecard version. Keep previous scorecards for comparison.
 
-**Propose options** for remaining high-residual concerns (same format as evaluate).
+**Propose options** for remaining high-residual concerns.
 
 ## Stopping criteria
 
@@ -61,17 +68,6 @@ Stop iterating when:
 - Top remaining gaps have residual < 3.0 each
 - Further corrections need scope changes beyond the document
 - User accepts current score
-
-## Version chain example
-
-```
-report.md                    # original (untouched)
-report_v01_89.md             # baseline with scorecard
-report_v02_34.md             # first correction
-report_v03_12.md             # second correction
-devils_advocate.md           # all scorecards accumulated
-fact_repository.md           # updated incrementally
-```
 
 The score must decrease each iteration. If not, corrections are creating new problems - stop and reassess.
 
