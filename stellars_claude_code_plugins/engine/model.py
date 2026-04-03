@@ -500,6 +500,7 @@ _KNOWN_VARS = {
     "phase_purpose",
     "p",
     "record_instructions",
+    "phase_dir",
 }
 _GATE_REQUIRED_VARS: dict[str, list[str]] = {
     "readback": ["understanding"],

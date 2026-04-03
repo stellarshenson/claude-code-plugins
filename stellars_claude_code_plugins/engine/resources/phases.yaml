@@ -87,6 +87,9 @@ actions:
       Write to {artifacts_dir}/hypotheses.yaml as identifier-keyed YAML dict.
       Each entry: hypothesis, prediction, evidence, stars, status, iteration_created, notes.
       New hypotheses: status "new", notes [].
+      Notes format: list of dicts [{status: "message"}], NOT plain strings.
+      Valid statuses: new, dismissed, processed, deferred.
+      Selected hypotheses should use status "processed", NOT "selected".
       APPEND new entries. UPDATE existing by identifier. Do NOT remove existing.
 
       Phase output:
@@ -169,6 +172,18 @@ FULL::RESEARCH:
       **Goal**: understand the problem space BEFORE forming hypotheses. Gather evidence,
       read code, check prior results, understand what exists and what's missing.
 
+      **MANDATORY output structure**: The merged research output MUST contain these sections:
+      1. **Current State Summary**: what exists, what works, key metrics (line counts, test counts, file counts)
+      2. **Gap Analysis**: what's missing vs what the objective requires, with specific file/function references
+      3. **File Inventory**: list of relevant files with their purpose and line counts
+      4. **Risk Assessment**: what could go wrong, dependencies, complexity concerns
+
+      Each agent finding MUST follow this format:
+      - **FINDING**: what was discovered (1-2 sentences)
+      - **EVIDENCE**: specific code references (file:line), metrics, or test output
+      - **IMPACT**: why this matters for the objective
+      - **FILES**: specific file paths involved
+
       {spawn_instruction}
       Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
 
@@ -184,7 +199,7 @@ FULL::RESEARCH:
 
       **AFTER all agents return**, write merged findings to a file, then:
       ```
-      {CMD} end --evidence "summary of what was researched" --agents "researcher,architect,product_manager" --output-file "path/to/research.md"
+      {CMD} end --evidence "summary of what was researched" --agents "researcher,architect,product_manager" --output-file "{phase_dir}/research.md"
       ```
 
       **Output**: research findings document summarising what was learned, ready for hypothesis generation.
@@ -263,9 +278,15 @@ FULL::RESEARCH:
           AGENTS: required={required_agents} | recorded={recorded_agents}
           OUTPUT: {output_status} | READBACK: {readback_status}
           EVIDENCE: {evidence}
-          Check: 3 agents spawned separately, findings contain specific
-          file references and concrete observations (not vague summaries).
-          Evaluate evidence QUALITY: are findings specific enough to act on? Vague summaries = FAIL.
+          Check: 3 agents spawned separately.
+          STRUCTURAL CHECKS (all must be present in output):
+          - Current State Summary section with specific metrics
+          - Gap Analysis section with file/function references
+          - File Inventory with paths
+          - Risk Assessment
+          - Each finding has EVIDENCE with code references (not just descriptions)
+          FAIL if ANY structural section is missing. FAIL if findings lack code references.
+          Vague summaries like "X is missing" without file paths or line numbers = FAIL.
           IF context messages are active, evidence SHOULD reference or acknowledge them.
 
 # ── FULL::HYPOTHESIS ───────────────────────────────────────────────
@@ -326,7 +347,7 @@ FULL::HYPOTHESIS:
 
       **AFTER all agents return**, write merged hypotheses to a file, then:
       ```
-      {CMD} end --evidence "summary of hypothesis debate" --agents "contrarian,optimist,pessimist,scientist" --output-file "path/to/hypotheses.md"
+      {CMD} end --evidence "summary of hypothesis debate" --agents "contrarian,optimist,pessimist,scientist" --output-file "{phase_dir}/hypotheses.md"
       ```
 
       **Output**: updated, ranked hypothesis backlog with top 1-3 selected for PLAN phase.
@@ -406,11 +427,18 @@ FULL::HYPOTHESIS:
           AGENTS: required={required_agents} | recorded={recorded_agents}
           OUTPUT: {output_status} | READBACK: {readback_status}
           EVIDENCE: {evidence}
-          Check: 4 agents spawned separately, hypotheses merged with
-          star ratings, top 1-3 selected with measurable predictions.
-          Evaluate hypothesis QUALITY: each must have root cause, prediction, and evidence. Generic hypotheses without specifics = FAIL.
-          Every hypothesis must be classified: status must be processed, dismissed, or deferred. Zero hypotheses with status "new" allowed to exit.
-          Notes must be present on every hypothesis with status other than 'new'.
+          Check: 4 agents spawned separately, hypotheses merged with star ratings.
+          FORMAT CHECK per selected hypothesis (ALL fields required):
+          - ID: identifier present
+          - HYPOTHESIS: 2-3 sentence problem statement with root cause
+          - WHAT TO DO: specific files and functions to modify
+          - PREDICT: measurable outcome (metric from X to Y)
+          - EVIDENCE: data points, benchmark scores, code references
+          - RISK: regressions, complexity concerns
+          - STARS: averaged rating with per-agent breakdown
+          FAIL if ANY selected hypothesis is missing ANY required field.
+          Also check: notes are in dict format [{status: "message"}], not plain strings.
+          Status must be one of: new, dismissed, processed, deferred (NOT "selected").
           IF context messages are active, evidence SHOULD reference or acknowledge them.
 
 # ── PLAN (shared) ──────────────────────────────────────────────────
@@ -560,7 +588,7 @@ PLAN:
 
       After agents return, write merged review to a file, then:
       ```
-      {CMD} end --evidence "plan reviewed by 3 agents" --agents "architect,critic,guardian" --output-file "path/to/plan.md"
+      {CMD} end --evidence "plan reviewed by 3 agents" --agents "architect,critic,guardian" --output-file "{phase_dir}/plan.md"
       ```
 
       {agents_instructions}
@@ -624,7 +652,7 @@ IMPLEMENT:
 
       **WHEN DONE**: write summary of changes to a file, then:
       ```
-      {CMD} end --evidence "implemented N changes per plan" --output-file "path/to/impl.md"
+      {CMD} end --evidence "implemented N changes per plan" --output-file "{phase_dir}/impl.md"
       ```
 
       **Output**: code changes ready for testing.
@@ -812,7 +840,7 @@ REVIEW:
 
       **AFTER all agents return**, write merged verdicts to a file, then:
       ```
-      {CMD} end --evidence "4 agents reviewed, all approve" --agents "critic,architect,guardian,forensicist" --output-file "path/to/review.md"
+      {CMD} end --evidence "4 agents reviewed, all approve" --agents "critic,architect,guardian,forensicist" --output-file "{phase_dir}/review.md"
       ```
 
       **Output**: merged verdict from all four agents + forensicist's failure analysis for next iteration.
@@ -1091,7 +1119,7 @@ PLANNING::RESEARCH:
 
       **AFTER all agents return**, write merged findings to a file, then:
       ```
-      {CMD} end --evidence "summary" --agents "researcher,architect,product_manager" --output-file "path/to/research.md"
+      {CMD} end --evidence "summary" --agents "researcher,architect,product_manager" --output-file "{phase_dir}/research.md"
       ```
 
     agents:
@@ -1197,7 +1225,7 @@ PLANNING::PLAN:
 
       Write the plan to a file, then:
       ```
-      {CMD} end --evidence "plan breakdown complete" --output-file "path/to/plan.md"
+      {CMD} end --evidence "plan breakdown complete" --output-file "{phase_dir}/plan.md"
       ```
 
     agents:
@@ -1297,7 +1325,7 @@ GC::PLAN:
 
       After agents return, write merged review to a file, then:
       ```
-      {CMD} end --evidence "GC plan reviewed" --agents "architect,critic,guardian" --output-file "path/to/plan.md"
+      {CMD} end --evidence "GC plan reviewed" --agents "architect,critic,guardian" --output-file "{phase_dir}/plan.md"
       ```
 
       {agents_instructions}

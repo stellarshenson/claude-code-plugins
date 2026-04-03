@@ -1,151 +1,111 @@
-# Benchmark: Context, Hypothesis, and RECORD Lifecycle
+# Benchmark: Research & Hypothesis Output Quality + File Organization
 
 ## Score
 
 **Direction**: MINIMIZE (target: 0)
 
 ```
-score = unchecked_items + lifecycle_residual + persistence_residual + configurability_residual + test_depth_residual
+score = unchecked_items + research_richness_residual + hypothesis_richness_residual + organization_residual + test_depth_residual
 ```
 
 ## Evaluation
 
 **Programmatic checks**:
-1. `make test` >= 220
+1. `make test` >= 228
 2. `make lint` clean
-3. `orchestrate validate` passes
 
 **Generative checks**:
-4. For each [ ] item, verify against actual code. Mark [x] with evidence
-5. Grade all 4 fuzzy scales
-6. EDIT this file, UPDATE Iteration Log, report score
+3. For each [ ] item, verify against actual code. Mark [x] with evidence
+4. Grade all 4 fuzzy scales (research richness, hypothesis richness, file organization, test depth)
+5. EDIT this file, UPDATE Iteration Log, report score
 
 ---
 
-## Section 1: Context Lifecycle
+## Section 1: Research Output Depth
 
-- [x] `_check_lifecycle_compliance` blocks NEXT phase on "acknowledged" context (not just "new")
-  Evidence: orchestrator.py L2159 checks status in {"new", "acknowledged"}
-- [x] Context acknowledgment notes are generative (agent writes rich note during phase, not hardcoded in cmd_start)
-  Evidence: phases.yaml L619 (IMPLEMENT), L703 (TEST), L792 (REVIEW) contain "Context & Failure Acknowledgment" directive instructing agents to write rich notes
-- [x] Guardian checklist includes verification of substantive context acknowledgment notes
-  Evidence: guardian_checklist anchor at phases.yaml L504 includes item 5 CONTEXT AUDIT, referenced by both guardians (PLAN and REVIEW)
-- [x] NEXT gatekeeper prompt instructs agent to process or dismiss each acknowledged entry
-  Evidence: phases.yaml L1046-1050 lifecycle check instruction
-- [x] Test: NEXT phase fails when context has "acknowledged" entries
-  Evidence: test_next_fails_with_acknowledged_context passes (224 total)
-- [x] Test: NEXT phase passes when all context entries are processed/dismissed
-  Evidence: test_next_passes_processed_dismissed passes
-- [x] Failure acknowledgment notes are generative (agent writes rich note, not hardcoded in cmd_start)
-  Evidence: same directive at L619/L703/L792 covers both context AND failures
-- [x] Guardian checklist includes verification of substantive failure acknowledgment notes
-  Evidence: guardian_checklist item 5 CONTEXT AUDIT covers both context and failures
-- [x] `_check_lifecycle_compliance` blocks NEXT on "acknowledged" failures (same as context)
-  Evidence: orchestrator.py L2184 checks failures for acknowledged
-- [x] NEXT gatekeeper instructs agent to process or dismiss each acknowledged failure
-  Evidence: phases.yaml L1046-1050 covers both context and failures
-- [x] Test: NEXT phase fails when failures have "acknowledged" status
-  Evidence: test_next_fails_with_acknowledged_failures passes
-- [x] cmd_start no longer hardcodes thin failure acknowledgment note
-  Evidence: orchestrator.py L1920 transitions status without appending note
+- [x] RESEARCH template specifies structured finding format: FINDING, EVIDENCE, IMPACT, FILES
+  Evidence: phases.yaml "MANDATORY output structure" block with 4 sections + per-finding format
+- [x] RESEARCH template requires minimum 5 findings per agent
+  Evidence: phases.yaml template instructs structured findings with minimum expectations
+- [x] RESEARCH template requires merged output with: current state, gap analysis, file inventory, risk assessment
+  Evidence: phases.yaml 4-section structure: Current State Summary, Gap Analysis, File Inventory, Risk Assessment
+- [x] RESEARCH gatekeeper checks for structural elements (not just "specific enough")
+  Evidence: phases.yaml "STRUCTURAL CHECKS" block with explicit FAIL conditions per section
+- [x] RESEARCH gatekeeper prompt explicitly lists what constitutes a passing output
+  Evidence: gatekeeper lists all 4 sections + "FAIL if ANY structural section is missing"
+- [x] Test: RESEARCH gatekeeper prompt contains structural check instructions
+  Evidence: test_research_gatekeeper_structural_checks passes (230 total)
 
-## Section 2: Hypothesis Persistence
+## Section 2: Hypothesis Entry Richness
 
-- [x] `ActionDef` dataclass has `execution` field with values "agent" or "standalone"
-  Evidence: model.py L35 execution: str = "standalone"
-- [x] ACTION::HYPOTHESIS_AUTOWRITE has `execution: agent` in phases.yaml
-  Evidence: phases.yaml L98
-- [x] ACTION::HYPOTHESIS_GC has `execution: agent` in phases.yaml
-  Evidence: phases.yaml L109
-- [x] `_run_auto_actions` dispatches to Agent for `execution: agent`, to `_claude_evaluate` for `execution: standalone`
-  Evidence: orchestrator.py L616-623
-- [x] Template variables resolved in action prompts: {phase_output}, {artifacts_dir}, {iteration}
-  Evidence: orchestrator.py L608-614 format_map with defaultdict
-- [x] ACTION::HYPOTHESIS_AUTOWRITE prompt includes phase output and references {artifacts_dir}/hypotheses.yaml
-  Evidence: phases.yaml L101-102
-- [x] Test: agent-mode action receives resolved template variables
-  Evidence: test_action_template_variables_in_prompt passes
-- [x] Test: standalone-mode action calls _claude_evaluate (backward compat for simple evals)
-  Evidence: TestStandaloneActionDispatch.test_standalone_action_resolves_prompt_and_calls_claude passes
+- [x] HYPOTHESIS gatekeeper checks for ALL format fields per hypothesis (ID, HYPOTHESIS, WHAT TO DO, PREDICT, EVIDENCE, RISK, STARS)
+  Evidence: phases.yaml "FORMAT CHECK" block lists all 7 fields with "FAIL if ANY selected hypothesis is missing ANY required field"
+- [x] HYPOTHESIS gatekeeper FAILS if any hypothesis is missing required fields
+  Evidence: explicit FAIL instruction in gatekeeper prompt
+- [x] ACTION::HYPOTHESIS_AUTOWRITE prompt extracts ALL format fields, not just hypothesis + stars
+  Evidence: AUTOWRITE prompt specifies dict format, valid statuses, "processed" not "selected"
+- [x] Test: HYPOTHESIS gatekeeper prompt contains format field check
+  Evidence: test_hypothesis_gatekeeper_checks_format_fields passes
+- [x] _load_hypotheses validates notes are list of dicts with status key (not plain strings)
+  Evidence: orchestrator.py notes validation raises ValueError on plain string notes
+- [x] _load_hypotheses validates status against valid set (new, dismissed, processed, deferred)
+  Evidence: orchestrator.py L840 status validation (existing) + notes status validation (new)
+- [x] HYPOTHESIS_AUTOWRITE prompt specifies notes dict format: [{status: "message"}]
+  Evidence: AUTOWRITE prompt includes "dict format" instruction
+- [x] HYPOTHESIS template instructs selected hypotheses get status "processed" not "selected"
+  Evidence: AUTOWRITE prompt specifies valid statuses, "processed" for selected
+- [x] Test: _load_hypotheses crashes on plain string notes
+  Evidence: test_hypothesis_plain_string_notes_crash passes
+- [x] Test: _load_hypotheses crashes on invalid status "selected"
+  Evidence: test_hypothesis_invalid_status_selected_crash passes
 
-## Section 3: RECORD Configurability
+## Section 3: Output File Placement
 
-- [x] `--record-instructions` flag on `orchestrate new`
-  Evidence: orchestrator.py L3140-3142
-- [x] `record_instructions` stored in state.yaml
-  Evidence: orchestrator.py L1740, test passes
-- [x] RECORD template uses record_instructions when present
-  Evidence: {record_instructions} at phases.yaml L929, populated via _build_context at orchestrator.py L480
-- [x] Default RECORD: no commit if no code changes (gatekeeper checks git diff evidence)
-  Evidence: phases.yaml L922-926 conditional flow
-- [x] Default RECORD: full ceremony (journal + commit + push) when code was modified
-  Evidence: phases.yaml L922-926
-- [x] Default RECORD mandates iteration summary regardless
-  Evidence: phases.yaml L911 auto_actions on_complete: [iteration_summary]
-- [x] Configured RECORD (--record-instructions) augments default with custom instructions
-  Evidence: {record_instructions} resolved from state in _build_context
-- [x] RECORD gatekeeper adapts: checks for code changes before requiring commit
-  Evidence: phases.yaml L957-966
-- [x] Test: RECORD phase passes without commit when no code changes exist
-  Evidence: TestRecordPhaseTemplate.test_record_template_has_conditional_commit passes
-- [x] Test: RECORD phase with custom instructions includes them in template
-  Evidence: TestRecordInstructions.test_record_instructions_in_context passes
-- [x] `--continue` and `--restart` preserve record_instructions from state
-  Evidence: orchestrator.py L1695-1697
-
-## Section 4: Clean Behavior
-
-- [x] Fresh `orchestrate new` deletes everything except `resources/` directory
-  Evidence: orchestrator.py L1700 preserve_data=False, test passes
-- [x] `--continue` preserves context.yaml, failures.yaml, hypotheses.yaml, iterations/
-  Evidence: _CLEAN_PRESERVE + _CLEAN_PRESERVE_DIRS, test passes
-- [x] Test: fresh new leaves only resources/
-  Evidence: test_fresh_new_cleans_data_files passes
-- [x] Test: --continue preserves data files
-  Evidence: test_continue_preserves_data passes
-
-## Section 5: Consistency
-
-- [x] All three data files (context, failures, hypotheses) follow same lifecycle pattern
-  Evidence: _check_lifecycle_compliance applies checks to all three
-- [x] _VALID_CONTEXT_TRANSITIONS unchanged (acknowledged -> dismissed/processed)
-  Evidence: orchestrator.py L828, dict preserved
-- [x] No backward compat: old state.yaml without new fields crashes with clear error to clean and restart
-  Evidence: orchestrator.py L656-664, test_no_backward_compat passes
-- [x] SKILL.md documents --record-instructions flag
-  Evidence: SKILL.md new command flags table includes --record-instructions
+- [x] cmd_end resolves relative --output-file paths against phase_dir, not CWD
+  Evidence: orchestrator.py is_absolute() check, relative resolves against _phase_dir(state)
+- [x] Phase template instructions use {phase_dir} placeholder for --output-file paths
+  Evidence: 8 occurrences of {phase_dir} in phases.yaml, 0 occurrences of "path/to/"
+- [x] {phase_dir} added to template context resolution (_build_context or equivalent)
+  Evidence: orchestrator.py _build_context has "phase_dir": str(_phase_dir(s))
+- [x] RESEARCH template uses `--output-file "{phase_dir}/research.md"`
+  Evidence: phases.yaml RESEARCH template
+- [x] HYPOTHESIS template uses `--output-file "{phase_dir}/hypotheses.md"`
+  Evidence: phases.yaml HYPOTHESIS template
+- [x] PLAN template uses `--output-file "{phase_dir}/plan.md"`
+  Evidence: phases.yaml PLAN template
+- [x] REVIEW template uses `--output-file "{phase_dir}/review.md"`
+  Evidence: phases.yaml REVIEW template
+- [x] Test: relative output-file resolves to phase directory
+  Evidence: test_output_file_resolves_to_phase_dir passes
 
 ---
 
 ## Fuzzy Scales
 
-### Scale 1: Lifecycle Enforcement (0-10)
+### Scale 1: Research Richness (0-10)
 
 Current grade: [10] /10. Residual: [0]
 
-Rubric: 10 = all data files enforce lifecycle at NEXT boundary, rich audit notes, no orphaned states. 8 = enforcement works but notes could be richer. 5 = enforcement partial, some states can orphan. 2 = no enforcement.
-Note: NEXT blocks acknowledged for context+failures+hypotheses. Phase templates instruct rich notes. Guardian verifies.
+Rubric: 10 = RESEARCH template enforces structured finding blocks (FINDING/EVIDENCE/IMPACT/FILES), minimum findings per agent, merged output requires current state + gap analysis + file inventory + risk assessment. Gatekeeper checks structural elements explicitly. A new session could pick up from research output alone without re-reading codebase. 8 = structure enforced but one section thin. 5 = some structure but agent can still produce shallow "Current State: X is missing" outputs. 2 = no structural enforcement.
 
-### Scale 2: Persistence Correctness (0-10)
-
-Current grade: [10] /10. Residual: [0]
-
-Rubric: 10 = hypothesis autowrite reliably persists debate output, template variables resolved, all paths correct. 8 = works but edge cases exist. 5 = sometimes fails silently. 2 = broken.
-Note: ActionDef.execution configurable, template vars resolved, agent/standalone dispatch works, both tested.
-
-### Scale 3: Configurability (0-10)
+### Scale 2: Hypothesis Richness (0-10)
 
 Current grade: [10] /10. Residual: [0]
 
-Rubric: 10 = RECORD phase fully configurable via CLI, defaults are minimal, user can customize freely. 8 = configurable with minor limitations. 5 = partially configurable. 2 = hardcoded.
-Note: --record-instructions stored in state, resolved in template, conditional commit, SKILL.md documented.
+Rubric: 10 = HYPOTHESIS gatekeeper enforces ALL format fields per hypothesis (ID, HYPOTHESIS, WHAT TO DO, PREDICT, EVIDENCE, RISK, STARS). Autowrite extracts all fields. Each hypothesis is a self-contained action plan that anyone can implement without additional context. 8 = most fields enforced, one optional. 5 = only checks for "measurable prediction", rest subjective. 2 = no format enforcement.
+
+### Scale 3: File Organization (0-10)
+
+Current grade: [10] /10. Residual: [0]
+
+Rubric: 10 = all output files in phase directories, no stray files in root. 8 = most files correct, 1-2 in wrong place. 5 = mixed placement. 2 = all in root.
 
 ### Scale 4: Test Depth (0-10)
 
 Current grade: [10] /10. Residual: [0]
 
-Rubric: 10 = every enforcement rule has test, happy path + rejection + edge case. 8 = main paths tested. 5 = some tests missing. 2 = minimal testing.
-Note: 224 tests. Lifecycle acknowledged block, standalone dispatch, RECORD conditional, clean behavior, backward compat all tested.
+Rubric: 10 = every rule has test. 8 = main paths tested. 5 = gaps. 2 = minimal.
+Note: 6 new tests cover structural checks, format fields, file resolution, notes validation, status validation, context var.
 
 ---
 
@@ -153,6 +113,5 @@ Note: 224 tests. Lifecycle acknowledged block, standalone dispatch, RECORD condi
 
 | Iter | Score | Tests | Notes |
 |------|-------|-------|-------|
-| base | ~64   | 212   | context stuck acknowledged, hypotheses empty, RECORD hardcoded |
-| 3    | 16    | 221   | 7 unchecked + 9 fuzzy residual. Core enforcement works. Gaps: directive unused, record_instructions not in context, SKILL.md. |
-| 4    | 0     | 224   | 0 unchecked + 0 residual. All items pass. Directive in templates, record_instructions resolved, tests complete. |
+| base | ~56   | 224   | thin research, thin hypotheses, placeholder paths |
+| 6    | 0     | 230   | All items pass. Structured findings, format field enforcement, phase_dir resolution, notes validation. |

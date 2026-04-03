@@ -478,6 +478,7 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
         "benchmark_info": benchmark_info,
         "prior_hyp": prior_hyp,
         "record_instructions": s.get("record_instructions", ""),
+        "phase_dir": str(_phase_dir(s)),
     }
     # Agent instructions - resolve via :: namespace (FULL::PLAN has agents for end review)
     agent_phase_key = _resolve_agents(phase or s.get("current_phase", ""))
@@ -891,6 +892,37 @@ def _load_hypotheses() -> dict:
                 f"hypotheses.yaml entry '{key}' has invalid status '{status}'. "
                 f"Must be one of: {sorted(_VALID_HYP_STATUSES)}"
             )
+        # Validate notes format: must be list of single-key dicts with valid status keys
+        notes = entry.get("notes")
+        if notes is not None:
+            if not isinstance(notes, list):
+                raise ValueError(
+                    f"hypotheses.yaml entry '{key}' has non-list notes "
+                    f"(got {type(notes).__name__}). Notes must be a list."
+                )
+            _VALID_NOTE_STATUSES = {"new", "dismissed", "processed", "deferred", "acknowledged"}
+            for i, note in enumerate(notes):
+                if isinstance(note, str):
+                    raise ValueError(
+                        f"hypotheses.yaml entry '{key}' has plain string notes. "
+                        "Notes must be dicts: [{{status: 'message'}}]"
+                    )
+                if not isinstance(note, dict):
+                    raise ValueError(
+                        f"hypotheses.yaml entry '{key}' notes[{i}] is not a dict "
+                        f"(got {type(note).__name__})."
+                    )
+                if len(note) != 1:
+                    raise ValueError(
+                        f"hypotheses.yaml entry '{key}' notes[{i}] must have exactly "
+                        f"one key (got {len(note)})."
+                    )
+                note_key = next(iter(note))
+                if note_key not in _VALID_NOTE_STATUSES:
+                    raise ValueError(
+                        f"hypotheses.yaml entry '{key}' notes[{i}] has invalid key "
+                        f"'{note_key}'. Must be one of: {sorted(_VALID_NOTE_STATUSES)}"
+                    )
     return data
 
 
@@ -1942,7 +1974,11 @@ def _validate_end_inputs(args, phase: str, state: dict) -> tuple:
     output_file_path = None
     output_content = ""
     if output_file_str:
-        output_file_path = Path(output_file_str).resolve()
+        p = Path(output_file_str)
+        if p.is_absolute():
+            output_file_path = p
+        else:
+            output_file_path = (_phase_dir(state) / p).resolve()
         if not output_file_path.exists():
             print(_msg("output_file_missing", path=output_file_path), file=sys.stderr)
             sys.exit(1)

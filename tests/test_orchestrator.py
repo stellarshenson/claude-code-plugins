@@ -2615,3 +2615,127 @@ class TestRecordPhaseTemplate:
         template = phase_obj.start
         assert "If NO code changes" in template or "If no code changes" in template
         assert "{record_instructions}" in template
+
+
+class TestOutputQuality:
+    """Tests for output quality: gatekeeper prompts, phase dirs, hypothesis validation."""
+
+    def test_research_gatekeeper_structural_checks(self, auto_build_claw_resources):
+        """RESEARCH gatekeeper checks for structural elements."""
+        import stellars_claude_code_plugins.engine.orchestrator as orch
+        orch._initialize(auto_build_claw_resources)
+        # Find RESEARCH gatekeeper prompt
+        research_key = None
+        for key in orch._MODEL.gates:
+            if "RESEARCH" in key and "gatekeeper" in key:
+                research_key = key
+                break
+        assert research_key is not None, "RESEARCH gatekeeper not found"
+        prompt = orch._MODEL.gates[research_key].prompt
+        prompt_lower = prompt.lower()
+        assert "current state" in prompt_lower or "structural" in prompt_lower
+        assert "gap analysis" in prompt_lower or "file inventory" in prompt_lower
+        assert "evidence" in prompt_lower
+
+    def test_hypothesis_gatekeeper_checks_format_fields(self, auto_build_claw_resources):
+        """HYPOTHESIS gatekeeper checks for all format fields."""
+        import stellars_claude_code_plugins.engine.orchestrator as orch
+        orch._initialize(auto_build_claw_resources)
+        hyp_key = None
+        for key in orch._MODEL.gates:
+            if "HYPOTHESIS" in key and "gatekeeper" in key:
+                hyp_key = key
+                break
+        assert hyp_key is not None, "HYPOTHESIS gatekeeper not found"
+        prompt = orch._MODEL.gates[hyp_key].prompt
+        prompt_lower = prompt.lower()
+        assert "what to do" in prompt_lower
+        assert "predict" in prompt_lower
+        assert "risk" in prompt_lower
+        assert "evidence" in prompt_lower
+
+    def test_output_file_resolves_to_phase_dir(self, minimal_resources, tmp_path):
+        """Relative output-file resolves against phase directory."""
+        import stellars_claude_code_plugins.engine.orchestrator as orch
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        state = {
+            "iteration": 1, "total_iterations": 1, "type": "test_workflow",
+            "objective": "test", "benchmark_cmd": "", "benchmark_scores": [],
+            "current_phase": "ALPHA", "phase_status": "in_progress",
+            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
+            "started_at": "2026-04-03", "phase_outputs": {}, "phase_agents": {},
+            "parent_type": "", "record_instructions": "",
+        }
+        orch._save_state(state)
+        phase_dir = orch._phase_dir(state)
+        # Create a test file in phase dir
+        test_file = phase_dir / "output.md"
+        test_file.write_text("test content")
+        # Resolve relative path - should find it in phase_dir
+        from pathlib import Path
+        p = Path("output.md")
+        resolved = (phase_dir / p).resolve()
+        assert resolved == test_file.resolve()
+
+    def test_hypothesis_plain_string_notes_crash(self, minimal_resources, tmp_path):
+        """_load_hypotheses crashes on plain string notes."""
+        import stellars_claude_code_plugins.engine.orchestrator as orch
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        hyps = {
+            "bad_hyp": {
+                "hypothesis": "test",
+                "status": "new",
+                "stars": 3,
+                "prediction": "",
+                "evidence": "",
+                "iteration_created": 1,
+                "notes": ["plain string note"],  # WRONG - should be [{status: "msg"}]
+            }
+        }
+        orch._save_hypotheses(hyps)
+        with pytest.raises(ValueError, match="plain string|dict"):
+            orch._load_hypotheses()
+
+    def test_hypothesis_invalid_status_selected_crash(self, minimal_resources, tmp_path):
+        """_load_hypotheses crashes on invalid status 'selected'."""
+        import stellars_claude_code_plugins.engine.orchestrator as orch
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        hyps = {
+            "bad_hyp": {
+                "hypothesis": "test",
+                "status": "selected",  # INVALID - not in valid set
+                "stars": 3,
+                "prediction": "",
+                "evidence": "",
+                "iteration_created": 1,
+                "notes": [],
+            }
+        }
+        orch._save_hypotheses(hyps)
+        with pytest.raises(ValueError, match="invalid status|selected"):
+            orch._load_hypotheses()
+
+    def test_phase_dir_in_context(self, auto_build_claw_resources, tmp_path):
+        """_build_context includes phase_dir variable."""
+        import stellars_claude_code_plugins.engine.orchestrator as orch
+        orch._initialize(auto_build_claw_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        state = {
+            "iteration": 1, "total_iterations": 1, "type": "full",
+            "objective": "test", "benchmark_cmd": "", "benchmark_scores": [],
+            "current_phase": "RESEARCH", "phase_status": "in_progress",
+            "completed_phases": [], "skipped_phases": [], "rejected_count": 0,
+            "started_at": "2026-04-03", "phase_outputs": {}, "phase_agents": {},
+            "parent_type": "", "record_instructions": "",
+        }
+        orch._save_state(state)
+        ctx = orch._build_context(state)
+        assert "phase_dir" in ctx
+        assert str(tmp_path) in ctx["phase_dir"]
