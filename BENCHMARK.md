@@ -81,10 +81,6 @@ score = unchecked_items + design_unity_residual + data_integrity_residual + form
 - [x] Align _build_failures_context filter style with context banner filter style
   Evidence: both now use `status in {"new", "acknowledged"}` pattern
 
-## Completion Conditions
-
-- [ ] Score stagnated (unchanged for 2 consecutive iterations despite implementation effort)
-
 ---
 
 ## Fuzzy Scales
