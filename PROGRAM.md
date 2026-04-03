@@ -148,6 +148,16 @@ Fail programmatically if ANY entry fails richness checks. Error message names th
   - Predict: thin hypotheses get rejected by code
   - Outcome: hypothesis entries are always self-contained action plans
 
+### Plan output quality (no enforcement)
+
+Same gap as RESEARCH and HYPOTHESIS - the PLAN phase produces a plan file but nothing validates its structure. A good plan must have: specific files to modify, concrete changes per file, root cause per target, acceptance criteria, risk assessment, predicted impact. Currently this is only checked by the LLM gatekeeper.
+
+Fix: add `_validate_plan_output(output_content: str)` with structural checks:
+- Required sections: at least 2 of (files, changes, acceptance, risk, predicted impact)
+- At least 1 file path reference
+- Total length >= 300 chars
+- Called from cmd_end for PLAN phase
+
 ## Exit Conditions
 
 - All work items implemented

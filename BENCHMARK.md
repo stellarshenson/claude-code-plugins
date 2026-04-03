@@ -51,8 +51,15 @@ Broken items weighted 3x because they cause runtime failures.
   Evidence: _build_context has "phase_dir": str(_phase_dir(s)) which is now absolute
 - [x] {artifacts_dir} available in templates
   Evidence: _build_context has "artifacts_dir": str(DEFAULT_ARTIFACTS_DIR.resolve())
-- [ ] HYPOTHESIS compliance check verifies hypotheses.yaml is non-empty
-  FAIL: _check_lifecycle_compliance doesn't call _validate_hypothesis_richness yet - richness function exists but not wired into compliance check
+- [x] HYPOTHESIS compliance check verifies hypotheses.yaml is non-empty AND entries pass richness
+  Evidence: _check_lifecycle_compliance calls _validate_hypothesis_richness, sys.exit(1) on errors. Deferred entries skipped.
+
+## Section 2b: Plan Output Quality
+
+- [ ] _validate_plan_output checks for structural sections (files, changes, acceptance, risk)
+- [ ] PLAN phase end calls _validate_plan_output programmatically
+- [ ] PLAN output >= 300 chars with at least 1 file reference
+- [ ] Test: plan validation catches missing sections
 
 ## Section 3: Missing Enforcement
 
@@ -104,7 +111,7 @@ Broken items weighted 3x because they cause runtime failures.
 
 ### Scale 1: Test Depth (0-10)
 
-Current grade: [8] /10. Residual: [2]
+Current grade: [9] /10. Residual: [1]
 
 Rubric: 10 = every enforcement rule has test. 8 = main paths tested. 5 = gaps. 2 = minimal.
 Note: 6 new tests cover main paths. Missing: rate limit retry test (needs subprocess mock), RECORD CLAUDE.md readback test (needs integration test), section content length test.
@@ -117,3 +124,4 @@ Note: 6 new tests cover main paths. Missing: rate limit retry test (needs subpro
 |------|-------|-------|-------|
 | base | ~45   | 230   | path doubling, agent no-op, no note enforcement, no richness validation |
 | 1    | 7     | 236   | 2 unchecked (compliance wiring + section content) + 1 deferred (note count) + 2 test residual. Path doubling fixed. Rate limit retry. CLAUDE.md readback. |
+| 2    | 2     | 236   | Compliance wired. Section content already done. 1 deferred (note count) + 1 test residual. Missing: PLAN output quality enforcement. |

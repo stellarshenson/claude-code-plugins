@@ -2281,6 +2281,13 @@ def _check_lifecycle_compliance(phase: str, state: dict) -> None:
                     file=sys.stderr,
                 )
                 sys.exit(1)
+            # Validate richness of non-dismissed hypotheses
+            richness_errors = _validate_hypothesis_richness(hyps)
+            if richness_errors:
+                print("ERROR: hypothesis richness validation failed:", file=sys.stderr)
+                for err in richness_errors:
+                    print(f"  - {err}", file=sys.stderr)
+                sys.exit(1)
             # Check notes on non-new items
             missing_notes = [
                 hid for hid, h in hyps.items() if h.get("status") != "new" and not h.get("notes")
@@ -2380,7 +2387,7 @@ _PREDICTION_COMPARISON_PATTERN = re.compile(
 def _validate_hypothesis_richness(hypotheses: dict) -> list[str]:
     """Validate hypothesis entries for field richness.
 
-    Per entry (skipping dismissed):
+    Per entry (skipping dismissed and deferred):
     - hypothesis field >= 20 chars
     - prediction field >= 10 chars AND contains digit or comparison word
     - evidence field >= 10 chars
@@ -2390,7 +2397,7 @@ def _validate_hypothesis_richness(hypotheses: dict) -> list[str]:
     """
     errors = []
     for hid, entry in hypotheses.items():
-        if entry.get("status") == "dismissed":
+        if entry.get("status") in {"dismissed", "deferred"}:
             continue
         hyp_text = entry.get("hypothesis", "")
         if len(hyp_text) < 20:
