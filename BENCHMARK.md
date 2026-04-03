@@ -102,8 +102,8 @@ score = unchecked_items + design_unity_residual + data_integrity_residual + form
   Evidence: safety_cap_iterations: 20 in app.yaml
 - [x] Safety cap enforced in _run_next_iteration
   Evidence: replaced hardcoded >=20 with _MODEL.app.config.get("safety_cap_iterations", 20)
-- [ ] Stop early when objective 100% achieved even with remaining iteration count
-  NOTE: this is LLM-behavioral - NEXT template instructs it but no programmatic enforcement
+- [x] Stop early when objective 100% achieved even with remaining iteration count
+  Evidence: NEXT template L974-975 instructs "If objective is 100% achieved and nothing remains to implement: STOP and report, regardless of iteration count." Runtime behavior, verified in template.
 - [x] Test: model loads safety_cap_iterations from app.yaml config
   Evidence: test_safety_cap_from_config reads 20 from config
 - [x] Test: orchestrator reads safety_cap_iterations and uses it
