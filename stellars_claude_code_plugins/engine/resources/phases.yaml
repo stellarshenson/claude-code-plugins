@@ -80,14 +80,13 @@ actions:
   ACTION::HYPOTHESIS_AUTOWRITE:
     cli_name: hypothesis_autowrite
     type: generative
-    execution: agent
     description: "Extract structured hypotheses from phase output"
     prompt: |
       Read the phase output below and extract structured hypotheses.
       Write to {artifacts_dir}/hypotheses.yaml as identifier-keyed YAML dict.
       Each entry: hypothesis, prediction, evidence, stars, status, iteration_created, notes.
       New hypotheses: status "new", notes [].
-      Notes format: list of dicts [{status: "message"}], NOT plain strings.
+      Notes format: list of dicts [{{status: "message"}}], NOT plain strings.
       Valid statuses: new, dismissed, processed, deferred.
       Selected hypotheses should use status "processed", NOT "selected".
       APPEND new entries. UPDATE existing by identifier. Do NOT remove existing.
@@ -97,7 +96,6 @@ actions:
   ACTION::HYPOTHESIS_GC:
     cli_name: hypothesis_gc
     type: generative
-    execution: agent
     description: "Archive dismissed hypotheses to archive file"
     prompt: |
       Read {artifacts_dir}/hypotheses.yaml. Move entries with status "dismissed"
@@ -293,7 +291,7 @@ FULL::RESEARCH:
 
 FULL::HYPOTHESIS:
   auto_actions:
-    on_complete: [hypothesis_autowrite, hypothesis_gc]
+    on_complete: [hypothesis_gc]
   start:
     template: |
       ## Phase: HYPOTHESIS
@@ -404,6 +402,10 @@ FULL::HYPOTHESIS:
     template: |
       ## Phase: HYPOTHESIS (exit criteria)
 
+      **BEFORE calling end**: Write all hypotheses to `{artifacts_dir}/hypotheses.yaml` as identifier-keyed YAML dict.
+      Each entry must have: hypothesis, prediction, evidence, stars (int 1-5), status (new/dismissed/processed/deferred), iteration_created, notes (list of dicts).
+      Selected hypotheses: status "processed". Rejected: status "dismissed" with note.
+
       **Verify ALL**:
       - [ ] FOUR separate agents spawned (contrarian, optimist, pessimist, scientist)
       - [ ] Agents provided on end: `--agents "contrarian,optimist,pessimist,scientist"`
@@ -437,7 +439,7 @@ FULL::HYPOTHESIS:
           - RISK: regressions, complexity concerns
           - STARS: averaged rating with per-agent breakdown
           FAIL if ANY selected hypothesis is missing ANY required field.
-          Also check: notes are in dict format [{status: "message"}], not plain strings.
+          Also check: notes are in dict format [{{status: "message"}}], not plain strings.
           Status must be one of: new, dismissed, processed, deferred (NOT "selected").
           IF context messages are active, evidence SHOULD reference or acknowledge them.
 
@@ -974,6 +976,8 @@ RECORD:
 
       {record_instructions}
 
+      **Project policy**: If the project's CLAUDE.md restricts git operations (e.g. requires explicit user approval for commits), follow those restrictions. CLAUDE.md always takes precedence over phase instructions. Record the iteration summary regardless of git policy.
+
       **WHEN DONE**:
       ```
       {CMD} end --evidence "summary written [, journal updated, committed, pushed]"
@@ -989,7 +993,8 @@ RECORD:
           PHASE: {phase} | OBJECTIVE: {objective}
           INSTRUCTIONS: {instructions}
           UNDERSTANDING: {understanding}
-          Must mention: iteration summary. If code changes mentioned, also mention commit.
+          IMPORTANT: If the project CLAUDE.md restricts git operations, the agent adapting to those restrictions is CORRECT behavior, not a failure.
+          Only require: iteration summary mentioned. Git operations are conditional on project policy.
           Be lenient on phrasing.
   end:
     template: |

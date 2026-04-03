@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 
 import yaml
 
@@ -479,6 +480,7 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
         "prior_hyp": prior_hyp,
         "record_instructions": s.get("record_instructions", ""),
         "phase_dir": str(_phase_dir(s)),
+        "artifacts_dir": str(DEFAULT_ARTIFACTS_DIR.resolve()),
     }
     # Agent instructions - resolve via :: namespace (FULL::PLAN has agents for end review)
     agent_phase_key = _resolve_agents(phase or s.get("current_phase", ""))
@@ -615,14 +617,8 @@ def _run_auto_actions(phase: str, state: dict) -> bool:
             resolved_prompt = action_def.prompt.format_map(
                 collections.defaultdict(str, template_vars)
             )
-            if action_def.execution == "agent":
-                # Print resolved prompt for the main conversation agent to act on
-                print(f"\n--- AUTO-ACTION (agent): {action_name} ---")
-                print(resolved_prompt)
-                print("--- END AUTO-ACTION ---\n")
-            else:
-                # standalone: run via claude -p subprocess
-                _claude_evaluate(resolved_prompt, timeout=120)
+            # Run generative action via claude -p subprocess
+            _claude_evaluate(resolved_prompt, timeout=120)
     return False
 
 
@@ -964,7 +960,7 @@ def _phase_dir(state: dict) -> Path:
     idx = phases.index(phase) + 1 if phase in phases else 0
     folder = DEFAULT_ARTIFACTS_DIR / f"phase_{idx:02d}_{phase.lower()}"
     folder.mkdir(parents=True, exist_ok=True)
-    return folder
+    return folder.resolve()
 
 
 def _next_phase(state: dict) -> str | None:
@@ -1149,6 +1145,15 @@ def _verify_test_phase(state: dict | None = None) -> tuple[bool, str]:
 
 # ── Claude evaluation ────────────────────────────────────────────────
 
+_RATE_LIMIT_PATTERNS = (
+    "hit your limit",
+    "rate limit",
+    "too many requests",
+    "Resource has been exhausted",
+)
+
+_RATE_LIMIT_BACKOFFS = (5, 15, 45)
+
 
 def _claude_evaluate(
     prompt: str,
@@ -1160,38 +1165,66 @@ def _claude_evaluate(
     Strips the CLAUDECODE environment variable to prevent subprocess
     hang (claude-agent-sdk detects it and enters degraded mode).
     Uses sonnet model with max-turns 3 and 60s timeout.
+    Retries up to 3 times on rate-limit responses with exponential backoff.
     Logs every prompt+response to artifacts/logs/ for debugging.
     """
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
-
-    try:
-        result = subprocess.run(
-            [
-                "claude",
-                "-p",
-                prompt,
-                "--model",
-                "sonnet",
-                "--max-turns",
-                "3",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            env=env,
-            cwd=str(PROJECT_ROOT),
-        )
-        output = result.stdout.strip()
-        first_line = output.split("\n")[0].strip("*#> ").strip().upper()
-        passed = first_line.startswith("PASS")
-    except FileNotFoundError:
-        passed, output = False, "FAIL: claude CLI not found."
-    except subprocess.TimeoutExpired:
-        passed, output = False, f"FAIL: claude -p timed out ({timeout}s)."
-
-    # Log for tracing
     log_dir = DEFAULT_ARTIFACTS_DIR / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
+
+    max_attempts = len(_RATE_LIMIT_BACKOFFS) + 1
+    for attempt in range(max_attempts):
+        try:
+            result = subprocess.run(
+                [
+                    "claude",
+                    "-p",
+                    prompt,
+                    "--model",
+                    "sonnet",
+                    "--max-turns",
+                    "3",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+                cwd=str(PROJECT_ROOT),
+            )
+            output = result.stdout.strip()
+            first_line = output.split("\n")[0].strip("*#> ").strip().upper()
+            passed = first_line.startswith("PASS")
+        except FileNotFoundError:
+            passed, output = False, "FAIL: claude CLI not found."
+            break
+        except subprocess.TimeoutExpired:
+            passed, output = False, f"FAIL: claude -p timed out ({timeout}s)."
+            break
+
+        # Check for rate-limit patterns in output
+        output_lower = output.lower()
+        is_rate_limited = any(pat.lower() in output_lower for pat in _RATE_LIMIT_PATTERNS)
+        if is_rate_limited and attempt < len(_RATE_LIMIT_BACKOFFS):
+            wait = _RATE_LIMIT_BACKOFFS[attempt]
+            retry_msg = (
+                f"Rate limit detected (attempt {attempt + 1}/{max_attempts}). "
+                f"Retrying in {wait}s..."
+            )
+            print(retry_msg, file=sys.stderr)
+            # Log the retry
+            ts = _now().replace(":", "-")
+            retry_log = log_dir / f"eval_retry_{ts}.log"
+            retry_log.write_text(
+                f"RATE LIMIT RETRY (attempt {attempt + 1})\nWait: {wait}s\n\nOUTPUT:\n{output}\n",
+                encoding="utf-8",
+            )
+            time.sleep(wait)
+            continue
+
+        # Not rate-limited or retries exhausted
+        break
+
+    # Log for tracing
     ts = _now().replace(":", "-")
     log_file = log_dir / f"eval_{ts}.log"
     log_file.write_text(
@@ -1729,15 +1762,11 @@ def cmd_new(args) -> None:
             args.record_instructions = old_state.get("record_instructions", "")
     else:
         # Fresh start: clean and reset (only preserve resources/)
-        last_iteration = _read_last_iteration()
         _clean_artifacts_dir(preserve_data=False)
         print(_msg("cleaned") + "\n")
-        old_state = _load_state()
-        iteration = max(
-            (old_state["iteration"] + 1) if old_state else 1,
-            last_iteration + 1,
-        )
+        iteration = 1
         benchmark_scores = []
+        old_state = None
 
     # Auto-run dependency workflow (iteration 0) when configured
     run_type = itype
@@ -2278,8 +2307,109 @@ def _check_lifecycle_compliance(phase: str, state: dict) -> None:
                             {"dismissed": f"exceeded max deferred iterations ({max_deferred})"}
                         )
             _save_hypotheses(hyps)
+
+            # Richness validation: fields must have substance
+            richness_errors = _validate_hypothesis_richness(hyps)
+            if richness_errors:
+                print("ERROR: Hypothesis richness validation failed:", file=sys.stderr)
+                for err in richness_errors:
+                    print(f"  - {err}", file=sys.stderr)
+                sys.exit(1)
         except (ValueError, FileNotFoundError):
             pass
+
+
+def _validate_research_output(output_content: str) -> list[str]:
+    """Validate research output for required sections, length, and file refs.
+
+    Checks:
+    - 4 section headers present (case-insensitive)
+    - Total length >= 500 chars
+    - >= 3 file path references (pattern: word/word.ext)
+    - Each section has >= 50 chars content between headers
+
+    Returns list of error strings (empty = valid).
+    """
+    errors = []
+    required_sections = ["current state", "gap analysis", "file inventory", "risk assessment"]
+    output_lower = output_content.lower()
+
+    # Check section headers present
+    for section in required_sections:
+        if section not in output_lower:
+            errors.append(f"Missing required section: {section}")
+
+    # Check total length
+    if len(output_content) < 500:
+        errors.append(f"Research output too short ({len(output_content)} chars, minimum 500)")
+
+    # Check file path references (word/word.ext pattern)
+    file_refs = re.findall(r"[\w/]+\.\w+", output_content)
+    if len(file_refs) < 3:
+        errors.append(f"Too few file path references ({len(file_refs)}, minimum 3)")
+
+    # Check each section has >= 50 chars content
+    section_positions = []
+    for section in required_sections:
+        idx = output_lower.find(section)
+        if idx >= 0:
+            section_positions.append((idx, section))
+    section_positions.sort(key=lambda x: x[0])
+
+    for i, (pos, name) in enumerate(section_positions):
+        header_end = output_content.find("\n", pos)
+        if header_end < 0:
+            header_end = pos + len(name)
+        content_start = header_end + 1
+        if i + 1 < len(section_positions):
+            content_end = section_positions[i + 1][0]
+        else:
+            content_end = len(output_content)
+        section_content = output_content[content_start:content_end].strip()
+        if len(section_content) < 50:
+            errors.append(f"Section '{name}' too short ({len(section_content)} chars, minimum 50)")
+
+    return errors
+
+
+_PREDICTION_COMPARISON_PATTERN = re.compile(
+    r"(?:\d|from|to|increase|decrease|reduce)", re.IGNORECASE
+)
+
+
+def _validate_hypothesis_richness(hypotheses: dict) -> list[str]:
+    """Validate hypothesis entries for field richness.
+
+    Per entry (skipping dismissed):
+    - hypothesis field >= 20 chars
+    - prediction field >= 10 chars AND contains digit or comparison word
+    - evidence field >= 10 chars
+    - stars is int 1-5
+
+    Returns list of error strings (empty = valid).
+    """
+    errors = []
+    for hid, entry in hypotheses.items():
+        if entry.get("status") == "dismissed":
+            continue
+        hyp_text = entry.get("hypothesis", "")
+        if len(hyp_text) < 20:
+            errors.append(f"Hypothesis '{hid}': hypothesis text too short ({len(hyp_text)} chars)")
+        pred_text = entry.get("prediction", "")
+        if len(pred_text) < 10:
+            errors.append(f"Hypothesis '{hid}': prediction too short ({len(pred_text)} chars)")
+        elif not _PREDICTION_COMPARISON_PATTERN.search(pred_text):
+            errors.append(
+                f"Hypothesis '{hid}': prediction must contain a digit or comparison word "
+                f"(from/to/increase/decrease/reduce)"
+            )
+        evidence_text = entry.get("evidence", "")
+        if len(evidence_text) < 10:
+            errors.append(f"Hypothesis '{hid}': evidence too short ({len(evidence_text)} chars)")
+        stars = entry.get("stars")
+        if not isinstance(stars, int) or stars < 1 or stars > 5:
+            errors.append(f"Hypothesis '{hid}': stars must be int 1-5 (got {stars!r})")
+    return errors
 
 
 def cmd_end(args) -> None:
@@ -2327,6 +2457,15 @@ def cmd_end(args) -> None:
     else:
         body = _PHASE_END.get(phase, lambda: "")()
         print(header + body)
+
+    # ── Research output structural validation ──
+    if "RESEARCH" in phase.upper() and output_content:
+        research_errors = _validate_research_output(output_content)
+        if research_errors:
+            print("ERROR: Research output failed structural validation:", file=sys.stderr)
+            for err in research_errors:
+                print(f"  - {err}", file=sys.stderr)
+            sys.exit(1)
 
     # ── Lifecycle compliance: hard programmatic gate ──
     _check_lifecycle_compliance(phase, state)

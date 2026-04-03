@@ -4,6 +4,16 @@
 
 Fix the actually broken subsystems in the orchestrator that were previously "fixed" with prompt text changes but have no code enforcement. The prior iteration scored 0 on the benchmark by checking template text presence, not runtime behavior. This program addresses the real gaps.
 
+## Critical Design Problem: RESEARCH and HYPOTHESIS ROI
+
+RESEARCH and HYPOTHESIS phases consume massive resources - multiple agent spawns, gatekeeper evaluations, subprocess calls - but produce almost nothing that persists. Phase outputs vanish due to the path doubling bug. Even when they do persist, the content is shallow because there's no code enforcement on quality.
+
+The ROI of these expensive phases must be visible:
+- Rich outputs MUST survive in phase directories as reusable artifacts
+- RESEARCH output must be rich enough that a new session can pick up from it without re-reading the codebase
+- HYPOTHESIS output must contain self-contained action plans (not just "do X"), with predictions that can be verified after implementation
+- Both must be validated programmatically before the phase completes - not by LLM judgment
+
 ## What Actually Works (leave alone)
 
 - `_load_hypotheses` notes validation - crashes on plain strings and invalid statuses
