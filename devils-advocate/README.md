@@ -4,26 +4,36 @@ Critical document analysis plugin for Claude Code. Systematically critiques docu
 
 ## Skills
 
-- **devils-advocate** - Build devil persona, generate concern catalogue with Fibonacci risk scoring, evaluate with scorecard, iterate corrections until residual risk minimized
+| Skill | Description |
+|-------|-------------|
+| `devils-advocate:setup` | Build devil persona + harvest fact repository |
+| `devils-advocate:evaluate` | Generate concern catalogue + baseline scorecard |
+| `devils-advocate:iterate` | Apply corrections, re-score, produce versioned copy |
+| `devils-advocate:run` | Full workflow end-to-end (setup -> evaluate -> iterate until done) |
 
-## How it works
+## Workflow
 
-1. Define the toughest reader (persona with role, biases, triggers)
-2. Harvest facts into `fact_repository.md`
-3. Generate concerns scored by likelihood x impact (1-64 range)
-4. Evaluate document with scorecard (0-100% per concern)
-5. Propose options for high-residual concerns
-6. Iterate versioned corrections until residual risk acceptable
+```
+/devils-advocate:setup       # 1. Build persona, harvest facts
+/devils-advocate:evaluate    # 2. Generate concerns + baseline scorecard
+/devils-advocate:iterate     # 3. Apply corrections, re-score (repeat)
+```
 
-## Trigger phrases
+Or run everything at once:
 
-- "devil's advocate on this document"
-- "critique this" / "scorecard"
-- "how will they attack this?"
-- "stress-test this for [audience]"
+```
+/devils-advocate:run          # Full workflow
+```
 
 ## Artefacts
 
-- `devils_advocate.md` - persona, concerns, scorecard, recommendations
+- `devils_advocate.md` - persona, concerns, scorecards (accumulated across iterations)
 - `fact_repository.md` - verified claims with sources
 - `<name>_v<NN>_<score>.md` - versioned corrections with embedded scorecard
+
+## Scoring
+
+- **Risk** = Likelihood x Impact (Fibonacci scale 1-8, max 64)
+- **Score** = 0-100% per concern (how well addressed)
+- **Residual** = Risk x (1 - Score)
+- **Document score** = sum of residuals (minimise)

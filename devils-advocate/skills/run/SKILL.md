@@ -1,6 +1,6 @@
 ---
-name: devils-advocate
-description: Use this skill when the user asks to critically evaluate a document, build a devil's advocate analysis, create a scorecard, or stress-test executive communications. Triggers on phrases like "devil's advocate", "critique this", "scorecard", "pushback scenarios", "how will they attack this", "evaluate concerns".
+name: run
+description: Run the full devil's advocate workflow end-to-end. Setup persona, evaluate baseline, then iterate corrections until residual risk is acceptable. Use when the user wants the complete analysis in one go.
 ---
 
 # Devil's Advocate - Critical Document Analysis
