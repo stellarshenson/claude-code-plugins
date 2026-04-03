@@ -51,11 +51,12 @@ Runs structured multi-iteration development cycles where each iteration passes t
 ### Usage
 
 ```bash
-# Start a 3-iteration improvement cycle
-/auto-build-claw:run new --type full --objective "fix connector routing" --iterations 3
+# Simplest: describe what you want - the plugin writes PROGRAM.md and BENCHMARK.md,
+# asks you to approve, then runs the orchestrator
+/auto-build-claw improve error handling in the API layer
 
-# With benchmark tracking
-/auto-build-claw:run new --type full --objective "improve score" --iterations 5 \
+# Direct usage if PROGRAM.md and BENCHMARK.md already exist
+/auto-build-claw:run new --type full --objective "Implement PROGRAM.md" --iterations 3 \
   --benchmark "Read BENCHMARK.md and evaluate each [ ] item"
 
 # Continue from previous session (preserves context, failures, hypotheses)
