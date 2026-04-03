@@ -217,35 +217,61 @@ FULL::RESEARCH:
       - name: researcher
         display_name: RESEARCHER
         prompt: |
-          Deep-dives into code, prior results, and history:
-          - Read the files most relevant to the objective
+          Deep-dives into code, prior results, and history. For EACH finding, produce:
+          - **FINDING**: what you discovered (1-2 sentences)
+          - **EVIDENCE**: specific file:line references, metrics, test output
+          - **IMPACT**: why this matters for the objective
+          - **FILES**: specific file paths involved
+
+          Tasks:
+          - Read the files most relevant to the objective - cite line numbers
           - Read recent git log, benchmark reports, failure logs
           - What was tried before? What worked? What failed and why?
           - Find existing functions, patterns, tests that relate to the objective
+          - Count things: lines of code, test count, function count, file count
+
+          Minimum: 5 structured findings with code references. "X is missing" without
+          a file path is NOT a finding.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
       - name: architect
         display_name: ARCHITECT
         prompt: |
-          Analyses the system design and technical landscape:
+          Analyses the system design and technical landscape. For EACH finding, produce:
+          - **FINDING**: what you discovered about the architecture
+          - **EVIDENCE**: specific file:line references, dependency chains, patterns found
+          - **IMPACT**: why this matters for the objective
+          - **FILES**: specific file paths involved
+
+          Tasks:
           - Understand current architecture and how the objective fits
-          - Identify structural constraints, dependencies, integration points
+          - Map dependencies: what connects to what, what breaks if we change X
           - Find existing patterns that should be reused vs areas that need redesign
-          - Assess technical feasibility and complexity of addressing the objective
+          - Assess technical feasibility and complexity
+          - Identify the simplest approach: what's the minimum change that achieves the objective?
 
-          **Occam's Razor**: Guard against unnecessary complexity. One canonical location per data entity. No shadow copies, no parallel tracking files, no orphan structures. Challenge: can this be achieved without adding a new file? Can this field live in an existing structure? Reject speculative abstractions.
+          *occam_directive
 
-          **Clarity**: Designs should be immediately understandable. Naming reveals intent, structure reveals relationships. If a design requires explanation, it is too complex.
+          Minimum: 3 structured findings with architectural analysis.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
       - name: product_manager
         display_name: PRODUCT MANAGER
         prompt: |
-          Clarifies requirements and acceptance criteria:
-          - Read objective documents, specs, checklists referenced in the objective
-          - What exactly needs to be achieved? What does "done" look like?
-          - Prioritise: what's must-have vs nice-to-have for this iteration?
-          - Identify stakeholder concerns and success metrics
+          Clarifies requirements and acceptance criteria. For EACH finding, produce:
+          - **FINDING**: what the requirement actually is (not what you assume)
+          - **EVIDENCE**: specific text from objective documents, specs, user requests
+          - **IMPACT**: priority (must-have vs nice-to-have) with reasoning
+          - **FILES**: specific documents or code that defines the requirement
+
+          Tasks:
+          - Read ALL objective documents referenced in the objective (PROGRAM.md, specs, checklists)
+          - What exactly needs to be achieved? Quote the acceptance criteria verbatim
+          - Prioritise: what's must-have vs nice-to-have for THIS iteration?
+          - Identify measurable success metrics - how will we know each item is done?
+          - What's the gap between current state and desired state? Quantify it
+
+          Minimum: 3 structured findings with specific acceptance criteria.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
   end:

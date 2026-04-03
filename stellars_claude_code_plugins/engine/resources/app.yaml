@@ -36,9 +36,9 @@ app:
   research_min_tokens: 500          # total research output
   research_section_min_tokens: 50   # per section in research output
   research_min_file_refs: 5         # minimum file path references
-  hypothesis_min_tokens: 25         # hypothesis field per entry
-  prediction_min_tokens: 15         # prediction field per entry
-  evidence_min_tokens: 15           # evidence field per entry
+  hypothesis_min_tokens: 50         # hypothesis field per entry (~2-3 sentences with root cause)
+  prediction_min_tokens: 30         # prediction field per entry (~specific measurable outcome)
+  evidence_min_tokens: 30           # evidence field per entry (~concrete data points and code refs)
   # cmd: the CLI command path shown in all help text and instructions.
   # Must match the actual script location relative to project root.
   cmd: "python .claude/skills/auto-build-claw/orchestrate.py"
