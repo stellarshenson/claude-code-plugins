@@ -74,7 +74,31 @@ score = unchecked_items + design_unity_residual + data_integrity_residual + form
 - [x] Stop condition is the default judgment (benchmark is always present, stop_condition guides when to stop optimizing)
   Evidence: stop_condition says "review benchmark score trajectory"
 
-## Section 4: Residual Reduction
+## Section 4: Restart Current Iteration
+
+- [ ] `orchestrate new --restart` or `orchestrate restart` resets current iteration phases to pending
+- [ ] Restart keeps iteration number, preserves all data (context/failures/hypotheses)
+- [ ] Objective can be updated on restart
+- [ ] Test: restart resets phases without incrementing iteration counter
+- [ ] Test: restart preserves data files
+
+## Section 4b: SKILL.md Restart Documentation
+
+- [ ] SKILL.md documents `--restart` flag/command
+- [ ] SKILL.md explains when to use restart vs --continue
+
+## Section 5: Stop Decision Tree
+
+- [x] NEXT template has clear stop hierarchy: 100% done stops regardless, then program exit conditions, then workflow stop_condition
+  Evidence: phases.yaml NEXT template_continue updated with decision tree
+- [x] Safety cap configurable in app.yaml
+  Evidence: safety_cap_iterations: 20 in app.yaml
+- [ ] Safety cap enforced in _run_next_iteration or NEXT phase
+- [ ] Stop early when objective 100% achieved even with remaining iteration count
+- [ ] Test: model loads safety_cap_iterations from app.yaml config
+- [ ] Test: orchestrator reads safety_cap_iterations and uses it
+
+## Section 6: Residual Reduction
 
 - [x] Interaction test: clean -> reload -> verify lifecycle accumulates correctly
   Evidence: test_clean_reload_lifecycle (clean, reload context+hypotheses, verify status+notes preserved)
@@ -135,3 +159,4 @@ Evidence: _build_failures_context aligned with context banner filter. All loader
 | clean | -    | 202   | Benchmark cleanup, programmatic gates design |
 | 34   | 4     | 207   | Programmatic gates, max deferred, stop condition, residuals. |
 | 35   | 2     | 208   | Deferred within limit test. Remove 'all items checked' condition. |
+| 36   | 12    | 208   | Stop decision tree, safety cap config, restart design, README article. +11 new items. |

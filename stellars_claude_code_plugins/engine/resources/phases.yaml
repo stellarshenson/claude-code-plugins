@@ -970,11 +970,12 @@ NEXT:
       - Verification items in BENCHMARK.md
 
       **PROCEED IMMEDIATELY to the next iteration** unless user explicitly asked to pause.
-      The user requested {total} iterations - execute all of them autonomously.
 
-      **Stop early ONLY if**: all targets met, all hypotheses exhausted, or context critically low.
-
-      Review the stop condition for this workflow before proceeding.
+      **Stop decision**:
+      - If objective is 100% achieved and nothing remains to implement: STOP and report, regardless of iteration count.
+      - If specific iteration count was requested: continue until count reached (unless objective 100% done).
+      - If unlimited iterations: check program exit conditions each iteration. If no explicit exit conditions, use the workflow stop condition to judge whether further optimization is worthwhile.
+      - Safety cap: stop after {total} iterations if unlimited was requested.
 
     template_final: |
       ## Phase: NEXT

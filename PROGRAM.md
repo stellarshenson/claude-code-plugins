@@ -43,6 +43,17 @@ Polish remaining features for the auto-build-claw orchestrator (v0.8.56, 202 tes
   - Example: "If benchmark score unchanged for 2 consecutive iterations despite implementation, stop and report what remains unresolved"
   - Acceptance: stop_condition in workflow.yaml, NEXT phase template references it
 
+- **Restart current iteration** (medium)
+  - Scope: `orchestrator.py` new command or flag
+  - When program/benchmark changed mid-iteration, allow restarting current iteration from RESEARCH
+  - `orchestrate new --restart` or `orchestrate restart`: resets current iteration's phases to pending, keeps iteration number, preserves all data
+  - Objective can be updated on restart
+  - Use case: user updates PROGRAM.md/BENCHMARK.md and wants the current iteration to re-evaluate from scratch
+  - Acceptance: restart resets phases without incrementing iteration counter
+
+- **Safety cap in app.yaml config** (done)
+  - `safety_cap_iterations: 20` added to app.yaml
+
 - **Residual reduction** (low)
   - Data Integrity 9->10: add interaction test (clean-then-reload-then-verify lifecycle)
   - Test Depth 9->10: same interaction test covers this

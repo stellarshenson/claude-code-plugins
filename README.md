@@ -11,6 +11,9 @@
 
 Claude Code plugins for autonomous development workflows. A shared YAML-driven orchestration engine with individual plugins that define their own phases, agents, and gates through declarative configuration.
 
+> [!NOTE]
+> Read the full article on the approach: [Your AI Agent Will Cut Corners. Here's How to Stop It.](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762)
+
 ## Plugins
 
 | Plugin | Description |
