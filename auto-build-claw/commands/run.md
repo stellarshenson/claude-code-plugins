@@ -1,7 +1,7 @@
 ---
 description: Run the auto-build-claw orchestrator for structured improvement cycles
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Agent, AskUserQuestion, Skill]
-argument-hint: "new --type full --objective \"...\" --iterations N [--benchmark \"...\"] | start | end | status | skip | reject | add-iteration | validate"
+argument-hint: "describe what you want to build or improve"
 ---
 
 # Auto Build Claw - Run Orchestrator
