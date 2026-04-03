@@ -1,140 +1,159 @@
-# Devil's Advocate - Remaining Features Program
+# Devil's Advocate - README Rewrite Program
 
 ## The Devil
 
-**Role**: Systems architect obsessed with design unity and minimal surface area
-**Cares about**: (1) One canonical location for each piece of data, (2) No orphan files or parallel tracking mechanisms, (3) Every data structure should be self-describing, (4) Fewer moving parts = fewer bugs
-**Style**: Pattern-driven. If two things store related data, they should be one thing. If a file has no schema, it's technical debt.
-**Default bias**: Against adding files, against adding fields, against complexity. Prove it's necessary.
-**Triggers**: Separate files tracking the same concern (context.yaml + context_ack.yaml), flat key-value when rich metadata is needed, "backward compat" used as excuse to keep two code paths
-**Decision**: Approve the program or demand consolidation before implementation
-**Source**: user-described persona
+**Role**: Senior developer evaluating whether to adopt this plugin system for their own Claude Code workflows
+**Cares about**: (1) Understanding what this does in under 60 seconds, (2) Seeing concrete examples that prove it works, (3) Finding accurate technical information they can trust
+**Style**: Skimmer. Reads the first paragraph, scans headers, looks for code blocks. If confused after 30 seconds, moves on.
+**Default bias**: Skeptical of "autonomous" claims. Assumes marketing until proven otherwise. Wants to see the mechanism, not the promise.
+**Triggers**: Buzzwords without substance, outdated information (kills trust immediately), walls of text, missing "how do I actually use this?" section
+**Decision**: Star/fork the repo or close the tab
+**Source**: user-described persona (toughest audience for a README)
 
 ---
 
 ## Concern Catalogue
 
-### 1. "context.yaml and context_ack.yaml are the same concern stored in two files"
+### 1. "I still don't understand what this actually does after reading the intro"
 
 **Likelihood: 8** | **Impact: 8** | **Risk: 64**
 
-**Their take**: context.yaml stores `{phase: message}`. context_ack.yaml stores `{phase: [seen_by_phases]}`. These are TWO files about the SAME data entity - a context message. The ack file is a shadow copy that must stay in sync. If context.yaml is cleared but context_ack.yaml isn't, you get phantom acknowledgments. If a context message is updated, the ack data references stale content. This is the classic "data in two places" anti-pattern.
+**Their take**: The PROGRAM says to "explain YAML-driven orchestration engine concept" but doesn't specify what the reader should understand after reading. If the README says "YAML-driven orchestration engine with FSM phases and multi-agent coordination" - that's jargon soup. What does it DO for me? Does it make my code better? How? The problem statement ("AI agents cut corners") is good - but if the README leads with architecture instead of value proposition, the skimmer closes the tab.
 
-The architect demands: ONE file, ONE entry per context message, ALL metadata inline:
-```yaml
-RESEARCH:
-  message: "focus on connector routing"
-  created: "2026-04-02T14:00:00Z"
-  acknowledged_by: [PLAN, IMPLEMENT]
-  processed: false
-```
+**Reality**: The auto-build-claw README already has a good "What it solves" section with concrete problems (shallow fixes, scope creep, lost context). The PROGRAM mentions "frame as pull-based enforcement" which is the right concept but needs to be the FIRST thing, not buried.
 
-**Reality**: The program already proposes this exact fix. But the CURRENT code (v0.8.51) has the split. The fix is planned but not implemented.
+**Response**: PROGRAM should explicitly state: the opening paragraph must answer "what does this do for me?" before any technical explanation. The "What it solves" framing from auto-build-claw/README.md should be the model.
 
-**Response**: This IS the top work item. Implement it first.
-
-### 2. "The version check cache file is another orphan"
+### 2. "The PROGRAM doesn't distinguish must-have from nice-to-have sections"
 
 **Likelihood: 5** | **Impact: 5** | **Risk: 25**
 
-**Their take**: `.auto-build-claw/.version_check` is a plain text file containing just a version string. No timestamp in the content - it uses file mtime for cache invalidation. This means: (1) copying the file preserves content but may reset mtime, (2) `_clean_artifacts_dir` could wipe it unless it's in the preserve list, (3) it's an invisible dot-file that's hard to discover.
+**Their take**: Everything is listed as a work item with equal weight. "Header and badges" is low priority, "Building a new plugin" is medium - but for a 3-iteration auto-build-claw run, what gets done first? If iteration 1 wastes time on badge formatting while the core plugin descriptions are wrong, the README improves minimally. The PROGRAM should sequence work items by reader impact: problem statement first, plugin descriptions second, everything else third.
 
-Why not store the version check in a proper state structure? The artifacts directory already has `state.yaml` and `log.yaml` with structured data. A `.version_check` plain text file with no schema is a wart.
+**Reality**: The PROGRAM does assign priority (low/high/medium) but doesn't sequence them. Auto-build-claw follows its own phase lifecycle (RESEARCH -> HYPOTHESIS -> PLAN -> IMPLEMENT) so the implementer will plan its own sequence. But without explicit priority in the program, the planner might not get it right.
 
-**Reality**: The version check is low-frequency (once per 24h) and non-critical (fails silently). A plain text file is the simplest thing that works. The mtime-based cache is elegant but fragile.
+**Response**: PROGRAM should state explicit iteration targets: iteration 1 = core content (what/why/plugins), iteration 2 = architecture + usage, iteration 3 = polish + accuracy verification.
 
-**Response**: Consider storing as `{latest_version: str, checked_at: ISO8601}` in YAML. Or accept the pragmatic plain-text file. Low priority.
-
-### 3. "hypothesis_autowrite prompt says 'Write entries' not 'Append entries'"
+### 3. "The BENCHMARK doesn't measure reader experience"
 
 **Likelihood: 8** | **Impact: 5** | **Risk: 40**
 
-**Their take**: workflow.yaml ACTION::HYPOTHESIS_AUTOWRITE prompt says "Write entries to hypotheses.yaml in YAML list format." This is ambiguous - does "write" mean overwrite or append? A generative action (claude -p) receiving this prompt will interpret "write" as "create the file with these entries" - overwriting whatever was there. The _build_hypothesis_context loads prior hypotheses for the HYPOTHESIS phase, but if hypothesis_autowrite then overwrites the file, the accumulation is lost.
+**Their take**: The benchmark checks presence ("section exists") and formatting ("no emojis", "no em-dashes") but never asks: "Can a new user understand what this project does after reading just the first 3 paragraphs?" There's no benchmark item for information hierarchy - does the README lead with value, then mechanism, then usage? The fuzzy scales (Accuracy, Completeness, Clarity, Flow) are too abstract. "Clarity: 0-10" with no rubric means the evaluator assigns whatever feels right.
 
-The architect demands: the prompt must say "Read existing hypotheses.yaml first. APPEND new entries, UPDATE existing entries by ID (matching by ID field). Do NOT remove entries unless their status is DONE or REMOVED."
+**Reality**: The 4 fuzzy scales ARE meant to capture this, but without rubrics they're subjective. Clarity and Flow specifically should measure reader experience, but the benchmark doesn't define what 8/10 clarity looks like vs 5/10.
 
-**Reality**: The program identifies this as a work item. The current prompt IS ambiguous.
+**Response**: Add rubric definitions for each fuzzy scale. Add a specific benchmark item: "First 3 paragraphs explain what the project does, what problem it solves, and how to get started."
 
-**Response**: Fix the prompt in workflow.yaml. One line change, high impact on hypothesis persistence.
+### 4. "No benchmark item for the README being self-consistent"
 
-### 4. "_clean_artifacts_dir preserves resources/ but not context_ack.yaml"
+**Likelihood: 5** | **Impact: 8** | **Risk: 40**
 
-**Likelihood: 5** | **Impact: 5** | **Risk: 25**
+**Their take**: The whole reason for this rewrite is that the README has wrong numbers (115 tests). The benchmark checks "test count is 212" but doesn't check other potential inconsistencies: does the architecture diagram match actual directory structure? Do the listed Makefile targets match the actual Makefile? Do the slash commands shown actually work? If iteration 2 adds a beautiful architecture section but the directory paths are wrong, the benchmark might not catch it because each item is checked in isolation.
 
-**Their take**: `_CLEAN_PRESERVE` = `{"context.yaml"}` and `_CLEAN_PRESERVE_DIRS` = `{"resources"}`. But `context_ack.yaml` is NOT in the preserve set. Every `new --clean` wipes the acknowledgment tracking. This contradicts the purpose of tracking which phases have seen which context messages.
+**Reality**: Section 1 (Accuracy) does have items for test count, version, plugins, skills, workflow types, architecture, and Makefile. But these are presence checks, not consistency checks. The benchmark could verify: "every file path shown in the README exists on disk", "every command shown in usage examples is valid".
 
-Once context.yaml becomes rich (with acknowledged_by inline), this concern vanishes - there's only one file to preserve and it's already preserved.
+**Response**: Add benchmark item: "Every file path, command, and code example in README.md is verified against actual codebase."
 
-**Reality**: This is another reason to consolidate into context.yaml. The separate file creates a preservation gap.
+### 5. "devils-advocate plugin description might be too detailed for a README"
 
-**Response**: Consolidating into context.yaml (concern #1) fixes this automatically.
+**Likelihood: 5** | **Impact: 3** | **Risk: 15**
 
-### 5. "Three separate data files with no schema versioning"
+**Their take**: The PROGRAM wants the README to describe "Risk scoring: Likelihood x Impact (Fibonacci 1-8, max 64), residual = risk x (1 - score)". That's implementation detail. A README reader wants to know: "this plugin critiques your documents and scores how well concerns are addressed." The math belongs in the plugin's own README, not the top-level repo README. Same risk for auto-build-claw - explaining all 8 phases with their lifecycle transitions is too much for a repo README.
+
+**Reality**: There's a balance. The top-level README should give enough detail to understand the concept but link to plugin-specific READMEs for depth. The PROGRAM doesn't mention linking to sub-READMEs at all.
+
+**Response**: PROGRAM should specify depth level for each plugin section: "concept + key differentiators + usage example, link to plugin README for full details." The formula and phase details go in the plugin READMEs.
+
+### 6. "No benchmark item for README length control"
 
 **Likelihood: 3** | **Impact: 5** | **Risk: 15**
 
-**Their take**: context.yaml, hypotheses.yaml, and .version_check all have implicit schemas with no version marker. When the format changes (like context.yaml gaining rich entries), the code does format detection inline (`if isinstance(entry, str): migrate`). Each format migration is ad-hoc code in the function that reads the file. With 3 files and growing, this becomes unmaintainable.
+**Their take**: The PROGRAM constraint says "keep total length reasonable" but the benchmark has no way to measure this. With 9 sections (header, what it solves, plugins overview, auto-build-claw, devils-advocate, architecture, building a plugin, install, development), each getting a paragraph plus code block, the README could easily balloon to 300+ lines. The current README is 110 lines. A 3x expansion would bury the value proposition.
 
-The architect wants: a `schema_version` field at the top of each YAML file, and a centralized migration registry.
+**Reality**: Modus primaris already constrains verbosity. But without a line count target, the benchmark can't flag bloat.
 
-**Reality**: Over-engineering for 3 files. The inline migration (`isinstance` check) is simple and obvious. A schema registry adds complexity without proportional benefit.
+**Response**: Add a soft target: "README should be under 200 lines" or similar. The benchmark should include a check for overall length.
 
-**Response**: Accept inline migration for now. Note for future if file count grows beyond 5.
-
-### 6. "cmd_status has grown into a god function"
+### 7. "The PROGRAM doesn't mention what to REMOVE from the current README"
 
 **Likelihood: 3** | **Impact: 3** | **Risk: 9**
 
-**Their take**: `cmd_status` now displays: iteration info, phase progress, agents recorded, AND context messages with acknowledgment. Each new feature adds another display block to the same function. The function is becoming a dashboard renderer that knows about every subsystem.
+**Their take**: The current README has content that might be outdated or wrong beyond just the test count. The standalone CLI usage section shows specific commands that might not match current implementation. The "Building a new plugin" section might describe an outdated process. The PROGRAM only talks about what to ADD, never what to remove or verify.
 
-**Reality**: Status is supposed to show everything. That's its job. The blocks are independent and don't interact.
+**Reality**: The PROGRAM does say "keep existing content" for some sections. But it should also say "verify existing content is still accurate" for sections being preserved.
 
-**Response**: Low priority. Monitor but don't refactor yet.
+**Response**: Add a work item: "Audit existing sections for accuracy before preserving them."
 
 ---
 
-## Scorecard v01 (PROGRAM.md as-is)
+## Scorecard v01 (PROGRAM.md + BENCHMARK.md as-is)
 
-| # | Concern | Risk | Score | Residual | Reasoning |
-|---|---------|------|-------|----------|-----------|
-| 1 | Context split into 2 files | 64 | 80% | 12.8 | Program explicitly proposes rich context entries with acknowledged_by inline. Remove context_ack.yaml. Well covered. Residual: hasn't been implemented yet. |
-| 2 | Version check orphan file | 25 | 40% | 15.0 | Program doesn't address .version_check format. Stays as plain text with mtime cache. Minor wart but not addressed. |
-| 3 | Hypothesis autowrite ambiguity | 40 | 85% | 6.0 | Program has explicit work item to fix prompt to say append/update. Well covered. |
-| 4 | context_ack.yaml not preserved | 25 | 90% | 2.5 | Consolidation (concern #1) eliminates this automatically. Program addresses root cause. |
-| 5 | No schema versioning | 15 | 30% | 10.5 | Program doesn't mention schema versioning. Relies on inline isinstance checks. Pragmatic but unaddressed. |
-| 6 | cmd_status growing | 9 | 50% | 4.5 | Program adds more to status (timestamps, processed flag) without mentioning extraction. Minor. |
+| # | Concern | Risk | Score | Residual | How addressed |
+|---|---------|------|-------|----------|---------------|
+| 1 | Reader doesn't understand what it does | 64 | 50% | 32.0 | PROGRAM mentions "explain core problem" and "pull-based enforcement" but doesn't mandate value-first information hierarchy |
+| 2 | No iteration sequencing | 25 | 40% | 15.0 | Priority labels (low/high/medium) exist but no explicit iteration targets |
+| 3 | Benchmark doesn't measure reader experience | 40 | 30% | 28.0 | Fuzzy scales exist but lack rubrics. No "can reader understand in 60s" check |
+| 4 | No consistency verification | 40 | 60% | 16.0 | Section 1 Accuracy has presence checks for key facts but no cross-verification |
+| 5 | Plugin detail level wrong for README | 15 | 20% | 12.0 | PROGRAM requests formula-level detail. No mention of linking to plugin READMEs |
+| 6 | No length control | 15 | 20% | 12.0 | Constraint says "reasonable" but benchmark has no line count check |
+| 7 | No audit of existing content | 9 | 30% | 6.3 | PROGRAM says "keep existing" but not "verify existing" |
 
-**Document score**: 51.3 (total residual risk)
-**Total absolute risk**: 178
-**Residual %**: 28.8%
+**Document score**: 121.3 (total residual risk)
+**Total absolute risk**: 208
+**Residual %**: 58.3%
 
 **Top gaps**:
-1. Version check file format (15.0) - plain text with mtime, no schema
-2. Context file consolidation (12.8) - planned but not yet done
-3. No schema versioning (10.5) - inline migration only
-4. Hypothesis prompt (6.0) - work item exists, needs execution
-5. cmd_status growth (4.5) - monitoring, not blocking
+1. Reader understanding (32.0) - no value-first mandate in PROGRAM
+2. Reader experience measurement (28.0) - no rubrics, no "understand in 60s" check
+3. Consistency verification (16.0) - presence checks but not cross-checks
+4. Iteration sequencing (15.0) - no explicit iteration targets
+5. Plugin detail level (12.0) - too much detail for top-level README
 
 ---
 
-## Options for Top Gaps
+## Recommended Corrections
 
-### Concern #2: Version check file (residual 15.0)
+### Concern #1: Value-first information hierarchy (residual 32.0)
 
-**Option A**: Convert to YAML `{latest: "0.8.51", checked_at: "2026-04-02T14:00:00Z"}`
-- Expected effect: #2 +40%, #5 +10% (schema more explicit)
+Add to PROGRAM "What it solves" work item:
+- "The opening paragraph MUST answer 'what does this do for me?' before any technical explanation"
+- "First 3 paragraphs: problem -> solution concept -> how to get started"
+- "Technical architecture comes AFTER the reader understands the value"
 
-**Option B**: Keep plain text, add to _CLEAN_PRESERVE
-- Expected effect: #2 +20% (preserved but still schemeless)
+### Concern #3: Benchmark reader experience (residual 28.0)
 
-**Recommendation**: Option A - 2 lines of code, makes the file self-describing.
+Add to BENCHMARK Section 2 (Completeness):
+- `[ ] First 3 paragraphs explain: what the project does, what problem it solves, how to start`
+- `[ ] Each plugin section leads with value proposition before technical details`
 
-### Concern #5: Schema versioning (residual 10.5)
+Add rubrics to fuzzy scales:
+- Clarity: 8+ means "a developer can understand the project's purpose, install it, and start using it from the README alone without consulting other files"
+- Flow: 8+ means "information is ordered by reader priority: problem -> solution -> usage -> architecture -> development"
 
-**Option A**: Add `_schema_version: 1` to each YAML file
-- Expected effect: #5 +50% but adds complexity everywhere
+### Concern #4: Consistency verification (residual 16.0)
 
-**Option B**: Accept inline migration, document the format in docstrings
-- Expected effect: #5 +20%, zero code change
+Add to BENCHMARK Section 1 (Accuracy):
+- `[ ] Every file path shown in README exists on disk`
+- `[ ] Every CLI command shown is a valid orchestrate subcommand or plugin slash command`
 
-**Recommendation**: Option B - inline migration is the right choice at this scale.
+### Concern #2: Iteration targets (residual 15.0)
+
+Add to PROGRAM a section:
+```
+## Iteration Targets
+- Iteration 1: Core content - problem statement, plugin descriptions, usage examples
+- Iteration 2: Architecture, building a plugin, install instructions
+- Iteration 3: Polish - accuracy verification, cross-consistency, flow optimization
+```
+
+### Concern #5: Plugin detail level (residual 12.0)
+
+Update PROGRAM plugin sections:
+- "Top-level README provides concept + key differentiators + 1 usage example per plugin"
+- "Link to plugin-specific README for full details (phase lifecycle, scoring formula, artefact format)"
+- "The repo README is a landing page, not a reference manual"
+
+### Concern #6: Length control (residual 12.0)
+
+Add to BENCHMARK:
+- `[ ] README.md is under 250 lines (current: 110, target: comprehensive but not bloated)`

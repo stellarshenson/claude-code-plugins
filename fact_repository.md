@@ -1,45 +1,69 @@
-# Fact Repository - Remaining Features
+# Fact Repository - README Rewrite Program
 
-Verified claims sourced from codebase analysis.
+Verified claims sourced from codebase, configuration, and test suite.
 No interpretation - just facts.
 
-## Current data files in .auto-build-claw/
+## Package facts
+- Package name: `stellars_claude_code_plugins`, version 0.8.59
+- Python >= 3.12, dependencies: pyyaml, transitions
+- CLI entry: `orchestrate` command via `stellars_claude_code_plugins.engine.orchestrator:main`
+- License: MIT
+- Source: pyproject.toml
 
-- `state.yaml` - iteration state (type, phase, objective, agents, benchmark scores)
-- `log.yaml` - audit trail of all events
-- `context.yaml` - user context messages: `{phase_name: message_string}` format
-- `context_ack.yaml` - acknowledgment tracking: `{phase_name: [seen_by_phases]}` format (SEPARATE FILE)
-- `.version_check` - plain text file containing latest PyPI version string (uses mtime for 24h cache)
-- `hypotheses.yaml` - hypothesis backlog: YAML list of `{id, hypothesis, stars}` dicts
-- `failures.yaml` - failure catalogue
-- `resources/` - project-local YAML resources (preserved across clean)
-- Source: orchestrator.py lines 95-101, 1666, 2787
+## Engine facts
+- 4,407 lines across 4 Python files (fsm.py: 256, model.py: 809, orchestrator.py: 3,315, __init__.py: 27)
+- Engine ships default resources: app.yaml, phases.yaml, workflow.yaml
+- Plugins override with their own resources YAML files
+- Source: `wc -l stellars_claude_code_plugins/engine/*.py`
 
-## Context handling facts
+## Test facts
+- 212 tests collected across 3 test files + conftest
+- test_fsm.py, test_model.py, test_orchestrator.py
+- Source: `pytest --co -q` output, 2026-04-03
 
-- context.yaml format: `{phase_name: message_string}` (flat, no metadata)
-- context_ack.yaml format: `{context_phase: [list_of_phases_that_saw_it]}` (separate file)
-- context.yaml IS in _CLEAN_PRESERVE (survives clean)
-- context_ack.yaml is NOT in _CLEAN_PRESERVE (wiped on clean)
-- Context injected into phase instructions as markdown banner with full message text
-- cmd_context stores plain string, no timestamp
-- Source: orchestrator.py lines 719-733, 1666-1675, 2248-2250
+## Plugin facts: auto-build-claw
+- 3 skills: auto-build-claw (main orchestrator), program-writer, benchmark-writer
+- Registered in `.claude-plugin/plugin.json`, category: development
+- 5 workflow types from workflow.yaml: FULL (8 phases, depends_on PLANNING), GC (5 phases), HOTFIX (3 phases), FAST (6 phases), PLANNING (4 phases, non-independent)
+- FULL phase sequence: RESEARCH -> HYPOTHESIS -> PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT
+- Features: hypothesis tracking with lifecycle (new/dismissed/processed/deferred), failure context, programmatic gates at phase boundaries, readback + gatekeeper per phase, stop conditions per workflow, safety cap (default 20), --continue and --restart flags
+- Source: workflow.yaml, orchestrator.py, auto-build-claw/skills/auto-build-claw/SKILL.md
 
-## Version check facts
+## Plugin facts: devils-advocate
+- 4 skills: setup, evaluate, iterate, run
+- Registered in `.claude-plugin/plugin.json`, category: documentation
+- Risk scoring: Likelihood x Impact (Fibonacci 1-8 scale), max risk 64
+- Score per concern: 0-100%, Residual = risk x (1 - score)
+- Document score = sum of residuals (minimize)
+- Artefacts: devils_advocate.md (persona + scorecards), fact_repository.md (verified claims), versioned corrections
+- Source: devils-advocate/README.md, devils-advocate/skills/*/SKILL.md
 
-- _check_version at lines 2776-2808
-- Cache: `.auto-build-claw/.version_check` plain text, mtime-based 24h expiry
-- PyPI URL: `https://pypi.org/pypi/stellars-claude-code-plugins/json`
-- Timeout: 2s via urllib
-- Currently prints warning only, no auto-reinstall
-- --no-version-check flag pre-parsed in main()
-- Source: orchestrator.py lines 2776-2822
+## Marketplace facts
+- Marketplace file: `.claude-plugin/marketplace.json`
+- 2 plugins: auto-build-claw (v1.0.0), devils-advocate (v1.0.0)
+- Install command: `/plugin marketplace add stellarshenson/claude-code-plugins`
+- Source: .claude-plugin/marketplace.json
 
-## Hypothesis facts
+## Makefile facts
+- Targets: install, test, lint, format, build, publish, clean, requirements, upgrade, create_environment, remove_environment, preflight, help
+- `make install` creates venv, installs deps, editable install, bumps version
+- `make test` runs pytest with coverage
+- `make lint` runs ruff format --check + ruff check
+- `make publish` builds + twine upload
+- Source: Makefile
 
-- hypotheses.yaml read by _build_hypothesis_context at line 436
-- Expected format: YAML list of `{id, hypothesis, stars}` dicts
-- Injected as `{prior_hyp}` template variable
-- hypothesis_autowrite prompt says "Write entries to hypotheses.yaml" (ambiguous - write vs append)
-- hypothesis_gc prompt says "Move entries with status DONE or REMOVED to archive"
-- Source: orchestrator.py lines 435-454, workflow.yaml lines 54-68
+## Documentation facts
+- Medium article: "Your AI Agent Will Cut Corners. Here's How to Stop It."
+- docs/medium/ contains article drafts and SVG diagrams (11 SVGs)
+- references/ contains 5 research papers on multi-agent systems, LLM reasoning
+- Source: docs/medium/, references/
+
+## Current README deficiencies
+- Claims 115 tests (actual: 212)
+- Architecture section only shows auto-build-claw directory
+- No devils-advocate plugin documentation
+- No explanation of orchestration engine concept
+- No marketplace installation instructions
+- Missing workflow types (only implies full)
+- Development section stale test count
+- Source: comparison of README.md vs actual codebase state
