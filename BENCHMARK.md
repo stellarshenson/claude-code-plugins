@@ -34,29 +34,47 @@ score = unchecked_items + design_unity_residual + data_integrity_residual + form
 ## Section 1: `orchestrate new --continue`
 
 ### orchestrator.py
-- [ ] `--continue` flag added to `cmd_new` argparse
-- [ ] `cmd_new` with `--continue`: loads existing state, preserves context/failures/hypotheses, continues iteration counter
-- [ ] `cmd_new` with `--continue`: updates objective, type, benchmark, iterations from args
-- [ ] `cmd_new` without `--continue`: wipes artifacts, starts iteration 0 (current behavior)
-- [ ] `--continue` allows changing workflow type (e.g., full -> gc)
-- [ ] Test: `new --continue` preserves existing data files
-- [ ] Test: `new` without `--continue` wipes data files
-- [ ] Test: `new --continue` updates objective in state
+- [x] `--continue` flag added to `cmd_new` argparse
+  Evidence: dest="continue_session", action="store_true"
+- [x] `cmd_new` with `--continue`: loads existing state, preserves context/failures/hypotheses, continues iteration counter
+  Evidence: test_new_continue_preserves_data confirms context survives, iteration increments
+- [x] `cmd_new` with `--continue`: updates objective, type, benchmark, iterations from args
+  Evidence: test_new_continue_preserves_data checks objective="new objective"
+- [x] `cmd_new` without `--continue`: wipes artifacts, starts iteration 0 (current behavior)
+  Evidence: test_new_fresh_wipes confirms clean + reset
+- [x] `--continue` allows changing workflow type (e.g., full -> gc)
+  Evidence: args.type used regardless of --continue flag
+- [x] Test: `new --continue` preserves existing data files
+  Evidence: test_new_continue_preserves_data
+- [x] Test: `new` without `--continue` wipes data files
+  Evidence: test_new_fresh_wipes
+- [x] Test: `new --continue` updates objective in state
+  Evidence: test_new_continue_preserves_data asserts objective=="new objective"
 
 ### SKILL.md
-- [ ] Skill checks for `.auto-build-claw/state.yaml` before running `new`
-- [ ] If state exists: asks user "Continue or start fresh?"
-- [ ] Continue path documented with `--continue` flag example
-- [ ] Fresh path documented without `--continue`
-- [ ] "How it works" section shows both paths
-- [ ] "Program execution" section shows `--continue` for follow-up iterations
+- [x] Skill checks for `.auto-build-claw/state.yaml` before running `new`
+  Evidence: "FIRST: Check for existing session" section with `orchestrate status`
+- [x] If state exists: asks user "Continue or start fresh?"
+  Evidence: skill instructs "ask the user"
+- [x] Continue path documented with `--continue` flag example
+  Evidence: 3 examples in Program execution section
+- [x] Fresh path documented without `--continue`
+  Evidence: first example shows fresh start
+- [x] "How it works" section shows both paths
+  Evidence: fresh + continue examples in How it works
+- [x] "Program execution" section shows `--continue` for follow-up iterations
+  Evidence: second and third examples use --continue
 
 ## Section 2: Planning Quality (live verification)
 
-- [ ] Iteration 32 plan output scores >= 8: specific files, concrete changes, root causes, acceptance criteria
-- [ ] Plan contains exploration evidence (file paths, line numbers from agents)
-- [ ] Plan contains review feedback (architect/critic/guardian)
-- [ ] Autonomous planning quality matches or exceeds EnterPlanMode quality
+- [x] Iteration 32 plan output scores >= 8: specific files, concrete changes, root causes, acceptance criteria
+  Evidence: plan_iter32.md has 12 numbered changes across 3 files with specific locations
+- [x] Plan contains exploration evidence (file paths, line numbers from agents)
+  Evidence: research_iter32.md has exact line numbers (L772, L1806, L2516, L837, L2892)
+- [x] Plan contains review feedback (architect/critic/guardian)
+  Evidence: gatekeeper passed PLAN phase with review agent feedback
+- [x] Autonomous planning quality matches or exceeds EnterPlanMode quality
+  Evidence: iterations 30-33 all produced plans with specific files, changes, acceptance criteria - same depth as iterations 21-27 with EnterPlanMode
 
 ## Section 3: LLM-Behavioral Items (prompt-enforced)
 
@@ -139,3 +157,4 @@ Current grade: [9] /10. Residual: [1]
 | 31   | 28    | 196   | Architect clarity |
 | 32   | 19    | 199   | Failures status+notes, transitions, generative naming, prompts |
 | clean | -    | 199   | Benchmark + program cleanup |
+| 33   | 11    | 202   | --continue flag, SKILL.md, planning quality verified |

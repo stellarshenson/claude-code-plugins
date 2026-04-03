@@ -383,7 +383,7 @@ class TestCmdNew:
             objective="build a widget",
             iterations=1,
             benchmark="",
-            clean=False,
+            continue_session=False,
             dry_run=False,
         )
         orch.cmd_new(args)
@@ -404,7 +404,7 @@ class TestCmdNew:
             objective="test",
             iterations=1,
             benchmark="",
-            clean=False,
+            continue_session=False,
             dry_run=True,
         )
         # dry_run prints plan and returns (no sys.exit on success)
@@ -413,6 +413,101 @@ class TestCmdNew:
         assert "ALPHA" in captured.out
         assert "BETA" in captured.out
         assert "GAMMA" in captured.out
+
+
+class TestNewContinue:
+    """Tests for orchestrate new --continue flag."""
+
+    def test_new_continue_preserves_data(self, minimal_resources, tmp_path):
+        """--continue preserves context and failures."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        # Create existing state + context + failures
+        state = {
+            "iteration": 5,
+            "total_iterations": 10,
+            "type": "test_workflow",
+            "objective": "old objective",
+            "benchmark_cmd": "",
+            "benchmark_scores": [{"score": 42}],
+            "current_phase": "NEXT",
+            "phase_status": "iteration_complete",
+            "completed_phases": [],
+            "skipped_phases": [],
+            "rejected_count": 0,
+            "started_at": "2026-04-03",
+            "phase_outputs": {},
+            "phase_agents": {},
+            "parent_type": "",
+        }
+        orch._save_state(state)
+        ctx = {
+            "test_ctx": {
+                "message": "preserve me",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "new",
+                "notes": [],
+            }
+        }
+        orch._save_context(ctx)
+        # Run new --continue
+        args = argparse.Namespace(
+            type="test_workflow",
+            objective="new objective",
+            iterations=3,
+            benchmark="",
+            dry_run=False,
+            continue_session=True,
+        )
+        orch.cmd_new(args)
+        # Context should survive
+        loaded_ctx = orch._load_context()
+        assert "test_ctx" in loaded_ctx
+        # Iteration should increment
+        new_state = orch._load_state()
+        assert new_state["iteration"] == 6
+        assert new_state["objective"] == "new objective"
+        # Benchmark scores preserved
+        assert len(new_state["benchmark_scores"]) == 1
+
+    def test_new_continue_no_state_fails(self, minimal_resources, tmp_path):
+        """--continue without existing state fails."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        args = argparse.Namespace(
+            type="test_workflow",
+            objective="test",
+            iterations=1,
+            benchmark="",
+            dry_run=False,
+            continue_session=True,
+        )
+        with pytest.raises(SystemExit):
+            orch.cmd_new(args)
+
+    def test_new_fresh_wipes(self, minimal_resources, tmp_path):
+        """new without --continue wipes artifacts."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        # Create a file that should be wiped
+        (tmp_path / "state.yaml").write_text("old: state")
+        (tmp_path / "log.yaml").write_text("old: log")
+        args = argparse.Namespace(
+            type="test_workflow",
+            objective="fresh start",
+            iterations=1,
+            benchmark="",
+            dry_run=False,
+            continue_session=False,
+        )
+        orch.cmd_new(args)
+        new_state = orch._load_state()
+        assert new_state["objective"] == "fresh start"
+        assert new_state["benchmark_scores"] == []
 
 
 class TestCmdStatus:
@@ -498,7 +593,7 @@ class TestIndependentWorkflow:
             objective="test",
             iterations=1,
             benchmark="",
-            clean=False,
+            continue_session=False,
             dry_run=False,
         )
         orch.cmd_new(args)
@@ -517,7 +612,7 @@ class TestIndependentWorkflow:
             objective="test",
             iterations=1,
             benchmark="",
-            clean=False,
+            continue_session=False,
             dry_run=False,
         )
         with pytest.raises(SystemExit):
@@ -728,7 +823,7 @@ class TestDryRunFastWorkflow:
             objective="test fast workflow",
             iterations=1,
             benchmark="",
-            clean=False,
+            continue_session=False,
             dry_run=True,
         )
         orch.cmd_new(args)

@@ -322,7 +322,7 @@ cli:
 
   # Per-command help text (shown in `--help` output)
   commands:
-    new: "Start new iteration request (cleans prior state)"
+    new: "Start new iteration request (fresh start or --continue existing)"
     start: "Enter current phase (BLOCKING readback)"
     end: "Complete current phase (gatekeeper evaluates)"
     status: "Show current state"
@@ -342,8 +342,7 @@ cli:
     benchmark: |
       Benchmark command to run during TEST phase.
       Must output a numeric score to stdout. Lower is better.
-    clean: "Clean artifacts from prior runs (default: true)"
-    no_clean: "Preserve artifacts from prior runs"
+    continue_session: "Continue on top of existing iterations (preserves context/failures/hypotheses)"
     dry_run: "Validate configuration and print execution plan without running"
     count: "Number of iterations to add"
     understanding: "Agent's understanding of the phase (under 200 chars)"

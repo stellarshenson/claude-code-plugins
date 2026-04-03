@@ -1578,7 +1578,8 @@ def cmd_new(args) -> None:
     Creates initial state with objective, iteration count, type, and
     optional benchmark command. Auto-starts iteration 0 (planning)
     when multiple iterations are requested with 'full' type.
-    Cleans prior artifacts by default.
+    Fresh start cleans prior artifacts. --continue preserves context,
+    failures, hypotheses, and benchmark scores from the existing session.
     """
     itype = args.type
     if itype not in ITERATION_TYPES:
@@ -1602,19 +1603,34 @@ def cmd_new(args) -> None:
         _dry_run(itype, total_iterations)
         return
 
-    # Read iteration counter BEFORE cleaning (clean wipes state file)
-    last_iteration = _read_last_iteration()
+    continue_session = getattr(args, "continue_session", False)
 
-    # Clean artifacts from prior runs (default: yes)
-    if getattr(args, "clean", True):
+    if continue_session:
+        # Continue: preserve data, load existing state
+        old_state = _load_state()
+        if not old_state:
+            print(
+                "No existing session to continue. Use 'orchestrate new' without --continue.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        iteration = old_state["iteration"] + 1
+        benchmark_scores = old_state.get("benchmark_scores", [])
+        print(
+            f"Continuing from iteration {old_state['iteration']}."
+            " Preserving context/failures/hypotheses.\n"
+        )
+    else:
+        # Fresh start: clean and reset
+        last_iteration = _read_last_iteration()
         _clean_artifacts_dir()
         print(_msg("cleaned") + "\n")
-
-    old_state = _load_state()
-    iteration = max(
-        (old_state["iteration"] + 1) if old_state else 1,
-        last_iteration + 1,
-    )
+        old_state = _load_state()
+        iteration = max(
+            (old_state["iteration"] + 1) if old_state else 1,
+            last_iteration + 1,
+        )
+        benchmark_scores = []
 
     # Auto-run dependency workflow (iteration 0) when configured
     run_type = itype
@@ -1636,7 +1652,7 @@ def cmd_new(args) -> None:
         "type": run_type,
         "objective": objective,
         "benchmark_cmd": benchmark_cmd,
-        "benchmark_scores": [],
+        "benchmark_scores": benchmark_scores,
         "current_phase": first_phase,
         "phase_status": "pending",
         "completed_phases": [],
@@ -2932,9 +2948,12 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     p_new.add_argument("--objective", required=True, help=_cli("args", "objective"))
     p_new.add_argument("--iterations", type=int, default=1, help=_cli("args", "iterations"))
     p_new.add_argument("--benchmark", default="", help=_cli("args", "benchmark"))
-    p_new.add_argument("--clean", action="store_true", default=False, help=_cli("args", "clean"))
     p_new.add_argument(
-        "--no-clean", action="store_false", dest="clean", help=_cli("args", "no_clean")
+        "--continue",
+        dest="continue_session",
+        action="store_true",
+        default=False,
+        help=_cli("args", "continue_session"),
     )
     p_new.add_argument(
         "--dry-run", action="store_true", default=False, help=_cli("args", "dry_run")
