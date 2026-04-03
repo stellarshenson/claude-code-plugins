@@ -266,11 +266,16 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 
 ## Section 13b: Architect Clarity Directive
 
-- [ ] All architect agents include clarity directive alongside Occam's razor
-- [ ] Directive instructs: designs should be immediately understandable, self-documenting
-- [ ] Directive instructs: naming reveals intent, structure reveals relationships
-- [ ] Directive instructs: if a design requires explanation, it's too complex
-- [ ] grep -i "clarity" in phases.yaml returns >= 4 matches (one per architect)
+- [x] All architect agents include clarity directive alongside Occam's razor
+  Evidence: 4 architect agents each have "**Clarity**:" block after Occam
+- [x] Directive instructs: designs should be immediately understandable, self-documenting
+  Evidence: "Designs should be immediately understandable"
+- [x] Directive instructs: naming reveals intent, structure reveals relationships
+  Evidence: "Naming reveals intent, structure reveals relationships"
+- [x] Directive instructs: if a design requires explanation, it's too complex
+  Evidence: "If a design requires explanation, it is too complex"
+- [x] grep -i "clarity" in phases.yaml returns >= 4 matches (one per architect)
+  Evidence: grep -ci clarity = 4
 
 ## Section 14: Generative Naming
 
@@ -678,4 +683,5 @@ Additionally ALL must hold:
 | 27   | 7     | 186   | Actions to phases.yaml, strict validation |
 | 28   | 57    | 194   | Context lifecycle (status+notes). +40 new benchmark items (S15b, S17, S18, S25) |
 | 29   | 51    | 196   | Hypothesis lifecycle (status+notes). S18 14/20 checked. Occam 8->9. |
-| 30   | 33    | 196   | Replace EnterPlanMode (S15b 18/22 checked). Zero tool refs in phases.yaml. |
+| 30   | 33    | 196   | Replace EnterPlanMode (S15b 18/22). Zero tool refs. |
+| 31   | 28    | 196   | Architect clarity directive (S13b 5/5). |
