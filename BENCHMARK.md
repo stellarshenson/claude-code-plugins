@@ -304,25 +304,40 @@ Maximum: ~75 checklist items + 50 graded = ~125. Target: < 10.
 ## Section 15b: Replace EnterPlanMode with Autonomous Planning
 
 ### Template changes
-- [ ] Zero `EnterPlanMode` references in PLAN start template
-- [ ] Zero `ExitPlanMode` references in PLAN start template
-- [ ] Zero `EnterPlanMode` references in PLANNING::PLAN start template
-- [ ] Zero `ExitPlanMode` references in PLANNING::PLAN start template
-- [ ] Zero `EnterPlanMode` references in GC::PLAN start template
-- [ ] Zero `ExitPlanMode` references in GC::PLAN start template
-- [ ] `grep -i "enterplanmode\|exitplanmode" phases.yaml` returns 0 matches
+- [x] Zero `EnterPlanMode` references in PLAN start template
+  Evidence: grep returns 0
+- [x] Zero `ExitPlanMode` references in PLAN start template
+  Evidence: grep returns 0
+- [x] Zero `EnterPlanMode` references in PLANNING::PLAN start template
+  Evidence: grep returns 0
+- [x] Zero `ExitPlanMode` references in PLANNING::PLAN start template
+  Evidence: grep returns 0
+- [x] Zero `EnterPlanMode` references in GC::PLAN start template
+  Evidence: grep returns 0
+- [x] Zero `ExitPlanMode` references in GC::PLAN start template
+  Evidence: grep returns 0
+- [x] `grep -i "enterplanmode\|exitplanmode" phases.yaml` returns 0 matches
+  Evidence: confirmed by grep
 
 ### Planning quality preserved
-- [ ] PLAN template still has 4 explicit steps: explore, design, review, write
-- [ ] PLAN template still requires: specific files, concrete changes, root causes, acceptance criteria, risk assessment
-- [ ] PLAN template still instructs spawning Explore agents for codebase investigation
-- [ ] PLAN template still instructs spawning review agents (architect, critic, guardian)
-- [ ] PLAN template still enforces read-only (no Edit/Write tools except plan output file)
+- [x] PLAN template still has 4 explicit steps: explore, design, review, write
+  Evidence: steps labeled **Explore**, **Design**, **Review**, **Write**
+- [x] PLAN template still requires: specific files, concrete changes, root causes, acceptance criteria, risk assessment
+  Evidence: "Plan must contain" section preserved with all requirements
+- [x] PLAN template still instructs spawning Explore agents for codebase investigation
+  Evidence: "Spawn **Explore agents** (up to 3 in parallel)"
+- [x] PLAN template still instructs spawning review agents (architect, critic, guardian)
+  Evidence: "Spawn review agents (architect, critic, guardian)"
+- [x] PLAN template still enforces read-only (no Edit/Write tools except plan output file)
+  Evidence: "Do NOT use Edit, Write, or any tool that modifies files"
 
 ### Readback and gatekeeper
-- [ ] PLAN readback gate checks for "planning" and "read-only" (not "EnterPlanMode")
-- [ ] PLANNING::PLAN readback gate updated similarly
-- [ ] Gatekeeper still validates plan depth (specific files, concrete changes, reasoning)
+- [x] PLAN readback gate checks for "planning" and "read-only" (not "EnterPlanMode")
+  Evidence: L449 "Must mention: planning AND read-only."
+- [x] PLANNING::PLAN readback gate updated similarly
+  Evidence: L1153 "Must mention: planning AND iteration-level work breakdown."
+- [x] Gatekeeper still validates plan depth (specific files, concrete changes, reasoning)
+  Evidence: gatekeeper prompt unchanged - still checks plan depth
 
 ### Planning quality measurement (0-10 scale)
 
@@ -338,14 +353,21 @@ The autonomous planning workflow MUST produce plans of equal or better quality t
 | <=5 | Plan is vague ("improve X", "fix issues"). No exploration evidence. |
 
 - [ ] Autonomous PLAN output scores >= 8 on the planning quality scale above
+  NOTE: can only be verified after running an iteration with the new autonomous planning
 - [ ] Plan contains codebase exploration evidence (file paths, line numbers, function names from Explore agents)
+  NOTE: requires running a full iteration to verify
 - [ ] Plan contains review agent feedback (architect, critic, guardian verdicts)
+  NOTE: requires running a full iteration to verify
 - [ ] Plan depth matches or exceeds what EnterPlanMode produced in iterations 21-27
+  NOTE: requires running a full iteration to verify
 
 ### Consequences verified
-- [ ] No orchestrator.py code depends on EnterPlanMode being called during PLAN phase
-- [ ] Test assertions for PLAN readback updated (no "EnterPlanMode" in expected understanding)
-- [ ] PLAN phase runs fully autonomous without any user interaction pause
+- [x] No orchestrator.py code depends on EnterPlanMode being called during PLAN phase
+  Evidence: grep -i enterplanmode orchestrator.py returns 0 matches
+- [x] Test assertions for PLAN readback updated (no "EnterPlanMode" in expected understanding)
+  Evidence: grep -i enterplanmode tests/ returns 0 matches
+- [x] PLAN phase runs fully autonomous without any user interaction pause
+  Evidence: no EnterPlanMode tool call in template, no ExitPlanMode needed
 
 ## Section 15c: Continue vs Fresh Session
 
@@ -656,3 +678,4 @@ Additionally ALL must hold:
 | 27   | 7     | 186   | Actions to phases.yaml, strict validation |
 | 28   | 57    | 194   | Context lifecycle (status+notes). +40 new benchmark items (S15b, S17, S18, S25) |
 | 29   | 51    | 196   | Hypothesis lifecycle (status+notes). S18 14/20 checked. Occam 8->9. |
+| 30   | 33    | 196   | Replace EnterPlanMode (S15b 18/22 checked). Zero tool refs in phases.yaml. |

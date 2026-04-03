@@ -417,17 +417,13 @@ PLAN:
       {prior_context}
 
       **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
-      You MUST use `EnterPlanMode` and follow planning mode rules.
-      Do NOT use Edit, Write, or any tool that modifies files (except the plan file).
+      Do NOT use Edit, Write, or any tool that modifies files (except the plan output file).
 
-      **Execution** (MANDATORY - follows explore -> design -> review -> write workflow):
-      This mirrors EnterPlanMode but runs autonomously (gatekeeper validates instead of user).
-      1. Call `EnterPlanMode` to enter planning mode
-      2. **Explore**: Read context (git log, failure log `{CMD} failures`, prior results). Spawn **Explore agents** (up to 3 in parallel) to investigate the codebase
-      3. **Design**: Based on exploration results, design the implementation approach
-      4. **Review**: Spawn review agents to validate the plan (architect, critic, guardian)
-      5. **Write**: Write the final plan to the plan file
-      6. Call `ExitPlanMode` when plan is complete
+      **Execution** (MANDATORY - explore -> design -> review -> write):
+      1. **Explore**: Read context (git log, failure log `{CMD} failures`, prior results). Spawn **Explore agents** (up to 3 in parallel) to investigate the codebase
+      2. **Design**: Based on exploration results, design the implementation approach with specific files, changes, and acceptance criteria
+      3. **Review**: Spawn review agents (architect, critic, guardian) to challenge the plan
+      4. **Write**: Write the final plan to a file for `--output-file`
 
       **Plan must contain**:
       - What specifically needs to change and why (root causes)
@@ -450,7 +446,7 @@ PLAN:
           PHASE: {phase} | OBJECTIVE: {objective}
           INSTRUCTIONS: {instructions}
           UNDERSTANDING: {understanding}
-          Must mention: EnterPlanMode (or planning mode) AND read-only.
+          Must mention: planning AND read-only.
           Be lenient on phrasing.
   execution:
     agents:
@@ -1125,8 +1121,7 @@ PLANNING::PLAN:
       Have the contrarian agent challenge each approach. Select the best with justification.
 
       **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
-      You MUST use `EnterPlanMode` and follow planning mode rules.
-      Call `ExitPlanMode` when the plan is complete.
+      Do NOT use Edit, Write, or any tool that modifies files (except the plan output file).
 
       **Goal**: Break down the objective into {total} iterations. For each iteration, define:
       1. **Scope**: which specific items/tasks this iteration will address
@@ -1158,7 +1153,7 @@ PLANNING::PLAN:
           PHASE: {phase} | OBJECTIVE: {objective}
           INSTRUCTIONS: {instructions}
           UNDERSTANDING: {understanding}
-          Must mention: EnterPlanMode AND iteration-level work breakdown.
+          Must mention: planning AND iteration-level work breakdown.
           Be lenient on phrasing.
   execution:
     agents:
@@ -1209,18 +1204,16 @@ GC::PLAN:
       {prior_context}
 
       **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
-      You MUST use `EnterPlanMode` and follow planning mode rules.
-      Do NOT use Edit, Write, or any tool that modifies files (except the plan file).
+      Do NOT use Edit, Write, or any tool that modifies files (except the plan output file).
 
       **Goal**: scope the garbage collection / cleanup work. GC plans are simpler
       than full iteration plans - no research or hypothesis phases precede this,
       so focus on identifying what to clean and why.
 
-      **Execution** (MANDATORY):
-      1. Call `EnterPlanMode` to enter planning mode
-      2. Identify cleanup targets: dead code, stale references, duplicate logic
-      3. For each target, state what to remove/change and why
-      4. Call `ExitPlanMode` when the plan is complete
+      **Execution** (MANDATORY - explore -> design -> write):
+      1. Identify cleanup targets: dead code, stale references, duplicate logic
+      2. For each target, state what to remove/change and why
+      3. Write plan to a file for `--output-file`
 
       **Output**: plan file listing cleanup targets with rationale.
 
