@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "0.8.64"
+version = "0.8.65"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
