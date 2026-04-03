@@ -195,24 +195,22 @@ FULL::RESEARCH:
       **Investigate unsolved failures**: If prior failures exist with unsolved status,
       investigate them as root causes. Each unsolved failure is an investigation target.
 
-      **AFTER all 3 explore agents return**, merge their findings into a single document.
+      **AFTER all 3 agents return**, merge their findings into a single document.
 
-      **THEN spawn a FOURTH agent: research_manager** to review the merged output.
-      The research_manager evaluates whether the research is SUFFICIENT for downstream work:
-      - Does it give HYPOTHESIS enough information to form testable hypotheses?
-      - Does it give PLAN enough detail to identify specific files and changes?
-      - Does it give IMPLEMENT enough context to write code without re-reading the codebase?
-      - Are there gaps that will cause hypothesis/plan/implementation to fail or produce shallow work?
+      **BEFORE calling end**, self-evaluate the merged output against this checklist:
+      - [ ] **Hypothesis readiness**: Are root causes identified (not just symptoms)? Can someone form testable hypotheses from these findings alone?
+      - [ ] **Plan readiness**: Are specific files, functions, and line numbers documented? Can someone write a plan without re-reading the codebase?
+      - [ ] **Implementation readiness**: Are function signatures, patterns, and dependencies mapped? Can someone write code from these findings?
+      - [ ] **Gap check**: What questions remain unanswered? What would you need to know that isn't here?
 
-      If the research_manager identifies gaps, GO BACK and fill them before proceeding.
-      Do NOT call end with insufficient research - it wastes all downstream phases.
+      If ANY criterion fails: go back to the relevant agent and fill the gap. Do NOT call end with research that would make downstream phases guess or re-read code.
 
-      **AFTER research_manager approves**, write final findings to a file, then:
+      **AFTER checklist passes**, write final findings to a file, then:
       ```
-      {CMD} end --evidence "summary of what was researched" --agents "researcher,architect,product_manager,research_manager" --output-file "{phase_dir}/research.md"
+      {CMD} end --evidence "summary of what was researched" --agents "researcher,architect,product_manager" --output-file "{phase_dir}/research.md"
       ```
 
-      **Output**: research findings document reviewed by research_manager as sufficient for hypothesis generation, planning, and implementation.
+      **Output**: research findings document sufficient for hypothesis generation, planning, and implementation.
 
     agents:
       - name: readback
@@ -286,40 +284,14 @@ FULL::RESEARCH:
           Minimum: 3 structured findings with specific acceptance criteria.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
-      - name: research_manager
-        display_name: RESEARCH MANAGER
-        prompt: |
-          You review the MERGED research output from the 3 explore agents.
-          Your job: decide if this research is SUFFICIENT for downstream work.
-
-          Evaluate against these criteria:
-          1. **Hypothesis readiness**: Can a hypothesis agent form testable hypotheses
-             from these findings? Are root causes identified, not just symptoms?
-          2. **Plan readiness**: Can a planner identify specific files, functions, and
-             changes from these findings? Or would they need to re-read the codebase?
-          3. **Implementation readiness**: Can an implementer write code from these
-             findings? Are line numbers, function signatures, and patterns documented?
-          4. **Gap identification**: What's MISSING? What questions remain unanswered?
-             What would you need to know that isn't here?
-
-          For each criterion, rate: SUFFICIENT / GAPS FOUND / INSUFFICIENT
-
-          If ANY criterion is INSUFFICIENT:
-          - List the specific gaps
-          - State which explore agent should fill them
-          - The orchestrating agent MUST go back and fill gaps before proceeding
-
-          If all criteria are SUFFICIENT: state "RESEARCH APPROVED FOR DOWNSTREAM"
-
-          **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
   end:
     template: |
       ## Phase: RESEARCH (exit criteria)
 
       **Verify ALL**:
-      - [ ] THREE explore agents spawned (researcher, architect, product_manager)
-      - [ ] FOURTH agent (research_manager) reviewed merged output and approved
-      - [ ] Agents provided on end: `--agents "researcher,architect,product_manager,research_manager"`
+      - [ ] THREE separate agents spawned (researcher, architect, product_manager)
+      - [ ] Merged output self-evaluated against downstream readiness checklist
+      - [ ] Agents provided on end: `--agents "researcher,architect,product_manager"`
       - [ ] Research findings written to file and provided via `--output-file`
       - [ ] Specific files read with line numbers cited in findings
       - [ ] Concrete findings documented (not "read the code" - actual observations)
@@ -341,7 +313,7 @@ FULL::RESEARCH:
           AGENTS: required={required_agents} | recorded={recorded_agents}
           OUTPUT: {output_status} | READBACK: {readback_status}
           EVIDENCE: {evidence}
-          Check: 4 agents (3 explore + 1 research_manager). research_manager must have approved.
+          Check: 3 agents spawned separately. Downstream readiness checklist evaluated.
           STRUCTURAL CHECKS (all must be present in output):
           - Current State Summary section with specific metrics
           - Gap Analysis section with file/function references

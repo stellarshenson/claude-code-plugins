@@ -223,7 +223,7 @@ class TestLoadAutoBuildClaw:
         """Agents are loaded from phases.yaml (no agents.yaml)."""
         model = load_model(auto_build_claw_resources)
         assert "FULL::RESEARCH" in model.agents
-        assert len(model.agents["FULL::RESEARCH"]) == 4
+        assert len(model.agents["FULL::RESEARCH"]) == 3
         names = [a.name for a in model.agents["FULL::RESEARCH"]]
         assert "researcher" in names
         assert "architect" in names
