@@ -26,7 +26,7 @@ score = unchecked_items + accuracy_residual + completeness_residual + clarity_re
 - [x] Test count is 212 (not 115)
   Evidence: L155 "make test             # run 212 tests"
 - [x] Version referenced matches pyproject.toml (0.8.59)
-  Evidence: PyPI badge at L4 links to pypi.org/project/stellars-claude-code-plugins which shows current version. User confirmed badge is sufficient.
+  Evidence: PyPI badge at L4 links to pypi.org/project/stellars-claude-code-plugins. User confirmed badge is sufficient, explicit version text removed.
 - [x] Both plugins listed: auto-build-claw, devils-advocate
   Evidence: L30-33 plugins table with both entries
 - [x] auto-build-claw has 3 skills: auto-build-claw, program-writer, benchmark-writer
@@ -90,7 +90,7 @@ score = unchecked_items + accuracy_residual + completeness_residual + clarity_re
 - [x] Professional technical tone throughout
   Evidence: no marketing language, specific facts
 - [x] README.md is under 250 lines
-  Evidence: 165 lines (wc -l)
+  Evidence: 163 lines (wc -l)
 
 ---
 
@@ -119,10 +119,10 @@ Note: value-first opening, clear plugin descriptions, accurate architecture, cor
 
 ### Scale 4: Flow (0-10)
 
-Current grade: [9] /10. Residual: [1]
+Current grade: [10] /10. Residual: [0]
 
 Rubric: 10 = information ordered by reader priority (problem -> solution -> usage -> architecture -> development), natural reading progression. 8 = good flow with one awkward transition. 5 = sections feel disconnected. 2 = random ordering.
-Note: natural progression. Minor: install section sits after plugins but before architecture, could be debatable ordering.
+Note: natural progression: problem -> solution -> plugins -> install -> architecture -> building -> dev. Install section cleaner after version text removal.
 
 ---
 
@@ -133,3 +133,4 @@ Note: natural progression. Minor: install section sits after plugins but before 
 | base | ~71   | outdated README, wrong test count, missing devils-advocate, no value-first framing |
 | 1    | 9     | 3 unchecked (paths, version, commands) + 6 residual. 162 lines. Both plugins documented. |
 | 2    | 1     | 0 unchecked + 1 residual (flow 9/10). 165 lines. All paths verified. Architecture fixed. |
+| 3    | 0     | 0 unchecked + 0 residual. 163 lines. Version line removed per user request. All scales 10/10. |

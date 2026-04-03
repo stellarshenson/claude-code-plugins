@@ -91,8 +91,6 @@ See [devils-advocate/README.md](devils-advocate/) for scoring formula details, a
 
 ## Install
 
-Current version: **0.8.59**
-
 ```bash
 pip install stellars-claude-code-plugins
 ```
