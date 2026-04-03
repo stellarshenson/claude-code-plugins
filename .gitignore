@@ -1,6 +1,7 @@
 # Project-specific
 .auto-build-claw/
 references/
+tmp/
 
 # Mac OS-specific storage files
 .DS_Store
