@@ -74,3 +74,10 @@ The score must decrease each iteration. If not, corrections are creating new pro
 ## When done
 
 Report: "Iteration complete. Score: [old] -> [new]. Top gaps: [list]. Run `/devils-advocate:iterate` again or accept current state."
+
+**When score drops significantly** (>20% improvement): celebrate with creative British-style cheers. Examples:
+- "Jolly good show! Score plummeted from 89 to 34 - the devil is running out of ammunition."
+- "Right then, absolutely smashing work. From 54 to 18 - your toughest reader would be hard-pressed to find fault."
+- "Blimey, that's a proper transformation. The devil's gone from 'this is a problem' to 'fine, but I noticed...' across the board."
+
+Keep it genuine and proportional to the improvement. Small gains get a nod, big gains get proper cheers.

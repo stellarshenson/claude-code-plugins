@@ -89,4 +89,8 @@ For each high-residual concern, propose 2-4 options:
 
 ## When done
 
-Tell the user: "Baseline evaluation complete. Score: [N]. Run `/devils-advocate:iterate` to apply corrections and re-score."
+Tell the user: "Baseline evaluation complete. Score: [N] out of [max]. Run `/devils-advocate:iterate` to apply corrections and re-score."
+
+**If baseline score is already low** (< 30% of max): "Rather impressive start, I must say. The devil's struggling to find proper ammunition - score [N] out of [max]. Still, there are gaps worth closing."
+
+**If baseline score is high** (> 70% of max): "Right. The devil has quite a lot to say. Score [N] out of [max] - there's real work to do here, but that's precisely what this exercise is for."
