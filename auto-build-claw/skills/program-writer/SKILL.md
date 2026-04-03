@@ -9,17 +9,20 @@ Write a `PROGRAM.md` through back-and-forth dialogue with the user. Do NOT produ
 
 ## Process
 
-### Round 1: Understand the objective
+### Round 1: Extract the intention
 
-Read the user's seed prompt (the text after `/auto-build-claw`). Then ASK these questions - all in ONE message, not one at a time:
+Read the user's seed prompt (the text after `/auto-build-claw`). Your job is to understand their INTENTION - what they want to achieve and why - not to prescribe how to do it. ASK these questions - all in ONE message, not one at a time:
 
-1. **What's the end state?** What does "done" look like? A specific metric, a working feature, a refactored codebase?
-2. **What exists today?** What's the current state - working code, broken code, nothing yet?
-3. **What's off-limits?** Files, behaviors, or APIs that must NOT change
-4. **How will we know it works?** Is there a test suite, a benchmark, a manual check?
-5. **What's the biggest risk?** What could go wrong or waste iterations?
+1. **What's the end state?** What does "done" look like? Paint the picture of success - not implementation steps, but the outcome
+2. **What exists today?** What's the current state - working code, broken code, nothing yet? What's the gap between now and the end state?
+3. **Why does this matter?** What problem does this solve? What's the cost of not doing it? This shapes priority
+4. **What's off-limits?** Files, behaviors, or APIs that must NOT change
+5. **How will we know it works?** Is there a test suite, a benchmark, a manual check? What's measurable?
+6. **What's the biggest risk?** What could go wrong or waste iterations?
 
-Do NOT proceed until the user answers. Their answers shape every work item.
+Listen carefully to the answers. The user often knows WHAT they want but may describe it in terms of HOW. Your job is to separate intention from implementation. Ask follow-up questions if the intention is unclear. "You mentioned refactoring X - is the goal to reduce complexity, improve testability, or enable a new feature?"
+
+Do NOT proceed until the user's intention is crystal clear.
 
 ### Round 2: Propose the program
 
@@ -76,9 +79,10 @@ Do NOT proceed to benchmark-writer or the orchestrator without explicit approval
 
 ## Rules
 
-- **Dense, not verbose** - program fits on one screen. No fluff
+- **Comprehensive** - the program can be as long as needed to fully capture the intention. Don't compress for brevity at the cost of clarity
+- **Intention over implementation** - work items describe WHAT to achieve and WHY, not HOW to do it. "Migrate FSM to transitions package" is intention. "Replace FSMConfig with transitions.Machine, update 15 call sites in orchestrator.py" is implementation detail that belongs in PLAN phase
+- **Implementation details only when user specifies** - if the user explicitly says "use this approach" or "change this specific function", include it. Otherwise, let RESEARCH and PLAN phases figure out the how
 - **Scope boundaries explicit** - what CAN and CANNOT be modified
 - **Single metric** - the program should enable ONE number to optimize
 - **No iteration breakdown** - the orchestrator handles iteration planning
-- **No implementation details** - RESEARCH and PLAN phases handle this
-- **Every work item has acceptance criteria** - "improve X" is not a work item, "reduce X from 14 to 0" is
+- **Every work item has measurable acceptance** - "improve X" is not a work item, "reduce X from 14 to 0" is
