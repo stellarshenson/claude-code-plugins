@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Claude Code plugins for autonomous development workflows",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "author": "stellarshenson"
   },
   "plugins": [
     {
       "name": "auto-build-claw",
       "source": "./auto-build-claw",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Autonomous build iteration orchestrator with multi-agent review, FSM-driven lifecycle, and YAML-configured workflows",
       "keywords": ["orchestrator", "iteration", "multi-agent", "review", "fsm", "build"],
       "category": "development",
@@ -22,7 +22,7 @@
     {
       "name": "devils-advocate",
       "source": "./devils-advocate",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Critical document analysis with persona-driven risk scoring, iterative scorecard evaluation, and versioned corrections",
       "keywords": ["critique", "analysis", "scorecard", "risk", "devil", "advocate"],
       "category": "documentation",
