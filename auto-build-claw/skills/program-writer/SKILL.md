@@ -73,6 +73,7 @@ Do NOT proceed to benchmark-writer or the orchestrator without explicit approval
   - Acceptance: <measurable conditions>
   - Predict: <what changes - from X to Y>
   - Outcome: <what the user gets when this is done>
+  - Depends on: <other work items that must be done first, if any>
 
 ## Exit Conditions
 <when to stop iterating>
@@ -92,3 +93,4 @@ Do NOT proceed to benchmark-writer or the orchestrator without explicit approval
 - **Logical grouping, not iteration breakdown** - work items should be grouped by logical category (e.g. "Framework extraction", "Config system", "Testing") when applicable, but NOT divided into iterations. The orchestrator's PLANNING phase decides iteration sequencing based on dependencies and scope
 - **Every work item has measurable acceptance** - "improve X" is not a work item, "reduce X from 14 to 0" is
 - **Predictions and outcomes** - each work item states what will change (predict: from X to Y) and what the user gets (outcome: enables Z, unblocks W). Predictions feed into the HYPOTHESIS phase. Outcomes keep work items grounded in user value
+- **Dependencies** - if a work item requires another to be done first, state it explicitly (depends on: X). This feeds into the PLANNING phase which sequences iterations based on dependency order. No circular dependencies
