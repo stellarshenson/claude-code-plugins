@@ -1,155 +1,63 @@
-# Program: Remaining Features
+# Program: Orchestrator Polish
 
 ## Objective
 
-Implement the 2 remaining unfinished items identified in the executive summary, plus any polish from prior features.
+Polish remaining features and behavioral improvements for the auto-build-claw orchestrator (v0.8.53, 196 tests).
 
-## Completed Features (v0.8.51)
+## Recently Completed (v0.8.53)
 
-- [x] Resource conflict handling - old format detection, archive, fresh copy
-- [x] Version check on startup - PyPI query, 2s timeout, 24h cache, --no-version-check
-- [x] Context acknowledgment tracking - context_ack.yaml, seen-by tracking in status
-- [x] Hypothesis prior_hyp injection - loads hypotheses.yaml into template variable
-- [x] HYPOTHESIS template already has rate/refine instructions (lines 234-238)
+- Rich context entries with status+notes lifecycle (new/acknowledged/dismissed/processed)
+- Rich failure entries with identifier keys, lifecycle tracking, solved/unsolved distinction
+- Rich hypothesis entries with status+notes (new/dismissed/processed/deferred), gatekeeper enforcement
+- Occam's razor + clarity directives in all architect agents
+- Autonomous planning (EnterPlanMode removed from all PLAN templates)
+- Actions centralized in phases.yaml (moved from workflow.yaml)
+- Version check structured YAML with checked_at timestamp
+- Resource conflict detection on version upgrade (content comparison + archive)
+- Hypothesis autowrite prompt says APPEND not Write
 
-## Work Items
+## Pending Work Items
 
-- **Context entry lifecycle** (high)
-  - Scope: `stellars_claude_code_plugins/engine/orchestrator.py` context system
-  - DONE: identifier-keyed entries, phase as attribute, no context_ack.yaml, legacy raises error
-  - PENDING: replace `acknowledged_by`/`processed` fields with unified `status` + `notes` pattern
-  - Entry schema: `{message, phase, created, status, notes: [{status: "message"}]}`
-  - Remove: `acknowledged_by` list and `processed` boolean (redundant - status+notes captures both)
-  - Statuses: `new` -> `acknowledged` -> `dismissed` | `processed`
-  - `new`: just added, broadcasted to agents
-  - `acknowledged`: phase/agent considered it (note explains how)
-  - `dismissed`: not relevant, hidden from banners (note explains why)
-  - `processed`: incorporated into PROGRAM.md/BENCHMARK.md (note explains what was done)
-  - Notes are generative: `[{acknowledged: "considered in PLAN, routing is relevant"}, {processed: "added as work item #3"}]`
-  - Banner: only `new` and `acknowledged` items shown. Dismissed/processed hidden from banners, visible in status
-  - NEXT gatekeeper: zero `new` context items allowed to exit
-  - Acceptance: context entries use status+notes, no acknowledged_by list, no processed boolean
+- **Context lifecycle: gatekeeper enforcement** (medium)
+  - NEXT gatekeeper should enforce zero `new` context items on exit
+  - Invalid status transitions should be rejected (e.g., dismissed -> processed)
+  - Gatekeeper should check notes present on every non-new item
 
-- **Resource conflict: archive user-modified YAMLs on version upgrade** (medium) [DONE]
+- **Hypothesis lifecycle: enforcement and pruning** (medium)
+  - Deferred hypotheses should be re-evaluated each HYPOTHESIS phase (no indefinite deferral)
+  - When hypothesis is processed, orthogonal alternatives should be dismissed (pruning)
+  - Gatekeeper should check notes present on every non-new item
+  - Programmatic test for gatekeeper rejection not feasible (gatekeeper is LLM-based)
+
+- **Continue vs fresh session** (high)
+  - `orchestrate start` continues existing session (no `new` needed)
+  - `orchestrate new` starts fresh (cleans artifacts)
+  - Skill must check state.yaml and ask before choosing path
+  - Never call `new` when continuing
 
 - **Auto-reinstall on version mismatch** (low)
-  - Scope: `stellars_claude_code_plugins/engine/orchestrator.py` `_check_version`
-  - Currently prints warning only: "Update available: X -> Y"
-  - Add option: if running inside Claude Code plugin context, auto-run `pip install --upgrade`
-  - Detection: check if `CLAUDECODE` env var is set or if invoked via plugin
-  - Safety: only auto-upgrade patch versions (0.8.X -> 0.8.Y), prompt for minor/major
-  - Acceptance: auto-upgrade works for patch versions in plugin context
+  - Auto `pip install --upgrade` for patch versions in plugin context
+  - Detection: CLAUDECODE env var or plugin invocation
 
-- **Convert .version_check to structured YAML** (low) [DONE]
+- **Generative naming** (deferred)
+  - LLM-generated identifiers instead of regex slugification
+  - Slugification works for CLI, generative adds value in orchestrated phases
 
-- **Polish: hypothesis_autowrite should append not overwrite** (medium) [DONE]
-
-- **Redesign failures.yaml to rich named entries** (medium) [DONE]
-
-- **Architect agent prompt: Occam's razor directive** (medium) [DONE]
-
-- **Generative naming for context and failure identifiers** (medium) [DEFERRED - slugification pragmatic for CLI]
-  - Identifier auto-generated by LLM when created within orchestrated phases
-  - Slugification fallback for direct CLI usage
-  - `--message` flag remains the input; identifier is always auto-generated (no separate `--id` flag needed)
-
-- **PLAN phase prompt mirrors EnterPlanMode design** (medium) [DONE]
-
-- **Strict action resolution with documentation** (high) [DONE]
-
-- **Architect agent: clarity directive** (medium)
-  - Scope: phases.yaml architect agent prompts (FULL::RESEARCH, PLAN, REVIEW, PLANNING::RESEARCH)
-  - Alongside Occam's razor, architect must also aim for clarity - designs should be immediately understandable
-  - Code and data structures should be self-documenting: naming reveals intent, structure reveals relationships
-  - If a design requires explanation to understand, it's too complex
-  - This extends the Occam directive: not just minimal fields, but minimal cognitive load
-  - Acceptance: all architect agents include clarity directive alongside Occam's razor
-
-- **Hypothesis lifecycle** (high)
-  - Scope: `orchestrator.py` hypothesis system, `phases.yaml` HYPOTHESIS phase
-  - Current: hypotheses.yaml is a flat list of `{id, hypothesis, stars}` dicts loaded by `_build_hypothesis_context`
-  - New schema: identifier-keyed rich entries: `{hypothesis, prediction, evidence, stars, status, iteration_created, notes: [{status: "message"}]}`
-  - Statuses: `new` -> `dismissed` | `processed` | `deferred`
-  - `new`: just generated by debate agents. CANNOT exit HYPOTHESIS phase in this state
-  - `processed`: selected for this iteration. Drives PLAN/IMPLEMENT. When one is processed, orthogonal hypotheses should be dismissed (pruned)
-  - `dismissed`: irrelevant or orthogonal to selected. Hidden from future HYPOTHESIS phases. Note explains why
-  - `deferred`: worth revisiting but not this iteration. Re-appears in next HYPOTHESIS phase for re-classification
-  - HYPOTHESIS phase flow: (1) load deferred hypotheses, (2) generate new, (3) classify ALL - zero `new` allowed to exit
-  - HYPOTHESIS gatekeeper: enforces zero `new` status. Every hypothesis must be processed/dismissed/deferred
-  - Pruning: when hypothesis is `processed`, dismiss orthogonal alternatives - don't accumulate
-  - Notes are generative: `[{deferred: "not relevant for context refactor"}, {processed: "selected for iter 23, timeout is root cause"}]`
-  - Acceptance: hypotheses.yaml uses identifier-keyed entries with status+notes, gatekeeper enforces classification
-
-- **Replace EnterPlanMode with autonomous planning workflow** (high)
-  - Scope: phases.yaml PLAN, PLANNING::PLAN, GC::PLAN start templates, readback gates, end criteria
-  - Problem: PLAN template instructs "Call EnterPlanMode" and "Call ExitPlanMode" - these are Claude Code built-in tools requiring user approval. This breaks autonomous iteration.
-  - The planning APPROACH must remain equally meticulous - same 4-step explore/design/review/write workflow, same depth requirements
-  - What changes: the tool calls (EnterPlanMode/ExitPlanMode) are removed, replaced with explicit autonomous instructions
-  - What stays: read-only constraint, explore agents, plan depth requirements, review agents, output file
-  - PLAN template must explicitly instruct:
-    1. **Explore**: spawn Explore agents to investigate codebase (same as EnterPlanMode Phase 1)
-    2. **Design**: design implementation approach with specific files, changes, acceptance criteria (same as EnterPlanMode Phase 2-3)
-    3. **Review**: spawn Plan agents to review the design (same as EnterPlanMode Phase 3)
-    4. **Write**: write plan to output file (same as EnterPlanMode Phase 4)
-  - The gatekeeper validates plan quality instead of user approval - same gate criteria
-  - PLANNING::PLAN and GC::PLAN get the same treatment (no EnterPlanMode, same depth)
-  - Readback gate: check for "planning" and "read-only" (not "EnterPlanMode")
-  - Consequences: orchestrator code that handles EnterPlanMode in cmd_start may need review
-  - Consequences: if EnterPlanMode is called during PLAN phase, it pauses for user - this MUST NOT happen
-  - Consequences: tests that verify PLAN phase readback mentions "EnterPlanMode" need updating
-  - Acceptance: zero EnterPlanMode/ExitPlanMode references in phases.yaml, planning quality unchanged
-
-- **Orchestrator: continue vs fresh session** (high)
-  - Scope: `orchestrator.py`, auto-build-claw skill run prompt
-  - Two paths:
-  - **Continue** (`orchestrate start`): picks up at next pending phase. No `new` needed. NEXT phase already advanced the iteration counter. Context/failures/hypotheses accumulate.
-  - **Fresh** (`orchestrate new`): creates new state, cleans artifacts, starts from iteration 0. Used only when starting a completely new program.
-  - The auto-build-claw skill MUST:
-    1. Check if state.yaml exists with active/completed iterations
-    2. If yes: ask "Continue existing session or start fresh?"
-    3. If continue: just `orchestrate start` - no `new`
-    4. If fresh: `orchestrate new` (cleans and starts over)
-  - Acceptance: skill distinguishes continue vs fresh, never calls `new` when continuing
-
-- **RESEARCH phase failure investigation** (medium)
-  - Scope: phases.yaml FULL::RESEARCH start template
-  - `_build_failures_context()` surfaces unsolved failures but RESEARCH template should more explicitly instruct agents to investigate them as root causes
-  - Acceptance: RESEARCH template mentions unsolved failures as investigation targets
-
-- **Gatekeeper context check strength** (medium)
-  - Scope: phases.yaml gatekeeper prompts
-  - Current: "SHOULD reference" (soft recommendation)
-  - Target: "MUST reference" for phases where context is directly actionable (PLAN, IMPLEMENT)
-  - Keep "SHOULD" for RESEARCH, HYPOTHESIS, REVIEW where context is informational
-  - Acceptance: PLAN and IMPLEMENT gatekeepers use MUST, others use SHOULD
-
-- **Tests for new features** (high)
-  - test_context_rich_format: new context entries have message, phase, created, acknowledged_by, processed
-  - test_context_identifier_key: entries keyed by identifier not phase name
-  - test_context_rejects_legacy: plain string entries raise error, not silently migrated
-  - test_context_acknowledgment_on_start: orchestrate start appends phase to acknowledged_by
-  - test_context_processed_flag: marking context as processed works
-  - test_failures_rich_format: failure entries have identifier, description, context, acknowledged_by, processed, solution
-  - test_failures_rejects_legacy: old flat list format raises error
-  - test_failures_solution_marking: marking failure as processed with solution works
-  - test_hypothesis_autowrite_prompt: verify prompt says append/update
-  - test_architect_occam_directive: all architect agents have simplicity directive in prompt
-  - Acceptance: >= 175 tests pass
+- **Prompt quality** (medium)
+  - RESEARCH template: explicitly instruct failure investigation as root causes
+  - Gatekeeper context: MUST for PLAN/IMPLEMENT, keep SHOULD for others
 
 ## Exit Conditions
 
-Iterations stop when ALL hold:
-- All work items implemented with tests
-- make test >= 165
+- All pending items implemented or explicitly deferred
+- make test >= 196
 - make lint clean
 - orchestrate validate passes
 - All 4 dry-runs pass
 
 ## Constraints
 
-- Auto-reinstall: patch versions only, never auto-upgrade minor/major
-- NO backward compat for context: plain string entries are rejected with error
-- NO backward compat for failures: old flat list format is rejected with error
-- NO migration code: one format per file, fully committed, no isinstance conversion paths
-- No changes to FSM or gate logic
-- Occam's razor applies to all design decisions: one canonical location per data entity, no parallel tracking, no speculative abstractions
+- Occam's razor: no field without a consumer, no file without a purpose
+- Clarity: designs should be immediately understandable
+- No backward compat: legacy formats raise errors
+- No migration code: one format per file
