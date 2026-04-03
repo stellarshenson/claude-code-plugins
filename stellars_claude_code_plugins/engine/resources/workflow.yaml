@@ -41,6 +41,10 @@ WORKFLOW::PLANNING:
   cli_name: planning
   description: "Planning iteration: research, break down work into implementation iterations"
   independent: false
+  stop_condition: |
+    Review benchmark score trajectory. If score unchanged for 2 consecutive
+    iterations despite implementation effort, stop and report to user what
+    remains unresolved and why progress stalled.
   phases:
     - name: RESEARCH
     - name: PLAN           # resolves to PLANNING::PLAN (work breakdown)
@@ -55,6 +59,10 @@ WORKFLOW::FULL:
   cli_name: full
   depends_on: WORKFLOW::PLANNING
   description: "Full iteration: research, hypothesise, plan, implement, test, review, record"
+  stop_condition: |
+    Review benchmark score trajectory. If score unchanged for 2 consecutive
+    iterations despite implementation effort, stop and report to user what
+    remains unresolved and why progress stalled.
   phases:
     - name: RESEARCH       # Gather evidence, read code, understand problem space
     - name: HYPOTHESIS     # Debate approaches with 4 agents, rank by star rating
@@ -71,6 +79,10 @@ WORKFLOW::FULL:
 WORKFLOW::GC:
   cli_name: gc
   description: "Garbage collection / cleanup"
+  stop_condition: |
+    Review benchmark score trajectory. If score unchanged for 2 consecutive
+    iterations despite implementation effort, stop and report to user what
+    remains unresolved and why progress stalled.
   phases:
     - name: PLAN
     - name: IMPLEMENT
@@ -84,6 +96,10 @@ WORKFLOW::GC:
 WORKFLOW::HOTFIX:
   cli_name: hotfix
   description: "Targeted fix, minimal ceremony"
+  stop_condition: |
+    Review benchmark score trajectory. If score unchanged for 2 consecutive
+    iterations despite implementation effort, stop and report to user what
+    remains unresolved and why progress stalled.
   phases:
     - name: IMPLEMENT
     - name: TEST
@@ -94,6 +110,10 @@ WORKFLOW::HOTFIX:
 WORKFLOW::FAST:
   cli_name: fast
   description: "Fast iteration: plan, implement, test, review, record"
+  stop_condition: |
+    Review benchmark score trajectory. If score unchanged for 2 consecutive
+    iterations despite implementation effort, stop and report to user what
+    remains unresolved and why progress stalled.
   phases:
     - name: PLAN
     - name: IMPLEMENT

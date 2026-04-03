@@ -336,8 +336,12 @@ def _build_failures_context() -> str:
     all_failures = _load_failures()
     if not all_failures:
         return ""
-    unsolved = {fid: f for fid, f in all_failures.items() if f.get("status") != "processed"}
-    solved = {fid: f for fid, f in all_failures.items() if f.get("status") == "processed"}
+    unsolved = {
+        fid: f for fid, f in all_failures.items() if f.get("status") in {"new", "acknowledged"}
+    }
+    solved = {
+        fid: f for fid, f in all_failures.items() if f.get("status") not in {"new", "acknowledged"}
+    }
     parts = [f"\n**Prior failures** ({len(all_failures)} total, {len(unsolved)} unsolved):\n"]
     if unsolved:
         parts.append("Unsolved (investigation targets):\n")
@@ -2077,6 +2081,79 @@ def _print_phase_summary(state: dict, phase: str) -> None:
     print("\n".join(summary_lines))
 
 
+def _check_lifecycle_compliance(phase: str, state: dict) -> None:
+    """Check lifecycle compliance for phase-specific data.
+
+    Called before gatekeeper. Hard programmatic gate - not LLM-dependent.
+    """
+    # NEXT phase: all context items must be classified (no "new")
+    if phase == "NEXT" or (
+        state.get("completed_phases") and "RECORD" in state.get("completed_phases", [])
+    ):
+        try:
+            ctx = _load_context()
+            new_items = [cid for cid, e in ctx.items() if e.get("status") == "new"]
+            if new_items:
+                print(
+                    f"ERROR: {len(new_items)} context item(s) still have status 'new': "
+                    f"{', '.join(new_items)}",
+                    file=sys.stderr,
+                )
+                print(
+                    "All context must be acknowledged, dismissed, or processed "
+                    "before iteration ends.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+        except (ValueError, FileNotFoundError):
+            pass  # No context file or invalid - not a compliance issue
+
+    # HYPOTHESIS phase: all hypotheses must be classified (no "new")
+    if "HYPOTHESIS" in phase.upper():
+        try:
+            hyps = _load_hypotheses()
+            new_hyps = [hid for hid, h in hyps.items() if h.get("status") == "new"]
+            if new_hyps:
+                print(
+                    f"ERROR: {len(new_hyps)} hypothesis(es) still have status 'new': "
+                    f"{', '.join(new_hyps)}",
+                    file=sys.stderr,
+                )
+                print(
+                    "All hypotheses must be processed, dismissed, or deferred before exiting.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            # Check notes on non-new items
+            missing_notes = [
+                hid for hid, h in hyps.items() if h.get("status") != "new" and not h.get("notes")
+            ]
+            if missing_notes:
+                print(
+                    f"WARNING: {len(missing_notes)} hypothesis(es) missing notes: "
+                    f"{', '.join(missing_notes)}",
+                    file=sys.stderr,
+                )
+            # Auto-dismiss expired deferred hypotheses
+            max_deferred = 3
+            if _MODEL and hasattr(_MODEL.app, "config"):
+                max_deferred = _MODEL.app.config.get("hypothesis_max_deferred_iterations", 3)
+            current_iter = state.get("iteration", 0)
+            for hid, h in hyps.items():
+                if h.get("status") == "deferred":
+                    created = h.get("iteration_created", current_iter)
+                    if current_iter - created > max_deferred:
+                        h["status"] = "dismissed"
+                        if not isinstance(h.get("notes"), list):
+                            h["notes"] = []
+                        h["notes"].append(
+                            {"dismissed": f"exceeded max deferred iterations ({max_deferred})"}
+                        )
+            _save_hypotheses(hyps)
+        except (ValueError, FileNotFoundError):
+            pass
+
+
 def cmd_end(args) -> None:
     """Complete current phase with gatekeeper validation.
 
@@ -2122,6 +2199,9 @@ def cmd_end(args) -> None:
     else:
         body = _PHASE_END.get(phase, lambda: "")()
         print(header + body)
+
+    # ── Lifecycle compliance: hard programmatic gate ──
+    _check_lifecycle_compliance(phase, state)
 
     # ── Gatekeeper: per-phase generative validation ──
     gk_passed, _gk_output = _run_end_gatekeeper(phase, state, evidence)

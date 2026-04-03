@@ -56,6 +56,7 @@ class WorkflowType:
     cli_name: str = ""  # short name for --type flag (e.g., "full" for WORKFLOW::FULL)
     depends_on: str = ""  # prerequisite workflow FQN (e.g., WORKFLOW::PLANNING)
     independent: bool = True  # if False, cannot be invoked directly via --type
+    stop_condition: str = ""  # workflow stop condition text
     required: list[str] = field(default_factory=list)
     skippable: list[str] = field(default_factory=list)
     phase_names: list[str] = field(default_factory=list)
@@ -108,6 +109,7 @@ class AppConfig:
     footer: FooterConfig
     messages: dict[str, str]
     cli: CliConfig
+    config: dict = field(default_factory=dict)  # extra app settings from app.yaml
 
 
 @dataclass
@@ -157,6 +159,7 @@ def _build_workflow_types(raw: dict) -> dict[str, WorkflowType]:
             cli_name=val.get("cli_name", ""),
             depends_on=val.get("depends_on", ""),
             independent=val.get("independent", True),
+            stop_condition=val.get("stop_condition", ""),
         )
     return result
 
@@ -373,6 +376,9 @@ def _build_app(raw: dict) -> AppConfig:
     app, dis, ban, ftr, cli = (
         raw.get(k, {}) for k in ("app", "display", "banner", "footer", "cli")
     )
+    # Capture extra app keys as config dict
+    _APP_KNOWN_KEYS = {"name", "description", "cmd", "artifacts_dir"}
+    extra_config = {k: v for k, v in app.items() if k not in _APP_KNOWN_KEYS}
     return AppConfig(
         name=app.get("name", ""),
         description=app.get("description", ""),
@@ -399,6 +405,7 @@ def _build_app(raw: dict) -> AppConfig:
             commands=cli.get("commands", {}),
             args=cli.get("args", {}),
         ),
+        config=extra_config,
     )
 
 

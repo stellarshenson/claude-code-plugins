@@ -1,6 +1,6 @@
 # stellars-claude-code-plugins
 
-[![GitHub Actions](https://github.com/stellarshenson/claude-code-plugins/actions/workflows/build.yml/badge.svg)](https://github.com/stellarshenson/claude-code-plugins/actions/workflows/build.yml)
+[![GitHub Actions](https://github.com/stellarshenson/claude-code-plugins/actions/workflows/ci.yml/badge.svg)](https://github.com/stellarshenson/claude-code-plugins/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/stellars-claude-code-plugins.svg)](https://pypi.org/project/stellars-claude-code-plugins/)
 [![Total PyPI downloads](https://static.pepy.tech/badge/stellars-claude-code-plugins)](https://pepy.tech/project/stellars-claude-code-plugins)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/)

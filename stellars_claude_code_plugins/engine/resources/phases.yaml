@@ -974,6 +974,8 @@ NEXT:
 
       **Stop early ONLY if**: all targets met, all hypotheses exhausted, or context critically low.
 
+      Review the stop condition for this workflow before proceeding.
+
     template_final: |
       ## Phase: NEXT
 

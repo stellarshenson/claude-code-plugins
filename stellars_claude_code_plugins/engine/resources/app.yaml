@@ -29,6 +29,7 @@
 app:
   name: "Auto Build Claw"
   description: "YAML-driven build iteration orchestrator"
+  hypothesis_max_deferred_iterations: 3
   # cmd: the CLI command path shown in all help text and instructions.
   # Must match the actual script location relative to project root.
   cmd: "python .claude/skills/auto-build-claw/orchestrate.py"

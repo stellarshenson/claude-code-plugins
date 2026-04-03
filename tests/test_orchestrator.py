@@ -6,9 +6,8 @@ are mocked since they require the claude CLI.
 """
 
 import argparse
-import shutil
-import time
 from pathlib import Path
+import shutil
 from unittest.mock import patch
 
 import pytest
@@ -1925,3 +1924,130 @@ class TestHypothesisContext:
         orch._save_hypotheses(hyp)
         orch._clean_artifacts_dir(tmp_path)
         assert (tmp_path / "hypotheses.yaml").exists()
+
+
+class TestLifecycleCompliance:
+    """Tests for programmatic status gates at phase boundaries."""
+
+    def test_next_fails_with_new_context(self, minimal_resources, tmp_path):
+        """NEXT phase end fails if context has new items."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "unclassified": {
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "new",
+                "notes": [],
+            }
+        }
+        orch._save_context(ctx)
+        state = {"iteration": 1, "completed_phases": ["RECORD"], "current_phase": "NEXT"}
+        with pytest.raises(SystemExit):
+            orch._check_lifecycle_compliance("NEXT", state)
+
+    def test_hypothesis_fails_with_new(self, minimal_resources, tmp_path):
+        """HYPOTHESIS phase end fails if hypothesis has new items."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        hyps = {
+            "unclassified": {
+                "hypothesis": "test",
+                "status": "new",
+                "stars": 3,
+                "prediction": "",
+                "evidence": "",
+                "iteration_created": 1,
+                "notes": [],
+            }
+        }
+        orch._save_hypotheses(hyps)
+        state = {"iteration": 1, "current_phase": "FULL::HYPOTHESIS"}
+        with pytest.raises(SystemExit):
+            orch._check_lifecycle_compliance("FULL::HYPOTHESIS", state)
+
+    def test_deferred_auto_dismissed(self, minimal_resources, tmp_path):
+        """Deferred hypothesis auto-dismissed after max iterations."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        hyps = {
+            "old_deferred": {
+                "hypothesis": "old",
+                "status": "deferred",
+                "stars": 2,
+                "prediction": "",
+                "evidence": "",
+                "iteration_created": 1,
+                "notes": [{"deferred": "wait"}],
+            }
+        }
+        orch._save_hypotheses(hyps)
+        state = {"iteration": 10, "current_phase": "FULL::HYPOTHESIS"}
+        # Should not exit (deferred gets auto-dismissed, not fail)
+        try:
+            orch._check_lifecycle_compliance("FULL::HYPOTHESIS", state)
+        except SystemExit:
+            pass  # May exit if other checks fail
+        loaded = orch._load_hypotheses()
+        assert loaded["old_deferred"]["status"] == "dismissed"
+        assert "exceeded max deferred" in str(loaded["old_deferred"]["notes"][-1])
+
+    def test_classified_items_pass(self, minimal_resources, tmp_path):
+        """All classified context items pass compliance check."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "done_item": {
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "processed",
+                "notes": [{"processed": "added to program"}],
+            }
+        }
+        orch._save_context(ctx)
+        state = {"iteration": 1, "completed_phases": ["RECORD"], "current_phase": "NEXT"}
+        # Should not raise
+        orch._check_lifecycle_compliance("NEXT", state)
+
+    def test_clean_reload_lifecycle(self, minimal_resources, tmp_path):
+        """Interaction test: clean then reload preserves lifecycle data."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        # Create context and hypotheses with lifecycle data
+        ctx = {
+            "item1": {
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "acknowledged",
+                "notes": [{"acknowledged": "seen by PLAN"}],
+            }
+        }
+        orch._save_context(ctx)
+        hyps = {
+            "hyp1": {
+                "hypothesis": "test hyp",
+                "status": "deferred",
+                "stars": 3,
+                "prediction": "",
+                "evidence": "",
+                "iteration_created": 1,
+                "notes": [{"deferred": "revisit next"}],
+            }
+        }
+        orch._save_hypotheses(hyps)
+        # Clean
+        orch._clean_artifacts_dir(tmp_path)
+        # Reload
+        loaded_ctx = orch._load_context()
+        loaded_hyps = orch._load_hypotheses()
+        assert loaded_ctx["item1"]["status"] == "acknowledged"
+        assert loaded_ctx["item1"]["notes"][0]["acknowledged"] == "seen by PLAN"
+        assert loaded_hyps["hyp1"]["status"] == "deferred"
