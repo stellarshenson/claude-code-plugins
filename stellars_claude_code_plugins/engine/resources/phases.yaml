@@ -54,6 +54,12 @@ occam_directive: &occam_directive |
   - Does this need a separate tracking mechanism? No orphan files, no redundant structures.
   Reject designs that introduce speculative abstractions or file proliferation.
 
+context_acknowledgment_directive: &context_acknowledgment_directive |
+  **Context Acknowledgment**: When context messages are active for this phase,
+  each agent MUST write a rich acknowledgment note for each context entry:
+  `{CMD} context --note <identifier> --message "Action: <what was done>. Referenced by: <agents>. Impact: <how it affected this phase>."`
+  Do NOT leave context entries with just "seen by" notes.
+
 # ── Actions ────────────────────────────────────────────────────────
 # Named actions referenced by auto_actions. Each action uses FQN
 # ACTION::NAME with cli_name for auto_actions references.
@@ -74,25 +80,25 @@ actions:
   ACTION::HYPOTHESIS_AUTOWRITE:
     cli_name: hypothesis_autowrite
     type: generative
+    execution: agent
     description: "Extract structured hypotheses from phase output"
     prompt: |
-      Read the hypothesis output and extract structured entries.
-      Read existing hypotheses.yaml first.
-      Format: identifier-keyed YAML dict. Each entry has:
-        hypothesis, prediction, evidence, stars, status, iteration_created, notes
-      New hypotheses get status: "new" and empty notes: [].
-      APPEND new entries with auto-generated identifier keys.
-      UPDATE existing entries by matching identifier.
-      Do NOT overwrite or remove existing entries.
-      Do NOT change status of existing entries.
+      Read the phase output below and extract structured hypotheses.
+      Write to {artifacts_dir}/hypotheses.yaml as identifier-keyed YAML dict.
+      Each entry: hypothesis, prediction, evidence, stars, status, iteration_created, notes.
+      New hypotheses: status "new", notes [].
+      APPEND new entries. UPDATE existing by identifier. Do NOT remove existing.
+
+      Phase output:
+      {phase_output}
   ACTION::HYPOTHESIS_GC:
     cli_name: hypothesis_gc
     type: generative
+    execution: agent
     description: "Archive dismissed hypotheses to archive file"
     prompt: |
-      Read hypotheses.yaml. Move entries with status "dismissed"
-      to hypotheses_archive.yaml. Keep entries with status "new",
-      "deferred", or "processed" in the main file.
+      Read {artifacts_dir}/hypotheses.yaml. Move entries with status "dismissed"
+      to {artifacts_dir}/hypotheses_archive.yaml. Keep "new", "deferred", "processed" in main file.
 
 # ── Shared skip gates ─────────────────────────────────────────────
 # Skip decisions are not phase-specific - they evaluate whether
@@ -523,6 +529,11 @@ PLAN:
               Was this intentional? If yes, proceed. If no, reject."
              Use AskUserQuestion if uncertain. Never silently allow suspected overfit.
 
+          5. CONTEXT AUDIT: are context acknowledgment notes substantive?
+             - BAD: "seen by REVIEW" (no action, no impact described)
+             - GOOD: "Considered in PLAN phase. Routing concern incorporated into iteration scope. Referenced by architect and critic agents."
+             If acknowledgment notes are shallow, WARN.
+
           VERDICTS: CLEAN / WARN (log) / BLOCK (reject) / ASK (ask user)
   end:
     template: |
@@ -902,22 +913,27 @@ RECORD:
     template: |
       ## Phase: RECORD
 
-      **Goal**: journal, commit, push, generate iteration summary.
+      **Goal**: record iteration results.
 
       **Actions**:
-      1. Append entry to `.claude/JOURNAL.md` (ALWAYS at end, NEVER insert)
-         - Format: `N. **Task - <short>**: description<br>\n    **Result**: rich paragraph`
-      2. Stage relevant files: `git add` (specific files, not -A)
-      3. Commit with descriptive message following project conventions
-      4. Push to remote
-      5. Verify push succeeded
+      1. Write iteration summary
+      2. Check `git status` for modified/staged files
+      3. **If code changes exist**:
+         - Append entry to `.claude/JOURNAL.md` (ALWAYS at end, NEVER insert)
+         - Stage relevant files: `git add` (specific files, not -A)
+         - Commit with descriptive message following project conventions
+         - Push to remote
+         - Verify push succeeded
+      4. **If NO code changes**: iteration summary is sufficient, skip journal/commit/push
+
+      {record_instructions}
 
       **WHEN DONE**:
       ```
-      {CMD} end --evidence "journal updated, committed, pushed"
+      {CMD} end --evidence "summary written [, journal updated, committed, pushed]"
       ```
 
-      **Output**: iteration summary written, journal updated, changes committed and pushed.
+      **Output**: iteration summary written. If code changed: journal updated, committed and pushed.
 
     agents:
       - name: readback
@@ -927,16 +943,16 @@ RECORD:
           PHASE: {phase} | OBJECTIVE: {objective}
           INSTRUCTIONS: {instructions}
           UNDERSTANDING: {understanding}
-          Must mention: journal entry AND git commit.
+          Must mention: iteration summary. If code changes mentioned, also mention commit.
           Be lenient on phrasing.
   end:
     template: |
       ## Phase: RECORD (exit criteria)
 
       **Verify ALL**:
-      - [ ] Journal entry appended
-      - [ ] Git commit with descriptive message
-      - [ ] Push to remote succeeded
+      - [ ] Iteration summary written
+      - [ ] If code changes: journal entry appended, git commit, push succeeded
+      - [ ] If no code changes: summary alone is sufficient
 
     agents:
       - name: gatekeeper
@@ -945,9 +961,9 @@ RECORD:
           Reply PASS or FAIL + brief reason. No tools.
           PHASE: {phase}
           EVIDENCE: {evidence}
-          Check: journal entry appended, git commit created,
-          push to remote succeeded.
-          Evaluate record QUALITY: journal entry must be substantive (not just "done"), commit message must follow conventions.
+          Check: iteration summary written.
+          If evidence mentions code changes: also check journal entry, commit, push.
+          If evidence states no code changes: summary alone is sufficient.
 
 # ── NEXT (shared) ─────────────────────────────────────────────────
 
@@ -1027,6 +1043,11 @@ NEXT:
           EVIDENCE: {evidence}
           Check: iteration advanced correctly or final status reported.
           If context items with status 'new' exist, FAIL - all context must be acknowledged, dismissed, or processed before iteration ends.
+          LIFECYCLE CHECK: For each context/failure entry with status "acknowledged":
+          - You MUST resolve it: mark processed (if acted upon) or dismissed (if not relevant)
+          - Use: {CMD} context --processed <id> --note "reason" OR {CMD} context --dismiss <id> --note "reason"
+          - Same for failures: {CMD} log-failure --processed <id> --note "reason"
+          Entries with status "acknowledged" CANNOT survive past this phase.
 
 # ── PLANNING workflow phases ──────────────────────────────────────
 

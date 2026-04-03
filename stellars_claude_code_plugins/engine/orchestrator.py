@@ -604,7 +604,23 @@ def _run_auto_actions(phase: str, state: dict) -> bool:
         if action_def is None:
             action_def = _MODEL.actions.get(action_name)
         if action_def and action_def.type == "generative" and action_def.prompt:
-            _claude_evaluate(action_def.prompt, timeout=120)
+            # Resolve template variables in prompt before execution
+            template_vars = {
+                "phase_output": state.get("phase_outputs", {}).get(phase, ""),
+                "artifacts_dir": str(DEFAULT_ARTIFACTS_DIR),
+                "iteration": str(state.get("iteration", "")),
+            }
+            resolved_prompt = action_def.prompt.format_map(
+                collections.defaultdict(str, template_vars)
+            )
+            if action_def.execution == "agent":
+                # Print resolved prompt for the main conversation agent to act on
+                print(f"\n--- AUTO-ACTION (agent): {action_name} ---")
+                print(resolved_prompt)
+                print("--- END AUTO-ACTION ---\n")
+            else:
+                # standalone: run via claude -p subprocess
+                _claude_evaluate(resolved_prompt, timeout=120)
     return False
 
 
@@ -616,10 +632,37 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+_REQUIRED_STATE_KEYS = {
+    "iteration",
+    "total_iterations",
+    "type",
+    "objective",
+    "benchmark_cmd",
+    "current_phase",
+    "phase_status",
+    "record_instructions",
+}
+
+
 def _load_state() -> dict | None:
-    """Load iteration state from state.yaml."""
+    """Load iteration state from state.yaml.
+
+    Validates required keys are present. Old state files missing
+    required keys will crash with a clear error.
+    """
     if STATE_FILE.exists():
-        return yaml.safe_load(STATE_FILE.read_text())
+        state = yaml.safe_load(STATE_FILE.read_text())
+        if state:
+            missing = _REQUIRED_STATE_KEYS - set(state.keys())
+            if missing:
+                print(
+                    f"ERROR: state.yaml is missing required keys: {', '.join(sorted(missing))}. "
+                    "This state file is from an older version. "
+                    "Run `orchestrate new` to start a fresh session.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+        return state
     return None
 
 
@@ -990,21 +1033,25 @@ _CLEAN_PRESERVE = {
 _CLEAN_PRESERVE_DIRS = {"resources", "iterations"}  # directories preserved across clean
 
 
-def _clean_artifacts_dir(artifacts_dir: Path | None = None) -> None:
+def _clean_artifacts_dir(artifacts_dir: Path | None = None, preserve_data: bool = True) -> None:
     """Clean artifacts directory for fresh run.
 
-    Preserves context.yaml and resources/ across clean operations.
-    Project-local resources contain user customizations that must survive.
+    When preserve_data=True (default, used by --continue): preserves context.yaml,
+    failures.yaml, hypotheses.yaml, resources/, and iterations/.
+    When preserve_data=False (fresh new): only preserves resources/ directory.
+    Project-local resources contain user customizations that must always survive.
     """
     d = artifacts_dir or DEFAULT_ARTIFACTS_DIR
+    preserve_files = _CLEAN_PRESERVE if preserve_data else set()
+    preserve_dirs = _CLEAN_PRESERVE_DIRS if preserve_data else {"resources"}
     if d.exists():
         for f in d.iterdir():
             if f.is_file():
-                if f.name in _CLEAN_PRESERVE:
+                if f.name in preserve_files:
                     continue
                 f.unlink()
             elif f.is_dir():
-                if f.name in _CLEAN_PRESERVE_DIRS:
+                if f.name in preserve_dirs:
                     continue
                 shutil.rmtree(f)
     d.mkdir(parents=True, exist_ok=True)
@@ -1645,10 +1692,12 @@ def cmd_new(args) -> None:
             args.benchmark = old_state.get("benchmark_cmd", "")
         if total_iterations == 1:  # Default value - use old
             total_iterations = old_state.get("total_iterations", total_iterations)
+        if not getattr(args, "record_instructions", ""):
+            args.record_instructions = old_state.get("record_instructions", "")
     else:
-        # Fresh start: clean and reset
+        # Fresh start: clean and reset (only preserve resources/)
         last_iteration = _read_last_iteration()
-        _clean_artifacts_dir()
+        _clean_artifacts_dir(preserve_data=False)
         print(_msg("cleaned") + "\n")
         old_state = _load_state()
         iteration = max(
@@ -1687,6 +1736,7 @@ def cmd_new(args) -> None:
         "phase_outputs": {},
         "phase_agents": {},
         "parent_type": itype if run_type != itype else "",
+        "record_instructions": getattr(args, "record_instructions", ""),
     }
     _save_state(state)
     _save_objective(objective, total_iterations)
@@ -1853,24 +1903,22 @@ def cmd_start(args) -> None:
                 body += f"**[{cid}]**: {entry['message']}\n\n"
             body += _msg("user_guidance_instruction")
 
-        # Transition new -> acknowledged
+        # Transition new -> acknowledged (notes left empty for agents to fill via phase prompts)
         dirty = False
         for cid, entry in all_ctx.items():
             if entry.get("status") == "new":
                 entry["status"] = "acknowledged"
-                entry.setdefault("notes", []).append({"acknowledged": f"seen by {phase}"})
                 dirty = True
         if dirty:
             _save_context(all_ctx)
 
-    # Transition new -> acknowledged on failures
+    # Transition new -> acknowledged on failures (notes left empty for agents to fill)
     all_failures = _load_failures()
     if all_failures:
         dirty_f = False
         for fid, entry in all_failures.items():
             if entry.get("status") == "new":
                 entry["status"] = "acknowledged"
-                entry.setdefault("notes", []).append({"acknowledged": f"seen by {phase}"})
                 dirty_f = True
         if dirty_f:
             _save_failures(all_failures)
@@ -2107,27 +2155,49 @@ def _check_lifecycle_compliance(phase: str, state: dict) -> None:
 
     Called before gatekeeper. Hard programmatic gate - not LLM-dependent.
     """
-    # NEXT phase: all context items must be classified (no "new")
+    # NEXT phase: all context/failure items must be processed (no "new" or "acknowledged")
     if phase == "NEXT" or (
         state.get("completed_phases") and "RECORD" in state.get("completed_phases", [])
     ):
         try:
             ctx = _load_context()
-            new_items = [cid for cid, e in ctx.items() if e.get("status") == "new"]
-            if new_items:
+            blocked_ctx = [
+                cid for cid, e in ctx.items() if e.get("status") in {"new", "acknowledged"}
+            ]
+            if blocked_ctx:
                 print(
-                    f"ERROR: {len(new_items)} context item(s) still have status 'new': "
-                    f"{', '.join(new_items)}",
+                    f"ERROR: {len(blocked_ctx)} context item(s) still unprocessed: "
+                    f"{', '.join(blocked_ctx)}",
                     file=sys.stderr,
                 )
                 print(
-                    "All context must be acknowledged, dismissed, or processed "
+                    "All context/failure entries must be processed or dismissed "
                     "before iteration ends.",
                     file=sys.stderr,
                 )
                 sys.exit(1)
         except (ValueError, FileNotFoundError):
             pass  # No context file or invalid - not a compliance issue
+
+        try:
+            failures = _load_failures()
+            blocked_failures = [
+                fid for fid, e in failures.items() if e.get("status") in {"new", "acknowledged"}
+            ]
+            if blocked_failures:
+                print(
+                    f"ERROR: {len(blocked_failures)} failure(s) still unprocessed: "
+                    f"{', '.join(blocked_failures)}",
+                    file=sys.stderr,
+                )
+                print(
+                    "All context/failure entries must be processed or dismissed "
+                    "before iteration ends.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+        except (ValueError, FileNotFoundError):
+            pass  # No failures file or invalid - not a compliance issue
 
     # HYPOTHESIS phase: all hypotheses must be classified (no "new")
     if "HYPOTHESIS" in phase.upper():
@@ -3065,6 +3135,11 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     )
     p_new.add_argument(
         "--dry-run", action="store_true", default=False, help=_cli("args", "dry_run")
+    )
+    p_new.add_argument(
+        "--record-instructions",
+        default="",
+        help="Custom instructions for RECORD phase (e.g. journal, git push)",
     )
 
     # ── start ──

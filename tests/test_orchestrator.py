@@ -139,7 +139,16 @@ class TestStateManagement:
         orch._initialize(minimal_resources)
         state_file = tmp_path / "state.yaml"
         orch.STATE_FILE = state_file
-        state = {"iteration": 1, "type": "test_workflow", "current_phase": "ALPHA"}
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "objective": "",
+            "benchmark_cmd": "",
+            "current_phase": "ALPHA",
+            "phase_status": "pending",
+            "record_instructions": "",
+        }
         orch._save_state(state)
         loaded = orch._load_state()
         assert loaded["iteration"] == 1
@@ -273,6 +282,9 @@ class TestPhaseCallables:
             "type": "test_workflow",
             "current_phase": "ALPHA",
             "objective": "build something",
+            "benchmark_cmd": "",
+            "phase_status": "pending",
+            "record_instructions": "",
         }
         orch._save_state(state)
 
@@ -292,6 +304,9 @@ class TestPhaseCallables:
             "type": "test_workflow",
             "current_phase": "ALPHA",
             "objective": "test",
+            "benchmark_cmd": "",
+            "phase_status": "pending",
+            "record_instructions": "",
         }
         orch._save_state(state)
 
@@ -305,7 +320,16 @@ class TestLifecycleGateResolution:
     def test_resolve_start_gate(self, minimal_resources, tmp_path):
         orch._initialize(minimal_resources)
         orch.STATE_FILE = tmp_path / "state.yaml"
-        state = {"type": "test_workflow", "current_phase": "ALPHA"}
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "objective": "",
+            "benchmark_cmd": "",
+            "current_phase": "ALPHA",
+            "phase_status": "pending",
+            "record_instructions": "",
+        }
         orch._save_state(state)
         gate_key = orch._resolve_lifecycle_gate("ALPHA", "start")
         assert "readback" in gate_key  # discovers readback from start_gate_types
@@ -313,7 +337,16 @@ class TestLifecycleGateResolution:
     def test_resolve_end_gate(self, minimal_resources, tmp_path):
         orch._initialize(minimal_resources)
         orch.STATE_FILE = tmp_path / "state.yaml"
-        state = {"type": "test_workflow", "current_phase": "ALPHA"}
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "objective": "",
+            "benchmark_cmd": "",
+            "current_phase": "ALPHA",
+            "phase_status": "pending",
+            "record_instructions": "",
+        }
         orch._save_state(state)
         gate_key = orch._resolve_lifecycle_gate("ALPHA", "end")
         assert "gatekeeper" in gate_key  # discovers gatekeeper from end_gate_types
@@ -321,7 +354,16 @@ class TestLifecycleGateResolution:
     def test_resolve_unknown_lifecycle_fallback(self, minimal_resources, tmp_path):
         orch._initialize(minimal_resources)
         orch.STATE_FILE = tmp_path / "state.yaml"
-        state = {"type": "test_workflow", "current_phase": "ALPHA"}
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "objective": "",
+            "benchmark_cmd": "",
+            "current_phase": "ALPHA",
+            "phase_status": "pending",
+            "record_instructions": "",
+        }
         orch._save_state(state)
         gate_key = orch._resolve_lifecycle_gate("ALPHA", "unknown")
         assert gate_key == "ALPHA::unknown"
@@ -439,6 +481,7 @@ class TestNewContinue:
             "phase_outputs": {},
             "phase_agents": {},
             "parent_type": "",
+            "record_instructions": "",
         }
         orch._save_state(state)
         ctx = {
@@ -533,6 +576,7 @@ class TestNewRestart:
             "phase_outputs": {"ALPHA": "findings"},
             "phase_agents": {"ALPHA": ["researcher"]},
             "parent_type": "",
+            "record_instructions": "",
         }
         orch._save_state(state)
         ctx = {
@@ -583,6 +627,7 @@ class TestNewRestart:
             "phase_outputs": {},
             "phase_agents": {},
             "parent_type": "",
+            "record_instructions": "",
         }
         orch._save_state(state)
         args = argparse.Namespace(
@@ -650,6 +695,7 @@ class TestCmdStatus:
             "total_iterations": 1,
             "type": "test_workflow",
             "objective": "test objective",
+            "benchmark_cmd": "",
             "current_phase": "BETA",
             "phase_status": "in_progress",
             "completed_phases": ["ALPHA"],
@@ -658,6 +704,8 @@ class TestCmdStatus:
             "started_at": "2026-01-01T00:00:00+00:00",
             "phase_outputs": {},
             "phase_agents": {},
+            "parent_type": "",
+            "record_instructions": "",
         }
         orch._save_state(state)
 
@@ -682,9 +730,13 @@ class TestCmdLogFailure:
 
         state = {
             "iteration": 1,
+            "total_iterations": 1,
             "type": "test_workflow",
+            "objective": "",
+            "benchmark_cmd": "",
             "current_phase": "ALPHA",
             "phase_status": "in_progress",
+            "record_instructions": "",
         }
         orch._save_state(state)
 
@@ -751,6 +803,7 @@ class TestRunUntilComplete:
             "total_iterations": 0,
             "type": "test_workflow",
             "objective": "test",
+            "benchmark_cmd": "",
             "current_phase": "GAMMA",
             "phase_status": "complete",
             "completed_phases": ["ALPHA", "BETA", "GAMMA"],
@@ -760,6 +813,7 @@ class TestRunUntilComplete:
             "phase_outputs": {},
             "phase_agents": {},
             "benchmark_scores": [{"score": 5}],
+            "record_instructions": "",
         }
         orch._save_state(state)
         orch._run_next_iteration(state)
@@ -775,7 +829,9 @@ class TestRunUntilComplete:
             "total_iterations": 0,
             "type": "test_workflow",
             "objective": "test",
+            "benchmark_cmd": "",
             "current_phase": "GAMMA",
+            "phase_status": "complete",
             "completed_phases": [],
             "skipped_phases": [],
             "rejected_count": 0,
@@ -783,6 +839,7 @@ class TestRunUntilComplete:
             "phase_outputs": {},
             "phase_agents": {},
             "benchmark_scores": [{"score": 5}, {"score": 2}, {"score": 0}],
+            "record_instructions": "",
         }
         orch._save_state(state)
         orch._run_next_iteration(state)
@@ -800,7 +857,9 @@ class TestRunUntilComplete:
             "total_iterations": 0,
             "type": "test_workflow",
             "objective": "test",
+            "benchmark_cmd": "",
             "current_phase": "GAMMA",
+            "phase_status": "complete",
             "completed_phases": [],
             "skipped_phases": [],
             "rejected_count": 0,
@@ -808,6 +867,7 @@ class TestRunUntilComplete:
             "phase_outputs": {},
             "phase_agents": {},
             "benchmark_scores": [{"score": 3}],
+            "record_instructions": "",
         }
         orch._save_state(state)
         orch._run_next_iteration(state)
@@ -918,6 +978,10 @@ cli:
             "current_phase": "STEP",
             "iteration": 1,
             "total_iterations": 1,
+            "objective": "",
+            "benchmark_cmd": "",
+            "phase_status": "pending",
+            "record_instructions": "",
         }
         orch._save_state(state)
 
@@ -1468,7 +1532,7 @@ class TestContextRichEntries:
         assert action is not None, "ACTION::HYPOTHESIS_AUTOWRITE not found in model"
         prompt = action.prompt
         assert "APPEND" in prompt or "append" in prompt
-        assert "do NOT overwrite" in prompt.lower() or "do not overwrite" in prompt.lower()
+        assert "do not remove" in prompt.lower() or "do not overwrite" in prompt.lower()
 
     def test_architect_agents_have_occam_directive(self, auto_build_claw_resources):
         """All architect agents have Occam's razor directive."""
@@ -1924,9 +1988,11 @@ class TestHypothesisContext:
             "iteration": 1,
             "type": "test_workflow",
             "objective": "test",
+            "benchmark_cmd": "",
             "total_iterations": 1,
             "current_phase": "ALPHA",
             "phase_status": "pending",
+            "record_instructions": "",
         }
         orch._save_state(state)
         ctx = orch._build_context(state)
@@ -1941,9 +2007,11 @@ class TestHypothesisContext:
             "iteration": 1,
             "type": "test_workflow",
             "objective": "test",
+            "benchmark_cmd": "",
             "total_iterations": 1,
             "current_phase": "ALPHA",
             "phase_status": "pending",
+            "record_instructions": "",
         }
         orch._save_state(state)
         ctx = orch._build_context(state)
@@ -1979,9 +2047,11 @@ class TestHypothesisContext:
             "iteration": 1,
             "type": "test_workflow",
             "objective": "test",
+            "benchmark_cmd": "",
             "total_iterations": 1,
             "current_phase": "ALPHA",
             "phase_status": "pending",
+            "record_instructions": "",
         }
         orch._save_state(state)
         ctx = orch._build_context(state)
@@ -2192,3 +2262,201 @@ class TestLifecycleCompliance:
         assert loaded_ctx["item1"]["status"] == "acknowledged"
         assert loaded_ctx["item1"]["notes"][0]["acknowledged"] == "seen by PLAN"
         assert loaded_hyps["hyp1"]["status"] == "deferred"
+
+
+class TestLifecycleAcknowledgedBlock:
+    """Tests for blocking 'acknowledged' entries at NEXT phase boundary."""
+
+    def test_next_fails_with_acknowledged_context(self, minimal_resources, tmp_path):
+        """NEXT phase fails when context has 'acknowledged' entries."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "item1": {
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "acknowledged",
+                "notes": [],
+            }
+        }
+        orch._save_context(ctx)
+        state = {"completed_phases": ["RECORD"], "iteration": 1}
+        with pytest.raises(SystemExit):
+            orch._check_lifecycle_compliance("NEXT", state)
+
+    def test_next_fails_with_acknowledged_failures(self, minimal_resources, tmp_path):
+        """NEXT phase fails when failures have 'acknowledged' status."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        failures = {
+            "fm1": {
+                "description": "test failure",
+                "context": "",
+                "iteration": 1,
+                "phase": "TEST",
+                "mode": "FM-TEST",
+                "status": "acknowledged",
+                "notes": [],
+                "solution": None,
+                "timestamp": "2026-04-03",
+            }
+        }
+        orch._save_failures(failures)
+        state = {"completed_phases": ["RECORD"], "iteration": 1}
+        with pytest.raises(SystemExit):
+            orch._check_lifecycle_compliance("NEXT", state)
+
+    def test_next_passes_processed_dismissed(self, minimal_resources, tmp_path):
+        """NEXT phase passes when all entries are processed or dismissed."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "item1": {
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "processed",
+                "notes": [{"processed": "added to program"}],
+            },
+            "item2": {
+                "message": "test2",
+                "phase": "PLAN",
+                "created": "2026-04-03",
+                "status": "dismissed",
+                "notes": [{"dismissed": "not relevant"}],
+            },
+        }
+        orch._save_context(ctx)
+        state = {"completed_phases": ["RECORD"], "iteration": 1}
+        # Should not raise
+        orch._check_lifecycle_compliance("NEXT", state)
+
+
+class TestCleanBehavior:
+    """Tests for fresh new vs --continue clean behavior."""
+
+    def test_fresh_new_cleans_data_files(self, minimal_resources, tmp_path):
+        """Fresh orchestrate new deletes everything except resources/."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        # Create data files that should be cleaned
+        (tmp_path / "context.yaml").write_text("test: data\n")
+        (tmp_path / "failures.yaml").write_text("test: data\n")
+        (tmp_path / "hypotheses.yaml").write_text("test: data\n")
+        (tmp_path / "state.yaml").write_text("test: data\n")
+        (tmp_path / "resources").mkdir(exist_ok=True)
+        (tmp_path / "resources" / "test.yaml").write_text("test: data\n")
+        # Clean with preserve_data=False (fresh new)
+        orch._clean_artifacts_dir(tmp_path, preserve_data=False)
+        assert not (tmp_path / "context.yaml").exists()
+        assert not (tmp_path / "failures.yaml").exists()
+        assert not (tmp_path / "hypotheses.yaml").exists()
+        assert (tmp_path / "resources" / "test.yaml").exists()
+
+    def test_continue_preserves_data(self, minimal_resources, tmp_path):
+        """--continue preserves context, failures, hypotheses."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        (tmp_path / "context.yaml").write_text("test: data\n")
+        (tmp_path / "failures.yaml").write_text("test: data\n")
+        (tmp_path / "hypotheses.yaml").write_text("test: data\n")
+        (tmp_path / "resources").mkdir(exist_ok=True)
+        # Clean with preserve_data=True (--continue)
+        orch._clean_artifacts_dir(tmp_path, preserve_data=True)
+        assert (tmp_path / "context.yaml").exists()
+        assert (tmp_path / "failures.yaml").exists()
+        assert (tmp_path / "hypotheses.yaml").exists()
+
+
+class TestActionExecution:
+    """Tests for ActionDef execution field and template variables."""
+
+    def test_action_execution_field(self, auto_build_claw_resources):
+        """ActionDef loads execution field from YAML."""
+        orch._initialize(auto_build_claw_resources)
+        autowrite = orch._MODEL.actions.get("ACTION::HYPOTHESIS_AUTOWRITE")
+        assert autowrite is not None
+        assert autowrite.execution == "agent"
+        gc = orch._MODEL.actions.get("ACTION::HYPOTHESIS_GC")
+        assert gc is not None
+        assert gc.execution == "agent"
+        # Programmatic actions default to "standalone"
+        plan_save = orch._MODEL.actions.get("ACTION::PLAN_SAVE")
+        assert plan_save is not None
+        assert plan_save.execution == "standalone"
+
+    def test_action_template_variables_in_prompt(self, auto_build_claw_resources):
+        """Generative action prompts contain template variable placeholders."""
+        orch._initialize(auto_build_claw_resources)
+        autowrite = orch._MODEL.actions.get("ACTION::HYPOTHESIS_AUTOWRITE")
+        assert autowrite is not None
+        assert "{phase_output}" in autowrite.prompt
+        assert "{artifacts_dir}" in autowrite.prompt
+
+
+class TestRecordInstructions:
+    """Tests for --record-instructions in state."""
+
+    def test_record_instructions_in_state(self, minimal_resources, tmp_path):
+        """record_instructions stored in state when provided."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "full",
+            "objective": "test",
+            "benchmark_cmd": "",
+            "benchmark_scores": [],
+            "current_phase": "RESEARCH",
+            "phase_status": "pending",
+            "completed_phases": [],
+            "skipped_phases": [],
+            "rejected_count": 0,
+            "started_at": "2026-04-03",
+            "phase_outputs": {},
+            "phase_agents": {},
+            "parent_type": "",
+            "record_instructions": "",
+            "record_instructions": "Update journal. Git push.",
+        }
+        orch._save_state(state)
+        loaded = orch._load_state()
+        assert loaded["record_instructions"] == "Update journal. Git push."
+
+    def test_no_backward_compat_missing_field(self, minimal_resources, tmp_path):
+        """Old state.yaml without record_instructions must crash."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        # Write state WITHOUT record_instructions
+        old_state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "full",
+            "objective": "test",
+            "benchmark_cmd": "",
+            "benchmark_scores": [],
+            "current_phase": "RESEARCH",
+            "phase_status": "pending",
+            "completed_phases": [],
+            "skipped_phases": [],
+            "rejected_count": 0,
+            "started_at": "2026-04-03",
+            "phase_outputs": {},
+            "phase_agents": {},
+            "parent_type": "",
+            # NO record_instructions field
+        }
+        (tmp_path / "state.yaml").write_text(
+            __import__("yaml").dump(old_state, default_flow_style=False)
+        )
+        with pytest.raises(SystemExit):
+            orch._load_state()

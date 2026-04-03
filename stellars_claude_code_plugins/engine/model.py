@@ -32,6 +32,7 @@ class ActionDef:
     description: str
     prompt: str = ""  # only for generative actions
     cli_name: str = ""  # short name for phases.yaml auto_actions references
+    execution: str = "standalone"  # "agent" (main process) or "standalone" (claude -p subprocess)
 
 
 @dataclass
@@ -423,6 +424,7 @@ def _build_actions(raw: dict) -> dict[str, ActionDef]:
             description=defn.get("description", ""),
             prompt=defn.get("prompt", ""),
             cli_name=defn.get("cli_name", ""),
+            execution=defn.get("execution", "standalone"),
         )
     return result
 
@@ -497,6 +499,7 @@ _KNOWN_VARS = {
     "completed_phases",
     "phase_purpose",
     "p",
+    "record_instructions",
 }
 _GATE_REQUIRED_VARS: dict[str, list[str]] = {
     "readback": ["understanding"],
