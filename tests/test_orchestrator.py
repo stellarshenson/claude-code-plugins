@@ -1131,7 +1131,7 @@ class TestCmdInfo:
         """Agent counts match expected per phase."""
         orch._initialize(auto_build_claw_resources)
         expected = {
-            "FULL::RESEARCH": 3,
+            "FULL::RESEARCH": 4,
             "FULL::HYPOTHESIS": 4,
             "PLAN": 3,
             "TEST": 1,
