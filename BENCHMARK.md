@@ -11,7 +11,7 @@ score = unchecked_items + design_unity_residual + data_integrity_residual + form
 ## Evaluation
 
 **Programmatic checks**:
-1. `make test` >= 199
+1. `make test` >= 205
 2. `make lint` clean
 3. `orchestrate validate` passes
 
@@ -22,74 +22,52 @@ score = unchecked_items + design_unity_residual + data_integrity_residual + form
 
 ---
 
-## Done (v0.8.55)
+## Done (v0.8.56)
 
 - [x] All lifecycle features (context/failures/hypotheses with status+notes)
 - [x] All directives (Occam, clarity, gatekeeper MUST, autonomous planning)
 - [x] All structural (actions in phases.yaml, resource conflict, version check YAML)
-- [x] Generative naming, invalid transitions, --clean default=False
+- [x] Generative naming, invalid transitions, --continue flag, SKILL.md updated
+- [x] Planning quality verified >= 8 from forensic evidence (iterations 30-33)
 
 ---
 
-## Section 1: `orchestrate new --continue`
+## Section 1: Programmatic Status Gates
 
-### orchestrator.py
-- [x] `--continue` flag added to `cmd_new` argparse
-  Evidence: dest="continue_session", action="store_true"
-- [x] `cmd_new` with `--continue`: loads existing state, preserves context/failures/hypotheses, continues iteration counter
-  Evidence: test_new_continue_preserves_data confirms context survives, iteration increments
-- [x] `cmd_new` with `--continue`: updates objective, type, benchmark, iterations from args
-  Evidence: test_new_continue_preserves_data checks objective="new objective"
-- [x] `cmd_new` without `--continue`: wipes artifacts, starts iteration 0 (current behavior)
-  Evidence: test_new_fresh_wipes confirms clean + reset
-- [x] `--continue` allows changing workflow type (e.g., full -> gc)
-  Evidence: args.type used regardless of --continue flag
-- [x] Test: `new --continue` preserves existing data files
-  Evidence: test_new_continue_preserves_data
-- [x] Test: `new` without `--continue` wipes data files
-  Evidence: test_new_fresh_wipes
-- [x] Test: `new --continue` updates objective in state
-  Evidence: test_new_continue_preserves_data asserts objective=="new objective"
+- [ ] NEXT phase `cmd_end`: check _load_context, FAIL if any entry has status=="new"
+- [ ] HYPOTHESIS phase `cmd_end`: check _load_hypotheses, FAIL if any entry has status=="new"
+- [ ] Non-new entries must have at least one note (notes list not empty)
+- [ ] Error message is clear: names which entries are unclassified
+- [ ] Test: NEXT end fails when context has new items
+- [ ] Test: HYPOTHESIS end fails when hypothesis has new items
+- [ ] Test: entries with notes pass the check
 
-### SKILL.md
-- [x] Skill checks for `.auto-build-claw/state.yaml` before running `new`
-  Evidence: "FIRST: Check for existing session" section with `orchestrate status`
-- [x] If state exists: asks user "Continue or start fresh?"
-  Evidence: skill instructs "ask the user"
-- [x] Continue path documented with `--continue` flag example
-  Evidence: 3 examples in Program execution section
-- [x] Fresh path documented without `--continue`
-  Evidence: first example shows fresh start
-- [x] "How it works" section shows both paths
-  Evidence: fresh + continue examples in How it works
-- [x] "Program execution" section shows `--continue` for follow-up iterations
-  Evidence: second and third examples use --continue
+## Section 2: Hypothesis Max Deferred Iterations
 
-## Section 2: Planning Quality (live verification)
+- [ ] `hypothesis_max_deferred_iterations` config in app.yaml (default: 3)
+- [ ] At HYPOTHESIS phase end: auto-dismiss deferred entries exceeding max
+- [ ] Auto-dismiss note: "exceeded max deferred iterations (N)"
+- [ ] Test: deferred hypothesis auto-dismissed after exceeding config
+- [ ] Test: deferred hypothesis within limit survives
 
-- [x] Iteration 32 plan output scores >= 8: specific files, concrete changes, root causes, acceptance criteria
-  Evidence: plan_iter32.md has 12 numbered changes across 3 files with specific locations
-- [x] Plan contains exploration evidence (file paths, line numbers from agents)
-  Evidence: research_iter32.md has exact line numbers (L772, L1806, L2516, L837, L2892)
-- [x] Plan contains review feedback (architect/critic/guardian)
-  Evidence: gatekeeper passed PLAN phase with review agent feedback
-- [x] Autonomous planning quality matches or exceeds EnterPlanMode quality
-  Evidence: iterations 30-33 all produced plans with specific files, changes, acceptance criteria - same depth as iterations 21-27 with EnterPlanMode
+## Section 3: Workflow Stop Condition
 
-## Section 3: LLM-Behavioral Items (prompt-enforced)
+- [ ] `stop_condition` prompt added to WORKFLOW::FULL in workflow.yaml
+- [ ] `stop_condition` prompt added to WORKFLOW::GC
+- [ ] `stop_condition` prompt added to WORKFLOW::HOTFIX
+- [ ] `stop_condition` prompt added to WORKFLOW::FAST
+- [ ] NEXT phase template references stop_condition when evaluating whether to continue
+- [ ] Stop condition is the default judgment (benchmark is always present, stop_condition guides when to stop optimizing)
 
-These items are enforced by gatekeeper prompts, not code. Verified by observing orchestrator behavior.
+## Section 4: Residual Reduction
 
-- [ ] Gatekeeper checks notes present on every non-new context item (prompt-based)
-- [ ] NEXT gatekeeper catches new context items in practice (observed)
-- [ ] Hypothesis pruning: orthogonal alternatives dismissed when one is processed (LLM-behavioral)
-- [ ] No hypothesis accumulates indefinitely as deferred (gatekeeper prompt enforces re-evaluation)
-- [ ] HYPOTHESIS gatekeeper rejects if any hypothesis has status new (observed)
+- [ ] Interaction test: clean -> reload -> verify lifecycle accumulates correctly
+- [ ] Align _build_failures_context filter style with context banner filter style
 
 ## Completion Conditions
 
-- [ ] All Section 1 items [x] AND all 6 grades >= 8
-- [ ] No score improvement for 2 consecutive iterations
+- [ ] All Section 1-4 items [x] AND all 6 grades >= 9
+- [ ] Score stagnated (unchanged for 2 consecutive iterations)
 
 ---
 
@@ -97,43 +75,25 @@ These items are enforced by gatekeeper prompts, not code. Verified by observing 
 
 ### Scale 1: Design Unity (0-10)
 
-| 10 | Every data entity has one canonical file. Actions in phases.yaml. No orphans. |
-| <=9 | One minor inconsistency. |
-
 Current grade: [10] /10. Residual: [0]
 
 ### Scale 2: Data Integrity (0-10)
-
-| 10 | All data survives clean. Lifecycles accumulate correctly. --continue preserves everything. |
-| 9 | All survives. One edge case. |
 
 Current grade: [9] /10. Residual: [1]
 
 ### Scale 3: Format Commitment (0-10)
 
-| 10 | One format per file. Old format raises error. Zero migration code. |
-| 9 | One format. One minor silent migration (version check cache). |
-
 Current grade: [9] /10. Residual: [1]
 
 ### Scale 4: Test Depth (0-10)
-
-| 10 | Every feature: happy path, rejection, edge case, interaction test. |
-| 9 | All tested. One missing interaction test. |
 
 Current grade: [9] /10. Residual: [1]
 
 ### Scale 5: Occam's Razor Adherence (0-10)
 
-| 10 | Every field has a consumer. Status+notes consistent. No redundant fields. |
-| <=9 | One inconsistency. |
-
 Current grade: [10] /10. Residual: [0]
 
 ### Scale 6: Code Cleanliness (0-10)
-
-| 10 | Zero stale references. All loaders follow same pattern. Prompts consistent. |
-| 9 | One minor inconsistency. |
 
 Current grade: [9] /10. Residual: [1]
 
@@ -156,5 +116,5 @@ Current grade: [9] /10. Residual: [1]
 | 30   | 33    | 196   | Replace EnterPlanMode |
 | 31   | 28    | 196   | Architect clarity |
 | 32   | 19    | 199   | Failures status+notes, transitions, generative naming, prompts |
-| clean | -    | 199   | Benchmark + program cleanup |
 | 33   | 11    | 202   | --continue flag, SKILL.md, planning quality verified |
+| clean | -    | 202   | Benchmark cleanup, programmatic gates design |
