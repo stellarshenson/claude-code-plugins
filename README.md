@@ -19,6 +19,7 @@ Claude Code plugins for autonomous development workflows. A shared YAML-driven o
 | Plugin | Description |
 |--------|-------------|
 | [auto-build-claw](auto-build-claw/) | Autonomous build iteration orchestrator with multi-agent review |
+| [devils-advocate](devils-advocate/) | Critical document analysis with persona-driven risk scoring and iterative improvement |
 
 ## Features
 
