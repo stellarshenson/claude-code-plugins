@@ -1,107 +1,84 @@
 ---
 name: program-writer
-description: Write a PROGRAM.md file defining objectives, work items, acceptance criteria, and exit conditions for auto-build-claw iterations. Use when user wants to define a structured improvement program before running the orchestrator. Invoked before workflow execution.
+description: Write a PROGRAM.md file through iterative dialogue with the user. Asks clarifying questions, proposes work items, refines based on feedback until the user approves. Invoked before workflow execution.
 ---
 
 # Program Writer
 
-Write a `PROGRAM.md` that drives auto-build-claw iterations. The program defines WHAT to achieve, not HOW to break it into iterations - the orchestrator handles iteration planning.
+Write a `PROGRAM.md` through back-and-forth dialogue with the user. Do NOT produce the full document on first attempt. Instead, build it incrementally through questions and proposals until the user says it's solid.
 
-## When to Use
+## Process
 
-Before running `orchestrate new`. The user describes what they want to improve, and this skill produces a structured PROGRAM.md that the orchestrator consumes via `--objective "Implement the program defined in PROGRAM.md (read PROGRAM.md)"`.
+### Round 1: Understand the objective
 
-## Structure
+Read the user's seed prompt (the text after `/auto-build-claw`). Then ASK these questions - all in ONE message, not one at a time:
 
-PROGRAM.md has these sections:
+1. **What's the end state?** What does "done" look like? A specific metric, a working feature, a refactored codebase?
+2. **What exists today?** What's the current state - working code, broken code, nothing yet?
+3. **What's off-limits?** Files, behaviors, or APIs that must NOT change
+4. **How will we know it works?** Is there a test suite, a benchmark, a manual check?
+5. **What's the biggest risk?** What could go wrong or waste iterations?
 
-### 1. Objective (1-3 sentences)
+Do NOT proceed until the user answers. Their answers shape every work item.
 
-What the program aims to achieve. Concise, measurable, grounded.
+### Round 2: Propose the program
 
-**Good**: "Migrate the custom FSM implementation to the transitions Python package while preserving the existing public API."
-**Bad**: "Make the code better and more modern."
+Based on the answers, write the first draft of PROGRAM.md with:
+- **Objective** (1-3 sentences, measurable)
+- **Current State** (what exists, what's broken, baseline numbers)
+- **Work Items** (flat list with scope, acceptance criteria, priority)
+- **Exit Conditions** (when to stop)
+- **Constraints** (what not to change)
 
-### 2. Baseline Metrics
+Present it to the user and ASK: "Review this program. What's missing, wrong, or over-scoped?"
 
-Current state numbers the benchmark will measure against. Table format:
+### Round 3+: Refine
 
-```markdown
-| Metric | Current | Target |
-|--------|---------|--------|
-| engine lines | 3113 | <2800 |
-| test count | 115 | >=100 |
-| functions >50L | 14 | 0 |
-```
+Iterate based on feedback. The user may:
+- Add work items they forgot
+- Remove items that are out of scope
+- Change priorities
+- Tighten acceptance criteria
+- Add constraints
 
-### 3. Work Items
+Each round: update PROGRAM.md, show the diff, ask if it's ready.
 
-A flat list of concrete work items with acceptance criteria. NOT iterations - the orchestrator decides how to group work into iterations.
+### Final: User approval
 
-Each work item has:
-- **Title** - what to do
-- **Scope** - files to modify, functions to change
-- **Acceptance criteria** - measurable conditions for done
-- **Priority** - high/medium/low
+The program is done ONLY when the user explicitly approves it. Phrases that count as approval:
+- "looks good", "approved", "let's go", "run it", "start", "yes"
 
-```markdown
-- **Migrate FSM to transitions package** (high)
-  - Scope: engine/fsm.py, tests/test_fsm.py, pyproject.toml
-  - Acceptance: transitions.Machine wraps FSM, all tests pass, no orchestrator changes needed
+Do NOT proceed to benchmark-writer or the orchestrator without explicit approval.
 
-- **Remove hypothesis from planning workflow** (medium)
-  - Scope: workflow.yaml, phases.yaml, agents.yaml
-  - Acceptance: PLANNING workflow has no HYPOTHESIS phase, FULL still has it, validate passes
-```
-
-### 4. Exit Conditions
-
-**MANDATORY section.** Every program MUST define when to stop. Required for `--iterations 0` (run until done), recommended even for fixed iteration counts.
-
-Default exit condition (use unless the program has a better one):
+## PROGRAM.md Structure
 
 ```markdown
+# Program: <short title>
+
+## Objective
+<1-3 sentences, measurable, grounded>
+
+## Current State
+<what exists, baseline metrics, what's broken>
+
+## Work Items
+
+- **<title>** (high/medium/low)
+  - Scope: <files, functions>
+  - Acceptance: <measurable conditions>
+
 ## Exit Conditions
+<when to stop iterating>
 
-Iterations stop when ANY of these is true:
-1. Benchmark score = 0 (all checklist items met)
-2. No score improvement for 2 consecutive iterations (plateau - no further optimisation possible)
-3. All work items have acceptance criteria met
-
-Additionally, ALL of these must hold:
-- make test passes with 0 failures
-- make lint passes clean
+## Constraints
+<what not to change>
 ```
 
-The **plateau condition** (no score improvement for 2 iterations) is the default safety valve. If the score stops improving, further iterations are wasted effort. The orchestrator should stop and report what remains unresolved.
+## Rules
 
-For programs with a programmatic score (loss, accuracy), the exit condition should reference the metric directly:
-
-```markdown
-## Exit Conditions
-
-Iterations stop when ANY of these is true:
-1. val_bpb < 0.95 (target reached)
-2. No val_bpb improvement > 0.001 for 3 consecutive iterations (plateau)
-3. 20 iterations completed (safety cap)
-```
-
-### 5. Constraints (optional)
-
-What NOT to change. Files that are off-limits. Behaviors to preserve.
-
-## Best Practices (from Karpathy autoresearch)
-
-- **Single metric to optimize** - the benchmark produces ONE number. Lower or higher is better. No ambiguity
-- **Fixed evaluation** - the metric computation doesn't change between iterations. Only the code under test changes
-- **Simplicity criterion** - all else being equal, simpler is better. Removing code for same results = win
-- **Fair comparison** - every iteration runs the same evaluation, making results directly comparable
-- **Concise program** - the program fits on one screen. Dense, specific, no fluff
-- **Scope boundaries** - explicitly state what CAN and CANNOT be modified
-
-## What NOT to Include
-
-- Iteration breakdown (orchestrator handles this in PLANNING phase)
-- Implementation details (RESEARCH and PLAN phases handle this)
-- Timeline estimates
-- Agent assignments
+- **Dense, not verbose** - program fits on one screen. No fluff
+- **Scope boundaries explicit** - what CAN and CANNOT be modified
+- **Single metric** - the program should enable ONE number to optimize
+- **No iteration breakdown** - the orchestrator handles iteration planning
+- **No implementation details** - RESEARCH and PLAN phases handle this
+- **Every work item has acceptance criteria** - "improve X" is not a work item, "reduce X from 14 to 0" is

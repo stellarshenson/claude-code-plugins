@@ -1,23 +1,73 @@
 ---
 name: benchmark-writer
-description: Write a BENCHMARK.md file with evaluation checklist, score formula, and iteration tracking table for auto-build-claw iterations. Use when user needs a benchmark to measure progress against PROGRAM.md work items. Invoked before workflow execution.
+description: Write a BENCHMARK.md with measurable evaluation criteria through iterative dialogue. Pushes for programmatic metrics over subjective checklists. Invoked after program-writer, before workflow execution.
 ---
 
 # Benchmark Writer
 
-Write a `BENCHMARK.md` that measures progress for auto-build-claw iterations. The benchmark defines HOW to evaluate, producing a single composite score. The orchestrator consumes it via `--benchmark "Read BENCHMARK.md and evaluate each [ ] item..."`.
+Write a `BENCHMARK.md` that produces a single number to optimize. Push hard for programmatic, measurable metrics. Subjective checklists are a last resort.
 
-## When to Use
+## Prerequisites
 
-After PROGRAM.md exists. The benchmark is derived from the program's work items and acceptance criteria. Each work item generates checklist items, and the score formula combines them into one number.
+PROGRAM.md must exist and be approved by the user.
 
-## Structure
+## Process
 
-BENCHMARK.md has these sections in order:
+### Round 1: Identify measurable signals
 
-### 1. Score Formula and Direction
+Read PROGRAM.md. For each work item, ASK the user - all in ONE message:
 
-The benchmark MUST produce a single composite number and state whether to MINIMIZE or MAXIMIZE.
+1. **What can we measure programmatically?** For each work item, propose concrete metrics:
+   - Line counts (`wc -l`), function counts (`grep -c "def "`)
+   - Test counts (`pytest --co -q | tail -1`), test pass rate
+   - Lint violations (`ruff check --statistics`)
+   - Complexity scores (`radon cc -s -a`)
+   - File existence checks (`test -f path`)
+   - grep pattern counts (occurrences of a pattern that should increase/decrease)
+   - Custom script output (a small Python one-liner that computes a metric)
+
+2. **What's the target for each metric?** Current value -> target value
+
+3. **What can't be measured programmatically?** These become fuzzy scales (0-10) with explicit rubrics - but only as a last resort. Every fuzzy scale must justify why a programmatic metric isn't possible.
+
+Present proposed metrics and ask: "Which of these can we actually compute? What am I missing?"
+
+### Round 2: Draft the benchmark
+
+Write BENCHMARK.md with:
+- **Score formula** with explicit weights
+- **Programmatic checks** (commands that produce numbers)
+- **Checklist items** (binary pass/fail verified against code)
+- **Fuzzy scales** (only for genuinely subjective qualities, with detailed rubrics)
+- **Iteration log** table
+
+Present to user and ASK: "Is this measuring the right things? Are the targets realistic?"
+
+### Round 3+: Refine
+
+Iterate based on feedback. Common refinements:
+- Adjust targets (too aggressive / too lenient)
+- Replace fuzzy scales with programmatic metrics the user suggests
+- Add metrics for edge cases the user knows about
+- Remove items that are redundant
+
+Each round: update BENCHMARK.md, show changes, ask if ready.
+
+### Final: User approval
+
+Done ONLY when user explicitly approves. Same approval phrases as program-writer.
+
+## Metric Hierarchy (prefer top, avoid bottom)
+
+1. **Programmatic command output** - `make test` failure count, `wc -l`, `grep -c`. Best. Reproducible, no LLM judgment
+2. **File/pattern existence checks** - `test -f path`, `grep -q pattern file`. Binary, fast
+3. **Computed metrics** - small Python one-liner or script that outputs a number. Good when standard tools don't cover it
+4. **Binary checklist items** - "X exists in file Y". Verified by reading code. LLM-evaluated but binary
+5. **Fuzzy scales (0-10)** - subjective grades with rubrics. Last resort. Every fuzzy scale should have a "why not programmatic?" justification
+
+## Score Formula Design
+
+The score formula should combine metrics with appropriate weights:
 
 ```markdown
 ## Score
@@ -25,148 +75,89 @@ The benchmark MUST produce a single composite number and state whether to MINIMI
 **Direction**: MINIMIZE (target: 0)
 
 ```
-score = unchecked_items + failed_tests + (complexity_violations * 2)
-```
+score = (failed_tests * 10) + unchecked_items + lint_violations + sum(fuzzy_residuals)
 ```
 
-### Fuzzy Items (graded 0-10)
+**Weights reflect severity**: test failures are 10x worse than a missing checklist item.
+```
 
-Not all quality measures are binary. For subjective or continuous measures, use **graded items** scored 0-10 where the **residual** (10 - grade) adds to the benchmark score.
+**Rules for good formulas**:
+- One number, one direction (MINIMIZE or MAXIMIZE)
+- Weights reflect actual severity (test failure > lint warning > style nit)
+- Programmatic components have higher weight than generative ones
+- Formula doesn't change between iterations (add items, don't change weights)
+
+## Fuzzy Scale Design (when unavoidable)
+
+Every fuzzy scale MUST have:
+- **Rubric**: what does 10 mean? What does 5 mean? What does 2 mean?
+- **Justification**: why can't this be measured programmatically?
+- **Anchor examples**: concrete descriptions at 3+ points on the scale
 
 ```markdown
-## Section N: Code Consistency (0-10 scale)
+### Scale: Design Consistency (0-10)
 
-Grade from 0 (inconsistent) to 10 (perfectly consistent). Residual adds to score.
+Current grade: [0] /10. Residual: [10]
 
-Consistency rules:
-- Every module follows the same patterns
-- No mixed conventions
-- All similar things structured the same way
+Rubric:
+- 10 = every module follows identical patterns, no mixed conventions
+- 8 = consistent with 1-2 minor deviations
+- 5 = some patterns shared, some divergent
+- 2 = no consistent patterns
 
-Current grade: [ ] /10
-Residual: [ ] (10 - grade)
+Why not programmatic: consistency is cross-cutting, no single grep pattern captures it.
 ```
 
-Graded items are useful for:
-- Design consistency (are all YAML sections structured the same?)
-- Code quality (how well-factored is the codebase?)
-- Documentation completeness (how thorough are the docstrings?)
-
-The evaluator assigns the grade and computes the residual. Include the grading criteria explicitly so different evaluations produce consistent scores.
-
-Three benchmark types:
-
-- **Generative** - Claude reads the checklist and evaluates each item against the codebase. Marks [x] or [ ]. Score = count of unchecked items
-- **Programmatic** - a command produces a number (e.g., `make test` failure count, loss function, accuracy). Score = command output
-- **Hybrid** - combines generative checklist with programmatic metrics. Score = weighted sum
-
-### 2. Evaluation Instructions
-
-How the evaluator (Claude or script) should execute the benchmark. Step by step.
+## BENCHMARK.md Structure
 
 ```markdown
+# Benchmark: <title matching PROGRAM.md>
+
+## Score
+
+**Direction**: MINIMIZE (target: 0)
+
+```
+score = <formula>
+```
+
 ## Evaluation
 
-1. Run `make test` - count failed tests
-2. Run `make lint` - must be clean (0 or 1 penalty)
-3. Read each [ ] item below and verify against codebase
-4. Mark [x] for passing, leave [ ] for failing
-5. EDIT this file with updated marks
-6. UPDATE the Iteration Log below with this iteration's results
-7. Report composite score
-```
+**Programmatic checks** (run these commands):
+1. `make test` - count failures (weight: 10x)
+2. `make lint` - must be clean
+3. <custom metric command>
 
-**CRITICAL**: For generative and hybrid benchmarks, the evaluator MUST EDIT the benchmark file. Reporting scores without updating the file is a violation.
+**Generative checks**:
+4. For each [ ] item, verify against code. Mark [x] with evidence
+5. Grade fuzzy scales using rubrics
+6. EDIT this file, UPDATE Iteration Log
 
-### 3. Checklist Sections
+---
 
-Derived from PROGRAM.md work items. Each work item becomes a section with specific, verifiable checklist items.
+## Section 1: <work item group>
+- [ ] <specific, verifiable item>
+  Evidence required: <what to check>
 
-Rules for good checklist items:
-- **Verifiable** - can be checked by reading code or running a command
-- **Specific** - names exact files, functions, fields
-- **Binary** - passes or fails, no gray area
-- **Independent** - each item stands alone
+## Fuzzy Scales (if any)
+### Scale: <name> (0-10)
+Current grade: [0] /10. Residual: [10]
+Rubric: <what each score means>
+Why not programmatic: <justification>
 
-```markdown
-## Section 1: FSM Migration
+---
 
-- [ ] transitions package in pyproject.toml dependencies
-- [ ] engine/fsm.py uses transitions.Machine
-- [ ] No custom FSMConfig dataclass
-- [ ] All test_fsm.py tests passing
-```
-
-### 4. Completion Conditions
-
-When to stop iterating. Links back to PROGRAM.md exit conditions.
-
-```markdown
-## Completion Conditions
-
-Iterations stop when ALL conditions are met:
-- [ ] All checklist items above are [x] (score = 0)
-- [ ] make test passes with 0 failures
-- [ ] make lint passes clean
-
-**Do NOT stop while any condition above is unmet.**
-```
-
-### 5. Iteration Log
-
-**MANDATORY section.** Tracks every evaluation across iterations. Updated by the evaluator during each TEST phase. Shows score trajectory so you can see if iterations are improving.
-
-```markdown
 ## Iteration Log
-
-| Iteration | Date | Score | Failed Tests | Unchecked Items | Notes |
-|-----------|------|-------|--------------|-----------------|-------|
-| baseline  | -    | TBD   | 0            | (all)           | before any work |
+| Iter | Score | Tests | Notes |
+|------|-------|-------|-------|
+| base | TBD   | N     | before any work |
 ```
 
-After each evaluation, the evaluator appends a new row:
+## Rules
 
-```markdown
-| iter 1    | 2026-04-01 | 12 | 0 | 12 | FSM migration complete, hypothesis removal done |
-| iter 2    | 2026-04-01 | 5  | 0 | 5  | complexity refactoring, benchmark enforcement |
-| iter 3    | 2026-04-02 | 0  | 0 | 0  | all conditions met |
-```
-
-The iteration log serves three purposes:
-1. **Progress tracking** - score should decrease (for MINIMIZE) or increase (for MAXIMIZE) over iterations
-2. **Regression detection** - if score goes up, something broke
-3. **Completion proof** - final row shows target reached
-
-## Benchmark Types Guide
-
-### When to use Generative (checklist only)
-- Code quality improvements (refactoring, dead code removal)
-- Feature implementation (migration, new capabilities)
-- Documentation completeness
-
-### When to use Programmatic (command output)
-- Model training (loss, accuracy, perplexity)
-- Performance optimization (latency, throughput)
-- Test coverage (percentage)
-- Code metrics (complexity score from tool)
-
-### When to use Hybrid
-- Code modernization with measurable quality targets
-- Research with both qualitative and quantitative goals
-
-## Best Practices (from Karpathy autoresearch)
-
-- **One number** - the benchmark produces exactly ONE score. Not a dashboard, not a report. One number
-- **Direction is explicit** - MINIMIZE or MAXIMIZE, stated at the top
-- **Fixed evaluation** - the evaluation method doesn't change between iterations. Add checklist items if discovered, but don't change the formula
-- **Fair comparison** - every iteration evaluated the same way
-- **Iteration log tracks progress** - the table shows if iterations are actually improving. Score going up = regression
-- **Programmatic when possible** - `val_bpb` in autoresearch is computed by code, not by Claude judging quality. Use commands and tools when you can measure, generative when you can't
-- **Simplicity bonus** - if the benchmark can reward code simplification (fewer lines, lower complexity), include it
-
-## What NOT to Include
-
-- Implementation guidance (that's PROGRAM.md)
-- Iteration plans (orchestrator handles this)
-- Vague items ("code quality improved" - how would you check?)
-- Items that require subjective judgment ("code is clean")
+- **Programmatic over generative** - if you can measure it with a command, do that instead of a checklist item
+- **Every fuzzy scale justifies its existence** - "why not programmatic?"
+- **Weights reflect reality** - test failures matter more than style
+- **Fixed evaluation** - the formula doesn't change between iterations
+- **Iteration log is mandatory** - tracks score trajectory
+- **Targets are specific** - "improve" is not a target, "reduce from 14 to 0" is
