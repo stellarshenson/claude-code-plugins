@@ -173,6 +173,9 @@ FULL::RESEARCH:
       Show your reasoning for each decision and finding.
       The output feeds directly into HYPOTHESIS where agents debate what to do with it.
 
+      **Investigate unsolved failures**: If prior failures exist with unsolved status,
+      investigate them as root causes. Each unsolved failure is an investigation target.
+
       **AFTER all agents return**, write merged findings to a file, then:
       ```
       {CMD} end --evidence "summary of what was researched" --agents "researcher,architect,product_manager" --output-file "path/to/research.md"
@@ -401,6 +404,7 @@ FULL::HYPOTHESIS:
           star ratings, top 1-3 selected with measurable predictions.
           Evaluate hypothesis QUALITY: each must have root cause, prediction, and evidence. Generic hypotheses without specifics = FAIL.
           Every hypothesis must be classified: status must be processed, dismissed, or deferred. Zero hypotheses with status "new" allowed to exit.
+          Notes must be present on every hypothesis with status other than 'new'.
           IF context messages are active, evidence SHOULD reference or acknowledge them.
 
 # ── PLAN (shared) ──────────────────────────────────────────────────
@@ -566,7 +570,7 @@ PLAN:
           root causes, acceptance criteria, and risk assessment.
           Vague plans ("improve X", "fix issues") = FAIL.
           Evaluate plan DEPTH: must include specific files, concrete changes, and reasoning for each. Shallow bullet lists = FAIL.
-          IF context messages are active, evidence SHOULD reference or acknowledge them.
+          IF context messages are active, evidence MUST reference or acknowledge them.
 
 # ── IMPLEMENT (shared) ────────────────────────────────────────────────
 
@@ -641,7 +645,7 @@ IMPLEMENT:
           Check: changes match plan (no scope creep), predict/verify
           reflection documented for each change.
           Evaluate implementation THOROUGHNESS: each change must show what was predicted vs what happened. Missing reflections = FAIL.
-          IF context messages are active, evidence SHOULD reference or acknowledge them.
+          IF context messages are active, evidence MUST reference or acknowledge them.
 
 # ── TEST (shared) ─────────────────────────────────────────────────────
 
@@ -1019,6 +1023,7 @@ NEXT:
           PHASE: {phase}
           EVIDENCE: {evidence}
           Check: iteration advanced correctly or final status reported.
+          If context items with status 'new' exist, FAIL - all context must be acknowledged, dismissed, or processed before iteration ends.
 
 # ── PLANNING workflow phases ──────────────────────────────────────
 

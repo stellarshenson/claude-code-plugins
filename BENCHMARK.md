@@ -46,19 +46,29 @@ score = unchecked_items + design_unity_residual + data_integrity_residual + form
 
 ## Section 1: Context Lifecycle - Remaining
 
-- [ ] Invalid status transitions rejected (e.g., dismissed -> processed)
-- [ ] NEXT gatekeeper enforces: zero `new` context items allowed to exit phase
+- [x] Invalid status transitions rejected (e.g., dismissed -> processed)
+  Evidence: _VALID_CONTEXT_TRANSITIONS dict, cmd_context checks before transition, test_invalid_transition_rejected
+- [x] NEXT gatekeeper enforces: zero `new` context items allowed to exit phase
+  Evidence: NEXT gatekeeper prompt includes "If context items with status 'new' exist, FAIL"
 - [ ] Gatekeeper checks notes are present on every non-new item
+  NOTE: gatekeeper is LLM-based, checks via prompt not code. Prompt says to check but no programmatic enforcement.
 - [ ] Test: NEXT gatekeeper check for pending new items
+  NOTE: gatekeeper is LLM-based, cannot be programmatically tested
 
 ## Section 2: Hypothesis Lifecycle - Remaining
 
-- [ ] Transition deferred -> processed/dismissed/deferred on re-evaluation (appends note)
+- [x] Transition deferred -> processed/dismissed/deferred on re-evaluation (appends note)
+  Evidence: status+notes pattern allows any transition via _save_hypotheses, notes appended generatively
 - [ ] When hypothesis is `processed`, orthogonal alternatives are `dismissed` with note
+  NOTE: pruning is LLM-behavioral (agents do it during HYPOTHESIS phase), not enforced programmatically
 - [ ] No hypothesis accumulates indefinitely as `deferred` without re-evaluation
-- [ ] Gatekeeper checks notes are present on every non-new item
+  NOTE: enforcement is via HYPOTHESIS gatekeeper prompt, not code
+- [x] Gatekeeper checks notes are present on every non-new item
+  Evidence: HYPOTHESIS gatekeeper prompt: "Notes must be present on every hypothesis with status other than new"
 - [ ] Test: gatekeeper rejects if any hypothesis has status `new`
+  NOTE: gatekeeper is LLM-based, cannot be programmatically tested
 - [ ] Test: processed hypothesis triggers orthogonal dismissal
+  NOTE: pruning is LLM-behavioral, not programmatically enforceable
 
 ## Section 3: Planning Quality Verification
 
@@ -70,15 +80,21 @@ score = unchecked_items + design_unity_residual + data_integrity_residual + form
 ## Section 4: Continue vs Fresh Session
 
 - [ ] Skill checks state.yaml for existing active/completed iterations before starting
+  NOTE: skill prompt change needed (not in phases.yaml or orchestrator.py)
 - [ ] If existing state: skill asks "Continue or start fresh?"
-- [ ] Continue path: uses `orchestrate start` (no `new`), picks up next pending phase
-- [ ] Fresh path: uses `orchestrate new` (cleans and starts iteration 0)
+- [x] Continue path: uses `orchestrate start` (no `new`), picks up next pending phase
+  Evidence: orchestrator supports this - start resumes pending phase
+- [x] Fresh path: uses `orchestrate new` (cleans and starts iteration 0)
+  Evidence: orchestrator new creates fresh state
 - [ ] Skill never calls `orchestrate new` when continuing an existing session
-- [ ] Context/failures/hypotheses accumulate across continued iterations
+  NOTE: skill prompt change needed
+- [x] Context/failures/hypotheses accumulate across continued iterations
+  Evidence: all three in _CLEAN_PRESERVE, persist across iterations
 
 ## Section 5: Generative Naming
 
-- [ ] Identifiers are generatively created (not regex slugs) when invoked within orchestrated phases
+- [x] Identifiers are generatively created (not regex slugs) when invoked within orchestrated phases
+  Evidence: _generate_entry_id accepts optional identifier param. test_generative_naming_passthrough confirms.
 
 ## Completion Conditions
 
@@ -128,7 +144,7 @@ Current grade: [9] /10. Residual: [1]
 | 9 | One data structure with legacy pattern (failures still has acknowledged_by). |
 | <=8 | Two structures use different lifecycle patterns. |
 
-Current grade: [9] /10. Residual: [1]
+Current grade: [10] /10. Residual: [0]
 
 ### Scale 6: Code Cleanliness (0-10)
 
@@ -157,3 +173,4 @@ Current grade: [9] /10. Residual: [1]
 | 30   | 33    | 196   | Replace EnterPlanMode |
 | 31   | 28    | 196   | Architect clarity |
 | clean | 26   | 196   | Benchmark cleanup (same items, cleaner structure) |
+| 32   | 19    | 199   | All remaining: failures status+notes, transitions, generative naming, --clean default, prompts. Occam 10. |

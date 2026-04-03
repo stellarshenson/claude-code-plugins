@@ -336,8 +336,8 @@ def _build_failures_context() -> str:
     all_failures = _load_failures()
     if not all_failures:
         return ""
-    unsolved = {fid: f for fid, f in all_failures.items() if not f.get("solution")}
-    solved = {fid: f for fid, f in all_failures.items() if f.get("solution")}
+    unsolved = {fid: f for fid, f in all_failures.items() if f.get("status") != "processed"}
+    solved = {fid: f for fid, f in all_failures.items() if f.get("status") == "processed"}
     parts = [f"\n**Prior failures** ({len(all_failures)} total, {len(unsolved)} unsolved):\n"]
     if unsolved:
         parts.append("Unsolved (investigation targets):\n")
@@ -729,8 +729,8 @@ def _append_failure(entry: dict) -> None:
         "iteration": entry.get("iteration", 0),
         "phase": entry.get("phase", "unknown"),
         "mode": entry.get("mode", "?"),
-        "acknowledged_by": [],
-        "processed": False,
+        "status": "new",
+        "notes": [],
         "solution": None,
         "timestamp": _now(),
     }
@@ -778,6 +778,14 @@ def _save_context(ctx: dict) -> None:
     CONTEXT_FILE.write_text(_yaml_dump(ctx))
 
 
+_VALID_CONTEXT_TRANSITIONS = {
+    "new": {"acknowledged", "dismissed", "processed"},
+    "acknowledged": {"dismissed", "processed"},
+    "dismissed": set(),  # terminal
+    "processed": set(),  # terminal
+}
+
+
 def _load_failures() -> dict:
     """Load failures from failures.yaml as identifier-keyed dicts.
     Raises ValueError if file contains legacy flat list format.
@@ -792,6 +800,16 @@ def _load_failures() -> dict:
                 "Delete failures.yaml and re-log failures."
             )
         return {}
+    _VALID_FAILURE_STATUSES = {"new", "acknowledged", "dismissed", "processed"}
+    for key, entry in data.items():
+        if not isinstance(entry, dict):
+            raise ValueError(f"failures.yaml entry '{key}' is not a dict.")
+        status = entry.get("status", "")
+        if status and status not in _VALID_FAILURE_STATUSES:
+            raise ValueError(
+                f"failures.yaml entry '{key}' has invalid status '{status}'. "
+                f"Must be one of: {sorted(_VALID_FAILURE_STATUSES)}"
+            )
     return data
 
 
@@ -834,20 +852,26 @@ def _save_hypotheses(hypotheses: dict) -> None:
     hyp_file.write_text(_yaml_dump(hypotheses))
 
 
-def _generate_entry_id(message: str, existing_ids: set) -> str:
+def _generate_entry_id(message: str, existing_ids: set, identifier: str = "") -> str:
     """Generate a short identifier from a message string.
 
-    Slugifies the message to lowercase alphanumeric + underscores,
-    truncated to 37 chars. Falls back to 'ctx' for empty slugs.
+    If *identifier* is provided, uses it directly (truncated to 37 chars)
+    instead of slugifying the message. Falls back to 'ctx' for empty values.
     Appends _2, _3, ... on collision with existing_ids.
     """
-    slug = re.sub(r"[^a-z0-9]+", "_", message.lower()).strip("_")[:37]
-    if not slug:
-        slug = "ctx"
-    candidate = slug
+    if identifier:
+        # Use provided identifier, ensure uniqueness
+        candidate = identifier.strip()[:37]
+        if not candidate:
+            candidate = "ctx"
+    else:
+        # Fall back to slugification
+        slug = re.sub(r"[^a-z0-9]+", "_", message.lower()).strip("_")[:37]
+        candidate = slug if slug else "ctx"
+    base = candidate
     counter = 2
     while candidate in existing_ids:
-        candidate = f"{slug}_{counter}"
+        candidate = f"{base}_{counter}"
         counter += 1
     return candidate
 
@@ -1798,14 +1822,14 @@ def cmd_start(args) -> None:
         if dirty:
             _save_context(all_ctx)
 
-    # Update failure acknowledged_by inline
+    # Transition new -> acknowledged on failures
     all_failures = _load_failures()
     if all_failures:
         dirty_f = False
         for fid, entry in all_failures.items():
-            ack_list = entry.setdefault("acknowledged_by", [])
-            if phase not in ack_list:
-                ack_list.append(phase)
+            if entry.get("status") == "new":
+                entry["status"] = "acknowledged"
+                entry.setdefault("notes", []).append({"acknowledged": f"seen by {phase}"})
                 dirty_f = True
         if dirty_f:
             _save_failures(all_failures)
@@ -2173,8 +2197,9 @@ def cmd_status(args) -> None:
     if failures:
         print("\n" + _msg("status_failures_header", count=len(failures)))
         for fid, f in failures:
-            solved = " [SOLVED]" if f.get("solution") else ""
-            print(f"  [{fid}] {f.get('mode', '?')}: {f.get('description', '?')[:60]}{solved}")
+            status = f.get("status", "new")
+            status_tag = f" [{status.upper()}]" if status != "new" else ""
+            print(f"  [{fid}] {f.get('mode', '?')}: {f.get('description', '?')[:60]}{status_tag}")
 
     # Show context messages with status and latest note
     all_ctx = _load_context()
@@ -2397,6 +2422,13 @@ def cmd_context(args) -> None:
         if identifier not in ctx:
             print(f"Context identifier '{identifier}' not found.", file=sys.stderr)
             sys.exit(1)
+        current_status = ctx[identifier].get("status", "new")
+        if "processed" not in _VALID_CONTEXT_TRANSITIONS.get(current_status, set()):
+            print(
+                f"Cannot transition context '{identifier}' from '{current_status}' to 'processed'.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         note_text = getattr(args, "note", "") or "marked processed"
         ctx[identifier]["status"] = "processed"
         ctx[identifier].setdefault("notes", []).append({"processed": note_text})
@@ -2417,6 +2449,13 @@ def cmd_context(args) -> None:
         ctx = _load_context()
         if identifier not in ctx:
             print(f"Context identifier '{identifier}' not found.", file=sys.stderr)
+            sys.exit(1)
+        current_status = ctx[identifier].get("status", "new")
+        if "dismissed" not in _VALID_CONTEXT_TRANSITIONS.get(current_status, set()):
+            print(
+                f"Cannot transition context '{identifier}' from '{current_status}' to 'dismissed'.",
+                file=sys.stderr,
+            )
             sys.exit(1)
         note_text = getattr(args, "note", "") or "dismissed"
         ctx[identifier]["status"] = "dismissed"
@@ -2513,7 +2552,10 @@ def cmd_failures(args) -> None:
         if processed_id not in failures:
             print(f"Failure '{processed_id}' not found.", file=sys.stderr)
             sys.exit(1)
-        failures[processed_id]["processed"] = True
+        failures[processed_id]["status"] = "processed"
+        failures[processed_id].setdefault("notes", []).append(
+            {"processed": solution_text or "marked processed"}
+        )
         if solution_text:
             failures[processed_id]["solution"] = solution_text
         _save_failures(failures)
@@ -2536,10 +2578,11 @@ def cmd_failures(args) -> None:
             mode = e.get("mode", "?")
             desc = e.get("description", "?")
             phase = e.get("phase", "?")
+            status = e.get("status", "new")
             solved = e.get("solution")
-            proc = " [PROCESSED]" if e.get("processed") else ""
+            status_tag = f" [{status.upper()}]" if status != "new" else ""
             sol = f" SOLUTION: {solved}" if solved else ""
-            print(f"  [{fid}] ({mode}) {phase}: {desc[:60]}{proc}{sol}")
+            print(f"  [{fid}] ({mode}) {phase}: {desc[:60]}{status_tag}{sol}")
 
 
 def cmd_info(args) -> None:
@@ -2889,7 +2932,7 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     p_new.add_argument("--objective", required=True, help=_cli("args", "objective"))
     p_new.add_argument("--iterations", type=int, default=1, help=_cli("args", "iterations"))
     p_new.add_argument("--benchmark", default="", help=_cli("args", "benchmark"))
-    p_new.add_argument("--clean", action="store_true", default=True, help=_cli("args", "clean"))
+    p_new.add_argument("--clean", action="store_true", default=False, help=_cli("args", "clean"))
     p_new.add_argument(
         "--no-clean", action="store_false", dest="clean", help=_cli("args", "no_clean")
     )

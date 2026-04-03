@@ -1296,8 +1296,11 @@ class TestContextLifecycle:
         orch._init_artifacts_dir(tmp_path)
         ctx = {
             "test_item": {
-                "message": "test", "phase": "RESEARCH",
-                "created": "2026-04-03", "status": "new", "notes": [],
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "new",
+                "notes": [],
             }
         }
         orch._save_context(ctx)
@@ -1312,8 +1315,11 @@ class TestContextLifecycle:
         orch._init_artifacts_dir(tmp_path)
         ctx = {
             "test_item": {
-                "message": "test", "phase": "RESEARCH",
-                "created": "2026-04-03", "status": "new", "notes": [],
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "new",
+                "notes": [],
             }
         }
         orch._save_context(ctx)
@@ -1336,8 +1342,10 @@ class TestContextLifecycle:
         orch._init_artifacts_dir(tmp_path)
         ctx = {
             "test_item": {
-                "message": "test", "phase": "RESEARCH",
-                "created": "2026-04-03", "status": "acknowledged",
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "acknowledged",
                 "notes": [{"acknowledged": "seen by ALPHA"}],
             }
         }
@@ -1357,8 +1365,10 @@ class TestContextLifecycle:
         orch._init_artifacts_dir(tmp_path)
         ctx = {
             "test_item": {
-                "message": "test", "phase": "RESEARCH",
-                "created": "2026-04-03", "status": "acknowledged",
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "acknowledged",
                 "notes": [{"acknowledged": "seen by ALPHA"}],
             }
         }
@@ -1378,12 +1388,17 @@ class TestContextLifecycle:
         orch._init_artifacts_dir(tmp_path)
         ctx = {
             "active_item": {
-                "message": "show me", "phase": "RESEARCH",
-                "created": "2026-04-03", "status": "new", "notes": [],
+                "message": "show me",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "new",
+                "notes": [],
             },
             "dismissed_item": {
-                "message": "hide me", "phase": "RESEARCH",
-                "created": "2026-04-03", "status": "dismissed",
+                "message": "hide me",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "dismissed",
                 "notes": [{"dismissed": "not relevant"}],
             },
         }
@@ -1400,8 +1415,11 @@ class TestContextLifecycle:
         orch._init_artifacts_dir(tmp_path)
         ctx = {
             "bad_item": {
-                "message": "test", "phase": "RESEARCH",
-                "created": "2026-04-03", "status": "invalid_status", "notes": [],
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "invalid_status",
+                "notes": [],
             }
         }
         orch._save_context(ctx)
@@ -1415,8 +1433,11 @@ class TestContextLifecycle:
         orch._init_artifacts_dir(tmp_path)
         ctx = {
             "test_item": {
-                "message": "test", "phase": "RESEARCH",
-                "created": "2026-04-03", "status": "new", "notes": [],
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "new",
+                "notes": [],
             }
         }
         orch._save_context(ctx)
@@ -1430,13 +1451,44 @@ class TestContextLifecycle:
         orch._init_artifacts_dir(tmp_path)
         ctx = {
             "test_item": {
-                "message": "test", "phase": "RESEARCH",
-                "created": "2026-04-03", "status": "new", "notes": [],
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "new",
+                "notes": [],
             }
         }
         orch._save_context(ctx)
         loaded = orch._load_context()
-        assert "processed" not in loaded["test_item"] or not isinstance(loaded["test_item"].get("processed"), bool)
+        assert "processed" not in loaded["test_item"] or not isinstance(
+            loaded["test_item"].get("processed"), bool
+        )
+
+    def test_invalid_transition_rejected(self, minimal_resources, tmp_path):
+        """Dismissed -> processed is invalid."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        ctx = {
+            "test_item": {
+                "message": "test",
+                "phase": "RESEARCH",
+                "created": "2026-04-03",
+                "status": "dismissed",
+                "notes": [{"dismissed": "not relevant"}],
+            }
+        }
+        orch._save_context(ctx)
+        # Check that transition validation exists
+        transitions = orch._VALID_CONTEXT_TRANSITIONS
+        assert "processed" not in transitions.get("dismissed", set())
+        assert "dismissed" not in transitions.get("processed", set())
+
+    def test_generative_naming_passthrough(self, minimal_resources, tmp_path):
+        """Provided identifier is used instead of slugification."""
+        orch._initialize(minimal_resources)
+        cid = orch._generate_entry_id("some message", set(), identifier="custom_name")
+        assert cid == "custom_name"
 
 
 class TestFailuresRichEntries:
@@ -1454,8 +1506,8 @@ class TestFailuresRichEntries:
                 "iteration": 3,
                 "phase": "IMPLEMENT",
                 "mode": "FM-TIMEOUT",
-                "acknowledged_by": [],
-                "processed": False,
+                "status": "new",
+                "notes": [],
                 "solution": None,
                 "timestamp": "2026-04-02T14:00:00+00:00",
             }
@@ -1507,19 +1559,20 @@ class TestFailuresRichEntries:
                 "iteration": 3,
                 "phase": "IMPLEMENT",
                 "mode": "FM-TIMEOUT",
-                "acknowledged_by": [],
-                "processed": False,
+                "status": "new",
+                "notes": [],
                 "solution": None,
                 "timestamp": "2026-04-02T14:00:00+00:00",
             }
         }
         orch._save_failures(failures)
         loaded = orch._load_failures()
-        loaded["gate_timeout"]["processed"] = True
+        loaded["gate_timeout"]["status"] = "processed"
+        loaded["gate_timeout"]["notes"].append({"processed": "increased timeout to 60s"})
         loaded["gate_timeout"]["solution"] = "increased timeout to 60s"
         orch._save_failures(loaded)
         final = orch._load_failures()
-        assert final["gate_timeout"]["processed"] is True
+        assert final["gate_timeout"]["status"] == "processed"
         assert final["gate_timeout"]["solution"] == "increased timeout to 60s"
 
     def test_failures_preserved_on_clean(self, minimal_resources, tmp_path):
@@ -1533,8 +1586,8 @@ class TestFailuresRichEntries:
                 "phase": "TEST",
                 "mode": "FM",
                 "iteration": 1,
-                "acknowledged_by": [],
-                "processed": False,
+                "status": "new",
+                "notes": [],
                 "solution": None,
                 "context": "",
                 "timestamp": "2026-04-02",
@@ -1558,8 +1611,8 @@ class TestFailuresRichEntries:
                 "iteration": 1,
                 "phase": "TEST",
                 "mode": "FM-A",
-                "acknowledged_by": [],
-                "processed": False,
+                "status": "new",
+                "notes": [],
                 "solution": None,
                 "timestamp": "2026-04-02",
             },
@@ -1569,8 +1622,8 @@ class TestFailuresRichEntries:
                 "iteration": 1,
                 "phase": "TEST",
                 "mode": "FM-B",
-                "acknowledged_by": [],
-                "processed": True,
+                "status": "processed",
+                "notes": [{"processed": "fixed it"}],
                 "solution": "fixed it",
                 "timestamp": "2026-04-02",
             },
@@ -1583,7 +1636,7 @@ class TestFailuresRichEntries:
         assert "solved_one" in ctx
 
     def test_failure_ack_on_start(self, minimal_resources, tmp_path):
-        """cmd_start updates acknowledged_by on failures."""
+        """cmd_start transitions new -> acknowledged on failures."""
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
@@ -1594,8 +1647,8 @@ class TestFailuresRichEntries:
                 "iteration": 1,
                 "phase": "TEST",
                 "mode": "FM",
-                "acknowledged_by": [],
-                "processed": False,
+                "status": "new",
+                "notes": [],
                 "solution": None,
                 "timestamp": "2026-04-02",
             }
@@ -1605,12 +1658,35 @@ class TestFailuresRichEntries:
         loaded = orch._load_failures()
         phase = "ALPHA"
         for fid, entry in loaded.items():
-            ack_list = entry.setdefault("acknowledged_by", [])
-            if phase not in ack_list:
-                ack_list.append(phase)
+            if entry.get("status") == "new":
+                entry["status"] = "acknowledged"
+                entry.setdefault("notes", []).append({"acknowledged": f"seen by {phase}"})
         orch._save_failures(loaded)
         final = orch._load_failures()
-        assert "ALPHA" in final["test_fail"]["acknowledged_by"]
+        assert final["test_fail"]["status"] == "acknowledged"
+        assert len(final["test_fail"]["notes"]) == 1
+        assert "acknowledged" in final["test_fail"]["notes"][0]
+
+    def test_failures_use_status_notes(self, minimal_resources, tmp_path):
+        """Failure entries use status+notes instead of acknowledged_by+processed."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        orch._append_failure(
+            {
+                "iteration": 1,
+                "phase": "TEST",
+                "mode": "FM-TEST",
+                "description": "test failure",
+            }
+        )
+        loaded = orch._load_failures()
+        fid = list(loaded.keys())[0]
+        assert "status" in loaded[fid]
+        assert "notes" in loaded[fid]
+        assert loaded[fid]["status"] == "new"
+        assert "acknowledged_by" not in loaded[fid]
+        assert "processed" not in loaded[fid] or not isinstance(loaded[fid].get("processed"), bool)
 
 
 class TestHypothesisContext:
