@@ -477,6 +477,7 @@ def _build_context(state: dict | None = None, phase: str = "", event: str = "") 
         "checklist": _guardian_checklist(),
         "benchmark_info": benchmark_info,
         "prior_hyp": prior_hyp,
+        "record_instructions": s.get("record_instructions", ""),
     }
     # Agent instructions - resolve via :: namespace (FULL::PLAN has agents for end review)
     agent_phase_key = _resolve_agents(phase or s.get("current_phase", ""))

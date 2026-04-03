@@ -616,6 +616,12 @@ IMPLEMENT:
       - Don't "improve" unrelated code (scope creep)
       - Each change must have predict/verify reflection
 
+      **Context & Failure Acknowledgment**: When context messages or failures are active,
+      each agent MUST write a rich acknowledgment note:
+      - Context: `{CMD} context --note <id> --message "Action: <what was done>. Referenced by: <agents>. Impact: <how>."`
+      - Failures: investigate each failure and note findings
+      Do NOT leave entries with shallow "seen by" notes.
+
       **WHEN DONE**: write summary of changes to a file, then:
       ```
       {CMD} end --evidence "implemented N changes per plan" --output-file "path/to/impl.md"
@@ -693,6 +699,12 @@ TEST:
       ```
       {CMD} log-failure --mode "FM-NAME" --desc "description"
       ```
+
+      **Context & Failure Acknowledgment**: When context messages or failures are active,
+      each agent MUST write a rich acknowledgment note:
+      - Context: `{CMD} context --note <id> --message "Action: <what was done>. Referenced by: <agents>. Impact: <how>."`
+      - Failures: investigate each failure and note findings
+      Do NOT leave entries with shallow "seen by" notes.
 
       **WHEN DONE**:
       ```
@@ -776,6 +788,12 @@ REVIEW:
       **Do NOT re-evaluate the benchmark.** Review code and benchmark results only.
 
       **Goal**: four agents review the work IN PARALLEL. This is NOT a rubber stamp.
+
+      **Context & Failure Acknowledgment**: When context messages or failures are active,
+      each agent MUST write a rich acknowledgment note:
+      - Context: `{CMD} context --note <id> --message "Action: <what was done>. Referenced by: <agents>. Impact: <how>."`
+      - Failures: investigate each failure and note findings
+      Do NOT leave entries with shallow "seen by" notes.
 
       {spawn_instruction}
       Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.

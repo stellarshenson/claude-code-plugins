@@ -2460,3 +2460,158 @@ class TestRecordInstructions:
         )
         with pytest.raises(SystemExit):
             orch._load_state()
+
+    def test_record_instructions_in_context(self, minimal_resources, tmp_path):
+        """record_instructions from state appears in _build_context output."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        orch.FAILURES_FILE = tmp_path / "failures.yaml"
+        orch.STATE_FILE = tmp_path / "state.yaml"
+        state = {
+            "iteration": 1,
+            "total_iterations": 1,
+            "type": "test_workflow",
+            "objective": "test",
+            "benchmark_cmd": "",
+            "current_phase": "ALPHA",
+            "phase_status": "pending",
+            "record_instructions": "Update journal. Git push.",
+        }
+        orch._save_state(state)
+        ctx = orch._build_context(state, phase="ALPHA", event="start")
+        assert ctx["record_instructions"] == "Update journal. Git push."
+
+
+class TestStandaloneActionDispatch:
+    """Tests for standalone generative action dispatch via _claude_evaluate."""
+
+    def test_standalone_action_resolves_prompt_and_calls_claude(self, tmp_path):
+        """Standalone generative action resolves template vars and calls _claude_evaluate."""
+        resources = tmp_path / "resources"
+        resources.mkdir()
+
+        (resources / "workflow.yaml").write_text("""
+WORKFLOW::SOLO:
+  cli_name: solo_workflow
+  description: "Workflow with standalone generative action"
+  phases:
+    - name: WORK
+""")
+
+        (resources / "phases.yaml").write_text("""
+actions:
+  ACTION::SOLO_ACTION:
+    cli_name: solo_action
+    type: generative
+    execution: standalone
+    description: "A standalone generative action"
+    prompt: "Summarise iteration {iteration} output: {phase_output}"
+
+shared_gates:
+  skip:
+    gatekeeper_skip:
+      mode: standalone_session
+      prompt: "Skip {phase} {iteration} {itype} {objective}: {reason}"
+    gatekeeper_force_skip:
+      mode: standalone_session
+      prompt: "Force-skip {phase} {iteration}: {reason}"
+WORK:
+  auto_actions:
+    on_complete: [solo_action]
+  start:
+    template: "Start work. Objective: {objective}"
+    agents:
+      - name: readback
+        mode: standalone_session
+        prompt: "Phase {phase}: {understanding}"
+  execution:
+    agents:
+      - name: worker
+        display_name: Worker
+        prompt: "Do work"
+  end:
+    template: "End work."
+    agents:
+      - name: gatekeeper
+        mode: standalone_session
+        prompt: "Phase {phase}: {evidence}"
+""")
+
+        (resources / "app.yaml").write_text("""
+app:
+  name: solo-test
+  description: "Standalone test"
+  cmd: "python orchestrate.py"
+  artifacts_dir: ".solo-test"
+display:
+  separator: "-"
+  separator_width: 40
+  header_char: "="
+  header_width: 40
+banner:
+  header: "{header_line}\\n{iter_label}\\n{header_line}\\n"
+  progress_current: "**{p}**"
+  progress_done: "~~{p}~~"
+footer:
+  start: "\\n{separator_line}\\n"
+  end: "\\n{separator_line}\\n"
+  final: "\\n{separator_line}\\n"
+messages:
+  no_active: "No active iteration."
+  validate_success: "OK"
+  validate_issues: "{count} issues"
+  validate_item: "  {num}. {issue}"
+  benchmark_driven_label: "benchmark-driven {iteration}"
+  benchmark_complete: "Benchmark conditions met."
+  benchmark_safety_cap: "WARNING: {count} iterations."
+cli:
+  description: "Solo test CLI"
+  epilog: "Usage: {cmd}"
+  commands:
+    new: "New"
+    start: "Start"
+    end: "End"
+    status: "Status"
+  args:
+    objective: "Objective"
+    iterations: "Iterations"
+""")
+
+        orch._initialize(resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch.STATE_FILE = tmp_path / "state.yaml"
+        state = {
+            "type": "solo_workflow",
+            "current_phase": "WORK",
+            "iteration": 2,
+            "total_iterations": 3,
+            "objective": "test standalone",
+            "benchmark_cmd": "",
+            "phase_status": "pending",
+            "record_instructions": "",
+            "phase_outputs": {"WORK": "implemented feature X"},
+        }
+        orch._save_state(state)
+
+        with patch.object(orch, "_claude_evaluate", return_value=(True, "PASS")) as mock_eval:
+            result = orch._run_auto_actions("WORK", state)
+            mock_eval.assert_called_once()
+            resolved_prompt = mock_eval.call_args[0][0]
+            assert "iteration 2" in resolved_prompt
+            assert "implemented feature X" in resolved_prompt
+        assert result is False
+
+
+class TestRecordPhaseTemplate:
+    """Tests for RECORD phase template content in real resources."""
+
+    def test_record_template_has_conditional_commit(self, auto_build_claw_resources):
+        """RECORD phase template contains conditional commit language."""
+        orch._initialize(auto_build_claw_resources)
+        resolved_phase = orch._resolve_phase("RECORD")
+        phase_obj = orch._MODEL.phases.get(resolved_phase)
+        assert phase_obj is not None, "RECORD phase not found in model"
+        template = phase_obj.start
+        assert "If NO code changes" in template or "If no code changes" in template
+        assert "{record_instructions}" in template

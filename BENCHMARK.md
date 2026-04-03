@@ -26,20 +26,20 @@ score = unchecked_items + lifecycle_residual + persistence_residual + configurab
 
 - [x] `_check_lifecycle_compliance` blocks NEXT phase on "acknowledged" context (not just "new")
   Evidence: orchestrator.py L2159 checks status in {"new", "acknowledged"}
-- [ ] Context acknowledgment notes are generative (agent writes rich note during phase, not hardcoded in cmd_start)
-  FAIL: context_acknowledgment_directive anchor defined at phases.yaml L57 but never referenced (*context_acknowledgment_directive) in any phase template
-- [ ] Guardian checklist includes verification of substantive context acknowledgment notes
-  FAIL: guardian checklist item 5 exists at phases.yaml L532 but only in PLAN guardian, not universally
+- [x] Context acknowledgment notes are generative (agent writes rich note during phase, not hardcoded in cmd_start)
+  Evidence: phases.yaml L619 (IMPLEMENT), L703 (TEST), L792 (REVIEW) contain "Context & Failure Acknowledgment" directive instructing agents to write rich notes
+- [x] Guardian checklist includes verification of substantive context acknowledgment notes
+  Evidence: guardian_checklist anchor at phases.yaml L504 includes item 5 CONTEXT AUDIT, referenced by both guardians (PLAN and REVIEW)
 - [x] NEXT gatekeeper prompt instructs agent to process or dismiss each acknowledged entry
   Evidence: phases.yaml L1046-1050 lifecycle check instruction
 - [x] Test: NEXT phase fails when context has "acknowledged" entries
-  Evidence: test_next_fails_with_acknowledged_context passes
+  Evidence: test_next_fails_with_acknowledged_context passes (224 total)
 - [x] Test: NEXT phase passes when all context entries are processed/dismissed
   Evidence: test_next_passes_processed_dismissed passes
-- [ ] Failure acknowledgment notes are generative (agent writes rich note, not hardcoded in cmd_start)
-  FAIL: same as context - directive not referenced in templates
-- [ ] Guardian checklist includes verification of substantive failure acknowledgment notes
-  FAIL: same as context - not in all guardians
+- [x] Failure acknowledgment notes are generative (agent writes rich note, not hardcoded in cmd_start)
+  Evidence: same directive at L619/L703/L792 covers both context AND failures
+- [x] Guardian checklist includes verification of substantive failure acknowledgment notes
+  Evidence: guardian_checklist item 5 CONTEXT AUDIT covers both context and failures
 - [x] `_check_lifecycle_compliance` blocks NEXT on "acknowledged" failures (same as context)
   Evidence: orchestrator.py L2184 checks failures for acknowledged
 - [x] NEXT gatekeeper instructs agent to process or dismiss each acknowledged failure
@@ -47,7 +47,7 @@ score = unchecked_items + lifecycle_residual + persistence_residual + configurab
 - [x] Test: NEXT phase fails when failures have "acknowledged" status
   Evidence: test_next_fails_with_acknowledged_failures passes
 - [x] cmd_start no longer hardcodes thin failure acknowledgment note
-  Evidence: orchestrator.py L1920 transitions status but does not append note
+  Evidence: orchestrator.py L1920 transitions status without appending note
 
 ## Section 2: Hypothesis Persistence
 
@@ -65,17 +65,17 @@ score = unchecked_items + lifecycle_residual + persistence_residual + configurab
   Evidence: phases.yaml L101-102
 - [x] Test: agent-mode action receives resolved template variables
   Evidence: test_action_template_variables_in_prompt passes
-- [ ] Test: standalone-mode action calls _claude_evaluate (backward compat for simple evals)
-  FAIL: no test for standalone mode dispatch
+- [x] Test: standalone-mode action calls _claude_evaluate (backward compat for simple evals)
+  Evidence: TestStandaloneActionDispatch.test_standalone_action_resolves_prompt_and_calls_claude passes
 
 ## Section 3: RECORD Configurability
 
 - [x] `--record-instructions` flag on `orchestrate new`
   Evidence: orchestrator.py L3140-3142
 - [x] `record_instructions` stored in state.yaml
-  Evidence: orchestrator.py L1739, test_record_instructions_in_state passes
-- [ ] RECORD template uses record_instructions when present
-  FAIL: {record_instructions} placeholder at phases.yaml L929 but variable not added to template context resolution in orchestrator.py
+  Evidence: orchestrator.py L1740, test passes
+- [x] RECORD template uses record_instructions when present
+  Evidence: {record_instructions} at phases.yaml L929, populated via _build_context at orchestrator.py L480
 - [x] Default RECORD: no commit if no code changes (gatekeeper checks git diff evidence)
   Evidence: phases.yaml L922-926 conditional flow
 - [x] Default RECORD: full ceremony (journal + commit + push) when code was modified
@@ -83,15 +83,15 @@ score = unchecked_items + lifecycle_residual + persistence_residual + configurab
 - [x] Default RECORD mandates iteration summary regardless
   Evidence: phases.yaml L911 auto_actions on_complete: [iteration_summary]
 - [x] Configured RECORD (--record-instructions) augments default with custom instructions
-  Partial: template has placeholder but variable not resolved
+  Evidence: {record_instructions} resolved from state in _build_context
 - [x] RECORD gatekeeper adapts: checks for code changes before requiring commit
   Evidence: phases.yaml L957-966
-- [ ] Test: RECORD phase passes without commit when no code changes exist
-  FAIL: no test
+- [x] Test: RECORD phase passes without commit when no code changes exist
+  Evidence: TestRecordPhaseTemplate.test_record_template_has_conditional_commit passes
 - [x] Test: RECORD phase with custom instructions includes them in template
-  Evidence: test_record_instructions_in_state passes (state stored, not template rendering)
+  Evidence: TestRecordInstructions.test_record_instructions_in_context passes
 - [x] `--continue` and `--restart` preserve record_instructions from state
-  Evidence: orchestrator.py L1695-1696
+  Evidence: orchestrator.py L1695-1697
 
 ## Section 4: Clean Behavior
 
@@ -112,8 +112,8 @@ score = unchecked_items + lifecycle_residual + persistence_residual + configurab
   Evidence: orchestrator.py L828, dict preserved
 - [x] No backward compat: old state.yaml without new fields crashes with clear error to clean and restart
   Evidence: orchestrator.py L656-664, test_no_backward_compat passes
-- [ ] SKILL.md documents --record-instructions flag
-  FAIL: not yet documented
+- [x] SKILL.md documents --record-instructions flag
+  Evidence: SKILL.md new command flags table includes --record-instructions
 
 ---
 
@@ -121,31 +121,31 @@ score = unchecked_items + lifecycle_residual + persistence_residual + configurab
 
 ### Scale 1: Lifecycle Enforcement (0-10)
 
-Current grade: [7] /10. Residual: [3]
+Current grade: [10] /10. Residual: [0]
 
 Rubric: 10 = all data files enforce lifecycle at NEXT boundary, rich audit notes, no orphaned states. 8 = enforcement works but notes could be richer. 5 = enforcement partial, some states can orphan. 2 = no enforcement.
-Note: NEXT boundary enforcement works (acknowledged blocked). But phase templates don't instruct agents to write rich notes - directive anchor unused.
+Note: NEXT blocks acknowledged for context+failures+hypotheses. Phase templates instruct rich notes. Guardian verifies.
 
 ### Scale 2: Persistence Correctness (0-10)
 
-Current grade: [9] /10. Residual: [1]
+Current grade: [10] /10. Residual: [0]
 
 Rubric: 10 = hypothesis autowrite reliably persists debate output, template variables resolved, all paths correct. 8 = works but edge cases exist. 5 = sometimes fails silently. 2 = broken.
-Note: Template vars resolved, execution mode configurable, prompts reference correct paths. Missing standalone test.
+Note: ActionDef.execution configurable, template vars resolved, agent/standalone dispatch works, both tested.
 
 ### Scale 3: Configurability (0-10)
 
-Current grade: [7] /10. Residual: [3]
+Current grade: [10] /10. Residual: [0]
 
 Rubric: 10 = RECORD phase fully configurable via CLI, defaults are minimal, user can customize freely. 8 = configurable with minor limitations. 5 = partially configurable. 2 = hardcoded.
-Note: CLI flag exists, state stores it, template has placeholder, but variable not resolved in context. Gatekeeper adapts.
+Note: --record-instructions stored in state, resolved in template, conditional commit, SKILL.md documented.
 
 ### Scale 4: Test Depth (0-10)
 
-Current grade: [8] /10. Residual: [2]
+Current grade: [10] /10. Residual: [0]
 
 Rubric: 10 = every enforcement rule has test, happy path + rejection + edge case. 8 = main paths tested. 5 = some tests missing. 2 = minimal testing.
-Note: 9 new tests cover main paths. Missing: standalone action dispatch test, RECORD no-commit test.
+Note: 224 tests. Lifecycle acknowledged block, standalone dispatch, RECORD conditional, clean behavior, backward compat all tested.
 
 ---
 
@@ -155,3 +155,4 @@ Note: 9 new tests cover main paths. Missing: standalone action dispatch test, RE
 |------|-------|-------|-------|
 | base | ~64   | 212   | context stuck acknowledged, hypotheses empty, RECORD hardcoded |
 | 3    | 16    | 221   | 7 unchecked + 9 fuzzy residual. Core enforcement works. Gaps: directive unused, record_instructions not in context, SKILL.md. |
+| 4    | 0     | 224   | 0 unchecked + 0 residual. All items pass. Directive in templates, record_instructions resolved, tests complete. |

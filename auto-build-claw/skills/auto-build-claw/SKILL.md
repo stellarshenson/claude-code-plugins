@@ -64,6 +64,19 @@ This gives the orchestrator a structured objective it can read in full at each p
 
 With `--iterations 0`, the orchestrator runs indefinitely until the benchmark score reaches 0 (all checklist conditions met). A safety cap of 20 iterations prevents runaway execution.
 
+### `new` command flags
+
+| Flag | Description |
+|------|-------------|
+| `--type` | Iteration type: `full`, `gc`, or `hotfix` (required) |
+| `--objective` | What the iterations aim to achieve (required) |
+| `--iterations` | Number of cycles. `0` = unlimited until benchmark passes. Default: 1 |
+| `--benchmark` | Generative instruction evaluated during TEST phase |
+| `--continue` | Resume an interrupted session from where it left off |
+| `--restart` | Restart current iteration from beginning (optionally update objective/benchmark/iterations) |
+| `--dry-run` | Show what would happen without executing |
+| `--record-instructions` | Custom instructions for RECORD phase (e.g. `"Update .claude/JOURNAL.md, git add, commit, push"`). Default: no journal/git unless code changes exist |
+
 ## MANDATORY: All work goes through the orchestrator
 
 **NO EXCEPTIONS.** Every code change, every file edit, every commit MUST happen within an orchestrator phase. Do NOT:
