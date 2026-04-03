@@ -54,12 +54,12 @@ Broken items weighted 3x because they cause runtime failures.
 - [x] HYPOTHESIS compliance check verifies hypotheses.yaml is non-empty AND entries pass richness
   Evidence: _check_lifecycle_compliance calls _validate_hypothesis_richness, sys.exit(1) on errors. Deferred entries skipped.
 
-## Section 2b: Plan Output Quality
+## Section 2b: Plan Quality Gatekeeper Checklist
 
-- [ ] _validate_plan_output checks for structural sections (files, changes, acceptance, risk)
-- [ ] PLAN phase end calls _validate_plan_output programmatically
-- [ ] PLAN output >= 300 chars with at least 1 file reference
-- [ ] Test: plan validation catches missing sections
+- [ ] PLAN gatekeeper prompt has explicit checklist: specific files, root causes, acceptance criteria, risk, predictions, dependencies
+- [ ] PLAN gatekeeper FAIL instruction for missing/vague items (not just "evaluate quality")
+- [ ] PLAN gatekeeper checks that plan depth matches what EnterPlanMode would produce: explore alternatives, have contrarian challenge, justify selected approach
+- [ ] PLAN template instructs: explore 2-3 approaches, have review agents challenge, select with justification (same rigor as EnterPlanMode without the interactive mode)
 
 ## Section 3: Missing Enforcement
 

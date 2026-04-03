@@ -148,15 +148,20 @@ Fail programmatically if ANY entry fails richness checks. Error message names th
   - Predict: thin hypotheses get rejected by code
   - Outcome: hypothesis entries are always self-contained action plans
 
-### Plan output quality (no enforcement)
+### Plan output quality (gatekeeper checklist, not code)
 
-Same gap as RESEARCH and HYPOTHESIS - the PLAN phase produces a plan file but nothing validates its structure. A good plan must have: specific files to modify, concrete changes per file, root cause per target, acceptance criteria, risk assessment, predicted impact. Currently this is only checked by the LLM gatekeeper.
+Unlike RESEARCH (structural sections) and HYPOTHESIS (field richness), PLAN quality is inherently generative - whether a root cause is correct or acceptance criteria are realistic requires LLM judgment. A programmatic validator would be prompt theater.
 
-Fix: add `_validate_plan_output(output_content: str)` with structural checks:
-- Required sections: at least 2 of (files, changes, acceptance, risk, predicted impact)
-- At least 1 file path reference
-- Total length >= 300 chars
-- Called from cmd_end for PLAN phase
+The fix is a rigorous PLAN gatekeeper checklist. The gatekeeper already runs - it just needs teeth. Update the PLAN gatekeeper prompt with an explicit checklist that must ALL pass:
+- [ ] Plan names specific files to modify (not "update the module")
+- [ ] Each change has a root cause identified
+- [ ] Each change has acceptance criteria that can be verified
+- [ ] Risk assessment present (what could go wrong)
+- [ ] Predictions with metrics (from X to Y)
+- [ ] Dependencies between changes identified (ordering)
+- FAIL if ANY item is missing or vague
+
+The "explore 2-3 alternatives, have contrarian challenge, select with justification" instruction exists in PLANNING::PLAN (work breakdown) but NOT in the shared PLAN phase used by FULL workflow. This planning rigor must be in ALL plan phases - the same depth that EnterPlanMode provides (explore alternatives, agent review, justified selection) without requiring interactive mode.
 
 ## Exit Conditions
 
