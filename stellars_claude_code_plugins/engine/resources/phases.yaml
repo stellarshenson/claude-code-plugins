@@ -167,20 +167,17 @@ FULL::RESEARCH:
       **Iteration**: {iteration}
       {iteration_purpose}
       {prior_context}{plan_context}
-      **Goal**: understand the problem space BEFORE forming hypotheses. Gather evidence,
-      read code, check prior results, understand what exists and what's missing.
+      **Your role: Research Manager.** You own the quality of this phase's output.
+      Three specialist agents work for you. You dispatch them, synthesize their findings
+      into a cohesive research document, and ensure it is rich enough that HYPOTHESIS,
+      PLAN, and IMPLEMENT can do their jobs without re-reading the codebase.
 
-      **MANDATORY output structure**: The merged research output MUST contain these sections:
-      1. **Current State Summary**: what exists, what works, key metrics (line counts, test counts, file counts)
-      2. **Gap Analysis**: what's missing vs what the objective requires, with specific file/function references
-      3. **File Inventory**: list of relevant files with their purpose and line counts
-      4. **Risk Assessment**: what could go wrong, dependencies, complexity concerns
+      If the agents bring back shallow findings, send them back. If there are gaps
+      between what the agents found and what downstream phases need, fill them yourself
+      or dispatch agents again. The research document you produce is the foundation
+      for ALL subsequent work - if it's thin, everything downstream will be thin.
 
-      Each agent finding MUST follow this format:
-      - **FINDING**: what was discovered (1-2 sentences)
-      - **EVIDENCE**: specific code references (file:line), metrics, or test output
-      - **IMPACT**: why this matters for the objective
-      - **FILES**: specific file paths involved
+      **Dispatch** 3 specialist agents:
 
       {spawn_instruction}
       Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
@@ -189,21 +186,28 @@ FULL::RESEARCH:
 
       **CRITICAL: This phase is READ-ONLY.** Do NOT modify any project files.
       Do NOT use Edit, Write, or any tool that changes files. Only gather information.
-      Show your reasoning for each decision and finding.
-      The output feeds directly into HYPOTHESIS where agents debate what to do with it.
 
       **Investigate unsolved failures**: If prior failures exist with unsolved status,
       investigate them as root causes. Each unsolved failure is an investigation target.
 
-      **AFTER all 3 agents return**, merge their findings into a single document.
+      **Synthesize**: After all 3 agents return, synthesize their findings into a single
+      document with these MANDATORY sections:
+      1. **Current State Summary**: what exists, what works, key metrics (line counts, test counts, file counts)
+      2. **Gap Analysis**: what's missing vs what the objective requires, with specific file/function references
+      3. **File Inventory**: list of relevant files with their purpose and line counts
+      4. **Risk Assessment**: what could go wrong, dependencies, complexity concerns
 
-      **BEFORE calling end**, self-evaluate the merged output against this checklist:
-      - [ ] **Hypothesis readiness**: Are root causes identified (not just symptoms)? Can someone form testable hypotheses from these findings alone?
-      - [ ] **Plan readiness**: Are specific files, functions, and line numbers documented? Can someone write a plan without re-reading the codebase?
-      - [ ] **Implementation readiness**: Are function signatures, patterns, and dependencies mapped? Can someone write code from these findings?
-      - [ ] **Gap check**: What questions remain unanswered? What would you need to know that isn't here?
+      Cross-reference agent findings. Resolve contradictions. Fill gaps where one agent
+      found something relevant to another's area. Add your own findings if agents missed
+      something obvious.
 
-      If ANY criterion fails: go back to the relevant agent and fill the gap. Do NOT call end with research that would make downstream phases guess or re-read code.
+      **Quality gate** - before calling end, verify your synthesized output passes:
+      - [ ] **Hypothesis readiness**: root causes identified (not symptoms). Testable hypotheses can be formed from this alone
+      - [ ] **Plan readiness**: specific files, functions, line numbers documented. A planner can identify changes without re-reading code
+      - [ ] **Implementation readiness**: function signatures, patterns, dependencies mapped. An implementer can write code from this
+      - [ ] **Gap check**: no unanswered questions that would force downstream phases to guess
+
+      If ANY criterion fails: dispatch agents again to fill gaps, or investigate yourself.
 
       **AFTER checklist passes**, write final findings to a file, then:
       ```
