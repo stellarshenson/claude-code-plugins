@@ -175,6 +175,14 @@ messages:
   iteration_plan_header: "**Iteration plan from planning phase**:"
   iteration_plan_content: "  {plan}..."
   iteration_remaining: "Remaining: {remaining}"
+  session_summary: |
+    ┌─ Session ──────────────────────────────────────────────
+    │ Objective:  {summary_objective}
+    │ Workflow:   {summary_workflow}
+    │ Iterations: {summary_iterations}
+    │ Benchmark:  {summary_benchmark}
+    │ Session:    {summary_session}
+    └────────────────────────────────────────────────────────
 
   # ── Benchmark-driven mode ──
   # Shown in run-until-complete mode (--iterations 0)

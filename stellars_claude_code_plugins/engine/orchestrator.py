@@ -1861,6 +1861,37 @@ def cmd_new(args) -> None:
                     )
                 )
 
+    # Session summary
+    obj_trunc = objective[:50] + "..." if len(objective) > 50 else objective
+    phase_count = len(type_info["phases"])
+    iter_display = (
+        "unlimited (safety cap: {})".format(_MODEL.app.config.get("safety_cap_iterations", 20))
+        if total_iterations == 0
+        else str(total_iterations)
+    )
+    bm_display = (
+        "no"
+        if not benchmark_cmd
+        else "yes - "
+        + benchmark_cmd.strip()[:50]
+        + ("..." if len(benchmark_cmd.strip()) > 50 else "")
+    )
+    session_display = (
+        f"continuing from iteration {old_state['iteration']}"
+        if old_state and (continue_session or restart_session)
+        else "fresh start"
+    )
+    print(
+        _msg(
+            "session_summary",
+            summary_objective=obj_trunc,
+            summary_workflow=f"{run_type} ({phase_count} phases)",
+            summary_iterations=iter_display,
+            summary_benchmark=bm_display,
+            summary_session=session_display,
+        )
+    )
+
     print("\n" + _msg("iteration_begin", cmd=CMD))
 
 
@@ -2063,25 +2094,15 @@ def _record_phase_outputs(
             state["phase_outputs"] = {}
         state["phase_outputs"][phase] = output_content
 
-        # Also save to phase subfolder
+        # Save to phase subfolder as output.md ONLY if the output-file
+        # is NOT already inside the phase directory (avoids duplicates)
         pdir = _phase_dir(state)
-        output_dest = pdir / "output.md"
-        md_lines = []
-        for line in output_content.split("\n"):
-            if (
-                line.strip()
-                and not line.startswith("#")
-                and not line.startswith("-")
-                and not line.startswith("|")
-            ):
-                md_lines.append(line + "<br>")
-            else:
-                md_lines.append(line)
-        md_content = "\n".join(md_lines)
-        output_dest.write_text(
-            f"# {phase} Output\n\n{md_content}\n",
-            encoding="utf-8",
-        )
+        if not str(output_file_path).startswith(str(pdir)):
+            output_dest = pdir / "output.md"
+            output_dest.write_text(
+                f"# {phase} Output\n\n{output_content}\n",
+                encoding="utf-8",
+            )
     elif evidence:
         # Evidence stored as gap-fill only if no --output-file
         if "phase_outputs" not in state:
