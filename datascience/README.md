@@ -17,7 +17,9 @@ Data science project standards plugin for Claude Code. Enforces notebook structu
 | `/datascience:new-project` | Scaffold a new project from [copier-data-science](https://github.com/stellarshenson/copier-data-science) template |
 | `/datascience:notebook` | Create a properly structured Jupytext notebook with all sections |
 | `/datascience:review` | Review notebook/script against all standards, produce violation checklist |
-| `/datascience:style` | Quick reference for rich output colors and patterns |
+| `/datascience:style` | Apply rich output styling standards - fix colors, print patterns, missing formatting |
+| `/datascience:fix-notebook` | Restructure a notebook to comply with all standards (non-destructive) |
+| `/datascience:fix-project` | Port existing project to copier-data-science template or update to latest |
 
 ## Standards Enforced
 

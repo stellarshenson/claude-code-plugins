@@ -1,23 +1,44 @@
 ---
-description: Quick reference for rich output styling patterns and colors
-allowed-tools: [Read]
-argument-hint: "what to style, e.g. 'table columns' or 'status colors' or 'ML evaluation'"
+description: Apply rich output styling standards to a notebook or script - fix colors, formatting, print patterns
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
+argument-hint: "path to file to fix, e.g. 'notebooks/01-kj-analysis.py'"
 ---
 
-# Rich Style Reference
+# Fix Rich Output Styling
 
-Quick lookup for rich output styling. Read the user's request and show the relevant patterns from the rich-output skill.
+Read a notebook or script and fix all rich output to comply with standards.
 
-## Full Reference
+## What to fix
 
-Invoke the `datascience:rich-output` skill knowledge and show the relevant section:
+1. **Multiple individual prints -> single multiline print**
+   - Find sequences of `rich.print()` or `rprint()` calls for related output
+   - Merge into single multiline call
 
-- **"colors"** / **"palette"** -> show text color table (headers, values, files, status)
-- **"table"** / **"columns"** -> show table column styles
-- **"status"** / **"indicators"** -> show status colors and symbols
-- **"evaluation"** / **"ML"** / **"TP FP"** -> show ML evaluation colors
-- **"matplotlib"** / **"plots"** -> show hex colors for matplotlib
-- **"progress"** / **"bars"** -> show progress bar pattern
-- **"all"** / no argument -> show everything
+2. **Wrong colors -> semantic colors**
+   - `cyan` for values -> `dark_sea_green` (no units) or `light_sea_green` (with units)
+   - `green` for success -> `dark_sea_green`
+   - `red` for error -> `indian_red`
+   - `yellow` for warning -> `dark_goldenrod`
+   - Hex colors in rich -> standard named colors
+   - `white` for headers -> `medium_purple`
 
-Always include a copy-pasteable code example for the requested pattern.
+3. **Missing rich formatting**
+   - Plain `print()` for structured output -> `rich.print()` with semantic colors
+   - f-strings without color for metrics/status -> add appropriate colors
+   - Tables without styled columns -> add column styles (grey70, light_coral, steel_blue)
+
+4. **Import fixes**
+   - Missing `import rich.jupyter as rich` or `from rich import print as rprint`
+   - Rich import not in the imports cell (notebook)
+
+5. **Progress bar patterns**
+   - Setup text in same cell as Progress bar -> split into separate cells
+   - tqdm where rich.progress would work -> suggest replacement
+
+## Process
+
+1. Read the file
+2. List all violations found (with line numbers)
+3. ASK user: "Found N styling issues. Fix all, or let me show them first?"
+4. Apply fixes
+5. Show summary of what changed

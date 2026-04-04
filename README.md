@@ -31,7 +31,7 @@ This project provides a shared YAML-driven orchestration engine that pulls agent
 |--------|--------|-------------|
 | [auto-build-claw](auto-build-claw/) | 3 | Autonomous build iteration orchestrator with multi-agent review |
 | [devils-advocate](devils-advocate/) | 5 | Critical document analysis with persona-driven risk scoring |
-| [datascience](datascience/) | 3 | Notebook structure, rich output styling, copier scaffolding, compliance review |
+| [datascience](datascience/) | 3 | Notebook structure, rich output styling, copier scaffolding, compliance fixes |
 
 ## auto-build-claw
 
@@ -133,7 +133,9 @@ datascience/                           # Plugin: data science standards
     new-project.md                     # Scaffold from copier template
     notebook.md                        # Create structured notebook
     review.md                          # Compliance review
-    style.md                           # Rich color reference
+    style.md                           # Apply rich output styling fixes
+    fix-notebook.md                    # Restructure notebook to standards
+    fix-project.md                     # Port/update project to copier template
 
 .claude-plugin/marketplace.json        # Plugin marketplace registry
 ```
