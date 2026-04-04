@@ -15,12 +15,6 @@ requires-python = ">=3.12.0"
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-
-[project.urls]
-Homepage = "https://github.com/stellarshenson/claude-code-plugins"
-Repository = "https://github.com/stellarshenson/claude-code-plugins"
-Issues = "https://github.com/stellarshenson/claude-code-plugins/issues"
-
 dependencies = [
     "pyyaml",
     "tiktoken",
@@ -40,6 +34,11 @@ dev = [
 
 [project.scripts]
 orchestrate = "stellars_claude_code_plugins.engine.orchestrator:main"
+
+[project.urls]
+Homepage = "https://github.com/stellarshenson/claude-code-plugins"
+Repository = "https://github.com/stellarshenson/claude-code-plugins"
+Issues = "https://github.com/stellarshenson/claude-code-plugins/issues"
 
 [tool.setuptools]
 include-package-data = true
