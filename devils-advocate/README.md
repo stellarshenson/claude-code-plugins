@@ -8,28 +8,41 @@ Critical document analysis plugin for Claude Code. Systematically critiques docu
 |-------|-------------|
 | `devils-advocate:setup` | Build devil persona + harvest fact repository |
 | `devils-advocate:evaluate` | Generate concern catalogue + baseline scorecard |
-| `devils-advocate:iterate` | Apply corrections, re-score, produce versioned copy |
-| `devils-advocate:run` | Full workflow end-to-end (setup -> evaluate -> iterate until done) |
+| `devils-advocate:improve` | Ask user how to address concerns (suggestions / auto-apply / planning mode) |
+| `devils-advocate:iterate` | Re-score after changes, update scorecard, create versioned files |
+| `devils-advocate:run` | Full workflow: setup -> evaluate -> improve/iterate loop |
 
 ## Workflow
 
 ```
+/devils-advocate:run          # Full workflow with improvement loop
+```
+
+Or step by step:
+
+```
 /devils-advocate:setup       # 1. Build persona, harvest facts
 /devils-advocate:evaluate    # 2. Generate concerns + baseline scorecard
-/devils-advocate:iterate     # 3. Apply corrections, re-score (repeat)
+/devils-advocate:improve     # 3. Decide how to address (user/auto/planning)
+/devils-advocate:iterate     # 4. Re-score, update scorecard (repeat 3-4)
 ```
 
-Or run everything at once:
+## Improvement loop
 
-```
-/devils-advocate:run          # Full workflow
-```
+The `improve -> iterate` cycle repeats until residual risk is acceptable:
+
+1. **Improve** asks: your suggestions, auto-apply, or planning mode?
+2. AI applies changes -> creates versioned file `<name>_v<NN>_<score>.md`
+3. **Iterate** re-scores all concerns against the new text
+4. Check: stop if residual < 10% of total, or stagnation, or user accepts
+
+If the user edits the document outside Claude, run `iterate` directly - it re-scores the current state and updates `devils_advocate.md` without creating a versioned copy.
 
 ## Artefacts
 
 - `devils_advocate.md` - persona, concerns, scorecards (accumulated across iterations)
 - `fact_repository.md` - verified claims with sources
-- `<name>_v<NN>_<score>.md` - versioned corrections with embedded scorecard
+- `<name>_v<NN>_<score>.md` - versioned corrections with embedded scorecard (AI changes only)
 
 ## Scoring
 

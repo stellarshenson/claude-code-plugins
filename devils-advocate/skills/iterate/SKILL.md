@@ -1,46 +1,46 @@
 ---
 name: iterate
-description: Re-evaluate document after corrections (auto or user-made) and produce updated scorecard. Can apply corrections autonomously or simply re-score a document the user has already modified.
+description: Re-evaluate document after corrections and produce updated scorecard. Creates versioned files when AI makes changes. Re-scores in place when user made changes outside Claude.
 ---
 
 # Devil's Advocate - Iterate
 
-Re-evaluate the document and produce an updated scorecard. Two modes:
-
-1. **Auto-correct**: Claude applies corrections from the scorecard's recommended options, then re-scores
-2. **Re-score only**: User has already made corrections - just re-evaluate against the existing concern catalogue
+Re-evaluate the document and produce an updated scorecard. Called after `improve` applies changes.
 
 **Prerequisites**: `devils_advocate.md` must contain a scorecard. If not, run `/devils-advocate:evaluate` first.
 
-## FIRST: Ask the user
+## Determine mode
 
-"Did you make corrections yourself, or should I apply corrections from the scorecard?"
+Two modes based on who made the changes:
 
-- **User made corrections**: skip to Step 2 (re-evaluate). The user points to the updated document.
-- **Auto-correct**: proceed with Step 1 (apply corrections) then Step 2 (re-evaluate).
+- **AI made changes** (came from `improve` skill): a versioned copy `<name>_v<NN+1>.md` exists with corrections applied. Re-score it, add embedded scorecard, rename with score suffix.
+- **User made changes outside Claude**: no versioned copy. Re-read the original document in its current state, re-score against the existing concern catalogue, update `devils_advocate.md` with new scorecard.
 
-## Step 1: Apply corrections (auto-correct mode only)
+## Step 1: Re-evaluate
 
-1. **Copy** current version as `<name>_v<NN+1>.md` (working copy)
-2. **Apply** the recommended options from the scorecard's top gaps
-3. **Track cross-concern tensions**: some fixes create new problems
-   - Answering "why" may increase finger-pointing
-   - Adding evidence may increase verbosity
-   - Stronger language may worsen tone
+Read the document (versioned copy or current original) in full.
 
-## Step 2: Re-evaluate
-
-Read the updated document (auto-corrected or user-modified) in full.
-
-1. **Re-score** each concern against the new text
-2. **Document score changes**: "Score changed from X% to Y% because [specific change]"
+1. **Re-score** each concern against the current text
+2. **Document score changes**: "Score changed from X% to Y% because [specific text change]"
 3. **Identify new concerns** introduced by changes - add to catalogue
-4. **Recalculate overall score**
-5. If auto-correct mode: **rename** working copy to `<name>_v<NN+1>_<score>.md`
+4. **Update cross-concern tension notes**
+5. **Recalculate overall score** - total residual risk
 
-## Step 3: Embed scorecard
+## Step 2: Versioned file handling
 
-**MANDATORY**: Every versioned document ends with an embedded scorecard:
+**If AI made changes** (versioned copy exists):
+- Embed scorecard at end of the versioned document (see format below)
+- Rename to `<name>_v<NN+1>_<score>.md` where score is rounded residual risk
+- This creates the audit trail: `report_v01_89.md` -> `report_v02_34.md` -> `report_v03_12.md`
+
+**If user made changes outside Claude**:
+- Do NOT create a versioned copy
+- The user's document IS the current state
+- Only update `devils_advocate.md` with the new scorecard
+
+## Step 3: Embed scorecard (versioned files only)
+
+**MANDATORY**: Every AI-created versioned document ends with:
 
 ```markdown
 ---
@@ -57,27 +57,26 @@ Read the updated document (auto-corrected or user-modified) in full.
 
 ## Step 4: Update devils_advocate.md
 
-Append new scorecard version. Keep previous scorecards for comparison.
+**ALWAYS** (both modes): append new scorecard version to `devils_advocate.md`. Keep previous scorecards for comparison across versions.
 
-**Propose options** for remaining high-residual concerns.
+**Propose options** for remaining high-residual concerns - these feed into the next `improve` cycle.
 
 ## Stopping criteria
 
-Stop iterating when:
+Report whether stopping criteria are met:
 - Residual risk below 10% of total absolute risk
 - Top remaining gaps have residual < 3.0 each
-- Further corrections need scope changes beyond the document
+- Score stopped improving (stagnation - same or worse than previous iteration)
 - User accepts current score
 
 The score must decrease each iteration. If not, corrections are creating new problems - stop and reassess.
 
 ## When done
 
-Report: "Iteration complete. Score: [old] -> [new]. Top gaps: [list]. Run `/devils-advocate:iterate` again or accept current state."
+Report: "Iteration complete. Score: [old] -> [new]. Top gaps: [list]."
 
-**When score drops significantly** (>20% improvement): celebrate with creative British-style cheers. Examples:
-- "Jolly good show! Score plummeted from 89 to 34 - the devil is running out of ammunition."
-- "Right then, absolutely smashing work. From 54 to 18 - your toughest reader would be hard-pressed to find fault."
-- "Blimey, that's a proper transformation. The devil's gone from 'this is a problem' to 'fine, but I noticed...' across the board."
+If stopping criteria met: "Stopping criteria reached. Accept current state or continue with `/devils-advocate:improve`."
 
-Keep it genuine and proportional to the improvement. Small gains get a nod, big gains get proper cheers.
+If not met: "Continue with `/devils-advocate:improve` to address remaining gaps."
+
+**When score drops significantly** (>20% improvement): celebrate with creative British-style cheers.

@@ -30,7 +30,7 @@ This project provides a shared YAML-driven orchestration engine that pulls agent
 | Plugin | Skills | Description |
 |--------|--------|-------------|
 | [auto-build-claw](auto-build-claw/) | 3 | Autonomous build iteration orchestrator with multi-agent review |
-| [devils-advocate](devils-advocate/) | 4 | Critical document analysis with persona-driven risk scoring |
+| [devils-advocate](devils-advocate/) | 5 | Critical document analysis with persona-driven risk scoring |
 
 ## auto-build-claw
 
