@@ -82,6 +82,28 @@ Risk scoring uses a Fibonacci scale (1-8) for likelihood and impact, producing r
 
 See [devils-advocate/README.md](devils-advocate/) for scoring formula details, artefact format, and the full concern catalogue methodology.
 
+## datascience
+
+Enforces data science project standards derived from production notebook workflows. Three skills auto-trigger when working with notebooks, datasets, or rich output. Six commands fix existing code or scaffold new projects.
+
+### Usage
+
+```bash
+# Create a new project from copier template
+/datascience:new-project
+
+# Fix an existing notebook to comply with standards
+/datascience:fix-notebook notebooks/01-kj-analysis.py
+
+# Apply rich styling fixes (wrong colors, multiple prints)
+/datascience:apply-style notebooks/02-kj-train.py
+
+# Port legacy project to copier-data-science template
+/datascience:fix-project
+```
+
+See [datascience/README.md](datascience/) for the full list of standards enforced.
+
 ## Install
 
 ```bash
@@ -133,7 +155,7 @@ datascience/                           # Plugin: data science standards
     new-project.md                     # Scaffold from copier template
     notebook.md                        # Create structured notebook
     review.md                          # Compliance review
-    style.md                           # Apply rich output styling fixes
+    apply-style.md                     # Apply rich output styling fixes
     fix-notebook.md                    # Restructure notebook to standards
     fix-project.md                     # Port/update project to copier template
 
