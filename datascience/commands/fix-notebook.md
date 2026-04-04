@@ -38,14 +38,18 @@ Read a notebook and restructure it to comply with all standards. Non-destructive
 1. Read the file
 2. Run full compliance check (same as `/datascience:review`)
 3. List all violations with line numbers
-4. ASK user: "Found N structural issues. Fix all, or review the list first?"
-5. Apply fixes in order (top-down to avoid line number shifts)
-6. Show before/after summary
-7. If filename needs renaming, ASK user to confirm
+4. Apply fixes directly - user sees each edit via standard tool approval
+5. Show before/after summary
+
+## Critical questions (ASK before proceeding)
+
+- **Filename rename**: "This notebook should be `03-kj-train-model.py`. Rename?" (could break imports/references)
+- **Format conversion**: "Convert from .ipynb to Jupytext .py? The .ipynb will be gitignored." (irreversible format change)
+- **Author initials**: "What are your initials for notebook naming?" (if not obvious)
+- **Import consolidation**: if imports are scattered across 5+ cells, show the proposed consolidated cell before applying
 
 ## Rules
 
-- NEVER delete existing code - only move, wrap, or add
+- Restructure aggressively - move cells, add sections, consolidate imports
 - NEVER change logic - only structure and formatting
-- ASK before renaming files
-- If unsure about author initials, ASK
+- User confirms each edit through normal tool approval flow

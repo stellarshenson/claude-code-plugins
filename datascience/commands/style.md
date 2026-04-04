@@ -39,6 +39,5 @@ Read a notebook or script and fix all rich output to comply with standards.
 
 1. Read the file
 2. List all violations found (with line numbers)
-3. ASK user: "Found N styling issues. Fix all, or let me show them first?"
-4. Apply fixes
-5. Show summary of what changed
+3. Apply fixes directly - user sees each edit via standard tool approval
+4. Show summary of what changed

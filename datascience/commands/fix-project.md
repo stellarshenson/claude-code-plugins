@@ -78,10 +78,18 @@ If user doesn't want a full port, fix individual issues:
 - No Makefile -> create from template
 - Missing `.gitignore` entries -> add standard DS ignores (`*.ipynb`, `data/`, `models/`)
 
+## Critical questions (ASK before proceeding)
+
+- **Port mode**: "This is a legacy project without copier. Full port to copier-data-science, or fix specific issues only?"
+- **Directory moves**: "Moving notebooks/ to match copier structure. These files will move: [list]. Any that should stay?"
+- **Makefile merge**: "Your Makefile has custom targets. Merge with copier Makefile? I'll keep all your targets and add missing ones."
+- **Dependencies**: "Your requirements.txt will merge into pyproject.toml. Review the merged deps?"
+- **CI/CD paths**: "This project has CI/CD. Moving directories will break workflow paths. Update them?"
+
 ## Rules
 
-- NEVER delete files - move or copy
-- ALWAYS ask before reorganizing directories
-- Preserve git history by using `git mv` where possible
-- If project has CI/CD, warn that paths may need updating
-- Create `@archive/` for files being replaced, not deleted
+- Restructure aggressively - move files, merge configs, create directories
+- Use `git mv` to preserve history where possible
+- User confirms each significant change through normal tool approval flow
+- If project has CI/CD, warn and fix paths after restructuring
+- Archive replaced config files to `@archive/` (old Makefile, old setup.py)
