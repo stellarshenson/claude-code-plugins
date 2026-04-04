@@ -30,10 +30,18 @@ Based on the answers, write the first draft of PROGRAM.md with:
 - **Objective** (1-3 sentences, measurable)
 - **Current State** (what exists, what's broken, baseline numbers)
 - **Work Items** (flat list with scope, acceptance criteria, priority)
-- **Exit Conditions** (when to stop)
+- **Exit Conditions** (when to stop - see below)
 - **Constraints** (what not to change)
 
-Present it to the user and ASK: "Review this program. What's missing, wrong, or over-scoped?"
+ASK the user specifically about exit conditions: "When should the orchestrator stop iterating? Default options:
+1. **Score stagnation** (recommended) - stop when benchmark score doesn't improve for 2 consecutive iterations despite implementation effort
+2. **Score target** - stop when benchmark score reaches a specific value (e.g. score < 5)
+3. **Scope completion** - stop when all work items have acceptance criteria met and nothing remains to implement
+4. **Combined** - stop on whichever comes first: target reached OR stagnation OR scope complete
+
+Do you have specific exit conditions, or should I use the default (score stagnation + scope completion)?"
+
+Present the full program to the user and ASK: "Review this program. What's missing, wrong, or over-scoped?"
 
 ### Round 3+: Refine
 
@@ -76,7 +84,10 @@ Do NOT proceed to benchmark-writer or the orchestrator without explicit approval
   - Depends on: <other work items that must be done first, if any>
 
 ## Exit Conditions
-<when to stop iterating>
+Iterations stop when ANY of these is true:
+1. <primary condition - tied to benchmark score>
+2. No benchmark score improvement for 2 consecutive iterations (stagnation)
+3. All work items complete and nothing remains to implement (scope done)
 
 ## Constraints
 <what not to change>
@@ -91,6 +102,7 @@ Do NOT proceed to benchmark-writer or the orchestrator without explicit approval
 - **Scope boundaries explicit** - what CAN and CANNOT be modified
 - **Single metric** - the program should enable ONE number to optimize
 - **Logical grouping, not iteration breakdown** - work items should be grouped by logical category (e.g. "Framework extraction", "Config system", "Testing") when applicable, but NOT divided into iterations. The orchestrator's PLANNING phase decides iteration sequencing based on dependencies and scope
+- **Exit conditions tied to benchmark, not acceptance criteria** - exit conditions must reference the benchmark score, not individual work item acceptance. The benchmark IS the objective function. Default: stop on score stagnation (no improvement for 2 iterations) OR scope completion (nothing left to implement) OR score reaches effective optimum (further improvement not possible). Ask the user for specific conditions - they may have a target score or a hard iteration cap
 - **Every work item has measurable acceptance** - "improve X" is not a work item, "reduce X from 14 to 0" is
 - **Predictions and outcomes** - each work item states what will change (predict: from X to Y) and what the user gets (outcome: enables Z, unblocks W). Predictions feed into the HYPOTHESIS phase. Outcomes keep work items grounded in user value
 - **Dependencies** - if a work item requires another to be done first, state it explicitly (depends on: X). This feeds into the PLANNING phase which sequences iterations based on dependency order. No circular dependencies
