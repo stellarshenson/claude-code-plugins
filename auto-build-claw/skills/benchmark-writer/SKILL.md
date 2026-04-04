@@ -5,7 +5,15 @@ description: Write a BENCHMARK.md with measurable evaluation criteria through it
 
 # Benchmark Writer
 
-Write a `BENCHMARK.md` that produces a single number to optimize. Push hard for programmatic, measurable metrics. Subjective checklists are a last resort.
+## What is the benchmark?
+
+The benchmark is a **scalar evaluation function**. It takes the current state of the codebase and produces ONE number. That number tells the orchestrator how far from done the iteration is.
+
+It is NOT a plan. It is NOT exit conditions. It is NOT a to-do list. It is a MEASUREMENT INSTRUMENT - like a thermometer or a loss function. Every iteration, the same benchmark runs against the codebase and produces a comparable score. The score trajectory (going down for MINIMIZE, up for MAXIMIZE) shows whether iterations are making progress.
+
+**What belongs in the benchmark**: score formula, programmatic checks (commands that produce numbers), data science metrics (MSE, F1, correlation), binary checklist items (does X exist in file Y), fuzzy scales (0-10 with rubrics), iteration log tracking score trajectory.
+
+**What does NOT belong**: exit conditions ("stop when..."), completion conditions, iteration planning, implementation guidance. Those belong in PROGRAM.md.
 
 ## Prerequisites
 
