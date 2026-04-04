@@ -1,44 +1,46 @@
-name: CI
+name: Build
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: ['*']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Install dependencies
-        run: |
-          uv venv .venv
-          uv pip install --python .venv -e ".[dev]"
-
+      - uses: astral-sh/setup-uv@v4
       - name: Lint
         run: |
           uvx ruff format --check
           uvx ruff check
 
-      - name: Test
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: astral-sh/setup-uv@v4
+      - name: Install dependencies
         run: |
-          .venv/bin/pytest tests/ -v --tb=short
-
-      - name: Validate model
+          uv venv .venv
+          uv pip install --python .venv -e ".[dev]"
+      - name: Run tests
+        run: |
+          .venv/bin/pytest tests/ -v --tb=short --cov
+      - name: Validate YAML model
         run: |
           .venv/bin/python -c "
           from stellars_claude_code_plugins.engine.model import load_model, validate_model
@@ -49,7 +51,57 @@ jobs:
           print('Model validation: OK')
           "
 
+  build:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v4
+      - name: Install dependencies
+        run: |
+          uv venv .venv
+          uv pip install --python .venv -e ".[dev]"
       - name: Build wheel
         run: |
           uv pip install --python .venv build
           .venv/bin/python -m build --wheel
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-artifacts
+          path: dist/stellars_claude_code_plugins*.whl
+          if-no-files-found: error
+
+  test-install:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: package-artifacts
+      - name: Install from wheel and verify
+        run: |
+          pip install stellars_claude_code_plugins*.whl
+          python -c "from stellars_claude_code_plugins.engine.orchestrator import main; print('Import OK')"
+          python -c "from stellars_claude_code_plugins.engine.model import load_model; print('Model import OK')"
+          python -c "from stellars_claude_code_plugins.engine.fsm import PhaseFSM; print('FSM import OK')"
+          orchestrate --help
+
+  check-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress README.md auto-build-claw/README.md devils-advocate/README.md
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
