@@ -27,6 +27,15 @@
       "keywords": ["critique", "analysis", "scorecard", "risk", "devil", "advocate"],
       "category": "documentation",
       "tags": ["review", "quality", "persona", "evaluation"]
+    },
+    {
+      "name": "datascience",
+      "source": "./datascience",
+      "version": "1.0.6",
+      "description": "Data science project standards - notebook structure, rich output styling, copier scaffolding, and compliance review",
+      "keywords": ["datascience", "notebook", "jupyter", "rich", "pytorch", "polars", "copier"],
+      "category": "development",
+      "tags": ["standards", "notebook", "scaffold", "review"]
     }
   ]
 }

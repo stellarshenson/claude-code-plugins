@@ -31,6 +31,7 @@ This project provides a shared YAML-driven orchestration engine that pulls agent
 |--------|--------|-------------|
 | [auto-build-claw](auto-build-claw/) | 3 | Autonomous build iteration orchestrator with multi-agent review |
 | [devils-advocate](devils-advocate/) | 5 | Critical document analysis with persona-driven risk scoring |
+| [datascience](datascience/) | 3 | Notebook structure, rich output styling, copier scaffolding, compliance review |
 
 ## auto-build-claw
 
@@ -118,8 +119,21 @@ devils-advocate/                       # Plugin: critical document analysis
   skills/
     setup/SKILL.md                     # Build persona + fact repository
     evaluate/SKILL.md                  # Concern catalogue + scorecard
+    improve/SKILL.md                   # Decide how to address concerns
     iterate/SKILL.md                   # Apply corrections, re-score
     run/SKILL.md                       # Full workflow end-to-end
+
+datascience/                           # Plugin: data science standards
+  .claude-plugin/plugin.json           # Plugin registration
+  skills/
+    datascience/SKILL.md               # Project conventions (auto-triggered)
+    notebook-standards/SKILL.md        # Notebook structure (auto-triggered)
+    rich-output/SKILL.md               # Rich styling patterns (auto-triggered)
+  commands/
+    new-project.md                     # Scaffold from copier template
+    notebook.md                        # Create structured notebook
+    review.md                          # Compliance review
+    style.md                           # Rich color reference
 
 .claude-plugin/marketplace.json        # Plugin marketplace registry
 ```
