@@ -25,6 +25,13 @@ Read PROGRAM.md. For each work item, ASK the user - all in ONE message:
    - File existence checks (`test -f path`)
    - grep pattern counts (occurrences of a pattern that should increase/decrease)
    - Custom script output (a small Python one-liner that computes a metric)
+   - **Data science metrics** (when the objective involves models, simulations, or statistical behavior):
+     - Error metrics: MSE, RMSE, MAE, MAPE
+     - Distribution metrics: KL divergence, Wasserstein distance, Kolmogorov-Smirnov statistic
+     - Classification: F1, precision, recall, accuracy, ROC-AUC
+     - Correlation: Pearson r, Spearman rho, R-squared
+     - Statistical tests: p-values, chi-squared, t-test results
+     - Custom: any domain-specific metric computable from simulation output or model predictions
 
 2. **What's the target for each metric?** Current value -> target value
 
@@ -60,10 +67,11 @@ Done ONLY when user explicitly approves. Same approval phrases as program-writer
 ## Metric Hierarchy (prefer top, avoid bottom)
 
 1. **Programmatic command output** - `make test` failure count, `wc -l`, `grep -c`. Best. Reproducible, no LLM judgment
-2. **File/pattern existence checks** - `test -f path`, `grep -q pattern file`. Binary, fast
-3. **Computed metrics** - small Python one-liner or script that outputs a number. Good when standard tools don't cover it
-4. **Binary checklist items** - "X exists in file Y". Verified by reading code. LLM-evaluated but binary
-5. **Fuzzy scales (0-10)** - subjective grades with rubrics. Last resort. Every fuzzy scale should have a "why not programmatic?" justification
+2. **Data science metrics** - MSE, RMSE, F1, KL divergence, correlation coefficients. Computed from data/model output. Objective, comparable across iterations
+3. **File/pattern existence checks** - `test -f path`, `grep -q pattern file`. Binary, fast
+4. **Computed metrics** - small Python one-liner or script that outputs a number. Good when standard tools don't cover it
+5. **Binary checklist items** - "X exists in file Y". Verified by reading code. LLM-evaluated but binary
+6. **Fuzzy scales (0-10)** - subjective grades with rubrics. Last resort. Every fuzzy scale should have a "why not programmatic?" justification
 
 ## Score Formula Design
 
@@ -155,7 +163,10 @@ Why not programmatic: <justification>
 
 ## Rules
 
+- **Benchmark is ONLY scoring** - it produces a scalar number evaluating the current iteration. It does NOT contain exit conditions, completion conditions, or stop criteria. Those belong in PROGRAM.md. The benchmark answers "what is the score right now?" - the program answers "when do we stop?"
+- **No completion conditions section** - do NOT generate "Iterations stop when..." or "Completion Conditions" sections in BENCHMARK.md. If the user asks about exit conditions, direct them to PROGRAM.md
 - **Programmatic over generative** - if you can measure it with a command, do that instead of a checklist item
+- **Data science metrics when applicable** - if the objective involves models, simulations, statistical behavior, or data pipelines, actively propose MSE/RMSE/MAE/F1/KL-divergence/correlation metrics. These are the highest-value programmatic measures for quantitative work
 - **Every fuzzy scale justifies its existence** - "why not programmatic?"
 - **Weights reflect reality** - test failures matter more than style
 - **Fixed evaluation** - the formula doesn't change between iterations
