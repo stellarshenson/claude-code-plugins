@@ -2,6 +2,8 @@
 
 Critical document analysis plugin for Claude Code. Systematically critiques documents from the perspective of their toughest audience using structured pushback scenarios, risk scoring, and iterative improvement.
 
+Unlike qualitative tools like [grill-me](https://github.com/mattpocock/skills/tree/main/grill-me) (Socratic interview producing shared understanding) or [Devil's Advocate Protocol](https://mcpmarket.com/tools/skills/devil-s-advocate-protocol) (one-shot adversarial reasoning), this plugin takes a semi-data-science approach: every concern gets a Fibonacci risk score (1-64), each iteration produces a measurable residual, and the score trajectory (89 -> 34 -> 12) shows convergence. Versioned files with embedded scorecards create an audit trail. The math decides priority, not gut feel.
+
 ## Skills
 
 | Skill | Description |
