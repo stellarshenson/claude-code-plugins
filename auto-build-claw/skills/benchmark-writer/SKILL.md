@@ -45,6 +45,18 @@ Read PROGRAM.md. For each work item, ASK the user - all in ONE message:
 
 3. **What can't be measured programmatically?** These become fuzzy scales (0-10) with explicit rubrics - but only as a last resort. Every fuzzy scale must justify why a programmatic metric isn't possible.
 
+4. **How do we execute each check?** For every metric, define the exact execution recipe - the command, script, or procedure that produces the number. This must be repeatable and comparable across iterations:
+   - **Shell commands**: `make test`, `pytest --co -q | tail -1`, `ruff check --statistics | tail -1`
+   - **Python scripts**: inline one-liners or dedicated test scripts that output a number
+   - **Scenario tests**: for complex behaviors (UI, API, simulation), define the test procedure:
+     - Playwright/browser tests: `npx playwright test --reporter=json | jq '.stats.unexpected'`
+     - API tests: `curl -s endpoint | jq '.status'` or a pytest fixture that hits the endpoint
+     - Simulation runs: `python run_simulation.py --config test.yaml | grep 'metric:'`
+     - Generative scenario tests: a prompt template + expected output pattern (e.g. "run `claude -p 'prompt'` and check output contains X")
+   - **Comparison baselines**: for before/after metrics, store the baseline value in the benchmark and compare against current
+
+   Every check in the benchmark must have an **Execution** line showing exactly how to reproduce it. No ambiguous "verify X works" - show the command.
+
 Present proposed metrics and ask: "Which of these can we actually compute? What am I missing?"
 
 ### Round 2: Draft the benchmark
@@ -141,8 +153,17 @@ score = <formula>
 
 **Programmatic checks** (run these commands):
 1. `make test` - count failures (weight: 10x)
+   Execution: `.venv/bin/pytest tests/ -q --tb=no | tail -1`
 2. `make lint` - must be clean
-3. <custom metric command>
+   Execution: `uvx ruff check --statistics | tail -1`
+3. <custom metric>
+   Execution: <exact command that outputs the number>
+
+**Scenario tests** (if applicable):
+- <test name>
+  Execution: <exact command or script>
+  Expected: <what passing looks like>
+  Metric: <what number to extract>
 
 **Generative checks**:
 4. For each [ ] item, verify against code. Mark [x] with evidence
@@ -153,6 +174,7 @@ score = <formula>
 
 ## Section 1: <work item group>
 - [ ] <specific, verifiable item>
+  Execution: <how to check - command, grep, or read instruction>
   Evidence required: <what to check>
 
 ## Fuzzy Scales (if any)
@@ -180,3 +202,4 @@ Why not programmatic: <justification>
 - **Fixed evaluation** - the formula doesn't change between iterations
 - **Iteration log is mandatory** - tracks score trajectory
 - **Targets are specific** - "improve" is not a target, "reduce from 14 to 0" is
+- **Every check has an execution recipe** - no ambiguous "verify X works". Show the exact command, script, or procedure that produces the result. Must be repeatable across iterations so scores are comparable. For complex checks (browser tests, API calls, simulation runs, generative scenarios), include the full execution procedure with expected output pattern
