@@ -2247,11 +2247,79 @@ def _print_phase_summary(state: dict, phase: str) -> None:
     print("\n".join(summary_lines))
 
 
+def _check_note_richness(phase: str) -> None:
+    """Check that acknowledged/dismissed/processed entries have rich notes (>= 50 tokens).
+
+    Called at every phase end. Entries that transitioned from 'new' must have
+    substantive notes explaining what was done - not just 'seen by PHASE'.
+    """
+    cfg = _MODEL.app.config if _MODEL else {}
+    min_tokens = cfg.get("note_min_tokens", 50)
+
+    errors = []
+    # Check context entries
+    try:
+        ctx = _load_context()
+        for cid, entry in ctx.items():
+            if entry.get("status") in {"acknowledged", "dismissed", "processed"}:
+                notes = entry.get("notes", [])
+                if not notes:
+                    errors.append(f"Context '{cid}': status '{entry['status']}' but no notes")
+                    continue
+                # Check the latest note has enough tokens
+                latest = notes[-1]
+                if isinstance(latest, dict):
+                    note_text = str(list(latest.values())[0]) if latest else ""
+                else:
+                    note_text = str(latest)
+                tokens = _count_tokens(note_text)
+                if tokens < min_tokens:
+                    errors.append(
+                        f"Context '{cid}': latest note too short "
+                        f"({tokens} tokens, minimum {min_tokens})"
+                    )
+    except (ValueError, FileNotFoundError):
+        pass
+
+    # Check failure entries
+    try:
+        failures = _load_failures()
+        for fid, entry in failures.items():
+            if entry.get("status") in {"acknowledged", "dismissed", "processed"}:
+                notes = entry.get("notes", [])
+                if not notes:
+                    errors.append(f"Failure '{fid}': status '{entry['status']}' but no notes")
+                    continue
+                latest = notes[-1]
+                if isinstance(latest, dict):
+                    note_text = str(list(latest.values())[0]) if latest else ""
+                else:
+                    note_text = str(latest)
+                tokens = _count_tokens(note_text)
+                if tokens < min_tokens:
+                    errors.append(
+                        f"Failure '{fid}': latest note too short "
+                        f"({tokens} tokens, minimum {min_tokens})"
+                    )
+    except (ValueError, FileNotFoundError):
+        pass
+
+    if errors:
+        print("ERROR: note richness validation failed:", file=sys.stderr)
+        for err in errors:
+            print(f"  - {err}", file=sys.stderr)
+        sys.exit(1)
+
+
 def _check_lifecycle_compliance(phase: str, state: dict) -> None:
     """Check lifecycle compliance for phase-specific data.
 
     Called before gatekeeper. Hard programmatic gate - not LLM-dependent.
     """
+    # ALL phases: check note richness on context and failure entries
+    # Every acknowledged/dismissed/processed entry must have notes with >= 50 tokens
+    _check_note_richness(phase)
+
     # NEXT phase: all context/failure items must be processed (no "new" or "acknowledged")
     if phase == "NEXT" or (
         state.get("completed_phases") and "RECORD" in state.get("completed_phases", [])

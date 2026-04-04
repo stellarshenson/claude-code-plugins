@@ -2218,7 +2218,7 @@ class TestLifecycleCompliance:
                 "phase": "RESEARCH",
                 "created": "2026-04-03",
                 "status": "processed",
-                "notes": [{"processed": "added to program"}],
+                "notes": [{"processed": "Added to PROGRAM.md as work item for FSM migration from custom implementation to transitions package. Acceptance criteria defined: transitions.Machine wraps FSM class, all 115 existing tests pass unchanged, no orchestrator.py call site changes needed. Referenced by architect and product_manager agents during RESEARCH phase synthesis. Root cause confirmed: custom FSM has 258 lines that the library handles natively."}],
             }
         }
         orch._save_context(ctx)
@@ -2320,14 +2320,14 @@ class TestLifecycleAcknowledgedBlock:
                 "phase": "RESEARCH",
                 "created": "2026-04-03",
                 "status": "processed",
-                "notes": [{"processed": "added to program"}],
+                "notes": [{"processed": "Added to PROGRAM.md as work item for FSM migration from custom implementation to transitions package. Acceptance criteria defined: transitions.Machine wraps FSM class, all 115 existing tests pass unchanged, no orchestrator.py call site changes needed. Referenced by architect and product_manager agents during RESEARCH phase synthesis. Root cause confirmed: custom FSM has 258 lines that the library handles natively."}],
             },
             "item2": {
                 "message": "test2",
                 "phase": "PLAN",
                 "created": "2026-04-03",
                 "status": "dismissed",
-                "notes": [{"dismissed": "not relevant"}],
+                "notes": [{"dismissed": "Not relevant to current iteration scope. The context was about README formatting which was completed in a prior session and verified in iteration 3. No further action needed, architect confirmed during PLAN phase review. The README now has correct test counts, both plugins documented, and all architecture paths verified against disk."}],
             },
         }
         orch._save_context(ctx)
