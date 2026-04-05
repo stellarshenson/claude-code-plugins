@@ -1,6 +1,6 @@
 # datascience
 
-Data science project standards plugin for Claude Code. Enforces notebook structure, naming conventions, rich output styling, and project organization. Creates new projects from copier templates, reviews existing code for compliance, applies research-backed prompt engineering techniques, and manages project journals.
+Data science project standards plugin for Claude Code. Enforces notebook structure, naming conventions, rich output styling, and project organization. Creates new projects from copier templates, reviews existing code for compliance, and applies research-backed prompt engineering techniques.
 
 ## Skills (auto-triggered)
 
@@ -11,7 +11,6 @@ Data science project standards plugin for Claude Code. Enforces notebook structu
 | `rich-output` | Formatting output with the rich library, creating tables, progress bars |
 | `prompt-engineering` | Crafting system prompts, agent instructions, or LLM prompts |
 | `progressbars` | Implementing progress bars in scripts or notebooks (tqdm or rich) |
-| `journal` | After completing substantive work - enforces append-only entries with verification |
 
 ## Commands (user-invoked)
 
@@ -26,7 +25,6 @@ Data science project standards plugin for Claude Code. Enforces notebook structu
 | `/datascience:fix-notebook` | Restructure a notebook to comply with all standards |
 | `/datascience:fix-project` | Port existing project to copier-data-science template or update to latest |
 | `/datascience:challenge` | Full psychological prompting stack for difficult problems - stakes + incentive + challenge |
-| `/datascience:archive-journal` | Archive older journal entries, keeping last 20 in main file |
 
 ## Prompt Engineering
 
@@ -43,4 +41,3 @@ The `prompt-engineering` skill includes 7 research-backed techniques with templa
 - **Project structure**: cookiecutter-data-science directories (data/raw, data/processed, notebooks/, src/, models/)
 - **PyTorch artifacts**: model.pt (TorchScript) + checkpoint.pt (state dict), folder rolling
 - **Code**: Google docstrings, type hints, Polars lazy processing, sklearn builtins preferred
-- **Journal**: append-only with verification, continuous numbering, archive at 40 entries

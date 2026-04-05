@@ -31,7 +31,8 @@ This project provides a shared YAML-driven orchestration engine that pulls agent
 |--------|--------|-------------|
 | [auto-build-claw](auto-build-claw/) | 3 | Autonomous build iteration orchestrator with multi-agent review |
 | [devils-advocate](devils-advocate/) | 5 | Critical document analysis with persona-driven risk scoring |
-| [datascience](datascience/) | 3 | Notebook structure, rich output styling, copier scaffolding, compliance fixes |
+| [datascience](datascience/) | 5 | Notebook standards, rich styling, prompt engineering, progress bars |
+| [journal](journal/) | 1 | Project journal management - create, update, and archive entries |
 
 ## auto-build-claw
 
@@ -84,7 +85,9 @@ See [devils-advocate/README.md](devils-advocate/) for scoring formula details, a
 
 ## datascience
 
-Enforces data science project standards derived from production notebook workflows. Three skills auto-trigger when working with notebooks, datasets, or rich output. Six commands fix existing code or scaffold new projects.
+Enforces data science project standards derived from production notebook workflows. Five skills auto-trigger when working with notebooks, datasets, rich output, prompts, or progress bars. Nine commands fix existing code, scaffold new projects, and apply prompt engineering techniques.
+
+**Skills**: `datascience` (project conventions), `notebook-standards` (section order, GPU-first), `rich-output` (semantic colors), `prompt-engineering` (7 research-backed techniques), `progressbars` (tqdm/rich)
 
 ### Usage
 
@@ -98,11 +101,41 @@ Enforces data science project standards derived from production notebook workflo
 # Apply rich styling fixes (wrong colors, multiple prints)
 /datascience:apply-style notebooks/02-kj-train.py
 
+# Add or fix progress bars (choose tqdm or rich)
+/datascience:apply-progressbar notebooks/02-kj-train.py
+
+# Apply prompt engineering technique (CoT, CoD, ToT, few-shot, etc.)
+/datascience:apply-prompt-technique
+
+# Full psychological prompting stack for hard problems
+/datascience:challenge
+
 # Port legacy project to copier-data-science template
 /datascience:fix-project
 ```
 
 See [datascience/README.md](datascience/) for the full list of standards enforced.
+
+## journal
+
+Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers after substantive work to maintain a consistent audit trail in `.claude/JOURNAL.md`.
+
+**Skills**: `journal` (auto-triggered after substantive work)
+
+### Usage
+
+```bash
+# Create a new entry for completed work
+/journal:create added retry logic to API client
+
+# Update the most recent entry with corrections
+/journal:update also fixed the timeout parameter
+
+# Archive older entries (keeps last 20)
+/journal:archive
+```
+
+See [journal/README.md](journal/) for entry format, detail levels, and archiving rules.
 
 ## Install
 
@@ -151,13 +184,27 @@ datascience/                           # Plugin: data science standards
     datascience/SKILL.md               # Project conventions (auto-triggered)
     notebook-standards/SKILL.md        # Notebook structure (auto-triggered)
     rich-output/SKILL.md               # Rich styling patterns (auto-triggered)
+    prompt-engineering/SKILL.md        # 7 techniques with references (auto-triggered)
+    progressbars/SKILL.md              # tqdm/rich progress bars (auto-triggered)
   commands/
     new-project.md                     # Scaffold from copier template
     notebook.md                        # Create structured notebook
     review.md                          # Compliance review
     apply-style.md                     # Apply rich output styling fixes
+    apply-progressbar.md               # Add or fix progress bars
+    apply-prompt-technique.md          # Apply prompt engineering technique
+    challenge.md                       # Psychological prompting for hard problems
     fix-notebook.md                    # Restructure notebook to standards
     fix-project.md                     # Port/update project to copier template
+
+journal/                               # Plugin: project journal management
+  .claude-plugin/plugin.json           # Plugin registration
+  skills/
+    journal/SKILL.md                   # Entry management + archiving (auto-triggered)
+  commands/
+    create.md                          # Create new journal entry
+    update.md                          # Update most recent entry
+    archive.md                         # Archive older entries
 
 .claude-plugin/marketplace.json        # Plugin marketplace registry
 ```
@@ -181,7 +228,7 @@ Register your plugin in the marketplace by adding an entry to `.claude-plugin/ma
 
 ```bash
 make install          # create venv, install deps, editable install
-make test             # run 212 tests
+make test             # run 236 tests
 make lint             # ruff format + check
 make format           # auto-fix formatting
 make build            # clean, test, bump version, build wheel
