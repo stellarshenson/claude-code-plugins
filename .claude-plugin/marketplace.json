@@ -2,18 +2,18 @@
   "name": "stellarshenson-marketplace",
   "owner": {
     "name": "Stellars Henson",
-    "email": "stellarshenson@gmail.com"
+    "email": "konrad.jelen+github@gmail.com"
   },
   "metadata": {
     "description": "Claude Code plugins for autonomous development workflows, critical analysis, data science standards, and project journaling",
-    "version": "1.0.10",
+    "version": "1.1.0",
     "author": "stellarshenson"
   },
   "plugins": [
     {
       "name": "auto-build-claw",
       "source": "./auto-build-claw",
-      "version": "1.0.10",
+      "version": "1.1.0",
       "description": "Autonomous build iteration orchestrator with multi-agent review, FSM-driven lifecycle, and YAML-configured workflows",
       "keywords": ["orchestrator", "iteration", "multi-agent", "review", "fsm", "build"],
       "category": "development",
@@ -22,7 +22,7 @@
     {
       "name": "devils-advocate",
       "source": "./devils-advocate",
-      "version": "1.0.10",
+      "version": "1.1.0",
       "description": "Critical document analysis with persona-driven risk scoring, iterative scorecard evaluation, and versioned corrections",
       "keywords": ["critique", "analysis", "scorecard", "risk", "devil", "advocate"],
       "category": "documentation",
@@ -31,7 +31,7 @@
     {
       "name": "datascience",
       "source": "./datascience",
-      "version": "1.0.10",
+      "version": "1.1.0",
       "description": "Data science project standards - notebook structure, rich output styling, copier scaffolding, and compliance review",
       "keywords": ["datascience", "notebook", "jupyter", "rich", "pytorch", "polars", "copier"],
       "category": "development",
@@ -40,11 +40,20 @@
     {
       "name": "journal",
       "source": "./journal",
-      "version": "1.0.10",
+      "version": "1.1.0",
       "description": "Project journal management - append-only entries, continuous numbering, verification, and archiving",
       "keywords": ["journal", "logging", "audit", "documentation", "changelog"],
       "category": "documentation",
       "tags": ["journal", "audit", "tracking"]
+    },
+    {
+      "name": "document-processing",
+      "source": "./document-processing",
+      "version": "1.1.0",
+      "description": "Structured document processing with source grounding, uniformization, PDF manipulation, and validation",
+      "keywords": ["document", "processing", "grounding", "validation", "pdf", "synthesis"],
+      "category": "documentation",
+      "tags": ["grounding", "uniformization", "legal", "court"]
     }
   ]
 }

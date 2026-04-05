@@ -173,9 +173,9 @@ score = <formula>
 ---
 
 ## Section 1: <work item group>
-- [ ] <specific, verifiable item>
+- [ ] <binary check - passes or fails, use [ ] for unchecked, [x] for passing>
   Execution: <how to check - command, grep, or read instruction>
-  Evidence required: <what to check>
+  Evidence: <what was found when checked>
 
 ## Fuzzy Scales (if any)
 ### Scale: <name> (0-10)

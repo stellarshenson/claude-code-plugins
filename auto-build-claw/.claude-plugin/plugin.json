@@ -1,11 +1,11 @@
 {
   "name": "auto-build-claw",
   "description": "Autonomous build iteration orchestrator. Runs structured improvement cycles with multi-agent review, FSM-driven phase lifecycle, per-phase gates, and YAML-configured workflows.",
-  "version": "1.0.10",
+  "version": "1.1.0",
   "license": "MIT",
   "author": {
     "name": "Stellars Henson",
-    "email": "stellarshenson@gmail.com"
+    "email": "konrad.jelen+github@gmail.com"
   },
   "keywords": [
     "orchestrator",

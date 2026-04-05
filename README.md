@@ -33,6 +33,7 @@ This project provides a shared YAML-driven orchestration engine that pulls agent
 | [devils-advocate](devils-advocate/) | 5 | Critical document analysis with persona-driven risk scoring |
 | [datascience](datascience/) | 5 | Notebook standards, rich styling, prompt engineering, progress bars |
 | [journal](journal/) | 1 | Project journal management - create, update, and archive entries |
+| [document-processing](document-processing/) | 4 | Structured document processing with source grounding, PDF, and validation |
 
 ## auto-build-claw
 
