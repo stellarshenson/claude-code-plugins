@@ -41,6 +41,10 @@ After appending an entry, ALWAYS verify:
 3. Confirm the entry number is one higher than the previous entry
 4. Confirm no entries were displaced or overwritten
 
+## Examples
+
+See `references/examples.md` for entries at each level (short ~80w, normal ~150w, extended ~350w).
+
 ## Archiving
 
 **Trigger**: exceeds 40 entries OR user requests
