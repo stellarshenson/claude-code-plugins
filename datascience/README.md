@@ -1,6 +1,6 @@
 # datascience
 
-Data science project standards plugin for Claude Code. Enforces notebook structure, naming conventions, rich output styling, and project organization. Creates new projects from copier templates and reviews existing code for compliance.
+Data science project standards plugin for Claude Code. Enforces notebook structure, naming conventions, rich output styling, and project organization. Creates new projects from copier templates, reviews existing code for compliance, and applies research-backed prompt engineering techniques.
 
 ## Skills (auto-triggered)
 
@@ -9,6 +9,7 @@ Data science project standards plugin for Claude Code. Enforces notebook structu
 | `datascience` | Working with data science projects, datasets, ML models, PyTorch, Polars, sklearn |
 | `notebook-standards` | Creating or modifying Jupyter notebooks (.ipynb or Jupytext .py) |
 | `rich-output` | Formatting output with the rich library, creating tables, progress bars |
+| `prompt-engineering` | Crafting system prompts, agent instructions, or LLM prompts |
 
 ## Commands (user-invoked)
 
@@ -18,8 +19,23 @@ Data science project standards plugin for Claude Code. Enforces notebook structu
 | `/datascience:notebook` | Create a properly structured Jupytext notebook with all sections |
 | `/datascience:review` | Review notebook/script against all standards, produce violation checklist |
 | `/datascience:apply-style` | Apply rich output styling standards - fix colors, print patterns, missing formatting |
-| `/datascience:fix-notebook` | Restructure a notebook to comply with all standards (non-destructive) |
+| `/datascience:fix-notebook` | Restructure a notebook to comply with all standards |
 | `/datascience:fix-project` | Port existing project to copier-data-science template or update to latest |
+| `/datascience:apply-prompt-technique` | Apply prompt engineering technique (psychological, CoT, ToT, few-shot, self-refine, rephrase) |
+| `/datascience:challenge` | Full psychological prompting stack for difficult problems - stakes + incentive + challenge |
+
+## Prompt Engineering Techniques
+
+Research-backed techniques with templates in `skills/prompt-engineering/references/`:
+
+| Technique | Effect | Reference |
+|-----------|--------|-----------|
+| Psychological Prompting | +45-115% reasoning | Stakes + persona + challenge + self-check |
+| Chain of Thought | +46% accuracy | "Think step by step" (Wei et al. 2022) |
+| Tree of Thought | Better decisions | Explore 2-3 paths, evaluate, select (Yao et al. 2023) |
+| Few-Shot | Consistent format | Show examples of desired output (Brown et al. 2020) |
+| Self-Refine | Iterative quality | Generate -> critique -> improve (Madaan et al. 2023) |
+| Rephrase and Respond | Better comprehension | Restate before solving (Deng et al. 2023) |
 
 ## Standards Enforced
 
