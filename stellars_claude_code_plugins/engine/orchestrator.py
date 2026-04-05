@@ -3417,7 +3417,7 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     p_new = sub.add_parser("new", help=_cli("commands", "new"))
     p_new.add_argument(
         "--type",
-        required=True,
+        default="fast",
         choices=list(ITERATION_TYPES.keys()),
     )
     p_new.add_argument("--objective", required=True, help=_cli("args", "objective"))
