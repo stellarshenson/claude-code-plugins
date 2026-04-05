@@ -28,19 +28,9 @@ Data science project standards plugin for Claude Code. Enforces notebook structu
 | `/datascience:challenge` | Full psychological prompting stack for difficult problems - stakes + incentive + challenge |
 | `/datascience:archive-journal` | Archive older journal entries, keeping last 20 in main file |
 
-## Prompt Engineering Techniques
+## Prompt Engineering
 
-Research-backed techniques with templates in `skills/prompt-engineering/references/`:
-
-| Technique | Effect | Reference |
-|-----------|--------|-----------|
-| Psychological Prompting | +45-115% reasoning | Stakes + persona + challenge + self-check |
-| Chain of Thought | +46% accuracy | "Think step by step" (Wei et al. 2022) |
-| Chain of Draft | CoT accuracy at 7.6% tokens | Minimal drafts ~5 words/step (Xu et al. 2025) |
-| Tree of Thought | Better decisions | Explore 2-3 paths, evaluate, select (Yao et al. 2023) |
-| Few-Shot | Consistent format | Show examples of desired output (Brown et al. 2020) |
-| Self-Refine | Iterative quality | Generate -> critique -> improve (Madaan et al. 2023) |
-| Rephrase and Respond | Better comprehension | Restate before solving (Deng et al. 2023) |
+The `prompt-engineering` skill includes 7 research-backed techniques with templates and paper references in `skills/prompt-engineering/references/`. Use `/datascience:apply-prompt-technique` to choose and apply, or `/datascience:challenge` for the full psychological stack on hard problems.
 
 ## Standards Enforced
 
