@@ -1,32 +1,31 @@
 ---
 name: prompt-engineering
-description: Apply research-backed prompt engineering techniques to improve LLM output quality. Offers multiple techniques (psychological prompting, chain-of-thought, tree-of-thought, few-shot, self-refine, rephrase-and-respond) with templates. Auto-triggered when crafting system prompts, agent instructions, or LLM prompts.
+description: Apply research-backed prompt engineering techniques to improve LLM output quality. Offers multiple techniques with templates and references. Auto-triggered when crafting system prompts, agent instructions, or LLM prompts.
 ---
 
 # Prompt Engineering Techniques
 
-Apply research-backed prompting techniques to improve output quality. Each technique has a reference document in `references/` with the research paper, template, and usage guidance.
+Research-backed prompting techniques. Each has a reference document with the paper, template, and usage guidance. Read the reference before applying.
 
-## Available Techniques
+## Techniques
 
-| # | Technique | Best for | Effect |
-|---|-----------|----------|--------|
-| 1 | **Psychological Prompting** | Complex tasks needing maximum effort | +45-115% on reasoning. Stakes + persona + challenge + self-check |
-| 2 | **Chain of Thought** | Math, logic, debugging | +46% accuracy. "Think step by step" |
-| 3 | **Tree of Thought** | Design decisions, architecture | Explore 2-3 paths, evaluate, select best |
-| 4 | **Few-Shot** | Structured output, classification | Show examples of desired format |
-| 5 | **Self-Refine** | Code, documents, iterative quality | Generate -> critique -> improve loop |
-| 6 | **Rephrase and Respond** | Ambiguous requirements | Restate problem before solving |
-| 7 | **Chain of Draft** | Token-limited reasoning | CoT accuracy at 7.6% token cost (Xu et al. 2025) |
+| # | Technique | Best for | Reference |
+|---|-----------|----------|-----------|
+| 1 | **Psychological Prompting** | Complex tasks, max effort (+45-115%) | `references/psychological-prompting.md` |
+| 2 | **Chain of Thought** | Math, logic, debugging (+46%) | `references/chain-of-thought.md` |
+| 3 | **Chain of Draft** | Token-limited reasoning (7.6% token cost) | `references/chain-of-draft.md` |
+| 4 | **Tree of Thought** | Design decisions, architecture | `references/tree-of-thought.md` |
+| 5 | **Few-Shot** | Structured output, classification | `references/few-shot.md` |
+| 6 | **Self-Refine** | Code, documents, iterative quality | `references/self-refine.md` |
+| 7 | **Rephrase and Respond** | Ambiguous requirements | `references/rephrase-and-respond.md` |
+
+## How to use
+
+1. Pick a technique from the table
+2. Read the reference file for the template and examples
+3. Apply the template to your prompt
+4. Techniques **stack** - psychological + chain-of-thought + self-refine for maximum effect
 
 ## When auto-triggered
 
-- Building system prompts or agent definitions
-- Writing orchestrator phase templates
-- Crafting prompts for `claude -p` subprocess calls
-- Designing LLM evaluation criteria
-- Any prompt that needs higher quality output
-
-## How to apply
-
-Read the relevant reference document for the template. Techniques can be **stacked** - psychological prompting combines naturally with chain-of-thought and self-refine for maximum effect on complex tasks.
+Building system prompts, agent definitions, orchestrator templates, `claude -p` prompts, or evaluation criteria.
