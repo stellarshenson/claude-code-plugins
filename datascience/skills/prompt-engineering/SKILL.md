@@ -17,6 +17,7 @@ Apply research-backed prompting techniques to improve output quality. Each techn
 | 4 | **Few-Shot** | Structured output, classification | Show examples of desired format |
 | 5 | **Self-Refine** | Code, documents, iterative quality | Generate -> critique -> improve loop |
 | 6 | **Rephrase and Respond** | Ambiguous requirements | Restate problem before solving |
+| 7 | **Chain of Draft** | Token-limited reasoning | CoT accuracy at 7.6% token cost (Xu et al. 2025) |
 
 ## When auto-triggered
 
