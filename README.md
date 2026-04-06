@@ -19,17 +19,24 @@ The marketplace includes a shared YAML-driven orchestration engine (`auto-build-
 
 ## Plugins
 
-| Plugin | Skills | Description |
-|--------|--------|-------------|
-| [auto-build-claw](auto-build-claw/) | 3 | Autonomous build iteration orchestrator with multi-agent review |
-| [devils-advocate](devils-advocate/) | 5 | Critical document analysis with persona-driven risk scoring |
-| [datascience](datascience/) | 5 | Notebook standards, rich styling, prompt engineering, progress bars |
-| [journal](journal/) | 1 | Project journal management - create, update, and archive entries |
-| [document-processing](document-processing/) | 4 | Structured document processing with source grounding, PDF, and validation |
+| Plugin | What it solves |
+|--------|---------------|
+| [auto-build-claw](auto-build-claw/) | Shallow fixes, scope creep, lost context, unchecked quality, benchmark gaming - enforces structured phases with multi-agent review |
+| [devils-advocate](devils-advocate/) | Untested assumptions, hidden risks, weak documents - quantified critique with Fibonacci risk scoring and measurable improvement |
+| [datascience](datascience/) | Inconsistent notebooks, wrong conventions, missing structure - enforces standards and scaffolds projects |
+| [document-processing](document-processing/) | Ungrounded claims, unverified documents, manual PDF work - source tracing, compliance checking, PDF automation |
+| [journal](journal/) | Lost work history, inconsistent entries - append-only audit trail with archiving |
 
 ## auto-build-claw
 
 Runs structured multi-iteration development cycles where each iteration passes through a full phase lifecycle with quality gates. A program defines what to build, a benchmark measures progress, and the engine enforces the workflow until the objective is met or iterations are exhausted.
+
+- **Shallow fixes** - forces research and hypothesis before implementation
+- **Scope creep** - plan locks scope, review catches deviations
+- **Lost context** - hypothesis catalogue and failure context persist across iterations
+- **Unchecked quality** - two independent gates (readback + gatekeeper) per phase
+- **No accountability** - every phase records agents, outputs, and verdicts in YAML audit logs
+- **Benchmark gaming** - guardian agent checks for benchmark-specific tuning vs genuine improvement
 
 **Skills**: `auto-build-claw` (orchestrator), `program-writer`, `benchmark-writer`
 
