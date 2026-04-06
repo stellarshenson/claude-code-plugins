@@ -6,24 +6,16 @@
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![Brought To You By KOLOMOLO](https://img.shields.io/badge/Brought%20To%20You%20By-KOLOMOLO-00ffff?style=flat)](https://kolomolo.com)
 
-AI coding agents generate impressive code but cut corners when left unsupervised - skipping tests, losing context between iterations, shipping shallow fixes that pass benchmarks without addressing root causes. The longer an agent runs autonomously, the more these failures compound.
+A plugin marketplace for Claude Code providing structured workflows for software development, document analysis, data science, and project management. Each plugin is pure configuration (skills, commands, YAML) - install one or all depending on your needs.
 
-This project provides a shared YAML-driven orchestration engine that pulls agents through structured phases with independent quality gates at every boundary. Instead of relying on the agent's self-discipline, the engine enforces research before implementation, hypothesis tracking across iterations, and multi-agent review before any code ships.
+```bash
+/plugin marketplace add stellarshenson/claude-code-plugins
+```
 
-> [!TIP]
-> Each plugin provides only YAML configuration files. The shared orchestration engine in `stellars_claude_code_plugins` handles all execution logic - FSM transitions, gate validation, multi-agent coordination, and state management.
+The marketplace includes a shared YAML-driven orchestration engine (`auto-build-claw`) that pulls agents through structured phases with quality gates, a semi-data-science document critic (`devils-advocate`) with Fibonacci risk scoring, data science project standards (`datascience`) with notebook scaffolding and compliance fixes, structured document processing (`document-processing`) with source grounding, and project journaling (`journal`).
 
 > [!NOTE]
-> Read the full article on the approach: [Your AI Agent Will Cut Corners. Here's How to Stop It.](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762)
-
-## What it solves
-
-- **Shallow fixes** - forces research and hypothesis before implementation
-- **Scope creep** - plan locks scope, review catches deviations
-- **Lost context** - hypothesis catalogue and failure context persist across iterations
-- **Unchecked quality** - two independent gates (readback + gatekeeper) per phase
-- **No accountability** - every phase records agents, outputs, and verdicts in YAML audit logs
-- **Benchmark gaming** - guardian agent checks for benchmark-specific tuning vs genuine improvement
+> Read the full article on the orchestration approach: [Your AI Agent Will Cut Corners. Here's How to Stop It.](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762)
 
 ## Plugins
 
@@ -138,6 +130,27 @@ Project journal management with append-only entry format, continuous numbering, 
 
 See [journal/README.md](journal/) for entry format, detail levels, and archiving rules.
 
+## document-processing
+
+Structured document processing with source grounding and quality control. Takes input documents through a verified workflow (analyze, draft, ground, uniformize) and produces outputs where every factual claim is traceable to source material.
+
+**Skills**: `process-documents` (4-phase workflow), `validate-document` (grounding + compliance), `pdf` (basic operations), `pdf-pro` (production workflows)
+
+### Usage
+
+```bash
+# Full workflow from objective
+/document-processing:run synthesize expert opinions into position paper
+
+# Update existing output with new source material
+/document-processing:update add new hearing transcript to timeline
+
+# Validate a document against its sources
+/document-processing:validate
+```
+
+See [document-processing/README.md](document-processing/) for the grounding methodology, folder structure, and PDF processing details.
+
 ## Install
 
 ```bash
@@ -197,6 +210,18 @@ datascience/                           # Plugin: data science standards
     challenge.md                       # Psychological prompting for hard problems
     fix-notebook.md                    # Restructure notebook to standards
     fix-project.md                     # Port/update project to copier template
+
+document-processing/                   # Plugin: structured document processing
+  .claude-plugin/plugin.json           # Plugin registration
+  skills/
+    process-documents/SKILL.md         # 4-phase workflow with grounding
+    validate-document/SKILL.md         # Source grounding + compliance
+    pdf/SKILL.md                       # Basic PDF operations (pypdf)
+    pdf-pro/SKILL.md                   # Production PDF (pdfplumber, OCR)
+  commands/
+    run.md                             # Full processing workflow
+    update.md                          # Update existing output
+    validate.md                        # Validate against source
 
 journal/                               # Plugin: project journal management
   .claude-plugin/plugin.json           # Plugin registration
