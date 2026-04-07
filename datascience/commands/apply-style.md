@@ -1,43 +1,29 @@
 ---
 description: Apply rich output styling standards to a notebook or script - fix colors, formatting, print patterns
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Skill]
 argument-hint: "path to file to fix, e.g. 'notebooks/01-kj-analysis.py'"
 ---
 
-# Fix Rich Output Styling
+# Apply Rich Styling
 
-Read a notebook or script and fix all rich output to comply with standards.
+Read a file and fix all rich output to comply with the `datascience:rich-output` skill.
+
+## Skill to apply
+
+**`datascience:rich-output`** - read this skill first. It is the single source of truth for colors, patterns, and rules. Do NOT duplicate its content here.
 
 ## What to fix
 
-1. **Multiple individual prints -> single multiline print**
-   - Find sequences of `rich.print()` or `rprint()` calls for related output
-   - Merge into single multiline call
-
-2. **Wrong colors -> semantic colors**
-   - `cyan` for values -> `dark_sea_green` (no units) or `light_sea_green` (with units)
-   - `green` for success -> `dark_sea_green`
-   - `red` for error -> `indian_red`
-   - `yellow` for warning -> `dark_goldenrod`
-   - Hex colors in rich -> standard named colors
-   - `white` for headers -> `medium_purple`
-
-3. **Missing rich formatting**
-   - Plain `print()` for structured output -> `rich.print()` with semantic colors
-   - f-strings without color for metrics/status -> add appropriate colors
-   - Tables without styled columns -> add column styles (grey70, light_coral, steel_blue)
-
-4. **Import fixes**
-   - Missing `import rich.jupyter as rich` or `from rich import print as rprint`
-   - Rich import not in the imports cell (notebook)
-
-5. **Progress bar patterns**
-   - Setup text in same cell as Progress bar -> split into separate cells
-   - tqdm where rich.progress would work -> suggest replacement
+1. **Multiple individual prints -> single multiline print** (per skill)
+2. **Wrong colors -> semantic colors** (per skill palette)
+3. **Missing rich formatting** - plain `print()` for structured output -> `rprint()`
+4. **Import fixes** - missing `from rich import print as rprint`
+5. **Hex colors -> standard named colors** (per skill)
 
 ## Process
 
 1. Read the file
-2. List all violations found (with line numbers)
-3. Apply fixes directly - user sees each edit via standard tool approval
-4. Show summary of what changed
+2. Read `rich-output` skill for current palette and rules
+3. List violations with line numbers
+4. Apply fixes directly
+5. Show summary

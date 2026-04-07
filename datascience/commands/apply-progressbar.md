@@ -1,54 +1,27 @@
 ---
 description: Add or fix progress bars in a notebook or script - choose classic (tqdm) or modern (rich) style
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
 argument-hint: "path to file to add progress bars to"
 ---
 
 # Apply Progress Bars
 
-Read a notebook or script and add progress bars to long-running loops, or fix existing broken progress bars.
+Read a file and add or fix progress bars. Uses the `datascience:progressbars` skill as the single source of truth.
 
-## Step 1: ASK the user
+## Skill to apply
 
-"Which progress bar style?
-1. **Classic (tqdm)** - works everywhere, ipywidgets in Jupyter
-2. **Modern (rich)** - spinners, elapsed time, ETA, styled output"
+**`datascience:progressbars`** - read this skill first for patterns, imports, completion fixes, and Jupyter compatibility. Do NOT duplicate its content here.
 
-## Step 2: Find loops to instrument
+## Steps
 
-Scan the file for:
-- `for` loops over large collections (lists, DataFrames, file lists)
-- `ThreadPoolExecutor` / `ProcessPoolExecutor` with `as_completed`
-- Training loops (epoch, batch iterations)
-- File processing loops (reading/writing multiple files)
-- Any loop with a comment like "slow", "takes time", "long running"
-
-## Step 3: Apply
-
-For each identified loop:
-- Wrap iterable with `tqdm(items, desc="...", unit="...")` (classic)
-- OR wrap in `with Progress(...) as progress:` block (modern)
-- Add completion fix for rich: `progress.update(task, completed=total)` after loop
-- Ensure progress bars are in SEPARATE cell from setup text (Jupyter)
-
-## Step 4: Fix existing broken bars
-
-- tqdm without `.auto`: change `from tqdm import tqdm` to `from tqdm.auto import tqdm`
-- rich bar stuck at N-1: add `progress.update(task, completed=total); progress.refresh()`
-- rich bar disappeared: check `transient=True` and remove it
-- logger/print interleaved with rich: change to `rich.print()`
-
-## Step 5: Update pyproject.toml
-
-Check `pyproject.toml` dependencies:
-- Classic chosen: ensure `tqdm` in `[project.dependencies]`, `ipywidgets` in `[project.optional-dependencies].dev`
-- Modern chosen: ensure `rich` in `[project.dependencies]`
-- Add missing deps, do NOT remove existing ones
-
-## Rules
-
-- ALWAYS ask classic vs modern first
-- In Jupyter: setup text in separate cell from Progress bar
-- Use `tqdm.auto` (never `tqdm.tqdm`) for automatic backend selection
-- Rich progress: always add completion fix after loop
-- ALWAYS update pyproject.toml if deps are missing
+1. ASK: "Classic (tqdm) or modern (rich)?" (per skill's selection rule)
+2. Read the `progressbars` skill for the chosen style's patterns
+3. Scan file for loops to instrument (large collections, executors, training, file processing)
+4. Apply wrappers per the skill's patterns
+5. Fix existing broken bars per the skill's troubleshooting section
+6. In Jupyter: split progress cell from setup text
+7. Update `pyproject.toml`:
+   - Classic: `tqdm` in deps, `ipywidgets` in dev deps
+   - Modern: `rich` in deps
+   Add missing, do NOT remove existing
+8. Show summary
