@@ -134,7 +134,7 @@ rprint(f"""[medium_purple]Configuration[/medium_purple]
 # """)
 ```
 
-5. **Default format is `.ipynb`** - creates a standard Jupyter notebook. If user explicitly asks for Jupytext percent format, create `.py` instead. The `.ipynb` is more portable and opens directly in JupyterLab without conversion.
+5. **Default format for new notebooks is `.ipynb`**. If user asks for `.py` or Jupytext, use that instead. This is only about what gets created when no notebook exists yet - fix-notebook never changes the format of existing files.
 
 6. Report: filename created, pyproject.toml changes (if any), next steps.
 

@@ -56,7 +56,7 @@ Read a notebook and fix it to comply with ALL standards: structure, rich styling
 
 ## Critical questions (ASK before proceeding)
 
-- **Filename rename**: "This notebook should be `03-kj-train-model.ipynb`. Rename?" (could break imports/references)
+- **Filename rename**: only if user explicitly asks. fix-notebook does NOT rename files by default
 - **Author**: "What are your initials and full name for the header?"
 - **Header rewrite**: show proposed narrative and ask "Does this capture the purpose correctly?"
 - **Import consolidation**: if imports scattered across 5+ cells, show proposed consolidated cell
