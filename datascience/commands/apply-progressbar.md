@@ -38,9 +38,17 @@ For each identified loop:
 - rich bar disappeared: check `transient=True` and remove it
 - logger/print interleaved with rich: change to `rich.print()`
 
+## Step 5: Update pyproject.toml
+
+Check `pyproject.toml` dependencies:
+- Classic chosen: ensure `tqdm` in `[project.dependencies]`, `ipywidgets` in `[project.optional-dependencies].dev`
+- Modern chosen: ensure `rich` in `[project.dependencies]`
+- Add missing deps, do NOT remove existing ones
+
 ## Rules
 
 - ALWAYS ask classic vs modern first
 - In Jupyter: setup text in separate cell from Progress bar
 - Use `tqdm.auto` (never `tqdm.tqdm`) for automatic backend selection
 - Rich progress: always add completion fix after loop
+- ALWAYS update pyproject.toml if deps are missing
