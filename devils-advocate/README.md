@@ -74,4 +74,5 @@ From a [knowledge graph CLI design document](https://github.com/stellarshenson/k
 
 Each iteration targeted the highest-residual concern. The math decided priority - concern #5 (missing confidence, residual 21.3) was addressed before #2 (optional features, residual 8.3) because its residual was 2.5x higher. Versioned documents (`DESIGN_v02.md` through `DESIGN_v06_16.md`) track exactly what changed and why at each step.
 
-Full analysis with persona, all 10 concerns with narrative (Their Take / Reality / Response), and 6 versioned scorecards: [examples/kg-builder-design-analysis.md](examples/kg-builder-design-analysis.md)
+- Condensed example (persona + 2 concerns + trajectory): [examples/kg-builder-design-analysis.md](examples/kg-builder-design-analysis.md)
+- Full analysis (all 10 concerns, 6 versioned scorecards): [examples/kg-builder-full-analysis.md](examples/kg-builder-full-analysis.md)
