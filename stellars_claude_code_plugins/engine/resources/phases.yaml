@@ -443,7 +443,13 @@ FULL::HYPOTHESIS:
     template: |
       ## Phase: HYPOTHESIS (exit criteria)
 
-      **BEFORE calling end**: Write all hypotheses to `{artifacts_dir}/hypotheses.yaml` as identifier-keyed YAML dict.
+      **BEFORE calling end**: Write hypotheses to TWO locations:
+      1. `{artifacts_dir}/hypotheses.yaml` - the PERSISTENT catalogue (survives across iterations, read by `_load_hypotheses`)
+      2. `{phase_dir}/hypotheses.md` - the phase output file (passed via `--output-file`)
+
+      **IMPORTANT**: `{artifacts_dir}` and `{phase_dir}` are DIFFERENT directories. The .yaml goes to artifacts root, the .md goes to the phase subfolder.
+
+      Format for hypotheses.yaml: identifier-keyed YAML dict.
       Each entry must have: hypothesis, prediction, evidence, stars (int 1-5), status (new/dismissed/processed/deferred), iteration_created, notes (list of dicts).
       Selected hypotheses: status "processed". Rejected: status "dismissed" with note.
 
