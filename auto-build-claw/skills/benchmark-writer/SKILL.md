@@ -13,7 +13,7 @@ It is NOT a plan. It is NOT exit conditions. It is NOT a to-do list. It is a MEA
 
 **What belongs in the benchmark**: score formula, programmatic checks (commands that produce numbers), data science metrics (MSE, F1, correlation), binary checklist items (does X exist in file Y), fuzzy scales (0-10 with rubrics), iteration log tracking score trajectory.
 
-**What does NOT belong**: exit conditions ("stop when..."), completion conditions, iteration planning, implementation guidance. Those belong in PROGRAM.md.
+**What does NOT belong (MOST COMMON MISTAKE)**: exit conditions ("stop when..."), completion conditions ("iterations stop when ALL..."), convergence criteria ("stop if delta < X"). These ALWAYS go in PROGRAM.md, NEVER in BENCHMARK.md. If you catch yourself writing "stop", "exit", "completion", or "converge" in the benchmark - STOP and move it to the program.
 
 ## Prerequisites
 
@@ -189,12 +189,21 @@ Why not programmatic: <justification>
 | Iter | Score | Tests | Notes |
 |------|-------|-------|-------|
 | base | TBD   | N     | before any work |
+
+<!-- NO "Completion Conditions" or "Exit Conditions" section here.
+     Those belong in PROGRAM.md. The benchmark ONLY scores. -->
 ```
 
 ## Rules
 
 - **Benchmark is ONLY scoring** - it produces a scalar number evaluating the current iteration. It does NOT contain exit conditions, completion conditions, or stop criteria. Those belong in PROGRAM.md. The benchmark answers "what is the score right now?" - the program answers "when do we stop?"
-- **No completion conditions section** - do NOT generate "Iterations stop when..." or "Completion Conditions" sections in BENCHMARK.md. If the user asks about exit conditions, direct them to PROGRAM.md
+- **ZERO exit/stop/completion conditions** - this is the most commonly violated rule. Do NOT generate ANY of these patterns in BENCHMARK.md:
+  - "Iterations stop when..." - WRONG, belongs in PROGRAM.md
+  - "Completion Conditions" section - WRONG, belongs in PROGRAM.md
+  - "Stop when score reaches..." - WRONG, belongs in PROGRAM.md
+  - "Exit when all items pass" - WRONG, belongs in PROGRAM.md
+  - Convergence checks like "stop condition met: delta < X" - WRONG, this is an exit condition disguised as a checklist item
+  If you find yourself writing ANYTHING about when to stop iterating, you are writing a PROGRAM item, not a BENCHMARK item. Move it to PROGRAM.md or delete it
 - **Programmatic over generative** - if you can measure it with a command, do that instead of a checklist item
 - **Data science metrics when applicable** - if the objective involves models, simulations, statistical behavior, or data pipelines, actively propose MSE/RMSE/MAE/F1/KL-divergence/correlation metrics. These are the highest-value programmatic measures for quantitative work
 - **Every fuzzy scale justifies its existence** - "why not programmatic?"
