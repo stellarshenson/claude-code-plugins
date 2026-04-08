@@ -111,8 +111,8 @@ score = (failed_tests * 10) + unchecked_items + lint_violations + sum(fuzzy_resi
 
 **Rules for good formulas**:
 - One number, one direction (MINIMIZE or MAXIMIZE)
-- Weights reflect actual severity (test failure > lint warning > style nit)
-- Programmatic components have higher weight than generative ones
+- **Data science metrics carry the most weight** - they are the primary optimisation target (RQI, MSE, F1, correlation). These should dominate the composite score (>= 50% weight). Checklist items and fuzzy scales are guardrails, not the objective
+- Weight hierarchy: data science metrics > programmatic checks > binary checklist > fuzzy scales
 - Formula doesn't change between iterations (add items, don't change weights)
 
 ## Fuzzy Scale Design (when unavoidable)
@@ -207,7 +207,7 @@ Why not programmatic: <justification>
 - **Programmatic over generative** - if you can measure it with a command, do that instead of a checklist item
 - **Data science metrics when applicable** - if the objective involves models, simulations, statistical behavior, or data pipelines, actively propose MSE/RMSE/MAE/F1/KL-divergence/correlation metrics. These are the highest-value programmatic measures for quantitative work
 - **Every fuzzy scale justifies its existence** - "why not programmatic?"
-- **Weights reflect reality** - test failures matter more than style
+- **Data science metrics dominate the score** - when applicable, they carry >= 50% of the composite weight. They are the optimisation target. Checklists and fuzzy scales are structural guardrails, not the thing being optimised
 - **Fixed evaluation** - the formula doesn't change between iterations
 - **Iteration log is mandatory** - tracks score trajectory
 - **Targets are specific** - "improve" is not a target, "reduce from 14 to 0" is
