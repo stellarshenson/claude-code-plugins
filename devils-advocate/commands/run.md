@@ -19,12 +19,12 @@ Full end-to-end critical analysis workflow with improvement loop.
 
 ## Versioned files
 
-Every time Claude applies changes (auto or from user suggestions), a versioned copy is created:
-- `<name>_v01_<score>.md` - original with embedded scorecard
-- `<name>_v02_<score>.md` - after first correction pass
-- `<name>_v03_<score>.md` - after second correction pass
+Every time Claude applies changes (auto or from user suggestions), a versioned copy is created with a **mandatory score suffix**:
+- `<name>_v01_89.md` - original with embedded scorecard (residual 89)
+- `<name>_v02_34.md` - after first correction pass (residual 34)
+- `<name>_v03_12.md` - after second correction pass (residual 12)
 
-The score suffix is the total residual risk (lower = better).
+The `_<score>` suffix is the rounded total residual risk. It is **MANDATORY** on every versioned file - the filename IS the score. A versioned file without a score suffix is incomplete.
 
 ## When user edits outside Claude
 

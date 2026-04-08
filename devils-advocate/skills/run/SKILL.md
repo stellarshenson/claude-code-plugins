@@ -335,11 +335,13 @@ fact_repository.md
 ```
 
 - `<NN>` - two-digit incremental version (`v01` is the initial document with embedded scorecard, `v02` is first correction pass, etc.)
-- `<score>` - rounded residual risk score after evaluation (lower is better)
+- `_<score>` - **MANDATORY** rounded residual risk score suffix. A versioned file without `_<score>` is INCOMPLETE - go back and rename it
 
 Examples:
 - `DESIGN_v01_89.md` - original document with first scorecard, residual risk 89
 - `DESIGN_v02_28.md` - first correction pass, residual risk 28
 - `DESIGN_v03_12.md` - second correction pass, residual risk 12
+
+**WRONG**: `DESIGN_v02.md` (missing score suffix - how improved is it? Nobody knows without opening the file)
 
 The `devils_advocate.md` and `fact_repository.md` artefacts are updated in place across iterations - do not create versioned copies of these. The `devils_advocate.md` accumulates all scorecards (v1, v2, v3...) for comparison across versions.

@@ -28,10 +28,14 @@ Read the document (versioned copy or current original) in full.
 
 ## Step 2: Versioned file handling
 
+**MANDATORY: Score suffix on every versioned file.** The filename MUST end with `_<score>` where score is the rounded total residual risk from the scorecard. This is non-negotiable - the score in the filename IS the audit trail.
+
 **If AI made changes** (versioned copy exists):
-- Embed scorecard at end of the versioned document (see format below)
-- Rename to `<name>_v<NN+1>_<score>.md` where score is rounded residual risk
-- This creates the audit trail: `report_v01_89.md` -> `report_v02_34.md` -> `report_v03_12.md`
+1. Embed scorecard at end of the versioned document (see format below)
+2. Calculate total residual risk (sum of all concern residuals, rounded to integer)
+3. **Rename** the file to `<name>_v<NN+1>_<score>.md` - the `_<score>` suffix is MANDATORY
+4. Example progression: `report_v01_89.md` -> `report_v02_34.md` -> `report_v03_12.md`
+5. If you forget the score suffix, the file is INCOMPLETE - go back and rename it
 
 **If user made changes outside Claude**:
 - Do NOT create a versioned copy

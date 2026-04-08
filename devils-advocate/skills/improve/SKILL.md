@@ -29,16 +29,18 @@ Which approach? (or mix: 'auto for #1-3, discuss #4-5')"
 ## Mode 1: User suggestions
 
 The user describes changes. Apply them to a new versioned copy:
-- Copy current as `<name>_v<NN+1>.md`
+- Copy current as `<name>_v<NN+1>.md` (score suffix added by `iterate` after re-scoring)
 - Apply the user's specific changes
 - Note which concerns each change targets
+- Hand off to `iterate` which will re-score and rename to `<name>_v<NN+1>_<score>.md`
 
 ## Mode 2: Auto-apply
 
 Apply the recommended options from the scorecard's "Explore options" section:
-- Copy current as `<name>_v<NN+1>.md`
+- Copy current as `<name>_v<NN+1>.md` (score suffix added by `iterate` after re-scoring)
 - For each top gap, apply the recommended option
 - Track cross-concern tensions (fixing one may worsen another)
+- Hand off to `iterate` which will re-score and rename to `<name>_v<NN+1>_<score>.md`
 
 ## Mode 3: Planning mode
 
