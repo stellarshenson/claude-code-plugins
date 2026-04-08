@@ -52,3 +52,24 @@ If the user edits the document outside Claude, run `iterate` directly - it re-sc
 - **Score** = 0-100% per concern (how well addressed)
 - **Residual** = Risk x (1 - Score)
 - **Document score** = sum of residuals (minimise)
+
+## Example: Real-world analysis
+
+From a [knowledge graph CLI design document](https://github.com/stellarshenson/knowledge-graph-foundry) analysis across 6 iterations:
+
+**Persona**: Senior backend engineer, 15+ years in production data pipelines. Skeptical of agent-heavy designs, prefers deterministic pipelines, suspicious of LLM-in-the-loop for infrastructure decisions.
+
+**10 concerns identified** with risk scores from 6 (OWL reasoning complexity) to 25 (missing confidence model for extracted triples):
+
+| # | Concern | Risk | v1 | v6 | Residual |
+|---|---------|------|-----|-----|----------|
+| 5 | Missing confidence model for triples | 25 | 15% | 92% | 2.0 |
+| 1 | Agents overused vs deterministic pipelines | 20 | 40% | 90% | 2.0 |
+| 3 | LLM normalization = silent corruption risk | 16 | 55% | 90% | 1.6 |
+| 2 | Optional features presented as core | 15 | 45% | 95% | 0.75 |
+| 4 | Schema inference produces unstable schemas | 12 | 60% | 90% | 1.2 |
+| 9 | No data volume estimates or perf targets | 12 | 5% | 92% | 0.96 |
+
+**Score trajectory**: 88.9 -> 27.8 -> 22.6 -> 20.4 -> 17.8 -> 15.5 across 6 versions
+
+Each iteration targeted the highest-residual concern. The math decided priority - concern #5 (missing confidence, residual 21.3) was addressed before #2 (optional features, residual 8.3) because its residual was 2.5x higher. Versioned documents (`DESIGN_v02.md` through `DESIGN_v06_16.md`) track exactly what changed and why at each step.
