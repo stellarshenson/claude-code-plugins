@@ -2367,6 +2367,22 @@ def _check_lifecycle_compliance(phase: str, state: dict) -> None:
     # HYPOTHESIS phase: all hypotheses must be classified (no "new")
     if "HYPOTHESIS" in phase.upper():
         try:
+            # Rescue: if agent wrote hypotheses.yaml to phase dir instead of artifacts root
+            hyp_file = DEFAULT_ARTIFACTS_DIR / "hypotheses.yaml"
+            if hyp_file.exists():
+                root_data = yaml.safe_load(hyp_file.read_text())
+                if not root_data or root_data == {}:
+                    # Root file is empty - check phase dir for the real file
+                    pdir = _phase_dir(state)
+                    phase_hyp = pdir / "hypotheses.yaml"
+                    if phase_hyp.exists():
+                        phase_data = yaml.safe_load(phase_hyp.read_text())
+                        if phase_data and isinstance(phase_data, dict) and phase_data != {}:
+                            hyp_file.write_text(phase_hyp.read_text())
+                            print(
+                                f"Rescued hypotheses.yaml from {pdir.name}/ to artifacts root.",
+                                file=sys.stderr,
+                            )
             hyps = _load_hypotheses()
             new_hyps = [hid for hid, h in hyps.items() if h.get("status") == "new"]
             if new_hyps:
