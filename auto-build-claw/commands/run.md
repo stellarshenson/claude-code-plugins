@@ -31,6 +31,8 @@ When the user asks to run an improvement cycle, execute these skills IN ORDER be
 
 **MANDATORY**: Do NOT skip steps 1 and 2. Do NOT start the orchestrator without an approved PROGRAM.md and BENCHMARK.md. The user must see and approve both documents before any work begins.
 
+**NEVER write BENCHMARK.md directly with the Write tool.** Always invoke the benchmark-writer skill. The skill has safety rules that prevent exit conditions from leaking into the benchmark. Writing BENCHMARK.md manually bypasses these rules - this is the #1 cause of malformed benchmarks.
+
 ## Direct Usage
 
 If PROGRAM.md and BENCHMARK.md already exist, skip to step 3:
