@@ -1,0 +1,178 @@
+<!--
+  project_timeline.svg - ~10 month project delivery timeline with 3 milestones
+  Style: signal timing diagram waveform with 3px sloped rising/falling edges.
+  Vertically symmetric around centre y=42: HIGH y=34, LOW y=50.
+  Shows: 2-week setup, then 6 modules with integration gaps, 3 milestones.
+  Each module ~4 weeks delivery + 1 week integration and validation sprint.
+  Theme: Optima Manufacturing palette (fg-1 #8b1a2b, accent #E61C29) with neutral grays.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 230">
+  <style>
+    .fg-1 { fill: #8b1a2b; }
+    .fg-2 { fill: #4a4a4a; }
+    .fg-3 { fill: #707070; }
+    .neutral-1 { fill: #3a3a3a; }
+    .neutral-2 { fill: #5a5a5a; }
+    .neutral-3 { fill: #808080; }
+    .wave-work { fill: #8b1a2b; fill-opacity: 0.35; }
+    .wave-buff { fill: #4a7088; fill-opacity: 0.35; }
+    .wave-onb { fill: #b08030; fill-opacity: 0.35; }
+    .wave-line { fill: none; stroke: none; }
+    .wave-base { stroke: #808080; }
+    .wave-tick { stroke: #808080; }
+    .wave-ms { stroke: #8b1a2b; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #F06068; }
+      .fg-2 { fill: #c0c0c0; }
+      .fg-3 { fill: #909090; }
+      .neutral-1 { fill: #e0e0e0; }
+      .neutral-2 { fill: #b0b0b0; }
+      .neutral-3 { fill: #909090; }
+      .wave-work { fill: #F06068; fill-opacity: 0.30; }
+      .wave-buff { fill: #6aA0C0; fill-opacity: 0.30; }
+      .wave-onb { fill: #D4A050; fill-opacity: 0.30; }
+      .wave-line { stroke: none; }
+      .wave-ms { stroke: #F06068; }
+    }
+  </style>
+
+  <!-- Title -->
+  <text x="400" y="12" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" class="fg-1" text-anchor="middle">PROJECT TIMELINE  |  ~10 MONTHS  |  3 MILESTONES  |  6 MODULES</text>
+
+  <!-- Signal timing waveform with sloped edges (3px diagonal transitions)
+       Centre=42, HIGH=34 (-8), LOW=50 (+8) - vertically symmetric
+       All buffers uniform 14px. Modules 96px (except M6 156px). Onboarding 44px.
+       Segments: Onb 20-64, M1 64-160, I&V 160-174, M2 174-270, Rev 270-284,
+       M3 284-380, I&V 380-394, M4 394-490, Rev 490-504, M5 504-600, I&V 600-614, M6 614-770 -->
+
+  <!-- Centre reference line -->
+  <line x1="32" y1="42" x2="714" y2="42" class="wave-base" stroke-width="0.5" stroke-dasharray="2,4" opacity="0.2"/>
+
+  <!-- Segment fills: vertically symmetric hexagons (uniform height y=34..50)
+       Hexagon: left_point -> top_left -> top_right -> right_point -> bot_right -> bot_left -> Z -->
+
+  <!-- Onboarding (amber, 28px ~2x buffer) -->
+  <path d="M36,42 L39,34 H61 L64,42 L61,50 H39 Z" class="wave-onb"/>
+  <!-- Module 1 (burgundy, 96px) -->
+  <path d="M64,42 L67,34 H157 L160,42 L157,50 H67 Z" class="wave-work"/>
+  <!-- I&V 1 (steel blue, 14px) -->
+  <path d="M160,42 L163,34 H171 L174,42 L171,50 H163 Z" class="wave-buff"/>
+  <!-- Module 2 (burgundy, 96px) -->
+  <path d="M174,42 L177,34 H267 L270,42 L267,50 H177 Z" class="wave-work"/>
+  <!-- Review 1 (steel blue, 14px) -->
+  <path d="M270,42 L273,34 H281 L284,42 L281,50 H273 Z" class="wave-buff"/>
+  <!-- Module 3 (burgundy, 96px) -->
+  <path d="M284,42 L287,34 H377 L380,42 L377,50 H287 Z" class="wave-work"/>
+  <!-- I&V 2 (steel blue, 14px) -->
+  <path d="M380,42 L383,34 H391 L394,42 L391,50 H383 Z" class="wave-buff"/>
+  <!-- Module 4 (burgundy, 96px) -->
+  <path d="M394,42 L397,34 H487 L490,42 L487,50 H397 Z" class="wave-work"/>
+  <!-- Review 2 (steel blue, 14px) -->
+  <path d="M490,42 L493,34 H501 L504,42 L501,50 H493 Z" class="wave-buff"/>
+  <!-- Module 5 (burgundy, 96px) -->
+  <path d="M504,42 L507,34 H597 L600,42 L597,50 H507 Z" class="wave-work"/>
+  <!-- I&V 3 (steel blue, 14px) -->
+  <path d="M600,42 L603,34 H611 L614,42 L611,50 H603 Z" class="wave-buff"/>
+  <!-- Module 6 (burgundy, 96px) -->
+  <path d="M614,42 L617,34 H707 L710,42 L707,50 H617 Z" class="wave-work"/>
+
+  <!-- Waveform stroke: top edge -->
+  <path d="M36,42 L39,34 H61 L64,42 L67,34 H157 L160,42 L163,34 H171 L174,42 L177,34 H267 L270,42 L273,34 H281 L284,42 L287,34 H377 L380,42 L383,34 H391 L394,42 L397,34 H487 L490,42 L493,34 H501 L504,42 L507,34 H597 L600,42 L603,34 H611 L614,42 L617,34 H707 L710,42" class="wave-line"/>
+  <!-- Waveform stroke: bottom edge (mirrors top) -->
+  <path d="M36,42 L39,50 H61 L64,42 L67,50 H157 L160,42 L163,50 H171 L174,42 L177,50 H267 L270,42 L273,50 H281 L284,42 L287,50 H377 L380,42 L383,50 H391 L394,42 L397,50 H487 L490,42 L493,50 H501 L504,42 L507,50 H597 L600,42 L603,50 H611 L614,42 L617,50 H707 L710,42" class="wave-line"/>
+
+  <!-- Milestone boundary markers (solid, prominent) -->
+  <line x1="270" y1="26" x2="270" y2="52" class="wave-ms" stroke-width="1.5" opacity="0.8"/>
+  <line x1="490" y1="26" x2="490" y2="52" class="wave-ms" stroke-width="1.5" opacity="0.8"/>
+  <line x1="710" y1="26" x2="710" y2="52" class="wave-ms" stroke-width="1.5" opacity="0.8"/>
+  <!-- Milestone boundary labels -->
+  <text x="270" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">MS1</text>
+  <text x="490" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">MS2</text>
+  <text x="710" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">MS3</text>
+
+  <!-- Module labels (above HIGH segments, centred on flat portion) -->
+  <text x="112" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">1</text>
+  <text x="222" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">2</text>
+  <text x="332" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">3</text>
+  <text x="442" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">4</text>
+  <text x="552" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">5</text>
+  <text x="662" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">6</text>
+
+  <!-- Time axis ticks -->
+  <line x1="36" y1="50" x2="36" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+  <line x1="64" y1="50" x2="64" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+  <line x1="270" y1="50" x2="270" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+  <line x1="490" y1="50" x2="490" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+  <line x1="710" y1="50" x2="710" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+
+  <!-- Time axis labels -->
+  <text x="36" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-3">W0</text>
+  <text x="64" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-3">W2</text>
+  <text x="270" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-3" text-anchor="middle">M3</text>
+  <text x="490" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-3" text-anchor="middle">M6</text>
+  <text x="710" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-3" text-anchor="end">~M10</text>
+
+  <!-- Milestone cards -->
+
+  <!-- Milestone 1: Foundation (square top, rounded bottom r=6) -->
+  <path d="M10,70 H250 V194 Q250,200 244,200 H16 Q10,200 10,194 Z" fill="#808080" fill-opacity="0.04" stroke="#808080" stroke-width="1.2"/>
+  <rect x="10" y="70" width="240" height="4" fill="#8b1a2b" opacity="0.5"/>
+  <text x="22" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-2">MILESTONE 1</text>
+  <text x="218" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-3" text-anchor="end">~3 months</text>
+  <text x="22" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="600" class="fg-1">Foundation</text>
+
+  <text x="22" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="neutral-1">Module 1</text>
+  <text x="85" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="neutral-2">Part Registration &amp; NFC</text>
+  <text x="22" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="neutral-1">Module 2</text>
+  <text x="85" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="neutral-2">Workflow Engine</text>
+
+  <text x="22" y="164" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Identity chain + step enforcement</text>
+  <text x="22" y="176" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">NFC infrastructure deployed</text>
+  <text x="22" y="188" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Mobile app operational</text>
+
+  <!-- Milestone 2: Production Coverage (square top, rounded bottom r=6) -->
+  <path d="M260,70 H500 V194 Q500,200 494,200 H266 Q260,200 260,194 Z" fill="#808080" fill-opacity="0.04" stroke="#808080" stroke-width="1"/>
+  <rect x="260" y="70" width="240" height="4" fill="#8b1a2b" opacity="0.35"/>
+  <text x="272" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-3">MILESTONE 2</text>
+  <text x="468" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-3" text-anchor="end">~3 months</text>
+  <text x="272" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="600" class="fg-1">Production Coverage</text>
+
+  <text x="272" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="neutral-1">Module 3</text>
+  <text x="335" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="neutral-2">CNC Machining Tracking</text>
+  <text x="272" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="neutral-1">Module 4</text>
+  <text x="335" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="neutral-2">Measurement Recording</text>
+
+  <text x="272" y="164" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Machine + operator linkage</text>
+  <text x="272" y="176" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Mandatory measurement capture</text>
+  <text x="272" y="188" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Cycle time data collection</text>
+
+  <!-- Milestone 3: Complete Traceability (square top, rounded bottom r=6) -->
+  <path d="M510,70 H790 V194 Q790,200 784,200 H516 Q510,200 510,194 Z" fill="#808080" fill-opacity="0.04" stroke="#808080" stroke-width="1"/>
+  <rect x="510" y="70" width="280" height="4" fill="#8b1a2b" opacity="0.25"/>
+  <text x="522" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-3">MILESTONE 3</text>
+  <text x="758" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-3" text-anchor="end">~3 months</text>
+  <text x="522" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="600" class="fg-1">Complete Traceability</text>
+
+  <text x="522" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="neutral-1">Module 5</text>
+  <text x="585" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="neutral-2">Assembly Verification</text>
+  <text x="522" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="neutral-1">Module 6</text>
+  <text x="585" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="neutral-2">Dispatch &amp; Traceability</text>
+
+  <text x="522" y="164" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Assembly step enforcement</text>
+  <text x="522" y="176" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">End-to-end traceability reports</text>
+  <text x="522" y="188" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Production handover</text>
+
+  <!-- Legend (three colour hexagons + milestone marker) -->
+  <!-- Work hexagon -->
+  <path d="M20,215 L23,210 H37 L40,215 L37,220 H23 Z" class="wave-work"/>
+  <text x="46" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-2">Module delivery (~4 weeks)</text>
+  <!-- Buffer hexagon (same height as work: y=210..220) -->
+  <path d="M210,215 L213,210 H227 L230,215 L227,220 H213 Z" class="wave-buff"/>
+  <text x="236" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-2">Integration / review (1-2 weeks)</text>
+  <!-- Onboarding hexagon (same height as work: y=210..220) -->
+  <path d="M430,215 L433,210 H447 L450,215 L447,220 H433 Z" class="wave-onb"/>
+  <text x="456" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-2">Onboarding (2 weeks)</text>
+  <!-- Milestone boundary -->
+  <line x1="600" y1="210" x2="600" y2="220" class="wave-ms" stroke-width="1.5" opacity="0.8"/>
+  <text x="608" y="218" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="neutral-2">Milestone boundary</text>
+</svg>

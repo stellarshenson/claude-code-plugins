@@ -1,0 +1,68 @@
+<!--
+  header_banner.svg - Nexus Design Document header banner
+  Shows: title, subtitle, description, and decorative accent bar.
+  Small graph-node icon on right side as visual motif.
+  Theme: Stellars-Tech derived - teal/cyan primary, orange accent.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 800 120">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+    }
+  </style>
+  <defs>
+    <linearGradient id="accent_bar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0" stop-color="#0096d1"/>
+      <stop offset="0.6" stop-color="#0096d1"/>
+      <stop offset="1" stop-color="#da8230"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Bottom accent gradient bar -->
+  <rect x="0" y="110" width="800" height="10" fill="url(#accent_bar)" opacity="0.6"/>
+
+  <!-- Title -->
+  <text x="40" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" class="fg-1">Knowledge Graph Foundry</text>
+
+  <!-- Subtitle -->
+  <text x="40" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="600" class="fg-2">Design Document</text>
+
+  <!-- Description -->
+  <text x="40" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-3">Hybrid pipeline with agent escalation for knowledge graph construction in Neo4J</text>
+
+  <!-- Version / meta -->
+  <text x="40" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-4">kgf command line interface | Created by Konrad Jelen, March 2026 | v28</text>
+
+  <!-- Decorative graph nodes (right side) -->
+  <g opacity="0.35">
+    <!-- Central node -->
+    <circle cx="700" cy="50" r="10" fill="none" stroke="#0096d1" stroke-width="1.8"/>
+    <circle cx="700" cy="50" r="3" fill="#0096d1" opacity="0.4"/>
+    <!-- Top-right node -->
+    <circle cx="740" cy="28" r="7" fill="none" stroke="#0096d1" stroke-width="1.4"/>
+    <circle cx="740" cy="28" r="2" fill="#0096d1" opacity="0.4"/>
+    <!-- Bottom-right node -->
+    <circle cx="748" cy="68" r="6" fill="none" stroke="#da8230" stroke-width="1.4"/>
+    <circle cx="748" cy="68" r="2" fill="#da8230" opacity="0.4"/>
+    <!-- Left node -->
+    <circle cx="660" cy="62" r="8" fill="none" stroke="#0096d1" stroke-width="1.4"/>
+    <circle cx="660" cy="62" r="2.5" fill="#0096d1" opacity="0.4"/>
+    <!-- Top-left node -->
+    <circle cx="668" cy="30" r="5" fill="none" stroke="#da8230" stroke-width="1.2"/>
+    <circle cx="668" cy="30" r="1.5" fill="#da8230" opacity="0.4"/>
+    <!-- Edges -->
+    <line x1="709" y1="44" x2="734" y2="32" stroke="#0096d1" stroke-width="1"/>
+    <line x1="708" y1="56" x2="743" y2="64" stroke="#da8230" stroke-width="1"/>
+    <line x1="691" y1="54" x2="667" y2="58" stroke="#0096d1" stroke-width="1"/>
+    <line x1="694" y1="43" x2="672" y2="33" stroke="#da8230" stroke-width="1"/>
+    <line x1="664" y1="35" x2="658" y2="55" stroke="#0096d1" stroke-width="0.8"/>
+  </g>
+
+</svg>

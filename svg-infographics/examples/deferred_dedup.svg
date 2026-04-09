@@ -1,0 +1,169 @@
+<!--
+  deferred_dedup.svg - Deferred cross-type dedup evidence accumulation
+  Shows: initial assessment -> timeline with evidence boosts -> resolution
+  Theme: Stellars-Tech derived - accent-1=#0096d1, accent-2=#da8230
+  Card shape: flat top, rounded bottom r=3 (per theme_swatch.svg)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .semantic-merge { fill: #1a7a5a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .semantic-merge { fill: #4cb8a0; }
+    }
+  </style>
+
+  <!-- Title -->
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">DEFERRED CROSS-TYPE DEDUP - EVIDENCE ACCUMULATION</text>
+
+  <!-- === LEFT CARD: Initial Assessment (accent-2) === -->
+  <g id="initial-assessment">
+    <path d="M20,36 H180 V189 Q180,192 177,192 H23 Q20,192 20,189 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M20,36 H180 V189 Q180,192 177,192 H23 Q20,192 20,189 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="20" y="36" width="160" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="100" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Initial Assessment</text>
+    <text x="100" y="78" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">"humidifier"</text>
+    <text x="100" y="96" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Component vs Accessory</text>
+    <text x="100" y="120" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">P = 0.52</text>
+    <text x="100" y="140" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Ambiguous zone</text>
+    <text x="100" y="154" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">(0.4 - 0.6)</text>
+    <!-- Defer indicator -->
+    <rect x="56" y="162" width="88" height="14" rx="3" fill="#0096d1" fill-opacity="0.08" stroke="#0096d1" stroke-width="0.8"/>
+    <text x="100" y="173" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">DEFERRED</text>
+  </g>
+
+  <!-- Chamfered L-route: left card -> timeline -->
+  <path d="M180,108 H196 L200,112 V112" fill="none" stroke="#da8230" stroke-width="1.2" opacity="0.5"/>
+  <polygon points="200,109 204,112 200,115" fill="#da8230" opacity="0.6"/>
+
+  <!-- === CENTRE: Timeline with evidence accumulation === -->
+  <g id="timeline">
+    <!-- Timeline horizontal line -->
+    <line x1="210" y1="112" x2="580" y2="112" stroke="#0096d1" stroke-width="1.5" opacity="0.3"/>
+
+    <!-- Round 1 marker -->
+    <circle cx="270" cy="112" r="5" fill="#0096d1" fill-opacity="0.15" stroke="#0096d1" stroke-width="1.2"/>
+    <text x="270" y="100" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">Doc N</text>
+
+    <!-- Round 1 boost cards -->
+    <g>
+      <path d="M224,130 H316 V187 Q316,190 313,190 H227 Q224,190 224,187 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M224,130 H316 V187 Q316,190 313,190 H227 Q224,190 224,187 Z" fill="none" stroke="#0096d1" stroke-width="0.8"/>
+      <rect x="224" y="130" width="92" height="3" fill="#0096d1" opacity="0.4"/>
+      <text x="270" y="149" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">+topology</text>
+      <text x="270" y="163" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Jaccard overlap</text>
+      <text x="270" y="175" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">of rel targets</text>
+      <text x="270" y="187" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">cap +0.15</text>
+    </g>
+    <!-- Boost arrow (with arrowhead) -->
+    <line x1="270" y1="117" x2="270" y2="126" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+    <polygon points="267,122 270,126 273,122" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Round 2 marker -->
+    <circle cx="400" cy="112" r="5" fill="#0096d1" fill-opacity="0.15" stroke="#0096d1" stroke-width="1.2"/>
+    <text x="400" y="100" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">Doc N+1</text>
+
+    <!-- Round 2 boost cards -->
+    <g>
+      <path d="M354,130 H446 V187 Q446,190 443,190 H357 Q354,190 354,187 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M354,130 H446 V187 Q446,190 443,190 H357 Q354,190 354,187 Z" fill="none" stroke="#0096d1" stroke-width="0.8"/>
+      <rect x="354" y="130" width="92" height="3" fill="#0096d1" opacity="0.4"/>
+      <text x="400" y="149" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">+co-occurrence</text>
+      <text x="400" y="163" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Shared chunk</text>
+      <text x="400" y="175" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">count accumulates</text>
+      <text x="400" y="187" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">cap +0.10</text>
+    </g>
+    <!-- Boost arrow (with arrowhead) -->
+    <line x1="400" y1="117" x2="400" y2="126" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+    <polygon points="397,122 400,126 403,122" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Round 3 marker -->
+    <circle cx="530" cy="112" r="5" fill="#0096d1" fill-opacity="0.15" stroke="#0096d1" stroke-width="1.2"/>
+    <text x="530" y="100" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">Doc N+2</text>
+
+    <!-- Round 3 boost cards -->
+    <g>
+      <path d="M484,130 H576 V187 Q576,190 573,190 H487 Q484,190 484,187 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M484,130 H576 V187 Q576,190 573,190 H487 Q484,190 484,187 Z" fill="none" stroke="#0096d1" stroke-width="0.8"/>
+      <rect x="484" y="130" width="92" height="3" fill="#0096d1" opacity="0.4"/>
+      <text x="530" y="149" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">+description</text>
+      <text x="530" y="163" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Description similarity</text>
+      <text x="530" y="175" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">from both variants</text>
+      <text x="530" y="187" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">cap +0.10</text>
+    </g>
+    <!-- Boost arrow (with arrowhead) -->
+    <line x1="530" y1="117" x2="530" y2="126" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+    <polygon points="527,122 530,126 533,122" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Cumulative posterior indicator -->
+    <text x="270" y="80" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">P=0.52</text>
+    <text x="400" y="80" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">P=0.57</text>
+    <text x="530" y="80" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">P=0.64</text>
+
+    <!-- Progress bar under timeline showing posterior growth -->
+    <rect x="210" y="62" width="370" height="6" rx="2" fill="#0096d1" fill-opacity="0.08"/>
+    <!-- 0.4 mark -->
+    <line x1="282" y1="60" x2="282" y2="70" stroke="#c44" stroke-width="0.8" opacity="0.4"/>
+    <!-- 0.6 mark -->
+    <line x1="466" y1="60" x2="466" y2="70" stroke="#2a8" stroke-width="0.8" opacity="0.4"/>
+    <!-- Filled portion (0.52 to 0.64 range) -->
+    <rect x="319" y="62" width="220" height="6" rx="2" fill="#0096d1" fill-opacity="0.25"/>
+  </g>
+
+  <!-- Chamfered L-route: timeline -> right card -->
+  <path d="M580,112 H596 L600,108 V108" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="600,105 604,108 600,111" fill="#0096d1" opacity="0.6"/>
+
+  <!-- === RIGHT CARD: Resolution (accent-1) === -->
+  <g id="resolution">
+    <path d="M610,36 H780 V189 Q780,192 777,192 H613 Q610,192 610,189 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M610,36 H780 V189 Q780,192 777,192 H613 Q610,192 610,189 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="610" y="36" width="170" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="695" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Resolution</text>
+    <text x="695" y="78" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">"humidifier"</text>
+    <text x="695" y="96" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">-> Component (winner)</text>
+    <text x="695" y="120" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">P = 0.64</text>
+    <text x="695" y="140" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Crosses merge threshold</text>
+    <text x="695" y="154" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">(>= 0.6)</text>
+    <!-- Merge indicator -->
+    <rect x="651" y="162" width="88" height="14" rx="3" fill="#2a8" fill-opacity="0.08" stroke="#2a8" stroke-width="0.8"/>
+    <text x="695" y="173" class="semantic-merge" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">MERGED</text>
+  </g>
+
+  <!-- === BOTTOM NOTE === -->
+  <g id="bottom-zone">
+    <!-- Container for bottom notes -->
+    <path d="M20,206 H780 V287 Q780,290 777,290 H23 Q20,290 20,287 Z" fill="#da8230" fill-opacity="0.02"/>
+    <path d="M20,206 H780 V287 Q780,290 777,290 H23 Q20,290 20,287 Z" fill="none" stroke="#da8230" stroke-width="0.8" opacity="0.25"/>
+    <rect x="20" y="206" width="760" height="4" fill="#da8230" opacity="0.15"/>
+
+    <text x="40" y="228" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Three-zone logic replaces binary merge/block</text>
+
+    <text x="40" y="248" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">posterior >= 0.6 -> merge immediately</text>
+    <text x="300" y="248" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">0.4 &lt;= posterior &lt; 0.6 -> defer to buffer</text>
+    <text x="580" y="248" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">posterior &lt; 0.4 -> block</text>
+
+    <text x="40" y="268" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">resolve_all() triggered at curing time - recomputes final posterior with accumulated evidence</text>
+    <text x="40" y="282" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">LLM escalation available for 2+ encounter pairs still in ambiguous zone (deferred_dedup_llm_escalation=true)</text>
+  </g>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="200" y="302" width="8" height="8" rx="1" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1"/>
+    <text x="212" y="310" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">Deferred pair (ambiguous zone)</text>
+    <rect x="400" y="302" width="8" height="8" rx="1" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="412" y="310" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Evidence accumulation (per-document boost)</text>
+  </g>
+
+</svg>

@@ -1,0 +1,113 @@
+<!--
+  15_logistic_regression_2d.svg - 2D decision boundary visualization
+  Shows: scatter plot with fuzzywuzzy (x) vs BM25 (y), sigmoid boundary, match/no-match zones
+  Theme: Meridian blue primary, teal fuzzywuzzy axis, amber BM25 axis
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-teal { fill: #007a8a; } .accent-amber { fill: #9a6a1a; }
+    .semantic-good { fill: #1a7a5a; } .semantic-risk { fill: #a03030; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-teal { fill: #40c4d4; } .accent-amber { fill: #d4a04a; }
+      .semantic-good { fill: #4cb8a0; } .semantic-risk { fill: #e06060; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox 800x280, margin 20px
+    Plot area: x=80..420, y=40..220 (340x180)
+    Right panel: x=460..780, y=40..220
+    Legend: y=248..268
+    X axis: fuzzywuzzy 0..100 mapped to x=80..420
+    Y axis: BM25 low..high mapped to y=220..40
+  === -->
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">LOGISTIC REGRESSION - LEARNED DECISION BOUNDARY</text>
+
+  <!-- Background zones - both use the same curve as the boundary -->
+  <!-- Match zone (above boundary) -->
+  <path d="M80,40 H420 V90 Q380,108 340,125 Q280,150 220,168 Q160,185 80,200 V40 Z" fill="#0096a6" fill-opacity="0.12"/>
+  <!-- No-match zone (below boundary) -->
+  <path d="M80,200 Q160,185 220,168 Q280,150 340,125 Q380,108 420,90 V220 H80 Z" fill="#a03030" fill-opacity="0.10"/>
+
+  <!-- Zone labels (centred in empty areas away from data points) -->
+  <text x="230" y="100" class="semantic-good" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">MATCH</text>
+  <text x="290" y="200" class="semantic-risk" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">NO MATCH</text>
+
+  <!-- Decision boundary (same curve as zone edges) -->
+  <path d="M80,200 Q160,185 220,168 Q280,150 340,125 Q380,108 420,90" fill="none" stroke="#00a6ff" stroke-width="2.5" opacity="0.5"/>
+  <text x="310" y="130" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7" transform="rotate(-20, 310, 130)">learned boundary</text>
+
+  <!-- Axes -->
+  <line x1="80" y1="220" x2="420" y2="220" stroke="#1a4d94" stroke-width="1" opacity="0.3"/>
+  <line x1="80" y1="220" x2="80" y2="40" stroke="#1a4d94" stroke-width="1" opacity="0.3"/>
+  <!-- Tick marks -->
+  <line x1="80" y1="220" x2="80" y2="224" stroke="#1a4d94" stroke-width="0.8" opacity="0.3"/>
+
+  <line x1="420" y1="220" x2="420" y2="224" stroke="#1a4d94" stroke-width="0.8" opacity="0.3"/>
+  <!-- X labels -->
+  <text x="80" y="236" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">0</text>
+  <text x="420" y="236" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">100</text>
+  <text x="250" y="234" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Fuzzywuzzy score</text>
+  <!-- Y labels -->
+  <text x="72" y="222" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">low</text>
+  <text x="72" y="44" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">high</text>
+  <text x="66" y="134" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" transform="rotate(-90, 66, 134)">BM25 score</text>
+
+  <!-- Data points: correct matches (filled teal) -->
+  <circle cx="340" cy="60" r="4" fill="#0096a6" fill-opacity="0.5" stroke="#0096a6" stroke-width="1"/>
+  <circle cx="360" cy="80" r="4" fill="#0096a6" fill-opacity="0.5" stroke="#0096a6" stroke-width="1"/>
+  <circle cx="300" cy="90" r="4" fill="#0096a6" fill-opacity="0.5" stroke="#0096a6" stroke-width="1"/>
+  <circle cx="380" cy="100" r="4" fill="#0096a6" fill-opacity="0.5" stroke="#0096a6" stroke-width="1"/>
+  <circle cx="320" cy="70" r="4" fill="#0096a6" fill-opacity="0.5" stroke="#0096a6" stroke-width="1"/>
+  <!-- High fuzzy, low BM25 -->
+  <circle cx="370" cy="170" r="5" fill="#0096a6" fill-opacity="0.6" stroke="#0096a6" stroke-width="1.2"/>
+  <circle cx="390" cy="185" r="4" fill="#0096a6" fill-opacity="0.5" stroke="#0096a6" stroke-width="1"/>
+  <!-- Low fuzzy, high BM25 -->
+  <circle cx="130" cy="55" r="5" fill="#0096a6" fill-opacity="0.6" stroke="#0096a6" stroke-width="1.2"/>
+  <circle cx="110" cy="75" r="4" fill="#0096a6" fill-opacity="0.5" stroke="#0096a6" stroke-width="1"/>
+
+  <!-- Data points: non-matches (open red) -->
+  <circle cx="110" cy="195" r="4" fill="none" stroke="#a03030" stroke-width="1.2" opacity="0.5"/>
+  <circle cx="150" cy="190" r="4" fill="none" stroke="#a03030" stroke-width="1.2" opacity="0.5"/>
+  <circle cx="95" cy="180" r="4" fill="none" stroke="#a03030" stroke-width="1.2" opacity="0.5"/>
+  <circle cx="170" cy="200" r="4" fill="none" stroke="#a03030" stroke-width="1.2" opacity="0.5"/>
+  <circle cx="130" cy="205" r="4" fill="none" stroke="#a03030" stroke-width="1.2" opacity="0.5"/>
+  <circle cx="200" cy="195" r="4" fill="none" stroke="#a03030" stroke-width="1.2" opacity="0.5"/>
+
+  <!-- Annotated examples -->
+  <circle cx="370" cy="170" r="8" fill="none" stroke="#0096a6" stroke-width="1.2" stroke-dasharray="3,2"/>
+  <text x="362" y="155" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600">"teat cup liner"</text>
+
+  <circle cx="130" cy="55" r="8" fill="none" stroke="#d4872a" stroke-width="1.2" stroke-dasharray="3,2"/>
+  <text x="144" y="52" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600">"92741301"</text>
+
+  <!-- Right panel: explanation -->
+  <path d="M460,40 H780 V217 Q780,220 777,220 H463 Q460,220 460,217 Z" fill="#00a6ff" fill-opacity="0.02"/>
+  <path d="M460,40 H780 V217 Q780,220 777,220 H463 Q460,220 460,217 Z" fill="none" stroke="#00a6ff" stroke-width="0.8" opacity="0.25"/>
+  <rect x="460" y="40" width="320" height="4" fill="#00a6ff" opacity="0.15"/>
+
+  <text x="476" y="64" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Reading the plot</text>
+  <text x="476" y="84" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Each dot is a query-result pair from training data</text>
+  <text x="476" y="100" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Filled = correct match, open = wrong result</text>
+  <text x="476" y="122" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">The blue curve is the learned decision boundary</text>
+  <text x="476" y="138" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Above = likely match, below = likely wrong</text>
+  <text x="476" y="160" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">The curve bends because a high score on</text>
+  <text x="476" y="176" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">either signal alone can be enough</text>
+  <text x="476" y="200" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Both example queries land above the boundary</text>
+  <text x="476" y="214" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">despite being strong on different axes</text>
+
+  <!-- Legend -->
+  <circle cx="120" cy="268" r="4" fill="#0096a6" fill-opacity="0.5" stroke="#0096a6" stroke-width="1"/>
+  <text x="128" y="272" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="7">Correct match</text>
+  <circle cx="240" cy="268" r="4" fill="none" stroke="#a03030" stroke-width="1.2" opacity="0.5"/>
+  <text x="248" y="272" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7">Wrong result</text>
+  <line x1="340" y1="268" x2="360" y2="268" stroke="#00a6ff" stroke-width="2.5" opacity="0.5"/>
+  <text x="364" y="272" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Learned boundary</text>
+  <rect x="490" y="262" width="12" height="12" rx="1" fill="#0096a6" fill-opacity="0.12"/>
+  <text x="506" y="272" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Match zone</text>
+  <rect x="590" y="262" width="12" height="12" rx="1" fill="#a03030" fill-opacity="0.10"/>
+  <text x="606" y="272" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">No-match zone</text>
+</svg>

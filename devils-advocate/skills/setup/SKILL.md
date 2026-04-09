@@ -7,6 +7,10 @@ description: Set up devil's advocate persona and fact repository for a target do
 
 Build the devil persona and fact repository before any evaluation begins. This is always the first step.
 
+## Task Tracking
+
+**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout setup. Create tasks for identifying target, building persona, harvesting facts. Mark each in_progress when starting, completed when done.
+
 ## Artefacts produced
 
 1. **`devils_advocate.md`** - Devil persona definition

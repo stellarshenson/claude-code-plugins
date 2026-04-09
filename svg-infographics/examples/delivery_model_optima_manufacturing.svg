@@ -1,0 +1,74 @@
+<!--
+  delivery_model.svg - Hybrid delivery model: carrier platform + Optima Manufacturing implementation
+  Shows: two-layer stack with generic platform (bottom, fixed) and domain-specific
+  implementation (top, T&M), plus equipment column on the right.
+  Intent: visualise the product/T&M split in the project execution model.
+  Theme: Optima Manufacturing palette (fg-1 #1f0f4a) with neutral grays, amber for platform.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 100">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .neutral-1 { fill: #3a3a3a; }
+    .neutral-2 { fill: #42346e; }
+    .neutral-3 { fill: #808080; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #909090; }
+      .neutral-1 { fill: #e0e0e0; }
+      .neutral-2 { fill: #b5b0c0; }
+      .neutral-3 { fill: #909090; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    Two stacked layers: implementation (top) + platform (bottom)
+    Implementation layer: y=14..48 (34px tall)
+    Platform layer: y=52..86 (34px tall)
+    Equipment column: x=620..780
+    Left margin: x=24
+    Header row: y offset +14 from top of layer
+    Type label: right of header text
+    Sub-items row: y offset +26 from top of layer
+    Sub-item spacing: ~100px apart
+  === -->
+
+  <!-- Implementation layer (top, burgundy fill - T&M) -->
+  <rect x="20" y="14" width="580" height="34" fill="#1f0f4a" fill-opacity="0.15"/>
+  <rect x="20" y="14" width="580" height="3" fill="#1f0f4a" opacity="0.5"/>
+  <text x="30" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">OPTIMA MANUFACTURING IMPLEMENTATION</text>
+  <text x="590" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="neutral-3" text-anchor="end">T&amp;M</text>
+  <text x="30" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Workflow engine</text>
+  <text x="126" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">NFC identity</text>
+  <text x="206" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Measurements</text>
+  <text x="296" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Step enforcement</text>
+  <text x="400" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Traceability reports</text>
+  <text x="510" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Integrations</text>
+
+  <!-- Platform layer (bottom, amber fill - fixed/product) -->
+  <path d="M20,52 H600 V80 Q600,86 594,86 H26 Q20,86 20,80 Z" fill="#3999fd" fill-opacity="0.25"/>
+  <rect x="20" y="52" width="580" height="3" fill="#3999fd" opacity="0.5"/>
+  <text x="30" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">CARRIER PLATFORM</text>
+  <text x="590" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="neutral-3" text-anchor="end">Fixed</text>
+  <text x="30" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">User management</text>
+  <text x="126" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Data persistence</text>
+  <text x="226" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Mobile connectivity</text>
+  <text x="346" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Event logging</text>
+  <text x="436" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Device registration</text>
+
+  <!-- Equipment column (right side, gray) -->
+  <path d="M620,14 H774 Q780,14 780,20 V80 Q780,86 774,86 H620 V14 Z" fill="#808080" fill-opacity="0.06" stroke="#808080" stroke-width="0.75"/>
+  <rect x="620" y="14" width="160" height="3" fill="#808080" opacity="0.4"/>
+  <text x="630" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">EQUIPMENT</text>
+  <text x="770" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="neutral-3" text-anchor="end">At cost</text>
+  <text x="630" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Industrial handhelds</text>
+  <text x="630" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">NFC tags</text>
+  <text x="630" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Workflow server</text>
+  <text x="630" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Network infrastructure</text>
+
+  <!-- Arrow: platform supports implementation -->
+  <line x1="310" y1="52" x2="310" y2="50" stroke="#808080" stroke-width="0.75" opacity="0.4"/>
+  <polygon points="310,48 307,52 313,52" fill="#808080" opacity="0.4"/>
+</svg>

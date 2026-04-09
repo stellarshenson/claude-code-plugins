@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 120">
+
+  <!-- Timeline track with cutouts around milestone circles (r=18, gap=20 each side) -->
+  <line x1="80" y1="55" x2="120" y2="55" stroke="#00a6ff" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+  <line x1="160" y1="55" x2="300" y2="55" stroke="#00a6ff" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+  <line x1="340" y1="55" x2="480" y2="55" stroke="#00a6ff" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+  <line x1="520" y1="55" x2="640" y2="55" stroke="#00a6ff" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+  <line x1="680" y1="55" x2="720" y2="55" stroke="#00a6ff" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Progress arrows -->
+  <polygon points="225,55 215,50 215,60" fill="#00a6ff" opacity="0.4"/>
+  <polygon points="405,55 395,50 395,60" fill="#00a6ff" opacity="0.4"/>
+  <polygon points="585,55 575,50 575,60" fill="#00a6ff" opacity="0.4"/>
+
+  <!-- 2026 - Transposition -->
+  <circle cx="140" cy="55" r="18" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="2"/>
+  <!-- Icon: gavel (Lucide, ISC license) -->
+  <g transform="translate(133, 48) scale(0.583)" fill="none" stroke="#00a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3l8.384-8.381"/>
+    <path d="m16 16 6-6"/><path d="m21.5 10.5-8-8"/><path d="m8 8 6-6"/><path d="m8.5 7.5 8 8"/>
+  </g>
+  <text x="140" y="26" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#00a6ff" text-anchor="middle">Jun 2026</text>
+  <text x="140" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#4a7ba7" text-anchor="middle">Transposition</text>
+  <text x="140" y="101" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#4a7ba7" text-anchor="middle">deadline</text>
+
+  <!-- 2027 - First reports 250+ -->
+  <circle cx="320" cy="55" r="18" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="2"/>
+  <!-- Icon: file-text (Lucide, ISC license) -->
+  <g transform="translate(313, 47) scale(0.583)" fill="none" stroke="#00a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/>
+    <path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>
+  </g>
+  <text x="320" y="26" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#00a6ff" text-anchor="middle">Jun 2027</text>
+  <text x="320" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#4a7ba7" text-anchor="middle">First reports</text>
+  <text x="320" y="101" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#4a7ba7" text-anchor="middle">250+ employees</text>
+
+  <!-- 2028-2030 recurring -->
+  <circle cx="500" cy="55" r="18" fill="#00a6ff" fill-opacity="0.06" stroke="#6b8db5" stroke-width="2"/>
+  <!-- Icon: refresh-cw (Lucide, ISC license) -->
+  <g transform="translate(493, 48) scale(0.583)" fill="none" stroke="#6b8db5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="23 4 23 10 17 10"/>
+    <polyline points="1 20 1 14 7 14"/>
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+  </g>
+  <text x="500" y="26" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#6b8db5" text-anchor="middle">2028-2030</text>
+  <text x="500" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#6b8db5" text-anchor="middle">Annual cycle</text>
+  <text x="500" y="101" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#6b8db5" text-anchor="middle">for 250+</text>
+
+  <!-- 2031 - 100+ threshold -->
+  <circle cx="660" cy="55" r="18" fill="#66ccff" fill-opacity="0.06" stroke="#66ccff" stroke-width="2"/>
+  <!-- Icon: expand (Lucide, ISC license) -->
+  <g transform="translate(653, 48) scale(0.583)" fill="none" stroke="#66ccff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m15 15 6 6"/><path d="m15 9 6-6"/><path d="M21 16v5h-5"/><path d="M21 8V3h-5"/>
+    <path d="M3 16v5h5"/><path d="m3 21 6-6"/><path d="M3 8V3h5"/><path d="M9 9 3 3"/>
+  </g>
+  <text x="660" y="26" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" fill="#66ccff" text-anchor="middle">Jun 2031</text>
+  <text x="660" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#4a7ba7" text-anchor="middle">Threshold lowers</text>
+  <text x="660" y="101" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#4a7ba7" text-anchor="middle">to 100+ employees</text>
+</svg>

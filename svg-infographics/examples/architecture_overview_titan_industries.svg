@@ -1,0 +1,206 @@
+<!--
+  architecture_overview.svg - High-level system architecture
+  Shows: MS Teams -> Agent -> Data Sources (PostgreSQL, Neo4j, APIs) + Human Workflow loop
+  Theme: Kolomolo palette. Lucide icons (ISC license).
+
+  GRID: viewBox 0 0 800 340. 5px grid. 16px card padding.
+  Cards: 5 data source cards at bottom, agent box centre, Teams box top-left, workflow box top-right.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 340">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .card-bg { fill: #70658a; fill-opacity: 0.06; stroke: #808080; stroke-width: 0.8; }
+    .accent-bar { opacity: 0.7; }
+    .connector { stroke: #5456f3; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+    .connector-dashed { stroke: #5456f3; stroke-width: 1.2; fill: none; stroke-dasharray: 4,3; stroke-linecap: round; }
+    .connector-green { stroke: #38d78c; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+    .arrow-head { fill: #5456f3; }
+    .arrow-head-green { fill: #38d78c; }
+    .icon-stroke { stroke: #1f0f4a; fill: none; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #b5b0c0; }
+      .icon-stroke { stroke: #eee7ff; }
+    }
+  </style>
+
+  <!-- ========== MS Teams Interface (top-left) ========== -->
+  <rect x="30" y="20" width="200" height="80" rx="8" class="card-bg"/>
+  <rect x="30" y="20" width="200" height="5" rx="2" fill="#3999fd" class="accent-bar"/>
+  <g transform="translate(46, 42) scale(0.75)" opacity="0.5" class="icon-stroke">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </g>
+  <text x="72" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" class="fg-1">MS Teams</text>
+  <text x="46" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Enterprise chat interface</text>
+  <text x="46" y="87" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Natural language queries</text>
+
+  <!-- ========== Agentic Advisor (centre) ========== -->
+  <rect x="280" y="15" width="240" height="90" rx="8" class="card-bg"/>
+  <rect x="280" y="15" width="240" height="5" rx="2" fill="#5456f3" class="accent-bar"/>
+  <g transform="translate(296, 38) scale(0.75)" opacity="0.5" class="icon-stroke">
+    <path d="M12 18V5"/>
+    <path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/>
+    <path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/>
+    <path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/>
+    <path d="M18 18a4 4 0 0 0 2-7.464"/>
+    <path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/>
+    <path d="M6 18a4 4 0 0 1-2-7.464"/>
+    <path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/>
+  </g>
+  <text x="322" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Agentic Advisor</text>
+  <text x="322" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Claude / AWS Bedrock orchestration</text>
+  <text x="322" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Reasoning, retrieval, tool selection</text>
+  <text x="322" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Context fusion across all sources</text>
+
+  <!-- ========== Human Workflow (top-right) ========== -->
+  <rect x="570" y="20" width="200" height="80" rx="8" class="card-bg"/>
+  <rect x="570" y="20" width="200" height="5" rx="2" fill="#38d78c" class="accent-bar"/>
+  <g transform="translate(586, 42) scale(0.75)" opacity="0.5" class="icon-stroke">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </g>
+  <text x="612" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" class="fg-1">Human Workflow</text>
+  <text x="586" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Task creation via workflow API</text>
+  <text x="586" y="87" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">SME input enhances knowledge graph</text>
+
+  <!-- ========== Connectors (top row, horizontal-first arrows) ========== -->
+  <!-- Teams(230,60) -> Agent(280,60), angle=0, length=50 -->
+  <g transform="translate(280,60) rotate(0)">
+    <line x1="-50" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+
+  <!-- Agent(520,55) -> Workflow(570,55), angle=0, length=50 -->
+  <g transform="translate(570,55) rotate(0)">
+    <line x1="-50" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+
+  <!-- Workflow(570,70) -> Agent(520,70), angle=180, length=50 -->
+  <g transform="translate(520,70) rotate(180)">
+    <line x1="-50" y1="0" x2="-10" y2="0" class="connector-green"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head-green"/>
+  </g>
+
+  <!-- ========== MCP Gateway bar ========== -->
+  <rect x="20" y="135" width="760" height="30" rx="4" fill="#5456f3" opacity="0.10" stroke="#5456f3" stroke-width="0.6" stroke-opacity="0.3"/>
+  <text x="400" y="155" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-2">MCP Gateway - Tool Routing Layer</text>
+
+  <!-- Agent(400,105) -> Gateway(400,135), angle=90, length=30 -->
+  <g transform="translate(400,135) rotate(90)">
+    <line x1="-30" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+
+  <!-- ========== Data Source Cards (bottom row) ========== -->
+  <!-- 5 cards, each 140px wide, 15px gaps, starting at x=20 -->
+
+  <!-- Card 1: PostgreSQL -->
+  <rect x="20" y="195" width="140" height="120" rx="8" class="card-bg"/>
+  <rect x="20" y="195" width="140" height="5" rx="2" fill="#5456f3" class="accent-bar"/>
+  <g transform="translate(36, 218) scale(0.75)" opacity="0.4" class="icon-stroke">
+    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+    <path d="M3 5V19a9 3 0 0 0 18 0V5"/>
+    <path d="M3 12a9 3 0 0 0 18 0"/>
+  </g>
+  <text x="62" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">PostgreSQL</text>
+  <text x="36" y="250" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Structured master data</text>
+  <text x="36" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Product catalogues</text>
+  <text x="36" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Inventory, pricing</text>
+  <text x="36" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">SQL access via MCP</text>
+  <text x="36" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" fill="#5456f3">SQL</text>
+
+  <!-- Card 2: Neo4j Knowledge Graph -->
+  <rect x="175" y="195" width="140" height="120" rx="8" class="card-bg"/>
+  <rect x="175" y="195" width="140" height="5" rx="2" fill="#3999fd" class="accent-bar"/>
+  <g transform="translate(191, 218) scale(0.75)" opacity="0.4" class="icon-stroke">
+    <circle cx="6" cy="6" r="3"/>
+    <circle cx="18" cy="6" r="3"/>
+    <circle cx="12" cy="18" r="3"/>
+    <line x1="9" y1="6" x2="15" y2="6"/>
+    <line x1="7.5" y1="8.5" x2="10.5" y2="15.5"/>
+    <line x1="16.5" y1="8.5" x2="13.5" y2="15.5"/>
+  </g>
+  <text x="217" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Neo4j</text>
+  <text x="191" y="250" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Knowledge graph</text>
+  <text x="191" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Relationships, context</text>
+  <text x="191" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Enrichment data</text>
+  <text x="191" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Cypher access via MCP</text>
+  <text x="191" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" fill="#3999fd">CYPHER</text>
+
+  <!-- Card 3: External APIs -->
+  <rect x="330" y="195" width="140" height="120" rx="8" class="card-bg"/>
+  <rect x="330" y="195" width="140" height="5" rx="2" fill="#38d78c" class="accent-bar"/>
+  <g transform="translate(346, 218) scale(0.75)" opacity="0.4" class="icon-stroke">
+    <path d="M4 12h16"/>
+    <path d="m15 7 5 5-5 5"/>
+    <path d="M20 12H4"/>
+    <path d="m9 17-5-5 5-5"/>
+  </g>
+  <text x="372" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">External APIs</text>
+  <text x="346" y="250" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">ERP, CRM, PLM systems</text>
+  <text x="346" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">SAP, Salesforce, etc.</text>
+  <text x="346" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Real-time data feeds</text>
+  <text x="346" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">REST/GraphQL via MCP</text>
+  <text x="346" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" fill="#38d78c">REST</text>
+
+  <!-- Card 4: Document Store -->
+  <rect x="485" y="195" width="140" height="120" rx="8" class="card-bg"/>
+  <rect x="485" y="195" width="140" height="5" rx="2" fill="#d857ad" class="accent-bar"/>
+  <g transform="translate(501, 218) scale(0.75)" opacity="0.4" class="icon-stroke">
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+    <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+    <path d="M10 13H8"/>
+    <path d="M16 17H8"/>
+    <path d="M16 13h-2"/>
+  </g>
+  <text x="527" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Documents</text>
+  <text x="501" y="250" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Technical manuals</text>
+  <text x="501" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Service bulletins</text>
+  <text x="501" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Vector embeddings</text>
+  <text x="501" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Semantic search via MCP</text>
+  <text x="501" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" fill="#d857ad">RAG</text>
+
+  <!-- Card 5: Workflow API -->
+  <rect x="640" y="195" width="140" height="120" rx="8" class="card-bg"/>
+  <rect x="640" y="195" width="140" height="5" rx="2" fill="#ec896e" class="accent-bar"/>
+  <g transform="translate(656, 218) scale(0.75)" opacity="0.4" class="icon-stroke">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <line x1="19" y1="8" x2="19" y2="14"/>
+    <line x1="22" y1="11" x2="16" y2="11"/>
+  </g>
+  <text x="682" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Workflow</text>
+  <text x="656" y="250" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Task creation</text>
+  <text x="656" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Human input</text>
+  <text x="656" y="274" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">KG enrichment</text>
+  <text x="656" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Teams notifications</text>
+  <text x="656" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" fill="#ec896e">API</text>
+
+  <!-- Gateway -> Data source connectors (horizontal-first, angle=90, tips at y=195) -->
+  <g transform="translate(90,195) rotate(90)">
+    <line x1="-30" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <g transform="translate(245,195) rotate(90)">
+    <line x1="-30" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <g transform="translate(400,195) rotate(90)">
+    <line x1="-30" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <g transform="translate(555,195) rotate(90)">
+    <line x1="-30" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <g transform="translate(710,195) rotate(90)">
+    <line x1="-30" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+</svg>

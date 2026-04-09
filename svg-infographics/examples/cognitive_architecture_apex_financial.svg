@@ -1,0 +1,66 @@
+<!--
+  cognitive_architecture.svg - Vision 2030 cognitive services layer architecture
+  Shows: three-layer stack (Pega + non-Pega consumers -> cognitive services -> foundation models)
+  Theme: Kolomolo palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 130">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #b5b0c0; }
+    }
+  </style>
+
+  <!-- Layer 1: Consumers (top) -->
+  <rect x="20" y="10" width="340" height="28" rx="4" fill="#1f0f4a" fill-opacity="0.12"/>
+  <rect x="20" y="10" width="340" height="3" fill="#1f0f4a" opacity="0.4"/>
+  <text x="30" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">PEGA WORKFLOWS</text>
+  <text x="140" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Case management</text>
+  <text x="230" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Decision strategies</text>
+  <text x="320" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">KYC</text>
+
+  <rect x="380" y="10" width="400" height="28" rx="4" fill="#1f0f4a" fill-opacity="0.08"/>
+  <rect x="380" y="10" width="400" height="3" fill="#808080" opacity="0.3"/>
+  <text x="390" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-3">NON-PEGA SYSTEMS</text>
+  <text x="510" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Internal tools</text>
+  <text x="590" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Business portals</text>
+  <text x="690" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Analytics</text>
+
+  <!-- Arrows down -->
+  <line x1="190" y1="40" x2="190" y2="48" stroke="#808080" stroke-width="0.75" opacity="0.4"/>
+  <polygon points="190,50 187,46 193,46" fill="#808080" opacity="0.4"/>
+  <line x1="580" y1="40" x2="580" y2="48" stroke="#808080" stroke-width="0.75" opacity="0.4"/>
+  <polygon points="580,50 577,46 583,46" fill="#808080" opacity="0.4"/>
+
+  <!-- API label -->
+  <text x="400" y="47" font-family="Segoe UI, Arial, sans-serif" font-size="6" fill="#808080" text-anchor="middle" letter-spacing="1">REST / gRPC API GATEWAY</text>
+
+  <!-- Layer 2: Cognitive Services (middle, accent) -->
+  <rect x="20" y="52" width="760" height="32" rx="4" fill="#5456f3" fill-opacity="0.10"/>
+  <rect x="20" y="52" width="760" height="3" fill="#5456f3" opacity="0.5"/>
+  <text x="30" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" fill="#5456f3">COGNITIVE SERVICES LAYER</text>
+  <text x="210" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Document intelligence</text>
+  <text x="330" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Risk scoring</text>
+  <text x="420" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">NLP screening</text>
+  <text x="520" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">AI agents</text>
+  <text x="600" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Process automation</text>
+  <text x="720" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">MLOps</text>
+
+  <!-- Arrows down -->
+  <line x1="400" y1="86" x2="400" y2="94" stroke="#808080" stroke-width="0.75" opacity="0.4"/>
+  <polygon points="400,96 397,92 403,92" fill="#808080" opacity="0.4"/>
+
+  <!-- Layer 3: Foundation models (bottom, blue) -->
+  <path d="M20,98 H780 V120 Q780,126 774,126 H26 Q20,126 20,120 Z" fill="#3999fd" fill-opacity="0.12"/>
+  <rect x="20" y="98" width="760" height="3" fill="#3999fd" opacity="0.4"/>
+  <text x="30" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#3999fd">FOUNDATION MODELS</text>
+  <text x="185" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Amazon Bedrock</text>
+  <text x="300" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Azure OpenAI</text>
+  <text x="410" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">AWS Agent Core</text>
+  <text x="540" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Custom ML models</text>
+  <text x="670" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Model registry</text>
+</svg>

@@ -1,0 +1,118 @@
+<!--
+  10_benchmark_program_flow.svg - Input/output flow of the benchmark script
+  Theme: Meridian blue primary, teal accent on process, amber on key outputs
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 310">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-teal { fill: #007a8a; } .accent-amber { fill: #9a6a1a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-teal { fill: #40c4d4; } .accent-amber { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox 800x310, margin 20px
+    3 cards: Input x=20..220, Process x=252..548, Output x=580..780
+    Arrows: 220..252, 548..580
+    Cards: y=36..200
+    Bottom container: y=216..290
+  === -->
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">BENCHMARK AS A PROGRAM - REPRODUCIBLE SCORECARD</text>
+
+  <!-- Input card (blue) -->
+  <g>
+    <path d="M20,36 H220 V197 Q220,200 217,200 H23 Q20,200 20,197 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M20,36 H220 V197 Q220,200 217,200 H23 Q20,200 20,197 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="20" y="36" width="200" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="120" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Input</text>
+    <text x="120" y="72" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">dataset.csv</text>
+    <!-- Field list with small teal dots -->
+    <circle cx="40" cy="93" r="2" fill="#0096a6" fill-opacity="0.4"/>
+    <text x="50" y="96" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">question</text>
+    <circle cx="40" cy="109" r="2" fill="#0096a6" fill-opacity="0.4"/>
+    <text x="50" y="112" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">expected_answer</text>
+    <circle cx="40" cy="125" r="2" fill="#0096a6" fill-opacity="0.4"/>
+    <text x="50" y="128" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">target_document_id</text>
+    <circle cx="40" cy="141" r="2" fill="#0096a6" fill-opacity="0.4"/>
+    <text x="50" y="144" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">required_entities</text>
+    <!-- Stats -->
+    <text x="120" y="172" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">10 questions</text>
+    <text x="120" y="188" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">~40 required entities total</text>
+  </g>
+
+  <!-- Arrow input → process -->
+  <line x1="220" y1="118" x2="248" y2="118" stroke="#00a6ff" stroke-width="2"/>
+  <polygon points="248,114 254,118 248,122" fill="#00a6ff"/>
+
+  <!-- Process box (teal accent) -->
+  <g>
+    <path d="M254,36 H546 V197 Q546,200 543,200 H257 Q254,200 254,197 Z" fill="#0096a6" fill-opacity="0.04"/>
+    <path d="M254,36 H546 V197 Q546,200 543,200 H257 Q254,200 254,197 Z" fill="none" stroke="#0096a6" stroke-width="1"/>
+    <rect x="254" y="36" width="292" height="5" fill="#0096a6" opacity="0.6"/>
+    <text x="400" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Benchmark Script</text>
+    <text x="400" y="72" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">runs N times per configuration (N = 3-5)</text>
+
+    <text x="270" y="92" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">For each question:</text>
+    <!-- Steps with numbered circles -->
+    <circle cx="278" cy="106" r="6" fill="#0096a6" fill-opacity="0.12" stroke="#0096a6" stroke-width="0.8"/>
+    <text x="278" y="109" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle">1</text>
+    <text x="290" y="109" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Run retrieval, record target doc rank</text>
+
+    <circle cx="278" cy="122" r="6" fill="#0096a6" fill-opacity="0.12" stroke="#0096a6" stroke-width="0.8"/>
+    <text x="278" y="125" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle">2</text>
+    <text x="290" y="125" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Generate answer via full agent pipeline</text>
+
+    <circle cx="278" cy="138" r="6" fill="#0096a6" fill-opacity="0.12" stroke="#0096a6" stroke-width="0.8"/>
+    <text x="278" y="141" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle">3</text>
+    <text x="290" y="141" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">LLM judge: justify then score (integer)</text>
+
+    <circle cx="278" cy="154" r="6" fill="#0096a6" fill-opacity="0.12" stroke="#0096a6" stroke-width="0.8"/>
+    <text x="278" y="157" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle">4</text>
+    <text x="290" y="157" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Count required entities in response</text>
+
+    <circle cx="278" cy="170" r="6" fill="#0096a6" fill-opacity="0.12" stroke="#0096a6" stroke-width="0.8"/>
+    <text x="278" y="173" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" text-anchor="middle">5</text>
+    <text x="290" y="173" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Record TTFT and total response time</text>
+
+    <text x="400" y="194" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Repeat N times → compute mean, stdev, min, max</text>
+  </g>
+
+  <!-- Arrow process → output -->
+  <line x1="546" y1="118" x2="574" y2="118" stroke="#00a6ff" stroke-width="2"/>
+  <polygon points="574,114 580,118 574,122" fill="#00a6ff"/>
+
+  <!-- Output card (amber accent for results) -->
+  <g>
+    <path d="M580,36 H780 V197 Q780,200 777,200 H583 Q580,200 580,197 Z" fill="#d4872a" fill-opacity="0.04"/>
+    <path d="M580,36 H780 V197 Q780,200 777,200 H583 Q580,200 580,197 Z" fill="none" stroke="#d4872a" stroke-width="1"/>
+    <rect x="580" y="36" width="200" height="5" fill="#d4872a" opacity="0.6"/>
+    <text x="680" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Output</text>
+    <text x="680" y="72" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">scorecard.json</text>
+    <text x="596" y="92" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">Per question:</text>
+    <text x="596" y="106" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">llm score, entity recall, rank</text>
+    <text x="596" y="120" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">hit @5/@10, response time</text>
+    <text x="596" y="142" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">Aggregate:</text>
+    <text x="596" y="156" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">total / theoretical max</text>
+    <text x="596" y="170" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">mean, stdev across runs</text>
+    <text x="596" y="184" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">MRR, hit rate, pass rate</text>
+  </g>
+
+  <!-- Bottom: use case container -->
+  <path d="M20,216 H780 V287 Q780,290 777,290 H23 Q20,290 20,287 Z" fill="#00a6ff" fill-opacity="0.02"/>
+  <path d="M20,216 H780 V287 Q780,290 777,290 H23 Q20,290 20,287 Z" fill="none" stroke="#00a6ff" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="216" width="760" height="4" fill="#00a6ff" opacity="0.15"/>
+  <text x="40" y="240" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Compare before and after any parameter change</text>
+  <text x="40" y="258" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">K=5 → K=10 | add re-ranker | swap embedding model | adjust similarity threshold</text>
+  <text x="40" y="276" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Run 3-5 times each. Compare means. Check if difference exceeds 2 standard deviations.</text>
+
+  <!-- Legend -->
+  <rect x="180" y="300" width="8" height="8" rx="1" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="1"/>
+  <text x="192" y="308" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Input (dataset)</text>
+  <rect x="300" y="300" width="8" height="8" rx="1" fill="#0096a6" fill-opacity="0.06" stroke="#0096a6" stroke-width="1"/>
+  <text x="312" y="308" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="7">Process (benchmark script)</text>
+  <rect x="460" y="300" width="8" height="8" rx="1" fill="#d4872a" fill-opacity="0.06" stroke="#d4872a" stroke-width="1"/>
+  <text x="472" y="308" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="7">Output (scorecard)</text>
+</svg>

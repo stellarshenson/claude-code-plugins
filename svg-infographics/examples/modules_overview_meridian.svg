@@ -1,0 +1,142 @@
+<!--
+  modules_overview.svg - 8-module scope of work card grid
+  Shows: two rows of cards (4 top, 4 bottom) representing project deliverables.
+  Row 1 (accent-1): Module 1 EU Regulatory Reporting, Module 2 Internal Reporting,
+  Module 3 Self-Service & Analytics, Module 4 Cognitive Software.
+  Row 2 (accent-2): Module 5 Power BI Dashboard, Module 6 Methodology Paper,
+  Module 7 Executive Reporting, Module 8 Training & Handover.
+  Cards use square-top/rounded-bottom paths with accent top bar and drop shadow.
+  Lucide icons per card: shield-check, chart-bar, sliders-horizontal, bot,
+  layout-dashboard, book-open, presentation, graduation-cap.
+  Intent: visual breakdown of all deliverables for scope section of proposal.
+  Theme: Meridian palette, fg-3 headings, fg-4 descriptions, bg-1 card fills.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320">
+  <defs>
+    <filter id="ds" x="-2%" y="-2%" width="104%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Row 1 -->
+  <!-- Module 1: x=10 y=10 w=185 h=130 r=10 -->
+  <path d="M10,10 H195 V130 Q195,140 185,140 H20 Q10,140 10,130 Z" fill="#5456f3" opacity="0.04" filter="url(#ds)"/>
+  <path d="M10,10 H195 V130 Q195,140 185,140 H20 Q10,140 10,130 Z" fill="none" stroke="#5456f3" stroke-width="1"/>
+  <rect x="10" y="10" width="185" height="5" fill="#5456f3" opacity="0.6"/>
+  <text x="30" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#5456f3">MODULE 1</text>
+  <text x="30" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">EU Regulatory</text>
+  <text x="30" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Reporting</text>
+  <text x="30" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Compliance reports</text>
+  <text x="30" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">8 EU subsidiaries</text>
+  <!-- Icon: shield-check (Lucide, ISC license) -->
+  <g transform="translate(153, 30) scale(0.667)" fill="none" stroke="#5456f3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+    <path d="m9 12 2 2 4-4"/>
+  </g>
+
+  <!-- Module 2: x=205 y=10 w=185 h=130 r=10 -->
+  <path d="M205,10 H390 V130 Q390,140 380,140 H215 Q205,140 205,130 Z" fill="#5456f3" opacity="0.04" filter="url(#ds)"/>
+  <path d="M205,10 H390 V130 Q390,140 380,140 H215 Q205,140 205,130 Z" fill="none" stroke="#5456f3" stroke-width="1"/>
+  <rect x="205" y="10" width="185" height="5" fill="#5456f3" opacity="0.6"/>
+  <text x="225" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#5456f3">MODULE 2</text>
+  <text x="225" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Internal</text>
+  <text x="225" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Reporting</text>
+  <text x="225" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Segmented analysis</text>
+  <text x="225" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">17 countries</text>
+  <!-- Icon: chart-bar (Lucide, ISC license) -->
+  <g transform="translate(352, 28) scale(0.667)" fill="none" stroke="#5456f3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+    <path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16h8"/><path d="M7 11h12"/><path d="M7 6h3"/>
+  </g>
+
+  <!-- Module 3: x=400 y=10 w=185 h=130 r=10 -->
+  <path d="M400,10 H585 V130 Q585,140 575,140 H410 Q400,140 400,130 Z" fill="#5456f3" opacity="0.04" filter="url(#ds)"/>
+  <path d="M400,10 H585 V130 Q585,140 575,140 H410 Q400,140 400,130 Z" fill="none" stroke="#5456f3" stroke-width="1"/>
+  <rect x="400" y="10" width="185" height="5" fill="#5456f3" opacity="0.6"/>
+  <text x="420" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#5456f3">MODULE 3</text>
+  <text x="420" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Self-Service &amp;</text>
+  <text x="420" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Analytics</text>
+  <text x="420" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">What-if, forecasting</text>
+  <text x="420" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Simulation engine</text>
+  <!-- Icon: sliders-horizontal (Lucide, ISC license) -->
+  <g transform="translate(548, 28) scale(0.667)" fill="none" stroke="#5456f3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+    <path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/>
+    <path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/>
+  </g>
+
+  <!-- Module 4: x=595 y=10 w=185 h=130 r=10 -->
+  <path d="M595,10 H780 V130 Q780,140 770,140 H605 Q595,140 595,130 Z" fill="#5456f3" opacity="0.04" filter="url(#ds)"/>
+  <path d="M595,10 H780 V130 Q780,140 770,140 H605 Q595,140 595,130 Z" fill="none" stroke="#5456f3" stroke-width="1"/>
+  <rect x="595" y="10" width="185" height="5" fill="#5456f3" opacity="0.6"/>
+  <text x="615" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#5456f3">MODULE 4</text>
+  <text x="615" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Cognitive</text>
+  <text x="615" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Software</text>
+  <text x="615" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">AI question-answering</text>
+  <text x="615" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Excel generation</text>
+  <!-- Icon: bot (Lucide, ISC license) -->
+  <g transform="translate(742, 26) scale(0.667)" fill="none" stroke="#5456f3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+    <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/>
+    <path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>
+  </g>
+
+  <!-- Row 2 -->
+  <!-- Module 5: x=10 y=160 w=185 h=130 r=10 -->
+  <path d="M10,160 H195 V280 Q195,290 185,290 H20 Q10,290 10,280 Z" fill="#3999fd" opacity="0.04" filter="url(#ds)"/>
+  <path d="M10,160 H195 V280 Q195,290 185,290 H20 Q10,290 10,280 Z" fill="none" stroke="#3999fd" stroke-width="1"/>
+  <rect x="10" y="160" width="185" height="5" fill="#3999fd" opacity="0.6"/>
+  <text x="30" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#3999fd">MODULE 5</text>
+  <text x="30" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Power BI</text>
+  <text x="30" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Dashboard</text>
+  <text x="30" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Real-time monitoring</text>
+  <text x="30" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Drill-down views</text>
+  <!-- Icon: layout-dashboard (Lucide, ISC license) -->
+  <g transform="translate(153, 176) scale(0.667)" fill="none" stroke="#3999fd" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+    <rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/>
+    <rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>
+  </g>
+
+  <!-- Module 6: x=205 y=160 w=185 h=130 r=10 -->
+  <path d="M205,160 H390 V280 Q390,290 380,290 H215 Q205,290 205,280 Z" fill="#3999fd" opacity="0.04" filter="url(#ds)"/>
+  <path d="M205,160 H390 V280 Q390,290 380,290 H215 Q205,290 205,280 Z" fill="none" stroke="#3999fd" stroke-width="1"/>
+  <rect x="205" y="160" width="185" height="5" fill="#3999fd" opacity="0.6"/>
+  <text x="225" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#3999fd">MODULE 6</text>
+  <text x="225" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Methodology</text>
+  <text x="225" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Paper</text>
+  <text x="225" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Scientific paper</text>
+  <text x="225" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">For auditors, executives</text>
+  <!-- Icon: book-open (Lucide, ISC license) -->
+  <g transform="translate(352, 176) scale(0.667)" fill="none" stroke="#3999fd" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+    <path d="M12 7v14"/>
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
+  </g>
+
+  <!-- Module 7: x=400 y=160 w=185 h=130 r=10 -->
+  <path d="M400,160 H585 V280 Q585,290 575,290 H410 Q400,290 400,280 Z" fill="#3999fd" opacity="0.04" filter="url(#ds)"/>
+  <path d="M400,160 H585 V280 Q585,290 575,290 H410 Q400,290 400,280 Z" fill="none" stroke="#3999fd" stroke-width="1"/>
+  <rect x="400" y="160" width="185" height="5" fill="#3999fd" opacity="0.6"/>
+  <text x="420" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#3999fd">MODULE 7</text>
+  <text x="420" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Executive</text>
+  <text x="420" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Reporting</text>
+  <text x="420" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Group-level, per-grade</text>
+  <text x="420" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Board-ready narrative</text>
+  <!-- Icon: presentation (Lucide, ISC license) -->
+  <g transform="translate(548, 176) scale(0.667)" fill="none" stroke="#3999fd" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+    <path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/>
+  </g>
+
+  <!-- Module 8: x=595 y=160 w=185 h=130 r=10 -->
+  <path d="M595,160 H780 V280 Q780,290 770,290 H605 Q595,290 595,280 Z" fill="#3999fd" opacity="0.04" filter="url(#ds)"/>
+  <path d="M595,160 H780 V280 Q780,290 770,290 H605 Q595,290 595,280 Z" fill="none" stroke="#3999fd" stroke-width="1"/>
+  <rect x="595" y="160" width="185" height="5" fill="#3999fd" opacity="0.6"/>
+  <text x="615" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#3999fd">MODULE 8</text>
+  <text x="615" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Training &amp;</text>
+  <text x="615" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#70658a">Handover</text>
+  <text x="615" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Knowledge transfer</text>
+  <text x="615" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">Codebase delivery</text>
+  <!-- Icon: graduation-cap (Lucide, ISC license) -->
+  <g transform="translate(742, 176) scale(0.667)" fill="none" stroke="#3999fd" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+    <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.084a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/>
+    <path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>
+  </g>
+
+  <text x="10" y="312" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#70658a">8 modules from regulatory compliance to training and handover</text>
+</svg>

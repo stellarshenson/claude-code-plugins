@@ -1,0 +1,135 @@
+<!--
+  query_flow.svg - How a query flows through the system
+  Shows: User asks question -> Agent reasons -> Queries multiple sources -> Fuses -> Responds
+  Theme: Kolomolo palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 180">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .card-bg { fill: #70658a; fill-opacity: 0.06; stroke: #808080; stroke-width: 0.8; }
+    .accent-bar { opacity: 0.7; }
+    .connector { stroke: #5456f3; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+    .connector-return { stroke: #38d78c; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+    .arrow-head { fill: #5456f3; }
+    .arrow-head-green { fill: #38d78c; }
+    .bubble { fill: #5456f3; fill-opacity: 0.08; stroke: #5456f3; stroke-width: 0.6; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #b5b0c0; }
+    }
+  </style>
+
+  <!-- Section label -->
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" class="fg-1">Query Resolution Flow</text>
+
+  <!-- User bubble -->
+  <rect x="20" y="35" width="100" height="55" rx="8" class="card-bg"/>
+  <rect x="20" y="35" width="100" height="4" rx="2" fill="#3999fd" class="accent-bar"/>
+  <text x="70" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">User</text>
+  <text x="70" y="73" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Asks question</text>
+  <text x="70" y="83" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">in Teams</text>
+
+  <!-- Reasoning -->
+  <rect x="155" y="30" width="120" height="65" rx="8" class="bubble"/>
+  <text x="215" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">Reasoning</text>
+  <text x="215" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Decompose query</text>
+  <text x="215" y="77" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Select tools</text>
+  <text x="215" y="89" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Plan retrieval</text>
+
+  <!-- Tool calls (parallel) -->
+  <rect x="310" y="30" width="90" height="35" rx="6" class="card-bg"/>
+  <rect x="310" y="30" width="90" height="3" rx="1" fill="#5456f3" class="accent-bar"/>
+  <text x="355" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">SQL Query</text>
+  <text x="355" y="61" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">PostgreSQL</text>
+
+  <rect x="310" y="72" width="90" height="35" rx="6" class="card-bg"/>
+  <rect x="310" y="72" width="90" height="3" rx="1" fill="#3999fd" class="accent-bar"/>
+  <text x="355" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">Cypher Query</text>
+  <text x="355" y="103" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">Neo4j</text>
+
+  <rect x="310" y="114" width="90" height="35" rx="6" class="card-bg"/>
+  <rect x="310" y="114" width="90" height="3" rx="1" fill="#38d78c" class="accent-bar"/>
+  <text x="355" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">API Call</text>
+  <text x="355" y="145" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" class="fg-3">External systems</text>
+
+  <!-- Fusion -->
+  <rect x="435" y="35" width="120" height="60" rx="8" class="bubble"/>
+  <text x="495" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">Context Fusion</text>
+  <text x="495" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Merge results</text>
+  <text x="495" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Resolve conflicts</text>
+  <text x="495" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#5456f3">cross-source validation</text>
+
+  <!-- Confidence check -->
+  <rect x="590" y="35" width="100" height="60" rx="8" class="card-bg"/>
+  <rect x="590" y="35" width="100" height="4" rx="2" fill="#d857ad" class="accent-bar"/>
+  <text x="640" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">Confidence</text>
+  <text x="640" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Sufficient? Respond.</text>
+  <text x="640" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Gap? Create task</text>
+  <text x="640" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle" fill="#d857ad">triggers workflow API</text>
+
+  <!-- Response -->
+  <rect x="720" y="35" width="65" height="55" rx="8" class="card-bg"/>
+  <rect x="720" y="35" width="65" height="4" rx="2" fill="#38d78c" class="accent-bar"/>
+  <text x="752" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">Answer</text>
+  <text x="752" y="73" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Coherent</text>
+  <text x="752" y="83" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">response</text>
+
+  <!-- Connectors (horizontal-first arrows, tips at card edges) -->
+  <!-- User(120,62) -> Reasoning(155,62), angle=0, length=35 -->
+  <g transform="translate(155,62) rotate(0)">
+    <line x1="-35" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+
+  <!-- Reasoning(275,50) -> SQL(310,47), angle=-4.9, length=35 -->
+  <g transform="translate(310,47) rotate(-4.9)">
+    <line x1="-35" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <!-- Reasoning(275,62) -> Cypher(310,89), angle=37.6, length=44 -->
+  <g transform="translate(310,89) rotate(37.6)">
+    <line x1="-44" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <!-- Reasoning(275,75) -> API(310,131), angle=58.0, length=66 -->
+  <g transform="translate(310,131) rotate(58.0)">
+    <line x1="-66" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+
+  <!-- SQL(400,47) -> Fusion(435,55), angle=12.9, length=36 -->
+  <g transform="translate(435,55) rotate(12.9)">
+    <line x1="-36" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <!-- Cypher(400,89) -> Fusion(435,70), angle=-28.5, length=40 -->
+  <g transform="translate(435,70) rotate(-28.5)">
+    <line x1="-40" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <!-- API(400,131) -> Fusion(435,85), angle=-52.7, length=58 -->
+  <g transform="translate(435,85) rotate(-52.7)">
+    <line x1="-58" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+
+  <!-- Fusion(555,65) -> Confidence(590,65), angle=0, length=35 -->
+  <g transform="translate(590,65) rotate(0)">
+    <line x1="-35" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+
+  <!-- Confidence(690,62) -> Answer(720,62), angle=0, length=30 -->
+  <g transform="translate(720,62) rotate(0)">
+    <line x1="-30" y1="0" x2="-10" y2="0" class="connector-return"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head-green"/>
+  </g>
+
+  <!-- Return path to user (angular U-shape, 7px below cards) -->
+  <path d="M752,97 V162 H55 V97" class="connector-return" stroke-dasharray="4,3"/>
+  <polygon points="51,97 55,90 59,97" class="arrow-head-green"/>
+  <text x="400" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" fill="#38d78c">response delivered to user in MS Teams</text>
+</svg>

@@ -1,0 +1,69 @@
+<!--
+  02_retrieval_blind_spots.svg - Both retrieval paths share similarity-based mechanism
+  Shows: two paths converging on same blind spot
+  Theme: Meridian palette
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; }
+    .accent-2 { fill: #4a90b8; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; }
+      .fg-2 { fill: #7ec0e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+    }
+  </style>
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">CURRENT RETRIEVAL - SHARED BLIND SPOTS</text>
+
+  <!-- Path A: Document Retrieval -->
+  <g>
+    <path d="M30,36 H370 V123 Q370,126 367,126 H33 Q30,126 30,123 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M30,36 H370 V123 Q370,126 367,126 H33 Q30,126 30,123 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="30" y="36" width="340" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="48" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Document Retrieval</text>
+    <text x="48" y="76" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9">pgvector cosine similarity (1536-dim embeddings)</text>
+    <text x="48" y="92" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9">K=5 results, threshold 0.5</text>
+    <text x="48" y="110" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Mechanism: how similar is the query to stored vectors?</text>
+  </g>
+
+  <!-- Path B: Component Search -->
+  <g>
+    <path d="M430,36 H770 V123 Q770,126 767,126 H433 Q430,126 430,123 Z" fill="#66ccff" fill-opacity="0.04"/>
+    <path d="M430,36 H770 V123 Q770,126 767,126 H433 Q430,126 430,123 Z" fill="none" stroke="#66ccff" stroke-width="1"/>
+    <rect x="430" y="36" width="340" height="5" fill="#66ccff" opacity="0.6"/>
+    <text x="448" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Component Search</text>
+    <text x="448" y="76" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9">fuzzywuzzy string similarity (Levenshtein distance)</text>
+    <text x="448" y="92" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9">Names, article numbers, translations</text>
+    <text x="448" y="110" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Mechanism: how similar is the query to stored strings?</text>
+  </g>
+
+  <!-- Converging arrows -->
+  <path d="M200,126 V142 L204,146 H396 L400,150 V158" fill="none" stroke="#00a6ff" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="397,158 400,162 403,158" fill="#00a6ff" opacity="0.6"/>
+  <path d="M600,126 V142 L596,146 H404 L400,150 V158" fill="none" stroke="#66ccff" stroke-width="1.2" opacity="0.4"/>
+
+  <!-- Shared blind spot -->
+  <g>
+    <path d="M160,162 H640 V249 Q640,252 637,252 H163 Q160,252 160,249 Z" fill="#00a6ff" fill-opacity="0.02"/>
+    <path d="M160,162 H640 V249 Q640,252 637,252 H163 Q160,252 160,249 Z" fill="none" stroke="#00a6ff" stroke-width="0.8" opacity="0.25"/>
+    <rect x="160" y="162" width="480" height="4" fill="#00a6ff" opacity="0.15"/>
+    <text x="400" y="186" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Same Underlying Approach: Find the Closest Match</text>
+    <text x="400" y="206" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">Both paths struggle when user terminology differs from documentation terminology</text>
+    <text x="400" y="222" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">"the milking thing keeps showing 3:14" - neither recognizes this as a VMS error code query</text>
+    <text x="400" y="242" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Neither path compensates for the other's weaknesses - they share the same failure modes</text>
+  </g>
+
+  <!-- Legend -->
+  <rect x="240" y="264" width="8" height="8" rx="1" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="1"/>
+  <text x="252" y="272" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Embedding similarity (vector space)</text>
+  <rect x="440" y="264" width="8" height="8" rx="1" fill="#66ccff" fill-opacity="0.06" stroke="#66ccff" stroke-width="1"/>
+  <text x="452" y="272" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">String similarity (character space)</text>
+</svg>

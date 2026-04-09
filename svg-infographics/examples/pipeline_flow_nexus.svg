@@ -1,0 +1,193 @@
+<!--
+  pipeline_flow.svg - Nexus ingestion pipeline flow diagram
+  Shows: 6 pipeline stages left-to-right (Parse, Chunk, Extract, Dedup, Resolve, Load)
+  connected by arrows, with 3 escalation cards below (Curing, Resolution, Deferred Dedup).
+  Chamfered L-shaped connectors link pipeline stages to their escalation agents.
+  Intent: visualize the hot pipeline path vs agent escalation points for Section 2 of Nexus_DESIGN.
+  Theme: Stellars-Tech derived - fg-1=#1a5a6e (light), accent-1=#0096d1, accent-2=#da8230.
+  Card shape: flat top, rounded bottom r=3 (per theme_swatch.svg).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 256">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 800x256
+    Pipeline row: y=24..74 (box 100x50, stride 126, first x=16)
+    Card shape: flat top, rounded bottom r=3
+    Arrow centres: y=49, tips touch shape edges
+    Escalation connectors: solid, chamfered L-shaped, horizontal at y=88
+    Escalation container: x=25, y=98, w=750, h=110 (flat top, rounded bottom r=3)
+    Escalation cards: y=116, h=78, w=230, 3 cards (x=35,285,535)
+    Escalation label: y=224 (below container)
+    Legend: y=244
+  === -->
+
+  <!-- Title -->
+  <text x="400" y="14" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">INGESTION PIPELINE</text>
+
+  <!-- === PIPELINE BOXES (stride 126: box 100x50, flat top, rounded bottom r=3) === -->
+
+  <!-- Parse: x=16 -->
+  <g id="parse-box">
+    <path d="M16,24 H116 V71 Q116,74 113,74 H19 Q16,74 16,71 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M16,24 H116 V71 Q116,74 113,74 H19 Q16,74 16,71 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="16" y="24" width="100" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="66" y="48" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Parse</text>
+    <text x="66" y="62" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">PDF, TXT, JSON</text>
+  </g>
+
+  <!-- Arrow 1: Parse -> Chunk -->
+  <line x1="116" y1="49" x2="138" y2="49" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="138,46 142,49 138,52" fill="#0096d1" opacity="0.6"/>
+
+  <!-- Chunk: x=142 -->
+  <g id="chunk-box">
+    <path d="M142,24 H242 V71 Q242,74 239,74 H145 Q142,74 142,71 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M142,24 H242 V71 Q242,74 239,74 H145 Q142,74 142,71 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="142" y="24" width="100" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="192" y="48" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Chunk</text>
+    <text x="192" y="62" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Token windows</text>
+  </g>
+
+  <!-- Arrow 2: Chunk -> Extract -->
+  <line x1="242" y1="49" x2="264" y2="49" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="264,46 268,49 264,52" fill="#0096d1" opacity="0.6"/>
+
+  <!-- Extract: x=268 -->
+  <g id="extract-box">
+    <path d="M268,24 H368 V71 Q368,74 365,74 H271 Q268,74 268,71 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M268,24 H368 V71 Q368,74 365,74 H271 Q268,74 268,71 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="268" y="24" width="100" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="318" y="48" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Extract</text>
+    <text x="318" y="62" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">litellm+instructor</text>
+  </g>
+
+  <!-- Arrow 3: Extract -> Dedup -->
+  <line x1="368" y1="49" x2="390" y2="49" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="390,46 394,49 390,52" fill="#0096d1" opacity="0.6"/>
+
+  <!-- Dedup: x=394 -->
+  <g id="dedup-box">
+    <path d="M394,24 H494 V71 Q494,74 491,74 H397 Q394,74 394,71 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M394,24 H494 V71 Q494,74 491,74 H397 Q394,74 394,71 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="394" y="24" width="100" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="444" y="48" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Dedup</text>
+    <text x="444" y="62" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Embedding + rules</text>
+  </g>
+
+  <!-- Arrow 4: Dedup -> Resolve -->
+  <line x1="494" y1="49" x2="516" y2="49" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="516,46 520,49 516,52" fill="#0096d1" opacity="0.6"/>
+
+  <!-- Resolve: x=520 -->
+  <g id="resolve-box">
+    <path d="M520,24 H620 V71 Q620,74 617,74 H523 Q520,74 520,71 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M520,24 H620 V71 Q620,74 617,74 H523 Q520,74 520,71 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="520" y="24" width="100" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="570" y="48" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Resolve</text>
+    <text x="570" y="62" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Cross-type merge</text>
+  </g>
+
+  <!-- Arrow 5: Resolve -> Load -->
+  <line x1="620" y1="49" x2="642" y2="49" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="642,46 646,49 642,52" fill="#0096d1" opacity="0.6"/>
+
+  <!-- Load: x=646 -->
+  <g id="load-box">
+    <path d="M646,24 H746 V71 Q746,74 743,74 H649 Q646,74 646,71 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M646,24 H746 V71 Q746,74 743,74 H649 Q646,74 646,71 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="646" y="24" width="100" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="696" y="48" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Load</text>
+    <text x="696" y="62" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Batch Cypher</text>
+  </g>
+
+  <!-- Neo4J target -->
+  <line x1="746" y1="49" x2="762" y2="49" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="762,46 770,49 762,52" fill="#0096d1" opacity="0.6"/>
+  <ellipse cx="784" cy="39" rx="12" ry="5" fill="none" stroke="#0096d1" stroke-width="1.2"/>
+  <path d="M772,39 V59 A12,5 0 0 0 796,59 V39" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1.2"/>
+  <ellipse cx="784" cy="59" rx="12" ry="5" fill="none" stroke="#0096d1" stroke-width="1.2"/>
+  <text x="784" y="52" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Neo4J</text>
+
+  <!-- === ESCALATION SECTION === -->
+
+  <!-- Chamfered L-connectors: pipeline stage -> escalation card -->
+  <!-- Extract (cx=318, bottom=74) -> Curing (cx=150, top=116) -->
+  <path d="M318,74 V84 L314,88 H154 L150,92 V112" fill="none" stroke="#da8230" stroke-width="1.2" opacity="0.5"/>
+  <polygon points="147,112 150,116 153,112" fill="#da8230" opacity="0.6"/>
+
+  <!-- Dedup (cx=444, bottom=74) -> Resolution card, straight down -->
+  <line x1="444" y1="74" x2="444" y2="112" stroke="#da8230" stroke-width="1.2" opacity="0.5"/>
+  <polygon points="441,112 444,116 447,112" fill="#da8230" opacity="0.6"/>
+
+  <!-- Resolve (cx=570, bottom=74) -> Deferred (cx=650, top=116) -->
+  <path d="M570,74 V84 L574,88 H646 L650,92 V112" fill="none" stroke="#da8230" stroke-width="1.2" opacity="0.5"/>
+  <polygon points="647,112 650,116 653,112" fill="#da8230" opacity="0.6"/>
+
+  <!-- Container for escalation cards (flat top, rounded bottom r=3) -->
+  <path d="M25,98 H775 V205 Q775,208 772,208 H28 Q25,208 25,205 Z" fill="#da8230" opacity="0.02"/>
+  <path d="M25,98 H775 V205 Q775,208 772,208 H28 Q25,208 25,205 Z" fill="none" stroke="#da8230" stroke-width="0.8" opacity="0.25"/>
+  <rect x="25" y="98" width="750" height="4" fill="#da8230" opacity="0.15"/>
+
+  <!-- === ESCALATION CARDS (3-up, w=230, h=78, flat top rounded bottom r=3) === -->
+
+  <!-- Curing Agent: x=35 cx=150 -->
+  <g id="curing-box">
+    <path d="M35,116 H265 V191 Q265,194 262,194 H38 Q35,194 35,191 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M35,116 H265 V191 Q265,194 262,194 H38 Q35,194 35,191 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="35" y="116" width="230" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="150" y="138" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Curing Agent</text>
+    <text x="150" y="152" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Metrics timeline + type frequencies</text>
+    <text x="150" y="166" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Returns CureDecision (cure/block)</text>
+    <text x="150" y="184" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">query_graph / query_buffer / inspect_metrics</text>
+  </g>
+
+  <!-- Resolution Agent: x=285 cx=400 -->
+  <g id="type-res-box">
+    <path d="M285,116 H515 V191 Q515,194 512,194 H288 Q285,194 285,191 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M285,116 H515 V191 Q515,194 512,194 H288 Q285,194 285,191 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="285" y="116" width="230" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="400" y="138" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Resolution Agent</text>
+    <text x="400" y="152" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Bayesian posterior + candidate pairs</text>
+    <text x="400" y="166" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Returns TypeChoice / MergeDecision</text>
+    <text x="400" y="184" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">query_graph / query_buffer</text>
+  </g>
+
+  <!-- Deferred Dedup Agent: x=535 cx=650 -->
+  <g id="deferred-box">
+    <path d="M535,116 H765 V191 Q765,194 762,194 H538 Q535,194 535,191 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M535,116 H765 V191 Q765,194 762,194 H538 Q535,194 535,191 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="535" y="116" width="230" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="650" y="138" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Deferred Dedup</text>
+    <text x="650" y="152" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Ambiguous zone (0.4-0.6 posterior)</text>
+    <text x="650" y="166" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Returns CrossTypeMergeDecision</text>
+    <text x="650" y="184" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">query_graph / query_buffer</text>
+  </g>
+
+  <!-- Escalation label (below container) -->
+  <text x="400" y="224" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="accent-2" text-anchor="middle" letter-spacing="1">ESCALATION AGENTS (STRANDS SDK)</text>
+
+  <!-- Legend -->
+  <g id="legend">
+    <line x1="200" y1="244" x2="220" y2="244" stroke="#0096d1" stroke-width="1.5"/>
+    <text x="224" y="247" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Pipeline (direct litellm+instructor)</text>
+    <line x1="440" y1="244" x2="460" y2="244" stroke="#da8230" stroke-width="1.5"/>
+    <text x="464" y="247" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Agent escalation (Strands SDK)</text>
+  </g>
+
+</svg>

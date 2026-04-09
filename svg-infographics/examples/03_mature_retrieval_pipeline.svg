@@ -1,0 +1,133 @@
+<!--
+  03_mature_retrieval_pipeline.svg - 3-stage retrieval pipeline
+  Shows: Query Comprehension -> Hybrid Retrieval -> Post-processing
+  Theme: Meridian blue primary, teal on current (semantic), amber on new proposals
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; }
+    .accent-2 { fill: #4a90b8; }
+    .accent-teal { fill: #007a8a; }
+    .accent-amber { fill: #9a6a1a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; }
+      .fg-2 { fill: #7ec0e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+      .accent-teal { fill: #40c4d4; }
+      .accent-amber { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 800x300, margins: 20px left+right
+    Usable width: 760px (x=20..780)
+    3 cards: w=240, gap=20
+    Card 1: x=20  w=240 (ends 260)
+    Arrow:  x=260..280
+    Card 2: x=280 w=240 (ends 520)
+    Arrow:  x=520..540
+    Card 3: x=540 w=240 (ends 780)
+    Card h=134 (y=36..170)
+    Coverage container: y=186..270 (x=20..780)
+    Coverage bars: 3 equal bars w=233, gap=13.5
+      Bar 1: x=30  w=233 (ends 263)
+      Bar 2: x=277 w=233 (ends 510)
+      Bar 3: x=523 w=233 (ends 756)
+    Legend: y=282
+  === -->
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">MATURE RETRIEVAL PIPELINE - THREE STAGES</text>
+
+  <!-- Stage 1: Query Comprehension (blue) -->
+  <g>
+    <path d="M20,36 H260 V167 Q260,170 257,170 H23 Q20,170 20,167 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M20,36 H260 V167 Q260,170 257,170 H23 Q20,170 20,167 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="20" y="36" width="240" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="36" y="56" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">STAGE 1</text>
+    <text x="36" y="74" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Query Comprehension</text>
+    <text x="36" y="94" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Expand abbreviations</text>
+    <text x="36" y="108" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Resolve ambiguity</text>
+    <text x="36" y="122" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Translate informal -> technical</text>
+    <text x="36" y="136" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Decompose complex queries</text>
+    <text x="36" y="158" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">"milking thing 3:14" -> "VMS error 3:14"</text>
+  </g>
+
+  <!-- Arrow 1->2 -->
+  <line x1="260" y1="103" x2="276" y2="103" stroke="#00a6ff" stroke-width="1.5" opacity="0.4"/>
+  <polygon points="276,100 280,103 276,106" fill="#00a6ff" opacity="0.6"/>
+
+  <!-- Stage 2: Hybrid Retrieval (blue container, teal+amber sub-strategies) -->
+  <g>
+    <path d="M280,36 H520 V167 Q520,170 517,170 H283 Q280,170 280,167 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M280,36 H520 V167 Q520,170 517,170 H283 Q280,170 280,167 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="280" y="36" width="240" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="296" y="56" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">STAGE 2</text>
+    <text x="296" y="74" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Hybrid Retrieval</text>
+
+    <!-- Sub-strategies: w=224 (8px inner padding each side) -->
+    <!-- Description text right-aligned at x=504 to avoid overflow -->
+    <rect x="288" y="86" width="224" height="20" rx="3" fill="#0096a6" fill-opacity="0.08" stroke="#0096a6" stroke-width="0.8"/>
+    <text x="296" y="100" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">Semantic</text>
+    <text x="504" y="100" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">pgvector (current)</text>
+
+    <rect x="288" y="112" width="224" height="20" rx="3" fill="#d4872a" fill-opacity="0.06" stroke="#d4872a" stroke-width="0.8"/>
+    <text x="296" y="126" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">BM25</text>
+    <text x="504" y="126" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">exact terms (new)</text>
+
+    <rect x="288" y="138" width="224" height="20" rx="3" fill="#d4872a" fill-opacity="0.06" stroke="#d4872a" stroke-width="0.8"/>
+    <text x="296" y="152" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">PageIndex</text>
+    <text x="504" y="152" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">structure + LLM (new)</text>
+  </g>
+
+  <!-- Arrow 2->3 -->
+  <line x1="520" y1="103" x2="536" y2="103" stroke="#00a6ff" stroke-width="1.5" opacity="0.4"/>
+  <polygon points="536,100 540,103 536,106" fill="#00a6ff" opacity="0.6"/>
+
+  <!-- Stage 3: Post-processing (blue) -->
+  <g>
+    <path d="M540,36 H780 V167 Q780,170 777,170 H543 Q540,170 540,167 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M540,36 H780 V167 Q780,170 777,170 H543 Q540,170 540,167 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="540" y="36" width="240" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="556" y="56" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">STAGE 3</text>
+    <text x="556" y="74" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Post-processing</text>
+    <text x="556" y="94" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Re-ranking (cross-encoder)</text>
+    <text x="556" y="108" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Deduplicate overlapping chunks</text>
+    <text x="556" y="122" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Order logically</text>
+    <text x="556" y="136" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Trim tangential content</text>
+    <text x="556" y="158" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Clean, focused context -> agent</text>
+  </g>
+
+  <!-- Current coverage container (20..780) -->
+  <path d="M20,186 H780 V267 Q780,270 777,270 H23 Q20,270 20,267 Z" fill="#00a6ff" fill-opacity="0.02"/>
+  <path d="M20,186 H780 V267 Q780,270 777,270 H23 Q20,270 20,267 Z" fill="none" stroke="#00a6ff" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="186" width="760" height="4" fill="#00a6ff" opacity="0.15"/>
+  <text x="400" y="210" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">Current coverage</text>
+
+  <!-- 3 coverage bars: evenly distributed within container (30..770 = 740px usable, 3 bars + 2 gaps) -->
+  <!-- bar w=230, gap=25: bar1 x=30..260, bar2 x=285..515, bar3 x=540..770 -->
+  <rect x="30" y="222" width="230" height="16" rx="3" fill="#00a6ff" fill-opacity="0.05" stroke="#00a6ff" stroke-width="0.5" opacity="0.3"/>
+  <text x="145" y="234" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Stage 1: not implemented</text>
+
+  <rect x="285" y="222" width="230" height="16" rx="3" fill="#0096a6" fill-opacity="0.12" stroke="#0096a6" stroke-width="0.8"/>
+  <text x="400" y="234" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Stage 2: semantic only (1 of 3)</text>
+
+  <rect x="540" y="222" width="230" height="16" rx="3" fill="#00a6ff" fill-opacity="0.05" stroke="#00a6ff" stroke-width="0.5" opacity="0.3"/>
+  <text x="655" y="234" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Stage 3: not implemented</text>
+
+  <text x="400" y="258" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Documentation specialist partially compensates for Stage 3, but operates on only 5 candidates</text>
+
+  <!-- Legend -->
+  <rect x="160" y="282" width="8" height="8" rx="1" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="1"/>
+  <text x="172" y="290" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Pipeline (blue)</text>
+  <rect x="290" y="282" width="8" height="8" rx="1" fill="#0096a6" fill-opacity="0.08" stroke="#0096a6" stroke-width="1"/>
+  <text x="302" y="290" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="7">Current (teal)</text>
+  <rect x="400" y="282" width="8" height="8" rx="1" fill="#d4872a" fill-opacity="0.06" stroke="#d4872a" stroke-width="1"/>
+  <text x="412" y="290" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="7">Proposed (amber)</text>
+</svg>

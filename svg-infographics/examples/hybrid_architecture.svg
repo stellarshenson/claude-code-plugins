@@ -1,0 +1,220 @@
+<!--
+  hybrid_architecture.svg - Nexus hybrid architecture overview
+  Shows: three-column layout. Left: input sources (PDF, JSON, etc). Centre: pipeline
+  stages stacked vertically. Right: agent engagement model (interactive checkpoints,
+  escalation points, tool registry).
+  Intent: top-level architecture diagram for Section 2 of Nexus_DESIGN.md.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 pipeline, accent-2=#da8230 agents.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 404">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 800x396
+    Left column:   x=16,  w=164, right=180, center=98
+    Centre column: x=210, w=308, right=518, center=364
+    Right column:  x=548, w=236, right=784, center=666
+    Column gaps: 30px (180..210, 518..548)
+    Headers: y=22
+    Content top: y=36
+    Vertical gap between cards: 14px
+    Pipeline stage: h=36, gap=8px
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: inputs-column, pipeline-column, agents-column
+    v-stack: inputs-column > unstructured, structured, ontology-seed
+    v-stack: pipeline-column > parse, chunk, extract, dedup, buffer, load, neo4j
+    v-stack: agents-column > checkpoints, escalation, tools
+  === -->
+
+  <!-- === COLUMN HEADERS === -->
+  <text x="98" y="22" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" letter-spacing="1">INPUT SOURCES</text>
+  <text x="364" y="22" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" letter-spacing="1">PIPELINE (HOT PATH)</text>
+  <text x="666" y="22" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" letter-spacing="1">AGENT ENGAGEMENT</text>
+
+  <!-- === LEFT COLUMN: INPUT SOURCES === -->
+  <g id="inputs-column">
+    <!-- Unstructured card: y=36, h=100, flat top rounded bottom -->
+    <path d="M16,36 H180 V133 Q180,136 177,136 H19 Q16,136 16,133 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M16,36 H180 V133 Q180,136 177,136 H19 Q16,136 16,133 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="16" y="36" width="164" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="30" y="56" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Unstructured</text>
+    <text x="30" y="72" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">PDF documents</text>
+    <text x="30" y="86" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">TXT / MD files</text>
+    <text x="30" y="100" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">DOCX documents</text>
+    <text x="30" y="114" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Free-form text extraction</text>
+    <!-- Icon: file-text -->
+    <rect x="144" y="50" width="14" height="18" rx="2" fill="none" stroke="#0096d1" stroke-width="1" opacity="0.4"/>
+    <line x1="148" y1="56" x2="155" y2="56" stroke="#0096d1" stroke-width="0.8" opacity="0.4"/>
+    <line x1="148" y1="60" x2="155" y2="60" stroke="#0096d1" stroke-width="0.8" opacity="0.4"/>
+    <line x1="148" y1="64" x2="153" y2="64" stroke="#0096d1" stroke-width="0.8" opacity="0.4"/>
+
+    <!-- Structured card: y=150, h=100, flat top rounded bottom -->
+    <path d="M16,150 H180 V247 Q180,250 177,250 H19 Q16,250 16,247 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M16,150 H180 V247 Q180,250 177,250 H19 Q16,250 16,247 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="16" y="150" width="164" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="30" y="170" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Structured</text>
+    <text x="30" y="186" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">JSON records</text>
+    <text x="30" y="200" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">JSONL streams</text>
+    <text x="30" y="214" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Schema inference (auto)</text>
+    <text x="30" y="228" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">First-class field mapping</text>
+    <!-- Icon: brackets -->
+    <text x="148" y="184" font-family="Segoe UI, monospace" font-size="16" class="accent-1" opacity="0.4">{ }</text>
+
+    <!-- Ontology seed card: y=264, h=76, flat top rounded bottom -->
+    <path d="M16,264 H180 V337 Q180,340 177,340 H19 Q16,340 16,337 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M16,264 H180 V337 Q180,340 177,340 H19 Q16,340 16,337 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="16" y="264" width="164" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="30" y="284" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Ontology Seed</text>
+    <text x="30" y="300" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">OWL, YAML, JSON, MD, TXT</text>
+    <text x="30" y="314" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">LLM-normalized to YAML</text>
+    <text x="30" y="328" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Optional (free extraction)</text>
+  </g>
+
+  <!-- Arrows: inputs -> pipeline (L-shaped angular routing) -->
+  <!-- Gap x=180..210, vertical midpoints staggered to avoid overlap -->
+
+  <!-- Unstructured (cy=86) -> Parse (cy=54) via x=192, chamfered -->
+  <path d="M180,86 H188 L192,82 V58 L196,54 H206" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="206,51 210,54 206,57" fill="#0096d1" opacity="0.6"/>
+
+  <!-- Structured (cy=200) -> Chunk (cy=98) via x=195, chamfered -->
+  <path d="M180,200 H191 L195,196 V102 L199,98 H206" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="206,95 210,98 206,101" fill="#0096d1" opacity="0.6"/>
+
+  <!-- Ontology (cy=302) -> Ontology Buffer (cy=230) via x=198, chamfered, dashed -->
+  <path d="M180,302 H194 L198,298 V234 L202,230 H206" fill="none" stroke="#da8230" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.4"/>
+  <polygon points="206,227 210,230 206,233" fill="#da8230" opacity="0.6"/>
+
+  <!-- === CENTRE COLUMN: PIPELINE === -->
+  <g id="pipeline-column">
+    <!-- Parse: y=36, h=36 -->
+    <g id="stage-parse">
+      <rect x="210" y="36" width="308" height="36" rx="5" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="1"/>
+      <text x="228" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">Parse + Detect</text>
+      <text x="380" y="58" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">File type routing, document parsing</text>
+    </g>
+
+    <!-- Chunk: y=80, h=36 -->
+    <g id="stage-chunk">
+      <rect x="210" y="80" width="308" height="36" rx="5" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="1"/>
+      <text x="228" y="102" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">Chunk</text>
+      <text x="380" y="102" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Token-window splitting</text>
+    </g>
+
+    <!-- Extract: y=124, h=36 -->
+    <g id="stage-extract">
+      <rect x="210" y="124" width="308" height="36" rx="5" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="1"/>
+      <text x="228" y="146" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">Extract</text>
+      <text x="380" y="146" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">litellm+instructor per chunk</text>
+    </g>
+
+    <!-- Dedup: y=168, h=36 -->
+    <g id="stage-dedup">
+      <rect x="210" y="168" width="308" height="36" rx="5" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="1"/>
+      <text x="228" y="190" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">Dedup + Resolve</text>
+      <text x="380" y="190" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Embedding similarity, Bayesian merge</text>
+    </g>
+
+    <!-- Buffer: y=212, h=36 -->
+    <g id="stage-cure">
+      <rect x="210" y="212" width="308" height="36" rx="5" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="1"/>
+      <text x="228" y="234" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">Ontology Buffer</text>
+      <text x="380" y="234" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Type frequencies, curing, clustering</text>
+    </g>
+
+    <!-- Load: y=256, h=36 -->
+    <g id="stage-load">
+      <rect x="210" y="256" width="308" height="36" rx="5" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="1"/>
+      <text x="228" y="278" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">Load + Validate</text>
+      <text x="380" y="278" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Batch Cypher, dual indexing</text>
+    </g>
+
+    <!-- Down arrows between stages (x=364, centre of column) -->
+    <line x1="364" y1="72" x2="364" y2="80" stroke="#0096d1" stroke-width="1" opacity="0.3"/>
+    <line x1="364" y1="116" x2="364" y2="124" stroke="#0096d1" stroke-width="1" opacity="0.3"/>
+    <line x1="364" y1="160" x2="364" y2="168" stroke="#0096d1" stroke-width="1" opacity="0.3"/>
+    <line x1="364" y1="204" x2="364" y2="212" stroke="#0096d1" stroke-width="1" opacity="0.3"/>
+    <line x1="364" y1="248" x2="364" y2="256" stroke="#0096d1" stroke-width="1" opacity="0.3"/>
+
+    <!-- Neo4J target -->
+    <line x1="364" y1="292" x2="364" y2="306" stroke="#0096d1" stroke-width="1" opacity="0.3"/>
+    <polygon points="360,306 364,314 368,306" fill="#0096d1" opacity="0.5"/>
+    <ellipse cx="364" cy="322" rx="30" ry="8" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <path d="M334,322 V342 A30,8 0 0 0 394,342 V322" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+    <ellipse cx="364" cy="342" rx="30" ry="8" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <text x="364" y="336" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">Neo4J</text>
+  </g>
+
+  <!-- Arrows: pipeline -> agents (L-shaped angular routing) -->
+  <!-- Gap x=518..548, vertical midpoints staggered -->
+
+  <!-- Extract (cy=142) -> Interactive Checkpoints (cy=91) via x=530, chamfered, dashed -->
+  <path d="M518,142 H526 L530,138 V95 L534,91 H544" fill="none" stroke="#da8230" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>
+  <polygon points="544,88 548,91 544,94" fill="#da8230" opacity="0.5"/>
+
+  <!-- Ontology Buffer (cy=230) -> Escalation Points (cy=215), straight horizontal -->
+  <line x1="518" y1="230" x2="544" y2="230" stroke="#da8230" stroke-width="1" stroke-dasharray="3,2" opacity="0.4"/>
+  <polygon points="544,227 548,230 544,233" fill="#da8230" opacity="0.5"/>
+
+  <!-- === RIGHT COLUMN: AGENT ENGAGEMENT === -->
+  <g id="agents-column">
+    <!-- Interactive checkpoints: y=36, h=110, flat top rounded bottom -->
+    <path d="M548,36 H784 V143 Q784,146 781,146 H551 Q548,146 548,143 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M548,36 H784 V143 Q784,146 781,146 H551 Q548,146 548,143 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="548" y="36" width="236" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="562" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="accent-2">Interactive Checkpoints</text>
+    <text x="562" y="72" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Schema inference proposal</text>
+    <text x="562" y="86" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Ontology normalization</text>
+    <text x="562" y="100" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Buffer refinement review</text>
+    <text x="562" y="114" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Migration plan approval</text>
+    <text x="562" y="132" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Skipped in --batch mode (autonomous)</text>
+
+    <!-- Escalation points: y=160, h=110, flat top rounded bottom -->
+    <path d="M548,160 H784 V267 Q784,270 781,270 H551 Q548,270 548,267 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M548,160 H784 V267 Q784,270 781,270 H551 Q548,270 548,267 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="548" y="160" width="236" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="562" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="accent-2">Escalation Points</text>
+    <text x="562" y="196" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Curing Agent - CureDecision</text>
+    <text x="562" y="210" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Resolution Agent - TypeChoice</text>
+    <text x="562" y="224" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Deferred Dedup - MergeDecision</text>
+    <text x="562" y="242" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Read-only context, structured return</text>
+    <text x="562" y="256" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">No pipeline state mutation</text>
+
+    <!-- Tool registry: y=284, h=80, flat top rounded bottom -->
+    <path d="M548,284 H784 V361 Q784,364 781,364 H551 Q548,364 548,361 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M548,284 H784 V361 Q784,364 781,364 H551 Q548,364 548,361 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="548" y="284" width="236" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="562" y="304" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="accent-1">Tool Registry</text>
+    <text x="562" y="320" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">query_graph - Neo4J read</text>
+    <text x="562" y="334" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">query_buffer - OntologyState</text>
+    <text x="562" y="348" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">inspect_metrics - Stability history</text>
+  </g>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="16" y="388" width="8" height="8" rx="1" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="28" y="396" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Pipeline (direct litellm+instructor)</text>
+    <rect x="200" y="388" width="8" height="8" rx="1" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1"/>
+    <text x="212" y="396" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">Agent engagement (Strands SDK)</text>
+    <line x1="400" y1="392" x2="420" y2="392" stroke="#da8230" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="424" y="396" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">Escalation (structured decision return)</text>
+  </g>
+
+</svg>

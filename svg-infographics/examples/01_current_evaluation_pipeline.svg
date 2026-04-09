@@ -1,0 +1,109 @@
+<!--
+  01_current_evaluation_pipeline.svg - Current evaluation lifecycle
+  Shows: request flow through guardrails, generation, evaluation, response
+  Theme: Meridian palette - accent-1=#00a6ff, accent-2=#66ccff
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; }
+    .accent-2 { fill: #4a90b8; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; }
+      .fg-2 { fill: #7ec0e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+    }
+  </style>
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">CURRENT EVALUATION PIPELINE</text>
+
+  <!-- Stage 1: User Query -->
+  <g>
+    <path d="M20,40 H150 V107 Q150,110 147,110 H23 Q20,110 20,107 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M20,40 H150 V107 Q150,110 147,110 H23 Q20,110 20,107 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="20" y="40" width="130" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="85" y="64" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">User Query</text>
+    <text x="85" y="80" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Question + context</text>
+    <text x="85" y="94" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">language, product, history</text>
+  </g>
+
+  <!-- Arrow 1->2 -->
+  <line x1="150" y1="75" x2="168" y2="75" stroke="#00a6ff" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="168,72 172,75 168,78" fill="#00a6ff" opacity="0.6"/>
+
+  <!-- Stage 2: Guardrails (parallel) -->
+  <g>
+    <path d="M172,40 H322 V107 Q322,110 319,110 H175 Q172,110 172,107 Z" fill="#66ccff" fill-opacity="0.04"/>
+    <path d="M172,40 H322 V107 Q322,110 319,110 H175 Q172,110 172,107 Z" fill="none" stroke="#66ccff" stroke-width="1"/>
+    <rect x="172" y="40" width="150" height="5" fill="#66ccff" opacity="0.6"/>
+    <text x="247" y="62" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Guardrails</text>
+    <text x="247" y="78" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Content safety + scope</text>
+    <text x="247" y="92" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">run in parallel</text>
+  </g>
+
+  <!-- Arrow 2->3 -->
+  <line x1="322" y1="75" x2="340" y2="75" stroke="#00a6ff" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="340,72 344,75 340,78" fill="#00a6ff" opacity="0.6"/>
+
+  <!-- Stage 3: Retrieval + Generation -->
+  <g>
+    <path d="M344,40 H514 V107 Q514,110 511,110 H347 Q344,110 344,107 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M344,40 H514 V107 Q514,110 511,110 H347 Q344,110 344,107 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="344" y="40" width="170" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="429" y="62" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Retrieval + Generation</text>
+    <text x="429" y="78" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">pgvector K=5, Sonnet synthesis</text>
+    <text x="429" y="92" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">documentation + information specialists</text>
+  </g>
+
+  <!-- Arrow 3->4 -->
+  <line x1="514" y1="75" x2="532" y2="75" stroke="#00a6ff" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="532,72 536,75 532,78" fill="#00a6ff" opacity="0.6"/>
+
+  <!-- Stage 4: Evaluation Agent -->
+  <g>
+    <path d="M536,40 H686 V107 Q686,110 683,110 H539 Q536,110 536,107 Z" fill="#66ccff" fill-opacity="0.04"/>
+    <path d="M536,40 H686 V107 Q686,110 683,110 H539 Q536,110 536,107 Z" fill="none" stroke="#66ccff" stroke-width="1"/>
+    <rect x="536" y="40" width="150" height="5" fill="#66ccff" opacity="0.6"/>
+    <text x="611" y="62" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Evaluation Agent</text>
+    <text x="611" y="78" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Haiku scores 0-100</text>
+    <text x="611" y="92" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">relevance, accuracy, completeness</text>
+  </g>
+
+  <!-- Arrow 4->5 -->
+  <line x1="686" y1="75" x2="704" y2="75" stroke="#00a6ff" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="704,72 708,75 704,78" fill="#00a6ff" opacity="0.6"/>
+
+  <!-- Stage 5: Response -->
+  <g>
+    <path d="M708,40 H780 V107 Q780,110 777,110 H711 Q708,110 708,107 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M708,40 H780 V107 Q780,110 777,110 H711 Q708,110 708,107 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="708" y="40" width="72" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="744" y="64" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Response</text>
+    <text x="744" y="80" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">+ metadata</text>
+    <text x="744" y="94" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">scores, links</text>
+  </g>
+
+  <!-- Bottom: Batch evaluation row -->
+  <path d="M20,126 H780 V197 Q780,200 777,200 H23 Q20,200 20,197 Z" fill="#00a6ff" fill-opacity="0.02"/>
+  <path d="M20,126 H780 V197 Q780,200 777,200 H23 Q20,200 20,197 Z" fill="none" stroke="#00a6ff" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="126" width="760" height="4" fill="#00a6ff" opacity="0.15"/>
+  <text x="40" y="148" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Batch Evaluation (offline)</text>
+  <text x="40" y="166" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Bedrock: faithfulness, correctness, helpfulness, harmfulness</text>
+  <text x="40" y="180" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Strands: custom LLM-as-judge evaluators</text>
+  <text x="40" y="194" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">LangWatch: observability + user feedback (-1, 0, +1)</text>
+  <text x="500" y="166" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">28+ product datasets</text>
+  <text x="500" y="180" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Custom rubric 0.0-1.0</text>
+  <text x="500" y="194" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Manual notebook runs</text>
+
+  <!-- Legend -->
+  <line x1="220" y1="212" x2="240" y2="212" stroke="#00a6ff" stroke-width="1.5"/>
+  <text x="244" y="215" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Primary pipeline flow</text>
+  <rect x="380" y="208" width="8" height="8" rx="1" fill="#66ccff" fill-opacity="0.06" stroke="#66ccff" stroke-width="1"/>
+  <text x="392" y="215" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">Quality evaluation stages</text>
+</svg>

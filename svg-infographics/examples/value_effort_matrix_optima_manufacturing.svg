@@ -1,0 +1,244 @@
+<!--
+  value_effort_matrix.svg - Automation value-effort matrix
+  Shows: 5 automation concepts rated across 5 production value aspects + 2 implementation
+  columns (effort, cost) using signal-strength bar icons for High/Mid/Low/Zero levels.
+  Intent: help Optima Manufacturing prioritise automation investments by visualising impact vs cost.
+  Theme: Optima Manufacturing red-based palette (fg-1 #1f0f4a through fg-4 #70658a, accent #5456f3).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 380">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .fg-4 { fill: #909090; }
+    .accent-1 { fill: #1f0f4a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #909090; }
+      .fg-4 { fill: #909090; }
+    }
+  </style>
+
+  <!-- Title -->
+  <text x="20" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Automation Value-Effort Matrix</text>
+  <text x="20" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Impact on production aspects vs implementation requirements</text>
+
+  <!-- Column header background -->
+  <rect x="0" y="50" width="800" height="28" fill="#808080" fill-opacity="0.06"/>
+
+  <!-- Column headers - Value -->
+  <text x="12" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" letter-spacing="1">AUTOMATION CONCEPT</text>
+  <text x="238" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">Intake QC</text>
+  <text x="318" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">Machining</text>
+  <text x="398" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">Assembly</text>
+  <text x="478" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">Inspection</text>
+  <text x="558" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">Tracking</text>
+
+  <!-- Vertical separator -->
+  <line x1="600" y1="54" x2="600" y2="280" stroke="#808080" stroke-width="1" opacity="0.2"/>
+
+  <!-- Column headers - Effort -->
+  <text x="648" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">Effort</text>
+  <text x="738" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">Cost</text>
+
+  <!-- Header underline -->
+  <line x1="8" y1="78" x2="790" y2="78" stroke="#808080" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- === ROW 1: Surface Quality Inspection === cy=98 -->
+  <rect x="0" y="84" width="800" height="30" fill="#808080" fill-opacity="0.03"/>
+  <text x="12" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-1">1. Surface Quality Inspection</text>
+  <!-- Intake: zero -->
+  <line x1="230" y1="98" x2="246" y2="98" stroke="#a0a0a0" stroke-width="1.5" stroke-dasharray="2,2"/>
+  <!-- Machining: mid -->
+  <rect x="310" y="95" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="316" y="91" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="322" y="87" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Assembly: zero -->
+  <line x1="390" y1="98" x2="406" y2="98" stroke="#a0a0a0" stroke-width="1.5" stroke-dasharray="2,2"/>
+  <!-- Inspection: high -->
+  <rect x="470" y="95" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="476" y="91" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="482" y="87" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Tracking: low -->
+  <rect x="550" y="95" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="556" y="91" width="4" height="10" rx="1" fill="#70658a" opacity="0.15"/>
+  <rect x="562" y="87" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Effort: mid -->
+  <rect x="640" y="95" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="646" y="91" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="652" y="87" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Cost: mid -->
+  <rect x="730" y="95" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="736" y="91" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="742" y="87" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+
+  <!-- === ROW 2: Automated Dimensional Measurement === cy=140 -->
+  <text x="12" y="144" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-1">2. Dimensional Measurement</text>
+  <!-- Intake: low -->
+  <rect x="230" y="137" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="236" y="133" width="4" height="10" rx="1" fill="#70658a" opacity="0.15"/>
+  <rect x="242" y="129" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Machining: high -->
+  <rect x="310" y="137" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="316" y="133" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="322" y="129" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Assembly: low -->
+  <rect x="390" y="137" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="396" y="133" width="4" height="10" rx="1" fill="#70658a" opacity="0.15"/>
+  <rect x="402" y="129" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Inspection: high -->
+  <rect x="470" y="137" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="476" y="133" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="482" y="129" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Tracking: mid -->
+  <rect x="550" y="137" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="556" y="133" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="562" y="129" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Effort: mid -->
+  <rect x="640" y="137" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="646" y="133" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="652" y="129" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Cost: mid -->
+  <rect x="730" y="137" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="736" y="133" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="742" y="129" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+
+  <!-- Row separator -->
+  <line x1="8" y1="156" x2="790" y2="156" stroke="#808080" stroke-width="0.3" opacity="0.15"/>
+
+  <!-- === ROW 3: Automated Assembly Step Auditing === cy=182 -->
+  <rect x="0" y="168" width="800" height="30" fill="#808080" fill-opacity="0.03"/>
+  <text x="12" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-1">3. Assembly Step Auditing</text>
+  <!-- Intake: zero -->
+  <line x1="230" y1="182" x2="246" y2="182" stroke="#a0a0a0" stroke-width="1.5" stroke-dasharray="2,2"/>
+  <!-- Machining: zero -->
+  <line x1="310" y1="182" x2="326" y2="182" stroke="#a0a0a0" stroke-width="1.5" stroke-dasharray="2,2"/>
+  <!-- Assembly: high -->
+  <rect x="390" y="179" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="396" y="175" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="402" y="171" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Inspection: high -->
+  <rect x="470" y="179" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="476" y="175" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="482" y="171" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Tracking: mid -->
+  <rect x="550" y="179" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="556" y="175" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="562" y="171" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Effort: high -->
+  <rect x="640" y="179" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="646" y="175" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="652" y="171" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Cost: mid -->
+  <rect x="730" y="179" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="736" y="175" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="742" y="171" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+
+  <!-- === ROW 4: Automated X-Ray Casting Inspection === cy=224 -->
+  <text x="12" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-1">4. X-Ray Casting Inspection</text>
+  <!-- Intake: high -->
+  <rect x="230" y="221" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="236" y="217" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="242" y="213" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Machining: high (prevents wasting 40-80min cycles) -->
+  <rect x="310" y="221" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="316" y="217" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="322" y="213" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Assembly: zero -->
+  <line x1="390" y1="224" x2="406" y2="224" stroke="#a0a0a0" stroke-width="1.5" stroke-dasharray="2,2"/>
+  <!-- Inspection: high -->
+  <rect x="470" y="221" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="476" y="217" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="482" y="213" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Tracking: mid -->
+  <rect x="550" y="221" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="556" y="217" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="562" y="213" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Effort: high -->
+  <rect x="640" y="221" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="646" y="217" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="652" y="213" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Cost: high -->
+  <rect x="730" y="221" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="736" y="217" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="742" y="213" width="4" height="14" rx="1" fill="#70658a"/>
+
+  <!-- Row separator -->
+  <line x1="8" y1="240" x2="790" y2="240" stroke="#808080" stroke-width="0.3" opacity="0.15"/>
+
+  <!-- === ROW 5: Production Tracking and Traceability === cy=266 -->
+  <rect x="0" y="252" width="800" height="30" fill="#808080" fill-opacity="0.03"/>
+  <text x="12" y="270" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-1">5. Production Tracking</text>
+  <!-- Intake: mid -->
+  <rect x="230" y="263" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="236" y="259" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="242" y="255" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Machining: mid -->
+  <rect x="310" y="263" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="316" y="259" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="322" y="255" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Assembly: mid -->
+  <rect x="390" y="263" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="396" y="259" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="402" y="255" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Inspection: mid -->
+  <rect x="470" y="263" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="476" y="259" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="482" y="255" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Tracking: high -->
+  <rect x="550" y="263" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="556" y="259" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="562" y="255" width="4" height="14" rx="1" fill="#70658a"/>
+  <!-- Effort: mid -->
+  <rect x="640" y="263" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="646" y="259" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="652" y="255" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <!-- Cost: low -->
+  <rect x="730" y="263" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="736" y="259" width="4" height="10" rx="1" fill="#70658a" opacity="0.15"/>
+  <rect x="742" y="255" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+
+  <!-- Bottom line -->
+  <line x1="8" y1="286" x2="790" y2="286" stroke="#808080" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- Section labels -->
+  <text x="398" y="302" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle" letter-spacing="1">PRODUCTION VALUE</text>
+  <text x="693" y="302" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle" letter-spacing="1">IMPLEMENTATION</text>
+
+  <!-- === LEGEND === -->
+  <text x="20" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Legend:</text>
+
+  <!-- High -->
+  <rect x="62" y="329" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="68" y="325" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="74" y="321" width="4" height="14" rx="1" fill="#70658a"/>
+  <text x="84" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">High</text>
+
+  <!-- Mid -->
+  <rect x="130" y="329" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="136" y="325" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="142" y="321" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <text x="152" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Mid</text>
+
+  <!-- Low -->
+  <rect x="192" y="329" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="198" y="325" width="4" height="10" rx="1" fill="#70658a" opacity="0.15"/>
+  <rect x="204" y="321" width="4" height="14" rx="1" fill="#70658a" opacity="0.15"/>
+  <text x="214" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Low</text>
+
+  <!-- Zero -->
+  <line x1="252" y1="332" x2="268" y2="332" stroke="#a0a0a0" stroke-width="1.5" stroke-dasharray="2,2"/>
+  <text x="274" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">None</text>
+
+  <!-- Effort/Cost legend note -->
+  <rect x="340" y="329" width="4" height="6" rx="1" fill="#70658a"/>
+  <rect x="346" y="325" width="4" height="10" rx="1" fill="#70658a"/>
+  <rect x="352" y="321" width="4" height="14" rx="1" fill="#70658a"/>
+  <text x="362" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Effort/Cost (higher = more demanding)</text>
+
+  <!-- Row separators between rows 1-2 and 3-4 -->
+  <line x1="8" y1="114" x2="790" y2="114" stroke="#808080" stroke-width="0.3" opacity="0.15"/>
+  <line x1="8" y1="198" x2="790" y2="198" stroke="#808080" stroke-width="0.3" opacity="0.15"/>
+
+</svg>

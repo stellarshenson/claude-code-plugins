@@ -1,0 +1,106 @@
+<!--
+  tracking_solution.svg - Production Tracking solution architecture overview
+  Shows: NFC-based tracking system with central workflow, handheld devices, and part lifecycle.
+  Intent: visualise the recommended solution (concept 5) architecture.
+  Theme: Optima Manufacturing palette (fg-1 #1f0f4a, accent #5456f3).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 210">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .fg-4 { fill: #909090; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #909090; }
+      .fg-4 { fill: #909090; }
+    }
+  </style>
+
+  <!-- Title -->
+  <text x="20" y="20" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4" letter-spacing="1">RECOMMENDED SOLUTION - PRODUCTION TRACKING AND PARTS TRACEABILITY</text>
+
+  <!-- === Central system (hub) === -->
+  <circle cx="400" cy="100" r="44" fill="#808080" fill-opacity="0.06" stroke="#808080" stroke-width="1.5"/>
+  <text x="400" y="93" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">Central</text>
+  <text x="400" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">Workflow</text>
+  <text x="400" y="117" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">Management</text>
+
+  <!-- === Left side: NFC + Part ID === -->
+
+  <!-- NFC Tag -->
+  <rect x="30" y="50" width="90" height="54" rx="8" fill="#808080" fill-opacity="0.05" stroke="#808080" stroke-width="1"/>
+  <!-- NFC icon -->
+  <rect x="48" y="64" width="14" height="10" rx="2" fill="none" stroke="#808080" stroke-width="1" opacity="0.5"/>
+  <circle cx="55" cy="69" r="1.5" fill="#1f0f4a" opacity="0.5"/>
+  <path d="M62,64 Q68,69 62,74" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <path d="M65,61 Q73,69 65,77" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <text x="75" y="73" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2">NFC</text>
+  <text x="48" y="93" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" class="fg-3">Unique Part ID</text>
+
+  <!-- Handheld device -->
+  <rect x="30" y="120" width="90" height="54" rx="8" fill="#808080" fill-opacity="0.05" stroke="#808080" stroke-width="1"/>
+  <!-- Tablet icon -->
+  <rect x="52" y="130" width="18" height="24" rx="2" fill="none" stroke="#808080" stroke-width="1" opacity="0.5"/>
+  <line x1="52" y1="134" x2="70" y2="134" stroke="#808080" stroke-width="0.5" opacity="0.5"/>
+  <line x1="52" y1="150" x2="70" y2="150" stroke="#808080" stroke-width="0.5" opacity="0.5"/>
+  <circle cx="61" cy="153" r="1" fill="#1f0f4a" opacity="0.5"/>
+  <text x="75" y="145" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Tablet</text>
+  <text x="48" y="165" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" class="fg-3">NFC Reader</text>
+
+  <!-- Connection lines: left side to hub -->
+  <line x1="124" y1="77" x2="356" y2="90" stroke="#808080" stroke-width="1.5" opacity="0.2"/>
+  <line x1="124" y1="147" x2="356" y2="110" stroke="#808080" stroke-width="1.5" opacity="0.2"/>
+
+  <!-- === Right side: tracked events === -->
+
+  <!-- Tracked data cards -->
+  <!-- Material Batch -->
+  <rect x="520" y="36" width="120" height="30" rx="5" fill="#808080" fill-opacity="0.05" stroke="#808080" stroke-width="0.8"/>
+  <circle cx="534" cy="51" r="4" fill="#1f0f4a" opacity="0.3"/>
+  <text x="542" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Material Batch</text>
+
+  <!-- Machine + Operator -->
+  <rect x="520" y="74" width="120" height="30" rx="5" fill="#808080" fill-opacity="0.05" stroke="#808080" stroke-width="0.8"/>
+  <circle cx="534" cy="89" r="4" fill="#1f0f4a" opacity="0.3"/>
+  <text x="542" y="93" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Machine + Operator</text>
+
+  <!-- Measurements -->
+  <rect x="520" y="112" width="120" height="30" rx="5" fill="#808080" fill-opacity="0.05" stroke="#808080" stroke-width="0.8"/>
+  <circle cx="534" cy="127" r="4" fill="#1f0f4a" opacity="0.3"/>
+  <text x="542" y="131" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Measurements</text>
+
+  <!-- Assembly Steps -->
+  <rect x="520" y="150" width="120" height="30" rx="5" fill="#808080" fill-opacity="0.05" stroke="#808080" stroke-width="0.8"/>
+  <circle cx="534" cy="165" r="4" fill="#1f0f4a" opacity="0.3"/>
+  <text x="542" y="169" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">Assembly Steps</text>
+
+  <!-- Connection lines: hub to right side -->
+  <line x1="444" y1="88" x2="516" y2="51" stroke="#808080" stroke-width="1" opacity="0.2"/>
+  <line x1="444" y1="95" x2="516" y2="89" stroke="#808080" stroke-width="1" opacity="0.2"/>
+  <line x1="444" y1="105" x2="516" y2="127" stroke="#808080" stroke-width="1" opacity="0.2"/>
+  <line x1="444" y1="112" x2="516" y2="165" stroke="#808080" stroke-width="1" opacity="0.2"/>
+
+  <!-- Far right: outcome -->
+  <rect x="670" y="36" width="110" height="144" rx="8" fill="#808080" fill-opacity="0.04" stroke="#808080" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <text x="725" y="60" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">Full</text>
+  <text x="725" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-1" text-anchor="middle">Traceability</text>
+
+  <line x1="695" y1="82" x2="755" y2="82" stroke="#808080" stroke-width="0.5" opacity="0.2"/>
+
+  <text x="725" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Part -> Machine</text>
+  <text x="725" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Part -> Operator</text>
+  <text x="725" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Part -> Material</text>
+  <text x="725" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Part -> Measurements</text>
+  <text x="725" y="146" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Part -> Assembly</text>
+  <text x="725" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Part -> Shipping</text>
+  <text x="725" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Part -> Customer</text>
+
+  <!-- Connection: tracked data to outcome -->
+  <line x1="644" y1="108" x2="666" y2="108" stroke="#808080" stroke-width="1" opacity="0.2"/>
+
+  <!-- Bottom: context switching note -->
+  <text x="400" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4" text-anchor="middle">Supports high-intensity parts context switching - technicians move between parts and resume operations seamlessly</text>
+</svg>

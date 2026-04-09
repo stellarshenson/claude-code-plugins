@@ -1,0 +1,101 @@
+<!--
+  16_llm_scoring_practices.svg - LLM scoring best practices
+  Shows: integer scale, justify-then-score flow, failure modes, raw totals vs percentage
+  Theme: Meridian blue primary, teal accent, amber for anti-patterns
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 352">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-teal { fill: #007a8a; } .accent-amber { fill: #9a6a1a; }
+    .semantic-good { fill: #1a7a5a; } .semantic-risk { fill: #a03030; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-teal { fill: #40c4d4; } .accent-amber { fill: #d4a04a; }
+      .semantic-good { fill: #4cb8a0; } .semantic-risk { fill: #e06060; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox 800x340, margin 20px
+    Row 1 (y=36..120): 3 practice cards, equal width w=240, gap=20
+      Card 1: x=20..260  (Integer scale)
+      Card 2: x=280..520 (Justify then score)
+      Card 3: x=540..780 (Failure modes)
+    Row 2 (y=140..240): Raw totals vs percentage - full width
+    Row 3 (y=260..320): Anti-pattern examples
+    Legend: y=332
+  === -->
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">LLM SCORING BEST PRACTICES</text>
+
+  <!-- Card 1: Integer Scale (teal) -->
+  <g>
+    <path d="M20,36 H260 V117 Q260,120 257,120 H23 Q20,120 20,117 Z" fill="#0096a6" fill-opacity="0.04"/>
+    <path d="M20,36 H260 V117 Q260,120 257,120 H23 Q20,120 20,117 Z" fill="none" stroke="#0096a6" stroke-width="1"/>
+    <rect x="20" y="36" width="240" height="5" fill="#0096a6" opacity="0.6"/>
+    <text x="140" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Use Integer Scales</text>
+    <text x="36" y="78" class="semantic-risk" font-family="Segoe UI, Arial, sans-serif" font-size="8">1-5 too coarse - collapses to 3 or 4</text>
+    <text x="36" y="96" class="semantic-good" font-family="Segoe UI, Arial, sans-serif" font-size="8">1-10 or 1-15 gives room for nuance</text>
+    <text x="36" y="114" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Integers, not floats - LLMs are more consistent</text>
+  </g>
+
+  <!-- Card 2: Justify Then Score (blue) -->
+  <g>
+    <path d="M280,36 H520 V117 Q520,120 517,120 H283 Q280,120 280,117 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M280,36 H520 V117 Q520,120 517,120 H283 Q280,120 280,117 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="280" y="36" width="240" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="400" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Justify Before Scoring</text>
+    <text x="296" y="78" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Prompt: explain reasoning first</text>
+    <text x="296" y="94" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Then assign the integer score</text>
+    <text x="296" y="114" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Forces careful examination instead of pattern-matching</text>
+  </g>
+
+  <!-- Card 3: Failure Modes (amber) -->
+  <g>
+    <path d="M540,36 H780 V117 Q780,120 777,120 H543 Q540,120 540,117 Z" fill="#d4872a" fill-opacity="0.04"/>
+    <path d="M540,36 H780 V117 Q780,120 777,120 H543 Q540,120 540,117 Z" fill="none" stroke="#d4872a" stroke-width="1"/>
+    <rect x="540" y="36" width="240" height="5" fill="#d4872a" opacity="0.6"/>
+    <text x="660" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Specify Failure Modes</text>
+    <text x="556" y="78" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">List what loses points: missing entity,</text>
+    <text x="556" y="94" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">wrong procedure, hallucinated part number</text>
+    <text x="556" y="114" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Detailed criteria produce consistent, defensible scores</text>
+  </g>
+
+  <!-- Row 2: Raw totals vs percentage -->
+  <path d="M20,140 H780 V237 Q780,240 777,240 H23 Q20,240 20,237 Z" fill="#00a6ff" fill-opacity="0.02"/>
+  <path d="M20,140 H780 V237 Q780,240 777,240 H23 Q20,240 20,237 Z" fill="none" stroke="#00a6ff" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="140" width="760" height="4" fill="#00a6ff" opacity="0.15"/>
+  <text x="40" y="164" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Work in raw integers, convert to % only at the end</text>
+
+  <!-- Good example (teal) -->
+  <rect x="40" y="176" width="340" height="44" rx="3" fill="#0096a6" fill-opacity="0.06" stroke="#0096a6" stroke-width="0.8"/>
+  <text x="56" y="194" class="semantic-good" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">47 / 60 → 49 / 60 = +2 points</text>
+  <text x="56" y="212" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Clear improvement, easy to reason about</text>
+
+  <!-- Bad example (amber) -->
+  <rect x="420" y="176" width="340" height="44" rx="3" fill="#d4872a" fill-opacity="0.06" stroke="#d4872a" stroke-width="0.8"/>
+  <text x="436" y="194" class="semantic-risk" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">78.3% → 81.7% = +3.4%</text>
+  <text x="436" y="212" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Same change, harder to parse, false precision</text>
+
+  <!-- Row 3: Prompt structure example -->
+  <path d="M20,260 H780 V317 Q780,320 777,320 H23 Q20,320 20,317 Z" fill="#0096a6" fill-opacity="0.02"/>
+  <path d="M20,260 H780 V317 Q780,320 777,320 H23 Q20,320 20,317 Z" fill="none" stroke="#0096a6" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="260" width="760" height="4" fill="#0096a6" opacity="0.15"/>
+  <text x="40" y="282" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Prompt structure for reliable LLM scoring</text>
+  <text x="40" y="300" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">1. List failure modes</text>
+  <text x="200" y="300" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">"Deduct 2 if wrong article number, 3 if hallucinated part..."</text>
+  <text x="40" y="314" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">2. Justify</text>
+  <text x="120" y="314" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">"Explain what is correct and what is missing"</text>
+  <text x="400" y="314" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">3. Score</text>
+  <text x="450" y="314" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">"Assign integer 1-10"</text>
+  <text x="570" y="314" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">4. Sum → %</text>
+  <text x="640" y="314" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">"Only at final report"</text>
+
+  <!-- Legend -->
+  <rect x="160" y="332" width="8" height="8" rx="1" fill="#0096a6" fill-opacity="0.06" stroke="#0096a6" stroke-width="1"/>
+  <text x="172" y="340" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="7">Best practice</text>
+  <rect x="290" y="332" width="8" height="8" rx="1" fill="#d4872a" fill-opacity="0.06" stroke="#d4872a" stroke-width="1"/>
+  <text x="302" y="340" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="7">Anti-pattern</text>
+  <rect x="410" y="332" width="8" height="8" rx="1" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="1"/>
+  <text x="422" y="340" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Scoring pipeline</text>
+</svg>

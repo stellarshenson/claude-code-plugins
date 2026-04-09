@@ -1,0 +1,130 @@
+<!--
+  opportunity_map.svg - Four opportunity areas as cards
+  Theme: Kolomolo palette. Cards 1-2 include Pega pegasus mark.
+  Icons: Lucide (ISC license) - shield-check, refresh-cw, cloud, brain
+
+  GRID: 5px base grid for y-positions. x-positions use 12px card padding
+  from card edges (x=22/220/418/616 are 2/0/2/1px off 5px grid -
+  structural, consistent across all 4 cards).
+
+  CARD LAYOUT (uniform):
+    Card inner:     y=10 to y=100  (content boundary, on 5px grid)
+    Card outer:     y=10 to y=110  (10px corner radius, on 5px grid)
+    Accent bar:     y=10, height=5  (y=10-15)
+    Title baseline: y=30
+    Body text:      y=45, 55, 65, 75  (10px rhythm, on 5px grid)
+    Bottom padding: 100 - 77 = 23px  (text bottom to card inner)
+
+  INNER/OUTER BBOX PER ELEMENT TYPE:
+    Padding rule: outer_bbox = inner_bbox + padding_per_type on all sides
+    Icon/logo padding: 6px. Text padding: 12px from card edges, 4px from icons.
+    Overlap check: outer bboxes must not overlap each other or extend past container inner bbox.
+
+    Decorative icon (4x Lucide, uniform 20x20 inner, y=60-80, behind body text at 18% opacity):
+      Card 1 shield-check: inner x=166-186 y=60-80,  outer x=160-192 y=54-86.  Card right=196 PASS (4px spare)
+      Card 2 refresh-cw:   inner x=364-384 y=60-80,  outer x=358-390 y=54-86.  Card right=394 PASS (4px spare)
+      Card 3 cloud:        inner x=562-582 y=60-80,  outer x=556-588 y=54-86.  Card right=592 PASS (4px spare)
+      Card 4 brain:        inner x=760-780 y=60-80,  outer x=754-786 y=54-86.  Card right=790 PASS (4px spare)
+
+    Pega mark (2x, uniform 20x9 inner, y=92):
+      Card 1: inner x=166-186 y=92-101,  outer x=160-192 y=86-107.  Card right=196 PASS (4px). Card inner bottom=100, outer bottom=107 (extends into corner radius area). ACCEPTED: 30% opacity brand watermark.
+      Card 2: inner x=364-384 y=92-101,  outer x=358-390 y=86-107.  Card right=394 PASS (4px). Same acceptance.
+      Icon-to-pega gap: icon outer bottom=86, pega outer top=86. Flush (0px gap). Inner gap=92-80=12px.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 120">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .decor { stroke: #1f0f4a; fill: #1f0f4a; }
+    .decor-stroke { stroke: #1f0f4a; fill: none; }
+    .pega-dark { fill: #1F2555; }
+    .pega-teal { fill: #86CAC7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #b5b0c0; }
+      .decor { stroke: #eee7ff; fill: #eee7ff; }
+      .decor-stroke { stroke: #eee7ff; }
+      .pega-dark { fill: #b0bde0; }
+      .pega-teal { fill: #a8e0dd; }
+    }
+  </style>
+
+  <!-- Card 1: KYC  x=10 w=186 right=196 -->
+  <path d="M10,10 H196 V100 Q196,110 186,110 H20 Q10,110 10,100 Z" fill="#70658a" fill-opacity="0.06" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="10" y="10" width="186" height="5" fill="#5456f3" opacity="0.7"/>
+  <text x="22" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2">1</text>
+  <text x="35" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">KYC Optimisation</text>
+  <text x="22" y="45" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Document classification</text>
+  <text x="22" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Risk scoring models</text>
+  <text x="22" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">NLP screening</text>
+  <text x="22" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Modular Pega integration</text>
+  <!-- Icon: shield-check (Lucide, ISC license)  inner 166-186 x 60-80  outer 160-192 x 54-86 -->
+  <g transform="translate(166, 60) scale(0.833)" opacity="0.18" class="decor-stroke" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+    <path d="m9 12 2 2 4-4"/>
+  </g>
+  <!-- Pega mark  inner 166-186 x 92-101  outer 160-192 x 86-107 -->
+  <g transform="translate(166, 92) scale(0.13)" opacity="0.30">
+    <path d="M136.36,17.098 L136.173,17.009 C136.154,16.998 133.96,16.01 132.245,17.815 L132.026,18.046 L135.539,19.768 L136.36,17.098 Z M152.441,36.389 C152.441,36.389 150.91,39.13 150.224,40.143 C149.535,41.164 147.38,41.798 145.517,40.908 C144.665,40.503 136.694,35.854 133.644,36.12 C118.205,37.466 113.999,31.105 113.503,30.527 C113.005,29.949 112.077,30.218 112.74,31.355 C116.127,37.163 126.15,39.856 126.15,39.856 C128.771,46.172 129.085,50.597 129.085,50.597 C126.489,48.574 123.687,46.869 120.714,45.453 C112.768,40.121 100.329,33.518 83.207,29.379 C84.191,15.797 91.044,-3.837 123.092,0.806 C123.092,0.806 129.522,1.86 133.809,4.824 C133.809,4.824 132.779,5.904 131.425,7.256 C130.071,8.605 131.569,9.471 131.569,9.471 L138.338,14.792 C138.417,17.607 138.533,18.396 140.651,20.944 C142.769,23.487 151.004,32.112 152.081,33.266 C153.329,34.6 152.441,36.389 152.441,36.389 Z M78.633,9.915 C76.938,16.897 77.068,23.049 77.939,28.221 C76.33,27.901 74.697,27.594 73.014,27.32 C37.94,21.612 27.361,38.899 31.455,52.916 C19.86,57.274 8.963,62.263 0.214,67.162 C13.98,34.146 43.896,5.087 69.145,1.268 C77.389,0.181 79.708,5.529 78.633,9.915 L78.633,9.915 Z" class="pega-dark"/>
+    <path d="M83.492,40.09 C97.157,39.01 110.054,40.381 120.713,45.453 C112.768,40.121 100.329,33.518 83.206,29.379 C82.864,34.111 83.23,38.107 83.492,40.09 Z M81.52,40.262 C66.209,41.723 48.105,46.663 31.455,52.916 C27.361,38.899 37.941,21.612 73.014,27.32 C74.697,27.594 76.33,27.901 77.938,28.221 C78.77,33.166 80.276,37.228 81.52,40.262 L81.52,40.262 Z" class="pega-teal"/>
+  </g>
+
+  <!-- Card 2: Constellation  x=208 w=186 right=394 -->
+  <path d="M208,10 H394 V100 Q394,110 384,110 H218 Q208,110 208,100 Z" fill="#70658a" fill-opacity="0.06" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="208" y="10" width="186" height="5" fill="#3999fd" opacity="0.7"/>
+  <text x="220" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2">2</text>
+  <text x="235" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Constellation Migration</text>
+  <text x="220" y="45" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Pega Infinity upgrade</text>
+  <text x="220" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">SDLC automation</text>
+  <text x="220" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">CI/CD pipelines</text>
+  <text x="220" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">AI-assisted code review</text>
+  <!-- Icon: refresh-cw (Lucide, ISC license)  inner 364-384 x 60-80  outer 358-390 x 54-86 -->
+  <g transform="translate(364, 60) scale(0.833)" opacity="0.18" class="decor-stroke" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+    <path d="M21 3v5h-5"/>
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+    <path d="M8 16H3v5"/>
+  </g>
+  <!-- Pega mark  inner 364-384 x 92-101  outer 358-390 x 86-107 -->
+  <g transform="translate(364, 92) scale(0.13)" opacity="0.30">
+    <path d="M136.36,17.098 L136.173,17.009 C136.154,16.998 133.96,16.01 132.245,17.815 L132.026,18.046 L135.539,19.768 L136.36,17.098 Z M152.441,36.389 C152.441,36.389 150.91,39.13 150.224,40.143 C149.535,41.164 147.38,41.798 145.517,40.908 C144.665,40.503 136.694,35.854 133.644,36.12 C118.205,37.466 113.999,31.105 113.503,30.527 C113.005,29.949 112.077,30.218 112.74,31.355 C116.127,37.163 126.15,39.856 126.15,39.856 C128.771,46.172 129.085,50.597 129.085,50.597 C126.489,48.574 123.687,46.869 120.714,45.453 C112.768,40.121 100.329,33.518 83.207,29.379 C84.191,15.797 91.044,-3.837 123.092,0.806 C123.092,0.806 129.522,1.86 133.809,4.824 C133.809,4.824 132.779,5.904 131.425,7.256 C130.071,8.605 131.569,9.471 131.569,9.471 L138.338,14.792 C138.417,17.607 138.533,18.396 140.651,20.944 C142.769,23.487 151.004,32.112 152.081,33.266 C153.329,34.6 152.441,36.389 152.441,36.389 Z M78.633,9.915 C76.938,16.897 77.068,23.049 77.939,28.221 C76.33,27.901 74.697,27.594 73.014,27.32 C37.94,21.612 27.361,38.899 31.455,52.916 C19.86,57.274 8.963,62.263 0.214,67.162 C13.98,34.146 43.896,5.087 69.145,1.268 C77.389,0.181 79.708,5.529 78.633,9.915 L78.633,9.915 Z" class="pega-dark"/>
+    <path d="M83.492,40.09 C97.157,39.01 110.054,40.381 120.713,45.453 C112.768,40.121 100.329,33.518 83.206,29.379 C82.864,34.111 83.23,38.107 83.492,40.09 Z M81.52,40.262 C66.209,41.723 48.105,46.663 31.455,52.916 C27.361,38.899 37.941,21.612 73.014,27.32 C74.697,27.594 76.33,27.901 77.938,28.221 C78.77,33.166 80.276,37.228 81.52,40.262 L81.52,40.262 Z" class="pega-teal"/>
+  </g>
+
+  <!-- Card 3: Cloud  x=406 w=186 right=592 -->
+  <path d="M406,10 H592 V100 Q592,110 582,110 H416 Q406,110 406,100 Z" fill="#70658a" fill-opacity="0.06" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="406" y="10" width="186" height="5" fill="#38d78c" opacity="0.7"/>
+  <text x="418" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2">3</text>
+  <text x="430" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Cloud Modernisation</text>
+  <text x="418" y="45" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Cloud-native architecture</text>
+  <text x="418" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">AWS Platinum Partner</text>
+  <text x="418" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Cost optimisation</text>
+  <text x="418" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Multi-cloud integration</text>
+  <!-- Icon: cloud (Lucide, ISC license)  inner 562-582 x 60-80  outer 556-588 x 54-86 -->
+  <g transform="translate(562, 60) scale(0.833)" opacity="0.18" class="decor-stroke" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+  </g>
+
+  <!-- Card 4: Vision 2030  x=604 w=186 right=790 -->
+  <path d="M604,10 H790 V100 Q790,110 780,110 H614 Q604,110 604,100 Z" fill="#70658a" fill-opacity="0.06" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="604" y="10" width="186" height="5" fill="#d857ad" opacity="0.7"/>
+  <text x="616" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2">4</text>
+  <text x="630" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Vision 2030: AI</text>
+  <text x="616" y="45" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Cognitive services layer</text>
+  <text x="616" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Intelligent automation</text>
+  <text x="616" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Pega AI Hub integration</text>
+  <text x="616" y="75" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Enterprise AI education</text>
+  <!-- Icon: brain (Lucide, ISC license)  inner 760-780 x 60-80  outer 754-786 x 54-86 -->
+  <g transform="translate(760, 60) scale(0.833)" opacity="0.18" class="decor-stroke" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 18V5"/>
+    <path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/>
+    <path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/>
+    <path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/>
+    <path d="M18 18a4 4 0 0 0 2-7.464"/>
+    <path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/>
+    <path d="M6 18a4 4 0 0 1-2-7.464"/>
+    <path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/>
+  </g>
+</svg>

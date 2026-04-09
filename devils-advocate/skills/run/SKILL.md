@@ -7,6 +7,10 @@ description: Run the full devil's advocate workflow end-to-end. Setup persona, e
 
 Systematically critique any document from the perspective of its toughest audience. Generate structured pushback scenarios, score how well concerns are addressed, and produce actionable improvement paths - including graphical options via the `svg-infographics` skill.
 
+## Task Tracking
+
+**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout the full workflow. Create tasks for setup, evaluation, and each iteration cycle. Mark each in_progress when starting, completed when done. This provides visible progress and ensures no step is skipped.
+
 ## Workflow
 
 The skill produces three artefacts in the same directory as the target document:

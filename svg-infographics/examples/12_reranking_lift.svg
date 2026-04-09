@@ -1,0 +1,139 @@
+<!--
+  12_reranking_lift.svg - Before/after document positions with re-ranking
+  Shows: 10 queries, target doc rank shifts from raw retrieval to post-rerank
+  Theme: Meridian enriched - teal current, amber improvement, red fragile zone
+  Arrow rule: arrowhead tip stops 1px before target circle edge (r+1 gap)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #007a8a; } .accent-2 { fill: #9a6a1a; }
+    .semantic-good { fill: #1a7a5a; }
+    .semantic-risk { fill: #a03030; }
+    .semantic-new { fill: #b87820; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #40c4d4; } .accent-2 { fill: #d4a04a; }
+      .semantic-good { fill: #4cb8a0; }
+      .semantic-risk { fill: #e06060; }
+      .semantic-new { fill: #e0a848; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    Target circles: r=5 (after) or r=4 (before)
+    Arrowhead: tip at target_cx + r + 1 (pointing left), back at tip + 8
+    Line: from before_cx - before_r to arrowhead back
+    Before circle drawn first (underneath), arrow over it, after circle on top
+  === -->
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">RE-RANKING LIFT - TARGET DOCUMENT POSITION SHIFT</text>
+  <text x="400" y="32" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Illustrative example: 10 benchmark queries showing where the target document lands before and after re-ranking</text>
+
+  <!-- Rank axis labels -->
+  <text x="160" y="58" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">Rank 1</text>
+  <text x="310" y="58" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">Rank 3</text>
+  <text x="460" y="58" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">Rank 5</text>
+  <text x="610" y="58" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Rank 10</text>
+  <text x="720" y="58" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Rank 20</text>
+
+  <!-- Grid lines -->
+  <line x1="160" y1="64" x2="160" y2="308" stroke="#0096a6" stroke-width="0.5" opacity="0.15"/>
+  <line x1="310" y1="64" x2="310" y2="308" stroke="#0096a6" stroke-width="0.5" opacity="0.15"/>
+  <line x1="460" y1="64" x2="460" y2="308" stroke="#0096a6" stroke-width="0.5" opacity="0.15"/>
+  <line x1="610" y1="64" x2="610" y2="308" stroke="#0096a6" stroke-width="0.5" opacity="0.15"/>
+
+  <!-- Fragile zone (rank 4-5) shading -->
+  <rect x="385" y="64" width="150" height="244" fill="#c44" fill-opacity="0.03"/>
+  <text x="460" y="318" class="semantic-risk" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">fragile zone (rank 4-5)</text>
+
+  <!-- Safe zone (rank 1-2) shading -->
+  <rect x="85" y="64" width="150" height="244" fill="#2a8" fill-opacity="0.03"/>
+  <text x="160" y="318" class="semantic-good" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">safe zone (rank 1-2)</text>
+
+  <!-- Q1: rank 4 (x=385) -> rank 1 (x=160). After r=5, tip=160+6=166, back=174 -->
+  <text x="40" y="82" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Q1</text>
+  <circle cx="385" cy="78" r="4" fill="#0096a6" fill-opacity="0.3" stroke="#0096a6" stroke-width="1"/>
+  <line x1="381" y1="78" x2="174" y2="78" stroke="#d4872a" stroke-width="1" opacity="0.5"/>
+  <polygon points="174,75 166,78 174,81" fill="#d4872a" opacity="0.7"/>
+  <circle cx="160" cy="78" r="5" fill="#d4872a" fill-opacity="0.4" stroke="#d4872a" stroke-width="1.2"/>
+
+  <!-- Q2: rank 1 -> rank 1 (no change) -->
+  <text x="40" y="106" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Q2</text>
+  <circle cx="160" cy="102" r="5" fill="#0096a6" fill-opacity="0.3" stroke="#0096a6" stroke-width="1.2"/>
+  <text x="178" y="106" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">no change</text>
+
+  <!-- Q3: rank 7 (x=520) -> rank 2 (x=235). After r=5, tip=241, back=249 -->
+  <text x="40" y="130" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Q3</text>
+  <circle cx="520" cy="126" r="4" fill="#0096a6" fill-opacity="0.3" stroke="#0096a6" stroke-width="1"/>
+  <line x1="516" y1="126" x2="249" y2="126" stroke="#d4872a" stroke-width="1" opacity="0.5"/>
+  <polygon points="249,123 241,126 249,129" fill="#d4872a" opacity="0.7"/>
+  <circle cx="235" cy="126" r="5" fill="#d4872a" fill-opacity="0.4" stroke="#d4872a" stroke-width="1.2"/>
+
+  <!-- Q4: rank 3 (x=310) -> rank 1 (x=160). After r=5, tip=166, back=174 -->
+  <text x="40" y="154" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Q4</text>
+  <circle cx="310" cy="150" r="4" fill="#0096a6" fill-opacity="0.3" stroke="#0096a6" stroke-width="1"/>
+  <line x1="306" y1="150" x2="174" y2="150" stroke="#d4872a" stroke-width="1" opacity="0.5"/>
+  <polygon points="174,147 166,150 174,153" fill="#d4872a" opacity="0.7"/>
+  <circle cx="160" cy="150" r="5" fill="#d4872a" fill-opacity="0.4" stroke="#d4872a" stroke-width="1.2"/>
+
+  <!-- Q5: rank 5 (x=460) -> rank 2 (x=235). After r=5, tip=241, back=249 -->
+  <text x="40" y="178" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Q5</text>
+  <circle cx="460" cy="174" r="4" fill="#0096a6" fill-opacity="0.3" stroke="#0096a6" stroke-width="1"/>
+  <line x1="456" y1="174" x2="249" y2="174" stroke="#d4872a" stroke-width="1" opacity="0.5"/>
+  <polygon points="249,171 241,174 249,177" fill="#d4872a" opacity="0.7"/>
+  <circle cx="235" cy="174" r="5" fill="#d4872a" fill-opacity="0.4" stroke="#d4872a" stroke-width="1.2"/>
+
+  <!-- Q6: rank 2 (x=235) -> rank 1 (x=160). After r=5, tip=166, back=174 -->
+  <text x="40" y="202" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Q6</text>
+  <circle cx="235" cy="198" r="4" fill="#0096a6" fill-opacity="0.3" stroke="#0096a6" stroke-width="1"/>
+  <line x1="231" y1="198" x2="174" y2="198" stroke="#d4872a" stroke-width="1" opacity="0.5"/>
+  <polygon points="174,195 166,198 174,201" fill="#d4872a" opacity="0.7"/>
+  <circle cx="160" cy="198" r="5" fill="#d4872a" fill-opacity="0.4" stroke="#d4872a" stroke-width="1.2"/>
+
+  <!-- Q7: rank 12 (x=640) -> rank 3 (x=310). After r=5, tip=316, back=324 -->
+  <text x="40" y="226" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Q7</text>
+  <circle cx="640" cy="222" r="4" fill="#c44" fill-opacity="0.3" stroke="#c44" stroke-width="1"/>
+  <line x1="636" y1="222" x2="324" y2="222" stroke="#d4872a" stroke-width="1.2" opacity="0.6"/>
+  <polygon points="324,219 316,222 324,225" fill="#d4872a" opacity="0.7"/>
+  <circle cx="310" cy="222" r="5" fill="#d4872a" fill-opacity="0.4" stroke="#d4872a" stroke-width="1.2"/>
+  <text x="488" y="218" class="semantic-new" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600">+9 lift</text>
+
+  <!-- Q8: rank 5 (x=460) -> rank 1 (x=160). After r=5, tip=166, back=174 -->
+  <text x="40" y="250" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Q8</text>
+  <circle cx="460" cy="246" r="4" fill="#0096a6" fill-opacity="0.3" stroke="#0096a6" stroke-width="1"/>
+  <line x1="456" y1="246" x2="174" y2="246" stroke="#d4872a" stroke-width="1" opacity="0.5"/>
+  <polygon points="174,243 166,246 174,249" fill="#d4872a" opacity="0.7"/>
+  <circle cx="160" cy="246" r="5" fill="#d4872a" fill-opacity="0.4" stroke="#d4872a" stroke-width="1.2"/>
+
+  <!-- Q9: not found -> rank 4 (x=385). After r=5, tip=391, back=399 -->
+  <text x="40" y="274" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Q9</text>
+  <text x="740" y="274" class="semantic-risk" font-family="Segoe UI, Arial, sans-serif" font-size="7">not found</text>
+  <line x1="730" y1="270" x2="399" y2="270" stroke="#d4872a" stroke-width="1.2" opacity="0.6" stroke-dasharray="3,2"/>
+  <polygon points="399,267 391,270 399,273" fill="#d4872a" opacity="0.7"/>
+  <circle cx="385" cy="270" r="5" fill="#d4872a" fill-opacity="0.4" stroke="#d4872a" stroke-width="1.2"/>
+  <text x="560" y="266" class="semantic-new" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600">rescued by BM25</text>
+
+  <!-- Q10: rank 2 (x=235) -> rank 1 (x=160). After r=5, tip=166, back=174 -->
+  <text x="40" y="298" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Q10</text>
+  <circle cx="235" cy="294" r="4" fill="#0096a6" fill-opacity="0.3" stroke="#0096a6" stroke-width="1"/>
+  <line x1="231" y1="294" x2="174" y2="294" stroke="#d4872a" stroke-width="1" opacity="0.5"/>
+  <polygon points="174,291 166,294 174,297" fill="#d4872a" opacity="0.7"/>
+  <circle cx="160" cy="294" r="5" fill="#d4872a" fill-opacity="0.4" stroke="#d4872a" stroke-width="1.2"/>
+
+  <!-- Summary stats -->
+  <path d="M20,334 H780 V367 Q780,370 777,370 H23 Q20,370 20,367 Z" fill="#0096a6" fill-opacity="0.02"/>
+  <path d="M20,334 H780 V367 Q780,370 777,370 H23 Q20,370 20,367 Z" fill="none" stroke="#0096a6" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="334" width="760" height="4" fill="#0096a6" opacity="0.15"/>
+  <text x="140" y="358" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Before: MRR = 0.42</text>
+  <text x="400" y="358" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">After: MRR = 0.82</text>
+  <text x="580" y="358" class="semantic-good" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">1 query rescued from "not found"</text>
+
+  <!-- Legend -->
+  <circle cx="200" cy="382" r="4" fill="#0096a6" fill-opacity="0.3" stroke="#0096a6" stroke-width="1"/>
+  <text x="208" y="386" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Before re-ranking</text>
+  <circle cx="360" cy="382" r="5" fill="#d4872a" fill-opacity="0.4" stroke="#d4872a" stroke-width="1.2"/>
+  <text x="368" y="386" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">After re-ranking</text>
+  <rect x="500" y="378" width="8" height="8" rx="1" fill="#c44" fill-opacity="0.06" stroke="#c44" stroke-width="0.8"/>
+  <text x="512" y="386" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7">Outside K=5 (missed by current system)</text>
+</svg>

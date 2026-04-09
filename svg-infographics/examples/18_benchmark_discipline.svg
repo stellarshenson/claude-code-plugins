@@ -1,0 +1,102 @@
+<!--
+  18_benchmark_discipline.svg - Keep conditions fixed, change one variable
+  Shows: left column of locked conditions, right side showing one unlocked variable
+  Theme: Meridian blue for fixed, teal for the single variable being tested
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-teal { fill: #007a8a; } .accent-amber { fill: #9a6a1a; }
+    .semantic-good { fill: #1a7a5a; } .semantic-risk { fill: #a03030; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-teal { fill: #40c4d4; } .accent-amber { fill: #d4a04a; }
+      .semantic-good { fill: #4cb8a0; } .semantic-risk { fill: #e06060; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox 800x300, margin 20px
+    Left panel (fixed): x=20..480, 5 rows of locked conditions
+    Right panel (variable): x=520..780, the one thing being changed
+    Bottom: anti-pattern warning
+  === -->
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">BENCHMARK DISCIPLINE - ONE VARIABLE AT A TIME</text>
+
+  <!-- Left panel: Fixed conditions (blue container) -->
+  <path d="M20,36 H480 V207 Q480,210 477,210 H23 Q20,210 20,207 Z" fill="#00a6ff" fill-opacity="0.02"/>
+  <path d="M20,36 H480 V207 Q480,210 477,210 H23 Q20,210 20,207 Z" fill="none" stroke="#00a6ff" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="36" width="460" height="4" fill="#00a6ff" opacity="0.15"/>
+  <text x="36" y="56" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">FIXED (do not change between compared runs)</text>
+
+  <!-- Lock icon shorthand: filled circle with bar -->
+  <!-- Row 1: Dataset -->
+  <circle cx="44" cy="76" r="6" fill="#00a6ff" fill-opacity="0.15" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="40" y="76" width="8" height="5" rx="1" fill="#00a6ff" fill-opacity="0.3"/>
+  <text x="60" y="80" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700">Dataset</text>
+  <text x="155" y="80" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">same questions, answers, entities, target doc IDs</text>
+
+  <!-- Row 2: Judge model -->
+  <circle cx="44" cy="102" r="6" fill="#00a6ff" fill-opacity="0.15" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="40" y="102" width="8" height="5" rx="1" fill="#00a6ff" fill-opacity="0.3"/>
+  <text x="60" y="106" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700">Judge model</text>
+  <text x="155" y="106" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">pin exact model ID and temperature</text>
+
+  <!-- Row 3: Knowledge base -->
+  <circle cx="44" cy="128" r="6" fill="#00a6ff" fill-opacity="0.15" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="40" y="128" width="8" height="5" rx="1" fill="#00a6ff" fill-opacity="0.3"/>
+  <text x="60" y="132" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700">Knowledge base</text>
+  <text x="155" y="132" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">same documents, no ingestion between runs</text>
+
+  <!-- Row 4: Prompts -->
+  <circle cx="44" cy="154" r="6" fill="#00a6ff" fill-opacity="0.15" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="40" y="154" width="8" height="5" rx="1" fill="#00a6ff" fill-opacity="0.3"/>
+  <text x="60" y="158" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700">Prompts</text>
+  <text x="155" y="158" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">system prompts, rubrics, scoring instructions</text>
+
+  <!-- Row 5: Infrastructure -->
+  <circle cx="44" cy="180" r="6" fill="#00a6ff" fill-opacity="0.15" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="40" y="180" width="8" height="5" rx="1" fill="#00a6ff" fill-opacity="0.3"/>
+  <text x="60" y="184" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700">Infrastructure</text>
+  <text x="155" y="184" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">same region, instance type, concurrency</text>
+
+  <!-- Right panel: The one variable (teal, prominent) -->
+  <path d="M520,36 H780 V207 Q780,210 777,210 H523 Q520,210 520,207 Z" fill="#0096a6" fill-opacity="0.06"/>
+  <path d="M520,36 H780 V207 Q780,210 777,210 H523 Q520,210 520,207 Z" fill="none" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="520" y="36" width="260" height="5" fill="#0096a6" opacity="0.6"/>
+  <text x="650" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">CHANGE FEW</text>
+  <text x="650" y="74" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Ideally one variable per comparison.</text>
+  <text x="650" y="88" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Compound changes cascade.</text>
+
+  <text x="540" y="108" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9">K value (5 → 10)</text>
+  <text x="540" y="126" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9">Similarity threshold (0.5 → 0.4)</text>
+  <text x="540" y="144" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9">Embedding model swap</text>
+  <text x="540" y="162" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9">Re-ranker on / off</text>
+  <text x="540" y="180" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9">Architecture changes</text>
+  <text x="540" y="200" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Isolate the effect. One at a time.</text>
+
+  <!-- Arrow between panels -->
+  <line x1="484" y1="123" x2="514" y2="123" stroke="#0096a6" stroke-width="2"/>
+  <polygon points="514,119 520,123 514,127" fill="#0096a6"/>
+
+  <!-- Bottom: anti-pattern warning -->
+  <path d="M20,226 H780 V287 Q780,290 777,290 H23 Q20,290 20,287 Z" fill="#a03030" fill-opacity="0.03"/>
+  <path d="M20,226 H780 V287 Q780,290 777,290 H23 Q20,290 20,287 Z" fill="none" stroke="#a03030" stroke-width="0.8" opacity="0.3"/>
+  <rect x="20" y="226" width="760" height="4" fill="#a03030" opacity="0.2"/>
+  <text x="40" y="250" class="semantic-risk" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Anti-pattern: compound changes between benchmarks</text>
+  <text x="40" y="268" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Changing K + threshold + embedding model together → cannot isolate which caused the score to move</text>
+  <text x="40" y="284" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Compound changes cascade: one improvement can mask a regression in another. You end up chasing a moving target.</text>
+  <!-- Icon: rabbit (Lucide, ISC license) + speed lines -->
+  <g transform="translate(738, 248) scale(0.75)" fill="none" stroke="#a03030" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.35">
+    <path d="M13 16a3 3 0 0 1 2.24 5"/>
+    <path d="M18 12h.01"/>
+    <path d="M18 21h-8a4 4 0 0 1-4-4 7 7 0 0 1 7-7h.2L9.6 6.4a1 1 0 1 1 2.8-2.8L15.8 7h.2c3.3 0 6 2.7 6 6v1a2 2 0 0 1-2 2h-1a3 3 0 0 0-3 3"/>
+    <path d="M20 8.54V4a2 2 0 1 0-4 0v3"/>
+    <path d="M7.612 12.524a3 3 0 1 0-1.6 4.3"/>
+    <!-- Speed lines behind rabbit -->
+    <line x1="-2" y1="10" x2="-8" y2="10"/>
+    <line x1="-3" y1="14" x2="-10" y2="14"/>
+    <line x1="-2" y1="18" x2="-7" y2="18"/>
+  </g>
+</svg>

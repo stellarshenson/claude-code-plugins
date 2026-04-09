@@ -1,0 +1,156 @@
+<!--
+  quality_control_challenge.svg - Quality control challenge visualisation
+  Shows: three problem cards (forgotten steps, no traceability, part confusion)
+  with visual metaphors for each gap in the current production process.
+  Intent: communicate the quality control pain points before introducing solutions.
+  Theme: Optima Manufacturing palette (fg-1 #1f0f4a, fg-2 #42346e, fg-3 #70658a, neutral #808080).
+  Layout: 800x170 viewBox, three equal-width cards, 14px vertical rhythm inside cards.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 170">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .neutral-3 { fill: #808080; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #909090; }
+      .neutral-3 { fill: #909090; }
+    }
+  </style>
+
+  <!-- Title -->
+  <text x="20" y="16" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="neutral-3" letter-spacing="1">QUALITY CONTROL GAPS</text>
+
+  <!-- ================================================================ -->
+  <!-- CARD 1: Forgotten Steps (x=20..240, y=28..148)                   -->
+  <!-- ================================================================ -->
+  <path d="M20,28 H240 V140 Q240,148 232,148 H28 Q20,148 20,140 Z" fill="#808080" fill-opacity="0.04"/>
+  <path d="M20,28 H240 V140 Q240,148 232,148 H28 Q20,148 20,140 Z" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="20" y="28" width="220" height="4" fill="#1f0f4a" opacity="0.35"/>
+
+  <text x="130" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2" text-anchor="middle">Forgotten Steps</text>
+
+  <!-- Checklist: 14px vertical rhythm, checkbox at x=36, text at x=52 -->
+
+  <!-- Item 1: CNC machining - completed (gray checkmark) -->
+  <rect x="36" y="56" width="10" height="10" rx="1.5" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <line x1="38" y1="61" x2="41" y2="64" stroke="#808080" stroke-width="1.2" opacity="0.6"/>
+  <line x1="41" y1="64" x2="44" y2="57" stroke="#808080" stroke-width="1.2" opacity="0.6"/>
+  <text x="52" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">CNC machining</text>
+
+  <!-- Item 2: Dimension check - SKIPPED (burgundy X) -->
+  <rect x="36" y="70" width="10" height="10" rx="1.5" fill="none" stroke="#1f0f4a" stroke-width="0.8" opacity="0.6"/>
+  <line x1="38" y1="72" x2="44" y2="78" stroke="#1f0f4a" stroke-width="1" opacity="0.5"/>
+  <line x1="44" y1="72" x2="38" y2="78" stroke="#1f0f4a" stroke-width="1" opacity="0.5"/>
+  <text x="52" y="79" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-1">Dimension check</text>
+
+  <!-- Item 3: Assembly step - SKIPPED (burgundy X) -->
+  <rect x="36" y="84" width="10" height="10" rx="1.5" fill="none" stroke="#1f0f4a" stroke-width="0.8" opacity="0.6"/>
+  <line x1="38" y1="86" x2="44" y2="92" stroke="#1f0f4a" stroke-width="1" opacity="0.5"/>
+  <line x1="44" y1="86" x2="38" y2="92" stroke="#1f0f4a" stroke-width="1" opacity="0.5"/>
+  <text x="52" y="93" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-1">Assembly step</text>
+
+  <!-- Item 4: Surface finish check - SKIPPED (burgundy X) -->
+  <rect x="36" y="98" width="10" height="10" rx="1.5" fill="none" stroke="#1f0f4a" stroke-width="0.8" opacity="0.6"/>
+  <line x1="38" y1="100" x2="44" y2="106" stroke="#1f0f4a" stroke-width="1" opacity="0.5"/>
+  <line x1="44" y1="100" x2="38" y2="106" stroke="#1f0f4a" stroke-width="1" opacity="0.5"/>
+  <text x="52" y="107" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-1">Surface finish check</text>
+
+  <!-- Item 5: Packaging - completed (gray checkmark) -->
+  <rect x="36" y="112" width="10" height="10" rx="1.5" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <line x1="38" y1="117" x2="41" y2="120" stroke="#808080" stroke-width="1.2" opacity="0.6"/>
+  <line x1="41" y1="120" x2="44" y2="113" stroke="#808080" stroke-width="1.2" opacity="0.6"/>
+  <text x="52" y="121" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Packaging</text>
+
+  <!-- Outcome: right side of card, vertically centred with checklist -->
+  <line x1="150" y1="60" x2="150" y2="122" stroke="#808080" stroke-width="0.5" opacity="0.15"/>
+  <text x="195" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-1" text-anchor="middle">Faulty part</text>
+  <text x="195" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-1" text-anchor="middle">ships to</text>
+  <text x="195" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-1" text-anchor="middle">customer</text>
+
+  <!-- Right-pointing arrow from checklist to outcome -->
+  <line x1="130" y1="135" x2="195" y2="135" stroke="#1f0f4a" stroke-width="0.7" opacity="0.3"/>
+  <polygon points="193,133 198,135 193,137" fill="#1f0f4a" opacity="0.4"/>
+  <text x="163" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="5.5" class="neutral-3" text-anchor="middle">no enforcement</text>
+
+  <!-- ================================================================ -->
+  <!-- CARD 2: No Traceability (x=260..520, y=28..148)                  -->
+  <!-- ================================================================ -->
+  <path d="M260,28 H520 V140 Q520,148 512,148 H268 Q260,148 260,140 Z" fill="#808080" fill-opacity="0.04"/>
+  <path d="M260,28 H520 V140 Q520,148 512,148 H268 Q260,148 260,140 Z" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="260" y="28" width="260" height="4" fill="#1f0f4a" opacity="0.35"/>
+
+  <text x="390" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2" text-anchor="middle">No Traceability</text>
+
+  <!-- Part icon on left -->
+  <rect x="280" y="62" width="24" height="18" rx="2" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <text x="292" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">?</text>
+  <text x="292" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-1" text-anchor="middle">Defect found</text>
+
+  <!-- Dashed link from part to question list -->
+  <line x1="310" y1="71" x2="340" y2="71" stroke="#808080" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.3"/>
+
+  <!-- Unknown context: 14px vertical rhythm, aligned at x=345 and x=500 -->
+  <text x="345" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Machine?</text>
+  <line x1="410" y1="65" x2="490" y2="65" stroke="#808080" stroke-width="0.5" stroke-dasharray="2,3" opacity="0.2"/>
+  <text x="497" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-1">--</text>
+
+  <text x="345" y="79" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Operator?</text>
+  <line x1="410" y1="79" x2="490" y2="79" stroke="#808080" stroke-width="0.5" stroke-dasharray="2,3" opacity="0.2"/>
+  <text x="497" y="79" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-1">--</text>
+
+  <text x="345" y="93" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Material batch?</text>
+  <line x1="410" y1="93" x2="490" y2="93" stroke="#808080" stroke-width="0.5" stroke-dasharray="2,3" opacity="0.2"/>
+  <text x="497" y="93" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-1">--</text>
+
+  <text x="345" y="107" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3">Measurements?</text>
+  <line x1="410" y1="107" x2="490" y2="107" stroke="#808080" stroke-width="0.5" stroke-dasharray="2,3" opacity="0.2"/>
+  <text x="497" y="107" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-1">--</text>
+
+  <!-- Bottom label -->
+  <text x="390" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="neutral-3" text-anchor="middle">root cause unknown</text>
+
+  <!-- ================================================================ -->
+  <!-- CARD 3: Part Confusion (x=540..780, y=28..148)                   -->
+  <!-- ================================================================ -->
+  <path d="M540,28 H780 V140 Q780,148 772,148 H548 Q540,148 540,140 Z" fill="#808080" fill-opacity="0.04"/>
+  <path d="M540,28 H780 V140 Q780,148 772,148 H548 Q540,148 540,140 Z" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="540" y="28" width="240" height="4" fill="#1f0f4a" opacity="0.35"/>
+
+  <text x="660" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2" text-anchor="middle">Part Confusion</text>
+
+  <!-- Two identical-looking parts side by side -->
+  <rect x="580" y="58" width="28" height="20" rx="2" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="582" y="60" width="8" height="4" rx="0.5" fill="#808080" opacity="0.15"/>
+  <circle cx="600" cy="68" r="3" fill="none" stroke="#808080" stroke-width="0.6" opacity="0.4"/>
+
+  <text x="621" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-3" text-anchor="middle">=</text>
+
+  <rect x="635" y="58" width="28" height="20" rx="2" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="637" y="60" width="8" height="4" rx="0.5" fill="#808080" opacity="0.15"/>
+  <circle cx="655" cy="68" r="3" fill="none" stroke="#808080" stroke-width="0.6" opacity="0.4"/>
+
+  <text x="678" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-3">visually</text>
+  <text x="678" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-3">identical</text>
+
+  <!-- But different part numbers: 14px rhythm from y=96 -->
+  <text x="594" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">PN-4821</text>
+  <text x="649" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">PN-4822</text>
+  <text x="621" y="97" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-1" text-anchor="middle">/=</text>
+
+  <!-- Different assembly requirements: 14px rhythm -->
+  <text x="594" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-3" text-anchor="middle">3 inserts + seal</text>
+  <text x="649" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-3" text-anchor="middle">5 inserts + 2 seals</text>
+
+  <!-- Outcome -->
+  <line x1="560" y1="120" x2="760" y2="120" stroke="#808080" stroke-width="0.5" opacity="0.15"/>
+  <text x="660" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-1" text-anchor="middle">wrong assembly applied</text>
+
+  <!-- ================================================================ -->
+  <!-- BOTTOM SUMMARY                                                   -->
+  <!-- ================================================================ -->
+  <text x="400" y="162" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-1" text-anchor="middle">No enforcement, no traceability, no part identification - faulty parts reach the customer</text>
+
+</svg>

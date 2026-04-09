@@ -1,0 +1,66 @@
+<!--
+  06_hybrid_scorecard.svg - Per-question scoring breakdown
+  Theme: Meridian palette
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-2 { fill: #4a90b8; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-2 { fill: #88ddff; }
+    }
+  </style>
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">HYBRID SCORECARD - PER QUESTION BREAKDOWN</text>
+
+  <!-- Example question card -->
+  <path d="M20,32 H780 V77 Q780,80 777,80 H23 Q20,80 20,77 Z" fill="#00a6ff" fill-opacity="0.02"/>
+  <path d="M20,32 H780 V77 Q780,80 777,80 H23 Q20,80 20,77 Z" fill="none" stroke="#00a6ff" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="32" width="760" height="4" fill="#00a6ff" opacity="0.15"/>
+  <text x="36" y="52" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Question: "What does VMS V300 error code 3:14 mean and how do I fix it?"</text>
+  <text x="36" y="68" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Required entities: VMS V300, error 3:14, milk flow sensor, replace sensor, article 92741301</text>
+
+  <!-- Three scoring components as cards -->
+  <!-- LLM Judge -->
+  <g>
+    <path d="M20,96 H260 V207 Q260,210 257,210 H23 Q20,210 20,207 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M20,96 H260 V207 Q260,210 257,210 H23 Q20,210 20,207 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="20" y="96" width="240" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="140" y="120" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">LLM Judge</text>
+    <text x="140" y="150" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" text-anchor="middle">0.85</text>
+    <text x="140" y="170" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Overall quality assessment</text>
+    <text x="140" y="184" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Fluency, correctness, completeness</text>
+    <text x="140" y="200" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Range: 0.0 - 1.0</text>
+  </g>
+
+  <!-- Entity Recall -->
+  <g>
+    <path d="M280,96 H520 V207 Q520,210 517,210 H283 Q280,210 280,207 Z" fill="#66ccff" fill-opacity="0.04"/>
+    <path d="M280,96 H520 V207 Q520,210 517,210 H283 Q280,210 280,207 Z" fill="none" stroke="#66ccff" stroke-width="1"/>
+    <rect x="280" y="96" width="240" height="5" fill="#66ccff" opacity="0.6"/>
+    <text x="400" y="120" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Entity Recall</text>
+    <text x="400" y="150" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" text-anchor="middle">0.80</text>
+    <text x="400" y="170" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">4 of 5 required items found</text>
+    <text x="400" y="184" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Missing: article 92741301</text>
+    <text x="400" y="200" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Range: 0.0 - 1.0</text>
+  </g>
+
+  <!-- Retrieval Rank -->
+  <g>
+    <path d="M540,96 H780 V207 Q780,210 777,210 H543 Q540,210 540,207 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M540,96 H780 V207 Q780,210 777,210 H543 Q540,210 540,207 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="540" y="96" width="240" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="660" y="120" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Retrieval Rank</text>
+    <text x="660" y="150" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" text-anchor="middle">0.50</text>
+    <text x="660" y="170" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Target doc at position 2 (1/2)</text>
+    <text x="660" y="184" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">1.0 if first, 0.33 if third</text>
+    <text x="660" y="200" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Range: 1/K - 1.0</text>
+  </g>
+
+  <!-- Sum bar -->
+  <text x="400" y="234" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Question Score: 0.85 + 0.80 + 0.50 = 2.15 / 3.0 max</text>
+  <rect x="140" y="244" width="520" height="10" rx="3" fill="#00a6ff" fill-opacity="0.08"/>
+  <rect x="140" y="244" width="372" height="10" rx="3" fill="#00a6ff" fill-opacity="0.3"/>
+  <text x="400" y="270" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Aggregate: sum across all 10 questions. Theoretical max = 30.0. Track the trend and gap to max.</text>
+</svg>

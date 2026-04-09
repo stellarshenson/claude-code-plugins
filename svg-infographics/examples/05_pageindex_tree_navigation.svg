@@ -1,0 +1,112 @@
+<!--
+  05_pageindex_tree_navigation.svg - How PageIndex navigates document structure
+  Theme: Meridian blue primary, teal accent on reasoning path, amber target highlight
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-2 { fill: #4a90b8; }
+    .accent-teal { fill: #007a8a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-2 { fill: #88ddff; }
+      .accent-teal { fill: #40c4d4; }
+    }
+  </style>
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">PAGEINDEX - STRUCTURAL REASONING RETRIEVAL</text>
+
+  <!-- Left: Tree structure container (blue) -->
+  <path d="M20,30 H380 V277 Q380,280 377,280 H23 Q20,280 20,277 Z" fill="#00a6ff" fill-opacity="0.02"/>
+  <path d="M20,30 H380 V277 Q380,280 377,280 H23 Q20,280 20,277 Z" fill="none" stroke="#00a6ff" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="30" width="360" height="4" fill="#00a6ff" opacity="0.15"/>
+  <text x="36" y="48" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">DOCUMENT TREE INDEX (VMS V300 MANUAL)</text>
+
+  <!-- Root (blue) -->
+  <g>
+    <path d="M130,60 H270 V87 Q270,90 267,90 H133 Q130,90 130,87 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M130,60 H270 V87 Q270,90 267,90 H133 Q130,90 130,87 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="130" y="60" width="140" height="4" fill="#00a6ff" opacity="0.6"/>
+    <text x="200" y="80" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">VMS V300 Manual</text>
+  </g>
+
+  <!-- Tree connectors - inactive in blue, active branch in teal -->
+  <path d="M170,90 V100 L166,104 H84 L80,108 V114" fill="none" stroke="#00a6ff" stroke-width="1.2" opacity="0.3"/>
+  <line x1="200" y1="90" x2="200" y2="114" stroke="#0096a6" stroke-width="1.5" opacity="0.6"/>
+  <path d="M230,90 V100 L234,104 H316 L320,108 V114" fill="none" stroke="#00a6ff" stroke-width="1.2" opacity="0.3"/>
+
+  <!-- Level 1 nodes -->
+  <!-- Installation (inactive, blue) -->
+  <g>
+    <rect x="40" y="114" width="80" height="24" rx="3" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="0.8"/>
+    <text x="80" y="130" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Installation</text>
+  </g>
+  <!-- Troubleshooting (active, teal highlight) -->
+  <g>
+    <rect x="160" y="114" width="80" height="24" rx="3" fill="#0096a6" fill-opacity="0.10" stroke="#0096a6" stroke-width="1.2"/>
+    <text x="200" y="130" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">Troubleshooting</text>
+  </g>
+  <!-- Maintenance (inactive, blue) -->
+  <g>
+    <rect x="280" y="114" width="80" height="24" rx="3" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="0.8"/>
+    <text x="320" y="130" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Maintenance</text>
+  </g>
+
+  <!-- Level 2 connectors under Troubleshooting -->
+  <path d="M160,138 V148 L156,152 H114 L110,156 V162" fill="none" stroke="#0096a6" stroke-width="1.5" opacity="0.5"/>
+  <path d="M240,138 V148 L244,152 H286 L290,156 V162" fill="none" stroke="#00a6ff" stroke-width="1.2" opacity="0.3"/>
+
+  <!-- Error Codes (active, teal) -->
+  <g>
+    <rect x="70" y="162" width="80" height="24" rx="3" fill="#0096a6" fill-opacity="0.10" stroke="#0096a6" stroke-width="1.2"/>
+    <text x="110" y="178" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">Error Codes</text>
+  </g>
+  <!-- Diagnostics (inactive, blue) -->
+  <g>
+    <rect x="250" y="162" width="80" height="24" rx="3" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="0.8"/>
+    <text x="290" y="178" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Diagnostics</text>
+  </g>
+
+  <!-- Arrow to target section (teal) -->
+  <line x1="110" y1="186" x2="110" y2="206" stroke="#0096a6" stroke-width="1.5" opacity="0.5"/>
+  <polygon points="107,202 110,206 113,202" fill="#0096a6" opacity="0.6"/>
+
+  <!-- Target leaf (amber for strong distinction) -->
+  <g>
+    <rect x="50" y="206" width="120" height="30" rx="3" fill="#d4872a" fill-opacity="0.10" stroke="#d4872a" stroke-width="1.5"/>
+    <text x="110" y="220" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" text-anchor="middle">Error 3:14</text>
+    <text x="110" y="232" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Milk flow sensor fault</text>
+  </g>
+
+  <!-- Reasoning annotation -->
+  <text x="200" y="260" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">LLM reasons: "error code" -> Troubleshooting -> Error Codes -> 3:14</text>
+  <text x="200" y="274" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Traceable path - no vector similarity needed</text>
+
+  <!-- Right: Explanation panel (blue, with teal step headers) -->
+  <g>
+    <path d="M400,30 H780 V277 Q780,280 777,280 H403 Q400,280 400,277 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M400,30 H780 V277 Q780,280 777,280 H403 Q400,280 400,277 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="400" y="30" width="380" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="416" y="52" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">How PageIndex Works</text>
+    <text x="416" y="74" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Step 1: Build tree index</text>
+    <text x="416" y="90" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Generate table-of-contents structure from each document</text>
+    <text x="416" y="104" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">No chunking, no embeddings - uses natural document hierarchy</text>
+    <text x="416" y="126" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Step 2: Navigate with LLM reasoning</text>
+    <text x="416" y="142" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">LLM reads the tree structure and reasons about which branch</text>
+    <text x="416" y="156" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">to follow - mimics how a human expert scans a manual</text>
+    <text x="416" y="178" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Why it fits Meridian documentation</text>
+    <text x="416" y="194" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Product manuals have clear hierarchical structure</text>
+    <text x="416" y="208" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Chapters, sections, procedures - natural tree structure</text>
+    <text x="416" y="222" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Results are explainable - exact section path is traceable</text>
+    <text x="416" y="248" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Performance</text>
+    <text x="416" y="264" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Tree index pre-computed - lookup is lightweight at query time</text>
+  </g>
+
+  <!-- Legend -->
+  <rect x="140" y="290" width="8" height="8" rx="1" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="1"/>
+  <text x="152" y="297" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Inactive branches (blue)</text>
+  <line x1="310" y1="294" x2="330" y2="294" stroke="#0096a6" stroke-width="1.5"/>
+  <text x="334" y="297" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="7">LLM reasoning path (teal)</text>
+  <rect x="510" y="290" width="8" height="8" rx="1" fill="#d4872a" fill-opacity="0.10" stroke="#d4872a" stroke-width="1.5"/>
+  <text x="522" y="297" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7">Target section (amber)</text>
+</svg>

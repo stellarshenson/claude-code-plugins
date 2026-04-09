@@ -1,0 +1,159 @@
+<!--
+  bayesian_resolution.svg - Bayesian Cross-Type Resolution
+  Shows: formula card, 4 evidence signal cards, posterior threshold bar
+  Theme: Stellars-Tech derived - accent-1=#0096d1 pipeline, accent-2=#da8230 agents
+  Card shape: flat top, rounded bottom r=3 (per theme_swatch.svg)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .semantic-block { fill: #a03030; }
+    .semantic-merge { fill: #1a7a5a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .semantic-block { fill: #e06060; }
+      .semantic-merge { fill: #4cb8a0; }
+    }
+  </style>
+
+  <!-- Title -->
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">BAYESIAN CROSS-TYPE RESOLUTION</text>
+
+  <!-- === TOP CARD: Formula (accent-1) === -->
+  <g id="formula-card">
+    <path d="M120,32 H680 V103 Q680,106 677,106 H123 Q120,106 120,103 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M120,32 H680 V103 Q680,106 677,106 H123 Q120,106 120,103 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="120" y="32" width="560" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="140" y="54" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">POSTERIOR</text>
+    <text x="400" y="76" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">P(merge | evidence) = P(type_k) * LR_name * LR_desc * LR_emb * LR_cooc / Z</text>
+    <text x="400" y="96" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Prior probability * likelihood ratios for each evidence signal, normalized by partition function Z</text>
+  </g>
+
+  <!-- Chamfered L-route arrows from formula to evidence cards -->
+  <!-- Formula -> Exemplar Name (cx=117) -->
+  <path d="M200,106 V114 L196,118 H121 L117,122 V126" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="114,122 117,126 120,122" fill="#0096d1" opacity="0.6"/>
+  <!-- Formula -> Description (cx=302) -->
+  <path d="M320,106 V114 L316,118 H306 L302,122 V126" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="299,122 302,126 305,122" fill="#0096d1" opacity="0.6"/>
+  <!-- Formula -> Embedding (cx=487) -->
+  <path d="M487,106 V122" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="484,122 487,126 490,122" fill="#0096d1" opacity="0.6"/>
+  <!-- Formula -> Co-occurrence (cx=672) -->
+  <path d="M600,106 V114 L604,118 H668 L672,122 V126" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="669,122 672,126 675,122" fill="#0096d1" opacity="0.6"/>
+
+  <!-- === EVIDENCE SIGNAL CARDS (4-up, accent-2 bars) === -->
+
+  <!-- Card 1: Exemplar Name - x=30, w=175 -->
+  <g id="signal-name">
+    <path d="M30,130 H205 V247 Q205,250 202,250 H33 Q30,250 30,247 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M30,130 H205 V247 Q205,250 202,250 H33 Q30,250 30,247 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="30" y="130" width="175" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="117" y="152" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Exemplar Name</text>
+    <text x="117" y="170" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">LR: [0.5, 1.5]</text>
+    <text x="117" y="190" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">FAISS cosine similarity</text>
+    <text x="117" y="204" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">against type exemplar</text>
+    <text x="117" y="218" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">embeddings</text>
+    <text x="117" y="234" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">0.5 = no match penalty</text>
+  </g>
+
+  <!-- Card 2: Description - x=215, w=175 -->
+  <g id="signal-desc">
+    <path d="M215,130 H390 V247 Q390,250 387,250 H218 Q215,250 215,247 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M215,130 H390 V247 Q390,250 387,250 H218 Q215,250 215,247 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="215" y="130" width="175" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="302" y="152" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Description</text>
+    <text x="302" y="170" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">LR: [1.0, 2.0]</text>
+    <text x="302" y="190" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Bag-of-words overlap</text>
+    <text x="302" y="204" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">between entity and</text>
+    <text x="302" y="218" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">exemplar descriptions</text>
+    <text x="302" y="234" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">1.0 = neutral (no evidence)</text>
+  </g>
+
+  <!-- Card 3: Embedding - x=400, w=175 -->
+  <g id="signal-emb">
+    <path d="M400,130 H575 V247 Q575,250 572,250 H403 Q400,250 400,247 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M400,130 H575 V247 Q575,250 572,250 H403 Q400,250 400,247 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="400" y="130" width="175" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="487" y="152" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Embedding</text>
+    <text x="487" y="170" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">LR: [1.0, 2.0]</text>
+    <text x="487" y="190" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Titan v2 1024-dim</text>
+    <text x="487" y="204" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">vector distance between</text>
+    <text x="487" y="218" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">entity pair embeddings</text>
+    <text x="487" y="234" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">1.0 = neutral (no embeddings)</text>
+  </g>
+
+  <!-- Card 4: Co-occurrence - x=585, w=175 -->
+  <g id="signal-cooc">
+    <path d="M585,130 H760 V247 Q760,250 757,250 H588 Q585,250 585,247 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M585,130 H760 V247 Q760,250 757,250 H588 Q585,250 585,247 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="585" y="130" width="175" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="672" y="152" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Co-occurrence</text>
+    <text x="672" y="170" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">LR: [1.0, 2.0]</text>
+    <text x="672" y="190" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Shared context windows</text>
+    <text x="672" y="204" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">between entity pair</text>
+    <text x="672" y="218" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">across chunks</text>
+    <text x="672" y="234" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">1.0 = neutral (no co-occurrence)</text>
+  </g>
+
+  <!-- Down arrows from evidence to threshold bar (with arrowheads) -->
+  <line x1="117" y1="250" x2="117" y2="268" stroke="#da8230" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="114,264 117,268 120,264" fill="#da8230" opacity="0.6"/>
+  <line x1="302" y1="250" x2="302" y2="268" stroke="#da8230" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="299,264 302,268 305,264" fill="#da8230" opacity="0.6"/>
+  <line x1="487" y1="250" x2="487" y2="268" stroke="#da8230" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="484,264 487,268 490,264" fill="#da8230" opacity="0.6"/>
+  <line x1="672" y1="250" x2="672" y2="268" stroke="#da8230" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="669,264 672,268 675,264" fill="#da8230" opacity="0.6"/>
+
+  <!-- Label -->
+  <text x="400" y="278" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" letter-spacing="1">POSTERIOR THRESHOLD ZONES</text>
+
+  <!-- === BOTTOM: 3-zone threshold bar === -->
+  <g id="threshold-bar">
+    <!-- Block zone: 0 to 0.4 (280px of 700px total) -->
+    <rect x="50" y="290" width="280" height="40" rx="0" fill="#c44" fill-opacity="0.08" stroke="#c44" stroke-width="0.8" opacity="0.5"/>
+    <text x="190" y="306" class="semantic-block" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">BLOCK</text>
+    <text x="190" y="322" class="semantic-block" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">posterior &lt; 0.4</text>
+
+    <!-- Defer zone: 0.4 to 0.6 (140px) -->
+    <rect x="330" y="290" width="140" height="40" rx="0" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="0.8" opacity="0.5"/>
+    <text x="400" y="306" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">DEFER</text>
+    <text x="400" y="322" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">0.4 - 0.6</text>
+
+    <!-- Merge zone: 0.6 to 1.0 (280px) -->
+    <rect x="470" y="290" width="280" height="40" rx="0" fill="#2a8" fill-opacity="0.08" stroke="#2a8" stroke-width="0.8" opacity="0.5"/>
+    <text x="610" y="306" class="semantic-merge" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">MERGE</text>
+    <text x="610" y="322" class="semantic-merge" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">posterior >= 0.6</text>
+
+    <!-- Threshold markers -->
+    <line x1="330" y1="286" x2="330" y2="334" stroke="#0096d1" stroke-width="1.5" opacity="0.6"/>
+    <text x="330" y="350" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">0.4</text>
+    <line x1="470" y1="286" x2="470" y2="334" stroke="#0096d1" stroke-width="1.5" opacity="0.6"/>
+    <text x="470" y="350" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">0.6</text>
+
+    <!-- Scale endpoints -->
+    <text x="50" y="350" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">0.0</text>
+    <text x="750" y="350" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">1.0</text>
+  </g>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="200" y="374" width="8" height="8" rx="1" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="212" y="382" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Pipeline signal (prior + normalization)</text>
+    <rect x="430" y="374" width="8" height="8" rx="1" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1"/>
+    <text x="442" y="382" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">Evidence signal (likelihood ratio)</text>
+  </g>
+
+</svg>

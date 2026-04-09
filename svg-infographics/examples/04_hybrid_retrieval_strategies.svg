@@ -1,0 +1,66 @@
+<!--
+  04_hybrid_retrieval_strategies.svg - Semantic vs BM25 vs PageIndex strengths
+  Theme: Meridian palette
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 260">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-2 { fill: #4a90b8; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-2 { fill: #88ddff; }
+    }
+  </style>
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">HYBRID RETRIEVAL - COMPLEMENTARY STRATEGIES</text>
+  <text x="400" y="32" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">All three run in parallel - combined latency equals the slowest single strategy</text>
+
+  <!-- Card 1: Semantic Search -->
+  <g>
+    <path d="M20,44 H260 V197 Q260,200 257,200 H23 Q20,200 20,197 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M20,44 H260 V197 Q260,200 257,200 H23 Q20,200 20,197 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="20" y="44" width="240" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="140" y="68" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Semantic Search</text>
+    <text x="140" y="84" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">pgvector + text-embedding-3-small</text>
+    <text x="36" y="106" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">Strong at:</text>
+    <text x="36" y="120" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Conceptual matches across phrasing</text>
+    <text x="36" y="134" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">"cleaning procedure" finds "maintenance"</text>
+    <text x="36" y="156" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">Weak at:</text>
+    <text x="36" y="170" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Exact codes, article numbers</text>
+    <text x="36" y="184" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">"error 3:14" compressed in embedding</text>
+  </g>
+
+  <!-- Card 2: BM25 Index (teal accent - proposed) -->
+  <g>
+    <path d="M280,44 H520 V197 Q520,200 517,200 H283 Q280,200 280,197 Z" fill="#0096a6" fill-opacity="0.04"/>
+    <path d="M280,44 H520 V197 Q520,200 517,200 H283 Q280,200 280,197 Z" fill="none" stroke="#0096a6" stroke-width="1"/>
+    <rect x="280" y="44" width="240" height="5" fill="#0096a6" opacity="0.6"/>
+    <text x="400" y="68" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">BM25 Index</text>
+    <text x="400" y="84" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Inverted index + term frequency scoring</text>
+    <text x="296" y="106" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">Strong at:</text>
+    <text x="296" y="120" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Exact term matching</text>
+    <text x="296" y="134" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">"error 3:14" finds docs with literal "3:14"</text>
+    <text x="296" y="156" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">Weak at:</text>
+    <text x="296" y="170" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Synonyms, paraphrasing</text>
+    <text x="296" y="184" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">"cleaning" misses "maintenance" docs</text>
+  </g>
+
+  <!-- Card 3: PageIndex (amber accent - proposed) -->
+  <g>
+    <path d="M540,44 H780 V197 Q780,200 777,200 H543 Q540,200 540,197 Z" fill="#d4872a" fill-opacity="0.04"/>
+    <path d="M540,44 H780 V197 Q780,200 777,200 H543 Q540,200 540,197 Z" fill="none" stroke="#d4872a" stroke-width="1"/>
+    <rect x="540" y="44" width="240" height="5" fill="#d4872a" opacity="0.6"/>
+    <text x="660" y="68" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">PageIndex</text>
+    <text x="660" y="84" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Document tree + LLM reasoning</text>
+    <text x="556" y="106" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">Strong at:</text>
+    <text x="556" y="120" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Structural navigation</text>
+    <text x="556" y="134" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Finds authoritative sections by hierarchy</text>
+    <text x="556" y="156" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">Weak at:</text>
+    <text x="556" y="170" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Content not in structured docs</text>
+    <text x="556" y="184" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Needs clear document hierarchy</text>
+  </g>
+
+  <!-- Bottom note -->
+  <text x="400" y="224" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">Each strategy covers the others' blind spots</text>
+  <text x="400" y="242" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">A relevant document has three independent chances to surface - semantic meaning, exact terms, or structural position</text>
+</svg>

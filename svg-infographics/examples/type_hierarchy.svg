@@ -1,0 +1,182 @@
+<!--
+  type_hierarchy.svg - Type hierarchy and self-evolution mechanism
+  Shows: 3-level type tree, sibling boost annotation, self-evolution panel
+  Theme: Stellars-Tech derived - accent-1=#0096d1, accent-2=#da8230
+  Card shape: flat top, rounded bottom r=3 (per theme_swatch.svg)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- Title -->
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">TYPE HIERARCHY AND SELF-EVOLUTION</text>
+
+  <!-- === LEFT SECTION: Type Tree === -->
+
+  <!-- Container for tree (muted) -->
+  <path d="M20,30 H470 V367 Q470,370 467,370 H23 Q20,370 20,367 Z" fill="#0096d1" fill-opacity="0.02"/>
+  <path d="M20,30 H470 V367 Q470,370 467,370 H23 Q20,370 20,367 Z" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="30" width="450" height="4" fill="#0096d1" opacity="0.15"/>
+  <text x="36" y="48" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">HIERARCHY TREE (from ontology.yml)</text>
+
+  <!-- Level 0: Root "Product" (accent-1 card) -->
+  <g id="root-product">
+    <path d="M180,75 H310 V112 Q310,115 307,115 H183 Q180,115 180,112 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M180,75 H310 V112 Q310,115 307,115 H183 Q180,115 180,112 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="180" y="75" width="130" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="245" y="97" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Part</text>
+    <text x="245" y="109" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">structural parent (never extracted)</text>
+  </g>
+
+  <!-- Tree connectors: root -> children -->
+  <path d="M220,115 V125 L216,129 H104 L100,133 V145" fill="none" stroke="#0096d1" stroke-width="1.5" opacity="0.5"/>
+  <line x1="245" y1="115" x2="245" y2="145" stroke="#0096d1" stroke-width="1.5" opacity="0.5"/>
+  <path d="M270,115 V125 L274,129 H386 L390,133 V145" fill="none" stroke="#0096d1" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Level 1: Children (accent-2 cards) -->
+
+  <!-- Component: cx=100 -->
+  <g id="child-component">
+    <path d="M36,145 H164 V182 Q164,185 161,185 H39 Q36,185 36,182 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M36,145 H164 V182 Q164,185 161,185 H39 Q36,185 36,182 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="36" y="145" width="128" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="100" y="167" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Component</text>
+    <text x="100" y="179" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">integral device part</text>
+  </g>
+
+  <!-- Accessory: cx=245 -->
+  <g id="child-accessory">
+    <path d="M181,145 H309 V182 Q309,185 306,185 H184 Q181,185 181,182 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M181,145 H309 V182 Q309,185 306,185 H184 Q181,185 181,182 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="181" y="145" width="128" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="245" y="167" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Accessory</text>
+    <text x="245" y="179" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">sold separately</text>
+  </g>
+
+  <!-- Third child placeholder: cx=390 -->
+  <g id="child-third">
+    <path d="M326,145 H454 V182 Q454,185 451,185 H329 Q326,185 326,182 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M326,145 H454 V182 Q454,185 451,185 H329 Q326,185 326,182 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="326" y="145" width="128" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="390" y="167" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Replacement</text>
+    <text x="390" y="179" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">consumable part</text>
+  </g>
+
+  <!-- Sibling boost annotation: curved line between Component and Accessory -->
+  <path d="M140,185 Q140,207 180,207 Q220,207 220,185" fill="none" stroke="#da8230" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.6"/>
+  <text x="180" y="223" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">prior = 0.95</text>
+  <text x="180" y="237" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">sibling boost for Bayesian resolution</text>
+
+  <!-- Level 2: Leaf exemplars (bottom row, side by side) -->
+  <!-- Component -> Humidifier -->
+  <line x1="74" y1="185" x2="74" y2="255" stroke="#0096d1" stroke-width="1.5" opacity="0.5"/>
+  <!-- Component -> HEPA Filter (vertical then horizontal) -->
+  <path d="M100,185 V247 H156 V255" fill="none" stroke="#0096d1" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Accessory -> Carrying Case -->
+  <line x1="245" y1="185" x2="247" y2="255" stroke="#da8230" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Replacement -> Mask Cushion -->
+  <line x1="390" y1="185" x2="390" y2="255" stroke="#da8230" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Humidifier -->
+  <g id="leaf-humidifier">
+    <path d="M36,255 H112 V285 Q112,288 109,288 H39 Q36,288 36,285 Z" fill="#0096d1" fill-opacity="0.02"/>
+    <path d="M36,255 H112 V285 Q112,288 109,288 H39 Q36,288 36,285 Z" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.4"/>
+    <text x="74" y="273" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">Humidifier</text>
+    <text x="74" y="284" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">42x extracted</text>
+  </g>
+
+  <!-- HEPA Filter -->
+  <g id="leaf-hepa">
+    <path d="M116,255 H196 V285 Q196,288 193,288 H119 Q116,288 116,285 Z" fill="#0096d1" fill-opacity="0.02"/>
+    <path d="M116,255 H196 V285 Q196,288 193,288 H119 Q116,288 116,285 Z" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.4"/>
+    <text x="156" y="273" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">HEPA Filter</text>
+    <text x="156" y="284" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">18x extracted</text>
+  </g>
+
+  <!-- Carrying Case -->
+  <g id="leaf-case">
+    <path d="M204,255 H290 V285 Q290,288 287,288 H207 Q204,288 204,285 Z" fill="#da8230" fill-opacity="0.02"/>
+    <path d="M204,255 H290 V285 Q290,288 287,288 H207 Q204,288 204,285 Z" fill="none" stroke="#da8230" stroke-width="0.8" opacity="0.4"/>
+    <text x="247" y="273" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">Carrying Case</text>
+    <text x="247" y="284" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">8x extracted</text>
+  </g>
+
+  <!-- Mask Cushion -->
+  <g id="leaf-cushion">
+    <path d="M326,255 H454 V285 Q454,288 451,288 H329 Q326,288 326,285 Z" fill="#da8230" fill-opacity="0.02"/>
+    <path d="M326,255 H454 V285 Q454,288 451,288 H329 Q326,288 326,285 Z" fill="none" stroke="#da8230" stroke-width="0.8" opacity="0.4"/>
+    <text x="390" y="273" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">Mask Cushion</text>
+    <text x="390" y="284" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">12x extracted</text>
+  </g>
+
+  <!-- Tree legend -->
+  <text x="36" y="311" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Parent types are structural - never appear as entity types. Children receive boosted priors for cross-type resolution.</text>
+
+  <!-- === RIGHT PANEL: Self-Evolution === -->
+  <g id="evolution-panel">
+    <path d="M490,30 H780 V367 Q780,370 777,370 H493 Q490,370 490,367 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M490,30 H780 V367 Q780,370 777,370 H493 Q490,370 490,367 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="490" y="30" width="290" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="506" y="50" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">SELF-EVOLUTION (FLUID MODE)</text>
+
+    <!-- Config threshold -->
+    <text x="506" y="74" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">GUIDE_EVOLUTION_MIN_ENCOUNTERS</text>
+    <text x="506" y="90" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700">= 3</text>
+
+    <!-- Mechanism description -->
+    <text x="506" y="116" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Trigger Condition</text>
+    <text x="506" y="132" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Cross-type pair encounters >= threshold</text>
+    <text x="506" y="146" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Document boundaries irrelevant</text>
+    <text x="506" y="160" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">record_cross_type_stats() -> evolve_type_hierarchy()</text>
+
+    <!-- Timeline example -->
+    <text x="506" y="186" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Evolution Timeline</text>
+
+    <!-- Doc 1 -->
+    <circle cx="522" cy="206" r="4" fill="#0096d1" fill-opacity="0.15" stroke="#0096d1" stroke-width="1"/>
+    <text x="532" y="210" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Doc 1: humidifier Component/Accessory (2x)</text>
+    <text x="548" y="222" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">pair_freq=2 &lt; 3 -> no evolution</text>
+
+    <!-- Doc 2 -->
+    <circle cx="522" cy="242" r="4" fill="#da8230" fill-opacity="0.15" stroke="#da8230" stroke-width="1"/>
+    <text x="532" y="246" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Doc 2: humidifier Component/Accessory (2x)</text>
+    <text x="548" y="258" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600">pair_freq=4 >= 3 -> EVOLVE</text>
+
+    <!-- Emerging type node (dotted) -->
+    <path d="M506,286 H760 V327 Q760,330 757,330 H509 Q506,330 506,327 Z" fill="#da8230" fill-opacity="0.02"/>
+    <path d="M506,286 H760 V327 Q760,330 757,330 H509 Q506,330 506,327 Z" fill="none" stroke="#da8230" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="633" y="304" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">"Part" -> [Component, Accessory]</text>
+    <text x="633" y="318" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Hierarchy created, flushed to ontology.yml</text>
+
+    <!-- Doc 3 note -->
+    <text x="506" y="350" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Doc 3: snapshot() includes hierarchy</text>
+    <text x="506" y="362" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Siblings under Part -> prior=0.95 (boosted)</text>
+  </g>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="200" y="384" width="8" height="8" rx="1" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="212" y="392" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Parent / structural type</text>
+    <rect x="370" y="384" width="8" height="8" rx="1" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1"/>
+    <text x="382" y="392" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">Entity type / evolution mechanism</text>
+    <line x1="540" y1="388" x2="560" y2="388" stroke="#da8230" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="564" y="392" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">Sibling boost / emerging pattern</text>
+  </g>
+
+</svg>

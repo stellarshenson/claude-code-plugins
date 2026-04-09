@@ -1,0 +1,198 @@
+<!--
+  11_end_to_end_retrieval_flow.svg - Complete proposed retrieval pipeline
+  Full flow: raw query -> comprehension -> parallel hybrid retrieval -> merge -> rerank -> context -> agent
+  Theme: Meridian enriched - teal pipeline, amber enhancements, red thresholds
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #007a8a; }
+    .accent-2 { fill: #9a6a1a; }
+    .semantic-new { fill: #b87820; }
+    .semantic-current { fill: #007a8a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; }
+      .fg-2 { fill: #7ec0e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #40c4d4; }
+      .accent-2 { fill: #d4a04a; }
+      .semantic-new { fill: #e0a848; }
+      .semantic-current { fill: #40c4d4; }
+    }
+  </style>
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">PROPOSED RETRIEVAL PIPELINE - END TO END</text>
+
+  <!-- ═══ ROW 1: Raw Query -> Query Comprehension ═══ -->
+
+  <!-- Raw Query -->
+  <g>
+    <path d="M20,36 H170 V93 Q170,96 167,96 H23 Q20,96 20,93 Z" fill="#d4872a" fill-opacity="0.04"/>
+    <path d="M20,36 H170 V93 Q170,96 167,96 H23 Q20,96 20,93 Z" fill="none" stroke="#d4872a" stroke-width="1"/>
+    <rect x="20" y="36" width="150" height="5" fill="#d4872a" opacity="0.6"/>
+    <text x="95" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Raw Query</text>
+    <text x="95" y="74" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">"the milking thing</text>
+    <text x="95" y="86" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">keeps showing 3:14"</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="170" y1="66" x2="194" y2="66" stroke="#d4872a" stroke-width="1.2" opacity="0.5"/>
+  <polygon points="194,63 198,66 194,69" fill="#d4872a" opacity="0.6"/>
+
+  <!-- Query Comprehension (NEW - amber) -->
+  <g>
+    <path d="M198,36 H440 V93 Q440,96 437,96 H201 Q198,96 198,93 Z" fill="#d4872a" fill-opacity="0.04"/>
+    <path d="M198,36 H440 V93 Q440,96 437,96 H201 Q198,96 198,93 Z" fill="none" stroke="#d4872a" stroke-width="1"/>
+    <rect x="198" y="36" width="242" height="5" fill="#d4872a" opacity="0.6"/>
+    <text x="214" y="54" class="semantic-new" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" letter-spacing="1">STAGE 1 - NEW</text>
+    <text x="319" y="68" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Query Comprehension</text>
+    <text x="319" y="84" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Expand, disambiguate, reformulate, decompose</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="440" y1="66" x2="464" y2="66" stroke="#0096a6" stroke-width="1.2" opacity="0.5"/>
+  <polygon points="464,63 468,66 464,69" fill="#0096a6" opacity="0.6"/>
+
+  <!-- Enhanced Query -->
+  <g>
+    <path d="M468,36 H780 V93 Q780,96 777,96 H471 Q468,96 468,93 Z" fill="#0096a6" fill-opacity="0.04"/>
+    <path d="M468,36 H780 V93 Q780,96 777,96 H471 Q468,96 468,93 Z" fill="none" stroke="#0096a6" stroke-width="1"/>
+    <rect x="468" y="36" width="312" height="5" fill="#0096a6" opacity="0.6"/>
+    <text x="624" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Enhanced Query</text>
+    <text x="624" y="74" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">"VMS milking system error code 3:14 troubleshooting"</text>
+    <text x="624" y="88" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">product: VMS | type: error_code | code: 3:14</text>
+  </g>
+
+  <!-- ═══ Down arrow to Stage 2 ═══ -->
+  <line x1="400" y1="96" x2="400" y2="116" stroke="#0096a6" stroke-width="1.5" opacity="0.4"/>
+  <polygon points="397,116 400,120 403,116" fill="#0096a6" opacity="0.6"/>
+
+  <!-- ═══ ROW 2: Hybrid Retrieval (3 parallel) ═══ -->
+
+  <!-- Container -->
+  <path d="M20,120 H780 V267 Q780,270 777,270 H23 Q20,270 20,267 Z" fill="#0096a6" fill-opacity="0.02"/>
+  <path d="M20,120 H780 V267 Q780,270 777,270 H23 Q20,270 20,267 Z" fill="none" stroke="#0096a6" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="120" width="760" height="4" fill="#0096a6" opacity="0.15"/>
+  <text x="36" y="140" class="semantic-current" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" letter-spacing="1">STAGE 2 - HYBRID RETRIEVAL (PARALLEL)</text>
+
+  <!-- Semantic Search (current - teal) -->
+  <g>
+    <path d="M36,150 H260 V257 Q260,260 257,260 H39 Q36,260 36,257 Z" fill="#0096a6" fill-opacity="0.04"/>
+    <path d="M36,150 H260 V257 Q260,260 257,260 H39 Q36,260 36,257 Z" fill="none" stroke="#0096a6" stroke-width="1"/>
+    <rect x="36" y="150" width="224" height="5" fill="#0096a6" opacity="0.6"/>
+    <text x="52" y="170" class="semantic-current" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" letter-spacing="1">CURRENT</text>
+    <text x="148" y="188" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Semantic Search</text>
+    <text x="148" y="204" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">pgvector cosine similarity</text>
+    <text x="148" y="218" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">1536-dim embeddings</text>
+    <text x="148" y="238" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Conceptual matching</text>
+    <text x="148" y="252" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Weak on exact codes/numbers</text>
+  </g>
+
+  <!-- BM25 (new - amber) -->
+  <g>
+    <path d="M280,150 H520 V257 Q520,260 517,260 H283 Q280,260 280,257 Z" fill="#d4872a" fill-opacity="0.04"/>
+    <path d="M280,150 H520 V257 Q520,260 517,260 H283 Q280,260 280,257 Z" fill="none" stroke="#d4872a" stroke-width="1"/>
+    <rect x="280" y="150" width="240" height="5" fill="#d4872a" opacity="0.6"/>
+    <text x="296" y="170" class="semantic-new" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" letter-spacing="1">NEW</text>
+    <text x="400" y="188" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">BM25 Index</text>
+    <text x="400" y="204" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Inverted index + term frequency</text>
+    <text x="400" y="218" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Pre-built, negligible latency</text>
+    <text x="400" y="238" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Exact term matching</text>
+    <text x="400" y="252" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">"3:14" finds literal "3:14" in docs</text>
+  </g>
+
+  <!-- PageIndex (new - amber) -->
+  <g>
+    <path d="M540,150 H764 V257 Q764,260 761,260 H543 Q540,260 540,257 Z" fill="#d4872a" fill-opacity="0.04"/>
+    <path d="M540,150 H764 V257 Q764,260 761,260 H543 Q540,260 540,257 Z" fill="none" stroke="#d4872a" stroke-width="1"/>
+    <rect x="540" y="150" width="224" height="5" fill="#d4872a" opacity="0.6"/>
+    <text x="556" y="170" class="semantic-new" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" letter-spacing="1">NEW</text>
+    <text x="652" y="188" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">PageIndex</text>
+    <text x="652" y="204" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Document tree + LLM reasoning</text>
+    <text x="652" y="218" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Pre-computed structure</text>
+    <text x="652" y="238" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Structural navigation</text>
+    <text x="652" y="252" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Follows manual hierarchy to section</text>
+  </g>
+
+  <!-- ═══ Down arrows merging to Stage 3 ═══ -->
+  <path d="M148,260 V280 L152,284 H396 L400,288 V296" fill="none" stroke="#00a6ff" stroke-width="1.2" opacity="0.4"/>
+  <line x1="400" y1="260" x2="400" y2="296" stroke="#00a6ff" stroke-width="1.2" opacity="0.5"/>
+  <path d="M652,260 V280 L648,284 H404 L400,288 V296" fill="none" stroke="#00a6ff" stroke-width="1.2" opacity="0.4"/>
+  <polygon points="397,296 400,300 403,296" fill="#00a6ff" opacity="0.6"/>
+
+  <!-- ═══ ROW 3: Post-processing ═══ -->
+  <path d="M120,300 H680 V397 Q680,400 677,400 H123 Q120,400 120,397 Z" fill="#d4872a" fill-opacity="0.02"/>
+  <path d="M120,300 H680 V397 Q680,400 677,400 H123 Q120,400 120,397 Z" fill="none" stroke="#d4872a" stroke-width="0.8" opacity="0.25"/>
+  <rect x="120" y="300" width="560" height="4" fill="#d4872a" opacity="0.15"/>
+  <text x="136" y="320" class="semantic-new" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" letter-spacing="1">STAGE 3 - NEW</text>
+
+  <!-- Merge -->
+  <g>
+    <path d="M136,330 H296 V387 Q296,390 293,390 H139 Q136,390 136,387 Z" fill="#d4872a" fill-opacity="0.04"/>
+    <path d="M136,330 H296 V387 Q296,390 293,390 H139 Q136,390 136,387 Z" fill="none" stroke="#d4872a" stroke-width="0.8"/>
+    <rect x="136" y="330" width="160" height="4" fill="#d4872a" opacity="0.4"/>
+    <text x="216" y="352" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">Merge Results</text>
+    <text x="216" y="368" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Combine all 3 result sets</text>
+    <text x="216" y="382" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Deduplicate overlapping docs</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="296" y1="360" x2="316" y2="360" stroke="#d4872a" stroke-width="1.2" opacity="0.5"/>
+  <polygon points="316,357 320,360 316,363" fill="#d4872a" opacity="0.6"/>
+
+  <!-- Re-rank -->
+  <g>
+    <path d="M320,330 H500 V387 Q500,390 497,390 H323 Q320,390 320,387 Z" fill="#c44" fill-opacity="0.03"/>
+    <path d="M320,330 H500 V387 Q500,390 497,390 H323 Q320,390 320,387 Z" fill="none" stroke="#c44" stroke-width="0.8"/>
+    <rect x="320" y="330" width="180" height="4" fill="#c44" opacity="0.4"/>
+    <text x="410" y="352" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">Re-rank</text>
+    <text x="410" y="368" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Cross-encoder scores each doc</text>
+    <text x="410" y="382" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Most accurate, reorders by relevance</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="500" y1="360" x2="520" y2="360" stroke="#d4872a" stroke-width="1.2" opacity="0.5"/>
+  <polygon points="520,357 524,360 520,363" fill="#d4872a" opacity="0.6"/>
+
+  <!-- Context Synthesis -->
+  <g>
+    <path d="M524,330 H664 V387 Q664,390 661,390 H527 Q524,390 524,387 Z" fill="#0096a6" fill-opacity="0.04"/>
+    <path d="M524,330 H664 V387 Q664,390 661,390 H527 Q524,390 524,387 Z" fill="none" stroke="#0096a6" stroke-width="0.8"/>
+    <rect x="524" y="330" width="140" height="4" fill="#0096a6" opacity="0.4"/>
+    <text x="594" y="352" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">Context Synthesis</text>
+    <text x="594" y="368" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Clean, focused window</text>
+    <text x="594" y="382" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Ordered, trimmed -> agent</text>
+  </g>
+
+  <!-- ═══ Final arrow to Agent ═══ -->
+  <line x1="664" y1="360" x2="698" y2="360" stroke="#0096a6" stroke-width="1.5" opacity="0.4"/>
+  <polygon points="698,357 702,360 698,363" fill="#0096a6" opacity="0.6"/>
+
+  <!-- Agent box -->
+  <g>
+    <path d="M702,330 H780 V387 Q780,390 777,390 H705 Q702,390 702,387 Z" fill="#0096a6" fill-opacity="0.06"/>
+    <path d="M702,330 H780 V387 Q780,390 777,390 H705 Q702,390 702,387 Z" fill="none" stroke="#0096a6" stroke-width="1.2"/>
+    <rect x="702" y="330" width="78" height="5" fill="#0096a6" opacity="0.6"/>
+    <text x="741" y="358" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Sonnet</text>
+    <text x="741" y="374" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Answer</text>
+    <text x="741" y="386" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">synthesis</text>
+  </g>
+
+  <!-- ═══ LEGEND ═══ -->
+  <g>
+    <rect x="140" y="416" width="8" height="8" rx="1" fill="#0096a6" fill-opacity="0.06" stroke="#0096a6" stroke-width="1"/>
+    <text x="152" y="424" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Current (semantic search + agent)</text>
+    <rect x="320" y="416" width="8" height="8" rx="1" fill="#d4872a" fill-opacity="0.06" stroke="#d4872a" stroke-width="1"/>
+    <text x="332" y="424" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">Proposed additions</text>
+    <rect x="500" y="416" width="8" height="8" rx="1" fill="#c44" fill-opacity="0.06" stroke="#c44" stroke-width="1"/>
+    <text x="512" y="424" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="7">Re-ranking (highest accuracy, higher compute)</text>
+  </g>
+
+  <!-- Bottom timing note -->
+  <text x="400" y="448" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">Latency profile</text>
+  <text x="400" y="464" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Stage 2 strategies run in parallel - combined latency equals the slowest. Re-ranking adds ~50-100ms. Total overhead: minimal.</text>
+</svg>

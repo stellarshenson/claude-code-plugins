@@ -1,0 +1,46 @@
+<!--
+  apex_financial_landscape.svg - Apex Financial Pega estate overview with key stats
+  Shows: three stat columns (apps, consultants, CoE) plus vendor strip.
+  Theme: Kolomolo palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 90">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #b5b0c0; }
+    }
+  </style>
+
+  <!-- Stat 1: Applications -->
+  <text x="120" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="700" fill="#5456f3" text-anchor="middle">30</text>
+  <text x="120" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3" text-anchor="middle">Pega applications</text>
+
+  <!-- Divider -->
+  <line x1="240" y1="10" x2="240" y2="55" stroke="#808080" stroke-width="1" opacity="0.15"/>
+
+  <!-- Stat 2: Consultants -->
+  <text x="360" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="700" fill="#3999fd" text-anchor="middle">~200</text>
+  <text x="360" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3" text-anchor="middle">External consultants</text>
+
+  <!-- Divider -->
+  <line x1="480" y1="10" x2="480" y2="55" stroke="#808080" stroke-width="1" opacity="0.15"/>
+
+  <!-- Stat 3: CoE -->
+  <text x="600" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="32" font-weight="700" class="fg-1" text-anchor="middle">7-8</text>
+  <text x="600" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3" text-anchor="middle">Internal CoE members</text>
+
+  <!-- Vendor strip -->
+  <text x="120" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">TCS</text>
+  <text x="280" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">LTI Mindtree</text>
+  <text x="440" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3" text-anchor="middle">Capgemini</text>
+  <text x="600" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#5456f3" text-anchor="middle" font-weight="600">Kolomolo + Ai4Process</text>
+
+  <!-- Dots between vendors -->
+  <circle cx="200" cy="74" r="1" fill="#808080" opacity="0.3"/>
+  <circle cx="360" cy="74" r="1" fill="#808080" opacity="0.3"/>
+  <circle cx="520" cy="74" r="1" fill="#808080" opacity="0.3"/>
+</svg>

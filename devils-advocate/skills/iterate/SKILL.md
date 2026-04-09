@@ -7,6 +7,10 @@ description: Improve document based on devil's concerns, create versioned file, 
 
 One iteration cycle: improve the document, create a versioned copy, score it, rename with the residual.
 
+## Task Tracking
+
+**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout the iteration. Create tasks for each step (decide, apply changes, score, finalize, update). Mark each in_progress when starting, completed when done. This ensures no step is skipped and provides visible progress.
+
 **Prerequisites**: `devils_advocate.md` must contain a scorecard with top gaps. Run `/devils-advocate:evaluate` first if not.
 
 ## Step 1: Decide how to improve

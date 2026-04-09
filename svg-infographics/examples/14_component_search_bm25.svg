@@ -1,0 +1,115 @@
+<!--
+  14_component_search_bm25.svg - Fuzzywuzzy + BM25 hybrid component search flow
+  Shows: vertical flow - query splits to two signals, manifold merges, logistic regression, output
+  Theme: Meridian blue primary, teal on fuzzywuzzy (current), amber on BM25 (new)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 440">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-teal { fill: #007a8a; } .accent-amber { fill: #9a6a1a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-teal { fill: #40c4d4; } .accent-amber { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox 800x440, margin 20px
+    Row 1 (y=36..72):  Query - centred, w=360, x=220..580
+    Row 2 (y=100..186): Two signal cards side by side
+      Card A: x=80..360  (w=280, Fuzzywuzzy)
+      Card B: x=440..720 (w=280, BM25)
+    Row 3 (y=224..296): Logistic Regression - centred, w=360, x=220..580
+    Row 4 (y=334..406): Ranked Results - centred, w=360, x=220..580
+    Arrows: vertical, clear of cards
+    Manifold bus: thick vertical at x=400, y=186..224
+    Legend: y=424
+  === -->
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">COMPONENT SEARCH - HYBRID SCORING</text>
+
+  <!-- Row 1: Query (centred) -->
+  <g>
+    <path d="M220,36 H580 V69 Q580,72 577,72 H223 Q220,72 220,69 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M220,36 H580 V69 Q580,72 577,72 H223 Q220,72 220,69 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="220" y="36" width="360" height="4" fill="#00a6ff" opacity="0.5"/>
+    <text x="400" y="60" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">User Query: "teat cup liner" or "92741301"</text>
+  </g>
+
+  <!-- Split arrows: query -> two signals (chamfered L-routes) -->
+  <path d="M320,72 V82 L316,86 H224 L220,90 V96" fill="none" stroke="#0096a6" stroke-width="1.5" opacity="0.5"/>
+  <polygon points="217,96 220,100 223,96" fill="#0096a6" opacity="0.6"/>
+  <path d="M480,72 V82 L484,86 H576 L580,90 V96" fill="none" stroke="#d4872a" stroke-width="1.5" opacity="0.5"/>
+  <polygon points="577,96 580,100 583,96" fill="#d4872a" opacity="0.6"/>
+
+  <!-- Row 2: Two signal cards -->
+
+  <!-- Card A: Fuzzywuzzy (teal) -->
+  <g>
+    <path d="M80,100 H360 V183 Q360,186 357,186 H83 Q80,186 80,183 Z" fill="#0096a6" fill-opacity="0.04"/>
+    <path d="M80,100 H360 V183 Q360,186 357,186 H83 Q80,186 80,183 Z" fill="none" stroke="#0096a6" stroke-width="1"/>
+    <rect x="80" y="100" width="280" height="5" fill="#0096a6" opacity="0.6"/>
+    <text x="96" y="122" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" letter-spacing="1">CURRENT</text>
+    <text x="96" y="140" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Fuzzywuzzy</text>
+    <text x="96" y="158" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Levenshtein distance - name similarity</text>
+    <text x="96" y="176" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Score 0-100: high when query resembles component name</text>
+  </g>
+
+  <!-- Card B: BM25 (amber) -->
+  <g>
+    <path d="M440,100 H720 V183 Q720,186 717,186 H443 Q440,186 440,183 Z" fill="#d4872a" fill-opacity="0.04"/>
+    <path d="M440,100 H720 V183 Q720,186 717,186 H443 Q440,186 440,183 Z" fill="none" stroke="#d4872a" stroke-width="1"/>
+    <rect x="440" y="100" width="280" height="5" fill="#d4872a" opacity="0.6"/>
+    <text x="456" y="122" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" letter-spacing="1">NEW</text>
+    <text x="456" y="140" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">BM25 Index</text>
+    <text x="456" y="158" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Exact term frequency matching</text>
+    <text x="456" y="176" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">Score: high when exact code or article number found</text>
+  </g>
+
+  <!-- Converging arrows: cards -> manifold bus (chamfered L-routes, opaque, thick) -->
+  <path d="M220,186 V196 L224,200 H400 V222" fill="none" stroke="#00a6ff" stroke-width="1.5" opacity="0.5"/>
+  <path d="M580,186 V196 L576,200 H400" fill="none" stroke="#00a6ff" stroke-width="1.5" opacity="0.5"/>
+  <!-- Arrowhead: stem ends at y=222, tip at y=228 (card edge) -->
+  <polygon points="397,222 400,228 403,222" fill="#00a6ff" opacity="0.6"/>
+
+  <!-- Row 3: Logistic Regression (centred, blue) -->
+  <g>
+    <path d="M220,228 H580 V293 Q580,296 577,296 H223 Q220,296 220,293 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M220,228 H580 V293 Q580,296 577,296 H223 Q220,296 220,293 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="220" y="228" width="360" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="400" y="252" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Logistic Regression</text>
+    <text x="400" y="270" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">2 features (fuzzywuzzy score + BM25 score) → P(correct match)</text>
+    <text x="400" y="288" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Learned weights from labelled query-result pairs - interpretable, stable, no overfit</text>
+  </g>
+
+  <!-- Arrow: logistic regression -> ranked results -->
+  <line x1="400" y1="296" x2="400" y2="330" stroke="#00a6ff" stroke-width="1.5" opacity="0.4"/>
+  <polygon points="397,330 400,334 403,330" fill="#00a6ff" opacity="0.6"/>
+
+  <!-- Row 4: Ranked Results (centred, blue) -->
+  <g>
+    <path d="M220,334 H580 V403 Q580,406 577,406 H223 Q220,406 220,403 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M220,334 H580 V403 Q580,406 577,406 H223 Q220,406 220,403 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="220" y="334" width="360" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="400" y="358" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Ranked Results</text>
+    <text x="400" y="378" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Components ordered by P(match) - best of both signals</text>
+    <text x="400" y="396" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Replaces hand-tuned thresholds with data-driven ranking</text>
+  </g>
+
+  <!-- Side annotations: examples (vertically centred with logistic regression card y=228..296) -->
+  <text x="210" y="250" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="end">"teat cup liner"</text>
+  <text x="210" y="266" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">fuzzy: 87 | BM25: low</text>
+  <text x="210" y="280" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">→ fuzzy dominates</text>
+
+  <text x="590" y="250" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">"92741301"</text>
+  <text x="590" y="266" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">fuzzy: 42 | BM25: high</text>
+  <text x="590" y="280" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">→ BM25 dominates</text>
+
+  <!-- Legend -->
+  <rect x="160" y="424" width="8" height="8" rx="1" fill="#0096a6" fill-opacity="0.06" stroke="#0096a6" stroke-width="1"/>
+  <text x="172" y="432" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="7">Fuzzywuzzy (current)</text>
+  <rect x="320" y="424" width="8" height="8" rx="1" fill="#d4872a" fill-opacity="0.06" stroke="#d4872a" stroke-width="1"/>
+  <text x="332" y="432" class="accent-amber" font-family="Segoe UI, Arial, sans-serif" font-size="7">BM25 (new)</text>
+  <rect x="450" y="424" width="8" height="8" rx="1" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="1"/>
+  <text x="462" y="432" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Logistic regression (learned combiner)</text>
+</svg>

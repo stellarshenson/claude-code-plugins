@@ -1,0 +1,152 @@
+<!--
+  confidence_propagation.svg - Confidence score transformation through pipeline stages
+  Shows: 6 pipeline stages as a horizontal flow with confidence transformations
+  Theme: Stellars-Tech derived - accent-1=#0096d1, accent-2=#da8230
+  Card shape: flat top, rounded bottom r=3 (per theme_swatch.svg)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 352">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- Title -->
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">CONFIDENCE PROPAGATION MODEL</text>
+
+  <!-- Subtitle -->
+  <text x="400" y="34" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Single float (0.0-1.0) representing extraction quality - pipeline signals logged but not persisted</text>
+
+  <!-- === 6 Stage cards: 3 top row, 3 bottom row === -->
+  <!-- Top row: y=48, card w=230, h=100, gap=20 -->
+
+  <!-- Stage 1: Extraction -->
+  <g id="stage-extract">
+    <path d="M20,48 H250 V145 Q250,148 247,148 H23 Q20,148 20,145 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M20,48 H250 V145 Q250,148 247,148 H23 Q20,148 20,145 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="20" y="48" width="230" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="34" y="68" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">STAGE 1</text>
+    <text x="34" y="84" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Extraction</text>
+    <text x="34" y="100" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">LLM assigns initial confidence</text>
+    <text x="34" y="114" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">per entity from source text clarity</text>
+    <text x="34" y="134" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">0.7-1.0 clear | 0.3-0.6 ambiguous</text>
+    <text x="34" y="146" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">extract_chunk</text>
+  </g>
+
+  <!-- Arrow 1->2 -->
+  <line x1="250" y1="98" x2="264" y2="98" stroke="#0096d1" stroke-width="2.5" opacity="0.7"/>
+  <polygon points="264,93 270,98 264,103" fill="#0096d1" opacity="0.8"/>
+
+  <!-- Stage 2: Within-type Dedup -->
+  <g id="stage-dedup">
+    <path d="M270,48 H500 V145 Q500,148 497,148 H273 Q270,148 270,145 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M270,48 H500 V145 Q500,148 497,148 H273 Q270,148 270,145 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="270" y="48" width="230" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="284" y="68" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">STAGE 2</text>
+    <text x="284" y="84" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Within-Type Dedup</text>
+    <text x="284" y="100" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Merge same-type entities:</text>
+    <text x="284" y="114" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">average across all merged instances</text>
+    <text x="284" y="134" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">[0.9, 0.85, 0.92] -> 0.89</text>
+    <text x="284" y="146" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">deduplicate</text>
+  </g>
+
+  <!-- Arrow 2->3 -->
+  <line x1="500" y1="98" x2="514" y2="98" stroke="#0096d1" stroke-width="2.5" opacity="0.7"/>
+  <polygon points="514,93 520,98 514,103" fill="#0096d1" opacity="0.8"/>
+
+  <!-- Stage 3: Entity Resolution -->
+  <g id="stage-resolve">
+    <path d="M520,48 H750 V145 Q750,148 747,148 H523 Q520,148 520,145 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M520,48 H750 V145 Q750,148 747,148 H523 Q520,148 520,145 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="520" y="48" width="230" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="534" y="68" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">STAGE 3</text>
+    <text x="534" y="84" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Entity Resolution</text>
+    <text x="534" y="100" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Multi-signal merge across name</text>
+    <text x="534" y="114" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">variants: weighted average</text>
+    <text x="534" y="134" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">Does not inflate confidence</text>
+    <text x="534" y="146" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">resolve_entities</text>
+  </g>
+
+  <!-- Down-step arrow from top row to bottom row -->
+  <path d="M750,120 H766 L770,124 V186 L766,190 H756" fill="none" stroke="#0096d1" stroke-width="2.5" opacity="0.7" stroke-linejoin="round"/>
+  <polygon points="756,185 750,190 756,195" fill="#0096d1" opacity="0.8"/>
+
+  <!-- Bottom row: y=168, reversed (right to left) -->
+
+  <!-- Stage 4: Cross-Type Resolution -->
+  <g id="stage-crosstype">
+    <path d="M520,168 H750 V277 Q750,280 747,280 H523 Q520,280 520,277 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M520,168 H750 V277 Q750,280 747,280 H523 Q520,280 520,277 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="520" y="168" width="230" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="534" y="188" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">STAGE 4</text>
+    <text x="534" y="204" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Cross-Type Resolution</text>
+    <text x="534" y="220" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Bayesian posterior decides merge/block</text>
+    <text x="534" y="234" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Confidence = avg of input confidences</text>
+    <text x="534" y="254" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">Posterior NOT written to entity</text>
+    <text x="534" y="266" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">_resolve_cross_type</text>
+  </g>
+
+  <!-- Arrow 4->5 (right to left) -->
+  <line x1="520" y1="218" x2="506" y2="218" stroke="#da8230" stroke-width="2.5" opacity="0.7"/>
+  <polygon points="506,213 500,218 506,223" fill="#da8230" opacity="0.8"/>
+
+  <!-- Stage 5: Type Enforcement -->
+  <g id="stage-enforce">
+    <path d="M270,168 H500 V277 Q500,280 497,280 H273 Q270,280 270,277 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M270,168 H500 V277 Q500,280 497,280 H273 Q270,280 270,277 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="270" y="168" width="230" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="284" y="188" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">STAGE 5</text>
+    <text x="284" y="204" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Type Enforcement</text>
+    <text x="284" y="220" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Type remapping does not alter</text>
+    <text x="284" y="234" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">confidence - reflects extraction quality</text>
+    <text x="284" y="254" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">Type entropy logged, not persisted</text>
+    <text x="284" y="266" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">_enforce_ontology_types</text>
+  </g>
+
+  <!-- Arrow 5->6 (right to left) -->
+  <line x1="270" y1="218" x2="256" y2="218" stroke="#0096d1" stroke-width="2.5" opacity="0.7"/>
+  <polygon points="256,213 250,218 256,223" fill="#0096d1" opacity="0.8"/>
+
+  <!-- Stage 6: Graph Insertion -->
+  <g id="stage-load">
+    <path d="M20,168 H250 V277 Q250,280 247,280 H23 Q20,280 20,277 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M20,168 H250 V277 Q250,280 247,280 H23 Q20,280 20,277 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="20" y="168" width="230" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="34" y="188" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1">STAGE 6</text>
+    <text x="34" y="204" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">Graph Insertion</text>
+    <text x="34" y="220" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Confidence written to Neo4j as-is</text>
+    <text x="34" y="234" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">MERGE updates: new value replaces old</text>
+    <text x="34" y="254" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700">update_count tracks re-ingestion</text>
+    <text x="34" y="266" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">load_extraction</text>
+  </g>
+
+  <!-- Arrow from Stage 6 to Neo4j -->
+  <line x1="135" y1="280" x2="135" y2="290" stroke="#0096d1" stroke-width="2.5" opacity="0.7"/>
+  <polygon points="130,290 135,296 140,290" fill="#0096d1" opacity="0.8"/>
+
+  <!-- Neo4j target (taller cylinder, dimmer icon, bolder text) -->
+  <ellipse cx="135" cy="306" rx="28" ry="9" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="0.8" opacity="0.5"/>
+  <path d="M107,306 V336 A28,9 0 0 0 163,336 V306" fill="#0096d1" fill-opacity="0.02" stroke="#0096d1" stroke-width="0.8" opacity="0.5"/>
+  <ellipse cx="135" cy="336" rx="28" ry="9" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.5"/>
+  <text x="135" y="326" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Neo4j</text>
+
+  <!-- Legend (beside Neo4j icon) -->
+  <g id="legend">
+    <rect x="180" y="312" width="8" height="8" rx="1" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="192" y="320" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Confidence preserved or averaged</text>
+    <rect x="180" y="326" width="8" height="8" rx="1" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1"/>
+    <text x="192" y="334" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">Decision signal (logged, not persisted on entity)</text>
+  </g>
+
+</svg>

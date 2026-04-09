@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 140">
+
+  <!-- Box 1: HR Data -->
+  <rect x="20" y="30" width="130" height="80" rx="8" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="1" opacity="0.3"/>
+  <!-- Icon: database (Lucide, ISC license) -->
+  <g transform="translate(73, 42) scale(0.583)" fill="none" stroke="#00a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+    <path d="M3 5V19A9 3 0 0 0 21 19V5"/>
+    <path d="M3 12A9 3 0 0 0 21 12"/>
+  </g>
+  <text x="85" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#4a7ba7" text-anchor="middle">HR Data</text>
+
+  <!-- Arrow 1 -->
+  <line x1="155" y1="70" x2="185" y2="70" stroke="#00a6ff" stroke-width="2" opacity="0.3"/>
+  <polygon points="185,65 195,70 185,75" fill="#00a6ff" opacity="0.8"/>
+
+  <!-- Box 2: Log-Linear Model -->
+  <rect x="200" y="30" width="150" height="80" rx="8" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="1.5"/>
+  <!-- Function icon -->
+  <text x="275" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#00a6ff" text-anchor="middle" font-style="italic">f(x)</text>
+  <text x="275" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#4a7ba7" text-anchor="middle">Log-Linear</text>
+  <text x="275" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#4a7ba7" text-anchor="middle">Model</text>
+
+  <!-- Arrow 2: horizontal stem then forked arms (horizontal-first, rotated into position) -->
+  <line x1="355" y1="70" x2="390" y2="70" stroke="#00a6ff" stroke-width="2" opacity="0.3"/>
+  <!-- Fork upper arm: horizontal arrow rotated -54.5deg at tip (410,42) -->
+  <g transform="translate(410, 42) rotate(-54.5)">
+    <line x1="-34" y1="0" x2="0" y2="0" stroke="#00a6ff" stroke-width="2" opacity="0.3"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#00a6ff" opacity="0.8"/>
+  </g>
+  <!-- Fork lower arm: horizontal arrow rotated 54.5deg at tip (410,98) -->
+  <g transform="translate(410, 98) rotate(54.5)">
+    <line x1="-34" y1="0" x2="0" y2="0" stroke="#00a6ff" stroke-width="2" opacity="0.3"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#00a6ff" opacity="0.8"/>
+  </g>
+
+  <!-- Box 3a: EU Compliance -->
+  <rect x="420" y="10" width="160" height="50" rx="8" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="1.5"/>
+  <!-- Icon: shield-check (Lucide, ISC license) -->
+  <g transform="translate(432, 20) scale(0.667)" fill="none" stroke="#00a6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+    <path d="m9 12 2 2 4-4"/>
+  </g>
+  <text x="455" y="33" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#4a7ba7">EU Compliance</text>
+  <text x="455" y="45" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#6b8db5">Adjusted gap vs 5%</text>
+
+  <!-- Box 3b: Oaxaca-Blinder -->
+  <rect x="420" y="80" width="160" height="50" rx="8" fill="#00a6ff" fill-opacity="0.06" stroke="#66ccff" stroke-width="1.5"/>
+  <!-- Icon: split (Lucide, ISC license) -->
+  <g transform="translate(432, 90) scale(0.667)" fill="none" stroke="#66ccff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 3h5v5"/><path d="M8 3H3v5"/>
+    <path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/>
+    <path d="m15 9 6-6"/>
+  </g>
+  <text x="455" y="103" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#4a7ba7">Oaxaca-Blinder</text>
+  <text x="455" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#6b8db5">Explained vs unexplained</text>
+
+  <!-- Merge upper arm: horizontal arrow rotated 29.7deg at tip (625,55) -->
+  <g transform="translate(625, 55) rotate(29.7)">
+    <line x1="-40" y1="0" x2="0" y2="0" stroke="#00a6ff" stroke-width="2" opacity="0.3"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#00a6ff" opacity="0.8"/>
+  </g>
+  <!-- Merge lower arm: horizontal arrow rotated -29.7deg at tip (625,85) -->
+  <g transform="translate(625, 85) rotate(-29.7)">
+    <line x1="-40" y1="0" x2="0" y2="0" stroke="#00a6ff" stroke-width="2" opacity="0.3"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#00a6ff" opacity="0.8"/>
+  </g>
+
+  <!-- Box 4: Reports -->
+  <rect x="630" y="35" width="150" height="70" rx="8" fill="#00a6ff" fill-opacity="0.06" stroke="#66ccff" stroke-width="1.5"/>
+  <!-- Icon: file-text (Lucide, ISC license) -->
+  <g transform="translate(645, 48) scale(0.75)" fill="none" stroke="#66ccff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/>
+    <path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>
+  </g>
+  <text x="675" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" fill="#4a7ba7">Reports &amp;</text>
+  <text x="675" y="77" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" fill="#4a7ba7">Dashboards</text>
+  <text x="675" y="93" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#6b8db5">Executive + detailed</text>
+</svg>

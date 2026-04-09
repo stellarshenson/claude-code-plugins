@@ -7,6 +7,10 @@ description: Generate baseline devil's advocate evaluation. Produces concern cat
 
 Generate the concern catalogue and scorecard. Run after setup.
 
+## Task Tracking
+
+**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout evaluation. Create tasks for each step (read context, generate catalogue, score, create v01). Mark each in_progress when starting, completed when done.
+
 **Prerequisites**: `devils_advocate.md` (persona) and `fact_repository.md` must exist. If not, tell the user to run `/devils-advocate:setup` first.
 
 ## Step 1: Read context

@@ -1,0 +1,180 @@
+<!--
+  theme_swatch.svg - Optima Manufacturing brand theme validation swatch (final palette)
+  Shows: palette reference strip (transparent bg), light background strip, dark background strip.
+  Intent: validate all Optima Manufacturing shade grades in context before producing deliverable infographics.
+  Theme: fg-1 #8b1a2b (burgundy) for headings, icons, accents, pain points.
+  fg-2 #4a4a4a (dark gray), fg-3 #707070 (medium gray) for text.
+  Neutrals #4a4a4a / #5a5a5a / #808080 for structural elements (cards, strokes, arrows).
+  No blue - burgundy + grays only.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520">
+  <style>
+    .fg-1 { fill: #8b1a2b; }
+    .fg-2 { fill: #4a4a4a; }
+    .fg-3 { fill: #707070; }
+    .neutral-1 { fill: #4a4a4a; }
+    .neutral-2 { fill: #5a5a5a; }
+    .neutral-3 { fill: #808080; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #F06068; }
+      .fg-2 { fill: #c0c0c0; }
+      .fg-3 { fill: #909090; }
+      .neutral-1 { fill: #e0e0e0; }
+      .neutral-2 { fill: #b0b0b0; }
+      .neutral-3 { fill: #909090; }
+    }
+  </style>
+
+  <!-- === SECTION 1: Palette Reference (transparent bg) === -->
+
+  <!-- Foreground shades -->
+  <text x="20" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#808080" letter-spacing="1">FOREGROUND SHADES</text>
+  <rect x="20" y="36" width="12" height="12" rx="2" fill="#8b1a2b"/>
+  <text x="38" y="47" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#8b1a2b">fg-1: #8b1a2b - Headings, icons, accents (burgundy)</text>
+  <rect x="20" y="56" width="12" height="12" rx="2" fill="#4a4a4a"/>
+  <text x="38" y="67" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#4a4a4a">fg-2: #4a4a4a - Card titles, stats (dark gray)</text>
+  <rect x="20" y="76" width="12" height="12" rx="2" fill="#707070"/>
+  <text x="38" y="87" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#707070">fg-3: #707070 - Descriptions (medium gray)</text>
+
+  <!-- Neutral shades -->
+  <text x="20" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#808080" letter-spacing="1">NEUTRAL SHADES (STRUCTURE)</text>
+  <rect x="20" y="120" width="12" height="12" rx="2" fill="#4a4a4a"/>
+  <text x="38" y="131" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#4a4a4a">neutral-1: #4a4a4a - Module labels</text>
+  <rect x="20" y="140" width="12" height="12" rx="2" fill="#5a5a5a"/>
+  <text x="38" y="151" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#5a5a5a">neutral-2: #5a5a5a - Body text</text>
+  <rect x="20" y="156" width="12" height="12" rx="2" fill="#808080"/>
+  <text x="38" y="167" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#808080">neutral-3: #808080 - Card strokes, arrows, dividers</text>
+
+  <!-- Accent / structural fills -->
+  <text x="420" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#808080" letter-spacing="1">ACCENT AND FILL USAGE</text>
+  <rect x="420" y="36" width="24" height="12" rx="2" fill="#8b1a2b"/>
+  <text x="450" y="47" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" fill="#4a4a4a">burgundy: #8b1a2b - Icons, top bars, signal bars</text>
+  <rect x="420" y="56" width="24" height="12" rx="2" fill="#808080"/>
+  <text x="450" y="67" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#4a4a4a">gray: #808080 - Card strokes, box fills, arrows</text>
+
+  <!-- Background fill samples -->
+  <text x="420" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#808080" letter-spacing="1">BACKGROUND FILLS</text>
+  <rect x="420" y="100" width="60" height="16" rx="3" fill="#808080" fill-opacity="0.04" stroke="#808080" stroke-width="0.5" opacity="0.5"/>
+  <text x="486" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#707070">card fill: gray at 0.04 opacity</text>
+  <rect x="420" y="122" width="60" height="5" rx="2" fill="#8b1a2b" opacity="0.35"/>
+  <text x="486" y="131" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#707070">top bar: burgundy at 0.35 opacity</text>
+  <rect x="420" y="142" width="60" height="4" rx="2" fill="#808080" opacity="0.25"/>
+  <text x="486" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#707070">timeline bar: gray at 0.25 opacity</text>
+
+  <!-- === SECTION 2: Light background strip === -->
+  <rect x="0" y="178" width="800" height="160" fill="#f5f5f4"/>
+
+  <text x="20" y="198" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#808080" letter-spacing="1">LIGHT BACKGROUND</text>
+
+  <!-- Card sample -->
+  <path d="M20,208 H160 V302 Q160,312 150,312 H30 Q20,312 20,302 Z" fill="#808080" fill-opacity="0.04"/>
+  <path d="M20,208 H160 V302 Q160,312 150,312 H30 Q20,312 20,302 Z" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="20" y="208" width="140" height="4" fill="#8b1a2b" opacity="0.35"/>
+  <text x="34" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">MODULE TITLE</text>
+  <text x="34" y="248" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Card Heading</text>
+  <text x="34" y="266" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Description text in neutral-2</text>
+  <text x="34" y="280" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Metadata in fg-3</text>
+  <!-- Icon in burgundy -->
+  <circle cx="140" cy="292" r="8" fill="none" stroke="#8b1a2b" stroke-width="1.5" opacity="0.5"/>
+  <line x1="137" y1="292" x2="143" y2="292" stroke="#8b1a2b" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Stats sample with gray dividers -->
+  <text x="200" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" class="fg-1">247</text>
+  <text x="200" y="248" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Employees</text>
+  <line x1="258" y1="218" x2="258" y2="254" stroke="#808080" stroke-width="1" opacity="0.15"/>
+  <text x="274" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" class="fg-1">98%</text>
+  <text x="274" y="248" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Uptime</text>
+  <line x1="332" y1="218" x2="332" y2="254" stroke="#808080" stroke-width="1" opacity="0.15"/>
+  <text x="348" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" class="fg-1">1950</text>
+  <text x="348" y="248" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Founded</text>
+
+  <!-- Timeline sample with gray track, burgundy bar -->
+  <line x1="200" y1="282" x2="250" y2="282" stroke="#808080" stroke-width="3" opacity="0.2"/>
+  <line x1="290" y1="282" x2="340" y2="282" stroke="#808080" stroke-width="3" opacity="0.2"/>
+  <line x1="380" y1="282" x2="430" y2="282" stroke="#808080" stroke-width="3" opacity="0.2"/>
+  <circle cx="270" cy="282" r="14" fill="#808080" fill-opacity="0.04" stroke="#808080" stroke-width="1" opacity="0.5"/>
+  <text x="270" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2" text-anchor="middle">M1</text>
+  <text x="270" y="310" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="neutral-3" text-anchor="middle">Week 1</text>
+  <circle cx="360" cy="282" r="14" fill="#808080" fill-opacity="0.04" stroke="#808080" stroke-width="1" opacity="0.5"/>
+  <text x="360" y="286" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2" text-anchor="middle">M2</text>
+  <text x="360" y="310" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="neutral-3" text-anchor="middle">Week 3</text>
+
+  <!-- Arrows: gray structural -->
+  <g transform="translate(480, 232) rotate(0)">
+    <line x1="-40" y1="0" x2="0" y2="0" stroke="#808080" stroke-width="1.5" opacity="0.3"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#808080" opacity="0.5"/>
+  </g>
+  <text x="490" y="236" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">structural</text>
+
+  <!-- Signal bar sample (burgundy) -->
+  <rect x="560" y="229" width="4" height="6" rx="1" fill="#8b1a2b"/>
+  <rect x="566" y="225" width="4" height="10" rx="1" fill="#8b1a2b"/>
+  <rect x="572" y="221" width="4" height="14" rx="1" fill="#8b1a2b"/>
+  <text x="582" y="236" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">signal bars</text>
+
+  <!-- Coverage bar -->
+  <text x="480" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2">Coverage</text>
+  <rect x="480" y="278" width="280" height="14" rx="7" fill="#808080" fill-opacity="0.08"/>
+  <rect x="480" y="278" width="210" height="14" rx="7" fill="#8b1a2b" opacity="0.25"/>
+  <text x="580" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#8b1a2b">75%</text>
+  <text x="748" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="neutral-3" text-anchor="end">target</text>
+
+  <!-- === SECTION 3: Dark background strip === -->
+  <rect x="0" y="348" width="800" height="172" fill="#1e1e1e"/>
+
+  <text x="20" y="368" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#909090" letter-spacing="1">DARK BACKGROUND</text>
+
+  <!-- Card sample -->
+  <path d="M20,378 H160 V464 Q160,474 150,474 H30 Q20,474 20,464 Z" fill="#808080" fill-opacity="0.06"/>
+  <path d="M20,378 H160 V464 Q160,474 150,474 H30 Q20,474 20,464 Z" fill="none" stroke="#808080" stroke-width="0.8" opacity="0.3"/>
+  <rect x="20" y="378" width="140" height="4" fill="#8b1a2b" opacity="0.4"/>
+  <text x="34" y="402" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" fill="#c0c0c0">MODULE TITLE</text>
+  <text x="34" y="418" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" fill="#F06068">Card Heading</text>
+  <text x="34" y="436" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#b0b0b0">Description in neutral-2</text>
+  <text x="34" y="450" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#909090">Metadata in fg-3</text>
+  <!-- Icon in dark mode -->
+  <circle cx="140" cy="460" r="8" fill="none" stroke="#F06068" stroke-width="1.5" opacity="0.5"/>
+  <line x1="137" y1="460" x2="143" y2="460" stroke="#F06068" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Stats sample -->
+  <text x="200" y="402" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#F06068">247</text>
+  <text x="200" y="418" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#909090">Employees</text>
+  <line x1="258" y1="388" x2="258" y2="424" stroke="#808080" stroke-width="1" opacity="0.15"/>
+  <text x="274" y="402" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#F06068">98%</text>
+  <text x="274" y="418" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#909090">Uptime</text>
+  <line x1="332" y1="388" x2="332" y2="424" stroke="#808080" stroke-width="1" opacity="0.15"/>
+  <text x="348" y="402" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#F06068">1950</text>
+  <text x="348" y="418" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#909090">Founded</text>
+
+  <!-- Timeline dark -->
+  <line x1="200" y1="452" x2="250" y2="452" stroke="#808080" stroke-width="3" opacity="0.2"/>
+  <line x1="290" y1="452" x2="340" y2="452" stroke="#808080" stroke-width="3" opacity="0.2"/>
+  <line x1="380" y1="452" x2="430" y2="452" stroke="#808080" stroke-width="3" opacity="0.2"/>
+  <circle cx="270" cy="452" r="14" fill="#808080" fill-opacity="0.06" stroke="#808080" stroke-width="1" opacity="0.3"/>
+  <text x="270" y="456" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#c0c0c0" text-anchor="middle">M1</text>
+  <text x="270" y="478" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#909090" text-anchor="middle">Week 1</text>
+  <circle cx="360" cy="452" r="14" fill="#808080" fill-opacity="0.06" stroke="#808080" stroke-width="1" opacity="0.3"/>
+  <text x="360" y="456" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#c0c0c0" text-anchor="middle">M2</text>
+  <text x="360" y="478" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#909090" text-anchor="middle">Week 3</text>
+
+  <!-- Arrows and signal dark -->
+  <g transform="translate(480, 402) rotate(0)">
+    <line x1="-40" y1="0" x2="0" y2="0" stroke="#808080" stroke-width="1.5" opacity="0.3"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#808080" opacity="0.5"/>
+  </g>
+  <text x="490" y="406" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#909090">structural</text>
+
+  <rect x="560" y="399" width="4" height="6" rx="1" fill="#F06068"/>
+  <rect x="566" y="395" width="4" height="10" rx="1" fill="#F06068"/>
+  <rect x="572" y="391" width="4" height="14" rx="1" fill="#F06068"/>
+  <text x="582" y="406" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#909090">signal bars</text>
+
+  <!-- Coverage bar dark -->
+  <text x="480" y="442" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#F06068">Coverage</text>
+  <rect x="480" y="448" width="280" height="14" rx="7" fill="#808080" fill-opacity="0.10"/>
+  <rect x="480" y="448" width="210" height="14" rx="7" fill="#8b1a2b" opacity="0.4"/>
+  <text x="580" y="458" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#f0c8cc">75%</text>
+  <text x="748" y="458" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#909090" text-anchor="end">target</text>
+
+</svg>

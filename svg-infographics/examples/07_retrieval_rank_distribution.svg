@@ -1,0 +1,66 @@
+<!--
+  07_retrieval_rank_distribution.svg - Hit rate at different K values
+  Theme: Meridian blue primary, teal accent on K=5 current setting
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 260">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-2 { fill: #4a90b8; }
+    .accent-teal { fill: #007a8a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-2 { fill: #88ddff; }
+      .accent-teal { fill: #40c4d4; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 800x260
+    Left labels: text-anchor="end" at x=100
+    Bar area: x=120, max width=480 (ends at x=600)
+    Percentage labels: 8px after filled bar end
+    Bar height=18, stride=30
+  === -->
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">RETRIEVAL PERFORMANCE - HIT RATE AT K</text>
+  <text x="400" y="32" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Does the target document appear in the top K retrieved results? (illustrative example)</text>
+
+  <!-- K=1: 35% = 168px of 480px -->
+  <text x="100" y="62" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="end">K = 1</text>
+  <rect x="120" y="50" width="480" height="18" rx="3" fill="#00a6ff" fill-opacity="0.06"/>
+  <rect x="120" y="50" width="168" height="18" rx="3" fill="#00a6ff" fill-opacity="0.3"/>
+  <text x="296" y="63" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">35%</text>
+
+  <!-- K=3: 60% = 288px -->
+  <text x="100" y="92" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="end">K = 3</text>
+  <rect x="120" y="80" width="480" height="18" rx="3" fill="#00a6ff" fill-opacity="0.06"/>
+  <rect x="120" y="80" width="288" height="18" rx="3" fill="#00a6ff" fill-opacity="0.3"/>
+  <text x="416" y="93" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">60%</text>
+
+  <!-- K=5: 75% = 360px (current setting, teal accent) -->
+  <text x="100" y="122" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="end">K = 5</text>
+  <rect x="120" y="110" width="480" height="18" rx="3" fill="#0096a6" fill-opacity="0.08" stroke="#0096a6" stroke-width="0.8"/>
+  <rect x="120" y="110" width="360" height="18" rx="3" fill="#0096a6" fill-opacity="0.3"/>
+  <text x="488" y="123" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">75% - current</text>
+
+  <!-- K=10: 85% = 408px -->
+  <text x="100" y="152" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="end">K = 10</text>
+  <rect x="120" y="140" width="480" height="18" rx="3" fill="#00a6ff" fill-opacity="0.06"/>
+  <rect x="120" y="140" width="408" height="18" rx="3" fill="#00a6ff" fill-opacity="0.3"/>
+  <text x="536" y="153" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">85%</text>
+
+  <!-- K=20: 95% = 456px -->
+  <text x="100" y="182" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="end">K = 20</text>
+  <rect x="120" y="170" width="480" height="18" rx="3" fill="#00a6ff" fill-opacity="0.06"/>
+  <rect x="120" y="170" width="456" height="18" rx="3" fill="#00a6ff" fill-opacity="0.3"/>
+  <text x="608" y="183" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">95%</text>
+
+  <!-- Right annotations -->
+  <text x="316" y="63" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">fragile</text>
+  <text x="634" y="183" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">robust</text>
+
+  <!-- Bottom notes -->
+  <text x="120" y="210" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">What this tells you</text>
+  <text x="120" y="226" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">25% of target documents never appear in top 5 - those queries always produce wrong answers with current K=5</text>
+  <text x="120" y="242" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8">Increasing K from 5 to 10 would recover an additional 10% of queries - worth measuring with the benchmark</text>
+</svg>

@@ -1,0 +1,48 @@
+<!--
+  engagement_model.svg - Partnership responsibility split
+  Shows: two columns (Kolomolo / Ai4Process) with domain bars showing lead/support.
+  Theme: Kolomolo palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 110">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #b5b0c0; }
+    }
+  </style>
+
+  <!-- Headers -->
+  <text x="20" y="16" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#808080" letter-spacing="1">DOMAIN</text>
+  <text x="340" y="16" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#5456f3" letter-spacing="1" font-weight="600">KOLOMOLO</text>
+  <text x="560" y="16" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#3999fd" letter-spacing="1" font-weight="600">AI4PROCESS</text>
+
+  <!-- Row 1: AI/ML -->
+  <text x="20" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">AI / ML</text>
+  <rect x="340" y="26" width="180" height="14" rx="3" fill="#5456f3" opacity="0.25"/>
+  <text x="430" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#5456f3" text-anchor="middle" font-weight="600">Lead</text>
+  <rect x="560" y="26" width="60" height="14" rx="3" fill="#3999fd" opacity="0.12"/>
+  <text x="590" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Support</text>
+
+  <!-- Row 2: Cloud -->
+  <text x="20" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">Cloud infrastructure</text>
+  <rect x="340" y="44" width="180" height="14" rx="3" fill="#5456f3" opacity="0.25"/>
+  <text x="430" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#5456f3" text-anchor="middle" font-weight="600">Lead</text>
+
+  <!-- Row 3: Pega -->
+  <text x="20" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">Pega platform</text>
+  <rect x="340" y="62" width="60" height="14" rx="3" fill="#5456f3" opacity="0.12"/>
+  <text x="370" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Support</text>
+  <rect x="560" y="62" width="180" height="14" rx="3" fill="#3999fd" opacity="0.25"/>
+  <text x="650" y="72" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#3999fd" text-anchor="middle" font-weight="600">Lead</text>
+
+  <!-- Row 4: Cognitive services -->
+  <text x="20" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">Cognitive services</text>
+  <rect x="340" y="80" width="180" height="14" rx="3" fill="#5456f3" opacity="0.25"/>
+  <text x="430" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="7" fill="#5456f3" text-anchor="middle" font-weight="600">Lead</text>
+  <rect x="560" y="80" width="100" height="14" rx="3" fill="#3999fd" opacity="0.15"/>
+  <text x="610" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">Integration</text>
+</svg>

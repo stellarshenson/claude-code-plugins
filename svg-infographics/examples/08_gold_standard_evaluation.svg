@@ -1,0 +1,91 @@
+<!--
+  08_gold_standard_evaluation.svg - 10 curated questions multi-dimensional scoring
+  Theme: Meridian blue primary, teal/amber accents on category cards, distinct scoring dims
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-teal { fill: #007a8a; } .accent-indigo { fill: #3a5ea5; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-teal { fill: #40c4d4; } .accent-indigo { fill: #7aaae0; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox 800x280, margin 20px
+    4 category cards: w=182, gap=12
+    Card 1: x=20..202, Card 2: x=214..396, Card 3: x=408..590, Card 4: x=602..780 (was 784 but 780 for margin)
+    Cards y=36..130
+    Scoring dims: y=146..260
+    Bottom text: y=232..250
+  === -->
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">GOLD-STANDARD QUESTIONS - CORE REGRESSION SET</text>
+
+  <!-- Card 1: Troubleshooting (blue) -->
+  <g>
+    <path d="M20,36 H202 V127 Q202,130 199,130 H23 Q20,130 20,127 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M20,36 H202 V127 Q202,130 199,130 H23 Q20,130 20,127 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="20" y="36" width="182" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="111" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Troubleshooting</text>
+    <text x="111" y="76" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Error codes, procedures</text>
+    <text x="111" y="92" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Specific diagnostic steps</text>
+    <text x="111" y="118" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">2-3 questions</text>
+  </g>
+
+  <!-- Card 2: Parts Lookup (teal) -->
+  <g>
+    <path d="M214,36 H396 V127 Q396,130 393,130 H217 Q214,130 214,127 Z" fill="#0096a6" fill-opacity="0.04"/>
+    <path d="M214,36 H396 V127 Q396,130 393,130 H217 Q214,130 214,127 Z" fill="none" stroke="#0096a6" stroke-width="1"/>
+    <rect x="214" y="36" width="182" height="5" fill="#0096a6" opacity="0.6"/>
+    <text x="305" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Parts Lookup</text>
+    <text x="305" y="76" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Article numbers, names</text>
+    <text x="305" y="92" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Component identification</text>
+    <text x="305" y="118" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">2-3 questions</text>
+  </g>
+
+  <!-- Card 3: Procedures (blue) -->
+  <g>
+    <path d="M408,36 H590 V127 Q590,130 587,130 H411 Q408,130 408,127 Z" fill="#00a6ff" fill-opacity="0.04"/>
+    <path d="M408,36 H590 V127 Q590,130 587,130 H411 Q408,130 408,127 Z" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="408" y="36" width="182" height="5" fill="#00a6ff" opacity="0.6"/>
+    <text x="499" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Procedures</text>
+    <text x="499" y="76" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Installation, maintenance</text>
+    <text x="499" y="92" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Exact specifications</text>
+    <text x="499" y="118" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">2-3 questions</text>
+  </g>
+
+  <!-- Card 4: Multi-document (amber) -->
+  <g>
+    <path d="M602,36 H780 V127 Q780,130 777,130 H605 Q602,130 602,127 Z" fill="#3a6ea5" fill-opacity="0.04"/>
+    <path d="M602,36 H780 V127 Q780,130 777,130 H605 Q602,130 602,127 Z" fill="none" stroke="#3a6ea5" stroke-width="1"/>
+    <rect x="602" y="36" width="178" height="5" fill="#3a6ea5" opacity="0.6"/>
+    <text x="691" y="58" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Multi-document</text>
+    <text x="691" y="76" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Needs multiple sources</text>
+    <text x="691" y="92" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Cross-reference synthesis</text>
+    <text x="691" y="118" class="accent-indigo" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">1-2 questions</text>
+  </g>
+
+  <!-- Per-question dimensions container -->
+  <path d="M20,146 H780 V257 Q780,260 777,260 H23 Q20,260 20,257 Z" fill="#00a6ff" fill-opacity="0.02"/>
+  <path d="M20,146 H780 V257 Q780,260 777,260 H23 Q20,260 20,257 Z" fill="none" stroke="#00a6ff" stroke-width="0.8" opacity="0.25"/>
+  <rect x="20" y="146" width="760" height="4" fill="#00a6ff" opacity="0.15"/>
+  <text x="40" y="168" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">Each gold-standard question produces four scores:</text>
+
+  <!-- 4 scoring dimension boxes - distinct colours -->
+  <rect x="40" y="180" width="160" height="28" rx="3" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="0.8"/>
+  <text x="120" y="198" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">LLM judge vs reference</text>
+
+  <rect x="220" y="180" width="160" height="28" rx="3" fill="#0096a6" fill-opacity="0.06" stroke="#0096a6" stroke-width="0.8"/>
+  <text x="300" y="198" class="accent-teal" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">Entity recall check</text>
+
+  <rect x="400" y="180" width="160" height="28" rx="3" fill="#3a6ea5" fill-opacity="0.06" stroke="#3a6ea5" stroke-width="0.8"/>
+  <text x="480" y="198" class="accent-indigo" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">Retrieval rank</text>
+
+  <rect x="580" y="180" width="160" height="28" rx="3" fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="0.8"/>
+  <text x="660" y="198" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle">Response time</text>
+
+  <text x="400" y="232" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">If a change improves scores on these 10 questions, it is a real improvement</text>
+  <text x="400" y="250" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Team writes the best possible reference answer for each - the standard the system should match</text>
+</svg>

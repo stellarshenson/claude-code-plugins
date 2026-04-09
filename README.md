@@ -12,7 +12,7 @@ A plugin marketplace for Claude Code providing structured workflows for software
 /plugin marketplace add stellarshenson/claude-code-plugins
 ```
 
-The marketplace includes a shared YAML-driven orchestration engine (`auto-build-claw`) that pulls agents through structured phases with quality gates, a semi-data-science document critic (`devils-advocate`) with Fibonacci risk scoring, data science project standards (`datascience`) with notebook scaffolding and compliance fixes, structured document processing (`document-processing`) with source grounding, and project journaling (`journal`).
+The marketplace includes a shared YAML-driven orchestration engine (`auto-build-claw`) that pulls agents through structured phases with quality gates, a semi-data-science document critic (`devils-advocate`) with Fibonacci risk scoring, production SVG infographics (`svg-infographics`) with grid-first design and automated validation, data science project standards (`datascience`) with notebook scaffolding and compliance fixes, structured document processing (`document-processing`) with source grounding, and project journaling (`journal`).
 
 > [!NOTE]
 > Read the full article on the orchestration approach: [Your AI Agent Will Cut Corners. Here's How to Stop It.](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762)
@@ -23,6 +23,7 @@ The marketplace includes a shared YAML-driven orchestration engine (`auto-build-
 |--------|---------------|
 | [auto-build-claw](auto-build-claw/) | Shallow fixes, scope creep, lost context, unchecked quality, benchmark gaming - enforces structured phases with multi-agent review |
 | [devils-advocate](devils-advocate/) | Untested assumptions, hidden risks, weak documents - quantified critique with Fibonacci risk scoring and measurable improvement |
+| [svg-infographics](svg-infographics/) | Approximate layouts, inconsistent styling, no dark mode, manual validation - enforces grid-first design with 5 automated checkers |
 | [datascience](datascience/) | Inconsistent notebooks, wrong conventions, missing structure - enforces standards and scaffolds projects |
 | [document-processing](document-processing/) | Ungrounded claims, unverified documents, manual PDF work - source tracing, compliance checking, PDF automation |
 | [journal](journal/) | Lost work history, inconsistent entries - append-only audit trail with archiving |
@@ -82,6 +83,33 @@ Risk scoring uses a Fibonacci scale (1-8) for likelihood and impact, producing r
 ```
 
 See [devils-advocate/README.md](devils-advocate/) for scoring formula details, artefact format, and the full concern catalogue methodology.
+
+## svg-infographics
+
+Creates production-quality SVG infographics with a mandatory 6-phase workflow (research, grid, scaffold, content, finishing, validation). Every coordinate is Python-calculated, every colour traces to an approved theme swatch, and five validation tools check overlaps, WCAG contrast, alignment, and connector quality before delivery.
+
+**Skills**: `svg-standards` (grid layout, CSS classes, cards, arrows), `workflow` (6-phase process), `theme` (palette approval), `validation` (checker tools)
+
+### Usage
+
+```bash
+# Create infographic(s) with full workflow
+/svg-infographics:create card grid showing 4 platform modules
+
+# Generate theme swatch for approval
+/svg-infographics:theme corporate blue palette
+
+# Run validation on existing SVGs
+/svg-infographics:validate docs/images/*.svg
+
+# Fix style/contrast issues
+/svg-infographics:fix-style docs/images/overview.svg
+
+# Fix layout/overlap issues
+/svg-infographics:fix-layout docs/images/overview.svg
+```
+
+Includes 64 production SVG examples, 5 Python validation tools, and theme swatches. See [svg-infographics/README.md](svg-infographics/) for design principles and workflow details.
 
 ## datascience
 
@@ -199,6 +227,27 @@ devils-advocate/                       # Plugin: critical document analysis
     iterate/SKILL.md                   # Apply corrections, re-score
     run/SKILL.md                       # Full workflow end-to-end
 
+svg-infographics/                      # Plugin: SVG infographic creation
+  .claude-plugin/plugin.json           # Plugin registration
+  skills/
+    svg-standards/SKILL.md             # Grid layout, CSS, cards, arrows, typography
+    workflow/SKILL.md                  # 6-phase sequential workflow with gates
+    theme/SKILL.md                     # Palette approval and swatch generation
+    validation/SKILL.md                # Checker tools and verification workflow
+  commands/
+    create.md                          # Create infographic(s) with full workflow
+    theme.md                           # Generate theme swatch for approval
+    validate.md                        # Run all validation checks
+    fix-style.md                       # Fix CSS, contrast, dark mode issues
+    fix-layout.md                      # Fix overlaps, alignment, spacing
+  tools/
+    calc_connector.py                  # Connector geometry calculator
+    check_overlaps.py                  # Bounding box overlap detection
+    check_contrast.py                  # WCAG 2.1 contrast checker
+    check_alignment.py                 # Grid snap and topology verification
+    check_connectors.py                # Connector quality checker
+  examples/                            # 64 production SVG reference examples
+
 datascience/                           # Plugin: data science standards
   .claude-plugin/plugin.json           # Plugin registration
   skills/
@@ -261,7 +310,7 @@ Register your plugin in the marketplace by adding an entry to `.claude-plugin/ma
 
 ```bash
 make install          # create venv, install deps, editable install
-make test             # run 236 tests
+make test             # run tests
 make lint             # ruff format + check
 make format           # auto-fix formatting
 make build            # clean, test, bump version, build wheel

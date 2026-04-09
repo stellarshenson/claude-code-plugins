@@ -1,0 +1,205 @@
+<!--
+  delivery_timeline.svg - 19-week project delivery timeline with module hexagons
+  Style: signal timing diagram waveform with 3px sloped rising/falling edges.
+  Vertically symmetric around centre y=42: HIGH y=34, LOW y=50.
+  Shows: 1 onboarding week + 8 modules in 4 phases + 3 contingency buffers.
+  Each module gets its own hexagon. Phase boundaries (P1-P4) mark transitions.
+  Lucide icons per phase card: database, check, expand, handshake.
+  Intent: show delivery roadmap with clear module sequencing and phase checkpoints.
+  Theme: Kolomolo palette (fg-1 #1f0f4a, accent #5456f3, accent-2 #3999fd).
+
+  === GRID ===
+  Timeline: x=30..771, y centre=42, HIGH=34, LOW=50
+  19 weeks total, ~39px per week
+  Hexagons: ONB 30-69, M1 69-147, M2 147-225, C1 225-264,
+            M3 264-342, M4 342-420, C2 420-459,
+            M5 459-537, M6 537-615, C3 615-654,
+            M7 654-732, M8 732-771
+  Phase boundaries: P1=225, P2=420, P3=615, P4=771
+  Module centres: 108, 186, 303, 381, 498, 576, 693, 752
+  Cards: y=70..180, all 186px wide, 12px gaps
+    Card 1: 10..196   Card 2: 208..394
+    Card 3: 406..592   Card 4: 604..790
+  ============
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 210">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .fg-4 { fill: #70658a; }
+    .wave-work { fill: #3999fd; fill-opacity: 0.55; }
+    .wave-buff { fill: #808080; fill-opacity: 0.85; }
+    .wave-onb { fill: #5456f3; fill-opacity: 0.35; }
+    .wave-line { fill: none; stroke: none; }
+    .wave-base { stroke: #808080; }
+    .wave-tick { stroke: #808080; }
+    .wave-ms { stroke: #1f0f4a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #b5b0c0; }
+      .fg-4 { fill: #b5b0c0; }
+      .wave-work { fill: #68b3ff; fill-opacity: 0.55; }
+      .wave-buff { fill: #808080; fill-opacity: 0.75; }
+      .wave-onb { fill: #7374ff; fill-opacity: 0.35; }
+      .wave-ms { stroke: #5456f3; }
+    }
+  </style>
+
+  <!-- Title -->
+  <text x="400" y="12" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600" class="fg-3" text-anchor="middle">PROJECT TIMELINE  |  ~18 WEEKS  |  4 PHASES  |  8 MODULES</text>
+
+  <!-- Centre reference line -->
+  <line x1="26" y1="42" x2="775" y2="42" class="wave-base" stroke-width="0.5" stroke-dasharray="2,4" opacity="0.2"/>
+
+  <!-- Module hexagons: vertically symmetric (uniform height y=34..50) -->
+
+  <!-- Onboarding (amber, 1w, 39px) -->
+  <path d="M30,42 L33,34 H66 L69,42 L66,50 H33 Z" class="wave-onb"/>
+  <!-- Module 1 (Kolomolo violet, 2w, 78px) -->
+  <path d="M69,42 L72,34 H144 L147,42 L144,50 H72 Z" class="wave-work"/>
+  <!-- Module 2 (Kolomolo violet, 2w, 78px) -->
+  <path d="M147,42 L150,34 H222 L225,42 L222,50 H150 Z" class="wave-work"/>
+  <!-- Contingency 1 (gray, 1w, 39px) -->
+  <path d="M225,42 L228,34 H261 L264,42 L261,50 H228 Z" class="wave-buff"/>
+  <!-- Module 3 (Kolomolo violet, 2w, 78px) -->
+  <path d="M264,42 L267,34 H339 L342,42 L339,50 H267 Z" class="wave-work"/>
+  <!-- Module 4 (Kolomolo violet, 2w, 78px) -->
+  <path d="M342,42 L345,34 H417 L420,42 L417,50 H345 Z" class="wave-work"/>
+  <!-- Contingency 2 (gray, 1w, 39px) -->
+  <path d="M420,42 L423,34 H456 L459,42 L456,50 H423 Z" class="wave-buff"/>
+  <!-- Module 5 (Kolomolo violet, 2w, 78px) -->
+  <path d="M459,42 L462,34 H534 L537,42 L534,50 H462 Z" class="wave-work"/>
+  <!-- Module 6 (Kolomolo violet, 2w, 78px) -->
+  <path d="M537,42 L540,34 H612 L615,42 L612,50 H540 Z" class="wave-work"/>
+  <!-- Contingency 3 (gray, 1w, 39px) -->
+  <path d="M615,42 L618,34 H651 L654,42 L651,50 H618 Z" class="wave-buff"/>
+  <!-- Module 7 (Kolomolo violet, 2w, 78px) -->
+  <path d="M654,42 L657,34 H729 L732,42 L729,50 H657 Z" class="wave-work"/>
+  <!-- Module 8 (Kolomolo violet, 1w, 39px) -->
+  <path d="M732,42 L735,34 H768 L771,42 L768,50 H735 Z" class="wave-work"/>
+
+  <!-- Phase boundary markers (solid, prominent) -->
+  <line x1="225" y1="26" x2="225" y2="52" class="wave-ms" stroke-width="1.5" opacity="0.8"/>
+  <line x1="420" y1="26" x2="420" y2="52" class="wave-ms" stroke-width="1.5" opacity="0.8"/>
+  <line x1="615" y1="26" x2="615" y2="52" class="wave-ms" stroke-width="1.5" opacity="0.8"/>
+  <line x1="771" y1="26" x2="771" y2="52" class="wave-ms" stroke-width="1.5" opacity="0.8"/>
+
+  <!-- Phase boundary labels (above markers) -->
+  <text x="225" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">P1</text>
+  <text x="420" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">P2</text>
+  <text x="615" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">P3</text>
+  <text x="771" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">P4</text>
+
+  <!-- Module labels (above hexagons, centred) -->
+  <text x="108" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">1</text>
+  <text x="186" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">2</text>
+  <text x="303" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">3</text>
+  <text x="381" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">4</text>
+  <text x="498" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">5</text>
+  <text x="576" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">6</text>
+  <text x="693" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">7</text>
+  <text x="752" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">8</text>
+
+  <!-- Contingency buffer labels -->
+  <text x="245" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">+1w</text>
+  <text x="440" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">+1w</text>
+  <text x="635" y="31" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">+1w</text>
+
+  <!-- Time axis ticks -->
+  <line x1="30" y1="50" x2="30" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+  <line x1="69" y1="50" x2="69" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+  <line x1="225" y1="50" x2="225" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+  <line x1="420" y1="50" x2="420" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+  <line x1="615" y1="50" x2="615" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+  <line x1="771" y1="50" x2="771" y2="55" class="wave-tick" stroke-width="0.75" opacity="0.4"/>
+
+  <!-- Time axis labels -->
+  <text x="30" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">W0</text>
+  <text x="69" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">W1</text>
+  <text x="225" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">W5</text>
+  <text x="420" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">W10</text>
+  <text x="615" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">W15</text>
+  <text x="771" y="63" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="end">W19</text>
+
+  <!-- Phase cards (square top, rounded bottom r=6) -->
+
+  <!-- Phase 1: Sweden Foundation (186px) -->
+  <path d="M10,70 H196 V172 Q196,180 188,180 H18 Q10,180 10,172 Z" fill="#70658a" fill-opacity="0.06" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="10" y="70" width="186" height="4" fill="#5456f3" opacity="0.5"/>
+  <text x="22" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2">PHASE 1</text>
+  <text x="184" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="end">Mod 1, 2</text>
+  <text x="22" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Sweden Foundation</text>
+  <text x="22" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">4 weeks</text>
+  <!-- Icon: database (Lucide, ISC license) -->
+  <g transform="translate(164, 99) scale(0.5)" fill="none" stroke="#808080" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>
+  </g>
+  <text x="22" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Validated dataset</text>
+  <text x="22" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Cloud infrastructure</text>
+  <text x="22" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Pay gap model for Sweden</text>
+  <text x="22" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">EU + internal reports</text>
+
+  <!-- Phase 2: Sweden Acceptance (186px) -->
+  <path d="M208,70 H394 V172 Q394,180 386,180 H216 Q208,180 208,172 Z" fill="#70658a" fill-opacity="0.06" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="208" y="70" width="186" height="4" fill="#5456f3" opacity="0.42"/>
+  <text x="220" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2">PHASE 2</text>
+  <text x="382" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="end">Mod 3, 4</text>
+  <text x="220" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Sweden Acceptance</text>
+  <text x="220" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">4 weeks</text>
+  <!-- Icon: check (Lucide, ISC license) -->
+  <g transform="translate(362, 99) scale(0.5)" fill="none" stroke="#808080" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <path d="M20 6 9 17l-5-5"/>
+  </g>
+  <text x="220" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Self-service analytics</text>
+  <text x="220" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">AI Q&amp;A layer</text>
+  <text x="220" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Scenario analysis</text>
+  <text x="220" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">HR sign-off</text>
+
+  <!-- Phase 3: Scale & Integrate (186px) -->
+  <path d="M406,70 H592 V172 Q592,180 584,180 H414 Q406,180 406,172 Z" fill="#70658a" fill-opacity="0.06" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="406" y="70" width="186" height="4" fill="#5456f3" opacity="0.35"/>
+  <text x="418" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2">PHASE 3</text>
+  <text x="580" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="end">Mod 5, 6</text>
+  <text x="418" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Scale &amp; Integrate</text>
+  <text x="418" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">4 weeks</text>
+  <!-- Icon: expand (Lucide, ISC license) -->
+  <g transform="translate(560, 99) scale(0.5)" fill="none" stroke="#808080" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <path d="m15 15 6 6"/><path d="m15 9 6-6"/><path d="M21 16v5h-5"/><path d="M21 8V3h-5"/>
+    <path d="M3 16v5h5"/><path d="m3 21 6-6"/><path d="M3 8V3h5"/><path d="M9 9 3 3"/>
+  </g>
+  <text x="418" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">17 countries live</text>
+  <text x="418" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Group-level consolidation</text>
+  <text x="418" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Power BI dashboards</text>
+  <text x="418" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Real-time monitoring</text>
+
+  <!-- Phase 4: Handover (186px) -->
+  <path d="M604,70 H790 V172 Q790,180 782,180 H612 Q604,180 604,172 Z" fill="#70658a" fill-opacity="0.06" stroke="#808080" stroke-width="0.8" opacity="0.5"/>
+  <rect x="604" y="70" width="186" height="4" fill="#5456f3" opacity="0.28"/>
+  <text x="616" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2">PHASE 4</text>
+  <text x="778" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="end">Mod 7, 8</text>
+  <text x="616" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Handover</text>
+  <text x="616" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">3 weeks</text>
+  <!-- Icon: handshake (Lucide, ISC license) -->
+  <g transform="translate(758, 99) scale(0.5)" fill="none" stroke="#808080" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <path d="m11 17 2 2a1 1 0 1 0 3-3"/>
+    <path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/>
+    <path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/>
+  </g>
+  <text x="616" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Methodology paper</text>
+  <text x="616" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Executive reporting</text>
+  <text x="616" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">Codebase transfer</text>
+  <text x="616" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-3">HR team training</text>
+
+  <!-- Legend -->
+  <path d="M20,200 L23,195 H37 L40,200 L37,205 H23 Z" class="wave-onb"/>
+  <text x="46" y="203" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Onboarding (1 week)</text>
+  <path d="M180,200 L183,195 H197 L200,200 L197,205 H183 Z" class="wave-work"/>
+  <text x="206" y="203" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Module delivery (1-2 weeks)</text>
+  <path d="M400,200 L403,195 H417 L420,200 L417,205 H403 Z" class="wave-buff"/>
+  <text x="426" y="203" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Contingency buffer (1 week)</text>
+  <line x1="600" y1="195" x2="600" y2="205" class="wave-ms" stroke-width="1.5" opacity="0.8"/>
+  <text x="608" y="203" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">Phase boundary</text>
+
+</svg>

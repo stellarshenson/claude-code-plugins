@@ -1,0 +1,147 @@
+<!--
+  modules_overview.svg - 6-module scope of work card grid
+  Shows: two rows of cards (3 top, 3 bottom) representing project deliverables.
+  Row 1: Module 1 Part Registration & NFC, Module 2 Workflow Engine, Module 3 CNC Tracking.
+  Row 2: Module 4 Measurement Recording, Module 5 Assembly Verification, Module 6 Dispatch & Traceability.
+  Cards use square-top/rounded-bottom paths with accent top bar and drop shadow.
+  Intent: visual breakdown of all deliverables for scope section of proposal.
+  Theme: Optima Manufacturing palette (fg-1 #1f0f4a, accent #5456f3) with neutral grays.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .neutral-1 { fill: #3a3a3a; }
+    .neutral-2 { fill: #42346e; }
+    .neutral-3 { fill: #808080; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #909090; }
+      .neutral-1 { fill: #e0e0e0; }
+      .neutral-2 { fill: #b5b0c0; }
+      .neutral-3 { fill: #909090; }
+    }
+  </style>
+  <defs>
+    <filter id="ds" x="-2%" y="-2%" width="104%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- Row 1 -->
+
+  <!-- Module 1: Part Registration & NFC Tagging -->
+  <path d="M10,10 H260 V130 Q260,140 250,140 H20 Q10,140 10,130 Z" fill="#808080" opacity="0.04" filter="url(#ds)"/>
+  <path d="M10,10 H260 V130 Q260,140 250,140 H20 Q10,140 10,130 Z" fill="none" stroke="#808080" stroke-width="1"/>
+  <rect x="10" y="10" width="250" height="5" fill="#1f0f4a" opacity="0.5"/>
+  <text x="30" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">MODULE 1</text>
+  <text x="30" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Part Registration</text>
+  <text x="30" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">&amp; NFC Tagging</text>
+  <text x="30" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Unique ID per part at intake</text>
+  <text x="30" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Material batch linkage</text>
+  <!-- Icon: NFC tag -->
+  <g transform="translate(218, 30)" fill="none" stroke="#808080" stroke-width="1.2" opacity="0.5">
+    <rect x="0" y="2" width="16" height="12" rx="2"/>
+    <circle cx="8" cy="8" r="1.5" fill="#1f0f4a" opacity="0.5"/>
+    <path d="M14,2 Q20,8 14,14" stroke-width="0.8"/>
+    <path d="M17,-1 Q25,8 17,17" stroke-width="0.8"/>
+  </g>
+
+  <!-- Module 2: Production Workflow Engine -->
+  <path d="M275,10 H525 V130 Q525,140 515,140 H285 Q275,140 275,130 Z" fill="#808080" opacity="0.04" filter="url(#ds)"/>
+  <path d="M275,10 H525 V130 Q525,140 515,140 H285 Q275,140 275,130 Z" fill="none" stroke="#808080" stroke-width="1"/>
+  <rect x="275" y="10" width="250" height="5" fill="#1f0f4a" opacity="0.5"/>
+  <text x="295" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">MODULE 2</text>
+  <text x="295" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Production</text>
+  <text x="295" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Workflow Engine</text>
+  <text x="295" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Step enforcement per part</text>
+  <text x="295" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Context switching support</text>
+  <!-- Icon: workflow/steps -->
+  <g transform="translate(483, 30)" fill="none" stroke="#808080" stroke-width="1.2" opacity="0.5">
+    <circle cx="4" cy="4" r="3"/>
+    <line x1="7" y1="4" x2="13" y2="4"/>
+    <circle cx="16" cy="4" r="3"/>
+    <line x1="19" y1="4" x2="25" y2="4"/>
+    <circle cx="28" cy="4" r="3"/>
+    <line x1="4" y1="7" x2="4" y2="11"/>
+    <rect x="0" y="11" width="8" height="5" rx="1"/>
+  </g>
+
+  <!-- Module 3: CNC Machining Tracking -->
+  <path d="M540,10 H790 V130 Q790,140 780,140 H550 Q540,140 540,130 Z" fill="#808080" opacity="0.04" filter="url(#ds)"/>
+  <path d="M540,10 H790 V130 Q790,140 780,140 H550 Q540,140 540,130 Z" fill="none" stroke="#808080" stroke-width="1"/>
+  <rect x="540" y="10" width="250" height="5" fill="#1f0f4a" opacity="0.5"/>
+  <text x="560" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2">MODULE 3</text>
+  <text x="560" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">CNC Machining</text>
+  <text x="560" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Tracking</text>
+  <text x="560" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Machine + operator linkage</text>
+  <text x="560" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Cycle time recording</text>
+  <!-- Icon: gear/machine -->
+  <g transform="translate(748, 28)" fill="none" stroke="#808080" stroke-width="1.2" opacity="0.5">
+    <circle cx="10" cy="10" r="7"/>
+    <circle cx="10" cy="10" r="3"/>
+    <line x1="10" y1="1" x2="10" y2="3"/>
+    <line x1="10" y1="17" x2="10" y2="19"/>
+    <line x1="1" y1="10" x2="3" y2="10"/>
+    <line x1="17" y1="10" x2="19" y2="10"/>
+  </g>
+
+  <!-- Row 2 -->
+
+  <!-- Module 4: Measurement & Inspection Recording -->
+  <path d="M10,160 H260 V280 Q260,290 250,290 H20 Q10,290 10,280 Z" fill="#808080" opacity="0.04" filter="url(#ds)"/>
+  <path d="M10,160 H260 V280 Q260,290 250,290 H20 Q10,290 10,280 Z" fill="none" stroke="#808080" stroke-width="1"/>
+  <rect x="10" y="160" width="250" height="5" fill="#1f0f4a" opacity="0.35"/>
+  <text x="30" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-3">MODULE 4</text>
+  <text x="30" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Measurement &amp;</text>
+  <text x="30" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Inspection Recording</text>
+  <text x="30" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Mandatory entry per step</text>
+  <text x="30" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Tolerance band pass/fail</text>
+  <!-- Icon: ruler/caliper -->
+  <g transform="translate(218, 178)" fill="none" stroke="#808080" stroke-width="1.2" opacity="0.4">
+    <line x1="0" y1="0" x2="0" y2="20"/>
+    <line x1="20" y1="0" x2="20" y2="20"/>
+    <line x1="0" y1="10" x2="20" y2="10" stroke-width="0.8"/>
+    <line x1="5" y1="3" x2="5" y2="7" stroke-width="0.8"/>
+    <line x1="10" y1="2" x2="10" y2="8" stroke-width="0.8"/>
+    <line x1="15" y1="3" x2="15" y2="7" stroke-width="0.8"/>
+  </g>
+
+  <!-- Module 5: Assembly Step Verification -->
+  <path d="M275,160 H525 V280 Q525,290 515,290 H285 Q275,290 275,280 Z" fill="#808080" opacity="0.04" filter="url(#ds)"/>
+  <path d="M275,160 H525 V280 Q525,290 515,290 H285 Q275,290 275,280 Z" fill="none" stroke="#808080" stroke-width="1"/>
+  <rect x="275" y="160" width="250" height="5" fill="#1f0f4a" opacity="0.35"/>
+  <text x="295" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-3">MODULE 5</text>
+  <text x="295" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Assembly Step</text>
+  <text x="295" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Verification</text>
+  <text x="295" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Checklist per part number</text>
+  <text x="295" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Mandatory completion</text>
+  <!-- Icon: checklist -->
+  <g transform="translate(485, 178)" fill="none" stroke="#808080" stroke-width="1.2" opacity="0.4">
+    <rect x="0" y="0" width="18" height="20" rx="2"/>
+    <polyline points="4,7 7,10 13,4"/>
+    <line x1="4" y1="15" x2="13" y2="15" stroke-width="0.8"/>
+  </g>
+
+  <!-- Module 6: Packaging, Dispatch & Traceability -->
+  <path d="M540,160 H790 V280 Q790,290 780,290 H550 Q540,290 540,280 Z" fill="#808080" opacity="0.04" filter="url(#ds)"/>
+  <path d="M540,160 H790 V280 Q790,290 780,290 H550 Q540,290 540,280 Z" fill="none" stroke="#808080" stroke-width="1"/>
+  <rect x="540" y="160" width="250" height="5" fill="#1f0f4a" opacity="0.35"/>
+  <text x="560" y="192" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-3">MODULE 6</text>
+  <text x="560" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Dispatch &amp;</text>
+  <text x="560" y="232" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Traceability</text>
+  <text x="560" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">End-to-end traceability reports</text>
+  <text x="560" y="272" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-2">Defect investigation support</text>
+  <!-- Icon: box with arrow -->
+  <g transform="translate(748, 178)" fill="none" stroke="#808080" stroke-width="1.2" opacity="0.4">
+    <rect x="0" y="4" width="16" height="12" rx="2"/>
+    <line x1="0" y1="8" x2="16" y2="8" stroke-width="0.8"/>
+    <polyline points="5,1 8,-2 11,1"/>
+    <line x1="8" y1="-2" x2="8" y2="8"/>
+  </g>
+
+  <!-- Footer -->
+  <text x="10" y="312" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="neutral-3">6 modules from part registration through to full production traceability</text>
+</svg>

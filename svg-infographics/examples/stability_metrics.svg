@@ -1,0 +1,184 @@
+<!--
+  stability_metrics.svg - 10 stability metrics organized by domain
+  Shows: 2x5 grid of compact metric cards grouped by domain origin
+  Theme: Stellars-Tech derived - accent-1=#0096d1, accent-2=#da8230
+  Card shape: flat top, rounded bottom r=3 (per theme_swatch.svg)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- Title -->
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">STABILITY METRICS DASHBOARD</text>
+
+  <!-- Domain column headers -->
+  <text x="148" y="38" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" letter-spacing="1">INFORMATION THEORY</text>
+  <line x1="20" y1="42" x2="276" y2="42" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+
+  <text x="418" y="38" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" letter-spacing="1">ECOLOGY</text>
+  <line x1="290" y1="42" x2="546" y2="42" stroke="#da8230" stroke-width="0.5" opacity="0.3"/>
+
+  <text x="672" y="38" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" letter-spacing="1">LINGUISTICS</text>
+  <line x1="560" y1="42" x2="780" y2="42" stroke="#0096d1" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- === INFORMATION THEORY (4 cards, 2x2 grid) === -->
+  <!-- Card w=120, h=120, gap=16 -->
+
+  <!-- IT Card 1: Entity Entropy -->
+  <g>
+    <path d="M20,50 H148 V167 Q148,170 145,170 H23 Q20,170 20,167 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M20,50 H148 V167 Q148,170 145,170 H23 Q20,170 20,167 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="20" y="50" width="128" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="84" y="72" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Shannon Entropy</text>
+    <text x="84" y="88" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Information Theory</text>
+    <text x="84" y="108" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">delta -> 0</text>
+    <text x="84" y="126" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Type distribution</text>
+    <text x="84" y="140" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">diversity measure</text>
+    <text x="84" y="160" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">entropy_shannon</text>
+  </g>
+
+  <!-- IT Card 2: JSD -->
+  <g>
+    <path d="M148,50 H276 V167 Q276,170 273,170 H151 Q148,170 148,167 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M148,50 H276 V167 Q276,170 273,170 H151 Q148,170 148,167 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="148" y="50" width="128" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="212" y="72" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">JSD</text>
+    <text x="212" y="88" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Information Theory</text>
+    <text x="212" y="108" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">-> 0</text>
+    <text x="212" y="126" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Symmetric bounded</text>
+    <text x="212" y="140" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">distribution distance</text>
+    <text x="212" y="160" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">js_divergence [0, 1]</text>
+  </g>
+
+  <!-- IT Card 3: Type Accumulation Rate -->
+  <g>
+    <path d="M20,184 H148 V301 Q148,304 145,304 H23 Q20,304 20,301 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M20,184 H148 V301 Q148,304 145,304 H23 Q20,304 20,301 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="20" y="184" width="128" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="84" y="206" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Type Accum Rate</text>
+    <text x="84" y="222" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Information Theory</text>
+    <text x="84" y="242" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">= 0</text>
+    <text x="84" y="260" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">New types per doc</text>
+    <text x="84" y="274" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">(dV / dN)</text>
+    <text x="84" y="294" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">type_accumulation_rate</text>
+  </g>
+
+  <!-- IT Card 4: Gini + Zipf -->
+  <g>
+    <path d="M148,184 H276 V301 Q276,304 273,304 H151 Q148,304 148,301 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M148,184 H276 V301 Q276,304 273,304 H151 Q148,304 148,301 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="148" y="184" width="128" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="212" y="206" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Gini + Zipf</text>
+    <text x="212" y="222" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Information Theory</text>
+    <text x="212" y="242" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">R^2 > 0.85</text>
+    <text x="212" y="260" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Frequency inequality</text>
+    <text x="212" y="274" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">and power-law fit</text>
+    <text x="212" y="294" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">gini_coefficient, zipf_r_squared</text>
+  </g>
+
+  <!-- === ECOLOGY (3 cards, top row 2, bottom row 1) === -->
+
+  <!-- Eco Card 1: Chao1 Coverage -->
+  <g>
+    <path d="M290,50 H418 V167 Q418,170 415,170 H293 Q290,170 290,167 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M290,50 H418 V167 Q418,170 415,170 H293 Q290,170 290,167 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="290" y="50" width="128" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="354" y="72" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Chao1 Coverage</text>
+    <text x="354" y="88" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Ecology</text>
+    <text x="354" y="108" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">-> 1.0</text>
+    <text x="354" y="126" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Observed / estimated</text>
+    <text x="354" y="140" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">total type richness</text>
+    <text x="354" y="160" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">chao1_coverage</text>
+  </g>
+
+  <!-- Eco Card 2: ACE Estimate -->
+  <g>
+    <path d="M418,50 H546 V167 Q546,170 543,170 H421 Q418,170 418,167 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M418,50 H546 V167 Q546,170 543,170 H421 Q418,170 418,167 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="418" y="50" width="128" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="482" y="72" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">ACE Estimate</text>
+    <text x="482" y="88" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Ecology</text>
+    <text x="482" y="108" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">-> observed</text>
+    <text x="482" y="126" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Abundance-based</text>
+    <text x="482" y="140" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">total type estimate</text>
+    <text x="482" y="160" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">ace_estimate</text>
+  </g>
+
+  <!-- Eco Card 3: Rolling Variance -->
+  <g>
+    <path d="M290,184 H418 V301 Q418,304 415,304 H293 Q290,304 290,301 Z" fill="#da8230" fill-opacity="0.04"/>
+    <path d="M290,184 H418 V301 Q418,304 415,304 H293 Q290,304 290,301 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+    <rect x="290" y="184" width="128" height="5" fill="#da8230" opacity="0.6"/>
+    <text x="354" y="206" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Rolling Variance</text>
+    <text x="354" y="222" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Ecology</text>
+    <text x="354" y="242" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">-> 0</text>
+    <text x="354" y="260" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Variance of key metrics</text>
+    <text x="354" y="274" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">over last W docs</text>
+    <text x="354" y="294" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">*_var suffixed metrics</text>
+  </g>
+
+  <!-- === LINGUISTICS (3 cards, top row 2, bottom row 1) === -->
+
+  <!-- Ling Card 1: Heaps' Beta -->
+  <g>
+    <path d="M560,50 H688 V167 Q688,170 685,170 H563 Q560,170 560,167 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M560,50 H688 V167 Q688,170 685,170 H563 Q560,170 560,167 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="560" y="50" width="128" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="624" y="72" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Heaps' Beta</text>
+    <text x="624" y="88" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Linguistics</text>
+    <text x="624" y="108" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">-> 0</text>
+    <text x="624" y="126" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Vocabulary growth</text>
+    <text x="624" y="140" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">rate (V = K * N^beta)</text>
+    <text x="624" y="160" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">heaps_beta</text>
+  </g>
+
+  <!-- Ling Card 2: KL Divergence (widened to match column) -->
+  <g>
+    <path d="M688,50 H780 V167 Q780,170 777,170 H691 Q688,170 688,167 Z" fill="#0096d1" fill-opacity="0.04"/>
+    <path d="M688,50 H780 V167 Q780,170 777,170 H691 Q688,170 688,167 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+    <rect x="688" y="50" width="92" height="5" fill="#0096d1" opacity="0.6"/>
+    <text x="734" y="72" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">KL Divergence</text>
+    <text x="734" y="88" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Linguistics</text>
+    <text x="734" y="108" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">-> 0</text>
+    <text x="734" y="126" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Distribution</text>
+    <text x="734" y="140" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">shift per doc</text>
+    <text x="734" y="160" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">kl_divergence</text>
+  </g>
+
+  <!-- Ling Card 3: Empty slot used for a summary card -->
+  <g>
+    <path d="M560,184 H780 V301 Q780,304 777,304 H563 Q560,304 560,301 Z" fill="#0096d1" fill-opacity="0.02"/>
+    <path d="M560,184 H780 V301 Q780,304 777,304 H563 Q560,304 560,301 Z" fill="none" stroke="#0096d1" stroke-width="0.8" opacity="0.25"/>
+    <rect x="560" y="184" width="220" height="4" fill="#0096d1" opacity="0.15"/>
+    <text x="670" y="210" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle">Convergence Signals</text>
+    <text x="670" y="230" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">JSD most robust: symmetric, bounded [0,1]</text>
+    <text x="670" y="246" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Chao1 predicts undiscovered types</text>
+    <text x="670" y="262" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Heaps' beta &lt; 0.1 = vocabulary saturating</text>
+    <text x="670" y="278" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Zipf R^2 > 0.85 = mature ontology</text>
+    <text x="670" y="296" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Pure Python (math stdlib only)</text>
+  </g>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="170" y="326" width="8" height="8" rx="1" fill="#0096d1" fill-opacity="0.06" stroke="#0096d1" stroke-width="1"/>
+    <text x="182" y="334" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7">Information Theory / Linguistics</text>
+    <rect x="370" y="326" width="8" height="8" rx="1" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1"/>
+    <text x="382" y="334" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="7">Ecology (species richness)</text>
+    <text x="550" y="334" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7">All metrics: StabilityMetrics class - observational only, no curing decisions</text>
+  </g>
+
+</svg>

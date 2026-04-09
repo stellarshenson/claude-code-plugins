@@ -1,0 +1,110 @@
+<!--
+  ingestion_pipeline.svg - Data ingestion and knowledge enrichment pipeline
+  Shows: Source systems -> ETL -> Knowledge Graph + Vector Store + PostgreSQL
+  Theme: Kolomolo palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .card-bg { fill: #70658a; fill-opacity: 0.06; stroke: #808080; stroke-width: 0.8; }
+    .accent-bar { opacity: 0.7; }
+    .connector { stroke: #5456f3; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+    .connector-green { stroke: #38d78c; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+    .arrow-head { fill: #5456f3; }
+    .arrow-head-green { fill: #38d78c; }
+    .pipe-bg { fill: #5456f3; fill-opacity: 0.08; stroke: #5456f3; stroke-width: 0.6; stroke-opacity: 0.3; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #b5b0c0; }
+    }
+  </style>
+
+  <!-- Section label -->
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle" class="fg-1">Ingestion Pipeline</text>
+
+  <!-- ========== Source systems (left column) ========== -->
+  <rect x="20" y="40" width="130" height="30" rx="6" class="card-bg"/>
+  <text x="85" y="60" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">ERP / SAP</text>
+
+  <rect x="20" y="80" width="130" height="30" rx="6" class="card-bg"/>
+  <text x="85" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">Technical Docs</text>
+
+  <rect x="20" y="120" width="130" height="30" rx="6" class="card-bg"/>
+  <text x="85" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">CRM / Salesforce</text>
+
+  <rect x="20" y="160" width="130" height="30" rx="6" class="card-bg"/>
+  <text x="85" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" class="fg-2">Human SME Input</text>
+  <rect x="20" y="160" width="130" height="4" rx="2" fill="#38d78c" class="accent-bar"/>
+
+  <!-- ========== ETL Processing (centre) ========== -->
+  <rect x="220" y="55" width="180" height="120" rx="8" class="pipe-bg"/>
+  <text x="310" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle" class="fg-1">Processing Pipeline</text>
+  <text x="310" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Schema mapping</text>
+  <text x="310" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Entity extraction (NLP)</text>
+  <text x="310" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Relationship inference</text>
+  <text x="310" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Embedding generation</text>
+  <text x="310" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Validation and deduplication</text>
+
+  <!-- Source -> ETL connectors (horizontal-first arrows) -->
+  <!-- (150,55) -> (220,80), angle=19.7deg, length=74 -->
+  <g transform="translate(220,80) rotate(19.7)">
+    <line x1="-74" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <!-- (150,95) -> (220,100), angle=4.1deg, length=70 -->
+  <g transform="translate(220,100) rotate(4.1)">
+    <line x1="-70" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <!-- (150,135) -> (220,125), angle=-8.1deg, length=71 -->
+  <g transform="translate(220,125) rotate(-8.1)">
+    <line x1="-71" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <!-- (150,175) -> (220,155), angle=-15.9deg, length=73 -->
+  <g transform="translate(220,155) rotate(-15.9)">
+    <line x1="-73" y1="0" x2="-10" y2="0" class="connector-green"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head-green"/>
+  </g>
+
+  <!-- ========== Target stores (right column) ========== -->
+  <rect x="470" y="35" width="150" height="45" rx="6" class="card-bg"/>
+  <rect x="470" y="35" width="150" height="4" rx="2" fill="#3999fd" class="accent-bar"/>
+  <text x="545" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">Neo4j Knowledge Graph</text>
+  <text x="545" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Entities, relationships, context</text>
+
+  <rect x="470" y="95" width="150" height="45" rx="6" class="card-bg"/>
+  <rect x="470" y="95" width="150" height="4" rx="2" fill="#d857ad" class="accent-bar"/>
+  <text x="545" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">Vector Store</text>
+  <text x="545" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Document embeddings, RAG</text>
+
+  <rect x="470" y="155" width="150" height="40" rx="6" class="card-bg"/>
+  <rect x="470" y="155" width="150" height="4" rx="2" fill="#5456f3" class="accent-bar"/>
+  <text x="545" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle" class="fg-1">PostgreSQL</text>
+  <text x="545" y="188" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" class="fg-3">Structured master data</text>
+
+  <!-- ETL -> Target connectors (horizontal-first arrows) -->
+  <!-- (400,80) -> (470,58), angle=-17.4deg, length=73 -->
+  <g transform="translate(470,58) rotate(-17.4)">
+    <line x1="-73" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <!-- (400,115) -> (470,117), angle=1.6deg, length=70 -->
+  <g transform="translate(470,117) rotate(1.6)">
+    <line x1="-70" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+  <!-- (400,150) -> (470,170), angle=15.9deg, length=73 -->
+  <g transform="translate(470,170) rotate(15.9)">
+    <line x1="-73" y1="0" x2="-10" y2="0" class="connector"/>
+    <polygon points="0,0 -10,-5 -10,5" class="arrow-head"/>
+  </g>
+
+  <!-- ========== Human feedback loop (green angular U-shape, 12px from cards) ========== -->
+  <path d="M632,57 H650 V175 H632" class="connector-green" stroke-dasharray="4,3"/>
+  <text x="662" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" fill="#38d78c" transform="rotate(90, 662, 116)">feedback loop</text>
+  <polygon points="632,171 624,175 632,179" class="arrow-head-green"/>
+</svg>
