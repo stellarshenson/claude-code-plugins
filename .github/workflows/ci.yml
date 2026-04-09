@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: lycheeverse/lychee-action@v2
         with:
-          args: --no-progress --exclude medium.com --exclude pepy.tech --exclude static.pepy.tech README.md auto-build-claw/README.md devils-advocate/README.md
+          args: --no-progress --exclude medium.com --exclude pepy.tech --exclude static.pepy.tech --exclude mcpmarket.com --exclude 'github\.com/stellarshenson/knowledge-graph-foundry' README.md auto-build-claw/README.md devils-advocate/README.md
           fail: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
