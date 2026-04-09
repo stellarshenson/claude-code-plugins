@@ -21,12 +21,12 @@ The marketplace includes a shared YAML-driven orchestration engine (`auto-build-
 
 | Plugin | What it solves |
 |--------|---------------|
-| [auto-build-claw](auto-build-claw/) | Shallow fixes, scope creep, lost context, unchecked quality, benchmark gaming - enforces structured phases with multi-agent review |
-| [devils-advocate](devils-advocate/) | Untested assumptions, hidden risks, weak documents - quantified critique with Fibonacci risk scoring and measurable improvement |
-| [svg-infographics](svg-infographics/) | Approximate layouts, inconsistent styling, no dark mode, manual validation - enforces grid-first design with 5 automated checkers |
-| [datascience](datascience/) | Inconsistent notebooks, wrong conventions, missing structure - enforces standards and scaffolds projects |
-| [document-processing](document-processing/) | Ungrounded claims, unverified documents, manual PDF work - source tracing, compliance checking, PDF automation |
-| [journal](journal/) | Lost work history, inconsistent entries - append-only audit trail with archiving |
+| [auto-build-claw](auto-build-claw/) | Executes code and artefact builds toward an objective with iterations driven by a calculated outcome benchmark - enforces structured phases with multi-agent review |
+| [devils-advocate](devils-advocate/) | Produces high-quality documents for a specific audience using a scientific, measured, iterative approach - quantified critique with Fibonacci risk scoring and per-iteration residual measurement |
+| [svg-infographics](svg-infographics/) | Produces high-quality standardised SVG infographics - grid-first design, theme-driven styling, dark/light mode, and 5 automated checkers for layout, contrast, and alignment |
+| [datascience](datascience/) | Produces high-quality data science projects and notebooks following consistent standards - scaffolds projects from copier templates, enforces notebook structure, applies rich output styling, and supports prompt engineering techniques |
+| [document-processing](document-processing/) | Processes documents according to user requests with grounding in source materials - source tracing, compliance checking, PDF automation |
+| [journal](journal/) | Produces a work journal marking key changes, implementations, and decisions - append-only audit trail with continuous numbering and archiving |
 
 ## auto-build-claw
 
