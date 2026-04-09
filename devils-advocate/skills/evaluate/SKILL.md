@@ -87,9 +87,21 @@ For each high-residual concern, propose 2-4 options:
 **Recommendation**: [which and why]
 ```
 
+## Step 5: Execution mode
+
+ASK the user: "How should I run the scoring? Two options:
+
+1. **In-session** (default) - I evaluate right here in this conversation. You see my reasoning live, can challenge scores, and we iterate together
+2. **Standalone** - I run the evaluation via `claude -p` as an independent subprocess. Faster, no conversation overhead, but you only see the final scorecard
+
+For initial evaluations, in-session is recommended so you can calibrate the devil's perspective. For re-scoring iterations where the persona is established, standalone is faster."
+
+- **In-session**: proceed with Steps 2-4 above in the conversation
+- **Standalone**: construct a prompt with persona + fact repository + target document content, run via `claude -p --model sonnet`, parse the output scorecard, append to `devils_advocate.md`
+
 ## When done
 
-Tell the user: "Baseline evaluation complete. Score: [N] out of [max]. Run `/devils-advocate:iterate` to apply corrections and re-score."
+Tell the user: "Baseline evaluation complete. Score: [N] out of [max]. Run `/devils-advocate:iterate` to improve and re-score."
 
 **If baseline score is already low** (< 30% of max): "Rather impressive start, I must say. The devil's struggling to find proper ammunition - score [N] out of [max]. Still, there are gaps worth closing."
 

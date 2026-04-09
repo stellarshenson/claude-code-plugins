@@ -1,86 +1,104 @@
 ---
 name: iterate
-description: Re-evaluate document after corrections and produce updated scorecard. Creates versioned files when AI makes changes. Re-scores in place when user made changes outside Claude.
+description: Improve document based on devil's concerns, create versioned file, re-score, rename with residual. Clear 4-step workflow - improve, version, score, rename. Re-scores in place when user made changes outside Claude.
 ---
 
 # Devil's Advocate - Iterate
 
-Re-evaluate the document and produce an updated scorecard. Called after `improve` applies changes.
+One iteration cycle: improve the document, create a versioned copy, score it, rename with the residual.
 
-**Prerequisites**: `devils_advocate.md` must contain a scorecard. If not, run `/devils-advocate:evaluate` first.
+**Prerequisites**: `devils_advocate.md` must contain a scorecard with top gaps. Run `/devils-advocate:evaluate` first if not.
 
-## Determine mode
+## Step 1: Decide how to improve
 
-Two modes based on who made the changes:
+ASK the user:
 
-- **AI made changes** (came from `improve` skill): a versioned copy `<name>_v<NN+1>.md` exists with corrections applied. Re-score it, add embedded scorecard, rename with score suffix.
-- **User made changes outside Claude**: no versioned copy. Re-read the original document in its current state, re-score against the existing concern catalogue, update `devils_advocate.md` with new scorecard.
+"Top concerns by residual risk:
+[list top 5 from latest scorecard]
 
-## Step 1: Re-evaluate
+How to address them?
+1. **Your suggestions** - tell me what to change
+2. **Auto-apply** - I apply the recommended options from the scorecard
+3. **Planning mode** - discuss each concern before changing
+4. **You already edited** - skip to re-scoring (you made changes outside Claude)
 
-Read the document (versioned copy or current original) in full.
+Which? (or mix: 'auto for #1-3, discuss #4')"
 
-1. **Re-score** each concern against the current text
-2. **Document score changes**: "Score changed from X% to Y% because [specific text change]"
-3. **Identify new concerns** introduced by changes - add to catalogue
-4. **Update cross-concern tension notes**
-5. **Recalculate overall score** - total residual risk
+## Step 2: Apply changes + create version
 
-## Step 2: Versioned file handling
+**If user chose 1, 2, or 3** (AI makes changes):
 
-**MANDATORY: Score suffix on every versioned file.** The filename MUST end with `_<score>` where score is the rounded total residual risk from the scorecard. This is non-negotiable - the score in the filename IS the audit trail.
+1. Determine next version number by scanning existing `<name>_v*.md` files
+2. Copy current document as `<name>_v<NN>.md` (NO score suffix yet - that comes after scoring)
+3. Apply changes to the versioned copy:
+   - Mode 1: apply user's specific suggestions
+   - Mode 2: apply recommended options from scorecard top gaps
+   - Mode 3: apply agreed changes from planning discussion
+4. Track which concerns each change targets
+5. Track cross-concern tensions (fixing one may worsen another)
+
+**If user chose 4** (user already edited):
+- Skip to Step 3. No versioned copy - the user's document IS the current state.
+
+## Step 3: Score
+
+Re-read the document (versioned copy or user-edited original) in full.
+
+ASK: "Score in-session or standalone (claude -p)?"
+- **In-session**: score each concern here, show reasoning
+- **Standalone**: run scoring via `claude -p` with persona + document content
+
+For each concern:
+1. Re-score 0-100% against the current text
+2. Document: "Score changed from X% to Y% because [specific text change]"
+3. Identify new concerns introduced by changes - add to catalogue
+4. Recalculate total residual risk
+
+## Step 4: Finalize version
 
 **If AI made changes** (versioned copy exists):
-1. Embed scorecard at end of the versioned document (see format below)
-2. Calculate total residual risk (sum of all concern residuals, rounded to integer)
-3. **Rename** the file to `<name>_v<NN+1>_<score>.md` - the `_<score>` suffix is MANDATORY
-4. Example progression: `report_v01_89.md` -> `report_v02_34.md` -> `report_v03_12.md`
-5. If you forget the score suffix, the file is INCOMPLETE - go back and rename it
 
-**If user made changes outside Claude**:
-- Do NOT create a versioned copy
-- The user's document IS the current state
-- Only update `devils_advocate.md` with the new scorecard
+1. Embed scorecard at the end of the versioned document:
+   ```markdown
+   ---
 
-## Step 3: Embed scorecard (versioned files only)
+   ## Document Scorecard (Devil's Advocate)
 
-**MANDATORY**: Every AI-created versioned document ends with:
+   **Persona**: [devil role and key bias]
+   **Score**: [total residual risk] (lower = better, max [total absolute risk])
 
-```markdown
----
+   | # | Concern | Risk | Score | Residual | How addressed |
+   |---|---------|------|-------|----------|---------------|
+   | 1 | [name] | [risk] | [0-100%] | [residual] | [specific text] |
+   ```
 
-## Document Scorecard (Devil's Advocate)
+2. **RENAME** the file: `<name>_v<NN>.md` -> `<name>_v<NN>_<score>.md`
+   - Score = rounded total residual risk
+   - Example: `report_v02.md` -> `report_v02_34.md`
+   - The `_<score>` suffix is MANDATORY. A file without it is incomplete.
 
-**Persona**: [devil role and key bias]
-**Score**: [total residual risk] (lower = better, max [total absolute risk])
+3. Progression: `report_v01_89.md` -> `report_v02_34.md` -> `report_v03_12.md`
 
-| # | Concern | Risk | Score | Residual | How addressed |
-|---|---------|------|-------|----------|---------------|
-| 1 | [name] | [risk] | [0-100%] | [residual] | [specific text reference] |
-```
+**If user edited outside Claude**:
+- No file rename. Update `devils_advocate.md` only.
 
-## Step 4: Update devils_advocate.md
+## Step 5: Update devils_advocate.md
 
-**ALWAYS** (both modes): append new scorecard version to `devils_advocate.md`. Keep previous scorecards for comparison across versions.
+ALWAYS (both modes):
+1. Append new scorecard version to `devils_advocate.md`
+2. Keep previous scorecards for comparison
+3. Propose options for remaining high-residual concerns
 
-**Propose options** for remaining high-residual concerns - these feed into the next `improve` cycle.
-
-## Stopping criteria
-
-Report whether stopping criteria are met:
-- Residual risk below 10% of total absolute risk
-- Top remaining gaps have residual < 3.0 each
-- Score stopped improving (stagnation - same or worse than previous iteration)
-- User accepts current score
-
-The score must decrease each iteration. If not, corrections are creating new problems - stop and reassess.
-
-## When done
+## Step 6: Report + continue or stop
 
 Report: "Iteration complete. Score: [old] -> [new]. Top gaps: [list]."
 
-If stopping criteria met: "Stopping criteria reached. Accept current state or continue with `/devils-advocate:improve`."
+Check stopping criteria:
+- Residual risk < 10% of total absolute risk -> **STOP**: "Target reached."
+- Top gaps all < 3.0 residual -> **STOP**: "All concerns adequately addressed."
+- Score didn't improve vs previous iteration -> **STOP**: "Stagnation - corrections creating new problems."
+- User says stop -> **STOP**
 
-If not met: "Continue with `/devils-advocate:improve` to address remaining gaps."
+If not stopping: "Continue with another `/devils-advocate:iterate`."
 
-**When score drops significantly** (>20% improvement): celebrate with creative British-style cheers.
+**Score drops >20%**: celebrate. "Jolly good show! From [old] to [new] - the devil's running out of ammunition."
