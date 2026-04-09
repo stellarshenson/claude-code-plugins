@@ -99,6 +99,29 @@ For initial evaluations, in-session is recommended so you can calibrate the devi
 - **In-session**: proceed with Steps 2-4 above in the conversation
 - **Standalone**: construct a prompt with persona + fact repository + target document content, run via `claude -p --model sonnet`, parse the output scorecard, append to `devils_advocate.md`
 
+## Step 6: Embed scorecard in target document + rename
+
+**MANDATORY**: The scored document must carry its own scorecard and residual in the filename.
+
+1. Copy the original target document as `<name>_v01.md` (first version)
+2. Embed the scorecard at the end of `<name>_v01.md`:
+   ```markdown
+   ---
+
+   ## Document Scorecard (Devil's Advocate)
+
+   **Persona**: [devil role and key bias]
+   **Score**: [total residual risk] (lower = better, max [total absolute risk])
+
+   | # | Concern | Risk | Score | Residual | How addressed |
+   |---|---------|------|-------|----------|---------------|
+   | 1 | [name] | [risk] | [0-100%] | [residual] | [specific text] |
+   ```
+3. **RENAME** to `<name>_v01_<score>.md` where score = rounded total residual
+4. Example: `report_v01.md` -> `report_v01_89.md`
+
+The original document is NOT modified. The `_v01_<score>.md` file is the first scored snapshot.
+
 ## When done
 
 Tell the user: "Baseline evaluation complete. Score: [N] out of [max]. Run `/devils-advocate:iterate` to improve and re-score."
