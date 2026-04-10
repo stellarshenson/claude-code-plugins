@@ -15,27 +15,27 @@ Diagnose and fix layout problems: element overlaps, alignment drift, spacing vio
 ## Skills to apply
 
 - **svg-standards**: Grid layout, margins, bounding boxes, card shapes, arrows
-- **validation**: check_overlaps.py, check_alignment.py, check_connectors.py
+- **validation**: `svg-infographics overlaps`, `svg-infographics alignment`, `svg-infographics connectors`
 
 ## Steps
 
 1. **Read the SVG** and its grid comment to understand intended layout
 
 2. **Run diagnostics**:
-   - `check_overlaps.py --svg {file}` - bounding box violations
-   - `check_alignment.py --svg {file}` - grid snap, rhythm, topology
-   - `check_connectors.py --svg {file}` - connector quality
+   - `svg-infographics overlaps --svg {file}` - bounding box violations
+   - `svg-infographics alignment --svg {file}` - grid snap, rhythm, topology
+   - `svg-infographics connectors --svg {file}` - connector quality
 
 3. **Apply fixes directly** (destructive):
    - Reposition overlapping elements using grid coordinates
    - Fix vertical rhythm (consistent y-increments)
    - Fix horizontal alignment (shared x values)
    - Adjust card padding (10px+ from edges)
-   - Recalculate arrow geometry with `calc_connector.py`
+   - Recalculate arrow geometry with `svg-infographics connector`
    - Update grid comment to match actual positions
 
 4. **Re-run validation** to confirm resolution
 
-5. **Optional**: `check_overlaps.py --inject-bounds` for visual bbox overlay, then `--strip-bounds` after verification
+5. **Optional**: `svg-infographics overlaps --inject-bounds` for visual bbox overlay, then `--strip-bounds` after verification
 
 6. **Report**: fixes applied, before/after violation counts

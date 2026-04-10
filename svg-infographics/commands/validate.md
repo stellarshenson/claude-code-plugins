@@ -21,10 +21,10 @@ Run the full validation suite on SVG files and report findings.
 1. **Identify targets**: Glob for SVG files in the specified path
 
 2. **Run all checkers in parallel** (per file):
-   - `check_overlaps.py --svg {file}`
-   - `check_contrast.py --svg {file}`
-   - `check_alignment.py --svg {file}`
-   - `check_connectors.py --svg {file}`
+   - `svg-infographics overlaps --svg {file}`
+   - `svg-infographics contrast --svg {file}`
+   - `svg-infographics alignment --svg {file}`
+   - `svg-infographics connectors --svg {file}`
 
 3. **Classify findings** per the fail-first rule:
    - Every finding is a real defect until individually defended

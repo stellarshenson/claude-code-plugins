@@ -5,30 +5,33 @@ description: SVG validation tools and verification workflow - overlap detection,
 
 # SVG Validation and Verification
 
-Four Python validation tools and a browser verification workflow ensure SVG quality. All tools are in the plugin's `tools/` directory.
+Five validation tools shipped with the `stellars-claude-code-plugins` pip package. Install once, use everywhere via the `svg-infographics` CLI.
+
+```bash
+pip install stellars-claude-code-plugins
+svg-infographics --help
+```
 
 ## Task Tracking
 
 **MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) when running validation. Create tasks for each checker run and fix cycle.
 
-## Tool: check_overlaps.py
+## Tool: overlaps
 
 Parses all visual elements, computes bounding boxes (text with font metrics, paths, rotated arrows, circles, rects), reports ALL overlaps.
 
 Classifications: `violation` (fix needed), `sibling` (adjacent), `label-on-fill` (intentional), `contained` (child in parent).
 
 ```bash
-TOOL_DIR=<plugin>/tools
-
 # Analyse and report
-python "$TOOL_DIR/check_overlaps.py" --svg path/to/file.svg
+svg-infographics overlaps --svg path/to/file.svg
 
 # Ignore reviewed pairs
-python "$TOOL_DIR/check_overlaps.py" --svg file.svg --ignore "21x23,24x25"
+svg-infographics overlaps --svg file.svg --ignore "21x23,24x25"
 
 # Inject/strip bounding box overlay
-python "$TOOL_DIR/check_overlaps.py" --svg file.svg --inject-bounds
-python "$TOOL_DIR/check_overlaps.py" --svg file.svg --strip-bounds
+svg-infographics overlaps --svg file.svg --inject-bounds
+svg-infographics overlaps --svg file.svg --strip-bounds
 ```
 
 ### Verification Workflow
@@ -44,43 +47,43 @@ All violations assumed **real defects** until individually defended. Each findin
 
 **Bulk dismissals prohibited.** Each finding individually examined.
 
-## Tool: check_contrast.py
+## Tool: contrast
 
 WCAG 2.1 contrast checker. Resolves CSS classes, alpha-blends backgrounds, checks AA (4.5:1 normal, 3.0:1 large) and AAA.
 
 ```bash
-python "$TOOL_DIR/check_contrast.py" --svg file.svg              # AA default
-python "$TOOL_DIR/check_contrast.py" --svg file.svg --level AAA  # stricter
-python "$TOOL_DIR/check_contrast.py" --svg file.svg --show-all   # include passing
-python "$TOOL_DIR/check_contrast.py" --svg file.svg --dark-bg "#272b31"
+svg-infographics contrast --svg file.svg              # AA default
+svg-infographics contrast --svg file.svg --level AAA  # stricter
+svg-infographics contrast --svg file.svg --show-all   # include passing
+svg-infographics contrast --svg file.svg --dark-bg "#272b31"
 ```
 
-## Tool: check_alignment.py
+## Tool: alignment
 
 Grid snapping, vertical rhythm, x-alignment, rect alignment, legend consistency, topology verification.
 
 ```bash
-python "$TOOL_DIR/check_alignment.py" --svg file.svg              # 5px grid default
-python "$TOOL_DIR/check_alignment.py" --svg file.svg --grid 10 --tolerance 1
+svg-infographics alignment --svg file.svg              # 5px grid default
+svg-infographics alignment --svg file.svg --grid 10 --tolerance 1
 ```
 
-## Tool: check_connectors.py
+## Tool: connectors
 
 Connector quality: zero-length segments, edge-snap, L-routing, label clearance.
 
 ```bash
-python "$TOOL_DIR/check_connectors.py" --svg file.svg
+svg-infographics connectors --svg file.svg
 ```
 
-## Tool: calc_connector.py
+## Tool: connector
 
 Connector geometry calculator. Computes angle, stem coordinates, arrowhead points, SVG snippet.
 
 ```bash
-python "$TOOL_DIR/calc_connector.py" --from 520,55 --to 590,135 --margin 4 --head-size 10,5
+svg-infographics connector --from 520,55 --to 590,135 --margin 4 --head-size 10,5
 
 # With pill cutout (splits into two segments):
-python "$TOOL_DIR/calc_connector.py" --from 353,122 --to 200,84 --margin 3 --cutout 236,90,78,13
+svg-infographics connector --from 353,122 --to 200,84 --margin 3 --cutout 236,90,78,13
 ```
 
 ## Pre-Delivery Checklist
@@ -108,9 +111,9 @@ python "$TOOL_DIR/calc_connector.py" --from 353,122 --to 200,84 --margin 3 --cut
 - [ ] All children within parent boundaries
 
 ### Automated
-- [ ] `check_overlaps.py` - all violations reviewed
-- [ ] `check_contrast.py` - zero FAIL in production
-- [ ] `check_alignment.py` - topology passes
+- [ ] `svg-infographics overlaps` - all violations reviewed
+- [ ] `svg-infographics contrast` - zero FAIL in production
+- [ ] `svg-infographics alignment` - topology passes
 - [ ] Browser visual check via Playwright
 
 ## Multi-Agent Validation Workflow

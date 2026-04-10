@@ -48,7 +48,7 @@ Structural elements at grid positions. No text, no icons, no content.
 2. `<g id="guide-grid" display="none">` reference lines
 3. Card `<path>` outlines (flat-top, rounded-bottom r=3, fill-opacity 0.04, stroke 1)
 4. Accent bars (`<rect>` height 5, opacity 0.6, flush with card top)
-5. Arrows using horizontal-first rule with `calc_connector.py` for diagonal connectors
+5. Arrows using horizontal-first rule with `svg-infographics connector` for diagonal connectors
 6. Connectors: chamfered L-routes (4px diagonal at 90-degree turns)
 7. Track line segments with cutouts (if timeline)
 8. **Verify**: every coordinate matches grid comment
@@ -68,7 +68,7 @@ Add content at grid positions:
 
 ## Phase 5: Finishing
 
-1. Verify arrow placement (horizontal-first rule, run `calc_connector.py` to confirm)
+1. Verify arrow placement (horizontal-first rule, run `svg-infographics connector` to confirm)
 2. Callout labels: centred in gap, 8px clear of arrow path
 3. File description comment before `<svg>`: filename, shows, intent, theme
 
@@ -76,7 +76,7 @@ Add content at grid positions:
 
 **DO NOT deliver without running validation.**
 
-1. Run `check_overlaps.py --svg {file}` - record summary
+1. Run `svg-infographics overlaps --svg {file}` - record summary
 2. Classify each violation individually (no bulk dismissals): Fixed / Accepted / Checker limitation
 3. Fix layout errors, re-run, record new summary
 4. Confirm: no #000000/#ffffff, all colours in swatch, transparent background, no width/height on `<svg>`

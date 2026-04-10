@@ -155,14 +155,14 @@ Add content at the positions documented in the grid.
 
 ### Phase 6: Validation
 
-1. Run `check_overlaps.py --svg {file}` and record the full summary line
+1. Run `svg-infographics overlaps --svg {file}` and record the full summary line
 2. Count violations by classification: violation, sibling, label-on-fill, contained
 3. Examine EACH violation individually (no bulk dismissals "these are all decorative"):
    - **Fixed**: element repositioned, re-run confirms resolution
    - **Accepted**: specific reason this is not a defect (e.g. "text inside its own card")
    - **Checker limitation**: manual computation proving compliance
 4. Fix all genuine layout errors (label overflow, arrowhead penetration, margin violations)
-5. Re-run `check_overlaps.py` after fixes and record new summary
+5. Re-run `svg-infographics overlaps` after fixes and record new summary
 6. Visual sanity check: do arrows connect to card edges? Do labels fit within gaps? Is spacing even?
 7. Confirm: no `#000000` or `#ffffff` in any fill or stroke; no colours outside theme swatch; transparent background; no fixed width/height on `<svg>`
 
@@ -186,6 +186,6 @@ Before creating any images, create `svg-workflow-checklist.md` in the target ima
 12. **Decorative imagery** - fg-1 or accent colours; opacity 0.30-0.35; small scale; in gap between text and logos
 13. **Colours** - no #000000/#ffffff; all colours traceable to theme swatch; transparent background
 14. **ViewBox** - dimensions match content; no width/height attributes on `<svg>`
-15. **Validation** - check_overlaps.py summary recorded; each violation individually classified; layout errors fixed; re-run confirms
+15. **Validation** - `svg-infographics overlaps` summary recorded; each violation individually classified; layout errors fixed; re-run confirms
 
 See `clients/arelion/agentic-workflow/images/svg-workflow-checklist.md` in the proposals repository for a complete reference template with image-specific checks.

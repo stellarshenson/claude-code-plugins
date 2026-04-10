@@ -45,7 +45,7 @@ Read these skills before generating anything - they are the source of truth:
    - Build scaffold from grid positions
    - Add content at documented positions
    - Verify arrows and add finishing touches
-   - Run `check_overlaps.py`, `check_contrast.py`, `check_alignment.py`
+   - Run `svg-infographics overlaps`, `svg-infographics contrast`, `svg-infographics alignment`
    - Classify every violation individually
 
 5. **Report**: List created files, validation results, any remaining items

@@ -22,7 +22,7 @@ Apply these standards when generating or modifying SVG infographics for document
 7. **Named Component Groups** - Wrap logical chunks in `<g id="component-name">`. Lowercase-hyphen names
 8. **Transparent Background** - `fill="transparent"` on root rect. No full-viewport background fills
 9. **Contrast Rules** - Every element contrasts its immediate background using theme colours. No `#000000` or `#ffffff`
-10. **Verify All Three** - Run `check_contrast.py`, `check_overlaps.py`, `check_alignment.py` before delivery
+10. **Verify All Three** - Run `svg-infographics contrast`, `svg-infographics overlaps`, `svg-infographics alignment` before delivery
 11. **Examples** - Read relevant SVG examples from `examples/` before creating each image
 
 ## CSS Theme Classes and Dark Mode Detection
@@ -259,7 +259,7 @@ Template: `translate(tipX, tipY) rotate(angleDeg)` wrapping:
 
 Angle = `atan2(dy, dx)` degrees. Stem ends at `-10` (arrowhead base). Arrows fully opaque.
 
-**MANDATORY for diagonal connectors**: Run `calc_connector.py` to compute geometry. Never hand-calculate angles.
+**MANDATORY for diagonal connectors**: Run `svg-infographics connector` to compute geometry. Never hand-calculate angles.
 
 ### Angular Arrow Design (Chamfered L-Routing)
 
@@ -333,7 +333,7 @@ Organic visual forms - flowing paths, concentric rings, orbital loops, funnels, 
 ## Troubleshooting
 
 - **Text invisible in dark mode**: Use CSS class instead of inline fill
-- **Overlapping elements**: Re-verify against grid comment, run `check_overlaps.py`
-- **Arrows wrong direction**: Use horizontal-first rule with `calc_connector.py`
-- **Colours off-theme**: Check every hex against swatch, run `check_contrast.py`
+- **Overlapping elements**: Re-verify against grid comment, run `svg-infographics overlaps`
+- **Arrows wrong direction**: Use horizontal-first rule with `svg-infographics connector`
+- **Colours off-theme**: Check every hex against swatch, run `svg-infographics contrast`
 - **Wrong size in markdown**: Remove `width`/`height` from `<svg>`, use `viewBox` only

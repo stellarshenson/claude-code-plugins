@@ -39,13 +39,15 @@ Each image completes all 6 phases before the next image starts. No batching.
 
 ## Validation Tools
 
-Five Python tools in `tools/` enforce quality:
+Five validation tools shipped with `pip install stellars-claude-code-plugins`, accessible via the `svg-infographics` CLI:
 
-- **check_overlaps.py** - bounding box overlap detection with inner/outer bbox model
-- **check_contrast.py** - WCAG 2.1 contrast verification (AA/AAA) in light and dark mode
-- **check_alignment.py** - grid snapping, vertical rhythm, topology verification
-- **check_connectors.py** - connector quality: zero-length, edge-snap, L-routing, label clearance
-- **calc_connector.py** - geometry calculator for diagonal connectors with SVG snippet output
+```bash
+svg-infographics overlaps --svg file.svg       # bounding box overlap detection
+svg-infographics contrast --svg file.svg       # WCAG 2.1 contrast (AA/AAA, light + dark)
+svg-infographics alignment --svg file.svg      # grid snapping, vertical rhythm, topology
+svg-infographics connectors --svg file.svg     # connector quality (zero-length, edge-snap)
+svg-infographics connector --from X,Y --to X,Y # diagonal connector geometry calculator
+```
 
 ## Examples
 
@@ -56,5 +58,5 @@ Five Python tools in `tools/` enforce quality:
 - **Grid-first**: Define viewBox, margins, columns, vertical rhythm BEFORE placing any content
 - **CSS theme classes**: `<style>` block with `prefers-color-scheme` for OS-aware dark/light mode
 - **Transparent background**: No full-viewport background fills - document controls the background
-- **Horizontal-first arrows**: Define arrows flat, rotate into position with `calc_connector.py`
+- **Horizontal-first arrows**: Define arrows flat, rotate into position with `svg-infographics connector`
 - **Fail-first validation**: All checker findings are real defects until individually defended
