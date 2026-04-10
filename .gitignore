@@ -1,5 +1,6 @@
 # Project-specific
 .autobuild/
+.auto-build-claw/
 references/
 tmp/
 
