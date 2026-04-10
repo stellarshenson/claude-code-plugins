@@ -27,7 +27,7 @@ import time
 import tiktoken
 import yaml
 
-from stellars_claude_code_plugins.engine.fsm import (
+from stellars_claude_code_plugins.autobuild.fsm import (
     ADVANCE,
     END,
     GATE_FAIL,
@@ -40,13 +40,13 @@ from stellars_claude_code_plugins.engine.fsm import (
     START,
     build_phase_lifecycle_fsm,
 )
-from stellars_claude_code_plugins.engine.fsm import (
+from stellars_claude_code_plugins.autobuild.fsm import (
     ALL_STATES as _FSM_ALL_STATES,
 )
-from stellars_claude_code_plugins.engine.model import (
+from stellars_claude_code_plugins.autobuild.model import (
     _KNOWN_VARS as _KNOWN_TEMPLATE_VARS,
 )
-from stellars_claude_code_plugins.engine.model import (
+from stellars_claude_code_plugins.autobuild.model import (
     load_model,
     resolve_phase_key,
     validate_model,
@@ -1482,7 +1482,7 @@ def _footer(phase: str, status: str, state: dict) -> str:
     """Render the phase footer with next-step guidance.
 
     Three variants loaded from app.yaml: 'start' (reminds agent of
-    claw commands), 'end' (directs to next phase), 'final' (last phase
+    autobuild commands), 'end' (directs to next phase), 'final' (last phase
     in iteration). Provides the command hints that guide autonomous
     execution through the phase sequence.
     """
@@ -3619,7 +3619,7 @@ def _check_version() -> None:
         installed = importlib.metadata.version("stellars-claude-code-plugins")
 
         # Check cache - structured YAML with checked_at timestamp
-        cache_file = PROJECT_ROOT / ".auto-build-claw" / ".version_check"
+        cache_file = PROJECT_ROOT / ".autobuild" / ".version_check"
         if cache_file.exists():
             cache_data = yaml.safe_load(cache_file.read_text())
             if isinstance(cache_data, dict) and "checked_at" in cache_data:
@@ -3670,7 +3670,7 @@ def main(resources_dir: Path | None = None):
                 break
     if resources_dir is None:
         # Try project-local resources first, copy defaults if missing
-        project_resources = PROJECT_ROOT / ".auto-build-claw" / "resources"
+        project_resources = PROJECT_ROOT / ".autobuild" / "resources"
         if _BUNDLED_RESOURCES.exists():
             resources_dir = _ensure_project_resources(project_resources)
         elif project_resources.exists():

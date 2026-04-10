@@ -11,7 +11,7 @@ Write a `PROGRAM.md` through back-and-forth dialogue with the user. Do NOT produ
 
 ### Round 1: Extract the intention
 
-Read the user's seed prompt (the text after `/auto-build-claw`). Your job is to understand their INTENTION - what they want to achieve and why - not to prescribe how to do it. ASK these questions - all in ONE message, not one at a time:
+Read the user's seed prompt (the text after `/autobuild`). Your job is to understand their INTENTION - what they want to achieve and why - not to prescribe how to do it. ASK these questions - all in ONE message, not one at a time:
 
 1. **What's the end state?** What does "done" look like? Paint the picture of success - not implementation steps, but the outcome
 2. **What exists today?** What's the current state - working code, broken code, nothing yet? What's the gap between now and the end state?

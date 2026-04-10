@@ -1,4 +1,4 @@
-# Auto Build Claw
+# Autobuild
 
 Autonomous build iteration orchestrator for Claude Code. Runs structured improvement cycles with multi-agent review, FSM-driven phase lifecycle, per-phase gates, and YAML-configured workflows.
 
@@ -15,19 +15,19 @@ Autonomous build iteration orchestrator for Claude Code. Runs structured improve
 
 ```bash
 # Start a 3-iteration improvement cycle
-/auto-build-claw:run new --type full --objective "fix connector routing" --iterations 3
+/autobuild:run new --type full --objective "fix connector routing" --iterations 3
 
 # With benchmark tracking
-/auto-build-claw:run new --type full --objective "improve score" --iterations 5 --benchmark "Read BENCHMARK.md and evaluate each [ ] item"
+/autobuild:run new --type full --objective "improve score" --iterations 5 --benchmark "Read BENCHMARK.md and evaluate each [ ] item"
 
 # Check progress
-/auto-build-claw:run status
+/autobuild:run status
 
 # Validate configuration
-/auto-build-claw:run validate
+/autobuild:run validate
 
 # Preview execution plan
-/auto-build-claw:run new --type full --objective "test" --iterations 2 --dry-run
+/autobuild:run new --type full --objective "test" --iterations 2 --dry-run
 ```
 
 ## Workflow types

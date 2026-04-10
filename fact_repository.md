@@ -6,7 +6,7 @@ No interpretation - just facts.
 ## Package facts
 - Package name: `stellars_claude_code_plugins`, version 0.8.59
 - Python >= 3.12, dependencies: pyyaml, transitions
-- CLI entry: `orchestrate` command via `stellars_claude_code_plugins.engine.orchestrator:main`
+- CLI entry: `orchestrate` command via `stellars_claude_code_plugins.autobuild.orchestrator:main`
 - License: MIT
 - Source: pyproject.toml
 
@@ -21,13 +21,13 @@ No interpretation - just facts.
 - test_fsm.py, test_model.py, test_orchestrator.py
 - Source: `pytest --co -q` output, 2026-04-03
 
-## Plugin facts: auto-build-claw
-- 3 skills: auto-build-claw (main orchestrator), program-writer, benchmark-writer
+## Plugin facts: autobuild
+- 3 skills: autobuild (main orchestrator), program-writer, benchmark-writer
 - Registered in `.claude-plugin/plugin.json`, category: development
 - 5 workflow types from workflow.yaml: FULL (8 phases, depends_on PLANNING), GC (5 phases), HOTFIX (3 phases), FAST (6 phases), PLANNING (4 phases, non-independent)
 - FULL phase sequence: RESEARCH -> HYPOTHESIS -> PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT
 - Features: hypothesis tracking with lifecycle (new/dismissed/processed/deferred), failure context, programmatic gates at phase boundaries, readback + gatekeeper per phase, stop conditions per workflow, safety cap (default 20), --continue and --restart flags
-- Source: workflow.yaml, orchestrator.py, auto-build-claw/skills/auto-build-claw/SKILL.md
+- Source: workflow.yaml, orchestrator.py, autobuild/skills/autobuild/SKILL.md
 
 ## Plugin facts: devils-advocate
 - 4 skills: setup, evaluate, iterate, run
@@ -40,7 +40,7 @@ No interpretation - just facts.
 
 ## Marketplace facts
 - Marketplace file: `.claude-plugin/marketplace.json`
-- 2 plugins: auto-build-claw (v1.0.0), devils-advocate (v1.0.0)
+- 2 plugins: autobuild (v1.0.0), devils-advocate (v1.0.0)
 - Install command: `/plugin marketplace add stellarshenson/claude-code-plugins`
 - Source: .claude-plugin/marketplace.json
 
@@ -60,7 +60,7 @@ No interpretation - just facts.
 
 ## Current README deficiencies
 - Claims 115 tests (actual: 212)
-- Architecture section only shows auto-build-claw directory
+- Architecture section only shows autobuild directory
 - No devils-advocate plugin documentation
 - No explanation of orchestration engine concept
 - No marketplace installation instructions

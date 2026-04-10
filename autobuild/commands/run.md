@@ -1,12 +1,12 @@
 ---
-description: Run the auto-build-claw orchestrator for structured improvement cycles
+description: Run the autobuild orchestrator for structured improvement cycles
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Agent, AskUserQuestion, Skill]
 argument-hint: "describe what you want to build or improve"
 ---
 
-# Auto Build Claw - Run Orchestrator
+# Autobuild - Run Orchestrator
 
-Load and execute the auto-build-claw skill for autonomous iteration orchestration.
+Load and execute the autobuild skill for autonomous iteration orchestration.
 
 ## Startup Sequence
 
@@ -16,7 +16,7 @@ When the user asks to run an improvement cycle, execute these skills IN ORDER be
 
 2. **benchmark-writer** - Generate BENCHMARK.md from the approved PROGRAM.md. Define score formula, direction (minimize/maximize), checklist sections, evaluation instructions. Do NOT proceed until user approves the benchmark.
 
-3. **auto-build-claw** - ASK the user which workflow to execute:
+3. **autobuild** - ASK the user which workflow to execute:
    - `full` - Feature work, improvements, research-driven changes
    - `gc` - Cleanup, dead code removal, refactoring
    - `hotfix` - Targeted bug fix, minimal ceremony
@@ -38,14 +38,14 @@ When the user asks to run an improvement cycle, execute these skills IN ORDER be
 If PROGRAM.md and BENCHMARK.md already exist, skip to step 3:
 
 ```bash
-/auto-build-claw:run new --type full --objective "..." --iterations N [--benchmark "..."]
-/auto-build-claw:run start --understanding "brief summary"
-/auto-build-claw:run end --evidence "what was done" --agents "a,b,c" --output-file "path"
-/auto-build-claw:run status
-/auto-build-claw:run skip --reason "why" [--force]
-/auto-build-claw:run reject --reason "what needs fixing"
-/auto-build-claw:run add-iteration --count N [--objective "updated objective"]
-/auto-build-claw:run validate
+/autobuild:run new --type full --objective "..." --iterations N [--benchmark "..."]
+/autobuild:run start --understanding "brief summary"
+/autobuild:run end --evidence "what was done" --agents "a,b,c" --output-file "path"
+/autobuild:run status
+/autobuild:run skip --reason "why" [--force]
+/autobuild:run reject --reason "what needs fixing"
+/autobuild:run add-iteration --count N [--objective "updated objective"]
+/autobuild:run validate
 ```
 
 **MANDATORY**: ALL work MUST go through the orchestrator. No code changes outside IMPLEMENT phase. No commits outside RECORD phase. No benchmark evaluation outside TEST phase. No exceptions.

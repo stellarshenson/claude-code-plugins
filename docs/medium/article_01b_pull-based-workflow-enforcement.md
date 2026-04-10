@@ -35,7 +35,7 @@ By iteration five, without this constraint, it would be committing half-tested c
 
 The problem isn't capability. It's that agents operate in a **push model** - they decide what comes next, when to skip steps, and whether their own work passes review. No one is checking.
 
-**Pull-based workflow enforcement** fixes this. The agent asks an orchestrator what to do. The orchestrator gates every transition with independent verification. The agent proves it did the work before it can proceed. The implementation is [auto-build-claw](https://github.com/stellarshenson/claude-code-plugins), a Claude Code plugin, but the pattern applies to any autonomous AI workflow.
+**Pull-based workflow enforcement** fixes this. The agent asks an orchestrator what to do. The orchestrator gates every transition with independent verification. The agent proves it did the work before it can proceed. The implementation is [autobuild](https://github.com/stellarshenson/claude-code-plugins), a Claude Code plugin, but the pattern applies to any autonomous AI workflow.
 
 ## Five failure modes
 

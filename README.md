@@ -12,7 +12,7 @@ A plugin marketplace for Claude Code providing structured workflows for software
 /plugin marketplace add stellarshenson/claude-code-plugins
 ```
 
-The marketplace includes a shared YAML-driven orchestration engine (`auto-build-claw`) that pulls agents through structured phases with quality gates, a semi-data-science document critic (`devils-advocate`) with Fibonacci risk scoring, production SVG infographics (`svg-infographics`) with grid-first design and automated validation, data science project standards (`datascience`) with notebook scaffolding and compliance fixes, structured document processing (`document-processing`) with source grounding, and project journaling (`journal`).
+The marketplace includes a shared YAML-driven orchestration engine (`autobuild`) that pulls agents through structured phases with quality gates, a semi-data-science document critic (`devils-advocate`) with Fibonacci risk scoring, production SVG infographics (`svg-infographics`) with grid-first design and automated validation, data science project standards (`datascience`) with notebook scaffolding and compliance fixes, structured document processing (`document-processing`) with source grounding, and project journaling (`journal`).
 
 > [!NOTE]
 > Read the full article on the orchestration approach: [Your AI Agent Will Cut Corners. Here's How to Stop It.](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762)
@@ -21,14 +21,14 @@ The marketplace includes a shared YAML-driven orchestration engine (`auto-build-
 
 | Plugin | What it solves |
 |--------|---------------|
-| [auto-build-claw](auto-build-claw/) | Executes code and artefact builds toward an objective with iterations driven by a calculated outcome benchmark - enforces structured phases with multi-agent review |
+| [autobuild](autobuild/) | Executes code and artefact builds toward an objective with iterations driven by a calculated outcome benchmark - enforces structured phases with multi-agent review |
 | [devils-advocate](devils-advocate/) | Produces high-quality documents for a specific audience using a scientific, measured, iterative approach - quantified critique with Fibonacci risk scoring and per-iteration residual measurement |
 | [svg-infographics](svg-infographics/) | Produces high-quality standardised SVG infographics - grid-first design, theme-driven styling, dark/light mode, and 5 automated checkers for layout, contrast, and alignment |
 | [datascience](datascience/) | Produces high-quality data science projects and notebooks following consistent standards - scaffolds projects from copier templates, enforces notebook structure, applies rich output styling, and supports prompt engineering techniques |
 | [document-processing](document-processing/) | Processes documents according to user requests with grounding in source materials - source tracing, compliance checking, PDF automation |
 | [journal](journal/) | Produces a work journal marking key changes, implementations, and decisions - append-only audit trail with continuous numbering and archiving |
 
-## auto-build-claw
+## autobuild
 
 Runs structured multi-iteration development cycles where each iteration passes through a full phase lifecycle with quality gates. A program defines what to build, a benchmark measures progress, and the engine enforces the workflow until the objective is met or iterations are exhausted.
 
@@ -39,7 +39,7 @@ Runs structured multi-iteration development cycles where each iteration passes t
 - **No accountability** - every phase records agents, outputs, and verdicts in YAML audit logs
 - **Benchmark gaming** - guardian agent checks for benchmark-specific tuning vs genuine improvement
 
-**Skills**: `auto-build-claw` (orchestrator), `program-writer`, `benchmark-writer`
+**Skills**: `autobuild` (orchestrator), `program-writer`, `benchmark-writer`
 
 ### Workflow types
 
@@ -55,12 +55,12 @@ Runs structured multi-iteration development cycles where each iteration passes t
 
 ```bash
 # Describe what you want - the plugin handles the rest
-/auto-build-claw improve error handling in the API layer
+/autobuild improve error handling in the API layer
 ```
 
 The plugin writes PROGRAM.md and BENCHMARK.md from your prompt, asks you to approve, then runs the orchestrator autonomously.
 
-See [auto-build-claw/README.md](auto-build-claw/) for the full phase lifecycle, agent architecture, and configuration details.
+See [autobuild/README.md](autobuild/) for the full phase lifecycle, agent architecture, and configuration details.
 
 ## devils-advocate
 

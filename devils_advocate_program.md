@@ -2,7 +2,7 @@
 
 ## The Devil
 
-**Role**: Senior backend engineer who has worked on the auto-build-claw codebase
+**Role**: Senior backend engineer who has worked on the autobuild codebase
 **Cares about**: (1) Does this fix a real problem or is it aesthetic? (2) Will this break things? (3) Is the scope right?
 **Style**: Evidence-first, skeptical of refactoring that changes structure without changing behavior
 **Default bias**: If it works, the bar for rearranging it is high
@@ -106,13 +106,13 @@ Each one is a separate inline YAML string that must be updated. Miss one and you
 
 ---
 
-### 7. "Auto-build-claw resources work item references a directory that doesn't exist"
+### 7. "Autobuild resources work item references a directory that doesn't exist"
 
 **Likelihood: 8** | **Impact: 2** | **Risk: 16**
 
-**Their take**: The PROGRAM says: "Update auto-build-claw resources - Scope: `auto-build-claw/skills/auto-build-claw/` (if any YAML references remain)." But glob search shows zero YAML files under any auto-build-claw path. Journal entry #19 confirms: "Removed old skill resources directory and redundant `orchestrate.py` entrypoint." This work item is dead. It's either stale (copied from an older version of the program) or the author didn't verify the current state before writing.
+**Their take**: The PROGRAM says: "Update autobuild resources - Scope: `autobuild/skills/autobuild/` (if any YAML references remain)." But glob search shows zero YAML files under any autobuild path. Journal entry #19 confirms: "Removed old skill resources directory and redundant `orchestrate.py` entrypoint." This work item is dead. It's either stale (copied from an older version of the program) or the author didn't verify the current state before writing.
 
-**Reality**: No YAML files exist at `auto-build-claw/skills/auto-build-claw/`. The work item is a no-op.
+**Reality**: No YAML files exist at `autobuild/skills/autobuild/`. The work item is a no-op.
 
 **Response**: Remove the work item. It signals sloppiness.
 
@@ -140,7 +140,7 @@ Each one is a separate inline YAML string that must be updated. Miss one and you
 | "7 phases with agents under gates.on_end" | **TRUE** | FULL::RESEARCH(3), FULL::HYPOTHESIS(4), PLAN(3), TEST(1), REVIEW(4), PLANNING::RESEARCH(3), PLANNING::PLAN(1) = 7 phases |
 | "The `_build_phases` function already skips `gates` key - must also skip `agents` key" | **MISLEADING** | `_build_phases` filters by `Phase.__dataclass_fields__` intersection, not by explicit skip. The `k != "gates"` is present but `agents` would be silently ignored anyway because Phase has no `agents` field. No code change needed in `_build_phases`. |
 | "Tests passing: 142" | **TRUE** | `pytest --co -q` reports 142 tests collected |
-| "Auto-build-claw skill resources directory has YAML references" | **FALSE** | Glob finds zero YAML files under any `auto-build-claw/` path. Resources were moved to module in journal entry #19. |
+| "Autobuild skill resources directory has YAML references" | **FALSE** | Glob finds zero YAML files under any `autobuild/` path. Resources were moved to module in journal entry #19. |
 | "model.py currently extracts agents from `on_end` subsection" | **TRUE** | model.py line 214: `if lifecycle == "on_end" and "agents" in subsection: agent_list = subsection["agents"]` |
 | "model.py has phase-level fallback" | **TRUE** | model.py line 207: `agent_list = section.get("agents", [])` reads phase-level first, then on_end overrides |
 
@@ -210,7 +210,7 @@ This is the third structural reorganization of agent placement in the codebase: 
 
 **Is this worth doing?** The devil says: probably not. The current architecture works, passes all tests, and has been stable through 19 development iterations. The "semantic mismatch" is a valid observation but fixing it introduces more complexity (dual-path loading, silent fallback, migration verification burden) than it removes. The PROGRAM conflates "misleading structure" with "broken architecture" to justify the work.
 
-**If you do it anyway**: (1) Remove the fallback entirely - commit to one location. (2) Add a deprecation warning if you keep the fallback. (3) Acknowledge this reverses journal entry #16 and explain what changed. (4) Add GC::PLAN to the scope analysis. (5) Remove the dead auto-build-claw work item. (6) Define atomic vs incremental migration strategy.
+**If you do it anyway**: (1) Remove the fallback entirely - commit to one location. (2) Add a deprecation warning if you keep the fallback. (3) Acknowledge this reverses journal entry #16 and explain what changed. (4) Add GC::PLAN to the scope analysis. (5) Remove the dead autobuild work item. (6) Define atomic vs incremental migration strategy.
 
 **Total catalogue risk**: 175 (across 8 concerns)
 **Highest individual risks**: Concerns #1 and #2 at 40 each (cosmetic refactoring + contradictory fallback)

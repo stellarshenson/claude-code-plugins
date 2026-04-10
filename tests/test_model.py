@@ -4,7 +4,7 @@ import warnings
 
 import pytest
 
-from stellars_claude_code_plugins.engine.model import (
+from stellars_claude_code_plugins.autobuild.model import (
     ActionDef,
     Agent,
     AppConfig,
@@ -140,15 +140,15 @@ class TestLoadModelErrors:
             load_model(resources)
 
 
-class TestLoadAutoBuildClaw:
-    """Tests loading the real auto-build-claw YAML resources."""
+class TestLoadAutobuild:
+    """Tests loading the real autobuild YAML resources."""
 
-    def test_load_real_resources(self, auto_build_claw_resources):
-        model = load_model(auto_build_claw_resources)
+    def test_load_real_resources(self, autobuild_resources):
+        model = load_model(autobuild_resources)
         assert isinstance(model, Model)
 
-    def test_real_workflow_types(self, auto_build_claw_resources):
-        model = load_model(auto_build_claw_resources)
+    def test_real_workflow_types(self, autobuild_resources):
+        model = load_model(autobuild_resources)
         assert "WORKFLOW::FULL" in model.workflow_types
         wf = model.workflow_types["WORKFLOW::FULL"]
         assert wf.cli_name == "full"
@@ -156,43 +156,43 @@ class TestLoadAutoBuildClaw:
         assert "IMPLEMENT" in wf.phase_names
         assert "TEST" in wf.phase_names
 
-    def test_real_workflow_cli_names(self, auto_build_claw_resources):
+    def test_real_workflow_cli_names(self, autobuild_resources):
         """All workflows have cli_name set."""
-        model = load_model(auto_build_claw_resources)
+        model = load_model(autobuild_resources)
         for wf_name, wf in model.workflow_types.items():
             assert wf.cli_name, f"Workflow {wf_name} missing cli_name"
 
-    def test_real_workflow_fqn_format(self, auto_build_claw_resources):
+    def test_real_workflow_fqn_format(self, autobuild_resources):
         """All workflows use WORKFLOW::NAME FQN format."""
-        model = load_model(auto_build_claw_resources)
+        model = load_model(autobuild_resources)
         for wf_name in model.workflow_types:
             assert wf_name.startswith("WORKFLOW::"), f"Workflow {wf_name} not FQN"
 
-    def test_real_depends_on_fqn(self, auto_build_claw_resources):
+    def test_real_depends_on_fqn(self, autobuild_resources):
         """depends_on uses FQN format."""
-        model = load_model(auto_build_claw_resources)
+        model = load_model(autobuild_resources)
         wf = model.workflow_types["WORKFLOW::FULL"]
         assert wf.depends_on == "WORKFLOW::PLANNING"
 
-    def test_real_phases_have_templates(self, auto_build_claw_resources):
-        model = load_model(auto_build_claw_resources)
+    def test_real_phases_have_templates(self, autobuild_resources):
+        model = load_model(autobuild_resources)
         for name, phase in model.phases.items():
             assert phase.start or phase.start_continue, f"Phase {name} has no start template"
 
-    def test_real_agents_have_names(self, auto_build_claw_resources):
-        model = load_model(auto_build_claw_resources)
+    def test_real_agents_have_names(self, autobuild_resources):
+        model = load_model(autobuild_resources)
         for phase_key, agents in model.agents.items():
             for agent in agents:
                 assert agent.name, f"Agent in {phase_key} has empty name"
                 assert agent.display_name, f"Agent {agent.name} in {phase_key} has empty display_name"
 
-    def test_real_gates_have_prompts(self, auto_build_claw_resources):
-        model = load_model(auto_build_claw_resources)
+    def test_real_gates_have_prompts(self, autobuild_resources):
+        model = load_model(autobuild_resources)
         for gate_key, gate in model.gates.items():
             assert gate.prompt, f"Gate {gate_key} has empty prompt"
 
-    def test_real_actions_loaded(self, auto_build_claw_resources):
-        model = load_model(auto_build_claw_resources)
+    def test_real_actions_loaded(self, autobuild_resources):
+        model = load_model(autobuild_resources)
         assert "ACTION::PLAN_SAVE" in model.actions
         assert model.actions["ACTION::PLAN_SAVE"].type == "programmatic"
         assert model.actions["ACTION::PLAN_SAVE"].cli_name == "plan_save"
@@ -200,28 +200,28 @@ class TestLoadAutoBuildClaw:
         assert model.actions["ACTION::HYPOTHESIS_AUTOWRITE"].type == "generative"
         assert model.actions["ACTION::HYPOTHESIS_AUTOWRITE"].prompt != ""
 
-    def test_real_gate_lifecycle_metadata(self, auto_build_claw_resources):
+    def test_real_gate_lifecycle_metadata(self, autobuild_resources):
         """Real model has gate lifecycle metadata populated."""
-        model = load_model(auto_build_claw_resources)
+        model = load_model(autobuild_resources)
         assert len(model.start_gate_types) > 0
         assert len(model.end_gate_types) > 0
         assert len(model.skip_gate_types) > 0
 
-    def test_real_auto_verify_on_test(self, auto_build_claw_resources):
+    def test_real_auto_verify_on_test(self, autobuild_resources):
         """Real FULL::TEST phase has auto_verify set."""
-        model = load_model(auto_build_claw_resources)
+        model = load_model(autobuild_resources)
         test_phase = model.phases.get("TEST")
         assert test_phase is not None
         assert test_phase.auto_verify is True
 
-    def test_real_model_validates(self, auto_build_claw_resources):
-        model = load_model(auto_build_claw_resources)
+    def test_real_model_validates(self, autobuild_resources):
+        model = load_model(autobuild_resources)
         issues = validate_model(model)
         assert issues == [], f"Validation issues: {issues}"
 
-    def test_agents_loaded_from_phases(self, auto_build_claw_resources):
+    def test_agents_loaded_from_phases(self, autobuild_resources):
         """Agents are loaded from phases.yaml (no agents.yaml)."""
-        model = load_model(auto_build_claw_resources)
+        model = load_model(autobuild_resources)
         assert "FULL::RESEARCH" in model.agents
         assert len(model.agents["FULL::RESEARCH"]) == 3
         names = [a.name for a in model.agents["FULL::RESEARCH"]]
@@ -229,10 +229,10 @@ class TestLoadAutoBuildClaw:
         assert "architect" in names
         assert "product_manager" in names
 
-    def test_three_files_loaded(self, auto_build_claw_resources):
+    def test_three_files_loaded(self, autobuild_resources):
         """Only 3 resource files needed (no agents.yaml)."""
         import os
-        files = os.listdir(auto_build_claw_resources)
+        files = os.listdir(autobuild_resources)
         assert "agents.yaml" not in files
         assert "workflow.yaml" in files
         assert "phases.yaml" in files

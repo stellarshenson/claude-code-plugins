@@ -1,4 +1,4 @@
-"""Typed object model for auto-build-claw. Loads from 3 YAML resource files."""
+"""Typed object model for autobuild. Loads from 3 YAML resource files."""
 
 from __future__ import annotations
 
@@ -383,7 +383,7 @@ def _build_app(raw: dict) -> AppConfig:
         name=app.get("name", ""),
         description=app.get("description", ""),
         cmd=app.get("cmd", ""),
-        artifacts_dir=app.get("artifacts_dir", ".auto-build-claw"),
+        artifacts_dir=app.get("artifacts_dir", ".autobuild"),
         display=DisplayConfig(
             separator=dis.get("separator", "─"),
             separator_width=dis.get("separator_width", 70),

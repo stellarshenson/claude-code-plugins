@@ -13,7 +13,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from stellars_claude_code_plugins.engine import orchestrator as orch
+from stellars_claude_code_plugins.autobuild import orchestrator as orch
 
 
 @pytest.fixture(autouse=True)
@@ -68,15 +68,15 @@ class TestInitialize:
         assert "plan_save" in orch._AUTO_ACTION_REGISTRY
         assert "iteration_advance" in orch._AUTO_ACTION_REGISTRY
 
-    def test_initialize_real_resources(self, auto_build_claw_resources):
-        orch._initialize(auto_build_claw_resources)
+    def test_initialize_real_resources(self, autobuild_resources):
+        orch._initialize(autobuild_resources)
         assert "full" in orch.ITERATION_TYPES
         assert orch._MODEL.app.name != ""
 
-    def test_reinitialize_clears_old_state(self, minimal_resources, auto_build_claw_resources):
+    def test_reinitialize_clears_old_state(self, minimal_resources, autobuild_resources):
         orch._initialize(minimal_resources)
         assert "test_workflow" in orch.ITERATION_TYPES
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         assert "test_workflow" not in orch.ITERATION_TYPES
         assert "full" in orch.ITERATION_TYPES
 
@@ -402,8 +402,8 @@ class TestCmdValidate:
             orch.cmd_validate(args)
         assert exc_info.value.code == 0
 
-    def test_validate_real_model(self, auto_build_claw_resources, tmp_path):
-        orch._initialize(auto_build_claw_resources)
+    def test_validate_real_model(self, autobuild_resources, tmp_path):
+        orch._initialize(autobuild_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         args = argparse.Namespace()
         with pytest.raises(SystemExit) as exc_info:
@@ -664,9 +664,9 @@ class TestNewRestart:
         with pytest.raises(SystemExit):
             orch.cmd_new(args)
 
-    def test_safety_cap_from_config(self, auto_build_claw_resources):
+    def test_safety_cap_from_config(self, autobuild_resources):
         """Safety cap reads from app.yaml config."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         assert hasattr(orch._MODEL.app, "config")
         cap = orch._MODEL.app.config.get("safety_cap_iterations", 20)
         assert cap == 20
@@ -994,9 +994,9 @@ cli:
 class TestDryRunFastWorkflow:
     """Tests for dry-run with the fast workflow type using real resources."""
 
-    def test_dry_run_fast_workflow(self, auto_build_claw_resources, tmp_path, capsys):
+    def test_dry_run_fast_workflow(self, autobuild_resources, tmp_path, capsys):
         """Verify dry-run with type=fast produces valid output."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
 
         args = argparse.Namespace(
@@ -1025,7 +1025,7 @@ class TestPluginEntrypoint:
 
     def test_entrypoint_import(self):
         """Verify the engine can be imported from the package."""
-        from stellars_claude_code_plugins.engine.orchestrator import main
+        from stellars_claude_code_plugins.autobuild.orchestrator import main
 
         assert callable(main)
 
@@ -1034,14 +1034,14 @@ class TestPluginEntrypoint:
         pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
         content = pyproject.read_text()
         assert "orchestrate" in content
-        assert "stellars_claude_code_plugins.engine.orchestrator:main" in content
+        assert "stellars_claude_code_plugins.autobuild.orchestrator:main" in content
 
     def test_bundled_resources_exist(self):
-        """Verify YAML resources are bundled in the engine module."""
+        """Verify YAML resources are bundled in the autobuild module."""
         resources = (
             Path(__file__).resolve().parent.parent
             / "stellars_claude_code_plugins"
-            / "engine"
+            / "autobuild"
             / "resources"
         )
         assert resources.exists()
@@ -1053,9 +1053,9 @@ class TestPluginEntrypoint:
 class TestCmdInfo:
     """Tests for the info command - model introspection."""
 
-    def test_info_workflows(self, auto_build_claw_resources, capsys):
+    def test_info_workflows(self, autobuild_resources, capsys):
         """List all workflows."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         args = argparse.Namespace(
             workflows=True, workflow=None, phases=False, phase=None, agents=False
         )
@@ -1065,9 +1065,9 @@ class TestCmdInfo:
         assert "full" in out  # cli_name
         assert "WORKFLOW::FAST" in out
 
-    def test_info_workflow_detail(self, auto_build_claw_resources, capsys):
+    def test_info_workflow_detail(self, autobuild_resources, capsys):
         """Detail one workflow by cli_name."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         args = argparse.Namespace(
             workflows=False, workflow="full", phases=False, phase=None, agents=False
         )
@@ -1077,9 +1077,9 @@ class TestCmdInfo:
         assert "HYPOTHESIS" in out
         assert "8 phases" in out or "NEXT" in out
 
-    def test_info_phases(self, auto_build_claw_resources, capsys):
+    def test_info_phases(self, autobuild_resources, capsys):
         """List all phases."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         args = argparse.Namespace(
             workflows=False, workflow=None, phases=True, phase=None, agents=False
         )
@@ -1089,9 +1089,9 @@ class TestCmdInfo:
         assert "IMPLEMENT" in out
         assert "GC::PLAN" in out
 
-    def test_info_phase_detail(self, auto_build_claw_resources, capsys):
+    def test_info_phase_detail(self, autobuild_resources, capsys):
         """Detail one phase showing start/execution/end agents."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         args = argparse.Namespace(
             workflows=False, workflow=None, phases=False, phase="FULL::RESEARCH", agents=False
         )
@@ -1103,9 +1103,9 @@ class TestCmdInfo:
         assert "product_manager" in out
         assert "gatekeeper" in out
 
-    def test_info_agents(self, auto_build_claw_resources, capsys):
+    def test_info_agents(self, autobuild_resources, capsys):
         """List all agents grouped by phase."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         args = argparse.Namespace(
             workflows=False, workflow=None, phases=False, phase=None, agents=True
         )
@@ -1116,9 +1116,9 @@ class TestCmdInfo:
         assert "guardian" in out
         assert "benchmark_evaluator" in out
 
-    def test_info_structure_compliance(self, auto_build_claw_resources, capsys):
+    def test_info_structure_compliance(self, autobuild_resources, capsys):
         """Every phase has readback in start and gatekeeper in end."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         for phase_name in orch._MODEL.phases:
             # Every phase should have readback gate
             rb_key = f"{phase_name}::readback"
@@ -1127,9 +1127,9 @@ class TestCmdInfo:
             gk_key = f"{phase_name}::gatekeeper"
             assert gk_key in orch._MODEL.gates, f"{phase_name} missing gatekeeper in end"
 
-    def test_info_execution_agents_match(self, auto_build_claw_resources):
+    def test_info_execution_agents_match(self, autobuild_resources):
         """Agent counts match expected per phase."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         expected = {
             "FULL::RESEARCH": 3,
             "FULL::HYPOTHESIS": 4,
@@ -1152,7 +1152,7 @@ class TestEnsureProjectResources:
 
     def test_copies_missing_resources(self, tmp_path):
         """Resources are copied from module to project dir when missing."""
-        project_resources = tmp_path / ".auto-build-claw" / "resources"
+        project_resources = tmp_path / ".autobuild" / "resources"
         result = orch._ensure_project_resources(project_resources)
         assert result == project_resources
         assert (project_resources / "workflow.yaml").exists()
@@ -1161,7 +1161,7 @@ class TestEnsureProjectResources:
 
     def test_stale_resources_archived_and_replaced(self, tmp_path):
         """Modified project resources are archived and replaced with bundled."""
-        project_resources = tmp_path / ".auto-build-claw" / "resources"
+        project_resources = tmp_path / ".autobuild" / "resources"
         project_resources.mkdir(parents=True)
         custom_content = "# custom workflow"
         (project_resources / "workflow.yaml").write_text(custom_content)
@@ -1169,7 +1169,7 @@ class TestEnsureProjectResources:
         (project_resources / "app.yaml").write_text("# old app")
         orch._ensure_project_resources(project_resources)
         # Stale resources archived, fresh installed
-        archives = list(tmp_path.glob(".auto-build-claw/resources.old.*"))
+        archives = list(tmp_path.glob(".autobuild/resources.old.*"))
         assert len(archives) >= 1
         # All files now match bundled
         assert (project_resources / "phases.yaml").exists()
@@ -1178,7 +1178,7 @@ class TestEnsureProjectResources:
 
     def test_loads_from_project_resources(self, tmp_path):
         """Orchestrator loads from project-local resources after copy."""
-        project_resources = tmp_path / ".auto-build-claw" / "resources"
+        project_resources = tmp_path / ".autobuild" / "resources"
         orch._ensure_project_resources(project_resources)
         model = orch.load_model(project_resources)
         assert model.app.name != ""
@@ -1186,7 +1186,7 @@ class TestEnsureProjectResources:
 
     def test_clean_preserves_resources(self, tmp_path):
         """_clean_artifacts_dir preserves resources/ subdirectory."""
-        artifacts = tmp_path / ".auto-build-claw"
+        artifacts = tmp_path / ".autobuild"
         resources = artifacts / "resources"
         resources.mkdir(parents=True)
         custom = "# custom workflow"
@@ -1239,7 +1239,7 @@ class TestResourceConflict:
         assert orch._detect_stale_resources(resources) is False
 
     def test_old_format_archived(self, tmp_path):
-        resources = tmp_path / ".auto-build-claw" / "resources"
+        resources = tmp_path / ".autobuild" / "resources"
         resources.mkdir(parents=True)
         (resources / "phases.yaml").write_text(
             "ALPHA:\n  gates:\n    on_start:\n      readback:\n        prompt: test"
@@ -1248,16 +1248,16 @@ class TestResourceConflict:
         (resources / "app.yaml").write_text("app: {}")
         orch._ensure_project_resources(resources)
         # Old resources should be archived
-        archives = list(tmp_path.glob(".auto-build-claw/resources.old.*"))
+        archives = list(tmp_path.glob(".autobuild/resources.old.*"))
         assert len(archives) >= 1
         # New resources should be fresh
         content = (resources / "phases.yaml").read_text()
         assert "start:" in content
         assert "gates:" not in content or "shared_gates:" in content
 
-    def test_detect_stale_content_mismatch(self, auto_build_claw_resources, tmp_path):
+    def test_detect_stale_content_mismatch(self, autobuild_resources, tmp_path):
         """Detects when project resources differ from bundled (version upgrade)."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         resources = tmp_path / "resources"
         resources.mkdir()
         # Copy bundled resources then modify one
@@ -1270,9 +1270,9 @@ class TestResourceConflict:
         phases.write_text(phases.read_text() + "\n# user modification")
         assert orch._detect_stale_resources(resources) is True
 
-    def test_detect_matching_resources_not_stale(self, auto_build_claw_resources, tmp_path):
+    def test_detect_matching_resources_not_stale(self, autobuild_resources, tmp_path):
         """Resources matching bundled are not stale."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         resources = tmp_path / "resources"
         resources.mkdir()
         for fname in orch._RESOURCE_FILES:
@@ -1525,18 +1525,18 @@ class TestContextRichEntries:
         with pytest.raises(ValueError, match="missing required keys"):
             orch._load_context()
 
-    def test_hypothesis_autowrite_prompt_says_append(self, auto_build_claw_resources):
+    def test_hypothesis_autowrite_prompt_says_append(self, autobuild_resources):
         """Hypothesis autowrite prompt says APPEND, not bare Write."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         action = orch._MODEL.actions.get("ACTION::HYPOTHESIS_AUTOWRITE")
         assert action is not None, "ACTION::HYPOTHESIS_AUTOWRITE not found in model"
         prompt = action.prompt
         assert "APPEND" in prompt or "append" in prompt
         assert "do not remove" in prompt.lower() or "do not overwrite" in prompt.lower()
 
-    def test_architect_agents_have_occam_directive(self, auto_build_claw_resources):
+    def test_architect_agents_have_occam_directive(self, autobuild_resources):
         """All architect agents have Occam's razor directive."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         architect_phases = []
         for phase_key, agents in orch._MODEL.agents.items():
             for agent in agents:
@@ -1549,9 +1549,9 @@ class TestContextRichEntries:
             f"Expected >= 4 architect agents, found {len(architect_phases)}"
         )
 
-    def test_gatekeeper_prompts_reference_context(self, auto_build_claw_resources):
+    def test_gatekeeper_prompts_reference_context(self, autobuild_resources):
         """Gatekeepers for RESEARCH/HYPOTHESIS/PLAN/IMPLEMENT/REVIEW reference context."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         check_phases = {"FULL::RESEARCH", "FULL::HYPOTHESIS", "PLAN", "IMPLEMENT", "REVIEW"}
         for phase_key, gates in orch._MODEL.gates.items():
             if phase_key in check_phases:
@@ -2377,17 +2377,17 @@ class TestCleanBehavior:
 class TestActionExecution:
     """Tests for ActionDef execution field and template variables."""
 
-    def test_action_has_no_execution_field(self, auto_build_claw_resources):
+    def test_action_has_no_execution_field(self, autobuild_resources):
         """ActionDef no longer has execution field (removed - agent mode was a no-op)."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         autowrite = orch._MODEL.actions.get("ACTION::HYPOTHESIS_AUTOWRITE")
         assert autowrite is not None
         assert not hasattr(autowrite, "execution"), "execution field should be removed from ActionDef"
         assert autowrite.type == "generative"
 
-    def test_action_template_variables_in_prompt(self, auto_build_claw_resources):
+    def test_action_template_variables_in_prompt(self, autobuild_resources):
         """Generative action prompts contain template variable placeholders."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         autowrite = orch._MODEL.actions.get("ACTION::HYPOTHESIS_AUTOWRITE")
         assert autowrite is not None
         assert "{phase_output}" in autowrite.prompt
@@ -2600,9 +2600,9 @@ cli:
 class TestRecordPhaseTemplate:
     """Tests for RECORD phase template content in real resources."""
 
-    def test_record_template_has_conditional_commit(self, auto_build_claw_resources):
+    def test_record_template_has_conditional_commit(self, autobuild_resources):
         """RECORD phase template contains conditional commit language."""
-        orch._initialize(auto_build_claw_resources)
+        orch._initialize(autobuild_resources)
         resolved_phase = orch._resolve_phase("RECORD")
         phase_obj = orch._MODEL.phases.get(resolved_phase)
         assert phase_obj is not None, "RECORD phase not found in model"
@@ -2614,10 +2614,10 @@ class TestRecordPhaseTemplate:
 class TestOutputQuality:
     """Tests for output quality: gatekeeper prompts, phase dirs, hypothesis validation."""
 
-    def test_research_gatekeeper_structural_checks(self, auto_build_claw_resources):
+    def test_research_gatekeeper_structural_checks(self, autobuild_resources):
         """RESEARCH gatekeeper checks for structural elements."""
-        import stellars_claude_code_plugins.engine.orchestrator as orch
-        orch._initialize(auto_build_claw_resources)
+        import stellars_claude_code_plugins.autobuild.orchestrator as orch
+        orch._initialize(autobuild_resources)
         # Find RESEARCH gatekeeper prompt
         research_key = None
         for key in orch._MODEL.gates:
@@ -2631,10 +2631,10 @@ class TestOutputQuality:
         assert "gap analysis" in prompt_lower or "file inventory" in prompt_lower
         assert "evidence" in prompt_lower
 
-    def test_hypothesis_gatekeeper_checks_format_fields(self, auto_build_claw_resources):
+    def test_hypothesis_gatekeeper_checks_format_fields(self, autobuild_resources):
         """HYPOTHESIS gatekeeper checks for all format fields."""
-        import stellars_claude_code_plugins.engine.orchestrator as orch
-        orch._initialize(auto_build_claw_resources)
+        import stellars_claude_code_plugins.autobuild.orchestrator as orch
+        orch._initialize(autobuild_resources)
         hyp_key = None
         for key in orch._MODEL.gates:
             if "HYPOTHESIS" in key and "gatekeeper" in key:
@@ -2650,7 +2650,7 @@ class TestOutputQuality:
 
     def test_output_file_resolves_to_phase_dir(self, minimal_resources, tmp_path):
         """Relative output-file resolves against phase directory."""
-        import stellars_claude_code_plugins.engine.orchestrator as orch
+        import stellars_claude_code_plugins.autobuild.orchestrator as orch
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
@@ -2675,7 +2675,7 @@ class TestOutputQuality:
 
     def test_hypothesis_plain_string_notes_crash(self, minimal_resources, tmp_path):
         """_load_hypotheses crashes on plain string notes."""
-        import stellars_claude_code_plugins.engine.orchestrator as orch
+        import stellars_claude_code_plugins.autobuild.orchestrator as orch
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
@@ -2696,7 +2696,7 @@ class TestOutputQuality:
 
     def test_hypothesis_invalid_status_selected_crash(self, minimal_resources, tmp_path):
         """_load_hypotheses crashes on invalid status 'selected'."""
-        import stellars_claude_code_plugins.engine.orchestrator as orch
+        import stellars_claude_code_plugins.autobuild.orchestrator as orch
         orch._initialize(minimal_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
@@ -2715,10 +2715,10 @@ class TestOutputQuality:
         with pytest.raises(ValueError, match="invalid status|selected"):
             orch._load_hypotheses()
 
-    def test_phase_dir_in_context(self, auto_build_claw_resources, tmp_path):
+    def test_phase_dir_in_context(self, autobuild_resources, tmp_path):
         """_build_context includes phase_dir variable."""
-        import stellars_claude_code_plugins.engine.orchestrator as orch
-        orch._initialize(auto_build_claw_resources)
+        import stellars_claude_code_plugins.autobuild.orchestrator as orch
+        orch._initialize(autobuild_resources)
         orch.DEFAULT_ARTIFACTS_DIR = tmp_path
         orch._init_artifacts_dir(tmp_path)
         state = {

@@ -20,17 +20,17 @@
 
 **Their take**: The PROGRAM says to "explain YAML-driven orchestration engine concept" but doesn't specify what the reader should understand after reading. If the README says "YAML-driven orchestration engine with FSM phases and multi-agent coordination" - that's jargon soup. What does it DO for me? Does it make my code better? How? The problem statement ("AI agents cut corners") is good - but if the README leads with architecture instead of value proposition, the skimmer closes the tab.
 
-**Reality**: The auto-build-claw README already has a good "What it solves" section with concrete problems (shallow fixes, scope creep, lost context). The PROGRAM mentions "frame as pull-based enforcement" which is the right concept but needs to be the FIRST thing, not buried.
+**Reality**: The autobuild README already has a good "What it solves" section with concrete problems (shallow fixes, scope creep, lost context). The PROGRAM mentions "frame as pull-based enforcement" which is the right concept but needs to be the FIRST thing, not buried.
 
-**Response**: PROGRAM should explicitly state: the opening paragraph must answer "what does this do for me?" before any technical explanation. The "What it solves" framing from auto-build-claw/README.md should be the model.
+**Response**: PROGRAM should explicitly state: the opening paragraph must answer "what does this do for me?" before any technical explanation. The "What it solves" framing from autobuild/README.md should be the model.
 
 ### 2. "The PROGRAM doesn't distinguish must-have from nice-to-have sections"
 
 **Likelihood: 5** | **Impact: 5** | **Risk: 25**
 
-**Their take**: Everything is listed as a work item with equal weight. "Header and badges" is low priority, "Building a new plugin" is medium - but for a 3-iteration auto-build-claw run, what gets done first? If iteration 1 wastes time on badge formatting while the core plugin descriptions are wrong, the README improves minimally. The PROGRAM should sequence work items by reader impact: problem statement first, plugin descriptions second, everything else third.
+**Their take**: Everything is listed as a work item with equal weight. "Header and badges" is low priority, "Building a new plugin" is medium - but for a 3-iteration autobuild run, what gets done first? If iteration 1 wastes time on badge formatting while the core plugin descriptions are wrong, the README improves minimally. The PROGRAM should sequence work items by reader impact: problem statement first, plugin descriptions second, everything else third.
 
-**Reality**: The PROGRAM does assign priority (low/high/medium) but doesn't sequence them. Auto-build-claw follows its own phase lifecycle (RESEARCH -> HYPOTHESIS -> PLAN -> IMPLEMENT) so the implementer will plan its own sequence. But without explicit priority in the program, the planner might not get it right.
+**Reality**: The PROGRAM does assign priority (low/high/medium) but doesn't sequence them. Autobuild follows its own phase lifecycle (RESEARCH -> HYPOTHESIS -> PLAN -> IMPLEMENT) so the implementer will plan its own sequence. But without explicit priority in the program, the planner might not get it right.
 
 **Response**: PROGRAM should state explicit iteration targets: iteration 1 = core content (what/why/plugins), iteration 2 = architecture + usage, iteration 3 = polish + accuracy verification.
 
@@ -58,7 +58,7 @@
 
 **Likelihood: 5** | **Impact: 3** | **Risk: 15**
 
-**Their take**: The PROGRAM wants the README to describe "Risk scoring: Likelihood x Impact (Fibonacci 1-8, max 64), residual = risk x (1 - score)". That's implementation detail. A README reader wants to know: "this plugin critiques your documents and scores how well concerns are addressed." The math belongs in the plugin's own README, not the top-level repo README. Same risk for auto-build-claw - explaining all 8 phases with their lifecycle transitions is too much for a repo README.
+**Their take**: The PROGRAM wants the README to describe "Risk scoring: Likelihood x Impact (Fibonacci 1-8, max 64), residual = risk x (1 - score)". That's implementation detail. A README reader wants to know: "this plugin critiques your documents and scores how well concerns are addressed." The math belongs in the plugin's own README, not the top-level repo README. Same risk for autobuild - explaining all 8 phases with their lifecycle transitions is too much for a repo README.
 
 **Reality**: There's a balance. The top-level README should give enough detail to understand the concept but link to plugin-specific READMEs for depth. The PROGRAM doesn't mention linking to sub-READMEs at all.
 
@@ -68,7 +68,7 @@
 
 **Likelihood: 3** | **Impact: 5** | **Risk: 15**
 
-**Their take**: The PROGRAM constraint says "keep total length reasonable" but the benchmark has no way to measure this. With 9 sections (header, what it solves, plugins overview, auto-build-claw, devils-advocate, architecture, building a plugin, install, development), each getting a paragraph plus code block, the README could easily balloon to 300+ lines. The current README is 110 lines. A 3x expansion would bury the value proposition.
+**Their take**: The PROGRAM constraint says "keep total length reasonable" but the benchmark has no way to measure this. With 9 sections (header, what it solves, plugins overview, autobuild, devils-advocate, architecture, building a plugin, install, development), each getting a paragraph plus code block, the README could easily balloon to 300+ lines. The current README is 110 lines. A 3x expansion would bury the value proposition.
 
 **Reality**: Modus primaris already constrains verbosity. But without a line count target, the benchmark can't flag bloat.
 

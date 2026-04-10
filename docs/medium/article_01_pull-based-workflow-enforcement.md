@@ -27,7 +27,7 @@ The problem isn't capability. These agents operate in a **push model** - they de
 
 **Pull-based workflow enforcement** fixes this. The agent doesn't decide what comes next - it asks an external orchestrator. The orchestrator gates every transition with independent verification. The agent must prove it did the work before it can proceed.
 
-The implementation is [auto-build-claw](https://github.com/stellarshenson/claude-code-plugins), a Claude Code plugin published as a pip package, but the pattern applies to any autonomous AI workflow.
+The implementation is [autobuild](https://github.com/stellarshenson/claude-code-plugins), a Claude Code plugin published as a pip package, but the pattern applies to any autonomous AI workflow.
 
 ![Five failure modes of autonomous agents](images/06-five-failure-modes.svg)
 
@@ -151,7 +151,7 @@ The engine is a generic YAML-driven state machine. **What** the agent should do 
 - `phases.yaml` - phase instructions, agents, gates, all inline per phase
 - `app.yaml` - display text, CLI config
 
-Resources are bundled in the pip package and auto-copied to `.auto-build-claw/resources/` on first use. Users can customise the local copy per project. The engine loads 3 files, builds a typed model, validates it, and runs - zero domain knowledge in Python. Phase resolution is strict: `WORKFLOW::PHASE` or bare `PHASE`, no fallback chain. A missing key is a configuration error, not a silent degradation.
+Resources are bundled in the pip package and auto-copied to `.autobuild/resources/` on first use. Users can customise the local copy per project. The engine loads 3 files, builds a typed model, validates it, and runs - zero domain knowledge in Python. Phase resolution is strict: `WORKFLOW::PHASE` or bare `PHASE`, no fallback chain. A missing key is a configuration error, not a silent degradation.
 
 Five workflow types: `full` (8 phases, 15 agents), `fast` (no research/hypothesis), `gc` (cleanup), `hotfix` (minimal), `planning` (work breakdown dependency).
 

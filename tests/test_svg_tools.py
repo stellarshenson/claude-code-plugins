@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-TOOLS_DIR = Path(__file__).resolve().parent.parent / "svg-infographics" / "tools"
+TOOLS_DIR = Path(__file__).resolve().parent.parent / "stellars_claude_code_plugins" / "svg_tools"
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "svg-infographics" / "examples"
 
 
@@ -209,38 +209,30 @@ class TestCalcConnectorModule:
     """Direct import tests for calc_connector functions."""
 
     def test_calc_connector_basic(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from calc_connector import calc_connector
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_connector
         c = calc_connector(0, 0, 100, 0)
         assert abs(c["angle_deg"] - 0.0) < 0.01
         assert abs(c["full_length"] - 100.0) < 0.01
         assert abs(c["tip_x"] - 100.0) < 0.01
         assert abs(c["tip_y"] - 0.0) < 0.01
-        sys.path.pop(0)
 
     def test_calc_connector_with_margin(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from calc_connector import calc_connector
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_connector
         c = calc_connector(0, 0, 100, 0, margin=5)
         assert abs(c["effective_length"] - 90.0) < 0.01
         assert abs(c["tip_x"] - 95.0) < 0.01
-        sys.path.pop(0)
 
     def test_calc_cutout(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from calc_connector import calc_cutout
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_cutout
         result = calc_cutout(0, 50, 400, 50, 150, 40, 100, 20)
         assert result is not None
         assert "segment1" in result
         assert "segment2" in result
-        sys.path.pop(0)
 
     def test_calc_cutout_no_intersection(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from calc_connector import calc_cutout
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_cutout
         result = calc_cutout(0, 50, 400, 50, 150, 200, 100, 20)
         assert result is None
-        sys.path.pop(0)
 
 
 # ---------------------------------------------------------------------------
@@ -293,84 +285,67 @@ class TestContrastModule:
     """Direct import tests for check_contrast functions."""
 
     def test_hex_to_rgb(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_contrast import hex_to_rgb
+        from stellars_claude_code_plugins.svg_tools.check_contrast import hex_to_rgb
         assert hex_to_rgb("#ff0000") == (255, 0, 0)
         assert hex_to_rgb("#00ff00") == (0, 255, 0)
         assert hex_to_rgb("#f00") == (255, 0, 0)
-        sys.path.pop(0)
 
     def test_relative_luminance(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_contrast import relative_luminance
+        from stellars_claude_code_plugins.svg_tools.check_contrast import relative_luminance
         white_lum = relative_luminance(255, 255, 255)
         black_lum = relative_luminance(0, 0, 0)
         assert white_lum > 0.99
         assert black_lum < 0.01
-        sys.path.pop(0)
 
     def test_contrast_ratio(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_contrast import relative_luminance, contrast_ratio
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            relative_luminance, contrast_ratio,
+        )
         white_lum = relative_luminance(255, 255, 255)
         black_lum = relative_luminance(0, 0, 0)
         ratio = contrast_ratio(white_lum, black_lum)
         assert ratio > 20.0  # black on white is 21:1
-        sys.path.pop(0)
 
     def test_blend_over(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_contrast import blend_over
-        # Black at 50% opacity over white should be mid-grey
+        from stellars_claude_code_plugins.svg_tools.check_contrast import blend_over
         result = blend_over("#000000", 0.5, "#ffffff")
         r, g, b = int(result[1:3], 16), int(result[3:5], 16), int(result[5:7], 16)
         assert 125 <= r <= 130
         assert 125 <= g <= 130
-        sys.path.pop(0)
 
     def test_resolve_color(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_contrast import resolve_color
+        from stellars_claude_code_plugins.svg_tools.check_contrast import resolve_color
         assert resolve_color("#ff0000") == "#ff0000"
         assert resolve_color("red") == "#ff0000"
         assert resolve_color("none") is None
         assert resolve_color("transparent") is None
-        sys.path.pop(0)
 
     def test_parse_css_classes(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_contrast import parse_css_classes
+        from stellars_claude_code_plugins.svg_tools.check_contrast import parse_css_classes
         css = ".fg-1 { fill: #1e3a5f; } .fg-2 { fill: #2a5f9e; }"
         classes = parse_css_classes(css)
         assert classes["fg-1"] == "#1e3a5f"
         assert classes["fg-2"] == "#2a5f9e"
-        sys.path.pop(0)
 
     def test_parse_css_strips_media(self):
         """Light mode parser should ignore @media blocks."""
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_contrast import parse_css_classes
+        from stellars_claude_code_plugins.svg_tools.check_contrast import parse_css_classes
         css = ".fg-1 { fill: #1e3a5f; } @media (prefers-color-scheme: dark) { .fg-1 { fill: #c8d6e5; } }"
         classes = parse_css_classes(css)
         assert classes["fg-1"] == "#1e3a5f"
-        sys.path.pop(0)
 
     def test_parse_dark_classes(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_contrast import parse_dark_classes
+        from stellars_claude_code_plugins.svg_tools.check_contrast import parse_dark_classes
         css = ".fg-1 { fill: #1e3a5f; } @media (prefers-color-scheme: dark) { .fg-1 { fill: #c8d6e5; } }"
         dark = parse_dark_classes(css)
         assert dark["fg-1"] == "#c8d6e5"
-        sys.path.pop(0)
 
     def test_is_large_text(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_contrast import is_large_text
+        from stellars_claude_code_plugins.svg_tools.check_contrast import is_large_text
         assert is_large_text(18, "normal") is True
         assert is_large_text(14, "bold") is True
         assert is_large_text(12, "normal") is False
         assert is_large_text(14, "normal") is False
-        sys.path.pop(0)
 
 
 # ---------------------------------------------------------------------------
@@ -411,22 +386,16 @@ class TestConnectorsModule:
     """Direct import tests for check_connectors functions."""
 
     def test_point_to_seg_dist(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_connectors import _point_to_seg_dist
-        # Point on the segment
+        from stellars_claude_code_plugins.svg_tools.check_connectors import _point_to_seg_dist
         assert abs(_point_to_seg_dist(50, 0, 0, 0, 100, 0)) < 0.01
-        # Point above segment midpoint
         assert abs(_point_to_seg_dist(50, 10, 0, 0, 100, 0) - 10.0) < 0.01
-        sys.path.pop(0)
 
     def test_parse_points(self):
-        sys.path.insert(0, str(TOOLS_DIR))
-        from check_connectors import _parse_points
+        from stellars_claude_code_plugins.svg_tools.check_connectors import _parse_points
         pts = _parse_points("100,50 200,60 300,70")
         assert len(pts) == 3
         assert pts[0] == (100.0, 50.0)
         assert pts[2] == (300.0, 70.0)
-        sys.path.pop(0)
 
 
 # ---------------------------------------------------------------------------
@@ -610,3 +579,204 @@ class TestPluginStructure:
             content = svg.read_text()
             for name in forbidden:
                 assert name not in content, f"Found unanonymised '{name}' in {svg.name}"
+
+
+# ---------------------------------------------------------------------------
+# Defect detection tests using real SVGs
+# ---------------------------------------------------------------------------
+
+
+class TestDefectDetection:
+    """Introduce specific defects into real SVGs and verify tools catch them."""
+
+    NS = "http://www.w3.org/2000/svg"
+
+    @pytest.fixture(autouse=True)
+    def register_ns(self):
+        """Register SVG namespace to prevent prefix rewriting."""
+        import xml.etree.ElementTree as ET
+        ET.register_namespace("", self.NS)
+
+    @pytest.fixture
+    def real_svg_content(self):
+        """Load a real example SVG."""
+        svg_path = EXAMPLES_DIR / "01_current_evaluation_pipeline.svg"
+        assert svg_path.exists(), f"Example SVG not found: {svg_path}"
+        return svg_path.read_text()
+
+    def _write_svg(self, root, path):
+        import xml.etree.ElementTree as ET
+        ET.ElementTree(root).write(str(path), xml_declaration=True, encoding="unicode")
+
+    def test_overlap_defect_detected(self, real_svg_content, tmp_path):
+        """Move two text elements to same position, verify overlap detection."""
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(real_svg_content)
+        texts = list(root.iter(f"{{{self.NS}}}text"))
+        assert len(texts) >= 2, "Need at least 2 text elements"
+        # Move second text to exact position of first
+        texts[1].set("x", texts[0].get("x", "0"))
+        texts[1].set("y", texts[0].get("y", "0"))
+        defective = tmp_path / "overlap_defect.svg"
+        self._write_svg(root, defective)
+
+        from stellars_claude_code_plugins.svg_tools.check_overlaps import (
+            parse_svg, analyze_overlaps,
+        )
+        elements = parse_svg(str(defective))
+        overlaps = analyze_overlaps(elements)
+        assert len(overlaps) > 0, "Expected overlaps to be detected"
+
+    def test_contrast_defect_detected(self, real_svg_content, tmp_path):
+        """Set text fill to near-white on white background, verify contrast failure."""
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(real_svg_content)
+        texts = list(root.iter(f"{{{self.NS}}}text"))
+        assert len(texts) >= 1, "Need at least 1 text element"
+        # Remove class and set near-background fill
+        target = texts[0]
+        target.attrib.pop("class", None)
+        target.set("fill", "#eeeeee")
+        defective = tmp_path / "contrast_defect.svg"
+        self._write_svg(root, defective)
+
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            parse_svg_for_contrast, check_all_contrasts,
+        )
+        texts_parsed, bgs, light_cls, dark_cls = parse_svg_for_contrast(str(defective))
+        results, _ = check_all_contrasts(texts_parsed, bgs, light_cls, dark_cls)
+        fails = [r for r in results if not r.aa_pass]
+        assert len(fails) > 0, "Expected at least one contrast failure"
+
+    def test_alignment_defect_detected(self, real_svg_content, tmp_path):
+        """Shift element off-grid, verify check_alignment catches it."""
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(real_svg_content)
+        texts = list(root.iter(f"{{{self.NS}}}text"))
+        assert len(texts) >= 1, "Need at least 1 text element"
+        # Shift off a 5px grid by 3px
+        original_x = float(texts[0].get("x", "0"))
+        texts[0].set("x", str(original_x + 3))
+        defective = tmp_path / "alignment_defect.svg"
+        self._write_svg(root, defective)
+
+        from stellars_claude_code_plugins.svg_tools.check_alignment import (
+            parse_svg_elements, check_grid_snapping,
+        )
+        elements = parse_svg_elements(str(defective))
+        issues = check_grid_snapping(elements, grid=5, tolerance=0)
+        assert len(issues) > 0, "Expected grid-snapping violations"
+
+    def test_connector_zero_length_defect(self, tmp_path):
+        """Create zero-length connector, verify detection."""
+        svg_content = textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+              <rect x="20" y="20" width="200" height="100" fill="#0284c7" fill-opacity="0.04"
+                    stroke="#0284c7" stroke-width="1"/>
+              <rect x="400" y="20" width="200" height="100" fill="#0284c7" fill-opacity="0.04"
+                    stroke="#0284c7" stroke-width="1"/>
+              <line x1="220" y1="70" x2="400" y2="70" stroke="#333" stroke-width="1"/>
+              <line x1="300" y1="150" x2="300" y2="150" stroke="#333" stroke-width="1"/>
+            </svg>
+        """)
+        defective = tmp_path / "zero_connector.svg"
+        defective.write_text(svg_content)
+
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            parse_svg, check_zero_length,
+        )
+        _, connectors, _ = parse_svg(str(defective))
+        issues = check_zero_length(connectors)
+        assert any("zero-length" in i.lower() for i in issues), "Expected zero-length detection"
+
+    def test_contrast_defect_via_cli(self, real_svg_content, tmp_path):
+        """End-to-end CLI test: inject contrast defect, run checker subprocess."""
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(real_svg_content)
+        texts = list(root.iter(f"{{{self.NS}}}text"))
+        target = texts[0]
+        target.attrib.pop("class", None)
+        target.set("fill", "#f0f0f0")  # nearly invisible on white
+        defective = tmp_path / "cli_contrast.svg"
+        self._write_svg(root, defective)
+
+        r = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "check_contrast.py"),
+             "--svg", str(defective), "--show-all"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0
+        assert "FAIL" in r.stdout or "fail" in r.stdout.lower()
+
+
+# ---------------------------------------------------------------------------
+# svg-infographics unified CLI tests
+# ---------------------------------------------------------------------------
+
+
+class TestSvgInfographicsCLI:
+    """Tests for the unified svg-infographics CLI entry point."""
+
+    CLI = Path(__file__).resolve().parent.parent / "stellars_claude_code_plugins" / "svg_tools" / "cli.py"
+
+    def _run(self, *args):
+        return subprocess.run(
+            [sys.executable, str(self.CLI), *args],
+            capture_output=True, text=True,
+        )
+
+    def test_help(self):
+        """--help should show subcommands."""
+        r = self._run("--help")
+        assert r.returncode == 0
+        assert "overlaps" in r.stdout
+        assert "contrast" in r.stdout
+        assert "alignment" in r.stdout
+        assert "connectors" in r.stdout
+        assert "connector" in r.stdout
+
+    def test_no_args_shows_help(self):
+        """No arguments should show help."""
+        r = self._run()
+        assert r.returncode == 0
+        assert "svg-infographics" in r.stdout
+
+    def test_unknown_subcommand(self):
+        """Unknown subcommand should fail with message."""
+        r = self._run("nonexistent")
+        assert r.returncode == 1
+        assert "Unknown subcommand" in r.stderr
+
+    def test_overlaps_subcommand(self, simple_svg):
+        """overlaps subcommand should run check_overlaps."""
+        r = self._run("overlaps", "--svg", str(simple_svg))
+        assert r.returncode == 0
+
+    def test_contrast_subcommand(self, simple_svg):
+        """contrast subcommand should run check_contrast."""
+        r = self._run("contrast", "--svg", str(simple_svg))
+        assert r.returncode == 0
+        assert "SUMMARY" in r.stdout
+
+    def test_alignment_subcommand(self, alignment_svg):
+        """alignment subcommand should run check_alignment."""
+        r = self._run("alignment", "--svg", str(alignment_svg))
+        assert r.returncode == 0
+
+    def test_connectors_subcommand(self, connector_svg):
+        """connectors subcommand should run check_connectors."""
+        r = self._run("connectors", "--svg", str(connector_svg))
+        assert r.returncode == 0
+
+    def test_connector_subcommand(self):
+        """connector subcommand should calculate geometry."""
+        r = self._run("connector", "--from", "100,50", "--to", "300,50")
+        assert r.returncode == 0
+        assert "0.0 degrees" in r.stdout
+
+    def test_subcommand_help(self):
+        """Each subcommand should accept --help."""
+        for sub in ["overlaps", "contrast", "alignment", "connectors", "connector"]:
+            r = self._run(sub, "--help")
+            # argparse exits with 0 on --help
+            assert r.returncode == 0, f"{sub} --help failed"

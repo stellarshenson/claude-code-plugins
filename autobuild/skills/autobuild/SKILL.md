@@ -1,9 +1,9 @@
 ---
-name: auto-build-claw
+name: autobuild
 description: Autonomous build iteration orchestrator. Runs structured improvement cycles with multi-agent review. Use when asked to iterate, improve, fix bugs, refactor, run GC, implement features, do quality improvement, run cleanup, or execute structured development cycles. Phases - research, hypothesis, plan, implement, test, review, record. 10 commands, 2 calls per phase.
 ---
 
-# Auto Build Claw - Autonomous Iteration Orchestrator
+# Autobuild - Autonomous Iteration Orchestrator
 
 This skill breaks complex improvement work into sequential phases, spawns independent agent panels at each stage, and enforces quality through two independent gates. Use it when the user asks to iterate on code, improve quality, fix bugs, refactor, run GC, or implement features through structured phases.
 
@@ -22,7 +22,7 @@ pip install stellars-claude-code-plugins
 The `orchestrate` CLI command becomes available after installation. Alternatively, run the entrypoint directly:
 
 ```bash
-python .claude/skills/auto-build-claw/orchestrate.py
+python .claude/skills/autobuild/orchestrate.py
 ```
 
 Both paths use the same engine - the entrypoint passes the skill's `resources/` directory to the shared orchestrator.
@@ -40,7 +40,7 @@ Both paths use the same engine - the entrypoint passes the skill's `resources/` 
 - **Objective**: what the iterations aim to achieve - ASK the user if not specified
 - **Iteration count**: how many cycles to run - ASK the user if not specified
 - **Benchmark** (optional): ASK the user: "Do you have a benchmark I should evaluate after each iteration? (1) No benchmark - just tests and lint, (2) Yes - please provide the instruction and what it measures." If provided, pass via `--benchmark "instruction"` on `new`. The `--benchmark` value is always a **generative instruction string** - text that tells the orchestrating Claude what to evaluate during the TEST phase. It is NOT a shell command. The instruction typically references a file containing the checklist, e.g., `--benchmark "Read MODEL_BENCHMARK.md and evaluate each [ ] item. Mark [x] if passing. Report remaining [ ] count as violation score."` The benchmark runs during TEST phase only - IMPLEMENT and REVIEW phases must NOT evaluate the benchmark
-- **Objective** can reference files for full context: e.g., `--objective "Implement the program defined in PROGRAM.md (read .claude/skills/auto-build-claw/PROGRAM.md)"`. This avoids cramming long objectives into command-line arguments. Use `PROGRAM.md` for complex objectives and `MODEL_BENCHMARK.md` (or any `*_BENCHMARK.md`) for benchmark checklists
+- **Objective** can reference files for full context: e.g., `--objective "Implement the program defined in PROGRAM.md (read .claude/skills/autobuild/PROGRAM.md)"`. This avoids cramming long objectives into command-line arguments. Use `PROGRAM.md` for complex objectives and `MODEL_BENCHMARK.md` (or any `*_BENCHMARK.md`) for benchmark checklists
 
 ## Program execution
 
@@ -157,7 +157,7 @@ orchestrate new --type full --objective "improve D3 score" --iterations 5 --benc
 orchestrate start --understanding "I will spawn 3 research agents to investigate D3 failures"
 
 # complete phase - record what was done, which agents, and output file
-orchestrate end --evidence "3 agents found rotation errors" --agents "researcher,architect,product_manager" --output-file ".auto-build-claw/phase_01_research/findings.md"
+orchestrate end --evidence "3 agents found rotation errors" --agents "researcher,architect,product_manager" --output-file ".autobuild/phase_01_research/findings.md"
 
 # check progress
 orchestrate status

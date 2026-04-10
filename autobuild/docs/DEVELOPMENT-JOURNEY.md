@@ -1,10 +1,10 @@
 # Development Journey
 
-This document captures the development history of auto-build-claw from initial concept to v3 with 0 benchmark violations.
+This document captures the development history of autobuild from initial concept to v3 with 0 benchmark violations.
 
 ## Origin
 
-Auto-build-claw was created to solve a fundamental problem with autonomous AI coding: **AI agents cut corners when allowed to self-direct their workflow.** They skip research, self-review instead of spawning independent agents, combine phases to save time, and game benchmarks by targeting specific test cases rather than fixing underlying issues.
+Autobuild was created to solve a fundamental problem with autonomous AI coding: **AI agents cut corners when allowed to self-direct their workflow.** They skip research, self-review instead of spawning independent agents, combine phases to save time, and game benchmarks by targeting specific test cases rather than fixing underlying issues.
 
 The solution: a pull-based orchestrator where the AI pulls instructions from a state machine rather than deciding its own workflow. The orchestrator enforces phase boundaries, requires independent agents for review, and validates every phase transition through gates that run in isolated subprocess sessions.
 
@@ -83,7 +83,7 @@ Several design decisions came directly from user corrections during development:
 - **"Transitions don't need YAML, just update phases"** - forward transitions are implicit (workflow.yaml sequence), backward are explicit (reject_to on phases)
 - **"_REVIEW? Looks like overfit"** - led to merging FULL::PLAN_REVIEW into FULL::PLAN
 - **"PLAN_BREAKDOWN not needed, just needs clear prompts"** - led to using PLANNING::PLAN via :: namespacing instead of a separate phase name
-- **"Work on _dev copy, don't break running orchestrator"** - led to the dev copy pattern where changes go in `auto-build-claw_dev/` while stable `auto-build-claw/` runs orchestration
+- **"Work on _dev copy, don't break running orchestrator"** - led to the dev copy pattern where changes go in `autobuild_dev/` while stable `autobuild/` runs orchestration
 - **"Are you running benchmark at all?"** - led to gatekeeper benchmark enforcement requiring concrete execution evidence (scores, counts)
 - **"Benchmark scoring - points left unresolved (unchecked)"** - benchmark score = count of remaining `[ ]` items, evaluated every TEST phase
 

@@ -4,7 +4,7 @@ Bump the patch version number for all plugins in this marketplace. Does NOT touc
 
 ## Files to update
 
-1. `auto-build-claw/.claude-plugin/plugin.json` - `"version"` field
+1. `autobuild/.claude-plugin/plugin.json` - `"version"` field
 2. `devils-advocate/.claude-plugin/plugin.json` - `"version"` field
 3. `datascience/.claude-plugin/plugin.json` - `"version"` field
 4. `journal/.claude-plugin/plugin.json` - `"version"` field

@@ -1,4 +1,4 @@
-# Auto Build Claw
+# Autobuild
 
 Autonomous iteration orchestrator for Claude Code. Breaks complex work into structured phases with multi-agent review, independent gates, and auditable state.
 
@@ -25,7 +25,7 @@ The `--objective` flag takes a text string that tells the orchestrating agent wh
 
 ```bash
 orchestrate.py new --type full \
-  --objective "Implement the program defined in PROGRAM.md (read .claude/skills/auto-build-claw/PROGRAM.md)" \
+  --objective "Implement the program defined in PROGRAM.md (read .claude/skills/autobuild/PROGRAM.md)" \
   --iterations 3
 ```
 

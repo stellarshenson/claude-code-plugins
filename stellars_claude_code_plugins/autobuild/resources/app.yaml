@@ -27,7 +27,7 @@
 
 # Application identity - change these to rebrand the orchestrator
 app:
-  name: "Auto Build Claw"
+  name: "Autobuild"
   description: "YAML-driven build iteration orchestrator"
   hypothesis_max_deferred_iterations: 3
   safety_cap_iterations: 20
@@ -42,8 +42,8 @@ app:
   note_min_tokens: 50               # context/failure note per transition (acknowledged/dismissed/processed) (~concrete data points and code refs)
   # cmd: the CLI command path shown in all help text and instructions.
   # Must match the actual script location relative to project root.
-  cmd: "python .claude/skills/auto-build-claw/orchestrate.py"
-  artifacts_dir: ".auto-build-claw"
+  cmd: "python .claude/skills/autobuild/orchestrate.py"
+  artifacts_dir: ".autobuild"
 
 # Display formatting - controls visual separators in CLI output
 # Example: separator_width=70 with separator="─" produces:
@@ -325,7 +325,7 @@ messages:
 # CLI help strings - used by argparse for --help output
 # Change these to customize the CLI documentation
 cli:
-  description: "Auto Build Claw - YAML-driven build iteration orchestrator."
+  description: "Autobuild - YAML-driven build iteration orchestrator."
   epilog: |
     Commands (10 total):
       {cmd} new --type full --objective "..." --iterations N

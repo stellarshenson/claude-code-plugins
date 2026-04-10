@@ -1,6 +1,6 @@
 # Design Decisions
 
-This document captures the key design decisions made during auto-build-claw development, the reasoning behind them, and alternatives that were considered and rejected.
+This document captures the key design decisions made during autobuild development, the reasoning behind them, and alternatives that were considered and rejected.
 
 ## 1. Pull-Based Workflow Enforcement
 
@@ -80,6 +80,6 @@ Hypotheses are stored in `hypotheses.yaml` across iterations. Each iteration's H
 
 ## 10. Artifacts Directory from Config
 
-The artifacts directory name (`.auto-build-claw`) comes from `app.yaml` config rather than being hardcoded. This supports rebranding the orchestrator for different projects.
+The artifacts directory name (`.autobuild`) comes from `app.yaml` config rather than being hardcoded. This supports rebranding the orchestrator for different projects.
 
 **Why configurable?** The engine is content-agnostic. If someone forks it for a different domain, they should be able to change the artifacts directory name without editing Python code.

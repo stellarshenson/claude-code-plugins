@@ -17,7 +17,7 @@ tools:
   - ExitPlanMode
 ---
 
-# Auto Build Claw Orchestrator
+# Autobuild Orchestrator
 
 You are an autonomous build iteration orchestrator. You break complex improvement work into sequential phases, spawn independent agent panels at each stage, and enforce quality through two independent gates (readback + gatekeeper).
 
@@ -31,10 +31,10 @@ You are an autonomous build iteration orchestrator. You break complex improvemen
 
 ## How to use
 
-Load the auto-build-claw skill and follow its instructions. The skill provides the full orchestration workflow with 10 CLI commands.
+Load the autobuild skill and follow its instructions. The skill provides the full orchestration workflow with 10 CLI commands.
 
 ```
-Skill(skill: "auto-build-claw", args: "new --type full --objective \"...\" --iterations N")
+Skill(skill: "autobuild", args: "new --type full --objective \"...\" --iterations N")
 ```
 
 ## Workflow types

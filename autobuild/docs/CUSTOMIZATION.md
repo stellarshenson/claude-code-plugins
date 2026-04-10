@@ -1,6 +1,6 @@
 # Customization Guide
 
-The auto-build-claw engine is content-agnostic. All domain-specific behaviour lives in YAML. To adapt it for a different project, edit the YAML files - no Python changes needed.
+The autobuild engine is content-agnostic. All domain-specific behaviour lives in YAML. To adapt it for a different project, edit the YAML files - no Python changes needed.
 
 ## Changing Phase Templates
 

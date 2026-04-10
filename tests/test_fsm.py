@@ -2,7 +2,7 @@
 
 import pytest
 
-from stellars_claude_code_plugins.engine.fsm import (
+from stellars_claude_code_plugins.autobuild.fsm import (
     ADVANCE,
     COMPLETE,
     END,
