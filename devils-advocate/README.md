@@ -78,8 +78,9 @@ Each iteration targeted the highest-residual concern. The math decided priority 
 
 | Example | Persona | Target | Concerns | Score |
 |---------|---------|--------|----------|-------|
+| [Executive pushback](examples/executive-pushback-analysis.md) | VP reviewing vendor deliverable, reads tone before facts | Executive summary with missed KPI | 21 concerns, 8 iterations | 269 -> 2 |
+| [README rewrite](examples/readme-rewrite-analysis.md) | Senior dev evaluating adoption, skimmer | PROGRAM.md + BENCHMARK.md | 7 concerns | 121.3 baseline |
 | [kg-builder condensed](examples/kg-builder-design-analysis.md) | Senior backend engineer, skeptical of agents | Architecture design doc | 2 shown (of 10) | 88.9 -> 15.5 |
 | [kg-builder full](examples/kg-builder-full-analysis.md) | Same | Same | All 10, 6 scorecards | 88.9 -> 15.5 |
-| [README rewrite](examples/readme-rewrite-analysis.md) | Senior dev evaluating adoption, skimmer | PROGRAM.md + BENCHMARK.md | 7 concerns | 121.3 baseline |
 
-The README rewrite example shows a different persona type - a "skimmer" who reads the first paragraph and scans headers, confused after 30 seconds moves on. Concerns are written in the devil's voice ("I still don't understand what this actually does") with concrete recommendations.
+The executive pushback example is the richest - 21 concerns evolving across 8 iterations, a positive concern (#15 SOW quotes reduce risk), concerns about tone and structure ("this reads like excuses", "I stopped reading after the third percentage"), and the full score trajectory from 269 to 2 including SVG infographics replacing text-based numbers in the final version.
