@@ -11,7 +11,7 @@ Data science project standards plugin for Claude Code. Enforces notebook structu
 | `rich-output` | Formatting output with the rich library, creating tables, progress bars |
 | `prompt-engineering` | Crafting system prompts, agent instructions, or LLM prompts |
 | `progressbars` | Implementing progress bars in scripts or notebooks (tqdm or rich) |
-| `footnotes` | Adding references, citations, or notes in notebook markdown cells |
+| `footnotes` | Adding references, citations, or notes in notebooks or markdown files |
 
 ## Commands (user-invoked)
 

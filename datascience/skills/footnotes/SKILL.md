@@ -1,11 +1,11 @@
 ---
 name: footnotes
-description: Markdown footnotes for Jupyter notebooks using anchor links and span elements. Auto-triggered when adding references, citations, notes, or footnotes in notebook markdown cells. Works in both JupyterLab and GitHub rendering.
+description: Markdown footnotes for Jupyter notebooks and markdown files using anchor links and span elements. Auto-triggered when adding references, citations, notes, or footnotes in any markdown context. Works in JupyterLab, GitHub, and standard markdown renderers.
 ---
 
-# Footnotes in Jupyter Markdown
+# Footnotes in Markdown
 
-Jupyter markdown doesn't support standard `[^1]` footnotes. Use this HTML-compatible pattern instead.
+Standard `[^1]` footnotes aren't supported in Jupyter or many markdown renderers. Use this HTML-compatible anchor pattern instead - works everywhere: JupyterLab, GitHub, GitLab, standard markdown.
 
 ## Pattern
 
