@@ -908,7 +908,7 @@ wheels = [
 
 [[package]]
 name = "stellars-claude-code-plugins"
-version = "0.8.73"
+version = "1.0.4"
 source = { editable = "." }
 dependencies = [
     { name = "pyyaml" },
