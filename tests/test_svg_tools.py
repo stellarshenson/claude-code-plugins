@@ -776,7 +776,349 @@ class TestSvgInfographicsCLI:
 
     def test_subcommand_help(self):
         """Each subcommand should accept --help."""
-        for sub in ["overlaps", "contrast", "alignment", "connectors", "connector"]:
+        for sub in ["overlaps", "contrast", "alignment", "connectors", "connector",
+                     "css", "primitives"]:
             r = self._run(sub, "--help")
-            # argparse exits with 0 on --help
             assert r.returncode == 0, f"{sub} --help failed"
+
+    def test_css_subcommand(self, simple_svg):
+        """css subcommand should run check_css."""
+        r = self._run("css", "--svg", str(simple_svg))
+        # simple_svg uses CSS classes - should pass
+        assert r.returncode == 0
+
+    def test_primitives_subcommand(self):
+        """primitives subcommand should generate geometry."""
+        r = self._run("primitives", "circle", "--cx", "100", "--cy", "100", "--r", "50")
+        assert r.returncode == 0
+        assert "center" in r.stdout
+
+
+# ---------------------------------------------------------------------------
+# calc_primitives.py tests
+# ---------------------------------------------------------------------------
+
+
+class TestCalcPrimitives:
+    """Tests for the primitive geometry generator."""
+
+    def test_rect_anchors(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_rect
+        r = gen_rect(20, 30, 200, 100)
+        assert r.anchors["top-left"].x == 20
+        assert r.anchors["top-left"].y == 30
+        assert r.anchors["bottom-right"].x == 220
+        assert r.anchors["bottom-right"].y == 130
+        assert r.anchors["center"].x == 120
+        assert r.anchors["center"].y == 80
+
+    def test_rect_rounded(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_rect
+        r = gen_rect(0, 0, 100, 80, r=3)
+        assert "Q" in r.svg  # rounded corners use quadratic bezier
+
+    def test_square(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_square
+        r = gen_square(10, 10, 50)
+        assert r.anchors["top-right"].x == 60
+        assert r.anchors["bottom-left"].y == 60
+
+    def test_circle_anchors(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_circle
+        r = gen_circle(100, 100, 50)
+        assert r.anchors["center"].x == 100
+        assert r.anchors["top"].y == 50
+        assert r.anchors["right"].x == 150
+        # Diagonal anchors at 45 degrees
+        assert abs(r.anchors["top-right"].x - 135.35) < 0.5
+
+    def test_ellipse(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_ellipse
+        r = gen_ellipse(200, 100, 80, 40)
+        assert r.anchors["left"].x == 120
+        assert r.anchors["right"].x == 280
+        assert r.anchors["top"].y == 60
+
+    def test_cube_fill(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_cube
+        r = gen_cube(50, 50, 100, 80, mode="fill")
+        assert "front-top-left" in r.anchors
+        assert "back-top-right" in r.anchors
+        assert "fill-opacity" in r.svg
+
+    def test_cube_wire(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_cube
+        r = gen_cube(50, 50, 100, 80, mode="wire")
+        assert 'fill="none"' in r.svg
+
+    def test_cylinder_fill(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_cylinder
+        r = gen_cylinder(200, 50, 60, 20, 100, mode="fill")
+        assert r.anchors["top-center"].y == 50
+        assert r.anchors["bottom-center"].y == 150
+        assert "A" in r.svg  # arcs for ellipses
+
+    def test_cylinder_wire(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_cylinder
+        r = gen_cylinder(200, 50, 60, 20, 100, mode="wire")
+        assert "stroke-dasharray" in r.svg  # hidden bottom arc
+
+    def test_axis_xy(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_axis
+        r = gen_axis(80, 200, 300, axes="xy", tick_count=5)
+        assert r.anchors["origin"].x == 80
+        assert r.anchors["x-end"].x == 380
+        assert r.anchors["y-end"].y == -100  # 200 - 300
+        assert "x-tick-0" in r.anchors
+        assert "y-tick-0" in r.anchors
+        assert "<polygon" in r.svg  # arrow tips
+
+    def test_axis_xyz(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_axis
+        r = gen_axis(200, 200, 150, axes="xyz")
+        assert "z-end" in r.anchors
+        assert r.anchors["z-end"].x < 200  # z goes left
+
+    def test_axis_x_only(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_axis
+        r = gen_axis(50, 100, 200, axes="x")
+        assert "x-end" in r.anchors
+        assert "y-end" not in r.anchors
+
+    def test_spline_basic(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_spline
+        pts = [(0, 0), (50, 100), (100, 50), (150, 80)]
+        r = gen_spline(pts, num_samples=20)
+        assert r.anchors["start"].x == 0
+        assert r.anchors["end"].x == 150
+        assert "M" in r.path_d
+        assert "L" in r.path_d
+
+    def test_spline_passes_through_control_points(self):
+        """PCHIP must interpolate (not approximate) - passes exactly through control points."""
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import pchip_interpolate
+        xs = [0, 50, 100, 150, 200]
+        ys = [10, 80, 30, 90, 50]
+        points = pchip_interpolate(xs, ys, num_samples=201)
+        # Check that control points are hit (within rounding tolerance)
+        for x, y in zip(xs, ys):
+            nearest = min(points, key=lambda p: abs(p.x - x))
+            assert abs(nearest.y - y) < 0.5, f"Control point ({x},{y}) not hit: got {nearest}"
+
+    def test_spline_monotone_preservation(self):
+        """PCHIP preserves monotonicity - no overshooting between knots."""
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import pchip_interpolate
+        xs = [0, 50, 100, 150]
+        ys = [0, 100, 100, 0]  # flat plateau in middle
+        points = pchip_interpolate(xs, ys, num_samples=100)
+        # Between x=50 and x=100, y should stay at or near 100 (not overshoot)
+        plateau = [p for p in points if 50 <= p.x <= 100]
+        for p in plateau:
+            assert p.y <= 101, f"Overshoot at x={p.x}: y={p.y} (expected <= 100)"
+
+    def test_diamond(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_diamond
+        r = gen_diamond(200, 100, 80, 60)
+        assert r.anchors["top"].y == 70
+        assert r.anchors["bottom"].y == 130
+        assert r.anchors["left"].x == 160
+        assert r.anchors["right"].x == 240
+
+    def test_hexagon(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_hexagon
+        r = gen_hexagon(300, 200, 50, flat_top=True)
+        assert "v0" in r.anchors
+        assert "v5" in r.anchors
+        assert r.anchors["area"].x > 0  # area computed by shapely
+        assert "polygon" in r.svg
+
+    def test_hexagon_pointy_top(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_hexagon
+        r = gen_hexagon(300, 200, 50, flat_top=False)
+        # Pointy-top (offset=30): vertices at different angles than flat-top
+        assert len([k for k in r.anchors if k.startswith("v")]) == 6
+
+    def test_star_five_point(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_star
+        r = gen_star(200, 200, 50)
+        assert "tip0" in r.anchors
+        assert "tip4" in r.anchors
+        assert "valley0" in r.anchors
+        assert r.anchors["top"].y < 200  # top tip above center
+
+    def test_star_custom_points(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_star
+        r = gen_star(200, 200, 50, inner_r=30, points=6)
+        assert "tip5" in r.anchors
+
+    def test_arc_quarter(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_arc
+        r = gen_arc(200, 200, 80, 0, 90)
+        assert r.anchors["start"].x > 200  # right side
+        assert r.anchors["end"].y < 200  # top (SVG y inverted)
+        assert "A" in r.path_d  # arc command
+        assert r.anchors["label"].x > 200  # label in quadrant 1
+
+    def test_sphere_fill(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_sphere
+        r = gen_sphere(200, 200, 50, mode="fill")
+        assert r.anchors["center"].x == 200
+        assert r.anchors["top"].y == 150
+        assert "circle" in r.svg
+        assert "ellipse" in r.svg  # highlight
+
+    def test_sphere_wire(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_sphere
+        r = gen_sphere(200, 200, 50, mode="wire")
+        assert 'fill="none"' in r.svg
+        assert r.svg.count("ellipse") == 2  # equator + meridian
+
+    def test_cuboid(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_cuboid
+        r = gen_cuboid(50, 50, 120, 80, 60, mode="fill")
+        assert "front-top-left" in r.anchors
+        assert "front-center" in r.anchors
+        assert "top-center" in r.anchors
+        assert "fill-opacity" in r.svg
+
+    def test_plane(self):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_plane
+        r = gen_plane(100, 200, 300, 100, tilt=30)
+        assert r.anchors["front-left"].x == 100
+        assert r.anchors["front-right"].x == 400
+        assert r.anchors["back-left"].y < 200  # tilted upward
+        assert "Z" in r.path_d  # closed path
+
+    def test_primitives_cli_rect(self):
+        r = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "calc_primitives.py"),
+             "rect", "--x", "20", "--y", "30", "--width", "200", "--height", "100"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0
+        assert "top-left" in r.stdout
+        assert "center" in r.stdout
+
+    def test_primitives_cli_spline(self):
+        r = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "calc_primitives.py"),
+             "spline", "--points", "0,0 50,100 100,50 150,80", "--samples", "20"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0
+        assert "Path data" in r.stdout
+
+    def test_primitives_cli_axis(self):
+        r = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "calc_primitives.py"),
+             "axis", "--origin", "80,200", "--length", "300", "--axes", "xyz", "--ticks", "5"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0
+        assert "z-end" in r.stdout
+
+
+# ---------------------------------------------------------------------------
+# check_css.py tests
+# ---------------------------------------------------------------------------
+
+
+class TestCheckCSS:
+    """Tests for the CSS compliance checker."""
+
+    def test_clean_svg_passes(self, simple_svg):
+        """SVG with proper CSS classes should pass."""
+        from stellars_claude_code_plugins.svg_tools.check_css import check_css_compliance
+        violations, stats = check_css_compliance(str(simple_svg))
+        errors = [v for v in violations if v.severity == "error"]
+        assert len(errors) == 0
+
+    def test_inline_fill_detected(self, tmp_path):
+        """Text with inline fill="#hex" should be flagged."""
+        svg = tmp_path / "inline.svg"
+        svg.write_text(textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
+              <style>.fg-1 { fill: #1e3a5f; }</style>
+              <text x="20" y="40" font-size="12" fill="#ff0000">Bad inline fill</text>
+            </svg>
+        """))
+        from stellars_claude_code_plugins.svg_tools.check_css import check_css_compliance
+        violations, _ = check_css_compliance(str(svg))
+        rules = [v.rule for v in violations]
+        assert "inline-fill-on-text" in rules
+
+    def test_forbidden_color_detected(self, tmp_path):
+        """#000000 and #ffffff should be flagged."""
+        svg = tmp_path / "forbidden.svg"
+        svg.write_text(textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
+              <style>.fg-1 { fill: #1e3a5f; }</style>
+              <rect x="0" y="0" width="400" height="100" fill="#000000"/>
+              <text x="20" y="40" font-size="12" class="fg-1">Text</text>
+            </svg>
+        """))
+        from stellars_claude_code_plugins.svg_tools.check_css import check_css_compliance
+        violations, _ = check_css_compliance(str(svg))
+        rules = [v.rule for v in violations]
+        assert "forbidden-color" in rules
+
+    def test_text_opacity_detected(self, tmp_path):
+        """Text with opacity attribute should be flagged."""
+        svg = tmp_path / "opacity.svg"
+        svg.write_text(textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
+              <style>.fg-1 { fill: #1e3a5f; }</style>
+              <text x="20" y="40" font-size="12" class="fg-1" opacity="0.5">Faded text</text>
+            </svg>
+        """))
+        from stellars_claude_code_plugins.svg_tools.check_css import check_css_compliance
+        violations, _ = check_css_compliance(str(svg))
+        rules = [v.rule for v in violations]
+        assert "text-opacity" in rules
+
+    def test_missing_dark_mode_warning(self, tmp_path):
+        """Light class without dark override should warn."""
+        svg = tmp_path / "no_dark.svg"
+        svg.write_text(textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
+              <style>.fg-1 { fill: #1e3a5f; }</style>
+              <text x="20" y="40" font-size="12" class="fg-1">No dark mode</text>
+            </svg>
+        """))
+        from stellars_claude_code_plugins.svg_tools.check_css import check_css_compliance
+        violations, stats = check_css_compliance(str(svg))
+        rules = [v.rule for v in violations if v.severity == "warning"]
+        assert "missing-dark-override" in rules
+
+    def test_css_cli(self, simple_svg):
+        """CLI should work end-to-end."""
+        r = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "check_css.py"), "--svg", str(simple_svg)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0
+
+    def test_css_cli_with_violations(self, tmp_path):
+        """CLI should exit 1 on errors."""
+        svg = tmp_path / "bad.svg"
+        svg.write_text(textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
+              <style>.fg-1 { fill: #1e3a5f; }</style>
+              <text x="20" y="40" font-size="12" fill="#ff0000">Inline fill</text>
+              <rect x="0" y="0" width="400" height="100" fill="#000000"/>
+            </svg>
+        """))
+        r = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "check_css.py"), "--svg", str(svg)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 1
+        assert "ERRORS" in r.stdout
+
+    def test_real_example_runs(self):
+        """CSS checker should not crash on real example SVGs."""
+        examples = [f for f in sorted(EXAMPLES_DIR.glob("*.svg")) if "swatch" not in f.name][:3]
+        for svg in examples:
+            from stellars_claude_code_plugins.svg_tools.check_css import check_css_compliance
+            violations, stats = check_css_compliance(str(svg))
+            assert stats["light_classes"] > 0, f"No CSS classes in {svg.name}"
