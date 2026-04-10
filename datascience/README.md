@@ -11,6 +11,7 @@ Data science project standards plugin for Claude Code. Enforces notebook structu
 | `rich-output` | Formatting output with the rich library, creating tables, progress bars |
 | `prompt-engineering` | Crafting system prompts, agent instructions, or LLM prompts |
 | `progressbars` | Implementing progress bars in scripts or notebooks (tqdm or rich) |
+| `footnotes` | Adding references, citations, or notes in notebook markdown cells |
 
 ## Commands (user-invoked)
 
@@ -25,6 +26,7 @@ Data science project standards plugin for Claude Code. Enforces notebook structu
 | `/datascience:fix-notebook` | Restructure a notebook to comply with all standards |
 | `/datascience:fix-project` | Port existing project to copier-data-science template or update to latest |
 | `/datascience:challenge` | Full psychological prompting stack for difficult problems - stakes + incentive + challenge |
+| `/datascience:apply-footnotes` | Add Jupyter-compatible footnotes (anchor links + span) to notebooks or markdown |
 
 ## Prompt Engineering
 
