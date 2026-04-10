@@ -5,7 +5,7 @@ description: SVG validation tools and verification workflow - overlap detection,
 
 # SVG Validation and Verification
 
-Five validation tools shipped with the `stellars-claude-code-plugins` pip package. Install once, use everywhere via the `svg-infographics` CLI.
+Seven tools shipped with the `stellars-claude-code-plugins` pip package. Install once, use everywhere via the `svg-infographics` CLI.
 
 ```bash
 pip install stellars-claude-code-plugins
@@ -75,6 +75,15 @@ Connector quality: zero-length segments, edge-snap, L-routing, label clearance.
 svg-infographics connectors --svg file.svg
 ```
 
+## Tool: css
+
+CSS compliance checker. Validates that all colours are CSS-controlled, no inline fills on text, no forbidden colours (#000000/#ffffff), dark mode overrides present.
+
+```bash
+svg-infographics css --svg file.svg              # Check compliance
+svg-infographics css --svg file.svg --strict     # Treat warnings as errors
+```
+
 ## Tool: connector
 
 Connector geometry calculator. Computes angle, stem coordinates, arrowhead points, SVG snippet.
@@ -85,6 +94,30 @@ svg-infographics connector --from 520,55 --to 590,135 --margin 4 --head-size 10,
 # With pill cutout (splits into two segments):
 svg-infographics connector --from 353,122 --to 200,84 --margin 3 --cutout 236,90,78,13
 ```
+
+## Tool: primitives
+
+Geometry generator returning exact anchor coordinates for precise element placement. Claude agents should use this instead of approximating positions. Run `svg-infographics primitives --help` for the full list.
+
+```bash
+# 2D shapes
+svg-infographics primitives rect --x 20 --y 30 --width 200 --height 100 --radius 3
+svg-infographics primitives circle --cx 400 --cy 200 --r 50
+svg-infographics primitives hexagon --cx 300 --cy 200 --r 40
+svg-infographics primitives diamond --cx 200 --cy 100 --width 80 --height 60
+svg-infographics primitives arc --cx 200 --cy 200 --r 80 --start 0 --end 90
+
+# 3D isometric shapes
+svg-infographics primitives cube --x 50 --y 50 --width 100 --height 80 --mode fill
+svg-infographics primitives cylinder --cx 200 --cy 50 --rx 60 --ry 20 --height 100
+svg-infographics primitives sphere --cx 300 --cy 200 --r 50
+
+# Curves and layout
+svg-infographics primitives spline --points "80,200 150,80 300,120 450,60" --samples 50
+svg-infographics primitives axis --origin 80,200 --length 300 --axes xyz --ticks 5
+```
+
+Each primitive returns named anchor points (center, top-left, vertices, tips, etc.) for precise positioning of text, connectors, and labels relative to shapes.
 
 ## Pre-Delivery Checklist
 
@@ -114,6 +147,7 @@ svg-infographics connector --from 353,122 --to 200,84 --margin 3 --cutout 236,90
 - [ ] `svg-infographics overlaps` - all violations reviewed
 - [ ] `svg-infographics contrast` - zero FAIL in production
 - [ ] `svg-infographics alignment` - topology passes
+- [ ] `svg-infographics css` - no inline fills, no forbidden colours, dark mode verified
 - [ ] Browser visual check via Playwright
 
 ## Multi-Agent Validation Workflow

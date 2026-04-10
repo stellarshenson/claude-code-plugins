@@ -32,7 +32,7 @@ Before creating any SVG content:
 
 Write the grid BEFORE any visual elements. This is the blueprint.
 
-1. **Use Python to calculate the grid** - NEVER eyeball positions. Run a Python script to compute all x/y positions, widths, gaps, clearances, vertical rhythm, viewBox dimensions
+1. **Use `svg-infographics primitives` to calculate the grid** - NEVER eyeball positions. Use `primitives rect`, `primitives circle`, `primitives axis` etc. to get exact anchor coordinates for all elements. For data-driven curves use `primitives spline --points "..." --samples N`
 2. Write `=== GRID ===` comment: viewBox, all x/y positions, rhythm step, margins, arrow paths
 3. Write `=== LAYOUT TOPOLOGY ===` comment: container-child, h-stack, v-stack, mirror, flow relationships
 4. No visual elements yet - grid only
@@ -46,11 +46,12 @@ Structural elements at grid positions. No text, no icons, no content.
 
 1. `<style>` block with all CSS classes + `@media (prefers-color-scheme: dark)` overrides
 2. `<g id="guide-grid" display="none">` reference lines
-3. Card `<path>` outlines (flat-top, rounded-bottom r=3, fill-opacity 0.04, stroke 1)
+3. Card `<path>` outlines - use `svg-infographics primitives rect --radius 3` for exact anchor coordinates (flat-top, rounded-bottom, fill-opacity 0.04, stroke 1)
 4. Accent bars (`<rect>` height 5, opacity 0.6, flush with card top)
 5. Arrows using horizontal-first rule with `svg-infographics connector` for diagonal connectors
 6. Connectors: chamfered L-routes (4px diagonal at 90-degree turns)
 7. Track line segments with cutouts (if timeline)
+8. For 3D shapes use `primitives cube/cylinder/sphere/cuboid/plane` for isometric coordinates
 8. **Verify**: every coordinate matches grid comment
 
 **GATE**: SVG has style block, card outlines, accent bars, arrows - but NO `<text>` content.
@@ -77,11 +78,12 @@ Add content at grid positions:
 **DO NOT deliver without running validation.**
 
 1. Run `svg-infographics overlaps --svg {file}` - record summary
-2. Classify each violation individually (no bulk dismissals): Fixed / Accepted / Checker limitation
-3. Fix layout errors, re-run, record new summary
-4. Confirm: no #000000/#ffffff, all colours in swatch, transparent background, no width/height on `<svg>`
+2. Run `svg-infographics css --svg {file}` - record CSS compliance
+3. Classify each violation individually (no bulk dismissals): Fixed / Accepted / Checker limitation
+4. Fix layout and CSS errors, re-run checkers, record new summary
+5. Confirm: no #000000/#ffffff, all colours in swatch, transparent background, no width/height on `<svg>`
 
-**GATE**: Paste validation script output in response. If scripts not run, phase incomplete.
+**GATE**: Paste validation output (overlaps + CSS) in response. If scripts not run, phase incomplete.
 
 ## Per-Image Checklist
 

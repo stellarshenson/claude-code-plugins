@@ -22,7 +22,7 @@ Apply these standards when generating or modifying SVG infographics for document
 7. **Named Component Groups** - Wrap logical chunks in `<g id="component-name">`. Lowercase-hyphen names
 8. **Transparent Background** - `fill="transparent"` on root rect. No full-viewport background fills
 9. **Contrast Rules** - Every element contrasts its immediate background using theme colours. No `#000000` or `#ffffff`
-10. **Verify All Three** - Run `svg-infographics contrast`, `svg-infographics overlaps`, `svg-infographics alignment` before delivery
+10. **Verify All Four** - Run `svg-infographics contrast`, `svg-infographics overlaps`, `svg-infographics alignment`, `svg-infographics css` before delivery
 11. **Examples** - Read relevant SVG examples from `examples/` before creating each image
 
 ## CSS Theme Classes and Dark Mode Detection
@@ -61,7 +61,7 @@ Default to solid fills. Opacity appropriate for:
 
 ### CSS-First Rule
 
-**MANDATORY**: Define all colours in `<style>` block, reference via `class=`. Inline `fill="#hex"` acceptable only for structural shape fills, fixed-colour swatch elements, and decorative low-opacity imagery.
+**MANDATORY**: Define all colours in `<style>` block, reference via `class=`. Inline `fill="#hex"` acceptable only for structural shape fills, fixed-colour swatch elements, and decorative low-opacity imagery. Validate with `svg-infographics css --svg file.svg`.
 
 ### Dark Mode Limitations
 
@@ -259,7 +259,7 @@ Template: `translate(tipX, tipY) rotate(angleDeg)` wrapping:
 
 Angle = `atan2(dy, dx)` degrees. Stem ends at `-10` (arrowhead base). Arrows fully opaque.
 
-**MANDATORY for diagonal connectors**: Run `svg-infographics connector` to compute geometry. Never hand-calculate angles.
+**MANDATORY for diagonal connectors**: Run `svg-infographics connector` to compute geometry. Never hand-calculate angles. For all shapes (rect, circle, hexagon, cube, cylinder, sphere, etc.) use `svg-infographics primitives <shape>` to get exact anchor coordinates - never approximate positions.
 
 ### Angular Arrow Design (Chamfered L-Routing)
 
@@ -336,4 +336,6 @@ Organic visual forms - flowing paths, concentric rings, orbital loops, funnels, 
 - **Overlapping elements**: Re-verify against grid comment, run `svg-infographics overlaps`
 - **Arrows wrong direction**: Use horizontal-first rule with `svg-infographics connector`
 - **Colours off-theme**: Check every hex against swatch, run `svg-infographics contrast`
+- **CSS compliance errors**: Run `svg-infographics css --svg file.svg` to find inline fills and missing dark mode overrides
+- **Imprecise coordinates**: Use `svg-infographics primitives <shape>` for exact anchor points
 - **Wrong size in markdown**: Remove `width`/`height` from `<svg>`, use `viewBox` only

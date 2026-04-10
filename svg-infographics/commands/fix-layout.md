@@ -32,6 +32,7 @@ Diagnose and fix layout problems: element overlaps, alignment drift, spacing vio
    - Fix horizontal alignment (shared x values)
    - Adjust card padding (10px+ from edges)
    - Recalculate arrow geometry with `svg-infographics connector`
+   - Use `svg-infographics primitives <shape>` for exact anchor coordinates when repositioning
    - Update grid comment to match actual positions
 
 4. **Re-run validation** to confirm resolution

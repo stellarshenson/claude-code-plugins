@@ -41,11 +41,11 @@ Read these skills before generating anything - they are the source of truth:
 
 4. **Per image** - execute all 6 phases sequentially:
    - Read 3-5 relevant examples from `examples/`
-   - Calculate grid with Python (Bash tool)
-   - Build scaffold from grid positions
+   - Calculate grid with `svg-infographics primitives` for exact anchor coordinates (Bash tool)
+   - Build scaffold from grid positions using primitives for shapes and connectors
    - Add content at documented positions
    - Verify arrows and add finishing touches
-   - Run `svg-infographics overlaps`, `svg-infographics contrast`, `svg-infographics alignment`
+   - Run `svg-infographics overlaps`, `svg-infographics contrast`, `svg-infographics alignment`, `svg-infographics css`
    - Classify every violation individually
 
 5. **Report**: List created files, validation results, any remaining items

@@ -25,6 +25,7 @@ Run the full validation suite on SVG files and report findings.
    - `svg-infographics contrast --svg {file}`
    - `svg-infographics alignment --svg {file}`
    - `svg-infographics connectors --svg {file}`
+   - `svg-infographics css --svg {file}`
 
 3. **Classify findings** per the fail-first rule:
    - Every finding is a real defect until individually defended

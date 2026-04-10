@@ -23,6 +23,7 @@ Apply fixes to existing SVG files for CSS compliance, contrast, dark mode suppor
 1. **Identify target**: Read the SVG file(s) to fix
 
 2. **Run diagnostics** (create tasks per checker):
+   - `svg-infographics css --svg {file}` - identify inline fills, forbidden colours, missing dark mode
    - `svg-infographics contrast --svg {file} --show-all` - identify FAIL and warn entries
    - `svg-infographics overlaps --svg {file}` - identify spacing violations
    - `svg-infographics alignment --svg {file}` - identify grid snap issues
