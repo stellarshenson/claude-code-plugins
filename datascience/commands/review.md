@@ -1,6 +1,6 @@
 ---
 description: Review a notebook or script for compliance with data science standards
-allowed-tools: [Read, Glob, Grep, Bash]
+allowed-tools: [Read, Glob, Grep, Bash, Skill]
 argument-hint: "path to notebook or script to review"
 ---
 

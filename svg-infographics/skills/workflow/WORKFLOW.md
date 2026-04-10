@@ -81,7 +81,7 @@ Place structural elements at grid positions. No text, no icons, no content yet.
    - Manifold design: document fork/merge points in grid comment; fork uses one source colour, merge uses single pipeline colour (not mixed)
    - Connector endpoints connect to arrow stems or directly to card edges
 
-7. Place track line segments (if timeline) - unchanged from below
+7. For 3D shapes use `svg-infographics primitives cube/cylinder/sphere/cuboid/plane` for isometric coordinates
 
 8. Place track line segments (if timeline):
    - `<line>` from cx+r of one milestone to cx-r of next

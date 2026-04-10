@@ -9,14 +9,15 @@ Bump the patch version number for all plugins in this marketplace. Does NOT touc
 3. `datascience/.claude-plugin/plugin.json` - `"version"` field
 4. `journal/.claude-plugin/plugin.json` - `"version"` field
 5. `document-processing/.claude-plugin/plugin.json` - `"version"` field
-6. `.claude-plugin/marketplace.json` - `"version"` field in ALL plugin entries AND the marketplace `metadata.version`
+6. `svg-infographics/.claude-plugin/plugin.json` - `"version"` field
+7. `.claude-plugin/marketplace.json` - `"version"` field in ALL plugin entries AND the marketplace `metadata.version`
 
 ## Steps
 
 1. Read the current version from `.claude-plugin/marketplace.json` metadata.version
 2. Parse as semver (MAJOR.MINOR.PATCH)
 3. Increment PATCH by 1
-4. Update ALL version strings (5 plugin.json + 6 marketplace entries) to the new version
+4. Update ALL version strings (6 plugin.json + 7 marketplace entries) to the new version
 5. Report: `Plugin versions bumped: X.Y.Z -> X.Y.(Z+1)`
 
 ## Rules

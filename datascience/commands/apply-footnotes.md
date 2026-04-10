@@ -1,10 +1,12 @@
 ---
 description: Add or fix footnotes in a notebook or markdown file using Jupyter-compatible anchor pattern
-allowed-tools: [Read, Write, Edit, Glob, Grep]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Skill]
 argument-hint: "path to file and what to footnote, e.g. 'notebooks/01-kj-analysis.ipynb add citations for papers mentioned'"
 ---
 
 # Apply Footnotes
+
+Read the `datascience:footnotes` skill first - it is the single source of truth for the footnote pattern. Do NOT duplicate its content here.
 
 Add Jupyter-compatible footnotes to a notebook or markdown file. Converts inline references to superscript anchor links with a footnote section.
 

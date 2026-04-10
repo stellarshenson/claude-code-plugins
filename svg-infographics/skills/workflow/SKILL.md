@@ -103,7 +103,7 @@ Create `svg-workflow-checklist.md` with these check groups per image (`[x]` veri
 12. **Decorative imagery** - fg-1 colour, opacity 0.30-0.35
 13. **Colours** - no #000000/#ffffff, all from swatch
 14. **ViewBox** - dimensions match content, no width/height on `<svg>`
-15. **Validation** - check_overlaps summary, violations classified, layout errors fixed
+15. **Validation** - `svg-infographics overlaps` + `svg-infographics css` summaries, violations classified, errors fixed
 
 ## Detailed Phase Reference
 

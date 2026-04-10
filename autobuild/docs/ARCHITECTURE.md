@@ -5,14 +5,14 @@ Autonomous iteration orchestrator for Claude Code. Breaks complex work into stru
 ## Architecture
 
 ```
-orchestrate.py          Pure execution engine (loads YAML, manages state, runs gates)
-resources/
-  workflow.yaml         Iteration types: full, gc, hotfix (+ planning dependency)
-  phases.yaml           Phase start/end instruction templates with {variables}
-  agents.yaml           Agent definitions per phase + gate prompts
-  app.yaml              All display text, CLI help, messages (~120 keys)
+stellars_claude_code_plugins/autobuild/
+  orchestrator.py       Pure execution engine (loads YAML, manages state, runs gates)
   model.py              Typed dataclasses + load_model() + validate_model()
   fsm.py                Finite state machine (transitions, guards, actions)
+  resources/
+    workflow.yaml       Iteration types: full, gc, hotfix (+ planning dependency)
+    phases.yaml         Phase templates, agent definitions, gate prompts (all inline per phase)
+    app.yaml            All display text, CLI help, messages (~120 keys)
 ```
 
 The Python engine is content-agnostic. To build a different skill with the same orchestration pattern, edit only the YAML files.
@@ -24,7 +24,7 @@ The Python engine is content-agnostic. To build a different skill with the same 
 The `--objective` flag takes a text string that tells the orchestrating agent what to achieve. For complex objectives, reference a file:
 
 ```bash
-orchestrate.py new --type full \
+orchestrate new --type full \
   --objective "Implement the program defined in PROGRAM.md (read .claude/skills/autobuild/PROGRAM.md)" \
   --iterations 3
 ```
@@ -43,7 +43,7 @@ The orchestrating agent reads this file and uses it as the full specification. T
 The `--benchmark` flag is always a **generative instruction** - text that tells Claude what to evaluate. It is NOT a shell command.
 
 ```bash
-orchestrate.py new --type full \
+orchestrate new --type full \
   --objective "..." \
   --benchmark "Read BENCHMARK.md and evaluate each [ ] item. Mark [x] if passing. Report remaining [ ] count as violation score."
 ```
@@ -86,7 +86,7 @@ Score = count of `[ ]` items. Goal: 0.
 **Good items**:
 ```markdown
 - [ ] `fsm.py` exists in `resources/`
-- [ ] no `if iteration == 0` checks remain in `orchestrate.py`
+- [ ] no `if iteration == 0` checks remain in `orchestrate`
 - [ ] `--dry-run` flag exists on `new` command
 - [ ] RESEARCH exit criteria require specific files with line numbers
 ```
@@ -134,7 +134,7 @@ For work that produces measurable outputs, typical metrics to track:
 | **Best for** | Architecture, workflow, docs, config | Tests, perf, accuracy, coverage |
 | **Example objective** | "Implement FSM-driven orchestrator" | "Improve model mAP to 0.85" |
 | **Example benchmark** | `"Read BENCHMARK.md, evaluate [ ] items"` | `"Run pytest --tb=short, count failures"` |
-| **Example item** | `[ ] no hardcoded text in orchestrate.py` | `mAP >= 0.85` (from `make eval`) |
+| **Example item** | `[ ] no hardcoded text in orchestrate` | `mAP >= 0.85` (from `make eval`) |
 | **Tracks progress** | Items flip `[ ]` -> `[x]` across iterations | Score improves numerically |
 | **Discovers new work** | Claude adds new `[ ]` items as discovered | N/A - fixed test suite |
 | **Subjectivity** | Low if items are specific, high if vague | Zero - pass/fail numeric |

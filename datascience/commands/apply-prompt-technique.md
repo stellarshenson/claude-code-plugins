@@ -1,6 +1,6 @@
 ---
 description: Apply a prompt engineering technique to improve a prompt, system instruction, or agent definition
-allowed-tools: [Read, Write, Edit, Glob, Grep, AskUserQuestion]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Skill, AskUserQuestion]
 argument-hint: "describe the prompt or task to improve"
 ---
 

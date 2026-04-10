@@ -5,7 +5,7 @@ description: Use this skill when implementing progress bars in Python scripts or
 
 # Progress Bars Skill
 
-Implements progress bars in Python scripts and Jupyter notebooks. Full reference in `PROGRESSBAR.md`.
+Implements progress bars in Python scripts and Jupyter notebooks. Full reference in the sections below.
 
 ## Selection Rule
 
@@ -77,7 +77,7 @@ Common issues preventing rich Progress bars from completing properly:
 - **Bar frozen**: default refresh is 10/sec. Use `refresh_per_second=10` for standard loops or call `progress.refresh()`
 - **Multiple bars overwrite**: create tasks once before the loop, use `progress.reset(task, total=...)` per batch
 
-Full troubleshooting with code examples in `PROGRESSBAR.md`.
+Full troubleshooting with code examples in the sections below.
 
 ## Jupyter Compatibility
 
@@ -100,7 +100,7 @@ with Progress(...) as progress:
     ...
 ```
 
-Full details in `PROGRESSBAR.md`.
+Full details in the sections below.
 
 ## pyproject.toml
 

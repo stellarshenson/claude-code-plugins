@@ -62,7 +62,7 @@ v3 was a major refactoring driven by a 137-item benchmark (PROGRAM.md specificat
 
 **:: namespacing**: Phase and agent keys use `WORKFLOW::PHASE` notation. `FULL::RESEARCH` has different templates from `PLANNING::RESEARCH`. Resolution follows a 3-level fallback: `WORKFLOW::PHASE` -> bare `PHASE` -> `FULL::PHASE`. This lets gc/hotfix reuse full's phases without duplication.
 
-**Per-phase gates**: Each `WORKFLOW::PHASE` declares its own readback and gatekeeper prompts in `agents.yaml`. No generic fallback. `FULL::TEST::gatekeeper` knows about benchmarks. `FULL::RESEARCH::gatekeeper` checks for rich findings. Missing gate = validation error.
+**Per-phase gates**: Each `WORKFLOW::PHASE` declares its own readback and gatekeeper prompts in `phases.yaml`. No generic fallback. `FULL::TEST::gatekeeper` knows about benchmarks. `FULL::RESEARCH::gatekeeper` checks for rich findings. Missing gate = validation error.
 
 **Planning as dependency workflow**: `planning` workflow type with `dependency: true`. The `full` workflow declares `depends_on: planning`. Planning auto-chains before the first implementation iteration. Eliminates all `if iteration == 0` hardcoding.
 

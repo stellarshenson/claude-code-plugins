@@ -75,4 +75,4 @@ rich.print(f"""[white]Configuration[/white]
 
 ## Rich Output
 
-Use `rich.print()` with semantic colors. Single multiline print call, never multiple individual prints for related output. See `datascience:style` for color reference.
+Use `rich.print()` with semantic colors. Single multiline print call, never multiple individual prints for related output. See `datascience:rich-output` for color reference.

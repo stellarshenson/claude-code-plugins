@@ -187,7 +187,7 @@ Each score reflects three dimensions:
 
 The document score is the **total residual risk** - the raw sum of unaddressed risk. We optimise by **minimising** this number. A perfect document scores 0. The starting score equals the total absolute risk.
 
-**File naming convention**: `<name>-v<NN>_<score>.md` where score is the rounded document score (total residual risk). Example: `pcp-rnd-v02_54.md` means version 02 with residual risk of 54.
+**File naming convention**: `<name>_v<NN>_<score>.md` where score is the rounded document score (total residual risk). Example: `pcp_rnd_v02_54.md` means version 02 with residual risk of 54.
 
 **Biggest gaps**: List the 5 concerns with highest residual risk. These are the optimisation targets for the next iteration.
 
@@ -306,10 +306,10 @@ Some fixes create new problems. Document these as constraints:
 ```markdown
 ---
 
-## Ocena dokumentu (Devil's Advocate Scorecard)
+## Devil's Advocate Scorecard
 
 **Persona**: [devil role and key bias]
-**Dokument score**: [total residual risk] (niższy = lepszy, maks. [total absolute risk])
+**Document score**: [total residual risk] (lower = better, max. [total absolute risk])
 
 | # | Concern | Risk | Score | Residual | How addressed |
 |---|---------|------|-------|----------|---------------|

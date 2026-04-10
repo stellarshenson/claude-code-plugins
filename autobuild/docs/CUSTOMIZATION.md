@@ -27,7 +27,7 @@ FULL::RESEARCH:
 
 ## Changing Agent Definitions
 
-Edit `resources/agents.yaml`. Each `WORKFLOW::PHASE` section has `agents:` (list of agents) and `gates:` (readback + gatekeeper prompts).
+Edit `resources/phases.yaml`. Each `WORKFLOW::PHASE` section has `agents:` (list of agents) and `gates:` (readback + gatekeeper prompts).
 
 To add an agent to a phase:
 ```yaml
@@ -85,7 +85,7 @@ Dependency workflows auto-chain before the parent. They cannot be invoked direct
 
 ## Adding Auto-Actions
 
-Register the action handler in `orchestrate.py`:
+Register the action handler in `orchestrator.py`:
 ```python
 def _action_my_action(state: dict, phase: str):
     # do something after phase completes
@@ -109,7 +109,7 @@ Edit `resources/app.yaml`. Every user-facing string is a template with `{variabl
 
 ## Changing Gate Prompts
 
-Each phase declares its own gate prompts under `gates:` in `agents.yaml`:
+Each phase declares its own gate prompts under `gates:` in `phases.yaml`:
 
 ```yaml
 FULL::RESEARCH:
@@ -134,12 +134,12 @@ FULL::RESEARCH:
 
 After any YAML change, run:
 ```bash
-python orchestrate.py validate
+orchestrate validate
 ```
 
 This checks: workflow phases resolve, agent numbering is sequential, gate prompts have required variables, reject_to targets exist, auto_action names are registered, namespaced keys resolve correctly.
 
 For a full execution preview:
 ```bash
-python orchestrate.py new --type full --objective "test" --iterations 2 --dry-run
+orchestrate new --type full --objective "test" --iterations 2 --dry-run
 ```

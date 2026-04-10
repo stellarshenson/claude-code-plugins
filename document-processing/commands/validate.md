@@ -1,6 +1,6 @@
 ---
 description: Validate a document against source material for grounding and compliance
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Skill, AskUserQuestion]
 argument-hint: "path to document to validate, and source material to check against"
 ---
 

@@ -32,21 +32,23 @@ Theme swatch -> user approval -> per image:
   3. Scaffold (structural elements, no content)
   4. Content (text, icons, legends)
   5. Finishing (arrows verified, description comment)
-  6. Validation (check_overlaps, check_contrast, check_alignment)
+  6. Validation (svg-infographics overlaps, contrast, alignment, css)
 ```
 
 Each image completes all 6 phases before the next image starts. No batching.
 
 ## Validation Tools
 
-Five validation tools shipped with `pip install stellars-claude-code-plugins`, accessible via the `svg-infographics` CLI:
+Seven tools shipped with `pip install stellars-claude-code-plugins`, accessible via the `svg-infographics` CLI:
 
 ```bash
-svg-infographics overlaps --svg file.svg       # bounding box overlap detection
-svg-infographics contrast --svg file.svg       # WCAG 2.1 contrast (AA/AAA, light + dark)
-svg-infographics alignment --svg file.svg      # grid snapping, vertical rhythm, topology
-svg-infographics connectors --svg file.svg     # connector quality (zero-length, edge-snap)
-svg-infographics connector --from X,Y --to X,Y # diagonal connector geometry calculator
+svg-infographics overlaps --svg file.svg            # bounding box overlap detection
+svg-infographics contrast --svg file.svg            # WCAG 2.1 contrast (AA/AAA, light + dark)
+svg-infographics alignment --svg file.svg           # grid snapping, vertical rhythm, topology
+svg-infographics connectors --svg file.svg          # connector quality (zero-length, edge-snap)
+svg-infographics css --svg file.svg                 # CSS compliance (inline fills, dark mode)
+svg-infographics connector --from X,Y --to X,Y      # diagonal connector geometry calculator
+svg-infographics primitives rect --x 20 --y 30 ... # exact anchor coordinates for shapes
 ```
 
 ## Examples

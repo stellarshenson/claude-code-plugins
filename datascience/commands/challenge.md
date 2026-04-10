@@ -1,6 +1,6 @@
 ---
 description: Apply psychological prompting challenge - stakes, incentive, competitive framing for difficult problems
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Agent, AskUserQuestion]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, AskUserQuestion]
 argument-hint: "describe the problem that needs solving"
 ---
 

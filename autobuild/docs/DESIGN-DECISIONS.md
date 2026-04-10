@@ -20,7 +20,7 @@ Both run via `claude -p` subprocess - a separate Claude session that cannot acce
 
 **Why subprocess, not in-session?** An in-session evaluator shares context with the agent it's evaluating. It sees the agent's reasoning chain and is biased toward agreeing. The subprocess sees only structured evidence text.
 
-**Why per-phase gates, not generic?** Generic gates had `if phase == "TEST"` conditions in the prompt. This is the same anti-pattern as `if phase == "TEST"` in Python. Each phase declares its own gate prompt in `agents.yaml` under the `gates:` subsection. `FULL::TEST::gatekeeper` knows about benchmarks because that's what its prompt says. `FULL::RESEARCH::gatekeeper` checks for rich findings because that's what its prompt says.
+**Why per-phase gates, not generic?** Generic gates had `if phase == "TEST"` conditions in the prompt. This is the same anti-pattern as `if phase == "TEST"` in Python. Each phase declares its own gate prompt in `phases.yaml` under the `gates:` subsection. `FULL::TEST::gatekeeper` knows about benchmarks because that's what its prompt says. `FULL::RESEARCH::gatekeeper` checks for rich findings because that's what its prompt says.
 
 ## 3. FSM Lifecycle vs Orchestrator Routing
 
