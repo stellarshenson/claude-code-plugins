@@ -74,5 +74,12 @@ From a [knowledge graph CLI design document](https://github.com/stellarshenson/k
 
 Each iteration targeted the highest-residual concern. The math decided priority - concern #5 (missing confidence, residual 21.3) was addressed before #2 (optional features, residual 8.3) because its residual was 2.5x higher. Versioned documents (`DESIGN_v02.md` through `DESIGN_v06_16.md`) track exactly what changed and why at each step.
 
-- Condensed example (persona + 2 concerns + trajectory): [examples/kg-builder-design-analysis.md](examples/kg-builder-design-analysis.md)
-- Full analysis (all 10 concerns, 6 versioned scorecards): [examples/kg-builder-full-analysis.md](examples/kg-builder-full-analysis.md)
+### Examples
+
+| Example | Persona | Target | Concerns | Score |
+|---------|---------|--------|----------|-------|
+| [kg-builder condensed](examples/kg-builder-design-analysis.md) | Senior backend engineer, skeptical of agents | Architecture design doc | 2 shown (of 10) | 88.9 -> 15.5 |
+| [kg-builder full](examples/kg-builder-full-analysis.md) | Same | Same | All 10, 6 scorecards | 88.9 -> 15.5 |
+| [README rewrite](examples/readme-rewrite-analysis.md) | Senior dev evaluating adoption, skimmer | PROGRAM.md + BENCHMARK.md | 7 concerns | 121.3 baseline |
+
+The README rewrite example shows a different persona type - a "skimmer" who reads the first paragraph and scans headers, confused after 30 seconds moves on. Concerns are written in the devil's voice ("I still don't understand what this actually does") with concrete recommendations.
