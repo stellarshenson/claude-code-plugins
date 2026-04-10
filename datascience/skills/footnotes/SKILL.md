@@ -5,46 +5,84 @@ description: Markdown footnotes for Jupyter notebooks and markdown files using a
 
 # Footnotes in Markdown
 
-Standard `[^1]` footnotes aren't supported in Jupyter or many markdown renderers. Use this HTML-compatible anchor pattern instead - works everywhere: JupyterLab, GitHub, GitLab, standard markdown.
+Standard `[^1]` footnotes aren't supported in Jupyter or many markdown renderers. Use this HTML anchor pattern instead - proven to work in JupyterLab (including its id sanitizer), GitHub, and standard markdown.
+
+## How it works in JupyterLab
+
+1. Markdown writes `<span id="D005">`
+2. JupyterLab sanitizer renames `id` to `data-jupyter-id="D005"` (does NOT delete it)
+3. User clicks the blue superscript link `[<sup>D005</sup>](#D005)`
+4. JupyterLab's internal click handler matches `#D005` against `data-jupyter-id="D005"`
+5. Calls `scrollIntoView()` on the target element - page scrolls to the entry
 
 ## Pattern
 
-**In-text reference** (superscript link):
+**Inline reference** (clickable superscript in text):
 ```markdown
-Some claim[<sup>1</sup>](#fn1) and another point[<sup>2</sup>](#fn2).
+- dowód: [<sup>D005</sup>](#D005) dowody/03 komunikacja z matką/2023-09-06 pismo.pdf
 ```
+Renders as: clickable blue superscript **D005** followed by the file path.
 
-**Footnote section** (at bottom of cell or notebook):
+**Target anchor** (in footnotes/references section):
 ```markdown
+- <span id="D005">D005 `dowody/03 komunikacja z matką/2023-09-06 pismo.pdf`</span>
+```
+Renders as: bullet point with D005 label and monospace file path.
+
+## Requirements
+
+- Target **MUST** use `<span id="...">` (not `<div>`, not heading - span works reliably with JupyterLab sanitizer)
+- Inline link **MUST** use `(#DXXX)` hash format (not relative file path)
+- No `<br>` needed between entries - bullet points handle spacing
+- `<sup>` inside the link is optional (cosmetic superscript) but should **NOT** be inside the target span
+- IDs must be unique across the entire document
+
+## Numbering Schemes
+
+Use a prefix that matches the content:
+
+| Context | Pattern | Example |
+|---------|---------|---------|
+| Evidence/documents | `D001`, `D002` | `[<sup>D005</sup>](#D005)` |
+| General footnotes | `fn1`, `fn2` | `[<sup>1</sup>](#fn1)` |
+| Paper citations | `ref1`, `ref2` | `[<sup>ref3</sup>](#ref3)` |
+| Named references | `fn_dataset`, `fn_paper` | `[<sup>*</sup>](#fn_dataset)` |
+
+## Full Example
+
+```markdown
+## Timeline
+
+- **2023-01-15 - Author submits proposal to committee**
+  - source: email
+  - evidence: [<sup>D001</sup>](#D001) documents/2023-01-15 proposal submission.pdf
+  - category: Submissions
+
+- **2023-02-20 - Committee responds with revision request**
+  - source: letter
+  - evidence: [<sup>D002</sup>](#D002) documents/2023-02-20 revision request.pdf
+  - category: Responses
+
 ---
 
-<span id="fn1"><sup>1</sup> Full footnote text with source or explanation.</span><br>
-<span id="fn2"><sup>2</sup> Another footnote with reference URL or detail.</span>
-```
+## References
 
-## Rules
-
-- **IDs must be unique** across the entire notebook: `fn1`, `fn2`, `fn3`... or use descriptive names: `fn_dataset`, `fn_paper`
-- **Superscript numbers** in the reference match the footnote: `<sup>1</sup>` -> `id="fn1"`
-- **Footnote section**: place after a horizontal rule (`---`) either at the bottom of the markdown cell containing the references, or in a dedicated `## Footnotes` cell at the end of the notebook
-- **Line breaks**: use `<br>` between footnotes for vertical spacing
-- **Keep footnotes short** - one or two sentences. For longer references, link to the source
-
-## Example
-
-```markdown
-The model uses cosine similarity[<sup>1</sup>](#fn1) for nearest-neighbor lookup.
-Training follows the SimCSE approach[<sup>2</sup>](#fn2) with dropout-based augmentation.
-
----
-
-<span id="fn1"><sup>1</sup> Cosine similarity measures the angle between vectors, ranging from -1 (opposite) to 1 (identical).</span><br>
-<span id="fn2"><sup>2</sup> Gao et al. 2021 - "SimCSE: Simple Contrastive Learning of Sentence Embeddings" https://arxiv.org/abs/2104.08821</span>
+- <span id="D001">D001 `documents/2023-01-15 proposal submission.pdf`</span>
+- <span id="D002">D002 `documents/2023-02-20 revision request.pdf`</span>
 ```
 
 ## When to use
 
+- Evidence references in legal/analytical documents
 - Academic citations in analysis notebooks
 - Method references (paper links, documentation)
-- Clarifying assumptions or caveats without cluttering the main text
 - Data source attribution
+- Any cross-referencing within a long markdown document
+
+## Common mistakes (learned from production)
+
+- Using `<div id="...">` instead of `<span id="...">` - JupyterLab sanitizer handles span reliably
+- Putting `<sup>` inside the target span - makes the label superscript at the target too
+- Using file paths as href instead of `#ID` hash links - won't scroll
+- Forgetting the `#` prefix in the inline link - `(D005)` doesn't work, `(#D005)` does
+- Using `<br>` between bullet-point entries - redundant, bullets already have spacing
