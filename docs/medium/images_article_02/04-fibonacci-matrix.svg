@@ -1,0 +1,101 @@
+<!--
+  17_fibonacci_scoring.svg - Fibonacci-based max score assignment
+  Shows: 4 criteria with unit boxes (filled=scored, empty=remaining capacity)
+  Theme: Meridian blue primary, teal accent for higher importance
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 292">
+  <style>
+    .fg-1 { fill: #1a4d94; } .fg-2 { fill: #2a5f9e; } .fg-3 { fill: #4a7ba7; } .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #006ba6; } .accent-teal { fill: #007a8a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #a8d4f0; } .fg-2 { fill: #7ec0e6; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #4dc4ff; } .accent-teal { fill: #40c4d4; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox 800x292, margin 8px left, 12px right
+    Labels: right-aligned at x=88
+    Boxes: x=100, each box 24x24 with 4px gap = 28px stride
+    Row 1 (y=44):  5 boxes  → ends x=100+5*28-4=236
+    Row 2 (y=94):  8 boxes  → ends x=100+8*28-4=320
+    Row 3 (y=144): 13 boxes → ends x=100+13*28-4=460
+    Row 4 (y=194): 21 boxes → ends x=100+21*28-4=684
+    Score labels: 14px after last box
+  === -->
+
+  <text x="400" y="18" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1">FIBONACCI MAX SCORES - IMPORTANCE WEIGHTING</text>
+  <text x="400" y="32" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Each box = 1 point. Filled = scored, empty = remaining capacity. Example scores shown.</text>
+
+  <!-- Row 1: Tone / formatting - max 5, scored 3 -->
+  <text x="88" y="60" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="end">Tone / formatting</text>
+  <text x="88" y="72" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">max 5</text>
+  <rect x="100" y="44" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.35" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="128" y="44" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.35" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="156" y="44" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.35" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="184" y="44" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.04" stroke="#00a6ff" stroke-width="0.8" opacity="0.4"/>
+  <rect x="212" y="44" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.04" stroke="#00a6ff" stroke-width="0.8" opacity="0.4"/>
+  <text x="250" y="62" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">3 / 5</text>
+
+  <!-- Row 2: Retrieval rank - max 8, scored 6 -->
+  <text x="88" y="110" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="end">Retrieval rank</text>
+  <text x="88" y="122" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">max 8</text>
+  <rect x="100" y="94" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.35" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="128" y="94" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.35" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="156" y="94" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.35" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="184" y="94" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.35" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="212" y="94" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.35" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="240" y="94" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.35" stroke="#00a6ff" stroke-width="1"/>
+  <rect x="268" y="94" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.04" stroke="#00a6ff" stroke-width="0.8" opacity="0.4"/>
+  <rect x="296" y="94" width="24" height="24" rx="2" fill="#00a6ff" fill-opacity="0.04" stroke="#00a6ff" stroke-width="0.8" opacity="0.4"/>
+  <text x="334" y="112" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">6 / 8</text>
+
+  <!-- Row 3: Completeness - max 13, scored 10 -->
+  <text x="88" y="160" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="end">Completeness</text>
+  <text x="88" y="172" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">max 13</text>
+  <rect x="100" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.35" stroke="#0096a6" stroke-width="1"/>
+  <rect x="128" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.35" stroke="#0096a6" stroke-width="1"/>
+  <rect x="156" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.35" stroke="#0096a6" stroke-width="1"/>
+  <rect x="184" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.35" stroke="#0096a6" stroke-width="1"/>
+  <rect x="212" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.35" stroke="#0096a6" stroke-width="1"/>
+  <rect x="240" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.35" stroke="#0096a6" stroke-width="1"/>
+  <rect x="268" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.35" stroke="#0096a6" stroke-width="1"/>
+  <rect x="296" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.35" stroke="#0096a6" stroke-width="1"/>
+  <rect x="324" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.35" stroke="#0096a6" stroke-width="1"/>
+  <rect x="352" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.35" stroke="#0096a6" stroke-width="1"/>
+  <rect x="380" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.04" stroke="#0096a6" stroke-width="0.8" opacity="0.4"/>
+  <rect x="408" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.04" stroke="#0096a6" stroke-width="0.8" opacity="0.4"/>
+  <rect x="436" y="144" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.04" stroke="#0096a6" stroke-width="0.8" opacity="0.4"/>
+  <text x="474" y="162" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600">10 / 13</text>
+
+  <!-- Row 4: Entity recall - max 21, scored 16 -->
+  <text x="88" y="210" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="end">Entity recall</text>
+  <text x="88" y="222" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="end">max 21</text>
+  <rect x="100" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="128" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="156" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="184" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="212" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="240" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="268" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="296" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="324" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="352" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="380" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="408" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="436" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="464" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="492" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="520" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.40" stroke="#0096a6" stroke-width="1.2"/>
+  <rect x="548" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.04" stroke="#0096a6" stroke-width="0.8" opacity="0.4"/>
+  <rect x="576" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.04" stroke="#0096a6" stroke-width="0.8" opacity="0.4"/>
+  <rect x="604" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.04" stroke="#0096a6" stroke-width="0.8" opacity="0.4"/>
+  <rect x="632" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.04" stroke="#0096a6" stroke-width="0.8" opacity="0.4"/>
+  <rect x="660" y="194" width="24" height="24" rx="2" fill="#0096a6" fill-opacity="0.04" stroke="#0096a6" stroke-width="0.8" opacity="0.4"/>
+  <text x="698" y="212" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700">16 / 21</text>
+
+  <!-- Bottom summary -->
+  <text x="400" y="250" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">Total: 35 / 47 (74%)</text>
+  <text x="400" y="266" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">Fibonacci: 5 → 8 → 13 → 21 - non-linear gaps naturally encode importance</text>
+  <text x="400" y="280" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">Work in raw integers (35/47). Convert to percentage (74%) only at final report.</text>
+</svg>

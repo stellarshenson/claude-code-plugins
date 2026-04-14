@@ -6,63 +6,136 @@
   },
   "metadata": {
     "description": "Claude Code plugins for autonomous development workflows, critical analysis, data science standards, SVG infographics, document processing, and project journaling",
-    "version": "1.2.7",
+    "version": "1.3.0",
     "author": "stellarshenson"
   },
   "plugins": [
     {
       "name": "autobuild",
       "source": "./autobuild",
-      "version": "1.2.7",
+      "version": "1.3.0",
       "description": "Autonomous build iteration orchestrator with multi-agent review, FSM-driven lifecycle, and YAML-configured workflows",
-      "keywords": ["orchestrator", "iteration", "multi-agent", "review", "fsm", "build"],
+      "keywords": [
+        "orchestrator",
+        "iteration",
+        "multi-agent",
+        "review",
+        "fsm",
+        "build"
+      ],
       "category": "development",
-      "tags": ["autonomous", "quality", "workflow", "agents"]
+      "tags": [
+        "autonomous",
+        "quality",
+        "workflow",
+        "agents"
+      ]
     },
     {
       "name": "devils-advocate",
       "source": "./devils-advocate",
-      "version": "1.2.7",
+      "version": "1.3.0",
       "description": "Critical document analysis with persona-driven risk scoring, iterative scorecard evaluation, and versioned corrections",
-      "keywords": ["critique", "analysis", "scorecard", "risk", "devil", "advocate"],
+      "keywords": [
+        "critique",
+        "analysis",
+        "scorecard",
+        "risk",
+        "devil",
+        "advocate"
+      ],
       "category": "documentation",
-      "tags": ["review", "quality", "persona", "evaluation"]
+      "tags": [
+        "review",
+        "quality",
+        "persona",
+        "evaluation"
+      ]
     },
     {
       "name": "datascience",
       "source": "./datascience",
-      "version": "1.2.7",
+      "version": "1.3.0",
       "description": "Data science project standards - notebook structure, rich output styling, copier scaffolding, and compliance review",
-      "keywords": ["datascience", "notebook", "jupyter", "rich", "pytorch", "polars", "copier"],
+      "keywords": [
+        "datascience",
+        "notebook",
+        "jupyter",
+        "rich",
+        "pytorch",
+        "polars",
+        "copier"
+      ],
       "category": "development",
-      "tags": ["standards", "notebook", "scaffold", "review"]
+      "tags": [
+        "standards",
+        "notebook",
+        "scaffold",
+        "review"
+      ]
     },
     {
       "name": "svg-infographics",
       "source": "./svg-infographics",
-      "version": "1.2.7",
+      "version": "1.3.0",
       "description": "SVG infographic creation with grid-first design, CSS theme classes, dark/light mode, validation tools, and 60+ reference examples",
-      "keywords": ["svg", "infographic", "diagram", "visualization", "timeline", "flowchart", "banner"],
+      "keywords": [
+        "svg",
+        "infographic",
+        "diagram",
+        "visualization",
+        "timeline",
+        "flowchart",
+        "banner"
+      ],
       "category": "documentation",
-      "tags": ["design", "visual", "theme", "dark-mode", "validation"]
+      "tags": [
+        "design",
+        "visual",
+        "theme",
+        "dark-mode",
+        "validation"
+      ]
     },
     {
       "name": "journal",
       "source": "./journal",
-      "version": "1.2.7",
+      "version": "1.3.0",
       "description": "Project journal management - append-only entries, continuous numbering, verification, and archiving",
-      "keywords": ["journal", "logging", "audit", "documentation", "changelog"],
+      "keywords": [
+        "journal",
+        "logging",
+        "audit",
+        "documentation",
+        "changelog"
+      ],
       "category": "documentation",
-      "tags": ["journal", "audit", "tracking"]
+      "tags": [
+        "journal",
+        "audit",
+        "tracking"
+      ]
     },
     {
       "name": "document-processing",
       "source": "./document-processing",
-      "version": "1.2.7",
+      "version": "1.3.0",
       "description": "Structured document processing with source grounding, uniformization, PDF manipulation, and validation",
-      "keywords": ["document", "processing", "grounding", "validation", "pdf", "synthesis"],
+      "keywords": [
+        "document",
+        "processing",
+        "grounding",
+        "validation",
+        "pdf",
+        "synthesis"
+      ],
       "category": "documentation",
-      "tags": ["grounding", "uniformization", "legal", "court"]
+      "tags": [
+        "grounding",
+        "uniformization",
+        "legal",
+        "court"
+      ]
     }
   ]
 }

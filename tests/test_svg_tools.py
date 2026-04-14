@@ -131,57 +131,60 @@ class TestCalcConnector:
         return result
 
     def test_horizontal_connector(self):
-        """Horizontal connector should have 0 degree angle."""
+        """Horizontal connector's END tangent should be 0 degrees."""
         r = self._run("--from", "100,50", "--to", "300,50")
         assert r.returncode == 0
-        assert "0.0 degrees" in r.stdout
+        assert "Angle:            0.0 degrees" in r.stdout
 
     def test_vertical_connector(self):
-        """Vertical downward connector should have 90 degree angle."""
+        """Vertical downward connector's END tangent should be 90 degrees."""
         r = self._run("--from", "100,50", "--to", "100,200")
         assert r.returncode == 0
-        assert "90.0 degrees" in r.stdout
+        assert "Angle:            90.0 degrees" in r.stdout
 
     def test_diagonal_connector(self):
-        """Diagonal connector should have 45 degree angle."""
+        """Diagonal connector's END tangent should be 45 degrees."""
         r = self._run("--from", "100,100", "--to", "200,200")
         assert r.returncode == 0
-        assert "45.0 degrees" in r.stdout
+        assert "Angle:            45.0 degrees" in r.stdout
 
     def test_negative_angle(self):
-        """Upward connector should have negative angle."""
+        """Upward connector's END tangent should be -45 degrees."""
         r = self._run("--from", "100,200", "--to", "200,100")
         assert r.returncode == 0
-        assert "-45.0 degrees" in r.stdout
+        assert "Angle:            -45.0 degrees" in r.stdout
 
     def test_margin_reduces_length(self):
-        """Margin should reduce effective length."""
+        """Margin should reduce total length."""
         r_no_margin = self._run("--from", "100,50", "--to", "300,50")
         r_with_margin = self._run("--from", "100,50", "--to", "300,50", "--margin", "10")
         assert r_no_margin.returncode == 0
         assert r_with_margin.returncode == 0
-        # Parse effective lengths
-        for line in r_no_margin.stdout.split("\n"):
-            if "Effective length" in line:
-                len_no = float(line.split(":")[1].strip().replace("px", ""))
-        for line in r_with_margin.stdout.split("\n"):
-            if "Effective length" in line:
-                len_with = float(line.split(":")[1].strip().replace("px", ""))
-        assert len_with < len_no
+        def _total(stdout):
+            for line in stdout.split("\n"):
+                if "Total length" in line:
+                    return float(line.split(":")[1].strip().replace("px", ""))
+            raise AssertionError("Total length line not found")
+        assert _total(r_with_margin.stdout) < _total(r_no_margin.stdout)
 
     def test_custom_head_size(self):
-        """Custom head size should appear in output."""
-        r = self._run("--from", "100,50", "--to", "300,50", "--head-size", "15,8")
+        """Custom head size should change the arrowhead polygon geometry."""
+        r = self._run("--from", "100,50", "--to", "300,50",
+                      "--head-size", "15,8", "--standoff", "0")
         assert r.returncode == 0
-        assert "-15" in r.stdout  # head length in polygon points
+        # Standoff=0, world-space polygon for horizontal 15x8 head:
+        #   tip(300,50), back-upper(285,42), back-lower(285,58)
+        assert "(300.0,50.0) (285.0,42.0) (285.0,58.0)" in r.stdout
 
     def test_svg_snippet_output(self):
-        """Should produce ready-to-paste SVG snippet."""
+        """Should produce ready-to-paste world-coordinate path + polygon."""
         r = self._run("--from", "100,50", "--to", "300,50")
         assert r.returncode == 0
-        assert "<g transform=" in r.stdout
-        assert "<line" in r.stdout
-        assert "<polygon" in r.stdout
+        assert "<path d=" in r.stdout
+        assert "<polygon points=" in r.stdout
+        # No more rotate-template output
+        assert "<g transform=" not in r.stdout
+        assert "<line " not in r.stdout
 
     def test_cutout_mode(self):
         """Cutout mode should split connector into two segments."""
@@ -209,18 +212,224 @@ class TestCalcConnectorModule:
     """Direct import tests for calc_connector functions."""
 
     def test_calc_connector_basic(self):
+        """Straight mode returns the polyline result shape (same as l/spline)."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_connector
+        c = calc_connector(0, 0, 100, 0, standoff=0)
+        assert c["mode"] == "straight"
+        assert abs(c["total_length"] - 100.0) < 0.01
+        assert c["end"]["tip"] == (100.0, 0.0)
+        assert abs(c["end"]["angle_deg"] - 0.0) < 0.01
+        assert c["end"]["arrow"] is not None
+        polygon = c["end"]["arrow"]["polygon"]
+        assert polygon[0] == (100.0, 0.0)
+        assert abs(polygon[1][0] - 90.0) < 0.01 and abs(polygon[1][1] - (-5.0)) < 0.01
+        assert abs(polygon[2][0] - 90.0) < 0.01 and abs(polygon[2][1] - 5.0) < 0.01
+
+    def test_default_standoff_is_one_pixel(self):
+        """Calls without explicit standoff get a 1px default gap at each end."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_connector
         c = calc_connector(0, 0, 100, 0)
-        assert abs(c["angle_deg"] - 0.0) < 0.01
-        assert abs(c["full_length"] - 100.0) < 0.01
-        assert abs(c["tip_x"] - 100.0) < 0.01
-        assert abs(c["tip_y"] - 0.0) < 0.01
+        assert c["standoff"] == (1.0, 1.0)
+        assert abs(c["total_length"] - 98.0) < 0.01
+
+    def test_auto_edge_from_rects(self):
+        """Passing src_rect and tgt_rect auto-computes edge incident points."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_connector
+        # Two rects side by side: A at (0,0,100,100), B at (200,0,100,100)
+        # Centre-to-centre line is horizontal, so edge points should be at
+        # the right edge of A (100, 50) and left edge of B (200, 50).
+        c = calc_connector(
+            src_rect=(0, 0, 100, 100),
+            tgt_rect=(200, 0, 100, 100),
+            arrow="none", standoff=0,
+        )
+        # First sample is on A's right edge, last sample is on B's left edge
+        assert abs(c["samples"][0][0] - 100) < 0.01
+        assert abs(c["samples"][0][1] - 50) < 0.01
+        assert abs(c["samples"][-1][0] - 200) < 0.01
+        assert abs(c["samples"][-1][1] - 50) < 0.01
+
+    def test_empty_space_finds_free_regions(self):
+        """calc_empty_space identifies connected free regions on a canvas."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        regions = find_empty_regions(
+            canvas=(0, 0, 400, 300),
+            shapes=[(100, 100, 80, 60), (250, 150, 80, 60)],
+            coarse_divisions=8, max_depth=2,
+        )
+        assert len(regions) >= 1
+        biggest = regions[0]
+        assert biggest["area"] > 50000
+        assert len(biggest["boundary"]) >= 4
+
+    def test_empty_space_no_shapes(self):
+        """No shapes: whole canvas is one free region."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        regions = find_empty_regions(
+            canvas=(0, 0, 100, 100), shapes=[], coarse_divisions=4, max_depth=1,
+        )
+        assert len(regions) == 1
+        assert abs(regions[0]["area"] - 10000) < 100
+
+    def test_empty_space_returns_sorted_by_area_desc(self):
+        """Regions must be sorted biggest first for ergonomic selection."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        regions = find_empty_regions(
+            canvas=(0, 0, 400, 300),
+            shapes=[(50, 50, 80, 60), (250, 50, 80, 60), (150, 200, 80, 60)],
+            coarse_divisions=8, max_depth=2,
+        )
+        if len(regions) >= 2:
+            for i in range(len(regions) - 1):
+                assert regions[i]["area"] >= regions[i + 1]["area"]
+
+    def test_empty_space_fully_occupied_returns_empty(self):
+        """Canvas fully covered by a single shape returns no regions."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        regions = find_empty_regions(
+            canvas=(0, 0, 100, 100), shapes=[(0, 0, 100, 100)],
+            coarse_divisions=4, max_depth=3,
+        )
+        assert regions == []
+
+    def test_empty_space_accepts_polygon_shape(self):
+        """Shapes can be arbitrary closed polygons, not just rects."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        # Triangle occupying the centre of a 300x300 canvas
+        triangle = [(100, 100), (200, 100), (150, 200)]
+        regions = find_empty_regions(
+            canvas=(0, 0, 300, 300), shapes=[triangle],
+            coarse_divisions=6, max_depth=2,
+        )
+        assert len(regions) >= 1
+        # The free area should be close to canvas area minus triangle area
+        # Triangle area = 0.5 * 100 * 100 = 5000; canvas = 90000; expected free ~85000
+        assert regions[0]["area"] >= 70000
+
+    def test_empty_space_recursive_subdivision_finds_small_gaps(self):
+        """max_depth>0 must find sub-cell free areas in occupied parent cells."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        # One shape occupying most of a cell but leaving a gap on one side
+        # On 100x100 canvas, 4x4 coarse grid = 25x25 cells
+        # Cover x=0..80 across the width but leave 80..100 free on the right
+        shapes = [(0, 0, 80, 100)]
+        regions_d0 = find_empty_regions(
+            canvas=(0, 0, 100, 100), shapes=shapes,
+            coarse_divisions=4, max_depth=0, simplify_tolerance=0,
+        )
+        regions_d3 = find_empty_regions(
+            canvas=(0, 0, 100, 100), shapes=shapes,
+            coarse_divisions=4, max_depth=3, simplify_tolerance=0,
+        )
+        # At depth 0, the 4x4 coarse grid has 25x25 cells. The partially-
+        # overlapping boundary cells at x=75..100 are marked occupied without
+        # subdivision, so the free area is only the fully-free cells (x=100?
+        # Actually x=75 is the left edge of the 4th column of cells, which
+        # goes from x=75..100. Since the shape ends at x=80, the 4th column
+        # is partially occupied and gets dropped entirely at depth 0.
+        # Total d0 free area = 0 (no fully-free columns).
+        # At depth 3, subdivision finds the free strip x=80..100.
+        d0_area = sum(r["area"] for r in regions_d0)
+        d3_area = sum(r["area"] for r in regions_d3)
+        assert d3_area > d0_area, (
+            f"depth=3 should find more free area than depth=0: "
+            f"d0={d0_area}, d3={d3_area}"
+        )
+
+    def test_empty_space_simplify_reduces_vertices(self):
+        """Higher simplify_tolerance produces fewer boundary vertices."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        shapes = [(100, 100, 50, 50), (200, 100, 50, 50), (150, 200, 50, 50)]
+        r_no_simp = find_empty_regions(
+            canvas=(0, 0, 400, 300), shapes=shapes,
+            coarse_divisions=8, max_depth=2, simplify_tolerance=0,
+        )
+        r_simp = find_empty_regions(
+            canvas=(0, 0, 400, 300), shapes=shapes,
+            coarse_divisions=8, max_depth=2, simplify_tolerance=10,
+        )
+        if r_no_simp and r_simp:
+            assert len(r_simp[0]["boundary"]) <= len(r_no_simp[0]["boundary"])
+
+    def test_empty_space_boundary_points_lie_within_canvas(self):
+        """All boundary vertices stay within the canvas bounds."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        regions = find_empty_regions(
+            canvas=(10, 20, 200, 150),
+            shapes=[(50, 50, 30, 30)],
+            coarse_divisions=6, max_depth=2,
+        )
+        for r in regions:
+            for x, y in r["boundary"]:
+                assert 10 - 0.01 <= x <= 210 + 0.01
+                assert 20 - 0.01 <= y <= 170 + 0.01
+
+    def test_empty_space_cli_outputs_svg(self):
+        """CLI end-to-end renders an SVG debug snippet for the regions."""
+        import subprocess
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
+             "empty-space",
+             "--canvas", "(0, 0, 200, 200)",
+             "--shapes", "[(50, 50, 50, 50)]",
+             "--coarse", "4", "--depth", "2"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "EMPTY REGIONS" in r.stdout
+        assert "<polygon" in r.stdout
+
+    def test_empty_space_cli_json_output(self):
+        """CLI --json emits a parseable JSON array of regions."""
+        import subprocess
+        import json as _json
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
+             "empty-space",
+             "--canvas", "(0, 0, 300, 300)",
+             "--shapes", "[(100, 100, 50, 50)]",
+             "--json"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        data = _json.loads(r.stdout)
+        assert isinstance(data, list)
+        assert all("boundary" in d and "area" in d for d in data)
+
+    def test_auto_edge_diagonal(self):
+        """Auto-edge computes correct perimeter intersection for diagonal layout."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_connector
+        # A at origin, B at (200, 150) - the line between centres goes down-right
+        # and should exit A through the bottom-right region and enter B through
+        # the top-left region.
+        c = calc_connector(
+            src_rect=(0, 0, 100, 100),
+            tgt_rect=(200, 150, 100, 100),
+            arrow="none", standoff=0,
+        )
+        s0 = c["samples"][0]
+        s_last = c["samples"][-1]
+        # The source edge point should be on the right or bottom of rect A
+        assert s0[0] >= 100 - 0.01 or s0[1] >= 100 - 0.01
+        # The target edge point should be on the left or top of rect B
+        assert s_last[0] <= 200 + 0.01 or s_last[1] <= 150 + 0.01
 
     def test_calc_connector_with_margin(self):
+        """Margin trims arc length from both ends."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_connector
         c = calc_connector(0, 0, 100, 0, margin=5)
-        assert abs(c["effective_length"] - 90.0) < 0.01
-        assert abs(c["tip_x"] - 95.0) < 0.01
+        # 100px - 5px from each end = 90px
+        assert abs(c["total_length"] - 90.0) < 0.01
+        # End tip is the trimmed target
+        assert abs(c["end"]["tip"][0] - 95.0) < 0.01
+
+    def test_calc_connector_no_arrow(self):
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_connector
+        c = calc_connector(0, 0, 100, 0, arrow="none")
+        assert c["start"]["arrow"] is None
+        assert c["end"]["arrow"] is None
+        # Trimmed path equals full path when no arrowhead clearance is needed
+        assert c["trimmed_path_d"] == c["path_d"]
 
     def test_calc_cutout(self):
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_cutout
@@ -228,6 +437,12 @@ class TestCalcConnectorModule:
         assert result is not None
         assert "segment1" in result
         assert "segment2" in result
+        # Each segment is now a polyline-shaped result
+        assert result["segment1"]["mode"] == "straight"
+        assert result["segment2"]["mode"] == "straight"
+        # Segment 1 has no arrowhead; segment 2 has one on the end
+        assert result["segment1"]["end"]["arrow"] is None
+        assert result["segment2"]["end"]["arrow"] is not None
 
     def test_calc_cutout_no_intersection(self):
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_cutout
@@ -244,9 +459,10 @@ class TestConnectorModes:
             capture_output=True, text=True,
         )
 
-    def test_l_mode_three_samples(self):
+    def test_l_mode_inferred_axis_horizontal(self):
+        """dx > dy -> horizontal-first L (corner at target.x, source.y)."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l
-        r = calc_l(100, 50, 300, 150, first_axis="h", arrow="end")
+        r = calc_l(100, 50, 300, 150, arrow="end")  # dx=200, dy=100 -> h first
         assert r["mode"] == "l"
         assert len(r["samples"]) == 3
         assert r["samples"][1] == (300, 50)  # corner
@@ -254,25 +470,25 @@ class TestConnectorModes:
         assert r["end"]["arrow"] is not None
         assert len(r["end"]["arrow"]["polygon"]) == 3
 
-    def test_l_mode_first_axis_v(self):
-        """first_axis='v' goes vertical first, so the corner is (src_x, tgt_y)."""
+    def test_l_mode_direction_forces_vertical_first(self):
+        """start_dir='N' forces vertical-first even when dx > dy."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l
-        r = calc_l(100, 50, 300, 150, first_axis="v", arrow="none")
+        r = calc_l(100, 50, 300, 150, arrow="none", start_dir="N")
+        # N direction is vertical -> corner at (src_x, tgt_y)
         assert r["samples"][1] == (100, 150)
         assert r["end"]["arrow"] is None
 
-    def test_l_chamfer_inserts_diagonal(self):
+    def test_l_chamfer_inferred_horizontal(self):
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
-        r = calc_l_chamfer(100, 50, 300, 150, first_axis="h", chamfer=4, arrow="end")
+        r = calc_l_chamfer(100, 50, 300, 150, chamfer=4, arrow="end")  # dx>dy -> h
         assert len(r["samples"]) == 4
-        # Two corner points 4px apart on different axes
         assert r["samples"][1] == (296, 50)
         assert r["samples"][2] == (300, 54)
 
     def test_l_chamfer_negative_direction(self):
-        """Chamfer must follow the sign of dx and dy (going up-and-left)."""
+        """Chamfer follows the sign of dx and dy when going up-and-left."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
-        r = calc_l_chamfer(300, 150, 100, 50, first_axis="h", chamfer=4, arrow="none")
+        r = calc_l_chamfer(300, 150, 100, 50, chamfer=4, arrow="none")  # dx>dy -> h
         assert r["samples"][1] == (104, 150)   # back 4px in -x direction
         assert r["samples"][2] == (100, 146)   # forward 4px in -y direction
 
@@ -280,10 +496,9 @@ class TestConnectorModes:
         """PCHIP must hit each waypoint exactly (parametric: equal at samples)."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_spline
         wp = [(100, 80), (200, 40), (300, 120), (400, 60)]
-        r = calc_spline(wp, samples=200, arrow="end")
+        r = calc_spline(wp, samples=200, arrow="end", standoff=0)
         assert r["mode"] == "spline"
         assert len(r["samples"]) == 200
-        # First and last samples are the endpoint waypoints
         assert abs(r["samples"][0][0] - 100) < 0.5
         assert abs(r["samples"][0][1] - 80) < 0.5
         assert abs(r["samples"][-1][0] - 400) < 0.5
@@ -316,6 +531,398 @@ class TestConnectorModes:
         assert abs(pts[0][0] - pts[-1][0]) < 0.5
         assert abs(pts[0][1] - pts[-1][1]) < 0.5
 
+    def test_l_chamfer_collinear_falls_back_to_straight(self):
+        """When src and tgt share an axis there is no corner to chamfer."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        # Pure horizontal run (dy == 0), use standoff=0 for exact coords
+        r = calc_l_chamfer(100, 200, 400, 200, chamfer=4, arrow="end", standoff=0)
+        assert len(r["samples"]) == 2
+        assert r["samples"][0] == (100, 200)
+        assert r["samples"][1] == (400, 200)
+        assert abs(r["end"]["angle_deg"] - 0.0) < 0.01
+        # Pure vertical run (dx == 0)
+        r = calc_l_chamfer(200, 100, 200, 400, chamfer=4, arrow="end", standoff=0)
+        assert len(r["samples"]) == 2
+        assert abs(r["end"]["angle_deg"] - 90.0) < 0.01
+
+
+class TestManifoldConnector:
+    """Tests for manifold mode: N starts + M ends + per-start merge + per-end fork."""
+
+    def _run(self, *args):
+        return subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "calc_connector.py"), *args],
+            capture_output=True, text=True,
+        )
+
+    def test_manifold_tension_zero_collapses_merges(self):
+        """Tension=0 places every merge point at spine_start."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 200), (50, 300)],
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="l-chamfer", tension=0, arrow="end",
+        )
+        assert r["mode"] == "manifold"
+        assert r["n_starts"] == 3
+        assert r["n_ends"] == 1
+        for m in r["merge_points"]:
+            assert m == (200, 200)
+        assert r["end_strands"][0]["end"]["arrow"] is not None
+
+    def test_manifold_merge_point_is_single_convergence(self):
+        """Canonical model: every start strand terminates at spine_start.
+        Same for fork: every end strand leaves from spine_end."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 200), (50, 300)],
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="l", tension=1,
+        )
+        # All merge points coincide at spine_start
+        for m in r["merge_points"]:
+            assert m == (200, 200)
+        # All fork points coincide at spine_end
+        for f in r["fork_points"]:
+            assert f == (300, 200)
+
+    def test_manifold_tension_tuple_stored(self):
+        """Tension tuple is stored as (start, end) tuple - tension now only
+        controls relaxation stiffness, not branch distribution."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 300)],
+            ends=[(400, 100), (400, 300)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="l-chamfer", tension=(0.2, 0.8),
+        )
+        assert r["tension"] == (0.2, 0.8)
+        # Canonical model: all merges at spine_start, all forks at spine_end
+        for m in r["merge_points"]:
+            assert m == (200, 200)
+        for f in r["fork_points"]:
+            assert f == (300, 200)
+
+    def test_manifold_each_shape(self):
+        """All four shapes must produce a valid manifold result."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        for shape in ("straight", "l", "l-chamfer", "spline"):
+            r = calc_manifold(
+                starts=[(50, 100), (50, 200)],
+                ends=[(400, 150)],
+                spine_start=(200, 150), spine_end=(300, 150),
+                shape=shape, samples=50, arrow="end",
+            )
+            assert r["shape"] == shape
+            assert r["spine"]["total_length"] > 0
+            for strand in r["start_strands"] + r["end_strands"] + [r["spine"]]:
+                assert "trimmed_path_d" in strand
+                assert strand["trimmed_path_d"].startswith("M")
+
+    def test_manifold_explicit_merge_points_override_inference(self):
+        """Passing merge_points explicitly bypasses tension-based inference."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 200)],
+            ends=[(400, 150)],
+            spine_start=(200, 150), spine_end=(300, 150),
+            merge_points=[(180, 60), (180, 240)],  # override
+            shape="l", tension=0.5,
+        )
+        assert r["merge_points"][0] == (180, 60)
+        assert r["merge_points"][1] == (180, 240)
+
+    def test_manifold_bbox_returned(self):
+        """Result dict includes a bbox spanning all sub-strands."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 300)],
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="l-chamfer", tension=1,
+        )
+        bb = r["bbox"]
+        assert bb is not None
+        x, y, w, h = bb
+        # Allow 2px tolerance for the default 1px standoff
+        assert x <= 52
+        assert x + w >= 398
+        assert y <= 102
+        assert y + h >= 198
+
+    def test_manifold_length_mismatch_raises(self):
+        """Explicit merge_points length must match starts length."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        import pytest
+        with pytest.raises(ValueError, match="merge_points length"):
+            calc_manifold(
+                starts=[(0, 0), (0, 10)],
+                ends=[(100, 5)],
+                spine_start=(50, 5), spine_end=(70, 5),
+                merge_points=[(50, 5)],  # only 1 for 2 starts
+                shape="l-chamfer",
+            )
+        with pytest.raises(ValueError, match="fork_points length"):
+            calc_manifold(
+                starts=[(0, 0)],
+                ends=[(100, 0), (100, 10)],
+                spine_start=(50, 5), spine_end=(70, 5),
+                fork_points=[(70, 5)],  # only 1 for 2 ends
+                shape="l-chamfer",
+            )
+
+    def test_manifold_tension_out_of_range_raises(self):
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        import pytest
+        with pytest.raises(ValueError, match="tension components"):
+            calc_manifold(
+                starts=[(0, 0)], ends=[(100, 0)],
+                spine_start=(50, 0), spine_end=(70, 0),
+                shape="l", tension=1.5,
+            )
+
+    def test_manifold_align_elbows_horizontal_spine(self):
+        """For a horizontal spine and align_elbows=True, all start strands
+        should turn at the same x-coordinate (the median of merge_points' x)."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 200), (50, 300)],
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="l-chamfer", tension=1, align_elbows=True,
+        )
+        # Each start strand polyline should include a point at x=align_x (=200
+        # since spine is horizontal and all merges share x=200 via tension=1)
+        for strand in r["start_strands"]:
+            xs = [s[0] for s in strand["samples"]]
+            # Expect the alignment x (~200) appears somewhere in the strand
+            # path, allowing 2px for default standoff trimming
+            assert any(abs(x - 200) < 2 for x in xs), f"no x≈200 in {xs}"
+
+    def test_manifold_align_elbows_respects_explicit_controls(self):
+        """If the caller supplies start_controls, align_elbows must not override them."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        explicit = [[(180, 100)], [], []]
+        r = calc_manifold(
+            starts=[(50, 100), (50, 200), (50, 300)],
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="l-chamfer", tension=1,
+            start_controls=explicit,
+            align_elbows=True,
+        )
+        # Strand 0 controls start with the explicit user control, plus the
+        # merge point appended as a trailing waypoint by the topology. The
+        # align_elbows injection is suppressed because user controls exist.
+        controls = r["start_strands"][0]["controls"]
+        assert controls[0] == (180, 100)  # user control preserved at the start
+
+    def test_manifold_organic_default_off(self):
+        """Cubic Bezier shapes make organic relaxation unnecessary by default.
+        Organic mode is opt-in - the default is deterministic Bezier curves."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 200), (50, 300)],
+            ends=[(400, 150), (400, 250)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="spline", tension=0.8,
+        )
+        assert r["organic"] is False
+
+    def test_manifold_organic_default_off_with_spine_controls(self):
+        """Passing explicit spine_controls disables auto-organic."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 200)],
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="spline", spine_controls=[(250, 180)],
+        )
+        assert r["organic"] is False
+
+    def test_manifold_organic_explicit_off(self):
+        """organic=False overrides the auto-default."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 200)],
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="spline", organic=False,
+        )
+        assert r["organic"] is False
+
+    def test_manifold_organic_moves_interior_points(self):
+        """Organic relaxation with low tension (flexible strands) moves interior points."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        baseline = calc_manifold(
+            starts=[(50, 100), (50, 200), (50, 300)],
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="spline", tension=0.0, organic=False,
+        )
+        # Low tension = flexible = visible bowing under repulsion
+        relaxed = calc_manifold(
+            starts=[(50, 100), (50, 200), (50, 300)],
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="spline", tension=0.0,
+            organic=True, organic_iterations=40, organic_repulsion=150,
+        )
+        baseline_samples = baseline["start_strands"][0]["samples"]
+        relaxed_samples = relaxed["start_strands"][0]["samples"]
+        # Lengths may differ after PCHIP re-sampling in organic mode;
+        # compare at midpoint, endpoints, and total bow deviation instead.
+        import numpy as np
+        b_mid = baseline_samples[len(baseline_samples) // 2]
+        r_mid = relaxed_samples[len(relaxed_samples) // 2]
+        # The midpoint should have moved perceptibly under repulsion
+        mid_moved = abs(b_mid[1] - r_mid[1]) > 0.3 or abs(b_mid[0] - r_mid[0]) > 0.3
+        assert mid_moved, (
+            f"organic relaxation at low tension should move the strand "
+            f"midpoint (baseline {b_mid}, relaxed {r_mid})"
+        )
+        # Endpoints stay within 2px of each other (standoff trim may differ slightly)
+        assert abs(baseline_samples[0][0] - relaxed_samples[0][0]) < 2
+        assert abs(baseline_samples[0][1] - relaxed_samples[0][1]) < 2
+        assert abs(baseline_samples[-1][0] - relaxed_samples[-1][0]) < 2
+        assert abs(baseline_samples[-1][1] - relaxed_samples[-1][1]) < 2
+
+    def test_manifold_tension_affects_relaxation_stiffness(self):
+        """Different tensions with organic mode produce different strand paths
+        via force-simulation stiffness, not via merge-point distribution."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        common = dict(
+            starts=[(50, 100), (50, 200), (50, 300)],
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="spline", organic=True,
+            organic_iterations=80, organic_repulsion=300,
+        )
+        r0 = calc_manifold(**common, tension=0.0)   # floppy
+        r1 = calc_manifold(**common, tension=1.0)   # stiff
+        # All merges at spine_start in both runs
+        for m in r0["merge_points"]:
+            assert m == (200, 200)
+        for m in r1["merge_points"]:
+            assert m == (200, 200)
+        # But the relaxed strand shapes differ because stiffness differs
+        s0 = r0["start_strands"][0]["samples"]
+        s1 = r1["start_strands"][0]["samples"]
+        assert s0 != s1
+
+    def test_direction_compass_east(self):
+        """start_dir='E' on a straight line produces horizontal tangent."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l
+        r = calc_l(50, 100, 200, 50, start_dir="E")
+        # start_dir=E = horizontal -> first_axis=h -> corner at (tgt.x, src.y)
+        assert r["samples"][1] == (200, 100)
+
+    def test_direction_compass_north_forces_vertical(self):
+        """start_dir='N' forces vertical first even when dx > dy."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l
+        r = calc_l(50, 100, 300, 50, start_dir="N")
+        # N = vertical -> corner at (src.x, tgt.y)
+        assert r["samples"][1] == (50, 50)
+
+    def test_direction_numeric_degrees(self):
+        """Numeric degrees work the same as compass strings."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l
+        r_compass = calc_l(50, 100, 300, 200, start_dir="E")
+        r_degrees = calc_l(50, 100, 300, 200, start_dir=90)  # 90 deg = east
+        assert r_compass["samples"][1] == r_degrees["samples"][1]
+
+    def test_direction_unpack_3_tuple(self):
+        """(x, y, direction) 3-tuple parses correctly via _unpack_point_with_direction."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import _unpack_point_with_direction
+        xy, d = _unpack_point_with_direction((10, 20, "NE"))
+        assert xy == (10.0, 20.0)
+        assert d == "NE"
+        xy, d = _unpack_point_with_direction((10, 20, 45))
+        assert d == 45
+        xy, d = _unpack_point_with_direction((10, 20))
+        assert d is None
+
+    def test_manifold_with_direction_annotated_starts(self):
+        """Manifold accepts 3-tuple starts/ends with direction hints."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100, "E"), (50, 200, "E")],
+            ends=[(400, 150, "E")],
+            spine_start=(200, 150), spine_end=(300, 150),
+            shape="spline", tension=0.5,
+        )
+        assert r["mode"] == "manifold"
+        # No crash; directions are applied internally to the sub-strands
+        assert len(r["start_strands"]) == 2
+        assert len(r["end_strands"]) == 1
+
+    def test_manifold_align_elbows_ignored_for_spline(self):
+        """Spline shape ignores align_elbows - no alignment control injected."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 200)],
+            ends=[(400, 150)],
+            spine_start=(200, 150), spine_end=(300, 150),
+            shape="spline", tension=1, align_elbows=True,
+        )
+        # With wire-harness topology: at most one waypoint per strand (the
+        # branch point on the spine, when it differs from spine_start).
+        # Align_elbows must NOT inject any additional alignment control.
+        for strand in r["start_strands"]:
+            assert len(strand["controls"]) <= 1
+
+    def test_manifold_start_controls_drive_routing(self):
+        """start_controls modify the start-strand polyline (staircase shape)."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+        r = calc_manifold(
+            starts=[(50, 100), (50, 300)],  # 2 starts so the 2nd branch is not at spine_start
+            ends=[(400, 200)],
+            spine_start=(200, 200), spine_end=(300, 200),
+            shape="l-chamfer", tension=1,
+            start_controls=[[(120, 100), (150, 130)], []],
+        )
+        strand = r["start_strands"][0]
+        # Strand 0's merge is at spine_start (t=0) so no topology waypoint is
+        # appended. Controls = just the user's 2 entries.
+        controls = strand["controls"]
+        assert controls[0] == (120, 100)
+        assert controls[1] == (150, 130)
+        assert len(controls) == 2
+
+    def test_manifold_cli_tension_model(self):
+        """CLI end-to-end with tension-based manifold."""
+        r = self._run(
+            "--mode", "manifold",
+            "--starts", "[(50,100),(50,200),(50,300)]",
+            "--ends", "[(400,200)]",
+            "--spine-start", "(200,200)",
+            "--spine-end", "(300,200)",
+            "--shape", "l-chamfer",
+            "--tension", "0.5",
+            "--arrow", "end",
+        )
+        assert r.returncode == 0, r.stderr
+        assert "MANIFOLD CONNECTOR" in r.stdout
+        assert "Starts:           3" in r.stdout
+        assert "Ends:             1" in r.stdout
+        assert "Spine start:" in r.stdout
+        assert "Tension:" in r.stdout
+        assert "BBox:" in r.stdout
+        assert "manifold-connector" in r.stdout
+
+    def test_manifold_cli_requires_spine_endpoints(self):
+        """Manifold CLI must reject missing spine-start / spine-end."""
+        r = self._run(
+            "--mode", "manifold",
+            "--starts", "[(50,100)]",
+            "--ends", "[(400,200)]",
+            # missing --spine-start and --spine-end
+        )
+        assert r.returncode != 0
+        assert "spine-start" in r.stderr or "spine-end" in r.stderr or "spine" in r.stderr.lower()
+
     def test_arrowhead_polygon_world_horizontal(self):
         """Arrow pointing right (angle=0) at tip (10, 5) should give known vertices."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import _arrowhead_polygon_world
@@ -334,7 +941,7 @@ class TestConnectorModes:
 
     def test_cli_l_mode(self):
         r = self._run("--mode", "l", "--from", "100,50", "--to", "300,150",
-                      "--first-axis", "h", "--arrow", "end")
+                      "--arrow", "end")
         assert r.returncode == 0
         assert "L CONNECTOR" in r.stdout
         assert "Arrow polygon" in r.stdout
@@ -358,12 +965,73 @@ class TestConnectorModes:
         # Both arrows requested: two polygon lines in the SVG snippet
         assert r.stdout.count("<polygon") == 2
 
-    def test_cli_straight_mode_unchanged(self):
-        """Backward compat: bare --from/--to still produces the legacy output."""
+    def test_polyline_result_has_bbox_and_warnings(self):
+        """Every polyline result now exposes bbox and warnings."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_connector
+        c = calc_connector(10, 20, 110, 80, standoff=0)
+        assert "bbox" in c
+        assert "warnings" in c
+        assert "standoff" in c
+        x, y, w, h = c["bbox"]
+        # bbox covers the line plus the arrowhead polygon vertices
+        assert x <= 10 and y <= 20
+        assert x + w >= 110 and y + h >= 80
+        assert isinstance(c["warnings"], list)
+
+    def test_polyline_result_standoff_tuple(self):
+        """Standoff as a 2-tuple trims start and end independently."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_connector
+        c = calc_connector(0, 0, 100, 0, standoff=(5, 15), arrow="none")
+        # Path runs from (5, 0) to (85, 0) after trimming
+        assert c["samples"][0] == (5, 0)
+        assert c["samples"][-1] == (85, 0)
+        assert c["standoff"] == (5.0, 15.0)
+
+    def test_controls_on_l_chamfer_mode(self):
+        """Controls add corners to the L-chamfer polyline."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        r = calc_l_chamfer(50, 50, 300, 200, controls=[(150, 50), (200, 150)], arrow="end")
+        # Polyline visits both controls as corners
+        samples = r["samples"]
+        assert any(s == (150, 50) for s in samples) or any(abs(s[0]-150) < 1 and abs(s[1]-50) < 1 for s in samples)
+        assert r["controls"] == [(150, 50), (200, 150)]
+
+    def test_controls_soft_cap_warning(self):
+        """More than 5 controls prints a warning but still returns a result."""
+        import subprocess
+        r = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "calc_connector.py"),
+             "--mode", "l-chamfer", "--from", "0,0", "--to", "300,300",
+             "--controls", "[(50,10),(100,20),(150,30),(200,40),(250,50),(280,80)]"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0
+        assert "WARNING" in r.stderr
+        assert "soft cap" in r.stderr
+
+    def test_straight_shape_rejects_controls(self):
+        """Straight connectors must reject controls via manifold dispatch."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import _calc_single_strand
+        import pytest
+        with pytest.raises(ValueError, match="straight shape does not accept"):
+            _calc_single_strand(
+                (0, 0), (100, 0), shape="straight", chamfer=4, samples=50,
+                margin=0, head_len=10, head_half_h=5, arrow="end",
+                controls=[(50, 20)],
+            )
+
+    def test_cli_straight_mode_unified_output(self):
+        """Straight mode is now routed through the polyline result builder -
+        output is <path> + <polygon> in world coordinates, no more
+        rotate-template <g transform=...> wrapper."""
         r = self._run("--from", "100,50", "--to", "300,50")
         assert r.returncode == 0
-        assert "0.0 degrees" in r.stdout
-        assert "<g transform=" in r.stdout
+        assert "STRAIGHT CONNECTOR" in r.stdout
+        assert "Angle:            0.0 degrees" in r.stdout
+        assert "<path d=" in r.stdout
+        assert "<polygon points=" in r.stdout
+        assert "<g transform=" not in r.stdout
+        assert "<line " not in r.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -1946,3 +2614,156 @@ class TestTextToPath:
         )
         assert r.returncode == 2
         assert "not found" in r.stderr
+
+
+# ---------------------------------------------------------------------------
+# detect_collisions tests
+# ---------------------------------------------------------------------------
+
+
+class TestDetectCollisions:
+    """Pairwise collision detection on connector polylines."""
+
+    def test_crossing_two_straight_lines(self):
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_connector, detect_collisions,
+        )
+        a = calc_connector(0, 0, 100, 100, arrow="none")
+        b = calc_connector(0, 100, 100, 0, arrow="none")
+        c = detect_collisions([a, b], tolerance=0.0, labels=["a", "b"])
+        assert len(c) == 1
+        assert c[0]["type"] == "crossing"
+        assert c[0]["min_distance"] == 0.0
+        assert c[0]["points"] == [(50.0, 50.0)]
+
+    def test_near_miss_with_tolerance(self):
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_connector, detect_collisions,
+        )
+        a = calc_connector(0, 10, 100, 10, arrow="none")
+        b = calc_connector(0, 15, 100, 15, arrow="none")
+        c = detect_collisions([a, b], tolerance=8.0, labels=["a", "b"])
+        assert len(c) == 1
+        assert c[0]["type"] == "near-miss"
+        assert c[0]["min_distance"] == 5.0
+
+    def test_touching_endpoint(self):
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_connector, detect_collisions,
+        )
+        a = calc_connector(0, 0, 50, 0, arrow="none", standoff=0)
+        b = calc_connector(50, 0, 100, 50, arrow="none", standoff=0)
+        c = detect_collisions([a, b], tolerance=2.0, labels=["a", "b"])
+        assert len(c) == 1
+        assert c[0]["type"] == "touching"
+
+    def test_parallel_no_collision(self):
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_connector, detect_collisions,
+        )
+        a = calc_connector(0, 0, 100, 0, arrow="none")
+        b = calc_connector(0, 30, 100, 30, arrow="none")
+        c = detect_collisions([a, b], tolerance=4.0, labels=["a", "b"])
+        assert c == []  # 30px apart, 4px tolerance -> no collision
+
+    def test_three_connector_report(self):
+        """Three connectors with mixed collision types."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_connector, detect_collisions,
+        )
+        connectors = [
+            calc_connector(0, 0, 100, 100, arrow="none"),   # A
+            calc_connector(0, 100, 100, 0, arrow="none"),   # B - crosses A
+            calc_connector(0, 200, 100, 200, arrow="none"), # C - isolated
+        ]
+        c = detect_collisions(connectors, tolerance=4.0, labels=["A", "B", "C"])
+        assert len(c) == 1
+        assert {c[0]["a"], c[0]["b"]} == {"A", "B"}
+
+    def test_collide_cli_crossing(self):
+        """CLI end-to-end for collision detection."""
+        import subprocess
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
+             "collide",
+             "--connectors", "[('a',[(0,0),(100,100)]),('b',[(0,100),(100,0)])]",
+             "--tolerance", "0"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        import json
+        report = json.loads(r.stdout)
+        assert len(report) == 1
+        assert report[0]["type"] == "crossing"
+
+
+# ---------------------------------------------------------------------------
+# charts tests
+# ---------------------------------------------------------------------------
+
+
+class TestCharts:
+    """Chart generation via pygal."""
+
+    def test_line_chart_returns_valid_svg(self):
+        from stellars_claude_code_plugins.svg_tools.charts import generate_chart
+        svg = generate_chart("line", data=[1, 3, 2, 5, 4], title="Test")
+        assert isinstance(svg, bytes)
+        assert svg.startswith(b"<?xml") or b"<svg" in svg[:200]
+
+    def test_bar_chart_categorical(self):
+        from stellars_claude_code_plugins.svg_tools.charts import generate_chart
+        svg = generate_chart("bar", data=[("A", 10), ("B", 20), ("C", 15)])
+        assert b"<svg" in svg[:500]
+
+    def test_multi_series_line(self):
+        from stellars_claude_code_plugins.svg_tools.charts import generate_chart
+        svg = generate_chart(
+            "line",
+            data=[("Series 1", [1, 2, 3, 4]), ("Series 2", [4, 3, 2, 1])],
+            labels=["Q1", "Q2", "Q3", "Q4"],
+        )
+        assert b"<svg" in svg[:500]
+
+    def test_colors_passed_as_argument(self):
+        """Caller can pass an explicit palette; no hardcoded themes."""
+        from stellars_claude_code_plugins.svg_tools.charts import generate_chart
+        svg = generate_chart(
+            "line", data=[1, 2, 3],
+            colors=["#ff0088", "#00ff88"],
+            fg_light="#112233", fg_dark="#eeddcc",
+            grid_light="#ccddee", grid_dark="#223344",
+        )
+        assert b"<svg" in svg[:500]
+        # Dark-mode override style should be present
+        assert b"prefers-color-scheme: dark" in svg
+
+    def test_dark_mode_css_injected(self):
+        """Every chart output carries the dark-mode override CSS block."""
+        from stellars_claude_code_plugins.svg_tools.charts import generate_chart
+        svg = generate_chart("bar", data=[("A", 1)], fg_dark="#abcdef")
+        assert b"#abcdef" in svg
+        assert b"prefers-color-scheme: dark" in svg
+
+    def test_unknown_chart_type_raises(self):
+        from stellars_claude_code_plugins.svg_tools.charts import generate_chart
+        import pytest
+        with pytest.raises(ValueError, match="unknown chart_type"):
+            generate_chart("pyramid", data=[1, 2, 3])
+
+    def test_charts_cli_outputs_svg(self, tmp_path):
+        import subprocess
+        out = tmp_path / "chart.svg"
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
+             "charts", "line",
+             "--data", "[1,2,3,4,5]",
+             "--title", "Test",
+             "--out", str(out)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert out.exists()
+        assert out.stat().st_size > 500
+        content = out.read_text()
+        assert "<svg" in content

@@ -257,17 +257,95 @@ Fill-opacity 0.04, stroke-width 1, accent bar height 5 at opacity 0.6.
 
 **Container cards**: fill-opacity 0.02, stroke-width 0.8, opacity 0.25, bar height 4 at opacity 0.15.
 
-## Arrow Construction (Horizontal-First Rule)
+## Arrow Construction (Connector Tool)
 
-**Always define arrows as horizontal shapes first, then rotate.**
+**Every arrow, every connector, every shape - built with `svg-infographics connector`. No exceptions.**
 
-Template: `translate(tipX, tipY) rotate(angleDeg)` wrapping:
-- Stem: `<line x1="-length" y1="0" x2="-10" y2="0"/>`
-- Head: `<polygon points="0,0 -10,-5 -10,5"/>`
+The tool returns everything needed to drop an arrow into the SVG in world coordinates:
+- `trimmed_path_d` - the stem path with arrowhead clearance already subtracted (paste directly as `<path d="...">`)
+- Per-end arrowhead polygon in world coordinates (paste directly as `<polygon points="...">`)
+- `tangent` and `angle_deg` at each end (for placing labels or joining to other elements)
+- `samples` along the path (for tangent labels, progress markers, midpoint callouts)
 
-Angle = `atan2(dy, dx)` degrees. Stem ends at `-10` (arrowhead base). Arrows fully opaque.
+No `rotate()` transforms, no `atan2` math, no horizontal-first templating. The connector tool already does the rotation in world space and returns final coordinates.
 
-**MANDATORY for diagonal connectors**: Run `svg-infographics connector` to compute geometry. Never hand-calculate angles. For all shapes (rect, circle, hexagon, cube, cylinder, sphere, etc.) use `svg-infographics primitives <shape>` to get exact anchor coordinates - never approximate positions.
+**Modes:**
+
+| Mode | Use |
+|------|-----|
+| `straight` | Single line, two points |
+| `l` | Axis-aligned L (sharp corner). First-axis inferred per segment |
+| `l-chamfer` | L with 4px corner cut. Default for any L route |
+| `spline` | Cubic Bezier via `bezier` lib when `start_dir`/`end_dir` given; PCHIP through waypoints otherwise |
+| `manifold` | N starts → single merge (`spine_start`) → spine → single fork (`spine_end`) → M ends. Canonical Sankey bundle |
+
+Flags on every mode: `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (default 1px), `--color`, `--width`, `--opacity`. Spline tangent magnitude: `--tangent-magnitude N` (default: 0.5×chord).
+
+### Canonical manifold
+
+One merge = `spine_start`, one fork = `spine_end`. All start strands terminate at `spine_start`, tangent to spine. All end strands leave from `spine_end`, tangent to spine. No branch distribution. Strands = cubic Beziers. Tangent magnitude = `tension`:
+
+- `tension=0` → long tangents → floppy bow
+- `tension=1` → short tangents → stiff near-straight
+- `tension=0.5` default → Sankey S-curve
+- Scalar or `(start,end)` tuple
+
+Strands inherit spine direction. Override per endpoint via 3-tuple `(x,y,"E")` or `(x,y,45)` (compass or deg CW from north).
+
+### Auto-edge mode
+
+Pass whole shapes to `calc_connector`, skip coordinates:
+
+- `src_rect=(x,y,w,h)` / `tgt_rect=(x,y,w,h)` — axis-aligned rects
+- `src_polygon=[(x,y),...]` / `tgt_polygon=[(x,y),...]` — closed polygon
+
+Tool computes centroid → rays to target centroid → returns perimeter intersection as endpoint. Explicit coords override.
+
+### Edge midpoint rule
+
+**Connector endpoints = shape EDGE MIDPOINTS, never centres or arbitrary corners.** Arrow meets card perpendicular to edge, text clash avoided.
+
+Tools:
+
+1. `svg-infographics geom attach --shape rect --side right|left|top|bottom --pos mid` — exact midpoint per side per rect
+2. `svg-infographics connector ... --src-rect ... --tgt-rect ...` (or `--src-polygon`/`--tgt-polygon`) — auto-edge: tool intersects centroid-to-centroid ray with perimeter
+3. `svg-infographics geom curve-midpoint --points "[(x,y),...]"` — arc-length midpoint of polyline (Bezier/L/spline). For labels ON a connector
+4. `svg-infographics geom shape-midpoint --points "[(x,y),...]"` — area-weighted centroid of closed polygon. For direction inference only, NEVER as endpoint
+
+Never eyeball endpoint coords. Use `primitives <shape>` for named anchors, `geom attach` for edge snap points. Hand-authored `<g transform="rotate(...)">` arrow groups are a workflow violation — connector tool replaces them.
+
+### Callout placement rules
+
+Callout = leader line + italic text annotating element. Five rules:
+
+1. Text in empty zone, close to target. Close-but-clear > far-but-safe.
+2. Leader should not cross any shapes or edges. If unavoidable, minimise crossings (pick the route with the fewest).
+3. Leader length: short-but-not-too-short. Long enough to clear the text bbox and reach the target with a visible angle; short enough that the reader's eye follows it in one glance.
+4. Text must not overlap own connector. Even if leader clean, text bbox must sit in empty space.
+5. Callouts must not overlap each other. Stack in one zone or distribute.
+
+### Callout construction workflow
+
+5 steps per callout:
+
+1. Empty space islands: `svg-infographics empty-space --canvas ... --shapes [...]` → boundary polygons per free island.
+2. Text bbox: width ≈ `len(text) * font_size * 0.55`, height ≈ `font_size + 2` per line. Stack lines if multi-line.
+3. Best placement: for each island, check text bbox fits AND candidate leader from bbox edge to target obeys rule 2 (minimal crossings). Prefer islands closest to target.
+4. Leader audit: no shape crossings. If unavoidable, pick fewest. Short-but-not-too-short per rule 3.
+5. Render text at chosen position, draw leader. Bbox was scaffold, discard.
+
+**Shapes for empty-space input**: every visible element counts — cards, strand paths (as bboxes or sample polylines), existing callouts, title+subtitle+label text (as bboxes), legend, dividers. ALL texts participate as their bounding boxes so nothing else lands on top of them. Text bbox: `(x - pad, y_baseline - font_size, width + 2·pad, font_size + 2·pad)` with `pad=2`.
+
+`empty-space` tool does step 1 + part of 3. Optional: `geom offset-polygon --direction inward --distance 4` to shrink each island by standoff before fitting.
+
+**Empty zones for manifold scenes** (highest yield first):
+
+- Above spine between merge/fork: `x∈[spine_start.x, spine_end.x], y<spine.y` — no strand traffic
+- Below spine between merge/fork: same x range, `y>spine.y`
+- Gaps between src/sink rows (~18-20px, one line each)
+- Above title row, below last row of cards
+
+**Audit**: `svg-infographics collide` on callout leaders + shape rects catches crossings; run before shipping, reposition offenders.
 
 ### Angular Arrow Design (Chamfered L-Routing)
 
@@ -357,7 +435,7 @@ Organic visual forms - flowing paths, concentric rings, orbital loops, funnels, 
 
 - **Text invisible in dark mode**: Use CSS class instead of inline fill
 - **Overlapping elements**: Re-verify against grid comment, run `svg-infographics overlaps`
-- **Arrows wrong direction**: Use horizontal-first rule with `svg-infographics connector`
+- **Arrows wrong direction**: Rerun `svg-infographics connector` with the correct `--from` and `--to` coordinates; paste the returned `trimmed_path_d` and arrowhead polygons
 - **Colours off-theme**: Check every hex against swatch, run `svg-infographics contrast`
 - **CSS compliance errors**: Run `svg-infographics css --svg file.svg` to find inline fills and missing dark mode overrides
 - **Imprecise coordinates**: Use `svg-infographics primitives <shape>` for exact anchor points

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "1.0.7"
+version = "1.0.11"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
@@ -16,7 +16,12 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
+    "bezier",
+    "fonttools",
+    "numpy",
+    "pygal",
     "pyyaml",
+    "scipy",
     "shapely",
     "tiktoken",
     "transitions",
@@ -25,16 +30,12 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "build",
-    "fonttools",
     "ipython",
     "pip",
     "pytest",
     "pytest-cov",
     "ruff",
     "twine",
-]
-fonts = [
-    "fonttools",
 ]
 
 [project.scripts]

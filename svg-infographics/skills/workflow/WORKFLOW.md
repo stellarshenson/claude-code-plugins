@@ -81,19 +81,17 @@ Place structural elements at grid positions. No text, no icons, no content yet.
    - At card top, height=5, accent colour, opacity=0.6
    - x, y, width must match the card path exactly (flush)
 
-5. Place arrows using the **horizontal-first rule**:
-   - Design every arrow as a horizontal shape first, then rotate into position
-   - Template: `<g transform="translate(tipX, tipY) rotate(angleDeg)">` wrapping:
-     - Stem: `<line x1="-length" y1="0" x2="-10" y2="0"/>` (ends at back of head, not at tip)
-     - Head: `<polygon points="0,0 -10,-5 -10,5"/>` (6px base, 4px depth)
-   - Angle = `atan2(dy, dx)` degrees from tail to tip; positive = clockwise
-   - **Stem touches back of polygon** - stem x2=-10 meets polygon base at x=-10
-   - After rotation, verify: tip lands at target edge, stem starts at source edge
-   - Compute rotated tip/tail coordinates: `tipX + cos(angle)*(-length)`, `tipY + sin(angle)*(-length)` to confirm fit
-   - Fully opaque - no `opacity` on line or polygon
-   - See `examples/arrow_patterns.svg` for straight (0deg), fork-up (-54.5deg), merge-down (29.7deg)
+5. Place all arrows and connectors via `svg-infographics connector`. **There is no separate "arrow" concept** - a simple point-to-point arrow is just a `straight` connector with `--arrow end`. The same tool handles straight lines, L-routes, chamfered L-routes, and PCHIP splines; rotating a horizontal template by hand is obsolete and forbidden.
 
-6. Place connectors. **Pick the right mode** and use `svg-infographics connector` with the matching `--mode` flag - never hand-author connector geometry:
+   The tool returns, in world coordinates:
+   - `trimmed_path_d` - the stem path with arrowhead clearance already subtracted; paste directly as `<path d="...">`
+   - Per-end arrowhead polygon in world coordinates; paste directly as `<polygon points="...">`
+   - `tangent` and `angle_deg` at each end (for labels, callouts, or joining to other elements)
+   - `samples` along the path (for midpoint callouts and standoff labels)
+
+   Do not author `<g transform="rotate(...)">` groups. Do not compute `atan2` angles by hand. Do not write horizontal stem templates and rotate them into position. Every one of these patterns is replaced by the connector tool's direct world-space output.
+
+6. **Pick the right mode** and use `svg-infographics connector` with the matching `--mode` flag:
 
    | When | Mode | Command |
    |------|------|---------|
@@ -101,8 +99,17 @@ Place structural elements at grid positions. No text, no icons, no content yet.
    | Right-angle route (axis-aligned) | `l` | `svg-infographics connector --mode l --from X,Y --to X,Y --first-axis h\|v` |
    | Right-angle route with softened corner | `l-chamfer` | `svg-infographics connector --mode l-chamfer --from X,Y --to X,Y --first-axis h\|v --chamfer 4` |
    | Smooth free curve through 3+ waypoints | `spline` | `svg-infographics connector --mode spline --waypoints "x1,y1 x2,y2 ..." --samples 200` |
+   | N starts fan into M ends through per-start merges and per-end forks | `manifold` | `svg-infographics connector --mode manifold --starts "..." --ends "..." --merge-points "..." --fork-points "..." --shape l-chamfer` |
 
-   All four modes accept `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--color`, `--width`, `--opacity`. The tool returns the trimmed path d (with arrowhead clearance), the world-space arrowhead polygons, and the tangent angle at each end so you know exactly where to place labels or attach to other elements.
+   All five modes accept `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--color`, `--width`, `--opacity`. The tool returns the trimmed path d (with arrowhead clearance), the world-space arrowhead polygons, and the tangent angle at each end so you know exactly where to place labels or attach to other elements.
+
+   **Manifold specifics**: the tool takes `--starts`, `--ends`, required `--spine-start` and `--spine-end`, and an optional `--tension` scalar or 2-tuple. Merge points and fork points are inferred automatically via perpendicular projection through the spine endpoints, scaled by tension: `tension=0` collapses all strands at the spine anchor, `tension=1` pulls each strand out to the full projection of its source onto the perpendicular line. Scalar tension applies to both sides; 2-tuple `(start, end)` applies independently. Optional `--merge-points` and `--fork-points` override the inference. Optional `--spine-controls` add PCHIP waypoints for spline shape or elbow corners for L shapes. Per-start and per-end controls route individual strands via `--start-controls` and `--end-controls` (list-of-lists, one inner list per sub-strand, soft cap 5 waypoints each).
+
+   The `--shape` flag (`straight`|`l`|`l-chamfer`|`spline`) applies to every strand, the spine, and every exit. For L and L-chamfer shapes the `--align-elbows` flag forces all start-strand elbows onto a common coordinate (and similarly for end strands), chosen by the algorithm from the spine orientation - horizontal spine aligns on x, vertical on y. This produces clean rail-style visuals. Per-segment first-axis is inferred from segment geometry so no global axis flag is needed.
+
+   The result exposes `start_strands`, `spine`, `end_strands`, `convergence_strands`, `divergence_strands` as individual polyline results, plus a manifold-level `bbox`, a `warnings` list, and `all_trimmed_d` - a pre-concatenated path d for pasting the whole manifold as a single block. Every polyline sub-result also carries its own `bbox` and `warnings`.
+
+7. **Collision detection** between connectors via `svg-infographics collide` (or the `detect_collisions` Python function). Takes a list of polyline results or raw sample lists and a `tolerance` in pixels (default 0 = strict crossing check). Returns crossing / near-miss / touching classifications with intersection coordinates and minimum distance. Built on shapely's `LineString.intersects` / `intersection` / `buffer`. Use it to flag near-misses during layout iteration, or to find anchor points for crossover markers, overlap dots, or "junction" decorations.
 
    Rules:
    - Default to `l-chamfer` with `--chamfer 4` for any multi-segment connection that changes direction. Sharp corners are forbidden in finished SVGs
@@ -147,7 +154,7 @@ Place structural elements at grid positions. No text, no icons, no content yet.
    - NO continuous line through circles - segmented with cutouts
    - Track line stroke-width 1.5, opacity 0.15
 
-9. **Verify**: every x/y coordinate matches the grid comment; arrow tip coordinates verified after rotation; connector endpoints meet card edges or arrow stems. Fix before proceeding.
+9. **Verify**: every x/y coordinate matches the grid comment; every connector `<path>` and arrowhead `<polygon>` matches what `svg-infographics connector` returned for the same `--from`/`--to`/`--mode`; connector endpoints meet card edges exactly (`svg-infographics connectors` will flag anything that misses). Fix before proceeding.
 
 ### Phase 4: Content
 
@@ -195,11 +202,11 @@ Add content at the positions documented in the grid.
 
 ### Phase 5: Finishing
 
-1. Verify arrow placement (arrows placed in Phase 3 using horizontal-first rule):
-   - Each arrow is a `<g transform="translate(tipX,tipY) rotate(angle)">` containing stem `<line>` + head `<polygon>`
-   - Compute rotated endpoints to confirm: tip at target edge, tail at source edge
-   - Stem touches back of polygon (stem x2=-10 meets polygon base at x=-10)
-   - Fully opaque (no opacity on line or polygon)
+1. Verify arrow placement (arrows placed in Phase 3 via `svg-infographics connector`):
+   - Every arrow is a `<path d="...">` (stem) plus `<polygon points="...">` (arrowhead), both in world coordinates - no wrapping `<g transform="rotate(...)">`, no hand-computed angles
+   - Re-run the connector tool for any arrow that looks off and paste the new output - do not nudge coordinates by hand
+   - Endpoints meet card edges exactly (verify with `svg-infographics connectors`)
+   - Fully opaque (no opacity on path or polygon)
 
 2. Add connector callout labels:
    - Centred in gap between source and target (x=midpoint, text-anchor=middle)
@@ -237,7 +244,7 @@ Before creating any images, create `svg-workflow-checklist.md` in the target ima
 3. **Text rules** - all `<text>` use CSS classes (zero inline fill); no opacity on text; `font-family="Segoe UI, Arial, sans-serif"` throughout
 4. **Text positions** - titles at accent_bar_bottom + 12px; descriptions at +14px rhythm; text within card boundaries (12px padding); minimum font 7px
 5. **Card shapes** - flat top, rounded bottom r=3; fill-opacity 0.04; stroke-width 1; accent bar height 5, opacity 0.6, flush with card
-6. **Arrow construction** - path-based chevron tips (NOT polygon); chamfered L-routes 4px diagonal; stem ends 4px before target; tip touches card edge; stroke-linecap/linejoin round
+6. **Arrow construction** - every arrow built with `svg-infographics connector`; `trimmed_path_d` pasted as `<path>`, arrowhead polygons pasted as `<polygon>` in world coordinates; no `rotate()` wrappers; `l-chamfer` mode with 4px chamfer for L-routes; endpoints meet card edges exactly; stroke-linecap/linejoin round
 7. **Track lines** - segmented with cutouts (cx-r to cx+r); no continuous line through circles; circles in gaps
 8. **Grid/spacing** - vertical rhythm consistent; horizontal alignment verified; 12px card padding; 10px viewBox edge; 10px inter-card
 9. **Legend** - text colour matches swatch colour; consistent row rhythm; swatches aligned

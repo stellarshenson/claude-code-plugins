@@ -13,13 +13,16 @@ The plugin ships with **three calculators** and **five validators**. Glance over
 
 | Tool | What it gives you |
 |------|-------------------|
-| `svg-infographics primitives <shape>` | Geometry + named anchors for rect, circle, ellipse, hex, star, arc, cube, cylinder, sphere, axis, **spline** (PCHIP through control points). Reach for it whenever you need a primitive's coordinates or a smooth waypoint curve |
-| `svg-infographics connector --mode <m>` | Connector geometry in 4 modes: `straight`, `l`, `l-chamfer`, `spline`. Returns trimmed path, arrowhead polygons in world coords, tangent angle at each end. Pick the mode by connection style |
-| `svg-infographics geom <op>` | Sketch constraints in the Fusion-360 style: midpoint, perpendicular foot, line extension, tangent points, intersections (line/line, line/circle, circle/circle), parallel/perpendicular construction, polar layout, evenly-spaced ring, concentric, angle bisector, **attachment points** on rect/circle edges, parallel **offset** of line/polyline/rect/circle/polygon (halos, rails, label standoff) |
+| `svg-infographics primitives <shape>` | Geometry + named anchors: rect, circle, ellipse, hex, star, arc, cube, cylinder, sphere, axis, spline (PCHIP). Use for primitive coords and smooth waypoint curves |
+| `svg-infographics connector --mode <m>` | 5 modes: `straight`, `l`, `l-chamfer`, `spline`, `manifold`. Returns trimmed path_d, arrowhead polygons (world coords), tangent/angle per end, bbox, warnings. Flags: `--standoff N\|start,end` (default 1px), auto-edge via `src_rect`/`tgt_rect` or `src_polygon`/`tgt_polygon`. `spline` with `start_dir`/`end_dir` → cubic Bezier (`bezier` lib), else PCHIP. `manifold`: single merge=`spine_start`, single fork=`spine_end`, strands inherit spine direction, `tension` scales Bezier tangent magnitude |
+| `svg-infographics geom <op>` | Sketch constraints: midpoint, perpendicular foot, line extension, tangent, intersections, parallel/perpendicular, polar, evenly-spaced, concentric, bisector, attachment points on rect/circle edges, parallel offset of line/polyline/rect/circle/polygon. Plus: `curve-midpoint` (arc-length midpoint + tangent on any polyline), `shape-midpoint` (area-weighted centroid of closed polygon) |
+| `svg-infographics charts <type>` | Pygal SVG charts: line, bar, hbar, area, radar, dot, histogram, pie. Palette via caller args: `--colors`/`--fg-light`/`--fg-dark`/`--grid-light`/`--grid-dark`. Dark mode via `@media (prefers-color-scheme: dark)` injection |
+| `svg-infographics empty-space` | Find free regions on a canvas via recursive quadtree scan. Coarse NxN grid → subdivide occupied cells 3x3 up to depth N → shapely-union the free cells → return boundary polygons per free island. Use for callout/label placement, or pipe into `geom offset-polygon --direction inward` for a standoff-shrunk safe zone |
 | `svg-infographics overlaps` | Text/shape overlap, spacing rhythm, font-size floors |
 | `svg-infographics contrast` | WCAG 2.1 contrast for text AND for objects vs the document background (light + dark mode) |
 | `svg-infographics alignment` | Grid snapping, vertical rhythm, layout topology |
 | `svg-infographics connectors` | Connector quality: zero-length, edge-snap, missing chamfer, dangling endpoints |
+| `svg-infographics collide` | Pairwise collision detection over a set of connectors. Tolerance-aware (buffered shapely intersection). Reports crossing / near-miss / touching with intersection coordinates and min distance |
 | `svg-infographics css` | CSS compliance: inline fills, missing dark-mode overrides, forbidden colours |
 
 Each calculator's `--help` output describes when to reach for each subcommand. Skim the menu before computing a coordinate, control point, or contrast value by hand - the tool's output is also paste-ready for the SVG.
@@ -71,8 +74,8 @@ Structural elements at grid positions. No text, no icons, no content.
 2. `<g id="guide-grid" display="none">` reference lines
 3. Card `<path>` outlines - use `svg-infographics primitives rect --radius 3` for exact anchor coordinates (flat-top, rounded-bottom, fill-opacity 0.04, stroke 1)
 4. Accent bars (`<rect>` height 5, opacity 0.6, flush with card top)
-5. Arrows using horizontal-first rule with `svg-infographics connector` for diagonal connectors
-6. Connectors: chamfered L-routes (4px diagonal at 90-degree turns)
+5. Arrows and connectors built with `svg-infographics connector` in the appropriate mode (`straight`, `l`, `l-chamfer`, `spline`) - paste the returned `trimmed_path_d` and world-space arrowhead polygons directly. No `rotate()` templates, no hand-calculated angles
+6. Prefer `l-chamfer` with `--chamfer 4` for any L-route; sharp corners are forbidden in finished SVGs
 7. Track line segments with cutouts (if timeline)
 8. For 3D shapes use `primitives cube/cylinder/sphere/cuboid/plane` for isometric coordinates
 8. **Verify**: every coordinate matches grid comment
@@ -92,7 +95,7 @@ Add content at grid positions:
 
 ## Phase 5: Finishing
 
-1. Verify arrow placement (horizontal-first rule, run `svg-infographics connector` to confirm)
+1. Verify arrow placement - every arrow's `<path>` and arrowhead `<polygon>` match what `svg-infographics connector` returned for the same `--from`/`--to`/`--mode`. Any discrepancy is a workflow violation
 2. Callout labels: centred in gap, 8px clear of arrow path
 3. File description comment before `<svg>`: filename, shows, intent, theme
 
@@ -117,7 +120,7 @@ Create `svg-workflow-checklist.md` with these check groups per image (`[x]` veri
 3. **Text rules** - CSS classes, no opacity, font-family
 4. **Text positions** - titles at +12px, descriptions at +14px, within boundaries
 5. **Card shapes** - flat top, rounded bottom r=3, fill-opacity 0.04, accent bar
-6. **Arrow construction** - horizontal-first, chamfered L-routes, stem ends 4px before target
+6. **Arrow construction** - all arrows and connectors built via `svg-infographics connector`, paste-ready `trimmed_path_d` + world-space arrowhead polygons, `l-chamfer` mode with 4px chamfer for L-routes, no hand-authored `rotate()` groups
 7. **Track lines** - segmented with cutouts
 8. **Grid/spacing** - vertical rhythm, horizontal alignment, padding
 9. **Legend** - text colour matches swatch

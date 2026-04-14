@@ -1,0 +1,41 @@
+<!--
+  arrow_patterns.svg - Arrow construction reference using horizontal-first rule
+  Shows: standard horizontal arrow template (tip at origin, pointing right) plus
+  three rotation examples: straight right (0deg), fork upward (-54.5deg), and
+  merge downward (29.7deg). All arrows fully opaque per arrow opacity rule.
+  Intent: reference for consistent arrow construction across all infographic SVGs.
+  Theme: generic accent blue #00a6ff - replace with project palette accent colour.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 140">
+
+  <!-- Labels -->
+  <text x="20" y="20" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" fill="#4a7ba7" letter-spacing="1">ARROW CONSTRUCTION: HORIZONTAL-FIRST RULE</text>
+
+  <!-- Template: horizontal arrow (tip at origin, pointing right) -->
+  <text x="20" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#6b8db5">Template (define horizontal, then rotate)</text>
+  <g transform="translate(195, 70) rotate(0)">
+    <line x1="-80" y1="0" x2="-10" y2="0" stroke="#00a6ff" stroke-width="2"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#00a6ff"/>
+  </g>
+  <text x="210" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#6b8db5">rotate(0) - straight right</text>
+
+  <!-- Example: fork upward (-54.5deg) -->
+  <g transform="translate(500, 42) rotate(-54.5)">
+    <line x1="-34" y1="0" x2="-10" y2="0" stroke="#00a6ff" stroke-width="2"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#00a6ff"/>
+  </g>
+  <text x="510" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#6b8db5">rotate(-54.5) - fork up</text>
+
+  <!-- Example: merge downward (29.7deg) -->
+  <g transform="translate(500, 110) rotate(29.7)">
+    <line x1="-40" y1="0" x2="-10" y2="0" stroke="#00a6ff" stroke-width="2"/>
+    <polygon points="0,0 -10,-5 -10,5" fill="#00a6ff"/>
+  </g>
+  <text x="510" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#6b8db5">rotate(29.7) - merge down</text>
+
+  <!-- Connecting lines to show fork/merge context -->
+  <line x1="420" y1="70" x2="460" y2="70" stroke="#00a6ff" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="460" y1="70" x2="475" y2="50" stroke="#00a6ff" stroke-width="1" stroke-dasharray="2,2"/>
+  <line x1="460" y1="70" x2="475" y2="100" stroke="#00a6ff" stroke-width="1" stroke-dasharray="2,2"/>
+
+</svg>

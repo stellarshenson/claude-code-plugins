@@ -106,6 +106,103 @@ def midpoint(p1: Point, p2: Point) -> Point:
     return Point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2)
 
 
+def shape_midpoint(points: list[Point]) -> tuple[Point, float]:
+    """Geometric midpoint (centroid) of a closed shape defined by its vertices.
+
+    Uses the area-weighted centroid formula for a simple polygon:
+        Cx = (1/6A) * sum((x_i + x_i+1) * cross_i)
+        Cy = (1/6A) * sum((y_i + y_i+1) * cross_i)
+        A  = 0.5 * sum(cross_i)
+        cross_i = x_i * y_i+1 - x_i+1 * y_i
+
+    Returns (centroid, signed_area). For degenerate cases (zero area) it
+    falls back to the arithmetic mean of the vertices. Use this to find
+    the visual centre of any closed shape - rectangles, polygons, stars,
+    hexagons, etc. - so a connector can point at the centre, or a label
+    can be placed there.
+
+    REMINDER: connectors should terminate at EDGE midpoints. Use this
+    centroid function for label placement or for inside-shape annotations,
+    NOT as a connector endpoint.
+    """
+    n = len(points)
+    if n < 2:
+        raise ValueError("shape_midpoint needs at least 2 points")
+    if n == 2:
+        return (midpoint(points[0], points[1]), 0.0)
+
+    # Close the polygon implicitly by wrapping indices
+    cx_accum = 0.0
+    cy_accum = 0.0
+    area_accum = 0.0
+    for i in range(n):
+        p = points[i]
+        q = points[(i + 1) % n]
+        cross = p.x * q.y - q.x * p.y
+        area_accum += cross
+        cx_accum += (p.x + q.x) * cross
+        cy_accum += (p.y + q.y) * cross
+    area = area_accum / 2
+    if abs(area) < EPS:
+        # Degenerate (collinear) - fall back to arithmetic mean
+        mx = sum(p.x for p in points) / n
+        my = sum(p.y for p in points) / n
+        return (Point(mx, my), 0.0)
+    cx = cx_accum / (6 * area)
+    cy = cy_accum / (6 * area)
+    return (Point(cx, cy), area)
+
+
+def curve_midpoint(points: list[Point]) -> tuple[Point, tuple[float, float], float]:
+    """Midpoint of a polyline by arc length.
+
+    Walks along the polyline accumulating segment lengths, finds the sample
+    at half of the total arc length, and returns:
+
+      - the exact interpolated midpoint (Point on the segment containing t=0.5)
+      - the unit tangent vector at that point (dx, dy)
+      - the total arc length of the polyline
+
+    This is the precise incident point for placing a label, annotation, or
+    junction at the "middle" of a curved connector. Works for any polyline
+    (straight-through L-chamfer corners, spline samples, Bezier samples)
+    because it operates on cumulative chord lengths - no curve-type knowledge
+    needed. Callers who want a Bezier midpoint can pass in the sampled
+    polyline from `calc_connector`/`calc_spline`.
+
+    REMINDER: connectors should terminate at edge MIDPOINTS of shapes. Use
+    `geom attach --shape rect --side right --pos mid` to compute edge
+    midpoints, and use `curve_midpoint` to find the midpoint of a connector
+    path (e.g. for placing a label on it).
+    """
+    if len(points) < 2:
+        raise ValueError("curve_midpoint needs at least 2 points")
+
+    # Cumulative arc length at each vertex
+    cum = [0.0]
+    for i in range(1, len(points)):
+        cum.append(cum[-1] + distance(points[i - 1], points[i]))
+    total = cum[-1]
+    if total == 0:
+        return (points[0], (1.0, 0.0), 0.0)
+
+    target = total / 2
+    # Find segment containing the midpoint
+    for i in range(1, len(points)):
+        if cum[i] >= target:
+            seg_start = cum[i - 1]
+            seg_len = cum[i] - cum[i - 1]
+            if seg_len == 0:
+                continue
+            t = (target - seg_start) / seg_len
+            mid = lerp(points[i - 1], points[i], t)
+            ux, uy = line_unit_vector(points[i - 1], points[i])
+            return (mid, (ux, uy), total)
+
+    # Shouldn't reach here
+    return (points[-1], (1.0, 0.0), total)
+
+
 def distance(p1: Point, p2: Point) -> float:
     """Euclidean distance between two points."""
     return math.hypot(p2.x - p1.x, p2.y - p1.y)
@@ -638,6 +735,43 @@ def cmd_midpoint(args):
     print(_svg_point(m, "#5456f3", 3))
 
 
+def cmd_curve_midpoint(args):
+    """Arc-length midpoint of a polyline (open curve). Use for label
+    placement or for finding the precise midpoint incident on a connector."""
+    import ast as _ast
+    if not args.points:
+        raise SystemExit("curve-midpoint requires --points [(x,y),(x,y),...]")
+    raw = _ast.literal_eval(args.points)
+    pts = [Point(float(p[0]), float(p[1])) for p in raw]
+    mid, tangent, total = curve_midpoint(pts)
+    _print_point("Midpoint", mid)
+    print(f"Tangent:   ({tangent[0]:.4f}, {tangent[1]:.4f})")
+    print(f"Angle:     {math.degrees(math.atan2(tangent[1], tangent[0])):.1f} deg")
+    print(f"Total arc: {total:.2f} px")
+    print("\n--- SVG ---")
+    d = "M" + " L".join(f"{p.x},{p.y}" for p in pts)
+    print(f'<path d="{d}" stroke="#999" fill="none" stroke-width="0.5"/>')
+    print(_svg_point(mid, "#5456f3", 3))
+
+
+def cmd_shape_midpoint(args):
+    """Centroid of a closed shape polygon. Use when a connector's source
+    or target is a closed shape (any polygon, not just a rect) and you
+    need the centre to compute a connect-from-centre direction."""
+    import ast as _ast
+    if not args.points:
+        raise SystemExit("shape-midpoint requires --points [(x,y),(x,y),...]")
+    raw = _ast.literal_eval(args.points)
+    pts = [Point(float(p[0]), float(p[1])) for p in raw]
+    centroid, area = shape_midpoint(pts)
+    _print_point("Centroid", centroid)
+    print(f"Signed area: {area:.2f} px^2")
+    print("\n--- SVG ---")
+    d = "M" + " L".join(f"{p.x},{p.y}" for p in pts) + " Z"
+    print(f'<path d="{d}" stroke="#999" fill="#5456f3" fill-opacity="0.1" stroke-width="0.5"/>')
+    print(_svg_point(centroid, "#5456f3", 3))
+
+
 def cmd_extend(args):
     p1, p2 = _parse_line(args.line)
     new_end = extend_line(p1, p2, args.by, args.end)
@@ -1038,6 +1172,24 @@ def main():
     p.add_argument("--p1", required=True, help="First point as 'x,y'")
     p.add_argument("--p2", required=True, help="Second point as 'x,y'")
     p.set_defaults(func=cmd_midpoint)
+
+    p = sub.add_parser(
+        "curve-midpoint",
+        help="Arc-length midpoint of an open polyline (curved connector, Bezier samples, L-route). Returns midpoint + tangent + total arc length.",
+        description="Walks a polyline accumulating segment lengths and returns the exact point at arc-length/2 with the tangent direction at that point. Use for labels on connectors or precise midpoint incident on a curved path.",
+    )
+    p.add_argument("--points", required=True,
+        help='Polyline as a Python literal: "[(x1,y1),(x2,y2),...]"')
+    p.set_defaults(func=cmd_curve_midpoint)
+
+    p = sub.add_parser(
+        "shape-midpoint",
+        help="Centroid of a closed shape (any polygon). Use when a connector is pointing at a non-rect closed shape and you need its centre for direction inference.",
+        description="Computes the area-weighted centroid of a closed polygon defined by its vertices. Returns the centroid point and the signed area. For rectangles, circles, stars, hexagons and any other closed polygon the caller passes as a vertex list.",
+    )
+    p.add_argument("--points", required=True,
+        help='Closed polygon vertices as a literal: "[(x1,y1),(x2,y2),...]"')
+    p.set_defaults(func=cmd_shape_midpoint)
 
     p = sub.add_parser(
         "extend",

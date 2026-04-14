@@ -1,0 +1,152 @@
+<!-- 06-manifold-showcase.svg - callouts placed via empty-space workflow -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 680">
+  <style>
+    .fg-1 { fill: #1a5a6e; }  .fg-3 { fill: #236a74; }
+    .card { fill: #005f7a; fill-opacity: 0.04; stroke: #005f7a; stroke-width: 1; }
+    .accent-bar { fill: #005f7a; opacity: 0.6; }
+    .spine-stroke { fill: none; stroke: #7a4a15; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; opacity: 0.95; }
+    .dot-spine { fill: #7a4a15; stroke: none; }
+    .divider { fill: none; stroke: #236a74; stroke-width: 0.6; stroke-dasharray: 3,5; opacity: 0.4; }
+    .callout-line { fill: none; stroke: #7a4a15; stroke-width: 1; opacity: 0.7; stroke-linecap: round; }
+    .callout-text { fill: #7a4a15; font-family: Segoe UI, Arial, sans-serif; font-size: 8.5px; font-style: italic; font-weight: 600; }
+    .strand-0 { fill: none; stroke: #005f7a; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
+    .arrow-0  { fill: #005f7a; stroke: none; opacity: 0.95; }
+    .strand-1 { fill: none; stroke: #1a7a8f; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
+    .arrow-1  { fill: #1a7a8f; stroke: none; opacity: 0.95; }
+    .strand-2 { fill: none; stroke: #0096d1; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
+    .arrow-2  { fill: #0096d1; stroke: none; opacity: 0.95; }
+    .strand-3 { fill: none; stroke: #2b7680; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
+    .arrow-3  { fill: #2b7680; stroke: none; opacity: 0.95; }
+    .strand-4 { fill: none; stroke: #3a91a6; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
+    .arrow-4  { fill: #3a91a6; stroke: none; opacity: 0.95; }
+    .strand-5 { fill: none; stroke: #1a5a6e; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
+    .arrow-5  { fill: #1a5a6e; stroke: none; opacity: 0.95; }
+    .strand-6 { fill: none; stroke: #4099b3; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
+    .arrow-6  { fill: #4099b3; stroke: none; opacity: 0.95; }
+    .strand-7 { fill: none; stroke: #2d8da8; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
+    .arrow-7  { fill: #2d8da8; stroke: none; opacity: 0.95; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }  .fg-3 { fill: #5aafc5; }
+      .card { fill: #5cc8e0; fill-opacity: 0.06; stroke: #5cc8e0; }
+      .accent-bar { fill: #5cc8e0; }
+      .spine-stroke { stroke: #d4a04a; }
+      .dot-spine { fill: #d4a04a; }
+      .divider { stroke: #5aafc5; }
+      .callout-line { stroke: #d4a04a; }
+      .callout-text { fill: #d4a04a; }
+      .strand-0 { stroke: #5cc8e0; }
+      .arrow-0  { fill: #5cc8e0; }
+      .strand-1 { stroke: #8fd4e6; }
+      .arrow-1  { fill: #8fd4e6; }
+      .strand-2 { stroke: #0096d1; }
+      .arrow-2  { fill: #0096d1; }
+      .strand-3 { stroke: #b8e4f0; }
+      .arrow-3  { fill: #b8e4f0; }
+      .strand-4 { stroke: #5aafc5; }
+      .arrow-4  { fill: #5aafc5; }
+      .strand-5 { stroke: #8fd4e6; }
+      .arrow-5  { fill: #8fd4e6; }
+      .strand-6 { stroke: #5cc8e0; }
+      .arrow-6  { fill: #5cc8e0; }
+      .strand-7 { stroke: #a3dde8; }
+      .arrow-7  { fill: #a3dde8; }
+    }
+  </style>
+  <text x="500" y="30" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="600" class="fg-1">Canonical manifold: cubic Bezier with tension-driven tangents</text>
+  <text x="500" y="48" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Manifold standoff 5px; direct + L-chamfer standoff 10px; edge-to-edge routing</text>
+  <g id="src_0"><path d="M60,70 H220 V119 Q220,122 217,122 H63 Q60,122 60,119 Z" class="card"/>
+    <rect x="60" y="70" width="160" height="4" class="accent-bar"/>
+    <text x="70" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">API Gateway</text>
+    <text x="70" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">REST + GraphQL</text></g>
+  <g id="src_1"><path d="M60,140 H220 V189 Q220,192 217,192 H63 Q60,192 60,189 Z" class="card"/>
+    <rect x="60" y="140" width="160" height="4" class="accent-bar"/>
+    <text x="70" y="160" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Event Bus</text>
+    <text x="70" y="176" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Kafka</text></g>
+  <g id="src_2"><path d="M60,210 H220 V259 Q220,262 217,262 H63 Q60,262 60,259 Z" class="card"/>
+    <rect x="60" y="210" width="160" height="4" class="accent-bar"/>
+    <text x="70" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Scheduler</text>
+    <text x="70" y="246" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Cron</text></g>
+  <g id="src_3"><path d="M60,280 H220 V329 Q220,332 217,332 H63 Q60,332 60,329 Z" class="card"/>
+    <rect x="60" y="280" width="160" height="4" class="accent-bar"/>
+    <text x="70" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Batch Job</text>
+    <text x="70" y="316" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">nightly ETL</text></g>
+  <g id="src_4"><path d="M60,350 H220 V399 Q220,402 217,402 H63 Q60,402 60,399 Z" class="card"/>
+    <rect x="60" y="350" width="160" height="4" class="accent-bar"/>
+    <text x="70" y="370" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Legacy DB</text>
+    <text x="70" y="386" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Oracle CDC</text></g>
+  <g id="sink_0"><path d="M810,90 H970 V139 Q970,142 967,142 H813 Q810,142 810,139 Z" class="card"/>
+    <rect x="810" y="90" width="160" height="4" class="accent-bar"/>
+    <text x="960" y="110" text-anchor="end" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">OLAP</text>
+    <text x="960" y="126" text-anchor="end" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Snowflake</text></g>
+  <g id="sink_1"><path d="M810,200 H970 V249 Q970,252 967,252 H813 Q810,252 810,249 Z" class="card"/>
+    <rect x="810" y="200" width="160" height="4" class="accent-bar"/>
+    <text x="960" y="220" text-anchor="end" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Graph</text>
+    <text x="960" y="236" text-anchor="end" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Neo4j</text></g>
+  <g id="sink_2"><path d="M810,310 H970 V359 Q970,362 967,362 H813 Q810,362 810,359 Z" class="card"/>
+    <rect x="810" y="310" width="160" height="4" class="accent-bar"/>
+    <text x="960" y="330" text-anchor="end" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Stream</text>
+    <text x="960" y="346" text-anchor="end" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Pulsar</text></g>
+  <g id="spine" class="spine-stroke"><path d="M415.00,230.00 L416.08,230.00 L419.11,230.00 L422.15,230.00 L425.19,230.00 L428.23,230.00 L431.27,230.00 L434.30,230.00 L437.34,230.00 L440.38,230.00 L443.42,230.00 L446.46,230.00 L449.49,230.00 L452.53,230.00 L455.57,230.00 L458.61,230.00 L461.65,230.00 L464.68,230.00 L467.72,230.00 L470.76,230.00 L473.80,230.00 L476.84,230.00 L479.87,230.00 L482.91,230.00 L485.95,230.00 L488.99,230.00 L492.03,230.00 L495.06,230.00 L498.10,230.00 L501.14,230.00 L504.18,230.00 L507.22,230.00 L510.25,230.00 L513.29,230.00 L516.33,230.00 L519.37,230.00 L522.41,230.00 L525.44,230.00 L528.48,230.00 L531.52,230.00 L534.56,230.00 L537.59,230.00 L540.63,230.00 L543.67,230.00 L546.71,230.00 L549.75,230.00 L552.78,230.00 L555.82,230.00 L558.86,230.00 L561.90,230.00 L564.94,230.00 L567.97,230.00 L571.01,230.00 L574.05,230.00 L577.09,230.00 L580.13,230.00 L583.16,230.00 L586.20,230.00 L589.24,230.00 L592.28,230.00 L595.32,230.00 L598.35,230.00 L601.39,230.00 L604.43,230.00 L607.47,230.00 L610.51,230.00 L613.54,230.00 L616.58,230.00 L619.62,230.00 L622.66,230.00 L625.70,230.00 L628.73,230.00 L631.77,230.00 L634.81,230.00 L637.85,230.00 L640.89,230.00 L643.92,230.00 L645.00,230.00"/></g>
+  <path class="strand-0" d="M225.00,96.07 L229.35,96.25 L233.75,96.57 L237.99,97.00 L242.05,97.54 L245.96,98.20 L249.70,98.97 L253.29,99.84 L256.74,100.82 L260.04,101.90 L263.20,103.07 L266.23,104.34 L269.12,105.69 L271.90,107.13 L274.55,108.66 L277.09,110.26 L279.51,111.94 L281.83,113.70 L284.05,115.52 L286.17,117.42 L288.20,119.37 L290.15,121.39 L292.01,123.46 L293.79,125.59 L295.50,127.76 L297.14,129.99 L298.72,132.26 L300.24,134.57 L301.71,136.91 L303.12,139.30 L304.49,141.71 L305.82,144.15 L307.12,146.61 L308.38,149.10 L309.62,151.60 L310.84,154.12 L312.04,156.65 L313.23,159.19 L314.41,161.73 L315.59,164.27 L316.77,166.81 L317.96,169.35 L319.16,171.88 L320.38,174.40 L321.62,176.90 L322.88,179.39 L324.18,181.85 L325.51,184.29 L326.88,186.70 L328.29,189.09 L329.76,191.43 L331.28,193.74 L332.86,196.01 L334.50,198.24 L336.21,200.41 L337.99,202.54 L339.85,204.61 L341.80,206.63 L343.83,208.58 L345.95,210.48 L348.17,212.30 L350.49,214.06 L352.91,215.74 L355.45,217.34 L358.10,218.87 L360.88,220.31 L363.77,221.66 L366.80,222.93 L369.96,224.10 L373.26,225.18 L376.71,226.16 L380.30,227.03 L384.04,227.80 L387.95,228.46 L392.01,229.00 L396.25,229.43 L400.65,229.75 L405.00,229.93"/>
+  <path class="strand-1" d="M225.00,166.05 L228.11,166.12 L231.97,166.27 L235.70,166.48 L239.32,166.74 L242.81,167.05 L246.19,167.42 L249.46,167.84 L252.62,168.30 L255.68,168.82 L258.63,169.38 L261.49,169.98 L264.25,170.63 L266.93,171.32 L269.51,172.05 L272.01,172.81 L274.43,173.62 L276.78,174.45 L279.04,175.33 L281.24,176.23 L283.38,177.16 L285.45,178.13 L287.46,179.12 L289.41,180.13 L291.31,181.17 L293.16,182.23 L294.96,183.32 L296.72,184.42 L298.44,185.54 L300.13,186.68 L301.78,187.83 L303.40,189.00 L305.00,190.17 L306.58,191.36 L308.14,192.56 L309.68,193.76 L311.21,194.97 L312.73,196.18 L314.24,197.39 L315.76,198.61 L317.27,199.82 L318.79,201.03 L320.32,202.24 L321.86,203.44 L323.42,204.64 L325.00,205.83 L326.60,207.00 L328.22,208.17 L329.87,209.32 L331.56,210.46 L333.28,211.58 L335.04,212.68 L336.84,213.77 L338.69,214.83 L340.59,215.87 L342.54,216.88 L344.55,217.87 L346.62,218.84 L348.76,219.77 L350.96,220.67 L353.22,221.55 L355.57,222.38 L357.99,223.19 L360.49,223.95 L363.07,224.68 L365.75,225.37 L368.51,226.02 L371.37,226.62 L374.32,227.18 L377.38,227.70 L380.54,228.16 L383.81,228.58 L387.19,228.95 L390.68,229.26 L394.30,229.52 L398.03,229.73 L401.89,229.88 L405.00,229.95"/>
+  <path class="strand-2" d="M225.00,235.99 L227.71,235.99 L231.39,235.97 L234.96,235.96 L238.43,235.93 L241.79,235.90 L245.05,235.87 L248.22,235.83 L251.28,235.78 L254.26,235.74 L257.15,235.68 L259.95,235.63 L262.67,235.57 L265.31,235.50 L267.87,235.43 L270.36,235.36 L272.78,235.29 L275.13,235.21 L277.42,235.13 L279.64,235.04 L281.81,234.95 L283.92,234.86 L285.98,234.77 L287.98,234.68 L289.95,234.58 L291.86,234.48 L293.74,234.38 L295.58,234.27 L297.38,234.17 L299.16,234.06 L300.90,233.95 L302.62,233.84 L304.32,233.73 L305.99,233.62 L307.65,233.51 L309.30,233.40 L310.94,233.28 L312.56,233.17 L314.19,233.06 L315.81,232.94 L317.44,232.83 L319.06,232.72 L320.70,232.60 L322.35,232.49 L324.01,232.38 L325.68,232.27 L327.38,232.16 L329.10,232.05 L330.84,231.94 L332.62,231.83 L334.42,231.73 L336.26,231.62 L338.14,231.52 L340.05,231.42 L342.02,231.32 L344.02,231.23 L346.08,231.14 L348.19,231.05 L350.36,230.96 L352.58,230.87 L354.87,230.79 L357.22,230.71 L359.64,230.64 L362.13,230.57 L364.69,230.50 L367.33,230.43 L370.05,230.37 L372.85,230.32 L375.74,230.26 L378.72,230.22 L381.78,230.17 L384.95,230.13 L388.21,230.10 L391.57,230.07 L395.04,230.04 L398.61,230.03 L402.29,230.01 L405.00,230.01"/>
+  <path class="strand-3" d="M225.00,305.94 L228.27,305.86 L232.20,305.68 L236.00,305.44 L239.67,305.13 L243.22,304.75 L246.65,304.32 L249.96,303.82 L253.15,303.27 L256.24,302.66 L259.22,301.99 L262.10,301.27 L264.88,300.50 L267.57,299.69 L270.16,298.82 L272.67,297.91 L275.09,296.96 L277.43,295.96 L279.69,294.93 L281.88,293.85 L284.00,292.74 L286.06,291.60 L288.05,290.43 L289.98,289.22 L291.85,287.98 L293.67,286.72 L295.45,285.44 L297.18,284.13 L298.87,282.80 L300.52,281.44 L302.13,280.08 L303.72,278.69 L305.28,277.30 L306.81,275.89 L308.33,274.47 L309.83,273.04 L311.31,271.60 L312.79,270.16 L314.26,268.72 L315.74,267.28 L317.21,265.84 L318.69,264.40 L320.17,262.96 L321.67,261.53 L323.19,260.11 L324.72,258.70 L326.28,257.31 L327.87,255.92 L329.48,254.56 L331.13,253.20 L332.82,251.87 L334.55,250.56 L336.33,249.28 L338.15,248.02 L340.02,246.78 L341.95,245.57 L343.94,244.40 L346.00,243.26 L348.12,242.15 L350.31,241.07 L352.57,240.04 L354.91,239.04 L357.33,238.09 L359.84,237.18 L362.43,236.31 L365.12,235.50 L367.90,234.73 L370.78,234.01 L373.76,233.34 L376.85,232.73 L380.04,232.18 L383.35,231.68 L386.78,231.25 L390.33,230.87 L394.00,230.56 L397.80,230.32 L401.73,230.14 L405.00,230.06"/>
+  <path class="strand-4" d="M225.00,375.93 L229.62,375.72 L234.15,375.38 L238.49,374.92 L242.66,374.32 L246.65,373.60 L250.48,372.76 L254.15,371.81 L257.65,370.75 L261.01,369.57 L264.21,368.30 L267.28,366.92 L270.21,365.44 L273.00,363.87 L275.67,362.21 L278.21,360.46 L280.64,358.63 L282.96,356.72 L285.16,354.73 L287.27,352.67 L289.28,350.53 L291.19,348.34 L293.02,346.08 L294.77,343.76 L296.43,341.39 L298.03,338.97 L299.56,336.50 L301.02,333.98 L302.43,331.42 L303.79,328.83 L305.09,326.20 L306.36,323.54 L307.59,320.86 L308.78,318.15 L309.95,315.42 L311.10,312.68 L312.22,309.92 L313.34,307.16 L314.45,304.39 L315.55,301.61 L316.66,298.84 L317.78,296.08 L318.90,293.32 L320.05,290.58 L321.22,287.85 L322.41,285.14 L323.64,282.46 L324.91,279.80 L326.21,277.17 L327.57,274.58 L328.98,272.02 L330.44,269.50 L331.97,267.03 L333.57,264.61 L335.23,262.24 L336.98,259.92 L338.81,257.66 L340.72,255.47 L342.73,253.33 L344.84,251.27 L347.04,249.28 L349.36,247.37 L351.79,245.54 L354.33,243.79 L357.00,242.13 L359.79,240.56 L362.72,239.08 L365.79,237.70 L368.99,236.43 L372.35,235.25 L375.85,234.19 L379.52,233.24 L383.35,232.40 L387.34,231.68 L391.51,231.08 L395.85,230.62 L400.38,230.28 L405.00,230.07"/>
+  <path class="strand-5" d="M655.00,229.91 L657.90,229.78 L661.62,229.52 L665.19,229.15 L668.63,228.69 L671.92,228.13 L675.08,227.47 L678.12,226.73 L681.02,225.90 L683.81,224.98 L686.47,223.98 L689.03,222.91 L691.47,221.75 L693.81,220.53 L696.04,219.23 L698.18,217.87 L700.22,216.44 L702.18,214.94 L704.04,213.39 L705.83,211.78 L707.54,210.12 L709.17,208.40 L710.73,206.64 L712.23,204.83 L713.67,202.98 L715.05,201.08 L716.37,199.15 L717.64,197.19 L718.87,195.19 L720.06,193.17 L721.21,191.11 L722.32,189.04 L723.41,186.94 L724.46,184.83 L725.50,182.70 L726.52,180.56 L727.52,178.40 L728.52,176.25 L729.51,174.08 L730.49,171.92 L731.48,169.75 L732.48,167.60 L733.48,165.44 L734.50,163.30 L735.54,161.17 L736.59,159.06 L737.68,156.96 L738.79,154.89 L739.94,152.83 L741.13,150.81 L742.36,148.81 L743.63,146.85 L744.95,144.92 L746.33,143.02 L747.77,141.17 L749.27,139.36 L750.83,137.60 L752.46,135.88 L754.17,134.22 L755.96,132.61 L757.82,131.06 L759.78,129.56 L761.82,128.13 L763.96,126.77 L766.19,125.47 L768.53,124.25 L770.97,123.09 L773.53,122.02 L776.19,121.02 L778.98,120.10 L781.88,119.27 L784.92,118.53 L788.08,117.87 L791.37,117.31 L793.05,117.09"/>
+  <path class="strand-6" d="M655.00,230.00 L656.49,229.99 L659.59,229.98 L662.60,229.97 L665.52,229.95 L668.35,229.93 L671.09,229.91 L673.76,229.89 L676.34,229.86 L678.85,229.82 L681.28,229.79 L683.64,229.75 L685.93,229.71 L688.15,229.67 L690.31,229.62 L692.41,229.57 L694.44,229.52 L696.42,229.47 L698.35,229.42 L700.22,229.36 L702.05,229.30 L703.82,229.24 L705.56,229.18 L707.25,229.12 L708.90,229.05 L710.51,228.99 L712.09,228.92 L713.64,228.85 L715.16,228.78 L716.66,228.71 L718.12,228.64 L719.57,228.56 L721.00,228.49 L722.41,228.42 L723.81,228.34 L725.20,228.27 L726.58,228.19 L727.95,228.11 L729.32,228.04 L730.68,227.96 L732.05,227.89 L733.42,227.81 L734.80,227.73 L736.19,227.66 L737.59,227.58 L739.00,227.51 L740.43,227.44 L741.88,227.36 L743.34,227.29 L744.84,227.22 L746.36,227.15 L747.91,227.08 L749.49,227.01 L751.10,226.95 L752.75,226.88 L754.44,226.82 L756.18,226.76 L757.95,226.70 L759.78,226.64 L761.65,226.58 L763.58,226.53 L765.56,226.48 L767.59,226.43 L769.69,226.38 L771.85,226.33 L774.07,226.29 L776.36,226.25 L778.72,226.21 L781.15,226.18 L783.66,226.14 L786.24,226.11 L788.91,226.09 L791.65,226.07 L793.00,226.06"/>
+  <path class="strand-7" d="M655.00,230.09 L657.72,230.20 L661.37,230.45 L664.87,230.79 L668.24,231.22 L671.48,231.74 L674.59,232.35 L677.57,233.04 L680.44,233.81 L683.19,234.67 L685.83,235.59 L688.36,236.59 L690.78,237.67 L693.10,238.81 L695.33,240.01 L697.46,241.28 L699.50,242.61 L701.46,244.00 L703.33,245.44 L705.13,246.94 L706.85,248.49 L708.50,250.08 L710.09,251.72 L711.61,253.41 L713.07,255.13 L714.48,256.89 L715.84,258.68 L717.15,260.51 L718.41,262.36 L719.64,264.25 L720.82,266.16 L721.98,268.09 L723.11,270.04 L724.21,272.00 L725.29,273.98 L726.35,275.97 L727.41,277.98 L728.45,279.98 L729.48,281.99 L730.52,284.01 L731.55,286.02 L732.59,288.02 L733.65,290.03 L734.71,292.02 L735.79,294.00 L736.89,295.96 L738.02,297.91 L739.18,299.84 L740.36,301.75 L741.59,303.64 L742.85,305.49 L744.16,307.32 L745.52,309.11 L746.93,310.87 L748.39,312.59 L749.91,314.28 L751.50,315.92 L753.15,317.51 L754.87,319.06 L756.67,320.56 L758.54,322.00 L760.50,323.39 L762.54,324.72 L764.67,325.99 L766.90,327.19 L769.22,328.33 L771.64,329.41 L774.17,330.41 L776.81,331.33 L779.56,332.19 L782.43,332.96 L785.41,333.65 L788.52,334.26 L791.76,334.78 L793.05,334.94"/>
+  <polygon class="arrow-5" points="805.00,116.09 792.76,110.60 793.26,122.59"/>
+  <polygon class="arrow-6" points="805.00,226.00 792.99,220.03 793.01,232.03"/>
+  <polygon class="arrow-7" points="805.00,335.91 793.25,329.44 792.77,341.43"/>
+  <g id="spine-anchors" class="dot-spine">
+    <circle cx="410.0" cy="230.0" r="5"/>
+    <circle cx="650.0" cy="230.0" r="5"/>
+  </g>
+  <g id="callout-merge">
+    <text x="420.0" y="220.0" class="callout-text">merge point</text>
+    <text x="420.0" y="231.0" class="callout-text">(single convergence at spine_start)</text>
+    <line x1="418.0" y1="222.5" x2="410" y2="226" class="callout-line"/>
+  </g>
+  <g id="callout-tangent">
+    <text x="420.0" y="220.0" class="callout-text">strand arrives tangent to spine</text>
+    <line x1="418.0" y1="217.0" x2="410" y2="226" class="callout-line"/>
+  </g>
+  <g id="callout-fork">
+    <text x="570.0" y="360.0" class="callout-text">fork point</text>
+    <text x="570.0" y="371.0" class="callout-text">(single divergence at spine_end)</text>
+    <line x1="644.8" y1="349.5" x2="650" y2="234" class="callout-line"/>
+  </g>
+  <g id="callout-standoff">
+    <text x="773.0" y="61.0" class="callout-text">5px standoff</text>
+    <text x="773.0" y="72.0" class="callout-text">(arrow tip gap)</text>
+    <line x1="808.1" y1="76.5" x2="808" y2="115" class="callout-line"/>
+  </g>
+  <line x1="30" y1="415" x2="970" y2="415" class="divider"/>
+  <text x="500" y="435" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Point-to-point modes on the same canvas</text>
+<g><path d="M60,440 H200 V477 Q200,480 197,480 H63 Q60,480 60,477 Z" class="card"/><rect x="60" y="440" width="140" height="4" class="accent-bar"/><text x="130.0" y="464.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape A</text></g>
+<g><path d="M420,440 H560 V477 Q560,480 557,480 H423 Q420,480 420,477 Z" class="card"/><rect x="420" y="440" width="140" height="4" class="accent-bar"/><text x="490.0" y="464.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape C</text></g>
+<g><path d="M420,500 H560 V537 Q560,540 557,540 H423 Q420,540 420,537 Z" class="card"/><rect x="420" y="500" width="140" height="4" class="accent-bar"/><text x="490.0" y="524.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape B</text></g>
+<g><path d="M720,500 H860 V537 Q860,540 857,540 H723 Q720,540 720,537 Z" class="card"/><rect x="720" y="500" width="140" height="4" class="accent-bar"/><text x="790.0" y="524.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape D</text></g>
+  <path class="strand-2" d="M209.86,473.31 L400.27,505.05"/>
+  <polygon class="arrow-2" points="410.14,506.69 401.09,500.11 399.45,509.98"/>
+  <path class="strand-4" d="M570.00,460.00 L784.00,460.00 L790.00,466.00 L790.00,480.00"/>
+  <polygon class="arrow-4" points="790.00,490.00 795.00,480.00 785.00,480.00"/>
+  <text x="310" y="585" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">calc_connector: auto-edge + 10px standoff</text>
+  <text x="780" y="585" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">calc_l_chamfer: top-edge incident + 10px standoff</text>
+  <line x1="30" y1="605" x2="970" y2="605" class="divider"/>
+  <g id="legend" transform="translate(40, 635)">
+    <text x="0" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Legend</text>
+    <line x1="55" y1="-3" x2="90" y2="-3" class="spine-stroke"/>
+    <text x="95" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Spine (stiff trunk)</text>
+    <circle cx="230" cy="-3" r="4" class="dot-spine"/>
+    <text x="240" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Merge / fork point</text>
+    <path d="M380,-3 L415,-3" class="strand-0"/>
+    <text x="420" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Manifold strand</text>
+    <path d="M540,-3 L575,-3" class="strand-2"/>
+    <text x="580" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Direct straight</text>
+    <path d="M690,-8 L705,-8 L707,-6 L707,2 L709,4 L725,4" class="strand-4" fill="none"/>
+    <text x="730" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">L-chamfer</text>
+    <line x1="815" y1="-5" x2="840" y2="-5" class="callout-line"/>
+    <text x="845" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Callout leader</text>
+  </g>
+</svg>

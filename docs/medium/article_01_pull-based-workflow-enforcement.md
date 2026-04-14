@@ -19,7 +19,7 @@ companion_project:
 
 # Pull-Based Workflow Enforcement for Autonomous AI Agents
 
-![Cover](images/article-cover.png)
+![Cover](images_article_01/article-cover.png)
 
 AI coding agents generate impressive code. They are terrible at following process. Give an autonomous agent a multi-iteration objective and watch: the first iteration gets a thorough plan, the second cuts research short, by the third it skips review entirely, and by the fifth it commits half-tested changes with self-approved reviews.
 
@@ -29,7 +29,7 @@ The problem isn't capability. These agents operate in a **push model** - they de
 
 The implementation is [autobuild](https://github.com/stellarshenson/claude-code-plugins), a Claude Code plugin published as a pip package, but the pattern applies to any autonomous AI workflow.
 
-![Five failure modes of autonomous agents](images/06-five-failure-modes.svg)
+![Five failure modes of autonomous agents](images_article_01/06-five-failure-modes.svg)
 
 ## The problem: five failure modes
 
@@ -43,11 +43,11 @@ The implementation is [autobuild](https://github.com/stellarshenson/claude-code-
 
 **Benchmark gaming.** The most insidious mode. The agent optimises for the measurement instead of the quality. If a benchmark checks "does the SVG have connectors?", it adds invisible zero-length connectors. If a test asserts a threshold, it relaxes the threshold. The score improves. The system doesn't.
 
-![Push vs Pull model comparison](images/01-push-vs-pull.svg)
+![Push vs Pull model comparison](images_article_01/01-push-vs-pull.svg)
 
 ## The method: three principles
 
-![The three principles](images/07-three-principles.svg)
+![The three principles](images_article_01/07-three-principles.svg)
 
 ### Principle 1: inversion of control via finite state machine
 
@@ -71,7 +71,7 @@ The gatekeeper receives the phase's exit criteria, required agents, and expected
 
 The orchestrator maintains persistent state: a hypothesis backlog ranked by multi-agent debate, a failure catalogue classified by root cause, and user context broadcast to all agents. Iteration 5 has access to everything learned in iterations 1-4.
 
-![Phase lifecycle with two gates](images/02-phase-lifecycle.svg)
+![Phase lifecycle with two gates](images_article_01/02-phase-lifecycle.svg)
 
 ## Two gates per phase
 
@@ -91,7 +91,7 @@ One practical gotcha: when spawning `claude -p` subprocesses from inside a runni
 
 At critical phases, the orchestrator spawns independent agent panels with deliberately different perspectives evaluating the same work in parallel. A hypothesis phase spawns four agents: contrarian, optimist, pessimist, scientist. A review phase spawns critic, architect, guardian, and forensicist. When any reviewer says BLOCK, the main session must reject and fix.
 
-![Guardian anti-overfit architecture](images/03-guardian-anti-overfit.svg)
+![Guardian anti-overfit architecture](images_article_01/03-guardian-anti-overfit.svg)
 
 ## The guardian: anti-overfit agent
 
@@ -121,11 +121,11 @@ orchestrate new --type full \
   --benchmark "Read BENCHMARK.md and evaluate each [ ] item..."
 ```
 
-![End-to-end program-driven execution](images/10-end-to-end-journey.svg)
+![End-to-end program-driven execution](images_article_01/10-end-to-end-journey.svg)
 
 ## Why it works: theoretical foundations
 
-![Theoretical foundations](images/11-theoretical-foundations.svg)
+![Theoretical foundations](images_article_01/11-theoretical-foundations.svg)
 
 The pull-based pattern isn't ad hoc engineering - it addresses known failure modes of transformer-based language models.
 
@@ -143,7 +143,7 @@ The pull-based pattern isn't ad hoc engineering - it addresses known failure mod
 
 ## Content/engine separation
 
-![Content/engine separation](images/04-content-engine-separation.svg)
+![Content/engine separation](images_article_01/04-content-engine-separation.svg)
 
 The engine is a generic YAML-driven state machine. **What** the agent should do (content) is separated from **how** the orchestrator works (engine). Three YAML files define everything:
 
@@ -155,7 +155,7 @@ Resources are bundled in the pip package and auto-copied to `.autobuild/resource
 
 Five workflow types: `full` (8 phases, 15 agents), `fast` (no research/hypothesis), `gc` (cleanup), `hotfix` (minimal), `planning` (work breakdown dependency).
 
-![Full 8-phase workflow with agents](images/05-full-workflow-agents.svg)
+![Full 8-phase workflow with agents](images_article_01/05-full-workflow-agents.svg)
 
 ## Real sessions
 
@@ -193,7 +193,7 @@ F1 is a real defect - rejecting back to IMPLEMENT to fix it.
 
 The **critic** approved - the implementation matched the plan exactly. The **forensicist** found a critical defect: the existing `_clean_artifacts_dir` function would silently destroy user-customised resources on every `new --clean` invocation. The critic checks plan alignment (did changes match the plan?). The forensicist traces failure modes (what could go wrong across iterations?). Pre-existing untouched code interacting destructively with new features is exactly the class of defect that plan-alignment reviewers miss but failure-mode analysts catch.
 
-![Four agents, four defect classes](images/09-multi-agent-defect-detection.svg)
+![Four agents, four defect classes](images_article_01/09-multi-agent-defect-detection.svg)
 
 ## Limitations
 

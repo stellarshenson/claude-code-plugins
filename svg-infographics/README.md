@@ -60,5 +60,5 @@ svg-infographics primitives rect --x 20 --y 30 ... # exact anchor coordinates fo
 - **Grid-first**: Define viewBox, margins, columns, vertical rhythm BEFORE placing any content
 - **CSS theme classes**: `<style>` block with `prefers-color-scheme` for OS-aware dark/light mode
 - **Transparent background**: No full-viewport background fills - document controls the background
-- **Horizontal-first arrows**: Define arrows flat, rotate into position with `svg-infographics connector`
+- **Tool-built connectors**: Every arrow, L-route, chamfered corner, and spline comes from `svg-infographics connector` in world coordinates - no hand-authored `rotate()` groups, no `atan2` math
 - **Fail-first validation**: All checker findings are real defects until individually defended

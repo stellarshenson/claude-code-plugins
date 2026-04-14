@@ -1,0 +1,165 @@
+<!--
+  01_marketplace_overview.svg - stellars-claude-code-plugins marketplace hero
+  Shows: marketplace title band + 6 plugin cards in a 3-column x 2-row grid grouped by
+  category (Build & Iterate / Critique & Validate / Communicate & Track), plus an
+  install-line strip at the bottom.
+  Intent: README hero infographic that says "this marketplace ships 6 plugins for
+  structured AI-assisted work" at a glance.
+  Theme: Stellars-Tech (teal primary, gold accent, Segoe UI, flat-top rounded-bottom cards).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 460">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    .stroke-1 { stroke: #005f7a; }
+    .stroke-2 { stroke: #7a4a15; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .stroke-1 { stroke: #5cc8e0; }
+      .stroke-2 { stroke: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 900x460, margin 20 all sides
+    Header band: y=20..86 (66) - title + tagline
+    Category strip: y=92..110 (18) - 3 column labels
+    Card grid: y=120..380 (260) - 2 rows of 120 with 20px gutter
+      Row 1: y=120..240
+      Row 2: y=260..380
+    Bottom strip: y=390..440 (50) - install command
+    Card columns (276 wide each, 16px gutters):
+      col1: x=20..296   (Build & Iterate)
+      col2: x=312..588  (Critique & Validate)
+      col3: x=604..880  (Communicate & Track)
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: header, categories, card-grid, install-strip
+    grid: 3 columns x 2 rows
+    contain: card > accent-bar, name, tagline, divider, capability-chips, footer-stat
+  === -->
+
+  <!-- === HEADER BAND === -->
+  <text x="20" y="42" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" class="fg-1">stellars-claude-code-plugins</text>
+  <text x="20" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-3">A marketplace for Claude Code - structured workflows for build, critique, and delivery</text>
+  <text x="20" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4" letter-spacing="1">6 PLUGINS - PURE CONFIG - YAML ENGINE - DARK MODE - PYPI - MIT</text>
+
+  <!-- === CATEGORY LABELS === -->
+  <text x="158" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="accent-1" letter-spacing="1.5" text-anchor="middle">BUILD &amp; ITERATE</text>
+  <text x="450" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="accent-1" letter-spacing="1.5" text-anchor="middle">CRITIQUE &amp; VALIDATE</text>
+  <text x="742" y="106" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="accent-1" letter-spacing="1.5" text-anchor="middle">COMMUNICATE &amp; TRACK</text>
+
+  <!-- === CARD ROW 1 === -->
+
+  <!-- Card 1.1: autobuild (col1, row1) x=20 y=120 w=276 h=120 -->
+  <path d="M20,120 H296 V237 Q296,240 293,240 H23 Q20,240 20,237 Z" fill="#005f7a" fill-opacity="0.04"/>
+  <path d="M20,120 H296 V237 Q296,240 293,240 H23 Q20,240 20,237 Z" fill="none" class="stroke-1" stroke-width="1"/>
+  <rect x="20" y="120" width="276" height="5" fill="#005f7a" opacity="0.6"/>
+  <text x="36" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" class="fg-1">autobuild</text>
+  <text x="36" y="167" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">YAML-driven phase orchestration</text>
+  <line x1="36" y1="178" x2="280" y2="178" class="stroke-1" stroke-width="0.5" opacity="0.25"/>
+  <!-- capability chips -->
+  <rect x="36" y="186" width="62" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="67" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">8 PHASES</text>
+  <rect x="104" y="186" width="74" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="141" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">4 WORKFLOWS</text>
+  <rect x="184" y="186" width="86" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="227" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">MULTI-AGENT</text>
+  <text x="36" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Phase pipeline + quality gates + audit logs</text>
+
+  <!-- Card 1.2: devils-advocate (col2, row1) x=312 y=120 w=276 h=120 -->
+  <path d="M312,120 H588 V237 Q588,240 585,240 H315 Q312,240 312,237 Z" fill="#005f7a" fill-opacity="0.04"/>
+  <path d="M312,120 H588 V237 Q588,240 585,240 H315 Q312,240 312,237 Z" fill="none" class="stroke-1" stroke-width="1"/>
+  <rect x="312" y="120" width="276" height="5" fill="#005f7a" opacity="0.6"/>
+  <text x="328" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" class="fg-1">devils-advocate</text>
+  <text x="328" y="167" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Persona-driven document critique</text>
+  <line x1="328" y1="178" x2="572" y2="178" class="stroke-1" stroke-width="0.5" opacity="0.25"/>
+  <rect x="328" y="186" width="86" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="371" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">FIBONACCI 1-64</text>
+  <rect x="420" y="186" width="62" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="451" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">ITERATIVE</text>
+  <rect x="488" y="186" width="64" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="520" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">SCORECARD</text>
+  <text x="328" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Risk-scored concerns + residual measurement</text>
+
+  <!-- Card 1.3: svg-infographics (col3, row1) x=604 y=120 w=276 h=120 -->
+  <path d="M604,120 H880 V237 Q880,240 877,240 H607 Q604,240 604,237 Z" fill="#005f7a" fill-opacity="0.04"/>
+  <path d="M604,120 H880 V237 Q880,240 877,240 H607 Q604,240 604,237 Z" fill="none" class="stroke-1" stroke-width="1"/>
+  <rect x="604" y="120" width="276" height="5" fill="#005f7a" opacity="0.6"/>
+  <text x="620" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" class="fg-1">svg-infographics</text>
+  <text x="620" y="167" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Grid-first SVG infographics</text>
+  <line x1="620" y1="178" x2="864" y2="178" class="stroke-1" stroke-width="0.5" opacity="0.25"/>
+  <rect x="620" y="186" width="60" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="650" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">8 TOOLS</text>
+  <rect x="686" y="186" width="74" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="723" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">DARK MODE</text>
+  <rect x="766" y="186" width="60" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="796" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">WCAG AA</text>
+  <text x="620" y="222" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">6-phase workflow + automated checkers</text>
+
+  <!-- === CARD ROW 2 === -->
+
+  <!-- Card 2.1: datascience (col1, row2) x=20 y=260 w=276 h=120 -->
+  <path d="M20,260 H296 V377 Q296,380 293,380 H23 Q20,380 20,377 Z" fill="#7a4a15" fill-opacity="0.04"/>
+  <path d="M20,260 H296 V377 Q296,380 293,380 H23 Q20,380 20,377 Z" fill="none" class="stroke-2" stroke-width="1"/>
+  <rect x="20" y="260" width="276" height="5" fill="#7a4a15" opacity="0.6"/>
+  <text x="36" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" class="fg-1">datascience</text>
+  <text x="36" y="307" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Notebooks + projects with structure</text>
+  <line x1="36" y1="318" x2="280" y2="318" class="stroke-2" stroke-width="0.5" opacity="0.25"/>
+  <rect x="36" y="326" width="56" height="14" rx="2" fill="#7a4a15" fill-opacity="0.08"/>
+  <text x="64" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">COPIER</text>
+  <rect x="98" y="326" width="64" height="14" rx="2" fill="#7a4a15" fill-opacity="0.08"/>
+  <text x="130" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">JUPYTEXT</text>
+  <rect x="168" y="326" width="48" height="14" rx="2" fill="#7a4a15" fill-opacity="0.08"/>
+  <text x="192" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">RICH</text>
+  <rect x="222" y="326" width="56" height="14" rx="2" fill="#7a4a15" fill-opacity="0.08"/>
+  <text x="250" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">PYTORCH</text>
+  <text x="36" y="362" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Standardised structure + style fix commands</text>
+
+  <!-- Card 2.2: document-processing (col2, row2) x=312 y=260 w=276 h=120 -->
+  <path d="M312,260 H588 V377 Q588,380 585,380 H315 Q312,380 312,377 Z" fill="#005f7a" fill-opacity="0.04"/>
+  <path d="M312,260 H588 V377 Q588,380 585,380 H315 Q312,380 312,377 Z" fill="none" class="stroke-1" stroke-width="1"/>
+  <rect x="312" y="260" width="276" height="5" fill="#005f7a" opacity="0.6"/>
+  <text x="328" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" class="fg-1">document-processing</text>
+  <text x="328" y="307" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Source-grounded structured processing</text>
+  <line x1="328" y1="318" x2="572" y2="318" class="stroke-1" stroke-width="0.5" opacity="0.25"/>
+  <rect x="328" y="326" width="68" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="362" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">GROUNDING</text>
+  <rect x="402" y="326" width="76" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="440" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">PDF AUTOMATION</text>
+  <rect x="484" y="326" width="68" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="518" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">VALIDATION</text>
+  <text x="328" y="362" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Source tracing + uniformization + compliance</text>
+
+  <!-- Card 2.3: journal (col3, row2) x=604 y=260 w=276 h=120 -->
+  <path d="M604,260 H880 V377 Q880,380 877,380 H607 Q604,380 604,377 Z" fill="#7a4a15" fill-opacity="0.04"/>
+  <path d="M604,260 H880 V377 Q880,380 877,380 H607 Q604,380 604,377 Z" fill="none" class="stroke-2" stroke-width="1"/>
+  <rect x="604" y="260" width="276" height="5" fill="#7a4a15" opacity="0.6"/>
+  <text x="620" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" class="fg-1">journal</text>
+  <text x="620" y="307" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Append-only project journal</text>
+  <line x1="620" y1="318" x2="864" y2="318" class="stroke-2" stroke-width="0.5" opacity="0.25"/>
+  <rect x="620" y="326" width="68" height="14" rx="2" fill="#7a4a15" fill-opacity="0.08"/>
+  <text x="654" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">NUMBERED</text>
+  <rect x="694" y="326" width="62" height="14" rx="2" fill="#7a4a15" fill-opacity="0.08"/>
+  <text x="725" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">ARCHIVED</text>
+  <rect x="762" y="326" width="64" height="14" rx="2" fill="#7a4a15" fill-opacity="0.08"/>
+  <text x="794" y="336" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">VERIFIED</text>
+  <text x="620" y="362" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4">Continuous numbering + archive workflow</text>
+
+  <!-- === BOTTOM INSTALL STRIP === -->
+  <rect x="20" y="390" width="860" height="42" rx="3" fill="#005f7a" fill-opacity="0.06"/>
+  <text x="36" y="408" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-1" letter-spacing="1">INSTALL</text>
+  <text x="36" y="424" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">/plugin marketplace add stellarshenson/claude-code-plugins</text>
+  <text x="865" y="425" font-family="Segoe UI, Arial, sans-serif" font-size="8" class="fg-4" text-anchor="end">github.com/stellarshenson/claude-code-plugins</text>
+</svg>
