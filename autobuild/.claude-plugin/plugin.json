@@ -1,7 +1,7 @@
 {
   "name": "autobuild",
   "description": "Autonomous build iteration orchestrator. Runs structured improvement cycles with multi-agent review, FSM-driven phase lifecycle, per-phase gates, and YAML-configured workflows.",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "license": "MIT",
   "author": {
     "name": "Stellars Henson",
