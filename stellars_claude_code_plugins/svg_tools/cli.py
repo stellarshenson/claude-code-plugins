@@ -19,23 +19,39 @@ import sys
 
 SUBCOMMANDS = {
     # ---- VALIDATORS (read an SVG, report problems) ----
-    "overlaps":   ("check_overlaps",
-                   "VALIDATE: text/shape overlaps, spacing rhythm, font sizes. Run on every finished SVG."),
-    "contrast":   ("check_contrast",
-                   "VALIDATE: WCAG 2.1 text contrast AND object-vs-background contrast in light + dark mode."),
-    "alignment":  ("check_alignment",
-                   "VALIDATE: grid snapping, vertical rhythm, topology. Catches eyeballed positions."),
-    "connectors": ("check_connectors",
-                   "VALIDATE: connector quality (zero-length, edge-snap, L-routing chamfer, dangling ends)."),
-    "css":        ("check_css",
-                   "VALIDATE: CSS compliance (inline fills that should be classes, missing dark-mode overrides)."),
+    "overlaps": (
+        "check_overlaps",
+        "VALIDATE: text/shape overlaps, spacing rhythm, font sizes. Run on every finished SVG.",
+    ),
+    "contrast": (
+        "check_contrast",
+        "VALIDATE: WCAG 2.1 text contrast AND object-vs-background contrast in light + dark mode.",
+    ),
+    "alignment": (
+        "check_alignment",
+        "VALIDATE: grid snapping, vertical rhythm, topology. Catches eyeballed positions.",
+    ),
+    "connectors": (
+        "check_connectors",
+        "VALIDATE: connector quality (zero-length, edge-snap, L-routing chamfer, dangling ends).",
+    ),
+    "css": (
+        "check_css",
+        "VALIDATE: CSS compliance (inline fills that should be classes, missing dark-mode overrides).",
+    ),
     # ---- CALCULATORS (produce numbers + SVG snippets you paste in) ----
-    "primitives": ("calc_primitives",
-                   "CALC primitive shapes with anchors: rect, circle, ellipse, hex, star, cube, cylinder, sphere, axis, spline."),
-    "connector":  ("calc_connector",
-                   "CALC connector geometry: straight, L, L-chamfer, or PCHIP spline. Returns trimmed path + arrowhead polygons + tangent angles."),
-    "geom":       ("calc_geometry",
-                   "CALC sketch constraints: attachment points, midpoint, tangent, intersection, offset, evenly-spaced, polar, bisector. The Fusion-360 toolkit."),
+    "primitives": (
+        "calc_primitives",
+        "CALC primitive shapes with anchors: rect, circle, ellipse, hex, star, cube, cylinder, sphere, axis, spline.",
+    ),
+    "connector": (
+        "calc_connector",
+        "CALC connector geometry: straight, L, L-chamfer, or PCHIP spline. Returns trimmed path + arrowhead polygons + tangent angles.",
+    ),
+    "geom": (
+        "calc_geometry",
+        "CALC sketch constraints: attachment points, midpoint, tangent, intersection, offset, evenly-spaced, polar, bisector. The Fusion-360 toolkit.",
+    ),
 }
 
 

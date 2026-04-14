@@ -27,14 +27,14 @@ Usage:
     python check_contrast.py --svg file.svg --object-min-area 1200
 """
 
+from dataclasses import dataclass
 import re
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
-
 
 # ---------------------------------------------------------------------------
 # Colour utilities
 # ---------------------------------------------------------------------------
+
 
 def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
     """Convert #RRGGBB or #RGB to (r, g, b) integers."""
@@ -46,9 +46,11 @@ def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
 
 def relative_luminance(r: int, g: int, b: int) -> float:
     """WCAG 2.1 relative luminance from sRGB values (0-255)."""
+
     def linearize(c: int) -> float:
         s = c / 255.0
         return s / 12.92 if s <= 0.04045 else ((s + 0.055) / 1.055) ** 2.4
+
     return 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b)
 
 
@@ -80,11 +82,20 @@ def blend_over(fg_hex: str, opacity: float, base_hex: str) -> str:
 # ---------------------------------------------------------------------------
 
 CSS_COLORS = {
-    "white": "#ffffff", "black": "#000000", "red": "#ff0000",
-    "green": "#008000", "blue": "#0000ff", "yellow": "#ffff00",
-    "magenta": "#ff00ff", "cyan": "#00ffff", "orange": "#ffa500",
-    "gray": "#808080", "grey": "#808080", "lime": "#00ff00",
-    "none": None, "transparent": None,
+    "white": "#ffffff",
+    "black": "#000000",
+    "red": "#ff0000",
+    "green": "#008000",
+    "blue": "#0000ff",
+    "yellow": "#ffff00",
+    "magenta": "#ff00ff",
+    "cyan": "#00ffff",
+    "orange": "#ffa500",
+    "gray": "#808080",
+    "grey": "#808080",
+    "lime": "#00ff00",
+    "none": None,
+    "transparent": None,
 }
 
 
@@ -109,6 +120,7 @@ def resolve_color(color_str: str) -> str | None:
 # ---------------------------------------------------------------------------
 # CSS class colour resolver
 # ---------------------------------------------------------------------------
+
 
 def parse_css_classes(style_text: str) -> dict[str, str]:
     """Extract .class { fill: #hex; } mappings from <style> block (light mode only)."""
@@ -161,7 +173,7 @@ def parse_dark_classes(style_text: str) -> dict[str, str]:
         elif style_text[j] == "}":
             depth -= 1
         j += 1
-    block = style_text[brace_pos + 1:j - 1]
+    block = style_text[brace_pos + 1 : j - 1]
     for m in re.finditer(r"\.(\w[\w-]*)\s*\{\s*fill:\s*(#[0-9a-fA-F]{3,6})\s*;?\s*\}", block):
         mappings[m.group(1)] = m.group(2)
     return mappings
@@ -170,6 +182,7 @@ def parse_dark_classes(style_text: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class TextElement:
@@ -209,11 +222,12 @@ class ContrastResult:
 @dataclass
 class Shape:
     """A filled shape (card, panel, icon) checked against the document bg."""
-    tag: str                        # rect/path/circle/ellipse/polygon
-    fill: str | None                # resolved hex or None
+
+    tag: str  # rect/path/circle/ellipse/polygon
+    fill: str | None  # resolved hex or None
     fill_opacity: float
     fill_class: str
-    stroke: str | None              # resolved hex or None
+    stroke: str | None  # resolved hex or None
     stroke_opacity: float
     stroke_width: float
     stroke_class: str
@@ -227,14 +241,14 @@ class Shape:
 @dataclass
 class ObjectContrastResult:
     shape: Shape
-    fill_ratio: float | None        # None if shape has no visible fill
-    stroke_ratio: float | None      # None if shape has no visible stroke
+    fill_ratio: float | None  # None if shape has no visible fill
+    stroke_ratio: float | None  # None if shape has no visible stroke
     effective_bg: str
-    fill_used: str | None           # blended fill hex used for ratio
-    stroke_used: str | None         # stroke hex used for ratio
-    threshold: float                # 3.0 for non-text
-    passed: bool                    # max(fill, stroke) >= threshold
-    mode: str                       # "light" or "dark"
+    fill_used: str | None  # blended fill hex used for ratio
+    stroke_used: str | None  # stroke hex used for ratio
+    threshold: float  # 3.0 for non-text
+    passed: bool  # max(fill, stroke) >= threshold
+    mode: str  # "light" or "dark"
 
 
 NS = "http://www.w3.org/2000/svg"
@@ -244,7 +258,10 @@ NS = "http://www.w3.org/2000/svg"
 # SVG parser
 # ---------------------------------------------------------------------------
 
-def parse_svg_for_contrast(filepath: str) -> tuple[list[TextElement], list[Background], dict[str, str], dict[str, str]]:
+
+def parse_svg_for_contrast(
+    filepath: str,
+) -> tuple[list[TextElement], list[Background], dict[str, str], dict[str, str]]:
     """Parse SVG and extract text elements and background regions."""
     tree = ET.parse(filepath)
     root = tree.getroot()
@@ -282,11 +299,18 @@ def parse_svg_for_contrast(filepath: str) -> tuple[list[TextElement], list[Backg
             if not fill_hex:
                 fill_hex = "#000000"
 
-            texts.append(TextElement(
-                content=content, fill=fill_hex, font_size=fs,
-                font_weight=fw, x=x, y=y, css_class=css_class,
-                text_anchor=text_anchor
-            ))
+            texts.append(
+                TextElement(
+                    content=content,
+                    fill=fill_hex,
+                    font_size=fs,
+                    font_weight=fw,
+                    x=x,
+                    y=y,
+                    css_class=css_class,
+                    text_anchor=text_anchor,
+                )
+            )
 
         elif tag == "rect":
             x = float(child.get("x", "0"))
@@ -309,10 +333,9 @@ def parse_svg_for_contrast(filepath: str) -> tuple[list[TextElement], list[Backg
             if w >= 780:
                 label = f"bg-strip {fill}"
 
-            backgrounds.append(Background(
-                label=label, fill=fill_hex, opacity=opacity,
-                x=x, y=y, w=w, h=h
-            ))
+            backgrounds.append(
+                Background(label=label, fill=fill_hex, opacity=opacity, x=x, y=y, w=w, h=h)
+            )
 
         elif tag == "path":
             d = child.get("d", "")
@@ -331,11 +354,17 @@ def parse_svg_for_contrast(filepath: str) -> tuple[list[TextElement], list[Backg
             bbox = _parse_path_bbox(d)
             if bbox is not None:
                 min_x, min_y, w, h = bbox
-                backgrounds.append(Background(
-                    label=f"path-fill {fill}",
-                    fill=fill_hex, opacity=opacity,
-                    x=min_x, y=min_y, w=w, h=h
-                ))
+                backgrounds.append(
+                    Background(
+                        label=f"path-fill {fill}",
+                        fill=fill_hex,
+                        opacity=opacity,
+                        x=min_x,
+                        y=min_y,
+                        w=w,
+                        h=h,
+                    )
+                )
 
     return texts, backgrounds, light_classes, dark_classes
 
@@ -361,13 +390,16 @@ def estimate_text_bbox(text: TextElement) -> tuple[float, float, float, float]:
     return x_left, y_top, est_width, text.font_size
 
 
-def bbox_overlaps(ax: float, ay: float, aw: float, ah: float,
-                  bx: float, by: float, bw: float, bh: float) -> bool:
+def bbox_overlaps(
+    ax: float, ay: float, aw: float, ah: float, bx: float, by: float, bw: float, bh: float
+) -> bool:
     """Check if two axis-aligned bounding boxes overlap."""
     return ax < bx + bw and ax + aw > bx and ay < by + bh and ay + ah > by
 
 
-def find_background_for_text(text: TextElement, backgrounds: list[Background]) -> Background | None:
+def find_background_for_text(
+    text: TextElement, backgrounds: list[Background]
+) -> Background | None:
     """Find the most specific (smallest) background that overlaps the text.
 
     Uses bounding-box overlap rather than point containment so text
@@ -395,9 +427,14 @@ _PATH_NUM_RE = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
 # commands we only sample the segment endpoint, not the control points - this
 # gives a tight bbox for the visible shape on every example we ship.
 _CMD_STRIDE = {
-    "M": 2, "L": 2, "T": 2,
-    "H": 1, "V": 1,
-    "C": 6, "S": 4, "Q": 4,
+    "M": 2,
+    "L": 2,
+    "T": 2,
+    "H": 1,
+    "V": 1,
+    "C": 6,
+    "S": 4,
+    "Q": 4,
     "A": 7,
 }
 
@@ -437,7 +474,7 @@ def _parse_path_bbox(d: str) -> tuple[float, float, float, float] | None:
         i = 0
         first = True
         while i + stride <= len(nums):
-            chunk = nums[i:i + stride]
+            chunk = nums[i : i + stride]
             i += stride
 
             if cmd_upper == "M":
@@ -524,7 +561,9 @@ def _get_canvas_size(root: ET.Element) -> tuple[float, float]:
         return 0.0, 0.0
 
 
-def parse_svg_shapes(filepath: str) -> tuple[list[Shape], dict[str, str], dict[str, str], float, float]:
+def parse_svg_shapes(
+    filepath: str,
+) -> tuple[list[Shape], dict[str, str], dict[str, str], float, float]:
     """Parse SVG and extract filled shapes plus CSS class lookups.
 
     Returns (shapes, light_classes, dark_classes, canvas_w, canvas_h).
@@ -606,18 +645,23 @@ def parse_svg_shapes(filepath: str) -> tuple[list[Shape], dict[str, str], dict[s
         if not fill_hex and not stroke_hex:
             continue
 
-        shapes.append(Shape(
-            tag=tag,
-            fill=fill_hex,
-            fill_opacity=fill_opacity,
-            fill_class=fill_class_used,
-            stroke=stroke_hex,
-            stroke_opacity=stroke_opacity,
-            stroke_width=stroke_width,
-            stroke_class=stroke_class_used,
-            x=x, y=y, w=w, h=h,
-            label=f"{tag} {w:.0f}x{h:.0f}",
-        ))
+        shapes.append(
+            Shape(
+                tag=tag,
+                fill=fill_hex,
+                fill_opacity=fill_opacity,
+                fill_class=fill_class_used,
+                stroke=stroke_hex,
+                stroke_opacity=stroke_opacity,
+                stroke_width=stroke_width,
+                stroke_class=stroke_class_used,
+                x=x,
+                y=y,
+                w=w,
+                h=h,
+                label=f"{tag} {w:.0f}x{h:.0f}",
+            )
+        )
 
     return _merge_paired_shapes(shapes), light_classes, dark_classes, canvas_w, canvas_h
 
@@ -648,11 +692,15 @@ def _merge_paired_shapes(shapes: list[Shape]) -> list[Shape]:
         merged_shape = Shape(**base.__dict__)
         for j in indices[1:]:
             other = shapes[j]
-            if (merged_shape.fill is None or merged_shape.fill_opacity == 0) and other.fill is not None:
+            if (
+                merged_shape.fill is None or merged_shape.fill_opacity == 0
+            ) and other.fill is not None:
                 merged_shape.fill = other.fill
                 merged_shape.fill_opacity = other.fill_opacity
                 merged_shape.fill_class = other.fill_class
-            if (merged_shape.stroke is None or merged_shape.stroke_width == 0) and other.stroke is not None:
+            if (
+                merged_shape.stroke is None or merged_shape.stroke_width == 0
+            ) and other.stroke is not None:
                 merged_shape.stroke = other.stroke
                 merged_shape.stroke_opacity = other.stroke_opacity
                 merged_shape.stroke_width = other.stroke_width
@@ -680,16 +728,18 @@ def _shape_is_doc_background(shape: Shape, canvas_w: float, canvas_h: float) -> 
     return (shape.w * shape.h) / canvas_area >= 0.8
 
 
-def _resolve_dark_color(hex_color: str | None, css_class: str,
-                       dark_classes: dict[str, str]) -> str | None:
+def _resolve_dark_color(
+    hex_color: str | None, css_class: str, dark_classes: dict[str, str]
+) -> str | None:
     """Return the dark-mode equivalent of a colour, or the original."""
     if css_class and css_class in dark_classes:
         return dark_classes[css_class]
     return hex_color
 
 
-def _check_one_shape(shape: Shape, doc_bg: str, mode: str,
-                     dark_classes: dict[str, str]) -> ObjectContrastResult:
+def _check_one_shape(
+    shape: Shape, doc_bg: str, mode: str, dark_classes: dict[str, str]
+) -> ObjectContrastResult:
     """Compute fill+stroke contrast for one shape vs the document bg."""
     if mode == "dark":
         fill_hex = _resolve_dark_color(shape.fill, shape.fill_class, dark_classes)
@@ -708,9 +758,7 @@ def _check_one_shape(shape: Shape, doc_bg: str, mode: str,
         else:
             blended = fill_hex
         fill_used = blended
-        fill_ratio = contrast_ratio(
-            relative_luminance(*hex_to_rgb(blended)), bg_lum
-        )
+        fill_ratio = contrast_ratio(relative_luminance(*hex_to_rgb(blended)), bg_lum)
 
     stroke_ratio: float | None = None
     stroke_used: str | None = None
@@ -720,9 +768,7 @@ def _check_one_shape(shape: Shape, doc_bg: str, mode: str,
         else:
             blended_stroke = stroke_hex
         stroke_used = blended_stroke
-        stroke_ratio = contrast_ratio(
-            relative_luminance(*hex_to_rgb(blended_stroke)), bg_lum
-        )
+        stroke_ratio = contrast_ratio(relative_luminance(*hex_to_rgb(blended_stroke)), bg_lum)
 
     candidates = [r for r in (fill_ratio, stroke_ratio) if r is not None]
     best = max(candidates) if candidates else 0.0
@@ -773,6 +819,7 @@ def check_object_contrasts(
 # ---------------------------------------------------------------------------
 # Contrast checking
 # ---------------------------------------------------------------------------
+
 
 def resolve_effective_bg(bg: Background | None, doc_bg: str) -> str:
     """Resolve the effective background colour by blending with document bg."""
@@ -829,7 +876,7 @@ def check_all_contrasts(
                 cls_name = matching[0]
                 dark_alt = dark_classes.get(cls_name, "?")
                 hints.append(
-                    f"  \"{text.content[:40]}\" uses inline fill={text.fill} "
+                    f'  "{text.content[:40]}" uses inline fill={text.fill} '
                     f"matching .{cls_name} - won't switch to {dark_alt} in dark mode"
                 )
 
@@ -839,13 +886,18 @@ def check_all_contrasts(
         bg_lum = relative_luminance(*hex_to_rgb(eff_bg))
         ratio = contrast_ratio(text_lum, bg_lum)
 
-        results.append(ContrastResult(
-            text=text, background=bg or doc_bg_light,
-            effective_bg=eff_bg, ratio=ratio,
-            aa_pass=ratio >= aa_threshold,
-            aaa_pass=ratio >= aaa_threshold,
-            large=large, mode="light"
-        ))
+        results.append(
+            ContrastResult(
+                text=text,
+                background=bg or doc_bg_light,
+                effective_bg=eff_bg,
+                ratio=ratio,
+                aa_pass=ratio >= aa_threshold,
+                aaa_pass=ratio >= aaa_threshold,
+                large=large,
+                mode="light",
+            )
+        )
 
         # --- Dark mode ---
         # resolve text fill for dark mode
@@ -862,18 +914,26 @@ def check_all_contrasts(
             dark_bg_lum = relative_luminance(*hex_to_rgb(dark_eff_bg))
             dark_ratio = contrast_ratio(dark_text_lum, dark_bg_lum)
 
-            results.append(ContrastResult(
-                text=TextElement(
-                    content=text.content, fill=dark_fill,
-                    font_size=text.font_size, font_weight=text.font_weight,
-                    x=text.x, y=text.y, css_class=text.css_class
-                ),
-                background=bg or doc_bg_dark,
-                effective_bg=dark_eff_bg, ratio=dark_ratio,
-                aa_pass=dark_ratio >= aa_threshold,
-                aaa_pass=dark_ratio >= aaa_threshold,
-                large=large, mode="dark"
-            ))
+            results.append(
+                ContrastResult(
+                    text=TextElement(
+                        content=text.content,
+                        fill=dark_fill,
+                        font_size=text.font_size,
+                        font_weight=text.font_weight,
+                        x=text.x,
+                        y=text.y,
+                        css_class=text.css_class,
+                    ),
+                    background=bg or doc_bg_dark,
+                    effective_bg=dark_eff_bg,
+                    ratio=dark_ratio,
+                    aa_pass=dark_ratio >= aa_threshold,
+                    aaa_pass=dark_ratio >= aaa_threshold,
+                    large=large,
+                    mode="dark",
+                )
+            )
 
     return results, hints
 
@@ -882,22 +942,41 @@ def check_all_contrasts(
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="SVG contrast checker (WCAG 2.1)")
     parser.add_argument("--svg", required=True, help="SVG file to check")
-    parser.add_argument("--level", choices=["AA", "AAA"], default="AA",
-                        help="WCAG level for text checks (default: AA)")
-    parser.add_argument("--dark-bg", default="#1e1e1e",
-                        help="Document background colour for dark mode (default: #1e1e1e)")
-    parser.add_argument("--show-all", action="store_true",
-                        help="Show all elements including passing ones")
-    parser.add_argument("--skip-objects", action="store_true",
-                        help="Skip object (non-text) contrast checks")
-    parser.add_argument("--object-min-area", type=float, default=800.0,
-                        help="Minimum bbox area (px²) for object contrast checks (default: 800)")
-    parser.add_argument("--object-min-dim", type=float, default=20.0,
-                        help="Minimum bbox dimension (px) for object contrast checks (default: 20)")
+    parser.add_argument(
+        "--level",
+        choices=["AA", "AAA"],
+        default="AA",
+        help="WCAG level for text checks (default: AA)",
+    )
+    parser.add_argument(
+        "--dark-bg",
+        default="#1e1e1e",
+        help="Document background colour for dark mode (default: #1e1e1e)",
+    )
+    parser.add_argument(
+        "--show-all", action="store_true", help="Show all elements including passing ones"
+    )
+    parser.add_argument(
+        "--skip-objects", action="store_true", help="Skip object (non-text) contrast checks"
+    )
+    parser.add_argument(
+        "--object-min-area",
+        type=float,
+        default=800.0,
+        help="Minimum bbox area (px²) for object contrast checks (default: 800)",
+    )
+    parser.add_argument(
+        "--object-min-dim",
+        type=float,
+        default=20.0,
+        help="Minimum bbox dimension (px) for object contrast checks (default: 20)",
+    )
     args = parser.parse_args()
 
     print(f"Contrast check: {args.svg}  (WCAG {args.level})")
@@ -912,8 +991,9 @@ def main():
     if dark_classes:
         print(f"CSS classes (dark):  {', '.join(f'.{k}={v}' for k, v in dark_classes.items())}")
 
-    results, hints = check_all_contrasts(texts, backgrounds, light_classes, dark_classes,
-                                          dark_doc_bg=args.dark_bg)
+    results, hints = check_all_contrasts(
+        texts, backgrounds, light_classes, dark_classes, dark_doc_bg=args.dark_bg
+    )
 
     # Print inline-fill-matches-class hints
     if hints:
@@ -962,10 +1042,14 @@ def main():
 
             class_note = f" .{r.text.css_class}" if r.text.css_class else ""
 
-            print(f"  [{marker:4s}] {r.ratio:5.2f}:1 (need {threshold:.1f}:1) "
-                  f"{size_label:6s} | \"{content_preview}\"")
-            print(f"         text: {r.text.fill}{class_note}  "
-                  f"({r.text.font_size:.0f}px/{r.text.font_weight})")
+            print(
+                f"  [{marker:4s}] {r.ratio:5.2f}:1 (need {threshold:.1f}:1) "
+                f'{size_label:6s} | "{content_preview}"'
+            )
+            print(
+                f"         text: {r.text.fill}{class_note}  "
+                f"({r.text.font_size:.0f}px/{r.text.font_weight})"
+            )
             print(f"         bg:   {r.effective_bg} <- {bg_label}")
             print()
 
@@ -1003,11 +1087,13 @@ def main():
 
                 fill_str = (
                     f"fill={r.fill_used} ratio={r.fill_ratio:.2f}:1"
-                    if r.fill_ratio is not None else "fill=none"
+                    if r.fill_ratio is not None
+                    else "fill=none"
                 )
                 stroke_str = (
                     f"stroke={r.stroke_used}@{r.shape.stroke_width:g}px ratio={r.stroke_ratio:.2f}:1"
-                    if r.stroke_ratio is not None else "stroke=none"
+                    if r.stroke_ratio is not None
+                    else "stroke=none"
                 )
 
                 print(f"  [{marker}] {r.shape.label} @ ({r.shape.x:.0f},{r.shape.y:.0f})")
@@ -1022,24 +1108,31 @@ def main():
     print(f"{'=' * 72}")
     total = len(results)
     passed = total - fails - warns
-    print(f"SUMMARY")
-    print(f"  TEXT:    {total} checks, {passed} pass, {warns} AA-only, {fails} FAIL "
-          f"(WCAG {args.level})")
+    print("SUMMARY")
+    print(
+        f"  TEXT:    {total} checks, {passed} pass, {warns} AA-only, {fails} FAIL "
+        f"(WCAG {args.level})"
+    )
     if not args.skip_objects:
-        print(f"  OBJECTS: {object_fails} FAIL "
-              "(WCAG SC 1.4.11, fill OR stroke must reach 3:1)")
+        print(f"  OBJECTS: {object_fails} FAIL (WCAG SC 1.4.11, fill OR stroke must reach 3:1)")
 
     if hints:
-        print(f"  {len(hints)} text element(s) use inline fills matching CSS classes "
-              "(won't switch in dark mode).")
+        print(
+            f"  {len(hints)} text element(s) use inline fills matching CSS classes "
+            "(won't switch in dark mode)."
+        )
     if fails > 0:
         print(f"\n  {fails} text element(s) fail WCAG {args.level} minimum contrast.")
         print("  Fix: use a lighter/darker text colour, or change the background.")
     if object_fails > 0:
-        print(f"\n  {object_fails} object(s) blend into the document background "
-              "in light or dark mode.")
-        print("  Fix: raise fill opacity, switch fill to a CSS class with dark-mode "
-              "swap, or strengthen stroke.")
+        print(
+            f"\n  {object_fails} object(s) blend into the document background "
+            "in light or dark mode."
+        )
+        print(
+            "  Fix: raise fill opacity, switch fill to a CSS class with dark-mode "
+            "swap, or strengthen stroke."
+        )
 
 
 if __name__ == "__main__":

@@ -16,17 +16,17 @@ intersection, bounding box).
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import math
 import re
 import sys
-from dataclasses import dataclass, field
 
-from shapely.geometry import Point as ShapelyPoint, Polygon as ShapelyPolygon
-
+from shapely.geometry import Polygon as ShapelyPolygon
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Point:
@@ -40,6 +40,7 @@ class Point:
 @dataclass
 class PrimitiveResult:
     """Result of primitive generation."""
+
     kind: str
     anchors: dict[str, Point]  # named anchor points (center, top, bottom-left, etc.)
     svg: str  # ready-to-paste SVG snippet
@@ -50,14 +51,17 @@ class PrimitiveResult:
 # PCHIP interpolation (pure Python, no scipy)
 # ---------------------------------------------------------------------------
 
+
 def _pchip_slopes(xs: list[float], ys: list[float]) -> list[float]:
     """Fritsch-Carlson PCHIP slopes. Preserves monotonicity between knots."""
     n = len(xs)
     if n < 2:
         return [0.0] * n
 
-    deltas = [(ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]) if xs[i + 1] != xs[i] else 0.0
-              for i in range(n - 1)]
+    deltas = [
+        (ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]) if xs[i + 1] != xs[i] else 0.0
+        for i in range(n - 1)
+    ]
     slopes = [0.0] * n
     slopes[0] = deltas[0]
     slopes[-1] = deltas[-1]
@@ -117,8 +121,12 @@ def pchip_interpolate(
         h01 = -2 * t3 + 3 * t2
         h11 = t3 - t2
 
-        y = (h00 * ys[seg_idx] + h10 * h * slopes[seg_idx]
-             + h01 * ys[seg_idx + 1] + h11 * h * slopes[seg_idx + 1])
+        y = (
+            h00 * ys[seg_idx]
+            + h10 * h * slopes[seg_idx]
+            + h01 * ys[seg_idx + 1]
+            + h11 * h * slopes[seg_idx + 1]
+        )
         result.append(Point(round(x, 2), round(y, 2)))
 
     return result
@@ -140,25 +148,35 @@ def points_to_svg_path(points: list[Point], closed: bool = False) -> str:
 # Primitive generators
 # ---------------------------------------------------------------------------
 
-def gen_rect(x: float, y: float, w: float, h: float,
-             r: float = 0, accent: str = "") -> PrimitiveResult:
+
+def gen_rect(
+    x: float, y: float, w: float, h: float, r: float = 0, accent: str = ""
+) -> PrimitiveResult:
     """Rectangle with optional rounded corners and accent bar."""
     anchors = {
-        "top-left": Point(x, y), "top-right": Point(x + w, y),
-        "bottom-left": Point(x, y + h), "bottom-right": Point(x + w, y + h),
+        "top-left": Point(x, y),
+        "top-right": Point(x + w, y),
+        "bottom-left": Point(x, y + h),
+        "bottom-right": Point(x + w, y + h),
         "center": Point(x + w / 2, y + h / 2),
-        "top-center": Point(x + w / 2, y), "bottom-center": Point(x + w / 2, y + h),
-        "left-center": Point(x, y + h / 2), "right-center": Point(x + w, y + h / 2),
+        "top-center": Point(x + w / 2, y),
+        "bottom-center": Point(x + w / 2, y + h),
+        "left-center": Point(x, y + h / 2),
+        "right-center": Point(x + w, y + h / 2),
     }
 
     if r > 0:
         # Flat-top, rounded-bottom card (infographic standard)
-        d = (f"M{x},{y} H{x + w} V{y + h - r} "
-             f"Q{x + w},{y + h} {x + w - r},{y + h} "
-             f"H{x + r} Q{x},{y + h} {x},{y + h - r} Z")
+        d = (
+            f"M{x},{y} H{x + w} V{y + h - r} "
+            f"Q{x + w},{y + h} {x + w - r},{y + h} "
+            f"H{x + r} Q{x},{y + h} {x},{y + h - r} Z"
+        )
         svg = f'<path d="{d}" fill="{{accent}}" fill-opacity="0.04" stroke="{{accent}}" stroke-width="1"/>'
         if accent:
-            svg += f'\n<rect x="{x}" y="{y}" width="{w}" height="5" fill="{{accent}}" opacity="0.6"/>'
+            svg += (
+                f'\n<rect x="{x}" y="{y}" width="{w}" height="5" fill="{{accent}}" opacity="0.6"/>'
+            )
     else:
         svg = f'<rect x="{x}" y="{y}" width="{w}" height="{h}"/>'
         d = ""
@@ -175,8 +193,10 @@ def gen_circle(cx: float, cy: float, r: float) -> PrimitiveResult:
     """Circle with cardinal and diagonal anchors."""
     anchors = {
         "center": Point(cx, cy),
-        "top": Point(cx, cy - r), "bottom": Point(cx, cy + r),
-        "left": Point(cx - r, cy), "right": Point(cx + r, cy),
+        "top": Point(cx, cy - r),
+        "bottom": Point(cx, cy + r),
+        "left": Point(cx - r, cy),
+        "right": Point(cx + r, cy),
         "top-left": Point(cx - r * 0.707, cy - r * 0.707),
         "top-right": Point(cx + r * 0.707, cy - r * 0.707),
         "bottom-left": Point(cx - r * 0.707, cy + r * 0.707),
@@ -190,8 +210,10 @@ def gen_ellipse(cx: float, cy: float, rx: float, ry: float) -> PrimitiveResult:
     """Ellipse with cardinal anchors."""
     anchors = {
         "center": Point(cx, cy),
-        "top": Point(cx, cy - ry), "bottom": Point(cx, cy + ry),
-        "left": Point(cx - rx, cy), "right": Point(cx + rx, cy),
+        "top": Point(cx, cy - ry),
+        "bottom": Point(cx, cy + ry),
+        "left": Point(cx - rx, cy),
+        "right": Point(cx + rx, cy),
     }
     svg = f'<ellipse cx="{cx}" cy="{cy}" rx="{rx}" ry="{ry}"/>'
     return PrimitiveResult("ellipse", anchors, svg)
@@ -206,15 +228,17 @@ def gen_diamond(cx: float, cy: float, w: float, h: float) -> PrimitiveResult:
 
     anchors = {
         "center": Point(cx, cy),
-        "top": top, "right": right, "bottom": bottom, "left": left,
+        "top": top,
+        "right": right,
+        "bottom": bottom,
+        "left": left,
     }
     vertices = f"{top.x},{top.y} {right.x},{right.y} {bottom.x},{bottom.y} {left.x},{left.y}"
     svg = f'<polygon points="{vertices}"/>'
     return PrimitiveResult("diamond", anchors, svg)
 
 
-def gen_hexagon(cx: float, cy: float, r: float,
-                flat_top: bool = True) -> PrimitiveResult:
+def gen_hexagon(cx: float, cy: float, r: float, flat_top: bool = True) -> PrimitiveResult:
     """Regular hexagon. Uses shapely for precise vertex computation.
 
     Args:
@@ -249,8 +273,9 @@ def gen_hexagon(cx: float, cy: float, r: float,
     return PrimitiveResult("hexagon", anchors, svg)
 
 
-def gen_star(cx: float, cy: float, outer_r: float,
-             inner_r: float = 0, points: int = 5) -> PrimitiveResult:
+def gen_star(
+    cx: float, cy: float, outer_r: float, inner_r: float = 0, points: int = 5
+) -> PrimitiveResult:
     """Regular star polygon. Inner radius defaults to outer_r * 0.4.
 
     Args:
@@ -281,8 +306,9 @@ def gen_star(cx: float, cy: float, outer_r: float,
     return PrimitiveResult("star", anchors, svg)
 
 
-def gen_arc(cx: float, cy: float, r: float,
-            start_angle: float, end_angle: float) -> PrimitiveResult:
+def gen_arc(
+    cx: float, cy: float, r: float, start_angle: float, end_angle: float
+) -> PrimitiveResult:
     """Circular arc sector (pie slice). Angles in degrees, 0 = right, CCW.
 
     Returns anchor points for the arc endpoints and midpoint.
@@ -303,21 +329,24 @@ def gen_arc(cx: float, cy: float, r: float,
 
     anchors = {
         "center": Point(cx, cy),
-        "start": start_pt, "end": end_pt, "mid": mid_pt,
-        "label": Point(round(cx + r * 0.6 * math.cos(mid_a), 2),
-                        round(cy - r * 0.6 * math.sin(mid_a), 2)),
+        "start": start_pt,
+        "end": end_pt,
+        "mid": mid_pt,
+        "label": Point(
+            round(cx + r * 0.6 * math.cos(mid_a), 2), round(cy - r * 0.6 * math.sin(mid_a), 2)
+        ),
     }
 
     # SVG arc: A rx ry x-rotation large-arc-flag sweep-flag x y
     # sweep-flag 0 for CCW in SVG coords (y inverted)
-    d = (f"M{cx},{cy} L{start_pt.x},{start_pt.y} "
-         f"A{r},{r} 0 {large_arc},0 {end_pt.x},{end_pt.y} Z")
+    d = f"M{cx},{cy} L{start_pt.x},{start_pt.y} A{r},{r} 0 {large_arc},0 {end_pt.x},{end_pt.y} Z"
     svg = f'<path d="{d}"/>'
     return PrimitiveResult("arc", anchors, svg, d)
 
 
-def gen_cube(x: float, y: float, w: float, h: float, depth: float = 0,
-             mode: str = "fill") -> PrimitiveResult:
+def gen_cube(
+    x: float, y: float, w: float, h: float, depth: float = 0, mode: str = "fill"
+) -> PrimitiveResult:
     """Isometric cube. Depth defaults to w*0.4.
 
     Args:
@@ -326,22 +355,25 @@ def gen_cube(x: float, y: float, w: float, h: float, depth: float = 0,
     if depth == 0:
         depth = w * 0.4
     dx = depth * 0.866  # cos(30)
-    dy = depth * 0.5    # sin(30)
+    dy = depth * 0.5  # sin(30)
 
     # 8 vertices (front face + back face offset by dx, -dy)
-    fl = Point(x, y)          # front-top-left
-    fr = Point(x + w, y)      # front-top-right
-    fbr = Point(x + w, y + h) # front-bottom-right
-    fbl = Point(x, y + h)     # front-bottom-left
+    fl = Point(x, y)  # front-top-left
+    fr = Point(x + w, y)  # front-top-right
+    fbr = Point(x + w, y + h)  # front-bottom-right
+    fbl = Point(x, y + h)  # front-bottom-left
     bl = Point(x + dx, y - dy)
     br = Point(x + w + dx, y - dy)
     bbr = Point(x + w + dx, y + h - dy)
     # bbl not visible
 
     anchors = {
-        "front-top-left": fl, "front-top-right": fr,
-        "front-bottom-left": fbl, "front-bottom-right": fbr,
-        "back-top-left": bl, "back-top-right": br,
+        "front-top-left": fl,
+        "front-top-right": fr,
+        "front-bottom-left": fbl,
+        "front-bottom-right": fbr,
+        "back-top-left": bl,
+        "back-top-right": br,
         "back-bottom-right": bbr,
         "center": Point(x + w / 2 + dx / 2, y + h / 2 - dy / 2),
     }
@@ -356,8 +388,7 @@ def gen_cube(x: float, y: float, w: float, h: float, depth: float = 0,
             f"M{fr.x},{fr.y} L{br.x},{br.y} L{bbr.x},{bbr.y} L{fbr.x},{fbr.y} Z",
         ]
         svg = "\n".join(
-            f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="1"/>'
-            for d in lines
+            f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="1"/>' for d in lines
         )
     else:
         # Three visible faces with different opacities
@@ -373,8 +404,9 @@ def gen_cube(x: float, y: float, w: float, h: float, depth: float = 0,
     return PrimitiveResult("cube", anchors, svg)
 
 
-def gen_cylinder(cx: float, cy: float, rx: float, ry: float, h: float,
-                 mode: str = "fill") -> PrimitiveResult:
+def gen_cylinder(
+    cx: float, cy: float, rx: float, ry: float, h: float, mode: str = "fill"
+) -> PrimitiveResult:
     """Cylinder with elliptical top and bottom faces.
 
     Args:
@@ -395,12 +427,12 @@ def gen_cylinder(cx: float, cy: float, rx: float, ry: float, h: float,
 
     # Top ellipse arc: A rx,ry 0 1,0 (full sweep)
     top_arc = f"M{cx - rx},{cy} A{rx},{ry} 0 1,0 {cx + rx},{cy} A{rx},{ry} 0 1,0 {cx - rx},{cy}"
-    # Bottom ellipse
-    bot_arc = f"M{cx - rx},{cy + h} A{rx},{ry} 0 1,0 {cx + rx},{cy + h} A{rx},{ry} 0 1,0 {cx - rx},{cy + h}"
     # Body: left side down, bottom arc, right side up, top arc
-    body_d = (f"M{cx - rx},{cy} L{cx - rx},{cy + h} "
-              f"A{rx},{ry} 0 0,0 {cx + rx},{cy + h} "
-              f"L{cx + rx},{cy} A{rx},{ry} 0 0,1 {cx - rx},{cy} Z")
+    body_d = (
+        f"M{cx - rx},{cy} L{cx - rx},{cy + h} "
+        f"A{rx},{ry} 0 0,0 {cx + rx},{cy + h} "
+        f"L{cx + rx},{cy} A{rx},{ry} 0 0,1 {cx - rx},{cy} Z"
+    )
 
     if mode == "wire":
         svg = (
@@ -419,8 +451,7 @@ def gen_cylinder(cx: float, cy: float, rx: float, ry: float, h: float,
     return PrimitiveResult("cylinder", anchors, svg)
 
 
-def gen_sphere(cx: float, cy: float, r: float,
-               mode: str = "fill") -> PrimitiveResult:
+def gen_sphere(cx: float, cy: float, r: float, mode: str = "fill") -> PrimitiveResult:
     """Sphere rendered as a circle with shading ellipses for 3D effect.
 
     Args:
@@ -430,19 +461,27 @@ def gen_sphere(cx: float, cy: float, r: float,
     """
     anchors = {
         "center": Point(cx, cy),
-        "top": Point(cx, cy - r), "bottom": Point(cx, cy + r),
-        "left": Point(cx - r, cy), "right": Point(cx + r, cy),
+        "top": Point(cx, cy - r),
+        "bottom": Point(cx, cy + r),
+        "left": Point(cx - r, cy),
+        "right": Point(cx + r, cy),
     }
 
     if mode == "wire":
         # Main circle
-        parts = [f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{{accent}}" stroke-width="1"/>']
+        parts = [
+            f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{{accent}}" stroke-width="1"/>'
+        ]
         # Equator ellipse (horizontal)
-        parts.append(f'<ellipse cx="{cx}" cy="{cy}" rx="{r}" ry="{r * 0.3}" '
-                     f'fill="none" stroke="{{accent}}" stroke-width="0.5" opacity="0.5"/>')
+        parts.append(
+            f'<ellipse cx="{cx}" cy="{cy}" rx="{r}" ry="{r * 0.3}" '
+            f'fill="none" stroke="{{accent}}" stroke-width="0.5" opacity="0.5"/>'
+        )
         # Meridian ellipse (vertical)
-        parts.append(f'<ellipse cx="{cx}" cy="{cy}" rx="{r * 0.3}" ry="{r}" '
-                     f'fill="none" stroke="{{accent}}" stroke-width="0.5" opacity="0.5"/>')
+        parts.append(
+            f'<ellipse cx="{cx}" cy="{cy}" rx="{r * 0.3}" ry="{r}" '
+            f'fill="none" stroke="{{accent}}" stroke-width="0.5" opacity="0.5"/>'
+        )
         svg = "\n".join(parts)
     else:
         # Shaded sphere: base circle + highlight ellipse offset top-left
@@ -460,8 +499,9 @@ def gen_sphere(cx: float, cy: float, r: float,
     return PrimitiveResult("sphere", anchors, svg)
 
 
-def gen_cuboid(x: float, y: float, w: float, h: float, d: float,
-               mode: str = "fill") -> PrimitiveResult:
+def gen_cuboid(
+    x: float, y: float, w: float, h: float, d: float, mode: str = "fill"
+) -> PrimitiveResult:
     """Isometric cuboid (box with independent width, height, depth).
 
     Like cube but with different width, height, and depth.
@@ -473,7 +513,7 @@ def gen_cuboid(x: float, y: float, w: float, h: float, d: float,
         d: Depth (into page, isometric projection at 30 degrees)
     """
     dx = d * 0.866  # cos(30)
-    dy = d * 0.5    # sin(30)
+    dy = d * 0.5  # sin(30)
 
     fl = Point(x, y)
     fr = Point(x + w, y)
@@ -484,9 +524,12 @@ def gen_cuboid(x: float, y: float, w: float, h: float, d: float,
     bbr = Point(x + w + dx, y + h - dy)
 
     anchors = {
-        "front-top-left": fl, "front-top-right": fr,
-        "front-bottom-left": fbl, "front-bottom-right": fbr,
-        "back-top-left": bl, "back-top-right": br,
+        "front-top-left": fl,
+        "front-top-right": fr,
+        "front-bottom-left": fbl,
+        "front-bottom-right": fbr,
+        "back-top-left": bl,
+        "back-top-right": br,
         "back-bottom-right": bbr,
         "center": Point(x + w / 2 + dx / 2, y + h / 2 - dy / 2),
         "front-center": Point(x + w / 2, y + h / 2),
@@ -512,8 +555,7 @@ def gen_cuboid(x: float, y: float, w: float, h: float, d: float,
     return PrimitiveResult("cuboid", anchors, svg)
 
 
-def gen_plane(x: float, y: float, w: float, h: float,
-              tilt: float = 30) -> PrimitiveResult:
+def gen_plane(x: float, y: float, w: float, h: float, tilt: float = 30) -> PrimitiveResult:
     """Isometric plane (flat surface tilted into the page).
 
     A parallelogram representing a flat surface in pseudo-3D.
@@ -528,14 +570,16 @@ def gen_plane(x: float, y: float, w: float, h: float,
     dx = h * math.cos(rad)
     dy = h * math.sin(rad)
 
-    fl = Point(x, y)           # front-left
-    fr = Point(x + w, y)       # front-right
+    fl = Point(x, y)  # front-left
+    fr = Point(x + w, y)  # front-right
     br = Point(x + w + dx, y - dy)  # back-right
-    bl = Point(x + dx, y - dy)      # back-left
+    bl = Point(x + dx, y - dy)  # back-left
 
     anchors = {
-        "front-left": fl, "front-right": fr,
-        "back-left": bl, "back-right": br,
+        "front-left": fl,
+        "front-right": fr,
+        "back-left": bl,
+        "back-right": br,
         "center": Point(x + w / 2 + dx / 2, y - dy / 2),
         "front-center": Point(x + w / 2, y),
         "back-center": Point(x + w / 2 + dx, y - dy),
@@ -547,10 +591,15 @@ def gen_plane(x: float, y: float, w: float, h: float,
     return PrimitiveResult("plane", anchors, svg, d)
 
 
-def gen_axis(origin_x: float, origin_y: float,
-             length: float, axes: str = "xy",
-             tick_spacing: float = 0, tick_count: int = 0,
-             labels: bool = True) -> PrimitiveResult:
+def gen_axis(
+    origin_x: float,
+    origin_y: float,
+    length: float,
+    axes: str = "xy",
+    tick_spacing: float = 0,
+    tick_count: int = 0,
+    labels: bool = True,
+) -> PrimitiveResult:
     """Generate coordinate axes with optional ticks and labels.
 
     Args:
@@ -574,69 +623,89 @@ def gen_axis(origin_x: float, origin_y: float,
         x_end = origin_x + length
         anchors["x-end"] = Point(x_end, origin_y)
         # Axis line
-        parts.append(f'<line x1="{origin_x}" y1="{origin_y}" x2="{x_end}" y2="{origin_y}" '
-                     f'stroke="{{accent}}" stroke-width="1"/>')
+        parts.append(
+            f'<line x1="{origin_x}" y1="{origin_y}" x2="{x_end}" y2="{origin_y}" '
+            f'stroke="{{accent}}" stroke-width="1"/>'
+        )
         # Arrow
-        parts.append(f'<polygon points="{x_end},{origin_y} '
-                     f'{x_end - ARROW_LEN},{origin_y - 3} '
-                     f'{x_end - ARROW_LEN},{origin_y + 3}" fill="{{accent}}"/>')
+        parts.append(
+            f'<polygon points="{x_end},{origin_y} '
+            f"{x_end - ARROW_LEN},{origin_y - 3} "
+            f'{x_end - ARROW_LEN},{origin_y + 3}" fill="{{accent}}"/>'
+        )
         # Ticks
         if tick_spacing > 0:
             tx = origin_x + tick_spacing
             i = 0
             while tx < x_end - ARROW_LEN:
                 anchors[f"x-tick-{i}"] = Point(tx, origin_y)
-                parts.append(f'<line x1="{tx}" y1="{origin_y - TICK_LEN}" '
-                             f'x2="{tx}" y2="{origin_y + TICK_LEN}" '
-                             f'stroke="{{accent}}" stroke-width="0.5"/>')
+                parts.append(
+                    f'<line x1="{tx}" y1="{origin_y - TICK_LEN}" '
+                    f'x2="{tx}" y2="{origin_y + TICK_LEN}" '
+                    f'stroke="{{accent}}" stroke-width="0.5"/>'
+                )
                 tx += tick_spacing
                 i += 1
         if labels:
-            parts.append(f'<text x="{x_end + 6}" y="{origin_y + 4}" font-size="9" '
-                         f'class="fg-3" font-family="Segoe UI, Arial, sans-serif">x</text>')
+            parts.append(
+                f'<text x="{x_end + 6}" y="{origin_y + 4}" font-size="9" '
+                f'class="fg-3" font-family="Segoe UI, Arial, sans-serif">x</text>'
+            )
 
     # Y-axis (upward)
     if "y" in axes:
         y_end = origin_y - length
         anchors["y-end"] = Point(origin_x, y_end)
-        parts.append(f'<line x1="{origin_x}" y1="{origin_y}" x2="{origin_x}" y2="{y_end}" '
-                     f'stroke="{{accent}}" stroke-width="1"/>')
-        parts.append(f'<polygon points="{origin_x},{y_end} '
-                     f'{origin_x - 3},{y_end + ARROW_LEN} '
-                     f'{origin_x + 3},{y_end + ARROW_LEN}" fill="{{accent}}"/>')
+        parts.append(
+            f'<line x1="{origin_x}" y1="{origin_y}" x2="{origin_x}" y2="{y_end}" '
+            f'stroke="{{accent}}" stroke-width="1"/>'
+        )
+        parts.append(
+            f'<polygon points="{origin_x},{y_end} '
+            f"{origin_x - 3},{y_end + ARROW_LEN} "
+            f'{origin_x + 3},{y_end + ARROW_LEN}" fill="{{accent}}"/>'
+        )
         if tick_spacing > 0:
             ty = origin_y - tick_spacing
             i = 0
             while ty > y_end + ARROW_LEN:
                 anchors[f"y-tick-{i}"] = Point(origin_x, ty)
-                parts.append(f'<line x1="{origin_x - TICK_LEN}" y1="{ty}" '
-                             f'x2="{origin_x + TICK_LEN}" y2="{ty}" '
-                             f'stroke="{{accent}}" stroke-width="0.5"/>')
+                parts.append(
+                    f'<line x1="{origin_x - TICK_LEN}" y1="{ty}" '
+                    f'x2="{origin_x + TICK_LEN}" y2="{ty}" '
+                    f'stroke="{{accent}}" stroke-width="0.5"/>'
+                )
                 ty -= tick_spacing
                 i += 1
         if labels:
-            parts.append(f'<text x="{origin_x - 10}" y="{y_end - 4}" font-size="9" '
-                         f'text-anchor="middle" class="fg-3" '
-                         f'font-family="Segoe UI, Arial, sans-serif">y</text>')
+            parts.append(
+                f'<text x="{origin_x - 10}" y="{y_end - 4}" font-size="9" '
+                f'text-anchor="middle" class="fg-3" '
+                f'font-family="Segoe UI, Arial, sans-serif">y</text>'
+            )
 
     # Z-axis (isometric: 30 degrees down-left from origin)
     if "z" in axes:
         z_dx = length * 0.866  # cos(30)
-        z_dy = length * 0.5    # sin(30)
+        z_dy = length * 0.5  # sin(30)
         z_end_x = origin_x - z_dx
         z_end_y = origin_y + z_dy
         anchors["z-end"] = Point(z_end_x, z_end_y)
-        parts.append(f'<line x1="{origin_x}" y1="{origin_y}" '
-                     f'x2="{z_end_x}" y2="{z_end_y}" '
-                     f'stroke="{{accent}}" stroke-width="1"/>')
+        parts.append(
+            f'<line x1="{origin_x}" y1="{origin_y}" '
+            f'x2="{z_end_x}" y2="{z_end_y}" '
+            f'stroke="{{accent}}" stroke-width="1"/>'
+        )
         # Arrow
         angle = math.atan2(z_dy, -z_dx)
         ax = z_end_x + ARROW_LEN * math.cos(angle - 0.35)
         ay = z_end_y + ARROW_LEN * math.sin(angle - 0.35)
         bx = z_end_x + ARROW_LEN * math.cos(angle + 0.35)
         by = z_end_y + ARROW_LEN * math.sin(angle + 0.35)
-        parts.append(f'<polygon points="{z_end_x:.1f},{z_end_y:.1f} '
-                     f'{ax:.1f},{ay:.1f} {bx:.1f},{by:.1f}" fill="{{accent}}"/>')
+        parts.append(
+            f'<polygon points="{z_end_x:.1f},{z_end_y:.1f} '
+            f'{ax:.1f},{ay:.1f} {bx:.1f},{by:.1f}" fill="{{accent}}"/>'
+        )
         if tick_spacing > 0:
             unit_x = -z_dx / length
             unit_y = z_dy / length
@@ -651,20 +720,23 @@ def gen_axis(origin_x: float, origin_y: float,
                 parts.append(
                     f'<line x1="{tx + perp_x * TICK_LEN:.1f}" y1="{ty + perp_y * TICK_LEN:.1f}" '
                     f'x2="{tx - perp_x * TICK_LEN:.1f}" y2="{ty - perp_y * TICK_LEN:.1f}" '
-                    f'stroke="{{accent}}" stroke-width="0.5"/>')
+                    f'stroke="{{accent}}" stroke-width="0.5"/>'
+                )
                 d += tick_spacing
                 i += 1
         if labels:
-            parts.append(f'<text x="{z_end_x - 8}" y="{z_end_y + 12}" font-size="9" '
-                         f'class="fg-3" font-family="Segoe UI, Arial, sans-serif">z</text>')
+            parts.append(
+                f'<text x="{z_end_x - 8}" y="{z_end_y + 12}" font-size="9" '
+                f'class="fg-3" font-family="Segoe UI, Arial, sans-serif">z</text>'
+            )
 
     svg = "\n".join(parts)
     return PrimitiveResult(f"axis-{axes}", anchors, svg)
 
 
-def gen_spline(control_points: list[tuple[float, float]],
-               num_samples: int = 50,
-               closed: bool = False) -> PrimitiveResult:
+def gen_spline(
+    control_points: list[tuple[float, float]], num_samples: int = 50, closed: bool = False
+) -> PrimitiveResult:
     """Smooth spline through control points via PCHIP interpolation.
 
     Args:
@@ -695,6 +767,7 @@ def gen_spline(control_points: list[tuple[float, float]],
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def _print_result(result: PrimitiveResult):
     """Print primitive result with anchors and SVG."""
     print(f"Primitive: {result.kind}")
@@ -708,7 +781,7 @@ def _print_result(result: PrimitiveResult):
         print(f"  {line}")
     if result.path_d:
         print()
-        print(f"Path data:\n  d=\"{result.path_d}\"")
+        print(f'Path data:\n  d="{result.path_d}"')
 
 
 def main():
@@ -821,8 +894,9 @@ def main():
 
     # spline
     p = sub.add_parser("spline", help="Smooth PCHIP spline through control points")
-    p.add_argument("--points", required=True,
-                   help="Control points: 'x1,y1 x2,y2 ...' (x strictly increasing)")
+    p.add_argument(
+        "--points", required=True, help="Control points: 'x1,y1 x2,y2 ...' (x strictly increasing)"
+    )
     p.add_argument("--samples", type=int, default=50, help="Interpolation points (default: 50)")
     p.add_argument("--closed", action="store_true", help="Close path with Z")
 
@@ -830,8 +904,12 @@ def main():
     p = sub.add_parser("axis", help="Coordinate axes (x, y, xy, xyz)")
     p.add_argument("--origin", required=True, help="Origin point: 'x,y'")
     p.add_argument("--length", type=float, required=True, help="Axis length in pixels")
-    p.add_argument("--axes", default="xy", choices=["x", "y", "xy", "xyz"],
-                   help="Which axes to draw (default: xy)")
+    p.add_argument(
+        "--axes",
+        default="xy",
+        choices=["x", "y", "xy", "xyz"],
+        help="Which axes to draw (default: xy)",
+    )
     p.add_argument("--ticks", type=int, default=0, help="Number of ticks per axis")
     p.add_argument("--tick-spacing", type=float, default=0, help="Pixels between ticks")
     p.add_argument("--no-labels", action="store_true", help="Omit axis labels")
@@ -839,8 +917,14 @@ def main():
     args = parser.parse_args()
 
     if args.primitive == "rect":
-        result = gen_rect(args.x, args.y, args.width, args.height,
-                          r=args.radius, accent="accent" if args.accent else "")
+        result = gen_rect(
+            args.x,
+            args.y,
+            args.width,
+            args.height,
+            r=args.radius,
+            accent="accent" if args.accent else "",
+        )
     elif args.primitive == "square":
         result = gen_square(args.x, args.y, args.size, r=args.radius)
     elif args.primitive == "circle":
@@ -856,16 +940,15 @@ def main():
     elif args.primitive == "arc":
         result = gen_arc(args.cx, args.cy, args.r, args.start, args.end)
     elif args.primitive == "cube":
-        result = gen_cube(args.x, args.y, args.width, args.height,
-                          depth=args.depth, mode=args.mode)
+        result = gen_cube(
+            args.x, args.y, args.width, args.height, depth=args.depth, mode=args.mode
+        )
     elif args.primitive == "cylinder":
-        result = gen_cylinder(args.cx, args.cy, args.rx, args.ry,
-                              args.height, mode=args.mode)
+        result = gen_cylinder(args.cx, args.cy, args.rx, args.ry, args.height, mode=args.mode)
     elif args.primitive == "sphere":
         result = gen_sphere(args.cx, args.cy, args.r, mode=args.mode)
     elif args.primitive == "cuboid":
-        result = gen_cuboid(args.x, args.y, args.width, args.height,
-                            args.depth, mode=args.mode)
+        result = gen_cuboid(args.x, args.y, args.width, args.height, args.depth, mode=args.mode)
     elif args.primitive == "plane":
         result = gen_plane(args.x, args.y, args.width, args.depth, tilt=args.tilt)
     elif args.primitive == "spline":
@@ -877,9 +960,15 @@ def main():
         result = gen_spline(pts, num_samples=args.samples, closed=args.closed)
     elif args.primitive == "axis":
         ox, oy = [float(v) for v in args.origin.split(",")]
-        result = gen_axis(ox, oy, args.length, axes=args.axes,
-                          tick_spacing=args.tick_spacing, tick_count=args.ticks,
-                          labels=not args.no_labels)
+        result = gen_axis(
+            ox,
+            oy,
+            args.length,
+            axes=args.axes,
+            tick_spacing=args.tick_spacing,
+            tick_count=args.ticks,
+            labels=not args.no_labels,
+        )
 
     _print_result(result)
 

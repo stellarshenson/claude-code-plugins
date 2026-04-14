@@ -32,10 +32,8 @@ that visualises the result so you can paste it into your file to verify.
 from __future__ import annotations
 
 import argparse
-import math
-import sys
 from dataclasses import dataclass
-
+import math
 
 EPS = 1e-9
 
@@ -43,6 +41,7 @@ EPS = 1e-9
 @dataclass(frozen=True)
 class Point:
     """A 2D point in SVG coordinate space (Y grows downward)."""
+
     x: float
     y: float
 
@@ -152,16 +151,16 @@ def perpendicular_foot(p: Point, line_p1: Point, line_p2: Point) -> Point:
     return Point(line_p1.x + t * dx, line_p1.y + t * dy)
 
 
-def parallel_line_through(line_p1: Point, line_p2: Point,
-                          through: Point) -> tuple[Point, Point]:
+def parallel_line_through(line_p1: Point, line_p2: Point, through: Point) -> tuple[Point, Point]:
     """Return two points defining a line parallel to line_p1->line_p2 through `through`."""
     dx = line_p2.x - line_p1.x
     dy = line_p2.y - line_p1.y
     return through, Point(through.x + dx, through.y + dy)
 
 
-def perpendicular_line_through(line_p1: Point, line_p2: Point,
-                               through: Point) -> tuple[Point, Point]:
+def perpendicular_line_through(
+    line_p1: Point, line_p2: Point, through: Point
+) -> tuple[Point, Point]:
     """Return two points defining a line perpendicular to line_p1->line_p2 through `through`."""
     dx = line_p2.x - line_p1.x
     dy = line_p2.y - line_p1.y
@@ -203,8 +202,7 @@ def intersect_lines(p1: Point, p2: Point, p3: Point, p4: Point) -> Point | None:
     return Point(x1 + t * (x2 - x1), y1 + t * (y2 - y1))
 
 
-def intersect_line_circle(p1: Point, p2: Point,
-                          center: Point, radius: float) -> list[Point]:
+def intersect_line_circle(p1: Point, p2: Point, center: Point, radius: float) -> list[Point]:
     """Intersection points of an infinite line with a circle (0, 1, or 2 points)."""
     dx = p2.x - p1.x
     dy = p2.y - p1.y
@@ -231,8 +229,7 @@ def intersect_line_circle(p1: Point, p2: Point,
     ]
 
 
-def intersect_circles(c1: Point, r1: float,
-                      c2: Point, r2: float) -> list[Point]:
+def intersect_circles(c1: Point, r1: float, c2: Point, r2: float) -> list[Point]:
     """Intersection points of two circles (0, 1, or 2 points)."""
     dx = c2.x - c1.x
     dy = c2.y - c1.y
@@ -268,8 +265,7 @@ def intersect_circles(c1: Point, r1: float,
 # ---------------------------------------------------------------------------
 
 
-def tangent_points_from_external(external: Point,
-                                 center: Point, radius: float) -> list[Point]:
+def tangent_points_from_external(external: Point, center: Point, radius: float) -> list[Point]:
     """Two tangent points where lines from `external` touch the circle.
 
     Uses the geometric construction: the tangent points lie on the circle
@@ -287,9 +283,9 @@ def tangent_points_from_external(external: Point,
     return intersect_circles(external, tangent_len, center, radius)
 
 
-def tangent_lines_two_circles(c1: Point, r1: float,
-                              c2: Point, r2: float,
-                              kind: str = "external") -> list[tuple[Point, Point]]:
+def tangent_lines_two_circles(
+    c1: Point, r1: float, c2: Point, r2: float, kind: str = "external"
+) -> list[tuple[Point, Point]]:
     """Tangent line segments between two circles.
 
     kind="external" returns the two outer tangents (lines that don't cross
@@ -314,10 +310,12 @@ def tangent_lines_two_circles(c1: Point, r1: float,
             ux = (c2.x - c1.x) / d
             uy = (c2.y - c1.y) / d
             nx, ny = -uy, ux
-            results.append((Point(c1.x + r1 * nx, c1.y + r1 * ny),
-                            Point(c2.x + r2 * nx, c2.y + r2 * ny)))
-            results.append((Point(c1.x - r1 * nx, c1.y - r1 * ny),
-                            Point(c2.x - r2 * nx, c2.y - r2 * ny)))
+            results.append(
+                (Point(c1.x + r1 * nx, c1.y + r1 * ny), Point(c2.x + r2 * nx, c2.y + r2 * ny))
+            )
+            results.append(
+                (Point(c1.x - r1 * nx, c1.y - r1 * ny), Point(c2.x - r2 * nx, c2.y - r2 * ny))
+            )
             return results
 
         # Different radii: external tangents meet at the external center of similitude
@@ -330,10 +328,12 @@ def tangent_lines_two_circles(c1: Point, r1: float,
         if len(t1) == 2 and len(t2) == 2:
             # Pair them by side: dot product of (t-c) vectors should match
             for tp1 in t1:
-                best = min(t2, key=lambda tp2: (
-                    ((tp1.x - c1.x) * (tp2.x - c2.x)
-                     + (tp1.y - c1.y) * (tp2.y - c2.y)) * -1
-                ))
+                best = min(
+                    t2,
+                    key=lambda tp2: (
+                        ((tp1.x - c1.x) * (tp2.x - c2.x) + (tp1.y - c1.y) * (tp2.y - c2.y)) * -1
+                    ),
+                )
                 results.append((tp1, best))
         return results
 
@@ -349,10 +349,12 @@ def tangent_lines_two_circles(c1: Point, r1: float,
         t2 = tangent_points_from_external(internal, c2, r2)
         if len(t1) == 2 and len(t2) == 2:
             for tp1 in t1:
-                best = min(t2, key=lambda tp2: (
-                    (tp1.x - c1.x) * (tp2.x - c2.x)
-                    + (tp1.y - c1.y) * (tp2.y - c2.y)
-                ))
+                best = min(
+                    t2,
+                    key=lambda tp2: (
+                        (tp1.x - c1.x) * (tp2.x - c2.x) + (tp1.y - c1.y) * (tp2.y - c2.y)
+                    ),
+                )
                 results.append((tp1, best))
         return results
 
@@ -370,15 +372,13 @@ def polar_to_cartesian(center: Point, r: float, angle_deg: float) -> Point:
     return Point(center.x + r * math.cos(a), center.y + r * math.sin(a))
 
 
-def evenly_spaced_on_circle(center: Point, r: float, count: int,
-                            start_angle_deg: float = 0) -> list[Point]:
+def evenly_spaced_on_circle(
+    center: Point, r: float, count: int, start_angle_deg: float = 0
+) -> list[Point]:
     """N points evenly distributed around a circle."""
     if count <= 0:
         return []
-    return [
-        polar_to_cartesian(center, r, start_angle_deg + 360 * i / count)
-        for i in range(count)
-    ]
+    return [polar_to_cartesian(center, r, start_angle_deg + 360 * i / count) for i in range(count)]
 
 
 def concentric_circles(center: Point, radii: list[float]) -> list[tuple[Point, float]]:
@@ -391,18 +391,17 @@ def concentric_circles(center: Point, radii: list[float]) -> list[tuple[Point, f
 # ---------------------------------------------------------------------------
 
 
-def rect_attachment(x: float, y: float, w: float, h: float,
-                    side: str, pos: str = "mid") -> Point:
+def rect_attachment(x: float, y: float, w: float, h: float, side: str, pos: str = "mid") -> Point:
     """Snap point on one edge of a rectangle.
 
     side: 'top' | 'right' | 'bottom' | 'left'
     pos:  'start' | 'mid' | 'end' (start = top-left along reading direction)
     """
     edge = {
-        "top":    ((x, y), (x + w, y)),
-        "right":  ((x + w, y), (x + w, y + h)),
+        "top": ((x, y), (x + w, y)),
+        "right": ((x + w, y), (x + w, y + h)),
         "bottom": ((x, y + h), (x + w, y + h)),
-        "left":   ((x, y), (x, y + h)),
+        "left": ((x, y), (x, y + h)),
     }
     if side not in edge:
         raise ValueError(f"side must be top/right/bottom/left, got {side!r}")
@@ -465,8 +464,9 @@ def perpendicular_normal(p1: Point, p2: Point, side: str = "left") -> tuple[floa
     raise ValueError(f"side must be 'left' or 'right', got {side!r}")
 
 
-def offset_point_from_line(p1: Point, p2: Point, t: float,
-                           distance: float, side: str = "left") -> Point:
+def offset_point_from_line(
+    p1: Point, p2: Point, t: float, distance: float, side: str = "left"
+) -> Point:
     """Point at parameter t along p1->p2, then shifted distance px to one side.
 
     Useful for placing labels at a standoff from an existing connector:
@@ -477,16 +477,14 @@ def offset_point_from_line(p1: Point, p2: Point, t: float,
     return Point(base.x + nx * distance, base.y + ny * distance)
 
 
-def offset_line(p1: Point, p2: Point, distance: float,
-                side: str = "left") -> tuple[Point, Point]:
+def offset_line(p1: Point, p2: Point, distance: float, side: str = "left") -> tuple[Point, Point]:
     """Parallel line at perpendicular distance from p1->p2."""
     nx, ny = perpendicular_normal(p1, p2, side)
     dx, dy = nx * distance, ny * distance
     return Point(p1.x + dx, p1.y + dy), Point(p2.x + dx, p2.y + dy)
 
 
-def offset_polyline(points: list[Point], distance: float,
-                    side: str = "left") -> list[Point]:
+def offset_polyline(points: list[Point], distance: float, side: str = "left") -> list[Point]:
     """Parallel polyline at perpendicular distance from the original.
 
     For each interior vertex, the new vertex is the intersection of the two
@@ -527,8 +525,9 @@ def offset_polyline(points: list[Point], distance: float,
     return result
 
 
-def offset_rect(x: float, y: float, w: float, h: float,
-                by: float) -> tuple[float, float, float, float] | None:
+def offset_rect(
+    x: float, y: float, w: float, h: float, by: float
+) -> tuple[float, float, float, float] | None:
     """Inflate (positive) or deflate (negative) a rect uniformly on all sides.
 
     Returns None if a negative offset would collapse the rect. Useful for
@@ -549,8 +548,9 @@ def offset_circle(center: Point, r: float, by: float) -> tuple[Point, float] | N
     return (center, new_r)
 
 
-def offset_polygon(points: list[Point], distance: float,
-                   direction: str = "outward") -> list[Point]:
+def offset_polygon(
+    points: list[Point], distance: float, direction: str = "outward"
+) -> list[Point]:
     """Offset a closed polygon inward or outward.
 
     direction="outward" inflates the polygon, "inward" deflates it. Uses the
@@ -611,15 +611,20 @@ def _svg_point(p: Point, color: str = "#5456f3", r: float = 3) -> str:
 
 
 def _svg_line(p1: Point, p2: Point, color: str = "#5456f3", width: float = 1) -> str:
-    return (f'<line x1="{p1.x:.2f}" y1="{p1.y:.2f}" '
-            f'x2="{p2.x:.2f}" y2="{p2.y:.2f}" '
-            f'stroke="{color}" stroke-width="{width}"/>')
+    return (
+        f'<line x1="{p1.x:.2f}" y1="{p1.y:.2f}" '
+        f'x2="{p2.x:.2f}" y2="{p2.y:.2f}" '
+        f'stroke="{color}" stroke-width="{width}"/>'
+    )
 
 
-def _svg_circle(c: Point, r: float, color: str = "#5456f3",
-                fill: str = "none", width: float = 1) -> str:
-    return (f'<circle cx="{c.x:.2f}" cy="{c.y:.2f}" r="{r:.2f}" '
-            f'fill="{fill}" stroke="{color}" stroke-width="{width}"/>')
+def _svg_circle(
+    c: Point, r: float, color: str = "#5456f3", fill: str = "none", width: float = 1
+) -> str:
+    return (
+        f'<circle cx="{c.x:.2f}" cy="{c.y:.2f}" r="{r:.2f}" '
+        f'fill="{fill}" stroke="{color}" stroke-width="{width}"/>'
+    )
 
 
 def cmd_midpoint(args):
@@ -695,7 +700,9 @@ def cmd_tangent(args):
     ext = _parse_point(getattr(args, "from"))
     points = tangent_points_from_external(ext, center, r)
     if not points:
-        print(f"No tangent: external point is inside circle (d={distance(ext, center):.2f}, r={r:.2f})")
+        print(
+            f"No tangent: external point is inside circle (d={distance(ext, center):.2f}, r={r:.2f})"
+        )
         return
     if len(points) == 1:
         print("External point lies on circle - single tangent point")
@@ -819,8 +826,10 @@ def cmd_attach(args):
             pt = rect_attachment(x, y, w, h, args.side, args.pos)
         _print_point("Attachment", pt)
         print("\n--- SVG ---")
-        print(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" '
-              f'fill="none" stroke="#999" stroke-width="0.5"/>')
+        print(
+            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" '
+            f'fill="none" stroke="#999" stroke-width="0.5"/>'
+        )
         print(_svg_point(pt, "#5456f3", 3))
     elif args.shape == "circle":
         center, r = _parse_circle(args.geometry)
@@ -874,10 +883,14 @@ def cmd_offset_rect(args):
     print(f"Original: x={x} y={y} w={w} h={h}")
     print(f"Offset:   x={nx} y={ny} w={nw} h={nh}")
     print("\n--- SVG ---")
-    print(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" '
-          f'fill="none" stroke="#999" stroke-width="0.5"/>')
-    print(f'<rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" '
-          f'fill="none" stroke="#5456f3" stroke-width="1.5"/>')
+    print(
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" '
+        f'fill="none" stroke="#999" stroke-width="0.5"/>'
+    )
+    print(
+        f'<rect x="{nx}" y="{ny}" width="{nw}" height="{nh}" '
+        f'fill="none" stroke="#5456f3" stroke-width="1.5"/>'
+    )
 
 
 def cmd_offset_circle(args):
@@ -1033,8 +1046,9 @@ def main():
     )
     p.add_argument("--line", required=True, help="Line as 'x1,y1,x2,y2'")
     p.add_argument("--by", type=float, required=True, help="Pixels to extend by (positive)")
-    p.add_argument("--end", choices=["start", "end"], default="end",
-                   help="Which end to push (default: end)")
+    p.add_argument(
+        "--end", choices=["start", "end"], default="end", help="Which end to push (default: end)"
+    )
     p.set_defaults(func=cmd_extend)
 
     p = sub.add_parser(
@@ -1102,8 +1116,12 @@ def main():
     )
     p.add_argument("--c1", required=True, help="First circle 'cx,cy,r'")
     p.add_argument("--c2", required=True, help="Second circle 'cx,cy,r'")
-    p.add_argument("--kind", choices=["external", "internal"], default="external",
-                   help="external = outer (non-crossing), internal = crossing between circles")
+    p.add_argument(
+        "--kind",
+        choices=["external", "internal"],
+        default="external",
+        help="external = outer (non-crossing), internal = crossing between circles",
+    )
     p.set_defaults(func=cmd_tangent_circles)
 
     # ----------------------------------------------------------------------
@@ -1146,7 +1164,9 @@ def main():
     )
     p.add_argument("--center", required=True, help="Origin 'cx,cy'")
     p.add_argument("--r", type=float, required=True, help="Radius")
-    p.add_argument("--angle", type=float, required=True, help="Angle in degrees (0=right, 90=down)")
+    p.add_argument(
+        "--angle", type=float, required=True, help="Angle in degrees (0=right, 90=down)"
+    )
     p.set_defaults(func=cmd_polar)
 
     p = sub.add_parser(
@@ -1157,8 +1177,12 @@ def main():
     p.add_argument("--center", required=True, help="Center 'cx,cy'")
     p.add_argument("--r", type=float, required=True, help="Radius")
     p.add_argument("--count", type=int, required=True, help="How many points")
-    p.add_argument("--start-angle", type=float, default=0,
-                   help="Angle of the first point in degrees (default: 0 = right)")
+    p.add_argument(
+        "--start-angle",
+        type=float,
+        default=0,
+        help="Angle of the first point in degrees (default: 0 = right)",
+    )
     p.set_defaults(func=cmd_evenly_spaced)
 
     p = sub.add_parser(
@@ -1180,8 +1204,12 @@ def main():
     )
     p.add_argument("--line", required=True, help="Original line 'x1,y1,x2,y2'")
     p.add_argument("--distance", type=float, required=True, help="Perpendicular offset in px")
-    p.add_argument("--side", choices=["left", "right"], default="left",
-                   help="Visual side: left = up-of-direction in SVG, right = down-of-direction")
+    p.add_argument(
+        "--side",
+        choices=["left", "right"],
+        default="left",
+        help="Visual side: left = up-of-direction in SVG, right = down-of-direction",
+    )
     p.set_defaults(func=cmd_offset_line)
 
     p = sub.add_parser(
@@ -1189,11 +1217,18 @@ def main():
         help="Parallel polyline with mitered corners. Use for parallel rails along an L-route, multi-segment flow channels, thick borders.",
         description="Offset every edge of a polyline perpendicularly and meet adjacent edges at mitered intersections.",
     )
-    p.add_argument("--points", required=True,
-                   help="Polyline vertices as \"x1,y1 x2,y2 ...\" (space or comma separated)")
+    p.add_argument(
+        "--points",
+        required=True,
+        help='Polyline vertices as "x1,y1 x2,y2 ..." (space or comma separated)',
+    )
     p.add_argument("--distance", type=float, required=True, help="Perpendicular offset in px")
-    p.add_argument("--side", choices=["left", "right"], default="left",
-                   help="Visual side relative to walking direction")
+    p.add_argument(
+        "--side",
+        choices=["left", "right"],
+        default="left",
+        help="Visual side relative to walking direction",
+    )
     p.set_defaults(func=cmd_offset_polyline)
 
     p = sub.add_parser(
@@ -1202,8 +1237,12 @@ def main():
         description="Grow or shrink a rect equally on all four sides. Returns None if a negative offset would collapse it.",
     )
     p.add_argument("--rect", required=True, help="Rect 'x,y,w,h'")
-    p.add_argument("--by", type=float, required=True,
-                   help="Pixels to grow each side (positive=halo, negative=shrink)")
+    p.add_argument(
+        "--by",
+        type=float,
+        required=True,
+        help="Pixels to grow each side (positive=halo, negative=shrink)",
+    )
     p.set_defaults(func=cmd_offset_rect)
 
     p = sub.add_parser(
@@ -1212,8 +1251,12 @@ def main():
         description="Add or subtract from a circle's radius keeping the centre fixed.",
     )
     p.add_argument("--circle", required=True, help="Circle 'cx,cy,r'")
-    p.add_argument("--by", type=float, required=True,
-                   help="Pixels to add to radius (positive=halo, negative=shrink)")
+    p.add_argument(
+        "--by",
+        type=float,
+        required=True,
+        help="Pixels to add to radius (positive=halo, negative=shrink)",
+    )
     p.set_defaults(func=cmd_offset_circle)
 
     p = sub.add_parser(
@@ -1221,11 +1264,14 @@ def main():
         help="Inflate or deflate a closed polygon. Use for halos around irregular shapes, padding around hit areas, layered ring polygons.",
         description="Outward = inflate, inward = deflate. Auto-detects polygon winding.",
     )
-    p.add_argument("--points", required=True,
-                   help="Polygon vertices as \"x1,y1 x2,y2 ...\"")
+    p.add_argument("--points", required=True, help='Polygon vertices as "x1,y1 x2,y2 ..."')
     p.add_argument("--distance", type=float, required=True, help="Offset distance in px")
-    p.add_argument("--direction", choices=["outward", "inward"], default="outward",
-                   help="outward = inflate, inward = deflate")
+    p.add_argument(
+        "--direction",
+        choices=["outward", "inward"],
+        default="outward",
+        help="outward = inflate, inward = deflate",
+    )
     p.set_defaults(func=cmd_offset_polygon)
 
     p = sub.add_parser(
@@ -1235,10 +1281,13 @@ def main():
     )
     p.add_argument("--line", required=True, help="Reference line 'x1,y1,x2,y2'")
     p.add_argument("--t", type=float, required=True, help="Parameter in [0, 1] along the line")
-    p.add_argument("--distance", type=float, required=True,
-                   help="Perpendicular standoff in px")
-    p.add_argument("--side", choices=["left", "right"], default="left",
-                   help="Visual side relative to walking direction")
+    p.add_argument("--distance", type=float, required=True, help="Perpendicular standoff in px")
+    p.add_argument(
+        "--side",
+        choices=["left", "right"],
+        default="left",
+        help="Visual side relative to walking direction",
+    )
     p.set_defaults(func=cmd_offset_point)
 
     # ----------------------------------------------------------------------
@@ -1256,16 +1305,25 @@ def main():
             "          --side center"
         ),
     )
-    p.add_argument("--shape", choices=["rect", "circle"], required=True,
-                   help="rect or circle")
-    p.add_argument("--geometry", required=True,
-                   help="rect: 'x,y,w,h'   circle: 'cx,cy,r'")
-    p.add_argument("--side", default="center",
-                   help="rect: top|right|bottom|left|tl|tr|bl|br|center   circle: perimeter|center")
-    p.add_argument("--pos", choices=["start", "mid", "end"], default="mid",
-                   help="Position along edge for rect sides (default: mid)")
-    p.add_argument("--angle", type=float, default=0,
-                   help="Perimeter angle in degrees for circle perimeter (default: 0)")
+    p.add_argument("--shape", choices=["rect", "circle"], required=True, help="rect or circle")
+    p.add_argument("--geometry", required=True, help="rect: 'x,y,w,h'   circle: 'cx,cy,r'")
+    p.add_argument(
+        "--side",
+        default="center",
+        help="rect: top|right|bottom|left|tl|tr|bl|br|center   circle: perimeter|center",
+    )
+    p.add_argument(
+        "--pos",
+        choices=["start", "mid", "end"],
+        default="mid",
+        help="Position along edge for rect sides (default: mid)",
+    )
+    p.add_argument(
+        "--angle",
+        type=float,
+        default=0,
+        help="Perimeter angle in degrees for circle perimeter (default: 0)",
+    )
     p.set_defaults(func=cmd_attach)
 
     args = parser.parse_args()

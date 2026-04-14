@@ -9,10 +9,10 @@ no #000000 or #ffffff, proper dark mode overrides.
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import re
 import sys
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass
 
 _NS_RE = re.compile(r"\{[^}]*\}")
 
@@ -24,6 +24,7 @@ def _strip_ns(tag: str) -> str:
 @dataclass
 class CSSViolation:
     """A CSS compliance violation."""
+
     element: str  # tag + id/text excerpt
     line: int  # element index in parse order
     rule: str  # short rule name
@@ -34,6 +35,7 @@ class CSSViolation:
 # ---------------------------------------------------------------------------
 # CSS parsing
 # ---------------------------------------------------------------------------
+
 
 def parse_style_block(svg_text: str) -> tuple[dict[str, dict], dict[str, dict], set[str]]:
     """Parse CSS classes from <style> block.
@@ -81,6 +83,7 @@ def parse_style_block(svg_text: str) -> tuple[dict[str, dict], dict[str, dict], 
 # Validation rules
 # ---------------------------------------------------------------------------
 
+
 def check_inline_fill_on_text(root, ns: str) -> list[CSSViolation]:
     """Text elements must use CSS classes for fill, never inline fill="#hex"."""
     violations = []
@@ -94,18 +97,24 @@ def check_inline_fill_on_text(root, ns: str) -> list[CSSViolation]:
         text_content = (elem.text or "")[:30]
 
         if fill and fill.startswith("#"):
-            violations.append(CSSViolation(
-                f"<text> \"{text_content}\"", idx,
-                "inline-fill-on-text",
-                f"Text has inline fill=\"{fill}\" - use a CSS class instead",
-            ))
+            violations.append(
+                CSSViolation(
+                    f'<text> "{text_content}"',
+                    idx,
+                    "inline-fill-on-text",
+                    f'Text has inline fill="{fill}" - use a CSS class instead',
+                )
+            )
         elif not css_class and not fill:
-            violations.append(CSSViolation(
-                f"<text> \"{text_content}\"", idx,
-                "no-class-no-fill",
-                "Text has neither CSS class nor fill - will inherit (may be invisible in dark mode)",
-                severity="warning",
-            ))
+            violations.append(
+                CSSViolation(
+                    f'<text> "{text_content}"',
+                    idx,
+                    "no-class-no-fill",
+                    "Text has neither CSS class nor fill - will inherit (may be invisible in dark mode)",
+                    severity="warning",
+                )
+            )
 
     return violations
 
@@ -121,11 +130,14 @@ def check_text_opacity(root, ns: str) -> list[CSSViolation]:
         opacity = elem.get("opacity")
         if opacity and float(opacity) < 1.0:
             text_content = (elem.text or "")[:30]
-            violations.append(CSSViolation(
-                f"<text> \"{text_content}\"", idx,
-                "text-opacity",
-                f"Text has opacity=\"{opacity}\" - removes contrast, use fg-3/fg-4 instead",
-            ))
+            violations.append(
+                CSSViolation(
+                    f'<text> "{text_content}"',
+                    idx,
+                    "text-opacity",
+                    f'Text has opacity="{opacity}" - removes contrast, use fg-3/fg-4 instead',
+                )
+            )
 
     return violations
 
@@ -145,11 +157,14 @@ def check_forbidden_colors(root, ns: str) -> list[CSSViolation]:
             if val in forbidden:
                 eid = elem.get("id", "")
                 label = f"<{tag}>" + (f" id={eid}" if eid else "")
-                violations.append(CSSViolation(
-                    label, idx,
-                    "forbidden-color",
-                    f"{attr_name}=\"{val}\" - use a theme colour instead of black/white",
-                ))
+                violations.append(
+                    CSSViolation(
+                        label,
+                        idx,
+                        "forbidden-color",
+                        f'{attr_name}="{val}" - use a theme colour instead of black/white',
+                    )
+                )
 
     return violations
 
@@ -172,11 +187,14 @@ def check_inline_styles(root, ns: str) -> list[CSSViolation]:
             if prop in STYLE_PROPS and "#" in val:
                 eid = elem.get("id", "")
                 label = f"<{tag}>" + (f" id={eid}" if eid else "")
-                violations.append(CSSViolation(
-                    label, idx,
-                    "inline-style-color",
-                    f"Inline style {prop}: {val} - move to CSS class",
-                ))
+                violations.append(
+                    CSSViolation(
+                        label,
+                        idx,
+                        "inline-style-color",
+                        f"Inline style {prop}: {val} - move to CSS class",
+                    )
+                )
 
     return violations
 
@@ -189,12 +207,15 @@ def check_dark_mode_coverage(
     violations = []
     for cls_name, props in light_classes.items():
         if "fill" in props and cls_name not in dark_classes:
-            violations.append(CSSViolation(
-                f".{cls_name}", 0,
-                "missing-dark-override",
-                f"Class .{cls_name} has fill in light mode but no dark mode override",
-                severity="warning",
-            ))
+            violations.append(
+                CSSViolation(
+                    f".{cls_name}",
+                    0,
+                    "missing-dark-override",
+                    f"Class .{cls_name} has fill in light mode but no dark mode override",
+                    severity="warning",
+                )
+            )
 
     return violations
 
@@ -216,7 +237,6 @@ def check_stroke_inline(root, ns: str) -> list[CSSViolation]:
         # Flag only if stroke is a non-theme color (heuristic: if no class and has stroke)
         if stroke.startswith("#") and not css_class:
             # Allow common patterns: cards with accent stroke, dividers
-            fill = elem.get("fill", "")
             fill_opacity = elem.get("fill-opacity", "1")
             # Cards (fill-opacity < 0.1) and dividers are acceptable with inline stroke
             if fill_opacity and float(fill_opacity) <= 0.1:
@@ -241,12 +261,15 @@ def check_font_inline(root, ns: str) -> list[CSSViolation]:
         text_content = (elem.text or "")[:30]
 
         if font and EXPECTED_FONT not in font:
-            violations.append(CSSViolation(
-                f"<text> \"{text_content}\"", idx,
-                "non-standard-font",
-                f"font-family=\"{font}\" - expected \"{EXPECTED_FONT}, Arial, sans-serif\"",
-                severity="warning",
-            ))
+            violations.append(
+                CSSViolation(
+                    f'<text> "{text_content}"',
+                    idx,
+                    "non-standard-font",
+                    f'font-family="{font}" - expected "{EXPECTED_FONT}, Arial, sans-serif"',
+                    severity="warning",
+                )
+            )
 
     return violations
 
@@ -254,6 +277,7 @@ def check_font_inline(root, ns: str) -> list[CSSViolation]:
 # ---------------------------------------------------------------------------
 # Main checker
 # ---------------------------------------------------------------------------
+
 
 def check_css_compliance(filepath: str) -> tuple[list[CSSViolation], dict]:
     """Run all CSS compliance checks on an SVG file.
@@ -295,14 +319,14 @@ def check_css_compliance(filepath: str) -> tuple[list[CSSViolation], dict]:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(
         prog="svg-infographics css",
         description="Check SVG CSS compliance - all colours via classes, no inline fills on text",
     )
     parser.add_argument("--svg", required=True, help="SVG file to check")
-    parser.add_argument("--strict", action="store_true",
-                        help="Treat warnings as errors")
+    parser.add_argument("--strict", action="store_true", help="Treat warnings as errors")
     args = parser.parse_args()
 
     violations, stats = check_css_compliance(args.svg)

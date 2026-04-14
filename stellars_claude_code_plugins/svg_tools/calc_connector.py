@@ -51,13 +51,16 @@ def calc_connector(src_x, src_y, tgt_x, tgt_y, margin=0, head_len=10, head_half_
     dy = tgt_y - src_y
     angle_rad = math.atan2(dy, dx)
     angle_deg = math.degrees(angle_rad)
-    full_length = math.sqrt(dx ** 2 + dy ** 2)
+    full_length = math.sqrt(dx**2 + dy**2)
 
     # Effective length after pulling back margins from both ends
     effective_length = full_length - 2 * margin
 
     if effective_length <= head_len + 2:
-        print(f"WARNING: effective length {effective_length:.1f}px too short for arrowhead", file=sys.stderr)
+        print(
+            f"WARNING: effective length {effective_length:.1f}px too short for arrowhead",
+            file=sys.stderr,
+        )
 
     # In local (flat) coordinates:
     # - tip is at origin (0, 0) after translate
@@ -93,13 +96,23 @@ def calc_connector(src_x, src_y, tgt_x, tgt_y, margin=0, head_len=10, head_half_
     }
 
 
-def calc_cutout(src_x, src_y, tgt_x, tgt_y, pill_x, pill_y, pill_w, pill_h,
-                margin=0, padding=3, head_len=10, head_half_h=5):
+def calc_cutout(
+    src_x,
+    src_y,
+    tgt_x,
+    tgt_y,
+    pill_x,
+    pill_y,
+    pill_w,
+    pill_h,
+    margin=0,
+    padding=3,
+    head_len=10,
+    head_half_h=5,
+):
     """Split a connector into two segments with a gap around a pill rect."""
     dx = tgt_x - src_x
     dy = tgt_y - src_y
-    angle_rad = math.atan2(dy, dx)
-    length = math.sqrt(dx ** 2 + dy ** 2)
 
     # Pill rect with padding
     px1, py1 = pill_x - padding, pill_y - padding
@@ -133,12 +146,14 @@ def calc_cutout(src_x, src_y, tgt_x, tgt_y, pill_x, pill_y, pill_w, pill_h,
     t_exit, exit_x, exit_y = intersections[-1]
 
     # Segment 1: source -> pill entry
-    seg1 = calc_connector(src_x, src_y, enter_x, enter_y, margin=margin,
-                          head_len=0, head_half_h=0)  # No arrowhead on seg1
+    seg1 = calc_connector(
+        src_x, src_y, enter_x, enter_y, margin=margin, head_len=0, head_half_h=0
+    )  # No arrowhead on seg1
 
     # Segment 2: pill exit -> target (with arrowhead)
-    seg2 = calc_connector(exit_x, exit_y, tgt_x, tgt_y, margin=margin,
-                          head_len=head_len, head_half_h=head_half_h)
+    seg2 = calc_connector(
+        exit_x, exit_y, tgt_x, tgt_y, margin=margin, head_len=head_len, head_half_h=head_half_h
+    )
 
     return {
         "segment1": seg1,
@@ -165,8 +180,7 @@ def _arrowhead_polygon_world(tip_x, tip_y, angle_rad, head_len, head_half_h):
     sin_a = math.sin(angle_rad)
 
     def to_world(lx, ly):
-        return (tip_x + cos_a * lx - sin_a * ly,
-                tip_y + sin_a * lx + cos_a * ly)
+        return (tip_x + cos_a * lx - sin_a * ly, tip_y + sin_a * lx + cos_a * ly)
 
     return [
         (tip_x, tip_y),
@@ -277,7 +291,9 @@ def _pchip_slopes_1d(xs, ys):
             slopes[i] = (w1 + w2) / (w1 / delta[i - 1] + w2 / delta[i])
 
     # Endpoint slopes: shape-preserving one-sided estimate
-    slopes[0] = ((2 * h[0] + h[1]) * delta[0] - h[0] * delta[1]) / (h[0] + h[1]) if n > 2 else delta[0]
+    slopes[0] = (
+        ((2 * h[0] + h[1]) * delta[0] - h[0] * delta[1]) / (h[0] + h[1]) if n > 2 else delta[0]
+    )
     if slopes[0] * delta[0] <= 0:
         slopes[0] = 0.0
     elif n > 2 and abs(slopes[0]) > 3 * abs(delta[0]):
@@ -313,8 +329,9 @@ def _pchip_eval_1d(xs, ys, slopes, query):
         h10 = t3 - 2 * t2 + t
         h01 = -2 * t3 + 3 * t2
         h11 = t3 - t2
-        out.append(h00 * ys[seg] + h10 * h * slopes[seg]
-                   + h01 * ys[seg + 1] + h11 * h * slopes[seg + 1])
+        out.append(
+            h00 * ys[seg] + h10 * h * slopes[seg] + h01 * ys[seg + 1] + h11 * h * slopes[seg + 1]
+        )
     return out
 
 
@@ -345,8 +362,7 @@ def pchip_parametric(waypoints, num_samples=200):
         result = []
         for i in range(num_samples):
             t = i / (num_samples - 1) if num_samples > 1 else 0
-            result.append((xs[0] + t * (xs[1] - xs[0]),
-                           ys[0] + t * (ys[1] - ys[0])))
+            result.append((xs[0] + t * (xs[1] - xs[0]), ys[0] + t * (ys[1] - ys[0])))
         return result
 
     sx = _pchip_slopes_1d(ts, xs)
@@ -415,8 +431,7 @@ def _build_endpoint_info(points, end, head_len, head_half_h, draw_arrow):
     }
 
     if draw_arrow:
-        polygon = _arrowhead_polygon_world(tip[0], tip[1], angle_rad,
-                                           head_len, head_half_h)
+        polygon = _arrowhead_polygon_world(tip[0], tip[1], angle_rad, head_len, head_half_h)
         stem_back = (tip[0] - tx * head_len, tip[1] - ty * head_len)
         info["arrow"] = {
             "polygon": polygon,
@@ -460,22 +475,32 @@ def _build_polyline_result(mode, points, head_len, head_half_h, arrow, margin=0.
     }
 
 
-def calc_l(src_x, src_y, tgt_x, tgt_y, first_axis="h", margin=0.0,
-           head_len=10, head_half_h=5, arrow="end"):
+def calc_l(
+    src_x, src_y, tgt_x, tgt_y, first_axis="h", margin=0.0, head_len=10, head_half_h=5, arrow="end"
+):
     """Two-segment axis-aligned L connector."""
     pts = _build_l_polyline(src_x, src_y, tgt_x, tgt_y, first_axis)
     return _build_polyline_result("l", pts, head_len, head_half_h, arrow, margin)
 
 
-def calc_l_chamfer(src_x, src_y, tgt_x, tgt_y, first_axis="h", chamfer=4.0,
-                   margin=0.0, head_len=10, head_half_h=5, arrow="end"):
+def calc_l_chamfer(
+    src_x,
+    src_y,
+    tgt_x,
+    tgt_y,
+    first_axis="h",
+    chamfer=4.0,
+    margin=0.0,
+    head_len=10,
+    head_half_h=5,
+    arrow="end",
+):
     """Chamfered L connector with diagonal corner cut."""
     pts = _build_l_chamfer_polyline(src_x, src_y, tgt_x, tgt_y, first_axis, chamfer)
     return _build_polyline_result("l-chamfer", pts, head_len, head_half_h, arrow, margin)
 
 
-def calc_spline(waypoints, samples=200, margin=0.0,
-                head_len=10, head_half_h=5, arrow="end"):
+def calc_spline(waypoints, samples=200, margin=0.0, head_len=10, head_half_h=5, arrow="end"):
     """Free PCHIP spline through 2D waypoints. Waypoints may go in any direction."""
     if len(waypoints) < 2:
         raise ValueError("Spline connector needs at least 2 waypoints")
@@ -483,14 +508,13 @@ def calc_spline(waypoints, samples=200, margin=0.0,
     return _build_polyline_result("spline", pts, head_len, head_half_h, arrow, margin)
 
 
-def format_polyline_svg(result, stroke_color="#5456f3", stroke_width="1.2",
-                        opacity="0.4"):
+def format_polyline_svg(result, stroke_color="#5456f3", stroke_width="1.2", opacity="0.4"):
     """Render an L / L-chamfer / spline result as a ready-to-paste SVG snippet."""
     lines = [
-        f'  <!-- {result["mode"]} connector: '
-        f'len={result["total_length"]:.0f}px '
-        f'start_angle={result["start"]["angle_deg"]:.1f}deg '
-        f'end_angle={result["end"]["angle_deg"]:.1f}deg -->',
+        f"  <!-- {result['mode']} connector: "
+        f"len={result['total_length']:.0f}px "
+        f"start_angle={result['start']['angle_deg']:.1f}deg "
+        f"end_angle={result['end']['angle_deg']:.1f}deg -->",
         f'  <path d="{result["trimmed_path_d"]}" fill="none" '
         f'stroke="{stroke_color}" stroke-width="{stroke_width}" '
         f'opacity="{opacity}" stroke-linejoin="round" stroke-linecap="round"/>',
@@ -501,9 +525,7 @@ def format_polyline_svg(result, stroke_color="#5456f3", stroke_width="1.2",
         if end["arrow"] is None:
             continue
         poly_pts = " ".join(f"{px:.2f},{py:.2f}" for px, py in end["arrow"]["polygon"])
-        lines.append(
-            f'  <polygon points="{poly_pts}" fill="{stroke_color}" opacity="0.6"/>'
-        )
+        lines.append(f'  <polygon points="{poly_pts}" fill="{stroke_color}" opacity="0.6"/>')
 
     return "\n".join(lines)
 
@@ -519,12 +541,10 @@ def format_svg(c, stroke_color="#5456f3", stroke_width="1.2", opacity="0.4"):
     hh = c["head_half_h"]
 
     lines = []
-    lines.append(f'  <!-- Connector: angle={angle:.1f}deg len={c["effective_length"]:.0f}px -->')
+    lines.append(f"  <!-- Connector: angle={angle:.1f}deg len={c['effective_length']:.0f}px -->")
 
     if hl > 0:
-        lines.append(
-            f'  <g transform="translate({tip_x:.1f}, {tip_y:.1f}) rotate({angle:.1f})">'
-        )
+        lines.append(f'  <g transform="translate({tip_x:.1f}, {tip_y:.1f}) rotate({angle:.1f})">')
         lines.append(
             f'    <line x1="{s_start:.0f}" y1="0" x2="{s_end:.0f}" y2="0"'
             f' stroke="{stroke_color}" stroke-width="{stroke_width}" opacity="{opacity}"/>'
@@ -584,24 +604,42 @@ def main():
         description=_CONNECTOR_DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--mode", choices=["straight", "l", "l-chamfer", "spline"],
-                        default="straight",
-                        help="Connector style: straight | l | l-chamfer | spline (default: straight)")
+    parser.add_argument(
+        "--mode",
+        choices=["straight", "l", "l-chamfer", "spline"],
+        default="straight",
+        help="Connector style: straight | l | l-chamfer | spline (default: straight)",
+    )
     parser.add_argument("--from", dest="src", help="Source point X,Y (straight/l/l-chamfer)")
     parser.add_argument("--to", dest="tgt", help="Target point X,Y (straight/l/l-chamfer)")
-    parser.add_argument("--waypoints", default=None,
-                        help="Spline waypoints \"x1,y1 x2,y2 ...\" (spline mode)")
-    parser.add_argument("--samples", type=int, default=200,
-                        help="Spline interpolation samples (default: 200)")
-    parser.add_argument("--first-axis", choices=["h", "v"], default="h",
-                        help="L mode first axis: 'h'=horizontal then vertical, 'v'=vice versa (default: h)")
-    parser.add_argument("--chamfer", type=float, default=4.0,
-                        help="L-chamfer corner cut size in px (default: 4)")
-    parser.add_argument("--arrow", choices=["none", "start", "end", "both"], default="end",
-                        help="Where to place arrowheads in l/l-chamfer/spline modes (default: end)")
+    parser.add_argument(
+        "--waypoints", default=None, help='Spline waypoints "x1,y1 x2,y2 ..." (spline mode)'
+    )
+    parser.add_argument(
+        "--samples", type=int, default=200, help="Spline interpolation samples (default: 200)"
+    )
+    parser.add_argument(
+        "--first-axis",
+        choices=["h", "v"],
+        default="h",
+        help="L mode first axis: 'h'=horizontal then vertical, 'v'=vice versa (default: h)",
+    )
+    parser.add_argument(
+        "--chamfer", type=float, default=4.0, help="L-chamfer corner cut size in px (default: 4)"
+    )
+    parser.add_argument(
+        "--arrow",
+        choices=["none", "start", "end", "both"],
+        default="end",
+        help="Where to place arrowheads in l/l-chamfer/spline modes (default: end)",
+    )
     parser.add_argument("--margin", type=float, default=0, help="Edge margin in px (default: 0)")
-    parser.add_argument("--head-size", default="10,5", help="Arrowhead length,half-height (default: 10,5)")
-    parser.add_argument("--cutout", default=None, help="Pill rect X,Y,W,H for cutout gap (straight only)")
+    parser.add_argument(
+        "--head-size", default="10,5", help="Arrowhead length,half-height (default: 10,5)"
+    )
+    parser.add_argument(
+        "--cutout", default=None, help="Pill rect X,Y,W,H for cutout gap (straight only)"
+    )
     parser.add_argument("--color", default="#5456f3", help="Stroke colour (default: #5456f3)")
     parser.add_argument("--width", default="1.2", help="Stroke width (default: 1.2)")
     parser.add_argument("--opacity", default="0.4", help="Stroke opacity (default: 0.4)")
@@ -617,25 +655,54 @@ def main():
 
         if args.cutout:
             px, py, pw, ph = map(float, args.cutout.split(","))
-            result = calc_cutout(src_x, src_y, tgt_x, tgt_y, px, py, pw, ph,
-                                 margin=args.margin, head_len=head_len, head_half_h=head_half_h)
+            result = calc_cutout(
+                src_x,
+                src_y,
+                tgt_x,
+                tgt_y,
+                px,
+                py,
+                pw,
+                ph,
+                margin=args.margin,
+                head_len=head_len,
+                head_half_h=head_half_h,
+            )
             if result is None:
                 print("Line does not cross pill rect - no cutout needed")
-                c = calc_connector(src_x, src_y, tgt_x, tgt_y,
-                                   margin=args.margin, head_len=head_len, head_half_h=head_half_h)
+                c = calc_connector(
+                    src_x,
+                    src_y,
+                    tgt_x,
+                    tgt_y,
+                    margin=args.margin,
+                    head_len=head_len,
+                    head_half_h=head_half_h,
+                )
                 print_result(c, args)
             else:
                 print("=== CUTOUT MODE: two segments ===\n")
-                print(f"Segment 1: ({result['segment1_from'][0]:.1f},{result['segment1_from'][1]:.1f})"
-                      f" -> ({result['segment1_to'][0]:.1f},{result['segment1_to'][1]:.1f})")
-                print(f"Segment 2: ({result['segment2_from'][0]:.1f},{result['segment2_from'][1]:.1f})"
-                      f" -> ({result['segment2_to'][0]:.1f},{result['segment2_to'][1]:.1f})")
-                print(f"\n--- SVG Snippet ---\n")
+                print(
+                    f"Segment 1: ({result['segment1_from'][0]:.1f},{result['segment1_from'][1]:.1f})"
+                    f" -> ({result['segment1_to'][0]:.1f},{result['segment1_to'][1]:.1f})"
+                )
+                print(
+                    f"Segment 2: ({result['segment2_from'][0]:.1f},{result['segment2_from'][1]:.1f})"
+                    f" -> ({result['segment2_to'][0]:.1f},{result['segment2_to'][1]:.1f})"
+                )
+                print("\n--- SVG Snippet ---\n")
                 print(format_svg(result["segment1"], args.color, args.width, args.opacity))
                 print(format_svg(result["segment2"], args.color, args.width, args.opacity))
         else:
-            c = calc_connector(src_x, src_y, tgt_x, tgt_y,
-                               margin=args.margin, head_len=head_len, head_half_h=head_half_h)
+            c = calc_connector(
+                src_x,
+                src_y,
+                tgt_x,
+                tgt_y,
+                margin=args.margin,
+                head_len=head_len,
+                head_half_h=head_half_h,
+            )
             print_result(c, args)
         return
 
@@ -644,22 +711,44 @@ def main():
         if args.waypoints is None:
             parser.error("--waypoints is required in spline mode")
         waypoints = _parse_waypoints(args.waypoints)
-        result = calc_spline(waypoints, samples=args.samples, margin=args.margin,
-                             head_len=head_len, head_half_h=head_half_h, arrow=args.arrow)
+        result = calc_spline(
+            waypoints,
+            samples=args.samples,
+            margin=args.margin,
+            head_len=head_len,
+            head_half_h=head_half_h,
+            arrow=args.arrow,
+        )
     else:
         if args.src is None or args.tgt is None:
             parser.error(f"--from and --to are required in {args.mode} mode")
         src_x, src_y = map(float, args.src.split(","))
         tgt_x, tgt_y = map(float, args.tgt.split(","))
         if args.mode == "l":
-            result = calc_l(src_x, src_y, tgt_x, tgt_y,
-                            first_axis=args.first_axis, margin=args.margin,
-                            head_len=head_len, head_half_h=head_half_h, arrow=args.arrow)
+            result = calc_l(
+                src_x,
+                src_y,
+                tgt_x,
+                tgt_y,
+                first_axis=args.first_axis,
+                margin=args.margin,
+                head_len=head_len,
+                head_half_h=head_half_h,
+                arrow=args.arrow,
+            )
         else:  # l-chamfer
-            result = calc_l_chamfer(src_x, src_y, tgt_x, tgt_y,
-                                    first_axis=args.first_axis, chamfer=args.chamfer,
-                                    margin=args.margin, head_len=head_len,
-                                    head_half_h=head_half_h, arrow=args.arrow)
+            result = calc_l_chamfer(
+                src_x,
+                src_y,
+                tgt_x,
+                tgt_y,
+                first_axis=args.first_axis,
+                chamfer=args.chamfer,
+                margin=args.margin,
+                head_len=head_len,
+                head_half_h=head_half_h,
+                arrow=args.arrow,
+            )
 
     print_polyline_result(result, args)
 
@@ -679,7 +768,7 @@ def print_polyline_result(result, args):
     print(f"=== {result['mode'].upper()} CONNECTOR ===")
     print(f"Samples:          {len(result['samples'])}")
     print(f"Total length:     {result['total_length']:.1f}px")
-    print(f"")
+    print("")
     for end_name in ("start", "end"):
         end = result[end_name]
         tip = end["tip"]
@@ -695,41 +784,43 @@ def print_polyline_result(result, args):
             print(f"Stem-back point:  ({arr['stem_back'][0]:.1f}, {arr['stem_back'][1]:.1f})")
             print(f"Transform:        {arr['transform']}")
         else:
-            print(f"Arrow:            (none)")
-        print(f"")
+            print("Arrow:            (none)")
+        print("")
 
-    print(f"=== PATH (full) ===")
+    print("=== PATH (full) ===")
     print(result["path_d"])
-    print(f"")
-    print(f"=== PATH (trimmed for arrowhead clearance) ===")
+    print("")
+    print("=== PATH (trimmed for arrowhead clearance) ===")
     print(result["trimmed_path_d"])
-    print(f"")
-    print(f"--- SVG Snippet ---")
+    print("")
+    print("--- SVG Snippet ---")
     print()
     print(format_polyline_svg(result, args.color, args.width, args.opacity))
 
 
 def print_result(c, args):
-    print(f"=== CONNECTOR ===")
+    print("=== CONNECTOR ===")
     print(f"Source:           ({c['stem_start_world'][0]:.1f}, {c['stem_start_world'][1]:.1f})")
     print(f"Target (tip):     ({c['tip_x']:.1f}, {c['tip_y']:.1f})")
     print(f"Angle:            {c['angle_deg']:.1f} degrees")
     print(f"Full length:      {c['full_length']:.1f}px")
     print(f"Effective length: {c['effective_length']:.1f}px")
-    print(f"")
-    print(f"=== TRANSFORM ===")
+    print("")
+    print("=== TRANSFORM ===")
     print(f"translate({c['tip_x']:.1f}, {c['tip_y']:.1f}) rotate({c['angle_deg']:.1f})")
-    print(f"")
-    print(f"=== LOCAL COORDINATES (flat, pre-rotation) ===")
+    print("")
+    print("=== LOCAL COORDINATES (flat, pre-rotation) ===")
     print(f"Stem:     x1={c['stem_start_local']:.0f}  x2={c['stem_end_local']:.0f}  y=0")
-    print(f"Head:     points=\"0,0 -{c['head_len']},{-c['head_half_h']:.0f} -{c['head_len']},{c['head_half_h']:.0f}\"")
-    print(f"")
-    print(f"=== WORLD COORDINATES (after rotation, for verification) ===")
+    print(
+        f'Head:     points="0,0 -{c["head_len"]},{-c["head_half_h"]:.0f} -{c["head_len"]},{c["head_half_h"]:.0f}"'
+    )
+    print("")
+    print("=== WORLD COORDINATES (after rotation, for verification) ===")
     print(f"Stem start: ({c['stem_start_world'][0]:.1f}, {c['stem_start_world'][1]:.1f})")
     print(f"Stem end:   ({c['stem_end_world'][0]:.1f}, {c['stem_end_world'][1]:.1f})")
     print(f"Tip:        ({c['tip_x']:.1f}, {c['tip_y']:.1f})")
-    print(f"")
-    print(f"--- SVG Snippet ---\n")
+    print("")
+    print("--- SVG Snippet ---\n")
     print(format_svg(c, args.color, args.width, args.opacity))
 
 

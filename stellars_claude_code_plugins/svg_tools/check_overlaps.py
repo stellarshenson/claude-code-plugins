@@ -17,12 +17,11 @@ Usage:
     python check_overlaps.py --svg file.svg --extra-padding 2
 """
 
-import re
-import math
-import xml.etree.ElementTree as ET
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from itertools import combinations
-
+import math
+import re
+import xml.etree.ElementTree as ET
 
 # ---------------------------------------------------------------------------
 # Per-role padding table (outer bbox = inner bbox + padding on all sides)
@@ -31,9 +30,9 @@ from itertools import combinations
 ROLE_PADDING: dict[str, float] = {
     "icon": 6,
     "logo": 6,
-    "text": 4,          # 4px from neighbouring elements; card-edge clearance checked separately
+    "text": 4,  # 4px from neighbouring elements; card-edge clearance checked separately
     "card": 10,
-    "accent-bar": 0,    # structural, flush with card top
+    "accent-bar": 0,  # structural, flush with card top
     "bg-fill": 0,
     "background": 0,
     "milestone": 6,
@@ -50,6 +49,7 @@ ROLE_PADDING: dict[str, float] = {
 # ---------------------------------------------------------------------------
 # Bounding box
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class BBox:
@@ -68,8 +68,7 @@ class BBox:
 
     def padded(self, padding: float) -> "BBox":
         """Return a new BBox expanded by padding on all sides."""
-        return BBox(self.x - padding, self.y - padding,
-                    self.w + 2 * padding, self.h + 2 * padding)
+        return BBox(self.x - padding, self.y - padding, self.w + 2 * padding, self.h + 2 * padding)
 
     def overlaps(self, other: "BBox") -> bool:
         if self.x >= other.x2 or other.x >= self.x2:
@@ -93,8 +92,9 @@ class BBox:
 
     def contains(self, other: "BBox") -> bool:
         """True if self fully contains other."""
-        return (self.x <= other.x and self.y <= other.y and
-                self.x2 >= other.x2 and self.y2 >= other.y2)
+        return (
+            self.x <= other.x and self.y <= other.y and self.x2 >= other.x2 and self.y2 >= other.y2
+        )
 
     def gap_to(self, other: "BBox") -> tuple[float, str, float, str]:
         """Compute horizontal and vertical gaps to another bbox.
@@ -137,13 +137,14 @@ class BBox:
 # Element record
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Element:
-    tag: str           # text, rect, path, circle, line, polygon, g-icon
-    label: str         # human-readable description
-    bbox: BBox         # inner bbox (rendered extent including stroke)
+    tag: str  # text, rect, path, circle, line, polygon, g-icon
+    label: str  # human-readable description
+    bbox: BBox  # inner bbox (rendered extent including stroke)
     section: str = ""  # which section it belongs to
-    role: str = ""     # functional role (text, card, divider, track, etc.)
+    role: str = ""  # functional role (text, card, divider, track, etc.)
     parent_bg: str = ""  # background context (transparent, light, dark)
 
     @property
@@ -157,10 +158,15 @@ class Element:
 # Segoe UI font metrics (approximate)
 # ---------------------------------------------------------------------------
 
+
 def text_bbox(
-    x: float, y: float, font_size: float, text: str,
-    font_weight: str = "normal", letter_spacing: float = 0,
-    text_anchor: str = "start"
+    x: float,
+    y: float,
+    font_size: float,
+    text: str,
+    font_weight: str = "normal",
+    letter_spacing: float = 0,
+    text_anchor: str = "start",
 ) -> BBox:
     """Compute approximate bounding box for SVG text element."""
     is_bold = font_weight in ("600", "700", "bold")
@@ -188,6 +194,7 @@ def text_bbox(
 # Path bounding box (simple M/H/V/Q/Z parser)
 # ---------------------------------------------------------------------------
 
+
 def path_bbox(d: str) -> BBox:
     """Extract bounding box from SVG path data string.
 
@@ -208,10 +215,26 @@ def path_bbox(d: str) -> BBox:
 
     # number of coordinate values consumed per command repeat
     PARAM_COUNT = {
-        "M": 2, "m": 2, "L": 2, "l": 2, "T": 2, "t": 2,
-        "H": 1, "h": 1, "V": 1, "v": 1,
-        "C": 6, "c": 6, "S": 4, "s": 4, "Q": 4, "q": 4,
-        "A": 7, "a": 7, "Z": 0, "z": 0,
+        "M": 2,
+        "m": 2,
+        "L": 2,
+        "l": 2,
+        "T": 2,
+        "t": 2,
+        "H": 1,
+        "h": 1,
+        "V": 1,
+        "v": 1,
+        "C": 6,
+        "c": 6,
+        "S": 4,
+        "s": 4,
+        "Q": 4,
+        "q": 4,
+        "A": 7,
+        "a": 7,
+        "Z": 0,
+        "z": 0,
     }
 
     def consume(n):
@@ -250,31 +273,41 @@ def path_bbox(d: str) -> BBox:
         if cmd == "M":
             cx, cy = vals[0], vals[1]
             sx, sy = cx, cy
-            xs.append(cx); ys.append(cy)
+            xs.append(cx)
+            ys.append(cy)
             cmd = "L"  # subsequent coords are implicit lineto
         elif cmd == "m":
-            cx += vals[0]; cy += vals[1]
+            cx += vals[0]
+            cy += vals[1]
             sx, sy = cx, cy
-            xs.append(cx); ys.append(cy)
+            xs.append(cx)
+            ys.append(cy)
             cmd = "l"
         elif cmd == "L":
             cx, cy = vals[0], vals[1]
-            xs.append(cx); ys.append(cy)
+            xs.append(cx)
+            ys.append(cy)
         elif cmd == "l":
-            cx += vals[0]; cy += vals[1]
-            xs.append(cx); ys.append(cy)
+            cx += vals[0]
+            cy += vals[1]
+            xs.append(cx)
+            ys.append(cy)
         elif cmd == "H":
             cx = vals[0]
-            xs.append(cx); ys.append(cy)
+            xs.append(cx)
+            ys.append(cy)
         elif cmd == "h":
             cx += vals[0]
-            xs.append(cx); ys.append(cy)
+            xs.append(cx)
+            ys.append(cy)
         elif cmd == "V":
             cy = vals[0]
-            xs.append(cx); ys.append(cy)
+            xs.append(cx)
+            ys.append(cy)
         elif cmd == "v":
             cy += vals[0]
-            xs.append(cx); ys.append(cy)
+            xs.append(cx)
+            ys.append(cy)
         elif cmd == "C":
             # cubic bezier: (cp1x,cp1y, cp2x,cp2y, x,y)
             xs.extend([vals[0], vals[2], vals[4]])
@@ -283,7 +316,8 @@ def path_bbox(d: str) -> BBox:
         elif cmd == "c":
             xs.extend([cx + vals[0], cx + vals[2], cx + vals[4]])
             ys.extend([cy + vals[1], cy + vals[3], cy + vals[5]])
-            cx += vals[4]; cy += vals[5]
+            cx += vals[4]
+            cy += vals[5]
         elif cmd == "S":
             xs.extend([vals[0], vals[2]])
             ys.extend([vals[1], vals[3]])
@@ -291,7 +325,8 @@ def path_bbox(d: str) -> BBox:
         elif cmd == "s":
             xs.extend([cx + vals[0], cx + vals[2]])
             ys.extend([cy + vals[1], cy + vals[3]])
-            cx += vals[2]; cy += vals[3]
+            cx += vals[2]
+            cy += vals[3]
         elif cmd == "Q":
             xs.extend([vals[0], vals[2]])
             ys.extend([vals[1], vals[3]])
@@ -299,20 +334,26 @@ def path_bbox(d: str) -> BBox:
         elif cmd == "q":
             xs.extend([cx + vals[0], cx + vals[2]])
             ys.extend([cy + vals[1], cy + vals[3]])
-            cx += vals[2]; cy += vals[3]
+            cx += vals[2]
+            cy += vals[3]
         elif cmd == "T":
             cx, cy = vals[0], vals[1]
-            xs.append(cx); ys.append(cy)
+            xs.append(cx)
+            ys.append(cy)
         elif cmd == "t":
-            cx += vals[0]; cy += vals[1]
-            xs.append(cx); ys.append(cy)
+            cx += vals[0]
+            cy += vals[1]
+            xs.append(cx)
+            ys.append(cy)
         elif cmd == "A" or cmd == "a":
             # arc: (rx, ry, x-rot, large-arc, sweep, x, y)
             if cmd == "A":
                 cx, cy = vals[5], vals[6]
             else:
-                cx += vals[5]; cy += vals[6]
-            xs.append(cx); ys.append(cy)
+                cx += vals[5]
+                cy += vals[6]
+            xs.append(cx)
+            ys.append(cy)
 
     if not xs or not ys:
         return BBox(0, 0, 0, 0)
@@ -325,6 +366,7 @@ def path_bbox(d: str) -> BBox:
 # ---------------------------------------------------------------------------
 # Parse transform for <g> elements
 # ---------------------------------------------------------------------------
+
 
 def parse_transform(transform: str) -> tuple[float, float, float, float]:
     """Parse translate, scale, and rotate from a transform attribute.
@@ -394,8 +436,7 @@ def _compute_local_bbox_recursive(el) -> BBox | None:
         r = float(el.get("r", "0"))
         sw = float(el.get("stroke-width", "0"))
         # include stroke in inner bbox
-        return BBox(cx - r - sw / 2, cy - r - sw / 2,
-                    2 * r + sw, 2 * r + sw)
+        return BBox(cx - r - sw / 2, cy - r - sw / 2, 2 * r + sw, 2 * r + sw)
 
     elif tag == "line":
         x1 = float(el.get("x1", "0"))
@@ -423,8 +464,8 @@ def _compute_local_bbox_recursive(el) -> BBox | None:
         transform = el.get("transform", "")
         tx, ty, scale, rotate = parse_transform(transform)
 
-        min_x, min_y = float('inf'), float('inf')
-        max_x, max_y = float('-inf'), float('-inf')
+        min_x, min_y = float("inf"), float("inf")
+        max_x, max_y = float("-inf"), float("-inf")
         found = False
 
         for child in el:
@@ -468,6 +509,7 @@ def _compute_local_bbox_recursive(el) -> BBox | None:
 # ---------------------------------------------------------------------------
 # SVG parser
 # ---------------------------------------------------------------------------
+
 
 def parse_svg(filepath: str) -> list[Element]:
     """Parse SVG and extract all visual elements with bounding boxes.
@@ -532,11 +574,16 @@ def parse_svg(filepath: str) -> list[Element]:
                 current_bg = "mid"
 
             bbox = text_bbox(x, y, fs, content, fw, ls, anchor)
-            elements.append(Element(
-                tag="text", label=f'"{content}" ({fs}px/{fw})',
-                bbox=bbox, section=current_section,
-                role="text", parent_bg=current_bg
-            ))
+            elements.append(
+                Element(
+                    tag="text",
+                    label=f'"{content}" ({fs}px/{fw})',
+                    bbox=bbox,
+                    section=current_section,
+                    role="text",
+                    parent_bg=current_bg,
+                )
+            )
 
         elif tag == "rect":
             x = float(get_attr(child, "x", "0"))
@@ -561,11 +608,16 @@ def parse_svg(filepath: str) -> list[Element]:
                 elif "#8a9bb5" in fill_lower:
                     current_section = "mid-strip"
                     current_bg = "mid"
-                elements.append(Element(
-                    tag="rect", label=f"bg-strip {fill}",
-                    bbox=BBox(x, y, w, h), section=current_section,
-                    role="background", parent_bg=current_bg
-                ))
+                elements.append(
+                    Element(
+                        tag="rect",
+                        label=f"bg-strip {fill}",
+                        bbox=BBox(x, y, w, h),
+                        section=current_section,
+                        role="background",
+                        parent_bg=current_bg,
+                    )
+                )
                 continue
 
             # classify rect role
@@ -577,11 +629,16 @@ def parse_svg(filepath: str) -> list[Element]:
             elif h <= 6:
                 role = "accent-bar"
 
-            elements.append(Element(
-                tag="rect", label=f"rect {w:.0f}x{h:.0f} @({x:.0f},{y:.0f})",
-                bbox=BBox(x, y, w, h), section=current_section,
-                role=role, parent_bg=current_bg
-            ))
+            elements.append(
+                Element(
+                    tag="rect",
+                    label=f"rect {w:.0f}x{h:.0f} @({x:.0f},{y:.0f})",
+                    bbox=BBox(x, y, w, h),
+                    section=current_section,
+                    role=role,
+                    parent_bg=current_bg,
+                )
+            )
 
         elif tag == "path":
             d = get_attr(child, "d", "")
@@ -589,14 +646,18 @@ def parse_svg(filepath: str) -> list[Element]:
             sw = float(get_attr(child, "stroke-width", "0"))
             # include stroke in inner bbox
             if sw > 0:
-                bbox = BBox(bbox.x - sw / 2, bbox.y - sw / 2,
-                            bbox.w + sw, bbox.h + sw)
+                bbox = BBox(bbox.x - sw / 2, bbox.y - sw / 2, bbox.w + sw, bbox.h + sw)
             role = "card" if bbox.w > 100 and bbox.h > 50 else "path"
-            elements.append(Element(
-                tag="path", label=f"path {bbox}",
-                bbox=bbox, section=current_section,
-                role=role, parent_bg=current_bg
-            ))
+            elements.append(
+                Element(
+                    tag="path",
+                    label=f"path {bbox}",
+                    bbox=bbox,
+                    section=current_section,
+                    role=role,
+                    parent_bg=current_bg,
+                )
+            )
 
         elif tag == "circle":
             ccx = float(get_attr(child, "cx", "0"))
@@ -605,12 +666,16 @@ def parse_svg(filepath: str) -> list[Element]:
             sw = float(get_attr(child, "stroke-width", "0"))
             # include stroke in inner bbox
             total_r = r + sw / 2
-            elements.append(Element(
-                tag="circle", label=f"circle r={r:.0f} @({ccx:.0f},{ccy:.0f})",
-                bbox=BBox(ccx - total_r, ccy - total_r, 2 * total_r, 2 * total_r),
-                section=current_section,
-                role="milestone", parent_bg=current_bg
-            ))
+            elements.append(
+                Element(
+                    tag="circle",
+                    label=f"circle r={r:.0f} @({ccx:.0f},{ccy:.0f})",
+                    bbox=BBox(ccx - total_r, ccy - total_r, 2 * total_r, 2 * total_r),
+                    section=current_section,
+                    role="milestone",
+                    parent_bg=current_bg,
+                )
+            )
 
         elif tag == "line":
             x1 = float(get_attr(child, "x1", "0"))
@@ -626,11 +691,16 @@ def parse_svg(filepath: str) -> list[Element]:
                 role = "divider"
             else:
                 role = "track-line"
-            elements.append(Element(
-                tag="line", label=f"line ({x1:.0f},{y1:.0f})->({x2:.0f},{y2:.0f})",
-                bbox=BBox(min_x, min_y, w, h),
-                section=current_section, role=role, parent_bg=current_bg
-            ))
+            elements.append(
+                Element(
+                    tag="line",
+                    label=f"line ({x1:.0f},{y1:.0f})->({x2:.0f},{y2:.0f})",
+                    bbox=BBox(min_x, min_y, w, h),
+                    section=current_section,
+                    role=role,
+                    parent_bg=current_bg,
+                )
+            )
 
         elif tag == "g":
             # Compute full recursive bbox with transform handling
@@ -671,12 +741,16 @@ def parse_svg(filepath: str) -> list[Element]:
                 role_name = "logo"
                 tag_name = "g-logo"
 
-            elements.append(Element(
-                tag=tag_name,
-                label=f"{role_name} @({tx:.0f},{ty:.0f}) s={scale:.2f} [{child_count} children] {bbox}",
-                bbox=bbox, section=current_section,
-                role=role_name, parent_bg=current_bg
-            ))
+            elements.append(
+                Element(
+                    tag=tag_name,
+                    label=f"{role_name} @({tx:.0f},{ty:.0f}) s={scale:.2f} [{child_count} children] {bbox}",
+                    bbox=bbox,
+                    section=current_section,
+                    role=role_name,
+                    parent_bg=current_bg,
+                )
+            )
 
     return elements
 
@@ -684,6 +758,7 @@ def parse_svg(filepath: str) -> list[Element]:
 # ---------------------------------------------------------------------------
 # Overlap analysis
 # ---------------------------------------------------------------------------
+
 
 def classify_overlap(a: Element, b: Element) -> str:
     """Classify the relationship between two overlapping elements.
@@ -699,10 +774,8 @@ def classify_overlap(a: Element, b: Element) -> str:
         return "contained"
 
     # label-on-fill: text on a rect/path/circle (intentional label placement)
-    fill_roles = ("rect", "color-chip", "bg-fill", "card", "accent-bar",
-                  "milestone", "background")
-    if (a.tag == "text" and b.role in fill_roles) or \
-       (b.tag == "text" and a.role in fill_roles):
+    fill_roles = ("rect", "color-chip", "bg-fill", "card", "accent-bar", "milestone", "background")
+    if (a.tag == "text" and b.role in fill_roles) or (b.tag == "text" and a.role in fill_roles):
         return "label-on-fill"
 
     # sibling: same role and same section (grid squares, bar segments, etc.)
@@ -754,7 +827,10 @@ def analyze_overlaps(
 # Proximity report
 # ---------------------------------------------------------------------------
 
-def proximity_report(elements: list[Element], threshold: float = 20.0) -> list[tuple[Element, Element, float, str, float, str]]:
+
+def proximity_report(
+    elements: list[Element], threshold: float = 20.0
+) -> list[tuple[Element, Element, float, str, float, str]]:
     """Find same-section element pairs within threshold px distance.
 
     Uses outer bboxes to measure spacing between elements.
@@ -779,6 +855,7 @@ def proximity_report(elements: list[Element], threshold: float = 20.0) -> list[t
         _, _, h, _, v, _ = item
         gaps = [g for g in [h, v] if g >= 0]
         return min(gaps) if gaps else 999
+
     results.sort(key=sort_key)
     return results
 
@@ -786,6 +863,7 @@ def proximity_report(elements: list[Element], threshold: float = 20.0) -> list[t
 # ---------------------------------------------------------------------------
 # Spacing checks (from Theme Validation Checklist)
 # ---------------------------------------------------------------------------
+
 
 def check_spacing(elements: list[Element]) -> list[str]:
     issues = []
@@ -828,8 +906,7 @@ def check_spacing(elements: list[Element]) -> list[str]:
                 bottom_pad = sb.y2 - eb.y2
                 if top_pad < 15 and top_pad > 0:
                     issues.append(
-                        f"STRIP TOP PADDING {top_pad:.0f}px < 15px: {e.label} "
-                        f"in {strip.label}"
+                        f"STRIP TOP PADDING {top_pad:.0f}px < 15px: {e.label} in {strip.label}"
                     )
                 if bottom_pad < 15 and bottom_pad > 0:
                     issues.append(
@@ -849,8 +926,7 @@ def check_spacing(elements: list[Element]) -> list[str]:
                     gap = mb.y - tb.y2
                     if gap < 6:
                         issues.append(
-                            f"TIMELINE LABEL GAP {gap:.0f}px < 6px: {t.label} "
-                            f"above {m.label}"
+                            f"TIMELINE LABEL GAP {gap:.0f}px < 6px: {t.label} above {m.label}"
                         )
 
     # containment overflow: child elements that are mostly inside a
@@ -890,8 +966,7 @@ def check_spacing(elements: list[Element]) -> list[str]:
                 continue
             tb = t.bbox
             db = d.bbox
-            if (tb.x < db.x2 and tb.x2 > db.x and
-                    tb.y < db.y2 and tb.y2 > db.y):
+            if tb.x < db.x2 and tb.x2 > db.x and tb.y < db.y2 and tb.y2 > db.y:
                 issues.append(
                     f"TEXT CROSSES DIVIDER: {t.label} "
                     f"(right={tb.x2:.0f}) crosses divider @x={db.x:.0f} "
@@ -904,6 +979,7 @@ def check_spacing(elements: list[Element]) -> list[str]:
 # ---------------------------------------------------------------------------
 # Typography hierarchy check
 # ---------------------------------------------------------------------------
+
 
 def check_typography(elements: list[Element]) -> list[str]:
     issues = []
@@ -928,10 +1004,11 @@ def check_typography(elements: list[Element]) -> list[str]:
 # Bounding box overlay generation
 # ---------------------------------------------------------------------------
 
+
 def generate_bounds_overlay(elements: list[Element], dividers: list[Element]) -> str:
     """Generate SVG group with inner and outer bounding box rectangles."""
     lines = []
-    lines.append('  <!-- === VERIFICATION: bounding box overlay (auto-generated) === -->')
+    lines.append("  <!-- === VERIFICATION: bounding box overlay (auto-generated) === -->")
     lines.append('  <g id="text-bounds" opacity="0.6">')
 
     for e in elements:
@@ -994,30 +1071,50 @@ def generate_bounds_overlay(elements: list[Element], dividers: list[Element]) ->
                 f'fill="none" stroke="yellow" stroke-width="0.5" stroke-dasharray="5,3"/>'
             )
 
-    lines.append('  </g>')
-    return '\n'.join(lines)
+    lines.append("  </g>")
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="SVG overlap detector with inner/outer bbox model")
+
+    parser = argparse.ArgumentParser(
+        description="SVG overlap detector with inner/outer bbox model"
+    )
     parser.add_argument("--svg", default="theme_swatch.svg", help="SVG file to check")
-    parser.add_argument("--inject-bounds", action="store_true",
-                        help="Strip existing overlay then inject fresh bounding box overlay")
-    parser.add_argument("--strip-bounds", action="store_true",
-                        help="Remove bounding box verification overlay from SVG")
-    parser.add_argument("--ignore", type=str, default="",
-                        help="Comma-separated overlap IDs to skip (e.g. '21x23,24x25')")
-    parser.add_argument("--extra-padding", type=float, default=0.0,
-                        help="Additional uniform inflation on top of per-role padding (catches near-misses)")
-    parser.add_argument("--padding", type=float, default=0.0,
-                        help="(Legacy) Alias for --extra-padding")
-    parser.add_argument("--raw", action="store_true",
-                        help="Compare raw inner bboxes only (skip per-role padding)")
+    parser.add_argument(
+        "--inject-bounds",
+        action="store_true",
+        help="Strip existing overlay then inject fresh bounding box overlay",
+    )
+    parser.add_argument(
+        "--strip-bounds",
+        action="store_true",
+        help="Remove bounding box verification overlay from SVG",
+    )
+    parser.add_argument(
+        "--ignore",
+        type=str,
+        default="",
+        help="Comma-separated overlap IDs to skip (e.g. '21x23,24x25')",
+    )
+    parser.add_argument(
+        "--extra-padding",
+        type=float,
+        default=0.0,
+        help="Additional uniform inflation on top of per-role padding (catches near-misses)",
+    )
+    parser.add_argument(
+        "--padding", type=float, default=0.0, help="(Legacy) Alias for --extra-padding"
+    )
+    parser.add_argument(
+        "--raw", action="store_true", help="Compare raw inner bboxes only (skip per-role padding)"
+    )
     args = parser.parse_args()
 
     # support legacy --padding flag
@@ -1055,7 +1152,9 @@ def main():
     print("-" * 72)
     for i, e in enumerate(elements):
         ob = e.outer_bbox
-        print(f"  [{i:2d}] {e.tag:8s} {e.role:12s} {e.section:12s} inner={e.bbox}  outer={ob}  {e.label}")
+        print(
+            f"  [{i:2d}] {e.tag:8s} {e.role:12s} {e.section:12s} inner={e.bbox}  outer={ob}  {e.label}"
+        )
 
     # overlap analysis
     print(f"\n{'=' * 72}")
@@ -1104,11 +1203,15 @@ def main():
                 print(f"          inner={a.bbox}  outer={a.outer_bbox}")
                 print(f"       B: [{b.role:12s}] [{j:2d}] {b.label}")
                 print(f"          inner={b.bbox}  outer={b.outer_bbox}")
-                print(f"       gaps (outer): h={h_gap:+.1f}px ({h_dir})  v={v_gap:+.1f}px ({v_dir})")
+                print(
+                    f"       gaps (outer): h={h_gap:+.1f}px ({h_dir})  v={v_gap:+.1f}px ({v_dir})"
+                )
                 if cls == "violation" and h_gap < 0 and v_gap < 0:
                     fix_h = abs(h_gap) + 1
                     fix_v = abs(v_gap) + 1
-                    print(f"       FIX: shift B right by {fix_h:.0f}px OR down by {fix_v:.0f}px to clear")
+                    print(
+                        f"       FIX: shift B right by {fix_h:.0f}px OR down by {fix_v:.0f}px to clear"
+                    )
                 print()
         if ignored:
             print(f"  ({ignored} overlaps ignored via --ignore)")
@@ -1159,12 +1262,16 @@ def main():
         cls_counts = {}
         for _, _, _, _, _, cls in overlaps:
             cls_counts[cls] = cls_counts.get(cls, 0) + 1
-        cls_parts = [f"{cls_counts.get(c, 0)} {c}" for c in CLASS_ORDER if cls_counts.get(c, 0) > 0]
+        cls_parts = [
+            f"{cls_counts.get(c, 0)} {c}" for c in CLASS_ORDER if cls_counts.get(c, 0) > 0
+        ]
         cls_summary = f" [{', '.join(cls_parts)}]"
     else:
         cls_summary = ""
-    print(f"SUMMARY: {shown} overlaps{ign_note}{cls_summary}, {total_prox} tight proximities, "
-          f"{len(spacing_issues)} spacing violations, {len(elements)} elements parsed")
+    print(
+        f"SUMMARY: {shown} overlaps{ign_note}{cls_summary}, {total_prox} tight proximities, "
+        f"{len(spacing_issues)} spacing violations, {len(elements)} elements parsed"
+    )
 
     # handle inject/strip bounds
     if args.strip_bounds or args.inject_bounds:
@@ -1173,14 +1280,13 @@ def main():
 
         # always strip existing overlay first
         svg_content = re.sub(
-            r'\s*<!-- === VERIFICATION:.*?</g>\s*',
-            '\n', svg_content, flags=re.DOTALL
+            r"\s*<!-- === VERIFICATION:.*?</g>\s*", "\n", svg_content, flags=re.DOTALL
         )
 
         if args.inject_bounds:
             dividers = [e for e in elements if e.role == "divider"]
             overlay = generate_bounds_overlay(elements, dividers)
-            svg_content = svg_content.replace('</svg>', f'\n{overlay}\n\n</svg>')
+            svg_content = svg_content.replace("</svg>", f"\n{overlay}\n\n</svg>")
             print(f"\nInjected bounding box overlay into {args.svg}")
         else:
             print(f"\nStripped bounding box overlay from {args.svg}")

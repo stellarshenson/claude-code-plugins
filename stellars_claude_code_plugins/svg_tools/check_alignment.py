@@ -15,10 +15,9 @@ Usage:
     python check_alignment.py --svg file.svg --grid 10 --tolerance 1
 """
 
+from dataclasses import dataclass
 import re
 import xml.etree.ElementTree as ET
-from dataclasses import dataclass, field
-
 
 NS = "http://www.w3.org/2000/svg"
 
@@ -77,16 +76,18 @@ def parse_svg_elements(filepath: str) -> list[PositionedElement]:
         tag = child.tag.replace(f"{{{NS}}}", "")
 
         if tag == "text":
-            elements.append(PositionedElement(
-                tag="text",
-                x=float(child.get("x", "0")),
-                y=float(child.get("y", "0")),
-                font_size=float(child.get("font-size", "10")),
-                text=(child.text or "".join(t.text or "" for t in child) or "")[:50],
-                css_class=child.get("class", ""),
-                idx=idx,
-                text_anchor=child.get("text-anchor", "start"),
-            ))
+            elements.append(
+                PositionedElement(
+                    tag="text",
+                    x=float(child.get("x", "0")),
+                    y=float(child.get("y", "0")),
+                    font_size=float(child.get("font-size", "10")),
+                    text=(child.text or "".join(t.text or "" for t in child) or "")[:50],
+                    css_class=child.get("class", ""),
+                    idx=idx,
+                    text_anchor=child.get("text-anchor", "start"),
+                )
+            )
 
         elif tag == "rect":
             w = float(child.get("width", "0"))
@@ -94,31 +95,37 @@ def parse_svg_elements(filepath: str) -> list[PositionedElement]:
             if w < 2 or h < 2:
                 idx += 1
                 continue
-            elements.append(PositionedElement(
-                tag="rect",
-                x=float(child.get("x", "0")),
-                y=float(child.get("y", "0")),
-                width=w,
-                height=h,
-                idx=idx,
-            ))
+            elements.append(
+                PositionedElement(
+                    tag="rect",
+                    x=float(child.get("x", "0")),
+                    y=float(child.get("y", "0")),
+                    width=w,
+                    height=h,
+                    idx=idx,
+                )
+            )
 
         elif tag == "line":
-            elements.append(PositionedElement(
-                tag="line",
-                x=float(child.get("x1", "0")),
-                y=float(child.get("y1", "0")),
-                width=float(child.get("x2", "0")),  # store x2 as width
-                height=float(child.get("y2", "0")),  # store y2 as height
-                idx=idx,
-            ))
+            elements.append(
+                PositionedElement(
+                    tag="line",
+                    x=float(child.get("x1", "0")),
+                    y=float(child.get("y1", "0")),
+                    width=float(child.get("x2", "0")),  # store x2 as width
+                    height=float(child.get("y2", "0")),  # store y2 as height
+                    idx=idx,
+                )
+            )
 
         idx += 1
 
     return elements
 
 
-def check_grid_snapping(elements: list[PositionedElement], grid: int, tolerance: int = 0) -> list[str]:
+def check_grid_snapping(
+    elements: list[PositionedElement], grid: int, tolerance: int = 0
+) -> list[str]:
     """Check if element coordinates snap to grid multiples."""
     issues = []
     for el in elements:
@@ -136,7 +143,9 @@ def check_grid_snapping(elements: list[PositionedElement], grid: int, tolerance:
 
         if off_grid:
             label = f'"{el.text}"' if el.text else f"{el.tag} {el.width:.0f}x{el.height:.0f}"
-            issues.append(f"  [{el.idx:3d}] {el.tag:5s} {label} - not on {grid}px grid: {', '.join(off_grid)}")
+            issues.append(
+                f"  [{el.idx:3d}] {el.tag:5s} {label} - not on {grid}px grid: {', '.join(off_grid)}"
+            )
 
     return issues
 
@@ -164,7 +173,9 @@ def check_text_vertical_rhythm(elements: list[PositionedElement]) -> list[str]:
 
         if len(unique_deltas) > 2:
             delta_str = ", ".join(f"{d:.0f}" for d in deltas if d > 0)
-            issues.append(f"  x~{x_key:.0f}: {len(group)} texts with irregular y-spacing: [{delta_str}]px")
+            issues.append(
+                f"  x~{x_key:.0f}: {len(group)} texts with irregular y-spacing: [{delta_str}]px"
+            )
 
     return issues
 
@@ -185,7 +196,7 @@ def check_x_alignment(elements: list[PositionedElement]) -> list[str]:
             texts_b = [t for t in texts if t.x == x_values[i + 1]]
             issues.append(
                 f"  Near-miss x alignment: x={x_values[i]} ({len(texts_a)} texts) "
-                f"vs x={x_values[i+1]} ({len(texts_b)} texts) - {diff:.1f}px apart"
+                f"vs x={x_values[i + 1]} ({len(texts_b)} texts) - {diff:.1f}px apart"
             )
 
     return issues
@@ -210,7 +221,9 @@ def check_rect_alignment(elements: list[PositionedElement]) -> list[str]:
         heights = set(r.height for r in group)
         if len(heights) > 1:
             h_str = ", ".join(f"{h:.0f}" for h in sorted(heights))
-            issues.append(f"  y~{y_key:.0f}: {len(group)} rects with mismatched heights: [{h_str}]px")
+            issues.append(
+                f"  y~{y_key:.0f}: {len(group)} rects with mismatched heights: [{h_str}]px"
+            )
 
     return issues
 
@@ -246,7 +259,11 @@ def check_legend_consistency(elements: list[PositionedElement]) -> list[str]:
     for chip in chips:
         # Find text element just to the right and at similar y
         for t in texts:
-            if abs(t.y - (chip.y + chip.height)) < chip.height and t.x > chip.x and t.x < chip.x + chip.width + 40:
+            if (
+                abs(t.y - (chip.y + chip.height)) < chip.height
+                and t.x > chip.x
+                and t.x < chip.x + chip.width + 40
+            ):
                 gaps.append(t.x - (chip.x + chip.width))
                 break
     if len(gaps) >= 2:
@@ -345,69 +362,97 @@ def _path_bbox(d: str) -> BBox | None:
 
         if cmd == "M":
             cx, cy = val, float(tokens[i + 1])
-            xs.append(cx); ys.append(cy)
-            i += 2; cmd = "L"
+            xs.append(cx)
+            ys.append(cy)
+            i += 2
+            cmd = "L"
         elif cmd == "m":
-            cx += val; cy += float(tokens[i + 1])
-            xs.append(cx); ys.append(cy)
-            i += 2; cmd = "l"
+            cx += val
+            cy += float(tokens[i + 1])
+            xs.append(cx)
+            ys.append(cy)
+            i += 2
+            cmd = "l"
         elif cmd == "L":
             cx, cy = val, float(tokens[i + 1])
-            xs.append(cx); ys.append(cy)
+            xs.append(cx)
+            ys.append(cy)
             i += 2
         elif cmd == "l":
-            cx += val; cy += float(tokens[i + 1])
-            xs.append(cx); ys.append(cy)
+            cx += val
+            cy += float(tokens[i + 1])
+            xs.append(cx)
+            ys.append(cy)
             i += 2
         elif cmd == "H":
-            cx = val; xs.append(cx); ys.append(cy)
+            cx = val
+            xs.append(cx)
+            ys.append(cy)
             i += 1
         elif cmd == "h":
-            cx += val; xs.append(cx); ys.append(cy)
+            cx += val
+            xs.append(cx)
+            ys.append(cy)
             i += 1
         elif cmd == "V":
-            cy = val; xs.append(cx); ys.append(cy)
+            cy = val
+            xs.append(cx)
+            ys.append(cy)
             i += 1
         elif cmd == "v":
-            cy += val; xs.append(cx); ys.append(cy)
+            cy += val
+            xs.append(cx)
+            ys.append(cy)
             i += 1
         elif cmd == "C":
             for j in range(0, 6, 2):
-                xs.append(float(tokens[i + j])); ys.append(float(tokens[i + j + 1]))
+                xs.append(float(tokens[i + j]))
+                ys.append(float(tokens[i + j + 1]))
             cx, cy = float(tokens[i + 4]), float(tokens[i + 5])
             i += 6
         elif cmd == "c":
             for j in range(0, 6, 2):
-                xs.append(cx + float(tokens[i + j])); ys.append(cy + float(tokens[i + j + 1]))
-            cx += float(tokens[i + 4]); cy += float(tokens[i + 5])
+                xs.append(cx + float(tokens[i + j]))
+                ys.append(cy + float(tokens[i + j + 1]))
+            cx += float(tokens[i + 4])
+            cy += float(tokens[i + 5])
             i += 6
         elif cmd == "S":
             for j in range(0, 4, 2):
-                xs.append(float(tokens[i + j])); ys.append(float(tokens[i + j + 1]))
+                xs.append(float(tokens[i + j]))
+                ys.append(float(tokens[i + j + 1]))
             cx, cy = float(tokens[i + 2]), float(tokens[i + 3])
             i += 4
         elif cmd == "s":
             for j in range(0, 4, 2):
-                xs.append(cx + float(tokens[i + j])); ys.append(cy + float(tokens[i + j + 1]))
-            cx += float(tokens[i + 2]); cy += float(tokens[i + 3])
+                xs.append(cx + float(tokens[i + j]))
+                ys.append(cy + float(tokens[i + j + 1]))
+            cx += float(tokens[i + 2])
+            cy += float(tokens[i + 3])
             i += 4
         elif cmd == "Q":
             for j in range(0, 4, 2):
-                xs.append(float(tokens[i + j])); ys.append(float(tokens[i + j + 1]))
+                xs.append(float(tokens[i + j]))
+                ys.append(float(tokens[i + j + 1]))
             cx, cy = float(tokens[i + 2]), float(tokens[i + 3])
             i += 4
         elif cmd == "q":
             for j in range(0, 4, 2):
-                xs.append(cx + float(tokens[i + j])); ys.append(cy + float(tokens[i + j + 1]))
-            cx += float(tokens[i + 2]); cy += float(tokens[i + 3])
+                xs.append(cx + float(tokens[i + j]))
+                ys.append(cy + float(tokens[i + j + 1]))
+            cx += float(tokens[i + 2])
+            cy += float(tokens[i + 3])
             i += 4
         elif cmd == "T":
             cx, cy = val, float(tokens[i + 1])
-            xs.append(cx); ys.append(cy)
+            xs.append(cx)
+            ys.append(cy)
             i += 2
         elif cmd == "t":
-            cx += val; cy += float(tokens[i + 1])
-            xs.append(cx); ys.append(cy)
+            cx += val
+            cy += float(tokens[i + 1])
+            xs.append(cx)
+            ys.append(cy)
             i += 2
         elif cmd in ("A", "a"):
             # Arc: rx ry rotation large-arc sweep x y
@@ -415,8 +460,10 @@ def _path_bbox(d: str) -> BBox | None:
                 if cmd == "A":
                     cx, cy = float(tokens[i + 5]), float(tokens[i + 6])
                 else:
-                    cx += float(tokens[i + 5]); cy += float(tokens[i + 6])
-                xs.append(cx); ys.append(cy)
+                    cx += float(tokens[i + 5])
+                    cy += float(tokens[i + 6])
+                xs.append(cx)
+                ys.append(cy)
             i += 7
         else:
             i += 1
@@ -455,10 +502,9 @@ def _collect_child_bboxes(group: ET.Element, ns: str) -> list[BBox]:
                 scale = float(m.group(1))
             child_boxes = _collect_child_bboxes(child, ns)
             for cb in child_boxes:
-                boxes.append(BBox(
-                    tx + cb.x * scale, ty + cb.y * scale,
-                    cb.w * scale, cb.h * scale
-                ))
+                boxes.append(
+                    BBox(tx + cb.x * scale, ty + cb.y * scale, cb.w * scale, cb.h * scale)
+                )
         elif tag == "defs":
             continue  # Skip defs (gradients, etc.)
         else:
@@ -508,10 +554,12 @@ def _x_overlap(a: BBox, b: BBox) -> float:
 
 def _contains(outer: BBox, inner: BBox, tolerance: float = 5) -> bool:
     """Check if inner is contained within outer (with tolerance)."""
-    return (outer.x - tolerance <= inner.x and
-            outer.y - tolerance <= inner.y and
-            outer.x2 + tolerance >= inner.x2 and
-            outer.y2 + tolerance >= inner.y2)
+    return (
+        outer.x - tolerance <= inner.x
+        and outer.y - tolerance <= inner.y
+        and outer.x2 + tolerance >= inner.x2
+        and outer.y2 + tolerance >= inner.y2
+    )
 
 
 @dataclass
@@ -528,7 +576,7 @@ def build_relationship_matrix(groups: dict[str, BBox]) -> dict[tuple[str, str], 
     names = sorted(groups.keys())
 
     for i, name_a in enumerate(names):
-        for name_b in names[i + 1:]:
+        for name_b in names[i + 1 :]:
             a, b = groups[name_a], groups[name_b]
 
             h_aligned = _y_overlap(a, b) > 0.3
@@ -567,7 +615,9 @@ def build_relationship_matrix(groups: dict[str, BBox]) -> dict[tuple[str, str], 
 
 @dataclass
 class DeclaredRelationship:
-    kind: str  # h-stack, v-stack, contain, mirror, h-align, v-align, right-of, left-of, above, below
+    kind: (
+        str  # h-stack, v-stack, contain, mirror, h-align, v-align, right-of, left-of, above, below
+    )
     groups: list[str]
     raw: str  # original text
 
@@ -625,10 +675,15 @@ def parse_topology_comment(filepath: str) -> list[DeclaredRelationship]:
         # Free-text relationships like "waveform header right of waveform hexagons"
         m = re.match(r"(\S+)\s+(right of|left of|above|below)\s+(\S+)", line)
         if m:
-            kind_map = {"right of": "right-of", "left of": "left-of", "above": "above", "below": "below"}
-            declared.append(DeclaredRelationship(
-                kind_map[m.group(2)], [m.group(1), m.group(3)], line
-            ))
+            kind_map = {
+                "right of": "right-of",
+                "left of": "left-of",
+                "above": "above",
+                "below": "below",
+            }
+            declared.append(
+                DeclaredRelationship(kind_map[m.group(2)], [m.group(1), m.group(3)], line)
+            )
 
     return declared
 
@@ -649,14 +704,16 @@ def verify_topology(
             rel = matrix[(b, a)]
             # Invert spatial direction
             inverse = {
-                "left-of": "right-of", "right-of": "left-of",
-                "above": "below", "below": "above",
-                "contains": "contained-in", "contained-in": "contains",
+                "left-of": "right-of",
+                "right-of": "left-of",
+                "above": "below",
+                "below": "above",
+                "contains": "contained-in",
+                "contained-in": "contains",
                 "overlapping": "overlapping",
             }
             return Relationship(
-                inverse.get(rel.spatial, rel.spatial),
-                rel.gap, rel.h_aligned, rel.v_aligned
+                inverse.get(rel.spatial, rel.spatial), rel.gap, rel.h_aligned, rel.v_aligned
             )
         return None
 
@@ -672,7 +729,7 @@ def verify_topology(
         if missing:
             results.append(f"  [WARN] {decl.raw}")
             for mg in missing:
-                results.append(f"         group \"{mg}\" not found in SVG")
+                results.append(f'         group "{mg}" not found in SVG')
             continue
 
         if decl.kind == "h-stack":
@@ -684,7 +741,9 @@ def verify_topology(
                 a, b = decl.groups[j], decl.groups[j + 1]
                 rel = _get_rel(a, b)
                 if rel and rel.spatial != "left-of":
-                    results.append(f"  [FAIL] h-stack: {a}, {b} - actual: {rel.spatial} (gap {rel.gap:.0f}px)")
+                    results.append(
+                        f"  [FAIL] h-stack: {a}, {b} - actual: {rel.spatial} (gap {rel.gap:.0f}px)"
+                    )
                     all_ok = False
             if all_ok:
                 results.append(f"  [PASS] h-stack: {', '.join(decl.groups)}")
@@ -697,7 +756,9 @@ def verify_topology(
                 a, b = decl.groups[j], decl.groups[j + 1]
                 rel = _get_rel(a, b)
                 if rel and rel.spatial not in ("above", "overlapping"):
-                    results.append(f"  [FAIL] v-stack: {a}, {b} - actual: {rel.spatial} (gap {rel.gap:.0f}px)")
+                    results.append(
+                        f"  [FAIL] v-stack: {a}, {b} - actual: {rel.spatial} (gap {rel.gap:.0f}px)"
+                    )
                     all_ok = False
             if all_ok:
                 results.append(f"  [PASS] v-stack: {', '.join(decl.groups)}")
@@ -718,7 +779,9 @@ def verify_topology(
             h_diff = abs(a.h - b.h)
             size_ok = w_diff <= 5 and h_diff <= 5
             if size_ok:
-                results.append(f"  [PASS] mirror: {a_name}, {b_name} (size match, offset {b.y - a.y:+.0f}px y)")
+                results.append(
+                    f"  [PASS] mirror: {a_name}, {b_name} (size match, offset {b.y - a.y:+.0f}px y)"
+                )
             else:
                 results.append(
                     f"  [FAIL] mirror: {a_name}, {b_name} - "
@@ -733,16 +796,24 @@ def verify_topology(
                 x_starts = [groups[g].x for g in decl.groups]
                 spread = max(x_starts) - min(x_starts)
                 if spread <= 10:
-                    results.append(f"  [PASS] h-align: {', '.join(decl.groups)} (x spread {spread:.0f}px)")
+                    results.append(
+                        f"  [PASS] h-align: {', '.join(decl.groups)} (x spread {spread:.0f}px)"
+                    )
                 else:
-                    results.append(f"  [FAIL] h-align: {', '.join(decl.groups)} - x spread {spread:.0f}px")
+                    results.append(
+                        f"  [FAIL] h-align: {', '.join(decl.groups)} - x spread {spread:.0f}px"
+                    )
             else:
                 y_starts = [groups[g].y for g in decl.groups]
                 spread = max(y_starts) - min(y_starts)
                 if spread <= 10:
-                    results.append(f"  [PASS] v-align: {', '.join(decl.groups)} (y spread {spread:.0f}px)")
+                    results.append(
+                        f"  [PASS] v-align: {', '.join(decl.groups)} (y spread {spread:.0f}px)"
+                    )
                 else:
-                    results.append(f"  [FAIL] v-align: {', '.join(decl.groups)} - y spread {spread:.0f}px")
+                    results.append(
+                        f"  [FAIL] v-align: {', '.join(decl.groups)} - y spread {spread:.0f}px"
+                    )
 
         elif decl.kind in ("right-of", "left-of", "above", "below"):
             if len(decl.groups) >= 2:
@@ -757,18 +828,22 @@ def verify_topology(
     svg_only = set(groups.keys()) - topo_groups
     if svg_only:
         for g in sorted(svg_only):
-            results.append(f"  [INFO] group \"{g}\" in SVG but not referenced in topology")
+            results.append(f'  [INFO] group "{g}" in SVG but not referenced in topology')
 
     return results
 
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="SVG alignment, grid snapping, and topology checker")
+
+    parser = argparse.ArgumentParser(
+        description="SVG alignment, grid snapping, and topology checker"
+    )
     parser.add_argument("--svg", required=True, help="SVG file to check")
     parser.add_argument("--grid", type=int, default=5, help="Grid step in px (default: 5)")
-    parser.add_argument("--tolerance", type=int, default=0,
-                        help="Tolerance for grid snapping in px (default: 0)")
+    parser.add_argument(
+        "--tolerance", type=int, default=0, help="Tolerance for grid snapping in px (default: 0)"
+    )
     args = parser.parse_args()
 
     print(f"Alignment check: {args.svg}  (grid={args.grid}px, tolerance={args.tolerance}px)")
@@ -846,9 +921,12 @@ def main():
 
         matrix = build_relationship_matrix(groups)
         # Show key relationships (skip trivial distant pairs)
-        interesting = [(k, v) for k, v in matrix.items()
-                       if v.spatial in ("left-of", "right-of", "contains", "contained-in", "overlapping")
-                       or (v.spatial in ("above", "below") and v.gap < 50)]
+        interesting = [
+            (k, v)
+            for k, v in matrix.items()
+            if v.spatial in ("left-of", "right-of", "contains", "contained-in", "overlapping")
+            or (v.spatial in ("above", "below") and v.gap < 50)
+        ]
         if interesting:
             print("RELATIONSHIP MATRIX")
             print("-" * 72)
