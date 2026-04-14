@@ -49,11 +49,11 @@ Runs structured multi-iteration development cycles where each iteration passes t
 
 | Type | Phases | Use when |
 |------|--------|----------|
-| `full` | RESEARCH -> HYPOTHESIS -> PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT | Feature work, improvements |
-| `fast` | PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT | Clear objective, no exploration needed |
-| `gc` | PLAN -> IMPLEMENT -> TEST -> RECORD -> NEXT | Cleanup, refactoring |
-| `hotfix` | IMPLEMENT -> TEST -> RECORD | Targeted bug fix |
-| `planning` | RESEARCH -> PLAN -> RECORD -> NEXT | Work breakdown (auto-chains before full) |
+| `full` | RESEARCH → HYPOTHESIS → PLAN → IMPLEMENT → TEST → REVIEW → RECORD → NEXT | Feature work, improvements |
+| `fast` | PLAN → IMPLEMENT → TEST → REVIEW → RECORD → NEXT | Clear objective, no exploration needed |
+| `gc` | PLAN → IMPLEMENT → TEST → RECORD → NEXT | Cleanup, refactoring |
+| `hotfix` | IMPLEMENT → TEST → RECORD | Targeted bug fix |
+| `planning` | RESEARCH → PLAN → RECORD → NEXT | Work breakdown (auto-chains before full) |
 
 ### Usage
 

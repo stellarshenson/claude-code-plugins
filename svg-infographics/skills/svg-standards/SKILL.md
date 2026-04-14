@@ -236,6 +236,14 @@ Prefer standard open-source SVG icon libraries.
 
 Embed in `<g transform="translate(x,y) scale(s)">`, override stroke to match palette. Comment: `<!-- Icon: {name} (Lucide, ISC license) -->`. Scale: 0.583 (~14px), 0.667 (~16px), 0.5 (~12px).
 
+### Default Placement
+
+Place icons in the **upper-right** quadrant of the graphic (top-level decorative/identity icons) or the **upper-right** corner of each card (per-card icons), unless the composition explicitly requires otherwise. Rationale: upper-right is the western reading path's terminal scan point for a title row, so the icon reinforces identity without competing with the left-aligned title.
+
+- **Graphic-level icon**: position inside the header band at `x = viewBox.width - margin - icon_size`, vertically centred on the title baseline
+- **Card-level icon**: position inside the card at `x = card.x + card.w - 6 - icon_size`, `y = card.y + 6`, clear of the accent bar and the title text
+- **Override only when**: the layout is a symmetric grid where centring reads better, a process flow where the icon anchors the start of a row, or a timeline where the icon sits on the event marker
+
 ## Card Backgrounds
 
 **Square-top, rounded-bottom** path so accent bar sits flush. Bottom corner radius r=3.
