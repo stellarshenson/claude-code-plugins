@@ -1,0 +1,133 @@
+<!--
+  06_document_processing_grounding.svg - document-processing plugin banner for README
+  Shows: left title block + right visual with 3-stage flow: source documents ->
+  grounding/validation -> compliant output, with subtle source-trace lines connecting
+  output back to original sources.
+  Intent: communicate "source grounding is the trust mechanism".
+  Theme: Stellars-Tech (teal primary).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .stroke-1 { stroke: #005f7a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .stroke-1 { stroke: #5cc8e0; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox 900x200, margin 20
+    Left title:  x=20..238
+    Divider:     x=250
+    Right zone:  x=260..880
+      3 stages (cards):
+        SOURCES:    x=260..420 (160 wide)
+        GROUNDING:  x=470..630 (160 wide)
+        OUTPUT:     x=680..880 (200 wide)
+      Stage cards:  y=50..150 (100 tall)
+      Trace lines:  y=170..180
+  === -->
+
+  <!-- === LEFT TITLE ZONE === -->
+  <text x="20" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" class="fg-1">document-processing</text>
+  <text x="20" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Source-grounded structured processing</text>
+
+  <rect x="20" y="86" width="68" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="54" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">GROUNDING</text>
+  <rect x="94" y="86" width="56" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="122" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">PDF AUTO</text>
+  <rect x="156" y="86" width="68" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="190" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">VALIDATION</text>
+
+  <text x="20" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">Source tracing +</text>
+  <text x="20" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">uniformization +</text>
+  <text x="20" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">compliance checks</text>
+
+  <text x="20" y="178" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-2" letter-spacing="1">/DOCUMENT-PROCESSING</text>
+
+
+  <!-- === RIGHT ZONE === -->
+  <text x="260" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-1" letter-spacing="1.5">SOURCE -> GROUND -> COMPLIANT OUTPUT</text>
+
+  <!-- Stage 1: SOURCES card x=260..420 -->
+  <path d="M260,52 H420 V147 Q420,150 417,150 H263 Q260,150 260,147 Z" fill="#005f7a" fill-opacity="0.05"/>
+  <path d="M260,52 H420 V147 Q420,150 417,150 H263 Q260,150 260,147 Z" fill="none" class="stroke-1" stroke-width="0.8"/>
+  <rect x="260" y="52" width="160" height="4" fill="#005f7a" opacity="0.6"/>
+  <text x="340" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">SOURCES</text>
+  <!-- mini doc icons inside -->
+  <rect x="282" y="84" width="22" height="28" rx="1" fill="#005f7a" fill-opacity="0.12" class="stroke-1" stroke-width="0.5"/>
+  <line x1="286" y1="92" x2="300" y2="92" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+  <line x1="286" y1="98" x2="300" y2="98" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+  <line x1="286" y1="104" x2="296" y2="104" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+
+  <rect x="312" y="84" width="22" height="28" rx="1" fill="#005f7a" fill-opacity="0.12" class="stroke-1" stroke-width="0.5"/>
+  <line x1="316" y1="92" x2="330" y2="92" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+  <line x1="316" y1="98" x2="330" y2="98" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+  <line x1="316" y1="104" x2="326" y2="104" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+
+  <rect x="342" y="84" width="22" height="28" rx="1" fill="#005f7a" fill-opacity="0.12" class="stroke-1" stroke-width="0.5"/>
+  <line x1="346" y1="92" x2="360" y2="92" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+  <line x1="346" y1="98" x2="360" y2="98" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+  <line x1="346" y1="104" x2="356" y2="104" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+
+  <rect x="372" y="84" width="22" height="28" rx="1" fill="#005f7a" fill-opacity="0.12" class="stroke-1" stroke-width="0.5"/>
+  <line x1="376" y1="92" x2="390" y2="92" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+  <line x1="376" y1="98" x2="390" y2="98" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+  <line x1="376" y1="104" x2="386" y2="104" class="stroke-1" stroke-width="0.5" opacity="0.4"/>
+
+  <text x="340" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-3" text-anchor="middle">PDFs - reports - data</text>
+  <text x="340" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">heterogeneous formats</text>
+
+  <!-- arrow chevron: sources -> grounding (no track line, polygons only) -->
+  <polygon points="430,96 446,100 430,104" fill="#005f7a" opacity="0.45"/>
+  <polygon points="448,96 464,100 448,104" fill="#005f7a" opacity="0.6"/>
+
+  <!-- Stage 2: GROUNDING card x=470..630 -->
+  <path d="M470,52 H630 V147 Q630,150 627,150 H473 Q470,150 470,147 Z" fill="#7a4a15" fill-opacity="0.06"/>
+  <path d="M470,52 H630 V147 Q630,150 627,150 H473 Q470,150 470,147 Z" fill="none" stroke="#7a4a15" stroke-width="0.8"/>
+  <rect x="470" y="52" width="160" height="4" fill="#7a4a15" opacity="0.6"/>
+  <text x="550" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">GROUNDING</text>
+
+  <!-- 3 process steps inside -->
+  <rect x="484" y="86" width="132" height="14" rx="2" fill="#7a4a15" fill-opacity="0.08"/>
+  <text x="550" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">extract + cite</text>
+  <rect x="484" y="104" width="132" height="14" rx="2" fill="#7a4a15" fill-opacity="0.08"/>
+  <text x="550" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">uniformize</text>
+  <rect x="484" y="122" width="132" height="14" rx="2" fill="#7a4a15" fill-opacity="0.08"/>
+  <text x="550" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">validate references</text>
+
+  <!-- arrow chevron: grounding -> output (polygons only) -->
+  <polygon points="640,96 656,100 640,104" fill="#7a4a15" opacity="0.45"/>
+  <polygon points="658,96 674,100 658,104" fill="#7a4a15" opacity="0.6"/>
+
+  <!-- Stage 3: OUTPUT card x=680..880 -->
+  <path d="M680,52 H880 V147 Q880,150 877,150 H683 Q680,150 680,147 Z" fill="#005f7a" fill-opacity="0.05"/>
+  <path d="M680,52 H880 V147 Q880,150 877,150 H683 Q680,150 680,147 Z" fill="none" class="stroke-1" stroke-width="0.8"/>
+  <rect x="680" y="52" width="200" height="4" fill="#005f7a" opacity="0.6"/>
+  <text x="780" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">COMPLIANT OUTPUT</text>
+
+  <!-- output doc body -->
+  <rect x="700" y="86" width="160" height="38" rx="2" fill="#005f7a" fill-opacity="0.10" class="stroke-1" stroke-width="0.6"/>
+  <line x1="710" y1="96" x2="850" y2="96" class="stroke-1" stroke-width="0.5" opacity="0.5"/>
+  <line x1="710" y1="104" x2="850" y2="104" class="stroke-1" stroke-width="0.5" opacity="0.5"/>
+  <line x1="710" y1="112" x2="844" y2="112" class="stroke-1" stroke-width="0.5" opacity="0.5"/>
+  <line x1="710" y1="120" x2="850" y2="120" class="stroke-1" stroke-width="0.5" opacity="0.5"/>
+
+  <!-- citation badge -->
+  <rect x="700" y="130" width="160" height="14" rx="2" fill="#7a4a15" fill-opacity="0.15"/>
+  <text x="780" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">[3 SOURCES CITED] every claim grounded</text>
+
+  <!-- Bottom footer -->
+  <text x="570" y="172" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">unsupported claims block the output  -  citations preserved end to end</text>
+</svg>

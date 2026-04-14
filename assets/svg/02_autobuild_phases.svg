@@ -1,0 +1,137 @@
+<!--
+  02_autobuild_phases.svg - autobuild plugin banner for README
+  Shows: left title block + right phase pipeline showing the 8-phase FSM lifecycle
+  (RESEARCH -> HYPOTHESIS -> PLAN -> IMPLEMENT -> TEST -> REVIEW -> RECORD -> NEXT).
+  Intent: communicate "structured phases with quality gates, not random iteration".
+  Theme: Stellars-Tech (teal primary).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 180">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .stroke-1 { stroke: #005f7a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .stroke-1 { stroke: #5cc8e0; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox 900x180, margin 20
+    Left title zone:  x=20..238  (218 wide)
+    Divider:          x=250
+    Right visual:     x=260..880 (620 wide)
+    Phase row:        y=70..130  - 8 cards 72 wide, 4px gap
+    Header band y=20..60, footer y=140..160
+  === -->
+
+  <!-- === LEFT TITLE ZONE === -->
+  <text x="20" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" class="fg-1">autobuild</text>
+  <text x="20" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">YAML-driven phase orchestration</text>
+
+  <!-- chips -->
+  <rect x="20" y="86" width="60" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="50" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">8 PHASES</text>
+  <rect x="86" y="86" width="38" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="105" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">FSM</text>
+  <rect x="130" y="86" width="86" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="173" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">MULTI-AGENT</text>
+
+  <text x="20" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">Iterative cycles with quality</text>
+  <text x="20" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">gates and audit logs</text>
+
+  <text x="20" y="160" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-2" letter-spacing="1">/AUTOBUILD START</text>
+
+  <!-- vertical divider -->
+  <line x1="250" y1="35" x2="250" y2="155" class="stroke-1" stroke-width="0.5" opacity="0.25"/>
+
+  <!-- === RIGHT VISUAL ZONE === -->
+  <text x="260" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-1" letter-spacing="1.5">PHASE LIFECYCLE</text>
+
+  <!-- 8 phase cards: x=260, 338, 416, 494, 572, 650, 728, 806 ; w=72 h=58 -->
+  <!-- Phase 1: RESEARCH -->
+  <path d="M260,60 H332 V115 Q332,118 329,118 H263 Q260,118 260,115 Z" fill="#005f7a" fill-opacity="0.05"/>
+  <path d="M260,60 H332 V115 Q332,118 329,118 H263 Q260,118 260,115 Z" fill="none" class="stroke-1" stroke-width="0.8"/>
+  <rect x="260" y="60" width="72" height="4" fill="#005f7a" opacity="0.6"/>
+  <text x="265" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1">01</text>
+  <text x="296" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-2" text-anchor="middle">RESEARCH</text>
+  <text x="296" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">explore</text>
+
+  <!-- Phase 2: HYPOTHESIS -->
+  <path d="M338,60 H410 V115 Q410,118 407,118 H341 Q338,118 338,115 Z" fill="#005f7a" fill-opacity="0.05"/>
+  <path d="M338,60 H410 V115 Q410,118 407,118 H341 Q338,118 338,115 Z" fill="none" class="stroke-1" stroke-width="0.8"/>
+  <rect x="338" y="60" width="72" height="4" fill="#005f7a" opacity="0.6"/>
+  <text x="343" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1">02</text>
+  <text x="374" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-2" text-anchor="middle">HYPOTHESIS</text>
+  <text x="374" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">predict</text>
+
+  <!-- Phase 3: PLAN -->
+  <path d="M416,60 H488 V115 Q488,118 485,118 H419 Q416,118 416,115 Z" fill="#005f7a" fill-opacity="0.05"/>
+  <path d="M416,60 H488 V115 Q488,118 485,118 H419 Q416,118 416,115 Z" fill="none" class="stroke-1" stroke-width="0.8"/>
+  <rect x="416" y="60" width="72" height="4" fill="#005f7a" opacity="0.6"/>
+  <text x="421" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1">03</text>
+  <text x="452" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-2" text-anchor="middle">PLAN</text>
+  <text x="452" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">scope</text>
+
+  <!-- Phase 4: IMPLEMENT -->
+  <path d="M494,60 H566 V115 Q566,118 563,118 H497 Q494,118 494,115 Z" fill="#7a4a15" fill-opacity="0.06"/>
+  <path d="M494,60 H566 V115 Q566,118 563,118 H497 Q494,118 494,115 Z" fill="none" stroke="#7a4a15" stroke-width="0.8"/>
+  <rect x="494" y="60" width="72" height="4" fill="#7a4a15" opacity="0.7"/>
+  <text x="499" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-2">04</text>
+  <text x="530" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-2" text-anchor="middle">IMPLEMENT</text>
+  <text x="530" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">build</text>
+
+  <!-- Phase 5: TEST -->
+  <path d="M572,60 H644 V115 Q644,118 641,118 H575 Q572,118 572,115 Z" fill="#005f7a" fill-opacity="0.05"/>
+  <path d="M572,60 H644 V115 Q644,118 641,118 H575 Q572,118 572,115 Z" fill="none" class="stroke-1" stroke-width="0.8"/>
+  <rect x="572" y="60" width="72" height="4" fill="#005f7a" opacity="0.6"/>
+  <text x="577" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1">05</text>
+  <text x="608" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-2" text-anchor="middle">TEST</text>
+  <text x="608" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">verify</text>
+
+  <!-- Phase 6: REVIEW -->
+  <path d="M650,60 H722 V115 Q722,118 719,118 H653 Q650,118 650,115 Z" fill="#005f7a" fill-opacity="0.05"/>
+  <path d="M650,60 H722 V115 Q722,118 719,118 H653 Q650,118 650,115 Z" fill="none" class="stroke-1" stroke-width="0.8"/>
+  <rect x="650" y="60" width="72" height="4" fill="#005f7a" opacity="0.6"/>
+  <text x="655" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1">06</text>
+  <text x="686" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-2" text-anchor="middle">REVIEW</text>
+  <text x="686" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">critic</text>
+
+  <!-- Phase 7: RECORD -->
+  <path d="M728,60 H800 V115 Q800,118 797,118 H731 Q728,118 728,115 Z" fill="#005f7a" fill-opacity="0.05"/>
+  <path d="M728,60 H800 V115 Q800,118 797,118 H731 Q728,118 728,115 Z" fill="none" class="stroke-1" stroke-width="0.8"/>
+  <rect x="728" y="60" width="72" height="4" fill="#005f7a" opacity="0.6"/>
+  <text x="733" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1">07</text>
+  <text x="764" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-2" text-anchor="middle">RECORD</text>
+  <text x="764" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">audit</text>
+
+  <!-- Phase 8: NEXT -->
+  <path d="M806,60 H878 V115 Q878,118 875,118 H809 Q806,118 806,115 Z" fill="#005f7a" fill-opacity="0.05"/>
+  <path d="M806,60 H878 V115 Q878,118 875,118 H809 Q806,118 806,115 Z" fill="none" class="stroke-1" stroke-width="0.8"/>
+  <rect x="806" y="60" width="72" height="4" fill="#005f7a" opacity="0.6"/>
+  <text x="811" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="accent-1">08</text>
+  <text x="842" y="94" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="fg-2" text-anchor="middle">NEXT</text>
+  <text x="842" y="108" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">loop</text>
+
+  <!-- arc grouping lines -->
+  <line x1="262" y1="128" x2="488" y2="128" class="stroke-1" stroke-width="0.5" opacity="0.3"/>
+  <line x1="494" y1="128" x2="566" y2="128" stroke="#7a4a15" stroke-width="0.5" opacity="0.4"/>
+  <line x1="572" y1="128" x2="878" y2="128" class="stroke-1" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- arc labels below the grouping lines -->
+  <text x="375" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">research arc</text>
+  <text x="530" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-2" text-anchor="middle">build core</text>
+  <text x="725" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">audit arc</text>
+
+  <!-- loop indicator (cycle dot + label) -->
+  <text x="568" y="160" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle" letter-spacing="0.5">cycle repeats until objective met</text>
+</svg>

@@ -1,0 +1,174 @@
+<!--
+  03_devils_advocate_scoring.svg - devils-advocate plugin banner for README
+  Shows: left title block + right visual with 5x5 Fibonacci risk matrix and
+  three sample concerns showing risk score progression.
+  Intent: communicate that quantified Fibonacci risk scoring is the differentiator.
+  Theme: Stellars-Tech (teal primary, gold accent for high-risk cells).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .stroke-1 { stroke: #005f7a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .stroke-1 { stroke: #5cc8e0; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox 900x200, margin 20
+    Left title:  x=20..238
+    Divider:     x=250
+    Right zone:  x=260..880
+      Risk matrix:    x=300..422  (122 wide, 5x24 cells + axis)
+      Legend strip:   y=170..180
+      Sample concerns: x=460..880 (3 stacked rows)
+  === -->
+
+  <!-- === LEFT TITLE ZONE === -->
+  <text x="20" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" class="fg-1">devils-advocate</text>
+  <text x="20" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Persona-driven document critique</text>
+
+  <rect x="20" y="86" width="86" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="63" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">FIBONACCI 1-64</text>
+  <rect x="112" y="86" width="62" height="14" rx="2" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="143" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">ITERATIVE</text>
+
+  <text x="20" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">Risk-scored concerns +</text>
+  <text x="20" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">residual measurement</text>
+  <text x="20" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">across iterations</text>
+
+  <text x="20" y="178" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-2" letter-spacing="1">/DEVILS-ADVOCATE:RUN</text>
+
+  <line x1="250" y1="35" x2="250" y2="180" class="stroke-1" stroke-width="0.5" opacity="0.25"/>
+
+  <!-- === RIGHT ZONE - RISK MATRIX === -->
+  <text x="260" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-1" letter-spacing="1.5">RISK = LIKELIHOOD x IMPACT</text>
+
+  <!-- Likelihood (y) axis label (rotated, placed inside right zone) -->
+  <text x="282" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle" transform="rotate(-90 282,116)" letter-spacing="1">LIKELIHOOD</text>
+
+  <!-- Y axis tick labels (top=8, bottom=1) -->
+  <text x="290" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="end">8</text>
+  <text x="290" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="end">5</text>
+  <text x="290" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="end">3</text>
+  <text x="290" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="end">2</text>
+  <text x="290" y="164" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="end">1</text>
+
+  <!-- 5x5 risk matrix cells. row top->bottom = L = 8,5,3,2,1 ; col left->right = I = 1,2,3,5,8 -->
+  <!-- Cell: 22x22 with 1px gap; origin x=294, y=60 ; cell(c,r) at x=294+c*23 y=60+r*23 -->
+
+  <!-- Cells use only "safe" opacities for AA contrast at 7px text:
+       0.05..0.18 = dark text passes; 0.85 = white text passes.
+       Cutoff: scores >=32 use white-on-dark, scores <32 use dark-on-light. -->
+
+  <!-- Row L=8 -->
+  <rect x="294" y="60" width="22" height="22" fill="#005f7a" fill-opacity="0.10"/>
+  <text x="305" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="fg-1" text-anchor="middle">8</text>
+  <rect x="317" y="60" width="22" height="22" fill="#005f7a" fill-opacity="0.14"/>
+  <text x="328" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="fg-1" text-anchor="middle">16</text>
+  <rect x="340" y="60" width="22" height="22" fill="#005f7a" fill-opacity="0.18"/>
+  <text x="351" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="fg-1" text-anchor="middle">24</text>
+  <rect x="363" y="60" width="22" height="22" fill="#005f7a" fill-opacity="0.85"/>
+  <text x="374" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" fill="#fff" text-anchor="middle">40</text>
+  <rect x="386" y="60" width="22" height="22" fill="#005f7a" fill-opacity="0.95"/>
+  <text x="397" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" fill="#fff" text-anchor="middle">64</text>
+
+  <!-- Row L=5 -->
+  <rect x="294" y="83" width="22" height="22" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="305" y="97" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="fg-1" text-anchor="middle">5</text>
+  <rect x="317" y="83" width="22" height="22" fill="#005f7a" fill-opacity="0.12"/>
+  <text x="328" y="97" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="fg-1" text-anchor="middle">10</text>
+  <rect x="340" y="83" width="22" height="22" fill="#005f7a" fill-opacity="0.16"/>
+  <text x="351" y="97" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="fg-1" text-anchor="middle">15</text>
+  <rect x="363" y="83" width="22" height="22" fill="#005f7a" fill-opacity="0.18"/>
+  <text x="374" y="97" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="fg-1" text-anchor="middle">25</text>
+  <rect x="386" y="83" width="22" height="22" fill="#005f7a" fill-opacity="0.85"/>
+  <text x="397" y="97" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" fill="#fff" text-anchor="middle">40</text>
+
+  <!-- Row L=3 -->
+  <rect x="294" y="106" width="22" height="22" fill="#005f7a" fill-opacity="0.06"/>
+  <text x="305" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">3</text>
+  <rect x="317" y="106" width="22" height="22" fill="#005f7a" fill-opacity="0.10"/>
+  <text x="328" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">6</text>
+  <rect x="340" y="106" width="22" height="22" fill="#005f7a" fill-opacity="0.12"/>
+  <text x="351" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">9</text>
+  <rect x="363" y="106" width="22" height="22" fill="#005f7a" fill-opacity="0.16"/>
+  <text x="374" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">15</text>
+  <rect x="386" y="106" width="22" height="22" fill="#005f7a" fill-opacity="0.18"/>
+  <text x="397" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700" class="fg-1" text-anchor="middle">24</text>
+
+  <!-- Row L=2 -->
+  <rect x="294" y="129" width="22" height="22" fill="#005f7a" fill-opacity="0.05"/>
+  <text x="305" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">2</text>
+  <rect x="317" y="129" width="22" height="22" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="328" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">4</text>
+  <rect x="340" y="129" width="22" height="22" fill="#005f7a" fill-opacity="0.10"/>
+  <text x="351" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">6</text>
+  <rect x="363" y="129" width="22" height="22" fill="#005f7a" fill-opacity="0.12"/>
+  <text x="374" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">10</text>
+  <rect x="386" y="129" width="22" height="22" fill="#005f7a" fill-opacity="0.14"/>
+  <text x="397" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">16</text>
+
+  <!-- Row L=1 -->
+  <rect x="294" y="152" width="22" height="22" fill="#005f7a" fill-opacity="0.04"/>
+  <text x="305" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">1</text>
+  <rect x="317" y="152" width="22" height="22" fill="#005f7a" fill-opacity="0.06"/>
+  <text x="328" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">2</text>
+  <rect x="340" y="152" width="22" height="22" fill="#005f7a" fill-opacity="0.08"/>
+  <text x="351" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">3</text>
+  <rect x="363" y="152" width="22" height="22" fill="#005f7a" fill-opacity="0.10"/>
+  <text x="374" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">5</text>
+  <rect x="386" y="152" width="22" height="22" fill="#005f7a" fill-opacity="0.12"/>
+  <text x="397" y="166" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-1" text-anchor="middle">8</text>
+
+  <!-- X axis tick labels (impact 1,2,3,5,8) -->
+  <text x="305" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">1</text>
+  <text x="328" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">2</text>
+  <text x="351" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">3</text>
+  <text x="374" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">5</text>
+  <text x="397" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">8</text>
+  <text x="351" y="196" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle" letter-spacing="1">IMPACT</text>
+
+  <!-- === SAMPLE CONCERNS (right side) === -->
+  <text x="450" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-1" letter-spacing="1.5">SAMPLE CONCERNS</text>
+
+  <!-- Concern 1: high risk -->
+  <rect x="450" y="58" width="36" height="22" rx="2" fill="#005f7a" fill-opacity="0.9"/>
+  <text x="468" y="73" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">40</text>
+  <text x="494" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1">Unsupported KPI claim</text>
+  <text x="494" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">L=8 (auditor will flag) x I=5 (regulatory)</text>
+
+  <!-- Concern 2: medium -->
+  <rect x="450" y="92" width="36" height="22" rx="2" fill="#005f7a" fill-opacity="0.32"/>
+  <text x="468" y="107" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1" text-anchor="middle">15</text>
+  <text x="494" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1">Vague timeline claim</text>
+  <text x="494" y="114" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">L=5 x I=3 (delivery confidence)</text>
+
+  <!-- Concern 3: low -->
+  <rect x="450" y="126" width="36" height="22" rx="2" fill="#005f7a" fill-opacity="0.10"/>
+  <text x="468" y="141" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-2" text-anchor="middle">3</text>
+  <text x="494" y="136" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1">Inconsistent terminology</text>
+  <text x="494" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">L=3 x I=1 (cosmetic)</text>
+
+  <!-- iteration arrow -->
+  <text x="450" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">iter 0</text>
+  <line x1="486" y1="167" x2="616" y2="167" class="stroke-1" stroke-width="0.6" opacity="0.4"/>
+  <polygon points="616,167 612,164 612,170" fill="#005f7a" opacity="0.5"/>
+  <text x="640" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">iter 1</text>
+  <line x1="672" y1="167" x2="798" y2="167" class="stroke-1" stroke-width="0.6" opacity="0.4"/>
+  <polygon points="798,167 794,164 794,170" fill="#005f7a" opacity="0.5"/>
+  <text x="822" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-2">resolved</text>
+
+  <text x="664" y="184" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">residual risk drops each iteration until acceptable</text>
+</svg>

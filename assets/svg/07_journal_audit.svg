@@ -1,0 +1,171 @@
+<!--
+  07_journal_audit.svg - journal plugin banner for README
+  Shows: left title block + right visual with archive bucket on the left, then a
+  timeline of numbered journal entries (1..N), with the most recent entries
+  highlighted and the rest receding into history.
+  Intent: communicate "append-only audit trail with continuous numbering and archiving".
+  Theme: Stellars-Tech (gold accent for journal like in marketplace hero).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .stroke-2 { stroke: #7a4a15; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .stroke-2 { stroke: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox 900x200, margin 20
+    Left title:   x=20..238
+    Right zone:   x=260..880
+      Archive bucket: x=260..360 (100 wide)
+      Timeline:       x=380..880 (10 numbered entry chips)
+      Each chip:      32 wide, 50 tall, 14 gap; centers at y=100
+  === -->
+
+  <!-- === LEFT TITLE ZONE === -->
+  <text x="20" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" class="fg-1">journal</text>
+  <text x="20" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Append-only project journal</text>
+
+  <rect x="20" y="86" width="68" height="14" rx="2" fill="#7a4a15" fill-opacity="0.10"/>
+  <text x="54" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">NUMBERED</text>
+  <rect x="94" y="86" width="62" height="14" rx="2" fill="#7a4a15" fill-opacity="0.10"/>
+  <text x="125" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">ARCHIVED</text>
+  <rect x="162" y="86" width="60" height="14" rx="2" fill="#7a4a15" fill-opacity="0.10"/>
+  <text x="192" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">VERIFIED</text>
+
+  <text x="20" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">Continuous numbering +</text>
+  <text x="20" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">archive workflow keeps</text>
+  <text x="20" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">history searchable</text>
+
+  <text x="20" y="178" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-2" letter-spacing="1">/JOURNAL:ADD</text>
+
+  <!-- === RIGHT ZONE === -->
+  <text x="260" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-2" letter-spacing="1.5">JOURNAL_ARCHIVE.md  +  JOURNAL.md</text>
+
+  <!-- Archive bucket (older entries 1..N) -->
+  <path d="M260,68 H360 V147 Q360,150 357,150 H263 Q260,150 260,147 Z" fill="#7a4a15" fill-opacity="0.04"/>
+  <path d="M260,68 H360 V147 Q360,150 357,150 H263 Q260,150 260,147 Z" fill="none" class="stroke-2" stroke-width="0.7" stroke-dasharray="3,2"/>
+  <rect x="260" y="68" width="100" height="3" fill="#7a4a15" opacity="0.5"/>
+  <text x="310" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" class="accent-2" text-anchor="middle">ARCHIVE</text>
+  <text x="310" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-2" text-anchor="middle">1..58</text>
+  <text x="310" y="116" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">older entries</text>
+  <text x="310" y="128" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">numbering preserved</text>
+  <text x="310" y="142" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">archive after 40 entries</text>
+
+  <!-- Arrow chevron from archive to active timeline -->
+  <polygon points="368,98 380,102 368,106" fill="#7a4a15" opacity="0.5"/>
+
+  <!-- Active timeline: entries 59..78 - shown as 10 chips representing recent 20 -->
+  <!-- positions: x=388 + i*48 for i=0..9 -->
+  <text x="388" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4">last 20 entries (most recent at right)</text>
+
+  <!-- Entry chips (10 visible, each 38w 56h, 8 gap) -->
+  <!-- Older (#69-73) at lower opacity, recent (#74-78) at full opacity -->
+  <!-- positions x: 388, 434, 480, 526, 572, 618, 664, 710, 756, 802 -->
+
+  <!-- Entry 69 -->
+  <rect x="388" y="74" width="38" height="56" rx="2" fill="#7a4a15" fill-opacity="0.06" stroke="#7a4a15" stroke-width="0.5"/>
+  <text x="407" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2" text-anchor="middle">69</text>
+  <line x1="394" y1="104" x2="420" y2="104" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="394" y1="110" x2="420" y2="110" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="394" y1="116" x2="416" y2="116" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="394" y1="122" x2="420" y2="122" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+
+  <!-- Entry 70 -->
+  <rect x="434" y="74" width="38" height="56" rx="2" fill="#7a4a15" fill-opacity="0.06" stroke="#7a4a15" stroke-width="0.5"/>
+  <text x="453" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2" text-anchor="middle">70</text>
+  <line x1="440" y1="104" x2="466" y2="104" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="440" y1="110" x2="466" y2="110" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="440" y1="116" x2="462" y2="116" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="440" y1="122" x2="466" y2="122" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+
+  <!-- Entry 71 -->
+  <rect x="480" y="74" width="38" height="56" rx="2" fill="#7a4a15" fill-opacity="0.06" stroke="#7a4a15" stroke-width="0.5"/>
+  <text x="499" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2" text-anchor="middle">71</text>
+  <line x1="486" y1="104" x2="512" y2="104" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="486" y1="110" x2="512" y2="110" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="486" y1="116" x2="508" y2="116" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="486" y1="122" x2="512" y2="122" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+
+  <!-- Entry 72 -->
+  <rect x="526" y="74" width="38" height="56" rx="2" fill="#7a4a15" fill-opacity="0.08" stroke="#7a4a15" stroke-width="0.5"/>
+  <text x="545" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2" text-anchor="middle">72</text>
+  <line x1="532" y1="104" x2="558" y2="104" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="532" y1="110" x2="558" y2="110" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="532" y1="116" x2="554" y2="116" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+  <line x1="532" y1="122" x2="558" y2="122" class="stroke-2" stroke-width="0.4" opacity="0.4"/>
+
+  <!-- Entry 73 -->
+  <rect x="572" y="74" width="38" height="56" rx="2" fill="#7a4a15" fill-opacity="0.10" stroke="#7a4a15" stroke-width="0.5"/>
+  <text x="591" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2" text-anchor="middle">73</text>
+  <line x1="578" y1="104" x2="604" y2="104" class="stroke-2" stroke-width="0.4" opacity="0.5"/>
+  <line x1="578" y1="110" x2="604" y2="110" class="stroke-2" stroke-width="0.4" opacity="0.5"/>
+  <line x1="578" y1="116" x2="600" y2="116" class="stroke-2" stroke-width="0.4" opacity="0.5"/>
+  <line x1="578" y1="122" x2="604" y2="122" class="stroke-2" stroke-width="0.4" opacity="0.5"/>
+
+  <!-- Entry 74 -->
+  <rect x="618" y="74" width="38" height="56" rx="2" fill="#7a4a15" fill-opacity="0.12" stroke="#7a4a15" stroke-width="0.6"/>
+  <text x="637" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2" text-anchor="middle">74</text>
+  <line x1="624" y1="104" x2="650" y2="104" class="stroke-2" stroke-width="0.5" opacity="0.6"/>
+  <line x1="624" y1="110" x2="650" y2="110" class="stroke-2" stroke-width="0.5" opacity="0.6"/>
+  <line x1="624" y1="116" x2="646" y2="116" class="stroke-2" stroke-width="0.5" opacity="0.6"/>
+  <line x1="624" y1="122" x2="650" y2="122" class="stroke-2" stroke-width="0.5" opacity="0.6"/>
+
+  <!-- Entry 75 -->
+  <rect x="664" y="74" width="38" height="56" rx="2" fill="#7a4a15" fill-opacity="0.14" stroke="#7a4a15" stroke-width="0.6"/>
+  <text x="683" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2" text-anchor="middle">75</text>
+  <line x1="670" y1="104" x2="696" y2="104" class="stroke-2" stroke-width="0.5" opacity="0.6"/>
+  <line x1="670" y1="110" x2="696" y2="110" class="stroke-2" stroke-width="0.5" opacity="0.6"/>
+  <line x1="670" y1="116" x2="692" y2="116" class="stroke-2" stroke-width="0.5" opacity="0.6"/>
+  <line x1="670" y1="122" x2="696" y2="122" class="stroke-2" stroke-width="0.5" opacity="0.6"/>
+
+  <!-- Entry 76 -->
+  <rect x="710" y="74" width="38" height="56" rx="2" fill="#7a4a15" fill-opacity="0.16" stroke="#7a4a15" stroke-width="0.6"/>
+  <text x="729" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-2" text-anchor="middle">76</text>
+  <line x1="716" y1="104" x2="742" y2="104" class="stroke-2" stroke-width="0.5" opacity="0.7"/>
+  <line x1="716" y1="110" x2="742" y2="110" class="stroke-2" stroke-width="0.5" opacity="0.7"/>
+  <line x1="716" y1="116" x2="738" y2="116" class="stroke-2" stroke-width="0.5" opacity="0.7"/>
+  <line x1="716" y1="122" x2="742" y2="122" class="stroke-2" stroke-width="0.5" opacity="0.7"/>
+
+  <!-- Entry 77 -->
+  <rect x="756" y="74" width="38" height="56" rx="2" fill="#7a4a15" fill-opacity="0.20" stroke="#7a4a15" stroke-width="0.7"/>
+  <text x="775" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">77</text>
+  <line x1="762" y1="104" x2="788" y2="104" class="stroke-2" stroke-width="0.5" opacity="0.8"/>
+  <line x1="762" y1="110" x2="788" y2="110" class="stroke-2" stroke-width="0.5" opacity="0.8"/>
+  <line x1="762" y1="116" x2="784" y2="116" class="stroke-2" stroke-width="0.5" opacity="0.8"/>
+  <line x1="762" y1="122" x2="788" y2="122" class="stroke-2" stroke-width="0.5" opacity="0.8"/>
+
+  <!-- Entry 78 (most recent, fully highlighted) -->
+  <rect x="802" y="74" width="38" height="56" rx="2" fill="#7a4a15" fill-opacity="0.28" stroke="#7a4a15" stroke-width="1"/>
+  <text x="821" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1" text-anchor="middle">78</text>
+  <line x1="808" y1="104" x2="834" y2="104" class="stroke-2" stroke-width="0.6" opacity="0.9"/>
+  <line x1="808" y1="110" x2="834" y2="110" class="stroke-2" stroke-width="0.6" opacity="0.9"/>
+  <line x1="808" y1="116" x2="830" y2="116" class="stroke-2" stroke-width="0.6" opacity="0.9"/>
+  <line x1="808" y1="122" x2="834" y2="122" class="stroke-2" stroke-width="0.6" opacity="0.9"/>
+
+  <!-- "next" placeholder -->
+  <text x="864" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="accent-2" text-anchor="middle">+</text>
+  <text x="864" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">79</text>
+
+  <!-- Bottom annotation -->
+  <text x="620" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">never delete - never reorder - newest entry always at the end</text>
+
+  <!-- Time arrow -->
+  <line x1="388" y1="160" x2="836" y2="160" class="stroke-2" stroke-width="0.6" opacity="0.4"/>
+  <polygon points="836,160 832,157 832,163" fill="#7a4a15" opacity="0.5"/>
+  <text x="388" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4">past</text>
+  <text x="836" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="6" font-weight="600" class="accent-2" text-anchor="end">now</text>
+</svg>

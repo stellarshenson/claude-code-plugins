@@ -1,0 +1,124 @@
+<!--
+  05_datascience_pipeline.svg - datascience plugin banner for README
+  Shows: left title block + right visual showing the standard notebook section
+  pipeline (Header -> GPU -> Imports -> Config -> Data -> Model -> Eval) plus
+  the project scaffolding bucket above.
+  Intent: communicate "standardised structure for notebooks AND projects".
+  Theme: Stellars-Tech (gold accent for datascience like in marketplace hero).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .stroke-2 { stroke: #7a4a15; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .stroke-2 { stroke: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox 900x200, margin 20
+    Left title:   x=20..238
+    Divider:      x=250
+    Right zone:   x=260..880
+      Top: project scaffolding row (y=42..82) - 5 directory chips
+      Mid: notebook section pipeline (y=98..146) - 7 boxes
+      Bot: section labels (y=160..180)
+  === -->
+
+  <!-- === LEFT TITLE ZONE === -->
+  <text x="20" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" class="fg-1">datascience</text>
+  <text x="20" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Notebooks + projects with structure</text>
+
+  <rect x="20" y="86" width="56" height="14" rx="2" fill="#7a4a15" fill-opacity="0.10"/>
+  <text x="48" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">COPIER</text>
+  <rect x="82" y="86" width="64" height="14" rx="2" fill="#7a4a15" fill-opacity="0.10"/>
+  <text x="114" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">JUPYTEXT</text>
+  <rect x="152" y="86" width="48" height="14" rx="2" fill="#7a4a15" fill-opacity="0.10"/>
+  <text x="176" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="fg-2" text-anchor="middle">RICH</text>
+
+  <text x="20" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">Standardised notebook</text>
+  <text x="20" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">structure + destructive</text>
+  <text x="20" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">style fix commands</text>
+
+  <text x="20" y="178" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-2" letter-spacing="1">/DATASCIENCE:NEW-PROJECT</text>
+
+  <line x1="250" y1="35" x2="250" y2="180" class="stroke-2" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- === RIGHT ZONE === -->
+  <text x="260" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-2" letter-spacing="1.5">PROJECT SCAFFOLD (copier-data-science)</text>
+
+  <!-- 5 dir chips: data/, notebooks/, src/, models/, reports/ -->
+  <!-- positions: x=260, 380, 500, 620, 740 ; w=110 h=22 -->
+  <rect x="260" y="52" width="110" height="22" rx="3" fill="#7a4a15" fill-opacity="0.06" stroke="#7a4a15" stroke-width="0.6"/>
+  <text x="315" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2" text-anchor="middle">data/</text>
+  <rect x="376" y="52" width="110" height="22" rx="3" fill="#7a4a15" fill-opacity="0.06" stroke="#7a4a15" stroke-width="0.6"/>
+  <text x="431" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2" text-anchor="middle">notebooks/</text>
+  <rect x="492" y="52" width="110" height="22" rx="3" fill="#7a4a15" fill-opacity="0.06" stroke="#7a4a15" stroke-width="0.6"/>
+  <text x="547" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2" text-anchor="middle">src/</text>
+  <rect x="608" y="52" width="110" height="22" rx="3" fill="#7a4a15" fill-opacity="0.06" stroke="#7a4a15" stroke-width="0.6"/>
+  <text x="663" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2" text-anchor="middle">models/</text>
+  <rect x="724" y="52" width="110" height="22" rx="3" fill="#7a4a15" fill-opacity="0.06" stroke="#7a4a15" stroke-width="0.6"/>
+  <text x="779" y="66" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="fg-2" text-anchor="middle">reports/</text>
+
+  <text x="260" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="accent-2" letter-spacing="1.5">NOTEBOOK SECTION ORDER</text>
+
+  <!-- 7 cells in pipeline: HEADER, GPU, IMPORTS, CONFIG, DATA, MODEL, EVAL -->
+  <!-- 78 wide, 11 gap; positions x=264, 353, 442, 531, 620, 709, 798 -->
+  <path d="M264,118 H342 V139 Q342,142 339,142 H267 Q264,142 264,139 Z" fill="#7a4a15" fill-opacity="0.06"/>
+  <path d="M264,118 H342 V139 Q342,142 339,142 H267 Q264,142 264,139 Z" fill="none" class="stroke-2" stroke-width="0.7"/>
+  <rect x="264" y="118" width="78" height="3" fill="#7a4a15" opacity="0.6"/>
+  <text x="303" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">HEADER</text>
+
+  <path d="M353,118 H431 V139 Q431,142 428,142 H356 Q353,142 353,139 Z" fill="#7a4a15" fill-opacity="0.06"/>
+  <path d="M353,118 H431 V139 Q431,142 428,142 H356 Q353,142 353,139 Z" fill="none" class="stroke-2" stroke-width="0.7"/>
+  <rect x="353" y="118" width="78" height="3" fill="#7a4a15" opacity="0.6"/>
+  <text x="392" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">GPU</text>
+
+  <path d="M442,118 H520 V139 Q520,142 517,142 H445 Q442,142 442,139 Z" fill="#7a4a15" fill-opacity="0.06"/>
+  <path d="M442,118 H520 V139 Q520,142 517,142 H445 Q442,142 442,139 Z" fill="none" class="stroke-2" stroke-width="0.7"/>
+  <rect x="442" y="118" width="78" height="3" fill="#7a4a15" opacity="0.6"/>
+  <text x="481" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">IMPORTS</text>
+
+  <path d="M531,118 H609 V139 Q609,142 606,142 H534 Q531,142 531,139 Z" fill="#7a4a15" fill-opacity="0.06"/>
+  <path d="M531,118 H609 V139 Q609,142 606,142 H534 Q531,142 531,139 Z" fill="none" class="stroke-2" stroke-width="0.7"/>
+  <rect x="531" y="118" width="78" height="3" fill="#7a4a15" opacity="0.6"/>
+  <text x="570" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">CONFIG</text>
+
+  <path d="M620,118 H698 V139 Q698,142 695,142 H623 Q620,142 620,139 Z" fill="#7a4a15" fill-opacity="0.06"/>
+  <path d="M620,118 H698 V139 Q698,142 695,142 H623 Q620,142 620,139 Z" fill="none" class="stroke-2" stroke-width="0.7"/>
+  <rect x="620" y="118" width="78" height="3" fill="#7a4a15" opacity="0.6"/>
+  <text x="659" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">DATA</text>
+
+  <path d="M709,118 H787 V139 Q787,142 784,142 H712 Q709,142 709,139 Z" fill="#7a4a15" fill-opacity="0.06"/>
+  <path d="M709,118 H787 V139 Q787,142 784,142 H712 Q709,142 709,139 Z" fill="none" class="stroke-2" stroke-width="0.7"/>
+  <rect x="709" y="118" width="78" height="3" fill="#7a4a15" opacity="0.6"/>
+  <text x="748" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">MODEL</text>
+
+  <path d="M798,118 H876 V139 Q876,142 873,142 H801 Q798,142 798,139 Z" fill="#7a4a15" fill-opacity="0.06"/>
+  <path d="M798,118 H876 V139 Q876,142 873,142 H801 Q798,142 798,139 Z" fill="none" class="stroke-2" stroke-width="0.7"/>
+  <rect x="798" y="118" width="78" height="3" fill="#7a4a15" opacity="0.6"/>
+  <text x="837" y="134" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2" text-anchor="middle">EVAL</text>
+
+  <!-- step labels under cells -->
+  <text x="303" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">title + author</text>
+  <text x="392" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">CUDA select</text>
+  <text x="481" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">grouped</text>
+  <text x="570" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">rich summary</text>
+  <text x="659" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">load + clean</text>
+  <text x="748" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">build + train</text>
+  <text x="837" y="158" font-family="Segoe UI, Arial, sans-serif" font-size="6" class="fg-4" text-anchor="middle">metrics</text>
+
+  <!-- bottom annotation -->
+  <text x="566" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="7" class="fg-4" text-anchor="middle">enforced by /datascience:fix-notebook  -  rich semantic colours throughout</text>
+</svg>

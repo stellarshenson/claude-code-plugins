@@ -6,6 +6,8 @@
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![Brought To You By KOLOMOLO](https://img.shields.io/badge/Brought%20To%20You%20By-KOLOMOLO-00ffff?style=flat)](https://kolomolo.com)
 
+<img alt="stellars-claude-code-plugins marketplace overview - 6 plugins grouped by category" src="assets/svg/01_marketplace_overview.svg" width="100%">
+
 A plugin marketplace for Claude Code providing structured workflows for software development, document analysis, data science, and project management. Each plugin is pure configuration (skills, commands, YAML) - install one or all depending on your needs.
 
 ```bash
@@ -29,6 +31,8 @@ The marketplace includes a shared YAML-driven orchestration engine (`autobuild`)
 | [journal](journal/) | Produces a work journal marking key changes, implementations, and decisions - append-only audit trail with continuous numbering and archiving |
 
 ## autobuild
+
+<img alt="autobuild 8-phase lifecycle: research, hypothesis, plan, implement, test, review, record, next" src="assets/svg/02_autobuild_phases.svg" width="100%">
 
 Runs structured multi-iteration development cycles where each iteration passes through a full phase lifecycle with quality gates. A program defines what to build, a benchmark measures progress, and the engine enforces the workflow until the objective is met or iterations are exhausted.
 
@@ -64,6 +68,8 @@ See [autobuild/README.md](autobuild/) for the full phase lifecycle, agent archit
 
 ## devils-advocate
 
+<img alt="devils-advocate Fibonacci risk matrix and sample concerns iterating to resolved" src="assets/svg/03_devils_advocate_scoring.svg" width="100%">
+
 Systematically critiques documents from the perspective of their toughest audience. Builds a devil persona, harvests verifiable facts, generates a risk-scored concern catalogue, and iterates corrections until residual risk is acceptable.
 
 **Skills**: `setup` (build persona + fact repository), `evaluate` (concern catalogue + baseline scorecard), `iterate` (apply corrections or re-score), `run` (full workflow end-to-end)
@@ -85,6 +91,8 @@ Risk scoring uses a Fibonacci scale (1-8) for likelihood and impact, producing r
 See [devils-advocate/README.md](devils-advocate/) for scoring formula details, artefact format, and the full concern catalogue methodology.
 
 ## svg-infographics
+
+<img alt="svg-infographics 6-phase workflow and 8 shipped CLI tools (validators + calculators)" src="assets/svg/04_svg_infographics_workflow.svg" width="100%">
 
 Creates production-quality SVG infographics with a mandatory 6-phase workflow (research, grid, scaffold, content, finishing, validation). Every coordinate is Python-calculated, every colour traces to an approved theme swatch, and five validation tools check overlaps, WCAG contrast, alignment, and connector quality before delivery.
 
@@ -112,6 +120,8 @@ Creates production-quality SVG infographics with a mandatory 6-phase workflow (r
 Includes 64 production SVG examples, 5 Python validation tools, and theme swatches. See [svg-infographics/README.md](svg-infographics/) for design principles and workflow details.
 
 ## datascience
+
+<img alt="datascience project scaffold and notebook section pipeline (header, GPU, imports, config, data, model, eval)" src="assets/svg/05_datascience_pipeline.svg" width="100%">
 
 Enforces data science project standards derived from production notebook workflows. Five skills auto-trigger when working with notebooks, datasets, rich output, prompts, or progress bars. Nine commands fix existing code, scaffold new projects, and apply prompt engineering techniques.
 
@@ -146,6 +156,8 @@ See [datascience/README.md](datascience/) for the full list of standards enforce
 
 ## journal
 
+<img alt="journal append-only timeline with archive and continuous numbering" src="assets/svg/07_journal_audit.svg" width="100%">
+
 Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers after substantive work to maintain a consistent audit trail in `.claude/JOURNAL.md`.
 
 **Skills**: `journal` (auto-triggered after substantive work)
@@ -166,6 +178,8 @@ Project journal management with append-only entry format, continuous numbering, 
 See [journal/README.md](journal/) for entry format, detail levels, and archiving rules.
 
 ## document-processing
+
+<img alt="document-processing 3-stage flow: sources, grounding, compliant cited output" src="assets/svg/06_document_processing_grounding.svg" width="100%">
 
 Structured document processing with source grounding and quality control. Takes input documents through a verified workflow (analyze, draft, ground, uniformize) and produces outputs where every factual claim is traceable to source material.
 
