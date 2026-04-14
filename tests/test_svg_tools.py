@@ -1385,9 +1385,15 @@ class TestSvgInfographicsCLI:
     def test_subcommand_help(self):
         """Each subcommand should accept --help."""
         for sub in ["overlaps", "contrast", "alignment", "connectors", "connector",
-                     "css", "primitives"]:
+                     "css", "primitives", "text-to-path"]:
             r = self._run(sub, "--help")
             assert r.returncode == 0, f"{sub} --help failed"
+
+    def test_text_to_path_listed_in_help(self):
+        """text-to-path must show up in the top-level help so users can discover it."""
+        r = self._run("--help")
+        assert "text-to-path" in r.stdout
+        assert "ON REQUEST" in r.stdout
 
     def test_css_subcommand(self, simple_svg):
         """css subcommand should run check_css."""
@@ -1730,3 +1736,213 @@ class TestCheckCSS:
             from stellars_claude_code_plugins.svg_tools.check_css import check_css_compliance
             violations, stats = check_css_compliance(str(svg))
             assert stats["light_classes"] > 0, f"No CSS classes in {svg.name}"
+
+
+# ---------------------------------------------------------------------------
+# text_to_path.py tests (on-request tool, requires fonttools)
+# ---------------------------------------------------------------------------
+
+
+# DejaVu Sans ships with most Linux distros and is what CI runners have.
+# If a future runner doesn't, the whole class is skipped rather than failed.
+_FONT_CANDIDATES = [
+    Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+    Path("/usr/share/fonts/dejavu/DejaVuSans.ttf"),
+    Path("/Library/Fonts/DejaVuSans.ttf"),
+]
+_SYSTEM_FONT = next((p for p in _FONT_CANDIDATES if p.exists()), None)
+
+pytest.importorskip(
+    "fontTools",
+    reason="text_to_path requires the [fonts] optional dependency",
+)
+
+
+@pytest.mark.skipif(_SYSTEM_FONT is None, reason="No system DejaVu Sans font available")
+class TestTextToPath:
+    """Tests for the on-request text -> SVG path tool."""
+
+    def test_basic_render_returns_path_element(self):
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        result = text_to_path("Hi", _SYSTEM_FONT, size=24, x=0, y=100)
+        assert result.svg.startswith("<path ")
+        assert result.svg.endswith("/>")
+        assert 'd="M' in result.svg  # path data starts with a moveto
+        assert "transform=" in result.svg
+        assert result.advance > 0
+        assert result.scale > 0
+
+    def test_baseline_y_matches_input(self):
+        """Y coord must be the baseline (matches SVG <text> semantics)."""
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        result = text_to_path("A", _SYSTEM_FONT, size=20, x=10, y=50)
+        # bbox top is above baseline (negative y direction in SVG coords)
+        assert result.bbox_y < 50
+        # bbox covers the baseline
+        assert result.bbox_y + result.bbox_height > 50
+
+    def test_anchor_middle_centers_horizontally(self):
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        start = text_to_path("Hello", _SYSTEM_FONT, size=24, x=200, y=100, anchor="start")
+        middle = text_to_path("Hello", _SYSTEM_FONT, size=24, x=200, y=100, anchor="middle")
+        end = text_to_path("Hello", _SYSTEM_FONT, size=24, x=200, y=100, anchor="end")
+
+        assert start.advance == pytest.approx(middle.advance)
+        assert start.advance == pytest.approx(end.advance)
+        # Origin of the middle-anchored result is half a width left of x
+        assert middle.bbox_x == pytest.approx(200 - start.advance / 2, abs=0.01)
+        assert end.bbox_x == pytest.approx(200 - start.advance, abs=0.01)
+        assert start.bbox_x == pytest.approx(200, abs=0.01)
+
+    def test_fit_width_scales_down_uniformly(self):
+        """When fit_width < natural advance, scale must shrink proportionally."""
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        natural = text_to_path("HELLO WORLD", _SYSTEM_FONT, size=48, x=0, y=0)
+        constrained = text_to_path(
+            "HELLO WORLD", _SYSTEM_FONT, size=48, x=0, y=0, fit_width=natural.advance / 4
+        )
+        assert constrained.advance == pytest.approx(natural.advance / 4, abs=0.5)
+        assert constrained.scale < natural.scale
+        # Aspect must be preserved: scale ratio matches advance ratio
+        assert constrained.scale / natural.scale == pytest.approx(0.25, rel=0.01)
+
+    def test_fit_width_no_op_when_natural_fits(self):
+        """fit_width must NOT scale up - only shrink when needed."""
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        natural = text_to_path("Hi", _SYSTEM_FONT, size=12, x=0, y=0)
+        constrained = text_to_path(
+            "Hi", _SYSTEM_FONT, size=12, x=0, y=0, fit_width=natural.advance * 10
+        )
+        assert constrained.scale == pytest.approx(natural.scale)
+        assert constrained.advance == pytest.approx(natural.advance)
+
+    def test_fill_attribute_emitted(self):
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        result = text_to_path("X", _SYSTEM_FONT, size=20, x=0, y=0, fill="#ff0000")
+        assert 'fill="#ff0000"' in result.svg
+
+    def test_css_class_attribute_emitted(self):
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        result = text_to_path("X", _SYSTEM_FONT, size=20, x=0, y=0, css_class="headline")
+        assert 'class="headline"' in result.svg
+
+    def test_no_fill_no_class_inherits(self):
+        """Path with neither fill nor class should rely on inherited styling."""
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        result = text_to_path("X", _SYSTEM_FONT, size=20, x=0, y=0)
+        assert "fill=" not in result.svg
+        assert "class=" not in result.svg
+
+    def test_invalid_anchor_rejected(self):
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        with pytest.raises(ValueError, match="anchor"):
+            text_to_path("X", _SYSTEM_FONT, size=20, anchor="left")
+
+    def test_invalid_size_rejected(self):
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        with pytest.raises(ValueError, match="size"):
+            text_to_path("X", _SYSTEM_FONT, size=0)
+
+    def test_invalid_fit_width_rejected(self):
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        with pytest.raises(ValueError, match="fit_width"):
+            text_to_path("X", _SYSTEM_FONT, size=20, fit_width=-5)
+
+    def test_unicode_falls_back_to_notdef(self):
+        """Characters not in cmap must not crash - they get the .notdef glyph."""
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        # U+10FFFD is a private-use codepoint, vanishingly unlikely to be in DejaVu
+        result = text_to_path("\U0010fffd", _SYSTEM_FONT, size=20)
+        assert result.svg.startswith("<path ")
+
+    def test_path_is_valid_svg_when_wrapped(self, tmp_path):
+        """Round-trip: emitted path inside a real SVG must parse cleanly."""
+        import xml.etree.ElementTree as ET
+
+        from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
+        result = text_to_path("Test", _SYSTEM_FONT, size=24, x=20, y=60, fill="#222")
+        wrapper = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">'
+            f"{result.svg}"
+            "</svg>"
+        )
+        out = tmp_path / "wrapped.svg"
+        out.write_text(wrapper)
+        # Parsing should not raise
+        tree = ET.parse(out)
+        paths = tree.getroot().findall("{http://www.w3.org/2000/svg}path")
+        assert len(paths) == 1
+
+    def test_cli_subcommand_smoke(self):
+        """Unified CLI must dispatch to text_to_path and emit a <path>."""
+        cli = (
+            Path(__file__).resolve().parent.parent
+            / "stellars_claude_code_plugins" / "svg_tools" / "cli.py"
+        )
+        r = subprocess.run(
+            [
+                sys.executable, str(cli), "text-to-path",
+                "--text", "OK",
+                "--font", str(_SYSTEM_FONT),
+                "--size", "16",
+                "--x", "10", "--y", "30",
+                "--anchor", "middle",
+                "--fill", "#222",
+            ],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "<path " in r.stdout
+        assert 'fill="#222"' in r.stdout
+
+    def test_cli_json_output_is_parseable(self):
+        """--json mode must emit a parseable dict with bbox + svg."""
+        import json as _json
+
+        cli = (
+            Path(__file__).resolve().parent.parent
+            / "stellars_claude_code_plugins" / "svg_tools" / "cli.py"
+        )
+        r = subprocess.run(
+            [
+                sys.executable, str(cli), "text-to-path",
+                "--text", "OK",
+                "--font", str(_SYSTEM_FONT),
+                "--size", "20", "--json",
+            ],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        data = _json.loads(r.stdout)
+        assert "svg" in data
+        assert "bbox_width" in data
+        assert data["bbox_width"] > 0
+
+    def test_cli_missing_font_exits_nonzero(self, tmp_path):
+        cli = (
+            Path(__file__).resolve().parent.parent
+            / "stellars_claude_code_plugins" / "svg_tools" / "cli.py"
+        )
+        r = subprocess.run(
+            [
+                sys.executable, str(cli), "text-to-path",
+                "--text", "X",
+                "--font", str(tmp_path / "nope.ttf"),
+            ],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 2
+        assert "not found" in r.stderr

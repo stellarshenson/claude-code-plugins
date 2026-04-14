@@ -13,6 +13,7 @@ Usage:
     svg-infographics primitives rect --x 20 --y 30 --width 200 --height 100
     svg-infographics primitives spline --points "80,200 150,80 300,120 450,60"
     svg-infographics primitives axis --origin 80,200 --length 400 --axes xyz --ticks 5
+    svg-infographics text-to-path --text "Hello" --font path/to/Inter.ttf --size 24 --x 100 --y 200
 """
 
 import sys
@@ -51,6 +52,11 @@ SUBCOMMANDS = {
     "geom": (
         "calc_geometry",
         "CALC sketch constraints: attachment points, midpoint, tangent, intersection, offset, evenly-spaced, polar, bisector. The Fusion-360 toolkit.",
+    ),
+    # ---- ON-REQUEST ONLY (requires `[fonts]` extra) ----
+    "text-to-path": (
+        "text_to_path",
+        "ON REQUEST: convert text + TTF/OTF font into SVG <path> outlines. Embeds text without font dependency. Requires 'pip install stellars-claude-code-plugins[fonts]'.",
     ),
 }
 

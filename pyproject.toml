@@ -25,12 +25,16 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "build",
+    "fonttools",
     "ipython",
     "pip",
     "pytest",
     "pytest-cov",
     "ruff",
     "twine",
+]
+fonts = [
+    "fonttools",
 ]
 
 [project.scripts]

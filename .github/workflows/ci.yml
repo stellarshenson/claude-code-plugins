@@ -43,9 +43,9 @@ jobs:
       - name: Validate YAML model
         run: |
           .venv/bin/python -c "
-          from stellars_claude_code_plugins.engine.model import load_model, validate_model
+          from stellars_claude_code_plugins.autobuild.model import load_model, validate_model
           from pathlib import Path
-          model = load_model(Path('stellars_claude_code_plugins/engine/resources'))
+          model = load_model(Path('stellars_claude_code_plugins/autobuild/resources'))
           issues = validate_model(model)
           assert not issues, f'Validation failed: {issues}'
           print('Model validation: OK')
@@ -90,9 +90,9 @@ jobs:
       - name: Install from wheel and verify
         run: |
           pip install stellars_claude_code_plugins*.whl
-          python -c "from stellars_claude_code_plugins.engine.orchestrator import main; print('Import OK')"
-          python -c "from stellars_claude_code_plugins.engine.model import load_model; print('Model import OK')"
-          python -c "from stellars_claude_code_plugins.engine.fsm import FSM; print('FSM import OK')"
+          python -c "from stellars_claude_code_plugins.autobuild.orchestrator import main; print('Import OK')"
+          python -c "from stellars_claude_code_plugins.autobuild.model import load_model; print('Model import OK')"
+          python -c "from stellars_claude_code_plugins.autobuild.fsm import FSM; print('FSM import OK')"
           orchestrate --help
 
   check-links:
