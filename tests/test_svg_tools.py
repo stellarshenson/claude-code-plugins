@@ -255,7 +255,7 @@ class TestCalcConnectorModule:
         regions = find_empty_regions(
             canvas=(0, 0, 400, 300),
             shapes=[(100, 100, 80, 60), (250, 150, 80, 60)],
-            coarse_divisions=8, max_depth=2,
+            coarse_divisions=8, max_depth=2, tolerance=0,
         )
         assert len(regions) >= 1
         biggest = regions[0]
@@ -267,6 +267,7 @@ class TestCalcConnectorModule:
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
         regions = find_empty_regions(
             canvas=(0, 0, 100, 100), shapes=[], coarse_divisions=4, max_depth=1,
+            tolerance=0,
         )
         assert len(regions) == 1
         assert abs(regions[0]["area"] - 10000) < 100
@@ -277,7 +278,7 @@ class TestCalcConnectorModule:
         regions = find_empty_regions(
             canvas=(0, 0, 400, 300),
             shapes=[(50, 50, 80, 60), (250, 50, 80, 60), (150, 200, 80, 60)],
-            coarse_divisions=8, max_depth=2,
+            coarse_divisions=8, max_depth=2, tolerance=0,
         )
         if len(regions) >= 2:
             for i in range(len(regions) - 1):
@@ -288,7 +289,7 @@ class TestCalcConnectorModule:
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
         regions = find_empty_regions(
             canvas=(0, 0, 100, 100), shapes=[(0, 0, 100, 100)],
-            coarse_divisions=4, max_depth=3,
+            coarse_divisions=4, max_depth=3, tolerance=0,
         )
         assert regions == []
 
@@ -299,7 +300,7 @@ class TestCalcConnectorModule:
         triangle = [(100, 100), (200, 100), (150, 200)]
         regions = find_empty_regions(
             canvas=(0, 0, 300, 300), shapes=[triangle],
-            coarse_divisions=6, max_depth=2,
+            coarse_divisions=6, max_depth=2, tolerance=0,
         )
         assert len(regions) >= 1
         # The free area should be close to canvas area minus triangle area
@@ -315,11 +316,11 @@ class TestCalcConnectorModule:
         shapes = [(0, 0, 80, 100)]
         regions_d0 = find_empty_regions(
             canvas=(0, 0, 100, 100), shapes=shapes,
-            coarse_divisions=4, max_depth=0, simplify_tolerance=0,
+            coarse_divisions=4, max_depth=0, simplify_tolerance=0, tolerance=0,
         )
         regions_d3 = find_empty_regions(
             canvas=(0, 0, 100, 100), shapes=shapes,
-            coarse_divisions=4, max_depth=3, simplify_tolerance=0,
+            coarse_divisions=4, max_depth=3, simplify_tolerance=0, tolerance=0,
         )
         # At depth 0, the 4x4 coarse grid has 25x25 cells. The partially-
         # overlapping boundary cells at x=75..100 are marked occupied without
@@ -342,11 +343,11 @@ class TestCalcConnectorModule:
         shapes = [(100, 100, 50, 50), (200, 100, 50, 50), (150, 200, 50, 50)]
         r_no_simp = find_empty_regions(
             canvas=(0, 0, 400, 300), shapes=shapes,
-            coarse_divisions=8, max_depth=2, simplify_tolerance=0,
+            coarse_divisions=8, max_depth=2, simplify_tolerance=0, tolerance=0,
         )
         r_simp = find_empty_regions(
             canvas=(0, 0, 400, 300), shapes=shapes,
-            coarse_divisions=8, max_depth=2, simplify_tolerance=10,
+            coarse_divisions=8, max_depth=2, simplify_tolerance=10, tolerance=0,
         )
         if r_no_simp and r_simp:
             assert len(r_simp[0]["boundary"]) <= len(r_no_simp[0]["boundary"])
@@ -357,12 +358,91 @@ class TestCalcConnectorModule:
         regions = find_empty_regions(
             canvas=(10, 20, 200, 150),
             shapes=[(50, 50, 30, 30)],
-            coarse_divisions=6, max_depth=2,
+            coarse_divisions=6, max_depth=2, tolerance=0,
         )
         for r in regions:
             for x, y in r["boundary"]:
                 assert 10 - 0.01 <= x <= 210 + 0.01
                 assert 20 - 0.01 <= y <= 170 + 0.01
+
+    def test_empty_space_tolerance_shrinks_regions(self):
+        """tolerance>0 erodes each free region inward by that distance."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        r0 = find_empty_regions(
+            canvas=(0, 0, 400, 300), shapes=[(150, 100, 100, 80)],
+            coarse_divisions=8, max_depth=2, tolerance=0,
+        )
+        r20 = find_empty_regions(
+            canvas=(0, 0, 400, 300), shapes=[(150, 100, 100, 80)],
+            coarse_divisions=8, max_depth=2, tolerance=20,
+        )
+        assert r0 and r20
+        # Eroded area is strictly less than untrimmed
+        assert r20[0]["area"] < r0[0]["area"]
+        # Eroded boundary sits at least ~20px inside the canvas edges
+        for x, y in r20[0]["boundary"]:
+            assert x >= 20 - 0.5
+            assert y >= 20 - 0.5
+            assert x <= 380 + 0.5
+            assert y <= 280 + 0.5
+
+    def test_empty_space_tolerance_drops_thin_regions(self):
+        """A thin free strip narrower than 2*tolerance erodes to nothing."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        # 400x300 canvas with a shape leaving only a 10px wide right strip
+        regions = find_empty_regions(
+            canvas=(0, 0, 400, 300), shapes=[(0, 0, 390, 300)],
+            coarse_divisions=8, max_depth=3, tolerance=20,
+        )
+        # After 20px inward erosion, no point survives - strip is too thin
+        assert regions == []
+
+    def test_empty_space_default_tolerance_is_20(self):
+        """Default tolerance should be 20px (callout minimum)."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        # Large open canvas, no shapes - with default tolerance the region
+        # should be shrunk by 20px on every side
+        regions = find_empty_regions(
+            canvas=(0, 0, 400, 300), shapes=[],
+            coarse_divisions=4, max_depth=1,
+        )
+        assert len(regions) == 1
+        # Eroded rect = (20, 20, 360, 260) = 93600 px^2
+        assert 90000 < regions[0]["area"] < 95000
+
+    def test_empty_space_min_area_drops_tiny_islands(self):
+        """min_area discards slivers too small to fit a callout bbox."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        # Canvas with shapes leaving several regions of varying sizes
+        shapes = [
+            (50, 50, 280, 60),   # upper band
+            (50, 130, 280, 60),  # middle band
+            (50, 210, 280, 60),  # lower band - leaves 20px gaps
+        ]
+        r_all = find_empty_regions(
+            canvas=(0, 0, 400, 300), shapes=shapes,
+            coarse_divisions=10, max_depth=2, tolerance=0, min_area=0,
+        )
+        r_big = find_empty_regions(
+            canvas=(0, 0, 400, 300), shapes=shapes,
+            coarse_divisions=10, max_depth=2, tolerance=0, min_area=2000,
+        )
+        assert len(r_big) <= len(r_all)
+        assert all(r["area"] >= 2000 for r in r_big)
+
+    def test_empty_space_default_max_depth_is_3(self):
+        """Default max_depth should be 3."""
+        import inspect
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        sig = inspect.signature(find_empty_regions)
+        assert sig.parameters["max_depth"].default == 3
+
+    def test_empty_space_default_min_area_is_500(self):
+        """Default min_area should be 500 px^2 (callout minimum fit)."""
+        import inspect
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        sig = inspect.signature(find_empty_regions)
+        assert sig.parameters["min_area"].default == 500.0
 
     def test_empty_space_cli_outputs_svg(self):
         """CLI end-to-end renders an SVG debug snippet for the regions."""
@@ -1403,6 +1483,118 @@ class TestGeometryViaUnifiedCli:
         assert "Midpoint: (50.00, 100.00)" in r.stdout
 
 
+class TestGeometryContains:
+    """geometry_in_polygon - containment + convex-safety."""
+
+    SQUARE = [(0, 0), (100, 0), (100, 100), (0, 100)]
+    # U-shape: 0..100 wide, 100 tall, with a 20-wide notch cut down from y=100
+    # to y=40 between x=40 and x=60
+    U_SHAPE = [
+        (0, 0), (100, 0), (100, 100),
+        (60, 100), (60, 40), (40, 40), (40, 100),
+        (0, 100),
+    ]
+
+    def test_point_inside_square(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import geometry_in_polygon
+        r = geometry_in_polygon(("point", (50, 50)), self.SQUARE)
+        assert r["contained"] and r["convex_safe"]
+
+    def test_point_outside_square(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import geometry_in_polygon
+        r = geometry_in_polygon(("point", (150, 50)), self.SQUARE)
+        assert not r["contained"] and not r["convex_safe"]
+
+    def test_bbox_fully_inside(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import geometry_in_polygon
+        r = geometry_in_polygon(("bbox", (10, 10, 80, 80)), self.SQUARE)
+        assert r["contained"] and r["convex_safe"]
+
+    def test_bbox_straddling_boundary(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import geometry_in_polygon
+        r = geometry_in_polygon(("bbox", (80, 80, 50, 50)), self.SQUARE)
+        assert not r["contained"]
+
+    def test_line_fully_inside_square(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import geometry_in_polygon
+        r = geometry_in_polygon(("line", ((10, 10), (90, 90))), self.SQUARE)
+        assert r["contained"] and r["convex_safe"]
+
+    def test_two_points_inside_concave_but_line_exits(self):
+        """Concave container: both endpoints inside but line cuts through notch."""
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import geometry_in_polygon
+        # (20,70) and (80,70) both inside U, straight line at y=70 passes
+        # through the notch (x=40..60 at y>=40 is outside the polygon)
+        r = geometry_in_polygon(("line", ((20, 70), (80, 70))), self.U_SHAPE)
+        assert not r["contained"]
+
+    def test_convex_safe_detects_concave_diagonal(self):
+        """Polyline goes around the notch (left leg → bottom → right leg) so
+        every individual segment stays inside the U. The convex hull of the
+        four endpoints, however, is the 60x60 rect that encloses the notch
+        and is NOT covered. exit_segments should flag the top chord."""
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import geometry_in_polygon
+        r = geometry_in_polygon(
+            ("polyline", [(20, 90), (20, 30), (80, 30), (80, 90)]),
+            self.U_SHAPE,
+        )
+        assert r["contained"]
+        assert not r["convex_safe"]
+        assert r["exit_segments"], "expected at least one exiting diagonal"
+
+    def test_inner_polygon_inside(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import geometry_in_polygon
+        r = geometry_in_polygon(
+            ("polygon", [(10, 10), (90, 10), (90, 90), (10, 90)]),
+            self.SQUARE,
+        )
+        assert r["contained"] and r["convex_safe"]
+
+    def test_rect_ray_exit_right_side(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import rect_ray_exit
+        # Rect centre (50, 50), ray toward (200, 50) → exits right edge at (100, 50)
+        px, py = rect_ray_exit((0, 0, 100, 100), (200, 50))
+        assert abs(px - 100) < 1e-6 and abs(py - 50) < 1e-6
+
+    def test_rect_ray_exit_bottom_side(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import rect_ray_exit
+        px, py = rect_ray_exit((0, 0, 100, 100), (50, 300))
+        assert abs(px - 50) < 1e-6 and abs(py - 100) < 1e-6
+
+    def test_rect_ray_exit_diagonal(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import rect_ray_exit
+        # Ray from (50, 50) toward (150, 150) - 45° exit through bottom-right corner
+        px, py = rect_ray_exit((0, 0, 100, 100), (150, 150))
+        assert abs(px - 100) < 1e-6 and abs(py - 100) < 1e-6
+
+    def test_rect_ray_exit_degenerate_raises(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import rect_ray_exit
+        import pytest
+        with pytest.raises(ValueError):
+            rect_ray_exit((0, 0, 100, 100), (50, 50))
+
+    def test_cli_geom_rect_edge(self):
+        r = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "cli.py"), "geom", "rect-edge",
+             "--rect", "0,0,100,100", "--from", "200,50"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "Edge point:  (100.00, 50.00)" in r.stdout
+
+    def test_cli_geom_contains_reports_all_fields(self):
+        r = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "cli.py"), "geom", "contains",
+             "--polygon", "[(0,0),(100,0),(100,100),(60,100),(60,40),(40,40),(40,100),(0,100)]",
+             "--line", "20,70,80,70"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "contained=NO" in r.stdout
+        assert "convex-safe=NO" in r.stdout
+        assert "exit:" in r.stdout
+
+
 # ---------------------------------------------------------------------------
 # check_contrast.py tests
 # ---------------------------------------------------------------------------
@@ -1718,6 +1910,137 @@ class TestCheckOverlaps:
         self._run(test_svg, "--inject-bounds")
         r = self._run(test_svg, "--strip-bounds")
         assert r.returncode == 0
+
+
+class TestCalloutCollision:
+    """Tests for callout cross-collision detection (leader + text across callouts)."""
+
+    CALLOUT_STYLE = (
+        '<style>\n'
+        '.callout-text { font-family: Segoe UI; font-size: 8.5px; font-style: italic; }\n'
+        '.callout-line { fill: none; stroke: #7a4a15; stroke-width: 1; }\n'
+        '</style>\n'
+    )
+
+    def _svg(self, tmp_path, body, viewbox="0 0 400 300"):
+        from pathlib import Path
+        p = Path(tmp_path) / "callouts.svg"
+        p.write_text(
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}">\n'
+            f'{self.CALLOUT_STYLE}{body}\n</svg>\n'
+        )
+        return str(p)
+
+    def test_parse_callouts_extracts_line_leaders(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.check_overlaps import parse_callouts
+        svg = self._svg(tmp_path, (
+            '<g id="callout-a">\n'
+            '  <text x="100" y="50" class="callout-text">hello</text>\n'
+            '  <line x1="100" y1="55" x2="150" y2="90" class="callout-line"/>\n'
+            '</g>\n'
+        ))
+        callouts = parse_callouts(svg)
+        assert len(callouts) == 1
+        assert callouts[0]["id"] == "callout-a"
+        assert callouts[0]["text_bbox"] is not None
+        assert callouts[0]["leaders"] == [((100.0, 55.0), (150.0, 90.0))]
+
+    def test_parse_callouts_handles_path_leaders(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.check_overlaps import parse_callouts
+        svg = self._svg(tmp_path, (
+            '<g id="callout-b">\n'
+            '  <text x="200" y="100" class="callout-text">world</text>\n'
+            '  <path d="M 200 105 L 240 130 L 260 150" class="callout-line"/>\n'
+            '</g>\n'
+        ))
+        callouts = parse_callouts(svg)
+        assert len(callouts) == 1
+        assert len(callouts[0]["leaders"]) == 2
+
+    def test_clean_callouts_no_violations(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.check_overlaps import check_callouts
+        svg = self._svg(tmp_path, (
+            '<g id="callout-a">\n'
+            '  <text x="20" y="30" class="callout-text">left</text>\n'
+            '  <line x1="20" y1="35" x2="40" y2="45" class="callout-line"/>\n'
+            '</g>\n'
+            '<g id="callout-b">\n'
+            '  <text x="300" y="200" class="callout-text">right</text>\n'
+            '  <line x1="300" y1="205" x2="270" y2="180" class="callout-line"/>\n'
+            '</g>\n'
+        ))
+        violations = check_callouts(svg)
+        assert violations == []
+
+    def test_leader_crosses_other_text_bbox(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.check_overlaps import check_callouts
+        # callout-b's leader sweeps through callout-a's text bbox
+        svg = self._svg(tmp_path, (
+            '<g id="callout-a">\n'
+            '  <text x="100" y="50" class="callout-text">aaa</text>\n'
+            '  <line x1="100" y1="55" x2="80" y2="80" class="callout-line"/>\n'
+            '</g>\n'
+            '<g id="callout-b">\n'
+            '  <text x="300" y="200" class="callout-text">bbb</text>\n'
+            '  <line x1="300" y1="205" x2="105" y2="48" class="callout-line"/>\n'
+            '</g>\n'
+        ))
+        violations = check_callouts(svg)
+        assert any("crosses text of callout-a" in v for v in violations)
+
+    def test_leaders_cross_each_other(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.check_overlaps import check_callouts
+        svg = self._svg(tmp_path, (
+            '<g id="callout-a">\n'
+            '  <text x="20" y="20" class="callout-text">a</text>\n'
+            '  <line x1="20" y1="25" x2="200" y2="200" class="callout-line"/>\n'
+            '</g>\n'
+            '<g id="callout-b">\n'
+            '  <text x="300" y="20" class="callout-text">b</text>\n'
+            '  <line x1="300" y1="25" x2="100" y2="200" class="callout-line"/>\n'
+            '</g>\n'
+        ))
+        violations = check_callouts(svg)
+        assert any("crosses leader" in v for v in violations)
+
+    def test_text_bboxes_overlap(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.check_overlaps import check_callouts
+        svg = self._svg(tmp_path, (
+            '<g id="callout-a">\n'
+            '  <text x="100" y="100" class="callout-text">overlap</text>\n'
+            '  <line x1="100" y1="105" x2="80" y2="120" class="callout-line"/>\n'
+            '</g>\n'
+            '<g id="callout-b">\n'
+            '  <text x="105" y="102" class="callout-text">same</text>\n'
+            '  <line x1="105" y1="107" x2="130" y2="120" class="callout-line"/>\n'
+            '</g>\n'
+        ))
+        violations = check_callouts(svg)
+        assert any("text of callout-a overlaps text of callout-b" in v for v in violations)
+
+    def test_empty_svg_no_callouts(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.check_overlaps import check_callouts
+        svg = self._svg(tmp_path, '<rect x="0" y="0" width="10" height="10"/>')
+        assert check_callouts(svg) == []
+
+    def test_cli_reports_callout_section(self, tmp_path):
+        svg = self._svg(tmp_path, (
+            '<g id="callout-a">\n'
+            '  <text x="20" y="20" class="callout-text">a</text>\n'
+            '  <line x1="20" y1="25" x2="200" y2="200" class="callout-line"/>\n'
+            '</g>\n'
+            '<g id="callout-b">\n'
+            '  <text x="300" y="20" class="callout-text">b</text>\n'
+            '  <line x1="300" y1="25" x2="100" y2="200" class="callout-line"/>\n'
+            '</g>\n'
+        ))
+        result = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "check_overlaps.py"), "--svg", svg],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0
+        assert "CALLOUT CROSS-COLLISIONS" in result.stdout
+        assert "crosses leader" in result.stdout
 
 
 # ---------------------------------------------------------------------------

@@ -316,27 +316,36 @@ Never eyeball endpoint coords. Use `primitives <shape>` for named anchors, `geom
 
 ### Callout placement rules
 
-Callout = leader line + italic text annotating element. Five rules:
+Callout = leader line + italic text annotating element. Six rules:
 
 1. Text in empty zone, close to target. Close-but-clear > far-but-safe.
 2. Leader should not cross any shapes or edges. If unavoidable, minimise crossings (pick the route with the fewest).
 3. Leader length: short-but-not-too-short. Long enough to clear the text bbox and reach the target with a visible angle; short enough that the reader's eye follows it in one glance.
 4. Text must not overlap own connector. Even if leader clean, text bbox must sit in empty space.
 5. Callouts must not overlap each other. Stack in one zone or distribute.
+6. Leader anchor stops `standoff` px short of text bbox. Never glue to bbox edge, never enter bbox interior. Compute: `svg-infographics geom offset-rect --rect <text-bbox> --by <standoff>` (inflate), then `svg-infographics geom rect-edge --rect <inflated> --from <target>` returns anchor point. Default standoff 3px.
 
 ### Callout construction workflow
 
-5 steps per callout:
+7 steps per callout (two audit gates - pre-placement and post-placement):
 
-1. Empty space islands: `svg-infographics empty-space --canvas ... --shapes [...]` → boundary polygons per free island.
-2. Text bbox: width ≈ `len(text) * font_size * 0.55`, height ≈ `font_size + 2` per line. Stack lines if multi-line.
-3. Best placement: for each island, check text bbox fits AND candidate leader from bbox edge to target obeys rule 2 (minimal crossings). Prefer islands closest to target.
-4. Leader audit: no shape crossings. If unavoidable, pick fewest. Short-but-not-too-short per rule 3.
-5. Render text at chosen position, draw leader. Bbox was scaffold, discard.
+1. **Pre-audit existing callouts**: `svg-infographics overlaps --svg file.svg` reports a CALLOUT CROSS-COLLISIONS section. Any prior leader/text overlap must be resolved before adding new callouts - stacking new work on top of broken layout wastes iterations.
+2. **Empty space islands**: `svg-infographics empty-space --canvas ... --shapes [...] --tolerance 20` → boundary polygons per free island, each shrunk inward by 20px. `--tolerance 20` is the minimum for callouts; anything smaller lets leaders clip adjacent shapes. Larger values (25-30) for denser scenes.
+3. **Text bbox**: width ≈ `len(text) * font_size * 0.55`, height ≈ `font_size + 2` per line. Stack lines if multi-line.
+4. **Best placement**: for each island, verify text bbox fits via `svg-infographics geom contains --polygon <island> --bbox <text-bbox>` - use returned polygon boundary, NEVER its axis-aligned bbox (islands can be L-shaped or horseshoe; text dropped in an empty sub-rectangle of the bbox may land inside an occluded shape). `contained=YES convex-safe=YES` is the pass condition. Then audit leader vs ALL hard shapes (not just the island) - leader may start inside the shape containing target but must not touch any other shape. Prefer islands closest to target, ties broken by shortest leader.
+
+   **Iterate callouts**: place one at a time, then add its text bbox to the hard-shape list before placing the next. Skipping this step causes the next placement to land on top of the previous one - caught by step 7's post-audit but wastes iteration cycles.
+
+   **Strand bboxes**: when a manifold scene passes curved strand bundles as `empty-space` shapes, keep the bbox tight around the actual curve envelope, not the whole rectangle of strand endpoints. Loose strand bboxes over-erode the island interior under `--tolerance 20` and leave only thin slivers, pushing callouts far from their targets.
+5. **Leader audit**: no shape crossings. If unavoidable, pick fewest. Short-but-not-too-short per rule 3.
+6. **Render** text at chosen position, draw leader. Bbox was scaffold, discard.
+7. **Post-audit**: re-run `svg-infographics overlaps --svg file.svg`. The CALLOUT CROSS-COLLISIONS section must be clean (no "leader of X crosses text of Y", "leader of X crosses leader of Y", "text of X overlaps text of Y"). Also re-check general overlaps against all other geometry. Any violation means the placement failed - reposition and repeat.
 
 **Shapes for empty-space input**: every visible element counts — cards, strand paths (as bboxes or sample polylines), existing callouts, title+subtitle+label text (as bboxes), legend, dividers. ALL texts participate as their bounding boxes so nothing else lands on top of them. Text bbox: `(x - pad, y_baseline - font_size, width + 2·pad, font_size + 2·pad)` with `pad=2`.
 
-`empty-space` tool does step 1 + part of 3. Optional: `geom offset-polygon --direction inward --distance 4` to shrink each island by standoff before fitting.
+`empty-space` does steps 2 + part of 4 (`--tolerance` replaces the optional `geom offset-polygon --direction inward` pass - handle it in one call).
+
+**`empty-space` not callout-only**: any "where to put X without overlapping Y" question. Legends, badges, secondary labels, logos, icons, decorative imagery, orphan annotations. Pass geometry as `shapes`, pick largest island, drop element. Saves iteration cycles on layouts clean in isolation but colliding when assembled.
 
 **Empty zones for manifold scenes** (highest yield first):
 
@@ -345,7 +354,10 @@ Callout = leader line + italic text annotating element. Five rules:
 - Gaps between src/sink rows (~18-20px, one line each)
 - Above title row, below last row of cards
 
-**Audit**: `svg-infographics collide` on callout leaders + shape rects catches crossings; run before shipping, reposition offenders.
+**Audit gates** (both mandatory):
+
+- `svg-infographics overlaps --svg file.svg` — the CALLOUT CROSS-COLLISIONS section checks leader-vs-other-callout-text, leader-vs-leader, and text-bbox-vs-text-bbox pairwise across all `<g id="callout-*">` groups. Run before (no-regression baseline) and after (acceptance gate).
+- `svg-infographics collide` on callout leaders + shape rects catches crossings against non-callout geometry; run before shipping, reposition offenders.
 
 ### Angular Arrow Design (Chamfered L-Routing)
 

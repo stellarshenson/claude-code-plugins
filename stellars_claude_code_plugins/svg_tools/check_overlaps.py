@@ -1076,6 +1076,238 @@ def generate_bounds_overlay(elements: list[Element], dividers: list[Element]) ->
 
 
 # ---------------------------------------------------------------------------
+# Callout cross-collision check
+# ---------------------------------------------------------------------------
+
+
+def _parse_path_segments(d: str) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    """Extract straight-line segments from an SVG `d` attribute (M/L/H/V/Z only).
+
+    Curves are approximated by their endpoints. Adequate for leader lines which
+    are conventionally straight or L-shaped.
+    """
+    tokens = re.findall(r"[MLHVZmlhvz]|-?\d+\.?\d*(?:[eE][-+]?\d+)?", d or "")
+    segs: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    x = y = 0.0
+    start_x = start_y = 0.0
+    i = 0
+    cmd = None
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok.isalpha():
+            cmd = tok
+            i += 1
+            continue
+        if cmd in ("M", "m"):
+            nx = float(tokens[i])
+            ny = float(tokens[i + 1])
+            if cmd == "m":
+                nx += x
+                ny += y
+            x, y = nx, ny
+            start_x, start_y = x, y
+            i += 2
+            cmd = "L" if cmd == "M" else "l"
+        elif cmd in ("L", "l"):
+            nx = float(tokens[i])
+            ny = float(tokens[i + 1])
+            if cmd == "l":
+                nx += x
+                ny += y
+            segs.append(((x, y), (nx, ny)))
+            x, y = nx, ny
+            i += 2
+        elif cmd in ("H", "h"):
+            nx = float(tokens[i])
+            if cmd == "h":
+                nx += x
+            segs.append(((x, y), (nx, y)))
+            x = nx
+            i += 1
+        elif cmd in ("V", "v"):
+            ny = float(tokens[i])
+            if cmd == "v":
+                ny += y
+            segs.append(((x, y), (x, ny)))
+            y = ny
+            i += 1
+        elif cmd in ("Z", "z"):
+            segs.append(((x, y), (start_x, start_y)))
+            x, y = start_x, start_y
+            i += 1
+        else:
+            i += 1
+    return segs
+
+
+def _extract_font_size_from_style(svg_text: str, class_name: str) -> float:
+    """Parse CSS `.class_name { font-size: Xpx }` from style block. Default 8.5."""
+    m = re.search(
+        rf"\.{re.escape(class_name)}\s*\{{[^}}]*font-size\s*:\s*(\d+(?:\.\d+)?)px",
+        svg_text,
+    )
+    return float(m.group(1)) if m else 8.5
+
+
+def parse_callouts(svg_path: str) -> list[dict]:
+    """Extract callout groups from an SVG.
+
+    Convention: `<g id="callout-*">` wrapping `<text class="callout-text">`
+    entries and `<line class="callout-line">` / `<path class="callout-line">`
+    leaders.
+
+    Returns list of dicts: `{"id", "text_bbox": BBox|None, "leaders": [((x1,y1),(x2,y2)), ...]}`.
+    """
+    with open(svg_path, "r") as f:
+        svg_text = f.read()
+
+    font_size = _extract_font_size_from_style(svg_text, "callout-text")
+    pad = 2.0
+
+    tree = ET.parse(svg_path)
+    root = tree.getroot()
+    ns = "{http://www.w3.org/2000/svg}"
+
+    callouts: list[dict] = []
+    for g in root.iter(f"{ns}g"):
+        gid = g.get("id", "")
+        if not gid.startswith("callout"):
+            continue
+
+        text_bboxes: list[BBox] = []
+        for t in g.iter(f"{ns}text"):
+            cls = t.get("class", "")
+            if "callout-text" not in cls:
+                continue
+            try:
+                x = float(t.get("x", 0))
+                y = float(t.get("y", 0))
+            except ValueError:
+                continue
+            content = "".join(t.itertext() or "")
+            width = max(1.0, len(content) * font_size * 0.55)
+            text_bboxes.append(BBox(x - pad, y - font_size, width + 2 * pad, font_size + 2 * pad))
+
+        text_bbox = None
+        if text_bboxes:
+            min_x = min(b.x for b in text_bboxes)
+            min_y = min(b.y for b in text_bboxes)
+            max_x = max(b.x2 for b in text_bboxes)
+            max_y = max(b.y2 for b in text_bboxes)
+            text_bbox = BBox(min_x, min_y, max_x - min_x, max_y - min_y)
+
+        leaders: list[tuple[tuple[float, float], tuple[float, float]]] = []
+        for line in g.iter(f"{ns}line"):
+            cls = line.get("class", "")
+            if "callout" not in cls:
+                continue
+            try:
+                x1 = float(line.get("x1", 0))
+                y1 = float(line.get("y1", 0))
+                x2 = float(line.get("x2", 0))
+                y2 = float(line.get("y2", 0))
+            except ValueError:
+                continue
+            leaders.append(((x1, y1), (x2, y2)))
+        for path in g.iter(f"{ns}path"):
+            cls = path.get("class", "")
+            if "callout" not in cls:
+                continue
+            leaders.extend(_parse_path_segments(path.get("d", "")))
+        for pl in g.iter(f"{ns}polyline"):
+            cls = pl.get("class", "")
+            if "callout" not in cls:
+                continue
+            pts_raw = pl.get("points", "").replace(",", " ").split()
+            try:
+                coords = [(float(pts_raw[k]), float(pts_raw[k + 1])) for k in range(0, len(pts_raw) - 1, 2)]
+            except (ValueError, IndexError):
+                continue
+            for k in range(len(coords) - 1):
+                leaders.append((coords[k], coords[k + 1]))
+
+        callouts.append({"id": gid, "text_bbox": text_bbox, "leaders": leaders})
+    return callouts
+
+
+def check_callouts(svg_path: str) -> list[str]:
+    """Pairwise cross-callout collision check.
+
+    Reports when a callout's leader crosses another callout's text bbox or
+    leader, and when callout text bboxes overlap each other. Uses shapely
+    LineString / box intersection for the line-vs-line and line-vs-rect tests.
+    """
+    try:
+        from shapely.geometry import LineString, box as sbox
+    except ImportError:
+        return ["shapely not installed - callout check skipped"]
+
+    callouts = parse_callouts(svg_path)
+    if not callouts:
+        return []
+
+    violations: list[str] = []
+    n = len(callouts)
+    for i in range(n):
+        for j in range(i + 1, n):
+            a, b = callouts[i], callouts[j]
+
+            # leader A vs text B
+            if b["text_bbox"] is not None:
+                bb = b["text_bbox"]
+                b_box = sbox(bb.x, bb.y, bb.x2, bb.y2)
+                for seg in a["leaders"]:
+                    if seg[0] == seg[1]:
+                        continue
+                    line = LineString(seg)
+                    if line.intersects(b_box) and not line.touches(b_box):
+                        violations.append(
+                            f"leader of {a['id']} crosses text of {b['id']} at {bb}"
+                        )
+                        break
+
+            # leader B vs text A
+            if a["text_bbox"] is not None:
+                ab = a["text_bbox"]
+                a_box = sbox(ab.x, ab.y, ab.x2, ab.y2)
+                for seg in b["leaders"]:
+                    if seg[0] == seg[1]:
+                        continue
+                    line = LineString(seg)
+                    if line.intersects(a_box) and not line.touches(a_box):
+                        violations.append(
+                            f"leader of {b['id']} crosses text of {a['id']} at {ab}"
+                        )
+                        break
+
+            # leader A vs leader B
+            cross_found = False
+            for sa in a["leaders"]:
+                if sa[0] == sa[1] or cross_found:
+                    continue
+                la = LineString(sa)
+                for sb in b["leaders"]:
+                    if sb[0] == sb[1]:
+                        continue
+                    lb = LineString(sb)
+                    if la.crosses(lb):
+                        violations.append(
+                            f"leader of {a['id']} crosses leader of {b['id']}"
+                        )
+                        cross_found = True
+                        break
+
+            # text A vs text B (bbox overlap)
+            if a["text_bbox"] is not None and b["text_bbox"] is not None:
+                if a["text_bbox"].overlaps(b["text_bbox"]):
+                    violations.append(
+                        f"text of {a['id']} overlaps text of {b['id']}"
+                    )
+
+    return violations
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -1253,6 +1485,17 @@ def main():
     for issue in typo_issues:
         print(f"  - {issue}")
 
+    # callout cross-collisions
+    print(f"\n{'=' * 72}")
+    print("CALLOUT CROSS-COLLISIONS (leader vs other callouts' text and leaders)")
+    print("-" * 72)
+    callout_issues = check_callouts(args.svg)
+    if not callout_issues:
+        print("  No callout cross-collisions found!")
+    else:
+        for issue in callout_issues:
+            print(f"  - {issue}")
+
     # summary
     total_prox = len(prox)
     print(f"\n{'=' * 72}")
@@ -1270,7 +1513,8 @@ def main():
         cls_summary = ""
     print(
         f"SUMMARY: {shown} overlaps{ign_note}{cls_summary}, {total_prox} tight proximities, "
-        f"{len(spacing_issues)} spacing violations, {len(elements)} elements parsed"
+        f"{len(spacing_issues)} spacing violations, {len(callout_issues)} callout cross-collisions, "
+        f"{len(elements)} elements parsed"
     )
 
     # handle inject/strip bounds

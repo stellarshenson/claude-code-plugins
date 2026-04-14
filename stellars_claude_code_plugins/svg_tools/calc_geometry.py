@@ -1083,6 +1083,230 @@ def cmd_bisector(args):
     print(_svg_line(vertex, far, "#5456f3", 1.2))
 
 
+def _parse_polygon_arg(s):
+    """Parse polygon as a Python literal '[(x,y),(x,y),...]' or 'x,y x,y ...'."""
+    import ast
+    s = s.strip()
+    if s.startswith("["):
+        return [tuple(p) for p in ast.literal_eval(s)]
+    pts = []
+    for tok in s.split():
+        parts = tok.replace(",", " ").split()
+        pts.append((float(parts[0]), float(parts[1])))
+    return pts
+
+
+def _build_shapely_geom(inner):
+    from shapely.geometry import (
+        Point as SPoint,
+        LineString,
+        Polygon as SPolygon,
+        box as sbox,
+    )
+    kind, data = inner
+    if kind == "point":
+        return SPoint(data[0], data[1])
+    if kind == "bbox":
+        x, y, w, h = data
+        return sbox(x, y, x + w, y + h)
+    if kind == "line":
+        return LineString([data[0], data[1]])
+    if kind == "polyline":
+        return LineString(data)
+    if kind == "polygon":
+        return SPolygon(data)
+    raise ValueError(f"unknown geometry kind: {kind}")
+
+
+def geometry_in_polygon(inner, polygon):
+    """Containment and convex-safety report for `inner` inside closed `polygon`.
+
+    Supports any inner geometry type passed as a (kind, data) tuple:
+
+      - ``('point', (x, y))`` - a single point
+      - ``('bbox', (x, y, w, h))`` - an axis-aligned rectangle
+      - ``('line', ((x1, y1), (x2, y2)))`` - a single segment
+      - ``('polyline', [(x, y), ...])`` - an open polyline or curve sample
+      - ``('polygon', [(x, y), ...])`` - a closed polygon vertex list
+
+    Returns a dictionary with three fields:
+
+      - ``contained``: True iff every point of `inner` lies inside the outer
+        polygon or on its boundary (``shapely.covers``). This is the classic
+        "is X inside Y" test and is sufficient for a convex outer polygon.
+
+      - ``convex_safe``: True iff the CONVEX HULL of `inner` is also covered
+        by the outer polygon. This is the stricter test: when the outer
+        polygon is concave, two inner points can both lie inside while the
+        straight line between them exits through a concave notch and re-enters.
+        ``convex_safe=True`` guarantees that any straight line between any two
+        points of `inner` stays fully inside the outer polygon. Equivalent to
+        saying "the tightest convex cover of `inner` fits in the outer".
+
+      - ``exit_segments``: list of ``(start, end)`` point pairs whose straight
+        line is NOT contained in the outer polygon. When the inner geometry is
+        a line / polyline / polygon the function enumerates every pair of
+        vertices and reports which ones fail. When the inner is a bbox the
+        four corners are used. Empty when ``convex_safe`` is True.
+
+    Typical use in the callout-placement workflow: pass the candidate text
+    bbox as ``inner`` and an empty-space island boundary as ``polygon``.
+    ``contained=True`` means the text visually lands on free space; adding
+    ``convex_safe=True`` means a leader drawn between any two corners (or any
+    two sample points of a more complex inner shape) stays inside the island
+    too - useful when the island is an L-shape or horseshoe.
+    """
+    from shapely.geometry import LineString, Polygon as SPolygon
+    from shapely.geometry.base import BaseGeometry
+    outer = SPolygon(polygon)
+    geom = _build_shapely_geom(inner)
+    contained = outer.covers(geom)
+
+    hull = geom.convex_hull
+    if isinstance(hull, BaseGeometry):
+        convex_safe = outer.covers(hull)
+    else:
+        convex_safe = False
+
+    exit_segments: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    if not convex_safe and geom.geom_type in (
+        "LineString", "Polygon", "MultiPoint", "Point",
+    ):
+        kind = inner[0]
+        if kind in ("line", "polyline"):
+            pts = list(geom.coords)
+            for i in range(len(pts)):
+                for j in range(i + 1, len(pts)):
+                    seg = LineString([pts[i], pts[j]])
+                    if not outer.covers(seg):
+                        exit_segments.append((pts[i], pts[j]))
+        elif kind == "polygon":
+            pts = list(geom.exterior.coords)
+            for i in range(len(pts)):
+                for j in range(i + 1, len(pts)):
+                    seg = LineString([pts[i], pts[j]])
+                    if not outer.covers(seg):
+                        exit_segments.append((pts[i], pts[j]))
+        elif kind == "bbox":
+            x, y, w, h = inner[1]
+            corners = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
+            for i in range(4):
+                for j in range(i + 1, 4):
+                    seg = LineString([corners[i], corners[j]])
+                    if not outer.covers(seg):
+                        exit_segments.append((corners[i], corners[j]))
+
+    return {
+        "contained": bool(contained),
+        "convex_safe": bool(convex_safe),
+        "exit_segments": exit_segments,
+    }
+
+
+def rect_ray_exit(rect, from_point):
+    """Perimeter intersection point of a ray from rect centre toward an external point.
+
+    Given an axis-aligned rectangle ``rect = (x, y, w, h)`` and a point
+    ``from_point = (px, py)``, extend the ray that starts at the centre of the
+    rectangle and passes through `from_point`. Return the single point where
+    that ray exits the rectangle perimeter.
+
+    Use case: leader anchor computation. Given a callout text bbox and a
+    leader target, inflate the bbox by the standoff, then call this function
+    with `from_point = target` to obtain the point on the inflated bbox edge
+    that faces the target. The leader should start at `from_point` and end at
+    the returned perimeter point; the small gap between the returned point
+    and the true bbox perimeter IS the standoff.
+
+    Assumes `from_point` lies outside the rect (or at worst on its boundary).
+    If `from_point` coincides with the rect centre the function raises.
+    """
+    x, y, w, h = rect
+    cx, cy = x + w / 2.0, y + h / 2.0
+    dx, dy = from_point[0] - cx, from_point[1] - cy
+    if dx == 0 and dy == 0:
+        raise ValueError("from_point coincides with rect centre")
+    ts = []
+    if dx != 0:
+        ts.append((x - cx) / dx)
+        ts.append((x + w - cx) / dx)
+    if dy != 0:
+        ts.append((y - cy) / dy)
+        ts.append((y + h - cy) / dy)
+    candidates = []
+    for t in ts:
+        if t <= 0:
+            continue
+        px = cx + t * dx
+        py = cy + t * dy
+        if x - 1e-9 <= px <= x + w + 1e-9 and y - 1e-9 <= py <= y + h + 1e-9:
+            candidates.append((t, px, py))
+    if not candidates:
+        raise ValueError("ray does not exit rect (geometry degenerate)")
+    candidates.sort(key=lambda c: c[0])
+    _, px, py = candidates[0]
+    return (px, py)
+
+
+def cmd_rect_edge(args):
+    parts = [float(t) for t in args.rect.replace(",", " ").split()]
+    if len(parts) != 4:
+        raise ValueError("--rect expects 'x,y,w,h'")
+    rect = tuple(parts)
+    fp = _parse_point(getattr(args, "from"))
+    px, py = rect_ray_exit(rect, (fp.x, fp.y))
+    cx, cy = rect[0] + rect[2] / 2, rect[1] + rect[3] / 2
+    print(f"Rect centre: ({cx:.2f}, {cy:.2f})")
+    print(f"Ray toward:  ({fp.x:.2f}, {fp.y:.2f})")
+    print(f"Edge point:  ({px:.2f}, {py:.2f})")
+
+
+def cmd_contains(args):
+    polygon = _parse_polygon_arg(args.polygon)
+    from shapely.geometry import Polygon as SPolygon
+    outer = SPolygon(polygon)
+    print(f"Outer: {len(polygon)} vertices, area={outer.area:.1f}")
+
+    def _report(label, inner):
+        res = geometry_in_polygon(inner, polygon)
+        cflag = "YES" if res["contained"] else "NO"
+        sflag = "YES" if res["convex_safe"] else "NO"
+        print(f"{label}: contained={cflag}  convex-safe={sflag}")
+        for s, e in res["exit_segments"][:3]:
+            print(f"  exit: {s} -> {e}")
+        if len(res["exit_segments"]) > 3:
+            print(f"  ... +{len(res['exit_segments']) - 3} more exits")
+
+    tested = 0
+    if args.point is not None:
+        pt = _parse_point(args.point)
+        _report(f"Point ({pt.x:.2f},{pt.y:.2f})", ("point", (pt.x, pt.y)))
+        tested += 1
+    if args.bbox is not None:
+        parts = [float(t) for t in args.bbox.replace(",", " ").split()]
+        if len(parts) != 4:
+            raise ValueError("--bbox expects 'x,y,w,h'")
+        _report(f"BBox {tuple(parts)}", ("bbox", tuple(parts)))
+        tested += 1
+    if args.line is not None:
+        parts = [float(t) for t in args.line.replace(",", " ").split()]
+        if len(parts) != 4:
+            raise ValueError("--line expects 'x1,y1,x2,y2'")
+        line = ((parts[0], parts[1]), (parts[2], parts[3]))
+        _report(f"Line {line[0]}->{line[1]}", ("line", line))
+        tested += 1
+    if args.polyline is not None:
+        pts = _parse_polygon_arg(args.polyline)
+        _report(f"Polyline ({len(pts)} pts)", ("polyline", pts))
+        tested += 1
+    if args.inner_polygon is not None:
+        pts = _parse_polygon_arg(args.inner_polygon)
+        _report(f"Inner polygon ({len(pts)} verts)", ("polygon", pts))
+        tested += 1
+    if tested == 0:
+        print("(no geometry; use --point / --bbox / --line / --polyline / --inner-polygon)")
+
+
 _TOP_DESCRIPTION = """\
 Geometry calculator for SVG infographics. Fusion-360-style sketch
 operations: attachment points, midpoints, tangents, intersections,
@@ -1116,6 +1340,8 @@ When to reach for which subcommand:
   Parallel rail along an L-route or path .... offset-polyline
   Inflate / deflate a closed polygon ........ offset-polygon
   Label standoff perpendicular to a line .... offset-point
+  Is a point / bbox inside a closed polygon. contains
+  Callout leader anchor on text bbox edge .. rect-edge
 """
 
 _EXAMPLES = """\
@@ -1248,6 +1474,28 @@ def main():
     p.add_argument("--vertex", required=True, help="Common vertex 'x,y'")
     p.add_argument("--p2", required=True, help="Second ray endpoint 'x,y'")
     p.set_defaults(func=cmd_bisector)
+
+    p = sub.add_parser(
+        "rect-edge",
+        help="Perimeter intersection of ray from rect centre toward an external point. Use for callout leader anchor: inflate text bbox by standoff, pass inflated rect + leader target, get anchor on bbox edge facing target.",
+        description="Given rect (x,y,w,h) and from-point p, extend ray rect_center->p until it exits the rect and return the exit point. Used to terminate a callout leader one standoff short of the text bbox.",
+    )
+    p.add_argument("--rect", required=True, help="Rect 'x,y,w,h'")
+    p.add_argument("--from", dest="from", required=True, help="External point 'x,y'")
+    p.set_defaults(func=cmd_rect_edge)
+
+    p = sub.add_parser(
+        "contains",
+        help="Is inner geometry (point/bbox/line/polyline/polygon) inside outer polygon? Reports contained + convex-safe (catches concave re-entry).",
+        description="Two checks. contained: all inner points inside outer. convex-safe: convex hull of inner also covered - when false, some line between two inner points exits concave outer. For callout bbox / leader / decorative shape validation inside empty-space islands.",
+    )
+    p.add_argument("--polygon", required=True, help='Outer polygon "[(x,y),...]" or "x,y x,y ..."')
+    p.add_argument("--point", help="Inner 'x,y'")
+    p.add_argument("--bbox", help="Inner 'x,y,w,h'")
+    p.add_argument("--line", help="Inner 'x1,y1,x2,y2'")
+    p.add_argument("--polyline", help='Inner "[(x,y),...]"')
+    p.add_argument("--inner-polygon", help='Inner closed "[(x,y),...]"')
+    p.set_defaults(func=cmd_contains)
 
     # ----------------------------------------------------------------------
     # Tangents

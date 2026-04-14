@@ -103,38 +103,42 @@
     <circle cx="650.0" cy="230.0" r="5"/>
   </g>
   <g id="callout-merge">
-    <text x="420.0" y="220.0" class="callout-text">merge point</text>
-    <text x="420.0" y="231.0" class="callout-text">(single convergence at spine_start)</text>
-    <line x1="418.0" y1="222.5" x2="410" y2="226" class="callout-line"/>
-  </g>
-  <g id="callout-tangent">
-    <text x="420.0" y="220.0" class="callout-text">strand arrives tangent to spine</text>
-    <line x1="418.0" y1="217.0" x2="410" y2="226" class="callout-line"/>
+    <text x="439" y="172" class="callout-text">merge point</text>
+    <text x="439" y="183" class="callout-text">(single convergence)</text>
+    <line x1="410" y1="230" x2="464.9" y2="190.5" class="callout-line"/>
   </g>
   <g id="callout-fork">
-    <text x="570.0" y="360.0" class="callout-text">fork point</text>
-    <text x="570.0" y="371.0" class="callout-text">(single divergence at spine_end)</text>
-    <line x1="644.8" y1="349.5" x2="650" y2="234" class="callout-line"/>
+    <text x="514" y="265" class="callout-text">fork point</text>
+    <text x="514" y="276" class="callout-text">(single divergence)</text>
+    <line x1="650" y1="230" x2="594.1" y2="253.5" class="callout-line"/>
   </g>
   <g id="callout-standoff">
-    <text x="773.0" y="61.0" class="callout-text">5px standoff</text>
-    <text x="773.0" y="72.0" class="callout-text">(arrow tip gap)</text>
-    <line x1="808.1" y1="76.5" x2="808" y2="115" class="callout-line"/>
+    <text x="773" y="51" class="callout-text">5px standoff</text>
+    <text x="773" y="62" class="callout-text">(arrow tip gap)</text>
+    <line x1="808" y1="116" x2="808.0" y2="69.5" class="callout-line"/>
+  </g>
+  <g id="callout-auto">
+    <text x="318" y="570" class="callout-text">auto-edge routing</text>
+    <line x1="412" y1="530" x2="371.3" y2="558.5" class="callout-line"/>
+  </g>
+  <g id="callout-chamfer">
+    <text x="749" y="453" class="callout-text">L-chamfer corner</text>
+    <line x1="786" y1="482" x2="786.3" y2="460.5" class="callout-line"/>
   </g>
   <line x1="30" y1="415" x2="970" y2="415" class="divider"/>
   <text x="500" y="435" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Point-to-point modes on the same canvas</text>
-<g><path d="M60,440 H200 V477 Q200,480 197,480 H63 Q60,480 60,477 Z" class="card"/><rect x="60" y="440" width="140" height="4" class="accent-bar"/><text x="130.0" y="464.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape A</text></g>
-<g><path d="M420,440 H560 V477 Q560,480 557,480 H423 Q420,480 420,477 Z" class="card"/><rect x="420" y="440" width="140" height="4" class="accent-bar"/><text x="490.0" y="464.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape C</text></g>
-<g><path d="M420,500 H560 V537 Q560,540 557,540 H423 Q420,540 420,537 Z" class="card"/><rect x="420" y="500" width="140" height="4" class="accent-bar"/><text x="490.0" y="524.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape B</text></g>
-<g><path d="M720,500 H860 V537 Q860,540 857,540 H723 Q720,540 720,537 Z" class="card"/><rect x="720" y="500" width="140" height="4" class="accent-bar"/><text x="790.0" y="524.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape D</text></g>
-  <path class="strand-2" d="M209.86,473.31 L400.27,505.05"/>
-  <polygon class="arrow-2" points="410.14,506.69 401.09,500.11 399.45,509.98"/>
-  <path class="strand-4" d="M570.00,460.00 L784.00,460.00 L790.00,466.00 L790.00,480.00"/>
-  <polygon class="arrow-4" points="790.00,490.00 795.00,480.00 785.00,480.00"/>
-  <text x="310" y="585" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">calc_connector: auto-edge + 10px standoff</text>
-  <text x="780" y="585" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">calc_l_chamfer: top-edge incident + 10px standoff</text>
-  <line x1="30" y1="605" x2="970" y2="605" class="divider"/>
-  <g id="legend" transform="translate(40, 635)">
+<g><path d="M60,460 H200 V497 Q200,500 197,500 H63 Q60,500 60,497 Z" class="card"/><rect x="60" y="460" width="140" height="4" class="accent-bar"/><text x="130.0" y="484.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape A</text></g>
+<g><path d="M420,460 H560 V497 Q560,500 557,500 H423 Q420,500 420,497 Z" class="card"/><rect x="420" y="460" width="140" height="4" class="accent-bar"/><text x="490.0" y="484.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape C</text></g>
+<g><path d="M420,520 H560 V557 Q560,560 557,560 H423 Q420,560 420,557 Z" class="card"/><rect x="420" y="520" width="140" height="4" class="accent-bar"/><text x="490.0" y="544.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape B</text></g>
+<g><path d="M720,520 H860 V557 Q860,560 857,560 H723 Q720,560 720,557 Z" class="card"/><rect x="720" y="520" width="140" height="4" class="accent-bar"/><text x="790.0" y="544.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Shape D</text></g>
+  <path class="strand-2" d="M209.86,493.31 L400.27,525.05"/>
+  <polygon class="arrow-2" points="410.14,526.69 401.09,520.11 399.45,529.98"/>
+  <path class="strand-4" d="M570.00,480.00 L784.00,480.00 L790.00,486.00 L790.00,500.00"/>
+  <polygon class="arrow-4" points="790.00,510.00 795.00,500.00 785.00,500.00"/>
+  <text x="310" y="605" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">calc_connector: auto-edge + 10px standoff</text>
+  <text x="780" y="605" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">calc_l_chamfer: top-edge incident + 10px standoff</text>
+  <line x1="30" y1="625" x2="970" y2="625" class="divider"/>
+  <g id="legend" transform="translate(40, 655)">
     <text x="0" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-1">Legend</text>
     <line x1="55" y1="-3" x2="90" y2="-3" class="spine-stroke"/>
     <text x="95" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Spine (stiff trunk)</text>
