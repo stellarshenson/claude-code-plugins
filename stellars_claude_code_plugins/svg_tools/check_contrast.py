@@ -1,20 +1,30 @@
-"""SVG text contrast checker using WCAG 2.1 relative luminance.
+"""SVG contrast checker using WCAG 2.1 relative luminance.
 
-Parses SVG elements, identifies text-on-background pairs, and computes
-WCAG contrast ratios. Checks both light mode (white document bg) and
-dark mode (near-black document bg) for every text element.
+Two checks run in light + dark mode:
 
-WCAG 2.1 thresholds:
+1. **Text contrast** (WCAG SC 1.4.3): every <text> element vs its
+   resolved background (containing rect/path/document bg).
+
+2. **Object contrast** (WCAG SC 1.4.11 non-text): every filled shape
+   (rect, path, circle, ellipse, polygon) vs the document background.
+   A shape passes if its fill OR stroke reaches the 3:1 threshold,
+   so cards with near-transparent fills but strong strokes still pass.
+
+Text WCAG thresholds:
   - AA normal text (< 18px or < 14px bold): 4.5:1
   - AA large text  (>= 18px or >= 14px bold): 3.0:1
   - AAA normal text: 7.0:1
   - AAA large text:  4.5:1
+
+Object WCAG threshold (non-text): 3:1 (max of fill or stroke contrast).
 
 Usage:
     python check_contrast.py --svg path/to/file.svg
     python check_contrast.py --svg file.svg --level AAA
     python check_contrast.py --svg file.svg --dark-bg "#272b31"
     python check_contrast.py --svg file.svg --show-all
+    python check_contrast.py --svg file.svg --skip-objects
+    python check_contrast.py --svg file.svg --object-min-area 1200
 """
 
 import re
@@ -196,6 +206,37 @@ class ContrastResult:
     mode: str
 
 
+@dataclass
+class Shape:
+    """A filled shape (card, panel, icon) checked against the document bg."""
+    tag: str                        # rect/path/circle/ellipse/polygon
+    fill: str | None                # resolved hex or None
+    fill_opacity: float
+    fill_class: str
+    stroke: str | None              # resolved hex or None
+    stroke_opacity: float
+    stroke_width: float
+    stroke_class: str
+    x: float
+    y: float
+    w: float
+    h: float
+    label: str
+
+
+@dataclass
+class ObjectContrastResult:
+    shape: Shape
+    fill_ratio: float | None        # None if shape has no visible fill
+    stroke_ratio: float | None      # None if shape has no visible stroke
+    effective_bg: str
+    fill_used: str | None           # blended fill hex used for ratio
+    stroke_used: str | None         # stroke hex used for ratio
+    threshold: float                # 3.0 for non-text
+    passed: bool                    # max(fill, stroke) >= threshold
+    mode: str                       # "light" or "dark"
+
+
 NS = "http://www.w3.org/2000/svg"
 
 
@@ -277,23 +318,23 @@ def parse_svg_for_contrast(filepath: str) -> tuple[list[TextElement], list[Backg
             d = child.get("d", "")
             fill = child.get("fill", "")
             opacity_str = child.get("opacity", "1")
+            fill_opacity_str = child.get("fill-opacity", "")
 
             fill_hex = resolve_color(fill)
             if not fill_hex or fill == "none":
                 continue
 
             opacity = float(opacity_str) if opacity_str else 1.0
+            if fill_opacity_str:
+                opacity = float(fill_opacity_str)
 
-            nums = [float(v) for v in re.findall(r"[-+]?\d*\.?\d+", d)]
-            if len(nums) >= 4:
-                xs = nums[0::2]
-                ys = nums[1::2]
-                min_x, max_x = min(xs), max(xs)
-                min_y, max_y = min(ys), max(ys)
+            bbox = _parse_path_bbox(d)
+            if bbox is not None:
+                min_x, min_y, w, h = bbox
                 backgrounds.append(Background(
                     label=f"path-fill {fill}",
                     fill=fill_hex, opacity=opacity,
-                    x=min_x, y=min_y, w=max_x - min_x, h=max_y - min_y
+                    x=min_x, y=min_y, w=w, h=h
                 ))
 
     return texts, backgrounds, light_classes, dark_classes
@@ -341,6 +382,392 @@ def find_background_for_text(text: TextElement, backgrounds: list[Background]) -
         return None
     candidates.sort(key=lambda b: b.w * b.h)
     return candidates[0]
+
+
+# ---------------------------------------------------------------------------
+# Shape parser (for object contrast)
+# ---------------------------------------------------------------------------
+
+_PATH_CMD_RE = re.compile(r"([MmLlHhVvCcSsQqTtAaZz])([^MmLlHhVvCcSsQqTtAaZz]*)")
+_PATH_NUM_RE = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
+
+# Number of coords each path command consumes per repeat. For Bezier and arc
+# commands we only sample the segment endpoint, not the control points - this
+# gives a tight bbox for the visible shape on every example we ship.
+_CMD_STRIDE = {
+    "M": 2, "L": 2, "T": 2,
+    "H": 1, "V": 1,
+    "C": 6, "S": 4, "Q": 4,
+    "A": 7,
+}
+
+
+def _parse_path_bbox(d: str) -> tuple[float, float, float, float] | None:
+    """Compute axis-aligned bbox of an SVG path with command awareness.
+
+    Walks the d attribute one command at a time, tracking the current point.
+    Handles relative commands, H/V single-coordinate moves, and the multi-
+    coordinate Bezier/arc forms by sampling segment endpoints. Loose for
+    curves that bow outside their endpoints, but exact for the rect/rounded-
+    rect paths used in our infographics.
+    """
+    if not d:
+        return None
+
+    cx = cy = 0.0
+    start_x = start_y = 0.0
+    xs: list[float] = []
+    ys: list[float] = []
+
+    for match in _PATH_CMD_RE.finditer(d):
+        cmd = match.group(1)
+        if cmd in ("Z", "z"):
+            cx, cy = start_x, start_y
+            xs.append(cx)
+            ys.append(cy)
+            continue
+
+        nums = [float(v) for v in _PATH_NUM_RE.findall(match.group(2))]
+        cmd_upper = cmd.upper()
+        is_rel = cmd.islower()
+        stride = _CMD_STRIDE.get(cmd_upper, 2)
+        if not nums:
+            continue
+
+        i = 0
+        first = True
+        while i + stride <= len(nums):
+            chunk = nums[i:i + stride]
+            i += stride
+
+            if cmd_upper == "M":
+                nx, ny = chunk
+                if is_rel:
+                    nx += cx
+                    ny += cy
+                cx, cy = nx, ny
+                if first:
+                    start_x, start_y = cx, cy
+                # Subsequent pairs after the first M are implicit L
+                first = False
+            elif cmd_upper in ("L", "T"):
+                nx, ny = chunk
+                if is_rel:
+                    nx += cx
+                    ny += cy
+                cx, cy = nx, ny
+            elif cmd_upper == "H":
+                nx = chunk[0]
+                if is_rel:
+                    nx += cx
+                cx = nx
+            elif cmd_upper == "V":
+                ny = chunk[0]
+                if is_rel:
+                    ny += cy
+                cy = ny
+            elif cmd_upper == "C":
+                nx, ny = chunk[4], chunk[5]
+                if is_rel:
+                    nx += cx
+                    ny += cy
+                cx, cy = nx, ny
+            elif cmd_upper == "S":
+                nx, ny = chunk[2], chunk[3]
+                if is_rel:
+                    nx += cx
+                    ny += cy
+                cx, cy = nx, ny
+            elif cmd_upper == "Q":
+                nx, ny = chunk[2], chunk[3]
+                if is_rel:
+                    nx += cx
+                    ny += cy
+                cx, cy = nx, ny
+            elif cmd_upper == "A":
+                nx, ny = chunk[5], chunk[6]
+                if is_rel:
+                    nx += cx
+                    ny += cy
+                cx, cy = nx, ny
+
+            xs.append(cx)
+            ys.append(cy)
+
+    if not xs or not ys:
+        return None
+    return min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)
+
+
+def _parse_polygon_bbox(points: str) -> tuple[float, float, float, float] | None:
+    """Compute bbox from a polygon points attribute."""
+    nums = [float(v) for v in re.findall(r"[-+]?\d*\.?\d+", points)]
+    if len(nums) < 4:
+        return None
+    xs = nums[0::2]
+    ys = nums[1::2]
+    return min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)
+
+
+def _get_canvas_size(root: ET.Element) -> tuple[float, float]:
+    """Extract canvas (width, height) from viewBox or width/height attrs."""
+    vb = root.get("viewBox")
+    if vb:
+        parts = re.split(r"[\s,]+", vb.strip())
+        if len(parts) == 4:
+            return float(parts[2]), float(parts[3])
+    w = root.get("width", "0").rstrip("px")
+    h = root.get("height", "0").rstrip("px")
+    try:
+        return float(w), float(h)
+    except ValueError:
+        return 0.0, 0.0
+
+
+def parse_svg_shapes(filepath: str) -> tuple[list[Shape], dict[str, str], dict[str, str], float, float]:
+    """Parse SVG and extract filled shapes plus CSS class lookups.
+
+    Returns (shapes, light_classes, dark_classes, canvas_w, canvas_h).
+    """
+    tree = ET.parse(filepath)
+    root = tree.getroot()
+
+    canvas_w, canvas_h = _get_canvas_size(root)
+
+    light_classes: dict[str, str] = {}
+    dark_classes: dict[str, str] = {}
+    for child in root:
+        tag = child.tag.replace(f"{{{NS}}}", "")
+        if tag == "style":
+            style_text = child.text or ""
+            light_classes = parse_css_classes(style_text)
+            dark_classes = parse_dark_classes(style_text)
+
+    shapes: list[Shape] = []
+
+    for child in root.iter():
+        tag = child.tag.replace(f"{{{NS}}}", "")
+        if tag not in ("rect", "path", "circle", "ellipse", "polygon"):
+            continue
+
+        # bbox extraction per tag
+        bbox: tuple[float, float, float, float] | None = None
+        if tag == "rect":
+            bbox = (
+                float(child.get("x", "0")),
+                float(child.get("y", "0")),
+                float(child.get("width", "0")),
+                float(child.get("height", "0")),
+            )
+        elif tag == "path":
+            bbox = _parse_path_bbox(child.get("d", ""))
+        elif tag == "circle":
+            cx = float(child.get("cx", "0"))
+            cy = float(child.get("cy", "0"))
+            r = float(child.get("r", "0"))
+            bbox = (cx - r, cy - r, 2 * r, 2 * r)
+        elif tag == "ellipse":
+            cx = float(child.get("cx", "0"))
+            cy = float(child.get("cy", "0"))
+            rx = float(child.get("rx", "0"))
+            ry = float(child.get("ry", "0"))
+            bbox = (cx - rx, cy - ry, 2 * rx, 2 * ry)
+        elif tag == "polygon":
+            bbox = _parse_polygon_bbox(child.get("points", ""))
+
+        if bbox is None or bbox[2] <= 0 or bbox[3] <= 0:
+            continue
+        x, y, w, h = bbox
+
+        # fill resolution
+        css_class = child.get("class", "")
+        fill_attr = child.get("fill", "")
+        fill_hex = resolve_color(fill_attr) if fill_attr else None
+        fill_class_used = ""
+        if not fill_hex and not fill_attr and css_class and css_class in light_classes:
+            # only inherit class fill when no explicit fill attr present
+            fill_hex = light_classes[css_class]
+            fill_class_used = css_class
+
+        opacity = float(child.get("opacity", "1") or 1.0)
+        fill_op_str = child.get("fill-opacity", "")
+        fill_opacity = float(fill_op_str) if fill_op_str else opacity
+
+        # stroke resolution
+        stroke_attr = child.get("stroke", "")
+        stroke_hex = resolve_color(stroke_attr) if stroke_attr else None
+        stroke_class_used = ""
+        if not stroke_hex and not stroke_attr and css_class and css_class in light_classes:
+            stroke_hex = None  # we don't assume class targets stroke
+        stroke_op_str = child.get("stroke-opacity", "")
+        stroke_opacity = float(stroke_op_str) if stroke_op_str else opacity
+        stroke_width = float(child.get("stroke-width", "0") or 0)
+
+        if not fill_hex and not stroke_hex:
+            continue
+
+        shapes.append(Shape(
+            tag=tag,
+            fill=fill_hex,
+            fill_opacity=fill_opacity,
+            fill_class=fill_class_used,
+            stroke=stroke_hex,
+            stroke_opacity=stroke_opacity,
+            stroke_width=stroke_width,
+            stroke_class=stroke_class_used,
+            x=x, y=y, w=w, h=h,
+            label=f"{tag} {w:.0f}x{h:.0f}",
+        ))
+
+    return _merge_paired_shapes(shapes), light_classes, dark_classes, canvas_w, canvas_h
+
+
+def _merge_paired_shapes(shapes: list[Shape]) -> list[Shape]:
+    """Merge sibling shapes sharing the same geometry into one logical shape.
+
+    Infographics often use two elements for the same card:
+      <path d="..." fill="#00a6ff" fill-opacity="0.04"/>
+      <path d="..." fill="none" stroke="#00a6ff" stroke-width="1"/>
+    The fill alone is near-invisible but the stroke makes the card visible.
+    Treating them as one shape lets the stroke contrast count for the card.
+    """
+    by_geom: dict[tuple, list[int]] = {}
+    for idx, s in enumerate(shapes):
+        key = (s.tag, round(s.x, 1), round(s.y, 1), round(s.w, 1), round(s.h, 1))
+        by_geom.setdefault(key, []).append(idx)
+
+    merged: list[Shape] = []
+    consumed: set[int] = set()
+    for indices in by_geom.values():
+        if len(indices) == 1:
+            merged.append(shapes[indices[0]])
+            consumed.add(indices[0])
+            continue
+
+        base = shapes[indices[0]]
+        merged_shape = Shape(**base.__dict__)
+        for j in indices[1:]:
+            other = shapes[j]
+            if (merged_shape.fill is None or merged_shape.fill_opacity == 0) and other.fill is not None:
+                merged_shape.fill = other.fill
+                merged_shape.fill_opacity = other.fill_opacity
+                merged_shape.fill_class = other.fill_class
+            if (merged_shape.stroke is None or merged_shape.stroke_width == 0) and other.stroke is not None:
+                merged_shape.stroke = other.stroke
+                merged_shape.stroke_opacity = other.stroke_opacity
+                merged_shape.stroke_width = other.stroke_width
+                merged_shape.stroke_class = other.stroke_class
+        merged.append(merged_shape)
+        consumed.update(indices)
+
+    return merged
+
+
+# ---------------------------------------------------------------------------
+# Object contrast checking (WCAG SC 1.4.11 non-text)
+# ---------------------------------------------------------------------------
+
+OBJECT_THRESHOLD = 3.0
+
+
+def _shape_is_doc_background(shape: Shape, canvas_w: float, canvas_h: float) -> bool:
+    """A shape that fills >=80% of the canvas is treated as the doc bg."""
+    if canvas_w <= 0 or canvas_h <= 0:
+        return False
+    canvas_area = canvas_w * canvas_h
+    if canvas_area <= 0:
+        return False
+    return (shape.w * shape.h) / canvas_area >= 0.8
+
+
+def _resolve_dark_color(hex_color: str | None, css_class: str,
+                       dark_classes: dict[str, str]) -> str | None:
+    """Return the dark-mode equivalent of a colour, or the original."""
+    if css_class and css_class in dark_classes:
+        return dark_classes[css_class]
+    return hex_color
+
+
+def _check_one_shape(shape: Shape, doc_bg: str, mode: str,
+                     dark_classes: dict[str, str]) -> ObjectContrastResult:
+    """Compute fill+stroke contrast for one shape vs the document bg."""
+    if mode == "dark":
+        fill_hex = _resolve_dark_color(shape.fill, shape.fill_class, dark_classes)
+        stroke_hex = _resolve_dark_color(shape.stroke, shape.stroke_class, dark_classes)
+    else:
+        fill_hex = shape.fill
+        stroke_hex = shape.stroke
+
+    bg_lum = relative_luminance(*hex_to_rgb(doc_bg))
+
+    fill_ratio: float | None = None
+    fill_used: str | None = None
+    if fill_hex and shape.fill_opacity > 0.0:
+        if shape.fill_opacity < 1.0:
+            blended = blend_over(fill_hex, shape.fill_opacity, doc_bg)
+        else:
+            blended = fill_hex
+        fill_used = blended
+        fill_ratio = contrast_ratio(
+            relative_luminance(*hex_to_rgb(blended)), bg_lum
+        )
+
+    stroke_ratio: float | None = None
+    stroke_used: str | None = None
+    if stroke_hex and shape.stroke_width > 0 and shape.stroke_opacity > 0.0:
+        if shape.stroke_opacity < 1.0:
+            blended_stroke = blend_over(stroke_hex, shape.stroke_opacity, doc_bg)
+        else:
+            blended_stroke = stroke_hex
+        stroke_used = blended_stroke
+        stroke_ratio = contrast_ratio(
+            relative_luminance(*hex_to_rgb(blended_stroke)), bg_lum
+        )
+
+    candidates = [r for r in (fill_ratio, stroke_ratio) if r is not None]
+    best = max(candidates) if candidates else 0.0
+    passed = best >= OBJECT_THRESHOLD
+
+    return ObjectContrastResult(
+        shape=shape,
+        fill_ratio=fill_ratio,
+        stroke_ratio=stroke_ratio,
+        effective_bg=doc_bg,
+        fill_used=fill_used,
+        stroke_used=stroke_used,
+        threshold=OBJECT_THRESHOLD,
+        passed=passed,
+        mode=mode,
+    )
+
+
+def check_object_contrasts(
+    shapes: list[Shape],
+    dark_classes: dict[str, str],
+    canvas_w: float,
+    canvas_h: float,
+    dark_doc_bg: str = "#1e1e1e",
+    light_doc_bg: str = "#ffffff",
+    min_area: float = 800.0,
+    min_dimension: float = 20.0,
+) -> list[ObjectContrastResult]:
+    """Check every meaningful shape against the document bg in both modes.
+
+    Filters: skips shapes that are the document background (>=80% canvas),
+    shapes smaller than min_area px², and shapes with min(w,h) < min_dimension
+    (these are typically thin accent bars or decorative dividers).
+    """
+    results: list[ObjectContrastResult] = []
+    for shape in shapes:
+        if _shape_is_doc_background(shape, canvas_w, canvas_h):
+            continue
+        if shape.w * shape.h < min_area:
+            continue
+        if min(shape.w, shape.h) < min_dimension:
+            continue
+        results.append(_check_one_shape(shape, light_doc_bg, "light", dark_classes))
+        results.append(_check_one_shape(shape, dark_doc_bg, "dark", dark_classes))
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -457,14 +884,20 @@ def check_all_contrasts(
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="SVG text contrast checker (WCAG 2.1)")
+    parser = argparse.ArgumentParser(description="SVG contrast checker (WCAG 2.1)")
     parser.add_argument("--svg", required=True, help="SVG file to check")
     parser.add_argument("--level", choices=["AA", "AAA"], default="AA",
-                        help="WCAG level to check against (default: AA)")
+                        help="WCAG level for text checks (default: AA)")
     parser.add_argument("--dark-bg", default="#1e1e1e",
                         help="Document background colour for dark mode (default: #1e1e1e)")
     parser.add_argument("--show-all", action="store_true",
-                        help="Show all text elements including passing ones")
+                        help="Show all elements including passing ones")
+    parser.add_argument("--skip-objects", action="store_true",
+                        help="Skip object (non-text) contrast checks")
+    parser.add_argument("--object-min-area", type=float, default=800.0,
+                        help="Minimum bbox area (px²) for object contrast checks (default: 800)")
+    parser.add_argument("--object-min-dim", type=float, default=20.0,
+                        help="Minimum bbox dimension (px) for object contrast checks (default: 20)")
     args = parser.parse_args()
 
     print(f"Contrast check: {args.svg}  (WCAG {args.level})")
@@ -536,12 +969,65 @@ def main():
             print(f"         bg:   {r.effective_bg} <- {bg_label}")
             print()
 
-    # summary
+    # ------------------------------------------------------------------
+    # Object (non-text) contrast checks
+    # ------------------------------------------------------------------
+    object_fails = 0
+    if not args.skip_objects:
+        shapes, _, dark_classes_obj, canvas_w, canvas_h = parse_svg_shapes(args.svg)
+        obj_results = check_object_contrasts(
+            shapes,
+            dark_classes_obj,
+            canvas_w,
+            canvas_h,
+            dark_doc_bg=args.dark_bg,
+            min_area=args.object_min_area,
+            min_dimension=args.object_min_dim,
+        )
+
+        for mode_label, mode_name in [("LIGHT MODE", "light"), ("DARK MODE", "dark")]:
+            mode_results = [r for r in obj_results if r.mode == mode_name]
+            if not mode_results:
+                continue
+
+            print(f"\n{'=' * 72}")
+            print(f"OBJECT CONTRAST - {mode_label} (WCAG SC 1.4.11, need >= 3.0:1)")
+            print("-" * 72)
+
+            for r in mode_results:
+                marker = "pass" if r.passed else "FAIL"
+                if not r.passed:
+                    object_fails += 1
+                if not args.show_all and r.passed:
+                    continue
+
+                fill_str = (
+                    f"fill={r.fill_used} ratio={r.fill_ratio:.2f}:1"
+                    if r.fill_ratio is not None else "fill=none"
+                )
+                stroke_str = (
+                    f"stroke={r.stroke_used}@{r.shape.stroke_width:g}px ratio={r.stroke_ratio:.2f}:1"
+                    if r.stroke_ratio is not None else "stroke=none"
+                )
+
+                print(f"  [{marker}] {r.shape.label} @ ({r.shape.x:.0f},{r.shape.y:.0f})")
+                print(f"         {fill_str}")
+                print(f"         {stroke_str}")
+                print(f"         bg:   {r.effective_bg}")
+                print()
+
+    # ------------------------------------------------------------------
+    # Summary
+    # ------------------------------------------------------------------
     print(f"{'=' * 72}")
     total = len(results)
     passed = total - fails - warns
-    print(f"SUMMARY: {total} checks, {passed} pass, {warns} AA-only, {fails} FAIL "
+    print(f"SUMMARY")
+    print(f"  TEXT:    {total} checks, {passed} pass, {warns} AA-only, {fails} FAIL "
           f"(WCAG {args.level})")
+    if not args.skip_objects:
+        print(f"  OBJECTS: {object_fails} FAIL "
+              "(WCAG SC 1.4.11, fill OR stroke must reach 3:1)")
 
     if hints:
         print(f"  {len(hints)} text element(s) use inline fills matching CSS classes "
@@ -549,6 +1035,11 @@ def main():
     if fails > 0:
         print(f"\n  {fails} text element(s) fail WCAG {args.level} minimum contrast.")
         print("  Fix: use a lighter/darker text colour, or change the background.")
+    if object_fails > 0:
+        print(f"\n  {object_fails} object(s) blend into the document background "
+              "in light or dark mode.")
+        print("  Fix: raise fill opacity, switch fill to a CSS class with dark-mode "
+              "swap, or strengthen stroke.")
 
 
 if __name__ == "__main__":

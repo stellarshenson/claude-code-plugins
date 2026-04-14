@@ -316,7 +316,22 @@ Faint icons at fg-1 colour, opacity 0.10-0.35, 15-20px extent, between text and 
 
 ## Data-Driven Curves
 
-Use **PCHIP interpolation** from `scipy.interpolate` for smooth data-driven paths. Dense sample 200-250 points. `stroke-linejoin="round"`, stroke 2-2.5px, fill segments at `fill-opacity="0.18-0.25"`.
+**MANDATORY**: For ANY curve that passes through known waypoints - decision boundaries, distribution shapes, trend lines, score trajectories, ROC/PR curves, isolines, sigmoid/logistic shapes - generate the path with the bundled `primitives spline` tool. Do NOT hand-write `C` (cubic) or `Q` (quadratic) bezier commands. Hand-rolled beziers require guessing control-point placement, overshoot waypoints, kink at segment joins, and fail visual review every time.
+
+```bash
+svg-infographics primitives spline \
+  --points "80,200 150,80 300,120 450,60 600,140" \
+  --samples 200
+```
+
+The tool runs PCHIP (Piecewise Cubic Hermite Interpolating Polynomial) which is monotonicity-preserving (no overshoot between waypoints), produces continuous tangents at every waypoint, and emits a ready-to-paste `<path d="...">` plus the resampled point list.
+
+Required parameters:
+- **Waypoints**: 4-8 points, X strictly increasing. Pick visual landmarks the curve must hit, not control points
+- **Samples**: 200-250 for smooth output (fewer for jagged debug renders)
+- **Render**: `stroke-linejoin="round"`, `stroke-width="2"` to `2.5"`, fill segments at `fill-opacity="0.18-0.25"` if shading under the curve
+
+Hand-written `<path d="M... C... C..."/>` for data curves is a workflow violation - rerun with `primitives spline` and replace the path.
 
 ## Markdown Integration
 

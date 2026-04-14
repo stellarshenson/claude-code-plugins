@@ -235,6 +235,506 @@ class TestCalcConnectorModule:
         assert result is None
 
 
+class TestConnectorModes:
+    """Tests for L, L-chamfer, and spline connector modes."""
+
+    def _run(self, *args):
+        return subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "calc_connector.py"), *args],
+            capture_output=True, text=True,
+        )
+
+    def test_l_mode_three_samples(self):
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l
+        r = calc_l(100, 50, 300, 150, first_axis="h", arrow="end")
+        assert r["mode"] == "l"
+        assert len(r["samples"]) == 3
+        assert r["samples"][1] == (300, 50)  # corner
+        assert abs(r["end"]["angle_deg"] - 90.0) < 0.01
+        assert r["end"]["arrow"] is not None
+        assert len(r["end"]["arrow"]["polygon"]) == 3
+
+    def test_l_mode_first_axis_v(self):
+        """first_axis='v' goes vertical first, so the corner is (src_x, tgt_y)."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l
+        r = calc_l(100, 50, 300, 150, first_axis="v", arrow="none")
+        assert r["samples"][1] == (100, 150)
+        assert r["end"]["arrow"] is None
+
+    def test_l_chamfer_inserts_diagonal(self):
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        r = calc_l_chamfer(100, 50, 300, 150, first_axis="h", chamfer=4, arrow="end")
+        assert len(r["samples"]) == 4
+        # Two corner points 4px apart on different axes
+        assert r["samples"][1] == (296, 50)
+        assert r["samples"][2] == (300, 54)
+
+    def test_l_chamfer_negative_direction(self):
+        """Chamfer must follow the sign of dx and dy (going up-and-left)."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        r = calc_l_chamfer(300, 150, 100, 50, first_axis="h", chamfer=4, arrow="none")
+        assert r["samples"][1] == (104, 150)   # back 4px in -x direction
+        assert r["samples"][2] == (100, 146)   # forward 4px in -y direction
+
+    def test_spline_passes_through_waypoints(self):
+        """PCHIP must hit each waypoint exactly (parametric: equal at samples)."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_spline
+        wp = [(100, 80), (200, 40), (300, 120), (400, 60)]
+        r = calc_spline(wp, samples=200, arrow="end")
+        assert r["mode"] == "spline"
+        assert len(r["samples"]) == 200
+        # First and last samples are the endpoint waypoints
+        assert abs(r["samples"][0][0] - 100) < 0.5
+        assert abs(r["samples"][0][1] - 80) < 0.5
+        assert abs(r["samples"][-1][0] - 400) < 0.5
+        assert abs(r["samples"][-1][1] - 60) < 0.5
+
+    def test_spline_arrow_both_returns_two_polygons(self):
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_spline
+        r = calc_spline([(0, 0), (50, 100), (100, 0)], samples=100, arrow="both")
+        assert r["start"]["arrow"] is not None
+        assert r["end"]["arrow"] is not None
+        # Trimmed path is shorter than full path due to clearance on both ends
+        assert len(r["trimmed_path_d"]) < len(r["path_d"])
+
+    def test_spline_handles_vertical_segment(self):
+        """Parametric PCHIP should not blow up on non-monotone X (vertical chunks)."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_spline
+        # Goes right, then straight down, then right again - non-monotone Y
+        wp = [(0, 0), (100, 0), (100, 100), (200, 100)]
+        r = calc_spline(wp, samples=50, arrow="end")
+        assert len(r["samples"]) == 50
+        assert r["total_length"] > 0
+
+    def test_pchip_parametric_loops(self):
+        """Parametrising by chord length must allow self-intersecting curves."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import pchip_parametric
+        wp = [(0, 0), (50, 50), (100, 0), (50, -50), (0, 0)]
+        pts = pchip_parametric(wp, num_samples=50)
+        assert len(pts) == 50
+        # Start equals end (closed loop)
+        assert abs(pts[0][0] - pts[-1][0]) < 0.5
+        assert abs(pts[0][1] - pts[-1][1]) < 0.5
+
+    def test_arrowhead_polygon_world_horizontal(self):
+        """Arrow pointing right (angle=0) at tip (10, 5) should give known vertices."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import _arrowhead_polygon_world
+        poly = _arrowhead_polygon_world(10, 5, 0, head_len=10, head_half_h=4)
+        assert poly[0] == (10, 5)
+        assert abs(poly[1][0] - 0) < 0.001 and abs(poly[1][1] - 1) < 0.001
+        assert abs(poly[2][0] - 0) < 0.001 and abs(poly[2][1] - 9) < 0.001
+
+    def test_trim_polyline_removes_correct_distance(self):
+        from stellars_claude_code_plugins.svg_tools.calc_connector import _trim_polyline, _polyline_length
+        pts = [(0, 0), (100, 0), (100, 100)]
+        trimmed = _trim_polyline(pts, 30, "end")
+        assert abs(_polyline_length(trimmed) - 170) < 0.01
+        trimmed = _trim_polyline(pts, 30, "start")
+        assert abs(_polyline_length(trimmed) - 170) < 0.01
+
+    def test_cli_l_mode(self):
+        r = self._run("--mode", "l", "--from", "100,50", "--to", "300,150",
+                      "--first-axis", "h", "--arrow", "end")
+        assert r.returncode == 0
+        assert "L CONNECTOR" in r.stdout
+        assert "Arrow polygon" in r.stdout
+        assert "<path d=" in r.stdout
+        assert "<polygon" in r.stdout
+
+    def test_cli_l_chamfer_mode(self):
+        r = self._run("--mode", "l-chamfer", "--from", "100,50", "--to", "300,150",
+                      "--chamfer", "4")
+        assert r.returncode == 0
+        assert "L-CHAMFER CONNECTOR" in r.stdout
+        # Chamfered L has 4 samples (src, before-corner, after-corner, tgt)
+        assert "Samples:          4" in r.stdout
+
+    def test_cli_spline_mode(self):
+        r = self._run("--mode", "spline", "--waypoints", "100,80 200,40 300,120 400,60",
+                      "--samples", "100", "--arrow", "both")
+        assert r.returncode == 0
+        assert "SPLINE CONNECTOR" in r.stdout
+        assert "Samples:          100" in r.stdout
+        # Both arrows requested: two polygon lines in the SVG snippet
+        assert r.stdout.count("<polygon") == 2
+
+    def test_cli_straight_mode_unchanged(self):
+        """Backward compat: bare --from/--to still produces the legacy output."""
+        r = self._run("--from", "100,50", "--to", "300,50")
+        assert r.returncode == 0
+        assert "0.0 degrees" in r.stdout
+        assert "<g transform=" in r.stdout
+
+
+# ---------------------------------------------------------------------------
+# calc_geometry.py tests
+# ---------------------------------------------------------------------------
+
+
+class TestGeometryModule:
+    """Direct import tests for calc_geometry primitives."""
+
+    def test_midpoint(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            midpoint, Point,
+        )
+        m = midpoint(Point(0, 0), Point(100, 200))
+        assert m.x == 50 and m.y == 100
+
+    def test_distance_lerp(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            distance, lerp, Point,
+        )
+        assert distance(Point(0, 0), Point(3, 4)) == 5.0
+        p = lerp(Point(0, 0), Point(100, 0), 0.25)
+        assert p.x == 25 and p.y == 0
+
+    def test_extend_line(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            extend_line, Point,
+        )
+        end = extend_line(Point(0, 0), Point(10, 0), 5, "end")
+        assert abs(end.x - 15) < 1e-9 and abs(end.y) < 1e-9
+        start = extend_line(Point(0, 0), Point(10, 0), 5, "start")
+        assert abs(start.x + 5) < 1e-9 and abs(start.y) < 1e-9
+
+    def test_perpendicular_foot(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            perpendicular_foot, Point,
+        )
+        # Project (5, 10) onto the X axis -> (5, 0)
+        foot = perpendicular_foot(Point(5, 10), Point(0, 0), Point(20, 0))
+        assert abs(foot.x - 5) < 1e-9
+        assert abs(foot.y) < 1e-9
+
+    def test_intersect_lines(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            intersect_lines, Point,
+        )
+        # X (0,0)-(100,100) crossed with X (0,100)-(100,0) -> (50,50)
+        pt = intersect_lines(Point(0, 0), Point(100, 100),
+                             Point(0, 100), Point(100, 0))
+        assert pt is not None
+        assert abs(pt.x - 50) < 1e-9 and abs(pt.y - 50) < 1e-9
+
+    def test_intersect_lines_parallel(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            intersect_lines, Point,
+        )
+        pt = intersect_lines(Point(0, 0), Point(10, 0),
+                             Point(0, 5), Point(10, 5))
+        assert pt is None
+
+    def test_intersect_line_circle_two_points(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            intersect_line_circle, Point,
+        )
+        # Horizontal line through circle center -> 2 intersections at x = ±r
+        pts = intersect_line_circle(Point(-50, 0), Point(50, 0),
+                                    Point(0, 0), 10)
+        assert len(pts) == 2
+        xs = sorted(p.x for p in pts)
+        assert abs(xs[0] + 10) < 1e-9 and abs(xs[1] - 10) < 1e-9
+
+    def test_intersect_line_circle_no_hit(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            intersect_line_circle, Point,
+        )
+        pts = intersect_line_circle(Point(-50, 100), Point(50, 100),
+                                    Point(0, 0), 10)
+        assert pts == []
+
+    def test_intersect_circles(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            intersect_circles, Point,
+        )
+        # Two circles centered at (0,0) and (10,0) with r=6 -> intersect at x=5, y=±sqrt(11)
+        pts = intersect_circles(Point(0, 0), 6, Point(10, 0), 6)
+        assert len(pts) == 2
+        for p in pts:
+            assert abs(p.x - 5) < 1e-6
+            assert abs(abs(p.y) - math.sqrt(11)) < 1e-6
+
+    def test_tangent_points_from_external(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            tangent_points_from_external, distance, Point,
+        )
+        center = Point(0, 0)
+        ext = Point(10, 0)
+        r = 6
+        pts = tangent_points_from_external(ext, center, r)
+        assert len(pts) == 2
+        for p in pts:
+            # Each tangent point lies on the circle
+            assert abs(distance(p, center) - r) < 1e-6
+            # And the line from ext to p is perpendicular to the radius at p
+            dx_radius = p.x - center.x
+            dy_radius = p.y - center.y
+            dx_tan = ext.x - p.x
+            dy_tan = ext.y - p.y
+            dot = dx_radius * dx_tan + dy_radius * dy_tan
+            assert abs(dot) < 1e-6
+
+    def test_polar_to_cartesian(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            polar_to_cartesian, Point,
+        )
+        # Angle 0 = +X (right) in SVG convention
+        p = polar_to_cartesian(Point(100, 100), 50, 0)
+        assert abs(p.x - 150) < 1e-9 and abs(p.y - 100) < 1e-9
+        # Angle 90 = +Y (down in SVG)
+        p = polar_to_cartesian(Point(100, 100), 50, 90)
+        assert abs(p.x - 100) < 1e-9 and abs(p.y - 150) < 1e-9
+
+    def test_evenly_spaced_on_circle(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            evenly_spaced_on_circle, distance, Point,
+        )
+        pts = evenly_spaced_on_circle(Point(0, 0), 10, 4)
+        assert len(pts) == 4
+        for p in pts:
+            assert abs(distance(p, Point(0, 0)) - 10) < 1e-9
+        # Point 0 at angle 0 is (10, 0)
+        assert abs(pts[0].x - 10) < 1e-9 and abs(pts[0].y) < 1e-9
+
+    def test_rect_attachment_points(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            rect_attachment, rect_corner, rect_center,
+        )
+        # 100x80 rect at (50, 50)
+        right_mid = rect_attachment(50, 50, 100, 80, "right", "mid")
+        assert right_mid.x == 150 and right_mid.y == 90
+
+        top_mid = rect_attachment(50, 50, 100, 80, "top", "mid")
+        assert top_mid.x == 100 and top_mid.y == 50
+
+        center = rect_center(50, 50, 100, 80)
+        assert center.x == 100 and center.y == 90
+
+        tl = rect_corner(50, 50, 100, 80, "tl")
+        assert tl.x == 50 and tl.y == 50
+
+    def test_bisector_direction(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            bisector_direction, Point,
+        )
+        # 90 degree corner: bisector is at 45 degrees
+        bx, by = bisector_direction(Point(10, 0), Point(0, 0), Point(0, 10))
+        assert abs(bx - by) < 1e-9
+        assert abs(math.hypot(bx, by) - 1) < 1e-9
+
+
+class TestGeometryOffsets:
+    """Tests for offset (parallel) geometry primitives."""
+
+    def test_offset_line_left_right(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            offset_line, Point,
+        )
+        # Walking east in SVG: visual left = -Y (up), visual right = +Y (down)
+        a, b = offset_line(Point(0, 0), Point(100, 0), 10, side="left")
+        assert abs(a.y + 10) < 1e-9 and abs(b.y + 10) < 1e-9
+        a, b = offset_line(Point(0, 0), Point(100, 0), 10, side="right")
+        assert abs(a.y - 10) < 1e-9 and abs(b.y - 10) < 1e-9
+
+    def test_offset_polyline_corner_miter(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            offset_polyline, Point,
+        )
+        # Right-angle polyline: (0,0) -> (100,0) -> (100,100), offset 10 to the right
+        result = offset_polyline(
+            [Point(0, 0), Point(100, 0), Point(100, 100)],
+            10, side="right",
+        )
+        assert len(result) == 3
+        # Walking east, right = +Y so first segment shifts to y=10
+        assert abs(result[0].x) < 1e-9 and abs(result[0].y - 10) < 1e-9
+        # Walking south, right = -X so second segment shifts to x=90
+        assert abs(result[2].x - 90) < 1e-9 and abs(result[2].y - 100) < 1e-9
+        # Mitre vertex sits at (90, 10)
+        assert abs(result[1].x - 90) < 1e-9 and abs(result[1].y - 10) < 1e-9
+
+    def test_offset_rect_inflate_deflate(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import offset_rect
+        # Inflate by 5
+        nx, ny, nw, nh = offset_rect(50, 50, 100, 80, 5)
+        assert (nx, ny, nw, nh) == (45, 45, 110, 90)
+        # Deflate by 5
+        nx, ny, nw, nh = offset_rect(50, 50, 100, 80, -5)
+        assert (nx, ny, nw, nh) == (55, 55, 90, 70)
+        # Collapse
+        assert offset_rect(50, 50, 10, 10, -10) is None
+
+    def test_offset_circle(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            offset_circle, Point,
+        )
+        c, r = offset_circle(Point(50, 50), 20, 5)
+        assert r == 25 and c.x == 50 and c.y == 50
+        assert offset_circle(Point(0, 0), 5, -10) is None
+
+    def test_offset_point_from_line(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            offset_point_from_line, Point,
+        )
+        # Mid of horizontal line, 10px to the right (down in SVG)
+        p = offset_point_from_line(Point(0, 0), Point(100, 0), 0.5, 10, "right")
+        assert abs(p.x - 50) < 1e-9 and abs(p.y - 10) < 1e-9
+
+    def test_offset_polygon_outward(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            offset_polygon, Point,
+        )
+        # Square (clockwise in SVG) inflated by 5 -> larger square with 5px halo
+        square = [Point(0, 0), Point(10, 0), Point(10, 10), Point(0, 10)]
+        result = offset_polygon(square, 5, "outward")
+        xs = sorted(p.x for p in result)
+        ys = sorted(p.y for p in result)
+        assert abs(xs[0] + 5) < 1e-9 and abs(xs[-1] - 15) < 1e-9
+        assert abs(ys[0] + 5) < 1e-9 and abs(ys[-1] - 15) < 1e-9
+
+    def test_offset_polygon_inward(self):
+        from stellars_claude_code_plugins.svg_tools.calc_geometry import (
+            offset_polygon, Point,
+        )
+        square = [Point(0, 0), Point(10, 0), Point(10, 10), Point(0, 10)]
+        result = offset_polygon(square, 2, "inward")
+        xs = sorted(p.x for p in result)
+        ys = sorted(p.y for p in result)
+        assert abs(xs[0] - 2) < 1e-9 and abs(xs[-1] - 8) < 1e-9
+        assert abs(ys[0] - 2) < 1e-9 and abs(ys[-1] - 8) < 1e-9
+
+
+class TestGeometryCLI:
+    """Tests for the calc_geometry CLI subcommands."""
+
+    TOOL = TOOLS_DIR / "calc_geometry.py"
+
+    def _run(self, *args):
+        return subprocess.run(
+            [sys.executable, str(self.TOOL), *args],
+            capture_output=True, text=True,
+        )
+
+    def test_cli_midpoint(self):
+        r = self._run("midpoint", "--p1", "0,0", "--p2", "100,200")
+        assert r.returncode == 0
+        assert "Midpoint: (50.00, 100.00)" in r.stdout
+
+    def test_cli_extend(self):
+        r = self._run("extend", "--line", "0,0,100,0", "--by", "20")
+        assert r.returncode == 0
+        assert "Extended end by 20.0: (120.00, 0.00)" in r.stdout
+
+    def test_cli_at(self):
+        r = self._run("at", "--line", "0,0,100,0", "--t", "0.25")
+        assert r.returncode == 0
+        assert "(25.00, 0.00)" in r.stdout
+
+    def test_cli_perpendicular(self):
+        r = self._run("perpendicular", "--point", "5,10", "--line", "0,0,20,0")
+        assert r.returncode == 0
+        assert "Foot: (5.00, 0.00)" in r.stdout
+        assert "Distance:  10.00" in r.stdout
+
+    def test_cli_tangent(self):
+        r = self._run("tangent", "--circle", "0,0,6", "--from", "10,0")
+        assert r.returncode == 0
+        assert "Tangent point 1" in r.stdout
+        assert "Tangent point 2" in r.stdout
+
+    def test_cli_intersect_lines(self):
+        r = self._run("intersect-lines", "--line1", "0,0,100,100",
+                      "--line2", "0,100,100,0")
+        assert r.returncode == 0
+        assert "Intersection: (50.00, 50.00)" in r.stdout
+
+    def test_cli_intersect_circles(self):
+        r = self._run("intersect-circles", "--c1", "0,0,6", "--c2", "10,0,6")
+        assert r.returncode == 0
+        assert "Intersection 1" in r.stdout
+        assert "Intersection 2" in r.stdout
+
+    def test_cli_evenly_spaced(self):
+        r = self._run("evenly-spaced", "--center", "0,0", "--r", "10", "--count", "4")
+        assert r.returncode == 0
+        # 4 points labelled Point 0..3
+        for i in range(4):
+            assert f"Point {i}" in r.stdout
+
+    def test_cli_concentric(self):
+        r = self._run("concentric", "--center", "100,100", "--radii", "20,40,60")
+        assert r.returncode == 0
+        # Three circle SVG elements emitted
+        assert r.stdout.count("<circle") == 3
+
+    def test_cli_attach_rect_right_mid(self):
+        r = self._run("attach", "--shape", "rect",
+                      "--geometry", "50,50,100,80", "--side", "right")
+        assert r.returncode == 0
+        assert "Attachment: (150.00, 90.00)" in r.stdout
+
+    def test_cli_attach_circle_perimeter(self):
+        r = self._run("attach", "--shape", "circle",
+                      "--geometry", "100,100,30", "--side", "perimeter",
+                      "--angle", "90")
+        assert r.returncode == 0
+        assert "Attachment: (100.00, 130.00)" in r.stdout
+
+    def test_cli_offset_line(self):
+        r = self._run("offset-line", "--line", "0,0,100,0",
+                      "--distance", "10", "--side", "right")
+        assert r.returncode == 0
+        assert "Offset start  : (0.00, 10.00)" in r.stdout
+
+    def test_cli_offset_polyline(self):
+        r = self._run("offset-polyline", "--points", "0,0 100,0 100,100",
+                      "--distance", "10", "--side", "right")
+        assert r.returncode == 0
+        assert "Offset polyline (3 points)" in r.stdout
+        assert "v1: (90.00, 10.00)" in r.stdout
+
+    def test_cli_offset_rect(self):
+        r = self._run("offset-rect", "--rect", "50,50,100,80", "--by", "5")
+        assert r.returncode == 0
+        assert "x=45.0" in r.stdout and "y=45.0" in r.stdout
+        assert "w=110.0" in r.stdout and "h=90.0" in r.stdout
+
+    def test_cli_offset_circle(self):
+        r = self._run("offset-circle", "--circle", "50,50,20", "--by", "-5")
+        assert r.returncode == 0
+        assert "Offset radius:   15" in r.stdout
+
+    def test_cli_offset_polygon(self):
+        r = self._run("offset-polygon", "--points", "0,0 10,0 10,10 0,10",
+                      "--distance", "2", "--direction", "inward")
+        assert r.returncode == 0
+        assert "Inward offset polygon (4 vertices)" in r.stdout
+
+    def test_cli_offset_point_standoff(self):
+        r = self._run("offset-point", "--line", "0,0,100,0",
+                      "--t", "0.5", "--distance", "12", "--side", "right")
+        assert r.returncode == 0
+        assert "(50.00, 12.00)" in r.stdout
+
+    def test_cli_unknown_subcommand_fails(self):
+        r = self._run("nonexistent")
+        assert r.returncode != 0
+
+
+class TestGeometryViaUnifiedCli:
+    """Smoke test that the new geom subcommand is wired into svg-infographics."""
+
+    def test_geom_midpoint_via_unified_cli(self):
+        r = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "cli.py"), "geom",
+             "midpoint", "--p1", "0,0", "--p2", "100,200"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0
+        assert "Midpoint: (50.00, 100.00)" in r.stdout
+
+
 # ---------------------------------------------------------------------------
 # check_contrast.py tests
 # ---------------------------------------------------------------------------
@@ -346,6 +846,114 @@ class TestContrastModule:
         assert is_large_text(14, "bold") is True
         assert is_large_text(12, "normal") is False
         assert is_large_text(14, "normal") is False
+
+
+class TestObjectContrast:
+    """Tests for object (non-text) contrast checks."""
+
+    def test_low_contrast_card_flagged(self, tmp_path):
+        """A near-white card with no stroke on a white doc bg should fail."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            parse_svg_shapes, check_object_contrasts,
+        )
+        svg = tmp_path / "lowobj.svg"
+        svg.write_text(textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+              <rect x="20" y="20" width="200" height="100" fill="#f5f5f5"/>
+            </svg>
+        """))
+        shapes, _, dark, w, h = parse_svg_shapes(str(svg))
+        results = check_object_contrasts(shapes, dark, w, h)
+        light_fails = [r for r in results if r.mode == "light" and not r.passed]
+        assert len(light_fails) >= 1, "Expected near-white card to fail object contrast"
+
+    def test_strong_stroke_saves_faint_fill(self, tmp_path):
+        """A faint fill paired with a strong stroke should pass via stroke."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            parse_svg_shapes, check_object_contrasts,
+        )
+        svg = tmp_path / "stroke_saves.svg"
+        svg.write_text(textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+              <path d="M20,20 H220 V120 H20 Z" fill="#0066aa" fill-opacity="0.04"/>
+              <path d="M20,20 H220 V120 H20 Z" fill="none" stroke="#003355" stroke-width="2"/>
+            </svg>
+        """))
+        shapes, _, dark, w, h = parse_svg_shapes(str(svg))
+        # The two paired paths must merge into one shape so the stroke counts.
+        assert len(shapes) == 1
+        results = check_object_contrasts(shapes, dark, w, h)
+        light = [r for r in results if r.mode == "light"]
+        assert all(r.passed for r in light), "Strong stroke should rescue faint fill"
+
+    def test_doc_background_is_skipped(self, tmp_path):
+        """A rect that fills the canvas should not be checked as an object."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            parse_svg_shapes, check_object_contrasts,
+        )
+        svg = tmp_path / "docbg.svg"
+        svg.write_text(textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+              <rect x="0" y="0" width="800" height="200" fill="#ffffff"/>
+              <rect x="20" y="20" width="200" height="100" fill="#0066aa"/>
+            </svg>
+        """))
+        shapes, _, dark, w, h = parse_svg_shapes(str(svg))
+        results = check_object_contrasts(shapes, dark, w, h)
+        # The 800x200 rect must not appear in results (it's the doc bg)
+        labels = {r.shape.label for r in results}
+        assert "rect 800x200" not in labels
+        assert "rect 200x100" in labels
+
+    def test_path_bbox_handles_h_v_commands(self):
+        """SVG path with H/V commands should produce an exact bbox."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import _parse_path_bbox
+        bbox = _parse_path_bbox("M20,40 H150 V107 H20 Z")
+        assert bbox is not None
+        x, y, w, h = bbox
+        assert x == 20 and y == 40
+        assert w == 130 and h == 67
+
+    def test_dark_mode_swaps_class_color(self, tmp_path):
+        """Object contrast check must use dark-mode class colour in dark mode."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            parse_svg_shapes, check_object_contrasts,
+        )
+        svg = tmp_path / "darkswap.svg"
+        svg.write_text(textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+              <style>
+                .card { fill: #0066aa; }
+                @media (prefers-color-scheme: dark) {
+                  .card { fill: #88ccee; }
+                }
+              </style>
+              <rect x="20" y="20" width="200" height="100" class="card"/>
+            </svg>
+        """))
+        shapes, _, dark, w, h = parse_svg_shapes(str(svg))
+        results = check_object_contrasts(shapes, dark, w, h)
+        light = next(r for r in results if r.mode == "light")
+        dark_r = next(r for r in results if r.mode == "dark")
+        assert light.fill_used == "#0066aa"
+        assert dark_r.fill_used == "#88ccee"
+
+    def test_skip_objects_flag(self, tmp_path):
+        """--skip-objects should suppress the OBJECT CONTRAST sections."""
+        svg = tmp_path / "obj.svg"
+        svg.write_text(textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
+              <rect x="20" y="20" width="200" height="100" fill="#f5f5f5"/>
+            </svg>
+        """))
+        result = subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "check_contrast.py"),
+             "--svg", str(svg), "--skip-objects"],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0
+        assert "OBJECT CONTRAST" not in result.stdout
+        assert "OBJECTS:" not in result.stdout
 
 
 # ---------------------------------------------------------------------------

@@ -28,6 +28,8 @@ Version tag `(v1.2.3)` only for versioned projects.
 | **Normal** | ~150-200 | Features, multi-file changes (DEFAULT) |
 | **Extended** | ~350+ | Architectural changes, design decisions |
 
+**Detail discipline**: full summaries with file paths, line counts, helper-function names, test counts per class, and exhaustive listings belong ONLY in **Extended** entries. **Normal** entries should read like the recap a colleague would give over coffee - what was added, the headline numbers, and the why - not a directory listing. **Short** entries get one fact and one outcome. If you find yourself writing a 300-word entry by default, downgrade to a normal-level recap unless the work genuinely qualifies as architectural or design-decision-level.
+
 ## What to Log
 
 **Log**: document changes, features, investigations with findings, diagram work

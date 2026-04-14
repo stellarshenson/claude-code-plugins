@@ -43,6 +43,7 @@ Read these skills before generating anything - they are the source of truth:
    - Read 3-5 relevant examples from `examples/`
    - Calculate grid with `svg-infographics primitives` for exact anchor coordinates (Bash tool)
    - Build scaffold from grid positions using primitives for shapes and connectors
+   - **For any smooth curve through waypoints** (decision boundaries, distributions, ROC/PR, sigmoid, trajectories, organic flow paths) you MUST use `svg-infographics primitives spline --points "..." --samples 200`. Hand-written `C`/`Q` bezier paths for data curves are forbidden - the PCHIP interpolator the tool uses is the only acceptable source for these paths
    - Add content at documented positions
    - Verify arrows and add finishing touches
    - Run `svg-infographics overlaps`, `svg-infographics contrast`, `svg-infographics alignment`, `svg-infographics css`

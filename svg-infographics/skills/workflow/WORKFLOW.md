@@ -2,6 +2,26 @@
 
 This document defines the exact workflow for creating SVG infographics. Every step must be followed in order, for every single image. No shortcuts, no batching.
 
+## Tool Inventory
+
+These tools ship with the plugin. Reach for them whenever the task they describe comes up - they exist so you do not have to guess coordinates, control points, tangents, or contrast values.
+
+**Calculators** (produce numbers + paste-ready SVG snippets):
+
+- `svg-infographics primitives` - rect, square, circle, ellipse, diamond, hex, star, arc, cube, cylinder, sphere, cuboid, plane, axis, **spline** (PCHIP through control points). Returns the geometry plus all named anchor points (top, bottom, center, corners). Useful whenever you need a primitive shape with exact anchors, isometric 3D, or any smooth waypoint curve
+- `svg-infographics connector` - straight, L, L-chamfer, or PCHIP spline connectors between elements. Returns the path d, trimmed path d (with arrowhead clearance), arrowhead polygons in world coords, and tangent angle at each end. Pick the mode that matches the connection style (straight = direct, l-chamfer = turning, spline = organic flow)
+- `svg-infographics geom` - sketch constraints in the Fusion-360 style: midpoints, perpendicular foot, line extension, tangent points, line/circle/circle intersections, parallel/perpendicular construction, polar conversion, evenly-spaced ring layout, concentric circles, angle bisector, attachment points on rect/circle, and parallel offsets (line, polyline, rect, circle, polygon, label standoff). Run `geom --help` for the full menu - the help text describes when each subcommand applies
+
+**Validators** (read the finished SVG, report problems):
+
+- `svg-infographics overlaps` - text/shape overlaps, spacing rhythm, font-size floors. Run on every finished SVG
+- `svg-infographics contrast` - WCAG 2.1 text contrast AND object-vs-background contrast (cards too faint to see) in light + dark mode
+- `svg-infographics alignment` - grid snapping, vertical rhythm, layout topology checks. Catches anything that drifted off the grid
+- `svg-infographics connectors` - connector quality: zero-length, edge-snap, missing chamfer on L-routes, dangling endpoints
+- `svg-infographics css` - CSS compliance: inline fills that should be classes, missing dark-mode overrides, forbidden colours
+
+**When deciding what to do**, scan this list and ask "is there a tool for this?" before computing values yourself. The cost of running a tool is one bash call; the cost of an eyeballed coordinate is a failed validation pass and a rework cycle. Each calculator's `--help` includes a "use for" hint per subcommand so you can match a need to a tool quickly.
+
 ## Skill Activation
 
 Before creating any SVG content:
@@ -73,15 +93,54 @@ Place structural elements at grid positions. No text, no icons, no content yet.
    - Fully opaque - no `opacity` on line or polygon
    - See `examples/arrow_patterns.svg` for straight (0deg), fork-up (-54.5deg), merge-down (29.7deg)
 
-6. Place connectors (chamfered L-routes):
-   - For multi-segment connections that change direction (not straight arrows)
-   - Chamfer: 4px diagonal at every 90-degree turn
-   - Formula: instead of `V{y} H{x}`, use `V{y-4} L{x+4},{y} H{x2-4} L{x2},{y+4}`
-   - Stagger vertical midpoints when multiple L-routes share a gap
-   - Manifold design: document fork/merge points in grid comment; fork uses one source colour, merge uses single pipeline colour (not mixed)
-   - Connector endpoints connect to arrow stems or directly to card edges
+6. Place connectors. **Pick the right mode** and use `svg-infographics connector` with the matching `--mode` flag - never hand-author connector geometry:
+
+   | When | Mode | Command |
+   |------|------|---------|
+   | One straight line between two points | `straight` | `svg-infographics connector --from X,Y --to X,Y` |
+   | Right-angle route (axis-aligned) | `l` | `svg-infographics connector --mode l --from X,Y --to X,Y --first-axis h\|v` |
+   | Right-angle route with softened corner | `l-chamfer` | `svg-infographics connector --mode l-chamfer --from X,Y --to X,Y --first-axis h\|v --chamfer 4` |
+   | Smooth free curve through 3+ waypoints | `spline` | `svg-infographics connector --mode spline --waypoints "x1,y1 x2,y2 ..." --samples 200` |
+
+   All four modes accept `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--color`, `--width`, `--opacity`. The tool returns the trimmed path d (with arrowhead clearance), the world-space arrowhead polygons, and the tangent angle at each end so you know exactly where to place labels or attach to other elements.
+
+   Rules:
+   - Default to `l-chamfer` with `--chamfer 4` for any multi-segment connection that changes direction. Sharp corners are forbidden in finished SVGs
+   - Use `spline` for organic flows, fork/merge manifolds, and any curve a designer would draw freehand. NEVER hand-write `C` (cubic) or `Q` (quadratic) commands
+   - Stagger vertical midpoints when multiple L-routes share a gap (use the corner coordinates the tool prints)
+   - Manifold design: document fork/merge points in the grid comment; fork uses one source colour, merge uses a single pipeline colour (not mixed)
+   - Connector endpoints meet card edges or arrow stems exactly - `check_connectors` will flag anything that misses
 
 7. For 3D shapes use `svg-infographics primitives cube/cylinder/sphere/cuboid/plane` for isometric coordinates
+
+7b. **For geometry constraints and attachment points** (Fusion-360-style sketch operations), use `svg-infographics geom` subcommands instead of computing coordinates by hand:
+
+    | Need | Command |
+    |------|---------|
+    | Snap point on card edge (top/right/bottom/left, mid/start/end) | `geom attach --shape rect --geometry X,Y,W,H --side right --pos mid` |
+    | Snap point on circle perimeter at angle | `geom attach --shape circle --geometry CX,CY,R --side perimeter --angle 45` |
+    | Midpoint between two points | `geom midpoint --p1 X,Y --p2 X,Y` |
+    | Extend a line endpoint by N px | `geom extend --line X1,Y1,X2,Y2 --by N --end end` |
+    | Point at parameter t along a line | `geom at --line X1,Y1,X2,Y2 --t 0.5` |
+    | Foot of perpendicular from a point to a line | `geom perpendicular --point X,Y --line X1,Y1,X2,Y2` |
+    | Tangent points from external point to a circle | `geom tangent --circle CX,CY,R --from X,Y` |
+    | Tangent lines between two circles | `geom tangent-circles --c1 CX,CY,R --c2 CX,CY,R --kind external\|internal` |
+    | Line/line, line/circle, circle/circle intersections | `geom intersect-lines\|intersect-line-circle\|intersect-circles` |
+    | N points evenly distributed around a circle | `geom evenly-spaced --center X,Y --r R --count N` |
+    | Concentric rings around a center | `geom concentric --center X,Y --radii r1,r2,r3` |
+    | Polar to cartesian | `geom polar --center X,Y --r R --angle DEG` |
+    | Angle bisector at a vertex | `geom bisector --p1 X,Y --vertex X,Y --p2 X,Y` |
+    | Parallel/perpendicular line through a point | `geom parallel\|perpendicular-line --line X1,Y1,X2,Y2 --through X,Y` |
+    | **Offset line at perpendicular distance** | `geom offset-line --line X1,Y1,X2,Y2 --distance N --side left\|right` |
+    | **Offset polyline (mitered) for parallel rails** | `geom offset-polyline --points "..." --distance N --side left\|right` |
+    | **Inflate / deflate a card outline** | `geom offset-rect --rect X,Y,W,H --by N` (negative shrinks) |
+    | **Halo / shrink a circle** | `geom offset-circle --circle CX,CY,R --by N` |
+    | **Outward / inward offset of a closed polygon** | `geom offset-polygon --points "..." --distance N --direction outward\|inward` |
+    | **Standoff label point along a connector** | `geom offset-point --line X1,Y1,X2,Y2 --t 0.5 --distance 12 --side left` |
+
+    Every subcommand prints both the computed value(s) and a small SVG verification snippet you can paste into the file to sanity-check visually. Always run the geometry tool before authoring coordinates by hand - eyeballed positions break alignment, miss tangents by 1-2px, and fail validation.
+
+7a. **For ANY smooth curve through known waypoints** (decision boundaries, distribution shapes, ROC/PR curves, sigmoid/logistic, score trajectories, isolines, organic flow paths) you MUST run `svg-infographics primitives spline --points "x1,y1 x2,y2 ..." --samples 200` and paste the returned `<path d="...">` verbatim. NEVER hand-write `C` (cubic) or `Q` (quadratic) bezier commands for data curves - control-point placement requires guessing, the curve overshoots waypoints, and joins kink. The PCHIP interpolator the tool uses is monotonicity-preserving and matches what a designer would draw. Only `Q` curves are allowed for card corner radii (Phase 3 scaffolding); everything else must come from the spline tool.
 
 8. Place track line segments (if timeline):
    - `<line>` from cx+r of one milestone to cx-r of next
