@@ -1,7 +1,7 @@
 # Project-specific
 .autobuild/
 .auto-build-claw/
-references/
+/references/
 tmp/
 
 # Mac OS-specific storage files
