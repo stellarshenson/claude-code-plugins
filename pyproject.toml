@@ -19,10 +19,12 @@ dependencies = [
     "bezier",
     "fonttools",
     "numpy",
+    "pillow",
     "pygal",
     "pyyaml",
     "scipy",
     "shapely",
+    "svgelements>=1.9",
     "tiktoken",
     "transitions",
 ]

@@ -325,27 +325,46 @@ Callout = leader line + italic text annotating element. Six rules:
 5. Callouts must not overlap each other. Stack in one zone or distribute.
 6. Leader anchor stops `standoff` px short of text bbox. Never glue to bbox edge, never enter bbox interior. Compute: `svg-infographics geom offset-rect --rect <text-bbox> --by <standoff>` (inflate), then `svg-infographics geom rect-edge --rect <inflated> --from <target>` returns anchor point. Default standoff 3px.
 
+### Callout naming convention (MANDATORY)
+
+Every callout MUST use the `callout` namespace across THREE places so that tooling can find, exclude, and audit them:
+
+1. **Group id prefix**: wrap every callout in `<g id="callout-<name>">`. The `callout-` prefix is mandatory — `svg-infographics empty-space` skips matching groups via the default `exclude_ids=["callout-*"]`, so existing callouts don't pollute the obstacle set when re-running placement. `svg-infographics overlaps` also uses the prefix to detect the CALLOUT CROSS-COLLISIONS audit block.
+2. **Text class**: every `<text>` child uses `class="callout-text"`. Font style, fill colour, and size come from the CSS class; `check_overlaps` resolves it to compute text bboxes for cross-collision checks.
+3. **Line class**: every leader `<line>` / `<path>` / `<polyline>` uses `class="callout-line"`. Stroke colour, width, and opacity come from the class.
+
+Example:
+```html
+<style>
+  .callout-text { font-family: Segoe UI; font-size: 8.5px; font-style: italic; fill: #7a4a15; }
+  .callout-line { stroke: #7a4a15; stroke-width: 1; fill: none; }
+</style>
+<g id="callout-merge">
+  <text x="445" y="130" class="callout-text">merge point</text>
+  <text x="445" y="141" class="callout-text">(single convergence)</text>
+  <line x1="410" y1="230" x2="464" y2="144" class="callout-line"/>
+</g>
+```
+
+No other id prefix or class scheme is accepted. Callouts that don't follow the convention are invisible to `empty-space`, `overlaps`, and the callout placement workflow.
+
 ### Callout construction workflow
 
 7 steps per callout (two audit gates - pre-placement and post-placement):
 
 1. **Pre-audit existing callouts**: `svg-infographics overlaps --svg file.svg` reports a CALLOUT CROSS-COLLISIONS section. Any prior leader/text overlap must be resolved before adding new callouts - stacking new work on top of broken layout wastes iterations.
-2. **Empty space islands**: `svg-infographics empty-space --canvas ... --shapes [...] --tolerance 20` → boundary polygons per free island, each shrunk inward by 20px. `--tolerance 20` is the minimum for callouts; anything smaller lets leaders clip adjacent shapes. Larger values (25-30) for denser scenes.
+2. **Empty space islands**: `svg-infographics empty-space --svg file.svg --tolerance 20` → boundary polygons per free island, each shrunk inward by 20px. `--tolerance 20` is the minimum for callouts; anything smaller lets leaders clip adjacent shapes. Larger values (25-30) for denser scenes. The tool reads the SVG directly — every visible element becomes an obstacle automatically. Existing `<g id="callout-*">` groups are excluded by default via `--exclude-id`. No manual shape list needed.
 3. **Text bbox**: width ≈ `len(text) * font_size * 0.55`, height ≈ `font_size + 2` per line. Stack lines if multi-line.
 4. **Best placement**: for each island, verify text bbox fits via `svg-infographics geom contains --polygon <island> --bbox <text-bbox>` - use returned polygon boundary, NEVER its axis-aligned bbox (islands can be L-shaped or horseshoe; text dropped in an empty sub-rectangle of the bbox may land inside an occluded shape). `contained=YES convex-safe=YES` is the pass condition. Then audit leader vs ALL hard shapes (not just the island) - leader may start inside the shape containing target but must not touch any other shape. Prefer islands closest to target, ties broken by shortest leader.
 
-   **Iterate callouts**: place one at a time, then add its text bbox to the hard-shape list before placing the next. Skipping this step causes the next placement to land on top of the previous one - caught by step 7's post-audit but wastes iteration cycles.
-
-   **Strand bboxes**: when a manifold scene passes curved strand bundles as `empty-space` shapes, keep the bbox tight around the actual curve envelope, not the whole rectangle of strand endpoints. Loose strand bboxes over-erode the island interior under `--tolerance 20` and leave only thin slivers, pushing callouts far from their targets.
+   **Iterate callouts**: place one at a time, then add its text bbox to the hard-shape list OR append it to the SVG file with the `callout-` prefix before re-running. Either approach works because empty-space excludes `callout-*` by default. Skipping this step causes the next placement to land on top of the previous one - caught by step 7's post-audit but wastes iteration cycles.
 5. **Leader audit**: no shape crossings. If unavoidable, pick fewest. Short-but-not-too-short per rule 3.
 6. **Render** text at chosen position, draw leader. Bbox was scaffold, discard.
 7. **Post-audit**: re-run `svg-infographics overlaps --svg file.svg`. The CALLOUT CROSS-COLLISIONS section must be clean (no "leader of X crosses text of Y", "leader of X crosses leader of Y", "text of X overlaps text of Y"). Also re-check general overlaps against all other geometry. Any violation means the placement failed - reposition and repeat.
 
-**Shapes for empty-space input**: every visible element counts — cards, strand paths (as bboxes or sample polylines), existing callouts, title+subtitle+label text (as bboxes), legend, dividers. ALL texts participate as their bounding boxes so nothing else lands on top of them. Text bbox: `(x - pad, y_baseline - font_size, width + 2·pad, font_size + 2·pad)` with `pad=2`.
+**SVG IS the source of truth**: `svg-infographics empty-space --svg ...` reads the actual SVG. No shape list is built by the caller. Shoulders near curved connectors appear as genuine free regions.
 
-`empty-space` does steps 2 + part of 4 (`--tolerance` replaces the optional `geom offset-polygon --direction inward` pass - handle it in one call).
-
-**`empty-space` not callout-only**: any "where to put X without overlapping Y" question. Legends, badges, secondary labels, logos, icons, decorative imagery, orphan annotations. Pass geometry as `shapes`, pick largest island, drop element. Saves iteration cycles on layouts clean in isolation but colliding when assembled.
+**`empty-space` not callout-only**: any "where to put X without overlapping Y" question. Legends, badges, secondary labels, logos, icons, decorative imagery, orphan annotations. Point it at your SVG, pick the largest island that fits the element, drop the element there.
 
 **Empty zones for manifold scenes** (highest yield first):
 

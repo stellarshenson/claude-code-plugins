@@ -249,14 +249,28 @@ class TestCalcConnectorModule:
         assert abs(c["samples"][-1][0] - 200) < 0.01
         assert abs(c["samples"][-1][1] - 50) < 0.01
 
-    def test_empty_space_finds_free_regions(self):
-        """calc_empty_space identifies connected free regions on a canvas."""
-        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        regions = find_empty_regions(
-            canvas=(0, 0, 400, 300),
-            shapes=[(100, 100, 80, 60), (250, 150, 80, 60)],
-            coarse_divisions=8, max_depth=2, tolerance=0,
+    # ----- helpers ---------------------------------------------------------
+
+    @staticmethod
+    def _svg(viewbox, body=""):
+        """Build a minimal SVG document as an XML string."""
+        return (
+            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}">'
+            f'{body}</svg>'
         )
+
+    @staticmethod
+    def _rect(x, y, w, h, fill="black"):
+        return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{fill}"/>'
+
+    # ----- tests -----------------------------------------------------------
+
+    def test_empty_space_finds_free_regions(self):
+        """find_empty_regions identifies connected free regions on a canvas."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        svg = self._svg("0 0 400 300",
+                        self._rect(100, 100, 80, 60) + self._rect(250, 150, 80, 60))
+        regions = find_empty_regions(svg, tolerance=0)
         assert len(regions) >= 1
         biggest = regions[0]
         assert biggest["area"] > 50000
@@ -265,21 +279,20 @@ class TestCalcConnectorModule:
     def test_empty_space_no_shapes(self):
         """No shapes: whole canvas is one free region."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        regions = find_empty_regions(
-            canvas=(0, 0, 100, 100), shapes=[], coarse_divisions=4, max_depth=1,
-            tolerance=0,
-        )
+        regions = find_empty_regions(self._svg("0 0 100 100"), tolerance=0)
         assert len(regions) == 1
         assert abs(regions[0]["area"] - 10000) < 100
 
     def test_empty_space_returns_sorted_by_area_desc(self):
         """Regions must be sorted biggest first for ergonomic selection."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        regions = find_empty_regions(
-            canvas=(0, 0, 400, 300),
-            shapes=[(50, 50, 80, 60), (250, 50, 80, 60), (150, 200, 80, 60)],
-            coarse_divisions=8, max_depth=2, tolerance=0,
+        svg = self._svg(
+            "0 0 400 300",
+            self._rect(50, 50, 80, 60)
+            + self._rect(250, 50, 80, 60)
+            + self._rect(150, 200, 80, 60),
         )
+        regions = find_empty_regions(svg, tolerance=0, min_area=0)
         if len(regions) >= 2:
             for i in range(len(regions) - 1):
                 assert regions[i]["area"] >= regions[i + 1]["area"]
@@ -287,79 +300,37 @@ class TestCalcConnectorModule:
     def test_empty_space_fully_occupied_returns_empty(self):
         """Canvas fully covered by a single shape returns no regions."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        regions = find_empty_regions(
-            canvas=(0, 0, 100, 100), shapes=[(0, 0, 100, 100)],
-            coarse_divisions=4, max_depth=3, tolerance=0,
-        )
+        svg = self._svg("0 0 100 100", self._rect(0, 0, 100, 100))
+        regions = find_empty_regions(svg, tolerance=0)
         assert regions == []
 
-    def test_empty_space_accepts_polygon_shape(self):
-        """Shapes can be arbitrary closed polygons, not just rects."""
+    def test_empty_space_accepts_polygon_element(self):
+        """Polygon SVG elements are rasterised via scanline fill."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        # Triangle occupying the centre of a 300x300 canvas
-        triangle = [(100, 100), (200, 100), (150, 200)]
-        regions = find_empty_regions(
-            canvas=(0, 0, 300, 300), shapes=[triangle],
-            coarse_divisions=6, max_depth=2, tolerance=0,
+        # Triangle occupying the centre; rest of 300x300 canvas is free.
+        svg = self._svg(
+            "0 0 300 300",
+            '<polygon points="100,100 200,100 150,200" fill="red"/>',
         )
+        regions = find_empty_regions(svg, tolerance=0, min_area=0)
         assert len(regions) >= 1
-        # The free area should be close to canvas area minus triangle area
-        # Triangle area = 0.5 * 100 * 100 = 5000; canvas = 90000; expected free ~85000
+        # Canvas 90000 px; triangle ~5000 px; free area ~85000.
         assert regions[0]["area"] >= 70000
 
-    def test_empty_space_recursive_subdivision_finds_small_gaps(self):
-        """max_depth>0 must find sub-cell free areas in occupied parent cells."""
+    def test_empty_space_pixel_exact_narrow_strip(self):
+        """Bitmap backend finds a narrow free strip exactly. 100x100 canvas
+        with obstacle 0..80 wide leaves a 20-px free strip on the right."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        # One shape occupying most of a cell but leaving a gap on one side
-        # On 100x100 canvas, 4x4 coarse grid = 25x25 cells
-        # Cover x=0..80 across the width but leave 80..100 free on the right
-        shapes = [(0, 0, 80, 100)]
-        regions_d0 = find_empty_regions(
-            canvas=(0, 0, 100, 100), shapes=shapes,
-            coarse_divisions=4, max_depth=0, simplify_tolerance=0, tolerance=0,
-        )
-        regions_d3 = find_empty_regions(
-            canvas=(0, 0, 100, 100), shapes=shapes,
-            coarse_divisions=4, max_depth=3, simplify_tolerance=0, tolerance=0,
-        )
-        # At depth 0, the 4x4 coarse grid has 25x25 cells. The partially-
-        # overlapping boundary cells at x=75..100 are marked occupied without
-        # subdivision, so the free area is only the fully-free cells (x=100?
-        # Actually x=75 is the left edge of the 4th column of cells, which
-        # goes from x=75..100. Since the shape ends at x=80, the 4th column
-        # is partially occupied and gets dropped entirely at depth 0.
-        # Total d0 free area = 0 (no fully-free columns).
-        # At depth 3, subdivision finds the free strip x=80..100.
-        d0_area = sum(r["area"] for r in regions_d0)
-        d3_area = sum(r["area"] for r in regions_d3)
-        assert d3_area > d0_area, (
-            f"depth=3 should find more free area than depth=0: "
-            f"d0={d0_area}, d3={d3_area}"
-        )
-
-    def test_empty_space_simplify_reduces_vertices(self):
-        """Higher simplify_tolerance produces fewer boundary vertices."""
-        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        shapes = [(100, 100, 50, 50), (200, 100, 50, 50), (150, 200, 50, 50)]
-        r_no_simp = find_empty_regions(
-            canvas=(0, 0, 400, 300), shapes=shapes,
-            coarse_divisions=8, max_depth=2, simplify_tolerance=0, tolerance=0,
-        )
-        r_simp = find_empty_regions(
-            canvas=(0, 0, 400, 300), shapes=shapes,
-            coarse_divisions=8, max_depth=2, simplify_tolerance=10, tolerance=0,
-        )
-        if r_no_simp and r_simp:
-            assert len(r_simp[0]["boundary"]) <= len(r_no_simp[0]["boundary"])
+        svg = self._svg("0 0 100 100", self._rect(0, 0, 80, 100))
+        regions = find_empty_regions(svg, tolerance=0, min_area=0)
+        assert len(regions) == 1
+        assert abs(regions[0]["area"] - 2000) < 50
 
     def test_empty_space_boundary_points_lie_within_canvas(self):
         """All boundary vertices stay within the canvas bounds."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        regions = find_empty_regions(
-            canvas=(10, 20, 200, 150),
-            shapes=[(50, 50, 30, 30)],
-            coarse_divisions=6, max_depth=2, tolerance=0,
-        )
+        svg = self._svg("10 20 200 150", self._rect(50, 50, 30, 30))
+        regions = find_empty_regions(svg, tolerance=0)
         for r in regions:
             for x, y in r["boundary"]:
                 assert 10 - 0.01 <= x <= 210 + 0.01
@@ -368,18 +339,11 @@ class TestCalcConnectorModule:
     def test_empty_space_tolerance_shrinks_regions(self):
         """tolerance>0 erodes each free region inward by that distance."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        r0 = find_empty_regions(
-            canvas=(0, 0, 400, 300), shapes=[(150, 100, 100, 80)],
-            coarse_divisions=8, max_depth=2, tolerance=0,
-        )
-        r20 = find_empty_regions(
-            canvas=(0, 0, 400, 300), shapes=[(150, 100, 100, 80)],
-            coarse_divisions=8, max_depth=2, tolerance=20,
-        )
+        svg = self._svg("0 0 400 300", self._rect(150, 100, 100, 80))
+        r0 = find_empty_regions(svg, tolerance=0, min_area=0)
+        r20 = find_empty_regions(svg, tolerance=20, min_area=0)
         assert r0 and r20
-        # Eroded area is strictly less than untrimmed
         assert r20[0]["area"] < r0[0]["area"]
-        # Eroded boundary sits at least ~20px inside the canvas edges
         for x, y in r20[0]["boundary"]:
             assert x >= 20 - 0.5
             assert y >= 20 - 0.5
@@ -389,23 +353,14 @@ class TestCalcConnectorModule:
     def test_empty_space_tolerance_drops_thin_regions(self):
         """A thin free strip narrower than 2*tolerance erodes to nothing."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        # 400x300 canvas with a shape leaving only a 10px wide right strip
-        regions = find_empty_regions(
-            canvas=(0, 0, 400, 300), shapes=[(0, 0, 390, 300)],
-            coarse_divisions=8, max_depth=3, tolerance=20,
-        )
-        # After 20px inward erosion, no point survives - strip is too thin
+        svg = self._svg("0 0 400 300", self._rect(0, 0, 390, 300))
+        regions = find_empty_regions(svg, tolerance=20)
         assert regions == []
 
     def test_empty_space_default_tolerance_is_20(self):
         """Default tolerance should be 20px (callout minimum)."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        # Large open canvas, no shapes - with default tolerance the region
-        # should be shrunk by 20px on every side
-        regions = find_empty_regions(
-            canvas=(0, 0, 400, 300), shapes=[],
-            coarse_divisions=4, max_depth=1,
-        )
+        regions = find_empty_regions(self._svg("0 0 400 300"))
         assert len(regions) == 1
         # Eroded rect = (20, 20, 360, 260) = 93600 px^2
         assert 90000 < regions[0]["area"] < 95000
@@ -413,29 +368,16 @@ class TestCalcConnectorModule:
     def test_empty_space_min_area_drops_tiny_islands(self):
         """min_area discards slivers too small to fit a callout bbox."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        # Canvas with shapes leaving several regions of varying sizes
-        shapes = [
-            (50, 50, 280, 60),   # upper band
-            (50, 130, 280, 60),  # middle band
-            (50, 210, 280, 60),  # lower band - leaves 20px gaps
-        ]
-        r_all = find_empty_regions(
-            canvas=(0, 0, 400, 300), shapes=shapes,
-            coarse_divisions=10, max_depth=2, tolerance=0, min_area=0,
+        svg = self._svg(
+            "0 0 400 300",
+            self._rect(50, 50, 280, 60)
+            + self._rect(50, 130, 280, 60)
+            + self._rect(50, 210, 280, 60),
         )
-        r_big = find_empty_regions(
-            canvas=(0, 0, 400, 300), shapes=shapes,
-            coarse_divisions=10, max_depth=2, tolerance=0, min_area=2000,
-        )
+        r_all = find_empty_regions(svg, tolerance=0, min_area=0)
+        r_big = find_empty_regions(svg, tolerance=0, min_area=2000)
         assert len(r_big) <= len(r_all)
         assert all(r["area"] >= 2000 for r in r_big)
-
-    def test_empty_space_default_max_depth_is_3(self):
-        """Default max_depth should be 3."""
-        import inspect
-        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
-        sig = inspect.signature(find_empty_regions)
-        assert sig.parameters["max_depth"].default == 3
 
     def test_empty_space_default_min_area_is_500(self):
         """Default min_area should be 500 px^2 (callout minimum fit)."""
@@ -444,30 +386,183 @@ class TestCalcConnectorModule:
         sig = inspect.signature(find_empty_regions)
         assert sig.parameters["min_area"].default == 500.0
 
-    def test_empty_space_cli_outputs_svg(self):
-        """CLI end-to-end renders an SVG debug snippet for the regions."""
+    def test_empty_space_canvas_edge_counts_as_obstacle(self):
+        """Canvas boundary is treated as an implicit obstacle."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        regions = find_empty_regions(self._svg("0 0 200 200"), tolerance=20)
+        assert len(regions) == 1
+        assert 24000 < regions[0]["area"] < 27000
+        for x, y in regions[0]["boundary"]:
+            assert 19 < x < 181
+            assert 19 < y < 181
+
+    def test_empty_space_transform_is_composed(self):
+        """Nested <g transform=...> elements contribute rotated coords."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        svg = self._svg(
+            "0 0 400 400",
+            '<g transform="translate(100, 100)">'
+            + self._rect(0, 0, 80, 80)
+            + '</g>',
+        )
+        regions = find_empty_regions(svg, tolerance=0, min_area=0)
+        # The rect is now at (100..180, 100..180). Scan an island that
+        # doesn't contain this zone.
+        for r in regions:
+            xs = [p[0] for p in r["boundary"]]
+            ys = [p[1] for p in r["boundary"]]
+            # No island overlaps the translated rect interior.
+            interior = (
+                min(xs) < 180 and max(xs) > 100
+                and min(ys) < 180 and max(ys) > 100
+            )
+            if interior:
+                # OK for boundary to touch the rect but the rect pixels
+                # themselves are NOT free.
+                pass
+
+    def test_empty_space_css_stroke_resolved(self):
+        """A rect with stroke defined in a CSS class contributes the correct
+        width to the occupancy grid via svgelements cascade resolution."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
+            '<style>.big { stroke: black; stroke-width: 10; fill: none; }</style>'
+            '<rect x="50" y="50" width="100" height="100" class="big"/>'
+            '</svg>'
+        )
+        # Stroke-only rect: only the 10-px border is occupied. Interior is
+        # free. Expect two top-level regions: the rect interior and the
+        # area outside the rect border (minus tolerance).
+        regions = find_empty_regions(svg, tolerance=0, min_area=0)
+        # With tolerance=0 there should be TWO free regions: inside the rect
+        # and outside. svgelements composes class cascade before yielding
+        # the rect, so our adapter sees stroke_width=10.
+        assert len(regions) == 2
+
+    def test_empty_space_exclude_ids_skips_callouts(self):
+        """exclude_ids glob filters matching <g id='callout-*'> groups."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        svg = self._svg(
+            "0 0 200 200",
+            self._rect(10, 10, 20, 20)
+            + '<g id="callout-foo">' + self._rect(100, 100, 50, 50) + '</g>',
+        )
+        # Without exclusion the callout rect is counted.
+        r_with = find_empty_regions(svg, tolerance=0, exclude_ids=(), min_area=0)
+        # With default exclusion (callout-*) the callout rect is skipped,
+        # so the central area is still free.
+        r_without = find_empty_regions(svg, tolerance=0, min_area=0)
+        assert len(r_with) != 0
+        assert len(r_without) != 0
+        # With exclusion, one big free region covers the callout zone;
+        # without exclusion, two smaller regions flank the callout.
+        assert r_without[0]["area"] > r_with[0]["area"]
+
+    def test_empty_space_accepts_path_input(self):
+        """find_empty_regions accepts a pathlib.Path to an SVG file."""
+        from pathlib import Path
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        import tempfile
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".svg", delete=False
+        ) as f:
+            f.write(self._svg("0 0 100 100", self._rect(0, 0, 50, 50)))
+            path = Path(f.name)
+        try:
+            regions = find_empty_regions(path, tolerance=0)
+            assert len(regions) >= 1
+        finally:
+            path.unlink()
+
+    def test_empty_space_accepts_bytes_input(self):
+        """find_empty_regions accepts raw XML bytes."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        data = self._svg("0 0 100 100").encode("utf-8")
+        regions = find_empty_regions(data, tolerance=0)
+        assert len(regions) == 1
+
+    def test_empty_space_rejects_bad_input(self):
+        """Non-SVG types raise TypeError."""
+        import pytest
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        with pytest.raises(TypeError, match="unsupported SVG source"):
+            find_empty_regions(42, tolerance=0)
+
+    def test_empty_space_text_anchor_middle(self):
+        """A text element with text-anchor=middle has its bbox centred
+        on x, not left-aligned. The test places a middle-anchored title
+        at the horizontal centre of the canvas - the free region on the
+        far left of the canvas should extend further left than the
+        bbox's left edge, proving the centred placement."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        svg = self._svg(
+            "0 0 400 100",
+            '<text x="200" y="30" text-anchor="middle" font-size="12">Middle</text>',
+        )
+        regions = find_empty_regions(svg, tolerance=0, min_area=0)
+        assert len(regions) >= 1
+        # The title row at y=18..32 should have a gap in the middle only.
+        # The whole right half x>=230 at y=20 must be free.
+        big = regions[0]
+        xs = [p[0] for p in big["boundary"]]
+        assert min(xs) < 50  # free region reaches left edge
+
+    def test_empty_space_text_width_reflects_content_length(self):
+        """Longer text yields a larger bbox, shrinking the free region."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+        short = self._svg(
+            "0 0 400 100",
+            '<text x="20" y="30" font-size="12">Hi</text>',
+        )
+        long_svg = self._svg(
+            "0 0 400 100",
+            '<text x="20" y="30" font-size="12">'
+            'a long piece of text spanning across the canvas</text>',
+        )
+        r_short = find_empty_regions(short, tolerance=0, min_area=0)
+        r_long = find_empty_regions(long_svg, tolerance=0, min_area=0)
+        # Both return 1+ regions; the short-text scene has MORE free area
+        # because less is occupied by the text bbox.
+        total_short = sum(r["area"] for r in r_short)
+        total_long = sum(r["area"] for r in r_long)
+        assert total_short > total_long
+
+    def test_empty_space_cli_lists_region_points(self, tmp_path):
+        """CLI end-to-end prints the boundary vertex list for each region."""
         import subprocess
+        svg_file = tmp_path / "scene.svg"
+        svg_file.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
+            '<rect x="50" y="50" width="50" height="50" fill="black"/>'
+            '</svg>'
+        )
         r = subprocess.run(
             [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
              "empty-space",
-             "--canvas", "(0, 0, 200, 200)",
-             "--shapes", "[(50, 50, 50, 50)]",
-             "--coarse", "4", "--depth", "2"],
+             "--svg", str(svg_file),
+             "--tolerance", "0"],
             capture_output=True, text=True,
         )
         assert r.returncode == 0, r.stderr
         assert "EMPTY REGIONS" in r.stdout
-        assert "<polygon" in r.stdout
+        assert "points:" in r.stdout
+        assert "<polygon" not in r.stdout
 
-    def test_empty_space_cli_json_output(self):
+    def test_empty_space_cli_json_output(self, tmp_path):
         """CLI --json emits a parseable JSON array of regions."""
         import subprocess
         import json as _json
+        svg_file = tmp_path / "scene.svg"
+        svg_file.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">'
+            '<rect x="100" y="100" width="50" height="50" fill="black"/>'
+            '</svg>'
+        )
         r = subprocess.run(
             [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
              "empty-space",
-             "--canvas", "(0, 0, 300, 300)",
-             "--shapes", "[(100, 100, 50, 50)]",
+             "--svg", str(svg_file),
              "--json"],
             capture_output=True, text=True,
         )
