@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">
+  <style>
+    .bg-plate { fill: #ffffff; }
+    .card-plate { fill: #f5f7f8; stroke: #1a5a6e; stroke-width: 1.5; }
+    .card-title { font: 600 14px 'Inter',sans-serif; fill: #0a1a24; }
+    .shape { fill: #0096d1; stroke: #1a5a6e; stroke-width: 1.2; }
+    .shape-tgt { fill: #da8230; stroke: #7a4a15; stroke-width: 1.2; }
+    .shape-label { font: 11px 'Inter',sans-serif; fill: #ffffff; text-anchor: middle; }
+    .obstacle { fill: #d4a04a; stroke: #7a4a15; stroke-width: 1.0; }
+    .obstacle-label { font: 10px 'Inter',sans-serif; fill: #0a1a24; text-anchor: middle; }
+    .route-intra { fill: none; stroke: #0a1a24; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+    .route-intra-head { fill: #0a1a24; }
+    .route-cross { fill: none; stroke: #1a5a6e; stroke-width: 2.0; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 6 4; }
+    .route-cross-head { fill: #1a5a6e; }
+    .route-label { font: 10px 'Inter',sans-serif; fill: #0a1a24; }
+    @media (prefers-color-scheme: dark) {
+      .bg-plate { fill: #0a1a24; }
+      .card-plate { fill: #0f2634; stroke: #5cc8e0; }
+      .card-title { fill: #e6f4fa; }
+      .shape { fill: #5cc8e0; stroke: #0096d1; }
+      .shape-label { fill: #0a1a24; }
+      .obstacle { fill: #da8230; stroke: #d4a04a; }
+      .obstacle-label { fill: #0a1a24; }
+      .route-intra { stroke: #5cc8e0; }
+      .route-intra-head { fill: #5cc8e0; }
+      .route-cross { stroke: #d4a04a; }
+      .route-cross-head { fill: #d4a04a; }
+      .route-label { fill: #e6f4fa; }
+    }
+  </style>
+
+  <rect class="bg-plate" x="0" y="0" width="1000" height="600"/>
+
+  <!-- Left card: card-A holds the intra-card routing -->
+  <rect id="card-A" class="card-plate" x="60" y="60" width="440" height="480" rx="14"/>
+  <text class="card-title" x="80" y="85">card-A</text>
+
+  <!-- Right card: card-B -->
+  <rect id="card-B" class="card-plate" x="540" y="60" width="400" height="480" rx="14"/>
+  <text class="card-title" x="560" y="85">card-B</text>
+
+  <!-- Endpoints inside card-A: src (top-left) and tgt (bottom-right) -->
+  <rect id="src-A" class="shape" x="100" y="120" width="90" height="50" rx="6"/>
+  <text class="shape-label" x="145" y="150">src</text>
+
+  <rect id="tgt-A" class="shape-tgt" x="370" y="460" width="90" height="50" rx="6"/>
+  <text class="shape-label" x="415" y="490">tgt</text>
+
+  <!-- Obstacles inside card-A that block the direct L-route -->
+  <rect id="obs-A-1" class="obstacle" x="240" y="140" width="120" height="90" rx="4"/>
+  <text class="obstacle-label" x="300" y="190">obstacle 1</text>
+
+  <rect id="obs-A-2" class="obstacle" x="110" y="270" width="180" height="70" rx="4"/>
+  <text class="obstacle-label" x="200" y="310">obstacle 2</text>
+
+  <rect id="obs-A-3" class="obstacle" x="330" y="280" width="140" height="100" rx="4"/>
+  <text class="obstacle-label" x="400" y="335">obstacle 3</text>
+
+  <rect id="obs-A-4" class="obstacle" x="140" y="400" width="200" height="60" rx="4"/>
+  <text class="obstacle-label" x="240" y="435">obstacle 4</text>
+
+  <!-- Single endpoint in card-B for the cross-card route -->
+  <rect id="dst-B" class="shape-tgt" x="760" y="280" width="100" height="60" rx="6"/>
+  <text class="shape-label" x="810" y="315">dst</text>
+
+  <!-- ========================================================= -->
+  <!-- Connectors layer                                           -->
+  <!-- ========================================================= -->
+
+  <!-- C1: intra-card auto-route (container_id=card-A, A* around obstacles) -->
+  <g id="route-c1">
+    <path class="route-intra" d="M190.00,149.00 L190.00,242.00 L184.00,248.00 L184.00,248.00 L488.00,248.00 L488.00,520.00 L408.51,520.00"/>
+    <polygon class="route-intra-head" points="411.88,512.12 401.27,515.66 408.34,522.73"/>
+  </g>
+
+  <!-- C2: card-edge to dst-inside-card-B, 1-bend auto-edge L -->
+  <g id="route-c2">
+    <path class="route-cross" d="M504.00,300.00 L752.49,300.00"/>
+    <polygon class="route-cross-head" points="760.00,306.00 756.46,295.39 749.39,302.46"/>
+  </g>
+
+  <!-- Route labels -->
+  <text class="route-label" x="500" y="262" text-anchor="middle">C1: auto-route (A*) inside card-A</text>
+  <text class="route-label" x="628" y="294" text-anchor="middle">C2: card-A -&gt; dst (auto-edge L)</text>
+</svg>
