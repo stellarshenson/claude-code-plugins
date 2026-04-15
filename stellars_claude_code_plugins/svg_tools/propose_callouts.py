@@ -396,8 +396,11 @@ def _build_obstacle_mask(svg_doc, canvas, exclude_ids, container_elem=None):
     skipped (it is not an obstacle) but its descendants / siblings
     remain obstacles as usual. The caller is responsible for AND-ing
     the resulting mask's inverse with a container interior mask.
+
+    Full-canvas background plates (shapes covering >=80% of the canvas)
+    are automatically skipped - see ``_is_canvas_background``.
     """
-    from .calc_empty_space import _rasterise_surrogates
+    from .calc_empty_space import _is_canvas_background, _rasterise_surrogates
 
     surrogates: list = []
 
@@ -405,7 +408,7 @@ def _build_obstacle_mask(svg_doc, canvas, exclude_ids, container_elem=None):
         eid = getattr(node, "id", None)
         if eid is not None and any(fnmatch.fnmatchcase(eid, pat) for pat in exclude_ids):
             return
-        if node is not container_elem:
+        if node is not container_elem and not _is_canvas_background(node, canvas):
             surrogates.extend(_element_to_surrogates(node))
         if isinstance(node, _se.Group):
             for child in node:
