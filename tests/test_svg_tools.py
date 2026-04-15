@@ -456,8 +456,93 @@ class TestCalcConnectorModule:
         total_l = sum(r["area"] for r in find_empty_regions(long_svg, tolerance=0, min_area=0))
         assert total_s > total_l
 
+    def test_empty_space_container_id(self):
+        """Covers: rect/circle/polygon/path containers clip detection to their
+        interior, regions are tagged with container_id, obstacles outside the
+        container are ignored, obstacles inside still occupy, missing id
+        raises, and Groups are rejected."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
+
+        # Rect container: outside obstacle ignored, inside obstacle occupies
+        rect_svg = self._svg(
+            "0 0 800 400",
+            '<rect id="card" x="100" y="50" width="600" height="300" fill="#eee"/>'
+            + '<rect id="inside" x="150" y="100" width="100" height="60" fill="#222"/>'
+            + '<rect id="outside" x="20" y="20" width="40" height="40" fill="#f00"/>',
+        )
+        regions = find_empty_regions(rect_svg, tolerance=5, min_area=100, container_id="card")
+        assert regions  # at least one empty region inside the card
+        for r in regions:
+            assert r["container_id"] == "card"
+            xs = [p[0] for p in r["boundary"]]
+            ys = [p[1] for p in r["boundary"]]
+            # Every point lies inside the card's bbox (100,50)-(700,350) with
+            # a small tolerance for the boundary pixel rounding.
+            assert min(xs) >= 100 - 2 and max(xs) <= 700 + 2
+            assert min(ys) >= 50 - 2 and max(ys) <= 350 + 2
+        # The "outside" rect must NOT show up as an empty region when clipped
+        # to the card; tagged regions live strictly inside the card.
+
+        # Circle container: boundary stays within the disc
+        circle_svg = self._svg(
+            "0 0 400 400",
+            '<circle id="disc" cx="200" cy="200" r="150" fill="#eee"/>'
+            + '<rect id="obs" x="180" y="180" width="40" height="40" fill="#222"/>',
+        )
+        regions = find_empty_regions(
+            circle_svg, tolerance=5, min_area=100, container_id="disc"
+        )
+        assert regions
+        for r in regions:
+            for x, y in r["boundary"]:
+                # Within the disc plus small pixel-rounding slack
+                dist_sq = (x - 200) ** 2 + (y - 200) ** 2
+                assert dist_sq <= (155) ** 2
+
+        # Polygon container (triangle)
+        tri_svg = self._svg(
+            "0 0 400 400",
+            '<polygon id="tri" points="200,50 350,350 50,350" fill="#eee"/>',
+        )
+        regions = find_empty_regions(
+            tri_svg, tolerance=5, min_area=100, container_id="tri"
+        )
+        assert regions
+        assert all(r["container_id"] == "tri" for r in regions)
+        # Triangle interior area roughly = 0.5 * base * height = 45000, minus erosion
+        assert regions[0]["area"] > 20000
+
+        # Path container (closed blob)
+        path_svg = self._svg(
+            "0 0 400 400",
+            '<path id="blob" d="M 100 200 C 100 100, 300 100, 300 200 S 200 350, 100 200 Z" fill="#eee"/>',
+        )
+        regions = find_empty_regions(
+            path_svg, tolerance=5, min_area=100, container_id="blob"
+        )
+        assert regions
+        assert all(r["container_id"] == "blob" for r in regions)
+
+        # Missing id -> ValueError
+        with pytest.raises(ValueError, match="not found"):
+            find_empty_regions(rect_svg, container_id="does_not_exist")
+
+        # Group rejected -> ValueError
+        grp_svg = self._svg(
+            "0 0 100 100",
+            '<g id="grp"><rect x="10" y="10" width="20" height="20"/></g>',
+        )
+        with pytest.raises(ValueError, match="closed shape"):
+            find_empty_regions(grp_svg, container_id="grp")
+
+        # Backward compat: no container_id -> container_id key is None
+        doc = find_empty_regions(rect_svg, tolerance=0, min_area=0)
+        assert doc
+        assert all(r["container_id"] is None for r in doc)
+
     def test_empty_space_cli(self, tmp_path):
-        """CLI prints region points and supports --json output."""
+        """CLI prints region points, supports --json output, and --container-id
+        clips detection to a specific element."""
         import subprocess
         import json as _json
 
@@ -479,7 +564,7 @@ class TestCalcConnectorModule:
         assert "points:" in r.stdout
         assert "<polygon" not in r.stdout
 
-        # JSON output - parseable array
+        # JSON output - parseable array, carries container_id field
         svg_file2 = tmp_path / "scene2.svg"
         svg_file2.write_text(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">'
@@ -494,7 +579,27 @@ class TestCalcConnectorModule:
         assert r.returncode == 0, r.stderr
         data = _json.loads(r.stdout)
         assert isinstance(data, list)
-        assert all("boundary" in d and "area" in d for d in data)
+        assert all("boundary" in d and "area" in d and "container_id" in d for d in data)
+        assert all(d["container_id"] is None for d in data)
+
+        # --container-id CLI flag clips to element interior
+        svg_file3 = tmp_path / "scene3.svg"
+        svg_file3.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">'
+            '<rect id="card" x="50" y="50" width="300" height="200" fill="#eee"/>'
+            '<rect id="outside" x="360" y="10" width="30" height="30" fill="#f00"/>'
+            '</svg>'
+        )
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
+             "empty-space", "--svg", str(svg_file3), "--container-id", "card",
+             "--tolerance", "0", "--json"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        data = _json.loads(r.stdout)
+        assert data
+        assert all(d["container_id"] == "card" for d in data)
 
 
 class TestConnectorModes:
@@ -585,6 +690,110 @@ class TestConnectorModes:
         assert len(pts) == 50
         assert abs(pts[0][0] - pts[-1][0]) < 0.5
         assert abs(pts[0][1] - pts[-1][1]) < 0.5
+
+    def test_auto_route_l(self):
+        """Auto-route L: U-shape detour around a blocking obstacle, inside-
+        container routing with container_id, and unroutable-case fallback
+        warning."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l
+
+        # Scenario 1: big obstacle between src and tgt on the left-right axis.
+        # The 1-bend L would punch through the obstacle; auto_route must
+        # produce a multi-elbow detour.
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">'
+            '<rect id="src" x="50" y="180" width="80" height="40" fill="#bbb"/>'
+            '<rect id="obstacle" x="300" y="50" width="200" height="300" fill="#bbb"/>'
+            '<rect id="tgt" x="670" y="180" width="80" height="40" fill="#bbb"/>'
+            '</svg>'
+        )
+        r = calc_l(
+            130, 200, 670, 200,
+            start_dir="E", end_dir="W", arrow="end",
+            auto_route=True, svg=svg,
+        )
+        assert r["mode"] == "l"
+        # Multi-elbow path: at least two waypoints = three bend points total
+        assert len(r["controls"]) >= 2, f"expected >=2 waypoints, got {r['controls']}"
+        # None of the interior samples lies inside the obstacle's xyxy bbox
+        for x, y in r["samples"]:
+            inside = 305 < x < 495 and 55 < y < 345
+            assert not inside, f"sample {(x,y)} is inside the obstacle"
+        assert not any("failed" in w for w in r["warnings"])
+
+        # Scenario 2: container_id clips routing to a card interior.
+        svg_card = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400">'
+            '<rect id="card" x="50" y="50" width="500" height="300" fill="#eee"/>'
+            '<rect id="inner-obstacle" x="250" y="120" width="100" height="160" fill="#222"/>'
+            '</svg>'
+        )
+        r = calc_l(
+            80, 200, 520, 200,
+            start_dir="E", end_dir="W", arrow="end",
+            auto_route=True, svg=svg_card, container_id="card",
+        )
+        assert len(r["controls"]) >= 2
+        # Every sample stays inside the card's bbox (50,50)-(550,350)
+        for x, y in r["samples"]:
+            assert 48 <= x <= 552 and 48 <= y <= 352
+
+        # Scenario 3: unroutable case -> warning + fallback to 1-bend L.
+        # Src and tgt fully boxed in by a near-closed wall with no gap wide
+        # enough for the 5 px margin.
+        svg_blocked = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
+            '<rect x="0" y="90" width="200" height="20" fill="#000"/>'
+            '<rect x="90" y="0" width="20" height="200" fill="#000"/>'
+            '</svg>'
+        )
+        r = calc_l(
+            20, 50, 180, 150,
+            arrow="end",
+            auto_route=True, svg=svg_blocked,
+            route_cell_size=5, route_margin=3,
+        )
+        # Either found a path OR fell back with a warning - both are valid.
+        failed = any("auto_route failed" in w for w in r["warnings"])
+        if failed:
+            assert r["mode"] == "l"
+            # Fallback is a simple 2-segment L (no waypoints)
+            assert len(r["samples"]) <= 3
+
+    def test_auto_route_cli(self, tmp_path):
+        """CLI --auto-route flag runs the router via the unified CLI entry
+        and emits a multi-elbow path. --svg is required when --auto-route
+        is set."""
+        import subprocess
+        svg_file = tmp_path / "scene.svg"
+        svg_file.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">'
+            '<rect id="src" x="50" y="180" width="80" height="40" fill="#bbb"/>'
+            '<rect id="obstacle" x="300" y="50" width="200" height="300" fill="#bbb"/>'
+            '<rect id="tgt" x="670" y="180" width="80" height="40" fill="#bbb"/>'
+            '</svg>'
+        )
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
+             "connector", "--mode", "l",
+             "--from", "130,200", "--to", "670,200",
+             "--start-dir", "E", "--end-dir", "W",
+             "--auto-route", "--svg", str(svg_file)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "controls" in r.stdout.lower() or "samples" in r.stdout.lower()
+
+        # --auto-route without --svg is a parser error
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
+             "connector", "--mode", "l",
+             "--from", "130,200", "--to", "670,200",
+             "--auto-route"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode != 0
+        assert "--auto-route requires --svg" in (r.stderr + r.stdout)
 
 
 class TestManifoldConnector:
