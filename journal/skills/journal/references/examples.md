@@ -55,6 +55,23 @@ Use this shape when a single session touches several orthogonal areas and every 
 - Terminal actions (commit pushed, version published) belong at the END as the release stamp
 - When tempted to add headings, bullets, or code blocks - resist; this shape is the target
 
+### Documentation + cleanup entry (README rewrite + stale-dep removal)
+
+Same shape for a session that is all documentation, polish, and plumbing cleanup - no new feature, no new test, just getting the story straight. The paragraph still runs continuous; every plugin file touched and every stale reference removed gets named, with the baseline test count as the closing stamp.
+
+```
+85. **Task - svg-infographics README capability rewrite + [fonts] extra cleanup** (plugins v1.3.2): Rewrote the svg-infographics README around five named capabilities and removed the stale `[fonts]` optional-dependency mention everywhere it leaked<br>
+    **Result**: Previous README pass drifted into deep workflow documentation - a dedicated Callout Naming Convention section, a 7-step empty-space walkthrough, multi-paragraph design-principle bullet lists - content that belongs in skill files, not in a capability overview. User pushed back: README should be "what + where" not "how", scannable in 60 seconds, capability-centric. Rewrote the document around five foundational-first capabilities: Design Foundations (grid-first layout, shape primitives, theme/CSS/dark mode, typography, 6-phase mandatory workflow, geometry sketch-constraint toolkit), Connectors (five routing modes with canonical Sankey manifold and auto-edge routing), Callouts and Empty Space (the `callout-*` naming convention folded inline as prose rather than a dedicated section, SVG-native free-region detection, placement workflow), Charts (pygal with caller-provided palette and injected dark mode), and Validation (five checkers plus pairwise connector collision as a mandatory pre-delivery gate). Each capability runs 3-4 sentences covering what, why, and which tools back it, followed by a one-line "Reference:" pointer to the relevant `skills/*/SKILL.md`. Added five use cases (branded banner, annotate dense diagram, Sankey flow, port foreign SVG, place legend on populated canvas) showing how capabilities compose. Kept Commands, Skills, and Tool Inventory as reference tables at the bottom for agents that scan by grep. Separately removed the `[fonts]` optional-dependency drift: `fonttools` was already a core `pyproject.toml` dependency so the `pip install 'stellars-claude-code-plugins[fonts]'` guidance that appeared in the README, `skills/validation/SKILL.md` ("Eight tools" with a `[fonts]` install block), and `stellars_claude_code_plugins/svg_tools/text_to_path.py` (module docstring, `_require_fonttools` error message, CLI error message) was wrong - most users reach the package via Claude Code and expect every tool to work without extras. Rewrote the validation skill intro to say "Twelve tools shipped ... no optional extras required", updated the text_to_path module docstring to note fonttools is bundled with the core install, replaced both error messages with "core dependency - reinstall the package" guidance, and updated the corresponding pytest skip-reason in `tests/test_svg_tools.py`. Also tightened `skills/svg-standards/SKILL.md` Z-order layering to mandate five named top-level groups (`<g id="background">`, `nodes`, `connectors`, `content`, `callouts`) so callouts always live on their own layer, rewrote the callout construction workflow in telegram style (dropped articles and copulas, kept the 7-step structure with its pre/post audit gates), and added a Quick Reference bullet for the layer convention. Deleted three stale repo-root artifacts from a prior devils-advocate run (`devils_advocate.md`, `devils_advocate_program.md`, `fact_repository.md`) that had drifted out of scope. Tests: 524 passing (no new tests - pure docs/cleanup session; the number is the baseline from the prior release entry confirming nothing regressed). Plugin marketplace bumped v1.3.1 -> v1.3.2, PyPI `stellars-claude-code-plugins` unchanged.
+```
+
+**Characteristics**:
+- ~440 words, ONE paragraph, no sub-headers, no bullet lists inside the entry
+- Motivation FIRST (user pushback), then fix, then collateral cleanup, then layering refinement
+- Every rewritten file named with its full path in backticks
+- Baseline test count (524) included with a one-clause explanation "no new tests - pure docs/cleanup" so readers know why the number didn't move
+- Release stamp at the end: plugins bumped, PyPI unchanged (this session did not ship code, so no PyPI version change)
+- Prose style: topics separated by periods and fresh subjects, not by headings or bullets
+
 ---
 
 ## Extended Entry

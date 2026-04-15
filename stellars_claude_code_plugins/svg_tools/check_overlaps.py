@@ -1220,7 +1220,10 @@ def parse_callouts(svg_path: str) -> list[dict]:
                 continue
             pts_raw = pl.get("points", "").replace(",", " ").split()
             try:
-                coords = [(float(pts_raw[k]), float(pts_raw[k + 1])) for k in range(0, len(pts_raw) - 1, 2)]
+                coords = [
+                    (float(pts_raw[k]), float(pts_raw[k + 1]))
+                    for k in range(0, len(pts_raw) - 1, 2)
+                ]
             except (ValueError, IndexError):
                 continue
             for k in range(len(coords) - 1):
@@ -1238,7 +1241,8 @@ def check_callouts(svg_path: str) -> list[str]:
     LineString / box intersection for the line-vs-line and line-vs-rect tests.
     """
     try:
-        from shapely.geometry import LineString, box as sbox
+        from shapely.geometry import LineString
+        from shapely.geometry import box as sbox
     except ImportError:
         return ["shapely not installed - callout check skipped"]
 
@@ -1261,9 +1265,7 @@ def check_callouts(svg_path: str) -> list[str]:
                         continue
                     line = LineString(seg)
                     if line.intersects(b_box) and not line.touches(b_box):
-                        violations.append(
-                            f"leader of {a['id']} crosses text of {b['id']} at {bb}"
-                        )
+                        violations.append(f"leader of {a['id']} crosses text of {b['id']} at {bb}")
                         break
 
             # leader B vs text A
@@ -1275,9 +1277,7 @@ def check_callouts(svg_path: str) -> list[str]:
                         continue
                     line = LineString(seg)
                     if line.intersects(a_box) and not line.touches(a_box):
-                        violations.append(
-                            f"leader of {b['id']} crosses text of {a['id']} at {ab}"
-                        )
+                        violations.append(f"leader of {b['id']} crosses text of {a['id']} at {ab}")
                         break
 
             # leader A vs leader B
@@ -1291,18 +1291,14 @@ def check_callouts(svg_path: str) -> list[str]:
                         continue
                     lb = LineString(sb)
                     if la.crosses(lb):
-                        violations.append(
-                            f"leader of {a['id']} crosses leader of {b['id']}"
-                        )
+                        violations.append(f"leader of {a['id']} crosses leader of {b['id']}")
                         cross_found = True
                         break
 
             # text A vs text B (bbox overlap)
             if a["text_bbox"] is not None and b["text_bbox"] is not None:
                 if a["text_bbox"].overlaps(b["text_bbox"]):
-                    violations.append(
-                        f"text of {a['id']} overlaps text of {b['id']}"
-                    )
+                    violations.append(f"text of {a['id']} overlaps text of {b['id']}")
 
     return violations
 

@@ -5,7 +5,7 @@ description: SVG validation tools and verification workflow - overlap detection,
 
 # SVG Validation and Verification
 
-Eight tools shipped with the `stellars-claude-code-plugins` pip package. Install once, use everywhere via the `svg-infographics` CLI. Seven core tools (validators + calculators) install with the base package; `text-to-path` is an on-request tool that requires the `[fonts]` extra.
+Twelve tools shipped with the `stellars-claude-code-plugins` pip package. Install once, use everywhere via the `svg-infographics` CLI. All tools (validators, calculators, and the on-request `text-to-path`) install with the base package - no optional extras required.
 
 ```bash
 pip install stellars-claude-code-plugins
@@ -133,12 +133,6 @@ Tradeoffs the caller accepts when this is used:
 - The output is no longer editable as text (no search/replace, no screen readers, no copy-paste)
 - File size grows roughly 5-20x compared to a `<text>` element
 - A `.ttf` or `.otf` font file path must be supplied - this tool does NOT resolve system fonts by family name
-
-Requires the optional `[fonts]` extra (adds `fonttools`):
-
-```bash
-pip install 'stellars-claude-code-plugins[fonts]'
-```
 
 Coordinates match `<text>` semantics: `--x` / `--y` are the **baseline** origin, `--anchor` mirrors `text-anchor` (start | middle | end). When `--fit-width` is given and the natural advance exceeds it, the path is uniformly scaled down to fit (aspect preserved - no glyph stretching).
 

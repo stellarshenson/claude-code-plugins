@@ -32,8 +32,8 @@ import fnmatch
 import io
 import json
 import math
-import sys
 from pathlib import Path
+import sys
 from typing import Any
 
 import numpy as np
@@ -182,10 +182,7 @@ def _tx_is_axis_aligned(transform):
     if transform is None:
         return True
     return (
-        abs(transform.b) < 1e-9
-        and abs(transform.c) < 1e-9
-        and transform.a > 0
-        and transform.d > 0
+        abs(transform.b) < 1e-9 and abs(transform.c) < 1e-9 and transform.a > 0 and transform.d > 0
     )
 
 
@@ -220,7 +217,6 @@ def _sample_path_to_segments(path):
     subpaths = []
     current = []
     closed = False
-    last_point = None
 
     for seg in path:
         name = type(seg).__name__
@@ -230,7 +226,6 @@ def _sample_path_to_segments(path):
             current = []
             if seg.end is not None:
                 current.append((float(seg.end.x), float(seg.end.y)))
-                last_point = seg.end
             closed = False
             continue
 
@@ -250,7 +245,6 @@ def _sample_path_to_segments(path):
         if name == "Line":
             if seg.end is not None:
                 current.append((float(seg.end.x), float(seg.end.y)))
-                last_point = seg.end
             continue
 
         # Curved segments: CubicBezier, QuadraticBezier, Arc
@@ -268,7 +262,6 @@ def _sample_path_to_segments(path):
             t = i / n
             p = seg.point(t)
             current.append((float(p.x), float(p.y)))
-        last_point = seg.end
 
     if current:
         subpaths.append((current, closed))
@@ -302,7 +295,10 @@ def _element_to_surrogates(elem):
     has_stroke = stroke is not None and getattr(stroke, "value", True) is not None
 
     transform = getattr(elem, "transform", None)
-    tx = lambda x, y: _tx_point(transform, x, y)
+
+    def tx(x, y):
+        return _tx_point(transform, x, y)
+
     out: list[tuple] = []
 
     if T == "Rect":
@@ -566,14 +562,14 @@ def _rasterise_surrogates(canvas, surrogates):
 
 
 _MOORE = [
-    (0, 1),    # E
-    (1, 1),    # SE
-    (1, 0),    # S
-    (1, -1),   # SW
-    (0, -1),   # W
+    (0, 1),  # E
+    (1, 1),  # SE
+    (1, 0),  # S
+    (1, -1),  # SW
+    (0, -1),  # W
     (-1, -1),  # NW
-    (-1, 0),   # N
-    (-1, 1),   # NE
+    (-1, 0),  # N
+    (-1, 1),  # NE
 ]
 
 
@@ -743,9 +739,7 @@ def find_empty_regions(
         contour_local = _trace_boundary(sub)
         if not contour_local:
             continue
-        contour_world = _boundary_to_world(
-            contour_local, (cx + c0, cy + r0)
-        )
+        contour_world = _boundary_to_world(contour_local, (cx + c0, cy + r0))
         if len(contour_world) < 3:
             continue
         results.append({"boundary": contour_world, "area": float(area_px)})
@@ -763,29 +757,37 @@ def main():
     parser = argparse.ArgumentParser(
         prog="svg-infographics empty-space",
         description="Identify empty regions on an SVG canvas via bitmap "
-                    "rasterisation and distance-transform erosion. Parses "
-                    "the SVG directly via svgelements - no manual shape list.",
+        "rasterisation and distance-transform erosion. Parses "
+        "the SVG directly via svgelements - no manual shape list.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--svg", required=True,
+        "--svg",
+        required=True,
         help="Path to the SVG file to scan",
     )
     parser.add_argument(
-        "--tolerance", type=float, default=20.0,
+        "--tolerance",
+        type=float,
+        default=20.0,
         help="Inward standoff in px (default 20, callout minimum). 0 disables.",
     )
     parser.add_argument(
-        "--min-area", type=float, default=500.0,
+        "--min-area",
+        type=float,
+        default=500.0,
         help="Drop regions smaller than this in px^2 (default 500).",
     )
     parser.add_argument(
-        "--exclude-id", action="append", default=None,
+        "--exclude-id",
+        action="append",
+        default=None,
         help="Glob pattern for element ids to exclude. Repeatable. "
-             "Defaults to 'callout-*' when omitted.",
+        "Defaults to 'callout-*' when omitted.",
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="Emit JSON output only",
     )
     args = parser.parse_args()

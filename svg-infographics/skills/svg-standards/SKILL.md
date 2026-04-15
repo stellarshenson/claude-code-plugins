@@ -13,17 +13,20 @@ Apply these standards when generating or modifying SVG infographics for document
 
 ## Key Principles (Quick Reference)
 
-1. **Theme First** - Generate and approve `theme_swatch.svg` before any deliverables
-2. **Grid-First Design** - Define viewBox, margins, panel origins, columns, vertical rhythm BEFORE placing content. Use invisible guide grid
-3. **CSS Theme Classes** - `<style>` block with `prefers-color-scheme` media query. Use `class=` not inline `fill=` for theme-dependent text
-4. **File Description Comment** - Every SVG starts with XML comment BEFORE `<svg>`: filename, shows, intent, theme
-5. **Grid Comment** - After `<style>`, document panel origins, columns, vertical rhythm in `GRID REFERENCE` comment
-6. **Layout Topology Comment** - Describe relationships (not coordinates): h-align, v-align, h-stack, v-stack, contain, mirror
-7. **Named Component Groups** - Wrap logical chunks in `<g id="component-name">`. Lowercase-hyphen names
-8. **Transparent Background** - `fill="transparent"` on root rect. No full-viewport background fills
-9. **Contrast Rules** - Every element contrasts its immediate background using theme colours. No `#000000` or `#ffffff`
-10. **Verify All Four** - Run `svg-infographics contrast`, `svg-infographics overlaps`, `svg-infographics alignment`, `svg-infographics css` before delivery
-11. **Examples** - Read relevant SVG examples from `examples/` before creating each image
+1. **Theme first** - approve `theme_swatch.svg` before deliverables
+2. **Grid first** - viewBox, margins, panel origins, columns, rhythm BEFORE content. Invisible guide grid
+3. **CSS theme classes** - `<style>` block + `prefers-color-scheme` media query. `class=`, never inline `fill=`
+4. **File description comment** - before `<svg>`: filename, shows, intent, theme
+5. **Grid comment** - after `<style>`, `GRID REFERENCE` documenting panel origins, columns, rhythm
+6. **Layout topology comment** - h-align / v-align / h-stack / v-stack / contain / mirror, relationships not coords
+7. **Five named layers** - `<g id="background">`, `<g id="nodes">`, `<g id="connectors">`, `<g id="content">`, `<g id="callouts">`. Every element belongs to exactly one. See Z-Order Layering
+8. **Named component groups** - logical chunks in `<g id="component-name">`, lowercase-hyphen
+9. **Transparent background** - `fill="transparent"` on root rect. No full-viewport fills
+10. **Contrast rules** - every element contrasts its immediate background via theme colours. No `#000000`, no `#ffffff`
+11. **Callouts via empty-space workflow** - never eyeball text positions. `empty-space` + `geom contains` + `geom rect-edge`. See Callout construction workflow
+12. **Connector tool for every arrow** - no `rotate()`, no `atan2`, no hand paths. See Arrow Construction
+13. **Verify all five** - `overlaps`, `contrast`, `alignment`, `css`, `connectors` before delivery
+14. **Examples** - read relevant `examples/` SVGs before creating each image
 
 ## CSS Theme Classes and Dark Mode Detection
 
@@ -259,27 +262,27 @@ Fill-opacity 0.04, stroke-width 1, accent bar height 5 at opacity 0.6.
 
 ## Arrow Construction (Connector Tool)
 
-**Every arrow, every connector, every shape - built with `svg-infographics connector`. No exceptions.**
+Every arrow, every connector, every shape built via `svg-infographics connector`. No exceptions. All output goes inside `<g id="connectors">` - never at root.
 
-The tool returns everything needed to drop an arrow into the SVG in world coordinates:
-- `trimmed_path_d` - the stem path with arrowhead clearance already subtracted (paste directly as `<path d="...">`)
-- Per-end arrowhead polygon in world coordinates (paste directly as `<polygon points="...">`)
-- `tangent` and `angle_deg` at each end (for placing labels or joining to other elements)
-- `samples` along the path (for tangent labels, progress markers, midpoint callouts)
+Tool returns in world coordinates:
+- `trimmed_path_d` - stem path with arrowhead clearance subtracted. Paste directly as `<path d="...">`
+- Per-end arrowhead polygon in world coordinates. Paste directly as `<polygon points="...">`
+- `tangent` / `angle_deg` at each end
+- `samples` along the path (tangent labels, progress markers, midpoint callouts)
 
-No `rotate()` transforms, no `atan2` math, no horizontal-first templating. The connector tool already does the rotation in world space and returns final coordinates.
+No `rotate()` transforms. No `atan2` math. No horizontal-first templating. Tool does world-space rotation.
 
-**Modes:**
+**Modes**:
 
 | Mode | Use |
 |------|-----|
 | `straight` | Single line, two points |
-| `l` | Axis-aligned L (sharp corner). First-axis inferred per segment |
+| `l` | Axis-aligned L, sharp corner. First-axis inferred per segment |
 | `l-chamfer` | L with 4px corner cut. Default for any L route |
 | `spline` | Cubic Bezier via `bezier` lib when `start_dir`/`end_dir` given; PCHIP through waypoints otherwise |
-| `manifold` | N starts → single merge (`spine_start`) → spine → single fork (`spine_end`) → M ends. Canonical Sankey bundle |
+| `manifold` | N starts → single merge → spine → single fork → M ends. Canonical Sankey bundle |
 
-Flags on every mode: `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (default 1px), `--color`, `--width`, `--opacity`. Spline tangent magnitude: `--tangent-magnitude N` (default: 0.5×chord).
+Flags (all modes): `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (default 1px), `--color`, `--width`, `--opacity`. Spline tangent magnitude: `--tangent-magnitude N` (default 0.5×chord).
 
 ### Canonical manifold
 
@@ -294,44 +297,46 @@ Strands inherit spine direction. Override per endpoint via 3-tuple `(x,y,"E")` o
 
 ### Auto-edge mode
 
-Pass whole shapes to `calc_connector`, skip coordinates:
+Pass shapes to `calc_connector`, skip coordinates:
 
-- `src_rect=(x,y,w,h)` / `tgt_rect=(x,y,w,h)` — axis-aligned rects
-- `src_polygon=[(x,y),...]` / `tgt_polygon=[(x,y),...]` — closed polygon
+- `src_rect=(x,y,w,h)` / `tgt_rect=(x,y,w,h)` - axis-aligned rects
+- `src_polygon=[(x,y),...]` / `tgt_polygon=[(x,y),...]` - closed polygon
 
-Tool computes centroid → rays to target centroid → returns perimeter intersection as endpoint. Explicit coords override.
+Tool computes centroid → rays to target centroid → perimeter intersection as endpoint. Explicit coords override.
 
 ### Edge midpoint rule
 
-**Connector endpoints = shape EDGE MIDPOINTS, never centres or arbitrary corners.** Arrow meets card perpendicular to edge, text clash avoided.
+Connector endpoints = shape EDGE MIDPOINTS. Never centres, never arbitrary corners. Arrow meets card perpendicular, text clash avoided.
 
 Tools:
 
-1. `svg-infographics geom attach --shape rect --side right|left|top|bottom --pos mid` — exact midpoint per side per rect
-2. `svg-infographics connector ... --src-rect ... --tgt-rect ...` (or `--src-polygon`/`--tgt-polygon`) — auto-edge: tool intersects centroid-to-centroid ray with perimeter
-3. `svg-infographics geom curve-midpoint --points "[(x,y),...]"` — arc-length midpoint of polyline (Bezier/L/spline). For labels ON a connector
-4. `svg-infographics geom shape-midpoint --points "[(x,y),...]"` — area-weighted centroid of closed polygon. For direction inference only, NEVER as endpoint
+1. `geom attach --shape rect --side right|left|top|bottom --pos mid` - midpoint per side per rect
+2. `connector ... --src-rect ... --tgt-rect ...` (or `--src-polygon`/`--tgt-polygon`) - auto-edge
+3. `geom curve-midpoint --points "[(x,y),...]"` - arc-length midpoint of polyline. Labels ON a connector
+4. `geom shape-midpoint --points "[(x,y),...]"` - area-weighted centroid. Direction inference only, never endpoint
 
-Never eyeball endpoint coords. Use `primitives <shape>` for named anchors, `geom attach` for edge snap points. Hand-authored `<g transform="rotate(...)">` arrow groups are a workflow violation — connector tool replaces them.
+Never eyeball endpoint coords. `primitives <shape>` for named anchors. `geom attach` for edge snap. Hand-authored `<g transform="rotate(...)">` arrow groups = workflow violation.
 
 ### Callout placement rules
 
 Callout = leader line + italic text annotating element. Six rules:
 
 1. Text in empty zone, close to target. Close-but-clear > far-but-safe.
-2. Leader should not cross any shapes or edges. If unavoidable, minimise crossings (pick the route with the fewest).
-3. Leader length: short-but-not-too-short. Long enough to clear the text bbox and reach the target with a visible angle; short enough that the reader's eye follows it in one glance.
-4. Text must not overlap own connector. Even if leader clean, text bbox must sit in empty space.
-5. Callouts must not overlap each other. Stack in one zone or distribute.
-6. Leader anchor stops `standoff` px short of text bbox. Never glue to bbox edge, never enter bbox interior. Compute: `svg-infographics geom offset-rect --rect <text-bbox> --by <standoff>` (inflate), then `svg-infographics geom rect-edge --rect <inflated> --from <target>` returns anchor point. Default standoff 3px.
+2. Leader must not cross shapes or edges. Unavoidable: minimise crossings, fewest wins.
+3. Leader length: short-but-not-too-short. Clear text bbox, reach target at visible angle, readable in one glance.
+4. Text never overlaps own connector. Even with clean leader, bbox must sit in empty space.
+5. Callouts never overlap each other. Stack one zone or distribute.
+6. Leader anchor stops `standoff` px short of text bbox. Never glue to edge, never enter interior. Compute: `geom offset-rect --rect <text-bbox> --by <standoff>` inflates, then `geom rect-edge --rect <inflated> --from <target>` returns anchor. Default standoff 3px.
 
 ### Callout naming convention (MANDATORY)
 
-Every callout MUST use the `callout` namespace across THREE places so that tooling can find, exclude, and audit them:
+Every callout uses the `callout` namespace in THREE places - otherwise invisible to tooling:
 
-1. **Group id prefix**: wrap every callout in `<g id="callout-<name>">`. The `callout-` prefix is mandatory — `svg-infographics empty-space` skips matching groups via the default `exclude_ids=["callout-*"]`, so existing callouts don't pollute the obstacle set when re-running placement. `svg-infographics overlaps` also uses the prefix to detect the CALLOUT CROSS-COLLISIONS audit block.
-2. **Text class**: every `<text>` child uses `class="callout-text"`. Font style, fill colour, and size come from the CSS class; `check_overlaps` resolves it to compute text bboxes for cross-collision checks.
-3. **Line class**: every leader `<line>` / `<path>` / `<polyline>` uses `class="callout-line"`. Stroke colour, width, and opacity come from the class.
+1. **Group id**: `<g id="callout-<name>">`. Prefix `callout-` mandatory. `empty-space` skips via default `exclude_ids=("callout-*",)`. `overlaps` parses prefix for CALLOUT CROSS-COLLISIONS block.
+2. **Text class**: `class="callout-text"` on every `<text>` child. Font/fill/size from CSS class.
+3. **Line class**: `class="callout-line"` on every `<line>` / `<path>` / `<polyline>` leader. Stroke/width/opacity from class.
+
+All callout groups live inside the top-level `<g id="callouts">` layer - never at root, never mixed with nodes or connectors.
 
 Example:
 ```html
@@ -339,44 +344,42 @@ Example:
   .callout-text { font-family: Segoe UI; font-size: 8.5px; font-style: italic; fill: #7a4a15; }
   .callout-line { stroke: #7a4a15; stroke-width: 1; fill: none; }
 </style>
-<g id="callout-merge">
-  <text x="445" y="130" class="callout-text">merge point</text>
-  <text x="445" y="141" class="callout-text">(single convergence)</text>
-  <line x1="410" y1="230" x2="464" y2="144" class="callout-line"/>
+<g id="callouts">
+  <g id="callout-merge">
+    <text x="445" y="130" class="callout-text">merge point</text>
+    <text x="445" y="141" class="callout-text">(single convergence)</text>
+    <line x1="410" y1="230" x2="464" y2="144" class="callout-line"/>
+  </g>
 </g>
 ```
 
-No other id prefix or class scheme is accepted. Callouts that don't follow the convention are invisible to `empty-space`, `overlaps`, and the callout placement workflow.
+Non-compliant callouts invisible to `empty-space`, `overlaps`, and workflow.
 
 ### Callout construction workflow
 
-7 steps per callout (two audit gates - pre-placement and post-placement):
+7 steps, two audit gates. SVG is source of truth.
 
-1. **Pre-audit existing callouts**: `svg-infographics overlaps --svg file.svg` reports a CALLOUT CROSS-COLLISIONS section. Any prior leader/text overlap must be resolved before adding new callouts - stacking new work on top of broken layout wastes iterations.
-2. **Empty space islands**: `svg-infographics empty-space --svg file.svg --tolerance 20` → boundary polygons per free island, each shrunk inward by 20px. `--tolerance 20` is the minimum for callouts; anything smaller lets leaders clip adjacent shapes. Larger values (25-30) for denser scenes. The tool reads the SVG directly — every visible element becomes an obstacle automatically. Existing `<g id="callout-*">` groups are excluded by default via `--exclude-id`. No manual shape list needed.
+1. **Pre-audit**: `svg-infographics overlaps --svg file.svg`. Fix any CALLOUT CROSS-COLLISIONS before adding new work.
+2. **Empty space**: `svg-infographics empty-space --svg file.svg --tolerance 20`. Returns boundary polygons per free island, shrunk inward 20px. Tool parses SVG directly, every visible element is an obstacle, existing `<g id="callout-*">` excluded by default. Larger tolerance (25-30) for dense scenes.
 3. **Text bbox**: width ≈ `len(text) * font_size * 0.55`, height ≈ `font_size + 2` per line. Stack lines if multi-line.
-4. **Best placement**: for each island, verify text bbox fits via `svg-infographics geom contains --polygon <island> --bbox <text-bbox>` - use returned polygon boundary, NEVER its axis-aligned bbox (islands can be L-shaped or horseshoe; text dropped in an empty sub-rectangle of the bbox may land inside an occluded shape). `contained=YES convex-safe=YES` is the pass condition. Then audit leader vs ALL hard shapes (not just the island) - leader may start inside the shape containing target but must not touch any other shape. Prefer islands closest to target, ties broken by shortest leader.
-
-   **Iterate callouts**: place one at a time, then add its text bbox to the hard-shape list OR append it to the SVG file with the `callout-` prefix before re-running. Either approach works because empty-space excludes `callout-*` by default. Skipping this step causes the next placement to land on top of the previous one - caught by step 7's post-audit but wastes iteration cycles.
-5. **Leader audit**: no shape crossings. If unavoidable, pick fewest. Short-but-not-too-short per rule 3.
-6. **Render** text at chosen position, draw leader. Bbox was scaffold, discard.
-7. **Post-audit**: re-run `svg-infographics overlaps --svg file.svg`. The CALLOUT CROSS-COLLISIONS section must be clean (no "leader of X crosses text of Y", "leader of X crosses leader of Y", "text of X overlaps text of Y"). Also re-check general overlaps against all other geometry. Any violation means the placement failed - reposition and repeat.
-
-**SVG IS the source of truth**: `svg-infographics empty-space --svg ...` reads the actual SVG. No shape list is built by the caller. Shoulders near curved connectors appear as genuine free regions.
-
-**`empty-space` not callout-only**: any "where to put X without overlapping Y" question. Legends, badges, secondary labels, logos, icons, decorative imagery, orphan annotations. Point it at your SVG, pick the largest island that fits the element, drop the element there.
+4. **Best placement**: for each island, `geom contains --polygon <island> --bbox <text-bbox>`. Pass condition `contained=YES convex-safe=YES` (islands often L-shaped - bbox must fit the polygon, NOT its axis-aligned bounds). Then audit leader vs all hard shapes. Leader may start inside target's own shape, must not touch others. Prefer islands closest to target, ties broken by shortest leader.
+5. **Iterate**: place one, append to `<g id="callouts">` with `callout-` prefix, re-run empty-space. Default exclude filters placed callouts automatically.
+6. **Render**: text at chosen position, leader drawn, placed inside `<g id="callouts">`. Bbox was scaffold - discard.
+7. **Post-audit**: re-run `overlaps --svg file.svg`. CALLOUT CROSS-COLLISIONS must be clean. Any violation means reposition + repeat.
 
 **Empty zones for manifold scenes** (highest yield first):
 
-- Above spine between merge/fork: `x∈[spine_start.x, spine_end.x], y<spine.y` — no strand traffic
+- Above spine between merge/fork: `x∈[spine_start.x, spine_end.x], y<spine.y`, no strand traffic
 - Below spine between merge/fork: same x range, `y>spine.y`
-- Gaps between src/sink rows (~18-20px, one line each)
+- Shoulder gaps between src/sink rows (~18-20px, one-line each)
 - Above title row, below last row of cards
 
-**Audit gates** (both mandatory):
+**Audit gates**:
 
-- `svg-infographics overlaps --svg file.svg` — the CALLOUT CROSS-COLLISIONS section checks leader-vs-other-callout-text, leader-vs-leader, and text-bbox-vs-text-bbox pairwise across all `<g id="callout-*">` groups. Run before (no-regression baseline) and after (acceptance gate).
-- `svg-infographics collide` on callout leaders + shape rects catches crossings against non-callout geometry; run before shipping, reposition offenders.
+- `overlaps --svg file.svg` - CALLOUT CROSS-COLLISIONS checks leader-vs-text, leader-vs-leader, text-vs-text pairwise across every `<g id="callout-*">`. Run before (baseline) and after (acceptance).
+- `collide` - callout leaders vs non-callout geometry. Run before shipping, reposition offenders.
+
+**`empty-space` not callout-only**: any "where to put X without overlapping Y" problem - legends, badges, logos, secondary labels, decorative imagery. Point at SVG, pick largest island that fits, drop element in `<g id="content">` or a named layer.
 
 ### Angular Arrow Design (Chamfered L-Routing)
 
@@ -387,17 +390,28 @@ Instead of: M{x1},{y1} V{y_mid} H{x2}
 Use:        M{x1},{y1} V{y_mid-4} L{x1+4},{y_mid} H{x2-4} L{x2},{y_mid+4}
 ```
 
-## Z-Order Layering
+## Z-Order Layering (MANDATORY)
 
-SVG renders in document order. Use:
-1. **Background** - track lines, grid lines, subtle fills
-2. **Connectors** - arrows, progress indicators
-3. **Nodes** - circles, boxes, cards
-4. **Content** - icons and text inside nodes
+SVG renders in document order. Five named groups, bottom-up. Every drawable element belongs to exactly one layer. No mixed content, no stray top-level shapes.
+
+```xml
+<svg ...>
+  <style>...</style>
+  <g id="background">...</g>   <!-- fills, grids, banners -->
+  <g id="nodes">...</g>         <!-- cards, circles, hexes -->
+  <g id="connectors">...</g>    <!-- arrows, strands, L-routes, manifold, spine -->
+  <g id="content">...</g>       <!-- icons, labels, text inside nodes -->
+  <g id="callouts">...</g>      <!-- callout groups - ALWAYS topmost -->
+</svg>
+```
+
+**Connectors layer**: every arrow, strand, L-chamfer, spine, manifold bundle lives in `<g id="connectors">`. Never draw connectors at root. Connector tool output goes inside this group.
+
+**Callouts layer**: every callout group lives in `<g id="callouts">`. Each callout is a child `<g id="callout-<name>">` - see Callout naming convention below. Callouts on their own layer means they render on top of everything, they batch-exclude cleanly from empty-space detection via `exclude_ids=("callout-*",)`, and they can be stripped / regenerated without touching the rest of the SVG.
 
 ### Track Line Cutouts
 
-Cut gaps in track at milestone nodes. **Never use `fill="white"` as knockout.**
+Cut gaps in track at milestone nodes. Never use `fill="white"` as knockout.
 
 ## Timeline Style: Signal Timing Hexagons
 

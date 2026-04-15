@@ -90,12 +90,12 @@ def main():
     parser.add_argument(
         "--connectors",
         default=None,
-        help='Python-literal list of sample lists or (label, samples) tuples',
+        help="Python-literal list of sample lists or (label, samples) tuples",
     )
     parser.add_argument(
         "--connectors-d",
         default=None,
-        help='Python-literal list of SVG path d strings (M/L only)',
+        help="Python-literal list of SVG path d strings (M/L only)",
     )
     parser.add_argument(
         "--tolerance",

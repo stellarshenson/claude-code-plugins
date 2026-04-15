@@ -2840,7 +2840,7 @@ _SYSTEM_FONT = next((p for p in _FONT_CANDIDATES if p.exists()), None)
 
 pytest.importorskip(
     "fontTools",
-    reason="text_to_path requires the [fonts] optional dependency",
+    reason="text_to_path requires fonttools (core dependency)",
 )
 
 

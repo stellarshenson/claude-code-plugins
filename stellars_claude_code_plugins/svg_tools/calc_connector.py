@@ -133,11 +133,21 @@ def _rect_edge_intersection(cx, cy, tx, ty, rect):
 
 
 def calc_connector(
-    src_x=None, src_y=None, tgt_x=None, tgt_y=None,
-    margin=0, head_len=10, head_half_h=5, arrow="end", standoff=None,
-    start_dir=None, end_dir=None,
-    src_rect=None, tgt_rect=None,
-    src_polygon=None, tgt_polygon=None,
+    src_x=None,
+    src_y=None,
+    tgt_x=None,
+    tgt_y=None,
+    margin=0,
+    head_len=10,
+    head_half_h=5,
+    arrow="end",
+    standoff=None,
+    start_dir=None,
+    end_dir=None,
+    src_rect=None,
+    tgt_rect=None,
+    src_polygon=None,
+    tgt_polygon=None,
 ):
     """Straight-line connector. Unified polyline output.
 
@@ -181,25 +191,22 @@ def calc_connector(
     # to compute the true edge incident point. Polygons and rects each use
     # their own intersection routine.
     if src_polygon is not None:
-        src_x, src_y = _polygon_edge_intersection(
-            sx_c, sy_c, tgt_x, tgt_y, src_polygon
-        )
+        src_x, src_y = _polygon_edge_intersection(sx_c, sy_c, tgt_x, tgt_y, src_polygon)
     elif src_rect is not None:
-        src_x, src_y = _rect_edge_intersection(
-            sx_c, sy_c, tgt_x, tgt_y, src_rect
-        )
+        src_x, src_y = _rect_edge_intersection(sx_c, sy_c, tgt_x, tgt_y, src_rect)
     if tgt_polygon is not None:
-        tgt_x, tgt_y = _polygon_edge_intersection(
-            tx_c, ty_c, src_x, src_y, tgt_polygon
-        )
+        tgt_x, tgt_y = _polygon_edge_intersection(tx_c, ty_c, src_x, src_y, tgt_polygon)
     elif tgt_rect is not None:
-        tgt_x, tgt_y = _rect_edge_intersection(
-            tx_c, ty_c, src_x, src_y, tgt_rect
-        )
+        tgt_x, tgt_y = _rect_edge_intersection(tx_c, ty_c, src_x, src_y, tgt_rect)
 
     return _build_polyline_result(
-        "straight", [(src_x, src_y), (tgt_x, tgt_y)],
-        head_len, head_half_h, arrow, margin, standoff=standoff,
+        "straight",
+        [(src_x, src_y), (tgt_x, tgt_y)],
+        head_len,
+        head_half_h,
+        arrow,
+        margin,
+        standoff=standoff,
     )
 
 
@@ -254,14 +261,26 @@ def calc_cutout(
 
     # Segment 1: source -> pill entry (no arrowhead)
     seg1 = calc_connector(
-        src_x, src_y, enter_x, enter_y,
-        margin=margin, head_len=head_len, head_half_h=head_half_h, arrow="none",
+        src_x,
+        src_y,
+        enter_x,
+        enter_y,
+        margin=margin,
+        head_len=head_len,
+        head_half_h=head_half_h,
+        arrow="none",
     )
 
     # Segment 2: pill exit -> target (arrowhead on end)
     seg2 = calc_connector(
-        exit_x, exit_y, tgt_x, tgt_y,
-        margin=margin, head_len=head_len, head_half_h=head_half_h, arrow="end",
+        exit_x,
+        exit_y,
+        tgt_x,
+        tgt_y,
+        margin=margin,
+        head_len=head_len,
+        head_half_h=head_half_h,
+        arrow="end",
     )
 
     return {
@@ -502,10 +521,22 @@ def pchip_parametric(waypoints, num_samples=200):
 # Compound directions are unit vectors at the appropriate angle.
 # Angle 0 is north, increasing clockwise (like a real compass).
 _COMPASS_ANGLES = {
-    "N": 0, "NNE": 22.5, "NE": 45, "ENE": 67.5,
-    "E": 90, "ESE": 112.5, "SE": 135, "SSE": 157.5,
-    "S": 180, "SSW": 202.5, "SW": 225, "WSW": 247.5,
-    "W": 270, "WNW": 292.5, "NW": 315, "NNW": 337.5,
+    "N": 0,
+    "NNE": 22.5,
+    "NE": 45,
+    "ENE": 67.5,
+    "E": 90,
+    "ESE": 112.5,
+    "SE": 135,
+    "SSE": 157.5,
+    "S": 180,
+    "SSW": 202.5,
+    "SW": 225,
+    "WSW": 247.5,
+    "W": 270,
+    "WNW": 292.5,
+    "NW": 315,
+    "NNW": 337.5,
 }
 
 
@@ -533,9 +564,7 @@ def _direction_to_unit_vector(direction):
     elif isinstance(direction, (int, float)):
         angle_deg = float(direction) % 360
     else:
-        raise ValueError(
-            f"direction must be a compass string or numeric angle, got {direction!r}"
-        )
+        raise ValueError(f"direction must be a compass string or numeric angle, got {direction!r}")
     angle_rad = math.radians(angle_deg)
     # Angle 0 = north = (0, -1); clockwise: E=(1,0), S=(0,1), W=(-1,0)
     dx = math.sin(angle_rad)
@@ -560,9 +589,7 @@ def _unpack_point_with_direction(point):
         return (float(point[0]), float(point[1])), None
     if len(point) == 3:
         return (float(point[0]), float(point[1])), point[2]
-    raise ValueError(
-        f"point must be (x, y) or (x, y, direction), got {point!r}"
-    )
+    raise ValueError(f"point must be (x, y) or (x, y, direction), got {point!r}")
 
 
 def _apply_direction_to_l(src, tgt, direction_in, direction_out):
@@ -720,14 +747,19 @@ def _resolve_standoff(standoff, margin):
         return (float(standoff), float(standoff))
     if isinstance(standoff, (tuple, list)) and len(standoff) == 2:
         return (float(standoff[0]), float(standoff[1]))
-    raise ValueError(
-        f"standoff must be a number or 2-tuple (start, end), got {standoff!r}"
-    )
+    raise ValueError(f"standoff must be a number or 2-tuple (start, end), got {standoff!r}")
 
 
 def _build_polyline_result(
-    mode, points, head_len, head_half_h, arrow,
-    margin=0.0, controls=None, warnings=None, standoff=None,
+    mode,
+    points,
+    head_len,
+    head_half_h,
+    arrow,
+    margin=0.0,
+    controls=None,
+    warnings=None,
+    standoff=None,
 ):
     """Common assembly: trims standoff from each end, builds endpoint info, packs result.
 
@@ -834,7 +866,9 @@ def _thread_l_controls(src, dst, controls, chamfer=None):
         if chamfer is None:
             seg = _build_l_polyline(a[0], a[1], b[0], b[1], first_axis=None)
         else:
-            seg = _build_l_chamfer_polyline(a[0], a[1], b[0], b[1], first_axis=None, chamfer=chamfer)
+            seg = _build_l_chamfer_polyline(
+                a[0], a[1], b[0], b[1], first_axis=None, chamfer=chamfer
+            )
         # Drop the first point of each segment except the very first, to avoid
         # duplicating the join between consecutive segments.
         result.extend(seg[1:])
@@ -842,9 +876,18 @@ def _thread_l_controls(src, dst, controls, chamfer=None):
 
 
 def calc_l(
-    src_x, src_y, tgt_x, tgt_y,
-    controls=None, margin=0.0, head_len=10, head_half_h=5, arrow="end",
-    standoff=None, start_dir=None, end_dir=None,
+    src_x,
+    src_y,
+    tgt_x,
+    tgt_y,
+    controls=None,
+    margin=0.0,
+    head_len=10,
+    head_half_h=5,
+    arrow="end",
+    standoff=None,
+    start_dir=None,
+    end_dir=None,
 ):
     """Axis-aligned L connector, sharp corners. First axis inferred from geometry.
 
@@ -859,15 +902,32 @@ def calc_l(
     else:
         pts = _build_l_polyline(src_x, src_y, tgt_x, tgt_y, first_axis=first_axis)
     return _build_polyline_result(
-        "l", pts, head_len, head_half_h, arrow, margin,
-        controls=controls, warnings=warnings, standoff=standoff,
+        "l",
+        pts,
+        head_len,
+        head_half_h,
+        arrow,
+        margin,
+        controls=controls,
+        warnings=warnings,
+        standoff=standoff,
     )
 
 
 def calc_l_chamfer(
-    src_x, src_y, tgt_x, tgt_y,
-    controls=None, chamfer=4.0, margin=0.0, head_len=10, head_half_h=5, arrow="end",
-    standoff=None, start_dir=None, end_dir=None,
+    src_x,
+    src_y,
+    tgt_x,
+    tgt_y,
+    controls=None,
+    chamfer=4.0,
+    margin=0.0,
+    head_len=10,
+    head_half_h=5,
+    arrow="end",
+    standoff=None,
+    start_dir=None,
+    end_dir=None,
 ):
     """Chamfered L connector. Same direction semantics as calc_l.
 
@@ -880,16 +940,34 @@ def calc_l_chamfer(
     if controls:
         pts = _thread_l_controls((src_x, src_y), (tgt_x, tgt_y), controls, chamfer=chamfer)
     else:
-        pts = _build_l_chamfer_polyline(src_x, src_y, tgt_x, tgt_y, first_axis=first_axis, chamfer=chamfer)
+        pts = _build_l_chamfer_polyline(
+            src_x, src_y, tgt_x, tgt_y, first_axis=first_axis, chamfer=chamfer
+        )
     return _build_polyline_result(
-        "l-chamfer", pts, head_len, head_half_h, arrow, margin,
-        controls=controls, warnings=warnings, standoff=standoff,
+        "l-chamfer",
+        pts,
+        head_len,
+        head_half_h,
+        arrow,
+        margin,
+        controls=controls,
+        warnings=warnings,
+        standoff=standoff,
     )
 
 
 def calc_spline(
-    waypoints, samples=200, margin=0.0, head_len=10, head_half_h=5, arrow="end",
-    controls=None, standoff=None, start_dir=None, end_dir=None, direction_offset=24.0,
+    waypoints,
+    samples=200,
+    margin=0.0,
+    head_len=10,
+    head_half_h=5,
+    arrow="end",
+    controls=None,
+    standoff=None,
+    start_dir=None,
+    end_dir=None,
+    direction_offset=24.0,
     tangent_magnitude=None,
 ):
     """Spline connector. PCHIP through waypoints OR cubic Bezier with tangent vectors.
@@ -935,8 +1013,15 @@ def calc_spline(
         pts = pchip_parametric(list(waypoints), num_samples=samples)
 
     return _build_polyline_result(
-        "spline", pts, head_len, head_half_h, arrow, margin,
-        controls=controls, warnings=warnings, standoff=standoff,
+        "spline",
+        pts,
+        head_len,
+        head_half_h,
+        arrow,
+        margin,
+        controls=controls,
+        warnings=warnings,
+        standoff=standoff,
     )
 
 
@@ -950,10 +1035,12 @@ def _sample_cubic_bezier(p0, p1, p2, p3, num=60):
     import bezier
     import numpy as np
 
-    nodes = np.asfortranarray([
-        [p0[0], p1[0], p2[0], p3[0]],
-        [p0[1], p1[1], p2[1], p3[1]],
-    ])
+    nodes = np.asfortranarray(
+        [
+            [p0[0], p1[0], p2[0], p3[0]],
+            [p0[1], p1[1], p2[1], p3[1]],
+        ]
+    )
     curve = bezier.Curve.from_nodes(nodes)
     ts = np.linspace(0.0, 1.0, num)
     xy = curve.evaluate_multi(ts)  # shape (2, num)
@@ -969,8 +1056,19 @@ def _sample_cubic_bezier(p0, p1, p2, p3, num=60):
 
 
 def _calc_single_strand(
-    src, dst, shape, chamfer, samples, margin, head_len, head_half_h, arrow,
-    controls=None, standoff=None, start_dir=None, end_dir=None,
+    src,
+    dst,
+    shape,
+    chamfer,
+    samples,
+    margin,
+    head_len,
+    head_half_h,
+    arrow,
+    controls=None,
+    standoff=None,
+    start_dir=None,
+    end_dir=None,
     tangent_magnitude=None,
 ):
     """Dispatch to the right single-strand builder based on `shape`.
@@ -984,34 +1082,63 @@ def _calc_single_strand(
     dx, dy = dst
     if shape == "straight":
         if controls:
-            raise ValueError(
-                "straight shape does not accept controls; use spline or l-chamfer"
-            )
+            raise ValueError("straight shape does not accept controls; use spline or l-chamfer")
         return calc_connector(
-            sx, sy, dx, dy,
-            margin=margin, head_len=head_len, head_half_h=head_half_h, arrow=arrow,
-            standoff=standoff, start_dir=start_dir, end_dir=end_dir,
+            sx,
+            sy,
+            dx,
+            dy,
+            margin=margin,
+            head_len=head_len,
+            head_half_h=head_half_h,
+            arrow=arrow,
+            standoff=standoff,
+            start_dir=start_dir,
+            end_dir=end_dir,
         )
     if shape == "l":
         return calc_l(
-            sx, sy, dx, dy,
-            controls=controls, margin=margin,
-            head_len=head_len, head_half_h=head_half_h, arrow=arrow,
-            standoff=standoff, start_dir=start_dir, end_dir=end_dir,
+            sx,
+            sy,
+            dx,
+            dy,
+            controls=controls,
+            margin=margin,
+            head_len=head_len,
+            head_half_h=head_half_h,
+            arrow=arrow,
+            standoff=standoff,
+            start_dir=start_dir,
+            end_dir=end_dir,
         )
     if shape == "l-chamfer":
         return calc_l_chamfer(
-            sx, sy, dx, dy,
-            controls=controls, chamfer=chamfer, margin=margin,
-            head_len=head_len, head_half_h=head_half_h, arrow=arrow,
-            standoff=standoff, start_dir=start_dir, end_dir=end_dir,
+            sx,
+            sy,
+            dx,
+            dy,
+            controls=controls,
+            chamfer=chamfer,
+            margin=margin,
+            head_len=head_len,
+            head_half_h=head_half_h,
+            arrow=arrow,
+            standoff=standoff,
+            start_dir=start_dir,
+            end_dir=end_dir,
         )
     if shape == "spline":
         return calc_spline(
-            [(sx, sy), (dx, dy)], samples=samples,
-            controls=controls, margin=margin,
-            head_len=head_len, head_half_h=head_half_h, arrow=arrow,
-            standoff=standoff, start_dir=start_dir, end_dir=end_dir,
+            [(sx, sy), (dx, dy)],
+            samples=samples,
+            controls=controls,
+            margin=margin,
+            head_len=head_len,
+            head_half_h=head_half_h,
+            arrow=arrow,
+            standoff=standoff,
+            start_dir=start_dir,
+            end_dir=end_dir,
             tangent_magnitude=tangent_magnitude,
         )
     raise ValueError(f"shape must be straight|l|l-chamfer|spline, got {shape!r}")
@@ -1037,9 +1164,7 @@ def _resolve_tension(tension):
         return (float(tension), float(tension))
     if isinstance(tension, (tuple, list)) and len(tension) == 2:
         return (float(tension[0]), float(tension[1]))
-    raise ValueError(
-        f"tension must be a number in [0, 1] or a 2-tuple, got {tension!r}"
-    )
+    raise ValueError(f"tension must be a number in [0, 1] or a 2-tuple, got {tension!r}")
 
 
 def _single_convergence_points(n, point):
@@ -1095,9 +1220,7 @@ def _organic_relaxation(
     offsets = np.concatenate([[0], np.cumsum(sizes)])
     n_total = int(offsets[-1])
 
-    pts = np.concatenate(
-        [np.asarray(s, dtype=float) for s in strands_samples], axis=0
-    )
+    pts = np.concatenate([np.asarray(s, dtype=float) for s in strands_samples], axis=0)
 
     strand_id = np.zeros(n_total, dtype=np.int32)
     for i, (off, sz) in enumerate(zip(offsets[:-1], sizes)):
@@ -1157,7 +1280,7 @@ def _organic_relaxation(
 
         # Spring force: Laplacian of each strand's chain
         spring_force = np.zeros_like(pts)
-        for (a, b, lo, hi, end) in interior_slices:
+        for a, b, lo, hi, end in interior_slices:
             interior = pts[a:b]
             prev_ = pts[lo : lo + (b - a)]
             next_ = pts[hi : hi + (b - a)]
@@ -1315,9 +1438,7 @@ def calc_manifold(
     M = len(ends)
     t_start, t_end = _resolve_tension(tension)
     if not (0 <= t_start <= 1) or not (0 <= t_end <= 1):
-        raise ValueError(
-            f"tension components must be in [0, 1], got ({t_start}, {t_end})"
-        )
+        raise ValueError(f"tension components must be in [0, 1], got ({t_start}, {t_end})")
 
     warnings = []
 
@@ -1348,9 +1469,7 @@ def calc_manifold(
         merge_points = [md[0] for md in merges_dirs]
         merge_directions = [md[1] for md in merges_dirs]
         if len(merge_points) != N:
-            raise ValueError(
-                f"merge_points length ({len(merge_points)}) must match starts ({N})"
-            )
+            raise ValueError(f"merge_points length ({len(merge_points)}) must match starts ({N})")
     if fork_points is None:
         # Canonical model: fork point is ONE point at spine_end. Every end
         # strand diverges from here, tangent to the spine direction.
@@ -1361,23 +1480,17 @@ def calc_manifold(
         fork_points = [fd[0] for fd in forks_dirs]
         fork_directions = [fd[1] for fd in forks_dirs]
         if len(fork_points) != M:
-            raise ValueError(
-                f"fork_points length ({len(fork_points)}) must match ends ({M})"
-            )
+            raise ValueError(f"fork_points length ({len(fork_points)}) must match ends ({M})")
 
     # --- Controls list normalisation ---
     if start_controls is None:
         start_controls = [[] for _ in range(N)]
     elif len(start_controls) != N:
-        raise ValueError(
-            f"start_controls length ({len(start_controls)}) must match starts ({N})"
-        )
+        raise ValueError(f"start_controls length ({len(start_controls)}) must match starts ({N})")
     if end_controls is None:
         end_controls = [[] for _ in range(M)]
     elif len(end_controls) != M:
-        raise ValueError(
-            f"end_controls length ({len(end_controls)}) must match ends ({M})"
-        )
+        raise ValueError(f"end_controls length ({len(end_controls)}) must match ends ({M})")
     if spine_controls is None:
         spine_controls = []
 
@@ -1395,13 +1508,21 @@ def calc_manifold(
             if aligned_start_controls[i]:
                 continue  # caller supplied controls - don't second-guess them
             aligned_start_controls[i] = _inject_alignment_control(
-                starts[i], merge_points[i], align_merge, orientation, None,
+                starts[i],
+                merge_points[i],
+                align_merge,
+                orientation,
+                None,
             )
         for j in range(M):
             if aligned_end_controls[j]:
                 continue
             aligned_end_controls[j] = _inject_alignment_control(
-                ends[j], fork_points[j], align_fork, orientation, None,
+                ends[j],
+                fork_points[j],
+                align_fork,
+                orientation,
+                None,
             )
 
     # --- Build sub-strands ---
@@ -1414,6 +1535,7 @@ def calc_manifold(
     # perpendicular projection, bulging the strand outward before converging.
     start_strands = []
     convergence_strands = [None] * N  # retained for API compatibility, always None
+
     # Tension -> Bezier tangent magnitude scaling. Low tension = floppy
     # = long tangent vectors = dramatic bow. High tension = stiff = short
     # tangent vectors = curve hugs the straight line. The scaling is
@@ -1430,21 +1552,25 @@ def calc_manifold(
 
     for i in range(N):
         user_controls = list(aligned_start_controls[i]) if aligned_start_controls[i] else []
-        include_merge = (
-            shape != "straight"
-            and merge_points[i] != spine_start
-        )
+        include_merge = shape != "straight" and merge_points[i] != spine_start
         all_controls = [*user_controls, merge_points[i]] if include_merge else user_controls
-        strand_end_dir = merge_directions[i] if merge_directions[i] is not None else spine_flow_angle_deg
+        strand_end_dir = (
+            merge_directions[i] if merge_directions[i] is not None else spine_flow_angle_deg
+        )
         # Compute tangent magnitude from start-side tension and this strand's
         # source -> merge chord length.
-        _chord = math.hypot(
-            spine_start[0] - starts[i][0], spine_start[1] - starts[i][1]
-        )
+        _chord = math.hypot(spine_start[0] - starts[i][0], spine_start[1] - starts[i][1])
         strand_tangent_mag = _chord * tangent_mult_start
         strand = _calc_single_strand(
-            starts[i], spine_start, shape, chamfer, samples, margin,
-            head_len, head_half_h, arrow="none",
+            starts[i],
+            spine_start,
+            shape,
+            chamfer,
+            samples,
+            margin,
+            head_len,
+            head_half_h,
+            arrow="none",
             controls=all_controls if all_controls else None,
             standoff=standoff,
             start_dir=start_directions[i],
@@ -1456,8 +1582,15 @@ def calc_manifold(
 
     # Spine: spine_start -> spine_end (with spine_controls, no arrow)
     spine = _calc_single_strand(
-        spine_start, spine_end, shape, chamfer, samples, margin,
-        head_len, head_half_h, arrow="none",
+        spine_start,
+        spine_end,
+        shape,
+        chamfer,
+        samples,
+        margin,
+        head_len,
+        head_half_h,
+        arrow="none",
         controls=spine_controls if spine_controls else None,
         standoff=standoff,
         start_dir=spine_start_dir,
@@ -1472,21 +1605,25 @@ def calc_manifold(
     divergence_strands = [None] * M  # retained for API compatibility
     for j in range(M):
         user_controls = list(aligned_end_controls[j]) if aligned_end_controls[j] else []
-        include_fork = (
-            shape != "straight"
-            and fork_points[j] != spine_end
-        )
+        include_fork = shape != "straight" and fork_points[j] != spine_end
         all_controls = [fork_points[j], *user_controls] if include_fork else user_controls
         # Start-direction rule: a strand leaving spine_end inherits the
         # spine's flow direction unless the fork point has an explicit override.
-        strand_start_dir = fork_directions[j] if fork_directions[j] is not None else spine_flow_angle_deg
-        _chord_e = math.hypot(
-            ends[j][0] - spine_end[0], ends[j][1] - spine_end[1]
+        strand_start_dir = (
+            fork_directions[j] if fork_directions[j] is not None else spine_flow_angle_deg
         )
+        _chord_e = math.hypot(ends[j][0] - spine_end[0], ends[j][1] - spine_end[1])
         strand_tangent_mag_e = _chord_e * tangent_mult_end
         strand = _calc_single_strand(
-            spine_end, ends[j], shape, chamfer, samples, margin,
-            head_len, head_half_h, arrow=arrow,
+            spine_end,
+            ends[j],
+            shape,
+            chamfer,
+            samples,
+            margin,
+            head_len,
+            head_half_h,
+            arrow=arrow,
             controls=all_controls if all_controls else None,
             standoff=standoff,
             start_dir=strand_start_dir,
@@ -1530,8 +1667,12 @@ def calc_manifold(
             # Rebuild start/end info from the relaxed samples
             arrow_start = strand["start"]["arrow"] is not None
             arrow_end = strand["end"]["arrow"] is not None
-            new_start_info = _build_endpoint_info(new_samples, "start", head_len, head_half_h, arrow_start)
-            new_end_info = _build_endpoint_info(new_samples, "end", head_len, head_half_h, arrow_end)
+            new_start_info = _build_endpoint_info(
+                new_samples, "start", head_len, head_half_h, arrow_start
+            )
+            new_end_info = _build_endpoint_info(
+                new_samples, "end", head_len, head_half_h, arrow_end
+            )
             strand["start"] = new_start_info
             strand["end"] = new_end_info
 
@@ -1636,7 +1777,6 @@ def detect_collisions(connectors, tolerance=0.0, labels=None):
 
     Uses shapely (LineString.intersects / intersection / distance / buffer).
     """
-    from shapely.geometry import MultiLineString, MultiPoint, Point
 
     if len(connectors) < 2:
         return []
@@ -1661,39 +1801,53 @@ def detect_collisions(connectors, tolerance=0.0, labels=None):
                 pts = _extract_points(inter)
                 # If the only intersection is a shared endpoint, call it touching
                 endpoint_share = any(
-                    _point_eq(p, la.coords[0]) or _point_eq(p, la.coords[-1])
-                    or _point_eq(p, lb.coords[0]) or _point_eq(p, lb.coords[-1])
+                    _point_eq(p, la.coords[0])
+                    or _point_eq(p, la.coords[-1])
+                    or _point_eq(p, lb.coords[0])
+                    or _point_eq(p, lb.coords[-1])
                     for p in pts
                 )
                 if endpoint_share and len(pts) == 1:
                     ctype = "touching"
                 else:
                     ctype = "crossing"
-                collisions.append({
-                    "a": labels[i], "b": labels[j],
-                    "type": ctype, "points": pts, "min_distance": min_dist,
-                })
+                collisions.append(
+                    {
+                        "a": labels[i],
+                        "b": labels[j],
+                        "type": ctype,
+                        "points": pts,
+                        "min_distance": min_dist,
+                    }
+                )
             elif tolerance > 0 and min_dist <= tolerance:
                 # Near-miss: buffered versions would overlap.
                 # Report the nearest-pair points (one on each line).
                 nearest_pt_a = la.interpolate(la.project(lb.centroid))
                 nearest_pt_b = lb.interpolate(lb.project(la.centroid))
-                collisions.append({
-                    "a": labels[i], "b": labels[j],
-                    "type": "near-miss",
-                    "points": [
-                        (float(nearest_pt_a.x), float(nearest_pt_a.y)),
-                        (float(nearest_pt_b.x), float(nearest_pt_b.y)),
-                    ],
-                    "min_distance": min_dist,
-                })
+                collisions.append(
+                    {
+                        "a": labels[i],
+                        "b": labels[j],
+                        "type": "near-miss",
+                        "points": [
+                            (float(nearest_pt_a.x), float(nearest_pt_a.y)),
+                            (float(nearest_pt_b.x), float(nearest_pt_b.y)),
+                        ],
+                        "min_distance": min_dist,
+                    }
+                )
     return collisions
 
 
 def _extract_points(geom):
     """Flatten a shapely intersection geometry into a list of (x, y) tuples."""
     from shapely.geometry import (
-        GeometryCollection, LineString, MultiLineString, MultiPoint, Point,
+        GeometryCollection,
+        LineString,
+        MultiLineString,
+        MultiPoint,
+        Point,
     )
 
     if geom.is_empty:
@@ -1740,7 +1894,9 @@ def format_manifold_svg(result, stroke_color="#5456f3", stroke_width="1.2", opac
             if end["arrow"] is None:
                 continue
             poly_pts = " ".join(f"{px:.2f},{py:.2f}" for px, py in end["arrow"]["polygon"])
-            lines.append(f'    <polygon points="{poly_pts}" fill="{stroke_color}" stroke="none" opacity="0.6"/>')
+            lines.append(
+                f'    <polygon points="{poly_pts}" fill="{stroke_color}" stroke="none" opacity="0.6"/>'
+            )
 
     for i, strand in enumerate(result["start_strands"]):
         emit_strand(strand, f"start {i}: start_point -> merge_point")
@@ -1839,76 +1995,97 @@ def main():
         "--waypoints", default=None, help='Spline waypoints "x1,y1 x2,y2 ..." (spline mode)'
     )
     parser.add_argument(
-        "--starts", default=None,
+        "--starts",
+        default=None,
         help='Manifold start points, literal form: "[(x1,y1),(x2,y2),...]" or legacy "x1,y1 x2,y2"',
     )
     parser.add_argument(
-        "--ends", default=None,
-        help='Manifold end points, literal or legacy form (one per end)',
+        "--ends",
+        default=None,
+        help="Manifold end points, literal or legacy form (one per end)",
     )
     parser.add_argument(
-        "--spine-start", default=None,
+        "--spine-start",
+        default=None,
         help='Manifold spine start point "(x,y)" - required for manifold mode',
     )
     parser.add_argument(
-        "--spine-end", default=None,
+        "--spine-end",
+        default=None,
         help='Manifold spine end point "(x,y)" - required for manifold mode',
     )
     parser.add_argument(
-        "--merge-points", default=None,
-        help='Optional merge points (one per start) - overrides tension inference',
+        "--merge-points",
+        default=None,
+        help="Optional merge points (one per start) - overrides tension inference",
     )
     parser.add_argument(
-        "--fork-points", default=None,
-        help='Optional fork points (one per end) - overrides tension inference',
+        "--fork-points",
+        default=None,
+        help="Optional fork points (one per end) - overrides tension inference",
     )
     parser.add_argument(
-        "--spine-controls", default=None,
+        "--spine-controls",
+        default=None,
         help='Spine control waypoints "[(x1,y1),(x2,y2),...]" (optional)',
     )
     parser.add_argument(
-        "--start-controls", default=None,
+        "--start-controls",
+        default=None,
         help='Per-start control groups "[[(x,y),...], [], ...]" (optional, N groups)',
     )
     parser.add_argument(
-        "--end-controls", default=None,
+        "--end-controls",
+        default=None,
         help='Per-end control groups "[[(x,y),...], [], ...]" (optional, M groups)',
     )
     parser.add_argument(
-        "--tension", default="0.5",
-        help='Manifold tension scalar or (start,end) tuple in [0,1]. Default 0.5',
+        "--tension",
+        default="0.5",
+        help="Manifold tension scalar or (start,end) tuple in [0,1]. Default 0.5",
     )
     parser.add_argument(
-        "--align-elbows", action="store_true",
-        help='For L / L-chamfer manifolds: force all start-strand elbows to share '
-             'one coordinate (and similarly for end strands). Algorithm picks the '
-             'alignment axis from the spine orientation. No effect on spline shapes.',
+        "--align-elbows",
+        action="store_true",
+        help="For L / L-chamfer manifolds: force all start-strand elbows to share "
+        "one coordinate (and similarly for end strands). Algorithm picks the "
+        "alignment axis from the spine orientation. No effect on spline shapes.",
     )
     parser.add_argument(
-        "--organic", choices=["auto", "on", "off"], default="auto",
-        help='Organic spline relaxation: auto (on for spline without controls), '
-             'on (force relaxation), off (force straight). Uses pairwise inverse-square '
-             'repulsion between strand sample points for a braided, "pulled-apart" look.',
+        "--organic",
+        choices=["auto", "on", "off"],
+        default="auto",
+        help="Organic spline relaxation: auto (on for spline without controls), "
+        "on (force relaxation), off (force straight). Uses pairwise inverse-square "
+        'repulsion between strand sample points for a braided, "pulled-apart" look.',
     )
     parser.add_argument(
-        "--organic-iterations", type=int, default=25,
+        "--organic-iterations",
+        type=int,
+        default=25,
         help="Organic relaxation iteration count (default: 25)",
     )
     parser.add_argument(
-        "--organic-repulsion", type=float, default=60.0,
+        "--organic-repulsion",
+        type=float,
+        default=60.0,
         help="Organic relaxation force strength (default: 60)",
     )
     parser.add_argument(
-        "--organic-segments", type=int, default=5,
+        "--organic-segments",
+        type=int,
+        default=5,
         help="Number of PCHIP segments per organic strand (anchors = segments+1). "
-             "More segments = finer control, more computation. Default: 5",
+        "More segments = finer control, more computation. Default: 5",
     )
     parser.add_argument(
-        "--standoff", default=None,
-        help='Endpoint standoff scalar or (start,end) tuple - overrides --margin',
+        "--standoff",
+        default=None,
+        help="Endpoint standoff scalar or (start,end) tuple - overrides --margin",
     )
     parser.add_argument(
-        "--controls", default=None,
+        "--controls",
+        default=None,
         help='Control waypoints for non-manifold modes "[(x,y),(x,y),...]"',
     )
     parser.add_argument(
@@ -1924,14 +2101,16 @@ def main():
         "--chamfer", type=float, default=4.0, help="L-chamfer corner cut size in px (default: 4)"
     )
     parser.add_argument(
-        "--start-dir", default=None,
-        help='Direction hint at the source endpoint: compass string (N/NE/NNW/...) or '
-             'numeric degrees clockwise from north. Constrains L first-axis or injects '
-             'a spline tangent control point.',
+        "--start-dir",
+        default=None,
+        help="Direction hint at the source endpoint: compass string (N/NE/NNW/...) or "
+        "numeric degrees clockwise from north. Constrains L first-axis or injects "
+        "a spline tangent control point.",
     )
     parser.add_argument(
-        "--end-dir", default=None,
-        help='Direction hint at the target endpoint, same format as --start-dir.',
+        "--end-dir",
+        default=None,
+        help="Direction hint at the target endpoint, same format as --start-dir.",
     )
     parser.add_argument(
         "--arrow",
@@ -1978,8 +2157,13 @@ def main():
             if result is None:
                 print("Line does not cross pill rect - no cutout needed")
                 c = calc_connector(
-                    src_x, src_y, tgt_x, tgt_y,
-                    margin=args.margin, head_len=head_len, head_half_h=head_half_h,
+                    src_x,
+                    src_y,
+                    tgt_x,
+                    tgt_y,
+                    margin=args.margin,
+                    head_len=head_len,
+                    head_half_h=head_half_h,
                     standoff=straight_standoff,
                 )
                 print_result(c, args)
@@ -1994,13 +2178,21 @@ def main():
                     f" -> ({result['segment2_to'][0]:.1f},{result['segment2_to'][1]:.1f})"
                 )
                 print("\n--- SVG Snippet ---\n")
-                print(format_polyline_svg(result["segment1"], args.color, args.width, args.opacity))
-                print(format_polyline_svg(result["segment2"], args.color, args.width, args.opacity))
+                print(
+                    format_polyline_svg(result["segment1"], args.color, args.width, args.opacity)
+                )
+                print(
+                    format_polyline_svg(result["segment2"], args.color, args.width, args.opacity)
+                )
         else:
             c = calc_connector(
-                src_x, src_y, tgt_x, tgt_y,
+                src_x,
+                src_y,
+                tgt_x,
+                tgt_y,
                 margin=args.margin,
-                head_len=head_len, head_half_h=head_half_h,
+                head_len=head_len,
+                head_half_h=head_half_h,
                 standoff=straight_standoff,
             )
             print_result(c, args)
@@ -2009,9 +2201,7 @@ def main():
     # Manifold mode: N starts + M ends + required spine start/end + optional tension/controls
     if args.mode == "manifold":
         if not all([args.starts, args.ends, args.spine_start, args.spine_end]):
-            parser.error(
-                "manifold mode requires --starts, --ends, --spine-start, --spine-end"
-            )
+            parser.error("manifold mode requires --starts, --ends, --spine-start, --spine-end")
         starts = _parse_point_list(args.starts)
         ends = _parse_point_list(args.ends)
         spine_start = _parse_point(args.spine_start)
@@ -2024,19 +2214,28 @@ def main():
         tension = _parse_tension(args.tension)
         standoff = _parse_standoff(args.standoff) if args.standoff else None
         result = calc_manifold(
-            starts=starts, ends=ends,
-            spine_start=spine_start, spine_end=spine_end,
-            shape=args.shape, tension=tension,
-            merge_points=merge_points, fork_points=fork_points,
+            starts=starts,
+            ends=ends,
+            spine_start=spine_start,
+            spine_end=spine_end,
+            shape=args.shape,
+            tension=tension,
+            merge_points=merge_points,
+            fork_points=fork_points,
             spine_controls=spine_controls,
-            start_controls=start_controls, end_controls=end_controls,
+            start_controls=start_controls,
+            end_controls=end_controls,
             align_elbows=args.align_elbows,
             organic={"auto": None, "on": True, "off": False}[args.organic],
             organic_iterations=args.organic_iterations,
             organic_repulsion=args.organic_repulsion,
             organic_segments=args.organic_segments,
-            chamfer=args.chamfer, samples=args.samples, margin=args.margin,
-            head_len=head_len, head_half_h=head_half_h, arrow=args.arrow,
+            chamfer=args.chamfer,
+            samples=args.samples,
+            margin=args.margin,
+            head_len=head_len,
+            head_half_h=head_half_h,
+            arrow=args.arrow,
             standoff=standoff,
         )
         print_manifold_result(result, args)
@@ -2067,19 +2266,28 @@ def main():
         tgt_x, tgt_y = _parse_point(args.tgt)
         if args.mode == "l":
             result = calc_l(
-                src_x, src_y, tgt_x, tgt_y,
+                src_x,
+                src_y,
+                tgt_x,
+                tgt_y,
                 controls=controls,
                 margin=args.margin,
-                head_len=head_len, head_half_h=head_half_h,
+                head_len=head_len,
+                head_half_h=head_half_h,
                 arrow=args.arrow,
                 standoff=standoff,
             )
         else:  # l-chamfer
             result = calc_l_chamfer(
-                src_x, src_y, tgt_x, tgt_y,
-                controls=controls, chamfer=args.chamfer,
+                src_x,
+                src_y,
+                tgt_x,
+                tgt_y,
+                controls=controls,
+                chamfer=args.chamfer,
                 margin=args.margin,
-                head_len=head_len, head_half_h=head_half_h,
+                head_len=head_len,
+                head_half_h=head_half_h,
                 arrow=args.arrow,
                 standoff=standoff,
             )
@@ -2096,6 +2304,7 @@ def _parse_waypoints(text):
       "[[100,80],[200,40],[300,120]]"  (JSON-style)
     """
     import ast as _ast
+
     text = text.strip()
     if text.startswith(("[", "(")):
         parsed = _ast.literal_eval(text)
@@ -2112,6 +2321,7 @@ def _parse_waypoints(text):
 def _parse_point_list(text):
     """Parse a point list from a literal or legacy space-separated string."""
     import ast as _ast
+
     text = text.strip()
     if text.startswith(("[", "(")):
         parsed = _ast.literal_eval(text)
@@ -2127,6 +2337,7 @@ def _parse_point_list(text):
 def _parse_point(text):
     """Parse a single (x, y) point. Accepts literal '(x,y)' or 'x,y'."""
     import ast as _ast
+
     text = text.strip()
     if text.startswith(("[", "(")):
         parsed = _ast.literal_eval(text)
@@ -2144,6 +2355,7 @@ def _parse_point_groups(text):
       "[[(150,100),(200,150)], [], [(150,300)], [(200,400),(180,380)]]"
     """
     import ast as _ast
+
     parsed = _ast.literal_eval(text)
     return [[tuple(p) for p in group] for group in parsed]
 
@@ -2151,6 +2363,7 @@ def _parse_point_groups(text):
 def _parse_tension(text):
     """Parse a tension scalar or 2-tuple."""
     import ast as _ast
+
     text = text.strip()
     if text.startswith(("[", "(")):
         parsed = _ast.literal_eval(text)

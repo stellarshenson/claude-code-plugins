@@ -739,6 +739,7 @@ def cmd_curve_midpoint(args):
     """Arc-length midpoint of a polyline (open curve). Use for label
     placement or for finding the precise midpoint incident on a connector."""
     import ast as _ast
+
     if not args.points:
         raise SystemExit("curve-midpoint requires --points [(x,y),(x,y),...]")
     raw = _ast.literal_eval(args.points)
@@ -759,6 +760,7 @@ def cmd_shape_midpoint(args):
     or target is a closed shape (any polygon, not just a rect) and you
     need the centre to compute a connect-from-centre direction."""
     import ast as _ast
+
     if not args.points:
         raise SystemExit("shape-midpoint requires --points [(x,y),(x,y),...]")
     raw = _ast.literal_eval(args.points)
@@ -1086,6 +1088,7 @@ def cmd_bisector(args):
 def _parse_polygon_arg(s):
     """Parse polygon as a Python literal '[(x,y),(x,y),...]' or 'x,y x,y ...'."""
     import ast
+
     s = s.strip()
     if s.startswith("["):
         return [tuple(p) for p in ast.literal_eval(s)]
@@ -1098,11 +1101,18 @@ def _parse_polygon_arg(s):
 
 def _build_shapely_geom(inner):
     from shapely.geometry import (
-        Point as SPoint,
         LineString,
+    )
+    from shapely.geometry import (
+        Point as SPoint,
+    )
+    from shapely.geometry import (
         Polygon as SPolygon,
+    )
+    from shapely.geometry import (
         box as sbox,
     )
+
     kind, data = inner
     if kind == "point":
         return SPoint(data[0], data[1])
@@ -1156,8 +1166,10 @@ def geometry_in_polygon(inner, polygon):
     two sample points of a more complex inner shape) stays inside the island
     too - useful when the island is an L-shape or horseshoe.
     """
-    from shapely.geometry import LineString, Polygon as SPolygon
+    from shapely.geometry import LineString
+    from shapely.geometry import Polygon as SPolygon
     from shapely.geometry.base import BaseGeometry
+
     outer = SPolygon(polygon)
     geom = _build_shapely_geom(inner)
     contained = outer.covers(geom)
@@ -1170,7 +1182,10 @@ def geometry_in_polygon(inner, polygon):
 
     exit_segments: list[tuple[tuple[float, float], tuple[float, float]]] = []
     if not convex_safe and geom.geom_type in (
-        "LineString", "Polygon", "MultiPoint", "Point",
+        "LineString",
+        "Polygon",
+        "MultiPoint",
+        "Point",
     ):
         kind = inner[0]
         if kind in ("line", "polyline"):
@@ -1264,6 +1279,7 @@ def cmd_rect_edge(args):
 def cmd_contains(args):
     polygon = _parse_polygon_arg(args.polygon)
     from shapely.geometry import Polygon as SPolygon
+
     outer = SPolygon(polygon)
     print(f"Outer: {len(polygon)} vertices, area={outer.area:.1f}")
 
@@ -1404,8 +1420,9 @@ def main():
         help="Arc-length midpoint of an open polyline (curved connector, Bezier samples, L-route). Returns midpoint + tangent + total arc length.",
         description="Walks a polyline accumulating segment lengths and returns the exact point at arc-length/2 with the tangent direction at that point. Use for labels on connectors or precise midpoint incident on a curved path.",
     )
-    p.add_argument("--points", required=True,
-        help='Polyline as a Python literal: "[(x1,y1),(x2,y2),...]"')
+    p.add_argument(
+        "--points", required=True, help='Polyline as a Python literal: "[(x1,y1),(x2,y2),...]"'
+    )
     p.set_defaults(func=cmd_curve_midpoint)
 
     p = sub.add_parser(
@@ -1413,8 +1430,11 @@ def main():
         help="Centroid of a closed shape (any polygon). Use when a connector is pointing at a non-rect closed shape and you need its centre for direction inference.",
         description="Computes the area-weighted centroid of a closed polygon defined by its vertices. Returns the centroid point and the signed area. For rectangles, circles, stars, hexagons and any other closed polygon the caller passes as a vertex list.",
     )
-    p.add_argument("--points", required=True,
-        help='Closed polygon vertices as a literal: "[(x1,y1),(x2,y2),...]"')
+    p.add_argument(
+        "--points",
+        required=True,
+        help='Closed polygon vertices as a literal: "[(x1,y1),(x2,y2),...]"',
+    )
     p.set_defaults(func=cmd_shape_midpoint)
 
     p = sub.add_parser(

@@ -13,8 +13,7 @@ Tradeoffs the caller should accept:
 - File size grows ~5-20x compared to a `<text>` element
 - A `.ttf` or `.otf` font file path is required (no system font resolution)
 
-Requires the optional `fonttools` dependency:
-    pip install 'stellars-claude-code-plugins[fonts]'
+Uses the `fonttools` package (bundled with the core install).
 """
 
 from __future__ import annotations
@@ -59,8 +58,8 @@ class TextPathResult:
 def _require_fonttools() -> None:
     if not _FONTTOOLS_AVAILABLE:
         raise ImportError(
-            "fonttools is required for text_to_path. Install with:\n"
-            "    pip install 'stellars-claude-code-plugins[fonts]'\n"
+            "fonttools is required for text_to_path. It is a core dependency "
+            "of stellars-claude-code-plugins - your install may be corrupted.\n"
             f"Original error: {_FONTTOOLS_ERROR}"
         )
 
@@ -197,8 +196,8 @@ def main() -> None:
 
     if not _FONTTOOLS_AVAILABLE:
         print(
-            "ERROR: fonttools not installed. Run:\n"
-            "    pip install 'stellars-claude-code-plugins[fonts]'",
+            "ERROR: fonttools not installed. It is a core dependency of "
+            "stellars-claude-code-plugins - reinstall the package.",
             file=sys.stderr,
         )
         sys.exit(2)

@@ -92,9 +92,7 @@ def _chart_class(chart_type):
         "pie": pygal.Pie,
     }
     if chart_type not in mapping:
-        raise ValueError(
-            f"unknown chart_type {chart_type!r}; choose one of {sorted(mapping)}"
-        )
+        raise ValueError(f"unknown chart_type {chart_type!r}; choose one of {sorted(mapping)}")
     return mapping[chart_type]
 
 
@@ -128,6 +126,7 @@ def _dark_mode_override_style(fg_light, fg_dark, grid_light, grid_dark, bg_dark)
 
 def _inject_dark_mode_css(svg_text, dark_css):
     """Inject the dark-mode override <style> into the pygal SVG's <defs>."""
+
     # Pygal emits a <defs><style> block. Append to its style content.
     def _augment_style(m):
         return m.group(0) + dark_css
@@ -181,18 +180,10 @@ def generate_chart(
 
     if not data:
         raise ValueError("data must not be empty")
-    if (
-        isinstance(data[0], tuple)
-        and len(data[0]) == 2
-        and isinstance(data[0][1], (list, tuple))
-    ):
+    if isinstance(data[0], tuple) and len(data[0]) == 2 and isinstance(data[0][1], (list, tuple)):
         for name, values in data:
             chart.add(name, values)
-    elif (
-        isinstance(data[0], tuple)
-        and len(data[0]) == 2
-        and isinstance(data[0][0], str)
-    ):
+    elif isinstance(data[0], tuple) and len(data[0]) == 2 and isinstance(data[0][0], str):
         for label, value in data:
             chart.add(label, value)
     else:
@@ -258,18 +249,42 @@ def main():
         default=None,
         help="Comma-separated hex series colours, e.g. '#005f7a,#7a4a15,#0096d1'",
     )
-    parser.add_argument("--fg-light", dest="fg_light", default=_DEFAULT_FG_LIGHT,
-                        help="Foreground colour for light mode (hex)")
-    parser.add_argument("--fg-dark", dest="fg_dark", default=_DEFAULT_FG_DARK,
-                        help="Foreground colour for dark mode (hex)")
-    parser.add_argument("--grid-light", dest="grid_light", default=_DEFAULT_GRID_LIGHT,
-                        help="Grid/axis stroke colour for light mode (hex)")
-    parser.add_argument("--grid-dark", dest="grid_dark", default=_DEFAULT_GRID_DARK,
-                        help="Grid/axis stroke colour for dark mode (hex)")
-    parser.add_argument("--bg-light", dest="bg_light", default="transparent",
-                        help="Plot background for light mode (usually transparent)")
-    parser.add_argument("--bg-dark", dest="bg_dark", default="transparent",
-                        help="Plot background for dark mode (usually transparent)")
+    parser.add_argument(
+        "--fg-light",
+        dest="fg_light",
+        default=_DEFAULT_FG_LIGHT,
+        help="Foreground colour for light mode (hex)",
+    )
+    parser.add_argument(
+        "--fg-dark",
+        dest="fg_dark",
+        default=_DEFAULT_FG_DARK,
+        help="Foreground colour for dark mode (hex)",
+    )
+    parser.add_argument(
+        "--grid-light",
+        dest="grid_light",
+        default=_DEFAULT_GRID_LIGHT,
+        help="Grid/axis stroke colour for light mode (hex)",
+    )
+    parser.add_argument(
+        "--grid-dark",
+        dest="grid_dark",
+        default=_DEFAULT_GRID_DARK,
+        help="Grid/axis stroke colour for dark mode (hex)",
+    )
+    parser.add_argument(
+        "--bg-light",
+        dest="bg_light",
+        default="transparent",
+        help="Plot background for light mode (usually transparent)",
+    )
+    parser.add_argument(
+        "--bg-dark",
+        dest="bg_dark",
+        default="transparent",
+        help="Plot background for dark mode (usually transparent)",
+    )
 
     parser.add_argument("--width", type=int, default=600, help="pixel width (default 600)")
     parser.add_argument("--height", type=int, default=360, help="pixel height (default 360)")

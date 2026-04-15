@@ -10,6 +10,7 @@
     .callout-line { fill: none; stroke: #7a4a15; stroke-width: 1; opacity: 0.7; stroke-linecap: round; }
     .callout-text { fill: #7a4a15; font-family: Segoe UI, Arial, sans-serif; font-size: 8.5px; font-style: italic; font-weight: 600; }
     .empty-region { fill: none; stroke: #e03020; stroke-width: 2.2; stroke-dasharray: 6,3; opacity: 0.85; }
+    .empty-label { fill: #e03020; font-family: Segoe UI, Arial, sans-serif; font-size: 10px; font-style: italic; font-weight: 700; opacity: 0.95; }
     .strand-0 { fill: none; stroke: #005f7a; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
     .arrow-0  { fill: #005f7a; stroke: none; opacity: 0.95; }
     .strand-1 { fill: none; stroke: #1a7a8f; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
@@ -35,6 +36,8 @@
       .divider { stroke: #5aafc5; }
       .callout-line { stroke: #d4a04a; }
       .callout-text { fill: #d4a04a; }
+      .empty-region { stroke: #ff8060; }
+      .empty-label { fill: #ff8060; }
       .strand-0 { stroke: #5cc8e0; }
       .arrow-0  { fill: #5cc8e0; }
       .strand-1 { stroke: #8fd4e6; }
@@ -114,9 +117,9 @@
     <line x1="650" y1="230" x2="594.1" y2="253.5" class="callout-line"/>
   </g>
   <g id="callout-standoff">
-    <text x="773" y="51" class="callout-text">5px standoff</text>
-    <text x="773" y="62" class="callout-text">(arrow tip gap)</text>
-    <line x1="808" y1="116" x2="808.0" y2="69.5" class="callout-line"/>
+    <text x="710" y="86" class="callout-text">5px standoff</text>
+    <text x="710" y="97" class="callout-text">(arrow tip gap)</text>
+    <line x1="808" y1="116" x2="777" y2="99" class="callout-line"/>
   </g>
   <g id="callout-auto">
     <text x="318" y="570" class="callout-text">auto-edge routing</text>
@@ -153,6 +156,8 @@
     <text x="730" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">L-chamfer</text>
     <line x1="815" y1="-5" x2="840" y2="-5" class="callout-line"/>
     <text x="845" y="0" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">Callout leader</text>
+    <line x1="0" y1="15" x2="35" y2="15" class="empty-region"/>
+    <text x="40" y="18" class="empty-label">Empty region (find_empty_regions)</text>
   </g>
   <!-- === EMPTY-SPACE DEBUG OVERLAY (SVG-native, transforms honoured) === -->
   <g id="empty-space-debug">
@@ -167,5 +172,17 @@
   <polygon class="empty-region" points="279,256 297,256 291,262 290,262 285,267 284,267 281,270 280,270 278,272 277,272 275,274 274,274 273,275 272,275 271,276 270,276 269,277 267,277 266,278 264,278 263,279 261,279 260,280 258,280 257,281 254,281 253,282 249,282 248,283 242,283 241,284 241,280 240,279 240,274 239,273 239,272 238,271 238,270 239,269 239,268 240,267 240,262 241,261 241,257 278,257 279,256"/>
   <polygon class="empty-region" points="241,119 244,119 245,120 248,120 249,121 251,121 252,122 254,122 255,123 257,123 258,124 259,124 260,125 261,125 263,127 264,127 265,128 266,128 270,132 271,132 276,137 276,138 280,142 280,143 282,145 282,146 284,148 284,149 285,150 285,151 287,153 287,154 288,155 288,156 287,156 286,155 285,155 284,154 282,154 281,153 279,153 278,152 276,152 275,151 272,151 271,150 268,150 267,149 263,149 262,148 257,148 256,147 250,147 249,146 242,146 241,145 241,140 240,139 240,134 239,133 239,132 238,131 238,130 239,129 239,128 240,127 240,122 241,121 241,120 241,119"/>
   <polygon class="empty-region" points="286,315 287,315 287,316 286,317 286,318 285,319 285,320 283,322 283,323 282,324 282,325 280,327 280,328 278,330 278,331 275,334 275,335 269,341 268,341 265,344 264,344 262,346 261,346 260,347 259,347 258,348 257,348 256,349 254,349 253,350 252,350 251,351 248,351 247,352 244,352 243,353 241,353 241,350 240,349 240,344 239,343 239,342 238,341 238,340 239,339 239,338 240,337 240,332 241,331 241,326 248,326 249,325 254,325 255,324 260,324 261,323 264,323 265,322 268,322 269,321 272,321 273,320 275,320 276,319 278,319 279,318 280,318 281,317 283,317 284,316 285,316 286,315"/>
+  <!-- Region labels - each fully contained inside its polygon AND clear of existing callouts -->
+  <text x="22" y="32" class="empty-label">empty 1: top band</text>
+  <text x="380" y="268" class="empty-label">empty 2: below spine</text>
+  <text x="220" y="449" class="empty-label">empty 3: lower-left</text>
+  <text x="630" y="449" class="empty-label">empty 4: lower-right</text>
+  <text x="582" y="513" class="empty-label">empty 5: middle</text>
+  <text x="759" y="286" class="empty-label">empty 6: sink gap</text>
+  <text x="761" y="175" class="empty-label">empty 7: sink gap</text>
+  <text x="244" y="201" class="empty-label" font-size="9">8</text>
+  <text x="244" y="269" class="empty-label" font-size="9">9</text>
+  <text x="242" y="134" class="empty-label" font-size="9">10</text>
+  <text x="252" y="336" class="empty-label" font-size="9">11</text>
 </g>
 </svg>
