@@ -30,7 +30,7 @@ This is not a prompting problem. It is a **representation** problem. LLMs genera
 
 The **svg-infographics** Claude Code plugin fixes this by inverting the approach. Instead of asking the model to emit pixels, it forces the model through a **grid-first workflow** where every coordinate is computed by a Python tool and every deliverable is refused by a validator until it passes. The result, on this repository's own marketplace banners and on sixty-four production examples, is SVG that is actually ready to ship.
 
-![The 6-phase workflow and eight shipped tools](images_article_02/01-workflow-and-tools.svg)
+![Five recurring defects in hand-written LLM SVG](images_article_02/01-five-defects.svg)
 
 ## The problem: LLMs cannot draw by hand
 
@@ -60,7 +60,7 @@ The plugin's core move is to split the problem in two.
 
 This is the same pull-based enforcement pattern that works for autonomous coding agents. The model does not get to self-certify. It computes, it paints within CSS, it submits, and an external process decides whether the work is acceptable.
 
-![Marketplace hero - real plugin output](images_article_02/02-marketplace-hero.svg)
+![Three pillars: computed geometry, CSS-constrained painting, validator-gated delivery](images_article_02/02-three-pillars.svg)
 
 ## The 6-phase workflow
 
@@ -77,6 +77,8 @@ Each image, start to finish, follows six sequential phases. No batching across i
 **Phase 5 - Finishing.** Verify arrow placements against the connector tool. Place callout labels centred in gaps with 8px clearance. Write a file description comment before the `<svg>` tag: filename, what it shows, intent, theme.
 
 **Phase 6 - Validation.** Run the checkers. Paste the output into the delivery. If the checkers were not run, the phase is not complete - this is a literal gate, not an aspiration.
+
+![The 6-phase workflow with gate checks](images_article_02/03-six-phase-workflow.svg)
 
 ## Eight tools, three calculators and five validators
 
@@ -102,7 +104,7 @@ The plugin ships as part of the `stellars-claude-code-plugins` pip package, expo
 
 The PCHIP spline rule is worth singling out. Any curve through known waypoints - a decision boundary, a sigmoid, a score trajectory, an organic flow path - is built by running `primitives spline --points "x1,y1 x2,y2 ..."` and pasting the returned path verbatim. Hand-authored cubic beziers are forbidden for data curves because they overshoot and kink. The PCHIP interpolator is monotonicity-preserving and produces the exact curve a designer would draw.
 
-![Arrow and connector patterns from the example library](images_article_02/03-arrow-patterns.svg)
+![Eight shipped tools split into calculators and validators](images_article_02/04-tools-inventory.svg)
 
 ## One call, seven strands: the manifold mode
 
@@ -163,7 +165,7 @@ Each violation that is accepted or marked as a limitation gets a one-line defenc
 
 This matters because LLMs, given the choice, will dismiss every warning. A plain "run the checker" instruction produces a response that reads the output, finds a reason every failure is "actually fine", and ships the broken SVG. The fail-first rule inverts the default: the checker is right unless the author can name which of three exceptions applies.
 
-![Fibonacci scoring matrix - a 5x5 layout built through the workflow](images_article_02/04-fibonacci-matrix.svg)
+![Fail-first validation: every finding is Fixed, Accepted, or Checker limitation](images_article_02/05-failfirst-flow.svg)
 
 ## Eating the dogfood: marketplace banners
 
@@ -175,7 +177,7 @@ The datascience plugin banner has an arrow line between two cards that kept trig
 
 The marketplace hero itself was trimmed twice by the cleanup iteration: the first pass shipped with header stats ("v1.2.5", "422 tests passing") that would age the banner the moment the next release landed. The second pass stripped both and left only the title, tagline, and capability strip. The "does it age" constraint was not in the checker, but the discipline of running through the workflow surfaced it as an obvious gap.
 
-![Theme swatch - the approved palette](images_article_02/05-theme-swatch.svg)
+![Theme swatch approval gate: palette approved before any deliverable](images_article_02/07-theme-approval.svg)
 
 ## Theme swatches and the approval gate
 
@@ -203,4 +205,4 @@ If your AI-generated diagrams look approximate, the fix is not a better prompt. 
 
 ---
 
-*The seven marketplace banners referenced in this article live in [`assets/svg/`](https://github.com/stellarshenson/claude-code-plugins/tree/main/assets/svg) of the `stellars-claude-code-plugins` repository. Sixty-four reference examples ship inside the plugin at [`svg-infographics/examples/`](https://github.com/stellarshenson/claude-code-plugins/tree/main/svg-infographics/examples).*
+*Every infographic in this article was produced by the plugin itself - through the same 6-phase workflow, with the same validator gates, using the same `stellars-tech` theme swatch. The plugin eats its own dogfood.*
