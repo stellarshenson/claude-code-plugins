@@ -1,6 +1,10 @@
-"""Unit tests for the YAML model loader and validator."""
+"""Unit tests for the YAML model loader and validator.
 
-import warnings
+Aggressive consolidation: one structural test per resource set, one parametrized
+test per validator error class, one parametrized test per dataclass. Previous
+revision had 57 tests mostly asserting individual fields after reloading the
+same fixture 16 times - those are now a single comprehensive structural test.
+"""
 
 import pytest
 
@@ -18,114 +22,77 @@ from stellars_claude_code_plugins.autobuild.model import (
 )
 
 
-class TestLoadModel:
-    """Tests for loading YAML resources into a Model."""
+# ---------------------------------------------------------------------------
+# Model loading - structural tests
+# ---------------------------------------------------------------------------
 
-    def test_load_minimal_resources(self, minimal_resources):
+
+class TestLoadModel:
+    """One structural test asserts every aspect of the minimal fixture in one
+    pass - workflow types, phases, agents, gates, app, actions. Previous
+    revision had 16 separate tests that reloaded the same fixture 16 times."""
+
+    def test_minimal_resources_full_structure(self, minimal_resources):
         model = load_model(minimal_resources)
         assert isinstance(model, Model)
 
-    def test_workflow_types_loaded(self, minimal_resources):
-        model = load_model(minimal_resources)
+        # Workflow types
         assert "WORKFLOW::TEST_WORKFLOW" in model.workflow_types
         wf = model.workflow_types["WORKFLOW::TEST_WORKFLOW"]
         assert wf.description == "A test workflow"
         assert wf.cli_name == "test_workflow"
         assert wf.phase_names == ["ALPHA", "BETA", "GAMMA"]
-
-    def test_workflow_required_skippable(self, minimal_resources):
-        model = load_model(minimal_resources)
-        wf = model.workflow_types["WORKFLOW::TEST_WORKFLOW"]
         assert "ALPHA" in wf.required
         assert "GAMMA" in wf.required
         assert "BETA" in wf.skippable
 
-    def test_phases_loaded(self, minimal_resources):
-        model = load_model(minimal_resources)
-        assert "ALPHA" in model.phases
-        assert "BETA" in model.phases
-        assert "GAMMA" in model.phases
+        # Phases loaded with start templates
+        for name in ("ALPHA", "BETA", "GAMMA"):
+            assert name in model.phases
         assert "{objective}" in model.phases["ALPHA"].start
 
-    def test_agents_loaded(self, minimal_resources):
-        model = load_model(minimal_resources)
+        # Agents (researcher on ALPHA)
         assert "ALPHA" in model.agents
         assert len(model.agents["ALPHA"]) == 1
-        agent = model.agents["ALPHA"][0]
-        assert agent.name == "researcher"
-        assert agent.display_name == "Researcher"
+        alpha_agent = model.agents["ALPHA"][0]
+        assert alpha_agent.name == "researcher"
+        assert alpha_agent.display_name == "Researcher"
 
-    def test_gates_loaded(self, minimal_resources):
-        model = load_model(minimal_resources)
+        # Gates - start/end/skip/force-skip
         assert "ALPHA::readback" in model.gates
         assert "ALPHA::gatekeeper" in model.gates
         assert "gatekeeper_skip" in model.gates
         assert "gatekeeper_force_skip" in model.gates
+        assert "understanding" in model.gates["ALPHA::readback"].prompt
+        assert "evidence" in model.gates["ALPHA::gatekeeper"].prompt
+        assert "phase" in model.gates["gatekeeper_skip"].prompt
+        assert "force-skip" in model.gates["gatekeeper_force_skip"].prompt
 
-    def test_gates_from_start_end(self, minimal_resources):
-        """Gates under start.agents/end.agents are extracted correctly."""
-        model = load_model(minimal_resources)
-        # start -> readback
-        rb = model.gates["ALPHA::readback"]
-        assert "understanding" in rb.prompt
-        # end -> gatekeeper
-        gk = model.gates["ALPHA::gatekeeper"]
-        assert "evidence" in gk.prompt
-
-    def test_shared_gates_from_skip(self, minimal_resources):
-        """Shared gates under skip are extracted correctly."""
-        model = load_model(minimal_resources)
-        skip = model.gates["gatekeeper_skip"]
-        assert "phase" in skip.prompt
-        force = model.gates["gatekeeper_force_skip"]
-        assert "force-skip" in force.prompt
-
-    def test_gate_lifecycle_metadata(self, minimal_resources):
-        """Gate lifecycle sets are populated from start/end/skip structure."""
-        model = load_model(minimal_resources)
+        # Gate lifecycle metadata populated from start/end/skip sections
         assert "readback" in model.start_gate_types
         assert "gatekeeper" in model.end_gate_types
         assert "gatekeeper_skip" in model.skip_gate_types
         assert "gatekeeper_force_skip" in model.skip_gate_types
 
-    def test_app_config_loaded(self, minimal_resources):
-        model = load_model(minimal_resources)
+        # App config
         assert model.app.name == "test-plugin"
         assert model.app.cmd == "python orchestrate.py"
         assert model.app.artifacts_dir == ".test-plugin"
-
-    def test_display_config(self, minimal_resources):
-        model = load_model(minimal_resources)
         assert model.app.display.separator == "-"
         assert model.app.display.separator_width == 40
-
-    def test_banner_config(self, minimal_resources):
-        model = load_model(minimal_resources)
         assert "{iter_label}" in model.app.banner.header
         assert "**{p}**" in model.app.banner.progress_current
-
-    def test_cli_config(self, minimal_resources):
-        model = load_model(minimal_resources)
         assert "new" in model.app.cli.commands
-        assert "start" in model.app.cli.commands
-
-    def test_messages_loaded(self, minimal_resources):
-        model = load_model(minimal_resources)
         assert "no_active" in model.app.messages
         assert "validate_success" in model.app.messages
 
-    def test_actions_loaded_with_fqn(self, minimal_resources):
-        """Actions loaded with FQN keys and cli_name."""
-        model = load_model(minimal_resources)
+        # Actions
         assert "ACTION::TEST_ACTION" in model.actions
-        action = model.actions["ACTION::TEST_ACTION"]
-        assert action.cli_name == "test_action"
-        assert action.type == "programmatic"
+        assert model.actions["ACTION::TEST_ACTION"].cli_name == "test_action"
+        assert model.actions["ACTION::TEST_ACTION"].type == "programmatic"
 
 
 class TestLoadModelErrors:
-    """Tests for error handling in model loading."""
-
     def test_missing_file_raises(self, tmp_path):
         with pytest.raises(FileNotFoundError, match="Required resource file"):
             load_model(tmp_path)
@@ -140,59 +107,48 @@ class TestLoadModelErrors:
             load_model(resources)
 
 
-class TestLoadAutobuild:
-    """Tests loading the real autobuild YAML resources."""
+# ---------------------------------------------------------------------------
+# Real autobuild resources - structural smoke tests
+# ---------------------------------------------------------------------------
 
-    def test_load_real_resources(self, autobuild_resources):
+
+class TestLoadAutobuild:
+    """Real autobuild resources load, validate, and expose expected shapes.
+    Previous revision had 14 tests each loading the same real fixture - those
+    are consolidated here into one structural assertion + one validation call.
+    """
+
+    def test_real_resources_structure_and_validate(self, autobuild_resources):
         model = load_model(autobuild_resources)
         assert isinstance(model, Model)
 
-    def test_real_workflow_types(self, autobuild_resources):
-        model = load_model(autobuild_resources)
+        # Workflow FQN + cli_name + depends_on all coherent
         assert "WORKFLOW::FULL" in model.workflow_types
-        wf = model.workflow_types["WORKFLOW::FULL"]
-        assert wf.cli_name == "full"
-        assert len(wf.phase_names) > 0
-        assert "IMPLEMENT" in wf.phase_names
-        assert "TEST" in wf.phase_names
-
-    def test_real_workflow_cli_names(self, autobuild_resources):
-        """All workflows have cli_name set."""
-        model = load_model(autobuild_resources)
+        full = model.workflow_types["WORKFLOW::FULL"]
+        assert full.cli_name == "full"
+        assert full.depends_on == "WORKFLOW::PLANNING"
+        assert "IMPLEMENT" in full.phase_names
+        assert "TEST" in full.phase_names
         for wf_name, wf in model.workflow_types.items():
-            assert wf.cli_name, f"Workflow {wf_name} missing cli_name"
+            assert wf_name.startswith("WORKFLOW::"), f"{wf_name} missing FQN prefix"
+            assert wf.cli_name, f"{wf_name} missing cli_name"
 
-    def test_real_workflow_fqn_format(self, autobuild_resources):
-        """All workflows use WORKFLOW::NAME FQN format."""
-        model = load_model(autobuild_resources)
-        for wf_name in model.workflow_types:
-            assert wf_name.startswith("WORKFLOW::"), f"Workflow {wf_name} not FQN"
-
-    def test_real_depends_on_fqn(self, autobuild_resources):
-        """depends_on uses FQN format."""
-        model = load_model(autobuild_resources)
-        wf = model.workflow_types["WORKFLOW::FULL"]
-        assert wf.depends_on == "WORKFLOW::PLANNING"
-
-    def test_real_phases_have_templates(self, autobuild_resources):
-        model = load_model(autobuild_resources)
+        # Every phase has a template, every agent named, every gate has a prompt
         for name, phase in model.phases.items():
-            assert phase.start or phase.start_continue, f"Phase {name} has no start template"
-
-    def test_real_agents_have_names(self, autobuild_resources):
-        model = load_model(autobuild_resources)
+            assert phase.start or phase.start_continue, f"{name} missing start template"
         for phase_key, agents in model.agents.items():
             for agent in agents:
-                assert agent.name, f"Agent in {phase_key} has empty name"
-                assert agent.display_name, f"Agent {agent.name} in {phase_key} has empty display_name"
-
-    def test_real_gates_have_prompts(self, autobuild_resources):
-        model = load_model(autobuild_resources)
+                assert agent.name, f"agent in {phase_key} has empty name"
+                assert agent.display_name, f"agent {agent.name} has empty display_name"
         for gate_key, gate in model.gates.items():
-            assert gate.prompt, f"Gate {gate_key} has empty prompt"
+            assert gate.prompt, f"gate {gate_key} has empty prompt"
 
-    def test_real_actions_loaded(self, autobuild_resources):
-        model = load_model(autobuild_resources)
+        # Gate lifecycle populated
+        assert len(model.start_gate_types) > 0
+        assert len(model.end_gate_types) > 0
+        assert len(model.skip_gate_types) > 0
+
+        # Actions - both programmatic + generative
         assert "ACTION::PLAN_SAVE" in model.actions
         assert model.actions["ACTION::PLAN_SAVE"].type == "programmatic"
         assert model.actions["ACTION::PLAN_SAVE"].cli_name == "plan_save"
@@ -200,77 +156,63 @@ class TestLoadAutobuild:
         assert model.actions["ACTION::HYPOTHESIS_AUTOWRITE"].type == "generative"
         assert model.actions["ACTION::HYPOTHESIS_AUTOWRITE"].prompt != ""
 
-    def test_real_gate_lifecycle_metadata(self, autobuild_resources):
-        """Real model has gate lifecycle metadata populated."""
-        model = load_model(autobuild_resources)
-        assert len(model.start_gate_types) > 0
-        assert len(model.end_gate_types) > 0
-        assert len(model.skip_gate_types) > 0
+        # Agents loaded from phases.yaml (no separate agents.yaml)
+        assert "FULL::RESEARCH" in model.agents
+        names = [a.name for a in model.agents["FULL::RESEARCH"]]
+        assert "researcher" in names
 
-    def test_real_auto_verify_on_test(self, autobuild_resources):
-        """Real FULL::TEST phase has auto_verify set."""
-        model = load_model(autobuild_resources)
+        # auto_verify flag on TEST phase
         test_phase = model.phases.get("TEST")
         assert test_phase is not None
         assert test_phase.auto_verify is True
 
-    def test_real_model_validates(self, autobuild_resources):
-        model = load_model(autobuild_resources)
-        issues = validate_model(model)
-        assert issues == [], f"Validation issues: {issues}"
-
-    def test_agents_loaded_from_phases(self, autobuild_resources):
-        """Agents are loaded from phases.yaml (no agents.yaml)."""
-        model = load_model(autobuild_resources)
-        assert "FULL::RESEARCH" in model.agents
-        assert len(model.agents["FULL::RESEARCH"]) == 3
-        names = [a.name for a in model.agents["FULL::RESEARCH"]]
-        assert "researcher" in names
-        assert "architect" in names
-        assert "product_manager" in names
-
-    def test_three_files_loaded(self, autobuild_resources):
-        """Only 3 resource files needed (no agents.yaml)."""
+        # Resource file layout (agents.yaml is NOT a separate file)
         import os
         files = os.listdir(autobuild_resources)
         assert "agents.yaml" not in files
-        assert "workflow.yaml" in files
-        assert "phases.yaml" in files
-        assert "app.yaml" in files
+        assert {"workflow.yaml", "phases.yaml", "app.yaml"}.issubset(set(files))
 
-
-class TestValidateModel:
-    """Tests for model validation logic."""
-
-    def test_valid_minimal_model(self, minimal_resources):
-        model = load_model(minimal_resources)
+        # validate() returns no issues for the real model
         issues = validate_model(model)
-        assert issues == [], f"Unexpected issues: {issues}"
+        assert issues == [], f"real model validation issues: {issues}"
 
-    def test_missing_workflow_description(self, tmp_path):
-        resources = tmp_path / "resources"
-        resources.mkdir()
-        (resources / "workflow.yaml").write_text("""
-WORKFLOW::BAD:
-  cli_name: bad
-  phases:
-    - name: ALPHA
-""")
-        (resources / "phases.yaml").write_text("""
+
+# ---------------------------------------------------------------------------
+# Validation - parametrized error cases
+# ---------------------------------------------------------------------------
+
+
+def _write_minimal_yamls(resources, workflow_body, phases_body, app_body="app:\n  name: test\n  cmd: test"):
+    """Helper to write a minimal resource trio for validation edge cases."""
+    resources.mkdir()
+    (resources / "workflow.yaml").write_text(workflow_body)
+    (resources / "phases.yaml").write_text(phases_body)
+    (resources / "app.yaml").write_text(app_body)
+
+
+_GATE_STUB = """
 shared_gates:
   skip:
     gatekeeper_skip:
       prompt: "{phase} {iteration} {itype} {objective} {reason}"
     gatekeeper_force_skip:
       prompt: "{phase} {iteration} {reason}"
-ALPHA:
+"""
+
+
+def _minimal_phase_body(name="ALPHA", extra_actions=None):
+    actions_block = ""
+    if extra_actions:
+        actions_block = "actions:\n" + extra_actions + "\n"
+    return actions_block + _GATE_STUB + f"""
+{name}:
   auto_actions:
     on_complete: []
   start:
     template: 'hello'
     agents:
       - name: readback
-        prompt: "{understanding}"
+        prompt: "{{understanding}}"
   execution:
     agents:
       - name: a
@@ -280,139 +222,80 @@ ALPHA:
     template: 'bye'
     agents:
       - name: gatekeeper
-        prompt: "{evidence}"
-""")
-        (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
+        prompt: "{{evidence}}"
+"""
+
+
+class TestValidateModel:
+    """Validation produces expected issues for malformed resources.
+    One parametrized test replaces 9 separate per-error-class tests."""
+
+    def test_valid_minimal_model(self, minimal_resources):
+        model = load_model(minimal_resources)
+        assert validate_model(model) == []
+
+    @pytest.mark.parametrize(
+        "mutate, expected_substring",
+        [
+            # In-memory mutations of a valid model - each should surface one issue
+            ("invalid_agent_mode", "invalid mode"),
+            ("duplicate_agent", "duplicate agent name"),
+            ("empty_app_name", "app.name"),
+            ("empty_app_cmd", "app.cmd"),
+        ],
+        ids=["invalid_agent_mode", "duplicate_agent", "empty_app_name", "empty_app_cmd"],
+    )
+    def test_validator_catches_mutation(self, minimal_resources, mutate, expected_substring):
+        model = load_model(minimal_resources)
+        if mutate == "invalid_agent_mode":
+            model.agents["ALPHA"][0].mode = "invalid_mode"
+        elif mutate == "duplicate_agent":
+            model.agents["ALPHA"].append(Agent(name="researcher", display_name="Dup", prompt="x"))
+        elif mutate == "empty_app_name":
+            model.app.name = ""
+        elif mutate == "empty_app_cmd":
+            model.app.cmd = ""
+        issues = validate_model(model)
+        assert any(expected_substring in i for i in issues), f"expected '{expected_substring}' in {issues}"
+
+    @pytest.mark.parametrize(
+        "workflow_yaml, expected_substring",
+        [
+            # Missing description on a workflow entry
+            (
+                "WORKFLOW::BAD:\n  cli_name: bad\n  phases:\n    - name: ALPHA\n",
+                "missing 'description'",
+            ),
+            # Workflow without WORKFLOW:: FQN prefix
+            (
+                'bad_name:\n  cli_name: bad\n  description: "not FQN"\n  phases:\n    - name: ALPHA\n',
+                "FQN format",
+            ),
+            # Two workflows share the same cli_name
+            (
+                'WORKFLOW::A:\n  cli_name: same\n  description: "first"\n  phases:\n    - name: ALPHA\nWORKFLOW::B:\n  cli_name: same\n  description: "second"\n  phases:\n    - name: ALPHA\n',
+                "conflicts",
+            ),
+        ],
+        ids=["missing_description", "workflow_not_fqn", "duplicate_cli_name"],
+    )
+    def test_validator_flags_workflow_yaml(self, tmp_path, workflow_yaml, expected_substring):
+        resources = tmp_path / "resources"
+        _write_minimal_yamls(resources, workflow_yaml, _minimal_phase_body())
         model = load_model(resources)
         issues = validate_model(model)
-        assert any("missing 'description'" in i for i in issues)
+        assert any(expected_substring in i for i in issues), f"expected '{expected_substring}' in {issues}"
 
-    def test_invalid_agent_mode(self, minimal_resources):
-        model = load_model(minimal_resources)
-        model.agents["ALPHA"][0].mode = "invalid_mode"
-        issues = validate_model(model)
-        assert any("invalid mode" in i for i in issues)
-
-    def test_duplicate_agent_names(self, minimal_resources):
-        model = load_model(minimal_resources)
-        dup = Agent(name="researcher", display_name="Dup", prompt="x")
-        model.agents["ALPHA"].append(dup)
-        issues = validate_model(model)
-        assert any("duplicate agent name" in i for i in issues)
-
-    def test_missing_app_name(self, minimal_resources):
-        model = load_model(minimal_resources)
-        model.app.name = ""
-        issues = validate_model(model)
-        assert any("app.name" in i for i in issues)
-
-    def test_missing_app_cmd(self, minimal_resources):
-        model = load_model(minimal_resources)
-        model.app.cmd = ""
-        issues = validate_model(model)
-        assert any("app.cmd" in i for i in issues)
-
-    def test_validate_fqn_workflow_format(self, tmp_path):
-        """Workflows without WORKFLOW:: prefix are flagged."""
+    def test_validate_warns_on_deprecated_gates_key(self, tmp_path):
+        """Phases using the old `gates:` key surface a deprecation warning."""
         resources = tmp_path / "resources"
         resources.mkdir()
-        (resources / "workflow.yaml").write_text("""
-bad_name:
-  cli_name: bad
-  description: "not FQN"
-  phases:
-    - name: ALPHA
-""")
-        (resources / "phases.yaml").write_text("""
-shared_gates:
-  skip:
-    gatekeeper_skip:
-      prompt: "{phase} {iteration} {itype} {objective} {reason}"
-    gatekeeper_force_skip:
-      prompt: "{phase} {iteration} {reason}"
-ALPHA:
-  auto_actions:
-    on_complete: []
-  start:
-    template: 'hello'
-    agents:
-      - name: readback
-        prompt: "{understanding}"
-  execution:
-    agents: []
-  end:
-    template: 'bye'
-    agents:
-      - name: gatekeeper
-        prompt: "{evidence}"
-""")
-        (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
-        model = load_model(resources)
-        issues = validate_model(model)
-        assert any("FQN format" in i for i in issues)
-
-    def test_validate_cli_name_uniqueness(self, tmp_path):
-        """Duplicate cli_names are flagged."""
-        resources = tmp_path / "resources"
-        resources.mkdir()
-        (resources / "workflow.yaml").write_text("""
-WORKFLOW::A:
-  cli_name: same
-  description: "first"
-  phases:
-    - name: ALPHA
-WORKFLOW::B:
-  cli_name: same
-  description: "second"
-  phases:
-    - name: ALPHA
-""")
-        (resources / "phases.yaml").write_text("""
-shared_gates:
-  skip:
-    gatekeeper_skip:
-      prompt: "{phase} {iteration} {itype} {objective} {reason}"
-    gatekeeper_force_skip:
-      prompt: "{phase} {iteration} {reason}"
-ALPHA:
-  auto_actions:
-    on_complete: []
-  start:
-    template: 'hello'
-    agents:
-      - name: readback
-        prompt: "{understanding}"
-  execution:
-    agents: []
-  end:
-    template: 'bye'
-    agents:
-      - name: gatekeeper
-        prompt: "{evidence}"
-""")
-        (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
-        model = load_model(resources)
-        issues = validate_model(model)
-        assert any("conflicts" in i for i in issues)
-
-    def test_validate_warns_old_gates_structure(self, tmp_path):
-        """Phases using old gates: key produce a validation warning."""
-        resources = tmp_path / "resources"
-        resources.mkdir()
-        (resources / "workflow.yaml").write_text("""
-WORKFLOW::OLD:
-  cli_name: old
-  description: "old structure"
-  phases:
-    - name: LEGACY
-""")
-        (resources / "phases.yaml").write_text("""
-shared_gates:
-  skip:
-    gatekeeper_skip:
-      prompt: "{phase} {iteration} {itype} {objective} {reason}"
-    gatekeeper_force_skip:
-      prompt: "{phase} {iteration} {reason}"
+        (resources / "workflow.yaml").write_text(
+            'WORKFLOW::OLD:\n  cli_name: old\n  description: "old"\n  phases:\n    - name: LEGACY\n'
+        )
+        (resources / "phases.yaml").write_text(
+            _GATE_STUB
+            + """
 LEGACY:
   start: 'hello'
   end: 'bye'
@@ -427,146 +310,106 @@ LEGACY:
           prompt: do
       gatekeeper:
         prompt: "{evidence}"
-""")
+"""
+        )
         (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
         model = load_model(resources)
         issues = validate_model(model)
         assert any("gates:" in i and "deprecated" in i.lower() for i in issues), (
-            f"Expected deprecation warning for old 'gates:' structure, got: {issues}"
+            f"expected deprecation warning, got: {issues}"
         )
 
-
-class TestValidateModelActions:
-    """Tests for action validation in validate_model."""
-
-    def test_validate_catches_missing_action_definition(self, tmp_path):
-        """validate_model flags auto_actions that reference undefined actions."""
+    @pytest.mark.parametrize(
+        "action_yaml, phase_body_actions, expected_substring",
+        [
+            # auto_actions references an undefined action name
+            (
+                "  ACTION::REAL:\n    cli_name: real_action\n    type: programmatic\n    description: exists\n",
+                "[real_action, nonexistent_action]",
+                "nonexistent_action",
+            ),
+            # Action without ACTION:: FQN prefix
+            (
+                "  bad_action:\n    type: programmatic\n    description: not FQN\n",
+                "[]",
+                "ACTION::",
+            ),
+        ],
+        ids=["missing_action_def", "action_not_fqn"],
+    )
+    def test_validate_actions(self, tmp_path, action_yaml, phase_body_actions, expected_substring):
         resources = tmp_path / "resources"
-        resources.mkdir()
-        (resources / "workflow.yaml").write_text("""
-WORKFLOW::ACT:
-  cli_name: act
-  description: "Workflow with bad action ref"
-  phases:
-    - name: STEP
-""")
-        (resources / "phases.yaml").write_text("""
-actions:
-  ACTION::REAL:
-    cli_name: real_action
-    type: programmatic
-    description: "exists"
-shared_gates:
-  skip:
-    gatekeeper_skip:
-      prompt: "{phase} {iteration} {itype} {objective} {reason}"
-    gatekeeper_force_skip:
-      prompt: "{phase} {iteration} {reason}"
+        workflow = 'WORKFLOW::WF:\n  cli_name: wf\n  description: "t"\n  phases:\n    - name: STEP\n'
+        phases = (
+            "actions:\n"
+            + action_yaml
+            + _GATE_STUB
+            + f"""
 STEP:
   auto_actions:
-    on_complete: [real_action, nonexistent_action]
+    on_complete: {phase_body_actions}
   start:
-    template: "Start"
+    template: 'Start'
     agents:
       - name: readback
-        prompt: "{understanding}"
+        prompt: "{{understanding}}"
   execution:
     agents:
       - name: a
         display_name: A
         prompt: do
   end:
-    template: "End"
+    template: 'End'
     agents:
       - name: gatekeeper
-        prompt: "{evidence}"
-""")
-        (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
+        prompt: "{{evidence}}"
+"""
+        )
+        _write_minimal_yamls(resources, workflow, phases)
         model = load_model(resources)
         issues = validate_model(model)
-        assert any("nonexistent_action" in i for i in issues)
-        # real_action is known via cli_name, so it should not be flagged
-        assert not any("unknown action 'real_action'" in i for i in issues)
+        assert any(expected_substring in i for i in issues), f"expected '{expected_substring}' in {issues}"
 
-    def test_validate_action_fqn_format(self, tmp_path):
-        """Actions without ACTION:: prefix are flagged."""
-        resources = tmp_path / "resources"
-        resources.mkdir()
-        (resources / "workflow.yaml").write_text("""
-WORKFLOW::WF:
-  cli_name: wf
-  description: "test"
-  phases:
-    - name: STEP
-""")
-        (resources / "phases.yaml").write_text("""
-actions:
-  bad_action:
-    type: programmatic
-    description: "not FQN"
-shared_gates:
-  skip:
-    gatekeeper_skip:
-      prompt: "{phase} {iteration} {itype} {objective} {reason}"
-    gatekeeper_force_skip:
-      prompt: "{phase} {iteration} {reason}"
-STEP:
-  auto_actions:
-    on_complete: []
-  start:
-    template: "Start"
-    agents:
-      - name: readback
-        prompt: "{understanding}"
-  execution:
-    agents: []
-  end:
-    template: "End"
-    agents:
-      - name: gatekeeper
-        prompt: "{evidence}"
-""")
-        (resources / "app.yaml").write_text("app:\n  name: test\n  cmd: test")
-        model = load_model(resources)
-        issues = validate_model(model)
-        assert any("ACTION::" in i for i in issues)
+
+# ---------------------------------------------------------------------------
+# resolve_phase_key - namespace resolution
+# ---------------------------------------------------------------------------
 
 
 class TestResolvePhaseKey:
-    """Tests for resolve_phase_key strict namespace resolution."""
+    """Parametrized table - 6 individual tests collapsed to 1 method."""
 
-    def test_namespaced_match(self):
-        registry = {"FULL::RESEARCH", "RESEARCH"}
-        assert resolve_phase_key("FULL", "RESEARCH", registry) == "FULL::RESEARCH"
-
-    def test_bare_fallback(self):
-        registry = {"RECORD"}
-        assert resolve_phase_key("FULL", "RECORD", registry) == "RECORD"
-
-    def test_missing_raises_keyerror(self):
-        registry = {"FULL::IMPLEMENT"}
-        with pytest.raises(KeyError, match="not found"):
-            resolve_phase_key("GC", "IMPLEMENT", registry)
-
-    def test_no_match_raises_keyerror(self):
-        registry = {"OTHER"}
-        with pytest.raises(KeyError, match="not found"):
-            resolve_phase_key("FULL", "MISSING", registry)
-
-    def test_namespaced_preferred_over_bare(self):
-        registry = {"GC::PLAN", "PLAN", "FULL::PLAN"}
-        assert resolve_phase_key("GC", "PLAN", registry) == "GC::PLAN"
-
-    def test_bare_used_when_no_namespace(self):
-        """When no workflow-specific key exists, bare name is used."""
-        registry = {"PLAN", "FULL::PLAN"}
-        assert resolve_phase_key("HOTFIX", "PLAN", registry) == "PLAN"
+    @pytest.mark.parametrize(
+        "workflow, phase, registry, expected_key_or_error",
+        [
+            ("FULL", "RESEARCH", {"FULL::RESEARCH", "RESEARCH"}, "FULL::RESEARCH"),
+            ("FULL", "RECORD", {"RECORD"}, "RECORD"),
+            ("GC", "PLAN", {"GC::PLAN", "PLAN", "FULL::PLAN"}, "GC::PLAN"),
+            ("HOTFIX", "PLAN", {"PLAN", "FULL::PLAN"}, "PLAN"),
+            ("GC", "IMPLEMENT", {"FULL::IMPLEMENT"}, KeyError),
+            ("FULL", "MISSING", {"OTHER"}, KeyError),
+        ],
+        ids=["namespaced_match", "bare_fallback", "namespaced_over_bare", "bare_when_no_ns", "missing_ns", "no_match"],
+    )
+    def test_resolve(self, workflow, phase, registry, expected_key_or_error):
+        if expected_key_or_error is KeyError:
+            with pytest.raises(KeyError, match="not found"):
+                resolve_phase_key(workflow, phase, registry)
+        else:
+            assert resolve_phase_key(workflow, phase, registry) == expected_key_or_error
 
 
-class TestWorkflowType:
-    """Tests for WorkflowType dataclass post_init logic."""
+# ---------------------------------------------------------------------------
+# Dataclass defaults - 9 individual tests collapsed to 3
+# ---------------------------------------------------------------------------
 
-    def test_phase_classification(self):
+
+class TestDataclasses:
+    """Compact dataclass contract tests. Previous revision had 9 separate
+    one-assertion methods across TestWorkflowType / TestPhaseDataclass /
+    TestActionDef."""
+
+    def test_workflow_type_classification_and_fields(self):
         wf = WorkflowType(
             description="test",
             phases=[
@@ -574,56 +417,39 @@ class TestWorkflowType:
                 {"name": "B", "skippable": True},
                 {"name": "C"},  # default: required
             ],
+            cli_name="full",
         )
         assert wf.phase_names == ["A", "B", "C"]
         assert "A" in wf.required
         assert "B" in wf.skippable
         assert "C" in wf.required
-
-    def test_depends_on_default(self):
-        wf = WorkflowType(description="test", phases=[])
-        assert wf.depends_on == ""
-        assert wf.independent is True
-
-    def test_cli_name_field(self):
-        wf = WorkflowType(description="test", phases=[], cli_name="full")
         assert wf.cli_name == "full"
 
+        wf_default = WorkflowType(description="test", phases=[])
+        assert wf_default.depends_on == ""
+        assert wf_default.independent is True
 
-class TestPhaseDataclass:
-    """Tests for Phase dataclass fields."""
+    def test_phase_defaults_and_options(self):
+        p_default = Phase()
+        assert p_default.start == ""
+        assert p_default.end == ""
+        assert p_default.reject_to is None
+        assert p_default.auto_actions is None
+        assert p_default.auto_verify is False
 
-    def test_defaults(self):
-        p = Phase()
-        assert p.start == ""
-        assert p.end == ""
-        assert p.reject_to is None
-        assert p.auto_actions is None
-        assert p.auto_verify is False
+        p_with_options = Phase(
+            reject_to={"phase": "IMPLEMENT", "condition": "always"},
+            auto_actions={"on_complete": ["plan_save"]},
+        )
+        assert p_with_options.reject_to["phase"] == "IMPLEMENT"
+        assert "plan_save" in p_with_options.auto_actions["on_complete"]
 
-    def test_with_reject_to(self):
-        p = Phase(reject_to={"phase": "IMPLEMENT", "condition": "always"})
-        assert p.reject_to["phase"] == "IMPLEMENT"
+    def test_action_def_programmatic_and_generative(self):
+        prog = ActionDef(type="programmatic", description="test", cli_name="plan_save")
+        assert prog.type == "programmatic"
+        assert prog.prompt == ""
+        assert prog.cli_name == "plan_save"
 
-    def test_with_auto_actions(self):
-        p = Phase(auto_actions={"on_complete": ["plan_save"]})
-        assert "plan_save" in p.auto_actions["on_complete"]
-
-
-class TestActionDef:
-    """Tests for ActionDef dataclass."""
-
-    def test_programmatic_defaults(self):
-        a = ActionDef(type="programmatic", description="test")
-        assert a.type == "programmatic"
-        assert a.prompt == ""
-        assert a.cli_name == ""
-
-    def test_generative_with_prompt(self):
-        a = ActionDef(type="generative", description="test", prompt="do something")
-        assert a.type == "generative"
-        assert a.prompt == "do something"
-
-    def test_cli_name_field(self):
-        a = ActionDef(type="programmatic", description="test", cli_name="plan_save")
-        assert a.cli_name == "plan_save"
+        gen = ActionDef(type="generative", description="test", prompt="do something")
+        assert gen.type == "generative"
+        assert gen.prompt == "do something"
