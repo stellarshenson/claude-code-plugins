@@ -1031,6 +1031,7 @@ def _auto_route_l_waypoints(
     from .calc_empty_space import (
         _container_interior_surrogates,
         _element_to_surrogates,
+        _is_canvas_background,
         _parse_svg_source,
         _rasterise_surrogates,
     )
@@ -1049,11 +1050,14 @@ def _auto_route_l_waypoints(
         if container_elem is None:
             return None
 
-    # Rasterise all obstacles (skip the container itself if pinned)
+    # Rasterise all obstacles. Skip the container itself if pinned, and
+    # always skip full-canvas background plates - otherwise a single
+    # bg-plate rect marks every pixel as an obstacle and the router
+    # reports "unroutable".
     surrogates: list = []
 
     def walk(node):
-        if node is not container_elem:
+        if node is not container_elem and not _is_canvas_background(node, viewbox):
             surrogates.extend(_element_to_surrogates(node))
         if isinstance(node, _se.Group):
             for child in node:
@@ -1116,40 +1120,64 @@ def _auto_route_l_waypoints(
             return True
         return bool(grid[cell[0], cell[1]])
 
-    def neighbours(r, c):
-        for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < gh and 0 <= nc < gw and is_free((nr, nc)):
-                yield (nr, nc)
+    # Directions: N, S, W, E as (dr, dc) deltas. The None sentinel is used
+    # as the "incoming direction" at the src so the first step is not
+    # penalised as a turn.
+    _DIRS = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
     def heuristic(a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-    openq: list = [(heuristic(src_cell, tgt_cell), 0, src_cell)]
-    came_from: dict = {src_cell: None}
-    g_score: dict = {src_cell: 0}
+    # A* state = (cell, incoming_direction). Adding the incoming direction
+    # lets us apply a turn penalty: moving in a different direction than
+    # the last step costs extra, so long straight runs beat staircases.
+    # ``TURN_PENALTY`` is measured in grid cells; 4 keeps the heuristic
+    # admissible because Manhattan distance doesn't account for detours.
+    TURN_PENALTY = 4
+
+    start_state = (src_cell, None)
+    openq: list = [(heuristic(src_cell, tgt_cell), 0, start_state)]
+    came_from: dict = {start_state: None}
+    g_score: dict = {start_state: 0}
     counter = 0
+    goal_state = None
 
     while openq:
         _, _, current = heapq.heappop(openq)
-        if current == tgt_cell:
+        cur_cell, cur_dir = current
+        if cur_cell == tgt_cell:
+            goal_state = current
             break
-        for nb in neighbours(*current):
-            tentative = g_score[current] + 1
-            if nb not in g_score or tentative < g_score[nb]:
-                g_score[nb] = tentative
-                came_from[nb] = current
+        for d in _DIRS:
+            nr = cur_cell[0] + d[0]
+            nc = cur_cell[1] + d[1]
+            if not (0 <= nr < gh and 0 <= nc < gw):
+                continue
+            nb_cell = (nr, nc)
+            if not is_free(nb_cell):
+                continue
+            step_cost = 1
+            if cur_dir is not None and d != cur_dir:
+                step_cost += TURN_PENALTY
+            nb_state = (nb_cell, d)
+            tentative = g_score[current] + step_cost
+            if nb_state not in g_score or tentative < g_score[nb_state]:
+                g_score[nb_state] = tentative
+                came_from[nb_state] = current
                 counter += 1
-                heapq.heappush(openq, (tentative + heuristic(nb, tgt_cell), counter, nb))
+                heapq.heappush(
+                    openq,
+                    (tentative + heuristic(nb_cell, tgt_cell), counter, nb_state),
+                )
 
-    if tgt_cell not in came_from:
+    if goal_state is None:
         return None
 
-    # Reconstruct path cell-by-cell from tgt back to src
+    # Reconstruct cell path from tgt back to src (drop the direction tag)
     cells: list = []
-    cur = tgt_cell
+    cur = goal_state
     while cur is not None:
-        cells.append(cur)
+        cells.append(cur[0])
         cur = came_from[cur]
     cells.reverse()
 
