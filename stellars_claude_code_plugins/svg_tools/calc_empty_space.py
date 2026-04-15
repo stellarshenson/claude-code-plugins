@@ -556,6 +556,59 @@ def _rasterise_surrogates(canvas, surrogates):
     return grid
 
 
+_BACKGROUND_COVERAGE_THRESHOLD = 0.8
+
+
+def _is_canvas_background(elem, canvas):
+    """True when ``elem`` is a filled shape that covers >= 80% of the canvas.
+
+    Used by every obstacle walk to automatically skip document background
+    plates (full-canvas rects, oversized panels, etc.). Without this rule
+    a single ``<rect class="bg-plate" width="W" height="H"/>`` would fill
+    every pixel of the occupancy grid and leave zero free space for
+    callouts or auto-route.
+
+    Matches the threshold used by ``check_contrast._shape_is_doc_background``
+    so empty-space and contrast agree on what counts as the doc background.
+    """
+    T = type(elem).__name__
+    if T not in ("Rect", "Circle", "Ellipse", "Polygon", "Polyline", "Path"):
+        return False
+    fill = getattr(elem, "fill", None)
+    if fill is None or getattr(fill, "value", True) is None:
+        return False
+    cx, cy, cw, ch = canvas
+    canvas_area = cw * ch
+    if canvas_area <= 0:
+        return False
+
+    surrogates = _element_to_surrogates(elem)
+    if not surrogates:
+        return False
+
+    # Compute the filled bbox across all surrogates this element produced.
+    xs: list[float] = []
+    ys: list[float] = []
+    for s in surrogates:
+        kind = s[0]
+        if kind == "rect":
+            _, x, y, w, h = s
+            xs.extend((x, x + w))
+            ys.extend((y, y + h))
+        elif kind == "polygon":
+            for px, py in s[1]:
+                xs.append(px)
+                ys.append(py)
+        else:
+            # polylines alone (stroke-only) don't count as background
+            continue
+    if not xs:
+        return False
+
+    elem_area = (max(xs) - min(xs)) * (max(ys) - min(ys))
+    return elem_area >= _BACKGROUND_COVERAGE_THRESHOLD * canvas_area
+
+
 def _container_interior_surrogates(elem):
     """Surrogate primitives representing the FILLED interior of ``elem``.
 
@@ -793,12 +846,17 @@ def find_empty_regions(
     # The container element (if any) is skipped-self: we don't add its own
     # surrogates to the obstacle set (otherwise it would fill its own
     # interior), but children inside it remain obstacles.
+    #
+    # Full-canvas background plates (shapes filling >=80% of the canvas)
+    # are always skipped - otherwise a single bg-plate would mark every
+    # pixel as occupied and leave zero free space. Partial backgrounds
+    # must be excluded via exclude_ids.
     surrogates = []
 
     def walk(node):
         if _id_excluded(node):
             return
-        if node is not container_elem:
+        if node is not container_elem and not _is_canvas_background(node, canvas):
             surrogates.extend(_element_to_surrogates(node))
         # svgelements Group / SVG are iterable - recurse into children.
         if isinstance(node, _se.Group):
