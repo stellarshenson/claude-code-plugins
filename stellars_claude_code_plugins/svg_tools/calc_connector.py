@@ -973,29 +973,165 @@ def _check_soft_cap(controls, label):
     return []
 
 
-def _thread_l_controls(src, dst, controls, chamfer=None):
-    """Build an orthogonal polyline from src to dst, visiting each control in
-    order as a corner. Each segment's first_axis is inferred from its own
-    geometry (dominant delta first). When chamfer is not None, corners get
-    the chamfered cut; when None, sharp corners.
+def _thread_l_controls(
+    src,
+    dst,
+    controls,
+    chamfer=None,
+    start_dir=None,
+    end_dir=None,
+    first_reserve=0.0,
+    last_reserve=0.0,
+):
+    """Build a single orthogonal polyline through [src, *controls, dst] and
+    optionally chamfer every 90 degree corner in a global pass.
 
-    Zero controls degenerates to a single L-segment (current behaviour).
+    The old implementation glued a separate 1-bend L per segment and then
+    concatenated them. That produced three artefacts on multi-elbow routes:
+    only the first elbow of each L was chamfered (inter-segment joins stayed
+    sharp); start_dir / end_dir were ignored because each segment re-inferred
+    its own first_axis; and the chamfer bevel could overshoot when the
+    segment's dominant delta was smaller than the chamfer radius.
+
+    This version builds ONE continuous sharp polyline first - locking the
+    first segment's first_axis from start_dir and the last segment's from
+    end_dir - then runs a single chamfer pass that bevels every 90 degree
+    vertex. The bevel is clamped per corner to half the shorter adjacent
+    segment so two adjacent bevels never overlap and near-colinear segments
+    degrade gracefully to sharp corners.
+
+    Parameters
+    ----------
+    src, dst : tuple[float, float]
+        Endpoints (world coordinates).
+    controls : list[tuple[float, float]] | None
+        Interior waypoints the polyline must pass through in order.
+    chamfer : float | None
+        Bevel radius in world units. None or <= 0 leaves corners sharp.
+    start_dir : str | None
+        Cardinal 'E' / 'W' / 'N' / 'S' locking the first segment's exit
+        axis (E/W -> horizontal exit, N/S -> vertical exit).
+    end_dir : str | None
+        Cardinal direction of motion INTO the target. N/S means the last
+        leg is vertical (so the elbow before it is horizontal); E/W means
+        the last leg is horizontal.
+    first_reserve : float
+        Minimum axial length that must survive on the first segment after
+        chamfering. Used by the caller to reserve room for standoff +
+        arrowhead clearance so the start-arrow's tangent stays aligned
+        with the first cardinal leg instead of eating into a bevel.
+    last_reserve : float
+        Same reservation for the last segment. Without this, a short last
+        leg combined with a large chamfer leaves the end-arrow's trim
+        walking into the bevel and the arrow tangent diverges from the
+        last-leg cardinal direction.
     """
-    waypoints = [src, *controls, dst]
-    result = [waypoints[0]]
-    for i in range(len(waypoints) - 1):
-        a = waypoints[i]
-        b = waypoints[i + 1]
-        if chamfer is None:
-            seg = _build_l_polyline(a[0], a[1], b[0], b[1], first_axis=None)
-        else:
-            seg = _build_l_chamfer_polyline(
-                a[0], a[1], b[0], b[1], first_axis=None, chamfer=chamfer
-            )
-        # Drop the first point of each segment except the very first, to avoid
-        # duplicating the join between consecutive segments.
-        result.extend(seg[1:])
-    return result
+    anchors = [src, *(controls or []), dst]
+    n_segments = len(anchors) - 1
+
+    start_card = _direction_to_cardinal(start_dir)
+    end_card = _direction_to_cardinal(end_dir)
+
+    # Step 1: build a sharp orthogonal polyline by inserting at most one
+    # corner per inter-anchor segment. A segment that already shares an
+    # axis (dx=0 or dy=0) collapses to a straight line with no corner.
+    pts: list = [anchors[0]]
+    for i in range(n_segments):
+        ax, ay = anchors[i]
+        bx, by = anchors[i + 1]
+        if ax == bx or ay == by:
+            pts.append((bx, by))
+            continue
+
+        first_axis = None
+        if i == 0 and start_card is not None:
+            # start_dir locks the first leg's axis - E/W leave horizontal,
+            # N/S leave vertical - so the route exits the src perpendicular
+            # to its edge even when the first waypoint is near-colinear.
+            first_axis = "h" if start_card in ("E", "W") else "v"
+        if i == n_segments - 1 and end_card is not None:
+            # end_dir describes the LAST leg's direction of motion. N/S
+            # means the last leg is vertical, so the corner before it is
+            # horizontal (first_axis='h'); mirror for E/W.
+            first_axis = "h" if end_card in ("N", "S") else "v"
+        if first_axis is None:
+            first_axis = _infer_first_axis(ax, ay, bx, by)
+
+        corner = (bx, ay) if first_axis == "h" else (ax, by)
+        pts.append(corner)
+        pts.append((bx, by))
+
+    # Step 2: drop consecutive duplicates (happens when a corner coincides
+    # with an anchor because one of the deltas was zero but the caller still
+    # supplied a direction lock).
+    dedup: list = [pts[0]]
+    for p in pts[1:]:
+        if p != dedup[-1]:
+            dedup.append(p)
+    pts = dedup
+
+    # Step 3: straighten runs of collinear vertices. Consecutive anchors
+    # that share a direction (e.g. two auto-route waypoints on the same
+    # horizontal line) should appear as one segment with no mid-vertex.
+    def _sgn(v):
+        return 0 if v == 0 else (1 if v > 0 else -1)
+
+    if len(pts) >= 3:
+        straight: list = [pts[0]]
+        for i in range(1, len(pts) - 1):
+            prev = straight[-1]
+            cur = pts[i]
+            nxt = pts[i + 1]
+            d1 = (_sgn(cur[0] - prev[0]), _sgn(cur[1] - prev[1]))
+            d2 = (_sgn(nxt[0] - cur[0]), _sgn(nxt[1] - cur[1]))
+            if d1 == d2:
+                continue
+            straight.append(cur)
+        straight.append(pts[-1])
+        pts = straight
+
+    if chamfer is None or chamfer <= 0 or len(pts) < 3:
+        return pts
+
+    # Step 4: global chamfer pass. Every interior vertex is a 90 degree
+    # corner (guaranteed by Steps 1-3), so bevel each one with a radius
+    # clamped to half the shorter adjacent segment length. The first and
+    # last interior corners additionally reserve `first_reserve` /
+    # `last_reserve` of axial length on the outer segment so the eventual
+    # standoff + arrowhead clearance stays on the cardinal leg rather
+    # than crossing into a diagonal bevel.
+    last_corner_idx = len(pts) - 2
+    chamfered: list = [pts[0]]
+    for i in range(1, len(pts) - 1):
+        prev = pts[i - 1]
+        corner = pts[i]
+        nxt = pts[i + 1]
+        dx_in = corner[0] - prev[0]
+        dy_in = corner[1] - prev[1]
+        dx_out = nxt[0] - corner[0]
+        dy_out = nxt[1] - corner[1]
+        len_in = abs(dx_in) + abs(dy_in)  # one of the deltas is 0
+        len_out = abs(dx_out) + abs(dy_out)
+        eff = min(float(chamfer), len_in / 2.0, len_out / 2.0)
+        if i == 1 and first_reserve > 0:
+            # Reserve first_reserve on the incoming (first) axial segment.
+            eff = min(eff, max(0.0, len_in - float(first_reserve)))
+        if i == last_corner_idx and last_reserve > 0:
+            # Reserve last_reserve on the outgoing (last) axial segment.
+            eff = min(eff, max(0.0, len_out - float(last_reserve)))
+        if eff <= 0.5:
+            chamfered.append(corner)
+            continue
+        # Axis-aligned unit vectors (one component is zero by construction).
+        uin = (_sgn(dx_in), _sgn(dy_in))
+        uout = (_sgn(dx_out), _sgn(dy_out))
+        before = (corner[0] - uin[0] * eff, corner[1] - uin[1] * eff)
+        after = (corner[0] + uout[0] * eff, corner[1] + uout[1] * eff)
+        chamfered.append(before)
+        chamfered.append(after)
+    chamfered.append(pts[-1])
+
+    return chamfered
 
 
 def _auto_route_l_waypoints(
@@ -1280,10 +1416,18 @@ def calc_l(
             controls = auto_wp
             _check_soft_cap(controls, "calc_l auto_route controls")
 
-    if controls:
-        pts = _thread_l_controls((src_x, src_y), (tgt_x, tgt_y), controls, chamfer=None)
-    else:
-        pts = _build_l_polyline(src_x, src_y, tgt_x, tgt_y, first_axis=first_axis)
+    # Route BOTH 1-bend and multi-elbow cases through _thread_l_controls
+    # so end_dir is always honored on the last segment (the direct
+    # _build_l_polyline path ignores end_dir because first_axis is locked
+    # from start_dir only).
+    pts = _thread_l_controls(
+        (src_x, src_y),
+        (tgt_x, tgt_y),
+        controls or [],
+        chamfer=None,
+        start_dir=start_dir,
+        end_dir=end_dir,
+    )
     return _build_polyline_result(
         "l",
         pts,
@@ -1370,12 +1514,29 @@ def calc_l_chamfer(
             controls = auto_wp
             _check_soft_cap(controls, "calc_l_chamfer auto_route controls")
 
-    if controls:
-        pts = _thread_l_controls((src_x, src_y), (tgt_x, tgt_y), controls, chamfer=chamfer)
-    else:
-        pts = _build_l_chamfer_polyline(
-            src_x, src_y, tgt_x, tgt_y, first_axis=first_axis, chamfer=chamfer
-        )
+    # Reserve standoff + head_len on each outer segment so the trim for
+    # arrowhead clearance never walks into a chamfer bevel (otherwise the
+    # line end lands on a diagonal and the arrow tangent diverges from
+    # end_dir). Compute reserves once and pass them into the threader.
+    start_trim, end_trim = _resolve_standoff(standoff, margin)
+    arrow_start = (arrow or "none") in ("start", "both")
+    arrow_end = (arrow or "none") in ("end", "both")
+    first_reserve = start_trim + (float(head_len) if arrow_start else 0.0)
+    last_reserve = end_trim + (float(head_len) if arrow_end else 0.0)
+
+    # Route BOTH 1-bend and multi-elbow cases through _thread_l_controls
+    # so end_dir is always honored on the last segment and the chamfer
+    # pass can apply the reserves to the outer corners.
+    pts = _thread_l_controls(
+        (src_x, src_y),
+        (tgt_x, tgt_y),
+        controls or [],
+        chamfer=chamfer,
+        start_dir=start_dir,
+        end_dir=end_dir,
+        first_reserve=first_reserve,
+        last_reserve=last_reserve,
+    )
     return _build_polyline_result(
         "l-chamfer",
         pts,

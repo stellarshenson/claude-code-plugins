@@ -895,6 +895,172 @@ class TestConnectorModes:
         assert r.returncode != 0
         assert "--auto-route requires --svg" in (r.stderr + r.stdout)
 
+    def test_threaded_route_respects_start_dir(self):
+        """Regression: when auto_route returns a first waypoint that is
+        nearly colinear with src (|dx|=1, |dy|=83), the threaded polyline
+        must still exit src perpendicular to its edge - the old per-segment
+        inference picked v-first and produced a path parallel to the east
+        edge of src. With start_dir locked into _thread_l_controls the
+        first step is horizontal (the small jog) and then vertical."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import _thread_l_controls
+        src = (174, 162)
+        dst = (422, 444)
+        # First waypoint is 1 px east and 83 px south of src - dominant
+        # delta is vertical, so inference would pick v-first. start_dir='E'
+        # must override it.
+        controls = [(175, 245), (483, 245)]
+        pts = _thread_l_controls(src, dst, controls, chamfer=None, start_dir="E", end_dir="N")
+        # First segment must move EAST before anything else.
+        assert pts[0] == src
+        dx0 = pts[1][0] - pts[0][0]
+        dy0 = pts[1][1] - pts[0][1]
+        assert dx0 != 0 and dy0 == 0, (
+            f"first segment should be horizontal (east), got dx={dx0} dy={dy0}"
+        )
+        assert dx0 > 0, f"first segment must go east, got dx={dx0}"
+
+    def test_threaded_route_respects_end_dir(self):
+        """The last segment's orientation must match end_dir so the arrow
+        tangent points in the requested cardinal direction. end_dir='S' on
+        a route whose last waypoint is above tgt must produce a final
+        vertical (southward) leg entering the top edge."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import _thread_l_controls
+        src = (174, 162)
+        dst = (422, 400)  # top-center of tgt rect
+        controls = [(175, 245), (483, 245)]
+        pts = _thread_l_controls(src, dst, controls, chamfer=None, start_dir="E", end_dir="S")
+        # Last segment must be vertical (dx=0) and moving south (dy>0).
+        dx_last = pts[-1][0] - pts[-2][0]
+        dy_last = pts[-1][1] - pts[-2][1]
+        assert dx_last == 0 and dy_last > 0, (
+            f"last segment should be vertical-south, got dx={dx_last} dy={dy_last}"
+        )
+
+    def test_chamfer_clamps_to_short_segments(self):
+        """Regression: the old _build_l_chamfer_polyline ignored segment
+        length and emitted an 'after' point offset by the full chamfer from
+        the corner, overshooting the segment endpoint when |dx|<chamfer.
+        The global chamfer pass must clamp the bevel to half the shorter
+        adjacent segment so no vertex ever backtracks."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import _thread_l_controls
+        # src->control1 has a 1px horizontal jog, then a 100px vertical
+        # run. A naive chamfer=5 would overshoot the 1px leg.
+        src = (100, 100)
+        dst = (200, 300)
+        controls = [(101, 200)]
+        pts = _thread_l_controls(src, dst, controls, chamfer=5, start_dir="E", end_dir="E")
+        # No segment in the output may backtrack: every consecutive pair
+        # must share a sign in at least one axis (otherwise we overshot).
+        for i in range(1, len(pts)):
+            a = pts[i - 1]
+            b = pts[i]
+            # Zero-length segments are a bug
+            assert (a[0], a[1]) != (b[0], b[1]), f"duplicate vertex at index {i}"
+        # Projected progression: x should never go below src.x (monotonic)
+        xs = [p[0] for p in pts]
+        assert all(xs[i + 1] >= xs[i] - 0.5 for i in range(len(xs) - 1)), (
+            f"x coordinate backtracks: {xs}"
+        )
+
+    def test_1bend_respects_end_dir_alone(self):
+        """Regression: 1-bend calc_l_chamfer with only end_dir (no start_dir)
+        must honor end_dir on the last leg. The old code bypassed
+        _thread_l_controls for the 1-bend case, so end_dir was silently
+        dropped and first_axis fell back to dominant-delta inference -
+        producing a diagonal arrow tangent when the dominant axis
+        disagreed with end_dir.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        # dx=376 >> |dy|=8 -> dominant inference picks h-first (last leg v).
+        # end_dir='W' says last leg must be HORIZONTAL. Without the fix the
+        # arrow tangent would be the diagonal bevel direction.
+        r = calc_l_chamfer(
+            src_x=494, src_y=280,
+            tgt_rect=(760, 244, 110, 56), end_dir="W",
+            chamfer=5, standoff=4, arrow="end",
+        )
+        tx, ty = r["end"]["tangent"]
+        assert abs(ty) < 1e-6 and tx > 0.99, (
+            f"end tangent must be pure east for end_dir='W', got ({tx}, {ty})"
+        )
+        # Last sample must share its y with the penultimate sample
+        # (pure horizontal final segment, no diagonal bevel leak).
+        samples = r["samples"]
+        assert samples[-1][1] == samples[-2][1], (
+            f"last segment must be horizontal, got {samples[-2]} -> {samples[-1]}"
+        )
+
+    def test_chamfer_reserves_arrowhead_clearance(self):
+        """Regression: when the last axial segment is shorter than
+        chamfer + standoff + head_len, the naive chamfer pass beveled
+        the last corner at full radius and the subsequent head-clearance
+        trim walked BACK into the bevel - the line ended on a diagonal
+        and the arrow tangent diverged from end_dir. The reserve logic
+        clamps the last corner's bevel so the final cardinal segment
+        always accommodates standoff + head_len.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        # Short last leg: 15 units from the last A*-like waypoint to tgt.
+        # chamfer=5, standoff=4, head_len=10 -> naive would leave 10-4=6
+        # after standoff which is less than head_len=10.
+        controls = [(100, 100), (250, 100), (250, 385)]
+        r = calc_l_chamfer(
+            src_x=50, src_y=100,
+            tgt_x=235, tgt_y=400,  # 15 units south of last waypoint
+            controls=controls,
+            chamfer=5, standoff=4, arrow="end", end_dir="S",
+            head_len=10, head_half_h=5,
+        )
+        tx, ty = r["end"]["tangent"]
+        assert abs(tx) < 1e-6 and ty > 0.99, (
+            f"end tangent must be pure south for end_dir='S', got ({tx}, {ty})"
+        )
+        # Final axial segment (last two samples) must be vertical.
+        samples = r["samples"]
+        assert samples[-1][0] == samples[-2][0], (
+            f"last segment must be vertical, got {samples[-2]} -> {samples[-1]}"
+        )
+
+    def test_all_elbows_chamfered(self):
+        """Regression: the old per-segment chamfer only beveled the corner
+        INSIDE each L, leaving inter-segment joins sharp. With the global
+        chamfer pass every 90 degree vertex gets a bevel, producing twice
+        as many samples as there are corners (two bevel points per corner
+        instead of one sharp vertex)."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import _thread_l_controls
+        # A 3-waypoint route that produces 3 corners: one inside the first
+        # L, one at the first inter-segment join, one inside the last L.
+        src = (0, 0)
+        dst = (300, 300)
+        controls = [(100, 100), (200, 100)]
+        sharp = _thread_l_controls(src, dst, controls, chamfer=None)
+        chamfered = _thread_l_controls(src, dst, controls, chamfer=10)
+        # Count corners in the sharp polyline (interior vertices).
+        sharp_corners = len(sharp) - 2
+        assert sharp_corners >= 2, f"expected at least 2 corners, got {sharp_corners}"
+        # Each chamfered corner replaces 1 vertex with 2, so chamfered
+        # length = len(sharp) + sharp_corners.
+        assert len(chamfered) == len(sharp) + sharp_corners, (
+            f"expected {len(sharp) + sharp_corners} samples after chamfer, "
+            f"got {len(chamfered)} (sharp had {len(sharp)})"
+        )
+        # No interior vertex in the chamfered output should be a sharp 90
+        # degree corner. A sharp corner has BOTH adjacent segments axis
+        # aligned AND on different axes. Bevel entry/exit vertices have
+        # one axis-aligned leg and one diagonal leg, which is fine.
+        for i in range(1, len(chamfered) - 1):
+            a = chamfered[i - 1]
+            b = chamfered[i]
+            c = chamfered[i + 1]
+            d1 = (b[0] - a[0], b[1] - a[1])
+            d2 = (c[0] - b[0], c[1] - b[1])
+            d1_h = d1[1] == 0 and d1[0] != 0
+            d1_v = d1[0] == 0 and d1[1] != 0
+            d2_h = d2[1] == 0 and d2[0] != 0
+            d2_v = d2[0] == 0 and d2[1] != 0
+            sharp_corner = (d1_h and d2_v) or (d1_v and d2_h)
+            assert not sharp_corner, f"vertex {i} at {b} is still a sharp corner"
+
 
 class TestManifoldConnector:
     """N-starts + M-ends Sankey-style manifold connector.
@@ -1243,12 +1409,15 @@ class TestManifoldConnector:
         assert c["samples"][-1] == (85, 0)
         assert c["standoff"] == (5.0, 15.0)
 
-        # l-chamfer controls add corners to the polyline
+        # l-chamfer controls add corners to the polyline. With the global
+        # chamfer pass, each control is replaced by a bevel pair straddling
+        # it, so the exact control coord no longer appears as a vertex - we
+        # assert instead that samples pass within `chamfer` of the control.
         r = calc_l_chamfer(50, 50, 300, 200, controls=[(150, 50), (200, 150)], arrow="end")
         samples = r["samples"]
+        chamfer_tol = 4.0 + 1e-3
         assert any(
-            s == (150, 50) or (abs(s[0] - 150) < 1 and abs(s[1] - 50) < 1)
-            for s in samples
+            abs(s[0] - 150) <= chamfer_tol and abs(s[1] - 50) <= chamfer_tol for s in samples
         )
         assert r["controls"] == [(150, 50), (200, 150)]
 

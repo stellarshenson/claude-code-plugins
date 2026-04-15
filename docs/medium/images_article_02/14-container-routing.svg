@@ -7,10 +7,10 @@
          secondary example of the plain auto-edge pattern.
   Intent: didactic - teaches the three layers of the routing stack: full-canvas
          bg-plate auto-skipped, container_id clips to a closed shape, multi-elbow
-         A* with turn penalty routes around obstacles. Placed after 11-connector-modes
-         in the article as an advanced pattern.
+         A* with turn penalty produces clean multi-elbow paths. Placed after
+         11-connector-modes in the article as an advanced pattern.
   Theme: Stellars-Tech. fg-1 title, fg-3 labels, accent-1 card plates and primary
-         connector, accent-2 for obstacles / tgt / dst.
+         connector, accent-2 for obstacles / tgt / dst. Inter sans-serif throughout.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
   <style>
@@ -20,7 +20,7 @@
     .fg-3 { fill: #236a74; }
 
     .card { fill: #005f7a; fill-opacity: 0.05; stroke: #005f7a; stroke-width: 1.2; }
-    .card-title { font-family: 'Courier New', Consolas, monospace; font-weight: 700; font-size: 11px; fill: #1a5a6e; }
+    .card-title { font: 600 12px 'Inter', sans-serif; fill: #1a5a6e; }
 
     .src { fill: #0096d1; fill-opacity: 0.22; stroke: #0096d1; stroke-width: 1.4; }
     .dst { fill: #da8230; fill-opacity: 0.25; stroke: #da8230; stroke-width: 1.4; }
@@ -95,16 +95,20 @@
   <rect class="dst" id="dst-B" x="760" y="244" width="110" height="56" rx="5"/>
   <text class="node-label" x="815" y="275">dst</text>
 
-  <!-- Connector 1: A* multi-elbow auto-route inside card-A -->
+  <!-- Connector 1: A* multi-elbow auto-route inside card-A (cell_size=10)
+       start_dir='E', end_dir='S', chamfer=5, standoff=4; last corner
+       bevel clamped to reserve standoff + head_len on final vertical leg -->
   <g id="route-c1">
-    <path class="route-auto" d="M174.00,166.00 L174.00,240.00 L179.00,245.00 L175.00,245.00 L483.00,245.00 L483.00,455.00 L427.93,455.00"/>
-    <polygon class="route-auto-head" points="424.83,446.83 428.36,457.44 435.44,450.36"/>
+    <path class="route-auto" d="M178.00,162.00 L200.00,162.00 L205.00,167.00 L205.00,240.00 L210.00,245.00 L440.00,245.00 L445.00,250.00 L445.00,380.00 L440.00,385.00 L423.00,385.00 L422.00,386.00"/>
+    <polygon class="route-auto-head" points="422.00,396.00 427.00,386.00 417.00,386.00"/>
   </g>
 
-  <!-- Connector 2: card-edge 1-bend L from card-A to dst-B -->
+  <!-- Connector 2: 1-bend L from card-A edge to dst-B, end_dir='E'
+       (connector moving EAST into tgt, entering via its LEFT edge);
+       last-segment orientation locked by end_dir even without controls -->
   <g id="route-c2">
-    <path class="route-edge" d="M494.00,280.00 L751.07,280.00"/>
-    <polygon class="route-edge-head" points="759.29,275.71 748.69,279.24 755.76,286.31"/>
+    <path class="route-edge" d="M494.00,276.00 L498.00,272.00 L746.00,272.00"/>
+    <polygon class="route-edge-head" points="756.00,272.00 746.00,267.00 746.00,277.00"/>
   </g>
 
   <!-- Annotations -->
