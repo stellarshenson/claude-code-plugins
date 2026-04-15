@@ -25,11 +25,14 @@ Version tag `(v1.2.3)` only for versioned projects.
 
 | Level | Words | When |
 |-------|-------|------|
-| **Short** | ~80 | Bug fixes, config changes, typos |
-| **Normal** | ~150-200 | Features, multi-file changes (DEFAULT) |
-| **Extended** | ~350+ | Architectural changes, design decisions |
+| **Standard** | ~70-120 | DEFAULT. Features, bug fixes, multi-file changes, investigations |
+| **Extended** | ~250-350 | ONLY when justified: architectural decisions, cross-cutting refactors, multi-system debugging sagas, new subsystems with non-obvious design choices |
 
-**Detail discipline**: full summaries with file paths, line counts, helper-function names, per-class test counts, exhaustive listings — ONLY in **Extended** entries. **Normal** entries = colleague's coffee recap — what added, headline numbers, why — not directory listing. **Short** entries = one fact, one outcome. Default 300-word entry? Downgrade to normal unless work genuinely architectural or design-decision-level.
+**Default is Standard.** Match the user's own summary length when they provide one — do NOT inflate a 5-bullet summary into a 400-word entry. Standard entries read like a colleague's coffee recap: what was added, headline numbers, why it matters, one or two file paths. Skip the directory listing, skip the per-function commentary, skip the reasoning chain.
+
+**Extended entries are the exception, not the rule.** Reach for Extended ONLY when the reader genuinely needs context the code alone cannot carry — a novel algorithm, a platform migration, a multi-iteration debugging story where the dead-ends matter, or a design decision future readers will second-guess without the reasoning. "I touched a lot of files" is NOT a justification. "This was hard" is NOT a justification. If you find yourself writing a 400-word entry for a feature add, downgrade to Standard.
+
+**Length check before saving**: count words in the entry body (after `**Result**:`). Over 150 words? Ask: "does the extra context carry information the user cannot get from the code?". If no, cut ruthlessly. If yes, keep and justify mentally.
 
 ## What to Log
 
@@ -46,7 +49,7 @@ After appending, ALWAYS verify:
 
 ## Examples
 
-See `references/examples.md` — entries per level (short ~80w, normal ~150w, extended ~350w).
+See `references/examples.md` — Standard and Extended entries with before/after examples showing when to downgrade a bloated draft.
 
 ## Archiving
 
