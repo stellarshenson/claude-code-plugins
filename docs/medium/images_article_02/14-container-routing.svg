@@ -1,0 +1,114 @@
+<!--
+  14-container-routing.svg - Showcase of the container-scoped auto-router.
+  Shows: two rounded cards on a bg-plate. card-A holds a src rect, a tgt rect, and
+         four obstacles. A multi-elbow A* auto-route threads from src to tgt around
+         all obstacles, clipped to card-A's interior via container_id. card-B holds
+         a dst rect; a simple 1-bend card-edge L connects card-A to dst as a
+         secondary example of the plain auto-edge pattern.
+  Intent: didactic - teaches the three layers of the routing stack: full-canvas
+         bg-plate auto-skipped, container_id clips to a closed shape, multi-elbow
+         A* with turn penalty routes around obstacles. Placed after 11-connector-modes
+         in the article as an advanced pattern.
+  Theme: Stellars-Tech. fg-1 title, fg-3 labels, accent-1 card plates and primary
+         connector, accent-2 for obstacles / tgt / dst.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <style>
+    .bg-plate { fill: #ffffff; }
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+
+    .card { fill: #005f7a; fill-opacity: 0.05; stroke: #005f7a; stroke-width: 1.2; }
+    .card-title { font-family: 'Courier New', Consolas, monospace; font-weight: 700; font-size: 11px; fill: #1a5a6e; }
+
+    .src { fill: #0096d1; fill-opacity: 0.22; stroke: #0096d1; stroke-width: 1.4; }
+    .dst { fill: #da8230; fill-opacity: 0.25; stroke: #da8230; stroke-width: 1.4; }
+    .obstacle { fill: #d4a04a; fill-opacity: 0.30; stroke: #b8541a; stroke-width: 1.0; }
+
+    .node-label { font: 10px 'Inter', sans-serif; fill: #1a5a6e; text-anchor: middle; }
+    .obs-label { font: 9px 'Inter', sans-serif; fill: #7a4a15; text-anchor: middle; }
+
+    .route-auto { fill: none; stroke: #005f7a; stroke-width: 2.0; stroke-linejoin: round; stroke-linecap: round; }
+    .route-auto-head { fill: #005f7a; }
+    .route-edge { fill: none; stroke: #b8541a; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 5 3; }
+    .route-edge-head { fill: #b8541a; }
+
+    .annot { font: 10px 'Inter', sans-serif; fill: #24697e; }
+    .annot-bold { font: 600 10px 'Inter', sans-serif; fill: #1a5a6e; }
+
+    @media (prefers-color-scheme: dark) {
+      .bg-plate { fill: #0a1a24; }
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .card { fill: #5cc8e0; fill-opacity: 0.06; stroke: #5cc8e0; }
+      .card-title { fill: #b8e4f0; }
+      .src { fill: #5cc8e0; fill-opacity: 0.28; stroke: #5cc8e0; }
+      .dst { fill: #e49648; fill-opacity: 0.30; stroke: #e49648; }
+      .obstacle { fill: #d4a04a; fill-opacity: 0.32; stroke: #f0a864; }
+      .node-label { fill: #0a1a24; }
+      .obs-label { fill: #0a1a24; }
+      .route-auto { stroke: #5cc8e0; }
+      .route-auto-head { fill: #5cc8e0; }
+      .route-edge { stroke: #e49648; }
+      .route-edge-head { fill: #e49648; }
+      .annot { fill: #8fd4e6; }
+      .annot-bold { fill: #b8e4f0; }
+    }
+  </style>
+
+  <rect class="bg-plate" width="1000" height="540"/>
+
+  <!-- Title -->
+  <text class="fg-1" x="500" y="32" text-anchor="middle" font-size="17" font-weight="700">container-scoped auto-routing</text>
+  <text class="fg-3" x="500" y="52" text-anchor="middle" font-size="11">grid A* clips to a closed shape + turn-penalty produces clean multi-elbow paths</text>
+
+  <!-- Cards (rounded) -->
+  <rect class="card" id="card-A" x="50" y="90" width="440" height="380" rx="14"/>
+  <text class="card-title" x="68" y="110">card-A</text>
+
+  <rect class="card" id="card-B" x="530" y="90" width="420" height="380" rx="14"/>
+  <text class="card-title" x="548" y="110">card-B</text>
+
+  <!-- Endpoints inside card-A -->
+  <rect class="src" id="src-A" x="90" y="140" width="84" height="44" rx="5"/>
+  <text class="node-label" x="132" y="167">src</text>
+
+  <rect class="dst" id="tgt-A" x="380" y="400" width="84" height="44" rx="5"/>
+  <text class="node-label" x="422" y="427">tgt</text>
+
+  <!-- Obstacles inside card-A -->
+  <rect class="obstacle" id="obs-1" x="220" y="160" width="110" height="68" rx="3"/>
+  <text class="obs-label" x="275" y="198">obstacle 1</text>
+
+  <rect class="obstacle" id="obs-2" x="100" y="258" width="150" height="52" rx="3"/>
+  <text class="obs-label" x="175" y="288">obstacle 2</text>
+
+  <rect class="obstacle" id="obs-3" x="300" y="260" width="130" height="76" rx="3"/>
+  <text class="obs-label" x="365" y="302">obstacle 3</text>
+
+  <rect class="obstacle" id="obs-4" x="130" y="348" width="186" height="38" rx="3"/>
+  <text class="obs-label" x="223" y="371">obstacle 4</text>
+
+  <!-- dst inside card-B -->
+  <rect class="dst" id="dst-B" x="760" y="244" width="110" height="56" rx="5"/>
+  <text class="node-label" x="815" y="275">dst</text>
+
+  <!-- Connector 1: A* multi-elbow auto-route inside card-A -->
+  <g id="route-c1">
+    <path class="route-auto" d="M174.00,166.00 L174.00,240.00 L179.00,245.00 L175.00,245.00 L483.00,245.00 L483.00,455.00 L427.93,455.00"/>
+    <polygon class="route-auto-head" points="424.83,446.83 428.36,457.44 435.44,450.36"/>
+  </g>
+
+  <!-- Connector 2: card-edge 1-bend L from card-A to dst-B -->
+  <g id="route-c2">
+    <path class="route-edge" d="M494.00,280.00 L751.07,280.00"/>
+    <polygon class="route-edge-head" points="759.29,275.71 748.69,279.24 755.76,286.31"/>
+  </g>
+
+  <!-- Annotations -->
+  <text class="annot-bold" x="500" y="500" text-anchor="middle">C1: container_id = card-A + auto_route -> multi-elbow A* around four obstacles</text>
+  <text class="annot" x="500" y="518" text-anchor="middle">C2: card-A -> dst via 1-bend auto-edge L (no container clip, plain geometric route)</text>
+
+</svg>
