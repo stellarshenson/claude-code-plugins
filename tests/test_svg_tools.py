@@ -300,18 +300,33 @@ class TestCalcConnectorModule:
         assert len(single) == 1
         assert abs(single[0]["area"] - 10000) < 100
 
-        # Fully occupied -> empty
-        assert find_empty_regions(
+        # Full-canvas background plate is auto-skipped (>=80% coverage rule),
+        # so a single 100x100 rect on a 100x100 canvas leaves the canvas
+        # fully free - not "fully occupied".
+        bg_only = find_empty_regions(
             self._svg("0 0 100 100", self._rect(0, 0, 100, 100)), tolerance=0
-        ) == []
+        )
+        assert len(bg_only) == 1
+        assert abs(bg_only[0]["area"] - 10000) < 100
 
-        # Narrow 20-px strip detected exactly
+        # A sub-80% obstacle covering most of the canvas still blocks routing:
+        # 70x70 on 100x100 = 49% coverage -> rasterised as an obstacle.
+        occupied = find_empty_regions(
+            self._svg("0 0 100 100", self._rect(15, 15, 70, 70)), tolerance=0, min_area=0
+        )
+        # The 70x70 obstacle leaves a thin ring -> 4 free strips. Total free
+        # area = 10000 - 4900 = 5100 px^2, split across multiple components.
+        assert occupied
+        assert sum(r["area"] for r in occupied) > 4500
+
+        # Narrow 30-px strip detected exactly. Obstacle is 70x100 on a
+        # 100x100 canvas (70% coverage, below the 80% background threshold).
         strip = find_empty_regions(
-            self._svg("0 0 100 100", self._rect(0, 0, 80, 100)),
+            self._svg("0 0 100 100", self._rect(0, 0, 70, 100)),
             tolerance=0, min_area=0,
         )
         assert len(strip) == 1
-        assert abs(strip[0]["area"] - 2000) < 50
+        assert abs(strip[0]["area"] - 3000) < 50
 
         # Default tolerance = 20, default min_area = 500. Canvas 400x300 eroded
         # by 20 -> ~93600 px^2.
@@ -373,9 +388,12 @@ class TestCalcConnectorModule:
         assert r0 and r20
         assert r20[0]["area"] < r0[0]["area"]
 
-        # Thin strip (<2*tolerance) erodes to empty
+        # Thin strip (<2*tolerance) erodes to empty. A 320x220 obstacle
+        # inset by 40 px on a 400x300 canvas (58% coverage, below the 80%
+        # background threshold) leaves a 40-wide ring that fully erodes
+        # at tolerance=20.
         assert find_empty_regions(
-            self._svg("0 0 400 300", self._rect(0, 0, 390, 300)), tolerance=20
+            self._svg("0 0 400 300", self._rect(40, 40, 320, 220)), tolerance=20
         ) == []
 
         # Canvas edge is an implicit obstacle (tolerance shrinks inward)
@@ -455,6 +473,43 @@ class TestCalcConnectorModule:
         total_s = sum(r["area"] for r in find_empty_regions(short, tolerance=0, min_area=0))
         total_l = sum(r["area"] for r in find_empty_regions(long_svg, tolerance=0, min_area=0))
         assert total_s > total_l
+
+    def test_empty_space_auto_skip_background(self):
+        """Full-canvas background plates (>=80% of canvas area) are auto-
+        skipped so a bg-plate rect does not fill the occupancy grid and
+        leave zero free space. Sub-80% shapes are still rasterised."""
+        from stellars_claude_code_plugins.svg_tools.calc_empty_space import (
+            _is_canvas_background,
+            find_empty_regions,
+            _parse_svg_source,
+        )
+
+        # Full-canvas rect -> skipped, whole canvas counted as free
+        full = self._svg(
+            "0 0 1000 600",
+            '<rect id="bg" x="0" y="0" width="1000" height="600" fill="#ffffff"/>'
+            + self._rect(100, 100, 80, 60),  # a real obstacle
+        )
+        regions = find_empty_regions(full, tolerance=0, min_area=0)
+        total_free = sum(r["area"] for r in regions)
+        # Canvas area minus the 80x60 real obstacle
+        assert 595000 < total_free < 600000
+
+        # 79% coverage rect is NOT skipped (just below threshold)
+        below = self._svg(
+            "0 0 100 100",
+            '<rect x="0" y="0" width="100" height="79" fill="#000"/>',
+        )
+        r_below = find_empty_regions(below, tolerance=0, min_area=0)
+        # Canvas has a 100x79 obstacle -> 100x21 remains free = 2100 px^2
+        assert r_below
+        assert abs(sum(r["area"] for r in r_below) - 2100) < 100
+
+        # _is_canvas_background helper direct check
+        doc, vb = _parse_svg_source(full)
+        assert vb == (0.0, 0.0, 1000.0, 600.0)
+        bg_elem = doc.get_element_by_id("bg")
+        assert _is_canvas_background(bg_elem, vb) is True
 
     def test_empty_space_container_id(self):
         """Covers: rect/circle/polygon/path containers clip detection to their
@@ -759,6 +814,51 @@ class TestConnectorModes:
             assert r["mode"] == "l"
             # Fallback is a simple 2-segment L (no waypoints)
             assert len(r["samples"]) <= 3
+
+    def test_auto_route_skips_bg_and_routes_inside_card(self):
+        """Regression for the demo failure: a scene with a full-canvas
+        bg-plate PLUS a container card PLUS obstacles inside must route
+        successfully. Without the bg-plate auto-skip the router would
+        see the entire canvas as occupied and report 'unroutable'."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600">'
+            '<rect id="bg-plate" x="0" y="0" width="1000" height="600" fill="#ffffff"/>'
+            '<rect id="card-A" x="60" y="60" width="440" height="480" fill="#f5f7f8"/>'
+            '<rect id="src-A" x="100" y="120" width="90" height="50" fill="#0096d1"/>'
+            '<rect id="tgt-A" x="370" y="460" width="90" height="50" fill="#da8230"/>'
+            '<rect id="obs-1" x="240" y="140" width="120" height="90" fill="#d4a04a"/>'
+            '<rect id="obs-2" x="110" y="270" width="180" height="70" fill="#d4a04a"/>'
+            '<rect id="obs-3" x="330" y="280" width="140" height="100" fill="#d4a04a"/>'
+            '<rect id="obs-4" x="140" y="400" width="200" height="60" fill="#d4a04a"/>'
+            '</svg>'
+        )
+
+        r = calc_l_chamfer(
+            src_rect=(100, 120, 90, 50), start_dir="E",
+            tgt_rect=(370, 460, 90, 50), end_dir="N",
+            chamfer=6, standoff=4, arrow="end",
+            auto_route=True, svg=svg, container_id="card-A",
+            route_cell_size=16, route_margin=8,
+        )
+        # A routable scene produces >= 2 waypoints and no failure warning
+        assert len(r["controls"]) >= 2
+        assert not any("failed" in w for w in r["warnings"])
+        # No sample sits inside any obstacle's bbox
+        obstacle_bboxes = [
+            (240, 140, 360, 230),
+            (110, 270, 290, 340),
+            (330, 280, 470, 380),
+            (140, 400, 340, 460),
+        ]
+        for x, y in r["samples"]:
+            for bx1, by1, bx2, by2 in obstacle_bboxes:
+                inside = bx1 + 2 < x < bx2 - 2 and by1 + 2 < y < by2 - 2
+                assert not inside, f"sample {(x, y)} inside obstacle {(bx1, by1, bx2, by2)}"
+        # Every sample stays inside card-A with small pixel rounding slack
+        for x, y in r["samples"]:
+            assert 58 <= x <= 502 and 58 <= y <= 542
 
     def test_auto_route_cli(self, tmp_path):
         """CLI --auto-route flag runs the router via the unified CLI entry
