@@ -556,6 +556,89 @@ def _rasterise_surrogates(canvas, surrogates):
     return grid
 
 
+def _container_interior_surrogates(elem):
+    """Surrogate primitives representing the FILLED interior of ``elem``.
+
+    Used when the caller pins empty-space detection to a specific container
+    shape via ``container_id``. The element's actual fill/stroke attributes
+    are ignored - a stroked-only rect still counts as a closed region for
+    masking purposes.
+
+    Groups are rejected with ValueError: ``<g>`` is not closed geometry, it
+    has no fill or boundary of its own. The caller must pass the ID of a
+    visible shape (rect, circle, polygon, path) instead.
+    """
+    T = type(elem).__name__
+
+    if T in ("SVG", "Group", "Defs", "Use"):
+        raise ValueError(
+            f"container_id must point to a closed shape, got <{T.lower()}>. "
+            "Groups have no geometry - pass the ID of a rect, circle, "
+            "ellipse, polygon, or path instead."
+        )
+
+    transform = getattr(elem, "transform", None)
+
+    def tx(x, y):
+        return _tx_point(transform, x, y)
+
+    if T == "Rect":
+        x = float(elem.x)
+        y = float(elem.y)
+        w = float(elem.width)
+        h = float(elem.height)
+        corners = [tx(x, y), tx(x + w, y), tx(x + w, y + h), tx(x, y + h)]
+        if _tx_is_axis_aligned(transform):
+            x0, y0 = corners[0]
+            x2, y2 = corners[2]
+            return [("rect", min(x0, x2), min(y0, y2), abs(x2 - x0), abs(y2 - y0))]
+        return [("polygon", corners)]
+
+    if T in ("Circle", "Ellipse"):
+        cx = float(elem.cx)
+        cy = float(elem.cy)
+        rx = float(elem.rx)
+        ry = float(getattr(elem, "ry", rx))
+        local = _circle_to_polygon(cx, cy, rx, ry)
+        return [("polygon", [tx(px, py) for px, py in local])]
+
+    if T == "Polygon":
+        pts = [tx(float(p.x), float(p.y)) for p in elem.points]
+        return [("polygon", pts)]
+
+    if T == "Polyline":
+        pts = [tx(float(p.x), float(p.y)) for p in elem.points]
+        if len(pts) >= 3:
+            if pts[0] != pts[-1]:
+                pts = pts + [pts[0]]
+            return [("polygon", pts)]
+        return []
+
+    if T == "Path":
+        out = []
+        subpaths = _sample_path_to_segments(elem)
+        for local_pts, closed in subpaths:
+            if len(local_pts) < 3:
+                continue
+            pts = [tx(px, py) for px, py in local_pts]
+            # Force-close open subpaths - container is treated as closed
+            # geometry regardless of source markup.
+            if pts[0] != pts[-1]:
+                pts = pts + [pts[0]]
+            out.append(("polygon", pts))
+        if not out:
+            raise ValueError(
+                "container_id resolved to a <path> with no closable subpath "
+                "(need at least 3 points per subpath)."
+            )
+        return out
+
+    raise ValueError(
+        f"container_id points to <{T.lower()}> which is not a supported "
+        "closed shape. Use rect, circle, ellipse, polygon, polyline, or path."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Moore-neighbourhood boundary tracer (unchanged from previous version)
 # ---------------------------------------------------------------------------
@@ -643,6 +726,7 @@ def find_empty_regions(
     min_area=500.0,
     canvas=None,
     exclude_ids=("callout-*",),
+    container_id=None,
 ):
     """Find empty regions on an SVG canvas.
 
@@ -666,15 +750,30 @@ def find_empty_regions(
             ``("callout-*",)`` so existing callouts are automatically
             excluded when re-running placement - rename your callout
             groups with the ``callout-`` prefix to benefit.
+        container_id: when set, clip detection to the interior of the
+            element with this ``id``. The element must be a closed shape
+            (rect, circle, ellipse, polygon, polyline, or path) - groups
+            are rejected. Its stroke/fill attributes are ignored; the
+            geometry alone defines the clip region. Obstacles outside the
+            container are irrelevant; obstacles inside still occupy.
+            Returned regions are tagged with ``container_id``. Default
+            ``None`` = no clipping (scan whole canvas).
 
     Returns:
-        list of ``{"boundary": [(x, y), ...], "area": float}`` dicts, one
-        per connected free region, sorted by area descending. Boundary
-        coordinates are integer pixel values exposed as floats.
+        list of ``{"boundary": [(x, y), ...], "area": float, "container_id":
+        str|None}`` dicts, one per connected free region, sorted by area
+        descending. Boundary coordinates are integer pixel values exposed
+        as floats.
     """
     svg_doc, viewbox_canvas = _parse_svg_source(svg)
     if canvas is None:
         canvas = viewbox_canvas
+
+    container_elem = None
+    if container_id is not None:
+        container_elem = svg_doc.get_element_by_id(container_id)
+        if container_elem is None:
+            raise ValueError(f"container_id={container_id!r} not found in SVG")
 
     exclude_patterns = tuple(exclude_ids or ())
 
@@ -690,12 +789,17 @@ def find_empty_regions(
     # exclude pattern, its entire subtree is skipped. svg_doc itself is a
     # Group at the top. This is what lets `exclude_ids=["callout-*"]`
     # strip every <g id="callout-foo"> including its descendant children.
+    #
+    # The container element (if any) is skipped-self: we don't add its own
+    # surrogates to the obstacle set (otherwise it would fill its own
+    # interior), but children inside it remain obstacles.
     surrogates = []
 
     def walk(node):
         if _id_excluded(node):
             return
-        surrogates.extend(_element_to_surrogates(node))
+        if node is not container_elem:
+            surrogates.extend(_element_to_surrogates(node))
         # svgelements Group / SVG are iterable - recurse into children.
         if isinstance(node, _se.Group):
             for child in node:
@@ -707,6 +811,16 @@ def find_empty_regions(
     free = ~occ
     if not free.any():
         return []
+
+    # Container clip: AND with the interior mask so only pixels inside the
+    # container count as free. Applied BEFORE erosion so the container
+    # boundary becomes an implicit obstacle for the distance transform.
+    if container_elem is not None:
+        interior_surrogates = _container_interior_surrogates(container_elem)
+        container_mask = _rasterise_surrogates(canvas, interior_surrogates)
+        free = free & container_mask
+        if not free.any():
+            return []
 
     # Inward erosion via Euclidean distance transform. Pad with False on
     # all sides so the canvas edge counts as an implicit obstacle.
@@ -742,7 +856,13 @@ def find_empty_regions(
         contour_world = _boundary_to_world(contour_local, (cx + c0, cy + r0))
         if len(contour_world) < 3:
             continue
-        results.append({"boundary": contour_world, "area": float(area_px)})
+        results.append(
+            {
+                "boundary": contour_world,
+                "area": float(area_px),
+                "container_id": container_id,
+            }
+        )
 
     results.sort(key=lambda r: -r["area"])
     return results
@@ -786,6 +906,13 @@ def main():
         "Defaults to 'callout-*' when omitted.",
     )
     parser.add_argument(
+        "--container-id",
+        default=None,
+        help="Clip detection to the interior of the element with this id. "
+        "Must point to a closed shape (rect/circle/ellipse/polygon/path); "
+        "groups are rejected. Obstacles outside the container are ignored.",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit JSON output only",
@@ -807,6 +934,7 @@ def main():
         tolerance=args.tolerance,
         min_area=args.min_area,
         exclude_ids=exclude_ids,
+        container_id=args.container_id,
     )
 
     if args.json:
