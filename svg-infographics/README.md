@@ -40,13 +40,15 @@ Reference: Arrow Construction section of `skills/svg-standards/SKILL.md`.
 
 ### 3. Callouts and Empty Space
 
-SVG-native free-region detection plus a callout placement workflow that never lands text inside occluded zones.
+Joint callout placement via greedy solver plus SVG-native free-region detection. Never lands text inside occluded zones and never crosses leaders.
 
-Every callout uses the `callout` namespace in three places so tooling can find, exclude, and audit them: wrap the group in `<g id="callout-<name>">`, set `class="callout-text"` on every `<text>` child, and set `class="callout-line"` on every leader `<line>` / `<path>` / `<polyline>`. The `callout-*` id prefix lets `empty-space` exclude placed callouts from the obstacle set, and lets `overlaps` run the cross-collisions audit. See `skills/svg-standards/SKILL.md` for the construction workflow, audit gates, and a minimal example.
+`svg-infographics callouts` is the primary path: one tool call, a JSON plan listing every callout, one optimised layout out. Supports both **leader callouts** (text-plus-line connecting target to label, standoff 20 px, scored on leader length sweet spot 55 px, diagonal angle, target distance) and **leaderless callouts** (text-only labels that sit close to their target, standoff 5 px, scored on bbox-centre-to-target distance so symmetric labels settle centred). Hard pairwise constraints on text-text overlap, leader-vs-text crossing, and leader-vs-leader crossing; soft scoring for preferred side, length, and angle. Returns best layout plus top-5 alternatives per callout with penalty breakdowns.
 
-`empty-space` reads an SVG file directly via `svgelements`, rasterises every visible element (rects, circles, paths with adaptively sampled Beziers and arcs, text bboxes via Pillow font metrics, transforms composed for `<g>` groups), applies Euclidean distance erosion, runs connected-component labelling, and returns boundary polygons of every free island sorted by area. Works on any SVG. The same tool is used for callouts, legends, badges, logos, and any "where does X fit without overlapping Y" question.
+Every callout uses the `callout` namespace in three places so tooling can find, exclude, and audit them: wrap the group in `<g id="callout-<name>">`, set `class="callout-text"` on every `<text>` child, and set `class="callout-line"` on every leader `<line>` / `<path>` / `<polyline>`. The `callout-*` id prefix lets `empty-space` exclude placed callouts from the obstacle set, and lets `overlaps` run the cross-collisions audit. See `skills/svg-standards/SKILL.md` for the construction workflow, leader-vs-leaderless selection rules, audit gates, and a minimal example.
 
-Backing tools: `svg-infographics empty-space`, `svg-infographics geom contains`, `svg-infographics geom rect-edge`, `svg-infographics overlaps`.
+`empty-space` reads an SVG file directly via `svgelements`, rasterises every visible element (rects, circles, paths with adaptively sampled Beziers and arcs, text bboxes via Pillow font metrics, transforms composed for `<g>` groups), applies Euclidean distance erosion, runs connected-component labelling, and returns boundary polygons of every free island sorted by area. Used under the hood by `callouts`, and directly for legends, badges, logos, and any "where does X fit without overlapping Y" question.
+
+Backing tools: `svg-infographics callouts`, `svg-infographics empty-space`, `svg-infographics geom contains`, `svg-infographics geom rect-edge`, `svg-infographics overlaps`.
 Reference: Callout construction workflow in `skills/svg-standards/SKILL.md`.
 
 ### 4. Charts
@@ -80,10 +82,11 @@ Skill: `svg-infographics:validation`.
 svg-infographics validate --svg banner.svg
 ```
 
-**Annotate a dense diagram with callouts.** Point `empty-space` at the SVG, fit text bboxes inside the returned polygons via `geom contains`, anchor leaders via `geom rect-edge`, gate on the `overlaps` cross-collision audit before and after. No manual coordinate hunting.
+**Annotate a dense diagram with callouts.** Build a plan JSON listing every callout (id, target, text, optional `leader: false` for leaderless group labels), then call `svg-infographics callouts` for a joint placement. Gate on the `overlaps` cross-collision audit before and after. No manual coordinate hunting.
 
 ```bash
-svg-infographics empty-space --svg diagram.svg --tolerance 20 --min-area 500
+svg-infographics overlaps --svg diagram.svg
+svg-infographics callouts --svg diagram.svg --plan callouts.json
 svg-infographics overlaps --svg diagram.svg
 ```
 
@@ -136,6 +139,7 @@ Every subcommand is invoked as `svg-infographics <subcommand> [args]`. Run `--he
 | `geom` | calculator | Sketch constraints: midpoint, perpendicular, tangent, intersections, offset, contains, rect-edge, curve-midpoint |
 | `charts` | calculator | Pygal SVG charts with caller-provided palette and injected dark mode |
 | `empty-space` | calculator | SVG-native free-region detection, returns boundary polygons for callout/legend/badge placement |
+| `callouts` | calculator | Joint placement for a list of leader + leaderless callouts via greedy solver with pairwise constraints |
 | `text-to-path` | on request | Render text as SVG `<path>` glyph outlines via fontTools |
 
 ## Examples

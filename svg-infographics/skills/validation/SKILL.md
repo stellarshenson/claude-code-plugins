@@ -5,7 +5,7 @@ description: SVG validation tools and verification workflow - overlap detection,
 
 # SVG Validation and Verification
 
-Twelve tools shipped with the `stellars-claude-code-plugins` pip package. Install once, use everywhere via the `svg-infographics` CLI. All tools (validators, calculators, and the on-request `text-to-path`) install with the base package - no optional extras required.
+Twelve tools shipped in `stellars-claude-code-plugins` pip package. Install once, use everywhere via `svg-infographics` CLI. All tools (validators, calculators, on-request `text-to-path`) install with base package - no optional extras.
 
 ```bash
 pip install stellars-claude-code-plugins
@@ -14,11 +14,11 @@ svg-infographics --help
 
 ## Task Tracking
 
-**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) when running validation. Create tasks for each checker run and fix cycle.
+**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) when running validation. Tasks per checker run and fix cycle.
 
 ## Tool: overlaps
 
-Parses all visual elements, computes bounding boxes (text with font metrics, paths, rotated arrows, circles, rects), reports ALL overlaps.
+Parses all visual elements, computes bboxes (text with font metrics, paths, rotated arrows, circles, rects), reports ALL overlaps.
 
 Classifications: `violation` (fix needed), `sibling` (adjacent), `label-on-fill` (intentional), `contained` (child in parent).
 
@@ -40,12 +40,12 @@ Cycle: `--strip-bounds` -> fix layout -> run check -> `--inject-bounds` -> visua
 
 ### Default-Bad Rule (Fail-First)
 
-All violations assumed **real defects** until individually defended. Each finding addressed as:
+All violations assumed **real defects** until individually defended. Each finding resolved as:
 - **Fixed**: repositioned, re-run confirms
 - **Accepted**: specific reason not a defect
 - **Checker limitation**: manual computation proving compliance
 
-**Bulk dismissals prohibited.** Each finding individually examined.
+**Bulk dismissals prohibited.** Examine every finding individually.
 
 ## Tool: contrast
 
@@ -77,7 +77,7 @@ svg-infographics connectors --svg file.svg
 
 ## Tool: css
 
-CSS compliance checker. Validates that all colours are CSS-controlled, no inline fills on text, no forbidden colours (#000000/#ffffff), dark mode overrides present.
+CSS compliance checker. Validates: all colours CSS-controlled, no inline fills on text, no forbidden colours (#000000/#ffffff), dark mode overrides present.
 
 ```bash
 svg-infographics css --svg file.svg              # Check compliance
@@ -97,7 +97,7 @@ svg-infographics connector --from 353,122 --to 200,84 --margin 3 --cutout 236,90
 
 ## Tool: primitives
 
-Geometry generator returning exact anchor coordinates for precise element placement. Claude agents should use this instead of approximating positions. Run `svg-infographics primitives --help` for the full list.
+Geometry generator returning exact anchor coordinates for precise element placement. Use instead of approximating positions. Run `svg-infographics primitives --help` for full list.
 
 ```bash
 # 2D shapes
@@ -117,24 +117,24 @@ svg-infographics primitives spline --points "80,200 150,80 300,120 450,60" --sam
 svg-infographics primitives axis --origin 80,200 --length 300 --axes xyz --ticks 5
 ```
 
-Each primitive returns named anchor points (center, top-left, vertices, tips, etc.) for precise positioning of text, connectors, and labels relative to shapes.
+Each primitive returns named anchor points (center, top-left, vertices, tips, etc.) for precise positioning of text, connectors, labels relative to shapes.
 
 ## Tool: text-to-path (ON REQUEST ONLY)
 
-Converts text rendered in a TTF/OTF font into SVG `<path>` outlines. **Do NOT run this by default.** Use it only when the user explicitly asks for one of:
+Converts text rendered in TTF/OTF font into SVG `<path>` outlines. **Do NOT run by default.** Use only when user explicitly asks for one of:
 
-- Embedding a custom font without depending on the renderer having it installed
-- Print or hand-off SVGs that must look identical across all renderers (rsvg, CairoSVG, Inkscape, browsers)
-- A headline / label that needs a deterministic bounding box for fit-to-width scaling without the glyph distortion of `textLength`
-- Branding marks (logos, wordmarks) that should never reflow
+- Embedding custom font without relying on renderer having it installed
+- Print/hand-off SVGs that must look identical across all renderers (rsvg, CairoSVG, Inkscape, browsers)
+- Headline/label needing deterministic bbox for fit-to-width scaling without `textLength` glyph distortion
+- Branding marks (logos, wordmarks) that must never reflow
 
-Tradeoffs the caller accepts when this is used:
+Tradeoffs caller accepts:
 
-- The output is no longer editable as text (no search/replace, no screen readers, no copy-paste)
-- File size grows roughly 5-20x compared to a `<text>` element
-- A `.ttf` or `.otf` font file path must be supplied - this tool does NOT resolve system fonts by family name
+- Output no longer editable as text (no search/replace, no screen readers, no copy-paste)
+- File size 5-20x larger than `<text>` element
+- `.ttf` or `.otf` font path required - tool does NOT resolve system fonts by family name
 
-Coordinates match `<text>` semantics: `--x` / `--y` are the **baseline** origin, `--anchor` mirrors `text-anchor` (start | middle | end). When `--fit-width` is given and the natural advance exceeds it, the path is uniformly scaled down to fit (aspect preserved - no glyph stretching).
+Coordinates match `<text>` semantics: `--x`/`--y` are **baseline** origin, `--anchor` mirrors `text-anchor` (start | middle | end). With `--fit-width`, natural advance exceeding the width uniformly scales path down (aspect preserved - no glyph stretching).
 
 ```bash
 # Minimal: render "Hello" at baseline (100, 200) using Inter.ttf at 24px
@@ -155,7 +155,7 @@ svg-infographics text-to-path --text "TITLE" --font ./Inter.ttf \
 svg-infographics text-to-path --text "Hi" --font ./Inter.ttf --size 24 --json
 ```
 
-The command prints the `<path>` snippet on stdout (paste it into your infographic) and the bounding box + scale on stderr so it doesn't pollute pipes.
+Command prints `<path>` snippet on stdout (paste into infographic), bbox + scale on stderr so pipes stay clean.
 
 ## Pre-Delivery Checklist
 
@@ -205,7 +205,7 @@ Playwright blocks `file://` URLs. Serve via HTTP:
 2. HTML wrapper: `<body style="background:#1e1e1e"><img src="http://localhost:8768/file.svg" width="900"></body>`
 3. Serve wrapper on different port, navigate Playwright
 4. Screenshot dark + light modes
-5. Check for: text overlap, contrast failures, bar misalignment, asymmetric padding
+5. Check: text overlap, contrast failures, bar misalignment, asymmetric padding
 
 ## Generative Failure Investigation
 

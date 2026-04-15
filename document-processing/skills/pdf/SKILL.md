@@ -8,7 +8,7 @@ license: Proprietary. LICENSE.txt has complete terms
 
 ## Overview
 
-This guide covers essential PDF processing operations using Python libraries and command-line tools. For advanced features, JavaScript libraries, and detailed examples, see reference.md. If you need to fill out a PDF form, read forms.md and follow its instructions.
+Essential PDF operations via Python libraries and CLI tools. Advanced features, JavaScript libraries, detailed examples: see reference.md. PDF form filling: read forms.md and follow instructions.
 
 ## Quick Start
 
@@ -288,7 +288,7 @@ with open("encrypted.pdf", "wb") as output:
 
 ## Next Steps
 
-- For advanced pypdfium2 usage, see reference.md
-- For JavaScript libraries (pdf-lib), see reference.md
-- If you need to fill out a PDF form, follow the instructions in forms.md
-- For troubleshooting guides, see reference.md
+- Advanced pypdfium2 usage: reference.md
+- JavaScript libraries (pdf-lib): reference.md
+- PDF form filling: forms.md
+- Troubleshooting: reference.md

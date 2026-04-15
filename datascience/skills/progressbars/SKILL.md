@@ -5,21 +5,21 @@ description: Use this skill when implementing progress bars in Python scripts or
 
 # Progress Bars Skill
 
-Implements progress bars in Python scripts and Jupyter notebooks. Full reference in the sections below.
+Progress bars for Python scripts and Jupyter notebooks. Full reference below.
 
 ## Selection Rule
 
-**MANDATORY**: Always ask the user which progress bar style to use (classic or modern) before implementing. Do not assume based on context.
+**MANDATORY**: Always ask user which style (classic or modern) before implementing. Never assume from context.
 
 ## Quick Reference
 
 ### Classic (tqdm)
 
-Works everywhere - terminals, Jupyter, IDE consoles. Renders as native ipywidgets in Jupyter when `ipywidgets` is installed.
+Works everywhere - terminals, Jupyter, IDE consoles. Renders as native ipywidgets in Jupyter when `ipywidgets` installed.
 
-**Dependencies**: `tqdm`, `ipywidgets` (for Jupyter widget rendering)
+**Dependencies**: `tqdm`, `ipywidgets` (Jupyter widget rendering)
 
-**Import**: `from tqdm.auto import tqdm` - the `.auto` submodule auto-selects the best backend (text in terminal, ipywidgets in Jupyter).
+**Import**: `from tqdm.auto import tqdm` - `.auto` submodule auto-selects backend (text in terminal, ipywidgets in Jupyter).
 
 ```python
 from tqdm.auto import tqdm
@@ -39,7 +39,7 @@ with ThreadPoolExecutor(max_workers=16) as executor:
 
 ### Modern (rich)
 
-Feature-rich with spinners, elapsed time, ETA. Works in both terminals and Jupyter notebooks.
+Feature-rich: spinners, elapsed time, ETA. Works in terminals and Jupyter notebooks.
 
 **Dependencies**: `rich`
 
@@ -70,26 +70,26 @@ with Progress(
 
 Common issues preventing rich Progress bars from completing properly:
 
-- **N-1 issue (bar stops one short)**: most common with parallel execution. After the loop, always call `progress.update(task, completed=total)` then `progress.refresh()` to force 100%. Defensive practice for sequential loops too
-- **Bar disappears**: `transient=True` clears the bar on context exit. Use `transient=False` (default) to keep it visible
-- **Stuck below 100%**: `total=` doesn't match `advance()` call count. Always advance on every iteration, even when skipping items
+- **N-1 issue (bar stops one short)**: most common with parallel execution. After loop, always call `progress.update(task, completed=total)` then `progress.refresh()` to force 100%. Defensive practice for sequential loops too
+- **Bar disappears**: `transient=True` clears bar on context exit. `transient=False` (default) keeps it visible
+- **Stuck below 100%**: `total=` doesn't match `advance()` call count. Always advance every iteration, even when skipping items
 - **Spinner won't stop**: all tasks must reach `completed == total`. Verify total matches actual iteration count
-- **Bar frozen**: default refresh is 10/sec. Use `refresh_per_second=10` for standard loops or call `progress.refresh()`
-- **Multiple bars overwrite**: create tasks once before the loop, use `progress.reset(task, total=...)` per batch
+- **Bar frozen**: default refresh 10/sec. `refresh_per_second=10` for standard loops or call `progress.refresh()`
+- **Multiple bars overwrite**: create tasks once before loop, use `progress.reset(task, total=...)` per batch
 
-Full troubleshooting with code examples in the sections below.
+Full troubleshooting with code examples below.
 
 ## Jupyter Compatibility
 
-Both styles work in Jupyter notebooks:
+Both styles work in Jupyter:
 
 - **tqdm.auto** + `ipywidgets` = native widget progress bars
 - **rich Progress** = renders correctly in JupyterLab
-- Always use `tqdm.auto` (not `tqdm.tqdm`) for automatic backend selection when using classic style
+- Always `tqdm.auto` (not `tqdm.tqdm`) for automatic backend selection in classic style
 
 ## Jupyter Output Ordering (rich)
 
-In Jupyter, `logger.info()` and `print()` bypass Jupyter's display system (stderr/stdout), causing messages to appear below or interleaved with rich Progress bars. Use `rich.print()` instead - it shares the same output pipeline as Progress:
+In Jupyter, `logger.info()` and `print()` bypass Jupyter display system (stderr/stdout), causing messages to appear below or interleaved with rich Progress bars. Use `rich.print()` instead - shares same output pipeline as Progress:
 
 ```python
 from rich import print as rprint
@@ -100,7 +100,7 @@ with Progress(...) as progress:
     ...
 ```
 
-Full details in the sections below.
+Full details below.
 
 ## pyproject.toml
 

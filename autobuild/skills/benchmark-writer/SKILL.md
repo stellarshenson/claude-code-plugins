@@ -7,23 +7,23 @@ description: Write a BENCHMARK.md with measurable evaluation criteria through it
 
 ## What is the benchmark?
 
-The benchmark is a **scalar evaluation function**. It takes the current state of the codebase and produces ONE number. That number tells the orchestrator how far from done the iteration is.
+Benchmark = **scalar evaluation function**. Takes codebase state, produces ONE number. Tells orchestrator how far from done.
 
-It is NOT a plan. It is NOT exit conditions. It is NOT a to-do list. It is a MEASUREMENT INSTRUMENT - like a thermometer or a loss function. Every iteration, the same benchmark runs against the codebase and produces a comparable score. The score trajectory (going down for MINIMIZE, up for MAXIMIZE) shows whether iterations are making progress.
+NOT a plan. NOT exit conditions. NOT a to-do list. MEASUREMENT INSTRUMENT - thermometer, loss function. Same benchmark runs every iteration against codebase, produces comparable score. Score trajectory (down for MINIMIZE, up for MAXIMIZE) reveals iteration progress.
 
-**What belongs in the benchmark**: score formula, programmatic checks (commands that produce numbers), data science metrics (MSE, F1, correlation), binary checklist items (does X exist in file Y), fuzzy scales (0-10 with rubrics), iteration log tracking score trajectory.
+**Belongs in benchmark**: score formula, programmatic checks (commands producing numbers), data science metrics (MSE, F1, correlation), binary checklist items (does X exist in file Y), fuzzy scales (0-10 with rubrics), iteration log tracking trajectory.
 
-**What does NOT belong (MOST COMMON MISTAKE)**: exit conditions ("stop when..."), completion conditions ("iterations stop when ALL..."), convergence criteria ("stop if delta < X"). These ALWAYS go in PROGRAM.md, NEVER in BENCHMARK.md. If you catch yourself writing "stop", "exit", "completion", or "converge" in the benchmark - STOP and move it to the program.
+**Does NOT belong (MOST COMMON MISTAKE)**: exit conditions ("stop when..."), completion conditions ("iterations stop when ALL..."), convergence criteria ("stop if delta < X"). ALWAYS PROGRAM.md, NEVER BENCHMARK.md. Catch yourself writing "stop", "exit", "completion", "converge" in benchmark - STOP, move to program.
 
 ## Prerequisites
 
-PROGRAM.md must exist and be approved by the user.
+PROGRAM.md exists, user-approved.
 
 ## Process
 
 ### Round 1: Identify measurable signals
 
-Read PROGRAM.md. For each work item, ASK the user - all in ONE message:
+Read PROGRAM.md. For each work item, ASK user - all in ONE message:
 
 1. **What can we measure programmatically?** For each work item, propose concrete metrics:
    - Line counts (`wc -l`), function counts (`grep -c "def "`)
@@ -33,7 +33,7 @@ Read PROGRAM.md. For each work item, ASK the user - all in ONE message:
    - File existence checks (`test -f path`)
    - grep pattern counts (occurrences of a pattern that should increase/decrease)
    - Custom script output (a small Python one-liner that computes a metric)
-   - **Data science metrics** (when the objective involves models, simulations, or statistical behavior):
+   - **Data science metrics** (when objective involves models, simulations, statistical behavior):
      - Error metrics: MSE, RMSE, MAE, MAPE
      - Distribution metrics: KL divergence, Wasserstein distance, Kolmogorov-Smirnov statistic
      - Classification: F1, precision, recall, accuracy, ROC-AUC
@@ -41,61 +41,61 @@ Read PROGRAM.md. For each work item, ASK the user - all in ONE message:
      - Statistical tests: p-values, chi-squared, t-test results
      - Custom: any domain-specific metric computable from simulation output or model predictions
 
-2. **What's the target for each metric?** Current value -> target value
+2. **Target per metric?** Current value -> target value
 
-3. **What can't be measured programmatically?** These become fuzzy scales (0-10) with explicit rubrics - but only as a last resort. Every fuzzy scale must justify why a programmatic metric isn't possible.
+3. **What can't be measured programmatically?** Becomes fuzzy scale (0-10) with explicit rubric - last resort only. Every fuzzy scale justifies why programmatic metric impossible.
 
-4. **How do we execute each check?** For every metric, define the exact execution recipe - the command, script, or procedure that produces the number. This must be repeatable and comparable across iterations:
+4. **How to execute each check?** For every metric, define exact execution recipe - command, script, procedure producing the number. Repeatable, comparable across iterations:
    - **Shell commands**: `make test`, `pytest --co -q | tail -1`, `ruff check --statistics | tail -1`
-   - **Python scripts**: inline one-liners or dedicated test scripts that output a number
-   - **Scenario tests**: for complex behaviors (UI, API, simulation), define the test procedure:
+   - **Python scripts**: inline one-liners or dedicated test scripts outputting a number
+   - **Scenario tests**: for complex behaviors (UI, API, simulation), define test procedure:
      - Playwright/browser tests: `npx playwright test --reporter=json | jq '.stats.unexpected'`
-     - API tests: `curl -s endpoint | jq '.status'` or a pytest fixture that hits the endpoint
+     - API tests: `curl -s endpoint | jq '.status'` or pytest fixture hitting the endpoint
      - Simulation runs: `python run_simulation.py --config test.yaml | grep 'metric:'`
-     - Generative scenario tests: a prompt template + expected output pattern (e.g. "run `claude -p 'prompt'` and check output contains X")
-   - **Comparison baselines**: for before/after metrics, store the baseline value in the benchmark and compare against current
+     - Generative scenario tests: prompt template + expected output pattern (e.g. "run `claude -p 'prompt'`, check output contains X")
+   - **Comparison baselines**: for before/after metrics, store baseline value in benchmark, compare against current
 
-   Every check in the benchmark must have an **Execution** line showing exactly how to reproduce it. No ambiguous "verify X works" - show the command.
+   Every check needs **Execution** line showing exact reproduction. No ambiguous "verify X works" - show the command.
 
-Present proposed metrics and ask: "Which of these can we actually compute? What am I missing?"
+Present proposed metrics, ask: "Which of these can we actually compute? What am I missing?"
 
 ### Round 2: Draft the benchmark
 
 Write BENCHMARK.md with:
 - **Score formula** with explicit weights
-- **Programmatic checks** (commands that produce numbers)
+- **Programmatic checks** (commands producing numbers)
 - **Checklist items** (binary pass/fail verified against code)
-- **Fuzzy scales** (only for genuinely subjective qualities, with detailed rubrics)
+- **Fuzzy scales** (only for genuinely subjective qualities, detailed rubrics)
 - **Iteration log** table
 
-Present to user and ASK: "Is this measuring the right things? Are the targets realistic?"
+Present to user, ASK: "Measuring the right things? Targets realistic?"
 
 ### Round 3+: Refine
 
-Iterate based on feedback. Common refinements:
+Iterate on feedback. Common refinements:
 - Adjust targets (too aggressive / too lenient)
-- Replace fuzzy scales with programmatic metrics the user suggests
-- Add metrics for edge cases the user knows about
-- Remove items that are redundant
+- Replace fuzzy scales with user-suggested programmatic metrics
+- Add metrics for edge cases user knows about
+- Remove redundant items
 
 Each round: update BENCHMARK.md, show changes, ask if ready.
 
 ### Final: User approval
 
-Done ONLY when user explicitly approves. Same approval phrases as program-writer.
+Done ONLY on explicit user approval. Same approval phrases as program-writer.
 
 ## Metric Hierarchy (prefer top, avoid bottom)
 
 1. **Programmatic command output** - `make test` failure count, `wc -l`, `grep -c`. Best. Reproducible, no LLM judgment
-2. **Data science metrics** - MSE, RMSE, F1, KL divergence, correlation coefficients. Computed from data/model output. Objective, comparable across iterations
+2. **Data science metrics** - MSE, RMSE, F1, KL divergence, correlation coefficients. Computed from data/model output. Objective, iteration-comparable
 3. **File/pattern existence checks** - `test -f path`, `grep -q pattern file`. Binary, fast
-4. **Computed metrics** - small Python one-liner or script that outputs a number. Good when standard tools don't cover it
+4. **Computed metrics** - Python one-liner or script outputting a number. Good when standard tools insufficient
 5. **Binary checklist items** - "X exists in file Y". Verified by reading code. LLM-evaluated but binary
-6. **Fuzzy scales (0-10)** - subjective grades with rubrics. Last resort. Every fuzzy scale should have a "why not programmatic?" justification
+6. **Fuzzy scales (0-10)** - subjective grades with rubrics. Last resort. Every fuzzy scale needs "why not programmatic?" justification
 
 ## Score Formula Design
 
-The score formula should combine metrics with appropriate weights:
+Combine metrics with appropriate weights:
 
 ```markdown
 ## Score
@@ -106,21 +106,21 @@ The score formula should combine metrics with appropriate weights:
 score = (failed_tests * 10) + unchecked_items + lint_violations + sum(fuzzy_residuals)
 ```
 
-**Weights reflect severity**: test failures are 10x worse than a missing checklist item.
+**Weights reflect severity**: test failures 10x worse than missing checklist item.
 ```
 
 **Rules for good formulas**:
 - One number, one direction (MINIMIZE or MAXIMIZE)
-- **Data science metrics carry the most weight** - they are the primary optimisation target (RQI, MSE, F1, correlation). These should dominate the composite score (>= 50% weight). Checklist items and fuzzy scales are guardrails, not the objective
+- **Data science metrics carry most weight** - primary optimisation target (RQI, MSE, F1, correlation). Dominate composite score (>= 50% weight). Checklist items and fuzzy scales = guardrails, not objective
 - Weight hierarchy: data science metrics > programmatic checks > binary checklist > fuzzy scales
-- Formula doesn't change between iterations (add items, don't change weights)
+- Formula fixed between iterations (add items, don't change weights)
 
 ## Fuzzy Scale Design (when unavoidable)
 
 Every fuzzy scale MUST have:
-- **Rubric**: what does 10 mean? What does 5 mean? What does 2 mean?
-- **Justification**: why can't this be measured programmatically?
-- **Anchor examples**: concrete descriptions at 3+ points on the scale
+- **Rubric**: meaning of 10, 5, 2
+- **Justification**: why not programmatic
+- **Anchor examples**: concrete descriptions at 3+ scale points
 
 ```markdown
 ### Scale: Design Consistency (0-10)
@@ -133,7 +133,7 @@ Rubric:
 - 5 = some patterns shared, some divergent
 - 2 = no consistent patterns
 
-Why not programmatic: consistency is cross-cutting, no single grep pattern captures it.
+Why not programmatic: consistency cross-cutting, no single grep pattern captures it.
 ```
 
 ## BENCHMARK.md Structure
@@ -196,19 +196,19 @@ Why not programmatic: <justification>
 
 ## Rules
 
-- **Benchmark is ONLY scoring** - it produces a scalar number evaluating the current iteration. It does NOT contain exit conditions, completion conditions, or stop criteria. Those belong in PROGRAM.md. The benchmark answers "what is the score right now?" - the program answers "when do we stop?"
-- **ZERO exit/stop/completion conditions** - this is the most commonly violated rule. Do NOT generate ANY of these patterns in BENCHMARK.md:
-  - "Iterations stop when..." - WRONG, belongs in PROGRAM.md
-  - "Completion Conditions" section - WRONG, belongs in PROGRAM.md
-  - "Stop when score reaches..." - WRONG, belongs in PROGRAM.md
-  - "Exit when all items pass" - WRONG, belongs in PROGRAM.md
-  - Convergence checks like "stop condition met: delta < X" - WRONG, this is an exit condition disguised as a checklist item
-  If you find yourself writing ANYTHING about when to stop iterating, you are writing a PROGRAM item, not a BENCHMARK item. Move it to PROGRAM.md or delete it
-- **Programmatic over generative** - if you can measure it with a command, do that instead of a checklist item
-- **Data science metrics when applicable** - if the objective involves models, simulations, statistical behavior, or data pipelines, actively propose MSE/RMSE/MAE/F1/KL-divergence/correlation metrics. These are the highest-value programmatic measures for quantitative work
-- **Every fuzzy scale justifies its existence** - "why not programmatic?"
-- **Data science metrics dominate the score** - when applicable, they carry >= 50% of the composite weight. They are the optimisation target. Checklists and fuzzy scales are structural guardrails, not the thing being optimised
-- **Fixed evaluation** - the formula doesn't change between iterations
-- **Iteration log is mandatory** - tracks score trajectory
-- **Targets are specific** - "improve" is not a target, "reduce from 14 to 0" is
-- **Every check has an execution recipe** - no ambiguous "verify X works". Show the exact command, script, or procedure that produces the result. Must be repeatable across iterations so scores are comparable. For complex checks (browser tests, API calls, simulation runs, generative scenarios), include the full execution procedure with expected output pattern
+- **Benchmark ONLY scores** - produces scalar number for current iteration. NO exit/completion/stop criteria. Those go in PROGRAM.md. Benchmark answers "what is the score right now?" - program answers "when do we stop?"
+- **ZERO exit/stop/completion conditions** - most commonly violated rule. NEVER generate these patterns in BENCHMARK.md:
+  - "Iterations stop when..." - WRONG, PROGRAM.md
+  - "Completion Conditions" section - WRONG, PROGRAM.md
+  - "Stop when score reaches..." - WRONG, PROGRAM.md
+  - "Exit when all items pass" - WRONG, PROGRAM.md
+  - Convergence checks like "stop condition met: delta < X" - WRONG, exit condition disguised as checklist item
+  Writing ANYTHING about when to stop iterating = PROGRAM item, not BENCHMARK. Move to PROGRAM.md or delete
+- **Programmatic over generative** - measurable by command? Use command, not checklist item
+- **Data science metrics when applicable** - objective involving models, simulations, statistical behavior, or data pipelines: actively propose MSE/RMSE/MAE/F1/KL-divergence/correlation. Highest-value programmatic measures for quantitative work
+- **Every fuzzy scale justifies existence** - "why not programmatic?"
+- **Data science metrics dominate score** - when applicable, >= 50% composite weight. Primary optimisation target. Checklists and fuzzy scales = structural guardrails, not the thing being optimised
+- **Fixed evaluation** - formula stable across iterations
+- **Iteration log mandatory** - tracks score trajectory
+- **Targets specific** - "improve" not a target, "reduce from 14 to 0" is
+- **Every check has execution recipe** - no ambiguous "verify X works". Exact command, script, or procedure producing the result. Repeatable across iterations for score comparability. Complex checks (browser tests, API calls, simulation runs, generative scenarios): include full execution procedure with expected output pattern

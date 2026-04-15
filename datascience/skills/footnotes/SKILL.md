@@ -5,15 +5,15 @@ description: Markdown footnotes for Jupyter notebooks and markdown files using a
 
 # Footnotes in Markdown
 
-Standard `[^1]` footnotes aren't supported in Jupyter or many markdown renderers. Use this HTML anchor pattern instead - proven to work in JupyterLab (including its id sanitizer), GitHub, and standard markdown.
+Standard `[^1]` footnotes unsupported in Jupyter and many markdown renderers. Use HTML anchor pattern instead - proven in JupyterLab (including id sanitizer), GitHub, standard markdown.
 
 ## How it works in JupyterLab
 
 1. Markdown writes `<span id="D005">`
-2. JupyterLab sanitizer renames `id` to `data-jupyter-id="D005"` (does NOT delete it)
-3. User clicks the blue superscript link `[<sup>D005</sup>](#D005)`
-4. JupyterLab's internal click handler matches `#D005` against `data-jupyter-id="D005"`
-5. Calls `scrollIntoView()` on the target element - page scrolls to the entry
+2. JupyterLab sanitizer renames `id` to `data-jupyter-id="D005"` - does NOT delete it
+3. User clicks blue superscript link `[<sup>D005</sup>](#D005)`
+4. JupyterLab internal click handler matches `#D005` against `data-jupyter-id="D005"`
+5. Calls `scrollIntoView()` on target - page scrolls to entry
 
 ## Pattern
 
@@ -21,25 +21,25 @@ Standard `[^1]` footnotes aren't supported in Jupyter or many markdown renderers
 ```markdown
 - dowód: [<sup>D005</sup>](#D005) dowody/03 komunikacja z matką/2023-09-06 pismo.pdf
 ```
-Renders as: clickable blue superscript **D005** followed by the file path.
+Renders: clickable blue superscript **D005** followed by file path.
 
-**Target anchor** (in footnotes/references section):
+**Target anchor** (footnotes/references section):
 ```markdown
 - <span id="D005">D005 `dowody/03 komunikacja z matką/2023-09-06 pismo.pdf`</span>
 ```
-Renders as: bullet point with D005 label and monospace file path.
+Renders: bullet with D005 label and monospace file path.
 
 ## Requirements
 
-- Target **MUST** use `<span id="...">` (not `<div>`, not heading - span works reliably with JupyterLab sanitizer)
-- Inline link **MUST** use `(#DXXX)` hash format (not relative file path)
-- No `<br>` needed between entries - bullet points handle spacing
-- `<sup>` inside the link is optional (cosmetic superscript) but should **NOT** be inside the target span
-- IDs must be unique across the entire document
+- Target **MUST** use `<span id="...">` - not `<div>`, not heading. Span works reliably with JupyterLab sanitizer
+- Inline link **MUST** use `(#DXXX)` hash format - not relative file path
+- No `<br>` between entries - bullet points handle spacing
+- `<sup>` inside link optional (cosmetic superscript), **NOT** inside target span
+- IDs unique across entire document
 
 ## Numbering Schemes
 
-Use a prefix that matches the content:
+Prefix matches content:
 
 | Context | Pattern | Example |
 |---------|---------|---------|
@@ -77,12 +77,12 @@ Use a prefix that matches the content:
 - Academic citations in analysis notebooks
 - Method references (paper links, documentation)
 - Data source attribution
-- Any cross-referencing within a long markdown document
+- Cross-referencing within long markdown documents
 
-## Common mistakes (learned from production)
+## Common mistakes (production lessons)
 
-- Using `<div id="...">` instead of `<span id="...">` - JupyterLab sanitizer handles span reliably
-- Putting `<sup>` inside the target span - makes the label superscript at the target too
-- Using file paths as href instead of `#ID` hash links - won't scroll
-- Forgetting the `#` prefix in the inline link - `(D005)` doesn't work, `(#D005)` does
-- Using `<br>` between bullet-point entries - redundant, bullets already have spacing
+- `<div id="...">` instead of `<span id="...">` - sanitizer handles span reliably
+- `<sup>` inside target span - makes label superscript at target too
+- File paths as href instead of `#ID` hash links - won't scroll
+- Missing `#` prefix in inline link - `(D005)` fails, `(#D005)` works
+- `<br>` between bullet entries - redundant, bullets already space

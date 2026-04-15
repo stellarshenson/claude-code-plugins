@@ -5,31 +5,31 @@ description: Validate a document against its source material for grounding, then
 
 # Document Validation Skill
 
-Validate any document against its source material through two phases: (1) source grounding - extract claims and verify each against the source, and (2) compliance checking - verify tone, style, length, and format rules.
+Validate document against source material in two phases: (1) source grounding - extract claims, verify each against source; (2) compliance - tone, style, length, format rules.
 
 ## Phase 0: Gather Criteria
 
-Before starting, collect the following from the user. If not provided, ask for them.
+Collect from user before starting. Ask if not provided.
 
 **Required:**
-- **Document to validate**: path to the document being checked
-- **Source document(s)**: path(s) to the source material the document should be grounded in
+- **Document to validate**: path to document being checked
+- **Source document(s)**: path(s) to source material for grounding
 
-**Optional (ask if not specified, offer sensible defaults):**
+**Optional (ask if unspecified, offer defaults):**
 - **Word count range**: min-max words (default: no constraint)
 - **Tone**: e.g. first-person narrative, formal, technical, conversational (default: infer from document)
-- **Style rules**: specific patterns to enforce or prohibit (default: none)
-- **Target audience**: who the document is written for (default: general)
-- **Section format rules**: constraints on bullet points, section lengths, heading structure (default: none)
-- **Focus rules**: content that should be excluded or prioritized (default: none)
-- **Format rules**: encoding, spacing, links policy, etc. (default: UTF-8, single line spacing, no links)
-- **Custom rules**: any additional project-specific rules as key-value pairs
+- **Style rules**: patterns to enforce or prohibit (default: none)
+- **Target audience**: who document written for (default: general)
+- **Section format rules**: bullet points, section lengths, heading structure (default: none)
+- **Focus rules**: content excluded or prioritized (default: none)
+- **Format rules**: encoding, spacing, links policy (default: UTF-8, single line spacing, no links)
+- **Custom rules**: project-specific rules as key-value pairs
 
-Store all criteria for use in both phases.
+Store all criteria for both phases.
 
 ## Phase 1: Setup
 
-Create a `validation/` directory in the current project root (the working directory). All validation artifacts go here.
+Create `validation/` directory in project root (working directory). All validation artifacts go here.
 
 ```
 validation/
@@ -40,20 +40,20 @@ validation/
 └── <filename>_corrected.<ext> <- Phase 5 output (best-effort corrected copy)
 ```
 
-Write `criteria.md` with all collected criteria formatted clearly.
+Write `criteria.md` with collected criteria formatted clearly.
 
 ## Phase 2: Source Grounding Check
 
-Extract every factual claim, assertion, attribution, number, date, and quote from the document. For each claim:
+Extract every factual claim, assertion, attribution, number, date, quote from document. For each:
 
-1. **State the claim** exactly as it appears in the document
-2. **Search the source** for confirming evidence
+1. **State claim** exactly as in document
+2. **Search source** for confirming evidence
 3. **Mark status**:
-   - CONFIRMED - source fragment found that supports the claim (quote the fragment)
-   - UNCONFIRMED - no supporting evidence found in source
-   - CONTRADICTED - source evidence contradicts the claim (quote both)
-   - INFERRED - claim is a reasonable inference but not directly stated (explain reasoning)
-   - NOT APPLICABLE - claim is structural/editorial, not fact-based
+   - CONFIRMED - supporting source fragment found (quote fragment)
+   - UNCONFIRMED - no supporting evidence in source
+   - CONTRADICTED - source contradicts claim (quote both)
+   - INFERRED - reasonable inference, not directly stated (explain reasoning)
+   - NOT APPLICABLE - structural/editorial, not fact-based
 
 **Output format** (`grounding-report.md`):
 
@@ -89,11 +89,11 @@ Extract every factual claim, assertion, attribution, number, date, and quote fro
 - **Grounding score**: X/Y (confirmed / total factual claims)
 ```
 
-If UNCONFIRMED or CONTRADICTED claims are found, list concrete corrections.
+UNCONFIRMED/CONTRADICTED claims: list concrete corrections.
 
 ## Phase 3: Compliance Checklist
 
-Check the document against all collected criteria. Generate `compliance-checklist.md`:
+Check document against all collected criteria. Generate `compliance-checklist.md`:
 
 ```markdown
 # Compliance Checklist
@@ -145,7 +145,7 @@ For each custom rule:
 - [ ] Action: [fix / OK]
 ```
 
-Use Python scripts for measurable checks (word count, point length, link detection) rather than eyeballing.
+Use Python scripts for measurable checks (word count, point length, link detection) - never eyeball.
 
 ## Phase 4: Validation Summary
 
@@ -178,22 +178,22 @@ Generate `validation-summary.md` combining both phases:
 
 ## Phase 5: Apply Corrections (best effort)
 
-After validation, always produce a corrected copy of the document with all fixable issues resolved:
+Always produce corrected copy with fixable issues resolved after validation:
 
-1. Copy the original document to `validation/<filename>_corrected.<ext>` (e.g. `report.md` -> `validation/report_corrected.md`)
-2. Apply all corrections identified in the grounding report and compliance checklist:
+1. Copy original to `validation/<filename>_corrected.<ext>` (e.g. `report.md` -> `validation/report_corrected.md`)
+2. Apply corrections from grounding report and compliance checklist:
    - UNCONFIRMED claims: rephrase to align with source or remove
    - CONTRADICTED claims: fix to match source evidence
    - Compliance failures: fix formatting, trim length, adjust tone
-3. Re-run both checks (grounding + compliance) against the corrected version
+3. Re-run both checks (grounding + compliance) against corrected version
 4. Update `validation-summary.md` with post-correction status
-5. Present the summary to the user with a diff of changes made
+5. Present summary to user with diff of changes
 
 ## Important Notes
 
-- **Never modify the source document(s)** - they are read-only reference
-- **All artifacts in `validation/`** - do not scatter files elsewhere
-- **Python for measurements** - use scripts for word counts, pattern matching, not manual counting
-- **Quote evidence** - always include the actual text from source/document, not just "confirmed"
-- **Be specific** - violations must cite the exact offending text with location
-- **Preserve originals** - never modify the original document. The corrected version is always a separate file in `validation/` with `_corrected` suffix. Only overwrite the original if the user explicitly requests it
+- **Never modify source document(s)** - read-only reference
+- **All artifacts in `validation/`** - no scattered files
+- **Python for measurements** - scripts for word counts, pattern matching, never manual
+- **Quote evidence** - actual text from source/document, not just "confirmed"
+- **Be specific** - violations cite exact offending text with location
+- **Preserve originals** - corrected version always separate file in `validation/` with `_corrected` suffix. Overwrite original only on explicit user request

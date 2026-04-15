@@ -5,7 +5,7 @@ description: Jupyter notebook structure and organization standards. Auto-trigger
 
 # Notebook Structure Standards
 
-Apply these patterns when creating or modifying Jupyter notebooks.
+Patterns for Jupyter notebook creation and modification.
 
 ## Mandatory Section Order
 
@@ -70,9 +70,9 @@ rich.print(f"""[white]Configuration[/white]
 
 - Markdown header before each code section
 - One logical operation per cell
-- Progress bars in SEPARATE cell from setup text (avoids overwriting)
-- Dollar signs: use `\\$` in markdown cells (LaTeX escape)
+- Progress bars in SEPARATE cell from setup text - avoids overwriting
+- Dollar signs: `\\$` in markdown cells (LaTeX escape)
 
 ## Rich Output
 
-Use `rich.print()` with semantic colors. Single multiline print call, never multiple individual prints for related output. See `datascience:rich-output` for color reference.
+`rich.print()` with semantic colors. Single multiline print call, never multiple individual prints for related output. See `datascience:rich-output` for color reference.

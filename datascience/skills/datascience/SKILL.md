@@ -5,21 +5,21 @@ description: Data science project conventions and standards. Auto-triggered when
 
 # Data Science Standards
 
-Apply these conventions when working on data science projects.
+Conventions for data science projects.
 
 ## Notebook Naming
 
 Pattern: `NN-initials-description.py` (Jupytext percent format)
-- Two-digit number for execution order: `01`, `02`, `03`
+- Two-digit execution order: `01`, `02`, `03`
 - Author initials: `kj` for Konrad Jelen
 - Brief description: `data-exploration`, `train-yolov8m`
 - Examples: `01-kj-data-exploration.py`, `04-kj-train-yolov8m.py`
 
-Sequential numbering within logical groupings. Archive obsolete notebooks to `@archive/` (never delete). Use `temp_` prefix for temporary notebooks excluded from Git.
+Sequential numbering within logical groupings. Archive obsolete notebooks to `@archive/` - never delete. `temp_` prefix for temporary notebooks excluded from Git.
 
 ## File Format
 
-Use Jupytext percent format (`.py` files) as source of truth. `# %%` for code cells, `# %% [markdown]` for markdown cells. Add `*.ipynb` to `.gitignore`. This enables proper git diffs and code review.
+Jupytext percent format (`.py` files) as source of truth. `# %%` for code cells, `# %% [markdown]` for markdown cells. Add `*.ipynb` to `.gitignore`. Enables proper git diffs and code review.
 
 ## Project Structure (cookiecutter-data-science)
 
@@ -42,11 +42,11 @@ models/<model_name>/
   checkpoint.pt   # State dict (needs class definition, for retraining)
 ```
 
-Implement folder rolling for model exports: current -> `-1`, `-1` -> `-2`, up to 5 versions.
+Folder rolling for model exports: current -> `-1`, `-1` -> `-2`, up to 5 versions.
 
 ## Code Standards
 
-- **Imports**: never import into `__init__.py`, always use explicit module imports
+- **Imports**: never import into `__init__.py`, always explicit module imports
 - **Docstrings**: Google format, type hints for params and returns
 - **DataFrames**: `purpose_df` for DataFrames, `purpose_lf` for LazyFrames
 - **Rich output**: `from rich.jupyter import print` for readable output
@@ -56,4 +56,4 @@ Implement folder rolling for model exports: current -> `-1`, `-1` -> `-2`, up to
 
 ## EDA First
 
-Always start with thorough EDA: data types, missing values, basic statistics, visual exploration (histograms, scatter, box plots), formulate testable hypotheses. For high-dimensional data, try UMAP/t-SNE for visualization.
+Start with thorough EDA: data types, missing values, basic statistics, visual exploration (histograms, scatter, box plots), testable hypotheses. High-dimensional data: try UMAP/t-SNE.

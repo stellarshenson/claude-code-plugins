@@ -5,12 +5,12 @@ description: Bridge between evaluate and iterate. Asks user how to address devil
 
 # Devil's Advocate - Improve
 
-**This skill is now integrated into `/devils-advocate:iterate`.**
+**Integrated into `/devils-advocate:iterate`.**
 
-The iterate skill handles the full cycle: decide how to improve (Step 1) -> apply changes + version (Step 2) -> score (Step 3) -> rename with residual (Step 4).
+Iterate handles full cycle: decide improvement (Step 1) -> apply changes + version (Step 2) -> score (Step 3) -> rename with residual (Step 4).
 
-Use `/devils-advocate:iterate` directly. It will ask the same improvement mode question (your suggestions / auto-apply / planning mode / you already edited) as its first step.
+Use `/devils-advocate:iterate` directly. First step asks same improvement mode (your suggestions / auto-apply / planning mode / you already edited).
 
 ## When user edits outside Claude
 
-If the user made changes themselves and just wants re-scoring, `/devils-advocate:iterate` handles this too - choose option 4 ("you already edited") and it skips straight to scoring.
+User edited externally, wants re-scoring only: `/devils-advocate:iterate` option 4 ("you already edited") skips straight to scoring.

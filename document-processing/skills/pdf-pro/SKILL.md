@@ -5,7 +5,7 @@ description: Production-ready PDF processing with forms, tables, OCR, validation
 
 # PDF Processing Pro
 
-Production-ready PDF processing toolkit with pre-built scripts, comprehensive error handling, and support for complex workflows.
+Production-ready PDF toolkit. Pre-built scripts, error handling, complex workflow support.
 
 ## Quick start
 
@@ -45,26 +45,26 @@ python scripts/extract_tables.py report.pdf --output tables.csv
 ### ✅ Production-ready scripts
 
 All scripts include:
-- **Error handling**: Graceful failures with detailed error messages
-- **Validation**: Input validation and type checking
-- **Logging**: Configurable logging with timestamps
-- **Type hints**: Full type annotations for IDE support
-- **CLI interface**: `--help` flag for all scripts
-- **Exit codes**: Proper exit codes for automation
+- **Error handling**: graceful failures, detailed error messages
+- **Validation**: input validation, type checking
+- **Logging**: configurable, timestamped
+- **Type hints**: full annotations for IDE support
+- **CLI interface**: `--help` flag on all scripts
+- **Exit codes**: proper codes for automation
 
 ### ✅ Comprehensive workflows
 
-- **PDF Forms**: Complete form processing pipeline
-- **Table Extraction**: Advanced table detection and extraction
-- **OCR Processing**: Scanned PDF text extraction
-- **Batch Operations**: Process multiple PDFs efficiently
-- **Validation**: Pre and post-processing validation
+- **PDF Forms**: complete form processing pipeline
+- **Table Extraction**: advanced detection and extraction
+- **OCR Processing**: scanned PDF text extraction
+- **Batch Operations**: efficient multi-PDF processing
+- **Validation**: pre/post-processing checks
 
 ## Advanced topics
 
 ### PDF Form Processing
 
-For complete form workflows including:
+Complete form workflows:
 - Field analysis and detection
 - Dynamic form filling
 - Validation rules
@@ -75,18 +75,18 @@ See [FORMS.md](FORMS.md)
 
 ### Table Extraction
 
-For complex table extraction:
+Complex extraction:
 - Multi-page tables
 - Merged cells
 - Nested tables
-- Custom table detection
-- Export to CSV/Excel
+- Custom detection
+- CSV/Excel export
 
 See [TABLES.md](TABLES.md)
 
 ### OCR Processing
 
-For scanned PDFs and image-based documents:
+Scanned PDFs and image-based documents:
 - Tesseract integration
 - Language support
 - Image preprocessing
@@ -99,48 +99,48 @@ See [OCR.md](OCR.md)
 
 ### Form processing
 
-**analyze_form.py** - Extract form field information
+**analyze_form.py** - extract form field info
 ```bash
 python scripts/analyze_form.py input.pdf [--output fields.json] [--verbose]
 ```
 
-**fill_form.py** - Fill PDF forms with data
+**fill_form.py** - fill PDF forms with data
 ```bash
 python scripts/fill_form.py input.pdf data.json output.pdf [--validate]
 ```
 
-**validate_form.py** - Validate form data before filling
+**validate_form.py** - validate form data before filling
 ```bash
 python scripts/validate_form.py data.json schema.json
 ```
 
 ### Table extraction
 
-**extract_tables.py** - Extract tables to CSV/Excel
+**extract_tables.py** - extract tables to CSV/Excel
 ```bash
 python scripts/extract_tables.py input.pdf [--output tables.csv] [--format csv|excel]
 ```
 
 ### Text extraction
 
-**extract_text.py** - Extract text with formatting preservation
+**extract_text.py** - extract text, preserve formatting
 ```bash
 python scripts/extract_text.py input.pdf [--output text.txt] [--preserve-formatting]
 ```
 
 ### Utilities
 
-**merge_pdfs.py** - Merge multiple PDFs
+**merge_pdfs.py** - merge multiple PDFs
 ```bash
 python scripts/merge_pdfs.py file1.pdf file2.pdf file3.pdf --output merged.pdf
 ```
 
-**split_pdf.py** - Split PDF into individual pages
+**split_pdf.py** - split PDF into individual pages
 ```bash
 python scripts/split_pdf.py input.pdf --output-dir pages/
 ```
 
-**validate_pdf.py** - Validate PDF integrity
+**validate_pdf.py** - validate PDF integrity
 ```bash
 python scripts/validate_pdf.py input.pdf
 ```
@@ -198,7 +198,7 @@ for pdf_file in glob.glob("invoices/*.pdf"):
 
 ## Error handling
 
-All scripts follow consistent error patterns:
+Consistent error patterns across all scripts:
 
 ```python
 # Exit codes
@@ -221,7 +221,7 @@ else:
 
 ## Dependencies
 
-All scripts require:
+Required for all scripts:
 
 ```bash
 pip install pdfplumber pypdf pillow pytesseract pandas
@@ -237,19 +237,19 @@ Optional for OCR:
 
 ## Performance tips
 
-- **Use batch processing** for multiple PDFs
-- **Enable multiprocessing** with `--parallel` flag (where supported)
-- **Cache extracted data** to avoid re-processing
-- **Validate inputs early** to fail fast
-- **Use streaming** for large PDFs (>50MB)
+- **Batch processing** for multiple PDFs
+- **Multiprocessing** via `--parallel` flag (where supported)
+- **Cache extracted data** - avoid re-processing
+- **Validate inputs early** - fail fast
+- **Streaming** for large PDFs (>50MB)
 
 ## Best practices
 
-1. **Always validate inputs** before processing
-2. **Use try-except** in custom scripts
+1. **Validate inputs** before processing
+2. **try-except** in custom scripts
 3. **Log all operations** for debugging
 4. **Test with sample PDFs** before production
-5. **Set timeouts** for long-running operations
+5. **Set timeouts** on long-running operations
 6. **Check exit codes** in automation
 7. **Backup originals** before modification
 
@@ -290,7 +290,7 @@ python scripts/analyze_form.py --help
 python scripts/extract_tables.py --help
 ```
 
-For detailed documentation on specific topics, see:
-- [FORMS.md](FORMS.md) - Complete form processing guide
-- [TABLES.md](TABLES.md) - Advanced table extraction
-- [OCR.md](OCR.md) - Scanned PDF processing
+Detailed topic docs:
+- [FORMS.md](FORMS.md) - complete form processing guide
+- [TABLES.md](TABLES.md) - advanced table extraction
+- [OCR.md](OCR.md) - scanned PDF processing

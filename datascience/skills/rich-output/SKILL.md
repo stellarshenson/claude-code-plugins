@@ -5,7 +5,7 @@ description: Rich text styling patterns for Python notebooks and scripts. Auto-t
 
 # Rich Output Styling
 
-Apply these semantic color assignments when using the rich library.
+Semantic color assignments for the rich library.
 
 ## Text Colors
 
@@ -48,8 +48,8 @@ Apply these semantic color assignments when using the rich library.
 
 ## Rules
 
-- Single multiline `rich.print()` for related output (NEVER multiple individual prints)
-- Use `[dim]` for visual variation without changing color
+- Single multiline `rich.print()` for related output - NEVER multiple individual prints
+- `[dim]` for visual variation without changing color
 - Dynamic boolean coloring: `"dark_sea_green" if val else "indian_red"`
 - Matplotlib hex: primary `#3498DB`, secondary `#E74C3C`, tertiary `#2ECC71`
-- All Rich standard colors (no hex codes) for terminal compatibility
+- Rich standard colors only (no hex) for terminal compatibility

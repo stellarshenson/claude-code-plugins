@@ -5,7 +5,7 @@ description: Apply research-backed prompt engineering techniques to improve LLM 
 
 # Prompt Engineering Techniques
 
-Research-backed prompting techniques. Each has a reference document with the paper, template, and usage guidance. Read the reference before applying.
+Research-backed prompting techniques. Each has a reference document - paper, template, usage guidance. Read reference before applying.
 
 ## Techniques
 
@@ -21,11 +21,11 @@ Research-backed prompting techniques. Each has a reference document with the pap
 
 ## How to use
 
-1. Pick a technique from the table
-2. Read the reference file for the template and examples
-3. Apply the template to your prompt
+1. Pick technique from table
+2. Read reference file for template and examples
+3. Apply template to prompt
 4. Techniques **stack** - psychological + chain-of-thought + self-refine for maximum effect
 
 ## When auto-triggered
 
-Building system prompts, agent definitions, orchestrator templates, `claude -p` prompts, or evaluation criteria.
+System prompts, agent definitions, orchestrator templates, `claude -p` prompts, evaluation criteria.

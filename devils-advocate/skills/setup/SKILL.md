@@ -5,34 +5,34 @@ description: Set up devil's advocate persona and fact repository for a target do
 
 # Devil's Advocate - Setup
 
-Build the devil persona and fact repository before any evaluation begins. This is always the first step.
+Build devil persona and fact repository before any evaluation. Always first step.
 
 ## Task Tracking
 
-**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout setup. Create tasks for identifying target, building persona, harvesting facts. Mark each in_progress when starting, completed when done.
+**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout setup. Create tasks for identifying target, building persona, harvesting facts. Mark in_progress when starting, completed when done.
 
 ## Artefacts produced
 
-1. **`devils_advocate.md`** - Devil persona definition
-2. **`fact_repository.md`** - Verified claims from source materials
+1. **`devils_advocate.md`** - devil persona definition
+2. **`fact_repository.md`** - verified claims from source materials
 
-Place both alongside the target document.
+Place both alongside target document.
 
-## Step 1: Identify the target document
+## Step 1: Identify target document
 
-Ask the user which document to evaluate. Read it in full.
+Ask user which document to evaluate. Read in full.
 
-## Step 2: Build the Devil Persona
+## Step 2: Build Devil Persona
 
-**MANDATORY**: The persona must be established before any concerns are generated.
+**MANDATORY**: Persona established BEFORE any concerns generated.
 
 ### Source A: User-provided seed
 
-The user provides a seed document (evaluation, review, critique) alongside the target. Infer the persona from the seed's tone, priorities, and concerns. Present the inferred persona for confirmation.
+User provides seed document (evaluation, review, critique) alongside target. Infer persona from seed's tone, priorities, concerns. Present inferred persona for confirmation.
 
-### Source B: User describes the persona
+### Source B: User describes persona
 
-Ask ALL of these in ONE message (do not ask one at a time):
+Ask ALL of these in ONE message (not one at a time):
 
 "Describe the toughest reader for this document:
 1. Who are they? (role, seniority)
@@ -44,7 +44,7 @@ Ask ALL of these in ONE message (do not ask one at a time):
 
 ### Source C: No seed or persona
 
-**You must ask.** Do not proceed with generic concerns. Ask in ONE message:
+**MUST ask.** Never proceed with generic concerns. Ask in ONE message:
 
 "No persona provided. Please either:
 (a) Describe the toughest reader (role, priorities, biases) in a few sentences, OR
@@ -98,8 +98,8 @@ No interpretation - just facts.
 **Rules**:
 - Verbatim quotes for legal/contract text
 - Separate user-provided from document-extracted facts
-- Update incrementally - never overwrite, always append
+- Incremental updates - never overwrite, always append
 
 ## When done
 
-Tell the user: "Persona and fact repository ready. Run `/devils-advocate:evaluate` to generate the baseline scorecard."
+Tell user: "Persona and fact repository ready. Run `/devils-advocate:evaluate` to generate the baseline scorecard."

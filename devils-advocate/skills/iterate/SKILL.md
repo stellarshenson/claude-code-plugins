@@ -5,13 +5,13 @@ description: Improve document based on devil's concerns, create versioned file, 
 
 # Devil's Advocate - Iterate
 
-One iteration cycle: improve the document, create a versioned copy, score it, rename with the residual.
+One iteration cycle: improve document, create versioned copy, score, rename with residual.
 
 ## Task Tracking
 
-**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout the iteration. Create tasks for each step (decide, apply changes, score, finalize, update). Mark each in_progress when starting, completed when done. This ensures no step is skipped and provides visible progress.
+**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout iteration. Create tasks per step (decide, apply, score, finalize, update). Mark in_progress when starting, completed when done. Prevents skipped steps, provides visible progress.
 
-**Prerequisites**: `devils_advocate.md` must contain a scorecard with top gaps. Run `/devils-advocate:evaluate` first if not.
+**Prerequisites**: `devils_advocate.md` must contain scorecard with top gaps. Run `/devils-advocate:evaluate` first otherwise.
 
 ## Step 1: Decide how to improve
 
@@ -32,28 +32,28 @@ Which? (or mix: 'auto for #1-3, discuss #4')"
 
 **If user chose 1, 2, or 3** (AI makes changes):
 
-1. Determine next version number by scanning existing `<name>_v*.md` files
-2. Copy current document as `<name>_v<NN>.md` (NO score suffix yet - that comes after scoring)
-3. Apply changes to the versioned copy:
-   - Mode 1: apply user's specific suggestions
-   - Mode 2: apply recommended options from scorecard top gaps
-   - Mode 3: apply agreed changes from planning discussion
+1. Determine next version number - scan existing `<name>_v*.md`
+2. Copy current document as `<name>_v<NN>.md` (no score suffix yet - added after scoring)
+3. Apply changes to versioned copy:
+   - Mode 1: user's specific suggestions
+   - Mode 2: recommended options from scorecard top gaps
+   - Mode 3: agreed changes from planning discussion
 4. Track which concerns each change targets
 5. Track cross-concern tensions (fixing one may worsen another)
 
 **If user chose 4** (user already edited):
-- Skip to Step 3. No versioned copy - the user's document IS the current state.
+- Skip to Step 3. No versioned copy - user's document IS current state.
 
 ## Step 3: Score
 
-Re-read the document (versioned copy or user-edited original) in full.
+Re-read document (versioned copy or user-edited original) in full.
 
 ASK: "Score in-session or standalone (claude -p)?"
 - **In-session**: score each concern here, show reasoning
 - **Standalone**: run scoring via `claude -p` with persona + document content
 
-For each concern:
-1. Re-score 0-100% against the current text
+Per concern:
+1. Re-score 0-100% against current text
 2. Document: "Score changed from X% to Y% because [specific text change]"
 3. Identify new concerns introduced by changes - add to catalogue
 4. Recalculate total residual risk
@@ -62,7 +62,7 @@ For each concern:
 
 **If AI made changes** (versioned copy exists):
 
-1. Embed scorecard at the end of the versioned document:
+1. Embed scorecard at end of versioned document:
    ```markdown
    ---
 
@@ -76,10 +76,10 @@ For each concern:
    | 1 | [name] | [risk] | [0-100%] | [residual] | [specific text] |
    ```
 
-2. **RENAME** the file: `<name>_v<NN>.md` -> `<name>_v<NN>_<score>.md`
+2. **RENAME** file: `<name>_v<NN>.md` -> `<name>_v<NN>_<score>.md`
    - Score = rounded total residual risk
    - Example: `report_v02.md` -> `report_v02_34.md`
-   - The `_<score>` suffix is MANDATORY. A file without it is incomplete.
+   - `_<score>` suffix MANDATORY. File without it incomplete.
 
 3. Progression: `report_v01_89.md` -> `report_v02_34.md` -> `report_v03_12.md`
 
@@ -103,6 +103,6 @@ Check stopping criteria:
 - Score didn't improve vs previous iteration -> **STOP**: "Stagnation - corrections creating new problems."
 - User says stop -> **STOP**
 
-If not stopping: "Continue with another `/devils-advocate:iterate`."
+Otherwise: "Continue with another `/devils-advocate:iterate`."
 
-**Score drops >20%**: celebrate. "Jolly good show! From [old] to [new] - the devil's running out of ammunition."
+**Score drops >20%**: celebrate. "Jolly good show! From [old] to [new] - devil's running out of ammunition."

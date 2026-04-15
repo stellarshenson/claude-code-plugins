@@ -5,11 +5,11 @@ description: Core SVG infographic standards - grid-first design, CSS theme class
 
 # SVG Infographic Standards
 
-Apply these standards when generating or modifying SVG infographics for documents. Read the **workflow** skill for the mandatory 6-phase per-image creation process. Read the **theme** skill for palette approval and swatch generation. Read the **validation** skill for checker tool usage.
+Apply these standards when generating/modifying SVG infographics for documents. Read **workflow** skill for mandatory 6-phase per-image process. Read **theme** skill for palette approval and swatch generation. Read **validation** skill for checker tool usage.
 
 ## Task Tracking
 
-**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout all SVG work. Create a task list at the start of any multi-step SVG creation or modification. Mark each task in_progress when starting, completed when done. This provides visible progress to the user and prevents skipping steps.
+**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout all SVG work. Task list at start of any multi-step SVG creation or modification. Mark in_progress on start, completed on finish. Visible progress, prevents skipping steps.
 
 ## Key Principles (Quick Reference)
 
@@ -30,7 +30,7 @@ Apply these standards when generating or modifying SVG infographics for document
 
 ## CSS Theme Classes and Dark Mode Detection
 
-Use `<style>` block with `prefers-color-scheme` media query for OS-theme-aware colours. Use `class=` not inline `fill=` for theme-dependent text.
+`<style>` block with `prefers-color-scheme` media query for OS-theme-aware colours. `class=` not inline `fill=` for theme-dependent text.
 
 ### Usage on Elements
 
@@ -51,11 +51,11 @@ Text on saturated accent fills needs:
 
 ### Font Opacity Rule
 
-**Never apply `opacity` to text elements.** Fonts render at full opacity always. Contrast via colour selection, not transparency. Applies to `opacity`, `fill-opacity` on `<text>`, and parent `<g>` opacity inheritance.
+**Never apply `opacity` to text elements.** Fonts always render at full opacity. Contrast via colour selection, not transparency. Applies to `opacity`, `fill-opacity` on `<text>`, and parent `<g>` opacity inheritance.
 
 ### Opacity and Transparency Rule
 
-Default to solid fills. Opacity appropriate for:
+Default solid fills. Opacity appropriate for:
 - Card background tints (`fill-opacity="0.04-0.06"`)
 - Track lines (`opacity="0.3"`)
 - Decorative background imagery (`opacity="0.10-0.35"`)
@@ -64,15 +64,15 @@ Default to solid fills. Opacity appropriate for:
 
 ### CSS-First Rule
 
-**MANDATORY**: Define all colours in `<style>` block, reference via `class=`. Inline `fill="#hex"` acceptable only for structural shape fills, fixed-colour swatch elements, and decorative low-opacity imagery. Validate with `svg-infographics css --svg file.svg`.
+**MANDATORY**: Define all colours in `<style>` block, reference via `class=`. Inline `fill="#hex"` acceptable only for structural shape fills, fixed-colour swatch elements, decorative low-opacity imagery. Validate with `svg-infographics css --svg file.svg`.
 
 ### Dark Mode Limitations
 
-`prefers-color-scheme` works in standalone/`<object>`/inline SVG but **not** via `<img>` or markdown `![alt](path)`. Design for light background primary. Assume `#1e1e1e` as dark bg.
+`prefers-color-scheme` works in standalone/`<object>`/inline SVG but **not** via `<img>` or markdown `![alt](path)`. Design for light background primary. Assume `#1e1e1e` dark bg.
 
 ## Contrast Rules
 
-Every element must contrast its immediate background using theme colours only.
+Every element MUST contrast immediate background using theme colours only.
 
 ### Background-Foreground Pairing
 
@@ -93,7 +93,7 @@ Every element must contrast its immediate background using theme colours only.
 
 ### Transparent Background
 
-Always use transparent background. Exception: banner gradient bars that ARE the design element.
+Always transparent background. Exception: banner gradient bars that ARE the design element.
 
 ### Safe Neutral Palette (when no brand defined)
 
@@ -108,7 +108,7 @@ Always use transparent background. Exception: banner gradient bars that ARE the 
 
 ## Grid-Based Layout
 
-**MANDATORY**: Every SVG uses an explicit grid documented in XML comment.
+**MANDATORY**: Every SVG uses explicit grid documented in XML comment.
 
 ### Design Workflow: Grid-First, Details-Last
 
@@ -132,7 +132,7 @@ y_row3   = 62   (row2 + 14)
 
 ### Invisible Guide Grid
 
-**MANDATORY**: First element after `<style>` is `<g id="guide-grid" display="none">`. Hierarchical bisection:
+**MANDATORY**: First element after `<style>` = `<g id="guide-grid" display="none">`. Hierarchical bisection:
 
 | Level | Step (800px) | Purpose |
 |-------|-------------|---------|
@@ -172,7 +172,7 @@ y_row3   = 62   (row2 + 14)
 
 ### Named Component Groups
 
-Wrap logical components in `<g id="component-name">`. Names lowercase-hyphen. Light/dark variants use `-light`/`-dark` suffix.
+Wrap logical components in `<g id="component-name">`. Lowercase-hyphen names. Light/dark variants use `-light`/`-dark` suffix.
 
 ### Multi-Card Grids
 
@@ -180,7 +180,7 @@ All cards in a row same width: `(viewBox_width - 2*margin - (n-1)*gap) / n`. Int
 
 ### Mandatory Margins
 
-All elements respect minimum margins from card borders and neighbours. Compute final bounding box after all transforms.
+All elements respect minimum margins from card borders and neighbours. Compute final bbox after all transforms.
 
 ### Inner and Outer Bounding Boxes
 
@@ -200,7 +200,7 @@ Every element has two bboxes:
 
 ### File Description Comment
 
-Every SVG starts with comment before `<svg>`: filename, shows, intent, theme.
+Every SVG starts with comment before `<svg>`. Filename, shows, intent, theme.
 
 ```xml
 <!--
@@ -241,15 +241,15 @@ Embed in `<g transform="translate(x,y) scale(s)">`, override stroke to match pal
 
 ### Default Placement
 
-Place icons in the **upper-right** quadrant of the graphic (top-level decorative/identity icons) or the **upper-right** corner of each card (per-card icons), unless the composition explicitly requires otherwise. Rationale: upper-right is the western reading path's terminal scan point for a title row, so the icon reinforces identity without competing with the left-aligned title.
+Place icons **upper-right** quadrant of graphic (top-level decorative/identity) or **upper-right** corner of each card (per-card), unless composition explicitly requires otherwise. Rationale: upper-right = western reading path terminal scan point for a title row, so icon reinforces identity without competing with left-aligned title.
 
-- **Graphic-level icon**: position inside the header band at `x = viewBox.width - margin - icon_size`, vertically centred on the title baseline
-- **Card-level icon**: position inside the card at `x = card.x + card.w - 6 - icon_size`, `y = card.y + 6`, clear of the accent bar and the title text
-- **Override only when**: the layout is a symmetric grid where centring reads better, a process flow where the icon anchors the start of a row, or a timeline where the icon sits on the event marker
+- **Graphic-level icon**: inside header band at `x = viewBox.width - margin - icon_size`, vertically centred on title baseline
+- **Card-level icon**: inside card at `x = card.x + card.w - 6 - icon_size`, `y = card.y + 6`, clear of accent bar and title text
+- **Override only when**: symmetric grid where centring reads better, process flow where icon anchors start of row, timeline where icon sits on event marker
 
 ## Card Backgrounds
 
-**Square-top, rounded-bottom** path so accent bar sits flush. Bottom corner radius r=3.
+**Square-top, rounded-bottom** path - accent bar sits flush. Bottom corner radius r=3.
 
 ```
 fill:   M{x},{y} H{x+w} V{y+h-r} Q{x+w},{y+h} {x+w-r},{y+h} H{x+r} Q{x},{y+h} {x},{y+h-r} Z
@@ -357,7 +357,14 @@ Non-compliant callouts invisible to `empty-space`, `overlaps`, and workflow.
 
 ### Callout construction workflow
 
-**Primary path: `svg-infographics callouts`.** One tool, one call, all callouts placed jointly. Greedy solver with random-ordering restarts. Handles leader + leaderless callouts, text bbox containment, leader cleanness, pairwise conflicts, preferred-side hints. Returns best layout plus top-5 alternatives per callout with penalty breakdowns.
+**Primary path: `svg-infographics callouts`.** One tool, one call, all callouts placed jointly. Greedy solver with random-ordering restarts. Handles leader + leaderless callouts in a single pass, text bbox containment, leader cleanness (auto walk-out of target container), pairwise conflicts (text-vs-text overlap, leader-vs-text crossing, leader-vs-leader crossing), preferred-side hints. Returns best layout plus top-5 alternatives per callout with penalty breakdowns.
+
+**Leader vs leaderless.** Two callout modes, different semantics, different defaults:
+
+- **Leader** (default, `"leader": true` or omitted). Text block plus a visible leader line from target to text bbox edge. Used for dense diagrams where the label needs to sit in free whitespace away from the target, with a line connecting the two. Standoff default 20 px (leader tip stops 20 px short of text for arrowhead clearance). Score combines leader length (sweet spot 55 px), diagonal angle preference (prefers 45° leaders over axis-aligned), target-distance overshoot, preferred side.
+- **Leaderless** (`"leader": false`). Text block placed as close to the target as possible without a connecting line - the text IS the pointer. Used for group labels ("5 INPUTS" above a card stack), waypoint labels, legend entries, any callout where spatial proximity reads as "this label belongs to that thing". Standoff default 5 px (much tighter than leader because there's no leader inflation). Score pulls the text BBOX CENTRE toward the target point (sweet spot 0) so horizontally-symmetric labels settle centred on their target instead of drifting to one side. Obstacle standoff still prevents overlap with actual shapes.
+
+Pick leaderless when the label is a group header, waypoint tag, or legend entry that can sit within a few pixels of its target. Pick leader when the target is inside dense content and the label must float in free whitespace with a visible connection.
 
 Three-step workflow:
 
@@ -375,7 +382,9 @@ Plan file shape (see `svg-infographics callouts --help` for the full schema):
 ]
 ```
 
-Targets can be points `[x, y]` or bboxes `[x, y, w, h]`. Multi-line text uses `\n`. `"leader": false` produces a leaderless label placed as close as possible to the target using a smaller 10 px standoff. Optional `preferred_side` is `"above" | "below" | "left" | "right"` (soft penalty, not a hard filter).
+Targets can be points `[x, y]` or bboxes `[x, y, w, h]`. Multi-line text uses `\n`. `"leader": false` marks a leaderless label (see Leader vs leaderless above for semantics and defaults). Optional `preferred_side` is `"above" | "below" | "left" | "right"` (soft penalty, not a hard filter).
+
+**Common failure mode: target coordinates in the wrong visual region.** The tool places text AT / CENTRED ON the target point. If a "group label" target like `(140, 40)` actually sits in the title band at `y=40` rather than above the card group at `y=62`, the label lands in the title band - visually wrong even though the tool is doing exactly what it was told. When leaderless placements look off, check the target first: it should be the point where you want the label to appear, not a semantic anchor like "the group centroid".
 
 **Debug path: manual primitives.** When the tool's result looks wrong or you want to investigate why a specific candidate was rejected, drop down to the individual primitives:
 
@@ -420,11 +429,11 @@ SVG renders in document order. Five named groups, bottom-up. Every drawable elem
 
 **Connectors layer**: every arrow, strand, L-chamfer, spine, manifold bundle lives in `<g id="connectors">`. Never draw connectors at root. Connector tool output goes inside this group.
 
-**Callouts layer**: every callout group lives in `<g id="callouts">`. Each callout is a child `<g id="callout-<name>">` - see Callout naming convention below. Callouts on their own layer means they render on top of everything, they batch-exclude cleanly from empty-space detection via `exclude_ids=("callout-*",)`, and they can be stripped / regenerated without touching the rest of the SVG.
+**Callouts layer**: every callout group lives in `<g id="callouts">`. Each callout = child `<g id="callout-<name>">` - see Callout naming convention below. Own layer means: renders on top of everything, batch-excludes cleanly from empty-space detection via `exclude_ids=("callout-*",)`, strippable/regeneratable without touching rest of SVG.
 
 ### Track Line Cutouts
 
-Cut gaps in track at milestone nodes. Never use `fill="white"` as knockout.
+Cut gaps in track at milestone nodes. Never `fill="white"` as knockout.
 
 ## Timeline Style: Signal Timing Hexagons
 
@@ -460,7 +469,7 @@ Faint icons at fg-1 colour, opacity 0.10-0.35, 15-20px extent, between text and 
 
 ## Data-Driven Curves
 
-**MANDATORY**: For ANY curve that passes through known waypoints - decision boundaries, distribution shapes, trend lines, score trajectories, ROC/PR curves, isolines, sigmoid/logistic shapes - generate the path with the bundled `primitives spline` tool. Do NOT hand-write `C` (cubic) or `Q` (quadratic) bezier commands. Hand-rolled beziers require guessing control-point placement, overshoot waypoints, kink at segment joins, and fail visual review every time.
+**MANDATORY**: For ANY curve passing through known waypoints - decision boundaries, distribution shapes, trend lines, score trajectories, ROC/PR curves, isolines, sigmoid/logistic shapes - generate path with bundled `primitives spline` tool. Do NOT hand-write `C` (cubic) or `Q` (quadratic) bezier commands. Hand-rolled beziers: guess control-point placement, overshoot waypoints, kink at segment joins, fail visual review every time.
 
 ```bash
 svg-infographics primitives spline \
@@ -468,14 +477,14 @@ svg-infographics primitives spline \
   --samples 200
 ```
 
-The tool runs PCHIP (Piecewise Cubic Hermite Interpolating Polynomial) which is monotonicity-preserving (no overshoot between waypoints), produces continuous tangents at every waypoint, and emits a ready-to-paste `<path d="...">` plus the resampled point list.
+Tool runs PCHIP (Piecewise Cubic Hermite Interpolating Polynomial) - monotonicity-preserving (no overshoot between waypoints), continuous tangents at every waypoint, emits ready-to-paste `<path d="...">` plus resampled point list.
 
 Required parameters:
 - **Waypoints**: 4-8 points, X strictly increasing. Pick visual landmarks the curve must hit, not control points
 - **Samples**: 200-250 for smooth output (fewer for jagged debug renders)
-- **Render**: `stroke-linejoin="round"`, `stroke-width="2"` to `2.5"`, fill segments at `fill-opacity="0.18-0.25"` if shading under the curve
+- **Render**: `stroke-linejoin="round"`, `stroke-width="2"` to `2.5"`, fill segments at `fill-opacity="0.18-0.25"` if shading under curve
 
-Hand-written `<path d="M... C... C..."/>` for data curves is a workflow violation - rerun with `primitives spline` and replace the path.
+Hand-written `<path d="M... C... C..."/>` for data curves = workflow violation. Rerun `primitives spline`, replace path.
 
 ## Markdown Integration
 
@@ -487,14 +496,14 @@ No HTML `<img>` unless width control needed.
 
 ## Creative Infographics
 
-Organic visual forms - flowing paths, concentric rings, orbital loops, funnels, constellations. Same theme swatch, CSS classes, transparent background. Use `<path>`, `<circle>`, `<ellipse>`. Low fill opacities (0.04-0.15). Layout topology uses `flow:`, `orbit:`, `scatter:`, `radial:`.
+Organic visual forms - flowing paths, concentric rings, orbital loops, funnels, constellations. Same theme swatch, CSS classes, transparent background. Use `<path>`, `<circle>`, `<ellipse>`. Low fill opacities (0.04-0.15). Layout topology: `flow:`, `orbit:`, `scatter:`, `radial:`.
 
 ## Troubleshooting
 
 - **Text invisible in dark mode**: Use CSS class instead of inline fill
 - **Overlapping elements**: Re-verify against grid comment, run `svg-infographics overlaps`
-- **Arrows wrong direction**: Rerun `svg-infographics connector` with the correct `--from` and `--to` coordinates; paste the returned `trimmed_path_d` and arrowhead polygons
+- **Arrows wrong direction**: Rerun `svg-infographics connector` with correct `--from`/`--to` coordinates; paste returned `trimmed_path_d` and arrowhead polygons
 - **Colours off-theme**: Check every hex against swatch, run `svg-infographics contrast`
-- **CSS compliance errors**: Run `svg-infographics css --svg file.svg` to find inline fills and missing dark mode overrides
+- **CSS compliance errors**: Run `svg-infographics css --svg file.svg` - finds inline fills and missing dark mode overrides
 - **Imprecise coordinates**: Use `svg-infographics primitives <shape>` for exact anchor points
 - **Wrong size in markdown**: Remove `width`/`height` from `<svg>`, use `viewBox` only

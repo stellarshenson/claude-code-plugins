@@ -5,27 +5,27 @@ description: Generate baseline devil's advocate evaluation. Produces concern cat
 
 # Devil's Advocate - Evaluate (Baseline)
 
-Generate the concern catalogue and scorecard. Run after setup.
+Generate concern catalogue and scorecard. Run after setup.
 
 ## Task Tracking
 
-**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout evaluation. Create tasks for each step (read context, generate catalogue, score, create v01). Mark each in_progress when starting, completed when done.
+**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout evaluation. Create tasks per step (read context, generate catalogue, score, create v01). Mark in_progress when starting, completed when done.
 
-**Prerequisites**: `devils_advocate.md` (persona) and `fact_repository.md` must exist. If not, tell the user to run `/devils-advocate:setup` first.
+**Prerequisites**: `devils_advocate.md` (persona) and `fact_repository.md` must exist. Otherwise tell user to run `/devils-advocate:setup` first.
 
 ## Step 1: Read context
 
-Read the target document, `devils_advocate.md` (persona), and `fact_repository.md` (facts) in full.
+Read target document, `devils_advocate.md` (persona), `fact_repository.md` (facts) in full.
 
 ## Step 2: Generate concern catalogue
 
-For each concern, score on two dimensions using Fibonacci scale (1, 2, 3, 5, 8):
+Per concern, score two dimensions, Fibonacci scale (1, 2, 3, 5, 8):
 
-- **Likelihood** (1-8): How likely this persona raises it
-- **Impact** (1-8): How much damage if unaddressed
+- **Likelihood** (1-8): how likely persona raises it
+- **Impact** (1-8): damage if unaddressed
 - **Risk = Likelihood x Impact** (1-64)
 
-**Risk adjustment**: After initial catalogue, review the full set. Adjust where interactions amplify importance. Document: `Risk: N (adjusted from L x I = M, reason: ...)`.
+**Risk adjustment**: after initial catalogue, review full set. Adjust where interactions amplify importance. Document: `Risk: N (adjusted from L x I = M, reason: ...)`.
 
 **Concern template**:
 ```markdown
@@ -33,11 +33,11 @@ For each concern, score on two dimensions using Fibonacci scale (1, 2, 3, 5, 8):
 
 **Likelihood: N** | **Impact: N** | **Risk: N**
 
-**Their take**: What the devil thinks. Write as them.
+**Their take**: what devil thinks. Write as them.
 
-**Reality**: The factual counter. Reference fact_repository.md.
+**Reality**: factual counter. Reference fact_repository.md.
 
-**Response**: How to address it.
+**Response**: how to address it.
 ```
 
 **Categories to always evaluate** (persona-weighted):
@@ -48,7 +48,7 @@ For each concern, score on two dimensions using Fibonacci scale (1, 2, 3, 5, 8):
 
 ## Step 3: Scorecard
 
-Score 0-100% per concern based on how well the document handles it.
+Score 0-100% per concern based on how well document handles it.
 
 | Score | Devil's reaction |
 |-------|-----------------|
@@ -71,13 +71,13 @@ Score 0-100% per concern based on how well the document handles it.
 
 - **Residual** = `risk x (1 - score)`
 - **Document score** = sum of all residuals (minimise this)
-- **Reasoning must reference specific text** from the document
+- **Reasoning MUST reference specific text** from document
 
-**Top gaps**: List 5 concerns with highest residual. These are optimisation targets.
+**Top gaps**: 5 concerns with highest residual. Optimisation targets.
 
 ## Step 4: Explore options
 
-For each high-residual concern, propose 2-4 options:
+Per high-residual concern, propose 2-4 options:
 
 ```markdown
 ### Concern #N: [name] (residual: X)
@@ -93,22 +93,22 @@ For each high-residual concern, propose 2-4 options:
 
 ## Step 5: Execution mode
 
-ASK the user: "How should I run the scoring? Two options:
+ASK user: "How should I run scoring? Two options:
 
-1. **In-session** (default) - I evaluate right here in this conversation. You see my reasoning live, can challenge scores, and we iterate together
-2. **Standalone** - I run the evaluation via `claude -p` as an independent subprocess. Faster, no conversation overhead, but you only see the final scorecard
+1. **In-session** (default) - evaluate here in conversation. See reasoning live, challenge scores, iterate together
+2. **Standalone** - evaluation via `claude -p` subprocess. Faster, no conversation overhead, final scorecard only
 
-For initial evaluations, in-session is recommended so you can calibrate the devil's perspective. For re-scoring iterations where the persona is established, standalone is faster."
+Initial evaluations: in-session recommended - calibrates devil's perspective. Re-scoring iterations, persona established: standalone faster."
 
-- **In-session**: proceed with Steps 2-4 above in the conversation
-- **Standalone**: construct a prompt with persona + fact repository + target document content, run via `claude -p --model sonnet`, parse the output scorecard, append to `devils_advocate.md`
+- **In-session**: proceed with Steps 2-4 above in conversation
+- **Standalone**: construct prompt with persona + fact repository + target document content, run via `claude -p --model sonnet`, parse output scorecard, append to `devils_advocate.md`
 
 ## Step 6: Embed scorecard in target document + rename
 
-**MANDATORY**: The scored document must carry its own scorecard and residual in the filename.
+**MANDATORY**: Scored document must carry own scorecard and residual in filename.
 
-1. Copy the original target document as `<name>_v01.md` (first version)
-2. Embed the scorecard at the end of `<name>_v01.md`:
+1. Copy original target document as `<name>_v01.md` (first version)
+2. Embed scorecard at end of `<name>_v01.md`:
    ```markdown
    ---
 
@@ -124,12 +124,12 @@ For initial evaluations, in-session is recommended so you can calibrate the devi
 3. **RENAME** to `<name>_v01_<score>.md` where score = rounded total residual
 4. Example: `report_v01.md` -> `report_v01_89.md`
 
-The original document is NOT modified. The `_v01_<score>.md` file is the first scored snapshot.
+Original document NOT modified. `_v01_<score>.md` file = first scored snapshot.
 
 ## When done
 
-Tell the user: "Baseline evaluation complete. Score: [N] out of [max]. Run `/devils-advocate:iterate` to improve and re-score."
+Tell user: "Baseline evaluation complete. Score: [N] out of [max]. Run `/devils-advocate:iterate` to improve and re-score."
 
-**If baseline score is already low** (< 30% of max): "Rather impressive start, I must say. The devil's struggling to find proper ammunition - score [N] out of [max]. Still, there are gaps worth closing."
+**Baseline already low** (< 30% of max): "Rather impressive start, I must say. The devil's struggling to find proper ammunition - score [N] out of [max]. Still, gaps worth closing."
 
-**If baseline score is high** (> 70% of max): "Right. The devil has quite a lot to say. Score [N] out of [max] - there's real work to do here, but that's precisely what this exercise is for."
+**Baseline high** (> 70% of max): "Right. The devil has quite a lot to say. Score [N] out of [max] - real work to do here, but that's precisely what this exercise is for."
