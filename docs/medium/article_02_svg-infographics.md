@@ -153,6 +153,8 @@ svg-infographics charts bar \
 
 The output is a standalone SVG that can be embedded inline inside a larger infographic via `<image>` or dropped straight into a Medium article. Because the palette is extracted from the same theme swatches used for card grids and manifold banners, charts stay visually consistent with the rest of the diagram family without the caller needing to configure anything manually.
 
+![Pygal charts with the stellars-tech theme](images_article_02/08-charts-showcase.svg)
+
 ## Fail-first validation
 
 Fail-first is the plugin's most important discipline. Every checker finding is treated as a real defect until it is individually defended. There is no bulk dismissal. The author has three legal classifications per violation:
@@ -175,7 +177,7 @@ The devils-advocate plugin banner originally used both teal and gold cells in it
 
 The datascience plugin banner has an arrow line between two cards that kept triggering a `track-line vs card` outer-padding overlap. Five attempts at re-routing did not satisfy the checker. The solution was to drop the connecting line entirely and let polygon-only chevrons carry the flow. Simpler, cleaner, validator-approved.
 
-The marketplace hero itself was trimmed twice by the cleanup iteration: the first pass shipped with header stats ("v1.2.5", "422 tests passing") that would age the banner the moment the next release landed. The second pass stripped both and left only the title, tagline, and capability strip. The "does it age" constraint was not in the checker, but the discipline of running through the workflow surfaced it as an obvious gap.
+The marketplace hero itself was trimmed by the cleanup iteration: the first pass shipped with volatile header stats - version strings and test counts - that would age the banner the moment the next release landed. The second pass stripped them and left only the title, tagline, and capability strip. The "does it age" constraint was not in the checker, but the discipline of running through the workflow surfaced it as an obvious gap.
 
 ![Theme swatch approval gate: palette approved before any deliverable](images_article_02/07-theme-approval.svg)
 

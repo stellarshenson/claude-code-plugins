@@ -1,0 +1,174 @@
+<!--
+  09-callouts-showcase.svg - svg-infographics callouts tool showcase
+  Shows: two demo canvases side-by-side (LEADER vs LEADERLESS mode) with three target shapes each
+         plus a legend strip of the solver's three hard constraints.
+  Intent: inline visual for the Medium article section introducing the joint callout placement solver.
+  Theme: Stellars-Tech (teal primary, burnt-orange accent-2 for callouts).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 440">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .accent-bar { fill: #005f7a; opacity: 0.6; }
+    .target-fill { fill: #005f7a; fill-opacity: 0.14; stroke: #005f7a; stroke-width: 1.2; }
+    .callout-text { fill: #7a4a15; font-family: Segoe UI, Arial, sans-serif; font-size: 8.5px; font-style: italic; font-weight: 600; }
+    .callout-line { fill: none; stroke: #7a4a15; stroke-width: 1; opacity: 0.75; stroke-linecap: round; }
+    .canvas-frame { fill: none; stroke: #236a74; stroke-width: 0.6; stroke-dasharray: 4,3; opacity: 0.3; }
+    .violation { stroke: #c04020; stroke-width: 1.5; fill: none; stroke-linecap: round; }
+    .legend-box { fill: #005f7a; fill-opacity: 0.03; stroke: #005f7a; stroke-width: 0.8; opacity: 0.55; }
+    .legend-mini { fill: #005f7a; fill-opacity: 0.18; stroke: #005f7a; stroke-width: 0.8; }
+    .mini-leader { fill: none; stroke: #7a4a15; stroke-width: 0.9; opacity: 0.8; stroke-linecap: round; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .accent-bar { fill: #5cc8e0; }
+      .target-fill { fill: #5cc8e0; fill-opacity: 0.18; stroke: #5cc8e0; }
+      .callout-text { fill: #d4a04a; }
+      .callout-line { stroke: #d4a04a; }
+      .canvas-frame { stroke: #5aafc5; }
+      .violation { stroke: #e06040; }
+      .legend-box { fill: #5cc8e0; stroke: #5cc8e0; }
+      .legend-mini { fill: #5cc8e0; stroke: #5cc8e0; }
+      .mini-leader { stroke: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 440
+    Margins: left/right 20, top 14, bottom 16
+    Title band: y=14..42 (title y=30, subtitle y=44)
+    Canvases y=56..260 (h=204), side-by-side:
+      Left canvas:  x=20..490  (LEADER MODE)
+      Right canvas: x=510..980 (LEADERLESS MODE)
+      Canvas header accent-bar y=56 h=4, mode label y=72
+      Canvas caption baseline y=252
+    Target shapes (identical x relative to canvas origin):
+      circle cx=100 cy=180 r=20
+      rect   x=180 y=155 w=60 h=46
+      diamond cx=380 cy=205 size=36  (points 360,205 380,223 400,205 380,187)
+      Canvas origins x = 20 (left), 510 (right)
+    Leaderless targets (right canvas) placed ABOVE each shape so centre-distance
+    scoring lands the label just above the shape:
+      circle → target (630, 148)   -> shape top 160 -> label centre ~148 = 12 above
+      rect   → target (720, 142)   -> shape top 155 -> label centre ~142 = 13 above
+      diamond→ target (900, 175)   -> shape top 187 -> label centre ~175 = 12 above
+    Legend strip y=280..424 (h=144):
+      title y=298, three 300x108 boxes
+  === -->
+
+  <g id="background">
+    <rect x="0" y="0" width="1000" height="440" fill="transparent"/>
+    <rect x="20" y="56" width="470" height="204" class="canvas-frame"/>
+    <rect x="510" y="56" width="470" height="204" class="canvas-frame"/>
+    <rect x="20" y="56" width="470" height="4" class="accent-bar"/>
+    <rect x="510" y="56" width="470" height="4" class="accent-bar"/>
+    <rect x="20" y="280" width="960" height="144" class="legend-box"/>
+    <rect x="20" y="280" width="960" height="4" class="accent-bar"/>
+  </g>
+
+  <g id="nodes">
+    <!-- LEFT CANVAS target shapes -->
+    <g id="left-targets">
+      <circle cx="120" cy="180" r="20" class="target-fill"/>
+      <rect x="200" y="155" width="60" height="46" class="target-fill"/>
+      <polygon points="380,187 400,205 380,223 360,205" class="target-fill"/>
+    </g>
+    <!-- RIGHT CANVAS target shapes (mirror) -->
+    <g id="right-targets">
+      <circle cx="630" cy="180" r="20" class="target-fill"/>
+      <rect x="710" y="155" width="60" height="46" class="target-fill"/>
+      <polygon points="890,187 910,205 890,223 870,205" class="target-fill"/>
+    </g>
+    <!-- LEGEND mini-scene shapes -->
+    <g id="legend-shapes">
+      <rect x="110" y="332" width="62" height="20" class="legend-mini"/>
+      <rect x="158" y="342" width="62" height="20" class="legend-mini"/>
+      <rect x="388" y="328" width="52" height="20" class="legend-mini"/>
+      <rect x="520" y="350" width="72" height="20" class="legend-mini"/>
+      <circle cx="728" cy="340" r="10" class="legend-mini"/>
+      <circle cx="898" cy="360" r="10" class="legend-mini"/>
+    </g>
+  </g>
+
+  <g id="connectors">
+    <rect x="452" y="336" width="60" height="20" class="legend-mini"/>
+    <line x1="440" y1="335" x2="520" y2="360" class="mini-leader"/>
+    <line x1="738" y1="340" x2="888" y2="360" class="mini-leader"/>
+    <line x1="738" y1="360" x2="888" y2="340" class="mini-leader"/>
+  </g>
+
+  <g id="content">
+    <text x="500" y="30" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" class="fg-1">svg-infographics callouts: joint placement solver</text>
+    <text x="500" y="46" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">two modes share one greedy solver with random-ordering restarts and top-K alternatives</text>
+
+    <text x="32" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">LEADER MODE</text>
+    <text x="32" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" class="fg-3">text floats in empty space; leader line connects to target</text>
+    <text x="522" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="fg-1">LEADERLESS MODE</text>
+    <text x="522" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" class="fg-3">text sits just above target; no leader; text IS the pointer</text>
+
+    <text x="32" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-weight="600" class="fg-2">standoff 20  leader sweet spot 55px, diagonal angle preferred</text>
+    <text x="522" y="252" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-weight="600" class="fg-2">standoff 5  bbox centre pulled to target, text lands above shape</text>
+
+    <text x="500" y="300" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="fg-1">HARD CONSTRAINTS — solver rejects any candidate that violates these</text>
+
+    <text x="180" y="390" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1">text vs text overlap</text>
+    <text x="180" y="404" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" class="fg-3">two label bboxes share area</text>
+    <text x="180" y="415" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" class="fg-3">candidate discarded</text>
+
+    <text x="500" y="390" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1">leader crosses text</text>
+    <text x="500" y="404" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" class="fg-3">leader line cuts through</text>
+    <text x="500" y="415" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" class="fg-3">a different callout's label</text>
+
+    <text x="820" y="390" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="fg-1">leader crosses leader</text>
+    <text x="820" y="404" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" class="fg-3">two leaders intersect</text>
+    <text x="820" y="415" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" class="fg-3">in the free-space region</text>
+
+    <g id="legend-violations">
+      <line x1="168" y1="336" x2="188" y2="356" class="violation"/>
+      <line x1="188" y1="336" x2="168" y2="356" class="violation"/>
+      <line x1="470" y1="338" x2="490" y2="358" class="violation"/>
+      <line x1="490" y1="338" x2="470" y2="358" class="violation"/>
+      <line x1="803" y1="340" x2="823" y2="360" class="violation"/>
+      <line x1="823" y1="340" x2="803" y2="360" class="violation"/>
+    </g>
+  </g>
+
+  <g id="callouts">
+    <!-- LEFT CANVAS: leader callouts. Positions from svg-infographics callouts solver:
+         targets at shape centres, standoff 20, placed in free space with leader lines. -->
+    <g id="callout-conv">
+      <text x="54" y="108" class="callout-text">convergence</text>
+      <text x="54" y="120" class="callout-text">point</text>
+      <line x1="120" y1="160" x2="88" y2="124" class="callout-line"/>
+    </g>
+    <g id="callout-stage">
+      <text x="276" y="108" class="callout-text">pipeline</text>
+      <text x="276" y="120" class="callout-text">stage</text>
+      <line x1="230" y1="155" x2="288" y2="124" class="callout-line"/>
+    </g>
+    <g id="callout-decision">
+      <text x="400" y="128" class="callout-text">decision</text>
+      <text x="400" y="140" class="callout-text">node</text>
+      <line x1="380" y1="187" x2="414" y2="146" class="callout-line"/>
+    </g>
+
+    <!-- RIGHT CANVAS: leaderless callouts. Centre-distance scoring pulls each
+         label centre to a target placed just above the shape, so text reads
+         "above circle / above rect / above diamond" with ~10px breath. -->
+    <g id="callout-l-conv">
+      <text x="630" y="152" text-anchor="middle" class="callout-text">convergence point</text>
+    </g>
+    <g id="callout-l-stage">
+      <text x="740" y="146" text-anchor="middle" class="callout-text">pipeline stage</text>
+    </g>
+    <g id="callout-l-decision">
+      <text x="890" y="178" text-anchor="middle" class="callout-text">decision node</text>
+    </g>
+  </g>
+</svg>

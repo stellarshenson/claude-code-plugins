@@ -1,0 +1,260 @@
+<!--
+  04-tools-inventory.svg - Eight shipped tools, split by role
+  Shows: two container cards side-by-side; left holds 5 calculator tool cards (geometry before painting),
+         right holds 6 validator tool cards (refuse delivery until clean). Each tool card carries the CLI
+         subcommand name in monospace and a one-line description of what it gives or catches.
+  Intent: appears after the "Eight tools" narrative section; reader sees split at a glance - calculators
+         produce coordinates and paths, validators reject bad output before delivery.
+  Theme: stellars-tech - accent-1 (#005f7a teal) for calculators, accent-2 (#7a4a15 ochre) for validators.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 460">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    .calc-card-fill   { fill: #005f7a; fill-opacity: 0.04; }
+    .calc-card-stroke { fill: none; stroke: #005f7a; stroke-width: 1; }
+    .calc-bar         { fill: #005f7a; opacity: 0.6; }
+    .calc-container-fill   { fill: #005f7a; fill-opacity: 0.02; }
+    .calc-container-stroke { fill: none; stroke: #005f7a; stroke-width: 0.8; opacity: 0.25; }
+    .calc-container-bar    { fill: #005f7a; opacity: 0.15; }
+    .val-card-fill    { fill: #7a4a15; fill-opacity: 0.04; }
+    .val-card-stroke  { fill: none; stroke: #7a4a15; stroke-width: 1; }
+    .val-bar          { fill: #7a4a15; opacity: 0.6; }
+    .val-container-fill    { fill: #7a4a15; fill-opacity: 0.02; }
+    .val-container-stroke  { fill: none; stroke: #7a4a15; stroke-width: 0.8; opacity: 0.25; }
+    .val-container-bar     { fill: #7a4a15; opacity: 0.15; }
+    .tool-name { fill: #1a5a6e; font-family: Consolas, Menlo, monospace; font-size: 11px; font-weight: 700; }
+    .tool-desc { fill: #236a74; font-family: Segoe UI, Arial, sans-serif; font-size: 9px; }
+    .role-tag  { font-family: Segoe UI, Arial, sans-serif; font-size: 8px; font-weight: 700; letter-spacing: 1px; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+      .calc-card-fill   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .calc-card-stroke { stroke: #5cc8e0; }
+      .calc-bar         { fill: #5cc8e0; }
+      .calc-container-fill   { fill: #5cc8e0; fill-opacity: 0.03; }
+      .calc-container-stroke { stroke: #5cc8e0; }
+      .calc-container-bar    { fill: #5cc8e0; }
+      .val-card-fill    { fill: #d4a04a; fill-opacity: 0.06; }
+      .val-card-stroke  { stroke: #d4a04a; }
+      .val-bar          { fill: #d4a04a; }
+      .val-container-fill    { fill: #d4a04a; fill-opacity: 0.03; }
+      .val-container-stroke  { stroke: #d4a04a; }
+      .val-container-bar     { fill: #d4a04a; }
+      .tool-name { fill: #b8e4f0; }
+      .tool-desc { fill: #5aafc5; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 460
+    Margins: 20 left, 20 right, top-band 0..56, bottom pad 440..460
+    Title band: y=22 (main title, 16px), y=40 (subtitle, 10px)
+    Container cards (2, side-by-side):
+      LEFT  (calculators): x=20, y=60, w=470, h=380
+      RIGHT (validators):  x=510, y=60, w=470, h=380
+      Container accent bar: height 4, opacity 0.15, flush with top
+      Container header band: y=60..108 (accent bar 60..64, title y=80, subtitle y=97)
+    Inner tool cards (2 columns x 3 rows per container):
+      Calculator container (x origin 34, gap 14 between cols):
+        col_0 x=34,  col_1 x=262   (each card 214 wide)
+        row_0 y=115, row_1 y=212, row_2 y=309   (each card 85 tall, 12 gap)
+      Validator container (x origin 524, gap 14 between cols):
+        col_0 x=524, col_1 x=752   (each card 214 wide)
+        row_0 y=115, row_1 y=212, row_2 y=309   (each card 85 tall, 12 gap)
+    Tool card anatomy (all cards 214x85, flat-top rounded-bottom r=3):
+      Accent bar: y=card_y .. card_y+5, opacity 0.6
+      Role tag "CALC" / "VAL": inside accent bar, x=card_x+8, y=card_y+16 (baseline)
+      Tool name (monospace): x=card_x+12, y=card_y+35
+      Description line 1: x=card_x+12, y=card_y+53
+      Description line 2: x=card_x+12, y=card_y+67
+    Vertical rhythm step inside a card: 14px (35 -> 53 is a 18px run for name/desc break, then 14 rhythm)
+    Calculator layout (5 cards):
+      primitives   -> col_0 row_0
+      connector    -> col_1 row_0
+      geom         -> col_0 row_1
+      callouts     -> col_1 row_1
+      empty-space  -> col_0 row_2   (col_1 row_2 empty)
+    Validator layout (6 cards, full grid):
+      overlaps     -> col_0 row_0
+      contrast     -> col_1 row_0
+      alignment    -> col_0 row_1
+      connectors   -> col_1 row_1
+      css          -> col_0 row_2
+      collide      -> col_1 row_2
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: calc-container | val-container (at y=60, equal width 470, gap 20)
+    contain: calc-container > [calc-header, calc-tool-card x5]
+    contain: val-container  > [val-header,  val-tool-card x6]
+    v-stack (inside each container): header-band, card-row-0, card-row-1, card-row-2
+    h-stack (inside each row): col_0 tool-card, col_1 tool-card
+    mirror: calc-container and val-container share identical grid geometry
+    h-align: tool-name + desc lines (same left x within a card)
+    v-align: all col_0 cards share x; all col_1 cards share x
+    v-spacing: 12px gap between card rows (row_0 bottom=200, row_1 top=212)
+  === -->
+
+  <g id="background"/>
+
+  <g id="nodes">
+    <!-- Left container: calculators -->
+    <g id="calc-container">
+      <path d="M20.0,60.0 H490.0 V437.0 Q490.0,440.0 487.0,440.0 H23.0 Q20.0,440.0 20.0,437.0 Z" class="calc-container-fill"/>
+      <path d="M20.0,60.0 H490.0 V437.0 Q490.0,440.0 487.0,440.0 H23.0 Q20.0,440.0 20.0,437.0 Z" class="calc-container-stroke"/>
+      <rect x="20" y="60" width="470" height="4" class="calc-container-bar"/>
+    </g>
+
+    <!-- Right container: validators -->
+    <g id="val-container">
+      <path d="M510.0,60.0 H980.0 V437.0 Q980.0,440.0 977.0,440.0 H513.0 Q510.0,440.0 510.0,437.0 Z" class="val-container-fill"/>
+      <path d="M510.0,60.0 H980.0 V437.0 Q980.0,440.0 977.0,440.0 H513.0 Q510.0,440.0 510.0,437.0 Z" class="val-container-stroke"/>
+      <rect x="510" y="60" width="470" height="4" class="val-container-bar"/>
+    </g>
+
+    <!-- Calculator tool cards (5) -->
+    <g id="tool-primitives">
+      <path d="M34.0,115.0 H248.0 V197.0 Q248.0,200.0 245.0,200.0 H37.0 Q34.0,200.0 34.0,197.0 Z" class="calc-card-fill"/>
+      <path d="M34.0,115.0 H248.0 V197.0 Q248.0,200.0 245.0,200.0 H37.0 Q34.0,200.0 34.0,197.0 Z" class="calc-card-stroke"/>
+      <rect x="34" y="115" width="214" height="5" class="calc-bar"/>
+    </g>
+    <g id="tool-connector">
+      <path d="M262.0,115.0 H476.0 V197.0 Q476.0,200.0 473.0,200.0 H265.0 Q262.0,200.0 262.0,197.0 Z" class="calc-card-fill"/>
+      <path d="M262.0,115.0 H476.0 V197.0 Q476.0,200.0 473.0,200.0 H265.0 Q262.0,200.0 262.0,197.0 Z" class="calc-card-stroke"/>
+      <rect x="262" y="115" width="214" height="5" class="calc-bar"/>
+    </g>
+    <g id="tool-geom">
+      <path d="M34.0,212.0 H248.0 V294.0 Q248.0,297.0 245.0,297.0 H37.0 Q34.0,297.0 34.0,294.0 Z" class="calc-card-fill"/>
+      <path d="M34.0,212.0 H248.0 V294.0 Q248.0,297.0 245.0,297.0 H37.0 Q34.0,297.0 34.0,294.0 Z" class="calc-card-stroke"/>
+      <rect x="34" y="212" width="214" height="5" class="calc-bar"/>
+    </g>
+    <g id="tool-callouts">
+      <path d="M262.0,212.0 H476.0 V294.0 Q476.0,297.0 473.0,297.0 H265.0 Q262.0,297.0 262.0,294.0 Z" class="calc-card-fill"/>
+      <path d="M262.0,212.0 H476.0 V294.0 Q476.0,297.0 473.0,297.0 H265.0 Q262.0,297.0 262.0,294.0 Z" class="calc-card-stroke"/>
+      <rect x="262" y="212" width="214" height="5" class="calc-bar"/>
+    </g>
+    <g id="tool-empty-space">
+      <path d="M34.0,309.0 H248.0 V391.0 Q248.0,394.0 245.0,394.0 H37.0 Q34.0,394.0 34.0,391.0 Z" class="calc-card-fill"/>
+      <path d="M34.0,309.0 H248.0 V391.0 Q248.0,394.0 245.0,394.0 H37.0 Q34.0,394.0 34.0,391.0 Z" class="calc-card-stroke"/>
+      <rect x="34" y="309" width="214" height="5" class="calc-bar"/>
+    </g>
+
+    <!-- Validator tool cards (6) -->
+    <g id="tool-overlaps">
+      <path d="M524.0,115.0 H738.0 V197.0 Q738.0,200.0 735.0,200.0 H527.0 Q524.0,200.0 524.0,197.0 Z" class="val-card-fill"/>
+      <path d="M524.0,115.0 H738.0 V197.0 Q738.0,200.0 735.0,200.0 H527.0 Q524.0,200.0 524.0,197.0 Z" class="val-card-stroke"/>
+      <rect x="524" y="115" width="214" height="5" class="val-bar"/>
+    </g>
+    <g id="tool-contrast">
+      <path d="M752.0,115.0 H966.0 V197.0 Q966.0,200.0 963.0,200.0 H755.0 Q752.0,200.0 752.0,197.0 Z" class="val-card-fill"/>
+      <path d="M752.0,115.0 H966.0 V197.0 Q966.0,200.0 963.0,200.0 H755.0 Q752.0,200.0 752.0,197.0 Z" class="val-card-stroke"/>
+      <rect x="752" y="115" width="214" height="5" class="val-bar"/>
+    </g>
+    <g id="tool-alignment">
+      <path d="M524.0,212.0 H738.0 V294.0 Q738.0,297.0 735.0,297.0 H527.0 Q524.0,297.0 524.0,294.0 Z" class="val-card-fill"/>
+      <path d="M524.0,212.0 H738.0 V294.0 Q738.0,297.0 735.0,297.0 H527.0 Q524.0,297.0 524.0,294.0 Z" class="val-card-stroke"/>
+      <rect x="524" y="212" width="214" height="5" class="val-bar"/>
+    </g>
+    <g id="tool-connectors">
+      <path d="M752.0,212.0 H966.0 V294.0 Q966.0,297.0 963.0,297.0 H755.0 Q752.0,297.0 752.0,294.0 Z" class="val-card-fill"/>
+      <path d="M752.0,212.0 H966.0 V294.0 Q966.0,297.0 963.0,297.0 H755.0 Q752.0,297.0 752.0,294.0 Z" class="val-card-stroke"/>
+      <rect x="752" y="212" width="214" height="5" class="val-bar"/>
+    </g>
+    <g id="tool-css">
+      <path d="M524.0,309.0 H738.0 V391.0 Q738.0,394.0 735.0,394.0 H527.0 Q524.0,394.0 524.0,391.0 Z" class="val-card-fill"/>
+      <path d="M524.0,309.0 H738.0 V391.0 Q738.0,394.0 735.0,394.0 H527.0 Q524.0,394.0 524.0,391.0 Z" class="val-card-stroke"/>
+      <rect x="524" y="309" width="214" height="5" class="val-bar"/>
+    </g>
+    <g id="tool-collide">
+      <path d="M752.0,309.0 H966.0 V391.0 Q966.0,394.0 963.0,394.0 H755.0 Q752.0,394.0 752.0,391.0 Z" class="val-card-fill"/>
+      <path d="M752.0,309.0 H966.0 V391.0 Q966.0,394.0 963.0,394.0 H755.0 Q752.0,394.0 752.0,391.0 Z" class="val-card-stroke"/>
+      <rect x="752" y="309" width="214" height="5" class="val-bar"/>
+    </g>
+  </g>
+
+  <g id="connectors"/>
+
+  <g id="content">
+    <!-- Top title band -->
+    <text x="500" y="26" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" class="fg-1">Eight shipped tools, split by role</text>
+    <text x="500" y="44" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">five calculators produce geometry; six validators refuse delivery until the grid is clean</text>
+
+    <!-- Container headers -->
+    <text x="34" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="accent-1">CALCULATORS</text>
+    <text x="34" y="99" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">geometry before painting - produce coordinates, paths, and anchors</text>
+    <text x="524" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="accent-2">VALIDATORS</text>
+    <text x="524" y="99" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">refuse delivery until clean - catch overlaps, contrast, stray colours</text>
+
+    <!-- Calculator tool card content -->
+    <!-- primitives -->
+    <text x="42" y="132" class="role-tag accent-1">CALC</text>
+    <text x="46" y="150" class="tool-name">primitives</text>
+    <text x="46" y="168" class="tool-desc">14 shape anchors + PCHIP</text>
+    <text x="46" y="182" class="tool-desc">splines through waypoints</text>
+    <!-- connector -->
+    <text x="270" y="132" class="role-tag accent-1">CALC</text>
+    <text x="274" y="150" class="tool-name">connector</text>
+    <text x="274" y="168" class="tool-desc">5 routing modes, auto</text>
+    <text x="274" y="182" class="tool-desc">edge-snap to shape rects</text>
+    <!-- geom -->
+    <text x="42" y="229" class="role-tag accent-1">CALC</text>
+    <text x="46" y="247" class="tool-name">geom</text>
+    <text x="46" y="265" class="tool-desc">sketch constraints: midpoint,</text>
+    <text x="46" y="279" class="tool-desc">tangent, offset, attach</text>
+    <!-- callouts -->
+    <text x="270" y="229" class="role-tag accent-1">CALC</text>
+    <text x="274" y="247" class="tool-name">callouts</text>
+    <text x="274" y="265" class="tool-desc">joint placement solver,</text>
+    <text x="274" y="279" class="tool-desc">leader + leaderless labels</text>
+    <!-- empty-space -->
+    <text x="42" y="326" class="role-tag accent-1">CALC</text>
+    <text x="46" y="344" class="tool-name">empty-space</text>
+    <text x="46" y="362" class="tool-desc">free-region detection via</text>
+    <text x="46" y="376" class="tool-desc">bitmap distance transform</text>
+
+    <!-- Validator tool card content -->
+    <!-- overlaps -->
+    <text x="532" y="132" class="role-tag accent-2">VAL</text>
+    <text x="536" y="150" class="tool-name">overlaps</text>
+    <text x="536" y="168" class="tool-desc">text/shape, rhythm check,</text>
+    <text x="536" y="182" class="tool-desc">font-size floor enforcement</text>
+    <!-- contrast -->
+    <text x="760" y="132" class="role-tag accent-2">VAL</text>
+    <text x="764" y="150" class="tool-name">contrast</text>
+    <text x="764" y="168" class="tool-desc">WCAG 2.1 text + object,</text>
+    <text x="764" y="182" class="tool-desc">light + dark mode pairs</text>
+    <!-- alignment -->
+    <text x="532" y="229" class="role-tag accent-2">VAL</text>
+    <text x="536" y="247" class="tool-name">alignment</text>
+    <text x="536" y="265" class="tool-desc">grid snapping, vertical</text>
+    <text x="536" y="279" class="tool-desc">rhythm, layout topology</text>
+    <!-- connectors -->
+    <text x="760" y="229" class="role-tag accent-2">VAL</text>
+    <text x="764" y="247" class="tool-name">connectors</text>
+    <text x="764" y="265" class="tool-desc">zero-length, edge-snap,</text>
+    <text x="764" y="279" class="tool-desc">chamfer + dangling ends</text>
+    <!-- css -->
+    <text x="532" y="326" class="role-tag accent-2">VAL</text>
+    <text x="536" y="344" class="tool-name">css</text>
+    <text x="536" y="362" class="tool-desc">inline fills, forbidden</text>
+    <text x="536" y="376" class="tool-desc">colours, dark mode coverage</text>
+    <!-- collide -->
+    <text x="760" y="326" class="role-tag accent-2">VAL</text>
+    <text x="764" y="344" class="tool-name">collide</text>
+    <text x="764" y="362" class="tool-desc">pairwise connector cross</text>
+    <text x="764" y="376" class="tool-desc">+ near-miss with tolerance</text>
+  </g>
+
+  <g id="callouts"/>
+</svg>

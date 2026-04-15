@@ -1,0 +1,324 @@
+<!--
+  01-five-defects.svg - Five recurring defects in LLM hand-written SVGs
+  Shows: five-card horizontal grid; each card carries a defect name, one-line description, and a tiny bad-vs-good schematic
+  Intent: reader absorbs all five failure modes in ~5 seconds, placed after article intro before "LLMs cannot draw by hand" section
+  Theme: Stellars-Tech (teal primary #0096d1, amber accent-2 #da8230)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 340">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .card-body   { fill: #0096d1; fill-opacity: 0.04; }
+    .card-stroke { fill: none; stroke: #0096d1; stroke-width: 1; }
+    .accent-bar  { fill: #0096d1; opacity: 0.6; }
+    .divider     { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.25; }
+    .eyebrow     { fill: #005f7a; font-family: Segoe UI, Arial, sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 1px; }
+    .title       { fill: #1a5a6e; font-family: Segoe UI, Arial, sans-serif; font-size: 13px; font-weight: 700; }
+    .desc        { fill: #236a74; font-family: Segoe UI, Arial, sans-serif; font-size: 9px; }
+    .minilabel   { fill: #2b7680; font-family: Segoe UI, Arial, sans-serif; font-size: 7px; font-weight: 600; letter-spacing: 0.5px; }
+    .schem-good  { fill: none; stroke: #0096d1; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+    .schem-good-fill { fill: #0096d1; }
+    .schem-bad   { fill: none; stroke: #da8230; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+    .schem-bad-fill  { fill: #da8230; }
+    .schem-muted { fill: none; stroke: #236a74; stroke-width: 0.8; opacity: 0.55; }
+    .schem-muted-fill { fill: #236a74; opacity: 0.6; }
+    .mini-card-body   { fill: #0096d1; fill-opacity: 0.06; }
+    .mini-card-stroke { fill: none; stroke: #0096d1; stroke-width: 0.6; opacity: 0.7; }
+    .mini-card-bar    { fill: #0096d1; opacity: 0.55; }
+    .mini-card-body-bad   { fill: #da8230; fill-opacity: 0.06; }
+    .mini-card-stroke-bad { fill: none; stroke: #da8230; stroke-width: 0.6; opacity: 0.7; }
+    .mini-card-bar-bad    { fill: #da8230; opacity: 0.55; }
+    .inline-hex-text  { fill: #da8230; font-family: monospace; font-size: 5.5px; }
+    .class-text       { fill: #0096d1; font-family: monospace; font-size: 5.5px; }
+    .dark-bg-fill     { fill: #1e1e1e; }
+    .invisible-text   { fill: #1e1e1e; font-family: Segoe UI, Arial, sans-serif; font-size: 7px; font-weight: 700; }
+    .visible-text     { fill: #b8e4f0; font-family: Segoe UI, Arial, sans-serif; font-size: 7px; font-weight: 700; }
+    .footnote    { fill: #2b7680; font-family: Segoe UI, Arial, sans-serif; font-size: 8px; font-style: italic; }
+    .header      { fill: #24697e; font-family: Segoe UI, Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .card-body   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .card-stroke { stroke: #5cc8e0; }
+      .accent-bar  { fill: #5cc8e0; }
+      .divider     { stroke: #5cc8e0; }
+      .eyebrow     { fill: #5cc8e0; }
+      .title       { fill: #b8e4f0; }
+      .desc        { fill: #5aafc5; }
+      .minilabel   { fill: #4099b3; }
+      .schem-good      { stroke: #5cc8e0; }
+      .schem-good-fill { fill: #5cc8e0; }
+      .schem-bad       { stroke: #d4a04a; }
+      .schem-bad-fill  { fill: #d4a04a; }
+      .schem-muted     { stroke: #5aafc5; }
+      .schem-muted-fill{ fill: #5aafc5; }
+      .mini-card-body      { fill: #5cc8e0; fill-opacity: 0.08; }
+      .mini-card-stroke    { stroke: #5cc8e0; }
+      .mini-card-bar       { fill: #5cc8e0; }
+      .mini-card-body-bad  { fill: #d4a04a; fill-opacity: 0.08; }
+      .mini-card-stroke-bad{ stroke: #d4a04a; }
+      .mini-card-bar-bad   { fill: #d4a04a; }
+      .inline-hex-text { fill: #d4a04a; }
+      .class-text      { fill: #5cc8e0; }
+      .footnote    { fill: #4099b3; }
+      .header      { fill: #8fd4e6; }
+    }
+  </style>
+
+  <g id="guide-grid" display="none">
+    <line x1="0" y1="60"  x2="1000" y2="60"  stroke="red" stroke-width="0.3"/>
+    <line x1="0" y1="146" x2="1000" y2="146" stroke="red" stroke-width="0.3"/>
+    <line x1="0" y1="310" x2="1000" y2="310" stroke="red" stroke-width="0.3"/>
+  </g>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 340
+    Margin: 20px all sides
+    Title band: y=14..42 (title baseline y=30)
+    Card row: y=60..310 (h=250)
+    Card count: 5, w=180, gap=15
+    Card origins (x): 20, 215, 410, 605, 800
+    Card rights  (x): 200, 395, 590, 785, 980
+    Accent bar:   y=60 h=5
+    Eyebrow:      y=83
+    Title:        y=103
+    Description L1: y=121  L2: y=133
+    Schematic divider: y=146
+    Schematic BAD/GOOD labels: y=160
+    Schematic content centre: y=205
+    Bad zone:  card.x+14 .. card.x+80  (w=66, centre=card.x+47)
+    Good zone: card.x+100 .. card.x+166 (w=66, centre=card.x+133)
+    Footer: y=328
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: [title-band, card-row, footer]
+    h-stack: card-1..card-5 in card-row with gap=15
+    contain: each card > [accent-bar, eyebrow, title, description, schematic-area]
+    contain: schematic-area > [divider, bad-label, good-label, bad-zone-shapes, good-zone-shapes]
+    mirror:  within each schematic-area, bad-zone and good-zone are horizontally mirrored slots
+    h-align: accent bars at y=60; eyebrows at y=83; titles at y=103; descriptions at y=121/133
+  === -->
+
+  <g id="background">
+    <rect width="1000" height="340" fill="transparent"/>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Card 1: Overlapping text -->
+    <path d="M20,60 H200 V307 Q200,310 197,310 H23 Q20,310 20,307 Z" class="card-body"/>
+    <path d="M20,60 H200 V307 Q200,310 197,310 H23 Q20,310 20,307 Z" class="card-stroke"/>
+    <rect x="20" y="60" width="180" height="5" class="accent-bar"/>
+    <line x1="34" y1="146" x2="186" y2="146" class="divider"/>
+
+    <!-- Card 2: Invisible in dark mode -->
+    <path d="M215,60 H395 V307 Q395,310 392,310 H218 Q215,310 215,307 Z" class="card-body"/>
+    <path d="M215,60 H395 V307 Q395,310 392,310 H218 Q215,310 215,307 Z" class="card-stroke"/>
+    <rect x="215" y="60" width="180" height="5" class="accent-bar"/>
+    <line x1="229" y1="146" x2="381" y2="146" class="divider"/>
+
+    <!-- Card 3: Dead connectors -->
+    <path d="M410,60 H590 V307 Q590,310 587,310 H413 Q410,310 410,307 Z" class="card-body"/>
+    <path d="M410,60 H590 V307 Q590,310 587,310 H413 Q410,310 410,307 Z" class="card-stroke"/>
+    <rect x="410" y="60" width="180" height="5" class="accent-bar"/>
+    <line x1="424" y1="146" x2="576" y2="146" class="divider"/>
+
+    <!-- Card 4: Benderless diagonals -->
+    <path d="M605,60 H785 V307 Q785,310 782,310 H608 Q605,310 605,307 Z" class="card-body"/>
+    <path d="M605,60 H785 V307 Q785,310 782,310 H608 Q605,310 605,307 Z" class="card-stroke"/>
+    <rect x="605" y="60" width="180" height="5" class="accent-bar"/>
+    <line x1="619" y1="146" x2="771" y2="146" class="divider"/>
+
+    <!-- Card 5: CSS laziness -->
+    <path d="M800,60 H980 V307 Q980,310 977,310 H803 Q800,310 800,307 Z" class="card-body"/>
+    <path d="M800,60 H980 V307 Q980,310 977,310 H803 Q800,310 800,307 Z" class="card-stroke"/>
+    <rect x="800" y="60" width="180" height="5" class="accent-bar"/>
+    <line x1="814" y1="146" x2="966" y2="146" class="divider"/>
+
+  </g>
+
+  <g id="connectors">
+    <!-- Card 3 BAD: arrow from source right-edge (x=444) toward target left-edge (x=470).
+         Stem 446..455, tip at 459. Target left-edge at x=470 -> visible 11px gap (dead connector). -->
+    <line x1="446" y1="205" x2="455" y2="205" class="schem-bad"/>
+    <polygon points="455,202 459,205 455,208" class="schem-bad-fill"/>
+
+    <!-- Card 3 GOOD: arrow from source right-edge (x=530) to target left-edge (x=556).
+         Stem 532..552, tip touches target edge at x=556. -->
+    <line x1="532" y1="205" x2="552" y2="205" class="schem-good"/>
+    <polygon points="552,202 556,205 552,208" class="schem-good-fill"/>
+  </g>
+
+  <g id="content">
+
+    <!-- Header band -->
+    <text x="500" y="30" text-anchor="middle" class="header">FIVE DEFECTS IN HAND-WRITTEN LLM SVGs</text>
+    <line x1="20" y1="42" x2="980" y2="42" stroke="#0096d1" stroke-width="0.5" opacity="0.25"/>
+
+    <!-- ============ CARD 1: OVERLAPPING TEXT ============ -->
+    <text x="34" y="83" class="eyebrow">DEFECT 01</text>
+    <text x="34" y="103" class="title">Overlapping text</text>
+    <text x="34" y="121" class="desc">Every y is an independent literal;</text>
+    <text x="34" y="133" class="desc">titles drift into accent bars</text>
+
+    <text x="67"  y="160" text-anchor="middle" class="minilabel">BAD</text>
+    <text x="153" y="160" text-anchor="middle" class="minilabel">GOOD</text>
+
+    <!-- Card 1 schematic BAD: tiny card with title crashing into accent bar -->
+    <!-- mini card bad: x=34 y=175 w=66 h=56 -->
+    <path d="M34,175 H100 V228 Q100,231 97,231 H37 Q34,231 34,228 Z" class="mini-card-body-bad"/>
+    <path d="M34,175 H100 V228 Q100,231 97,231 H37 Q34,231 34,228 Z" class="mini-card-stroke-bad"/>
+    <rect x="34" y="175" width="66" height="5" class="mini-card-bar-bad"/>
+    <!-- title TEXT colliding with accent bar (overlapping) -->
+    <text x="40" y="184" class="inline-hex-text" style="font-size:7px;font-weight:700;">Heading</text>
+    <text x="40" y="195" class="inline-hex-text" style="font-size:6px;">description line</text>
+
+    <!-- Card 1 schematic GOOD: tiny card with title properly clear of accent bar -->
+    <path d="M120,175 H186 V228 Q186,231 183,231 H123 Q120,231 120,228 Z" class="mini-card-body"/>
+    <path d="M120,175 H186 V228 Q186,231 183,231 H123 Q120,231 120,228 Z" class="mini-card-stroke"/>
+    <rect x="120" y="175" width="66" height="5" class="mini-card-bar"/>
+    <text x="126" y="197" class="class-text" style="font-size:7px;font-weight:700;">Heading</text>
+    <text x="126" y="208" class="class-text" style="font-size:6px;">description line</text>
+
+    <!-- Card 1 footer hint -->
+    <text x="34"  y="253" class="footnote">y literals drift</text>
+    <text x="120" y="253" class="footnote">rhythm: +14px</text>
+
+    <!-- ============ CARD 2: INVISIBLE IN DARK MODE ============ -->
+    <text x="229" y="83" class="eyebrow">DEFECT 02</text>
+    <text x="229" y="103" class="title">Invisible in dark mode</text>
+    <text x="229" y="121" class="desc">Hard-coded #000 / #fff break the</text>
+    <text x="229" y="133" class="desc">moment the OS theme flips</text>
+
+    <text x="262" y="160" text-anchor="middle" class="minilabel">BAD</text>
+    <text x="348" y="160" text-anchor="middle" class="minilabel">GOOD</text>
+
+    <!-- Card 2 BAD: dark strip, text hard-coded near-black "disappears" visually against dark -->
+    <rect x="240" y="185" width="46" height="32" rx="2" class="dark-bg-fill" stroke="#da8230" stroke-width="1"/>
+    <text x="263" y="204" text-anchor="middle" class="invisible-text">TEXT</text>
+    <!-- X mark overlay (accent-2 orange) to indicate broken -->
+    <line x1="244" y1="189" x2="282" y2="213" stroke="#da8230" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="282" y1="189" x2="244" y2="213" stroke="#da8230" stroke-width="1.4" stroke-linecap="round"/>
+    <text x="263" y="234" text-anchor="middle" class="inline-hex-text">fill="#000000"</text>
+
+    <!-- Card 2 GOOD: same dark strip, text uses a theme class so it reads -->
+    <rect x="326" y="185" width="46" height="32" rx="2" class="dark-bg-fill" stroke="#0096d1" stroke-width="1"/>
+    <text x="349" y="204" text-anchor="middle" class="visible-text">TEXT</text>
+    <text x="349" y="234" text-anchor="middle" class="class-text">class="fg-1"</text>
+
+    <text x="262" y="253" text-anchor="middle" class="footnote">breaks in dark</text>
+    <text x="348" y="253" text-anchor="middle" class="footnote">adapts via CSS</text>
+
+    <!-- ============ CARD 3: DEAD CONNECTORS ============ -->
+    <text x="424" y="83" class="eyebrow">DEFECT 03</text>
+    <text x="424" y="103" class="title">Dead connectors</text>
+    <text x="424" y="121" class="desc">Arrows end 3px short or past the</text>
+    <text x="424" y="133" class="desc">card edge; no arrowhead clearance</text>
+
+    <text x="457" y="160" text-anchor="middle" class="minilabel">BAD</text>
+    <text x="543" y="160" text-anchor="middle" class="minilabel">GOOD</text>
+
+    <!-- Card 3 BAD: two tiny cards inside bad-zone x=424..490.
+         source x=424..444 (w=20), target x=470..490 (w=20). Gap x=444..470. -->
+    <rect x="424" y="190" width="20" height="30" rx="2" class="mini-card-body-bad"/>
+    <rect x="424" y="190" width="20" height="30" rx="2" class="mini-card-stroke-bad"/>
+    <rect x="424" y="190" width="20" height="3" class="mini-card-bar-bad"/>
+    <rect x="470" y="190" width="20" height="30" rx="2" class="mini-card-body-bad"/>
+    <rect x="470" y="190" width="20" height="30" rx="2" class="mini-card-stroke-bad"/>
+    <rect x="470" y="190" width="20" height="3" class="mini-card-bar-bad"/>
+
+    <!-- Card 3 GOOD: two tiny cards inside good-zone x=510..576.
+         source x=510..530, target x=556..576. -->
+    <rect x="510" y="190" width="20" height="30" rx="2" class="mini-card-body"/>
+    <rect x="510" y="190" width="20" height="30" rx="2" class="mini-card-stroke"/>
+    <rect x="510" y="190" width="20" height="3" class="mini-card-bar"/>
+    <rect x="556" y="190" width="20" height="30" rx="2" class="mini-card-body"/>
+    <rect x="556" y="190" width="20" height="30" rx="2" class="mini-card-stroke"/>
+    <rect x="556" y="190" width="20" height="3" class="mini-card-bar"/>
+
+    <text x="457" y="242" text-anchor="middle" class="footnote">stops short</text>
+    <text x="543" y="242" text-anchor="middle" class="footnote">meets edge</text>
+
+    <!-- ============ CARD 4: BENDERLESS DIAGONALS ============ -->
+    <text x="619" y="83" class="eyebrow">DEFECT 04</text>
+    <text x="619" y="103" class="title">Benderless diagonals</text>
+    <text x="619" y="121" class="desc">Hand-written cubic Beziers overshoot</text>
+    <text x="619" y="133" class="desc">waypoints and kink at joins</text>
+
+    <text x="652" y="160" text-anchor="middle" class="minilabel">BAD</text>
+    <text x="738" y="160" text-anchor="middle" class="minilabel">GOOD</text>
+
+    <!-- Card 4 BAD: kinky hand-drawn curve through waypoints with sharp elbow overshoots -->
+    <!-- waypoints -->
+    <circle cx="625" cy="220" r="1.6" class="schem-muted-fill"/>
+    <circle cx="640" cy="185" r="1.6" class="schem-muted-fill"/>
+    <circle cx="658" cy="218" r="1.6" class="schem-muted-fill"/>
+    <circle cx="675" cy="188" r="1.6" class="schem-muted-fill"/>
+    <!-- Bad polyline with sharp kinks overshooting waypoints -->
+    <path d="M625,220 L632,178 L640,185 L645,228 L658,218 L663,175 L675,188" class="schem-bad"/>
+
+    <!-- Card 4 GOOD: smooth spline via PCHIP - waypoints 710,225 725,190 740,210 755,185 770,215 -->
+    <circle cx="710" cy="225" r="1.6" class="schem-muted-fill"/>
+    <circle cx="725" cy="190" r="1.6" class="schem-muted-fill"/>
+    <circle cx="740" cy="210" r="1.6" class="schem-muted-fill"/>
+    <circle cx="755" cy="185" r="1.6" class="schem-muted-fill"/>
+    <circle cx="770" cy="215" r="1.6" class="schem-muted-fill"/>
+    <path d="M710.0,225.0 L711.02,222.48 L712.03,219.7 L713.05,216.73 L714.07,213.63 L715.08,210.48 L716.1,207.33 L717.12,204.25 L718.14,201.31 L719.15,198.56 L720.17,196.09 L721.19,193.95 L722.2,192.21 L723.22,190.93 L724.24,190.18 L725.25,190.02 L726.27,190.41 L727.29,191.25 L728.31,192.49 L729.32,194.02 L730.34,195.8 L731.36,197.73 L732.37,199.75 L733.39,201.77 L734.41,203.73 L735.42,205.55 L736.44,207.16 L737.46,208.47 L738.47,209.42 L739.49,209.93 L740.51,209.92 L741.53,209.28 L742.54,208.09 L743.56,206.45 L744.58,204.44 L745.59,202.16 L746.61,199.71 L747.63,197.18 L748.64,194.66 L749.66,192.25 L750.68,190.03 L751.69,188.11 L752.71,186.57 L753.73,185.51 L754.75,185.02 L755.76,185.15 L756.78,185.79 L757.8,186.89 L758.81,188.39 L759.83,190.22 L760.85,192.34 L761.86,194.69 L762.88,197.21 L763.9,199.85 L764.92,202.55 L765.93,205.26 L766.95,207.91 L767.97,210.46 L768.98,212.84 L770.0,215.0" class="schem-good"/>
+
+    <text x="652" y="253" text-anchor="middle" class="footnote">kinks + overshoot</text>
+    <text x="738" y="253" text-anchor="middle" class="footnote">PCHIP spline</text>
+
+    <!-- ============ CARD 5: CSS LAZINESS ============ -->
+    <text x="814" y="83" class="eyebrow">DEFECT 05</text>
+    <text x="814" y="103" class="title">CSS laziness</text>
+    <text x="814" y="121" class="desc">Inline fills on every element; theme</text>
+    <text x="814" y="133" class="desc">lives in 97 copies of the same hex</text>
+
+    <text x="847" y="160" text-anchor="middle" class="minilabel">BAD</text>
+    <text x="933" y="160" text-anchor="middle" class="minilabel">GOOD</text>
+
+    <!-- Card 5 BAD: three tiny cards each with inline fill hex text -->
+    <rect x="820" y="180" width="54" height="15" rx="2" class="mini-card-body-bad"/>
+    <rect x="820" y="180" width="54" height="15" rx="2" class="mini-card-stroke-bad"/>
+    <text x="824" y="191" class="inline-hex-text">fill="#0096d1"</text>
+
+    <rect x="820" y="199" width="54" height="15" rx="2" class="mini-card-body-bad"/>
+    <rect x="820" y="199" width="54" height="15" rx="2" class="mini-card-stroke-bad"/>
+    <text x="824" y="210" class="inline-hex-text">fill="#0096d1"</text>
+
+    <rect x="820" y="218" width="54" height="15" rx="2" class="mini-card-body-bad"/>
+    <rect x="820" y="218" width="54" height="15" rx="2" class="mini-card-stroke-bad"/>
+    <text x="824" y="229" class="inline-hex-text">fill="#0096d1"</text>
+
+    <!-- Card 5 GOOD: three tiny cards each with shared class ref -->
+    <rect x="906" y="180" width="54" height="15" rx="2" class="mini-card-body"/>
+    <rect x="906" y="180" width="54" height="15" rx="2" class="mini-card-stroke"/>
+    <text x="910" y="191" class="class-text">class="card"</text>
+
+    <rect x="906" y="199" width="54" height="15" rx="2" class="mini-card-body"/>
+    <rect x="906" y="199" width="54" height="15" rx="2" class="mini-card-stroke"/>
+    <text x="910" y="210" class="class-text">class="card"</text>
+
+    <rect x="906" y="218" width="54" height="15" rx="2" class="mini-card-body"/>
+    <rect x="906" y="218" width="54" height="15" rx="2" class="mini-card-stroke"/>
+    <text x="910" y="229" class="class-text">class="card"</text>
+
+    <text x="847" y="253" text-anchor="middle" class="footnote">97 hex copies</text>
+    <text x="933" y="253" text-anchor="middle" class="footnote">one CSS rule</text>
+
+  </g>
+
+  <g id="callouts">
+    <!-- No callouts on this piece - card bodies carry the labels -->
+  </g>
+
+</svg>

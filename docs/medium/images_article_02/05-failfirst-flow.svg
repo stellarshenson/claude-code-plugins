@@ -1,0 +1,227 @@
+<!--
+  05-failfirst-flow.svg - Fail-first validation decision tree
+  Shows: single checker-finding input at top, diverging into three classification
+         cards (Fixed / Accepted / Checker limitation), converging into one
+         "Cleared for delivery" outcome card at bottom.
+  Intent: illustrate the fail-first rule - every finding must be individually
+          classified. Default path is Fixed (teal accent); the other two branches
+          require justification (orange accent).
+  Theme: Stellars-Tech - accent-1=#0096d1 teal (fix/good path),
+         accent-2=#da8230 orange (justified exception paths).
+-->
+
+<!-- === GRID REFERENCE ===
+  viewBox: 1000 x 440
+  Margins: outer 20 top/bottom, 60 left/right (gap to branch cards)
+  Title band: y=12..24 (graphic title), y=26 (no subtitle)
+  Input card: x=330 y=36 w=340 h=66   bottom-center=(500,102)
+  Divergence bus: y=110, spans x=200..800 (centered over branches)
+  Top stub: (500,102) -> (500,110), 8px, no arrow
+  Top drops: (200,110)->(200,132), (500,110)->(500,132), (800,110)->(800,132), head 7x3.5
+  Branch cards: y=132 w=280 h=168 bottom_y=300, gap 20px
+    Fixed (accent-1 teal):      x=60   center_x=200
+    Accepted (accent-2 orange): x=360  center_x=500
+    Checker limit (accent-2):   x=660  center_x=800
+  Convergence bus: y=320, spans x=200..800
+  Branch drops: (200,300)->(200,320), (500,300)->(500,320), (800,300)->(800,320), no arrow
+  Final stub: (500,320)->(500,332), 12px, head 7x3.5
+  Outcome card: x=330 y=332 w=340 h=66
+  Vertical rhythm inside branch cards: title y+20 (accent offset), subtitle y+16, bullets 14px step
+  === -->
+
+<!-- === LAYOUT TOPOLOGY ===
+  v-stack: graphic-title, input-card, top-bus, branch-cards, bottom-bus, outcome-card
+  h-align: input-card, outcome-card centered on x=500
+  h-stack: three branch-cards with equal 20px gaps centered on x=500
+  mirror: top-bus (divergence) and bottom-bus (convergence)
+  flow: input -> [bus] -> {three branches} -> [bus] -> outcome
+  semantics:
+    accent-1 (teal) = default/fix path
+    accent-2 (orange) = justified-exception paths
+  === -->
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 440">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .card-teal   { fill: #0096d1; fill-opacity: 0.04; stroke: #0096d1; stroke-width: 1; }
+    .card-orange { fill: #da8230; fill-opacity: 0.04; stroke: #da8230; stroke-width: 1; }
+    .bar-teal   { fill: #0096d1; opacity: 0.6; }
+    .bar-orange { fill: #da8230; opacity: 0.6; }
+    .arrow-teal   { fill: none; stroke: #0096d1; stroke-width: 1.4; opacity: 0.65; stroke-linejoin: round; stroke-linecap: round; }
+    .arrow-orange { fill: none; stroke: #da8230; stroke-width: 1.4; opacity: 0.65; stroke-linejoin: round; stroke-linecap: round; }
+    .head-teal   { fill: #0096d1; opacity: 0.75; }
+    .head-orange { fill: #da8230; opacity: 0.75; }
+    .bus-line { fill: none; stroke: #0096d1; stroke-width: 1.4; opacity: 0.55; stroke-linejoin: round; stroke-linecap: round; }
+    .stub-line { fill: none; stroke: #0096d1; stroke-width: 1.4; opacity: 0.55; stroke-linecap: round; }
+    .bullet-dot-teal   { fill: #0096d1; opacity: 0.8; }
+    .bullet-dot-orange { fill: #da8230; opacity: 0.8; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .card-teal   { fill: #5cc8e0; fill-opacity: 0.08; stroke: #5cc8e0; }
+      .card-orange { fill: #d4a04a; fill-opacity: 0.08; stroke: #d4a04a; }
+      .bar-teal   { fill: #5cc8e0; }
+      .bar-orange { fill: #d4a04a; }
+      .arrow-teal   { stroke: #5cc8e0; }
+      .arrow-orange { stroke: #d4a04a; }
+      .head-teal   { fill: #5cc8e0; }
+      .head-orange { fill: #d4a04a; }
+      .bus-line  { stroke: #5cc8e0; }
+      .stub-line { stroke: #5cc8e0; }
+      .bullet-dot-teal   { fill: #5cc8e0; }
+      .bullet-dot-orange { fill: #d4a04a; }
+    }
+  </style>
+
+  <g id="background">
+    <rect x="0" y="0" width="1000" height="440" fill="transparent"/>
+    <g id="guide-grid" display="none">
+      <line x1="500" y1="0" x2="500" y2="440" stroke="red" stroke-width="0.3"/>
+      <line x1="200" y1="0" x2="200" y2="440" stroke="red" stroke-width="0.3"/>
+      <line x1="800" y1="0" x2="800" y2="440" stroke="red" stroke-width="0.3"/>
+      <line x1="0" y1="110" x2="1000" y2="110" stroke="red" stroke-width="0.3"/>
+      <line x1="0" y1="320" x2="1000" y2="320" stroke="red" stroke-width="0.3"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+    <!-- Input card: Checker finding (teal-neutral) -->
+    <g id="node-input">
+      <path d="M330.0,36.0 H670.0 V99.0 Q670.0,102.0 667.0,102.0 H333.0 Q330.0,102.0 330.0,99.0 Z" class="card-teal"/>
+      <rect x="330" y="36" width="340" height="5" class="bar-teal"/>
+    </g>
+
+    <!-- Branch 1: Fixed (teal = default/good path) -->
+    <g id="node-fixed">
+      <path d="M60.0,132.0 H340.0 V297.0 Q340.0,300.0 337.0,300.0 H63.0 Q60.0,300.0 60.0,297.0 Z" class="card-teal"/>
+      <rect x="60" y="132" width="280" height="5" class="bar-teal"/>
+    </g>
+
+    <!-- Branch 2: Accepted (orange = exception) -->
+    <g id="node-accepted">
+      <path d="M360.0,132.0 H640.0 V297.0 Q640.0,300.0 637.0,300.0 H363.0 Q360.0,300.0 360.0,297.0 Z" class="card-orange"/>
+      <rect x="360" y="132" width="280" height="5" class="bar-orange"/>
+    </g>
+
+    <!-- Branch 3: Checker limitation (orange = exception) -->
+    <g id="node-limit">
+      <path d="M660.0,132.0 H940.0 V297.0 Q940.0,300.0 937.0,300.0 H663.0 Q660.0,300.0 660.0,297.0 Z" class="card-orange"/>
+      <rect x="660" y="132" width="280" height="5" class="bar-orange"/>
+    </g>
+
+    <!-- Outcome card: Cleared for delivery (teal) -->
+    <g id="node-outcome">
+      <path d="M330.0,332.0 H670.0 V395.0 Q670.0,398.0 667.0,398.0 H333.0 Q330.0,398.0 330.0,395.0 Z" class="card-teal"/>
+      <rect x="330" y="332" width="340" height="5" class="bar-teal"/>
+    </g>
+  </g>
+
+  <g id="connectors">
+    <!-- Top divergence: stub from input bottom to bus, then horizontal bus, then three drop arrows -->
+    <line x1="500" y1="102" x2="500" y2="110" class="stub-line"/>
+    <line x1="200" y1="110" x2="800" y2="110" class="bus-line"/>
+
+    <!-- Drop to Fixed (teal, straight, head=7x3.5) -->
+    <path d="M200.00,110.00 L200.00,125.00" class="arrow-teal"/>
+    <polygon points="200.00,132.00 203.50,125.00 196.50,125.00" class="head-teal"/>
+
+    <!-- Drop to Accepted (orange) -->
+    <path d="M500.00,110.00 L500.00,125.00" class="arrow-orange"/>
+    <polygon points="500.00,132.00 503.50,125.00 496.50,125.00" class="head-orange"/>
+
+    <!-- Drop to Checker limitation (orange) -->
+    <path d="M800.00,110.00 L800.00,125.00" class="arrow-orange"/>
+    <polygon points="800.00,132.00 803.50,125.00 796.50,125.00" class="head-orange"/>
+
+    <!-- Bottom convergence: three branch drops to bus, bus, final stub arrow to outcome -->
+    <line x1="200" y1="300" x2="200" y2="320" class="stub-line"/>
+    <line x1="500" y1="300" x2="500" y2="320" class="stub-line"/>
+    <line x1="800" y1="300" x2="800" y2="320" class="stub-line"/>
+    <line x1="200" y1="320" x2="800" y2="320" class="bus-line"/>
+
+    <!-- Final stub arrow into outcome card (teal) -->
+    <path d="M500.00,320.00 L500.00,325.00" class="arrow-teal"/>
+    <polygon points="500.00,332.00 503.50,325.00 496.50,325.00" class="head-teal"/>
+  </g>
+
+  <g id="content">
+    <!-- Input card content -->
+    <g id="content-input">
+      <text x="500" y="62" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Checker finding</text>
+      <text x="500" y="80" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">any violation from overlaps / contrast / alignment / connectors / css</text>
+      <text x="500" y="94" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-4">every finding is a defect until classified</text>
+    </g>
+
+    <!-- Fixed (teal, default path) -->
+    <g id="content-fixed">
+      <text x="76" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" class="accent-1">DEFAULT PATH</text>
+      <text x="76" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="fg-1">Fixed</text>
+      <text x="76" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">element corrected in place</text>
+      <text x="76" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">no defence required</text>
+      <line x1="76" y1="214" x2="324" y2="214" stroke="#0096d1" stroke-width="0.6" opacity="0.35"/>
+      <text x="76" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" class="accent-1">ACCEPTANCE</text>
+      <circle cx="82" cy="244" r="1.6" class="bullet-dot-teal"/>
+      <text x="90" y="247" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">element corrected in-place</text>
+      <circle cx="82" cy="258" r="1.6" class="bullet-dot-teal"/>
+      <text x="90" y="261" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">checker now passes</text>
+      <circle cx="82" cy="272" r="1.6" class="bullet-dot-teal"/>
+      <text x="90" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">no justification needed</text>
+      <text x="76" y="291" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-4">the rule: fix first, defend only as exception</text>
+    </g>
+
+    <!-- Accepted (orange, exception path) -->
+    <g id="content-accepted">
+      <text x="376" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" class="accent-2">EXCEPTION PATH</text>
+      <text x="376" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="fg-1">Accepted</text>
+      <text x="376" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">violation is intentional</text>
+      <text x="376" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">documented defence in delivery</text>
+      <line x1="376" y1="214" x2="624" y2="214" stroke="#da8230" stroke-width="0.6" opacity="0.35"/>
+      <text x="376" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" class="accent-2">ACCEPTANCE</text>
+      <circle cx="382" cy="244" r="1.6" class="bullet-dot-orange"/>
+      <text x="390" y="247" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">violation is intentional</text>
+      <circle cx="382" cy="258" r="1.6" class="bullet-dot-orange"/>
+      <text x="390" y="261" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">one-line defence in delivery</text>
+      <circle cx="382" cy="272" r="1.6" class="bullet-dot-orange"/>
+      <text x="390" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">e.g. banner gradient IS the design</text>
+      <text x="376" y="291" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-4">designer overrides checker, once, with reason</text>
+    </g>
+
+    <!-- Checker limitation (orange, exception path) -->
+    <g id="content-limit">
+      <text x="676" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" class="accent-2">EXCEPTION PATH</text>
+      <text x="676" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="fg-1">Checker limitation</text>
+      <text x="676" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">tool cannot resolve the case</text>
+      <text x="676" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">documented defence in delivery</text>
+      <line x1="676" y1="214" x2="924" y2="214" stroke="#da8230" stroke-width="0.6" opacity="0.35"/>
+      <text x="676" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" class="accent-2">ACCEPTANCE</text>
+      <circle cx="682" cy="244" r="1.6" class="bullet-dot-orange"/>
+      <text x="690" y="247" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">tool cannot resolve case</text>
+      <circle cx="682" cy="258" r="1.6" class="bullet-dot-orange"/>
+      <text x="690" y="261" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">one-line defence in delivery</text>
+      <circle cx="682" cy="272" r="1.6" class="bullet-dot-orange"/>
+      <text x="690" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">e.g. CSS-class stroke for SC 1.4.11</text>
+      <text x="676" y="291" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-4">human reading required, checker is blind</text>
+    </g>
+
+    <!-- Outcome content -->
+    <g id="content-outcome">
+      <text x="500" y="358" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Cleared for delivery</text>
+      <text x="500" y="376" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">every violation classified - no bulk dismissal, no silent passes</text>
+      <text x="500" y="390" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-4">validator output pasted in response with each classification</text>
+    </g>
+
+    <!-- Graphic title at top -->
+    <text x="500" y="20" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" letter-spacing="1.5" class="fg-2">FAIL-FIRST VALIDATION - EVERY FINDING INDIVIDUALLY CLASSIFIED</text>
+  </g>
+
+  <g id="callouts"/>
+</svg>

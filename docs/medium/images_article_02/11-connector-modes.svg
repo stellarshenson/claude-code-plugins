@@ -1,0 +1,176 @@
+<!--
+  11-connector-modes.svg - Reference showcase of the four point-to-point connector routing modes.
+  Shows: 2x2 cell grid - straight (TL), l (TR), l-chamfer (BL), spline (BR). Each cell has a src/tgt
+         card pair at identical relative offsets with the named connector routing between them plus
+         a two-line caption describing the use case. Spline cell overlays 4 orange cross markers at
+         the PCHIP waypoints so the reader can see what "control through waypoints" means concretely.
+  Intent: didactic reference placed right before the manifold showcase - builds from the simplest
+         mode (straight) to the most organic (spline), so manifold reads as the 5th, advanced mode.
+  Theme: Stellars-Tech. fg-1 title, fg-3 descriptions, accent-1 connectors and cards, four wp-*
+         shades of accent-2 orange for the four spline waypoints.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 460">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .card { fill: #005f7a; fill-opacity: 0.04; stroke: #005f7a; stroke-width: 1; }
+    .accent-bar { fill: #005f7a; opacity: 0.6; }
+    .cell-frame { fill: none; stroke: #236a74; stroke-width: 0.6; stroke-dasharray: 4,3; opacity: 0.3; }
+    .connector-line { fill: none; stroke: #005f7a; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; opacity: 0.95; }
+    .arrow { fill: #005f7a; stroke: none; opacity: 0.95; }
+    .mode-label { font-family: 'Courier New', Consolas, monospace; font-weight: 700; }
+    .waypoint { fill: none; stroke-width: 1.8; stroke-linecap: round; }
+    .wp-1 { stroke: #da8230; }
+    .wp-2 { stroke: #c66520; }
+    .wp-3 { stroke: #b8541a; }
+    .wp-4 { stroke: #a3420f; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .card { fill: #5cc8e0; fill-opacity: 0.06; stroke: #5cc8e0; }
+      .accent-bar { fill: #5cc8e0; }
+      .cell-frame { stroke: #5aafc5; }
+      .connector-line { stroke: #5cc8e0; }
+      .arrow { fill: #5cc8e0; }
+      .wp-1 { stroke: #f0a864; }
+      .wp-2 { stroke: #e49648; }
+      .wp-3 { stroke: #d88432; }
+      .wp-4 { stroke: #c97018; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000x460
+    Margins: left/right 20, top 14, bottom 20
+    Title band: y=14..42 (title y=30, subtitle y=44)
+    2x2 cell grid, each cell 460w x 180h, 20px gap:
+      Cell 1 (TL: straight)  x=20..480  y=60..240
+      Cell 2 (TR: l)         x=520..980 y=60..240
+      Cell 3 (BL: l-chamfer) x=20..480  y=260..440
+      Cell 4 (BR: spline)    x=520..980 y=260..440
+    Inside each cell (relative to cell top-left):
+      Mode label baseline:  cell_y + 22 (left at cell_x + 16)
+      Src card:             (cell_x + 50, cell_y + 30, 60, 40)
+      Tgt card:             (cell_x + 350, cell_y + 100, 60, 40)
+      Caption line 1:       cell_y + 160 centred at cell_x_mid
+      Caption line 2:       cell_y + 172 centred at cell_x_mid
+    Cell-1 src rect (70, 90, 60, 40)  -> tgt rect (370, 160, 60, 40)
+    Cell-2 src rect (570, 90, 60, 40) -> tgt rect (870, 160, 60, 40)
+    Cell-3 src rect (70, 290, 60, 40) -> tgt rect (370, 360, 60, 40)
+    Cell-4 src rect (570, 290, 60, 40) -> tgt rect (870, 360, 60, 40)
+    Spline waypoints: 630,310 720,325 810,370 870,380
+  === -->
+
+  <g id="background">
+    <rect x="20" y="60" width="460" height="180" rx="6" class="cell-frame"/>
+    <rect x="520" y="60" width="460" height="180" rx="6" class="cell-frame"/>
+    <rect x="20" y="260" width="460" height="180" rx="6" class="cell-frame"/>
+    <rect x="520" y="260" width="460" height="180" rx="6" class="cell-frame"/>
+  </g>
+
+  <g id="nodes">
+    <!-- Cell 1: straight -->
+    <g id="cell-1-src">
+      <path d="M70,90 H130 V127 Q130,130 127,130 H73 Q70,130 70,127 Z" class="card"/>
+      <rect x="70" y="90" width="60" height="5" class="accent-bar"/>
+    </g>
+    <g id="cell-1-tgt">
+      <path d="M370,160 H430 V197 Q430,200 427,200 H373 Q370,200 370,197 Z" class="card"/>
+      <rect x="370" y="160" width="60" height="5" class="accent-bar"/>
+    </g>
+    <!-- Cell 2: l -->
+    <g id="cell-2-src">
+      <path d="M570,90 H630 V127 Q630,130 627,130 H573 Q570,130 570,127 Z" class="card"/>
+      <rect x="570" y="90" width="60" height="5" class="accent-bar"/>
+    </g>
+    <g id="cell-2-tgt">
+      <path d="M870,160 H930 V197 Q930,200 927,200 H873 Q870,200 870,197 Z" class="card"/>
+      <rect x="870" y="160" width="60" height="5" class="accent-bar"/>
+    </g>
+    <!-- Cell 3: l-chamfer -->
+    <g id="cell-3-src">
+      <path d="M70,290 H130 V327 Q130,330 127,330 H73 Q70,330 70,327 Z" class="card"/>
+      <rect x="70" y="290" width="60" height="5" class="accent-bar"/>
+    </g>
+    <g id="cell-3-tgt">
+      <path d="M370,360 H430 V397 Q430,400 427,400 H373 Q370,400 370,397 Z" class="card"/>
+      <rect x="370" y="360" width="60" height="5" class="accent-bar"/>
+    </g>
+    <!-- Cell 4: spline -->
+    <g id="cell-4-src">
+      <path d="M570,290 H630 V327 Q630,330 627,330 H573 Q570,330 570,327 Z" class="card"/>
+      <rect x="570" y="290" width="60" height="5" class="accent-bar"/>
+    </g>
+    <g id="cell-4-tgt">
+      <path d="M870,360 H930 V397 Q930,400 927,400 H873 Q870,400 870,397 Z" class="card"/>
+      <rect x="870" y="360" width="60" height="5" class="accent-bar"/>
+    </g>
+  </g>
+
+  <g id="connectors">
+    <!-- Cell 1: straight auto edge-snap, standoff 4 -->
+    <path d="M133.90,117.91 L356.37,169.82" class="connector-line"/>
+    <polygon points="366.10,172.09 357.50,164.95 355.23,174.69" class="arrow"/>
+
+    <!-- Cell 2: L route, src_rect start_dir=E -> tgt_rect end_dir=S, standoff 4 -->
+    <path d="M634.00,110.00 L900.00,110.00 L900.00,146.00" class="connector-line"/>
+    <polygon points="900.00,156.00 905.00,146.00 895.00,146.00" class="arrow"/>
+
+    <!-- Cell 3: L-chamfer route, start_dir=E end_dir=S, chamfer 4, standoff 4 -->
+    <path d="M134.00,310.00 L396.00,310.00 L400.00,314.00 L400.00,346.00" class="connector-line"/>
+    <polygon points="400.00,356.00 405.00,346.00 395.00,346.00" class="arrow"/>
+
+    <!-- Cell 4: spline via 4 PCHIP waypoints (630,310) (720,325) (810,370) (870,380), standoff 4 -->
+    <path d="M634.00,310.15 L635.22,310.21 L636.52,310.27 L637.82,310.35 L639.12,310.43 L640.42,310.52 L641.71,310.61 L643.01,310.71 L644.30,310.81 L645.59,310.93 L646.88,311.04 L648.17,311.17 L649.46,311.29 L650.74,311.43 L652.03,311.57 L653.31,311.71 L654.59,311.86 L655.87,312.02 L657.15,312.18 L658.43,312.34 L659.70,312.51 L660.97,312.69 L662.25,312.87 L663.52,313.05 L664.78,313.24 L666.05,313.44 L667.32,313.63 L668.58,313.84 L669.84,314.04 L671.10,314.25 L672.36,314.47 L673.62,314.69 L674.88,314.91 L676.13,315.14 L677.38,315.37 L678.64,315.60 L679.89,315.84 L681.13,316.08 L682.38,316.32 L683.62,316.57 L684.87,316.82 L686.11,317.07 L687.35,317.33 L688.59,317.59 L689.82,317.85 L691.06,318.11 L692.29,318.38 L693.52,318.65 L694.75,318.92 L695.98,319.20 L697.21,319.47 L698.43,319.75 L699.65,320.03 L700.87,320.32 L702.09,320.60 L703.31,320.89 L704.53,321.18 L705.74,321.47 L706.95,321.76 L708.16,322.05 L709.37,322.35 L710.58,322.64 L711.79,322.94 L712.99,323.24 L714.19,323.54 L715.39,323.84 L716.59,324.14 L717.79,324.44 L718.98,324.74 L720.17,325.04 L721.36,325.36 L722.55,325.70 L723.73,326.05 L724.91,326.42 L726.08,326.82 L727.25,327.23 L728.41,327.65 L729.58,328.09 L730.74,328.55 L731.89,329.03 L733.04,329.52 L734.19,330.02 L735.34,330.54 L736.48,331.07 L737.62,331.62 L738.76,332.17 L739.89,332.74 L741.02,333.32 L742.15,333.92 L743.28,334.52 L744.41,335.13 L745.53,335.75 L746.65,336.38 L747.77,337.02 L748.89,337.67 L750.01,338.32 L751.12,338.98 L752.24,339.65 L753.35,340.32 L754.46,341.00 L755.57,341.68 L756.68,342.37 L757.79,343.06 L758.90,343.75 L760.01,344.45 L761.12,345.15 L762.22,345.85 L763.33,346.55 L764.44,347.25 L765.54,347.96 L766.65,348.66 L767.76,349.36 L768.86,350.06 L769.97,350.76 L771.08,351.45 L772.19,352.15 L773.30,352.83 L774.41,353.52 L775.52,354.20 L776.63,354.88 L777.75,355.55 L778.86,356.21 L779.98,356.87 L781.10,357.52 L782.22,358.16 L783.34,358.79 L784.46,359.42 L785.59,360.04 L786.71,360.64 L787.84,361.24 L788.98,361.83 L790.11,362.40 L791.25,362.97 L792.39,363.52 L793.53,364.06 L794.68,364.58 L795.83,365.09 L796.98,365.59 L798.13,366.07 L799.29,366.54 L800.45,366.99 L801.62,367.43 L802.79,367.85 L803.96,368.25 L805.14,368.63 L806.32,368.99 L807.50,369.34 L808.69,369.67 L809.88,369.97 L811.08,370.26 L812.28,370.56 L813.48,370.85 L814.69,371.14 L815.90,371.42 L817.11,371.71 L818.32,371.99 L819.54,372.27 L820.76,372.54 L821.98,372.82 L823.20,373.09 L824.43,373.36 L825.66,373.63 L826.89,373.89 L828.13,374.15 L829.36,374.40 L830.60,374.66 L831.84,374.90 L833.09,375.15 L834.33,375.39 L835.58,375.63 L836.83,375.86 L838.08,376.09 L839.34,376.31 L840.59,376.53 L841.85,376.74 L843.11,376.95 L844.38,377.16 L845.64,377.36 L846.91,377.55 L848.18,377.74 L849.45,377.92 L850.72,378.10 L851.99,378.27 L853.27,378.44 L854.55,378.60 L855.83,378.75 L856.06,378.78" class="connector-line"/>
+    <polygon points="866.01,379.74 856.42,373.98 855.65,383.95" class="arrow"/>
+
+    <!-- Cell 4: spline waypoint cross markers (drawn AFTER the path so they render on top) -->
+    <g id="cell-4-waypoints">
+      <line x1="626" y1="306" x2="634" y2="314" class="waypoint wp-1"/>
+      <line x1="634" y1="306" x2="626" y2="314" class="waypoint wp-1"/>
+      <line x1="716" y1="321" x2="724" y2="329" class="waypoint wp-2"/>
+      <line x1="724" y1="321" x2="716" y2="329" class="waypoint wp-2"/>
+      <line x1="806" y1="366" x2="814" y2="374" class="waypoint wp-3"/>
+      <line x1="814" y1="366" x2="806" y2="374" class="waypoint wp-3"/>
+      <line x1="866" y1="376" x2="874" y2="384" class="waypoint wp-4"/>
+      <line x1="874" y1="376" x2="866" y2="384" class="waypoint wp-4"/>
+    </g>
+  </g>
+
+  <g id="content">
+    <text x="500" y="30" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="fg-1">Point-to-point connector modes</text>
+    <text x="500" y="46" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Four routing styles for edges between two nodes - shown on identical src/tgt layouts</text>
+
+    <!-- Cell 1: straight -->
+    <text x="36" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="13" class="mode-label fg-1">straight</text>
+    <text x="100" y="113" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">src</text>
+    <text x="400" y="183" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">tgt</text>
+    <text x="250" y="218" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2">Direct line, single segment</text>
+    <text x="250" y="230" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">Use: aligned or loose layouts</text>
+
+    <!-- Cell 2: l -->
+    <text x="536" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="13" class="mode-label fg-1">l</text>
+    <text x="600" y="113" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">src</text>
+    <text x="900" y="183" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">tgt</text>
+    <text x="750" y="218" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2">Axis-aligned right-angle corners</text>
+    <text x="750" y="230" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">Use: grid-aligned wiring, tree layouts</text>
+
+    <!-- Cell 3: l-chamfer -->
+    <text x="36" y="282" font-family="Segoe UI, Arial, sans-serif" font-size="13" class="mode-label fg-1">l-chamfer</text>
+    <text x="100" y="313" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">src</text>
+    <text x="400" y="383" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">tgt</text>
+    <text x="250" y="418" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2">Softened corners via 4px diagonal</text>
+    <text x="250" y="430" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">Use: every production L-route</text>
+
+    <!-- Cell 4: spline -->
+    <text x="536" y="282" font-family="Segoe UI, Arial, sans-serif" font-size="13" class="mode-label fg-1">spline</text>
+    <text x="600" y="313" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">src</text>
+    <text x="900" y="383" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" class="fg-2">tgt</text>
+    <text x="750" y="418" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="fg-2">PCHIP curve through waypoints</text>
+    <text x="750" y="430" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">Use: organic flows, data curves</text>
+  </g>
+
+  <g id="callouts"></g>
+</svg>

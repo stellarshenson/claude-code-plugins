@@ -1,0 +1,265 @@
+<!--
+  02-three-pillars.svg - Three pillars of the svg-infographics plugin
+  Shows: three column cards (Computed geometry / CSS-constrained painting / Validator-gated delivery)
+         with bullet lists, converging via a manifold into a single outcome card "Shippable SVG".
+  Intent: visualize the separation between geometry (Python tools), painting (CSS ruleset), and
+          delivery (validators) for section "separate geometry from painting" of article 02.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 teal, accent-2=#da8230 orange.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000x560
+    Margin: 30px left/right
+    Title band: y=0..40 (title at y=24)
+    Pillar row: y=60..420 (card height 360)
+    Pillar cards: 3 x (w=290 h=360)
+      Pillar 1 (left,  accent-1): x=30,  centre_x=175,  right_edge=320
+      Pillar 2 (mid,   accent-1): x=355, centre_x=500,  right_edge=645
+      Pillar 3 (right, accent-1): x=680, centre_x=825,  right_edge=970
+    Card internals:
+      accent bar: y=60, height=5
+      pillar number label:  y=82  (font 10, 700, accent-1)
+      title:                y=102 (font 14, 700, fg-1)
+      subtitle:             y=120 (font 10, italic, fg-3)
+      divider line:         y=132
+      bullet rows: y0=156, step=44 (5 rows at 156, 200, 244, 288, 332)
+        each row:
+          code text at x+20 y+0 (font 10, 600, accent-1)
+          description at x+20 y+14 (font 9, fg-3)
+    Manifold convergence:
+      trunk y=432 (12px below pillar bottom y=420)
+      merge points: (175,432), (500,432), (825,432)
+      spine: (500,432) -> (500,444)
+      arrow tip: (500,449)
+    Outcome card: x=350 y=450 w=300 h=80
+      accent bar at y=450 h=5
+      title        y=484 (font 14, 700, fg-1, centred on x=500)
+      subtitle     y=506 (font 10, italic, fg-3, centred on x=500)
+    Vertical rhythm: 14px base; bullets use 14px internal (10+4 line gap + 44px row stride)
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: pillar-1, pillar-2, pillar-3 (equal width, equal gap 35)
+    v-stack: title, pillar-row, manifold, outcome
+    v-align: pillar-1, pillar-2, pillar-3 top=60 bottom=420
+    h-align: three card centres (175, 500, 825) feed into manifold trunk y=432
+    contain: each pillar -> accent-bar, number-label, title, subtitle, divider, 5 bullet rows
+    mirror: pillar-1 and pillar-3 around centre x=500
+    converge: (pillar-1-bottom, pillar-2-bottom, pillar-3-bottom) -> manifold trunk -> outcome-top
+  === -->
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="0" y1="0" x2="1000" y2="0" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="560" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="560" x2="1000" y2="560" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Pillar 1 card: x=30 y=60 w=290 h=360 -->
+    <g id="pillar-1-card">
+      <path d="M30,60 H320 V417 Q320,420 317,420 H33 Q30,420 30,417 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M30,60 H320 V417 Q320,420 317,420 H33 Q30,420 30,417 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="30" y="60" width="290" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Pillar 2 card: x=355 y=60 w=290 h=360 -->
+    <g id="pillar-2-card">
+      <path d="M355,60 H645 V417 Q645,420 642,420 H358 Q355,420 355,417 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M355,60 H645 V417 Q645,420 642,420 H358 Q355,420 355,417 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="355" y="60" width="290" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Pillar 3 card: x=680 y=60 w=290 h=360 -->
+    <g id="pillar-3-card">
+      <path d="M680,60 H970 V417 Q970,420 967,420 H683 Q680,420 680,417 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M680,60 H970 V417 Q970,420 967,420 H683 Q680,420 680,417 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="680" y="60" width="290" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Outcome card: x=350 y=450 w=300 h=80 (accent-2 orange) -->
+    <g id="outcome-card">
+      <path d="M350,450 H650 V527 Q650,530 647,530 H353 Q350,530 350,527 Z" fill="#da8230" fill-opacity="0.06"/>
+      <path d="M350,450 H650 V527 Q650,530 647,530 H353 Q350,530 350,527 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="350" y="450" width="300" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+  </g>
+
+  <g id="connectors">
+    <!-- Manifold convergence: 3 pillar bottoms into single trunk at y=432 into outcome top.
+         Generated via svg-infographics connector mode=manifold,
+         starts [(175,420),(500,420),(825,420)], ends [(500,450)],
+         merge points [(175,432),(500,432),(825,432)],
+         spine (500,432) to (500,444), shape l-chamfer chamfer=4, arrow end. -->
+    <g class="manifold-connector" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.5" stroke-linejoin="round" stroke-linecap="round">
+      <!-- start 0: pillar-1 bottom -> merge -->
+      <path d="M175.00,421.00 L175.00,432.00 L499.00,432.00"/>
+      <!-- start 1: pillar-2 bottom -> merge -->
+      <path d="M500.00,421.00 L500.00,431.00"/>
+      <!-- start 2: pillar-3 bottom -> merge -->
+      <path d="M825.00,421.00 L825.00,432.00 L501.00,432.00"/>
+      <!-- spine: merge_anchor -> fork_anchor -->
+      <path d="M500.00,433.00 L500.00,443.00"/>
+    </g>
+    <polygon points="500.00,449.00 505.00,439.00 495.00,439.00" fill="#0096d1" opacity="0.7"/>
+  </g>
+
+  <g id="content">
+
+    <!-- Main title -->
+    <text x="500" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-2" text-anchor="middle" letter-spacing="1.2">THREE PILLARS OF THE SVG-INFOGRAPHICS PLUGIN</text>
+    <text x="500" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3" text-anchor="middle">geometry, painting, and delivery - separated by design, converging on one result</text>
+
+    <!-- === PILLAR 1: Computed geometry === -->
+    <g id="pillar-1-content">
+      <text x="45" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="accent-1" letter-spacing="1">PILLAR 1</text>
+      <text x="45" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Computed geometry</text>
+      <text x="45" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">Python tools own coordinates</text>
+      <line x1="45" y1="132" x2="305" y2="132" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <!-- Bullet 1 -->
+      <circle cx="50" cy="153" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="60" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">primitives</text>
+      <text x="60" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">14 shape anchors, PCHIP splines</text>
+
+      <!-- Bullet 2 -->
+      <circle cx="50" cy="197" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="60" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">connector</text>
+      <text x="60" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">5 routing modes, auto edge-snap</text>
+
+      <!-- Bullet 3 -->
+      <circle cx="50" cy="241" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="60" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">geom</text>
+      <text x="60" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">midpoint, tangent, offset, intersection</text>
+
+      <!-- Bullet 4 -->
+      <circle cx="50" cy="285" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="60" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">callouts</text>
+      <text x="60" y="302" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">joint placement solver</text>
+
+      <!-- Bullet 5 -->
+      <circle cx="50" cy="329" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="60" y="332" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">empty-space</text>
+      <text x="60" y="346" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">free-region detection</text>
+
+      <!-- Icon: ruler (Lucide, ISC license) - upper-right corner of card -->
+      <g transform="translate(294, 72) scale(0.583)" fill="none" stroke="#0096d1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+        <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0z"/>
+        <path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>
+      </g>
+    </g>
+
+    <!-- === PILLAR 2: CSS-constrained painting === -->
+    <g id="pillar-2-content">
+      <text x="370" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="accent-1" letter-spacing="1">PILLAR 2</text>
+      <text x="370" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">CSS-constrained painting</text>
+      <text x="370" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">One style block owns colour</text>
+      <line x1="370" y1="132" x2="630" y2="132" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <!-- Bullet 1 -->
+      <circle cx="375" cy="153" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="385" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">.fg-1, .fg-2, .fg-3, .fg-4</text>
+      <text x="385" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">text classes, swatch-bound</text>
+
+      <!-- Bullet 2 -->
+      <circle cx="375" cy="197" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="385" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">.accent-1, .accent-2</text>
+      <text x="385" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">accent classes for emphasis</text>
+
+      <!-- Bullet 3 -->
+      <circle cx="375" cy="241" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="385" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">.card</text>
+      <text x="385" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">flat-top rounded-bottom shape</text>
+
+      <!-- Bullet 4 -->
+      <circle cx="375" cy="285" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="385" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">@media prefers-color-scheme</text>
+      <text x="385" y="302" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">dark mode overrides</text>
+
+      <!-- Bullet 5 -->
+      <circle cx="375" cy="329" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="385" y="332" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">zero inline fills</text>
+      <text x="385" y="346" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">text never hardcodes colour</text>
+
+      <!-- Icon: palette (Lucide, ISC license) -->
+      <g transform="translate(619, 72) scale(0.583)" fill="none" stroke="#0096d1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+        <circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/>
+        <circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/>
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+      </g>
+    </g>
+
+    <!-- === PILLAR 3: Validator-gated delivery === -->
+    <g id="pillar-3-content">
+      <text x="695" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="accent-1" letter-spacing="1">PILLAR 3</text>
+      <text x="695" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Validator-gated delivery</text>
+      <text x="695" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">Checkers refuse until clean</text>
+      <line x1="695" y1="132" x2="955" y2="132" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <!-- Bullet 1 -->
+      <circle cx="700" cy="153" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="710" y="156" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">overlaps</text>
+      <text x="710" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">text/shape, rhythm, font-size floor</text>
+
+      <!-- Bullet 2 -->
+      <circle cx="700" cy="197" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="710" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">contrast</text>
+      <text x="710" y="214" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">WCAG 2.1 light and dark</text>
+
+      <!-- Bullet 3 -->
+      <circle cx="700" cy="241" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="710" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">alignment</text>
+      <text x="710" y="258" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">grid, rhythm, topology</text>
+
+      <!-- Bullet 4 -->
+      <circle cx="700" cy="285" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="710" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">connectors</text>
+      <text x="710" y="302" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">zero-length, edge-snap, chamfer</text>
+
+      <!-- Bullet 5 -->
+      <circle cx="700" cy="329" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="710" y="332" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">css</text>
+      <text x="710" y="346" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">inline fills, colour compliance</text>
+
+      <!-- Icon: shield-check (Lucide, ISC license) -->
+      <g transform="translate(944, 72) scale(0.583)" fill="none" stroke="#0096d1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" opacity="0.5">
+        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+        <path d="m9 12 2 2 4-4"/>
+      </g>
+    </g>
+
+    <!-- === OUTCOME CARD: Shippable SVG === -->
+    <g id="outcome-content">
+      <text x="500" y="484" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" text-anchor="middle">Shippable SVG</text>
+      <text x="500" y="504" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3" text-anchor="middle">passes first review</text>
+      <text x="500" y="520" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" class="accent-2" text-anchor="middle" letter-spacing="1">OUTCOME</text>
+    </g>
+
+  </g>
+
+  <g id="callouts">
+  </g>
+
+</svg>
