@@ -304,6 +304,37 @@ svg-infographics connector --mode l-chamfer \
 
 **Missing direction = warning**. Rects without directions fall back to centre-to-target ray snap; tool emits warning. Always pass directions for L-routes.
 
+### Multi-elbow L via `controls`
+
+Long or crowded routes: pass explicit waypoints via `--controls "[(x1,y1),(x2,y2),...]"`. Each waypoint becomes an elbow; tool threads axis-aligned segments between consecutive points. Soft cap 5 - exceed it and tool warns. Prefer auto-route over hand-authored waypoints.
+
+### Auto-route (A*) for L-routes
+
+`--auto-route --svg scene.svg` runs grid A* on the SVG obstacle bitmap and picks multi-elbow waypoints that clear every shape in the file. Cell-based; default cell=10 px, margin=5 px clearance. Use when a 1-bend L collides with other elements:
+
+```bash
+svg-infographics connector --mode l-chamfer \
+  --src-rect "70,90,60,40"  --start-dir E \
+  --tgt-rect "670,180,80,40" --end-dir W \
+  --auto-route --svg scene.svg \
+  --chamfer 4 --standoff 4 --arrow end
+```
+
+Flags: `--route-cell-size N` (smaller = higher fidelity + slower), `--route-margin N` (obstacle clearance), `--container-id ID` (clip routing to one element). Router fails gracefully: unroutable = fallback to 1-bend L + warning in output. Always inspect `warnings` field.
+
+### Container-scoped routing and detection
+
+`--container-id ID` on `empty-space`, `callouts`, and `connector --auto-route` clips operation to the interior of a specific closed shape. Element must be rect/circle/ellipse/polygon/polyline/path - groups rejected because `<g>` has no geometry. Use when placing callouts or routing connectors BETWEEN two shapes that both live inside the same card:
+
+```bash
+svg-infographics empty-space --svg scene.svg --container-id card-1
+svg-infographics callouts --svg scene.svg --plan plan.json --container-id card-1
+svg-infographics connector --mode l --auto-route --svg scene.svg \
+  --container-id card-1 --src-rect ... --tgt-rect ... --start-dir E --end-dir W
+```
+
+**Picking rule**: the container ID must name a shape whose interior geometrically contains BOTH endpoints (or both callout targets). Outside obstacles are ignored; inside obstacles still occupy. Regions returned by `empty-space` carry a `container_id` field for caller verification.
+
 ### Spline waypoints
 
 `--waypoints "x1,y1 x2,y2 x3,y3 x4,y4"` for PCHIP. 3-5 waypoints enough — monotonicity-preserving, more points overfit. Showcase with visible markers: place `<g id="cell-4-waypoints">` AFTER path in connectors layer (render on top). Tiny cross glyphs (two crossing `<line>` + `stroke-linecap: round`) per waypoint, varied accent-2 shades for distinction.
