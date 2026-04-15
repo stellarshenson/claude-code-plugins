@@ -3185,3 +3185,180 @@ class TestCharts:
         assert out.stat().st_size > 500
         content = out.read_text()
         assert "<svg" in content
+
+
+# ---------------------------------------------------------------------------
+# propose_callouts.py tests
+# ---------------------------------------------------------------------------
+
+
+class TestProposeCallouts:
+    """Greedy callout placement tool."""
+
+    SIMPLE_SVG = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400">'
+        '<rect x="50" y="50" width="200" height="100" fill="black"/>'
+        '<rect x="350" y="250" width="200" height="100" fill="black"/>'
+        '</svg>'
+    )
+
+    def test_places_single_leader_callout(self):
+        from stellars_claude_code_plugins.svg_tools.propose_callouts import (
+            CalloutRequest,
+            propose_callouts,
+        )
+        result = propose_callouts(
+            self.SIMPLE_SVG,
+            [CalloutRequest(id="callout-a", target=(150, 100), text="annotated")],
+        )
+        layout = result["best_layout"]
+        assert len(layout) == 1
+        proposal = layout[0]
+        assert proposal is not None
+        assert proposal.id == "callout-a"
+        assert proposal.leader_start == (150.0, 100.0)
+        assert proposal.leader_anchor is not None
+        assert result["stats"]["hard_failures"] == 0
+
+    def test_places_leaderless_callout(self):
+        from stellars_claude_code_plugins.svg_tools.propose_callouts import (
+            CalloutRequest,
+            propose_callouts,
+        )
+        result = propose_callouts(
+            self.SIMPLE_SVG,
+            [
+                CalloutRequest(
+                    id="callout-leaderless",
+                    target=(300, 200),
+                    text="no line",
+                    leader=False,
+                )
+            ],
+        )
+        proposal = result["best_layout"][0]
+        assert proposal is not None
+        assert proposal.leader_start is None
+        assert proposal.leader_anchor is None
+
+    def test_multiple_callouts_no_pairwise_conflict(self):
+        """Two callouts on the same SVG must produce non-overlapping
+        text bboxes and non-crossing leaders."""
+        from stellars_claude_code_plugins.svg_tools.propose_callouts import (
+            CalloutRequest,
+            propose_callouts,
+        )
+        result = propose_callouts(
+            self.SIMPLE_SVG,
+            [
+                CalloutRequest(id="callout-a", target=(150, 100), text="left card"),
+                CalloutRequest(id="callout-b", target=(450, 300), text="right card"),
+            ],
+        )
+        a, b = result["best_layout"]
+        assert a is not None and b is not None
+        # Text bboxes must not overlap
+        ax, ay, aw, ah = a.text_bbox
+        bx, by, bw, bh = b.text_bbox
+        assert ax + aw <= bx or bx + bw <= ax or ay + ah <= by or by + bh <= ay
+
+    def test_deterministic_with_seed(self):
+        from stellars_claude_code_plugins.svg_tools.propose_callouts import (
+            CalloutRequest,
+            propose_callouts,
+        )
+        req = [CalloutRequest(id="callout-a", target=(150, 100), text="hello")]
+        r1 = propose_callouts(self.SIMPLE_SVG, req, seed=42)
+        r2 = propose_callouts(self.SIMPLE_SVG, req, seed=42)
+        p1 = r1["best_layout"][0]
+        p2 = r2["best_layout"][0]
+        assert p1.text_baseline == p2.text_baseline
+        assert p1.penalty == p2.penalty
+
+    def test_id_must_start_with_callout_prefix(self):
+        import pytest
+        from stellars_claude_code_plugins.svg_tools.propose_callouts import _load_plan
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as f:
+            f.write('[{"id": "badname", "target": [100, 100], "text": "x"}]')
+            path = f.name
+        try:
+            with pytest.raises(ValueError, match="must start with 'callout-'"):
+                _load_plan(path)
+        finally:
+            import os
+            os.unlink(path)
+
+    def test_multiline_text_via_newline(self):
+        from stellars_claude_code_plugins.svg_tools.propose_callouts import (
+            CalloutRequest,
+            propose_callouts,
+        )
+        # Two-line text should land in a bbox tall enough for both lines.
+        result = propose_callouts(
+            self.SIMPLE_SVG,
+            [
+                CalloutRequest(
+                    id="callout-a",
+                    target=(150, 100),
+                    text="first line\nsecond line",
+                )
+            ],
+        )
+        p = result["best_layout"][0]
+        assert p is not None
+        # bbox height >= 2 lines at 8.5 font + pad
+        assert p.text_bbox[3] >= 2 * 8.5
+
+    def test_cli_help_shows_schema(self):
+        import subprocess
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
+             "callouts", "--help"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0
+        assert "Schema for --plan JSON" in r.stdout
+        assert "callout-" in r.stdout
+        assert "leader" in r.stdout
+        assert "preferred_side" in r.stdout
+
+    def test_cli_run_on_real_svg(self, tmp_path):
+        import subprocess
+        plan = tmp_path / "plan.json"
+        plan.write_text(
+            '[{"id": "callout-a", "target": [150, 100], "text": "test annotation"}]'
+        )
+        svg = tmp_path / "scene.svg"
+        svg.write_text(self.SIMPLE_SVG)
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
+             "callouts", "--svg", str(svg), "--plan", str(plan)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "PROPOSAL" in r.stdout
+        assert "callout-a" in r.stdout
+
+    def test_cli_json_output(self, tmp_path):
+        import json as _json
+        import subprocess
+        plan = tmp_path / "plan.json"
+        plan.write_text(
+            '[{"id": "callout-a", "target": [150, 100], "text": "x"}]'
+        )
+        svg = tmp_path / "scene.svg"
+        svg.write_text(self.SIMPLE_SVG)
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
+             "callouts", "--svg", str(svg), "--plan", str(plan), "--json"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        data = _json.loads(r.stdout)
+        assert "best_layout" in data
+        assert "proposals" in data
+        assert "stats" in data

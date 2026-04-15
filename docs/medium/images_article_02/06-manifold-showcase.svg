@@ -103,27 +103,36 @@
     <circle cx="650.0" cy="230.0" r="5"/>
   </g>
   <g id="callout-merge">
-    <text x="439" y="172" class="callout-text">merge point</text>
-    <text x="439" y="183" class="callout-text">(single convergence)</text>
-    <line x1="410" y1="230" x2="464.9" y2="190.5" class="callout-line"/>
+    <text x="427" y="286" class="callout-text">merge point</text>
+    <text x="427" y="296" class="callout-text">(single convergence)</text>
+    <line x1="410" y1="230" x2="450" y2="267" class="callout-line"/>
   </g>
   <g id="callout-fork">
-    <text x="514" y="265" class="callout-text">fork point</text>
-    <text x="514" y="276" class="callout-text">(single divergence)</text>
-    <line x1="650" y1="230" x2="594.1" y2="253.5" class="callout-line"/>
+    <text x="552" y="170" class="callout-text">fork point</text>
+    <text x="552" y="182" class="callout-text">(single divergence)</text>
+    <line x1="650" y1="230" x2="612" y2="191" class="callout-line"/>
   </g>
   <g id="callout-standoff">
-    <text x="773" y="51" class="callout-text">5px standoff</text>
-    <text x="773" y="62" class="callout-text">(arrow tip gap)</text>
-    <line x1="808" y1="116" x2="808.0" y2="69.5" class="callout-line"/>
+    <text x="722" y="56" class="callout-text">5px standoff</text>
+    <text x="722" y="66" class="callout-text">(arrow tip gap)</text>
+    <line x1="808" y1="116" x2="771" y2="76" class="callout-line"/>
   </g>
   <g id="callout-auto">
-    <text x="318" y="570" class="callout-text">auto-edge routing</text>
-    <line x1="412" y1="530" x2="371.3" y2="558.5" class="callout-line"/>
+    <text x="282" y="568" class="callout-text">auto-edge routing</text>
+    <line x1="412" y1="530" x2="360" y2="550" class="callout-line"/>
   </g>
   <g id="callout-chamfer">
-    <text x="749" y="453" class="callout-text">L-chamfer corner</text>
-    <line x1="786" y1="482" x2="786.3" y2="460.5" class="callout-line"/>
+    <text x="837" y="448" class="callout-text">L-chamfer corner</text>
+    <line x1="786" y1="482" x2="836" y2="460" class="callout-line"/>
+  </g>
+  <g id="callout-inputs">
+    <text x="119" y="60" class="callout-text">5 INPUTS</text>
+  </g>
+  <g id="callout-outputs">
+    <text x="867" y="80" class="callout-text">3 OUTPUTS</text>
+  </g>
+  <g id="callout-spine">
+    <text x="519" y="220" class="callout-text">spine</text>
   </g>
   <line x1="30" y1="415" x2="970" y2="415" class="divider"/>
   <text x="500" y="435" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="fg-1">Point-to-point modes on the same canvas</text>

@@ -60,7 +60,11 @@ SUBCOMMANDS = {
     ),
     "empty-space": (
         "calc_empty_space",
-        "CALC empty regions on a canvas via recursive quadtree scan. Returns boundary polygons for free islands. Use for callout/label placement without overlaps.",
+        "CALC empty regions on an SVG canvas via svgelements + bitmap. Returns boundary polygons for free islands. Use for callout/label placement without overlaps.",
+    ),
+    "callouts": (
+        "propose_callouts",
+        "CALC joint callout placement proposals. Given an SVG and a list of callout requests, returns one best layout plus top-N alternatives per callout with penalty breakdowns.",
     ),
     "collide": (
         "check_collisions",

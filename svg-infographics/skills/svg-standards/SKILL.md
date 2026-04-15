@@ -357,29 +357,42 @@ Non-compliant callouts invisible to `empty-space`, `overlaps`, and workflow.
 
 ### Callout construction workflow
 
-7 steps, two audit gates. SVG is source of truth.
+**Primary path: `svg-infographics callouts`.** One tool, one call, all callouts placed jointly. Greedy solver with random-ordering restarts. Handles leader + leaderless callouts, text bbox containment, leader cleanness, pairwise conflicts, preferred-side hints. Returns best layout plus top-5 alternatives per callout with penalty breakdowns.
+
+Three-step workflow:
 
 1. **Pre-audit**: `svg-infographics overlaps --svg file.svg`. Fix any CALLOUT CROSS-COLLISIONS before adding new work.
-2. **Empty space**: `svg-infographics empty-space --svg file.svg --tolerance 20`. Returns boundary polygons per free island, shrunk inward 20px. Tool parses SVG directly, every visible element is an obstacle, existing `<g id="callout-*">` excluded by default. Larger tolerance (25-30) for dense scenes.
-3. **Text bbox**: width ≈ `len(text) * font_size * 0.55`, height ≈ `font_size + 2` per line. Stack lines if multi-line.
-4. **Best placement**: for each island, `geom contains --polygon <island> --bbox <text-bbox>`. Pass condition `contained=YES convex-safe=YES` (islands often L-shaped - bbox must fit the polygon, NOT its axis-aligned bounds). Then audit leader vs all hard shapes. Leader may start inside target's own shape, must not touch others. Prefer islands closest to target, ties broken by shortest leader.
-5. **Iterate**: place one, append to `<g id="callouts">` with `callout-` prefix, re-run empty-space. Default exclude filters placed callouts automatically.
-6. **Render**: text at chosen position, leader drawn, placed inside `<g id="callouts">`. Bbox was scaffold - discard.
-7. **Post-audit**: re-run `overlaps --svg file.svg`. CALLOUT CROSS-COLLISIONS must be clean. Any violation means reposition + repeat.
+2. **Propose**: build a plan JSON listing every callout you need (id, target, text). Call `svg-infographics callouts --svg file.svg --plan callouts.json`. Paste the returned coordinates into the SVG inside the `<g id="callouts">` layer, each callout wrapped in its own `<g id="callout-<name>">` group.
+3. **Post-audit**: re-run `overlaps --svg file.svg`. CALLOUT CROSS-COLLISIONS must be clean. Any violation means the plan was under-constrained (unusual - the tool already checks these). Reposition or adjust weights and re-run.
 
-**Empty zones for manifold scenes** (highest yield first):
+Plan file shape (see `svg-infographics callouts --help` for the full schema):
+
+```json
+[
+  {"id": "callout-merge",  "target": [410, 230], "text": "merge point\n(single convergence)"},
+  {"id": "callout-fork",   "target": [650, 230], "text": "fork point\n(single divergence)"},
+  {"id": "callout-label",  "target": [150,  95], "text": "source 1", "leader": false}
+]
+```
+
+Targets can be points `[x, y]` or bboxes `[x, y, w, h]`. Multi-line text uses `\n`. `"leader": false` produces a leaderless label placed as close as possible to the target using a smaller 10 px standoff. Optional `preferred_side` is `"above" | "below" | "left" | "right"` (soft penalty, not a hard filter).
+
+**Debug path: manual primitives.** When the tool's result looks wrong or you want to investigate why a specific candidate was rejected, drop down to the individual primitives:
+
+- `svg-infographics empty-space --svg file.svg --tolerance 20` - returns free-region boundary polygons, shrunk inward by 20 px, with `<g id="callout-*">` already excluded by default
+- `svg-infographics geom contains --polygon <island> --bbox <text-bbox>` - verifies a proposed text bbox fits inside a region polygon (`contained=YES convex-safe=YES` pass condition; islands are often L-shaped so axis-aligned bbox bounds are not enough)
+- `svg-infographics geom offset-rect --rect <text-bbox> --by <standoff>` - inflates the text bbox by standoff
+- `svg-infographics geom rect-edge --rect <inflated> --from <target>` - returns the leader anchor (point on the inflated bbox where the leader terminates)
+- `svg-infographics overlaps --svg file.svg` - post-audit; the `CALLOUT CROSS-COLLISIONS` block reports leader-vs-text, leader-vs-leader, text-vs-text violations pairwise across every `<g id="callout-*">`
+
+**Empty zones for manifold scenes** (highest yield first, useful context when reading the tool's output):
 
 - Above spine between merge/fork: `x∈[spine_start.x, spine_end.x], y<spine.y`, no strand traffic
 - Below spine between merge/fork: same x range, `y>spine.y`
-- Shoulder gaps between src/sink rows (~18-20px, one-line each)
+- Shoulder gaps between src/sink rows (~18-20 px, one-line each)
 - Above title row, below last row of cards
 
-**Audit gates**:
-
-- `overlaps --svg file.svg` - CALLOUT CROSS-COLLISIONS checks leader-vs-text, leader-vs-leader, text-vs-text pairwise across every `<g id="callout-*">`. Run before (baseline) and after (acceptance).
-- `collide` - callout leaders vs non-callout geometry. Run before shipping, reposition offenders.
-
-**`empty-space` not callout-only**: any "where to put X without overlapping Y" problem - legends, badges, logos, secondary labels, decorative imagery. Point at SVG, pick largest island that fits, drop element in `<g id="content">` or a named layer.
+**`empty-space` not callout-only**: any "where to put X without overlapping Y" problem - legends, badges, logos, secondary labels, decorative imagery. Point at SVG, pick the largest island that fits, drop the element in `<g id="content">` or a named layer.
 
 ### Angular Arrow Design (Chamfered L-Routing)
 
