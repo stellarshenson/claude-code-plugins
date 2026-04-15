@@ -167,15 +167,15 @@ FULL::RESEARCH:
       **Iteration**: {iteration}
       {iteration_purpose}
       {prior_context}{plan_context}
-      **Your role: Research Manager.** You own the quality of this phase's output.
-      Three specialist agents work for you. You dispatch them, synthesize their findings
-      into a cohesive research document, and ensure it is rich enough that HYPOTHESIS,
-      PLAN, and IMPLEMENT can do their jobs without re-reading the codebase.
+      **Your role: Research Manager.** You own quality of this phase's output.
+      Three specialist agents work for you. Dispatch them, synthesize findings
+      into cohesive research document, ensure rich enough that HYPOTHESIS,
+      PLAN, IMPLEMENT can do their jobs without re-reading codebase.
 
-      If the agents bring back shallow findings, send them back. If there are gaps
-      between what the agents found and what downstream phases need, fill them yourself
-      or dispatch agents again. The research document you produce is the foundation
-      for ALL subsequent work - if it's thin, everything downstream will be thin.
+      If agents bring back shallow findings, send them back. If gaps exist
+      between agent findings and downstream phase needs, fill them yourself
+      or dispatch agents again. Research document you produce is foundation
+      for ALL subsequent work - if thin, everything downstream will be thin.
 
       **Dispatch** 3 specialist agents:
 
@@ -188,23 +188,23 @@ FULL::RESEARCH:
       Do NOT use Edit, Write, or any tool that changes files. Only gather information.
 
       **Investigate unsolved failures**: If prior failures exist with unsolved status,
-      investigate them as root causes. Each unsolved failure is an investigation target.
+      investigate them as root causes. Each unsolved failure is investigation target.
 
-      **Synthesize**: After all 3 agents return, synthesize their findings into a single
+      **Synthesize**: After all 3 agents return, synthesize findings into single
       document with these MANDATORY sections:
       1. **Current State Summary**: what exists, what works, key metrics (line counts, test counts, file counts)
-      2. **Gap Analysis**: what's missing vs what the objective requires, with specific file/function references
-      3. **File Inventory**: list of relevant files with their purpose and line counts
+      2. **Gap Analysis**: what's missing vs what objective requires, with specific file/function references
+      3. **File Inventory**: list of relevant files with purpose and line counts
       4. **Risk Assessment**: what could go wrong, dependencies, complexity concerns
 
       Cross-reference agent findings. Resolve contradictions. Fill gaps where one agent
-      found something relevant to another's area. Add your own findings if agents missed
+      found something relevant to another's area. Add own findings if agents missed
       something obvious.
 
-      **Quality gate** - before calling end, verify your synthesized output passes:
+      **Quality gate** - before calling end, verify synthesized output passes:
       - [ ] **Hypothesis readiness**: root causes identified (not symptoms). Testable hypotheses can be formed from this alone
-      - [ ] **Plan readiness**: specific files, functions, line numbers documented. A planner can identify changes without re-reading code
-      - [ ] **Implementation readiness**: function signatures, patterns, dependencies mapped. An implementer can write code from this
+      - [ ] **Plan readiness**: specific files, functions, line numbers documented. Planner can identify changes without re-reading code
+      - [ ] **Implementation readiness**: function signatures, patterns, dependencies mapped. Implementer can write code from this
       - [ ] **Gap check**: no unanswered questions that would force downstream phases to guess
 
       If ANY criterion fails: dispatch agents again to fill gaps, or investigate yourself.
@@ -231,38 +231,38 @@ FULL::RESEARCH:
       - name: researcher
         display_name: RESEARCHER
         prompt: |
-          Deep-dives into code, prior results, and history. For EACH finding, produce:
+          Deep-dives into code, prior results, history. For EACH finding, produce:
           - **FINDING**: what you discovered (1-2 sentences)
           - **EVIDENCE**: specific file:line references, metrics, test output
-          - **IMPACT**: why this matters for the objective
+          - **IMPACT**: why this matters for objective
           - **FILES**: specific file paths involved
 
           Tasks:
-          - Read the files most relevant to the objective - cite line numbers
+          - Read files most relevant to objective - cite line numbers
           - Read recent git log, benchmark reports, failure logs
           - What was tried before? What worked? What failed and why?
-          - Find existing functions, patterns, tests that relate to the objective
+          - Find existing functions, patterns, tests that relate to objective
           - Count things: lines of code, test count, function count, file count
 
           Minimum: 5 structured findings with code references. "X is missing" without
-          a file path is NOT a finding.
+          file path is NOT a finding.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
       - name: architect
         display_name: ARCHITECT
         prompt: |
-          Analyses the system design and technical landscape. For EACH finding, produce:
-          - **FINDING**: what you discovered about the architecture
+          Analyses system design and technical landscape. For EACH finding, produce:
+          - **FINDING**: what you discovered about architecture
           - **EVIDENCE**: specific file:line references, dependency chains, patterns found
-          - **IMPACT**: why this matters for the objective
+          - **IMPACT**: why this matters for objective
           - **FILES**: specific file paths involved
 
           Tasks:
-          - Understand current architecture and how the objective fits
+          - Understand current architecture and how objective fits
           - Map dependencies: what connects to what, what breaks if we change X
           - Find existing patterns that should be reused vs areas that need redesign
           - Assess technical feasibility and complexity
-          - Identify the simplest approach: what's the minimum change that achieves the objective?
+          - Identify simplest approach: what's minimum change that achieves objective?
 
           *occam_directive
 
@@ -273,17 +273,17 @@ FULL::RESEARCH:
         display_name: PRODUCT MANAGER
         prompt: |
           Clarifies requirements and acceptance criteria. For EACH finding, produce:
-          - **FINDING**: what the requirement actually is (not what you assume)
+          - **FINDING**: what requirement actually is (not what you assume)
           - **EVIDENCE**: specific text from objective documents, specs, user requests
           - **IMPACT**: priority (must-have vs nice-to-have) with reasoning
-          - **FILES**: specific documents or code that defines the requirement
+          - **FILES**: specific documents or code that defines requirement
 
           Tasks:
-          - Read ALL objective documents referenced in the objective (PROGRAM.md, specs, checklists)
-          - What exactly needs to be achieved? Quote the acceptance criteria verbatim
+          - Read ALL objective documents referenced in objective (PROGRAM.md, specs, checklists)
+          - What exactly needs to be achieved? Quote acceptance criteria verbatim
           - Prioritise: what's must-have vs nice-to-have for THIS iteration?
           - Identify measurable success metrics - how will we know each item is done?
-          - What's the gap between current state and desired state? Quantify it
+          - What's gap between current state and desired state? Quantify it
 
           Minimum: 3 structured findings with specific acceptance criteria.
 
@@ -345,33 +345,33 @@ FULL::HYPOTHESIS:
       Do NOT use Edit, Write, or any tool that changes files.
       Show your reasoning for each decision and finding.
 
-      **Goal**: review, refine, and evolve the hypothesis backlog informed by RESEARCH findings.
-      Four agents with different perspectives each review the EXISTING hypothesis list,
-      propose additions, flag removals, and suggest re-ordering.
+      **Goal**: review, refine, evolve hypothesis backlog informed by RESEARCH findings.
+      Four agents with different perspectives each review EXISTING hypothesis list,
+      propose additions, flag removals, suggest re-ordering.
 
       {spawn_instruction}
       Do NOT combine agents. Do NOT self-review. Each agent MUST be a separate Agent tool call.
-      Give each agent: (1) research findings, (2) the prior hypothesis list shown above.
+      Give each agent: (1) research findings, (2) prior hypothesis list shown above.
 
       Each agent MUST:
-      1. **Rate** each existing hypothesis with stars (1-5): how valuable is it from this perspective?
-      2. **Review** each - is it still valid? Already addressed? Obsolete?
+      1. **Rate** each existing hypothesis with stars (1-5): how valuable from this perspective?
+      2. **Review** each - still valid? Already addressed? Obsolete?
       3. **Propose** 1-3 new hypotheses from their perspective
       4. **Flag** any existing hypotheses for removal (with reason)
-      5. **Return** a re-ordered list: most important first, with star ratings
+      5. **Return** re-ordered list: most important first, with star ratings
 
       {agents_instructions}
 
       ### Merging hypotheses
 
       After all 4 agents return, merge their proposals:
-      1. Compile the full hypothesis list (existing + new proposals)
+      1. Compile full hypothesis list (existing + new proposals)
       2. Remove hypotheses flagged by 2+ agents
       3. Average star ratings across agents (total stars / 4 agents = hypothesis score)
       4. Rank by star average (highest first), break ties by: evidence x impact x risk
       5. Select top 1-3 for THIS iteration
-      6. Write each hypothesis as a RICH, self-contained description that anyone can understand
-         without context. Include: what the problem is, why it exists (root cause), what
+      6. Write each hypothesis as RICH, self-contained description that anyone can understand
+         without context. Include: what problem is, why it exists (root cause), what
          specifically to change (files, functions), what measurable outcome to expect, and
          what could go wrong. Format:
          ```
@@ -508,18 +508,18 @@ PLAN:
       **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
       Do NOT use Edit, Write, or any tool that modifies files (except the plan output file).
 
-      **The plan MUST be grounded in the hypotheses from the HYPOTHESIS phase.**
-      Each selected hypothesis should map to specific plan items with files, changes, and acceptance criteria.
-      If no hypotheses exist, the plan must explain its own reasoning from scratch.
+      **Plan MUST be grounded in hypotheses from HYPOTHESIS phase.**
+      Each selected hypothesis should map to specific plan items with files, changes, acceptance criteria.
+      If no hypotheses exist, plan must explain its own reasoning from scratch.
 
-      Before creating the final plan, explore 2-3 alternative approaches to decomposing the work.
-      Have the contrarian agent challenge each approach. Select the best with justification.
+      Before creating final plan, explore 2-3 alternative approaches to decomposing work.
+      Have contrarian agent challenge each approach. Select best with justification.
 
       **Execution** (MANDATORY - explore -> design -> review -> write):
-      1. **Explore**: Read context (git log, failure log `{CMD} failures`, prior results). Spawn **Explore agents** (up to 3 in parallel) to investigate the codebase
-      2. **Design**: Based on exploration results, design the implementation approach with specific files, changes, and acceptance criteria
-      3. **Review**: Spawn review agents (architect, critic, guardian) to challenge the plan
-      4. **Write**: Write the final plan to a file for `--output-file`
+      1. **Explore**: Read context (git log, failure log `{CMD} failures`, prior results). Spawn **Explore agents** (up to 3 in parallel) to investigate codebase
+      2. **Design**: Based on exploration results, design implementation approach with specific files, changes, acceptance criteria
+      3. **Review**: Spawn review agents (architect, critic, guardian) to challenge plan
+      4. **Write**: Write final plan to file for `--output-file`
 
       **Plan must contain**:
       - What specifically needs to change and why (root causes)
@@ -528,7 +528,7 @@ PLAN:
       - Acceptance criteria for each change
       - Risk assessment and planned impact
 
-      **Why agents**: planning quality depends on SEEING the code, not guessing.
+      **Why agents**: planning quality depends on SEEING code, not guessing.
       Explore agents search broadly and return findings. Without them, plans are
       shallow and miss existing code that could be reused.
 
@@ -549,13 +549,13 @@ PLAN:
       - name: architect
         display_name: ARCHITECT
         prompt: |
-          Reviews the plan for technical feasibility and design quality:
-          - Is the plan specific enough to verify after implementation?
-          - Are the right files identified? Are there dependencies missed?
-          - Is the approach the simplest that could work?
-          - Are there existing functions/patterns that should be reused instead of reinventing?
-          - Could the proposed changes introduce regressions?
-          If the plan is vague ("improve code quality"), REJECT it.
+          Reviews plan for technical feasibility and design quality:
+          - Is plan specific enough to verify after implementation?
+          - Are right files identified? Are dependencies missed?
+          - Is approach simplest that could work?
+          - Are existing functions/patterns that should be reused instead of reinventing?
+          - Could proposed changes introduce regressions?
+          If plan is vague ("improve code quality"), REJECT it.
 
           **Occam's Razor**: Guard against unnecessary complexity. One canonical location per data entity. No shadow copies, no parallel tracking files, no orphan structures. Challenge: can this be achieved without adding a new file? Can this field live in an existing structure? Reject speculative abstractions.
 
@@ -565,24 +565,24 @@ PLAN:
       - name: critic
         display_name: CRITIC
         prompt: |
-          Reviews the plan for quality and completeness:
-          - Is the plan specific enough to verify after implementation?
-          - Are there gaps - things the hypotheses demand but the plan doesn't address?
-          - Is the scope right - not too large (won't finish), not too small (won't matter)?
-          - Does the plan address the ROOT CAUSE or just the symptom?
-          If the plan is vague ("improve code quality"), REJECT it.
+          Reviews plan for quality and completeness:
+          - Is plan specific enough to verify after implementation?
+          - Are there gaps - things hypotheses demand but plan doesn't address?
+          - Is scope right - not too large (won't finish), not too small (won't matter)?
+          - Does plan address ROOT CAUSE or just symptom?
+          If plan is vague ("improve code quality"), REJECT it.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
       - name: guardian
         display_name: GUARDIAN
         prompt: |
-          Reviews the plan for overfit risk. READ THE ACTUAL CODE to verify claims.
+          Reviews plan for overfit risk. READ THE ACTUAL CODE to verify claims.
           Do not trust evidence text alone - use Read, Grep, Glob to check files.
-          The guardian is the quality gate
+          Guardian is quality gate
           that prevents changes from gaming tests, benchmarks, or scenarios
-          instead of genuinely improving the system. Apply the checklist below
-          to every proposed change. If uncertain whether a change is overfit
-          or intentional specialisation, ASK the user - never silently approve.
+          instead of genuinely improving system. Apply checklist below
+          to every proposed change. If uncertain whether change is overfit
+          or intentional specialisation, ASK user - never silently approve.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
         checklist: &guardian_checklist |
@@ -682,27 +682,27 @@ IMPLEMENT:
     template: |
       ## Phase: IMPLEMENT
 
-      **Do NOT evaluate the benchmark.** Write code only. Benchmark evaluation
+      **Do NOT evaluate benchmark.** Write code only. Benchmark evaluation
       happens in TEST phase.
 
       **Goal**: make code changes with internal hypothesis loop.
 
       **Per change**:
-      1. PREDICT: what will change in the output?
-      2. IMPLEMENT: make the change
+      1. PREDICT: what will change in output?
+      2. IMPLEMENT: make change
       3. VERIFY: does output match prediction? If not: diagnose, retry
       4. REFLECT: ROOT_CAUSE_FIXED / PARTIAL / WRONG / NEW_DEFECT
 
       **Spawn worker agents** for multi-file changes (use Agent tool):
-      - Each agent gets DISJOINT file ownership (no two agents edit the same file)
+      - Each agent gets DISJOINT file ownership (no two agents edit same file)
       - Each agent gets: files to modify, acceptance criteria from plan, predict/verify loop
-      - Launch agents IN PARALLEL when their file sets don't overlap
-      - Agent results are merged by the orchestrating session
+      - Launch agents IN PARALLEL when file sets don't overlap
+      - Agent results merged by orchestrating session
 
       **Single-file changes**: make directly, no agent needed.
 
       **Rules**:
-      - Follow the plan from PLAN phase - don't add features beyond what was planned
+      - Follow plan from PLAN phase - don't add features beyond what was planned
       - Don't "improve" unrelated code (scope creep)
       - Each change must have predict/verify reflection
 
@@ -770,20 +770,20 @@ TEST:
       **CRITICAL: This phase is READ-ONLY.** Do NOT modify any project files.
       Do NOT use Edit, Write, or any tool that changes files.
 
-      **This is where benchmark evaluation happens.** The benchmark instruction below
-      is for YOU to follow. Read the referenced file, evaluate each item, update
-      checkmarks, and report the violation count.
+      **This is where benchmark evaluation happens.** Benchmark instruction below
+      is for YOU to follow. Read referenced file, evaluate each item, update
+      checkmarks, report violation count.
 
-      **Goal**: automated verification. Tests, lint, and benchmark MUST pass.
+      **Goal**: automated verification. Tests, lint, benchmark MUST pass.
 
-      **Actions** (the orchestrator runs these automatically on `end`):
+      **Actions** (orchestrator runs these automatically on `end`):
       1. `make test` - all tests pass
       2. `make lint` - no lint errors
       3. Benchmark (if configured) - runs and records score
       {benchmark_info}
 
       If tests fail: auto-reject back to IMPLEMENT. Do not proceed with failing tests.
-      Benchmark failure is NOT blocking (score is tracked, not gated).
+      Benchmark failure NOT blocking (score tracked, not gated).
 
       **Log failures**: if you find failure modes during testing, log them:
       ```
@@ -818,17 +818,17 @@ TEST:
       - name: benchmark_evaluator
         display_name: BENCHMARK EVALUATOR
         prompt: |
-          Evaluate the project benchmark and update the score tracking:
-          1. Read BENCHMARK.md from the project root
-          2. For each checklist item, evaluate whether it is satisfied
-          3. Check the item if satisfied, uncheck if not - edit BENCHMARK.md directly
-          4. Count unchecked items and compute the benchmark score
-          5. Update the Score Tracking table at the bottom of BENCHMARK.md
-             with the current iteration results (iteration number, score, summary)
-          6. Report the final score as your output
+          Evaluate project benchmark and update score tracking:
+          1. Read BENCHMARK.md from project root
+          2. For each checklist item, evaluate whether satisfied
+          3. Check item if satisfied, uncheck if not - edit BENCHMARK.md directly
+          4. Count unchecked items and compute benchmark score
+          5. Update Score Tracking table at bottom of BENCHMARK.md
+             with current iteration results (iteration number, score, summary)
+          6. Report final score as your output
 
           **IMPORTANT**: You MUST edit BENCHMARK.md - reading without editing = failure.
-          The benchmark score formula is defined in BENCHMARK.md itself.
+          Benchmark score formula defined in BENCHMARK.md itself.
   end:
     template: |
       ## Phase: TEST (exit criteria)
@@ -875,9 +875,9 @@ REVIEW:
       **CRITICAL: This phase is READ-ONLY.** Do NOT modify any project files.
       Do NOT use Edit, Write, or any tool that changes files.
       Show your reasoning for each decision and finding.
-      **Do NOT re-evaluate the benchmark.** Review code and benchmark results only.
+      **Do NOT re-evaluate benchmark.** Review code and benchmark results only.
 
-      **Goal**: four agents review the work IN PARALLEL. This is NOT a rubber stamp.
+      **Goal**: four agents review work IN PARALLEL. This is NOT rubber stamp.
 
       **Context & Failure Acknowledgment**: When context messages or failures are active,
       each agent MUST write a rich acknowledgment note:
@@ -923,24 +923,24 @@ REVIEW:
         display_name: CRITIC
         prompt: |
           Checks implementation quality and plan alignment:
-          1. **Plan alignment**: do the changes match the PLAN? Any scope creep?
+          1. **Plan alignment**: do changes match PLAN? Any scope creep?
           2. **Quality**: are changes clean, minimal, correct?
           3. **Regressions**: could these changes break anything not covered by tests?
-          4. **Completeness**: is anything from the plan left undone?
+          4. **Completeness**: is anything from plan left undone?
 
-          The critic must be SPECIFIC: "code quality is poor" is not actionable.
+          Critic must be SPECIFIC: "code quality is poor" is not actionable.
           "Function X at line Y duplicates logic from Z" is actionable.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
       - name: architect
         display_name: ARCHITECT
         prompt: |
-          Checks architectural soundness of the implementation:
-          1. **Design fit**: do changes fit the existing architecture or fight against it?
+          Checks architectural soundness of implementation:
+          1. **Design fit**: do changes fit existing architecture or fight against it?
           2. **Abstraction level**: right level of abstraction? No premature generalisation?
           3. **Dependencies**: are new dependencies justified? Any circular references introduced?
           4. **Patterns**: do changes follow established project patterns or diverge without reason?
-          5. **Simplicity**: is this the simplest approach that could work?
+          5. **Simplicity**: is this simplest approach that could work?
 
           **Occam's Razor**: Guard against unnecessary complexity. One canonical location per data entity. No shadow copies, no parallel tracking files, no orphan structures. Challenge: can this be achieved without adding a new file? Can this field live in an existing structure? Reject speculative abstractions.
 
@@ -950,31 +950,31 @@ REVIEW:
       - name: guardian
         display_name: GUARDIAN
         prompt: |
-          Reviews the implementation for overfit risk. READ THE ACTUAL CODE
+          Reviews implementation for overfit risk. READ THE ACTUAL CODE
           using Read, Grep, Glob tools - do not trust evidence text alone.
-          Examine every code change against the checklist below. Look for
+          Examine every code change against checklist below. Look for
           patterns where changes target specific test cases, benchmark
           scenarios, or datasets rather
-          than genuinely improving the system. Compare implementation against
-          the stated plan - did scope creep introduce overfit patterns?
+          than genuinely improving system. Compare implementation against
+          stated plan - did scope creep introduce overfit patterns?
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
         checklist: *guardian_checklist
       - name: forensicist
         display_name: FORENSICIST
         prompt: |
-          Analyses failure modes and feeds insights into the NEXT iteration:
+          Analyses failure modes and feeds insights into NEXT iteration:
           1. **What failed in this iteration?** Read test results, benchmark scores, checker outputs
           2. **Root cause classification**: for each failure, classify as:
-             - GENERATIVE: the LLM produced wrong output (prompt/brief issue)
+             - GENERATIVE: LLM produced wrong output (prompt/brief issue)
              - PROGRAMMATIC: code calculated wrong values (algorithm/logic issue)
-             - ARCHITECTURAL: the system design doesn't support what's needed
-          3. **Failure patterns**: are the same failures repeating across iterations? If so, why
+             - ARCHITECTURAL: system design doesn't support what's needed
+          3. **Failure patterns**: are same failures repeating across iterations? If so, why
              haven't previous fixes worked?
-          4. **Input for next iteration**: what specific hypotheses should the NEXT iteration test?
-             What files/functions are the root cause? What measurable improvement to target?
+          4. **Input for next iteration**: what specific hypotheses should NEXT iteration test?
+             What files/functions are root cause? What measurable improvement to target?
 
-          The forensicist's output is critical - it feeds directly into the RESEARCH phase of the
+          Forensicist's output is critical - feeds directly into RESEARCH phase of
           next iteration as prior context. Be specific: name files, line numbers, error messages.
 
           **READ-ONLY**: Do NOT modify any files. Do NOT use Edit, Write, or any tool that changes files.
@@ -1036,7 +1036,7 @@ RECORD:
 
       {record_instructions}
 
-      **Project policy**: If the project's CLAUDE.md restricts git operations (e.g. requires explicit user approval for commits), follow those restrictions. CLAUDE.md always takes precedence over phase instructions. Record the iteration summary regardless of git policy.
+      **Project policy**: If project's CLAUDE.md restricts git operations (e.g. requires explicit user approval for commits), follow those restrictions. CLAUDE.md always takes precedence over phase instructions. Record iteration summary regardless of git policy.
 
       **WHEN DONE**:
       ```
@@ -1053,8 +1053,8 @@ RECORD:
           PHASE: {phase} | OBJECTIVE: {objective}
           INSTRUCTIONS: {instructions}
           UNDERSTANDING: {understanding}
-          IMPORTANT: If the project CLAUDE.md restricts git operations, the agent adapting to those restrictions is CORRECT behavior, not a failure.
-          Only require: iteration summary mentioned. Git operations are conditional on project policy.
+          IMPORTANT: If project CLAUDE.md restricts git operations, agent adapting to those restrictions is CORRECT behavior, not failure.
+          Only require: iteration summary mentioned. Git operations conditional on project policy.
           Be lenient on phrasing.
   end:
     template: |
@@ -1099,9 +1099,9 @@ NEXT:
       **PROCEED IMMEDIATELY to the next iteration** unless user explicitly asked to pause.
 
       **Stop decision**:
-      - If objective is 100% achieved and nothing remains to implement: STOP and report, regardless of iteration count.
+      - If objective 100% achieved and nothing remains to implement: STOP and report, regardless of iteration count.
       - If specific iteration count was requested: continue until count reached (unless objective 100% done).
-      - If unlimited iterations: check program exit conditions each iteration. If no explicit exit conditions, use the workflow stop condition to judge whether further optimization is worthwhile.
+      - If unlimited iterations: check program exit conditions each iteration. If no explicit exit conditions, use workflow stop condition to judge whether further optimization is worthwhile.
       - Safety cap: stop after {total} iterations if unlimited was requested.
 
     template_final: |
@@ -1171,8 +1171,8 @@ PLANNING::RESEARCH:
 
       **Objective**: {objective}
 
-      **This is the PLANNING iteration.** Research goal: understand the problem space
-      and gather evidence for breaking down the objective into implementation iterations.
+      **This is the PLANNING iteration.** Research goal: understand problem space
+      and gather evidence for breaking down objective into implementation iterations.
       Focus on problem decomposition, not code-level investigation.
 
       {spawn_instruction}
@@ -1202,7 +1202,7 @@ PLANNING::RESEARCH:
       - name: researcher
         display_name: RESEARCHER
         prompt: |
-          Investigate the problem space for work breakdown planning:
+          Investigate problem space for work breakdown planning:
           - Read objective documents and specs
           - Assess overall scope and complexity
           - Identify major work areas and dependencies
@@ -1265,20 +1265,20 @@ PLANNING::PLAN:
       **Objective**: {objective}
       **Planned iterations**: {total}
 
-      Before creating the final plan, explore 2-3 alternative approaches to decomposing the work.
-      Have the contrarian agent challenge each approach. Select the best with justification.
+      Before creating final plan, explore 2-3 alternative approaches to decomposing work.
+      Have contrarian agent challenge each approach. Select best with justification.
 
       **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
-      Do NOT use Edit, Write, or any tool that modifies files (except the plan output file).
+      Do NOT use Edit, Write, or any tool that modifies files (except plan output file).
 
-      **Goal**: Break down the objective into {total} iterations. For each iteration, define:
+      **Goal**: Break down objective into {total} iterations. For each iteration, define:
       1. **Scope**: which specific items/tasks this iteration will address
       2. **Files**: which files will be modified
-      3. **Acceptance criteria**: how to verify the iteration succeeded
+      3. **Acceptance criteria**: how to verify iteration succeeded
       4. **Dependencies**: what must be done before this iteration can start
 
-      **Important**: Be honest about what fits in {total} iterations. If the objective
-      is too large, say so and prioritise the most impactful items first.
+      **Important**: Be honest about what fits in {total} iterations. If objective
+      is too large, say so and prioritise most impactful items first.
 
       **Format the plan as**:
       ```
@@ -1308,9 +1308,9 @@ PLANNING::PLAN:
       - name: contrarian
         display_name: CONTRARIAN
         prompt: |
-          Challenge the proposed iteration plan:
+          Challenge proposed iteration plan:
           - Are there better alternative approaches not considered?
-          - Is the iteration ordering optimal?
+          - Is iteration ordering optimal?
           - What assumptions are being made without evidence?
 
           **READ-ONLY**: Do NOT modify any files.
@@ -1352,16 +1352,16 @@ GC::PLAN:
       {prior_context}
 
       **CRITICAL: NO CODE EDITS IN THIS PHASE.** Planning is READ-ONLY.
-      Do NOT use Edit, Write, or any tool that modifies files (except the plan output file).
+      Do NOT use Edit, Write, or any tool that modifies files (except plan output file).
 
-      **Goal**: scope the garbage collection / cleanup work. GC plans are simpler
+      **Goal**: scope garbage collection / cleanup work. GC plans are simpler
       than full iteration plans - no research or hypothesis phases precede this,
       so focus on identifying what to clean and why.
 
       **Execution** (MANDATORY - explore -> design -> write):
       1. Identify cleanup targets: dead code, stale references, duplicate logic
       2. For each target, state what to remove/change and why
-      3. Write plan to a file for `--output-file`
+      3. Write plan to file for `--output-file`
 
       **Output**: plan file listing cleanup targets with rationale.
 

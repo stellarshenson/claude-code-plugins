@@ -76,7 +76,7 @@ footer:
   # Shown after phase START instructions - reminds agent what to do next
   # Note: leading \n ensures blank line before footer in output
   start: "\n  REMINDER: This phase's instructions above are AUTHORITATIVE.\n\
-    \  Follow them exactly. Do NOT work from memory or skip steps.\n\
+    \  Follow exactly. Do NOT work from memory or skip steps.\n\
     {separator_line}\n\
     \  Iteration {iteration} ({itype}) | Phase: {phase}\n\
     \  FIRST: {cmd} start --understanding \"brief summary (under 200 chars)\"\n\
@@ -159,8 +159,8 @@ messages:
   iteration_skippable: "Skippable: {skippable}"
   dependency_banner: "**Dependency workflow.** {description}"
   dependency_purpose: "{description}"
-  dependency_blocked: "Cannot invoke dependency workflow '{itype}' directly. It runs automatically when a parent workflow depends on it."
-  iteration_n_banner: "**Implementation iteration {iteration}/{total}.** Implement the scope defined in the iteration plan from the planning iteration."
+  dependency_blocked: "Cannot invoke dependency workflow '{itype}' directly. Runs automatically when parent workflow depends on it."
+  iteration_n_banner: "**Implementation iteration {iteration}/{total}.** Implement scope defined in iteration plan from planning iteration."
   iteration_begin: |
     To begin, run:
     ```
@@ -258,7 +258,7 @@ messages:
   context_set: "Context added for {phase}:"
   context_message: "  {message}"
   context_in_progress: |
-    Phase is already in progress. Context will be visible to agents when they read the state. Re-run `{cmd} start --understanding "..."` to see it in instructions.
+    Phase already in progress. Context will be visible to agents when they read state. Re-run `{cmd} start --understanding "..."` to see it in instructions.
   context_will_show: "Context will be shown when {phase} starts."
 
   # ── Failure logging (cmd_log_failure, cmd_failures) ──
@@ -301,9 +301,9 @@ messages:
   user_guidance_header_line: "{header_line}"
   user_guidance_header: "  USER GUIDANCE FOR THIS PHASE (broadcast to ALL agents)"
   user_guidance_instruction: |
-    **This guidance comes from the user and MUST be considered by every agent
+    **This guidance comes from user and MUST be considered by every agent
     spawned in this phase. ACKNOWLEDGE each context message by referencing it
-    in your output. Incorporate it into your research, hypotheses,
+    in your output. Incorporate into your research, hypotheses,
     plans, or implementation as appropriate.**
 
   # ── Status display (cmd_status) ──
