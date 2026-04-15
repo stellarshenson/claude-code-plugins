@@ -384,13 +384,18 @@ def _free_mask_from_obstacles(obstacle_mask, standoff: float):
     return free
 
 
-def _build_obstacle_mask(svg_doc, canvas, exclude_ids):
+def _build_obstacle_mask(svg_doc, canvas, exclude_ids, container_elem=None):
     """Rasterise every visible surrogate into a raw obstacle bitmap.
 
     Distinct from the free_mask used by ``find_empty_regions`` because
     this one has NO distance-transform erosion - we want the exact
     pixels covered by obstacles so the leader walker can detect hits
     down to the pixel.
+
+    When ``container_elem`` is set, the element's own surrogates are
+    skipped (it is not an obstacle) but its descendants / siblings
+    remain obstacles as usual. The caller is responsible for AND-ing
+    the resulting mask's inverse with a container interior mask.
     """
     from .calc_empty_space import _rasterise_surrogates
 
@@ -400,7 +405,8 @@ def _build_obstacle_mask(svg_doc, canvas, exclude_ids):
         eid = getattr(node, "id", None)
         if eid is not None and any(fnmatch.fnmatchcase(eid, pat) for pat in exclude_ids):
             return
-        surrogates.extend(_element_to_surrogates(node))
+        if node is not container_elem:
+            surrogates.extend(_element_to_surrogates(node))
         if isinstance(node, _se.Group):
             for child in node:
                 walk(child)
@@ -693,6 +699,7 @@ def propose_callouts(
     seed: int = 42,
     weights: dict | None = None,
     exclude_ids=("callout-*",),
+    container_id=None,
 ):
     """Propose joint placements for a list of callouts against an SVG.
 
@@ -710,6 +717,13 @@ def propose_callouts(
     centred on their target instead of drifting to one side. Mixing
     leader and leaderless callouts triggers two empty-space passes
     so each callout is routed to its matching free regions.
+
+    When ``container_id`` is set, placement is clipped to the interior
+    of that element - both the free-mask used by the leader walker and
+    the empty-region polygons consumed by the candidate enumerator.
+    The element must be a closed shape (rect/circle/ellipse/polygon/
+    polyline/path); groups are rejected. Useful for placing callouts
+    inside a specific card without competing with whitespace outside.
     """
     if weights is None:
         weights = dict(DEFAULT_WEIGHTS)
@@ -723,9 +737,27 @@ def propose_callouts(
     # Parse the SVG once, reuse for regions and obstacles.
     svg_doc, viewbox = _parse_svg_source(svg)
 
+    # Optional container clip: resolved once, reused for both the raw
+    # obstacle walk (skip-self) and the free-mask intersection.
+    container_elem = None
+    container_mask = None
+    if container_id is not None:
+        container_elem = svg_doc.get_element_by_id(container_id)
+        if container_elem is None:
+            raise ValueError(f"container_id={container_id!r} not found in SVG")
+        from .calc_empty_space import (
+            _container_interior_surrogates,
+            _rasterise_surrogates,
+        )
+
+        interior_surrogates = _container_interior_surrogates(container_elem)
+        container_mask = _rasterise_surrogates(viewbox, interior_surrogates)
+
     # Rasterise every visible obstacle to a raw pixel bitmap. The leader
     # walker samples this mask along each candidate line.
-    obstacle_mask, obstacle_origin = _build_obstacle_mask(svg_doc, viewbox, exclude_ids)
+    obstacle_mask, obstacle_origin = _build_obstacle_mask(
+        svg_doc, viewbox, exclude_ids, container_elem=container_elem
+    )
 
     # Compute the free mask per distinct standoff directly from the
     # obstacle bitmap via distance_transform_edt. Preserves interior
@@ -738,12 +770,14 @@ def propose_callouts(
     mask_by_so: dict[float, tuple] = {}
     regions_by_so: dict[float, list] = {}
     for s in standoffs_needed:
-        mask_by_so[s] = (
-            _free_mask_from_obstacles(obstacle_mask, s),
-            obstacle_origin,
-        )
+        free_mask = _free_mask_from_obstacles(obstacle_mask, s)
+        if container_mask is not None:
+            free_mask = free_mask & container_mask
+        mask_by_so[s] = (free_mask, obstacle_origin)
         # Keep the polygon list for debug overlays and result output.
-        regions_by_so[s] = find_empty_regions(svg, tolerance=s, exclude_ids=exclude_ids)
+        regions_by_so[s] = find_empty_regions(
+            svg, tolerance=s, exclude_ids=exclude_ids, container_id=container_id
+        )
 
     # Per-callout candidate enumeration.
     shortlists: list[list[CalloutProposal]] = []
@@ -922,6 +956,14 @@ def main():
     )
     parser.add_argument("--seed", type=int, default=42, help="RNG seed")
     parser.add_argument(
+        "--container-id",
+        default=None,
+        help="Clip placement to the interior of the element with this id. "
+        "Must point to a closed shape (rect/circle/ellipse/polygon/path); "
+        "groups are rejected. Callouts are routed only to empty regions "
+        "inside the container.",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit the full result as JSON",
@@ -938,6 +980,7 @@ def main():
         restart_orderings=args.restarts,
         n_proposals=args.n_proposals,
         seed=args.seed,
+        container_id=args.container_id,
     )
 
     if args.json:
