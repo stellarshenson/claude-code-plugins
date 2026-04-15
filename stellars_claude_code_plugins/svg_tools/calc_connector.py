@@ -998,6 +998,182 @@ def _thread_l_controls(src, dst, controls, chamfer=None):
     return result
 
 
+def _auto_route_l_waypoints(
+    src,
+    tgt,
+    start_dir=None,
+    end_dir=None,
+    svg=None,
+    container_id=None,
+    cell_size=10,
+    margin_px=5,
+):
+    """Grid A* router that returns intermediate elbow waypoints avoiding
+    obstacles in the SVG. Returns a list of (x, y) tuples (may be empty if
+    a single 1-bend L already clears obstacles) or None if no path is
+    routable at the current cell size.
+
+    Algorithm: rasterise every SVG element as an obstacle, erode by
+    ``margin_px``, downsample to ``cell_size``-spaced cells via centre
+    sampling, run 4-connected A* from src cell to tgt cell with Manhattan
+    heuristic, reconstruct the path, drop collinear interior cells, and
+    return the resulting elbow points (first and last are dropped - those
+    are src / tgt themselves).
+    """
+    if svg is None:
+        return None
+
+    import heapq
+
+    import numpy as np
+    from scipy import ndimage as ndi
+
+    from .calc_empty_space import (
+        _container_interior_surrogates,
+        _element_to_surrogates,
+        _parse_svg_source,
+        _rasterise_surrogates,
+    )
+
+    try:
+        import svgelements as _se
+    except ImportError:
+        return None
+
+    svg_doc, viewbox = _parse_svg_source(svg)
+    cx, cy, cw, ch = viewbox
+
+    container_elem = None
+    if container_id is not None:
+        container_elem = svg_doc.get_element_by_id(container_id)
+        if container_elem is None:
+            return None
+
+    # Rasterise all obstacles (skip the container itself if pinned)
+    surrogates: list = []
+
+    def walk(node):
+        if node is not container_elem:
+            surrogates.extend(_element_to_surrogates(node))
+        if isinstance(node, _se.Group):
+            for child in node:
+                walk(child)
+
+    walk(svg_doc)
+
+    obstacle_mask = _rasterise_surrogates(viewbox, surrogates)
+    free_mask = ~obstacle_mask
+
+    if container_elem is not None:
+        interior = _container_interior_surrogates(container_elem)
+        container_mask = _rasterise_surrogates(viewbox, interior)
+        free_mask = free_mask & container_mask
+
+    # Erode so the route stays a few pixels clear of obstacles
+    if margin_px > 0:
+        padded = np.zeros((free_mask.shape[0] + 2, free_mask.shape[1] + 2), dtype=bool)
+        padded[1:-1, 1:-1] = free_mask
+        dist = ndi.distance_transform_edt(padded)
+        free_mask = dist[1:-1, 1:-1] > margin_px
+
+    # Downsample: sample the centre pixel of every cell_size-wide cell
+    step = max(1, int(cell_size))
+    H, W = free_mask.shape
+    gh = H // step
+    gw = W // step
+    if gh < 2 or gw < 2:
+        return None
+    half = step // 2
+    grid = free_mask[half::step, half::step][:gh, :gw]
+
+    def world_to_cell(x, y):
+        gx = int((x - cx) // step)
+        gy = int((y - cy) // step)
+        return (max(0, min(gh - 1, gy)), max(0, min(gw - 1, gx)))
+
+    def cell_to_world(r, c):
+        return (cx + (c + 0.5) * step, cy + (r + 0.5) * step)
+
+    src_cell = world_to_cell(*src)
+    tgt_cell = world_to_cell(*tgt)
+    if src_cell == tgt_cell:
+        return []
+
+    # Force a 1-cell halo around src / tgt to be free so A* can enter and
+    # exit. Without this the erosion halo around the endpoint rects would
+    # trap the router - a 5 px erosion typically blocks every cell directly
+    # adjacent to a rect edge even though that cell is geometrically free.
+    forced_free: set = set()
+    for anchor in (src_cell, tgt_cell):
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                cell = (anchor[0] + dr, anchor[1] + dc)
+                if 0 <= cell[0] < gh and 0 <= cell[1] < gw:
+                    forced_free.add(cell)
+
+    def is_free(cell):
+        if cell in forced_free:
+            return True
+        return bool(grid[cell[0], cell[1]])
+
+    def neighbours(r, c):
+        for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < gh and 0 <= nc < gw and is_free((nr, nc)):
+                yield (nr, nc)
+
+    def heuristic(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    openq: list = [(heuristic(src_cell, tgt_cell), 0, src_cell)]
+    came_from: dict = {src_cell: None}
+    g_score: dict = {src_cell: 0}
+    counter = 0
+
+    while openq:
+        _, _, current = heapq.heappop(openq)
+        if current == tgt_cell:
+            break
+        for nb in neighbours(*current):
+            tentative = g_score[current] + 1
+            if nb not in g_score or tentative < g_score[nb]:
+                g_score[nb] = tentative
+                came_from[nb] = current
+                counter += 1
+                heapq.heappush(openq, (tentative + heuristic(nb, tgt_cell), counter, nb))
+
+    if tgt_cell not in came_from:
+        return None
+
+    # Reconstruct path cell-by-cell from tgt back to src
+    cells: list = []
+    cur = tgt_cell
+    while cur is not None:
+        cells.append(cur)
+        cur = came_from[cur]
+    cells.reverse()
+
+    # Drop collinear interior cells so only direction-change vertices remain
+    corners: list = [cells[0]]
+    for i in range(1, len(cells) - 1):
+        p = cells[i - 1]
+        c = cells[i]
+        n = cells[i + 1]
+        d1 = (c[0] - p[0], c[1] - p[1])
+        d2 = (n[0] - c[0], n[1] - c[1])
+        if d1 != d2:
+            corners.append(c)
+    corners.append(cells[-1])
+
+    if len(corners) <= 2:
+        # Path is a single run - no elbows needed beyond the 1-bend L.
+        return []
+
+    # Interior corners become the waypoints threaded through _thread_l_controls.
+    waypoints = [cell_to_world(r, c) for r, c in corners[1:-1]]
+    return waypoints
+
+
 def calc_l(
     src_x=None,
     src_y=None,
@@ -1013,6 +1189,11 @@ def calc_l(
     end_dir=None,
     src_rect=None,
     tgt_rect=None,
+    auto_route=False,
+    svg=None,
+    container_id=None,
+    route_cell_size=10,
+    route_margin=5,
 ):
     """Axis-aligned L connector, sharp corners.
 
@@ -1026,6 +1207,14 @@ def calc_l(
     horizontal exit, N/S => vertical exit). ``end_dir`` is the direction
     the connector is still MOVING when it arrives at the target — so S
     means "moving south into tgt", entering via the TOP edge.
+
+    ``auto_route=True`` runs grid A* on the SVG's obstacle bitmap and
+    automatically picks multi-elbow waypoints that avoid collisions. The
+    caller must also pass ``svg`` (path/string/bytes). ``container_id``
+    restricts routing to the interior of that element; ``route_cell_size``
+    (default 10 px) controls A* resolution vs. speed; ``route_margin``
+    (default 5 px) is the clearance from obstacles. On failure the tool
+    falls back to the 1-bend L and emits a warning.
     """
     warnings = _check_soft_cap(controls, "calc_l controls")
 
@@ -1043,6 +1232,25 @@ def calc_l(
         first_axis = None
         if start_dir is not None:
             first_axis = _apply_direction_to_l((src_x, src_y), (tgt_x, tgt_y), start_dir, end_dir)
+
+    if auto_route and not controls:
+        auto_wp = _auto_route_l_waypoints(
+            (src_x, src_y),
+            (tgt_x, tgt_y),
+            start_dir=start_dir,
+            end_dir=end_dir,
+            svg=svg,
+            container_id=container_id,
+            cell_size=route_cell_size,
+            margin_px=route_margin,
+        )
+        if auto_wp is None:
+            msg = "calc_l auto_route failed - falling back to 1-bend L"
+            warnings.append(msg)
+            print(f"WARNING: {msg}", file=sys.stderr)
+        else:
+            controls = auto_wp
+            _check_soft_cap(controls, "calc_l auto_route controls")
 
     if controls:
         pts = _thread_l_controls((src_x, src_y), (tgt_x, tgt_y), controls, chamfer=None)
@@ -1077,6 +1285,11 @@ def calc_l_chamfer(
     end_dir=None,
     src_rect=None,
     tgt_rect=None,
+    auto_route=False,
+    svg=None,
+    container_id=None,
+    route_cell_size=10,
+    route_margin=5,
 ):
     """Chamfered L connector. Same edge-aware semantics as ``calc_l``.
 
@@ -1084,6 +1297,12 @@ def calc_l_chamfer(
     to snap endpoints to edge midpoints and lock the first axis — this is
     the canonical way to avoid the vertical-along-edge artefact. Without
     directions, geometry inference runs and a warning is emitted.
+
+    ``auto_route=True`` runs grid A* on the SVG's obstacle bitmap and
+    automatically picks multi-elbow waypoints that avoid collisions.
+    Requires ``svg``; ``container_id`` clips routing to one element;
+    ``route_cell_size`` / ``route_margin`` tune resolution and clearance.
+    Failure falls back to 1-bend L with a warning.
     """
     warnings = _check_soft_cap(controls, "calc_l_chamfer controls")
 
@@ -1103,6 +1322,25 @@ def calc_l_chamfer(
         first_axis = None
         if start_dir is not None:
             first_axis = _apply_direction_to_l((src_x, src_y), (tgt_x, tgt_y), start_dir, end_dir)
+
+    if auto_route and not controls:
+        auto_wp = _auto_route_l_waypoints(
+            (src_x, src_y),
+            (tgt_x, tgt_y),
+            start_dir=start_dir,
+            end_dir=end_dir,
+            svg=svg,
+            container_id=container_id,
+            cell_size=route_cell_size,
+            margin_px=route_margin,
+        )
+        if auto_wp is None:
+            msg = "calc_l_chamfer auto_route failed - falling back to 1-bend L"
+            warnings.append(msg)
+            print(f"WARNING: {msg}", file=sys.stderr)
+        else:
+            controls = auto_wp
+            _check_soft_cap(controls, "calc_l_chamfer auto_route controls")
 
     if controls:
         pts = _thread_l_controls((src_x, src_y), (tgt_x, tgt_y), controls, chamfer=chamfer)
@@ -2309,6 +2547,38 @@ def main():
     parser.add_argument("--color", default="#5456f3", help="Stroke colour (default: #5456f3)")
     parser.add_argument("--width", default="1.2", help="Stroke width (default: 1.2)")
     parser.add_argument("--opacity", default="0.4", help="Stroke opacity (default: 0.4)")
+    parser.add_argument(
+        "--auto-route",
+        action="store_true",
+        help="Run grid A* on the SVG obstacle bitmap to pick multi-elbow "
+        "waypoints that avoid collisions. Requires --svg. Falls back to "
+        "1-bend L with a warning if unroutable.",
+    )
+    parser.add_argument(
+        "--svg",
+        default=None,
+        help="SVG file path for --auto-route. Required when --auto-route is set.",
+    )
+    parser.add_argument(
+        "--container-id",
+        default=None,
+        help="Clip auto-route to the interior of the element with this id "
+        "(must be a closed shape; groups rejected). Used only with --auto-route.",
+    )
+    parser.add_argument(
+        "--route-cell-size",
+        type=float,
+        default=10.0,
+        help="A* grid cell size in px (default: 10). Smaller = higher "
+        "fidelity + slower. Used only with --auto-route.",
+    )
+    parser.add_argument(
+        "--route-margin",
+        type=float,
+        default=5.0,
+        help="Obstacle clearance in px for the routing free-mask (default: 5). "
+        "Used only with --auto-route.",
+    )
     args = parser.parse_args()
 
     head_len, head_half_h = map(float, args.head_size.split(","))
@@ -2468,6 +2738,8 @@ def main():
             parser.error(f"--from or --src-rect is required in {args.mode} mode")
         if tgt_rect is None and (tgt_x is None or tgt_y is None):
             parser.error(f"--to or --tgt-rect is required in {args.mode} mode")
+        if args.auto_route and args.svg is None:
+            parser.error("--auto-route requires --svg")
         if args.mode == "l":
             result = calc_l(
                 src_x=src_x,
@@ -2484,6 +2756,11 @@ def main():
                 end_dir=args.end_dir,
                 src_rect=src_rect,
                 tgt_rect=tgt_rect,
+                auto_route=args.auto_route,
+                svg=args.svg,
+                container_id=args.container_id,
+                route_cell_size=args.route_cell_size,
+                route_margin=args.route_margin,
             )
         else:  # l-chamfer
             result = calc_l_chamfer(
@@ -2502,6 +2779,11 @@ def main():
                 end_dir=args.end_dir,
                 src_rect=src_rect,
                 tgt_rect=tgt_rect,
+                auto_route=args.auto_route,
+                svg=args.svg,
+                container_id=args.container_id,
+                route_cell_size=args.route_cell_size,
+                route_margin=args.route_margin,
             )
 
     print_polyline_result(result, args)
