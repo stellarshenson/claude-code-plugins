@@ -276,13 +276,37 @@ No `rotate()` transforms. No `atan2` math. No horizontal-first templating. Tool 
 
 | Mode | Use |
 |------|-----|
-| `straight` | Single line, two points |
-| `l` | Axis-aligned L, sharp corner. First-axis inferred per segment |
+| `straight` | Single line. Auto edge-snap from src/tgt rects |
+| `l` | Axis-aligned L, sharp corner. Edge-aware via rects + directions |
 | `l-chamfer` | L with 4px corner cut. Default for any L route |
 | `spline` | Cubic Bezier via `bezier` lib when `start_dir`/`end_dir` given; PCHIP through waypoints otherwise |
 | `manifold` | N starts → single merge → spine → single fork → M ends. Canonical Sankey bundle |
 
 Flags (all modes): `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (default 1px), `--color`, `--width`, `--opacity`. Spline tangent magnitude: `--tangent-magnitude N` (default 0.5×chord).
+
+### L-route edge-aware API (CANONICAL)
+
+`l` / `l-chamfer` between rects: pass BOTH rects AND cardinal directions. Tool snaps endpoints to edge midpoints, locks first-axis, no parallel-to-edge drift.
+
+```bash
+svg-infographics connector --mode l-chamfer \
+  --src-rect "70,90,60,40"  --start-dir E \
+  --tgt-rect "370,160,60,40" --end-dir S \
+  --chamfer 4 --standoff 4 --arrow end
+```
+
+**Direction semantics**:
+- `start_dir`: exit direction from src. `E`/`W` → horizontal, `N`/`S` → vertical.
+- `end_dir`: travel direction at tgt arrival. `S` = "moving south" → enters TOP edge. Inverse: `E`→left, `W`→right, `N`→bottom, `S`→top.
+- Perpendicular pair (`start=E, end=S`) → 1-bend L, corner at `(tgt_mid_x, src_mid_y)`.
+
+**Failure mode without directions**: points `--from 630,160 --to 870,260`; tool infers first-axis from `|dx|>|dy|`; vertical segment at `x=870` runs along tgt's left edge; arrow dives from the side. Fix = `start=E, end=S` — vertical lands at `x=tgt_mid_x=900` entering top cleanly.
+
+**Missing direction = warning**. Rects without directions fall back to centre-to-target ray snap; tool emits warning. Always pass directions for L-routes.
+
+### Spline waypoints
+
+`--waypoints "x1,y1 x2,y2 x3,y3 x4,y4"` for PCHIP. 3-5 waypoints enough — monotonicity-preserving, more points overfit. Showcase with visible markers: place `<g id="cell-4-waypoints">` AFTER path in connectors layer (render on top). Tiny cross glyphs (two crossing `<line>` + `stroke-linecap: round`) per waypoint, varied accent-2 shades for distinction.
 
 ### Canonical manifold
 
@@ -295,14 +319,14 @@ One merge = `spine_start`, one fork = `spine_end`. All start strands terminate a
 
 Strands inherit spine direction. Override per endpoint via 3-tuple `(x,y,"E")` or `(x,y,45)` (compass or deg CW from north).
 
-### Auto-edge mode
+### Auto-edge mode (straight)
 
-Pass shapes to `calc_connector`, skip coordinates:
+Shapes to `calc_connector`, skip coordinates:
 
 - `src_rect=(x,y,w,h)` / `tgt_rect=(x,y,w,h)` - axis-aligned rects
 - `src_polygon=[(x,y),...]` / `tgt_polygon=[(x,y),...]` - closed polygon
 
-Tool computes centroid → rays to target centroid → perimeter intersection as endpoint. Explicit coords override.
+Straight mode: centroid → target ray → perimeter intersection = endpoint. L / l-chamfer: use edge-aware API above (rects + directions), NOT centroid-ray snap — risks parallel-to-edge failure. Explicit coords override rects.
 
 ### Edge midpoint rule
 
@@ -359,12 +383,24 @@ Non-compliant callouts invisible to `empty-space`, `overlaps`, and workflow.
 
 **Primary path: `svg-infographics callouts`.** One tool, one call, all callouts placed jointly. Greedy solver with random-ordering restarts. Handles leader + leaderless callouts in a single pass, text bbox containment, leader cleanness (auto walk-out of target container), pairwise conflicts (text-vs-text overlap, leader-vs-text crossing, leader-vs-leader crossing), preferred-side hints. Returns best layout plus top-5 alternatives per callout with penalty breakdowns.
 
-**Leader vs leaderless.** Two callout modes, different semantics, different defaults:
+**Two modes: leader vs leaderless.** Different semantics, different defaults, different scoring.
 
-- **Leader** (default, `"leader": true` or omitted). Text block plus a visible leader line from target to text bbox edge. Used for dense diagrams where the label needs to sit in free whitespace away from the target, with a line connecting the two. Standoff default 20 px (leader tip stops 20 px short of text for arrowhead clearance). Score combines leader length (sweet spot 55 px), diagonal angle preference (prefers 45° leaders over axis-aligned), target-distance overshoot, preferred side.
-- **Leaderless** (`"leader": false`). Text block placed as close to the target as possible without a connecting line - the text IS the pointer. Used for group labels ("5 INPUTS" above a card stack), waypoint labels, legend entries, any callout where spatial proximity reads as "this label belongs to that thing". Standoff default 5 px (much tighter than leader because there's no leader inflation). Score pulls the text BBOX CENTRE toward the target point (sweet spot 0) so horizontally-symmetric labels settle centred on their target instead of drifting to one side. Obstacle standoff still prevents overlap with actual shapes.
+**Leader mode** (default, `"leader": true` or omitted):
+- Text block + visible leader line from target to text bbox edge.
+- Use: dense diagrams, label sits in free whitespace away from target, leader connects the two.
+- Standoff default 20 px (leader tip stops 20 px short of text for arrowhead clearance).
+- Score: leader length (sweet spot 55 px), diagonal angle preference, target-distance overshoot, preferred side.
 
-Pick leaderless when the label is a group header, waypoint tag, or legend entry that can sit within a few pixels of its target. Pick leader when the target is inside dense content and the label must float in free whitespace with a visible connection.
+**Leaderless mode** (`"leader": false`):
+- Text block placed close to target, NO connecting line. Text IS the pointer.
+- Use: group headers ("5 INPUTS" above a card stack), waypoint tags, legend entries, anywhere spatial proximity alone reads as "this label belongs to that thing".
+- Standoff default 5 px (much tighter than leader — no leader inflation).
+- Score: pulls text bbox CENTRE toward target point (sweet spot 0). Single unique minimum → horizontally-symmetric labels settle centred on target instead of drifting to one side.
+- **Target placement trick**: to make the label land ABOVE the shape (not on top of it), place the target ~8-12 px above the shape's top edge. The centre-distance solver will position the label centre at the target → text bbox sits just above the shape with natural breath. Same trick for below/left/right.
+
+**Selection rule**:
+- Leaderless → group header, waypoint tag, legend entry, "floating above/below" label.
+- Leader → target inside dense content, label must float away from target with visible connection.
 
 Three-step workflow:
 

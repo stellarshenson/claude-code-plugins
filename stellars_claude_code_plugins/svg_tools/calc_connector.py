@@ -634,6 +634,129 @@ def _infer_first_axis(src_x, src_y, tgt_x, tgt_y):
     return "h" if abs(tgt_x - src_x) >= abs(tgt_y - src_y) else "v"
 
 
+# Direction -> 4-edge mapping for rect edge-midpoints. Key = compass letter,
+# value = edge name ("right"/"left"/"top"/"bottom"). Anything outside the
+# cardinal set (NE, NNE, 45, ...) is rejected by the L resolver because an
+# L-route can only leave/enter a rect on one of four axis-aligned edges.
+_CARDINAL_EDGE = {"E": "right", "W": "left", "N": "top", "S": "bottom"}
+
+
+def _rect_edge_midpoint(rect, edge):
+    """Return the midpoint of the named edge of an axis-aligned rect.
+
+    rect is (x, y, w, h), edge is "right"/"left"/"top"/"bottom".
+    """
+    rx, ry, rw, rh = rect
+    if edge == "right":
+        return (rx + rw, ry + rh / 2)
+    if edge == "left":
+        return (rx, ry + rh / 2)
+    if edge == "top":
+        return (rx + rw / 2, ry)
+    if edge == "bottom":
+        return (rx + rw / 2, ry + rh)
+    raise ValueError(f"unknown edge {edge!r}")
+
+
+def _direction_to_cardinal(direction):
+    """Coerce a direction spec to one of 'E'/'W'/'N'/'S' (or None).
+
+    Accepts compass strings (cardinal only for L) and numeric angles
+    (snapped to nearest cardinal). Non-cardinal compass keys (NNE, NE,
+    ENE, ...) and off-axis angles return None so the caller can fall
+    back to the geometry inference with a warning.
+    """
+    if direction is None:
+        return None
+    if isinstance(direction, str):
+        key = direction.strip().upper()
+        if key in _CARDINAL_EDGE:
+            return key
+        return None
+    if isinstance(direction, (int, float)):
+        angle = float(direction) % 360
+        # Snap to nearest cardinal if within 1 degree, else reject.
+        for deg, card in ((0, "N"), (90, "E"), (180, "S"), (270, "W"), (360, "N")):
+            if abs(angle - deg) <= 1.0:
+                return card
+        return None
+    return None
+
+
+def _resolve_l_endpoints_from_rects(
+    src_rect, tgt_rect, src_x, src_y, tgt_x, tgt_y, start_dir, end_dir, warnings
+):
+    """Edge-aware endpoint + first-axis resolution for L / L-chamfer routes.
+
+    When a rect is supplied WITH a cardinal direction, the connector's
+    exit / entry point snaps to the midpoint of the matching edge and the
+    first-axis is locked to that direction's axis. Missing directions fall
+    back to geometric inference and append a warning to ``warnings``.
+
+    Cardinal semantics:
+      - ``start_dir`` is the direction the connector LEAVES the src
+        (E/W => horizontal exit, N/S => vertical exit).
+      - ``end_dir`` is the direction the connector is still MOVING when it
+        arrives at the tgt. S means "moving south into tgt" which means
+        it enters from the TOP edge; E means "moving east into tgt" so it
+        enters from the LEFT edge; and so on (inverse mapping).
+
+    Returns (src_x, src_y, tgt_x, tgt_y, first_axis). ``first_axis`` is
+    ``None`` when no direction was given (caller uses geometric inference).
+    """
+    # Entry-edge inverse map: end_dir tells the direction of travel at
+    # tgt, so the entry edge is opposite to that direction.
+    entry_edge = {"E": "left", "W": "right", "N": "bottom", "S": "top"}
+    exit_edge = {"E": "right", "W": "left", "N": "top", "S": "bottom"}
+
+    start_card = _direction_to_cardinal(start_dir)
+    end_card = _direction_to_cardinal(end_dir)
+
+    resolved_src = (src_x, src_y)
+    resolved_tgt = (tgt_x, tgt_y)
+
+    if src_rect is not None:
+        if start_card is not None:
+            resolved_src = _rect_edge_midpoint(src_rect, exit_edge[start_card])
+        else:
+            warnings.append(
+                "L route: src_rect supplied without cardinal start_dir; "
+                "endpoint inferred from centre-to-target ray — route may "
+                "run parallel to an edge. Pass --start_dir E|W|N|S to snap."
+            )
+            # Ray from src centre toward the current tgt guess to snap a
+            # reasonable edge-intersection point.
+            sx_c = src_rect[0] + src_rect[2] / 2
+            sy_c = src_rect[1] + src_rect[3] / 2
+            resolved_src = _rect_edge_intersection(
+                sx_c, sy_c, resolved_tgt[0], resolved_tgt[1], src_rect
+            )
+
+    if tgt_rect is not None:
+        if end_card is not None:
+            resolved_tgt = _rect_edge_midpoint(tgt_rect, entry_edge[end_card])
+        else:
+            warnings.append(
+                "L route: tgt_rect supplied without cardinal end_dir; "
+                "endpoint inferred from centre-to-source ray — route may "
+                "run parallel to an edge. Pass --end_dir E|W|N|S to snap."
+            )
+            tx_c = tgt_rect[0] + tgt_rect[2] / 2
+            ty_c = tgt_rect[1] + tgt_rect[3] / 2
+            resolved_tgt = _rect_edge_intersection(
+                tx_c, ty_c, resolved_src[0], resolved_src[1], tgt_rect
+            )
+
+    # First-axis from direction: E/W => horizontal first, N/S => vertical.
+    # Only locked when START direction is known; otherwise left None so
+    # the downstream builder falls back to geometric inference.
+    first_axis = None
+    if start_card is not None:
+        first_axis = "h" if start_card in ("E", "W") else "v"
+
+    return resolved_src[0], resolved_src[1], resolved_tgt[0], resolved_tgt[1], first_axis
+
+
 def _build_l_polyline(src_x, src_y, tgt_x, tgt_y, first_axis=None):
     """Two-segment L route. first_axis='h' goes horizontal first, 'v' vertical.
 
@@ -876,10 +999,10 @@ def _thread_l_controls(src, dst, controls, chamfer=None):
 
 
 def calc_l(
-    src_x,
-    src_y,
-    tgt_x,
-    tgt_y,
+    src_x=None,
+    src_y=None,
+    tgt_x=None,
+    tgt_y=None,
     controls=None,
     margin=0.0,
     head_len=10,
@@ -888,15 +1011,39 @@ def calc_l(
     standoff=None,
     start_dir=None,
     end_dir=None,
+    src_rect=None,
+    tgt_rect=None,
 ):
-    """Axis-aligned L connector, sharp corners. First axis inferred from geometry.
+    """Axis-aligned L connector, sharp corners.
 
-    REMINDER: endpoints must be on shape EDGES, not centres (use `geom attach`).
+    When ``src_rect`` / ``tgt_rect`` are supplied WITH cardinal ``start_dir`` /
+    ``end_dir``, the tool snaps endpoints to the midpoint of the edge that
+    matches the direction and locks the first-axis accordingly — no
+    parallel-to-edge artefacts. Without directions the tool falls back to
+    geometric inference and emits a warning.
+
+    ``start_dir`` is the direction the connector LEAVES the source (E/W =>
+    horizontal exit, N/S => vertical exit). ``end_dir`` is the direction
+    the connector is still MOVING when it arrives at the target — so S
+    means "moving south into tgt", entering via the TOP edge.
     """
     warnings = _check_soft_cap(controls, "calc_l controls")
-    first_axis = None
-    if start_dir is not None:
-        first_axis = _apply_direction_to_l((src_x, src_y), (tgt_x, tgt_y), start_dir, end_dir)
+
+    if src_rect is not None or tgt_rect is not None:
+        if src_x is None or src_y is None:
+            src_x = src_y = 0.0
+        if tgt_x is None or tgt_y is None:
+            tgt_x = tgt_y = 0.0
+        src_x, src_y, tgt_x, tgt_y, first_axis = _resolve_l_endpoints_from_rects(
+            src_rect, tgt_rect, src_x, src_y, tgt_x, tgt_y, start_dir, end_dir, warnings
+        )
+    else:
+        if src_x is None or src_y is None or tgt_x is None or tgt_y is None:
+            raise ValueError("calc_l requires src_x/src_y/tgt_x/tgt_y or src_rect/tgt_rect")
+        first_axis = None
+        if start_dir is not None:
+            first_axis = _apply_direction_to_l((src_x, src_y), (tgt_x, tgt_y), start_dir, end_dir)
+
     if controls:
         pts = _thread_l_controls((src_x, src_y), (tgt_x, tgt_y), controls, chamfer=None)
     else:
@@ -915,10 +1062,10 @@ def calc_l(
 
 
 def calc_l_chamfer(
-    src_x,
-    src_y,
-    tgt_x,
-    tgt_y,
+    src_x=None,
+    src_y=None,
+    tgt_x=None,
+    tgt_y=None,
     controls=None,
     chamfer=4.0,
     margin=0.0,
@@ -928,15 +1075,35 @@ def calc_l_chamfer(
     standoff=None,
     start_dir=None,
     end_dir=None,
+    src_rect=None,
+    tgt_rect=None,
 ):
-    """Chamfered L connector. Same direction semantics as calc_l.
+    """Chamfered L connector. Same edge-aware semantics as ``calc_l``.
 
-    REMINDER: endpoints must be on shape EDGES, not centres (use `geom attach`).
+    Pass ``src_rect`` / ``tgt_rect`` plus cardinal ``start_dir`` / ``end_dir``
+    to snap endpoints to edge midpoints and lock the first axis — this is
+    the canonical way to avoid the vertical-along-edge artefact. Without
+    directions, geometry inference runs and a warning is emitted.
     """
     warnings = _check_soft_cap(controls, "calc_l_chamfer controls")
-    first_axis = None
-    if start_dir is not None:
-        first_axis = _apply_direction_to_l((src_x, src_y), (tgt_x, tgt_y), start_dir, end_dir)
+
+    if src_rect is not None or tgt_rect is not None:
+        if src_x is None or src_y is None:
+            src_x = src_y = 0.0
+        if tgt_x is None or tgt_y is None:
+            tgt_x = tgt_y = 0.0
+        src_x, src_y, tgt_x, tgt_y, first_axis = _resolve_l_endpoints_from_rects(
+            src_rect, tgt_rect, src_x, src_y, tgt_x, tgt_y, start_dir, end_dir, warnings
+        )
+    else:
+        if src_x is None or src_y is None or tgt_x is None or tgt_y is None:
+            raise ValueError(
+                "calc_l_chamfer requires src_x/src_y/tgt_x/tgt_y or src_rect/tgt_rect"
+            )
+        first_axis = None
+        if start_dir is not None:
+            first_axis = _apply_direction_to_l((src_x, src_y), (tgt_x, tgt_y), start_dir, end_dir)
+
     if controls:
         pts = _thread_l_controls((src_x, src_y), (tgt_x, tgt_y), controls, chamfer=chamfer)
     else:
@@ -2113,6 +2280,20 @@ def main():
         help="Direction hint at the target endpoint, same format as --start-dir.",
     )
     parser.add_argument(
+        "--src-rect",
+        default=None,
+        help="Source shape bounding rect as 'x,y,w,h'. For l/l-chamfer modes, "
+        "combine with --start-dir E|W|N|S to snap the exit point to the edge "
+        "midpoint. Missing direction falls back to centre-to-target ray and "
+        "emits a warning.",
+    )
+    parser.add_argument(
+        "--tgt-rect",
+        default=None,
+        help="Target shape bounding rect as 'x,y,w,h'. Combine with --end-dir "
+        "to snap the entry point to the edge midpoint.",
+    )
+    parser.add_argument(
         "--arrow",
         choices=["none", "start", "end", "both"],
         default="end",
@@ -2133,10 +2314,20 @@ def main():
     head_len, head_half_h = map(float, args.head_size.split(","))
 
     if args.mode == "straight" and args.waypoints is None:
-        if args.src is None or args.tgt is None:
-            parser.error("--from and --to are required in straight mode")
-        src_x, src_y = _parse_point(args.src)
-        tgt_x, tgt_y = _parse_point(args.tgt)
+        src_rect = _parse_rect(args.src_rect) if args.src_rect else None
+        tgt_rect = _parse_rect(args.tgt_rect) if args.tgt_rect else None
+        if args.src is not None:
+            src_x, src_y = _parse_point(args.src)
+        else:
+            src_x = src_y = None
+        if args.tgt is not None:
+            tgt_x, tgt_y = _parse_point(args.tgt)
+        else:
+            tgt_x = tgt_y = None
+        if src_rect is None and (src_x is None or src_y is None):
+            parser.error("--from or --src-rect is required in straight mode")
+        if tgt_rect is None and (tgt_x is None or tgt_y is None):
+            parser.error("--to or --tgt-rect is required in straight mode")
         straight_standoff = _parse_standoff(args.standoff) if args.standoff else None
 
         if args.cutout:
@@ -2194,6 +2385,8 @@ def main():
                 head_len=head_len,
                 head_half_h=head_half_h,
                 standoff=straight_standoff,
+                src_rect=src_rect,
+                tgt_rect=tgt_rect,
             )
             print_result(c, args)
         return
@@ -2260,29 +2453,44 @@ def main():
             standoff=standoff,
         )
     else:
-        if args.src is None or args.tgt is None:
-            parser.error(f"--from and --to are required in {args.mode} mode")
-        src_x, src_y = _parse_point(args.src)
-        tgt_x, tgt_y = _parse_point(args.tgt)
+        src_rect = _parse_rect(args.src_rect) if args.src_rect else None
+        tgt_rect = _parse_rect(args.tgt_rect) if args.tgt_rect else None
+        if args.src is not None:
+            src_x, src_y = _parse_point(args.src)
+        else:
+            src_x = src_y = None
+        if args.tgt is not None:
+            tgt_x, tgt_y = _parse_point(args.tgt)
+        else:
+            tgt_x = tgt_y = None
+        # --from/--to required unless a matching rect is provided for each side.
+        if src_rect is None and (src_x is None or src_y is None):
+            parser.error(f"--from or --src-rect is required in {args.mode} mode")
+        if tgt_rect is None and (tgt_x is None or tgt_y is None):
+            parser.error(f"--to or --tgt-rect is required in {args.mode} mode")
         if args.mode == "l":
             result = calc_l(
-                src_x,
-                src_y,
-                tgt_x,
-                tgt_y,
+                src_x=src_x,
+                src_y=src_y,
+                tgt_x=tgt_x,
+                tgt_y=tgt_y,
                 controls=controls,
                 margin=args.margin,
                 head_len=head_len,
                 head_half_h=head_half_h,
                 arrow=args.arrow,
                 standoff=standoff,
+                start_dir=args.start_dir,
+                end_dir=args.end_dir,
+                src_rect=src_rect,
+                tgt_rect=tgt_rect,
             )
         else:  # l-chamfer
             result = calc_l_chamfer(
-                src_x,
-                src_y,
-                tgt_x,
-                tgt_y,
+                src_x=src_x,
+                src_y=src_y,
+                tgt_x=tgt_x,
+                tgt_y=tgt_y,
                 controls=controls,
                 chamfer=args.chamfer,
                 margin=args.margin,
@@ -2290,6 +2498,10 @@ def main():
                 head_half_h=head_half_h,
                 arrow=args.arrow,
                 standoff=standoff,
+                start_dir=args.start_dir,
+                end_dir=args.end_dir,
+                src_rect=src_rect,
+                tgt_rect=tgt_rect,
             )
 
     print_polyline_result(result, args)
@@ -2346,6 +2558,20 @@ def _parse_point(text):
     if len(parts) != 2:
         raise ValueError(f"point must have exactly 2 numbers, got {len(parts)}")
     return (parts[0], parts[1])
+
+
+def _parse_rect(text):
+    """Parse 'x,y,w,h' (or literal '(x,y,w,h)') into a 4-tuple of floats."""
+    import ast as _ast
+
+    text = text.strip()
+    if text.startswith(("[", "(")):
+        parsed = _ast.literal_eval(text)
+        return (float(parsed[0]), float(parsed[1]), float(parsed[2]), float(parsed[3]))
+    parts = [float(t) for t in text.replace(",", " ").split()]
+    if len(parts) != 4:
+        raise ValueError(f"rect must have exactly 4 numbers (x,y,w,h), got {len(parts)}")
+    return (parts[0], parts[1], parts[2], parts[3])
 
 
 def _parse_point_groups(text):
@@ -2435,6 +2661,10 @@ def print_polyline_result(result, args):
     print(f"=== {result['mode'].upper()} CONNECTOR ===")
     print(f"Samples:          {len(result['samples'])}")
     print(f"Total length:     {result['total_length']:.1f}px")
+    if result.get("warnings"):
+        print("Warnings:")
+        for w in result["warnings"]:
+            print(f"  ! {w}")
     print("")
     for end_name in ("start", "end"):
         end = result[end_name]

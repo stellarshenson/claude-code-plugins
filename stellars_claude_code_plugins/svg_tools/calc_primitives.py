@@ -365,7 +365,7 @@ def gen_cube(
     bl = Point(x + dx, y - dy)
     br = Point(x + w + dx, y - dy)
     bbr = Point(x + w + dx, y + h - dy)
-    # bbl not visible
+    bbl = Point(x + dx, y + h - dy)  # hidden back-bottom-left (dashed in wire mode)
 
     anchors = {
         "front-top-left": fl,
@@ -374,12 +374,13 @@ def gen_cube(
         "front-bottom-right": fbr,
         "back-top-left": bl,
         "back-top-right": br,
+        "back-bottom-left": bbl,
         "back-bottom-right": bbr,
         "center": Point(x + w / 2 + dx / 2, y + h / 2 - dy / 2),
     }
 
     if mode == "wire":
-        lines = [
+        visible = [
             # Front face
             f"M{fl.x},{fl.y} L{fr.x},{fr.y} L{fbr.x},{fbr.y} L{fbl.x},{fbl.y} Z",
             # Top face
@@ -387,8 +388,20 @@ def gen_cube(
             # Right face
             f"M{fr.x},{fr.y} L{br.x},{br.y} L{bbr.x},{bbr.y} L{fbr.x},{fbr.y} Z",
         ]
+        # Hidden edges emanate from bbl (back-bottom-left corner). Three edges:
+        # bbl-bl (vertical), bbl-bbr (back-bottom horizontal), bbl-fbl (depth diagonal)
+        hidden = [
+            f"M{bbl.x},{bbl.y} L{bl.x},{bl.y}",
+            f"M{bbl.x},{bbl.y} L{bbr.x},{bbr.y}",
+            f"M{bbl.x},{bbl.y} L{fbl.x},{fbl.y}",
+        ]
         svg = "\n".join(
-            f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="1"/>' for d in lines
+            f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="1"/>' for d in visible
+        )
+        svg += "\n" + "\n".join(
+            f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="0.7" '
+            f'stroke-dasharray="2,2" opacity="0.55"/>'
+            for d in hidden
         )
     else:
         # Three visible faces with different opacities
@@ -435,12 +448,23 @@ def gen_cylinder(
     )
 
     if mode == "wire":
+        # Visible: top ellipse (full), body silhouette (left + right verticals +
+        # front half of bottom ellipse). Hidden: back half of bottom ellipse,
+        # back half of top ellipse already included in the full top arc.
         svg = (
-            f'<path d="{body_d}" fill="none" stroke="{{accent}}" stroke-width="1"/>\n'
+            # Left vertical
+            f'<path d="M{cx - rx},{cy} L{cx - rx},{cy + h}" fill="none" stroke="{{accent}}" stroke-width="1"/>\n'
+            # Right vertical
+            f'<path d="M{cx + rx},{cy} L{cx + rx},{cy + h}" fill="none" stroke="{{accent}}" stroke-width="1"/>\n'
+            # Full top ellipse (visible)
             f'<path d="{top_arc}" fill="none" stroke="{{accent}}" stroke-width="1"/>\n'
-            # Bottom visible half (front arc)
+            # Front (visible) half of bottom ellipse: solid
             f'<path d="M{cx - rx},{cy + h} A{rx},{ry} 0 0,0 {cx + rx},{cy + h}" '
-            f'fill="none" stroke="{{accent}}" stroke-width="1" stroke-dasharray="4,3"/>'
+            f'fill="none" stroke="{{accent}}" stroke-width="1"/>\n'
+            # Back (hidden) half of bottom ellipse: dashed
+            f'<path d="M{cx - rx},{cy + h} A{rx},{ry} 0 0,1 {cx + rx},{cy + h}" '
+            f'fill="none" stroke="{{accent}}" stroke-width="0.7" '
+            f'stroke-dasharray="2,2" opacity="0.55"/>'
         )
     else:
         svg = (
@@ -522,6 +546,7 @@ def gen_cuboid(
     bl = Point(x + dx, y - dy)
     br = Point(x + w + dx, y - dy)
     bbr = Point(x + w + dx, y + h - dy)
+    bbl = Point(x + dx, y + h - dy)  # hidden back-bottom-left
 
     anchors = {
         "front-top-left": fl,
@@ -530,6 +555,7 @@ def gen_cuboid(
         "front-bottom-right": fbr,
         "back-top-left": bl,
         "back-top-right": br,
+        "back-bottom-left": bbl,
         "back-bottom-right": bbr,
         "center": Point(x + w / 2 + dx / 2, y + h / 2 - dy / 2),
         "front-center": Point(x + w / 2, y + h / 2),
@@ -541,9 +567,19 @@ def gen_cuboid(
     right_d = f"M{fr.x},{fr.y} L{br.x},{br.y} L{bbr.x},{bbr.y} L{fbr.x},{fbr.y} Z"
 
     if mode == "wire":
+        visible = [front_d, top_d, right_d]
+        hidden = [
+            f"M{bbl.x},{bbl.y} L{bl.x},{bl.y}",
+            f"M{bbl.x},{bbl.y} L{bbr.x},{bbr.y}",
+            f"M{bbl.x},{bbl.y} L{fbl.x},{fbl.y}",
+        ]
         svg = "\n".join(
-            f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="1"/>'
-            for d in [front_d, top_d, right_d]
+            f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="1"/>' for d in visible
+        )
+        svg += "\n" + "\n".join(
+            f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="0.7" '
+            f'stroke-dasharray="2,2" opacity="0.55"/>'
+            for d in hidden
         )
     else:
         svg = (
@@ -555,16 +591,22 @@ def gen_cuboid(
     return PrimitiveResult("cuboid", anchors, svg)
 
 
-def gen_plane(x: float, y: float, w: float, h: float, tilt: float = 30) -> PrimitiveResult:
+def gen_plane(
+    x: float, y: float, w: float, h: float, tilt: float = 30, mode: str = "fill"
+) -> PrimitiveResult:
     """Isometric plane (flat surface tilted into the page).
 
-    A parallelogram representing a flat surface in pseudo-3D.
+    A parallelogram representing a flat surface in pseudo-3D. A flat plane
+    has no truly hidden edges (all four outline segments are visible from
+    an isometric viewpoint), so ``wire`` mode simply emits the outline
+    without fill, matching the visual language of the other 3D primitives.
 
     Args:
         x, y: Front-left corner
         w: Width (horizontal extent)
         h: Depth (into page, projected at tilt angle)
         tilt: Projection angle in degrees (default: 30)
+        mode: ``"fill"`` for shaded parallelogram, ``"wire"`` for outline only
     """
     rad = math.radians(tilt)
     dx = h * math.cos(rad)
@@ -586,7 +628,10 @@ def gen_plane(x: float, y: float, w: float, h: float, tilt: float = 30) -> Primi
     }
 
     d = f"M{fl.x},{fl.y} L{fr.x},{fr.y} L{br.x:.1f},{br.y:.1f} L{bl.x:.1f},{bl.y:.1f} Z"
-    svg = f'<path d="{d}" fill="{{accent}}" fill-opacity="0.06" stroke="{{accent}}" stroke-width="1"/>'
+    if mode == "wire":
+        svg = f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="1"/>'
+    else:
+        svg = f'<path d="{d}" fill="{{accent}}" fill-opacity="0.06" stroke="{{accent}}" stroke-width="1"/>'
 
     return PrimitiveResult("plane", anchors, svg, d)
 
@@ -622,12 +667,13 @@ def gen_axis(
     if "x" in axes:
         x_end = origin_x + length
         anchors["x-end"] = Point(x_end, origin_y)
-        # Axis line
+        # Axis line stops at the BACK of the arrowhead so the line does not
+        # protrude through the triangle.
         parts.append(
-            f'<line x1="{origin_x}" y1="{origin_y}" x2="{x_end}" y2="{origin_y}" '
+            f'<line x1="{origin_x}" y1="{origin_y}" x2="{x_end - ARROW_LEN}" y2="{origin_y}" '
             f'stroke="{{accent}}" stroke-width="1"/>'
         )
-        # Arrow
+        # Arrow triangle: tip at (x_end, origin_y), base at x_end-ARROW_LEN.
         parts.append(
             f'<polygon points="{x_end},{origin_y} '
             f"{x_end - ARROW_LEN},{origin_y - 3} "
@@ -656,8 +702,10 @@ def gen_axis(
     if "y" in axes:
         y_end = origin_y - length
         anchors["y-end"] = Point(origin_x, y_end)
+        # Line stops at arrow back (y_end + ARROW_LEN) so the axis does not
+        # stab through the triangle.
         parts.append(
-            f'<line x1="{origin_x}" y1="{origin_y}" x2="{origin_x}" y2="{y_end}" '
+            f'<line x1="{origin_x}" y1="{origin_y}" x2="{origin_x}" y2="{y_end + ARROW_LEN}" '
             f'stroke="{{accent}}" stroke-width="1"/>'
         )
         parts.append(
@@ -691,17 +739,25 @@ def gen_axis(
         z_end_x = origin_x - z_dx
         z_end_y = origin_y + z_dy
         anchors["z-end"] = Point(z_end_x, z_end_y)
+        # Line stops ARROW_LEN short of z_end along the axis direction so the
+        # line does not protrude through the arrowhead. Unit vector origin->z_end
+        # is (-0.866, 0.5); back-of-arrow = z_end shifted ARROW_LEN back toward origin.
+        z_back_x = z_end_x + ARROW_LEN * 0.866
+        z_back_y = z_end_y - ARROW_LEN * 0.5
         parts.append(
             f'<line x1="{origin_x}" y1="{origin_y}" '
-            f'x2="{z_end_x}" y2="{z_end_y}" '
+            f'x2="{z_back_x:.1f}" y2="{z_back_y:.1f}" '
             f'stroke="{{accent}}" stroke-width="1"/>'
         )
-        # Arrow
-        angle = math.atan2(z_dy, -z_dx)
-        ax = z_end_x + ARROW_LEN * math.cos(angle - 0.35)
-        ay = z_end_y + ARROW_LEN * math.sin(angle - 0.35)
-        bx = z_end_x + ARROW_LEN * math.cos(angle + 0.35)
-        by = z_end_y + ARROW_LEN * math.sin(angle + 0.35)
+        # Arrow: back direction is from tip toward origin (opposite of axis
+        # forward direction). Forward is atan2(z_dy, -z_dx); back is
+        # atan2(-z_dy, z_dx). Offsetting back-points along the BACK angle
+        # places them correctly on the tip's trailing side.
+        back_angle = math.atan2(-z_dy, z_dx)
+        ax = z_end_x + ARROW_LEN * math.cos(back_angle - 0.35)
+        ay = z_end_y + ARROW_LEN * math.sin(back_angle - 0.35)
+        bx = z_end_x + ARROW_LEN * math.cos(back_angle + 0.35)
+        by = z_end_y + ARROW_LEN * math.sin(back_angle + 0.35)
         parts.append(
             f'<polygon points="{z_end_x:.1f},{z_end_y:.1f} '
             f'{ax:.1f},{ay:.1f} {bx:.1f},{by:.1f}" fill="{{accent}}"/>'
