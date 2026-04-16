@@ -5,28 +5,49 @@ description: Core SVG infographic standards - grid-first design, CSS theme class
 
 # SVG Infographic Standards
 
-Apply these standards when generating/modifying SVG infographics for documents. Read **workflow** skill for mandatory 6-phase per-image process. Read **theme** skill for palette approval and swatch generation. Read **validation** skill for checker tool usage.
+This plugin is a **design application for AI agents**. The agent is the designer; the CLI tools are the application. Never hand-write coordinates, colours, or connector paths. Every position comes from a tool call, every colour from a CSS class, every arrow from the connector tool.
+
+**Core tools** (the agent's drawing canvas):
+
+| Tool | Purpose |
+|------|---------|
+| `svg-infographics primitives <shape>` | Shape geometry + anchors (18 built-in: rect, circle, hexagon, gear, cloud, document, etc) |
+| `svg-infographics connector --mode <m>` | Connectors in 5 modes: straight, l, l-chamfer, spline, manifold. Auto-routes around obstacles |
+| `svg-infographics geom <op>` | Alignment constraints: midpoint, perpendicular, attach, contains, offset, polar |
+| `svg-infographics callouts` | Joint label placement via solver. Leader and leaderless modes |
+| `svg-infographics empty-space` | Free-region detection for placement decisions |
+| `svg-infographics charts <type>` | Pygal charts with theme-matched dual-mode palettes |
+| `svg-infographics shapes search` | draw.io stencil library (1000+ shapes, downloaded on demand) |
+
+**Quality panel** (refuse delivery until clean):
+
+| Tool | Catches |
+|------|---------|
+| `svg-infographics overlaps` | Text/shape overlap, spacing, font floors, callout collisions |
+| `svg-infographics contrast` | WCAG 2.1 in both light and dark mode |
+| `svg-infographics alignment` | Grid snap, vertical rhythm, topology |
+| `svg-infographics connectors` | Dead ends, edge-snap, chamfer, dangling |
+| `svg-infographics css` | Inline fills, missing dark mode, forbidden colours |
+| `svg-infographics collide` | Pairwise connector intersections |
+
+Read **workflow** skill for 6-phase process. Read **theme** skill for palette approval. Read **validation** skill for checker usage.
 
 ## Task Tracking
 
-**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout all SVG work. Task list at start of any multi-step SVG creation or modification. Mark in_progress on start, completed on finish. Visible progress, prevents skipping steps.
+**MANDATORY**: TaskCreate/TaskUpdate throughout SVG work. Task list at start, mark in_progress/completed. Visible progress, prevents skipping steps.
 
-## Key Principles (Quick Reference)
+## Key Principles
 
-1. **Theme first** - approve `theme_swatch.svg` before deliverables
-2. **Grid first** - viewBox, margins, panel origins, columns, rhythm BEFORE content. Invisible guide grid
-3. **CSS theme classes** - `<style>` block + `prefers-color-scheme` media query. `class=`, never inline `fill=`
-4. **File description comment** - before `<svg>`: filename, shows, intent, theme
-5. **Grid comment** - after `<style>`, `GRID REFERENCE` documenting panel origins, columns, rhythm
-6. **Layout topology comment** - h-align / v-align / h-stack / v-stack / contain / mirror, relationships not coords
-7. **Five named layers** - `<g id="background">`, `<g id="nodes">`, `<g id="connectors">`, `<g id="content">`, `<g id="callouts">`. Every element belongs to exactly one. See Z-Order Layering
-8. **Named component groups** - logical chunks in `<g id="component-name">`, lowercase-hyphen
-9. **Transparent background** - `fill="transparent"` on root rect. No full-viewport fills
-10. **Contrast rules** - every element contrasts its immediate background via theme colours. No `#000000`, no `#ffffff`
-11. **Callouts via empty-space workflow** - never eyeball text positions. `empty-space` + `geom contains` + `geom rect-edge`. See Callout construction workflow
-12. **Connector tool for every arrow** - no `rotate()`, no `atan2`, no hand paths. See Arrow Construction
-13. **Verify all five** - `overlaps`, `contrast`, `alignment`, `css`, `connectors` before delivery
-14. **Examples** - read relevant `examples/` SVGs before creating each image
+1. **Tool first** - every coordinate from `primitives`, every arrow from `connector`, every placement from `geom`/`callouts`/`empty-space`. Never eyeball
+2. **Theme first** - approve `theme_swatch.svg` before deliverables
+3. **Grid first** - viewBox, margins, columns, rhythm as comments BEFORE content
+4. **CSS classes** - `<style>` + `prefers-color-scheme` media query. `class=`, never inline `fill=`
+5. **File description comment** - before `<svg>`: filename, shows, intent, theme
+6. **Five named layers** - `background`, `nodes`, `connectors`, `content`, `callouts`
+7. **Transparent background** - `fill="transparent"` on root rect
+8. **Contrast** - every element contrasts its background via theme. No `#000000`, no `#ffffff`
+9. **Validate before delivery** - run all six checkers. No run, no ship
+10. **Read examples** - study `examples/` before creating each image
 
 ## CSS Theme Classes and Dark Mode Detection
 
