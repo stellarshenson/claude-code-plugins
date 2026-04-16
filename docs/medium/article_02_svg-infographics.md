@@ -232,6 +232,8 @@ The highest-variance, highest-magnitude failure classes became tool targets. End
 
 The result: a plugin shaped by failure data, not intuition.
 
+![Failure-driven tool development](images_article_02/18-failure-driven-development.svg)
+
 ---
 
 *Every infographic in this article was produced by the plugin itself - the agent as designer, the tool as application.*

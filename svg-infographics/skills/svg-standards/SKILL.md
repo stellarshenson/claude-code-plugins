@@ -322,6 +322,28 @@ Every SVG starts with comment before `<svg>`. Filename, shows, intent, theme.
 - `text-anchor="middle"` for centred, explicit `x` for left-aligned
 - **Never use `<tspan>` for mixed styling** - separate `<text>` elements with explicit x positions
 
+### Unicode glyphs in text
+
+Use Unicode directly inside `<text>` content, never ASCII fallbacks. SVG text renders glyphs natively and the XML parser handles Unicode without entity escapes.
+
+| Intent | Write | Don't write |
+|---|---|---|
+| right arrow | `→` (U+2192) | `->`, `-&gt;` |
+| left arrow | `←` (U+2190) | `<-`, `&lt;-` |
+| up / down arrow | `↑` / `↓` | `^`, `v` |
+| bidirectional | `↔` (U+2194) | `<->` |
+| heavy right arrow | `➜` / `➔` | `>` |
+| em-dash | `—` (U+2014) | `--` |
+| en-dash | `–` (U+2013) | `-` in ranges |
+| ellipsis | `…` (U+2026) | `...` |
+| multiplication / cross | `×` (U+00D7) | `x` |
+| bullet | `•` (U+2022) | `*` |
+| chevron right | `›` (U+203A) | `>` |
+
+Rationale: the article-wide typography rules forbid ASCII `->` in prose; the SVG text layer must match. Historically `->` ends up duplicated as `-&gt;` by validators and renders awkward in tight typography. Unicode glyphs render at consistent baseline and weight across all OS font stacks.
+
+XML comments are a DIFFERENT case: the double-hyphen `--` breaks XML parsing (see validation skill). Don't place any substitutions inside comments; keep ASCII prose there and rely on Unicode only for displayed text nodes.
+
 ## Icon Sourcing Policy
 
 Prefer standard open-source SVG icon libraries.

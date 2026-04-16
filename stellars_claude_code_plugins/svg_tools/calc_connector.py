@@ -1836,28 +1836,47 @@ def calc_l_chamfer(
                 total += abs(dx) + abs(dy)
             return total
 
+        # Stem-too-short warnings. A bend that lands right at (or 1-2px from)
+        # the arrowhead or the source endpoint looks unprofessional - the
+        # arrow appears to emerge mid-corner. Two severity tiers:
+        #   - visible < 3px  -> CRITICAL (bend ON the arrow tip)
+        #   - visible < stem_min -> CONSIDER (stem too short, raise geometry)
         if arrow_end:
             leg = _axis_leg_length(pts, "end")
             visible = leg - end_trim - float(head_len)
-            if visible + 0.5 < float(stem_min):
+            if visible + 0.5 < 3.0:
                 msg = (
-                    f"l-chamfer: last cardinal stem behind arrow is "
-                    f"{max(0.0, visible):.1f}px (< stem_min={stem_min}); "
-                    f"geometry does not allow the full stem target."
+                    f"CONSIDER (snap rule): bend {max(0.0, visible):.1f}px "
+                    f"from end arrow; arrow emerges mid-corner. "
+                    f"Extend approach leg."
                 )
                 warnings.append(msg)
-                print(f"WARNING: {msg}", file=sys.stderr)
+                print(msg, file=sys.stderr)
+            elif visible + 0.5 < float(stem_min):
+                msg = (
+                    f"CONSIDER (snap rule): end stem {max(0.0, visible):.1f}px "
+                    f"(< stem_min={stem_min}). Lengthen final leg."
+                )
+                warnings.append(msg)
+                print(msg, file=sys.stderr)
         if arrow_start:
             leg = _axis_leg_length(pts, "start")
             visible = leg - start_trim - float(head_len)
-            if visible + 0.5 < float(stem_min):
+            if visible + 0.5 < 3.0:
                 msg = (
-                    f"l-chamfer: first cardinal stem ahead of arrow is "
-                    f"{max(0.0, visible):.1f}px (< stem_min={stem_min}); "
-                    f"geometry does not allow the full stem target."
+                    f"CONSIDER (snap rule): bend {max(0.0, visible):.1f}px "
+                    f"from start arrow; arrow emerges mid-corner. "
+                    f"Extend first leg."
                 )
                 warnings.append(msg)
-                print(f"WARNING: {msg}", file=sys.stderr)
+                print(msg, file=sys.stderr)
+            elif visible + 0.5 < float(stem_min):
+                msg = (
+                    f"CONSIDER (snap rule): start stem {max(0.0, visible):.1f}px "
+                    f"(< stem_min={stem_min}). Lengthen first leg."
+                )
+                warnings.append(msg)
+                print(msg, file=sys.stderr)
     return _build_polyline_result(
         "l-chamfer",
         pts,
@@ -2085,13 +2104,181 @@ def _resolve_tension(tension):
 def _single_convergence_points(n, point):
     """Return a list of N copies of the same convergence point.
 
-    In the canonical manifold model every start strand converges at exactly
-    the same merge point (= spine_start) and every end strand diverges from
-    exactly the same fork point (= spine_end). There is no "distribution"
-    along the spine - the spine has a single start and a single end, and
-    the strands all terminate there, tangent to the spine direction.
+    Legacy canonical-manifold model: every start strand converges at exactly
+    spine_start and every end strand diverges from exactly spine_end. Kept
+    for backward compatibility. The default for new manifolds is
+    _distributed_convergence_points (snapping rules), which slides each
+    merge/fork point along the spine to its perpendicular projection.
     """
     return [tuple(point)] * n
+
+
+def _project_onto_spine(point, spine_start, spine_end):
+    """Perpendicular projection of `point` onto the spine segment.
+
+    Returns the projection clamped to the segment [spine_start, spine_end]
+    along with the fractional t in [0, 1] describing where on the spine the
+    projection landed. t=0 means "at spine_start", t=1 means "at spine_end";
+    interior t values denote T-junctions.
+    """
+    sx, sy = spine_start[0], spine_start[1]
+    ex, ey = spine_end[0], spine_end[1]
+    vx, vy = ex - sx, ey - sy
+    length_sq = vx * vx + vy * vy
+    if length_sq < 1e-9:
+        return (sx, sy), 0.0
+    px, py = point[0], point[1]
+    t = ((px - sx) * vx + (py - sy) * vy) / length_sq
+    t = max(0.0, min(1.0, t))
+    return (sx + t * vx, sy + t * vy), t
+
+
+def _snap_to_grid(coord, grid):
+    """Snap a scalar coordinate to the nearest multiple of `grid`.
+
+    Returns `coord` unchanged if grid <= 0. Used by the snapping rules to
+    land merge/fork points on clean pixel boundaries.
+    """
+    if not grid or grid <= 0:
+        return coord
+    return round(coord / grid) * grid
+
+
+def _distributed_convergence_points(
+    points,
+    spine_start,
+    spine_end,
+    snap_grid=0,
+):
+    """Slide each point onto the spine via perpendicular projection.
+
+    This is the core of the manifold snapping rules:
+
+    * **Align snap**: each merge/fork point is projected perpendicularly onto
+      the spine line, then clamped to the [spine_start, spine_end] segment.
+      Interior projections produce T-junctions; projections at the endpoints
+      degenerate to the legacy single-convergence behaviour.
+    * **Grid snap**: when `snap_grid > 0`, the projection's coordinate along
+      the spine axis is snapped to the nearest grid line (horizontal spines
+      snap X, vertical spines snap Y, diagonal spines snap the parametric t).
+      This keeps connectors landing on clean integer pixel boundaries.
+
+    Returns a list of (snapped_point, t) tuples parallel to `points`, where
+    t in [0, 1] is the fractional distance along the spine. Callers use t
+    to decide whether the strand endpoint is a T-junction (0 < t < 1) or a
+    true spine-endpoint convergence (t==0 or t==1).
+    """
+    orientation = _spine_orientation(
+        (spine_end[0] - spine_start[0], spine_end[1] - spine_start[1])
+    )
+    out = []
+    for p in points:
+        proj, t = _project_onto_spine(p, spine_start, spine_end)
+        if snap_grid and snap_grid > 0:
+            if orientation == "horizontal":
+                snapped_x = _snap_to_grid(proj[0], snap_grid)
+                proj, t = _project_onto_spine((snapped_x, proj[1]), spine_start, spine_end)
+            elif orientation == "vertical":
+                snapped_y = _snap_to_grid(proj[1], snap_grid)
+                proj, t = _project_onto_spine((proj[0], snapped_y), spine_start, spine_end)
+            else:
+                snapped_x = _snap_to_grid(proj[0], snap_grid)
+                snapped_y = _snap_to_grid(proj[1], snap_grid)
+                proj, t = _project_onto_spine((snapped_x, snapped_y), spine_start, spine_end)
+        out.append((proj, t))
+    return out
+
+
+def _middle_alignment_hint(points, spine_start, spine_end, label):
+    """Snap-rule hint: odd count + middle point off-axis => suggest spine realignment.
+
+    When a manifold has an odd number of starts (or ends) and the MIDDLE
+    point's perpendicular distance to the spine line is nonzero, the spine
+    is not running through the natural "centre" of the fan. Moving the
+    spine so it passes through the middle point produces a visually
+    balanced manifold where the central strand flows straight through.
+
+    Returns a telegram-style "CONSIDER: ..." string or None.
+    """
+    n = len(points)
+    if n < 3 or n % 2 == 0:
+        return None
+    mid = points[n // 2]
+    # Only fire the hint when the middle point's projection lands AT a spine
+    # endpoint (t=0 or t=1). That's the case where the middle strand feeds
+    # into the spine from outside the spine's axis range, and realigning the
+    # spine perpendicular axis makes the middle strand a clean straight line.
+    # For T-junction geometry (interior projection), the strand is already
+    # perpendicular and no realignment is warranted.
+    _, t_mid = _project_onto_spine(mid, spine_start, spine_end)
+    if 0.01 < t_mid < 0.99:
+        return None
+    orientation = _spine_orientation(
+        (spine_end[0] - spine_start[0], spine_end[1] - spine_start[1])
+    )
+    if orientation == "horizontal":
+        target_y = mid[1]
+        current_y = spine_start[1]
+        offset = abs(target_y - current_y)
+        if offset < 0.5:
+            return None
+        return (
+            f"CONSIDER (snap rule): odd {label} ({n}); middle off-axis "
+            f"by {offset:.1f}px. Move spine to y={target_y:.0f} "
+            f"for straight-through middle strand."
+        )
+    if orientation == "vertical":
+        target_x = mid[0]
+        current_x = spine_start[0]
+        offset = abs(target_x - current_x)
+        if offset < 0.5:
+            return None
+        return (
+            f"CONSIDER (snap rule): odd {label} ({n}); middle off-axis "
+            f"by {offset:.1f}px. Move spine to x={target_x:.0f} "
+            f"for straight-through middle strand."
+        )
+    # Diagonal spine: perpendicular distance to infinite line.
+    vx = spine_end[0] - spine_start[0]
+    vy = spine_end[1] - spine_start[1]
+    vlen = math.hypot(vx, vy)
+    if vlen < 1e-9:
+        return None
+    nx, ny = -vy / vlen, vx / vlen  # unit normal
+    offset = abs((mid[0] - spine_start[0]) * nx + (mid[1] - spine_start[1]) * ny)
+    if offset < 0.5:
+        return None
+    return (
+        f"CONSIDER (snap rule): odd {label} ({n}); middle {offset:.1f}px "
+        f"off diagonal spine. Shift spine_start/spine_end "
+        f"so line crosses middle point."
+    )
+
+
+def _endpoint_clearance_hints(points_with_t, spine_start, spine_end, label, min_fraction=0.05):
+    """Snap-rule hint: merge/fork too close to spine endpoint = no room to route.
+
+    When a merge/fork point's t is within `min_fraction` of 0 or 1, the
+    strand has effectively zero room to leave the spine-endpoint region
+    before being forced into a chamfer. Returns a list of telegram-style
+    CONSIDER hints, one per too-close point.
+    """
+    hints = []
+    spine_len = math.hypot(spine_end[0] - spine_start[0], spine_end[1] - spine_start[1])
+    for i, (_, t) in enumerate(points_with_t):
+        if t < min_fraction and t > 0.0001:
+            hints.append(
+                f"CONSIDER (snap rule): {label}[{i}] sits {t * spine_len:.1f}px "
+                f"from spine_start (t={t:.2f}). Spread merges along spine "
+                f"or extend spine_start."
+            )
+        elif t > 1.0 - min_fraction and t < 0.9999:
+            hints.append(
+                f"CONSIDER (snap rule): {label}[{i}] sits {(1 - t) * spine_len:.1f}px "
+                f"from spine_end (t={t:.2f}). Spread forks along spine "
+                f"or extend spine_end."
+            )
+    return hints
 
 
 def _organic_relaxation(
@@ -2296,6 +2483,8 @@ def calc_manifold(
     head_half_h=5,
     arrow="end",
     standoff=None,
+    snap_grid=0,
+    strict=False,
 ):
     """Build a manifold connector.
 
@@ -2376,12 +2565,30 @@ def calc_manifold(
         spine_flow_angle_deg = math.degrees(math.atan2(_sp_dx, -_sp_dy)) % 360
     else:
         spine_flow_angle_deg = None
+    # Snapping rules (two layers - hints always fire, geometry is opt-out):
+    #   1. GEOMETRY layer (disabled by `strict=True`):
+    #      - Project each merge/fork onto the spine segment (align snap).
+    #      - Grid-snap the projection when `snap_grid > 0`.
+    #      - Interior t in (0, 1) -> T-junction strand routing.
+    #   2. HINT layer (ALWAYS on):
+    #      - CONSIDER (snap rule): ... telegram-style best-practice hints.
+    #
+    # `strict=True` means "apply caller's geometry literally" - layer 1 is
+    # skipped, but layer 2 still fires so Claude sees the aesthetic suggestions
+    # even when strict keeps the literal placement.
+    apply_geometry_snap = not strict
+    emit_hints = True
+
+    merge_ts = [0.0] * N
     if merge_points is None:
-        # Canonical model: merge point is ONE point at spine_start.
-        # Every start strand converges here, tangent to the spine direction.
-        # Tension/bundling is resolved via the force simulation, not by
-        # distributing merge points along the spine.
-        merge_points = _single_convergence_points(N, spine_start)
+        if apply_geometry_snap:
+            distributed = _distributed_convergence_points(
+                starts, spine_start, spine_end, snap_grid=snap_grid
+            )
+            merge_points = [pt for pt, _ in distributed]
+            merge_ts = [t for _, t in distributed]
+        else:
+            merge_points = _single_convergence_points(N, spine_start)
         merge_directions = [None] * N
     else:
         merges_dirs = [_unpack_point_with_direction(p) for p in merge_points]
@@ -2389,10 +2596,19 @@ def calc_manifold(
         merge_directions = [md[1] for md in merges_dirs]
         if len(merge_points) != N:
             raise ValueError(f"merge_points length ({len(merge_points)}) must match starts ({N})")
+        # Record t for each caller-provided merge point so T-junction detection
+        # still applies.
+        merge_ts = [_project_onto_spine(mp, spine_start, spine_end)[1] for mp in merge_points]
+    fork_ts = [1.0] * M
     if fork_points is None:
-        # Canonical model: fork point is ONE point at spine_end. Every end
-        # strand diverges from here, tangent to the spine direction.
-        fork_points = _single_convergence_points(M, spine_end)
+        if apply_geometry_snap:
+            distributed = _distributed_convergence_points(
+                ends, spine_start, spine_end, snap_grid=snap_grid
+            )
+            fork_points = [pt for pt, _ in distributed]
+            fork_ts = [t for _, t in distributed]
+        else:
+            fork_points = _single_convergence_points(M, spine_end)
         fork_directions = [None] * M
     else:
         forks_dirs = [_unpack_point_with_direction(p) for p in fork_points]
@@ -2400,6 +2616,38 @@ def calc_manifold(
         fork_directions = [fd[1] for fd in forks_dirs]
         if len(fork_points) != M:
             raise ValueError(f"fork_points length ({len(fork_points)}) must match ends ({M})")
+        fork_ts = [_project_onto_spine(fp, spine_start, spine_end)[1] for fp in fork_points]
+
+    # --- Snap-rule best-practice hints (telegram style "CONSIDER: ...") ---
+    # Hints always fire when snap_rules is on, even under --strict, so the
+    # caller sees aesthetic suggestions without geometry being auto-adjusted.
+    if emit_hints:
+        # Hints analyse the CALLER's original points (starts, ends), not the
+        # auto-projected ones, so --strict gets the same guidance as default.
+        for hint in _endpoint_clearance_hints(
+            [(p, _project_onto_spine(p, spine_start, spine_end)[1]) for p in starts],
+            spine_start,
+            spine_end,
+            "starts",
+        ):
+            warnings.append(hint)
+            print(hint, file=sys.stderr)
+        for hint in _endpoint_clearance_hints(
+            [(p, _project_onto_spine(p, spine_start, spine_end)[1]) for p in ends],
+            spine_start,
+            spine_end,
+            "ends",
+        ):
+            warnings.append(hint)
+            print(hint, file=sys.stderr)
+        middle_hint_start = _middle_alignment_hint(starts, spine_start, spine_end, "starts")
+        if middle_hint_start:
+            warnings.append(middle_hint_start)
+            print(middle_hint_start, file=sys.stderr)
+        middle_hint_end = _middle_alignment_hint(ends, spine_start, spine_end, "ends")
+        if middle_hint_end:
+            warnings.append(middle_hint_end)
+            print(middle_hint_end, file=sys.stderr)
 
     # --- Controls list normalisation ---
     if start_controls is None:
@@ -2469,37 +2717,207 @@ def calc_manifold(
     tangent_mult_start = _tension_to_tangent_mult(t_start)
     tangent_mult_end = _tension_to_tangent_mult(t_end)
 
+    # Per-strand standoff: a manifold must read as ONE continuous connector,
+    # so inner junctions (start-strand end at merge/spine, spine endpoints,
+    # end-strand start at fork/spine) MUST have zero standoff. Otherwise the
+    # default 1px trim leaves visible gaps where strands meet. Outer endpoints
+    # still honour the caller's standoff / margin.
+    inner_stub = 0.0
+
+    # Perpendicular-to-spine direction (as compass angle) for T-junction
+    # strands. A T-junction strand's last segment must approach the spine
+    # at 90 degrees so the junction reads as a clean tee, not a chamfered
+    # elbow. Two perpendicular directions exist; the builder below picks
+    # whichever points from the strand's source toward the spine.
+    def _perpendicular_approach_angle(src):
+        if _sp_len <= 0:
+            return None
+        # Spine normal (rotate spine unit by 90 degrees, both signs)
+        nx1, ny1 = -_sp_dy, _sp_dx
+        nx2, ny2 = _sp_dy, -_sp_dx
+        # Pick the normal that points from src toward the spine (i.e. the
+        # one whose dot product with (spine_projection - src) is positive).
+        proj, _ = _project_onto_spine(src, spine_start, spine_end)
+        vx = proj[0] - src[0]
+        vy = proj[1] - src[1]
+        dot1 = vx * nx1 + vy * ny1
+        dot2 = vx * nx2 + vy * ny2
+        if dot1 >= dot2:
+            return math.degrees(math.atan2(nx1, -ny1)) % 360
+        return math.degrees(math.atan2(nx2, -ny2)) % 360
+
+    # T-junction threshold: anything strictly interior counts. We use a tiny
+    # epsilon so a distributed point that landed exactly on spine_start
+    # (t=0.0) keeps the legacy convergence routing.
+    T_JUNCTION_EPS = 1e-4
+
+    # T-junction middle detection (GEOMETRIC, not index-based):
+    #
+    # At a merge or fork point, each strand bends from its along-spine leg to
+    # its perpendicular-to-spine leg. Those bend points align on a shared
+    # "merge line" perpendicular to the spine. A strand is a T-JUNCTION MIDDLE
+    # when it has peer strands on BOTH sides of it along that merge line -
+    # i.e., the trunk extends past its bend point in both perpendicular
+    # directions. The extremes of the cluster (top-most and bottom-most
+    # perpendicular positions) are L-JUNCTION ENDS, not T-junctions.
+    #
+    # Middle strands drop their chamfer: a chamfered bend at a T-junction
+    # creates a visible bump against the perpendicular trunk, whereas a sharp
+    # L at the extreme tips of the cluster reads clean.
+    #
+    # Clusters of <3 strands have no middle (every member is an extreme by
+    # sort), so chamfer stays on for everyone. The spine endpoint itself is
+    # added to the sort so that a small cluster anchored by the spine still
+    # has a "middle" when the spine sits between peer bends.
+    def _detect_middle_indices(points, spine_dir, spine_endpoint):
+        n = len(points)
+        if n < 3:
+            return set()
+        sp_mag = math.hypot(spine_dir[0], spine_dir[1])
+        if sp_mag < 1e-9:
+            return set()
+        # Unit vector perpendicular to the spine direction
+        perp = (-spine_dir[1] / sp_mag, spine_dir[0] / sp_mag)
+
+        def project(p):
+            return p[0] * perp[0] + p[1] * perp[1]
+
+        # Sort strand positions with the spine endpoint injected so a cluster
+        # anchored by the spine counts the spine as a trunk landmark.
+        # Use a sort key that only compares projected positions (not the
+        # strand index) to avoid "NoneType < int" on ties.
+        labelled = [(project(p), i) for i, p in enumerate(points)]
+        labelled.append((project(spine_endpoint), None))
+        labelled.sort(key=lambda t: t[0])
+        # Extremes are the smallest and largest along the trunk axis.
+        extremes = set()
+        for lab in labelled:
+            if lab[1] is not None:
+                extremes.add(lab[1])
+                break
+        for lab in reversed(labelled):
+            if lab[1] is not None:
+                extremes.add(lab[1])
+                break
+        return {i for i in range(n) if i not in extremes}
+
+    middle_start_indices = (
+        set() if strict else _detect_middle_indices(starts, spine_direction, spine_start)
+    )
+    middle_end_indices = (
+        set() if strict else _detect_middle_indices(ends, spine_direction, spine_end)
+    )
+
+    # Outer-side standoffs: caller's `standoff`/`margin` applied to the
+    # original source of start strands and the original target of end strands.
+    _outer_start_trim, _outer_end_trim = _resolve_standoff(standoff, margin)
+    # Symmetric visual gaps: the destination side leaves `end_trim + head_len`
+    # of visible clearance (standoff + arrow stem). To make the source-side
+    # gap look equal, the start-side standoff auto-scales by +head_len when
+    # the end strands carry an arrow. Callers who want a different source gap
+    # can override via an explicit 2-tuple `standoff`.
+    arrow_end_active = (arrow or "none") in ("end", "both")
+    if standoff is None and arrow_end_active:
+        _outer_start_trim = _outer_end_trim + float(head_len)
+    start_strand_standoff = (_outer_start_trim, inner_stub)
+    end_strand_standoff = (inner_stub, _outer_end_trim)
+    spine_standoff = (inner_stub, inner_stub)
+
     for i in range(N):
         user_controls = list(aligned_start_controls[i]) if aligned_start_controls[i] else []
-        include_merge = shape != "straight" and merge_points[i] != spine_start
-        all_controls = [*user_controls, merge_points[i]] if include_merge else user_controls
-        strand_end_dir = (
-            merge_directions[i] if merge_directions[i] is not None else spine_flow_angle_deg
-        )
-        # Compute tangent magnitude from start-side tension and this strand's
-        # source -> merge chord length.
-        _chord = math.hypot(spine_start[0] - starts[i][0], spine_start[1] - starts[i][1])
-        strand_tangent_mag = _chord * tangent_mult_start
-        strand = _calc_single_strand(
-            starts[i],
-            spine_start,
-            shape,
-            chamfer,
-            samples,
-            margin,
-            head_len,
-            head_half_h,
-            arrow="none",
-            controls=all_controls if all_controls else None,
-            standoff=standoff,
-            start_dir=start_directions[i],
-            end_dir=strand_end_dir,
-            tangent_magnitude=strand_tangent_mag,
-        )
+        t_i = merge_ts[i]
+        is_tjunction = apply_geometry_snap and T_JUNCTION_EPS < t_i < 1.0 - T_JUNCTION_EPS
+        if is_tjunction:
+            # Strand terminates at merge_points[i] on the spine. No chamfer at
+            # that end - the tee is formed by the spine passing through the
+            # strand's endpoint. We approach perpendicular to the spine.
+            strand_end_dir = (
+                merge_directions[i]
+                if merge_directions[i] is not None
+                else _perpendicular_approach_angle(starts[i])
+            )
+            all_controls = user_controls if user_controls else None
+            _chord = math.hypot(
+                merge_points[i][0] - starts[i][0], merge_points[i][1] - starts[i][1]
+            )
+            strand_tangent_mag = _chord * tangent_mult_start
+            # T-junction strands must meet the spine cleanly: no chamfer
+            # anywhere in the strand path. A chamfer at the spine-facing end
+            # creates a visible bump against the spine line (the user's
+            # "middle connector with chamfer" complaint). A chamfer at an
+            # interior bend would also look wrong against a clean tee, so
+            # we set chamfer=0 for the whole strand.
+            # `strict=True` opts out of this aesthetic rule and keeps the
+            # caller's chamfer value even at T-junctions.
+            t_junction_chamfer = chamfer if strict else 0.0
+            strand = _calc_single_strand(
+                starts[i],
+                merge_points[i],
+                shape,
+                t_junction_chamfer,
+                samples,
+                margin,
+                head_len,
+                head_half_h,
+                arrow="none",
+                controls=all_controls,
+                standoff=start_strand_standoff,
+                start_dir=start_directions[i],
+                end_dir=strand_end_dir,
+                tangent_magnitude=strand_tangent_mag,
+            )
+        else:
+            # Endpoint convergence at spine_start (t<=eps or t>=1-eps).
+            # For L-chamfer / L shapes the end direction is left UNCONSTRAINED
+            # (None) so the router picks the natural two-bend path honouring
+            # only start_dir. Forcing end_dir to the spine flow would conflict
+            # with start_dir on diagonally-offset endpoints and reverse the
+            # routing. Splines still get the spine flow as a tangent hint.
+            include_merge = shape != "straight" and merge_points[i] != spine_start
+            all_controls = [*user_controls, merge_points[i]] if include_merge else user_controls
+            if merge_directions[i] is not None:
+                strand_end_dir = merge_directions[i]
+            elif shape in ("l", "l-chamfer"):
+                strand_end_dir = None
+            else:
+                strand_end_dir = spine_flow_angle_deg
+            _chord = math.hypot(spine_start[0] - starts[i][0], spine_start[1] - starts[i][1])
+            strand_tangent_mag = _chord * tangent_mult_start
+            # T-junction middle detection: if this strand is NOT at the
+            # extreme perpendicular position of the cluster, it's a middle
+            # connector at a T-junction formed by its peers. Drop the chamfer
+            # so the tee reads clean.
+            if i in middle_start_indices:
+                effective_chamfer = 0.0
+                hint = (
+                    f"HINT: start[{i}] chamfer dropped; T-junction middle "
+                    f"(peers on both sides of merge trunk)."
+                )
+                warnings.append(hint)
+                print(hint, file=sys.stderr)
+            else:
+                effective_chamfer = chamfer
+            strand = _calc_single_strand(
+                starts[i],
+                spine_start,
+                shape,
+                effective_chamfer,
+                samples,
+                margin,
+                head_len,
+                head_half_h,
+                arrow="none",
+                controls=all_controls if all_controls else None,
+                standoff=start_strand_standoff,
+                start_dir=start_directions[i],
+                end_dir=strand_end_dir,
+                tangent_magnitude=strand_tangent_mag,
+            )
         start_strands.append(strand)
         warnings.extend(strand["warnings"])
 
-    # Spine: spine_start -> spine_end (with spine_controls, no arrow)
+    # Spine: spine_start -> spine_end (with spine_controls, no arrow).
+    # Both endpoints meet inner strands so standoff=0 both sides.
     spine = _calc_single_strand(
         spine_start,
         spine_end,
@@ -2511,7 +2929,7 @@ def calc_manifold(
         head_half_h,
         arrow="none",
         controls=spine_controls if spine_controls else None,
-        standoff=standoff,
+        standoff=spine_standoff,
         start_dir=spine_start_dir,
         end_dir=spine_end_dir,
     )
@@ -2522,33 +2940,101 @@ def calc_manifold(
     # strand leaves the spine's single endpoint cleanly.
     end_strands = []
     divergence_strands = [None] * M  # retained for API compatibility
+
+    # Perpendicular-from-spine direction (as compass angle) for T-junction
+    # end strands. The strand leaves the spine at fork_points[j] heading
+    # perpendicular toward ends[j]; mirror of the start-side helper.
+    def _perpendicular_departure_angle(dst):
+        if _sp_len <= 0:
+            return None
+        nx1, ny1 = -_sp_dy, _sp_dx
+        nx2, ny2 = _sp_dy, -_sp_dx
+        proj, _ = _project_onto_spine(dst, spine_start, spine_end)
+        vx = dst[0] - proj[0]
+        vy = dst[1] - proj[1]
+        dot1 = vx * nx1 + vy * ny1
+        dot2 = vx * nx2 + vy * ny2
+        if dot1 >= dot2:
+            return math.degrees(math.atan2(nx1, -ny1)) % 360
+        return math.degrees(math.atan2(nx2, -ny2)) % 360
+
     for j in range(M):
         user_controls = list(aligned_end_controls[j]) if aligned_end_controls[j] else []
-        include_fork = shape != "straight" and fork_points[j] != spine_end
-        all_controls = [fork_points[j], *user_controls] if include_fork else user_controls
-        # Start-direction rule: a strand leaving spine_end inherits the
-        # spine's flow direction unless the fork point has an explicit override.
-        strand_start_dir = (
-            fork_directions[j] if fork_directions[j] is not None else spine_flow_angle_deg
-        )
-        _chord_e = math.hypot(ends[j][0] - spine_end[0], ends[j][1] - spine_end[1])
-        strand_tangent_mag_e = _chord_e * tangent_mult_end
-        strand = _calc_single_strand(
-            spine_end,
-            ends[j],
-            shape,
-            chamfer,
-            samples,
-            margin,
-            head_len,
-            head_half_h,
-            arrow=arrow,
-            controls=all_controls if all_controls else None,
-            standoff=standoff,
-            start_dir=strand_start_dir,
-            end_dir=end_directions[j],
-            tangent_magnitude=strand_tangent_mag_e,
-        )
+        t_j = fork_ts[j]
+        is_tjunction = apply_geometry_snap and T_JUNCTION_EPS < t_j < 1.0 - T_JUNCTION_EPS
+        if is_tjunction:
+            # Strand departs from fork_points[j] on the spine, heading
+            # perpendicular to the spine. No chamfer at the spine-facing end.
+            strand_start_dir = (
+                fork_directions[j]
+                if fork_directions[j] is not None
+                else _perpendicular_departure_angle(ends[j])
+            )
+            all_controls = user_controls if user_controls else None
+            _chord_e = math.hypot(ends[j][0] - fork_points[j][0], ends[j][1] - fork_points[j][1])
+            strand_tangent_mag_e = _chord_e * tangent_mult_end
+            # T-junction fork strands: no chamfer (symmetric with start-side
+            # T-junction rule - the middle connectors must meet the spine at
+            # a clean tee, no bumps). `strict=True` overrides and keeps the
+            # caller's chamfer value.
+            t_junction_chamfer = chamfer if strict else 0.0
+            strand = _calc_single_strand(
+                fork_points[j],
+                ends[j],
+                shape,
+                t_junction_chamfer,
+                samples,
+                margin,
+                head_len,
+                head_half_h,
+                arrow=arrow,
+                controls=all_controls,
+                standoff=end_strand_standoff,
+                start_dir=strand_start_dir,
+                end_dir=end_directions[j],
+                tangent_magnitude=strand_tangent_mag_e,
+            )
+        else:
+            # Endpoint convergence at spine_end (t>=1-eps or t<=eps). Same
+            # reasoning as start-side: for L / L-chamfer shapes, leave the
+            # strand's start direction UNCONSTRAINED so the router can honour
+            # end_dir without fighting the spine-flow default.
+            include_fork = shape != "straight" and fork_points[j] != spine_end
+            all_controls = [fork_points[j], *user_controls] if include_fork else user_controls
+            if fork_directions[j] is not None:
+                strand_start_dir = fork_directions[j]
+            elif shape in ("l", "l-chamfer"):
+                strand_start_dir = None
+            else:
+                strand_start_dir = spine_flow_angle_deg
+            _chord_e = math.hypot(ends[j][0] - spine_end[0], ends[j][1] - spine_end[1])
+            strand_tangent_mag_e = _chord_e * tangent_mult_end
+            if j in middle_end_indices:
+                effective_chamfer = 0.0
+                hint = (
+                    f"HINT: end[{j}] chamfer dropped; T-junction middle "
+                    f"(peers on both sides of fork trunk)."
+                )
+                warnings.append(hint)
+                print(hint, file=sys.stderr)
+            else:
+                effective_chamfer = chamfer
+            strand = _calc_single_strand(
+                spine_end,
+                ends[j],
+                shape,
+                effective_chamfer,
+                samples,
+                margin,
+                head_len,
+                head_half_h,
+                arrow=arrow,
+                controls=all_controls if all_controls else None,
+                standoff=end_strand_standoff,
+                start_dir=strand_start_dir,
+                end_dir=end_directions[j],
+                tangent_magnitude=strand_tangent_mag_e,
+            )
         end_strands.append(strand)
         warnings.extend(strand["warnings"])
 
@@ -2634,7 +3120,10 @@ def calc_manifold(
     #    visual defect - the fix is to move the merge/fork point or increase
     #    tension so the fan-out is wider and strands separate cleanly.
     def _check_strand_crossings(strands, label):
-        """Detect pairwise intersections among a list of strand results."""
+        """Detect pairwise intersections among a list of strand results.
+
+        Telegram-style WARNING. Crossings are real defects, not hints.
+        """
         try:
             from shapely.geometry import LineString
         except ImportError:
@@ -2651,45 +3140,128 @@ def calc_manifold(
                 if lines[i] is None or lines[j] is None:
                     continue
                 if lines[i].crosses(lines[j]):
+                    tens = t_start if label == "start" else t_end
+                    anchor = "merge" if label == "start" else "fork"
                     msg = (
-                        f"manifold {label} strands {i} and {j} CROSS each "
-                        f"other. Fix: increase tension (current {t_start if label == 'start' else t_end:.2f}) "
-                        f"or move the {'merge' if label == 'start' else 'fork'} point further from the spine endpoint."
+                        f"WARNING: manifold {label} strands {i}/{j} CROSS. "
+                        f"Increase tension (now {tens:.2f}) "
+                        f"or move {anchor} points further apart on spine."
                     )
                     warnings.append(msg)
-                    print(f"WARNING: {msg}", file=sys.stderr)
+                    print(msg, file=sys.stderr)
 
     _check_strand_crossings(start_strands, "start")
     _check_strand_crossings(end_strands, "end")
 
-    # 2. Backward-curve detection: check if any strand sample moves
-    #    backward relative to the spine's flow direction. Backward curves
-    #    happen when tension is too low and the S-curve overshoots,
-    #    curving against the flow before reaching its target.
+    # 2. Backward-curve detection: any sample moving against the spine flow
+    #    direction, which happens when bezier S-curves overshoot (too-low
+    #    tension) or when endpoint directions force a loop. Caught for both
+    #    l-chamfer and spline shapes because it reads raw samples post-build.
+    #    Telegram-style CONSIDER hint: tells the caller which knob to turn.
     if _sp_len > 0:
         flow_unit = (_sp_dx, _sp_dy)
 
         def _check_backward(strands, label):
+            side_tension = t_start if label == "start" else t_end
             for i, s in enumerate(strands):
                 pts = s.get("samples", [])
                 if len(pts) < 3:
                     continue
+                max_back = 0.0
+                back_k = None
                 for k in range(1, len(pts)):
                     dx = pts[k][0] - pts[k - 1][0]
                     dy = pts[k][1] - pts[k - 1][1]
                     dot = dx * flow_unit[0] + dy * flow_unit[1]
-                    if dot < -2.0:  # > 2px backward movement
-                        msg = (
-                            f"manifold {label} strand {i} curves BACKWARD "
-                            f"against spine flow at sample {k}. Fix: increase "
-                            f"tension or reduce the angular spread of endpoints."
-                        )
-                        warnings.append(msg)
-                        print(f"WARNING: {msg}", file=sys.stderr)
-                        break  # one warning per strand is enough
+                    if dot < max_back:
+                        max_back = dot
+                        back_k = k
+                if max_back < -2.0:
+                    msg = (
+                        f"CONSIDER (snap rule): manifold {label} strand {i} "
+                        f"bends BACKWARD against spine flow ({-max_back:.1f}px "
+                        f"at sample {back_k}); tension {side_tension:.2f} "
+                        f"too loose. Raise tension toward 1.0 or narrow "
+                        f"endpoint spread."
+                    )
+                    warnings.append(msg)
+                    print(msg, file=sys.stderr)
 
         _check_backward(start_strands, "start")
         _check_backward(end_strands, "end")
+        # Spine itself can overshoot when spine_controls / direction hints
+        # push it against its own flow.
+        pts = spine.get("samples", [])
+        if len(pts) >= 3:
+            max_back = 0.0
+            back_k = None
+            for k in range(1, len(pts)):
+                dx = pts[k][0] - pts[k - 1][0]
+                dy = pts[k][1] - pts[k - 1][1]
+                dot = dx * flow_unit[0] + dy * flow_unit[1]
+                if dot < max_back:
+                    max_back = dot
+                    back_k = k
+            if max_back < -2.0:
+                msg = (
+                    f"CONSIDER (snap rule): manifold SPINE bends BACKWARD "
+                    f"against its own flow ({-max_back:.1f}px at sample {back_k}). "
+                    f"Remove conflicting spine_controls or straighten "
+                    f"spine_start_dir / spine_end_dir hints."
+                )
+                warnings.append(msg)
+                print(msg, file=sys.stderr)
+
+    # 3. Flow-chain twist detection: the topology is
+    #       starts[i] -> merge[i] -> spine_start -> spine_end -> fork[j] -> ends[j]
+    #    and every link should have a positive dot product with the spine flow
+    #    direction. A negative dot means a source sits AHEAD of its merge point,
+    #    or an end sits BEHIND its fork - something is reversed or miswired.
+    #    The SPINE direction is the reference; everything downstream follows it.
+    if _sp_len > 0:
+        flow_unit = (_sp_dx, _sp_dy)
+        # Use perpendicular tolerance rather than exact zero: a start that
+        # sits 1-2px forward of its merge (e.g. due to grid snapping) is not
+        # twisted, but a start 50px past its merge definitely is.
+        twist_threshold = -3.0
+
+        for i in range(N):
+            dx = merge_points[i][0] - starts[i][0]
+            dy = merge_points[i][1] - starts[i][1]
+            dot = dx * flow_unit[0] + dy * flow_unit[1]
+            if dot < twist_threshold:
+                msg = (
+                    f"WARNING: TWIST start[{i}] {-dot:.1f}px ahead of merge "
+                    f"along flow. Swap coords or flip spine."
+                )
+                warnings.append(msg)
+                print(msg, file=sys.stderr)
+
+        for j in range(M):
+            dx = ends[j][0] - fork_points[j][0]
+            dy = ends[j][1] - fork_points[j][1]
+            dot = dx * flow_unit[0] + dy * flow_unit[1]
+            if dot < twist_threshold:
+                msg = (
+                    f"WARNING: TWIST end[{j}] {-dot:.1f}px behind fork "
+                    f"along flow. Swap coords or flip spine."
+                )
+                warnings.append(msg)
+                print(msg, file=sys.stderr)
+
+        # Centroid sanity: overall starts-to-ends direction must match spine flow.
+        sx = sum(p[0] for p in starts) / N
+        sy = sum(p[1] for p in starts) / N
+        ex = sum(p[0] for p in ends) / M
+        ey = sum(p[1] for p in ends) / M
+        centroid_flow = (ex - sx) * flow_unit[0] + (ey - sy) * flow_unit[1]
+        if centroid_flow < -10.0:
+            msg = (
+                f"WARNING: FLOW REVERSED starts centroid {-centroid_flow:.1f}px "
+                f"downstream of ends. Swap starts/ends or flip spine."
+            )
+            warnings.append(msg)
+            print(msg, file=sys.stderr)
 
     return {
         "mode": "manifold",
@@ -2968,7 +3540,7 @@ def main():
     )
     parser.add_argument(
         "--mode",
-        choices=["straight", "l", "l-chamfer", "spline", "manifold"],
+        choices=["straight", "l", "l-chamfer", "L-chamfer", "spline", "manifold"],
         default="straight",
         help="Connector style: straight | l | l-chamfer | spline | manifold (default: straight)",
     )
@@ -3035,6 +3607,21 @@ def main():
         "alignment axis from the spine orientation. No effect on spline shapes.",
     )
     parser.add_argument(
+        "--snap-grid",
+        type=float,
+        default=0.0,
+        help="Grid-snap merge/fork coords to nearest N px along spine axis. "
+        "0 = off. Align snap (perpendicular projection onto spine) runs "
+        "alongside when a manifold is built.",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Literal mode: apply caller geometry exactly as given. No endpoint "
+        "sliding onto spine, no grid snap, chamfer kept at T-junctions. "
+        "Snap-rule CONSIDER hints still fire (they are guidance, never auto-fix).",
+    )
+    parser.add_argument(
         "--organic",
         choices=["auto", "on", "off"],
         default="auto",
@@ -3073,8 +3660,8 @@ def main():
     )
     parser.add_argument(
         "--shape",
-        choices=["straight", "l", "l-chamfer", "spline"],
-        default="l-chamfer",
+        choices=["straight", "l", "l-chamfer", "L-chamfer", "spline"],
+        default="L-chamfer",
         help="Strand shape for manifold mode (default: l-chamfer)",
     )
     parser.add_argument(
@@ -3260,6 +3847,14 @@ def main():
             print_result(c, args)
         return
 
+    # Accept both "L-chamfer" (preferred; 'l' is easy to mistake for '1') and
+    # "l-chamfer" (legacy). Normalize to the lowercase form used internally
+    # for dispatch and style keys.
+    if hasattr(args, "shape") and args.shape == "L-chamfer":
+        args.shape = "l-chamfer"
+    if args.mode == "L-chamfer":
+        args.mode = "l-chamfer"
+
     # Manifold mode: N starts + M ends + required spine start/end + optional tension/controls
     if args.mode == "manifold":
         if not all([args.starts, args.ends, args.spine_start, args.spine_end]):
@@ -3299,6 +3894,10 @@ def main():
             head_half_h=head_half_h,
             arrow=args.arrow,
             standoff=standoff,
+            # --strict disables geometry modification (sliding, grid snap).
+            # Hints always fire.
+            snap_grid=0.0 if args.strict else args.snap_grid,
+            strict=args.strict,
         )
         print_manifold_result(result, args)
         return

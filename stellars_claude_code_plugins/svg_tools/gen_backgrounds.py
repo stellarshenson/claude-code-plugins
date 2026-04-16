@@ -163,10 +163,20 @@ def _snap_direction_45(dx, dy):
 
 
 def _space_colonize(
-    w, h, rng, seeds, attractors,
-    reach, step, branch_prob,
-    merge_radius=0, snap_grid=0, use_occupancy=False,
-    quantize_45=False, max_iterations=40, density_fn=None,
+    w,
+    h,
+    rng,
+    seeds,
+    attractors,
+    reach,
+    step,
+    branch_prob,
+    merge_radius=0,
+    snap_grid=0,
+    use_occupancy=False,
+    quantize_45=False,
+    max_iterations=40,
+    density_fn=None,
 ):
     """Space colonization tree growth toward attractor goals.
 
@@ -325,7 +335,7 @@ def _space_colonize(
                 nodes[tip_idx][2] = "terminal"
                 continue
 
-            # Average direction toward forward attractors
+            # Compute raw attractor direction
             avg_dx, avg_dy = 0.0, 0.0
             for _, ax, ay, d in nearby:
                 wa = 1.0 / max(1.0, d)
@@ -333,21 +343,61 @@ def _space_colonize(
                 avg_dy += (ay - ty) * wa
             mag = math.hypot(avg_dx, avg_dy)
             if mag < 0.001:
-                avg_dx, avg_dy = pref_dx, pref_dy
+                att_dx, att_dy = pref_dx, pref_dy
             else:
-                avg_dx, avg_dy = avg_dx / mag, avg_dy / mag
+                att_dx, att_dy = avg_dx / mag, avg_dy / mag
 
-            # Direction blend: 20% seed dir + 40% prev dir + 40% attractor dir
-            # Mild seed anchor prevents drift; strong prev prevents oscillation
-            avg_dx = 0.2 * seed_dx + 0.4 * pref_dx + 0.4 * avg_dx
-            avg_dy = 0.2 * seed_dy + 0.4 * pref_dy + 0.4 * avg_dy
-            mag = math.hypot(avg_dx, avg_dy)
-            if mag > 1e-6:
-                avg_dx, avg_dy = avg_dx / mag, avg_dy / mag
-
-            # 45° quantization for PCB-like paths
             if quantize_45:
-                avg_dx, avg_dy = _snap_direction_45(avg_dx, avg_dy)
+                # PCB: discrete choice among 8 cardinal/diagonal directions.
+                # No blending - pick ONE direction with persistence bias so traces
+                # form long straight runs then turn only when needed.
+                inv_s2 = 1.0 / math.sqrt(2)
+                candidates = [
+                    (1, 0),
+                    (inv_s2, inv_s2),
+                    (0, 1),
+                    (-inv_s2, inv_s2),
+                    (-1, 0),
+                    (-inv_s2, -inv_s2),
+                    (0, -1),
+                    (inv_s2, -inv_s2),
+                ]
+                best = None
+                best_score = -1e9
+                for cdx, cdy in candidates:
+                    # Persistence (strong): keep previous direction
+                    persist = cdx * pref_dx + cdy * pref_dy
+                    # Attractor alignment
+                    attract = cdx * att_dx + cdy * att_dy
+                    # Seed alignment (mild anchor)
+                    seed_align = cdx * seed_dx + cdy * seed_dy
+                    score = 0.65 * persist + 0.25 * attract + 0.1 * seed_align
+                    if score > best_score:
+                        best_score = score
+                        best = (cdx, cdy)
+                avg_dx, avg_dy = best
+            else:
+                # Neural: progressive fan-out based on depth.
+                # Near seed (depth 0-3): bundled, strong seed bias.
+                # Middle (depth 4-8): transition.
+                # Far (depth 9+): lateral spread dominates.
+                depth_factor = min(1.0, tip_depth / 10.0)
+                w_seed = 0.7 * (1 - depth_factor) + 0.05 * depth_factor
+                w_pref = 0.2 * (1 - depth_factor) + 0.25 * depth_factor
+                w_att = 0.1 * (1 - depth_factor) + 0.5 * depth_factor
+                avg_dx = w_seed * seed_dx + w_pref * pref_dx + w_att * att_dx
+                avg_dy = w_seed * seed_dy + w_pref * pref_dy + w_att * att_dy
+                # Add lateral push past depth 4: perpendicular to seed direction
+                if depth_factor > 0.3:
+                    perp_dx, perp_dy = -seed_dy, seed_dx
+                    # Deterministic lateral side per tip lineage (hash of tip_idx)
+                    lateral_sign = 1 if (tip_idx * 2654435761) & 0x40000000 else -1
+                    lateral = (depth_factor - 0.3) * 0.35
+                    avg_dx += lateral_sign * perp_dx * lateral
+                    avg_dy += lateral_sign * perp_dy * lateral
+                mag = math.hypot(avg_dx, avg_dy)
+                if mag > 1e-6:
+                    avg_dx, avg_dy = avg_dx / mag, avg_dy / mag
 
             nx = _sn(tx + avg_dx * step)
             ny = _sn(ty + avg_dy * step)
@@ -389,16 +439,18 @@ def _space_colonize(
             bp = branch_prob * (0.2 + local_d * 0.8)
             if rng.random() < bp:
                 if quantize_45:
-                    turn = rng.choice([math.pi / 4, -math.pi / 4, math.pi / 2, -math.pi / 2])
-                else:
-                    turn = rng.uniform(math.pi / 3, 2 * math.pi / 3) * rng.choice([-1, 1])
-                c, s = math.cos(turn), math.sin(turn)
-                bdx = avg_dx * c - avg_dy * s
-                bdy = avg_dx * s + avg_dy * c
-                if quantize_45:
+                    # PCB: T-junction = strictly perpendicular (90° turn left or right)
+                    side = rng.choice([-1, 1])
+                    bdx, bdy = -avg_dy * side, avg_dx * side
                     bdx, bdy = _snap_direction_45(bdx, bdy)
-                # Branch gets its OWN seed direction (the branch direction)
-                # This allows perpendicular branches to grow outward
+                else:
+                    # Neural: lateral branch (70-110° from current) biased away from seed
+                    turn_mag = rng.uniform(math.pi * 0.4, math.pi * 0.6)
+                    side = rng.choice([-1, 1])
+                    c, s = math.cos(turn_mag * side), math.sin(turn_mag * side)
+                    bdx = avg_dx * c - avg_dy * s
+                    bdy = avg_dx * s + avg_dy * c
+                # Branch gets its OWN seed direction so it spreads outward
                 new_frontier.append((new_idx, bdx, bdy, bdx, bdy))
 
         if len(new_frontier) > 120:
@@ -534,7 +586,9 @@ def _gen_circuit(
     grid = 4
     # Origin directions -> seed directions
     _angle_map = {"down": [0], "up": [180], "right": [270], "left": [90], "radial": [0, 180]}
-    origin_angles = _angle_map.get(direction, [0, 180]) if origin_directions is None else origin_directions
+    origin_angles = (
+        _angle_map.get(direction, [0, 180]) if origin_directions is None else origin_directions
+    )
     _cardinal = {0: (0, 1), 90: (-1, 0), 180: (0, -1), 270: (1, 0)}
 
     # Seeds: bus groups along canvas edges with wider spacing
@@ -572,11 +626,18 @@ def _gen_circuit(
     step = min(w, h) * 0.12
     reach = max(w, h) * 0.5
     nodes, edges_t = _space_colonize(
-        w, h, rng, seeds, attractors,
-        reach=reach, step=step, branch_prob=branch_p * 1.3,
+        w,
+        h,
+        rng,
+        seeds,
+        attractors,
+        reach=reach,
+        step=step,
+        branch_prob=branch_p * 1.3,
         merge_radius=step * 0.5,  # only VERY close merges (no bus-eating)
         snap_grid=grid,
-        use_occupancy=True, quantize_45=True,
+        use_occupancy=True,
+        quantize_45=True,
         max_iterations=35,
         density_fn=density_fn if grad_pts else None,
     )
@@ -688,8 +749,12 @@ def _gen_circuit(
         if n[2] == "root":
             continue
         # Skip pads near canvas border
-        if (n[0] < edge_margin or n[0] > w - edge_margin
-                or n[1] < edge_margin or n[1] > h - edge_margin):
+        if (
+            n[0] < edge_margin
+            or n[0] > w - edge_margin
+            or n[1] < edge_margin
+            or n[1] > h - edge_margin
+        ):
             continue
         # Only pads at terminals (deg=1) and junctions (deg>=3)
         if not (deg == 1 or deg >= 3):
@@ -717,12 +782,21 @@ def _gen_circuit(
 
 
 def _gen_circuit_legacy(
-    w, h, density, direction, rng,
-    bend_angle=45, origin_directions=None,
-    stroke_width=2.5, stroke_std=0.4,
-    pad_radius=4.5, pad_std=1.0,
-    branch_prob=None, merge_prob=0.15,
-    density_points=None, density_gradient=None,
+    w,
+    h,
+    density,
+    direction,
+    rng,
+    bend_angle=45,
+    origin_directions=None,
+    stroke_width=2.5,
+    stroke_std=0.4,
+    pad_radius=4.5,
+    pad_std=1.0,
+    branch_prob=None,
+    merge_prob=0.15,
+    density_points=None,
+    density_gradient=None,
     subdivision_rounds=2,
 ):
     """Legacy v14 grid-annealing circuit. Kept for reference."""
@@ -1188,10 +1262,10 @@ def _gen_neural(
         sp_w = w * 0.9 / per_edge
         sp_h = h * 0.9 / per_edge
         for i in range(per_edge):
-            seeds.append((w * 0.05 + (i + 0.5) * sp_w, 0, 0, 1))       # top -> down
-            seeds.append((w * 0.05 + (i + 0.5) * sp_w, h, 0, -1))      # bottom -> up
-            seeds.append((0, h * 0.05 + (i + 0.5) * sp_h, 1, 0))       # left -> right
-            seeds.append((w, h * 0.05 + (i + 0.5) * sp_h, -1, 0))      # right -> left
+            seeds.append((w * 0.05 + (i + 0.5) * sp_w, 0, 0, 1))  # top -> down
+            seeds.append((w * 0.05 + (i + 0.5) * sp_w, h, 0, -1))  # bottom -> up
+            seeds.append((0, h * 0.05 + (i + 0.5) * sp_h, 1, 0))  # left -> right
+            seeds.append((w, h * 0.05 + (i + 0.5) * sp_h, -1, 0))  # right -> left
 
     # Attractors placed across canvas, weighted by density
     n_attractors = max(40, int(100 * factor))
@@ -1205,15 +1279,24 @@ def _gen_neural(
             break
 
     # Space colonization: small step -> hair-like curves through many points
-    # merge_radius=0 so dendrites don't fuse (neural has rare merges)
+    # merge_radius=0 so dendrites don't fuse. Long reach + iterations = long fan-out
+    # strands reaching toward canvas sides.
     step = max(w, h) * 0.022
-    reach = max(w, h) * 0.4
+    reach = max(w, h) * 0.55
     nodes, edges_t = _space_colonize(
-        w, h, rng, seeds, attractors,
-        reach=reach, step=step, branch_prob=branch_p * 0.4,
-        merge_radius=0, snap_grid=0,
-        use_occupancy=False, quantize_45=False,
-        max_iterations=60,
+        w,
+        h,
+        rng,
+        seeds,
+        attractors,
+        reach=reach,
+        step=step,
+        branch_prob=branch_p * 0.45,
+        merge_radius=0,
+        snap_grid=0,
+        use_occupancy=False,
+        quantize_45=False,
+        max_iterations=80,
         density_fn=density_fn if grad_pts else None,
     )
 

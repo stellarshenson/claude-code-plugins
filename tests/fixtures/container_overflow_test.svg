@@ -1,0 +1,86 @@
+<!--
+  container_overflow_test.svg - FIXTURE for check_container_overflow.
+  Seeded with known hard-to-detect overflow fails. Each failing text is
+  tagged with data-failcase="N" and a comment describing the fail.
+  The matching test walks the list and asserts the checker reports
+  each fail at least once.
+
+  Also includes PASSING cases (text safely inside container) - the checker
+  must NOT report those.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800">
+  <style>
+    text { font-family: Helvetica, Arial, sans-serif; }
+  </style>
+
+  <!-- FAIL 1: obvious horizontal overflow. Long text centred at card centre
+       spreads past the right edge. -->
+  <g id="fail-1-obvious-right">
+    <rect x="30" y="30" width="120" height="60" fill="none" stroke="#888"/>
+    <text x="90" y="65" font-size="12" text-anchor="middle" data-failcase="1">this text clearly overflows the card boundary</text>
+  </g>
+
+  <!-- FAIL 2: obvious LEFT overflow. Text anchored end at x=200 extends
+       LEFT past the card's left edge at x=180. -->
+  <g id="fail-2-left">
+    <rect x="180" y="30" width="100" height="60" fill="none" stroke="#888"/>
+    <text x="200" y="65" font-size="12" text-anchor="end" data-failcase="2">extending left beyond card</text>
+  </g>
+
+  <!-- FAIL 3: translated text escapes parent card. Text at local x=0 becomes
+       x=200 after translate, card ends at x=180. -->
+  <g id="fail-3-translated">
+    <rect x="320" y="30" width="120" height="60" fill="none" stroke="#888"/>
+    <g transform="translate(200,65)">
+      <text x="100" y="0" font-size="12" data-failcase="3">translate-escape</text>
+    </g>
+  </g>
+
+  <!-- FAIL 4: rotated text. 90deg rotation flips width and height, the
+       text bbox after rotation extends VERTICALLY past the short card. -->
+  <g id="fail-4-rotated">
+    <rect x="480" y="30" width="100" height="40" fill="none" stroke="#888"/>
+    <text x="530" y="55" font-size="12" text-anchor="middle" transform="rotate(90, 530, 55)" data-failcase="4">vertical runoff</text>
+  </g>
+
+  <!-- FAIL 5: text below card (bottom overflow). y beyond card bottom. -->
+  <g id="fail-5-below">
+    <rect x="620" y="30" width="120" height="50" fill="none" stroke="#888"/>
+    <text x="680" y="95" font-size="12" text-anchor="middle" data-failcase="5">below the card</text>
+  </g>
+
+  <!-- PASS 1: text properly inside card. -->
+  <g id="pass-1-inside">
+    <rect x="30" y="120" width="200" height="80" fill="none" stroke="#888"/>
+    <text x="130" y="160" font-size="12" text-anchor="middle">inside card</text>
+  </g>
+
+  <!-- PASS 2: text in tiny sub-group (< 10000 area). Sub-group rect is
+       only 40x20 = 800, below threshold, so checker skips it even if text
+       extends past the sub-rect. -->
+  <g id="pass-2-tiny-subgroup">
+    <rect x="280" y="120" width="200" height="80" fill="none" stroke="#888"/>
+    <g id="sub-tiny">
+      <rect x="290" y="130" width="40" height="20" fill="none" stroke="#ccc"/>
+      <text x="310" y="145" font-size="10" text-anchor="middle">fits-parent</text>
+    </g>
+  </g>
+
+  <!-- FAIL 6: nested groups with compound transforms. Outer translate(300,250)
+       plus inner translate(100,0) puts text at effective x=400, card at x=300
+       w=80 -> right edge 380. Text 'nested fail' at local x=0 anchor=start
+       appears at world x=400, overflowing 20+px. -->
+  <g id="fail-6-nested" transform="translate(300,250)">
+    <rect x="0" y="0" width="80" height="60" fill="none" stroke="#888"/>
+    <g transform="translate(100,0)">
+      <text x="0" y="30" font-size="12" data-failcase="6">nested fail</text>
+    </g>
+  </g>
+
+  <!-- PASS 3: borderline - text ends EXACTLY at card edge. Tolerance
+       of 0.5px keeps this passing. -->
+  <g id="pass-3-exact-edge">
+    <rect x="500" y="250" width="100" height="60" fill="none" stroke="#888"/>
+    <text x="595" y="285" font-size="10" text-anchor="end">exact-edge</text>
+  </g>
+</svg>

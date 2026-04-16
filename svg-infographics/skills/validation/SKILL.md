@@ -7,6 +7,43 @@ description: SVG validation tools and verification workflow - overlap detection,
 
 Twelve tools shipped in `stellars-claude-code-plugins` pip package. Install once, use everywhere via `svg-infographics` CLI. All tools (validators, calculators, on-request `text-to-path`) install with base package - no optional extras.
 
+## Failure severity ladder
+
+Validator output maps to three severities. Only HARD FAILs block delivery; SOFT WARNINGS and HINTS are advisory.
+
+| Severity | Prefix | What it means | Ship rule |
+|---|---|---|---|
+| HARD FAIL | `WARNING:` | Broken geometry / illegal state. Requires written justification in the SVG comment to ship anyway. | Default: BLOCK |
+| SOFT WARNING | `CONSIDER (snap rule):` | Aesthetic degradation, avoidable with small adjustment | Fix when convenient |
+| HINT | `HINT:` | Rule was auto-applied, FYI only (e.g. T-junction chamfer dropped) | No action |
+
+### Hard-fail classes
+
+These are geometry defects where the renderer produces visually-broken output:
+
+1. **Text-on-edge overlap** - text glyph bbox crosses a stroke line (axis, card border, divider). Text becomes unreadable where it crosses the line. **Hard fail unless justified** (e.g. a deliberate label pinned to a grid line, commented as such).
+
+2. **Edge-on-edge overlap** - two strokes crossing where they shouldn't (axis line through a card border, connector arm through an unrelated divider). Reads as a routing bug. **Hard fail unless justified**.
+
+3. **Text-outside-container** - text extends past its parent card / zone rectangle. Layout has overflowed. **Hard fail**.
+
+4. **Connector-through-content** - connector mid-segment crosses a content group (card, label block). **Hard fail**.
+
+5. **XML malformation** - broken parse (e.g. `--` in comment). Catches cannot proceed. **Hard fail**.
+
+### Justifying a hard fail
+
+If a hard fail is genuinely intended (e.g. a pinned label, a deliberate grid annotation), add an XML comment adjacent to the offending element documenting the reason:
+
+```xml
+<!-- Hard-fail justified: "4.5:1" label sits ON the WCAG threshold line by design,
+     communicating the boundary visually. Not a layout bug. -->
+<line class="target-quad-stroke" x1="430" y1="246" x2="430" y2="294"/>
+<text class="accent-2 metric-unit" x="432" y="248">4.5:1</text>
+```
+
+No justification = the SVG does not ship.
+
 ```bash
 pip install stellars-claude-code-plugins
 svg-infographics --help

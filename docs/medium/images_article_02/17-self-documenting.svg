@@ -27,8 +27,8 @@
     .callout-stroke { fill: none; stroke: #005f7a; stroke-width: 1; }
     .callout-bar    { fill: #005f7a; opacity: 0.6; }
 
-    .dashed-conn { fill: none; stroke: #236a74; stroke-width: 1.2; stroke-dasharray: 5 4; stroke-linecap: round; }
-    .conn-dot    { fill: #236a74; }
+    .manifold-strand { fill: none; stroke: #005f7a; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; }
+    .manifold-arrow  { fill: #005f7a; stroke: none; opacity: 0.9; }
 
     .code-text { font-family: 'Consolas', 'Menlo', monospace; font-size: 9px; }
     .card-title { font-size: 12px; font-weight: 700; }
@@ -55,8 +55,8 @@
       .callout-stroke { stroke: #5cc8e0; }
       .callout-bar    { fill: #5cc8e0; }
 
-      .dashed-conn { stroke: #5aafc5; }
-      .conn-dot    { fill: #5aafc5; }
+      .manifold-strand { stroke: #5cc8e0; }
+      .manifold-arrow  { fill: #5cc8e0; }
 
       .timeline-line  { stroke: #d4a04a; }
       .timeline-dot   { fill: #d4a04a; }
@@ -88,10 +88,12 @@
         code line: x=492, y=card_y+42 (9px mono fg-3)
         desc line: x=492, y=card_y+58 (9px fg-3)
 
-    Dashed connectors (file icon right edge to card left edge):
-      Start points on file icon (x=240): y=120, y=170, y=220
-      End points on cards (x=480): y=107, y=187, y=267
-      Dots at both ends (r=3)
+    Manifold connector (file icon right edge -> 3 cards left edge):
+      Starts (x=240): y=126, y=174, y=222
+      Ends   (x=480): y=107, y=187, y=267
+      Spine: (310,174) -> (410,174) - horizontal trunk between merge and fork
+      Shape: l-chamfer, chamfer=6, align-elbows
+      Merge and fork anchor dots (r=3.5)
 
     Timeline arrow (below main content):
       y=350 (horizontal line)
@@ -144,23 +146,29 @@
   </g>
 
   <!-- ============================================================ -->
-  <!-- DASHED CONNECTORS: file -> callout cards                      -->
+  <!-- MANIFOLD: file icon -> 3 callout cards (1-to-3)               -->
+  <!-- Snap rules active: spine aligned to middle card y=187 so the  -->
+  <!-- middle strand flows straight through without a kink.          -->
+  <!--   start=(241,187)  spine=(310,187)->(400,187)                 -->
+  <!--   ends=(465,107),(465,187),(465,267)                          -->
+  <!-- Strands route vertical-first so arrows enter cards from LEFT. -->
+  <!-- Generated via: svg-infographics connector, mode=manifold,     -->
+  <!--   shape=L-chamfer, chamfer=8, snap-grid=1                     -->
   <!-- ============================================================ -->
   <g id="connectors">
-    <!-- Connector 1: file y=126 -> card 1 centre y=107 -->
-    <circle class="conn-dot" cx="240" cy="126" r="3"/>
-    <path class="dashed-conn" d="M243,126 L340,126 L340,107 L477,107"/>
-    <circle class="conn-dot" cx="480" cy="107" r="3"/>
-
-    <!-- Connector 2: file y=174 -> card 2 centre y=187 -->
-    <circle class="conn-dot" cx="240" cy="174" r="3"/>
-    <path class="dashed-conn" d="M243,174 L360,174 L360,187 L477,187"/>
-    <circle class="conn-dot" cx="480" cy="187" r="3"/>
-
-    <!-- Connector 3: file y=222 -> card 3 centre y=267 -->
-    <circle class="conn-dot" cx="240" cy="222" r="3"/>
-    <path class="dashed-conn" d="M243,222 L350,222 L350,267 L477,267"/>
-    <circle class="conn-dot" cx="480" cy="267" r="3"/>
+    <!-- start strand: file icon right edge -> merge anchor (11px symmetric gap) -->
+    <path class="manifold-strand" d="M252,187 L310,187"/>
+    <!-- spine: merge -> fork (same class, no separate styling) -->
+    <path class="manifold-strand" d="M310,187 L400,187"/>
+    <!-- end 0: fork -> top card (vertical first, chamfer in) -->
+    <path class="manifold-strand" d="M400,187 L400,115 L408,107 L454,107"/>
+    <polygon class="manifold-arrow" points="464,107 454,102 454,112"/>
+    <!-- end 1: fork -> middle card (straight through, no chamfer) -->
+    <path class="manifold-strand" d="M400,187 L454,187"/>
+    <polygon class="manifold-arrow" points="464,187 454,182 454,192"/>
+    <!-- end 2: fork -> bottom card (vertical down, chamfer in) -->
+    <path class="manifold-strand" d="M400,187 L400,259 L408,267 L454,267"/>
+    <polygon class="manifold-arrow" points="464,267 454,262 454,272"/>
   </g>
 
   <!-- ============================================================ -->

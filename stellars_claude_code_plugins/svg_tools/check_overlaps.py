@@ -1304,6 +1304,274 @@ def check_callouts(svg_path: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Container overflow check (hard fail - text escapes its enclosing rect)
+# ---------------------------------------------------------------------------
+
+
+def _parse_transform(attr: str) -> tuple[float, float, float, float, float, float]:
+    """Parse an SVG transform attribute into an affine matrix (a, b, c, d, e, f).
+
+    Supports translate, scale, rotate, matrix. Returns the IDENTITY when the
+    attribute is empty or unparseable. Composes left-to-right when the attribute
+    contains multiple transform functions.
+
+    The returned matrix applies a point (x, y) as:
+        x' = a*x + c*y + e
+        y' = b*x + d*y + f
+    """
+    import math as _math
+    import re as _re
+
+    def compose(
+        m1: tuple[float, float, float, float, float, float],
+        m2: tuple[float, float, float, float, float, float],
+    ) -> tuple[float, float, float, float, float, float]:
+        a1, b1, c1, d1, e1, f1 = m1
+        a2, b2, c2, d2, e2, f2 = m2
+        return (
+            a1 * a2 + c1 * b2,
+            b1 * a2 + d1 * b2,
+            a1 * c2 + c1 * d2,
+            b1 * c2 + d1 * d2,
+            a1 * e2 + c1 * f2 + e1,
+            b1 * e2 + d1 * f2 + f1,
+        )
+
+    identity = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+    if not attr:
+        return identity
+
+    matrix = identity
+    for name, args in _re.findall(r"(\w+)\s*\(([^)]*)\)", attr):
+        nums = [float(n) for n in _re.split(r"[\s,]+", args.strip()) if n]
+        if name == "translate":
+            tx = nums[0] if nums else 0.0
+            ty = nums[1] if len(nums) > 1 else 0.0
+            m = (1.0, 0.0, 0.0, 1.0, tx, ty)
+        elif name == "scale":
+            sx = nums[0] if nums else 1.0
+            sy = nums[1] if len(nums) > 1 else sx
+            m = (sx, 0.0, 0.0, sy, 0.0, 0.0)
+        elif name == "rotate":
+            angle = _math.radians(nums[0] if nums else 0.0)
+            ca, sa = _math.cos(angle), _math.sin(angle)
+            cx = nums[1] if len(nums) > 1 else 0.0
+            cy = nums[2] if len(nums) > 2 else 0.0
+            # rotate around (cx, cy) = translate(cx,cy) * rotate(angle) * translate(-cx,-cy)
+            if cx or cy:
+                m = (ca, sa, -sa, ca, cx - ca * cx + sa * cy, cy - sa * cx - ca * cy)
+            else:
+                m = (ca, sa, -sa, ca, 0.0, 0.0)
+        elif name == "matrix" and len(nums) == 6:
+            m = tuple(nums)
+        else:
+            continue
+        matrix = compose(matrix, m)
+    return matrix
+
+
+def _apply_transform(
+    matrix: tuple[float, float, float, float, float, float], x: float, y: float
+) -> tuple[float, float]:
+    a, b, c, d, e, f = matrix
+    return (a * x + c * y + e, b * x + d * y + f)
+
+
+def _transform_bbox(matrix: tuple[float, float, float, float, float, float], bb: BBox) -> BBox:
+    """Apply a 2D affine transform to a bbox; return the axis-aligned hull."""
+    corners = [
+        _apply_transform(matrix, bb.x, bb.y),
+        _apply_transform(matrix, bb.x2, bb.y),
+        _apply_transform(matrix, bb.x, bb.y2),
+        _apply_transform(matrix, bb.x2, bb.y2),
+    ]
+    xs = [p[0] for p in corners]
+    ys = [p[1] for p in corners]
+    return BBox(min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys))
+
+
+def check_container_overflow(
+    svg_path: str,
+    tolerance: float = 0.5,
+    min_container_area: float = 2000.0,
+) -> list[str]:
+    """Detect text whose rendered bbox extends past its enclosing card/zone rect.
+
+    Hard-fail class: text clipped by a card / zone border is a layout bug,
+    not an aesthetic hint. The overlaps validator already catches text/text
+    collisions; this check catches the SEPARATE failure mode of "text
+    escapes container" which the sibling-pair bbox comparison misses
+    (the intersection with the parent is counted as 'contained' = intended).
+
+    Algorithm, DOM only (no raster):
+      1. Parse the SVG tree.
+      2. For every `<g>` with a LARGE enclosing `<rect>` (area >= min_container_area,
+         default 10000 px - i.e. 100x100 or bigger, rules out tiny sub-groups
+         like sigma badges whose text deliberately extends beyond the badge).
+      3. For every `<text>` DIRECT child of that group (not nested further),
+         compute its bbox via `text_bbox()` and compare against the container.
+         Text elements with a `transform` attribute (rotated / translated) are
+         skipped - the static bbox doesn't reflect the rendered position.
+      4. Any bbox edge extending past the container edge by more than
+         `tolerance` is a WARNING (hard fail).
+
+    Returns telegram-style WARNING strings.
+    """
+    from xml.etree import ElementTree as ET
+
+    try:
+        tree = ET.parse(svg_path)
+    except ET.ParseError as exc:
+        return [f"WARNING: XML parse failed: {exc}"]
+
+    SVG_NS = "http://www.w3.org/2000/svg"
+
+    def local(tag: str) -> str:
+        return tag.rsplit("}", 1)[-1]
+
+    def read_rect(el) -> tuple[float, float, float, float] | None:
+        try:
+            return (
+                float(el.get("x", "0")),
+                float(el.get("y", "0")),
+                float(el.get("width", "0")),
+                float(el.get("height", "0")),
+            )
+        except (TypeError, ValueError):
+            return None
+
+    violations: list[str] = []
+    root = tree.getroot()
+
+    # Walk the DOM and carry the cumulative (root-to-node) transform matrix
+    # so every bbox we compute is in ROOT coordinates - i.e. final rendered
+    # geometry, not the author-space geometry.
+    identity = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+
+    def compose(m1, m2):
+        a1, b1, c1, d1, e1, f1 = m1
+        a2, b2, c2, d2, e2, f2 = m2
+        return (
+            a1 * a2 + c1 * b2,
+            b1 * a2 + d1 * b2,
+            a1 * c2 + c1 * d2,
+            b1 * c2 + d1 * d2,
+            a1 * e2 + c1 * f2 + e1,
+            b1 * e2 + d1 * f2 + f1,
+        )
+
+    def walk(node, parent_matrix):
+        own = _parse_transform(node.get("transform", "")) if hasattr(node, "get") else identity
+        matrix = compose(parent_matrix, own)
+        tag = local(node.tag)
+
+        if tag == "g":
+            gid = node.get("id", "<anonymous>")
+            # Identify the container rect among DIRECT rect children.
+            rect_candidates = []
+            for ch in node:
+                if local(ch.tag) == "rect":
+                    r = read_rect(ch)
+                    if r and r[2] > 0 and r[3] > 0:
+                        rect_candidates.append(r)
+            container_world = None
+            if rect_candidates:
+                cbest = max(rect_candidates, key=lambda r: r[2] * r[3])
+                if cbest[2] * cbest[3] >= min_container_area:
+                    # Transform the container rect into ROOT coords too.
+                    container_world = _transform_bbox(
+                        matrix, BBox(cbest[0], cbest[1], cbest[2], cbest[3])
+                    )
+
+            if container_world is not None:
+                # Check every DESCENDANT text against THIS container.
+                for t in node.iter(f"{{{SVG_NS}}}text"):
+                    try:
+                        tx = float(t.get("x", "0"))
+                        ty = float(t.get("y", "0"))
+                        fs = float(t.get("font-size", "10"))
+                    except (TypeError, ValueError):
+                        continue
+                    fw = t.get("font-weight", "normal")
+                    ls_str = t.get("letter-spacing", "0")
+                    try:
+                        ls = float(ls_str) if ls_str else 0.0
+                    except ValueError:
+                        ls = 0.0
+                    anchor = t.get("text-anchor", "start")
+                    content = t.text or ""
+                    if not content.strip():
+                        continue
+                    bb_local = text_bbox(tx, ty, fs, content, fw, ls, anchor)
+
+                    # Compose transforms from ROOT to this text element.
+                    # We need to walk the path from root to `t` to accumulate
+                    # all ancestor transforms + text's own transform.
+                    # Simpler: iterate the tree with parent tracking instead.
+                    # For now compute text-local bbox + text's own transform +
+                    # the matrix of the enclosing group `node`.
+                    text_own = _parse_transform(t.get("transform", ""))
+                    text_matrix = compose(matrix, text_own)
+                    # Walk any intermediate groups between `node` and `t`.
+                    # ElementTree doesn't give parent links, so recompute by
+                    # descending from node and tracking the chain.
+                    chain = _find_chain(node, t)
+                    if chain is None:
+                        eff_matrix = text_matrix
+                    else:
+                        eff_matrix = matrix
+                        for anc in chain:
+                            eff_matrix = compose(
+                                eff_matrix, _parse_transform(anc.get("transform", ""))
+                            )
+                    bb_world = _transform_bbox(eff_matrix, bb_local)
+
+                    excess = []
+                    if bb_world.x + tolerance < container_world.x:
+                        excess.append(f"L {container_world.x - bb_world.x:.1f}px")
+                    if bb_world.x2 > container_world.x2 + tolerance:
+                        excess.append(f"R {bb_world.x2 - container_world.x2:.1f}px")
+                    if bb_world.y + tolerance < container_world.y:
+                        excess.append(f"T {container_world.y - bb_world.y:.1f}px")
+                    if bb_world.y2 > container_world.y2 + tolerance:
+                        excess.append(f"B {bb_world.y2 - container_world.y2:.1f}px")
+                    if excess:
+                        snippet = content.strip()[:40]
+                        violations.append(
+                            f"WARNING: text '{snippet}' escapes g#{gid} by {', '.join(excess)}"
+                        )
+
+        # Recurse into children (carry matrix).
+        for ch in node:
+            walk(ch, matrix)
+
+    walk(root, identity)
+    return violations
+
+
+def _find_chain(ancestor, descendant):
+    """Return the ordered list of DOM nodes from ancestor's IMMEDIATE child
+    down to `descendant` inclusive. Returns None when not found.
+
+    Example: if `descendant` is directly under `ancestor`, the chain is
+    [descendant]. If `descendant` is in a sub-group,
+    [sub-group, descendant].
+    """
+
+    def dfs(node, path):
+        for ch in node:
+            new_path = path + [ch]
+            if ch is descendant:
+                return new_path
+            found = dfs(ch, new_path)
+            if found is not None:
+                return found
+        return None
+
+    return dfs(ancestor, [])
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -1490,6 +1758,17 @@ def main():
         print("  No callout cross-collisions found!")
     else:
         for issue in callout_issues:
+            print(f"  - {issue}")
+
+    # container overflow (text escaping its parent card / zone rect)
+    print(f"\n{'=' * 72}")
+    print("CONTAINER OVERFLOW (text escaping parent rect - HARD FAIL)")
+    print("-" * 72)
+    overflow_issues = check_container_overflow(args.svg)
+    if not overflow_issues:
+        print("  No text escapes its container.")
+    else:
+        for issue in overflow_issues:
             print(f"  - {issue}")
 
     # summary

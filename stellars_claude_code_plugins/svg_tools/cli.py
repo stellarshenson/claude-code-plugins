@@ -41,6 +41,10 @@ SUBCOMMANDS = {
         "check_css",
         "VALIDATE: CSS compliance (inline fills that should be classes, missing dark-mode overrides).",
     ),
+    "validate": (
+        "check_svg_valid",
+        "VALIDATE: XML well-formedness + SVG structural sanity. Catches '-- in comment' bugs, missing viewBox, empty <path d>. Run LAST on every finished SVG.",
+    ),
     # ---- CALCULATORS (produce numbers + SVG snippets you paste in) ----
     "primitives": (
         "calc_primitives",

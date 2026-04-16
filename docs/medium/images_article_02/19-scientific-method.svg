@@ -1,0 +1,424 @@
+<!--
+  19-scientific-method.svg - The scientific method behind the plugin
+  Shows: three-zone experimental pipeline.
+    Zone A (HYPOTHESIZE & GENERATE): stack of prompt cards each with an assumed outcome;
+           each prompt fans out into N raw LLM generations to capture variance.
+    Zone B (MEASURE & CLASSIFY): four defect-class mini histograms (overlap area,
+           endpoint gap, contrast ratio, alignment drift) with explicit mean, sigma,
+           and count labels - the quantitative catalogue of failure modes.
+    Zone C (TARGET): magnitude-vs-variance scatter; the top-right quadrant
+           (high magnitude + high variance) is the "tool target" zone. Four points,
+           each a defect class, become the four tools.
+  Intent: reader sees that the plugin was designed by MEASURING failure, not by
+          imagining features. Science shaped the tools: hypothesize, sample,
+          measure, rank, target.
+  Theme:  Stellars-Tech. fg-1 titles, fg-3 labels, accent-1 primary elements,
+          accent-2 measurement/metric accents. Inter sans-serif throughout.
+-->
+
+<!-- === GRID ===
+  viewBox: 1000 x 420
+  Outer margins: 30 left/right, 20 top, 20 bottom
+  Title band: y=26 (17px/700 fg-1 centred), y=46 (11px fg-3 centred)
+  Main band: y=68..360 (292 tall)
+  Caption band: y=380..400
+
+  Three-zone horizontal split:
+    zone-A: x=30..330   w=300   HYPOTHESIZE + GENERATE
+    zone-B: x=360..660  w=300   MEASURE 4 defect classes
+    zone-C: x=690..970  w=280   TARGET top-right quadrant
+    connectors: arrows between zones at y=207
+
+  Zone A internals:
+    zone title:     x=180  y=82  14px/700 accent-1
+    zone subtitle:  x=180  y=98  9px fg-3 italic
+    prompt stack:   small stacked rounded rectangles representing prompt corpus,
+                    6 visible tickets at (60..180, 120..240), offset by (8, 6)
+    generation fan: per-prompt arrows fanning right to N sample dots at x=260..300
+    variance note:  "captures variance across N generations" centred y=268
+
+  Zone B internals:
+    zone title:     x=510  y=82  14px/700 accent-1
+    zone subtitle:  x=510  y=98  9px fg-3 italic
+    four histograms arranged as 2x2 grid at y=110..310:
+      top-left  (overlap):   x=370..510  y=110..200
+      top-right (gap):       x=510..650  y=110..200
+      bottom-left (contrast): x=370..510  y=210..300
+      bottom-right (drift):   x=510..650  y=210..300
+    each histogram shows: metric name + unit + mean + sigma badge + bar chart
+    classification caption: "type . magnitude . frequency" centred y=328
+
+  Zone C internals:
+    zone title:    x=830  y=90   13px/700 accent-1
+    zone subtitle: x=830  y=106  9px fg-3 italic
+    quadrant tag:  "tool targets" centred at (897, 124) 8.5px/700 accent-2
+                   (placed ABOVE scatter plot area so it never competes with points)
+    scatter plot:  axes x=730..955 (x-axis), y=140..290 (y-axis)
+      x-axis line: y=290, x=730..955
+      y-axis line: x=730, y=140..290
+      grid verticals at x=785, 840, 895; grid horizontals y=178, 215, 252
+      quadrant split at x=840 (freq mid), y=215 (mag mid)
+      target quadrant: x=840..955, y=140..215 (top-right), accent-2 dashed tint
+    4 target points inside target quadrant, 2x2 grid with labels OUTSIDE point:
+      overlap:  cx=860 cy=162  label at x=856 y=165 end-anchor
+      contrast: cx=920 cy=162  label at x=924 y=165 start-anchor
+      drift:    cx=860 cy=196  label at x=856 y=199 end-anchor
+      gap:      cx=920 cy=196  label at x=924 y=199 start-anchor
+    low-quadrant noise points: 5 scattered in bottom half (y>215), left half (x<840)
+    axis labels:
+      x-axis "frequency ->" centred at (842, 306) 8px fg-3
+      y-axis "magnitude ->" rotated -90 around (716, 215), placed to read upward
+    emergence note: "selected classes become the tools" centred at (830, 326)
+
+  Connector band at y=207: arrow from A-end to B-start, and B-end to C-start,
+  matching the .manifold-strand style used in 18 so 19 reads as its companion.
+
+=== -->
+
+<!-- === LAYOUT TOPOLOGY ===
+  h-split: zone-A (30..330) | zone-B (360..660) | zone-C (690..970)
+  v-stack: title-band (0..60) | main-content (68..360) | caption-band (380..400)
+  contain: zone-A -> prompt-stack, generation-fan, variance-note
+  contain: zone-B -> 4 mini-histograms (2x2), classification caption
+  contain: zone-C -> scatter axes, 4 points, target-quadrant highlight, note
+  connect: zone-A -> zone-B arrow at y=207
+  connect: zone-B -> zone-C arrow at y=207
+  semantics:
+    accent-1 (teal) = primary research elements (prompts, tools, axes)
+    accent-2 (amber) = measurement / metric / target overlay
+  flow: left-to-right, methodology stage at each zone
+=== -->
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420">
+  <style>
+    text { font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif; }
+    .fg-1 { fill: #1a5a6e; }
+    .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+
+    .zone-fill   { fill: #005f7a; fill-opacity: 0.04; }
+    .zone-stroke { fill: none; stroke: #005f7a; stroke-width: 1; opacity: 0.5; }
+    .zone-bar    { fill: #005f7a; opacity: 0.5; }
+
+    .ticket-fill   { fill: #005f7a; fill-opacity: 0.08; }
+    .ticket-stroke { fill: none; stroke: #005f7a; stroke-width: 0.8; }
+
+    .sample-dot    { fill: #005f7a; opacity: 0.45; }
+    .sample-line   { fill: none; stroke: #005f7a; stroke-width: 0.6; opacity: 0.4; stroke-dasharray: 2 2; }
+
+    .hist-fill   { fill: #005f7a; fill-opacity: 0.04; }
+    .hist-stroke { fill: none; stroke: #005f7a; stroke-width: 0.7; opacity: 0.6; }
+    .hist-bar    { fill: #005f7a; opacity: 0.7; }
+    .hist-axis   { fill: none; stroke: #005f7a; stroke-width: 0.6; opacity: 0.5; }
+
+    .sigma-fill   { fill: #7a4a15; fill-opacity: 0.1; }
+    .sigma-stroke { fill: none; stroke: #7a4a15; stroke-width: 0.6; opacity: 0.6; }
+
+    .axis        { fill: none; stroke: #1a5a6e; stroke-width: 0.8; }
+    .axis-tick   { fill: none; stroke: #1a5a6e; stroke-width: 0.6; opacity: 0.5; }
+    .axis-grid   { fill: none; stroke: #1a5a6e; stroke-width: 0.4; opacity: 0.18; stroke-dasharray: 2 2; }
+
+    .target-quad-fill   { fill: #7a4a15; fill-opacity: 0.08; }
+    .target-quad-stroke { fill: none; stroke: #7a4a15; stroke-width: 0.8; stroke-dasharray: 3 2; opacity: 0.7; }
+
+    .scatter-point-target { fill: #7a4a15; opacity: 0.9; }
+    .scatter-point-other  { fill: #005f7a; opacity: 0.5; }
+    .scatter-label        { font-size: 8.5px; font-weight: 600; }
+
+    .manifold-strand { fill: none; stroke: #005f7a; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; }
+    .manifold-arrow  { fill: #005f7a; stroke: none; opacity: 0.9; }
+
+    .zone-title    { font-size: 13px; font-weight: 700; }
+    .zone-subtitle { font-size: 9px; font-style: italic; }
+    .metric-name   { font-size: 10px; font-weight: 700; }
+    .metric-unit   { font-size: 7.5px; }
+    .metric-stat   { font-size: 7.5px; font-weight: 600; }
+    .caption       { font-size: 10px; font-style: italic; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+
+      .zone-fill   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .zone-stroke { stroke: #5cc8e0; }
+      .zone-bar    { fill: #5cc8e0; }
+
+      .ticket-fill   { fill: #5cc8e0; fill-opacity: 0.1; }
+      .ticket-stroke { stroke: #5cc8e0; }
+
+      .sample-dot  { fill: #5cc8e0; }
+      .sample-line { stroke: #5cc8e0; }
+
+      .hist-fill   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .hist-stroke { stroke: #5cc8e0; }
+      .hist-bar    { fill: #5cc8e0; }
+      .hist-axis   { stroke: #5cc8e0; }
+
+      .sigma-fill   { fill: #d4a04a; fill-opacity: 0.14; }
+      .sigma-stroke { stroke: #d4a04a; }
+
+      .axis      { stroke: #b8e4f0; }
+      .axis-tick { stroke: #b8e4f0; }
+      .axis-grid { stroke: #b8e4f0; }
+
+      .target-quad-fill   { fill: #d4a04a; fill-opacity: 0.12; }
+      .target-quad-stroke { stroke: #d4a04a; }
+
+      .scatter-point-target { fill: #d4a04a; }
+      .scatter-point-other  { fill: #5cc8e0; }
+
+      .manifold-strand { stroke: #5cc8e0; }
+      .manifold-arrow  { fill: #5cc8e0; }
+    }
+  </style>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1000" height="420" fill="transparent"/>
+
+  <!-- Title -->
+  <text class="fg-1" x="500" y="26" text-anchor="middle" font-size="17" font-weight="700">the scientific method</text>
+  <text class="fg-3" x="500" y="46" text-anchor="middle" font-size="11">hypothesize, sample, measure, rank: the plugin was shaped by failure data</text>
+
+  <!-- ============================================================ -->
+  <!-- ZONE A: HYPOTHESIZE + GENERATE (x=30..330)                    -->
+  <!-- ============================================================ -->
+  <g id="zone-a">
+    <rect class="zone-fill"   x="30" y="68" width="300" height="292" rx="4"/>
+    <rect class="zone-stroke" x="30" y="68" width="300" height="292" rx="4"/>
+    <rect class="zone-bar"    x="30" y="68" width="300" height="4"  rx="4"/>
+    <text class="accent-1 zone-title"     x="180" y="90"  text-anchor="middle">1. hypothesize &amp; generate</text>
+    <text class="fg-3 zone-subtitle"      x="180" y="106" text-anchor="middle">each prompt assumes a specific outcome</text>
+
+    <!-- Prompt stack: 6 tickets offset diagonally -->
+    <g id="prompt-stack">
+      <rect class="ticket-fill"   x="54"  y="130" width="96" height="24" rx="3"/>
+      <rect class="ticket-stroke" x="54"  y="130" width="96" height="24" rx="3"/>
+      <line class="hist-axis" x1="62" y1="138" x2="142" y2="138"/>
+      <line class="hist-axis" x1="62" y1="144" x2="128" y2="144"/>
+      <line class="hist-axis" x1="62" y1="150" x2="110" y2="150"/>
+
+      <rect class="ticket-fill"   x="62"  y="158" width="96" height="24" rx="3"/>
+      <rect class="ticket-stroke" x="62"  y="158" width="96" height="24" rx="3"/>
+      <line class="hist-axis" x1="70" y1="166" x2="150" y2="166"/>
+      <line class="hist-axis" x1="70" y1="172" x2="134" y2="172"/>
+      <line class="hist-axis" x1="70" y1="178" x2="118" y2="178"/>
+
+      <rect class="ticket-fill"   x="70"  y="186" width="96" height="24" rx="3"/>
+      <rect class="ticket-stroke" x="70"  y="186" width="96" height="24" rx="3"/>
+      <line class="hist-axis" x1="78" y1="194" x2="158" y2="194"/>
+      <line class="hist-axis" x1="78" y1="200" x2="142" y2="200"/>
+      <line class="hist-axis" x1="78" y1="206" x2="126" y2="206"/>
+
+      <rect class="ticket-fill"   x="78"  y="214" width="96" height="24" rx="3"/>
+      <rect class="ticket-stroke" x="78"  y="214" width="96" height="24" rx="3"/>
+      <line class="hist-axis" x1="86" y1="222" x2="166" y2="222"/>
+      <line class="hist-axis" x1="86" y1="228" x2="150" y2="228"/>
+      <line class="hist-axis" x1="86" y1="234" x2="134" y2="234"/>
+
+      <text class="fg-3 metric-unit" x="54" y="249">prompt corpus</text>
+    </g>
+
+    <!-- Generation fan: arrows from the top prompt ticket splitting into N samples -->
+    <g id="generation-fan">
+      <line class="sample-line" x1="166" y1="198" x2="260" y2="140"/>
+      <line class="sample-line" x1="166" y1="198" x2="260" y2="168"/>
+      <line class="sample-line" x1="166" y1="198" x2="260" y2="198"/>
+      <line class="sample-line" x1="166" y1="198" x2="260" y2="228"/>
+      <line class="sample-line" x1="166" y1="198" x2="260" y2="256"/>
+
+      <circle class="sample-dot" cx="264" cy="140" r="3.5"/>
+      <circle class="sample-dot" cx="264" cy="168" r="3.5"/>
+      <circle class="sample-dot" cx="264" cy="198" r="3.5"/>
+      <circle class="sample-dot" cx="264" cy="228" r="3.5"/>
+      <circle class="sample-dot" cx="264" cy="256" r="3.5"/>
+
+      <text class="fg-3 metric-unit" x="280" y="202">N samples</text>
+      <text class="fg-3 metric-unit" x="280" y="214">per prompt</text>
+    </g>
+
+    <text class="fg-3 metric-stat" x="180" y="296" text-anchor="middle">raw output captures variance across generations</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- ZONE B: MEASURE + CLASSIFY (x=360..660)                       -->
+  <!-- ============================================================ -->
+  <g id="zone-b">
+    <rect class="zone-fill"   x="360" y="68" width="300" height="292" rx="4"/>
+    <rect class="zone-stroke" x="360" y="68" width="300" height="292" rx="4"/>
+    <rect class="zone-bar"    x="360" y="68" width="300" height="4"  rx="4"/>
+    <text class="accent-1 zone-title"     x="510" y="90"  text-anchor="middle">2. measure &amp; classify</text>
+    <text class="fg-3 zone-subtitle"      x="510" y="106" text-anchor="middle">every failure a measurable defect</text>
+
+    <!-- Histogram top-left: overlap area -->
+    <g id="hist-overlap">
+      <rect class="hist-fill"   x="372" y="118" width="134" height="88" rx="3"/>
+      <rect class="hist-stroke" x="372" y="118" width="134" height="88" rx="3"/>
+      <text class="fg-1 metric-name" x="380" y="132">overlap</text>
+      <text class="fg-3 metric-unit" x="380" y="141">area, px^2</text>
+      <rect class="sigma-fill" x="468" y="122" width="34" height="14" rx="2"/>
+      <rect class="sigma-stroke" x="468" y="122" width="34" height="14" rx="2"/>
+      <text class="accent-2 metric-stat" x="485" y="132" text-anchor="middle">sigma 312</text>
+      <line class="hist-axis" x1="380" y1="198" x2="502" y2="198"/>
+      <rect class="hist-bar" x="383" y="188" width="10" height="10"/>
+      <rect class="hist-bar" x="396" y="178" width="10" height="20"/>
+      <rect class="hist-bar" x="409" y="162" width="10" height="36"/>
+      <rect class="hist-bar" x="422" y="152" width="10" height="46"/>
+      <rect class="hist-bar" x="435" y="168" width="10" height="30"/>
+      <rect class="hist-bar" x="448" y="180" width="10" height="18"/>
+      <rect class="hist-bar" x="461" y="174" width="10" height="24"/>
+      <rect class="hist-bar" x="474" y="184" width="10" height="14"/>
+      <rect class="hist-bar" x="487" y="190" width="10" height="8"/>
+    </g>
+
+    <!-- Histogram top-right: endpoint gap -->
+    <g id="hist-gap">
+      <rect class="hist-fill"   x="516" y="118" width="134" height="88" rx="3"/>
+      <rect class="hist-stroke" x="516" y="118" width="134" height="88" rx="3"/>
+      <text class="fg-1 metric-name" x="524" y="132">endpoint gap</text>
+      <text class="fg-3 metric-unit" x="524" y="141">distance, px</text>
+      <rect class="sigma-fill" x="612" y="122" width="34" height="14" rx="2"/>
+      <rect class="sigma-stroke" x="612" y="122" width="34" height="14" rx="2"/>
+      <text class="accent-2 metric-stat" x="629" y="132" text-anchor="middle">sigma 4.2</text>
+      <line class="hist-axis" x1="524" y1="198" x2="646" y2="198"/>
+      <rect class="hist-bar" x="527" y="172" width="10" height="26"/>
+      <rect class="hist-bar" x="540" y="158" width="10" height="40"/>
+      <rect class="hist-bar" x="553" y="150" width="10" height="48"/>
+      <rect class="hist-bar" x="566" y="164" width="10" height="34"/>
+      <rect class="hist-bar" x="579" y="178" width="10" height="20"/>
+      <rect class="hist-bar" x="592" y="184" width="10" height="14"/>
+      <rect class="hist-bar" x="605" y="186" width="10" height="12"/>
+      <rect class="hist-bar" x="618" y="190" width="10" height="8"/>
+      <rect class="hist-bar" x="631" y="192" width="10" height="6"/>
+    </g>
+
+    <!-- Histogram bottom-left: contrast ratio -->
+    <g id="hist-contrast">
+      <rect class="hist-fill"   x="372" y="214" width="134" height="88" rx="3"/>
+      <rect class="hist-stroke" x="372" y="214" width="134" height="88" rx="3"/>
+      <text class="fg-1 metric-name" x="380" y="228">contrast</text>
+      <text class="fg-3 metric-unit" x="380" y="237">ratio vs bg</text>
+      <rect class="sigma-fill" x="468" y="218" width="34" height="14" rx="2"/>
+      <rect class="sigma-stroke" x="468" y="218" width="34" height="14" rx="2"/>
+      <text class="accent-2 metric-stat" x="485" y="228" text-anchor="middle">sigma 1.1</text>
+      <line class="hist-axis" x1="380" y1="294" x2="502" y2="294"/>
+      <!-- WCAG threshold line at 4.5:1 -->
+      <line class="target-quad-stroke" x1="430" y1="246" x2="430" y2="294"/>
+      <text class="accent-2 metric-unit" x="432" y="254" text-anchor="start">WCAG 4.5:1</text>
+      <rect class="hist-bar" x="383" y="274" width="10" height="20"/>
+      <rect class="hist-bar" x="396" y="262" width="10" height="32"/>
+      <rect class="hist-bar" x="409" y="254" width="10" height="40"/>
+      <rect class="hist-bar" x="422" y="258" width="10" height="36"/>
+      <rect class="hist-bar" x="435" y="272" width="10" height="22"/>
+      <rect class="hist-bar" x="448" y="280" width="10" height="14"/>
+      <rect class="hist-bar" x="461" y="284" width="10" height="10"/>
+      <rect class="hist-bar" x="474" y="288" width="10" height="6"/>
+      <rect class="hist-bar" x="487" y="290" width="10" height="4"/>
+    </g>
+
+    <!-- Histogram bottom-right: alignment drift -->
+    <g id="hist-drift">
+      <rect class="hist-fill"   x="516" y="214" width="134" height="88" rx="3"/>
+      <rect class="hist-stroke" x="516" y="214" width="134" height="88" rx="3"/>
+      <text class="fg-1 metric-name" x="524" y="228">alignment drift</text>
+      <text class="fg-3 metric-unit" x="524" y="237">offset, px</text>
+      <rect class="sigma-fill" x="612" y="218" width="34" height="14" rx="2"/>
+      <rect class="sigma-stroke" x="612" y="218" width="34" height="14" rx="2"/>
+      <text class="accent-2 metric-stat" x="629" y="228" text-anchor="middle">sigma 8.5</text>
+      <line class="hist-axis" x1="524" y1="294" x2="646" y2="294"/>
+      <rect class="hist-bar" x="527" y="266" width="10" height="28"/>
+      <rect class="hist-bar" x="540" y="254" width="10" height="40"/>
+      <rect class="hist-bar" x="553" y="246" width="10" height="48"/>
+      <rect class="hist-bar" x="566" y="252" width="10" height="42"/>
+      <rect class="hist-bar" x="579" y="262" width="10" height="32"/>
+      <rect class="hist-bar" x="592" y="272" width="10" height="22"/>
+      <rect class="hist-bar" x="605" y="278" width="10" height="16"/>
+      <rect class="hist-bar" x="618" y="284" width="10" height="10"/>
+      <rect class="hist-bar" x="631" y="288" width="10" height="6"/>
+    </g>
+
+    <text class="fg-3 metric-stat" x="510" y="326" text-anchor="middle">type . magnitude . frequency</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- ZONE C: TARGET (x=690..970)                                   -->
+  <!-- ============================================================ -->
+  <g id="zone-c">
+    <rect class="zone-fill"   x="690" y="68" width="280" height="292" rx="4"/>
+    <rect class="zone-stroke" x="690" y="68" width="280" height="292" rx="4"/>
+    <rect class="zone-bar"    x="690" y="68" width="280" height="4"  rx="4"/>
+    <text class="accent-1 zone-title"     x="830" y="90"  text-anchor="middle">3. target the highest variance</text>
+    <text class="fg-3 zone-subtitle"      x="830" y="106" text-anchor="middle">magnitude x frequency selects tools</text>
+
+    <!-- Quadrant tag OUTSIDE plot (above), so it never competes with scatter points -->
+    <text class="accent-2 metric-stat" x="897" y="124" text-anchor="middle">tool targets · high mag + freq</text>
+
+    <!-- Scatter plot: axes, grid, quadrant highlight, points, labels -->
+    <g id="scatter">
+      <!-- Grid lines: quadrant split at x=840 (freq mid), y=215 (mag mid) -->
+      <line class="axis-grid" x1="730" y1="215" x2="955" y2="215"/>
+      <line class="axis-grid" x1="730" y1="178" x2="955" y2="178"/>
+      <line class="axis-grid" x1="730" y1="252" x2="955" y2="252"/>
+      <line class="axis-grid" x1="785" y1="140" x2="785" y2="290"/>
+      <line class="axis-grid" x1="840" y1="140" x2="840" y2="290"/>
+      <line class="axis-grid" x1="895" y1="140" x2="895" y2="290"/>
+
+      <!-- Target quadrant (top-right) -->
+      <rect class="target-quad-fill"   x="840" y="140" width="115" height="75"/>
+      <rect class="target-quad-stroke" x="840" y="140" width="115" height="75"/>
+
+      <!-- Axis lines -->
+      <line class="axis" x1="730" y1="290" x2="955" y2="290"/>
+      <line class="axis" x1="730" y1="140" x2="730" y2="290"/>
+
+      <!-- Axis tick labels -->
+      <text class="fg-3 metric-unit" x="842" y="306" text-anchor="middle">frequency →</text>
+      <text class="fg-3 metric-unit" x="716" y="215" text-anchor="middle" transform="rotate(-90, 716, 215)">magnitude →</text>
+
+      <!-- 4 TARGET points, 2x2 grid inside target quadrant. -->
+      <!-- Top-row labels sit ABOVE their points, bottom-row labels BELOW, -->
+      <!-- centred on cx so each label is unambiguously bound to its point. -->
+      <!-- overlap: top-left of quadrant -->
+      <circle class="scatter-point-target" cx="870" cy="170" r="4.5"/>
+      <text class="accent-2 scatter-label" x="870" y="156" text-anchor="middle">overlap</text>
+
+      <!-- contrast: top-right -->
+      <circle class="scatter-point-target" cx="925" cy="170" r="4.5"/>
+      <text class="accent-2 scatter-label" x="925" y="156" text-anchor="middle">contrast</text>
+
+      <!-- drift: bottom-left -->
+      <circle class="scatter-point-target" cx="870" cy="190" r="4.5"/>
+      <text class="accent-2 scatter-label" x="870" y="208" text-anchor="middle">drift</text>
+
+      <!-- gap: bottom-right -->
+      <circle class="scatter-point-target" cx="925" cy="190" r="4.5"/>
+      <text class="accent-2 scatter-label" x="925" y="208" text-anchor="middle">gap</text>
+
+      <!-- Low-quadrant noise points (non-targets): observed but not tool-worthy -->
+      <circle class="scatter-point-other" cx="758" cy="266" r="3"/>
+      <circle class="scatter-point-other" cx="780" cy="248" r="3"/>
+      <circle class="scatter-point-other" cx="802" cy="272" r="3"/>
+      <circle class="scatter-point-other" cx="776" cy="232" r="3"/>
+      <circle class="scatter-point-other" cx="818" cy="256" r="3"/>
+      <circle class="scatter-point-other" cx="798" cy="240" r="3"/>
+    </g>
+
+    <text class="fg-3 metric-stat" x="830" y="326" text-anchor="middle">selected classes become the tools</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- INTER-ZONE CONNECTORS (stages 1->2 and 2->3)                  -->
+  <!-- ============================================================ -->
+  <g id="zone-connectors">
+    <path class="manifold-strand" d="M330,214 L360,214"/>
+    <polygon class="manifold-arrow" points="358,214 348,209 348,219"/>
+
+    <path class="manifold-strand" d="M660,214 L690,214"/>
+    <polygon class="manifold-arrow" points="688,214 678,209 678,219"/>
+  </g>
+
+  <!-- Caption -->
+  <text class="fg-3 caption" x="500" y="392" text-anchor="middle">the plugin was shaped by failure data, not intuition</text>
+</svg>

@@ -1,8 +1,8 @@
 # Project-specific
 .autobuild/
 .auto-build-claw/
-/references/
 tmp/
+.playwright-mcp/
 
 # Mac OS-specific storage files
 .DS_Store
