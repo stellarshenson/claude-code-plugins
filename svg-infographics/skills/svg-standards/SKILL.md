@@ -41,13 +41,14 @@ Read **workflow** skill for 6-phase process. Read **theme** skill for palette ap
 1. **Tool first** - every coordinate from `primitives`, every arrow from `connector`, every placement from `geom`/`callouts`/`empty-space`. Never eyeball
 2. **Theme first** - approve `theme_swatch.svg` before deliverables
 3. **Grid first** - viewBox, margins, columns, rhythm as comments BEFORE content
-4. **CSS classes** - `<style>` + `prefers-color-scheme` media query. `class=`, never inline `fill=`
-5. **File description comment** - before `<svg>`: filename, shows, intent, theme
-6. **Five named layers** - `background`, `nodes`, `connectors`, `content`, `callouts`
-7. **Transparent background** - `fill="transparent"` on root rect
-8. **Contrast** - every element contrasts its background via theme. No `#000000`, no `#ffffff`
-9. **Validate before delivery** - run all six checkers. No run, no ship
-10. **Read examples** - study `examples/` before creating each image
+4. **Group everything** - every visual unit = a `<g>` group. Card = group. Icon+label = group. Section = group of groups. Topology comment declares group relationships. No loose elements
+5. **CSS classes** - `<style>` + `prefers-color-scheme` media query. `class=`, never inline `fill=`
+6. **File description comment** - before `<svg>`: filename, shows, intent, theme
+7. **Five named layers** - `background`, `nodes`, `connectors`, `content`, `callouts`
+8. **Transparent background** - `fill="transparent"` on root rect
+9. **Contrast** - every element contrasts its background via theme. No `#000000`, no `#ffffff`
+10. **Validate before delivery** - run all six checkers. No run, no ship
+11. **Read examples** - study `examples/` (66 references) before creating each image
 
 ## CSS Theme Classes and Dark Mode Detection
 
@@ -176,65 +177,95 @@ y_row3   = 62   (row2 + 14)
 === -->
 ```
 
-### Layout Topology Comment
+### Layout Topology and Grouping
 
-**MANDATORY**: Describes relationships, not coordinates.
+**CRITICAL**: topology defines the design's structure. Every visual unit = a `<g>` group. Topology comment declares relationships between groups. Grouping is NOT optional - it is the foundation for maintainability, alignment, and rework.
+
+#### Topology comment (MANDATORY)
+
+Declares spatial relationships between groups. NOT coordinates - relationships.
+
+```xml
+<!-- TOPOLOGY:
+  h-stack: card-research, card-plan, card-implement, card-review (gap=20)
+  v-align: card-research.top = card-plan.top = card-implement.top = card-review.top
+  contain: section-header > title, subtitle
+  contain: card-research > icon-search, label-research, desc-research
+  h-spacing: card-research .. card-review (equal)
+  mirror: section-left ~ section-right (x-axis)
+-->
+```
 
 | Operation | Meaning |
 |-----------|---------|
-| `h-align` | Same x (vertical column) |
-| `v-align` | Same y (horizontal row) |
-| `h-stack` | Adjacent left to right |
-| `v-stack` | Adjacent top to bottom |
-| `v-spacing` | Equal vertical gaps |
-| `h-spacing` | Equal horizontal gaps |
-| `contain` | Element inside another |
-| `mirror` | Symmetric layout |
+| `h-stack` | Groups adjacent left to right |
+| `v-stack` | Groups adjacent top to bottom |
+| `h-align` | Groups share x (column) |
+| `v-align` | Groups share y (row) |
+| `h-spacing` | Equal horizontal gaps between groups |
+| `v-spacing` | Equal vertical gaps between groups |
+| `contain` | Group inside another group |
+| `mirror` | Symmetric groups |
 
-### Named Component Groups
+#### Grouping rules (MANDATORY)
 
-Wrap logical components in `<g id="component-name">`. Lowercase-hyphen names. Light/dark variants use `-light`/`-dark` suffix.
+**Every visual unit = a `<g>` group.** No loose elements at root or directly inside layer groups.
 
-### Group Operations
+| Visual unit | Group pattern |
+|-------------|--------------|
+| Card | `<g id="card-name">` containing rect + accent-bar + title + description + icon |
+| Icon + label | `<g id="icon-name">` containing scaled icon `<g>` + adjacent `<text>` |
+| Section | `<g id="section-name">` containing header group + card groups |
+| Legend | `<g id="legend">` containing swatch rects + label texts |
+| Connector + label | connector in `<g id="connectors">`, label in `<g id="callout-name">` |
+| Decorative cluster | `<g id="deco-name">` for embroidery elements, particle fields |
 
-Groups (`<g>`) are the primary unit for multi-element manipulation. Build content inside a group at origin, then position the entire group with one transform.
-
-**Creating groups**: build child elements at local coordinates (relative to 0,0), wrap in `<g id="name" transform="translate(x,y)">`. All children move, scale, rotate together.
+**Build at origin, position via translate.** Child elements use local coordinates (0,0 relative). Group positioned by one `transform="translate(x,y)"`. Move the group = change one number.
 
 ```xml
-<!-- Card group: build at origin, position via translate -->
 <g id="card-pricing" transform="translate(320, 120)">
   <rect x="0" y="0" width="200" height="140" class="card-body"/>
   <rect x="0" y="0" width="200" height="5" class="accent-bar"/>
+  <g id="icon-tag" transform="translate(164, 8) scale(0.667)">
+    <!-- Lucide icon at local coords -->
+  </g>
   <text x="16" y="32" class="fg-1">Pricing</text>
+  <text x="16" y="52" class="fg-3">per-seat model</text>
 </g>
 ```
 
-**Group transforms** (apply to the entire group at once):
-- `translate(x, y)` - move the group. Primary positioning method.
-- `scale(sx, sy)` - resize. Use for icon groups: `scale(0.667)` = 16px icons from 24px Lucide originals.
-- `rotate(deg, cx, cy)` - rotate around a centre point. Rarely needed - prefer tool-computed geometry.
-- Combine: `transform="translate(100, 200) scale(0.5)"` - translate FIRST (in parent coords), then scale.
+#### Group transforms
 
-**Positioning groups with alignment tools**:
+- `translate(x, y)` - primary positioning. Use for all group placement
+- `scale(sx, sy)` - icon sizing: `scale(0.667)` = 16px from 24px Lucide
+- `rotate(deg, cx, cy)` - rare. Prefer tool-computed geometry
+- Combine: `transform="translate(100, 200) scale(0.5)"` - translate first (parent coords), then scale
+
+#### Positioning groups via tools
 
 ```bash
-# Compute positions for 4 card groups, then align tops + distribute horizontally
+# Align 4 card groups to same top edge
 geom align --rects "[(0,0,200,140),(0,0,200,140),(0,0,200,140),(0,0,200,140)]" --edge top
+
+# Distribute with equal gaps
 geom distribute --rects "[(50,120,200,140),(270,120,200,140),(490,120,200,140),(710,120,200,140)]" --axis h --mode gap
 ```
 
-Use the returned positions as `translate(x, y)` values on each `<g>`.
+Returned positions = `translate(x, y)` values for each `<g>`.
 
-**Nesting**: groups nest. A card group inside a section group inside the `<g id="nodes">` layer. Transforms compose: child inherits parent's transform, then applies its own. Keep nesting shallow (3 levels max) for readability.
+#### Nesting
 
-**Group bbox**: after transforms, the effective bbox in root coordinates = child bbox transformed by all ancestor transforms. `geom` tools operate in root coordinates - pass the final world-space rects, not local group coords.
+Groups nest: card inside section inside layer. Transforms compose (child inherits parent). Max 3 levels deep.
 
-**Rules**:
-- Every multi-element unit = a group. No loose rects/text at root.
-- Unique `id` on every group. Lowercase-hyphen: `card-overview`, `section-header`, `legend-strip`.
-- Content groups inside layer groups: `<g id="nodes"><g id="card-a">...</g></g>`.
-- Icons always in their own `<g transform="translate(...) scale(...)">`.
+```
+<g id="nodes">                          <!-- layer -->
+  <g id="section-inputs">              <!-- section -->
+    <g id="card-api" transform="...">  <!-- card -->
+```
+
+#### Group bbox
+
+After transforms, effective bbox = child bbox in root coordinates. `geom` tools operate in root coordinates. Pass world-space rects to alignment tools, not local group coords.
 
 ### Multi-Card Grids
 
