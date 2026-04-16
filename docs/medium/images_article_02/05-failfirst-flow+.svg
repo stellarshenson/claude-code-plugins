@@ -1,0 +1,447 @@
+<!--
+  05-failfirst-flow+.svg - Fail-first validation decision tree (add-life: medium)
+  Source: 05-failfirst-flow.svg (untouched)
+
+  add-life: medium
+    colour: moderate - per-card hue variants within teal+amber family
+      Input card: deep-teal base (#1a7a8e)
+      Fixed card: cyan-teal (#17a6c7) - focal default-path card, strongest variant
+      Accepted card: copper (#c47828) - exception path, amber shifted to copper
+      Limit card: ochre (#b8861f) - exception path, amber shifted to ochre
+      Outcome card: steel-teal (#00647e) - grounding outcome
+    shapes: moderate - 2px stagger shadow plates behind focal cards, corner brackets
+    icons: per-item, lucide-style - 1 icon per card (5 icons)
+      input: search-finding; fixed: check-circle; accepted: shield-alert;
+      limit: eye-off; outcome: check-square
+    embroidery: moderate - corner brackets on all 5 cards + tech-line fragments
+    abstract: moderate - 14 accent particles in whitespace, 2 background arcs
+    bg_texture: grid (matches technical validation story), opacity 0.08, 22 elements
+    glow: connectors+titles - cool glow on bus + stubs, warm glow on titles
+    validation: strict-errors-only
+  Standing directives: additive only, original untouched, in-family hue,
+    bg opacity <= 0.10, dark-mode override per class, no inline fill except class.
+-->
+
+<!-- === GRID REFERENCE (inherited from source) ===
+  viewBox: 1000 x 440
+  Input card: x=330 y=36 w=340 h=66
+  Branch cards: Fixed x=60, Accepted x=360, Limit x=660, all y=132 w=280 h=168
+  Outcome card: x=330 y=332 w=340 h=66
+  Decorations live in <g id="add-life-decorations"> between background and nodes
+  === -->
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 440">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .card-teal   { fill: #0096d1; fill-opacity: 0.04; stroke: #0096d1; stroke-width: 1; }
+    .card-orange { fill: #da8230; fill-opacity: 0.04; stroke: #da8230; stroke-width: 1; }
+    .bar-teal   { fill: #0096d1; opacity: 0.6; }
+    .bar-orange { fill: #da8230; opacity: 0.6; }
+    .arrow-teal   { fill: none; stroke: #0096d1; stroke-width: 1.4; opacity: 0.65; stroke-linejoin: round; stroke-linecap: round; }
+    .arrow-orange { fill: none; stroke: #da8230; stroke-width: 1.4; opacity: 0.65; stroke-linejoin: round; stroke-linecap: round; }
+    .head-teal   { fill: #0096d1; opacity: 0.75; }
+    .head-orange { fill: #da8230; opacity: 0.75; }
+    .bus-line { fill: none; stroke: #0096d1; stroke-width: 1.4; opacity: 0.55; stroke-linejoin: round; stroke-linecap: round; }
+    .stub-line { fill: none; stroke: #0096d1; stroke-width: 1.4; opacity: 0.55; stroke-linecap: round; }
+    .bullet-dot-teal   { fill: #0096d1; opacity: 0.8; }
+    .bullet-dot-orange { fill: #da8230; opacity: 0.8; }
+
+    /* === add-life classes === */
+    /* Background grid texture (opacity 0.08, under directive #4 cap 0.10) */
+    .bg-grid { fill: none; stroke: #5aafc5; stroke-width: 0.3; opacity: 0.08; }
+    .bg-grid-mark { fill: #5aafc5; opacity: 0.08; stroke: none; }
+    /* Per-card hue variants (directive #13) */
+    .card-v1 { fill: #1a7a8e; fill-opacity: 0.05; stroke: #1a7a8e; stroke-width: 1.1; } /* input: deep-teal */
+    .card-v2 { fill: #17a6c7; fill-opacity: 0.06; stroke: #17a6c7; stroke-width: 1.2; } /* fixed: cyan-teal focal */
+    .card-v3 { fill: #c47828; fill-opacity: 0.05; stroke: #c47828; stroke-width: 1.1; } /* accepted: copper */
+    .card-v4 { fill: #b8861f; fill-opacity: 0.05; stroke: #b8861f; stroke-width: 1.1; } /* limit: ochre */
+    .card-v5 { fill: #00647e; fill-opacity: 0.05; stroke: #00647e; stroke-width: 1.1; } /* outcome: steel-teal */
+    .bar-v1 { fill: #1a7a8e; opacity: 0.7; }
+    .bar-v2 { fill: #17a6c7; opacity: 0.75; }
+    .bar-v3 { fill: #c47828; opacity: 0.7; }
+    .bar-v4 { fill: #b8861f; opacity: 0.7; }
+    .bar-v5 { fill: #00647e; opacity: 0.7; }
+    /* Card shadow plates (shapes: moderate, 2px offset) */
+    .card-shadow { fill: #1a5a6e; opacity: 0.05; }
+    /* Corner brackets (embroidery) */
+    .bracket { fill: none; stroke: #2b7680; stroke-width: 0.9; opacity: 0.45; stroke-linecap: round; }
+    .bracket-warm { fill: none; stroke: #7a4a15; stroke-width: 0.9; opacity: 0.45; stroke-linecap: round; }
+    /* Tech-line fragments (embroidery) */
+    .tech-line { fill: none; stroke: #2b7680; stroke-width: 0.5; opacity: 0.35; stroke-linecap: round; stroke-dasharray: 2,3; }
+    /* Abstract particles + arcs */
+    .particle-a { fill: #5aafc5; opacity: 0.35; }
+    .particle-b { fill: #7a4a15; opacity: 0.30; }
+    .arc-bg { fill: none; stroke: #5aafc5; stroke-width: 0.6; opacity: 0.18; }
+    /* Lucide-style icons */
+    .icon { fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-v1 { stroke: #1a7a8e; }
+    .icon-v2 { stroke: #17a6c7; }
+    .icon-v3 { stroke: #c47828; }
+    .icon-v4 { stroke: #b8861f; }
+    .icon-v5 { stroke: #00647e; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .card-teal   { fill: #5cc8e0; fill-opacity: 0.08; stroke: #5cc8e0; }
+      .card-orange { fill: #d4a04a; fill-opacity: 0.08; stroke: #d4a04a; }
+      .bar-teal   { fill: #5cc8e0; }
+      .bar-orange { fill: #d4a04a; }
+      .arrow-teal   { stroke: #5cc8e0; }
+      .arrow-orange { stroke: #d4a04a; }
+      .head-teal   { fill: #5cc8e0; }
+      .head-orange { fill: #d4a04a; }
+      .bus-line  { stroke: #5cc8e0; }
+      .stub-line { stroke: #5cc8e0; }
+      .bullet-dot-teal   { fill: #5cc8e0; }
+      .bullet-dot-orange { fill: #d4a04a; }
+
+      /* dark-mode overrides for add-life */
+      .bg-grid { stroke: #5cc8e0; opacity: 0.08; }
+      .bg-grid-mark { fill: #5cc8e0; opacity: 0.08; }
+      .card-v1 { fill: #5cc8e0; fill-opacity: 0.07; stroke: #5cc8e0; }
+      .card-v2 { fill: #8fd4e6; fill-opacity: 0.09; stroke: #8fd4e6; }
+      .card-v3 { fill: #d4a04a; fill-opacity: 0.07; stroke: #d4a04a; }
+      .card-v4 { fill: #d4b85c; fill-opacity: 0.07; stroke: #d4b85c; }
+      .card-v5 { fill: #5aafc5; fill-opacity: 0.07; stroke: #5aafc5; }
+      .bar-v1 { fill: #5cc8e0; }
+      .bar-v2 { fill: #8fd4e6; }
+      .bar-v3 { fill: #d4a04a; }
+      .bar-v4 { fill: #d4b85c; }
+      .bar-v5 { fill: #5aafc5; }
+      .card-shadow { fill: #5cc8e0; opacity: 0.06; }
+      .bracket { stroke: #5aafc5; }
+      .bracket-warm { stroke: #d4a04a; }
+      .tech-line { stroke: #5aafc5; }
+      .particle-a { fill: #5cc8e0; }
+      .particle-b { fill: #d4a04a; }
+      .arc-bg { stroke: #5cc8e0; }
+      .icon-v1 { stroke: #5cc8e0; }
+      .icon-v2 { stroke: #8fd4e6; }
+      .icon-v3 { stroke: #d4a04a; }
+      .icon-v4 { stroke: #d4b85c; }
+      .icon-v5 { stroke: #5aafc5; }
+    }
+  </style>
+
+  <defs>
+    <!-- Cool glow for connectors + bus lines -->
+    <filter id="glow-cool" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Warm glow for titles -->
+    <filter id="glow-warm" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g id="background">
+    <rect x="0" y="0" width="1000" height="440" fill="transparent"/>
+    <g id="guide-grid" display="none">
+      <line x1="500" y1="0" x2="500" y2="440" stroke="red" stroke-width="0.3"/>
+      <line x1="200" y1="0" x2="200" y2="440" stroke="red" stroke-width="0.3"/>
+      <line x1="800" y1="0" x2="800" y2="440" stroke="red" stroke-width="0.3"/>
+      <line x1="0" y1="110" x2="1000" y2="110" stroke="red" stroke-width="0.3"/>
+      <line x1="0" y1="320" x2="1000" y2="320" stroke="red" stroke-width="0.3"/>
+    </g>
+  </g>
+
+  <!-- === add-life decorations (additive, above background, below content) === -->
+  <g id="add-life-decorations">
+    <!-- Grid background texture (opacity 0.08) -->
+    <g id="bg-texture">
+      <line x1="0"    y1="0" x2="0"    y2="440" class="bg-grid"/>
+      <line x1="100"  y1="0" x2="100"  y2="440" class="bg-grid"/>
+      <line x1="200"  y1="0" x2="200"  y2="440" class="bg-grid"/>
+      <line x1="300"  y1="0" x2="300"  y2="440" class="bg-grid"/>
+      <line x1="400"  y1="0" x2="400"  y2="440" class="bg-grid"/>
+      <line x1="500"  y1="0" x2="500"  y2="440" class="bg-grid"/>
+      <line x1="600"  y1="0" x2="600"  y2="440" class="bg-grid"/>
+      <line x1="700"  y1="0" x2="700"  y2="440" class="bg-grid"/>
+      <line x1="800"  y1="0" x2="800"  y2="440" class="bg-grid"/>
+      <line x1="900"  y1="0" x2="900"  y2="440" class="bg-grid"/>
+      <line x1="1000" y1="0" x2="1000" y2="440" class="bg-grid"/>
+      <line x1="0" y1="0"   x2="1000" y2="0"   class="bg-grid"/>
+      <line x1="0" y1="110" x2="1000" y2="110" class="bg-grid"/>
+      <line x1="0" y1="220" x2="1000" y2="220" class="bg-grid"/>
+      <line x1="0" y1="330" x2="1000" y2="330" class="bg-grid"/>
+      <line x1="0" y1="440" x2="1000" y2="440" class="bg-grid"/>
+      <!-- corner ticks at intersection nodes -->
+      <circle cx="100" cy="110" r="1.2" class="bg-grid-mark"/>
+      <circle cx="500" cy="110" r="1.2" class="bg-grid-mark"/>
+      <circle cx="900" cy="110" r="1.2" class="bg-grid-mark"/>
+      <circle cx="100" cy="330" r="1.2" class="bg-grid-mark"/>
+      <circle cx="500" cy="330" r="1.2" class="bg-grid-mark"/>
+      <circle cx="900" cy="330" r="1.2" class="bg-grid-mark"/>
+    </g>
+
+    <!-- Background arcs (abstract: moderate) -->
+    <g id="bg-arcs">
+      <path class="arc-bg" d="M 20,220 Q 200,40 500,40"/>
+      <path class="arc-bg" d="M 500,400 Q 800,400 980,220"/>
+    </g>
+
+    <!-- Card shadow plates (shapes: moderate, 2px offset under each card) -->
+    <g id="card-shadows">
+      <!-- input -->
+      <rect x="332" y="38" width="340" height="66" rx="3" class="card-shadow"/>
+      <!-- branches -->
+      <rect x="62" y="134" width="280" height="168" rx="3" class="card-shadow"/>
+      <rect x="362" y="134" width="280" height="168" rx="3" class="card-shadow"/>
+      <rect x="662" y="134" width="280" height="168" rx="3" class="card-shadow"/>
+      <!-- outcome -->
+      <rect x="332" y="334" width="340" height="66" rx="3" class="card-shadow"/>
+    </g>
+
+    <!-- Per-card hue overlays (directive #13) - layered above original card fills -->
+    <g id="card-hue-overlays">
+      <!-- v1 input (deep-teal) -->
+      <path d="M330,36 H670 V99 Q670,102 667,102 H333 Q330,102 330,99 Z" class="card-v1"/>
+      <rect x="330" y="36" width="340" height="5" class="bar-v1"/>
+      <!-- v2 fixed (cyan-teal, focal) -->
+      <path d="M60,132 H340 V297 Q340,300 337,300 H63 Q60,300 60,297 Z" class="card-v2"/>
+      <rect x="60" y="132" width="280" height="5" class="bar-v2"/>
+      <!-- v3 accepted (copper) -->
+      <path d="M360,132 H640 V297 Q640,300 637,300 H363 Q360,300 360,297 Z" class="card-v3"/>
+      <rect x="360" y="132" width="280" height="5" class="bar-v3"/>
+      <!-- v4 limit (ochre) -->
+      <path d="M660,132 H940 V297 Q940,300 937,300 H663 Q660,300 660,297 Z" class="card-v4"/>
+      <rect x="660" y="132" width="280" height="5" class="bar-v4"/>
+      <!-- v5 outcome (steel-teal) -->
+      <path d="M330,332 H670 V395 Q670,398 667,398 H333 Q330,398 330,395 Z" class="card-v5"/>
+      <rect x="330" y="332" width="340" height="5" class="bar-v5"/>
+    </g>
+
+    <!-- Corner brackets (embroidery) on each card -->
+    <g id="corner-brackets">
+      <!-- input card: (330,36)-(670,102) -->
+      <path d="M 335,46 L 335,41 L 340,41" class="bracket"/>
+      <path d="M 665,41 L 670,41 L 670,46" class="bracket"/>
+      <path d="M 335,97 L 335,102 L 340,102" class="bracket"/>
+      <path d="M 665,102 L 670,102 L 670,97" class="bracket"/>
+
+      <!-- fixed card: (60,132)-(340,300) -->
+      <path d="M 65,142 L 65,137 L 70,137" class="bracket"/>
+      <path d="M 335,137 L 340,137 L 340,142" class="bracket"/>
+      <path d="M 65,295 L 65,300 L 70,300" class="bracket"/>
+      <path d="M 335,300 L 340,300 L 340,295" class="bracket"/>
+
+      <!-- accepted card: (360,132)-(640,300) -->
+      <path d="M 365,142 L 365,137 L 370,137" class="bracket-warm"/>
+      <path d="M 635,137 L 640,137 L 640,142" class="bracket-warm"/>
+      <path d="M 365,295 L 365,300 L 370,300" class="bracket-warm"/>
+      <path d="M 635,300 L 640,300 L 640,295" class="bracket-warm"/>
+
+      <!-- limit card: (660,132)-(940,300) -->
+      <path d="M 665,142 L 665,137 L 670,137" class="bracket-warm"/>
+      <path d="M 935,137 L 940,137 L 940,142" class="bracket-warm"/>
+      <path d="M 665,295 L 665,300 L 670,300" class="bracket-warm"/>
+      <path d="M 935,300 L 940,300 L 940,295" class="bracket-warm"/>
+
+      <!-- outcome card: (330,332)-(670,398) -->
+      <path d="M 335,342 L 335,337 L 340,337" class="bracket"/>
+      <path d="M 665,337 L 670,337 L 670,342" class="bracket"/>
+      <path d="M 335,393 L 335,398 L 340,398" class="bracket"/>
+      <path d="M 665,398 L 670,398 L 670,393" class="bracket"/>
+    </g>
+
+    <!-- Tech-line fragments (embroidery) in whitespace -->
+    <g id="tech-lines">
+      <line x1="20" y1="50"   x2="50"  y2="50"  class="tech-line"/>
+      <line x1="20" y1="60"   x2="40"  y2="60"  class="tech-line"/>
+      <line x1="950" y1="50"  x2="980" y2="50"  class="tech-line"/>
+      <line x1="960" y1="60"  x2="980" y2="60"  class="tech-line"/>
+      <line x1="20" y1="380"  x2="50"  y2="380" class="tech-line"/>
+      <line x1="20" y1="390"  x2="40"  y2="390" class="tech-line"/>
+      <line x1="950" y1="380" x2="980" y2="380" class="tech-line"/>
+      <line x1="960" y1="390" x2="980" y2="390" class="tech-line"/>
+    </g>
+
+    <!-- Accent particles (abstract: moderate, 14 particles) -->
+    <g id="particles">
+      <circle cx="30"  cy="160" r="1.4" class="particle-a"/>
+      <circle cx="38"  cy="200" r="1.0" class="particle-a"/>
+      <circle cx="25"  cy="245" r="1.2" class="particle-a"/>
+      <circle cx="40"  cy="285" r="1.0" class="particle-a"/>
+      <circle cx="970" cy="160" r="1.4" class="particle-b"/>
+      <circle cx="962" cy="200" r="1.0" class="particle-b"/>
+      <circle cx="975" cy="245" r="1.2" class="particle-b"/>
+      <circle cx="960" cy="285" r="1.0" class="particle-b"/>
+      <circle cx="240" cy="420" r="1.1" class="particle-a"/>
+      <circle cx="760" cy="420" r="1.1" class="particle-b"/>
+      <circle cx="180" cy="22"  r="1.0" class="particle-a"/>
+      <circle cx="820" cy="22"  r="1.0" class="particle-b"/>
+      <circle cx="480" cy="125" r="0.9" class="particle-a"/>
+      <circle cx="520" cy="125" r="0.9" class="particle-a"/>
+    </g>
+  </g>
+
+  <!-- Original nodes (UNTOUCHED) -->
+  <g id="nodes">
+    <g id="node-input">
+      <path d="M330.0,36.0 H670.0 V99.0 Q670.0,102.0 667.0,102.0 H333.0 Q330.0,102.0 330.0,99.0 Z" class="card-teal"/>
+      <rect x="330" y="36" width="340" height="5" class="bar-teal"/>
+    </g>
+    <g id="node-fixed">
+      <path d="M60.0,132.0 H340.0 V297.0 Q340.0,300.0 337.0,300.0 H63.0 Q60.0,300.0 60.0,297.0 Z" class="card-teal"/>
+      <rect x="60" y="132" width="280" height="5" class="bar-teal"/>
+    </g>
+    <g id="node-accepted">
+      <path d="M360.0,132.0 H640.0 V297.0 Q640.0,300.0 637.0,300.0 H363.0 Q360.0,300.0 360.0,297.0 Z" class="card-orange"/>
+      <rect x="360" y="132" width="280" height="5" class="bar-orange"/>
+    </g>
+    <g id="node-limit">
+      <path d="M660.0,132.0 H940.0 V297.0 Q940.0,300.0 937.0,300.0 H663.0 Q660.0,300.0 660.0,297.0 Z" class="card-orange"/>
+      <rect x="660" y="132" width="280" height="5" class="bar-orange"/>
+    </g>
+    <g id="node-outcome">
+      <path d="M330.0,332.0 H670.0 V395.0 Q670.0,398.0 667.0,398.0 H333.0 Q330.0,398.0 330.0,395.0 Z" class="card-teal"/>
+      <rect x="330" y="332" width="340" height="5" class="bar-teal"/>
+    </g>
+  </g>
+
+  <!-- Original connectors (UNTOUCHED, glow applied via filter) -->
+  <g id="connectors" filter="url(#glow-cool)">
+    <line x1="500" y1="102" x2="500" y2="110" class="stub-line"/>
+    <line x1="200" y1="110" x2="800" y2="110" class="bus-line"/>
+    <path d="M200.00,110.00 L200.00,125.00" class="arrow-teal"/>
+    <polygon points="200.00,132.00 203.50,125.00 196.50,125.00" class="head-teal"/>
+    <path d="M500.00,110.00 L500.00,125.00" class="arrow-orange"/>
+    <polygon points="500.00,132.00 503.50,125.00 496.50,125.00" class="head-orange"/>
+    <path d="M800.00,110.00 L800.00,125.00" class="arrow-orange"/>
+    <polygon points="800.00,132.00 803.50,125.00 796.50,125.00" class="head-orange"/>
+    <line x1="200" y1="300" x2="200" y2="320" class="stub-line"/>
+    <line x1="500" y1="300" x2="500" y2="320" class="stub-line"/>
+    <line x1="800" y1="300" x2="800" y2="320" class="stub-line"/>
+    <line x1="200" y1="320" x2="800" y2="320" class="bus-line"/>
+    <path d="M500.00,320.00 L500.00,325.00" class="arrow-teal"/>
+    <polygon points="500.00,332.00 503.50,325.00 496.50,325.00" class="head-teal"/>
+  </g>
+
+  <!-- Original content (UNTOUCHED) -->
+  <g id="content">
+    <g id="content-input">
+      <text x="500" y="62" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1" filter="url(#glow-warm)">Checker finding</text>
+      <text x="500" y="80" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">any violation from overlaps / contrast / alignment / connectors / css</text>
+      <text x="500" y="94" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-4">every finding is a defect until classified</text>
+    </g>
+
+    <g id="content-fixed">
+      <text x="76" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" class="accent-1">DEFAULT PATH</text>
+      <text x="76" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="fg-1" filter="url(#glow-warm)">Fixed</text>
+      <text x="76" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">element corrected in place</text>
+      <text x="76" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">no defence required</text>
+      <line x1="76" y1="214" x2="324" y2="214" stroke="#0096d1" stroke-width="0.6" opacity="0.35"/>
+      <text x="76" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" class="accent-1">ACCEPTANCE</text>
+      <circle cx="82" cy="244" r="1.6" class="bullet-dot-teal"/>
+      <text x="90" y="247" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">element corrected in-place</text>
+      <circle cx="82" cy="258" r="1.6" class="bullet-dot-teal"/>
+      <text x="90" y="261" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">checker now passes</text>
+      <circle cx="82" cy="272" r="1.6" class="bullet-dot-teal"/>
+      <text x="90" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">no justification needed</text>
+      <text x="76" y="291" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-4">the rule: fix first, defend only as exception</text>
+    </g>
+
+    <g id="content-accepted">
+      <text x="376" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" class="accent-2">EXCEPTION PATH</text>
+      <text x="376" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="fg-1" filter="url(#glow-warm)">Accepted</text>
+      <text x="376" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">violation is intentional</text>
+      <text x="376" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">documented defence in delivery</text>
+      <line x1="376" y1="214" x2="624" y2="214" stroke="#da8230" stroke-width="0.6" opacity="0.35"/>
+      <text x="376" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" class="accent-2">ACCEPTANCE</text>
+      <circle cx="382" cy="244" r="1.6" class="bullet-dot-orange"/>
+      <text x="390" y="247" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">violation is intentional</text>
+      <circle cx="382" cy="258" r="1.6" class="bullet-dot-orange"/>
+      <text x="390" y="261" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">one-line defence in delivery</text>
+      <circle cx="382" cy="272" r="1.6" class="bullet-dot-orange"/>
+      <text x="390" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">e.g. banner gradient IS the design</text>
+      <text x="376" y="291" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-4">designer overrides checker, once, with reason</text>
+    </g>
+
+    <g id="content-limit">
+      <text x="676" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="1.5" class="accent-2">EXCEPTION PATH</text>
+      <text x="676" y="174" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="fg-1" filter="url(#glow-warm)">Checker limitation</text>
+      <text x="676" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">tool cannot resolve the case</text>
+      <text x="676" y="202" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">documented defence in delivery</text>
+      <line x1="676" y1="214" x2="924" y2="214" stroke="#da8230" stroke-width="0.6" opacity="0.35"/>
+      <text x="676" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="1" class="accent-2">ACCEPTANCE</text>
+      <circle cx="682" cy="244" r="1.6" class="bullet-dot-orange"/>
+      <text x="690" y="247" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">tool cannot resolve case</text>
+      <circle cx="682" cy="258" r="1.6" class="bullet-dot-orange"/>
+      <text x="690" y="261" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">one-line defence in delivery</text>
+      <circle cx="682" cy="272" r="1.6" class="bullet-dot-orange"/>
+      <text x="690" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-2">e.g. CSS-class stroke for SC 1.4.11</text>
+      <text x="676" y="291" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-4">human reading required, checker is blind</text>
+    </g>
+
+    <g id="content-outcome">
+      <text x="500" y="358" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1" filter="url(#glow-warm)">Cleared for delivery</text>
+      <text x="500" y="376" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">every violation classified - no bulk dismissal, no silent passes</text>
+      <text x="500" y="390" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-4">validator output pasted in response with each classification</text>
+    </g>
+
+    <text x="500" y="20" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" letter-spacing="1.5" class="fg-2" filter="url(#glow-warm)">FAIL-FIRST VALIDATION - EVERY FINDING INDIVIDUALLY CLASSIFIED</text>
+  </g>
+
+  <!-- === add-life icons (per-item, lucide-style, placed in card whitespace) === -->
+  <!-- Icon placement: top-right corner of each card with 10px edge clearance.
+       Icons ~14x14 at integer coordinates.
+       input icon: search (circle + handle)
+       fixed icon: check-circle
+       accepted icon: shield-alert
+       limit icon: eye-off
+       outcome icon: check-square
+  -->
+  <g id="add-life-icons">
+    <!-- input: search finding - card y=36..102, right edge 670; icon at (646,48)-(660,62) -->
+    <g class="icon icon-v1" transform="translate(642,46)">
+      <circle cx="6" cy="6" r="4.5"/>
+      <line x1="9.5" y1="9.5" x2="13" y2="13"/>
+    </g>
+
+    <!-- fixed: check-circle; card (60,132)-(340,300). Icon top-right (318,142). -->
+    <g class="icon icon-v2" transform="translate(316,140)">
+      <circle cx="7" cy="7" r="6"/>
+      <polyline points="4,7 6.5,9.5 10,5.5"/>
+    </g>
+
+    <!-- accepted: shield-alert; card (360,132)-(640,300). Icon (618,142) -->
+    <g class="icon icon-v3" transform="translate(616,140)">
+      <path d="M 7,1 L 12.5,3 L 12.5,8 Q 12.5,11.5 7,13 Q 1.5,11.5 1.5,8 L 1.5,3 Z"/>
+      <line x1="7" y1="5" x2="7" y2="8"/>
+      <circle cx="7" cy="10.2" r="0.4"/>
+    </g>
+
+    <!-- limit: eye-off; card (660,132)-(940,300). Icon (918,142) -->
+    <g class="icon icon-v4" transform="translate(916,140)">
+      <path d="M 2,7 Q 7,2 12,7 Q 7,12 2,7"/>
+      <circle cx="7" cy="7" r="2"/>
+      <line x1="1.5" y1="1.5" x2="12.5" y2="12.5"/>
+    </g>
+
+    <!-- outcome: check-square; card (330,332)-(670,398). Icon (646,342) -->
+    <g class="icon icon-v5" transform="translate(644,342)">
+      <rect x="1" y="1" width="12" height="12" rx="1.5"/>
+      <polyline points="4,7 6.5,9.5 10,5.5"/>
+    </g>
+  </g>
+
+  <g id="callouts"/>
+</svg>

@@ -5,34 +5,34 @@ description: Set up devil's advocate persona and fact repository for a target do
 
 # Devil's Advocate - Setup
 
-Build devil persona and fact repository before any evaluation. Always first step.
+Build persona and fact repository. Always first step.
 
 ## Task Tracking
 
-**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout setup. Create tasks for identifying target, building persona, harvesting facts. Mark in_progress when starting, completed when done.
+**MANDATORY**: Use TaskCreate/TaskUpdate for identifying target, building persona, harvesting facts. Mark in_progress/completed.
 
 ## Artefacts produced
 
-1. **`devils_advocate.md`** - devil persona definition
-2. **`fact_repository.md`** - verified claims from source materials
+1. **`devils_advocate.md`** - persona definition
+2. **`fact_repository.md`** - verified claims
 
-Place both alongside target document.
+Place alongside target document.
 
 ## Step 1: Identify target document
 
-Ask user which document to evaluate. Read in full.
+Ask user which document. Read in full.
 
 ## Step 2: Build Devil Persona
 
-**MANDATORY**: Persona established BEFORE any concerns generated.
+**MANDATORY**: Persona BEFORE concerns.
 
 ### Source A: User-provided seed
 
-User provides seed document (evaluation, review, critique) alongside target. Infer persona from seed's tone, priorities, concerns. Present inferred persona for confirmation.
+Seed document (evaluation, review) alongside target. Infer persona from tone, priorities. Confirm with user.
 
 ### Source B: User describes persona
 
-Ask ALL of these in ONE message (not one at a time):
+Ask ALL in ONE message:
 
 "Describe the toughest reader for this document:
 1. Who are they? (role, seniority)
@@ -44,13 +44,13 @@ Ask ALL of these in ONE message (not one at a time):
 
 ### Source C: No seed or persona
 
-**MUST ask.** Never proceed with generic concerns. Ask in ONE message:
+**MUST ask.** Never proceed with generic concerns. One message:
 
-"No persona provided. Please either:
-(a) Describe the toughest reader (role, priorities, biases) in a few sentences, OR
-(b) List 2-4 reader roles and I'll build a composite devil from their combined concerns"
+"No persona provided. Either:
+(a) Describe toughest reader (role, priorities, biases), OR
+(b) List 2-4 roles and I'll build a composite devil"
 
-For groups: merge priorities (union), take harshest bias from each, weight likelihood by which persona raises each concern.
+For groups: merge priorities (union), harshest bias per persona, weight likelihood by which persona raises each concern.
 
 ### Persona documentation
 
@@ -74,7 +74,7 @@ Write to `devils_advocate.md`:
 
 ## Step 3: Harvest facts into fact_repository.md
 
-Scan all available source materials. Extract verifiable claims with sources.
+Scan sources. Extract verifiable claims with sources.
 
 ```markdown
 # Fact Repository - [Project Name]
@@ -97,9 +97,9 @@ No interpretation - just facts.
 
 **Rules**:
 - Verbatim quotes for legal/contract text
-- Separate user-provided from document-extracted facts
-- Incremental updates - never overwrite, always append
+- Separate user-provided from document-extracted
+- Incremental - append, never overwrite
 
 ## When done
 
-Tell user: "Persona and fact repository ready. Run `/devils-advocate:evaluate` to generate the baseline scorecard."
+Tell user: "Persona and fact repository ready. Run `/devils-advocate:evaluate` for the baseline scorecard."

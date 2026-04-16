@@ -5,31 +5,31 @@ description: Validate a document against its source material for grounding, then
 
 # Document Validation Skill
 
-Validate document against source material in two phases: (1) source grounding - extract claims, verify each against source; (2) compliance - tone, style, length, format rules.
+Two phases: (1) source grounding - extract claims, verify each; (2) compliance - tone, style, length, format.
 
 ## Phase 0: Gather Criteria
 
-Collect from user before starting. Ask if not provided.
+Ask if not provided.
 
 **Required:**
-- **Document to validate**: path to document being checked
-- **Source document(s)**: path(s) to source material for grounding
+- **Document to validate**: path
+- **Source document(s)**: path(s) for grounding
 
-**Optional (ask if unspecified, offer defaults):**
-- **Word count range**: min-max words (default: no constraint)
-- **Tone**: e.g. first-person narrative, formal, technical, conversational (default: infer from document)
+**Optional (offer defaults):**
+- **Word count range**: min-max (default: no constraint)
+- **Tone**: first-person, formal, technical, conversational (default: infer)
 - **Style rules**: patterns to enforce or prohibit (default: none)
-- **Target audience**: who document written for (default: general)
-- **Section format rules**: bullet points, section lengths, heading structure (default: none)
+- **Target audience**: default: general
+- **Section format rules**: bullets, section lengths, heading structure (default: none)
 - **Focus rules**: content excluded or prioritized (default: none)
-- **Format rules**: encoding, spacing, links policy (default: UTF-8, single line spacing, no links)
-- **Custom rules**: project-specific rules as key-value pairs
+- **Format rules**: encoding, spacing, links (default: UTF-8, single spacing, no links)
+- **Custom rules**: key-value pairs
 
-Store all criteria for both phases.
+Store all criteria.
 
 ## Phase 1: Setup
 
-Create `validation/` directory in project root (working directory). All validation artifacts go here.
+Create `validation/` in project root. All artifacts here.
 
 ```
 validation/
@@ -40,22 +40,22 @@ validation/
 └── <filename>_corrected.<ext> <- Phase 5 output (best-effort corrected copy)
 ```
 
-Write `criteria.md` with collected criteria formatted clearly.
+Write `criteria.md`.
 
 ## Phase 2: Source Grounding Check
 
-Extract every factual claim, assertion, attribution, number, date, quote from document. For each:
+Extract every factual claim, assertion, attribution, number, date, quote. For each:
 
 1. **State claim** exactly as in document
 2. **Search source** for confirming evidence
 3. **Mark status**:
-   - CONFIRMED - supporting source fragment found (quote fragment)
-   - UNCONFIRMED - no supporting evidence in source
-   - CONTRADICTED - source contradicts claim (quote both)
-   - INFERRED - reasonable inference, not directly stated (explain reasoning)
+   - CONFIRMED - supporting fragment found (quote it)
+   - UNCONFIRMED - no evidence in source
+   - CONTRADICTED - source contradicts (quote both)
+   - INFERRED - reasonable inference, not directly stated (explain)
    - NOT APPLICABLE - structural/editorial, not fact-based
 
-**Output format** (`grounding-report.md`):
+**Output** (`grounding-report.md`):
 
 ```markdown
 # Source Grounding Report
@@ -89,11 +89,11 @@ Extract every factual claim, assertion, attribution, number, date, quote from do
 - **Grounding score**: X/Y (confirmed / total factual claims)
 ```
 
-UNCONFIRMED/CONTRADICTED claims: list concrete corrections.
+UNCONFIRMED/CONTRADICTED: list concrete corrections.
 
 ## Phase 3: Compliance Checklist
 
-Check document against all collected criteria. Generate `compliance-checklist.md`:
+Check against all criteria. Generate `compliance-checklist.md`:
 
 ```markdown
 # Compliance Checklist
@@ -145,11 +145,11 @@ For each custom rule:
 - [ ] Action: [fix / OK]
 ```
 
-Use Python scripts for measurable checks (word count, point length, link detection) - never eyeball.
+Use Python scripts for measurable checks (word count, point length, links) - never eyeball.
 
 ## Phase 4: Validation Summary
 
-Generate `validation-summary.md` combining both phases:
+Generate `validation-summary.md`:
 
 ```markdown
 # Validation Summary
@@ -178,22 +178,22 @@ Generate `validation-summary.md` combining both phases:
 
 ## Phase 5: Apply Corrections (best effort)
 
-Always produce corrected copy with fixable issues resolved after validation:
+Always produce corrected copy:
 
-1. Copy original to `validation/<filename>_corrected.<ext>` (e.g. `report.md` -> `validation/report_corrected.md`)
-2. Apply corrections from grounding report and compliance checklist:
-   - UNCONFIRMED claims: rephrase to align with source or remove
-   - CONTRADICTED claims: fix to match source evidence
-   - Compliance failures: fix formatting, trim length, adjust tone
-3. Re-run both checks (grounding + compliance) against corrected version
+1. Copy original to `validation/<filename>_corrected.<ext>`
+2. Apply corrections:
+   - UNCONFIRMED: rephrase to align with source or remove
+   - CONTRADICTED: fix to match source
+   - Compliance failures: fix formatting, trim, adjust tone
+3. Re-run both checks against corrected version
 4. Update `validation-summary.md` with post-correction status
-5. Present summary to user with diff of changes
+5. Present diff to user
 
 ## Important Notes
 
-- **Never modify source document(s)** - read-only reference
-- **All artifacts in `validation/`** - no scattered files
-- **Python for measurements** - scripts for word counts, pattern matching, never manual
-- **Quote evidence** - actual text from source/document, not just "confirmed"
+- **Never modify source document(s)** - read-only
+- **All artifacts in `validation/`**
+- **Python for measurements** - never manual
+- **Quote evidence** - actual text, not "confirmed"
 - **Be specific** - violations cite exact offending text with location
-- **Preserve originals** - corrected version always separate file in `validation/` with `_corrected` suffix. Overwrite original only on explicit user request
+- **Preserve originals** - corrected version separate file with `_corrected` suffix. Overwrite only on explicit request

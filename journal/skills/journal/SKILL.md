@@ -5,11 +5,11 @@ description: Journal entry management and archiving. Auto-triggered after comple
 
 # Journal Management
 
-Manages `.claude/JOURNAL.md` entries. Journal = project audit trail — every substantive task gets entry.
+Manages `.claude/JOURNAL.md`. Journal = project audit trail. Every substantive task gets entry.
 
 ## CRITICAL: Append-Only Rule
 
-New entries MUST append at END of file. NEVER insert between existing entries. Last entry = most recent work. After writing, VERIFY append by reading last 5 lines.
+New entries MUST append at END. NEVER insert between existing entries. Last entry = most recent. After writing, VERIFY by reading last 5 lines.
 
 ## Entry Format
 
@@ -26,34 +26,33 @@ Version tag `(v1.2.3)` only for versioned projects.
 | Level | Words | When |
 |-------|-------|------|
 | **Standard** | ~70-120 | DEFAULT. Features, bug fixes, multi-file changes, investigations |
-| **Extended** | ~250-350 | ONLY when justified: architectural decisions, cross-cutting refactors, multi-system debugging sagas, new subsystems with non-obvious design choices |
+| **Extended** | ~250-350 | ONLY when justified: architectural decisions, cross-cutting refactors, multi-system debugging, new subsystems with non-obvious design |
 
-**Default is Standard.** Match the user's own summary length when they provide one — do NOT inflate a 5-bullet summary into a 400-word entry. Standard entries read like a colleague's coffee recap: what was added, headline numbers, why it matters, one or two file paths. Skip the directory listing, skip the per-function commentary, skip the reasoning chain.
+**Default: Standard.** Match user's own summary length. Do NOT inflate a 5-bullet summary into 400 words. Standard entries read like a colleague's coffee recap: what was added, headline numbers, why it matters, one or two file paths. Skip directory listings, per-function commentary, reasoning chains.
 
-**Extended entries are the exception, not the rule.** Reach for Extended ONLY when the reader genuinely needs context the code alone cannot carry — a novel algorithm, a platform migration, a multi-iteration debugging story where the dead-ends matter, or a design decision future readers will second-guess without the reasoning. "I touched a lot of files" is NOT a justification. "This was hard" is NOT a justification. If you find yourself writing a 400-word entry for a feature add, downgrade to Standard.
+**Extended = exception.** Reach for Extended ONLY when the reader needs context the code cannot carry - novel algorithm, platform migration, multi-iteration debugging where dead-ends matter, design decision future readers will second-guess. "I touched a lot of files" = NOT justification. "This was hard" = NOT justification. Writing 400 words for a feature add? Downgrade to Standard.
 
-**Length check before saving**: count words in the entry body (after `**Result**:`). Over 150 words? Ask: "does the extra context carry information the user cannot get from the code?". If no, cut ruthlessly. If yes, keep and justify mentally.
+**Length check before saving**: count words after `**Result**:`. Over 150? Ask: "does extra context carry information the user cannot get from code?". No → cut. Yes → keep.
 
 ## What to Log
 
-**Log**: document changes, features, investigations with findings, diagram work
-**Skip**: git commits, file cleanup, maintenance. State: "Not logging to journal: <reason>"
+- **Log**: document changes, features, investigations with findings, diagram work
+- **Skip**: git commits, file cleanup, maintenance. State: "Not logging to journal: <reason>"
 
 ## Verification After Writing
 
-After appending, ALWAYS verify:
 1. Read last entry in file
-2. Confirm matches what just written
-3. Confirm entry number one higher than previous
+2. Confirm matches what was written
+3. Confirm number is one higher than previous
 4. Confirm no entries displaced or overwritten
 
 ## Examples
 
-See `references/examples.md` — Standard and Extended entries with before/after examples showing when to downgrade a bloated draft.
+See `references/examples.md` - Standard and Extended with before/after.
 
 ## CLI Tools (deterministic, no LLM)
 
-`journal-tools` validates, archives, and sorts journal files. Pure string parsing - no generative AI. Use BEFORE committing to catch format drift, and for archiving/sorting instead of manual edits.
+`journal-tools` validates, archives, sorts. Pure string parsing. Use BEFORE committing to catch drift.
 
 ### Check
 
@@ -61,9 +60,9 @@ See `references/examples.md` — Standard and Extended entries with before/after
 journal-tools check .claude/JOURNAL.md
 ```
 
-Validates: continuous numbering, ascending order, entry format (title + Result body), word count tiers. Entries over 150 words = warning (standard exceeded). Over 400 words = error (extended exceeded). Exit code 0 = clean, 1 = errors found.
+Validates: continuous numbering, ascending order, format (title + Result), word count tiers. Over 150 words = warning. Over 400 = error. Exit 0 = clean, 1 = errors.
 
-**MANDATORY**: run `journal-tools check` after writing entries to catch word-count drift. If the checker flags an entry, condense before committing.
+**MANDATORY**: run `journal-tools check` after writing. Flagged → condense before commit.
 
 ### Archive
 
@@ -71,9 +70,9 @@ Validates: continuous numbering, ascending order, entry format (title + Result b
 journal-tools archive .claude/JOURNAL.md
 ```
 
-Moves entries to `JOURNAL_ARCHIVE.md` when count exceeds threshold (default 40). Keeps last 20 in main file. Appends to existing archive. Maintains continuous numbering. Flags: `--keep-last N`, `--threshold N`, `--archive-path PATH`.
+Moves entries to `JOURNAL_ARCHIVE.md` when count exceeds threshold (default 40). Keeps last 20 in main. Appends to existing archive. Maintains continuous numbering. Flags: `--keep-last N`, `--threshold N`, `--archive-path PATH`.
 
-Use this instead of manual archive edits - prevents numbering mistakes and header corruption.
+Use instead of manual archive edits.
 
 ### Sort
 
@@ -81,12 +80,12 @@ Use this instead of manual archive edits - prevents numbering mistakes and heade
 journal-tools sort .claude/JOURNAL.md --dry-run
 ```
 
-Re-numbers entries sequentially. Fixes gaps (e.g. 1, 2, 5 -> 1, 2, 3) and ordering (e.g. 3 before 2 -> 2 before 3). Use `--dry-run` to preview, omit to write in-place. Flag: `--start-from N`.
+Re-numbers sequentially. Fixes gaps (1, 2, 5 → 1, 2, 3) and ordering (3 before 2 → 2 before 3). `--dry-run` previews. Omit to write in-place. Flag: `--start-from N`.
 
 ## Archiving
 
-**Trigger**: exceeds 40 entries OR user requests. Prefer `journal-tools archive` CLI over manual editing.
+**Trigger**: exceeds 40 entries OR user requests. Prefer `journal-tools archive` over manual edit.
 1. Move older entries to `.claude/JOURNAL_ARCHIVE.md`
-2. Keep last 20 entries in main file
+2. Keep last 20 in main
 3. Add link at top: `**Note**: Entries 1-N have been archived`
-4. Maintain continuous numbering — NEVER reset
+4. Maintain continuous numbering. NEVER reset

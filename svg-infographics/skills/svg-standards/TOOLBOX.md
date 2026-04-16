@@ -1,6 +1,6 @@
 # SVG Infographics Toolbox
 
-Tool palette for the svg-infographics design application. Every coordinate, colour, connector, and placement comes from a tool call.
+Tool palette for svg-infographics. Every coordinate, colour, connector, placement = tool call.
 
 ```
 svg-infographics

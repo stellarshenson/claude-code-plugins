@@ -5,15 +5,15 @@ description: Jupyter notebook structure and organization standards. Auto-trigger
 
 # Notebook Structure Standards
 
-Patterns for Jupyter notebook creation and modification.
+Patterns for Jupyter notebook creation.
 
 ## Mandatory Section Order
 
 1. **Header** - title, author, approach with numbered steps
 2. **GPU Selection** - `CUDA_VISIBLE_DEVICES` BEFORE any torch/tf/jax import
-3. **Imports** - ALL imports in one cell, grouped by category with inline comments, autoreload enabled
+3. **Imports** - ALL imports in one cell, grouped, with inline comments, autoreload enabled
 4. **Reproducibility** - `set_seed(42)` for random, numpy, torch
-5. **Configuration** - all hyperparameters in one cell with inline comments, rich-formatted summary at end
+5. **Configuration** - all hyperparameters in one cell, inline comments, rich summary at end
 6. **Data Loading**
 7. **Model/Processing**
 8. **Execution** (training, inference)
@@ -51,11 +51,11 @@ import rich.jupyter as rich
 from rich.progress import Progress, BarColumn
 ```
 
-ALL imports in this cell - never import in later cells.
+ALL imports in this cell. Never import later.
 
 ## Configuration Cell
 
-All hyperparameters with inline comments. End with rich-formatted summary including GPU confirmation:
+All hyperparameters with inline comments. End with rich summary + GPU confirmation:
 
 ```python
 rich.print(f"""[white]Configuration[/white]
@@ -71,8 +71,8 @@ rich.print(f"""[white]Configuration[/white]
 - Markdown header before each code section
 - One logical operation per cell
 - Progress bars in SEPARATE cell from setup text - avoids overwriting
-- Dollar signs: `\\$` in markdown cells (LaTeX escape)
+- Dollar signs: `\\$` in markdown (LaTeX escape)
 
 ## Rich Output
 
-`rich.print()` with semantic colors. Single multiline print call, never multiple individual prints for related output. See `datascience:rich-output` for color reference.
+`rich.print()` with semantic colors. Single multiline call. Never multiple individual prints for related output. See `datascience:rich-output`.

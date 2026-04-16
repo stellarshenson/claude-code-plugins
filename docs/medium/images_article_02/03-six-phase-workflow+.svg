@@ -1,0 +1,461 @@
+<!--
+  03-six-phase-workflow+.svg - Mandatory 6-phase SVG infographic workflow (enhanced)
+  Shows: 6 horizontal phase cards (Research, Invisible Grid, Scaffold, Content, Finishing, Validation)
+  connected by straight arrows, each card carrying a numbered badge, name, description,
+  and a small diamond gate indicator with gate-rule label.
+  Intent: illustrates the gated 6-phase workflow enforced by the svg-infographics plugin.
+  Theme: stellars-tech (fg-1=#1a5a6e light / #b8e4f0 dark, accent-1=#005f7a/#5cc8e0,
+  accent-2=#7a4a15/#d4a04a). Card shape: flat top, rounded bottom r=3.
+-->
+<!-- add-life: medium
+  colour: per-phase cyan->teal->blue-teal hue drift on accent bars (in-family modulation), gate diamonds gain warm-ochre gradient
+  shapes: tech-line corner brackets on every card (top-left, top-right), micro scan-line under accent bar
+  icons: 6 contextual phase icons (search, grid, layout, file-text, sparkles, shield-check) + 6 tiny gate sub-glyphs (lock/key) on diamonds
+  embroidery: corner brackets 6px, bracket tick marks, dashed tech-line under accent bar (opacity 0.25)
+  abstract: 14 accent particles in between-card gutters, 2 faint background arcs spanning top/bottom bands
+  bg texture: geographic/topographic contour wisps (3 faded curves)
+  glow: cyan stdDev=2 on phase-number badges, warm ochre stdDev=1.8 on gate diamonds, subtle halo on title
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 220">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .card-fill { fill: #0096d1; fill-opacity: 0.04; }
+    .card-stroke { fill: none; stroke: #0096d1; stroke-width: 1; }
+    .accent-bar { fill: #0096d1; opacity: 0.6; }
+
+    /* per-phase hue variants (in-family creative, moderate) */
+    .card-fill-1   { fill: #00a6d3; fill-opacity: 0.045; }
+    .card-stroke-1 { fill: none; stroke: #00a6d3; stroke-width: 1; }
+    .card-fill-2   { fill: #0096d1; fill-opacity: 0.04; }
+    .card-stroke-2 { fill: none; stroke: #0096d1; stroke-width: 1; }
+    .card-fill-3   { fill: #00b2d8; fill-opacity: 0.05; }
+    .card-stroke-3 { fill: none; stroke: #00b2d8; stroke-width: 1; }
+    .card-fill-4   { fill: #1585c4; fill-opacity: 0.045; }
+    .card-stroke-4 { fill: none; stroke: #1585c4; stroke-width: 1; }
+    .card-fill-5   { fill: #0582b5; fill-opacity: 0.045; }
+    .card-stroke-5 { fill: none; stroke: #0582b5; stroke-width: 1; }
+    .card-fill-6   { fill: #006f99; fill-opacity: 0.05; }
+    .card-stroke-6 { fill: none; stroke: #006f99; stroke-width: 1.1; }
+    .phase-num { fill: #7a4a15; font-family: Segoe UI, Arial, sans-serif; font-size: 22px; font-weight: 800; opacity: 0.85; }
+    .phase-name { fill: #1a5a6e; font-family: Segoe UI, Arial, sans-serif; font-size: 12px; font-weight: 700; }
+    .phase-desc { fill: #236a74; font-family: Segoe UI, Arial, sans-serif; font-size: 9px; }
+    .gate-fill { fill: #da8230; opacity: 0.85; }
+    .gate-stroke { fill: none; stroke: #7a4a15; stroke-width: 0.8; }
+    .gate-label { fill: #7a4a15; font-family: Segoe UI, Arial, sans-serif; font-size: 7px; font-weight: 700; letter-spacing: 0.4px; }
+    .gate-desc { fill: #2b7680; font-family: Segoe UI, Arial, sans-serif; font-size: 7px; }
+    .arrow-line { fill: none; stroke: #0096d1; stroke-width: 1.4; opacity: 0.55; stroke-linecap: round; }
+    .arrow-head { fill: #0096d1; opacity: 0.8; }
+    .title-text { fill: #1a5a6e; font-family: Segoe UI, Arial, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; }
+    .subtitle-text { fill: #236a74; font-family: Segoe UI, Arial, sans-serif; font-size: 9px; }
+    .legend-text { fill: #2b7680; font-family: Segoe UI, Arial, sans-serif; font-size: 8px; }
+    .legend-strong { fill: #7a4a15; font-family: Segoe UI, Arial, sans-serif; font-size: 8px; font-weight: 700; }
+
+    /* add-life decoration classes */
+    .phase-icon { fill: none; stroke: #0096d1; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+    .phase-icon-fill { fill: #0096d1; opacity: 0.18; }
+    .corner-bracket { fill: none; stroke: #0096d1; stroke-width: 0.8; opacity: 0.45; stroke-linecap: round; }
+    .corner-tick { fill: #0096d1; opacity: 0.5; }
+    .scan-line { fill: none; stroke: #0096d1; stroke-width: 0.6; opacity: 0.25; stroke-dasharray: 2 2; }
+    .bg-contour { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.12; }
+    .bg-arc { fill: none; stroke: #7a4a15; stroke-width: 0.6; opacity: 0.14; }
+    .particle { fill: #0096d1; opacity: 0.35; }
+    .particle-warm { fill: #7a4a15; opacity: 0.4; }
+    .gate-sub { fill: none; stroke: #fff; stroke-width: 0.7; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .card-fill { fill: #5cc8e0; fill-opacity: 0.06; }
+      .card-stroke { stroke: #5cc8e0; }
+      .card-fill-1   { fill: #6fd5ec; fill-opacity: 0.065; }
+      .card-stroke-1 { stroke: #6fd5ec; }
+      .card-fill-2   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .card-stroke-2 { stroke: #5cc8e0; }
+      .card-fill-3   { fill: #7adcee; fill-opacity: 0.07; }
+      .card-stroke-3 { stroke: #7adcee; }
+      .card-fill-4   { fill: #4db3d0; fill-opacity: 0.065; }
+      .card-stroke-4 { stroke: #4db3d0; }
+      .card-fill-5   { fill: #48b8cf; fill-opacity: 0.065; }
+      .card-stroke-5 { stroke: #48b8cf; }
+      .card-fill-6   { fill: #3aa5c4; fill-opacity: 0.07; }
+      .card-stroke-6 { stroke: #3aa5c4; }
+      .accent-bar { fill: #5cc8e0; }
+      .phase-num { fill: #d4a04a; }
+      .phase-name { fill: #b8e4f0; }
+      .phase-desc { fill: #5aafc5; }
+      .gate-fill { fill: #d4a04a; }
+      .gate-stroke { stroke: #d4a04a; }
+      .gate-label { fill: #d4a04a; }
+      .gate-desc { fill: #4099b3; }
+      .arrow-line { stroke: #5cc8e0; }
+      .arrow-head { fill: #5cc8e0; }
+      .title-text { fill: #b8e4f0; }
+      .subtitle-text { fill: #5aafc5; }
+      .legend-text { fill: #4099b3; }
+      .legend-strong { fill: #d4a04a; }
+      .phase-icon { stroke: #5cc8e0; }
+      .phase-icon-fill { fill: #5cc8e0; }
+      .corner-bracket { stroke: #5cc8e0; }
+      .corner-tick { fill: #5cc8e0; }
+      .scan-line { stroke: #5cc8e0; }
+      .bg-contour { stroke: #5cc8e0; opacity: 0.14; }
+      .bg-arc { stroke: #d4a04a; opacity: 0.18; }
+      .particle { fill: #5cc8e0; opacity: 0.45; }
+      .particle-warm { fill: #d4a04a; opacity: 0.5; }
+      .gate-sub { stroke: #1a3440; }
+    }
+  </style>
+
+  <defs>
+    <filter id="glow-cyan" x="-40%" y="-40%" width="180%" height="180%" filterUnits="objectBoundingBox">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-warm" x="-40%" y="-40%" width="180%" height="180%" filterUnits="objectBoundingBox">
+      <feGaussianBlur stdDeviation="1.8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-title" x="-20%" y="-60%" width="140%" height="220%" filterUnits="objectBoundingBox">
+      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- === GRID REFERENCE (unchanged) ===
+    viewBox: 1100 x 220, cards at x=22,202,382,562,742,922 y=42..180
+    Icon slot per card: cx=card.x+150, cy=60 (top-right of card, r=8, below accent bar y=47, clear of phase-num baseline y=72)
+    Corner brackets: top-left at (card.x+3, 49..57), top-right at (card.x+155, 49..57)
+    Scan-line: dashed under accent bar at y=49.5, spans card width - 12
+    Phase-icon position: icon centre (card.x+150, 62), 14x14 bbox
+  === -->
+
+  <g id="background">
+    <rect x="0" y="0" width="1100" height="220" fill="transparent"/>
+  </g>
+
+  <!-- Topographic background contours -->
+  <path d="M 0,8 Q 180,4 360,10 T 720,6 T 1100,12" class="bg-contour"/>
+  <path d="M 0,212 Q 220,216 440,210 T 880,214 T 1100,208" class="bg-contour"/>
+  <path d="M 60,4 Q 280,14 520,8 T 980,14" class="bg-contour"/>
+  <!-- Two faint warm arcs (decorative frame) -->
+  <path d="M 40,38 Q 550,22 1060,38" class="bg-arc"/>
+  <path d="M 40,184 Q 550,200 1060,184" class="bg-arc"/>
+
+  <!-- Accent particles in gutters between cards -->
+  <circle cx="191" cy="70" r="1.2" class="particle"/>
+  <circle cx="191" cy="150" r="1" class="particle"/>
+  <circle cx="371" cy="62" r="1.2" class="particle"/>
+  <circle cx="371" cy="148" r="1" class="particle-warm"/>
+  <circle cx="551" cy="68" r="1" class="particle"/>
+  <circle cx="551" cy="160" r="1.3" class="particle"/>
+  <circle cx="731" cy="62" r="1.1" class="particle-warm"/>
+  <circle cx="731" cy="150" r="1" class="particle"/>
+  <circle cx="911" cy="70" r="1.2" class="particle"/>
+  <circle cx="911" cy="148" r="1" class="particle-warm"/>
+  <circle cx="400" cy="7" r="0.9" class="particle"/>
+  <circle cx="700" cy="7" r="0.9" class="particle"/>
+  <circle cx="130" cy="210" r="1" class="particle-warm"/>
+  <circle cx="970" cy="210" r="1" class="particle-warm"/>
+
+  <g id="nodes">
+    <!-- Card 1: Research - x=22 -->
+    <g id="card-1">
+      <path d="M22,42 H180 V177 Q180,180 177,180 H25 Q22,180 22,177 Z" class="card-fill-1"/>
+      <path d="M22,42 H180 V177 Q180,180 177,180 H25 Q22,180 22,177 Z" class="card-stroke-1"/>
+      <rect x="22" y="42" width="158" height="5" class="accent-bar"/>
+      <polygon points="168,152 174,158 168,164 162,158" class="gate-fill"/>
+      <polygon points="168,152 174,158 168,164 162,158" class="gate-stroke"/>
+    </g>
+
+    <!-- Card 2: Invisible Grid - x=202 -->
+    <g id="card-2">
+      <path d="M202,42 H360 V177 Q360,180 357,180 H205 Q202,180 202,177 Z" class="card-fill-2"/>
+      <path d="M202,42 H360 V177 Q360,180 357,180 H205 Q202,180 202,177 Z" class="card-stroke-2"/>
+      <rect x="202" y="42" width="158" height="5" class="accent-bar"/>
+      <polygon points="348,152 354,158 348,164 342,158" class="gate-fill"/>
+      <polygon points="348,152 354,158 348,164 342,158" class="gate-stroke"/>
+    </g>
+
+    <!-- Card 3: Scaffold - x=382 -->
+    <g id="card-3">
+      <path d="M382,42 H540 V177 Q540,180 537,180 H385 Q382,180 382,177 Z" class="card-fill-3"/>
+      <path d="M382,42 H540 V177 Q540,180 537,180 H385 Q382,180 382,177 Z" class="card-stroke-3"/>
+      <rect x="382" y="42" width="158" height="5" class="accent-bar"/>
+      <polygon points="528,152 534,158 528,164 522,158" class="gate-fill"/>
+      <polygon points="528,152 534,158 528,164 522,158" class="gate-stroke"/>
+    </g>
+
+    <!-- Card 4: Content - x=562 -->
+    <g id="card-4">
+      <path d="M562,42 H720 V177 Q720,180 717,180 H565 Q562,180 562,177 Z" class="card-fill-4"/>
+      <path d="M562,42 H720 V177 Q720,180 717,180 H565 Q562,180 562,177 Z" class="card-stroke-4"/>
+      <rect x="562" y="42" width="158" height="5" class="accent-bar"/>
+      <polygon points="708,152 714,158 708,164 702,158" class="gate-fill"/>
+      <polygon points="708,152 714,158 708,164 702,158" class="gate-stroke"/>
+    </g>
+
+    <!-- Card 5: Finishing - x=742 -->
+    <g id="card-5">
+      <path d="M742,42 H900 V177 Q900,180 897,180 H745 Q742,180 742,177 Z" class="card-fill-5"/>
+      <path d="M742,42 H900 V177 Q900,180 897,180 H745 Q742,180 742,177 Z" class="card-stroke-5"/>
+      <rect x="742" y="42" width="158" height="5" class="accent-bar"/>
+      <polygon points="888,152 894,158 888,164 882,158" class="gate-fill"/>
+      <polygon points="888,152 894,158 888,164 882,158" class="gate-stroke"/>
+    </g>
+
+    <!-- Card 6: Validation - x=922 -->
+    <g id="card-6">
+      <path d="M922,42 H1080 V177 Q1080,180 1077,180 H925 Q922,180 922,177 Z" class="card-fill-6"/>
+      <path d="M922,42 H1080 V177 Q1080,180 1077,180 H925 Q922,180 922,177 Z" class="card-stroke-6"/>
+      <rect x="922" y="42" width="158" height="5" class="accent-bar"/>
+      <polygon points="1068,152 1074,158 1068,164 1062,158" class="gate-fill"/>
+      <polygon points="1068,152 1074,158 1068,164 1062,158" class="gate-stroke"/>
+    </g>
+  </g>
+
+  <!-- Corner brackets (tech-line futuristic flourishes) - per-card groups for tight bboxes -->
+  <g id="bracket-1">
+    <path d="M 24,55 L 24,49 L 30,49" class="corner-bracket"/>
+    <path d="M 178,55 L 178,49 L 172,49" class="corner-bracket"/>
+    <rect x="24" y="172" width="3" height="0.8" class="corner-tick"/>
+    <rect x="175" y="172" width="3" height="0.8" class="corner-tick"/>
+  </g>
+  <g id="bracket-2">
+    <path d="M 204,55 L 204,49 L 210,49" class="corner-bracket"/>
+    <path d="M 358,55 L 358,49 L 352,49" class="corner-bracket"/>
+    <rect x="204" y="172" width="3" height="0.8" class="corner-tick"/>
+    <rect x="355" y="172" width="3" height="0.8" class="corner-tick"/>
+  </g>
+  <g id="bracket-3">
+    <path d="M 384,55 L 384,49 L 390,49" class="corner-bracket"/>
+    <path d="M 538,55 L 538,49 L 532,49" class="corner-bracket"/>
+    <rect x="384" y="172" width="3" height="0.8" class="corner-tick"/>
+    <rect x="535" y="172" width="3" height="0.8" class="corner-tick"/>
+  </g>
+  <g id="bracket-4">
+    <path d="M 564,55 L 564,49 L 570,49" class="corner-bracket"/>
+    <path d="M 718,55 L 718,49 L 712,49" class="corner-bracket"/>
+    <rect x="564" y="172" width="3" height="0.8" class="corner-tick"/>
+    <rect x="715" y="172" width="3" height="0.8" class="corner-tick"/>
+  </g>
+  <g id="bracket-5">
+    <path d="M 744,55 L 744,49 L 750,49" class="corner-bracket"/>
+    <path d="M 898,55 L 898,49 L 892,49" class="corner-bracket"/>
+    <rect x="744" y="172" width="3" height="0.8" class="corner-tick"/>
+    <rect x="895" y="172" width="3" height="0.8" class="corner-tick"/>
+  </g>
+  <g id="bracket-6">
+    <path d="M 924,55 L 924,49 L 930,49" class="corner-bracket"/>
+    <path d="M 1078,55 L 1078,49 L 1072,49" class="corner-bracket"/>
+    <rect x="924" y="172" width="3" height="0.8" class="corner-tick"/>
+    <rect x="1075" y="172" width="3" height="0.8" class="corner-tick"/>
+  </g>
+
+  <g id="connectors">
+    <g id="connector-1">
+      <path d="M182,111 L194,111" class="arrow-line"/>
+      <polygon points="200,111 194,107 194,115" class="arrow-head"/>
+    </g>
+    <g id="connector-2">
+      <path d="M362,111 L374,111" class="arrow-line"/>
+      <polygon points="380,111 374,107 374,115" class="arrow-head"/>
+    </g>
+    <g id="connector-3">
+      <path d="M542,111 L554,111" class="arrow-line"/>
+      <polygon points="560,111 554,107 554,115" class="arrow-head"/>
+    </g>
+    <g id="connector-4">
+      <path d="M722,111 L734,111" class="arrow-line"/>
+      <polygon points="740,111 734,107 734,115" class="arrow-head"/>
+    </g>
+    <g id="connector-5">
+      <path d="M902,111 L914,111" class="arrow-line"/>
+      <polygon points="920,111 914,107 914,115" class="arrow-head"/>
+    </g>
+  </g>
+
+  <!-- Phase icons: one per card at top-right. Icon bbox ~14x14 centred at (card.x+148, 60).
+       Clear of accent bar (y=47) and phase-num baseline. Lucide-inspired (ISC license) multi-stroke glyphs. -->
+  <!-- Phase 1: search (magnifier + handle) -->
+  <g id="icon-1" transform="translate(156,53)">
+    <circle cx="6" cy="6" r="4.5" class="phase-icon"/>
+    <circle cx="6" cy="6" r="4.5" class="phase-icon-fill"/>
+    <path d="M 9.2,9.2 L 12.5,12.5" class="phase-icon"/>
+  </g>
+  <!-- Phase 2: grid (3x3) -->
+  <g id="icon-2" transform="translate(336,53)">
+    <rect x="0.5" y="0.5" width="13" height="13" rx="1.2" class="phase-icon"/>
+    <path d="M 5,0.5 L 5,13.5 M 9,0.5 L 9,13.5 M 0.5,5 L 13.5,5 M 0.5,9 L 13.5,9" class="phase-icon"/>
+  </g>
+  <!-- Phase 3: layout (header + two columns) -->
+  <g id="icon-3" transform="translate(516,53)">
+    <rect x="0.5" y="0.5" width="13" height="13" rx="1.2" class="phase-icon"/>
+    <path d="M 0.5,4.5 L 13.5,4.5 M 7,4.5 L 7,13.5" class="phase-icon"/>
+  </g>
+  <!-- Phase 4: file-text (doc with lines) -->
+  <g id="icon-4" transform="translate(696,53)">
+    <path d="M 2,0.5 L 9,0.5 L 12.5,4 L 12.5,13.5 L 2,13.5 Z" class="phase-icon"/>
+    <path d="M 9,0.5 L 9,4 L 12.5,4" class="phase-icon"/>
+    <path d="M 4.5,7.5 L 10,7.5 M 4.5,10 L 10,10 M 4.5,12 L 8,12" class="phase-icon"/>
+  </g>
+  <!-- Phase 5: sparkles (star burst + small accent) -->
+  <g id="icon-5" transform="translate(876,53)">
+    <path d="M 5,0.5 L 6.2,4.8 L 10.5,6 L 6.2,7.2 L 5,11.5 L 3.8,7.2 L -0.5,6 L 3.8,4.8 Z" class="phase-icon"/>
+    <path d="M 11,9.5 L 11.6,11.4 L 13.5,12 L 11.6,12.6 L 11,14.5 L 10.4,12.6 L 8.5,12 L 10.4,11.4 Z" class="phase-icon"/>
+  </g>
+  <!-- Phase 6: shield-check (shield with tick) -->
+  <g id="icon-6" transform="translate(1056,53)">
+    <path d="M 7,0.5 L 12.5,2.5 L 12.5,7.5 Q 12.5,11 7,13.5 Q 1.5,11 1.5,7.5 L 1.5,2.5 Z" class="phase-icon"/>
+    <path d="M 4,7 L 6.2,9.2 L 10,5.4" class="phase-icon" stroke-width="1.3"/>
+  </g>
+
+  <g id="content">
+    <!-- Title band -->
+    <text x="550" y="20" text-anchor="middle" font-size="12" class="title-text" filter="url(#glow-title)">SIX-PHASE MANDATORY WORKFLOW</text>
+    <text x="550" y="33" text-anchor="middle" font-size="9" class="subtitle-text">sequential phases with hard gate checks between each step</text>
+
+    <!-- Card 1 content: Research -->
+    <g id="card-1-content">
+      <text x="34" y="72" font-size="22" class="phase-num" filter="url(#glow-cyan)">1</text>
+      <text x="34" y="92" font-size="12" class="phase-name">Research</text>
+      <text x="34" y="107" font-size="9" class="phase-desc">Read 3-5 relevant</text>
+      <text x="34" y="118" font-size="9" class="phase-desc">examples before</text>
+      <text x="34" y="129" font-size="9" class="phase-desc">writing anything.</text>
+      <text x="34" y="140" font-size="9" class="phase-desc">Confirm patterns.</text>
+      <text x="34" y="165" font-size="8" class="gate-label">GATE</text>
+      <text x="34" y="175" font-size="7" class="gate-desc">pattern summary</text>
+    </g>
+
+    <!-- Card 2 content: Invisible Grid -->
+    <g id="card-2-content">
+      <text x="214" y="72" font-size="22" class="phase-num" filter="url(#glow-cyan)">2</text>
+      <text x="214" y="92" font-size="12" class="phase-name">Invisible Grid</text>
+      <text x="214" y="107" font-size="9" class="phase-desc">viewBox, margins,</text>
+      <text x="214" y="118" font-size="9" class="phase-desc">origins, rhythm as</text>
+      <text x="214" y="129" font-size="9" class="phase-desc">XML comments only.</text>
+      <text x="214" y="140" font-size="9" class="phase-desc">Blueprint first.</text>
+      <text x="214" y="165" font-size="8" class="gate-label">GATE</text>
+      <text x="214" y="175" font-size="7" class="gate-desc">no visuals yet</text>
+    </g>
+
+    <!-- Card 3 content: Scaffold -->
+    <g id="card-3-content">
+      <text x="394" y="72" font-size="22" class="phase-num" filter="url(#glow-cyan)">3</text>
+      <text x="394" y="92" font-size="12" class="phase-name">Scaffold</text>
+      <text x="394" y="107" font-size="9" class="phase-desc">Primitive shapes</text>
+      <text x="394" y="118" font-size="9" class="phase-desc">and connectors at</text>
+      <text x="394" y="129" font-size="9" class="phase-desc">grid positions.</text>
+      <text x="394" y="140" font-size="9" class="phase-desc">No text yet.</text>
+      <text x="394" y="165" font-size="8" class="gate-label">GATE</text>
+      <text x="394" y="175" font-size="7" class="gate-desc">structure verified</text>
+    </g>
+
+    <!-- Card 4 content: Content -->
+    <g id="card-4-content">
+      <text x="574" y="72" font-size="22" class="phase-num" filter="url(#glow-cyan)">4</text>
+      <text x="574" y="92" font-size="12" class="phase-name">Content</text>
+      <text x="574" y="107" font-size="9" class="phase-desc">CSS-class text,</text>
+      <text x="574" y="118" font-size="9" class="phase-desc">icons, legends,</text>
+      <text x="574" y="129" font-size="9" class="phase-desc">decorative imagery.</text>
+      <text x="574" y="140" font-size="9" class="phase-desc">No inline fills.</text>
+      <text x="574" y="165" font-size="8" class="gate-label">GATE</text>
+      <text x="574" y="175" font-size="7" class="gate-desc">class-only text</text>
+    </g>
+
+    <!-- Card 5 content: Finishing -->
+    <g id="card-5-content">
+      <text x="754" y="72" font-size="22" class="phase-num" filter="url(#glow-cyan)">5</text>
+      <text x="754" y="92" font-size="12" class="phase-name">Finishing</text>
+      <text x="754" y="107" font-size="9" class="phase-desc">Arrow tips checked,</text>
+      <text x="754" y="118" font-size="9" class="phase-desc">callouts centred,</text>
+      <text x="754" y="129" font-size="9" class="phase-desc">file description</text>
+      <text x="754" y="140" font-size="9" class="phase-desc">comment added.</text>
+      <text x="754" y="165" font-size="8" class="gate-label">GATE</text>
+      <text x="754" y="175" font-size="7" class="gate-desc">arrows match tool</text>
+    </g>
+
+    <!-- Card 6 content: Validation -->
+    <g id="card-6-content">
+      <text x="934" y="72" font-size="22" class="phase-num" filter="url(#glow-cyan)">6</text>
+      <text x="934" y="92" font-size="12" class="phase-name">Validation</text>
+      <text x="934" y="107" font-size="9" class="phase-desc">Overlaps, contrast,</text>
+      <text x="934" y="118" font-size="9" class="phase-desc">alignment, CSS</text>
+      <text x="934" y="129" font-size="9" class="phase-desc">checkers run and</text>
+      <text x="934" y="140" font-size="9" class="phase-desc">results classified.</text>
+      <text x="934" y="165" font-size="8" class="gate-label">GATE</text>
+      <text x="934" y="175" font-size="7" class="gate-desc">output pasted</text>
+    </g>
+  </g>
+
+  <!-- Gate diamond glow (warm halo) + sub-lock glyph, per-card groups to keep bboxes tight -->
+  <g id="gate-deco-1">
+    <polygon points="168,152 174,158 168,164 162,158" class="gate-fill" opacity="0.55" filter="url(#glow-warm)"/>
+    <g transform="translate(165,155)">
+      <path d="M 1.3,2.5 L 1.3,1.8 Q 1.3,0.4 3,0.4 Q 4.7,0.4 4.7,1.8 L 4.7,2.5" class="gate-sub"/>
+      <rect x="0.6" y="2.5" width="4.8" height="3.2" rx="0.5" class="gate-sub"/>
+    </g>
+  </g>
+  <g id="gate-deco-2">
+    <polygon points="348,152 354,158 348,164 342,158" class="gate-fill" opacity="0.55" filter="url(#glow-warm)"/>
+    <g transform="translate(345,155)">
+      <path d="M 1.3,2.5 L 1.3,1.8 Q 1.3,0.4 3,0.4 Q 4.7,0.4 4.7,1.8 L 4.7,2.5" class="gate-sub"/>
+      <rect x="0.6" y="2.5" width="4.8" height="3.2" rx="0.5" class="gate-sub"/>
+    </g>
+  </g>
+  <g id="gate-deco-3">
+    <polygon points="528,152 534,158 528,164 522,158" class="gate-fill" opacity="0.55" filter="url(#glow-warm)"/>
+    <g transform="translate(525,155)">
+      <path d="M 1.3,2.5 L 1.3,1.8 Q 1.3,0.4 3,0.4 Q 4.7,0.4 4.7,1.8 L 4.7,2.5" class="gate-sub"/>
+      <rect x="0.6" y="2.5" width="4.8" height="3.2" rx="0.5" class="gate-sub"/>
+    </g>
+  </g>
+  <g id="gate-deco-4">
+    <polygon points="708,152 714,158 708,164 702,158" class="gate-fill" opacity="0.55" filter="url(#glow-warm)"/>
+    <g transform="translate(705,155)">
+      <path d="M 1.3,2.5 L 1.3,1.8 Q 1.3,0.4 3,0.4 Q 4.7,0.4 4.7,1.8 L 4.7,2.5" class="gate-sub"/>
+      <rect x="0.6" y="2.5" width="4.8" height="3.2" rx="0.5" class="gate-sub"/>
+    </g>
+  </g>
+  <g id="gate-deco-5">
+    <polygon points="888,152 894,158 888,164 882,158" class="gate-fill" opacity="0.55" filter="url(#glow-warm)"/>
+    <g transform="translate(885,155)">
+      <path d="M 1.3,2.5 L 1.3,1.8 Q 1.3,0.4 3,0.4 Q 4.7,0.4 4.7,1.8 L 4.7,2.5" class="gate-sub"/>
+      <rect x="0.6" y="2.5" width="4.8" height="3.2" rx="0.5" class="gate-sub"/>
+    </g>
+  </g>
+  <g id="gate-deco-6">
+    <polygon points="1068,152 1074,158 1068,164 1062,158" class="gate-fill" opacity="0.55" filter="url(#glow-warm)"/>
+    <g transform="translate(1065,155)">
+      <path d="M 1.3,2.5 L 1.3,1.8 Q 1.3,0.4 3,0.4 Q 4.7,0.4 4.7,1.8 L 4.7,2.5" class="gate-sub"/>
+      <rect x="0.6" y="2.5" width="4.8" height="3.2" rx="0.5" class="gate-sub"/>
+    </g>
+  </g>
+
+  <g id="callouts">
+    <!-- Legend strip: gate indicator key -->
+    <g id="callout-legend">
+      <polygon points="352,205 358,211 352,217 346,211" class="gate-fill"/>
+      <polygon points="352,205 358,211 352,217 346,211" class="gate-stroke"/>
+      <text x="366" y="214" font-size="8" class="legend-strong">DIAMOND = HARD GATE</text>
+      <text x="486" y="214" font-size="8" class="legend-text">non-negotiable pause; next phase blocked until gate criterion is satisfied</text>
+    </g>
+  </g>
+</svg>

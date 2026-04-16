@@ -15,11 +15,11 @@ Pattern: `NN-initials-description.py` (Jupytext percent format)
 - Brief description: `data-exploration`, `train-yolov8m`
 - Examples: `01-kj-data-exploration.py`, `04-kj-train-yolov8m.py`
 
-Sequential numbering within logical groupings. Archive obsolete notebooks to `@archive/` - never delete. `temp_` prefix for temporary notebooks excluded from Git.
+Sequential numbering within groupings. Archive obsolete to `@archive/`. Never delete. `temp_` prefix for temporary notebooks excluded from Git.
 
 ## File Format
 
-Jupytext percent format (`.py` files) as source of truth. `# %%` for code cells, `# %% [markdown]` for markdown cells. Add `*.ipynb` to `.gitignore`. Enables proper git diffs and code review.
+Jupytext percent format (`.py`) = source of truth. `# %%` for code, `# %% [markdown]` for markdown. Add `*.ipynb` to `.gitignore`. Enables git diffs and code review.
 
 ## Project Structure (cookiecutter-data-science)
 
@@ -42,18 +42,18 @@ models/<model_name>/
   checkpoint.pt   # State dict (needs class definition, for retraining)
 ```
 
-Folder rolling for model exports: current -> `-1`, `-1` -> `-2`, up to 5 versions.
+Folder rolling: current → `-1` → `-2`, up to 5 versions.
 
 ## Code Standards
 
-- **Imports**: never import into `__init__.py`, always explicit module imports
+- **Imports**: never into `__init__.py`. Always explicit module imports
 - **Docstrings**: Google format, type hints for params and returns
 - **DataFrames**: `purpose_df` for DataFrames, `purpose_lf` for LazyFrames
-- **Rich output**: `from rich.jupyter import print` for readable output
-- **Polars**: lazy processing (`pl.LazyFrame` + `collect()`) for large datasets
-- **Prefer builtins**: `sklearn.model_selection.train_test_split` over manual splitting
-- **Plots**: consistent `figsize=(12, 6)`, matplotlib + seaborn
+- **Rich output**: `from rich.jupyter import print`
+- **Polars**: lazy (`pl.LazyFrame` + `collect()`) for large datasets
+- **Prefer builtins**: `sklearn.model_selection.train_test_split` over manual
+- **Plots**: `figsize=(12, 6)`, matplotlib + seaborn
 
 ## EDA First
 
-Start with thorough EDA: data types, missing values, basic statistics, visual exploration (histograms, scatter, box plots), testable hypotheses. High-dimensional data: try UMAP/t-SNE.
+Start thorough: data types, missing values, basic statistics, visual exploration (histograms, scatter, box plots), testable hypotheses. High-dimensional: try UMAP/t-SNE.

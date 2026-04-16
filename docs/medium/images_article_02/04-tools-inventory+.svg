@@ -1,0 +1,479 @@
+<!--
+  04-tools-inventory+.svg - Eight shipped tools, split by role (enhanced)
+  Shows: two container cards side-by-side; left holds 5 calculator tool cards (geometry before painting),
+         right holds 6 validator tool cards (refuse delivery until clean). Each tool card carries the CLI
+         subcommand name in monospace and a one-line description of what it gives or catches.
+  Intent: appears after the "Eight tools" narrative section.
+  Theme: stellars-tech - accent-1 (#005f7a teal) for calculators, accent-2 (#7a4a15 ochre) for validators.
+-->
+<!-- add-life: medium
+  colour: per-container hue anchoring (teal for calc, ochre for val), card outlines gain subtle complementary edge tint, container-role icons with warm/cool gradient hint
+  shapes: tech-line corner brackets on every tool card + the two container cards, micro scan-line under accent bar
+  icons: 11 tool icons (calculator, ruler, compass, triangle, layers / search-check, contrast, grid, route, paintbrush, shield-alert) + 2 role icons on containers (sigma for calc, shield-check for val)
+  embroidery: corner brackets 5px, tick marks at bottom corners, dashed micro scan-line under accent bar
+  abstract: 20 accent particles scattered in between-card gutters and container margins, 2 background arcs
+  bg texture: grid/technical faded engineering grid lines (6 vertical + 4 horizontal at opacity 0.06)
+  glow: cyan stdDev=2 on calc role icon + container title, warm ochre stdDev=1.8 on val role icon + container title, title halo
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 460">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    .calc-card-fill   { fill: #005f7a; fill-opacity: 0.04; }
+    .calc-card-stroke { fill: none; stroke: #005f7a; stroke-width: 1; }
+    .calc-bar         { fill: #005f7a; opacity: 0.6; }
+    .calc-container-fill   { fill: #005f7a; fill-opacity: 0.02; }
+    .calc-container-stroke { fill: none; stroke: #005f7a; stroke-width: 0.8; opacity: 0.25; }
+    .calc-container-bar    { fill: #005f7a; opacity: 0.15; }
+    .val-card-fill    { fill: #7a4a15; fill-opacity: 0.04; }
+    .val-card-stroke  { fill: none; stroke: #7a4a15; stroke-width: 1; }
+    .val-bar          { fill: #7a4a15; opacity: 0.6; }
+    .val-container-fill    { fill: #7a4a15; fill-opacity: 0.02; }
+    .val-container-stroke  { fill: none; stroke: #7a4a15; stroke-width: 0.8; opacity: 0.25; }
+    .val-container-bar     { fill: #7a4a15; opacity: 0.15; }
+    .tool-name { fill: #1a5a6e; font-family: Consolas, Menlo, monospace; font-size: 11px; font-weight: 700; }
+    .tool-desc { fill: #236a74; font-family: Segoe UI, Arial, sans-serif; font-size: 9px; }
+    .role-tag  { font-family: Segoe UI, Arial, sans-serif; font-size: 8px; font-weight: 700; letter-spacing: 1px; }
+
+    /* add-life decoration classes */
+    .calc-icon { fill: none; stroke: #005f7a; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+    .calc-icon-fill { fill: #005f7a; opacity: 0.15; }
+    .val-icon { fill: none; stroke: #7a4a15; stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+    .val-icon-fill { fill: #7a4a15; opacity: 0.15; }
+    .calc-bracket { fill: none; stroke: #005f7a; stroke-width: 0.8; opacity: 0.45; stroke-linecap: round; }
+    .val-bracket  { fill: none; stroke: #7a4a15; stroke-width: 0.8; opacity: 0.45; stroke-linecap: round; }
+    .calc-tick { fill: #005f7a; opacity: 0.4; }
+    .val-tick  { fill: #7a4a15; opacity: 0.4; }
+    .scan-line-calc { fill: none; stroke: #005f7a; stroke-width: 0.6; opacity: 0.22; stroke-dasharray: 2 2; }
+    .scan-line-val  { fill: none; stroke: #7a4a15; stroke-width: 0.6; opacity: 0.22; stroke-dasharray: 2 2; }
+    .bg-grid-line { fill: none; stroke: #1a5a6e; stroke-width: 0.4; opacity: 0.06; }
+    .bg-arc-calc { fill: none; stroke: #005f7a; stroke-width: 0.6; opacity: 0.15; }
+    .bg-arc-val  { fill: none; stroke: #7a4a15; stroke-width: 0.6; opacity: 0.15; }
+    .particle-calc { fill: #005f7a; opacity: 0.4; }
+    .particle-val  { fill: #7a4a15; opacity: 0.4; }
+    .role-icon-calc { fill: none; stroke: #005f7a; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+    .role-icon-val  { fill: none; stroke: #7a4a15; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+      .calc-card-fill   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .calc-card-stroke { stroke: #5cc8e0; }
+      .calc-bar         { fill: #5cc8e0; }
+      .calc-container-fill   { fill: #5cc8e0; fill-opacity: 0.03; }
+      .calc-container-stroke { stroke: #5cc8e0; }
+      .calc-container-bar    { fill: #5cc8e0; }
+      .val-card-fill    { fill: #d4a04a; fill-opacity: 0.06; }
+      .val-card-stroke  { stroke: #d4a04a; }
+      .val-bar          { fill: #d4a04a; }
+      .val-container-fill    { fill: #d4a04a; fill-opacity: 0.03; }
+      .val-container-stroke  { stroke: #d4a04a; }
+      .val-container-bar     { fill: #d4a04a; }
+      .tool-name { fill: #b8e4f0; }
+      .tool-desc { fill: #5aafc5; }
+      .calc-icon { stroke: #5cc8e0; }
+      .calc-icon-fill { fill: #5cc8e0; }
+      .val-icon  { stroke: #d4a04a; }
+      .val-icon-fill { fill: #d4a04a; }
+      .calc-bracket { stroke: #5cc8e0; }
+      .val-bracket  { stroke: #d4a04a; }
+      .calc-tick { fill: #5cc8e0; }
+      .val-tick  { fill: #d4a04a; }
+      .scan-line-calc { stroke: #5cc8e0; }
+      .scan-line-val  { stroke: #d4a04a; }
+      .bg-grid-line { stroke: #5cc8e0; opacity: 0.08; }
+      .bg-arc-calc { stroke: #5cc8e0; opacity: 0.2; }
+      .bg-arc-val  { stroke: #d4a04a; opacity: 0.2; }
+      .particle-calc { fill: #5cc8e0; opacity: 0.5; }
+      .particle-val  { fill: #d4a04a; opacity: 0.5; }
+      .role-icon-calc { stroke: #5cc8e0; }
+      .role-icon-val  { stroke: #d4a04a; }
+    }
+  </style>
+
+  <defs>
+    <filter id="glow-cyan" x="-40%" y="-40%" width="180%" height="180%" filterUnits="objectBoundingBox">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-warm" x="-40%" y="-40%" width="180%" height="180%" filterUnits="objectBoundingBox">
+      <feGaussianBlur stdDeviation="1.8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-title" x="-20%" y="-60%" width="140%" height="220%" filterUnits="objectBoundingBox">
+      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- === GRID REFERENCE (unchanged) ===
+    viewBox: 1000 x 460, two containers (20-490, 510-980) at y=60-440
+    Inner tool cards 214x85 at rows y=115, 212, 309
+    Icon slot (tool cards): cx=card.x+196, cy=card.y+18 (right side of accent bar zone)
+    Role icon (containers): right side of header band, cx=460 (calc) / cx=950 (val), cy=82
+    Corner brackets: top-left (card.x+2, card.y+6..11) top-right (card.x+212, card.y+6..11)
+    Container brackets: inside at top-left (22, 62) and top-right (488, 62)
+    Particle zones: between-row gutters (y=202-212, y=299-309, y=396-440)
+  === -->
+
+  <g id="background"/>
+
+  <!-- Technical grid background - edge-only tick markers (do not cross text) -->
+  <path d="M 255,436 L 255,444" class="bg-grid-line"/>
+  <path d="M 745,436 L 745,444" class="bg-grid-line"/>
+  <path d="M 255,52 L 255,58" class="bg-grid-line"/>
+  <path d="M 745,52 L 745,58" class="bg-grid-line"/>
+
+  <!-- Accent particles scattered in gutters -->
+  <circle cx="255" cy="206" r="1.1" class="particle-calc"/>
+  <circle cx="100" cy="206" r="1" class="particle-calc"/>
+  <circle cx="400" cy="206" r="1.1" class="particle-calc"/>
+  <circle cx="255" cy="303" r="1" class="particle-calc"/>
+  <circle cx="140" cy="400" r="1.2" class="particle-calc"/>
+  <circle cx="350" cy="400" r="1" class="particle-calc"/>
+  <circle cx="255" cy="450" r="1.1" class="particle-calc"/>
+  <circle cx="100" cy="52" r="0.9" class="particle-calc"/>
+  <circle cx="455" cy="82" r="0.9" class="particle-calc"/>
+  <circle cx="745" cy="206" r="1.1" class="particle-val"/>
+  <circle cx="590" cy="206" r="1" class="particle-val"/>
+  <circle cx="890" cy="206" r="1.1" class="particle-val"/>
+  <circle cx="745" cy="303" r="1" class="particle-val"/>
+  <circle cx="620" cy="400" r="1.2" class="particle-val"/>
+  <circle cx="870" cy="400" r="1" class="particle-val"/>
+  <circle cx="745" cy="450" r="1.1" class="particle-val"/>
+  <circle cx="100" cy="30" r="0.9" class="particle-val"/>
+  <circle cx="900" cy="30" r="0.9" class="particle-val"/>
+  <circle cx="500" cy="250" r="0.9" class="particle-calc"/>
+  <circle cx="500" cy="350" r="0.9" class="particle-val"/>
+
+  <g id="nodes">
+    <!-- Left container: calculators -->
+    <g id="calc-container">
+      <path d="M20.0,60.0 H490.0 V437.0 Q490.0,440.0 487.0,440.0 H23.0 Q20.0,440.0 20.0,437.0 Z" class="calc-container-fill"/>
+      <path d="M20.0,60.0 H490.0 V437.0 Q490.0,440.0 487.0,440.0 H23.0 Q20.0,440.0 20.0,437.0 Z" class="calc-container-stroke"/>
+      <rect x="20" y="60" width="470" height="4" class="calc-container-bar"/>
+    </g>
+
+    <!-- Right container: validators -->
+    <g id="val-container">
+      <path d="M510.0,60.0 H980.0 V437.0 Q980.0,440.0 977.0,440.0 H513.0 Q510.0,440.0 510.0,437.0 Z" class="val-container-fill"/>
+      <path d="M510.0,60.0 H980.0 V437.0 Q980.0,440.0 977.0,440.0 H513.0 Q510.0,440.0 510.0,437.0 Z" class="val-container-stroke"/>
+      <rect x="510" y="60" width="470" height="4" class="val-container-bar"/>
+    </g>
+
+    <!-- Calculator tool cards (5) -->
+    <g id="tool-primitives">
+      <path d="M34.0,115.0 H248.0 V197.0 Q248.0,200.0 245.0,200.0 H37.0 Q34.0,200.0 34.0,197.0 Z" class="calc-card-fill"/>
+      <path d="M34.0,115.0 H248.0 V197.0 Q248.0,200.0 245.0,200.0 H37.0 Q34.0,200.0 34.0,197.0 Z" class="calc-card-stroke"/>
+      <rect x="34" y="115" width="214" height="5" class="calc-bar"/>
+    </g>
+    <g id="tool-connector">
+      <path d="M262.0,115.0 H476.0 V197.0 Q476.0,200.0 473.0,200.0 H265.0 Q262.0,200.0 262.0,197.0 Z" class="calc-card-fill"/>
+      <path d="M262.0,115.0 H476.0 V197.0 Q476.0,200.0 473.0,200.0 H265.0 Q262.0,200.0 262.0,197.0 Z" class="calc-card-stroke"/>
+      <rect x="262" y="115" width="214" height="5" class="calc-bar"/>
+    </g>
+    <g id="tool-geom">
+      <path d="M34.0,212.0 H248.0 V294.0 Q248.0,297.0 245.0,297.0 H37.0 Q34.0,297.0 34.0,294.0 Z" class="calc-card-fill"/>
+      <path d="M34.0,212.0 H248.0 V294.0 Q248.0,297.0 245.0,297.0 H37.0 Q34.0,297.0 34.0,294.0 Z" class="calc-card-stroke"/>
+      <rect x="34" y="212" width="214" height="5" class="calc-bar"/>
+    </g>
+    <g id="tool-callouts">
+      <path d="M262.0,212.0 H476.0 V294.0 Q476.0,297.0 473.0,297.0 H265.0 Q262.0,297.0 262.0,294.0 Z" class="calc-card-fill"/>
+      <path d="M262.0,212.0 H476.0 V294.0 Q476.0,297.0 473.0,297.0 H265.0 Q262.0,297.0 262.0,294.0 Z" class="calc-card-stroke"/>
+      <rect x="262" y="212" width="214" height="5" class="calc-bar"/>
+    </g>
+    <g id="tool-empty-space">
+      <path d="M34.0,309.0 H248.0 V391.0 Q248.0,394.0 245.0,394.0 H37.0 Q34.0,394.0 34.0,391.0 Z" class="calc-card-fill"/>
+      <path d="M34.0,309.0 H248.0 V391.0 Q248.0,394.0 245.0,394.0 H37.0 Q34.0,394.0 34.0,391.0 Z" class="calc-card-stroke"/>
+      <rect x="34" y="309" width="214" height="5" class="calc-bar"/>
+    </g>
+
+    <!-- Validator tool cards (6) -->
+    <g id="tool-overlaps">
+      <path d="M524.0,115.0 H738.0 V197.0 Q738.0,200.0 735.0,200.0 H527.0 Q524.0,200.0 524.0,197.0 Z" class="val-card-fill"/>
+      <path d="M524.0,115.0 H738.0 V197.0 Q738.0,200.0 735.0,200.0 H527.0 Q524.0,200.0 524.0,197.0 Z" class="val-card-stroke"/>
+      <rect x="524" y="115" width="214" height="5" class="val-bar"/>
+    </g>
+    <g id="tool-contrast">
+      <path d="M752.0,115.0 H966.0 V197.0 Q966.0,200.0 963.0,200.0 H755.0 Q752.0,200.0 752.0,197.0 Z" class="val-card-fill"/>
+      <path d="M752.0,115.0 H966.0 V197.0 Q966.0,200.0 963.0,200.0 H755.0 Q752.0,200.0 752.0,197.0 Z" class="val-card-stroke"/>
+      <rect x="752" y="115" width="214" height="5" class="val-bar"/>
+    </g>
+    <g id="tool-alignment">
+      <path d="M524.0,212.0 H738.0 V294.0 Q738.0,297.0 735.0,297.0 H527.0 Q524.0,297.0 524.0,294.0 Z" class="val-card-fill"/>
+      <path d="M524.0,212.0 H738.0 V294.0 Q738.0,297.0 735.0,297.0 H527.0 Q524.0,297.0 524.0,294.0 Z" class="val-card-stroke"/>
+      <rect x="524" y="212" width="214" height="5" class="val-bar"/>
+    </g>
+    <g id="tool-connectors">
+      <path d="M752.0,212.0 H966.0 V294.0 Q966.0,297.0 963.0,297.0 H755.0 Q752.0,297.0 752.0,294.0 Z" class="val-card-fill"/>
+      <path d="M752.0,212.0 H966.0 V294.0 Q966.0,297.0 963.0,297.0 H755.0 Q752.0,297.0 752.0,294.0 Z" class="val-card-stroke"/>
+      <rect x="752" y="212" width="214" height="5" class="val-bar"/>
+    </g>
+    <g id="tool-css">
+      <path d="M524.0,309.0 H738.0 V391.0 Q738.0,394.0 735.0,394.0 H527.0 Q524.0,394.0 524.0,391.0 Z" class="val-card-fill"/>
+      <path d="M524.0,309.0 H738.0 V391.0 Q738.0,394.0 735.0,394.0 H527.0 Q524.0,394.0 524.0,391.0 Z" class="val-card-stroke"/>
+      <rect x="524" y="309" width="214" height="5" class="val-bar"/>
+    </g>
+    <g id="tool-collide">
+      <path d="M752.0,309.0 H966.0 V391.0 Q966.0,394.0 963.0,394.0 H755.0 Q752.0,394.0 752.0,391.0 Z" class="val-card-fill"/>
+      <path d="M752.0,309.0 H966.0 V391.0 Q966.0,394.0 963.0,394.0 H755.0 Q752.0,394.0 752.0,391.0 Z" class="val-card-stroke"/>
+      <rect x="752" y="309" width="214" height="5" class="val-bar"/>
+    </g>
+  </g>
+
+  <!-- Per-card corner brackets (tight bboxes, one group per card) -->
+  <g id="brk-primitives">
+    <path d="M 36,127 L 36,122 L 41,122" class="calc-bracket"/>
+    <path d="M 246,127 L 246,122 L 241,122" class="calc-bracket"/>
+    <rect x="36" y="193" width="2.5" height="0.8" class="calc-tick"/>
+    <rect x="243.5" y="193" width="2.5" height="0.8" class="calc-tick"/>
+  </g>
+  <g id="brk-connector">
+    <path d="M 264,127 L 264,122 L 269,122" class="calc-bracket"/>
+    <path d="M 474,127 L 474,122 L 469,122" class="calc-bracket"/>
+    <rect x="264" y="193" width="2.5" height="0.8" class="calc-tick"/>
+    <rect x="471.5" y="193" width="2.5" height="0.8" class="calc-tick"/>
+  </g>
+  <g id="brk-geom">
+    <path d="M 36,224 L 36,219 L 41,219" class="calc-bracket"/>
+    <path d="M 246,224 L 246,219 L 241,219" class="calc-bracket"/>
+    <rect x="36" y="290" width="2.5" height="0.8" class="calc-tick"/>
+    <rect x="243.5" y="290" width="2.5" height="0.8" class="calc-tick"/>
+  </g>
+  <g id="brk-callouts">
+    <path d="M 264,224 L 264,219 L 269,219" class="calc-bracket"/>
+    <path d="M 474,224 L 474,219 L 469,219" class="calc-bracket"/>
+    <rect x="264" y="290" width="2.5" height="0.8" class="calc-tick"/>
+    <rect x="471.5" y="290" width="2.5" height="0.8" class="calc-tick"/>
+  </g>
+  <g id="brk-empty-space">
+    <path d="M 36,321 L 36,316 L 41,316" class="calc-bracket"/>
+    <path d="M 246,321 L 246,316 L 241,316" class="calc-bracket"/>
+    <rect x="36" y="387" width="2.5" height="0.8" class="calc-tick"/>
+    <rect x="243.5" y="387" width="2.5" height="0.8" class="calc-tick"/>
+  </g>
+  <g id="brk-overlaps">
+    <path d="M 526,127 L 526,122 L 531,122" class="val-bracket"/>
+    <path d="M 736,127 L 736,122 L 731,122" class="val-bracket"/>
+    <rect x="526" y="193" width="2.5" height="0.8" class="val-tick"/>
+    <rect x="733.5" y="193" width="2.5" height="0.8" class="val-tick"/>
+  </g>
+  <g id="brk-contrast">
+    <path d="M 754,127 L 754,122 L 759,122" class="val-bracket"/>
+    <path d="M 964,127 L 964,122 L 959,122" class="val-bracket"/>
+    <rect x="754" y="193" width="2.5" height="0.8" class="val-tick"/>
+    <rect x="961.5" y="193" width="2.5" height="0.8" class="val-tick"/>
+  </g>
+  <g id="brk-alignment">
+    <path d="M 526,224 L 526,219 L 531,219" class="val-bracket"/>
+    <path d="M 736,224 L 736,219 L 731,219" class="val-bracket"/>
+    <rect x="526" y="290" width="2.5" height="0.8" class="val-tick"/>
+    <rect x="733.5" y="290" width="2.5" height="0.8" class="val-tick"/>
+  </g>
+  <g id="brk-connectors">
+    <path d="M 754,224 L 754,219 L 759,219" class="val-bracket"/>
+    <path d="M 964,224 L 964,219 L 959,219" class="val-bracket"/>
+    <rect x="754" y="290" width="2.5" height="0.8" class="val-tick"/>
+    <rect x="961.5" y="290" width="2.5" height="0.8" class="val-tick"/>
+  </g>
+  <g id="brk-css">
+    <path d="M 526,321 L 526,316 L 531,316" class="val-bracket"/>
+    <path d="M 736,321 L 736,316 L 731,316" class="val-bracket"/>
+    <rect x="526" y="387" width="2.5" height="0.8" class="val-tick"/>
+    <rect x="733.5" y="387" width="2.5" height="0.8" class="val-tick"/>
+  </g>
+  <g id="brk-collide">
+    <path d="M 754,321 L 754,316 L 759,316" class="val-bracket"/>
+    <path d="M 964,321 L 964,316 L 959,316" class="val-bracket"/>
+    <rect x="754" y="387" width="2.5" height="0.8" class="val-tick"/>
+    <rect x="961.5" y="387" width="2.5" height="0.8" class="val-tick"/>
+  </g>
+
+  <!-- Tool icons: one per tool card at card top-right.
+       Icons live at cx=card.x+196, cy=card.y+18, 14x14 bbox.
+       Coordinate check: card.y=115, icon y=118..132 (below accent bar 115..120, clear of tool-name at y=card.y+35)
+       Lucide-inspired (ISC license) multi-stroke glyphs. -->
+  <!-- primitives: calculator -->
+  <g id="icon-primitives" transform="translate(224,124)">
+    <rect x="0.5" y="0.5" width="13" height="13" rx="1.5" class="calc-icon"/>
+    <rect x="2.5" y="2.5" width="9" height="3" rx="0.5" class="calc-icon-fill"/>
+    <path d="M 3.5,7.5 L 4.5,7.5 M 6.5,7.5 L 7.5,7.5 M 9.5,7.5 L 10.5,7.5" class="calc-icon"/>
+    <path d="M 3.5,10 L 4.5,10 M 6.5,10 L 7.5,10 M 9.5,10 L 10.5,10" class="calc-icon"/>
+    <path d="M 3.5,12 L 4.5,12 M 6.5,12 L 7.5,12" class="calc-icon"/>
+  </g>
+  <!-- connector: ruler (simplified) -->
+  <g id="icon-connector" transform="translate(452,124)">
+    <rect x="0.5" y="3" width="13" height="8" rx="0.8" class="calc-icon"/>
+    <path d="M 3,3 L 3,6 M 5,3 L 5,5 M 7,3 L 7,6 M 9,3 L 9,5 M 11,3 L 11,6" class="calc-icon"/>
+  </g>
+  <!-- geom: compass -->
+  <g id="icon-geom" transform="translate(224,221)">
+    <circle cx="7" cy="7" r="5.5" class="calc-icon"/>
+    <path d="M 7,1.5 L 7,7 L 10.5,10" class="calc-icon" stroke-width="1.2"/>
+    <circle cx="7" cy="7" r="0.9" class="calc-icon-fill"/>
+  </g>
+  <!-- callouts: triangle -->
+  <g id="icon-callouts" transform="translate(452,221)">
+    <path d="M 7,1 L 13,12 L 1,12 Z" class="calc-icon"/>
+    <path d="M 7,1 L 13,12 L 1,12 Z" class="calc-icon-fill"/>
+    <circle cx="7" cy="8" r="0.8" class="calc-icon"/>
+  </g>
+  <!-- empty-space: layers -->
+  <g id="icon-empty-space" transform="translate(224,318)">
+    <path d="M 7,1 L 13,4.5 L 7,8 L 1,4.5 Z" class="calc-icon"/>
+    <path d="M 1,7.5 L 7,11 L 13,7.5" class="calc-icon"/>
+    <path d="M 1,10.5 L 7,14 L 13,10.5" class="calc-icon"/>
+  </g>
+  <!-- overlaps: search-check -->
+  <g id="icon-overlaps" transform="translate(714,124)">
+    <circle cx="5.5" cy="5.5" r="4" class="val-icon"/>
+    <path d="M 3.5,5.5 L 5,7 L 7.5,4" class="val-icon" stroke-width="1.2"/>
+    <path d="M 8.4,8.4 L 12,12" class="val-icon"/>
+  </g>
+  <!-- contrast: contrast (half-filled circle) -->
+  <g id="icon-contrast" transform="translate(942,124)">
+    <circle cx="7" cy="7" r="5.5" class="val-icon"/>
+    <path d="M 7,1.5 A 5.5,5.5 0 0 1 7,12.5 Z" class="val-icon-fill"/>
+  </g>
+  <!-- alignment: grid -->
+  <g id="icon-alignment" transform="translate(714,221)">
+    <rect x="0.5" y="0.5" width="13" height="13" rx="1" class="val-icon"/>
+    <path d="M 5,0.5 L 5,13.5 M 9,0.5 L 9,13.5 M 0.5,5 L 13.5,5 M 0.5,9 L 13.5,9" class="val-icon"/>
+  </g>
+  <!-- connectors: route (corner + arrow) -->
+  <g id="icon-connectors" transform="translate(942,221)">
+    <circle cx="2.5" cy="2.5" r="1.5" class="val-icon"/>
+    <circle cx="11.5" cy="11.5" r="1.5" class="val-icon"/>
+    <path d="M 2.5,4 L 2.5,9 Q 2.5,11.5 5,11.5 L 10,11.5" class="val-icon"/>
+  </g>
+  <!-- css: paintbrush -->
+  <g id="icon-css" transform="translate(714,318)">
+    <path d="M 9,1 L 13,5 L 7,11 L 3,7 Z" class="val-icon"/>
+    <path d="M 3,7 L 1,11 L 5,13 L 7,11" class="val-icon"/>
+  </g>
+  <!-- collide: shield-alert -->
+  <g id="icon-collide" transform="translate(942,318)">
+    <path d="M 7,0.5 L 12.5,2.5 L 12.5,7.5 Q 12.5,11 7,13.5 Q 1.5,11 1.5,7.5 L 1.5,2.5 Z" class="val-icon"/>
+    <path d="M 7,4.5 L 7,8" class="val-icon" stroke-width="1.3"/>
+    <circle cx="7" cy="10.2" r="0.7" class="val-icon-fill"/>
+  </g>
+
+  <!-- Container role icons (larger, at header right) -->
+  <!-- Calc container: sigma -->
+  <g id="role-icon-calc" transform="translate(448,70)" filter="url(#glow-cyan)">
+    <path d="M 2,1 L 16,1 L 16,4 L 10,4 L 16,10 L 10,16 L 16,16 L 16,19 L 2,19 L 8,10 Z" class="role-icon-calc" stroke-width="1.3"/>
+  </g>
+  <!-- Val container: shield-check double -->
+  <g id="role-icon-val" transform="translate(938,70)" filter="url(#glow-warm)">
+    <path d="M 10,1 L 18,3 L 18,9 Q 18,14 10,18 Q 2,14 2,9 L 2,3 Z" class="role-icon-val" stroke-width="1.3"/>
+    <path d="M 5.5,9.5 L 8.5,12.5 L 14,7" class="role-icon-val" stroke-width="1.5"/>
+  </g>
+
+  <!-- Container corner brackets -->
+  <g id="brk-calc-container">
+    <path d="M 24,72 L 24,64 L 32,64" class="calc-bracket"/>
+    <path d="M 486,72 L 486,64 L 478,64" class="calc-bracket"/>
+    <rect x="22" y="432" width="4" height="0.8" class="calc-tick"/>
+    <rect x="484" y="432" width="4" height="0.8" class="calc-tick"/>
+  </g>
+  <g id="brk-val-container">
+    <path d="M 514,72 L 514,64 L 522,64" class="val-bracket"/>
+    <path d="M 976,72 L 976,64 L 968,64" class="val-bracket"/>
+    <rect x="512" y="432" width="4" height="0.8" class="val-tick"/>
+    <rect x="974" y="432" width="4" height="0.8" class="val-tick"/>
+  </g>
+
+  <g id="connectors"/>
+
+  <g id="content">
+    <!-- Top title band -->
+    <text x="500" y="26" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" class="fg-1" filter="url(#glow-title)">Eight shipped tools, split by role</text>
+    <text x="500" y="44" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">five calculators produce geometry; six validators refuse delivery until the grid is clean</text>
+
+    <!-- Container headers -->
+    <text x="34" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="accent-1" filter="url(#glow-cyan)">CALCULATORS</text>
+    <text x="34" y="99" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">geometry before painting - produce coordinates, paths, and anchors</text>
+    <text x="524" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" class="accent-2" filter="url(#glow-warm)">VALIDATORS</text>
+    <text x="524" y="99" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">refuse delivery until clean - catch overlaps, contrast, stray colours</text>
+
+    <!-- Calculator tool card content -->
+    <!-- primitives -->
+    <text x="42" y="132" class="role-tag accent-1">CALC</text>
+    <text x="46" y="150" class="tool-name">primitives</text>
+    <text x="46" y="168" class="tool-desc">14 shape anchors + PCHIP</text>
+    <text x="46" y="182" class="tool-desc">splines through waypoints</text>
+    <!-- connector -->
+    <text x="270" y="132" class="role-tag accent-1">CALC</text>
+    <text x="274" y="150" class="tool-name">connector</text>
+    <text x="274" y="168" class="tool-desc">5 routing modes, auto</text>
+    <text x="274" y="182" class="tool-desc">edge-snap to shape rects</text>
+    <!-- geom -->
+    <text x="42" y="229" class="role-tag accent-1">CALC</text>
+    <text x="46" y="247" class="tool-name">geom</text>
+    <text x="46" y="265" class="tool-desc">sketch constraints: midpoint,</text>
+    <text x="46" y="279" class="tool-desc">tangent, offset, attach</text>
+    <!-- callouts -->
+    <text x="270" y="229" class="role-tag accent-1">CALC</text>
+    <text x="274" y="247" class="tool-name">callouts</text>
+    <text x="274" y="265" class="tool-desc">joint placement solver,</text>
+    <text x="274" y="279" class="tool-desc">leader + leaderless labels</text>
+    <!-- empty-space -->
+    <text x="42" y="326" class="role-tag accent-1">CALC</text>
+    <text x="46" y="344" class="tool-name">empty-space</text>
+    <text x="46" y="362" class="tool-desc">free-region detection via</text>
+    <text x="46" y="376" class="tool-desc">bitmap distance transform</text>
+
+    <!-- Validator tool card content -->
+    <!-- overlaps -->
+    <text x="532" y="132" class="role-tag accent-2">VAL</text>
+    <text x="536" y="150" class="tool-name">overlaps</text>
+    <text x="536" y="168" class="tool-desc">text/shape, rhythm check,</text>
+    <text x="536" y="182" class="tool-desc">font-size floor enforcement</text>
+    <!-- contrast -->
+    <text x="760" y="132" class="role-tag accent-2">VAL</text>
+    <text x="764" y="150" class="tool-name">contrast</text>
+    <text x="764" y="168" class="tool-desc">WCAG 2.1 text + object,</text>
+    <text x="764" y="182" class="tool-desc">light + dark mode pairs</text>
+    <!-- alignment -->
+    <text x="532" y="229" class="role-tag accent-2">VAL</text>
+    <text x="536" y="247" class="tool-name">alignment</text>
+    <text x="536" y="265" class="tool-desc">grid snapping, vertical</text>
+    <text x="536" y="279" class="tool-desc">rhythm, layout topology</text>
+    <!-- connectors -->
+    <text x="760" y="229" class="role-tag accent-2">VAL</text>
+    <text x="764" y="247" class="tool-name">connectors</text>
+    <text x="764" y="265" class="tool-desc">zero-length, edge-snap,</text>
+    <text x="764" y="279" class="tool-desc">chamfer + dangling ends</text>
+    <!-- css -->
+    <text x="532" y="326" class="role-tag accent-2">VAL</text>
+    <text x="536" y="344" class="tool-name">css</text>
+    <text x="536" y="362" class="tool-desc">inline fills, forbidden</text>
+    <text x="536" y="376" class="tool-desc">colours, dark mode coverage</text>
+    <!-- collide -->
+    <text x="760" y="326" class="role-tag accent-2">VAL</text>
+    <text x="764" y="344" class="tool-name">collide</text>
+    <text x="764" y="362" class="tool-desc">pairwise connector cross</text>
+    <text x="764" y="376" class="tool-desc">+ near-miss with tolerance</text>
+  </g>
+
+  <g id="callouts"/>
+</svg>

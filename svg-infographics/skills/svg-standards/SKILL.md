@@ -5,80 +5,80 @@ description: Core SVG infographic standards - grid-first design, CSS theme class
 
 # SVG Infographic Standards
 
-This plugin is a **design application for AI agents**. The agent is the designer; the CLI tools are the application. Never hand-write coordinates, colours, or connector paths. Every position comes from a tool call, every colour from a CSS class, every arrow from the connector tool.
+Design application for AI agents. Agent is the designer, CLI tools are the application. Never hand-write coordinates, colours, or connector paths. Every position from a tool call. Every colour from a CSS class. Every arrow from the connector tool.
 
-**Core tools** (the agent's drawing canvas):
+**Core tools** (drawing canvas):
 
 | Tool | Purpose |
 |------|---------|
 | `svg-infographics primitives <shape>` | Shape geometry + anchors (18 built-in: rect, circle, hexagon, gear, cloud, document, etc) |
-| `svg-infographics connector --mode <m>` | Connectors in 5 modes: straight, l, l-chamfer, spline, manifold. Auto-routes around obstacles |
+| `svg-infographics connector --mode <m>` | 5 modes: straight, l, l-chamfer, spline, manifold. Auto-routes around obstacles |
 | `svg-infographics geom <op>` | Alignment constraints: midpoint, perpendicular, attach, contains, offset, polar |
 | `svg-infographics callouts` | Joint label placement via solver. Leader and leaderless modes |
-| `svg-infographics empty-space` | Free-region detection for placement decisions |
+| `svg-infographics empty-space` | Free-region detection |
 | `svg-infographics charts <type>` | Pygal charts with theme-matched dual-mode palettes |
-| `svg-infographics shapes search` | draw.io stencil library (1000+ shapes, downloaded on demand) |
+| `svg-infographics shapes search` | draw.io stencil library (1000+ shapes, on demand) |
 
 **Quality panel** (refuse delivery until clean):
 
 | Tool | Catches |
 |------|---------|
 | `svg-infographics overlaps` | Text/shape overlap, spacing, font floors, callout collisions |
-| `svg-infographics contrast` | WCAG 2.1 in both light and dark mode |
-| `svg-infographics alignment` | Grid snap, vertical rhythm, topology |
+| `svg-infographics contrast` | WCAG 2.1 light + dark |
+| `svg-infographics alignment` | Grid snap, rhythm, topology |
 | `svg-infographics connectors` | Dead ends, edge-snap, chamfer, dangling |
 | `svg-infographics css` | Inline fills, missing dark mode, forbidden colours |
 | `svg-infographics collide` | Pairwise connector intersections |
 
-Read **workflow** skill for 6-phase process. Read **theme** skill for palette approval. Read **validation** skill for checker usage.
+Read **workflow** skill for 6-phase process. Read **theme** for palette approval. Read **validation** for checker usage.
 
 ## Task Tracking
 
-**MANDATORY**: TaskCreate/TaskUpdate throughout SVG work. Task list at start, mark in_progress/completed. Visible progress, prevents skipping steps.
+**MANDATORY**: TaskCreate/TaskUpdate throughout. Task list at start, mark in_progress/completed. Prevents skipped steps.
 
 ## Key Principles
 
 1. **Tool first** - every coordinate from `primitives`, every arrow from `connector`, every placement from `geom`/`callouts`/`empty-space`. Never eyeball
-2. **Place via empty-space** - before placing any element inside a container (icon, decoration, label), run `empty-space --edges-only --container-id <id>` to find safe zones. Text, strokes, and outlines are obstacles; filled backgrounds are not. Respect tolerance as padding. Elements sharing a role (e.g. icons across cards) must be h-aligned or v-aligned via `geom align`
+2. **Place via empty-space** - before placing inside a container, run `empty-space --edges-only --container-id <id>`. Text/strokes/outlines = obstacles, fills = not. Role-shared elements h-aligned or v-aligned via `geom align`
 3. **Theme first** - approve `theme_swatch.svg` before deliverables
 4. **Grid first** - viewBox, margins, columns, rhythm as comments BEFORE content
-5. **Group everything** - every visual unit = a `<g>` group. Card = group. Icon+label = group. Section = group of groups. Topology comment declares group relationships. No loose elements
-6. **CSS classes** - `<style>` + `prefers-color-scheme` media query. `class=`, never inline `fill=`
-7. **File description comment** - before `<svg>`: filename, shows, intent, theme
+5. **Group everything** - every visual unit = a `<g>`. Topology comment declares relationships. No loose elements
+6. **CSS classes** - `<style>` + `prefers-color-scheme`. `class=`, never inline `fill=`
+7. **File description comment** before `<svg>`: filename, shows, intent, theme
 8. **Five named layers** - `background`, `nodes`, `connectors`, `content`, `callouts`
 9. **Transparent background** - `fill="transparent"` on root rect
-10. **Contrast** - every element contrasts its background via theme. No `#000000`, no `#ffffff`
-11. **Validate before delivery** - run all six checkers. No run, no ship
-12. **Read examples** - study `examples/` (66 references) before creating each image
+10. **Contrast via theme** - no `#000000`, no `#ffffff`
+11. **Validate before delivery** - all six checkers. No run, no ship
+12. **Read examples** - study `examples/` (66 references) before each image
 
-## CSS Theme Classes and Dark Mode Detection
+## CSS Theme Classes and Dark Mode
 
-`<style>` block with `prefers-color-scheme` media query for OS-theme-aware colours. `class=` not inline `fill=` for theme-dependent text.
+`<style>` block with `prefers-color-scheme`. `class=` not inline `fill=`.
 
-### Usage on Elements
+### Usage
 
 ```xml
-<!-- Theme-aware: switches with dark mode -->
+<!-- Theme-aware -->
 <text class="fg-2" font-size="12">Heading</text>
 <text class="on-fill" font-size="9">75%</text>
 
-<!-- Fixed colour: use fill= for elements that must not change -->
+<!-- Fixed colour: use fill= when it must not change -->
 <rect fill="#E61C29" opacity="0.6"/>
 ```
 
 ### The `on-fill` Class
 
-Text on saturated accent fills needs:
-- **Light mode**: dark text (fg-1) for contrast against coloured fill
-- **Dark mode**: very light text (pale tint) for contrast against coloured fill on dark background
+Text on saturated accent fills:
+- Light mode: dark text (fg-1)
+- Dark mode: pale tint
 
 ### Font Opacity Rule
 
-**Never apply `opacity` to text elements.** Fonts always render at full opacity. Contrast via colour selection, not transparency. Applies to `opacity`, `fill-opacity` on `<text>`, and parent `<g>` opacity inheritance.
+**Never apply `opacity` to text.** Fonts render at full opacity. Contrast via colour, not transparency. Applies to `opacity`, `fill-opacity` on `<text>`, and parent `<g>` opacity inheritance.
 
-### Opacity and Transparency Rule
+### Opacity and Transparency
 
-Default solid fills. Opacity appropriate for:
+Opacity only for:
 - Card background tints (`fill-opacity="0.04-0.06"`)
 - Track lines (`opacity="0.3"`)
 - Decorative background imagery (`opacity="0.10-0.35"`)
@@ -87,38 +87,38 @@ Default solid fills. Opacity appropriate for:
 
 ### CSS-First Rule
 
-**MANDATORY**: Define all colours in `<style>` block, reference via `class=`. Inline `fill="#hex"` acceptable only for structural shape fills, fixed-colour swatch elements, decorative low-opacity imagery. Validate with `svg-infographics css --svg file.svg`.
+**MANDATORY**: Define all colours in `<style>`, reference via `class=`. Inline `fill="#hex"` OK only for structural shape fills, fixed-colour swatch elements, decorative low-opacity imagery. Validate with `svg-infographics css`.
 
 ### Dark Mode Limitations
 
-`prefers-color-scheme` works in standalone/`<object>`/inline SVG but **not** via `<img>` or markdown `![alt](path)`. Design for light background primary. Assume `#1e1e1e` dark bg.
+`prefers-color-scheme` works in standalone/`<object>`/inline SVG. Fails via `<img>` or markdown `![alt](path)`. Design light-primary. Assume `#1e1e1e` dark bg.
 
 ## Contrast Rules
 
-Every element MUST contrast immediate background using theme colours only.
+Every element MUST contrast its background via theme colours.
 
 ### Background-Foreground Pairing
 
 | Background | Foreground |
 |------------|-----------|
-| Transparent (document bg) | fg-1 or fg-2 |
+| Transparent (doc bg) | fg-1 or fg-2 |
 | bg-1 (accent at 0.04-0.08) | fg-1 headings, fg-3/fg-4 labels |
 | bg-2 (accent at 0.3-0.6) | fg-1 or fg-2 |
 | Full accent fill (0.8-1.0) | fg-4 or fg-1 (whichever contrasts) |
-| Accent swatch (solid chip) | fg-1 label below, not on top |
+| Accent swatch chip | fg-1 label below, not on top |
 
-### Colours to Avoid
+### Forbidden Colours
 
-- `#000000` - invisible on dark backgrounds
-- `#ffffff` - invisible on light backgrounds, breaks dark mode
+- `#000000` - invisible on dark
+- `#ffffff` - invisible on light, breaks dark mode
 - Pure greys below `#404040` or above `#c0c0c0`
-- Any colour not in the approved theme palette
+- Anything not in approved theme
 
 ### Transparent Background
 
-Always transparent background. Exception: banner gradient bars that ARE the design element.
+Always transparent. Exception: banner gradient bars that ARE the design element.
 
-### Safe Neutral Palette (when no brand defined)
+### Safe Neutral Palette (no brand defined)
 
 | Purpose | Colour |
 |---------|--------|
@@ -133,18 +133,18 @@ Always transparent background. Exception: banner gradient bars that ARE the desi
 
 **MANDATORY**: Every SVG uses explicit grid documented in XML comment.
 
-### Design Workflow: Grid-First, Details-Last
+### Design Workflow
 
-1. **Grid and guide lines** - viewBox, guide grid `<g>`, grid comment, layout topology
-2. **Placeholder rectangles** - large rects for key motifs at correct positions
-3. **Structural elements** - card paths, track lines, accent bars, dividers
-4. **Content** - text, icons, arrows, data elements
-5. **Styling** - CSS classes, fills, opacities, dark mode overrides
-6. **Validation** - overlap, contrast, alignment checks
+1. Grid and guide lines - viewBox, guide grid `<g>`, grid comment, topology
+2. Placeholder rectangles at correct positions
+3. Structural elements - card paths, track lines, accent bars, dividers
+4. Content - text, icons, arrows, data
+5. Styling - CSS classes, fills, opacities, dark mode
+6. Validation
 
 ### Vertical Rhythm
 
-Single step size (typically 14px), all content rows on multiples:
+Single step size (14px typical), content rows on multiples:
 
 ```
 y_title  = 14
@@ -180,11 +180,11 @@ y_row3   = 62   (row2 + 14)
 
 ### Layout Topology and Grouping
 
-**CRITICAL**: topology defines the design's structure. Every visual unit = a `<g>` group. Topology comment declares relationships between groups. Grouping is NOT optional - it is the foundation for maintainability, alignment, and rework.
+**CRITICAL**: Every visual unit = a `<g>` group. Topology comment declares relationships. Grouping is mandatory foundation for maintainability, alignment, rework.
 
 #### Topology comment (MANDATORY)
 
-Declares spatial relationships between groups. NOT coordinates - relationships.
+Declares relationships, NOT coordinates.
 
 ```xml
 <!-- TOPOLOGY:
@@ -199,29 +199,29 @@ Declares spatial relationships between groups. NOT coordinates - relationships.
 
 | Operation | Meaning |
 |-----------|---------|
-| `h-stack` | Groups adjacent left to right |
-| `v-stack` | Groups adjacent top to bottom |
-| `h-align` | Groups share x (column) |
-| `v-align` | Groups share y (row) |
-| `h-spacing` | Equal horizontal gaps between groups |
-| `v-spacing` | Equal vertical gaps between groups |
-| `contain` | Group inside another group |
+| `h-stack` | Adjacent left to right |
+| `v-stack` | Adjacent top to bottom |
+| `h-align` | Share x (column) |
+| `v-align` | Share y (row) |
+| `h-spacing` | Equal horizontal gaps |
+| `v-spacing` | Equal vertical gaps |
+| `contain` | Group inside another |
 | `mirror` | Symmetric groups |
 
 #### Grouping rules (MANDATORY)
 
-**Every visual unit = a `<g>` group.** No loose elements at root or directly inside layer groups.
+Every visual unit = a `<g>`. No loose elements at root or inside layer groups.
 
 | Visual unit | Group pattern |
 |-------------|--------------|
 | Card | `<g id="card-name">` containing rect + accent-bar + title + description + icon |
 | Icon + label | `<g id="icon-name">` containing scaled icon `<g>` + adjacent `<text>` |
-| Section | `<g id="section-name">` containing header group + card groups |
+| Section | `<g id="section-name">` containing header + card groups |
 | Legend | `<g id="legend">` containing swatch rects + label texts |
 | Connector + label | connector in `<g id="connectors">`, label in `<g id="callout-name">` |
-| Decorative cluster | `<g id="deco-name">` for embroidery elements, particle fields |
+| Decorative cluster | `<g id="deco-name">` for embroidery, particle fields |
 
-**Build at origin, position via translate.** Child elements use local coordinates (0,0 relative). Group positioned by one `transform="translate(x,y)"`. Move the group = change one number.
+**Build at origin, position via translate.** Child elements use local coords (0,0 relative). Group positioned by one `transform="translate(x,y)"`. Move the group = change one number.
 
 ```xml
 <g id="card-pricing" transform="translate(320, 120)">
@@ -237,12 +237,12 @@ Declares spatial relationships between groups. NOT coordinates - relationships.
 
 #### Group transforms
 
-- `translate(x, y)` - primary positioning. Use for all group placement
+- `translate(x, y)` - primary positioning
 - `scale(sx, sy)` - icon sizing: `scale(0.667)` = 16px from 24px Lucide
 - `rotate(deg, cx, cy)` - rare. Prefer tool-computed geometry
 - Combine: `transform="translate(100, 200) scale(0.5)"` - translate first (parent coords), then scale
 
-#### Positioning groups via tools
+#### Positioning via tools
 
 ```bash
 # Align 4 card groups to same top edge
@@ -252,11 +252,11 @@ geom align --rects "[(0,0,200,140),(0,0,200,140),(0,0,200,140),(0,0,200,140)]" -
 geom distribute --rects "[(50,120,200,140),(270,120,200,140),(490,120,200,140),(710,120,200,140)]" --axis h --mode gap
 ```
 
-Returned positions = `translate(x, y)` values for each `<g>`.
+Returned positions = `translate(x, y)` values.
 
 #### Nesting
 
-Groups nest: card inside section inside layer. Transforms compose (child inherits parent). Max 3 levels deep.
+Max 3 levels deep: layer > section > card. Transforms compose.
 
 ```
 <g id="nodes">                          <!-- layer -->
@@ -266,11 +266,11 @@ Groups nest: card inside section inside layer. Transforms compose (child inherit
 
 #### Group bbox
 
-After transforms, effective bbox = child bbox in root coordinates. `geom` tools operate in root coordinates. Pass world-space rects to alignment tools, not local group coords.
+After transforms, effective bbox = child bbox in root coords. `geom` tools operate in root coords. Pass world-space rects, not local group coords.
 
 ### Multi-Card Grids
 
-All cards in a row same width: `(viewBox_width - 2*margin - (n-1)*gap) / n`. Inter-card gap 12px (timeline) or 20px (content). Card padding 16px left/right, 20px top from accent bar.
+Same width per row: `(viewBox_width - 2*margin - (n-1)*gap) / n`. Inter-card gap 12px (timeline) or 20px (content). Card padding 16px left/right, 20px top from accent bar.
 
 ### Mandatory Margins
 
@@ -279,8 +279,8 @@ All elements respect minimum margins from card borders and neighbours. Compute f
 ### Inner and Outer Bounding Boxes
 
 Every element has two bboxes:
-- **Inner bbox**: rendered extent including stroke width
-- **Outer bbox**: inner + per-element-type padding
+- **Inner**: rendered extent including stroke width
+- **Outer**: inner + per-element padding
 
 | Element type | Padding |
 |-------------|---------|
@@ -311,20 +311,20 @@ Every SVG starts with comment before `<svg>`. Filename, shows, intent, theme.
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}">
 ```
 
-- `viewBox` only - no `width`/`height` attributes
+- `viewBox` only, no `width`/`height`
 - Default width: `1800` for new infographics
 - Common sizes: `1800x200` (stats), `1800x280` (timelines), `1800x320` (flows), `1800x400` (headers), `1800x700` (grids)
 
 ### Typography
 
 - `font-family="Helvetica, Arial, sans-serif"` - system fonts only
-- Sizes 7-28px. Size progression: hero stats (18-28px) > headings (12-14px) > labels (10-11px) > metadata (8-9px)
+- Sizes 7-28px. Progression: hero stats (18-28px) > headings (12-14px) > labels (10-11px) > metadata (8-9px)
 - `text-anchor="middle"` for centred, explicit `x` for left-aligned
-- **Never use `<tspan>` for mixed styling** - separate `<text>` elements with explicit x positions
+- **Never `<tspan>` for mixed styling** - separate `<text>` elements
 
 ### Unicode glyphs in text
 
-Use Unicode directly inside `<text>` content, never ASCII fallbacks. SVG text renders glyphs natively and the XML parser handles Unicode without entity escapes.
+Use Unicode directly, never ASCII fallbacks.
 
 | Intent | Write | Don't write |
 |---|---|---|
@@ -340,36 +340,34 @@ Use Unicode directly inside `<text>` content, never ASCII fallbacks. SVG text re
 | bullet | `•` (U+2022) | `*` |
 | chevron right | `›` (U+203A) | `>` |
 
-Rationale: the article-wide typography rules forbid ASCII `->` in prose; the SVG text layer must match. Historically `->` ends up duplicated as `-&gt;` by validators and renders awkward in tight typography. Unicode glyphs render at consistent baseline and weight across all OS font stacks.
+XML comments differ: `--` breaks parsing. Keep ASCII prose in comments. Unicode only in text nodes.
 
-XML comments are a DIFFERENT case: the double-hyphen `--` breaks XML parsing (see validation skill). Don't place any substitutions inside comments; keep ASCII prose there and rely on Unicode only for displayed text nodes.
+## Icon Sourcing
 
-## Icon Sourcing Policy
-
-Prefer standard open-source SVG icon libraries.
+Prefer open-source SVG libraries.
 
 | Library | License | Icons |
 |---------|---------|-------|
 | Lucide | ISC | 1000+ |
 | Feather | MIT | 280+ |
 
-Embed in `<g transform="translate(x,y) scale(s)">`, override stroke to match palette. Comment: `<!-- Icon: {name} (Lucide, ISC license) -->`. Scale: 0.583 (~14px), 0.667 (~16px), 0.5 (~12px).
+Embed in `<g transform="translate(x,y) scale(s)">`, override stroke. Comment: `<!-- Icon: {name} (Lucide, ISC license) -->`. Scale: 0.583 (~14px), 0.667 (~16px), 0.5 (~12px).
 
 ### Default Placement
 
-Place icons **upper-right** quadrant of graphic (top-level decorative/identity) or **upper-right** corner of each card (per-card), unless composition explicitly requires otherwise. Rationale: upper-right = western reading path terminal scan point for a title row, so icon reinforces identity without competing with left-aligned title.
+Place icons upper-right quadrant (graphic-level) or upper-right corner of each card (per-card). Western reading path terminates upper-right; icon reinforces identity without competing with title.
 
-- **Graphic-level icon**: inside header band at `x = viewBox.width - margin - icon_size`, vertically centred on title baseline
-- **Card-level icon**: inside card at `x = card.x + card.w - 6 - icon_size`, `y = card.y + 6`, clear of accent bar and title text
-- **Override only when**: symmetric grid where centring reads better, process flow where icon anchors start of row, timeline where icon sits on event marker
+- **Graphic-level**: inside header band at `x = viewBox.width - margin - icon_size`, vertically centred on title baseline
+- **Card-level**: inside card at `x = card.x + card.w - 6 - icon_size`, `y = card.y + 6`
+- **Override only when**: symmetric grid, process flow with icon anchoring row start, timeline with icon on event marker
 
 ### Text placement relative to visual elements
 
-Place text AFTER icons, shapes, and decorations are positioned. Compute label coordinates from already-placed element geometry via `geom midpoint`, `geom attach`, or `geom perpendicular` - never eyeball offsets. Prevents overlap between icons and their labels, between card titles and accent bars, between connector labels and arrowheads. The `overlaps` checker catches violations post-hoc but prevention via computed placement is cheaper than iteration.
+Place text AFTER icons/shapes/decorations. Compute label coords from placed geometry via `geom midpoint`, `geom attach`, `geom perpendicular`. Never eyeball. Prevents overlap between icons and labels, titles and accent bars, connector labels and arrowheads.
 
 ## Card Backgrounds
 
-**Square-top, rounded-bottom** path - accent bar sits flush. Bottom corner radius r=3.
+Square-top, rounded-bottom path. Accent bar flush. Bottom corner radius r=3.
 
 ```
 fill:   M{x},{y} H{x+w} V{y+h-r} Q{x+w},{y+h} {x+w-r},{y+h} H{x+r} Q{x},{y+h} {x},{y+h-r} Z
@@ -382,15 +380,15 @@ Fill-opacity 0.04, stroke-width 1, accent bar height 5 at opacity 0.6.
 
 ## Arrow Construction (Connector Tool)
 
-Every arrow, every connector, every shape built via `svg-infographics connector`. No exceptions. All output goes inside `<g id="connectors">` - never at root.
+Every arrow, every connector, every shape via `svg-infographics connector`. No exceptions. Output goes inside `<g id="connectors">`.
 
 Tool returns in world coordinates:
-- `trimmed_path_d` - stem path with arrowhead clearance subtracted. Paste directly as `<path d="...">`
-- Per-end arrowhead polygon in world coordinates. Paste directly as `<polygon points="...">`
+- `trimmed_path_d` - stem with arrowhead clearance. Paste as `<path d="...">`
+- Per-end arrowhead polygon. Paste as `<polygon points="...">`
 - `tangent` / `angle_deg` at each end
-- `samples` along the path (tangent labels, progress markers, midpoint callouts)
+- `samples` along path (for tangent labels, progress markers, midpoint callouts)
 
-No `rotate()` transforms. No `atan2` math. No horizontal-first templating. Tool does world-space rotation.
+No `rotate()` transforms. No `atan2`. No horizontal-first templating.
 
 **Modes**:
 
@@ -400,13 +398,13 @@ No `rotate()` transforms. No `atan2` math. No horizontal-first templating. Tool 
 | `l` | Axis-aligned L, sharp corner. Edge-aware via rects + directions |
 | `l-chamfer` | L with 4px corner cut. Default for any L route |
 | `spline` | Cubic Bezier via `bezier` lib when `start_dir`/`end_dir` given; PCHIP through waypoints otherwise |
-| `manifold` | N starts → single merge → spine → single fork → M ends. Canonical Sankey bundle |
+| `manifold` | N starts → single merge → spine → single fork → M ends. Sankey bundle |
 
-Flags (all modes): `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (default 1px), `--color`, `--width`, `--opacity`. Spline tangent magnitude: `--tangent-magnitude N` (default 0.5×chord).
+Flags (all modes): `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (default 1px), `--color`, `--width`, `--opacity`. Spline: `--tangent-magnitude N` (default 0.5×chord).
 
 ### L-route edge-aware API (CANONICAL)
 
-`l` / `l-chamfer` between rects: pass BOTH rects AND cardinal directions. Tool snaps endpoints to edge midpoints, locks first-axis, no parallel-to-edge drift.
+`l` / `l-chamfer` between rects: pass BOTH rects AND cardinal directions. Tool snaps endpoints to edge midpoints, locks first-axis.
 
 ```bash
 svg-infographics connector --mode l-chamfer \
@@ -416,21 +414,19 @@ svg-infographics connector --mode l-chamfer \
 ```
 
 **Direction semantics**:
-- `start_dir`: exit direction from src. `E`/`W` → horizontal, `N`/`S` → vertical.
-- `end_dir`: travel direction at tgt arrival. `S` = "moving south" → enters TOP edge. Inverse: `E`→left, `W`→right, `N`→bottom, `S`→top.
-- Perpendicular pair (`start=E, end=S`) → 1-bend L, corner at `(tgt_mid_x, src_mid_y)`.
+- `start_dir`: exit from src. `E`/`W` → horizontal, `N`/`S` → vertical
+- `end_dir`: travel INTO tgt. `S` = moving south → enters TOP edge. Inverse: `E`→left, `W`→right, `N`→bottom, `S`→top
+- Perpendicular pair (`start=E, end=S`) → 1-bend L, corner at `(tgt_mid_x, src_mid_y)`
 
-**Failure mode without directions**: points `--from 630,160 --to 870,260`; tool infers first-axis from `|dx|>|dy|`; vertical segment at `x=870` runs along tgt's left edge; arrow dives from the side. Fix = `start=E, end=S` — vertical lands at `x=tgt_mid_x=900` entering top cleanly.
-
-**Missing direction = warning**. Rects without directions fall back to centre-to-target ray snap; tool emits warning. Always pass directions for L-routes.
+**Missing direction = warning**. Rects without directions fall back to centre-to-target ray snap. Always pass directions for L-routes.
 
 ### Multi-elbow L via `controls`
 
-Long or crowded routes: pass explicit waypoints via `--controls "[(x1,y1),(x2,y2),...]"`. Each waypoint becomes an elbow; tool threads axis-aligned segments between consecutive points. Soft cap 5 - exceed it and tool warns. Prefer auto-route over hand-authored waypoints.
+`--controls "[(x1,y1),(x2,y2),...]"` for explicit waypoints. Soft cap 5. Prefer auto-route over hand waypoints.
 
-### Auto-route (A*) for L-routes
+### Auto-route (A*)
 
-`--auto-route --svg scene.svg` runs grid A* on the SVG obstacle bitmap and picks multi-elbow waypoints that clear every shape in the file. Cell-based; default cell=10 px, margin=5 px clearance. Use when a 1-bend L collides with other elements:
+`--auto-route --svg scene.svg` runs grid A* on SVG obstacle bitmap. Default cell=10px, margin=5px. Use when 1-bend L collides:
 
 ```bash
 svg-infographics connector --mode l-chamfer \
@@ -440,29 +436,27 @@ svg-infographics connector --mode l-chamfer \
   --chamfer 4 --standoff 4 --arrow end
 ```
 
-Flags: `--route-cell-size N` (smaller = higher fidelity + slower), `--route-margin N` (obstacle clearance), `--container-id ID` (clip routing to one element). Router fails gracefully: unroutable = fallback to 1-bend L + warning in output. Always inspect `warnings` field.
+Flags: `--route-cell-size N` (smaller = higher fidelity + slower), `--route-margin N`, `--container-id ID`. Unroutable = fallback 1-bend L + warning. Inspect `warnings` field.
 
 ### Straight-line collapse (`--straight-tolerance`)
 
-When src and tgt both have a cardinal-aligned edge and can slide along their edges to a shared coordinate within `--straight-tolerance` (default 20 px), the L degenerates to a **single straight segment** - no corner, no chamfer, no twist. Both rect endpoints slide to a common y (E/W directions) or x (N/S directions). Raw point + rect works too: the rect snaps its movable coord to the point. Disable with `--straight-tolerance 0`.
+Default 20px. When src and tgt can slide along edges to a shared coordinate within tolerance, L degenerates to single straight segment. No corner, no chamfer, no twist.
 
-**Slide bias**: when both endpoints are rects, the shared target is biased toward the **smaller range's midpoint** clamped to the overlap intersection. The smaller geometry slides as little as possible; the larger rect absorbs the displacement (shifting an anchor on a long edge is visually imperceptible). For point + rect, the point is treated as zero-width "smaller" and stays fixed.
-
-Typical use: connecting two cards whose anchor y-coordinates differ by a handful of pixels. Without collapse, a tiny vertical jog + chamfer + standoff produces a visually "twisted" start near the src edge. With collapse, the connector is a clean horizontal line.
+**Slide bias**: smaller geometry slides less. Larger rect absorbs displacement. Disable with `--straight-tolerance 0`.
 
 ### Stem preservation (`--stem-min`)
 
-`--stem-min N` (default 20 px) reserves a clean cardinal stem of at least N px behind each arrowhead after standoff + head_len clearance. Implementation is two-layered:
+Default 20px. Reserves clean cardinal stem behind each arrowhead. Three layers:
 
-- **A\* penalty zone**: turns inside a Manhattan cell radius around src / tgt cost a heavy extra penalty (`STEM_TURN_PENALTY=100`), forcing the router to commit direction far enough from endpoints that the final cardinal leg is long. The zone radius is `ceil(reserve / cell_size) + 1` cells - the `+1` covers cell-centre-vs-real-endpoint quantisation (up to cell_size/2 on each axis) AND chamfer bevel width so the final bevel renders at full radius instead of clamping to 0-1 px.
-- **Cell-centre snap on returned waypoints**: the first and last router waypoints are snapped so their non-cardinal axis matches `real_src` / `real_tgt` exactly. This eliminates threader-corner-insertion at the endpoints - A*'s waypoints become the exact corners the chamfer pass operates on, so `len_out` in the chamfer matches what A* reserved.
-- **Chamfer clamp**: the first and last corner bevels in the threader are clamped to `eff ≤ len_in - first_reserve` / `eff ≤ len_out - last_reserve` so the trim for arrowhead clearance never walks into a bevel. When the geometry genuinely can't accommodate the stem (e.g. obstacle directly behind tgt), the tool emits a non-fatal warning with the actual stem length achieved.
+- **A\* penalty zone**: turns near endpoints cost `STEM_TURN_PENALTY=100`. Zone radius `ceil(reserve / cell_size) + 1` cells
+- **Cell-centre snap**: first and last waypoints snap so non-cardinal axis matches real endpoints exactly
+- **Chamfer clamp**: first/last bevels clamped so arrowhead trim never walks into bevel
 
-Set `--stem-min 0` to disable the reservation entirely (matches legacy behaviour).
+Geometry-impossible = non-fatal warning with actual stem achieved. Set `--stem-min 0` for legacy.
 
-### Container-scoped routing and detection
+### Container-scoped routing
 
-`--container-id ID` on `empty-space`, `callouts`, and `connector --auto-route` clips operation to the interior of a specific closed shape. Element must be rect/circle/ellipse/polygon/polyline/path - groups rejected because `<g>` has no geometry. Use when placing callouts or routing connectors BETWEEN two shapes that both live inside the same card:
+`--container-id ID` on `empty-space`, `callouts`, `connector --auto-route` clips to interior of one closed shape. Must be rect/circle/ellipse/polygon/polyline/path - groups rejected.
 
 ```bash
 svg-infographics empty-space --svg scene.svg --container-id card-1
@@ -471,36 +465,36 @@ svg-infographics connector --mode l --auto-route --svg scene.svg \
   --container-id card-1 --src-rect ... --tgt-rect ... --start-dir E --end-dir W
 ```
 
-**Picking rule**: the container ID must name a shape whose interior geometrically contains BOTH endpoints (or both callout targets). Outside obstacles are ignored; inside obstacles still occupy. Regions returned by `empty-space` carry a `container_id` field for caller verification.
+Container ID must name a shape whose interior contains BOTH endpoints. Outside obstacles ignored, inside obstacles respected.
 
 ### Spline waypoints
 
-`--waypoints "x1,y1 x2,y2 x3,y3 x4,y4"` for PCHIP. 3-5 waypoints enough — monotonicity-preserving, more points overfit. Showcase with visible markers: place `<g id="cell-4-waypoints">` AFTER path in connectors layer (render on top). Tiny cross glyphs (two crossing `<line>` + `stroke-linecap: round`) per waypoint, varied accent-2 shades for distinction.
+`--waypoints "x1,y1 x2,y2 x3,y3 x4,y4"` for PCHIP. 3-5 waypoints enough. Showcase with markers: `<g id="cell-4-waypoints">` AFTER path in connectors layer. Tiny cross glyphs (two crossing `<line>` + `stroke-linecap: round`) in varied accent-2 shades.
 
 ### Canonical manifold
 
-One merge = `spine_start`, one fork = `spine_end`. All start strands terminate at `spine_start`, tangent to spine. All end strands leave from `spine_end`, tangent to spine. No branch distribution. Strands = cubic Beziers. Tangent magnitude = `tension`:
+One merge = `spine_start`, one fork = `spine_end`. Start strands terminate at `spine_start`, tangent to spine. End strands leave `spine_end`, tangent to spine. Strands = cubic Beziers. Tangent magnitude = `tension`:
 
 - `tension=0` → long tangents → floppy bow, strands cross easily
-- `tension=1` → short tangents → stiff near-straight, maximum separation
+- `tension=1` → short tangents → stiff near-straight, max separation
 - `tension=0.75` default → clean S-curves with good separation
 - Scalar or `(start,end)` tuple for asymmetric stiffness
 
-Strands inherit spine direction. Override per endpoint via 3-tuple `(x,y,"E")` or `(x,y,45)` (compass or deg CW from north).
+Strands inherit spine direction. Override per endpoint via 3-tuple `(x,y,"E")` or `(x,y,45)`.
 
 ### Manifold quality warnings
 
-The tool emits two types of non-fatal warnings. **Always inspect `warnings` in the result.**
+Two non-fatal warning types. Always inspect `warnings`.
 
-**"strands CROSS each other"** - two strands in the same fan (start or end) intersect. Visual defect. Fix by:
-1. Increase `tension` toward 1.0 (stiffer strands separate better)
-2. Move `spine_start`/`spine_end` further from the endpoints (longer spine = wider fan angle)
-3. Pass explicit `fork_points`/`merge_points` to spread convergence
+**"strands CROSS each other"** - two strands in same fan intersect. Fix:
+1. Increase `tension` toward 1.0
+2. Move `spine_start`/`spine_end` further from endpoints
+3. Pass explicit `fork_points`/`merge_points`
 
-**"curves BACKWARD against spine flow"** - a strand's S-curve overshoots and briefly moves opposite to the spine direction before turning back. Happens with low tension + wide angular spread. Fix by:
-1. Increase `tension` (0.85-0.95 for tight layouts)
-2. Reduce the vertical/perpendicular spread of endpoints
-3. Move the fork/merge point further along the spine direction
+**"curves BACKWARD against spine flow"** - strand S-curve overshoots opposite spine direction before turning back. Fix:
+1. Increase `tension` (0.85-0.95)
+2. Reduce perpendicular spread of endpoints
+3. Move fork/merge point further along spine
 
 ### Auto-edge mode (straight)
 
@@ -509,43 +503,42 @@ Shapes to `calc_connector`, skip coordinates:
 - `src_rect=(x,y,w,h)` / `tgt_rect=(x,y,w,h)` - axis-aligned rects
 - `src_polygon=[(x,y),...]` / `tgt_polygon=[(x,y),...]` - closed polygon
 
-Straight mode: centroid → target ray → perimeter intersection = endpoint. L / l-chamfer: use edge-aware API above (rects + directions), NOT centroid-ray snap — risks parallel-to-edge failure. Explicit coords override rects.
+Straight mode: centroid → target ray → perimeter intersection. L / l-chamfer: use edge-aware API (rects + directions), NOT centroid-ray snap. Explicit coords override rects.
 
 ### Edge midpoint rule
 
-Connector endpoints = shape EDGE MIDPOINTS. Never centres, never arbitrary corners. Arrow meets card perpendicular, text clash avoided.
+Connector endpoints = shape EDGE MIDPOINTS. Never centres, never arbitrary corners.
 
 Tools:
 
-1. `geom attach --shape rect --side right|left|top|bottom --pos mid` - midpoint per side per rect
-2. `connector ... --src-rect ... --tgt-rect ...` (or `--src-polygon`/`--tgt-polygon`) - auto-edge
+1. `geom attach --shape rect --side right|left|top|bottom --pos mid` - edge midpoint
+2. `connector ... --src-rect ... --tgt-rect ...` - auto-edge
 3. `geom curve-midpoint --points "[(x,y),...]"` - arc-length midpoint of polyline. Labels ON a connector
 4. `geom shape-midpoint --points "[(x,y),...]"` - area-weighted centroid. Direction inference only, never endpoint
 
-Never eyeball endpoint coords. `primitives <shape>` for named anchors. `geom attach` for edge snap. Hand-authored `<g transform="rotate(...)">` arrow groups = workflow violation.
+Never eyeball endpoints. Hand-authored `<g transform="rotate(...)">` arrow groups = workflow violation.
 
 ### Callout placement rules
 
 Callout = leader line + italic text annotating element. Six rules:
 
-1. Text in empty zone, close to target. Close-but-clear > far-but-safe.
-2. Leader must not cross shapes or edges. Unavoidable: minimise crossings, fewest wins.
-3. Leader length: short-but-not-too-short. Clear text bbox, reach target at visible angle, readable in one glance.
-4. Text never overlaps own connector. Even with clean leader, bbox must sit in empty space.
-5. Callouts never overlap each other. Stack one zone or distribute.
-6. Leader anchor stops `standoff` px short of text bbox. Never glue to edge, never enter interior. Compute: `geom offset-rect --rect <text-bbox> --by <standoff>` inflates, then `geom rect-edge --rect <inflated> --from <target>` returns anchor. Default standoff 3px.
+1. Text in empty zone, close to target. Close-but-clear > far-but-safe
+2. Leader must not cross shapes or edges. Unavoidable: minimise crossings
+3. Leader length: short-but-not-too-short. Clear bbox, reach target at visible angle
+4. Text never overlaps own connector
+5. Callouts never overlap each other
+6. Leader stops `standoff` px short of text bbox. Compute: `geom offset-rect --rect <text-bbox> --by <standoff>` inflates, then `geom rect-edge --rect <inflated> --from <target>` returns anchor. Default standoff 3px
 
 ### Callout naming convention (MANDATORY)
 
-Every callout uses the `callout` namespace in THREE places - otherwise invisible to tooling:
+Every callout uses the `callout` namespace in THREE places:
 
-1. **Group id**: `<g id="callout-<name>">`. Prefix `callout-` mandatory. `empty-space` skips via default `exclude_ids=("callout-*",)`. `overlaps` parses prefix for CALLOUT CROSS-COLLISIONS block.
-2. **Text class**: `class="callout-text"` on every `<text>` child. Font/fill/size from CSS class.
-3. **Line class**: `class="callout-line"` on every `<line>` / `<path>` / `<polyline>` leader. Stroke/width/opacity from class.
+1. **Group id**: `<g id="callout-<name>">`. `empty-space` skips via `exclude_ids=("callout-*",)`. `overlaps` parses prefix for CALLOUT CROSS-COLLISIONS
+2. **Text class**: `class="callout-text"` on every `<text>` child
+3. **Line class**: `class="callout-line"` on every `<line>`/`<path>`/`<polyline>` leader
 
-All callout groups live inside the top-level `<g id="callouts">` layer - never at root, never mixed with nodes or connectors.
+All callout groups live inside top-level `<g id="callouts">` layer.
 
-Example:
 ```html
 <style>
   .callout-text { font-family: Segoe UI; font-size: 8.5px; font-style: italic; fill: #7a4a15; }
@@ -560,38 +553,38 @@ Example:
 </g>
 ```
 
-Non-compliant callouts invisible to `empty-space`, `overlaps`, and workflow.
+Non-compliant callouts invisible to `empty-space`, `overlaps`, workflow.
 
 ### Callout construction workflow
 
-**Primary path: `svg-infographics callouts`.** One tool, one call, all callouts placed jointly. Greedy solver with random-ordering restarts. Handles leader + leaderless callouts in a single pass, text bbox containment, leader cleanness (auto walk-out of target container), pairwise conflicts (text-vs-text overlap, leader-vs-text crossing, leader-vs-leader crossing), preferred-side hints. Returns best layout plus top-5 alternatives per callout with penalty breakdowns.
+**Primary path: `svg-infographics callouts`.** One tool, one call, all callouts placed jointly. Greedy solver with random-ordering restarts. Handles leader + leaderless in single pass. Returns best layout + top-5 alternatives per callout with penalty breakdowns.
 
-**Two modes: leader vs leaderless.** Different semantics, different defaults, different scoring.
+**Two modes: leader vs leaderless.**
 
 **Leader mode** (default, `"leader": true` or omitted):
-- Text block + visible leader line from target to text bbox edge.
-- Use: dense diagrams, label sits in free whitespace away from target, leader connects the two.
-- Standoff default 20 px (leader tip stops 20 px short of text for arrowhead clearance).
-- Score: leader length (sweet spot 55 px), diagonal angle preference, target-distance overshoot, preferred side.
+- Text block + visible leader line
+- Use: dense diagrams, label in free whitespace away from target
+- Standoff default 20px
+- Score: leader length (sweet spot 55px), diagonal angle, target overshoot, preferred side
 
 **Leaderless mode** (`"leader": false`):
-- Text block placed close to target, NO connecting line. Text IS the pointer.
-- Use: group headers ("5 INPUTS" above a card stack), waypoint tags, legend entries, anywhere spatial proximity alone reads as "this label belongs to that thing".
-- Standoff default 5 px (much tighter than leader — no leader inflation).
-- Score: pulls text bbox CENTRE toward target point (sweet spot 0). Single unique minimum → horizontally-symmetric labels settle centred on target instead of drifting to one side.
-- **Target placement trick**: to make the label land ABOVE the shape (not on top of it), place the target ~8-12 px above the shape's top edge. The centre-distance solver will position the label centre at the target → text bbox sits just above the shape with natural breath. Same trick for below/left/right.
+- Text block close to target, no connecting line. Text IS the pointer
+- Use: group headers, waypoint tags, legend entries, spatial-proximity labels
+- Standoff default 5px (tighter - no leader)
+- Score: pulls bbox CENTRE toward target (sweet spot 0). Symmetric labels settle centred
+- **Target trick**: to land label ABOVE shape, place target ~8-12px above shape top edge
 
-**Selection rule**:
-- Leaderless → group header, waypoint tag, legend entry, "floating above/below" label.
-- Leader → target inside dense content, label must float away from target with visible connection.
+**Selection**:
+- Leaderless → group header, waypoint tag, legend, floating label
+- Leader → target inside dense content, label floats away with connection
 
 Three-step workflow:
 
-1. **Pre-audit**: `svg-infographics overlaps --svg file.svg`. Fix any CALLOUT CROSS-COLLISIONS before adding new work.
-2. **Propose**: build a plan JSON listing every callout you need (id, target, text). Call `svg-infographics callouts --svg file.svg --plan callouts.json`. Paste the returned coordinates into the SVG inside the `<g id="callouts">` layer, each callout wrapped in its own `<g id="callout-<name>">` group.
-3. **Post-audit**: re-run `overlaps --svg file.svg`. CALLOUT CROSS-COLLISIONS must be clean. Any violation means the plan was under-constrained (unusual - the tool already checks these). Reposition or adjust weights and re-run.
+1. **Pre-audit**: `svg-infographics overlaps`. Fix CALLOUT CROSS-COLLISIONS before adding work
+2. **Propose**: build plan JSON. Call `svg-infographics callouts --svg file.svg --plan callouts.json`. Paste coordinates into `<g id="callouts">` layer, each in own `<g id="callout-<name>">` group
+3. **Post-audit**: re-run `overlaps`. CALLOUT CROSS-COLLISIONS must be clean
 
-Plan file shape (see `svg-infographics callouts --help` for the full schema):
+Plan file shape (see `--help` for full schema):
 
 ```json
 [
@@ -601,26 +594,26 @@ Plan file shape (see `svg-infographics callouts --help` for the full schema):
 ]
 ```
 
-Targets can be points `[x, y]` or bboxes `[x, y, w, h]`. Multi-line text uses `\n`. `"leader": false` marks a leaderless label (see Leader vs leaderless above for semantics and defaults). Optional `preferred_side` is `"above" | "below" | "left" | "right"` (soft penalty, not a hard filter).
+Targets: points `[x, y]` or bboxes `[x, y, w, h]`. Multi-line: `\n`. `"leader": false` = leaderless. Optional `preferred_side` is `"above"|"below"|"left"|"right"` (soft penalty).
 
-**Common failure mode: target coordinates in the wrong visual region.** The tool places text AT / CENTRED ON the target point. If a "group label" target like `(140, 40)` actually sits in the title band at `y=40` rather than above the card group at `y=62`, the label lands in the title band - visually wrong even though the tool is doing exactly what it was told. When leaderless placements look off, check the target first: it should be the point where you want the label to appear, not a semantic anchor like "the group centroid".
+**Common failure mode**: target coordinates in wrong visual region. Tool places text AT/CENTRED ON target. When leaderless looks off, check target first - it should be the point where the label appears, not a semantic anchor.
 
-**Debug path: manual primitives.** When the tool's result looks wrong or you want to investigate why a specific candidate was rejected, drop down to the individual primitives:
+**Debug path: manual primitives**:
 
-- `svg-infographics empty-space --svg file.svg --tolerance 20` - returns free-region boundary polygons, shrunk inward by 20 px, with `<g id="callout-*">` already excluded by default
-- `svg-infographics geom contains --polygon <island> --bbox <text-bbox>` - verifies a proposed text bbox fits inside a region polygon (`contained=YES convex-safe=YES` pass condition; islands are often L-shaped so axis-aligned bbox bounds are not enough)
-- `svg-infographics geom offset-rect --rect <text-bbox> --by <standoff>` - inflates the text bbox by standoff
-- `svg-infographics geom rect-edge --rect <inflated> --from <target>` - returns the leader anchor (point on the inflated bbox where the leader terminates)
-- `svg-infographics overlaps --svg file.svg` - post-audit; the `CALLOUT CROSS-COLLISIONS` block reports leader-vs-text, leader-vs-leader, text-vs-text violations pairwise across every `<g id="callout-*">`
+- `svg-infographics empty-space --svg file.svg --tolerance 20` - free-region polygons, shrunk 20px, `<g id="callout-*">` excluded by default
+- `svg-infographics geom contains --polygon <island> --bbox <text-bbox>` - verifies bbox fits inside region. `contained=YES convex-safe=YES` pass condition
+- `svg-infographics geom offset-rect --rect <text-bbox> --by <standoff>` - inflates bbox
+- `svg-infographics geom rect-edge --rect <inflated> --from <target>` - leader anchor point
+- `svg-infographics overlaps --svg file.svg` - post-audit
 
-**Empty zones for manifold scenes** (highest yield first, useful context when reading the tool's output):
+**Empty zones for manifold scenes** (highest yield first):
 
-- Above spine between merge/fork: `x∈[spine_start.x, spine_end.x], y<spine.y`, no strand traffic
+- Above spine between merge/fork: `x∈[spine_start.x, spine_end.x], y<spine.y`
 - Below spine between merge/fork: same x range, `y>spine.y`
-- Shoulder gaps between src/sink rows (~18-20 px, one-line each)
-- Above title row, below last row of cards
+- Shoulder gaps between src/sink rows (~18-20px)
+- Above title row, below last row
 
-**`empty-space` not callout-only**: any "where to put X without overlapping Y" problem - legends, badges, logos, secondary labels, decorative imagery. Point at SVG, pick the largest island that fits, drop the element in `<g id="content">` or a named layer.
+**`empty-space` not callout-only**: works for legends, badges, logos, secondary labels, decorative imagery. Point at SVG, pick largest island that fits, drop into `<g id="content">` or named layer.
 
 ### Angular Arrow Design (Chamfered L-Routing)
 
@@ -633,7 +626,7 @@ Use:        M{x1},{y1} V{y_mid-4} L{x1+4},{y_mid} H{x2-4} L{x2},{y_mid+4}
 
 ## Z-Order Layering (MANDATORY)
 
-SVG renders in document order. Five named groups, bottom-up. Every drawable element belongs to exactly one layer. No mixed content, no stray top-level shapes.
+SVG renders in document order. Five named groups, bottom-up. Every drawable element in exactly one layer. No mixed content, no stray top-level shapes.
 
 ```xml
 <svg ...>
@@ -646,9 +639,9 @@ SVG renders in document order. Five named groups, bottom-up. Every drawable elem
 </svg>
 ```
 
-**Connectors layer**: every arrow, strand, L-chamfer, spine, manifold bundle lives in `<g id="connectors">`. Never draw connectors at root. Connector tool output goes inside this group.
+**Connectors layer**: every arrow, strand, L-chamfer, spine, manifold bundle inside `<g id="connectors">`. Never draw at root.
 
-**Callouts layer**: every callout group lives in `<g id="callouts">`. Each callout = child `<g id="callout-<name>">` - see Callout naming convention below. Own layer means: renders on top of everything, batch-excludes cleanly from empty-space detection via `exclude_ids=("callout-*",)`, strippable/regeneratable without touching rest of SVG.
+**Callouts layer**: every callout group inside `<g id="callouts">`. Each callout = child `<g id="callout-<name>">`. Renders on top, batch-excludes from empty-space via `exclude_ids=("callout-*",)`, strippable/regeneratable.
 
 ### Track Line Cutouts
 
@@ -656,7 +649,7 @@ Cut gaps in track at milestone nodes. Never `fill="white"` as knockout.
 
 ## Timeline Style: Signal Timing Hexagons
 
-Vertically symmetric hexagon segments. Centre line y=42, top y=34, bottom y=50, slope 3px.
+Vertically symmetric hexagons. Centre line y=42, top y=34, bottom y=50, slope 3px.
 
 ```xml
 <path d="M64,42 L67,34 H157 L160,42 L157,50 H67 Z" class="wave-work"/>
@@ -688,7 +681,7 @@ Faint icons at fg-1 colour, opacity 0.10-0.35, 15-20px extent, between text and 
 
 ## Data-Driven Curves
 
-**MANDATORY**: For ANY curve passing through known waypoints - decision boundaries, distribution shapes, trend lines, score trajectories, ROC/PR curves, isolines, sigmoid/logistic shapes - generate path with bundled `primitives spline` tool. Do NOT hand-write `C` (cubic) or `Q` (quadratic) bezier commands. Hand-rolled beziers: guess control-point placement, overshoot waypoints, kink at segment joins, fail visual review every time.
+**MANDATORY**: For ANY curve through known waypoints - decision boundaries, distributions, trends, scores, ROC/PR, isolines, sigmoid/logistic - generate with `primitives spline`. Never hand-write `C` or `Q` bezier commands for data curves. Hand-rolled beziers guess control points, overshoot waypoints, kink at joins.
 
 ```bash
 svg-infographics primitives spline \
@@ -696,14 +689,14 @@ svg-infographics primitives spline \
   --samples 200
 ```
 
-Tool runs PCHIP (Piecewise Cubic Hermite Interpolating Polynomial) - monotonicity-preserving (no overshoot between waypoints), continuous tangents at every waypoint, emits ready-to-paste `<path d="...">` plus resampled point list.
+Tool runs PCHIP: monotonicity-preserving, continuous tangents at every waypoint. Emits paste-ready `<path d="...">` + resampled points.
 
-Required parameters:
-- **Waypoints**: 4-8 points, X strictly increasing. Pick visual landmarks the curve must hit, not control points
-- **Samples**: 200-250 for smooth output (fewer for jagged debug renders)
-- **Render**: `stroke-linejoin="round"`, `stroke-width="2"` to `2.5"`, fill segments at `fill-opacity="0.18-0.25"` if shading under curve
+Required:
+- **Waypoints**: 4-8 points, X strictly increasing. Visual landmarks, not control points
+- **Samples**: 200-250 for smooth (fewer for jagged debug)
+- **Render**: `stroke-linejoin="round"`, `stroke-width="2"` to `2.5"`, fill segments at `fill-opacity="0.18-0.25"` if shading
 
-Hand-written `<path d="M... C... C..."/>` for data curves = workflow violation. Rerun `primitives spline`, replace path.
+Hand-written `<path d="M... C... C..."/>` for data curves = workflow violation.
 
 ## Markdown Integration
 
@@ -717,51 +710,51 @@ No HTML `<img>` unless width control needed.
 
 ### Built-in shapes (18 types)
 
-`svg-infographics primitives <shape>` returns exact anchors + paste-ready SVG. Never eyeball coordinates.
+`svg-infographics primitives <shape>` returns exact anchors + paste-ready SVG.
 
 Basic: `rect`, `square`, `circle`, `ellipse`, `diamond`, `hexagon`, `star`, `arc`
 3D wireframe: `cube`, `cuboid`, `cylinder`, `sphere`, `plane`, `axis`
 Symbolic: `gear`, `pyramid`, `cloud`, `document`
 Curves: `spline` (PCHIP through waypoints)
 
-Each returns `{"svg": "...", "anchors": {"centre": [x,y], "top": [x,y], ...}, "bbox": [x,y,w,h]}`. Use anchors for connector attachment, label placement, and alignment constraints.
+Each returns `{"svg": "...", "anchors": {"centre": [x,y], "top": [x,y], ...}, "bbox": [x,y,w,h]}`. Use anchors for connector attachment, labels, alignment.
 
-### draw.io shape catalogue (1000+ stencils, downloaded on demand)
+### draw.io shape catalogue (1000+ stencils, on demand)
 
-For shapes beyond the 18 built-in types (AWS icons, network diagrams, UML, BPMN, electrical symbols), use the draw.io stencil library:
+For shapes beyond the 18 built-ins (AWS icons, network, UML, BPMN, electrical):
 
 ```bash
-# Download and index a stencil library (first use only)
+# Download and index a stencil library (first use)
 svg-infographics shapes index --source https://raw.githubusercontent.com/jgraph/drawio/master/src/main/webapp/stencils/general.xml
 
-# Search for a shape
+# Search
 svg-infographics shapes search "database" --limit 5
 
-# Render a shape at target size
+# Render at target size
 svg-infographics shapes render --name "database" --x 100 --y 200 --w 80 --h 60
 
 # Browse a category
 svg-infographics shapes catalogue --category general --output catalogue.svg
 ```
 
-Stencils downloaded on first use and cached locally. NOT bundled with the package. The index is a lightweight JSON file (~500KB for the full draw.io set). Shapes are scaled via `transform` and return the same `{"svg", "anchors", "bbox"}` contract as built-in primitives.
+Cached after first use. Index ~500KB for full draw.io set. Scaled via `transform`, returns same `{"svg", "anchors", "bbox"}` contract.
 
-**Shape selection rule**: check built-in primitives FIRST (faster, theme-matched, anchor-rich). Use draw.io shapes only when no built-in matches (AWS/Azure icons, domain-specific symbols, complex stencils). draw.io shapes get auto-derived anchors from bbox only - no named semantic anchors like built-in shapes have.
+**Shape selection rule**: check built-in primitives FIRST (faster, theme-matched, anchor-rich). Use draw.io only when no built-in matches. draw.io shapes get bbox-derived anchors only - no named semantic anchors.
 
 ## Creative Infographics
 
-Organic visual forms - flowing paths, concentric rings, orbital loops, funnels, constellations. Same theme swatch, CSS classes, transparent background. Use `<path>`, `<circle>`, `<ellipse>`. Low fill opacities (0.04-0.15). Layout topology: `flow:`, `orbit:`, `scatter:`, `radial:`.
+Organic forms - flowing paths, concentric rings, orbital loops, funnels, constellations. Same theme swatch, CSS classes, transparent background. Use `<path>`, `<circle>`, `<ellipse>`. Low fill opacities (0.04-0.15). Topology: `flow:`, `orbit:`, `scatter:`, `radial:`.
 
 ### Add Life (`/svg-infographics:add-life`)
 
-Decoration pass on existing SVGs. Six enhancement dimensions (colour variation, shapes, icons, embroidery, abstract graphics, glow) at four intensity levels (low/medium/high/absurd). Additive only - never breaks existing layout. Mandatory `<!-- add-life -->` comment documents what was applied. Run validators after.
+Decoration pass on existing SVGs. Six dimensions (colour variation, shapes, icons, embroidery, abstract graphics, glow) at four intensities (low/medium/high/absurd). Additive only - never breaks layout. Mandatory `<!-- add-life -->` comment. Run validators after.
 
 ## Troubleshooting
 
-- **Text invisible in dark mode**: Use CSS class instead of inline fill
-- **Overlapping elements**: Re-verify against grid comment, run `svg-infographics overlaps`
-- **Arrows wrong direction**: Rerun `svg-infographics connector` with correct `--from`/`--to` coordinates; paste returned `trimmed_path_d` and arrowhead polygons
-- **Colours off-theme**: Check every hex against swatch, run `svg-infographics contrast`
-- **CSS compliance errors**: Run `svg-infographics css --svg file.svg` - finds inline fills and missing dark mode overrides
-- **Imprecise coordinates**: Use `svg-infographics primitives <shape>` for exact anchor points
-- **Wrong size in markdown**: Remove `width`/`height` from `<svg>`, use `viewBox` only
+- **Text invisible in dark mode**: use CSS class, not inline fill
+- **Overlapping elements**: re-verify against grid comment, run `overlaps`
+- **Arrows wrong direction**: rerun `connector` with correct `--from`/`--to`; paste `trimmed_path_d` and arrowhead polygons
+- **Colours off-theme**: check every hex against swatch, run `contrast`
+- **CSS compliance errors**: run `css --svg file.svg`
+- **Imprecise coordinates**: use `primitives <shape>` for exact anchors
+- **Wrong size in markdown**: remove `width`/`height` from `<svg>`, use `viewBox` only

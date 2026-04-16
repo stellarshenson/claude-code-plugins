@@ -5,53 +5,53 @@ description: Run the full devil's advocate workflow end-to-end. Setup persona, e
 
 # Devil's Advocate - Critical Document Analysis
 
-Systematically critique any document from perspective of toughest audience. Generate structured pushback scenarios, score how well concerns are addressed, produce actionable improvement paths - including graphical options via `svg-infographics` skill.
+Critique a document from its toughest audience. Generate pushback, score responses, produce improvements. Visuals via `svg-infographics`.
 
 ## Task Tracking
 
-**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) throughout full workflow. Create tasks for setup, evaluation, each iteration cycle. Mark in_progress when starting, completed when done. Provides visible progress, prevents skipped steps.
+**MANDATORY**: Use TaskCreate/TaskUpdate for setup, evaluation, each iteration. Mark in_progress/completed.
 
 ## Workflow
 
-Three artefacts produced in same directory as target document:
+Three artefacts in target document directory:
 
-1. **`devils_advocate.md`** - devil persona, concern catalogue, risk scoring, scorecard, detailed responses
-2. **`fact_repository.md`** - verified claims harvested from source documents, contracts, data, user-provided facts
-3. **Scorecard** (embedded in `devils_advocate.md`) - percentage-based evaluation per concern
+1. **`devils_advocate.md`** - persona, concerns, scoring, responses
+2. **`fact_repository.md`** - verified claims from sources + user input
+3. **Scorecard** - embedded in `devils_advocate.md`
 
-Optional: SVG infographics via `svg-infographics` skill when visual communication strengthens document.
+Optional: SVG infographics via `svg-infographics` skill.
 
 ## Step 1: Build Devil Persona
 
-**MANDATORY**: Devil persona established BEFORE any concerns generated. Three sources:
+**MANDATORY**: Persona BEFORE concerns. Three sources:
 
 ### Source A: User-provided seed
 
-User provides seed document (evaluation, review, critique) alongside target. Infer persona from seed's tone, priorities, concerns. Present inferred persona to user for confirmation before proceeding.
+Seed document (evaluation, review) alongside target. Infer persona from tone, priorities. Confirm with user.
 
 ### Source B: User describes persona
 
-Ask user these questions:
+Ask:
 
-1. **Who is the reader?** (title, role, seniority - e.g. "VP of Network Operations", "board member", "procurement lead")
-2. **What do they care about most?** (cost, risk, timeline, reputation, compliance, technical quality)
-3. **What is their communication style?** (data-driven, gut-feel, political, legalistic)
-4. **What is their default bias?** (skeptical of vendors, risk-averse, cost-focused, detail-oriented)
-5. **What triggers them?** (blame-shifting, excuses, missing numbers, verbose language, finger-pointing)
-6. **What decision power do they have?** (approve/reject, recommend to board, escalate, negotiate)
+1. **Who is the reader?** (title, role, seniority)
+2. **What do they care about?** (cost, risk, timeline, reputation, compliance, technical quality)
+3. **Communication style?** (data-driven, gut-feel, political, legalistic)
+4. **Default bias?** (skeptical, risk-averse, cost-focused, detail-oriented)
+5. **Triggers?** (blame-shifting, excuses, missing numbers, verbose language)
+6. **Decision power?** (approve/reject, recommend, escalate, negotiate)
 
-### Source C: No seed or persona provided
+### Source C: No seed or persona
 
-User invokes skill without seed and without describing persona - **MUST ask**. Never proceed with generic concerns. Present two options:
+**MUST ask**. Never proceed with generic concerns. Offer:
 
-1. **Single persona** - "Who is the toughest reader for this document? Describe their role, priorities, and biases"
-2. **Group of personas** - "List 2-4 reader roles that this document must satisfy. I will build a composite devil that represents their combined concerns"
+1. **Single persona** - "Who is the toughest reader? Role, priorities, biases?"
+2. **Group of personas** - "List 2-4 roles. I'll build a composite devil"
 
-**Group of personas**: build composite devil - merge priorities (union of all concerns), take harshest bias from each persona, weight likelihood scores by which persona most likely raises each concern. Document each contributing persona and composite in `devils_advocate.md`.
+**Group**: merge priorities (union), take harshest bias per persona, weight likelihood by which persona raises each concern. Document each contributor and composite.
 
 ### Persona documentation
 
-**Document persona** at top of `devils_advocate.md`:
+Top of `devils_advocate.md`:
 
 ```markdown
 # Devil's Advocate - [Project Name]
@@ -69,13 +69,13 @@ User invokes skill without seed and without describing persona - **MUST ask**. N
 ---
 ```
 
-Composite personas: add subsection listing each contributing persona with individual priorities before merged devil profile.
+Composite: add subsection per contributing persona before merged profile.
 
-Persona shapes every concern. Cost-focused CFO generates different concerns than risk-averse compliance officer. Without persona: generic concerns, meaningless scoring.
+Persona shapes every concern. Without it: generic concerns, meaningless scoring.
 
 ## Step 2: Harvest facts into fact_repository.md
 
-Scan all available source materials, extract verifiable claims. Every fact MUST have source.
+Scan sources, extract verifiable claims. Every fact MUST have source.
 
 **Structure**:
 ```markdown
@@ -103,20 +103,20 @@ No interpretation - just facts.
 
 **Rules**:
 - Verbatim quotes for contract clauses - never paraphrase legal text
-- Separate user-provided facts from document-extracted facts
-- Include mathematical derivations where relevant (e.g. probability calculations)
-- Incremental updates - never overwrite, always append and deduplicate
-- User provides new facts during iteration: add to appropriate section
+- Separate user-provided from document-extracted facts
+- Include mathematical derivations where relevant
+- Incremental - append and deduplicate, never overwrite
+- User gives new facts during iteration: append to right section
 
 ## Step 3: Generate concern catalogue
 
-Per concern, score two dimensions, Fibonacci-like scale (1, 2, 3, 5, 8). Higher values carry disproportionate weight - forces clear differentiation between moderate and critical concerns:
+Per concern, Fibonacci scale (1, 2, 3, 5, 8):
 
-- **Likelihood** (1/2/3/5/8): how likely this persona raises this concern
-- **Impact** (1/2/3/5/8): damage if left unaddressed with this reader
-- **Risk = Likelihood x Impact** (1-64, always positive - devil catalogues concerns only, not strengths)
+- **Likelihood** (1/2/3/5/8): chance persona raises it
+- **Impact** (1/2/3/5/8): damage if unaddressed
+- **Risk = Likelihood x Impact** (1-64, always positive)
 
-**Risk adjustment**: after initial catalogue, review full set, adjust scores where initial Likelihood x Impact underestimates actual importance. Some concerns interact - one that amplifies three others deserves more weight than standalone score suggests. Document as `Risk: N (adjusted from L x I = M, reason: ...)`. Adjusted risk stays in 1-64 range.
+**Risk adjustment**: after initial catalogue, review full set. Adjust where concerns interact. Document as `Risk: N (adjusted from L x I = M, reason: ...)`. Stay in 1-64.
 
 **Concern template**:
 ```markdown
@@ -131,28 +131,26 @@ Per concern, score two dimensions, Fibonacci-like scale (1, 2, 3, 5, 8). Higher 
 **Response**: how to address - in document or verbally.
 ```
 
-**Concern categories to always evaluate** (persona-weighted):
+**Categories to always evaluate** (persona-weighted):
 - **Accuracy gaps** - targets missed, metrics below expectation
-- **Trust signals** - defensive tone, finger-pointing, excuse-making, blame-shifting
-- **Cognitive load** - too many numbers, verbose language, overstructure
-- **Omissions** - missing data, hidden bad numbers, selective presentation
-- **Forward-looking** - what happens next, upgrade path, production readiness
+- **Trust signals** - defensive tone, blame-shifting, excuses
+- **Cognitive load** - too many numbers, verbose, overstructure
+- **Omissions** - missing data, hidden bad numbers, selective framing
+- **Forward-looking** - what next, upgrade path, production readiness
 - **Legal/contractual** - SOW compliance, clause coverage, sign-off risk
 - **Professional responsibility** - vendor expertise, best practices, duty of care
 
-**No negative risk scores.** Concern catalogue captures concerns only - things devil would challenge. Strengths and mitigating factors belong in "Reality" and "Response" fields, not as separate entries with negative scores. Well-addressed concern scores high on scorecard (reduces residual risk) - that's how positive factors get captured.
+**No negative risk scores.** Concerns only. Strengths go in "Reality" and "Response". Well-addressed concern scores high on scorecard.
 
 ## Step 4: Evaluate target document (Scorecard)
 
-Scorecard evaluates **quality of addressing**, not just presence. Per concern, score 0-100% based on how effectively document handles it from devil's perspective.
+Scorecard = **quality of addressing**, not presence. 0-100% per concern.
 
-### Evaluation criteria per concern
+### Evaluation criteria
 
-Each score reflects three dimensions:
-
-1. **Coverage** - concern addressed at all? Where in document?
-2. **Quality** - how well addressed? Convinces devil or leaves gaps?
-3. **Side effects** - addressing this create or worsen other concerns?
+1. **Coverage** - addressed at all? Where?
+2. **Quality** - convinces devil or leaves gaps?
+3. **Side effects** - creates or worsens other concerns?
 
 ### Scoring scale
 
@@ -175,33 +173,32 @@ Each score reflects three dimensions:
 | 1 | [short name] | 25 | 85% | [specific text/element that addresses it + quality assessment + any side effects] |
 ```
 
-**Reasoning column MUST reference specific text from document** - not generic statements. Quote exact phrases that address (or fail to address) concern.
+**Reasoning MUST quote specific text**. No generic statements.
 
-### Overall score calculation
+### Overall score
 
-**Objective**: minimise document score (total residual risk). Lower = better.
+**Minimise** document score (total residual risk). Lower = better.
 
-- **Residual risk per concern** = `risk x (1 - score)`
-- **Document score** = sum of all residual risks (number used in filenames and tracking)
-- **Total risk** = sum of risk across all concerns (theoretical max if nothing addressed)
+- **Residual per concern** = `risk x (1 - score)`
+- **Document score** = sum of all residuals
+- **Total risk** = sum of all risk (theoretical max)
 
-Document score = **total residual risk** - raw sum of unaddressed risk. Optimise by **minimising**. Perfect document = 0. Starting score = total absolute risk.
+Perfect = 0. Starting = total absolute risk.
 
-**File naming convention**: `<name>_v<NN>_<score>.md` where score = rounded document score (total residual risk). Example: `pcp_rnd_v02_54.md` = version 02, residual risk 54.
+**File naming**: `<name>_v<NN>_<score>.md`. Example: `pcp_rnd_v02_54.md`.
 
-**Biggest gaps**: 5 concerns with highest residual risk. Optimisation targets for next iteration.
+**Biggest gaps**: top 5 residuals. Next iteration targets.
 
 ### Optimisation framing
 
-Scorecard = **optimisation problem**:
 - **Objective**: minimise total residual risk
-- **Constraints**: cross-concern tensions (fixing one may worsen another)
-- **Decision variables**: text changes, structural changes, visual additions, content additions/removals
-- **Trade-offs**: every change evaluated for net effect across ALL concerns, not just targeted one
+- **Constraints**: cross-concern tensions
+- **Variables**: text, structure, visuals, content
+- **Trade-offs**: evaluate net effect across ALL concerns
 
 ## Step 5: Explore options
 
-Per high-residual concern, propose 2-4 concrete options:
+Per high-residual concern, propose 2-4 options:
 
 ```markdown
 ### Concern #N: [name] (residual: X.X)
@@ -218,29 +215,25 @@ Per high-residual concern, propose 2-4 concrete options:
 **Recommendation**: [which option and why]
 ```
 
-**Visual options**: concern relates to cognitive load (#10), number exhaustion (#14), or metric confusion (#13) - always include at least one SVG infographic option. Specify:
-- Chart type (stacked bar, before/after, grid, classification)
-- Data to visualise
-- Expected score improvement across multiple concerns
-- Reference `svg-infographics` skill for implementation
+**Visual options**: if concern relates to cognitive load (#10), number exhaustion (#14), or metric confusion (#13) - always include SVG option. Specify chart type, data, expected improvement, reference `svg-infographics`.
 
 ## Step 6: Iterate - Versioned Corrections
 
-Each iteration produces new versioned copy of target document with corrections applied, then fresh re-evaluation. Original document never modified.
+Each iteration: new versioned copy, fresh evaluation. Original untouched.
 
 ### Iteration workflow
 
-1. **Copy** current version as next version: `<name>_v<NN+1>.md` (working copy, score suffix added after evaluation)
-2. **Apply corrections** from Step 5 to new version only
-3. **Embed scorecard** at end of new version (see Embedded scorecard section)
-4. **Re-read** updated document in full
-5. **Re-score** each concern against new text, fresh evaluation
-6. **Document score changes** with reasoning: "Score changed from X% to Y% because [specific text change]"
-7. **Identify new concerns** introduced by changes - add to catalogue
+1. **Copy** current as `<name>_v<NN+1>.md`
+2. **Apply corrections** from Step 5 to new version
+3. **Embed scorecard** at end
+4. **Re-read** updated document
+5. **Re-score** each concern against new text
+6. **Document changes**: "Score X% -> Y% because [specific text change]"
+7. **Identify new concerns** from changes, add to catalogue
 8. **Update cross-concern tension notes**
-9. **Recalculate overall score** - becomes the `<score>` suffix
-10. **Rename** working copy to `<name>_v<NN+1>_<score>.md`
-11. **Update** `devils_advocate.md` with new scorecard (keep previous scorecards for comparison)
+9. **Recalculate score** - becomes `<score>` suffix
+10. **Rename** to `<name>_v<NN+1>_<score>.md`
+11. **Update** `devils_advocate.md` with new scorecard (keep old ones)
 
 ### Version chain example
 
@@ -253,54 +246,54 @@ devils_advocate.md           # updated in place, contains all scorecards
 fact_repository.md           # updated in place
 ```
 
-Score MUST decrease with each iteration. If not: corrections introducing new concerns or worsening existing ones - stop and reassess.
+Score MUST decrease each iteration. If not: corrections are creating problems - stop and reassess.
 
 ### Stopping criteria
 
-Stop iterating when:
-- Residual risk below 10% of total absolute risk
-- Top remaining gaps all have residual < 3.0
-- Further corrections require scope changes beyond document (e.g. new data, architectural decisions, stakeholder input)
-- User explicitly accepts current score
+Stop when:
+- Residual < 10% of total absolute risk
+- Top remaining gaps all < 3.0
+- Corrections need scope changes beyond document
+- User accepts current score
 
-### Cross-concern tension tracking
+### Cross-concern tensions
 
-Some fixes create new problems. Document as constraints:
+Some fixes break others:
 - Answering "why" may increase finger-pointing
 - Adding evidence may increase verbosity
 - SOW quotes may increase defensive tone
-- Brevity may lose supporting evidence
-- Stronger language may improve factual coverage but worsen tone
+- Brevity may drop supporting evidence
+- Stronger language may improve facts but worsen tone
 
 ## Scoring principles
 
-**Aggression and defensiveness always punish.** Confrontational, accusatory, blame-shifting language reduces tone concern scores even if factual coverage improves. Devil notices tone before facts.
+**Aggression punishes.** Confrontational, accusatory, blame-shifting language drops tone scores even if facts improve. Tone registers before facts.
 
-**Reader needs to know WHY.** Document stating facts without reasons leaves devil to fill in own narrative - usually worse one.
+**Reader needs WHY.** Facts without reasons = devil fills blanks, usually badly.
 
-**Transparency beats framing.** Hiding bad numbers costs more trust than showing with context. Devil notices omissions, penalises harder than bad numbers shown honestly.
+**Transparency beats framing.** Hiding bad numbers costs more trust than showing with context.
 
-**Quality over presence.** Concern "addressed" with weak or generic language scores worse than one addressed with specific evidence and clear reasoning. Devil reads critically - half-answers worse than no answer, signal awareness without competence.
+**Quality over presence.** Weak addressing scores worse than no addressing. Half-answers signal awareness without competence.
 
-**One visual replaces three paragraphs.** SVG infographics (via `svg-infographics` skill) = highest-leverage improvement for cognitive load concerns:
+**One visual replaces three paragraphs.** SVG (via `svg-infographics`) = highest leverage for cognitive load:
 - Stacked bars for metric breakdowns
-- Before/after comparisons for value demonstration
-- Grid/field visualisations for explaining composite metrics
-- Classification distributions for categorisation results
+- Before/after for value
+- Grid/field for composite metrics
+- Classification distributions
 
 ## Anti-patterns
 
-- **Never soften concerns.** Write as devil would phrase - harsh, direct, in their voice
-- **Never pre-judge which concerns matter.** Score all; let math decide priority
-- **Never conflate scoring with approval.** 90% = 10% residual risk, not "good enough"
-- **Never remove concerns once added.** Mark resolved but keep in catalogue
-- **Never score generously.** In doubt, score lower. Overconfident scoring = risk itself
-- **Never use generic reasoning.** Every score MUST reference specific text from target document
-- **Never optimise one concern in isolation.** Always evaluate net effect across all concerns
+- **Never soften concerns.** Write as devil - harsh, direct, their voice
+- **Never pre-judge priority.** Let math decide
+- **Never conflate scoring with approval.** 90% = 10% residual risk
+- **Never remove concerns.** Mark resolved, keep in catalogue
+- **Never score generously.** In doubt, score lower
+- **Never use generic reasoning.** Always quote specific text
+- **Never optimise in isolation.** Net effect across all concerns
 
 ## Embedded scorecard in versioned documents
 
-**MANDATORY**: Every versioned document must end with embedded scorecard section after horizontal rule. Makes each version self-contained - reader sees document AND evaluation in one file.
+**MANDATORY**: Every versioned document ends with embedded scorecard after horizontal rule.
 
 **Format**:
 ```markdown
@@ -320,32 +313,32 @@ Some fixes create new problems. Document as constraints:
 ```
 
 **Rules**:
-- "How addressed" column MUST reference specific sections or phrases from document above
-- Concern not addressed at all: write "Not addressed", score 0%
-- Keep reasoning concise - summary table, not full analysis
+- "How addressed" MUST reference specific sections/phrases
+- Not addressed: write "Not addressed", score 0%
+- Concise summary, not full analysis
 
 ## File naming
 
-Place artefacts alongside target document:
+Alongside target:
 ```
 target_document.md
 devils_advocate.md
 fact_repository.md
 ```
 
-**Versioned documents** use the naming convention:
+**Versioned documents**:
 ```
 <name>_v<NN>_<score>.md
 ```
 
-- `<NN>` - two-digit incremental version (`v01` = initial document with embedded scorecard, `v02` = first correction pass, etc.)
-- `_<score>` - **MANDATORY** rounded residual risk score suffix. Versioned file without `_<score>` = INCOMPLETE - go back and rename it
+- `<NN>` - two-digit (`v01` = initial + scorecard, `v02` = first correction)
+- `_<score>` - **MANDATORY** rounded residual. Missing = INCOMPLETE
 
 Examples:
-- `DESIGN_v01_89.md` - original document with first scorecard, residual risk 89
-- `DESIGN_v02_28.md` - first correction pass, residual risk 28
-- `DESIGN_v03_12.md` - second correction pass, residual risk 12
+- `DESIGN_v01_89.md` - original + first scorecard, residual 89
+- `DESIGN_v02_28.md` - first correction, residual 28
+- `DESIGN_v03_12.md` - second correction, residual 12
 
-**WRONG**: `DESIGN_v02.md` (missing score suffix - improvement unknown without opening file)
+**WRONG**: `DESIGN_v02.md` (no score suffix)
 
-`devils_advocate.md` and `fact_repository.md` updated in place across iterations - never create versioned copies. `devils_advocate.md` accumulates all scorecards (v1, v2, v3...) for cross-version comparison.
+`devils_advocate.md` and `fact_repository.md` updated in place - never versioned. `devils_advocate.md` accumulates all scorecards for comparison.

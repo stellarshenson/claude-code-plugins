@@ -5,29 +5,29 @@ description: SVG theme swatch generation, palette approval workflow, colour nami
 
 # SVG Theme Management
 
-Themes define colour palette for all SVG infographics in a project. Every project needs approved theme before deliverables.
+Themes define the colour palette for all SVG infographics. Every project needs approved theme before deliverables.
 
 ## Task Tracking
 
-**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) when generating themes. Tasks for swatch generation, user approval, documentation.
+**MANDATORY**: TaskCreate/TaskUpdate when generating themes. Tasks for swatch generation, user approval, documentation.
 
 ## Theme Approval Workflow
 
 1. **Ask user** for brand colours, mood, reference materials
-2. **Generate theme swatch SVG** (`theme_swatch.svg`) showing all colours in context:
+2. **Generate `theme_swatch.svg`** showing all colours in context:
    - Primary, secondary, tertiary text colours with sample text
    - Accent colours with sample strokes and fills
    - Card background fills at intended opacity
    - Icon stroke colour samples
-   - Mini timeline or flowchart snippet demonstrating palette
+   - Mini timeline or flowchart demonstrating palette
 3. **Present to user** for approval before any deliverable SVGs
 4. **Document approved palette** in project `CLAUDE.md` or `theme.md`
 
 ### When to Skip
 
 - Modifying existing SVGs with established palette
-- User already provided and confirmed hex codes
-- Single quick SVG with clear colour direction
+- User provided and confirmed hex codes
+- Single quick SVG with clear direction
 
 ## Theme Structure
 
@@ -35,16 +35,16 @@ Numbered shade grades in four roles:
 
 | Role | Grade | Purpose |
 |------|-------|---------|
-| **fg-1** | Most contrastive | Headings, primary labels, hero stat numbers |
+| **fg-1** | Most contrastive | Headings, primary labels, hero stats |
 | **fg-2** | High contrast | Card titles, phase subtitles |
 | **fg-3** | Medium contrast | Descriptions, sublabels |
 | **fg-4** | Least contrastive | Metadata, tertiary text |
 | **accent-1** | Primary | Strokes, icons, borders |
-| **accent-2** | Secondary | Lighter strokes, later-phase elements |
+| **accent-2** | Secondary | Lighter strokes, later-phase |
 | **bg-1** | Card fill | Accent-1 at fill-opacity 0.04-0.06 |
 | **bg-2** | Track fill | Accent-1 at opacity 0.3 |
 
-fg-4 MUST remain readable at small sizes (9-10px).
+fg-4 MUST remain readable at 9-10px.
 
 ## Theme Definition Format
 
@@ -65,14 +65,14 @@ Three sections: palette reference (transparent bg), light background strip, dark
 
 ### Swatch Requirements
 
-- `=== COLOUR RULES ===` comment block documenting all hex values, dark mode mappings, accent usage guidance, hierarchy statement
+- `=== COLOUR RULES ===` comment block documenting all hex values, dark mode mappings, accent usage guidance, hierarchy
 - No hex values in label text - reference by name only
 - Semantic colour labels use own colour as fill
 - Demonstration strips may use inline fills intentionally
 
 ## Colour Naming and Swatch Completeness
 
-**MANDATORY**: Every hex colour in any SVG MUST have named entry in theme swatch.
+**MANDATORY**: Every hex colour in any SVG MUST have a named entry in the theme swatch.
 
 Named categories:
 - **Foreground shades** (fg-1..fg-4): via CSS classes

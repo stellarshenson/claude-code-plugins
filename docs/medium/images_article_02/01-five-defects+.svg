@@ -1,0 +1,492 @@
+<!--
+  01-five-defects.svg - Five recurring defects in LLM hand-written SVGs
+  Shows: five-card horizontal grid; each card carries a defect name, one-line description, and a tiny bad-vs-good schematic
+  Intent: reader absorbs all five failure modes in ~5 seconds, placed after article intro before "LLMs cannot draw by hand" section
+  Theme: Stellars-Tech (teal primary #0096d1, amber accent-2 #da8230)
+-->
+<!-- add-life: medium
+  colour: within-family hue shifts (teal -> cyan-teal on focal card accent, amber -> ochre on BAD mini-cards); per-card accent-bar hue variation
+  shapes: tech corner brackets on all 5 cards, micro scan-line accents below accent bars
+  icons: one domain-appropriate multi-stroke icon per defect card (alert-triangle, x-circle, scan-line, contrast, grid-off)
+  embroidery: neural-dendritic dilute background traces at 0.05-0.08 opacity
+  abstract: 12 scattered accent particles in whitespace, 2 background arcs top and bottom
+  bg texture: neural dendritic branches low density, low opacity
+  glow: soft cyan-teal stdDev=2 on header text and accent bars, warm amber stdDev=1.5 on defect icons
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 280">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .card-body   { fill: #0096d1; fill-opacity: 0.04; }
+    .card-stroke { fill: none; stroke: #0096d1; stroke-width: 1; }
+    .accent-bar  { fill: #0096d1; opacity: 0.6; }
+    .accent-bar-b { fill: #00a8d9; opacity: 0.65; }
+    .accent-bar-c { fill: #0088c4; opacity: 0.6; }
+
+    /* per-card hue variants (in-family, creative, moderate) */
+    .card-body-1   { fill: #00a6d3; fill-opacity: 0.045; }
+    .card-stroke-1 { fill: none; stroke: #00a6d3; stroke-width: 1; }
+    .card-body-2   { fill: #0096d1; fill-opacity: 0.04; }
+    .card-stroke-2 { fill: none; stroke: #0096d1; stroke-width: 1; }
+    .card-body-3   { fill: #00b2d8; fill-opacity: 0.055; }
+    .card-stroke-3 { fill: none; stroke: #00b2d8; stroke-width: 1.2; }
+    .card-body-4   { fill: #1585c4; fill-opacity: 0.045; }
+    .card-stroke-4 { fill: none; stroke: #1585c4; stroke-width: 1; }
+    .card-body-5   { fill: #0582b5; fill-opacity: 0.045; }
+    .card-stroke-5 { fill: none; stroke: #0582b5; stroke-width: 1; }
+    .divider     { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.25; }
+    .eyebrow     { fill: #005f7a; font-family: Segoe UI, Arial, sans-serif; font-size: 9px; font-weight: 600; letter-spacing: 1px; }
+    .title       { fill: #1a5a6e; font-family: Segoe UI, Arial, sans-serif; font-size: 13px; font-weight: 700; }
+    .desc        { fill: #236a74; font-family: Segoe UI, Arial, sans-serif; font-size: 9px; }
+    .minilabel   { fill: #2b7680; font-family: Segoe UI, Arial, sans-serif; font-size: 7px; font-weight: 600; letter-spacing: 0.5px; }
+    .schem-good  { fill: none; stroke: #0096d1; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+    .schem-good-fill { fill: #0096d1; }
+    .schem-bad   { fill: none; stroke: #da8230; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+    .schem-bad-fill  { fill: #da8230; }
+    .schem-muted { fill: none; stroke: #236a74; stroke-width: 0.8; opacity: 0.55; }
+    .schem-muted-fill { fill: #236a74; opacity: 0.6; }
+    .mini-card-body   { fill: #0096d1; fill-opacity: 0.06; }
+    .mini-card-stroke { fill: none; stroke: #0096d1; stroke-width: 0.6; opacity: 0.7; }
+    .mini-card-bar    { fill: #0096d1; opacity: 0.55; }
+    .mini-card-body-bad   { fill: #da8230; fill-opacity: 0.06; }
+    .mini-card-stroke-bad { fill: none; stroke: #da8230; stroke-width: 0.6; opacity: 0.7; }
+    .mini-card-bar-bad    { fill: #da8230; opacity: 0.55; }
+    .inline-hex-text  { fill: #da8230; font-family: monospace; font-size: 5.5px; }
+    .class-text       { fill: #0096d1; font-family: monospace; font-size: 5.5px; }
+    .dark-bg-fill     { fill: #1e1e1e; }
+    .invisible-text   { fill: #1e1e1e; font-family: Segoe UI, Arial, sans-serif; font-size: 7px; font-weight: 700; }
+    .visible-text     { fill: #b8e4f0; font-family: Segoe UI, Arial, sans-serif; font-size: 7px; font-weight: 700; }
+    .footnote    { fill: #2b7680; font-family: Segoe UI, Arial, sans-serif; font-size: 8px; font-style: italic; }
+    .header      { fill: #24697e; font-family: Segoe UI, Arial, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; }
+    .corner-bracket { fill: none; stroke: #0096d1; stroke-width: 1; opacity: 0.55; stroke-linecap: round; }
+    .corner-bracket-focal { fill: none; stroke: #00a8d9; stroke-width: 1.2; opacity: 0.75; stroke-linecap: round; }
+    .scan-line   { fill: none; stroke: #0096d1; stroke-width: 0.4; opacity: 0.22; stroke-dasharray: 2 2; }
+    .defect-icon { fill: none; stroke: #da8230; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+    .defect-icon-fill { fill: #da8230; opacity: 0.85; }
+    .bg-neural   { fill: none; stroke: #0096d1; stroke-width: 0.6; opacity: 0.06; }
+    .bg-neural-node { fill: #0096d1; opacity: 0.08; }
+    .particle    { fill: #0096d1; opacity: 0.3; }
+    .particle-warm { fill: #da8230; opacity: 0.3; }
+    .bg-arc      { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.12; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .card-body   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .card-stroke { stroke: #5cc8e0; }
+      .accent-bar  { fill: #5cc8e0; }
+      .accent-bar-b { fill: #6fd5ec; }
+      .accent-bar-c { fill: #52bfd8; }
+      .card-body-1   { fill: #6fd5ec; fill-opacity: 0.065; }
+      .card-stroke-1 { stroke: #6fd5ec; }
+      .card-body-2   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .card-stroke-2 { stroke: #5cc8e0; }
+      .card-body-3   { fill: #7adcee; fill-opacity: 0.075; }
+      .card-stroke-3 { stroke: #7adcee; }
+      .card-body-4   { fill: #4db3d0; fill-opacity: 0.065; }
+      .card-stroke-4 { stroke: #4db3d0; }
+      .card-body-5   { fill: #48b8cf; fill-opacity: 0.065; }
+      .card-stroke-5 { stroke: #48b8cf; }
+      .divider     { stroke: #5cc8e0; }
+      .eyebrow     { fill: #5cc8e0; }
+      .title       { fill: #b8e4f0; }
+      .desc        { fill: #5aafc5; }
+      .minilabel   { fill: #4099b3; }
+      .schem-good      { stroke: #5cc8e0; }
+      .schem-good-fill { fill: #5cc8e0; }
+      .schem-bad       { stroke: #d4a04a; }
+      .schem-bad-fill  { fill: #d4a04a; }
+      .schem-muted     { stroke: #5aafc5; }
+      .schem-muted-fill{ fill: #5aafc5; }
+      .mini-card-body      { fill: #5cc8e0; fill-opacity: 0.08; }
+      .mini-card-stroke    { stroke: #5cc8e0; }
+      .mini-card-bar       { fill: #5cc8e0; }
+      .mini-card-body-bad  { fill: #d4a04a; fill-opacity: 0.08; }
+      .mini-card-stroke-bad{ stroke: #d4a04a; }
+      .mini-card-bar-bad   { fill: #d4a04a; }
+      .inline-hex-text { fill: #d4a04a; }
+      .class-text      { fill: #5cc8e0; }
+      .footnote    { fill: #4099b3; }
+      .header      { fill: #8fd4e6; }
+      .corner-bracket { stroke: #5cc8e0; }
+      .corner-bracket-focal { stroke: #6fd5ec; }
+      .scan-line   { stroke: #5cc8e0; }
+      .defect-icon { stroke: #d4a04a; }
+      .defect-icon-fill { fill: #d4a04a; }
+      .bg-neural   { stroke: #5cc8e0; opacity: 0.08; }
+      .bg-neural-node { fill: #5cc8e0; opacity: 0.1; }
+      .particle    { fill: #5cc8e0; opacity: 0.35; }
+      .particle-warm { fill: #d4a04a; opacity: 0.35; }
+      .bg-arc      { stroke: #5cc8e0; opacity: 0.15; }
+    }
+  </style>
+
+  <defs>
+    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-warm" x="-30%" y="-30%" width="160%" height="160%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 280
+    Title band: y=14..42 (header baseline y=30)
+    Card row: y=60..265 (h=205)
+    Card count: 5, w=180, gap=15
+    Card origins (x): 20, 215, 410, 605, 800
+    Icon slot per card: x=card.x+152..172 y=70..90 (upper-right, 20x20 at scale 0.9)
+    Corner bracket slot: 6px marks at all 4 corners of each card
+    Scan-line: y=68 under accent bar, card-width span
+  === -->
+
+  <g id="background">
+    <rect width="1000" height="280" fill="transparent"/>
+
+    <!-- Background neural dendritic texture: sparse branches behind all content -->
+    <g id="add-life-bg-texture">
+      <path d="M10,50 Q80,45 140,55 T250,52 Q320,48 400,58" class="bg-neural"/>
+      <path d="M600,48 Q680,52 750,46 T880,54 Q940,58 995,50" class="bg-neural"/>
+      <path d="M15,270 Q90,274 160,268 T290,271 Q380,265 480,272" class="bg-neural"/>
+      <path d="M520,268 Q620,272 710,266 T850,270 Q930,273 990,267" class="bg-neural"/>
+      <path d="M8,160 Q30,140 48,165 T90,155" class="bg-neural"/>
+      <path d="M915,175 Q940,158 965,180 T995,168" class="bg-neural"/>
+      <circle cx="140" cy="55" r="0.8" class="bg-neural-node"/>
+      <circle cx="250" cy="52" r="0.8" class="bg-neural-node"/>
+      <circle cx="680" cy="52" r="0.8" class="bg-neural-node"/>
+      <circle cx="750" cy="46" r="0.8" class="bg-neural-node"/>
+      <circle cx="160" cy="268" r="0.8" class="bg-neural-node"/>
+      <circle cx="290" cy="271" r="0.8" class="bg-neural-node"/>
+      <circle cx="710" cy="266" r="0.8" class="bg-neural-node"/>
+      <circle cx="48" cy="165" r="0.8" class="bg-neural-node"/>
+      <circle cx="965" cy="180" r="0.8" class="bg-neural-node"/>
+    </g>
+
+    <!-- Background arcs -->
+    <g id="add-life-bg-arcs">
+      <path d="M-40,20 Q500,-10 1040,22" class="bg-arc"/>
+      <path d="M-40,275 Q500,305 1040,273" class="bg-arc"/>
+    </g>
+  </g>
+
+  <g id="guide-grid" display="none">
+    <line x1="0" y1="60"  x2="1000" y2="60"  stroke="red" stroke-width="0.3"/>
+    <line x1="0" y1="146" x2="1000" y2="146" stroke="red" stroke-width="0.3"/>
+  </g>
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: [title-band, card-row]
+    h-stack: card-1..card-5 in card-row with gap=15
+    contain: each card > [accent-bar, eyebrow, title, description, icon, corner-brackets, schematic-area]
+    h-align: accent bars at y=60; eyebrows at y=83; titles at y=103; descriptions at y=121/133; icons at y=70..90
+  === -->
+
+  <g id="nodes">
+
+    <!-- Card 1: Overlapping text -->
+    <path d="M20,60 H200 V262 Q200,265 197,265 H23 Q20,265 20,262 Z" class="card-body-1"/>
+    <path d="M20,60 H200 V262 Q200,265 197,265 H23 Q20,265 20,262 Z" class="card-stroke-1"/>
+    <rect x="20" y="60" width="180" height="5" class="accent-bar-b" filter="url(#glow-cyan)"/>
+    <line x1="34" y1="146" x2="186" y2="146" class="divider"/>
+
+    <!-- Card 2: Invisible in dark mode -->
+    <path d="M215,60 H395 V262 Q395,265 392,265 H218 Q215,265 215,262 Z" class="card-body-2"/>
+    <path d="M215,60 H395 V262 Q395,265 392,265 H218 Q215,265 215,262 Z" class="card-stroke-2"/>
+    <rect x="215" y="60" width="180" height="5" class="accent-bar"/>
+    <line x1="229" y1="146" x2="381" y2="146" class="divider"/>
+
+    <!-- Card 3: Dead connectors (focal) -->
+    <path d="M410,60 H590 V262 Q590,265 587,265 H413 Q410,265 410,262 Z" class="card-body-3"/>
+    <path d="M410,60 H590 V262 Q590,265 587,265 H413 Q410,265 410,262 Z" class="card-stroke-3"/>
+    <rect x="410" y="60" width="180" height="5" class="accent-bar-b" filter="url(#glow-cyan)"/>
+    <line x1="424" y1="146" x2="576" y2="146" class="divider"/>
+
+    <!-- Card 4: Benderless diagonals -->
+    <path d="M605,60 H785 V262 Q785,265 782,265 H608 Q605,265 605,262 Z" class="card-body-4"/>
+    <path d="M605,60 H785 V262 Q785,265 782,265 H608 Q605,265 605,262 Z" class="card-stroke-4"/>
+    <rect x="605" y="60" width="180" height="5" class="accent-bar-c"/>
+    <line x1="619" y1="146" x2="771" y2="146" class="divider"/>
+
+    <!-- Card 5: CSS laziness -->
+    <path d="M800,60 H980 V262 Q980,265 977,265 H803 Q800,265 800,262 Z" class="card-body-5"/>
+    <path d="M800,60 H980 V262 Q980,265 977,265 H803 Q800,265 800,262 Z" class="card-stroke-5"/>
+    <rect x="800" y="60" width="180" height="5" class="accent-bar"/>
+    <line x1="814" y1="146" x2="966" y2="146" class="divider"/>
+
+  </g>
+
+  <g id="add-life-decorations">
+    <!-- Corner brackets per card (6px marks, all 4 corners) -->
+    <!-- Card 1 corners (x=20..200, y=60..265). Focal card gets stronger brackets. -->
+    <g>
+      <!-- Card 1 -->
+      <path d="M22,68 L22,62 L28,62" class="corner-bracket"/>
+      <path d="M198,68 L198,62 L192,62" class="corner-bracket"/>
+      <path d="M22,257 L22,263 L28,263" class="corner-bracket"/>
+      <path d="M198,257 L198,263 L192,263" class="corner-bracket"/>
+      <!-- Card 2 -->
+      <path d="M217,68 L217,62 L223,62" class="corner-bracket"/>
+      <path d="M393,68 L393,62 L387,62" class="corner-bracket"/>
+      <path d="M217,257 L217,263 L223,263" class="corner-bracket"/>
+      <path d="M393,257 L393,263 L387,263" class="corner-bracket"/>
+      <!-- Card 3 (focal) -->
+      <path d="M412,68 L412,62 L418,62" class="corner-bracket-focal"/>
+      <path d="M588,68 L588,62 L582,62" class="corner-bracket-focal"/>
+      <path d="M412,257 L412,263 L418,263" class="corner-bracket-focal"/>
+      <path d="M588,257 L588,263 L582,263" class="corner-bracket-focal"/>
+      <!-- Card 4 -->
+      <path d="M607,68 L607,62 L613,62" class="corner-bracket"/>
+      <path d="M783,68 L783,62 L777,62" class="corner-bracket"/>
+      <path d="M607,257 L607,263 L613,263" class="corner-bracket"/>
+      <path d="M783,257 L783,263 L777,263" class="corner-bracket"/>
+      <!-- Card 5 -->
+      <path d="M802,68 L802,62 L808,62" class="corner-bracket"/>
+      <path d="M978,68 L978,62 L972,62" class="corner-bracket"/>
+      <path d="M802,257 L802,263 L808,263" class="corner-bracket"/>
+      <path d="M978,257 L978,263 L972,263" class="corner-bracket"/>
+    </g>
+
+    <!-- Scan-line accent below accent bar on each card (y=69) -->
+    <g>
+      <line x1="28" y1="69" x2="192" y2="69" class="scan-line"/>
+      <line x1="223" y1="69" x2="387" y2="69" class="scan-line"/>
+      <line x1="418" y1="69" x2="582" y2="69" class="scan-line"/>
+      <line x1="613" y1="69" x2="777" y2="69" class="scan-line"/>
+      <line x1="808" y1="69" x2="972" y2="69" class="scan-line"/>
+    </g>
+
+    <!-- Accent particles in whitespace -->
+    <g id="add-life-particles">
+      <circle cx="8" cy="14" r="1" class="particle"/>
+      <circle cx="204" cy="18" r="0.8" class="particle-warm"/>
+      <circle cx="6" cy="100" r="0.9" class="particle"/>
+      <circle cx="994" cy="100" r="0.9" class="particle-warm"/>
+      <circle cx="4" cy="200" r="1" class="particle"/>
+      <circle cx="996" cy="210" r="1" class="particle"/>
+      <circle cx="500" cy="8" r="1.2" class="particle-warm"/>
+      <circle cx="250" cy="8" r="0.8" class="particle"/>
+      <circle cx="750" cy="10" r="0.8" class="particle"/>
+      <circle cx="100" cy="50" r="0.6" class="particle"/>
+      <circle cx="900" cy="50" r="0.6" class="particle"/>
+      <circle cx="500" cy="275" r="1" class="particle-warm"/>
+    </g>
+  </g>
+
+  <g id="add-life-icons">
+    <!-- Icons: one per defect card at x=card.x+148, y=72..88 (18x16 slot)
+         Lucide-style multi-stroke glyphs, ISC License -->
+
+    <!-- Card 1 icon: alert-triangle (Lucide, ISC) at (168, 72) 16px -->
+    <g transform="translate(168,72)" class="defect-icon" filter="url(#glow-warm)">
+      <path d="M8,1 L15,13 L1,13 Z"/>
+      <line x1="8" y1="5.5" x2="8" y2="9"/>
+      <circle cx="8" cy="11.2" r="0.5" class="defect-icon-fill" stroke="none"/>
+    </g>
+
+    <!-- Card 2 icon: contrast/moon-sun split (Lucide contrast, ISC) at (363, 72) -->
+    <g transform="translate(363,72)" class="defect-icon" filter="url(#glow-warm)">
+      <circle cx="8" cy="8" r="6.5"/>
+      <path d="M8,1.5 A6.5,6.5 0 0,1 8,14.5 Z" class="defect-icon-fill" stroke="none"/>
+    </g>
+
+    <!-- Card 3 icon: scan-line / arrow-gap (custom) at (558, 72) -->
+    <g transform="translate(558,72)" class="defect-icon" filter="url(#glow-warm)">
+      <rect x="0.5" y="2" width="4" height="10" rx="0.6"/>
+      <rect x="11.5" y="2" width="4" height="10" rx="0.6"/>
+      <line x1="5.5" y1="7" x2="8" y2="7"/>
+      <polyline points="8,5 10,7 8,9"/>
+    </g>
+
+    <!-- Card 4 icon: spline-kink (custom wave) at (753, 72) -->
+    <g transform="translate(753,72)" class="defect-icon" filter="url(#glow-warm)">
+      <polyline points="0.5,13 3,4 6,12 9,3 12,13 15.5,4"/>
+    </g>
+
+    <!-- Card 5 icon: grid-off / palette-error (Lucide grid-off adapted, ISC) at (948, 72) -->
+    <g transform="translate(948,72)" class="defect-icon" filter="url(#glow-warm)">
+      <rect x="0.8" y="0.8" width="14.4" height="14.4" rx="1.5"/>
+      <line x1="0.8" y1="5.7" x2="15.2" y2="5.7"/>
+      <line x1="0.8" y1="10.6" x2="15.2" y2="10.6"/>
+      <line x1="5.7" y1="0.8" x2="5.7" y2="15.2"/>
+      <line x1="10.6" y1="0.8" x2="10.6" y2="15.2"/>
+      <line x1="1" y1="15" x2="15" y2="1"/>
+    </g>
+  </g>
+
+  <g id="connectors">
+    <!-- Card 3 BAD: arrow from source right-edge (x=444) toward target left-edge (x=470).
+         Stem 446..455, tip at 459. Target left-edge at x=470 -> visible 11px gap (dead connector). -->
+    <line x1="446" y1="205" x2="455" y2="205" class="schem-bad"/>
+    <polygon points="455,202 459,205 455,208" class="schem-bad-fill"/>
+
+    <!-- Card 3 GOOD: arrow from source right-edge (x=530) to target left-edge (x=556).
+         Stem 532..552, tip touches target edge at x=556. -->
+    <line x1="532" y1="205" x2="552" y2="205" class="schem-good"/>
+    <polygon points="552,202 556,205 552,208" class="schem-good-fill"/>
+  </g>
+
+  <g id="content">
+
+    <!-- Header band (focal, glowing) -->
+    <text x="500" y="30" text-anchor="middle" class="header" filter="url(#glow-cyan)">FIVE DEFECTS IN HAND-WRITTEN LLM SVGs</text>
+    <line x1="20" y1="42" x2="980" y2="42" stroke="#0096d1" stroke-width="0.5" opacity="0.25"/>
+
+    <!-- ============ CARD 1: OVERLAPPING TEXT ============ -->
+    <text x="34" y="83" class="eyebrow">DEFECT 01</text>
+    <text x="34" y="103" class="title">Overlapping text</text>
+    <text x="34" y="121" class="desc">Every y is an independent literal;</text>
+    <text x="34" y="133" class="desc">titles drift into accent bars</text>
+
+    <text x="67"  y="160" text-anchor="middle" class="minilabel">BAD</text>
+    <text x="153" y="160" text-anchor="middle" class="minilabel">GOOD</text>
+
+    <!-- Card 1 schematic BAD: tiny card with title crashing into accent bar -->
+    <path d="M34,175 H100 V228 Q100,231 97,231 H37 Q34,231 34,228 Z" class="mini-card-body-bad"/>
+    <path d="M34,175 H100 V228 Q100,231 97,231 H37 Q34,231 34,228 Z" class="mini-card-stroke-bad"/>
+    <rect x="34" y="175" width="66" height="5" class="mini-card-bar-bad"/>
+    <text x="40" y="184" class="inline-hex-text" style="font-size:7px;font-weight:700;">Heading</text>
+    <text x="40" y="195" class="inline-hex-text" style="font-size:6px;">description line</text>
+
+    <!-- Card 1 schematic GOOD -->
+    <path d="M120,175 H186 V228 Q186,231 183,231 H123 Q120,231 120,228 Z" class="mini-card-body"/>
+    <path d="M120,175 H186 V228 Q186,231 183,231 H123 Q120,231 120,228 Z" class="mini-card-stroke"/>
+    <rect x="120" y="175" width="66" height="5" class="mini-card-bar"/>
+    <text x="126" y="197" class="class-text" style="font-size:7px;font-weight:700;">Heading</text>
+    <text x="126" y="208" class="class-text" style="font-size:6px;">description line</text>
+
+    <text x="34"  y="253" class="footnote">y literals drift</text>
+    <text x="120" y="253" class="footnote">rhythm: +14px</text>
+
+    <!-- ============ CARD 2: INVISIBLE IN DARK MODE ============ -->
+    <text x="229" y="83" class="eyebrow">DEFECT 02</text>
+    <text x="229" y="103" class="title">Invisible in dark mode</text>
+    <text x="229" y="121" class="desc">Hard-coded #000 / #fff break the</text>
+    <text x="229" y="133" class="desc">moment the OS theme flips</text>
+
+    <text x="262" y="160" text-anchor="middle" class="minilabel">BAD</text>
+    <text x="348" y="160" text-anchor="middle" class="minilabel">GOOD</text>
+
+    <!-- Card 2 BAD -->
+    <rect x="240" y="185" width="46" height="32" rx="2" class="dark-bg-fill" stroke="#da8230" stroke-width="1"/>
+    <text x="263" y="204" text-anchor="middle" class="invisible-text">TEXT</text>
+    <line x1="244" y1="189" x2="282" y2="213" stroke="#da8230" stroke-width="1.4" stroke-linecap="round"/>
+    <line x1="282" y1="189" x2="244" y2="213" stroke="#da8230" stroke-width="1.4" stroke-linecap="round"/>
+    <text x="263" y="234" text-anchor="middle" class="inline-hex-text">fill="#000000"</text>
+
+    <!-- Card 2 GOOD -->
+    <rect x="326" y="185" width="46" height="32" rx="2" class="dark-bg-fill" stroke="#0096d1" stroke-width="1"/>
+    <text x="349" y="204" text-anchor="middle" class="visible-text">TEXT</text>
+    <text x="349" y="234" text-anchor="middle" class="class-text">class="fg-1"</text>
+
+    <text x="262" y="253" text-anchor="middle" class="footnote">breaks in dark</text>
+    <text x="348" y="253" text-anchor="middle" class="footnote">adapts via CSS</text>
+
+    <!-- ============ CARD 3: DEAD CONNECTORS ============ -->
+    <text x="424" y="83" class="eyebrow">DEFECT 03</text>
+    <text x="424" y="103" class="title">Dead connectors</text>
+    <text x="424" y="121" class="desc">Arrows end 3px short or past the</text>
+    <text x="424" y="133" class="desc">card edge; no arrowhead clearance</text>
+
+    <text x="457" y="160" text-anchor="middle" class="minilabel">BAD</text>
+    <text x="543" y="160" text-anchor="middle" class="minilabel">GOOD</text>
+
+    <!-- Card 3 BAD -->
+    <rect x="424" y="190" width="20" height="30" rx="2" class="mini-card-body-bad"/>
+    <rect x="424" y="190" width="20" height="30" rx="2" class="mini-card-stroke-bad"/>
+    <rect x="424" y="190" width="20" height="3" class="mini-card-bar-bad"/>
+    <rect x="470" y="190" width="20" height="30" rx="2" class="mini-card-body-bad"/>
+    <rect x="470" y="190" width="20" height="30" rx="2" class="mini-card-stroke-bad"/>
+    <rect x="470" y="190" width="20" height="3" class="mini-card-bar-bad"/>
+
+    <!-- Card 3 GOOD -->
+    <rect x="510" y="190" width="20" height="30" rx="2" class="mini-card-body"/>
+    <rect x="510" y="190" width="20" height="30" rx="2" class="mini-card-stroke"/>
+    <rect x="510" y="190" width="20" height="3" class="mini-card-bar"/>
+    <rect x="556" y="190" width="20" height="30" rx="2" class="mini-card-body"/>
+    <rect x="556" y="190" width="20" height="30" rx="2" class="mini-card-stroke"/>
+    <rect x="556" y="190" width="20" height="3" class="mini-card-bar"/>
+
+    <text x="457" y="242" text-anchor="middle" class="footnote">stops short</text>
+    <text x="543" y="242" text-anchor="middle" class="footnote">meets edge</text>
+
+    <!-- ============ CARD 4: BENDERLESS DIAGONALS ============ -->
+    <text x="619" y="83" class="eyebrow">DEFECT 04</text>
+    <text x="619" y="103" class="title">Benderless diagonals</text>
+    <text x="619" y="121" class="desc">Hand-written cubic Beziers overshoot</text>
+    <text x="619" y="133" class="desc">waypoints and kink at joins</text>
+
+    <text x="652" y="160" text-anchor="middle" class="minilabel">BAD</text>
+    <text x="738" y="160" text-anchor="middle" class="minilabel">GOOD</text>
+
+    <!-- Card 4 BAD -->
+    <circle cx="625" cy="220" r="1.6" class="schem-muted-fill"/>
+    <circle cx="640" cy="185" r="1.6" class="schem-muted-fill"/>
+    <circle cx="658" cy="218" r="1.6" class="schem-muted-fill"/>
+    <circle cx="675" cy="188" r="1.6" class="schem-muted-fill"/>
+    <path d="M625,220 L632,178 L640,185 L645,228 L658,218 L663,175 L675,188" class="schem-bad"/>
+
+    <!-- Card 4 GOOD -->
+    <circle cx="710" cy="225" r="1.6" class="schem-muted-fill"/>
+    <circle cx="725" cy="190" r="1.6" class="schem-muted-fill"/>
+    <circle cx="740" cy="210" r="1.6" class="schem-muted-fill"/>
+    <circle cx="755" cy="185" r="1.6" class="schem-muted-fill"/>
+    <circle cx="770" cy="215" r="1.6" class="schem-muted-fill"/>
+    <path d="M710.0,225.0 L711.02,222.48 L712.03,219.7 L713.05,216.73 L714.07,213.63 L715.08,210.48 L716.1,207.33 L717.12,204.25 L718.14,201.31 L719.15,198.56 L720.17,196.09 L721.19,193.95 L722.2,192.21 L723.22,190.93 L724.24,190.18 L725.25,190.02 L726.27,190.41 L727.29,191.25 L728.31,192.49 L729.32,194.02 L730.34,195.8 L731.36,197.73 L732.37,199.75 L733.39,201.77 L734.41,203.73 L735.42,205.55 L736.44,207.16 L737.46,208.47 L738.47,209.42 L739.49,209.93 L740.51,209.92 L741.53,209.28 L742.54,208.09 L743.56,206.45 L744.58,204.44 L745.59,202.16 L746.61,199.71 L747.63,197.18 L748.64,194.66 L749.66,192.25 L750.68,190.03 L751.69,188.11 L752.71,186.57 L753.73,185.51 L754.75,185.02 L755.76,185.15 L756.78,185.79 L757.8,186.89 L758.81,188.39 L759.83,190.22 L760.85,192.34 L761.86,194.69 L762.88,197.21 L763.9,199.85 L764.92,202.55 L765.93,205.26 L766.95,207.91 L767.97,210.46 L768.98,212.84 L770.0,215.0" class="schem-good"/>
+
+    <text x="652" y="253" text-anchor="middle" class="footnote">kinks + overshoot</text>
+    <text x="738" y="253" text-anchor="middle" class="footnote">PCHIP spline</text>
+
+    <!-- ============ CARD 5: CSS LAZINESS ============ -->
+    <text x="814" y="83" class="eyebrow">DEFECT 05</text>
+    <text x="814" y="103" class="title">CSS laziness</text>
+    <text x="814" y="121" class="desc">Inline fills on every element; theme</text>
+    <text x="814" y="133" class="desc">lives in 97 copies of the same hex</text>
+
+    <text x="847" y="160" text-anchor="middle" class="minilabel">BAD</text>
+    <text x="933" y="160" text-anchor="middle" class="minilabel">GOOD</text>
+
+    <!-- Card 5 BAD -->
+    <rect x="820" y="180" width="54" height="15" rx="2" class="mini-card-body-bad"/>
+    <rect x="820" y="180" width="54" height="15" rx="2" class="mini-card-stroke-bad"/>
+    <text x="824" y="191" class="inline-hex-text">fill="#0096d1"</text>
+
+    <rect x="820" y="199" width="54" height="15" rx="2" class="mini-card-body-bad"/>
+    <rect x="820" y="199" width="54" height="15" rx="2" class="mini-card-stroke-bad"/>
+    <text x="824" y="210" class="inline-hex-text">fill="#0096d1"</text>
+
+    <rect x="820" y="218" width="54" height="15" rx="2" class="mini-card-body-bad"/>
+    <rect x="820" y="218" width="54" height="15" rx="2" class="mini-card-stroke-bad"/>
+    <text x="824" y="229" class="inline-hex-text">fill="#0096d1"</text>
+
+    <!-- Card 5 GOOD -->
+    <rect x="906" y="180" width="54" height="15" rx="2" class="mini-card-body"/>
+    <rect x="906" y="180" width="54" height="15" rx="2" class="mini-card-stroke"/>
+    <text x="910" y="191" class="class-text">class="card"</text>
+
+    <rect x="906" y="199" width="54" height="15" rx="2" class="mini-card-body"/>
+    <rect x="906" y="199" width="54" height="15" rx="2" class="mini-card-stroke"/>
+    <text x="910" y="210" class="class-text">class="card"</text>
+
+    <rect x="906" y="218" width="54" height="15" rx="2" class="mini-card-body"/>
+    <rect x="906" y="218" width="54" height="15" rx="2" class="mini-card-stroke"/>
+    <text x="910" y="229" class="class-text">class="card"</text>
+
+    <text x="847" y="253" text-anchor="middle" class="footnote">97 hex copies</text>
+    <text x="933" y="253" text-anchor="middle" class="footnote">one CSS rule</text>
+
+  </g>
+
+  <g id="callouts">
+  </g>
+
+</svg>

@@ -5,46 +5,50 @@ description: Autonomous build iteration orchestrator. Runs structured improvemen
 
 # Autobuild - Autonomous Iteration Orchestrator
 
-Breaks complex improvement work into sequential phases, spawns independent agent panels per stage, enforces quality through two independent gates. Use when user asks to iterate on code, improve quality, fix bugs, refactor, run GC, or implement features via structured phases.
+Breaks improvement work into phases. Spawns agent panels per stage. Enforces quality via two independent gates. Use for iteration, quality improvement, bug fixes, refactors, GC, feature implementation.
 
-Solves common autonomous coding problems: **shallow fixes** (forces research and hypothesis formation before implementation), **scope creep** (plan locks scope, review catches deviations), **overfit to benchmarks** (guardian agent checks every change for benchmark-specific tuning that destroys generality), **lost context across iterations** (hypothesis catalogue persists, knowledge accumulates), **unchecked quality** (two independent gates catch misunderstandings and incomplete work), **no accountability** (every phase records agents spawned, outputs produced, gatekeeper verdicts in auditable YAML logs).
+Solves:
+- **Shallow fixes** - forces research and hypothesis before implementation
+- **Scope creep** - plan locks scope, review catches deviations
+- **Benchmark overfit** - guardian agent blocks benchmark-specific tuning
+- **Lost context** - hypothesis catalogue persists across iterations
+- **Unchecked quality** - two independent gates catch incomplete work
+- **No accountability** - every phase logs agents, outputs, verdicts in YAML
 
-Full phase instructions, agent definitions, exit criteria loaded from YAML resource files in `resources/`. Run `start` to see what each phase requires.
+Phase instructions, agent definitions, exit criteria live in `resources/`. Run `start` to see what each phase requires.
 
 ## Setup
-
-Install orchestration engine before use:
 
 ```bash
 pip install stellars-claude-code-plugins
 ```
 
-`orchestrate` CLI available after installation. Alternative - run entrypoint directly:
+`orchestrate` CLI appears after install. Or run entrypoint directly:
 
 ```bash
 python .claude/skills/autobuild/orchestrate.py
 ```
 
-Both paths share the same engine - entrypoint passes skill's `resources/` dir to shared orchestrator.
+Both share the same engine.
 
 ## Triggers
 
-- Iterate on code or improve quality
-- Fix bugs or refactor
-- Run garbage collection or cleanup
-- Implement features through structured phases
-- Execute structured development cycles
+- Iterate on code, improve quality
+- Fix bugs, refactor
+- Run GC or cleanup
+- Implement features via phases
+- Structured development cycles
 
 ## Prerequisites
 
-- **Objective**: iteration goal - ASK user if unspecified
-- **Iteration count**: cycles to run - ASK user if unspecified
-- **Benchmark** (optional): ASK user: "Do you have a benchmark I should evaluate after each iteration? (1) No benchmark - just tests and lint, (2) Yes - please provide the instruction and what it measures." If provided, pass via `--benchmark "instruction"` on `new`. `--benchmark` value = **generative instruction string** - text telling orchestrating Claude what to evaluate during TEST phase. NOT a shell command. Instruction typically references a file with the checklist, e.g., `--benchmark "Read MODEL_BENCHMARK.md and evaluate each [ ] item. Mark [x] if passing. Report remaining [ ] count as violation score."` Benchmark runs during TEST phase only - IMPLEMENT and REVIEW phases MUST NOT evaluate benchmark
-- **Objective** can reference files for full context: e.g., `--objective "Implement the program defined in PROGRAM.md (read .claude/skills/autobuild/PROGRAM.md)"`. Avoids cramming long objectives into CLI args. Use `PROGRAM.md` for complex objectives, `MODEL_BENCHMARK.md` (or any `*_BENCHMARK.md`) for benchmark checklists
+- **Objective**: iteration goal. ASK if unspecified
+- **Iteration count**: cycles to run. ASK if unspecified
+- **Benchmark** (optional): ASK user: "Benchmark to evaluate each iteration? (1) No, just tests/lint, (2) Yes, provide instruction and what it measures." Pass via `--benchmark "instruction"`. `--benchmark` = **generative instruction string**, NOT a shell command. Typically references a file: `--benchmark "Read MODEL_BENCHMARK.md, evaluate each [ ] item, mark [x] if passing, report remaining [ ] count as violation score."` Benchmark runs in TEST phase ONLY. IMPLEMENT and REVIEW MUST NOT evaluate benchmark
+- **Objective** may reference files: `--objective "Implement the program defined in PROGRAM.md (read .claude/skills/autobuild/PROGRAM.md)"`. Use `PROGRAM.md` for complex objectives, `*_BENCHMARK.md` for checklists
 
 ## Program execution
 
-For complex multi-iteration objectives, define full program in `PROGRAM.md` and evaluation checklist in `BENCHMARK.md`, then run:
+Complex multi-iteration objectives: define in `PROGRAM.md`, checklist in `BENCHMARK.md`, then run:
 
 ```bash
 # Fixed number of iterations
@@ -60,46 +64,46 @@ orchestrate new --type full \
   --benchmark "Read BENCHMARK.md and evaluate each [ ] item. Mark [x] if passing. Report remaining [ ] count as violation score."
 ```
 
-Gives orchestrator a structured objective readable in full at each phase, plus measurable benchmark tracking progress across iterations. Benchmark evaluated generatively during TEST phase - orchestrating agent reads checklist, verifies each item against codebase, reports violation count as score to optimize.
+Orchestrator reads structured objective at each phase. Benchmark tracks progress. TEST phase verifies each checklist item against codebase, reports violation count.
 
-With `--iterations 0`, orchestrator runs indefinitely until benchmark score reaches 0 (all checklist conditions met). Safety cap of 20 iterations prevents runaway execution.
+`--iterations 0` runs until score = 0 (all conditions met). Safety cap: 20 iterations.
 
 ### `new` command flags
 
 | Flag | Description |
 |------|-------------|
-| `--type` | Iteration type: `full`, `gc`, or `hotfix` (required) |
+| `--type` | `full`, `gc`, or `hotfix` (required) |
 | `--objective` | Iteration goal (required) |
-| `--iterations` | Number of cycles. `0` = unlimited until benchmark passes. Default: 1 |
+| `--iterations` | Cycles. `0` = unlimited until benchmark passes. Default: 1 |
 | `--benchmark` | Generative instruction evaluated during TEST phase |
-| `--continue` | Resume interrupted session from where it left off |
-| `--restart` | Restart current iteration from beginning (optionally update objective/benchmark/iterations) |
-| `--dry-run` | Show what would happen without executing |
-| `--record-instructions` | Custom instructions for RECORD phase (e.g. `"Update .claude/JOURNAL.md, git add, commit, push"`). Default: no journal/git unless code changes exist |
+| `--continue` | Resume interrupted session |
+| `--restart` | Restart current iteration (optionally update objective/benchmark/iterations) |
+| `--dry-run` | Preview without executing |
+| `--record-instructions` | Custom RECORD instructions (e.g. `"Update .claude/JOURNAL.md, git add, commit, push"`). Default: no journal/git unless code changed |
 
 ## MANDATORY: All work goes through the orchestrator
 
-**NO EXCEPTIONS.** Every code change, file edit, commit MUST happen within an orchestrator phase. Do NOT:
+**NO EXCEPTIONS.** Every code change, file edit, commit MUST occur inside an orchestrator phase. Do NOT:
 
-- Edit files outside IMPLEMENT phase
-- Skip phases, do work "directly" to save time
+- Edit files outside IMPLEMENT
+- Skip phases
 - Make changes between orchestrator commands
-- Commit without RECORD phase
-- Evaluate benchmarks outside TEST phase
+- Commit without RECORD
+- Evaluate benchmarks outside TEST
 
-Orchestrator enforces quality gates (readback + gatekeeper). Bypass = bypass quality control. Orchestrator ceremony feels slow? That's the cost of not shipping broken code.
+Bypassing gates = bypassing quality control.
 
 **Phase discipline**:
-- RESEARCH, HYPOTHESIS, PLAN, REVIEW - READ-ONLY. No file modifications
-- IMPLEMENT - ONLY phase allowing code changes
+- RESEARCH, HYPOTHESIS, PLAN, REVIEW - READ-ONLY
+- IMPLEMENT - only phase allowing code changes
 - TEST - run tests, evaluate benchmarks. Edit BENCHMARK.md only
 - RECORD - journal, commit, push. No code changes
 
-Tempted to "just quickly fix something" outside the orchestrator? DON'T. Start a phase, do it properly, end the phase.
+Tempted to "just quickly fix something" outside? DON'T. Start a phase.
 
 ## How it works
 
-Every phase follows same 2-call pattern:
+Every phase = 2-call pattern:
 
 ```bash
 orchestrate new --type full --objective "improve X" --iterations 3
@@ -109,34 +113,34 @@ orchestrate start --understanding "I will spawn 3 research agents"
 orchestrate end --evidence "done" --agents "a,b,c" --output-file "path"
 ```
 
-CLI guides through each phase with full instructions, agent definitions, exit criteria. Run `start` to see what to do, `end` when done.
+CLI guides each phase with instructions, agent definitions, exit criteria.
 
-**FULLY AUTONOMOUS EXECUTION - NO HUMAN IN THE LOOP**:
+**FULLY AUTONOMOUS - NO HUMAN IN LOOP**:
 
-Orchestrator eliminates human as bottleneck. Human role limited to:
-1. Writing objective (PROGRAM.md)
-2. Defining benchmark (BENCHMARK.md)
-3. Choosing workflow type and iteration count
+Human role:
+1. Write objective (PROGRAM.md)
+2. Define benchmark (BENCHMARK.md)
+3. Choose workflow type and iteration count
 
 Everything else autonomous:
-- Move phase to phase IMMEDIATELY after `end` succeeds. No pause. No questions.
-- Move iteration to iteration IMMEDIATELY after NEXT completes. No pause.
-- NEVER ask "shall I continue?", "ready for next phase?", "want to checkpoint?"
-- NEVER summarize and wait for approval - proceed to next phase.
-- NEVER offer approach choices mid-run - PLAN phase already decided.
-- ONLY reasons to stop: (1) user explicitly asked to pause, (2) gate FAILS and needs fixing, (3) exit conditions met, (4) context limit reached (auto-compaction handles this).
+- Advance phase IMMEDIATELY after `end`. No pause. No questions
+- Advance iteration IMMEDIATELY after NEXT. No pause
+- NEVER ask "shall I continue?", "ready for next phase?", "checkpoint?"
+- NEVER summarize and wait for approval
+- NEVER offer approach choices mid-run - PLAN already decided
+- Stop ONLY on: (1) user explicit pause, (2) gate FAIL needing fix, (3) exit conditions met, (4) context limit (auto-compaction handles)
 
-Quality gates (readback + gatekeeper) = quality control mechanism, not human review. Trust the gates.
+Gates = quality control, not human review. Trust the gates.
 
 | Type | Use when |
 |------|----------|
 | `full` | Feature work, improvements, research-driven changes |
-| `gc` | Cleanup, dead code removal, refactoring |
+| `gc` | Cleanup, dead code, refactoring |
 | `hotfix` | Targeted bug fix, minimal ceremony |
 
 ## User guidance
 
-Users can inject context into any phase. When user says "focus on X" or "consider Y", use context command to store it - appears as prominent banner in phase instructions, broadcast to all agents spawned after the command:
+Inject context into any phase. User says "focus on X" → use context command. Stores as banner in phase instructions, broadcast to all agents spawned after:
 
 ```bash
 orchestrate context --phase RESEARCH --message "focus on connector routing"
@@ -144,7 +148,7 @@ orchestrate context --phase RESEARCH --message "focus on connector routing"
 
 ## Commands
 
-10 commands total. Run `orchestrate --help` or `orchestrate <command> --help` for full reference.
+10 total. Run `orchestrate --help` or `orchestrate <command> --help`.
 
 
 ```bash

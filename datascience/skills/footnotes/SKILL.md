@@ -5,41 +5,39 @@ description: Markdown footnotes for Jupyter notebooks and markdown files using a
 
 # Footnotes in Markdown
 
-Standard `[^1]` footnotes unsupported in Jupyter and many markdown renderers. Use HTML anchor pattern instead - proven in JupyterLab (including id sanitizer), GitHub, standard markdown.
+Standard `[^1]` footnotes unsupported in Jupyter. Use HTML anchor pattern. Proven in JupyterLab (incl. id sanitizer), GitHub, standard markdown.
 
 ## How it works in JupyterLab
 
 1. Markdown writes `<span id="D005">`
-2. JupyterLab sanitizer renames `id` to `data-jupyter-id="D005"` - does NOT delete it
+2. JupyterLab sanitizer renames `id` to `data-jupyter-id="D005"` (not deleted)
 3. User clicks blue superscript link `[<sup>D005</sup>](#D005)`
-4. JupyterLab internal click handler matches `#D005` against `data-jupyter-id="D005"`
-5. Calls `scrollIntoView()` on target - page scrolls to entry
+4. JupyterLab click handler matches `#D005` against `data-jupyter-id="D005"`
+5. Calls `scrollIntoView()` on target
 
 ## Pattern
 
-**Inline reference** (clickable superscript in text):
+**Inline reference** (clickable superscript):
 ```markdown
 - dowód: [<sup>D005</sup>](#D005) dowody/03 komunikacja z matką/2023-09-06 pismo.pdf
 ```
-Renders: clickable blue superscript **D005** followed by file path.
+Renders: clickable blue superscript **D005** + file path.
 
-**Target anchor** (footnotes/references section):
+**Target anchor** (references section):
 ```markdown
 - <span id="D005">D005 `dowody/03 komunikacja z matką/2023-09-06 pismo.pdf`</span>
 ```
-Renders: bullet with D005 label and monospace file path.
+Renders: bullet with D005 label + monospace path.
 
 ## Requirements
 
-- Target **MUST** use `<span id="...">` - not `<div>`, not heading. Span works reliably with JupyterLab sanitizer
-- Inline link **MUST** use `(#DXXX)` hash format - not relative file path
-- No `<br>` between entries - bullet points handle spacing
-- `<sup>` inside link optional (cosmetic superscript), **NOT** inside target span
-- IDs unique across entire document
+- Target MUST use `<span id="...">`. Not `<div>`, not heading
+- Inline link MUST use `(#DXXX)` hash. Not relative path
+- No `<br>` between entries - bullets handle spacing
+- `<sup>` inside link optional. NOT inside target span
+- IDs unique across document
 
 ## Numbering Schemes
-
-Prefix matches content:
 
 | Context | Pattern | Example |
 |---------|---------|---------|
@@ -75,14 +73,14 @@ Prefix matches content:
 
 - Evidence references in legal/analytical documents
 - Academic citations in analysis notebooks
-- Method references (paper links, documentation)
+- Method references (papers, docs)
 - Data source attribution
-- Cross-referencing within long markdown documents
+- Cross-referencing within long markdown
 
-## Common mistakes (production lessons)
+## Common mistakes
 
 - `<div id="...">` instead of `<span id="...">` - sanitizer handles span reliably
-- `<sup>` inside target span - makes label superscript at target too
-- File paths as href instead of `#ID` hash links - won't scroll
-- Missing `#` prefix in inline link - `(D005)` fails, `(#D005)` works
-- `<br>` between bullet entries - redundant, bullets already space
+- `<sup>` inside target span - makes label superscript at target
+- File paths as href instead of `#ID` - won't scroll
+- Missing `#` prefix - `(D005)` fails, `(#D005)` works
+- `<br>` between bullets - redundant

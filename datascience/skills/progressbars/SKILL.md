@@ -5,21 +5,21 @@ description: Use this skill when implementing progress bars in Python scripts or
 
 # Progress Bars Skill
 
-Progress bars for Python scripts and Jupyter notebooks. Full reference below.
+Progress bars for Python scripts and Jupyter.
 
 ## Selection Rule
 
-**MANDATORY**: Always ask user which style (classic or modern) before implementing. Never assume from context.
+**MANDATORY**: ASK user which style (classic or modern) before implementing. Never assume.
 
 ## Quick Reference
 
 ### Classic (tqdm)
 
-Works everywhere - terminals, Jupyter, IDE consoles. Renders as native ipywidgets in Jupyter when `ipywidgets` installed.
+Works everywhere - terminals, Jupyter, IDE. Renders native ipywidgets in Jupyter when `ipywidgets` installed.
 
-**Dependencies**: `tqdm`, `ipywidgets` (Jupyter widget rendering)
+**Deps**: `tqdm`, `ipywidgets` (Jupyter widgets)
 
-**Import**: `from tqdm.auto import tqdm` - `.auto` submodule auto-selects backend (text in terminal, ipywidgets in Jupyter).
+**Import**: `from tqdm.auto import tqdm` - `.auto` auto-selects backend.
 
 ```python
 from tqdm.auto import tqdm
@@ -39,9 +39,9 @@ with ThreadPoolExecutor(max_workers=16) as executor:
 
 ### Modern (rich)
 
-Feature-rich: spinners, elapsed time, ETA. Works in terminals and Jupyter notebooks.
+Spinners, elapsed time, ETA. Terminals + Jupyter.
 
-**Dependencies**: `rich`
+**Deps**: `rich`
 
 ```python
 from rich.progress import (
@@ -68,28 +68,22 @@ with Progress(
 
 ## Modern (rich) - Completion Fixes
 
-Common issues preventing rich Progress bars from completing properly:
-
-- **N-1 issue (bar stops one short)**: most common with parallel execution. After loop, always call `progress.update(task, completed=total)` then `progress.refresh()` to force 100%. Defensive practice for sequential loops too
-- **Bar disappears**: `transient=True` clears bar on context exit. `transient=False` (default) keeps it visible
-- **Stuck below 100%**: `total=` doesn't match `advance()` call count. Always advance every iteration, even when skipping items
-- **Spinner won't stop**: all tasks must reach `completed == total`. Verify total matches actual iteration count
-- **Bar frozen**: default refresh 10/sec. `refresh_per_second=10` for standard loops or call `progress.refresh()`
-- **Multiple bars overwrite**: create tasks once before loop, use `progress.reset(task, total=...)` per batch
-
-Full troubleshooting with code examples below.
+- **N-1 issue (stops one short)**: common with parallel execution. After loop: `progress.update(task, completed=total)` then `progress.refresh()`. Defensive for sequential too
+- **Bar disappears**: `transient=True` clears on context exit. `transient=False` (default) keeps visible
+- **Stuck below 100%**: `total=` doesn't match `advance()` count. Advance every iteration, even when skipping
+- **Spinner won't stop**: all tasks must reach `completed == total`. Verify total matches iteration count
+- **Bar frozen**: default refresh 10/sec. `refresh_per_second=10` or call `progress.refresh()`
+- **Multiple bars overwrite**: create tasks before loop, use `progress.reset(task, total=...)` per batch
 
 ## Jupyter Compatibility
 
-Both styles work in Jupyter:
-
-- **tqdm.auto** + `ipywidgets` = native widget progress bars
-- **rich Progress** = renders correctly in JupyterLab
-- Always `tqdm.auto` (not `tqdm.tqdm`) for automatic backend selection in classic style
+- **tqdm.auto** + `ipywidgets` = native widget bars
+- **rich Progress** renders in JupyterLab
+- Always `tqdm.auto` (not `tqdm.tqdm`) for classic style
 
 ## Jupyter Output Ordering (rich)
 
-In Jupyter, `logger.info()` and `print()` bypass Jupyter display system (stderr/stdout), causing messages to appear below or interleaved with rich Progress bars. Use `rich.print()` instead - shares same output pipeline as Progress:
+`logger.info()` and `print()` bypass Jupyter display (stderr/stdout), causing messages to appear below or interleaved with rich Progress. Use `rich.print()` instead - shares Progress pipeline:
 
 ```python
 from rich import print as rprint
@@ -99,8 +93,6 @@ with Progress(...) as progress:
     task = progress.add_task("Processing", total=len(items))
     ...
 ```
-
-Full details below.
 
 ## pyproject.toml
 

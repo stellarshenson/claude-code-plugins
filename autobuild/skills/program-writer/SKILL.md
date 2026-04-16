@@ -5,61 +5,60 @@ description: Write a PROGRAM.md file through iterative dialogue with the user. A
 
 # Program Writer
 
-Write `PROGRAM.md` through back-and-forth dialogue. NEVER produce full document on first attempt. Build incrementally via questions and proposals until user confirms solid.
+Write `PROGRAM.md` via dialogue. NEVER produce full document on first attempt. Build incrementally via questions and proposals.
 
 ## Process
 
 ### Round 1: Extract the intention
 
-Read user's seed prompt (text after `/autobuild`). Goal: understand INTENTION - what they want and why - not HOW. ASK these questions - all in ONE message, not one at a time:
+Read seed prompt (text after `/autobuild`). Goal: understand INTENTION (what + why), not HOW. ASK all in ONE message:
 
-1. **End state?** What does "done" look like? Paint picture of success - outcome, not implementation steps
-2. **What exists today?** Current state - working code, broken code, nothing yet? Gap between now and end state?
-3. **Why does this matter?** Problem solved? Cost of not doing it? Shapes priority
+1. **End state?** What does "done" look like? Outcome, not implementation
+2. **What exists today?** Current state. Gap to end state?
+3. **Why does this matter?** Problem solved? Cost of not doing? Shapes priority
 4. **Off-limits?** Files, behaviors, APIs that MUST NOT change
-5. **How will we know it works?** Test suite, benchmark, manual check? What's measurable?
-6. **Biggest risk?** What could go wrong or waste iterations?
+5. **How do we know it works?** Test suite, benchmark, manual check?
+6. **Biggest risk?** What could waste iterations?
 
-Listen carefully. Users often know WHAT but describe it as HOW. Separate intention from implementation. Ask follow-ups when intention unclear. "You mentioned refactoring X - goal = reduce complexity, improve testability, or enable a new feature?"
+Users know WHAT but describe HOW. Separate intention from implementation. Follow up when unclear: "You mentioned refactoring X - goal = reduce complexity, improve testability, or enable a new feature?"
 
 Do NOT proceed until intention crystal clear.
 
 ### Round 2: Propose the program
 
-From answers, write first draft of PROGRAM.md with:
+Write first draft with:
 - **Objective** (1-3 sentences, measurable)
-- **Current State** (what exists, what's broken, baseline numbers)
-- **Work Items** (flat list with scope, acceptance criteria, priority)
-- **Exit Conditions** (when to stop - see below)
+- **Current State** (what exists, broken, baseline numbers)
+- **Work Items** (flat list: scope, acceptance, priority)
+- **Exit Conditions** (see below)
 - **Constraints** (what not to change)
 
-ASK user about exit conditions: "When should orchestrator stop iterating? Default options:
-1. **Score stagnation** (recommended) - stop when benchmark score doesn't improve for 2 consecutive iterations despite implementation effort
-2. **Score target** - stop when benchmark score hits specific value (e.g. score < 5)
-3. **Scope completion** - stop when all work items meet acceptance, nothing left to implement
-4. **Combined** - stop on whichever first: target reached OR stagnation OR scope complete
+ASK about exit conditions: "When should orchestrator stop?
+1. **Score stagnation** (recommended) - stop if no improvement 2 consecutive iterations
+2. **Score target** - stop when score hits value (e.g. score < 5)
+3. **Scope completion** - stop when all work items meet acceptance
+4. **Combined** - whichever first: target OR stagnation OR scope complete
 
-Specific exit conditions, or default (stagnation + scope completion)?"
+Specific, or default (stagnation + scope completion)?"
 
-Present full program, ASK: "Review. What's missing, wrong, or over-scoped?"
+Present full program. Ask: "What's missing, wrong, over-scoped?"
 
 ### Round 3+: Refine
 
-Iterate on feedback. User may:
+User may:
 - Add forgotten work items
 - Remove out-of-scope items
 - Change priorities
-- Tighten acceptance criteria
+- Tighten acceptance
 - Add constraints
 
-Each round: update PROGRAM.md, show diff, ask if ready.
+Each round: update, show diff, ask if ready.
 
 ### Final: User approval
 
-Done ONLY on explicit user approval. Approval phrases:
-- "looks good", "approved", "let's go", "run it", "start", "yes"
+Explicit approval only. Phrases: "looks good", "approved", "let's go", "run it", "start", "yes".
 
-Do NOT proceed to benchmark-writer or orchestrator without explicit approval.
+Do NOT proceed without approval.
 
 ## PROGRAM.md Structure
 
@@ -95,14 +94,14 @@ Iterations stop when ANY of these is true:
 
 ## Rules
 
-- **Comprehensive** - program can be as long as needed to capture intention fully. Never compress at cost of clarity
-- **Intention over implementation** - work items describe WHAT and WHY, not HOW. "Migrate FSM to transitions package" = intention. "Replace FSMConfig with transitions.Machine, update 15 call sites in orchestrator.py" = implementation detail, belongs in PLAN phase
-- **Capture expert knowledge** - user-provided architectural constraints, design decisions, technology choices, domain insights MUST land in program. User = domain expert. "Use SimPy resources for connection pools" or "config must compose in 3 layers" = expert guidance orchestrator needs. Architectural direction, not implementation detail
-- **Let RESEARCH/PLAN figure out the how** - absent specific user guidance, don't prescribe implementation. RESEARCH phase investigates codebase, PLAN designs implementation
+- **Comprehensive** - as long as needed. Never compress at cost of clarity
+- **Intention over implementation** - work items = WHAT + WHY, not HOW. "Migrate FSM to transitions package" = intention. "Replace FSMConfig with transitions.Machine, update 15 call sites" = implementation (belongs in PLAN)
+- **Capture expert knowledge** - user architectural constraints, design decisions, tech choices, domain insights MUST land in program. "Use SimPy resources for connection pools" = expert guidance orchestrator needs
+- **Let RESEARCH/PLAN figure out the how** - don't prescribe implementation absent user guidance
 - **Scope boundaries explicit** - what CAN and CANNOT be modified
 - **Single metric** - program enables ONE number to optimize
-- **Logical grouping, not iteration breakdown** - group by logical category (e.g. "Framework extraction", "Config system", "Testing") when applicable, NOT by iterations. Orchestrator's PLANNING phase sequences iterations per dependencies and scope
-- **Exit conditions tied to benchmark, not acceptance criteria** - exit conditions reference benchmark score, not individual work item acceptance. Benchmark IS the objective function. Default: stop on score stagnation (no improvement for 2 iterations) OR scope completion (nothing left to implement) OR score at effective optimum (no further improvement possible). Ask user for specific conditions - target score or hard iteration cap possible
-- **Every work item has measurable acceptance** - "improve X" not a work item, "reduce X from 14 to 0" is
-- **Predictions and outcomes** - each work item states what changes (predict: from X to Y) and what user gets (outcome: enables Z, unblocks W). Predictions feed HYPOTHESIS phase. Outcomes keep items grounded in user value
-- **Dependencies** - work item requiring another first: state explicitly (depends on: X). Feeds PLANNING phase iteration sequencing. No circular dependencies
+- **Logical grouping, not iteration breakdown** - group by category ("Framework extraction", "Config system", "Testing"), NOT iterations. PLANNING sequences per dependencies
+- **Exit conditions tied to benchmark, not acceptance criteria** - reference score, not work item acceptance. Benchmark IS the objective function. Default: stagnation OR scope completion OR effective optimum. Ask user for specifics
+- **Every work item has measurable acceptance** - "improve X" not valid, "reduce X from 14 to 0" is
+- **Predictions and outcomes** - each work item states changes (predict: X→Y) and user value (outcome: enables Z). Feeds HYPOTHESIS phase
+- **Dependencies** - state explicitly (depends on: X). Feeds PLANNING. No circular deps

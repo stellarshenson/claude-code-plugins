@@ -5,35 +5,31 @@ description: SVG validation tools and verification workflow - overlap detection,
 
 # SVG Validation and Verification
 
-Twelve tools shipped in `stellars-claude-code-plugins` pip package. Install once, use everywhere via `svg-infographics` CLI. All tools (validators, calculators, on-request `text-to-path`) install with base package - no optional extras.
+Twelve tools shipped in `stellars-claude-code-plugins` pip package. Install once, use everywhere via `svg-infographics` CLI. All tools install with base package - no optional extras.
 
 ## Failure severity ladder
 
-Validator output maps to three severities. Only HARD FAILs block delivery; SOFT WARNINGS and HINTS are advisory.
+Three severities. Only HARD FAILs block delivery.
 
-| Severity | Prefix | What it means | Ship rule |
+| Severity | Prefix | Meaning | Ship rule |
 |---|---|---|---|
-| HARD FAIL | `WARNING:` | Broken geometry / illegal state. Requires written justification in the SVG comment to ship anyway. | Default: BLOCK |
+| HARD FAIL | `WARNING:` | Broken geometry / illegal state. Requires written justification in SVG comment to ship | Default: BLOCK |
 | SOFT WARNING | `CONSIDER (snap rule):` | Aesthetic degradation, avoidable with small adjustment | Fix when convenient |
-| HINT | `HINT:` | Rule was auto-applied, FYI only (e.g. T-junction chamfer dropped) | No action |
+| HINT | `HINT:` | Rule was auto-applied, FYI (e.g. T-junction chamfer dropped) | No action |
 
 ### Hard-fail classes
 
-These are geometry defects where the renderer produces visually-broken output:
+Geometry defects where rendered output is visually broken:
 
-1. **Text-on-edge overlap** - text glyph bbox crosses a stroke line (axis, card border, divider). Text becomes unreadable where it crosses the line. **Hard fail unless justified** (e.g. a deliberate label pinned to a grid line, commented as such).
-
-2. **Edge-on-edge overlap** - two strokes crossing where they shouldn't (axis line through a card border, connector arm through an unrelated divider). Reads as a routing bug. **Hard fail unless justified**.
-
-3. **Text-outside-container** - text extends past its parent card / zone rectangle. Layout has overflowed. **Hard fail**.
-
-4. **Connector-through-content** - connector mid-segment crosses a content group (card, label block). **Hard fail**.
-
-5. **XML malformation** - broken parse (e.g. `--` in comment). Catches cannot proceed. **Hard fail**.
+1. **Text-on-edge overlap** - text glyph bbox crosses a stroke (axis, card border, divider). Unreadable where crossed. **Hard fail unless justified**
+2. **Edge-on-edge overlap** - two strokes crossing wrongly (axis through card border, connector through unrelated divider). Reads as routing bug. **Hard fail unless justified**
+3. **Text-outside-container** - text extends past parent rectangle. Layout overflow. **Hard fail**
+4. **Connector-through-content** - connector mid-segment crosses content group. **Hard fail**
+5. **XML malformation** - broken parse (e.g. `--` in comment). **Hard fail**
 
 ### Justifying a hard fail
 
-If a hard fail is genuinely intended (e.g. a pinned label, a deliberate grid annotation), add an XML comment adjacent to the offending element documenting the reason:
+Intentional hard fail? Add XML comment adjacent documenting reason:
 
 ```xml
 <!-- Hard-fail justified: "4.5:1" label sits ON the WCAG threshold line by design,
@@ -42,7 +38,7 @@ If a hard fail is genuinely intended (e.g. a pinned label, a deliberate grid ann
 <text class="accent-2 metric-unit" x="432" y="248">4.5:1</text>
 ```
 
-No justification = the SVG does not ship.
+No justification = no ship.
 
 ```bash
 pip install stellars-claude-code-plugins
@@ -51,13 +47,13 @@ svg-infographics --help
 
 ## Task Tracking
 
-**MANDATORY**: Use Claude Code task tracking (TaskCreate/TaskUpdate) when running validation. Tasks per checker run and fix cycle.
+**MANDATORY**: TaskCreate/TaskUpdate when running validation. Tasks per checker run and fix cycle.
 
 ## Tool: overlaps
 
 Parses all visual elements, computes bboxes (text with font metrics, paths, rotated arrows, circles, rects), reports ALL overlaps.
 
-Classifications: `violation` (fix needed), `sibling` (adjacent), `label-on-fill` (intentional), `contained` (child in parent).
+Classifications: `violation` (fix), `sibling` (adjacent), `label-on-fill` (intentional), `contained` (child in parent).
 
 ```bash
 # Analyse and report
@@ -73,14 +69,14 @@ svg-infographics overlaps --svg file.svg --strip-bounds
 
 ### Verification Workflow
 
-Cycle: `--strip-bounds` -> fix layout -> run check -> `--inject-bounds` -> visually verify -> repeat -> `--strip-bounds` (final, mandatory).
+Cycle: `--strip-bounds` → fix layout → run check → `--inject-bounds` → visually verify → repeat → `--strip-bounds` (final, mandatory).
 
 ### Default-Bad Rule (Fail-First)
 
-All violations assumed **real defects** until individually defended. Each finding resolved as:
+All violations assumed **real defects** until individually defended. Resolve each:
 - **Fixed**: repositioned, re-run confirms
 - **Accepted**: specific reason not a defect
-- **Checker limitation**: manual computation proving compliance
+- **Checker limitation**: manual computation proves compliance
 
 **Bulk dismissals prohibited.** Examine every finding individually.
 
@@ -114,11 +110,11 @@ svg-infographics connectors --svg file.svg
 
 ## Tool: css
 
-CSS compliance checker. Validates: all colours CSS-controlled, no inline fills on text, no forbidden colours (#000000/#ffffff), dark mode overrides present.
+CSS compliance. Validates: all colours CSS-controlled, no inline fills on text, no forbidden colours (#000000/#ffffff), dark mode overrides present.
 
 ```bash
 svg-infographics css --svg file.svg              # Check compliance
-svg-infographics css --svg file.svg --strict     # Treat warnings as errors
+svg-infographics css --svg file.svg --strict     # Warnings as errors
 ```
 
 ## Tool: connector
@@ -134,7 +130,7 @@ svg-infographics connector --from 353,122 --to 200,84 --margin 3 --cutout 236,90
 
 ## Tool: primitives
 
-Geometry generator returning exact anchor coordinates for precise element placement. Use instead of approximating positions. Run `svg-infographics primitives --help` for full list.
+Geometry generator returning exact anchors for precise placement. Run `primitives --help` for full list.
 
 ```bash
 # 2D shapes
@@ -154,24 +150,24 @@ svg-infographics primitives spline --points "80,200 150,80 300,120 450,60" --sam
 svg-infographics primitives axis --origin 80,200 --length 300 --axes xyz --ticks 5
 ```
 
-Each primitive returns named anchor points (center, top-left, vertices, tips, etc.) for precise positioning of text, connectors, labels relative to shapes.
+Each primitive returns named anchor points (center, top-left, vertices, tips, etc.) for precise positioning.
 
 ## Tool: text-to-path (ON REQUEST ONLY)
 
-Converts text rendered in TTF/OTF font into SVG `<path>` outlines. **Do NOT run by default.** Use only when user explicitly asks for one of:
+Converts text rendered in TTF/OTF font into SVG `<path>` outlines. **Do NOT run by default.** Use only when user explicitly asks for:
 
-- Embedding custom font without relying on renderer having it installed
-- Print/hand-off SVGs that must look identical across all renderers (rsvg, CairoSVG, Inkscape, browsers)
-- Headline/label needing deterministic bbox for fit-to-width scaling without `textLength` glyph distortion
+- Embedding custom font without renderer having it installed
+- Print/hand-off SVGs identical across renderers (rsvg, CairoSVG, Inkscape, browsers)
+- Headline/label needing deterministic bbox for fit-to-width without `textLength` distortion
 - Branding marks (logos, wordmarks) that must never reflow
 
 Tradeoffs caller accepts:
 
-- Output no longer editable as text (no search/replace, no screen readers, no copy-paste)
-- File size 5-20x larger than `<text>` element
-- `.ttf` or `.otf` font path required - tool does NOT resolve system fonts by family name
+- No longer editable as text (no search/replace, no screen readers, no copy-paste)
+- File size 5-20x larger than `<text>`
+- `.ttf` or `.otf` path required - no system font resolution
 
-Coordinates match `<text>` semantics: `--x`/`--y` are **baseline** origin, `--anchor` mirrors `text-anchor` (start | middle | end). With `--fit-width`, natural advance exceeding the width uniformly scales path down (aspect preserved - no glyph stretching).
+Coordinates: `--x`/`--y` are **baseline** origin, `--anchor` mirrors `text-anchor` (start | middle | end). With `--fit-width`, natural advance exceeding width uniformly scales path down (aspect preserved).
 
 ```bash
 # Minimal: render "Hello" at baseline (100, 200) using Inter.ttf at 24px
@@ -192,7 +188,7 @@ svg-infographics text-to-path --text "TITLE" --font ./Inter.ttf \
 svg-infographics text-to-path --text "Hi" --font ./Inter.ttf --size 24 --json
 ```
 
-Command prints `<path>` snippet on stdout (paste into infographic), bbox + scale on stderr so pipes stay clean.
+Prints `<path>` on stdout, bbox + scale on stderr.
 
 ## Pre-Delivery Checklist
 
@@ -212,23 +208,23 @@ Command prints `<path>` snippet on stdout (paste into infographic), bbox + scale
 - [ ] Text within parent shapes
 
 ### Layout
-- [ ] Z-order: track -> connectors -> nodes -> content
+- [ ] Z-order: track → connectors → nodes → content
 - [ ] Card fills at 0.04-0.08 opacity
 - [ ] 10px+ padding from edges
 - [ ] Uniform spacing, consistent alignment
 - [ ] All children within parent boundaries
 
 ### Automated
-- [ ] `svg-infographics overlaps` - all violations reviewed
-- [ ] `svg-infographics contrast` - zero FAIL in production
-- [ ] `svg-infographics alignment` - topology passes
-- [ ] `svg-infographics css` - no inline fills, no forbidden colours, dark mode verified
+- [ ] `overlaps` - all violations reviewed
+- [ ] `contrast` - zero FAIL in production
+- [ ] `alignment` - topology passes
+- [ ] `css` - no inline fills, no forbidden colours, dark mode verified
 - [ ] Browser visual check via Playwright
 
 ## Multi-Agent Validation Workflow
 
 1. **Generator** creates/edits SVG
-2. **Checker agents** run all three scripts **in parallel** (3 concurrent agents)
+2. **Checker agents** run all three scripts **in parallel** (3 concurrent)
 3. **Generator** classifies findings, writes `verification_checklist.md`
 4. **Critic agent** (separate context, fail-first) reviews every classification
 5. **Fixer** addresses rejections, re-runs checkers

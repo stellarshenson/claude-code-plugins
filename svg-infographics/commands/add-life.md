@@ -12,6 +12,110 @@ Decoration pass on existing SVG. NOT a redesign - additive overlays, filters, fi
 
 **MANDATORY**: This command follows the svg-infographics skill and workflow. All placement uses tools (`empty-space`, `geom align`), all colours use CSS classes with dark mode, all elements respect topology and grouping. Read `svg-standards/SKILL.md` principles - they apply here.
 
+## Local directive file (user's project)
+
+`./svg-infographics-add-life.md` at the CURRENT project root. LOCAL to the user's project. NOT shipped with the plugin. Stores the user's ANSWERS to the questionnaire and their custom standing-directive overrides, not the questionnaire itself.
+
+- Questionnaire = static, defined in this command (below).
+- User's answers = stored in the local directive file under "Resolved pattern".
+- History = local append-only log in the directive file.
+
+### Directive file template (generated on first run, minimal)
+
+```markdown
+# svg-infographics-add-life directive (project-local)
+
+## Standing directive overrides (optional; defaults in the command)
+
+(Leave empty to use shipped defaults; or list overrides here.)
+
+## Creative brief (rewritten each run, free-text from user)
+
+(empty)
+
+## Resolved pattern (rewritten by the command each run)
+
+(empty)
+
+## History (append-only)
+
+(empty)
+```
+
+### Shipped standing directives (apply unless overridden in local file)
+
+1. **Additive only.** Never move/resize/restyle existing content. Decorations into `<g id="add-life-decorations">`.
+2. **Original untouched.** Output to `+` variant or user-chosen suffix.
+3. **Colour in-family.** Teal → cyan/blue-teal OK; teal → green FORBIDDEN. Amber → ochre/copper OK; amber → red FORBIDDEN.
+4. **Background opacity ≤ 0.10.** HARD CAP. Density via path count.
+5. **Icon per item** when questionnaire = `per-item`.
+6. **Icons = multi-stroke glyphs.** Lucide/Feather style.
+7. **Placement validated.** `empty-space --edges-only` before every decoration. `geom align` for role-shared.
+8. **Validation HARD gates.** `validate` → 0 errors; `overlaps` container-overflow → 0; `contrast` → WCAG AA preserved.
+9. **Dark-mode override per new class.**
+10. **Doc comment.** `<!-- add-life: <level> ... -->` block near top.
+11. **Size budget.** Low < 15KB. Medium < 50KB. High < 100KB.
+12. **No PNG rasterisation.** SVG only.
+13. **Push the hue harder.** Wide in-family hue range (up to ~25°), saturation + lightness part of the toolkit, per-card variants, focal stronger than neighbours.
+
+### Questionnaire (MANDATORY every run — use `AskUserQuestion`)
+
+Ask the user via the `AskUserQuestion` tool so they see the nice tab-based multiple-choice UI and can either click an option or chat their own answer. Ask in batches (up to 4 questions per `AskUserQuestion` call) to keep the UI compact. User answers override the defaults; "default" / empty answer uses the Default column.
+
+**Batch 0 (FIRST, before the structured questions): free-text creative brief.**
+
+Ask ONE open-ended question before any structured option: "Describe in your own words what this beautifying pass is about, the mood or theme you want, and anything else the agent should know." Use `AskUserQuestion` with the "free-text" input mode (the user types a paragraph, no multiple-choice options).
+
+Capture the answer verbatim into the local directive file's **Creative brief** section (a new section above "Resolved pattern"). Sub-agents read the Creative brief and use it to pick domain-appropriate icons, bg textures, embroidery motifs, and to break ties when the structured answers leave room (e.g. the user said "cyberpunk HUD atmosphere" → embroidery theme = cyberpunk HUD, glow palette = dual with a cooler cool-end, etc).
+
+If the user skips the free-text brief (empty answer), note in the brief "no user brief provided; infer from SVG content".
+
+**Batch 1: scope + intensity**
+
+| Question | Options | Default |
+|----------|---------|---------|
+| Target files | list of paths or glob | current article folder |
+| Output suffix | `+` / `_live` / in-place | `+` |
+| Intensity | `low` / `medium` / `high` / `absurd` | `medium` |
+
+**Batch 2: structure dimensions**
+
+| Question | Options | Default |
+|----------|---------|---------|
+| Colour variation | `off` / `subtle` / `moderate` / `free` | `moderate` |
+| Shapes | `off` / `subtle` / `moderate` / `bold` | `moderate` |
+| Icons mode | `per-item` / `per-header` / `off` | `per-item` |
+| Icon library | `lucide` / `feather` / `custom` | `lucide` |
+
+**Batch 3: decoration dimensions**
+
+| Question | Options | Default |
+|----------|---------|---------|
+| Embroidery | `off` / `sparse` / `moderate` / `dense` | `moderate` |
+| Abstract graphics | `off` / `sparse` / `moderate` / `rich` | `moderate` |
+| Bg texture theme | `none` / `circuit` / `neural` / `topo` / `grid` / `organic` / `constellation` | match article domain |
+| Bg opacity cap | `0.05` / `0.08` / `0.10` | `0.10` (directive #4 cap) |
+
+**Batch 4: glow + validation**
+
+| Question | Options | Default |
+|----------|---------|---------|
+| Glow mode | `off` / `focal-only` / `connectors+titles` / `everywhere` | `connectors+titles` |
+| Glow palette | `cool` / `warm` / `dual` | `dual` |
+| Validation strictness | `strict` / `strict-errors-only` | `strict-errors-only` |
+
+If the user's initial command invocation volunteered any answers inline (e.g. "medium intensity, icons per item, circuit texture"), pre-fill those into the `AskUserQuestion` defaults so the user only confirms the rest.
+
+Workflow:
+1. If `./svg-infographics-add-life.md` missing: generate the minimal template above.
+2. Read it. Apply any standing-directive overrides from the local file on top of the shipped defaults.
+3. Walk the 14-question questionnaire. Collect answers.
+4. Rewrite the local file's "Resolved pattern" section with the answers.
+5. Append history entry when done.
+6. Sub-agents told: "Read `./svg-infographics-add-life.md` and apply the Resolved pattern."
+
+Questionnaire asked every run. Resolved pattern rewrites. Directive overrides persist across runs.
+
 ## Before touching
 
 1. Read target SVG completely
@@ -26,14 +130,16 @@ Decoration pass on existing SVG. NOT a redesign - additive overlays, filters, fi
 
 ### 1. Colour variation
 
-Creative variation anchored in brand palette. Hue shifts, lightness and saturation tweaks, opacity layering. Apply to BOTH fills AND strokes - card outlines, connectors, accent bars should all get subtle hue variation, not remain uniform. May introduce complementary hues where they add depth - not limited to strict brand colours.
+Be creative with colour per card / pillar / phase / tool-tile. Every repeating element gets its own hue variant on body + stroke + accent bar. Hue, saturation, lightness all in play. In-family only (teal → cyan/blue-teal OK, teal → green FORBIDDEN; amber → ochre/copper OK, amber → red FORBIDDEN). Rhythm, not coded categories.
+
+Apply to BOTH fills AND strokes. Introduce `card-body-1 / -2 / -3 ...` classes with `@media (prefers-color-scheme: dark)` overrides.
 
 | Level | Character |
 |-------|-----------|
-| **low** | Subtle. Opacity variants, alternate row tinting, small hue shifts on accents |
-| **medium** | Noticeable. Derived shades, gradient fills on focal cards, complementary accent hues where warranted |
-| **high** | Rich. Many derived shades, multi-stop gradients, colour-coded groups, free use of complementary hues |
-| **absurd** | Chromatic. Iridescent overlays, every element its own shade, bold complementary splashes |
+| **low** | Per-card opacity + tiny hue shifts on accents |
+| **medium** | Per-card body + stroke + accent-bar hue variants. Focal card a stronger variant |
+| **high** | Multi-stop gradients, several variants per card, colour-coded groups within family |
+| **absurd** | Iridescent overlays, every element its own shade |
 
 ### 2. Shape and creative elements
 
@@ -142,41 +248,35 @@ This comment allows future agents to understand what decorations were applied, a
 
 ## Workflow
 
-### Step 1: Read and analyse
+### Step 1: Read directive file
 
-Read SVG + theme. Understand content domain (tech, AI, science, business, etc.).
+Read `svg-infographics-add-life.md` FULLY. Standing directives (never-negotiable) live there. So does the questionnaire, the dimension reference, and the resolved-pattern slot that this run will populate.
 
-### Step 2: Propose treatment (MANDATORY - ask before applying)
+### Step 2: Read target SVG + theme
 
-Present a proposal table to the user covering all 7 dimensions. Suggest specific treatments based on SVG content and requested level. User must confirm or adjust before any edits.
+For each file passed in arguments, read the SVG completely. Parse the XML comment block to absorb intent and theme. Identify the CSS theme classes, the palette, and the dark-mode overrides.
 
-**Proposal format:**
+### Step 3: Run the mandatory questionnaire
 
-```
-Add-life proposal for <filename> at <level>:
+Walk the user through all 14 questions from the directive file. Use `AskUserQuestion` if available, otherwise present them as a numbered list and wait for all answers. Do NOT shortcut, do NOT use previous runs' answers. Every run re-asks. This is the guard against silent drift.
 
-| Dimension | Proposed treatment | Skip? |
-|-----------|-------------------|-------|
-| Colour | Hue-shifted fills AND strokes, alternate card tinting | |
-| Shapes | Accent bars, rounded corners, card shadows | |
-| Icons | Detailed multi-stroke icons in headers | |
-| Embroidery | Theme: <suggest based on content>. Corner marks, tech-line flourishes | |
-| Abstract | Accent particles in whitespace, background arcs | |
-| Bg texture | Theme: <circuit/neural/geographic/grid/organic/none>. Faded traces | |
-| Glow | Selective glow on focal elements | |
+Defaults are allowed - the user may answer "default" to accept the Default column for any question. "Skip" marks a dimension as off for this run. Custom values are copied verbatim.
 
-Proceed? (or adjust any dimension)
-```
+If the user volunteered any of these answers inline in their command invocation (e.g. they said "medium intensity, icons per item, circuit texture"), pre-fill those answers in the questionnaire and only ask about the remaining ones. But still SHOW the full questionnaire so the user sees every decision being made.
 
-For **embroidery**, suggest a domain theme: electronics/circuit, AI/neural, cyberpunk HUD, sci-fi abstract, decorative flourishes, science/math.
+### Step 4: Rewrite the Resolved pattern
 
-For **background texture**, suggest a theme: circuit/PCB traces, neural/dendritic, geographic/topographic, grid/technical, organic/natural, or none.
+After all 14 answers are collected, rewrite the **Resolved pattern** section in `svg-infographics-add-life.md` with the current run's concrete choices. Timestamp the update. This becomes the single source of truth that sub-agents will read.
 
-Pick the domain that matches the SVG content. User can override.
+### Step 5: Apply (delegated to sub-agents for multi-file runs)
 
-### Step 3: Apply
+For a single file: apply the seven dimensions per the resolved pattern directly. One task per dimension.
 
-After user confirms, apply all six dimensions as approved. One task per dimension.
+For multiple files: spawn parallel `svg-designer` sub-agents, one per file or one per 2 files. Every sub-agent's prompt starts with:
+
+> Read `svg-infographics-add-life.md` first. Follow every standing directive and the resolved pattern in that file.
+
+Then list the specific file(s) and any per-file domain targeting (icon picks, texture theme) that vary between files.
 
 **Placement rules (MANDATORY)**:
 
@@ -185,9 +285,28 @@ After user confirms, apply all six dimensions as approved. One task per dimensio
 3. **Group decorations**: all add-life elements go into a dedicated `<g id="add-life-decorations">` group. Icons into `<g id="add-life-icons">`. Maintain the five-layer structure
 4. **Overlap validation**: run `overlaps` checker after placement. Any decoration that violates padding/margin/spacing rules gets repositioned or removed
 
-### Step 4: Verify
+### Step 6: Verify
 
-1. Render PNG at 3x via `render-png --mode both`
-2. Run `overlaps` + `contrast` validators
-3. Fix validation failures
-4. Report: dimensions applied, additions, final file size
+For each modified file:
+1. `svg-infographics validate <file>` - zero XML errors.
+2. `svg-infographics overlaps --svg <file>` - zero container-overflow warnings (text escaping parent = hard fail per validation skill).
+3. `svg-infographics contrast --svg <file>` - WCAG AA preserved.
+4. Fix or revert any hard-fail violation before declaring done.
+
+**Do NOT rasterise to PNG.** The `medium-article` skill was updated to embed SVGs directly - per-SVG PNGs are no longer produced for article assets.
+
+### Step 7: Log the run
+
+Append a one-line history entry to the directive file's History section:
+
+```
+# <YYYY-MM-DD HH:MM> - <files> - <level> - <OK | FAIL: reason>
+```
+
+### Step 8: Report
+
+Report to the user:
+- Files produced (paths with + suffix or equivalent)
+- Per-dimension summary (what was added)
+- Validator results
+- Final file sizes

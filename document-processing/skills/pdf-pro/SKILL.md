@@ -5,7 +5,7 @@ description: Production-ready PDF processing with forms, tables, OCR, validation
 
 # PDF Processing Pro
 
-Production-ready PDF toolkit. Pre-built scripts, error handling, complex workflow support.
+Production PDF toolkit. Pre-built scripts, error handling, complex workflows.
 
 ## Quick start
 
@@ -19,7 +19,7 @@ with pdfplumber.open("document.pdf") as pdf:
     print(text)
 ```
 
-### Analyze PDF form (using included script)
+### Analyze PDF form
 
 ```bash
 python scripts/analyze_form.py input.pdf --output fields.json
@@ -42,29 +42,28 @@ python scripts/extract_tables.py report.pdf --output tables.csv
 
 ## Features
 
-### ✅ Production-ready scripts
+### Production-ready scripts
 
 All scripts include:
-- **Error handling**: graceful failures, detailed error messages
+- **Error handling**: graceful failures, detailed messages
 - **Validation**: input validation, type checking
 - **Logging**: configurable, timestamped
-- **Type hints**: full annotations for IDE support
-- **CLI interface**: `--help` flag on all scripts
+- **Type hints**: full annotations
+- **CLI interface**: `--help` flag on all
 - **Exit codes**: proper codes for automation
 
-### ✅ Comprehensive workflows
+### Comprehensive workflows
 
-- **PDF Forms**: complete form processing pipeline
-- **Table Extraction**: advanced detection and extraction
+- **PDF Forms**: full form processing pipeline
+- **Table Extraction**: advanced detection
 - **OCR Processing**: scanned PDF text extraction
-- **Batch Operations**: efficient multi-PDF processing
+- **Batch Operations**: multi-PDF processing
 - **Validation**: pre/post-processing checks
 
 ## Advanced topics
 
 ### PDF Form Processing
 
-Complete form workflows:
 - Field analysis and detection
 - Dynamic form filling
 - Validation rules
@@ -75,7 +74,6 @@ See [FORMS.md](FORMS.md)
 
 ### Table Extraction
 
-Complex extraction:
 - Multi-page tables
 - Merged cells
 - Nested tables
@@ -86,7 +84,6 @@ See [TABLES.md](TABLES.md)
 
 ### OCR Processing
 
-Scanned PDFs and image-based documents:
 - Tesseract integration
 - Language support
 - Image preprocessing
@@ -198,7 +195,7 @@ for pdf_file in glob.glob("invoices/*.pdf"):
 
 ## Error handling
 
-Consistent error patterns across all scripts:
+Exit codes across scripts:
 
 ```python
 # Exit codes
@@ -221,7 +218,7 @@ else:
 
 ## Dependencies
 
-Required for all scripts:
+Required:
 
 ```bash
 pip install pdfplumber pypdf pillow pytesseract pandas
@@ -237,35 +234,30 @@ Optional for OCR:
 
 ## Performance tips
 
-- **Batch processing** for multiple PDFs
-- **Multiprocessing** via `--parallel` flag (where supported)
+- **Batch** multiple PDFs
+- **Multiprocessing** via `--parallel` flag where supported
 - **Cache extracted data** - avoid re-processing
 - **Validate inputs early** - fail fast
 - **Streaming** for large PDFs (>50MB)
 
 ## Best practices
 
-1. **Validate inputs** before processing
-2. **try-except** in custom scripts
-3. **Log all operations** for debugging
-4. **Test with sample PDFs** before production
-5. **Set timeouts** on long-running operations
-6. **Check exit codes** in automation
-7. **Backup originals** before modification
+1. Validate inputs before processing
+2. try-except in custom scripts
+3. Log all operations
+4. Test with sample PDFs before production
+5. Set timeouts on long-running ops
+6. Check exit codes in automation
+7. Backup originals before modification
 
 ## Troubleshooting
 
-### Common issues
-
-**"Module not found" errors**:
+**"Module not found"**:
 ```bash
 pip install -r requirements.txt
 ```
 
-**Tesseract not found**:
-```bash
-# Install tesseract system package (see Dependencies)
-```
+**Tesseract not found**: install system package (see Dependencies).
 
 **Memory errors with large PDFs**:
 ```python
@@ -290,7 +282,7 @@ python scripts/analyze_form.py --help
 python scripts/extract_tables.py --help
 ```
 
-Detailed topic docs:
-- [FORMS.md](FORMS.md) - complete form processing guide
-- [TABLES.md](TABLES.md) - advanced table extraction
-- [OCR.md](OCR.md) - scanned PDF processing
+Topic docs:
+- [FORMS.md](FORMS.md) - form processing
+- [TABLES.md](TABLES.md) - table extraction
+- [OCR.md](OCR.md) - scanned PDFs

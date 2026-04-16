@@ -8,7 +8,7 @@ license: Proprietary. LICENSE.txt has complete terms
 
 ## Overview
 
-Essential PDF operations via Python libraries and CLI tools. Advanced features, JavaScript libraries, detailed examples: see reference.md. PDF form filling: read forms.md and follow instructions.
+PDF operations via Python libraries and CLI tools. Advanced features, JS libraries, detailed examples: see reference.md. Form filling: forms.md.
 
 ## Quick Start
 
