@@ -75,6 +75,11 @@ SUBCOMMANDS = {
         "text_to_path",
         "ON REQUEST: convert text + TTF/OTF font into SVG <path> outlines. Embeds text without font dependency.",
     ),
+    # ---- DRAW.IO SHAPE LIBRARY ----
+    "shapes": (
+        "drawio_shapes",
+        "SHAPES: index, search, catalogue, and render draw.io stencil libraries as SVG snippets.",
+    ),
 }
 
 

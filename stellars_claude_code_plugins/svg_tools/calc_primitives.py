@@ -844,25 +844,33 @@ def gen_gear(
     for i in range(teeth):
         base_angle = tooth_angle * i
         # Base-left on inner circle
-        pts.append(Point(
-            round(x + inner_r * math.cos(base_angle - half_tooth), 2),
-            round(y + inner_r * math.sin(base_angle - half_tooth), 2),
-        ))
+        pts.append(
+            Point(
+                round(x + inner_r * math.cos(base_angle - half_tooth), 2),
+                round(y + inner_r * math.sin(base_angle - half_tooth), 2),
+            )
+        )
         # Tip-left on outer circle
-        pts.append(Point(
-            round(x + outer_r * math.cos(base_angle - half_tooth), 2),
-            round(y + outer_r * math.sin(base_angle - half_tooth), 2),
-        ))
+        pts.append(
+            Point(
+                round(x + outer_r * math.cos(base_angle - half_tooth), 2),
+                round(y + outer_r * math.sin(base_angle - half_tooth), 2),
+            )
+        )
         # Tip-right on outer circle
-        pts.append(Point(
-            round(x + outer_r * math.cos(base_angle + half_tooth), 2),
-            round(y + outer_r * math.sin(base_angle + half_tooth), 2),
-        ))
+        pts.append(
+            Point(
+                round(x + outer_r * math.cos(base_angle + half_tooth), 2),
+                round(y + outer_r * math.sin(base_angle + half_tooth), 2),
+            )
+        )
         # Base-right on inner circle
-        pts.append(Point(
-            round(x + inner_r * math.cos(base_angle + half_tooth), 2),
-            round(y + inner_r * math.sin(base_angle + half_tooth), 2),
-        ))
+        pts.append(
+            Point(
+                round(x + inner_r * math.cos(base_angle + half_tooth), 2),
+                round(y + inner_r * math.sin(base_angle + half_tooth), 2),
+            )
+        )
 
     anchors = {
         "centre": Point(x, y),
@@ -910,7 +918,9 @@ def gen_pyramid(
     }
 
     face_left = f"M{apex.x},{apex.y} L{base_left.x},{base_left.y} L{base_back.x},{base_back.y} Z"
-    face_right = f"M{apex.x},{apex.y} L{base_right.x},{base_right.y} L{base_back.x},{base_back.y} Z"
+    face_right = (
+        f"M{apex.x},{apex.y} L{base_right.x},{base_right.y} L{base_back.x},{base_back.y} Z"
+    )
     face_back = f"M{base_left.x},{base_left.y} L{base_right.x},{base_right.y} L{base_back.x},{base_back.y} Z"
 
     if mode == "wire":
@@ -967,9 +977,7 @@ def gen_cloud(
         lx1 = lx0 + lobe_w
         lmid = (lx0 + lx1) / 2
         parts.append(
-            f"C{lx0:.2f},{y:.2f} "
-            f"{lmid:.2f},{y - 0.05 * h:.2f} "
-            f"{lx1:.2f},{y + 0.05 * h:.2f}"
+            f"C{lx0:.2f},{y:.2f} {lmid:.2f},{y - 0.05 * h:.2f} {lx1:.2f},{y + 0.05 * h:.2f}"
         )
     # Right ramp down
     parts.append(
@@ -1014,19 +1022,9 @@ def gen_document(
         fold = min(w, h) * 0.2
 
     # Main body: top-left -> (top-right minus fold) -> diagonal -> down -> bottom-right -> bottom-left
-    body_d = (
-        f"M{x},{y} "
-        f"L{x + w - fold},{y} "
-        f"L{x + w},{y + fold} "
-        f"L{x + w},{y + h} "
-        f"L{x},{y + h} Z"
-    )
+    body_d = f"M{x},{y} L{x + w - fold},{y} L{x + w},{y + fold} L{x + w},{y + h} L{x},{y + h} Z"
     # Fold flap triangle
-    flap_d = (
-        f"M{x + w - fold},{y} "
-        f"L{x + w - fold},{y + fold} "
-        f"L{x + w},{y + fold} Z"
-    )
+    flap_d = f"M{x + w - fold},{y} L{x + w - fold},{y + fold} L{x + w},{y + fold} Z"
 
     anchors = {
         "top-left": Point(x, y),
@@ -1185,7 +1183,9 @@ def main():
     p.add_argument("--x", type=float, required=True)
     p.add_argument("--y", type=float, required=True)
     p.add_argument("--outer-r", type=float, required=True, help="Outer (tip) radius")
-    p.add_argument("--inner-r", type=float, default=0, help="Inner (root) radius (default: outer_r*0.7)")
+    p.add_argument(
+        "--inner-r", type=float, default=0, help="Inner (root) radius (default: outer_r*0.7)"
+    )
     p.add_argument("--teeth", type=int, default=12, help="Number of teeth (default: 12)")
     p.add_argument("--mode", choices=["filled", "outline"], default="filled")
 
@@ -1275,7 +1275,9 @@ def main():
     elif args.primitive == "plane":
         result = gen_plane(args.x, args.y, args.width, args.depth, tilt=args.tilt)
     elif args.primitive == "gear":
-        result = gen_gear(args.x, args.y, args.outer_r, inner_r=args.inner_r, teeth=args.teeth, mode=args.mode)
+        result = gen_gear(
+            args.x, args.y, args.outer_r, inner_r=args.inner_r, teeth=args.teeth, mode=args.mode
+        )
     elif args.primitive == "pyramid":
         result = gen_pyramid(args.x, args.y, args.base_w, args.height, mode=args.mode)
     elif args.primitive == "cloud":

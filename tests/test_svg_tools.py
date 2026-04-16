@@ -3513,8 +3513,9 @@ import textwrap as _textwrap
 from stellars_claude_code_plugins.svg_tools.drawio_shapes import (
     DrawioShape,
     ShapeIndex,
+    _load_index,
     _mxgraph_to_svg_path,
-    build_index,
+    index_source,
     parse_drawio_library,
     render_catalogue,
     render_shape,
@@ -3643,12 +3644,11 @@ class TestMxGraphToSvgPath:
         assert "L 100.000 0.000" in d
         assert "Z" in d
 
-    def test_scaling_applied(self):
-        """Coordinates are scaled from the [0,100] stencil box to (w, h)."""
+    def test_coordinates_are_absolute(self):
+        """Coordinates are used as-is (absolute units, not normalised)."""
         el = self._el("<foreground><move x='50' y='50'/></foreground>")
         d = _mxgraph_to_svg_path(el, w=200, h=100)
-        # x=50% of 200 = 100, y=50% of 100 = 50
-        assert "M 100.000 50.000" in d
+        assert "M 50.000 50.000" in d
 
     def test_curve_produces_C(self):
         """curve element -> SVG cubic bezier C command."""
@@ -3674,106 +3674,191 @@ class TestMxGraphToSvgPath:
 
 
 class TestShapeIndex:
-    """Unit tests for ShapeIndex: build, search, save, load, by_category."""
+    """Unit tests for ShapeIndex and cache-based index operations."""
 
     def _make_index(self, tmp_path) -> ShapeIndex:
+        """Build an index from a local stencil file via index_source."""
         xml_file = tmp_path / "networking.xml"
         xml_file.write_text(_SAMPLE_STENCIL_XML)
-        return build_index([tmp_path])
+        return index_source(str(xml_file))
 
-    def test_build_index_finds_shapes(self, tmp_path):
+    def test_index_source_finds_shapes(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
         index = self._make_index(tmp_path)
         assert len(index.shapes) == 2
 
-    def test_build_index_categories(self, tmp_path):
+    def test_index_source_tracks_source(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
         index = self._make_index(tmp_path)
-        assert "networking" in index.categories
+        assert "networking.xml" in index.sources
 
-    def test_build_index_empty_dir(self, tmp_path):
-        """An empty directory produces an empty index without error."""
-        subdir = tmp_path / "empty"
-        subdir.mkdir()
-        index = build_index([subdir])
-        assert len(index.shapes) == 0
-        assert len(index.categories) == 0
-
-    def test_build_index_missing_dir(self, tmp_path):
-        """A non-existent directory is skipped without raising."""
-        index = build_index([tmp_path / "no_such_dir"])
-        assert index.shapes == []
-
-    def test_search_exact_match(self, tmp_path):
+    def test_search_exact_match(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
         index = self._make_index(tmp_path)
         results = index.search("database")
         assert len(results) >= 1
         assert results[0].name == "database"
 
-    def test_search_partial_match(self, tmp_path):
+    def test_search_partial_match(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
         index = self._make_index(tmp_path)
         results = index.search("data")
         assert any(s.name == "database" for s in results)
 
-    def test_search_no_match_returns_empty(self, tmp_path):
+    def test_search_no_match_returns_empty(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
         index = self._make_index(tmp_path)
         results = index.search("xyzzy_nonexistent")
         assert results == []
 
-    def test_search_limit_respected(self, tmp_path):
-        # Add multiple XML files to get more shapes
-        for i in range(5):
+    def test_search_limit_respected(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
+        # Index two separate files
+        for i in range(3):
             f = tmp_path / f"lib{i}.xml"
-            f.write_text(_SAMPLE_STENCIL_XML)
-        index = build_index([tmp_path])
+            f.write_text(_SAMPLE_STENCIL_XML.replace("networking", f"lib{i}"))
+            index_source(str(f))
+        index = _load_index()
         results = index.search("database", limit=2)
         assert len(results) <= 2
 
-    def test_list_categories_sorted(self, tmp_path):
-        for name in ("zzz.xml", "aaa.xml"):
-            (tmp_path / name).write_text(_SAMPLE_STENCIL_XML)
-        index = build_index([tmp_path])
-        cats = index.list_categories()
-        assert cats == sorted(cats)
-
-    def test_by_category_returns_shapes(self, tmp_path):
+    def test_by_category_returns_shapes(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
         index = self._make_index(tmp_path)
         shapes = index.by_category("networking")
         assert len(shapes) == 2
 
-    def test_by_category_unknown_returns_empty(self, tmp_path):
+    def test_by_category_unknown_returns_empty(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
         index = self._make_index(tmp_path)
         assert index.by_category("unknown_category") == []
 
-    def test_save_and_load_roundtrip(self, tmp_path):
-        """Shapes survive a save -> load roundtrip with identical attributes."""
+    def test_save_and_load_roundtrip(self, tmp_path, monkeypatch):
+        """Shapes survive a save -> load roundtrip via cache."""
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
         index = self._make_index(tmp_path)
-        index_path = tmp_path / "index.json"
-        index.save(index_path)
-
-        loaded = ShapeIndex.load(index_path)
+        loaded = _load_index()
         assert len(loaded.shapes) == len(index.shapes)
-        orig_names = {s.name for s in index.shapes}
-        loaded_names = {s.name for s in loaded.shapes}
-        assert orig_names == loaded_names
+        assert {s.name for s in loaded.shapes} == {s.name for s in index.shapes}
 
-    def test_save_json_structure(self, tmp_path):
-        """Saved JSON has required top-level keys and correct version."""
+    def test_index_json_structure(self, tmp_path, monkeypatch):
+        """Saved index JSON has required top-level keys and version 2."""
         import json as _json
-        index = self._make_index(tmp_path)
-        index_path = tmp_path / "index.json"
-        index.save(index_path)
-        data = _json.loads(index_path.read_text())
-        assert data["version"] == 1
-        assert data["shape_count"] == len(index.shapes)
+
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
+        self._make_index(tmp_path)
+        data = _json.loads((tmp_path / "_index.json").read_text())
+        assert data["version"] == 2
+        assert data["shape_count"] == 2
         assert isinstance(data["categories"], list)
         assert isinstance(data["shapes"], list)
+        assert isinstance(data["sources"], dict)
 
-    def test_load_wrong_version_raises(self, tmp_path):
-        """Loading an index with an unsupported version raises ValueError."""
+    def test_load_wrong_version_returns_empty(self, tmp_path, monkeypatch):
+        """An index with wrong version returns empty index (no crash)."""
         import json as _json
-        index_path = tmp_path / "bad_version.json"
-        index_path.write_text(_json.dumps({"version": 999, "shapes": [], "categories": []}))
-        with pytest.raises(ValueError, match="Unsupported index version"):
-            ShapeIndex.load(index_path)
+
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
+        (tmp_path / "_index.json").write_text(
+            _json.dumps({"version": 999, "shapes": [], "categories": []})
+        )
+        index = _load_index()
+        assert len(index.shapes) == 0
+
+    def test_empty_cache_returns_empty_index(self, tmp_path, monkeypatch):
+        """No index file returns empty ShapeIndex."""
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
+        index = _load_index()
+        assert len(index.shapes) == 0
+        assert len(index.sources) == 0
+
+    def test_reindex_same_source_deduplicates(self, tmp_path, monkeypatch):
+        """Indexing the same file twice does not create duplicate shapes."""
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.CACHE_DIR", tmp_path
+        )
+        monkeypatch.setattr(
+            "stellars_claude_code_plugins.svg_tools.drawio_shapes.INDEX_FILE",
+            tmp_path / "_index.json",
+        )
+        xml_file = tmp_path / "networking.xml"
+        xml_file.write_text(_SAMPLE_STENCIL_XML)
+        index_source(str(xml_file))
+        index_source(str(xml_file))
+        index = _load_index()
+        assert len(index.shapes) == 2  # not 4
 
 
 class TestRenderShape:
