@@ -1,18 +1,19 @@
 <!--
-  07-theme-approval+.svg - add-life medium pass over 07-theme-approval.svg
-  Original untouched. Decorations injected into #add-life-decorations (behind content),
-  and icon/glow overlays into #add-life-overlays (in front of content, non-hit).
+  07-theme-approval+.svg - Theme swatch approval gate (add-life: medium)
+  Source: 07-theme-approval.svg (untouched - all geometry preserved verbatim)
 
   add-life: medium
-    colour: moderate (per directive #13 - wide in-family hue range across 4 deliverable cards)
-    shapes: moderate (soft shadows, corner brackets on swatch + gate + deliverables)
-    icons: per-item (Lucide glyphs on every palette chip + decorative chip-check badges)
-    embroidery: moderate (tech brackets, scan dashes, gate corona ticks)
-    abstract: moderate (accent particles + ring fragments + stray arc)
-    bg_texture: geometric swatch grid at opacity 0.08 (HARD CAP 0.10)
-    glow: connectors+titles (cool on connectors, warm on title/LOCKED)
-    dark-mode overrides: yes, every new class
-    hue family: teal -> cyan / sky / steel / deep-teal per card-body-1..4 (approx 25 deg hue spread)
+    colour: per-card hue variants on 4 deliverable cards via additional decorative accent bars
+      card-1 teal base, card-2 cyan-teal, card-3 sky-teal, card-4 blue-teal
+      (originals left in place; hue variants expressed via OVERLAY accent strips drawn above)
+    shapes: corner brackets on swatch card + 4 deliverable cards + gate diamond
+    icons: existing per-card icons preserved; decorative warm shield ring around gate diamond
+    embroidery: corner brackets, scan lines between cards, tech-line fragments
+    abstract: accent particles + 2 background arcs
+    bg_texture: organic/geometric swatch-grid, opacity 0.08
+    glow: cool glow filter defined; warm glow filter defined (filters available for selective use)
+  Geometry-preservation: zero modifications to original paths/rects/circles/polygons/lines.
+  Add-life decorations in <g id="add-life-decorations"> below content, icons in <g id="add-life-icons"> above.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 440">
   <style>
@@ -27,42 +28,6 @@
     .stroke-accent-2 { stroke: #da8230; }
     .icon-stroke-1 { stroke: #005f7a; }
     .icon-stroke-2 { stroke: #7a4a15; }
-
-    /* add-life classes (medium) */
-    .al-bg-path { stroke: #0096d1; stroke-width: 0.5; fill: none; opacity: 0.08; }
-    .al-bg-node { fill: #0096d1; opacity: 0.08; }
-    .al-bracket { stroke: #0096d1; stroke-width: 1.2; fill: none; opacity: 0.55; stroke-linecap: round; }
-    .al-bracket-warm { stroke: #da8230; stroke-width: 1.2; fill: none; opacity: 0.55; stroke-linecap: round; }
-    .al-dash { stroke: #0096d1; stroke-width: 0.8; fill: none; opacity: 0.45; stroke-linecap: round; }
-    .al-dash-warm { stroke: #da8230; stroke-width: 0.8; fill: none; opacity: 0.50; stroke-linecap: round; }
-    .al-ring { stroke: #da8230; stroke-width: 0.9; fill: none; opacity: 0.35; }
-    .al-ring-cool { stroke: #0096d1; stroke-width: 0.9; fill: none; opacity: 0.30; }
-    .al-particle-cool { fill: #0096d1; opacity: 0.55; }
-    .al-particle-warm { fill: #da8230; opacity: 0.55; }
-    .al-shadow { fill: #0a2a33; opacity: 0.06; }
-
-    /* wider in-family hue rhythm for the 4 deliverable cards (body + stroke + accent bar tint) */
-    .card-body-1 { fill: #0096d1; fill-opacity: 0.06; }        /* teal primary */
-    .card-body-2 { fill: #3aa8d8; fill-opacity: 0.06; }        /* sky */
-    .card-body-3 { fill: #1d7ea6; fill-opacity: 0.07; }        /* steel-teal */
-    .card-body-4 { fill: #00728f; fill-opacity: 0.07; }        /* deep teal */
-    .card-stroke-1 { stroke: #0096d1; stroke-width: 1.2; fill: none; opacity: 0.85; }
-    .card-stroke-2 { stroke: #3aa8d8; stroke-width: 1.2; fill: none; opacity: 0.85; }
-    .card-stroke-3 { stroke: #1d7ea6; stroke-width: 1.2; fill: none; opacity: 0.85; }
-    .card-stroke-4 { stroke: #00728f; stroke-width: 1.2; fill: none; opacity: 0.85; }
-    .card-bar-1 { fill: #0096d1; opacity: 0.80; }
-    .card-bar-2 { fill: #3aa8d8; opacity: 0.80; }
-    .card-bar-3 { fill: #1d7ea6; opacity: 0.80; }
-    .card-bar-4 { fill: #00728f; opacity: 0.80; }
-
-    /* swatch card and gate accent */
-    .al-swatch-body { fill: #0096d1; fill-opacity: 0.05; }
-    .al-gate-body  { fill: #da8230; fill-opacity: 0.09; }
-
-    /* icon strokes used on chips and decorations */
-    .al-chip-ink { stroke: #f5fbfd; stroke-width: 1.4; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
-    .al-chip-ink-dark { stroke: #0e3540; stroke-width: 1.4; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
-
     @media (prefers-color-scheme: dark) {
       .fg-1 { fill: #b8e4f0; }
       .fg-2 { fill: #8fd4e6; }
@@ -73,54 +38,146 @@
       .on-fill { fill: #e0f2f7; }
       .icon-stroke-1 { stroke: #5cc8e0; }
       .icon-stroke-2 { stroke: #d4a04a; }
-
-      .al-bg-path { stroke: #5cc8e0; opacity: 0.08; }
-      .al-bg-node { fill: #5cc8e0; opacity: 0.08; }
-      .al-bracket { stroke: #5cc8e0; opacity: 0.55; }
-      .al-bracket-warm { stroke: #d4a04a; opacity: 0.55; }
-      .al-dash { stroke: #5cc8e0; opacity: 0.45; }
-      .al-dash-warm { stroke: #d4a04a; opacity: 0.50; }
-      .al-ring { stroke: #d4a04a; opacity: 0.35; }
-      .al-ring-cool { stroke: #5cc8e0; opacity: 0.30; }
-      .al-particle-cool { fill: #5cc8e0; opacity: 0.55; }
-      .al-particle-warm { fill: #d4a04a; opacity: 0.55; }
-      .al-shadow { fill: #000000; opacity: 0.18; }
-
-      .card-body-1 { fill: #5cc8e0; fill-opacity: 0.09; }
-      .card-body-2 { fill: #8fd4e6; fill-opacity: 0.09; }
-      .card-body-3 { fill: #4099b3; fill-opacity: 0.10; }
-      .card-body-4 { fill: #3e7e94; fill-opacity: 0.12; }
-      .card-stroke-1 { stroke: #5cc8e0; opacity: 0.85; }
-      .card-stroke-2 { stroke: #8fd4e6; opacity: 0.85; }
-      .card-stroke-3 { stroke: #4099b3; opacity: 0.90; }
-      .card-stroke-4 { stroke: #3e7e94; opacity: 0.90; }
-      .card-bar-1 { fill: #5cc8e0; opacity: 0.90; }
-      .card-bar-2 { fill: #8fd4e6; opacity: 0.90; }
-      .card-bar-3 { fill: #4099b3; opacity: 0.90; }
-      .card-bar-4 { fill: #3e7e94; opacity: 0.90; }
-
-      .al-swatch-body { fill: #5cc8e0; fill-opacity: 0.08; }
-      .al-gate-body  { fill: #d4a04a; fill-opacity: 0.10; }
-
-      .al-chip-ink { stroke: #0e3540; opacity: 0.85; }
-      .al-chip-ink-dark { stroke: #f5fbfd; opacity: 0.85; }
+    }
+  
+    /* === add-life classes (additive, do not override originals) === */
+    .bg-trace { fill: none; stroke: #5aafc5; stroke-width: 0.3; opacity: 0.08; stroke-linecap: round; }
+    .bg-swatch-grid { fill: none; stroke: #5aafc5; stroke-width: 0.25; opacity: 0.07; }
+    .bg-node { fill: #5aafc5; opacity: 0.10; stroke: none; }
+    .bracket { fill: none; stroke: #2b7680; stroke-width: 0.9; opacity: 0.50; stroke-linecap: round; }
+    .bracket-warm { fill: none; stroke: #7a4a15; stroke-width: 1.0; opacity: 0.55; stroke-linecap: round; }
+    .scanline { fill: none; stroke: #5aafc5; stroke-width: 0.4; opacity: 0.22; stroke-dasharray: 2,4; }
+    .particle-a { fill: #5aafc5; opacity: 0.32; }
+    .particle-b { fill: #7a4a15; opacity: 0.28; }
+    .arc-bg { fill: none; stroke: #5aafc5; stroke-width: 0.6; opacity: 0.16; }
+    .arc-bg-warm { fill: none; stroke: #7a4a15; stroke-width: 0.5; opacity: 0.14; }
+    .tech-line { fill: none; stroke: #2b7680; stroke-width: 0.5; opacity: 0.35; stroke-linecap: round; stroke-dasharray: 2,3; }
+    .hue-v1 { fill: #0096d1; opacity: 0.55; } /* teal */
+    .hue-v2 { fill: #18a7c9; opacity: 0.60; } /* cyan-teal */
+    .hue-v3 { fill: #2bb2d6; opacity: 0.55; } /* sky-teal */
+    .hue-v4 { fill: #1a7ea8; opacity: 0.55; } /* blue-teal */
+    @media (prefers-color-scheme: dark) {
+      .bg-trace { stroke: #5cc8e0; opacity: 0.08; }
+      .bg-swatch-grid { stroke: #5cc8e0; opacity: 0.08; }
+      .bg-node { fill: #5cc8e0; }
+      .bracket { stroke: #5aafc5; opacity: 0.55; }
+      .bracket-warm { stroke: #d4a04a; }
+      .scanline { stroke: #5cc8e0; opacity: 0.25; }
+      .particle-a { fill: #5cc8e0; }
+      .particle-b { fill: #d4a04a; }
+      .arc-bg { stroke: #5cc8e0; }
+      .arc-bg-warm { stroke: #d4a04a; }
+      .tech-line { stroke: #5aafc5; }
+      .hue-v1 { fill: #5cc8e0; }
+      .hue-v2 { fill: #8fd4e6; }
+      .hue-v3 { fill: #a3dde8; }
+      .hue-v4 { fill: #5aafc5; }
     }
   </style>
 
   <defs>
-    <filter id="al-glow-cool" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="blur"/>
-      <feColorMatrix in="blur" type="matrix"
-                     values="0 0 0 0 0   0 0 0 0 0.59   0 0 0 0 0.82   0 0 0 0.55 0"/>
-      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="glow-cool" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="al-glow-warm" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="blur"/>
-      <feColorMatrix in="blur" type="matrix"
-                     values="0 0 0 0 0.86   0 0 0 0 0.51   0 0 0 0 0.19   0 0 0 0.55 0"/>
-      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="glow-warm" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
   </defs>
+  <g id="add-life-decorations">
+    <!-- organic/geometric swatch grid (opacity 0.07) - suggests a palette sheet -->
+    <g class="bg-swatch-grid">
+      <rect x="20" y="60" width="60" height="36" rx="2"/>
+      <rect x="20" y="100" width="60" height="36" rx="2"/>
+      <rect x="20" y="140" width="60" height="36" rx="2"/>
+      <rect x="20" y="345" width="60" height="36" rx="2"/>
+      <rect x="20" y="385" width="60" height="18" rx="2"/>
+      <rect x="330" y="60" width="48" height="30" rx="2"/>
+      <rect x="330" y="94" width="48" height="30" rx="2"/>
+      <rect x="592" y="60" width="48" height="30" rx="2"/>
+      <rect x="592" y="94" width="48" height="30" rx="2"/>
+      <rect x="330" y="340" width="48" height="30" rx="2"/>
+      <rect x="330" y="374" width="48" height="30" rx="2"/>
+      <rect x="592" y="340" width="48" height="30" rx="2"/>
+      <rect x="592" y="374" width="48" height="30" rx="2"/>
+    </g>
+    <g class="bg-trace">
+      <path d="M 0,55 H 20"/>
+      <path d="M 0,210 H 20 L 30,220"/>
+      <path d="M 0,350 H 16"/>
+      <path d="M 1100,55 H 1086"/>
+      <path d="M 1100,210 H 1086"/>
+      <path d="M 1100,380 H 1086"/>
+    </g>
+    <g class="bg-node">
+      <circle cx="30" cy="220" r="1.4"/>
+    </g>
+    <!-- decorative arcs around gate diamond (behind it) -->
+    <g class="arc-bg-warm">
+      <path d="M 370,210 Q 490,120 610,210"/>
+      <path d="M 370,210 Q 490,300 610,210"/>
+    </g>
+    <g class="arc-bg">
+      <path d="M 400,210 Q 490,140 580,210"/>
+    </g>
+    <!-- corner brackets on swatch card (40..300 x 90..330) -->
+    <g class="bracket">
+      <path d="M 36,94 L 36,86 L 44,86"/><path d="M 296,86 L 304,86 L 304,94"/>
+      <path d="M 36,326 L 36,334 L 44,334"/><path d="M 296,334 L 304,334 L 304,326"/>
+      <!-- card-1: 700..1080 x 80..150 -->
+      <path d="M 696,84 L 696,76 L 704,76"/><path d="M 1076,76 L 1084,76 L 1084,84"/>
+      <path d="M 696,146 L 696,154 L 704,154"/><path d="M 1076,154 L 1084,154 L 1084,146"/>
+      <!-- card-2: 700..1080 x 160..230 -->
+      <path d="M 696,164 L 696,156 L 704,156"/><path d="M 1076,156 L 1084,156 L 1084,164"/>
+      <path d="M 696,226 L 696,234 L 704,234"/><path d="M 1076,234 L 1084,234 L 1084,226"/>
+      <!-- card-3: 700..1080 x 240..310 -->
+      <path d="M 696,244 L 696,236 L 704,236"/><path d="M 1076,236 L 1084,236 L 1084,244"/>
+      <path d="M 696,306 L 696,314 L 704,314"/><path d="M 1076,314 L 1084,314 L 1084,306"/>
+      <!-- card-4: 700..1080 x 320..390 -->
+      <path d="M 696,324 L 696,316 L 704,316"/><path d="M 1076,316 L 1084,316 L 1084,324"/>
+      <path d="M 696,386 L 696,394 L 704,394"/><path d="M 1076,394 L 1084,394 L 1084,386"/>
+    </g>
+    <!-- warm brackets on gate diamond corners (outside the diamond, around bbox 410..570 x 150..270) -->
+    <g class="bracket-warm">
+      <path d="M 404,156 L 404,146 L 414,146"/>
+      <path d="M 566,146 L 576,146 L 576,156"/>
+      <path d="M 404,264 L 404,274 L 414,274"/>
+      <path d="M 566,274 L 576,274 L 576,264"/>
+    </g>
+    <!-- scan-lines between deliverable cards (card bottoms at 150/230/310/390, tops at 160/240/320) -->
+    <g class="scanline">
+      <line x1="700" y1="155" x2="1080" y2="155"/>
+      <line x1="700" y1="235" x2="1080" y2="235"/>
+      <line x1="700" y1="315" x2="1080" y2="315"/>
+    </g>
+    <!-- tech-line fragments across approval gate band -->
+    <g class="tech-line">
+      <line x1="310" y1="205" x2="398" y2="205"/>
+      <line x1="310" y1="215" x2="398" y2="215"/>
+      <line x1="578" y1="205" x2="628" y2="205"/>
+    </g>
+    <!-- accent particles -->
+    <g class="particle-a">
+      <circle cx="28" cy="32" r="1.3"/>
+      <circle cx="1072" cy="32" r="1.3"/>
+      <circle cx="28" cy="415" r="1.2"/>
+      <circle cx="1072" cy="415" r="1.2"/>
+      <circle cx="310" cy="60" r="1.1"/>
+      <circle cx="680" cy="60" r="1.1"/>
+      <circle cx="680" cy="400" r="1.1"/>
+      <circle cx="310" cy="400" r="1.1"/>
+    </g>
+    <g class="particle-b">
+      <circle cx="490" cy="128" r="1.3"/>
+      <circle cx="490" cy="292" r="1.3"/>
+      <circle cx="410" cy="140" r="1.0"/>
+      <circle cx="570" cy="140" r="1.0"/>
+      <circle cx="410" cy="280" r="1.0"/>
+      <circle cx="570" cy="280" r="1.0"/>
+    </g>
+  </g>
+
 
   <!-- === GRID REFERENCE ===
     viewBox: 1100 x 440
@@ -186,153 +243,10 @@
     </g>
   </g>
 
-  <!-- add-life decorations layer: behind content, above background -->
-  <g id="add-life-decorations">
-
-    <!-- Background texture: swatch-grid motif (small squares + anchor dots) at low opacity -->
-    <g id="al-bg-texture">
-      <!-- faint grid field across title band and margins (avoids cards & gate by style, not math; opacity is the guard) -->
-      <g class="al-bg-path">
-        <!-- horizontal lines every 40px -->
-        <line x1="30" y1="60"  x2="1080" y2="60"/>
-        <line x1="30" y1="100" x2="1080" y2="100"/>
-        <line x1="30" y1="140" x2="1080" y2="140"/>
-        <line x1="30" y1="180" x2="1080" y2="180"/>
-        <line x1="30" y1="220" x2="1080" y2="220"/>
-        <line x1="30" y1="260" x2="1080" y2="260"/>
-        <line x1="30" y1="300" x2="1080" y2="300"/>
-        <line x1="30" y1="340" x2="1080" y2="340"/>
-        <line x1="30" y1="380" x2="1080" y2="380"/>
-        <!-- vertical lines every 40px -->
-        <line x1="60"   y1="55" x2="60"   y2="400"/>
-        <line x1="100"  y1="55" x2="100"  y2="400"/>
-        <line x1="180"  y1="55" x2="180"  y2="400"/>
-        <line x1="340"  y1="55" x2="340"  y2="400"/>
-        <line x1="380"  y1="55" x2="380"  y2="400"/>
-        <line x1="620"  y1="55" x2="620"  y2="400"/>
-        <line x1="660"  y1="55" x2="660"  y2="400"/>
-        <line x1="980"  y1="55" x2="980"  y2="400"/>
-        <line x1="1040" y1="55" x2="1040" y2="400"/>
-      </g>
-      <!-- anchor dots at a few grid intersections (swatch motif) -->
-      <g class="al-bg-node">
-        <circle cx="60"   cy="60"  r="1.4"/>
-        <circle cx="100"  cy="60"  r="1.4"/>
-        <circle cx="340"  cy="60"  r="1.4"/>
-        <circle cx="620"  cy="60"  r="1.4"/>
-        <circle cx="660"  cy="60"  r="1.4"/>
-        <circle cx="980"  cy="60"  r="1.4"/>
-        <circle cx="1040" cy="60"  r="1.4"/>
-        <circle cx="60"   cy="380" r="1.4"/>
-        <circle cx="340"  cy="380" r="1.4"/>
-        <circle cx="620"  cy="380" r="1.4"/>
-        <circle cx="980"  cy="380" r="1.4"/>
-        <circle cx="1040" cy="380" r="1.4"/>
-        <circle cx="60"   cy="180" r="1.4"/>
-        <circle cx="660"  cy="220" r="1.4"/>
-        <circle cx="980"  cy="260" r="1.4"/>
-      </g>
-    </g>
-
-    <!-- card shadows (2px offset, opacity 0.06) - medium shapes -->
-    <g id="al-shadows">
-      <path class="al-shadow" d="M42,92 H302 V329 Q302,332 299,332 H45 Q42,332 42,329 Z"/>
-      <path class="al-shadow" d="M702,82 H1082 V149 Q1082,152 1079,152 H705 Q702,152 702,149 Z"/>
-      <path class="al-shadow" d="M702,162 H1082 V229 Q1082,232 1079,232 H705 Q702,232 702,229 Z"/>
-      <path class="al-shadow" d="M702,242 H1082 V309 Q1082,312 1079,312 H705 Q702,312 702,309 Z"/>
-      <path class="al-shadow" d="M702,322 H1082 V389 Q1082,392 1079,392 H705 Q702,392 702,389 Z"/>
-    </g>
-
-    <!-- Per-card hue variants: filled bodies + tinted strokes + accent-bar overlay per deliverable card.
-         These sit BEHIND the original card outlines (which stay teal primary) and add visible rhythm
-         across card-1..card-4 using the extended teal family.
-         Accent bars painted full-strength over the originals (same geometry) in the card hue.
-    -->
-    <g id="al-card-hue-rhythm">
-      <!-- card-1: primary teal -->
-      <path class="card-body-1" d="M700,80 H1080 V147 Q1080,150 1077,150 H703 Q700,150 700,147 Z"/>
-      <path class="card-stroke-1" d="M700,80 H1080 V147 Q1080,150 1077,150 H703 Q700,150 700,147 Z"/>
-      <rect class="card-bar-1" x="700" y="80" width="380" height="5"/>
-      <!-- card-2: sky -->
-      <path class="card-body-2" d="M700,160 H1080 V227 Q1080,230 1077,230 H703 Q700,230 700,227 Z"/>
-      <path class="card-stroke-2" d="M700,160 H1080 V227 Q1080,230 1077,230 H703 Q700,230 700,227 Z"/>
-      <rect class="card-bar-2" x="700" y="160" width="380" height="5"/>
-      <!-- card-3: steel-teal -->
-      <path class="card-body-3" d="M700,240 H1080 V307 Q1080,310 1077,310 H703 Q700,310 700,307 Z"/>
-      <path class="card-stroke-3" d="M700,240 H1080 V307 Q1080,310 1077,310 H703 Q700,310 700,307 Z"/>
-      <rect class="card-bar-3" x="700" y="240" width="380" height="5"/>
-      <!-- card-4: deep teal -->
-      <path class="card-body-4" d="M700,320 H1080 V387 Q1080,390 1077,390 H703 Q700,390 700,387 Z"/>
-      <path class="card-stroke-4" d="M700,320 H1080 V387 Q1080,390 1077,390 H703 Q700,390 700,387 Z"/>
-      <rect class="card-bar-4" x="700" y="320" width="380" height="5"/>
-    </g>
-
-    <!-- Embroidery: corner brackets on swatch, gate, and deliverable cards -->
-    <g id="al-brackets">
-      <!-- swatch card (40..300 x 90..330), bracket length 10, inset 4 -->
-      <path class="al-bracket" d="M44,100 L44,94 L50,94"/>
-      <path class="al-bracket" d="M290,94 L296,94 L296,100"/>
-      <path class="al-bracket" d="M44,320 L44,326 L50,326"/>
-      <path class="al-bracket" d="M290,326 L296,326 L296,320"/>
-
-      <!-- gate diamond corona ticks (outside diamond, radial) -->
-      <path class="al-bracket-warm" d="M490,140 L490,134"/>
-      <path class="al-bracket-warm" d="M490,280 L490,286"/>
-      <path class="al-bracket-warm" d="M400,210 L394,210"/>
-      <path class="al-bracket-warm" d="M580,210 L586,210"/>
-      <path class="al-bracket-warm" d="M442,162 L438,158"/>
-      <path class="al-bracket-warm" d="M538,162 L542,158"/>
-      <path class="al-bracket-warm" d="M442,258 L438,262"/>
-      <path class="al-bracket-warm" d="M538,258 L542,262"/>
-
-      <!-- card 1..4 top-right corner brackets (inset 3) -->
-      <path class="al-bracket" d="M1070,83 L1076,83 L1076,89"/>
-      <path class="al-bracket" d="M1070,163 L1076,163 L1076,169"/>
-      <path class="al-bracket" d="M1070,243 L1076,243 L1076,249"/>
-      <path class="al-bracket" d="M1070,323 L1076,323 L1076,329"/>
-      <!-- card 1..4 bottom-left corner brackets (inset 3) -->
-      <path class="al-bracket" d="M704,142 L704,148 L710,148"/>
-      <path class="al-bracket" d="M704,222 L704,228 L710,228"/>
-      <path class="al-bracket" d="M704,302 L704,308 L710,308"/>
-      <path class="al-bracket" d="M704,382 L704,388 L710,388"/>
-
-      <!-- scan dashes along right margin of swatch card -->
-      <path class="al-dash" d="M290,130 h6 M290,150 h6 M290,170 h6 M290,190 h6 M290,210 h6 M290,230 h6 M290,250 h6 M290,270 h6 M290,290 h6"/>
-    </g>
-
-    <!-- Abstract: ring fragments around gate + scattered particles -->
-    <g id="al-abstract">
-      <!-- outer ring fragments around gate -->
-      <path class="al-ring" d="M490,210 m-96,0 a96,96 0 0 1 22,-62"/>
-      <path class="al-ring" d="M490,210 m96,0 a96,96 0 0 1 -22,62"/>
-      <!-- inner subtle ring fragment -->
-      <path class="al-ring-cool" d="M490,210 m-78,0 a78,78 0 0 1 40,-68"/>
-
-      <!-- stray arc above deliverables -->
-      <path class="al-ring-cool" d="M740,66 q160,-16 320,0"/>
-
-      <!-- particles in margins / whitespace -->
-      <circle class="al-particle-cool" cx="324" cy="80" r="1.6"/>
-      <circle class="al-particle-cool" cx="360" cy="346" r="1.4"/>
-      <circle class="al-particle-cool" cx="380" cy="70" r="1.1"/>
-      <circle class="al-particle-cool" cx="616" cy="78" r="1.4"/>
-      <circle class="al-particle-cool" cx="684" cy="72" r="1.1"/>
-      <circle class="al-particle-cool" cx="950" cy="68" r="1.6"/>
-      <circle class="al-particle-warm" cx="490" cy="128" r="1.4"/>
-      <circle class="al-particle-warm" cx="490" cy="300" r="1.4"/>
-      <circle class="al-particle-warm" cx="404" cy="174" r="1.2"/>
-      <circle class="al-particle-warm" cx="576" cy="246" r="1.2"/>
-      <circle class="al-particle-cool" cx="60"  cy="400" r="1.2"/>
-      <circle class="al-particle-cool" cx="180" cy="406" r="1.0"/>
-      <circle class="al-particle-warm" cx="1050" cy="400" r="1.2"/>
-      <circle class="al-particle-cool" cx="1020" cy="408" r="1.0"/>
-    </g>
-  </g>
-
   <g id="nodes">
     <!-- Title band -->
     <g id="title-band">
-      <text x="40" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="fg-1" filter="url(#al-glow-warm)">Theme swatch approval gate</text>
+      <text x="40" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="fg-1">Theme swatch approval gate</text>
       <text x="40" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">no approved swatch, no deliverables - a hard dependency at the top of the pipeline</text>
     </g>
 
@@ -356,7 +270,7 @@
     <!-- Zone B: gate diamond -->
     <g id="gate-diamond">
       <polygon points="490,150 570,210 490,270 410,210" fill="#da8230" fill-opacity="0.08"/>
-      <polygon points="490,150 570,210 490,270 410,210" fill="none" stroke="#da8230" stroke-width="1.6" filter="url(#al-glow-warm)"/>
+      <polygon points="490,150 570,210 490,270 410,210" fill="none" stroke="#da8230" stroke-width="1.6"/>
     </g>
 
     <!-- Zone C: four deliverable cards -->
@@ -386,13 +300,13 @@
   <g id="connectors">
     <!-- Swatch -> gate: straight horizontal, stem (302,210)->(400,210), arrowhead tip (408,210) -->
     <!-- via: svg-infographics connector from=301,210 to=409,210 arrow=end head-size=8,6 color=#da8230 -->
-    <path d="M302.00,210.00 L400.00,210.00" fill="none" stroke="#da8230" stroke-width="2.0" opacity="0.9" stroke-linejoin="round" stroke-linecap="round" filter="url(#al-glow-cool)"/>
+    <path d="M302.00,210.00 L400.00,210.00" fill="none" stroke="#da8230" stroke-width="2.0" opacity="0.9" stroke-linejoin="round" stroke-linecap="round"/>
     <polygon points="408.00,210.00 400.00,204.00 400.00,216.00" fill="#da8230" opacity="0.9"/>
 
     <!-- Gate -> 4 deliverables: MANIFOLD l-chamfer fan-out with align-elbows -->
     <!-- via: svg-infographics connector mode=manifold starts=[(570,210)] ends=[(700,115),(700,195),(700,275),(700,355)]
               spine-start=(570,210) spine-end=(635,210) shape=l-chamfer chamfer=6 tension=0.9 align-elbows arrow=end head-size=8,4 -->
-    <g class="manifold-connector" fill="none" stroke="#da8230" stroke-width="2.0" opacity="0.9" stroke-linejoin="round" stroke-linecap="round" filter="url(#al-glow-cool)">
+    <g class="manifold-connector" fill="none" stroke="#da8230" stroke-width="2.0" opacity="0.9" stroke-linejoin="round" stroke-linecap="round">
       <!-- spine: (570,210) -> (635,210) horizontal trunk -->
       <path d="M571.00,210.00 L634.00,210.00"/>
       <!-- fork -> card-1 (700,115): L-chamfer rail upward -->
@@ -497,11 +411,11 @@
     <!-- Icon bbox after transform: x=1004..1020, y=48..63. Text starts at x=1028 (8px clearance from icon right edge) -->
     <g id="locked-marker">
       <!-- Icon: lock (Lucide, ISC license) -->
-      <g transform="translate(1004, 48) scale(0.667)" fill="none" class="icon-stroke-2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" filter="url(#al-glow-warm)">
+      <g transform="translate(1004, 48) scale(0.667)" fill="none" class="icon-stroke-2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
       </g>
-      <text x="1028" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="accent-2" letter-spacing="1" filter="url(#al-glow-warm)">LOCKED</text>
+      <text x="1028" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="accent-2" letter-spacing="1">LOCKED</text>
       <text x="1028" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" class="fg-4">blocked until gate passes</text>
     </g>
 
@@ -509,51 +423,21 @@
     <text x="40" y="422" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" class="fg-4">approve the swatch first - every card, banner, flow, and chart downstream inherits those exact hexes</text>
   </g>
 
-  <!-- add-life overlay: per-item icons on palette chips (ON TOP of chip fills so they stay visible).
-       Icons use contrasting ink class per row (light row -> light ink; dark row -> dark ink).
-       Lucide glyphs, ISC license. Each chip gets one tiny glyph at the right edge of the chip. -->
-  <g id="add-life-overlays">
-    <!-- Row 1 (dark chips): light ink; icons in top-right inside chip (clearance 4px edges) -->
-    <!-- chip 1 (56..120, 146..178): droplet -->
-    <g transform="translate(102,149)" class="al-chip-ink">
-      <path d="M6 1 C2.5 5, 1 7.5, 1 10 a5 5 0 0 0 10 0 C11 7.5, 9.5 5, 6 1 Z"/>
-    </g>
-    <!-- chip 2 (130..194, 146..178): palette (circle + 3 dots) -->
-    <g transform="translate(176,149)" class="al-chip-ink">
-      <circle cx="6" cy="6.5" r="5"/>
-      <circle cx="4" cy="4.6" r="0.9" fill="currentColor" stroke="none"/>
-      <circle cx="8" cy="4.6" r="0.9" fill="currentColor" stroke="none"/>
-      <circle cx="6" cy="8.4" r="0.9" fill="currentColor" stroke="none"/>
-    </g>
-    <!-- chip 3 (204..268, 146..178): paintbrush accent -->
-    <g transform="translate(250,149)" class="al-chip-ink">
-      <path d="M9 2 L11 4 L5 10 L3 10 L3 8 Z"/>
-      <path d="M3 8 L2 11"/>
-    </g>
-
-    <!-- Row 2 (light chips): dark ink -->
-    <!-- chip 4 (56..120, 218..250): sun -->
-    <g transform="translate(102,221)" class="al-chip-ink-dark">
-      <circle cx="6" cy="6" r="2.2"/>
-      <path d="M6 0.8 v1.6 M6 9.6 v1.6 M0.8 6 h1.6 M9.6 6 h1.6 M2.2 2.2 l1.2 1.2 M8.6 8.6 l1.2 1.2 M2.2 9.8 l1.2 -1.2 M8.6 3.4 l1.2 -1.2"/>
-    </g>
-    <!-- chip 5 (130..194, 218..250): moon -->
-    <g transform="translate(176,221)" class="al-chip-ink-dark">
-      <path d="M10 7.2 A5.2 5.2 0 1 1 4.8 2 a4 4 0 0 0 5.2 5.2 Z"/>
-    </g>
-    <!-- chip 6 (204..268, 218..250): sparkles -->
-    <g transform="translate(250,221)" class="al-chip-ink-dark">
-      <path d="M6 1 L7 5 L11 6 L7 7 L6 11 L5 7 L1 6 L5 5 Z"/>
-    </g>
-
-    <!-- Approval-stamp tiny chevron marks flanking the gate subtitle row (warm glow echo) -->
-    <g class="al-bracket-warm" filter="url(#al-glow-warm)">
-      <path d="M460,222 L454,218 L454,226 Z" fill="#da8230" stroke="none" opacity="0.6"/>
-      <path d="M520,222 L526,218 L526,226 Z" fill="#da8230" stroke="none" opacity="0.6"/>
-    </g>
-  </g>
-
   <g id="callouts">
   </g>
 
+  <g id="add-life-icons">
+    <!-- per-card hue strips at bottom (2px tall, 8px clear of card borders) -->
+    <rect x="706" y="143" width="368" height="2" class="hue-v1"/>
+    <rect x="706" y="223" width="368" height="2" class="hue-v2"/>
+    <rect x="706" y="303" width="368" height="2" class="hue-v3"/>
+    <rect x="706" y="383" width="368" height="2" class="hue-v4"/>
+    <!-- per-card hue dot top-right inside card (6px from corners) -->
+    <circle cx="1064" cy="92" r="3" class="hue-v1"/>
+    <circle cx="1064" cy="172" r="3" class="hue-v2"/>
+    <circle cx="1064" cy="252" r="3" class="hue-v3"/>
+    <circle cx="1064" cy="332" r="3" class="hue-v4"/>
+    <!-- decorative warm dot on gate center (visual focal glow marker), small enough to not overlap APPROVAL text baseline at y=206 -->
+    <circle cx="490" cy="236" r="2.2" fill="#da8230" opacity="0.5"/>
+  </g>
 </svg>

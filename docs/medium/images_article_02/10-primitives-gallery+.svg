@@ -1,0 +1,564 @@
+<!--
+  10-primitives-gallery+.svg - add-life medium pass over 10-primitives-gallery.svg
+  Original primitives (rect, square, circle, ellipse, diamond, hexagon, star, arc, spline,
+  cube, cuboid, cylinder, sphere, plane, axis) and labels UNCHANGED.
+  All add-life layers sit before nodes (bg + per-cell plates) or after content (decorations).
+
+  add-life: medium
+    colour: moderate (per-cell in-family hue variants on the 15 cards - cyan drift for A-family primitives, ochre/copper drift for B-family)
+    shapes: moderate (corner brackets on every cell, micro scan-line under accent bar, 2D/3D section dividers)
+    icons: per-item category glyph at top-right of each cell (8 for 2D row 1-2, 7 for 3D row 3)
+    embroidery: moderate (4-dot register marks on outer corners, tech tick ladders at grid intersections)
+    abstract: moderate (16 particles in cell gutters, 4 ring fragments at outer corners)
+    bg_texture: grid/technical (engineering grid 0.07 opacity, HARD CAP 0.10)
+    glow: connectors+titles (cyan stdDev=2 on main title + accent bars, warm ochre stdDev=1.7 on labels of B-family)
+    dark-mode: overrides for every add-life class
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
+  <style>
+    .fg-1 { fill: #1a5a6e; } .fg-3 { fill: #236a74; } .fg-4 { fill: #2b7680; }
+    .card-fill { fill: #005f7a; fill-opacity: 0.02; }
+    .card-stroke { fill: none; stroke: #005f7a; stroke-width: 0.8; opacity: 0.35; }
+    .card-bar { fill: #005f7a; opacity: 0.35; }
+    .shape-a-thin { fill: none; stroke: #005f7a; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+    .shape-a-fillsolid { fill: #005f7a; stroke: none; }
+    .shape-a-ghost { fill: none; stroke: #005f7a; stroke-width: 0.9; stroke-linejoin: round; }
+    .shape-b-thin { fill: none; stroke: #7a4a15; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+    .shape-b-fillsolid { fill: #7a4a15; stroke: none; }
+    .shape-b-ghost { fill: none; stroke: #7a4a15; stroke-width: 0.9; stroke-linejoin: round; }
+    .title-main { font-family: Segoe UI, Arial, sans-serif; font-size: 16px; font-weight: 700; fill: #1a5a6e; }
+    .title-sub { font-family: Segoe UI, Arial, sans-serif; font-size: 10px; fill: #236a74; }
+    .cell-label { font-family: Segoe UI, Arial, sans-serif; font-size: 11px; font-weight: 700; fill: #1a5a6e; }
+    .cell-param { font-family: Consolas, Menlo, monospace; font-size: 8px; fill: #2b7680; }
+
+    /* add-life (medium) - per-cell hue variants: 15 cells, alternating A/B family
+       Cell index 1..15 reading left-to-right, top-to-bottom.
+       A-family (cool, teal->cyan->deep): cells 1,3,5,7,9,11,13,15
+       B-family (warm, ochre->copper):    cells 2,4,6,8,10,12,14
+       Wide-in-family drift so the row has visible rhythm. */
+    .card-body-1  { fill: #00a6d3; fill-opacity: 0.035; }
+    .card-stroke-1{ fill: none; stroke: #00a6d3; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-1   { fill: #00a6d3; opacity: 0.60; }
+    .card-body-2  { fill: #8a5220; fill-opacity: 0.035; }
+    .card-stroke-2{ fill: none; stroke: #8a5220; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-2   { fill: #8a5220; opacity: 0.60; }
+    .card-body-3  { fill: #0096d1; fill-opacity: 0.035; }
+    .card-stroke-3{ fill: none; stroke: #0096d1; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-3   { fill: #0096d1; opacity: 0.60; }
+    .card-body-4  { fill: #7a4a15; fill-opacity: 0.035; }
+    .card-stroke-4{ fill: none; stroke: #7a4a15; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-4   { fill: #7a4a15; opacity: 0.60; }
+    .card-body-5  { fill: #00b2d8; fill-opacity: 0.035; }
+    .card-stroke-5{ fill: none; stroke: #00b2d8; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-5   { fill: #00b2d8; opacity: 0.60; }
+    .card-body-6  { fill: #66400f; fill-opacity: 0.035; }
+    .card-stroke-6{ fill: none; stroke: #66400f; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-6   { fill: #66400f; opacity: 0.60; }
+    .card-body-7  { fill: #1585c4; fill-opacity: 0.035; }
+    .card-stroke-7{ fill: none; stroke: #1585c4; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-7   { fill: #1585c4; opacity: 0.60; }
+    .card-body-8  { fill: #9a6128; fill-opacity: 0.035; }
+    .card-stroke-8{ fill: none; stroke: #9a6128; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-8   { fill: #9a6128; opacity: 0.60; }
+    .card-body-9  { fill: #00728f; fill-opacity: 0.04; }
+    .card-stroke-9{ fill: none; stroke: #00728f; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-9   { fill: #00728f; opacity: 0.60; }
+    .card-body-10 { fill: #7a4a15; fill-opacity: 0.035; }
+    .card-stroke-10{ fill: none; stroke: #7a4a15; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-10  { fill: #7a4a15; opacity: 0.60; }
+    .card-body-11 { fill: #0582b5; fill-opacity: 0.035; }
+    .card-stroke-11{ fill: none; stroke: #0582b5; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-11  { fill: #0582b5; opacity: 0.60; }
+    .card-body-12 { fill: #8a5220; fill-opacity: 0.035; }
+    .card-stroke-12{ fill: none; stroke: #8a5220; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-12  { fill: #8a5220; opacity: 0.60; }
+    .card-body-13 { fill: #00a6d3; fill-opacity: 0.035; }
+    .card-stroke-13{ fill: none; stroke: #00a6d3; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-13  { fill: #00a6d3; opacity: 0.60; }
+    .card-body-14 { fill: #66400f; fill-opacity: 0.035; }
+    .card-stroke-14{ fill: none; stroke: #66400f; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-14  { fill: #66400f; opacity: 0.60; }
+    .card-body-15 { fill: #1585c4; fill-opacity: 0.035; }
+    .card-stroke-15{ fill: none; stroke: #1585c4; stroke-width: 0.9; opacity: 0.55; }
+    .card-bar-15  { fill: #1585c4; opacity: 0.60; }
+
+    /* decoration classes */
+    .al-bg-line { stroke: #0096d1; stroke-width: 0.4; fill: none; opacity: 0.07; }
+    .al-bg-arc  { stroke: #0096d1; stroke-width: 0.5; fill: none; opacity: 0.14; }
+    .al-bracket-cool { fill: none; stroke: #0096d1; stroke-width: 0.8; opacity: 0.55; stroke-linecap: round; }
+    .al-bracket-warm { fill: none; stroke: #da8230; stroke-width: 0.8; opacity: 0.55; stroke-linecap: round; }
+    .al-scan { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.30; stroke-dasharray: 2 2; }
+    .al-tick-cool { fill: #0096d1; opacity: 0.5; }
+    .al-tick-warm { fill: #da8230; opacity: 0.5; }
+    .al-particle-cool { fill: #0096d1; opacity: 0.45; }
+    .al-particle-warm { fill: #da8230; opacity: 0.45; }
+    .al-ring-cool { fill: none; stroke: #0096d1; stroke-width: 0.8; opacity: 0.25; }
+    .al-ring-warm { fill: none; stroke: #da8230; stroke-width: 0.8; opacity: 0.25; }
+    .al-cat-icon-cool { fill: none; stroke: #0096d1; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; opacity: 0.65; }
+    .al-cat-icon-warm { fill: none; stroke: #da8230; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; opacity: 0.70; }
+    .al-section-label { fill: #24697e; font-family: Segoe UI, Arial, sans-serif; font-size: 8px; font-weight: 600; letter-spacing: 1.5px; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; } .fg-3 { fill: #5aafc5; } .fg-4 { fill: #4099b3; }
+      .card-fill { fill: #5cc8e0; fill-opacity: 0.04; }
+      .card-stroke { stroke: #5cc8e0; opacity: 0.45; }
+      .card-bar { fill: #5cc8e0; opacity: 0.45; }
+      .shape-a-thin, .shape-a-ghost { stroke: #5cc8e0; }
+      .shape-a-fillsolid { fill: #5cc8e0; }
+      .shape-b-thin, .shape-b-ghost { stroke: #d4a04a; }
+      .shape-b-fillsolid { fill: #d4a04a; }
+      .title-main, .cell-label { fill: #b8e4f0; }
+      .title-sub { fill: #5aafc5; }
+      .cell-param { fill: #4099b3; }
+
+      .card-body-1  { fill: #6fd5ec; fill-opacity: 0.05; } .card-stroke-1 { stroke: #6fd5ec; } .card-bar-1  { fill: #6fd5ec; }
+      .card-body-2  { fill: #d4a04a; fill-opacity: 0.05; } .card-stroke-2 { stroke: #d4a04a; } .card-bar-2  { fill: #d4a04a; }
+      .card-body-3  { fill: #5cc8e0; fill-opacity: 0.05; } .card-stroke-3 { stroke: #5cc8e0; } .card-bar-3  { fill: #5cc8e0; }
+      .card-body-4  { fill: #c6913e; fill-opacity: 0.05; } .card-stroke-4 { stroke: #c6913e; } .card-bar-4  { fill: #c6913e; }
+      .card-body-5  { fill: #7adcee; fill-opacity: 0.05; } .card-stroke-5 { stroke: #7adcee; } .card-bar-5  { fill: #7adcee; }
+      .card-body-6  { fill: #b08036; fill-opacity: 0.05; } .card-stroke-6 { stroke: #b08036; } .card-bar-6  { fill: #b08036; }
+      .card-body-7  { fill: #4db3d0; fill-opacity: 0.05; } .card-stroke-7 { stroke: #4db3d0; } .card-bar-7  { fill: #4db3d0; }
+      .card-body-8  { fill: #dcaf5e; fill-opacity: 0.05; } .card-stroke-8 { stroke: #dcaf5e; } .card-bar-8  { fill: #dcaf5e; }
+      .card-body-9  { fill: #3e7e94; fill-opacity: 0.06; } .card-stroke-9 { stroke: #3e7e94; } .card-bar-9  { fill: #3e7e94; }
+      .card-body-10 { fill: #d4a04a; fill-opacity: 0.05; } .card-stroke-10{ stroke: #d4a04a; } .card-bar-10 { fill: #d4a04a; }
+      .card-body-11 { fill: #48b8cf; fill-opacity: 0.05; } .card-stroke-11{ stroke: #48b8cf; } .card-bar-11 { fill: #48b8cf; }
+      .card-body-12 { fill: #d4a04a; fill-opacity: 0.05; } .card-stroke-12{ stroke: #d4a04a; } .card-bar-12 { fill: #d4a04a; }
+      .card-body-13 { fill: #6fd5ec; fill-opacity: 0.05; } .card-stroke-13{ stroke: #6fd5ec; } .card-bar-13 { fill: #6fd5ec; }
+      .card-body-14 { fill: #b08036; fill-opacity: 0.05; } .card-stroke-14{ stroke: #b08036; } .card-bar-14 { fill: #b08036; }
+      .card-body-15 { fill: #4db3d0; fill-opacity: 0.05; } .card-stroke-15{ stroke: #4db3d0; } .card-bar-15 { fill: #4db3d0; }
+
+      .al-bg-line { stroke: #5cc8e0; opacity: 0.08; }
+      .al-bg-arc  { stroke: #5cc8e0; opacity: 0.18; }
+      .al-bracket-cool { stroke: #5cc8e0; }
+      .al-bracket-warm { stroke: #d4a04a; }
+      .al-scan { stroke: #5cc8e0; opacity: 0.35; }
+      .al-tick-cool { fill: #5cc8e0; }
+      .al-tick-warm { fill: #d4a04a; }
+      .al-particle-cool { fill: #5cc8e0; opacity: 0.55; }
+      .al-particle-warm { fill: #d4a04a; opacity: 0.55; }
+      .al-ring-cool { stroke: #5cc8e0; opacity: 0.30; }
+      .al-ring-warm { stroke: #d4a04a; opacity: 0.30; }
+      .al-cat-icon-cool { stroke: #5cc8e0; }
+      .al-cat-icon-warm { stroke: #d4a04a; }
+      .al-section-label { fill: #8fd4e6; }
+    }
+  </style>
+
+  <defs>
+    <filter id="al-glow-cool" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="al-glow-warm" x="-25%" y="-25%" width="150%" height="150%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 540
+    Title band: y=0..50 (title y=26, subtitle y=42)
+    Cards: 5 cols x 3 rows
+      Row 1: y=58..208  Row 2: y=218..368  Row 3: y=378..528
+      Col x: 22,215,408,601,794 (w=184, gap=9)
+    Cell index (1..15) reading L-R top-bottom:
+      Row 1:  1=rect, 2=square, 3=circle, 4=ellipse, 5=diamond
+      Row 2:  6=hex,  7=star,   8=arc,    9=spline,  10=cube
+      Row 3: 11=cuboid,12=cylinder,13=sphere,14=plane,15=axis
+  === -->
+
+  <g id="add-life-background">
+    <rect x="0" y="0" width="1000" height="540" fill="transparent"/>
+
+    <!-- Engineering grid (major + minor, HARD CAP 0.10) -->
+    <g id="al-bg-grid">
+      <!-- horizontal row separators -->
+      <line class="al-bg-line" x1="10" y1="54" x2="990" y2="54"/>
+      <line class="al-bg-line" x1="10" y1="212" x2="990" y2="212"/>
+      <line class="al-bg-line" x1="10" y1="372" x2="990" y2="372"/>
+      <line class="al-bg-line" x1="10" y1="532" x2="990" y2="532"/>
+      <!-- minor horizontal -->
+      <line class="al-bg-line" x1="10" y1="130" x2="990" y2="130"/>
+      <line class="al-bg-line" x1="10" y1="290" x2="990" y2="290"/>
+      <line class="al-bg-line" x1="10" y1="450" x2="990" y2="450"/>
+      <!-- vertical column separators at card gaps (gap centres) -->
+      <line class="al-bg-line" x1="210" y1="54" x2="210" y2="532"/>
+      <line class="al-bg-line" x1="403" y1="54" x2="403" y2="532"/>
+      <line class="al-bg-line" x1="596" y1="54" x2="596" y2="532"/>
+      <line class="al-bg-line" x1="789" y1="54" x2="789" y2="532"/>
+      <!-- outer frame -->
+      <line class="al-bg-line" x1="14" y1="54" x2="14" y2="532"/>
+      <line class="al-bg-line" x1="986" y1="54" x2="986" y2="532"/>
+    </g>
+
+    <!-- Background arcs -->
+    <g id="al-bg-arcs">
+      <path class="al-bg-arc" d="M-20,10 Q500,-14 1020,14"/>
+      <path class="al-bg-arc" d="M-20,532 Q500,556 1020,534"/>
+    </g>
+  </g>
+
+  <!-- Titles with subtle glow -->
+  <text x="500" y="26" text-anchor="middle" class="title-main" filter="url(#al-glow-cool)">Fifteen shape primitives</text>
+  <text x="500" y="42" text-anchor="middle" class="title-sub">every cell computed by svg-infographics primitives &lt;shape&gt;</text>
+
+  <!-- === Per-cell hue-varied cards (replace original uniform cards) === -->
+  <g id="cards">
+    <!-- Cell 1: rect (cool) -->
+    <path d="M22,58 H206 V205 Q206,208 203,208 H25 Q22,208 22,205 Z" class="card-body-1"/>
+    <path d="M22,58 H206 V205 Q206,208 203,208 H25 Q22,208 22,205 Z" class="card-stroke-1"/>
+    <rect x="22" y="58" width="184" height="4" class="card-bar-1"/>
+    <!-- Cell 2: square (warm) -->
+    <path d="M215,58 H399 V205 Q399,208 396,208 H218 Q215,208 215,205 Z" class="card-body-2"/>
+    <path d="M215,58 H399 V205 Q399,208 396,208 H218 Q215,208 215,205 Z" class="card-stroke-2"/>
+    <rect x="215" y="58" width="184" height="4" class="card-bar-2"/>
+    <!-- Cell 3: circle (cool) -->
+    <path d="M408,58 H592 V205 Q592,208 589,208 H411 Q408,208 408,205 Z" class="card-body-3"/>
+    <path d="M408,58 H592 V205 Q592,208 589,208 H411 Q408,208 408,205 Z" class="card-stroke-3"/>
+    <rect x="408" y="58" width="184" height="4" class="card-bar-3"/>
+    <!-- Cell 4: ellipse (warm) -->
+    <path d="M601,58 H785 V205 Q785,208 782,208 H604 Q601,208 601,205 Z" class="card-body-4"/>
+    <path d="M601,58 H785 V205 Q785,208 782,208 H604 Q601,208 601,205 Z" class="card-stroke-4"/>
+    <rect x="601" y="58" width="184" height="4" class="card-bar-4"/>
+    <!-- Cell 5: diamond (cool) -->
+    <path d="M794,58 H978 V205 Q978,208 975,208 H797 Q794,208 794,205 Z" class="card-body-5"/>
+    <path d="M794,58 H978 V205 Q978,208 975,208 H797 Q794,208 794,205 Z" class="card-stroke-5"/>
+    <rect x="794" y="58" width="184" height="4" class="card-bar-5"/>
+
+    <!-- Cell 6: hexagon (warm) -->
+    <path d="M22,218 H206 V365 Q206,368 203,368 H25 Q22,368 22,365 Z" class="card-body-6"/>
+    <path d="M22,218 H206 V365 Q206,368 203,368 H25 Q22,368 22,365 Z" class="card-stroke-6"/>
+    <rect x="22" y="218" width="184" height="4" class="card-bar-6"/>
+    <!-- Cell 7: star (cool) -->
+    <path d="M215,218 H399 V365 Q399,368 396,368 H218 Q215,368 215,365 Z" class="card-body-7"/>
+    <path d="M215,218 H399 V365 Q399,368 396,368 H218 Q215,368 215,365 Z" class="card-stroke-7"/>
+    <rect x="215" y="218" width="184" height="4" class="card-bar-7"/>
+    <!-- Cell 8: arc (warm) -->
+    <path d="M408,218 H592 V365 Q592,368 589,368 H411 Q408,368 408,365 Z" class="card-body-8"/>
+    <path d="M408,218 H592 V365 Q592,368 589,368 H411 Q408,368 408,365 Z" class="card-stroke-8"/>
+    <rect x="408" y="218" width="184" height="4" class="card-bar-8"/>
+    <!-- Cell 9: spline (cool) -->
+    <path d="M601,218 H785 V365 Q785,368 782,368 H604 Q601,368 601,365 Z" class="card-body-9"/>
+    <path d="M601,218 H785 V365 Q785,368 782,368 H604 Q601,368 601,365 Z" class="card-stroke-9"/>
+    <rect x="601" y="218" width="184" height="4" class="card-bar-9"/>
+    <!-- Cell 10: cube (warm) -->
+    <path d="M794,218 H978 V365 Q978,368 975,368 H797 Q794,368 794,365 Z" class="card-body-10"/>
+    <path d="M794,218 H978 V365 Q978,368 975,368 H797 Q794,368 794,365 Z" class="card-stroke-10"/>
+    <rect x="794" y="218" width="184" height="4" class="card-bar-10"/>
+
+    <!-- Cell 11: cuboid (cool) -->
+    <path d="M22,378 H206 V525 Q206,528 203,528 H25 Q22,528 22,525 Z" class="card-body-11"/>
+    <path d="M22,378 H206 V525 Q206,528 203,528 H25 Q22,528 22,525 Z" class="card-stroke-11"/>
+    <rect x="22" y="378" width="184" height="4" class="card-bar-11"/>
+    <!-- Cell 12: cylinder (warm) -->
+    <path d="M215,378 H399 V525 Q399,528 396,528 H218 Q215,528 215,525 Z" class="card-body-12"/>
+    <path d="M215,378 H399 V525 Q399,528 396,528 H218 Q215,528 215,525 Z" class="card-stroke-12"/>
+    <rect x="215" y="378" width="184" height="4" class="card-bar-12"/>
+    <!-- Cell 13: sphere (cool) -->
+    <path d="M408,378 H592 V525 Q592,528 589,528 H411 Q408,528 408,525 Z" class="card-body-13"/>
+    <path d="M408,378 H592 V525 Q592,528 589,528 H411 Q408,528 408,525 Z" class="card-stroke-13"/>
+    <rect x="408" y="378" width="184" height="4" class="card-bar-13"/>
+    <!-- Cell 14: plane (warm) -->
+    <path d="M601,378 H785 V525 Q785,528 782,528 H604 Q601,528 601,525 Z" class="card-body-14"/>
+    <path d="M601,378 H785 V525 Q785,528 782,528 H604 Q601,528 601,525 Z" class="card-stroke-14"/>
+    <rect x="601" y="378" width="184" height="4" class="card-bar-14"/>
+    <!-- Cell 15: axis (cool) -->
+    <path d="M794,378 H978 V525 Q978,528 975,528 H797 Q794,528 794,525 Z" class="card-body-15"/>
+    <path d="M794,378 H978 V525 Q978,528 975,528 H797 Q794,528 794,525 Z" class="card-stroke-15"/>
+    <rect x="794" y="378" width="184" height="4" class="card-bar-15"/>
+  </g>
+
+  <!-- === Original shape primitives (UNCHANGED) === -->
+  <g id="shapes">
+    <g id="shape-rect">
+      <rect class="shape-a-thin" x="64.0" y="86.0" width="100.0" height="60.0"/>
+    </g>
+    <g id="shape-square">
+      <rect class="shape-b-thin" x="267.0" y="76.0" width="80.0" height="80.0"/>
+    </g>
+    <g id="shape-circle">
+      <circle class="shape-a-thin" cx="500.0" cy="116.0" r="42.0"/>
+    </g>
+    <g id="shape-ellipse">
+      <ellipse class="shape-b-thin" cx="693.0" cy="116.0" rx="55.0" ry="32.0"/>
+    </g>
+    <g id="shape-diamond">
+      <polygon class="shape-a-thin" points="886.0,74.0 928.0,116.0 886.0,158.0 844.0,116.0"/>
+    </g>
+    <g id="shape-hexagon">
+      <polygon class="shape-b-thin" points="158.0,276.0 136.0,314.11 92.0,314.11 70.0,276.0 92.0,237.89 136.0,237.89"/>
+    </g>
+    <g id="shape-star">
+      <polygon class="shape-a-thin" points="307.0,232.0 296.42,261.44 265.15,262.4 289.88,281.56 281.14,311.6 307.0,294.0 332.86,311.6 324.12,281.56 348.85,262.4 317.58,261.44"/>
+    </g>
+    <g id="shape-arc">
+      <path class="shape-b-thin" d="M500.0,276.0 L532.91,257.0 A38.0,38.0 0 1,0 519.0,308.91 Z"/>
+    </g>
+    <g id="shape-spline">
+      <path class="shape-a-thin" d="M638.0,291.0 L638.55,290.16 L639.11,289.3 L639.66,288.4 L640.21,287.48 L640.76,286.53 L641.32,285.56 L641.87,284.56 L642.42,283.55 L642.97,282.52 L643.53,281.48 L644.08,280.42 L644.63,279.35 L645.19,278.27 L645.74,277.19 L646.29,276.1 L646.84,275.01 L647.4,273.92 L647.95,272.83 L648.5,271.74 L649.06,270.66 L649.61,269.59 L650.16,268.52 L650.71,267.47 L651.27,266.43 L651.82,265.41 L652.37,264.41 L652.92,263.42 L653.48,262.46 L654.03,261.52 L654.58,260.61 L655.14,259.73 L655.69,258.87 L656.24,258.05 L656.79,257.27 L657.35,256.52 L657.9,255.81 L658.45,255.13 L659.01,254.51 L659.56,253.92 L660.11,253.39 L660.66,252.9 L661.22,252.46 L661.77,252.08 L662.32,251.75 L662.87,251.48 L663.43,251.26 L663.98,251.11 L664.53,251.02 L665.09,251.0 L665.64,251.06 L666.19,251.21 L666.74,251.45 L667.3,251.76 L667.85,252.16 L668.4,252.63 L668.95,253.17 L669.51,253.78 L670.06,254.45 L670.61,255.18 L671.17,255.96 L671.72,256.8 L672.27,257.69 L672.82,258.62 L673.38,259.6 L673.93,260.61 L674.48,261.66 L675.04,262.73 L675.59,263.83 L676.14,264.96 L676.69,266.1 L677.25,267.26 L677.8,268.43 L678.35,269.61 L678.9,270.8 L679.46,271.98 L680.01,273.16 L680.56,274.33 L681.12,275.5 L681.67,276.65 L682.22,277.78 L682.77,278.89 L683.33,279.98 L683.88,281.03 L684.43,282.06 L684.98,283.04 L685.54,283.99 L686.09,284.89 L686.64,285.75 L687.2,286.56 L687.75,287.31 L688.3,288.0 L688.85,288.63 L689.41,289.19 L689.96,289.69 L690.51,290.11 L691.07,290.45 L691.62,290.72 L692.17,290.9 L692.72,290.99 L693.28,290.99 L693.83,290.9 L694.38,290.72 L694.93,290.45 L695.49,290.11 L696.04,289.69 L696.59,289.19 L697.15,288.63 L697.7,288.0 L698.25,287.31 L698.8,286.56 L699.36,285.75 L699.91,284.89 L700.46,283.99 L701.02,283.04 L701.57,282.06 L702.12,281.03 L702.67,279.98 L703.23,278.89 L703.78,277.78 L704.33,276.65 L704.88,275.5 L705.44,274.33 L705.99,273.16 L706.54,271.98 L707.1,270.8 L707.65,269.61 L708.2,268.43 L708.75,267.26 L709.31,266.1 L709.86,264.96 L710.41,263.83 L710.96,262.73 L711.52,261.66 L712.07,260.61 L712.62,259.6 L713.18,258.62 L713.73,257.69 L714.28,256.8 L714.83,255.96 L715.39,255.18 L715.94,254.45 L716.49,253.78 L717.05,253.17 L717.6,252.63 L718.15,252.16 L718.7,251.76 L719.26,251.45 L719.81,251.21 L720.36,251.06 L720.91,251.0 L721.47,251.02 L722.02,251.11 L722.57,251.26 L723.13,251.48 L723.68,251.75 L724.23,252.08 L724.78,252.46 L725.34,252.9 L725.89,253.39 L726.44,253.92 L726.99,254.51 L727.55,255.13 L728.1,255.81 L728.65,256.52 L729.21,257.27 L729.76,258.05 L730.31,258.87 L730.86,259.73 L731.42,260.61 L731.97,261.52 L732.52,262.46 L733.08,263.42 L733.63,264.41 L734.18,265.41 L734.73,266.43 L735.29,267.47 L735.84,268.52 L736.39,269.59 L736.94,270.66 L737.5,271.74 L738.05,272.83 L738.6,273.92 L739.16,275.01 L739.71,276.1 L740.26,277.19 L740.81,278.27 L741.37,279.35 L741.92,280.42 L742.47,281.48 L743.03,282.52 L743.58,283.55 L744.13,284.56 L744.68,285.56 L745.24,286.53 L745.79,287.48 L746.34,288.4 L746.89,289.3 L747.45,290.16 L748.0,291.0" fill="none"/>
+    </g>
+    <g id="shape-cube">
+      <path class="shape-b-thin" d="M861.0,258.0 L911.0,258.0 L911.0,308.0 L861.0,308.0 Z" fill="none"/>
+      <path class="shape-b-thin" d="M861.0,258.0 L878.32,248.0 L928.32,248.0 L911.0,258.0 Z" fill="none"/>
+      <path class="shape-b-thin" d="M911.0,258.0 L928.32,248.0 L928.32,298.0 L911.0,308.0 Z" fill="none"/>
+      <path class="shape-b-ghost" d="M878.32,298.0 L878.32,248.0" fill="none" stroke-dasharray="2,2" opacity="0.55"/>
+      <path class="shape-b-ghost" d="M878.32,298.0 L928.32,298.0" fill="none" stroke-dasharray="2,2" opacity="0.55"/>
+      <path class="shape-b-ghost" d="M878.32,298.0 L861.0,308.0" fill="none" stroke-dasharray="2,2" opacity="0.55"/>
+    </g>
+    <g id="shape-cuboid">
+      <path class="shape-a-thin" d="M69.0,421.0 L149.0,421.0 L149.0,471.0 L69.0,471.0 Z" fill="none"/>
+      <path class="shape-a-thin" d="M69.0,421.0 L89.78399999999999,409.0 L169.784,409.0 L149.0,421.0 Z" fill="none"/>
+      <path class="shape-a-thin" d="M149.0,421.0 L169.784,409.0 L169.784,459.0 L149.0,471.0 Z" fill="none"/>
+      <path class="shape-a-ghost" d="M89.78399999999999,459.0 L89.78399999999999,409.0" fill="none" stroke-dasharray="2,2" opacity="0.55"/>
+      <path class="shape-a-ghost" d="M89.78399999999999,459.0 L169.784,459.0" fill="none" stroke-dasharray="2,2" opacity="0.55"/>
+      <path class="shape-a-ghost" d="M89.78399999999999,459.0 L69.0,471.0" fill="none" stroke-dasharray="2,2" opacity="0.55"/>
+    </g>
+    <g id="shape-cylinder">
+      <path class="shape-b-thin" d="M275.0,411.0 L275.0,466.0" fill="none"/>
+      <path class="shape-b-thin" d="M339.0,411.0 L339.0,466.0" fill="none"/>
+      <path class="shape-b-thin" d="M275.0,411.0 A32.0,9.0 0 1,0 339.0,411.0 A32.0,9.0 0 1,0 275.0,411.0" fill="none"/>
+      <path class="shape-b-thin" d="M275.0,466.0 A32.0,9.0 0 0,0 339.0,466.0" fill="none"/>
+      <path class="shape-b-ghost" d="M275.0,466.0 A32.0,9.0 0 0,1 339.0,466.0" fill="none" stroke-dasharray="2,2" opacity="0.55"/>
+    </g>
+    <g id="shape-sphere">
+      <circle class="shape-a-thin" cx="500.0" cy="436.0" r="42.0" fill="none"/>
+      <ellipse class="shape-a-thin" cx="500.0" cy="436.0" rx="42.0" ry="12.6" fill="none" opacity="0.5"/>
+      <ellipse class="shape-a-thin" cx="500.0" cy="436.0" rx="12.6" ry="42.0" fill="none" opacity="0.5"/>
+    </g>
+    <g id="shape-plane">
+      <path class="shape-b-thin" d="M618.5,459.0 L728.5,459.0 L767.5,436.5 L657.5,436.5 Z" fill="none"/>
+    </g>
+    <g id="shape-axis">
+      <line class="shape-a-thin" x1="871.0" y1="461.0" x2="921.0" y2="461.0"/>
+      <polygon class="shape-a-fillsolid" points="929.0,461.0 921.0,458.0 921.0,464.0"/>
+      <line class="shape-a-thin" x1="885.5" y1="457.0" x2="885.5" y2="465.0"/>
+      <line class="shape-a-thin" x1="900.0" y1="457.0" x2="900.0" y2="465.0"/>
+      <line class="shape-a-thin" x1="914.5" y1="457.0" x2="914.5" y2="465.0"/>
+      <text x="935.0" y="465.0" font-size="9" class="fg-3" font-family="Segoe UI, Arial, sans-serif">x</text>
+      <line class="shape-a-thin" x1="871.0" y1="461.0" x2="871.0" y2="411.0"/>
+      <polygon class="shape-a-fillsolid" points="871.0,403.0 868.0,411.0 874.0,411.0"/>
+      <line class="shape-a-thin" x1="867.0" y1="446.5" x2="875.0" y2="446.5"/>
+      <line class="shape-a-thin" x1="867.0" y1="432.0" x2="875.0" y2="432.0"/>
+      <line class="shape-a-thin" x1="867.0" y1="417.5" x2="875.0" y2="417.5"/>
+      <text x="861.0" y="399.0" font-size="9" text-anchor="middle" class="fg-3" font-family="Segoe UI, Arial, sans-serif">y</text>
+      <line class="shape-a-thin" x1="871.0" y1="461.0" x2="827.7" y2="486.0"/>
+      <polygon class="shape-a-fillsolid" points="820.8,490.0 825.9,483.9 828.7,488.6"/>
+      <line class="shape-a-thin" x1="856.4" y1="464.8" x2="860.4" y2="471.7"/>
+      <line class="shape-a-thin" x1="843.9" y1="472.0" x2="847.9" y2="479.0"/>
+      <line class="shape-a-thin" x1="831.3" y1="479.3" x2="835.3" y2="486.2"/>
+      <text x="812.772" y="502.0" font-size="9" class="fg-3" font-family="Segoe UI, Arial, sans-serif">z</text>
+    </g>
+  </g>
+
+  <!-- === Original labels (UNCHANGED) === -->
+  <g id="labels">
+    <text x="114" y="186" text-anchor="middle" class="cell-label">rect</text>
+    <text x="114" y="198" text-anchor="middle" class="cell-param">w=100 h=60</text>
+    <text x="307" y="186" text-anchor="middle" class="cell-label">square</text>
+    <text x="307" y="198" text-anchor="middle" class="cell-param">size=80</text>
+    <text x="500" y="186" text-anchor="middle" class="cell-label">circle</text>
+    <text x="500" y="198" text-anchor="middle" class="cell-param">r=42</text>
+    <text x="693" y="186" text-anchor="middle" class="cell-label">ellipse</text>
+    <text x="693" y="198" text-anchor="middle" class="cell-param">rx=55 ry=32</text>
+    <text x="886" y="186" text-anchor="middle" class="cell-label">diamond</text>
+    <text x="886" y="198" text-anchor="middle" class="cell-param">w=84 h=84</text>
+    <text x="114" y="346" text-anchor="middle" class="cell-label">hexagon</text>
+    <text x="114" y="358" text-anchor="middle" class="cell-param">r=44 flat-top</text>
+    <text x="307" y="346" text-anchor="middle" class="cell-label">star</text>
+    <text x="307" y="358" text-anchor="middle" class="cell-param">r=44 points=5</text>
+    <text x="500" y="346" text-anchor="middle" class="cell-label">arc</text>
+    <text x="500" y="358" text-anchor="middle" class="cell-param">r=38 30-300 deg</text>
+    <text x="693" y="346" text-anchor="middle" class="cell-label">spline</text>
+    <text x="693" y="358" text-anchor="middle" class="cell-param">pchip 5 waypoints</text>
+    <text x="886" y="346" text-anchor="middle" class="cell-label">cube</text>
+    <text x="886" y="358" text-anchor="middle" class="cell-param">size=50 wire</text>
+    <text x="114" y="506" text-anchor="middle" class="cell-label">cuboid</text>
+    <text x="114" y="518" text-anchor="middle" class="cell-param">w=80 h=50 d=24</text>
+    <text x="307" y="506" text-anchor="middle" class="cell-label">cylinder</text>
+    <text x="307" y="518" text-anchor="middle" class="cell-param">rx=32 ry=9 h=55</text>
+    <text x="500" y="506" text-anchor="middle" class="cell-label">sphere</text>
+    <text x="500" y="518" text-anchor="middle" class="cell-param">r=42 wire</text>
+    <text x="693" y="506" text-anchor="middle" class="cell-label">plane</text>
+    <text x="693" y="518" text-anchor="middle" class="cell-param">w=110 d=45 tilt=30</text>
+    <text x="886" y="506" text-anchor="middle" class="cell-label">axis</text>
+    <text x="886" y="518" text-anchor="middle" class="cell-param">xyz len=58 ticks=3</text>
+  </g>
+
+  <!-- === ADD-LIFE decorations (overlay, drawn LAST) === -->
+  <g id="add-life-decorations">
+
+    <!-- Corner brackets on all 15 cells (2px inset, 6px arms) -->
+    <!-- Row 1 -->
+    <g id="al-brackets-r1">
+      <!-- Cell 1 -->
+      <path class="al-bracket-cool" d="M24,66 L24,60 L30,60"/>
+      <path class="al-bracket-cool" d="M198,60 L204,60 L204,66"/>
+      <path class="al-bracket-cool" d="M24,200 L24,206 L30,206"/>
+      <path class="al-bracket-cool" d="M198,206 L204,206 L204,200"/>
+      <!-- Cell 2 -->
+      <path class="al-bracket-warm" d="M217,66 L217,60 L223,60"/>
+      <path class="al-bracket-warm" d="M391,60 L397,60 L397,66"/>
+      <path class="al-bracket-warm" d="M217,200 L217,206 L223,206"/>
+      <path class="al-bracket-warm" d="M391,206 L397,206 L397,200"/>
+      <!-- Cell 3 -->
+      <path class="al-bracket-cool" d="M410,66 L410,60 L416,60"/>
+      <path class="al-bracket-cool" d="M584,60 L590,60 L590,66"/>
+      <path class="al-bracket-cool" d="M410,200 L410,206 L416,206"/>
+      <path class="al-bracket-cool" d="M584,206 L590,206 L590,200"/>
+      <!-- Cell 4 -->
+      <path class="al-bracket-warm" d="M603,66 L603,60 L609,60"/>
+      <path class="al-bracket-warm" d="M777,60 L783,60 L783,66"/>
+      <path class="al-bracket-warm" d="M603,200 L603,206 L609,206"/>
+      <path class="al-bracket-warm" d="M777,206 L783,206 L783,200"/>
+      <!-- Cell 5 -->
+      <path class="al-bracket-cool" d="M796,66 L796,60 L802,60"/>
+      <path class="al-bracket-cool" d="M970,60 L976,60 L976,66"/>
+      <path class="al-bracket-cool" d="M796,200 L796,206 L802,206"/>
+      <path class="al-bracket-cool" d="M970,206 L976,206 L976,200"/>
+    </g>
+    <!-- Row 2 -->
+    <g id="al-brackets-r2">
+      <path class="al-bracket-warm" d="M24,226 L24,220 L30,220"/>
+      <path class="al-bracket-warm" d="M198,220 L204,220 L204,226"/>
+      <path class="al-bracket-warm" d="M24,360 L24,366 L30,366"/>
+      <path class="al-bracket-warm" d="M198,366 L204,366 L204,360"/>
+      <path class="al-bracket-cool" d="M217,226 L217,220 L223,220"/>
+      <path class="al-bracket-cool" d="M391,220 L397,220 L397,226"/>
+      <path class="al-bracket-cool" d="M217,360 L217,366 L223,366"/>
+      <path class="al-bracket-cool" d="M391,366 L397,366 L397,360"/>
+      <path class="al-bracket-warm" d="M410,226 L410,220 L416,220"/>
+      <path class="al-bracket-warm" d="M584,220 L590,220 L590,226"/>
+      <path class="al-bracket-warm" d="M410,360 L410,366 L416,366"/>
+      <path class="al-bracket-warm" d="M584,366 L590,366 L590,360"/>
+      <path class="al-bracket-cool" d="M603,226 L603,220 L609,220"/>
+      <path class="al-bracket-cool" d="M777,220 L783,220 L783,226"/>
+      <path class="al-bracket-cool" d="M603,360 L603,366 L609,366"/>
+      <path class="al-bracket-cool" d="M777,366 L783,366 L783,360"/>
+      <path class="al-bracket-warm" d="M796,226 L796,220 L802,220"/>
+      <path class="al-bracket-warm" d="M970,220 L976,220 L976,226"/>
+      <path class="al-bracket-warm" d="M796,360 L796,366 L802,366"/>
+      <path class="al-bracket-warm" d="M970,366 L976,366 L976,360"/>
+    </g>
+    <!-- Row 3 -->
+    <g id="al-brackets-r3">
+      <path class="al-bracket-cool" d="M24,386 L24,380 L30,380"/>
+      <path class="al-bracket-cool" d="M198,380 L204,380 L204,386"/>
+      <path class="al-bracket-cool" d="M24,520 L24,526 L30,526"/>
+      <path class="al-bracket-cool" d="M198,526 L204,526 L204,520"/>
+      <path class="al-bracket-warm" d="M217,386 L217,380 L223,380"/>
+      <path class="al-bracket-warm" d="M391,380 L397,380 L397,386"/>
+      <path class="al-bracket-warm" d="M217,520 L217,526 L223,526"/>
+      <path class="al-bracket-warm" d="M391,526 L397,526 L397,520"/>
+      <path class="al-bracket-cool" d="M410,386 L410,380 L416,380"/>
+      <path class="al-bracket-cool" d="M584,380 L590,380 L590,386"/>
+      <path class="al-bracket-cool" d="M410,520 L410,526 L416,526"/>
+      <path class="al-bracket-cool" d="M584,526 L590,526 L590,520"/>
+      <path class="al-bracket-warm" d="M603,386 L603,380 L609,380"/>
+      <path class="al-bracket-warm" d="M777,380 L783,380 L783,386"/>
+      <path class="al-bracket-warm" d="M603,520 L603,526 L609,526"/>
+      <path class="al-bracket-warm" d="M777,526 L783,526 L783,520"/>
+      <path class="al-bracket-cool" d="M796,386 L796,380 L802,380"/>
+      <path class="al-bracket-cool" d="M970,380 L976,380 L976,386"/>
+      <path class="al-bracket-cool" d="M796,520 L796,526 L802,526"/>
+      <path class="al-bracket-cool" d="M970,526 L976,526 L976,520"/>
+    </g>
+
+    <!-- Scan-lines under accent bars (one per row, spans card width).
+         Placed 2px below each card accent bar. -->
+    <g id="al-scans-r1">
+      <line class="al-scan" x1="28" y1="65" x2="200" y2="65"/>
+      <line class="al-scan" x1="221" y1="65" x2="393" y2="65"/>
+      <line class="al-scan" x1="414" y1="65" x2="586" y2="65"/>
+      <line class="al-scan" x1="607" y1="65" x2="779" y2="65"/>
+      <line class="al-scan" x1="800" y1="65" x2="972" y2="65"/>
+    </g>
+    <g id="al-scans-r2">
+      <line class="al-scan" x1="28" y1="225" x2="200" y2="225"/>
+      <line class="al-scan" x1="221" y1="225" x2="393" y2="225"/>
+      <line class="al-scan" x1="414" y1="225" x2="586" y2="225"/>
+      <line class="al-scan" x1="607" y1="225" x2="779" y2="225"/>
+      <line class="al-scan" x1="800" y1="225" x2="972" y2="225"/>
+    </g>
+    <g id="al-scans-r3">
+      <line class="al-scan" x1="28" y1="385" x2="200" y2="385"/>
+      <line class="al-scan" x1="221" y1="385" x2="393" y2="385"/>
+      <line class="al-scan" x1="414" y1="385" x2="586" y2="385"/>
+      <line class="al-scan" x1="607" y1="385" x2="779" y2="385"/>
+      <line class="al-scan" x1="800" y1="385" x2="972" y2="385"/>
+    </g>
+
+    <!-- Tick marks at bottom-centre of each cell -->
+    <g id="al-ticks">
+      <rect class="al-tick-cool" x="113" y="202" width="2" height="3"/>
+      <rect class="al-tick-warm" x="306" y="202" width="2" height="3"/>
+      <rect class="al-tick-cool" x="499" y="202" width="2" height="3"/>
+      <rect class="al-tick-warm" x="692" y="202" width="2" height="3"/>
+      <rect class="al-tick-cool" x="885" y="202" width="2" height="3"/>
+      <rect class="al-tick-warm" x="113" y="362" width="2" height="3"/>
+      <rect class="al-tick-cool" x="306" y="362" width="2" height="3"/>
+      <rect class="al-tick-warm" x="499" y="362" width="2" height="3"/>
+      <rect class="al-tick-cool" x="692" y="362" width="2" height="3"/>
+      <rect class="al-tick-warm" x="885" y="362" width="2" height="3"/>
+      <rect class="al-tick-cool" x="113" y="522" width="2" height="3"/>
+      <rect class="al-tick-warm" x="306" y="522" width="2" height="3"/>
+      <rect class="al-tick-cool" x="499" y="522" width="2" height="3"/>
+      <rect class="al-tick-warm" x="692" y="522" width="2" height="3"/>
+      <rect class="al-tick-cool" x="885" y="522" width="2" height="3"/>
+    </g>
+
+    <!-- Category glyphs at top-right of each cell (small 10x10 Lucide-style).
+         2D row uses "square" glyph, 2D row 2 uses "pentagon/curve" glyph, 3D row uses "box" glyph with depth edge. -->
+    <!-- Row 1 (2D-basic): square glyph -->
+    <g id="al-cat-r1">
+      <rect class="al-cat-icon-cool" x="190" y="69" width="9" height="7"/>
+      <rect class="al-cat-icon-warm" x="383" y="69" width="9" height="7"/>
+      <rect class="al-cat-icon-cool" x="576" y="69" width="9" height="7"/>
+      <rect class="al-cat-icon-warm" x="769" y="69" width="9" height="7"/>
+      <rect class="al-cat-icon-cool" x="962" y="69" width="9" height="7"/>
+    </g>
+    <!-- Row 2 (2D-curve): arc glyph -->
+    <g id="al-cat-r2">
+      <path class="al-cat-icon-warm" d="M190,76 A5,5 0 0 1 199,76"/>
+      <path class="al-cat-icon-cool" d="M383,76 A5,5 0 0 1 392,76"/>
+      <path class="al-cat-icon-warm" d="M576,76 A5,5 0 0 1 585,76"/>
+      <path class="al-cat-icon-cool" d="M769,76 A5,5 0 0 1 778,76"/>
+      <path class="al-cat-icon-warm" d="M962,76 A5,5 0 0 1 971,76"/>
+    </g>
+    <!-- Row 3 (3D): box-with-depth glyph -->
+    <g id="al-cat-r3">
+      <path class="al-cat-icon-cool" d="M190,76 L197,76 L197,69 M190,76 L192,73 L199,73 L197,76 M197,69 L199,67 L199,71"/>
+      <path class="al-cat-icon-warm" d="M383,76 L390,76 L390,69 M383,76 L385,73 L392,73 L390,76 M390,69 L392,67 L392,71"/>
+      <path class="al-cat-icon-cool" d="M576,76 L583,76 L583,69 M576,76 L578,73 L585,73 L583,76 M583,69 L585,67 L585,71"/>
+      <path class="al-cat-icon-warm" d="M769,76 L776,76 L776,69 M769,76 L771,73 L778,73 L776,76 M776,69 L778,67 L778,71"/>
+      <path class="al-cat-icon-cool" d="M962,76 L969,76 L969,69 M962,76 L964,73 L971,73 L969,76 M969,69 L971,67 L971,71"/>
+    </g>
+
+    <!-- Whitespace particles (16) -->
+    <g id="al-particles">
+      <circle class="al-particle-cool" cx="212" cy="132" r="1.1"/>
+      <circle class="al-particle-warm" cx="405" cy="132" r="1.1"/>
+      <circle class="al-particle-cool" cx="598" cy="132" r="1.1"/>
+      <circle class="al-particle-warm" cx="791" cy="132" r="1.1"/>
+      <circle class="al-particle-warm" cx="212" cy="292" r="1"/>
+      <circle class="al-particle-cool" cx="405" cy="292" r="1"/>
+      <circle class="al-particle-warm" cx="598" cy="292" r="1"/>
+      <circle class="al-particle-cool" cx="791" cy="292" r="1"/>
+      <circle class="al-particle-cool" cx="212" cy="452" r="1"/>
+      <circle class="al-particle-warm" cx="405" cy="452" r="1"/>
+      <circle class="al-particle-cool" cx="598" cy="452" r="1"/>
+      <circle class="al-particle-warm" cx="791" cy="452" r="1"/>
+      <circle class="al-particle-cool" cx="6" cy="56" r="0.9"/>
+      <circle class="al-particle-cool" cx="994" cy="56" r="0.9"/>
+      <circle class="al-particle-warm" cx="6" cy="534" r="0.9"/>
+      <circle class="al-particle-warm" cx="994" cy="534" r="0.9"/>
+    </g>
+
+    <!-- Outer-corner ring fragments (4) -->
+    <g id="al-rings">
+      <path class="al-ring-cool" d="M-8,14 A30,30 0 0 1 22,44"/>
+      <path class="al-ring-cool" d="M978,44 A30,30 0 0 1 1008,14"/>
+      <path class="al-ring-warm" d="M-8,526 A30,30 0 0 0 22,496"/>
+      <path class="al-ring-warm" d="M978,496 A30,30 0 0 0 1008,526"/>
+    </g>
+  </g>
+</svg>

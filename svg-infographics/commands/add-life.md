@@ -8,6 +8,18 @@ argument-hint: "path(s) + level, e.g. 'docs/images/*.svg medium' or 'banner.svg 
 
 Decoration pass on existing SVG. NOT a redesign - additive overlays, filters, fills. Positions, text, connectors stay unchanged.
 
+## HARD RULE (absolute, non-negotiable)
+
+**UNDER NO CIRCUMSTANCES CHANGE GEOMETRY unless the user explicitly asks for it.**
+
+No paths may be moved, resized, rewritten, or deleted. No `<g>` structure may be restructured. No `<line>`, `<path>`, `<rect>`, `<circle>`, `<polygon>`, or connector may be altered, removed, or replaced with a "better" version. No spine, trunk, strand, arrow, or axis line may be touched. No card shape, manifold, workflow arrow, or grid line may be tweaked.
+
+If a decoration would require modifying an existing element, DO NOT add it. Decorations live in a SEPARATE `<g id="add-life-decorations">` group added BELOW the original `<g id="content">` and `<g id="connectors">` in the DOM. The original DOM stays byte-for-byte identical below the style block.
+
+Post-pass verification: after writing the output file, count `<path>`, `<line>`, `<rect>`, `<circle>`, `<polygon>` elements in the original and in the output. Every original element tag count must be preserved (output ≥ original for each tag). If any count dropped, **fix it in place** - copy the missing elements back from the original into the output file. Do NOT revert the whole pass; just restore the missing geometry and keep the valid decorations.
+
+If the user explicitly requests a geometry change ("widen the spine", "move the fork 20px east"), that's allowed and scoped to what they asked for, nothing else.
+
 **Input**: SVG file(s) + intensity level (low / medium / high / absurd). Default: medium.
 
 **MANDATORY**: This command follows the svg-infographics skill and workflow. All placement uses tools (`empty-space`, `geom align`), all colours use CSS classes with dark mode, all elements respect topology and grouping. Read `svg-standards/SKILL.md` principles - they apply here.

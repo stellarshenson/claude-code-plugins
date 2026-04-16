@@ -1,0 +1,238 @@
+<!--
+  12-honeycomb.svg - Decorative honeycomb mosaic of 14 shape primitives
+  Shows: ~28 flat-top hexagons packed across a widescreen canvas. Each cell
+         holds a small geometric motif (dot, ring, triangle, plus, star, diamond,
+         chevron, concentric rings, dot cluster, slash, cross, square, arrow, grid).
+         Shades vary across six teal grades and three ochre grades; some cells filled,
+         some stroked-only for breathing room.
+  Intent: section-break / visual breather hinting at composability - many primitives
+          from one tool, organic yet mathematical.
+  Theme: stellars-tech teal + ochre accent, full prefers-color-scheme dark overrides.
+-->
+<!-- add-life: medium
+  colour: existing 6 teal + 3 ochre hex shades already provide per-cell rhythm; kept and extended
+  shapes: canvas corner brackets (4 corners of viewBox), micro accent marks in margin band
+  icons: honeycomb already IS the shape showcase - no per-cell icons (would double-up)
+  embroidery: organic dendritic faded arcs in background margin (matches natural-hex theme)
+  abstract: 14 scattered accent particles in whitespace (top/bottom bands), 2 large background arcs
+  bg texture: organic/dendritic soft arcs + specks at 0.06-0.10 opacity (HARD CAP)
+  glow: subtle cyan stdDev=2 on three focal filled hexes (centre accent), stdDev=1.5 warm on the ochre accent hex
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 380">
+  <style>
+    .hex-teal-1-fill   { fill: #00475c; fill-opacity: 0.22; stroke: #00475c; stroke-width: 1; }
+    .hex-teal-1-stroke { fill: none; stroke: #00475c; stroke-width: 1.2; opacity: 0.55; }
+    .hex-teal-2-fill   { fill: #005f7a; fill-opacity: 0.22; stroke: #005f7a; stroke-width: 1; }
+    .hex-teal-2-stroke { fill: none; stroke: #005f7a; stroke-width: 1.2; opacity: 0.55; }
+    .hex-teal-3-fill   { fill: #1a7590; fill-opacity: 0.22; stroke: #1a7590; stroke-width: 1; }
+    .hex-teal-3-stroke { fill: none; stroke: #1a7590; stroke-width: 1.2; opacity: 0.55; }
+    .hex-teal-4-fill   { fill: #2b8aa3; fill-opacity: 0.22; stroke: #2b8aa3; stroke-width: 1; }
+    .hex-teal-4-stroke { fill: none; stroke: #2b8aa3; stroke-width: 1.2; opacity: 0.55; }
+    .hex-teal-5-fill   { fill: #3ca0b7; fill-opacity: 0.22; stroke: #3ca0b7; stroke-width: 1; }
+    .hex-teal-5-stroke { fill: none; stroke: #3ca0b7; stroke-width: 1.2; opacity: 0.55; }
+    .hex-teal-6-fill   { fill: #4db5cb; fill-opacity: 0.22; stroke: #4db5cb; stroke-width: 1; }
+    .hex-teal-6-stroke { fill: none; stroke: #4db5cb; stroke-width: 1.2; opacity: 0.55; }
+    .hex-ochre-1-fill   { fill: #5e360d; fill-opacity: 0.26; stroke: #5e360d; stroke-width: 1; }
+    .hex-ochre-1-stroke { fill: none; stroke: #5e360d; stroke-width: 1.2; opacity: 0.65; }
+    .hex-ochre-2-fill   { fill: #7a4a15; fill-opacity: 0.26; stroke: #7a4a15; stroke-width: 1; }
+    .hex-ochre-2-stroke { fill: none; stroke: #7a4a15; stroke-width: 1.2; opacity: 0.65; }
+    .hex-ochre-3-fill   { fill: #9a6020; fill-opacity: 0.26; stroke: #9a6020; stroke-width: 1; }
+    .hex-ochre-3-stroke { fill: none; stroke: #9a6020; stroke-width: 1.2; opacity: 0.65; }
+    .motif         { fill: #1a5a6e; stroke: none; }
+    .motif-stroke  { fill: none; stroke: #1a5a6e; stroke-width: 1.1; stroke-linejoin: round; stroke-linecap: round; }
+    .motif-line    { fill: none; stroke: #1a5a6e; stroke-width: 1.1; stroke-linecap: round; }
+    .motif-line-bold { fill: none; stroke: #1a5a6e; stroke-width: 1.6; stroke-linecap: round; }
+
+    /* add-life add-ons */
+    .corner-bracket { fill: none; stroke: #0096d1; stroke-width: 1; opacity: 0.55; stroke-linecap: round; }
+    .corner-bracket-warm { fill: none; stroke: #da8230; stroke-width: 1.1; opacity: 0.6; stroke-linecap: round; }
+    .bg-organic  { fill: none; stroke: #0096d1; stroke-width: 0.6; opacity: 0.08; }
+    .bg-organic-node { fill: #0096d1; opacity: 0.10; }
+    .particle    { fill: #0096d1; opacity: 0.3; }
+    .particle-warm { fill: #da8230; opacity: 0.3; }
+    .bg-arc      { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.12; }
+
+    @media (prefers-color-scheme: dark) {
+      .hex-teal-1-fill   { fill: #2d7e94; fill-opacity: 0.26; stroke: #2d7e94; }
+      .hex-teal-1-stroke { stroke: #2d7e94; opacity: 0.60; }
+      .hex-teal-2-fill   { fill: #3d92a8; fill-opacity: 0.26; stroke: #3d92a8; }
+      .hex-teal-2-stroke { stroke: #3d92a8; opacity: 0.60; }
+      .hex-teal-3-fill   { fill: #4da6ba; fill-opacity: 0.26; stroke: #4da6ba; }
+      .hex-teal-3-stroke { stroke: #4da6ba; opacity: 0.60; }
+      .hex-teal-4-fill   { fill: #5cbacc; fill-opacity: 0.26; stroke: #5cbacc; }
+      .hex-teal-4-stroke { stroke: #5cbacc; opacity: 0.60; }
+      .hex-teal-5-fill   { fill: #6cced8; fill-opacity: 0.26; stroke: #6cced8; }
+      .hex-teal-5-stroke { stroke: #6cced8; opacity: 0.60; }
+      .hex-teal-6-fill   { fill: #9edfe8; fill-opacity: 0.26; stroke: #9edfe8; }
+      .hex-teal-6-stroke { stroke: #9edfe8; opacity: 0.60; }
+      .hex-ochre-1-fill   { fill: #c89548; fill-opacity: 0.30; stroke: #c89548; }
+      .hex-ochre-1-stroke { stroke: #c89548; opacity: 0.70; }
+      .hex-ochre-2-fill   { fill: #d4a04a; fill-opacity: 0.30; stroke: #d4a04a; }
+      .hex-ochre-2-stroke { stroke: #d4a04a; opacity: 0.70; }
+      .hex-ochre-3-fill   { fill: #e0b05a; fill-opacity: 0.30; stroke: #e0b05a; }
+      .hex-ochre-3-stroke { stroke: #e0b05a; opacity: 0.70; }
+      .motif         { fill: #b8e4f0; }
+      .motif-stroke  { stroke: #b8e4f0; }
+      .motif-line    { stroke: #b8e4f0; }
+      .motif-line-bold { stroke: #b8e4f0; }
+      .corner-bracket { stroke: #5cc8e0; }
+      .corner-bracket-warm { stroke: #d4a04a; }
+      .bg-organic   { stroke: #5cc8e0; opacity: 0.10; }
+      .bg-organic-node { fill: #5cc8e0; opacity: 0.14; }
+      .particle    { fill: #5cc8e0; opacity: 0.35; }
+      .particle-warm { fill: #d4a04a; opacity: 0.35; }
+      .bg-arc      { stroke: #5cc8e0; opacity: 0.15; }
+    }
+  </style>
+
+  <defs>
+    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-warm" x="-30%" y="-30%" width="160%" height="160%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000x380
+    Margin: x=30, y=40
+    Hex circumradius R=52; flat-top packing
+    Horizontal pitch (column): 1.5*R = 78.0
+    Vertical pitch (row):      sqrt(3)*R ≈ 90.07
+    Odd columns offset by v_pitch/2 ≈ 45.03
+    Placed: 28 hexagons across columns x rows
+    Palette: 6 teal shades, 3 ochre shades; ~20% stroke-only, ~15% empty
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-spacing: columns equally spaced by 78.0
+    v-spacing: rows equally spaced by 90.07 within column
+    mirror: offset pattern repeats across alternating columns (offset half v_pitch)
+    contain: nodes layer holds hexes; content layer holds motifs inside hexes
+  === -->
+
+  <rect x="0" y="0" width="1000" height="380" fill="transparent"/>
+
+  <g id="background">
+    <!-- Organic dendritic bg traces in margin bands (top/bottom, kept within 16px strip padding) -->
+    <g id="add-life-bg-texture">
+      <path d="M30,30 Q80,22 130,32 Q180,38 240,30 Q300,22 360,32" class="bg-organic"/>
+      <path d="M680,30 Q750,36 810,26 Q870,22 940,32 Q960,32 970,32" class="bg-organic"/>
+      <path d="M30,350 Q100,356 170,346 Q230,342 290,352 Q330,356 380,350" class="bg-organic"/>
+      <path d="M620,352 Q690,348 760,354 Q830,358 900,350 Q940,348 970,350" class="bg-organic"/>
+      <circle cx="130" cy="30" r="1.1" class="bg-organic-node"/>
+      <circle cx="240" cy="28" r="1.1" class="bg-organic-node"/>
+      <circle cx="810" cy="24" r="1.1" class="bg-organic-node"/>
+      <circle cx="940" cy="30" r="1.1" class="bg-organic-node"/>
+      <circle cx="170" cy="348" r="1.1" class="bg-organic-node"/>
+      <circle cx="290" cy="352" r="1.1" class="bg-organic-node"/>
+      <circle cx="760" cy="356" r="1.1" class="bg-organic-node"/>
+      <circle cx="900" cy="352" r="1.1" class="bg-organic-node"/>
+    </g>
+
+    <!-- Background arcs (large soft sweeps, control points kept >=18 from edge) -->
+    <g id="add-life-bg-arcs">
+      <path d="M40,28 Q500,18 960,28" class="bg-arc"/>
+      <path d="M40,352 Q500,362 960,352" class="bg-arc"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+    <polygon points="134.0,92.0 108.0,137.03 56.0,137.03 30.0,92.0 56.0,46.97 108.0,46.97" class="hex-ochre-1-fill" filter="url(#glow-warm)"/>
+    <polygon points="134.0,182.07 108.0,227.1 56.0,227.1 30.0,182.07 56.0,137.04 108.0,137.04" class="hex-teal-4-fill"/>
+    <polygon points="134.0,272.13 108.0,317.16 56.0,317.16 30.0,272.13 56.0,227.1 108.0,227.1" class="hex-teal-4-stroke"/>
+    <polygon points="212.0,137.03 186.0,182.06 134.0,182.06 108.0,137.03 134.0,92.0 186.0,92.0" class="hex-teal-4-fill"/>
+    <polygon points="212.0,227.1 186.0,272.13 134.0,272.13 108.0,227.1 134.0,182.07 186.0,182.07" class="hex-teal-3-fill"/>
+    <polygon points="290.0,92.0 264.0,137.03 212.0,137.03 186.0,92.0 212.0,46.97 264.0,46.97" class="hex-teal-4-fill"/>
+    <polygon points="290.0,182.07 264.0,227.1 212.0,227.1 186.0,182.07 212.0,137.04 264.0,137.04" class="hex-teal-3-fill"/>
+    <polygon points="290.0,272.13 264.0,317.16 212.0,317.16 186.0,272.13 212.0,227.1 264.0,227.1" class="hex-teal-3-stroke"/>
+    <polygon points="368.0,137.03 342.0,182.06 290.0,182.06 264.0,137.03 290.0,92.0 342.0,92.0" class="hex-teal-3-fill"/>
+    <polygon points="368.0,227.1 342.0,272.13 290.0,272.13 264.0,227.1 290.0,182.07 342.0,182.07" class="hex-teal-2-fill"/>
+    <polygon points="446.0,92.0 420.0,137.03 368.0,137.03 342.0,92.0 368.0,46.97 420.0,46.97" class="hex-teal-3-fill"/>
+    <polygon points="446.0,182.07 420.0,227.1 368.0,227.1 342.0,182.07 368.0,137.04 420.0,137.04" class="hex-teal-1-fill" filter="url(#glow-cyan)"/>
+    <polygon points="446.0,272.13 420.0,317.16 368.0,317.16 342.0,272.13 368.0,227.1 420.0,227.1" class="hex-teal-3-stroke"/>
+    <polygon points="524.0,137.03 498.0,182.06 446.0,182.06 420.0,137.03 446.0,92.0 498.0,92.0" class="hex-teal-2-fill"/>
+    <polygon points="524.0,227.1 498.0,272.13 446.0,272.13 420.0,227.1 446.0,182.07 498.0,182.07" class="hex-teal-2-fill" filter="url(#glow-cyan)"/>
+    <polygon points="602.0,92.0 576.0,137.03 524.0,137.03 498.0,92.0 524.0,46.97 576.0,46.97" class="hex-teal-3-fill"/>
+    <polygon points="602.0,182.07 576.0,227.1 524.0,227.1 498.0,182.07 524.0,137.04 576.0,137.04" class="hex-teal-1-fill"/>
+    <polygon points="602.0,272.13 576.0,317.16 524.0,317.16 498.0,272.13 524.0,227.1 576.0,227.1" class="hex-teal-3-stroke"/>
+    <polygon points="680.0,137.03 654.0,182.06 602.0,182.06 576.0,137.03 602.0,92.0 654.0,92.0" class="hex-teal-3-fill"/>
+    <polygon points="680.0,227.1 654.0,272.13 602.0,272.13 576.0,227.1 602.0,182.07 654.0,182.07" class="hex-teal-2-fill" filter="url(#glow-cyan)"/>
+    <polygon points="758.0,92.0 732.0,137.03 680.0,137.03 654.0,92.0 680.0,46.97 732.0,46.97" class="hex-teal-4-fill"/>
+    <polygon points="758.0,182.07 732.0,227.1 680.0,227.1 654.0,182.07 680.0,137.04 732.0,137.04" class="hex-teal-3-fill"/>
+    <polygon points="758.0,272.13 732.0,317.16 680.0,317.16 654.0,272.13 680.0,227.1 732.0,227.1" class="hex-teal-3-stroke"/>
+    <polygon points="836.0,137.03 810.0,182.06 758.0,182.06 732.0,137.03 758.0,92.0 810.0,92.0" class="hex-teal-4-fill"/>
+    <polygon points="836.0,227.1 810.0,272.13 758.0,272.13 732.0,227.1 758.0,182.07 810.0,182.07" class="hex-teal-3-fill"/>
+    <polygon points="914.0,92.0 888.0,137.03 836.0,137.03 810.0,92.0 836.0,46.97 888.0,46.97" class="hex-teal-4-fill"/>
+    <polygon points="914.0,182.07 888.0,227.1 836.0,227.1 810.0,182.07 836.0,137.04 888.0,137.04" class="hex-teal-4-fill"/>
+    <polygon points="914.0,272.13 888.0,317.16 836.0,317.16 810.0,272.13 836.0,227.1 888.0,227.1" class="hex-teal-4-stroke"/>
+  </g>
+
+  <g id="connectors"></g>
+
+  <g id="content">
+    <circle cx="82" cy="92" r="3" class="motif"/>
+    <circle cx="76" cy="182.07" r="2" class="motif"/><circle cx="82"   cy="182.07" r="2" class="motif"/><circle cx="88" cy="182.07" r="2" class="motif"/>
+    <polygon points="82,264.93 75.4,277.53 88.6,277.53" class="motif-stroke"/>
+    <line x1="152.0" y1="129.03" x2="168.0" y2="145.03" class="motif-line"/><line x1="152.0" y1="145.03" x2="168.0" y2="129.03" class="motif-line"/>
+    <circle cx="233.0" cy="87" r="1.6" class="motif"/><circle cx="243.0" cy="87" r="1.6" class="motif"/><circle cx="233.0" cy="97" r="1.6" class="motif"/><circle cx="243.0" cy="97" r="1.6" class="motif"/><circle cx="238.0"   cy="92"   r="1.6" class="motif"/>
+    <circle cx="238.0" cy="182.07" r="10" class="motif-stroke"/><circle cx="238.0" cy="182.07" r="6" class="motif-stroke"/><circle cx="238.0" cy="182.07" r="2" class="motif"/>
+    <circle cx="238.0" cy="272.13" r="8" class="motif-stroke"/><circle cx="238.0" cy="272.13" r="3" class="motif"/>
+    <line x1="307.0" y1="146.03" x2="325.0" y2="128.03" class="motif-line-bold"/>
+    <line x1="306.0" y1="227.1" x2="326.0" y2="227.1" class="motif-line"/><line x1="316.0" y1="217.1" x2="316.0" y2="237.1" class="motif-line"/><line x1="309.0" y1="220.1" x2="323.0" y2="234.1" class="motif-line"/><line x1="309.0" y1="234.1" x2="323.0" y2="220.1" class="motif-line"/>
+    <line x1="385.0" y1="92" x2="400.0" y2="92" class="motif-line"/><polyline points="397.0,88 403.0,92 397.0,96" class="motif-line"/>
+    <circle cx="394.0" cy="272.13" r="3" class="motif"/>
+    <circle cx="466.0" cy="137.03" r="2" class="motif"/><circle cx="472.0"   cy="137.03" r="2" class="motif"/><circle cx="478.0" cy="137.03" r="2" class="motif"/>
+    <polygon points="472.0,219.9 465.4,232.5 478.6,232.5" class="motif-stroke"/>
+    <rect x="541.0" y="83" width="18" height="18" rx="1.5" class="motif-stroke"/>
+    <line x1="541.0" y1="182.07" x2="559.0" y2="182.07" class="motif-line"/><line x1="550.0" y1="173.07" x2="550.0" y2="191.07" class="motif-line"/>
+    <circle cx="545.0" cy="267.13" r="1.6" class="motif"/><circle cx="555.0" cy="267.13" r="1.6" class="motif"/><circle cx="545.0" cy="277.13" r="1.6" class="motif"/><circle cx="555.0" cy="277.13" r="1.6" class="motif"/><circle cx="550.0"   cy="272.13"   r="1.6" class="motif"/>
+    <circle cx="628.0" cy="227.1" r="8" class="motif-stroke"/><circle cx="628.0" cy="227.1" r="3" class="motif"/>
+    <line x1="698.0" y1="84" x2="714.0" y2="100" class="motif-line"/><line x1="698.0" y1="100" x2="714.0" y2="84" class="motif-line"/>
+    <polyline points="697.0,185.07 706.0,178.07 715.0,185.07" class="motif-line"/><polyline points="697.0,191.07 706.0,184.07 715.0,191.07" class="motif-line"/>
+    <line x1="697.0" y1="272.13" x2="712.0" y2="272.13" class="motif-line"/><polyline points="709.0,268.13 715.0,272.13 709.0,276.13" class="motif-line"/>
+    <polygon points="784.0,127.03 794.0,137.03 784.0,147.03 774.0,137.03" class="motif-stroke"/>
+    <circle cx="784.0" cy="227.1" r="3" class="motif"/>
+    <line x1="852.0" y1="182.07" x2="872.0" y2="182.07" class="motif-line"/><line x1="862.0" y1="172.07" x2="862.0" y2="192.07" class="motif-line"/><line x1="855.0" y1="175.07" x2="869.0" y2="189.07" class="motif-line"/><line x1="855.0" y1="189.07" x2="869.0" y2="175.07" class="motif-line"/>
+    <rect x="853.0" y="263.13" width="18" height="18" rx="1.5" class="motif-stroke"/>
+  </g>
+
+  <g id="add-life-decorations">
+    <!-- Canvas corner brackets (inset 18px from viewBox edge to respect strip padding) -->
+    <g>
+      <path d="M18,26 L18,18 L26,18" class="corner-bracket"/>
+      <path d="M982,26 L982,18 L974,18" class="corner-bracket"/>
+      <path d="M18,354 L18,362 L26,362" class="corner-bracket"/>
+      <path d="M982,354 L982,362 L974,362" class="corner-bracket"/>
+    </g>
+
+    <!-- Warm corner-bracket accents flanking the ochre hex (top-left focal) -->
+    <g>
+      <path d="M24,40 L16,40 L16,48" class="corner-bracket-warm"/>
+      <path d="M148,40 L156,40 L156,48" class="corner-bracket-warm"/>
+    </g>
+
+    <!-- Decorative particles in margin whitespace (all inside 15px strip padding) -->
+    <g id="add-life-particles">
+      <circle cx="30" cy="28" r="1" class="particle"/>
+      <circle cx="970" cy="28" r="1" class="particle"/>
+      <circle cx="500" cy="22" r="1.1" class="particle"/>
+      <circle cx="260" cy="26" r="0.9" class="particle"/>
+      <circle cx="740" cy="26" r="0.9" class="particle"/>
+      <circle cx="30" cy="352" r="1" class="particle"/>
+      <circle cx="970" cy="352" r="1" class="particle"/>
+      <circle cx="500" cy="358" r="1.1" class="particle"/>
+      <circle cx="260" cy="354" r="0.9" class="particle"/>
+      <circle cx="740" cy="354" r="0.9" class="particle"/>
+      <circle cx="82" cy="28" r="0.9" class="particle-warm"/>
+      <circle cx="82" cy="352" r="0.8" class="particle"/>
+      <circle cx="942" cy="352" r="0.8" class="particle"/>
+      <circle cx="942" cy="28" r="0.8" class="particle"/>
+    </g>
+  </g>
+
+  <g id="callouts"></g>
+</svg>

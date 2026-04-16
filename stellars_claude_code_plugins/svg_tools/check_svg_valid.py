@@ -101,6 +101,91 @@ def validate_svg(path: Path) -> tuple[int, int, list[str]]:
     return errors, warnings, messages
 
 
+# ---------------------------------------------------------------------------
+# Geometry-preservation check (add-life safety net)
+# ---------------------------------------------------------------------------
+
+
+_GEOMETRY_TAGS = ("path", "line", "rect", "circle", "polygon", "polyline", "ellipse")
+
+
+def _geometry_signatures(path: Path) -> tuple[dict[str, int], dict[str, list[tuple[str, str]]]]:
+    """Return (per-tag count, per-tag signatures) for a well-formed SVG.
+
+    Signatures: for each geometry element we record a stable identifier
+    (the `d` attr for paths, `x1,y1,x2,y2` for lines, etc) plus the element's
+    `id` when present. Used to report which specific elements disappeared.
+    """
+    counts: dict[str, int] = {}
+    sigs: dict[str, list[tuple[str, str]]] = {}
+    try:
+        tree = ET.parse(path)
+    except ET.ParseError:
+        return counts, sigs
+    root = tree.getroot()
+    for el in root.iter():
+        tag = el.tag.rsplit("}", 1)[-1]
+        if tag not in _GEOMETRY_TAGS:
+            continue
+        counts[tag] = counts.get(tag, 0) + 1
+        gid = el.attrib.get("id", "")
+        if tag == "path":
+            sig = el.attrib.get("d", "")[:80]
+        elif tag in ("line",):
+            sig = ",".join(
+                el.attrib.get(k, "") for k in ("x1", "y1", "x2", "y2")
+            )
+        elif tag == "rect":
+            sig = ",".join(
+                el.attrib.get(k, "") for k in ("x", "y", "width", "height")
+            )
+        elif tag == "circle":
+            sig = ",".join(el.attrib.get(k, "") for k in ("cx", "cy", "r"))
+        elif tag == "ellipse":
+            sig = ",".join(el.attrib.get(k, "") for k in ("cx", "cy", "rx", "ry"))
+        elif tag in ("polygon", "polyline"):
+            sig = el.attrib.get("points", "")[:80]
+        else:
+            sig = ""
+        sigs.setdefault(tag, []).append((gid, sig))
+    return counts, sigs
+
+
+def compare_geometry(
+    original: Path, modified: Path
+) -> tuple[int, list[str]]:
+    """Compare geometry elements between `original` and `modified`.
+
+    Enforces: every geometry element (by signature) present in `original`
+    MUST also be present in `modified`. Count in `modified` may be higher
+    (decoration layer). Count lower or specific signatures missing → error.
+
+    Returns (error_count, messages). Messages point at specific missing
+    elements (tag + id + signature snippet) so the caller can restore them.
+    """
+    msgs: list[str] = []
+    o_counts, o_sigs = _geometry_signatures(original)
+    m_counts, m_sigs = _geometry_signatures(modified)
+
+    errors = 0
+    for tag in _GEOMETRY_TAGS:
+        oc = o_counts.get(tag, 0)
+        mc = m_counts.get(tag, 0)
+        if mc < oc:
+            msgs.append(
+                f"ERROR: {modified.name}: {tag} count dropped "
+                f"{oc} → {mc} (missing {oc - mc})"
+            )
+            errors += 1
+            # Point at specific missing signatures
+            m_sig_set = set(m_sigs.get(tag, []))
+            for gid, sig in o_sigs.get(tag, []):
+                if (gid, sig) not in m_sig_set:
+                    label = f"id='{gid}'" if gid else f"d/pos='{sig[:40]}'"
+                    msgs.append(f"  MISSING {tag}: {label}")
+    return errors, msgs
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="svg-infographics validate",
@@ -120,6 +205,15 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Suppress WARNING lines; only print ERROR messages and exit code.",
     )
+    parser.add_argument(
+        "--baseline",
+        type=str,
+        default=None,
+        help="Original SVG to compare geometry against. Every path/line/rect/"
+        "circle/polygon in the baseline must also appear in the validated file. "
+        "Count drops and missing signatures are reported with their ids / "
+        "attribute snippets so you can restore them. Add-life pass uses this.",
+    )
     return parser
 
 
@@ -128,6 +222,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     total_errors = 0
     total_warnings = 0
+    baseline_path = Path(args.baseline) if args.baseline else None
+    if baseline_path and not baseline_path.exists():
+        print(f"ERROR: baseline not found: {baseline_path}", file=sys.stderr)
+        return 1
+
     for p in args.svg:
         errors, warnings, messages = validate_svg(Path(p))
         total_errors += errors
@@ -135,8 +234,13 @@ def main(argv: list[str] | None = None) -> int:
         for msg in messages:
             if args.quiet and msg.startswith("WARNING:"):
                 continue
-            # ERRORs go to stderr, WARNINGs to stderr, summary to stdout
             print(msg, file=sys.stderr)
+        if baseline_path and errors == 0:
+            # Only meaningful when the XML parses. Compare geometry.
+            geom_errs, geom_msgs = compare_geometry(baseline_path, Path(p))
+            total_errors += geom_errs
+            for msg in geom_msgs:
+                print(msg, file=sys.stderr)
     if total_errors == 0 and total_warnings == 0:
         print(f"OK: {len(args.svg)} file(s) validated, no issues.")
     else:
