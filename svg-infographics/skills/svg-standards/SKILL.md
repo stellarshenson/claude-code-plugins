@@ -382,8 +382,6 @@ The tool emits two types of non-fatal warnings. **Always inspect `warnings` in t
 2. Reduce the vertical/perpendicular spread of endpoints
 3. Move the fork/merge point further along the spine direction
 
-**Padlock/icon overlap with labels** - when an icon and its label occupy the same visual zone, use `geom` to compute offset positions or place the label on the opposite side of the card from the icon. The `overlaps` checker catches this post-hoc; prevent it by computing label placement AFTER icon placement using `geom midpoint` or `geom attach`.
-
 ### Auto-edge mode (straight)
 
 Shapes to `calc_connector`, skip coordinates:
