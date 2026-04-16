@@ -79,22 +79,22 @@
 
     <!-- Pillar 1 card: x=30 y=60 w=290 h=360 -->
     <g id="pillar-1-card">
-      <path d="M30,60 H320 V417 Q320,420 317,420 H33 Q30,420 30,417 Z" fill="#0096d1" fill-opacity="0.04"/>
-      <path d="M30,60 H320 V417 Q320,420 317,420 H33 Q30,420 30,417 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <path d="M30,60 H320 V362 Q320,365 317,365 H33 Q30,365 30,362 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M30,60 H320 V362 Q320,365 317,365 H33 Q30,365 30,362 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
       <rect x="30" y="60" width="290" height="5" fill="#0096d1" opacity="0.6"/>
     </g>
 
     <!-- Pillar 2 card: x=355 y=60 w=290 h=360 -->
     <g id="pillar-2-card">
-      <path d="M355,60 H645 V417 Q645,420 642,420 H358 Q355,420 355,417 Z" fill="#0096d1" fill-opacity="0.04"/>
-      <path d="M355,60 H645 V417 Q645,420 642,420 H358 Q355,420 355,417 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <path d="M355,60 H645 V362 Q645,365 642,365 H358 Q355,365 355,362 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M355,60 H645 V362 Q645,365 642,365 H358 Q355,365 355,362 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
       <rect x="355" y="60" width="290" height="5" fill="#0096d1" opacity="0.6"/>
     </g>
 
     <!-- Pillar 3 card: x=680 y=60 w=290 h=360 -->
     <g id="pillar-3-card">
-      <path d="M680,60 H970 V417 Q970,420 967,420 H683 Q680,420 680,417 Z" fill="#0096d1" fill-opacity="0.04"/>
-      <path d="M680,60 H970 V417 Q970,420 967,420 H683 Q680,420 680,417 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <path d="M680,60 H970 V362 Q970,365 967,365 H683 Q680,365 680,362 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M680,60 H970 V362 Q970,365 967,365 H683 Q680,365 680,362 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
       <rect x="680" y="60" width="290" height="5" fill="#0096d1" opacity="0.6"/>
     </g>
 

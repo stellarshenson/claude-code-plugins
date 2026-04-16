@@ -216,6 +216,14 @@ Dark mode via `prefers-color-scheme` does not work via `<img>` tags or markdown 
 
 The workflow adds latency. Building through six phases with tool calls takes longer than "write me an SVG". The return is that the output ships on the first pass - no 3-6 hour correction loop across a set of images.
 
+## Creative output: beyond card grids
+
+The plugin is not limited to card grids. The same computed geometry + CSS constraint pipeline produces organic layouts - hexagonal tessellations where every cell is precisely placed via `primitives hexagon` with polar coordinate spacing, and freeform constellation maps where spline connectors thread between radial node clusters with varying stroke weight and opacity. These are not hand-positioned - every coordinate traces back to a tool call.
+
+![Hexagonal tessellation with computed cell placement](images_article_02/12-honeycomb.svg)
+
+![Constellation map with spline connectors between radial clusters](images_article_02/13-constellation.svg)
+
 ## The pattern: tools, not tokens
 
 The insight behind this plugin is not SVG-specific. When you need an LLM to produce a structured visual output - a diagram, a chart, a layout - do not ask it to code the output format. Give it a **design application** and let it be the designer. The application handles coordinates, constraints, and quality. The model handles intent.

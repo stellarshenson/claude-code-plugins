@@ -4,7 +4,7 @@
   Intent: reader absorbs all five failure modes in ~5 seconds, placed after article intro before "LLMs cannot draw by hand" section
   Theme: Stellars-Tech (teal primary #0096d1, amber accent-2 #da8230)
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 290">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 280">
   <style>
     .fg-1 { fill: #1a5a6e; }
     .fg-2 { fill: #24697e; }
@@ -109,38 +109,38 @@
   === -->
 
   <g id="background">
-    <rect width="1000" height="290" fill="transparent"/>
+    <rect width="1000" height="280" fill="transparent"/>
   </g>
 
   <g id="nodes">
 
     <!-- Card 1: Overlapping text -->
-    <path d="M20,60 H200 V307 Q200,310 197,310 H23 Q20,310 20,307 Z" class="card-body"/>
-    <path d="M20,60 H200 V307 Q200,310 197,310 H23 Q20,310 20,307 Z" class="card-stroke"/>
+    <path d="M20,60 H200 V262 Q200,265 197,265 H23 Q20,265 20,262 Z" class="card-body"/>
+    <path d="M20,60 H200 V262 Q200,265 197,265 H23 Q20,265 20,262 Z" class="card-stroke"/>
     <rect x="20" y="60" width="180" height="5" class="accent-bar"/>
     <line x1="34" y1="146" x2="186" y2="146" class="divider"/>
 
     <!-- Card 2: Invisible in dark mode -->
-    <path d="M215,60 H395 V307 Q395,310 392,310 H218 Q215,310 215,307 Z" class="card-body"/>
-    <path d="M215,60 H395 V307 Q395,310 392,310 H218 Q215,310 215,307 Z" class="card-stroke"/>
+    <path d="M215,60 H395 V262 Q395,265 392,265 H218 Q215,265 215,262 Z" class="card-body"/>
+    <path d="M215,60 H395 V262 Q395,265 392,265 H218 Q215,265 215,262 Z" class="card-stroke"/>
     <rect x="215" y="60" width="180" height="5" class="accent-bar"/>
     <line x1="229" y1="146" x2="381" y2="146" class="divider"/>
 
     <!-- Card 3: Dead connectors -->
-    <path d="M410,60 H590 V307 Q590,310 587,310 H413 Q410,310 410,307 Z" class="card-body"/>
-    <path d="M410,60 H590 V307 Q590,310 587,310 H413 Q410,310 410,307 Z" class="card-stroke"/>
+    <path d="M410,60 H590 V262 Q590,265 587,265 H413 Q410,265 410,262 Z" class="card-body"/>
+    <path d="M410,60 H590 V262 Q590,265 587,265 H413 Q410,265 410,262 Z" class="card-stroke"/>
     <rect x="410" y="60" width="180" height="5" class="accent-bar"/>
     <line x1="424" y1="146" x2="576" y2="146" class="divider"/>
 
     <!-- Card 4: Benderless diagonals -->
-    <path d="M605,60 H785 V307 Q785,310 782,310 H608 Q605,310 605,307 Z" class="card-body"/>
-    <path d="M605,60 H785 V307 Q785,310 782,310 H608 Q605,310 605,307 Z" class="card-stroke"/>
+    <path d="M605,60 H785 V262 Q785,265 782,265 H608 Q605,265 605,262 Z" class="card-body"/>
+    <path d="M605,60 H785 V262 Q785,265 782,265 H608 Q605,265 605,262 Z" class="card-stroke"/>
     <rect x="605" y="60" width="180" height="5" class="accent-bar"/>
     <line x1="619" y1="146" x2="771" y2="146" class="divider"/>
 
     <!-- Card 5: CSS laziness -->
-    <path d="M800,60 H980 V307 Q980,310 977,310 H803 Q800,310 800,307 Z" class="card-body"/>
-    <path d="M800,60 H980 V307 Q980,310 977,310 H803 Q800,310 800,307 Z" class="card-stroke"/>
+    <path d="M800,60 H980 V262 Q980,265 977,265 H803 Q800,265 800,262 Z" class="card-body"/>
+    <path d="M800,60 H980 V262 Q980,265 977,265 H803 Q800,265 800,262 Z" class="card-stroke"/>
     <rect x="800" y="60" width="180" height="5" class="accent-bar"/>
     <line x1="814" y1="146" x2="966" y2="146" class="divider"/>
 
