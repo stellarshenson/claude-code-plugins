@@ -322,6 +322,24 @@ svg-infographics connector --mode l-chamfer \
 
 Flags: `--route-cell-size N` (smaller = higher fidelity + slower), `--route-margin N` (obstacle clearance), `--container-id ID` (clip routing to one element). Router fails gracefully: unroutable = fallback to 1-bend L + warning in output. Always inspect `warnings` field.
 
+### Straight-line collapse (`--straight-tolerance`)
+
+When src and tgt both have a cardinal-aligned edge and can slide along their edges to a shared coordinate within `--straight-tolerance` (default 20 px), the L degenerates to a **single straight segment** - no corner, no chamfer, no twist. Both rect endpoints slide to a common y (E/W directions) or x (N/S directions). Raw point + rect works too: the rect snaps its movable coord to the point. Disable with `--straight-tolerance 0`.
+
+**Slide bias**: when both endpoints are rects, the shared target is biased toward the **smaller range's midpoint** clamped to the overlap intersection. The smaller geometry slides as little as possible; the larger rect absorbs the displacement (shifting an anchor on a long edge is visually imperceptible). For point + rect, the point is treated as zero-width "smaller" and stays fixed.
+
+Typical use: connecting two cards whose anchor y-coordinates differ by a handful of pixels. Without collapse, a tiny vertical jog + chamfer + standoff produces a visually "twisted" start near the src edge. With collapse, the connector is a clean horizontal line.
+
+### Stem preservation (`--stem-min`)
+
+`--stem-min N` (default 20 px) reserves a clean cardinal stem of at least N px behind each arrowhead after standoff + head_len clearance. Implementation is two-layered:
+
+- **A\* penalty zone**: turns inside a Manhattan cell radius around src / tgt cost a heavy extra penalty (`STEM_TURN_PENALTY=100`), forcing the router to commit direction far enough from endpoints that the final cardinal leg is long. The zone radius is `ceil(reserve / cell_size) + 1` cells - the `+1` covers cell-centre-vs-real-endpoint quantisation (up to cell_size/2 on each axis) AND chamfer bevel width so the final bevel renders at full radius instead of clamping to 0-1 px.
+- **Cell-centre snap on returned waypoints**: the first and last router waypoints are snapped so their non-cardinal axis matches `real_src` / `real_tgt` exactly. This eliminates threader-corner-insertion at the endpoints - A*'s waypoints become the exact corners the chamfer pass operates on, so `len_out` in the chamfer matches what A* reserved.
+- **Chamfer clamp**: the first and last corner bevels in the threader are clamped to `eff ≤ len_in - first_reserve` / `eff ≤ len_out - last_reserve` so the trim for arrowhead clearance never walks into a bevel. When the geometry genuinely can't accommodate the stem (e.g. obstacle directly behind tgt), the tool emits a non-fatal warning with the actual stem length achieved.
+
+Set `--stem-min 0` to disable the reservation entirely (matches legacy behaviour).
+
 ### Container-scoped routing and detection
 
 `--container-id ID` on `empty-space`, `callouts`, and `connector --auto-route` clips operation to the interior of a specific closed shape. Element must be rect/circle/ellipse/polygon/polyline/path - groups rejected because `<g>` has no geometry. Use when placing callouts or routing connectors BETWEEN two shapes that both live inside the same card:

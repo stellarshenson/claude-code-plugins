@@ -14,6 +14,7 @@
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
   <style>
+    text { font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif; }
     .bg-plate { fill: #ffffff; }
     .fg-1 { fill: #1a5a6e; }
     .fg-2 { fill: #24697e; }
@@ -96,18 +97,29 @@
   <text class="node-label" x="815" y="275">dst</text>
 
   <!-- Connector 1: A* multi-elbow auto-route inside card-A (cell_size=10)
-       start_dir='E', end_dir='S', chamfer=5, standoff=4; last corner
-       bevel clamped to reserve standoff + head_len on final vertical leg -->
+       start_dir='E', end_dir='S', chamfer=5, standoff=4, stem_min=20;
+       stem-zone turn penalty pushes the router's last corner far from
+       tgt AND waypoint snap aligns A* cell centres with real endpoints
+       so the threader doesn't insert extra corners that would eat the
+       reserve. Final vertical leg now has room for standoff + head_len
+       + a full 20 px visible stem AND a full 5 px chamfer at the last
+       elbow -->
   <g id="route-c1">
-    <path class="route-auto" d="M178.00,162.00 L200.00,162.00 L205.00,167.00 L205.00,240.00 L210.00,245.00 L440.00,245.00 L445.00,250.00 L445.00,380.00 L440.00,385.00 L423.00,385.00 L422.00,386.00"/>
+    <path class="route-auto" d="M178.00,162.00 L200.00,162.00 L205.00,167.00 L205.00,240.00 L210.00,245.00 L440.00,245.00 L445.00,250.00 L445.00,350.00 L440.00,355.00 L427.00,355.00 L422.00,360.00 L422.00,386.00"/>
     <polygon class="route-auto-head" points="422.00,396.00 427.00,386.00 417.00,386.00"/>
   </g>
 
-  <!-- Connector 2: 1-bend L from card-A edge to dst-B, end_dir='E'
-       (connector moving EAST into tgt, entering via its LEFT edge);
-       last-segment orientation locked by end_dir even without controls -->
+  <!-- Connector 2: card-A -> dst-B via true rect-rect geometry routing.
+       Both endpoints are rects with start_dir='E' / end_dir='E'. Their
+       natural midpoints (card-A: 280, dst-B: 272) differ by 8 px - under
+       straight_tolerance=20 - so the slide heuristic collapses the L to
+       a straight line. Bias-to-smaller-range picks dst-B's midpoint
+       (272) as the shared y because dst-B is the smaller geometry
+       (y-range 56 vs card-A's 380): dst-B does not move at all, and
+       card-A absorbs the full 8 px slide on its much larger right edge
+       where the displacement is visually invisible -->
   <g id="route-c2">
-    <path class="route-edge" d="M494.00,276.00 L498.00,272.00 L746.00,272.00"/>
+    <path class="route-edge" d="M494.00,272.00 L746.00,272.00"/>
     <polygon class="route-edge-head" points="756.00,272.00 746.00,267.00 746.00,277.00"/>
   </g>
 

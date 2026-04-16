@@ -1021,6 +1021,233 @@ class TestConnectorModes:
             f"last segment must be vertical, got {samples[-2]} -> {samples[-1]}"
         )
 
+    def test_straight_collapse_point_to_rect(self):
+        """Raw point src + rect tgt with end_dir='E': when src.y is inside
+        the tgt edge's y-range AND the natural midpoint difference is
+        within straight_tolerance, both endpoints slide to a shared y
+        and the route collapses to a single straight horizontal line.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        # src.y = 280 is inside tgt y-range [244, 300]; diff from mid
+        # (272) is 8 <= 20. Slide collapses to straight.
+        r = calc_l_chamfer(
+            src_x=494, src_y=280,
+            tgt_rect=(760, 244, 110, 56), end_dir="E",
+            chamfer=5, standoff=4, arrow="end",
+        )
+        samples = r["samples"]
+        # Exactly one segment (two samples) = straight line, no corner
+        assert len(samples) == 2, f"expected 2 samples for straight route, got {samples}"
+        assert samples[0][1] == samples[1][1], (
+            f"straight route must have constant y, got {samples}"
+        )
+        tx, ty = r["end"]["tangent"]
+        assert abs(ty) < 1e-6 and tx > 0.99
+
+    def test_straight_collapse_falls_back_when_outside_range(self):
+        """When src's y coordinate is OUTSIDE the tgt edge's y-range,
+        the slide is rejected and the tool falls back to the midpoint.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        # src.y = 100 is OUTSIDE tgt y-range [244, 300] -> no slide.
+        # Also diff = |100 - 272| = 172 > 20 so tolerance would reject
+        # it anyway. The point is that tgt must still anchor at midpoint.
+        r = calc_l_chamfer(
+            src_x=494, src_y=100,
+            tgt_rect=(760, 244, 110, 56), end_dir="E",
+            chamfer=5, standoff=4, arrow="end",
+        )
+        # Tgt endpoint y must be the edge midpoint (272), NOT src.y (100)
+        tgt_sample = r["samples"][-1]
+        assert abs(tgt_sample[1] - 272) < 1.0 or tgt_sample[1] >= 244, (
+            f"tgt must snap to midpoint when slide rejected, got y={tgt_sample[1]}"
+        )
+
+    def test_straight_collapse_rect_to_rect_overlap(self):
+        """Rect-to-rect with both horizontal directions and overlapping
+        y-ranges. The slide should find a common y in the overlap and
+        collapse the route to a single horizontal line.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        # Both rects have y-range covering [150, 160] with mid-y very close
+        # (155 for src, 160 for tgt, diff 5 < tolerance=20). Slide
+        # collapses.
+        r = calc_l_chamfer(
+            src_rect=(50, 130, 80, 50), start_dir="E",   # y range 130-180, mid=155
+            tgt_rect=(400, 140, 80, 40), end_dir="E",   # y range 140-180, mid=160
+            chamfer=5, standoff=4, arrow="end",
+        )
+        samples = r["samples"]
+        assert len(samples) == 2, f"expected 2 samples for straight rect-rect, got {samples}"
+        # Shared y = midpoint of overlap intersection [140, 180] = 160
+        assert abs(samples[0][1] - samples[1][1]) < 1e-6
+
+    def test_straight_collapse_no_slide_when_perpendicular(self):
+        """Rect-to-rect with PERPENDICULAR directions (E + S) must not
+        attempt to collapse - there is no shared axis to slide on.
+        Route keeps its corner.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        r = calc_l_chamfer(
+            src_rect=(90, 140, 84, 44), start_dir="E",
+            tgt_rect=(380, 400, 84, 44), end_dir="S",
+            chamfer=5, standoff=4, arrow="end",
+        )
+        samples = r["samples"]
+        # Must have at least one corner -> more than 2 samples
+        assert len(samples) > 2, (
+            f"perpendicular rect pair must keep corner, got {samples}"
+        )
+
+    def test_stem_min_warning_on_short_last_leg(self):
+        """stem_min requires len_out >= standoff + head_len + stem_min.
+        When the last cardinal leg is too short to accommodate the stem
+        target, the tool emits a non-fatal warning and clamps the last
+        corner's bevel to preserve as much cardinal stem as possible.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        # Construct a polyline whose final cardinal leg is 15 units
+        # (from the last corner to tgt). end_dir='S' forces first_axis
+        # on the last segment to 'h', making the corner at (250, 100).
+        # Last leg (250, 100) -> (250, 115) = 15 units; need 34.
+        r = calc_l_chamfer(
+            src_x=50, src_y=100,
+            tgt_x=250, tgt_y=115,
+            controls=[(200, 100)],
+            chamfer=5, standoff=4, arrow="end", end_dir="S",
+            head_len=10, head_half_h=5, stem_min=20,
+        )
+        assert any("stem" in w for w in r["warnings"]), (
+            f"expected stem-min warning, got warnings={r['warnings']}"
+        )
+
+    def test_stem_min_configurable(self):
+        """stem_min is configurable - passing stem_min=0 disables the
+        reserve and the tool bevels at full chamfer even on short legs.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        r0 = calc_l_chamfer(
+            src_x=50, src_y=100, tgt_x=250, tgt_y=115,
+            controls=[(200, 100)],
+            chamfer=5, standoff=4, arrow="end",
+            end_dir="S", stem_min=0,
+        )
+        # stem_min=0 disables the stem warning
+        assert not any("stem" in w for w in r0["warnings"])
+
+    def test_autoroute_stem_zone_penalty_keeps_corner_far_from_tgt(self):
+        """The A* stem-zone turn penalty forces corners to stay far
+        enough from tgt that the final cardinal leg accommodates
+        standoff + head_len + stem_min. Without the penalty the router
+        would hug the tgt too closely and leave the arrow with only a
+        few pixels of cardinal stem.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        # Scene identical in spirit to the container-routing demo: src
+        # on left, tgt bottom-right, obstacles forcing a multi-elbow
+        # detour. Without stem_min the last corner would sit ~15 px
+        # north of tgt; with stem_min=20 the penalty forces it >=34 px.
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">'
+            '<rect x="0" y="0" width="500" height="500" fill="#ffffff"/>'
+            '<rect id="card" x="20" y="20" width="460" height="460" fill="#eee"/>'
+            '<rect id="obs-1" x="150" y="100" width="120" height="60" fill="#888"/>'
+            '<rect id="obs-2" x="150" y="280" width="200" height="60" fill="#888"/>'
+            '</svg>'
+        )
+        r = calc_l_chamfer(
+            src_rect=(40, 200, 80, 40), start_dir="E",
+            tgt_rect=(360, 400, 80, 40), end_dir="S",
+            chamfer=5, standoff=4, arrow="end",
+            auto_route=True, svg=svg, container_id="card",
+            route_cell_size=10, route_margin=6,
+            stem_min=20,
+        )
+        assert not any("stem" in w for w in r["warnings"]), (
+            f"stem penalty should achieve 20 px, got warnings={r['warnings']}"
+        )
+        # Walk backward from the end and measure the last cardinal run.
+        samples = r["samples"]
+        import math
+        last_leg = 0.0
+        for i in range(len(samples) - 1, 0, -1):
+            a = samples[i - 1]
+            b = samples[i]
+            dx = b[0] - a[0]
+            dy = b[1] - a[1]
+            if dx != 0 and dy != 0:
+                break
+            last_leg += math.hypot(dx, dy)
+        # Final cardinal leg (post-standoff) must be >= head_len + stem_min = 30
+        assert last_leg >= 30, f"expected last cardinal leg >= 30, got {last_leg}"
+
+    def test_slide_bias_point_is_zero_width_smaller(self):
+        """Raw point + rect: the point is effectively a zero-width
+        "smaller" geometry, so it never moves - the rect absorbs 100 %
+        of the slide by snapping its edge coord to the point. This is
+        consistent with the rect-rect bias rule (smaller slides less).
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        # Point at (494, 280); tgt rect y-range [244, 300] mid 272.
+        # Diff 8 <= tolerance 20, point y inside rect range -> slide.
+        # Point stays at y=280, rect slides from mid 272 to 280.
+        r = calc_l_chamfer(
+            src_x=494, src_y=280,
+            tgt_rect=(760, 244, 110, 56), end_dir="E",
+            chamfer=5, standoff=4, arrow="end",
+        )
+        samples = r["samples"]
+        assert len(samples) == 2, f"expected straight line, got {samples}"
+        assert samples[0][1] == 280, f"raw point must stay at y=280, got {samples[0]}"
+        assert samples[1][1] == 280, f"rect must slide to y=280, got {samples[1]}"
+
+    def test_slide_bias_favors_smaller_range(self):
+        """When both endpoints are movable on the same axis, the slide
+        target biases toward the SMALLER range's midpoint (clamped to
+        the intersection). The smaller geometry moves less / not at all
+        and the larger absorbs the slide.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+        # Src y-range [180, 280] (wide, mid 230); tgt y-range [220, 260]
+        # (narrow, mid 240). Natural diff 10 < tolerance=20. Intersection
+        # is [220, 260]. Smaller (tgt, width 40) midpoint is 240 which
+        # lies inside the intersection, so target = 240. Tgt does not
+        # move (already at its midpoint), src slides from 230 to 240.
+        # The old midpoint-of-intersection rule would pick 240 too in
+        # this symmetric case, so use an asymmetric intersection.
+        # src [180, 300] mid 240, tgt [210, 250] mid 230. Diff=10.
+        # Intersection [210, 250]. Smaller is tgt (width 40, mid 230).
+        # Old rule: mid of intersection = 230. New rule: tgt mid = 230.
+        # Same here. We need a case where intersection-mid != smaller-mid.
+        # src [100, 200] mid 150, tgt [140, 160] mid 150. Diff=0,
+        # intersection [140, 160] mid 150, smaller mid 150. Same.
+        # Better: src [100, 300] mid 200, tgt [190, 210] mid 200.
+        # Diff=0. Intersection [190, 210] mid 200 == tgt mid. Same.
+        # True asymmetric: src [100, 200] mid 150, tgt [130, 160] mid
+        # 145. Diff=5. Intersection [130, 160] mid 145. Smaller (tgt,
+        # width 30) mid 145. Same result!
+        # The old mid-of-intersection equals smaller-mid whenever the
+        # smaller range is FULLY INSIDE the larger. Picking a case
+        # where smaller is partially outside: src [100, 150] mid 125,
+        # tgt [140, 170] mid 155. Diff=30 > tol=20, rejected.
+        # Use tolerance=50 for the test. src [100, 150] (width 50),
+        # tgt [140, 170] (width 30, smaller). Intersection [140, 150]
+        # mid 145. Smaller (tgt) mid 155 clamped to [140, 150] -> 150.
+        # Target 150 instead of 145. Both slide to 150.
+        r = calc_l_chamfer(
+            src_rect=(50, 100, 80, 50), start_dir="E",    # y range 100..150
+            tgt_rect=(400, 140, 80, 30), end_dir="E",    # y range 140..170 (smaller)
+            chamfer=5, standoff=4, arrow="end",
+            straight_tolerance=50,
+        )
+        samples = r["samples"]
+        assert len(samples) == 2, f"expected straight line, got {samples}"
+        # Biased target = 150 (smaller mid 155 clamped to intersection
+        # [140, 150]); old rule would pick intersection mid = 145.
+        assert abs(samples[0][1] - 150) < 1e-6, (
+            f"slide bias should pick target y=150, got {samples[0]}"
+        )
+
     def test_all_elbows_chamfered(self):
         """Regression: the old per-segment chamfer only beveled the corner
         INSIDE each L, leaving inter-segment joins sharp. With the global

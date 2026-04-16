@@ -658,6 +658,41 @@ def _rect_edge_midpoint(rect, edge):
     raise ValueError(f"unknown edge {edge!r}")
 
 
+def _rect_edge_slide_range(rect, edge):
+    """Return the sliding range for an axis-aligned rect edge as (axis, lo, hi).
+
+    For horizontal edges (left / right) the sliding axis is 'y' and the
+    range is [rect.top, rect.bottom] - the y coordinate can move anywhere
+    along that edge. For vertical edges (top / bottom) the sliding axis
+    is 'x' with range [rect.left, rect.right]. Used by the straight-line
+    collapse heuristic to decide whether src and tgt can be slid to a
+    shared coordinate.
+    """
+    rx, ry, rw, rh = rect
+    if edge in ("right", "left"):
+        return ("y", ry, ry + rh)
+    if edge in ("top", "bottom"):
+        return ("x", rx, rx + rw)
+    raise ValueError(f"unknown edge {edge!r}")
+
+
+def _rect_edge_point_at(rect, edge, coord):
+    """Return a point on the named rect edge with the sliding axis set
+    to ``coord``. Complements _rect_edge_midpoint for the straight-line
+    slide resolver.
+    """
+    rx, ry, rw, rh = rect
+    if edge == "right":
+        return (rx + rw, coord)
+    if edge == "left":
+        return (rx, coord)
+    if edge == "top":
+        return (coord, ry)
+    if edge == "bottom":
+        return (coord, ry + rh)
+    raise ValueError(f"unknown edge {edge!r}")
+
+
 def _direction_to_cardinal(direction):
     """Coerce a direction spec to one of 'E'/'W'/'N'/'S' (or None).
 
@@ -684,7 +719,16 @@ def _direction_to_cardinal(direction):
 
 
 def _resolve_l_endpoints_from_rects(
-    src_rect, tgt_rect, src_x, src_y, tgt_x, tgt_y, start_dir, end_dir, warnings
+    src_rect,
+    tgt_rect,
+    src_x,
+    src_y,
+    tgt_x,
+    tgt_y,
+    start_dir,
+    end_dir,
+    warnings,
+    straight_tolerance=20.0,
 ):
     """Edge-aware endpoint + first-axis resolution for L / L-chamfer routes.
 
@@ -701,6 +745,17 @@ def _resolve_l_endpoints_from_rects(
         it enters from the TOP edge; E means "moving east into tgt" so it
         enters from the LEFT edge; and so on (inverse mapping).
 
+    Straight-line collapse (``straight_tolerance`` px): when both
+    endpoints expose a sliding axis along the SAME cardinal, and their
+    natural midpoints differ by less than the tolerance, both endpoints
+    are slid along their edges to a shared coordinate so the route
+    degenerates to a single straight line. This avoids the "twisted
+    start" artefact where a tiny first leg + chamfer + standoff leaves
+    the connector exiting through a diagonal bevel. Raw point endpoints
+    count as "not movable"; when the rect endpoint can hit the raw
+    point's coordinate within the tolerance and the rect's edge extent,
+    the rect side slides.
+
     Returns (src_x, src_y, tgt_x, tgt_y, first_axis). ``first_axis`` is
     ``None`` when no direction was given (caller uses geometric inference).
     """
@@ -715,6 +770,9 @@ def _resolve_l_endpoints_from_rects(
     resolved_src = (src_x, src_y)
     resolved_tgt = (tgt_x, tgt_y)
 
+    # Pass 1: resolve each endpoint to its natural position (rect edge
+    # midpoint when the direction is cardinal, geometry inference
+    # otherwise, raw coord if no rect).
     if src_rect is not None:
         if start_card is not None:
             resolved_src = _rect_edge_midpoint(src_rect, exit_edge[start_card])
@@ -724,8 +782,6 @@ def _resolve_l_endpoints_from_rects(
                 "endpoint inferred from centre-to-target ray — route may "
                 "run parallel to an edge. Pass --start_dir E|W|N|S to snap."
             )
-            # Ray from src centre toward the current tgt guess to snap a
-            # reasonable edge-intersection point.
             sx_c = src_rect[0] + src_rect[2] / 2
             sy_c = src_rect[1] + src_rect[3] / 2
             resolved_src = _rect_edge_intersection(
@@ -746,6 +802,67 @@ def _resolve_l_endpoints_from_rects(
             resolved_tgt = _rect_edge_intersection(
                 tx_c, ty_c, resolved_src[0], resolved_src[1], tgt_rect
             )
+
+    # Pass 2: straight-line collapse. Try to slide both endpoints along
+    # their edges so the route degenerates to a single cardinal segment
+    # with no corner. Requires:
+    #   - both directions are cardinal and on the SAME axis (both E/W
+    #     or both N/S), OR one endpoint is a raw point whose coordinate
+    #     projects onto the rect's movable edge
+    #   - the natural midpoint difference is <= straight_tolerance
+    #   - the rect's edge extent contains the slide target
+    if straight_tolerance is not None and straight_tolerance > 0:
+        src_slide = None  # (axis, lo, hi) if src side can slide
+        tgt_slide = None
+        if src_rect is not None and start_card is not None:
+            src_slide = _rect_edge_slide_range(src_rect, exit_edge[start_card])
+        if tgt_rect is not None and end_card is not None:
+            tgt_slide = _rect_edge_slide_range(tgt_rect, entry_edge[end_card])
+
+        # Case A: BOTH endpoints are movable on the same axis.
+        if src_slide is not None and tgt_slide is not None and src_slide[0] == tgt_slide[0]:
+            axis = src_slide[0]
+            idx = 1 if axis == "y" else 0
+            diff = abs(resolved_src[idx] - resolved_tgt[idx])
+            if diff <= straight_tolerance:
+                lo = max(src_slide[1], tgt_slide[1])
+                hi = min(src_slide[2], tgt_slide[2])
+                if lo <= hi:
+                    # Bias the shared target toward the smaller range's
+                    # midpoint (clamped to the intersection) so the
+                    # smaller-geometry endpoint slides as little as
+                    # possible - shifting an anchor on a larger edge is
+                    # visually less noticeable than shifting it on a
+                    # small one.
+                    src_width = src_slide[2] - src_slide[1]
+                    tgt_width = tgt_slide[2] - tgt_slide[1]
+                    if src_width <= tgt_width:
+                        preferred = (src_slide[1] + src_slide[2]) / 2.0
+                    else:
+                        preferred = (tgt_slide[1] + tgt_slide[2]) / 2.0
+                    target = max(lo, min(hi, preferred))
+                    resolved_src = _rect_edge_point_at(src_rect, exit_edge[start_card], target)
+                    resolved_tgt = _rect_edge_point_at(tgt_rect, entry_edge[end_card], target)
+
+        # Case B: only src is movable, tgt is a raw point. Snap src's
+        # slide coord to the tgt raw coord when it lands inside the
+        # src edge extent AND the natural difference is within tolerance.
+        elif src_slide is not None and tgt_rect is None:
+            axis, lo, hi = src_slide
+            idx = 1 if axis == "y" else 0
+            natural_src = resolved_src[idx]
+            raw_tgt = resolved_tgt[idx]
+            if abs(natural_src - raw_tgt) <= straight_tolerance and lo <= raw_tgt <= hi:
+                resolved_src = _rect_edge_point_at(src_rect, exit_edge[start_card], raw_tgt)
+
+        # Case C: only tgt is movable, src is a raw point.
+        elif tgt_slide is not None and src_rect is None:
+            axis, lo, hi = tgt_slide
+            idx = 1 if axis == "y" else 0
+            natural_tgt = resolved_tgt[idx]
+            raw_src = resolved_src[idx]
+            if abs(natural_tgt - raw_src) <= straight_tolerance and lo <= raw_src <= hi:
+                resolved_tgt = _rect_edge_point_at(tgt_rect, entry_edge[end_card], raw_src)
 
     # First-axis from direction: E/W => horizontal first, N/S => vertical.
     # Only locked when START direction is known; otherwise left None so
@@ -1143,6 +1260,8 @@ def _auto_route_l_waypoints(
     container_id=None,
     cell_size=10,
     margin_px=5,
+    first_stem_reserve=0.0,
+    last_stem_reserve=0.0,
 ):
     """Grid A* router that returns intermediate elbow waypoints avoiding
     obstacles in the SVG. Returns a list of (x, y) tuples (may be empty if
@@ -1155,6 +1274,14 @@ def _auto_route_l_waypoints(
     heuristic, reconstruct the path, drop collinear interior cells, and
     return the resulting elbow points (first and last are dropped - those
     are src / tgt themselves).
+
+    ``first_stem_reserve`` / ``last_stem_reserve`` create "stem zones"
+    near src and tgt where A* turns pay a heavy extra penalty. This
+    discourages the router from placing its last corner close to tgt
+    (or its first corner close to src) so the final and initial
+    cardinal legs are long enough to accommodate standoff + arrowhead
+    clearance + a visible stem. The reserves are in world pixels and
+    converted to Manhattan cell distances internally.
     """
     if svg is None:
         return None
@@ -1271,6 +1398,41 @@ def _auto_route_l_waypoints(
     # admissible because Manhattan distance doesn't account for detours.
     TURN_PENALTY = 4
 
+    # Stem zones: turning inside a Manhattan radius of ``stem_cells``
+    # around src or tgt costs an extra ``STEM_TURN_PENALTY`` on top of
+    # the normal turn penalty. This discourages A* from placing corners
+    # near the endpoints, producing long cardinal legs that can absorb
+    # standoff + arrowhead clearance + a visible stem. The penalty is
+    # large enough to dominate normal path cost within the zone but not
+    # so large that an obstacle-forced turn makes the whole path
+    # unroutable - A* still finds SOMETHING, just more expensive.
+    STEM_TURN_PENALTY = 100
+    import math as _math
+
+    # Convert world-unit reserves to Manhattan cell radii, then add ONE
+    # cell of headroom. The extra cell covers two things:
+    #   (a) the cell-to-world quantisation error - A* measures distance
+    #       between cell CENTRES, but the threader measures distance to
+    #       real_src / real_tgt which can be up to cell_size/2 off on
+    #       each axis, so a "4 cell" A* reserve is only 35 world units
+    #       when real_tgt is offset 5 px from its cell centre;
+    #   (b) the chamfer bevel width - for the final bevel to render at
+    #       its full radius, the last cardinal leg must be >= reserve +
+    #       chamfer long.
+    # One extra cell (= cell_size world units) is enough to cover both
+    # in the common case (cell_size 10, chamfer <= 5). For larger
+    # chamfers the caller can drop cell_size to 5 or 8 to gain precision.
+    first_stem_cells = (
+        int(_math.ceil(float(first_stem_reserve) / float(step))) + 1
+        if first_stem_reserve and first_stem_reserve > 0
+        else 0
+    )
+    last_stem_cells = (
+        int(_math.ceil(float(last_stem_reserve) / float(step))) + 1
+        if last_stem_reserve and last_stem_reserve > 0
+        else 0
+    )
+
     start_state = (src_cell, None)
     openq: list = [(heuristic(src_cell, tgt_cell), 0, start_state)]
     came_from: dict = {start_state: None}
@@ -1295,6 +1457,18 @@ def _auto_route_l_waypoints(
             step_cost = 1
             if cur_dir is not None and d != cur_dir:
                 step_cost += TURN_PENALTY
+                # Extra penalty for turns inside the stem zone - the
+                # Manhattan distance is measured at the CURRENT cell
+                # (where the turn originates) so the radius captures
+                # every cell whose corner would eat into the stem.
+                if last_stem_cells > 0:
+                    tdist = abs(cur_cell[0] - tgt_cell[0]) + abs(cur_cell[1] - tgt_cell[1])
+                    if tdist < last_stem_cells:
+                        step_cost += STEM_TURN_PENALTY
+                if first_stem_cells > 0:
+                    sdist = abs(cur_cell[0] - src_cell[0]) + abs(cur_cell[1] - src_cell[1])
+                    if sdist < first_stem_cells:
+                        step_cost += STEM_TURN_PENALTY
             nb_state = (nb_cell, d)
             tentative = g_score[current] + step_cost
             if nb_state not in g_score or tentative < g_score[nb_state]:
@@ -1335,6 +1509,43 @@ def _auto_route_l_waypoints(
 
     # Interior corners become the waypoints threaded through _thread_l_controls.
     waypoints = [cell_to_world(r, c) for r, c in corners[1:-1]]
+
+    # Cell-center snap: the A* returns waypoints at cell centers which
+    # do NOT exactly match real_src / real_tgt coordinates. When the
+    # threader builds the final L-segment from the last waypoint to
+    # real_tgt with end_dir cardinal, it INSERTS a corner at
+    # ``(real_tgt.x, waypoint.y)`` for E/W or ``(waypoint.x, real_tgt.y)``
+    # for N/S. That inserted corner is at a DIFFERENT world position
+    # from the A* cell center, and its distance to real_tgt is typically
+    # a few pixels shorter than A* thought - directly eating into the
+    # stem reserve and squashing the last chamfer bevel.
+    #
+    # Fix: before returning, snap the last waypoint's non-cardinal axis
+    # to real_tgt's cardinal coord so the threader does NOT insert an
+    # extra corner. The waypoint becomes the last true corner, and A*'s
+    # cell-distance calculation for the reserve matches the threader's
+    # real-world len_out. Same symmetric snap for the first waypoint
+    # against real_src under start_dir. This eliminates the coordinate
+    # system mismatch between A* cells and threader world coords.
+    start_card = _direction_to_cardinal(start_dir)
+    end_card = _direction_to_cardinal(end_dir)
+    if waypoints and start_card is not None:
+        wx, wy = waypoints[0]
+        if start_card in ("E", "W"):
+            # First cardinal leg is horizontal; waypoint must share src.y
+            waypoints[0] = (wx, float(src[1]))
+        else:
+            # First cardinal leg is vertical; waypoint must share src.x
+            waypoints[0] = (float(src[0]), wy)
+    if waypoints and end_card is not None:
+        wx, wy = waypoints[-1]
+        if end_card in ("E", "W"):
+            # Last cardinal leg is horizontal; waypoint must share tgt.y
+            waypoints[-1] = (wx, float(tgt[1]))
+        else:
+            # Last cardinal leg is vertical; waypoint must share tgt.x
+            waypoints[-1] = (float(tgt[0]), wy)
+
     return waypoints
 
 
@@ -1358,6 +1569,8 @@ def calc_l(
     container_id=None,
     route_cell_size=10,
     route_margin=5,
+    straight_tolerance=20.0,
+    stem_min=20.0,
 ):
     """Axis-aligned L connector, sharp corners.
 
@@ -1371,6 +1584,13 @@ def calc_l(
     horizontal exit, N/S => vertical exit). ``end_dir`` is the direction
     the connector is still MOVING when it arrives at the target — so S
     means "moving south into tgt", entering via the TOP edge.
+
+    ``straight_tolerance`` (default 20 px) controls the straight-line
+    collapse heuristic. When both endpoints can slide along their edges
+    to a shared coordinate and their natural midpoint difference is
+    within this tolerance, the L degenerates to a single straight
+    segment with no corner - removing the "twisted start" artefact that
+    a tiny first leg + chamfer + standoff produces. Set to 0 to disable.
 
     ``auto_route=True`` runs grid A* on the SVG's obstacle bitmap and
     automatically picks multi-elbow waypoints that avoid collisions. The
@@ -1388,14 +1608,29 @@ def calc_l(
         if tgt_x is None or tgt_y is None:
             tgt_x = tgt_y = 0.0
         src_x, src_y, tgt_x, tgt_y, first_axis = _resolve_l_endpoints_from_rects(
-            src_rect, tgt_rect, src_x, src_y, tgt_x, tgt_y, start_dir, end_dir, warnings
+            src_rect,
+            tgt_rect,
+            src_x,
+            src_y,
+            tgt_x,
+            tgt_y,
+            start_dir,
+            end_dir,
+            warnings,
+            straight_tolerance=straight_tolerance,
         )
     else:
         if src_x is None or src_y is None or tgt_x is None or tgt_y is None:
             raise ValueError("calc_l requires src_x/src_y/tgt_x/tgt_y or src_rect/tgt_rect")
-        first_axis = None
-        if start_dir is not None:
-            first_axis = _apply_direction_to_l((src_x, src_y), (tgt_x, tgt_y), start_dir, end_dir)
+
+    # Compute stem reserves even for the sharp L so the auto-router
+    # keeps its corners far enough from src / tgt to leave a clean
+    # stem for standoff + arrowhead clearance + stem_min visible px.
+    start_trim, end_trim = _resolve_standoff(standoff, margin)
+    arrow_start = (arrow or "none") in ("start", "both")
+    arrow_end = (arrow or "none") in ("end", "both")
+    first_stem = start_trim + (float(head_len) if arrow_start else 0.0) + float(stem_min)
+    last_stem = end_trim + (float(head_len) if arrow_end else 0.0) + float(stem_min)
 
     if auto_route and not controls:
         auto_wp = _auto_route_l_waypoints(
@@ -1407,6 +1642,8 @@ def calc_l(
             container_id=container_id,
             cell_size=route_cell_size,
             margin_px=route_margin,
+            first_stem_reserve=first_stem,
+            last_stem_reserve=last_stem,
         )
         if auto_wp is None:
             msg = "calc_l auto_route failed - falling back to 1-bend L"
@@ -1462,6 +1699,8 @@ def calc_l_chamfer(
     container_id=None,
     route_cell_size=10,
     route_margin=5,
+    straight_tolerance=20.0,
+    stem_min=20.0,
 ):
     """Chamfered L connector. Same edge-aware semantics as ``calc_l``.
 
@@ -1469,6 +1708,14 @@ def calc_l_chamfer(
     to snap endpoints to edge midpoints and lock the first axis — this is
     the canonical way to avoid the vertical-along-edge artefact. Without
     directions, geometry inference runs and a warning is emitted.
+
+    ``straight_tolerance`` (default 20 px) controls the straight-line
+    collapse heuristic - see ``calc_l`` for details. ``stem_min`` (default
+    20 px) reserves a clean cardinal stem of at least that many pixels
+    behind each arrowhead after standoff + head_len clearance. When the
+    geometry can't accommodate the reservation, the outer corner's bevel
+    clamps to 0 (sharp corner) and a warning is emitted so the caller
+    knows the guarantee couldn't be honored.
 
     ``auto_route=True`` runs grid A* on the SVG's obstacle bitmap and
     automatically picks multi-elbow waypoints that avoid collisions.
@@ -1484,16 +1731,37 @@ def calc_l_chamfer(
         if tgt_x is None or tgt_y is None:
             tgt_x = tgt_y = 0.0
         src_x, src_y, tgt_x, tgt_y, first_axis = _resolve_l_endpoints_from_rects(
-            src_rect, tgt_rect, src_x, src_y, tgt_x, tgt_y, start_dir, end_dir, warnings
+            src_rect,
+            tgt_rect,
+            src_x,
+            src_y,
+            tgt_x,
+            tgt_y,
+            start_dir,
+            end_dir,
+            warnings,
+            straight_tolerance=straight_tolerance,
         )
     else:
         if src_x is None or src_y is None or tgt_x is None or tgt_y is None:
             raise ValueError(
                 "calc_l_chamfer requires src_x/src_y/tgt_x/tgt_y or src_rect/tgt_rect"
             )
-        first_axis = None
-        if start_dir is not None:
-            first_axis = _apply_direction_to_l((src_x, src_y), (tgt_x, tgt_y), start_dir, end_dir)
+
+    # Reserve standoff + head_len + stem_min on each outer segment so
+    # (a) the trim for arrowhead clearance never walks into a chamfer
+    # bevel - otherwise the line end lands on a diagonal and the arrow
+    # tangent diverges from end_dir - and (b) there is always at least
+    # ``stem_min`` px of clean cardinal stem behind each arrowhead when
+    # the geometry allows. Compute reserves once and pass them into BOTH
+    # the auto-router (as stem-zone turn penalty radii) and the threader
+    # (as chamfer bevel clamps) so router corners stay far enough from
+    # endpoints that the threader can honor the visible-stem guarantee.
+    start_trim, end_trim = _resolve_standoff(standoff, margin)
+    arrow_start = (arrow or "none") in ("start", "both")
+    arrow_end = (arrow or "none") in ("end", "both")
+    first_reserve = start_trim + (float(head_len) if arrow_start else 0.0) + float(stem_min)
+    last_reserve = end_trim + (float(head_len) if arrow_end else 0.0) + float(stem_min)
 
     if auto_route and not controls:
         auto_wp = _auto_route_l_waypoints(
@@ -1505,6 +1773,8 @@ def calc_l_chamfer(
             container_id=container_id,
             cell_size=route_cell_size,
             margin_px=route_margin,
+            first_stem_reserve=first_reserve,
+            last_stem_reserve=last_reserve,
         )
         if auto_wp is None:
             msg = "calc_l_chamfer auto_route failed - falling back to 1-bend L"
@@ -1513,16 +1783,6 @@ def calc_l_chamfer(
         else:
             controls = auto_wp
             _check_soft_cap(controls, "calc_l_chamfer auto_route controls")
-
-    # Reserve standoff + head_len on each outer segment so the trim for
-    # arrowhead clearance never walks into a chamfer bevel (otherwise the
-    # line end lands on a diagonal and the arrow tangent diverges from
-    # end_dir). Compute reserves once and pass them into the threader.
-    start_trim, end_trim = _resolve_standoff(standoff, margin)
-    arrow_start = (arrow or "none") in ("start", "both")
-    arrow_end = (arrow or "none") in ("end", "both")
-    first_reserve = start_trim + (float(head_len) if arrow_start else 0.0)
-    last_reserve = end_trim + (float(head_len) if arrow_end else 0.0)
 
     # Route BOTH 1-bend and multi-elbow cases through _thread_l_controls
     # so end_dir is always honored on the last segment and the chamfer
@@ -1537,6 +1797,67 @@ def calc_l_chamfer(
         first_reserve=first_reserve,
         last_reserve=last_reserve,
     )
+
+    # If the geometry could not accommodate stem_min behind the arrows,
+    # emit a non-fatal warning so the caller knows the stem target was
+    # missed. Look at the final / initial cardinal leg of the post-
+    # chamfer polyline: we need (leg length) >= head_len + stem_min for
+    # the arrowhead to sit on a clean cardinal stem of at least stem_min.
+    if stem_min and stem_min > 0 and len(pts) >= 2:
+
+        def _axis_leg_length(points, end):
+            """Length of the last (or first) maximal axis-aligned run.
+
+            Walks from the specified endpoint inward, accumulating
+            segment lengths as long as each segment is axis-aligned AND
+            shares the same cardinal axis as the first step. Stops at
+            the first diagonal (bevel) or direction change (corner).
+            """
+            if end == "end":
+                seq = list(reversed(points))
+            else:
+                seq = list(points)
+            if len(seq) < 2:
+                return 0.0
+            dx0 = seq[1][0] - seq[0][0]
+            dy0 = seq[1][1] - seq[0][1]
+            if dx0 != 0 and dy0 != 0:
+                return 0.0  # first step is diagonal, no cardinal stem
+            axis0 = "h" if dy0 == 0 else "v"
+            total = abs(dx0) + abs(dy0)
+            for i in range(2, len(seq)):
+                dx = seq[i][0] - seq[i - 1][0]
+                dy = seq[i][1] - seq[i - 1][1]
+                if dx != 0 and dy != 0:
+                    break  # diagonal bevel
+                axis = "h" if dy == 0 else "v"
+                if axis != axis0:
+                    break  # direction change (corner)
+                total += abs(dx) + abs(dy)
+            return total
+
+        if arrow_end:
+            leg = _axis_leg_length(pts, "end")
+            visible = leg - end_trim - float(head_len)
+            if visible + 0.5 < float(stem_min):
+                msg = (
+                    f"l-chamfer: last cardinal stem behind arrow is "
+                    f"{max(0.0, visible):.1f}px (< stem_min={stem_min}); "
+                    f"geometry does not allow the full stem target."
+                )
+                warnings.append(msg)
+                print(f"WARNING: {msg}", file=sys.stderr)
+        if arrow_start:
+            leg = _axis_leg_length(pts, "start")
+            visible = leg - start_trim - float(head_len)
+            if visible + 0.5 < float(stem_min):
+                msg = (
+                    f"l-chamfer: first cardinal stem ahead of arrow is "
+                    f"{max(0.0, visible):.1f}px (< stem_min={stem_min}); "
+                    f"geometry does not allow the full stem target."
+                )
+                warnings.append(msg)
+                print(f"WARNING: {msg}", file=sys.stderr)
     return _build_polyline_result(
         "l-chamfer",
         pts,
@@ -2768,6 +3089,27 @@ def main():
         help="Obstacle clearance in px for the routing free-mask (default: 5). "
         "Used only with --auto-route.",
     )
+    parser.add_argument(
+        "--straight-tolerance",
+        type=float,
+        default=20.0,
+        help="Straight-line collapse tolerance in px (default: 20). When "
+        "both L endpoints can slide along their cardinal edges to a "
+        "shared coordinate within this tolerance, the L degenerates to "
+        "a single straight segment. Slide bias favours the smaller "
+        "geometry so the larger rect absorbs the displacement. Set to "
+        "0 to disable the collapse heuristic.",
+    )
+    parser.add_argument(
+        "--stem-min",
+        type=float,
+        default=20.0,
+        help="Minimum visible cardinal stem behind each arrowhead in px "
+        "(default: 20). Reserved via A* stem-zone turn penalty + "
+        "waypoint snap + chamfer clamp. When the geometry can't honour "
+        "the target, the tool emits a non-fatal warning with the "
+        "achieved stem length. Set to 0 to disable the reservation.",
+    )
     args = parser.parse_args()
 
     head_len, head_half_h = map(float, args.head_size.split(","))
@@ -2950,6 +3292,8 @@ def main():
                 container_id=args.container_id,
                 route_cell_size=args.route_cell_size,
                 route_margin=args.route_margin,
+                straight_tolerance=args.straight_tolerance,
+                stem_min=args.stem_min,
             )
         else:  # l-chamfer
             result = calc_l_chamfer(
@@ -2973,6 +3317,8 @@ def main():
                 container_id=args.container_id,
                 route_cell_size=args.route_cell_size,
                 route_margin=args.route_margin,
+                straight_tolerance=args.straight_tolerance,
+                stem_min=args.stem_min,
             )
 
     print_polyline_result(result, args)
