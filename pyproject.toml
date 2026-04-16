@@ -44,6 +44,7 @@ dev = [
 orchestrate = "stellars_claude_code_plugins.autobuild.orchestrator:main"
 svg-infographics = "stellars_claude_code_plugins.svg_tools.cli:main"
 journal-tools = "stellars_claude_code_plugins.journal_tools:main"
+render-png = "stellars_claude_code_plugins.svg_tools.render_png:main"
 
 [project.urls]
 Homepage = "https://github.com/stellarshenson/claude-code-plugins"
