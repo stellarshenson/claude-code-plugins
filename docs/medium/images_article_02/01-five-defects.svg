@@ -4,7 +4,7 @@
   Intent: reader absorbs all five failure modes in ~5 seconds, placed after article intro before "LLMs cannot draw by hand" section
   Theme: Stellars-Tech (teal primary #0096d1, amber accent-2 #da8230)
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 340">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 290">
   <style>
     .fg-1 { fill: #1a5a6e; }
     .fg-2 { fill: #24697e; }
@@ -109,7 +109,7 @@
   === -->
 
   <g id="background">
-    <rect width="1000" height="340" fill="transparent"/>
+    <rect width="1000" height="290" fill="transparent"/>
   </g>
 
   <g id="nodes">
