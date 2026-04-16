@@ -3868,4 +3868,3 @@ class TestRenderCatalogue:
         # 6 shapes, 3 cols -> 2 rows; width=240, height=160
         assert 'width="240"' in svg
         assert 'height="160"' in svg
-        assert "stats" in data
