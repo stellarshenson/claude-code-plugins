@@ -1,9 +1,9 @@
-"""Render SVG to PNG via headless Chrome with proper dark/light mode support.
+"""Render SVG to PNG via Playwright with proper dark/light mode support.
 
-Chrome evaluates @media (prefers-color-scheme: dark) natively. For dark mode
-uses --force-dark-mode to trigger the media query, with
---disable-features=WebContentsForceDark to prevent Chrome's auto-darkening
-algorithm from inverting colours and corrupting sizing.
+Playwright's page.emulate_media(color_scheme="dark") natively triggers
+@media (prefers-color-scheme: dark) CSS media queries without modifying
+the SVG. Combined with screenshot(omit_background=True) for transparent
+PNG output.
 
 Usage:
     render-png input.svg output.png --mode light --width 3000
@@ -15,28 +15,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 import re
-import subprocess
-import sys
 import tempfile
 
-
-def _find_chrome() -> str:
-    for name in [
-        "google-chrome",
-        "google-chrome-stable",
-        "chromium",
-        "chromium-browser",
-    ]:
-        try:
-            result = subprocess.run(["which", name], capture_output=True, text=True, check=False)
-            if result.returncode == 0:
-                return result.stdout.strip()
-        except FileNotFoundError:
-            continue
-    raise FileNotFoundError("Chrome/Chromium not found.")
+from playwright.sync_api import sync_playwright
 
 
 def _parse_viewbox(svg_text: str) -> tuple[float, float] | None:
@@ -55,13 +38,12 @@ def render_svg_to_png(
     mode: str = "light",
     width: int = 3000,
     bg: str | None = None,
-    chrome_path: str | None = None,
 ) -> Path:
-    """Render SVG to PNG using headless Chrome.
+    """Render SVG to PNG using Playwright (Chromium).
 
-    For dark mode: --force-dark-mode triggers prefers-color-scheme: dark,
-    --disable-features=WebContentsForceDark prevents Chrome's auto-darkening
-    from inverting/dimming colours. SVG stays untouched.
+    Uses page.emulate_media(color_scheme=mode) to natively trigger
+    @media (prefers-color-scheme: dark/light) CSS media queries.
+    No SVG modification needed.
 
     Args:
         svg_path: Path to the SVG file.
@@ -69,13 +51,12 @@ def render_svg_to_png(
         mode: 'light' or 'dark'.
         width: Output width in pixels.
         bg: Background colour (default: transparent).
-        chrome_path: Optional Chrome binary path.
     """
     svg_path = Path(svg_path).resolve()
     output_path = Path(output_path).resolve()
-    chrome = chrome_path or _find_chrome()
 
     svg_text = svg_path.read_text(encoding="utf-8")
+
     vb = _parse_viewbox(svg_text)
     if vb:
         vb_w, vb_h = vb
@@ -84,17 +65,7 @@ def render_svg_to_png(
     else:
         target_height = int(width * 0.6)
 
-    # Chrome viewport needs buffer to avoid crop; we'll trim after
-    viewport_height = target_height + 100
-
-    # Default bg: transparent for light, #0a1a24 for dark (bright dark-mode
-    # colours on transparent bg look washed out in light-bg viewers)
-    if bg:
-        bg_css = bg
-    elif mode == "dark":
-        bg_css = "#0a1a24"
-    else:
-        bg_css = "transparent"
+    bg_css = bg if bg else "transparent"
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -102,7 +73,7 @@ def render_svg_to_png(
 <meta charset="utf-8">
 <style>
   * {{ margin: 0; padding: 0; }}
-  html, body {{ background: {bg_css}; overflow: hidden; width: {width}px; height: {viewport_height}px; }}
+  html, body {{ background: {bg_css}; overflow: hidden; width: {width}px; height: {target_height}px; }}
   svg {{ width: {width}px; height: {target_height}px; display: block; }}
 </style>
 </head>
@@ -118,42 +89,28 @@ def render_svg_to_png(
         html_path = f.name
 
     try:
-        cmd = [
-            chrome,
-            "--headless=new",
-            "--disable-gpu",
-            "--no-sandbox",
-            "--disable-software-rasterizer",
-            "--hide-scrollbars",
-            f"--screenshot={output_path}",
-            f"--window-size={width},{viewport_height}",
-        ]
-        if mode == "dark":
-            cmd.extend(
-                [
-                    "--force-dark-mode",
-                    "--disable-features=WebContentsForceDark",
-                ]
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                color_scheme=mode,
+                viewport={"width": width, "height": target_height},
             )
-        cmd.append(f"file://{html_path}")
+            page = context.new_page()
+            page.goto(f"file://{html_path}")
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120, check=False)
-        if result.returncode != 0:
-            print(f"Chrome stderr: {result.stderr}", file=sys.stderr)
-            raise RuntimeError(f"Chrome exited with code {result.returncode}")
+            omit_bg = bg is None
+            page.screenshot(
+                path=str(output_path),
+                type="png",
+                omit_background=omit_bg,
+                clip={"x": 0, "y": 0, "width": width, "height": target_height},
+            )
+            browser.close()
     finally:
-        os.unlink(html_path)
+        Path(html_path).unlink(missing_ok=True)
 
     if not output_path.exists():
-        raise RuntimeError(f"Chrome did not create {output_path}")
-
-    # Crop to exact target dimensions (Chrome viewport may include buffer)
-    from PIL import Image
-
-    img = Image.open(output_path)
-    if img.height > target_height or img.width > width:
-        img = img.crop((0, 0, min(img.width, width), min(img.height, target_height)))
-        img.save(output_path)
+        raise RuntimeError(f"Playwright did not create {output_path}")
 
     size = output_path.stat().st_size
     print(
@@ -165,7 +122,7 @@ def render_svg_to_png(
 def main():
     parser = argparse.ArgumentParser(
         prog="render-png",
-        description="Render SVG to PNG via headless Chrome with dark/light mode.",
+        description="Render SVG to PNG via Playwright with dark/light mode.",
     )
     parser.add_argument("svg", help="Input SVG file")
     parser.add_argument("output", help="Output PNG file")

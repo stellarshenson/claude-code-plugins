@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "1.0.25"
+version = "1.0.26"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
@@ -20,6 +20,7 @@ dependencies = [
     "fonttools",
     "numpy",
     "pillow",
+    "playwright",
     "pygal",
     "pyyaml",
     "scipy",
