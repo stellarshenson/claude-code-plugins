@@ -39,16 +39,17 @@ Read **workflow** skill for 6-phase process. Read **theme** skill for palette ap
 ## Key Principles
 
 1. **Tool first** - every coordinate from `primitives`, every arrow from `connector`, every placement from `geom`/`callouts`/`empty-space`. Never eyeball
-2. **Theme first** - approve `theme_swatch.svg` before deliverables
-3. **Grid first** - viewBox, margins, columns, rhythm as comments BEFORE content
-4. **Group everything** - every visual unit = a `<g>` group. Card = group. Icon+label = group. Section = group of groups. Topology comment declares group relationships. No loose elements
-5. **CSS classes** - `<style>` + `prefers-color-scheme` media query. `class=`, never inline `fill=`
-6. **File description comment** - before `<svg>`: filename, shows, intent, theme
-7. **Five named layers** - `background`, `nodes`, `connectors`, `content`, `callouts`
-8. **Transparent background** - `fill="transparent"` on root rect
-9. **Contrast** - every element contrasts its background via theme. No `#000000`, no `#ffffff`
-10. **Validate before delivery** - run all six checkers. No run, no ship
-11. **Read examples** - study `examples/` (66 references) before creating each image
+2. **Place via empty-space** - before placing any element inside a container (icon, decoration, label), run `empty-space --edges-only --container-id <id>` to find safe zones. Text, strokes, and outlines are obstacles; filled backgrounds are not. Respect tolerance as padding. Elements sharing a role (e.g. icons across cards) must be h-aligned or v-aligned via `geom align`
+3. **Theme first** - approve `theme_swatch.svg` before deliverables
+4. **Grid first** - viewBox, margins, columns, rhythm as comments BEFORE content
+5. **Group everything** - every visual unit = a `<g>` group. Card = group. Icon+label = group. Section = group of groups. Topology comment declares group relationships. No loose elements
+6. **CSS classes** - `<style>` + `prefers-color-scheme` media query. `class=`, never inline `fill=`
+7. **File description comment** - before `<svg>`: filename, shows, intent, theme
+8. **Five named layers** - `background`, `nodes`, `connectors`, `content`, `callouts`
+9. **Transparent background** - `fill="transparent"` on root rect
+10. **Contrast** - every element contrasts its background via theme. No `#000000`, no `#ffffff`
+11. **Validate before delivery** - run all six checkers. No run, no ship
+12. **Read examples** - study `examples/` (66 references) before creating each image
 
 ## CSS Theme Classes and Dark Mode Detection
 

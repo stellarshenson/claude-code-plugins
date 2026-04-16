@@ -94,7 +94,8 @@ svg-infographics
  |   |-- --svg scene.svg         Input SVG
  |   |-- --tolerance N           Min erosion (default 20px)
  |   |-- --min-area N            Drop slivers (default 500)
- |   '-- --container-id          Clip to shape interior
+ |   |-- --container-id          Clip to shape interior
+ |   '-- --edges-only            Ignore fills, only edges/text as obstacles (for decoration placement)
  |
  |-- charts <type>               Pygal SVG charts
  |   |-- line | bar | hbar       Standard chart types
@@ -128,7 +129,8 @@ svg-infographics
      |-- /svg-infographics:validate      Run all validators
      |-- /svg-infographics:fix-layout    Fix overlaps, alignment, spacing
      |-- /svg-infographics:fix-style     Fix CSS, contrast, dark mode
-     '-- /svg-infographics:add-life      Creative enhancement (6 dimensions x 4 levels)
+     |-- /svg-infographics:add-life      Creative enhancement (6 dimensions x 4 levels)
+     '-- /svg-infographics:export-png    Render SVG to PNG (light/dark/both, transparent bg)
 ```
 
 ## Quick lookup

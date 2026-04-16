@@ -10,12 +10,15 @@ Decoration pass on existing SVG. NOT a redesign - additive overlays, filters, fi
 
 **Input**: SVG file(s) + intensity level (low / medium / high / absurd). Default: medium.
 
+**MANDATORY**: This command follows the svg-infographics skill and workflow. All placement uses tools (`empty-space`, `geom align`), all colours use CSS classes with dark mode, all elements respect topology and grouping. Read `svg-standards/SKILL.md` principles - they apply here.
+
 ## Before touching
 
 1. Read target SVG completely
 2. Read XML comment block - understand intent and theme
 3. Identify theme swatch (CSS classes, palette, dark-mode overrides)
-4. Reference `svg-infographics/skills/svg-standards/SKILL.md` for palette
+4. Reference `svg-infographics/skills/svg-standards/SKILL.md` for palette and placement rules
+5. Run `empty-space --svg <file> --edges-only --tolerance 8 --min-area 100` to map available space
 
 **Never break layout.** Enhancements = additive only.
 
@@ -23,69 +26,92 @@ Decoration pass on existing SVG. NOT a redesign - additive overlays, filters, fi
 
 ### 1. Colour variation
 
-Expand palette within brand hue family. Derive new shades via lightness, saturation, opacity shifts. Never off-brand hues.
+Creative variation anchored in brand palette. Hue shifts, lightness and saturation tweaks, opacity layering. Apply to BOTH fills AND strokes - card outlines, connectors, accent bars should all get subtle hue variation, not remain uniform. May introduce complementary hues where they add depth - not limited to strict brand colours.
 
-| Level | Treatment |
+| Level | Character |
 |-------|-----------|
-| **low** | 2-3 opacity variants (0.08, 0.15, 0.25). Alternate row tinting |
-| **medium** | 4-6 derived shades (analogous +-15 deg). Gradient fills on key cards. Varied stroke opacity |
-| **high** | 8+ derived shades. Multi-stop gradients. Colour-coded groups. Spatial colour transitions |
-| **absurd** | Chromatic harmonics. Iridescent overlays. Every element unique shade. Complementary accent splashes |
+| **low** | Subtle. Opacity variants, alternate row tinting, small hue shifts on accents |
+| **medium** | Noticeable. Derived shades, gradient fills on focal cards, complementary accent hues where warranted |
+| **high** | Rich. Many derived shades, multi-stop gradients, colour-coded groups, free use of complementary hues |
+| **absurd** | Chromatic. Iridescent overlays, every element its own shade, bold complementary splashes |
 
 ### 2. Shape and creative elements
 
 Visual hierarchy, depth cues, compositional interest.
 
-| Level | Treatment |
+| Level | Character |
 |-------|-----------|
-| **low** | Rounded corners rx=8-12. Accent bars 3-4px at card tops. Slight size variation |
-| **medium** | Layered shadows via offset rects at 0.06 opacity. Stagger 2-4px for depth. Decorative dividers |
-| **high** | Overlapping card edges. Isometric tilt hints. Background section plates. Corner brackets |
-| **absurd** | Irregular polygon cards. Translucent layers. Perspective distortion. Organic blob containers |
+| **low** | Gentle. Rounded corners, thin accent bars, slight size variation |
+| **medium** | Layered. Card shadows for depth, decorative dividers, staggered elements |
+| **high** | Bold. Overlapping edges, isometric hints, background plates, corner brackets |
+| **absurd** | Experimental. Irregular polygons, translucent layers, perspective distortion |
 
 ### 3. Icons and symbols
 
-Small iconic glyphs reinforcing element meaning.
+Detailed multi-stroke iconic glyphs reinforcing element meaning. NOT simple silhouettes - each icon should be a small but complete drawing with visible internal detail.
 
-| Level | Treatment |
+| Level | Character |
 |-------|-----------|
-| **low** | 2-3 geometric icons (dot, chevron, checkmark). Monochrome 12-16px in headers |
-| **medium** | 5-8 contextual icons. 2-3 line weights. Mix filled/outline. Headers + endpoints + titles |
-| **high** | Unique icon per card. Accent-coloured fills. Badge icons at junctions. Icon strips in headers |
-| **absurd** | Icon patterns as card backgrounds. Floating particle icons. Inline icon glyphs on every label |
+| **low** | Few. Geometric icons in key headers, monochrome |
+| **medium** | Contextual. Icons per section, mixed stroke weights and fill/outline |
+| **high** | Comprehensive. Unique icon per card, accent-coloured, badge icons at junctions |
+| **absurd** | Pervasive. Icon patterns as backgrounds, floating particles, inline glyphs on labels |
 
 ### 4. Decorative embroidery
 
-Textile-inspired patterns, borders, ornamental detail.
+Futuristic flourishes, tech-line accents, ornamental detail. Choose a domain theme from the embroidery gallery that matches SVG content.
 
-| Level | Treatment |
+**Domain themes**: electronics/circuit, AI/neural, cyberpunk HUD, sci-fi abstract, decorative flourishes, science/math
+
+**Organic circuitry**: faded circuit-trace paths that grow organically across the background - branching lines with node dots at intersections, like PCB traces or neural dendrites. Low opacity, placed in the background layer behind all content. Density scales with level.
+
+| Level | Character |
 |-------|-----------|
-| **low** | Dotted borders on 1-2 cards. Dash patterns on dividers. Dots at grid intersections |
-| **medium** | Cross-stitch dot backgrounds (8px spacing, 0.06 opacity). Decorative end-caps. Corner marks |
-| **high** | `<pattern>` fills (herringbone, chevron, dot-grid). Alternating dash/dot borders. Filigree corners |
-| **absurd** | Full textile overlays. Woven grid backgrounds. Lace borders. Celtic knot connectors |
+| **low** | Sparse. Corner marks on focal cards, dash accents. One or two faded organic circuit traces in background |
+| **medium** | Textured. Tech-line fragments, angular bracket decorations, micro geometric patterns. Several organic circuit branches |
+| **high** | Intricate. Pattern fills, alternating motifs, filigree corners. Organic circuitry network spanning background |
+| **absurd** | Dense. Full textile overlays, woven backgrounds, themed border systems. Dense organic circuitry everywhere |
 
 ### 5. Abstract graphics
 
 Non-representational shapes creating visual energy.
 
-| Level | Treatment |
+| Level | Character |
 |-------|-----------|
-| **low** | 3-5 accent dots (r=2-4) in white space. One subtle background arc |
-| **medium** | 10-20 particles (circles, diamonds) varied opacity 0.04-0.15. 2-3 background arcs. Concentric ring fragments |
-| **high** | 30+ particle cloud with size/opacity gradient. Wave undulations. Constellation lines. Radial burst |
-| **absurd** | Dense particle field. Ribbon paths between elements. Voronoi outlines. Orbital rings. Fractal branching |
+| **low** | Minimal. Few accent particles in whitespace, one subtle background sweep |
+| **medium** | Atmospheric. Scattered particles with varied opacity, background arcs, ring fragments |
+| **high** | Energetic. Particle clouds, wave undulations, constellation lines, radial bursts |
+| **absurd** | Dense. Particle fields, ribbon paths, voronoi outlines, orbital rings, fractal branching |
 
-### 6. Glow effects
+### 6. Background texture
 
-Luminous highlights via SVG filters (feGaussianBlur, feColorMatrix, feComposite).
+Faded organic patterns behind content adding visual depth. Low opacity, background layer only.
 
-| Level | Treatment |
+**Texture themes** (ask user which fits):
+- Circuit / PCB traces - branching paths with node dots at intersections
+- Neural / dendritic - organic branching like neurons or root systems
+- Geographic / topographic - contour lines, map-like undulations
+- Grid / technical - faded engineering grid, coordinate markers
+- Organic / natural - flowing curves, leaf veins, water ripples
+- None - skip this dimension
+
+| Level | Character |
 |-------|-----------|
-| **low** | One glow filter (stdDeviation=2). Apply to 1-2 focal elements |
-| **medium** | Two filters (cool accent-1 stdDev=3, warm accent-2 stdDev=2). All connectors + key borders. Title halos |
-| **high** | Three-layer glow (inner 1, mid 4, outer 8). Connectors, accent bars, icons, focal shapes. Background radial glow |
-| **absurd** | Every element glows. Bloom on entire composition. Neon double-glow on connectors. Light leak edges |
+| **low** | One or two faded traces, very sparse |
+| **medium** | Several branching paths, subtle network |
+| **high** | Full background network, clearly visible texture |
+| **absurd** | Dense texture covering entire background |
+
+### 7. Glow effects
+
+Luminous highlights via SVG filters. Apply selectively where it reinforces visual hierarchy.
+
+| Level | Character |
+|-------|-----------|
+| **low** | Restrained. Glow on one or two focal elements only |
+| **medium** | Warm. Dual-tone glow on connectors and key borders, title halos |
+| **high** | Dramatic. Multi-layer glow, connectors and accent bars, background radial glow |
+| **absurd** | Full bloom. Everything glows, neon double-glow, light leak edges |
 
 ## Documentation comment
 
@@ -116,10 +142,52 @@ This comment allows future agents to understand what decorations were applied, a
 
 ## Workflow
 
-1. Read SVG + theme
-2. Task list: one task per dimension
-3. Apply all six at requested level
-4. Render PNG at 3x for visual check
-5. Run `overlaps` + `contrast` validators
-6. Fix validation failures
-7. Report: dimensions applied, additions, final file size
+### Step 1: Read and analyse
+
+Read SVG + theme. Understand content domain (tech, AI, science, business, etc.).
+
+### Step 2: Propose treatment (MANDATORY - ask before applying)
+
+Present a proposal table to the user covering all 7 dimensions. Suggest specific treatments based on SVG content and requested level. User must confirm or adjust before any edits.
+
+**Proposal format:**
+
+```
+Add-life proposal for <filename> at <level>:
+
+| Dimension | Proposed treatment | Skip? |
+|-----------|-------------------|-------|
+| Colour | Hue-shifted fills AND strokes, alternate card tinting | |
+| Shapes | Accent bars, rounded corners, card shadows | |
+| Icons | Detailed multi-stroke icons in headers | |
+| Embroidery | Theme: <suggest based on content>. Corner marks, tech-line flourishes | |
+| Abstract | Accent particles in whitespace, background arcs | |
+| Bg texture | Theme: <circuit/neural/geographic/grid/organic/none>. Faded traces | |
+| Glow | Selective glow on focal elements | |
+
+Proceed? (or adjust any dimension)
+```
+
+For **embroidery**, suggest a domain theme: electronics/circuit, AI/neural, cyberpunk HUD, sci-fi abstract, decorative flourishes, science/math.
+
+For **background texture**, suggest a theme: circuit/PCB traces, neural/dendritic, geographic/topographic, grid/technical, organic/natural, or none.
+
+Pick the domain that matches the SVG content. User can override.
+
+### Step 3: Apply
+
+After user confirms, apply all six dimensions as approved. One task per dimension.
+
+**Placement rules (MANDATORY)**:
+
+1. **Empty-space first**: before placing ANY element (icon, flourish, particle), run `empty-space --svg <file> --edges-only --tolerance 8 --min-area 100` to find safe zones. For placement inside a specific card, add `--container-id <card-id>`. Only place within detected free regions
+2. **Topology alignment**: elements sharing a role across containers (e.g. icons across cards, corner marks across sections) MUST be aligned via `geom align`. Icons in a row of cards share the same y. Corner marks at the same relative position in each card
+3. **Group decorations**: all add-life elements go into a dedicated `<g id="add-life-decorations">` group. Icons into `<g id="add-life-icons">`. Maintain the five-layer structure
+4. **Overlap validation**: run `overlaps` checker after placement. Any decoration that violates padding/margin/spacing rules gets repositioned or removed
+
+### Step 4: Verify
+
+1. Render PNG at 3x via `render-png --mode both`
+2. Run `overlaps` + `contrast` validators
+3. Fix validation failures
+4. Report: dimensions applied, additions, final file size

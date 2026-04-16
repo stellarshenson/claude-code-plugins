@@ -80,6 +80,11 @@ SUBCOMMANDS = {
         "drawio_shapes",
         "SHAPES: index, search, catalogue, and render draw.io stencil libraries as SVG snippets.",
     ),
+    # ---- BACKGROUND TEXTURE GENERATOR ----
+    "background": (
+        "gen_backgrounds",
+        "BG: procedural background textures (circuit, neural, topo, grid, organic, celtic, scifi, constellation, flourish, geometric, crystalline).",
+    ),
 }
 
 

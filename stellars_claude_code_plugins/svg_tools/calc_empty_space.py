@@ -780,6 +780,7 @@ def find_empty_regions(
     canvas=None,
     exclude_ids=("callout-*",),
     container_id=None,
+    edges_only=False,
 ):
     """Find empty regions on an SVG canvas.
 
@@ -811,6 +812,13 @@ def find_empty_regions(
             container are irrelevant; obstacles inside still occupy.
             Returned regions are tagged with ``container_id``. Default
             ``None`` = no clipping (scan whole canvas).
+        edges_only: when True, only edges count as obstacles - container
+            outlines, connectors, icons, and text bboxes. Filled
+            interiors of shapes (card backgrounds, plates) are ignored.
+            This finds empty space WITHIN cards, not just between them.
+            Useful for placing decorative elements like icons, flourishes,
+            and embroidery that should avoid text and strokes but may
+            sit on top of filled backgrounds.
 
     Returns:
         list of ``{"boundary": [(x, y), ...], "area": float, "container_id":
@@ -857,7 +865,19 @@ def find_empty_regions(
         if _id_excluded(node):
             return
         if node is not container_elem and not _is_canvas_background(node, canvas):
-            surrogates.extend(_element_to_surrogates(node))
+            raw = _element_to_surrogates(node)
+            if edges_only:
+                # Keep only strokes (polylines) and text bboxes. Drop
+                # filled rects and polygons so card interiors are free.
+                # Text elements emit ("rect", ...) which we keep - text
+                # IS an obstacle even in edges-only mode.
+                T = type(node).__name__
+                if T == "Text":
+                    surrogates.extend(raw)
+                else:
+                    surrogates.extend(s for s in raw if s[0] == "polyline")
+            else:
+                surrogates.extend(raw)
         # svgelements Group / SVG are iterable - recurse into children.
         if isinstance(node, _se.Group):
             for child in node:
@@ -971,6 +991,13 @@ def main():
         "groups are rejected. Obstacles outside the container are ignored.",
     )
     parser.add_argument(
+        "--edges-only",
+        action="store_true",
+        help="Only treat edges as obstacles (container outlines, connectors, "
+        "icons, text). Filled card interiors are ignored, finding empty "
+        "space WITHIN cards. Use for placing decorative elements.",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit JSON output only",
@@ -993,6 +1020,7 @@ def main():
         min_area=args.min_area,
         exclude_ids=exclude_ids,
         container_id=args.container_id,
+        edges_only=args.edges_only,
     )
 
     if args.json:
