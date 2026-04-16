@@ -1,0 +1,228 @@
+<!--
+  17-self-documenting.svg - Self-documenting SVG files that carry their own intent
+  Shows: a stylised SVG file icon on the left with three dashed-line callout connectors
+         pointing to three "zoom-in" cards on the right. Each card highlights a different
+         self-documenting feature: XML comment block, CSS class references, named elements.
+         A horizontal timeline arrow below shows "Created Apr" -> "Updated Jul" -> "Re-themed Oct"
+         to reinforce the reworkability message.
+  Intent: reader understands that plugin SVGs are not throwaway graphics - they carry
+         structured metadata for future reworking by agents or humans.
+  Theme: Stellars-Tech. fg-1 titles, fg-3 labels, accent-1 file icon and callout cards,
+         accent-2 for timeline highlights. Inter sans-serif throughout.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420">
+  <style>
+    text { font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif; }
+    .fg-1 { fill: #1a5a6e; }
+    .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+
+    .file-body    { fill: #005f7a; fill-opacity: 0.06; }
+    .file-stroke  { fill: none; stroke: #005f7a; stroke-width: 1.4; }
+    .file-fold    { fill: #005f7a; fill-opacity: 0.12; stroke: #005f7a; stroke-width: 1.4; }
+    .file-line    { fill: none; stroke: #005f7a; stroke-width: 0.8; opacity: 0.3; }
+
+    .callout-fill   { fill: #005f7a; fill-opacity: 0.05; }
+    .callout-stroke { fill: none; stroke: #005f7a; stroke-width: 1; }
+    .callout-bar    { fill: #005f7a; opacity: 0.6; }
+
+    .dashed-conn { fill: none; stroke: #236a74; stroke-width: 1.2; stroke-dasharray: 5 4; stroke-linecap: round; }
+    .conn-dot    { fill: #236a74; }
+
+    .code-text { font-family: 'Consolas', 'Menlo', monospace; font-size: 9px; }
+    .card-title { font-size: 12px; font-weight: 700; }
+    .card-desc  { font-size: 9px; }
+
+    .timeline-line { fill: none; stroke: #7a4a15; stroke-width: 1.4; stroke-linecap: round; }
+    .timeline-dot  { fill: #7a4a15; }
+    .timeline-head { fill: #7a4a15; }
+    .timeline-label { font-size: 10px; font-weight: 600; }
+    .timeline-date  { font-size: 9px; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+
+      .file-body   { fill: #5cc8e0; fill-opacity: 0.08; }
+      .file-stroke { stroke: #5cc8e0; }
+      .file-fold   { fill: #5cc8e0; fill-opacity: 0.15; stroke: #5cc8e0; }
+      .file-line   { stroke: #5cc8e0; }
+
+      .callout-fill   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .callout-stroke { stroke: #5cc8e0; }
+      .callout-bar    { fill: #5cc8e0; }
+
+      .dashed-conn { stroke: #5aafc5; }
+      .conn-dot    { fill: #5aafc5; }
+
+      .timeline-line  { stroke: #d4a04a; }
+      .timeline-dot   { fill: #d4a04a; }
+      .timeline-head  { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 420
+    Margins: left=30, right=30, top=0, bottom=10
+    Title band: y=26 (17px 700 fg-1 centred x=500), y=46 (11px fg-3 centred)
+
+    File icon: centred at x=170, y=190 (vertical centre of callout zone)
+      Icon body: x=100, y=80, w=140, h=190
+      Fold triangle: top-right corner 30x30 (from x=210,y=80 to x=240,y=80 to x=240,y=110)
+      Code lines: 8 horizontal lines spaced 18px starting y=120
+      Label "diagram.svg": centred at x=170, y=290 (below icon)
+
+    Callout cards (3 cards, right side):
+      Each card: w=450, h=70, rx=4
+      Card x=480 (left edge)
+      Card 1 (XML Comment):    y=72,  centre_y=107
+      Card 2 (CSS Classes):    y=152, centre_y=187
+      Card 3 (Named Elements): y=232, centre_y=267
+      Card gap: 10px
+      Card internals:
+        accent bar: h=4 at top
+        title: x=492, y=card_y+24 (12px 700 fg-1)
+        code line: x=492, y=card_y+42 (9px mono fg-3)
+        desc line: x=492, y=card_y+58 (9px fg-3)
+
+    Dashed connectors (file icon right edge to card left edge):
+      Start points on file icon (x=240): y=120, y=170, y=220
+      End points on cards (x=480): y=107, y=187, y=267
+      Dots at both ends (r=3)
+
+    Timeline arrow (below main content):
+      y=350 (horizontal line)
+      x range: 150 to 850
+      3 milestone dots: x=250 (Apr), x=500 (Jul), x=750 (Oct)
+      Arrow head at x=850
+      Labels above dots, dates below
+      Timeline title: x=500, y=335 (centred above line)
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-split: file-icon-zone (30..340) | connector-gap (340..480) | callout-zone (480..960)
+    v-stack: title-band (0..60) | main-content (60..310) | timeline-zone (320..420)
+    connect: file-icon -> dashed-line -> callout-card (3 connectors)
+    contain: file-icon -> body, fold, code-lines, label
+    contain: each callout -> accent-bar, title, code-snippet, description
+    h-align: all callout cards share x=480
+    flow: timeline left-to-right showing temporal reworkability
+  === -->
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1000" height="420" fill="transparent"/>
+
+  <!-- Title -->
+  <text class="fg-1" x="500" y="26" text-anchor="middle" font-size="17" font-weight="700">self-documenting SVG files</text>
+  <text class="fg-3" x="500" y="46" text-anchor="middle" font-size="11">every file carries its own intent, theme, and structure for future reworking</text>
+
+  <!-- ============================================================ -->
+  <!-- FILE ICON: x=100 y=80 w=140 h=190                            -->
+  <!-- ============================================================ -->
+  <g id="file-icon">
+    <!-- Main body with fold -->
+    <path class="file-body" d="M100,80 H210 L240,110 V267 Q240,270 237,270 H103 Q100,270 100,267 Z"/>
+    <path class="file-stroke" d="M100,80 H210 L240,110 V267 Q240,270 237,270 H103 Q100,270 100,267 Z"/>
+    <!-- Corner fold -->
+    <path class="file-fold" d="M210,80 L240,110 H210 Z"/>
+
+    <!-- Simulated code lines inside file -->
+    <line class="file-line" x1="114" y1="126" x2="200" y2="126"/>
+    <line class="file-line" x1="114" y1="142" x2="226" y2="142"/>
+    <line class="file-line" x1="114" y1="158" x2="190" y2="158"/>
+    <line class="file-line" x1="114" y1="174" x2="216" y2="174"/>
+    <line class="file-line" x1="114" y1="190" x2="180" y2="190"/>
+    <line class="file-line" x1="114" y1="206" x2="226" y2="206"/>
+    <line class="file-line" x1="114" y1="222" x2="196" y2="222"/>
+    <line class="file-line" x1="114" y1="238" x2="210" y2="238"/>
+
+    <!-- File label -->
+    <text class="fg-1" x="170" y="292" text-anchor="middle" font-size="11" font-weight="600">diagram.svg</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- DASHED CONNECTORS: file -> callout cards                      -->
+  <!-- ============================================================ -->
+  <g id="connectors">
+    <!-- Connector 1: file y=126 -> card 1 centre y=107 -->
+    <circle class="conn-dot" cx="240" cy="126" r="3"/>
+    <path class="dashed-conn" d="M243,126 L340,126 L340,107 L477,107"/>
+    <circle class="conn-dot" cx="480" cy="107" r="3"/>
+
+    <!-- Connector 2: file y=174 -> card 2 centre y=187 -->
+    <circle class="conn-dot" cx="240" cy="174" r="3"/>
+    <path class="dashed-conn" d="M243,174 L360,174 L360,187 L477,187"/>
+    <circle class="conn-dot" cx="480" cy="187" r="3"/>
+
+    <!-- Connector 3: file y=222 -> card 3 centre y=267 -->
+    <circle class="conn-dot" cx="240" cy="222" r="3"/>
+    <path class="dashed-conn" d="M243,222 L350,222 L350,267 L477,267"/>
+    <circle class="conn-dot" cx="480" cy="267" r="3"/>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- CALLOUT CARD 1: XML Comment Block - y=72 h=70                 -->
+  <!-- ============================================================ -->
+  <g id="callout-1">
+    <rect class="callout-fill" x="480" y="72" width="450" height="70" rx="4"/>
+    <rect class="callout-stroke" x="480" y="72" width="450" height="70" rx="4"/>
+    <rect class="callout-bar" x="480" y="72" width="450" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="496" y="96">XML Comment Block</text>
+    <text class="fg-3 code-text" x="496" y="114">&lt;!-- filename, intent, theme --&gt;</text>
+    <text class="fg-3 card-desc" x="496" y="130" font-size="9">structured metadata at top of every file</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- CALLOUT CARD 2: CSS Class References - y=152 h=70             -->
+  <!-- ============================================================ -->
+  <g id="callout-2">
+    <rect class="callout-fill" x="480" y="152" width="450" height="70" rx="4"/>
+    <rect class="callout-stroke" x="480" y="152" width="450" height="70" rx="4"/>
+    <rect class="callout-bar" x="480" y="152" width="450" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="496" y="176">CSS Class References</text>
+    <text class="fg-3 code-text" x="496" y="194">class="fg-1"  not  fill="#1a5a6e"</text>
+    <text class="fg-3 card-desc" x="496" y="210" font-size="9">theme changes propagate via CSS, not search-and-replace</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- CALLOUT CARD 3: Named Elements - y=232 h=70                   -->
+  <!-- ============================================================ -->
+  <g id="callout-3">
+    <rect class="callout-fill" x="480" y="232" width="450" height="70" rx="4"/>
+    <rect class="callout-stroke" x="480" y="232" width="450" height="70" rx="4"/>
+    <rect class="callout-bar" x="480" y="232" width="450" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="496" y="256">Named Elements</text>
+    <text class="fg-3 code-text" x="496" y="274">id="callout-spine"  id="card-A"</text>
+    <text class="fg-3 card-desc" x="496" y="290" font-size="9">every group and connector is addressable by name</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- TIMELINE: Created -> Updated -> Re-themed                     -->
+  <!-- ============================================================ -->
+  <g id="timeline">
+    <text class="fg-3" x="500" y="335" text-anchor="middle" font-size="9" font-style="italic">reworkable across time</text>
+
+    <!-- Timeline line -->
+    <line class="timeline-line" x1="150" y1="358" x2="840" y2="358"/>
+    <polygon class="timeline-head" points="840,354 850,358 840,362"/>
+
+    <!-- Milestone 1: Created Apr -->
+    <circle class="timeline-dot" cx="250" cy="358" r="4"/>
+    <text class="accent-2 timeline-label" x="250" y="348" text-anchor="middle">Created</text>
+    <text class="fg-3 timeline-date" x="250" y="376" text-anchor="middle">Apr</text>
+
+    <!-- Milestone 2: Updated Jul -->
+    <circle class="timeline-dot" cx="500" cy="358" r="4"/>
+    <text class="accent-2 timeline-label" x="500" y="348" text-anchor="middle">Updated</text>
+    <text class="fg-3 timeline-date" x="500" y="376" text-anchor="middle">Jul</text>
+
+    <!-- Milestone 3: Re-themed Oct -->
+    <circle class="timeline-dot" cx="750" cy="358" r="4"/>
+    <text class="accent-2 timeline-label" x="750" y="348" text-anchor="middle">Re-themed</text>
+    <text class="fg-3 timeline-date" x="750" y="376" text-anchor="middle">Oct</text>
+  </g>
+
+</svg>
