@@ -117,6 +117,11 @@ svg-infographics
  |   |-- css                     Inline fills, forbidden colours, missing dark-mode overrides
  |   '-- collide                 Pairwise connector intersection with near-miss detection
  |
+ |-- render-png                    SVG to PNG via Playwright (evaluates CSS media queries)
+ |   |-- --mode light|dark|both   Colour scheme. "both" creates .light.png + .dark.png
+ |   |-- --width N                Output width px (default 3000)
+ |   '-- --bg "#hex"              Background colour (default: transparent)
+ |
  '-- COMMANDS (user-invoked)
      |-- /svg-infographics:create        Full 6-phase workflow
      |-- /svg-infographics:theme         Generate/update theme swatch
@@ -143,3 +148,4 @@ svg-infographics
 | Check before delivery | `overlaps` + `contrast` + `alignment` + `connectors` + `css` + `collide` |
 | Add visual richness | `/svg-infographics:add-life file.svg medium` |
 | Search for icons | `shapes search "database"` |
+| Export SVG to PNG | `render-png input.svg output.png --mode both --width 3000` |
