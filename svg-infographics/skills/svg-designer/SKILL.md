@@ -81,11 +81,13 @@ Follow the 6-phase workflow from the `workflow` skill. No shortcuts.
 
 ## Rendering
 
-After creating/modifying an SVG, render PNG at 3x resolution for visual check:
+After creating/modifying an SVG, render PNG at 3x resolution with WHITE background:
 
 ```bash
-cairosvg input.svg -o output.png --output-width 3000
+cairosvg input.svg -o output.png --output-width 3000 --background "#ffffff"
 ```
+
+**MANDATORY `--background "#ffffff"`**: SVGs use `fill="transparent"` for dark-mode CSS switching but PNG has no media queries. Without white background the PNG renders transparent = BLACK in most viewers, washing out all light-mode colours.
 
 Use `--output-width` at 3x the viewBox width. The `-d` flag alone does NOT change pixel dimensions.
 
