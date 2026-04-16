@@ -724,6 +724,186 @@ def _svg_circle(
     )
 
 
+# ---------------------------------------------------------------------------
+# Alignment and distribution (multi-geometry operations)
+# ---------------------------------------------------------------------------
+
+
+def _parse_rects(text: str) -> list[tuple[float, float, float, float]]:
+    """Parse a list of rects: '[(x,y,w,h),(x,y,w,h),...]' or 'x,y,w,h x,y,w,h ...'."""
+    import ast
+
+    text = text.strip()
+    if text.startswith("["):
+        items = ast.literal_eval(text)
+        return [(float(r[0]), float(r[1]), float(r[2]), float(r[3])) for r in items]
+    rects = []
+    for chunk in text.split():
+        parts = [float(v) for v in chunk.split(",")]
+        rects.append((parts[0], parts[1], parts[2], parts[3]))
+    return rects
+
+
+def align(rects: list[tuple], edge: str) -> list[tuple]:
+    """Align rects along a shared edge or centre line.
+
+    edge: 'left', 'right', 'top', 'bottom', 'h-center', 'v-center'.
+    Returns new (x, y, w, h) tuples with positions adjusted. Sizes unchanged.
+    """
+    if not rects:
+        return []
+    if edge == "left":
+        target = min(r[0] for r in rects)
+        return [(target, r[1], r[2], r[3]) for r in rects]
+    if edge == "right":
+        target = max(r[0] + r[2] for r in rects)
+        return [(target - r[2], r[1], r[2], r[3]) for r in rects]
+    if edge == "top":
+        target = min(r[1] for r in rects)
+        return [(r[0], target, r[2], r[3]) for r in rects]
+    if edge == "bottom":
+        target = max(r[1] + r[3] for r in rects)
+        return [(r[0], target - r[3], r[2], r[3]) for r in rects]
+    if edge == "h-center":
+        target = sum(r[0] + r[2] / 2 for r in rects) / len(rects)
+        return [(target - r[2] / 2, r[1], r[2], r[3]) for r in rects]
+    if edge == "v-center":
+        target = sum(r[1] + r[3] / 2 for r in rects) / len(rects)
+        return [(r[0], target - r[3] / 2, r[2], r[3]) for r in rects]
+    raise ValueError(f"edge must be left|right|top|bottom|h-center|v-center, got {edge!r}")
+
+
+def distribute(rects: list[tuple], axis: str, mode: str = "center") -> list[tuple]:
+    """Space rects evenly along an axis.
+
+    axis: 'h' (horizontal) or 'v' (vertical).
+    mode: 'center' (equal centroid spacing), 'gap' (equal gaps between edges).
+    Returns new (x, y, w, h) tuples with positions adjusted. Sizes unchanged.
+    Rects sorted by current position along the axis before distributing.
+    """
+    if len(rects) < 3:
+        return list(rects)  # need >=3 to distribute
+
+    if axis == "h":
+        indexed = sorted(enumerate(rects), key=lambda ir: ir[1][0])
+    else:
+        indexed = sorted(enumerate(rects), key=lambda ir: ir[1][1])
+
+    result = [None] * len(rects)
+
+    if mode == "center":
+        if axis == "h":
+            centers = [r[0] + r[2] / 2 for _, r in indexed]
+            start, end = centers[0], centers[-1]
+            step = (end - start) / (len(indexed) - 1)
+            for k, (orig_i, r) in enumerate(indexed):
+                new_cx = start + k * step
+                result[orig_i] = (new_cx - r[2] / 2, r[1], r[2], r[3])
+        else:
+            centers = [r[1] + r[3] / 2 for _, r in indexed]
+            start, end = centers[0], centers[-1]
+            step = (end - start) / (len(indexed) - 1)
+            for k, (orig_i, r) in enumerate(indexed):
+                new_cy = start + k * step
+                result[orig_i] = (r[0], new_cy - r[3] / 2, r[2], r[3])
+    elif mode == "gap":
+        if axis == "h":
+            total_width = sum(r[2] for _, r in indexed)
+            first_left = indexed[0][1][0]
+            last_right = indexed[-1][1][0] + indexed[-1][1][2]
+            total_space = last_right - first_left - total_width
+            gap = total_space / (len(indexed) - 1) if len(indexed) > 1 else 0
+            cursor = first_left
+            for orig_i, r in indexed:
+                result[orig_i] = (cursor, r[1], r[2], r[3])
+                cursor += r[2] + gap
+        else:
+            total_height = sum(r[3] for _, r in indexed)
+            first_top = indexed[0][1][1]
+            last_bottom = indexed[-1][1][1] + indexed[-1][1][3]
+            total_space = last_bottom - first_top - total_height
+            gap = total_space / (len(indexed) - 1) if len(indexed) > 1 else 0
+            cursor = first_top
+            for orig_i, r in indexed:
+                result[orig_i] = (r[0], cursor, r[2], r[3])
+                cursor += r[3] + gap
+    else:
+        raise ValueError(f"mode must be 'center' or 'gap', got {mode!r}")
+
+    return result
+
+
+def stack(rects: list[tuple], axis: str, gap: float = 10.0, anchor: str = "start") -> list[tuple]:
+    """Stack rects sequentially along an axis with a fixed gap.
+
+    axis: 'h' (left-to-right) or 'v' (top-to-bottom).
+    gap: pixels between adjacent edges.
+    anchor: 'start' (first rect stays, others follow) or 'center' (centre the stack).
+    Returns new (x, y, w, h) tuples.
+    """
+    if not rects:
+        return []
+
+    if axis == "h":
+        if anchor == "center":
+            total = sum(r[2] for r in rects) + gap * (len(rects) - 1)
+            cx = sum(r[0] + r[2] / 2 for r in rects) / len(rects)
+            cursor = cx - total / 2
+        else:
+            cursor = rects[0][0]
+        new = []
+        for r in rects:
+            new.append((cursor, r[1], r[2], r[3]))
+            cursor += r[2] + gap
+        return new
+    elif axis == "v":
+        if anchor == "center":
+            total = sum(r[3] for r in rects) + gap * (len(rects) - 1)
+            cy = sum(r[1] + r[3] / 2 for r in rects) / len(rects)
+            cursor = cy - total / 2
+        else:
+            cursor = rects[0][1]
+        new = []
+        for r in rects:
+            new.append((r[0], cursor, r[2], r[3]))
+            cursor += r[3] + gap
+        return new
+    raise ValueError(f"axis must be 'h' or 'v', got {axis!r}")
+
+
+def cmd_align(args):
+    rects = _parse_rects(args.rects)
+    result = align(rects, args.edge)
+    import json
+
+    print(json.dumps({"aligned": [list(r) for r in result], "edge": args.edge}))
+
+
+def cmd_distribute(args):
+    rects = _parse_rects(args.rects)
+    result = distribute(rects, args.axis, args.mode)
+    import json
+
+    print(
+        json.dumps(
+            {"distributed": [list(r) for r in result], "axis": args.axis, "mode": args.mode}
+        )
+    )
+
+
+def cmd_stack(args):
+    rects = _parse_rects(args.rects)
+    result = stack(rects, args.axis, args.gap, args.anchor)
+    import json
+
+    print(json.dumps({"stacked": [list(r) for r in result], "axis": args.axis, "gap": args.gap}))
+
+
+# ---------------------------------------------------------------------------
+# CLI command implementations (point/line/circle operations)
+# ---------------------------------------------------------------------------
+
+
 def cmd_midpoint(args):
     p1 = _parse_point(args.p1)
     p2 = _parse_point(args.p2)
@@ -1745,6 +1925,67 @@ def main():
         help="Perimeter angle in degrees for circle perimeter (default: 0)",
     )
     p.set_defaults(func=cmd_attach)
+
+    # ------------------------------------------------------------------
+    # Alignment and distribution
+    # ------------------------------------------------------------------
+    p = sub.add_parser(
+        "align",
+        help="Align multiple rects along a shared edge or centre. Like Figma's align toolbar.",
+        description=(
+            "Align a list of rects to a common edge or centre line.\n"
+            "  edge: left | right | top | bottom | h-center | v-center"
+        ),
+    )
+    p.add_argument(
+        "--rects",
+        required=True,
+        help="List of rects: '[(x,y,w,h),(x,y,w,h),...]' or 'x,y,w,h x,y,w,h ...'",
+    )
+    p.add_argument(
+        "--edge",
+        required=True,
+        choices=["left", "right", "top", "bottom", "h-center", "v-center"],
+        help="Edge or centre to align to",
+    )
+    p.set_defaults(func=cmd_align)
+
+    p = sub.add_parser(
+        "distribute",
+        help="Space rects evenly along an axis. Equal centroid spacing or equal gap between edges.",
+    )
+    p.add_argument(
+        "--rects",
+        required=True,
+        help="List of rects: '[(x,y,w,h),(x,y,w,h),...]'",
+    )
+    p.add_argument("--axis", required=True, choices=["h", "v"], help="Distribution axis")
+    p.add_argument(
+        "--mode",
+        default="center",
+        choices=["center", "gap"],
+        help="'center' = equal centroid spacing, 'gap' = equal gaps between edges (default: center)",
+    )
+    p.set_defaults(func=cmd_distribute)
+
+    p = sub.add_parser(
+        "stack",
+        help="Stack rects sequentially with a fixed gap. h-stack or v-stack.",
+    )
+    p.add_argument(
+        "--rects",
+        required=True,
+        help="List of rects: '[(x,y,w,h),(x,y,w,h),...]'",
+    )
+    p.add_argument("--axis", required=True, choices=["h", "v"], help="Stack direction")
+    p.add_argument("--gap", type=float, default=10.0, help="Pixels between edges (default: 10)")
+    p.add_argument(
+        "--anchor",
+        default="start",
+        choices=["start", "center"],
+        help="'start' = first rect stays, 'center' = centre the stack (default: start)",
+    )
+    p.set_defaults(func=cmd_stack)
 
     args = parser.parse_args()
     args.func(args)
