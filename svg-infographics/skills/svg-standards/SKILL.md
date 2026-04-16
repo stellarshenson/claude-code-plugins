@@ -247,6 +247,10 @@ Place icons **upper-right** quadrant of graphic (top-level decorative/identity) 
 - **Card-level icon**: inside card at `x = card.x + card.w - 6 - icon_size`, `y = card.y + 6`, clear of accent bar and title text
 - **Override only when**: symmetric grid where centring reads better, process flow where icon anchors start of row, timeline where icon sits on event marker
 
+### Text placement relative to visual elements
+
+Place text AFTER icons, shapes, and decorations are positioned. Compute label coordinates from already-placed element geometry via `geom midpoint`, `geom attach`, or `geom perpendicular` - never eyeball offsets. Prevents overlap between icons and their labels, between card titles and accent bars, between connector labels and arrowheads. The `overlaps` checker catches violations post-hoc but prevention via computed placement is cheaper than iteration.
+
 ## Card Backgrounds
 
 **Square-top, rounded-bottom** path - accent bar sits flush. Bottom corner radius r=3.
