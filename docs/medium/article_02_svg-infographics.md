@@ -30,9 +30,9 @@ read_time: "10 min read"
 
 When you ask an LLM to "draw an SVG infographic", you are asking it to be an SVG *coder*. The model opens an invisible text editor and starts typing XML: `<rect x="50" y="80" width="200" height="120"/>`, then a `<text>` element with a guessed y-offset, then a `<line>` with hand-picked endpoints. Every coordinate is a token prediction. Nothing snaps to anything. There is no grid, no alignment guide, no ruler. The model is drawing blind.
 
-A human designer would never work this way. Open Inkscape, Figma, or Illustrator and you get snapping, smart connectors, alignment guides, a grid overlay, a colour picker bound to a swatch, and a layer panel. You do not type coordinates - you place shapes and the application computes the geometry. The design tool is the difference between a designer and someone writing PostScript by hand.
+A human designer would never work this way. Open any vector design application and you get snapping, smart connectors, alignment guides, a grid overlay, a colour picker bound to a swatch, and a layer panel. You do not type coordinates - you place shapes and the application computes the geometry. The design tool is the difference between a designer and someone writing PostScript by hand.
 
-**The svg-infographics plugin is that design tool - built for AI agents.** It gives the LLM the same affordances a human gets from Inkscape: snap-to-grid placement, computed connectors that route around obstacles, alignment enforcement, theme-bound colours, and a validation panel that refuses broken output. The agent becomes the *designer* - deciding what to show, where cards go, which elements connect - while the tool handles the geometry, the colours, and the quality gate.
+**The svg-infographics plugin is that design tool - built for AI agents.** It gives the LLM the same affordances a human gets from a design application: snap-to-grid placement, computed connectors that route around obstacles, alignment enforcement, theme-bound colours, and a validation panel that refuses broken output. The agent becomes the *designer* - deciding what to show, where cards go, which elements connect - while the tool handles the geometry, the colours, and the quality gate.
 
 The result, across sixty-four production examples, is SVG that ships on the first pass. No hand-editing. No coordinate chasing. No 30-minute correction loops.
 
@@ -44,13 +44,13 @@ Every vector graphics application provides five things that make design possible
 
 **Snap-to-grid.** A designer drags a card and it locks to the nearest grid line. An LLM typing `x="147"` has no grid. The offset drifts element by element, and by the tenth card the rhythm is gone. Fix time: 5-15 minutes per image.
 
-**Smart connectors.** In Inkscape, you drag an arrow from card A to card B and the application routes it, adds the arrowhead, and adjusts when you move a card. An LLM guesses two endpoints, gets the arrowhead angle wrong, and produces a line that ends three pixels short of its target. Fix time: 5-10 minutes per arrow.
+**Smart connectors.** In a design app, you drag an arrow from card A to card B and the application routes it, adds the arrowhead, and adjusts when you move a card. An LLM guesses two endpoints, gets the arrowhead angle wrong, and produces a line that ends three pixels short of its target. Fix time: 5-10 minutes per arrow.
 
 **Colour swatches.** A designer picks from a palette. An LLM types `fill="#000000"` because it is a cheap token. The colour disappears in dark mode, and now you need a full `<style>` block with `@media (prefers-color-scheme: dark)` overrides. Fix time: 10-20 minutes.
 
 **Alignment guides.** Drag three cards and they centre-align automatically. An LLM types three independent `x` values and they are never quite equal. Fix time: 5-10 minutes for each alignment pass.
 
-**A quality gate.** Inkscape shows you the result live. An LLM ships XML and hopes for the best. You open the SVG, see the problems, go back to the model, ask for fixes, get new problems. Fix time: the entire correction loop - 30 to 90 minutes per image.
+**A quality gate.** A design app shows you the result live. An LLM ships XML and hopes for the best. You open the SVG, see the problems, go back to the model, ask for fixes, get new problems. Fix time: the entire correction loop - 30 to 90 minutes per image.
 
 For a six-image article, that is **3-6 hours of hand-editing** that adds no creative value. The plugin replaces it with a single supervised pass through a structured workflow.
 
@@ -62,7 +62,7 @@ The plugin ships as `stellars-claude-code-plugins`, exposing a unified `svg-info
 
 **Design tools (the agent's "drawing canvas"):**
 
-| Tool | Inkscape equivalent |
+| Tool | Design app equivalent |
 |------|-------------------|
 | `primitives` | Shape palette - rect, circle, hexagon, star, arc, cube, cylinder, sphere, plus PCHIP spline curves. Returns exact anchors and paste-ready snippets |
 | `connector` | Smart connector - five routing modes with snap-to-edge, auto-routing around obstacles, arrowhead computation |
@@ -82,7 +82,13 @@ The plugin ships as `stellars-claude-code-plugins`, exposing a unified `svg-info
 | `css` | Inline fills, missing dark-mode overrides, forbidden colours |
 | `collide` | Pairwise connector intersection with near-miss detection |
 
-The agent never types a coordinate. It calls `primitives rect --x 50 --y 80 --w 200 --h 120` and gets the rect plus its named anchors (top-center, right-mid, bottom-left, etc). It calls `connector --mode l-chamfer --src-rect ... --tgt-rect ... --start-dir E --end-dir S` and gets a fully routed path with arrowhead polygons in world coordinates. The tool does the maths. The agent does the design.
+The agent never types a coordinate. It calls `primitives rect --x 50 --y 80 --w 200 --h 120` and gets the rect plus its named anchors (top-center, right-mid, bottom-left, etc). Fourteen shape types are computed this way - from basic rectangles to isometric cubes and PCHIP spline curves:
+
+![Fourteen shape primitives computed by the tool](images_article_02/10-primitives-gallery.svg)
+
+It calls `connector --mode l-chamfer --src-rect ... --tgt-rect ... --start-dir E --end-dir S` and gets a fully routed path with arrowhead polygons in world coordinates. The tool does the maths. The agent does the design.
+
+![Design application features mapped to CLI equivalents](images_article_02/15-design-app-analogy.svg)
 
 ![Twelve shipped tools split into calculators and validators](images_article_02/04-tools-inventory.svg)
 
@@ -98,7 +104,7 @@ The key is Phase 2. The grid exists *before* anything is drawn. Every subsequent
 
 ## Smart connectors that route around obstacles
 
-In Inkscape, you drag a connector between two shapes and it routes around everything in between. The plugin gives the agent the same capability.
+In a desktop design application, you drag a connector between two shapes and it routes around everything in between. The plugin gives the agent the same capability.
 
 The `connector` tool has five routing modes - from simple to complex:
 
@@ -110,7 +116,7 @@ The `connector` tool has five routing modes - from simple to complex:
 
 ![Four point-to-point connector modes](images_article_02/11-connector-modes.svg)
 
-The auto-routing mode is where the "Inkscape for agents" metaphor becomes concrete. Pass `--auto-route --svg scene.svg` and the tool reads the entire SVG, rasterises every shape as an obstacle, runs **grid A*** with turn penalty to find a multi-elbow path that avoids collisions, and returns a chamfered connector with clean stems behind the arrowhead. Container-scoped routing (`--container-id card-A`) clips the route to a specific shape's interior - exactly like Inkscape's "route within group" behaviour.
+The auto-routing mode is where the "design application for agents" metaphor becomes concrete. Pass `--auto-route --svg scene.svg` and the tool reads the entire SVG, rasterises every shape as an obstacle, runs **grid A*** with turn penalty to find a multi-elbow path that avoids collisions, and returns a chamfered connector with clean stems behind the arrowhead. Container-scoped routing (`--container-id card-A`) clips the route to a specific shape's interior - exactly like a "route within group" feature in a desktop design tool.
 
 **Straight-line collapse**: when src and tgt are nearly aligned, both endpoints slide along their edges to a shared coordinate and the L degenerates to a straight segment. The smaller geometry stays put; the larger absorbs the slide. The agent never has to think about this - the tool handles it.
 
@@ -160,7 +166,7 @@ The `charts` subcommand wraps pygal for clean, CSS-themeable SVG charts. The cal
 
 The quality panel's key discipline: every finding is a real defect until the author individually classifies it as **Fixed**, **Accepted** (intentional violation), or **Checker limitation** (tool cannot resolve). No bulk dismissals. The default is fix.
 
-This matters because LLMs, given the choice, dismiss every warning. The fail-first rule inverts the default: the checker is right unless the author names which of three exceptions applies. Exactly like Inkscape's preflight panel refusing to export a PDF with missing fonts - the tool protects the designer from shipping broken work.
+This matters because LLMs, given the choice, dismiss every warning. The fail-first rule inverts the default: the checker is right unless the author names which of three exceptions applies. Exactly like a preflight panel refusing to export a PDF with missing fonts - the tool protects the designer from shipping broken work.
 
 ![Fail-first validation](images_article_02/05-failfirst-flow.svg)
 
@@ -184,6 +190,8 @@ The plugin's SVGs carry their own documentation. Every file starts with a struct
 
 This means the graphics are **reworkable long after creation**. An agent - or a human - can open the SVG months later, read the comment block, understand the intent, and update the content without reverse-engineering the layout. The file is its own specification. That is the difference between a graphic and a graphic asset.
 
+![SVG files carry intent, CSS classes, and named elements for future reworking](images_article_02/17-self-documenting.svg)
+
 ## Built on algorithms, not heuristics
 
 The plugin does not use prompt tricks. Every capability is backed by a real algorithm:
@@ -196,7 +204,9 @@ The plugin does not use prompt tricks. Every capability is backed by a real algo
 - **Connected-component labelling** on binary obstacle masks for free-island detection
 - **Shapely geometric operations** for pairwise connector collision detection with tolerance buffers
 
-These are the same algorithms that power Inkscape's snapping engine, Figma's auto-layout, and professional EDA routers. The plugin brings them to the agent's toolkit as CLI calls.
+These are the same algorithms that power design application snapping engines, auto-layout systems, and professional EDA routers. The plugin brings them to the agent's toolkit as CLI calls.
+
+![Algorithm stack powering the plugin](images_article_02/16-algorithm-stack.svg)
 
 ## Limitations
 
