@@ -132,13 +132,9 @@ def _geometry_signatures(path: Path) -> tuple[dict[str, int], dict[str, list[tup
         if tag == "path":
             sig = el.attrib.get("d", "")[:80]
         elif tag in ("line",):
-            sig = ",".join(
-                el.attrib.get(k, "") for k in ("x1", "y1", "x2", "y2")
-            )
+            sig = ",".join(el.attrib.get(k, "") for k in ("x1", "y1", "x2", "y2"))
         elif tag == "rect":
-            sig = ",".join(
-                el.attrib.get(k, "") for k in ("x", "y", "width", "height")
-            )
+            sig = ",".join(el.attrib.get(k, "") for k in ("x", "y", "width", "height"))
         elif tag == "circle":
             sig = ",".join(el.attrib.get(k, "") for k in ("cx", "cy", "r"))
         elif tag == "ellipse":
@@ -151,9 +147,7 @@ def _geometry_signatures(path: Path) -> tuple[dict[str, int], dict[str, list[tup
     return counts, sigs
 
 
-def compare_geometry(
-    original: Path, modified: Path
-) -> tuple[int, list[str]]:
+def compare_geometry(original: Path, modified: Path) -> tuple[int, list[str]]:
     """Compare geometry elements between `original` and `modified`.
 
     Enforces: every geometry element (by signature) present in `original`
@@ -173,8 +167,7 @@ def compare_geometry(
         mc = m_counts.get(tag, 0)
         if mc < oc:
             msgs.append(
-                f"ERROR: {modified.name}: {tag} count dropped "
-                f"{oc} → {mc} (missing {oc - mc})"
+                f"ERROR: {modified.name}: {tag} count dropped {oc} → {mc} (missing {oc - mc})"
             )
             errors += 1
             # Point at specific missing signatures
