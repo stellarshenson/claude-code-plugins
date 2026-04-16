@@ -2448,9 +2448,9 @@ class TestPluginStructure:
         assert (p / "skills" / "workflow" / "WORKFLOW.md").is_file()
         for cmd in ("create", "fix-style", "fix-layout", "validate", "theme"):
             assert (p / "commands" / f"{cmd}.md").is_file(), f"missing command {cmd}"
-        for tool in ("calc_connector.py", "check_overlaps.py", "check_alignment.py",
-                     "check_contrast.py", "check_connectors.py"):
-            assert (p / "tools" / tool).is_file(), f"missing tool {tool}"
+        # Plugin uses the svg-infographics CLI binary from the PyPI package,
+        # not standalone tool scripts - tools/ folder was removed.
+        assert not (p / "tools").exists(), "plugin tools/ folder should not exist; use CLI instead"
 
         # plugin.json is valid JSON with expected fields
         data = json.loads((p / ".claude-plugin" / "plugin.json").read_text())

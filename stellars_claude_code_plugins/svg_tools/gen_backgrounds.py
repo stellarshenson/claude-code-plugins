@@ -134,6 +134,335 @@ def _right_skewed(rng, loc, scale, skew=1.5):
 
 
 # ---------------------------------------------------------------------------
+# Space colonization engine (Runions et al. 2007) - shared by circuit & neural
+# ---------------------------------------------------------------------------
+
+
+def _idw_density(x, y, w, h, grad_pts):
+    """Inverse distance weighted density at (x,y). grad_pts: [(fx,fy,weight),...]"""
+    if not grad_pts:
+        return 1.0
+    total_w, total = 0.0, 0.0
+    for fx, fy, wt in grad_pts:
+        px, py = fx * w, fy * h
+        d2 = (px - x) ** 2 + (py - y) ** 2
+        iw = 1.0 / max(1.0, d2)
+        total_w += iw
+        total += iw * wt
+    return total / max(1e-6, total_w)
+
+
+def _snap_direction_45(dx, dy):
+    """Snap (dx,dy) unit vector to nearest 45-degree angle (0, 45, 90, ...)."""
+    mag = math.hypot(dx, dy)
+    if mag < 1e-6:
+        return 1.0, 0.0
+    angle = math.atan2(dy, dx)
+    snap = round(angle / (math.pi / 4)) * (math.pi / 4)
+    return math.cos(snap), math.sin(snap)
+
+
+def _space_colonize(
+    w, h, rng, seeds, attractors,
+    reach, step, branch_prob,
+    merge_radius=0, snap_grid=0, use_occupancy=False,
+    quantize_45=False, max_iterations=40, density_fn=None,
+):
+    """Space colonization tree growth toward attractor goals.
+
+    Args:
+        seeds: [(x,y,dx,dy)] - starting points with initial directions
+        attractors: [(x,y)] - goal points traces grow toward (consumed on arrival)
+        reach: max distance a tip senses attractors
+        step: growth distance per iteration (should be large for long traces)
+        branch_prob: fork probability per step
+        merge_radius: distance to merge into existing chain (0=disabled)
+        snap_grid: >0 snaps positions to grid (circuit-style)
+        use_occupancy: True enables collision avoidance (circuit)
+        quantize_45: True snaps growth direction to nearest 45° (PCB-like)
+        density_fn: (x,y) -> 0-1, boosts branching in dense areas,
+                    terminates in sparse areas
+
+    Returns: (nodes, edges) where
+        nodes: [[x, y, kind, depth], ...]  kind in {root, junction, terminal}
+        edges: [(src_idx, dst_idx, depth), ...]  parent-child tree
+    """
+    nodes = []
+    edges = []
+    attractor_live = list(attractors)
+
+    def _sn(v):
+        return round(v / snap_grid) * snap_grid if snap_grid > 0 else v
+
+    occ = set() if use_occupancy else None
+    occ_grid = max(snap_grid, 4) if use_occupancy else 6
+
+    def _mark_occ(x1, y1, x2, y2):
+        if occ is None:
+            return
+        dist = math.hypot(x2 - x1, y2 - y1)
+        steps = max(2, int(dist / occ_grid) + 1)
+        for i in range(steps + 1):
+            t = i / steps
+            gx = int(round((x1 + t * (x2 - x1)) / occ_grid))
+            gy = int(round((y1 + t * (y2 - y1)) / occ_grid))
+            occ.add((gx, gy))
+
+    def _is_clear(x1, y1, x2, y2):
+        """Check path is clear. Skip first cell (we grow FROM it - already marked)."""
+        if occ is None:
+            return True
+        dist = math.hypot(x2 - x1, y2 - y1)
+        steps = max(2, int(dist / occ_grid) + 1)
+        for i in range(1, steps + 1):
+            t = i / steps
+            gx = int(round((x1 + t * (x2 - x1)) / occ_grid))
+            gy = int(round((y1 + t * (y2 - y1)) / occ_grid))
+            if (gx, gy) in occ:
+                return False
+        return True
+
+    margin = step * 0.3
+    _att_grid = max(reach * 0.5, 20)
+    _att_map = {}
+
+    def _index_attractors():
+        _att_map.clear()
+        for ai, (ax, ay) in enumerate(attractor_live):
+            gx, gy = int(ax / _att_grid), int(ay / _att_grid)
+            _att_map.setdefault((gx, gy), set()).add(ai)
+
+    def _find_nearby(tx, ty):
+        gx, gy = int(tx / _att_grid), int(ty / _att_grid)
+        rc = int(reach / _att_grid) + 1
+        result = []
+        for ddx in range(-rc, rc + 1):
+            for ddy in range(-rc, rc + 1):
+                for ai in _att_map.get((gx + ddx, gy + ddy), ()):
+                    ax, ay = attractor_live[ai]
+                    d = math.hypot(ax - tx, ay - ty)
+                    if d < reach:
+                        result.append((ai, ax, ay, d))
+        return result
+
+    _index_attractors()
+
+    frontier = []
+    for sx, sy, dx, dy in seeds:
+        idx = len(nodes)
+        nodes.append([_sn(sx), _sn(sy), "root", 0])
+        # (tip_idx, pref_dx, pref_dy, seed_dx, seed_dy)
+        frontier.append((idx, dx, dy, dx, dy))
+
+    # Spatial index of placed nodes for merge detection
+    _node_grid = max(step * 0.75, 6)
+    _node_map = {}
+
+    def _add_node_index(idx):
+        nx_, ny_ = nodes[idx][0], nodes[idx][1]
+        gx, gy = int(nx_ / _node_grid), int(ny_ / _node_grid)
+        _node_map.setdefault((gx, gy), []).append(idx)
+
+    def _find_merge_target(nx_, ny_, exclude_idx, radius):
+        gx, gy = int(nx_ / _node_grid), int(ny_ / _node_grid)
+        rc = int(radius / _node_grid) + 1
+        best = None
+        best_d = radius
+        for ddx in range(-rc, rc + 1):
+            for ddy in range(-rc, rc + 1):
+                for ni in _node_map.get((gx + ddx, gy + ddy), ()):
+                    if ni == exclude_idx:
+                        continue
+                    # Don't merge into root seeds (would short-circuit bus groups)
+                    if nodes[ni][2] == "root":
+                        continue
+                    dx_ = nodes[ni][0] - nx_
+                    dy_ = nodes[ni][1] - ny_
+                    dd = math.hypot(dx_, dy_)
+                    if dd < best_d:
+                        best_d = dd
+                        best = ni
+        return best
+
+    # Index initial seed nodes
+    for idx, *_ in frontier:
+        _add_node_index(idx)
+
+    for _it in range(max_iterations):
+        if not frontier or not attractor_live:
+            break
+        new_frontier = []
+        for tip_idx, pref_dx, pref_dy, seed_dx, seed_dy in frontier:
+            tx, ty = nodes[tip_idx][0], nodes[tip_idx][1]
+            tip_depth = nodes[tip_idx][3]
+            local_d = density_fn(tx, ty) if density_fn else 1.0
+
+            nearby = _find_nearby(tx, ty)
+            if not nearby:
+                nodes[tip_idx][2] = "terminal"
+                continue
+
+            # Density-driven termination (past depth 2): softer contrast
+            # At d=0.15 -> 51% terminate, at d=1.0 -> 0%
+            if tip_depth > 2 and rng.random() > local_d * 0.75 + 0.25:
+                nodes[tip_idx][2] = "terminal"
+                continue
+
+            # No hooks: forward filter allows up to ~120° cone from seed
+            # and ~150° cone from pref. Rejects U-turns (> 135° from seed).
+            forward = []
+            for ai, ax, ay, d in nearby:
+                # Normalized forward-dot (cosine of angle)
+                inv_d = 1.0 / max(1.0, d)
+                fdot_seed = ((ax - tx) * seed_dx + (ay - ty) * seed_dy) * inv_d
+                fdot_pref = ((ax - tx) * pref_dx + (ay - ty) * pref_dy) * inv_d
+                # cos(120°) = -0.5, cos(150°) = -0.87
+                if fdot_seed > -0.5 and fdot_pref > -0.87:
+                    forward.append((ai, ax, ay, d))
+            if forward:
+                nearby = forward
+            else:
+                nodes[tip_idx][2] = "terminal"
+                continue
+
+            # Average direction toward forward attractors
+            avg_dx, avg_dy = 0.0, 0.0
+            for _, ax, ay, d in nearby:
+                wa = 1.0 / max(1.0, d)
+                avg_dx += (ax - tx) * wa
+                avg_dy += (ay - ty) * wa
+            mag = math.hypot(avg_dx, avg_dy)
+            if mag < 0.001:
+                avg_dx, avg_dy = pref_dx, pref_dy
+            else:
+                avg_dx, avg_dy = avg_dx / mag, avg_dy / mag
+
+            # Direction blend: 20% seed dir + 40% prev dir + 40% attractor dir
+            # Mild seed anchor prevents drift; strong prev prevents oscillation
+            avg_dx = 0.2 * seed_dx + 0.4 * pref_dx + 0.4 * avg_dx
+            avg_dy = 0.2 * seed_dy + 0.4 * pref_dy + 0.4 * avg_dy
+            mag = math.hypot(avg_dx, avg_dy)
+            if mag > 1e-6:
+                avg_dx, avg_dy = avg_dx / mag, avg_dy / mag
+
+            # 45° quantization for PCB-like paths
+            if quantize_45:
+                avg_dx, avg_dy = _snap_direction_45(avg_dx, avg_dy)
+
+            nx = _sn(tx + avg_dx * step)
+            ny = _sn(ty + avg_dy * step)
+            nx = max(margin, min(w - margin, nx))
+            ny = max(margin, min(h - margin, ny))
+
+            # Check if new position should MERGE into an existing node
+            merge_to = None
+            if merge_radius > 0:
+                merge_to = _find_merge_target(nx, ny, tip_idx, merge_radius)
+            if merge_to is not None:
+                # Create merge edge to existing node; this tip stops growing
+                edges.append((tip_idx, merge_to, tip_depth + 1))
+                nodes[tip_idx][2] = "junction"
+                continue
+
+            if not _is_clear(tx, ty, nx, ny):
+                nodes[tip_idx][2] = "terminal"
+                continue
+
+            new_depth = tip_depth + 1
+            new_idx = len(nodes)
+            nodes.append([nx, ny, "junction", new_depth])
+            edges.append((tip_idx, new_idx, new_depth))
+            _mark_occ(tx, ty, nx, ny)
+            _add_node_index(new_idx)
+
+            consumed = set()
+            for ai, _ax, _ay, d in nearby:
+                if d < step * 1.5:
+                    consumed.add(ai)
+            if consumed:
+                attractor_live = [a for i, a in enumerate(attractor_live) if i not in consumed]
+                _index_attractors()
+
+            new_frontier.append((new_idx, avg_dx, avg_dy, seed_dx, seed_dy))
+
+            # Density-boosted branching
+            bp = branch_prob * (0.2 + local_d * 0.8)
+            if rng.random() < bp:
+                if quantize_45:
+                    turn = rng.choice([math.pi / 4, -math.pi / 4, math.pi / 2, -math.pi / 2])
+                else:
+                    turn = rng.uniform(math.pi / 3, 2 * math.pi / 3) * rng.choice([-1, 1])
+                c, s = math.cos(turn), math.sin(turn)
+                bdx = avg_dx * c - avg_dy * s
+                bdy = avg_dx * s + avg_dy * c
+                if quantize_45:
+                    bdx, bdy = _snap_direction_45(bdx, bdy)
+                # Branch gets its OWN seed direction (the branch direction)
+                # This allows perpendicular branches to grow outward
+                new_frontier.append((new_idx, bdx, bdy, bdx, bdy))
+
+        if len(new_frontier) > 120:
+            rng.shuffle(new_frontier)
+            for tip_idx, _, _, _, _ in new_frontier[120:]:
+                nodes[tip_idx][2] = "terminal"
+            new_frontier = new_frontier[:120]
+        frontier = new_frontier
+
+    for tip_idx, _, _, _, _ in frontier:
+        if nodes[tip_idx][2] == "junction":
+            nodes[tip_idx][2] = "terminal"
+
+    return nodes, edges
+
+
+def _chain_tree(nodes, edges):
+    """Walk tree from roots/junctions to terminals, collecting continuous chains.
+
+    Returns list of (node_indices, max_depth). Branch points break chains so
+    each chain is a single continuous polyline.
+    """
+    adj = {}
+    for src, dst, _dep in edges:
+        adj.setdefault(src, []).append(dst)
+        adj.setdefault(dst, []).append(src)
+
+    degree = {i: len(adj.get(i, [])) for i in range(len(nodes))}
+    # Chain endpoints: degree != 2 (roots, branches, terminals)
+    endpoints = [i for i in range(len(nodes)) if degree.get(i, 0) != 2]
+
+    visited_edges = set()
+    chains = []
+
+    def _edge_key(a, b):
+        return (min(a, b), max(a, b))
+
+    # Walk chains from each endpoint
+    for start in endpoints:
+        for nxt in adj.get(start, []):
+            ek = _edge_key(start, nxt)
+            if ek in visited_edges:
+                continue
+            chain = [start]
+            cur, prev = nxt, start
+            visited_edges.add(ek)
+            chain.append(cur)
+            # Continue until we hit another endpoint
+            while degree.get(cur, 0) == 2:
+                neighbors = adj[cur]
+                nn = neighbors[0] if neighbors[0] != prev else neighbors[1]
+                ek2 = _edge_key(cur, nn)
+                if ek2 in visited_edges:
+                    break
+                visited_edges.add(ek2)
+                prev, cur = cur, nn
+                chain.append(cur)
+            if len(chain) >= 2:
+                max_d = max(nodes[i][3] for i in chain)
+                chains.append((chain, max_d))
+    return chains
+
+
+# ---------------------------------------------------------------------------
 # Circuit: bus-group traces with configurable bend angle, T-junction branching.
 # Reference: circuit.jpg - parallel bus runs from edges, 45-deg diagonal bends
 # creating staircase patterns, filled-circle pads at endpoints and junctions,
@@ -182,6 +511,221 @@ def _gen_circuit(
             "top-down", "bottom-up", "center-out", "edges-in".
         subdivision_rounds: Number of subdivision rounds 0-3 (default 2).
     """
+    d = _DENSITY[density]
+    factor = d["factor"]
+    branch_p = branch_prob if branch_prob is not None else d["branch_p"]
+
+    # --- Space colonization with 45° quantization (PCB-like) ---
+    grad_pts = density_points
+    if grad_pts is None and density_gradient:
+        _presets = {
+            "left-to-right": [(0, 0.5, 0.15), (1, 0.5, 1.0)],
+            "right-to-left": [(0, 0.5, 1.0), (1, 0.5, 0.15)],
+            "top-down": [(0.5, 0, 1.0), (0.5, 1, 0.15)],
+            "bottom-up": [(0.5, 0, 0.15), (0.5, 1, 1.0)],
+            "center-out": [(0.5, 0.5, 1.0), (0, 0, 0.1), (1, 0, 0.1), (0, 1, 0.1), (1, 1, 0.1)],
+            "edges-in": [(0.5, 0.5, 0.1), (0, 0, 1.0), (1, 0, 1.0), (0, 1, 1.0), (1, 1, 1.0)],
+        }
+        grad_pts = _presets.get(density_gradient)
+
+    def density_fn(x, y):
+        return _idw_density(x, y, w, h, grad_pts)
+
+    grid = 4
+    # Origin directions -> seed directions
+    _angle_map = {"down": [0], "up": [180], "right": [270], "left": [90], "radial": [0, 180]}
+    origin_angles = _angle_map.get(direction, [0, 180]) if origin_directions is None else origin_directions
+    _cardinal = {0: (0, 1), 90: (-1, 0), 180: (0, -1), 270: (1, 0)}
+
+    # Seeds: bus groups along canvas edges with wider spacing
+    bus_gap = grid * 6  # 24px spacing between parallel buses (was 12)
+    n_bus_groups = max(3, int(6 * factor))
+    seeds = []
+    for _ in range(n_bus_groups):
+        angle = origin_angles[rng.randint(0, len(origin_angles) - 1)] % 360
+        snapped = round(angle / 90) * 90 % 360
+        pdx, pdy = _cardinal.get(snapped, (0, 1))
+        n_parallel = rng.randint(2, max(3, int(3 * min(factor, 2.0))))
+        if snapped in (0, 180):
+            base = rng.uniform(w * 0.05, w * 0.75)
+            y_edge = 0 if snapped == 0 else h
+            for ti in range(n_parallel):
+                seeds.append((base + ti * bus_gap, y_edge, pdx, pdy))
+        else:
+            base = rng.uniform(h * 0.05, h * 0.75)
+            x_edge = 0 if snapped == 270 else w
+            for ti in range(n_parallel):
+                seeds.append((x_edge, base + ti * bus_gap, pdx, pdy))
+
+    # Attractor pads weighted by density gradient
+    n_attractors = max(30, int(90 * factor))
+    attractors = []
+    for _ in range(n_attractors * 4):
+        ax = rng.uniform(w * 0.05, w * 0.95)
+        ay = rng.uniform(h * 0.05, h * 0.95)
+        if rng.random() < density_fn(ax, ay):
+            attractors.append((ax, ay))
+        if len(attractors) >= n_attractors:
+            break
+
+    # Grow tree with 45° quantized extensions - more branching, tight merges
+    step = min(w, h) * 0.12
+    reach = max(w, h) * 0.5
+    nodes, edges_t = _space_colonize(
+        w, h, rng, seeds, attractors,
+        reach=reach, step=step, branch_prob=branch_p * 1.3,
+        merge_radius=step * 0.5,  # only VERY close merges (no bus-eating)
+        snap_grid=grid,
+        use_occupancy=True, quantize_45=True,
+        max_iterations=35,
+        density_fn=density_fn if grad_pts else None,
+    )
+
+    # Chain tree into continuous polylines
+    chains = _chain_tree(nodes, edges_t)
+
+    # Render as PCB traces: polylines + pads
+    elements = []
+    max_depth = max((n[3] for n in nodes), default=1) or 1
+
+    # Chamfer 90-degree corners into 45-degree diagonal bends (PCB signature)
+    def _chamfer_corners(pts, chamfer=6.0):
+        """Replace sharp 90° corners with 45° diagonal chamfer.
+
+        Detects direction change >= 80°. Backs off by `chamfer` on each side
+        of the corner and connects with a diagonal segment.
+        """
+        if len(pts) < 3:
+            return pts
+        out = [pts[0]]
+        for i in range(1, len(pts) - 1):
+            px, py = pts[i - 1]
+            cx, cy = pts[i]
+            nx, ny = pts[i + 1]
+            dx1, dy1 = cx - px, cy - py
+            dx2, dy2 = nx - cx, ny - cy
+            l1 = math.hypot(dx1, dy1)
+            l2 = math.hypot(dx2, dy2)
+            # Skip chamfer for short segments (prevents hook artifacts)
+            if l1 < chamfer * 2.5 or l2 < chamfer * 2.5:
+                out.append((cx, cy))
+                continue
+            # Angle between segments - check if it's a near-90° turn
+            cross = dx1 * dy2 - dy1 * dx2
+            dot = dx1 * dx2 + dy1 * dy2
+            angle = abs(math.atan2(abs(cross), dot))
+            # Insert chamfer only if turn is near-orthogonal (70°-110°)
+            if math.pi * 0.4 < angle < math.pi * 0.6:
+                ch = min(chamfer, l1 * 0.4, l2 * 0.4)
+                # Back off from corner toward previous point
+                ax = cx - dx1 / l1 * ch
+                ay = cy - dy1 / l1 * ch
+                # Forward off from corner toward next point
+                bx = cx + dx2 / l2 * ch
+                by = cy + dy2 / l2 * ch
+                out.append((ax, ay))
+                out.append((bx, by))
+            else:
+                out.append((cx, cy))
+        out.append(pts[-1])
+        return out
+
+    for chain, _chain_max_depth in chains:
+        pts = [(nodes[i][0], nodes[i][1]) for i in chain]
+        if len(pts) < 2:
+            continue
+        # Apply 45° chamfer at orthogonal corners
+        pts = _chamfer_corners(pts, chamfer=6.0)
+        # Depth-based taper: root thick, terminals thin
+        root_depth = nodes[chain[0]][3]
+        thickness_factor = 1.0 - min(0.7, root_depth / max_depth * 0.65)
+        sw = _right_skewed(rng, stroke_width * thickness_factor, stroke_std, skew=1.8)
+        d_str = f"M{pts[0][0]:.1f},{pts[0][1]:.1f}"
+        for px, py in pts[1:]:
+            d_str += f" L{px:.1f},{py:.1f}"
+        elements.append(
+            BackgroundElement(
+                kind="path",
+                svg=f'<path d="{d_str}" stroke-width="{sw:.1f}"/>',
+                role="trace",
+            )
+        )
+
+    # Ring pads at terminals and junctions (degree != 2)
+    adj = {}
+    for src, dst, _ in edges_t:
+        adj.setdefault(src, []).append(dst)
+        adj.setdefault(dst, []).append(src)
+    edge_margin = min(w, h) * 0.04
+    # Collect all trace segments for pad collision check
+    all_segments = []
+    for src, dst, _ in edges_t:
+        all_segments.append((nodes[src][0], nodes[src][1], nodes[dst][0], nodes[dst][1], src, dst))
+
+    def _pad_collides(cx, cy, pr, own_idx):
+        """Check if pad at (cx,cy) with radius pr overlaps any trace segment
+        that's NOT incident to own_idx."""
+        for x1, y1, x2, y2, s, d in all_segments:
+            if s == own_idx or d == own_idx:
+                continue
+            # Distance from (cx,cy) to segment (x1,y1)-(x2,y2)
+            dx, dy = x2 - x1, y2 - y1
+            seg_len2 = dx * dx + dy * dy
+            if seg_len2 < 1:
+                continue
+            t = max(0.0, min(1.0, ((cx - x1) * dx + (cy - y1) * dy) / seg_len2))
+            px = x1 + t * dx
+            py = y1 + t * dy
+            if math.hypot(cx - px, cy - py) < pr + 1.5:
+                return True
+        return False
+
+    for i, n in enumerate(nodes):
+        deg = len(adj.get(i, []))
+        if deg == 0:
+            continue
+        # Skip pads at root seeds (canvas edge entry points)
+        if n[2] == "root":
+            continue
+        # Skip pads near canvas border
+        if (n[0] < edge_margin or n[0] > w - edge_margin
+                or n[1] < edge_margin or n[1] > h - edge_margin):
+            continue
+        # Only pads at terminals (deg=1) and junctions (deg>=3)
+        if not (deg == 1 or deg >= 3):
+            continue
+        pr = _right_skewed(rng, pad_radius, pad_std, skew=1.4)
+        # Skip if pad would cover another trace (short-circuit prevention)
+        if _pad_collides(n[0], n[1], pr, i):
+            continue
+        elements.append(
+            BackgroundElement(
+                kind="circle",
+                svg=f'<circle cx="{n[0]:.1f}" cy="{n[1]:.1f}" r="{pr:.1f}"/>',
+                role="pad",
+            )
+        )
+        elements.append(
+            BackgroundElement(
+                kind="circle",
+                svg=f'<circle cx="{n[0]:.1f}" cy="{n[1]:.1f}" r="{pr * 0.4:.1f}" style="fill:#0a1a24"/>',
+                role="pad-hole",
+            )
+        )
+
+    return elements
+
+
+def _gen_circuit_legacy(
+    w, h, density, direction, rng,
+    bend_angle=45, origin_directions=None,
+    stroke_width=2.5, stroke_std=0.4,
+    pad_radius=4.5, pad_std=1.0,
+    branch_prob=None, merge_prob=0.15,
+    density_points=None, density_gradient=None,
+    subdivision_rounds=2,
+):
+    """Legacy v14 grid-annealing circuit. Kept for reference."""
     d = _DENSITY[density]
     factor = d["factor"]
     branch_p = branch_prob if branch_prob is not None else d["branch_p"]
@@ -603,11 +1147,11 @@ def _gen_neural(
     """
     d = _DENSITY[density]
     factor = d["factor"]
-    elements = []
+    branch_p = d["branch_p"]
 
     # Density gradient for attractor distribution
-    _grad_pts = density_points
-    if _grad_pts is None and density_gradient:
+    grad_pts = density_points
+    if grad_pts is None and density_gradient:
         _presets = {
             "left-to-right": [(0, 0.5, 0.15), (1, 0.5, 1.0)],
             "right-to-left": [(0, 0.5, 1.0), (1, 0.5, 0.15)],
@@ -616,138 +1160,124 @@ def _gen_neural(
             "center-out": [(0.5, 0.5, 1.0), (0, 0, 0.1), (1, 0, 0.1), (0, 1, 0.1), (1, 1, 0.1)],
             "edges-in": [(0.5, 0.5, 0.1), (0, 0, 1.0), (1, 0, 1.0), (0, 1, 1.0), (1, 1, 1.0)],
         }
-        _grad_pts = _presets.get(density_gradient)
+        grad_pts = _presets.get(density_gradient)
 
-    def _density_at(x, y):
-        if not _grad_pts:
-            return 1.0
-        xf, yf = x / max(1, w), y / max(1, h)
-        tw_sum, tv_sum = 0.0, 0.0
-        for px, py, pw in _grad_pts:
-            dist = max(0.01, math.hypot(xf - px, yf - py))
-            inv_d = 1.0 / (dist * dist)
-            tw_sum += inv_d
-            tv_sum += inv_d * pw
-        return min(1.0, max(0.0, tv_sum / tw_sum))
+    def density_fn(x, y):
+        return _idw_density(x, y, w, h, grad_pts)
 
-    # Scatter attraction points - weighted by density gradient
-    n_attractors = max(30, int(80 * factor))
+    # Many seeds along origin edge with inward-pointing directions
+    n_seeds = max(6, int(12 * factor))
+    seeds = []
+    if direction in ("down", "up"):
+        y_edge = 0 if direction == "down" else h
+        pdy = 1 if direction == "down" else -1
+        spacing = (w * 0.9) / max(1, n_seeds - 1)
+        for si in range(n_seeds):
+            sx = w * 0.05 + si * spacing + rng.gauss(0, spacing * 0.15)
+            seeds.append((max(2, min(w - 2, sx)), y_edge, 0, pdy))
+    elif direction in ("right", "left"):
+        x_edge = 0 if direction == "right" else w
+        pdx = 1 if direction == "right" else -1
+        spacing = (h * 0.9) / max(1, n_seeds - 1)
+        for si in range(n_seeds):
+            sy = h * 0.05 + si * spacing + rng.gauss(0, spacing * 0.15)
+            seeds.append((x_edge, max(2, min(h - 2, sy)), pdx, 0))
+    else:
+        # radial: seeds along ALL four edges, each pointing inward
+        per_edge = max(3, n_seeds // 4)
+        sp_w = w * 0.9 / per_edge
+        sp_h = h * 0.9 / per_edge
+        for i in range(per_edge):
+            seeds.append((w * 0.05 + (i + 0.5) * sp_w, 0, 0, 1))       # top -> down
+            seeds.append((w * 0.05 + (i + 0.5) * sp_w, h, 0, -1))      # bottom -> up
+            seeds.append((0, h * 0.05 + (i + 0.5) * sp_h, 1, 0))       # left -> right
+            seeds.append((w, h * 0.05 + (i + 0.5) * sp_h, -1, 0))      # right -> left
+
+    # Attractors placed across canvas, weighted by density
+    n_attractors = max(40, int(100 * factor))
     attractors = []
-    attempts = n_attractors * 3
-    for _ in range(attempts):
+    for _ in range(n_attractors * 4):
         ax = rng.uniform(w * 0.03, w * 0.97)
         ay = rng.uniform(h * 0.03, h * 0.97)
-        if rng.random() < _density_at(ax, ay):
+        if rng.random() < density_fn(ax, ay):
             attractors.append((ax, ay))
         if len(attractors) >= n_attractors:
             break
 
-    # Seed roots based on direction
-    n_seeds = max(2, int(5 * factor))
-    seeds = []
-    for _ in range(n_seeds):
-        if direction == "down":
-            seeds.append((rng.uniform(w * 0.1, w * 0.9), h * 0.02))
-        elif direction == "up":
-            seeds.append((rng.uniform(w * 0.1, w * 0.9), h * 0.98))
-        elif direction == "right":
-            seeds.append((w * 0.02, rng.uniform(h * 0.1, h * 0.9)))
-        elif direction == "left":
-            seeds.append((w * 0.98, rng.uniform(h * 0.1, h * 0.9)))
-        else:
-            seeds.append((w * 0.5 + rng.gauss(0, w * 0.15), h * 0.5 + rng.gauss(0, h * 0.15)))
+    # Space colonization: small step -> hair-like curves through many points
+    # merge_radius=0 so dendrites don't fuse (neural has rare merges)
+    step = max(w, h) * 0.022
+    reach = max(w, h) * 0.4
+    nodes, edges_t = _space_colonize(
+        w, h, rng, seeds, attractors,
+        reach=reach, step=step, branch_prob=branch_p * 0.4,
+        merge_radius=0, snap_grid=0,
+        use_occupancy=False, quantize_45=False,
+        max_iterations=60,
+        density_fn=density_fn if grad_pts else None,
+    )
 
-    # Root stroke width: thick trunks at origin, tapering outward
-    root_sw = 3.0 * min(2.0, factor + 0.5)
-    reach = max(w, h) * 0.35  # wider reach so branches extend further
-    step = max(w, h) * 0.018  # slightly smaller steps = smoother curves
-    branches = []  # list of (points, stroke_width)
-    all_pts = []  # shared list of ALL placed points (for repulsion)
+    chains = _chain_tree(nodes, edges_t)
 
-    for sx, sy in seeds:
-        # Initial direction: from seed toward canvas center
-        cx, cy = w / 2, h / 2
-        init_dx = cx - sx
-        init_dy = cy - sy
-        init_dist = math.hypot(init_dx, init_dy)
-        if init_dist > 1:
-            init_dx /= init_dist
-            init_dy /= init_dist
-        else:
-            init_dx, init_dy = 0, 1
-        _neural_grow(
-            sx,
-            sy,
-            list(attractors),
-            w,
-            h,
-            reach,
-            step,
-            branches,
-            rng,
-            depth=0,
-            tw=root_sw,
-            parent_dx=init_dx,
-            parent_dy=init_dy,
-            all_pts=all_pts,
-            attract_repel=attract_repel,
-            density_fn=_density_at if _grad_pts else None,
-        )
+    # Render: smooth curves with aggressive depth-based taper
+    # Thick parent trunks (4-6px) -> hair-like terminal dendrites (0.3-0.5px)
+    elements = []
+    max_depth = max((n[3] for n in nodes), default=1) or 1
+    root_sw = 4.5 * min(2.0, factor + 0.5)
 
-    # Track branch tips for merge pass
-    tips = []
-    for pts, tw in branches:
+    # Adjacency for degree lookup
+    adj = {}
+    for src, dst, _ in edges_t:
+        adj.setdefault(src, []).append(dst)
+        adj.setdefault(dst, []).append(src)
+
+    for chain, _chain_max_depth in chains:
+        pts = [(nodes[i][0], nodes[i][1]) for i in chain]
         if len(pts) < 2:
             continue
-        d_str = f"M{pts[0][0]:.1f},{pts[0][1]:.1f}"
-        for i in range(1, len(pts)):
-            px, py = pts[i]
-            d_str += f" L{px:.1f},{py:.1f}"
+        root_depth = nodes[chain[0]][3]
+        # Depth-based taper (thinner deeper)
+        taper = (1.0 - min(0.95, root_depth / max(1, max_depth) * 0.95)) ** 2.2
+        # Gamma-like thickness: most chains thin, rare thick trunks
+        # Gamma(shape=1.3, scale=0.35) -> mean ~0.45, long right tail
+        gamma_mult = rng.gammavariate(1.3, 0.35)
+        tw = max(0.2, root_sw * taper * gamma_mult)
+        # Smooth quadratic bezier through chain points (organic curves)
+        if len(pts) == 2:
+            d_str = f"M{pts[0][0]:.1f},{pts[0][1]:.1f} L{pts[1][0]:.1f},{pts[1][1]:.1f}"
+        else:
+            d_str = f"M{pts[0][0]:.1f},{pts[0][1]:.1f}"
+            for i in range(1, len(pts) - 1):
+                # Midpoint between pts[i] and pts[i+1]
+                mx = (pts[i][0] + pts[i + 1][0]) / 2
+                my = (pts[i][1] + pts[i + 1][1]) / 2
+                d_str += f" Q{pts[i][0]:.1f},{pts[i][1]:.1f} {mx:.1f},{my:.1f}"
+            d_str += f" T{pts[-1][0]:.1f},{pts[-1][1]:.1f}"
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
         elements.append(
             BackgroundElement(
-                "path",
-                f'<path d="{d_str}" stroke-width="{tw:.2f}"/>',
-                "dendrite",
-                (min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)),
+                kind="path",
+                svg=f'<path d="{d_str}" stroke-width="{tw:.2f}"/>',
+                role="dendrite",
+                bbox=(min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)),
             )
         )
-        # Synapse dot at branch tip
-        ex, ey = pts[-1]
-        r_tip = max(1.0, tw * 0.7)
+
+    # Synapse dots at terminal nodes (degree 1, not roots) - visible 2-3px
+    for i, n in enumerate(nodes):
+        deg = len(adj.get(i, []))
+        if deg != 1 or n[2] == "root":
+            continue
+        r_dot = max(1.4, 2.4 - n[3] / max(1, max_depth) * 0.8)
         elements.append(
             BackgroundElement(
-                "circle",
-                f'<circle cx="{ex:.1f}" cy="{ey:.1f}" r="{r_tip:.1f}"/>',
-                "synapse",
-                (ex - r_tip, ey - r_tip, r_tip * 2, r_tip * 2),
+                kind="circle",
+                svg=f'<circle cx="{n[0]:.1f}" cy="{n[1]:.1f}" r="{r_dot:.1f}"/>',
+                role="synapse",
+                bbox=(n[0] - r_dot, n[1] - r_dot, r_dot * 2, r_dot * 2),
             )
         )
-        tips.append((ex, ey, tw))
-
-    # Merge pass: connect nearby branch tips (neural anastomosis)
-    merge_r = step * 4
-    used = set()
-    for i, (x1, y1, tw1) in enumerate(tips):
-        if i in used:
-            continue
-        for j, (x2, y2, tw2) in enumerate(tips):
-            if j <= i or j in used:
-                continue
-            dd = math.hypot(x2 - x1, y2 - y1)
-            if dd < merge_r and rng.random() < 0.3:
-                merge_sw = min(tw1, tw2) * 0.5
-                elements.append(
-                    BackgroundElement(
-                        "path",
-                        f'<path d="M{x1:.1f},{y1:.1f} L{x2:.1f},{y2:.1f}" stroke-width="{merge_sw:.2f}"/>',
-                        "dendrite",
-                        (min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1)),
-                    )
-                )
-                used.add(j)
-                break
 
     return elements
 

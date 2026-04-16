@@ -84,27 +84,23 @@ The `svg-infographics` CLI exposes twelve tools - six for design, six for valida
 
 Six calculators that replace the geometry you would normally eyeball. They turn placement, routing, and charting into computed operations - the agent says *where* and *what*, the tools handle exact coordinates and anchors.
 
-| Tool | Design app equivalent |
-|------|-------------------|
-| `primitives` | Shape palette - rect, circle, hexagon, star, arc, cube, cylinder, sphere, plus PCHIP spline curves. Returns exact anchors and paste-ready snippets |
-| `connector` | Smart connector - five routing modes with snap-to-edge, auto-routing around obstacles, arrowhead computation |
-| `geom` | Alignment guides and constraints - midpoint, perpendicular, tangent, intersection, parallel, polar, attachment points, containment |
-| `callouts` | Auto-placement - joint label positioning via solver with overlap avoidance |
-| `empty-space` | Free-region detection - "where can I put this without overlapping anything?" |
-| `charts` | Chart panel - bar, line, area, radar, pie via pygal with theme-matched palettes |
+- **`primitives`** (shape palette) - rect, circle, hexagon, star, arc, cube, cylinder, sphere, plus PCHIP spline curves. Returns exact anchors and paste-ready snippets
+- **`connector`** (smart connector) - five routing modes with snap-to-edge, auto-routing around obstacles, arrowhead computation
+- **`geom`** (alignment guides and constraints) - midpoint, perpendicular, tangent, intersection, parallel, polar, attachment points, containment
+- **`callouts`** (auto-placement) - joint label positioning via solver with overlap avoidance
+- **`empty-space`** (free-region detection) - "where can I put this without overlapping anything?"
+- **`charts`** (chart panel) - bar, line, area, radar, pie via pygal with theme-matched palettes
 
 **Quality panel:**
 
 Six validators that act as the quality gate before delivery. Each checker targets a specific defect class - overlaps, contrast, alignment, connector integrity, CSS hygiene, and collision - so nothing ships with a known flaw.
 
-| Tool | What it catches |
-|------|-----------------|
-| `overlaps` | Text/shape overlap, spacing rhythm, font-size floors, callout collisions |
-| `contrast` | WCAG 2.1 for text AND objects in both light and dark mode |
-| `alignment` | Grid snapping, vertical rhythm, layout topology |
-| `connectors` | Dead ends, missing chamfers, edge-snap violations |
-| `css` | Inline fills, missing dark-mode overrides, forbidden colours |
-| `collide` | Pairwise connector intersection with near-miss detection |
+- **`overlaps`** - text/shape overlap, spacing rhythm, font-size floors, callout collisions
+- **`contrast`** - WCAG 2.1 for text AND objects in both light and dark mode
+- **`alignment`** - grid snapping, vertical rhythm, layout topology
+- **`connectors`** - dead ends, missing chamfers, edge-snap violations
+- **`css`** - inline fills, missing dark-mode overrides, forbidden colours
+- **`collide`** - pairwise connector intersection with near-miss detection
 
 The agent calls `primitives rect --x 50 --y 80 --w 200 --h 120` and gets the rect plus named anchors. Eighteen shape types - rectangles to isometric cubes to PCHIP splines. Each returns exact anchor coordinates so connectors snap without guessing.
 

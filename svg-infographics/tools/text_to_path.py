@@ -1,1 +1,0 @@
-../../stellars_claude_code_plugins/svg_tools/text_to_path.py

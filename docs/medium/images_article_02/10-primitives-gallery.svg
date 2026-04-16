@@ -1,4 +1,4 @@
-<!-- 10-primitives-gallery.svg - sticker sheet of fourteen shape primitives. 5x3 tight grid, teal/ochre alternation, 3D primitives in wireframe with dashed hidden edges. -->
+<!-- 10-primitives-gallery.svg - sticker sheet of fifteen shape primitives. 5x3 tight grid, teal/ochre alternation, 3D primitives in wireframe with dashed hidden edges. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
   <style>
     .fg-1 { fill: #1a5a6e; } .fg-3 { fill: #236a74; } .fg-4 { fill: #2b7680; }
@@ -29,7 +29,7 @@
       .cell-param { fill: #4099b3; }
     }
   </style>
-  <text x="500" y="26" text-anchor="middle" class="title-main">Fourteen shape primitives</text>
+  <text x="500" y="26" text-anchor="middle" class="title-main">Fifteen shape primitives</text>
   <text x="500" y="42" text-anchor="middle" class="title-sub">every cell computed by svg-infographics primitives &lt;shape&gt;</text>
   <g id="cards">
     <path d="M22,58 H206 V205 Q206,208 203,208 H25 Q22,208 22,205 Z" class="card-fill"/>
@@ -135,6 +135,7 @@
       <ellipse class="shape-a-thin" cx="500.0" cy="436.0" rx="12.6" ry="42.0" fill="none" opacity="0.5"/>
     </g>
     <g id="shape-plane">
+      <path class="shape-b-thin" d="M618.5,459.0 L728.5,459.0 L767.5,436.5 L657.5,436.5 Z" fill="none"/>
     </g>
     <g id="shape-axis">
       <line class="shape-a-thin" x1="871.0" y1="461.0" x2="921.0" y2="461.0"/>

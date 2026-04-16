@@ -1,1 +1,0 @@
-../../stellars_claude_code_plugins/svg_tools/check_overlaps.py
