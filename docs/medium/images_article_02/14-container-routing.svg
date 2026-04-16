@@ -15,7 +15,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540">
   <style>
     text { font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif; }
-    .bg-plate { fill: #ffffff; }
+    .bg-plate { fill: none; }
     .fg-1 { fill: #1a5a6e; }
     .fg-2 { fill: #24697e; }
     .fg-3 { fill: #236a74; }
@@ -39,7 +39,7 @@
     .annot-bold { font: 600 10px 'Inter', sans-serif; fill: #1a5a6e; }
 
     @media (prefers-color-scheme: dark) {
-      .bg-plate { fill: #0a1a24; }
+      .bg-plate { fill: none; }
       .fg-1 { fill: #b8e4f0; }
       .fg-2 { fill: #8fd4e6; }
       .fg-3 { fill: #5aafc5; }

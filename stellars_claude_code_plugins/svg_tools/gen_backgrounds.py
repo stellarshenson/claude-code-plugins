@@ -120,206 +120,467 @@ def _snap(v, grid):
     return round(v / grid) * grid
 
 
+def _right_skewed(rng, loc, scale, skew=1.5):
+    """Sample from a right-skewed distribution (power transform).
+
+    Most values cluster near loc (thin traces), fewer reach loc + scale (thick).
+    skew=1 is uniform, skew=2 gives strong right skew.
+    Returns value >= loc * 0.3.
+    """
+    # Power distribution: u^(1/skew) where u ~ Uniform(0,1)
+    # skew > 1 pushes mass toward 0 (thin), long tail toward 1 (thick)
+    u = rng.random() ** skew
+    return max(loc * 0.3, loc * (0.3 + 1.7 * u) + rng.gauss(0, scale * 0.2))
+
+
 # ---------------------------------------------------------------------------
-# Circuit: PCB traces with 45-degree diagonals, pads, vias
+# Circuit: bus-group traces with configurable bend angle, T-junction branching.
+# Reference: circuit.jpg - parallel bus runs from edges, 45-deg diagonal bends
+# creating staircase patterns, filled-circle pads at endpoints and junctions,
+# ZERO trace crossings, thin uniform strokes, directional flow.
 # ---------------------------------------------------------------------------
 
 
-def _gen_circuit(w, h, density, direction, rng):
+def _gen_circuit(
+    w,
+    h,
+    density,
+    direction,
+    rng,
+    bend_angle=45,
+    origin_directions=None,
+    stroke_width=2.5,
+    stroke_std=0.4,
+    pad_radius=4.5,
+    pad_std=1.0,
+    branch_prob=None,
+    merge_prob=0.15,
+    density_points=None,
+    density_gradient=None,
+    subdivision_rounds=2,
+):
+    """PCB-style traces via grid-annealing with density gradients.
+
+    Generation uses a multi-round grid subdivision:
+    - Round 0: 3x3 coarse grid, bus groups placed proportional to local density
+    - Rounds 1-N: under-target cells subdivide 2x2, extend/add traces
+    - Final: full-span traces and merge pass
+
+    Args:
+        bend_angle: Bend angle in degrees (default 45).
+        origin_directions: List of angles for trace origins.
+            0=top, 90=right, 180=bottom, 270=left. Default: [0, 180].
+        stroke_width: Mean trace stroke width (default 2.5).
+        stroke_std: Std deviation for stroke width variation (default 0.4).
+        pad_radius: Mean pad outer radius (default 4.5).
+        pad_std: Std deviation for pad radius variation (default 1.0).
+        branch_prob: Probability of branch stubs (default: from density preset).
+        merge_prob: Probability of merging into nearby trace (default 0.15).
+        density_points: List of (x_frac, y_frac, weight) for spatial density
+            control. Fractions 0-1, weight 0-1. IDW interpolation between points.
+        density_gradient: Shorthand preset: "left-to-right", "right-to-left",
+            "top-down", "bottom-up", "center-out", "edges-in".
+        subdivision_rounds: Number of subdivision rounds 0-3 (default 2).
+    """
     d = _DENSITY[density]
-    factor, branch_p, node_p = d["factor"], d["branch_p"], d["node_p"]
-    grid = max(6, int(15 / max(factor, 0.3)))
+    factor = d["factor"]
+    branch_p = branch_prob if branch_prob is not None else d["branch_p"]
     elements = []
 
-    n_roots = max(3, int(6 * factor))
-
-    for _ in range(n_roots):
-        # Root on an edge based on direction
-        if direction in ("right", "radial"):
-            sx = _snap(rng.uniform(0, w * 0.15), grid)
-        elif direction == "left":
-            sx = _snap(rng.uniform(w * 0.85, w), grid)
-        else:
-            sx = _snap(rng.uniform(w * 0.1, w * 0.9), grid)
-        if direction == "down":
-            sy = _snap(rng.uniform(0, h * 0.15), grid)
-        elif direction == "up":
-            sy = _snap(rng.uniform(h * 0.85, h), grid)
-        else:
-            sy = _snap(rng.uniform(h * 0.05, h * 0.95), grid)
-
-        _circuit_tree(
-            sx, sy, w, h, grid, direction, branch_p, node_p, elements, rng, depth=0, tw=1.4
-        )
-
-    return elements
-
-
-def _circuit_tree(x, y, w, h, grid, direction, branch_p, node_p, elements, rng, depth, tw):
-    """Grow a circuit trace tree: long segments with orthogonal + diagonal routing."""
-    if depth > 4:
-        return
-
-    pts = [(x, y)]
-    n_segments = rng.randint(3, 8 - depth)
-    cur_tw = max(0.3, tw - depth * 0.2)
-
-    # Primary angle based on direction
-    if direction == "right":
-        base_angle = 0
-    elif direction == "left":
-        base_angle = math.pi
-    elif direction == "down":
-        base_angle = math.pi / 2
-    elif direction == "up":
-        base_angle = -math.pi / 2
+    # Parse origin directions (angles -> edges with bend bias)
+    if origin_directions is None:
+        _angle_map = {"down": [0], "up": [180], "right": [270], "left": [90], "radial": [0, 180]}
+        origin_angles = _angle_map.get(direction, [0, 180])
     else:
-        base_angle = rng.uniform(0, 2 * math.pi)
+        origin_angles = origin_directions
 
-    for seg in range(n_segments):
-        # Long straight segment in primary direction with drift
-        seg_len = _snap(rng.uniform(grid * 4, grid * 12), grid)
+    # Map angles to edge specs: (edge_name, pdx, pdy, is_vert, bend_bias)
+    # bend_bias: -1 to 1, from the fractional offset of the angle
+    _cardinal = {
+        0: ("top", 0, 1, True),
+        90: ("right", -1, 0, False),
+        180: ("bottom", 0, -1, True),
+        270: ("left", 1, 0, False),
+    }
+    edges = []
+    for a in origin_angles:
+        a = a % 360
+        snapped = round(a / 90) * 90 % 360
+        offset = (a - snapped) / 45.0  # -1 to +1 range
+        ename, pdx, pdy, is_v = _cardinal.get(snapped, _cardinal[0])
+        edges.append((ename, pdx, pdy, is_v, offset))
 
-        # Occasionally diagonal (45-deg offset from base)
-        if rng.random() < 0.35:
-            angle = base_angle + rng.choice([-math.pi / 4, math.pi / 4])
-        else:
-            angle = base_angle + rng.gauss(0, 0.15)
+    if not edges:
+        edges = [("top", 0, 1, True, 0.0)]
 
-        nx = _snap(x + seg_len * math.cos(angle), grid)
-        ny = _snap(y + seg_len * math.sin(angle), grid)
-        nx = max(0, min(w, nx))
-        ny = max(0, min(h, ny))
+    # PCB parameters
+    grid = 4
+    bus_gap = grid * 2  # tight bus spacing
 
-        if nx == x and ny == y:
-            continue
+    # --- Occupancy grid (clearance scales with stroke width) ---
+    # At grid=4px, clearance=2 means 8px exclusion zone per side of trace.
+    # With sw=2.5, that gives ~5.5px visible gap - tight but no overlaps.
+    clearance = max(2, int(math.ceil(stroke_width / grid)) + 1)
+    occ = set()
 
-        pts.append((nx, ny))
+    def _g(v):
+        return int(round(v / grid))
 
-        # Small junction node at branch points
-        if rng.random() < node_p * 0.5:
-            r = rng.uniform(1.2, 2.5)
-            elements.append(
-                BackgroundElement(
-                    "circle",
-                    f'<circle cx="{nx:.1f}" cy="{ny:.1f}" r="{r:.1f}"/>',
-                    "via",
-                    (nx - r, ny - r, r * 2, r * 2),
-                )
-            )
+    def _s(v):
+        return round(v / grid) * grid
 
-        # Branch off
-        if rng.random() < branch_p:
-            branch_angle = angle + rng.choice(
-                [-math.pi / 2, math.pi / 2, -math.pi / 4, math.pi / 4]
-            )
-            _circuit_branch(
-                nx,
-                ny,
-                w,
-                h,
-                grid,
-                branch_angle,
-                branch_p * 0.5,
-                node_p,
-                elements,
-                rng,
-                depth + 1,
-                cur_tw,
-            )
+    def _mark(x1, y1, x2, y2):
+        dist = math.hypot(x2 - x1, y2 - y1)
+        steps = max(2, int(dist / grid) + 1)
+        for i in range(steps + 1):
+            t = i / steps
+            gx = _g(x1 + t * (x2 - x1))
+            gy = _g(y1 + t * (y2 - y1))
+            for ddx in range(-clearance, clearance + 1):
+                for ddy in range(-clearance, clearance + 1):
+                    occ.add((gx + ddx, gy + ddy))
 
-        x, y = nx, ny
+    def _mark_pts(pts):
+        for i in range(len(pts) - 1):
+            _mark(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1])
 
-    # Endpoint pad
-    if rng.random() < node_p:
-        ps = rng.uniform(3, 6)
-        elements.append(
-            BackgroundElement(
-                "rect",
-                f'<rect x="{x - ps / 2:.1f}" y="{y - ps / 2:.1f}" '
-                f'width="{ps:.1f}" height="{ps:.1f}" rx="1"/>',
-                "pad",
-                (x - ps / 2, y - ps / 2, ps, ps),
-            )
-        )
+    def _clear(x1, y1, x2, y2):
+        dist = math.hypot(x2 - x1, y2 - y1)
+        steps = max(2, int(dist / grid) + 1)
+        for i in range(steps + 1):
+            t = i / steps
+            gx = _g(x1 + t * (x2 - x1))
+            gy = _g(y1 + t * (y2 - y1))
+            if (gx, gy) in occ:
+                return False
+        return True
 
-    # Emit trace
-    if len(pts) > 1:
-        d = "M" + " L".join(f"{px:.1f},{py:.1f}" for px, py in pts)
-        xs = [p[0] for p in pts]
-        ys = [p[1] for p in pts]
+    def _pts_ok(pts):
+        for i in range(len(pts) - 1):
+            if not _clear(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]):
+                return False
+        return True
+
+    def _clear_branch(x1, y1, x2, y2):
+        """Like _clear but skips first 30% of segment (allows start from occupied trace)."""
+        dist = math.hypot(x2 - x1, y2 - y1)
+        steps = max(2, int(dist / grid) + 1)
+        skip = max(1, int(steps * 0.3))
+        for i in range(skip, steps + 1):
+            t = i / steps
+            gx = _g(x1 + t * (x2 - x1))
+            gy = _g(y1 + t * (y2 - y1))
+            if (gx, gy) in occ:
+                return False
+        return True
+
+    def _clear_merge(x1, y1, x2, y2):
+        """Like _clear but skips first and last 30% (connects two occupied traces)."""
+        dist = math.hypot(x2 - x1, y2 - y1)
+        steps = max(3, int(dist / grid) + 1)
+        skip = max(1, int(steps * 0.3))
+        for i in range(skip, steps - skip + 1):
+            t = i / steps
+            gx = _g(x1 + t * (x2 - x1))
+            gy = _g(y1 + t * (y2 - y1))
+            if (gx, gy) in occ:
+                return False
+        return True
+
+    def _emit(pts, sw_override=None):
+        if len(pts) < 2:
+            return
+        sw = sw_override or stroke_width
+        d_str = "M" + " L".join(f"{p[0]:.0f},{p[1]:.0f}" for p in pts)
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
         elements.append(
             BackgroundElement(
                 "path",
-                f'<path d="{d}" stroke-width="{cur_tw:.1f}"/>',
+                f'<path d="{d_str}" stroke-width="{sw:.1f}"/>',
                 "trace",
                 (min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)),
             )
         )
 
-
-def _circuit_branch(x, y, w, h, grid, angle, branch_p, node_p, elements, rng, depth, tw):
-    """Short branch off a main circuit trace."""
-    if depth > 5:
-        return
-    pts = [(x, y)]
-    n_segs = rng.randint(1, 4)
-    cur_tw = max(0.25, tw - depth * 0.15)
-
-    for _ in range(n_segs):
-        seg_len = _snap(rng.uniform(grid * 2, grid * 6), grid)
-        # Slight wobble around branch angle
-        a = angle + rng.gauss(0, 0.2)
-        nx = _snap(x + seg_len * math.cos(a), grid)
-        ny = _snap(y + seg_len * math.sin(a), grid)
-        nx = max(0, min(w, nx))
-        ny = max(0, min(h, ny))
-        if nx == x and ny == y:
-            break
-        pts.append((nx, ny))
-
-        if rng.random() < branch_p:
-            sub_angle = a + rng.choice([-math.pi / 3, math.pi / 3])
-            _circuit_branch(
-                nx,
-                ny,
-                w,
-                h,
-                grid,
-                sub_angle,
-                branch_p * 0.4,
-                node_p,
-                elements,
-                rng,
-                depth + 1,
-                cur_tw,
-            )
-        x, y = nx, ny
-
-    # Small endpoint
-    if rng.random() < node_p * 0.6:
-        r = rng.uniform(0.8, 2)
+    def _pad(cx, cy, r_override=None):
+        """Ring annular pad."""
+        r_out = r_override or pad_radius
+        r_hole = r_out * 0.4
         elements.append(
             BackgroundElement(
                 "circle",
-                f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}"/>',
-                "via",
-                (x - r, y - r, r * 2, r * 2),
+                f'<circle cx="{cx:.0f}" cy="{cy:.0f}" r="{r_out:.1f}"/>',
+                "pad",
+                (cx - r_out, cy - r_out, r_out * 2, r_out * 2),
+            )
+        )
+        elements.append(
+            BackgroundElement(
+                "circle",
+                f'<circle cx="{cx:.0f}" cy="{cy:.0f}" r="{r_hole:.1f}"/>',
+                "pad-hole",
+                (cx - r_hole, cy - r_hole, r_hole * 2, r_hole * 2),
             )
         )
 
-    if len(pts) > 1:
-        d = "M" + " L".join(f"{px:.1f},{py:.1f}" for px, py in pts)
-        xs = [p[0] for p in pts]
-        ys = [p[1] for p in pts]
-        elements.append(
-            BackgroundElement(
-                "path",
-                f'<path d="{d}" stroke-width="{cur_tw:.1f}"/>',
-                "trace",
-                (min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)),
-            )
-        )
+    # Margin: pads and trace endpoints stay inside canvas by at least pad_radius
+    _margin = _s(pad_radius + pad_std + 2)
+
+    def _clamp(x, y):
+        return max(_margin, min(w - _margin, _s(x))), max(_margin, min(h - _margin, _s(y)))
+
+    # --- Density gradient ---
+    _grad_pts = density_points
+    if _grad_pts is None and density_gradient:
+        _presets = {
+            "left-to-right": [(0, 0.5, 0.15), (1, 0.5, 1.0)],
+            "right-to-left": [(0, 0.5, 1.0), (1, 0.5, 0.15)],
+            "top-down": [(0.5, 0, 1.0), (0.5, 1, 0.15)],
+            "bottom-up": [(0.5, 0, 0.15), (0.5, 1, 1.0)],
+            "center-out": [(0.5, 0.5, 1.0), (0, 0, 0.1), (1, 0, 0.1), (0, 1, 0.1), (1, 1, 0.1)],
+            "edges-in": [(0.5, 0.5, 0.1), (0, 0, 1.0), (1, 0, 1.0), (0, 1, 1.0), (1, 1, 1.0)],
+        }
+        _grad_pts = _presets.get(density_gradient)
+
+    def _density_at(x, y):
+        """IDW interpolation of density at canvas point. Returns 0-1 weight."""
+        if not _grad_pts:
+            return 1.0
+        xf, yf = x / max(1, w), y / max(1, h)
+        total_w = 0.0
+        total_v = 0.0
+        for px, py, pw in _grad_pts:
+            dist = max(0.01, math.hypot(xf - px, yf - py))
+            inv_d = 1.0 / (dist * dist)
+            total_w += inv_d
+            total_v += inv_d * pw
+        return min(1.0, max(0.0, total_v / total_w))
+
+    # Track placed trace waypoints for merge detection
+    _trace_pts = []
+
+    def _density_change(x0, y0, x1, y1):
+        """Compute density change along a trace: positive = density increasing."""
+        if not _grad_pts:
+            return 0.0
+        return _density_at(x1, y1) - _density_at(x0, y0)
+
+    # --- Inner function: lay one bus-group trace ---
+    def _lay_trace(sx, sy, pdx, pdy, is_vert, bend_sign, base_run, bus_sw, bus_pad_r):
+        """Place one trace from (sx,sy) in direction (pdx,pdy). Returns point list or None."""
+        branch_sw = max(0.5, bus_sw * 0.6)
+        branch_pad_r = max(2.0, bus_pad_r * 0.7)
+
+        ex1 = sx + pdx * base_run
+        ey1 = sy + pdy * base_run
+        ex1, ey1 = _clamp(ex1, ey1)
+
+        if abs(ex1 - sx) + abs(ey1 - sy) < min(w, h) * 0.08:
+            return None
+        if not _clear(sx, sy, ex1, ey1):
+            return None
+
+        pts = [(sx, sy), (ex1, ey1)]
+
+        # Diagonal bend (forward-only)
+        if rng.random() < 0.80:
+            diag_len = _s(rng.uniform(min(w, h) * 0.05, min(w, h) * 0.15))
+            post_len = _s(rng.uniform(min(w, h) * 0.08, min(w, h) * 0.30))
+
+            if bend_angle >= 89:
+                if is_vert:
+                    bx, by = _s(ex1 + bend_sign * (diag_len + post_len)), ey1
+                else:
+                    bx, by = ex1, _s(ey1 + bend_sign * (diag_len + post_len))
+                bx, by = _clamp(bx, by)
+                new_pts = [(bx, by)]
+            else:
+                new_pts = []
+                if is_vert:
+                    dx = _s(ex1 + bend_sign * _s(diag_len))
+                    dy = _s(ey1 + pdy * _s(diag_len))
+                    dx, dy = _clamp(dx, dy)
+                    new_pts.append((dx, dy))
+                    if post_len > grid:
+                        px, py = _clamp(dx + bend_sign * post_len, dy)
+                        if abs(px - dx) >= grid:
+                            new_pts.append((px, py))
+                else:
+                    dx = _s(ex1 + pdx * _s(diag_len))
+                    dy = _s(ey1 + bend_sign * _s(diag_len))
+                    dx, dy = _clamp(dx, dy)
+                    new_pts.append((dx, dy))
+                    if post_len > grid:
+                        px, py = _clamp(dx, dy + bend_sign * post_len)
+                        if abs(py - dy) >= grid:
+                            new_pts.append((px, py))
+
+            check = [pts[-1]] + new_pts
+            if _pts_ok(check):
+                pts.extend(new_pts)
+
+        if len(pts) < 2:
+            return None
+
+        _mark_pts(pts)
+        _emit(pts, bus_sw)
+        _pad(pts[-1][0], pts[-1][1], bus_pad_r)
+        for p in pts:
+            _trace_pts.append(p)
+
+        # Density-driven branch/merge modulation:
+        #   density DECREASING along trace -> boost merge (traces converge)
+        #   density INCREASING along trace -> boost branch (traces fork)
+        d_change = _density_change(pts[0][0], pts[0][1], pts[-1][0], pts[-1][1])
+        # d_change: positive = density increasing at endpoint, negative = decreasing
+        local_merge_p = merge_prob * (1.0 + max(0, -d_change * 3))  # boost when decreasing
+        local_branch_p = branch_p * (1.0 + max(0, d_change * 3))  # boost when increasing
+
+        # Merge: connect endpoint to nearby existing trace
+        # Short merge connections skip occupancy (intentional crossing)
+        if local_merge_p > 0 and rng.random() < local_merge_p and len(_trace_pts) > 10:
+            ex, ey = pts[-1]
+            merge_r = min(w, h) * 0.12
+            best_d, best_p = merge_r, None
+            for tp in _trace_pts[: -len(pts)]:
+                dd = math.hypot(tp[0] - ex, tp[1] - ey)
+                if grid * 3 < dd < best_d:
+                    best_d, best_p = dd, tp
+            if best_p:
+                # Short merges (< 40px): skip occupancy, just connect
+                # Longer merges: check middle section only
+                ok = best_d < 40 or _clear_merge(ex, ey, best_p[0], best_p[1])
+                if ok:
+                    _mark(ex, ey, best_p[0], best_p[1])
+                    _emit([(ex, ey), best_p], branch_sw)
+
+        # Branch stubs - density-modulated
+        for si in range(len(pts) - 1):
+            if rng.random() > local_branch_p * 0.8:
+                continue
+            t_frac = rng.uniform(0.25, 0.75)
+            p0, p1 = pts[si], pts[si + 1]
+            mx = _s(p0[0] + t_frac * (p1[0] - p0[0]))
+            my = _s(p0[1] + t_frac * (p1[1] - p0[1]))
+            sdx, sdy = p1[0] - p0[0], p1[1] - p0[1]
+            br_len = _s(rng.uniform(min(w, h) * 0.03, min(w, h) * 0.10))
+            if abs(sdy) > abs(sdx):
+                bx, by = _s(mx + rng.choice([-1, 1]) * br_len), my
+            else:
+                bx, by = mx, _s(my + rng.choice([-1, 1]) * br_len)
+            bx, by = _clamp(bx, by)
+            if _clear_branch(mx, my, bx, by):
+                _mark(mx, my, bx, by)
+                _emit([(mx, my), (bx, by)], branch_sw)
+                _pad(bx, by, branch_pad_r)
+
+        return pts
+
+    # --- Grid-annealing generation ---
+    total_buses = max(12, int(25 * factor))
+    rounds = max(0, min(3, subdivision_rounds))
+
+    # Build initial 3x3 grid cells: (x0, y0, x1, y1, target_count, placed_count)
+    nx0, ny0 = 3, 3
+    cells = []
+    for iy in range(ny0):
+        for ix in range(nx0):
+            x0 = ix * w / nx0
+            y0 = iy * h / ny0
+            x1 = (ix + 1) * w / nx0
+            y1 = (iy + 1) * h / ny0
+            cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+            dw = _density_at(cx, cy)
+            cell_frac = 1.0 / (nx0 * ny0)
+            # Amplify gradient: dw^2 makes sparse areas much sparser
+            target = max(0, round(total_buses * cell_frac * dw * dw))
+            cells.append([x0, y0, x1, y1, target, 0])
+
+    for rnd in range(rounds + 1):
+        next_cells = []
+        for cell in cells:
+            x0, y0, x1, y1, target, placed = cell
+            remaining = target - placed
+            if remaining <= 0:
+                continue
+
+            cw, ch = x1 - x0, y1 - y0
+            if cw < grid * 6 or ch < grid * 6:
+                continue  # cell too small to subdivide further
+
+            # Place bus groups in this cell
+            n_to_place = remaining if rnd == rounds else max(1, remaining // 2)
+            for _ in range(n_to_place):
+                edge_name, pdx, pdy, is_vert, bend_bias = edges[rng.randint(0, len(edges) - 1)]
+                bus_sw = _right_skewed(rng, stroke_width, stroke_std, skew=1.8)
+                bus_pad_r = _right_skewed(rng, pad_radius, pad_std, skew=1.5)
+                n_in_bus = rng.randint(2, max(3, int(4 * min(factor, 2.0))))
+
+                if abs(bend_bias) > 0.3:
+                    bend_sign = 1 if bend_bias > 0 else -1
+                else:
+                    bend_sign = rng.choice([-1, 1])
+
+                # Starting position: along the cell edge nearest the canvas border
+                if is_vert:
+                    base = _s(rng.uniform(x0 + _margin, x1 - _margin - n_in_bus * bus_gap))
+                    cross = 0 if edge_name == "top" else h
+                else:
+                    base = _s(rng.uniform(y0 + _margin, y1 - _margin - n_in_bus * bus_gap))
+                    cross = 0 if edge_name == "left" else w
+
+                base_run = rng.uniform(min(cw, ch) * 0.4, max(cw, ch) * 0.9)
+                stair_step = rng.uniform(grid * 3, grid * 6)
+
+                for ti in range(n_in_bus):
+                    if is_vert:
+                        sx = _s(base + ti * bus_gap)
+                        sy = cross
+                    else:
+                        sx = cross
+                        sy = _s(base + ti * bus_gap)
+
+                    run1 = _s(base_run + ti * stair_step)
+                    result = _lay_trace(
+                        sx, sy, pdx, pdy, is_vert, bend_sign, run1, bus_sw, bus_pad_r
+                    )
+                    if result:
+                        cell[5] += 1
+
+            # Subdivide under-target cells for next round
+            if rnd < rounds and cell[5] < target:
+                mid_x, mid_y = (x0 + x1) / 2, (y0 + y1) / 2
+                sub_target = max(1, (target - cell[5]) // 4)
+                for sx0, sy0, sx1, sy1 in [
+                    (x0, y0, mid_x, mid_y),
+                    (mid_x, y0, x1, mid_y),
+                    (x0, mid_y, mid_x, y1),
+                    (mid_x, mid_y, x1, y1),
+                ]:
+                    sc = _density_at((sx0 + sx1) / 2, (sy0 + sy1) / 2)
+                    next_cells.append([sx0, sy0, sx1, sy1, max(0, round(sub_target * sc * sc)), 0])
+
+        if next_cells:
+            cells = next_cells
+
+    # --- Full-span traces ---
+    span_sw = _right_skewed(rng, stroke_width, stroke_std, skew=1.8)
+    n_span = max(2, int(4 * factor))
+    for _ in range(n_span):
+        edge_name, pdx, pdy, is_vert, _bias = edges[rng.randint(0, len(edges) - 1)]
+        if is_vert:
+            sx = _s(rng.uniform(w * 0.05, w * 0.95))
+            sy = 0 if edge_name == "top" else h
+            ex, ey = sx, (h if edge_name == "top" else 0)
+        else:
+            sy = _s(rng.uniform(h * 0.05, h * 0.95))
+            sx = 0 if edge_name == "left" else w
+            ex, ey = (w if edge_name == "left" else 0), sy
+        if _clear(sx, sy, ex, ey):
+            _mark(sx, sy, ex, ey)
+            _emit([(sx, sy), (ex, ey)], span_sw)
+
+    return elements
 
 
 # ---------------------------------------------------------------------------
@@ -327,20 +588,62 @@ def _circuit_branch(x, y, w, h, grid, angle, branch_p, node_p, elements, rng, de
 # ---------------------------------------------------------------------------
 
 
-def _gen_neural(w, h, density, direction, rng):
+def _gen_neural(
+    w, h, density, direction, rng, density_points=None, density_gradient=None, attract_repel=0.5
+):
+    """Dendritic branching via space colonization with density gradient.
+
+    Args:
+        attract_repel: Balance between attraction (toward attractors) and
+            repulsion (away from existing branches). 0.0 = pure repulsion
+            (max spread), 1.0 = pure attraction (convergent). Default 0.5.
+
+    Thick root trunks taper to thin terminal branches. Density gradient
+    controls where attractors cluster, so dense areas grow more branches.
+    """
     d = _DENSITY[density]
     factor = d["factor"]
     elements = []
 
-    # Scatter attraction points
-    n_attractors = max(20, int(60 * factor))
-    attractors = [
-        (rng.uniform(w * 0.05, w * 0.95), rng.uniform(h * 0.05, h * 0.95))
-        for _ in range(n_attractors)
-    ]
+    # Density gradient for attractor distribution
+    _grad_pts = density_points
+    if _grad_pts is None and density_gradient:
+        _presets = {
+            "left-to-right": [(0, 0.5, 0.15), (1, 0.5, 1.0)],
+            "right-to-left": [(0, 0.5, 1.0), (1, 0.5, 0.15)],
+            "top-down": [(0.5, 0, 1.0), (0.5, 1, 0.15)],
+            "bottom-up": [(0.5, 0, 0.15), (0.5, 1, 1.0)],
+            "center-out": [(0.5, 0.5, 1.0), (0, 0, 0.1), (1, 0, 0.1), (0, 1, 0.1), (1, 1, 0.1)],
+            "edges-in": [(0.5, 0.5, 0.1), (0, 0, 1.0), (1, 0, 1.0), (0, 1, 1.0), (1, 1, 1.0)],
+        }
+        _grad_pts = _presets.get(density_gradient)
+
+    def _density_at(x, y):
+        if not _grad_pts:
+            return 1.0
+        xf, yf = x / max(1, w), y / max(1, h)
+        tw_sum, tv_sum = 0.0, 0.0
+        for px, py, pw in _grad_pts:
+            dist = max(0.01, math.hypot(xf - px, yf - py))
+            inv_d = 1.0 / (dist * dist)
+            tw_sum += inv_d
+            tv_sum += inv_d * pw
+        return min(1.0, max(0.0, tv_sum / tw_sum))
+
+    # Scatter attraction points - weighted by density gradient
+    n_attractors = max(30, int(80 * factor))
+    attractors = []
+    attempts = n_attractors * 3
+    for _ in range(attempts):
+        ax = rng.uniform(w * 0.03, w * 0.97)
+        ay = rng.uniform(h * 0.03, h * 0.97)
+        if rng.random() < _density_at(ax, ay):
+            attractors.append((ax, ay))
+        if len(attractors) >= n_attractors:
+            break
 
     # Seed roots based on direction
-    n_seeds = max(2, int(4 * factor))
+    n_seeds = max(2, int(5 * factor))
     seeds = []
     for _ in range(n_seeds):
         if direction == "down":
@@ -352,87 +655,237 @@ def _gen_neural(w, h, density, direction, rng):
         elif direction == "left":
             seeds.append((w * 0.98, rng.uniform(h * 0.1, h * 0.9)))
         else:
-            seeds.append((w * 0.5 + rng.gauss(0, w * 0.1), h * 0.5 + rng.gauss(0, h * 0.1)))
+            seeds.append((w * 0.5 + rng.gauss(0, w * 0.15), h * 0.5 + rng.gauss(0, h * 0.15)))
 
-    # Grow from seeds toward attractors
-    reach = max(w, h) * 0.15
-    step = max(w, h) * 0.03
-    branches = []  # list of (points, width)
+    # Root stroke width: thick trunks at origin, tapering outward
+    root_sw = 3.0 * min(2.0, factor + 0.5)
+    reach = max(w, h) * 0.35  # wider reach so branches extend further
+    step = max(w, h) * 0.018  # slightly smaller steps = smoother curves
+    branches = []  # list of (points, stroke_width)
+    all_pts = []  # shared list of ALL placed points (for repulsion)
 
     for sx, sy in seeds:
-        _neural_grow(sx, sy, attractors, w, h, reach, step, branches, rng, depth=0, tw=1.4)
+        # Initial direction: from seed toward canvas center
+        cx, cy = w / 2, h / 2
+        init_dx = cx - sx
+        init_dy = cy - sy
+        init_dist = math.hypot(init_dx, init_dy)
+        if init_dist > 1:
+            init_dx /= init_dist
+            init_dy /= init_dist
+        else:
+            init_dx, init_dy = 0, 1
+        _neural_grow(
+            sx,
+            sy,
+            list(attractors),
+            w,
+            h,
+            reach,
+            step,
+            branches,
+            rng,
+            depth=0,
+            tw=root_sw,
+            parent_dx=init_dx,
+            parent_dy=init_dy,
+            all_pts=all_pts,
+            attract_repel=attract_repel,
+            density_fn=_density_at if _grad_pts else None,
+        )
 
+    # Track branch tips for merge pass
+    tips = []
     for pts, tw in branches:
         if len(pts) < 2:
             continue
-        # Smooth quadratic bezier
-        d = f"M{pts[0][0]:.1f},{pts[0][1]:.1f}"
+        d_str = f"M{pts[0][0]:.1f},{pts[0][1]:.1f}"
         for i in range(1, len(pts)):
             px, py = pts[i]
-            d += f" L{px:.1f},{py:.1f}"
+            d_str += f" L{px:.1f},{py:.1f}"
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
         elements.append(
             BackgroundElement(
                 "path",
-                f'<path d="{d}" stroke-width="{tw:.2f}"/>',
+                f'<path d="{d_str}" stroke-width="{tw:.2f}"/>',
                 "dendrite",
                 (min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)),
             )
         )
+        # Synapse dot at branch tip
+        ex, ey = pts[-1]
+        r_tip = max(1.0, tw * 0.7)
+        elements.append(
+            BackgroundElement(
+                "circle",
+                f'<circle cx="{ex:.1f}" cy="{ey:.1f}" r="{r_tip:.1f}"/>',
+                "synapse",
+                (ex - r_tip, ey - r_tip, r_tip * 2, r_tip * 2),
+            )
+        )
+        tips.append((ex, ey, tw))
+
+    # Merge pass: connect nearby branch tips (neural anastomosis)
+    merge_r = step * 4
+    used = set()
+    for i, (x1, y1, tw1) in enumerate(tips):
+        if i in used:
+            continue
+        for j, (x2, y2, tw2) in enumerate(tips):
+            if j <= i or j in used:
+                continue
+            dd = math.hypot(x2 - x1, y2 - y1)
+            if dd < merge_r and rng.random() < 0.3:
+                merge_sw = min(tw1, tw2) * 0.5
+                elements.append(
+                    BackgroundElement(
+                        "path",
+                        f'<path d="M{x1:.1f},{y1:.1f} L{x2:.1f},{y2:.1f}" stroke-width="{merge_sw:.2f}"/>',
+                        "dendrite",
+                        (min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1)),
+                    )
+                )
+                used.add(j)
+                break
 
     return elements
 
 
-def _neural_grow(x, y, attractors, w, h, reach, step, branches, rng, depth, tw):
-    if depth > 6 or not attractors:
+def _neural_grow(
+    x,
+    y,
+    attractors,
+    w,
+    h,
+    reach,
+    step,
+    branches,
+    rng,
+    depth,
+    tw,
+    parent_dx=0,
+    parent_dy=1,
+    all_pts=None,
+    attract_repel=0.5,
+    density_fn=None,
+):
+    """Space colonization with density-driven attraction/repulsion.
+
+    In dense areas: attraction dominates -> branches converge and merge.
+    In sparse areas: repulsion dominates -> branches spread out to fill space.
+    """
+    if depth > 5 or not attractors or (all_pts and len(all_pts) > 2000):
         return
+    if all_pts is None:
+        all_pts = []
     pts = [(x, y)]
-    for _ in range(rng.randint(4, 10)):
-        # Find nearest attractor within reach
+    max_steps = rng.randint(8, 20)
+    cur_dx, cur_dy = parent_dx, parent_dy
+    repel_reach = step * 4  # how far repulsion acts
+
+    for step_i in range(max_steps):
+        # --- Attraction: toward nearest attractor ---
         best_d = float("inf")
         best_a = None
         for ax, ay in attractors:
-            d = math.hypot(ax - x, ay - y)
-            if d < best_d:
-                best_d = d
+            dd = math.hypot(ax - x, ay - y)
+            if dd < best_d:
+                best_d = dd
                 best_a = (ax, ay)
         if best_a is None or best_d > reach * 3:
             break
-        # Step toward it with some noise
-        dx = best_a[0] - x
-        dy = best_a[1] - y
-        dist = math.hypot(dx, dy)
-        if dist < 1:
+        adx = best_a[0] - x
+        ady = best_a[1] - y
+        adist = math.hypot(adx, ady)
+        if adist < 1:
             break
-        nx = x + (dx / dist) * step + rng.gauss(0, step * 0.3)
-        ny = y + (dy / dist) * step + rng.gauss(0, step * 0.3)
+        attr_x, attr_y = adx / adist, ady / adist
+
+        # --- Repulsion: away from nearby existing points ---
+        # Use only the last ~50 points for O(1)-ish performance
+        rep_x, rep_y = 0.0, 0.0
+        n_rep = 0
+        check_start = max(0, len(all_pts) - 60)
+        for pi in range(check_start, len(all_pts)):
+            px, py = all_pts[pi]
+            rdx, rdy = x - px, y - py
+            rdist = math.hypot(rdx, rdy)
+            if 0.1 < rdist < repel_reach:
+                force = 1.0 / (rdist * rdist)
+                rep_x += (rdx / rdist) * force
+                rep_y += (rdy / rdist) * force
+                n_rep += 1
+        if n_rep > 0:
+            rmag = math.hypot(rep_x, rep_y)
+            if rmag > 0.001:
+                rep_x /= rmag
+                rep_y /= rmag
+
+        # --- Blend attraction + repulsion based on local density ---
+        # High density -> more attraction (converge). Low density -> more repulsion (spread).
+        local_ar = attract_repel
+        if density_fn:
+            local_ar = min(0.95, max(0.1, density_fn(x, y)))
+
+        fx = local_ar * attr_x + (1 - local_ar) * rep_x
+        fy = local_ar * attr_y + (1 - local_ar) * rep_y
+        fmag = math.hypot(fx, fy)
+        if fmag < 0.001:
+            fx, fy = attr_x, attr_y
+        else:
+            fx, fy = fx / fmag, fy / fmag
+
+        cur_dx, cur_dy = fx, fy
+        nx = x + fx * step + rng.gauss(0, step * 0.15)
+        ny = y + fy * step + rng.gauss(0, step * 0.15)
         nx = max(0, min(w, nx))
         ny = max(0, min(h, ny))
         pts.append((nx, ny))
-        # Remove attractors that are reached
+        all_pts.append((nx, ny))
+
+        # Remove reached attractors
         attractors[:] = [
             (ax, ay) for ax, ay in attractors if math.hypot(ax - nx, ay - ny) > step * 0.5
         ]
-        # Branch
-        if rng.random() < 0.2 and depth < 4:
+
+        # Branch: perpendicular spread, probability boosted in sparse areas
+        branch_boost = 1.0 + (1.0 - local_ar) * 1.5
+        if rng.random() < 0.20 * branch_boost and depth < 5 and step_i > 1:
+            child_tw = tw * 0.6
+            angle_off = rng.uniform(math.pi / 3, 2 * math.pi / 3) * rng.choice([-1, 1])
+            cos_a, sin_a = math.cos(angle_off), math.sin(angle_off)
+            br_dx = cur_dx * cos_a - cur_dy * sin_a
+            br_dy = cur_dx * sin_a + cur_dy * cos_a
+            branch_atts = [
+                (ax, ay)
+                for ax, ay in attractors
+                if math.hypot(ax - nx, ay - ny) > 1
+                and ((ax - nx) * br_dx + (ay - ny) * br_dy) > -0.2 * math.hypot(ax - nx, ay - ny)
+            ] or list(attractors)
             _neural_grow(
                 nx,
                 ny,
-                attractors,
+                branch_atts,
                 w,
                 h,
-                reach * 0.7,
-                step * 0.8,
+                reach * 0.8,
+                step * 0.85,
                 branches,
                 rng,
                 depth + 1,
-                tw * 0.65,
+                child_tw,
+                br_dx,
+                br_dy,
+                all_pts,
+                attract_repel,
+                density_fn,
             )
         x, y = nx, ny
 
     if len(pts) > 1:
-        branches.append((pts, max(0.3, tw - depth * 0.15)))
+        branch_tw = max(0.3, tw * (0.88**depth))
+        branches.append((pts, branch_tw))
 
 
 # ---------------------------------------------------------------------------
@@ -1264,6 +1717,7 @@ def generate_background(
     density: str = "medium",
     direction: str = "right",
     seed: int | None = None,
+    **kwargs,
 ) -> BackgroundResult:
     """Generate background geometry as primitives for Claude to style.
 
@@ -1277,6 +1731,7 @@ def generate_background(
         density: sparse / low / medium / high / dense.
         direction: right / down / left / up / radial.
         seed: Random seed for reproducibility.
+        **kwargs: Type-specific options (e.g. bend_angle=45 for circuit).
     """
     if bg_type not in _GENERATORS:
         raise ValueError(f"Unknown bg type {bg_type!r}. Choose from: {', '.join(BG_TYPES)}")
@@ -1284,7 +1739,14 @@ def generate_background(
         raise ValueError(f"Unknown density {density!r}. Choose from: {', '.join(_DENSITY)}")
 
     rng = _rng(seed)
-    elements = _GENERATORS[bg_type](w, h, density, direction, rng)
+    gen_fn = _GENERATORS[bg_type]
+
+    # Pass type-specific kwargs if the generator accepts them
+    import inspect
+
+    sig = inspect.signature(gen_fn)
+    extra = {k: v for k, v in kwargs.items() if k in sig.parameters}
+    elements = gen_fn(w, h, density, direction, rng, **extra)
 
     result = BackgroundResult(bg_type=bg_type, elements=elements, bbox=(0, 0, w, h))
     result.build_svg()
@@ -1322,6 +1784,57 @@ def main():
         help="Growth direction (default: right)",
     )
     parser.add_argument("--seed", type=int, default=None, help="Random seed")
+    parser.add_argument(
+        "--bend-angle",
+        type=int,
+        default=45,
+        help="Bend angle in degrees for circuit traces (default: 45). Use 90 for right-angle only.",
+    )
+    parser.add_argument(
+        "--origin-directions",
+        type=str,
+        default=None,
+        help="Comma-separated origin angles: 0=top, 90=right, 180=bottom, 270=left (default: from --direction). Example: '0,180'",
+    )
+    parser.add_argument(
+        "--stroke-width", type=float, default=2.5, help="Mean trace stroke width (default: 2.5)"
+    )
+    parser.add_argument(
+        "--stroke-std", type=float, default=0.4, help="Stroke width std deviation (default: 0.4)"
+    )
+    parser.add_argument(
+        "--pad-radius", type=float, default=4.5, help="Mean pad radius (default: 4.5)"
+    )
+    parser.add_argument(
+        "--pad-std", type=float, default=1.0, help="Pad radius std deviation (default: 1.0)"
+    )
+    parser.add_argument(
+        "--branch-prob",
+        type=float,
+        default=None,
+        help="Branch probability (default: from density preset)",
+    )
+    parser.add_argument(
+        "--merge-prob", type=float, default=0.15, help="Merge probability (default: 0.15)"
+    )
+    parser.add_argument(
+        "--density-gradient",
+        type=str,
+        default=None,
+        help="Density gradient preset: left-to-right, right-to-left, top-down, bottom-up, center-out, edges-in",
+    )
+    parser.add_argument(
+        "--density-points",
+        type=str,
+        default=None,
+        help="Custom density points as 'x1,y1,w1;x2,y2,w2;...' (fractions 0-1)",
+    )
+    parser.add_argument(
+        "--subdivision-rounds",
+        type=int,
+        default=2,
+        help="Grid subdivision rounds 0-3 (default: 2)",
+    )
     parser.add_argument("--list", action="store_true", help="List types and exit")
     parser.add_argument("--preview", action="store_true", help="Wrap in full SVG for preview")
     parser.add_argument("--json", action="store_true", help="Output element metadata as JSON")
@@ -1333,6 +1846,20 @@ def main():
             print(f"  {t}")
         return
 
+    # Parse origin_directions from comma-separated string
+    origin_dirs = None
+    if args.origin_directions:
+        origin_dirs = [float(x.strip()) for x in args.origin_directions.split(",")]
+
+    # Parse density_points from semicolon-separated string
+    dp = None
+    if args.density_points:
+        dp = []
+        for part in args.density_points.split(";"):
+            vals = [float(v.strip()) for v in part.split(",")]
+            if len(vals) == 3:
+                dp.append(tuple(vals))
+
     result = generate_background(
         bg_type=args.type,
         w=args.w,
@@ -1340,6 +1867,17 @@ def main():
         density=args.density,
         direction=args.direction,
         seed=args.seed,
+        bend_angle=args.bend_angle,
+        origin_directions=origin_dirs,
+        stroke_width=args.stroke_width,
+        stroke_std=args.stroke_std,
+        pad_radius=args.pad_radius,
+        pad_std=args.pad_std,
+        branch_prob=args.branch_prob,
+        merge_prob=args.merge_prob,
+        density_gradient=args.density_gradient,
+        density_points=dp,
+        subdivision_rounds=args.subdivision_rounds,
     )
 
     if args.json:

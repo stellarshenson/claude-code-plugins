@@ -73,10 +73,11 @@
       title: x=632, y=card_y+20 (11px 600 fg-1)
       desc: x=632, y=card_y+36 (9px mono fg-3)
     Arrow connectors (between cards):
-      start: x=380 (left card right edge), y=card_y+24 (card vertical centre)
-      end: x=620 (right card left edge), y=card_y+24
-      arrow tip at x=616 (4px standoff for head)
-      arrow head: 7px equilateral triangle pointing right
+      left card right edge: x=380, right card left edge: x=620
+      standoff: 5px from both edges (stem starts x=385, tip at x=615)
+      stem: M385,cy L608,cy (trimmed for arrowhead clearance)
+      arrowhead polygon: (615,cy) (608,cy-4) (608,cy+4)
+      head size: 7x4 (length x half-height)
     Vertical rhythm: 58px row stride, 48px card, 10px gap
   === -->
 
@@ -118,9 +119,9 @@
     <text class="fg-1 card-title" x="62" y="112">Snap to Grid</text>
     <text class="fg-3" x="62" y="128" font-size="9">drag a shape and it locks to the nearest grid line</text>
 
-    <!-- Arrow: x=380,y=116 -> x=620,y=116 -->
-    <line class="arrow-line" x1="384" y1="116" x2="614" y2="116"/>
-    <polygon class="arrow-head" points="614,112 622,116 614,120"/>
+    <!-- Arrow: left-card-right(380) -> right-card-left(620), standoff=5px -->
+    <path class="arrow-line" d="M385,116 L608,116"/>
+    <polygon class="arrow-head" points="615,116 608,112 608,120"/>
 
     <!-- Right card: x=620 y=92 w=330 h=48 -->
     <rect class="right-card-fill" x="620" y="92" width="330" height="48" rx="4"/>
@@ -141,9 +142,9 @@
     <text class="fg-1 card-title" x="62" y="170">Smart Connector</text>
     <text class="fg-3" x="62" y="186" font-size="9">drag an arrow and it routes around obstacles</text>
 
-    <!-- Arrow -->
-    <line class="arrow-line" x1="384" y1="174" x2="614" y2="174"/>
-    <polygon class="arrow-head" points="614,170 622,174 614,178"/>
+    <!-- Arrow: left-card-right(380) -> right-card-left(620), standoff=5px -->
+    <path class="arrow-line" d="M385,174 L608,174"/>
+    <polygon class="arrow-head" points="615,174 608,170 608,178"/>
 
     <!-- Right card: x=620 y=150 w=330 h=48 -->
     <rect class="right-card-fill" x="620" y="150" width="330" height="48" rx="4"/>
@@ -164,9 +165,9 @@
     <text class="fg-1 card-title" x="62" y="228">Colour Picker</text>
     <text class="fg-3" x="62" y="244" font-size="9">select from a bound swatch palette</text>
 
-    <!-- Arrow -->
-    <line class="arrow-line" x1="384" y1="232" x2="614" y2="232"/>
-    <polygon class="arrow-head" points="614,228 622,232 614,236"/>
+    <!-- Arrow: left-card-right(380) -> right-card-left(620), standoff=5px -->
+    <path class="arrow-line" d="M385,232 L608,232"/>
+    <polygon class="arrow-head" points="615,232 608,228 608,236"/>
 
     <!-- Right card: x=620 y=208 w=330 h=48 -->
     <rect class="right-card-fill" x="620" y="208" width="330" height="48" rx="4"/>
@@ -187,9 +188,9 @@
     <text class="fg-1 card-title" x="62" y="286">Alignment Guide</text>
     <text class="fg-3" x="62" y="302" font-size="9">centre-align, distribute, snap to neighbours</text>
 
-    <!-- Arrow -->
-    <line class="arrow-line" x1="384" y1="290" x2="614" y2="290"/>
-    <polygon class="arrow-head" points="614,286 622,290 614,294"/>
+    <!-- Arrow: left-card-right(380) -> right-card-left(620), standoff=5px -->
+    <path class="arrow-line" d="M385,290 L608,290"/>
+    <polygon class="arrow-head" points="615,290 608,286 608,294"/>
 
     <!-- Right card: x=620 y=266 w=330 h=48 -->
     <rect class="right-card-fill" x="620" y="266" width="330" height="48" rx="4"/>
@@ -210,9 +211,9 @@
     <text class="fg-1 card-title" x="62" y="344">Preflight Panel</text>
     <text class="fg-3" x="62" y="360" font-size="9">refuse export until all checks pass</text>
 
-    <!-- Arrow -->
-    <line class="arrow-line" x1="384" y1="348" x2="614" y2="348"/>
-    <polygon class="arrow-head" points="614,344 622,348 614,352"/>
+    <!-- Arrow: left-card-right(380) -> right-card-left(620), standoff=5px -->
+    <path class="arrow-line" d="M385,348 L608,348"/>
+    <polygon class="arrow-head" points="615,348 608,344 608,352"/>
 
     <!-- Right card: x=620 y=324 w=330 h=48 -->
     <rect class="right-card-fill" x="620" y="324" width="330" height="48" rx="4"/>
