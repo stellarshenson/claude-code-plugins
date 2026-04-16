@@ -195,6 +195,47 @@ y_row3   = 62   (row2 + 14)
 
 Wrap logical components in `<g id="component-name">`. Lowercase-hyphen names. Light/dark variants use `-light`/`-dark` suffix.
 
+### Group Operations
+
+Groups (`<g>`) are the primary unit for multi-element manipulation. Build content inside a group at origin, then position the entire group with one transform.
+
+**Creating groups**: build child elements at local coordinates (relative to 0,0), wrap in `<g id="name" transform="translate(x,y)">`. All children move, scale, rotate together.
+
+```xml
+<!-- Card group: build at origin, position via translate -->
+<g id="card-pricing" transform="translate(320, 120)">
+  <rect x="0" y="0" width="200" height="140" class="card-body"/>
+  <rect x="0" y="0" width="200" height="5" class="accent-bar"/>
+  <text x="16" y="32" class="fg-1">Pricing</text>
+</g>
+```
+
+**Group transforms** (apply to the entire group at once):
+- `translate(x, y)` - move the group. Primary positioning method.
+- `scale(sx, sy)` - resize. Use for icon groups: `scale(0.667)` = 16px icons from 24px Lucide originals.
+- `rotate(deg, cx, cy)` - rotate around a centre point. Rarely needed - prefer tool-computed geometry.
+- Combine: `transform="translate(100, 200) scale(0.5)"` - translate FIRST (in parent coords), then scale.
+
+**Positioning groups with alignment tools**:
+
+```bash
+# Compute positions for 4 card groups, then align tops + distribute horizontally
+geom align --rects "[(0,0,200,140),(0,0,200,140),(0,0,200,140),(0,0,200,140)]" --edge top
+geom distribute --rects "[(50,120,200,140),(270,120,200,140),(490,120,200,140),(710,120,200,140)]" --axis h --mode gap
+```
+
+Use the returned positions as `translate(x, y)` values on each `<g>`.
+
+**Nesting**: groups nest. A card group inside a section group inside the `<g id="nodes">` layer. Transforms compose: child inherits parent's transform, then applies its own. Keep nesting shallow (3 levels max) for readability.
+
+**Group bbox**: after transforms, the effective bbox in root coordinates = child bbox transformed by all ancestor transforms. `geom` tools operate in root coordinates - pass the final world-space rects, not local group coords.
+
+**Rules**:
+- Every multi-element unit = a group. No loose rects/text at root.
+- Unique `id` on every group. Lowercase-hyphen: `card-overview`, `section-header`, `legend-strip`.
+- Content groups inside layer groups: `<g id="nodes"><g id="card-a">...</g></g>`.
+- Icons always in their own `<g transform="translate(...) scale(...)">`.
+
 ### Multi-Card Grids
 
 All cards in a row same width: `(viewBox_width - 2*margin - (n-1)*gap) / n`. Inter-card gap 12px (timeline) or 20px (content). Card padding 16px left/right, 20px top from accent bar.
