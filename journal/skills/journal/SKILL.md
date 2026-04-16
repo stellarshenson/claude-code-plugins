@@ -51,9 +51,41 @@ After appending, ALWAYS verify:
 
 See `references/examples.md` — Standard and Extended entries with before/after examples showing when to downgrade a bloated draft.
 
+## CLI Tools (deterministic, no LLM)
+
+`journal-tools` validates, archives, and sorts journal files. Pure string parsing - no generative AI. Use BEFORE committing to catch format drift, and for archiving/sorting instead of manual edits.
+
+### Check
+
+```bash
+journal-tools check .claude/JOURNAL.md
+```
+
+Validates: continuous numbering, ascending order, entry format (title + Result body), word count tiers. Entries over 150 words = warning (standard exceeded). Over 400 words = error (extended exceeded). Exit code 0 = clean, 1 = errors found.
+
+**MANDATORY**: run `journal-tools check` after writing entries to catch word-count drift. If the checker flags an entry, condense before committing.
+
+### Archive
+
+```bash
+journal-tools archive .claude/JOURNAL.md
+```
+
+Moves entries to `JOURNAL_ARCHIVE.md` when count exceeds threshold (default 40). Keeps last 20 in main file. Appends to existing archive. Maintains continuous numbering. Flags: `--keep-last N`, `--threshold N`, `--archive-path PATH`.
+
+Use this instead of manual archive edits - prevents numbering mistakes and header corruption.
+
+### Sort
+
+```bash
+journal-tools sort .claude/JOURNAL.md --dry-run
+```
+
+Re-numbers entries sequentially. Fixes gaps (e.g. 1, 2, 5 -> 1, 2, 3) and ordering (e.g. 3 before 2 -> 2 before 3). Use `--dry-run` to preview, omit to write in-place. Flag: `--start-from N`.
+
 ## Archiving
 
-**Trigger**: exceeds 40 entries OR user requests
+**Trigger**: exceeds 40 entries OR user requests. Prefer `journal-tools archive` CLI over manual editing.
 1. Move older entries to `.claude/JOURNAL_ARCHIVE.md`
 2. Keep last 20 entries in main file
 3. Add link at top: `**Note**: Entries 1-N have been archived`

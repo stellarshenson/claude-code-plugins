@@ -24,10 +24,10 @@ The marketplace includes a shared YAML-driven orchestration engine (`autobuild`)
 |--------|---------------|
 | [autobuild](autobuild/) | Executes code and artefact builds toward an objective with iterations driven by a calculated outcome benchmark - enforces structured phases with multi-agent review |
 | [devils-advocate](devils-advocate/) | Produces high-quality documents for a specific audience using a scientific, measured, iterative approach - quantified critique with Fibonacci risk scoring and per-iteration residual measurement |
-| [svg-infographics](svg-infographics/) | Produces high-quality standardised SVG infographics - grid-first design, theme-driven styling, dark/light mode, and 5 automated checkers for layout, contrast, and alignment |
+| [svg-infographics](svg-infographics/) | Produces high-quality standardised SVG infographics - grid-first design, theme-driven styling, dark/light mode, 5 routing modes (straight/L/L-chamfer/spline/manifold) with A* auto-routing, callout placement solver, chart generation, and 6 automated checkers |
 | [datascience](datascience/) | Produces high-quality data science projects and notebooks following consistent standards - scaffolds projects from copier templates, enforces notebook structure, applies rich output styling, and supports prompt engineering techniques |
 | [document-processing](document-processing/) | Processes documents according to user requests with grounding in source materials - source tracing, compliance checking, PDF automation |
-| [journal](journal/) | Produces a work journal marking key changes, implementations, and decisions - append-only audit trail with continuous numbering and archiving |
+| [journal](journal/) | Produces a work journal marking key changes, implementations, and decisions - append-only audit trail with continuous numbering, archiving, and deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement |
 
 ## autobuild
 
@@ -93,9 +93,11 @@ See [devils-advocate/README.md](devils-advocate/) for scoring formula details, a
 
 <img alt="svg-infographics 6-phase workflow and 8 shipped CLI tools (validators + calculators)" src="assets/svg/04_svg_infographics_workflow.svg" width="100%">
 
-Creates production-quality SVG infographics with a mandatory 6-phase workflow (research, grid, scaffold, content, finishing, validation). Every coordinate is Python-calculated, every colour traces to an approved theme swatch, and five validation tools check overlaps, WCAG contrast, alignment, and connector quality before delivery.
+Creates production-quality SVG infographics with a mandatory 6-phase workflow (research, grid, scaffold, content, finishing, validation). Every coordinate is Python-calculated, every colour traces to an approved theme swatch, and six validation tools check overlaps, WCAG contrast, alignment, connector quality, CSS compliance, and pairwise connector collisions before delivery.
 
-**Skills**: `svg-standards` (grid layout, CSS classes, cards, arrows), `workflow` (6-phase process), `theme` (palette approval), `validation` (checker tools)
+Five connector routing modes (`straight`, `l`, `l-chamfer`, `spline`, `manifold`) with grid A* auto-routing around obstacles, container-scoped routing within specific shapes, straight-line collapse for near-aligned endpoints, and stem preservation guaranteeing clean cardinal segments behind arrowheads. Callout placement via greedy solver with leader and leaderless modes. Charts via pygal with dual light/dark palette and WCAG contrast audit.
+
+**Skills**: `svg-standards` (grid layout, CSS classes, connectors, callouts), `workflow` (6-phase process), `theme` (palette approval), `validation` (checker tools)
 
 ### Usage
 
@@ -116,7 +118,7 @@ Creates production-quality SVG infographics with a mandatory 6-phase workflow (r
 /svg-infographics:fix-layout docs/images/overview.svg
 ```
 
-Includes 64 production SVG examples, 5 Python validation tools, and theme swatches. See [svg-infographics/README.md](svg-infographics/) for design principles and workflow details.
+Includes 60+ production SVG examples, 12 CLI tools (6 validators + 6 calculators), and theme swatches. See [svg-infographics/README.md](svg-infographics/) for the five capability groups and workflow details.
 
 ## datascience
 
@@ -157,7 +159,7 @@ See [datascience/README.md](datascience/) for the full list of standards enforce
 
 <img alt="journal append-only timeline with archive and continuous numbering" src="assets/svg/07_journal_audit.svg" width="100%">
 
-Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers after substantive work to maintain a consistent audit trail in `.claude/JOURNAL.md`.
+Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers after substantive work to maintain a consistent audit trail in `.claude/JOURNAL.md`. Includes a deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement - no generative AI in the loop.
 
 **Skills**: `journal` (auto-triggered after substantive work)
 
@@ -172,9 +174,17 @@ Project journal management with append-only entry format, continuous numbering, 
 
 # Archive older entries (keeps last 20)
 /journal:archive
+
+# Validate format, numbering, and word counts (deterministic CLI)
+journal-tools check .claude/JOURNAL.md
+
+# Re-number entries sequentially
+journal-tools sort .claude/JOURNAL.md --dry-run
 ```
 
-See [journal/README.md](journal/) for entry format, detail levels, and archiving rules.
+Two word-count tiers: Standard (<=150 words, the default) and Extended (<=400 words, for architectural decisions). The checker flags entries over target as warnings and entries over extended max as errors.
+
+See [journal/README.md](journal/) for entry format, CLI tools, and archiving rules.
 
 ## document-processing
 

@@ -11,6 +11,13 @@ Unlike ad-hoc changelog updates, this plugin enforces a single entry shape, guar
 /plugin install journal@stellarshenson-marketplace
 ```
 
+The `journal-tools` CLI ships as part of the shared Python package:
+
+```bash
+pip install stellars-claude-code-plugins
+journal-tools --help
+```
+
 ## Commands
 
 | Command | What it does |
@@ -25,23 +32,35 @@ Unlike ad-hoc changelog updates, this plugin enforces a single entry shape, guar
 |-------|--------------|
 | `journal` | After completing substantive work - enforces append-only entries, format, numbering, and verification |
 
+## CLI tools
+
+Deterministic validation, archiving, and sorting - no generative AI in the loop.
+
+```bash
+# Validate format, numbering, and word counts
+journal-tools check .claude/JOURNAL.md
+
+# Archive old entries (threshold 40, keep last 20)
+journal-tools archive .claude/JOURNAL.md
+
+# Re-number entries sequentially (fix gaps/ordering)
+journal-tools sort .claude/JOURNAL.md --dry-run
+```
+
+The checker enforces two word-count tiers for entry bodies (after `**Result**:`):
+
+| Tier | Target | Use when |
+|------|--------|----------|
+| **Standard** | <=150 words | DEFAULT. Features, bug fixes, multi-file changes |
+| **Extended** | <=400 words | Architectural decisions, cross-cutting refactors, debugging sagas |
+
+Entries exceeding standard target get a warning; entries exceeding extended max get an error.
+
 ## Entry format
 
 Entries follow the pattern `N. **Task - <short name>**:` / `**Result**:`, optionally tagged with a project version (e.g. `(v1.3.1)`) when the project has a `package.json`, `pyproject.toml`, or similar manifest. Numbering is continuous across the lifetime of the journal and never resets across archive boundaries.
 
-Four detail levels (Short, Normal, Extended, Multi-topic Normal) cover the span from trivial fix to multi-topic release. Full examples and guidance on when to pick each shape live in `skills/journal/references/examples.md`.
-
-## Example
-
-```bash
-# Create an entry after finishing a feature
-/journal:create implemented workspace culling with last_modified timestamp
-
-# Archive when the journal has grown past 40 entries
-/journal:archive
-```
-
-The `journal` skill also fires automatically at the end of substantive sessions, so explicit `/journal:create` is mostly useful when forcing an entry or disambiguating a multi-part task.
+Two detail tiers (Standard and Extended) cover the span from quick fix to multi-topic release. Standard is the default - match the user's own summary length and do not inflate. Full examples in `skills/journal/references/examples.md`.
 
 ## Rules summary
 
@@ -49,10 +68,9 @@ The `journal` skill also fires automatically at the end of substantive sessions,
 - Continuous numbering preserved across archive boundaries
 - Archive threshold at 40 entries, main file trimmed to last 20
 - Maintenance tasks (git commits, cleanup) are skipped, not logged
-
-Full specification, verification steps, and archive renumbering flow in `skills/journal/SKILL.md`.
+- Standard tier <=150 words is the default; Extended only when justified
 
 ## Documentation
 
 - `skills/journal/SKILL.md` - full entry spec, verification, append-only enforcement, archive flow
-- `skills/journal/references/examples.md` - worked examples for each detail level
+- `skills/journal/references/examples.md` - worked examples for each detail tier
