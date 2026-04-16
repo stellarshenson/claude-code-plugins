@@ -361,12 +361,28 @@ svg-infographics connector --mode l --auto-route --svg scene.svg \
 
 One merge = `spine_start`, one fork = `spine_end`. All start strands terminate at `spine_start`, tangent to spine. All end strands leave from `spine_end`, tangent to spine. No branch distribution. Strands = cubic Beziers. Tangent magnitude = `tension`:
 
-- `tension=0` → long tangents → floppy bow
-- `tension=1` → short tangents → stiff near-straight
-- `tension=0.5` default → Sankey S-curve
-- Scalar or `(start,end)` tuple
+- `tension=0` → long tangents → floppy bow, strands cross easily
+- `tension=1` → short tangents → stiff near-straight, maximum separation
+- `tension=0.75` default → clean S-curves with good separation
+- Scalar or `(start,end)` tuple for asymmetric stiffness
 
 Strands inherit spine direction. Override per endpoint via 3-tuple `(x,y,"E")` or `(x,y,45)` (compass or deg CW from north).
+
+### Manifold quality warnings
+
+The tool emits two types of non-fatal warnings. **Always inspect `warnings` in the result.**
+
+**"strands CROSS each other"** - two strands in the same fan (start or end) intersect. Visual defect. Fix by:
+1. Increase `tension` toward 1.0 (stiffer strands separate better)
+2. Move `spine_start`/`spine_end` further from the endpoints (longer spine = wider fan angle)
+3. Pass explicit `fork_points`/`merge_points` to spread convergence
+
+**"curves BACKWARD against spine flow"** - a strand's S-curve overshoots and briefly moves opposite to the spine direction before turning back. Happens with low tension + wide angular spread. Fix by:
+1. Increase `tension` (0.85-0.95 for tight layouts)
+2. Reduce the vertical/perpendicular spread of endpoints
+3. Move the fork/merge point further along the spine direction
+
+**Padlock/icon overlap with labels** - when an icon and its label occupy the same visual zone, use `geom` to compute offset positions or place the label on the opposite side of the card from the icon. The `overlaps` checker catches this post-hoc; prevent it by computing label placement AFTER icon placement using `geom midpoint` or `geom attach`.
 
 ### Auto-edge mode (straight)
 

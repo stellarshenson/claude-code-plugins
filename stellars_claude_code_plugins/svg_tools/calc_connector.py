@@ -2278,7 +2278,7 @@ def calc_manifold(
     spine_start,
     spine_end,
     shape="l-chamfer",
-    tension=0.5,
+    tension=0.75,
     merge_points=None,
     fork_points=None,
     spine_controls=None,
@@ -2313,9 +2313,13 @@ def calc_manifold(
         spine_end          (x, y). Required. Where fork strands diverge from.
         shape              One of "straight", "l", "l-chamfer", "spline".
         tension            Scalar in [0,1] or 2-tuple (start_tension, end_tension).
-                           Controls how merge/fork points fan out. 0 = collapse
-                           at spine endpoint, 1 = full perpendicular projection
-                           of each start/end onto the merge/fork line.
+                           Default 0.75 (stiff). Controls how merge/fork points
+                           fan out AND how stiff the S-curves are. 0 = collapse
+                           at spine endpoint (floppy, strands cross easily);
+                           1 = full perpendicular projection (rigid, maximum
+                           separation). Increase toward 1.0 when strands cross
+                           or curve backward. Use (start, end) tuple for
+                           asymmetric stiffness.
         merge_points       Optional list (one per start) to override inference.
         fork_points        Optional list (one per end) to override inference.
         spine_controls     Optional list of waypoints for the spine connector.
@@ -2622,6 +2626,70 @@ def calc_manifold(
         parts.extend(s[key] for s in divergence_strands if s is not None)
         parts.extend(s[key] for s in end_strands)
         return " ".join(parts)
+
+    # --- Post-build quality checks ---
+
+    # 1. Strand crossing detection: check if any start strands cross each
+    #    other or any end strands cross each other. Crossing strands are a
+    #    visual defect - the fix is to move the merge/fork point or increase
+    #    tension so the fan-out is wider and strands separate cleanly.
+    def _check_strand_crossings(strands, label):
+        """Detect pairwise intersections among a list of strand results."""
+        try:
+            from shapely.geometry import LineString
+        except ImportError:
+            return
+        lines = []
+        for s in strands:
+            pts = s.get("samples", [])
+            if len(pts) >= 2:
+                lines.append(LineString([(float(x), float(y)) for x, y in pts]))
+            else:
+                lines.append(None)
+        for i in range(len(lines)):
+            for j in range(i + 1, len(lines)):
+                if lines[i] is None or lines[j] is None:
+                    continue
+                if lines[i].crosses(lines[j]):
+                    msg = (
+                        f"manifold {label} strands {i} and {j} CROSS each "
+                        f"other. Fix: increase tension (current {t_start if label == 'start' else t_end:.2f}) "
+                        f"or move the {'merge' if label == 'start' else 'fork'} point further from the spine endpoint."
+                    )
+                    warnings.append(msg)
+                    print(f"WARNING: {msg}", file=sys.stderr)
+
+    _check_strand_crossings(start_strands, "start")
+    _check_strand_crossings(end_strands, "end")
+
+    # 2. Backward-curve detection: check if any strand sample moves
+    #    backward relative to the spine's flow direction. Backward curves
+    #    happen when tension is too low and the S-curve overshoots,
+    #    curving against the flow before reaching its target.
+    if _sp_len > 0:
+        flow_unit = (_sp_dx, _sp_dy)
+
+        def _check_backward(strands, label):
+            for i, s in enumerate(strands):
+                pts = s.get("samples", [])
+                if len(pts) < 3:
+                    continue
+                for k in range(1, len(pts)):
+                    dx = pts[k][0] - pts[k - 1][0]
+                    dy = pts[k][1] - pts[k - 1][1]
+                    dot = dx * flow_unit[0] + dy * flow_unit[1]
+                    if dot < -2.0:  # > 2px backward movement
+                        msg = (
+                            f"manifold {label} strand {i} curves BACKWARD "
+                            f"against spine flow at sample {k}. Fix: increase "
+                            f"tension or reduce the angular spread of endpoints."
+                        )
+                        warnings.append(msg)
+                        print(f"WARNING: {msg}", file=sys.stderr)
+                        break  # one warning per strand is enough
+
+        _check_backward(start_strands, "start")
+        _check_backward(end_strands, "end")
 
     return {
         "mode": "manifold",
