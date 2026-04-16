@@ -819,6 +819,238 @@ def gen_spline(
     return PrimitiveResult("spline", anchors, svg, path_d)
 
 
+def gen_gear(
+    x: float, y: float, outer_r: float, inner_r: float = 0, teeth: int = 12, mode: str = "filled"
+) -> PrimitiveResult:
+    """Toothed gear wheel centered at (x, y).
+
+    Each tooth is a trapezoid: two base vertices on the inner circle and two
+    tip vertices on the outer circle. Teeth are evenly spaced over 360 degrees.
+
+    Args:
+        x, y: Centre of the gear
+        outer_r: Outer (tip) radius
+        inner_r: Inner (root) radius (default: outer_r * 0.7)
+        teeth: Number of teeth (default: 12)
+        mode: "filled" for a filled polygon, "outline" for stroke-only path
+    """
+    if inner_r == 0:
+        inner_r = outer_r * 0.7
+
+    tooth_angle = 2 * math.pi / teeth
+    half_tooth = tooth_angle * 0.25  # half-width of each tooth tip
+
+    pts = []
+    for i in range(teeth):
+        base_angle = tooth_angle * i
+        # Base-left on inner circle
+        pts.append(Point(
+            round(x + inner_r * math.cos(base_angle - half_tooth), 2),
+            round(y + inner_r * math.sin(base_angle - half_tooth), 2),
+        ))
+        # Tip-left on outer circle
+        pts.append(Point(
+            round(x + outer_r * math.cos(base_angle - half_tooth), 2),
+            round(y + outer_r * math.sin(base_angle - half_tooth), 2),
+        ))
+        # Tip-right on outer circle
+        pts.append(Point(
+            round(x + outer_r * math.cos(base_angle + half_tooth), 2),
+            round(y + outer_r * math.sin(base_angle + half_tooth), 2),
+        ))
+        # Base-right on inner circle
+        pts.append(Point(
+            round(x + inner_r * math.cos(base_angle + half_tooth), 2),
+            round(y + inner_r * math.sin(base_angle + half_tooth), 2),
+        ))
+
+    anchors = {
+        "centre": Point(x, y),
+        "top": Point(x, y - outer_r),
+        "right": Point(x + outer_r, y),
+        "bottom": Point(x, y + outer_r),
+        "left": Point(x - outer_r, y),
+    }
+
+    vertices = " ".join(f"{p.x},{p.y}" for p in pts)
+    if mode == "filled":
+        svg = f'<polygon points="{vertices}" fill="{{accent}}" fill-opacity="0.08" stroke="{{accent}}" stroke-width="1"/>'
+    else:
+        d = "M" + " L".join(f"{p.x},{p.y}" for p in pts) + " Z"
+        svg = f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="1"/>'
+
+    return PrimitiveResult("gear", anchors, svg)
+
+
+def gen_pyramid(
+    x: float, y: float, base_w: float, height: float, mode: str = "filled"
+) -> PrimitiveResult:
+    """Isometric 3D pyramid with three visible faces. Apex at top.
+
+    Uses pseudo-3D projection: apex above the base centre, base-back
+    recessed upward at 60% of the height to simulate depth.
+
+    Args:
+        x, y: Top-left corner of the bounding box
+        base_w: Width of the base
+        height: Height from base to apex
+        mode: "filled" for shaded faces, "wire" for outline with dashed hidden edges
+    """
+    apex = Point(x + base_w / 2, y)
+    base_left = Point(x, y + height)
+    base_right = Point(x + base_w, y + height)
+    base_back = Point(x + base_w / 2, y + height * 0.6)
+
+    anchors = {
+        "apex": apex,
+        "base-left": base_left,
+        "base-right": base_right,
+        "base-back": base_back,
+        "centre": Point(x + base_w / 2, y + height * 0.7),
+    }
+
+    face_left = f"M{apex.x},{apex.y} L{base_left.x},{base_left.y} L{base_back.x},{base_back.y} Z"
+    face_right = f"M{apex.x},{apex.y} L{base_right.x},{base_right.y} L{base_back.x},{base_back.y} Z"
+    face_back = f"M{base_left.x},{base_left.y} L{base_right.x},{base_right.y} L{base_back.x},{base_back.y} Z"
+
+    if mode == "wire":
+        svg = (
+            f'<path d="{face_left}" fill="none" stroke="{{accent}}" stroke-width="1"/>\n'
+            f'<path d="{face_right}" fill="none" stroke="{{accent}}" stroke-width="1"/>\n'
+            f'<path d="M{base_back.x},{base_back.y} L{apex.x},{apex.y}" '
+            f'fill="none" stroke="{{accent}}" stroke-width="0.7" stroke-dasharray="2,2" opacity="0.55"/>'
+        )
+    else:
+        svg = (
+            f'<path d="{face_left}" fill="{{accent}}" fill-opacity="0.15" stroke="{{accent}}" stroke-width="1"/>\n'
+            f'<path d="{face_right}" fill="{{accent}}" fill-opacity="0.10" stroke="{{accent}}" stroke-width="1"/>\n'
+            f'<path d="{face_back}" fill="{{accent}}" fill-opacity="0.05"/>'
+        )
+
+    return PrimitiveResult("pyramid", anchors, svg)
+
+
+def gen_cloud(
+    x: float, y: float, w: float, h: float, lobes: int = 5, mode: str = "filled"
+) -> PrimitiveResult:
+    """Cloud shape built from a cubic-bezier closed path scaled to (x, y, w, h).
+
+    The path uses a 5-lobe cloud template with control points scaled
+    proportionally to w and h. The `lobes` parameter adjusts the number of
+    bumps by repeating the top-arc segment pattern.
+
+    Args:
+        x, y: Top-left corner of the bounding box
+        w, h: Width and height of the bounding box
+        lobes: Number of top bumps (default: 5; values 3-7 work well)
+        mode: "filled" for filled cloud, "outline" for stroke-only path
+    """
+    # Base 5-lobe template scaled to (w, h).  The bottom is flat-ish at 0.7*h.
+    # Additional lobes duplicate the middle bump arc segment.
+    extra = max(0, lobes - 5)
+    lobe_w = w / (5 + extra)
+
+    # Build the top arc as a series of bump arcs (cubic bezier per lobe).
+    # Start: left side entry at (0.15*w, 0.35*h)
+    # Each lobe adds one cubic bump of width lobe_w rising to ~0.05*h above y.
+    parts = [f"M{x + 0.2 * w:.2f},{y + 0.7 * h:.2f}"]
+    # Left ramp up
+    parts.append(
+        f"C{x + 0.05 * w:.2f},{y + 0.7 * h:.2f} "
+        f"{x:.2f},{y + 0.45 * h:.2f} "
+        f"{x + 0.15 * w:.2f},{y + 0.35 * h:.2f}"
+    )
+    # Top lobes: each lobe spans lobe_w, centre rises to y + 0.05*h
+    lobe_count = 5 + extra
+    for i in range(lobe_count):
+        lx0 = x + 0.15 * w + i * lobe_w
+        lx1 = lx0 + lobe_w
+        lmid = (lx0 + lx1) / 2
+        parts.append(
+            f"C{lx0:.2f},{y:.2f} "
+            f"{lmid:.2f},{y - 0.05 * h:.2f} "
+            f"{lx1:.2f},{y + 0.05 * h:.2f}"
+        )
+    # Right ramp down
+    parts.append(
+        f"C{x + w:.2f},{y + 0.35 * h:.2f} "
+        f"{x + w:.2f},{y + 0.6 * h:.2f} "
+        f"{x + 0.8 * w:.2f},{y + 0.7 * h:.2f}"
+    )
+    parts.append("Z")
+    d = " ".join(parts)
+
+    anchors = {
+        "centre": Point(x + w / 2, y + h / 2),
+        "top": Point(x + w / 2, y),
+        "right": Point(x + w, y + h * 0.6),
+        "bottom": Point(x + w / 2, y + h * 0.7),
+        "left": Point(x, y + h * 0.6),
+    }
+
+    if mode == "filled":
+        svg = f'<path d="{d}" fill="{{accent}}" fill-opacity="0.08" stroke="{{accent}}" stroke-width="1"/>'
+    else:
+        svg = f'<path d="{d}" fill="none" stroke="{{accent}}" stroke-width="1"/>'
+
+    return PrimitiveResult("cloud", anchors, svg, d)
+
+
+def gen_document(
+    x: float, y: float, w: float, h: float, fold: float = 0, mode: str = "filled"
+) -> PrimitiveResult:
+    """Rectangle with a folded corner (dog-ear) at the top-right.
+
+    The main body is a pentagon with the top-right corner cut diagonally.
+    A small triangle overlaid at the fold represents the curled flap.
+
+    Args:
+        x, y: Top-left corner
+        w, h: Width and height
+        fold: Size of the fold triangle (default: min(w, h) * 0.2)
+        mode: "filled" for shaded document, "outline" for stroke-only
+    """
+    if fold == 0:
+        fold = min(w, h) * 0.2
+
+    # Main body: top-left -> (top-right minus fold) -> diagonal -> down -> bottom-right -> bottom-left
+    body_d = (
+        f"M{x},{y} "
+        f"L{x + w - fold},{y} "
+        f"L{x + w},{y + fold} "
+        f"L{x + w},{y + h} "
+        f"L{x},{y + h} Z"
+    )
+    # Fold flap triangle
+    flap_d = (
+        f"M{x + w - fold},{y} "
+        f"L{x + w - fold},{y + fold} "
+        f"L{x + w},{y + fold} Z"
+    )
+
+    anchors = {
+        "top-left": Point(x, y),
+        "top-right": Point(x + w - fold, y),
+        "bottom-left": Point(x, y + h),
+        "bottom-right": Point(x + w, y + h),
+        "centre": Point(x + w / 2, y + h / 2),
+        "fold": Point(x + w, y + fold),
+    }
+
+    if mode == "filled":
+        svg = (
+            f'<path d="{body_d}" fill="{{accent}}" fill-opacity="0.06" stroke="{{accent}}" stroke-width="1"/>\n'
+            f'<path d="{flap_d}" fill="{{accent}}" fill-opacity="0.12" stroke="{{accent}}" stroke-width="0.7"/>'
+        )
+    else:
+        svg = (
+            f'<path d="{body_d}" fill="none" stroke="{{accent}}" stroke-width="1"/>\n'
+            f'<path d="{flap_d}" fill="none" stroke="{{accent}}" stroke-width="0.7" stroke-dasharray="2,2"/>'
+        )
+
+    return PrimitiveResult("document", anchors, svg, body_d)
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -948,6 +1180,41 @@ def main():
     p.add_argument("--depth", type=float, required=True)
     p.add_argument("--tilt", type=float, default=30, help="Projection angle (default: 30)")
 
+    # gear
+    p = sub.add_parser("gear", help="Toothed gear wheel (filled or outline)")
+    p.add_argument("--x", type=float, required=True)
+    p.add_argument("--y", type=float, required=True)
+    p.add_argument("--outer-r", type=float, required=True, help="Outer (tip) radius")
+    p.add_argument("--inner-r", type=float, default=0, help="Inner (root) radius (default: outer_r*0.7)")
+    p.add_argument("--teeth", type=int, default=12, help="Number of teeth (default: 12)")
+    p.add_argument("--mode", choices=["filled", "outline"], default="filled")
+
+    # pyramid
+    p = sub.add_parser("pyramid", help="Isometric 3D pyramid (filled or wireframe)")
+    p.add_argument("--x", type=float, required=True)
+    p.add_argument("--y", type=float, required=True)
+    p.add_argument("--base-w", type=float, required=True, help="Base width")
+    p.add_argument("--height", type=float, required=True)
+    p.add_argument("--mode", choices=["filled", "wire"], default="filled")
+
+    # cloud
+    p = sub.add_parser("cloud", help="Cloud shape with lobe bumps (filled or outline)")
+    p.add_argument("--x", type=float, required=True)
+    p.add_argument("--y", type=float, required=True)
+    p.add_argument("--w", type=float, required=True)
+    p.add_argument("--h", type=float, required=True)
+    p.add_argument("--lobes", type=int, default=5, help="Number of top bumps (default: 5)")
+    p.add_argument("--mode", choices=["filled", "outline"], default="filled")
+
+    # document
+    p = sub.add_parser("document", help="Document shape with folded top-right corner")
+    p.add_argument("--x", type=float, required=True)
+    p.add_argument("--y", type=float, required=True)
+    p.add_argument("--w", type=float, required=True)
+    p.add_argument("--h", type=float, required=True)
+    p.add_argument("--fold", type=float, default=0, help="Fold size (default: min(w,h)*0.2)")
+    p.add_argument("--mode", choices=["filled", "outline"], default="filled")
+
     # spline
     p = sub.add_parser("spline", help="Smooth PCHIP spline through control points")
     p.add_argument(
@@ -1007,6 +1274,14 @@ def main():
         result = gen_cuboid(args.x, args.y, args.width, args.height, args.depth, mode=args.mode)
     elif args.primitive == "plane":
         result = gen_plane(args.x, args.y, args.width, args.depth, tilt=args.tilt)
+    elif args.primitive == "gear":
+        result = gen_gear(args.x, args.y, args.outer_r, inner_r=args.inner_r, teeth=args.teeth, mode=args.mode)
+    elif args.primitive == "pyramid":
+        result = gen_pyramid(args.x, args.y, args.base_w, args.height, mode=args.mode)
+    elif args.primitive == "cloud":
+        result = gen_cloud(args.x, args.y, args.w, args.h, lobes=args.lobes, mode=args.mode)
+    elif args.primitive == "document":
+        result = gen_document(args.x, args.y, args.w, args.h, fold=args.fold, mode=args.mode)
     elif args.primitive == "spline":
         coords = re.findall(r"[-+]?\d*\.?\d+", args.points)
         if len(coords) < 4 or len(coords) % 2 != 0:

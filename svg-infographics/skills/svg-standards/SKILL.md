@@ -579,9 +579,48 @@ Hand-written `<path d="M... C... C..."/>` for data curves = workflow violation. 
 
 No HTML `<img>` unless width control needed.
 
+## Shape Primitives
+
+### Built-in shapes (18 types)
+
+`svg-infographics primitives <shape>` returns exact anchors + paste-ready SVG. Never eyeball coordinates.
+
+Basic: `rect`, `square`, `circle`, `ellipse`, `diamond`, `hexagon`, `star`, `arc`
+3D wireframe: `cube`, `cuboid`, `cylinder`, `sphere`, `plane`, `axis`
+Symbolic: `gear`, `pyramid`, `cloud`, `document`
+Curves: `spline` (PCHIP through waypoints)
+
+Each returns `{"svg": "...", "anchors": {"centre": [x,y], "top": [x,y], ...}, "bbox": [x,y,w,h]}`. Use anchors for connector attachment, label placement, and alignment constraints.
+
+### draw.io shape catalogue (1000+ stencils, downloaded on demand)
+
+For shapes beyond the 18 built-in types (AWS icons, network diagrams, UML, BPMN, electrical symbols), use the draw.io stencil library:
+
+```bash
+# Download and index a stencil library (first use only)
+svg-infographics shapes index --source https://raw.githubusercontent.com/jgraph/drawio/master/src/main/webapp/stencils/general.xml
+
+# Search for a shape
+svg-infographics shapes search "database" --limit 5
+
+# Render a shape at target size
+svg-infographics shapes render --name "database" --x 100 --y 200 --w 80 --h 60
+
+# Browse a category
+svg-infographics shapes catalogue --category general --output catalogue.svg
+```
+
+Stencils downloaded on first use and cached locally. NOT bundled with the package. The index is a lightweight JSON file (~500KB for the full draw.io set). Shapes are scaled via `transform` and return the same `{"svg", "anchors", "bbox"}` contract as built-in primitives.
+
+**Shape selection rule**: check built-in primitives FIRST (faster, theme-matched, anchor-rich). Use draw.io shapes only when no built-in matches (AWS/Azure icons, domain-specific symbols, complex stencils). draw.io shapes get auto-derived anchors from bbox only - no named semantic anchors like built-in shapes have.
+
 ## Creative Infographics
 
 Organic visual forms - flowing paths, concentric rings, orbital loops, funnels, constellations. Same theme swatch, CSS classes, transparent background. Use `<path>`, `<circle>`, `<ellipse>`. Low fill opacities (0.04-0.15). Layout topology: `flow:`, `orbit:`, `scatter:`, `radial:`.
+
+### Add Life (`/svg-infographics:add-life`)
+
+Decoration pass on existing SVGs. Six enhancement dimensions (colour variation, shapes, icons, embroidery, abstract graphics, glow) at four intensity levels (low/medium/high/absurd). Additive only - never breaks existing layout. Mandatory `<!-- add-life -->` comment documents what was applied. Run validators after.
 
 ## Troubleshooting
 

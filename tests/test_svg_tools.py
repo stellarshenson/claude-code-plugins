@@ -2853,6 +2853,139 @@ class TestCalcPrimitives:
             assert expected in r.stdout
 
 
+    def test_gear(self):
+        """Gear produces a valid polygon/path with correct anchors and bbox shape."""
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_gear
+
+        g = gen_gear(100, 100, 50)
+        assert "centre" in g.anchors
+        assert "top" in g.anchors and "right" in g.anchors
+        assert "bottom" in g.anchors and "left" in g.anchors
+        assert g.anchors["centre"].x == 100 and g.anchors["centre"].y == 100
+        assert abs(g.anchors["top"].y - 50) < 0.5
+        assert abs(g.anchors["right"].x - 150) < 0.5
+        assert "<polygon" in g.svg or "<path" in g.svg
+
+        # outline mode uses a path with fill=none
+        g_wire = gen_gear(100, 100, 50, mode="outline")
+        assert 'fill="none"' in g_wire.svg
+
+        # inner_r default is outer_r * 0.7
+        g_default = gen_gear(0, 0, 100)
+        assert g_default.anchors["top"].y == -100
+        # custom teeth count changes vertex density
+        g_coarse = gen_gear(0, 0, 40, inner_r=28, teeth=6)
+        assert g_coarse.anchors["right"].x == 40
+
+    def test_pyramid(self):
+        """Pyramid apex is at top of bbox; base anchors at expected positions."""
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_pyramid
+
+        p = gen_pyramid(50, 20, 100, 80)
+        assert "apex" in p.anchors
+        assert "base-left" in p.anchors
+        assert "base-right" in p.anchors
+        assert "base-back" in p.anchors
+        assert "centre" in p.anchors
+
+        apex = p.anchors["apex"]
+        assert abs(apex.x - 100) < 0.5  # x + base_w/2
+        assert abs(apex.y - 20) < 0.5   # y (top of bbox)
+
+        base_left = p.anchors["base-left"]
+        assert abs(base_left.x - 50) < 0.5
+        assert abs(base_left.y - 100) < 0.5  # y + height
+
+        base_right = p.anchors["base-right"]
+        assert abs(base_right.x - 150) < 0.5
+
+        # base-back is recessed at 60% of height
+        base_back = p.anchors["base-back"]
+        assert abs(base_back.y - (20 + 80 * 0.6)) < 0.5
+
+        # filled mode has fill-opacity; wire mode has fill=none
+        assert "fill-opacity" in p.svg
+        p_wire = gen_pyramid(50, 20, 100, 80, mode="wire")
+        assert 'fill="none"' in p_wire.svg
+        assert "stroke-dasharray" in p_wire.svg
+
+    def test_cloud(self):
+        """Cloud path is closed, anchors are within the bounding box."""
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_cloud
+
+        c = gen_cloud(10, 20, 200, 100)
+        assert "centre" in c.anchors
+        assert "top" in c.anchors and "bottom" in c.anchors
+        assert "left" in c.anchors and "right" in c.anchors
+
+        assert abs(c.anchors["centre"].x - 110) < 0.5  # x + w/2
+        assert abs(c.anchors["top"].x - 110) < 0.5
+
+        # path closes with Z
+        assert "Z" in c.svg
+        assert "C" in c.svg  # cubic bezier
+
+        # outline mode omits fill
+        c_wire = gen_cloud(10, 20, 200, 100, mode="outline")
+        assert 'fill="none"' in c_wire.svg
+
+        # extra lobes produce a longer path string
+        c5 = gen_cloud(0, 0, 300, 150, lobes=5)
+        c7 = gen_cloud(0, 0, 300, 150, lobes=7)
+        assert len(c7.svg) > len(c5.svg)
+
+    def test_document(self):
+        """Document has a fold corner; anchors match expected positions."""
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_document
+
+        d = gen_document(10, 20, 160, 200)
+        assert "top-left" in d.anchors
+        assert "top-right" in d.anchors
+        assert "bottom-left" in d.anchors
+        assert "bottom-right" in d.anchors
+        assert "centre" in d.anchors
+        assert "fold" in d.anchors
+
+        fold_default = min(160, 200) * 0.2  # 32
+        top_right = d.anchors["top-right"]
+        assert abs(top_right.x - (10 + 160 - fold_default)) < 0.5
+        assert abs(top_right.y - 20) < 0.5
+
+        fold_pt = d.anchors["fold"]
+        assert abs(fold_pt.x - (10 + 160)) < 0.5
+        assert abs(fold_pt.y - (20 + fold_default)) < 0.5
+
+        assert abs(d.anchors["centre"].x - (10 + 80)) < 0.5
+        assert abs(d.anchors["centre"].y - (20 + 100)) < 0.5
+
+        # SVG contains two paths (body + flap)
+        assert d.svg.count("<path") == 2
+
+        # explicit fold size
+        d_custom = gen_document(0, 0, 100, 80, fold=10)
+        assert abs(d_custom.anchors["top-right"].x - 90) < 0.5
+
+        # outline mode uses fill=none on both paths
+        d_wire = gen_document(0, 0, 100, 80, mode="outline")
+        assert 'fill="none"' in d_wire.svg
+
+    def test_new_primitives_cli(self):
+        """CLI smoke test: gear, pyramid, cloud, document all produce valid output."""
+        cases = [
+            (["gear", "--x", "100", "--y", "100", "--outer-r", "50"], "centre"),
+            (["pyramid", "--x", "50", "--y", "20", "--base-w", "100", "--height", "80"], "apex"),
+            (["cloud", "--x", "10", "--y", "20", "--w", "200", "--h", "100"], "centre"),
+            (["document", "--x", "10", "--y", "20", "--w", "160", "--h", "200"], "top-left"),
+        ]
+        for args, expected in cases:
+            r = subprocess.run(
+                [sys.executable, str(TOOLS_DIR / "calc_primitives.py"), *args],
+                capture_output=True, text=True,
+            )
+            assert r.returncode == 0, f"CLI failed for {args[0]}: {r.stderr}"
+            assert expected in r.stdout, f"Expected '{expected}' in output for {args[0]}"
+
+
 class TestCheckCSS:
     """check_css compliance tests. 8 tests -> 3."""
 
@@ -3369,4 +3502,370 @@ class TestProposeCallouts:
         data = _json.loads(r.stdout)
         assert "best_layout" in data
         assert "proposals" in data
+
+
+# ---------------------------------------------------------------------------
+# drawio_shapes.py tests
+# ---------------------------------------------------------------------------
+
+import textwrap as _textwrap
+
+from stellars_claude_code_plugins.svg_tools.drawio_shapes import (
+    DrawioShape,
+    ShapeIndex,
+    _mxgraph_to_svg_path,
+    build_index,
+    parse_drawio_library,
+    render_catalogue,
+    render_shape,
+)
+
+
+_SAMPLE_STENCIL_XML = _textwrap.dedent("""\
+    <?xml version="1.0" encoding="UTF-8"?>
+    <shapes>
+      <shape name="database" w="60" h="80" aspect="fixed">
+        <background>
+          <ellipse x="0" y="0" w="60" h="20"/>
+        </background>
+        <foreground>
+          <move x="0" y="10"/>
+          <line x="60" y="10"/>
+          <move x="0" y="10"/>
+          <curve x1="15" y1="20" x2="45" y2="20" x3="60" y3="10"/>
+          <move x="0" y="10"/>
+          <line x="0" y="70"/>
+          <curve x1="0" y1="80" x2="60" y2="80" x3="60" y3="70"/>
+          <line x="60" y="10"/>
+          <close/>
+        </foreground>
+      </shape>
+      <shape name="server" w="60" h="80" aspect="fixed">
+        <foreground>
+          <move x="5" y="0"/>
+          <line x="55" y="0"/>
+          <line x="55" y="80"/>
+          <line x="5" y="80"/>
+          <close/>
+        </foreground>
+      </shape>
+    </shapes>
+""")
+
+_SAMPLE_MXLIBRARY_XML = _textwrap.dedent("""\
+    <mxlibrary>[{"title":"Cloud","w":50,"h":40,"xml":""},{"title":"Router","w":60,"h":60,"xml":""}]</mxlibrary>
+""")
+
+
+class TestDrawioShapesParsing:
+    """Unit tests for parse_drawio_library and related helpers."""
+
+    def test_parse_format_b_returns_shapes(self, tmp_path):
+        """Format B stencil XML produces one DrawioShape per <shape> element."""
+        xml_file = tmp_path / "networking.xml"
+        xml_file.write_text(_SAMPLE_STENCIL_XML)
+        shapes = parse_drawio_library(xml_file)
+        assert len(shapes) == 2
+        names = {s.name for s in shapes}
+        assert "database" in names
+        assert "server" in names
+
+    def test_parse_format_b_dimensions(self, tmp_path):
+        """Width and height are read from stencil attributes."""
+        xml_file = tmp_path / "networking.xml"
+        xml_file.write_text(_SAMPLE_STENCIL_XML)
+        shapes = parse_drawio_library(xml_file)
+        db = next(s for s in shapes if s.name == "database")
+        assert db.width == 60.0
+        assert db.height == 80.0
+
+    def test_parse_format_b_svg_snippet_has_path(self, tmp_path):
+        """The SVG snippet for a stencil shape contains at least one <path> element."""
+        xml_file = tmp_path / "networking.xml"
+        xml_file.write_text(_SAMPLE_STENCIL_XML)
+        shapes = parse_drawio_library(xml_file)
+        db = next(s for s in shapes if s.name == "database")
+        assert "<path" in db.svg_snippet
+
+    def test_parse_format_b_category_from_filename(self, tmp_path):
+        """Category is derived from the library filename stem."""
+        xml_file = tmp_path / "my-network-shapes.xml"
+        xml_file.write_text(_SAMPLE_STENCIL_XML)
+        shapes = parse_drawio_library(xml_file)
+        assert all(s.category == "my_network_shapes" for s in shapes)
+
+    def test_parse_format_a_returns_shapes(self, tmp_path):
+        """Format A mxlibrary JSON entries with titles produce DrawioShape objects."""
+        xml_file = tmp_path / "cloud.xml"
+        xml_file.write_text(_SAMPLE_MXLIBRARY_XML)
+        shapes = parse_drawio_library(xml_file)
+        assert len(shapes) == 2
+        names = {s.name for s in shapes}
+        assert "Cloud" in names
+        assert "Router" in names
+
+    def test_parse_missing_file_returns_empty(self, tmp_path):
+        """A non-existent file path returns an empty list without raising."""
+        shapes = parse_drawio_library(tmp_path / "does_not_exist.xml")
+        assert shapes == []
+
+    def test_parse_malformed_xml_returns_empty(self, tmp_path):
+        """A file with invalid XML returns an empty list without raising."""
+        bad = tmp_path / "bad.xml"
+        bad.write_text("NOT XML AT ALL <<<")
+        shapes = parse_drawio_library(bad)
+        assert shapes == []
+
+    def test_parse_unknown_root_tag_returns_empty(self, tmp_path):
+        """An XML file with an unrecognised root returns an empty list."""
+        xml_file = tmp_path / "weird.xml"
+        xml_file.write_text("<something><else/></something>")
+        shapes = parse_drawio_library(xml_file)
+        assert shapes == []
+
+
+class TestMxGraphToSvgPath:
+    """Unit tests for the mxGraph stencil path converter."""
+
+    def _el(self, xml_str: str):
+        import xml.etree.ElementTree as ET
+        return ET.fromstring(xml_str)
+
+    def test_move_and_line(self):
+        """move -> M and line -> L with correct scaling."""
+        el = self._el(
+            "<foreground>"
+            '<move x="0" y="0"/><line x="100" y="0"/><close/>'
+            "</foreground>"
+        )
+        d = _mxgraph_to_svg_path(el, w=100, h=100)
+        assert "M 0.000 0.000" in d
+        assert "L 100.000 0.000" in d
+        assert "Z" in d
+
+    def test_scaling_applied(self):
+        """Coordinates are scaled from the [0,100] stencil box to (w, h)."""
+        el = self._el("<foreground><move x='50' y='50'/></foreground>")
+        d = _mxgraph_to_svg_path(el, w=200, h=100)
+        # x=50% of 200 = 100, y=50% of 100 = 50
+        assert "M 100.000 50.000" in d
+
+    def test_curve_produces_C(self):
+        """curve element -> SVG cubic bezier C command."""
+        el = self._el(
+            "<foreground>"
+            '<curve x1="10" y1="0" x2="90" y2="0" x3="100" y3="50"/>'
+            "</foreground>"
+        )
+        d = _mxgraph_to_svg_path(el, w=100, h=100)
+        assert d.startswith("C ")
+
+    def test_ellipse_produces_arcs(self):
+        """ellipse element is converted to two SVG arc commands."""
+        el = self._el('<foreground><ellipse x="0" y="0" w="100" h="100"/></foreground>')
+        d = _mxgraph_to_svg_path(el, w=100, h=100)
+        assert "A " in d
+
+    def test_empty_foreground_returns_empty_string(self):
+        """A <foreground> with no recognised children returns an empty string."""
+        el = self._el("<foreground><unknown x='0' y='0'/></foreground>")
+        d = _mxgraph_to_svg_path(el, w=100, h=100)
+        assert d == ""
+
+
+class TestShapeIndex:
+    """Unit tests for ShapeIndex: build, search, save, load, by_category."""
+
+    def _make_index(self, tmp_path) -> ShapeIndex:
+        xml_file = tmp_path / "networking.xml"
+        xml_file.write_text(_SAMPLE_STENCIL_XML)
+        return build_index([tmp_path])
+
+    def test_build_index_finds_shapes(self, tmp_path):
+        index = self._make_index(tmp_path)
+        assert len(index.shapes) == 2
+
+    def test_build_index_categories(self, tmp_path):
+        index = self._make_index(tmp_path)
+        assert "networking" in index.categories
+
+    def test_build_index_empty_dir(self, tmp_path):
+        """An empty directory produces an empty index without error."""
+        subdir = tmp_path / "empty"
+        subdir.mkdir()
+        index = build_index([subdir])
+        assert len(index.shapes) == 0
+        assert len(index.categories) == 0
+
+    def test_build_index_missing_dir(self, tmp_path):
+        """A non-existent directory is skipped without raising."""
+        index = build_index([tmp_path / "no_such_dir"])
+        assert index.shapes == []
+
+    def test_search_exact_match(self, tmp_path):
+        index = self._make_index(tmp_path)
+        results = index.search("database")
+        assert len(results) >= 1
+        assert results[0].name == "database"
+
+    def test_search_partial_match(self, tmp_path):
+        index = self._make_index(tmp_path)
+        results = index.search("data")
+        assert any(s.name == "database" for s in results)
+
+    def test_search_no_match_returns_empty(self, tmp_path):
+        index = self._make_index(tmp_path)
+        results = index.search("xyzzy_nonexistent")
+        assert results == []
+
+    def test_search_limit_respected(self, tmp_path):
+        # Add multiple XML files to get more shapes
+        for i in range(5):
+            f = tmp_path / f"lib{i}.xml"
+            f.write_text(_SAMPLE_STENCIL_XML)
+        index = build_index([tmp_path])
+        results = index.search("database", limit=2)
+        assert len(results) <= 2
+
+    def test_list_categories_sorted(self, tmp_path):
+        for name in ("zzz.xml", "aaa.xml"):
+            (tmp_path / name).write_text(_SAMPLE_STENCIL_XML)
+        index = build_index([tmp_path])
+        cats = index.list_categories()
+        assert cats == sorted(cats)
+
+    def test_by_category_returns_shapes(self, tmp_path):
+        index = self._make_index(tmp_path)
+        shapes = index.by_category("networking")
+        assert len(shapes) == 2
+
+    def test_by_category_unknown_returns_empty(self, tmp_path):
+        index = self._make_index(tmp_path)
+        assert index.by_category("unknown_category") == []
+
+    def test_save_and_load_roundtrip(self, tmp_path):
+        """Shapes survive a save -> load roundtrip with identical attributes."""
+        index = self._make_index(tmp_path)
+        index_path = tmp_path / "index.json"
+        index.save(index_path)
+
+        loaded = ShapeIndex.load(index_path)
+        assert len(loaded.shapes) == len(index.shapes)
+        orig_names = {s.name for s in index.shapes}
+        loaded_names = {s.name for s in loaded.shapes}
+        assert orig_names == loaded_names
+
+    def test_save_json_structure(self, tmp_path):
+        """Saved JSON has required top-level keys and correct version."""
+        import json as _json
+        index = self._make_index(tmp_path)
+        index_path = tmp_path / "index.json"
+        index.save(index_path)
+        data = _json.loads(index_path.read_text())
+        assert data["version"] == 1
+        assert data["shape_count"] == len(index.shapes)
+        assert isinstance(data["categories"], list)
+        assert isinstance(data["shapes"], list)
+
+    def test_load_wrong_version_raises(self, tmp_path):
+        """Loading an index with an unsupported version raises ValueError."""
+        import json as _json
+        index_path = tmp_path / "bad_version.json"
+        index_path.write_text(_json.dumps({"version": 999, "shapes": [], "categories": []}))
+        with pytest.raises(ValueError, match="Unsupported index version"):
+            ShapeIndex.load(index_path)
+
+
+class TestRenderShape:
+    """Unit tests for render_shape."""
+
+    def _make_shape(self) -> DrawioShape:
+        return DrawioShape(
+            name="database",
+            category="networking",
+            library="networking.xml",
+            width=60.0,
+            height=80.0,
+            svg_snippet="<g><rect width='60' height='80'/></g>",
+        )
+
+    def test_returns_required_keys(self):
+        shape = self._make_shape()
+        result = render_shape(shape, x=10.0, y=20.0, w=120.0, h=160.0)
+        assert "svg" in result
+        assert "anchors" in result
+        assert "bbox" in result
+
+    def test_bbox_matches_target(self):
+        shape = self._make_shape()
+        result = render_shape(shape, x=10.0, y=20.0, w=120.0, h=160.0)
+        assert result["bbox"] == (10.0, 20.0, 120.0, 160.0)
+
+    def test_svg_has_transform(self):
+        shape = self._make_shape()
+        result = render_shape(shape, x=10.0, y=20.0, w=120.0, h=160.0)
+        assert 'transform="translate(10.0,20.0)' in result["svg"]
+
+    def test_anchors_cardinal_points(self):
+        shape = self._make_shape()
+        result = render_shape(shape, x=0.0, y=0.0, w=60.0, h=80.0)
+        anchors = result["anchors"]
+        assert anchors["top-left"] == (0.0, 0.0)
+        assert anchors["bottom-right"] == (60.0, 80.0)
+        assert anchors["centre"] == (30.0, 40.0)
+
+    def test_scale_encoded_in_transform(self):
+        """Scale factor changes proportionally to target vs native dimensions."""
+        shape = self._make_shape()  # native 60x80
+        result = render_shape(shape, x=0.0, y=0.0, w=120.0, h=160.0)
+        # scale should be 2.0 in both axes
+        assert "scale(2.000000,2.000000)" in result["svg"]
+
+
+class TestRenderCatalogue:
+    """Unit tests for render_catalogue."""
+
+    def _shapes(self, n: int = 3) -> list[DrawioShape]:
+        return [
+            DrawioShape(
+                name=f"shape{i}",
+                category="test",
+                library="test.xml",
+                width=60.0,
+                height=80.0,
+                svg_snippet="<g><rect width='60' height='80'/></g>",
+            )
+            for i in range(n)
+        ]
+
+    def test_empty_list_returns_minimal_svg(self):
+        svg = render_catalogue([])
+        assert "<svg" in svg
+        assert 'width="0"' in svg
+
+    def test_output_is_valid_svg(self):
+        """render_catalogue output opens with <svg and closes with </svg>."""
+        shapes = self._shapes(4)
+        svg = render_catalogue(shapes, columns=2, cell_size=100)
+        assert svg.strip().startswith("<svg")
+        assert svg.strip().endswith("</svg>")
+
+    def test_all_shape_names_in_output(self):
+        shapes = self._shapes(3)
+        svg = render_catalogue(shapes, columns=3)
+        for shape in shapes:
+            assert shape.name in svg
+
+    def test_dark_mode_media_query_present(self):
+        shapes = self._shapes(2)
+        svg = render_catalogue(shapes)
+        assert "prefers-color-scheme: dark" in svg
+
+    def test_grid_dimensions(self):
+        """SVG dimensions match columns * cell_size and rows * cell_size."""
+        shapes = self._shapes(6)
+        svg = render_catalogue(shapes, columns=3, cell_size=80)
+        # 6 shapes, 3 cols -> 2 rows; width=240, height=160
+        assert 'width="240"' in svg
+        assert 'height="160"' in svg
         assert "stats" in data
