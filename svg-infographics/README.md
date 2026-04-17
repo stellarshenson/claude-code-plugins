@@ -110,7 +110,7 @@ svg-infographics overlaps --svg diagram.svg
 | `/svg-infographics:validate` | Run all validation checks on one or more files |
 | `/svg-infographics:fix-layout` | Fix overlaps, alignment, spacing, and grid violations |
 | `/svg-infographics:fix-style` | Fix CSS theme classes, contrast, dark mode, and colour compliance |
-| `/svg-infographics:add-life` | Enhance SVGs with glow, icons, decorations, colour variation, abstract shapes at 4 intensity levels (low/medium/high/absurd) |
+| `/svg-infographics:beautify` | Additive decoration pass on existing SVGs - glow, per-item icons, colour variation, shape flourishes, bg texture (thick + ghost-transparent), abstract particles at 4 intensity levels (low/medium/high/absurd). Questionnaire-driven, geometry-guarded, local directive at `./svg-infographics-beautify.md` |
 
 ## Skills
 

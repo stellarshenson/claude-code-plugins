@@ -1,4 +1,4 @@
-<!-- 19-embroidery-glyphs-midtier.svg - Mid-tier glyph library for add-life embroidery.
+<!-- 19-embroidery-glyphs-midtier.svg - Mid-tier glyph library for beautify embroidery.
   Shows: 32 intricate decorative glyphs in an 8x4 grid. Each glyph uses 3-8 SVG
          primitives with multiple stroke weights, gradients, glow filters, and
          opacity layering. More complex than the basic tier (18-embroidery-glyphs.svg).
@@ -6,7 +6,7 @@
            decorative flourishes (row 4).
   Palette: stellars-tech teal + ochre with 14 derived shades, 2 gradient defs,
            2 glow filters (cyan + warm).
-  Intent: visual catalogue of mid-tier embroidery elements for the add-life command
+  Intent: visual catalogue of mid-tier embroidery elements for the beautify command
           at medium and high levels. Each glyph is a multi-layered, multi-colour
           composition suitable for card flourishes, connector decorations, and
           empty-space texture.

@@ -1,10 +1,10 @@
-<!-- 18-embroidery-glyphs.svg - Glyph library for the add-life embroidery command.
+<!-- 18-embroidery-glyphs.svg - Glyph library for the beautify embroidery command.
   Shows: 32 decorative glyphs/icons in an 8x4 grid. Each glyph is a small
          stroke-based motif (40-60px) built from simple SVG primitives.
   Domains: electronics/circuit (row 1), AI/neural (row 2), science/math (row 3),
            abstract/decorative (row 4).
   Palette: stellars-tech teal + ochre with hue-shifted derivatives.
-  Intent: visual catalogue of embroidery elements that the add-life command
+  Intent: visual catalogue of embroidery elements that the beautify command
           scatters across infographics for organic texture.
   Theme: stellars-tech teal + ochre accent, full prefers-color-scheme dark overrides.
 -->
@@ -156,7 +156,7 @@
   <rect x="0" y="0" width="1000" height="520" fill="transparent"/>
 
   <!-- ======== TITLES ======== -->
-  <text x="500" y="22" text-anchor="middle" class="title-main fg-1">decorative glyphs for add-life embroidery</text>
+  <text x="500" y="22" text-anchor="middle" class="title-main fg-1">decorative glyphs for beautify embroidery</text>
   <text x="500" y="38" text-anchor="middle" class="title-sub fg-3">32 elements across electronics, AI, science, and abstract domains</text>
 
   <!-- ======== CELL BACKGROUND PLATES ======== -->

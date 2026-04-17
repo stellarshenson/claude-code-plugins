@@ -1,0 +1,485 @@
+<!--
+  18-failure-driven-development.svg - How the plugin was developed: failure-driven tool design
+  Shows: 4 measured defect classes on the LEFT (overlap area, endpoint gap, contrast ratio,
+         alignment drift) flowing through a manifold spine labelled "failure data analysis"
+         out to 4 targeted tool responses on the RIGHT (routing engine, callout solver,
+         WCAG checker, position primitives). The manifold itself is the visual argument:
+         the plugin converges every failure class through measurement then forks out to a
+         dedicated tool for each class.
+  Intent: reader understands the plugin was shaped by measured defects, not intuition;
+          every tool exists because a specific, quantified failure mode demanded it.
+  Theme:  Stellars-Tech. fg-1 titles, fg-3 labels, accent-1 primary tool/defect, accent-2
+          spine + metric badges. Inter sans-serif throughout.
+-->
+<!-- add-life: medium
+  colour: 4 defect hue variants (sky-teal, cyan-teal, deep-teal, blue-teal) and 4 tool hue variants same family, per-card body + stroke + accent-bar in-family drift
+  shapes: corner brackets on focal spine nodes, tech scan-lines under zone spine, micro chevrons near manifold merge/fork anchors
+  icons: lucide per item (alert-triangle, move, contrast, grid for defects; route, message-square, eye, target for tools)
+  embroidery: circuit/PCB background traces with node dots matching failure-feedback-loop theme
+  abstract: 16 scattered accent particles in whitespace, 2 background arcs top/bottom
+  bg texture: circuit/PCB faded traces at 0.08-0.10 opacity (HARD CAP)
+  glow: cyan stdDev=2 on title, stdDev=1.5 on spine label, warm stdDev=1.6 on metric values
+-->
+
+<!-- === GRID ===
+  viewBox: 1000 x 420
+  Outer margins: 30 left/right, top=0, bottom=10
+  Title band: y=26 (17px/700 fg-1 centred x=500), y=46 (11px fg-3 centred)
+
+  Horizontal topology (4 columns):
+    defect-cards:  x=30..300   w=270
+    left-gutter:   x=300..460  (start strands to merge)
+    spine:         x=460..540  merge(460,207) .. fork(540,207)
+    right-gutter:  x=540..700  (fork strands to tool-cards)
+    tool-cards:    x=700..970  w=270
+
+  Vertical rhythm (4 rows, identical for defect and tool columns):
+    row-1: y=68..128   centre_y=99    strand-attach y=99
+    row-2: y=140..200  centre_y=171   strand-attach y=171
+    row-3: y=212..272  centre_y=243   strand-attach y=243
+    row-4: y=284..344  centre_y=315   strand-attach y=315
+    row gap: 12px, card h=60, accent-bar h=4 top
+=== -->
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420">
+  <style>
+    text { font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif; }
+    .fg-1 { fill: #1a5a6e; }
+    .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+
+    .defect-fill   { fill: #005f7a; fill-opacity: 0.05; }
+    .defect-stroke { fill: none; stroke: #005f7a; stroke-width: 1; }
+    .defect-bar    { fill: #005f7a; opacity: 0.6; }
+
+    .tool-fill   { fill: #005f7a; fill-opacity: 0.05; }
+    .tool-stroke { fill: none; stroke: #005f7a; stroke-width: 1; }
+    .tool-bar    { fill: #005f7a; opacity: 0.6; }
+
+    .metric-fill   { fill: #7a4a15; fill-opacity: 0.08; }
+    .metric-stroke { fill: none; stroke: #7a4a15; stroke-width: 0.8; opacity: 0.6; }
+
+    .icon-fill   { fill: #005f7a; fill-opacity: 0.12; }
+    .icon-stroke { fill: none; stroke: #005f7a; stroke-width: 1; }
+    .icon-glyph  { fill: none; stroke: #005f7a; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+
+    .card-title { font-size: 13px; font-weight: 700; }
+    .card-desc  { font-size: 9px; }
+    .metric-val { font-size: 13px; font-weight: 700; }
+    .metric-unit { font-size: 8px; }
+
+    .manifold-strand { fill: none; stroke: #005f7a; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; }
+    .manifold-arrow  { fill: #005f7a; stroke: none; opacity: 0.9; }
+
+    .caption { font-size: 10px; font-style: italic; }
+
+    /* add-life additions: per-card hue variants (in-family teal drift) */
+    .defect-body-1 { fill: #008bb8; fill-opacity: 0.06; }
+    .defect-edge-1 { fill: none; stroke: #008bb8; stroke-width: 1; }
+    .defect-accent-1 { fill: #008bb8; opacity: 0.7; }
+    .defect-body-2 { fill: #00a2c4; fill-opacity: 0.065; }
+    .defect-edge-2 { fill: none; stroke: #00a2c4; stroke-width: 1; }
+    .defect-accent-2 { fill: #00a2c4; opacity: 0.72; }
+    .defect-body-3 { fill: #007090; fill-opacity: 0.06; }
+    .defect-edge-3 { fill: none; stroke: #007090; stroke-width: 1; }
+    .defect-accent-3 { fill: #007090; opacity: 0.7; }
+    .defect-body-4 { fill: #0582b5; fill-opacity: 0.065; }
+    .defect-edge-4 { fill: none; stroke: #0582b5; stroke-width: 1; }
+    .defect-accent-4 { fill: #0582b5; opacity: 0.72; }
+
+    .tool-body-1 { fill: #008bb8; fill-opacity: 0.065; }
+    .tool-edge-1 { fill: none; stroke: #008bb8; stroke-width: 1; }
+    .tool-accent-1 { fill: #008bb8; opacity: 0.7; }
+    .tool-body-2 { fill: #00a2c4; fill-opacity: 0.07; }
+    .tool-edge-2 { fill: none; stroke: #00a2c4; stroke-width: 1; }
+    .tool-accent-2 { fill: #00a2c4; opacity: 0.72; }
+    .tool-body-3 { fill: #007090; fill-opacity: 0.065; }
+    .tool-edge-3 { fill: none; stroke: #007090; stroke-width: 1; }
+    .tool-accent-3 { fill: #007090; opacity: 0.7; }
+    .tool-body-4 { fill: #0582b5; fill-opacity: 0.07; }
+    .tool-edge-4 { fill: none; stroke: #0582b5; stroke-width: 1; }
+    .tool-accent-4 { fill: #0582b5; opacity: 0.72; }
+
+    .corner-bracket { fill: none; stroke: #0096d1; stroke-width: 1; opacity: 0.5; stroke-linecap: round; }
+    .scan-line   { fill: none; stroke: #0096d1; stroke-width: 0.4; opacity: 0.3; stroke-dasharray: 3 2; }
+    .bg-circuit  { fill: none; stroke: #0096d1; stroke-width: 0.6; opacity: 0.08; }
+    .bg-circuit-node { fill: #0096d1; opacity: 0.10; }
+    .particle    { fill: #0096d1; opacity: 0.3; }
+    .particle-warm { fill: #d4822f; opacity: 0.32; }
+    .bg-arc      { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.12; }
+    .deco-icon   { fill: none; stroke: #0096d1; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; }
+    .deco-icon-warm { fill: none; stroke: #b8541a; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.65; }
+    .chevron-mark { fill: none; stroke: #0096d1; stroke-width: 0.8; opacity: 0.55; stroke-linecap: round; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+
+      .defect-fill   { fill: #5cc8e0; fill-opacity: 0.08; }
+      .defect-stroke { stroke: #5cc8e0; }
+      .defect-bar    { fill: #5cc8e0; }
+
+      .tool-fill   { fill: #5cc8e0; fill-opacity: 0.08; }
+      .tool-stroke { stroke: #5cc8e0; }
+      .tool-bar    { fill: #5cc8e0; }
+
+      .metric-fill   { fill: #d4a04a; fill-opacity: 0.12; }
+      .metric-stroke { stroke: #d4a04a; }
+
+      .icon-fill   { fill: #5cc8e0; fill-opacity: 0.14; }
+      .icon-stroke { stroke: #5cc8e0; }
+      .icon-glyph  { stroke: #5cc8e0; }
+
+      .manifold-strand { stroke: #5cc8e0; }
+      .manifold-arrow  { fill: #5cc8e0; }
+
+      .defect-body-1 { fill: #4ab6cf; fill-opacity: 0.09; }
+      .defect-edge-1 { stroke: #4ab6cf; }
+      .defect-accent-1 { fill: #4ab6cf; }
+      .defect-body-2 { fill: #5cc8dc; fill-opacity: 0.10; }
+      .defect-edge-2 { stroke: #5cc8dc; }
+      .defect-accent-2 { fill: #5cc8dc; }
+      .defect-body-3 { fill: #3ea2b8; fill-opacity: 0.09; }
+      .defect-edge-3 { stroke: #3ea2b8; }
+      .defect-accent-3 { fill: #3ea2b8; }
+      .defect-body-4 { fill: #48b8cf; fill-opacity: 0.10; }
+      .defect-edge-4 { stroke: #48b8cf; }
+      .defect-accent-4 { fill: #48b8cf; }
+
+      .tool-body-1 { fill: #4ab6cf; fill-opacity: 0.10; }
+      .tool-edge-1 { stroke: #4ab6cf; }
+      .tool-accent-1 { fill: #4ab6cf; }
+      .tool-body-2 { fill: #5cc8dc; fill-opacity: 0.11; }
+      .tool-edge-2 { stroke: #5cc8dc; }
+      .tool-accent-2 { fill: #5cc8dc; }
+      .tool-body-3 { fill: #3ea2b8; fill-opacity: 0.10; }
+      .tool-edge-3 { stroke: #3ea2b8; }
+      .tool-accent-3 { fill: #3ea2b8; }
+      .tool-body-4 { fill: #48b8cf; fill-opacity: 0.11; }
+      .tool-edge-4 { stroke: #48b8cf; }
+      .tool-accent-4 { fill: #48b8cf; }
+
+      .corner-bracket { stroke: #5cc8e0; }
+      .scan-line { stroke: #5cc8e0; }
+      .bg-circuit   { stroke: #5cc8e0; opacity: 0.10; }
+      .bg-circuit-node { fill: #5cc8e0; opacity: 0.14; }
+      .particle    { fill: #5cc8e0; opacity: 0.35; }
+      .particle-warm { fill: #d4a04a; opacity: 0.35; }
+      .bg-arc      { stroke: #5cc8e0; opacity: 0.15; }
+      .deco-icon   { stroke: #5cc8e0; }
+      .deco-icon-warm { stroke: #d4a04a; }
+      .chevron-mark { stroke: #5cc8e0; }
+    }
+  </style>
+
+  <defs>
+    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-label" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-warm" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- add-life-decorations: background layer BELOW content -->
+  <g id="add-life-decorations">
+    <!-- Circuit/PCB trace background (failure feedback loops motif) -->
+    <g id="add-life-bg-texture">
+      <path d="M5,10 H60 V32 H120 V14 H180" class="bg-circuit"/>
+      <path d="M820,12 H870 V36 H930 V18 H995" class="bg-circuit"/>
+      <path d="M6,402 H52 V380 H112 V404 H168" class="bg-circuit"/>
+      <path d="M832,404 H884 V382 H940 V402 H995" class="bg-circuit"/>
+      <path d="M380,58 V40 H320" class="bg-circuit"/>
+      <path d="M620,58 V40 H680" class="bg-circuit"/>
+      <path d="M380,362 V380 H320" class="bg-circuit"/>
+      <path d="M620,362 V380 H680" class="bg-circuit"/>
+      <path d="M12,207 H22 V200" class="bg-circuit"/>
+      <path d="M988,207 H978 V200" class="bg-circuit"/>
+      <circle cx="60" cy="32" r="1.2" class="bg-circuit-node"/>
+      <circle cx="120" cy="14" r="1.2" class="bg-circuit-node"/>
+      <circle cx="870" cy="36" r="1.2" class="bg-circuit-node"/>
+      <circle cx="930" cy="18" r="1.2" class="bg-circuit-node"/>
+      <circle cx="52" cy="380" r="1.2" class="bg-circuit-node"/>
+      <circle cx="112" cy="404" r="1.2" class="bg-circuit-node"/>
+      <circle cx="884" cy="382" r="1.2" class="bg-circuit-node"/>
+      <circle cx="940" cy="402" r="1.2" class="bg-circuit-node"/>
+      <circle cx="320" cy="40" r="1.2" class="bg-circuit-node"/>
+      <circle cx="680" cy="40" r="1.2" class="bg-circuit-node"/>
+      <circle cx="320" cy="380" r="1.2" class="bg-circuit-node"/>
+      <circle cx="680" cy="380" r="1.2" class="bg-circuit-node"/>
+      <circle cx="22" cy="200" r="1.2" class="bg-circuit-node"/>
+      <circle cx="978" cy="200" r="1.2" class="bg-circuit-node"/>
+    </g>
+
+    <!-- Background arcs -->
+    <g id="add-life-bg-arcs">
+      <path d="M-40,12 Q500,-18 1040,14" class="bg-arc"/>
+      <path d="M-40,408 Q500,436 1040,406" class="bg-arc"/>
+    </g>
+
+    <!-- Corner brackets around spine merge/fork -->
+    <g id="add-life-brackets">
+      <path d="M412,196 L406,196 L406,202" class="corner-bracket"/>
+      <path d="M412,218 L406,218 L406,212" class="corner-bracket"/>
+      <path d="M588,196 L594,196 L594,202" class="corner-bracket"/>
+      <path d="M588,218 L594,218 L594,212" class="corner-bracket"/>
+    </g>
+
+    <!-- Scan-lines above/below spine label -->
+    <g id="add-life-scanlines">
+      <line x1="406" y1="186" x2="594" y2="186" class="scan-line"/>
+      <line x1="406" y1="232" x2="594" y2="232" class="scan-line"/>
+    </g>
+
+    <!-- Chevron marks flanking manifold merge and fork anchors -->
+    <g id="add-life-chevrons">
+      <path d="M400,203 L404,207 L400,211" class="chevron-mark"/>
+      <path d="M600,203 L596,207 L600,211" class="chevron-mark"/>
+    </g>
+
+    <!-- Scattered accent particles in whitespace -->
+    <g id="add-life-particles">
+      <circle cx="12" cy="10" r="1" class="particle"/>
+      <circle cx="988" cy="10" r="1" class="particle"/>
+      <circle cx="12" cy="410" r="1" class="particle"/>
+      <circle cx="988" cy="410" r="1" class="particle"/>
+      <circle cx="500" cy="8" r="1.1" class="particle"/>
+      <circle cx="500" cy="412" r="1" class="particle"/>
+      <circle cx="380" cy="10" r="0.9" class="particle"/>
+      <circle cx="620" cy="10" r="0.9" class="particle"/>
+      <circle cx="380" cy="410" r="0.9" class="particle"/>
+      <circle cx="620" cy="410" r="0.9" class="particle"/>
+      <circle cx="12" cy="207" r="1" class="particle"/>
+      <circle cx="988" cy="207" r="1" class="particle"/>
+      <circle cx="500" cy="60" r="0.9" class="particle-warm"/>
+      <circle cx="500" cy="356" r="0.9" class="particle-warm"/>
+      <circle cx="460" cy="182" r="0.7" class="particle-warm"/>
+      <circle cx="540" cy="232" r="0.7" class="particle-warm"/>
+    </g>
+  </g>
+
+  <!-- add-life-icons: per-item lucide glyphs, ISC licence -->
+  <g id="add-life-icons">
+    <!-- Defect icons: upper-right corner of each defect card at (x=282, y+8), 14x14 -->
+    <!-- Defect 1 overlap: alert-triangle -->
+    <g transform="translate(282, 78) scale(0.583)" class="deco-icon">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </g>
+    <!-- Defect 2 gap: move-horizontal -->
+    <g transform="translate(282, 150) scale(0.583)" class="deco-icon">
+      <polyline points="18 8 22 12 18 16"/>
+      <polyline points="6 8 2 12 6 16"/>
+      <line x1="2" y1="12" x2="22" y2="12"/>
+    </g>
+    <!-- Defect 3 contrast: contrast -->
+    <g transform="translate(282, 222) scale(0.583)" class="deco-icon">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 2v20"/>
+      <path d="M12 2a10 10 0 0 1 0 20z"/>
+    </g>
+    <!-- Defect 4 drift: grid -->
+    <g transform="translate(282, 294) scale(0.583)" class="deco-icon">
+      <rect x="3" y="3" width="7" height="7"/>
+      <rect x="14" y="3" width="7" height="7"/>
+      <rect x="14" y="14" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/>
+    </g>
+
+    <!-- Tool icons: upper-right corner of each tool card at (x=952, y+8), 14x14 -->
+    <!-- Tool 1 routing: route -->
+    <g transform="translate(952, 78) scale(0.583)" class="deco-icon">
+      <circle cx="6" cy="19" r="3"/>
+      <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/>
+      <circle cx="18" cy="5" r="3"/>
+    </g>
+    <!-- Tool 2 callout: message-square -->
+    <g transform="translate(952, 150) scale(0.583)" class="deco-icon">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </g>
+    <!-- Tool 3 WCAG: eye -->
+    <g transform="translate(952, 222) scale(0.583)" class="deco-icon">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </g>
+    <!-- Tool 4 position: target -->
+    <g transform="translate(952, 294) scale(0.583)" class="deco-icon">
+      <circle cx="12" cy="12" r="10"/>
+      <circle cx="12" cy="12" r="6"/>
+      <circle cx="12" cy="12" r="2"/>
+    </g>
+  </g>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1000" height="420" fill="transparent"/>
+
+  <!-- Title -->
+  <text class="fg-1" x="500" y="26" text-anchor="middle" font-size="17" font-weight="700" filter="url(#glow-cyan)">how it was developed</text>
+  <text class="fg-3" x="500" y="46" text-anchor="middle" font-size="11">every tool exists because a specific, measured failure class demanded it</text>
+
+  <!-- ============================================================ -->
+  <!-- DEFECT CARDS (LEFT COLUMN): x=30..300                         -->
+  <!-- ============================================================ -->
+  <g id="defect-cards">
+    <!-- Defect 1: overlap 127px -->
+    <g id="defect-1">
+      <rect class="defect-body-1"   x="30" y="68" width="270" height="60" rx="4"/>
+      <rect class="defect-edge-1" x="30" y="68" width="270" height="60" rx="4"/>
+      <rect class="defect-accent-1"    x="30" y="68" width="270" height="4" rx="4"/>
+      <rect class="metric-fill"   x="40" y="80" width="72" height="40" rx="3"/>
+      <rect class="metric-stroke" x="40" y="80" width="72" height="40" rx="3"/>
+      <text class="accent-2 metric-val"  x="76" y="100" text-anchor="middle" filter="url(#glow-warm)">127</text>
+      <text class="fg-3 metric-unit"     x="76" y="114" text-anchor="middle">px overlap</text>
+      <text class="fg-1 card-title"      x="122" y="93">text/shape overlap</text>
+      <text class="fg-3 card-desc"       x="122" y="109">label sits on card edge,</text>
+      <text class="fg-3 card-desc"       x="122" y="121">measured as pixel area</text>
+    </g>
+
+    <!-- Defect 2: endpoint gap 11px -->
+    <g id="defect-2">
+      <rect class="defect-body-2"   x="30" y="140" width="270" height="60" rx="4"/>
+      <rect class="defect-edge-2" x="30" y="140" width="270" height="60" rx="4"/>
+      <rect class="defect-accent-2"    x="30" y="140" width="270" height="4" rx="4"/>
+      <rect class="metric-fill"   x="40" y="152" width="72" height="40" rx="3"/>
+      <rect class="metric-stroke" x="40" y="152" width="72" height="40" rx="3"/>
+      <text class="accent-2 metric-val"  x="76" y="172" text-anchor="middle" filter="url(#glow-warm)">11</text>
+      <text class="fg-3 metric-unit"     x="76" y="186" text-anchor="middle">px gap</text>
+      <text class="fg-1 card-title"      x="122" y="165">endpoint gap</text>
+      <text class="fg-3 card-desc"       x="122" y="181">arrow misses target,</text>
+      <text class="fg-3 card-desc"       x="122" y="193">residual distance in px</text>
+    </g>
+
+    <!-- Defect 3: contrast ratio 2.1:1 -->
+    <g id="defect-3">
+      <rect class="defect-body-3"   x="30" y="212" width="270" height="60" rx="4"/>
+      <rect class="defect-edge-3" x="30" y="212" width="270" height="60" rx="4"/>
+      <rect class="defect-accent-3"    x="30" y="212" width="270" height="4" rx="4"/>
+      <rect class="metric-fill"   x="40" y="224" width="72" height="40" rx="3"/>
+      <rect class="metric-stroke" x="40" y="224" width="72" height="40" rx="3"/>
+      <text class="accent-2 metric-val"  x="76" y="244" text-anchor="middle" filter="url(#glow-warm)">2.1:1</text>
+      <text class="fg-3 metric-unit"     x="76" y="258" text-anchor="middle">contrast</text>
+      <text class="fg-1 card-title"      x="122" y="237">contrast failure</text>
+      <text class="fg-3 card-desc"       x="122" y="253">text below WCAG AA,</text>
+      <text class="fg-3 card-desc"       x="122" y="265">ratio vs background</text>
+    </g>
+
+    <!-- Defect 4: alignment drift 15-30px -->
+    <g id="defect-4">
+      <rect class="defect-body-4"   x="30" y="284" width="270" height="60" rx="4"/>
+      <rect class="defect-edge-4" x="30" y="284" width="270" height="60" rx="4"/>
+      <rect class="defect-accent-4"    x="30" y="284" width="270" height="4" rx="4"/>
+      <rect class="metric-fill"   x="40" y="296" width="72" height="40" rx="3"/>
+      <rect class="metric-stroke" x="40" y="296" width="72" height="40" rx="3"/>
+      <text class="accent-2 metric-val"  x="76" y="316" text-anchor="middle" filter="url(#glow-warm)">15-30</text>
+      <text class="fg-3 metric-unit"     x="76" y="330" text-anchor="middle">px drift</text>
+      <text class="fg-1 card-title"      x="122" y="309">alignment drift</text>
+      <text class="fg-3 card-desc"       x="122" y="325">cards off the grid,</text>
+      <text class="fg-3 card-desc"       x="122" y="337">deviation per element</text>
+    </g>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- MANIFOLD CONNECTOR: 4 defects -> spine -> 4 tools             -->
+  <!-- ============================================================ -->
+  <g id="manifold">
+    <path class="manifold-strand" d="M311,99 L412,99 L420,107 L420,207"/>
+    <path class="manifold-strand" d="M311,171 L420,171 L420,207"/>
+    <path class="manifold-strand" d="M311,243 L420,243 L420,207"/>
+    <path class="manifold-strand" d="M311,315 L412,315 L420,307 L420,207"/>
+
+    <path class="manifold-strand" d="M420,207 L580,207"/>
+
+    <path class="manifold-strand" d="M580,207 L580,107 L588,99 L689,99"/>
+    <polygon class="manifold-arrow" points="699,99 689,94 689,104"/>
+    <path class="manifold-strand" d="M580,207 L580,171 L689,171"/>
+    <polygon class="manifold-arrow" points="699,171 689,166 689,176"/>
+    <path class="manifold-strand" d="M580,207 L580,243 L689,243"/>
+    <polygon class="manifold-arrow" points="699,243 689,238 689,248"/>
+    <path class="manifold-strand" d="M580,207 L580,307 L588,315 L689,315"/>
+    <polygon class="manifold-arrow" points="699,315 689,310 689,320"/>
+  </g>
+
+  <!-- Spine labels (in original position) -->
+  <text class="accent-2" x="500" y="195" text-anchor="middle" font-size="9" font-weight="700" font-style="italic" filter="url(#glow-label)">failure data analysis</text>
+  <text class="fg-3" x="500" y="224" text-anchor="middle" font-size="8">measured. classified. quantified.</text>
+
+  <!-- ============================================================ -->
+  <!-- TOOL CARDS (RIGHT COLUMN): x=700..970                         -->
+  <!-- ============================================================ -->
+  <g id="tool-cards">
+    <!-- Tool 1: routing engine -->
+    <g id="tool-1">
+      <rect class="tool-body-1"   x="700" y="68" width="270" height="60" rx="4"/>
+      <rect class="tool-edge-1" x="700" y="68" width="270" height="60" rx="4"/>
+      <rect class="tool-accent-1"    x="700" y="68" width="270" height="4" rx="4"/>
+      <circle class="icon-fill"   cx="722" cy="99" r="13"/>
+      <circle class="icon-stroke" cx="722" cy="99" r="13"/>
+      <path class="icon-glyph" d="M715,103 L715,97 L720,97 L720,101 L729,101"/>
+      <polygon class="accent-1" points="730,101 727,99.5 727,102.5"/>
+      <text class="fg-1 card-title" x="742" y="93">routing engine</text>
+      <text class="fg-3 card-desc"  x="742" y="109">L-chamfered paths, edge-snap,</text>
+      <text class="fg-3 card-desc"  x="742" y="121">standoff: closes endpoint gaps</text>
+    </g>
+
+    <!-- Tool 2: callout solver -->
+    <g id="tool-2">
+      <rect class="tool-body-2"   x="700" y="140" width="270" height="60" rx="4"/>
+      <rect class="tool-edge-2" x="700" y="140" width="270" height="60" rx="4"/>
+      <rect class="tool-accent-2"    x="700" y="140" width="270" height="4" rx="4"/>
+      <circle class="icon-fill"   cx="722" cy="171" r="13"/>
+      <circle class="icon-stroke" cx="722" cy="171" r="13"/>
+      <rect x="715" y="166" width="11" height="7" rx="1.5" fill="none" stroke="#005f7a" stroke-width="1.2" class="icon-glyph"/>
+      <path class="icon-glyph" d="M720,173 L722,177 L724,173"/>
+      <text class="fg-1 card-title" x="742" y="165">callout solver</text>
+      <text class="fg-3 card-desc"  x="742" y="181">empty-space + joint placement:</text>
+      <text class="fg-3 card-desc"  x="742" y="193">eliminates label overlap</text>
+    </g>
+
+    <!-- Tool 3: WCAG checker -->
+    <g id="tool-3">
+      <rect class="tool-body-3"   x="700" y="212" width="270" height="60" rx="4"/>
+      <rect class="tool-edge-3" x="700" y="212" width="270" height="60" rx="4"/>
+      <rect class="tool-accent-3"    x="700" y="212" width="270" height="4" rx="4"/>
+      <circle class="icon-fill"   cx="722" cy="243" r="13"/>
+      <circle class="icon-stroke" cx="722" cy="243" r="13"/>
+      <path d="M722,232 A11,11 0 0,1 722,254 Z" fill="#005f7a" opacity="0.55"/>
+      <circle cx="722" cy="243" r="11" fill="none" stroke="#005f7a" stroke-width="1.2" class="icon-glyph"/>
+      <text class="fg-1 card-title" x="742" y="237">WCAG checker</text>
+      <text class="fg-3 card-desc"  x="742" y="253">text + object contrast ratio:</text>
+      <text class="fg-3 card-desc"  x="742" y="265">enforces WCAG AA in both modes</text>
+    </g>
+
+    <!-- Tool 4: position primitives -->
+    <g id="tool-4">
+      <rect class="tool-body-4"   x="700" y="284" width="270" height="60" rx="4"/>
+      <rect class="tool-edge-4" x="700" y="284" width="270" height="60" rx="4"/>
+      <rect class="tool-accent-4"    x="700" y="284" width="270" height="4" rx="4"/>
+      <circle class="icon-fill"   cx="722" cy="315" r="13"/>
+      <circle class="icon-stroke" cx="722" cy="315" r="13"/>
+      <g fill="#005f7a">
+        <circle cx="717" cy="310" r="1.3"/><circle cx="722" cy="310" r="1.3"/><circle cx="727" cy="310" r="1.3"/>
+        <circle cx="717" cy="315" r="1.3"/><circle cx="722" cy="315" r="1.3"/><circle cx="727" cy="315" r="1.3"/>
+        <circle cx="717" cy="320" r="1.3"/><circle cx="722" cy="320" r="1.3"/><circle cx="727" cy="320" r="1.3"/>
+      </g>
+      <text class="fg-1 card-title" x="742" y="309">position primitives</text>
+      <text class="fg-3 card-desc"  x="742" y="325">computed anchors + rect/hex/arc:</text>
+      <text class="fg-3 card-desc"  x="742" y="337">eliminates grid drift</text>
+    </g>
+  </g>
+
+  <!-- Caption band -->
+  <g id="caption">
+    <text class="fg-3 caption" x="500" y="390" text-anchor="middle">failure data in, targeted tool out - each tool eliminates one measured defect class</text>
+  </g>
+
+</svg>

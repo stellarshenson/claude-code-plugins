@@ -1,0 +1,601 @@
+<!--
+  19-scientific-method.svg - The scientific method behind the plugin
+  Shows: three-zone experimental pipeline.
+    Zone A (HYPOTHESIZE & GENERATE): stack of prompt cards each with an assumed outcome;
+           each prompt fans out into N raw LLM generations to capture variance.
+    Zone B (MEASURE & CLASSIFY): four defect-class mini histograms (overlap area,
+           endpoint gap, contrast ratio, alignment drift) with explicit mean, sigma,
+           and count labels - the quantitative catalogue of failure modes.
+    Zone C (TARGET): magnitude-vs-variance scatter; the top-right quadrant
+           (high magnitude + high variance) is the "tool target" zone. Four points,
+           each a defect class, become the four tools.
+  Intent: reader sees that the plugin was designed by MEASURING failure, not by
+          imagining features. Science shaped the tools: hypothesize, sample,
+          measure, rank, target.
+  Theme:  Stellars-Tech. fg-1 titles, fg-3 labels, accent-1 primary elements,
+          accent-2 measurement/metric accents. Inter sans-serif throughout.
+-->
+<!-- add-life: medium
+  colour: 3 zone hue variants (sky-teal A, cyan-teal B, deep-teal C) on zone body + stroke + accent-bar; 4 histogram hue variants matched to zone B interior
+  shapes: corner brackets on each zone frame, scan-lines under zone titles, subtle chevrons flanking inter-zone connectors
+  icons: lucide per item (flask-conical for zone A, bar-chart-3 for zone B, crosshair for zone C; plus mini glyphs on 4 histograms: box-select, ruler, contrast, grid)
+  embroidery: neural/dendritic background traces with node dots matching hypothesis-branching theme
+  abstract: 18 scattered accent particles in whitespace, 2 background dendrite arcs
+  bg texture: neural/dendritic faded traces at 0.08-0.10 opacity (HARD CAP)
+  glow: cyan stdDev=2 on title, stdDev=1.5 on zone titles, warm stdDev=1.6 on sigma stats + target scatter points
+-->
+
+<!-- === GRID ===
+  viewBox: 1000 x 420
+  Three-zone horizontal split:
+    zone-A: x=30..330   w=300   HYPOTHESIZE + GENERATE
+    zone-B: x=360..660  w=300   MEASURE 4 defect classes
+    zone-C: x=690..970  w=280   TARGET top-right quadrant
+    connectors: arrows between zones at y=207
+=== -->
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 420">
+  <style>
+    text { font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif; }
+    .fg-1 { fill: #1a5a6e; }
+    .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+
+    .zone-fill   { fill: #005f7a; fill-opacity: 0.04; }
+    .zone-stroke { fill: none; stroke: #005f7a; stroke-width: 1; opacity: 0.5; }
+    .zone-bar    { fill: #005f7a; opacity: 0.5; }
+
+    .ticket-fill   { fill: #005f7a; fill-opacity: 0.08; }
+    .ticket-stroke { fill: none; stroke: #005f7a; stroke-width: 0.8; }
+
+    .sample-dot    { fill: #005f7a; opacity: 0.45; }
+    .sample-line   { fill: none; stroke: #005f7a; stroke-width: 0.6; opacity: 0.4; stroke-dasharray: 2 2; }
+
+    .hist-fill   { fill: #005f7a; fill-opacity: 0.04; }
+    .hist-stroke { fill: none; stroke: #005f7a; stroke-width: 0.7; opacity: 0.6; }
+    .hist-bar    { fill: #005f7a; opacity: 0.7; }
+    .hist-axis   { fill: none; stroke: #005f7a; stroke-width: 0.6; opacity: 0.5; }
+
+    .sigma-fill   { fill: #7a4a15; fill-opacity: 0.1; }
+    .sigma-stroke { fill: none; stroke: #7a4a15; stroke-width: 0.6; opacity: 0.6; }
+
+    .axis        { fill: none; stroke: #1a5a6e; stroke-width: 0.8; }
+    .axis-tick   { fill: none; stroke: #1a5a6e; stroke-width: 0.6; opacity: 0.5; }
+    .axis-grid   { fill: none; stroke: #1a5a6e; stroke-width: 0.4; opacity: 0.18; stroke-dasharray: 2 2; }
+
+    .target-quad-fill   { fill: #7a4a15; fill-opacity: 0.08; }
+    .target-quad-stroke { fill: none; stroke: #7a4a15; stroke-width: 0.8; stroke-dasharray: 3 2; opacity: 0.7; }
+
+    .scatter-point-target { fill: #7a4a15; opacity: 0.9; }
+    .scatter-point-other  { fill: #005f7a; opacity: 0.5; }
+    .scatter-label        { font-size: 8.5px; font-weight: 600; }
+
+    .manifold-strand { fill: none; stroke: #005f7a; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.85; }
+    .manifold-arrow  { fill: #005f7a; stroke: none; opacity: 0.9; }
+
+    .zone-title    { font-size: 13px; font-weight: 700; }
+    .zone-subtitle { font-size: 9px; font-style: italic; }
+    .metric-name   { font-size: 10px; font-weight: 700; }
+    .metric-unit   { font-size: 7.5px; }
+    .metric-stat   { font-size: 7.5px; font-weight: 600; }
+    .caption       { font-size: 10px; font-style: italic; }
+
+    /* add-life additions: per-zone and per-histogram hue variants */
+    .zone-body-a { fill: #008bb8; fill-opacity: 0.05; }
+    .zone-edge-a { fill: none; stroke: #008bb8; stroke-width: 1; opacity: 0.55; }
+    .zone-accent-a { fill: #008bb8; opacity: 0.6; }
+    .zone-body-b { fill: #00a2c4; fill-opacity: 0.055; }
+    .zone-edge-b { fill: none; stroke: #00a2c4; stroke-width: 1; opacity: 0.58; }
+    .zone-accent-b { fill: #00a2c4; opacity: 0.6; }
+    .zone-body-c { fill: #007090; fill-opacity: 0.05; }
+    .zone-edge-c { fill: none; stroke: #007090; stroke-width: 1; opacity: 0.55; }
+    .zone-accent-c { fill: #007090; opacity: 0.6; }
+
+    .hist-body-1 { fill: #008bb8; fill-opacity: 0.05; }
+    .hist-edge-1 { fill: none; stroke: #008bb8; stroke-width: 0.75; opacity: 0.62; }
+    .hist-bar-1  { fill: #008bb8; opacity: 0.7; }
+    .hist-body-2 { fill: #00a2c4; fill-opacity: 0.05; }
+    .hist-edge-2 { fill: none; stroke: #00a2c4; stroke-width: 0.75; opacity: 0.62; }
+    .hist-bar-2  { fill: #00a2c4; opacity: 0.7; }
+    .hist-body-3 { fill: #007090; fill-opacity: 0.05; }
+    .hist-edge-3 { fill: none; stroke: #007090; stroke-width: 0.75; opacity: 0.62; }
+    .hist-bar-3  { fill: #007090; opacity: 0.7; }
+    .hist-body-4 { fill: #0582b5; fill-opacity: 0.05; }
+    .hist-edge-4 { fill: none; stroke: #0582b5; stroke-width: 0.75; opacity: 0.62; }
+    .hist-bar-4  { fill: #0582b5; opacity: 0.7; }
+
+    .corner-bracket { fill: none; stroke: #0096d1; stroke-width: 1; opacity: 0.5; stroke-linecap: round; }
+    .scan-line   { fill: none; stroke: #0096d1; stroke-width: 0.4; opacity: 0.3; stroke-dasharray: 3 2; }
+    .bg-dendrite { fill: none; stroke: #0096d1; stroke-width: 0.55; opacity: 0.09; stroke-linecap: round; }
+    .bg-dendrite-node { fill: #0096d1; opacity: 0.11; }
+    .particle    { fill: #0096d1; opacity: 0.3; }
+    .particle-warm { fill: #d4822f; opacity: 0.32; }
+    .bg-arc      { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.12; }
+    .deco-icon   { fill: none; stroke: #0096d1; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; }
+    .deco-icon-warm { fill: none; stroke: #b8541a; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.65; }
+    .chevron-mark { fill: none; stroke: #0096d1; stroke-width: 0.8; opacity: 0.55; stroke-linecap: round; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+
+      .zone-fill   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .zone-stroke { stroke: #5cc8e0; }
+      .zone-bar    { fill: #5cc8e0; }
+
+      .ticket-fill   { fill: #5cc8e0; fill-opacity: 0.1; }
+      .ticket-stroke { stroke: #5cc8e0; }
+
+      .sample-dot  { fill: #5cc8e0; }
+      .sample-line { stroke: #5cc8e0; }
+
+      .hist-fill   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .hist-stroke { stroke: #5cc8e0; }
+      .hist-bar    { fill: #5cc8e0; }
+      .hist-axis   { stroke: #5cc8e0; }
+
+      .sigma-fill   { fill: #d4a04a; fill-opacity: 0.14; }
+      .sigma-stroke { stroke: #d4a04a; }
+
+      .axis      { stroke: #b8e4f0; }
+      .axis-tick { stroke: #b8e4f0; }
+      .axis-grid { stroke: #b8e4f0; }
+
+      .target-quad-fill   { fill: #d4a04a; fill-opacity: 0.12; }
+      .target-quad-stroke { stroke: #d4a04a; }
+
+      .scatter-point-target { fill: #d4a04a; }
+      .scatter-point-other  { fill: #5cc8e0; }
+
+      .manifold-strand { stroke: #5cc8e0; }
+      .manifold-arrow  { fill: #5cc8e0; }
+
+      .zone-body-a { fill: #4ab6cf; fill-opacity: 0.08; }
+      .zone-edge-a { stroke: #4ab6cf; }
+      .zone-accent-a { fill: #4ab6cf; }
+      .zone-body-b { fill: #5cc8dc; fill-opacity: 0.09; }
+      .zone-edge-b { stroke: #5cc8dc; }
+      .zone-accent-b { fill: #5cc8dc; }
+      .zone-body-c { fill: #3ea2b8; fill-opacity: 0.08; }
+      .zone-edge-c { stroke: #3ea2b8; }
+      .zone-accent-c { fill: #3ea2b8; }
+
+      .hist-body-1 { fill: #4ab6cf; fill-opacity: 0.08; }
+      .hist-edge-1 { stroke: #4ab6cf; }
+      .hist-bar-1  { fill: #4ab6cf; }
+      .hist-body-2 { fill: #5cc8dc; fill-opacity: 0.08; }
+      .hist-edge-2 { stroke: #5cc8dc; }
+      .hist-bar-2  { fill: #5cc8dc; }
+      .hist-body-3 { fill: #3ea2b8; fill-opacity: 0.08; }
+      .hist-edge-3 { stroke: #3ea2b8; }
+      .hist-bar-3  { fill: #3ea2b8; }
+      .hist-body-4 { fill: #48b8cf; fill-opacity: 0.08; }
+      .hist-edge-4 { stroke: #48b8cf; }
+      .hist-bar-4  { fill: #48b8cf; }
+
+      .corner-bracket { stroke: #5cc8e0; }
+      .scan-line { stroke: #5cc8e0; }
+      .bg-dendrite { stroke: #5cc8e0; opacity: 0.11; }
+      .bg-dendrite-node { fill: #5cc8e0; opacity: 0.15; }
+      .particle    { fill: #5cc8e0; opacity: 0.35; }
+      .particle-warm { fill: #d4a04a; opacity: 0.35; }
+      .bg-arc      { stroke: #5cc8e0; opacity: 0.15; }
+      .deco-icon   { stroke: #5cc8e0; }
+      .deco-icon-warm { stroke: #d4a04a; }
+      .chevron-mark { stroke: #5cc8e0; }
+    }
+  </style>
+
+  <defs>
+    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-label" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-warm" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- add-life-decorations: background layer BELOW content -->
+  <g id="add-life-decorations">
+    <!-- Neural/dendritic background (hypothesis branching motif) -->
+    <g id="add-life-bg-texture">
+      <path d="M8,14 Q30,30 56,22 Q80,14 104,34" class="bg-dendrite"/>
+      <path d="M56,22 Q68,8 90,12" class="bg-dendrite"/>
+      <path d="M104,34 Q120,46 140,40" class="bg-dendrite"/>
+      <path d="M992,16 Q970,30 944,22 Q918,14 894,34" class="bg-dendrite"/>
+      <path d="M944,22 Q932,8 910,12" class="bg-dendrite"/>
+      <path d="M894,34 Q878,46 858,40" class="bg-dendrite"/>
+      <path d="M10,406 Q34,392 58,400 Q82,408 102,388" class="bg-dendrite"/>
+      <path d="M58,400 Q72,416 96,414" class="bg-dendrite"/>
+      <path d="M990,404 Q968,392 942,400 Q918,408 896,388" class="bg-dendrite"/>
+      <path d="M942,400 Q928,416 904,414" class="bg-dendrite"/>
+      <path d="M345,20 Q340,40 350,58" class="bg-dendrite"/>
+      <path d="M675,20 Q680,40 670,58" class="bg-dendrite"/>
+      <path d="M345,400 Q340,380 350,362" class="bg-dendrite"/>
+      <path d="M675,400 Q680,380 670,362" class="bg-dendrite"/>
+      <circle cx="30" cy="30" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="56" cy="22" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="104" cy="34" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="140" cy="40" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="90" cy="12" r="1.2" class="bg-dendrite-node"/>
+      <circle cx="970" cy="30" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="944" cy="22" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="894" cy="34" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="858" cy="40" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="910" cy="12" r="1.2" class="bg-dendrite-node"/>
+      <circle cx="58" cy="400" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="102" cy="388" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="942" cy="400" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="896" cy="388" r="1.3" class="bg-dendrite-node"/>
+      <circle cx="345" cy="20" r="1.2" class="bg-dendrite-node"/>
+      <circle cx="675" cy="20" r="1.2" class="bg-dendrite-node"/>
+      <circle cx="345" cy="400" r="1.2" class="bg-dendrite-node"/>
+      <circle cx="675" cy="400" r="1.2" class="bg-dendrite-node"/>
+    </g>
+
+    <!-- Background arcs (soft dendrite sweeps) -->
+    <g id="add-life-bg-arcs">
+      <path d="M-40,18 Q500,-12 1040,18" class="bg-arc"/>
+      <path d="M-40,408 Q500,436 1040,406" class="bg-arc"/>
+    </g>
+
+    <!-- Corner brackets on each zone frame -->
+    <g id="add-life-brackets">
+      <path d="M34,74 L34,70 L38,70" class="corner-bracket"/>
+      <path d="M326,74 L326,70 L322,70" class="corner-bracket"/>
+      <path d="M34,354 L34,358 L38,358" class="corner-bracket"/>
+      <path d="M326,354 L326,358 L322,358" class="corner-bracket"/>
+      <path d="M364,74 L364,70 L368,70" class="corner-bracket"/>
+      <path d="M656,74 L656,70 L652,70" class="corner-bracket"/>
+      <path d="M364,354 L364,358 L368,358" class="corner-bracket"/>
+      <path d="M656,354 L656,358 L652,358" class="corner-bracket"/>
+      <path d="M694,74 L694,70 L698,70" class="corner-bracket"/>
+      <path d="M966,74 L966,70 L962,70" class="corner-bracket"/>
+      <path d="M694,354 L694,358 L698,358" class="corner-bracket"/>
+      <path d="M966,354 L966,358 L962,358" class="corner-bracket"/>
+    </g>
+
+    <!-- Scan-lines just under each zone title -->
+    <g id="add-life-scanlines">
+      <line x1="88" y1="94" x2="272" y2="94" class="scan-line"/>
+      <line x1="418" y1="94" x2="602" y2="94" class="scan-line"/>
+      <line x1="748" y1="94" x2="912" y2="94" class="scan-line"/>
+    </g>
+
+    <!-- Chevron marks flanking inter-zone connector arrows at y=214 -->
+    <g id="add-life-chevrons">
+      <path d="M336,210 L340,214 L336,218" class="chevron-mark"/>
+      <path d="M354,210 L350,214 L354,218" class="chevron-mark"/>
+      <path d="M666,210 L670,214 L666,218" class="chevron-mark"/>
+      <path d="M684,210 L680,214 L684,218" class="chevron-mark"/>
+    </g>
+
+    <!-- Scattered accent particles in whitespace -->
+    <g id="add-life-particles">
+      <circle cx="12" cy="14" r="1" class="particle"/>
+      <circle cx="988" cy="14" r="1" class="particle"/>
+      <circle cx="12" cy="406" r="1" class="particle"/>
+      <circle cx="988" cy="406" r="1" class="particle"/>
+      <circle cx="500" cy="10" r="1.1" class="particle"/>
+      <circle cx="500" cy="410" r="1" class="particle"/>
+      <circle cx="345" cy="12" r="0.9" class="particle"/>
+      <circle cx="675" cy="12" r="0.9" class="particle"/>
+      <circle cx="345" cy="406" r="0.9" class="particle"/>
+      <circle cx="675" cy="406" r="0.9" class="particle"/>
+      <circle cx="12" cy="214" r="1" class="particle"/>
+      <circle cx="988" cy="214" r="1" class="particle"/>
+      <circle cx="18" cy="110" r="0.9" class="particle"/>
+      <circle cx="18" cy="310" r="0.9" class="particle"/>
+      <circle cx="982" cy="110" r="0.9" class="particle"/>
+      <circle cx="982" cy="310" r="0.9" class="particle"/>
+      <circle cx="345" cy="214" r="0.8" class="particle-warm"/>
+      <circle cx="675" cy="214" r="0.8" class="particle-warm"/>
+    </g>
+  </g>
+
+  <!-- add-life-icons: per-item lucide glyphs, ISC licence -->
+  <g id="add-life-icons">
+    <!-- Zone A flask-conical in upper-right of zone at (308,74) 14x14 -->
+    <g transform="translate(308, 74) scale(0.583)" class="deco-icon">
+      <path d="M10 2v7.31"/>
+      <path d="M14 9.3V1.99"/>
+      <path d="M8.5 2h7"/>
+      <path d="M14 9.3a6.5 6.5 0 1 1-4 0"/>
+    </g>
+    <!-- Zone B bar-chart-3 at (638,74) -->
+    <g transform="translate(638, 74) scale(0.583)" class="deco-icon">
+      <path d="M3 3v18h18"/>
+      <path d="M8 17V9"/>
+      <path d="M13 17V5"/>
+      <path d="M18 17v-3"/>
+    </g>
+    <!-- Zone C crosshair at (948,74) -->
+    <g transform="translate(948, 74) scale(0.583)" class="deco-icon">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="22" y1="12" x2="18" y2="12"/>
+      <line x1="6" y1="12" x2="2" y2="12"/>
+      <line x1="12" y1="6" x2="12" y2="2"/>
+      <line x1="12" y1="22" x2="12" y2="18"/>
+    </g>
+
+    <!-- Histogram mini icons at upper-right of each histogram (10x10) -->
+    <!-- hist-overlap box-select at (492,120) -->
+    <g transform="translate(492, 120) scale(0.417)" class="deco-icon">
+      <path d="M5 3a2 2 0 0 0-2 2"/>
+      <path d="M19 3a2 2 0 0 1 2 2"/>
+      <path d="M21 19a2 2 0 0 1-2 2"/>
+      <path d="M5 21a2 2 0 0 1-2-2"/>
+      <path d="M9 3h1"/>
+      <path d="M9 21h1"/>
+      <path d="M14 3h1"/>
+      <path d="M14 21h1"/>
+      <path d="M3 9v1"/>
+      <path d="M21 9v1"/>
+      <path d="M3 14v1"/>
+      <path d="M21 14v1"/>
+    </g>
+    <!-- hist-gap ruler at (636,120) -->
+    <g transform="translate(636, 120) scale(0.417)" class="deco-icon">
+      <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/>
+      <path d="m14.5 12.5 2-2"/>
+      <path d="m11.5 9.5 2-2"/>
+      <path d="m8.5 6.5 2-2"/>
+      <path d="m17.5 15.5 2-2"/>
+    </g>
+    <!-- hist-contrast at (492,216) -->
+    <g transform="translate(492, 216) scale(0.417)" class="deco-icon">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 2v20"/>
+      <path d="M12 2a10 10 0 0 1 0 20z"/>
+    </g>
+    <!-- hist-drift grid at (636,216) -->
+    <g transform="translate(636, 216) scale(0.417)" class="deco-icon">
+      <rect x="3" y="3" width="7" height="7"/>
+      <rect x="14" y="3" width="7" height="7"/>
+      <rect x="14" y="14" width="7" height="7"/>
+      <rect x="3" y="14" width="7" height="7"/>
+    </g>
+  </g>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1000" height="420" fill="transparent"/>
+
+  <!-- Title -->
+  <text class="fg-1" x="500" y="26" text-anchor="middle" font-size="17" font-weight="700" filter="url(#glow-cyan)">the scientific method</text>
+  <text class="fg-3" x="500" y="46" text-anchor="middle" font-size="11">hypothesize, sample, measure, rank: the plugin was shaped by failure data</text>
+
+  <!-- ============================================================ -->
+  <!-- ZONE A: HYPOTHESIZE + GENERATE (x=30..330)                    -->
+  <!-- ============================================================ -->
+  <g id="zone-a">
+    <rect class="zone-body-a"   x="30" y="68" width="300" height="292" rx="4"/>
+    <rect class="zone-edge-a" x="30" y="68" width="300" height="292" rx="4"/>
+    <rect class="zone-accent-a"    x="30" y="68" width="300" height="4"  rx="4"/>
+    <text class="accent-1 zone-title"     x="180" y="90"  text-anchor="middle" filter="url(#glow-label)">1. hypothesize &amp; generate</text>
+    <text class="fg-3 zone-subtitle"      x="180" y="106" text-anchor="middle">each prompt assumes a specific outcome</text>
+
+    <!-- Prompt stack: 6 tickets offset diagonally -->
+    <g id="prompt-stack">
+      <rect class="ticket-fill"   x="54"  y="130" width="96" height="24" rx="3"/>
+      <rect class="ticket-stroke" x="54"  y="130" width="96" height="24" rx="3"/>
+      <line class="hist-axis" x1="62" y1="138" x2="142" y2="138"/>
+      <line class="hist-axis" x1="62" y1="144" x2="128" y2="144"/>
+      <line class="hist-axis" x1="62" y1="150" x2="110" y2="150"/>
+
+      <rect class="ticket-fill"   x="62"  y="158" width="96" height="24" rx="3"/>
+      <rect class="ticket-stroke" x="62"  y="158" width="96" height="24" rx="3"/>
+      <line class="hist-axis" x1="70" y1="166" x2="150" y2="166"/>
+      <line class="hist-axis" x1="70" y1="172" x2="134" y2="172"/>
+      <line class="hist-axis" x1="70" y1="178" x2="118" y2="178"/>
+
+      <rect class="ticket-fill"   x="70"  y="186" width="96" height="24" rx="3"/>
+      <rect class="ticket-stroke" x="70"  y="186" width="96" height="24" rx="3"/>
+      <line class="hist-axis" x1="78" y1="194" x2="158" y2="194"/>
+      <line class="hist-axis" x1="78" y1="200" x2="142" y2="200"/>
+      <line class="hist-axis" x1="78" y1="206" x2="126" y2="206"/>
+
+      <rect class="ticket-fill"   x="78"  y="214" width="96" height="24" rx="3"/>
+      <rect class="ticket-stroke" x="78"  y="214" width="96" height="24" rx="3"/>
+      <line class="hist-axis" x1="86" y1="222" x2="166" y2="222"/>
+      <line class="hist-axis" x1="86" y1="228" x2="150" y2="228"/>
+      <line class="hist-axis" x1="86" y1="234" x2="134" y2="234"/>
+
+      <text class="fg-3 metric-unit" x="54" y="249">prompt corpus</text>
+    </g>
+
+    <!-- Generation fan: arrows from the top prompt ticket splitting into N samples -->
+    <g id="generation-fan">
+      <line class="sample-line" x1="166" y1="198" x2="260" y2="140"/>
+      <line class="sample-line" x1="166" y1="198" x2="260" y2="168"/>
+      <line class="sample-line" x1="166" y1="198" x2="260" y2="198"/>
+      <line class="sample-line" x1="166" y1="198" x2="260" y2="228"/>
+      <line class="sample-line" x1="166" y1="198" x2="260" y2="256"/>
+
+      <circle class="sample-dot" cx="264" cy="140" r="3.5"/>
+      <circle class="sample-dot" cx="264" cy="168" r="3.5"/>
+      <circle class="sample-dot" cx="264" cy="198" r="3.5"/>
+      <circle class="sample-dot" cx="264" cy="228" r="3.5"/>
+      <circle class="sample-dot" cx="264" cy="256" r="3.5"/>
+
+      <text class="fg-3 metric-unit" x="280" y="202">N samples</text>
+      <text class="fg-3 metric-unit" x="280" y="214">per prompt</text>
+    </g>
+
+    <text class="fg-3 metric-stat" x="180" y="296" text-anchor="middle">raw output captures variance across generations</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- ZONE B: MEASURE + CLASSIFY (x=360..660)                       -->
+  <!-- ============================================================ -->
+  <g id="zone-b">
+    <rect class="zone-body-b"   x="360" y="68" width="300" height="292" rx="4"/>
+    <rect class="zone-edge-b" x="360" y="68" width="300" height="292" rx="4"/>
+    <rect class="zone-accent-b"    x="360" y="68" width="300" height="4"  rx="4"/>
+    <text class="accent-1 zone-title"     x="510" y="90"  text-anchor="middle" filter="url(#glow-label)">2. measure &amp; classify</text>
+    <text class="fg-3 zone-subtitle"      x="510" y="106" text-anchor="middle">every failure a measurable defect</text>
+
+    <!-- Histogram top-left: overlap area -->
+    <g id="hist-overlap">
+      <rect class="hist-body-1"   x="372" y="118" width="134" height="88" rx="3"/>
+      <rect class="hist-edge-1" x="372" y="118" width="134" height="88" rx="3"/>
+      <text class="fg-1 metric-name" x="380" y="132">overlap</text>
+      <text class="fg-3 metric-unit" x="380" y="141">area, px^2</text>
+      <rect class="sigma-fill" x="468" y="122" width="34" height="14" rx="2"/>
+      <rect class="sigma-stroke" x="468" y="122" width="34" height="14" rx="2"/>
+      <text class="accent-2 metric-stat" x="485" y="132" text-anchor="middle" filter="url(#glow-warm)">sigma 312</text>
+      <line class="hist-axis" x1="380" y1="198" x2="502" y2="198"/>
+      <rect class="hist-bar-1" x="383" y="188" width="10" height="10"/>
+      <rect class="hist-bar-1" x="396" y="178" width="10" height="20"/>
+      <rect class="hist-bar-1" x="409" y="162" width="10" height="36"/>
+      <rect class="hist-bar-1" x="422" y="152" width="10" height="46"/>
+      <rect class="hist-bar-1" x="435" y="168" width="10" height="30"/>
+      <rect class="hist-bar-1" x="448" y="180" width="10" height="18"/>
+      <rect class="hist-bar-1" x="461" y="174" width="10" height="24"/>
+      <rect class="hist-bar-1" x="474" y="184" width="10" height="14"/>
+      <rect class="hist-bar-1" x="487" y="190" width="10" height="8"/>
+    </g>
+
+    <!-- Histogram top-right: endpoint gap -->
+    <g id="hist-gap">
+      <rect class="hist-body-2"   x="516" y="118" width="134" height="88" rx="3"/>
+      <rect class="hist-edge-2" x="516" y="118" width="134" height="88" rx="3"/>
+      <text class="fg-1 metric-name" x="524" y="132">endpoint gap</text>
+      <text class="fg-3 metric-unit" x="524" y="141">distance, px</text>
+      <rect class="sigma-fill" x="612" y="122" width="34" height="14" rx="2"/>
+      <rect class="sigma-stroke" x="612" y="122" width="34" height="14" rx="2"/>
+      <text class="accent-2 metric-stat" x="629" y="132" text-anchor="middle" filter="url(#glow-warm)">sigma 4.2</text>
+      <line class="hist-axis" x1="524" y1="198" x2="646" y2="198"/>
+      <rect class="hist-bar-2" x="527" y="172" width="10" height="26"/>
+      <rect class="hist-bar-2" x="540" y="158" width="10" height="40"/>
+      <rect class="hist-bar-2" x="553" y="150" width="10" height="48"/>
+      <rect class="hist-bar-2" x="566" y="164" width="10" height="34"/>
+      <rect class="hist-bar-2" x="579" y="178" width="10" height="20"/>
+      <rect class="hist-bar-2" x="592" y="184" width="10" height="14"/>
+      <rect class="hist-bar-2" x="605" y="186" width="10" height="12"/>
+      <rect class="hist-bar-2" x="618" y="190" width="10" height="8"/>
+      <rect class="hist-bar-2" x="631" y="192" width="10" height="6"/>
+    </g>
+
+    <!-- Histogram bottom-left: contrast ratio -->
+    <g id="hist-contrast">
+      <rect class="hist-body-3"   x="372" y="214" width="134" height="88" rx="3"/>
+      <rect class="hist-edge-3" x="372" y="214" width="134" height="88" rx="3"/>
+      <text class="fg-1 metric-name" x="380" y="228">contrast</text>
+      <text class="fg-3 metric-unit" x="380" y="237">ratio vs bg</text>
+      <rect class="sigma-fill" x="468" y="218" width="34" height="14" rx="2"/>
+      <rect class="sigma-stroke" x="468" y="218" width="34" height="14" rx="2"/>
+      <text class="accent-2 metric-stat" x="485" y="228" text-anchor="middle" filter="url(#glow-warm)">sigma 1.1</text>
+      <line class="hist-axis" x1="380" y1="294" x2="502" y2="294"/>
+      <line class="target-quad-stroke" x1="430" y1="246" x2="430" y2="294"/>
+      <text class="accent-2 metric-unit" x="432" y="254" text-anchor="start">WCAG 4.5:1</text>
+      <rect class="hist-bar-3" x="383" y="274" width="10" height="20"/>
+      <rect class="hist-bar-3" x="396" y="262" width="10" height="32"/>
+      <rect class="hist-bar-3" x="409" y="254" width="10" height="40"/>
+      <rect class="hist-bar-3" x="422" y="258" width="10" height="36"/>
+      <rect class="hist-bar-3" x="435" y="272" width="10" height="22"/>
+      <rect class="hist-bar-3" x="448" y="280" width="10" height="14"/>
+      <rect class="hist-bar-3" x="461" y="284" width="10" height="10"/>
+      <rect class="hist-bar-3" x="474" y="288" width="10" height="6"/>
+      <rect class="hist-bar-3" x="487" y="290" width="10" height="4"/>
+    </g>
+
+    <!-- Histogram bottom-right: alignment drift -->
+    <g id="hist-drift">
+      <rect class="hist-body-4"   x="516" y="214" width="134" height="88" rx="3"/>
+      <rect class="hist-edge-4" x="516" y="214" width="134" height="88" rx="3"/>
+      <text class="fg-1 metric-name" x="524" y="228">alignment drift</text>
+      <text class="fg-3 metric-unit" x="524" y="237">offset, px</text>
+      <rect class="sigma-fill" x="612" y="218" width="34" height="14" rx="2"/>
+      <rect class="sigma-stroke" x="612" y="218" width="34" height="14" rx="2"/>
+      <text class="accent-2 metric-stat" x="629" y="228" text-anchor="middle" filter="url(#glow-warm)">sigma 8.5</text>
+      <line class="hist-axis" x1="524" y1="294" x2="646" y2="294"/>
+      <rect class="hist-bar-4" x="527" y="266" width="10" height="28"/>
+      <rect class="hist-bar-4" x="540" y="254" width="10" height="40"/>
+      <rect class="hist-bar-4" x="553" y="246" width="10" height="48"/>
+      <rect class="hist-bar-4" x="566" y="252" width="10" height="42"/>
+      <rect class="hist-bar-4" x="579" y="262" width="10" height="32"/>
+      <rect class="hist-bar-4" x="592" y="272" width="10" height="22"/>
+      <rect class="hist-bar-4" x="605" y="278" width="10" height="16"/>
+      <rect class="hist-bar-4" x="618" y="284" width="10" height="10"/>
+      <rect class="hist-bar-4" x="631" y="288" width="10" height="6"/>
+    </g>
+
+    <text class="fg-3 metric-stat" x="510" y="326" text-anchor="middle">type . magnitude . frequency</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- ZONE C: TARGET (x=690..970)                                   -->
+  <!-- ============================================================ -->
+  <g id="zone-c">
+    <rect class="zone-body-c"   x="690" y="68" width="280" height="292" rx="4"/>
+    <rect class="zone-edge-c" x="690" y="68" width="280" height="292" rx="4"/>
+    <rect class="zone-accent-c"    x="690" y="68" width="280" height="4"  rx="4"/>
+    <text class="accent-1 zone-title"     x="830" y="90"  text-anchor="middle" filter="url(#glow-label)">3. target the highest variance</text>
+    <text class="fg-3 zone-subtitle"      x="830" y="106" text-anchor="middle">magnitude x frequency selects tools</text>
+
+    <text class="accent-2 metric-stat" x="897" y="124" text-anchor="middle">tool targets · high mag + freq</text>
+
+    <!-- Scatter plot: axes, grid, quadrant highlight, points, labels -->
+    <g id="scatter">
+      <line class="axis-grid" x1="730" y1="215" x2="955" y2="215"/>
+      <line class="axis-grid" x1="730" y1="178" x2="955" y2="178"/>
+      <line class="axis-grid" x1="730" y1="252" x2="955" y2="252"/>
+      <line class="axis-grid" x1="785" y1="140" x2="785" y2="290"/>
+      <line class="axis-grid" x1="840" y1="140" x2="840" y2="290"/>
+      <line class="axis-grid" x1="895" y1="140" x2="895" y2="290"/>
+
+      <rect class="target-quad-fill"   x="840" y="140" width="115" height="75"/>
+      <rect class="target-quad-stroke" x="840" y="140" width="115" height="75"/>
+
+      <line class="axis" x1="730" y1="290" x2="955" y2="290"/>
+      <line class="axis" x1="730" y1="140" x2="730" y2="290"/>
+
+      <text class="fg-3 metric-unit" x="842" y="306" text-anchor="middle">frequency →</text>
+      <text class="fg-3 metric-unit" x="716" y="215" text-anchor="middle" transform="rotate(-90, 716, 215)">magnitude →</text>
+
+      <circle class="scatter-point-target" cx="870" cy="170" r="4.5" filter="url(#glow-warm)"/>
+      <text class="accent-2 scatter-label" x="870" y="156" text-anchor="middle">overlap</text>
+
+      <circle class="scatter-point-target" cx="925" cy="170" r="4.5" filter="url(#glow-warm)"/>
+      <text class="accent-2 scatter-label" x="925" y="156" text-anchor="middle">contrast</text>
+
+      <circle class="scatter-point-target" cx="870" cy="190" r="4.5" filter="url(#glow-warm)"/>
+      <text class="accent-2 scatter-label" x="870" y="208" text-anchor="middle">drift</text>
+
+      <circle class="scatter-point-target" cx="925" cy="190" r="4.5" filter="url(#glow-warm)"/>
+      <text class="accent-2 scatter-label" x="925" y="208" text-anchor="middle">gap</text>
+
+      <circle class="scatter-point-other" cx="758" cy="266" r="3"/>
+      <circle class="scatter-point-other" cx="780" cy="248" r="3"/>
+      <circle class="scatter-point-other" cx="802" cy="272" r="3"/>
+      <circle class="scatter-point-other" cx="776" cy="232" r="3"/>
+      <circle class="scatter-point-other" cx="818" cy="256" r="3"/>
+      <circle class="scatter-point-other" cx="798" cy="240" r="3"/>
+    </g>
+
+    <text class="fg-3 metric-stat" x="830" y="326" text-anchor="middle">selected classes become the tools</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- INTER-ZONE CONNECTORS (stages 1->2 and 2->3)                  -->
+  <!-- ============================================================ -->
+  <g id="zone-connectors">
+    <path class="manifold-strand" d="M330,214 L360,214"/>
+    <polygon class="manifold-arrow" points="358,214 348,209 348,219"/>
+
+    <path class="manifold-strand" d="M660,214 L690,214"/>
+    <polygon class="manifold-arrow" points="688,214 678,209 678,219"/>
+  </g>
+
+  <!-- Caption -->
+  <text class="fg-3 caption" x="500" y="392" text-anchor="middle">the plugin was shaped by failure data, not intuition</text>
+</svg>

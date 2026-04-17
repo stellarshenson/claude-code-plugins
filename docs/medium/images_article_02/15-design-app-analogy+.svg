@@ -1,0 +1,504 @@
+<!--
+  15-design-app-analogy.svg - Design application to CLI equivalence mapping
+  Shows: two-column comparison with 5 rows; left column "Design Application" concepts
+         (snap to grid, smart connector, colour picker, alignment guide, preflight panel)
+         mapped via arrow connectors to right column "svg-infographics CLI" equivalents.
+         Each row is a card-pair with an arrow between them.
+  Intent: reader instantly sees that every Inkscape/Figma affordance has a direct CLI
+          counterpart in the plugin - the agent gets the same tools as a human designer.
+  Theme: Stellars-Tech. fg-1 titles, fg-3 labels, accent-1 left cards (design concepts),
+         accent-2 right cards (CLI equivalents). Inter sans-serif throughout.
+-->
+<!-- add-life: medium
+  colour: per-row in-family hue drift - left (sky-teal, cyan-teal, deep-teal, blue-teal, teal) + right (ochre, copper-ochre, amber-ochre, copper, deep-ochre) on body + stroke + accent bar
+  shapes: corner brackets on every card, scan-line under each title, decorative micro-marks
+  icons: lucide per row - left (grid, git-branch, palette, align-center, shield-check) + right (box, route, droplet, move, check-circle) small glyph upper-right of each card
+  embroidery: grid/technical faded coordinate markers as background texture (matches engineering drawing motif)
+  abstract: 10 scattered accent particles in whitespace, 2 background arcs top/bottom
+  bg texture: grid/technical faded lines + coordinate ticks at 0.06-0.08 opacity (HARD CAP 0.10)
+  glow: cyan stdDev=2 on main title, stdDev=1.5 on column headers
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400">
+  <style>
+    text { font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif; }
+    .fg-1 { fill: #1a5a6e; }
+    .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+
+    .left-card-fill   { fill: #005f7a; fill-opacity: 0.05; }
+    .left-card-stroke { fill: none; stroke: #005f7a; stroke-width: 1; }
+    .left-bar         { fill: #005f7a; opacity: 0.6; }
+
+    .right-card-fill   { fill: #7a4a15; fill-opacity: 0.05; }
+    .right-card-stroke { fill: none; stroke: #7a4a15; stroke-width: 1; }
+    .right-bar         { fill: #7a4a15; opacity: 0.6; }
+
+    .arrow-line { fill: none; stroke: #236a74; stroke-width: 1.4; stroke-linecap: round; }
+    .arrow-head { fill: #236a74; }
+
+    .col-header { font-size: 14px; font-weight: 700; letter-spacing: 0.5px; }
+    .card-title { font-size: 11px; font-weight: 600; }
+    .card-desc  { font-size: 9px; font-family: 'Consolas', 'Menlo', monospace; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+
+      .left-card-fill   { fill: #5cc8e0; fill-opacity: 0.06; }
+      .left-card-stroke { stroke: #5cc8e0; }
+      .left-bar         { fill: #5cc8e0; }
+
+      .right-card-fill   { fill: #d4a04a; fill-opacity: 0.06; }
+      .right-card-stroke { stroke: #d4a04a; }
+      .right-bar         { fill: #d4a04a; }
+
+      .arrow-line { stroke: #5aafc5; }
+      .arrow-head { fill: #5aafc5; }
+    }
+
+    /* add-life add-ons */
+    .corner-bracket { fill: none; stroke: #0096d1; stroke-width: 0.8; opacity: 0.55; stroke-linecap: round; }
+    .scan-line      { fill: none; stroke: #0096d1; stroke-width: 0.35; opacity: 0.28; stroke-dasharray: 3 2; }
+    .bg-grid-line   { fill: none; stroke: #0096d1; stroke-width: 0.4; opacity: 0.07; }
+    .bg-grid-tick   { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.09; }
+    .bg-grid-node   { fill: #0096d1; opacity: 0.10; }
+    .bg-arc         { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.12; }
+    .particle-cool  { fill: #0096d1; opacity: 0.30; }
+    .particle-warm  { fill: #da8230; opacity: 0.30; }
+    .row-icon-cool  { fill: none; stroke: #0096d1; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.60; }
+    .row-icon-warm  { fill: none; stroke: #da8230; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.65; }
+
+    /* per-row left-card (teal family) hue variants */
+    .l-card-1 { fill: #008bb8; fill-opacity: 0.055; stroke: #008bb8; stroke-width: 1; }
+    .l-bar-1  { fill: #008bb8; opacity: 0.65; }
+    .l-card-2 { fill: #00a2c4; fill-opacity: 0.060; stroke: #00a2c4; stroke-width: 1; }
+    .l-bar-2  { fill: #00a2c4; opacity: 0.70; }
+    .l-card-3 { fill: #006e8a; fill-opacity: 0.055; stroke: #006e8a; stroke-width: 1; }
+    .l-bar-3  { fill: #006e8a; opacity: 0.68; }
+    .l-card-4 { fill: #0582b5; fill-opacity: 0.060; stroke: #0582b5; stroke-width: 1; }
+    .l-bar-4  { fill: #0582b5; opacity: 0.70; }
+    .l-card-5 { fill: #1a7e9a; fill-opacity: 0.055; stroke: #1a7e9a; stroke-width: 1; }
+    .l-bar-5  { fill: #1a7e9a; opacity: 0.68; }
+
+    /* per-row right-card (amber/ochre family) hue variants */
+    .r-card-1 { fill: #8a5518; fill-opacity: 0.055; stroke: #8a5518; stroke-width: 1; }
+    .r-bar-1  { fill: #8a5518; opacity: 0.65; }
+    .r-card-2 { fill: #a3620f; fill-opacity: 0.060; stroke: #a3620f; stroke-width: 1; }
+    .r-bar-2  { fill: #a3620f; opacity: 0.68; }
+    .r-card-3 { fill: #b8701a; fill-opacity: 0.060; stroke: #b8701a; stroke-width: 1; }
+    .r-bar-3  { fill: #b8701a; opacity: 0.70; }
+    .r-card-4 { fill: #9a501b; fill-opacity: 0.055; stroke: #9a501b; stroke-width: 1; }
+    .r-bar-4  { fill: #9a501b; opacity: 0.68; }
+    .r-card-5 { fill: #7a4a15; fill-opacity: 0.055; stroke: #7a4a15; stroke-width: 1; }
+    .r-bar-5  { fill: #7a4a15; opacity: 0.65; }
+
+    @media (prefers-color-scheme: dark) {
+      .corner-bracket { stroke: #5cc8e0; }
+      .scan-line      { stroke: #5cc8e0; }
+      .bg-grid-line   { stroke: #5cc8e0; opacity: 0.09; }
+      .bg-grid-tick   { stroke: #5cc8e0; opacity: 0.11; }
+      .bg-grid-node   { fill: #5cc8e0; opacity: 0.14; }
+      .bg-arc         { stroke: #5cc8e0; opacity: 0.15; }
+      .particle-cool  { fill: #5cc8e0; opacity: 0.35; }
+      .particle-warm  { fill: #d4a04a; opacity: 0.35; }
+      .row-icon-cool  { stroke: #5cc8e0; }
+      .row-icon-warm  { stroke: #d4a04a; }
+      .l-card-1 { fill: #4ab6cf; fill-opacity: 0.08; stroke: #4ab6cf; }
+      .l-bar-1  { fill: #4ab6cf; }
+      .l-card-2 { fill: #5cc8dc; fill-opacity: 0.08; stroke: #5cc8dc; }
+      .l-bar-2  { fill: #5cc8dc; }
+      .l-card-3 { fill: #3ea2b8; fill-opacity: 0.08; stroke: #3ea2b8; }
+      .l-bar-3  { fill: #3ea2b8; }
+      .l-card-4 { fill: #48b8cf; fill-opacity: 0.08; stroke: #48b8cf; }
+      .l-bar-4  { fill: #48b8cf; }
+      .l-card-5 { fill: #52bcc8; fill-opacity: 0.08; stroke: #52bcc8; }
+      .l-bar-5  { fill: #52bcc8; }
+      .r-card-1 { fill: #c8944a; fill-opacity: 0.08; stroke: #c8944a; }
+      .r-bar-1  { fill: #c8944a; }
+      .r-card-2 { fill: #d8a452; fill-opacity: 0.08; stroke: #d8a452; }
+      .r-bar-2  { fill: #d8a452; }
+      .r-card-3 { fill: #e4ac58; fill-opacity: 0.08; stroke: #e4ac58; }
+      .r-bar-3  { fill: #e4ac58; }
+      .r-card-4 { fill: #c08040; fill-opacity: 0.08; stroke: #c08040; }
+      .r-bar-4  { fill: #c08040; }
+      .r-card-5 { fill: #b88038; fill-opacity: 0.08; stroke: #b88038; }
+      .r-bar-5  { fill: #b88038; }
+    }
+  </style>
+
+  <defs>
+    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-header" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <g id="add-life-decorations">
+    <!-- Background grid/technical texture (coordinate ticks + faint lines) -->
+    <g id="add-life-bg-texture">
+      <!-- faint horizontal guide lines at row midpoints (outside cards) -->
+      <line x1="8" y1="116" x2="44" y2="116" class="bg-grid-line"/>
+      <line x1="956" y1="116" x2="992" y2="116" class="bg-grid-line"/>
+      <line x1="8" y1="174" x2="44" y2="174" class="bg-grid-line"/>
+      <line x1="956" y1="174" x2="992" y2="174" class="bg-grid-line"/>
+      <line x1="8" y1="232" x2="44" y2="232" class="bg-grid-line"/>
+      <line x1="956" y1="232" x2="992" y2="232" class="bg-grid-line"/>
+      <line x1="8" y1="290" x2="44" y2="290" class="bg-grid-line"/>
+      <line x1="956" y1="290" x2="992" y2="290" class="bg-grid-line"/>
+      <line x1="8" y1="348" x2="44" y2="348" class="bg-grid-line"/>
+      <line x1="956" y1="348" x2="992" y2="348" class="bg-grid-line"/>
+      <!-- corner coordinate ticks -->
+      <line x1="4" y1="4" x2="18" y2="4" class="bg-grid-tick"/>
+      <line x1="4" y1="4" x2="4" y2="18" class="bg-grid-tick"/>
+      <line x1="996" y1="4" x2="982" y2="4" class="bg-grid-tick"/>
+      <line x1="996" y1="4" x2="996" y2="18" class="bg-grid-tick"/>
+      <line x1="4" y1="396" x2="18" y2="396" class="bg-grid-tick"/>
+      <line x1="4" y1="396" x2="4" y2="382" class="bg-grid-tick"/>
+      <line x1="996" y1="396" x2="982" y2="396" class="bg-grid-tick"/>
+      <line x1="996" y1="396" x2="996" y2="382" class="bg-grid-tick"/>
+      <!-- gutter tick marks every 20px along top band -->
+      <line x1="500" y1="62" x2="500" y2="68" class="bg-grid-tick"/>
+      <line x1="460" y1="62" x2="460" y2="66" class="bg-grid-tick"/>
+      <line x1="540" y1="62" x2="540" y2="66" class="bg-grid-tick"/>
+      <!-- node dots at intersections -->
+      <circle cx="18" cy="18" r="1" class="bg-grid-node"/>
+      <circle cx="982" cy="18" r="1" class="bg-grid-node"/>
+      <circle cx="18" cy="382" r="1" class="bg-grid-node"/>
+      <circle cx="982" cy="382" r="1" class="bg-grid-node"/>
+    </g>
+
+    <!-- Background arcs (top + bottom sweeps) -->
+    <g id="add-life-bg-arcs">
+      <path d="M-40,10 Q500,-14 1040,12" class="bg-arc"/>
+      <path d="M-40,392 Q500,412 1040,390" class="bg-arc"/>
+    </g>
+
+    <!-- Scan lines under each left-card title (baseline y = card_y + 26) -->
+    <g id="add-life-scan-lines">
+      <line x1="62" y1="118" x2="170" y2="118" class="scan-line"/>
+      <line x1="62" y1="176" x2="190" y2="176" class="scan-line"/>
+      <line x1="62" y1="234" x2="160" y2="234" class="scan-line"/>
+      <line x1="62" y1="292" x2="200" y2="292" class="scan-line"/>
+      <line x1="62" y1="350" x2="180" y2="350" class="scan-line"/>
+      <line x1="632" y1="118" x2="730" y2="118" class="scan-line"/>
+      <line x1="632" y1="176" x2="790" y2="176" class="scan-line"/>
+      <line x1="632" y1="234" x2="760" y2="234" class="scan-line"/>
+      <line x1="632" y1="292" x2="760" y2="292" class="scan-line"/>
+      <line x1="632" y1="350" x2="790" y2="350" class="scan-line"/>
+    </g>
+
+    <!-- Corner brackets on each card (5 arms 5px, top-left + top-right + bottom-left + bottom-right) -->
+    <g id="add-life-corner-brackets">
+      <!-- row 0 left -->
+      <path d="M53,98 L53,93 L58,93" class="corner-bracket"/>
+      <path d="M377,98 L377,93 L372,93" class="corner-bracket"/>
+      <path d="M53,134 L53,139 L58,139" class="corner-bracket"/>
+      <path d="M377,134 L377,139 L372,139" class="corner-bracket"/>
+      <!-- row 0 right -->
+      <path d="M623,98 L623,93 L628,93" class="corner-bracket"/>
+      <path d="M947,98 L947,93 L942,93" class="corner-bracket"/>
+      <path d="M623,134 L623,139 L628,139" class="corner-bracket"/>
+      <path d="M947,134 L947,139 L942,139" class="corner-bracket"/>
+      <!-- row 1 left -->
+      <path d="M53,156 L53,151 L58,151" class="corner-bracket"/>
+      <path d="M377,156 L377,151 L372,151" class="corner-bracket"/>
+      <path d="M53,192 L53,197 L58,197" class="corner-bracket"/>
+      <path d="M377,192 L377,197 L372,197" class="corner-bracket"/>
+      <!-- row 1 right -->
+      <path d="M623,156 L623,151 L628,151" class="corner-bracket"/>
+      <path d="M947,156 L947,151 L942,151" class="corner-bracket"/>
+      <path d="M623,192 L623,197 L628,197" class="corner-bracket"/>
+      <path d="M947,192 L947,197 L942,197" class="corner-bracket"/>
+      <!-- row 2 left -->
+      <path d="M53,214 L53,209 L58,209" class="corner-bracket"/>
+      <path d="M377,214 L377,209 L372,209" class="corner-bracket"/>
+      <path d="M53,250 L53,255 L58,255" class="corner-bracket"/>
+      <path d="M377,250 L377,255 L372,255" class="corner-bracket"/>
+      <!-- row 2 right -->
+      <path d="M623,214 L623,209 L628,209" class="corner-bracket"/>
+      <path d="M947,214 L947,209 L942,209" class="corner-bracket"/>
+      <path d="M623,250 L623,255 L628,255" class="corner-bracket"/>
+      <path d="M947,250 L947,255 L942,255" class="corner-bracket"/>
+      <!-- row 3 left -->
+      <path d="M53,272 L53,267 L58,267" class="corner-bracket"/>
+      <path d="M377,272 L377,267 L372,267" class="corner-bracket"/>
+      <path d="M53,308 L53,313 L58,313" class="corner-bracket"/>
+      <path d="M377,308 L377,313 L372,313" class="corner-bracket"/>
+      <!-- row 3 right -->
+      <path d="M623,272 L623,267 L628,267" class="corner-bracket"/>
+      <path d="M947,272 L947,267 L942,267" class="corner-bracket"/>
+      <path d="M623,308 L623,313 L628,313" class="corner-bracket"/>
+      <path d="M947,308 L947,313 L942,313" class="corner-bracket"/>
+      <!-- row 4 left -->
+      <path d="M53,330 L53,325 L58,325" class="corner-bracket"/>
+      <path d="M377,330 L377,325 L372,325" class="corner-bracket"/>
+      <path d="M53,366 L53,371 L58,371" class="corner-bracket"/>
+      <path d="M377,366 L377,371 L372,371" class="corner-bracket"/>
+      <!-- row 4 right -->
+      <path d="M623,330 L623,325 L628,325" class="corner-bracket"/>
+      <path d="M947,330 L947,325 L942,325" class="corner-bracket"/>
+      <path d="M623,366 L623,371 L628,371" class="corner-bracket"/>
+      <path d="M947,366 L947,371 L942,371" class="corner-bracket"/>
+    </g>
+
+    <!-- Accent particles in whitespace -->
+    <g id="add-life-particles">
+      <circle cx="28" cy="70" r="1.4" class="particle-cool"/>
+      <circle cx="972" cy="70" r="1.4" class="particle-warm"/>
+      <circle cx="500" cy="78" r="1.2" class="particle-cool"/>
+      <circle cx="500" cy="116" r="1" class="particle-cool"/>
+      <circle cx="500" cy="174" r="1.2" class="particle-warm"/>
+      <circle cx="500" cy="232" r="1" class="particle-cool"/>
+      <circle cx="500" cy="290" r="1.2" class="particle-warm"/>
+      <circle cx="500" cy="348" r="1" class="particle-cool"/>
+      <circle cx="30" cy="388" r="1.2" class="particle-cool"/>
+      <circle cx="970" cy="388" r="1.2" class="particle-warm"/>
+    </g>
+  </g>
+
+  <g id="add-life-icons">
+    <!-- Lucide (ISC license) row icons, 10x10 in upper-right of each card (card top-right minus 20,4 offset) -->
+    <!-- Left row 0: Snap to Grid => grid (16x16 grid at 360,96, scale 0.625 => 10x10) -->
+    <g transform="translate(354, 108) scale(0.625)" class="row-icon-cool">
+      <rect x="3" y="3" width="7" height="7" rx="1"/>
+      <rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/>
+      <rect x="14" y="14" width="7" height="7" rx="1"/>
+    </g>
+    <!-- Left row 1: Smart Connector => git-branch -->
+    <g transform="translate(354, 166) scale(0.625)" class="row-icon-cool">
+      <line x1="6" y1="3" x2="6" y2="15"/>
+      <circle cx="6" cy="18" r="3"/>
+      <circle cx="18" cy="6" r="3"/>
+      <path d="M18 9v3a3 3 0 0 1-3 3H9"/>
+    </g>
+    <!-- Left row 2: Colour Picker => palette -->
+    <g transform="translate(354, 224) scale(0.625)" class="row-icon-cool">
+      <circle cx="13.5" cy="6.5" r="1.5"/>
+      <circle cx="17.5" cy="10.5" r="1.5"/>
+      <circle cx="8.5" cy="7.5" r="1.5"/>
+      <circle cx="6.5" cy="12.5" r="1.5"/>
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.5 0 1-.5 1-1v-1c0-1 1-2 2-2h2c3 0 5-2 5-5 0-5.5-4.5-10-10-10z"/>
+    </g>
+    <!-- Left row 3: Alignment Guide => align-center-horizontal -->
+    <g transform="translate(354, 282) scale(0.625)" class="row-icon-cool">
+      <line x1="12" y1="3" x2="12" y2="21"/>
+      <rect x="5" y="8" width="14" height="8" rx="1"/>
+    </g>
+    <!-- Left row 4: Preflight Panel => shield-check -->
+    <g transform="translate(354, 340) scale(0.625)" class="row-icon-cool">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <path d="M9 12l2 2 4-4"/>
+    </g>
+    <!-- Right row 0: primitives rect => box (cube outline) -->
+    <g transform="translate(924, 108) scale(0.625)" class="row-icon-warm">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+      <line x1="12" y1="22.08" x2="12" y2="12"/>
+    </g>
+    <!-- Right row 1: connector auto-route => route -->
+    <g transform="translate(924, 166) scale(0.625)" class="row-icon-warm">
+      <circle cx="6" cy="19" r="3"/>
+      <circle cx="18" cy="5" r="3"/>
+      <path d="M6 16V9a5 5 0 0 1 10 0v2"/>
+    </g>
+    <!-- Right row 2: theme_swatch => droplet -->
+    <g transform="translate(924, 224) scale(0.625)" class="row-icon-warm">
+      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+    </g>
+    <!-- Right row 3: geom midpoint => move -->
+    <g transform="translate(924, 282) scale(0.625)" class="row-icon-warm">
+      <polyline points="5 9 2 12 5 15"/>
+      <polyline points="9 5 12 2 15 5"/>
+      <polyline points="15 19 12 22 9 19"/>
+      <polyline points="19 9 22 12 19 15"/>
+      <line x1="2" y1="12" x2="22" y2="12"/>
+      <line x1="12" y1="2" x2="12" y2="22"/>
+    </g>
+    <!-- Right row 4: overlaps + contrast => check-circle -->
+    <g transform="translate(924, 340) scale(0.625)" class="row-icon-warm">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </g>
+  </g>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 400
+    Margins: left=30, right=30, top=0, bottom=12
+    Title band: y=28 (main title 17px 700 fg-1, centred x=500)
+    Subtitle: y=48 (11px fg-3, centred x=500)
+    Column headers: y=74 (14px 700)
+      Left header "Design Application": x=215, text-anchor=middle
+      Right header "svg-infographics CLI": x=785, text-anchor=middle
+    Card rows: 5 rows, row_0 y=92
+      row stride: 58px (card height 48, gap 10)
+      row_y = 92 + row * 58 => 92, 150, 208, 266, 324
+    Left cards (accent-1):
+      x=50, w=330, h=48, rx=4
+      accent bar: x=50, w=330, h=4
+      title: x=62, y=card_y+20 (11px 600 fg-1)
+      desc: x=62, y=card_y+36 (9px fg-3)
+    Right cards (accent-2):
+      x=620, w=330, h=48, rx=4
+      accent bar: x=620, w=330, h=4
+      title: x=632, y=card_y+20 (11px 600 fg-1)
+      desc: x=632, y=card_y+36 (9px mono fg-3)
+    Arrow connectors (between cards):
+      left card right edge: x=380, right card left edge: x=620
+      standoff: 5px from both edges (stem starts x=385, tip at x=615)
+      stem: M385,cy L608,cy (trimmed for arrowhead clearance)
+      arrowhead polygon: (615,cy) (608,cy-4) (608,cy+4)
+      head size: 7x4 (length x half-height)
+    Vertical rhythm: 58px row stride, 48px card, 10px gap
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: left-column (x=50..380) | arrow-gap (380..620) | right-column (620..950)
+    v-stack: title-band (0..60) | col-headers (60..88) | card-rows (92..372) | bottom-pad (372..400)
+    h-align: all left cards share x=50, all right cards share x=620
+    v-align: each row left card and right card share same y
+    connect: left-card-right-edge -> arrow -> right-card-left-edge (5 arrows)
+    contain: each card -> accent-bar, title-text, desc-text
+  === -->
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1000" height="400" fill="transparent"/>
+
+  <g id="guide-grid" display="none">
+    <line x1="50" y1="0" x2="50" y2="400" stroke="red" stroke-width="0.3"/>
+    <line x1="380" y1="0" x2="380" y2="400" stroke="red" stroke-width="0.3"/>
+    <line x1="620" y1="0" x2="620" y2="400" stroke="red" stroke-width="0.3"/>
+    <line x1="950" y1="0" x2="950" y2="400" stroke="red" stroke-width="0.3"/>
+  </g>
+
+  <!-- Title -->
+  <text class="fg-1" x="500" y="28" text-anchor="middle" font-size="17" font-weight="700" filter="url(#glow-cyan)">design application analogy</text>
+  <text class="fg-3" x="500" y="48" text-anchor="middle" font-size="11">every Inkscape affordance has a CLI counterpart</text>
+
+  <!-- Column Headers -->
+  <text class="fg-1 col-header" x="215" y="74" text-anchor="middle" filter="url(#glow-header)">Design Application</text>
+  <text class="fg-1 col-header" x="785" y="74" text-anchor="middle" filter="url(#glow-header)">svg-infographics CLI</text>
+
+  <!-- ============================================================ -->
+  <!-- ROW 0: Snap to Grid  =>  primitives rect  x 50  y 80          -->
+  <!-- ============================================================ -->
+  <g id="row-0">
+    <!-- Left card: x=50 y=92 w=330 h=48 -->
+    <rect class="l-card-1" x="50" y="92" width="330" height="48" rx="4"/>
+    <rect class="left-card-stroke" x="50" y="92" width="330" height="48" rx="4"/>
+    <rect class="l-bar-1" x="50" y="92" width="330" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="62" y="112">Snap to Grid</text>
+    <text class="fg-3" x="62" y="128" font-size="9">drag a shape and it locks to the nearest grid line</text>
+
+    <!-- Arrow: left-card-right(380) -> right-card-left(620), standoff=5px -->
+    <path class="arrow-line" d="M385,116 L608,116"/>
+    <polygon class="arrow-head" points="615,116 608,112 608,120"/>
+
+    <!-- Right card: x=620 y=92 w=330 h=48 -->
+    <rect class="r-card-1" x="620" y="92" width="330" height="48" rx="4"/>
+    <rect class="right-card-stroke" x="620" y="92" width="330" height="48" rx="4"/>
+    <rect class="r-bar-1" x="620" y="92" width="330" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="632" y="112">primitives rect</text>
+    <text class="fg-3 card-desc" x="632" y="128">--x 50 --y 80 --w 200 --h 120</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- ROW 1: Smart Connector  =>  connector  auto-route              -->
+  <!-- ============================================================ -->
+  <g id="row-1">
+    <!-- Left card: x=50 y=150 w=330 h=48 -->
+    <rect class="l-card-2" x="50" y="150" width="330" height="48" rx="4"/>
+    <rect class="left-card-stroke" x="50" y="150" width="330" height="48" rx="4"/>
+    <rect class="l-bar-2" x="50" y="150" width="330" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="62" y="170">Smart Connector</text>
+    <text class="fg-3" x="62" y="186" font-size="9">drag an arrow and it routes around obstacles</text>
+
+    <!-- Arrow: left-card-right(380) -> right-card-left(620), standoff=5px -->
+    <path class="arrow-line" d="M385,174 L608,174"/>
+    <polygon class="arrow-head" points="615,174 608,170 608,178"/>
+
+    <!-- Right card: x=620 y=150 w=330 h=48 -->
+    <rect class="r-card-2" x="620" y="150" width="330" height="48" rx="4"/>
+    <rect class="right-card-stroke" x="620" y="150" width="330" height="48" rx="4"/>
+    <rect class="r-bar-2" x="620" y="150" width="330" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="632" y="170">connector --auto-route</text>
+    <text class="fg-3 card-desc" x="632" y="186">--svg scene.svg --mode l-chamfer</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- ROW 2: Colour Picker => theme_swatch.svg + CSS classes        -->
+  <!-- ============================================================ -->
+  <g id="row-2">
+    <!-- Left card: x=50 y=208 w=330 h=48 -->
+    <rect class="l-card-3" x="50" y="208" width="330" height="48" rx="4"/>
+    <rect class="left-card-stroke" x="50" y="208" width="330" height="48" rx="4"/>
+    <rect class="l-bar-3" x="50" y="208" width="330" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="62" y="228">Colour Picker</text>
+    <text class="fg-3" x="62" y="244" font-size="9">select from a bound swatch palette</text>
+
+    <!-- Arrow: left-card-right(380) -> right-card-left(620), standoff=5px -->
+    <path class="arrow-line" d="M385,232 L608,232"/>
+    <polygon class="arrow-head" points="615,232 608,228 608,236"/>
+
+    <!-- Right card: x=620 y=208 w=330 h=48 -->
+    <rect class="r-card-3" x="620" y="208" width="330" height="48" rx="4"/>
+    <rect class="right-card-stroke" x="620" y="208" width="330" height="48" rx="4"/>
+    <rect class="r-bar-3" x="620" y="208" width="330" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="632" y="228">theme_swatch.svg</text>
+    <text class="fg-3 card-desc" x="632" y="244">CSS classes: .fg-1 .accent-1 ...</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- ROW 3: Alignment Guide => geom midpoint / perpendicular       -->
+  <!-- ============================================================ -->
+  <g id="row-3">
+    <!-- Left card: x=50 y=266 w=330 h=48 -->
+    <rect class="l-card-4" x="50" y="266" width="330" height="48" rx="4"/>
+    <rect class="left-card-stroke" x="50" y="266" width="330" height="48" rx="4"/>
+    <rect class="l-bar-4" x="50" y="266" width="330" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="62" y="286">Alignment Guide</text>
+    <text class="fg-3" x="62" y="302" font-size="9">centre-align, distribute, snap to neighbours</text>
+
+    <!-- Arrow: left-card-right(380) -> right-card-left(620), standoff=5px -->
+    <path class="arrow-line" d="M385,290 L608,290"/>
+    <polygon class="arrow-head" points="615,290 608,286 608,294"/>
+
+    <!-- Right card: x=620 y=266 w=330 h=48 -->
+    <rect class="r-card-4" x="620" y="266" width="330" height="48" rx="4"/>
+    <rect class="right-card-stroke" x="620" y="266" width="330" height="48" rx="4"/>
+    <rect class="r-bar-4" x="620" y="266" width="330" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="632" y="286">geom midpoint</text>
+    <text class="fg-3 card-desc" x="632" y="302">perpendicular / parallel / attach</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- ROW 4: Preflight Panel => overlaps + contrast + alignment     -->
+  <!-- ============================================================ -->
+  <g id="row-4">
+    <!-- Left card: x=50 y=324 w=330 h=48 -->
+    <rect class="l-card-5" x="50" y="324" width="330" height="48" rx="4"/>
+    <rect class="left-card-stroke" x="50" y="324" width="330" height="48" rx="4"/>
+    <rect class="l-bar-5" x="50" y="324" width="330" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="62" y="344">Preflight Panel</text>
+    <text class="fg-3" x="62" y="360" font-size="9">refuse export until all checks pass</text>
+
+    <!-- Arrow: left-card-right(380) -> right-card-left(620), standoff=5px -->
+    <path class="arrow-line" d="M385,348 L608,348"/>
+    <polygon class="arrow-head" points="615,348 608,344 608,352"/>
+
+    <!-- Right card: x=620 y=324 w=330 h=48 -->
+    <rect class="r-card-5" x="620" y="324" width="330" height="48" rx="4"/>
+    <rect class="right-card-stroke" x="620" y="324" width="330" height="48" rx="4"/>
+    <rect class="r-bar-5" x="620" y="324" width="330" height="4" rx="4"/>
+    <text class="fg-1 card-title" x="632" y="344">overlaps + contrast</text>
+    <text class="fg-3 card-desc" x="632" y="360">alignment + connectors + css</text>
+  </g>
+
+</svg>

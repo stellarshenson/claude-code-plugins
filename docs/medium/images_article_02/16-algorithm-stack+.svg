@@ -1,0 +1,384 @@
+<!--
+  16-algorithm-stack.svg - Scientific algorithm stack powering the plugin
+  Shows: four horizontal layer cards stacked bottom-to-top, each representing an
+         algorithm domain: Rasterisation (base), Pathfinding, Interpolation, Validation (top).
+         Each card has a title, library tag, and 2-3 keyword items. Gradient opacity
+         increases from bottom (0.04) to top (0.10) to show progression from low-level
+         computation to high-level quality enforcement.
+  Intent: reader sees the plugin is built on real scientific algorithms, not prompt heuristics.
+         Bottom-to-top layering shows foundation -> application progression.
+  Theme: Stellars-Tech. fg-1 titles, fg-3 labels, accent-1 layer cards with progressive
+         opacity, accent-2 for library tags. Inter sans-serif throughout.
+-->
+<!-- add-life: medium
+  colour: per-layer in-family hue drift (deep-teal base -> cyan-teal -> sky-teal -> bright-cyan focal top) on body + stroke + accent bar
+  shapes: tech corner brackets per card, scan-line accents under each layer number
+  icons: lucide per layer (cpu=rasterisation, route=pathfinding, spline=interpolation, shield-check=validation focal) right-aligned before lib tag
+  embroidery: circuit/PCB faded traces in background (algorithmic layers domain), node dots at intersections
+  abstract: 12 accent particles in whitespace, 2 background arcs top/bottom
+  bg texture: circuit at 0.08-0.10 opacity (HARD CAP)
+  glow: cyan stdDev=2 on main title, stdDev=1.5 on layer numbers and focal top card stroke
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 380">
+  <style>
+    text { font-family: 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif; }
+    .fg-1 { fill: #1a5a6e; }
+    .fg-3 { fill: #236a74; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+
+    .layer-1-fill { fill: #005f7a; fill-opacity: 0.04; }
+    .layer-2-fill { fill: #005f7a; fill-opacity: 0.06; }
+    .layer-3-fill { fill: #005f7a; fill-opacity: 0.08; }
+    .layer-4-fill { fill: #005f7a; fill-opacity: 0.10; }
+
+    .layer-stroke { fill: none; stroke: #005f7a; stroke-width: 1; }
+    .layer-bar    { fill: #005f7a; opacity: 0.6; }
+
+    .lib-tag-fill   { fill: #7a4a15; fill-opacity: 0.12; }
+    .lib-tag-stroke { fill: none; stroke: #7a4a15; stroke-width: 0.8; }
+    .lib-tag-text   { fill: #7a4a15; font-size: 8px; font-weight: 600; font-family: 'Consolas', 'Menlo', monospace; }
+
+    .layer-num  { font-size: 9px; font-weight: 700; letter-spacing: 1px; }
+    .layer-title { font-size: 14px; font-weight: 700; }
+    .layer-item  { font-size: 10px; }
+    .layer-sep   { fill: none; stroke: #005f7a; stroke-width: 0.5; opacity: 0.2; }
+
+    .up-arrow { fill: none; stroke: #236a74; stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 4 3; }
+    .up-arrow-head { fill: #236a74; }
+
+    /* add-life add-ons */
+    .corner-bracket { fill: none; stroke: #0096d1; stroke-width: 1; opacity: 0.55; stroke-linecap: round; }
+    .scan-line      { fill: none; stroke: #0096d1; stroke-width: 0.4; opacity: 0.28; stroke-dasharray: 3 2; }
+    .bg-circuit     { fill: none; stroke: #0096d1; stroke-width: 0.6; opacity: 0.09; }
+    .bg-circuit-node{ fill: #0096d1; opacity: 0.10; }
+    .bg-arc         { fill: none; stroke: #0096d1; stroke-width: 0.5; opacity: 0.12; }
+    .particle       { fill: #0096d1; opacity: 0.32; }
+    .particle-warm  { fill: #da8230; opacity: 0.3; }
+    .layer-icon     { fill: none; stroke: #0096d1; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; opacity: 0.65; }
+    .layer-icon-focal { fill: none; stroke: #00c8f0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; opacity: 0.9; }
+
+    /* per-layer card body + stroke + bar hue variants (in-family teal drift: deep -> bright) */
+    .card-body-1   { fill: #006e8e; fill-opacity: 0.05; }
+    .card-stroke-1 { fill: none; stroke: #006e8e; stroke-width: 1; }
+    .card-bar-1    { fill: #006e8e; opacity: 0.6; }
+
+    .card-body-2   { fill: #0086a8; fill-opacity: 0.065; }
+    .card-stroke-2 { fill: none; stroke: #0086a8; stroke-width: 1; }
+    .card-bar-2    { fill: #0086a8; opacity: 0.65; }
+
+    .card-body-3   { fill: #009bc0; fill-opacity: 0.08; }
+    .card-stroke-3 { fill: none; stroke: #009bc0; stroke-width: 1; }
+    .card-bar-3    { fill: #009bc0; opacity: 0.7; }
+
+    .card-body-4   { fill: #00b8dc; fill-opacity: 0.11; }
+    .card-stroke-4 { fill: none; stroke: #00b8dc; stroke-width: 1.2; }
+    .card-bar-4    { fill: #00b8dc; opacity: 0.8; }
+
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-3 { fill: #5aafc5; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+
+      .layer-1-fill { fill: #5cc8e0; fill-opacity: 0.04; }
+      .layer-2-fill { fill: #5cc8e0; fill-opacity: 0.06; }
+      .layer-3-fill { fill: #5cc8e0; fill-opacity: 0.08; }
+      .layer-4-fill { fill: #5cc8e0; fill-opacity: 0.10; }
+
+      .layer-stroke { stroke: #5cc8e0; }
+      .layer-bar    { fill: #5cc8e0; }
+
+      .lib-tag-fill   { fill: #d4a04a; fill-opacity: 0.15; }
+      .lib-tag-stroke { stroke: #d4a04a; }
+      .lib-tag-text   { fill: #d4a04a; }
+
+      .layer-sep { stroke: #5cc8e0; }
+      .up-arrow  { stroke: #5aafc5; }
+      .up-arrow-head { fill: #5aafc5; }
+
+      .corner-bracket { stroke: #5cc8e0; }
+      .scan-line      { stroke: #5cc8e0; }
+      .bg-circuit     { stroke: #5cc8e0; opacity: 0.11; }
+      .bg-circuit-node{ fill: #5cc8e0; opacity: 0.14; }
+      .bg-arc         { stroke: #5cc8e0; opacity: 0.15; }
+      .particle       { fill: #5cc8e0; opacity: 0.35; }
+      .particle-warm  { fill: #d4a04a; opacity: 0.35; }
+      .layer-icon     { stroke: #5cc8e0; }
+      .layer-icon-focal { stroke: #8ee4f4; }
+
+      .card-body-1   { fill: #3a94ad; fill-opacity: 0.07; }
+      .card-stroke-1 { stroke: #3a94ad; }
+      .card-bar-1    { fill: #3a94ad; }
+
+      .card-body-2   { fill: #4aa8bf; fill-opacity: 0.08; }
+      .card-stroke-2 { stroke: #4aa8bf; }
+      .card-bar-2    { fill: #4aa8bf; }
+
+      .card-body-3   { fill: #5ebdd1; fill-opacity: 0.09; }
+      .card-stroke-3 { stroke: #5ebdd1; }
+      .card-bar-3    { fill: #5ebdd1; }
+
+      .card-body-4   { fill: #7ad0e0; fill-opacity: 0.12; }
+      .card-stroke-4 { stroke: #7ad0e0; }
+      .card-bar-4    { fill: #7ad0e0; }
+    }
+  </style>
+
+  <defs>
+    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-label" x="-20%" y="-20%" width="140%" height="140%" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 380
+    Margins: left=40, right=40, top=0, bottom=10
+    Title band: y=26 (17px 700 fg-1 centred), y=46 (11px fg-3 centred)
+    Layer stack (bottom-to-top, 4 layers):
+      Each layer card: x=40, w=920, h=64, rx=5
+      Layer gap: 8px
+      Total stack height: 4*64 + 3*8 = 280
+      Stack starts at y=66 (topmost layer)
+      Layer 4 (Validation, top):     x=40, y=66,  w=920, h=64
+      Layer 3 (Interpolation):       x=40, y=138, w=920, h=64
+      Layer 2 (Pathfinding):         x=40, y=210, w=920, h=64
+      Layer 1 (Rasterisation, base): x=40, y=282, w=920, h=64
+      Bottom of stack: y=346
+    Card internals:
+      Left accent bar: x=40, w=5, h=64 (vertical bar on left edge)
+      Layer number: x=60, y=card_y+18 (9px 700 accent-1)
+      Title: x=60, y=card_y+36 (14px 700 fg-1)
+      Description items: x=60, y=card_y+52 (10px fg-3)
+      Library tag: pill at x=880, y=card_y+26, w=auto, h=20, centred
+    Up-arrow column (right side, between layers):
+      x=30, from y=346 to y=66
+      Dashed line with arrowhead at top
+    Vertical rhythm: 64px layer + 8px gap = 72px stride
+    Bottom annotation: y=368 (9px fg-3, centred)
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: title-band (0..58) | layer-4 | gap | layer-3 | gap | layer-2 | gap | layer-1 | bottom-pad
+    h-align: all layers share x=40, w=920
+    v-align: layers stacked with 8px gap
+    contain: each layer -> accent-bar, number-label, title, items, lib-tag-pill
+    flow: bottom-to-top progression shown by opacity gradient and up-arrow
+  === -->
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1000" height="380" fill="transparent"/>
+
+  <!-- add-life: background circuit traces + arcs (render behind content) -->
+  <g id="add-life-bg">
+    <g id="add-life-bg-texture">
+      <path d="M6,12 H48 V32 H90 V14 H140" class="bg-circuit"/>
+      <path d="M860,12 H908 V34 H950 V18 H994" class="bg-circuit"/>
+      <path d="M6,368 H56 V348 H108 V370 H170" class="bg-circuit"/>
+      <path d="M820,368 H878 V346 H930 V368 H994" class="bg-circuit"/>
+      <path d="M8,200 H28 V180 H64" class="bg-circuit"/>
+      <path d="M972,200 H992 V180 H970" class="bg-circuit"/>
+      <circle cx="48" cy="32" r="1.2" class="bg-circuit-node"/>
+      <circle cx="90" cy="14" r="1.2" class="bg-circuit-node"/>
+      <circle cx="908" cy="34" r="1.2" class="bg-circuit-node"/>
+      <circle cx="950" cy="18" r="1.2" class="bg-circuit-node"/>
+      <circle cx="56" cy="348" r="1.2" class="bg-circuit-node"/>
+      <circle cx="108" cy="370" r="1.2" class="bg-circuit-node"/>
+      <circle cx="878" cy="346" r="1.2" class="bg-circuit-node"/>
+      <circle cx="930" cy="368" r="1.2" class="bg-circuit-node"/>
+      <circle cx="28" cy="180" r="1.1" class="bg-circuit-node"/>
+      <circle cx="992" cy="180" r="1.1" class="bg-circuit-node"/>
+    </g>
+    <g id="add-life-bg-arcs">
+      <path d="M-40,8 Q500,-18 1040,10" class="bg-arc"/>
+      <path d="M-40,374 Q500,398 1040,372" class="bg-arc"/>
+    </g>
+  </g>
+
+  <!-- Title -->
+  <text class="fg-1" x="500" y="26" text-anchor="middle" font-size="17" font-weight="700" filter="url(#glow-cyan)">algorithm stack</text>
+  <text class="fg-3" x="500" y="46" text-anchor="middle" font-size="11">real algorithms, not prompt heuristics - foundation to enforcement</text>
+
+  <!-- Up-arrow on left margin (bottom to top progression) -->
+  <line class="up-arrow" x1="24" y1="350" x2="24" y2="78"/>
+  <polygon class="up-arrow-head" points="20,82 24,70 28,82"/>
+  <text class="fg-3" x="24" y="368" text-anchor="middle" font-size="8" font-style="italic">abstraction</text>
+
+  <!-- ============================================================ -->
+  <!-- LAYER 1 (base): Rasterisation - y=282 h=64                   -->
+  <!-- ============================================================ -->
+  <g id="layer-1">
+    <rect class="layer-1-fill" x="40" y="282" width="920" height="64" rx="5"/>
+    <rect class="layer-stroke" x="40" y="282" width="920" height="64" rx="5"/>
+    <rect class="layer-bar" x="40" y="282" width="5" height="64" rx="5"/>
+    <text class="accent-1 layer-num" x="60" y="300">LAYER 1</text>
+    <text class="fg-1 layer-title" x="60" y="318">Rasterisation</text>
+    <text class="fg-3 layer-item" x="60" y="336">distance transforms, obstacle masks, connected-component labelling</text>
+    <!-- Library tag -->
+    <rect class="lib-tag-fill" x="840" y="296" width="100" height="20" rx="10"/>
+    <rect class="lib-tag-stroke" x="840" y="296" width="100" height="20" rx="10"/>
+    <text class="lib-tag-text" x="890" y="310" text-anchor="middle">scipy.ndimage</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- LAYER 2: Pathfinding - y=210 h=64                             -->
+  <!-- ============================================================ -->
+  <g id="layer-2">
+    <rect class="layer-2-fill" x="40" y="210" width="920" height="64" rx="5"/>
+    <rect class="layer-stroke" x="40" y="210" width="920" height="64" rx="5"/>
+    <rect class="layer-bar" x="40" y="210" width="5" height="64" rx="5"/>
+    <text class="accent-1 layer-num" x="60" y="228">LAYER 2</text>
+    <text class="fg-1 layer-title" x="60" y="246">Pathfinding</text>
+    <text class="fg-3 layer-item" x="60" y="264">A* with turn penalty, stem-zone cost, Manhattan heuristic</text>
+    <!-- Library tag -->
+    <rect class="lib-tag-fill" x="866" y="224" width="74" height="20" rx="10"/>
+    <rect class="lib-tag-stroke" x="866" y="224" width="74" height="20" rx="10"/>
+    <text class="lib-tag-text" x="903" y="238" text-anchor="middle">heapq</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- LAYER 3: Interpolation - y=138 h=64                           -->
+  <!-- ============================================================ -->
+  <g id="layer-3">
+    <rect class="layer-3-fill" x="40" y="138" width="920" height="64" rx="5"/>
+    <rect class="layer-stroke" x="40" y="138" width="920" height="64" rx="5"/>
+    <rect class="layer-bar" x="40" y="138" width="5" height="64" rx="5"/>
+    <text class="accent-1 layer-num" x="60" y="156">LAYER 3</text>
+    <text class="fg-1 layer-title" x="60" y="174">Interpolation</text>
+    <text class="fg-3 layer-item" x="60" y="192">PCHIP monotonic splines, Bezier tangent computation</text>
+    <!-- Library tag -->
+    <rect class="lib-tag-fill" x="835" y="152" width="105" height="20" rx="10"/>
+    <rect class="lib-tag-stroke" x="835" y="152" width="105" height="20" rx="10"/>
+    <text class="lib-tag-text" x="887" y="166" text-anchor="middle">scipy.interpolate</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- LAYER 4 (top): Validation - y=66 h=64                        -->
+  <!-- ============================================================ -->
+  <g id="layer-4">
+    <rect class="layer-4-fill" x="40" y="66" width="920" height="64" rx="5"/>
+    <rect class="layer-stroke" x="40" y="66" width="920" height="64" rx="5"/>
+    <rect class="layer-bar" x="40" y="66" width="5" height="64" rx="5"/>
+    <text class="accent-1 layer-num" x="60" y="84">LAYER 4</text>
+    <text class="fg-1 layer-title" x="60" y="102">Validation</text>
+    <text class="fg-3 layer-item" x="60" y="120">WCAG contrast ratios, Shapely collision detection, greedy constraint solver</text>
+    <!-- Library tag -->
+    <rect class="lib-tag-fill" x="843" y="80" width="97" height="20" rx="10"/>
+    <rect class="lib-tag-stroke" x="843" y="80" width="97" height="20" rx="10"/>
+    <text class="lib-tag-text" x="891" y="94" text-anchor="middle">shapely + W3C</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- add-life decorations (additive, do not modify originals)      -->
+  <!-- ============================================================ -->
+  <g id="add-life-decorations">
+    <!-- Per-layer card body tints (overlay, semi-transparent, rendered over base fills) -->
+    <g id="add-life-card-tints">
+      <!-- Layer 1 (base, deepest tint of new palette) -->
+      <rect class="card-body-1" x="40" y="282" width="920" height="64" rx="5"/>
+      <rect class="card-stroke-1" x="40" y="282" width="920" height="64" rx="5"/>
+      <rect class="card-bar-1" x="40" y="282" width="5" height="64" rx="5"/>
+      <!-- Layer 2 -->
+      <rect class="card-body-2" x="40" y="210" width="920" height="64" rx="5"/>
+      <rect class="card-stroke-2" x="40" y="210" width="920" height="64" rx="5"/>
+      <rect class="card-bar-2" x="40" y="210" width="5" height="64" rx="5"/>
+      <!-- Layer 3 -->
+      <rect class="card-body-3" x="40" y="138" width="920" height="64" rx="5"/>
+      <rect class="card-stroke-3" x="40" y="138" width="920" height="64" rx="5"/>
+      <rect class="card-bar-3" x="40" y="138" width="5" height="64" rx="5"/>
+      <!-- Layer 4 focal (brightest, slightly thicker stroke, glow) -->
+      <rect class="card-body-4" x="40" y="66" width="920" height="64" rx="5"/>
+      <rect class="card-stroke-4" x="40" y="66" width="920" height="64" rx="5" filter="url(#glow-label)"/>
+      <rect class="card-bar-4" x="40" y="66" width="5" height="64" rx="5"/>
+    </g>
+
+    <!-- Corner brackets per layer card (top-left + top-right + bottom-left + bottom-right), 6px arms -->
+    <g id="add-life-brackets">
+      <!-- Layer 1 -->
+      <path d="M44,288 L44,284 L48,284" class="corner-bracket"/>
+      <path d="M956,288 L956,284 L952,284" class="corner-bracket"/>
+      <path d="M44,340 L44,344 L48,344" class="corner-bracket"/>
+      <path d="M956,340 L956,344 L952,344" class="corner-bracket"/>
+      <!-- Layer 2 -->
+      <path d="M44,216 L44,212 L48,212" class="corner-bracket"/>
+      <path d="M956,216 L956,212 L952,212" class="corner-bracket"/>
+      <path d="M44,268 L44,272 L48,272" class="corner-bracket"/>
+      <path d="M956,268 L956,272 L952,272" class="corner-bracket"/>
+      <!-- Layer 3 -->
+      <path d="M44,144 L44,140 L48,140" class="corner-bracket"/>
+      <path d="M956,144 L956,140 L952,140" class="corner-bracket"/>
+      <path d="M44,196 L44,200 L48,200" class="corner-bracket"/>
+      <path d="M956,196 L956,200 L952,200" class="corner-bracket"/>
+      <!-- Layer 4 (focal) -->
+      <path d="M44,72 L44,68 L48,68" class="corner-bracket"/>
+      <path d="M956,72 L956,68 L952,68" class="corner-bracket"/>
+      <path d="M44,124 L44,128 L48,128" class="corner-bracket"/>
+      <path d="M956,124 L956,128 L952,128" class="corner-bracket"/>
+    </g>
+
+    <!-- Scan-line accents under each LAYER N label (just below y=302,230,158,86) -->
+    <g id="add-life-scanlines">
+      <line x1="60" y1="306" x2="120" y2="306" class="scan-line"/>
+      <line x1="60" y1="234" x2="120" y2="234" class="scan-line"/>
+      <line x1="60" y1="162" x2="120" y2="162" class="scan-line"/>
+      <line x1="60" y1="90"  x2="120" y2="90"  class="scan-line"/>
+    </g>
+
+    <!-- Decorative particles in whitespace (edges + up-arrow column gaps) -->
+    <g id="add-life-particles">
+      <circle cx="14" cy="60"  r="1"   class="particle"/>
+      <circle cx="14" cy="200" r="0.9" class="particle"/>
+      <circle cx="14" cy="340" r="1"   class="particle"/>
+      <circle cx="986" cy="60"  r="1"   class="particle"/>
+      <circle cx="986" cy="200" r="0.9" class="particle"/>
+      <circle cx="986" cy="340" r="1"   class="particle"/>
+      <circle cx="500" cy="8"   r="1"   class="particle"/>
+      <circle cx="500" cy="374" r="1"   class="particle"/>
+      <circle cx="250" cy="8"   r="0.9" class="particle"/>
+      <circle cx="750" cy="8"   r="0.9" class="particle"/>
+      <circle cx="780" cy="374" r="0.9" class="particle-warm"/>
+      <circle cx="220" cy="374" r="0.9" class="particle-warm"/>
+    </g>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- add-life icons (lucide, ISC license; per-layer domain cues)   -->
+  <!-- Positioned left of each library tag: tag starts at x>=835,    -->
+  <!-- placed at x=800-814 region, vertically card-centred.          -->
+  <!-- Icon box 14x14, lucide viewBox 24 -> scale 0.583              -->
+  <!-- ============================================================ -->
+  <g id="add-life-icons">
+    <!-- LAYER 1 rasterisation: cpu (grid + central die) at (800, 299) -->
+    <g transform="translate(800,299) scale(0.583)" class="layer-icon">
+      <rect x="4" y="4" width="16" height="16" rx="2"/>
+      <rect x="9" y="9" width="6" height="6"/>
+      <path d="M9 2v3"/><path d="M15 2v3"/>
+      <path d="M9 19v3"/><path d="M15 19v3"/>
+      <path d="M2 9h3"/><path d="M2 15h3"/>
+      <path d="M19 9h3"/><path d="M19 15h3"/>
+    </g>
+    <!-- LAYER 2 pathfinding: route (start dot - path - end dot) at (800, 227) -->
+    <g transform="translate(800,227) scale(0.583)" class="layer-icon">
+      <circle cx="6" cy="19" r="3"/>
+      <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/>
+      <circle cx="18" cy="5" r="3"/>
+    </g>
+    <!-- LAYER 3 interpolation: spline/waves at (800, 155) -->
+    <g transform="translate(800,155) scale(0.583)" class="layer-icon">
+      <path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+      <path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+      <path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+    </g>
+    <!-- LAYER 4 validation (FOCAL): shield-check at (800, 83), brighter class -->
+    <g transform="translate(800,83) scale(0.583)" class="layer-icon-focal">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <path d="M9 12l2 2 4-4"/>
+    </g>
+  </g>
+
+</svg>

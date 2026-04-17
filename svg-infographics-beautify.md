@@ -1,6 +1,6 @@
-# svg-infographics-add-life directive (project-local)
+# svg-infographics-beautify directive (project-local)
 
-Local add-life rules for THIS project. Questionnaire lives in the `/svg-infographics:add-life` command. This file stores answers and history.
+Local beautify rules for THIS project. Questionnaire lives in the `/svg-infographics:beautify` command. This file stores answers and history.
 
 ## Standing directive overrides
 
@@ -8,7 +8,7 @@ None. Using shipped defaults from the command (13 standing directives including 
 
 ### Local enforcement: DO NOT CHANGE GEOMETRY (absolute)
 
-UNDER NO CIRCUMSTANCES change geometry unless I explicitly ask. No original `<path>`, `<line>`, `<rect>`, `<circle>`, `<polygon>` may be moved, resized, rewritten, or deleted. Decorations in a SEPARATE `<g id="add-life-decorations">` group. Post-pass: count each element tag in the original vs output; every original count preserved (output ≥ original per tag). If any count dropped: FIX IN PLACE - copy the missing elements from the original into the output file, keep the decorations. Do not revert the whole pass.
+UNDER NO CIRCUMSTANCES change geometry unless I explicitly ask. No original `<path>`, `<line>`, `<rect>`, `<circle>`, `<polygon>` may be moved, resized, rewritten, or deleted. Decorations in a SEPARATE `<g id="beautify-decorations">` group. Post-pass: count each element tag in the original vs output; every original count preserved (output ≥ original per tag). If any count dropped: FIX IN PLACE - copy the missing elements from the original into the output file, keep the decorations. Do not revert the whole pass.
 
 ## Creative brief (rewritten each run, free-text from user)
 
@@ -66,4 +66,9 @@ validation_strictness: strict-errors-only
 # 2026-04-16 - 05-failfirst-flow+.svg / 07-theme-approval+.svg - medium - OK
 # 2026-04-16 - 06-manifold-showcase+.svg / 08-charts-showcase+.svg - medium - OK
 # 2026-04-16 - 11-connector-modes+.svg / 12-honeycomb+.svg - medium - OK (22.1KB / 17.2KB, 0 container-overflow, WCAG AA preserved)
+# 2026-04-16 - 16-algorithm-stack+.svg / 17-self-documenting+.svg - medium - OK (20.5KB / 23.1KB, 0 container-overflow, WCAG AA preserved, all tag counts >= original)
+# 2026-04-16 - 18-failure-driven-development+.svg / 19-scientific-method+.svg - medium - OK (25.7KB / 32.3KB, geometry preserved vs baseline, 4 defect+4 tool hue variants 18 circuit theme, 3 zone+4 hist hue variants 19 neural theme, WCAG AA preserved, 19 retains baseline container-overflow warnings only, no new ones)
+# 2026-04-16 - 13-constellation+.svg - medium - OK (71.9KB, 6 per-hub hue variants (4 teal + 2 ochre drift), organic/dendritic bg, orbit rings + starbursts + sparkle icons on focal hubs, dual-palette glow on cores, geometry preserved vs baseline, WCAG AA preserved)
+# 2026-04-16 - 14-container-routing+.svg - medium - OK (17.0KB, 2 card + 4 obstacle hue variants, circuit/PCB bg, corner brackets on cards + obstacles, 5 lucide icons (card-A box, card-B package, src play, tgt target, dst flag), cyan+warm glow on title + route, geometry preserved, baseline WCAG carry-over only)
+# 2026-04-16 - 15-design-app-analogy+.svg - medium - OK (27.3KB, 10 per-row hue variants (5 teal + 5 ochre drifts), grid/technical bg texture, corner brackets on every card, 10 lucide row icons, scan lines under each card title, dual-palette glow on title + column headers, geometry preserved, baseline container-overflow carry-over only (checker limitation - g#row-N bbox excludes row content))
 ```

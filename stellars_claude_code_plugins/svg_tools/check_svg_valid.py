@@ -102,7 +102,7 @@ def validate_svg(path: Path) -> tuple[int, int, list[str]]:
 
 
 # ---------------------------------------------------------------------------
-# Geometry-preservation check (add-life safety net)
+# Geometry-preservation check (beautify safety net)
 # ---------------------------------------------------------------------------
 
 

@@ -2374,7 +2374,7 @@ def generate_background(
 def main():
     parser = argparse.ArgumentParser(
         prog="svg-infographics background",
-        description="Generate procedural SVG background geometry for add-life.",
+        description="Generate procedural SVG background geometry for beautify.",
     )
     parser.add_argument(
         "--type",

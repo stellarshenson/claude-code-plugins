@@ -14,7 +14,7 @@ Decoration pass on existing SVG. NOT a redesign - additive overlays, filters, fi
 
 No paths may be moved, resized, rewritten, or deleted. No `<g>` structure may be restructured. No `<line>`, `<path>`, `<rect>`, `<circle>`, `<polygon>`, or connector may be altered, removed, or replaced with a "better" version. No spine, trunk, strand, arrow, or axis line may be touched. No card shape, manifold, workflow arrow, or grid line may be tweaked.
 
-If a decoration would require modifying an existing element, DO NOT add it. Decorations live in a SEPARATE `<g id="add-life-decorations">` group added BELOW the original `<g id="content">` and `<g id="connectors">` in the DOM. The original DOM stays byte-for-byte identical below the style block.
+If a decoration would require modifying an existing element, DO NOT add it. Decorations live in a SEPARATE `<g id="beautify-decorations">` group added BELOW the original `<g id="content">` and `<g id="connectors">` in the DOM. The original DOM stays byte-for-byte identical below the style block.
 
 Post-pass verification: after writing the output file, count `<path>`, `<line>`, `<rect>`, `<circle>`, `<polygon>` elements in the original and in the output. Every original element tag count must be preserved (output ≥ original for each tag). If any count dropped, **fix it in place** - copy the missing elements back from the original into the output file. Do NOT revert the whole pass; just restore the missing geometry and keep the valid decorations.
 
@@ -26,7 +26,7 @@ If the user explicitly requests a geometry change ("widen the spine", "move the 
 
 ## Local directive file (user's project)
 
-`./svg-infographics-add-life.md` at the CURRENT project root. LOCAL to the user's project. NOT shipped with the plugin. Stores the user's ANSWERS to the questionnaire and their custom standing-directive overrides, not the questionnaire itself.
+`./svg-infographics-beautify.md` at the CURRENT project root. LOCAL to the user's project. NOT shipped with the plugin. Stores the user's ANSWERS to the questionnaire and their custom standing-directive overrides, not the questionnaire itself.
 
 - Questionnaire = static, defined in this command (below).
 - User's answers = stored in the local directive file under "Resolved pattern".
@@ -35,7 +35,7 @@ If the user explicitly requests a geometry change ("widen the spine", "move the 
 ### Directive file template (generated on first run, minimal)
 
 ```markdown
-# svg-infographics-add-life directive (project-local)
+# svg-infographics-beautify directive (project-local)
 
 ## Standing directive overrides (optional; defaults in the command)
 
@@ -56,16 +56,16 @@ If the user explicitly requests a geometry change ("widen the spine", "move the 
 
 ### Shipped standing directives (apply unless overridden in local file)
 
-1. **Additive only.** Never move/resize/restyle existing content. Decorations into `<g id="add-life-decorations">`.
+1. **Additive only.** Never move/resize/restyle existing content. ALL beautify additions live in `<g id="beautify-decorations">` (background + shape decorations) and `<g id="beautify-icons">` (per-item glyphs). Nothing goes outside these two groups.
 2. **Original untouched.** Output to `+` variant or user-chosen suffix.
 3. **Colour in-family.** Teal → cyan/blue-teal OK; teal → green FORBIDDEN. Amber → ochre/copper OK; amber → red FORBIDDEN.
-4. **Background opacity ≤ 0.10.** HARD CAP. Density via path count.
+4. **Background strokes: thick + ghost-transparent.** Default `stroke-width: 2.5-4` with `opacity: 0.04-0.06`. Atmospheric, not line-art. Reduce stroke width only if it would visibly overpower content at 3x render; never exceed opacity 0.08. HARD CAP opacity 0.10.
 5. **Icon per item** when questionnaire = `per-item`.
 6. **Icons = multi-stroke glyphs.** Lucide/Feather style.
 7. **Placement validated.** `empty-space --edges-only` before every decoration. `geom align` for role-shared.
 8. **Validation HARD gates.** `validate` → 0 errors; `overlaps` container-overflow → 0; `contrast` → WCAG AA preserved.
 9. **Dark-mode override per new class.**
-10. **Doc comment.** `<!-- add-life: <level> ... -->` block near top.
+10. **Doc comment.** `<!-- beautify: <level> ... -->` block near top.
 11. **Size budget.** Low < 15KB. Medium < 50KB. High < 100KB.
 12. **No PNG rasterisation.** SVG only.
 13. **Push the hue harder.** Wide in-family hue range (up to ~25°), saturation + lightness part of the toolkit, per-card variants, focal stronger than neighbours.
@@ -119,12 +119,12 @@ If the user skips the free-text brief (empty answer), note in the brief "no user
 If the user's initial command invocation volunteered any answers inline (e.g. "medium intensity, icons per item, circuit texture"), pre-fill those into the `AskUserQuestion` defaults so the user only confirms the rest.
 
 Workflow:
-1. If `./svg-infographics-add-life.md` missing: generate the minimal template above.
+1. If `./svg-infographics-beautify.md` missing: generate the minimal template above.
 2. Read it. Apply any standing-directive overrides from the local file on top of the shipped defaults.
 3. Walk the 14-question questionnaire. Collect answers.
 4. Rewrite the local file's "Resolved pattern" section with the answers.
 5. Append history entry when done.
-6. Sub-agents told: "Read `./svg-infographics-add-life.md` and apply the Resolved pattern."
+6. Sub-agents told: "Read `./svg-infographics-beautify.md` and apply the Resolved pattern."
 
 Questionnaire asked every run. Resolved pattern rewrites. Directive overrides persist across runs.
 
@@ -233,10 +233,10 @@ Luminous highlights via SVG filters. Apply selectively where it reinforces visua
 
 ## Documentation comment
 
-**MANDATORY**: append an `<!-- add-life -->` XML comment block inside the SVG (after the existing file description comment) documenting what was done:
+**MANDATORY**: append an `<!-- beautify -->` XML comment block inside the SVG (after the existing file description comment) documenting what was done:
 
 ```xml
-<!-- add-life: medium
+<!-- beautify: medium
   colour: 4 derived shades, gradient fills on section headers
   shapes: card shadows at 0.06 opacity, accent bars 3px
   icons: 6 contextual icons (grid, connector, palette, align, check, chart)
@@ -262,7 +262,7 @@ This comment allows future agents to understand what decorations were applied, a
 
 ### Step 1: Read directive file
 
-Read `svg-infographics-add-life.md` FULLY. Standing directives (never-negotiable) live there. So does the questionnaire, the dimension reference, and the resolved-pattern slot that this run will populate.
+Read `svg-infographics-beautify.md` FULLY. Standing directives (never-negotiable) live there. So does the questionnaire, the dimension reference, and the resolved-pattern slot that this run will populate.
 
 ### Step 2: Read target SVG + theme
 
@@ -278,7 +278,7 @@ If the user volunteered any of these answers inline in their command invocation 
 
 ### Step 4: Rewrite the Resolved pattern
 
-After all 14 answers are collected, rewrite the **Resolved pattern** section in `svg-infographics-add-life.md` with the current run's concrete choices. Timestamp the update. This becomes the single source of truth that sub-agents will read.
+After all 14 answers are collected, rewrite the **Resolved pattern** section in `svg-infographics-beautify.md` with the current run's concrete choices. Timestamp the update. This becomes the single source of truth that sub-agents will read.
 
 ### Step 5: Apply (delegated to sub-agents for multi-file runs)
 
@@ -286,7 +286,7 @@ For a single file: apply the seven dimensions per the resolved pattern directly.
 
 For multiple files: spawn parallel `svg-designer` sub-agents, one per file or one per 2 files. Every sub-agent's prompt starts with:
 
-> Read `svg-infographics-add-life.md` first. Follow every standing directive and the resolved pattern in that file.
+> Read `svg-infographics-beautify.md` first. Follow every standing directive and the resolved pattern in that file.
 
 Then list the specific file(s) and any per-file domain targeting (icon picks, texture theme) that vary between files.
 
@@ -294,7 +294,7 @@ Then list the specific file(s) and any per-file domain targeting (icon picks, te
 
 1. **Empty-space first**: before placing ANY element (icon, flourish, particle), run `empty-space --svg <file> --edges-only --tolerance 8 --min-area 100` to find safe zones. For placement inside a specific card, add `--container-id <card-id>`. Only place within detected free regions
 2. **Topology alignment**: elements sharing a role across containers (e.g. icons across cards, corner marks across sections) MUST be aligned via `geom align`. Icons in a row of cards share the same y. Corner marks at the same relative position in each card
-3. **Group decorations**: all add-life elements go into a dedicated `<g id="add-life-decorations">` group. Icons into `<g id="add-life-icons">`. Maintain the five-layer structure
+3. **Group decorations**: all beautify elements go into a dedicated `<g id="beautify-decorations">` group. Icons into `<g id="beautify-icons">`. Maintain the five-layer structure
 4. **Overlap validation**: run `overlaps` checker after placement. Any decoration that violates padding/margin/spacing rules gets repositioned or removed
 
 ### Step 6: Verify

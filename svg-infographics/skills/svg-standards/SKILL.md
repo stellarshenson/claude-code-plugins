@@ -745,9 +745,9 @@ Cached after first use. Index ~500KB for full draw.io set. Scaled via `transform
 
 Organic forms - flowing paths, concentric rings, orbital loops, funnels, constellations. Same theme swatch, CSS classes, transparent background. Use `<path>`, `<circle>`, `<ellipse>`. Low fill opacities (0.04-0.15). Topology: `flow:`, `orbit:`, `scatter:`, `radial:`.
 
-### Add Life (`/svg-infographics:add-life`)
+### Beautify (`/svg-infographics:beautify`)
 
-Decoration pass on existing SVGs. Six dimensions (colour variation, shapes, icons, embroidery, abstract graphics, glow) at four intensities (low/medium/high/absurd). Additive only - never breaks layout. Mandatory `<!-- add-life -->` comment. Run validators after.
+Decoration pass on existing SVGs. Seven dimensions (colour variation, shapes, icons, embroidery, abstract graphics, bg texture, glow) at four intensities (low/medium/high/absurd). Additive only - never breaks layout. All additions live in `<g id="beautify-decorations">` + `<g id="beautify-icons">`, nothing outside. Bg strokes: thick (2.5-4) + ghost-transparent (opacity 0.04-0.06, HARD CAP 0.10). Geometry guard via `validate --baseline`. Local directive at project root: `./svg-infographics-beautify.md`. Mandatory `<!-- beautify -->` comment. Run `validate` + `overlaps` + `contrast` after every pass.
 
 ## Troubleshooting
 

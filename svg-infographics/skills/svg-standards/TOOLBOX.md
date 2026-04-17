@@ -129,7 +129,7 @@ svg-infographics
      |-- /svg-infographics:validate      Run all validators
      |-- /svg-infographics:fix-layout    Fix overlaps, alignment, spacing
      |-- /svg-infographics:fix-style     Fix CSS, contrast, dark mode
-     |-- /svg-infographics:add-life      Creative enhancement (6 dimensions x 4 levels)
+     |-- /svg-infographics:beautify      Additive decoration pass (7 dimensions x 4 levels, geometry-guarded)
      '-- /svg-infographics:export-png    Render SVG to PNG (light/dark/both, transparent bg)
 ```
 
@@ -148,6 +148,6 @@ svg-infographics
 | Place labels | `callouts --svg scene.svg --plan callouts.json` |
 | Find empty space | `empty-space --svg scene.svg` |
 | Check before delivery | `overlaps` + `contrast` + `alignment` + `connectors` + `css` + `collide` |
-| Add visual richness | `/svg-infographics:add-life file.svg medium` |
+| Add visual richness | `/svg-infographics:beautify file.svg medium` |
 | Search for icons | `shapes search "database"` |
 | Export SVG to PNG | `render-png input.svg output.png --mode both --width 3000` |

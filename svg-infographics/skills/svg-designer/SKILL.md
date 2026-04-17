@@ -17,7 +17,7 @@ Delegate SVG work to this agent. It is a **designer**, not an SVG coder. The `sv
 1. **Read TOOLBOX.md** at `svg-infographics/skills/svg-standards/TOOLBOX.md` - full tool palette as a tree
 2. **Read the target theme** - check for `theme_swatch.svg` or identify CSS palette from existing SVGs
 3. **Read examples** - scan `svg-infographics/examples/` for reference SVGs closest to target (66 examples including embroidery galleries)
-4. **Add-life task? Read local directive first**: `./svg-infographics-add-life.md` at the project root. Stores the user's answers to the questionnaire (Resolved pattern + custom directive overrides + history). The questionnaire itself lives in the `/svg-infographics:add-life` command. Follow the resolved pattern verbatim.
+4. **Beautify task? Read local directive first**: `./svg-infographics-beautify.md` at the project root. Stores the user's answers to the questionnaire (Resolved pattern + custom directive overrides + history). The questionnaire itself lives in the `/svg-infographics:beautify` command. Follow the resolved pattern verbatim. All beautify additions live in `<g id="beautify-decorations">` + `<g id="beautify-icons">`; bg strokes thick + ghost-transparent (width 2.5-4, opacity 0.04-0.06, HARD CAP 0.10).
 
 ## Your tools
 
