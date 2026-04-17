@@ -50,16 +50,7 @@ Record the new plugin version - you will cite it in the journal entry.
 
 ### 5. Update the journal
 
-Append a new entry to `.claude/JOURNAL.md` using the modus secundis rich-paragraph style. The entry title MUST cite both versions: `(vX.Y.Z PyPI, plugins vA.B.C)`.
-
-Follow the shape documented in `journal/skills/journal/references/examples.md` — specifically the "Multi-topic Normal Entry" example:
-
-- Single dense paragraph, no sub-headers or bullet lists
-- Problem or motivation FIRST, then solution, then tools/files touched, then performance/tests, then release stamp at the end
-- Concrete numbers (ms, %, test counts, file paths, function names in backticks)
-- Commit SHA and published version at the end as the release stamp
-
-Never invent entry content - write only about work that actually happened in the current session.
+Invoke `/journal:update`. Nothing else. The command handles format, numbering, Standard-length default, append-vs-extend decision, and `journal-tools check` validation. Do NOT edit `.claude/JOURNAL.md` directly.
 
 ### 6. Stage and commit
 
@@ -111,5 +102,5 @@ Release vA.B.C complete
 - Never bypass git hooks with `--no-verify`.
 - Never force-push to main.
 - Never commit files you cannot justify. Ask when uncertain.
-- The journal entry is MANDATORY - a release without a journal entry is half-finished.
+- The journal entry is MANDATORY and MUST be created via `/journal:update` — never inline-edit `JOURNAL.md`. A release without a journal entry is half-finished.
 - If PyPI publish fails after plugin version bump, revert the bump files (`git checkout -- <plugin.json files>`) before retrying - partial version state across files is worse than no bump at all.
