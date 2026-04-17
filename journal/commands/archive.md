@@ -1,26 +1,36 @@
 ---
-description: Archive older journal entries, keeping last 20 in main file
-allowed-tools: [Read, Write, Edit, Glob]
-argument-hint: ""
+description: Archive older journal entries via `journal-tools archive`. Keeps last 20 in main, appends rest to JOURNAL_ARCHIVE.md. Triggers - "archive journal", "prune journal", "compact journal".
+allowed-tools: [Read, Write, Edit, Bash, Glob]
+argument-hint: "(optional) --keep-last N, --threshold N"
 ---
 
-# Archive Journal Entries
+# Archive Journal
 
-Archive older journal entries from `.claude/JOURNAL.md` to `.claude/JOURNAL_ARCHIVE.md`, keeping only the last 20 entries in the main journal.
+Prefer the programmatic tool. It preserves numbering and appends idempotently.
 
-## Steps
+## Primary path (programmatic)
 
-1. Read `.claude/JOURNAL.md`
-2. Count total entries
-3. If more than 20:
-   - Move all except last 20 to `.claude/JOURNAL_ARCHIVE.md` (create or append)
-   - Update main journal to keep only last 20
-   - Add link at top: `**Note**: Entries 1-N have been archived to [JOURNAL_ARCHIVE.md](JOURNAL_ARCHIVE.md).`
-4. Maintain continuous numbering - NEVER reset
-5. VERIFY: read both files after archiving to confirm no entries lost
+```bash
+uv run journal-tools archive .claude/JOURNAL.md
+```
+
+Default: threshold 40, keep last 20. Flags: `--keep-last N`, `--threshold N`, `--archive-path PATH`. If `uv` not available, try plain `journal-tools archive ...` or `python -m stellars_claude_code_plugins.journal_tools archive ...`.
+
+After run:
+1. Read `.claude/JOURNAL.md` last 5 lines — confirm last 20 entries remain, note at top links to archive
+2. Read `.claude/JOURNAL_ARCHIVE.md` last 5 lines — confirm entries appended, numbering continuous
+3. Run `uv run journal-tools check .claude/JOURNAL.md` — exit 0 = clean
+
+## Fallback (manual, only if CLI unavailable)
+
+1. Read `.claude/JOURNAL.md`, count entries
+2. If count > 40, move all except last 20 to `.claude/JOURNAL_ARCHIVE.md` (create or append)
+3. Keep main journal starting at entry `N-19` (not reset to 1)
+4. Add top line: `**Note**: Entries 1-M have been archived to [JOURNAL_ARCHIVE.md](JOURNAL_ARCHIVE.md).`
+5. Verify both files after — no entries lost, numbering continuous across archive + main
 
 ## Rules
 
-- Entry numbers are continuous across archive and main file
-- Archive file accumulates - never overwrite, always append
-- After archiving, the main journal starts at entry N+1 (not 1)
+- Numbering is continuous across archive + main. NEVER reset to 1.
+- Archive file appends. NEVER overwrite.
+- Threshold default 40, keep-last default 20 — do not change unless user asks.

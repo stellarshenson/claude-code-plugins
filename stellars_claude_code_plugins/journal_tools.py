@@ -123,7 +123,7 @@ def check_journal(
     - Continuous numbering (no gaps, no duplicates)
     - Ascending order (append-only)
     - Entry format (has title, has Result body)
-    - Word count thresholds (> standard_target = warning, > extended_max = error)
+    - Word count thresholds (> standard_target = warning, > extended_max = warning)
     """
     violations: list[Violation] = []
 
@@ -166,15 +166,15 @@ def check_journal(
                 Violation(entry.number, "warning", "missing or empty **Result** body")
             )
 
-        # Word count
+        # Word count - warnings only (never errors)
         wc = entry.body_word_count
         if wc > extended_max:
             violations.append(
                 Violation(
                     entry.number,
-                    "error",
-                    f"body is {wc} words (max extended = {extended_max}). "
-                    f"Condense to standard ({standard_target}) or justify extended.",
+                    "warning",
+                    f"body is {wc} words (over extended max = {extended_max}). "
+                    f"Consider condensing to standard ({standard_target}) unless depth is justified.",
                 )
             )
         elif wc > standard_target:

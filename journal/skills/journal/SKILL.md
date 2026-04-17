@@ -1,91 +1,98 @@
 ---
 name: journal
-description: Journal entry management and archiving. Auto-triggered after completing substantive work to ensure entries are appended correctly. Enforces entry format, append-only rule, continuous numbering, and archiving.
+description: Manage `.claude/JOURNAL.md`. Auto-triggered on "update journal", "add journal entry", "log this", "journal this", "record this in the journal", "create journal", "init journal", or after finishing substantive work. Enforces format, append-only, continuous numbering, archiving.
+allowed-tools: [Read, Write, Edit, Bash, Glob]
 ---
 
-# Journal Management
+# Journal
 
-Manages `.claude/JOURNAL.md`. Journal = project audit trail. Every substantive task gets entry.
+Project audit trail. Every substantive task = one entry. Append at END. Last entry = newest.
 
-## CRITICAL: Append-Only Rule
+## Commands
 
-New entries MUST append at END. NEVER insert between existing entries. Last entry = most recent. After writing, VERIFY by reading last 5 lines.
+| Command | Use |
+|---------|-----|
+| `/journal:create` | INIT empty journal. Backfill from conversation context. Refuses if file exists. |
+| `/journal:update` | DEFAULT. Append new entry. Extend last entry only if same task, pre-release. |
+| `/journal:archive` | Move old entries to `JOURNAL_ARCHIVE.md`. Triggered >40 entries. |
 
-## Entry Format
+No ambiguity. `create` = scaffold once. `update` = every write after.
+
+## Append-only
+
+Never insert between entries. Never renumber. Never reorder. Numbers monotonic.
+
+After write: read last 5 lines. Confirm match.
+
+## Entry format
 
 ```
-<number>. **Task - <short 3-5 word depiction>** (v1.2.3): task description<br>
-    **Result**: summary of work done
+<N>. **Task - <short depiction>** (v1.2.3): one-line summary<br>
+    **Result**: dense paragraph - problem, solution, files/libraries, verification
 ```
 
-Version tag `(v1.2.3)` only for versioned projects.
+Version tag only if project versioned (`package.json` / `pyproject.toml` / `Cargo.toml`).
 
-
-## Entry Levels
+## Levels
 
 | Level | Words | When |
 |-------|-------|------|
-| **Standard** | ~70-120 | DEFAULT. Features, bug fixes, multi-file changes, investigations |
-| **Extended** | ~250-350 | ONLY when justified: architectural decisions, cross-cutting refactors, multi-system debugging, new subsystems with non-obvious design |
+| Standard | ~70-120 | DEFAULT. Feature, fix, multi-file change, investigation |
+| Extended | ~250-350 | ONLY: architectural decision, platform migration, multi-iteration debug, novel algorithm |
 
-**Default: Standard.** Match user's own summary length. Do NOT inflate a 5-bullet summary into 400 words. Standard entries read like a colleague's coffee recap: what was added, headline numbers, why it matters, one or two file paths. Skip directory listings, per-function commentary, reasoning chains.
+Match user's own summary length. 5-bullet summary → not 400 words. "I touched lots of files" = not Extended. "This was hard" = not Extended.
 
-**Extended = exception.** Reach for Extended ONLY when the reader needs context the code cannot carry - novel algorithm, platform migration, multi-iteration debugging where dead-ends matter, design decision future readers will second-guess. "I touched a lot of files" = NOT justification. "This was hard" = NOT justification. Writing 400 words for a feature add? Downgrade to Standard.
+Length check before save: count words after `**Result**:`. Over 150? Cut unless extra context carries info unavailable from code.
 
-**Length check before saving**: count words after `**Result**:`. Over 150? Ask: "does extra context carry information the user cannot get from code?". No → cut. Yes → keep.
+## What to log
 
-## What to Log
+Log: document changes, features, investigations with findings, diagram work.
 
-- **Log**: document changes, features, investigations with findings, diagram work
-- **Skip**: git commits, file cleanup, maintenance. State: "Not logging to journal: <reason>"
-
-## Verification After Writing
-
-1. Read last entry in file
-2. Confirm matches what was written
-3. Confirm number is one higher than previous
-4. Confirm no entries displaced or overwritten
+Skip: git commits, file cleanup, version bumps, maintenance. State: "Not logging to journal: <reason>".
 
 ## Examples
 
-See `references/examples.md` - Standard and Extended with before/after.
+See `references/examples.md`. Standard + Extended with before/after.
 
-## CLI Tools (deterministic, no LLM)
+## CLI tools
 
-`journal-tools` validates, archives, sorts. Pure string parsing. Use BEFORE committing to catch drift.
+`journal-tools` - deterministic validation, archive, sort. Pure string parsing. Run BEFORE commit.
 
-### Check
+### check
 
 ```bash
 journal-tools check .claude/JOURNAL.md
 ```
 
-Validates: continuous numbering, ascending order, format (title + Result), word count tiers. Over 150 words = warning. Over 400 = error. Exit 0 = clean, 1 = errors.
+Validates: continuous numbering, ascending order, format, word count tiers. Length over target = warning only (never error). Format violations (duplicate number, out-of-order, missing title) = error. Exit 0 = no errors, 1 = format errors.
 
-**MANDATORY**: run `journal-tools check` after writing. Flagged → condense before commit.
+MANDATORY after write. Word-count warning → condense if cheap. Format error → fix before commit.
 
-### Archive
+### archive
 
 ```bash
 journal-tools archive .claude/JOURNAL.md
 ```
 
-Moves entries to `JOURNAL_ARCHIVE.md` when count exceeds threshold (default 40). Keeps last 20 in main. Appends to existing archive. Maintains continuous numbering. Flags: `--keep-last N`, `--threshold N`, `--archive-path PATH`.
+Moves entries to `JOURNAL_ARCHIVE.md` when count exceeds threshold (default 40). Keeps last 20 in main. Appends to existing archive. Maintains continuous numbering.
 
-Use instead of manual archive edits.
+Flags: `--keep-last N`, `--threshold N`, `--archive-path PATH`.
 
-### Sort
+Prefer over manual edit.
+
+### sort
 
 ```bash
 journal-tools sort .claude/JOURNAL.md --dry-run
 ```
 
-Re-numbers sequentially. Fixes gaps (1, 2, 5 → 1, 2, 3) and ordering (3 before 2 → 2 before 3). `--dry-run` previews. Omit to write in-place. Flag: `--start-from N`.
+Re-numbers sequentially. Fixes gaps (1,2,5 → 1,2,3) and ordering. `--dry-run` previews. Omit to write in-place. Flag: `--start-from N`.
 
 ## Archiving
 
-**Trigger**: exceeds 40 entries OR user requests. Prefer `journal-tools archive` over manual edit.
+Trigger: >40 entries OR user requests. Prefer `journal-tools archive`.
+
 1. Move older entries to `.claude/JOURNAL_ARCHIVE.md`
 2. Keep last 20 in main
-3. Add link at top: `**Note**: Entries 1-N have been archived`
-4. Maintain continuous numbering. NEVER reset
+3. Add link at top: `**Note**: Entries 1-N archived to JOURNAL_ARCHIVE.md`
+4. Maintain continuous numbering. NEVER reset.

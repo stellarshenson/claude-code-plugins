@@ -159,30 +159,40 @@ See [datascience/README.md](datascience/) for the full list of standards enforce
 
 <img alt="journal append-only timeline with archive and continuous numbering" src="assets/svg/07_journal_audit.svg" width="100%">
 
-Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers after substantive work to maintain a consistent audit trail in `.claude/JOURNAL.md`. Includes a deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement - no generative AI in the loop.
+Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers on journal-related phrases (see below) or after substantive work, maintaining a consistent audit trail in `.claude/JOURNAL.md`. Includes a deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement - no generative AI in the loop.
 
-**Skills**: `journal` (auto-triggered after substantive work)
+**Skill**: `journal` (auto-triggered by the phrases below or after finishing substantive work)
+
+### Auto-trigger phrases
+
+| Command | Triggers on |
+|---------|-------------|
+| `/journal:update` | "update journal", "add journal entry", "add entry", "log this", "journal this", "record this in the journal" |
+| `/journal:create` | "create journal", "init journal", "start journal", "new journal" (refuses if file already exists) |
+| `/journal:archive` | "archive journal", "prune journal", "compact journal" (auto-suggests when >40 entries) |
+
+Clear split: `create` = scaffold-from-empty one-time, `update` = every write after that (append new entry or extend the last one), `archive` = runs the CLI archiver.
 
 ### Usage
 
 ```bash
-# Create a new entry for completed work
-/journal:create added retry logic to API client
+# Add a new entry — use this for 99% of journal writes
+/journal:update added retry logic to API client
 
-# Update the most recent entry with corrections
-/journal:update also fixed the timeout parameter
+# Initialise a fresh journal (only when JOURNAL.md does not yet exist)
+/journal:create backfill from this session
 
-# Archive older entries (keeps last 20)
+# Archive older entries (keeps last 20 in main, appends rest to JOURNAL_ARCHIVE.md)
 /journal:archive
 
 # Validate format, numbering, and word counts (deterministic CLI)
 journal-tools check .claude/JOURNAL.md
 
-# Re-number entries sequentially
+# Re-number entries sequentially (fixes gaps or reorders)
 journal-tools sort .claude/JOURNAL.md --dry-run
 ```
 
-Two word-count tiers: Standard (<=150 words, the default) and Extended (<=400 words, for architectural decisions). The checker flags entries over target as warnings and entries over extended max as errors.
+Two word-count tiers: **Standard** (~70-120 words, the default) and **Extended** (~250-350 words, ONLY when the user explicitly asks or the work is an architectural decision / platform migration / multi-iteration debug). The checker emits warnings (not errors) when entries exceed the standard target or the extended max — length is a nudge, never a block.
 
 See [journal/README.md](journal/) for entry format, CLI tools, and archiving rules.
 

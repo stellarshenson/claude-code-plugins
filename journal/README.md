@@ -20,17 +20,21 @@ journal-tools --help
 
 ## Commands
 
-| Command | What it does |
-|---------|-------------|
-| `/journal:create` | Create a new journal entry for completed work |
-| `/journal:update` | Update the most recent entry with additional details or corrections |
-| `/journal:archive` | Archive older entries, keeping the last 20 in the main file |
+Clear split, no ambiguity:
+
+| Command | Use |
+|---------|-----|
+| `/journal:create` | INIT only — scaffolds empty `JOURNAL.md` and backfills entries from conversation context. Refuses if file exists. Triggers: "create journal", "init journal", "start journal" |
+| `/journal:update` | DEFAULT write — appends a new numbered entry (or extends the last entry's Result paragraph when the work is the same task). Triggers: "update journal", "add journal entry", "log this", "journal this", "record this in the journal" |
+| `/journal:archive` | Archive older entries via `journal-tools archive` (keeps last 20 in main, appends rest to `JOURNAL_ARCHIVE.md`). Triggers: "archive journal", "prune journal" |
+
+All three commands auto-run `journal-tools check` after writing and refuse to proceed on format / numbering errors.
 
 ## Skills
 
 | Skill | Triggers when |
 |-------|--------------|
-| `journal` | After completing substantive work - enforces append-only entries, format, numbering, and verification |
+| `journal` | Auto-triggered on any of the phrases above or after finishing substantive work - enforces append-only entries, format, numbering, and post-write CLI validation |
 
 ## CLI tools
 
@@ -51,16 +55,16 @@ The checker enforces two word-count tiers for entry bodies (after `**Result**:`)
 
 | Tier | Target | Use when |
 |------|--------|----------|
-| **Standard** | <=150 words | DEFAULT. Features, bug fixes, multi-file changes |
-| **Extended** | <=400 words | Architectural decisions, cross-cutting refactors, debugging sagas |
+| **Standard** | ~70-120 words | DEFAULT. Features, bug fixes, multi-file changes |
+| **Extended** | ~250-350 words | ONLY when the user explicitly asks ("extended entry", "full detail") or the work is an architectural decision / platform migration / multi-iteration debug |
 
-Entries exceeding standard target get a warning; entries exceeding extended max get an error.
+Entries exceeding either threshold get a **warning** (not an error) - length is a nudge, never a block. Format violations (duplicate numbers, out-of-order entries, missing title) remain errors since they break the audit trail.
 
 ## Entry format
 
 Entries follow the pattern `N. **Task - <short name>**:` / `**Result**:`, optionally tagged with a project version (e.g. `(v1.3.1)`) when the project has a `package.json`, `pyproject.toml`, or similar manifest. Numbering is continuous across the lifetime of the journal and never resets across archive boundaries.
 
-Two detail tiers (Standard and Extended) cover the span from quick fix to multi-topic release. Standard is the default - match the user's own summary length and do not inflate. Full examples in `skills/journal/references/examples.md`.
+Two detail tiers (Standard and Extended) cover the span from quick fix to multi-topic release. **Standard is the default** - match the user's own summary length and do not inflate. Extended kicks in ONLY when the user explicitly asks ("extended entry", "full detail") or the work is an architectural decision / platform migration / multi-iteration debug. Full examples in `skills/journal/references/examples.md`.
 
 ## Rules summary
 
