@@ -1,25 +1,18 @@
 ---
-description: Create SVG infographic(s) following the full grid-first design workflow
+description: Create SVG infographic(s) following the full grid-first design workflow. Triggers - "create svg", "make svg", "create graphics", "make infographic", "create diagram", "make banner", "create timeline", "create flowchart".
 allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate]
 argument-hint: "describe the infographic, e.g. 'card grid showing 4 platform modules' or 'timeline of project milestones'"
 ---
 
 # Create SVG Infographic
 
-Create one or more SVG infographics following the mandatory 6-phase workflow. Each image goes through all phases sequentially - no batching.
+Create one or more SVG infographics following the mandatory 6-phase workflow. Each image goes through all phases sequentially — no batching.
+
+Spawns `svg-designer` agent via fork context so user can continue working while agent designs.
 
 ## Task Tracking
 
-**MANDATORY**: Create a task list at the start showing all phases for each image. Update task status as you progress. This is non-negotiable.
-
-## Skills to apply
-
-Read these skills before generating anything - they are the source of truth:
-
-- **svg-standards**: Core design rules, grid layout, CSS classes, cards, arrows, typography
-- **workflow**: 6-phase sequential process with gate checks
-- **theme**: Palette approval and swatch generation
-- **validation**: Checker tools and verification workflow
+MANDATORY: create a task list at start showing all phases for each image. Update task status as you progress. Non-negotiable.
 
 ## Steps
 
@@ -29,24 +22,27 @@ Read these skills before generating anything - they are the source of truth:
    - Brand/theme? (existing swatch or new?)
    - Any specific style preferences?
 
-2. **Create task list** with phases per image:
-   - Phase 1: Research (read examples, confirm conventions)
-   - Phase 2: Invisible Grid (Python-calculated, comment-only)
-   - Phase 3: Scaffold (structural elements, no content)
-   - Phase 4: Content (text, icons, legends)
-   - Phase 5: Finishing (arrows verified, description comment)
-   - Phase 6: Validation (run all checkers)
+2. **Theme check**: If no approved swatch exists for this brand, run `/svg-infographics:theme` first.
 
-3. **Theme check**: If no approved swatch exists for this brand, run theme approval workflow first
+3. **Spawn `svg-designer` agent** via `Agent(subagent_type="svg-designer", prompt="Create <description> at <path>. Follow 6-phase workflow. Theme <swatch>.")`. Fork context runs out-of-band; user keeps working.
 
-4. **Per image** - execute all 6 phases sequentially:
-   - Read 3-5 relevant examples from `examples/`
-   - Calculate grid with `svg-infographics primitives` for exact anchor coordinates (Bash tool)
-   - Build scaffold from grid positions using primitives for shapes and connectors
-   - **For any smooth curve through waypoints** (decision boundaries, distributions, ROC/PR, sigmoid, trajectories, organic flow paths) you MUST use `svg-infographics primitives spline --points "..." --samples 200`. Hand-written `C`/`Q` bezier paths for data curves are forbidden - the PCHIP interpolator the tool uses is the only acceptable source for these paths
-   - Add content at documented positions
-   - Verify arrows and add finishing touches
-   - Run `svg-infographics overlaps`, `svg-infographics contrast`, `svg-infographics alignment`, `svg-infographics css`
-   - Classify every violation individually
+4. **Agent workflow** (runs in fork):
+   - Phase 1 — Research: read 3-5 relevant examples from `examples/`
+   - Phase 2 — Invisible Grid: calculate with `svg-infographics primitives` for exact anchor coordinates. File contains ONLY XML comments (grid + topology)
+   - Phase 3 — Scaffold: build structure from grid positions using primitives for shapes and `connector` for arrows (always `--standoff 2`)
+   - Phase 4 — Content: add text (CSS classes only), icons (Lucide ISC), descriptions. Unicode glyphs only — no ASCII arrows
+   - Phase 5 — Finishing: verify connectors match tool output, place callouts via `callouts`, write file description comment
+   - Phase 6 — Validation: run all seven checkers (`validate`, `overlaps`, `contrast`, `alignment`, `connectors`, `css`, `collide`). Classify every violation individually. Bulk dismissals prohibited
 
-5. **Report**: List created files, validation results, any remaining items
+5. **For any smooth curve through waypoints** (decision boundaries, distributions, ROC/PR, sigmoid, trajectories, organic flow paths) the agent MUST use `svg-infographics primitives spline --points "..." --samples 200`. Hand-written `C`/`Q` bezier paths for data curves = workflow violation.
+
+6. **Report**: created files, validation results, any remaining items.
+
+## Skills applied
+
+The spawned `svg-designer` agent reads and applies:
+
+- `references/tools.md` — full tool palette
+- `references/standards.md` — design rules, grid layout, CSS classes, cards, arrows, typography, callouts, z-order
+- `references/workflow.md` — 6-phase process with gate checks
+- `references/validation.md` — checker tools and severity ladder

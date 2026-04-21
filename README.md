@@ -97,7 +97,7 @@ Creates production-quality SVG infographics with a mandatory 6-phase workflow (r
 
 Five connector routing modes (`straight`, `l`, `l-chamfer`, `spline`, `manifold`) with grid A* auto-routing around obstacles, container-scoped routing within specific shapes, straight-line collapse for near-aligned endpoints, and stem preservation guaranteeing clean cardinal segments behind arrowheads. Callout placement via greedy solver with leader and leaderless modes. Charts via pygal with dual light/dark palette and WCAG contrast audit.
 
-**Skills**: `svg-standards` (grid layout, CSS classes, connectors, callouts), `workflow` (6-phase process), `theme` (palette approval), `validation` (checker tools)
+**Skills**: `svg-designer` (fork-context design agent with tool palette, 6-phase workflow, design rules, validation gates), `theme` (palette approval + swatch generation)
 
 ### Usage
 
@@ -111,11 +111,12 @@ Five connector routing modes (`straight`, `l`, `l-chamfer`, `spline`, `manifold`
 # Run validation on existing SVGs
 /svg-infographics:validate docs/images/*.svg
 
-# Fix style/contrast issues
-/svg-infographics:fix-style docs/images/overview.svg
+# Fix issues in existing SVGs (layout / style / contrast / connectors / all)
+/svg-infographics:fix docs/images/overview.svg style
+/svg-infographics:fix docs/images/overview.svg layout
 
-# Fix layout/overlap issues
-/svg-infographics:fix-layout docs/images/overview.svg
+# Additive decoration pass on existing SVGs
+/svg-infographics:beautify docs/images/overview.svg medium
 ```
 
 Includes 60+ production SVG examples, 12 CLI tools (6 validators + 6 calculators), and theme swatches. See [svg-infographics/README.md](svg-infographics/) for the five capability groups and workflow details.

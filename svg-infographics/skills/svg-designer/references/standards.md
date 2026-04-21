@@ -50,6 +50,8 @@ Read **workflow** skill for 6-phase process. Read **theme** for palette approval
 10. **Contrast via theme** - no `#000000`, no `#ffffff`
 11. **Validate before delivery** - all six checkers. No run, no ship
 12. **Read examples** - study `examples/` (66 references) before each image
+13. **Unicode glyphs in text** - `→` not `->`, `←` not `<-`, `↔` not `<->`, `…` not `...`, `—` not `--`, `×` not `x`, `•` not `*`. ASCII arrow in any `<text>` node = FAIL. See Unicode glyphs table below
+14. **Connector tool for every arrow** - hand-coded `<path d="M...">` for any routed line = FAIL. Not even "just 10 pixels"
 
 ## CSS Theme Classes and Dark Mode
 

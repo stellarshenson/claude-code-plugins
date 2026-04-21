@@ -1,6 +1,6 @@
 ---
 name: journal
-description: Manage `.claude/JOURNAL.md`. Auto-triggered on "update journal", "add journal entry", "log this", "journal this", "record this in the journal", "create journal", "init journal", or after finishing substantive work. Enforces format, append-only, continuous numbering, archiving.
+description: Manage `.claude/JOURNAL.md`. **Auto-triggers on ANY mention of "journal"** — questions about the journal, entry format, word-count tiers, archiving, the `/journal:*` commands, or the `journal-tools` CLI. Also triggers on "update journal", "add journal entry", "log this", "journal this", "record this in the journal", "create journal", "init journal", "archive journal", "prune journal", or after finishing substantive work that should be logged. Enforces format, append-only, continuous numbering, word-count tiers, post-write `journal-tools check` validation, archiving.
 allowed-tools: [Read, Write, Edit, Bash, Glob]
 ---
 

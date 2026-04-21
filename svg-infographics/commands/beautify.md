@@ -22,7 +22,7 @@ If the user explicitly requests a geometry change ("widen the spine", "move the 
 
 **Input**: SVG file(s) + intensity level (low / medium / high / absurd). Default: medium.
 
-**MANDATORY**: This command follows the svg-infographics skill and workflow. All placement uses tools (`empty-space`, `geom align`), all colours use CSS classes with dark mode, all elements respect topology and grouping. Read `svg-standards/SKILL.md` principles - they apply here.
+**MANDATORY**: This command follows the svg-infographics skill and workflow. All placement uses tools (`empty-space`, `geom align`), all colours use CSS classes with dark mode, all elements respect topology and grouping. Read `svg-designer/references/standards.md` principles - they apply here.
 
 ## Local directive file (user's project)
 
@@ -133,7 +133,7 @@ Questionnaire asked every run. Resolved pattern rewrites. Directive overrides pe
 1. Read target SVG completely
 2. Read XML comment block - understand intent and theme
 3. Identify theme swatch (CSS classes, palette, dark-mode overrides)
-4. Reference `svg-infographics/skills/svg-standards/SKILL.md` for palette and placement rules
+4. Reference `svg-infographics/skills/svg-designer/references/standards.md` for palette and placement rules
 5. Run `empty-space --svg <file> --edges-only --tolerance 8 --min-area 100` to map available space
 
 **Never break layout.** Enhancements = additive only.

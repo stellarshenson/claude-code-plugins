@@ -2448,10 +2448,13 @@ class TestPluginStructure:
         p = self.PLUGIN_DIR
         assert (p / ".claude-plugin" / "plugin.json").is_file()
         assert (p / "README.md").is_file()
-        for skill in ("svg-standards", "workflow", "theme", "validation"):
+        for skill in ("svg-designer", "theme"):
             assert (p / "skills" / skill / "SKILL.md").is_file(), f"missing skill {skill}"
-        assert (p / "skills" / "workflow" / "WORKFLOW.md").is_file()
-        for cmd in ("create", "fix-style", "fix-layout", "validate", "theme"):
+        for ref in ("tools", "standards", "workflow", "validation"):
+            assert (p / "skills" / "svg-designer" / "references" / f"{ref}.md").is_file(), (
+                f"missing reference {ref}"
+            )
+        for cmd in ("create", "fix", "validate", "theme", "beautify", "export-png"):
             assert (p / "commands" / f"{cmd}.md").is_file(), f"missing command {cmd}"
         # Plugin uses the svg-infographics CLI binary from the PyPI package,
         # not standalone tool scripts - tools/ folder was removed.

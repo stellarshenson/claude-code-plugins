@@ -127,8 +127,7 @@ svg-infographics
      |-- /svg-infographics:create        Full 6-phase workflow
      |-- /svg-infographics:theme         Generate/update theme swatch
      |-- /svg-infographics:validate      Run all validators
-     |-- /svg-infographics:fix-layout    Fix overlaps, alignment, spacing
-     |-- /svg-infographics:fix-style     Fix CSS, contrast, dark mode
+     |-- /svg-infographics:fix           Fix layout/style/contrast/connectors (argument describes intent)
      |-- /svg-infographics:beautify      Additive decoration pass (7 dimensions x 4 levels, geometry-guarded)
      '-- /svg-infographics:export-png    Render SVG to PNG (light/dark/both, transparent bg)
 ```
@@ -138,9 +137,9 @@ svg-infographics
 | Need | Tool |
 |------|------|
 | Place a shape | `primitives <shape>` |
-| Connect two shapes | `connector --mode l-chamfer --src-rect ... --tgt-rect ...` |
-| Route around obstacles | `connector --auto-route --svg scene.svg` |
-| Fan N sources to M sinks | `connector --mode manifold` |
+| Connect two shapes | `connector --mode l-chamfer --src-rect ... --tgt-rect ... --standoff 2` |
+| Route around obstacles | `connector --auto-route --svg scene.svg --standoff 2` |
+| Fan N sources to M sinks | `connector --mode manifold --standoff 2` |
 | Align cards in a row | `geom align --edge top --rects "[...]"` |
 | Equal spacing | `geom distribute --axis h --rects "[...]"` |
 | Stack vertically | `geom stack --axis v --gap 12 --rects "[...]"` |

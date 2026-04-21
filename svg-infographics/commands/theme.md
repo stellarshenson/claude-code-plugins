@@ -14,8 +14,8 @@ Create a theme swatch SVG for user approval before producing infographic deliver
 
 ## Skills to apply
 
-- **theme**: Theme structure, swatch template, colour naming, approval workflow
-- **svg-standards**: CSS classes, dark mode, contrast rules
+- **`theme` skill** — theme structure, swatch template, colour naming, approval workflow
+- **`svg-designer` skill, `references/standards.md`** — CSS classes, dark mode, contrast rules
 
 ## Steps
 

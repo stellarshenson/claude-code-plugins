@@ -186,9 +186,9 @@
   <!-- ZONE A: HYPOTHESIZE + GENERATE (x=30..330)                    -->
   <!-- ============================================================ -->
   <g id="zone-a">
-    <rect class="zone-fill"   x="30" y="68" width="300" height="292" rx="4"/>
-    <rect class="zone-stroke" x="30" y="68" width="300" height="292" rx="4"/>
-    <rect class="zone-bar"    x="30" y="68" width="300" height="4"  rx="4"/>
+    <path class="zone-fill"   d="M30,68 H330 V356 Q330,360 326,360 H34 Q30,360 30,356 Z"/>
+    <path class="zone-stroke" d="M30,68 H330 V356 Q330,360 326,360 H34 Q30,360 30,356 Z"/>
+    <rect class="zone-bar"    x="30" y="68" width="300" height="4"/>
     <text class="accent-1 zone-title"     x="180" y="90"  text-anchor="middle">1. hypothesize &amp; generate</text>
     <text class="fg-3 zone-subtitle"      x="180" y="106" text-anchor="middle">each prompt assumes a specific outcome</text>
 
@@ -246,9 +246,9 @@
   <!-- ZONE B: MEASURE + CLASSIFY (x=360..660)                       -->
   <!-- ============================================================ -->
   <g id="zone-b">
-    <rect class="zone-fill"   x="360" y="68" width="300" height="292" rx="4"/>
-    <rect class="zone-stroke" x="360" y="68" width="300" height="292" rx="4"/>
-    <rect class="zone-bar"    x="360" y="68" width="300" height="4"  rx="4"/>
+    <path class="zone-fill"   d="M360,68 H660 V356 Q660,360 656,360 H364 Q360,360 360,356 Z"/>
+    <path class="zone-stroke" d="M360,68 H660 V356 Q660,360 656,360 H364 Q360,360 360,356 Z"/>
+    <rect class="zone-bar"    x="360" y="68" width="300" height="4"/>
     <text class="accent-1 zone-title"     x="510" y="90"  text-anchor="middle">2. measure &amp; classify</text>
     <text class="fg-3 zone-subtitle"      x="510" y="106" text-anchor="middle">every failure a measurable defect</text>
 
@@ -346,9 +346,9 @@
   <!-- ZONE C: TARGET (x=690..970)                                   -->
   <!-- ============================================================ -->
   <g id="zone-c">
-    <rect class="zone-fill"   x="690" y="68" width="280" height="292" rx="4"/>
-    <rect class="zone-stroke" x="690" y="68" width="280" height="292" rx="4"/>
-    <rect class="zone-bar"    x="690" y="68" width="280" height="4"  rx="4"/>
+    <path class="zone-fill"   d="M690,68 H970 V356 Q970,360 966,360 H694 Q690,360 690,356 Z"/>
+    <path class="zone-stroke" d="M690,68 H970 V356 Q970,360 966,360 H694 Q690,360 690,356 Z"/>
+    <rect class="zone-bar"    x="690" y="68" width="280" height="4"/>
     <text class="accent-1 zone-title"     x="830" y="90"  text-anchor="middle">3. target the highest variance</text>
     <text class="fg-3 zone-subtitle"      x="830" y="106" text-anchor="middle">magnitude x frequency selects tools</text>
 
@@ -412,10 +412,10 @@
   <!-- INTER-ZONE CONNECTORS (stages 1->2 and 2->3)                  -->
   <!-- ============================================================ -->
   <g id="zone-connectors">
-    <path class="manifold-strand" d="M330,214 L360,214"/>
+    <path class="manifold-strand" d="M332,214 L348,214"/>
     <polygon class="manifold-arrow" points="358,214 348,209 348,219"/>
 
-    <path class="manifold-strand" d="M660,214 L690,214"/>
+    <path class="manifold-strand" d="M662,214 L678,214"/>
     <polygon class="manifold-arrow" points="688,214 678,209 678,219"/>
   </g>
 
