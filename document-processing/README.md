@@ -8,6 +8,26 @@ Unlike ad-hoc summarization, this plugin generates a tailored processing program
 
 Ships the `document-processing` CLI with a three-layer lexical grounder plus an optional fourth semantic layer. Every hit returns line / column / paragraph / page / context snippet — the agent cites precisely without rereading the source. **Saves tokens: measured 64-86% reduction vs batched generative grounding** on real sources (SVG Medium article, Liu 2023 paper).
 
+### Data-science calibrated
+
+The grounding classifier was tuned via a six-iteration `autobuild` cycle with
+a composite benchmark score and 3-fold cross-validation on three held-out
+academic papers (Liu 2023, Ye 2024, Han 2024 - 14 labelled claims each,
+12 real + 2 fabricated). Final CV mean accuracy 1.0 with zero overfit
+gap. Every tunable parameter (29 fields: per-layer weights, ramp
+endpoints, voter thresholds, entity-penalty factor, adaptive-gap
+classifier mode, percentile floor, etc.) is exposed in
+`stellars_claude_code_plugins/document_processing/config.yaml` and
+documented per field; override via `.stellars-plugins/config.yaml`
+project-local. A `scripts/calibrate.py` grid-search and
+`scripts/calibrate_cv.py` cross-validation harness are shipped for
+re-tuning on new corpora.
+
+Full optimisation record: program definition, benchmark formula,
+hypothesis + falsifiers, per-iteration artefacts, forensic report,
+CV results, and corpus data all archived under
+[`references/grounding-optimisation/`](../references/grounding-optimisation/).
+
 | Layer | What it catches | Dep |
 |-------|-----------------|-----|
 | Exact (regex) | Whitespace-tolerant verbatim quotes | core |

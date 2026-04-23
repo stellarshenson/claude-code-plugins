@@ -209,6 +209,8 @@ Structured document processing with source grounding and quality control. Takes 
 
 **CLI**: ships the `document-processing` command with three-layer lexical grounding (regex + Levenshtein + BM25) plus an optional fourth semantic layer (multilingual-e5 + FAISS). Every hit returns line / column / paragraph / page / context snippet — the agent cites without rereading. **Saves tokens: measured 64-86% reduction vs batched generative grounding** on real sources. Semantic layer is opt-in via `pip install 'stellars-claude-code-plugins[semantic]'` + `document-processing setup`.
 
+**Data-science calibrated**: the classifier was tuned via a six-iteration `autobuild` cycle with a composite benchmark score and 3-fold cross-validation on three held-out academic papers (Liu 2023, Ye 2024, Han 2024 - 14 labelled claims each). Final CV mean accuracy **1.0** with zero overfit gap. 29 tunable parameters exposed in `config.yaml`, documented per field, overridable via `.stellars-plugins/config.yaml`. Full program definition, benchmark, hypothesis + falsifiers, forensic report, CV results, and corpus data archived under [`references/grounding-optimisation/`](references/grounding-optimisation/).
+
 ### Usage
 
 ```bash

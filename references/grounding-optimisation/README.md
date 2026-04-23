@@ -56,16 +56,29 @@ CONFIRMED); claims 13-14 are fabrications (expected REJECTED).
 
 ## Reproducing
 
-Everything needed is in the project proper:
+Everything needed is archived here. Paths below are relative to this
+folder (`references/grounding-optimisation/`).
 
 ```bash
-# Install with semantic extras
-make requirements
+cd references/grounding-optimisation/
+
+# Install with semantic extras (from project root)
+(cd ../.. && make requirements)
 
 # Export HF token (models are on Hugging Face)
 export HF_TOKEN=<your-hf-token>
 
-# Single-run benchmark (same as CI)
+# The bench scripts read from /tmp/grounding-demo/ and /tmp/holdout/
+# by convention. Re-stage the corpora before running:
+mkdir -p /tmp/grounding-demo /tmp/holdout
+cp data/liu2023.txt     /tmp/grounding-demo/
+cp data/liu_claims.json /tmp/grounding-demo/
+cp data/ye2024.txt      /tmp/holdout/
+cp data/ye_claims.json  /tmp/holdout/
+cp data/han2024.txt     /tmp/holdout/
+cp data/han_claims.json /tmp/holdout/
+
+# Single-run benchmark probes
 uv run python scripts/bench_liu_accuracy.py
 uv run python scripts/bench_agreement_gap.py
 uv run python scripts/bench_numeric.py
@@ -74,17 +87,20 @@ uv run python scripts/validate.py \
     --liu-accuracy ... --agreement-gap-attainment ... \
     --numeric-recall ... --portability-pass ... --skill-rules-present ...
 
-# 3-fold cross-validation (96 seconds)
+# 3-fold cross-validation (~96 seconds)
 uv run python scripts/calibrate_cv.py
 
-# Grid sweep a subset of config fields (sweep spec example)
+# Grid sweep a subset of config fields
 uv run python scripts/calibrate.py --sweep sweep.yaml
 ```
 
-The three fixture text files in `data/` match what lives under
-`/tmp/grounding-demo/` and `/tmp/holdout/` during benchmark runs. To
-re-run the CV from a fresh clone, copy these files back to those
-paths (see `scripts/calibrate_cv.py` for the expected locations).
+Source PDFs used to derive these text fixtures live under
+`references/papers/` in the project root (not archived here; the
+extracted text in `data/` is the canonical eval input):
+
+- `references/papers/liu2023_lost_in_the_middle.pdf`
+- `references/papers/ye2024_justice_or_prejudice.pdf`
+- `references/papers/han2024_llm_multi_agent_systems.pdf`
 
 ## Caveats worth reading before trusting the numbers
 
