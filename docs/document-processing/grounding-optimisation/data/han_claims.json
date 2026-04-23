@@ -1,0 +1,16 @@
+[
+  {"id": "h01", "claim": "The paper surveys challenges in LLM multi-agent systems"},
+  {"id": "h02", "claim": "Multi-agent systems leverage collaboration among agents with diverse capabilities and roles"},
+  {"id": "h03", "claim": "The authors discuss task allocation, iterative debates, context management, and memory management"},
+  {"id": "h04", "claim": "The paper explores potential applications of multi-agent systems in blockchain systems"},
+  {"id": "h05", "claim": "Hierarchical structures consist of a leader and one or multiple followers"},
+  {"id": "h06", "claim": "Stackelberg games are distinguished by a leadership-followership dynamic"},
+  {"id": "h07", "claim": "Nested structures combine equi-level and hierarchical sub-structures"},
+  {"id": "h08", "claim": "Dynamic structures allow agents to be added or removed over time"},
+  {"id": "h09", "claim": "Global planning involves partitioning work flow and allocating sub-tasks to agents"},
+  {"id": "h10", "claim": "Memory management in single-agent systems includes short-term and long-term memory"},
+  {"id": "h11", "claim": "Shanshan Han is the corresponding author affiliated with University of California, Irvine"},
+  {"id": "h12", "claim": "The paper references RAG, retrieval augmented generation, as external data storage"},
+  {"id": "h13", "claim": "The authors propose a new algorithm called SwarmLLM that reduces agent coordination overhead by 60 percent"},
+  {"id": "h14", "claim": "Experiments were conducted on the BlockchainBench-v3 benchmark using 256 GPUs from AWS"}
+]

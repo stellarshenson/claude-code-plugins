@@ -1,0 +1,16 @@
+[
+  {"id": "y01", "claim": "The paper proposes CALM as a framework for quantifying biases in LLM-as-a-Judge systems"},
+  {"id": "y02", "claim": "The authors identify twelve distinct types of biases in LLM judges"},
+  {"id": "y03", "claim": "CALM employs automated principle-guided modification to generate biased counterparts of original content"},
+  {"id": "y04", "claim": "The framework uses Robustness Rate and Consistency Rate as evaluation metrics"},
+  {"id": "y05", "claim": "Position bias refers to LLMs favoring one answer position over another"},
+  {"id": "y06", "claim": "Verbosity bias describes LLM judges preferring longer responses even when shorter ones are clearer or more accurate"},
+  {"id": "y07", "claim": "The paper evaluates judge models including ChatGPT, GPT-4o, and Claude-3.5-Sonnet"},
+  {"id": "y08", "claim": "Authority bias involves inserting fake citations to observe whether the judge's preference changes"},
+  {"id": "y09", "claim": "Fallacy oversight is the tendency to ignore logical errors and focus only on final results"},
+  {"id": "y10", "claim": "The dataset selection includes question-answering, mathematical reasoning, and alignment datasets"},
+  {"id": "y11", "claim": "Answer generation models in the experiment include Llama3-8B, Llama3-70B, Mistral-7B, and Mixtral-8x22B"},
+  {"id": "y12", "claim": "The CALM framework reduces reliance on human evaluators by automating bias injection"},
+  {"id": "y13", "claim": "The paper proposes a new debiasing technique called SoberJudge that uses chain-of-thought reasoning to reduce verbosity bias by 47 percent"},
+  {"id": "y14", "claim": "Experiments were conducted primarily on a dedicated cluster at Google Research with TPU v5 pods"}
+]

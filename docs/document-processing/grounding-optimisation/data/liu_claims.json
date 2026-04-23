@@ -1,0 +1,16 @@
+[
+  {"id": "l01", "claim": "current language models do not robustly make use of information in long input contexts"},
+  {"id": "l02", "claim": "performance is often highest when relevant information occurs at the beginning or end of the input context"},
+  {"id": "l03", "claim": "significantly degrades when models must access relevant information in the middle of long contexts"},
+  {"id": "l04", "claim": "multi-document question answering and key-value retrieval"},
+  {"id": "l05", "claim": "Accuracy follows a U-shaped curve with respect to the position of relevant information"},
+  {"id": "l06", "claim": "even for explicitly long-context models"},
+  {"id": "l07", "claim": "Language models attend more to the start and end of a prompt than to its middle"},
+  {"id": "l08", "claim": "Adding more tokens to the context window does not automatically make the model use that extra space well"},
+  {"id": "l09", "claim": "LLMs behave as if attention is biased toward recency and primacy rather than uniformly across the context window"},
+  {"id": "l10", "claim": "Simply giving a model a bigger context does not guarantee better reading comprehension over that context"},
+  {"id": "l11", "claim": "Models struggle to find a single key-value pair hidden in a long random list of pairs"},
+  {"id": "l12", "claim": "Query-aware contextualization places the query both before and after the documents"},
+  {"id": "l13", "claim": "The paper proposes a new positional encoding called RoPE-Mid that fixes the middle-of-context degradation"},
+  {"id": "l14", "claim": "All experiments were run on a single NVIDIA H100 GPU donated by Meta"}
+]
