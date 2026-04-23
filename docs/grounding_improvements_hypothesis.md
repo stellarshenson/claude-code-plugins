@@ -174,6 +174,44 @@ to enable semantic (with explicit consent). Not silent fallback.
 **Predicted effect:** users who declined semantic but would benefit get
 a second chance when the data warrants it. No auto-enable.
 
+### Tier 5 (portability rescue, added Iter 5)
+
+### H11. Gap-detection adaptive agreement threshold
+
+**Problem restated after Iter 4:** H3's percentile-based semantic
+threshold was falsified for models intrinsically weaker on the target
+corpus. mpnet-base-v2 on Liu produces `semantic_ratio` 0.48-0.57 for
+real paraphrases versus 0.87+ on E5-small. No absolute threshold (raw
+cosine OR ratio) makes mpnet's classifications match E5's.
+
+However, the RANK ORDERING of claims by `agreement_score` IS stable
+across models: both E5 and mpnet rank Liu real paraphrases ABOVE Liu
+fabricated claims (post entity-presence penalty). The discriminator
+that varies is the *absolute scale*, not the *relative positioning*.
+
+**Claim:** a per-batch adaptive threshold chosen at the LARGEST GAP in
+the sorted distribution of non-exact / non-fuzzy / non-bm25
+`agreement_score` values will place itself in the real-vs-fake boundary
+regardless of the model's absolute scale. Classifications become
+rank-based and model-agnostic.
+
+**Predicted effect:** on the Liu 14-claim portability test, E5 and
+mpnet produce IDENTICAL match_types for all 14 claims (portability_pass
+= 1). On single-claim `ground` (no batch), fall back to the absolute
+`agreement_threshold` parameter.
+
+**Falsifier:** the hypothesis is FALSE if, after H11 is implemented,
+the bench_portability.py test still reports 0 on E5 vs mpnet-base-v2,
+OR the Liu 14-claim liu_accuracy drops below 0.90 under the adaptive
+classifier.
+
+**Scope limits:**
+- Applies to `ground_many` batch mode only. Single `ground` keeps
+  absolute threshold semantics (backward compat).
+- When fewer than 4 claims with semantic-only agreement signal are
+  present in a batch, adaptive gap detection falls back to absolute
+  threshold (insufficient distribution to detect a meaningful gap).
+
 ## Explicit non-goals
 
 The following came up in design discussion but are NOT part of this

@@ -282,6 +282,16 @@ def find_numeric_mismatches(claim: str, passage: str) -> list[tuple[str, str]]:
     A disagreement requires both sides to share either the same unit
     (``"%"``, ``"GB"``) or the same context word (``"nodes"``, ``"users"``)
     AND have different values.
+
+    Iter 6 specificity gate (mirrors ``find_entity_mismatches``): the claim
+    must have EXACTLY ONE number in a given (unit, context) category
+    before a mismatch is flagged. Multi-value lists (e.g. "Llama3-8B,
+    Llama3-70B, Mistral-7B, Mixtral-8x22B" - four numbers in the
+    ``b`` billion-params category) are NOT flagged because the winning
+    passage may legitimately cite only a subset; an inventory-style
+    claim that overlaps with part of the source is supported, not
+    contradicted. The overlap check also skips when any claim value
+    already appears among the passage values for the same key.
     """
     claim_nums = extract_numbers(claim)
     if not claim_nums:
@@ -301,33 +311,55 @@ def find_numeric_mismatches(claim: str, passage: str) -> list[tuple[str, str]]:
         if cw:
             pass_by_key.setdefault(("", cw), []).append(v)
 
-    mismatches: list[tuple[str, str]] = []
+    # Group claim numbers by the same partial-key lookup used for passage,
+    # so we can detect multi-entry claim categories and skip them.
+    claim_by_key: dict[tuple[str, str], list[str]] = {}
     for cv, cu, ccw in claim_nums:
-        # Try full key, then unit-only, then context-only
-        candidates: list[str] = []
         for key in [(cu, ccw), (cu, ""), ("", ccw)]:
             if key == ("", ""):
                 continue
             if key in pass_by_key:
-                candidates = pass_by_key[key]
+                claim_by_key.setdefault(key, []).append(cv)
                 break
-        if not candidates:
+
+    mismatches: list[tuple[str, str]] = []
+    for key, claim_values in claim_by_key.items():
+        # Specificity gate: multi-value lists aren't contradicted by partial
+        # passage coverage.
+        if len(claim_values) != 1:
             continue
-        # If claim value matches any passage candidate, no mismatch
-        if cv in candidates:
+        passage_values = pass_by_key.get(key, [])
+        if not passage_values:
             continue
-        # Disagreement on same category: pick the first candidate as the
-        # contradicting value
-        mismatches.append((cv, candidates[0]))
+        cv = claim_values[0]
+        # Overlap check: any claim value in passage_values means supported.
+        if cv in passage_values:
+            continue
+        mismatches.append((cv, passage_values[0]))
     return mismatches
 
 
 def find_entity_mismatches(claim: str, passage: str) -> list[tuple[str, str]]:
     """Return ``[(claim_entity, passage_entity)]`` for tech-category disagreements.
 
-    Only tech entities from the whitelist are checked. If claim mentions one
-    value in a category (e.g. "H100") and passage mentions a DIFFERENT value
-    in the SAME category (e.g. "A100"), that is a mismatch.
+    Only tech entities from the whitelist are checked. A mismatch requires:
+
+    1. Claim and passage share a tech category (e.g. ``gpu_model``).
+    2. Claim has EXACTLY ONE entity in that category. Multi-entity lists
+       like "we tested GPT-4o, Claude-3.5-Sonnet, and Llama3-70B" are NOT
+       flagged because the winning passage might mention only a subset;
+       the claim is not "contradicted" by the passage citing a different
+       subset of models.
+    3. The single claim entity does NOT appear among the passage's
+       entities in the same category. Any overlap (even partial) is
+       treated as support, not contradiction.
+
+    This catches the "H100 vs A100" / "42 nodes vs 12 nodes" single-value
+    fabrication class while allowing list-compatible subsets. The rule was
+    tightened in Iter 6 after cross-validation found the old per-item loop
+    false-flagging real paraphrases (Ye y07: "ChatGPT, GPT-4o,
+    Claude-3.5-Sonnet" vs passage naming Llama3 models in the same
+    judge-models category).
     """
     claim_tech = _find_tech_entities(claim)
     if not claim_tech:
@@ -341,11 +373,17 @@ def find_entity_mismatches(claim: str, passage: str) -> list[tuple[str, str]]:
         if category not in passage_tech:
             continue
         passage_items = passage_tech[category]
-        for ci in claim_items:
-            if ci in passage_items:
-                continue
-            # Different value in same category -> mismatch
-            mismatches.append((ci, passage_items[0]))
+        # Specificity gate: multi-entity claims are lists, not assertions.
+        if len(claim_items) != 1:
+            continue
+        (ci,) = claim_items
+        # Overlap check: if the single claim entity already appears in
+        # passage, it's confirmed, not contradicted.
+        if ci in passage_items:
+            continue
+        # One specific claim entity, passage has different entity(ies)
+        # in the same category -> real contradiction.
+        mismatches.append((ci, passage_items[0]))
     return mismatches
 
 

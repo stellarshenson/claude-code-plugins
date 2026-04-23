@@ -1,0 +1,149 @@
+# ============================================================================
+# document-processing grounding configuration
+# ============================================================================
+#
+# Every tunable magic number used by the grounding pipeline lives here. The
+# values below are the DEFAULTS that produced the best composite score on
+# the reference BENCHMARK.md as of v1.3.27 (Liu 14-claim perfect, numeric
+# seed perfect, cross-layer agreement gap >= 0.10, skill rules present).
+#
+# Override order (first match wins):
+#   1. Explicit keyword argument to ground() / ground_many() / etc
+#   2. ./.stellars-plugins/config.yaml in the project root
+#   3. This bundled default (shipped with the plugin)
+#
+# Tune via scripts/calibrate.py — it grid-searches the benchmark against
+# per-field value lists and returns the highest-scoring combination.
+#
+# Sections map 1:1 to fields on GroundingConfig (see config.py).
+# ============================================================================
+
+# ---- match_type classification thresholds ----------------------------------
+# These gate which match_type a claim resolves to. Priority: exact > fuzzy
+# > bm25 > semantic > agreement-fallback > none. A layer must be ABOVE its
+# threshold to "fire"; otherwise the next priority is tried.
+
+# Partial-ratio Levenshtein score required for match_type=fuzzy.
+# 0.85 means 85% of the claim must align to a substring in the source.
+fuzzy_threshold: 0.85
+
+# BM25 token_recall (fraction of unique claim tokens appearing in the
+# winning passage) required for match_type=bm25. 0.5 = half the claim's
+# unique tokens are present.
+bm25_threshold: 0.5
+
+# Raw cosine similarity required for match_type=semantic in ABSOLUTE mode
+# (when percentile mode is disabled or the percentile is below this floor).
+semantic_threshold: 0.6
+
+# Fraction of the random chunk-pair cosine distribution that qualifies as
+# "top-tier semantic" for match_type=semantic in PERCENTILE mode. 0.02 =
+# top 2% of random pairs. Model-agnostic per H3.
+semantic_threshold_percentile: 0.02
+
+# Minimum agreement_score for the agreement-fallback classifier
+# (match_type = highest-contributing layer). Too low = confirms weak
+# hits; too high = rejects legitimate multi-layer-agreement paraphrases.
+agreement_threshold: 0.45
+
+# ---- match_type fallback floor ---------------------------------------------
+
+# Safety floor for SemanticGrounder.percentile_threshold. Guards against
+# degenerate corpora (1-2 chunks) where the sampled percentile collapses
+# below a value any reasonable retrieval would call a real match. Set to
+# 0 to disable.
+percentile_floor: 0.65
+
+# ---- agreement_score per-layer weights -------------------------------------
+# Must sum to 1.0 unless you want to scale agreement_score beyond [0, 1].
+
+agreement_weight_exact: 0.30
+agreement_weight_fuzzy: 0.25
+agreement_weight_bm25: 0.20
+agreement_weight_semantic: 0.25
+
+# ---- agreement_score per-layer ramps ---------------------------------------
+# Each ramp converts a raw layer score in [0, 1] to a v_layer value in
+# [0, 1]. Values below _low clamp to 0, values above _high clamp to 1,
+# linear in between. Set the RAMP on the portion of the layer's output
+# range that carries useful signal.
+
+# Fuzzy: partial_ratio < 0.5 is essentially noise; > 1.0 can't happen.
+fuzzy_ramp_low: 0.5
+fuzzy_ramp_high: 1.0
+
+# BM25 token_recall scales already in [0, 1]. Ramp over [0, 0.5] so a
+# token_recall of 0.5 already contributes fully.
+bm25_ramp_low: 0.0
+bm25_ramp_high: 0.5
+
+# Semantic absolute cosine: ramp over typical match range [0.5, 1.0].
+semantic_abs_ramp_low: 0.5
+semantic_abs_ramp_high: 1.0
+
+# Semantic ratio (cosine / claim_self_score): ramp over [0.80, 1.00].
+# Real hits tend to cluster near 1.0; values below 0.80 are topical noise.
+semantic_ratio_ramp_low: 0.80
+semantic_ratio_ramp_high: 1.00
+
+# ---- agreement_score voter thresholds --------------------------------------
+# A layer counts as a "voter" if its raw score meets its voter threshold.
+# Multi-voter bonus rewards independent signals (H1: agreement beats
+# magnitude).
+
+voter_exact: 1.0                 # exact is binary
+voter_fuzzy: 0.55                # partial-ratio of roughly half the claim
+voter_bm25: 0.15                 # some token overlap
+voter_semantic_abs: 0.70         # raw cosine above random-pair ~top-5%
+voter_semantic_ratio: 0.90       # ratio close to self-similarity
+
+# Semantic voter fires on EITHER the absolute OR the ratio threshold
+# (OR-gate). Setting this to "and" requires both; "abs_only" drops
+# ratio entirely.
+voter_semantic_mode: or          # or | and | abs_only | ratio_only
+
+# ---- agreement_score multi-voter bonuses -----------------------------------
+# Added to the raw weighted sum. Reflects "N layers agreeing > any 1 alone".
+
+voter_bonus_2: 0.20              # two independent voters
+voter_bonus_3_plus: 0.35         # three or more (capped)
+
+# ---- entity-presence penalty ------------------------------------------------
+# Claim proper nouns absent from ANY source passage weaken confidence
+# without forcing CONTRADICTED. Penalty = factor * (n_absent / n_entities),
+# subtracted from agreement_score. Iter 3 added this to catch fabricated
+# specific-entity claims like "RoPE-Mid" or "H100".
+
+entity_penalty_factor: 0.15      # max penalty when 100% of claim entities are absent
+
+# ---- semantic layer -------------------------------------------------------
+
+chunk_max_chars: 1500            # target recursive-chunk size
+chunk_overlap_ratio: 0.25        # 25% overlap between adjacent chunks
+percentile_sample_n: 200         # random chunk-pair cosines sampled at index time
+
+# ---- sentence-split fallback -----------------------------------------------
+# When blank-line splitting yields a single mega-passage (common with
+# pdftotext output), fall back to sentence-level splits so BM25 has a
+# non-degenerate corpus. Very short fragments are merged with their
+# successor.
+
+min_passage_chars: 40            # merge sentences shorter than this
+single_passage_fallback_length: 1500  # trigger fallback above this text length
+
+# ---- classifier mode (H11) -------------------------------------------------
+# ``absolute`` = use agreement_threshold verbatim for match_type fallback.
+# ``adaptive_gap`` = in batch mode (ground_many), compute threshold as the
+# midpoint of the largest gap in the semantic-zone agreement_score
+# distribution. Model-agnostic within a corpus.
+
+classifier_mode: adaptive_gap    # absolute | adaptive_gap
+
+# Minimum number of semantic-zone claims required before adaptive_gap
+# kicks in. Below this, adaptive falls back to absolute.
+adaptive_gap_min_claims: 4
+
+# ---- other -----------------------------------------------------------------
+
+context_chars: 80                # chars of before/after context captured per hit
+semantic_top_k: 3                # top-K semantic alternatives reported

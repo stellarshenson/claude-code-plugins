@@ -141,6 +141,27 @@ public CLI flag shape (additions only).
   - Outcome: multilingual promise becomes verified rather than claimed.
   - Depends on: none.
 
+### Portability rescue (added after Iter 4 plateau)
+
+- **Gap-detection adaptive agreement threshold** (hypothesis H11)
+  - Scope: `stellars_claude_code_plugins/document_processing/grounding.py`
+    `ground_many` function; `scripts/bench_portability.py` verification.
+  - Acceptance: `ground_many` computes a per-batch adaptive
+    agreement_threshold equal to the midpoint of the largest gap in the
+    sorted distribution of `agreement_score` values for claims whose
+    exact/fuzzy/bm25 layers are below their own thresholds. The
+    absolute threshold passed via `agreement_threshold=` remains a
+    floor. Single-claim `ground` keeps absolute-threshold semantics.
+    `bench_portability.py` reports 1 on E5-small vs mpnet-base-v2 on
+    the Liu 14-claim fixture, AND `bench_liu_accuracy.py` does not
+    regress below 0.90 under the adaptive classifier.
+  - Predict: bench_portability 0 -> 1 (+10 score points); liu_accuracy
+    stays at 1.0 on E5 and mpnet converges to the same classifications.
+  - Outcome: portability_pass unlocks; composite score projected to
+    drop from 10.0 to ≤ 5.0 (hitting the BENCHMARK effective target).
+  - Depends on: H1 (agreement_score formula); H2 (entity-presence
+    penalty - provides the real-vs-fake rank separation).
+
 ### Skill updates
 
 - **Rule: "agreement beats magnitude"** (hypothesis H8)

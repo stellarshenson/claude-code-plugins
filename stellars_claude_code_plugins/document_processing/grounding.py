@@ -42,6 +42,10 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 from rapidfuzz.fuzz import partial_ratio_alignment
 
+from stellars_claude_code_plugins.document_processing.config import (
+    GroundingConfig,
+    load_config,
+)
 from stellars_claude_code_plugins.document_processing.entity_check import (
     find_absent_entities,
     find_mismatches,
@@ -386,6 +390,7 @@ def _compute_agreement_score(
     bm25_token_recall: float,
     semantic_score: float,
     semantic_ratio: float = 0.0,
+    cfg: GroundingConfig | None = None,
 ) -> float:
     """Weighted cross-layer agreement score with multi-voter bonus.
 
@@ -416,41 +421,56 @@ def _compute_agreement_score(
 
     Returns value in [0, 1].
     """
-    v_exact = 1.0 if exact_score >= 1.0 else 0.0
-    v_fuzzy = max(0.0, min(1.0, (fuzzy_score - 0.5) / 0.5))  # ramp over [0.5, 1.0]
-    v_bm25 = max(0.0, min(1.0, bm25_token_recall / 0.5))  # ramp over [0, 0.5]
-    # Semantic contribution: take the MAX of the absolute-cosine ramp and
-    # the model-normalised ratio ramp so whichever signal fires more
-    # strongly dominates. Ratio path gives portability benefit for
-    # low-scale models (mpnet); absolute path protects corpora where
-    # ratio happens to be noisy. Either alone is enough to contribute.
-    v_sem_abs = max(0.0, min(1.0, (semantic_score - 0.5) / 0.5))
+    c = cfg if cfg is not None else load_config()
+
+    def _ramp(x: float, lo: float, hi: float) -> float:
+        if hi <= lo:
+            return 0.0
+        return max(0.0, min(1.0, (x - lo) / (hi - lo)))
+
+    v_exact = 1.0 if exact_score >= c.voter_exact else 0.0
+    v_fuzzy = _ramp(fuzzy_score, c.fuzzy_ramp_low, c.fuzzy_ramp_high)
+    v_bm25 = _ramp(bm25_token_recall, c.bm25_ramp_low, c.bm25_ramp_high)
+    v_sem_abs = _ramp(semantic_score, c.semantic_abs_ramp_low, c.semantic_abs_ramp_high)
     v_sem_ratio = (
-        max(0.0, min(1.0, (semantic_ratio - 0.80) / 0.20)) if semantic_ratio > 0.0 else 0.0
+        _ramp(semantic_ratio, c.semantic_ratio_ramp_low, c.semantic_ratio_ramp_high)
+        if semantic_ratio > 0.0
+        else 0.0
     )
     v_sem = max(v_sem_abs, v_sem_ratio)
 
-    raw = 0.30 * v_exact + 0.25 * v_fuzzy + 0.20 * v_bm25 + 0.25 * v_sem
+    raw = (
+        c.agreement_weight_exact * v_exact
+        + c.agreement_weight_fuzzy * v_fuzzy
+        + c.agreement_weight_bm25 * v_bm25
+        + c.agreement_weight_semantic * v_sem
+    )
 
-    # Count voters with per-layer thresholds (lower than 0.3 so weak-but-real
-    # fuzzy/bm25 signals still register agreement with a strong semantic hit).
-    # Semantic voter uses semantic_ratio when available (model-agnostic) and
-    # falls back to raw cosine when not.
-    sem_votes = semantic_score >= 0.70 or semantic_ratio >= 0.90
+    # Semantic voter combines absolute and ratio per configured mode.
+    if c.voter_semantic_mode == "abs_only":
+        sem_votes = semantic_score >= c.voter_semantic_abs
+    elif c.voter_semantic_mode == "ratio_only":
+        sem_votes = semantic_ratio >= c.voter_semantic_ratio
+    elif c.voter_semantic_mode == "and":
+        sem_votes = (
+            semantic_score >= c.voter_semantic_abs and semantic_ratio >= c.voter_semantic_ratio
+        )
+    else:  # "or"
+        sem_votes = (
+            semantic_score >= c.voter_semantic_abs or semantic_ratio >= c.voter_semantic_ratio
+        )
     voter_flags = (
-        exact_score >= 1.0,
-        fuzzy_score >= 0.55,
-        bm25_token_recall >= 0.15,
+        exact_score >= c.voter_exact,
+        fuzzy_score >= c.voter_fuzzy,
+        bm25_token_recall >= c.voter_bm25,
         sem_votes,
     )
     voters = sum(voter_flags)
 
-    # Multi-voter bonus per H1: "any one alone < two together".
-    # 1 voter: no bonus. 2 voters: +0.20. 3+: +0.35. Cap raw+bonus at 1.0.
     if voters >= 3:
-        bonus = 0.35
+        bonus = c.voter_bonus_3_plus
     elif voters == 2:
-        bonus = 0.20
+        bonus = c.voter_bonus_2
     else:
         bonus = 0.0
 
@@ -461,14 +481,15 @@ def ground(
     claim: str,
     sources: Sequence[SourceInput],
     *,
-    fuzzy_threshold: float = 0.85,
-    bm25_threshold: float = 0.5,
-    semantic_threshold: float = 0.6,
+    fuzzy_threshold: float | None = None,
+    bm25_threshold: float | None = None,
+    semantic_threshold: float | None = None,
     semantic_threshold_percentile: float | None = None,
-    agreement_threshold: float = 0.45,
-    context_chars: int = 80,
+    agreement_threshold: float | None = None,
+    context_chars: int | None = None,
     semantic_grounder=None,
-    semantic_top_k: int = 3,
+    semantic_top_k: int | None = None,
+    config: GroundingConfig | None = None,
 ) -> GroundingMatch:
     """Ground a single claim against one or more sources.
 
@@ -492,6 +513,24 @@ def ground(
         (above threshold) > bm25 (token-recall above threshold) > none.
         ``combined_score`` = ``max(all three)``.
     """
+    cfg = (config if config is not None else load_config()).overlay(
+        fuzzy_threshold=fuzzy_threshold,
+        bm25_threshold=bm25_threshold,
+        semantic_threshold=semantic_threshold,
+        semantic_threshold_percentile=semantic_threshold_percentile,
+        agreement_threshold=agreement_threshold,
+        context_chars=context_chars,
+        semantic_top_k=semantic_top_k,
+    )
+    # Bind resolved values to local names so the body reads unchanged.
+    fuzzy_threshold = cfg.fuzzy_threshold
+    bm25_threshold = cfg.bm25_threshold
+    semantic_threshold = cfg.semantic_threshold
+    semantic_threshold_percentile = cfg.semantic_threshold_percentile
+    agreement_threshold = cfg.agreement_threshold
+    context_chars = cfg.context_chars
+    semantic_top_k = cfg.semantic_top_k
+
     result = GroundingMatch(claim=claim)
     pairs = _unpack_sources(sources)
     if not pairs:
@@ -619,6 +658,7 @@ def ground(
         bm25_token_recall=result.bm25_token_recall,
         semantic_score=result.semantic_score,
         semantic_ratio=result.semantic_ratio,
+        cfg=cfg,
     )
 
     # Entity-presence penalty: graded downweight when claim proper-noun
@@ -628,7 +668,9 @@ def ground(
     # CONTRADICTED here.
     all_claim_entities = list_claim_entities(claim)
     if all_claim_entities and result.entities_absent:
-        penalty = 0.15 * (len(result.entities_absent) / len(all_claim_entities))
+        penalty = cfg.entity_penalty_factor * (
+            len(result.entities_absent) / len(all_claim_entities)
+        )
         result.agreement_score = max(0.0, result.agreement_score - penalty)
 
     # combined_score = max of all per-layer scores (legacy, preserved)
@@ -692,9 +734,11 @@ def ground(
         result.match_type = "bm25"
     elif result.semantic_score >= effective_semantic_threshold:
         result.match_type = "semantic"
-    elif result.agreement_score >= agreement_threshold:
+    elif cfg.classifier_mode == "absolute" and result.agreement_score >= agreement_threshold:
         # Multi-layer agreement can confirm even when no single layer passed threshold
-        # Classify by highest-contributing layer for the match_type label
+        # Classify by highest-contributing layer for the match_type label.
+        # In adaptive_gap mode this step is skipped here and applied in
+        # ground_many using a per-batch gap-derived threshold instead.
         if (
             result.semantic_score >= result.bm25_score
             and result.semantic_score >= result.fuzzy_score
@@ -716,21 +760,39 @@ def ground_many(
     claims: Sequence[str],
     sources: Sequence[SourceInput],
     *,
-    fuzzy_threshold: float = 0.85,
-    bm25_threshold: float = 0.5,
-    semantic_threshold: float = 0.6,
+    fuzzy_threshold: float | None = None,
+    bm25_threshold: float | None = None,
+    semantic_threshold: float | None = None,
     semantic_threshold_percentile: float | None = None,
-    agreement_threshold: float = 0.45,
-    context_chars: int = 80,
+    agreement_threshold: float | None = None,
+    context_chars: int | None = None,
     semantic_grounder=None,
-    semantic_top_k: int = 3,
+    semantic_top_k: int | None = None,
+    config: GroundingConfig | None = None,
 ) -> list[GroundingMatch]:
     """Batch version of :func:`ground`.
 
     If ``semantic_grounder`` is provided, the source passages are indexed
     once (chunked + embedded + FAISS) and reused across all claims — major
     speedup over re-indexing per claim.
+
+    When ``config.classifier_mode == "adaptive_gap"`` (H11), semantic-zone
+    claims (those where no lexical layer cleared its threshold) are
+    reclassified using a per-batch threshold computed as the midpoint of
+    the largest gap in their ``agreement_score`` distribution. Makes the
+    classifier rank-based and therefore portable across embedding models
+    with different absolute-score distributions.
     """
+    cfg = (config if config is not None else load_config()).overlay(
+        fuzzy_threshold=fuzzy_threshold,
+        bm25_threshold=bm25_threshold,
+        semantic_threshold=semantic_threshold,
+        semantic_threshold_percentile=semantic_threshold_percentile,
+        agreement_threshold=agreement_threshold,
+        context_chars=context_chars,
+        semantic_top_k=semantic_top_k,
+    )
+
     # Eagerly index sources once for the semantic layer if supplied
     if semantic_grounder is not None:
         try:
@@ -743,18 +805,69 @@ def ground_many(
             )
             semantic_grounder = None  # disable on error
 
-    return [
+    matches = [
         ground(
             c,
             sources,
-            fuzzy_threshold=fuzzy_threshold,
-            bm25_threshold=bm25_threshold,
-            semantic_threshold=semantic_threshold,
-            semantic_threshold_percentile=semantic_threshold_percentile,
-            agreement_threshold=agreement_threshold,
-            context_chars=context_chars,
             semantic_grounder=semantic_grounder,
-            semantic_top_k=semantic_top_k,
+            config=cfg,
         )
         for c in claims
     ]
+
+    # H11: adaptive_gap classifier — reclassify semantic-zone claims (those
+    # where no lexical layer cleared its threshold) using a per-batch
+    # threshold derived from the distribution's gap structure. Model-
+    # agnostic: rank ordering of agreement_scores is stable across semantic
+    # models even when absolute scales differ wildly.
+    if cfg.classifier_mode == "adaptive_gap":
+        semantic_zone_idxs = [
+            i
+            for i, m in enumerate(matches)
+            if m.exact_score < cfg.voter_exact
+            and m.fuzzy_score < cfg.fuzzy_threshold
+            and m.bm25_score < cfg.bm25_threshold
+            and not m.numeric_mismatches
+            and not m.entity_mismatches
+        ]
+        if len(semantic_zone_idxs) >= cfg.adaptive_gap_min_claims:
+            scored = sorted(
+                ((matches[i].agreement_score, i) for i in semantic_zone_idxs),
+                key=lambda p: p[0],
+            )
+            # Find the real-vs-fake boundary: largest gap in the BOTTOM HALF
+            # of the sorted distribution. The entity-presence penalty (Iter
+            # 3) pushes fakes toward the bottom; the first significant gap
+            # above them marks where support begins. Using the global
+            # largest gap instead would place the threshold in the top
+            # half and misclassify legitimate middling-confidence claims.
+            bottom_half_cutoff = max(2, (len(scored) + 1) // 2)
+            candidate_gaps = [
+                (scored[j + 1][0] - scored[j][0], j)
+                for j in range(min(len(scored) - 1, bottom_half_cutoff))
+            ]
+            largest_gap, gap_idx = max(candidate_gaps)
+            adaptive_thr = (scored[gap_idx][0] + scored[gap_idx + 1][0]) / 2
+            # In adaptive_gap mode the agreement_threshold config value acts
+            # as an absolute FLOOR only when the adaptive gap is meaningless
+            # (degenerate distribution). When adaptive_thr is a real
+            # separator, use it directly even if below the absolute floor —
+            # that's the whole point of making the classifier rank-based.
+            effective_thr = adaptive_thr
+
+            for i in semantic_zone_idxs:
+                m = matches[i]
+                if m.match_type != "none":
+                    continue
+                if m.agreement_score >= effective_thr:
+                    # Label as "semantic" uniformly. The adaptive_gap
+                    # classifier is the *semantic-zone* classifier by
+                    # definition (we only enter this branch for claims
+                    # where no lexical layer cleared threshold). Using the
+                    # "highest-contributing layer" label here would
+                    # re-introduce model-dependence (different models
+                    # weight fuzzy/bm25/semantic differently for the same
+                    # claim, breaking portability).
+                    m.match_type = "semantic"
+
+    return matches

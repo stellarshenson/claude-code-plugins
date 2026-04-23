@@ -1,0 +1,197 @@
+{
+  "sweep": {
+    "classifier_mode": [
+      "absolute",
+      "adaptive_gap"
+    ],
+    "agreement_threshold": [
+      0.4,
+      0.45,
+      0.5
+    ],
+    "entity_penalty_factor": [
+      0.1,
+      0.15,
+      0.2
+    ]
+  },
+  "folds": [
+    {
+      "fold": "A",
+      "calibrate": [
+        "liu",
+        "ye"
+      ],
+      "test": "han",
+      "best_config": {
+        "classifier_mode": "adaptive_gap",
+        "agreement_threshold": 0.4,
+        "entity_penalty_factor": 0.15
+      },
+      "cal_score": 1.5,
+      "cal_metrics": {
+        "accuracy": 1.0,
+        "portability": 1.0,
+        "gap_attainment": 1.0
+      },
+      "test_accuracy": 1.0,
+      "test_portability": 1,
+      "test_gap_attainment": 1.0,
+      "overfit_gap": 0.0,
+      "runners_up": [
+        {
+          "config": {
+            "classifier_mode": "adaptive_gap",
+            "agreement_threshold": 0.4,
+            "entity_penalty_factor": 0.2
+          },
+          "cal_score": 1.5
+        },
+        {
+          "config": {
+            "classifier_mode": "adaptive_gap",
+            "agreement_threshold": 0.45,
+            "entity_penalty_factor": 0.15
+          },
+          "cal_score": 1.5
+        },
+        {
+          "config": {
+            "classifier_mode": "adaptive_gap",
+            "agreement_threshold": 0.45,
+            "entity_penalty_factor": 0.2
+          },
+          "cal_score": 1.5
+        }
+      ]
+    },
+    {
+      "fold": "B",
+      "calibrate": [
+        "liu",
+        "han"
+      ],
+      "test": "ye",
+      "best_config": {
+        "classifier_mode": "adaptive_gap",
+        "agreement_threshold": 0.4,
+        "entity_penalty_factor": 0.15
+      },
+      "cal_score": 1.5,
+      "cal_metrics": {
+        "accuracy": 1.0,
+        "portability": 1.0,
+        "gap_attainment": 1.0
+      },
+      "test_accuracy": 1.0,
+      "test_portability": 1,
+      "test_gap_attainment": 1.0,
+      "overfit_gap": 0.0,
+      "runners_up": [
+        {
+          "config": {
+            "classifier_mode": "adaptive_gap",
+            "agreement_threshold": 0.4,
+            "entity_penalty_factor": 0.2
+          },
+          "cal_score": 1.5
+        },
+        {
+          "config": {
+            "classifier_mode": "adaptive_gap",
+            "agreement_threshold": 0.45,
+            "entity_penalty_factor": 0.15
+          },
+          "cal_score": 1.5
+        },
+        {
+          "config": {
+            "classifier_mode": "adaptive_gap",
+            "agreement_threshold": 0.45,
+            "entity_penalty_factor": 0.2
+          },
+          "cal_score": 1.5
+        }
+      ]
+    },
+    {
+      "fold": "C",
+      "calibrate": [
+        "ye",
+        "han"
+      ],
+      "test": "liu",
+      "best_config": {
+        "classifier_mode": "adaptive_gap",
+        "agreement_threshold": 0.4,
+        "entity_penalty_factor": 0.1
+      },
+      "cal_score": 1.5,
+      "cal_metrics": {
+        "accuracy": 1.0,
+        "portability": 1.0,
+        "gap_attainment": 1.0
+      },
+      "test_accuracy": 1.0,
+      "test_portability": 1,
+      "test_gap_attainment": 0.8665,
+      "overfit_gap": 0.0,
+      "runners_up": [
+        {
+          "config": {
+            "classifier_mode": "adaptive_gap",
+            "agreement_threshold": 0.4,
+            "entity_penalty_factor": 0.15
+          },
+          "cal_score": 1.5
+        },
+        {
+          "config": {
+            "classifier_mode": "adaptive_gap",
+            "agreement_threshold": 0.4,
+            "entity_penalty_factor": 0.2
+          },
+          "cal_score": 1.5
+        },
+        {
+          "config": {
+            "classifier_mode": "adaptive_gap",
+            "agreement_threshold": 0.45,
+            "entity_penalty_factor": 0.1
+          },
+          "cal_score": 1.5
+        }
+      ]
+    }
+  ],
+  "aggregate": {
+    "mean_test_accuracy": 1.0,
+    "std_test_accuracy": 0.0,
+    "mean_overfit_gap": 0.0,
+    "all_folds_same_winner": false,
+    "winning_config_if_same": null,
+    "current_default_config": {
+      "classifier_mode": "adaptive_gap",
+      "agreement_threshold": 0.45,
+      "entity_penalty_factor": 0.15
+    },
+    "current_default_per_corpus": {
+      "liu": {
+        "accuracy": 1.0,
+        "portability": 1,
+        "gap_attainment": 1.0
+      },
+      "ye": {
+        "accuracy": 1.0,
+        "portability": 1,
+        "gap_attainment": 1.0
+      },
+      "han": {
+        "accuracy": 1.0,
+        "portability": 1,
+        "gap_attainment": 1.0
+      }
+    }
+  },
+  "runtime_seconds": 95.6
+}
