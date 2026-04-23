@@ -1,0 +1,3 @@
+The final curated dataset size was 50 GB after deduplication and
+quality filtering, down from the raw 180 GB scrape. Metadata and
+annotations occupy an additional few megabytes.

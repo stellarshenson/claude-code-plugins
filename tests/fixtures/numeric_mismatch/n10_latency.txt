@@ -1,0 +1,3 @@
+Average end-to-end latency was measured at 150 ms per request on
+the production endpoint, including network overhead. The p99
+latency sat around 320 ms during peak load.

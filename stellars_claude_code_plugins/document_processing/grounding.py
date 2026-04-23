@@ -34,6 +34,7 @@ Location semantics:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import logging
 import re
 from typing import Literal, Sequence
 
@@ -41,10 +42,36 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 from rapidfuzz.fuzz import partial_ratio_alignment
 
-MatchType = Literal["exact", "fuzzy", "bm25", "semantic", "none"]
+from stellars_claude_code_plugins.document_processing.entity_check import (
+    find_absent_entities,
+    find_mismatches,
+    list_claim_entities,
+)
+
+logger = logging.getLogger(__name__)
+
+MatchType = Literal["exact", "fuzzy", "bm25", "semantic", "contradicted", "none"]
 
 SourceInput = str | tuple[str, str]
 """A source is either raw text or a ``(path, text)`` pair for provenance."""
+
+
+@dataclass
+class SemanticHitSummary:
+    """Compact summary of a semantic hit for ``semantic_top_k`` reporting.
+
+    Avoids coupling :class:`GroundingMatch` to the optional
+    :class:`semantic.SemanticHit` class (which is only importable with the
+    ``[semantic]`` extra). All float scores in [0, 1] for L2-normalised
+    embeddings.
+    """
+
+    score: float = 0.0
+    matched_text: str = ""
+    source_index: int = -1
+    source_path: str = ""
+    char_start: int = -1
+    char_end: int = -1
 
 
 @dataclass
@@ -102,6 +129,31 @@ class GroundingMatch:
     semantic_score: float = 0.0  # cosine similarity in [0, 1] with L2-normalised embeddings
     semantic_matched_text: str = ""
     semantic_location: Location = field(default_factory=Location)
+    semantic_top_k: list[SemanticHitSummary] = field(default_factory=list)
+    """Top-K semantic hits (up to 3 by default) for alternative pointers."""
+    semantic_ratio: float = 0.0
+    """semantic_score / claim_self_score; calibration anchor per claim. 0 when semantic layer off."""
+    # Agreement across layers
+    agreement_score: float = 0.0
+    """Weighted combination of exact / fuzzy / bm25 / semantic layers with multi-voter bonus."""
+    # Contradiction detection (numeric + named-entity mismatch between claim and winning passage)
+    numeric_mismatches: list[tuple[str, str]] = field(default_factory=list)
+    """List of ``(claim_value, passage_value)`` for numeric disagreements."""
+    entity_mismatches: list[tuple[str, str]] = field(default_factory=list)
+    """List of ``(claim_entity, passage_entity)`` for tech-entity disagreements."""
+    entities_absent: list[str] = field(default_factory=list)
+    """Proper-noun entities mentioned in the claim with zero occurrences in ANY source passage.
+
+    Weaker than ``entity_mismatches`` (which requires the source to mention
+    the same category with a different value) but catches fabricated-entity
+    claims like "RoPE-Mid" or "NVIDIA H100 donated by Meta" when the source
+    is a Liu-style paper that never names these. Non-empty ``entities_absent``
+    downweights ``agreement_score`` via a graded penalty (does not force
+    CONTRADICTED - absence is weaker evidence than disagreement).
+    """
+    # Borderline expansion flag (H5 - reserved, not set in iter 1)
+    expanded: bool = False
+    """True when chunk-boundary expansion fired on a borderline semantic hit."""
     # Resolution
     match_type: MatchType = "none"
     combined_score: float = 0.0  # max of all enabled layers
@@ -201,11 +253,20 @@ def _tokenize(text: str) -> list[str]:
     return _TOKEN_RE.findall(text.lower())
 
 
+_SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9])")
+_MIN_PASSAGE_CHARS = 40
+
+
 def _split_passages(text: str) -> list[tuple[int, int, str]]:
     """Split text into passages by blank-line boundaries.
 
     Returns ``[(start, end, passage_text), ...]`` with char offsets into the
     original text. Passages with no word characters are dropped.
+
+    Falls back to sentence splitting when blank-line splitting produces a
+    single mega-passage on long texts (common with ``pdftotext`` output that
+    uses single-newline line breaks). Prevents BM25 from degenerating into a
+    1-doc corpus where IDF is meaningless.
     """
     if not text:
         return []
@@ -215,6 +276,41 @@ def _split_passages(text: str) -> list[tuple[int, int, str]]:
         p = m.group()
         if _TOKEN_RE.search(p):
             passages.append((m.start(), m.end(), p))
+
+    # Fallback: on long single-passage texts, split on sentence boundaries so
+    # BM25 has a corpus to rank against.
+    if len(passages) == 1 and len(text) > 1500:
+        start_0, _, body = passages[0]
+        sentence_passages: list[tuple[int, int, str]] = []
+        cursor = 0
+        for m in _SENT_SPLIT_RE.finditer(body):
+            sent_end = m.start()
+            sentence = body[cursor:sent_end].strip()
+            if sentence:
+                sentence_passages.append((start_0 + cursor, start_0 + sent_end, sentence))
+            cursor = m.end()
+        tail = body[cursor:].strip()
+        if tail:
+            sentence_passages.append((start_0 + cursor, start_0 + len(body), tail))
+
+        # Merge too-short sentences with their successor so BM25 IDF stays useful
+        merged: list[tuple[int, int, str]] = []
+        pending: tuple[int, int, str] | None = None
+        for s, e, p in sentence_passages:
+            if pending is None:
+                pending = (s, e, p)
+                continue
+            if len(pending[2]) < _MIN_PASSAGE_CHARS:
+                pending = (pending[0], e, pending[2] + " " + p)
+            else:
+                merged.append(pending)
+                pending = (s, e, p)
+        if pending is not None:
+            merged.append(pending)
+
+        if len(merged) >= 2:
+            return merged
+
     return passages
 
 
@@ -284,6 +380,59 @@ def _bm25_match(
 # -- Main API -----------------------------------------------------------
 
 
+def _compute_agreement_score(
+    exact_score: float,
+    fuzzy_score: float,
+    bm25_token_recall: float,
+    semantic_score: float,
+) -> float:
+    """Weighted cross-layer agreement score with multi-voter bonus.
+
+    Per H1 spec: ``any layer firing alone < two layers firing together``.
+    Real paraphrases light up multiple layers weakly; fabrications typically
+    fire only on semantic (topical similarity with no lexical overlap).
+
+    Each layer has a per-layer "vote" threshold. Layers above threshold are
+    counted as voters. The score is a weighted sum of per-layer
+    contributions plus a multi-voter bonus that rewards independent signals.
+
+    Layer vote thresholds (tuned low so real-but-weak signals still count):
+    - exact:    >= 1.0 (exact is binary)
+    - fuzzy:    >= 0.55 (partial-ratio of ~half the claim)
+    - bm25:     >= 0.15 (some token overlap)
+    - semantic: >= 0.70 (raw cosine above random-pair top-5%)
+
+    Returns value in [0, 1].
+    """
+    v_exact = 1.0 if exact_score >= 1.0 else 0.0
+    v_fuzzy = max(0.0, min(1.0, (fuzzy_score - 0.5) / 0.5))  # ramp over [0.5, 1.0]
+    v_bm25 = max(0.0, min(1.0, bm25_token_recall / 0.5))  # ramp over [0, 0.5]
+    v_sem = max(0.0, min(1.0, (semantic_score - 0.5) / 0.5))  # ramp over [0.5, 1.0]
+
+    raw = 0.30 * v_exact + 0.25 * v_fuzzy + 0.20 * v_bm25 + 0.25 * v_sem
+
+    # Count voters with per-layer thresholds (lower than 0.3 so weak-but-real
+    # fuzzy/bm25 signals still register agreement with a strong semantic hit)
+    voter_flags = (
+        exact_score >= 1.0,
+        fuzzy_score >= 0.55,
+        bm25_token_recall >= 0.15,
+        semantic_score >= 0.70,
+    )
+    voters = sum(voter_flags)
+
+    # Multi-voter bonus per H1: "any one alone < two together".
+    # 1 voter: no bonus. 2 voters: +0.20. 3+: +0.35. Cap raw+bonus at 1.0.
+    if voters >= 3:
+        bonus = 0.35
+    elif voters == 2:
+        bonus = 0.20
+    else:
+        bonus = 0.0
+
+    return min(1.0, raw + bonus)
+
+
 def ground(
     claim: str,
     sources: Sequence[SourceInput],
@@ -291,8 +440,11 @@ def ground(
     fuzzy_threshold: float = 0.85,
     bm25_threshold: float = 0.5,
     semantic_threshold: float = 0.6,
+    semantic_threshold_percentile: float | None = None,
+    agreement_threshold: float = 0.55,
     context_chars: int = 80,
     semantic_grounder=None,
+    semantic_top_k: int = 3,
 ) -> GroundingMatch:
     """Ground a single claim against one or more sources.
 
@@ -370,12 +522,21 @@ def ground(
         )
 
     # Semantic pass (optional; off unless caller passes a grounder)
+    effective_semantic_threshold = semantic_threshold
     if semantic_grounder is not None:
         try:
             # Index only if not already indexed (ground_many pre-indexes once)
             if getattr(semantic_grounder, "_index", None) is None:
                 semantic_grounder.index_sources(pairs)
-            hits = semantic_grounder.search(claim, top_k=1)
+            # H3: model-agnostic percentile-based threshold override
+            if semantic_threshold_percentile is not None:
+                pct_thr = semantic_grounder.percentile_threshold(
+                    top_pct=semantic_threshold_percentile
+                )
+                if pct_thr > 0:
+                    effective_semantic_threshold = pct_thr
+            # Fetch top-3 for semantic_top_k reporting and alternative pointers
+            hits = semantic_grounder.search(claim, top_k=semantic_top_k)
             if hits:
                 best = hits[0]
                 # Raw cosine similarity; for L2-normalised embeddings it lives in
@@ -392,25 +553,132 @@ def ground(
                     source_path=best.source_path,
                     context_chars=context_chars,
                 )
-        except Exception:
-            # Semantic layer is advisory; never block the lexical result
-            pass
+                # Populate top_k summaries
+                result.semantic_top_k = [
+                    SemanticHitSummary(
+                        score=max(0.0, min(1.0, h.score)),
+                        matched_text=h.matched_text,
+                        source_index=h.source_index,
+                        source_path=h.source_path,
+                        char_start=h.char_start,
+                        char_end=h.char_end,
+                    )
+                    for h in hits
+                ]
+                # semantic_ratio (H7): claim vs itself as calibration anchor
+                try:
+                    self_score = semantic_grounder.self_score(claim)
+                    if self_score > 0:
+                        result.semantic_ratio = result.semantic_score / self_score
+                except Exception as exc:
+                    logger.warning("semantic self_score failed (claim=%r): %s", claim[:80], exc)
+        except Exception as exc:
+            logger.warning(
+                "semantic layer failed (claim=%r): %s - lexical-only result returned",
+                claim[:80],
+                exc,
+            )
 
-    # Resolve match_type: exact > fuzzy > bm25 > semantic > none
+    # Entity-presence check: flag claim proper nouns absent from ANY source
+    # passage (Iter 3 addition). Weaker than contradiction (entity mismatch in
+    # the winning passage) but catches fabricated-entity fakes where the
+    # specific named entity doesn't appear anywhere in the source.
+    full_source_text = "\n".join(t for _, _, t in pairs)
+    result.entities_absent = find_absent_entities(claim, full_source_text)
+
+    # Agreement score across layers (always computed; uses 0 for disabled layers)
+    result.agreement_score = _compute_agreement_score(
+        exact_score=result.exact_score,
+        fuzzy_score=result.fuzzy_score,
+        bm25_token_recall=result.bm25_token_recall,
+        semantic_score=result.semantic_score,
+    )
+
+    # Entity-presence penalty: graded downweight when claim proper-noun
+    # entities are absent from the source (Iter 3). Penalty scales with the
+    # FRACTION of claim entities missing, capped so agreement_score stays in
+    # [0, 1]. Absence is weaker than contradiction so we never escalate to
+    # CONTRADICTED here.
+    all_claim_entities = list_claim_entities(claim)
+    if all_claim_entities and result.entities_absent:
+        penalty = 0.15 * (len(result.entities_absent) / len(all_claim_entities))
+        result.agreement_score = max(0.0, result.agreement_score - penalty)
+
+    # combined_score = max of all per-layer scores (legacy, preserved)
     result.combined_score = max(
         result.exact_score,
         result.fuzzy_score,
         result.bm25_score,
         result.semantic_score,
     )
+
+    # Contradiction detection: compare claim against winning passage (H2)
+    # Pick the "winning" passage for extraction: priority exact > semantic > bm25 > fuzzy
+    # If no layer isolated a clear span, fall back to the single-source text so
+    # contradictions are still caught on tiny sources where passage-ranking fails.
+    winning_passage = ""
     if result.exact_score == 1.0:
+        winning_passage = result.exact_matched_text
+    elif result.semantic_score > 0.0 and result.semantic_matched_text:
+        winning_passage = result.semantic_matched_text
+    elif result.bm25_score > 0.0 and result.bm25_matched_text:
+        winning_passage = result.bm25_matched_text
+    elif result.fuzzy_score > 0.0 and result.fuzzy_matched_text:
+        # Widen the fuzzy window to the full line containing the match so
+        # the claim's key value (year, percentage, entity) is not clipped.
+        idx = result.fuzzy_location.source_index
+        if 0 <= idx < len(pairs):
+            src_text = pairs[idx][2]
+            start = max(0, result.fuzzy_location.char_start - 100)
+            end = min(len(src_text), result.fuzzy_location.char_end + 200)
+            winning_passage = src_text[start:end]
+        else:
+            winning_passage = result.fuzzy_matched_text
+    elif len(pairs) == 1:
+        # Only one source and no layer anchored: compare claim against the
+        # full source text directly. Conservative category-matching in
+        # ``find_mismatches`` prevents spurious mismatches here.
+        winning_passage = pairs[0][2]
+
+    if winning_passage:
+        num_mm, ent_mm = find_mismatches(claim, winning_passage)
+        result.numeric_mismatches = num_mm
+        result.entity_mismatches = ent_mm
+
+    # Resolve match_type:
+    # priority: contradicted (always wins) > exact > fuzzy > bm25 > semantic > agreement > none
+    has_contradiction = bool(result.numeric_mismatches or result.entity_mismatches)
+    has_any_signal = (
+        result.exact_score > 0
+        or result.fuzzy_score > 0
+        or result.bm25_score > 0
+        or result.semantic_score > 0
+    )
+
+    if has_contradiction and has_any_signal:
+        result.match_type = "contradicted"
+    elif result.exact_score == 1.0:
         result.match_type = "exact"
     elif result.fuzzy_score >= fuzzy_threshold:
         result.match_type = "fuzzy"
     elif result.bm25_score >= bm25_threshold:
         result.match_type = "bm25"
-    elif result.semantic_score >= semantic_threshold:
+    elif result.semantic_score >= effective_semantic_threshold:
         result.match_type = "semantic"
+    elif result.agreement_score >= agreement_threshold:
+        # Multi-layer agreement can confirm even when no single layer passed threshold
+        # Classify by highest-contributing layer for the match_type label
+        if (
+            result.semantic_score >= result.bm25_score
+            and result.semantic_score >= result.fuzzy_score
+        ):
+            result.match_type = "semantic"
+        elif result.bm25_score >= result.fuzzy_score:
+            result.match_type = "bm25"
+        elif result.fuzzy_score > 0:
+            result.match_type = "fuzzy"
+        else:
+            result.match_type = "none"
     else:
         result.match_type = "none"
 
@@ -424,8 +692,11 @@ def ground_many(
     fuzzy_threshold: float = 0.85,
     bm25_threshold: float = 0.5,
     semantic_threshold: float = 0.6,
+    semantic_threshold_percentile: float | None = None,
+    agreement_threshold: float = 0.55,
     context_chars: int = 80,
     semantic_grounder=None,
+    semantic_top_k: int = 3,
 ) -> list[GroundingMatch]:
     """Batch version of :func:`ground`.
 
@@ -438,7 +709,11 @@ def ground_many(
         try:
             pairs = _unpack_sources(sources)
             semantic_grounder.index_sources(pairs)
-        except Exception:
+        except Exception as exc:
+            logger.error(
+                "semantic index_sources failed: %s - disabling semantic layer for this batch",
+                exc,
+            )
             semantic_grounder = None  # disable on error
 
     return [
@@ -448,8 +723,11 @@ def ground_many(
             fuzzy_threshold=fuzzy_threshold,
             bm25_threshold=bm25_threshold,
             semantic_threshold=semantic_threshold,
+            semantic_threshold_percentile=semantic_threshold_percentile,
+            agreement_threshold=agreement_threshold,
             context_chars=context_chars,
             semantic_grounder=semantic_grounder,
+            semantic_top_k=semantic_top_k,
         )
         for c in claims
     ]

@@ -1,0 +1,4 @@
+The reference implementation is provided in TensorFlow 2.11 with
+full training and inference pipelines. The authors do not publish
+any alternative framework bindings, and all public checkpoints
+depend on the TensorFlow runtime.

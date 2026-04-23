@@ -40,12 +40,12 @@ UV_OPTS =
 .PHONY: requirements
 requirements:
 	@echo "$(MSG_PREFIX) installing requirements with uv"
-	uv $(UV_OPTS) sync --python $(PROJECT_DIR)/.venv --extra dev
+	uv $(UV_OPTS) sync --python $(PROJECT_DIR)/.venv --all-extras
 ## Upgrade Python dependencies to latest versions
 .PHONY: upgrade
 upgrade:
 	@echo "$(MSG_PREFIX) upgrading packages with uv"
-	uv $(UV_OPTS) sync --python $(PROJECT_DIR)/.venv --extra dev --upgrade
+	uv $(UV_OPTS) sync --python $(PROJECT_DIR)/.venv --all-extras --upgrade
 
 ## Delete all compiled Python files
 clean:

@@ -1,0 +1,3 @@
+Training completed in 24 hours using 8 GPUs, substantially faster
+than the original baseline which required several days on comparable
+hardware. Convergence was stable across seeds.

@@ -102,6 +102,28 @@ Write `criteria.md`.
 
 ## Phase 2: Source Grounding Check
 
+### Core rules
+
+Three rules override default behaviour for every claim. They apply in order - rule 2 trumps rule 1, rule 3 applies after rules 1-2 are decided.
+
+**Rule 1: agreement beats magnitude.** Confidence comes from how many layers agree, not from any single layer's peak score. A claim with `semantic_score=0.90`, `fuzzy_score=0` and `bm25_score=0` is LESS confirmed than a claim with `semantic_score=0.75`, `fuzzy_score=0.65` and `bm25_score=0.45`. The tool reports `agreement_score` specifically to encode this - prefer it over individual layer scores when deciding whether to confirm. Example: a claim that only lights up semantic at 0.90 with no lexical overlap reads like topical similarity to a noise passage, not real grounding. Read the pointer (the returned passage) before accepting.
+
+**Rule 2: contradiction flag is the final word.** If `numeric_mismatches` OR `entity_mismatches` returned by the tool is non-empty, the verdict is CONTRADICTED regardless of every other score. Example: claim "Kubernetes runs on 42 nodes" against source "12 nodes" returns `numeric_mismatches=[("42", "12")]` - this is CONTRADICTED even if `exact_score=1.0` on the surrounding wording. Never promote a CONTRADICTED claim to CONFIRMED; never suppress the flag. The numeric/entity disagreement IS the finding.
+
+**Rule 3: re-recommend semantic on struggle.** When the three-layer pass leaves more than 25% of claims UNCONFIRMED, OR any claim lands in the "almost grounded" zone (`fuzzy_score` in [0.5, 0.85] AND `bm25_score` in [0.2, 0.5]), ask the user once whether to enable semantic - do not silently auto-enable. Use exactly this template:
+
+```
+Three-layer grounding left N/M claims UNCONFIRMED and K in the
+almost-grounded zone. Semantic grounding (4th layer, +150MB model
+first time, requires `[semantic]` extra) often resolves these. Enable?
+  - yes: re-run with --semantic on
+  - no: keep current verdicts
+```
+
+Record the answer in `./.stellars-plugins/settings.json` so the ask isn't repeated in the same session.
+
+### Per-claim workflow
+
 Extract every factual claim, assertion, attribution, number, date, quote. For each:
 
 1. **State claim** exactly as in document

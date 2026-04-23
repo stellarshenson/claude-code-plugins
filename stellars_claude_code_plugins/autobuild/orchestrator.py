@@ -674,6 +674,31 @@ def _load_state() -> dict | None:
     return None
 
 
+def _yaml_safe_text(text: str) -> str:
+    """Make arbitrary text safe for YAML block-scalar (``|``) output.
+
+    PyYAML falls back from ``|`` block style to double-quoted style whenever
+    a string contains non-printable control characters (ANSI escape codes,
+    backspace, bell, etc.). That produces unreadable output like
+    ``"\\e[1m\\e[36m>>>..."``. This helper converts every non-printable
+    character that isn't ``\\n`` or ``\\t`` into its Python ``repr``
+    escape form (e.g. ``\\x1b`` becomes the 4-char literal ``\\x1b``)
+    AGGRESSIVELY, with NO truncation or information loss - the full
+    original content is still recoverable by reversing the escapes.
+
+    Use this instead of stripping ANSI codes, which loses data.
+    """
+    out: list[str] = []
+    for ch in text:
+        if ch in ("\n", "\t") or ch.isprintable():
+            out.append(ch)
+        else:
+            # Python repr gives e.g. "'\\x1b'" for ESC; strip the enclosing
+            # quotes to get the bare escape literal
+            out.append(repr(ch)[1:-1])
+    return "".join(out)
+
+
 def _yaml_dump(data: object) -> str:
     """Dump data to YAML with literal block style for readable output.
 
@@ -707,13 +732,21 @@ def _yaml_dump(data: object) -> str:
         return "\n".join(lines)
 
     def _prepare(obj):
-        """Recursively convert long or multiline strings to LiteralStr."""
+        """Recursively convert long or multiline strings to LiteralStr.
+
+        All strings eligible for block-scalar output are passed through
+        ``_yaml_safe_text`` first so control characters (ANSI escapes,
+        etc.) do NOT force PyYAML to fall back to double-quoted style.
+        No information is lost - control chars are rendered in their
+        Python ``\\xHH`` repr form and remain recoverable.
+        """
         if isinstance(obj, dict):
             return {k: _prepare(v) for k, v in obj.items()}
         if isinstance(obj, list):
             return [_prepare(v) for v in obj]
         if isinstance(obj, str) and ("\n" in obj or len(obj) > 80):
             text = _wrap_long(obj) if "\n" not in obj else obj
+            text = _yaml_safe_text(text)
             if not text.endswith("\n"):
                 text += "\n"
             return LiteralStr(text)
@@ -2041,12 +2074,19 @@ def _validate_end_inputs(args, phase: str, state: dict) -> tuple:
     output_file_str = getattr(args, "output_file", "") or ""
 
     # Resolve and validate --output-file
+    # Precedence for relative paths: (1) absolute → use as-is, (2) exists
+    # from CWD → resolve from CWD, (3) fall back to phase-dir-relative.
+    # This prevents path duplication when callers pass a project-relative
+    # path like ".autobuild/phase_02_implement/fix.md" that already points
+    # inside the artifacts tree.
     output_file_path = None
     output_content = ""
     if output_file_str:
         p = Path(output_file_str)
         if p.is_absolute():
             output_file_path = p
+        elif p.exists():
+            output_file_path = p.resolve()
         else:
             output_file_path = (_phase_dir(state) / p).resolve()
         if not output_file_path.exists():
@@ -2138,7 +2178,7 @@ def _handle_test_failure(state: dict, phase: str, output: str) -> None:
             "iteration": state["iteration"],
             "phase": phase,
             "mode": "FM-TEST-FAIL",
-            "description": output[:200],
+            "description": output,
         }
     )
     print("\n" + _msg("tests_fail", target=target))

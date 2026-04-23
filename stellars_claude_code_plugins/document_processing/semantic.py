@@ -112,6 +112,10 @@ class SemanticGrounder:
         # Index state — lazily built in index_sources()
         self._index = None
         self._provenance: list[tuple[int, str, Chunk]] = []
+        # H3: percentile threshold calibration - sampled chunk-pair cosine
+        # distribution from the most recent ``index_sources`` call. ``None``
+        # until an index is built. Float array of ``n_samples`` floats.
+        self._cosine_samples = None
 
     # ---- public API ------------------------------------------------------
 
@@ -143,6 +147,73 @@ class SemanticGrounder:
         matrix = np.vstack(all_vectors).astype("float32")
         self._provenance = all_chunks
         self._index = self._build_faiss(matrix)
+        # H3: sample N=200 random chunk-pair cosines to calibrate
+        # model-agnostic thresholds. With L2-normalised embeddings, dot
+        # product == cosine. Sampling off-diagonal pairs avoids the
+        # trivial self-similarity 1.0.
+        n_chunks = matrix.shape[0]
+        if n_chunks >= 2:
+            rng = np.random.default_rng(42)
+            n_samples = min(200, n_chunks * (n_chunks - 1) // 2)
+            sims = np.empty(n_samples, dtype="float32")
+            for k in range(n_samples):
+                i = int(rng.integers(0, n_chunks))
+                j = int(rng.integers(0, n_chunks))
+                if j == i:
+                    j = (j + 1) % n_chunks
+                sims[k] = float(np.dot(matrix[i], matrix[j]))
+            self._cosine_samples = sims
+        else:
+            self._cosine_samples = None
+
+    def percentile_threshold(self, top_pct: float = 0.02, floor: float = 0.65) -> float:
+        """Return the cosine value at the (1 - top_pct) quantile of the
+        sampled chunk-pair distribution.
+
+        Example: ``top_pct=0.02`` -> threshold above which only 2% of
+        random chunk pairs score. Model-agnostic: a strong real match will
+        land in the tail regardless of the model's absolute scale.
+
+        The ``floor`` guards against degenerate corpora (very small or
+        homogeneous) where the quantile collapses below a value any
+        reasonable retrieval model would treat as a real match. Set floor=0
+        to disable.
+
+        Returns ``0.0`` when no distribution has been sampled yet (index
+        with fewer than 2 chunks or ``index_sources`` not called).
+        """
+        import numpy as np  # type: ignore
+
+        if self._cosine_samples is None or len(self._cosine_samples) == 0:
+            return 0.0
+        # top_pct = 0.02 -> we want the score above which only the top 2%
+        # of random pairs lie, i.e. the (1 - 0.02) = 0.98 quantile
+        q = float(np.quantile(self._cosine_samples, 1.0 - top_pct))
+        return max(floor, min(1.0, q))
+
+    def self_score(self, claim: str) -> float:
+        """Cosine similarity of the claim embedded as query vs as passage.
+
+        Provides a per-claim calibration anchor for
+        :attr:`grounding.GroundingMatch.semantic_ratio`. For E5 models the
+        query/passage prefixes deliberately shift embeddings apart; this
+        method returns the claim's "best possible" self-agreement score so
+        the caller can normalise their search score against it.
+
+        For non-E5 models (no prefix) this typically returns ~1.0.
+        """
+        import numpy as np  # type: ignore
+
+        if self._is_e5():
+            query_text = f"query: {claim}"
+            passage_text = f"passage: {claim}"
+        else:
+            query_text = claim
+            passage_text = claim
+        vecs = self._embed([query_text, passage_text]).astype("float32")
+        # Inner product of L2-normalised vectors = cosine
+        score = float(np.dot(vecs[0], vecs[1]))
+        return max(0.0, min(1.0, score))
 
     def search(self, claim: str, *, top_k: int = 1) -> list[SemanticHit]:
         """Return top-K chunks matching the claim, sorted by cosine similarity."""

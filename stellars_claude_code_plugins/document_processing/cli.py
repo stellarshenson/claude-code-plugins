@@ -90,14 +90,31 @@ def _match_line(m: GroundingMatch) -> str:
     elif m.match_type == "semantic":
         loc = _loc_str(m.semantic_location)
         winning = m.semantic_matched_text
+    elif m.match_type == "contradicted":
+        # Show the winning-passage location even in contradicted mode
+        if m.semantic_score > 0:
+            loc = _loc_str(m.semantic_location)
+            winning = m.semantic_matched_text
+        elif m.bm25_score > 0:
+            loc = _loc_str(m.bm25_location)
+            winning = m.bm25_matched_text
+        else:
+            loc = _loc_str(m.fuzzy_location)
+            winning = m.fuzzy_matched_text
     else:
         loc = "(no match)"
         winning = m.semantic_matched_text or m.bm25_matched_text or m.fuzzy_matched_text
+
+    mismatch_info = ""
+    if m.numeric_mismatches or m.entity_mismatches:
+        mismatches = m.numeric_mismatches + m.entity_mismatches
+        mismatch_info = f" mismatches={mismatches}"
+
     return (
         f"{m.match_type.upper()} "
         f"exact={m.exact_score:.3f} fuzzy={m.fuzzy_score:.3f} "
         f"bm25={m.bm25_score:.3f} semantic={m.semantic_score:.3f} "
-        f"combined={m.combined_score:.3f} @ {loc} | {winning!r}"
+        f"agreement={m.agreement_score:.3f}{mismatch_info} @ {loc} | {winning!r}"
     )
 
 
@@ -114,6 +131,7 @@ def cmd_ground(args: argparse.Namespace) -> int:
         fuzzy_threshold=args.threshold,
         bm25_threshold=args.bm25_threshold,
         semantic_threshold=args.semantic_threshold,
+        semantic_threshold_percentile=getattr(args, "semantic_threshold_percentile", None),
         semantic_grounder=grounder,
     )
     if args.json:
@@ -154,12 +172,14 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
         fuzzy_threshold=args.threshold,
         bm25_threshold=args.bm25_threshold,
         semantic_threshold=args.semantic_threshold,
+        semantic_threshold_percentile=getattr(args, "semantic_threshold_percentile", None),
         semantic_grounder=grounder,
     )
     exact = sum(1 for m in matches if m.match_type == "exact")
     fuzzy = sum(1 for m in matches if m.match_type == "fuzzy")
     bm25 = sum(1 for m in matches if m.match_type == "bm25")
     semantic = sum(1 for m in matches if m.match_type == "semantic")
+    contradicted = sum(1 for m in matches if m.match_type == "contradicted")
     none = sum(1 for m in matches if m.match_type == "none")
     total = len(matches)
     grounded = exact + fuzzy + bm25 + semantic
@@ -173,6 +193,7 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
                     "fuzzy": fuzzy,
                     "bm25": bm25,
                     "semantic": semantic,
+                    "contradicted": contradicted,
                     "none": none,
                     "grounded": grounded,
                     "grounding_score": grounded / total if total else 0.0,
@@ -189,6 +210,7 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
                 f"- Fuzzy: {fuzzy}",
                 f"- BM25: {bm25}",
                 f"- Semantic: {semantic}",
+                f"- Contradicted: {contradicted}",
                 f"- Unconfirmed: {none}",
                 f"- Grounding score: {grounded}/{total} ({100 * grounded / total:.1f}%)"
                 if total
@@ -203,6 +225,7 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
                     "fuzzy": "CONFIRMED (fuzzy)",
                     "bm25": "CONFIRMED (bm25 / topical)",
                     "semantic": "CONFIRMED (semantic)",
+                    "contradicted": "CONTRADICTED",
                     "none": "UNCONFIRMED",
                 }[m.match_type]
                 lines.append(
@@ -312,6 +335,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Semantic cosine-similarity threshold for 'semantic' classification (default 0.6)",
     )
     g.add_argument(
+        "--semantic-threshold-percentile",
+        type=float,
+        default=None,
+        help=(
+            "Model-agnostic percentile threshold (H3): fraction of random chunk-pair "
+            "cosines that count as the tail (e.g. 0.02 = top 2%%). Overrides "
+            "--semantic-threshold when set. Self-calibrates when embedding model swaps."
+        ),
+    )
+    g.add_argument(
         "--semantic",
         choices=["on", "off"],
         default=None,
@@ -354,6 +387,16 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.6,
         help="Semantic cosine-similarity threshold for 'semantic' classification (default 0.6)",
+    )
+    gm.add_argument(
+        "--semantic-threshold-percentile",
+        type=float,
+        default=None,
+        help=(
+            "Model-agnostic percentile threshold (H3): fraction of random chunk-pair "
+            "cosines that count as the tail (e.g. 0.02 = top 2%%). Overrides "
+            "--semantic-threshold when set. Self-calibrates when embedding model swaps."
+        ),
     )
     gm.add_argument(
         "--semantic",

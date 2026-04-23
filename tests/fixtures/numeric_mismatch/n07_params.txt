@@ -1,0 +1,3 @@
+We release the 13B parameters variant of the model alongside the
+pre-training checkpoints. Smaller 7 billion parameter ablations
+are discussed in the appendix, but the primary release is 13B.

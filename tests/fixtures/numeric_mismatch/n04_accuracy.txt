@@ -1,0 +1,3 @@
+The final model achieved 78% accuracy on the held-out test set,
+a significant improvement over the 65% baseline. Precision and
+recall remained balanced at similar levels.

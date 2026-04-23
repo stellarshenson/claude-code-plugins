@@ -1,0 +1,72 @@
+[
+  {
+    "id": "n01",
+    "claim": "The cluster runs on 42 nodes.",
+    "source": "n01_nodes.txt",
+    "expected": "contradicted",
+    "notes": "claim says 42 nodes, source says 12 nodes (same context word)"
+  },
+  {
+    "id": "n02",
+    "claim": "Experiments ran on NVIDIA H100 GPUs.",
+    "source": "n02_gpu.txt",
+    "expected": "contradicted",
+    "notes": "claim says H100, source says A100 (same nvidia_gpu category)"
+  },
+  {
+    "id": "n03",
+    "claim": "The paper was published in 2019.",
+    "source": "n03_year.txt",
+    "expected": "contradicted",
+    "notes": "claim says 2019, source says 2023"
+  },
+  {
+    "id": "n04",
+    "claim": "Accuracy reached 98%.",
+    "source": "n04_accuracy.txt",
+    "expected": "contradicted",
+    "notes": "claim 98%, source 78% (same unit)"
+  },
+  {
+    "id": "n05",
+    "claim": "300 users participated in the study.",
+    "source": "n05_users.txt",
+    "expected": "contradicted",
+    "notes": "claim 300 users, source 30 users"
+  },
+  {
+    "id": "n06",
+    "claim": "Training took 72 hours on 8 GPUs.",
+    "source": "n06_training.txt",
+    "expected": "contradicted",
+    "notes": "claim 72 hours, source 24 hours"
+  },
+  {
+    "id": "n07",
+    "claim": "The model has 7B parameters.",
+    "source": "n07_params.txt",
+    "expected": "contradicted",
+    "notes": "claim 7B params, source 13B params"
+  },
+  {
+    "id": "n08",
+    "claim": "Dataset size was 500 GB.",
+    "source": "n08_dataset.txt",
+    "expected": "contradicted",
+    "notes": "claim 500 GB, source 50 GB"
+  },
+  {
+    "id": "n09",
+    "claim": "They used PyTorch for implementation.",
+    "source": "n09_framework.txt",
+    "expected": "contradicted",
+    "notes": "claim PyTorch, source TensorFlow (same framework category)"
+  },
+  {
+    "id": "n10",
+    "claim": "Latency was 15 ms on average.",
+    "source": "n10_latency.txt",
+    "expected": "contradicted",
+    "notes": "claim 15 ms, source 150 ms"
+  }
+]

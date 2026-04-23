@@ -1,0 +1,3 @@
+All experiments in this study were performed on NVIDIA A100 GPUs
+with 40 GB of HBM2e memory per device. The cluster comprised
+eight A100 units connected via NVLink.

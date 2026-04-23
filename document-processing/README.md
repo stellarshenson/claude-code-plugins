@@ -4,6 +4,54 @@ Structured document processing plugin for Claude Code. Turns raw source material
 
 Unlike ad-hoc summarization, this plugin generates a tailored processing program (`INSTRUCTIONS.md` + `BENCHMARK.md`) for the specific objective, enforces explicit phase gates, and ships a complete PDF manipulation toolkit alongside a dedicated validator for grounding and compliance audits.
 
+## Grounding CLI
+
+Ships the `document-processing` CLI with a three-layer lexical grounder plus an optional fourth semantic layer. Every hit returns line / column / paragraph / page / context snippet — the agent cites precisely without rereading the source. **Saves tokens: measured 64-86% reduction vs batched generative grounding** on real sources (SVG Medium article, Liu 2023 paper).
+
+| Layer | What it catches | Dep |
+|-------|-----------------|-----|
+| Exact (regex) | Whitespace-tolerant verbatim quotes | core |
+| Fuzzy (Levenshtein) | Near-verbatim paraphrases (char similarity ≥ threshold) | core |
+| BM25 (topical) | Same key terms, different word order | core |
+| Semantic (E5 + FAISS) | Same meaning, different wording AND different terms | opt-in |
+
+The fourth layer is off by default — it pulls `torch`, `transformers`, `faiss-cpu`, `pyarrow` and downloads a ~120 MB retrieval model. Enable only when lexical layers leave too many UNCONFIRMED claims.
+
+### Install (core)
+
+```bash
+pip install stellars-claude-code-plugins
+document-processing --help
+```
+
+### Enable semantic (optional, opt-in)
+
+```bash
+pip install 'stellars-claude-code-plugins[semantic]'
+document-processing setup                 # interactive prompt, writes settings
+```
+
+Settings live at `./.stellars-plugins/settings.json` (project-local, sibling to `.claude/`). Default model: `intfloat/multilingual-e5-small` (118M params, multilingual, trained for retrieval).
+
+### Usage
+
+```bash
+# Single claim, three-layer default
+document-processing ground \
+  --claim "Kubernetes runs on 12 nodes" \
+  --source docs/source.md \
+  --threshold 0.85 --bm25-threshold 0.5
+
+# Batch, all four layers including semantic
+document-processing ground-many \
+  --claims validation/claims.json \
+  --source docs/source.md \
+  --output validation/grounding-report.md \
+  --semantic on --semantic-threshold 0.85
+```
+
+Output includes all layer scores per claim, the winning passage, and location metadata. See `skills/validate-document/SKILL.md` for how the agent should read the output (including "never blindly trust scores — verify via the pointer").
+
 ## Installation
 
 ```bash
