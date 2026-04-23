@@ -657,6 +657,7 @@ class TestPluginEntrypoint:
         assert "stellars_claude_code_plugins.autobuild.orchestrator:main" in content
         resources = (
             Path(__file__).resolve().parent.parent
+            / "src"
             / "stellars_claude_code_plugins"
             / "autobuild"
             / "resources"

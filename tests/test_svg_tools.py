@@ -11,7 +11,12 @@ from pathlib import Path
 
 import pytest
 
-TOOLS_DIR = Path(__file__).resolve().parent.parent / "stellars_claude_code_plugins" / "svg_tools"
+TOOLS_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "src"
+    / "stellars_claude_code_plugins"
+    / "svg_tools"
+)
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "svg-infographics" / "examples"
 
 
@@ -2594,7 +2599,7 @@ class TestDefectDetection:
 class TestSvgInfographicsCLI:
     """Unified svg-infographics CLI dispatcher. 12 tests -> 3."""
 
-    CLI = Path(__file__).resolve().parent.parent / "stellars_claude_code_plugins" / "svg_tools" / "cli.py"
+    CLI = Path(__file__).resolve().parent.parent / "src" / "stellars_claude_code_plugins" / "svg_tools" / "cli.py"
 
     def _run(self, *args):
         return subprocess.run(
@@ -3195,7 +3200,7 @@ class TestTextToPath:
 
         cli = (
             Path(__file__).resolve().parent.parent
-            / "stellars_claude_code_plugins" / "svg_tools" / "cli.py"
+            / "src" / "stellars_claude_code_plugins" / "svg_tools" / "cli.py"
         )
 
         # CLI --fill emits the expected attribute

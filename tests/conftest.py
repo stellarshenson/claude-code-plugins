@@ -8,7 +8,13 @@ import pytest
 @pytest.fixture
 def autobuild_resources():
     """Path to bundled YAML resource files in the autobuild module."""
-    return Path(__file__).resolve().parent.parent / "stellars_claude_code_plugins" / "autobuild" / "resources"
+    return (
+        Path(__file__).resolve().parent.parent
+        / "src"
+        / "stellars_claude_code_plugins"
+        / "autobuild"
+        / "resources"
+    )
 
 
 @pytest.fixture
