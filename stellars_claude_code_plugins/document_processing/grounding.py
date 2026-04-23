@@ -385,6 +385,7 @@ def _compute_agreement_score(
     fuzzy_score: float,
     bm25_token_recall: float,
     semantic_score: float,
+    semantic_ratio: float = 0.0,
 ) -> float:
     """Weighted cross-layer agreement score with multi-voter bonus.
 
@@ -396,28 +397,51 @@ def _compute_agreement_score(
     counted as voters. The score is a weighted sum of per-layer
     contributions plus a multi-voter bonus that rewards independent signals.
 
+    Semantic contribution (H7, Iter 4): when ``semantic_ratio`` is provided
+    (the claim's cosine against itself-as-passage, already computed on the
+    semantic path), the ramp uses it as a model-normalised measure instead
+    of the raw cosine. ``ratio = cos(claim, match) / cos(claim, claim)`` is
+    naturally bounded in [0, 1] and is roughly model-independent for real
+    hits (~1.0) versus noise (~0.85 or below). Ramp centre 0.88 so real
+    hits contribute strongly regardless of whether the underlying model is
+    E5-small (absolute hits 0.85+) or mpnet (absolute hits 0.70+). When
+    ``semantic_ratio`` is 0 (semantic layer disabled or no hit), falls back
+    to the absolute-cosine ramp for backward compatibility.
+
     Layer vote thresholds (tuned low so real-but-weak signals still count):
     - exact:    >= 1.0 (exact is binary)
     - fuzzy:    >= 0.55 (partial-ratio of ~half the claim)
     - bm25:     >= 0.15 (some token overlap)
-    - semantic: >= 0.70 (raw cosine above random-pair top-5%)
+    - semantic: ratio >= 0.90 when available, else raw cosine >= 0.70
 
     Returns value in [0, 1].
     """
     v_exact = 1.0 if exact_score >= 1.0 else 0.0
     v_fuzzy = max(0.0, min(1.0, (fuzzy_score - 0.5) / 0.5))  # ramp over [0.5, 1.0]
     v_bm25 = max(0.0, min(1.0, bm25_token_recall / 0.5))  # ramp over [0, 0.5]
-    v_sem = max(0.0, min(1.0, (semantic_score - 0.5) / 0.5))  # ramp over [0.5, 1.0]
+    # Semantic contribution: take the MAX of the absolute-cosine ramp and
+    # the model-normalised ratio ramp so whichever signal fires more
+    # strongly dominates. Ratio path gives portability benefit for
+    # low-scale models (mpnet); absolute path protects corpora where
+    # ratio happens to be noisy. Either alone is enough to contribute.
+    v_sem_abs = max(0.0, min(1.0, (semantic_score - 0.5) / 0.5))
+    v_sem_ratio = (
+        max(0.0, min(1.0, (semantic_ratio - 0.80) / 0.20)) if semantic_ratio > 0.0 else 0.0
+    )
+    v_sem = max(v_sem_abs, v_sem_ratio)
 
     raw = 0.30 * v_exact + 0.25 * v_fuzzy + 0.20 * v_bm25 + 0.25 * v_sem
 
     # Count voters with per-layer thresholds (lower than 0.3 so weak-but-real
-    # fuzzy/bm25 signals still register agreement with a strong semantic hit)
+    # fuzzy/bm25 signals still register agreement with a strong semantic hit).
+    # Semantic voter uses semantic_ratio when available (model-agnostic) and
+    # falls back to raw cosine when not.
+    sem_votes = semantic_score >= 0.70 or semantic_ratio >= 0.90
     voter_flags = (
         exact_score >= 1.0,
         fuzzy_score >= 0.55,
         bm25_token_recall >= 0.15,
-        semantic_score >= 0.70,
+        sem_votes,
     )
     voters = sum(voter_flags)
 
@@ -441,7 +465,7 @@ def ground(
     bm25_threshold: float = 0.5,
     semantic_threshold: float = 0.6,
     semantic_threshold_percentile: float | None = None,
-    agreement_threshold: float = 0.55,
+    agreement_threshold: float = 0.45,
     context_chars: int = 80,
     semantic_grounder=None,
     semantic_top_k: int = 3,
@@ -586,12 +610,15 @@ def ground(
     full_source_text = "\n".join(t for _, _, t in pairs)
     result.entities_absent = find_absent_entities(claim, full_source_text)
 
-    # Agreement score across layers (always computed; uses 0 for disabled layers)
+    # Agreement score across layers (always computed; uses 0 for disabled layers).
+    # semantic_ratio (H7) is passed so the semantic contribution is
+    # model-normalised when available.
     result.agreement_score = _compute_agreement_score(
         exact_score=result.exact_score,
         fuzzy_score=result.fuzzy_score,
         bm25_token_recall=result.bm25_token_recall,
         semantic_score=result.semantic_score,
+        semantic_ratio=result.semantic_ratio,
     )
 
     # Entity-presence penalty: graded downweight when claim proper-noun
@@ -693,7 +720,7 @@ def ground_many(
     bm25_threshold: float = 0.5,
     semantic_threshold: float = 0.6,
     semantic_threshold_percentile: float | None = None,
-    agreement_threshold: float = 0.55,
+    agreement_threshold: float = 0.45,
     context_chars: int = 80,
     semantic_grounder=None,
     semantic_top_k: int = 3,
