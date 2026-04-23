@@ -45,7 +45,7 @@ jobs:
           .venv/bin/python -c "
           from stellars_claude_code_plugins.autobuild.model import load_model, validate_model
           from pathlib import Path
-          model = load_model(Path('stellars_claude_code_plugins/autobuild/resources'))
+          model = load_model(Path('src/stellars_claude_code_plugins/autobuild/resources'))
           issues = validate_model(model)
           assert not issues, f'Validation failed: {issues}'
           print('Model validation: OK')
