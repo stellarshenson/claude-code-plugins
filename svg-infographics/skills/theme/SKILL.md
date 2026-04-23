@@ -7,6 +7,14 @@ description: SVG theme swatch generation, palette approval workflow, colour nami
 
 Themes define the colour palette for all SVG infographics. Every project needs approved theme before deliverables.
 
+## Install (MANDATORY)
+
+```bash
+pip install stellars-claude-code-plugins
+```
+
+Ships `svg-infographics` CLI (used for swatch generation, contrast audit). Verify: `svg-infographics --help`.
+
 ## Task Tracking
 
 **MANDATORY**: TaskCreate/TaskUpdate when generating themes. Tasks for swatch generation, user approval, documentation.

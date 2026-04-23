@@ -12,6 +12,14 @@ Design application for AI agents. Agent = designer, CLI = drawing application. *
 
 **How to spawn**: `Agent(subagent_type="svg-designer", prompt="Create an infographic showing...")` or via `/svg-infographics:create`.
 
+## Install (MANDATORY)
+
+```bash
+pip install stellars-claude-code-plugins
+```
+
+Ships the `svg-infographics` CLI (primitives, connector, geom, callouts, empty-space, charts, shapes, overlaps, contrast, alignment, connectors, css, collide, validate, text-to-path) plus `render-png`. Verify: `svg-infographics --help`. Without install no tool runs, no validation passes, no delivery.
+
 ## First steps (every session)
 
 1. **Read `references/tools.md`** — full tool palette as a tree

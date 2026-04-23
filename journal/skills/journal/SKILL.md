@@ -8,6 +8,14 @@ allowed-tools: [Read, Write, Edit, Bash, Glob]
 
 Project audit trail. Every substantive task = one entry. Append at END. Last entry = newest.
 
+## Install (MANDATORY)
+
+```bash
+pip install stellars-claude-code-plugins
+```
+
+Ships `journal-tools` CLI (`check`, `sort`, `archive`). Verify: `journal-tools --help`. Without install no post-write validation, no deterministic archive, no renumber.
+
 ## Commands
 
 | Command | Use |

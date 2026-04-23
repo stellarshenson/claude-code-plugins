@@ -205,6 +205,8 @@ Structured document processing with source grounding and quality control. Takes 
 
 **Skills**: `process-documents` (4-phase workflow), `validate-document` (grounding + compliance), `pdf` (basic operations), `pdf-pro` (production workflows)
 
+**CLI**: ships the `document-processing` command with deterministic three-layer grounding - regex (exact) + Levenshtein (fuzzy) + BM25 (topical passage ranking). All three scores reported per call plus line/column/paragraph/page/context for every hit, so the grounding agent cites precisely without rereading the source. Primary grounding approach; disciplined generative interpretation is secondary.
+
 ### Usage
 
 ```bash
@@ -216,15 +218,39 @@ Structured document processing with source grounding and quality control. Takes 
 
 # Validate a document against its sources
 /document-processing:validate
+
+# Direct CLI: ground a single claim (regex + Levenshtein + BM25)
+document-processing ground \
+  --claim "Kubernetes runs on 12 nodes" \
+  --source docs/source.md \
+  --threshold 0.85 --bm25-threshold 0.5 --json
+
+# Batch ground N claims from JSON
+document-processing ground-many \
+  --claims validation/claims.json \
+  --source docs/source.md \
+  --output validation/grounding-report.md
 ```
 
 See [document-processing/README.md](document-processing/) for the grounding methodology, folder structure, and PDF processing details.
 
 ## Install
 
+The library ships the deterministic CLIs that every plugin depends on — install it alongside the plugin marketplace. Without the library the skills fall back to manual work and lose all automation.
+
 ```bash
 pip install stellars-claude-code-plugins
 ```
+
+Provides these binaries:
+
+| Binary | Used by |
+|--------|---------|
+| `orchestrate` | `autobuild` |
+| `svg-infographics` | `svg-infographics`, `devils-advocate` (visuals) |
+| `render-png` | `svg-infographics` (Playwright-based SVG → PNG) |
+| `journal-tools` | `journal` (check / sort / archive) |
+| `document-processing` | `document-processing` (ground / ground-many, three-layer grounding) |
 
 As a Claude Code plugin marketplace:
 

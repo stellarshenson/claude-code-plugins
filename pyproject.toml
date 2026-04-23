@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "1.0.37"
+version = "1.0.38"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
@@ -23,6 +23,8 @@ dependencies = [
     "playwright",
     "pygal",
     "pyyaml",
+    "rank-bm25>=0.2.2",
+    "rapidfuzz>=3.14.5",
     "scipy",
     "shapely",
     "svgelements>=1.9",
@@ -46,6 +48,7 @@ orchestrate = "stellars_claude_code_plugins.autobuild.orchestrator:main"
 svg-infographics = "stellars_claude_code_plugins.svg_tools.cli:main"
 journal-tools = "stellars_claude_code_plugins.journal_tools:main"
 render-png = "stellars_claude_code_plugins.svg_tools.render_png:main"
+document-processing = "stellars_claude_code_plugins.document_processing.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/stellarshenson/claude-code-plugins"

@@ -7,6 +7,14 @@ description: Validate a document against its source material for grounding, then
 
 Two phases: (1) source grounding - extract claims, verify each; (2) compliance - tone, style, length, format.
 
+## Install (MANDATORY)
+
+```bash
+pip install stellars-claude-code-plugins
+```
+
+Ships `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported on every call, with line/column/paragraph/page/context for every hit. Verify: `document-processing --help`. Without install no programmatic grounding — manual search only.
+
 ## Phase 0: Gather Criteria
 
 Ask if not provided.
@@ -47,13 +55,57 @@ Write `criteria.md`.
 Extract every factual claim, assertion, attribution, number, date, quote. For each:
 
 1. **State claim** exactly as in document
-2. **Search source** for confirming evidence
-3. **Mark status**:
-   - CONFIRMED - supporting fragment found (quote it)
-   - UNCONFIRMED - no evidence in source
-   - CONTRADICTED - source contradicts (quote both)
-   - INFERRED - reasonable inference, not directly stated (explain)
-   - NOT APPLICABLE - structural/editorial, not fact-based
+2. **Run grounding tool FIRST — primary approach.** The `document-processing` CLI is the agent's primary grounding method. Use `document-processing ground` for single claims or `document-processing ground-many` for batches. The tool runs THREE layers independently (regex exact, Levenshtein fuzzy, BM25 passage ranking) and reports all three scores plus line/column/paragraph/page/context for every hit — no rereading the source. **Secondary approach: disciplined generative interpretation** — only when all three lexical layers fail and the claim is semantic (e.g. a summary, synthesis, or cross-passage inference). Do not skip the tool; run it first, then add generative interpretation on top when lexical signal is absent
+3. **Mark status** based on tool output:
+   - CONFIRMED - `match_type=exact` (score 1.0) → quote `exact_matched_text` at `exact_location`
+   - CONFIRMED (fuzzy) - `match_type=fuzzy` (fuzzy_score ≥ threshold) → quote `fuzzy_matched_text` at `fuzzy_location`, note paraphrase tolerance used
+   - CONFIRMED (topical / BM25) - `match_type=bm25` (token-recall ≥ bm25_threshold) → quote `bm25_matched_text` (the winning passage) at `bm25_location`, note that wording differs but terms align
+   - UNCONFIRMED - `match_type=none` (all three scores below their thresholds) → no lexical evidence in source; consider generative interpretation only if semantic claim, otherwise remove/rephrase
+   - CONTRADICTED - source directly contradicts (manual call; re-run with the contradicting phrase to cite location)
+   - INFERRED - reasonable inference, not directly stated (explain; tool confirms absence of verbatim)
+   - NOT APPLICABLE - structural/editorial, not fact-based (skip tool)
+
+### Using the grounding CLI
+
+Batch pass — builds `grounding-report.md` in one shot:
+
+```bash
+# claims.json: list of strings or [{"claim": "...", "id": "..."}]
+document-processing ground-many \
+  --claims validation/claims.json \
+  --source docs/source.md \
+  --output validation/grounding-report.md \
+  --threshold 0.85 \
+  --bm25-threshold 0.5
+```
+
+Single-claim probe — useful for on-demand checks during review:
+
+```bash
+document-processing ground \
+  --claim "Kubernetes runs on 12 nodes" \
+  --source docs/architecture.md \
+  --json
+```
+
+All three scores (exact + fuzzy + bm25) come back on every call even when only one fires — use the layered signal to distinguish verbatim quotes, paraphrases, and topical claims from fabrications.
+
+### Tool output maps to status
+
+| Tool output | Status |
+|-------------|--------|
+| `exact_score=1.0` | CONFIRMED |
+| `fuzzy_score ≥ threshold`, `exact_score=0` | CONFIRMED (fuzzy) — note paraphrase |
+| `bm25_score ≥ bm25_threshold`, `exact=0`, `fuzzy<threshold` | CONFIRMED (topical) — note wording differs, same terms |
+| all three below thresholds | UNCONFIRMED (quote best available for diagnostics) |
+
+Priority when multiple layers hit: exact > fuzzy > bm25.
+
+The tool also returns `exact_location` / `fuzzy_location` / `bm25_location` with `line_start`, `column_start`, `paragraph`, `page`, `context_before`, `context_after` — cite these directly in the report instead of rereading the source file. This saves tokens and keeps citations precise.
+
+### When to reach for generative (secondary) grounding
+
+Only when all three lexical layers return `none` AND the claim is semantic (summary, synthesis, cross-passage inference). Disciplined: still cite WHICH passages contributed and acknowledge absence of verbatim/paraphrase/term match. Do not let generative interpretation override a lexical UNCONFIRMED for factual claims — that is fabrication territory.
 
 **Output** (`grounding-report.md`):
 
@@ -68,13 +120,19 @@ Extract every factual claim, assertion, attribution, number, date, quote. For ea
 
 ### 1. <short claim summary>
 **Claim**: "<exact text from document>"
-**Status**: CONFIRMED
-**Source**: "<supporting fragment from source>"
+**Status**: CONFIRMED (exact 1.000, fuzzy 1.000, bm25 1.000)
+**Source**: "<supporting fragment from source>" @ `docs/source.md:L42:C5 ¶3 pg2`
 
 ### 2. <short claim summary>
 **Claim**: "<exact text from document>"
-**Status**: UNCONFIRMED
-**Source**: No supporting evidence found
+**Status**: CONFIRMED (topical) (exact 0.000, fuzzy 0.52, bm25 0.88)
+**Source**: "<winning passage from source>" @ `docs/source.md:L88 ¶5` (token-recall 0.88)
+**Note**: Wording differs; same key terms found in passage.
+
+### 3. <short claim summary>
+**Claim**: "<exact text from document>"
+**Status**: UNCONFIRMED (exact 0.000, fuzzy 0.62, bm25 0.20)
+**Source**: No lexical evidence in source. Best fuzzy: "<nearest fragment>" @ `docs/source.md:L88 ¶5` (ratio 0.62, below threshold). Best BM25 passage @ `docs/source.md:¶12` (token-recall 0.20, below threshold)
 **Recommendation**: Remove or rephrase
 
 ...
