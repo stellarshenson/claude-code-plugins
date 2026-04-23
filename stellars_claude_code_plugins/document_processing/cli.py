@@ -3,6 +3,7 @@
 Subcommands:
     ground        — ground a single claim against source files
     ground-many   — ground many claims (from JSON) against sources, emit report
+    setup         — first-run: configure optional semantic grounding
 """
 
 from __future__ import annotations
@@ -13,11 +14,41 @@ import json
 from pathlib import Path
 import sys
 
+from stellars_claude_code_plugins.document_processing import settings as settings_mod
 from stellars_claude_code_plugins.document_processing.grounding import (
     GroundingMatch,
     ground,
     ground_many,
 )
+
+
+def _build_semantic_grounder(cfg: settings_mod.Settings, cli_override: str | None):
+    """Return a SemanticGrounder or None based on settings + CLI override.
+
+    ``cli_override`` may be ``"on"``, ``"off"``, or ``None``.
+    """
+    use = cfg.semantic_enabled
+    if cli_override == "on":
+        use = True
+    elif cli_override == "off":
+        use = False
+    if not use:
+        return None
+    if not settings_mod.is_semantic_available():
+        print(
+            "WARNING: semantic grounding requested but dependencies missing.\n"
+            + settings_mod.semantic_install_hint(),
+            file=sys.stderr,
+        )
+        return None
+    # Lazy import only when actually instantiating
+    from stellars_claude_code_plugins.document_processing.semantic import SemanticGrounder
+
+    return SemanticGrounder(
+        model_name=cfg.semantic_model,
+        device=cfg.semantic_device,
+        cache_dir=cfg.cache_dir,
+    )
 
 
 def _read_sources(paths: list[str]) -> list[tuple[str, str]]:
@@ -46,7 +77,7 @@ def _loc_str(loc) -> str:
 
 
 def _match_line(m: GroundingMatch) -> str:
-    """One-line summary showing exact + fuzzy + BM25 scores with winning location."""
+    """One-line summary showing all layer scores with winning location."""
     if m.match_type == "exact":
         loc = _loc_str(m.exact_location)
         winning = m.exact_matched_text
@@ -56,14 +87,17 @@ def _match_line(m: GroundingMatch) -> str:
     elif m.match_type == "bm25":
         loc = _loc_str(m.bm25_location)
         winning = m.bm25_matched_text
+    elif m.match_type == "semantic":
+        loc = _loc_str(m.semantic_location)
+        winning = m.semantic_matched_text
     else:
         loc = "(no match)"
-        winning = m.bm25_matched_text or m.fuzzy_matched_text
+        winning = m.semantic_matched_text or m.bm25_matched_text or m.fuzzy_matched_text
     return (
         f"{m.match_type.upper()} "
         f"exact={m.exact_score:.3f} fuzzy={m.fuzzy_score:.3f} "
-        f"bm25={m.bm25_score:.3f} combined={m.combined_score:.3f} "
-        f"@ {loc} | {winning!r}"
+        f"bm25={m.bm25_score:.3f} semantic={m.semantic_score:.3f} "
+        f"combined={m.combined_score:.3f} @ {loc} | {winning!r}"
     )
 
 
@@ -72,11 +106,15 @@ def cmd_ground(args: argparse.Namespace) -> int:
     if not sources:
         print("ERROR: at least one --source required", file=sys.stderr)
         return 1
+    cfg = settings_mod.ensure_loaded(auto_prompt=False)
+    grounder = _build_semantic_grounder(cfg, getattr(args, "semantic", None))
     m = ground(
         args.claim,
         sources,
         fuzzy_threshold=args.threshold,
         bm25_threshold=args.bm25_threshold,
+        semantic_threshold=args.semantic_threshold,
+        semantic_grounder=grounder,
     )
     if args.json:
         print(json.dumps(asdict(m), indent=2))
@@ -108,18 +146,23 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
         )
         return 1
 
+    cfg = settings_mod.ensure_loaded(auto_prompt=False)
+    grounder = _build_semantic_grounder(cfg, getattr(args, "semantic", None))
     matches = ground_many(
         claims,
         sources,
         fuzzy_threshold=args.threshold,
         bm25_threshold=args.bm25_threshold,
+        semantic_threshold=args.semantic_threshold,
+        semantic_grounder=grounder,
     )
     exact = sum(1 for m in matches if m.match_type == "exact")
     fuzzy = sum(1 for m in matches if m.match_type == "fuzzy")
     bm25 = sum(1 for m in matches if m.match_type == "bm25")
+    semantic = sum(1 for m in matches if m.match_type == "semantic")
     none = sum(1 for m in matches if m.match_type == "none")
     total = len(matches)
-    grounded = exact + fuzzy + bm25
+    grounded = exact + fuzzy + bm25 + semantic
 
     if args.output:
         if args.json:
@@ -129,6 +172,7 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
                     "exact": exact,
                     "fuzzy": fuzzy,
                     "bm25": bm25,
+                    "semantic": semantic,
                     "none": none,
                     "grounded": grounded,
                     "grounding_score": grounded / total if total else 0.0,
@@ -144,6 +188,7 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
                 f"- Exact: {exact}",
                 f"- Fuzzy: {fuzzy}",
                 f"- BM25: {bm25}",
+                f"- Semantic: {semantic}",
                 f"- Unconfirmed: {none}",
                 f"- Grounding score: {grounded}/{total} ({100 * grounded / total:.1f}%)"
                 if total
@@ -157,11 +202,13 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
                     "exact": "CONFIRMED",
                     "fuzzy": "CONFIRMED (fuzzy)",
                     "bm25": "CONFIRMED (bm25 / topical)",
+                    "semantic": "CONFIRMED (semantic)",
                     "none": "UNCONFIRMED",
                 }[m.match_type]
                 lines.append(
                     f"### {i}. {status} (exact {m.exact_score:.3f}, "
-                    f"fuzzy {m.fuzzy_score:.3f}, bm25 {m.bm25_score:.3f})"
+                    f"fuzzy {m.fuzzy_score:.3f}, bm25 {m.bm25_score:.3f}, "
+                    f"semantic {m.semantic_score:.3f})"
                 )
                 lines.append(f"**Claim**: {m.claim!r}")
                 if m.exact_score == 1.0:
@@ -186,7 +233,21 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
                     )
                     snippet = m.bm25_matched_text[:200].replace("\n", " ")
                     lines.append(f"  > {snippet}{'…' if len(m.bm25_matched_text) > 200 else ''}")
-                if m.exact_score == 0 and m.fuzzy_score == 0 and m.bm25_score == 0:
+                if m.semantic_score > 0:
+                    lines.append(
+                        f"**Best semantic passage** (cosine {m.semantic_score:.3f}) @ "
+                        f"{_loc_str(m.semantic_location)}:"
+                    )
+                    snippet = m.semantic_matched_text[:200].replace("\n", " ")
+                    lines.append(
+                        f"  > {snippet}{'…' if len(m.semantic_matched_text) > 200 else ''}"
+                    )
+                if (
+                    m.exact_score == 0
+                    and m.fuzzy_score == 0
+                    and m.bm25_score == 0
+                    and m.semantic_score == 0
+                ):
                     lines.append("**Match**: (no signal from any layer)")
                 lines.append("")
             Path(args.output).write_text("\n".join(lines), encoding="utf-8")
@@ -196,7 +257,8 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
             print(_match_line(m))
 
     print(
-        f"\n{total} claims: {exact} exact, {fuzzy} fuzzy, {bm25} bm25, {none} unconfirmed. "
+        f"\n{total} claims: {exact} exact, {fuzzy} fuzzy, {bm25} bm25, "
+        f"{semantic} semantic, {none} unconfirmed. "
         f"score={grounded}/{total} ({100 * grounded / total:.1f}%)"
         if total
         else "0 claims",
@@ -243,6 +305,18 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0.5,
         help="BM25 token-recall threshold for 'bm25' classification (default 0.5)",
     )
+    g.add_argument(
+        "--semantic-threshold",
+        type=float,
+        default=0.6,
+        help="Semantic cosine-similarity threshold for 'semantic' classification (default 0.6)",
+    )
+    g.add_argument(
+        "--semantic",
+        choices=["on", "off"],
+        default=None,
+        help="Override settings.semantic_enabled for this call",
+    )
     g.add_argument("--json", action="store_true", help="Emit the full match as JSON")
     g.set_defaults(func=cmd_ground)
 
@@ -275,11 +349,56 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0.5,
         help="BM25 token-recall threshold for 'bm25' classification (default 0.5)",
     )
+    gm.add_argument(
+        "--semantic-threshold",
+        type=float,
+        default=0.6,
+        help="Semantic cosine-similarity threshold for 'semantic' classification (default 0.6)",
+    )
+    gm.add_argument(
+        "--semantic",
+        choices=["on", "off"],
+        default=None,
+        help="Override settings.semantic_enabled for this call",
+    )
     gm.add_argument("--output", help="Write report to this path instead of stdout")
     gm.add_argument("--json", action="store_true", help="Emit JSON instead of markdown")
     gm.set_defaults(func=cmd_ground_many)
 
+    # setup subcommand
+    su = sub.add_parser(
+        "setup",
+        help="First-run setup: ask about semantic grounding, write settings",
+        description=(
+            "Interactive setup for .stellars-plugins/settings.json. Asks whether to "
+            "enable the optional semantic grounding layer (ModernBERT + FAISS)."
+        ),
+    )
+    su.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-prompt even if settings already exist",
+    )
+    su.set_defaults(func=cmd_setup)
+
     return parser
+
+
+def cmd_setup(args: argparse.Namespace) -> int:
+    if settings_mod.settings_exist() and not args.force:
+        cfg = settings_mod.load()
+        print(
+            f"Settings already present at {settings_mod.settings_path()}.\n"
+            f"  semantic_enabled = {cfg.semantic_enabled}\n"
+            f"  semantic_model   = {cfg.semantic_model}\n"
+            f"  semantic_device  = {cfg.semantic_device}\n"
+            f"  cache_dir        = {cfg.cache_dir}\n"
+            "Re-run with --force to reconfigure.",
+            file=sys.stderr,
+        )
+        return 0
+    settings_mod.prompt_first_run()
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

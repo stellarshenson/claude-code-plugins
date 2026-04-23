@@ -15,6 +15,56 @@ pip install stellars-claude-code-plugins
 
 Ships `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported on every call, with line/column/paragraph/page/context for every hit. Verify: `document-processing --help`. Without install no programmatic grounding — manual search only.
 
+## Check semantic-grounding consent (MANDATORY every run)
+
+Before running grounding, read `./.stellars-plugins/settings.json` (project-local, sibling to `.claude/`) to see whether the user has consented to semantic grounding:
+
+```bash
+test -f .stellars-plugins/settings.json && cat .stellars-plugins/settings.json
+```
+
+If the file does not exist, run `document-processing setup` — this prompts the user once, writes the answer, and never prompts again. Do NOT silently enable semantic; it requires optional deps (`pip install 'stellars-claude-code-plugins[semantic]'`) and downloads a ~150 MB model on first use.
+
+Read the `semantic_enabled` field:
+
+- `semantic_enabled: true` → pass `--semantic on` to every `document-processing ground` / `ground-many` call. The tool adds a 4th layer (ModernBERT + FAISS) that catches claims where wording AND terms diverge but meaning aligns. Useful for long or abstract sources.
+- `semantic_enabled: false` (default) → pass `--semantic off` or omit the flag. Three lexical layers only.
+- Missing file → run `document-processing setup` and proceed per user's answer.
+
+### Never blindly trust scores. Verify generatively when in doubt
+
+Scores = signals, not truth. Every layer can be fooled:
+
+- Exact: hits unrelated substring with same word order
+- Fuzzy: high on character overlap with opposite meaning ("3-6 hours" vs "36 hours")
+- BM25: high on shared terms with no logical link
+- Semantic: high on topically-similar passage that doesn't support the claim
+
+**Tool always gives a pointer — line, column, paragraph, page, context snippet — even on UNCONFIRMED.** Use it. Jump to the location, read the passage, judge. No full re-scan needed. That is the whole point.
+
+Verify generatively when ANY of:
+
+- Borderline score: winning layer within 0.05 of threshold (fuzzy 0.85-0.90, bm25 0.40-0.50, semantic 0.85-0.90)
+- Layer disagreement: semantic ≥0.85 but lexical low (fuzzy <0.6, bm25 <0.3)
+- Location off: tool points at a passage nowhere near where the claim should live
+- Numerical / named-entity claims: models blur "3 seconds" vs "3 minutes". Always read
+- Medium score on fake-sounding claim: reject unless the named entity appears in the quoted passage
+
+Output verdict: cite the quoted passage + state supports / contradicts / topical-only. Never override CONFIRMED without evidence. Never accept CONFIRMED without reading.
+
+### When to RE-RECOMMEND semantic to the user
+
+If `semantic_enabled` is `false` AND the three-layer pass leaves many UNCONFIRMED claims (rule of thumb: **>25% unconfirmed** or **any unconfirmed claim with fuzzy 0.5-0.85 AND bm25 0.2-0.5** — the "almost grounded" zone), stop and recommend semantic to the user explicitly:
+
+> The grounding pass left N/M claims UNCONFIRMED and several are in the "almost grounded" zone (paraphrased meaning, diverged wording). Enabling semantic grounding (ModernBERT + FAISS) would likely catch these. To enable:
+>
+> 1. `pip install 'stellars-claude-code-plugins[semantic]'`
+> 2. `document-processing setup --force` and answer yes
+>
+> This downloads a ~150 MB model on first use. Re-run the grounding with `--semantic on` afterwards.
+
+Do NOT silently enable it — ask the user first, they already declined once. Offer, wait for consent, then proceed.
+
 ## Phase 0: Gather Criteria
 
 Ask if not provided.
@@ -71,12 +121,14 @@ Batch pass — builds `grounding-report.md` in one shot:
 
 ```bash
 # claims.json: list of strings or [{"claim": "...", "id": "..."}]
+# Pass --semantic on if settings.semantic_enabled == true
 document-processing ground-many \
   --claims validation/claims.json \
   --source docs/source.md \
   --output validation/grounding-report.md \
   --threshold 0.85 \
-  --bm25-threshold 0.5
+  --bm25-threshold 0.5 \
+  --semantic on     # omit or use 'off' when settings disables it
 ```
 
 Single-claim probe — useful for on-demand checks during review:
@@ -97,9 +149,10 @@ All three scores (exact + fuzzy + bm25) come back on every call even when only o
 | `exact_score=1.0` | CONFIRMED |
 | `fuzzy_score ≥ threshold`, `exact_score=0` | CONFIRMED (fuzzy) — note paraphrase |
 | `bm25_score ≥ bm25_threshold`, `exact=0`, `fuzzy<threshold` | CONFIRMED (topical) — note wording differs, same terms |
-| all three below thresholds | UNCONFIRMED (quote best available for diagnostics) |
+| `semantic_score ≥ semantic_threshold`, lexical all below | CONFIRMED (semantic) — meaning matches, wording + terms diverge. Only fires when `--semantic on` |
+| all layers below thresholds | UNCONFIRMED (quote best available for diagnostics) |
 
-Priority when multiple layers hit: exact > fuzzy > bm25.
+Priority when multiple layers hit: exact > fuzzy > bm25 > semantic.
 
 The tool also returns `exact_location` / `fuzzy_location` / `bm25_location` with `line_start`, `column_start`, `paragraph`, `page`, `context_before`, `context_after` — cite these directly in the report instead of rereading the source file. This saves tokens and keeps citations precise.
 

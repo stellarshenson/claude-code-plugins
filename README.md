@@ -17,6 +17,8 @@ The marketplace includes a shared YAML-driven orchestration engine (`autobuild`)
 
 > [!NOTE]
 > Read the full article on the orchestration approach: [Your AI Agent Will Cut Corners. Here's How to Stop It.](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762)
+>
+> Read about the SVG infographics plugin: [Stop Fixing Your AI's SVGs](https://medium.com/towards-artificial-intelligence/stop-fixing-your-ai-svgs-715df70ccca0)
 
 ## Plugins
 
@@ -205,7 +207,7 @@ Structured document processing with source grounding and quality control. Takes 
 
 **Skills**: `process-documents` (4-phase workflow), `validate-document` (grounding + compliance), `pdf` (basic operations), `pdf-pro` (production workflows)
 
-**CLI**: ships the `document-processing` command with deterministic three-layer grounding - regex (exact) + Levenshtein (fuzzy) + BM25 (topical passage ranking). All three scores reported per call plus line/column/paragraph/page/context for every hit, so the grounding agent cites precisely without rereading the source. Primary grounding approach; disciplined generative interpretation is secondary.
+**CLI**: ships the `document-processing` command with three-layer grounding — regex (exact) + Levenshtein (fuzzy) + BM25 (topical). Reports all three scores plus line/column/paragraph/page/context for every hit, so the agent cites without rereading. Optional 4th semantic layer via `[semantic]` extras. **Saves tokens — the grounding runs locally, no LLM call per claim.**
 
 ### Usage
 

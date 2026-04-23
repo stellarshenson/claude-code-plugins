@@ -41,7 +41,7 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 from rapidfuzz.fuzz import partial_ratio_alignment
 
-MatchType = Literal["exact", "fuzzy", "bm25", "none"]
+MatchType = Literal["exact", "fuzzy", "bm25", "semantic", "none"]
 
 SourceInput = str | tuple[str, str]
 """A source is either raw text or a ``(path, text)`` pair for provenance."""
@@ -98,9 +98,13 @@ class GroundingMatch:
     bm25_token_recall: float = 0.0  # Fraction of unique claim tokens in best passage
     bm25_matched_text: str = ""
     bm25_location: Location = field(default_factory=Location)
+    # Semantic (ModernBERT + FAISS) layer — optional, off unless enabled
+    semantic_score: float = 0.0  # cosine similarity in [0, 1] with L2-normalised embeddings
+    semantic_matched_text: str = ""
+    semantic_location: Location = field(default_factory=Location)
     # Resolution
     match_type: MatchType = "none"
-    combined_score: float = 0.0  # max(exact_score, fuzzy_score, bm25_score)
+    combined_score: float = 0.0  # max of all enabled layers
 
 
 def _normalize_whitespace(text: str) -> str:
@@ -286,7 +290,9 @@ def ground(
     *,
     fuzzy_threshold: float = 0.85,
     bm25_threshold: float = 0.5,
+    semantic_threshold: float = 0.6,
     context_chars: int = 80,
+    semantic_grounder=None,
 ) -> GroundingMatch:
     """Ground a single claim against one or more sources.
 
@@ -363,14 +369,48 @@ def ground(
             context_chars=context_chars,
         )
 
-    # Resolve match_type: exact > fuzzy > bm25 > none
-    result.combined_score = max(result.exact_score, result.fuzzy_score, result.bm25_score)
+    # Semantic pass (optional; off unless caller passes a grounder)
+    if semantic_grounder is not None:
+        try:
+            # Index only if not already indexed (ground_many pre-indexes once)
+            if getattr(semantic_grounder, "_index", None) is None:
+                semantic_grounder.index_sources(pairs)
+            hits = semantic_grounder.search(claim, top_k=1)
+            if hits:
+                best = hits[0]
+                # Raw cosine similarity; for L2-normalised embeddings it lives in
+                # [-1, 1] but typical retrieval signal is [0, 1]. Clamp negatives
+                # to 0 so the score always reads as an "agreement" level.
+                result.semantic_score = max(0.0, min(1.0, best.score))
+                result.semantic_matched_text = best.matched_text
+                source_text = next(t for i, _, t in pairs if i == best.source_index)
+                result.semantic_location = _locate(
+                    source_text,
+                    best.char_start,
+                    best.char_end,
+                    source_index=best.source_index,
+                    source_path=best.source_path,
+                    context_chars=context_chars,
+                )
+        except Exception:
+            # Semantic layer is advisory; never block the lexical result
+            pass
+
+    # Resolve match_type: exact > fuzzy > bm25 > semantic > none
+    result.combined_score = max(
+        result.exact_score,
+        result.fuzzy_score,
+        result.bm25_score,
+        result.semantic_score,
+    )
     if result.exact_score == 1.0:
         result.match_type = "exact"
     elif result.fuzzy_score >= fuzzy_threshold:
         result.match_type = "fuzzy"
     elif result.bm25_score >= bm25_threshold:
         result.match_type = "bm25"
+    elif result.semantic_score >= semantic_threshold:
+        result.match_type = "semantic"
     else:
         result.match_type = "none"
 
@@ -383,16 +423,33 @@ def ground_many(
     *,
     fuzzy_threshold: float = 0.85,
     bm25_threshold: float = 0.5,
+    semantic_threshold: float = 0.6,
     context_chars: int = 80,
+    semantic_grounder=None,
 ) -> list[GroundingMatch]:
-    """Batch version of :func:`ground`. Returns one match per claim."""
+    """Batch version of :func:`ground`.
+
+    If ``semantic_grounder`` is provided, the source passages are indexed
+    once (chunked + embedded + FAISS) and reused across all claims — major
+    speedup over re-indexing per claim.
+    """
+    # Eagerly index sources once for the semantic layer if supplied
+    if semantic_grounder is not None:
+        try:
+            pairs = _unpack_sources(sources)
+            semantic_grounder.index_sources(pairs)
+        except Exception:
+            semantic_grounder = None  # disable on error
+
     return [
         ground(
             c,
             sources,
             fuzzy_threshold=fuzzy_threshold,
             bm25_threshold=bm25_threshold,
+            semantic_threshold=semantic_threshold,
             context_chars=context_chars,
+            semantic_grounder=semantic_grounder,
         )
         for c in claims
     ]

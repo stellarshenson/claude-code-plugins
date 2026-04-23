@@ -11,6 +11,11 @@ from stellars_claude_code_plugins.document_processing import (
     ground,
     ground_many,
 )
+from stellars_claude_code_plugins.document_processing import settings as settings_mod
+from stellars_claude_code_plugins.document_processing.chunking import (
+    Chunk,
+    recursive_chunk,
+)
 from stellars_claude_code_plugins.document_processing.cli import main as cli_main
 from stellars_claude_code_plugins.document_processing.grounding import Location
 
@@ -320,7 +325,17 @@ class TestCLI:
         src = tmp_path / "src.txt"
         src.write_text("Only about horticulture.")
         code = cli_main(
-            ["ground", "--claim", "quantum physics", "--source", str(src), "--threshold", "0.95"]
+            [
+                "ground",
+                "--claim",
+                "quantum physics",
+                "--source",
+                str(src),
+                "--threshold",
+                "0.95",
+                "--semantic",
+                "off",  # ensure test doesn't depend on optional model download
+            ]
         )
         assert code == 1
         out = capsys.readouterr().out
@@ -392,3 +407,104 @@ class TestCLI:
     def test_ground_missing_source_errors(self, capsys):
         with pytest.raises(SystemExit):
             cli_main(["ground", "--claim", "anything", "--source", "/nonexistent/file.txt"])
+
+
+class TestChunking:
+    """Recursive chunking preserves offsets + boundaries."""
+
+    def test_empty_text_returns_empty(self):
+        assert recursive_chunk("") == []
+
+    def test_short_text_one_chunk(self):
+        text = "The quick brown fox."
+        chunks = recursive_chunk(text, max_chars=1500)
+        assert len(chunks) == 1
+        assert chunks[0].text == text
+        assert chunks[0].char_start == 0
+        assert chunks[0].char_end == len(text)
+
+    def test_paragraph_split(self):
+        text = "First paragraph here.\n\nSecond paragraph longer content here.\n\nThird paragraph ends the document."
+        chunks = recursive_chunk(text, max_chars=30, min_chunk_chars=10)
+        assert len(chunks) >= 2
+
+    def test_offsets_are_valid(self):
+        text = "paragraph one\n\nparagraph two content\n\nparagraph three final"
+        chunks = recursive_chunk(text, max_chars=200, min_chunk_chars=5)
+        for c in chunks:
+            # Char offsets must be valid bounds into the source
+            assert 0 <= c.char_start < c.char_end <= len(text)
+            # First + last words of the chunk should appear inside the source span
+            first_word = c.text.split()[0]
+            last_word = c.text.split()[-1]
+            span = text[c.char_start : c.char_end]
+            assert first_word in span
+            assert last_word in span
+
+    def test_long_sentence_sliding_window(self):
+        sentence = "word " * 500  # long single sentence
+        chunks = recursive_chunk(sentence, max_chars=200, overlap_chars=50)
+        assert len(chunks) > 1
+        # Overlap: consecutive chunks share some content
+        if len(chunks) >= 2:
+            assert chunks[0].char_end > chunks[1].char_start
+
+    def test_offsets_monotonic(self):
+        text = "a " * 200 + "\n\n" + "b " * 200
+        chunks = recursive_chunk(text, max_chars=100)
+        starts = [c.char_start for c in chunks]
+        assert starts == sorted(starts)
+
+    def test_chunk_dataclass(self):
+        c = Chunk("hello", 0, 5)
+        assert len(c) == 5
+
+
+class TestSettings:
+    """Settings load/save/prompt — zero-dep."""
+
+    def test_defaults_when_no_file(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        cfg = settings_mod.load()
+        assert cfg.semantic_enabled is False
+        assert cfg.semantic_model == "intfloat/multilingual-e5-small"
+        assert cfg.semantic_device == "auto"
+
+    def test_save_then_load_roundtrip(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        # Create project root marker
+        (tmp_path / ".claude").mkdir()
+        s = settings_mod.Settings(semantic_enabled=True, semantic_model="custom/model")
+        path = settings_mod.save(s)
+        assert path.exists()
+        loaded = settings_mod.load()
+        assert loaded.semantic_enabled is True
+        assert loaded.semantic_model == "custom/model"
+
+    def test_is_semantic_available_reflects_imports(self):
+        # This may be True or False depending on test env — just ensure the
+        # function runs without error and returns a bool
+        result = settings_mod.is_semantic_available()
+        assert isinstance(result, bool)
+
+    def test_install_hint_is_helpful(self):
+        hint = settings_mod.semantic_install_hint()
+        assert "pip install" in hint
+        assert "semantic" in hint.lower()
+
+
+class TestCLISetup:
+    """CLI setup subcommand."""
+
+    def test_setup_shows_current_if_present(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        (tmp_path / ".claude").mkdir()
+        # Pre-seed settings
+        settings_mod.save(settings_mod.Settings(semantic_enabled=True))
+        code = cli_main(["setup"])
+        assert code == 0
+        err = capsys.readouterr().err
+        assert "semantic_enabled" in err

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "1.0.38"
+version = "1.0.39"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
@@ -41,6 +41,12 @@ dev = [
     "pytest-cov",
     "ruff",
     "twine",
+]
+semantic = [
+    "torch>=2.0",
+    "transformers>=4.40",
+    "faiss-cpu>=1.7",
+    "pyarrow>=14.0",
 ]
 
 [project.scripts]
