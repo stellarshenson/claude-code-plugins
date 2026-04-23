@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "1.0.39"
+version = "1.1.3"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
@@ -52,7 +52,7 @@ semantic = [
 [project.scripts]
 orchestrate = "stellars_claude_code_plugins.autobuild.orchestrator:main"
 svg-infographics = "stellars_claude_code_plugins.svg_tools.cli:main"
-journal-tools = "stellars_claude_code_plugins.journal_tools:main"
+journal-tools = "stellars_claude_code_plugins.journal.journal_tools:main"
 render-png = "stellars_claude_code_plugins.svg_tools.render_png:main"
 document-processing = "stellars_claude_code_plugins.document_processing.cli:main"
 
@@ -65,6 +65,7 @@ Issues = "https://github.com/stellarshenson/claude-code-plugins/issues"
 include-package-data = true
 
 [tool.setuptools.package-data]
+"stellars_claude_code_plugins" = ["config_*.yaml"]
 "stellars_claude_code_plugins.autobuild" = ["resources/*.yaml"]
 
 [tool.setuptools.packages.find]

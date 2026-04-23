@@ -42,9 +42,11 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 from rapidfuzz.fuzz import partial_ratio_alignment
 
-from stellars_claude_code_plugins.document_processing.config import (
+from stellars_claude_code_plugins.config import (
     GroundingConfig,
-    load_config,
+)
+from stellars_claude_code_plugins.config import (
+    load_document_processing_config as load_config,
 )
 from stellars_claude_code_plugins.document_processing.entity_check import (
     find_absent_entities,

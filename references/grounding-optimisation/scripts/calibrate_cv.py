@@ -36,7 +36,7 @@ import time
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from stellars_claude_code_plugins.document_processing.config import load_config  # noqa: E402
+from stellars_claude_code_plugins.config import load_document_processing_config as load_config  # noqa: E402
 from stellars_claude_code_plugins.document_processing.grounding import ground_many  # noqa: E402
 from stellars_claude_code_plugins.document_processing.semantic import SemanticGrounder  # noqa: E402
 
@@ -49,10 +49,20 @@ CORPORA = {
         "claims": Path("/tmp/grounding-demo/liu_claims.json"),
         "source": Path("/tmp/grounding-demo/liu2023.txt"),
         "expected": {
-            "l01": "CONFIRMED", "l02": "CONFIRMED", "l03": "CONFIRMED", "l04": "CONFIRMED",
-            "l05": "CONFIRMED", "l06": "CONFIRMED", "l07": "CONFIRMED", "l08": "CONFIRMED",
-            "l09": "CONFIRMED", "l10": "CONFIRMED", "l11": "CONFIRMED", "l12": "CONFIRMED",
-            "l13": "REJECTED", "l14": "REJECTED",
+            "l01": "CONFIRMED",
+            "l02": "CONFIRMED",
+            "l03": "CONFIRMED",
+            "l04": "CONFIRMED",
+            "l05": "CONFIRMED",
+            "l06": "CONFIRMED",
+            "l07": "CONFIRMED",
+            "l08": "CONFIRMED",
+            "l09": "CONFIRMED",
+            "l10": "CONFIRMED",
+            "l11": "CONFIRMED",
+            "l12": "CONFIRMED",
+            "l13": "REJECTED",
+            "l14": "REJECTED",
         },
         "real_ids": tuple(f"l{i:02d}" for i in range(1, 13)),
         "fake_ids": ("l13", "l14"),
@@ -174,11 +184,7 @@ def evaluate_corpus(
 
 def cal_score(metrics: dict) -> float:
     """CV-native calibration score. Higher is better."""
-    return (
-        metrics["accuracy"]
-        + 0.25 * metrics["portability"]
-        + 0.25 * metrics["gap_attainment"]
-    )
+    return metrics["accuracy"] + 0.25 * metrics["portability"] + 0.25 * metrics["gap_attainment"]
 
 
 # --------------------------------------------------------------------------
@@ -199,9 +205,7 @@ def _build_grounders() -> dict:
         text = meta["source"].read_text(encoding="utf-8", errors="replace")
         pair = (str(meta["source"]), text)
         for model_name in MODELS:
-            print(
-                f"loading {corpus_name} × {model_name.split('/')[-1]}", file=sys.stderr
-            )
+            print(f"loading {corpus_name} × {model_name.split('/')[-1]}", file=sys.stderr)
             g = SemanticGrounder(
                 model_name=model_name,
                 device="cpu",
@@ -272,9 +276,7 @@ def main() -> int:
                 "test_portability": test_metrics["portability"],
                 "test_gap_attainment": round(test_metrics["gap_attainment"], 4),
                 "overfit_gap": round(best_cal["accuracy"] - test_metrics["accuracy"], 4),
-                "runners_up": [
-                    {"config": r[1], "cal_score": round(r[0], 4)} for r in ranked[1:4]
-                ],
+                "runners_up": [{"config": r[1], "cal_score": round(r[0], 4)} for r in ranked[1:4]],
             }
         )
 
@@ -308,12 +310,8 @@ def main() -> int:
 
     aggregate = {
         "mean_test_accuracy": round(statistics.fmean(test_accs), 4),
-        "std_test_accuracy": round(
-            statistics.pstdev(test_accs) if len(test_accs) > 1 else 0.0, 4
-        ),
-        "mean_overfit_gap": round(
-            statistics.fmean(f["overfit_gap"] for f in fold_results), 4
-        ),
+        "std_test_accuracy": round(statistics.pstdev(test_accs) if len(test_accs) > 1 else 0.0, 4),
+        "mean_overfit_gap": round(statistics.fmean(f["overfit_gap"] for f in fold_results), 4),
         "all_folds_same_winner": all_same,
         "winning_config_if_same": fold_results[0]["best_config"] if all_same else None,
         "current_default_config": default_cfg,
