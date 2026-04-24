@@ -16,22 +16,44 @@ Design application for AI agents. Agent = designer, CLI = drawing application. *
 
 Three commands, in order. No authoring happens outside this loop. Applies whether this skill is loaded in the main context or via a forked agent.
 
-1. **`svg-infographics preflight`** - declare components up front via flags. The tool returns only the rule cards that apply + context-aware warnings. Example:
+**The single most common source of failed SVGs is building too hastily - jumping straight to `<rect>` / `<path>` elements without first laying down the grid comments and scaffolding every key object as a placeholder.** Grid + scaffolding first, content second. Skipping the grid/scaffold phase costs more redo time than the phase itself.
+
+1. **`svg-infographics preflight`** - declare components up front via flags. The tool returns only the rule cards that apply + context-aware warnings + per-component tool recommendations. Example:
 
    ```bash
    svg-infographics preflight \
      --cards 4 \
      --connectors 1 --connector-mode manifold --connector-direction sinks-to-sources \
-     --backgrounds 1 --dark-mode required
+     --backgrounds 1
    ```
 
-   Connectors / ribbons WITHOUT `--connector-direction` fail the declaration - direction is mandatory because arrow semantics cannot be inferred from geometry.
+   Dual-theme (dark mode) is ALWAYS required - no flag, just make it happen. Connectors / ribbons WITHOUT `--connector-direction` fail the declaration - direction is mandatory because arrow semantics cannot be inferred from geometry.
 
-2. **Author the SVG** following the returned rule bundle. All tools used during authoring (primitives, connector, geom, callouts) must themselves be invoked with explicit direction / geometry flags (see WI#3 in `rules/connector.md`).
+2. **Grid + scaffold before content**. File starts as XML comments ONLY: viewBox, margins, column origins, vertical rhythm, topology. Then scaffolded `<g id="...">` placeholders for every key object (cards, connectors, content, callouts). Only AFTER the scaffold is approved does any content land. Agents that skip this phase ship broken layouts and redo more than they build.
 
-3. **`svg-infographics check --svg <file>`** with the SAME flags used in step 1. Verifies the built file contains the declared components. Then **`svg-infographics finalize <file>`** for the ship-ready structural gate - exits 1 on any HARD finding.
+3. **Author the SVG** following the returned rule bundle. All tools used during authoring (primitives, connector, geom, place, empty-space, callouts) must themselves be invoked with explicit direction / geometry flags (see WI#3 in `rules/connector.md`).
+
+4. **`svg-infographics check --svg <file>`** with the SAME flags used in step 1. Verifies the built file contains the declared components + has dark-mode CSS + has no free-floating primitives outside named groups. Then **`svg-infographics finalize <file>`** for the ship-ready structural gate - exits 1 on any HARD finding.
 
 Skipping preflight = no rule bundle in context = the same 6-phase rules buried in narrative prose that busy contexts evict. The preflight call is what keeps rules loaded at the moment they matter.
+
+## Toolbox manifest (what to reach for, and when)
+
+Every visible pixel must trace back to a CLI tool call. Full palette:
+
+- **`preflight` / `check` / `finalize`** - quartermaster loop. Start, verify, ship.
+- **`primitives`** - every rect / circle / hex / star / cube / cylinder / axis / spline. Returns anchors.
+- **`connector`** - every arrow. Modes: straight, L, L-chamfer, spline, manifold, ribbon. ALWAYS pass `--direction`; for L / L-chamfer also pass `--start-dir + --end-dir` OR `--src-rect + --tgt-rect`.
+- **`geom`** - align, distribute, attach, midpoint, offset, polar, bisector. Fusion-360-style constraints.
+- **`empty-space`** - GENERAL-PURPOSE placement finder. Not for callouts only. Run it BEFORE placing any new element (icon, text block, badge, decorative glyph) to see where the free zones are.
+- **`place`** - position an element (icon, text bbox, badge) inside a named container. Uses `empty-space` under the hood; returns top-left (x, y) respecting margins. Replaces hand-positioning.
+- **`callouts`** - joint-optimal callout placement solver.
+- **`charts`** - themed data charts via pygal.
+- **`shapes`** - 1000+ draw.io stencil icons.
+- **`background`** - procedural textures (circuit, neural, topo, grid, celtic, organic).
+- **`text-to-path`** - convert text + TTF to `<path>` outlines when exact bbox is needed.
+- **`overlaps` / `contrast` / `alignment` / `connectors` / `css` / `validate` / `collide`** - per-defect validators; mostly rolled up by `finalize`.
+- **`render-png`** - SVG → PNG via Playwright.
 
 ## Install (MANDATORY)
 

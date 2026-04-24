@@ -118,7 +118,6 @@ class Declaration:
     """
 
     counts: dict[str, int] = field(default_factory=dict)
-    dark_mode: str = "optional"  # required | optional | none
     connector_mode: str | None = None
     connector_direction: str | None = None
 
@@ -144,7 +143,6 @@ def declaration_from_args(args: argparse.Namespace) -> Declaration:
 
     decl = Declaration(
         counts=counts,
-        dark_mode=getattr(args, "dark_mode", "optional"),
         connector_mode=getattr(args, "connector_mode", None),
         connector_direction=getattr(args, "connector_direction", None),
     )
@@ -179,8 +177,6 @@ def declaration_from_args(args: argparse.Namespace) -> Declaration:
                 f"--connector-direction {decl.connector_direction!r} invalid "
                 f"for mode {decl.connector_mode!r}; use one of {sorted(valid)}"
             )
-    if decl.dark_mode not in ("required", "optional", "none"):
-        raise ManifestError(f"--dark-mode must be required|optional|none, got {decl.dark_mode!r}")
     return decl
 
 
@@ -211,9 +207,10 @@ your actual build.
   vertical rhythm as XML comments BEFORE any visible element.
 - **Theme swatch**: use CSS classes, never inline `fill=` for
   themed colours.
-- **Dark mode** (when declared `--dark-mode required`): every
-  themed class MUST have a `@media (prefers-color-scheme: dark)`
-  override in the top `<style>` block.
+- **Dual-theme support** (always): every themed CSS class MUST
+  have a `@media (prefers-color-scheme: dark)` override in the
+  top `<style>` block. Every SVG ships with dark-mode support.
+  Non-negotiable; `check` rejects any SVG missing the override.
 - **Aspect-ratio lock** (when declared): width/height ratio of
   the SVG viewBox must match within 1%.
 - **No undocumented suppressions**: every validator dismissal
@@ -271,6 +268,11 @@ def pull_rules(
     if warnings:
         parts.append("\n## Warnings\n")
         parts.extend(f"- {w}" for w in warnings)
+
+    # Tool recommendations: "use THIS tool, not your intuition". One pointer
+    # per declared component type.
+    parts.extend(_tool_recommendations(decl))
+
     return "\n".join(parts) + "\n"
 
 
@@ -312,6 +314,99 @@ def _contextual_warnings(decl: Declaration) -> list[str]:
             "overlap content ~30% of the time."
         )
     return out
+
+
+# Per-component-type tool recommendations. Agents proliferate hand-coded
+# geometry because they forget the tool exists or assume a sub-second
+# computation doesn't need a CLI. These are the "use this, not your
+# intuition" pointers the quartermaster hands back with the rules.
+_TOOL_RECOMMENDATIONS: dict[str, list[str]] = {
+    "card": [
+        "`svg-infographics primitives rect --x X --y Y --width W --height H --rx 8`"
+        " for every card body. Anchors returned.",
+        "`svg-infographics geom align` / `geom distribute` for equal-width "
+        "rows, equal-height columns, uniform gaps.",
+        "`svg-infographics empty-space --svg <file> --container-id <card-id> "
+        "--edges-only` to find free zones INSIDE each card before placing "
+        "inline content.",
+        "`svg-infographics place --svg <file> --container <card-id> "
+        "--size W,H --corner <top-left|top-right|...> --margin 12` to "
+        "position every inline element (title text, badges, icons) inside "
+        "a card. Text size = estimated text width, font-size pixels.",
+    ],
+    "connector": [
+        "`svg-infographics connector --mode <straight|l|l-chamfer|spline|manifold>` "
+        "for EVERY arrow. Always pass `--direction` (mandatory on manifold) and, "
+        "for L / L-chamfer modes, `--start-dir + --end-dir` OR `--src-rect + "
+        "--tgt-rect` - otherwise the route will look garbage.",
+        "`svg-infographics empty-space --svg <file>` to find the channel "
+        "between cards where a connector can route without crossing.",
+        "`svg-infographics collide --svg <file>` after drawing to catch connector crossings.",
+    ],
+    "ribbon": [
+        "`svg-infographics connector --mode ribbon --from-edge X0,Y0,X1,Y1 "
+        "--to-edge X0,Y0,X1,Y1 --direction <sources-to-sinks|sinks-to-sources>` "
+        "for every flow ribbon. Endpoints MUST stick to source/target bboxes.",
+    ],
+    "background": [
+        "`svg-infographics background --family <circuit|neural|topo|grid|"
+        "celtic|organic>` to generate procedural texture. Seed for "
+        "reproducibility.",
+    ],
+    "timeline": [
+        "`svg-infographics geom distribute` to snap timeline cards to "
+        "equal width / equal gap along the axis.",
+        "`svg-infographics primitives rect` for each timeline card; same "
+        "width + same height across the whole timeline.",
+        "`svg-infographics empty-space --svg <file>` before adding "
+        "annotations above / below the axis to confirm they fit.",
+    ],
+    "icon": [
+        "`svg-infographics shapes render --library <name> --name <icon>` for "
+        "existing stencil icons, OR `svg-infographics primitives icon --type "
+        "<gear|check|...>` for built-in glyphs.",
+        "`svg-infographics place --svg <file> --container <card-id> "
+        "--size W,H --corner top-right --margin 12` to position the icon "
+        "inside its container using the empty-space finder. Never "
+        "hand-position.",
+        "`svg-infographics empty-space --svg <file> --container-id <card-id> "
+        "--edges-only` to see candidate zones before `place`.",
+    ],
+    "callout": [
+        "`svg-infographics callouts --svg <file> --requests <requests.json>` "
+        "for joint-optimal placement. Hand-placed callouts overlap content "
+        "roughly 30% of the time.",
+        "`svg-infographics empty-space --svg <file>` to see candidate zones "
+        "the solver will pick from.",
+    ],
+}
+
+
+def _tool_recommendations(decl: Declaration) -> list[str]:
+    """Return 'use this tool' pointers for every declared component type.
+
+    Always appended to the preflight output so agents see the tool name
+    paired with the rule card, not just the rules in isolation.
+    """
+    lines: list[str] = []
+    for ctype in decl.declared_types:
+        recs = _TOOL_RECOMMENDATIONS.get(ctype)
+        if not recs:
+            continue
+        lines.append(f"\n### {ctype}\n")
+        for r in recs:
+            lines.append(f"- {r}")
+    if not lines:
+        return []
+    return (
+        ["\n## Tool recommendations\n"]
+        + lines
+        + [
+            "\n**Rule of thumb**: if the coordinate, colour, or path came from "
+            "your head instead of a CLI tool, it's a workflow violation. Every "
+            "visible pixel must trace back to a tool call."
+        ]
+    )
 
 
 # --------------------------------------------------------------------------
@@ -445,7 +540,8 @@ def check(decl: Declaration, svg_path: Path) -> CheckReport:
 
     FAIL findings:
     - declared count does not match found count (per component type)
-    - dark_mode=required without @media (prefers-color-scheme: dark)
+    - missing @media (prefers-color-scheme: dark) override (always required;
+      every SVG ships with dual-theme support, no exceptions)
     """
     findings: list[CheckFinding] = []
     root = _svg_root(svg_path)
@@ -465,20 +561,70 @@ def check(decl: Declaration, svg_path: Path) -> CheckReport:
                 )
             )
 
-    if decl.dark_mode == "required" and not _has_dark_mode(root):
+    if not _has_dark_mode(root):
         findings.append(
             CheckFinding(
                 severity="FAIL",
                 category="dark_mode",
                 message=(
-                    "--dark-mode required but no "
-                    "@media (prefers-color-scheme: dark) rule found in "
-                    "any <style>"
+                    "no @media (prefers-color-scheme: dark) rule found in any "
+                    "<style>. Every SVG ships with dual-theme support - add "
+                    "dark-mode overrides for every themed class."
                 ),
             )
         )
 
+    # Free graphics: shapes sitting as direct children of <svg> without a
+    # named <g> parent. Usually a sign of ad-hoc additions that bypassed
+    # the layout discipline.
+    free_findings = _find_free_graphics(root)
+    findings.extend(free_findings)
+
     return CheckReport(findings=findings)
+
+
+_PRIMITIVE_TAGS = {"rect", "circle", "ellipse", "path", "polygon", "polyline", "line"}
+
+
+def _find_free_graphics(root: ET.Element) -> list[CheckFinding]:
+    """Warn when primitive shapes sit directly under <svg> with no <g> parent.
+
+    Five-layer discipline (background / nodes / connectors / content /
+    callouts) requires every visible element to live inside a named
+    group. Direct-child shapes at the root level escape the topology
+    comment, break z-order expectations, and make re-theme / re-layout
+    harder. This is a WARN, not a FAIL - a single root-level background
+    rect is legitimate, but a pile of root-level shapes says the
+    layout was authored ad-hoc.
+    """
+    findings: list[CheckFinding] = []
+    free_count = 0
+    free_samples: list[str] = []
+    for child in list(root):
+        tag = child.tag.lower()
+        if tag in _PRIMITIVE_TAGS:
+            free_count += 1
+            if len(free_samples) < 3:
+                eid = child.get("id") or "(no id)"
+                free_samples.append(f"<{tag} id={eid}>")
+    # A single root-level rect is often the transparent backplate - tolerate it.
+    if free_count >= 2:
+        findings.append(
+            CheckFinding(
+                severity="WARN",
+                category="free_graphics",
+                message=(
+                    f"{free_count} primitive shape(s) directly under <svg> "
+                    "without a named <g> parent "
+                    f"({', '.join(free_samples)}). Every visible element "
+                    "should live inside a named group (background / nodes / "
+                    "connectors / content / callouts). Use "
+                    "`svg-infographics empty-space` to find where they "
+                    "belong, then wrap them in the correct layer group."
+                ),
+            )
+        )
+    return findings
 
 
 # --------------------------------------------------------------------------
@@ -546,12 +692,6 @@ def _add_declaration_flags(p: argparse.ArgumentParser) -> None:
             "forward|reverse|both|none. For manifold/ribbon: "
             "sources-to-sinks|sinks-to-sources|both|none."
         ),
-    )
-    p.add_argument(
-        "--dark-mode",
-        dest="dark_mode",
-        default="optional",
-        help="required | optional | none (default: optional)",
     )
 
 

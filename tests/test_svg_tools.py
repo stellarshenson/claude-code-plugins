@@ -4102,7 +4102,6 @@ class TestManifestPreflight:
             ribbons=0,
             connector_mode="manifold",
             connector_direction=None,  # missing; must raise
-            dark_mode="optional",
         )
         with pytest.raises(ManifestError) as exc:
             declaration_from_args(ns)
@@ -4126,7 +4125,6 @@ class TestManifestPreflight:
             ribbons=0,
             connector_mode="manifold",
             connector_direction="forward",  # manifold needs sources-to-sinks etc.
-            dark_mode="optional",
         )
         with pytest.raises(ManifestError) as exc:
             declaration_from_args(ns)
@@ -4157,7 +4155,6 @@ class TestManifestPreflight:
             ribbons=0,
             connector_mode="straight",
             connector_direction="forward",
-            dark_mode="optional",
         )
         decl = declaration_from_args(ns)
         bundle = pull_rules(decl, rules_dir=rules_dir)
@@ -4171,10 +4168,13 @@ class TestManifestPreflight:
             check,
         )
 
-        # SVG with 2 cards but the declaration says 4
+        # SVG with 2 cards but the declaration says 4. Adds dark-mode
+        # rule so the check does NOT also fire on missing-dark-mode -
+        # we're isolating the count-drift assertion.
         svg = tmp_path / "two_cards.svg"
         svg.write_text(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">\n'
+            '  <style>@media (prefers-color-scheme: dark) { .fg { fill: #fff; } }</style>\n'
             '  <g id="card-a"><rect width="100" height="50"/></g>\n'
             '  <g id="card-b"><rect width="100" height="50"/></g>\n'
             "</svg>\n"
@@ -4187,7 +4187,8 @@ class TestManifestPreflight:
             for f in report.findings
         )
 
-    def test_check_missing_dark_mode(self, tmp_path):
+    def test_check_always_requires_dark_mode(self, tmp_path):
+        """Dual-theme is always required - no opt-out flag."""
         from stellars_claude_code_plugins.svg_tools.manifest import (
             Declaration,
             check,
@@ -4199,7 +4200,7 @@ class TestManifestPreflight:
             '  <style>.fg { fill: #000; }</style>\n'
             "</svg>\n"
         )
-        decl = Declaration(counts={}, dark_mode="required")
+        decl = Declaration(counts={})
         report = check(decl, svg)
         assert report.failed
         assert any(f.category == "dark_mode" for f in report.findings)
@@ -4214,6 +4215,7 @@ class TestManifestPreflight:
         svg = tmp_path / "manifold.svg"
         svg.write_text(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">\n'
+            '  <style>@media (prefers-color-scheme: dark) { .a { fill: #fff; } }</style>\n'
             '  <g id="connectors">\n'
             '    <g class="manifold-connector">\n'
             '      <path d="M 0,0 L 100,0"/>\n'
@@ -4405,3 +4407,107 @@ class TestConnectorDirectionWarning:
         _resolve_direction_flag(ns, argparse.ArgumentParser())
         err = capsys.readouterr().err
         assert "route" in err.lower() and ("start-dir" in err or "src-rect" in err)
+
+
+class TestPlaceElement:
+    """Generic element placement inside a container."""
+
+    def test_place_icon_in_top_right_corner(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.place_icon import place_element
+
+        # Simple card with plenty of empty space
+        svg = tmp_path / "card.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">\n'
+            '  <rect id="target" x="40" y="40" width="300" height="100" '
+            '    fill="#eee" stroke="#000"/>\n'
+            "</svg>\n"
+        )
+        result = place_element(
+            svg,
+            container_id="target",
+            width=24,
+            height=24,
+            corner="top-right",
+            margin=8,
+        )
+        # Top-right corner of a 300x100 card (origin 40,40) with 8px margin
+        # places the 24x24 icon near (40+300-8-24, 40+8) = (308, 48).
+        # Exact value depends on empty-space pixel grid; allow some slack.
+        assert result["x"] > 250
+        assert result["y"] < 80
+
+    def test_place_refuses_when_no_fit(self, tmp_path):
+        import pytest
+
+        from stellars_claude_code_plugins.svg_tools.place_icon import place_element
+
+        svg = tmp_path / "tiny.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">\n'
+            '  <rect id="target" x="10" y="10" width="30" height="30" '
+            '    fill="#eee" stroke="#000"/>\n'
+            "</svg>\n"
+        )
+        # 100x100 icon into a 30x30 card - must fail
+        with pytest.raises(ValueError) as exc:
+            place_element(
+                svg, container_id="target", width=100, height=100, margin=8
+            )
+        assert "large enough" in str(exc.value) or "no empty regions" in str(exc.value)
+
+
+class TestToolRecommendations:
+    """Preflight output must include tool recommendations per declared type."""
+
+    def test_pull_includes_tool_recommendations(self, tmp_path):
+        import argparse
+
+        from stellars_claude_code_plugins.svg_tools.manifest import (
+            declaration_from_args,
+            pull_rules,
+        )
+
+        rules_dir = tmp_path / "rules"
+        rules_dir.mkdir()
+        (rules_dir / "card.md").write_text("# Card\n")
+        (rules_dir / "icon.md").write_text("# Icon\n")
+
+        ns = argparse.Namespace(
+            cards=2,
+            connectors=0,
+            backgrounds=0,
+            timelines=0,
+            icons=3,
+            callouts=0,
+            ribbons=0,
+            connector_mode=None,
+            connector_direction=None,
+        )
+        decl = declaration_from_args(ns)
+        bundle = pull_rules(decl, rules_dir=rules_dir)
+        assert "Tool recommendations" in bundle
+        # Must mention `place` for icons
+        assert "svg-infographics place" in bundle
+
+
+class TestFreeGraphicsWarning:
+    """Root-level primitive shapes without a <g> parent raise a WARN."""
+
+    def test_free_graphics_warn(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.manifest import (
+            Declaration,
+            check,
+        )
+
+        # Two bare <rect>s at root - no <g> parent, not a single backplate
+        svg = tmp_path / "free.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">\n'
+            '  <style>@media (prefers-color-scheme: dark) { .a { fill: #fff; } }</style>\n'
+            '  <rect x="10" y="10" width="20" height="20"/>\n'
+            '  <rect x="50" y="50" width="20" height="20"/>\n'
+            "</svg>\n"
+        )
+        report = check(Declaration(counts={}), svg)
+        assert any(f.category == "free_graphics" for f in report.findings)

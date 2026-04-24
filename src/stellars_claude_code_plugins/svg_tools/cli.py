@@ -77,11 +77,15 @@ SUBCOMMANDS = {
     ),
     "empty-space": (
         "calc_empty_space",
-        "CALC empty regions on an SVG canvas via svgelements + bitmap. Returns boundary polygons for free islands. Use for callout/label placement without overlaps.",
+        "CALC empty regions on an SVG canvas via svgelements + bitmap. GENERAL-PURPOSE placement tool: icons, text blocks, callouts, decorative elements, or any new content. Run before adding anything to verify it fits and to pick the target zone. Not a callout-only tool.",
     ),
     "callouts": (
         "propose_callouts",
         "CALC joint callout placement proposals. Given an SVG and a list of callout requests, returns one best layout plus top-N alternatives per callout with penalty breakdowns.",
+    ),
+    "place": (
+        "place_icon",
+        "PLACE: position an element (icon, text bbox, badge) inside a named container using the empty-space finder. Returns top-left (x, y) respecting margins. Use for every icon AND every text block instead of hand-positioning.",
     ),
     "collide": (
         "check_collisions",
