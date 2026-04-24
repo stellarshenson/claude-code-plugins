@@ -1,0 +1,87 @@
+**Connector rule card** - rules when preflight declares `--connectors N`.
+
+## Direction semantics (MANDATORY)
+
+Arrow direction is NOT inferred from input point order. Declare it explicitly via `--connector-direction` or the `calc_connector --direction` flag:
+
+- **straight / L / L-chamfer / spline modes**:
+  - `forward` = arrowhead at `--to` (source -> target; most common)
+  - `reverse` = arrowhead at `--from` (target -> source; "supported by", "depends on")
+  - `both` = double-headed (bidirectional, sync protocols)
+  - `none` = no arrowhead (undirected; use sparingly)
+- **manifold mode**:
+  - `sources-to-sinks` = arrowheads at sinks (broadcast / 1-to-many)
+  - `sinks-to-sources` = arrowheads at sources (converge / many-to-1)
+  - `both` = arrowheads at every strand-end (sync)
+  - `none` = flow only, no arrowheads
+
+Canonical direction per diagram type:
+
+| Diagram type | Direction | Meaning |
+|--------------|-----------|---------|
+| platform stack | `sinks-to-sources` | supported by (arrows UP) |
+| orchestration / control | `sources-to-sinks` | drives (arrows out/down) |
+| dataflow / pipeline | `forward` or `sources-to-sinks` | data travels from source to sink |
+| dependency graph | `reverse` or `sinks-to-sources` | depends on (arrows UP/in) |
+| sync / bidirectional | `both` | two-way channel |
+
+If the wrong direction ships the diagram tells the wrong story. The `check` subcommand catches declared-vs-rendered mismatches.
+
+## Mode selection
+
+- `straight` - two endpoints with optional standoff. Use when source and target are on a clear sight-line.
+- `L` - two axis-aligned segments with a right-angle bend. Pass `--first-axis h` or `v` to force the initial direction.
+- `L-chamfer` - L-route with a soft chamfer (4-12px radius) at the corner. Preferred over hard L; reads as polished rather than technical-drawing.
+- `spline` - PCHIP through 3+ waypoints. Use when the path must curve around existing geometry.
+- `manifold` - N starts converge through a shared spine, fork to M ends. Use for "many sources produce into one pipeline" or "one source broadcasts to many consumers". Spine MUST pass through a deliberate gap between intermediate elements.
+
+## Stem-to-head ratio (40/60 rule)
+
+Arrowhead must be AT MOST 40% of total connector length. Equivalently: stem length >= 60% of total. Stubby arrows (head dominates) read as misclicked shapes rather than directional connectors.
+
+- `head_fraction = head_length / (stem_length + head_length)` must be `<= 0.40`
+- Rule of thumb: 8-10px head on a >= 40px connector. Short connectors (< 30px) should use straight mode without an arrowhead and rely on the geometry for direction.
+- `check_connectors` raises SOFT warning when `head_fraction > 0.40`.
+- Override via `--max-head-fraction 0.30` when a tighter ratio is needed.
+
+## Geometry discipline
+
+- **Standoff**: 8-24px between connector endpoint and source/target boundary (tool default is 2-24 depending on mode). Never zero (arrows must not touch element edges).
+- **Manifold standoff quirk**: in manifold mode with `arrow=end` (default), the tool auto-adds `head_len` (default 10px) to the START standoff to visually balance the destination-side gap (destination has margin + arrowhead clearance). So passing `--margin 15` yields a 15px gap at destination and a 25px gap at source; both are the tool respecting your value, just with an automatic visual-symmetry adjustment. Pass explicit `--standoff Nstart,Nend` to disable the adjust and get exact values.
+- **Chamfer radius**: 4-12px for L-chamfer. Matches card corner radius roughly.
+- **Spline tension**: 0.3-0.6 for dataflow curves. Higher values produce loops that look uncontrolled.
+- **Manifold spine**: place through a deliberate gap in the middle layout so the spine passes cleanly without overlapping intermediate cards. Example: if middle tier has 4 cards, plan a 40px gap between cards 2 and 3 so the spine at x=spine_x passes through.
+
+## Arrowhead polygon
+
+- Size: 8-12 wide, 6-9 tall. Tool default `--head-size 8,6` is correct for most cases.
+- Filled triangle, no stroke. Use `.arrow-fill` class for theming.
+- Opacity: 0.7-0.9 on both strokes and polygon. Never 1.0 (reads as a solid shape).
+- Dark-mode override: accent-colour fill for light, brighter tint for dark. Always paired with the connector stroke colour.
+
+## CSS classes (theme + dark mode)
+
+Always use named classes, never inline `fill=` / `stroke=` for themed colours:
+
+```css
+.arrow-stroke { stroke: #5456f3; }
+.arrow-fill { fill: #5456f3; }
+@media (prefers-color-scheme: dark) {
+  .arrow-stroke { stroke: #7374ff; }
+  .arrow-fill { fill: #7374ff; }
+}
+```
+
+## Group conventions (MANDATORY for check)
+
+Every connector path MUST live inside a `<g>` that matches one of:
+
+- `id="connectors"` (canonical; one group containing all connector paths in the SVG)
+- `class="connector"` (on the parent `<g>` or individual path)
+- `class="manifold-connector"` for manifold groups
+
+`check` counts connectors by scanning for these. Paths outside any such group get counted as zero, which will fail the component count.
+
+## Mixed directions in one group
+
+A single `<g id="connectors">` containing connectors pointing in opposite axes (some up, some down; some left, some right) is almost always a copy-paste mistake. `check_connectors` raises a SOFT warning when it detects this, unless the group has `data-connector-pattern="mixed"` which opt-ins the user into an explicit mixed-direction pattern.

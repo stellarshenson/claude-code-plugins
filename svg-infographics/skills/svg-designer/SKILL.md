@@ -12,6 +12,27 @@ Design application for AI agents. Agent = designer, CLI = drawing application. *
 
 **How to spawn**: `Agent(subagent_type="svg-designer", prompt="Create an infographic showing...")` or via `/svg-infographics:create`.
 
+## MANDATORY workflow (every build, every invocation)
+
+Three commands, in order. No authoring happens outside this loop. Applies whether this skill is loaded in the main context or via a forked agent.
+
+1. **`svg-infographics preflight`** - declare components up front via flags. The tool returns only the rule cards that apply + context-aware warnings. Example:
+
+   ```bash
+   svg-infographics preflight \
+     --cards 4 \
+     --connectors 1 --connector-mode manifold --connector-direction sinks-to-sources \
+     --backgrounds 1 --dark-mode required
+   ```
+
+   Connectors / ribbons WITHOUT `--connector-direction` fail the declaration - direction is mandatory because arrow semantics cannot be inferred from geometry.
+
+2. **Author the SVG** following the returned rule bundle. All tools used during authoring (primitives, connector, geom, callouts) must themselves be invoked with explicit direction / geometry flags (see WI#3 in `rules/connector.md`).
+
+3. **`svg-infographics check --svg <file>`** with the SAME flags used in step 1. Verifies the built file contains the declared components. Then **`svg-infographics finalize <file>`** for the ship-ready structural gate - exits 1 on any HARD finding.
+
+Skipping preflight = no rule bundle in context = the same 6-phase rules buried in narrative prose that busy contexts evict. The preflight call is what keeps rules loaded at the moment they matter.
+
 ## Install (MANDATORY)
 
 ```bash

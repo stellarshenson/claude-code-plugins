@@ -3533,6 +3533,70 @@ visible stroke never pokes through the polygon.
 """
 
 
+_LINEAR_DIRECTION_MAP = {
+    "forward": "end",
+    "reverse": "start",
+    "both": "both",
+    "none": "none",
+}
+_MANIFOLD_DIRECTION_MAP = {
+    "sources-to-sinks": "end",
+    "sinks-to-sources": "start",
+    "both": "both",
+    "none": "none",
+}
+
+
+def _resolve_direction_flag(args, parser):
+    """Map --direction (semantic) to --arrow (mechanical), and warn on omission.
+
+    Also fires the L / L-chamfer routing hint: without explicit direction
+    geometry (start-dir + end-dir OR src-rect + tgt-rect OR polygon
+    equivalents), the router has to guess which axis to leave each
+    endpoint on - and the guess is frequently wrong for non-trivial
+    layouts. The warning tells the agent to declare geometry.
+    """
+    is_manifold = args.mode == "manifold"
+    direction_map = _MANIFOLD_DIRECTION_MAP if is_manifold else _LINEAR_DIRECTION_MAP
+    if args.direction is not None:
+        if args.direction not in direction_map:
+            parser.error(
+                f"--direction {args.direction!r} invalid for mode={args.mode!r}; "
+                f"expected one of {sorted(direction_map)}"
+            )
+        args.arrow = direction_map[args.direction]
+    else:
+        # No explicit direction. Proceed but warn loudly.
+        valid = sorted(direction_map)
+        print(
+            f"WARNING: --direction not declared on mode={args.mode!r}. "
+            f"Arrowhead placement defaults to --arrow={args.arrow!r} which "
+            f"follows input point order, not semantic intent. Declare "
+            f"--direction explicitly; expected one of {valid}.",
+            file=sys.stderr,
+        )
+
+    # L / L-chamfer underconstrained routing warning.
+    if args.mode in ("l", "l-chamfer", "L-chamfer"):
+        src_polygon = getattr(args, "src_polygon", None)
+        tgt_polygon = getattr(args, "tgt_polygon", None)
+        has_start_dir = getattr(args, "start_dir", None) is not None
+        has_end_dir = getattr(args, "end_dir", None) is not None
+        has_src_rect = args.src_rect is not None or src_polygon is not None
+        has_tgt_rect = args.tgt_rect is not None or tgt_polygon is not None
+        has_geometry = has_src_rect and has_tgt_rect
+        has_both_dirs = has_start_dir and has_end_dir
+        if not has_geometry and not has_both_dirs:
+            print(
+                f"WARNING: mode={args.mode!r} without --start-dir + --end-dir OR "
+                "--src-rect + --tgt-rect. Router must infer which axis to leave "
+                "each endpoint on, and the guess is frequently wrong for "
+                "non-trivial layouts - route will likely look garbage. "
+                "Declare either (a) both directions or (b) both shape rects.",
+                file=sys.stderr,
+            )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=_CONNECTOR_DESCRIPTION,
@@ -3702,6 +3766,19 @@ def main():
         default="end",
         help="Where to place arrowheads in l/l-chamfer/spline modes (default: end)",
     )
+    parser.add_argument(
+        "--direction",
+        default=None,
+        help=(
+            "Semantic arrow direction; maps to --arrow per mode. "
+            "For straight/l/l-chamfer/spline: "
+            "forward|reverse|both|none. For manifold: "
+            "sources-to-sinks|sinks-to-sources|both|none. When omitted, "
+            "the tool proceeds with --arrow defaults but emits a stderr "
+            "warning - arrow direction is a deliberate choice, not a "
+            "geometry accident."
+        ),
+    )
     parser.add_argument("--margin", type=float, default=0, help="Edge margin in px (default: 0)")
     parser.add_argument(
         "--head-size", default="10,5", help="Arrowhead length,half-height (default: 10,5)"
@@ -3766,6 +3843,8 @@ def main():
         "achieved stem length. Set to 0 to disable the reservation.",
     )
     args = parser.parse_args()
+
+    _resolve_direction_flag(args, parser)
 
     head_len, head_half_h = map(float, args.head_size.split(","))
 

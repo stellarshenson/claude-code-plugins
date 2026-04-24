@@ -6,9 +6,9 @@ argument-hint: "describe the infographic, e.g. 'card grid showing 4 platform mod
 
 # Create SVG Infographic
 
-Create one or more SVG infographics following the mandatory 6-phase workflow. Each image goes through all phases sequentially — no batching.
+Create one or more SVG infographics following the mandatory preflight → author → check → finalize workflow. Each image goes through all four stages sequentially — no batching.
 
-Spawns `svg-designer` agent via fork context so user can continue working while agent designs.
+Spawns `svg-designer` agent via fork context so user can continue working while agent designs. The agent MUST invoke `svg-infographics preflight` (declaring all components via flags) as its first action - this pulls the relevant rule cards into context before any `<rect>` is written. No authoring before preflight completes.
 
 ## Task Tracking
 
@@ -27,12 +27,13 @@ MANDATORY: create a task list at start showing all phases for each image. Update
 3. **Spawn `svg-designer` agent** via `Agent(subagent_type="svg-designer", prompt="Create <description> at <path>. Follow 6-phase workflow. Theme <swatch>.")`. Fork context runs out-of-band; user keeps working.
 
 4. **Agent workflow** (runs in fork):
+   - Preflight — call `svg-infographics preflight --cards N --connectors N --connector-mode X --connector-direction Y ...` with the full declared component set. Capture the returned rule bundle into the agent's context. No authoring begins until preflight returns.
    - Phase 1 — Research: read 3-5 relevant examples from `examples/`
    - Phase 2 — Invisible Grid: calculate with `svg-infographics primitives` for exact anchor coordinates. File contains ONLY XML comments (grid + topology)
-   - Phase 3 — Scaffold: build structure from grid positions using primitives for shapes and `connector` for arrows (always `--standoff 2`)
+   - Phase 3 — Scaffold: build structure from grid positions using primitives for shapes and `connector` for arrows. ALWAYS pass `--direction` (and for L / L-chamfer, also `--start-dir` + `--end-dir` or `--src-rect` + `--tgt-rect`) - otherwise the routing looks garbage.
    - Phase 4 — Content: add text (CSS classes only), icons (Lucide ISC), descriptions. Unicode glyphs only — no ASCII arrows
    - Phase 5 — Finishing: verify connectors match tool output, place callouts via `callouts`, write file description comment
-   - Phase 6 — Validation: run all seven checkers (`validate`, `overlaps`, `contrast`, `alignment`, `connectors`, `css`, `collide`). Classify every violation individually. Bulk dismissals prohibited
+   - Phase 6 — Check + Finalize: run `svg-infographics check --svg <file>` with the SAME flags used in preflight. Exit 0 = component counts match the declaration. Then `svg-infographics finalize <file>` for the ship-ready structural gate. Exit 1 on HARD finding = not shippable.
 
 5. **For any smooth curve through waypoints** (decision boundaries, distributions, ROC/PR, sigmoid, trajectories, organic flow paths) the agent MUST use `svg-infographics primitives spline --points "..." --samples 200`. Hand-written `C`/`Q` bezier paths for data curves = workflow violation.
 
@@ -42,6 +43,7 @@ MANDATORY: create a task list at start showing all phases for each image. Update
 
 The spawned `svg-designer` agent reads and applies:
 
+- `rules/<component>.md` — per-component rule cards (card, connector, ribbon, background, timeline, icon, callout). Pulled automatically by `svg-infographics preflight` based on declared component types.
 - `references/tools.md` — full tool palette
 - `references/standards.md` — design rules, grid layout, CSS classes, cards, arrows, typography, callouts, z-order
 - `references/workflow.md` — 6-phase process with gate checks

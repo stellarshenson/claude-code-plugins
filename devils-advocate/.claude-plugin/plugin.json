@@ -1,7 +1,7 @@
 {
   "name": "devils-advocate",
   "description": "Critical document analysis with persona-driven risk scoring, iterative scorecard evaluation, and versioned corrections.",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "license": "MIT",
   "author": {
     "name": "Stellars Henson",

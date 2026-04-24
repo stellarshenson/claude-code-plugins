@@ -20,6 +20,19 @@ Usage:
 import sys
 
 SUBCOMMANDS = {
+    # ---- QUARTERMASTER / PRE-FLIGHT (declare intent, pull rules) ----
+    "preflight": (
+        "manifest",
+        "PRE-FLIGHT: declare what you will build via flags; tool returns the matching rule bundle + warnings. Run FIRST, before authoring any <rect>.",
+    ),
+    "check": (
+        "manifest",
+        "CHECK: verify an SVG matches a flag-based declaration. Exits 1 on component-count drift or missing dark-mode.",
+    ),
+    "finalize": (
+        "finalize",
+        "FINALIZE: ship-ready gate. Runs XML + overlap + connector validators and returns exit 1 on any HARD finding. One answer: is this file shippable?",
+    ),
     # ---- VALIDATORS (read an SVG, report problems) ----
     "overlaps": (
         "check_overlaps",
@@ -105,7 +118,6 @@ def main():
         sys.exit(0)
 
     subcommand = sys.argv[1]
-    sys.argv = [f"svg-infographics {subcommand}"] + sys.argv[2:]
 
     if subcommand not in SUBCOMMANDS:
         print(f"Unknown subcommand: {subcommand}", file=sys.stderr)
@@ -113,11 +125,25 @@ def main():
         sys.exit(1)
 
     module_name = SUBCOMMANDS[subcommand][0]
+    # The manifest module hosts multiple sub-subcommands (preflight / check)
+    # under one parser, so it needs the subcommand name preserved in argv.
+    # Everything else is a single-subcommand module and gets the
+    # subcommand folded into the prog name.
+    if module_name == "manifest":
+        sys.argv = [f"svg-infographics {subcommand}", subcommand] + sys.argv[2:]
+    else:
+        sys.argv = [f"svg-infographics {subcommand}"] + sys.argv[2:]
+
     module = __import__(
         f"stellars_claude_code_plugins.svg_tools.{module_name}",
         fromlist=["main"],
     )
-    module.main()
+    rc = module.main()
+    # Propagate the subcommand's exit code. Modules that historically
+    # never returned (e.g. raise SystemExit internally) yield None, which
+    # we treat as success to preserve legacy behaviour.
+    if isinstance(rc, int):
+        sys.exit(rc)
 
 
 if __name__ == "__main__":

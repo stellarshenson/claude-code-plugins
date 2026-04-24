@@ -2573,7 +2573,7 @@ class TestDefectDetection:
         from stellars_claude_code_plugins.svg_tools.check_connectors import (
             parse_svg as cc_parse, check_zero_length,
         )
-        _, connectors, _ = cc_parse(str(zero_path))
+        _, connectors, _, _ = cc_parse(str(zero_path))
         assert any("zero-length" in i.lower() for i in check_zero_length(connectors))
 
     def test_contrast_defect_via_cli(self, real_svg_content, tmp_path):
@@ -4074,3 +4074,334 @@ class TestContainerOverflow:
         }
         unknown = set(seen_ids) - allowed
         assert not unknown, f"unexpected fail IDs reported: {unknown}"
+
+
+# ---------------------------------------------------------------------------
+# Release C: quartermaster + stem-head + direction + finalize
+# ---------------------------------------------------------------------------
+
+
+class TestManifestPreflight:
+    """Pre-flight checklist (flag-driven rule pull)."""
+
+    def test_declaration_requires_connector_direction(self):
+        import argparse
+
+        from stellars_claude_code_plugins.svg_tools.manifest import (
+            ManifestError,
+            declaration_from_args,
+        )
+
+        ns = argparse.Namespace(
+            cards=0,
+            connectors=2,
+            backgrounds=0,
+            timelines=0,
+            icons=0,
+            callouts=0,
+            ribbons=0,
+            connector_mode="manifold",
+            connector_direction=None,  # missing; must raise
+            dark_mode="optional",
+        )
+        with pytest.raises(ManifestError) as exc:
+            declaration_from_args(ns)
+        assert "connector-direction" in str(exc.value)
+
+    def test_declaration_rejects_wrong_direction_for_manifold(self):
+        import argparse
+
+        from stellars_claude_code_plugins.svg_tools.manifest import (
+            ManifestError,
+            declaration_from_args,
+        )
+
+        ns = argparse.Namespace(
+            cards=0,
+            connectors=1,
+            backgrounds=0,
+            timelines=0,
+            icons=0,
+            callouts=0,
+            ribbons=0,
+            connector_mode="manifold",
+            connector_direction="forward",  # manifold needs sources-to-sinks etc.
+            dark_mode="optional",
+        )
+        with pytest.raises(ManifestError) as exc:
+            declaration_from_args(ns)
+        assert "manifold" in str(exc.value)
+
+    def test_pull_returns_only_declared_types(self, tmp_path):
+        import argparse
+
+        from stellars_claude_code_plugins.svg_tools.manifest import (
+            declaration_from_args,
+            pull_rules,
+        )
+
+        # Build a temp rules_dir with two rule cards
+        rules_dir = tmp_path / "rules"
+        rules_dir.mkdir()
+        (rules_dir / "card.md").write_text("# Card Rule\n")
+        (rules_dir / "connector.md").write_text("# Connector Rule\n")
+        (rules_dir / "timeline.md").write_text("# Timeline Rule\n")
+
+        ns = argparse.Namespace(
+            cards=4,
+            connectors=1,
+            backgrounds=0,
+            timelines=0,  # NOT declared; rule MUST NOT appear in bundle
+            icons=0,
+            callouts=0,
+            ribbons=0,
+            connector_mode="straight",
+            connector_direction="forward",
+            dark_mode="optional",
+        )
+        decl = declaration_from_args(ns)
+        bundle = pull_rules(decl, rules_dir=rules_dir)
+        assert "Card Rule" in bundle
+        assert "Connector Rule" in bundle
+        assert "Timeline Rule" not in bundle  # timeline count was 0
+
+    def test_check_detects_component_count_drift(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.manifest import (
+            Declaration,
+            check,
+        )
+
+        # SVG with 2 cards but the declaration says 4
+        svg = tmp_path / "two_cards.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">\n'
+            '  <g id="card-a"><rect width="100" height="50"/></g>\n'
+            '  <g id="card-b"><rect width="100" height="50"/></g>\n'
+            "</svg>\n"
+        )
+        decl = Declaration(counts={"card": 4})
+        report = check(decl, svg)
+        assert report.failed
+        assert any(
+            "declared 4 card" in f.message and "found 2" in f.message
+            for f in report.findings
+        )
+
+    def test_check_missing_dark_mode(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.manifest import (
+            Declaration,
+            check,
+        )
+
+        svg = tmp_path / "no_dark.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">\n'
+            '  <style>.fg { fill: #000; }</style>\n'
+            "</svg>\n"
+        )
+        decl = Declaration(counts={}, dark_mode="required")
+        report = check(decl, svg)
+        assert report.failed
+        assert any(f.category == "dark_mode" for f in report.findings)
+
+    def test_manifold_counter_single_logical_connector(self, tmp_path):
+        """One <g class='manifold-connector'> with 6 strand paths = 1 connector."""
+        from stellars_claude_code_plugins.svg_tools.manifest import (
+            Declaration,
+            check,
+        )
+
+        svg = tmp_path / "manifold.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">\n'
+            '  <g id="connectors">\n'
+            '    <g class="manifold-connector">\n'
+            '      <path d="M 0,0 L 100,0"/>\n'
+            '      <path d="M 0,50 L 100,50"/>\n'
+            '      <path d="M 100,0 L 100,100"/>\n'
+            '      <path d="M 100,100 L 200,100"/>\n'
+            '      <path d="M 100,100 L 200,200"/>\n'
+            '      <path d="M 100,100 L 200,250"/>\n'
+            "    </g>\n"
+            "  </g>\n"
+            "</svg>\n"
+        )
+        decl = Declaration(counts={"connector": 1})
+        report = check(decl, svg)
+        # Must NOT flag drift - one manifold is one logical connector
+        count_findings = [f for f in report.findings if f.category == "component_count"]
+        assert not count_findings, f"unexpected: {count_findings}"
+
+
+class TestStemHeadRatio:
+    """WI#2: stubby-arrow warning (head must be <= 40% of total)."""
+
+    def test_passes_on_well_proportioned_arrow(self):
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            Arrowhead,
+            Connector,
+            check_stem_head_ratio,
+        )
+
+        # 100px stem, 10px head -> head is 9% of total, fine
+        stem = Connector(elem_id="c", tag="path", points=[(0, 0), (100, 0)])
+        head = Arrowhead(
+            elem_id="h",
+            points=[(100, 0), (90, -5), (90, 5)],
+            tip=(100, 0),
+            length=10,
+        )
+        issues = check_stem_head_ratio([stem], [head])
+        assert issues == []
+
+    def test_warns_on_stubby_arrow(self):
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            Arrowhead,
+            Connector,
+            check_stem_head_ratio,
+        )
+
+        # 10px stem, 15px head -> head is 60% of total
+        stem = Connector(elem_id="c", tag="path", points=[(0, 0), (10, 0)])
+        head = Arrowhead(
+            elem_id="h",
+            points=[(10, 0), (-5, -7), (-5, 7)],
+            tip=(10, 0),
+            length=15,
+        )
+        issues = check_stem_head_ratio([stem], [head])
+        assert len(issues) == 1
+        assert "stem-head-ratio" in issues[0]
+
+    def test_no_arrowheads_no_findings(self):
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            Connector,
+            check_stem_head_ratio,
+        )
+
+        issues = check_stem_head_ratio(
+            [Connector(elem_id="c", tag="path", points=[(0, 0), (100, 0)])],
+            [],
+        )
+        assert issues == []
+
+
+class TestFinalize:
+    """WI#5: the shippable gate."""
+
+    def test_clean_svg_returns_no_hard_findings(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.finalize import finalize
+
+        svg = tmp_path / "clean.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">\n'
+            '  <rect x="10" y="10" width="80" height="80" fill="#eee"/>\n'
+            "</svg>\n"
+        )
+        hard, soft = finalize(svg)
+        assert hard == []
+
+    def test_malformed_xml_hard_fail(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools.finalize import finalize
+
+        svg = tmp_path / "broken.svg"
+        # Invalid XML: unclosed tag
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">\n'
+            '  <rect width="50" height="50"\n'
+            "</svg>\n"
+        )
+        hard, _ = finalize(svg)
+        assert any("[validate]" in h for h in hard)
+
+
+class TestConnectorDirectionWarning:
+    """WI#3: calc_connector --direction mandatory / L-mode geometry warning."""
+
+    def test_missing_direction_emits_warning_on_straight(self, capsys):
+        import argparse
+
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            _resolve_direction_flag,
+        )
+
+        # Straight mode + direction=None -> warning
+        ns = argparse.Namespace(
+            mode="straight",
+            direction=None,
+            arrow="end",
+            src_rect=None,
+            tgt_rect=None,
+            src_polygon=None,
+            tgt_polygon=None,
+            start_dir=None,
+            end_dir=None,
+        )
+        parser = argparse.ArgumentParser()
+        _resolve_direction_flag(ns, parser)
+        err = capsys.readouterr().err
+        assert "--direction not declared" in err
+
+    def test_direction_forward_maps_to_arrow_end(self):
+        import argparse
+
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            _resolve_direction_flag,
+        )
+
+        ns = argparse.Namespace(
+            mode="straight",
+            direction="forward",
+            arrow="end",
+            src_rect=None,
+            tgt_rect=None,
+            src_polygon=None,
+            tgt_polygon=None,
+            start_dir=None,
+            end_dir=None,
+        )
+        _resolve_direction_flag(ns, argparse.ArgumentParser())
+        assert ns.arrow == "end"
+
+    def test_manifold_sinks_to_sources_maps_to_start(self):
+        import argparse
+
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            _resolve_direction_flag,
+        )
+
+        ns = argparse.Namespace(
+            mode="manifold",
+            direction="sinks-to-sources",
+            arrow="end",
+            src_rect=None,
+            tgt_rect=None,
+            src_polygon=None,
+            tgt_polygon=None,
+            start_dir=None,
+            end_dir=None,
+        )
+        _resolve_direction_flag(ns, argparse.ArgumentParser())
+        assert ns.arrow == "start"
+
+    def test_l_mode_without_geometry_warns(self, capsys):
+        import argparse
+
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            _resolve_direction_flag,
+        )
+
+        ns = argparse.Namespace(
+            mode="l",
+            direction="forward",  # provided, so no direction warning
+            arrow="end",
+            src_rect=None,
+            tgt_rect=None,
+            src_polygon=None,
+            tgt_polygon=None,
+            start_dir=None,
+            end_dir=None,
+        )
+        _resolve_direction_flag(ns, argparse.ArgumentParser())
+        err = capsys.readouterr().err
+        assert "route" in err.lower() and ("start-dir" in err or "src-rect" in err)

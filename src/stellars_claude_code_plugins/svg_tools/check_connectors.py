@@ -50,6 +50,22 @@ class Connector:
 
 
 @dataclass
+class Arrowhead:
+    """A `<polygon>` element that looks like a triangular arrowhead.
+
+    Triangles with a "tip" vertex (the furthest from the polygon centroid)
+    are the canonical arrow shape. ``tip`` is the vertex pointing toward
+    the arrow's logical destination; ``length`` is the distance from the
+    tip back to the midpoint of the opposite edge (the arrow's head span).
+    """
+
+    elem_id: str
+    points: list[tuple[float, float]]
+    tip: tuple[float, float]
+    length: float
+
+
+@dataclass
 class TextLabel:
     content: str
     cx: float
@@ -130,13 +146,132 @@ def _min_bbox_to_seg_dist(bb: BBox, x1: float, y1: float, x2: float, y2: float) 
     return min(_point_to_seg_dist(px, py, x1, y1, x2, y2) for px, py in pts)
 
 
-def parse_svg(filepath: str) -> tuple[list[CardRect], list[Connector], list[TextLabel]]:
-    """Parse SVG and extract cards, connectors, and text labels."""
+_PATH_CMD_RE = re.compile(r"([MmLlHhVvZz])\s*([-\d.,\s]*)")
+
+
+def _parse_path_d(d: str) -> list[tuple[float, float]]:
+    """Flatten an SVG `d` attribute to a polyline.
+
+    Supports M / L / H / V (absolute + relative) and Z closepath.
+    Curves / arcs (C / S / Q / T / A) are approximated by their
+    endpoint - good enough for stem-length measurement of typical
+    connector paths which are polyline-shaped anyway.
+    """
+    pts: list[tuple[float, float]] = []
+    cx, cy = 0.0, 0.0
+    start_cx, start_cy = 0.0, 0.0
+    nums_re = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
+    tokens = list(_PATH_CMD_RE.finditer(d))
+    for m in tokens:
+        cmd = m.group(1)
+        args = [float(n) for n in nums_re.findall(m.group(2))]
+        if cmd in ("M", "m"):
+            # Move-to then implicit LineTo for subsequent pairs
+            first = True
+            for i in range(0, len(args) - 1, 2):
+                x, y = args[i], args[i + 1]
+                if cmd == "m" and pts:
+                    x += cx
+                    y += cy
+                cx, cy = x, y
+                if first:
+                    start_cx, start_cy = cx, cy
+                pts.append((cx, cy))
+                first = False
+                # After first pair, absolute M becomes implicit L
+                cmd = "L" if cmd == "M" else "l"
+        elif cmd in ("L", "l"):
+            for i in range(0, len(args) - 1, 2):
+                x, y = args[i], args[i + 1]
+                if cmd == "l":
+                    x += cx
+                    y += cy
+                cx, cy = x, y
+                pts.append((cx, cy))
+        elif cmd in ("H", "h"):
+            for x in args:
+                if cmd == "h":
+                    x += cx
+                cx = x
+                pts.append((cx, cy))
+        elif cmd in ("V", "v"):
+            for y in args:
+                if cmd == "v":
+                    y += cy
+                cy = y
+                pts.append((cx, cy))
+        elif cmd in ("Z", "z"):
+            cx, cy = start_cx, start_cy
+            pts.append((cx, cy))
+        # Other commands (C/S/Q/T/A) - consume their args and move cursor
+        # to the last pair (approximate the curve as its endpoint).
+        elif cmd in ("C", "c", "S", "s", "Q", "q", "T", "t"):
+            # Pairs per command: C=3, S=2, Q=2, T=1
+            pair_count = {"C": 3, "c": 3, "S": 2, "s": 2, "Q": 2, "q": 2, "T": 1, "t": 1}[cmd]
+            step = pair_count * 2
+            for i in range(0, len(args) - step + 1, step):
+                x, y = args[i + step - 2], args[i + step - 1]
+                if cmd.islower():
+                    x += cx
+                    y += cy
+                cx, cy = x, y
+                pts.append((cx, cy))
+        elif cmd in ("A", "a"):
+            # Arc: 7 args per segment; endpoint is args[5], args[6]
+            for i in range(0, len(args) - 6, 7):
+                x, y = args[i + 5], args[i + 6]
+                if cmd == "a":
+                    x += cx
+                    y += cy
+                cx, cy = x, y
+                pts.append((cx, cy))
+    return pts
+
+
+def _polyline_length(points: list[tuple[float, float]]) -> float:
+    total = 0.0
+    for i in range(len(points) - 1):
+        dx = points[i + 1][0] - points[i][0]
+        dy = points[i + 1][1] - points[i][1]
+        total += (dx * dx + dy * dy) ** 0.5
+    return total
+
+
+def _arrowhead_from_polygon(el) -> Arrowhead | None:
+    """Detect a triangular arrowhead and compute its tip + length.
+
+    Rules:
+    - 3 vertices (common arrowhead shape)
+    - the "tip" is the vertex furthest from the centroid of the other two
+    - length = distance from tip to midpoint of the opposite edge
+    """
+    pts = _parse_points(el.get("points", ""))
+    if len(pts) != 3:
+        return None
+    a, b, c = pts
+    # Compute the distance from each vertex to the midpoint of the opposite edge.
+    # The tip has the max distance.
+    candidates = []
+    for i, v in enumerate([a, b, c]):
+        others = [pts[j] for j in range(3) if j != i]
+        mx = (others[0][0] + others[1][0]) / 2.0
+        my = (others[0][1] + others[1][1]) / 2.0
+        dist = ((v[0] - mx) ** 2 + (v[1] - my) ** 2) ** 0.5
+        candidates.append((dist, v))
+    length, tip = max(candidates, key=lambda c: c[0])
+    return Arrowhead(elem_id=el.get("id", ""), points=pts, tip=tip, length=length)
+
+
+def parse_svg(
+    filepath: str,
+) -> tuple[list[CardRect], list[Connector], list[TextLabel], list[Arrowhead]]:
+    """Parse SVG and extract cards, connectors, text labels, arrowheads."""
     tree = ET.parse(filepath)
     root = tree.getroot()
     cards: list[CardRect] = []
     connectors: list[Connector] = []
     labels: list[TextLabel] = []
+    arrowheads: list[Arrowhead] = []
     for el in root.iter():
         tag = _strip_ns(el.tag)
         if tag == "rect" and _is_card_element(el):
@@ -159,6 +294,15 @@ def parse_svg(filepath: str) -> tuple[list[CardRect], list[Connector], list[Text
             pts = _parse_points(el.get("points", ""))
             if len(pts) >= 2:
                 connectors.append(Connector(el.get("id", ""), "polyline", pts))
+        elif tag == "path":
+            d = el.get("d") or ""
+            pts = _parse_path_d(d)
+            if len(pts) >= 2:
+                connectors.append(Connector(el.get("id", ""), "path", pts))
+        elif tag == "polygon":
+            arr = _arrowhead_from_polygon(el)
+            if arr is not None:
+                arrowheads.append(arr)
         elif tag == "text":
             content = el.text or ""
             for child in el:
@@ -182,7 +326,7 @@ def parse_svg(filepath: str) -> tuple[list[CardRect], list[Connector], list[Text
                     content, x_left + est_w / 2, y_top + fs / 2, BBox(x_left, y_top, est_w, fs)
                 )
             )
-    return cards, connectors, labels
+    return cards, connectors, labels, arrowheads
 
 
 def check_zero_length(connectors: list[Connector], tol: float = 0.5) -> list[str]:
@@ -243,6 +387,72 @@ def check_l_routing(connectors: list[Connector], tol: float = 2.0) -> list[str]:
     return issues
 
 
+# Stubby-arrow rule: head must be AT MOST 40% of total connector length.
+# Hardcoded because it's a visual-quality constant, not a tunable.
+_MAX_HEAD_FRACTION = 0.40
+
+
+def check_stem_head_ratio(
+    connectors: list[Connector],
+    arrowheads: list[Arrowhead],
+    *,
+    pairing_tol: float = 4.0,
+) -> list[str]:
+    """Check: warn when arrowhead length dominates total connector length.
+
+    Rule: head length MUST be <= 40% of total (stem + head) length.
+    Equivalently the stem is >= 60%. Stubby arrows (head dominates)
+    read as misclicked shapes rather than directional connectors.
+
+    Pairing: each arrowhead is associated with the connector whose
+    endpoint (start or end) is within ``pairing_tol`` pixels of the
+    arrowhead tip. Unpaired arrowheads and connectors without an
+    arrowhead are skipped - the stem-to-head ratio only applies
+    where an arrow is actually drawn.
+    """
+    issues: list[str] = []
+    if not arrowheads:
+        return issues
+    for head in arrowheads:
+        best_stem_len = None
+        best_cid = None
+        for c in connectors:
+            if len(c.points) < 2:
+                continue
+            start_d = (
+                (c.points[0][0] - head.tip[0]) ** 2 + (c.points[0][1] - head.tip[1]) ** 2
+            ) ** 0.5
+            end_d = (
+                (c.points[-1][0] - head.tip[0]) ** 2 + (c.points[-1][1] - head.tip[1]) ** 2
+            ) ** 0.5
+            min_d = min(start_d, end_d)
+            if min_d > pairing_tol:
+                continue
+            stem_len = _polyline_length(c.points)
+            if best_stem_len is None or stem_len > best_stem_len:
+                best_stem_len = stem_len
+                best_cid = c.elem_id or "(no id)"
+        if best_stem_len is None:
+            # Unpaired arrowhead - a common pattern where the head sits
+            # beyond the stroke's trimmed endpoint. Estimate stem length
+            # by measuring the closest approach of any connector polyline
+            # to the tip on its tail side. Too noisy to flag; skip.
+            continue
+        total = best_stem_len + head.length
+        if total <= 0:
+            continue
+        head_fraction = head.length / total
+        if head_fraction > _MAX_HEAD_FRACTION:
+            issues.append(
+                f"[stem-head-ratio] Arrow id={head.elem_id or '(no id)'} paired with "
+                f"connector id={best_cid}: head={head.length:.1f}px is "
+                f"{head_fraction * 100:.0f}% of total {total:.1f}px "
+                f"(must be <= {_MAX_HEAD_FRACTION * 100:.0f}%). "
+                f"Stem is stubby - extend the connector or shrink the head."
+            )
+    return issues
+
+
 def check_label_clearance(
     connectors: list[Connector],
     labels: list[TextLabel],
@@ -281,14 +491,18 @@ def main():
 
     print(f"Connector check: {args.svg}")
     print("=" * 72)
-    cards, connectors, labels = parse_svg(args.svg)
-    print(f"Found {len(connectors)} connectors, {len(cards)} cards, {len(labels)} labels")
+    cards, connectors, labels, arrowheads = parse_svg(args.svg)
+    print(
+        f"Found {len(connectors)} connectors, {len(cards)} cards, "
+        f"{len(labels)} labels, {len(arrowheads)} arrowheads"
+    )
 
     all_issues: list[str] = []
     all_issues.extend(check_zero_length(connectors))
     all_issues.extend(check_edge_snap(connectors, cards))
     all_issues.extend(check_l_routing(connectors))
     all_issues.extend(check_label_clearance(connectors, labels))
+    all_issues.extend(check_stem_head_ratio(connectors, arrowheads))
 
     if all_issues:
         print()
