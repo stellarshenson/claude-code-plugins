@@ -7,63 +7,66 @@ description: Validate a document against its source material for grounding, then
 
 Two phases: (1) source grounding - extract claims, verify each; (2) compliance - tone, style, length, format.
 
+## Output style (MANDATORY for all generated artefacts)
+
+Every file the skill writes (`grounding-report.md`, `compliance-checklist.md`, `validation-summary.md`, `criteria.md`) uses telegram-style: short clauses, drop articles/copulas where meaning stays clear, one fact per line, bullets not paragraphs, concrete numbers over adjectives, no hedging ("may"/"might"), imperative actions. Reviewers skim for verdicts - prose costs attention.
+
 ## Install (MANDATORY)
 
 ```bash
 pip install stellars-claude-code-plugins
 ```
 
-Ships `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported on every call, with line/column/paragraph/page/context for every hit. Verify: `document-processing --help`. Without install no programmatic grounding — manual search only.
+Ships `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Without install → manual search only, no programmatic grounding.
 
 ## Check semantic-grounding consent (MANDATORY every run)
 
-Before running grounding, read `./.stellars-plugins/settings.json` (project-local, sibling to `.claude/`) to see whether the user has consented to semantic grounding:
+Read `./.stellars-plugins/settings.json` (project-local, sibling to `.claude/`) before grounding:
 
 ```bash
 test -f .stellars-plugins/settings.json && cat .stellars-plugins/settings.json
 ```
 
-If the file does not exist, run `document-processing setup` — this prompts the user once, writes the answer, and never prompts again. Do NOT silently enable semantic; it requires optional deps (`pip install 'stellars-claude-code-plugins[semantic]'`) and downloads a ~150 MB model on first use.
+Missing file → run `document-processing setup` once (writes answer, never re-prompts). Never auto-enable semantic — needs optional deps (`pip install 'stellars-claude-code-plugins[semantic]'`) + 150MB model download on first use; surprise installs waste user bandwidth.
 
-Read the `semantic_enabled` field:
+Read `semantic_enabled`:
 
-- `semantic_enabled: true` → pass `--semantic on` to every `document-processing ground` / `ground-many` call. The tool adds a 4th layer (ModernBERT + FAISS) that catches claims where wording AND terms diverge but meaning aligns. Useful for long or abstract sources.
-- `semantic_enabled: false` (default) → pass `--semantic off` or omit the flag. Three lexical layers only.
-- Missing file → run `document-processing setup` and proceed per user's answer.
+- `true` → pass `--semantic on` to every `ground` / `ground-many` call. 4th layer (ModernBERT + FAISS) catches meaning-match when wording AND terms diverge. Useful for long/abstract sources.
+- `false` (default) → pass `--semantic off` or omit. Three lexical layers only.
+- Missing file → run `document-processing setup` and proceed per answer.
 
 ### Never blindly trust scores. Verify generatively when in doubt
 
 Scores = signals, not truth. Every layer can be fooled:
 
-- Exact: hits unrelated substring with same word order
-- Fuzzy: high on character overlap with opposite meaning ("3-6 hours" vs "36 hours")
-- BM25: high on shared terms with no logical link
-- Semantic: high on topically-similar passage that doesn't support the claim
+- exact: hits unrelated substring with same word order
+- fuzzy: high on character overlap with opposite meaning ("3-6 hours" vs "36 hours")
+- bm25: high on shared terms with no logical link
+- semantic: high on topically-similar passage that doesn't support the claim
 
-**Tool always gives a pointer — line, column, paragraph, page, context snippet — even on UNCONFIRMED.** Use it. Jump to the location, read the passage, judge. No full re-scan needed. That is the whole point.
+Tool ALWAYS gives a pointer (line/column/paragraph/page/context) even on UNCONFIRMED. Use it. Jump → read → judge. No full rescan needed — that's the point, saves tokens.
 
 Verify generatively when ANY of:
 
-- Borderline score: winning layer within 0.05 of threshold (fuzzy 0.85-0.90, bm25 0.40-0.50, semantic 0.85-0.90)
-- Layer disagreement: semantic ≥0.85 but lexical low (fuzzy <0.6, bm25 <0.3)
-- Location off: tool points at a passage nowhere near where the claim should live
-- Numerical / named-entity claims: models blur "3 seconds" vs "3 minutes". Always read
-- Medium score on fake-sounding claim: reject unless the named entity appears in the quoted passage
+- Borderline: winning layer within 0.05 of threshold (fuzzy 0.85-0.90, bm25 0.40-0.50, semantic 0.85-0.90) — close calls are the failure zone
+- Layer disagreement: semantic ≥0.85 but fuzzy <0.6 AND bm25 <0.3 → topical similarity without real support, often noise
+- Location off: pointer nowhere near where the claim should live → wrong chunk won
+- Numeric / named-entity claims: models blur "3 seconds" vs "3 minutes"; always read
+- Medium score on fake-sounding claim: reject unless named entity appears in the quoted passage — fake-entity detection is the whole point of H2
 
-Output verdict: cite the quoted passage + state supports / contradicts / topical-only. Never override CONFIRMED without evidence. Never accept CONFIRMED without reading.
+Verdict output: quote the passage + state supports / contradicts / topical-only. Never override CONFIRMED without evidence, never accept CONFIRMED without reading.
 
 ### When to RE-RECOMMEND semantic to the user
 
-If `semantic_enabled` is `false` AND the three-layer pass leaves many UNCONFIRMED claims (rule of thumb: **>25% unconfirmed** or **any unconfirmed claim with fuzzy 0.5-0.85 AND bm25 0.2-0.5** — the "almost grounded" zone), stop and recommend semantic to the user explicitly:
+`semantic_enabled=false` AND three-layer pass leaves many UNCONFIRMED (>25% OR any claim fuzzy 0.5-0.85 AND bm25 0.2-0.5 — the "almost grounded" zone that semantic usually rescues) → stop and ask:
 
-> The grounding pass left N/M claims UNCONFIRMED and several are in the "almost grounded" zone (paraphrased meaning, diverged wording). Enabling semantic grounding (ModernBERT + FAISS) would likely catch these. To enable:
+> Three-layer grounding left N/M UNCONFIRMED and K in the almost-grounded zone. Semantic grounding (4th layer, +150MB model first time, requires `[semantic]` extra) often resolves these. Enable?
 >
 > 1. `pip install 'stellars-claude-code-plugins[semantic]'`
 > 2. `document-processing setup --force` and answer yes
->
-> This downloads a ~150 MB model on first use. Re-run the grounding with `--semantic on` afterwards.
+> 3. re-run with `--semantic on`
 
-Do NOT silently enable it — ask the user first, they already declined once. Offer, wait for consent, then proceed.
+Never silently enable — user already declined once. Offer, wait for consent, proceed.
 
 ## Phase 0: Gather Criteria
 
@@ -75,11 +78,11 @@ Ask if not provided.
 
 **Optional (offer defaults):**
 - **Word count range**: min-max (default: no constraint)
-- **Tone**: first-person, formal, technical, conversational (default: infer)
+- **Tone**: first-person / formal / technical / conversational (default: infer)
 - **Style rules**: patterns to enforce or prohibit (default: none)
-- **Target audience**: default: general
+- **Target audience**: default general
 - **Section format rules**: bullets, section lengths, heading structure (default: none)
-- **Focus rules**: content excluded or prioritized (default: none)
+- **Focus rules**: excluded or prioritised content (default: none)
 - **Format rules**: encoding, spacing, links (default: UTF-8, single spacing, no links)
 - **Custom rules**: key-value pairs
 
@@ -87,7 +90,7 @@ Store all criteria.
 
 ## Phase 1: Setup
 
-Create `validation/` in project root. All artifacts here.
+Create `validation/` in project root. All artifacts here — single directory = one place to delete, diff, archive.
 
 ```
 validation/
@@ -104,13 +107,13 @@ Write `criteria.md`.
 
 ### Core rules
 
-Three rules override default behaviour for every claim. They apply in order - rule 2 trumps rule 1, rule 3 applies after rules 1-2 are decided.
+Three rules override default per-claim behaviour. Apply in order: rule 2 trumps 1, rule 3 fires after 1-2 decided.
 
-**Rule 1: agreement beats magnitude.** Confidence comes from how many layers agree, not from any single layer's peak score. A claim with `semantic_score=0.90`, `fuzzy_score=0` and `bm25_score=0` is LESS confirmed than a claim with `semantic_score=0.75`, `fuzzy_score=0.65` and `bm25_score=0.45`. The tool reports `agreement_score` specifically to encode this - prefer it over individual layer scores when deciding whether to confirm. Example: a claim that only lights up semantic at 0.90 with no lexical overlap reads like topical similarity to a noise passage, not real grounding. Read the pointer (the returned passage) before accepting.
+**Rule 1: agreement beats magnitude.** Confidence = how many layers agree, NOT a single layer's peak. Claim with sem=0.90, fuzzy=0, bm25=0 is LESS confirmed than sem=0.75, fuzzy=0.65, bm25=0.45 — multi-layer agreement rules out topical-noise false positives. Prefer `agreement_score` over individual scores. Semantic-only hit = read the pointer before accepting; lone layer at threshold is usually topical similarity, not grounding.
 
-**Rule 2: contradiction flag is the final word.** If `numeric_mismatches` OR `entity_mismatches` returned by the tool is non-empty, the verdict is CONTRADICTED regardless of every other score. Example: claim "Kubernetes runs on 42 nodes" against source "12 nodes" returns `numeric_mismatches=[("42", "12")]` - this is CONTRADICTED even if `exact_score=1.0` on the surrounding wording. Never promote a CONTRADICTED claim to CONFIRMED; never suppress the flag. The numeric/entity disagreement IS the finding.
+**Rule 2: contradiction flag is the final word.** `numeric_mismatches` OR `entity_mismatches` non-empty → verdict CONTRADICTED, overrides every other score. Example: claim "Kubernetes runs on 42 nodes" vs source "12 nodes" → `numeric_mismatches=[("42", "12")]` → CONTRADICTED even with `exact_score=1.0` on surrounding wording. Never promote CONTRADICTED to CONFIRMED, never suppress — the numeric/entity disagreement IS the finding.
 
-**Rule 3: re-recommend semantic on struggle.** When the three-layer pass leaves more than 25% of claims UNCONFIRMED, OR any claim lands in the "almost grounded" zone (`fuzzy_score` in [0.5, 0.85] AND `bm25_score` in [0.2, 0.5]), ask the user once whether to enable semantic - do not silently auto-enable. Use exactly this template:
+**Rule 3: re-recommend semantic on struggle.** >25% UNCONFIRMED OR any claim in `fuzzy_score` [0.5, 0.85] AND `bm25_score` [0.2, 0.5] almost-grounded zone → ask user ONCE. Never silent auto-enable — user consent was explicit, one-way. Template:
 
 ```
 Three-layer grounding left N/M claims UNCONFIRMED and K in the
@@ -120,26 +123,26 @@ first time, requires `[semantic]` extra) often resolves these. Enable?
   - no: keep current verdicts
 ```
 
-Record the answer in `./.stellars-plugins/settings.json` so the ask isn't repeated in the same session.
+Record answer in `./.stellars-plugins/settings.json` — avoids re-asking same session.
 
 ### Per-claim workflow
 
-Extract every factual claim, assertion, attribution, number, date, quote. For each:
+Extract every factual claim, assertion, attribution, number, date, quote. Per claim:
 
 1. **State claim** exactly as in document
-2. **Run grounding tool FIRST — primary approach.** The `document-processing` CLI is the agent's primary grounding method. Use `document-processing ground` for single claims or `document-processing ground-many` for batches. The tool runs THREE layers independently (regex exact, Levenshtein fuzzy, BM25 passage ranking) and reports all three scores plus line/column/paragraph/page/context for every hit — no rereading the source. **Secondary approach: disciplined generative interpretation** — only when all three lexical layers fail and the claim is semantic (e.g. a summary, synthesis, or cross-passage inference). Do not skip the tool; run it first, then add generative interpretation on top when lexical signal is absent
-3. **Mark status** based on tool output:
-   - CONFIRMED - `match_type=exact` (score 1.0) → quote `exact_matched_text` at `exact_location`
-   - CONFIRMED (fuzzy) - `match_type=fuzzy` (fuzzy_score ≥ threshold) → quote `fuzzy_matched_text` at `fuzzy_location`, note paraphrase tolerance used
-   - CONFIRMED (topical / BM25) - `match_type=bm25` (token-recall ≥ bm25_threshold) → quote `bm25_matched_text` (the winning passage) at `bm25_location`, note that wording differs but terms align
-   - UNCONFIRMED - `match_type=none` (all three scores below their thresholds) → no lexical evidence in source; consider generative interpretation only if semantic claim, otherwise remove/rephrase
-   - CONTRADICTED - source directly contradicts (manual call; re-run with the contradicting phrase to cite location)
-   - INFERRED - reasonable inference, not directly stated (explain; tool confirms absence of verbatim)
-   - NOT APPLICABLE - structural/editorial, not fact-based (skip tool)
+2. **Run grounding tool FIRST.** Use `document-processing ground` for single claims, `ground-many` for batches. Three layers run independently (regex + Levenshtein + BM25), all three scores + line/column/paragraph/page/context per hit — no rereading source, huge token saving. Secondary: disciplined generative interpretation ONLY when all three lexical layers fail AND claim is semantic (summary / synthesis / cross-passage inference). Never skip the tool; run first, add generative on top when lexical signal absent.
+3. **Mark status** from tool output:
+   - CONFIRMED — `match_type=exact` → quote `exact_matched_text` at `exact_location`
+   - CONFIRMED (fuzzy) — `match_type=fuzzy` → quote `fuzzy_matched_text` at `fuzzy_location`, note paraphrase tolerance
+   - CONFIRMED (topical / bm25) — `match_type=bm25` → quote `bm25_matched_text` at `bm25_location`, note wording differs but terms align
+   - UNCONFIRMED — `match_type=none` → no lexical evidence; generative only for semantic claims, else remove/rephrase
+   - CONTRADICTED — source directly contradicts (manual call; re-run with contradicting phrase for location)
+   - INFERRED — reasonable inference not directly stated; explain, tool confirms absence of verbatim
+   - NOT APPLICABLE — structural/editorial, not fact-based; skip tool
 
 ### Using the grounding CLI
 
-Batch pass — builds `grounding-report.md` in one shot:
+Batch — builds `grounding-report.md` in one shot:
 
 ```bash
 # claims.json: list of strings or [{"claim": "...", "id": "..."}]
@@ -150,10 +153,10 @@ document-processing ground-many \
   --output validation/grounding-report.md \
   --threshold 0.85 \
   --bm25-threshold 0.5 \
-  --semantic on     # omit or use 'off' when settings disables it
+  --semantic on     # omit or 'off' when settings disables it
 ```
 
-Single-claim probe — useful for on-demand checks during review:
+Single-claim probe — on-demand checks during review:
 
 ```bash
 document-processing ground \
@@ -162,158 +165,166 @@ document-processing ground \
   --json
 ```
 
-All three scores (exact + fuzzy + bm25) come back on every call even when only one fires — use the layered signal to distinguish verbatim quotes, paraphrases, and topical claims from fabrications.
+All three scores always return, even when only one fires — layered signal distinguishes verbatim / paraphrase / topical / fabrication.
 
 ### Tool output maps to status
 
 | Tool output | Status |
 |-------------|--------|
 | `exact_score=1.0` | CONFIRMED |
-| `fuzzy_score ≥ threshold`, `exact_score=0` | CONFIRMED (fuzzy) — note paraphrase |
-| `bm25_score ≥ bm25_threshold`, `exact=0`, `fuzzy<threshold` | CONFIRMED (topical) — note wording differs, same terms |
-| `semantic_score ≥ semantic_threshold`, lexical all below | CONFIRMED (semantic) — meaning matches, wording + terms diverge. Only fires when `--semantic on` |
-| all layers below thresholds | UNCONFIRMED (quote best available for diagnostics) |
+| `fuzzy_score ≥ threshold`, `exact_score=0` | CONFIRMED (fuzzy) — paraphrase |
+| `bm25_score ≥ bm25_threshold`, `exact=0`, `fuzzy<threshold` | CONFIRMED (topical) — wording differs, same terms |
+| `semantic_score ≥ semantic_threshold`, lexical all below | CONFIRMED (semantic) — meaning matches, wording+terms diverge. Only with `--semantic on` |
+| all layers below thresholds | UNCONFIRMED — quote best available for diagnostics |
 
-Priority when multiple layers hit: exact > fuzzy > bm25 > semantic.
+Priority when multiple fire: exact > fuzzy > bm25 > semantic.
 
-The tool also returns `exact_location` / `fuzzy_location` / `bm25_location` with `line_start`, `column_start`, `paragraph`, `page`, `context_before`, `context_after` — cite these directly in the report instead of rereading the source file. This saves tokens and keeps citations precise.
+Tool returns `exact_location` / `fuzzy_location` / `bm25_location` with `line_start`, `column_start`, `paragraph`, `page`, `context_before`, `context_after` — cite directly, don't reread source. Saves tokens, keeps citations precise.
 
 ### When to reach for generative (secondary) grounding
 
-Only when all three lexical layers return `none` AND the claim is semantic (summary, synthesis, cross-passage inference). Disciplined: still cite WHICH passages contributed and acknowledge absence of verbatim/paraphrase/term match. Do not let generative interpretation override a lexical UNCONFIRMED for factual claims — that is fabrication territory.
+Only when all three lexical layers return `none` AND claim is semantic (summary / synthesis / cross-passage inference). Disciplined: still cite WHICH passages contributed + acknowledge absence of verbatim/paraphrase/term match. Never let generative override lexical UNCONFIRMED for factual claims — that's fabrication territory.
 
-**Output** (`grounding-report.md`):
+**Output** (`grounding-report.md`) — telegram-style template:
 
 ```markdown
 # Source Grounding Report
 
-**Document**: <path>
-**Source(s)**: <path(s)>
-**Date**: <date>
+- document: <path>
+- sources: <path(s)>
+- date: <date>
 
 ## Claims
 
-### 1. <short claim summary>
-**Claim**: "<exact text from document>"
-**Status**: CONFIRMED (exact 1.000, fuzzy 1.000, bm25 1.000)
-**Source**: "<supporting fragment from source>" @ `docs/source.md:L42:C5 ¶3 pg2`
+### 1. <id>
+- claim: "<exact text>"
+- status: CONFIRMED
+- scores: exact 1.00 / fuzzy 1.00 / bm25 1.00
+- source: "<supporting fragment>" @ `docs/source.md:L42:C5 ¶3 pg2`
 
-### 2. <short claim summary>
-**Claim**: "<exact text from document>"
-**Status**: CONFIRMED (topical) (exact 0.000, fuzzy 0.52, bm25 0.88)
-**Source**: "<winning passage from source>" @ `docs/source.md:L88 ¶5` (token-recall 0.88)
-**Note**: Wording differs; same key terms found in passage.
+### 2. <id>
+- claim: "<exact text>"
+- status: CONFIRMED (topical)
+- scores: exact 0.00 / fuzzy 0.52 / bm25 0.88
+- source: "<winning passage>" @ `docs/source.md:L88 ¶5`
+- note: wording differs, terms match
 
-### 3. <short claim summary>
-**Claim**: "<exact text from document>"
-**Status**: UNCONFIRMED (exact 0.000, fuzzy 0.62, bm25 0.20)
-**Source**: No lexical evidence in source. Best fuzzy: "<nearest fragment>" @ `docs/source.md:L88 ¶5` (ratio 0.62, below threshold). Best BM25 passage @ `docs/source.md:¶12` (token-recall 0.20, below threshold)
-**Recommendation**: Remove or rephrase
+### 3. <id>
+- claim: "<exact text>"
+- status: UNCONFIRMED
+- scores: exact 0.00 / fuzzy 0.62 / bm25 0.20
+- best fuzzy: "<fragment>" @ `docs/source.md:L88 ¶5` (ratio 0.62 < 0.85)
+- best bm25: `¶12` (recall 0.20 < 0.5)
+- action: remove or rephrase
 
 ...
 
 ## Summary
-- Total claims: X
-- Confirmed: X
-- Unconfirmed: X
-- Contradicted: X
-- Inferred: X
-- Not applicable: X
-- **Grounding score**: X/Y (confirmed / total factual claims)
+
+- total: X
+- confirmed: X
+- unconfirmed: X
+- contradicted: X
+- inferred: X
+- n/a: X
+- grounding score: X/Y (confirmed / total factual)
 ```
 
 UNCONFIRMED/CONTRADICTED: list concrete corrections.
 
 ## Phase 3: Compliance Checklist
 
-Check against all criteria. Generate `compliance-checklist.md`:
+Check against all criteria. Generate `compliance-checklist.md` — telegram-style template:
 
 ```markdown
 # Compliance Checklist
 
-**Document**: <path>
-**Date**: <date>
+- document: <path>
+- date: <date>
 
-## Word Count
-- [ ] Current count: XXX words
-- [ ] Target range: [min]-[max]
-- [ ] In range: YES/NO
-- [ ] Action: [trim/expand/OK]
+## word_count
+- count: XXX
+- range: [min, max]
+- pass: yes/no
+- action: trim N / expand N / ok
 
-## Tone
-- [ ] Expected: <tone description>
-- [ ] Violations found: [list quotes or NONE]
-- [ ] Action: [rephrase X passages / OK]
+## tone
+- expected: <tone>
+- violations: [quotes] / none
+- action: rephrase N passages / ok
 
-## Style Rules
-For each rule provided:
-- [ ] Rule: <description>
-- [ ] Status: PASS/FAIL
-- [ ] Violations: [list or NONE]
-- [ ] Action: [fix / OK]
+## style_rules
+(per rule)
+- rule: <desc>
+- status: pass/fail
+- violations: [quotes] / none
+- action: fix / ok
 
-## Focus Rules
-- [ ] Prohibited content found: [list quotes or NONE]
-- [ ] Required content present: [list or YES/NO]
-- [ ] Action: [remove X / add Y / OK]
+## focus_rules
+- prohibited found: [quotes] / none
+- required present: [list] / yes/no
+- action: remove N / add N / ok
 
-## Format
-- [ ] Encoding: UTF-8 YES/NO
-- [ ] Paragraph spacing: correct YES/NO
-- [ ] Links: [count found or NONE]
-- [ ] Action: [fix / OK]
+## format
+- encoding: UTF-8 yes/no
+- spacing: correct yes/no
+- links: N / none
+- action: fix / ok
 
-## Section Format
-For each section rule:
-- [ ] Rule: <description>
-- [ ] Status: PASS/FAIL
-- [ ] Details: [measurements]
-- [ ] Action: [fix / OK]
+## section_format
+(per rule)
+- rule: <desc>
+- status: pass/fail
+- details: [measurements]
+- action: fix / ok
 
-## Custom Rules
-For each custom rule:
-- [ ] Rule: <description>
-- [ ] Status: PASS/FAIL
-- [ ] Evidence: [details]
-- [ ] Action: [fix / OK]
+## custom_rules
+(per rule)
+- rule: <desc>
+- status: pass/fail
+- evidence: [details]
+- action: fix / ok
 ```
 
-Use Python scripts for measurable checks (word count, point length, links) - never eyeball.
+Python scripts for measurable checks (word count, point length, links) — never eyeball; human counting on long docs is unreliable, off-by-N errors cascade into wrong verdicts.
 
 ## Phase 4: Validation Summary
 
-Generate `validation-summary.md`:
+Generate `validation-summary.md` — telegram-style template:
 
 ```markdown
 # Validation Summary
 
-**Document**: <path>
-**Source(s)**: <path(s)>
-**Date**: <date>
+- document: <path>
+- sources: <path(s)>
+- date: <date>
 
-## Grounding
-- Claims checked: X
-- Grounding score: X/Y (Z%)
-- Issues: [list or NONE]
+## grounding
+- claims: X
+- score: X/Y (Z%)
+- issues: [list] / none
 
-## Compliance
-- Rules checked: X
-- Passed: X
-- Failed: X
-- Issues: [list or NONE]
+## compliance
+- rules: X
+- passed: X
+- failed: X
+- issues: [list] / none
 
-## Overall Verdict
-[PASS / PASS WITH WARNINGS / FAIL]
+## verdict
+PASS / PASS WITH WARNINGS / FAIL
 
-## Required Actions
-1. [numbered list of all required fixes, or "None - document passes all checks"]
+## required_actions
+1. <fix>
+2. <fix>
+...
+(or "none - document passes all checks")
 ```
 
 ## Phase 5: Apply Corrections (best effort)
 
-Always produce corrected copy:
+Always produce corrected copy — separate file so original stays reviewable:
 
-1. Copy original to `validation/<filename>_corrected.<ext>`
+1. Copy original → `validation/<filename>_corrected.<ext>`
 2. Apply corrections:
    - UNCONFIRMED: rephrase to align with source or remove
    - CONTRADICTED: fix to match source
@@ -324,9 +335,9 @@ Always produce corrected copy:
 
 ## Important Notes
 
-- **Never modify source document(s)** - read-only
-- **All artifacts in `validation/`**
-- **Python for measurements** - never manual
-- **Quote evidence** - actual text, not "confirmed"
-- **Be specific** - violations cite exact offending text with location
-- **Preserve originals** - corrected version separate file with `_corrected` suffix. Overwrite only on explicit request
+- Never modify source document(s) — read-only; source integrity is the whole basis of grounding
+- All artifacts in `validation/` — single cleanup point
+- Python for measurements — never manual; eyeballing corrupts verdicts
+- Quote evidence — actual text, not "confirmed"; verdict without quote is assertion
+- Be specific — violations cite exact offending text + location
+- Preserve originals — corrected version separate file with `_corrected` suffix; overwrite only on explicit request
