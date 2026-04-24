@@ -23,6 +23,10 @@ import argparse
 from pathlib import Path
 import sys
 
+from stellars_claude_code_plugins.svg_tools._warning_gate import (
+    add_ack_warning_arg,
+    enforce_warning_acks,
+)
 from stellars_claude_code_plugins.svg_tools.check_connectors import (
     check_edge_snap as cc_edge_snap,
 )
@@ -119,6 +123,7 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument("svg", help="Path to SVG to audit")
+    add_ack_warning_arg(parser)
     args = parser.parse_args(argv)
 
     svg_path = Path(args.svg)
@@ -131,6 +136,19 @@ def main(argv: list[str] | None = None) -> int:
         print(f"finalize {svg_path}: OK - shippable.", file=sys.stderr)
         return 0
 
+    # Gate: every HARD and SOFT finding requires a conscious ack with
+    # reasoning. The gate lives at finalize's layer so sub-validator
+    # findings surfaced here must be acknowledged per-finding, same as
+    # producer-tool warnings. Tokens are deterministic for the
+    # (finalize args, finding_text) pair.
+    gate_findings = [f"HARD: {f}" for f in hard] + [f"SOFT: {f}" for f in soft]
+    # argv=None at invocation goes through sys.argv[1:]; subprocess
+    # callers pass explicit argv here so use whichever was resolved.
+    cli_argv = argv if argv is not None else sys.argv[1:]
+    enforce_warning_acks(gate_findings, cli_argv, args.ack_warning)
+
+    # Gate passed - print the (now-acked) findings for the human audit
+    # trail, then exit 1 on any HARD / 0 on pure SOFT.
     if hard:
         print("HARD findings:")
         for f in hard:

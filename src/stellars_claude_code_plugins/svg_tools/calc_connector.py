@@ -45,6 +45,16 @@ import argparse
 import math
 import sys
 
+# Absolute import (not relative) so the module can be invoked both as
+# ``python -m stellars_claude_code_plugins.svg_tools.calc_connector`` and as
+# a bare script path - tests exercise both forms.
+from stellars_claude_code_plugins.svg_tools._warning_gate import (
+    add_ack_warning_arg,
+    compute_warning_token,  # noqa: F401 - re-exported for back-compat
+    enforce_warning_acks,
+    parse_ack_warning_args,  # noqa: F401 - re-exported for back-compat
+)
+
 
 def _polygon_centroid(points):
     """Area-weighted centroid of a simple closed polygon."""
@@ -3746,14 +3756,15 @@ _MANIFOLD_DIRECTION_MAP = {
 
 
 def _resolve_direction_flag(args, parser):
-    """Map --direction (semantic) to --arrow (mechanical), and warn on omission.
+    """Map --direction (semantic) to --arrow (mechanical), and collect pre-
+    dispatch warnings for the ack gate.
 
-    Also fires the L / L-chamfer routing hint: without explicit direction
-    geometry (start-dir + end-dir OR src-rect + tgt-rect OR polygon
-    equivalents), the router has to guess which axis to leave each
-    endpoint on - and the guess is frequently wrong for non-trivial
-    layouts. The warning tells the agent to declare geometry.
+    Returns a list of warning strings (empty when everything is declared).
+    Caller merges these with result['warnings'] before the gate so
+    direction-omission and underconstrained-routing warnings also require
+    acknowledgement.
     """
+    pre_warnings = []
     is_manifold = args.mode == "manifold"
     direction_map = _MANIFOLD_DIRECTION_MAP if is_manifold else _LINEAR_DIRECTION_MAP
     if args.direction is not None:
@@ -3764,14 +3775,14 @@ def _resolve_direction_flag(args, parser):
             )
         args.arrow = direction_map[args.direction]
     else:
-        # No explicit direction. Proceed but warn loudly.
+        # No explicit direction. Collect the warning - the gate will print
+        # it and require an ack before the SVG is emitted.
         valid = sorted(direction_map)
-        print(
+        pre_warnings.append(
             f"WARNING: --direction not declared on mode={args.mode!r}. "
             f"Arrowhead placement defaults to --arrow={args.arrow!r} which "
             f"follows input point order, not semantic intent. Declare "
-            f"--direction explicitly; expected one of {valid}.",
-            file=sys.stderr,
+            f"--direction explicitly; expected one of {valid}."
         )
 
     # L / L-chamfer underconstrained routing warning.
@@ -3785,14 +3796,15 @@ def _resolve_direction_flag(args, parser):
         has_geometry = has_src_rect and has_tgt_rect
         has_both_dirs = has_start_dir and has_end_dir
         if not has_geometry and not has_both_dirs:
-            print(
+            pre_warnings.append(
                 f"WARNING: mode={args.mode!r} without --start-dir + --end-dir OR "
                 "--src-rect + --tgt-rect. Router must infer which axis to leave "
                 "each endpoint on, and the guess is frequently wrong for "
                 "non-trivial layouts - route will likely look garbage. "
-                "Declare either (a) both directions or (b) both shape rects.",
-                file=sys.stderr,
+                "Declare either (a) both directions or (b) both shape rects."
             )
+
+    return pre_warnings
 
 
 def main():
@@ -4070,9 +4082,10 @@ def main():
         "the target, the tool emits a non-fatal warning with the "
         "achieved stem length. Set to 0 to disable the reservation.",
     )
+    add_ack_warning_arg(parser)
     args = parser.parse_args()
 
-    _resolve_direction_flag(args, parser)
+    pre_warnings = _resolve_direction_flag(args, parser)
 
     head_len, head_half_h = map(float, args.head_size.split(","))
 
@@ -4109,7 +4122,6 @@ def main():
                 head_half_h=head_half_h,
             )
             if result is None:
-                print("Line does not cross pill rect - no cutout needed")
                 c = calc_connector(
                     src_x,
                     src_y,
@@ -4120,8 +4132,18 @@ def main():
                     head_half_h=head_half_h,
                     standoff=straight_standoff,
                 )
+                enforce_warning_acks(
+                    pre_warnings + list(c.get("warnings", [])),
+                    sys.argv[1:],
+                    args.ack_warning,
+                )
+                print("Line does not cross pill rect - no cutout needed")
                 print_result(c, args)
             else:
+                combined = list(result.get("warnings", []))
+                combined += list(result.get("segment1", {}).get("warnings", []))
+                combined += list(result.get("segment2", {}).get("warnings", []))
+                enforce_warning_acks(pre_warnings + combined, sys.argv[1:], args.ack_warning)
                 print("=== CUTOUT MODE: two segments ===\n")
                 print(
                     f"Segment 1: ({result['segment1_from'][0]:.1f},{result['segment1_from'][1]:.1f})"
@@ -4150,6 +4172,11 @@ def main():
                 standoff=straight_standoff,
                 src_rect=src_rect,
                 tgt_rect=tgt_rect,
+            )
+            enforce_warning_acks(
+                pre_warnings + list(c.get("warnings", [])),
+                sys.argv[1:],
+                args.ack_warning,
             )
             print_result(c, args)
         return
@@ -4209,6 +4236,11 @@ def main():
             end_shapes=_parse_shape_list(args.end_shapes),
             snap_tolerance=args.snap_tolerance,
         )
+        enforce_warning_acks(
+            pre_warnings + list(result.get("warnings", [])),
+            sys.argv[1:],
+            args.ack_warning,
+        )
         print_manifold_result(result, args)
         return
 
@@ -4220,6 +4252,16 @@ def main():
         if args.waypoints is None:
             parser.error("--waypoints is required in spline mode")
         waypoints = _parse_waypoints(args.waypoints)
+        # A PCHIP spline needs at least 3 waypoints to actually curve -
+        # two points degenerate to a straight line, which is what other
+        # modes are for. Fail loudly with guidance instead of silently
+        # producing a line.
+        if len(waypoints) < 3:
+            parser.error(
+                f"--mode spline needs at least 3 waypoints to produce a curve; "
+                f"got {len(waypoints)}. Two-point paths should use --mode straight, "
+                f"or add a middle control point: --waypoints 'x1,y1 xmid,ymid x2,y2'."
+            )
         result = calc_spline(
             waypoints,
             samples=args.samples,
@@ -4298,6 +4340,11 @@ def main():
                 stem_min=args.stem_min,
             )
 
+    enforce_warning_acks(
+        pre_warnings + list(result.get("warnings", [])),
+        sys.argv[1:],
+        args.ack_warning,
+    )
     print_polyline_result(result, args)
 
 
@@ -4320,7 +4367,10 @@ def _parse_waypoints(text):
     for token in text.replace(",", " ").split():
         out.append(float(token))
     if len(out) < 4 or len(out) % 2 != 0:
-        raise ValueError(f"--waypoints must contain >= 2 pairs of numbers, got {len(out)} numbers")
+        raise ValueError(
+            f"--waypoints must contain >= 2 pairs of numbers, got {len(out)} numbers. "
+            f"For --mode spline you need >= 3 pairs (waypoints) to get a curve."
+        )
     return [(out[i], out[i + 1]) for i in range(0, len(out), 2)]
 
 

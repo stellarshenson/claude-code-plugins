@@ -42,6 +42,11 @@ import ast
 import re
 import sys
 
+from stellars_claude_code_plugins.svg_tools._warning_gate import (
+    add_ack_warning_arg,
+    enforce_warning_acks,
+)
+
 # Neutral fallback palette - used only when the caller provides no colours.
 # Keeping this small and neutral avoids any implicit brand baggage.
 _DEFAULT_COLORS = ["#0284c7", "#7c3aed", "#059669", "#dc2626", "#f59e0b", "#0891b2"]
@@ -463,6 +468,7 @@ def main():
         "--no-legend", dest="show_legend", action="store_false", help="hide the legend"
     )
     parser.add_argument("--out", default=None, help="write SVG to this file (default stdout)")
+    add_ack_warning_arg(parser)
     args = parser.parse_args()
 
     svg_bytes = generate_chart(
@@ -496,18 +502,20 @@ def main():
     print(f"[charts] light palette ({len(pal_light)}): {', '.join(pal_light)}", file=sys.stderr)
     print(f"[charts] dark palette  ({len(pal_dark)}): {', '.join(pal_dark)}", file=sys.stderr)
     print(f"[charts] light bg: {bg_l}   dark bg: {bg_d}", file=sys.stderr)
-    if warnings:
-        print(
-            f"[charts] CONTRAST WARNINGS ({len(warnings)}) - fix these before shipping:",
-            file=sys.stderr,
-        )
-        for w in warnings:
-            print(f"  ! {w}", file=sys.stderr)
-    else:
+    if not warnings:
         print(
             "[charts] contrast audit: all series >= 7:1 in both modes (target 7-10:1)",
             file=sys.stderr,
         )
+
+    # Gate: any contrast warning blocks SVG output until acknowledged with
+    # --ack-warning TOKEN=reason. Same stop-and-think contract as the
+    # connector tool.
+    enforce_warning_acks(
+        [f"CONTRAST: {w}" for w in warnings],
+        sys.argv[1:],
+        args.ack_warning,
+    )
 
     if args.out:
         with open(args.out, "wb") as f:

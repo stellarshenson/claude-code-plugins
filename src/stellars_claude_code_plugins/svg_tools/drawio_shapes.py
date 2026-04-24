@@ -32,6 +32,17 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
+from stellars_claude_code_plugins.svg_tools._warning_gate import (
+    add_ack_warning_arg,
+    enforce_warning_acks,
+)
+
+# Module-level accumulator for warning-ack gate. Indexing / render helpers
+# deep in the call stack append here instead of printing to stderr; the
+# CLI dispatch calls enforce_warning_acks once at the end so all warnings
+# surface together with their tokens.
+_PENDING_WARNINGS: list[str] = []
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -427,14 +438,14 @@ def parse_drawio_library(xml_path: str | Path) -> list[DrawioShape]:
     """
     path = Path(xml_path)
     if not path.exists():
-        print(f"Warning: {path} not found, skipping.", file=sys.stderr)
+        _PENDING_WARNINGS.append(f"{path} not found, skipping.")
         return []
 
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
         root = ET.fromstring(text)
     except ET.ParseError as exc:
-        print(f"Warning: {path} XML parse error ({exc}), skipping.", file=sys.stderr)
+        _PENDING_WARNINGS.append(f"{path} XML parse error ({exc}), skipping.")
         return []
 
     library = path.name
@@ -454,10 +465,7 @@ def parse_drawio_library(xml_path: str | Path) -> list[DrawioShape]:
     if nested is not None:
         return _parse_format_b(nested, library, category)
 
-    print(
-        f"Warning: {path} has unrecognised root tag <{root.tag}>, skipping.",
-        file=sys.stderr,
-    )
+    _PENDING_WARNINGS.append(f"{path} has unrecognised root tag <{root.tag}>, skipping.")
     return []
 
 
@@ -465,7 +473,7 @@ def _parse_format_a(json_text: str, library: str, category: str) -> list[DrawioS
     try:
         entries = json.loads(json_text.strip())
     except json.JSONDecodeError as exc:
-        print(f"Warning: mxlibrary JSON parse error ({exc}), skipping.", file=sys.stderr)
+        _PENDING_WARNINGS.append(f"mxlibrary JSON parse error ({exc}), skipping.")
         return []
     shapes: list[DrawioShape] = []
     for entry in entries:
@@ -525,7 +533,7 @@ def build_index(source_dirs: list[str | Path]) -> ShapeIndex:
                 index.shapes.append(shape)
                 index.categories.setdefault(shape.category, []).append(idx)
         else:
-            print(f"Warning: {resolved} not found, skipping.", file=sys.stderr)
+            _PENDING_WARNINGS.append(f"{resolved} not found, skipping.")
     return index
 
 
@@ -872,6 +880,13 @@ def main() -> None:
     p_render.add_argument("--library", help="Restrict to a specific library/category.")
     p_render.add_argument("--json", action="store_true", help="Output as JSON with metadata.")
 
+    # Add --ack-warning to every subparser so the flag is discoverable
+    # from any subcommand. The stop-and-think gate fires after dispatch
+    # once per invocation - stdout is buffered during dispatch so the
+    # gate can block primary output when warnings fire.
+    for sp in (p_index, p_search, p_cat, p_render):
+        add_ack_warning_arg(sp)
+
     args = parser.parse_args()
 
     dispatch = {
@@ -882,7 +897,19 @@ def main() -> None:
     }
 
     if args.subcmd in dispatch:
-        dispatch[args.subcmd](args)
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            dispatch[args.subcmd](args)
+        enforce_warning_acks(
+            [f"drawio-shapes: {w}" for w in _PENDING_WARNINGS],
+            sys.argv[1:],
+            getattr(args, "ack_warning", []) or [],
+        )
+        # Gate passed (or no warnings) - release buffered stdout.
+        sys.stdout.write(buf.getvalue())
     else:
         parser.print_help()
         sys.exit(1)

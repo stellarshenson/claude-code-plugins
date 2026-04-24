@@ -4,18 +4,15 @@ Tests: calc_connector, check_contrast, check_connectors, check_overlaps, check_a
 """
 
 import math
+from pathlib import Path
 import subprocess
 import sys
 import textwrap
-from pathlib import Path
 
 import pytest
 
 TOOLS_DIR = (
-    Path(__file__).resolve().parent.parent
-    / "src"
-    / "stellars_claude_code_plugins"
-    / "svg_tools"
+    Path(__file__).resolve().parent.parent / "src" / "stellars_claude_code_plugins" / "svg_tools"
 )
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "svg-infographics" / "examples"
 
@@ -34,7 +31,8 @@ def tools_dir():
 def simple_svg(tmp_path):
     """Minimal SVG with one card and one text element."""
     svg = tmp_path / "simple.svg"
-    svg.write_text(textwrap.dedent("""\
+    svg.write_text(
+        textwrap.dedent("""\
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
           <style>
             .fg-1 { fill: #1e3a5f; }
@@ -51,7 +49,8 @@ def simple_svg(tmp_path):
           <text x="34" y="45" font-size="12" class="fg-1" font-family="Segoe UI, Arial, sans-serif">Card Title</text>
           <text x="34" y="59" font-size="10" class="fg-3" font-family="Segoe UI, Arial, sans-serif">Description text</text>
         </svg>
-    """))
+    """)
+    )
     return svg
 
 
@@ -59,7 +58,8 @@ def simple_svg(tmp_path):
 def contrast_fail_svg(tmp_path):
     """SVG with a contrast failure: light text on light background."""
     svg = tmp_path / "contrast_fail.svg"
-    svg.write_text(textwrap.dedent("""\
+    svg.write_text(
+        textwrap.dedent("""\
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
           <style>
             .fg-1 { fill: #1e3a5f; }
@@ -69,7 +69,8 @@ def contrast_fail_svg(tmp_path):
           </style>
           <text x="20" y="40" font-size="12" fill="#cccccc" font-family="Segoe UI, Arial, sans-serif">Low contrast text</text>
         </svg>
-    """))
+    """)
+    )
     return svg
 
 
@@ -77,7 +78,8 @@ def contrast_fail_svg(tmp_path):
 def overlap_svg(tmp_path):
     """SVG with two overlapping text elements."""
     svg = tmp_path / "overlap.svg"
-    svg.write_text(textwrap.dedent("""\
+    svg.write_text(
+        textwrap.dedent("""\
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
           <style>
             .fg-1 { fill: #1e3a5f; }
@@ -85,7 +87,8 @@ def overlap_svg(tmp_path):
           <text x="20" y="40" font-size="14" class="fg-1">First label</text>
           <text x="22" y="42" font-size="14" class="fg-1">Second label</text>
         </svg>
-    """))
+    """)
+    )
     return svg
 
 
@@ -93,13 +96,15 @@ def overlap_svg(tmp_path):
 def connector_svg(tmp_path):
     """SVG with connectors and cards."""
     svg = tmp_path / "connectors.svg"
-    svg.write_text(textwrap.dedent("""\
+    svg.write_text(
+        textwrap.dedent("""\
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
           <rect x="20" y="20" width="200" height="100"/>
           <rect x="400" y="20" width="200" height="100"/>
           <line x1="220" y1="70" x2="400" y2="70" stroke="#333" stroke-width="1"/>
         </svg>
-    """))
+    """)
+    )
     return svg
 
 
@@ -107,7 +112,8 @@ def connector_svg(tmp_path):
 def alignment_svg(tmp_path):
     """SVG with aligned text for rhythm checking."""
     svg = tmp_path / "alignment.svg"
-    svg.write_text(textwrap.dedent("""\
+    svg.write_text(
+        textwrap.dedent("""\
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
           <style>
             .fg-1 { fill: #1e3a5f; }
@@ -116,7 +122,8 @@ def alignment_svg(tmp_path):
           <text x="20" y="44" font-size="12" class="fg-1">Line two</text>
           <text x="20" y="58" font-size="12" class="fg-1">Line three</text>
         </svg>
-    """))
+    """)
+    )
     return svg
 
 
@@ -131,9 +138,19 @@ class TestCalcConnector:
     Previous revision had 9 one-assertion CLI methods."""
 
     def _run(self, *args):
-        return subprocess.run(
-            [sys.executable, str(TOOLS_DIR / "calc_connector.py"), *args],
-            capture_output=True, text=True,
+        # Auto-declare --direction (most tests are direction-agnostic) then
+        # delegate to the shared run_gated_cli helper. It discovers any
+        # warning tokens from the BLOCKED block and reruns with per-warning
+        # acks. Tests that specifically probe gate behaviour use
+        # subprocess.run directly and bypass this helper.
+        from _gate_helpers import run_gated_cli
+
+        full_args = list(args)
+        if "--direction" not in full_args:
+            full_args += ["--direction", "forward"]
+        return run_gated_cli(
+            [sys.executable, str(TOOLS_DIR / "calc_connector.py")],
+            *full_args,
         )
 
     @pytest.mark.parametrize(
@@ -161,17 +178,25 @@ class TestCalcConnector:
         a = run("--from", "100,50", "--to", "300,50")
         b = run("--from", "100,50", "--to", "300,50", "--margin", "10")
         assert a.returncode == 0 and b.returncode == 0
+
         def _len(stdout):
             for line in stdout.split("\n"):
                 if "Total length" in line:
                     return float(line.split(":")[1].strip().replace("px", ""))
             raise AssertionError("Total length not found")
+
         assert _len(b.stdout) < _len(a.stdout)
 
         # Custom head-size world-coords horizontal arrow
         c = run(
-            "--from", "100,50", "--to", "300,50",
-            "--head-size", "15,8", "--standoff", "0",
+            "--from",
+            "100,50",
+            "--to",
+            "300,50",
+            "--head-size",
+            "15,8",
+            "--standoff",
+            "0",
         )
         assert c.returncode == 0
         assert "(300.0,50.0) (285.0,42.0) (285.0,58.0)" in c.stdout
@@ -209,7 +234,8 @@ class TestCalcConnectorModule:
         auto edge-snap from rects (both aligned and diagonal), margin
         trim, no-arrow mode, and calc_cutout happy + miss paths."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import (
-            calc_connector, calc_cutout,
+            calc_connector,
+            calc_cutout,
         )
 
         # Basic straight (standoff=0) - full 100px, horizontal angle, arrow polygon correct
@@ -229,8 +255,10 @@ class TestCalcConnectorModule:
 
         # Auto edge-snap (aligned rects) - endpoints on edge midpoints
         c = calc_connector(
-            src_rect=(0, 0, 100, 100), tgt_rect=(200, 0, 100, 100),
-            arrow="none", standoff=0,
+            src_rect=(0, 0, 100, 100),
+            tgt_rect=(200, 0, 100, 100),
+            arrow="none",
+            standoff=0,
         )
         assert abs(c["samples"][0][0] - 100) < 0.01
         assert abs(c["samples"][0][1] - 50) < 0.01
@@ -239,8 +267,10 @@ class TestCalcConnectorModule:
 
         # Auto edge-snap (diagonal) - endpoints on correct perimeter faces
         c = calc_connector(
-            src_rect=(0, 0, 100, 100), tgt_rect=(200, 150, 100, 100),
-            arrow="none", standoff=0,
+            src_rect=(0, 0, 100, 100),
+            tgt_rect=(200, 150, 100, 100),
+            arrow="none",
+            standoff=0,
         )
         s0, sL = c["samples"][0], c["samples"][-1]
         assert s0[0] >= 99.99 or s0[1] >= 99.99
@@ -272,10 +302,7 @@ class TestCalcConnectorModule:
 
     @staticmethod
     def _svg(viewbox, body=""):
-        return (
-            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}">'
-            f'{body}</svg>'
-        )
+        return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}">{body}</svg>'
 
     @staticmethod
     def _rect(x, y, w, h, fill="black"):
@@ -328,7 +355,8 @@ class TestCalcConnectorModule:
         # 100x100 canvas (70% coverage, below the 80% background threshold).
         strip = find_empty_regions(
             self._svg("0 0 100 100", self._rect(0, 0, 70, 100)),
-            tolerance=0, min_area=0,
+            tolerance=0,
+            min_area=0,
         )
         assert len(strip) == 1
         assert abs(strip[0]["area"] - 3000) < 50
@@ -339,6 +367,7 @@ class TestCalcConnectorModule:
         assert len(default) == 1
         assert 90000 < default[0]["area"] < 95000
         import inspect
+
         assert inspect.signature(find_empty_regions).parameters["min_area"].default == 500.0
 
     def test_empty_space_shapes_transforms_and_css(self):
@@ -359,7 +388,7 @@ class TestCalcConnectorModule:
         # Nested <g transform="translate(...)"> composes
         translated = self._svg(
             "0 0 400 400",
-            '<g transform="translate(100, 100)">' + self._rect(0, 0, 80, 80) + '</g>',
+            '<g transform="translate(100, 100)">' + self._rect(0, 0, 80, 80) + "</g>",
         )
         regions = find_empty_regions(translated, tolerance=0, min_area=0)
         assert len(regions) >= 1
@@ -367,9 +396,9 @@ class TestCalcConnectorModule:
         # CSS-class stroke cascades correctly - stroke-only rect leaves interior free
         css_svg = (
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
-            '<style>.big { stroke: black; stroke-width: 10; fill: none; }</style>'
+            "<style>.big { stroke: black; stroke-width: 10; fill: none; }</style>"
             '<rect x="50" y="50" width="100" height="100" class="big"/>'
-            '</svg>'
+            "</svg>"
         )
         css_regions = find_empty_regions(css_svg, tolerance=0, min_area=0)
         assert len(css_regions) == 2  # inside + outside of the stroke ring
@@ -397,9 +426,12 @@ class TestCalcConnectorModule:
         # inset by 40 px on a 400x300 canvas (58% coverage, below the 80%
         # background threshold) leaves a 40-wide ring that fully erodes
         # at tolerance=20.
-        assert find_empty_regions(
-            self._svg("0 0 400 300", self._rect(40, 40, 320, 220)), tolerance=20
-        ) == []
+        assert (
+            find_empty_regions(
+                self._svg("0 0 400 300", self._rect(40, 40, 320, 220)), tolerance=20
+            )
+            == []
+        )
 
         # Canvas edge is an implicit obstacle (tolerance shrinks inward)
         edge = find_empty_regions(self._svg("0 0 200 200"), tolerance=20)
@@ -422,7 +454,9 @@ class TestCalcConnectorModule:
         cal = self._svg(
             "0 0 200 200",
             self._rect(10, 10, 20, 20)
-            + '<g id="callout-foo">' + self._rect(100, 100, 50, 50) + '</g>',
+            + '<g id="callout-foo">'
+            + self._rect(100, 100, 50, 50)
+            + "</g>",
         )
         r_with = find_empty_regions(cal, tolerance=0, exclude_ids=(), min_area=0)
         r_def = find_empty_regions(cal, tolerance=0, min_area=0)
@@ -430,14 +464,13 @@ class TestCalcConnectorModule:
 
     def test_empty_space_input_types(self):
         """Accepts str SVG, pathlib.Path, bytes; rejects everything else."""
-        import tempfile
         from pathlib import Path
+        import tempfile
+
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import find_empty_regions
 
         # Path input
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".svg", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".svg", delete=False) as f:
             f.write(self._svg("0 0 100 100", self._rect(0, 0, 50, 50)))
             path = Path(f.name)
         try:
@@ -446,9 +479,7 @@ class TestCalcConnectorModule:
             path.unlink()
 
         # Bytes input
-        assert len(find_empty_regions(
-            self._svg("0 0 100 100").encode("utf-8"), tolerance=0
-        )) == 1
+        assert len(find_empty_regions(self._svg("0 0 100 100").encode("utf-8"), tolerance=0)) == 1
 
         # Non-SVG input rejected
         with pytest.raises(TypeError, match="unsupported SVG source"):
@@ -485,8 +516,8 @@ class TestCalcConnectorModule:
         leave zero free space. Sub-80% shapes are still rasterised."""
         from stellars_claude_code_plugins.svg_tools.calc_empty_space import (
             _is_canvas_background,
-            find_empty_regions,
             _parse_svg_source,
+            find_empty_regions,
         )
 
         # Full-canvas rect -> skipped, whole canvas counted as free
@@ -549,9 +580,7 @@ class TestCalcConnectorModule:
             '<circle id="disc" cx="200" cy="200" r="150" fill="#eee"/>'
             + '<rect id="obs" x="180" y="180" width="40" height="40" fill="#222"/>',
         )
-        regions = find_empty_regions(
-            circle_svg, tolerance=5, min_area=100, container_id="disc"
-        )
+        regions = find_empty_regions(circle_svg, tolerance=5, min_area=100, container_id="disc")
         assert regions
         for r in regions:
             for x, y in r["boundary"]:
@@ -564,9 +593,7 @@ class TestCalcConnectorModule:
             "0 0 400 400",
             '<polygon id="tri" points="200,50 350,350 50,350" fill="#eee"/>',
         )
-        regions = find_empty_regions(
-            tri_svg, tolerance=5, min_area=100, container_id="tri"
-        )
+        regions = find_empty_regions(tri_svg, tolerance=5, min_area=100, container_id="tri")
         assert regions
         assert all(r["container_id"] == "tri" for r in regions)
         # Triangle interior area roughly = 0.5 * base * height = 45000, minus erosion
@@ -577,9 +604,7 @@ class TestCalcConnectorModule:
             "0 0 400 400",
             '<path id="blob" d="M 100 200 C 100 100, 300 100, 300 200 S 200 350, 100 200 Z" fill="#eee"/>',
         )
-        regions = find_empty_regions(
-            path_svg, tolerance=5, min_area=100, container_id="blob"
-        )
+        regions = find_empty_regions(path_svg, tolerance=5, min_area=100, container_id="blob")
         assert regions
         assert all(r["container_id"] == "blob" for r in regions)
 
@@ -603,21 +628,30 @@ class TestCalcConnectorModule:
     def test_empty_space_cli(self, tmp_path):
         """CLI prints region points, supports --json output, and --container-id
         clips detection to a specific element."""
-        import subprocess
         import json as _json
+        import subprocess
 
         svg_file = tmp_path / "scene.svg"
         svg_file.write_text(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
             '<rect x="50" y="50" width="50" height="50" fill="black"/>'
-            '</svg>'
+            "</svg>"
         )
 
         # Default output - human-readable list
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
-             "empty-space", "--svg", str(svg_file), "--tolerance", "0"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "empty-space",
+                "--svg",
+                str(svg_file),
+                "--tolerance",
+                "20",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         assert "EMPTY REGIONS" in r.stdout
@@ -629,12 +663,20 @@ class TestCalcConnectorModule:
         svg_file2.write_text(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">'
             '<rect x="100" y="100" width="50" height="50" fill="black"/>'
-            '</svg>'
+            "</svg>"
         )
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
-             "empty-space", "--svg", str(svg_file2), "--json"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "empty-space",
+                "--svg",
+                str(svg_file2),
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         data = _json.loads(r.stdout)
@@ -648,13 +690,24 @@ class TestCalcConnectorModule:
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">'
             '<rect id="card" x="50" y="50" width="300" height="200" fill="#eee"/>'
             '<rect id="outside" x="360" y="10" width="30" height="30" fill="#f00"/>'
-            '</svg>'
+            "</svg>"
         )
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
-             "empty-space", "--svg", str(svg_file3), "--container-id", "card",
-             "--tolerance", "0", "--json"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "empty-space",
+                "--svg",
+                str(svg_file3),
+                "--container-id",
+                "card",
+                "--tolerance",
+                "20",
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         data = _json.loads(r.stdout)
@@ -677,10 +730,16 @@ class TestConnectorModes:
             # L-chamfer negative direction (up-and-left), signs flip
             ("l-chamfer", 4, (300, 150), (100, 50), None, [(104, 150), (100, 146)], None),
         ],
-        ids=["l_horizontal_first", "l_forced_vertical", "l_chamfer_positive", "l_chamfer_negative"],
+        ids=[
+            "l_horizontal_first",
+            "l_forced_vertical",
+            "l_chamfer_positive",
+            "l_chamfer_negative",
+        ],
     )
     def test_l_modes(self, mode, chamfer, src, tgt, start_dir, expected_corners, expected_angle):
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l, calc_l_chamfer
+
         kwargs = {"arrow": "end"} if expected_angle is not None else {"arrow": "none"}
         if start_dir:
             kwargs["start_dir"] = start_dir
@@ -706,7 +765,8 @@ class TestConnectorModes:
         segments, arrow=both returns two polygons with trimming, and
         l-chamfer collinear degenerates to a straight line."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import (
-            calc_spline, calc_l_chamfer,
+            calc_l_chamfer,
+            calc_spline,
         )
 
         # PCHIP hits waypoints exactly
@@ -745,6 +805,7 @@ class TestConnectorModes:
         """pchip_parametric produces self-intersecting / closed curves when
         the waypoints loop back - chord-length parametrisation required."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import pchip_parametric
+
         wp = [(0, 0), (50, 50), (100, 0), (50, -50), (0, 0)]
         pts = pchip_parametric(wp, num_samples=50)
         assert len(pts) == 50
@@ -765,12 +826,18 @@ class TestConnectorModes:
             '<rect id="src" x="50" y="180" width="80" height="40" fill="#bbb"/>'
             '<rect id="obstacle" x="300" y="50" width="200" height="300" fill="#bbb"/>'
             '<rect id="tgt" x="670" y="180" width="80" height="40" fill="#bbb"/>'
-            '</svg>'
+            "</svg>"
         )
         r = calc_l(
-            130, 200, 670, 200,
-            start_dir="E", end_dir="W", arrow="end",
-            auto_route=True, svg=svg,
+            130,
+            200,
+            670,
+            200,
+            start_dir="E",
+            end_dir="W",
+            arrow="end",
+            auto_route=True,
+            svg=svg,
         )
         assert r["mode"] == "l"
         # Multi-elbow path: at least two waypoints = three bend points total
@@ -778,7 +845,7 @@ class TestConnectorModes:
         # None of the interior samples lies inside the obstacle's xyxy bbox
         for x, y in r["samples"]:
             inside = 305 < x < 495 and 55 < y < 345
-            assert not inside, f"sample {(x,y)} is inside the obstacle"
+            assert not inside, f"sample {(x, y)} is inside the obstacle"
         assert not any("failed" in w for w in r["warnings"])
 
         # Scenario 2: container_id clips routing to a card interior.
@@ -786,12 +853,19 @@ class TestConnectorModes:
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400">'
             '<rect id="card" x="50" y="50" width="500" height="300" fill="#eee"/>'
             '<rect id="inner-obstacle" x="250" y="120" width="100" height="160" fill="#222"/>'
-            '</svg>'
+            "</svg>"
         )
         r = calc_l(
-            80, 200, 520, 200,
-            start_dir="E", end_dir="W", arrow="end",
-            auto_route=True, svg=svg_card, container_id="card",
+            80,
+            200,
+            520,
+            200,
+            start_dir="E",
+            end_dir="W",
+            arrow="end",
+            auto_route=True,
+            svg=svg_card,
+            container_id="card",
         )
         assert len(r["controls"]) >= 2
         # Every sample stays inside the card's bbox (50,50)-(550,350)
@@ -805,13 +879,18 @@ class TestConnectorModes:
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">'
             '<rect x="0" y="90" width="200" height="20" fill="#000"/>'
             '<rect x="90" y="0" width="20" height="200" fill="#000"/>'
-            '</svg>'
+            "</svg>"
         )
         r = calc_l(
-            20, 50, 180, 150,
+            20,
+            50,
+            180,
+            150,
             arrow="end",
-            auto_route=True, svg=svg_blocked,
-            route_cell_size=5, route_margin=3,
+            auto_route=True,
+            svg=svg_blocked,
+            route_cell_size=5,
+            route_margin=3,
         )
         # Either found a path OR fell back with a warning - both are valid.
         failed = any("auto_route failed" in w for w in r["warnings"])
@@ -837,15 +916,22 @@ class TestConnectorModes:
             '<rect id="obs-2" x="110" y="270" width="180" height="70" fill="#d4a04a"/>'
             '<rect id="obs-3" x="330" y="280" width="140" height="100" fill="#d4a04a"/>'
             '<rect id="obs-4" x="140" y="400" width="200" height="60" fill="#d4a04a"/>'
-            '</svg>'
+            "</svg>"
         )
 
         r = calc_l_chamfer(
-            src_rect=(100, 120, 90, 50), start_dir="E",
-            tgt_rect=(370, 460, 90, 50), end_dir="N",
-            chamfer=6, standoff=4, arrow="end",
-            auto_route=True, svg=svg, container_id="card-A",
-            route_cell_size=16, route_margin=8,
+            src_rect=(100, 120, 90, 50),
+            start_dir="E",
+            tgt_rect=(370, 460, 90, 50),
+            end_dir="N",
+            chamfer=6,
+            standoff=4,
+            arrow="end",
+            auto_route=True,
+            svg=svg,
+            container_id="card-A",
+            route_cell_size=16,
+            route_margin=8,
         )
         # A routable scene produces >= 2 waypoints and no failure warning
         assert len(r["controls"]) >= 2
@@ -870,32 +956,71 @@ class TestConnectorModes:
         and emits a multi-elbow path. --svg is required when --auto-route
         is set."""
         import subprocess
+
         svg_file = tmp_path / "scene.svg"
         svg_file.write_text(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">'
             '<rect id="src" x="50" y="180" width="80" height="40" fill="#bbb"/>'
             '<rect id="obstacle" x="300" y="50" width="200" height="300" fill="#bbb"/>'
             '<rect id="tgt" x="670" y="180" width="80" height="40" fill="#bbb"/>'
-            '</svg>'
+            "</svg>"
         )
-        r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
-             "connector", "--mode", "l",
-             "--from", "130,200", "--to", "670,200",
-             "--start-dir", "E", "--end-dir", "W",
-             "--auto-route", "--svg", str(svg_file)],
-            capture_output=True, text=True,
-        )
+        base_cmd = [
+            sys.executable,
+            "-m",
+            "stellars_claude_code_plugins.svg_tools.cli",
+            "connector",
+            "--mode",
+            "l",
+            "--from",
+            "130,200",
+            "--to",
+            "670,200",
+            "--start-dir",
+            "E",
+            "--end-dir",
+            "W",
+            "--direction",
+            "forward",
+            "--auto-route",
+            "--svg",
+            str(svg_file),
+        ]
+        r = subprocess.run(base_cmd, capture_output=True, text=True)
+        if r.returncode == 2 and "BLOCKED" in r.stderr:
+            import re
+
+            toks = re.findall(r"W-[0-9a-f]{8}", r.stderr)
+            ack_flags = []
+            seen = set()
+            for t in toks:
+                if t in seen:
+                    continue
+                seen.add(t)
+                ack_flags += ["--ack-warning", f"{t}=test fixture"]
+            r = subprocess.run(base_cmd + ack_flags, capture_output=True, text=True)
         assert r.returncode == 0, r.stderr
         assert "controls" in r.stdout.lower() or "samples" in r.stdout.lower()
 
         # --auto-route without --svg is a parser error
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
-             "connector", "--mode", "l",
-             "--from", "130,200", "--to", "670,200",
-             "--auto-route"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "connector",
+                "--mode",
+                "l",
+                "--from",
+                "130,200",
+                "--to",
+                "670,200",
+                "--direction",
+                "forward",
+                "--auto-route",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode != 0
         assert "--auto-route requires --svg" in (r.stderr + r.stdout)
@@ -908,6 +1033,7 @@ class TestConnectorModes:
         edge of src. With start_dir locked into _thread_l_controls the
         first step is horizontal (the small jog) and then vertical."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import _thread_l_controls
+
         src = (174, 162)
         dst = (422, 444)
         # First waypoint is 1 px east and 83 px south of src - dominant
@@ -930,6 +1056,7 @@ class TestConnectorModes:
         a route whose last waypoint is above tgt must produce a final
         vertical (southward) leg entering the top edge."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import _thread_l_controls
+
         src = (174, 162)
         dst = (422, 400)  # top-center of tgt rect
         controls = [(175, 245), (483, 245)]
@@ -948,6 +1075,7 @@ class TestConnectorModes:
         The global chamfer pass must clamp the bevel to half the shorter
         adjacent segment so no vertex ever backtracks."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import _thread_l_controls
+
         # src->control1 has a 1px horizontal jog, then a 100px vertical
         # run. A naive chamfer=5 would overshoot the 1px leg.
         src = (100, 100)
@@ -976,13 +1104,18 @@ class TestConnectorModes:
         disagreed with end_dir.
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         # dx=376 >> |dy|=8 -> dominant inference picks h-first (last leg v).
         # end_dir='W' says last leg must be HORIZONTAL. Without the fix the
         # arrow tangent would be the diagonal bevel direction.
         r = calc_l_chamfer(
-            src_x=494, src_y=280,
-            tgt_rect=(760, 244, 110, 56), end_dir="W",
-            chamfer=5, standoff=4, arrow="end",
+            src_x=494,
+            src_y=280,
+            tgt_rect=(760, 244, 110, 56),
+            end_dir="W",
+            chamfer=5,
+            standoff=4,
+            arrow="end",
         )
         tx, ty = r["end"]["tangent"]
         assert abs(ty) < 1e-6 and tx > 0.99, (
@@ -1005,16 +1138,23 @@ class TestConnectorModes:
         always accommodates standoff + head_len.
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         # Short last leg: 15 units from the last A*-like waypoint to tgt.
         # chamfer=5, standoff=4, head_len=10 -> naive would leave 10-4=6
         # after standoff which is less than head_len=10.
         controls = [(100, 100), (250, 100), (250, 385)]
         r = calc_l_chamfer(
-            src_x=50, src_y=100,
-            tgt_x=235, tgt_y=400,  # 15 units south of last waypoint
+            src_x=50,
+            src_y=100,
+            tgt_x=235,
+            tgt_y=400,  # 15 units south of last waypoint
             controls=controls,
-            chamfer=5, standoff=4, arrow="end", end_dir="S",
-            head_len=10, head_half_h=5,
+            chamfer=5,
+            standoff=4,
+            arrow="end",
+            end_dir="S",
+            head_len=10,
+            head_half_h=5,
         )
         tx, ty = r["end"]["tangent"]
         assert abs(tx) < 1e-6 and ty > 0.99, (
@@ -1033,12 +1173,17 @@ class TestConnectorModes:
         and the route collapses to a single straight horizontal line.
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         # src.y = 280 is inside tgt y-range [244, 300]; diff from mid
         # (272) is 8 <= 20. Slide collapses to straight.
         r = calc_l_chamfer(
-            src_x=494, src_y=280,
-            tgt_rect=(760, 244, 110, 56), end_dir="E",
-            chamfer=5, standoff=4, arrow="end",
+            src_x=494,
+            src_y=280,
+            tgt_rect=(760, 244, 110, 56),
+            end_dir="E",
+            chamfer=5,
+            standoff=4,
+            arrow="end",
         )
         samples = r["samples"]
         # Exactly one segment (two samples) = straight line, no corner
@@ -1054,13 +1199,18 @@ class TestConnectorModes:
         the slide is rejected and the tool falls back to the midpoint.
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         # src.y = 100 is OUTSIDE tgt y-range [244, 300] -> no slide.
         # Also diff = |100 - 272| = 172 > 20 so tolerance would reject
         # it anyway. The point is that tgt must still anchor at midpoint.
         r = calc_l_chamfer(
-            src_x=494, src_y=100,
-            tgt_rect=(760, 244, 110, 56), end_dir="E",
-            chamfer=5, standoff=4, arrow="end",
+            src_x=494,
+            src_y=100,
+            tgt_rect=(760, 244, 110, 56),
+            end_dir="E",
+            chamfer=5,
+            standoff=4,
+            arrow="end",
         )
         # Tgt endpoint y must be the edge midpoint (272), NOT src.y (100)
         tgt_sample = r["samples"][-1]
@@ -1074,13 +1224,18 @@ class TestConnectorModes:
         collapse the route to a single horizontal line.
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         # Both rects have y-range covering [150, 160] with mid-y very close
         # (155 for src, 160 for tgt, diff 5 < tolerance=20). Slide
         # collapses.
         r = calc_l_chamfer(
-            src_rect=(50, 130, 80, 50), start_dir="E",   # y range 130-180, mid=155
-            tgt_rect=(400, 140, 80, 40), end_dir="E",   # y range 140-180, mid=160
-            chamfer=5, standoff=4, arrow="end",
+            src_rect=(50, 130, 80, 50),
+            start_dir="E",  # y range 130-180, mid=155
+            tgt_rect=(400, 140, 80, 40),
+            end_dir="E",  # y range 140-180, mid=160
+            chamfer=5,
+            standoff=4,
+            arrow="end",
         )
         samples = r["samples"]
         assert len(samples) == 2, f"expected 2 samples for straight rect-rect, got {samples}"
@@ -1093,16 +1248,19 @@ class TestConnectorModes:
         Route keeps its corner.
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         r = calc_l_chamfer(
-            src_rect=(90, 140, 84, 44), start_dir="E",
-            tgt_rect=(380, 400, 84, 44), end_dir="S",
-            chamfer=5, standoff=4, arrow="end",
+            src_rect=(90, 140, 84, 44),
+            start_dir="E",
+            tgt_rect=(380, 400, 84, 44),
+            end_dir="S",
+            chamfer=5,
+            standoff=4,
+            arrow="end",
         )
         samples = r["samples"]
         # Must have at least one corner -> more than 2 samples
-        assert len(samples) > 2, (
-            f"perpendicular rect pair must keep corner, got {samples}"
-        )
+        assert len(samples) > 2, f"perpendicular rect pair must keep corner, got {samples}"
 
     def test_stem_min_warning_on_short_last_leg(self):
         """stem_min requires len_out >= standoff + head_len + stem_min.
@@ -1111,32 +1269,47 @@ class TestConnectorModes:
         corner's bevel to preserve as much cardinal stem as possible.
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         # Construct a polyline whose final cardinal leg is 15 units
         # (from the last corner to tgt). end_dir='S' forces first_axis
         # on the last segment to 'h', making the corner at (250, 100).
         # Last leg (250, 100) -> (250, 115) = 15 units; need 34.
         r = calc_l_chamfer(
-            src_x=50, src_y=100,
-            tgt_x=250, tgt_y=115,
+            src_x=50,
+            src_y=100,
+            tgt_x=250,
+            tgt_y=115,
             controls=[(200, 100)],
-            chamfer=5, standoff=4, arrow="end", end_dir="S",
-            head_len=10, head_half_h=5, stem_min=20,
+            chamfer=5,
+            standoff=4,
+            arrow="end",
+            end_dir="S",
+            head_len=10,
+            head_half_h=5,
+            stem_min=20,
         )
         # Accept stem-min or critical bend-proximity hint.
-        assert any(
-            "stem" in w or "bend" in w for w in r["warnings"]
-        ), f"expected stem-min / bend-proximity warning, got warnings={r['warnings']}"
+        assert any("stem" in w or "bend" in w for w in r["warnings"]), (
+            f"expected stem-min / bend-proximity warning, got warnings={r['warnings']}"
+        )
 
     def test_stem_min_configurable(self):
         """stem_min is configurable - passing stem_min=0 disables the
         reserve and the tool bevels at full chamfer even on short legs.
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         r0 = calc_l_chamfer(
-            src_x=50, src_y=100, tgt_x=250, tgt_y=115,
+            src_x=50,
+            src_y=100,
+            tgt_x=250,
+            tgt_y=115,
             controls=[(200, 100)],
-            chamfer=5, standoff=4, arrow="end",
-            end_dir="S", stem_min=0,
+            chamfer=5,
+            standoff=4,
+            arrow="end",
+            end_dir="S",
+            stem_min=0,
         )
         # stem_min=0 disables the stem warning
         assert not any("stem" in w for w in r0["warnings"])
@@ -1149,6 +1322,7 @@ class TestConnectorModes:
         few pixels of cardinal stem.
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         # Scene identical in spirit to the container-routing demo: src
         # on left, tgt bottom-right, obstacles forcing a multi-elbow
         # detour. Without stem_min the last corner would sit ~15 px
@@ -1159,14 +1333,21 @@ class TestConnectorModes:
             '<rect id="card" x="20" y="20" width="460" height="460" fill="#eee"/>'
             '<rect id="obs-1" x="150" y="100" width="120" height="60" fill="#888"/>'
             '<rect id="obs-2" x="150" y="280" width="200" height="60" fill="#888"/>'
-            '</svg>'
+            "</svg>"
         )
         r = calc_l_chamfer(
-            src_rect=(40, 200, 80, 40), start_dir="E",
-            tgt_rect=(360, 400, 80, 40), end_dir="S",
-            chamfer=5, standoff=4, arrow="end",
-            auto_route=True, svg=svg, container_id="card",
-            route_cell_size=10, route_margin=6,
+            src_rect=(40, 200, 80, 40),
+            start_dir="E",
+            tgt_rect=(360, 400, 80, 40),
+            end_dir="S",
+            chamfer=5,
+            standoff=4,
+            arrow="end",
+            auto_route=True,
+            svg=svg,
+            container_id="card",
+            route_cell_size=10,
+            route_margin=6,
             stem_min=20,
         )
         assert not any("stem" in w for w in r["warnings"]), (
@@ -1175,6 +1356,7 @@ class TestConnectorModes:
         # Walk backward from the end and measure the last cardinal run.
         samples = r["samples"]
         import math
+
         last_leg = 0.0
         for i in range(len(samples) - 1, 0, -1):
             a = samples[i - 1]
@@ -1194,13 +1376,18 @@ class TestConnectorModes:
         consistent with the rect-rect bias rule (smaller slides less).
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         # Point at (494, 280); tgt rect y-range [244, 300] mid 272.
         # Diff 8 <= tolerance 20, point y inside rect range -> slide.
         # Point stays at y=280, rect slides from mid 272 to 280.
         r = calc_l_chamfer(
-            src_x=494, src_y=280,
-            tgt_rect=(760, 244, 110, 56), end_dir="E",
-            chamfer=5, standoff=4, arrow="end",
+            src_x=494,
+            src_y=280,
+            tgt_rect=(760, 244, 110, 56),
+            end_dir="E",
+            chamfer=5,
+            standoff=4,
+            arrow="end",
         )
         samples = r["samples"]
         assert len(samples) == 2, f"expected straight line, got {samples}"
@@ -1214,6 +1401,7 @@ class TestConnectorModes:
         and the larger absorbs the slide.
         """
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
         # Src y-range [180, 280] (wide, mid 230); tgt y-range [220, 260]
         # (narrow, mid 240). Natural diff 10 < tolerance=20. Intersection
         # is [220, 260]. Smaller (tgt, width 40) midpoint is 240 which
@@ -1241,9 +1429,13 @@ class TestConnectorModes:
         # mid 145. Smaller (tgt) mid 155 clamped to [140, 150] -> 150.
         # Target 150 instead of 145. Both slide to 150.
         r = calc_l_chamfer(
-            src_rect=(50, 100, 80, 50), start_dir="E",    # y range 100..150
-            tgt_rect=(400, 140, 80, 30), end_dir="E",    # y range 140..170 (smaller)
-            chamfer=5, standoff=4, arrow="end",
+            src_rect=(50, 100, 80, 50),
+            start_dir="E",  # y range 100..150
+            tgt_rect=(400, 140, 80, 30),
+            end_dir="E",  # y range 140..170 (smaller)
+            chamfer=5,
+            standoff=4,
+            arrow="end",
             straight_tolerance=50,
         )
         samples = r["samples"]
@@ -1261,6 +1453,7 @@ class TestConnectorModes:
         as many samples as there are corners (two bevel points per corner
         instead of one sharp vertex)."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import _thread_l_controls
+
         # A 3-waypoint route that produces 3 corners: one inside the first
         # L, one at the first inter-segment join, one inside the last L.
         src = (0, 0)
@@ -1305,9 +1498,22 @@ class TestManifoldConnector:
     """
 
     def _run(self, *args):
-        return subprocess.run(
-            [sys.executable, str(TOOLS_DIR / "calc_connector.py"), *args],
-            capture_output=True, text=True,
+        # Auto-declare --direction matching the mode (manifold vs linear)
+        # then delegate to the shared run_gated_cli helper. Per-strand
+        # CONSIDER warnings (e.g. off-spine offsets) and L-chamfer stem
+        # warnings are discovered and acked automatically so tests focus
+        # on CLI output surface, not gate mechanics.
+        from _gate_helpers import run_gated_cli
+
+        full_args = list(args)
+        if "--direction" not in full_args:
+            if "manifold" in full_args:
+                full_args += ["--direction", "sources-to-sinks"]
+            else:
+                full_args += ["--direction", "forward"]
+        return run_gated_cli(
+            [sys.executable, str(TOOLS_DIR / "calc_connector.py")],
+            *full_args,
         )
 
     @pytest.mark.parametrize(
@@ -1325,11 +1531,16 @@ class TestManifoldConnector:
         merge at spine_start, all end strands fork from spine_end, spine
         has positive length, and each sub-result carries trimmed_path_d."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+
         r = calc_manifold(
             starts=[(50, 100), (50, 200), (50, 300)],
             ends=[(400, 150), (400, 250)],
-            spine_start=(200, 200), spine_end=(300, 200),
-            shape=shape, tension=tension, samples=50, arrow="end",
+            spine_start=(200, 200),
+            spine_end=(300, 200),
+            shape=shape,
+            tension=tension,
+            samples=50,
+            arrow="end",
         )
         assert r["mode"] == "manifold"
         assert r["shape"] == shape
@@ -1357,8 +1568,10 @@ class TestManifoldConnector:
         r = calc_manifold(
             starts=[(50, 100), (50, 300)],
             ends=[(400, 100), (400, 300)],
-            spine_start=(200, 200), spine_end=(300, 200),
-            shape="l-chamfer", tension=(0.2, 0.8),
+            spine_start=(200, 200),
+            spine_end=(300, 200),
+            shape="l-chamfer",
+            tension=(0.2, 0.8),
         )
         assert r["tension"] == (0.2, 0.8)
 
@@ -1366,8 +1579,10 @@ class TestManifoldConnector:
         r = calc_manifold(
             starts=[(50, 100), (50, 300)],
             ends=[(400, 200)],
-            spine_start=(200, 200), spine_end=(300, 200),
-            shape="l-chamfer", tension=1,
+            spine_start=(200, 200),
+            spine_end=(300, 200),
+            shape="l-chamfer",
+            tension=1,
         )
         x, y, w, h = r["bbox"]
         # Source-side standoff in manifold mode is head_len + DEFAULT_STANDOFF
@@ -1381,9 +1596,11 @@ class TestManifoldConnector:
         r = calc_manifold(
             starts=[(50, 100), (50, 200)],
             ends=[(400, 150)],
-            spine_start=(200, 150), spine_end=(300, 150),
+            spine_start=(200, 150),
+            spine_end=(300, 150),
             merge_points=[(180, 60), (180, 240)],
-            shape="l", tension=0.5,
+            shape="l",
+            tension=0.5,
         )
         assert r["merge_points"][0] == (180, 60)
         assert r["merge_points"][1] == (180, 240)
@@ -1409,8 +1626,11 @@ class TestManifoldConnector:
     def test_manifold_validation_errors(self, bad_args, match):
         """Invalid argument combinations raise ValueError with specific match."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+
         defaults = dict(
-            spine_start=(50, 5), spine_end=(70, 5), shape="l-chamfer",
+            spine_start=(50, 5),
+            spine_end=(70, 5),
+            shape="l-chamfer",
         )
         with pytest.raises(ValueError, match=match):
             calc_manifold(**defaults, **bad_args)
@@ -1424,8 +1644,10 @@ class TestManifoldConnector:
         r = calc_manifold(
             starts=[(50, 100), (50, 200), (50, 300)],
             ends=[(400, 150), (400, 250)],
-            spine_start=(200, 200), spine_end=(300, 200),
-            shape="spline", tension=0.8,
+            spine_start=(200, 200),
+            spine_end=(300, 200),
+            shape="spline",
+            tension=0.8,
         )
         assert r["organic"] is False
 
@@ -1433,8 +1655,10 @@ class TestManifoldConnector:
         r = calc_manifold(
             starts=[(50, 100), (50, 200)],
             ends=[(400, 200)],
-            spine_start=(200, 200), spine_end=(300, 200),
-            shape="spline", organic=False,
+            spine_start=(200, 200),
+            spine_end=(300, 200),
+            shape="spline",
+            organic=False,
         )
         assert r["organic"] is False
 
@@ -1442,13 +1666,17 @@ class TestManifoldConnector:
         common = dict(
             starts=[(50, 100), (50, 200), (50, 300)],
             ends=[(400, 200)],
-            spine_start=(200, 200), spine_end=(300, 200),
-            shape="spline", tension=0.0,
+            spine_start=(200, 200),
+            spine_end=(300, 200),
+            shape="spline",
+            tension=0.0,
         )
         baseline = calc_manifold(**common, organic=False)
         relaxed = calc_manifold(
-            **common, organic=True,
-            organic_iterations=40, organic_repulsion=150,
+            **common,
+            organic=True,
+            organic_iterations=40,
+            organic_repulsion=150,
         )
         b_mid = baseline["start_strands"][0]["samples"][
             len(baseline["start_strands"][0]["samples"]) // 2
@@ -1460,11 +1688,17 @@ class TestManifoldConnector:
 
         # Organic relaxation with different tensions produces different paths
         s0 = calc_manifold(
-            **common, organic=True, organic_iterations=80, organic_repulsion=300,
+            **common,
+            organic=True,
+            organic_iterations=80,
+            organic_repulsion=300,
         )
         common["tension"] = 1.0
         s1 = calc_manifold(
-            **common, organic=True, organic_iterations=80, organic_repulsion=300,
+            **common,
+            organic=True,
+            organic_iterations=80,
+            organic_repulsion=300,
         )
         assert s0["start_strands"][0]["samples"] != s1["start_strands"][0]["samples"]
 
@@ -1479,8 +1713,11 @@ class TestManifoldConnector:
         r = calc_manifold(
             starts=[(50, 100), (50, 200), (50, 300)],
             ends=[(400, 200)],
-            spine_start=(200, 200), spine_end=(300, 200),
-            shape="l-chamfer", tension=1, align_elbows=True,
+            spine_start=(200, 200),
+            spine_end=(300, 200),
+            shape="l-chamfer",
+            tension=1,
+            align_elbows=True,
         )
         for strand in r["start_strands"]:
             xs = [s[0] for s in strand["samples"]]
@@ -1491,9 +1728,12 @@ class TestManifoldConnector:
         r = calc_manifold(
             starts=[(50, 100), (50, 200), (50, 300)],
             ends=[(400, 200)],
-            spine_start=(200, 200), spine_end=(300, 200),
-            shape="l-chamfer", tension=1,
-            start_controls=explicit, align_elbows=True,
+            spine_start=(200, 200),
+            spine_end=(300, 200),
+            shape="l-chamfer",
+            tension=1,
+            start_controls=explicit,
+            align_elbows=True,
         )
         assert r["start_strands"][0]["controls"][0] == (180, 100)
 
@@ -1501,8 +1741,10 @@ class TestManifoldConnector:
         r = calc_manifold(
             starts=[(50, 100), (50, 300)],
             ends=[(400, 200)],
-            spine_start=(200, 200), spine_end=(300, 200),
-            shape="l-chamfer", tension=1,
+            spine_start=(200, 200),
+            spine_end=(300, 200),
+            shape="l-chamfer",
+            tension=1,
             start_controls=[[(120, 100), (150, 130)], []],
         )
         controls = r["start_strands"][0]["controls"]
@@ -1514,8 +1756,11 @@ class TestManifoldConnector:
         r = calc_manifold(
             starts=[(50, 100), (50, 200)],
             ends=[(400, 150)],
-            spine_start=(200, 150), spine_end=(300, 150),
-            shape="spline", tension=1, align_elbows=True,
+            spine_start=(200, 150),
+            spine_end=(300, 150),
+            shape="spline",
+            tension=1,
+            align_elbows=True,
         )
         for strand in r["start_strands"]:
             assert len(strand["controls"]) <= 1
@@ -1525,7 +1770,9 @@ class TestManifoldConnector:
         underlying _unpack_point_with_direction helper parses compass strings
         and numeric degrees equivalently."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import (
-            calc_l, calc_manifold, _unpack_point_with_direction,
+            _unpack_point_with_direction,
+            calc_l,
+            calc_manifold,
         )
 
         # compass vs numeric degrees agree
@@ -1549,8 +1796,10 @@ class TestManifoldConnector:
         r = calc_manifold(
             starts=[(50, 100, "E"), (50, 200, "E")],
             ends=[(400, 150, "E")],
-            spine_start=(200, 150), spine_end=(300, 150),
-            shape="spline", tension=0.5,
+            spine_start=(200, 150),
+            spine_end=(300, 150),
+            shape="spline",
+            tension=0.5,
         )
         assert r["mode"] == "manifold"
         assert len(r["start_strands"]) == 2
@@ -1560,17 +1809,41 @@ class TestManifoldConnector:
         "mode, extra_args, expected_tokens",
         [
             # CLI L mode - path + polygon + arrow polygon
-            ("l", ["--from", "100,50", "--to", "300,150", "--arrow", "end"],
-             ["L CONNECTOR", "Arrow polygon", "<path d=", "<polygon"]),
+            (
+                "l",
+                ["--from", "100,50", "--to", "300,150", "--arrow", "end"],
+                ["L CONNECTOR", "Arrow polygon", "<path d=", "<polygon"],
+            ),
             # CLI L-chamfer - 4-sample polyline
-            ("l-chamfer", ["--from", "100,50", "--to", "300,150", "--chamfer", "4"],
-             ["L-CHAMFER CONNECTOR", "Samples:          4"]),
+            (
+                "l-chamfer",
+                ["--from", "100,50", "--to", "300,150", "--chamfer", "4"],
+                ["L-CHAMFER CONNECTOR", "Samples:          4"],
+            ),
             # CLI spline with arrow=both - 2 polygons in the SVG output
-            ("spline", ["--waypoints", "100,80 200,40 300,120 400,60", "--samples", "100", "--arrow", "both"],
-             ["SPLINE CONNECTOR", "Samples:          100"]),
+            (
+                "spline",
+                [
+                    "--waypoints",
+                    "100,80 200,40 300,120 400,60",
+                    "--samples",
+                    "100",
+                    "--arrow",
+                    "both",
+                ],
+                ["SPLINE CONNECTOR", "Samples:          100"],
+            ),
             # CLI straight unified output - path + polygon in world coords, no rotate template
-            ("straight", ["--from", "100,50", "--to", "300,50"],
-             ["STRAIGHT CONNECTOR", "Angle:            0.0 degrees", "<path d=", "<polygon points="]),
+            (
+                "straight",
+                ["--from", "100,50", "--to", "300,50"],
+                [
+                    "STRAIGHT CONNECTOR",
+                    "Angle:            0.0 degrees",
+                    "<path d=",
+                    "<polygon points=",
+                ],
+            ),
         ],
         ids=["l", "l_chamfer", "spline", "straight_unified"],
     )
@@ -1585,27 +1858,43 @@ class TestManifoldConnector:
         path. Previous revision split these into two separate tests."""
         # Tension-based manifold CLI runs end-to-end
         r = self._run(
-            "--mode", "manifold",
-            "--starts", "[(50,100),(50,200),(50,300)]",
-            "--ends", "[(400,200)]",
-            "--spine-start", "(200,200)",
-            "--spine-end", "(300,200)",
-            "--shape", "l-chamfer",
-            "--tension", "0.5",
-            "--arrow", "end",
+            "--mode",
+            "manifold",
+            "--starts",
+            "[(50,100),(50,200),(50,300)]",
+            "--ends",
+            "[(400,200)]",
+            "--spine-start",
+            "(200,200)",
+            "--spine-end",
+            "(300,200)",
+            "--shape",
+            "l-chamfer",
+            "--tension",
+            "0.5",
+            "--arrow",
+            "end",
         )
         assert r.returncode == 0, r.stderr
         for tok in [
-            "MANIFOLD CONNECTOR", "Starts:           3", "Ends:             1",
-            "Spine start:", "Tension:", "BBox:", "manifold-connector",
+            "MANIFOLD CONNECTOR",
+            "Starts:           3",
+            "Ends:             1",
+            "Spine start:",
+            "Tension:",
+            "BBox:",
+            "manifold-connector",
         ]:
             assert tok in r.stdout
 
         # Missing spine endpoints -> non-zero exit
         r = self._run(
-            "--mode", "manifold",
-            "--starts", "[(50,100)]",
-            "--ends", "[(400,200)]",
+            "--mode",
+            "manifold",
+            "--starts",
+            "[(50,100)]",
+            "--ends",
+            "[(400,200)]",
         )
         assert r.returncode != 0
         assert "spine" in r.stderr.lower()
@@ -1617,8 +1906,12 @@ class TestManifoldConnector:
         trim across both ends, l-chamfer controls, controls soft cap warning
         via CLI, and straight shape rejects controls."""
         from stellars_claude_code_plugins.svg_tools.calc_connector import (
-            _arrowhead_polygon_world, _trim_polyline, _polyline_length,
-            calc_connector, calc_l_chamfer, _calc_single_strand,
+            _arrowhead_polygon_world,
+            _calc_single_strand,
+            _polyline_length,
+            _trim_polyline,
+            calc_connector,
+            calc_l_chamfer,
         )
 
         # Arrow polygon for horizontal arrow at tip (10, 5)
@@ -1658,22 +1951,48 @@ class TestManifoldConnector:
         )
         assert r["controls"] == [(150, 50), (200, 150)]
 
-        # Soft-cap warning via CLI when >5 controls are given
-        r = subprocess.run(
-            [sys.executable, str(TOOLS_DIR / "calc_connector.py"),
-             "--mode", "l-chamfer", "--from", "0,0", "--to", "300,300",
-             "--controls", "[(50,10),(100,20),(150,30),(200,40),(250,50),(280,80)]"],
-            capture_output=True, text=True,
-        )
-        assert r.returncode == 0
-        assert "WARNING" in r.stderr
+        # Soft-cap warning via CLI when >5 controls are given. The gate
+        # blocks output - discover the token from the BLOCKED block, then
+        # rerun with a per-warning ack.
+        base_cmd = [
+            sys.executable,
+            str(TOOLS_DIR / "calc_connector.py"),
+            "--mode",
+            "l-chamfer",
+            "--from",
+            "0,0",
+            "--to",
+            "300,300",
+            "--direction",
+            "forward",
+            "--controls",
+            "[(50,10),(100,20),(150,30),(200,40),(250,50),(280,80)]",
+        ]
+        r = subprocess.run(base_cmd, capture_output=True, text=True)
+        assert r.returncode == 2 and "BLOCKED" in r.stderr, r.stderr
+        assert "soft cap" in r.stderr
+        import re
+
+        toks = re.findall(r"W-[0-9a-f]{8}", r.stderr)
+        ack_flags = []
+        for t in dict.fromkeys(toks):
+            ack_flags += ["--ack-warning", f"{t}=fixture for soft-cap coverage"]
+        r = subprocess.run(base_cmd + ack_flags, capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
         assert "soft cap" in r.stderr
 
         # Straight shape rejects controls via the manifold-dispatch helper
         with pytest.raises(ValueError, match="straight shape does not accept"):
             _calc_single_strand(
-                (0, 0), (100, 0), shape="straight", chamfer=4, samples=50,
-                margin=0, head_len=10, head_half_h=5, arrow="end",
+                (0, 0),
+                (100, 0),
+                shape="straight",
+                chamfer=4,
+                samples=50,
+                margin=0,
+                head_len=10,
+                head_half_h=5,
+                arrow="end",
                 controls=[(50, 20)],
             )
 
@@ -1685,8 +2004,13 @@ class TestGeometryModule:
     def test_basic_primitives(self):
         """midpoint, distance, lerp, extend_line, perpendicular_foot, bisector_direction."""
         from stellars_claude_code_plugins.svg_tools.calc_geometry import (
-            midpoint, distance, lerp, extend_line, perpendicular_foot,
-            bisector_direction, Point,
+            Point,
+            bisector_direction,
+            distance,
+            extend_line,
+            lerp,
+            midpoint,
+            perpendicular_foot,
         )
 
         assert midpoint(Point(0, 0), Point(100, 200)) == Point(50, 100) or (
@@ -1714,31 +2038,48 @@ class TestGeometryModule:
         """intersect_lines (hit/parallel), intersect_line_circle (hit/miss),
         intersect_circles, tangent_points_from_external."""
         from stellars_claude_code_plugins.svg_tools.calc_geometry import (
-            intersect_lines, intersect_line_circle, intersect_circles,
-            tangent_points_from_external, distance, Point,
+            Point,
+            distance,
+            intersect_circles,
+            intersect_line_circle,
+            intersect_lines,
+            tangent_points_from_external,
         )
 
         # Line intersection - diagonals of unit square cross at (50, 50)
         pt = intersect_lines(
-            Point(0, 0), Point(100, 100),
-            Point(0, 100), Point(100, 0),
+            Point(0, 0),
+            Point(100, 100),
+            Point(0, 100),
+            Point(100, 0),
         )
         assert abs(pt.x - 50) < 1e-9 and abs(pt.y - 50) < 1e-9
 
         # Parallel lines -> None
-        assert intersect_lines(
-            Point(0, 0), Point(10, 0),
-            Point(0, 5), Point(10, 5),
-        ) is None
+        assert (
+            intersect_lines(
+                Point(0, 0),
+                Point(10, 0),
+                Point(0, 5),
+                Point(10, 5),
+            )
+            is None
+        )
 
         # Line hits circle at x=±10, misses at y=100
         pts = intersect_line_circle(Point(-50, 0), Point(50, 0), Point(0, 0), 10)
         xs = sorted(p.x for p in pts)
         assert abs(xs[0] + 10) < 1e-9 and abs(xs[1] - 10) < 1e-9
 
-        assert intersect_line_circle(
-            Point(-50, 100), Point(50, 100), Point(0, 0), 10,
-        ) == []
+        assert (
+            intersect_line_circle(
+                Point(-50, 100),
+                Point(50, 100),
+                Point(0, 0),
+                10,
+            )
+            == []
+        )
 
         # Two circles centred (0,0) and (10,0), r=6 -> x=5, y=±sqrt(11)
         pts = intersect_circles(Point(0, 0), 6, Point(10, 0), 6)
@@ -1761,8 +2102,13 @@ class TestGeometryModule:
         """polar_to_cartesian, evenly_spaced_on_circle, rect_attachment,
         rect_corner, rect_center."""
         from stellars_claude_code_plugins.svg_tools.calc_geometry import (
-            polar_to_cartesian, evenly_spaced_on_circle, distance,
-            rect_attachment, rect_corner, rect_center, Point,
+            Point,
+            distance,
+            evenly_spaced_on_circle,
+            polar_to_cartesian,
+            rect_attachment,
+            rect_center,
+            rect_corner,
         )
 
         # Angle 0 = +X in SVG; angle 90 = +Y (down)
@@ -1798,7 +2144,11 @@ class TestGeometryOffsets:
         """offset_line, offset_polyline with mitred corner, offset_rect
         (inflate / deflate / collapse), offset_circle (hit / invalid)."""
         from stellars_claude_code_plugins.svg_tools.calc_geometry import (
-            offset_line, offset_polyline, offset_rect, offset_circle, Point,
+            Point,
+            offset_circle,
+            offset_line,
+            offset_polyline,
+            offset_rect,
         )
 
         # Line left/right sides (SVG: right = +Y down)
@@ -1809,7 +2159,9 @@ class TestGeometryOffsets:
 
         # Right-angle polyline, offset 10 right -> mitred vertex at (90, 10)
         result = offset_polyline(
-            [Point(0, 0), Point(100, 0), Point(100, 100)], 10, side="right",
+            [Point(0, 0), Point(100, 0), Point(100, 100)],
+            10,
+            side="right",
         )
         assert len(result) == 3
         assert abs(result[0].x) < 1e-9 and abs(result[0].y - 10) < 1e-9
@@ -1829,7 +2181,9 @@ class TestGeometryOffsets:
     def test_offset_point_and_polygon(self):
         """offset_point_from_line (standoff), offset_polygon (outward / inward)."""
         from stellars_claude_code_plugins.svg_tools.calc_geometry import (
-            offset_point_from_line, offset_polygon, Point,
+            Point,
+            offset_point_from_line,
+            offset_polygon,
         )
 
         # Mid-line offset 10 to the right = (50, 10)
@@ -1861,36 +2215,90 @@ class TestGeometryCLI:
     def _run_tool(self, *args):
         return subprocess.run(
             [sys.executable, str(self.TOOL), *args],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
 
     @pytest.mark.parametrize(
         "subcommand, args, expected_substring",
         [
             ("midpoint", ["--p1", "0,0", "--p2", "100,200"], "Midpoint: (50.00, 100.00)"),
-            ("extend", ["--line", "0,0,100,0", "--by", "20"], "Extended end by 20.0: (120.00, 0.00)"),
+            (
+                "extend",
+                ["--line", "0,0,100,0", "--by", "20"],
+                "Extended end by 20.0: (120.00, 0.00)",
+            ),
             ("at", ["--line", "0,0,100,0", "--t", "0.25"], "(25.00, 0.00)"),
             ("perpendicular", ["--point", "5,10", "--line", "0,0,20,0"], "Foot: (5.00, 0.00)"),
             ("tangent", ["--circle", "0,0,6", "--from", "10,0"], "Tangent point 1"),
-            ("intersect-lines", ["--line1", "0,0,100,100", "--line2", "0,100,100,0"], "Intersection: (50.00, 50.00)"),
+            (
+                "intersect-lines",
+                ["--line1", "0,0,100,100", "--line2", "0,100,100,0"],
+                "Intersection: (50.00, 50.00)",
+            ),
             ("intersect-circles", ["--c1", "0,0,6", "--c2", "10,0,6"], "Intersection 1"),
             ("evenly-spaced", ["--center", "0,0", "--r", "10", "--count", "4"], "Point 0"),
             ("concentric", ["--center", "100,100", "--radii", "20,40,60"], "<circle"),
-            ("attach", ["--shape", "rect", "--geometry", "50,50,100,80", "--side", "right"], "Attachment: (150.00, 90.00)"),
-            ("attach", ["--shape", "circle", "--geometry", "100,100,30", "--side", "perimeter", "--angle", "90"], "Attachment: (100.00, 130.00)"),
-            ("offset-line", ["--line", "0,0,100,0", "--distance", "10", "--side", "right"], "Offset start  : (0.00, 10.00)"),
-            ("offset-polyline", ["--points", "0,0 100,0 100,100", "--distance", "10", "--side", "right"], "v1: (90.00, 10.00)"),
+            (
+                "attach",
+                ["--shape", "rect", "--geometry", "50,50,100,80", "--side", "right"],
+                "Attachment: (150.00, 90.00)",
+            ),
+            (
+                "attach",
+                [
+                    "--shape",
+                    "circle",
+                    "--geometry",
+                    "100,100,30",
+                    "--side",
+                    "perimeter",
+                    "--angle",
+                    "90",
+                ],
+                "Attachment: (100.00, 130.00)",
+            ),
+            (
+                "offset-line",
+                ["--line", "0,0,100,0", "--distance", "10", "--side", "right"],
+                "Offset start  : (0.00, 10.00)",
+            ),
+            (
+                "offset-polyline",
+                ["--points", "0,0 100,0 100,100", "--distance", "10", "--side", "right"],
+                "v1: (90.00, 10.00)",
+            ),
             ("offset-rect", ["--rect", "50,50,100,80", "--by", "5"], "x=45.0"),
             ("offset-circle", ["--circle", "50,50,20", "--by", "-5"], "Offset radius:   15"),
-            ("offset-polygon", ["--points", "0,0 10,0 10,10 0,10", "--distance", "2", "--direction", "inward"], "Inward offset polygon (4 vertices)"),
-            ("offset-point", ["--line", "0,0,100,0", "--t", "0.5", "--distance", "12", "--side", "right"], "(50.00, 12.00)"),
+            (
+                "offset-polygon",
+                ["--points", "0,0 10,0 10,10 0,10", "--distance", "2", "--direction", "inward"],
+                "Inward offset polygon (4 vertices)",
+            ),
+            (
+                "offset-point",
+                ["--line", "0,0,100,0", "--t", "0.5", "--distance", "12", "--side", "right"],
+                "(50.00, 12.00)",
+            ),
         ],
         ids=[
-            "midpoint", "extend", "at", "perpendicular", "tangent",
-            "intersect_lines", "intersect_circles", "evenly_spaced", "concentric",
-            "attach_rect", "attach_circle_perimeter",
-            "offset_line", "offset_polyline", "offset_rect", "offset_circle",
-            "offset_polygon_inward", "offset_point",
+            "midpoint",
+            "extend",
+            "at",
+            "perpendicular",
+            "tangent",
+            "intersect_lines",
+            "intersect_circles",
+            "evenly_spaced",
+            "concentric",
+            "attach_rect",
+            "attach_circle_perimeter",
+            "offset_line",
+            "offset_polyline",
+            "offset_rect",
+            "offset_circle",
+            "offset_polygon_inward",
+            "offset_point",
         ],
     )
     def test_cli_subcommands(self, subcommand, args, expected_substring):
@@ -1905,9 +2313,18 @@ class TestGeometryCLI:
     def test_geom_midpoint_via_unified_cli(self):
         """The calc_geometry subcommands are reachable through svg-infographics."""
         r = subprocess.run(
-            [sys.executable, str(TOOLS_DIR / "cli.py"), "geom",
-             "midpoint", "--p1", "0,0", "--p2", "100,200"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(TOOLS_DIR / "cli.py"),
+                "geom",
+                "midpoint",
+                "--p1",
+                "0,0",
+                "--p2",
+                "100,200",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0
         assert "Midpoint: (50.00, 100.00)" in r.stdout
@@ -1919,8 +2336,13 @@ class TestGeometryContains:
     SQUARE = [(0, 0), (100, 0), (100, 100), (0, 100)]
     # U-shape: notch cut down from y=100 to y=40 between x=40 and x=60
     U_SHAPE = [
-        (0, 0), (100, 0), (100, 100),
-        (60, 100), (60, 40), (40, 40), (40, 100),
+        (0, 0),
+        (100, 0),
+        (100, 100),
+        (60, 100),
+        (60, 40),
+        (40, 40),
+        (40, 100),
         (0, 100),
     ]
 
@@ -1937,12 +2359,20 @@ class TestGeometryContains:
             (("line", ((20, 70), (80, 70))), "U_SHAPE", False, None),
         ],
         ids=[
-            "point_inside", "point_outside", "bbox_inside", "bbox_straddling",
-            "line_inside", "polygon_inside", "line_concave_notch",
+            "point_inside",
+            "point_outside",
+            "bbox_inside",
+            "bbox_straddling",
+            "line_inside",
+            "polygon_inside",
+            "line_concave_notch",
         ],
     )
-    def test_containment_cases(self, geometry, polygon_key, expected_contained, expected_convex_safe):
+    def test_containment_cases(
+        self, geometry, polygon_key, expected_contained, expected_convex_safe
+    ):
         from stellars_claude_code_plugins.svg_tools.calc_geometry import geometry_in_polygon
+
         polygon = getattr(self, polygon_key)
         r = geometry_in_polygon(geometry, polygon)
         assert r["contained"] is expected_contained
@@ -1954,6 +2384,7 @@ class TestGeometryContains:
         whose convex hull includes the notch - convex_safe is False and
         exit_segments identifies the offending diagonals."""
         from stellars_claude_code_plugins.svg_tools.calc_geometry import geometry_in_polygon
+
         r = geometry_in_polygon(
             ("polyline", [(20, 90), (20, 30), (80, 30), (80, 90)]),
             self.U_SHAPE,
@@ -1973,6 +2404,7 @@ class TestGeometryContains:
     )
     def test_rect_ray_exit_cases(self, rect, target, expected):
         from stellars_claude_code_plugins.svg_tools.calc_geometry import rect_ray_exit
+
         px, py = rect_ray_exit(rect, target)
         assert abs(px - expected[0]) < 1e-6
         assert abs(py - expected[1]) < 1e-6
@@ -1980,24 +2412,42 @@ class TestGeometryContains:
     def test_rect_ray_exit_degenerate_raises(self):
         """Target at rect centre -> no direction to cast a ray."""
         from stellars_claude_code_plugins.svg_tools.calc_geometry import rect_ray_exit
+
         with pytest.raises(ValueError):
             rect_ray_exit((0, 0, 100, 100), (50, 50))
 
     def test_cli_contains_and_rect_edge(self):
         """geom contains + geom rect-edge subcommands via the unified CLI."""
         r = subprocess.run(
-            [sys.executable, str(TOOLS_DIR / "cli.py"), "geom", "rect-edge",
-             "--rect", "0,0,100,100", "--from", "200,50"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(TOOLS_DIR / "cli.py"),
+                "geom",
+                "rect-edge",
+                "--rect",
+                "0,0,100,100",
+                "--from",
+                "200,50",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         assert "Edge point:  (100.00, 50.00)" in r.stdout
 
         r = subprocess.run(
-            [sys.executable, str(TOOLS_DIR / "cli.py"), "geom", "contains",
-             "--polygon", "[(0,0),(100,0),(100,100),(60,100),(60,40),(40,40),(40,100),(0,100)]",
-             "--line", "20,70,80,70"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(TOOLS_DIR / "cli.py"),
+                "geom",
+                "contains",
+                "--polygon",
+                "[(0,0),(100,0),(100,100),(60,100),(60,40),(40,40),(40,100),(0,100)]",
+                "--line",
+                "20,70,80,70",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         assert "contained=NO" in r.stdout
@@ -2010,9 +2460,15 @@ class TestCheckContrast:
 
     def _run(self, svg_path, *extra_args):
         return subprocess.run(
-            [sys.executable, str(TOOLS_DIR / "check_contrast.py"),
-             "--svg", str(svg_path), *extra_args],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(TOOLS_DIR / "check_contrast.py"),
+                "--svg",
+                str(svg_path),
+                *extra_args,
+            ],
+            capture_output=True,
+            text=True,
         )
 
     def test_cli_smoke(self, simple_svg, contrast_fail_svg):
@@ -2043,7 +2499,11 @@ class TestContrastModule:
         """hex_to_rgb, relative_luminance, contrast_ratio, blend_over,
         resolve_color."""
         from stellars_claude_code_plugins.svg_tools.check_contrast import (
-            hex_to_rgb, relative_luminance, contrast_ratio, blend_over, resolve_color,
+            blend_over,
+            contrast_ratio,
+            hex_to_rgb,
+            relative_luminance,
+            resolve_color,
         )
 
         # hex parsing - full form + shorthand
@@ -2075,7 +2535,9 @@ class TestContrastModule:
         """parse_css_classes (strips media), parse_dark_classes (extracts media),
         is_large_text thresholds."""
         from stellars_claude_code_plugins.svg_tools.check_contrast import (
-            parse_css_classes, parse_dark_classes, is_large_text,
+            is_large_text,
+            parse_css_classes,
+            parse_dark_classes,
         )
 
         css = (
@@ -2107,28 +2569,33 @@ class TestObjectContrast:
         doc-background rect is skipped, dark-mode class colour is used
         when evaluating dark mode."""
         from stellars_claude_code_plugins.svg_tools.check_contrast import (
-            parse_svg_shapes, check_object_contrasts,
+            check_object_contrasts,
+            parse_svg_shapes,
         )
 
         # 1) Near-white card on white bg fails light-mode contrast
         lowobj = tmp_path / "lowobj.svg"
-        lowobj.write_text(textwrap.dedent("""\
+        lowobj.write_text(
+            textwrap.dedent("""\
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
               <rect x="20" y="20" width="200" height="100" fill="#f5f5f5"/>
             </svg>
-        """))
+        """)
+        )
         shapes, _, dark, w, h = parse_svg_shapes(str(lowobj))
         results = check_object_contrasts(shapes, dark, w, h)
         assert any(r.mode == "light" and not r.passed for r in results)
 
         # 2) Strong stroke rescues faint fill (paired paths merge into one shape)
         stroke_saves = tmp_path / "stroke_saves.svg"
-        stroke_saves.write_text(textwrap.dedent("""\
+        stroke_saves.write_text(
+            textwrap.dedent("""\
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
               <path d="M20,20 H220 V120 H20 Z" fill="#0066aa" fill-opacity="0.04"/>
               <path d="M20,20 H220 V120 H20 Z" fill="none" stroke="#003355" stroke-width="2"/>
             </svg>
-        """))
+        """)
+        )
         shapes, _, dark, w, h = parse_svg_shapes(str(stroke_saves))
         assert len(shapes) == 1
         results = check_object_contrasts(shapes, dark, w, h)
@@ -2136,12 +2603,14 @@ class TestObjectContrast:
 
         # 3) Doc-background rect (covers canvas) is skipped
         docbg = tmp_path / "docbg.svg"
-        docbg.write_text(textwrap.dedent("""\
+        docbg.write_text(
+            textwrap.dedent("""\
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
               <rect x="0" y="0" width="800" height="200" fill="#ffffff"/>
               <rect x="20" y="20" width="200" height="100" fill="#0066aa"/>
             </svg>
-        """))
+        """)
+        )
         shapes, _, dark, w, h = parse_svg_shapes(str(docbg))
         results = check_object_contrasts(shapes, dark, w, h)
         labels = {r.shape.label for r in results}
@@ -2150,7 +2619,8 @@ class TestObjectContrast:
 
         # 4) Dark-mode swap: same class has different fills in light vs dark
         darkswap = tmp_path / "darkswap.svg"
-        darkswap.write_text(textwrap.dedent("""\
+        darkswap.write_text(
+            textwrap.dedent("""\
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
               <style>
                 .card { fill: #0066aa; }
@@ -2160,7 +2630,8 @@ class TestObjectContrast:
               </style>
               <rect x="20" y="20" width="200" height="100" class="card"/>
             </svg>
-        """))
+        """)
+        )
         shapes, _, dark, w, h = parse_svg_shapes(str(darkswap))
         results = check_object_contrasts(shapes, dark, w, h)
         light = next(r for r in results if r.mode == "light")
@@ -2179,15 +2650,23 @@ class TestObjectContrast:
         assert x == 20 and y == 40 and w == 130 and h == 67
 
         svg = tmp_path / "obj.svg"
-        svg.write_text(textwrap.dedent("""\
+        svg.write_text(
+            textwrap.dedent("""\
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200">
               <rect x="20" y="20" width="200" height="100" fill="#f5f5f5"/>
             </svg>
-        """))
+        """)
+        )
         r = subprocess.run(
-            [sys.executable, str(TOOLS_DIR / "check_contrast.py"),
-             "--svg", str(svg), "--skip-objects"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(TOOLS_DIR / "check_contrast.py"),
+                "--svg",
+                str(svg),
+                "--skip-objects",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0
         assert "OBJECT CONTRAST" not in r.stdout
@@ -2200,7 +2679,8 @@ class TestCheckConnectors:
     def _run(self, svg_path):
         return subprocess.run(
             [sys.executable, str(TOOLS_DIR / "check_connectors.py"), "--svg", str(svg_path)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
 
     def test_cli_basic_and_zero_length(self, connector_svg, tmp_path):
@@ -2210,11 +2690,13 @@ class TestCheckConnectors:
         assert "Connector check" in r.stdout
 
         zero = tmp_path / "zero.svg"
-        zero.write_text(textwrap.dedent("""\
+        zero.write_text(
+            textwrap.dedent("""\
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
               <line x1="100" y1="50" x2="100" y2="50" stroke="#333"/>
             </svg>
-        """))
+        """)
+        )
         r = self._run(zero)
         assert r.returncode == 0
         assert "zero-length" in r.stdout
@@ -2222,8 +2704,10 @@ class TestCheckConnectors:
     def test_module_helpers(self):
         """_point_to_seg_dist and _parse_points helper functions."""
         from stellars_claude_code_plugins.svg_tools.check_connectors import (
-            _point_to_seg_dist, _parse_points,
+            _parse_points,
+            _point_to_seg_dist,
         )
+
         assert abs(_point_to_seg_dist(50, 0, 0, 0, 100, 0)) < 0.01
         assert abs(_point_to_seg_dist(50, 10, 0, 0, 100, 0) - 10.0) < 0.01
 
@@ -2238,9 +2722,15 @@ class TestCheckOverlaps:
 
     def _run(self, svg_path, *extra_args):
         return subprocess.run(
-            [sys.executable, str(TOOLS_DIR / "check_overlaps.py"),
-             "--svg", str(svg_path), *extra_args],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(TOOLS_DIR / "check_overlaps.py"),
+                "--svg",
+                str(svg_path),
+                *extra_args,
+            ],
+            capture_output=True,
+            text=True,
         )
 
     def test_cli_scenarios(self, simple_svg, overlap_svg, tmp_path):
@@ -2273,17 +2763,17 @@ class TestCalloutCollision:
     CLI smoke, three violation families)."""
 
     CALLOUT_STYLE = (
-        '<style>\n'
-        '.callout-text { font-family: Segoe UI; font-size: 8.5px; font-style: italic; }\n'
-        '.callout-line { fill: none; stroke: #7a4a15; stroke-width: 1; }\n'
-        '</style>\n'
+        "<style>\n"
+        ".callout-text { font-family: Segoe UI; font-size: 8.5px; font-style: italic; }\n"
+        ".callout-line { fill: none; stroke: #7a4a15; stroke-width: 1; }\n"
+        "</style>\n"
     )
 
     def _svg(self, tmp_path, body, viewbox="0 0 400 300"):
         p = Path(tmp_path) / "callouts.svg"
         p.write_text(
             f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}">\n'
-            f'{self.CALLOUT_STYLE}{body}\n</svg>\n'
+            f"{self.CALLOUT_STYLE}{body}\n</svg>\n"
         )
         return str(p)
 
@@ -2292,12 +2782,15 @@ class TestCalloutCollision:
         from stellars_claude_code_plugins.svg_tools.check_overlaps import parse_callouts
 
         # <line> leader
-        svg = self._svg(tmp_path, (
-            '<g id="callout-a">\n'
-            '  <text x="100" y="50" class="callout-text">hello</text>\n'
-            '  <line x1="100" y1="55" x2="150" y2="90" class="callout-line"/>\n'
-            '</g>\n'
-        ))
+        svg = self._svg(
+            tmp_path,
+            (
+                '<g id="callout-a">\n'
+                '  <text x="100" y="50" class="callout-text">hello</text>\n'
+                '  <line x1="100" y1="55" x2="150" y2="90" class="callout-line"/>\n'
+                "</g>\n"
+            ),
+        )
         callouts = parse_callouts(svg)
         assert len(callouts) == 1
         assert callouts[0]["id"] == "callout-a"
@@ -2305,12 +2798,15 @@ class TestCalloutCollision:
         assert callouts[0]["leaders"] == [((100.0, 55.0), (150.0, 90.0))]
 
         # <path> leader with M/L segments -> 2 sub-segments
-        svg = self._svg(tmp_path, (
-            '<g id="callout-b">\n'
-            '  <text x="200" y="100" class="callout-text">world</text>\n'
-            '  <path d="M 200 105 L 240 130 L 260 150" class="callout-line"/>\n'
-            '</g>\n'
-        ))
+        svg = self._svg(
+            tmp_path,
+            (
+                '<g id="callout-b">\n'
+                '  <text x="200" y="100" class="callout-text">world</text>\n'
+                '  <path d="M 200 105 L 240 130 L 260 150" class="callout-line"/>\n'
+                "</g>\n"
+            ),
+        )
         callouts = parse_callouts(svg)
         assert len(callouts) == 1
         assert len(callouts[0]["leaders"]) == 2
@@ -2322,16 +2818,19 @@ class TestCalloutCollision:
         from stellars_claude_code_plugins.svg_tools.check_overlaps import check_callouts
 
         # Clean layout - no violations
-        clean = self._svg(tmp_path, (
-            '<g id="callout-a">\n'
-            '  <text x="20" y="30" class="callout-text">left</text>\n'
-            '  <line x1="20" y1="35" x2="40" y2="45" class="callout-line"/>\n'
-            '</g>\n'
-            '<g id="callout-b">\n'
-            '  <text x="300" y="200" class="callout-text">right</text>\n'
-            '  <line x1="300" y1="205" x2="270" y2="180" class="callout-line"/>\n'
-            '</g>\n'
-        ))
+        clean = self._svg(
+            tmp_path,
+            (
+                '<g id="callout-a">\n'
+                '  <text x="20" y="30" class="callout-text">left</text>\n'
+                '  <line x1="20" y1="35" x2="40" y2="45" class="callout-line"/>\n'
+                "</g>\n"
+                '<g id="callout-b">\n'
+                '  <text x="300" y="200" class="callout-text">right</text>\n'
+                '  <line x1="300" y1="205" x2="270" y2="180" class="callout-line"/>\n'
+                "</g>\n"
+            ),
+        )
         assert check_callouts(clean) == []
 
         # No callouts at all -> empty
@@ -2339,62 +2838,75 @@ class TestCalloutCollision:
         assert check_callouts(none_svg) == []
 
         # Leader-crosses-text
-        cross_text = self._svg(tmp_path, (
-            '<g id="callout-a">\n'
-            '  <text x="100" y="50" class="callout-text">aaa</text>\n'
-            '  <line x1="100" y1="55" x2="80" y2="80" class="callout-line"/>\n'
-            '</g>\n'
-            '<g id="callout-b">\n'
-            '  <text x="300" y="200" class="callout-text">bbb</text>\n'
-            '  <line x1="300" y1="205" x2="105" y2="48" class="callout-line"/>\n'
-            '</g>\n'
-        ))
+        cross_text = self._svg(
+            tmp_path,
+            (
+                '<g id="callout-a">\n'
+                '  <text x="100" y="50" class="callout-text">aaa</text>\n'
+                '  <line x1="100" y1="55" x2="80" y2="80" class="callout-line"/>\n'
+                "</g>\n"
+                '<g id="callout-b">\n'
+                '  <text x="300" y="200" class="callout-text">bbb</text>\n'
+                '  <line x1="300" y1="205" x2="105" y2="48" class="callout-line"/>\n'
+                "</g>\n"
+            ),
+        )
         vs = check_callouts(cross_text)
         assert any("crosses text of callout-a" in v for v in vs)
 
         # Leader-crosses-leader
-        cross_leader = self._svg(tmp_path, (
-            '<g id="callout-a">\n'
-            '  <text x="20" y="20" class="callout-text">a</text>\n'
-            '  <line x1="20" y1="25" x2="200" y2="200" class="callout-line"/>\n'
-            '</g>\n'
-            '<g id="callout-b">\n'
-            '  <text x="300" y="20" class="callout-text">b</text>\n'
-            '  <line x1="300" y1="25" x2="100" y2="200" class="callout-line"/>\n'
-            '</g>\n'
-        ))
+        cross_leader = self._svg(
+            tmp_path,
+            (
+                '<g id="callout-a">\n'
+                '  <text x="20" y="20" class="callout-text">a</text>\n'
+                '  <line x1="20" y1="25" x2="200" y2="200" class="callout-line"/>\n'
+                "</g>\n"
+                '<g id="callout-b">\n'
+                '  <text x="300" y="20" class="callout-text">b</text>\n'
+                '  <line x1="300" y1="25" x2="100" y2="200" class="callout-line"/>\n'
+                "</g>\n"
+            ),
+        )
         vs = check_callouts(cross_leader)
         assert any("crosses leader" in v for v in vs)
 
         # Text-vs-text bbox overlap
-        overlap_text = self._svg(tmp_path, (
-            '<g id="callout-a">\n'
-            '  <text x="100" y="100" class="callout-text">overlap</text>\n'
-            '  <line x1="100" y1="105" x2="80" y2="120" class="callout-line"/>\n'
-            '</g>\n'
-            '<g id="callout-b">\n'
-            '  <text x="105" y="102" class="callout-text">same</text>\n'
-            '  <line x1="105" y1="107" x2="130" y2="120" class="callout-line"/>\n'
-            '</g>\n'
-        ))
+        overlap_text = self._svg(
+            tmp_path,
+            (
+                '<g id="callout-a">\n'
+                '  <text x="100" y="100" class="callout-text">overlap</text>\n'
+                '  <line x1="100" y1="105" x2="80" y2="120" class="callout-line"/>\n'
+                "</g>\n"
+                '<g id="callout-b">\n'
+                '  <text x="105" y="102" class="callout-text">same</text>\n'
+                '  <line x1="105" y1="107" x2="130" y2="120" class="callout-line"/>\n'
+                "</g>\n"
+            ),
+        )
         vs = check_callouts(overlap_text)
         assert any("text of callout-a overlaps text of callout-b" in v for v in vs)
 
     def test_cli_reports_callout_cross_collisions_section(self, tmp_path):
         """check_overlaps.py CLI surfaces a CALLOUT CROSS-COLLISIONS block."""
-        svg = self._svg(tmp_path, (
-            '<g id="callout-a">\n'
-            '  <text x="20" y="20" class="callout-text">a</text>\n'
-            '  <line x1="20" y1="25" x2="200" y2="200" class="callout-line"/>\n'
-            '</g>\n'
-            '<g id="callout-b">\n'
-            '  <text x="300" y="20" class="callout-text">b</text>\n'
-            '  <line x1="300" y1="25" x2="100" y2="200" class="callout-line"/>\n'
-            '</g>\n'
-        ))
+        svg = self._svg(
+            tmp_path,
+            (
+                '<g id="callout-a">\n'
+                '  <text x="20" y="20" class="callout-text">a</text>\n'
+                '  <line x1="20" y1="25" x2="200" y2="200" class="callout-line"/>\n'
+                "</g>\n"
+                '<g id="callout-b">\n'
+                '  <text x="300" y="20" class="callout-text">b</text>\n'
+                '  <line x1="300" y1="25" x2="100" y2="200" class="callout-line"/>\n'
+                "</g>\n"
+            ),
+        )
         r = subprocess.run(
             [sys.executable, str(TOOLS_DIR / "check_overlaps.py"), "--svg", svg],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0
         assert "CALLOUT CROSS-COLLISIONS" in r.stdout
@@ -2408,9 +2920,15 @@ class TestCheckAlignment:
         """Default run, custom --grid, grid + --tolerance all succeed."""
         for extra in ([], ["--grid", "7"], ["--grid", "14", "--tolerance", "2"]):
             r = subprocess.run(
-                [sys.executable, str(TOOLS_DIR / "check_alignment.py"),
-                 "--svg", str(alignment_svg), *extra],
-                capture_output=True, text=True,
+                [
+                    sys.executable,
+                    str(TOOLS_DIR / "check_alignment.py"),
+                    "--svg",
+                    str(alignment_svg),
+                    *extra,
+                ],
+                capture_output=True,
+                text=True,
             )
             assert r.returncode == 0, f"alignment failed with extra args {extra}"
 
@@ -2435,7 +2953,8 @@ class TestExampleSVGs:
         for svg in example_svgs:
             r = subprocess.run(
                 [sys.executable, str(TOOLS_DIR / tool_name), "--svg", str(svg)],
-                capture_output=True, text=True,
+                capture_output=True,
+                text=True,
             )
             assert r.returncode == 0, f"{tool_name} crashed on {svg.name}: {r.stderr}"
 
@@ -2497,6 +3016,7 @@ class TestDefectDetection:
     @pytest.fixture(autouse=True)
     def register_ns(self):
         import xml.etree.ElementTree as ET
+
         ET.register_namespace("", self.NS)
 
     @pytest.fixture
@@ -2507,6 +3027,7 @@ class TestDefectDetection:
 
     def _write_svg(self, root, path):
         import xml.etree.ElementTree as ET
+
         ET.ElementTree(root).write(str(path), xml_declaration=True, encoding="unicode")
 
     def test_defect_families_via_python_api(self, real_svg_content, tmp_path):
@@ -2524,8 +3045,10 @@ class TestDefectDetection:
         defect = tmp_path / "overlap.svg"
         self._write_svg(root, defect)
         from stellars_claude_code_plugins.svg_tools.check_overlaps import (
-            parse_svg, analyze_overlaps,
+            analyze_overlaps,
+            parse_svg,
         )
+
         elements = parse_svg(str(defect))
         assert len(analyze_overlaps(elements)) > 0
 
@@ -2538,8 +3061,10 @@ class TestDefectDetection:
         defect = tmp_path / "contrast.svg"
         self._write_svg(root, defect)
         from stellars_claude_code_plugins.svg_tools.check_contrast import (
-            parse_svg_for_contrast, check_all_contrasts,
+            check_all_contrasts,
+            parse_svg_for_contrast,
         )
+
         texts_parsed, bgs, light_cls, dark_cls = parse_svg_for_contrast(str(defect))
         results, _ = check_all_contrasts(texts_parsed, bgs, light_cls, dark_cls)
         assert any(not r.aa_pass for r in results)
@@ -2552,8 +3077,10 @@ class TestDefectDetection:
         defect = tmp_path / "alignment.svg"
         self._write_svg(root, defect)
         from stellars_claude_code_plugins.svg_tools.check_alignment import (
-            parse_svg_elements, check_grid_snapping,
+            check_grid_snapping,
+            parse_svg_elements,
         )
+
         assert len(check_grid_snapping(parse_svg_elements(str(defect)), grid=5, tolerance=0)) > 0
 
         # Zero-length connector defect (hand-crafted - the example SVG may
@@ -2571,8 +3098,12 @@ class TestDefectDetection:
         zero_path = tmp_path / "zero.svg"
         zero_path.write_text(zero_connector)
         from stellars_claude_code_plugins.svg_tools.check_connectors import (
-            parse_svg as cc_parse, check_zero_length,
+            check_zero_length,
         )
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            parse_svg as cc_parse,
+        )
+
         _, connectors, _, _ = cc_parse(str(zero_path))
         assert any("zero-length" in i.lower() for i in check_zero_length(connectors))
 
@@ -2580,6 +3111,7 @@ class TestDefectDetection:
         """CLI end-to-end: inject contrast defect, run the check_contrast
         subprocess, confirm a FAIL surfaces in stdout."""
         import xml.etree.ElementTree as ET
+
         root = ET.fromstring(real_svg_content)
         texts = list(root.iter(f"{{{self.NS}}}text"))
         target = texts[0]
@@ -2588,9 +3120,15 @@ class TestDefectDetection:
         defect = tmp_path / "cli_contrast.svg"
         self._write_svg(root, defect)
         r = subprocess.run(
-            [sys.executable, str(TOOLS_DIR / "check_contrast.py"),
-             "--svg", str(defect), "--show-all"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(TOOLS_DIR / "check_contrast.py"),
+                "--svg",
+                str(defect),
+                "--show-all",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0
         assert "FAIL" in r.stdout or "fail" in r.stdout.lower()
@@ -2599,12 +3137,19 @@ class TestDefectDetection:
 class TestSvgInfographicsCLI:
     """Unified svg-infographics CLI dispatcher. 12 tests -> 3."""
 
-    CLI = Path(__file__).resolve().parent.parent / "src" / "stellars_claude_code_plugins" / "svg_tools" / "cli.py"
+    CLI = (
+        Path(__file__).resolve().parent.parent
+        / "src"
+        / "stellars_claude_code_plugins"
+        / "svg_tools"
+        / "cli.py"
+    )
 
     def _run(self, *args):
         return subprocess.run(
             [sys.executable, str(self.CLI), *args],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
 
     def test_help_and_discovery(self):
@@ -2612,8 +3157,14 @@ class TestSvgInfographicsCLI:
         subcommand accepts --help; text-to-path surfaces as ON REQUEST."""
         r = self._run("--help")
         assert r.returncode == 0
-        for sub in ("overlaps", "contrast", "alignment", "connectors", "connector",
-                    "text-to-path"):
+        for sub in (
+            "overlaps",
+            "contrast",
+            "alignment",
+            "connectors",
+            "connector",
+            "text-to-path",
+        ):
             assert sub in r.stdout, f"{sub} missing from --help"
         assert "ON REQUEST" in r.stdout
 
@@ -2625,8 +3176,16 @@ class TestSvgInfographicsCLI:
         assert r.returncode == 1
         assert "Unknown subcommand" in r.stderr
 
-        for sub in ("overlaps", "contrast", "alignment", "connectors", "connector",
-                    "css", "primitives", "text-to-path"):
+        for sub in (
+            "overlaps",
+            "contrast",
+            "alignment",
+            "connectors",
+            "connector",
+            "css",
+            "primitives",
+            "text-to-path",
+        ):
             r = self._run(sub, "--help")
             assert r.returncode == 0, f"{sub} --help failed"
 
@@ -2651,8 +3210,16 @@ class TestSvgInfographicsCLI:
 
     def test_calc_subcommands(self):
         """connector (calc) + primitives subcommands produce expected outputs."""
-        r = self._run("connector", "--from", "100,50", "--to", "300,50")
-        assert r.returncode == 0
+        r = self._run(
+            "connector",
+            "--from",
+            "100,50",
+            "--to",
+            "300,50",
+            "--direction",
+            "forward",
+        )
+        assert r.returncode == 0, r.stderr
         assert "0.0 degrees" in r.stdout
 
         r = self._run("primitives", "circle", "--cx", "100", "--cy", "100", "--r", "50")
@@ -2670,28 +3237,58 @@ class TestCalcPrimitives:
     # Each row: (shape fn name, kwargs, anchor checks as (anchor_name, axis, expected))
     _ANCHOR_CASES = [
         # rect: (20,30) -> (220,130), center (120, 80)
-        ("gen_rect", {"x": 20, "y": 30, "w": 200, "h": 100}, [
-            ("top-left", "x", 20), ("top-left", "y", 30),
-            ("bottom-right", "x", 220), ("bottom-right", "y", 130),
-            ("center", "x", 120), ("center", "y", 80),
-        ]),
+        (
+            "gen_rect",
+            {"x": 20, "y": 30, "w": 200, "h": 100},
+            [
+                ("top-left", "x", 20),
+                ("top-left", "y", 30),
+                ("bottom-right", "x", 220),
+                ("bottom-right", "y", 130),
+                ("center", "x", 120),
+                ("center", "y", 80),
+            ],
+        ),
         # square: (10,10) size 50 -> top-right (60,10), bottom-left (10,60)
-        ("gen_square", {"x": 10, "y": 10, "size": 50}, [
-            ("top-right", "x", 60), ("bottom-left", "y", 60),
-        ]),
+        (
+            "gen_square",
+            {"x": 10, "y": 10, "size": 50},
+            [
+                ("top-right", "x", 60),
+                ("bottom-left", "y", 60),
+            ],
+        ),
         # circle: (100,100) r 50
-        ("gen_circle", {"cx": 100, "cy": 100, "r": 50}, [
-            ("center", "x", 100), ("top", "y", 50), ("right", "x", 150),
-        ]),
+        (
+            "gen_circle",
+            {"cx": 100, "cy": 100, "r": 50},
+            [
+                ("center", "x", 100),
+                ("top", "y", 50),
+                ("right", "x", 150),
+            ],
+        ),
         # ellipse: (200,100) rx=80 ry=40
-        ("gen_ellipse", {"cx": 200, "cy": 100, "rx": 80, "ry": 40}, [
-            ("left", "x", 120), ("right", "x", 280), ("top", "y", 60),
-        ]),
+        (
+            "gen_ellipse",
+            {"cx": 200, "cy": 100, "rx": 80, "ry": 40},
+            [
+                ("left", "x", 120),
+                ("right", "x", 280),
+                ("top", "y", 60),
+            ],
+        ),
         # diamond: (200,100) w=80 h=60
-        ("gen_diamond", {"cx": 200, "cy": 100, "w": 80, "h": 60}, [
-            ("top", "y", 70), ("bottom", "y", 130),
-            ("left", "x", 160), ("right", "x", 240),
-        ]),
+        (
+            "gen_diamond",
+            {"cx": 200, "cy": 100, "w": 80, "h": 60},
+            [
+                ("top", "y", 70),
+                ("bottom", "y", 130),
+                ("left", "x", 160),
+                ("right", "x", 240),
+            ],
+        ),
     ]
 
     @pytest.mark.parametrize(
@@ -2701,6 +3298,7 @@ class TestCalcPrimitives:
     )
     def test_shape_anchors(self, fn_name, kwargs, checks):
         import stellars_claude_code_plugins.svg_tools.calc_primitives as prims
+
         fn = getattr(prims, fn_name)
         r = fn(**kwargs)
         for anchor_name, axis, expected in checks:
@@ -2712,7 +3310,8 @@ class TestCalcPrimitives:
     def test_rect_rounded_and_diagonal_circle(self):
         """Rect with r=3 uses quadratic beziers; circle diagonal anchors
         lie on the 45-degree offset from centre."""
-        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_rect, gen_circle
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_circle, gen_rect
+
         r = gen_rect(0, 0, 100, 80, r=3)
         assert "Q" in r.svg
         c = gen_circle(100, 100, 50)
@@ -2721,12 +3320,24 @@ class TestCalcPrimitives:
     @pytest.mark.parametrize(
         "shape_name, kwargs_fill, kwargs_wire, wire_marker",
         [
-            ("gen_cube", {"x": 50, "y": 50, "w": 100, "h": 80, "mode": "fill"},
-             {"x": 50, "y": 50, "w": 100, "h": 80, "mode": "wire"}, 'fill="none"'),
-            ("gen_cylinder", {"cx": 200, "cy": 50, "rx": 60, "ry": 20, "h": 100, "mode": "fill"},
-             {"cx": 200, "cy": 50, "rx": 60, "ry": 20, "h": 100, "mode": "wire"}, "stroke-dasharray"),
-            ("gen_sphere", {"cx": 200, "cy": 200, "r": 50, "mode": "fill"},
-             {"cx": 200, "cy": 200, "r": 50, "mode": "wire"}, 'fill="none"'),
+            (
+                "gen_cube",
+                {"x": 50, "y": 50, "w": 100, "h": 80, "mode": "fill"},
+                {"x": 50, "y": 50, "w": 100, "h": 80, "mode": "wire"},
+                'fill="none"',
+            ),
+            (
+                "gen_cylinder",
+                {"cx": 200, "cy": 50, "rx": 60, "ry": 20, "h": 100, "mode": "fill"},
+                {"cx": 200, "cy": 50, "rx": 60, "ry": 20, "h": 100, "mode": "wire"},
+                "stroke-dasharray",
+            ),
+            (
+                "gen_sphere",
+                {"cx": 200, "cy": 200, "r": 50, "mode": "fill"},
+                {"cx": 200, "cy": 200, "r": 50, "mode": "wire"},
+                'fill="none"',
+            ),
         ],
         ids=["cube", "cylinder", "sphere"],
     )
@@ -2735,6 +3346,7 @@ class TestCalcPrimitives:
         a distinguishing marker (fill=none for cube/sphere, dashed bottom
         arc for cylinder hidden edges)."""
         import stellars_claude_code_plugins.svg_tools.calc_primitives as prims
+
         fn = getattr(prims, shape_name)
         r_fill = fn(**kwargs_fill)
         r_wire = fn(**kwargs_wire)
@@ -2785,7 +3397,8 @@ class TestCalcPrimitives:
         """PCHIP interpolator hits every waypoint and preserves monotonicity
         (no overshoot across a plateau)."""
         from stellars_claude_code_plugins.svg_tools.calc_primitives import (
-            gen_spline, pchip_interpolate,
+            gen_spline,
+            pchip_interpolate,
         )
 
         # Basic gen_spline output has M/L commands and start/end anchors
@@ -2856,15 +3469,18 @@ class TestCalcPrimitives:
         for args, expected in [
             (["rect", "--x", "20", "--y", "30", "--width", "200", "--height", "100"], "top-left"),
             (["spline", "--points", "0,0 50,100 100,50 150,80", "--samples", "20"], "Path data"),
-            (["axis", "--origin", "80,200", "--length", "300", "--axes", "xyz", "--ticks", "5"], "z-end"),
+            (
+                ["axis", "--origin", "80,200", "--length", "300", "--axes", "xyz", "--ticks", "5"],
+                "z-end",
+            ),
         ]:
             r = subprocess.run(
                 [sys.executable, str(TOOLS_DIR / "calc_primitives.py"), *args],
-                capture_output=True, text=True,
+                capture_output=True,
+                text=True,
             )
             assert r.returncode == 0, f"primitives CLI failed on {args[0]}"
             assert expected in r.stdout
-
 
     def test_gear(self):
         """Gear produces a valid polygon/path with correct anchors and bbox shape."""
@@ -2903,7 +3519,7 @@ class TestCalcPrimitives:
 
         apex = p.anchors["apex"]
         assert abs(apex.x - 100) < 0.5  # x + base_w/2
-        assert abs(apex.y - 20) < 0.5   # y (top of bbox)
+        assert abs(apex.y - 20) < 0.5  # y (top of bbox)
 
         base_left = p.anchors["base-left"]
         assert abs(base_left.x - 50) < 0.5
@@ -2993,7 +3609,8 @@ class TestCalcPrimitives:
         for args, expected in cases:
             r = subprocess.run(
                 [sys.executable, str(TOOLS_DIR / "calc_primitives.py"), *args],
-                capture_output=True, text=True,
+                capture_output=True,
+                text=True,
             )
             assert r.returncode == 0, f"CLI failed for {args[0]}: {r.stderr}"
             assert expected in r.stdout, f"Expected '{expected}' in output for {args[0]}"
@@ -3051,12 +3668,14 @@ class TestCheckCSS:
         from stellars_claude_code_plugins.svg_tools.check_css import check_css_compliance
 
         svg = tmp_path / "case.svg"
-        svg.write_text(textwrap.dedent(f"""\
+        svg.write_text(
+            textwrap.dedent(f"""\
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
               <style>.fg-1 {{ fill: #1e3a5f; }}</style>
               {body}
             </svg>
-        """))
+        """)
+        )
         violations, _ = check_css_compliance(str(svg))
         rules_at_severity = [v.rule for v in violations if v.severity == severity]
         assert expected_rule in rules_at_severity
@@ -3066,21 +3685,25 @@ class TestCheckCSS:
         error-severity violations."""
         r = subprocess.run(
             [sys.executable, str(TOOLS_DIR / "check_css.py"), "--svg", str(simple_svg)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0
 
         bad = tmp_path / "bad.svg"
-        bad.write_text(textwrap.dedent("""\
+        bad.write_text(
+            textwrap.dedent("""\
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
               <style>.fg-1 { fill: #1e3a5f; }</style>
               <text x="20" y="40" font-size="12" fill="#ff0000">Inline fill</text>
               <rect x="0" y="0" width="400" height="100" fill="#000000"/>
             </svg>
-        """))
+        """)
+        )
         r = subprocess.run(
             [sys.executable, str(TOOLS_DIR / "check_css.py"), "--svg", str(bad)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 1
         assert "ERRORS" in r.stdout
@@ -3187,6 +3810,7 @@ class TestTextToPath:
     def test_input_validation(self, kwargs, match):
         """Invalid anchor/size/fit_width raise ValueError with specific match."""
         from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
+
         with pytest.raises(ValueError, match=match):
             text_to_path("X", _SYSTEM_FONT, **kwargs)
 
@@ -3196,20 +3820,40 @@ class TestTextToPath:
         parses cleanly when wrapped inside a real SVG document."""
         import json as _json
         import xml.etree.ElementTree as ET
+
         from stellars_claude_code_plugins.svg_tools.text_to_path import text_to_path
 
         cli = (
             Path(__file__).resolve().parent.parent
-            / "src" / "stellars_claude_code_plugins" / "svg_tools" / "cli.py"
+            / "src"
+            / "stellars_claude_code_plugins"
+            / "svg_tools"
+            / "cli.py"
         )
 
         # CLI --fill emits the expected attribute
         r = subprocess.run(
-            [sys.executable, str(cli), "text-to-path",
-             "--text", "OK", "--font", str(_SYSTEM_FONT),
-             "--size", "16", "--x", "10", "--y", "30",
-             "--anchor", "middle", "--fill", "#222"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(cli),
+                "text-to-path",
+                "--text",
+                "OK",
+                "--font",
+                str(_SYSTEM_FONT),
+                "--size",
+                "16",
+                "--x",
+                "10",
+                "--y",
+                "30",
+                "--anchor",
+                "middle",
+                "--fill",
+                "#222",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         assert "<path " in r.stdout
@@ -3217,10 +3861,20 @@ class TestTextToPath:
 
         # CLI --json emits parseable metadata
         r = subprocess.run(
-            [sys.executable, str(cli), "text-to-path",
-             "--text", "OK", "--font", str(_SYSTEM_FONT),
-             "--size", "20", "--json"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(cli),
+                "text-to-path",
+                "--text",
+                "OK",
+                "--font",
+                str(_SYSTEM_FONT),
+                "--size",
+                "20",
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         data = _json.loads(r.stdout)
@@ -3230,20 +3884,24 @@ class TestTextToPath:
 
         # Missing font -> exit code 2 + "not found" stderr
         r = subprocess.run(
-            [sys.executable, str(cli), "text-to-path",
-             "--text", "X", "--font", str(tmp_path / "nope.ttf")],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(cli),
+                "text-to-path",
+                "--text",
+                "X",
+                "--font",
+                str(tmp_path / "nope.ttf"),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 2
         assert "not found" in r.stderr
 
         # Wrap the emitted path in an SVG and verify it parses
         r = text_to_path("Test", _SYSTEM_FONT, size=24, x=20, y=60, fill="#222")
-        wrapper = (
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">'
-            f"{r.svg}"
-            "</svg>"
-        )
+        wrapper = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">{r.svg}</svg>'
         out = tmp_path / "wrapped.svg"
         out.write_text(wrapper)
         tree = ET.parse(out)
@@ -3258,11 +3916,15 @@ class TestDetectCollisions:
         "a_pts, b_pts, tolerance, expected_type, extra_checks",
         [
             # Two diagonals crossing at (50, 50)
-            ((0, 0, 100, 100), (0, 100, 100, 0), 0.0, "crossing",
-             {"min_distance": 0.0, "points": [(50.0, 50.0)]}),
+            (
+                (0, 0, 100, 100),
+                (0, 100, 100, 0),
+                0.0,
+                "crossing",
+                {"min_distance": 0.0, "points": [(50.0, 50.0)]},
+            ),
             # Parallel 5px apart, tolerance 8 -> near-miss
-            ((0, 10, 100, 10), (0, 15, 100, 15), 8.0, "near-miss",
-             {"min_distance": 5.0}),
+            ((0, 10, 100, 10), (0, 15, 100, 15), 8.0, "near-miss", {"min_distance": 5.0}),
             # Endpoint touching at (50, 0)
             ((0, 0, 50, 0), (50, 0, 100, 50), 2.0, "touching", None),
         ],
@@ -3270,8 +3932,10 @@ class TestDetectCollisions:
     )
     def test_collision_types(self, a_pts, b_pts, tolerance, expected_type, extra_checks):
         from stellars_claude_code_plugins.svg_tools.calc_connector import (
-            calc_connector, detect_collisions,
+            calc_connector,
+            detect_collisions,
         )
+
         # Endpoint touching case requires standoff=0 so the lines actually touch
         kwargs = dict(arrow="none")
         if expected_type == "touching":
@@ -3289,8 +3953,10 @@ class TestDetectCollisions:
         """Parallel non-colliding lines return []; three-connector scene
         only reports the colliding pair; CLI end-to-end returns JSON."""
         import json as _json
+
         from stellars_claude_code_plugins.svg_tools.calc_connector import (
-            calc_connector, detect_collisions,
+            calc_connector,
+            detect_collisions,
         )
 
         # 30px apart with 4px tolerance -> no collision
@@ -3310,11 +3976,18 @@ class TestDetectCollisions:
 
         # CLI end-to-end
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
-             "collide",
-             "--connectors", "[('a',[(0,0),(100,100)]),('b',[(0,100),(100,0)])]",
-             "--tolerance", "0"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "collide",
+                "--connectors",
+                "[('a',[(0,0),(100,100)]),('b',[(0,100),(100,0)])]",
+                "--tolerance",
+                "20",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         report = _json.loads(r.stdout)
@@ -3350,10 +4023,13 @@ class TestCharts:
 
         # Caller palette override produces dark-mode @media block
         svg = generate_chart(
-            "line", data=[1, 2, 3],
+            "line",
+            data=[1, 2, 3],
             colors=["#ff0088", "#00ff88"],
-            fg_light="#112233", fg_dark="#eeddcc",
-            grid_light="#ccddee", grid_dark="#223344",
+            fg_light="#112233",
+            fg_dark="#eeddcc",
+            grid_light="#ccddee",
+            grid_dark="#223344",
         )
         assert b"prefers-color-scheme: dark" in svg
 
@@ -3367,15 +4043,30 @@ class TestCharts:
             generate_chart("pyramid", data=[1, 2, 3])
 
     def test_cli_outputs_svg_file(self, tmp_path):
-        """CLI writes an SVG file that contains <svg> and weighs > 500 bytes."""
+        """CLI writes an SVG file that contains <svg> and weighs > 500 bytes.
+        Explicit high-contrast palettes (7:1+ vs white/near-black) so the
+        contrast-warning gate does not fire and block output."""
         out = tmp_path / "chart.svg"
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
-             "charts", "line",
-             "--data", "[1,2,3,4,5]",
-             "--title", "Test",
-             "--out", str(out)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "charts",
+                "line",
+                "--data",
+                "[1,2,3,4,5]",
+                "--title",
+                "Test",
+                "--colors",
+                "#0f172a",  # very dark on white = high contrast
+                "--colors-dark",
+                "#f8fafc",  # very light on near-black = high contrast
+                "--out",
+                str(out),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         assert out.exists()
@@ -3390,14 +4081,15 @@ class TestProposeCallouts:
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400">'
         '<rect x="50" y="50" width="200" height="100" fill="black"/>'
         '<rect x="350" y="250" width="200" height="100" fill="black"/>'
-        '</svg>'
+        "</svg>"
     )
 
     def test_placement_shapes_and_determinism(self):
         """Single leader callout, single leaderless callout, two non-conflict
         callouts, and deterministic results from a fixed seed."""
         from stellars_claude_code_plugins.svg_tools.propose_callouts import (
-            CalloutRequest, propose_callouts,
+            CalloutRequest,
+            propose_callouts,
         )
 
         # Single leader callout
@@ -3415,8 +4107,11 @@ class TestProposeCallouts:
         # Single leaderless callout
         r = propose_callouts(
             self.SIMPLE_SVG,
-            [CalloutRequest(id="callout-leaderless", target=(300, 200),
-                            text="no line", leader=False)],
+            [
+                CalloutRequest(
+                    id="callout-leaderless", target=(300, 200), text="no line", leader=False
+                )
+            ],
         )
         p = r["best_layout"][0]
         assert p.leader_start is None
@@ -3445,24 +4140,25 @@ class TestProposeCallouts:
     def test_multiline_and_id_validation(self):
         """Multi-line text (\n) produces a tall-enough bbox; plan file
         validator rejects IDs that don't start with 'callout-'."""
-        import tempfile, os
+        import os
+        import tempfile
+
         from stellars_claude_code_plugins.svg_tools.propose_callouts import (
-            CalloutRequest, propose_callouts, _load_plan,
+            CalloutRequest,
+            _load_plan,
+            propose_callouts,
         )
 
         # Multi-line text: bbox height >= 2 line heights
         r = propose_callouts(
             self.SIMPLE_SVG,
-            [CalloutRequest(id="callout-a", target=(150, 100),
-                            text="first line\nsecond line")],
+            [CalloutRequest(id="callout-a", target=(150, 100), text="first line\nsecond line")],
         )
         p = r["best_layout"][0]
         assert p.text_bbox[3] >= 2 * 8.5
 
         # _load_plan rejects non-'callout-' ids
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write('[{"id": "badname", "target": [100, 100], "text": "x"}]')
             path = f.name
         try:
@@ -3479,9 +4175,15 @@ class TestProposeCallouts:
 
         # --help includes schema info
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
-             "callouts", "--help"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "callouts",
+                "--help",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0
         assert "Schema for --plan JSON" in r.stdout
@@ -3491,15 +4193,22 @@ class TestProposeCallouts:
 
         # CLI run on real SVG
         plan = tmp_path / "plan.json"
-        plan.write_text(
-            '[{"id": "callout-a", "target": [150, 100], "text": "test annotation"}]'
-        )
+        plan.write_text('[{"id": "callout-a", "target": [150, 100], "text": "test annotation"}]')
         svg = tmp_path / "scene.svg"
         svg.write_text(self.SIMPLE_SVG)
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
-             "callouts", "--svg", str(svg), "--plan", str(plan)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "callouts",
+                "--svg",
+                str(svg),
+                "--plan",
+                str(plan),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         assert "PROPOSAL" in r.stdout
@@ -3507,9 +4216,19 @@ class TestProposeCallouts:
 
         # CLI --json
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.svg_tools.cli",
-             "callouts", "--svg", str(svg), "--plan", str(plan), "--json"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "callouts",
+                "--svg",
+                str(svg),
+                "--plan",
+                str(plan),
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         data = _json.loads(r.stdout)
@@ -3533,7 +4252,6 @@ from stellars_claude_code_plugins.svg_tools.drawio_shapes import (
     render_catalogue,
     render_shape,
 )
-
 
 _SAMPLE_STENCIL_XML = _textwrap.dedent("""\
     <?xml version="1.0" encoding="UTF-8"?>
@@ -3643,15 +4361,12 @@ class TestMxGraphToSvgPath:
 
     def _el(self, xml_str: str):
         import xml.etree.ElementTree as ET
+
         return ET.fromstring(xml_str)
 
     def test_move_and_line(self):
         """move -> M and line -> L with correct scaling."""
-        el = self._el(
-            "<foreground>"
-            '<move x="0" y="0"/><line x="100" y="0"/><close/>'
-            "</foreground>"
-        )
+        el = self._el('<foreground><move x="0" y="0"/><line x="100" y="0"/><close/></foreground>')
         d = _mxgraph_to_svg_path(el, w=100, h=100)
         assert "M 0.000 0.000" in d
         assert "L 100.000 0.000" in d
@@ -3666,9 +4381,7 @@ class TestMxGraphToSvgPath:
     def test_curve_produces_C(self):
         """curve element -> SVG cubic bezier C command."""
         el = self._el(
-            "<foreground>"
-            '<curve x1="10" y1="0" x2="90" y2="0" x3="100" y3="50"/>'
-            "</foreground>"
+            '<foreground><curve x1="10" y1="0" x2="90" y2="0" x3="100" y3="50"/></foreground>'
         )
         d = _mxgraph_to_svg_path(el, w=100, h=100)
         assert d.startswith("C ")
@@ -3988,6 +4701,7 @@ class TestContainerOverflow:
         from stellars_claude_code_plugins.svg_tools.check_overlaps import (
             check_container_overflow,
         )
+
         return check_container_overflow(self.FIXTURE)
 
     def test_fail_1_obvious_right_overflow(self):
@@ -4174,7 +4888,7 @@ class TestManifestPreflight:
         svg = tmp_path / "two_cards.svg"
         svg.write_text(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">\n'
-            '  <style>@media (prefers-color-scheme: dark) { .fg { fill: #fff; } }</style>\n'
+            "  <style>@media (prefers-color-scheme: dark) { .fg { fill: #fff; } }</style>\n"
             '  <g id="card-a"><rect width="100" height="50"/></g>\n'
             '  <g id="card-b"><rect width="100" height="50"/></g>\n'
             "</svg>\n"
@@ -4183,8 +4897,7 @@ class TestManifestPreflight:
         report = check(decl, svg)
         assert report.failed
         assert any(
-            "declared 4 card" in f.message and "found 2" in f.message
-            for f in report.findings
+            "declared 4 card" in f.message and "found 2" in f.message for f in report.findings
         )
 
     def test_check_always_requires_dark_mode(self, tmp_path):
@@ -4197,7 +4910,7 @@ class TestManifestPreflight:
         svg = tmp_path / "no_dark.svg"
         svg.write_text(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">\n'
-            '  <style>.fg { fill: #000; }</style>\n'
+            "  <style>.fg { fill: #000; }</style>\n"
             "</svg>\n"
         )
         decl = Declaration(counts={})
@@ -4215,7 +4928,7 @@ class TestManifestPreflight:
         svg = tmp_path / "manifold.svg"
         svg.write_text(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">\n'
-            '  <style>@media (prefers-color-scheme: dark) { .a { fill: #fff; } }</style>\n'
+            "  <style>@media (prefers-color-scheme: dark) { .a { fill: #fff; } }</style>\n"
             '  <g id="connectors">\n'
             '    <g class="manifold-connector">\n'
             '      <path d="M 0,0 L 100,0"/>\n'
@@ -4320,14 +5033,14 @@ class TestFinalize:
 class TestConnectorDirectionWarning:
     """WI#3: calc_connector --direction mandatory / L-mode geometry warning."""
 
-    def test_missing_direction_emits_warning_on_straight(self, capsys):
+    def test_missing_direction_emits_warning_on_straight(self):
         import argparse
 
         from stellars_claude_code_plugins.svg_tools.calc_connector import (
             _resolve_direction_flag,
         )
 
-        # Straight mode + direction=None -> warning
+        # Straight mode + direction=None -> warning returned for the gate.
         ns = argparse.Namespace(
             mode="straight",
             direction=None,
@@ -4340,9 +5053,8 @@ class TestConnectorDirectionWarning:
             end_dir=None,
         )
         parser = argparse.ArgumentParser()
-        _resolve_direction_flag(ns, parser)
-        err = capsys.readouterr().err
-        assert "--direction not declared" in err
+        pre_warnings = _resolve_direction_flag(ns, parser)
+        assert any("--direction not declared" in w for w in pre_warnings)
 
     def test_direction_forward_maps_to_arrow_end(self):
         import argparse
@@ -4386,7 +5098,7 @@ class TestConnectorDirectionWarning:
         _resolve_direction_flag(ns, argparse.ArgumentParser())
         assert ns.arrow == "start"
 
-    def test_l_mode_without_geometry_warns(self, capsys):
+    def test_l_mode_without_geometry_warns(self):
         import argparse
 
         from stellars_claude_code_plugins.svg_tools.calc_connector import (
@@ -4404,9 +5116,92 @@ class TestConnectorDirectionWarning:
             start_dir=None,
             end_dir=None,
         )
-        _resolve_direction_flag(ns, argparse.ArgumentParser())
-        err = capsys.readouterr().err
-        assert "route" in err.lower() and ("start-dir" in err or "src-rect" in err)
+        pre_warnings = _resolve_direction_flag(ns, argparse.ArgumentParser())
+        assert any(
+            "route" in w.lower() and ("start-dir" in w or "src-rect" in w) for w in pre_warnings
+        )
+
+
+class TestWarningAckGate:
+    """Stop-and-think gate: every warning the tool emits must be consciously
+    acknowledged with a deterministic token + terse reasoning before SVG
+    output is released. Test covers token stability, reason enforcement,
+    per-warning + universal ack, and exit-code contract."""
+
+    def _run(self, *args):
+        return subprocess.run(
+            [sys.executable, str(TOOLS_DIR / "calc_connector.py"), *args],
+            capture_output=True,
+            text=True,
+        )
+
+    def _unacked_argv(self):
+        # Straight-mode call without --direction -> emits one pre-dispatch
+        # warning. Minimal fixture.
+        return ["--mode", "straight", "--from", "10,10", "--to", "100,100"]
+
+    def test_unacked_warning_blocks_with_exit_2(self):
+        r = self._run(*self._unacked_argv())
+        assert r.returncode == 2
+        assert r.stdout == ""
+        assert "BLOCKED" in r.stderr
+        assert "--ack-warning" in r.stderr
+
+    def test_token_is_deterministic(self):
+        r1 = self._run(*self._unacked_argv())
+        r2 = self._run(*self._unacked_argv())
+        import re
+
+        toks1 = re.findall(r"W-[0-9a-f]{8}", r1.stderr)
+        toks2 = re.findall(r"W-[0-9a-f]{8}", r2.stderr)
+        assert toks1 and toks1 == toks2
+
+    def test_valid_ack_unblocks(self):
+        r = self._run(*self._unacked_argv())
+        import re
+
+        tok = re.findall(r"W-[0-9a-f]{8}", r.stderr)[0]
+        r2 = self._run(
+            *self._unacked_argv(),
+            "--ack-warning",
+            f"{tok}=demo fixture",
+        )
+        assert r2.returncode == 0, r2.stderr
+        assert "STRAIGHT CONNECTOR" in r2.stdout
+        assert "Acknowledged 1 warning" in r2.stderr
+        assert "demo fixture" in r2.stderr
+
+    def test_ack_without_reason_is_rejected(self):
+        r = self._run(
+            *self._unacked_argv(),
+            "--ack-warning",
+            "W-deadbeef",  # no '=reason'
+        )
+        assert r.returncode == 2
+        assert "Reasoning is mandatory" in r.stderr
+
+    def test_no_bulk_override(self):
+        # Reserved literal "all" is NOT special - it is just a bogus token
+        # and must still fail to match any warning, so the gate continues
+        # to block. One --ack-warning per warning is the only path through.
+        r = self._run(*self._unacked_argv(), "--ack-warning", "all=trying to cheat")
+        assert r.returncode == 2
+        assert "BLOCKED" in r.stderr
+
+    def test_stale_ack_token_noted_but_does_not_block(self):
+        r = self._run(*self._unacked_argv())
+        import re
+
+        real_tok = re.findall(r"W-[0-9a-f]{8}", r.stderr)[0]
+        r2 = self._run(
+            *self._unacked_argv(),
+            "--ack-warning",
+            f"{real_tok}=valid reason",
+            "--ack-warning",
+            "W-00000000=stale fixture",
+        )
+        assert r2.returncode == 0, r2.stderr
+        assert "stale" in r2.stderr.lower() or "no matching" in r2.stderr.lower()
 
 
 class TestPlaceElement:
@@ -4451,9 +5246,7 @@ class TestPlaceElement:
         )
         # 100x100 icon into a 30x30 card - must fail
         with pytest.raises(ValueError) as exc:
-            place_element(
-                svg, container_id="target", width=100, height=100, margin=8
-            )
+            place_element(svg, container_id="target", width=100, height=100, margin=8)
         assert "large enough" in str(exc.value) or "no empty regions" in str(exc.value)
 
 
@@ -4504,7 +5297,7 @@ class TestFreeGraphicsWarning:
         svg = tmp_path / "free.svg"
         svg.write_text(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">\n'
-            '  <style>@media (prefers-color-scheme: dark) { .a { fill: #fff; } }</style>\n'
+            "  <style>@media (prefers-color-scheme: dark) { .a { fill: #fff; } }</style>\n"
             '  <rect x="10" y="10" width="20" height="20"/>\n'
             '  <rect x="50" y="50" width="20" height="20"/>\n'
             "</svg>\n"

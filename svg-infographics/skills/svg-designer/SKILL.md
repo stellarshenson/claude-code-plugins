@@ -111,6 +111,21 @@ Verify: `svg-infographics --help`. No install = no tool = no validation = no del
 - Manifold tension 0.75; bump to 0.85-0.95 if strands cross. Check `warnings`
 - `--stem-min 20` guarantees clean cardinal stem behind arrowheads
 
+## Warning-ack gate (STOP AND THINK)
+
+**Every producer tool in svg-tools gates its output behind a stop-and-think warning-ack mechanism.** Tools currently gated: `calc_connector`, `charts`; rollout to `drawio_shapes`, `calc_empty_space`, `calc_primitives`, `gen_backgrounds`, `place_icon`, `text_to_path`, `finalize` is in progress (Release D).
+
+**Contract (identical across every gated tool)**:
+
+- Any warning (WARNING / CONSIDER / HINT / contrast finding / stem-length / etc.) makes the tool exit 2 with a BLOCKED block listing one deterministic token per warning.
+- Output resumes only with `--ack-warning TOKEN=reason` passed per warning.
+- Tokens are `hash(canonical_input, warning_text)` - stable across reruns.
+- **One flag per warning, one reason per warning. No bulk override.**
+- Reasoning MUST be terse: one short clause ("card column locked", "T-junction middle, desired visual", "palette anchored on brand spec"). Never "known issue" or "I know what I'm doing" - those fail review.
+- Fixing the input is ALWAYS preferred over acking. A stack of acks is a signal the input needs rework.
+
+Per-tool specifics live in each rule card (`rules/connector.md`, `rules/background.md`, etc.). Full gate matrix and workflow in `references/validation.md`.
+
 ## Alignment checklist (quick)
 
 - Same row: `geom align --rects "[...]" --edge top`

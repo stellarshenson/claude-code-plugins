@@ -39,6 +39,11 @@ from typing import Any
 import numpy as np
 from scipy import ndimage as ndi
 
+from stellars_claude_code_plugins.svg_tools._warning_gate import (
+    add_ack_warning_arg,
+    enforce_warning_acks,
+)
+
 try:
     import svgelements as _se
 except ImportError as _exc:  # pragma: no cover - dep is mandatory
@@ -1002,14 +1007,15 @@ def main():
         action="store_true",
         help="Emit JSON output only",
     )
+    add_ack_warning_arg(parser)
     args = parser.parse_args()
 
+    warnings: list[str] = []
     if args.tolerance < 20.0:
-        print(
+        warnings.append(
             f"WARNING: --tolerance {args.tolerance} is below the 20px "
             "minimum recommended for callouts; leaders may clip adjacent "
-            "shapes.",
-            file=sys.stderr,
+            "shapes."
         )
 
     exclude_ids = args.exclude_id if args.exclude_id else ("callout-*",)
@@ -1022,6 +1028,9 @@ def main():
         container_id=args.container_id,
         edges_only=args.edges_only,
     )
+
+    # Gate before emitting primary output - blocks stdout on unacked warnings.
+    enforce_warning_acks(warnings, sys.argv[1:], args.ack_warning)
 
     if args.json:
         json.dump(regions, sys.stdout, indent=2)

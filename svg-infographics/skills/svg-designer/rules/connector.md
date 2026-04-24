@@ -85,3 +85,25 @@ Every connector path MUST live inside a `<g>` that matches one of:
 ## Mixed directions in one group
 
 A single `<g id="connectors">` containing connectors pointing in opposite axes (some up, some down; some left, some right) is almost always a copy-paste mistake. `check_connectors` raises a SOFT warning when it detects this, unless the group has `data-connector-pattern="mixed"` which opt-ins the user into an explicit mixed-direction pattern.
+
+## Stop-and-think warning-ack gate (MANDATORY)
+
+`calc_connector` blocks SVG output on exit 2 whenever any warning fires (WARNING / CONSIDER / HINT - ALL severity levels). Output resumes only after every warning is consciously acknowledged with `--ack-warning TOKEN=reason`. Tokens are deterministic `hash(input, warning_text)` so reruns with the same input reproduce them.
+
+One `--ack-warning` flag per warning. There is NO bulk override. Every warning gets its own token AND its own reason - the whole point is conscious pause per item.
+
+**Reasoning MUST be terse**. One short clause describing why the warning is safe to ignore, not a paragraph. Examples:
+
+- `--ack-warning W-03c26fa7='card column locked, stem cannot grow'` (good)
+- `--ack-warning W-03c26fa7='T-junction middle, chamfer drop is the desired visual'` (good)
+- `--ack-warning W-03c26fa7='known limitation of the current layout'` (weak - explain which layout constraint)
+- `--ack-warning W-03c26fa7='I know what I am doing'` (bad - no content; will fail review)
+
+Workflow:
+
+1. Run the tool. Gate blocks with a BLOCKED block listing each warning + its token.
+2. Read each warning. Decide: fix the input, or ack with a terse reason.
+3. Rerun with one `--ack-warning TOKEN=reason` flag per warning being ignored.
+4. Audit trail prints each ack with its reason to stderr before SVG output.
+
+Fixing the geometry is ALWAYS preferred over acking. Only ack when the warning is a known trade-off tied to a specific constraint (e.g. card-column geometry fixed, desired visual pattern, adjacent element clearance). A stack of acks without specific reasoning is a signal the layout needs rework.

@@ -2,6 +2,55 @@
 
 Twelve tools shipped in `stellars-claude-code-plugins` pip package. Install once, use via `svg-infographics` CLI. No optional extras.
 
+## Stop-and-think warning-ack gate (MANDATORY)
+
+Every **producer** tool in svg-tools (generates an artefact - SVG snippet, coordinates, layout, render) blocks its primary output whenever any warning fires. Output resumes only after the caller acknowledges each warning with a deterministic token and terse reasoning. This is not optional and there is no bulk override.
+
+**Gate matrix** (Release D):
+
+| Tool | Gated? | Warnings blocked |
+|---|---|---|
+| `calc_connector` (straight / L / L-chamfer / spline / manifold) | YES | direction omission, L-routing underconstrained, stem-length, stem/head ratio, manifold spine-offset, T-junction hints, FLOW REVERSED, TWIST, soft-cap controls |
+| `charts` | YES | palette contrast findings (light + dark modes vs background) |
+| `drawio_shapes` | YES | indexer warnings (file not found, parse errors, unrecognised root tag) |
+| `empty-space` | YES | tolerance-below-20px warning |
+| `finalize` | YES | every HARD + SOFT finding surfaced from sub-validators |
+| `check_*` validators (overlaps, contrast, alignment, connectors, css, svg_valid) | NO | findings are the primary output; exit code signals severity |
+| `primitives`, `place`, `text-to-path`, `gen_backgrounds` | NO | only emit hard-error messages before `sys.exit(1)` or pure-info lines |
+
+**Contract** (identical across every gated tool):
+
+1. Run the tool. Any warning makes it exit 2 with a `BLOCKED` block listing one deterministic token per warning.
+2. Token format: `W-xxxxxxxx` (8 hex chars), computed as `sha256(canonical_argv, warning_text)[:8]`. Same input + same warning text = same token across reruns.
+3. Fix the input (preferred) OR rerun with `--ack-warning TOKEN=reason` once per warning. No bulk override - one flag per warning, one reason per warning.
+4. Acked: tool prints an audit summary of `[TOKEN] warning / reason: ...` pairs on stderr, then proceeds to output.
+5. Input or warning text changes -> token changes -> a stale ack no longer matches -> gate blocks again. You cannot silently pass a different defect by reusing an old ack.
+
+**Reasoning MUST be terse.** One short clause that names the constraint. Good: `'card column locked'`, `'T-junction middle, desired visual'`, `'palette anchored on brand spec'`. Bad: `'known issue'`, `'I know what I'm doing'`, `'see ticket'`, `'geometry constrained'` (too vague - which constraint?). Bad reasons fail review; a stack of vague acks is a signal the input needs rework.
+
+**Fixing the input is ALWAYS preferred over acking.** The gate is there to force a deliberate choice, not to be bypassed. If every build ends with a long `--ack-warning` list, the layout or declaration is wrong - rework it instead.
+
+**Token discovery workflow** (the common path):
+
+```bash
+# 1. Build naturally; gate fires with tokens listed
+svg-infographics connector --mode manifold --starts "[...]" ...
+# ...
+# BLOCKED: 3 unacknowledged warning(s).
+#   [W-11a21a1f]  CONSIDER: starts strand 2 at (560,205) is 5.0px off spine...
+#   [W-aca14b8c]  CONSIDER (snap rule): odd starts (3); middle off-axis...
+#   [W-03c26fa7]  CONSIDER (snap rule): end stem 8.0px (< stem_min=20.0)...
+
+# 2. Decide per-warning. Rerun with per-ack flags (terse reasons).
+svg-infographics connector --mode manifold --starts "[...]" ... \
+    --ack-warning W-11a21a1f='card stroke width, snapping would collide' \
+    --ack-warning W-aca14b8c='spine locked to target geometry' \
+    --ack-warning W-03c26fa7='hex edge fixed; short stem accepted'
+# SVG output released; stderr shows audit trail.
+```
+
+
+
 ```bash
 pip install stellars-claude-code-plugins
 svg-infographics --help

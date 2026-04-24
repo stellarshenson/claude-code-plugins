@@ -72,6 +72,14 @@ Backing tools: `svg-infographics overlaps`, `svg-infographics contrast`, `svg-in
 Commands: `/svg-infographics:validate`, `/svg-infographics:fix`.
 Skill: `svg-infographics:svg-designer` (see `references/validation.md`).
 
+### 6. Stop-and-think warning-ack gate
+
+Every producer tool (`calc_connector`, `charts`, `drawio_shapes`, `empty-space`, `finalize`) blocks its primary output whenever any warning fires - WARNING, CONSIDER, HINT, contrast finding, stem-length, spine-offset, everything. The caller must acknowledge each warning explicitly with `--ack-warning TOKEN=reason`. Tokens are deterministic `sha256(canonical_argv, warning_text)[:8]` so reruns reproduce them. One flag per warning, one terse reason per warning - no bulk override. Forces a conscious per-finding decision instead of letting warnings scroll past unread.
+
+Fixing the input is always preferred over acking. A stack of vague acks ("known issue", "see ticket") fails review - reasons must name a specific constraint ("card column locked", "T-junction middle, desired visual", "palette anchored on brand spec").
+
+See `references/validation.md` for the full gate matrix and workflow.
+
 ## Use cases
 
 **Build a branded marketplace banner.** Generate and approve a theme swatch first. Scaffold the 6-phase workflow grid, drop cards via `primitives rect`, connect them with `connector --mode l-chamfer`, validate with all five checkers before shipping.
