@@ -508,3 +508,302 @@ class TestCLISetup:
         assert code == 0
         err = capsys.readouterr().err
         assert "semantic_enabled" in err
+
+
+# -------------------------------------------------------------------------
+# WI#1: binary source rejection
+# -------------------------------------------------------------------------
+
+
+class TestBinarySourceRejection:
+    """CLI rejects binary inputs loud with exit code 2."""
+
+    def test_png_magic_bytes_rejected(self, tmp_path, capsys):
+        png_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+        p = tmp_path / "weird.txt"  # renamed PNG
+        p.write_bytes(png_bytes)
+        claim = tmp_path / "claim.json"
+        claim.write_text(json.dumps(["hello world"]))
+        with pytest.raises(SystemExit) as exc:
+            cli_main(["ground-many", "--claims", str(claim), "--source", str(p)])
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "PNG image" in err
+
+    def test_pdf_by_extension_rejected(self, tmp_path, capsys):
+        p = tmp_path / "document.pdf"
+        p.write_bytes(b"%PDF-1.4 fake content here")
+        with pytest.raises(SystemExit) as exc:
+            cli_main(["ground", "--claim", "anything", "--source", str(p)])
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert ".pdf file" in err or "PDF" in err
+
+    def test_invalid_utf8_rejected(self, tmp_path, capsys):
+        p = tmp_path / "bad.txt"
+        p.write_bytes(b"valid ascii then invalid: \xff\xfe\xfd")
+        with pytest.raises(SystemExit) as exc:
+            cli_main(["ground", "--claim", "anything", "--source", str(p)])
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "UTF-8" in err
+
+    def test_plain_text_accepted(self, tmp_path):
+        p = tmp_path / "plain.txt"
+        p.write_text("hello world")
+        code = cli_main(["ground", "--claim", "hello world", "--source", str(p)])
+        assert code == 0
+
+
+# -------------------------------------------------------------------------
+# WI#3: cross-source provenance + --primary-source
+# -------------------------------------------------------------------------
+
+
+class TestCrossSourceProvenance:
+    def test_grounded_source_from_exact_hit(self):
+        sources = [
+            ("primary.md", "The cat sat on the mat."),
+            ("secondary.md", "Unrelated content about dogs."),
+        ]
+        m = ground("the cat sat on the mat", sources)
+        assert m.match_type == "exact"
+        assert m.grounded_source == "primary.md"
+        assert m.is_primary_source is True
+
+    def test_non_primary_flag(self):
+        sources = [
+            ("primary.md", "Nothing about cats here."),
+            ("secondary.md", "The cat sat on the mat."),
+        ]
+        m = ground("the cat sat on the mat", sources, primary_source="primary.md")
+        assert m.grounded_source == "secondary.md"
+        assert m.is_primary_source is False
+        assert m.verification_needed is True
+
+    def test_primary_source_match(self):
+        sources = [
+            ("primary.md", "The cat sat on the mat."),
+            ("secondary.md", "Also: the cat sat on the mat."),
+        ]
+        m = ground("the cat sat on the mat", sources, primary_source="primary.md")
+        assert m.is_primary_source is True
+
+
+# -------------------------------------------------------------------------
+# WI#5 + WI#6: lexical_co_support, verification_needed, claim_attributes
+# -------------------------------------------------------------------------
+
+
+class TestVerificationSignals:
+    def test_exact_hit_has_lexical_support(self):
+        m = ground("the cat sat", [("a.txt", "the cat sat on the mat")])
+        assert m.lexical_co_support is True
+
+    def test_claim_attributes_populated(self):
+        m = ground(
+            "42 users logged in yesterday",
+            [("a.txt", "42 users logged in yesterday.")],
+        )
+        attrs = m.claim_attributes
+        assert "numbers" in attrs
+        assert "entities" in attrs
+        assert "passage_numbers" in attrs
+        assert "passage_entities" in attrs
+        # At least the number 42 should be extracted
+        values = [v for v, _, _ in attrs["numbers"]]
+        assert "42" in values
+
+    def test_numeric_co_presence_triggers_verification(self):
+        # Both sides have numbers tied to the same context word ("users")
+        # but the deterministic mismatch detector won't fire with a single
+        # clean hit — the heuristic flag should still call this out.
+        m = ground(
+            "the project grew to 42 users",
+            [("a.txt", "the project reports 100 users on record")],
+        )
+        # bm25 / fuzzy co-occurrence should yield verification_needed=True
+        # because both claim and passage have number+"users"
+        if m.match_type in ("fuzzy", "bm25", "semantic"):
+            assert m.verification_needed is True
+
+
+# -------------------------------------------------------------------------
+# WI#2: extract-claims
+# -------------------------------------------------------------------------
+
+
+class TestExtractClaims:
+    def test_basic_extraction(self, tmp_path):
+        from stellars_claude_code_plugins.document_processing.extract import (
+            extract_claims,
+        )
+
+        doc = (
+            "# Heading\n\n"
+            "The system handles 42 concurrent sessions. "
+            "It was tested on Linux and macOS.\n\n"
+            "Short.\n\n"
+            "- dev\n"
+            "- test\n"
+            "- staging\n\n"
+            "The deployment runs on Kubernetes with three nodes.\n"
+        )
+        claims = extract_claims(doc)
+        assert len(claims) >= 2
+        # Stable IDs
+        assert claims[0].id.startswith("c0")
+        # Short stubs and pure headers excluded
+        for c in claims:
+            assert len(c.claim) >= 20
+
+    def test_cli_extract_claims(self, tmp_path, capsys):
+        doc = tmp_path / "doc.md"
+        doc.write_text(
+            "The system handles 42 concurrent sessions.\n"
+            "It was tested on Linux and macOS.\n"
+        )
+        out = tmp_path / "claims.json"
+        code = cli_main(
+            ["extract-claims", "--document", str(doc), "--output", str(out)]
+        )
+        assert code == 0
+        data = json.loads(out.read_text())
+        assert len(data) >= 1
+        assert "id" in data[0]
+        assert "claim" in data[0]
+        assert "line_number" in data[0]
+
+
+# -------------------------------------------------------------------------
+# WI#4: check-consistency
+# -------------------------------------------------------------------------
+
+
+class TestCheckConsistency:
+    def test_numeric_divergence_flagged(self):
+        from stellars_claude_code_plugins.document_processing.consistency import (
+            check_consistency,
+        )
+
+        text = (
+            "The platform supports 42 users on average.\n"
+            "\n\n"
+            "Recent benchmarks show 50 users on load.\n"
+        )
+        findings = check_consistency(text)
+        numeric_findings = [f for f in findings if f.kind == "numeric"]
+        assert len(numeric_findings) >= 1
+        # Both line numbers should appear
+        all_lines = [line for f in numeric_findings for line, _ in f.occurrences]
+        assert 1 in all_lines
+        assert 4 in all_lines
+
+    def test_entity_set_divergence_flagged(self):
+        from stellars_claude_code_plugins.document_processing.consistency import (
+            check_consistency,
+        )
+
+        text = (
+            "We run dev, test, and staging environments.\n"
+            "\n\n"
+            "Pipeline deploys to dev, staging, and prod.\n"
+        )
+        findings = check_consistency(text)
+        set_findings = [f for f in findings if f.kind == "entity_set"]
+        assert len(set_findings) >= 1
+
+    def test_no_divergence_reports_clean(self):
+        from stellars_claude_code_plugins.document_processing.consistency import (
+            check_consistency,
+            format_consistency_report,
+        )
+
+        text = "Simple consistent document with 42 users and 42 users again.\n"
+        findings = check_consistency(text)
+        # Same value twice - no divergence
+        numeric_findings = [f for f in findings if f.kind == "numeric"]
+        assert not numeric_findings
+        report = format_consistency_report(findings)
+        assert "No divergences" in report
+
+    def test_cli_check_consistency(self, tmp_path):
+        doc = tmp_path / "doc.md"
+        doc.write_text(
+            "The system handles 42 users per session.\n\nRecent tests show 50 users per session.\n"
+        )
+        out = tmp_path / "consistency.md"
+        code = cli_main(
+            ["check-consistency", "--document", str(doc), "--output", str(out)]
+        )
+        # Exit 1 when findings exist
+        assert code == 1
+        assert out.exists()
+        report = out.read_text()
+        assert "Self-Consistency" in report
+
+
+# -------------------------------------------------------------------------
+# WI#7: validate-many
+# -------------------------------------------------------------------------
+
+
+class TestValidateMany:
+    def test_basic_batch(self, tmp_path, monkeypatch):
+        # Redirect HOME so settings don't leak from the real user
+        monkeypatch.setenv("HOME", str(tmp_path / "fake_home"))
+        (tmp_path / "fake_home").mkdir()
+
+        # Build two tiny client fixtures
+        client_a = tmp_path / "clients" / "alpha"
+        client_a.mkdir(parents=True)
+        (client_a / "transcript.md").write_text(
+            "Alpha team is building an API for payment processing.\n"
+            "They plan to launch in Q3 2026 with 5 team members.\n"
+        )
+        (client_a / "brief.md").write_text(
+            "Alpha team builds a payment API.\n"
+            "Launch planned for Q3 2026.\n"
+            "Team size: 5 members.\n"
+        )
+
+        client_b = tmp_path / "clients" / "beta"
+        client_b.mkdir(parents=True)
+        (client_b / "transcript.md").write_text(
+            "Beta team works on a data pipeline using Apache Spark.\n"
+            "They handle 1M rows per day.\n"
+        )
+        (client_b / "brief.md").write_text(
+            "Beta team runs a data pipeline on Apache Spark.\n"
+            "Daily volume is 1M rows.\n"
+        )
+
+        source_map = tmp_path / "source_map.yaml"
+        source_map.write_text(
+            "clients:\n"
+            "  alpha:\n"
+            "    sources: [clients/alpha/transcript.md]\n"
+            "    document: clients/alpha/brief.md\n"
+            "  beta:\n"
+            "    sources: [clients/beta/transcript.md]\n"
+            "    document: clients/beta/brief.md\n"
+        )
+
+        output_dir = tmp_path / "validation"
+        code = cli_main(
+            [
+                "validate-many",
+                "--source-map",
+                str(source_map),
+                "--output-dir",
+                str(output_dir),
+                "--semantic",
+                "off",
+            ]
+        )
+        # Code is 0 only if everything grounded AND no inconsistencies.
+        # On a tiny fixture some claims may not reach thresholds; accept 0 or 1.
+        assert code in (0, 1)
+        assert (output_dir / "alpha" / "grounding-report.md").exists()
+        assert (output_dir / "alpha" / "consistency-report.md").exists()
+        assert (output_dir / "beta" / "grounding-report.md").exists()

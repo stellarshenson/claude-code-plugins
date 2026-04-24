@@ -49,6 +49,8 @@ from stellars_claude_code_plugins.config import (
     load_document_processing_config as load_config,
 )
 from stellars_claude_code_plugins.document_processing.entity_check import (
+    extract_entities,
+    extract_numbers,
     find_absent_entities,
     find_mismatches,
     list_claim_entities,
@@ -160,6 +162,18 @@ class GroundingMatch:
     # Borderline expansion flag (H5 - reserved, not set in iter 1)
     expanded: bool = False
     """True when chunk-boundary expansion fired on a borderline semantic hit."""
+    # Cross-source provenance (WI#3)
+    grounded_source: str | None = None
+    """Source path where the winning-layer hit was found, or None if no match."""
+    is_primary_source: bool = True
+    """False when grounded_source differs from a caller-supplied primary source."""
+    # Lexical co-support gate (WI#5) / verification signal (WI#6)
+    lexical_co_support: bool = False
+    """True when semantic fires AND at least one lexical layer clears its cosupport floor."""
+    verification_needed: bool = False
+    """True when the match carries one or more second-guess signals (see ground())."""
+    claim_attributes: dict = field(default_factory=dict)
+    """Side-by-side attribute summary: numbers/entities in claim vs winning passage."""
     # Resolution
     match_type: MatchType = "none"
     combined_score: float = 0.0  # max of all enabled layers
@@ -492,6 +506,7 @@ def ground(
     semantic_grounder=None,
     semantic_top_k: int | None = None,
     config: GroundingConfig | None = None,
+    primary_source: str | None = None,
 ) -> GroundingMatch:
     """Ground a single claim against one or more sources.
 
@@ -755,7 +770,169 @@ def ground(
     else:
         result.match_type = "none"
 
+    # WI#3 / WI#5 / WI#6: post-match metadata populated after match_type is set.
+    # Cheap computations reused by downstream review tooling and the
+    # verification_needed flag below.
+    _populate_match_metadata(
+        result,
+        cfg=cfg,
+        primary_source=primary_source,
+        fuzzy_threshold=fuzzy_threshold,
+        bm25_threshold=bm25_threshold,
+        effective_semantic_threshold=effective_semantic_threshold,
+    )
+
     return result
+
+
+# ---------------------------------------------------------------------------
+# Post-match metadata (WI#3, WI#5, WI#6)
+# ---------------------------------------------------------------------------
+
+
+def _winning_location(m: GroundingMatch) -> Location | None:
+    """Return the Location corresponding to the winning match_type."""
+    if m.match_type == "exact":
+        return m.exact_location
+    if m.match_type == "fuzzy":
+        return m.fuzzy_location
+    if m.match_type == "bm25":
+        return m.bm25_location
+    if m.match_type == "semantic":
+        return m.semantic_location
+    if m.match_type == "contradicted":
+        # Pick the layer with the strongest signal so the reader can
+        # navigate to the passage that triggered the contradiction.
+        if m.exact_score == 1.0:
+            return m.exact_location
+        if m.semantic_score > 0:
+            return m.semantic_location
+        if m.bm25_score > 0:
+            return m.bm25_location
+        if m.fuzzy_score > 0:
+            return m.fuzzy_location
+    return None
+
+
+def _populate_match_metadata(
+    m: GroundingMatch,
+    *,
+    cfg: GroundingConfig,
+    primary_source: str | None,
+    fuzzy_threshold: float,
+    bm25_threshold: float,
+    effective_semantic_threshold: float,
+) -> None:
+    """Fill WI#3 (cross-source provenance) + WI#5 (lexical co-support) +
+    WI#6 (verification_needed, claim_attributes) on an already-scored match.
+
+    Kept as a separate function so ``ground`` stays readable and the
+    post-score bookkeeping has a single clear home.
+    """
+    # --- WI#3: grounded_source + is_primary_source -----------------------
+    winning = _winning_location(m)
+    if winning is not None and winning.source_path:
+        m.grounded_source = winning.source_path
+    else:
+        m.grounded_source = None
+
+    if primary_source is not None and m.grounded_source is not None:
+        m.is_primary_source = m.grounded_source == primary_source
+    else:
+        m.is_primary_source = True
+
+    # --- WI#5: lexical_co_support --------------------------------------
+    # Semantic hits cheaper to second-guess when at least one lexical layer
+    # also carries signal. Fuzzy above floor OR bm25 token-recall above
+    # floor qualifies. Exact hits are already lexical so they auto-qualify
+    # (an exact match is the strongest form of lexical support).
+    lexical_ok = (
+        m.exact_score >= 1.0
+        or m.fuzzy_score >= cfg.lexical_cosupport_fuzzy_min
+        or m.bm25_token_recall >= cfg.lexical_cosupport_bm25_min
+    )
+    m.lexical_co_support = bool(lexical_ok)
+
+    # --- WI#6: claim_attributes (side-by-side numbers + entities) ------
+    passage_text = ""
+    if winning is not None:
+        if m.match_type == "exact":
+            passage_text = m.exact_matched_text
+        elif m.match_type == "fuzzy":
+            passage_text = m.fuzzy_matched_text
+        elif m.match_type == "bm25":
+            passage_text = m.bm25_matched_text
+        elif m.match_type == "semantic":
+            passage_text = m.semantic_matched_text
+        elif m.match_type == "contradicted":
+            # Mirror the winning-location picker above.
+            if m.exact_score == 1.0:
+                passage_text = m.exact_matched_text
+            elif m.semantic_score > 0:
+                passage_text = m.semantic_matched_text
+            elif m.bm25_score > 0:
+                passage_text = m.bm25_matched_text
+            else:
+                passage_text = m.fuzzy_matched_text
+
+    claim_numbers = extract_numbers(m.claim)
+    claim_entities = extract_entities(m.claim)
+    passage_numbers = extract_numbers(passage_text) if passage_text else []
+    passage_entities = extract_entities(passage_text) if passage_text else []
+
+    m.claim_attributes = {
+        "numbers": claim_numbers,
+        "entities": claim_entities,
+        "passage_numbers": passage_numbers,
+        "passage_entities": passage_entities,
+    }
+
+    # --- WI#6: verification_needed -------------------------------------
+    # A CONFIRMED match carries verification_needed=True when any of these
+    # second-guess signals fire. Applies only to the four confirmed
+    # verdicts (exact / fuzzy / bm25 / semantic); contradicted is already
+    # a loud signal and unconfirmed/none needs no further flagging.
+    if m.match_type not in ("exact", "fuzzy", "bm25", "semantic"):
+        m.verification_needed = False
+        return
+
+    reasons: list[bool] = []
+
+    # (a) semantic-only without lexical support
+    if m.match_type == "semantic" and not m.lexical_co_support:
+        reasons.append(True)
+
+    # (b) cross-source pollution: grounded source != caller's primary
+    if not m.is_primary_source:
+        reasons.append(True)
+
+    # (c) winning-layer score within proximity of its own threshold
+    proximity = cfg.verification_threshold_proximity
+    winning_score_floor: tuple[float, float] | None = None
+    if m.match_type == "fuzzy":
+        winning_score_floor = (m.fuzzy_score, fuzzy_threshold)
+    elif m.match_type == "bm25":
+        winning_score_floor = (m.bm25_score, bm25_threshold)
+    elif m.match_type == "semantic":
+        winning_score_floor = (m.semantic_score, effective_semantic_threshold)
+    if winning_score_floor is not None:
+        score, floor = winning_score_floor
+        if score - floor < proximity:
+            reasons.append(True)
+
+    # (d) deterministic numeric-mismatch pass was empty, but both claim and
+    # passage have numbers on the same side of a unit/context boundary. The
+    # specificity gate in find_numeric_mismatches suppresses legitimate
+    # multi-value range contradictions; flag for human second-guess.
+    if not m.numeric_mismatches and claim_numbers and passage_numbers:
+        # Share at least one (unit, context) family - a shallow co-presence
+        # signal that says "both sides are quantifying the same thing".
+        claim_keys = {(u, cw) for _, u, cw in claim_numbers if u or cw}
+        passage_keys = {(u, cw) for _, u, cw in passage_numbers if u or cw}
+        if claim_keys & passage_keys:
+            reasons.append(True)
+
+    m.verification_needed = any(reasons)
 
 
 def ground_many(
@@ -771,6 +948,7 @@ def ground_many(
     semantic_grounder=None,
     semantic_top_k: int | None = None,
     config: GroundingConfig | None = None,
+    primary_source: str | None = None,
 ) -> list[GroundingMatch]:
     """Batch version of :func:`ground`.
 
@@ -813,6 +991,7 @@ def ground_many(
             sources,
             semantic_grounder=semantic_grounder,
             config=cfg,
+            primary_source=primary_source,
         )
         for c in claims
     ]
@@ -871,5 +1050,17 @@ def ground_many(
                     # weight fuzzy/bm25/semantic differently for the same
                     # claim, breaking portability).
                     m.match_type = "semantic"
+                    # Re-run WI#3/#5/#6 metadata - match_type just changed
+                    # from "none" to "semantic" so verification_needed and
+                    # grounded_source need fresh computation against the
+                    # semantic layer's location and threshold.
+                    _populate_match_metadata(
+                        m,
+                        cfg=cfg,
+                        primary_source=primary_source,
+                        fuzzy_threshold=cfg.fuzzy_threshold,
+                        bm25_threshold=cfg.bm25_threshold,
+                        effective_semantic_threshold=cfg.semantic_threshold,
+                    )
 
     return matches

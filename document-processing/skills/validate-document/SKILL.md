@@ -127,7 +127,17 @@ Record answer in `./.stellars-plugins/settings.json` — avoids re-asking same s
 
 ### Per-claim workflow
 
-Extract every factual claim, assertion, attribution, number, date, quote. Per claim:
+Extract every factual claim, assertion, attribution, number, date, quote.
+
+**Step 0 (batch runs): extract-claims.** Let the heuristic extractor build the claims list instead of typing 30+ claims by hand - shrinks manual work from ~30 min to ~5 min plus review. Lossy: markdown headers, bullet stubs, and short sentences get dropped. Always review the generated `claims.json` before grounding. Reason: enumeration is the one step where manual work scales badly; grounding + attribute sidecar does the judgement.
+
+```bash
+document-processing extract-claims \
+  --document clients/actone/opportunity_brief.md \
+  --output validation/claims.json
+```
+
+Per claim:
 
 1. **State claim** exactly as in document
 2. **Run grounding tool FIRST.** Use `document-processing ground` for single claims, `ground-many` for batches. Three layers run independently (regex + Levenshtein + BM25), all three scores + line/column/paragraph/page/context per hit — no rereading source, huge token saving. Secondary: disciplined generative interpretation ONLY when all three lexical layers fail AND claim is semantic (summary / synthesis / cross-passage inference). Never skip the tool; run first, add generative on top when lexical signal absent.
@@ -147,14 +157,19 @@ Batch — builds `grounding-report.md` in one shot:
 ```bash
 # claims.json: list of strings or [{"claim": "...", "id": "..."}]
 # Pass --semantic on if settings.semantic_enabled == true
+# Pass --primary-source to flag cross-source pollution when multiple --source flags are present
 document-processing ground-many \
   --claims validation/claims.json \
   --source docs/source.md \
+  --source docs/research.md \
+  --primary-source docs/source.md \
   --output validation/grounding-report.md \
   --threshold 0.85 \
   --bm25-threshold 0.5 \
   --semantic on     # omit or 'off' when settings disables it
 ```
+
+Binary sources (PDF / PNG / JPG / DOCX / XLSX / ZIP) now fail loud with exit code 2 and a suggested extractor (`pdftotext`, `docx2txt`, `pandoc`). Previous silent U+FFFD decode masked this as a grounding miss.
 
 Single-claim probe — on-demand checks during review:
 
@@ -166,6 +181,19 @@ document-processing ground \
 ```
 
 All three scores always return, even when only one fires — layered signal distinguishes verbatim / paraphrase / topical / fabrication.
+
+### verification_needed: second-guess this CONFIRMED verdict
+
+`GroundingMatch.verification_needed=true` fires whenever the tool thinks a CONFIRMED verdict deserves a human/agent re-check before trust. Reasons fill `grounding-report.md` inline so reviewers don't have to guess which signal tripped:
+
+- semantic hit without lexical co-support (topical noise risk) — `lexical_co_support=false`
+- grounded on non-primary source when `--primary-source` was supplied (cross-source pollution)
+- winning-layer score within 0.05 of its threshold (borderline)
+- claim has numbers, passage has numbers on the same unit/context key, but `numeric_mismatches` is empty (deterministic check silent but co-presence heuristic fires — possible multi-value range collision the specificity gate suppressed)
+
+`claim_attributes` sidecar lists numbers + entities for both claim and winning passage side-by-side, so the second-guess pass can compare without rereading source. Never downgrade CONFIRMED to UNCONFIRMED on `verification_needed=true` without reading - the flag is a cue, not a verdict.
+
+`grounded_source` names the path where the winning-layer hit was found. Always check it before citing: a claim grounded on the wrong file in a multi-source batch is a silent failure mode the earlier tool couldn't catch.
 
 ### Tool output maps to status
 
@@ -217,6 +245,15 @@ Only when all three lexical layers return `none` AND claim is semantic (summary 
 - best bm25: `¶12` (recall 0.20 < 0.5)
 - action: remove or rephrase
 
+### 4. <id>
+- claim: "<exact text with number>"
+- status: CONFIRMED (semantic) - VERIFY
+- scores: exact 0.00 / fuzzy 0.22 / bm25 0.05 / semantic 0.84
+- source file: `docs/research.md` [NON-PRIMARY]
+- verification: no lexical co-support, grounded on non-primary source, numeric co-presence without clear mismatch
+- claim numbers: [("42", "", "users")]  |  passage numbers: [("50", "", "users")]
+- action: second-guess - passage says 50 users, claim says 42 users, may be a silent numeric slip
+
 ...
 
 ## Summary
@@ -231,6 +268,23 @@ Only when all three lexical layers return `none` AND claim is semantic (summary 
 ```
 
 UNCONFIRMED/CONTRADICTED: list concrete corrections.
+
+## Phase 2.5: Self-Consistency
+
+Grounding catches claim-vs-source mismatch. It cannot catch same-document internal inconsistencies - the brief that lists `dev/test/staging` on one page and `dev/staging/prod` on another. Run the intra-document checker after grounding, before compliance:
+
+```bash
+document-processing check-consistency \
+  --document path/to/document.md \
+  --output validation/consistency-report.md
+```
+
+Findings come in two shapes:
+
+- **numeric**: same `(unit, context_word)` key with different values across lines. Example: "42 users" on line 10 vs "50 users" on line 80.
+- **entity_set**: token-sets with high Jaccard overlap (>= 0.5) but non-identical members. Catches the `dev/test/staging` vs `dev/staging/prod` case; also flags `Python 3.11` vs `Python 3.12` head-token variants with numeric tails.
+
+Every finding lists line numbers. Resolve intrinsic inconsistencies before shipping - the document claims X and not-X means one of them is wrong, grounding against external source won't disambiguate. Exit code 1 when findings exist (automation-friendly).
 
 ## Phase 3: Compliance Checklist
 

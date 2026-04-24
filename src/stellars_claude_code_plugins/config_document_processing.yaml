@@ -116,6 +116,23 @@ voter_bonus_3_plus: 0.35         # three or more (capped)
 
 entity_penalty_factor: 0.15      # max penalty when 100% of claim entities are absent
 
+# ---- lexical co-support gate (WI#5) ---------------------------------------
+# Semantic-only hits (no lexical layer firing) often reflect topical noise,
+# not real grounding. A hit carries lexical_co_support=True when semantic
+# fires AND at least one lexical layer clears these low thresholds. When
+# lexical_co_support is False on a CONFIRMED semantic hit, verification_needed
+# gets flipped to True so downstream review knows to second-guess the verdict.
+
+lexical_cosupport_fuzzy_min: 0.4   # partial-ratio below this = no meaningful word overlap
+lexical_cosupport_bm25_min: 0.1    # <10% of claim's unique tokens present = effectively none
+
+# ---- verification threshold proximity (WI#6) ------------------------------
+# Claims confirmed by a layer whose score is this close to the layer's own
+# threshold sit on the fence: below the value they would have been
+# UNCONFIRMED. Flagged verification_needed for human/agent second-guess.
+
+verification_threshold_proximity: 0.05
+
 # ---- semantic layer -------------------------------------------------------
 
 chunk_max_chars: 1500            # target recursive-chunk size

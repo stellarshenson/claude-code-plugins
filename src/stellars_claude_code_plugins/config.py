@@ -135,6 +135,17 @@ class GroundingConfig:
     entity_penalty_factor: float
     """Max fraction of agreement_score removed when 100% of claim entities absent from source."""
 
+    # ── lexical co-support gate (WI#5) ──────────────────────────────────
+    lexical_cosupport_fuzzy_min: float
+    """Min fuzzy score to count as lexical co-support for a semantic hit."""
+
+    lexical_cosupport_bm25_min: float
+    """Min bm25_token_recall to count as lexical co-support for a semantic hit."""
+
+    # ── verification threshold proximity (WI#6) ─────────────────────────
+    verification_threshold_proximity: float
+    """Score-within-this-of-threshold marks match as verification_needed."""
+
     # ── semantic / chunking ─────────────────────────────────────────────
     chunk_max_chars: int
     chunk_overlap_ratio: float
