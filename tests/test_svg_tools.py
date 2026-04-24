@@ -4511,3 +4511,104 @@ class TestFreeGraphicsWarning:
         )
         report = check(Declaration(counts={}), svg)
         assert any(f.category == "free_graphics" for f in report.findings)
+
+
+class TestManifoldSpineAlignment:
+    """WI: near-spine alignment detection + opt-in --snap-tolerance."""
+
+    def test_passive_recommendation_fires_in_band(self):
+        """Offset in (0.5, 30] px with no snap request -> CONSIDER warning."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_manifold,
+        )
+
+        res = calc_manifold(
+            starts=[(100, 215)],
+            ends=[(538, 220), (538, 320)],
+            spine_start=(200, 215),
+            spine_end=(500, 215),
+            shape="l",
+        )
+        hints = " ".join(res.get("warnings", []))
+        assert "Alignment possible" in hints
+        # End 1 was 5px off spine; it should still be at y=220 (no snap fired)
+        assert res["end_strands"][0]["samples"][-1][1] != 215
+
+    def test_snap_with_geometry_slides_endpoint(self):
+        """Snap requested + bbox allows snap -> endpoint silently moved."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_manifold,
+        )
+
+        # end at (538, 220), spine at y=215, bbox y spans 210..225 -> snap ok
+        res = calc_manifold(
+            starts=[(100, 215)],
+            ends=[(538, 220), (538, 320)],
+            spine_start=(200, 215),
+            spine_end=(500, 215),
+            shape="l",
+            snap_tolerance=10,
+            end_shapes=[(530, 210, 20, 15), (530, 315, 20, 15)],
+        )
+        # End 1 got snapped from y=220 to y=215
+        assert res["end_strands"][0]["samples"][-1][1] == 215
+        # Passive warning should NOT fire for this endpoint (silent success)
+        hints = " ".join(res.get("warnings", []))
+        assert "strand 1 at (538,220) is 5.0px" not in hints
+
+    def test_snap_blocked_by_geometry(self):
+        """Snap requested but bbox too tight -> no slide, blocking warning."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_manifold,
+        )
+
+        res = calc_manifold(
+            starts=[(100, 215)],
+            ends=[(538, 220), (538, 320)],
+            spine_start=(200, 215),
+            spine_end=(500, 215),
+            shape="l",
+            snap_tolerance=10,
+            # bbox for end 1 spans y=219..224 - snapped y=215 is OUT
+            end_shapes=[(530, 219, 20, 5), (530, 315, 20, 15)],
+        )
+        hints = " ".join(res.get("warnings", []))
+        assert "prevents alignment" in hints
+        # End did NOT snap to spine y=215 (stays near 220; exact offset
+        # depends on arrowhead / margin trimming).
+        assert abs(res["end_strands"][0]["samples"][-1][1] - 215) > 2.0
+
+    def test_straight_shape_skipped(self):
+        """Non-L shapes get no spine-alignment warnings (no kink to remove)."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_manifold,
+        )
+
+        res = calc_manifold(
+            starts=[(100, 215)],
+            ends=[(538, 220), (538, 320)],
+            spine_start=(200, 215),
+            spine_end=(500, 215),
+            shape="straight",
+        )
+        hints = " ".join(res.get("warnings", []))
+        # "Alignment possible" is the new helper's phrase; must not appear
+        assert "Alignment possible" not in hints
+
+    def test_offset_above_cap_not_flagged(self):
+        """Offsets > SPINE_OFFSET_MAX_RECOMMEND_PX are intentional kinks."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_manifold,
+        )
+
+        # End is 80px off spine - way above 30 px cap
+        res = calc_manifold(
+            starts=[(100, 215)],
+            ends=[(538, 295), (538, 320)],
+            spine_start=(200, 215),
+            spine_end=(500, 215),
+            shape="l",
+        )
+        hints = " ".join(res.get("warnings", []))
+        # New-style recommendation must NOT fire for end 1 (offset 80px > 30)
+        assert "strand 1 at (538,295)" not in hints

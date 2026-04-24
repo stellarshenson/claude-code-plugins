@@ -2255,6 +2255,170 @@ def _middle_alignment_hint(points, spine_start, spine_end, label):
     )
 
 
+# --------------------------------------------------------------------------
+# Near-spine alignment tunables (externalise-ready).
+#
+# These are the numeric thresholds that govern when the manifold builder
+# emits a "your endpoint is close enough to the spine to be aligned"
+# recommendation and when `--snap-tolerance` is accepted. Keep them as
+# named constants so a future config wiring (yaml / env var) can override
+# without code changes.
+# --------------------------------------------------------------------------
+
+# Offsets strictly below this are considered already aligned (rounding
+# noise) and no warning fires. Pure cleanliness floor.
+SPINE_OFFSET_MIN_PX = 0.5
+
+# Offsets above this are considered intentional kinks (the agent wanted
+# an L-bend on purpose). The recommendation band is (MIN, MAX] inclusive.
+SPINE_OFFSET_MAX_RECOMMEND_PX = 30.0
+
+# Extra tolerance when checking whether a snapped endpoint still lands
+# inside a declared target bbox. Absorbs rounding from shape edges.
+SPINE_SNAP_BBOX_TOLERANCE_PX = 0.5
+
+
+def _spine_offset_and_snap(
+    points,
+    spine_start,
+    spine_end,
+    label,
+    shapes,
+    snap_tolerance,
+    shape,
+    max_recommend=SPINE_OFFSET_MAX_RECOMMEND_PX,
+):
+    """Detect near-spine endpoints and optionally snap them onto the axis.
+
+    Walks every endpoint (``starts`` or ``ends``) and measures its
+    perpendicular offset to the spine axis. In the "reasonable alignment"
+    band (0.5 px < offset <= ``max_recommend``) the endpoint is a
+    candidate for elbow-free routing - sliding it onto the spine axis
+    turns the L / L-chamfer strand into a single clean segment.
+
+    Three outcomes per endpoint:
+
+    1. ``snap_tolerance > 0`` AND geometry supplied AND snap would stay
+       inside the declared bbox -> silently align (endpoint coord is
+       rewritten in the returned list; no warning).
+    2. ``snap_tolerance > 0`` AND geometry supplied BUT snap would leave
+       the bbox -> no align; warning explains the geometry block.
+    3. Everything else (detection only, or snap requested without
+       geometry) -> no align; passive "alignment possible" warning with
+       the exact command + geometry reminder.
+
+    Scope restriction: only fires when ``shape`` is ``"l"`` or
+    ``"l-chamfer"``. Straight / spline strands absorb offsets naturally
+    and don't produce visible kinks.
+
+    Args:
+        points: list of ``(x, y)`` endpoints (starts or ends).
+        spine_start / spine_end: spine axis segment.
+        label: ``"starts"`` or ``"ends"`` (used in warning text).
+        shapes: optional list of ``(x, y, w, h)`` bboxes, one per point,
+            or None. When present, gates auto-snap with a bbox
+            containment check.
+        snap_tolerance: float; 0 disables auto-snap, >0 enables it when
+            geometry allows.
+        shape: manifold strand shape (``"straight"``, ``"l"``,
+            ``"l-chamfer"``, ``"spline"``).
+        max_recommend: upper bound of the "reasonable alignment" band;
+            offsets beyond this are considered intentional kinks and
+            get no warning.
+
+    Returns:
+        ``(new_points, warnings)``. ``new_points`` has snapped coords
+        where applicable; the original list is returned unchanged for
+        non-L shapes or when no snaps fire. ``warnings`` is a list of
+        CONSIDER-style strings ready to append to the manifold result.
+    """
+    if shape not in ("l", "l-chamfer", "L-chamfer"):
+        return list(points), []
+    orientation = _spine_orientation(
+        (spine_end[0] - spine_start[0], spine_end[1] - spine_start[1])
+    )
+    new_points = list(points)
+    warnings_out: list[str] = []
+    noun = label[:-1]  # "ends" -> "end", "starts" -> "start"
+    flag_shapes = f"--{noun}-shapes"
+
+    for i, pt in enumerate(points):
+        if orientation == "horizontal":
+            target = spine_start[1]
+            offset = abs(pt[1] - target)
+            axis_str = f"y={target:.0f}"
+            snapped = (pt[0], target)
+        elif orientation == "vertical":
+            target = spine_start[0]
+            offset = abs(pt[0] - target)
+            axis_str = f"x={target:.0f}"
+            snapped = (target, pt[1])
+        else:
+            # Diagonal: perpendicular distance, no simple snap target.
+            vx = spine_end[0] - spine_start[0]
+            vy = spine_end[1] - spine_start[1]
+            vlen = math.hypot(vx, vy)
+            if vlen < 1e-9:
+                continue
+            nx, ny = -vy / vlen, vx / vlen
+            offset = abs((pt[0] - spine_start[0]) * nx + (pt[1] - spine_start[1]) * ny)
+            axis_str = "spine axis"
+            snapped = None  # snap on diagonals is ambiguous; skip auto-align
+
+        if offset < SPINE_OFFSET_MIN_PX or offset > max_recommend:
+            continue
+
+        bbox = shapes[i] if shapes and i < len(shapes) and shapes[i] is not None else None
+
+        if snap_tolerance > 0 and offset <= snap_tolerance and snapped is not None:
+            if bbox is not None:
+                bx, by, bw, bh = bbox
+                tol = SPINE_SNAP_BBOX_TOLERANCE_PX
+                if (
+                    bx - tol <= snapped[0] <= bx + bw + tol
+                    and by - tol <= snapped[1] <= by + bh + tol
+                ):
+                    # Snap is safe - rewrite point silently.
+                    new_points[i] = snapped
+                    continue
+                # Geometry blocks.
+                warnings_out.append(
+                    f"CONSIDER: {label} strand {i + 1} at "
+                    f"({pt[0]:.0f},{pt[1]:.0f}) is {offset:.1f}px off spine "
+                    f"({axis_str}); target bbox {bbox} prevents alignment - "
+                    f"snapped {axis_str} falls outside the target's snappable "
+                    f"edge. Move target upstream or widen the target."
+                )
+                continue
+            # snap-tolerance set but no geometry provided.
+            warnings_out.append(
+                f"CONSIDER: {label} strand {i + 1} at "
+                f"({pt[0]:.0f},{pt[1]:.0f}) is {offset:.1f}px off spine "
+                f"({axis_str}); --snap-tolerance set but {flag_shapes} missing - "
+                f"cannot verify snap stays on the target edge. Supply "
+                f'{flag_shapes} "x,y,w,h x,y,w,h ..." and re-run.'
+            )
+            continue
+
+        # Passive recommendation (no snap requested).
+        if snapped is None:
+            warnings_out.append(
+                f"CONSIDER: {label} strand {i + 1} at "
+                f"({pt[0]:.0f},{pt[1]:.0f}) is {offset:.1f}px off the diagonal "
+                f"spine. Alignment would require moving the endpoint onto the "
+                f"spine line; auto-snap not supported on diagonal spines."
+            )
+        else:
+            warnings_out.append(
+                f"CONSIDER: {label} strand {i + 1} at "
+                f"({pt[0]:.0f},{pt[1]:.0f}) is {offset:.1f}px off spine "
+                f"({axis_str}). Alignment possible - rerun with "
+                f'`--snap-tolerance 30` (and supply {flag_shapes} "x,y,w,h ..." '
+                f"so the tool can verify the snap lands on a valid target edge)."
+            )
+    return new_points, warnings_out
+
+
 def _endpoint_clearance_hints(points_with_t, spine_start, spine_end, label, min_fraction=0.05):
     """Snap-rule hint: merge/fork too close to spine endpoint = no room to route.
 
@@ -2485,6 +2649,9 @@ def calc_manifold(
     standoff=None,
     snap_grid=0,
     strict=False,
+    start_shapes=None,
+    end_shapes=None,
+    snap_tolerance=0.0,
 ):
     """Build a manifold connector.
 
@@ -2578,6 +2745,37 @@ def calc_manifold(
     # even when strict keeps the literal placement.
     apply_geometry_snap = not strict
     emit_hints = True
+
+    # Near-spine alignment detection + opt-in snap. Only fires on
+    # L / L-chamfer strands where the offset produces a visible kink.
+    # Rewrites starts/ends in place when snap is safe; otherwise just
+    # collects CONSIDER-style warnings. Runs BEFORE merge/fork inference
+    # so snapped coords propagate through the rest of the build.
+    if emit_hints and shape in ("l", "l-chamfer", "L-chamfer"):
+        starts, spine_snap_warnings_s = _spine_offset_and_snap(
+            starts,
+            spine_start,
+            spine_end,
+            "starts",
+            start_shapes,
+            snap_tolerance,
+            shape,
+        )
+        for hint in spine_snap_warnings_s:
+            warnings.append(hint)
+            print(hint, file=sys.stderr)
+        ends, spine_snap_warnings_e = _spine_offset_and_snap(
+            ends,
+            spine_start,
+            spine_end,
+            "ends",
+            end_shapes,
+            snap_tolerance,
+            shape,
+        )
+        for hint in spine_snap_warnings_e:
+            warnings.append(hint)
+            print(hint, file=sys.stderr)
 
     merge_ts = [0.0] * N
     if merge_points is None:
@@ -3686,6 +3884,36 @@ def main():
         "Snap-rule CONSIDER hints still fire (they are guidance, never auto-fix).",
     )
     parser.add_argument(
+        "--snap-tolerance",
+        type=float,
+        default=0.0,
+        dest="snap_tolerance",
+        help="L / L-chamfer manifold only: auto-slide endpoints whose "
+        "perpendicular offset to the spine is <= N px onto the spine axis "
+        "so the strand becomes kink-free. Requires --start-shapes or "
+        f"--end-shapes to verify the snap stays inside the target bbox. "
+        f"Default 0 = detection warnings only. Recommendation band is "
+        f"(0.5, {SPINE_OFFSET_MAX_RECOMMEND_PX:.0f}] px; offsets above "
+        f"{SPINE_OFFSET_MAX_RECOMMEND_PX:.0f} px are treated as intentional "
+        "kinks and NOT flagged.",
+    )
+    parser.add_argument(
+        "--start-shapes",
+        default=None,
+        help="Manifold only: space-separated bboxes 'x,y,w,h x,y,w,h ...' "
+        "for each start endpoint (same order as --starts). Gates "
+        "--snap-tolerance: a snap only fires when the shifted coord "
+        "still lies inside the declared bbox.",
+    )
+    parser.add_argument(
+        "--end-shapes",
+        default=None,
+        help="Manifold only: space-separated bboxes 'x,y,w,h x,y,w,h ...' "
+        "for each end endpoint (same order as --ends). Gates "
+        "--snap-tolerance: a snap only fires when the shifted coord "
+        "still lies inside the declared bbox.",
+    )
+    parser.add_argument(
         "--organic",
         choices=["auto", "on", "off"],
         default="auto",
@@ -3977,6 +4205,9 @@ def main():
             # Hints always fire.
             snap_grid=0.0 if args.strict else args.snap_grid,
             strict=args.strict,
+            start_shapes=_parse_shape_list(args.start_shapes),
+            end_shapes=_parse_shape_list(args.end_shapes),
+            snap_tolerance=args.snap_tolerance,
         )
         print_manifold_result(result, args)
         return
@@ -4121,6 +4352,27 @@ def _parse_point(text):
     if len(parts) != 2:
         raise ValueError(f"point must have exactly 2 numbers, got {len(parts)}")
     return (parts[0], parts[1])
+
+
+def _parse_shape_list(text):
+    """Parse 'x,y,w,h x,y,w,h ...' into a list of 4-tuples, or None.
+
+    Used by --start-shapes / --end-shapes on manifold mode. Empty / None
+    input returns None so the caller can treat missing geometry as "no
+    bbox provided" and skip the snap safety check.
+    """
+    if not text:
+        return None
+    chunks = text.replace(";", " ").split()
+    out = []
+    for chunk in chunks:
+        nums = [float(x) for x in chunk.split(",") if x]
+        if len(nums) != 4:
+            raise ValueError(
+                f"shape list chunk {chunk!r} must be 'x,y,w,h' (4 comma-separated floats)"
+            )
+        out.append(tuple(nums))
+    return out or None
 
 
 def _parse_rect(text):

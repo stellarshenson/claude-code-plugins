@@ -66,6 +66,7 @@ KNOWN_COMPONENT_TYPES = {
     "icon",
     "callout",
     "ribbon",
+    "header",
 }
 
 KNOWN_CONNECTOR_MODES = {
@@ -379,6 +380,15 @@ _TOOL_RECOMMENDATIONS: dict[str, list[str]] = {
         "`svg-infographics empty-space --svg <file>` to see candidate zones "
         "the solver will pick from.",
     ],
+    "header": [
+        "`svg-infographics primitives rect` for the header band backplate "
+        "when the header uses a coloured band. Keep height <= 48px for "
+        "standard infographics.",
+        "`svg-infographics place --svg <file> --container <header-id> "
+        "--size W,H --corner <top-left|top-right>` to position decorative "
+        "element inside the header band. Remember the 20% horizontal rule: "
+        "decorative width / viewBox width <= 0.20.",
+    ],
 }
 
 
@@ -491,6 +501,8 @@ def _count_components_in_svg(root: ET.Element) -> dict[str, int]:
             counts["icon"] += 1
         if "callout" in gclass or gid.startswith("callout-"):
             counts["callout"] += 1
+        if gid == "header" or gid.startswith("header-") or "header" in gclass:
+            counts["header"] += 1
         # Ribbon groups: each `<path>` inside counts as one ribbon flow
         # (each ribbon is one filled-shape strand).
         if gid.endswith("-ribbons") or gid == "ribbons":
@@ -668,6 +680,13 @@ def _add_declaration_flags(p: argparse.ArgumentParser) -> None:
     p.add_argument("--timelines", type=int, default=0, help="Number of timelines")
     p.add_argument("--icons", type=int, default=0, help="Number of icons")
     p.add_argument("--callouts", type=int, default=0, help="Number of callouts")
+    p.add_argument(
+        "--headers",
+        type=int,
+        default=0,
+        help="Number of header bands (title + decorative element rows). "
+        "Pulls header.md rule with 20% horizontal rule for decorative graphics.",
+    )
     p.add_argument(
         "--ribbons",
         type=int,
