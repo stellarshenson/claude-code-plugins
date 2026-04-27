@@ -46,8 +46,7 @@ Arrowhead must be AT MOST 40% of total connector length. Equivalently: stem leng
 
 ## Geometry discipline
 
-- **Standoff**: 8-24px between connector endpoint and source/target boundary (tool default is 2-24 depending on mode). Never zero (arrows must not touch element edges).
-- **Manifold standoff quirk**: in manifold mode with `arrow=end` (default), the tool auto-adds `head_len` (default 10px) to the START standoff to visually balance the destination-side gap (destination has margin + arrowhead clearance). So passing `--margin 15` yields a 15px gap at destination and a 25px gap at source; both are the tool respecting your value, just with an automatic visual-symmetry adjustment. Pass explicit `--standoff Nstart,Nend` to disable the adjust and get exact values.
+- **Standoff**: 8-24px between connector endpoint and source/target boundary. Project minimum 2px, 8-12px is the sweet spot. Standoff is SYMMETRIC by default - `--standoff N` gives N px on both start and end. Asymmetric gaps require an explicit 2-tuple (future parser work; currently scalar only). `--standoff 0` triggers a BLOCKED warning; fix or ack with a specific reason ("flush attachment intentional for cluster", "legend tail touches frame by design").
 - **Chamfer radius**: 4-12px for L-chamfer. Matches card corner radius roughly.
 - **Spline tension**: 0.3-0.6 for dataflow curves. Higher values produce loops that look uncontrolled.
 - **Manifold spine**: place through a deliberate gap in the middle layout so the spine passes cleanly without overlapping intermediate cards. Example: if middle tier has 4 cards, plan a 40px gap between cards 2 and 3 so the spine at x=spine_x passes through.

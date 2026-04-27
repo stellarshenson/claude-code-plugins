@@ -78,19 +78,20 @@ Verify: `svg-infographics --help`. No install = no tool = no validation = no del
 1. **Full workflow, no skipping** - preflight → scaffold → author → check → finalize. Skipping any phase = #1 failure mode. Hasty `<rect>` before grid + placeholder scaffolding wastes more time than building them
 2. **Tool first** - coords from `primitives`, arrows from `connector`, placement from `geom` / `callouts` / `empty-space` / `place`. Never eyeball
 3. **Place via empty-space** - before dropping inside a container, run `empty-space --edges-only --container-id <id>`. Text / strokes / outlines = obstacles; fills ≠ obstacles. Role-shared elements aligned via `geom align`
-4. **Theme first** - approve `theme_swatch.svg` before deliverables
-5. **Grid first** - viewBox, margins, columns, rhythm as XML comments BEFORE any visible element
-6. **Group everything** - every visual unit = a `<g>`. Topology comment declares relationships. No loose elements
-7. **CSS classes only** - `<style>` + `prefers-color-scheme`. `class=`, never inline `fill=`
-8. **File description comment** before `<svg>`: filename, shows, intent, theme
-9. **Five named layers** - `background`, `nodes`, `connectors`, `content`, `callouts`
-10. **Transparent backplate** - `fill="transparent"` on root rect
-11. **Contrast via theme** - no `#000000`, no `#ffffff`
-12. **Validate before delivery** - `finalize` runs every checker. No run = no ship
-13. **Read examples** - study `examples/` (66 references) before each image
-14. **Unicode glyphs in `<text>`** - `→` not `->`, `←` not `<-`, `↔` not `<->`, `…` not `...`, `—` not `--`, `×` not `x`, `•` not `*`. ASCII arrow in any text node = FAIL
-15. **Connector tool for every arrow** - hand-coded `<path d="M...">` for any routed line = FAIL. Not even "just 10 pixels"
-16. **MS Word scaling compatibility** - every SVG must render cleanly when inserted and scaled in Word. (a) common fonts only (Segoe UI / Arial / Calibri); (b) stroke-width >= 0.5 (thinner vanishes on print rasterisation); (c) no `filter` / `mask` / `foreignObject` / animations (Word ignores them, output breaks); (d) light-mode fills stand alone - Word shows light-mode unconditionally so never rely on dark `@media` for the primary render; (e) explicit `viewBox` + `preserveAspectRatio="xMidYMid meet"`; (f) avoid text-on-path, textPath, gradients with > 4 stops. Test at 25% and 200% scale - text + connectors legible at both ends
+4. **Symmetry by default** - corner-placed elements equidistant from BOTH adjacent edges (icon in top-left at margin 12 → 12px from top AND 12px from left; not 12 from top + 8 from left). Connector standoff equal at start and end (default is symmetric; `--standoff N` gives N on both sides). Equal padding above/below title blocks; equal gaps between cards in a row; equal margins on left and right of a centred header. Asymmetry must be intentional AND justified against a specific visual rule (arrowhead weight, label clearance, directional emphasis, grid-column flow). When in doubt: equal. A tool-eyeballed offset that "looks right" but isn't symmetric is a failure mode
+5. **Theme first** - approve `theme_swatch.svg` before deliverables
+6. **Grid first** - viewBox, margins, columns, rhythm as XML comments BEFORE any visible element
+7. **Group everything** - every visual unit = a `<g>`. Topology comment declares relationships. No loose elements
+8. **CSS classes only** - `<style>` + `prefers-color-scheme`. `class=`, never inline `fill=`
+9. **File description comment** before `<svg>`: filename, shows, intent, theme
+10. **Five named layers** - `background`, `nodes`, `connectors`, `content`, `callouts`
+11. **Transparent backplate** - `fill="transparent"` on root rect
+12. **Contrast via theme** - no `#000000`, no `#ffffff`
+13. **Validate before delivery** - `finalize` runs every checker. No run = no ship
+14. **Read examples** - study `examples/` (66 references) before each image
+15. **Unicode glyphs in `<text>`** - `→` not `->`, `←` not `<-`, `↔` not `<->`, `…` not `...`, `—` not `--`, `×` not `x`, `•` not `*`. ASCII arrow in any text node = FAIL
+16. **Connector tool for every arrow** - hand-coded `<path d="M...">` for any routed line = FAIL. Not even "just 10 pixels"
+17. **MS Word scaling compatibility** - every SVG must render cleanly when inserted and scaled in Word. (a) common fonts only (Segoe UI / Arial / Calibri); (b) stroke-width >= 0.5 (thinner vanishes on print rasterisation); (c) no `filter` / `mask` / `foreignObject` / animations (Word ignores them, output breaks); (d) light-mode fills stand alone - Word shows light-mode unconditionally so never rely on dark `@media` for the primary render; (e) explicit `viewBox` + `preserveAspectRatio="xMidYMid meet"`; (f) avoid text-on-path, textPath, gradients with > 4 stops. Test at 25% and 200% scale - text + connectors legible at both ends
 
 ## Phase gates (shortcut; full detail in `references/workflow.md`)
 

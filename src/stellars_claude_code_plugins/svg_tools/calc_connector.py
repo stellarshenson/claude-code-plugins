@@ -980,6 +980,46 @@ def _bbox_of(points, extras=()):
 DEFAULT_STANDOFF = 1.0  # default 1px gap between stroke and endpoint
 
 
+def _zero_standoff_warning(standoff):
+    """Return a warning string if ``standoff`` is zero on either end.
+
+    Zero standoff makes the connector stroke touch the shape edge, which
+    reads as a drawing glitch (the line blurs into the border). Project
+    minimum is >= 2px. Caller can still ship zero-standoff on purpose by
+    acking the warning via ``--ack-warning TOKEN=reason``.
+    """
+    if standoff is None:
+        return None
+    if isinstance(standoff, (int, float)):
+        if float(standoff) == 0.0:
+            return (
+                "WARNING: --standoff 0 puts the connector stroke directly on "
+                "the shape edge. Project minimum is >= 2px. Ack with a "
+                "reason if flush endpoint is intentional."
+            )
+        return None
+    try:
+        a, b = standoff
+    except (TypeError, ValueError):
+        return None
+    if float(a) == 0.0 and float(b) == 0.0:
+        return (
+            "WARNING: --standoff 0,0 puts both endpoints flush on shape "
+            "edges. Project minimum is >= 2px each side. Ack if intentional."
+        )
+    if float(a) == 0.0:
+        return (
+            "WARNING: --standoff start-side is 0 (connector stroke on source "
+            "edge). Project minimum is >= 2px. Ack if intentional."
+        )
+    if float(b) == 0.0:
+        return (
+            "WARNING: --standoff end-side is 0 (connector stroke on target "
+            "edge). Project minimum is >= 2px. Ack if intentional."
+        )
+    return None
+
+
 def _resolve_standoff(standoff, margin):
     """Return (start_trim, end_trim) from the standoff/margin inputs.
 
@@ -3016,17 +3056,13 @@ def calc_manifold(
         set() if strict else _detect_middle_indices(ends, spine_direction, spine_end)
     )
 
-    # Outer-side standoffs: caller's `standoff`/`margin` applied to the
+    # Outer-side standoffs: caller's `standoff` / `margin` applied to the
     # original source of start strands and the original target of end strands.
+    # Default behaviour is SYMMETRIC - the start and end sides use the same
+    # standoff value. Callers who want an asymmetric gap pass a 2-tuple via
+    # `standoff` explicitly; the tool does not auto-scale one side to
+    # compensate for arrowhead clearance.
     _outer_start_trim, _outer_end_trim = _resolve_standoff(standoff, margin)
-    # Symmetric visual gaps: the destination side leaves `end_trim + head_len`
-    # of visible clearance (standoff + arrow stem). To make the source-side
-    # gap look equal, the start-side standoff auto-scales by +head_len when
-    # the end strands carry an arrow. Callers who want a different source gap
-    # can override via an explicit 2-tuple `standoff`.
-    arrow_end_active = (arrow or "none") in ("end", "both")
-    if standoff is None and arrow_end_active:
-        _outer_start_trim = _outer_end_trim + float(head_len)
     start_strand_standoff = (_outer_start_trim, inner_stub)
     end_strand_standoff = (inner_stub, _outer_end_trim)
     spine_standoff = (inner_stub, inner_stub)
@@ -4105,6 +4141,9 @@ def main():
         if tgt_rect is None and (tgt_x is None or tgt_y is None):
             parser.error("--to or --tgt-rect is required in straight mode")
         straight_standoff = _parse_standoff(args.standoff) if args.standoff else None
+        _zero_warn = _zero_standoff_warning(straight_standoff)
+        if _zero_warn:
+            pre_warnings.append(_zero_warn)
 
         if args.cutout:
             px, py, pw, ph = map(float, args.cutout.split(","))
@@ -4204,6 +4243,9 @@ def main():
         end_controls = _parse_point_groups(args.end_controls) if args.end_controls else None
         tension = _parse_tension(args.tension)
         standoff = _parse_standoff(args.standoff) if args.standoff else None
+        _zero_warn = _zero_standoff_warning(standoff)
+        if _zero_warn:
+            pre_warnings.append(_zero_warn)
         result = calc_manifold(
             starts=starts,
             ends=ends,
@@ -4246,6 +4288,9 @@ def main():
 
     controls = _parse_point_list(args.controls) if args.controls else None
     standoff = _parse_standoff(args.standoff) if args.standoff else None
+    _zero_warn = _zero_standoff_warning(standoff)
+    if _zero_warn:
+        pre_warnings.append(_zero_warn)
 
     # New polyline-based modes
     if args.mode == "spline" or args.waypoints is not None:
