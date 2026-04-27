@@ -17,11 +17,23 @@ import json
 from pathlib import Path
 import sys
 
-from stellars_claude_code_plugins.document_processing import settings as settings_mod
+from stellars_claude_code_plugins.document_processing import (
+    extractors,
+)
+from stellars_claude_code_plugins.document_processing import (
+    ocr as ocr_mod,
+)
+from stellars_claude_code_plugins.document_processing import (
+    settings as settings_mod,
+)
 from stellars_claude_code_plugins.document_processing.grounding import (
     GroundingMatch,
     ground,
     ground_many,
+)
+from stellars_claude_code_plugins.svg_tools._warning_gate import (
+    add_ack_warning_arg,
+    enforce_warning_acks,
 )
 
 
@@ -132,42 +144,161 @@ def _sniff_binary(path: Path) -> str | None:
     return None
 
 
-def _read_sources(paths: list[str]) -> list[tuple[str, str]]:
-    """Read source files, failing loud on binary/undecodable input.
+def _read_sources(
+    paths: list[str],
+    *,
+    scanned_threshold: int = extractors.DEFAULT_SCANNED_THRESHOLD,
+    ocr_lang: str | None = None,
+    warnings: list[str] | None = None,
+) -> list[tuple[str, str]]:
+    """Read source files with format-aware extractors + scanned-PDF fallback.
 
-    Exit code 2 (distinct from 1 = legitimate no-hit) so automation can
-    distinguish a config error from a grounding miss. Rejects binary
-    formats by extension AND magic-byte sniff before decode is attempted;
-    a renamed PDF or a rogue PNG will still be caught.
+    Pipeline per source:
+
+    1. Plain text / .md / .rst / .docx / .odt / .rtf / .html → extract.
+    2. PDF with extractable text → pypdf extraction.
+    3. PDF with near-empty extracted text (scanned) →
+       a. find sibling (``<stem>.ocr.txt``, ``<stem>.txt``, ``.docx`` etc).
+       b. fall through to auto-OCR if ``--ocr-lang`` provided AND OCR
+          extras installed; cache result as ``<stem>.ocr.txt``.
+       c. otherwise emit OCR-LANG-NEEDED or OCR-MISSING warning and
+          skip the source so grounding does not silently produce empty
+          hits.
+    4. Unsupported formats → emit SKIPPED warning, skip source.
+    5. UTF-8 decode failure on a text source → emit SKIPPED warning,
+       skip source.
+
+    All non-success outcomes append to ``warnings`` (caller passes the
+    same list to ``enforce_warning_acks``). The function never calls
+    ``sys.exit`` directly - the gate is responsible for blocking when
+    the agent has not acked the warnings.
     """
+    if warnings is None:
+        warnings = []
+
     out: list[tuple[str, str]] = []
     for p in paths:
         path = Path(p)
         if not path.is_file():
-            print(f"ERROR: source not found: {p}", file=sys.stderr)
-            sys.exit(2)
-        binary_kind = _sniff_binary(path)
-        if binary_kind is not None:
-            print(
-                f"ERROR: source {p} looks like a {binary_kind}, not text. "
-                f"Extract text first (e.g. pdftotext / pypdf / ocrmypdf for PDFs, "
-                f"docx2txt / pandoc for docx, unzip for archives) and pass the "
-                f"extracted .txt to --source.",
-                file=sys.stderr,
-            )
-            sys.exit(2)
+            warnings.append(f"SOURCE-MISSING: {p} not found - skipped.")
+            continue
+
+        # Try the format-aware dispatch first. If extract_text raises
+        # UnsupportedFormat, fall through to a SKIPPED warning rather
+        # than the historical exit 2.
         try:
-            text = path.read_text(encoding="utf-8", errors="strict")
-        except UnicodeDecodeError as exc:
-            print(
-                f"ERROR: source {p} is not valid UTF-8 at byte {exc.start}: {exc.reason}. "
-                f"Re-encode the file (iconv / recode) or extract text with a format-aware "
-                f"tool (pdftotext / pypdf / ocrmypdf / pandoc). "
-                f"Previous silent U+FFFD replacement masked this as a grounding miss.",
-                file=sys.stderr,
+            extracted = extractors.extract_text(path, scanned_threshold=scanned_threshold)
+        except extractors.UnsupportedFormat as exc:
+            # Last resort: try the historical UTF-8 read for files that
+            # have an unfamiliar extension but are actually plain text.
+            binary_kind = _sniff_binary(path)
+            if binary_kind is None:
+                try:
+                    fallback = path.read_text(encoding="utf-8", errors="strict")
+                except (UnicodeDecodeError, OSError):
+                    warnings.append(f"SOURCE-SKIPPED: {p} - {exc}")
+                    continue
+                out.append((str(path), fallback))
+                continue
+            warnings.append(f"SOURCE-SKIPPED: {p} - {exc}")
+            continue
+        except OSError as exc:
+            warnings.append(f"SOURCE-SKIPPED: {p} - read failed: {exc}")
+            continue
+
+        if extracted.kind != "pdf-scanned":
+            out.append((str(path), extracted.text))
+            continue
+
+        # --- Scanned PDF fallback chain ---
+        sibling = extractors.find_sibling(path)
+        if sibling is not None:
+            try:
+                sibling_extracted = extractors.extract_text(
+                    sibling, scanned_threshold=scanned_threshold
+                )
+            except (extractors.UnsupportedFormat, OSError) as exc:
+                warnings.append(
+                    f"SOURCE-SKIPPED: {path.name} sibling {sibling.name} could not be read - {exc}"
+                )
+                continue
+            # If the sibling is itself a tool-generated OCR candidate
+            # whose header is still in place, surface OCR-CANDIDATE so
+            # the agent reviews before the candidate becomes ground
+            # truth. Removing the header marks it as reviewed.
+            if sibling.name == path.stem + ".ocr.txt" and ocr_mod.has_unreviewed_header(sibling):
+                warnings.append(
+                    f"OCR-CANDIDATE: {path.name} -> using cached candidate {sibling.name} "
+                    f"(unreviewed - header still present). Open the file, scan for "
+                    f"transcription errors (numbers, names, technical terms), edit "
+                    f"corrections in place, delete the header block to mark reviewed, "
+                    f"OR ack 'candidate-accepted-as-is' if a quick scan shows it is fine."
+                )
+            else:
+                warnings.append(
+                    f"OCR-FALLBACK: {path.name} -> sibling {sibling.name} (text extracted)."
+                )
+            out.append((str(path), sibling_extracted.text))
+            continue
+
+        # No sibling. Need OCR. Language is the agent's call.
+        if ocr_lang is None:
+            suggested = extractors.infer_pdf_language(extracted.text, path)
+            warnings.append(
+                f"OCR-LANG-NEEDED: {path.name} is a scanned PDF with no sibling text "
+                f"file. OCR requires a language model - inspect the document (filename, "
+                f"any visible page text via Read tool) and rerun with "
+                f"`--ocr-lang <code>` (suggested from sparse extraction: "
+                f"`--ocr-lang {suggested}`). Source SKIPPED until language is supplied."
             )
-            sys.exit(2)
-        out.append((str(path), text))
+            continue
+
+        if not ocr_mod.ocr_available():
+            warnings.append(
+                f"OCR-MISSING: {path.name} is a scanned PDF, no sibling found, OCR "
+                f"extras not installed. Either install: {ocr_mod.install_hint()} "
+                f"OR Claude-OCR via the Read tool with `pages=N` per page, transcribe "
+                f"in the source language ({ocr_lang}), save as {path.stem}.ocr.txt "
+                f"next to the source, rerun. Source SKIPPED."
+            )
+            continue
+
+        try:
+            result = ocr_mod.ocr_pdf(path, ocr_lang)
+        except ocr_mod.OcrUnavailable as exc:
+            warnings.append(f"OCR-MISSING: {path.name} - {exc}. Source SKIPPED.")
+            continue
+
+        cache_path = ocr_mod.cache_ocr_candidate(path, result)
+
+        if result.quality == "good":
+            warnings.append(
+                f"OCR-FALLBACK: {path.name} -> auto-OCR (lang={ocr_lang}, mean conf "
+                f"{result.mean_confidence:.0f}%, cached as {cache_path.name}; review "
+                f"optional)."
+            )
+            out.append((str(path), result.text))
+        elif result.quality == "candidate":
+            warnings.append(
+                f"OCR-CANDIDATE: {path.name} -> auto-OCR produced usable but mid-confidence "
+                f"text (lang={ocr_lang}, mean conf {result.mean_confidence:.0f}%, "
+                f"{result.total_chars} chars). Candidate cached as {cache_path.name}. "
+                f"Review and edit corrections in place before acking, OR ack "
+                f"'candidate-accepted-as-is' if a quick scan shows it is fine."
+            )
+            out.append((str(path), result.text))
+        else:  # failed
+            warnings.append(
+                f"OCR-FAILED: {path.name} -> auto-OCR produced low-quality text "
+                f"(lang={ocr_lang}, mean conf {result.mean_confidence:.0f}%, "
+                f"{result.total_chars} chars). Reason: {result.failure_reason}. "
+                f"Candidate cached as {cache_path.name} for editing. Recommended: "
+                f"do vision-OCR via Read tool on {path.name}, replace {cache_path.name} "
+                f"with corrected transcript, rerun. Source SKIPPED."
+            )
+            # Source NOT appended - text is too poor for grounding to
+            # be honest about hits/misses.
+
     return out
 
 
@@ -228,9 +359,23 @@ def _match_line(m: GroundingMatch) -> str:
 
 
 def cmd_ground(args: argparse.Namespace) -> int:
-    sources = _read_sources(args.source)
+    source_warnings: list[str] = []
+    sources = _read_sources(
+        args.source,
+        scanned_threshold=getattr(args, "scanned_threshold", extractors.DEFAULT_SCANNED_THRESHOLD),
+        ocr_lang=getattr(args, "ocr_lang", None),
+        warnings=source_warnings,
+    )
+    enforce_warning_acks(
+        source_warnings,
+        sys.argv[1:],
+        getattr(args, "ack_warning", []) or [],
+    )
     if not sources:
-        print("ERROR: at least one --source required", file=sys.stderr)
+        print(
+            "ERROR: every source was skipped (see warnings above) or no --source was provided",
+            file=sys.stderr,
+        )
         return 1
     cfg = settings_mod.ensure_loaded(auto_prompt=False)
     grounder = _build_semantic_grounder(cfg, getattr(args, "semantic", None))
@@ -252,9 +397,23 @@ def cmd_ground(args: argparse.Namespace) -> int:
 
 
 def cmd_ground_many(args: argparse.Namespace) -> int:
-    sources = _read_sources(args.source)
+    source_warnings: list[str] = []
+    sources = _read_sources(
+        args.source,
+        scanned_threshold=getattr(args, "scanned_threshold", extractors.DEFAULT_SCANNED_THRESHOLD),
+        ocr_lang=getattr(args, "ocr_lang", None),
+        warnings=source_warnings,
+    )
+    enforce_warning_acks(
+        source_warnings,
+        sys.argv[1:],
+        getattr(args, "ack_warning", []) or [],
+    )
     if not sources:
-        print("ERROR: at least one --source required", file=sys.stderr)
+        print(
+            "ERROR: every source was skipped (see warnings above) or no --source was provided",
+            file=sys.stderr,
+        )
         return 1
     claims_path = Path(args.claims)
     if not claims_path.is_file():
@@ -430,6 +589,41 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
     return 0 if none == 0 else 1
 
 
+def _add_source_format_args(parser: argparse.ArgumentParser) -> None:
+    """Register the source-format / OCR flags shared by ground + ground-many.
+
+    ``--ocr-lang`` is intentionally not defaulted - the agent inspects each
+    scanned PDF and supplies the right Tesseract model. The CLI fires
+    OCR-LANG-NEEDED through the warning-ack gate when a scanned PDF is
+    detected and the flag is missing, with a suggested code from filename
+    / partial-PDF inference so the agent has a starting point.
+    """
+    parser.add_argument(
+        "--ocr-lang",
+        dest="ocr_lang",
+        default=None,
+        help=(
+            "Tesseract language code for auto-OCR of scanned PDFs (e.g. eng, "
+            "deu, fra, spa, chi_sim). REQUIRED when any --source is a scanned "
+            "PDF without a sibling text file. Inspect the document (filename "
+            "tokens, visible page text via the Read tool) and pick the right "
+            "model. The tool will suggest a code from sparse extraction if you "
+            "omit the flag, then ask you to rerun with `--ocr-lang <code>`."
+        ),
+    )
+    parser.add_argument(
+        "--scanned-threshold",
+        dest="scanned_threshold",
+        type=int,
+        default=extractors.DEFAULT_SCANNED_THRESHOLD,
+        help=(
+            f"Chars-per-page threshold below which a PDF is classified as "
+            f"scanned (default {extractors.DEFAULT_SCANNED_THRESHOLD}). Tune "
+            f"upward for heavy-image PDFs with sparse legitimate captions."
+        ),
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="document-processing",
@@ -491,6 +685,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Override settings.semantic_enabled for this call",
     )
     g.add_argument("--json", action="store_true", help="Emit the full match as JSON")
+    _add_source_format_args(g)
+    add_ack_warning_arg(g)
     g.set_defaults(func=cmd_ground)
 
     gm = sub.add_parser(
@@ -556,6 +752,8 @@ def _build_parser() -> argparse.ArgumentParser:
             "(cross-source pollution signal, WI#3)."
         ),
     )
+    _add_source_format_args(gm)
+    add_ack_warning_arg(gm)
     gm.set_defaults(func=cmd_ground_many)
 
     # extract-claims subcommand

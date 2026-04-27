@@ -103,6 +103,48 @@ validation/
 
 Write `criteria.md`.
 
+## Source format support (Release F+)
+
+Grounding tools accept these formats directly via `--source`:
+
+- `.txt` / `.md` / `.rst` - read as UTF-8
+- `.pdf` (text) - extracted via pypdf
+- `.pdf` (scanned/image-only) - falls back through the chain below
+- `.docx` - extracted via python-docx
+- `.odt` - extracted via odfpy
+- `.rtf` - extracted via striprtf
+- `.html` / `.htm` - stripped via stdlib `html.parser`
+
+**Scanned-PDF fallback chain** (when text extraction yields < 100 chars/page):
+
+1. **Sibling lookup** (same stem, same directory). Priority order:
+   `.ocr.txt` → `.txt` → `.docx` → `.doc` → `.odt` → `.md` → `.rst`
+   → `.html` → `.htm` → `.rtf`. Image extensions (`.png` / `.jpg` /
+   `.tiff` etc) and the original `.pdf` are excluded. First match
+   wins; the tool fires `OCR-FALLBACK` warning.
+2. **Auto-OCR** (when `[ocr]` extras installed: `pip install
+   stellars-claude-code-plugins[ocr]` + system tesseract). Caller
+   MUST supply `--ocr-lang <code>` (e.g. `eng`, `deu`, `fra`,
+   `chi_sim`). Tool runs pytesseract with the supplied language,
+   caches result as `<stem>.ocr.txt` next to the source.
+3. **Vision-OCR by Claude** (when extras missing OR OCR fails).
+   Use the Read tool on the PDF with `pages=N` per page,
+   transcribe each page in source language, save as
+   `<stem>.ocr.txt` next to source, rerun.
+
+**Gate warnings the agent will see and how to respond**:
+
+| Warning | Trigger | Response |
+|---|---|---|
+| `OCR-FALLBACK` | Sibling text file found OR auto-OCR succeeded with mean confidence ≥80% AND ≥100 chars | Optional review. Ack `'sibling-text-accepted'` or `'good-quality-OCR-accepted'` |
+| `OCR-CANDIDATE` | Auto-OCR mid-confidence (60-80%) OR sibling `.ocr.txt` still has the tool-generated header (unreviewed) | Open `<stem>.ocr.txt`, scan for transcription errors (numbers, names, technical terms), edit corrections in place, delete the header block to mark reviewed. Then ack `'candidate-reviewed'` (or `'candidate-accepted-as-is'` after a quick scan) |
+| `OCR-FAILED` | Auto-OCR mean confidence < 60% OR < 20 chars extracted | Either correct the cached `<stem>.ocr.txt` candidate manually, OR delete it and run vision-OCR via Read tool on the PDF, save corrected transcript as `<stem>.ocr.txt`, rerun. Source is SKIPPED until the candidate is replaced |
+| `OCR-LANG-NEEDED` | Scanned PDF, no sibling, `--ocr-lang` not supplied | Inspect the document (filename tokens, visible page text via Read tool), pick the right Tesseract code (the gate suggests one from sparse extraction). Rerun with `--ocr-lang <code>` |
+| `OCR-MISSING` | Scanned PDF, no sibling, OCR extras missing | Either install `[ocr]` extras + system tesseract, OR vision-OCR via Read tool, save as `<stem>.ocr.txt`, rerun |
+| `SOURCE-MISSING` / `SOURCE-SKIPPED` | File not found / unsupported format / decode error | Fix the path / convert format upstream / accept the skip with `'skip-acceptable'` |
+
+**Candidate-file convention**: `<stem>.ocr.txt` is the highest-priority sibling. Tool-generated candidates open with a `# OCR candidate for ...` header carrying quality stats, language, timestamp. Editing the candidate replaces the auto-OCR text. **Deleting the header block marks the candidate as human-reviewed and silences `OCR-CANDIDATE` on the next run** (otherwise the warning re-fires - a never-reviewed candidate cannot graduate silently to ground truth).
+
 ## Phase 2: Source Grounding Check
 
 ### Core rules

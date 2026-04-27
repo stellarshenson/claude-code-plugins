@@ -53,6 +53,19 @@ document-processing setup                 # interactive prompt, writes settings
 
 Settings live at `./.stellars-plugins/settings.json` (project-local, sibling to `.claude/`). Default model: `intfloat/multilingual-e5-small` (118M params, multilingual, trained for retrieval).
 
+### Enable OCR (optional, opt-in)
+
+```bash
+pip install 'stellars-claude-code-plugins[ocr]'
+# plus a system tesseract install:
+apt install tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu  # etc per language
+# brew install tesseract tesseract-lang                         # macOS
+```
+
+Enables auto-OCR fallback for scanned PDFs that have no sibling text file. The agent supplies `--ocr-lang <code>` per run (`eng`, `deu`, `fra`, `chi_sim`, etc) - the tool never auto-detects language. Auto-OCR results are written as `<stem>.ocr.txt` next to the source with a header carrying quality stats (mean confidence, page count, language, timestamp). Without the `[ocr]` extras the tool falls back to a vision-OCR workflow - the agent reads the PDF via the Read tool, transcribes pages, saves to `<stem>.ocr.txt`, reruns. Either path produces the same sibling-file convention so subsequent grounding runs use the cached candidate without re-OCR.
+
+**Native source formats** (no extras required): `.txt`, `.md`, `.rst`, `.pdf` (text), `.docx`, `.odt`, `.rtf`, `.html` - extracted directly. The stop-and-think warning-ack gate surfaces per-source warnings (`OCR-FALLBACK`, `OCR-CANDIDATE`, `OCR-FAILED`, `OCR-LANG-NEEDED`, `OCR-MISSING`, `SOURCE-SKIPPED`) the agent must ack with terse reasoning before grounding consumes the result.
+
 ### Usage
 
 ```bash

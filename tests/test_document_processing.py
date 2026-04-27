@@ -511,14 +511,19 @@ class TestCLISetup:
 
 
 # -------------------------------------------------------------------------
-# WI#1: binary source rejection
+# Source-format fallback: gate-warning on unsupported binaries (was WI#1
+# binary-rejection; Release F changed the contract to skip-with-warning).
 # -------------------------------------------------------------------------
 
 
-class TestBinarySourceRejection:
-    """CLI rejects binary inputs loud with exit code 2."""
+class TestBinarySourceFallback:
+    """Binary inputs no longer hard-block with exit 2 - they emit a SKIPPED
+    warning through the stop-and-think gate. The gate exits 2 by default
+    (warning unacked); the agent acks per source with `--ack-warning
+    TOKEN='skip-binary-source-acceptable'` to proceed.
+    """
 
-    def test_png_magic_bytes_rejected(self, tmp_path, capsys):
+    def test_png_magic_bytes_emit_skipped_gate_warning(self, tmp_path, capsys):
         png_bytes = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
         p = tmp_path / "weird.txt"  # renamed PNG
         p.write_bytes(png_bytes)
@@ -526,33 +531,425 @@ class TestBinarySourceRejection:
         claim.write_text(json.dumps(["hello world"]))
         with pytest.raises(SystemExit) as exc:
             cli_main(["ground-many", "--claims", str(claim), "--source", str(p)])
+        # Gate exits 2 with the unacked SOURCE-SKIPPED warning.
         assert exc.value.code == 2
         err = capsys.readouterr().err
-        assert "PNG image" in err
+        assert "BLOCKED" in err
+        assert "SOURCE-SKIPPED" in err
 
-    def test_pdf_by_extension_rejected(self, tmp_path, capsys):
+    def test_pdf_with_invalid_bytes_skipped(self, tmp_path, capsys):
+        # A PDF that pypdf cannot parse triggers UnsupportedFormat which
+        # routes to SOURCE-SKIPPED through the gate.
         p = tmp_path / "document.pdf"
         p.write_bytes(b"%PDF-1.4 fake content here")
         with pytest.raises(SystemExit) as exc:
             cli_main(["ground", "--claim", "anything", "--source", str(p)])
         assert exc.value.code == 2
         err = capsys.readouterr().err
-        assert ".pdf file" in err or "PDF" in err
+        assert "BLOCKED" in err
 
-    def test_invalid_utf8_rejected(self, tmp_path, capsys):
+    def test_invalid_utf8_skipped(self, tmp_path, capsys):
         p = tmp_path / "bad.txt"
         p.write_bytes(b"valid ascii then invalid: \xff\xfe\xfd")
         with pytest.raises(SystemExit) as exc:
             cli_main(["ground", "--claim", "anything", "--source", str(p)])
         assert exc.value.code == 2
         err = capsys.readouterr().err
-        assert "UTF-8" in err
+        assert "BLOCKED" in err
+        assert "SOURCE-SKIPPED" in err
 
     def test_plain_text_accepted(self, tmp_path):
         p = tmp_path / "plain.txt"
         p.write_text("hello world")
         code = cli_main(["ground", "--claim", "hello world", "--source", str(p)])
         assert code == 0
+
+
+# -------------------------------------------------------------------------
+# Release F: source-format fallback + sibling lookup + auto-OCR
+# -------------------------------------------------------------------------
+
+
+def _ack_all_warnings(stderr_out: str) -> list[str]:
+    """Helper - extract every W-xxxxxxxx token from BLOCKED stderr and
+    return a list of `--ack-warning TOKEN=test-fixture` argv pairs."""
+    import re
+
+    seen: set[str] = set()
+    flags: list[str] = []
+    for tok in re.findall(r"W-[0-9a-f]{8}", stderr_out):
+        if tok in seen:
+            continue
+        seen.add(tok)
+        flags += ["--ack-warning", f"{tok}=test-fixture"]
+    return flags
+
+
+class TestSourceFormats:
+    """Source loading via extractors module: PDF text/scanned, DOCX,
+    sibling lookup, OCR-LANG-NEEDED gate, OCR-MISSING gate, auto-OCR
+    quality bands. Uses mocks for OCR + scanned-PDF detection so tests
+    do not need a real Tesseract install."""
+
+    def test_text_source_passthrough(self, tmp_path):
+        """Plain .txt remains the simple happy-path."""
+        p = tmp_path / "plain.txt"
+        p.write_text("the brown fox jumps over the lazy dog")
+        code = cli_main(["ground", "--claim", "the brown fox", "--source", str(p)])
+        assert code == 0
+
+    def test_docx_source_extracted(self, tmp_path):
+        """python-docx produces a .docx; grounding finds the claim."""
+        from docx import Document
+
+        doc = Document()
+        doc.add_paragraph("The brown fox jumps over the lazy dog.")
+        doc.add_paragraph("Second paragraph with more content.")
+        p = tmp_path / "report.docx"
+        doc.save(str(p))
+        code = cli_main(["ground", "--claim", "the brown fox", "--source", str(p)])
+        assert code == 0
+
+    def test_pdf_text_extraction(self, tmp_path, monkeypatch):
+        """Mock extract_text to return pdf-text kind; grounding succeeds."""
+        from stellars_claude_code_plugins.document_processing import extractors
+
+        p = tmp_path / "document.pdf"
+        p.write_bytes(b"%PDF-1.4 stub")
+
+        def fake_extract(path, scanned_threshold=100):
+            return extractors.Extracted(
+                text="the brown fox jumps over the lazy dog",
+                kind="pdf-text",
+                page_count=1,
+            )
+
+        monkeypatch.setattr(extractors, "extract_text", fake_extract)
+        code = cli_main(["ground", "--claim", "the brown fox", "--source", str(p)])
+        assert code == 0
+
+    def test_scanned_pdf_with_ocr_txt_sibling(self, tmp_path, monkeypatch, capsys):
+        """Scanned PDF + sibling .ocr.txt with header → OCR-CANDIDATE warning."""
+        from stellars_claude_code_plugins.document_processing import extractors
+
+        pdf = tmp_path / "scanned.pdf"
+        pdf.write_bytes(b"%PDF-1.4 stub")
+        sibling = tmp_path / "scanned.ocr.txt"
+        sibling.write_text(
+            "# OCR candidate for scanned.pdf\n"
+            "# quality: candidate (mean conf 67%, 2 pages, 100 chars)\n"
+            "# lang: eng\n"
+            "# generated: 2026-04-27 10:00 UTC\n"
+            "# NOTE: review etc\n"
+            "\n"
+            "the brown fox jumps over the lazy dog"
+        )
+
+        original = extractors.extract_text
+
+        def fake_extract(path, scanned_threshold=100):
+            if path.suffix.lower() == ".pdf":
+                return extractors.Extracted(text="", kind="pdf-scanned", page_count=2)
+            return original(path, scanned_threshold=scanned_threshold)
+
+        monkeypatch.setattr(extractors, "extract_text", fake_extract)
+
+        # First run blocks (gate fires OCR-CANDIDATE for unreviewed sibling).
+        with pytest.raises(SystemExit) as exc:
+            cli_main(["ground", "--claim", "the brown fox", "--source", str(pdf)])
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "OCR-CANDIDATE" in err
+        assert "scanned.ocr.txt" in err
+
+        # Ack with reason → grounding succeeds via sibling text.
+        ack_flags = _ack_all_warnings(err)
+        code = cli_main(["ground", "--claim", "the brown fox", "--source", str(pdf), *ack_flags])
+        assert code == 0
+
+    def test_scanned_pdf_with_reviewed_ocr_sibling_no_candidate_warn(self, tmp_path, monkeypatch):
+        """Sibling without header (human-reviewed) fires OCR-FALLBACK not
+        OCR-CANDIDATE - candidate has graduated to ground truth."""
+        from stellars_claude_code_plugins.document_processing import extractors
+
+        pdf = tmp_path / "scanned.pdf"
+        pdf.write_bytes(b"%PDF-1.4 stub")
+        sibling = tmp_path / "scanned.ocr.txt"
+        sibling.write_text("the brown fox jumps over the lazy dog")  # no header
+
+        original = extractors.extract_text
+
+        def fake_extract(path, scanned_threshold=100):
+            if path.suffix.lower() == ".pdf":
+                return extractors.Extracted(text="", kind="pdf-scanned", page_count=2)
+            return original(path, scanned_threshold=scanned_threshold)
+
+        monkeypatch.setattr(extractors, "extract_text", fake_extract)
+        # Single ack call - the sibling fires OCR-FALLBACK rather than CANDIDATE.
+        with pytest.raises(SystemExit) as exc:
+            cli_main(["ground", "--claim", "the brown fox", "--source", str(pdf)])
+        # First run blocks with OCR-FALLBACK
+        assert exc.value.code == 2
+
+    def test_scanned_pdf_no_ocr_lang_emits_lang_needed(self, tmp_path, monkeypatch, capsys):
+        """Scanned PDF + no sibling + no --ocr-lang → OCR-LANG-NEEDED."""
+        from stellars_claude_code_plugins.document_processing import extractors
+
+        pdf = tmp_path / "scanned.pdf"
+        pdf.write_bytes(b"%PDF-1.4 stub")
+
+        def fake_extract(path, scanned_threshold=100):
+            return extractors.Extracted(text="", kind="pdf-scanned", page_count=2)
+
+        monkeypatch.setattr(extractors, "extract_text", fake_extract)
+
+        with pytest.raises(SystemExit) as exc:
+            cli_main(["ground", "--claim", "anything", "--source", str(pdf)])
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "OCR-LANG-NEEDED" in err
+        assert "--ocr-lang" in err
+
+    def test_scanned_pdf_with_ocr_lang_no_deps_emits_missing(self, tmp_path, monkeypatch, capsys):
+        """Scanned PDF + --ocr-lang + no OCR deps → OCR-MISSING."""
+        from stellars_claude_code_plugins.document_processing import (
+            extractors,
+        )
+        from stellars_claude_code_plugins.document_processing import (
+            ocr as ocr_mod,
+        )
+
+        pdf = tmp_path / "scanned.pdf"
+        pdf.write_bytes(b"%PDF-1.4 stub")
+
+        def fake_extract(path, scanned_threshold=100):
+            return extractors.Extracted(text="", kind="pdf-scanned", page_count=2)
+
+        monkeypatch.setattr(extractors, "extract_text", fake_extract)
+        monkeypatch.setattr(ocr_mod, "ocr_available", lambda: False)
+
+        with pytest.raises(SystemExit) as exc:
+            cli_main(["ground", "--claim", "anything", "--source", str(pdf), "--ocr-lang", "eng"])
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "OCR-MISSING" in err
+
+    def test_auto_ocr_good_quality_caches_and_passes(self, tmp_path, monkeypatch, capsys):
+        """Mock ocr_pdf to return quality=good; cache file written; source flows."""
+        from stellars_claude_code_plugins.document_processing import (
+            extractors,
+        )
+        from stellars_claude_code_plugins.document_processing import (
+            ocr as ocr_mod,
+        )
+
+        pdf = tmp_path / "scanned.pdf"
+        pdf.write_bytes(b"%PDF-1.4 stub")
+
+        def fake_extract(path, scanned_threshold=100):
+            if path.suffix == ".pdf":
+                return extractors.Extracted(text="", kind="pdf-scanned", page_count=2)
+            return extractors.Extracted(
+                text=path.read_text(encoding="utf-8", errors="strict"), kind="text"
+            )
+
+        monkeypatch.setattr(extractors, "extract_text", fake_extract)
+        monkeypatch.setattr(ocr_mod, "ocr_available", lambda: True)
+
+        good_text = "the brown fox jumps over the lazy dog " * 5
+
+        def fake_ocr_pdf(path, lang, *, dpi=200):
+            return ocr_mod.OcrResult(
+                text=good_text,
+                mean_confidence=92.0,
+                per_page_confidence=[91.0, 93.0],
+                total_chars=len(good_text),
+                quality="good",
+                lang=lang,
+            )
+
+        monkeypatch.setattr(ocr_mod, "ocr_pdf", fake_ocr_pdf)
+
+        # First run blocks with OCR-FALLBACK; cache file is written
+        # alongside even though the gate blocked the grounding step.
+        with pytest.raises(SystemExit) as exc:
+            cli_main(
+                [
+                    "ground",
+                    "--claim",
+                    "the brown fox",
+                    "--source",
+                    str(pdf),
+                    "--ocr-lang",
+                    "eng",
+                ]
+            )
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "OCR-FALLBACK" in err
+        assert "scanned.ocr.txt" in err
+
+        # Cache file written with the OCR header.
+        cache = tmp_path / "scanned.ocr.txt"
+        assert cache.exists()
+        assert "# OCR candidate for scanned.pdf" in cache.read_text()
+        assert "the brown fox" in cache.read_text()
+
+        # Simulate agent reviewing the candidate by stripping the header.
+        # On rerun the gate should fire OCR-FALLBACK (sibling, not
+        # candidate) and the source flows through to grounding.
+        cache.write_text(good_text)
+
+        # Capture the (different) OCR-FALLBACK token from a fresh run
+        # without acks, then rerun with the matching ack.
+        with pytest.raises(SystemExit):
+            cli_main(
+                [
+                    "ground",
+                    "--claim",
+                    "the brown fox",
+                    "--source",
+                    str(pdf),
+                    "--ocr-lang",
+                    "eng",
+                ]
+            )
+        err2 = capsys.readouterr().err
+        ack_flags = _ack_all_warnings(err2)
+        code = cli_main(
+            [
+                "ground",
+                "--claim",
+                "the brown fox",
+                "--source",
+                str(pdf),
+                "--ocr-lang",
+                "eng",
+                *ack_flags,
+            ]
+        )
+        assert code == 0
+
+    def test_auto_ocr_failed_quality_skips_source(self, tmp_path, monkeypatch, capsys):
+        """Mock OCR returns quality=failed; OCR-FAILED warning + source skipped."""
+        from stellars_claude_code_plugins.document_processing import (
+            extractors,
+        )
+        from stellars_claude_code_plugins.document_processing import (
+            ocr as ocr_mod,
+        )
+
+        pdf = tmp_path / "scanned.pdf"
+        pdf.write_bytes(b"%PDF-1.4 stub")
+
+        def fake_extract(path, scanned_threshold=100):
+            return extractors.Extracted(text="", kind="pdf-scanned", page_count=2)
+
+        monkeypatch.setattr(extractors, "extract_text", fake_extract)
+        monkeypatch.setattr(ocr_mod, "ocr_available", lambda: True)
+
+        def fake_ocr_pdf(path, lang, *, dpi=200):
+            return ocr_mod.OcrResult(
+                text="garbled",
+                mean_confidence=42.0,
+                per_page_confidence=[42.0],
+                total_chars=7,
+                quality="failed",
+                failure_reason="mean confidence 42.0% < 60%",
+                lang=lang,
+            )
+
+        monkeypatch.setattr(ocr_mod, "ocr_pdf", fake_ocr_pdf)
+
+        with pytest.raises(SystemExit) as exc:
+            cli_main(
+                [
+                    "ground",
+                    "--claim",
+                    "anything",
+                    "--source",
+                    str(pdf),
+                    "--ocr-lang",
+                    "eng",
+                ]
+            )
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "OCR-FAILED" in err
+        assert "vision-OCR" in err.lower() or "Read tool" in err
+        # Candidate cached for editing even though source was skipped.
+        assert (tmp_path / "scanned.ocr.txt").exists()
+
+    def test_sibling_priority_ocr_txt_beats_txt_beats_docx(self, tmp_path):
+        """find_sibling returns highest-priority match."""
+        from stellars_claude_code_plugins.document_processing.extractors import find_sibling
+
+        pdf = tmp_path / "report.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        (tmp_path / "report.docx").write_bytes(b"PK\x03\x04 stub")
+        (tmp_path / "report.txt").write_text("text")
+        (tmp_path / "report.ocr.txt").write_text("ocr text")
+
+        assert find_sibling(pdf).name == "report.ocr.txt"
+
+    def test_sibling_excludes_image_extensions(self, tmp_path):
+        """A sibling .png next to a .pdf is NOT a candidate sibling."""
+        from stellars_claude_code_plugins.document_processing.extractors import find_sibling
+
+        pdf = tmp_path / "report.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        (tmp_path / "report.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
+        assert find_sibling(pdf) is None
+
+    def test_language_inference_from_filename(self, tmp_path):
+        """Filename hints (-de, _fr) feed the language suggestion."""
+        from stellars_claude_code_plugins.document_processing.extractors import (
+            infer_pdf_language,
+        )
+
+        de_path = tmp_path / "rapport-de.pdf"
+        de_path.write_bytes(b"%PDF-1.4")
+        assert infer_pdf_language("", de_path) == "deu"
+
+        fr_path = tmp_path / "rapport_fr.pdf"
+        fr_path.write_bytes(b"%PDF-1.4")
+        assert infer_pdf_language("", fr_path) == "fra"
+
+        en_path = tmp_path / "report.pdf"
+        en_path.write_bytes(b"%PDF-1.4")
+        assert infer_pdf_language("", en_path) == "eng"  # default
+
+    def test_ocr_candidate_header_format(self, tmp_path):
+        """cache_ocr_candidate writes a header with quality / lang / timestamp."""
+        from stellars_claude_code_plugins.document_processing import ocr as ocr_mod
+
+        pdf = tmp_path / "scanned.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+
+        result = ocr_mod.OcrResult(
+            text="the brown fox",
+            mean_confidence=72.0,
+            per_page_confidence=[72.0],
+            total_chars=13,
+            quality="candidate",
+            lang="eng",
+        )
+        cache = ocr_mod.cache_ocr_candidate(pdf, result)
+        body = cache.read_text()
+
+        assert "# OCR candidate for scanned.pdf" in body
+        assert "# quality: candidate" in body
+        assert "# lang: eng" in body
+        assert "# generated:" in body
+        assert "the brown fox" in body
+        # Header still in place → file is unreviewed.
+        assert ocr_mod.has_unreviewed_header(cache)
+
+        # Removing the header marks reviewed.
+        cleaned_body = "the brown fox"
+        cache.write_text(cleaned_body)
+        assert not ocr_mod.has_unreviewed_header(cache)
 
 
 # -------------------------------------------------------------------------
@@ -660,13 +1057,10 @@ class TestExtractClaims:
     def test_cli_extract_claims(self, tmp_path, capsys):
         doc = tmp_path / "doc.md"
         doc.write_text(
-            "The system handles 42 concurrent sessions.\n"
-            "It was tested on Linux and macOS.\n"
+            "The system handles 42 concurrent sessions.\nIt was tested on Linux and macOS.\n"
         )
         out = tmp_path / "claims.json"
-        code = cli_main(
-            ["extract-claims", "--document", str(doc), "--output", str(out)]
-        )
+        code = cli_main(["extract-claims", "--document", str(doc), "--output", str(out)])
         assert code == 0
         data = json.loads(out.read_text())
         assert len(data) >= 1
@@ -733,9 +1127,7 @@ class TestCheckConsistency:
             "The system handles 42 users per session.\n\nRecent tests show 50 users per session.\n"
         )
         out = tmp_path / "consistency.md"
-        code = cli_main(
-            ["check-consistency", "--document", str(doc), "--output", str(out)]
-        )
+        code = cli_main(["check-consistency", "--document", str(doc), "--output", str(out)])
         # Exit 1 when findings exist
         assert code == 1
         assert out.exists()
@@ -774,8 +1166,7 @@ class TestValidateMany:
             "They handle 1M rows per day.\n"
         )
         (client_b / "brief.md").write_text(
-            "Beta team runs a data pipeline on Apache Spark.\n"
-            "Daily volume is 1M rows.\n"
+            "Beta team runs a data pipeline on Apache Spark.\nDaily volume is 1M rows.\n"
         )
 
         source_map = tmp_path / "source_map.yaml"
