@@ -35,7 +35,7 @@
 - `CURVE-FLATTENED` warning fires per curved input; ack with a real reason ("circle approximated as polygon - acceptable here") or rerun with `--tolerance N` to drop near-collinear noise
 - For organic icons (thousands of cubic Bezier nodes) the polyline output stays large; consider running the op interactively in Inkscape if the result will ship as-is
 
-## Warnings (the eight gate tokens)
+## Warnings (the nine gate tokens)
 
 | Token | Meaning | Typical fix |
 |-------|---------|-------------|
@@ -47,6 +47,7 @@
 | `RESULT-MULTI-ISLAND` | N>1 disconnected components | Acceptable for XOR; for difference inspect whether intent was a hole, not multi-piece |
 | `BUFFER-COLLAPSE` | negative margin erased shape | Reduce `|margin|` or accept empty result |
 | `MARGIN-EXCEEDS-SHAPE` | `|margin|` > 0.5 × min(bbox dim) | Sanity-check the value; usually a typo (4 vs 40) |
+| `COMMENTS-NEED-REVIEW` | source SVG had `<!-- -->` comments; preserved verbatim in output but the boolean op may have changed surrounding structure | Review each listed comment in the output - edit the wording or delete it if it no longer applies. Ack with `'comments still apply'` or `'edited comments after review'`. Fires only when `--replace-id` is used AND the source had at least one comment |
 
 Acks reuse the standard pattern: `--ack-warning TOKEN='terse reason'` per warning. Tokens are deterministic; reruns reproduce them.
 

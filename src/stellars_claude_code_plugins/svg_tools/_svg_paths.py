@@ -27,9 +27,11 @@ warning through the warning gate; callers that just need a rasterisation
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import io
 import math
 from pathlib import Path
+import re
 import xml.etree.ElementTree as ET
 
 try:
@@ -409,18 +411,71 @@ def find_element_by_id(svg_doc, element_id: str):
 
 _SVG_NS = "http://www.w3.org/2000/svg"
 
+_COMMENT_RE = re.compile(r"<!--(.*?)-->", re.DOTALL)
+_ID_BEFORE_COMMENT_RE = re.compile(r'id\s*=\s*["\']([^"\']+)["\']')
 
-def replace_path_d_in_xml(xml_text: str, element_id: str, new_d: str) -> str:
+
+@dataclass
+class XmlComment:
+    """One XML comment recovered from a source SVG.
+
+    ``text`` is the comment body trimmed of leading / trailing whitespace
+    (the agent-authored note, e.g. ``"GRID REFERENCE"``).
+
+    ``approx_line`` is the 1-based line number where the comment opener
+    appears in the original XML text.
+
+    ``near_id`` is the id of the nearest preceding element with an
+    ``id=`` attribute, best-effort - helps the agent locate the comment
+    in the (possibly large) output even if the comment text itself is
+    generic.
+    """
+
+    text: str
+    approx_line: int
+    near_id: str | None
+
+
+def extract_xml_comments(xml_text: str) -> list[XmlComment]:
+    """Walk the original XML text once and return every ``<!-- ... -->``
+    block with its approximate source line number and the id of the
+    nearest preceding element (best-effort, by scanning backwards from
+    the comment opener for the latest ``id="..."`` attribute).
+    """
+    comments: list[XmlComment] = []
+    for m in _COMMENT_RE.finditer(xml_text):
+        text = m.group(1).strip()
+        line_no = xml_text.count("\n", 0, m.start()) + 1
+        # Scan backwards from the comment opener for the most recent id=
+        # attribute. Bounded scan keeps this cheap on large SVGs.
+        prefix = xml_text[max(0, m.start() - 4096) : m.start()]
+        id_matches = list(_ID_BEFORE_COMMENT_RE.finditer(prefix))
+        near_id = id_matches[-1].group(1) if id_matches else None
+        comments.append(XmlComment(text=text, approx_line=line_no, near_id=near_id))
+    return comments
+
+
+def replace_path_d_in_xml(
+    xml_text: str, element_id: str, new_d: str
+) -> tuple[str, list[XmlComment]]:
     """Rewrite the ``d=`` attribute on the element with ``id=element_id``.
 
-    Operates on raw XML text (not svgelements) so all sibling attributes
-    and namespace declarations survive the round-trip. Returns the new XML
-    text. Raises ``ValueError`` if no element with that id exists.
+    Returns ``(new_xml_text, comments)`` where ``comments`` is every
+    ``<!-- ... -->`` block found in the source. Comments are PRESERVED
+    in the output (verbatim, in their original positions) via the stdlib
+    ``ET.TreeBuilder(insert_comments=True)`` parser - the returned list
+    is for surfacing them through the warning gate so the caller forces
+    a conscious review when the boolean op may have changed surrounding
+    structure.
+
+    Raises ``ValueError`` if no element with that id exists.
     """
-    # Register the SVG namespace so ET serialises without ns0: prefixes.
     ET.register_namespace("", _SVG_NS)
 
-    root = ET.fromstring(xml_text)
+    comments = extract_xml_comments(xml_text)
+
+    parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
+    root = ET.fromstring(xml_text, parser=parser)
     target = None
     for elem in root.iter():
         if elem.attrib.get("id") == element_id:
@@ -429,7 +484,7 @@ def replace_path_d_in_xml(xml_text: str, element_id: str, new_d: str) -> str:
     if target is None:
         raise ValueError(f"no element with id={element_id!r} found in SVG")
     target.set("d", new_d)
-    return ET.tostring(root, encoding="unicode")
+    return ET.tostring(root, encoding="unicode"), comments
 
 
 def get_element_class(elem) -> str | None:

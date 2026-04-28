@@ -37,6 +37,7 @@ from pathlib import Path
 import sys
 
 from stellars_claude_code_plugins.svg_tools._svg_paths import (
+    extract_xml_comments,
     find_element_by_id,
     get_element_class,
     parse_svg_source,
@@ -473,6 +474,36 @@ def main() -> int:
                 "components; output is one <path> with multiple M...Z subpaths."
             )
 
+    # COMMENTS-NEED-REVIEW: when rewriting in place, surface every XML
+    # comment in the source so the agent reviews whether each still
+    # describes the (possibly changed) surrounding structure. Comments
+    # are PRESERVED in the output verbatim - the warning is review-only,
+    # not a copy-paste burden.
+    source_comments = []
+    if args.replace_id:
+        try:
+            source_xml_text = args.svg.read_text(encoding="utf-8")
+        except Exception as exc:
+            print(f"ERROR: failed to read SVG for in-place rewrite: {exc}", file=sys.stderr)
+            return 1
+        source_comments = extract_xml_comments(source_xml_text)
+        if source_comments:
+            n = len(source_comments)
+            lines = [
+                f"COMMENTS-NEED-REVIEW: source SVG contained {n} comment(s); "
+                f"preserved verbatim in output but the boolean op rewrote "
+                f"element id={args.replace_id!r}. Verify each comment still "
+                "describes the surrounding structure; edit or delete in the "
+                "output if not. Comments:"
+            ]
+            for c in source_comments:
+                near = f" near id={c.near_id}" if c.near_id else ""
+                lines.append(f"  [line ~{c.approx_line}{near}]: {c.text}")
+            lines.append(
+                "Ack with reason: 'comments still apply' or 'edited comments after review'."
+            )
+            warnings.append("\n".join(lines))
+
     # Gate: enforce acks. Exits 2 if anything is unacked.
     enforce_warning_acks(warnings, sys.argv[1:], args.ack_warning)
 
@@ -501,10 +532,12 @@ def _emit_output(args, info: dict, css_class: str | None) -> int:
     )
 
     if args.replace_id:
-        # Read raw XML and rewrite the d= on the named element.
+        # Read raw XML and rewrite the d= on the named element. Comments
+        # are preserved by the parser; the returned list is metadata
+        # already surfaced through the gate before we reached this point.
         xml_text = args.svg.read_text(encoding="utf-8")
         try:
-            new_xml = replace_path_d_in_xml(xml_text, args.replace_id, info["path_d"])
+            new_xml, _comments = replace_path_d_in_xml(xml_text, args.replace_id, info["path_d"])
         except ValueError as exc:
             print(f"ERROR: --replace-id failed: {exc}", file=sys.stderr)
             return 1

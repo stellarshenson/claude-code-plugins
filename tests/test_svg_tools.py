@@ -5826,3 +5826,134 @@ class TestBoolean:
         )
         assert proc2.returncode == 0, proc2.stderr
         assert "<path" in proc2.stdout
+
+
+@pytest.fixture
+def commented_svg(tmp_path):
+    """SVG with multiple comments + style block + indentation."""
+    svg = tmp_path / "commented.svg"
+    svg.write_text(
+        textwrap.dedent("""\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+          <!-- GRID REFERENCE: 100x100 cells -->
+          <style>.card { fill: #0a1a24; }</style>
+          <!-- LAYOUT TOPOLOGY: bar row at y=80 -->
+          <g id="row1">
+            <rect id="bar1" x="20" y="80" width="40" height="40" class="card"/>
+            <rect id="bar2" x="80" y="80" width="40" height="40" class="card"/>
+            <!-- bar1 anchor x=100 -->
+          </g>
+        </svg>
+    """)
+    )
+    return svg
+
+
+class TestBooleanComments:
+    """Comment preservation + COMMENTS-NEED-REVIEW gate (Release G follow-up)."""
+
+    def test_replace_id_preserves_comments(self, commented_svg):
+        runner = _ack_all()
+        proc = runner(
+            [
+                "--op",
+                "union",
+                "--svg",
+                str(commented_svg),
+                "--ids",
+                "bar1",
+                "bar2",
+                "--replace-id",
+                "bar1",
+            ]
+        )
+        assert proc.returncode == 0, proc.stderr
+        # All three comments must survive verbatim in the output.
+        assert "GRID REFERENCE: 100x100 cells" in proc.stdout
+        assert "LAYOUT TOPOLOGY: bar row at y=80" in proc.stdout
+        assert "bar1 anchor x=100" in proc.stdout
+        # The <style> block must survive too.
+        assert "<style>.card { fill: #0a1a24; }</style>" in proc.stdout
+        # The rewritten element has the new d= attribute.
+        assert 'id="bar1"' in proc.stdout
+        assert ' d="M ' in proc.stdout
+
+    def test_replace_id_fires_comments_need_review_warning(self, commented_svg):
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "boolean",
+                "--op",
+                "union",
+                "--svg",
+                str(commented_svg),
+                "--ids",
+                "bar1",
+                "bar2",
+                "--replace-id",
+                "bar1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc.returncode == 2
+        assert "COMMENTS-NEED-REVIEW" in proc.stderr
+        # Each comment listed in the warning body.
+        assert "GRID REFERENCE" in proc.stderr
+        assert "LAYOUT TOPOLOGY" in proc.stderr
+        assert "bar1 anchor x=100" in proc.stderr
+        # Three comments => the count is in the warning text.
+        assert "3 comment(s)" in proc.stderr
+
+    def test_replace_id_no_comments_no_warning(self, square_with_hole_svg):
+        # square_with_hole_svg has zero XML comments; the new warning
+        # must NOT fire on this fixture (existing test stays clean).
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "boolean",
+                "--op",
+                "union",
+                "--svg",
+                str(square_with_hole_svg),
+                "--ids",
+                "bg",
+                "hole",
+                "--replace-id",
+                "bg",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        # If any warnings fire, COMMENTS-NEED-REVIEW must NOT be one.
+        assert "COMMENTS-NEED-REVIEW" not in proc.stderr
+
+    def test_comments_warning_includes_near_id(self, commented_svg):
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "boolean",
+                "--op",
+                "union",
+                "--svg",
+                str(commented_svg),
+                "--ids",
+                "bar1",
+                "bar2",
+                "--replace-id",
+                "bar1",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc.returncode == 2
+        # The "bar1 anchor x=100" comment sits inside <g id="row1"> after
+        # <rect id="bar2">; near_id should be bar2 (closest preceding id).
+        assert "near id=bar2" in proc.stderr
