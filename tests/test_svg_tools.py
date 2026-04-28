@@ -5,6 +5,7 @@ Tests: calc_connector, check_contrast, check_connectors, check_overlaps, check_a
 
 import math
 from pathlib import Path
+import re
 import subprocess
 import sys
 import textwrap
@@ -5405,3 +5406,423 @@ class TestManifoldSpineAlignment:
         hints = " ".join(res.get("warnings", []))
         # New-style recommendation must NOT fire for end 1 (offset 80px > 30)
         assert "strand 1 at (538,295)" not in hints
+
+
+# ---------------------------------------------------------------------------
+# Boolean / margin operations (calc_boolean.py)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def two_squares_svg(tmp_path):
+    """Two overlapping unit squares with shared corner: 0..10 and 5..15."""
+    svg = tmp_path / "two_squares.svg"
+    svg.write_text(
+        textwrap.dedent("""\
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <rect id="sq-a" x="0" y="0" width="10" height="10" fill="#0096d1"/>
+          <rect id="sq-b" x="5" y="5" width="10" height="10" fill="#da8230"/>
+        </svg>
+    """)
+    )
+    return svg
+
+
+@pytest.fixture
+def square_with_hole_svg(tmp_path):
+    """Big square (id=bg) and a smaller inset square (id=hole)."""
+    svg = tmp_path / "square_with_hole.svg"
+    svg.write_text(
+        textwrap.dedent("""\
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+          <rect id="bg" x="20" y="20" width="160" height="160" class="card"/>
+          <rect id="hole" x="80" y="80" width="40" height="40" fill="#0096d1"/>
+        </svg>
+    """)
+    )
+    return svg
+
+
+@pytest.fixture
+def two_circles_svg(tmp_path):
+    """Two overlapping circles - drawn as <circle> (svgelements treats as Arc)."""
+    svg = tmp_path / "two_circles.svg"
+    svg.write_text(
+        textwrap.dedent("""\
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+          <circle id="c1" cx="80" cy="100" r="40" fill="#0096d1"/>
+          <circle id="c2" cx="120" cy="100" r="40" fill="#da8230"/>
+        </svg>
+    """)
+    )
+    return svg
+
+
+@pytest.fixture
+def open_polyline_svg(tmp_path):
+    """One unclosed polyline (no Z) plus one filled square."""
+    svg = tmp_path / "open_polyline.svg"
+    svg.write_text(
+        textwrap.dedent("""\
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <path id="open-tri" d="M 10 10 L 90 10 L 90 90" fill="#0096d1"/>
+          <rect id="sq" x="20" y="20" width="40" height="40" fill="#da8230"/>
+        </svg>
+    """)
+    )
+    return svg
+
+
+def _ack_all(reason: str = "test fixture"):
+    """Auto-discover gate tokens and ack them.
+
+    Returns a callable taking the original argv list; runs once, captures
+    tokens, reruns with --ack-warning per token. Wraps run_gated_cli with the
+    boolean-tool entrypoint already baked in.
+    """
+    from _gate_helpers import run_gated_cli
+
+    def _runner(args):
+        return run_gated_cli(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "boolean",
+            ],
+            *args,
+            reason=reason,
+        )
+
+    return _runner
+
+
+class TestBoolean:
+    def test_two_squares_union_single_island(self, two_squares_svg):
+        runner = _ack_all()
+        proc = runner(
+            ["--op", "union", "--svg", str(two_squares_svg), "--ids", "sq-a", "sq-b"]
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "<path" in proc.stdout
+        assert "kind=polygon" in proc.stdout
+        assert "islands=1" in proc.stdout
+
+    def test_two_squares_intersection_lens_area(self, two_squares_svg):
+        runner = _ack_all()
+        proc = runner(
+            [
+                "--op",
+                "intersection",
+                "--svg",
+                str(two_squares_svg),
+                "--ids",
+                "sq-a",
+                "sq-b",
+            ]
+        )
+        assert proc.returncode == 0, proc.stderr
+        # 5x5 overlap = area 25
+        assert "area=25" in proc.stdout
+
+    def test_two_squares_difference_l_shape(self, two_squares_svg):
+        runner = _ack_all()
+        proc = runner(
+            [
+                "--op",
+                "difference",
+                "--svg",
+                str(two_squares_svg),
+                "--ids",
+                "sq-a",
+                "sq-b",
+            ]
+        )
+        assert proc.returncode == 0, proc.stderr
+        # 100 - 25 overlap = 75
+        assert "area=75" in proc.stdout
+
+    def test_two_squares_xor_two_islands(self, two_squares_svg):
+        # XOR of two corner-overlapping squares = two L-pieces.
+        runner = _ack_all()
+        proc = runner(
+            ["--op", "xor", "--svg", str(two_squares_svg), "--ids", "sq-a", "sq-b"]
+        )
+        assert proc.returncode == 0, proc.stderr
+        # Two disconnected L-shapes => RESULT-MULTI-ISLAND fires.
+        assert "islands=2" in proc.stdout
+
+    def test_buffer_grow(self, two_squares_svg):
+        runner = _ack_all()
+        proc = runner(
+            [
+                "--op",
+                "buffer",
+                "--svg",
+                str(two_squares_svg),
+                "--ids",
+                "sq-a",
+                "--margin",
+                "5",
+            ]
+        )
+        assert proc.returncode == 0, proc.stderr
+        # 10x10 square + 5px margin around = bbox -5..15 in both axes.
+        assert "bbox=(-5.000, -5.000, 15.000, 15.000)" in proc.stdout
+
+    def test_buffer_shrink_collapse_blocks(self, two_squares_svg):
+        # Without acks the gate must fire BUFFER-COLLAPSE.
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "boolean",
+                "--op",
+                "buffer",
+                "--svg",
+                str(two_squares_svg),
+                "--ids",
+                "sq-a",
+                "--margin",
+                "-50",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc.returncode == 2
+        assert "BUFFER-COLLAPSE" in proc.stderr
+        assert "MARGIN-EXCEEDS-SHAPE" in proc.stderr
+
+    def test_cutout_with_margin_grows_hole(self, square_with_hole_svg):
+        runner = _ack_all()
+        proc = runner(
+            [
+                "--op",
+                "cutout",
+                "--svg",
+                str(square_with_hole_svg),
+                "--ids",
+                "bg",
+                "hole",
+                "--margin",
+                "4",
+            ]
+        )
+        assert proc.returncode == 0, proc.stderr
+        # bg: 160x160 = 25600. hole 40x40 + 4px margin (rounded corners) ~= 48*48 - corner cut.
+        # Expected ~ 25600 - ~2300 (rounded square area) = ~23300
+        # The exact area depends on quad-segs rounding; just sanity-check a band.
+        # Pull the area from stdout.
+        for line in proc.stdout.splitlines():
+            if "area=" in line:
+                area = float(line.split("area=")[1].split()[0])
+                assert 23000 < area < 23500
+                break
+        else:  # pragma: no cover
+            pytest.fail("no area line in stdout")
+
+    def test_outline_ring_annulus(self, square_with_hole_svg):
+        runner = _ack_all()
+        proc = runner(
+            [
+                "--op",
+                "outline",
+                "--svg",
+                str(square_with_hole_svg),
+                "--ids",
+                "hole",
+                "--margin",
+                "4",
+            ]
+        )
+        assert proc.returncode == 0, proc.stderr
+        # Outline = outer 44x44 minus inner 36x36 (centred at original 40x40).
+        # Expected approximate area ~= 44^2 - 36^2 = 1936 - 1296 = 640.
+        for line in proc.stdout.splitlines():
+            if "area=" in line:
+                area = float(line.split("area=")[1].split()[0])
+                assert 600 < area < 680
+                break
+
+    def test_intersection_with_inset_shrinks(self, two_squares_svg):
+        runner = _ack_all()
+        proc_naive = runner(
+            [
+                "--op",
+                "intersection",
+                "--svg",
+                str(two_squares_svg),
+                "--ids",
+                "sq-a",
+                "sq-b",
+            ]
+        )
+        proc_inset = runner(
+            [
+                "--op",
+                "intersection",
+                "--svg",
+                str(two_squares_svg),
+                "--ids",
+                "sq-a",
+                "sq-b",
+                "--margin",
+                "1",
+            ]
+        )
+        # Naive intersection = 5x5 = 25. With 1px inset on both = 3x3 = 9.
+        assert "area=25" in proc_naive.stdout
+        assert "area=9" in proc_inset.stdout
+
+    def test_replace_id_inplace_preserves_attrs(self, square_with_hole_svg):
+        runner = _ack_all()
+        proc = runner(
+            [
+                "--op",
+                "union",
+                "--svg",
+                str(square_with_hole_svg),
+                "--ids",
+                "bg",
+                "hole",
+                "--replace-id",
+                "bg",
+            ]
+        )
+        assert proc.returncode == 0, proc.stderr
+        # Output should be a valid full SVG with id=bg now carrying a path d=,
+        # and the original class="card" preserved.
+        assert "id=\"bg\"" in proc.stdout
+        assert "class=\"card\"" in proc.stdout
+        # Must contain at least one path-data move command.
+        assert ' d="M ' in proc.stdout
+
+    def test_curve_flattened_warning_on_circle(self, two_circles_svg):
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "boolean",
+                "--op",
+                "union",
+                "--svg",
+                str(two_circles_svg),
+                "--ids",
+                "c1",
+                "c2",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc.returncode == 2
+        assert "CURVE-FLATTENED" in proc.stderr
+        # Should fire once per curved input.
+        assert proc.stderr.count("CURVE-FLATTENED") >= 2
+
+    def test_nonexistent_id_fires_input_not_found(self, two_squares_svg):
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "boolean",
+                "--op",
+                "union",
+                "--svg",
+                str(two_squares_svg),
+                "--ids",
+                "sq-a",
+                "ghost-id",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc.returncode == 2
+        assert "INPUT-NOT-FOUND" in proc.stderr
+
+    def test_open_path_warning_fires(self, open_polyline_svg):
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "boolean",
+                "--op",
+                "union",
+                "--svg",
+                str(open_polyline_svg),
+                "--ids",
+                "open-tri",
+                "sq",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc.returncode == 2
+        assert "INPUT-OPEN-PATH" in proc.stderr
+
+    def test_margin_ignored_for_union_softwarn(self, two_squares_svg):
+        runner = _ack_all()
+        proc = runner(
+            [
+                "--op",
+                "union",
+                "--svg",
+                str(two_squares_svg),
+                "--ids",
+                "sq-a",
+                "sq-b",
+                "--margin",
+                "5",
+            ]
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "ignored for --op union" in proc.stderr
+
+    def test_gate_ack_flow_succeeds(self, two_circles_svg):
+        # Drive the gate manually: first run captures tokens, second acks.
+        proc1 = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "boolean",
+                "--op",
+                "union",
+                "--svg",
+                str(two_circles_svg),
+                "--ids",
+                "c1",
+                "c2",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc1.returncode == 2
+        tokens = re.findall(r"W-[0-9a-f]{8}", proc1.stderr)
+        ack_args = []
+        for tok in set(tokens):
+            ack_args += ["--ack-warning", f"{tok}=test-ack"]
+
+        proc2 = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "boolean",
+                "--op",
+                "union",
+                "--svg",
+                str(two_circles_svg),
+                "--ids",
+                "c1",
+                "c2",
+                *ack_args,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc2.returncode == 0, proc2.stderr
+        assert "<path" in proc2.stdout

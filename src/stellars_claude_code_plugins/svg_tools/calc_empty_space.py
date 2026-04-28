@@ -29,16 +29,20 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
-import io
 import json
 import math
-from pathlib import Path
 import sys
 from typing import Any
 
 import numpy as np
 from scipy import ndimage as ndi
 
+from stellars_claude_code_plugins.svg_tools._svg_paths import (
+    parse_svg_source as _parse_svg_source,
+)
+from stellars_claude_code_plugins.svg_tools._svg_paths import (
+    sample_path_to_polylines as _sample_path_to_segments,
+)
 from stellars_claude_code_plugins.svg_tools._warning_gate import (
     add_ack_warning_arg,
     enforce_warning_acks,
@@ -83,64 +87,6 @@ def _text_width_px(text, font_size):
         font = _ImageFont.load_default(size=key)
         _FONT_CACHE[key] = font
     return float(font.getlength(text))
-
-
-# ---------------------------------------------------------------------------
-# SVG source handling
-# ---------------------------------------------------------------------------
-
-
-def _parse_svg_source(source):
-    """Coerce ``source`` into a parsed svgelements SVG document.
-
-    Accepts:
-      * ``pathlib.Path`` - file on disk
-      * ``str`` - either an XML string (starts with ``<``) or a path
-      * ``bytes`` - raw XML bytes
-      * file-like object with a ``.read()`` method
-
-    Returns a tuple ``(svg_doc, canvas_viewbox)`` where ``canvas_viewbox``
-    is ``(x, y, w, h)`` derived from the SVG viewBox or falls back to
-    ``(0, 0, width, height)`` from the root <svg> attributes.
-    """
-    if isinstance(source, Path):
-        svg = _se.SVG.parse(str(source))
-    elif isinstance(source, bytes):
-        svg = _se.SVG.parse(io.BytesIO(source))
-    elif isinstance(source, str):
-        stripped = source.lstrip()
-        if stripped.startswith("<"):
-            svg = _se.SVG.parse(io.StringIO(source))
-        else:
-            svg = _se.SVG.parse(source)
-    elif hasattr(source, "read"):
-        svg = _se.SVG.parse(source)
-    else:
-        raise TypeError(
-            f"unsupported SVG source type: {type(source).__name__}. "
-            "Expected path, str, bytes, or file-like object."
-        )
-
-    vb = svg.viewbox
-    if vb is not None:
-        try:
-            canvas = (float(vb.x), float(vb.y), float(vb.width), float(vb.height))
-        except AttributeError:
-            # Some svgelements versions expose viewbox as a string
-            parts = str(vb).split()
-            if len(parts) == 4:
-                canvas = tuple(float(p) for p in parts)
-            else:
-                canvas = None
-    else:
-        canvas = None
-
-    if canvas is None:
-        w = float(svg.width) if svg.width else 1000.0
-        h = float(svg.height) if svg.height else 1000.0
-        canvas = (0.0, 0.0, w, h)
-
-    return svg, canvas
 
 
 # ---------------------------------------------------------------------------
@@ -198,80 +144,6 @@ def _circle_to_polygon(cx, cy, rx, ry, sides=_CIRCLE_SIDES):
         t = 2 * math.pi * i / sides
         pts.append((cx + rx * math.cos(t), cy + ry * math.sin(t)))
     return pts
-
-
-def _adaptive_sample_count(length_px):
-    """Pick a per-segment sample count: ~1 sample per px, clamped [10, 100]."""
-    if length_px is None or not math.isfinite(length_px) or length_px <= 0:
-        return 10
-    return max(10, min(100, int(round(length_px))))
-
-
-def _sample_path_to_segments(path):
-    """Convert an svgelements Path into a list of (open_polyline, closed)
-    tuples.
-
-    A path may contain multiple subpaths (separated by Move segments) and
-    may alternate between open and closed via Close segments. We walk the
-    segment list, collecting points for each subpath and sampling Bezier /
-    arc segments via ``.point(t)`` at adaptive sample counts.
-
-    Returns a list of ``(points, closed)`` tuples where ``points`` is a
-    list of ``(x, y)`` floats and ``closed`` is a bool.
-    """
-    subpaths = []
-    current = []
-    closed = False
-
-    for seg in path:
-        name = type(seg).__name__
-        if name == "Move":
-            if current:
-                subpaths.append((current, closed))
-            current = []
-            if seg.end is not None:
-                current.append((float(seg.end.x), float(seg.end.y)))
-            closed = False
-            continue
-
-        if name == "Close":
-            if current and seg.end is not None:
-                # Ensure the subpath explicitly terminates at its start.
-                start = (float(seg.end.x), float(seg.end.y))
-                if not current or current[0] != start:
-                    current.append(start)
-            closed = True
-            if current:
-                subpaths.append((current, closed))
-            current = []
-            closed = False
-            continue
-
-        if name == "Line":
-            if seg.end is not None:
-                current.append((float(seg.end.x), float(seg.end.y)))
-            continue
-
-        # Curved segments: CubicBezier, QuadraticBezier, Arc
-        try:
-            length = float(seg.length(error=1e-3))
-        except TypeError:
-            length = float(seg.length())
-        except Exception:
-            length = None
-        n = _adaptive_sample_count(length)
-        # Include t=0 only if current is empty (otherwise last point is
-        # already at t=0 of this segment).
-        start_t = 1 if current else 0
-        for i in range(start_t, n + 1):
-            t = i / n
-            p = seg.point(t)
-            current.append((float(p.x), float(p.y)))
-
-    if current:
-        subpaths.append((current, closed))
-
-    return subpaths
 
 
 def _element_to_surrogates(elem):

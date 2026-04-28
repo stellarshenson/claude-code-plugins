@@ -99,6 +99,8 @@ Creates production-quality SVG infographics with a mandatory 6-phase workflow (r
 
 Five connector routing modes (`straight`, `l`, `l-chamfer`, `spline`, `manifold`) with grid A* auto-routing around obstacles, container-scoped routing within specific shapes, straight-line collapse for near-aligned endpoints, and stem preservation guaranteeing clean cardinal segments behind arrowheads. Callout placement via greedy solver with leader and leaderless modes. Charts via pygal with dual light/dark palette and WCAG contrast audit.
 
+**Boolean / margin operations** on path shapes (`boolean` calculator): headless Inkscape Path menu - `union`, `intersection`, `difference`, `xor` (Exclusion) plus one-step `buffer` (Inset / Outset), `cutout` (cut-with-margin: subtract B inflated by N units from A), and `outline` (closed annulus of width N around a shape's boundary). The cutout-with-margin and outline-as-band ops are not exposed as one-button operations by Inkscape, Illustrator, Affinity, Figma, Sketch, or CorelDRAW - bundling them as primitives is the main agentic value-add. Operates polygon-only via `shapely`; Bezier / Arc inputs flatten to polylines, with the lossy round-trip surfaced as a CURVE-FLATTENED warning through the gate. Supports `--replace-id ID` for in-place rewrite of a named element's `d=` attribute.
+
 **Stop-and-think warning-ack gate**: every producer tool (`calc_connector`, `charts`, `drawio_shapes`, `empty-space`, `finalize`) blocks its primary output whenever any warning fires. The caller must acknowledge each warning explicitly with `--ack-warning TOKEN=reason` - one flag per warning, terse reasoning required, no bulk override. Tokens are deterministic per invocation so reruns reproduce them. Forces a conscious per-finding decision instead of letting warnings scroll past unread.
 
 **Skills**: `svg-designer` (fork-context design agent with tool palette, 6-phase workflow, design rules, validation gates), `theme` (palette approval + swatch generation)
@@ -123,7 +125,7 @@ Five connector routing modes (`straight`, `l`, `l-chamfer`, `spline`, `manifold`
 /svg-infographics:beautify docs/images/overview.svg medium
 ```
 
-Includes 60+ production SVG examples, 12 CLI tools (6 validators + 6 calculators), and theme swatches. See [svg-infographics/README.md](svg-infographics/) for the five capability groups and workflow details.
+Includes 60+ production SVG examples, 13 CLI tools (6 validators + 7 calculators including the boolean / margin ops), and theme swatches. See [svg-infographics/README.md](svg-infographics/) for the capability groups and workflow details.
 
 ## datascience
 

@@ -83,6 +83,20 @@ svg-infographics
  |   '-- SHAPE ANALYSIS
  |       '-- shape-midpoint      Area-weighted centroid of closed polygon
  |
+ |-- boolean --op <op>           Boolean / margin operations on path shapes
+ |   |-- union                   A ∪ B - merge filled regions
+ |   |-- intersection            A ∩ B - overlap (optional pre-inset both via --margin)
+ |   |-- difference              A \ B - subtract (optional inflate B via --margin)
+ |   |-- xor                     A △ B - symmetric difference (Inkscape Exclusion)
+ |   |-- buffer                  Inflate / deflate one shape. REQUIRED --margin (sign: + grow, - shrink)
+ |   |-- cutout                  One-step "cut B from A with N px breathing room". REQUIRED --margin
+ |   |-- outline                 One-step closed annulus of width N around boundary. REQUIRED --margin
+ |   |-- --join {round,mitre,bevel}    Corner style for buffer-based ops (default round)
+ |   |-- --quad-segs N           Round-corner sample count (default 16)
+ |   |-- --tolerance N           Polyline simplification (drops curve-flatten noise)
+ |   |-- --replace-id ID         In-place rewrite of a named element's d= attribute
+ |   '-- --out FILE              Write to file instead of stdout
+ |
  |-- callouts                    Joint label placement via greedy solver
  |   |-- --plan callouts.json    JSON list of callout requests
  |   |-- --svg scene.svg         Target SVG for obstacle detection
@@ -146,6 +160,10 @@ svg-infographics
 | Snap to card edge | `geom attach --shape rect --geometry x,y,w,h --side right` |
 | Place labels | `callouts --svg scene.svg --plan callouts.json` |
 | Find empty space | `empty-space --svg scene.svg` |
+| Merge two shapes into one path | `boolean --op union --svg scene.svg --ids a b` |
+| Cut a hole with breathing room | `boolean --op cutout --svg scene.svg --ids container hole --margin 4` |
+| Stroked-look filled ring | `boolean --op outline --svg scene.svg --ids shape --margin 6` |
+| Inflate / deflate a shape | `boolean --op buffer --svg scene.svg --ids shape --margin 8` |
 | Check before delivery | `overlaps` + `contrast` + `alignment` + `connectors` + `css` + `collide` |
 | Add visual richness | `/svg-infographics:beautify file.svg medium` |
 | Search for icons | `shapes search "database"` |

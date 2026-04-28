@@ -71,6 +71,10 @@ SUBCOMMANDS = {
         "calc_geometry",
         "CALC sketch constraints: attachment points, midpoint, tangent, intersection, offset, evenly-spaced, polar, bisector. The Fusion-360 toolkit.",
     ),
+    "boolean": (
+        "calc_boolean",
+        "CALC boolean / margin ops on SVG paths: union, intersection, difference, xor (Inkscape Path menu) plus buffer (Inset/Outset), cutout (one-step cut-with-margin), outline (one-step ring of width N around boundary).",
+    ),
     "charts": (
         "charts",
         "CALC data charts as SVG via pygal: line, bar, hbar, area, radar, dot, histogram, pie. Themed (stellars-tech / kolomolo / meridian / neutral).",

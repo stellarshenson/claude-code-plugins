@@ -45,6 +45,7 @@ Every visible pixel traces back to a CLI call. Palette:
 - `primitives` - rect / circle / hex / star / cube / cylinder / axis / spline. Returns anchors
 - `connector` - every arrow. Modes: straight, L, L-chamfer, spline, manifold, ribbon. ALWAYS pass `--direction`; for L / L-chamfer also `--start-dir + --end-dir` OR `--src-rect + --tgt-rect` (otherwise route looks garbage)
 - `geom` - align, distribute, attach, midpoint, offset, polar, bisector
+- `boolean` - union / intersection / difference / xor on path shapes (Inkscape Path menu) plus one-step `buffer` (Inset/Outset), `cutout` (cut-with-margin), `outline` (ring of width N around boundary). See `rules/shapes.md`
 - `empty-space` - GENERAL-PURPOSE placement finder. Not callout-only. Run BEFORE placing any new element
 - `place` - position element (icon, text bbox, badge) inside a container. Uses empty-space under the hood
 - `callouts` - joint-optimal callout placement solver
