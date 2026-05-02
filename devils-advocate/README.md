@@ -1,12 +1,16 @@
-# devils-advocate
+# devils-advocate - attack your document before your reviewer does
 
 [![GitHub Actions](https://github.com/stellarshenson/claude-code-plugins/actions/workflows/ci.yml/badge.svg)](https://github.com/stellarshenson/claude-code-plugins/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/stellars-claude-code-plugins.svg)](https://pypi.org/project/stellars-claude-code-plugins/)
 [![Total PyPI downloads](https://static.pepy.tech/badge/stellars-claude-code-plugins)](https://pepy.tech/project/stellars-claude-code-plugins)
 
-Critical document analysis plugin for Claude Code. Systematically critiques documents from the perspective of their toughest audience using a custom persona, Fibonacci risk scoring, and versioned iterative improvement.
+Your reviewer / client / court / investor / VP will tear your document apart. Claude won't. Claude will tell you it looks great and ship.
 
-Unlike qualitative tools like [grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) or [Devil's Advocate Protocol](https://mcpmarket.com/tools/skills/devil-s-advocate-protocol), this plugin is semi-data-science: the devil is inferred from existing conversations, emails, or meeting transcripts (or described manually), every concern gets a Fibonacci risk score, and each iteration produces a measurable residual so the trajectory (89 -> 34 -> 12) shows convergence. Versioned files with embedded scorecards create an audit trail.
+This plugin builds an adversarial persona for the document's actual toughest audience, harvests verifiable facts from source material, generates a risk-scored concern catalogue, and iterates corrections until residual risk is acceptable. Risk uses a Fibonacci scale (1-8) for likelihood and impact (1-64 combined). Every iteration produces a measurable residual; versioned filenames embed it (`<name>_v07_15.md` where 15 is the residual) so the trajectory is visible in the file listing.
+
+**Real trajectory from `examples/executive-pushback-analysis.md`**: an executive summary defending a missed KPI, baseline residual 269 across 21 concerns, converged to residual 2 across 8 iterations. That is a measurable convergence on a real document, not vibes.
+
+Unlike qualitative tools like [grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) or [Devil's Advocate Protocol](https://mcpmarket.com/tools/skills/devil-s-advocate-protocol), this plugin is semi-data-science: the devil is inferred from existing conversations / emails / meeting transcripts (or described manually), every concern gets a Fibonacci risk score, and each iteration produces a measurable residual so convergence is visible. Versioned files with embedded scorecards create an audit trail.
 
 ## Installation
 

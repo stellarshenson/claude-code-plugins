@@ -28,6 +28,8 @@ When in doubt: append.
 
 Default is **Standard** (~70-120 words, one dense paragraph). Use **Extended** (~250-350 words) only when the user asks ("extended entry", "full detail") or the work is an architectural decision / platform migration / multi-iteration debug.
 
+**Extended entries MUST be marked** with `[Extended]` after `Task` so the validator and downstream readers know the wider word band is intentional, not drift. Without the marker, `journal-tools check` warns over 150 words and tells you to either condense or add the marker.
+
 ### Standard example
 
 ```markdown
@@ -40,11 +42,27 @@ Default is **Standard** (~70-120 words, one dense paragraph). Use **Extended** (
    suffix. Build and tests pass.
 ```
 
-Shape: one-line Task summary after `**Task - <depiction>** (vX.Y.Z):`, then `**Result**:` as a single information-dense paragraph — problem → solution → files/libraries → verification. No sub-headers, no bullet lists.
+Shape: one-line Task summary after `**Task - <depiction>** (vX.Y.Z):`, then `**Result**:` as a single information-dense paragraph - problem -> solution -> files/libraries -> verification. No sub-headers, no bullet lists.
 
-### Extended example
+### Extended example (mark with `[Extended]`)
 
-Same shape but ~250-350 words with more depth on rationale, tradeoffs, alternatives considered, or multi-stage debugging. Full worked examples in `journal/skills/journal/references/examples.md` (sections "Normal Entry" and "Extended Entry").
+```markdown
+115. **Task [Extended] - Autobuild Iter 1+2 for grounding improvements** (v1.0.40): ran `orchestrate new --type fast` against the PROGRAM.md / BENCHMARK.md pair built in the previous session<br>
+    **Result**: 250-400 word paragraph with depth on rationale, tradeoffs, alternatives considered, or multi-stage debugging.
+```
+
+Marker rules:
+- `[Extended]` lives BETWEEN `Task` and the dash, inside the bold span: `**Task [Extended] - <depiction>**`
+- Case-insensitive (`[extended]`, `[EXTENDED]` also work) but prefer the canonical capitalisation
+- Validator silent for marked entries in the [150, 400] word band
+- Validator warns if marked but body < 150 (false advertising) - drop the marker or expand
+- Validator warns if over 400 even with the marker - condense
+
+### Style
+
+Telegram-style terse language by default. Drop articles, drop copulas, file paths and function names in backticks. **Always keep the WHY** - the trigger that prompted the work, the why-this-approach over alternatives, gotchas, cause-and-effect chains. Future-you reading the entry six months later needs the rationale; the code itself only shows what changed. See `skills/journal/SKILL.md` Style section for the full rule set with examples.
+
+Full worked examples in `journal/skills/journal/references/examples.md`.
 
 ## Steps
 

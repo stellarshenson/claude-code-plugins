@@ -15,7 +15,7 @@ import sys
 # ---------------------------------------------------------------------------
 
 ENTRY_RE = re.compile(
-    r"^(\d+)\.\s+\*\*Task\s*-\s*(.+?)\*\*"
+    r"^(\d+)\.\s+\*\*Task\s*(?P<extended>\[Extended\])?\s*-\s*(.+?)\*\*"
     r"(?:\s*\(([^)]*)\))?"
     r":\s*(.*?)(?:<br>|$)",
     re.IGNORECASE,
@@ -24,6 +24,7 @@ ENTRY_RE = re.compile(
 RESULT_PREFIX = re.compile(r"^\s+\*\*Result\*\*:\s*", re.IGNORECASE)
 
 STANDARD_TARGET = 150
+EXTENDED_MIN = 150
 EXTENDED_MAX = 400
 
 
@@ -34,6 +35,7 @@ class JournalEntry:
     version_tag: str
     description: str
     result_body: str
+    is_extended: bool = False
     raw_lines: list[str] = field(default_factory=list)
     line_start: int = 0
 
@@ -81,9 +83,10 @@ def parse_journal(text: str) -> list[JournalEntry]:
                 entries.append(current)
             current = JournalEntry(
                 number=int(m.group(1)),
-                title=m.group(2).strip(),
-                version_tag=m.group(3) or "",
-                description=m.group(4).strip(),
+                title=m.group(3).strip(),
+                version_tag=m.group(4) or "",
+                description=m.group(5).strip(),
+                is_extended=m.group("extended") is not None,
                 result_body="",
                 raw_lines=[line],
                 line_start=i + 1,
@@ -166,15 +169,38 @@ def check_journal(
                 Violation(entry.number, "warning", "missing or empty **Result** body")
             )
 
-        # Word count - warnings only (never errors)
+        # Word count: warnings only (never errors).
+        # Marked-[Extended] band is [EXTENDED_MIN, extended_max].
+        # Unmarked default is Standard (<= standard_target); over warns and
+        # suggests the [Extended] marker.
         wc = entry.body_word_count
-        if wc > extended_max:
+        if entry.is_extended:
+            if wc > extended_max:
+                violations.append(
+                    Violation(
+                        entry.number,
+                        "warning",
+                        f"body {wc} words, over extended max {extended_max}. "
+                        "Condense - even Extended caps here.",
+                    )
+                )
+            elif wc < EXTENDED_MIN:
+                violations.append(
+                    Violation(
+                        entry.number,
+                        "warning",
+                        f"body {wc} words but marked [Extended] "
+                        f"(min {EXTENDED_MIN}). Expand or drop the marker.",
+                    )
+                )
+        elif wc > extended_max:
             violations.append(
                 Violation(
                     entry.number,
                     "warning",
-                    f"body is {wc} words (over extended max = {extended_max}). "
-                    f"Consider condensing to standard ({standard_target}) unless depth is justified.",
+                    f"body {wc} words, over extended max {extended_max}. "
+                    f"Condense to Standard ({standard_target}) or add "
+                    "`**Task [Extended] - ...**` marker if depth is real.",
                 )
             )
         elif wc > standard_target:
@@ -182,8 +208,9 @@ def check_journal(
                 Violation(
                     entry.number,
                     "warning",
-                    f"body is {wc} words (standard target = {standard_target}). "
-                    f"Consider condensing unless extended is justified.",
+                    f"body {wc} words, over Standard target {standard_target}. "
+                    "Condense or add `**Task [Extended] - ...**` marker if "
+                    "depth is real.",
                 )
             )
 

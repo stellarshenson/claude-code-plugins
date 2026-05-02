@@ -34,23 +34,49 @@ After write: read last 5 lines. Confirm match.
 
 ## Entry format
 
+Standard (default):
 ```
 <N>. **Task - <short depiction>** (v1.2.3): one-line summary<br>
     **Result**: dense paragraph - problem, solution, files/libraries, verification
+```
+
+Extended (opt-in via `[Extended]` marker after `Task`):
+```
+<N>. **Task [Extended] - <short depiction>** (v1.2.3): one-line summary<br>
+    **Result**: 250-400 word paragraph
 ```
 
 Version tag only if project versioned (`package.json` / `pyproject.toml` / `Cargo.toml`).
 
 ## Levels
 
-| Level | Words | When |
-|-------|-------|------|
-| Standard | ~70-120 | DEFAULT. Feature, fix, multi-file change, investigation |
-| Extended | ~250-350 | ONLY: architectural decision, platform migration, multi-iteration debug, novel algorithm |
+| Level | Marker | Words | When |
+|-------|--------|-------|------|
+| Standard | none | <= 150 | DEFAULT. Feature, fix, multi-file change, investigation |
+| Extended | `[Extended]` | 150-400 | ONLY: architectural decision, platform migration, multi-iteration debug, novel algorithm |
 
-Match user's own summary length. 5-bullet summary → not 400 words. "I touched lots of files" = not Extended. "This was hard" = not Extended.
+Match the user's own summary length. 5-bullet summary -> not 400 words. "I touched lots of files" = not Extended. "This was hard" = not Extended.
 
-Length check before save: count words after `**Result**:`. Over 150? Cut unless extra context carries info unavailable from code.
+Marker is mandatory for Extended. Without it `journal-tools check` warns over 150 words and tells you to either condense or add `[Extended]`. With it the gate stays silent in the [150, 400] band but warns under 150 (false advertising) or over 400 (too long for any tier).
+
+## Style
+
+Telegram-style terse language by default - drop articles ("the" / "a"), drop copulas ("is" / "are" / "was"), dense paragraphs over multi-bullet structure, file paths and function names in backticks.
+
+**Always keep the WHY.** Future-you (or another agent) reading this entry six months later needs to understand WHY the implementation or work was done, not just WHAT was done. The code itself shows what changed; the journal carries the rationale that does NOT survive in `git log` / `git blame` / the file content. Specifically keep:
+
+- **Trigger** - what prompted the work (a user report, a forensic finding, a CI failure, a benchmark regression)
+- **Why this approach over alternatives** - the design decision and its constraint ("picked A over B because of C")
+- **Gotchas / non-obvious constraints** - things that surprised you and will surprise the next reader if undocumented
+- **Cause-and-effect chains** - "X required Y because Z" - so the reader can reconstruct the reasoning when the code alone is insufficient
+
+Drop ceremonial connective tissue, hedging, restated obvious context, and bullet-list expansions of single ideas. Keep load-bearing reasoning - especially the trigger and the why-this-approach.
+
+Bad (verbose, no reasoning): "I made some changes to the validator and updated some files."
+
+Bad (terse but no WHY): "Validator updated. Tests green."
+
+Good (terse + WHY preserved): "Validator now honours `[Extended]` marker - silent in [150, 400] band when marked, warns otherwise. **Trigger**: agents kept inflating Standard entries to ~200 words to clear word-count warnings instead of either condensing or marking intent; the gate became noise. **Why this design**: the marker makes intent explicit and machine-checkable in one regex; alternative was raising STANDARD_TARGET globally, rejected because it would erode the discipline that pushes Standard entries to the 70-120 sweet spot."
 
 ## What to log
 

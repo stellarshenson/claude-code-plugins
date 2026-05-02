@@ -76,10 +76,10 @@ Same shape for a session that is all documentation, polish, and plumbing cleanup
 
 ## Extended Entry
 
-For complex refactoring or multi-component changes requiring clear per-layer breakdown.
+For complex refactoring or multi-component changes requiring clear per-layer breakdown. **Mark with `[Extended]` after `Task`** so `journal-tools check` honours the wider 150-400 word band.
 
 ```
-8. **Task - Replace sessions with workspaces** (v1.0.18): Replaced session culling with workspace culling throughout the extension<br>
+8. **Task [Extended] - Replace sessions with workspaces** (v1.0.18): Replaced session culling with workspace culling throughout the extension<br>
    **Result**: User clarified that "sessions" (kernel-notebook associations) were not the intended culling target - the extension should cull JupyterLab workspaces (auto-0, auto-k, default, etc.) instead. These are UI state files stored in `~/.jupyter/lab/workspaces/` created when users open multiple browser windows.
 
    **Design**: Workspaces are managed by `jupyterlab_server.workspaces_handler.WorkspacesManager` which reads JSON files from `~/.jupyter/lab/workspaces/`. Each workspace has metadata including `id`, `last_modified`, and `created` timestamps. Culling decision uses `last_modified` rather than access time since workspace files are only written when UI state changes. Default workspace is protected because it's the fallback when no workspace is specified - culling it would disrupt users without explicit workspace URLs. Workspace culling disabled by default (unlike kernels/terminals) because most users don't accumulate many workspaces and the 7-day timeout is long enough that manual cleanup is rarely needed.

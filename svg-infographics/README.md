@@ -1,6 +1,18 @@
-# svg-infographics
+# svg-infographics - stop fixing your AI's SVGs
 
-Produce production-quality SVG infographics with grid-first design, CSS theme classes, dark/light mode, automated validation, and a 60+ example library. Built so every coordinate is tool-calculated, every colour traces to an approved theme swatch, and every deliverable passes five checkers before it ships. Works on your own SVGs and on foreign ones you did not author.
+You ask Claude for "an architecture diagram." It ships an SVG with text overlapping connectors, no dark mode, contrast failures, and a `<path d="M ...">` glued together by hand. You spend twice as long fixing the output as you would have spent drawing it.
+
+This plugin makes that impossible. Every coordinate goes through a Python calculator. Every colour traces to an approved theme swatch with a `@media (prefers-color-scheme: dark)` block. Six independent validators block delivery on overlap / contrast / alignment / connector / CSS / pairwise-collision findings. A stop-and-think warning gate forces a conscious ack with terse reasoning per finding before any producer tool emits its primary output.
+
+Read the full article: [Stop Fixing Your AI's SVGs](https://medium.com/towards-artificial-intelligence/stop-fixing-your-ai-svgs-715df70ccca0).
+
+13 CLI tools (6 validators + 7 calculators), 60+ production examples in [`examples/`](examples/), and headless boolean / margin operations on path shapes (Inkscape Path menu plus one-step cutout-with-margin and outline-as-band).
+
+## Production proof: declarative bar cutouts
+
+Real session feedback after using the v1.4.14 boolean tool to cut 9 lightning-glyph holes (with a 10 px breathing-room margin) into a 9-bar chart - replacing ~25 manually-computed rect splits with 9 declarative cutout calls:
+
+> "The boolean tool worked very well. Output was multipolygon paths (2 disconnected islands per bar) with curved edges that follow the lightning's actual silhouette - not approximated rectangular gaps. One-step cutout-with-margin (Inkscape / Illustrator need 2 steps). Deterministic warning tokens that block until acknowledged caught two intentional conditions and forced a conscious ack rather than silently producing weird output. In-place rewrite via `--replace-id` kept the SVG structure intact, just swapped each bar's `d=` attribute. Output validates clean (`svg-infographics validate` 0 issues, contrast AAA 6/6 text pass)."
 
 ## Installation
 

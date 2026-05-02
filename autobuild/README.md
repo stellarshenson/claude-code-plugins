@@ -1,8 +1,36 @@
-# autobuild
+# autobuild - stop Claude from cutting corners
 
-Autonomous build iteration orchestrator for Claude Code. Runs structured improvement cycles with multi-agent review, FSM-driven phase lifecycle, per-phase gates, and YAML-configured workflows.
+```
+Bad agent:
+  User:    "improve error handling"
+  Claude:  "Fixed it."
+  Reality: 2 files changed, no tests run, edge cases broken.
 
-The plugin decomposes complex work into sequential phases (research, hypothesis, plan, implement, test, review, record), spawns independent agent panels at each stage, and enforces quality through two independent gates per phase (readback + gatekeeper). Every phase records agents spawned, outputs produced, and verdicts in auditable YAML logs.
+With autobuild:
+  User:    /autobuild:run improve error handling
+
+  Claude must:
+   1. inspect code              (RESEARCH)
+   2. write PROGRAM.md          (PLAN)
+   3. define BENCHMARK.md       (BENCHMARK)
+   4. get your approval         (GATE)
+   5. implement                 (IMPLEMENT)
+   6. run tests                 (TEST)
+   7. review against objective  (REVIEW)
+   8. record audit trail        (RECORD)
+```
+
+Every phase has two independent quality gates (readback + gatekeeper). Every iteration produces a measurable benchmark score so progress is visible, not vibe-checked. Every step records agents spawned, outputs produced, and verdicts in auditable YAML logs.
+
+Read the full article: [Your AI Agent Will Cut Corners. Here's How to Stop It](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762).
+
+## Real iteration trajectories
+
+Real cycles run by this plugin against this repo (excerpts from `.claude/JOURNAL.md`):
+
+- **Document grounding optimisation** - composite benchmark score `69.3 -> 5.0`, final 1.0 cross-validation accuracy on three held-out academic papers (Liu 2023, Ye 2024, Han 2024). Six iterations, 29 tunable parameters exposed in `config.yaml`. Full PROGRAM, BENCHMARK, hypothesis + falsifiers archived under [`references/grounding-optimisation/`](../references/grounding-optimisation/) ([JOURNAL entry 114](../.claude/JOURNAL.md))
+- **svg-infographics forensics** - audited 6 prior Claude Code sessions, identified 231 occurrences of "false positive" rationalisation, shipped 4 corrective work items in one release including the quartermaster preflight pattern, connector direction declaration, and stubby-arrow validator ([JOURNAL entry 124](../.claude/JOURNAL.md))
+- **document-processing forensics** - shipped all 7 work items from a forensic-review plan in a single release combining correctness fixes (binary-source rejection, lexical co-support) with workflow additions (claim extraction, intra-doc consistency, batch orchestrator) ([JOURNAL entry 123](../.claude/JOURNAL.md))
 
 ## Installation
 

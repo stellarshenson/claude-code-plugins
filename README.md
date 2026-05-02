@@ -7,20 +7,35 @@
 
 <img alt="stellars-claude-code-plugins marketplace overview - 6 plugins grouped by category" src="assets/svg/01_marketplace_overview.svg" width="100%">
 
-A plugin marketplace for Claude Code providing structured workflows for software development, document analysis, data science, and project management. Each plugin is pure configuration (skills, commands, YAML) - install one or all depending on your needs.
+## Your AI agent will cut corners. This is the forcing function.
+
+You ask Claude to "improve error handling." Claude says "Fixed it." Two files changed, no tests run, edge cases broken. Or it ships an SVG infographic with overlapping text and contrast failures. Or it passes a document past a reviewer who'd tear it apart.
+
+This marketplace makes Claude work like a disciplined engineer instead. Each plugin enforces a specific discipline: research before implement, validate before ship, ground every claim, audit every iteration.
+
+```bash
+# Force Claude through research, plan, test, review, and audit before claiming done
+/autobuild:run improve error handling in the API layer
+
+#  -> writes PROGRAM.md (objective + scope)
+#  -> writes BENCHMARK.md (measurable score)
+#  -> asks for your approval
+#  -> implements
+#  -> runs tests
+#  -> reviews against the benchmark
+#  -> records evidence in YAML audit log
+```
 
 ```bash
 /plugin marketplace add stellarshenson/claude-code-plugins
+/plugin install autobuild@stellarshenson-marketplace
 ```
 
-The marketplace includes a shared YAML-driven orchestration engine (`autobuild`) that pulls agents through structured phases with quality gates, a semi-data-science document critic (`devils-advocate`) with Fibonacci risk scoring, production SVG infographics (`svg-infographics`) with grid-first design and automated validation, data science project standards (`datascience`) with notebook scaffolding and compliance fixes, structured document processing (`document-processing`) with source grounding, and project journaling (`journal`).
+Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop It](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762) and [Stop Fixing Your AI's SVGs](https://medium.com/towards-artificial-intelligence/stop-fixing-your-ai-svgs-715df70ccca0). For real examples (60+ production SVGs, 4 worked devils-advocate analyses, 3 autobuild iteration trajectories, a 1.0-CV grounding result), see [`showcase/`](showcase/).
 
-> [!NOTE]
-> Read the full article on the orchestration approach: [Your AI Agent Will Cut Corners. Here's How to Stop It.](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762)
->
-> Read about the SVG infographics plugin: [Stop Fixing Your AI's SVGs](https://medium.com/towards-artificial-intelligence/stop-fixing-your-ai-svgs-715df70ccca0)
+## The full marketplace - six disciplines
 
-## Plugins
+`autobuild` is the spear. The same forcing-function logic powers five more plugins, each enforcing a different kind of discipline on Claude. Install them individually or as a bundle.
 
 | Plugin | What it solves |
 |--------|---------------|
