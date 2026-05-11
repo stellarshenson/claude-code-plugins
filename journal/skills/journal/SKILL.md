@@ -100,7 +100,13 @@ See `references/examples.md`. Standard + Extended with before/after.
 journal-tools check .claude/JOURNAL.md
 ```
 
-Validates: continuous numbering, ascending order, format, word count tiers. Length over target = warning only (never error). Format violations (duplicate number, out-of-order, missing title) = error. Exit 0 = no errors, 1 = format errors.
+Validates:
+- continuous numbering, ascending order
+- format: title present after `Task -`
+- **Result-marker structure**: every Task must be followed by exactly ONE `**Result**:` line. Task without a Result marker -> error. Task with two or more Result markers -> error. Orphan `**Result**:` line outside any Task -> error (these were silently absorbed by the previous parser, masking malformed entries where the Task line was missing or mistyped)
+- word count tiers (Standard target = warning over, Extended band silent in [150, 400], over both = warning)
+
+Length over target = warning only (never error). Structural violations (duplicate number, out-of-order, missing title, missing/duplicate/orphan Result marker) = error. Exit 0 = no errors, 1 = errors.
 
 MANDATORY after write. Word-count warning → condense if cheap. Format error → fix before commit.
 

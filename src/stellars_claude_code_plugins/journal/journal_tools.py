@@ -36,6 +36,7 @@ class JournalEntry:
     description: str
     result_body: str
     is_extended: bool = False
+    result_marker_count: int = 0  # number of `**Result**:` lines seen for this Task
     raw_lines: list[str] = field(default_factory=list)
     line_start: int = 0
 
@@ -63,15 +64,27 @@ class ArchiveResult:
 # ---------------------------------------------------------------------------
 
 
-def parse_journal(text: str) -> list[JournalEntry]:
-    """Parse a JOURNAL.md file into structured entries.
+def parse_journal_with_diagnostics(
+    text: str,
+) -> tuple[list[JournalEntry], list[Violation]]:
+    """Parse a JOURNAL.md file into structured entries + parser-level violations.
 
     Handles the standard format:
         N. **Task - Title** (vX.Y.Z): description<br>
             **Result**: body text...
+
+    Parser-level violations cover format errors that don't correspond to a
+    successfully-parsed entry:
+    - Orphan `**Result**:` lines outside any Task (silently absorbed today
+      would be a silent bug; surface as an error so the author can fix)
+
+    Per-entry violations like "Task without Result marker" or "multiple
+    Result markers" are NOT in the parser-violations list - they live on
+    the entry via `result_marker_count` and are surfaced by `check_journal`.
     """
     lines = text.split("\n")
     entries: list[JournalEntry] = []
+    parser_violations: list[Violation] = []
     current: JournalEntry | None = None
     in_result = False
 
@@ -94,19 +107,57 @@ def parse_journal(text: str) -> list[JournalEntry]:
             in_result = False
             continue
 
-        if current is not None:
-            current.raw_lines.append(line)
-            rm = RESULT_PREFIX.match(line)
-            if rm:
+        if current is None:
+            # Outside any entry. Flag orphan `**Result**:` lines as errors -
+            # they were silently absorbed by the previous parser, masking
+            # malformed entries where the Task line was missing or mistyped.
+            if RESULT_PREFIX.match(line):
+                parser_violations.append(
+                    Violation(
+                        entry_number=None,
+                        severity="error",
+                        message=(
+                            f"line {i + 1}: orphan **Result**: marker outside "
+                            "any Task entry. Add a `N. **Task - ...**` line "
+                            "above it, or remove the stray marker."
+                        ),
+                    )
+                )
+            continue
+
+        current.raw_lines.append(line)
+        rm = RESULT_PREFIX.match(line)
+        if rm:
+            current.result_marker_count += 1
+            if current.result_marker_count == 1:
                 in_result = True
                 current.result_body = line[rm.end() :]
-            elif in_result and line.strip():
-                current.result_body += " " + line.strip()
+            else:
+                # Second (or later) Result marker on the same Task. Keep the
+                # content (append instead of overwrite) so nothing is lost,
+                # but the entry now carries result_marker_count > 1 which
+                # `check_journal` flags as an error.
+                current.result_body += " " + line[rm.end() :]
+            continue
+        if in_result and line.strip():
+            current.result_body += " " + line.strip()
 
     if current is not None:
         current.result_body = current.result_body.strip()
         entries.append(current)
 
+    return entries, parser_violations
+
+
+def parse_journal(text: str) -> list[JournalEntry]:
+    """Parse a JOURNAL.md file into structured entries.
+
+    Thin wrapper around `parse_journal_with_diagnostics` that drops the
+    parser-violations list - kept for back-compat with callers that only
+    need the entries. New code should prefer the diagnostics form so
+    orphan-Result violations are surfaced.
+    """
+    entries, _ = parse_journal_with_diagnostics(text)
     return entries
 
 
@@ -164,9 +215,34 @@ def check_journal(
         if not entry.title:
             violations.append(Violation(entry.number, "error", "missing title after 'Task -'"))
 
-        if not entry.result_body:
+        # Result marker checks. Three failure modes:
+        # 1. No `**Result**:` line at all -> structural error (the Task has no result)
+        # 2. Exactly one `**Result**:` line but body is empty -> warning (marker present, no content)
+        # 3. More than one `**Result**:` line on the same Task -> structural error
+        if entry.result_marker_count == 0:
             violations.append(
-                Violation(entry.number, "warning", "missing or empty **Result** body")
+                Violation(
+                    entry.number,
+                    "error",
+                    "Task line has no `**Result**:` marker. Every Task must "
+                    "be followed by a `    **Result**: ...` line on the next "
+                    "indented line.",
+                )
+            )
+        elif entry.result_marker_count > 1:
+            violations.append(
+                Violation(
+                    entry.number,
+                    "error",
+                    f"Task has {entry.result_marker_count} `**Result**:` "
+                    "markers; expected exactly 1. Merge the bodies into a "
+                    "single **Result** paragraph or split into separate "
+                    "numbered Task entries.",
+                )
+            )
+        elif not entry.result_body:
+            violations.append(
+                Violation(entry.number, "warning", "`**Result**:` marker found but body is empty")
             )
 
         # Word count: warnings only (never errors).
@@ -411,10 +487,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     text = path.read_text(encoding="utf-8")
-    entries = parse_journal(text)
+    entries, parser_violations = parse_journal_with_diagnostics(text)
 
     if args.command == "check":
-        violations = check_journal(
+        violations = parser_violations + check_journal(
             entries,
             standard_target=args.standard_target,
             extended_max=args.extended_max,

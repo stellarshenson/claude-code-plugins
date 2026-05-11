@@ -85,7 +85,7 @@ Full worked examples in `journal/skills/journal/references/examples.md`.
 
 Every write MUST be validated via the CLI. These tools exist for a reason — use them:
 
-- `uv run journal-tools check .claude/JOURNAL.md` — MANDATORY post-write validation (format, numbering, word-count tiers)
+- `uv run journal-tools check .claude/JOURNAL.md` — MANDATORY post-write validation. Checks format (title after `Task -`), Result-marker structure (every Task gets exactly ONE `**Result**:` line; missing/duplicate/orphan = error), continuous numbering, ascending order, word-count tiers
 - `uv run journal-tools sort .claude/JOURNAL.md --dry-run` — preview re-numbering if gaps or reorders detected
 - `uv run journal-tools archive .claude/JOURNAL.md` — archive once >40 entries (use `/journal:archive`)
 
