@@ -50,8 +50,23 @@ def _build_semantic_grounder(cfg: settings_mod.Settings, cli_override: str | Non
     if not use:
         return None
     if not settings_mod.is_semantic_available():
+        # `--semantic on` is an explicit contract: deps present -> run,
+        # deps missing -> hard fail. Silent degradation produces misleading
+        # grounding reports (rows labelled `(semantic)` with score 0.000).
+        if cli_override == "on":
+            print(
+                "ERROR: --semantic on requires the [semantic] extras, but "
+                "dependencies are missing. Install and rerun:\n"
+                + settings_mod.semantic_install_hint(),
+                file=sys.stderr,
+            )
+            sys.exit(2)
+        # Implicit enable from config (no `--semantic on` on the command
+        # line) - keep warn-and-degrade so config-default users don't get
+        # surprise exit-2 failures on machines without the extras installed.
         print(
-            "WARNING: semantic grounding requested but dependencies missing.\n"
+            "WARNING: semantic grounding enabled in settings but "
+            "dependencies missing; continuing without semantic layer.\n"
             + settings_mod.semantic_install_hint(),
             file=sys.stderr,
         )

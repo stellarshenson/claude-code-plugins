@@ -495,6 +495,98 @@ class TestSettings:
         assert "semantic" in hint.lower()
 
 
+class TestSemanticOnContract:
+    """`--semantic on` is an explicit contract:
+
+    - deps present -> grounder is built, returned
+    - deps missing -> hard fail (sys.exit 2), do NOT silently degrade
+
+    `--semantic` not passed (config default takes over) keeps the old
+    warn-and-degrade behaviour for back-compat. `--semantic off` is
+    handled earlier and never reaches the deps-check.
+    """
+
+    def test_semantic_on_with_deps_missing_exits_2(self, monkeypatch, capsys):
+        """The bug we saw in the 49th-batch grounding: --semantic on,
+        deps missing, CLI proceeded silently. New contract: hard fail.
+        """
+        from stellars_claude_code_plugins.document_processing.cli import (
+            _build_semantic_grounder,
+        )
+
+        monkeypatch.setattr(settings_mod, "is_semantic_available", lambda: False)
+        cfg = settings_mod.Settings(semantic_enabled=False)
+
+        with pytest.raises(SystemExit) as exc_info:
+            _build_semantic_grounder(cfg, cli_override="on")
+        assert exc_info.value.code == 2
+
+        err = capsys.readouterr().err
+        assert "ERROR: --semantic on requires the [semantic] extras" in err
+        assert "pip install" in err
+
+    def test_semantic_config_default_with_deps_missing_warns_and_degrades(
+        self, monkeypatch, capsys
+    ):
+        """Config says enabled, deps missing, no explicit --semantic flag.
+        Back-compat: warn, return None, let the caller continue without
+        semantic. Don't surprise users with exit 2 just because their
+        config has semantic_enabled=true on a machine without the extras.
+        """
+        from stellars_claude_code_plugins.document_processing.cli import (
+            _build_semantic_grounder,
+        )
+
+        monkeypatch.setattr(settings_mod, "is_semantic_available", lambda: False)
+        cfg = settings_mod.Settings(semantic_enabled=True)
+
+        result = _build_semantic_grounder(cfg, cli_override=None)
+        assert result is None
+
+        err = capsys.readouterr().err
+        assert "WARNING: semantic grounding enabled in settings" in err
+        # NOT the explicit-fail error
+        assert "ERROR: --semantic on" not in err
+
+    def test_semantic_off_short_circuits_before_deps_check(self, monkeypatch):
+        """--semantic off returns None before the deps check; setting the
+        availability to False should not matter because we never get there.
+        """
+        from stellars_claude_code_plugins.document_processing.cli import (
+            _build_semantic_grounder,
+        )
+
+        sentinel_called = []
+        monkeypatch.setattr(
+            settings_mod,
+            "is_semantic_available",
+            lambda: sentinel_called.append(True) or False,
+        )
+        cfg = settings_mod.Settings(semantic_enabled=True)
+
+        result = _build_semantic_grounder(cfg, cli_override="off")
+        assert result is None
+        assert sentinel_called == []  # deps-check never invoked
+
+    def test_validate_many_helper_honours_same_contract(self, monkeypatch, capsys):
+        """validate_many.py has a copy of the same function (to dodge a
+        circular import) - it must apply the same hard-fail rule.
+        """
+        from stellars_claude_code_plugins.document_processing.validate_many import (
+            _maybe_build_grounder,
+        )
+
+        monkeypatch.setattr(settings_mod, "is_semantic_available", lambda: False)
+        cfg = settings_mod.Settings(semantic_enabled=False)
+
+        with pytest.raises(SystemExit) as exc_info:
+            _maybe_build_grounder(cfg, semantic_override="on")
+        assert exc_info.value.code == 2
+
+        err = capsys.readouterr().err
+        assert "ERROR: --semantic on requires the [semantic] extras" in err
+
+
 class TestCLISetup:
     """CLI setup subcommand."""
 
