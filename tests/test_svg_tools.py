@@ -2718,6 +2718,230 @@ class TestCheckConnectors:
         assert pts[2] == (300.0, 70.0)
 
 
+class TestLChamferExitDirection:
+    """check_l_chamfer_exit_direction: post-hoc safety net for the
+    "horizontal-out-of-bottom" failure mode where a connector originates
+    on a card edge but its first segment runs parallel to that edge
+    instead of perpendicular.
+    """
+
+    def _build_cards_and_connector(self, conn_points):
+        """Helper to build a CardRect + Connector from raw points."""
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            BBox,
+            CardRect,
+            Connector,
+        )
+
+        cards = [
+            CardRect(
+                elem_id="root-card",
+                label="Root",
+                bbox=BBox(x=494, y=142, w=212, h=80),
+            ),
+            CardRect(
+                elem_id="left-card",
+                label="Left",
+                bbox=BBox(x=150, y=314, w=400, h=260),
+            ),
+        ]
+        conn = Connector(
+            elem_id="conn-1",
+            tag="polyline",
+            points=conn_points,
+        )
+        return cards, [conn]
+
+    def test_horizontal_out_of_bottom_edge_flagged(self):
+        """User's exact failure case: origin (594,222) on root-card bottom
+        edge (y2=222), first segment horizontal to (358,222). Must flag.
+        """
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            check_l_chamfer_exit_direction,
+        )
+
+        cards, connectors = self._build_cards_and_connector(
+            [(594, 222), (358, 222), (350, 230), (350, 314)]
+        )
+        issues = check_l_chamfer_exit_direction(connectors, cards)
+        assert len(issues) == 1
+        assert "[l-chamfer-exit]" in issues[0]
+        assert "bottom edge" in issues[0]
+        assert "first segment is horizontal" in issues[0]
+        assert "root-card" in issues[0]
+
+    def test_vertical_south_stem_passes(self):
+        """Fixed version: 28px south stem before horizontal jog. No flag."""
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            check_l_chamfer_exit_direction,
+        )
+
+        cards, connectors = self._build_cards_and_connector(
+            [(594, 222), (594, 250), (358, 250), (350, 258), (350, 314)]
+        )
+        issues = check_l_chamfer_exit_direction(connectors, cards)
+        assert issues == []
+
+    def test_horizontal_out_of_top_edge_flagged(self):
+        """Symmetric case: origin on top edge, first segment horizontal."""
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            BBox,
+            CardRect,
+            Connector,
+            check_l_chamfer_exit_direction,
+        )
+
+        # Card at y=200..280; origin at (300,200) is on top edge.
+        cards = [
+            CardRect(
+                elem_id="top-card",
+                label="Top",
+                bbox=BBox(x=250, y=200, w=200, h=80),
+            )
+        ]
+        connectors = [
+            Connector(
+                elem_id="conn-top",
+                tag="polyline",
+                points=[(300, 200), (100, 200), (100, 50)],
+            )
+        ]
+        issues = check_l_chamfer_exit_direction(connectors, cards)
+        assert len(issues) == 1
+        assert "top edge" in issues[0]
+        assert "first segment is horizontal" in issues[0]
+
+    def test_vertical_out_of_left_edge_flagged(self):
+        """Vertical edge case: origin on left edge, first segment vertical."""
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            BBox,
+            CardRect,
+            Connector,
+            check_l_chamfer_exit_direction,
+        )
+
+        cards = [
+            CardRect(
+                elem_id="side-card",
+                label="Side",
+                bbox=BBox(x=100, y=200, w=200, h=200),
+            )
+        ]
+        connectors = [
+            Connector(
+                elem_id="conn-side",
+                tag="polyline",
+                points=[(100, 300), (100, 100), (300, 100)],
+            )
+        ]
+        issues = check_l_chamfer_exit_direction(connectors, cards)
+        assert len(issues) == 1
+        assert "left edge" in issues[0]
+        assert "first segment is vertical" in issues[0]
+
+    def test_short_first_segment_skipped(self):
+        """Zero-length / sub-10px first segments are ignored - other
+        checks (check_zero_length, check_l_routing) handle those.
+        """
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            check_l_chamfer_exit_direction,
+        )
+
+        cards, connectors = self._build_cards_and_connector(
+            [(594, 222), (599, 222), (599, 314)]  # 5px first segment
+        )
+        issues = check_l_chamfer_exit_direction(connectors, cards)
+        assert issues == []
+
+    def test_origin_far_from_any_card_edge_not_flagged(self):
+        """Origin away from card edges: no edge-direction relationship,
+        so no flag fires even if first segment is horizontal.
+        """
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            check_l_chamfer_exit_direction,
+        )
+
+        cards, connectors = self._build_cards_and_connector(
+            [(800, 50), (400, 50), (400, 100)]  # origin in empty space
+        )
+        issues = check_l_chamfer_exit_direction(connectors, cards)
+        assert issues == []
+
+    def test_l_chamfer_calc_emits_missing_start_dir_warning(self):
+        """The calc_l_chamfer path (Tier 1) emits MISSING-START-DIR-LCHAMFER
+        when src_rect is supplied without --start-dir. Token-prefix should
+        be present in the warning text so the gate output is grep-able.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_l_chamfer,
+        )
+
+        result = calc_l_chamfer(
+            src_x=None,
+            src_y=None,
+            tgt_x=None,
+            tgt_y=None,
+            src_rect=(100, 100, 200, 80),
+            tgt_rect=(500, 400, 200, 80),
+            start_dir=None,  # missing
+            end_dir="N",
+            arrow="end",
+        )
+        warnings = result.get("warnings", [])
+        assert any("MISSING-START-DIR-LCHAMFER" in w for w in warnings), (
+            f"expected MISSING-START-DIR-LCHAMFER in warnings; got: {warnings}"
+        )
+
+    def test_l_chamfer_calc_emits_missing_end_dir_warning(self):
+        """Symmetric: missing --end-dir with tgt_rect supplied."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_l_chamfer,
+        )
+
+        result = calc_l_chamfer(
+            src_x=None,
+            src_y=None,
+            tgt_x=None,
+            tgt_y=None,
+            src_rect=(100, 100, 200, 80),
+            tgt_rect=(500, 400, 200, 80),
+            start_dir="S",
+            end_dir=None,  # missing
+            arrow="end",
+        )
+        warnings = result.get("warnings", [])
+        assert any("MISSING-END-DIR-LCHAMFER" in w for w in warnings), (
+            f"expected MISSING-END-DIR-LCHAMFER in warnings; got: {warnings}"
+        )
+
+    def test_l_chamfer_both_directions_declared_no_missing_dir_warning(self):
+        """When both --start-dir and --end-dir are passed, neither
+        MISSING-*-DIR-LCHAMFER warning should fire.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            calc_l_chamfer,
+        )
+
+        result = calc_l_chamfer(
+            src_x=None,
+            src_y=None,
+            tgt_x=None,
+            tgt_y=None,
+            src_rect=(100, 100, 200, 80),
+            tgt_rect=(500, 400, 200, 80),
+            start_dir="S",
+            end_dir="N",
+            arrow="end",
+        )
+        warnings = result.get("warnings", [])
+        assert not any("MISSING-START-DIR-LCHAMFER" in w for w in warnings), (
+            f"unexpected MISSING-START-DIR warning: {warnings}"
+        )
+        assert not any("MISSING-END-DIR-LCHAMFER" in w for w in warnings), (
+            f"unexpected MISSING-END-DIR warning: {warnings}"
+        )
+
+
 class TestCheckOverlaps:
     """CLI + --inject-bounds / --strip-bounds for check_overlaps.py. 4 -> 1."""
 
@@ -5500,9 +5724,7 @@ def _ack_all(reason: str = "test fixture"):
 class TestBoolean:
     def test_two_squares_union_single_island(self, two_squares_svg):
         runner = _ack_all()
-        proc = runner(
-            ["--op", "union", "--svg", str(two_squares_svg), "--ids", "sq-a", "sq-b"]
-        )
+        proc = runner(["--op", "union", "--svg", str(two_squares_svg), "--ids", "sq-a", "sq-b"])
         assert proc.returncode == 0, proc.stderr
         assert "<path" in proc.stdout
         assert "kind=polygon" in proc.stdout
@@ -5545,9 +5767,7 @@ class TestBoolean:
     def test_two_squares_xor_two_islands(self, two_squares_svg):
         # XOR of two corner-overlapping squares = two L-pieces.
         runner = _ack_all()
-        proc = runner(
-            ["--op", "xor", "--svg", str(two_squares_svg), "--ids", "sq-a", "sq-b"]
-        )
+        proc = runner(["--op", "xor", "--svg", str(two_squares_svg), "--ids", "sq-a", "sq-b"])
         assert proc.returncode == 0, proc.stderr
         # Two disconnected L-shapes => RESULT-MULTI-ISLAND fires.
         assert "islands=2" in proc.stdout
@@ -5693,8 +5913,8 @@ class TestBoolean:
         assert proc.returncode == 0, proc.stderr
         # Output should be a valid full SVG with id=bg now carrying a path d=,
         # and the original class="card" preserved.
-        assert "id=\"bg\"" in proc.stdout
-        assert "class=\"card\"" in proc.stdout
+        assert 'id="bg"' in proc.stdout
+        assert 'class="card"' in proc.stdout
         # Must contain at least one path-data move command.
         assert ' d="M ' in proc.stdout
 

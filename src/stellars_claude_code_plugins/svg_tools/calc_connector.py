@@ -787,10 +787,20 @@ def _resolve_l_endpoints_from_rects(
         if start_card is not None:
             resolved_src = _rect_edge_midpoint(src_rect, exit_edge[start_card])
         else:
+            # MISSING-START-DIR-LCHAMFER: L / L-chamfer with src_rect but no
+            # cardinal start_dir lets the geometric inference run, which can
+            # produce a path that exits parallel to the source edge (the
+            # "horizontal-out-of-bottom" failure mode). Gate-warning so the
+            # caller either passes --start-dir OR consciously acks that the
+            # inferred-axis path is intended.
             warnings.append(
-                "L route: src_rect supplied without cardinal start_dir; "
-                "endpoint inferred from centre-to-target ray — route may "
-                "run parallel to an edge. Pass --start_dir E|W|N|S to snap."
+                "MISSING-START-DIR-LCHAMFER: src_rect supplied without "
+                "--start-dir E|W|N|S. Geometric inference will pick the "
+                "first axis from the target's relative position - this can "
+                "produce a path that exits parallel to the source edge "
+                "(e.g. horizontal exit from a card's bottom edge). Pass "
+                "--start-dir explicitly OR ack with reason "
+                "'inferred-axis-intended'."
             )
             sx_c = src_rect[0] + src_rect[2] / 2
             sy_c = src_rect[1] + src_rect[3] / 2
@@ -802,10 +812,17 @@ def _resolve_l_endpoints_from_rects(
         if end_card is not None:
             resolved_tgt = _rect_edge_midpoint(tgt_rect, entry_edge[end_card])
         else:
+            # MISSING-END-DIR-LCHAMFER: symmetric to the above, for the
+            # target side. Inferred end_dir can produce a final approach
+            # that runs parallel to the target edge instead of entering
+            # it perpendicularly.
             warnings.append(
-                "L route: tgt_rect supplied without cardinal end_dir; "
-                "endpoint inferred from centre-to-source ray — route may "
-                "run parallel to an edge. Pass --end_dir E|W|N|S to snap."
+                "MISSING-END-DIR-LCHAMFER: tgt_rect supplied without "
+                "--end-dir E|W|N|S. Geometric inference will pick the "
+                "final approach axis from source position - this can "
+                "produce a path that approaches parallel to the target "
+                "edge. Pass --end-dir explicitly OR ack with reason "
+                "'inferred-axis-intended'."
             )
             tx_c = tgt_rect[0] + tgt_rect[2] / 2
             ty_c = tgt_rect[1] + tgt_rect[3] / 2
@@ -1847,6 +1864,41 @@ def calc_l_chamfer(
         first_reserve=first_reserve,
         last_reserve=last_reserve,
     )
+
+    # ROUTE-AXIS-MISMATCH + SHORT-FIRST-SEGMENT post-threading checks.
+    # Even when start_dir is declared, the threader can occasionally
+    # produce a first segment whose axis disagrees with the declaration
+    # (e.g. when control waypoints force a different topology) or whose
+    # length is below the 28px clarity floor (visible-stem rule). Surface
+    # both as gate warnings.
+    _MIN_FIRST_SEGMENT_PX = 28.0
+    _check_start_card = _direction_to_cardinal(start_dir)
+    if _check_start_card is not None and len(pts) >= 2:
+        x0, y0 = pts[0]
+        x1, y1 = pts[1]
+        first_axis_actual = "h" if y0 == y1 else ("v" if x0 == x1 else "diagonal")
+        first_axis_expected = "h" if _check_start_card in ("E", "W") else "v"
+        if first_axis_actual != first_axis_expected:
+            warnings.append(
+                f"ROUTE-AXIS-MISMATCH: first segment is {first_axis_actual} "
+                f"but start_dir={start_dir} expects {first_axis_expected}. "
+                "The routed path exits parallel to the source edge instead "
+                "of perpendicular - visually the connector appears to leave "
+                "the wrong face of the source. Adjust waypoints or accept "
+                "with reason 'topology-overrides-start-dir'."
+            )
+        else:
+            first_segment_length = abs(x1 - x0) + abs(y1 - y0)
+            if first_segment_length + 0.5 < _MIN_FIRST_SEGMENT_PX:
+                warnings.append(
+                    f"SHORT-FIRST-SEGMENT: first {first_axis_actual} segment "
+                    f"is {first_segment_length:.0f}px (< "
+                    f"{int(_MIN_FIRST_SEGMENT_PX)}px clarity floor). Without "
+                    "a visible perpendicular stem the path appears to exit "
+                    "from the side of the source rect, not its declared edge. "
+                    "Move the next control point further out, OR ack with "
+                    "reason 'tight-geometry-required'."
+                )
 
     # If the geometry could not accommodate stem_min behind the arrows,
     # emit a non-fatal warning so the caller knows the stem target was

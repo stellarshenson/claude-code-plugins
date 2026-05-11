@@ -35,6 +35,20 @@ If the wrong direction ships the diagram tells the wrong story. The `check` subc
 - `spline` - PCHIP through 3+ waypoints. Use when the path must curve around existing geometry.
 - `manifold` - N starts converge through a shared spine, fork to M ends. Use for "many sources produce into one pipeline" or "one source broadcasts to many consumers". Spine MUST pass through a deliberate gap between intermediate elements.
 
+## L / L-chamfer exit-direction gate (MANDATORY)
+
+When passing `--src-rect` and / or `--tgt-rect` to `calc_connector --mode l` / `--mode l-chamfer`, ALWAYS pass `--start-dir` and `--end-dir` (E / W / N / S). The toolchain enforces this through THREE gates:
+
+1. **`MISSING-START-DIR-LCHAMFER` / `MISSING-END-DIR-LCHAMFER`** (calc_l_chamfer pre-routing) - fires whenever `src_rect` / `tgt_rect` is supplied without the corresponding direction. Without the cardinal direction the router falls back to geometric inference, which can produce a path that exits parallel to the source edge (the "horizontal-out-of-bottom" failure - a connector that leaves a card's bottom edge horizontally instead of dropping south first, visually appearing to exit the side). Fix by passing the direction explicitly; ack only with reason `'inferred-axis-intended'` and confirm the geometric inference is what you actually want.
+
+2. **`ROUTE-AXIS-MISMATCH`** (calc_l_chamfer post-threading) - fires when the threader produced a first segment whose axis disagrees with the declared `start_dir`. Happens when control waypoints or auto-routing override the direction lock. Ack with reason `'topology-overrides-start-dir'` if the override is intentional, otherwise fix the waypoints.
+
+3. **`SHORT-FIRST-SEGMENT`** (calc_l_chamfer post-threading) - fires when the first axis-aligned segment is shorter than 28px (the visible-stem clarity floor). Without a visible perpendicular stem the path appears to exit from the side of the source rect, not its declared edge. Move the next control point further out, OR ack with reason `'tight-geometry-required'` if the layout forces it.
+
+4. **`check_l_chamfer_exit_direction`** (post-hoc validator in `svg-infographics connectors`) - safety net for hand-written SVGs that never invoked `calc_connector`. Detects connectors whose origin sits within 3px of a card edge AND whose first segment runs parallel to that edge. Catches the same failure mode at the validation surface.
+
+Cross-reference: the `connectors` CLI runs check #4 automatically as part of its check matrix. The other three flow through `calc_connector`'s stop-and-think gate (see "Stop-and-think warning-ack gate" section below).
+
 ## Stem-to-head ratio (40/60 rule)
 
 Arrowhead must be AT MOST 40% of total connector length. Equivalently: stem length >= 60% of total. Stubby arrows (head dominates) read as misclicked shapes rather than directional connectors.

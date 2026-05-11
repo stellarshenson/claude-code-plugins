@@ -53,6 +53,7 @@ Every visible pixel traces back to a CLI call. Palette:
 - `shapes` - 1000+ draw.io stencil icons
 - `background` - procedural textures (circuit, neural, topo, grid, celtic, organic)
 - `text-to-path` - exact text bbox via TTF outline
+- `shaders` (beautify dimension 8) - 10 shader-mimicking SVG filter recipes: frosted-glass, water-ripple, iridescent, chromatic-aberration, embossed-metal, light-leak, bokeh, lens-flare, holographic-foil, paper-grain. See `rules/shaders.md` for canonical `<defs>` blocks + composition examples + anti-patterns
 - `overlaps` / `contrast` / `alignment` / `connectors` / `css` / `validate` / `collide` - per-defect validators, rolled up by `finalize`
 - `render-png` - SVG → PNG via Playwright
 
@@ -94,7 +95,7 @@ Verify: `svg-infographics --help`. Never ask the user whether to install - just 
 14. **Read examples** - study `examples/` (66 references) before each image
 15. **Unicode glyphs in `<text>`** - `→` not `->`, `←` not `<-`, `↔` not `<->`, `…` not `...`, `—` not `--`, `×` not `x`, `•` not `*`. ASCII arrow in any text node = FAIL
 16. **Connector tool for every arrow** - hand-coded `<path d="M...">` for any routed line = FAIL. Not even "just 10 pixels"
-17. **MS Word scaling compatibility** - every SVG must render cleanly when inserted and scaled in Word. (a) common fonts only (Segoe UI / Arial / Calibri); (b) stroke-width >= 0.5 (thinner vanishes on print rasterisation); (c) no `filter` / `mask` / `foreignObject` / animations (Word ignores them, output breaks); (d) light-mode fills stand alone - Word shows light-mode unconditionally so never rely on dark `@media` for the primary render; (e) explicit `viewBox` + `preserveAspectRatio="xMidYMid meet"`; (f) avoid text-on-path, textPath, gradients with > 4 stops. Test at 25% and 200% scale - text + connectors legible at both ends
+17. **MS Word scaling compatibility** - every SVG must render cleanly when inserted and scaled in Word. (a) common fonts only (Segoe UI / Arial / Calibri); (b) stroke-width >= 0.5 (thinner vanishes on print rasterisation); (c) no `filter` / `mask` / `foreignObject` / animations in the Word-targeted variant (Word ignores them, output breaks); (d) light-mode fills stand alone - Word shows light-mode unconditionally so never rely on dark `@media` for the primary render; (e) explicit `viewBox` + `preserveAspectRatio="xMidYMid meet"`; (f) avoid text-on-path, textPath, gradients with > 4 stops. Test at 25% and 200% scale - text + connectors legible at both ends. **Exception**: beautify dimension 8 (shader effects) IS allowed when the print-strip workflow is enabled - it produces a `<file>+_print.svg` variant with all `<filter>` defs and `filter=` attributes stripped, which the article skill picks for Word delivery while the `<file>+.svg` live variant carries the effects for web rendering. See `rules/shaders.md`
 
 ## Phase gates (shortcut; full detail in `references/workflow.md`)
 

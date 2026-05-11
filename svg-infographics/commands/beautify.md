@@ -116,12 +116,25 @@ If the user skips the free-text brief (empty answer), note in the brief "no user
 | Glow palette | `cool` / `warm` / `dual` | `dual` |
 | Validation strictness | `strict` / `strict-errors-only` | `strict-errors-only` |
 
-If the user's initial command invocation volunteered any answers inline (e.g. "medium intensity, icons per item, circuit texture"), pre-fill those into the `AskUserQuestion` defaults so the user only confirms the rest.
+**Batch 5: shader effects** (dimension 8 — opt-in)
+
+| Question | Options | Default |
+|----------|---------|---------|
+| Shader mode | `off` / `subtle` / `moderate` / `wild` | `off` |
+| Shader theme | `none` / `frosted-glass` / `water-ripple` / `iridescent` / `chromatic-aberration` / `embossed-metal` / `light-leak` / `bokeh` / `lens-flare` / `holographic-foil` / `paper-grain` / `auto` | `auto` (creative brief decides) |
+| Print compat | `strip-on-export` / `preserve-effects` | `strip-on-export` |
+| Animation | `off` / `subtle` | `off` |
+
+If shader mode is `off` (default), skip Batch 5 entirely — no other Batch-5 questions are asked. When `shader mode != off`, the agent reads `skills/svg-designer/rules/shaders.md` and picks the SVG filter recipe(s) matching the chosen theme (or composes from the creative brief when `theme=auto`). When `print compat = strip-on-export`, beautify writes BOTH `<file>+.svg` (with filters) and `<file>+_print.svg` (filters stripped) per file. Animation default `off` because SMIL filter animations break print rasterisers entirely; `subtle` opts in to one-element water-ripple `seed` animation only.
+
+The questionnaire now totals 18 questions across 5 batches. `AskUserQuestion` still batches at up to 4 per call.
+
+If the user's initial command invocation volunteered any answers inline (e.g. "medium intensity, icons per item, circuit texture, water-ripple shader"), pre-fill those into the `AskUserQuestion` defaults so the user only confirms the rest.
 
 Workflow:
 1. If `./svg-infographics-beautify.md` missing: generate the minimal template above.
 2. Read it. Apply any standing-directive overrides from the local file on top of the shipped defaults.
-3. Walk the 14-question questionnaire. Collect answers.
+3. Walk the 18-question questionnaire (Batch 5 skipped when shader mode = off). Collect answers.
 4. Rewrite the local file's "Resolved pattern" section with the answers.
 5. Append history entry when done.
 6. Sub-agents told: "Read `./svg-infographics-beautify.md` and apply the Resolved pattern."
@@ -138,7 +151,7 @@ Questionnaire asked every run. Resolved pattern rewrites. Directive overrides pe
 
 **Never break layout.** Enhancements = additive only.
 
-## Six dimensions
+## Eight dimensions
 
 ### 1. Colour variation
 
@@ -231,6 +244,26 @@ Luminous highlights via SVG filters. Apply selectively where it reinforces visua
 | **high** | Dramatic. Multi-layer glow, connectors and accent bars, background radial glow |
 | **absurd** | Full bloom. Everything glows, neon double-glow, light leak edges |
 
+### 8. Shader effects
+
+Shader-style atmospheric treatments via native SVG filter primitives — no JavaScript, no Canvas. Ten canonical recipes cover frosted-glass cards, water-ripple distortion ("blurred by water"), iridescent oil-slick sheen, chromatic-aberration lens fringe, embossed-metal bumpmaps, light-leak corner glow, bokeh background dots, anamorphic lens-flare streaks, holographic-foil sheen, and paper-grain canvas texture. Pick from the recipe file - sub-agents paste the chosen `<defs>` block verbatim then apply `filter="url(#name)"` on the target element. Do NOT invent filter chains - noise-based effects need specific parameter ranges to look right.
+
+| Level | Character |
+|-------|-----------|
+| **low** | One effect on one focal element (frosted-glass on title card) |
+| **medium** | 2-3 effects, focal + decorative (frosted cards + paper-grain overlay) |
+| **high** | Multi-effect (frosted cards + water-ripple background + iridescent accents) |
+| **absurd** | Everything (chromatic-aberration titles + water-ripple background + holographic cards + light-leak corners + bokeh + lens-flare) |
+
+**Default OFF.** Most infographics don't need shader effects - they add file size and break print rasterisers (Word / LibreOffice drop SVG filters entirely). Opt-in via questionnaire Batch 5. When `shader mode != off` AND `print compat = strip-on-export` (the default), beautify produces TWO files: `<file>+.svg` with filters and `<file>+_print.svg` with all `<filter>` defs and `filter=` attributes stripped. The article skill picks the print variant for Word delivery, the live variant for web.
+
+**Recipe file**: `skills/svg-designer/rules/shaders.md` — 10 canonical SVG filter chains with copy-paste-ready `<defs>` blocks, level guidance, anti-patterns, and 5 worked combination examples (underwater report card, premium proposal, vintage photo article, blueprint diagram, holographic banner). Read this BEFORE writing any filter.
+
+**Compatible combinations** (2-3 effects compose well; >3 stops rendering correctly):
+- water-ripple + frosted-glass + bokeh = "submerged" theme
+- holographic-foil + paper-grain + chromatic-aberration = "premium proposal" theme
+- light-leak + paper-grain + embossed-metal = "vintage photo" theme
+
 ## Documentation comment
 
 **MANDATORY**: append an `<!-- beautify -->` XML comment block inside the SVG (after the existing file description comment) documenting what was done:
@@ -243,6 +276,7 @@ Luminous highlights via SVG filters. Apply selectively where it reinforces visua
   embroidery: dot backgrounds 8px spacing, decorative end-caps on dividers
   abstract: 15 accent particles, 2 background arcs
   glow: cool accent-1 stdDev=3 on connectors, warm accent-2 stdDev=2 on focal cards
+  shaders: frosted-glass on card bodies, paper-grain overlay alpha 0.05 (print variant emitted as `<file>+_print.svg`)
 -->
 ```
 
@@ -257,6 +291,8 @@ This comment allows future agents to understand what decorations were applied, a
 5. Size targets: <50KB medium, <100KB high. Absurd unlimited
 6. Text stays legible. Decoration interferes with contrast = reduce or remove
 7. Run `overlaps` + `contrast` validators after. Broken validation = broken embroidery
+8. **Shader effects require print-strip**. When `shader mode != off` AND `print compat = strip-on-export`, produce TWO files per source: `<file>+.svg` (filters applied) AND `<file>+_print.svg` (every `<filter>` def removed from `<defs>` and every `filter="url(#...)"` attribute stripped from elements). The article skill picks the print variant for Word delivery, the live variant for web. When `print compat = preserve-effects`, only the live variant is produced and the user accepts that Word will render filters flat (i.e. without effect)
+9. **Shader perf budget**. Max 3 filter primitives per chain. Max 4 distinct named filters per SVG. `filterUnits="userSpaceOnUse"` MANDATORY with explicit `x` / `y` / `width` / `height` regions — never `objectBoundingBox` on shader filters, the region calculation gets the noise-based effects wrong and produces invisible output. SMIL animation off by default; opt-in via Batch 5 `animation: subtle` and only for ONE element
 
 ## Workflow
 
@@ -270,7 +306,7 @@ For each file passed in arguments, read the SVG completely. Parse the XML commen
 
 ### Step 3: Run the mandatory questionnaire
 
-Walk the user through all 14 questions from the directive file. Use `AskUserQuestion` if available, otherwise present them as a numbered list and wait for all answers. Do NOT shortcut, do NOT use previous runs' answers. Every run re-asks. This is the guard against silent drift.
+Walk the user through all 18 questions from the directive file (Batch 5 skipped when shader mode = off). Use `AskUserQuestion` if available, otherwise present them as a numbered list and wait for all answers. Do NOT shortcut, do NOT use previous runs' answers. Every run re-asks. This is the guard against silent drift.
 
 Defaults are allowed - the user may answer "default" to accept the Default column for any question. "Skip" marks a dimension as off for this run. Custom values are copied verbatim.
 

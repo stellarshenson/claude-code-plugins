@@ -387,6 +387,94 @@ def check_l_routing(connectors: list[Connector], tol: float = 2.0) -> list[str]:
     return issues
 
 
+# Safety-net validator for L-chamfer connectors authored without
+# invoking calc_connector (e.g. hand-written SVG paths). Catches the
+# "horizontal-out-of-bottom" failure mode where the first segment of a
+# multi-point polyline runs parallel to the source card's edge instead
+# of perpendicular. Heuristic, not exact - relies on geometric proximity
+# to a card edge as the source-edge signal.
+_EDGE_PROXIMITY_TOL_PX = 3.0
+_PARALLEL_FIRST_SEG_MIN_PX = 10.0
+
+
+def check_l_chamfer_exit_direction(
+    connectors: list[Connector],
+    cards: list[CardRect],
+    edge_tol: float = _EDGE_PROXIMITY_TOL_PX,
+) -> list[str]:
+    """Check: flag connector first segments that exit parallel to a card edge.
+
+    For each polyline / path with 2+ points, check whether the origin is
+    within ``edge_tol`` pixels of any card edge (top / bottom / left /
+    right). If so, the first segment SHOULD run perpendicular to that
+    edge (e.g. origin on a bottom edge -> first segment vertical, going
+    south). When the first segment instead runs parallel to that edge
+    (e.g. horizontal out of a bottom edge), flag it - the visual result
+    is a connector that appears to leave the wrong face of the source.
+
+    This is the post-hoc safety net for hand-written SVGs where
+    calc_l_chamfer's MISSING-START-DIR-LCHAMFER and ROUTE-AXIS-MISMATCH
+    warnings never had a chance to fire.
+    """
+    issues = []
+    for c in connectors:
+        if c.tag not in ("polyline", "path"):
+            continue
+        if len(c.points) < 2:
+            continue
+        cid = c.elem_id or "(no id)"
+        x0, y0 = c.points[0]
+        x1, y1 = c.points[1]
+        dx = x1 - x0
+        dy = y1 - y0
+        # Skip degenerate first segments (zero-length or diagonal -
+        # check_zero_length / check_l_routing handle those).
+        first_len = abs(dx) + abs(dy)
+        if first_len < _PARALLEL_FIRST_SEG_MIN_PX:
+            continue
+        # Identify the source card edge by proximity to the origin.
+        # Edge labels: "top" / "bottom" / "left" / "right".
+        for card in cards:
+            bb = card.bbox
+            on_top = abs(y0 - bb.y) <= edge_tol and bb.x - edge_tol <= x0 <= bb.x2 + edge_tol
+            on_bottom = abs(y0 - bb.y2) <= edge_tol and bb.x - edge_tol <= x0 <= bb.x2 + edge_tol
+            on_left = abs(x0 - bb.x) <= edge_tol and bb.y - edge_tol <= y0 <= bb.y2 + edge_tol
+            on_right = abs(x0 - bb.x2) <= edge_tol and bb.y - edge_tol <= y0 <= bb.y2 + edge_tol
+            # Choose the FIRST matching edge so a corner-snapped origin
+            # doesn't trigger multiple times. Cards with id "card-X" are
+            # preferred over container groups, but the input order is
+            # what we get.
+            if on_top or on_bottom:
+                # Horizontal edge: first segment must be vertical (perp).
+                if abs(dy) <= edge_tol and abs(dx) > edge_tol:
+                    edge_label = "top" if on_top else "bottom"
+                    issues.append(
+                        f"[l-chamfer-exit] Connector id={cid} originates "
+                        f"at ({x0:.0f},{y0:.0f}) on card id={card.elem_id} "
+                        f"{edge_label} edge but first segment is horizontal "
+                        f"({dx:+.0f}px). Expected vertical exit segment "
+                        f"perpendicular to the edge - the path appears to "
+                        f"leave the wrong face. Add a perpendicular stem "
+                        f"before the first horizontal jog."
+                    )
+                    break
+            if on_left or on_right:
+                # Vertical edge: first segment must be horizontal (perp).
+                if abs(dx) <= edge_tol and abs(dy) > edge_tol:
+                    edge_label = "left" if on_left else "right"
+                    issues.append(
+                        f"[l-chamfer-exit] Connector id={cid} originates "
+                        f"at ({x0:.0f},{y0:.0f}) on card id={card.elem_id} "
+                        f"{edge_label} edge but first segment is vertical "
+                        f"({dy:+.0f}px). Expected horizontal exit segment "
+                        f"perpendicular to the edge - the path appears to "
+                        f"leave the wrong face. Add a perpendicular stem "
+                        f"before the first vertical jog."
+                    )
+                    break
+    return issues
+
+
 # Stubby-arrow rule: head must be AT MOST 40% of total connector length.
 # Hardcoded because it's a visual-quality constant, not a tunable.
 _MAX_HEAD_FRACTION = 0.40
@@ -501,6 +589,7 @@ def main():
     all_issues.extend(check_zero_length(connectors))
     all_issues.extend(check_edge_snap(connectors, cards))
     all_issues.extend(check_l_routing(connectors))
+    all_issues.extend(check_l_chamfer_exit_direction(connectors, cards))
     all_issues.extend(check_label_clearance(connectors, labels))
     all_issues.extend(check_stem_head_ratio(connectors, arrowheads))
 
