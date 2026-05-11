@@ -17,10 +17,12 @@ Solves:
 
 Phase instructions, agent definitions, exit criteria live in `resources/`. Run `start` to see what each phase requires.
 
-## Setup
+## Pre-flight install (MANDATORY - run every session, no asking)
+
+Always run this single line BEFORE invoking `orchestrate`. No-op when the package is already importable; auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python:
 
 ```bash
-pip install stellars-claude-code-plugins
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
 `orchestrate` CLI appears after install. Or run entrypoint directly:
@@ -29,7 +31,7 @@ pip install stellars-claude-code-plugins
 python .claude/skills/autobuild/orchestrate.py
 ```
 
-Both share the same engine.
+Both share the same engine. Never ask the user whether to install - just run the pre-flight line.
 
 ## Triggers
 

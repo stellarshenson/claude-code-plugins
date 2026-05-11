@@ -7,6 +7,16 @@ description: Design and execute structured document processing workflows. Takes 
 
 Meta-skill for structured document processing. Generates tailored program (INSTRUCTIONS.md + BENCHMARK.md), scaffolds WIP folder, executes. Does not process documents directly.
 
+## Pre-flight install (MANDATORY - run every session, no asking)
+
+Always run this single line BEFORE invoking `document-processing`. No-op when the package is already importable; auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python:
+
+```bash
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+```
+
+Never ask the user whether to install - just run the line.
+
 ## Invocation
 
 `/process-documents <objective description>`

@@ -56,13 +56,15 @@ Every visible pixel traces back to a CLI call. Palette:
 - `overlaps` / `contrast` / `alignment` / `connectors` / `css` / `validate` / `collide` - per-defect validators, rolled up by `finalize`
 - `render-png` - SVG → PNG via Playwright
 
-## Install
+## Pre-flight install (MANDATORY - run every session, no asking)
+
+Always run this single line BEFORE invoking `svg-infographics` or `render-png`. No-op when the package is already importable; auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python:
 
 ```bash
-pip install stellars-claude-code-plugins
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
-Verify: `svg-infographics --help`. No install = no tool = no validation = no delivery.
+Verify: `svg-infographics --help`. Never ask the user whether to install - just run the line. No install = no tool = no validation = no delivery.
 
 ## First steps (every session)
 

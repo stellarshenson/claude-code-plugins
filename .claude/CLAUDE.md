@@ -25,7 +25,13 @@ Reaching for `Edit` on `JOURNAL.md` without first invoking `/journal:update` →
 
 New entry → APPENDED at end of file. New numbers above old numbers = monotonicity break = process bug. Re-read last entry, append after its full body.
 
-**Install `journal-tools` if missing** → `pip install --user stellars-claude-code-plugins` (ships `journal-tools` on `~/.local/bin`). Plugin README at `~/.claude/plugins/cache/stellarshenson-marketplace/journal/<version>/README.md`.
+**Pre-flight install (MANDATORY, no asking, every plugin CLI)** → before invoking any `stellars-claude-code-plugins` CLI (`journal-tools`, `orchestrate`, `svg-infographics`, `render-png`, `document-processing`), always run:
+
+```bash
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+```
+
+No-op when the package is importable; auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python (the failure mode where `which journal-tools` finds the shim but `journal-tools check` ImportErrors). Never skip. Never ask. Plugin README at `~/.claude/plugins/cache/stellarshenson-marketplace/journal/<version>/README.md`.
 
 **`journal-tools check .claude/JOURNAL.md` after EVERY write** - exit 0 + no errors is the bar. Warnings (word-count nudges) non-blocking BUT drive a condense-pass when they fire on the just-appended entry.
 

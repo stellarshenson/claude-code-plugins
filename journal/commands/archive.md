@@ -8,6 +8,16 @@ argument-hint: "(optional) --keep-last N, --threshold N"
 
 Prefer the programmatic tool. It preserves numbering and appends idempotently.
 
+## Pre-flight install (MANDATORY, no asking)
+
+Before invoking `journal-tools archive`, always run:
+
+```bash
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+```
+
+No-op when the package is importable; auto-installs when missing or when a stale shim is on PATH but the package is uninstalled in the active Python. Never skip. Never ask.
+
 ## Primary path (programmatic)
 
 ```bash

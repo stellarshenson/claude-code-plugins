@@ -57,25 +57,47 @@ print(f"Visible GPUs: {torch.cuda.device_count()}")  # Should be 1
 print(f"GPU 0: {torch.cuda.get_device_name(0)}")     # Should be target GPU
 ```
 
-### 5. Display GPU Info with Rich (Notebooks)
+### 5. Display GPU Info with Rich in the Configuration Cell
 
-In Jupyter notebooks, display GPU configuration using Rich for formatted output:
+**Mandatory when the notebook uses CUDA.** The Configuration cell's Rich render MUST include a `[bold]Device[/bold]` sub-section showing the GPU name. Without it the agent + human reader cannot tell whether `CUDA_VISIBLE_DEVICES` actually selected the intended device. Catches the silent wrong-device bug.
+
+Capture the device details right above the Rich render (still inside the Configuration cell):
 
 ```python
-import rich.jupyter as rich
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A"
+gpu_compute_cap = (
+    f"{torch.cuda.get_device_properties(0).major}."
+    f"{torch.cuda.get_device_properties(0).minor}"
+    if torch.cuda.is_available()
+    else "N/A"
+)
+gpu_memory_gb = (
+    torch.cuda.get_device_properties(0).total_memory / 1e9
+    if torch.cuda.is_available()
+    else 0
+)
+```
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A'
-cuda_visible = os.environ.get('CUDA_VISIBLE_DEVICES', 'not set')
+Embed in the Rich render as the last sub-section so it sits next to the resolved device:
 
-rich.print(f"""[white]Device:[/white]
-  Device: [cyan]{device}[/cyan]
+```python
+from rich import print as rprint
+
+rprint(f"""[bold cyan]Configuration[/bold cyan]
+[dim]{"─" * 40}[/dim]
+[bold]Model[/bold]
+  ...
+
+[bold]Device[/bold]
+  Using: [green]{device}[/green]
   GPU: [cyan]{gpu_name}[/cyan]
-  CUDA_VISIBLE_DEVICES: [cyan]{cuda_visible}[/cyan]
+  Compute cap: [yellow]{gpu_compute_cap}[/yellow]
+  Memory: [yellow]{gpu_memory_gb:.1f} GB[/yellow]
 """)
 ```
 
-Include this in the Configuration cell to confirm GPU selection.
+**Verification rule**: if you import torch BEFORE setting `CUDA_VISIBLE_DEVICES`, the env var has no effect for the rest of the process. Always set the env var in the GPU Selection section (notebook section 2) BEFORE the Imports section. The Rich render's `GPU:` line is the eyes-on confirmation that this ordering worked.
 
 ### 6. Monitor During Execution
 

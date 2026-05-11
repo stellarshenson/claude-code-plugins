@@ -8,13 +8,15 @@ allowed-tools: [Read, Write, Edit, Bash, Glob]
 
 Project audit trail. Every substantive task = one entry. Append at END. Last entry = newest.
 
-## Install (MANDATORY)
+## Pre-flight install (MANDATORY - run every session, no asking)
+
+Always run this single line BEFORE invoking any `journal-tools` subcommand. It is a no-op when the package is already importable; it auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python (the failure mode where `which journal-tools` finds the shim but `journal-tools check` ImportErrors):
 
 ```bash
-pip install stellars-claude-code-plugins
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
-Ships `journal-tools` CLI (`check`, `sort`, `archive`). Verify: `journal-tools --help`. Without install no post-write validation, no deterministic archive, no renumber.
+Ships `journal-tools` CLI (`check`, `sort`, `archive`). Verify: `journal-tools --help`. Never skip this step. Never ask the user whether to install - just run the line.
 
 ## Commands
 

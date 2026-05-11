@@ -33,10 +33,14 @@ Read these skills before generating the notebook. They are the source of truth f
 
 5. **Header**: brief narrative paragraph (purpose, method, rationale - 2-4 sentences of flowing prose, not bullets). Approach section with numbered phases explaining "what AND why". Output section listing specific artifacts.
 
-6. **Structure**: follow `notebook-standards` skill exactly - GPU first, imports grouped with autoreload, reproducibility seeds, config cell with rich summary.
+6. **Structure**: follow `notebook-standards` skill exactly - GPU first, imports grouped with autoreload, reproducibility seeds, config cell with sectioned Rich render. **Section overview MANDATORY** - every `## Section Name` header gets a 1-2 sentence overview (or 3-5 bullets when listy) directly below, BEFORE the first code cell.
 
-7. **Styling**: follow `rich-output` skill for all `rprint()` calls - semantic colors per the palette.
+7. **Configuration cell**: hyperparameters with inline comments + sectioned Rich render at the END of the same cell. When GPU is enabled, the render MUST include `[bold]Device[/bold]` sub-section showing `torch.cuda.get_device_name(0)` so the resolved GPU is visible in the output. See `notebook-standards/SKILL.md` Configuration template + `GPU-SETUP.md` section 5.
 
-8. **Progress bars**: if long-running ops, follow `progressbars` skill for the chosen style. Setup text in separate cell.
+8. **Equations and math in markdown**: render LaTeX as equations - `$inline-math$` for inline (e.g. `$P(A|B) = \frac{P(B|A) P(A)}{P(B)}$`), `$$display-math$$` for centred display. Escape stray dollar amounts as `\$` so MathJax does not eat them. Repo `.md` files OUTSIDE the notebook still use the escape-always rule.
 
-9. Report: filename created, pyproject.toml changes, next steps.
+9. **Styling**: follow `rich-output` skill for all `rprint()` calls - semantic colors per the palette.
+
+10. **Progress bars**: if long-running ops, follow `progressbars` skill for the chosen style. Setup text in separate cell.
+
+11. Report: filename created, pyproject.toml changes, next steps.

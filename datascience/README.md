@@ -67,7 +67,7 @@ Create a new project, scaffold the first notebook, then review it:
 
 ## Reference
 
-- [`skills/notebook-standards/SKILL.md`](skills/notebook-standards/SKILL.md) - section order, GPU selection, imports, configuration, naming convention
+- [`skills/notebook-standards/SKILL.md`](skills/notebook-standards/SKILL.md) - section order, GPU selection, imports, configuration, naming convention. Configuration cells use a sectioned Rich render; the active GPU's name (and compute capability + memory) appears in a `[bold]Device[/bold]` sub-section when CUDA is used. Each section carries a 1-2 sentence overview below its header so a scrolling reader can navigate without expanding code. LaTeX renders as equations inside notebook markdown (`$f(x)$`, `$$P(A|B) = \frac{P(B|A) P(A)}{P(B)}$$`); dollar amounts in prose escape as `\$`
 - [`skills/rich-output/SKILL.md`](skills/rich-output/SKILL.md) - semantic colour palette and print patterns
 - [`skills/progressbars/SKILL.md`](skills/progressbars/SKILL.md) - tqdm and rich progress bar recipes
 - [`skills/footnotes/SKILL.md`](skills/footnotes/SKILL.md) - JupyterLab-compatible anchor pattern (standard `[^1]` does not render in JupyterLab)

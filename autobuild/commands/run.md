@@ -8,6 +8,16 @@ argument-hint: "describe what you want to build or improve"
 
 Load and execute the autobuild skill for autonomous iteration orchestration.
 
+## Pre-flight install (MANDATORY, no asking)
+
+Before invoking `orchestrate`, always run:
+
+```bash
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+```
+
+No-op when the package is importable; auto-installs when missing or when a stale shim is on PATH but the package is uninstalled in the active Python.
+
 ## Startup Sequence
 
 When the user asks to run an improvement cycle, execute these skills IN ORDER before starting the orchestrator:

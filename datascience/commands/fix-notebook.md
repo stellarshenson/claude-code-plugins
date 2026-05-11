@@ -29,6 +29,11 @@ Read these skills before making changes. They are the source of truth. Do NOT ha
 - Missing reproducibility -> add set_seed
 - Scattered config -> consolidate with rich summary at end
 - No markdown headers before sections -> add them
+- Section header without overview text below it -> add a 1-2 sentence overview (or 3-5 bullets when listy) before the first code cell of that section. File-level Header section is the sole exception
+- Configuration cell with no Rich render at end -> add the sectioned `rprint(f"""[bold cyan]Configuration[/bold cyan] ...""")` block per the canonical template in `notebook-standards/SKILL.md`
+- Configuration cell on a GPU notebook without `[bold]Device[/bold]` sub-section showing `torch.cuda.get_device_name(0)` -> add the Device block per `GPU-SETUP.md` section 5
+- Markdown cell containing equations as plain text (e.g. `P(A|B) = P(B|A) * P(A) / P(B)`) -> wrap in `$...$` for inline or `$$...$$` for display so MathJax renders them
+- Markdown cell with odd number of unescaped `$` (heuristic for stray dollar amounts that MathJax will eat) -> surface the cell number and ask the user whether each `$` is a price (escape as `\$`) or a math delimiter (leave + verify pairs match)
 
 ### Styling (per `rich-output` skill)
 - Plain `print()` for structured output -> `rprint()` with semantic colors from the skill

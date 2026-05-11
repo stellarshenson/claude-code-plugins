@@ -70,7 +70,15 @@ Full worked examples in `journal/skills/journal/references/examples.md`.
 2. Pick mode (append vs update) per the rule above.
 3. Write the entry in Standard format. Match the user's own summary length; never inflate.
 4. Version tag if the project is versioned (`pyproject.toml` / `package.json` / `Cargo.toml`).
-5. **MUST run `uv run journal-tools check .claude/JOURNAL.md`** after writing. Exit 0 = clean. Any error → fix and re-run. This step is not optional.
+5. **Pre-flight install (MANDATORY, no asking)**: before invoking `journal-tools`, always run:
+
+   ```bash
+   python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+   ```
+
+   No-op when the package is importable; auto-installs when missing or when a stale shim is on PATH but the package is uninstalled in the active Python. Never skip. Never ask the user.
+
+6. **MUST run `uv run journal-tools check .claude/JOURNAL.md`** (or plain `journal-tools check .claude/JOURNAL.md` if `uv` is unavailable) after writing. Exit 0 = clean. Any error → fix and re-run. This step is not optional.
 6. Verify by reading the last 10 lines.
 
 ## CLI tools (mandatory)

@@ -27,7 +27,15 @@ If `.claude/JOURNAL.md` already exists, stop and tell the user to use `/journal:
    ```
 4. Append one entry per work unit, numbered from `1`, in chronological order. Use **Standard format** (~70-120 words, see example below).
 5. Version tag per entry if the project is versioned (`pyproject.toml` / `package.json` / `Cargo.toml`).
-6. **MUST run `uv run journal-tools check .claude/JOURNAL.md`**. Exit 0 = clean. Any error → fix and re-run. Not optional.
+6. **Pre-flight install (MANDATORY, no asking)**:
+
+   ```bash
+   python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+   ```
+
+   No-op when the package is importable; auto-installs when missing or when a stale shim is on PATH but the package is uninstalled in the active Python.
+
+7. **MUST run `uv run journal-tools check .claude/JOURNAL.md`** (or plain `journal-tools check ...` if `uv` is unavailable). Exit 0 = clean. Any error → fix and re-run. Not optional.
 
 ## Format
 

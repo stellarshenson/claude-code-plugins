@@ -8,6 +8,16 @@ argument-hint: "path to source_map.yaml (declares clients[].sources + document)"
 
 Batch-validate a set of client documents declared in a `source_map.yaml` manifest. Runs extract-claims, ground-many (with cross-source provenance), and check-consistency for every client entry, writing per-client reports under a single output root.
 
+## Pre-flight install (MANDATORY, no asking)
+
+Before invoking `document-processing`, always run:
+
+```bash
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+```
+
+No-op when the package is importable; auto-installs when missing or when a stale shim is on PATH but the package is uninstalled in the active Python.
+
 `source_map.yaml` shape:
 
 ```yaml

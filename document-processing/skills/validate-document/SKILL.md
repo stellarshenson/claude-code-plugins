@@ -11,13 +11,15 @@ Two phases: (1) source grounding - extract claims, verify each; (2) compliance -
 
 Every file the skill writes (`grounding-report.md`, `compliance-checklist.md`, `validation-summary.md`, `criteria.md`) uses telegram-style: short clauses, drop articles/copulas where meaning stays clear, one fact per line, bullets not paragraphs, concrete numbers over adjectives, no hedging ("may"/"might"), imperative actions. Reviewers skim for verdicts - prose costs attention.
 
-## Install (MANDATORY)
+## Pre-flight install (MANDATORY - run every session, no asking)
+
+Always run this single line BEFORE invoking `document-processing`. No-op when the package is already importable; auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python:
 
 ```bash
-pip install stellars-claude-code-plugins
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
-Ships `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Without install → manual search only, no programmatic grounding.
+Ships `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask the user whether to install - just run the line. Without install -> manual search only, no programmatic grounding.
 
 ## Check semantic-grounding consent (MANDATORY every run)
 
