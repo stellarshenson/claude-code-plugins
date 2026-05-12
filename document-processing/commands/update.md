@@ -19,7 +19,7 @@ Invoke the `document-processing:update` skill. It updates an existing `3-output/
 ## Flow
 
 1. The skill identifies what exists (`3-output/`, `2-wip/`, `INSTRUCTIONS.md`, `BENCHMARK.md`), asks what changed and which document, then does a targeted update (default) or a full re-run via the `process` skill
-2. Mandatory grounding pass: `extract-claims` -> review -> `ground-many` against every `1-input/` source -> `check-consistency`, via the `grounding` skill; fix every UNCONFIRMED / CONTRADICTED claim and consistency finding
+2. Mandatory grounding pass via the `grounding` skill: `document-processing extract-claims` on the changed doc -> review `claims.json` -> `document-processing batch-ground --claims ... --source <each 1-input/ source> --output validation/grounding-report.md` -> `document-processing check-consistency --document <doc> --output validation/consistency-report.md`; fix every UNCONFIRMED / CONTRADICTED claim and consistency finding
 3. Re-verify against `BENCHMARK.md`, report score delta
 4. WIP manifest updated with what changed, when, and the post-update grounding score
 

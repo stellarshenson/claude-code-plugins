@@ -158,7 +158,7 @@ def _run_single_client(
 
 
 def _render_grounding_report(entry: ClientEntry, matches) -> str:
-    """Compact per-client grounding report (same shape as ground-many output)."""
+    """Compact per-client grounding report (same shape as batch-ground output)."""
     total = len(matches)
     grounded = sum(1 for m in matches if m.match_type in ("exact", "fuzzy", "bm25", "semantic"))
     verify = sum(1 for m in matches if m.verification_needed)
@@ -264,7 +264,7 @@ def run_validate_many(
         )
 
     print(
-        f"validate-many done: {len(entries)} clients, {len(errors)} errors, "
+        f"batch-validate done: {len(entries)} clients, {len(errors)} errors, "
         f"{total_unconfirmed} unconfirmed claims, {total_findings} consistency findings",
         file=sys.stderr,
     )

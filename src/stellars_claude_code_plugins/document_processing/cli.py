@@ -2,10 +2,12 @@
 
 Subcommands:
     ground             - ground a single claim against source files
-    ground-many        - ground many claims (from JSON) against sources, emit report
+    batch-ground       - ground many claims (from JSON) against sources, emit report
+                         (alias: ground-many)
     extract-claims     - heuristic sentence-to-claim extractor for a document
     check-consistency  - intra-document numeric/entity divergence detector
-    validate-many      - batch-run grounding + consistency across many clients
+    batch-validate     - batch-run grounding + consistency across many clients
+                         (alias: validate-many)
     setup              - first-run: configure optional semantic grounding
 """
 
@@ -605,7 +607,7 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
 
 
 def _add_source_format_args(parser: argparse.ArgumentParser) -> None:
-    """Register the source-format / OCR flags shared by ground + ground-many.
+    """Register the source-format / OCR flags shared by ground + batch-ground.
 
     ``--ocr-lang`` is intentionally not defaulted - the agent inspects each
     scanned PDF and supplies the right Tesseract model. The CLI fires
@@ -705,12 +707,13 @@ def _build_parser() -> argparse.ArgumentParser:
     g.set_defaults(func=cmd_ground)
 
     gm = sub.add_parser(
-        "ground-many",
+        "batch-ground",
+        aliases=["ground-many"],
         help="Ground many claims from a JSON file against sources.",
         description=(
             "Batch grounding. Claims JSON = list of strings OR list of "
             "{'claim': str, ...} objects. Emits markdown report by default, "
-            "JSON with --json."
+            "JSON with --json. (Alias: ground-many.)"
         ),
     )
     gm.add_argument("--claims", required=True, help="Path to claims JSON")
@@ -774,7 +777,7 @@ def _build_parser() -> argparse.ArgumentParser:
     # extract-claims subcommand
     ex = sub.add_parser(
         "extract-claims",
-        help="Heuristic sentence-to-claim extractor; emits claims.json for ground-many.",
+        help="Heuristic sentence-to-claim extractor; emits claims.json for batch-ground.",
         description=(
             "Walk a markdown/text document and emit a list of claim candidates. "
             "Assigns stable IDs (c01, c02, ...), keeps order, drops sub-20-char "
@@ -806,14 +809,15 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     cc.set_defaults(func=cmd_check_consistency)
 
-    # validate-many subcommand
+    # batch-validate subcommand
     vm = sub.add_parser(
-        "validate-many",
+        "batch-validate",
+        aliases=["validate-many"],
         help="Batch-run grounding + consistency across clients declared in source_map.yaml.",
         description=(
             "Walk a source_map.yaml (one entry per client: sources[] and "
             "document) and produce validation/<client>/grounding-report.md + "
-            "consistency-report.md per entry."
+            "consistency-report.md per entry. (Alias: validate-many.)"
         ),
     )
     vm.add_argument("--source-map", required=True, help="Path to source_map.yaml")
@@ -912,7 +916,7 @@ def cmd_extract_claims(args: argparse.Namespace) -> int:
     # Lossy by design - warn so the user knows to review before grounding.
     print(
         "NOTE: extract-claims uses a heuristic. Review claims.json before "
-        "running ground-many - short/ambiguous sentences may need rewording.",
+        "running batch-ground - short/ambiguous sentences may need rewording.",
         file=sys.stderr,
     )
     return 0

@@ -11,8 +11,8 @@ Invoke the `document-processing:grounding` skill. Pure grounding - no tone/style
 Three modes (the skill picks based on the argument):
 
 - **Single claim** - `document-processing ground --claim "..." --source <file> --json`
-- **One document** - `extract-claims` -> review `claims.json` -> `ground-many --claims ... --source <each source> --output validation/grounding-report.md`, then `check-consistency`
-- **Many documents** - a `source_map.yaml` declaring `clients[].sources` + `document` (+ optional `primary_source`) -> `document-processing validate-many --source-map source_map.yaml --output-dir validation/`, producing `validation/<client>/{claims.json,grounding-report.md,consistency-report.md}` per client
+- **One document — the full grounding chain (extract → ground → consistency)** - `document-processing extract-claims --document <doc> --output validation/claims.json` -> review `claims.json` -> `document-processing batch-ground --claims validation/claims.json --source <src1> --source <src2> --output validation/grounding-report.md` -> `document-processing check-consistency --document <doc> --output validation/consistency-report.md`. All three steps run; the run produces both `grounding-report.md` and `consistency-report.md`.
+- **Many documents** - a `source_map.yaml` declaring `clients[].sources` + `document` (+ optional `primary_source`) -> `document-processing batch-validate --source-map source_map.yaml --output-dir validation/`, which runs that same chain per client, producing `validation/<client>/{claims.json,grounding-report.md,consistency-report.md}`
 
 ## Pre-flight install (MANDATORY, no asking)
 

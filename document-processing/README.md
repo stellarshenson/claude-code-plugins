@@ -35,7 +35,7 @@ CV results, and corpus data all archived under
 | BM25 (topical) | Same key terms, different word order | core |
 | Semantic (E5 + FAISS) | Same meaning, different wording AND different terms | opt-in |
 
-The fourth layer is off by default — it pulls `torch`, `transformers`, `faiss-cpu`, `pyarrow` and downloads a ~120 MB retrieval model. Enable only when lexical layers leave too many UNCONFIRMED claims.
+The 4th layer needs the `[semantic]` extra (`torch`, `transformers`, `faiss-cpu`, `pyarrow`) and a ~120 MB retrieval model on first use. The `grounding` skill treats semantic as the **default** and recommends enabling it on first run (`document-processing setup`); a bare package install ships it off so nothing surprise-downloads, and the user can decline at `setup` time. Lexical-only is the path you fall to when the user has deliberately opted out.
 
 ### Install (core)
 
@@ -77,14 +77,14 @@ document-processing ground \
 
 # One document: extract claims, then ground them all
 document-processing extract-claims --document docs/brief.md --output validation/claims.json
-document-processing ground-many \
+document-processing batch-ground \
   --claims validation/claims.json \
   --source docs/source.md \
   --output validation/grounding-report.md \
   --semantic on --semantic-threshold 0.85
 
 # Many documents via manifest
-document-processing validate-many --source-map source_map.yaml --output-dir validation/
+document-processing batch-validate --source-map source_map.yaml --output-dir validation/
 
 # Intra-document self-consistency
 document-processing check-consistency --document docs/brief.md --output validation/consistency-report.md
@@ -116,7 +116,7 @@ Each command pairs with a skill of the same name; the skill auto-triggers, the c
 | Skill | Triggers when |
 |-------|--------------|
 | `process` | Building a structured deliverable FROM sources - reconstruct a timeline, draft a statement, assemble a catalogue, synthesize a position paper. Generates a tailored `INSTRUCTIONS.md` + `BENCHMARK.md`. NOT for validating an existing doc (use `validate`) or bare grounding (use `grounding`) |
-| `grounding` | Grounding claims against source(s) via the CLI - "ground", "grounding", "check grounding", "run ground-many", "verify claims against a source". Pure grounding, no compliance. The canonical verification flow; `validate`, `process`, and `update` all call it |
+| `grounding` | Grounding claims against source(s) via the CLI - "ground", "grounding", "check grounding", "run batch-ground", "verify claims against a source". Pure grounding, no compliance. The canonical verification flow; `validate`, `process`, and `update` all call it |
 | `validate` | Validating a document against rules and against its source - "validate document", "validate against rules", "check compliance and grounding", "audit document against source". Runs the `grounding` skill, then adds the compliance layer |
 | `update` | Updating an existing `3-output/` document - "update the document", "add a new source to the timeline", "re-verify after sources changed", "apply corrections to the output". Ends with a mandatory CLI-grounding pass |
 | `pdf` | PDF work - fill a form, extract text/tables, create/merge/split PDFs, OCR a scanned PDF, batch-process. Library reference + pre-built scripts + topic guides for forms, tables, OCR |

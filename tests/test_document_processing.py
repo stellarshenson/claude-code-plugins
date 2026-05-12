@@ -364,7 +364,7 @@ class TestCLI:
         out = tmp_path / "report.md"
         cli_main(
             [
-                "ground-many",
+                "batch-ground",
                 "--claims",
                 str(claims),
                 "--source",
@@ -387,7 +387,7 @@ class TestCLI:
         out = tmp_path / "report.json"
         cli_main(
             [
-                "ground-many",
+                "batch-ground",
                 "--claims",
                 str(claims),
                 "--source",
@@ -403,6 +403,16 @@ class TestCLI:
         assert len(data["matches"]) == 2
         # Location fields should be in the JSON
         assert "exact_location" in data["matches"][0]
+
+    def test_ground_many_alias_still_works(self, tmp_path):
+        # `ground-many` is the legacy alias for `batch-ground`; old scripts must keep working.
+        src = tmp_path / "src.txt"
+        src.write_text("The quick brown fox jumps.")
+        claims = tmp_path / "claims.json"
+        claims.write_text(json.dumps(["brown fox"]))
+        out = tmp_path / "report.md"
+        cli_main(["ground-many", "--claims", str(claims), "--source", str(src), "--output", str(out)])
+        assert "Grounding Report" in out.read_text()
 
     def test_ground_missing_source_errors(self, capsys):
         with pytest.raises(SystemExit):
@@ -622,7 +632,7 @@ class TestBinarySourceFallback:
         claim = tmp_path / "claim.json"
         claim.write_text(json.dumps(["hello world"]))
         with pytest.raises(SystemExit) as exc:
-            cli_main(["ground-many", "--claims", str(claim), "--source", str(p)])
+            cli_main(["batch-ground", "--claims", str(claim), "--source", str(p)])
         # Gate exits 2 with the unacked SOURCE-SKIPPED warning.
         assert exc.value.code == 2
         err = capsys.readouterr().err
@@ -1228,7 +1238,7 @@ class TestCheckConsistency:
 
 
 # -------------------------------------------------------------------------
-# WI#7: validate-many
+# WI#7: batch-validate (alias: validate-many)
 # -------------------------------------------------------------------------
 
 
@@ -1275,7 +1285,7 @@ class TestValidateMany:
         output_dir = tmp_path / "validation"
         code = cli_main(
             [
-                "validate-many",
+                "batch-validate",
                 "--source-map",
                 str(source_map),
                 "--output-dir",

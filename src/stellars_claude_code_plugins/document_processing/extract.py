@@ -1,8 +1,8 @@
-"""Claim extraction: turn a document into a claims.json for ground-many.
+"""Claim extraction: turn a document into a claims.json for batch-ground.
 
 The grounding tool's heaviest manual step is producing the claims list.
 This module provides a deterministic sentence-per-line heuristic extractor
-that emits JSON compatible with ``ground-many --claims``:
+that emits JSON compatible with ``batch-ground --claims``:
 
     [
         {"id": "c01", "claim": "We observed 42 concurrent sessions."},

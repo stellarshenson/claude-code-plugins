@@ -55,7 +55,7 @@ Load references:
 - `references/UNIFORMIZATION.md` - quality control
 - `references/FOLDER-STRUCTURE.md` - folder conventions
 
-For CLI-assisted grounding of HIGH-impact claims during Phase 2 (Verify & Ground), invoke the **`grounding`** skill / `document-processing ground-many` - it carries the deterministic three-layer lexical grounder (+ optional semantic), the OCR fallback chain, and the verdict rules. `references/GROUNDING.md` is the classification methodology; the `grounding` skill is the operational tool.
+For CLI-assisted grounding of HIGH-impact claims during Phase 2 (Verify & Ground), invoke the **`grounding`** skill / `document-processing batch-ground` - it carries the deterministic three-layer lexical grounder (+ optional semantic), the OCR fallback chain, and the verdict rules. `references/GROUNDING.md` is the classification methodology; the `grounding` skill is the operational tool.
 
 When deriving uniformization rules, load the real rule-set examples in `${CLAUDE_PLUGIN_ROOT}/examples/` - a full in-use `INSTRUCTIONS.md` with measurable rules R0-R4 (no-fluff, length range with a preferred band, focus exclusions with example quotes, text format, list-section format) plus a worked uniformization checklist. Use them to make every rule *measurable* (word ranges, per-bullet word counts, exclusion lists with example quotes, a falsifiable "does this sentence change what the reader knows" test). Adapt the shape, not the content.
 

@@ -43,7 +43,11 @@ No-op when the package is importable; auto-installs when missing OR when a stale
    - Re-execute from Phase 1 of the `process` skill using existing + new sources
    - Produces new version in `3-output/`
 
-5. **MANDATORY grounding pass** (every update, no exception): run the grounding CLI on the updated content via the `grounding` skill - `document-processing extract-claims` on the changed document, review `claims.json`, then `document-processing ground-many --claims ... --source <each 1-input/ source> --output validation/grounding-report.md` (add `--semantic on` only if `settings.semantic_enabled == true`), then `document-processing check-consistency --document <updated doc> --output validation/consistency-report.md`. Fix any UNCONFIRMED / CONTRADICTED claim and any consistency finding before declaring done. Apply the `grounding` skill's verdict rules.
+5. **MANDATORY grounding pass** (every update, no exception): run the grounding CLI on the updated content via the `grounding` skill -
+   - `document-processing extract-claims --document <updated doc> --output validation/claims.json`, review `validation/claims.json`
+   - `document-processing batch-ground --claims validation/claims.json --source <src1> --source <src2> ... --output validation/grounding-report.md` (one `--source` per `1-input/` source; pass `--semantic on` — the default — unless the user has opted out, i.e. `settings.semantic_enabled == false`; see the `grounding` skill)
+   - `document-processing check-consistency --document <updated doc> --output validation/consistency-report.md`
+   Fix any UNCONFIRMED / CONTRADICTED claim and any consistency finding before declaring done. Apply the `grounding` skill's verdict rules.
 
 6. **Re-verify against benchmark**: Run `BENCHMARK.md` evaluation against the updated document. Report the score delta.
 

@@ -257,7 +257,7 @@ document-processing ground \
   --threshold 0.85 --bm25-threshold 0.5 --semantic-threshold 0.85 --json
 
 # Batch ground N claims from JSON, force semantic on for this call
-document-processing ground-many \
+document-processing batch-ground \
   --claims validation/claims.json \
   --source docs/source.md \
   --output validation/grounding-report.md \
@@ -282,7 +282,7 @@ Provides these binaries:
 | `svg-infographics` | `svg-infographics`, `devils-advocate` (visuals) |
 | `render-png` | `svg-infographics` (Playwright-based SVG → PNG) |
 | `journal-tools` | `journal` (check / sort / archive) |
-| `document-processing` | `document-processing` (ground / ground-many, three-layer grounding) |
+| `document-processing` | `document-processing` (ground / batch-ground, three-layer grounding) |
 
 As a Claude Code plugin marketplace:
 
