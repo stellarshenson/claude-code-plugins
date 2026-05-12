@@ -2,7 +2,7 @@
 
 Structured document processing plugin for Claude Code. Turns raw source material in `1-input/` into verified, quality-controlled outputs in `3-output/` through a three-phase workflow (analyze and draft, verify and ground, uniformize and deliver) with full traceability from every claim back to its source.
 
-Unlike ad-hoc summarization, this plugin generates a tailored processing program (`INSTRUCTIONS.md` + `BENCHMARK.md`) for the specific objective, enforces explicit phase gates, and ships a complete PDF manipulation toolkit alongside a dedicated validator for grounding and compliance audits.
+Unlike ad-hoc summarization, this plugin generates a tailored processing program (`INSTRUCTIONS.md` + `BENCHMARK.md`) for the specific objective, enforces explicit phase gates, ships a deterministic grounding CLI, and provides a complete PDF toolkit. There is exactly one verification flow - the `grounding` skill - and everything that needs grounding (the `validate` skill, the `process` skill's verify phase, the `update` skill's closing step) calls it rather than re-implementing it.
 
 ## Grounding CLI
 
@@ -75,15 +75,22 @@ document-processing ground \
   --source docs/source.md \
   --threshold 0.85 --bm25-threshold 0.5
 
-# Batch, all four layers including semantic
+# One document: extract claims, then ground them all
+document-processing extract-claims --document docs/brief.md --output validation/claims.json
 document-processing ground-many \
   --claims validation/claims.json \
   --source docs/source.md \
   --output validation/grounding-report.md \
   --semantic on --semantic-threshold 0.85
+
+# Many documents via manifest
+document-processing validate-many --source-map source_map.yaml --output-dir validation/
+
+# Intra-document self-consistency
+document-processing check-consistency --document docs/brief.md --output validation/consistency-report.md
 ```
 
-Output includes all layer scores per claim, the winning passage, and location metadata. See `skills/validate-document/SKILL.md` for how the agent should read the output (including "never blindly trust scores — verify via the pointer").
+Output includes all layer scores per claim, the winning passage, and location metadata. See `skills/grounding/SKILL.md` for how the agent should read the output (including "never blindly trust scores — verify via the pointer", the three core verdict rules, and the OCR fallback chain).
 
 ## Installation
 
@@ -94,46 +101,53 @@ Output includes all layer scores per claim, the winning passage, and location me
 
 ## Commands (user-invoked)
 
+Each command pairs with a skill of the same name; the skill auto-triggers, the command is the explicit entry point.
+
 | Command | What it does |
 |---------|-------------|
-| `/document-processing:run` | Full workflow: objective refinement -> `INSTRUCTIONS.md` -> `BENCHMARK.md` -> scaffold WIP -> execute three phases -> deliver |
-| `/document-processing:update` | Update an existing output with new sources, corrections, rule changes, or re-verification against updated source material |
-| `/document-processing:validate` | Validate a document against its source for grounding, then check tone, style, length, and format compliance |
+| `/document-processing:process` | Build a deliverable from sources: objective refinement -> `INSTRUCTIONS.md` -> `BENCHMARK.md` -> scaffold `2-wip/` -> analyze & draft -> verify & ground -> uniformize & deliver to `3-output/` |
+| `/document-processing:validate` | Validate a finished document against rules AND its source: grounding (delegated to the `grounding` skill) + tone/style/length/format/focus/custom-rule compliance |
+| `/document-processing:grounding` | Pure grounding via the CLI - a single claim, one document's claims, or a batch via `source_map.yaml`. No compliance layer |
+| `/document-processing:update` | Update an existing `3-output/` document (new source, corrections, rule changes), always re-running the grounding CLI on the changed content before declaring done |
+| `/document-processing:pdf` | PDF toolkit - extract text/tables, create/merge/split, fill and flatten forms, OCR scanned PDFs, batch-process |
 
 ## Skills (auto-triggered)
 
 | Skill | Triggers when |
 |-------|--------------|
-| `process-documents` | Processing, analyzing, synthesizing, extracting, reconstructing, or transforming documents from `1-input/` into structured outputs in `3-output/` |
-| `validate-document` | Validating, verifying, or auditing a document against source material for grounding and tone/style/format compliance |
-| `pdf` | Comprehensive PDF toolkit - extraction, merging, splitting, form filling with pypdf, pdfplumber, and reportlab |
-| `pdf-pro` | Production-ready PDF workflows - complex forms, table extraction, OCR, batch processing, validation with error handling and logging |
+| `process` | Building a structured deliverable FROM sources - reconstruct a timeline, draft a statement, assemble a catalogue, synthesize a position paper. Generates a tailored `INSTRUCTIONS.md` + `BENCHMARK.md`. NOT for validating an existing doc (use `validate`) or bare grounding (use `grounding`) |
+| `grounding` | Grounding claims against source(s) via the CLI - "ground", "grounding", "check grounding", "run ground-many", "verify claims against a source". Pure grounding, no compliance. The canonical verification flow; `validate`, `process`, and `update` all call it |
+| `validate` | Validating a document against rules and against its source - "validate document", "validate against rules", "check compliance and grounding", "audit document against source". Runs the `grounding` skill, then adds the compliance layer |
+| `update` | Updating an existing `3-output/` document - "update the document", "add a new source to the timeline", "re-verify after sources changed", "apply corrections to the output". Ends with a mandatory CLI-grounding pass |
+| `pdf` | PDF work - fill a form, extract text/tables, create/merge/split PDFs, OCR a scanned PDF, batch-process. Library reference + pre-built scripts + topic guides for forms, tables, OCR |
 
 ## Example usage
 
 ```
-/document-processing:run synthesize expert opinions into unified position paper
+/document-processing:process synthesize expert opinions into unified position paper
 ```
 
-The `process-documents` skill walks through objective refinement, generates `INSTRUCTIONS.md` and `BENCHMARK.md` for user approval, scaffolds a WIP folder under `2-wip/<task-name>/`, then executes the three-phase workflow (analyze and draft, verify and ground, uniformize and deliver) before evaluating the result against `BENCHMARK.md` and promoting it to `3-output/`.
+The `process` skill walks through objective refinement, generates `INSTRUCTIONS.md` and `BENCHMARK.md` for user approval, scaffolds a WIP folder under `2-wip/<task-name>/`, then executes the three-phase workflow (analyze and draft, verify and ground, uniformize and deliver) before evaluating the result against `BENCHMARK.md` and promoting it to `3-output/`. The Verify & Ground phase invokes the `grounding` skill.
 
 ## How it works
 
-The plugin operates over a fixed project layout: `1-input/` holds read-only source material, `2-wip/<task-name>/` holds per-task drafts and reports, `3-output/` holds final delivered documents, and `4-references/` holds examples and verified facts used as grounding anchors. Every intermediate artifact stays in WIP until all rules pass. See `skills/process-documents/references/FOLDER-STRUCTURE.md` for the full convention.
+The plugin operates over a fixed project layout: `1-input/` holds read-only source material, `2-wip/<task-name>/` holds per-task drafts and reports, `3-output/` holds final delivered documents, and `4-references/` holds examples and verified facts used as grounding anchors. Every intermediate artifact stays in WIP until all rules pass. See `skills/process/references/FOLDER-STRUCTURE.md` for the full convention.
 
-Grounding validation classifies every factual claim against its source (direct quote, paraphrase, inference, interpretation, or unsupported) and records confirmed, unconfirmed, and contradicted counts in a grounding report. See `skills/process-documents/references/GROUNDING.md` for the complete methodology.
+Grounding is the single verification flow. The `grounding` skill runs the deterministic three-layer CLI (regex exact + Levenshtein fuzzy + BM25, plus optional semantic), reads the per-claim verdicts, applies three core rules (agreement beats magnitude; a numeric/entity contradiction is the final word; re-recommend semantic on struggle), handles the scanned-PDF OCR fallback chain, and writes a grounding report plus an intra-document self-consistency report. The `validate` skill wraps it and layers compliance on top; the `process` skill calls it from its verify phase; the `update` skill calls it as a mandatory closing step. The claim-classification methodology for the synthesis workflow (DIRECT QUOTE / PARAPHRASE / INFERENCE / INTERPRETATION / UNSUPPORTED, with HIGH/MEDIUM/LOW severity) is in `skills/process/references/GROUNDING.md`.
 
-Uniformization applies task-specific measurable rules (R1, R2, R3...) derived from stated quality criteria and project-level standards, executed in priority order until every rule passes. See `skills/process-documents/references/UNIFORMIZATION.md` for rule categories.
+Uniformization applies task-specific measurable rules (R1, R2, R3...) derived from stated quality criteria and project-level standards, executed in priority order until every rule passes. See `skills/process/references/UNIFORMIZATION.md` for rule categories, and `examples/` for real, in-use rule-sets (a full `INSTRUCTIONS.md` plus a worked uniformization checklist) to load when helping a user author their own.
 
-The PDF toolkit covers both a library-focused guide (`pdf`) and production-ready scripts with CLI, logging, and error handling (`pdf-pro`) for forms, tables, OCR, and batch operations. See `skills/pdf-pro/FORMS.md`, `skills/pdf-pro/TABLES.md`, and `skills/pdf-pro/OCR.md` for the advanced workflows.
+The PDF toolkit (`pdf` skill) covers a library-focused guide (pypdf, pdfplumber, reportlab), pre-built scripts under `skills/pdf/scripts/`, CLI tools (pdftotext, qpdf, pdftk, pdfimages), production patterns (exit codes, batch processing), and topic guides: `skills/pdf/forms.md` and `skills/pdf/forms-production.md` for form processing, `skills/pdf/tables.md` for advanced table extraction, `skills/pdf/ocr.md` for scanned PDFs, `skills/pdf/reference.md` for advanced/JS libraries and troubleshooting.
 
 ## Documentation
 
-- `skills/process-documents/SKILL.md` - five-phase execution flow and phase gates
-- `skills/process-documents/references/FOLDER-STRUCTURE.md` - folder convention
-- `skills/process-documents/references/WORKFLOW.md` - three-phase execution detail
-- `skills/process-documents/references/GROUNDING.md` - claim classification and verification rules
-- `skills/process-documents/references/UNIFORMIZATION.md` - rule categories and generation template
-- `skills/validate-document/SKILL.md` - validation audit phases
-- `skills/pdf/SKILL.md` - PDF library reference
-- `skills/pdf-pro/SKILL.md` - production PDF scripts and workflows
+- `skills/process/SKILL.md` - four-phase build flow (objective refinement, program generation, benchmark generation, scaffolding, execution) and phase gates
+- `skills/process/references/FOLDER-STRUCTURE.md` - folder convention
+- `skills/process/references/WORKFLOW.md` - three-phase execution detail
+- `skills/process/references/GROUNDING.md` - claim classification and verification rules for the synthesis workflow
+- `skills/process/references/UNIFORMIZATION.md` - rule categories and generation template
+- `examples/` - real validation rule-sets (`INSTRUCTIONS-example-preschool-transcriptions.md`, `uniformization-checklist-example.md`)
+- `skills/grounding/SKILL.md` - the canonical grounding flow: CLI usage (single / document / batch), semantic-consent gate, OCR fallback chain, core verdict rules, status mapping, self-consistency check
+- `skills/validate/SKILL.md` - validation: criteria gathering, grounding (via the `grounding` skill), compliance checklist, summary, corrected copy
+- `skills/update/SKILL.md` - updating an existing output with a mandatory CLI-grounding closing step
+- `skills/pdf/SKILL.md` - PDF library reference, pre-built scripts, production patterns; topic guides `forms.md`, `forms-production.md`, `tables.md`, `ocr.md`, `reference.md`

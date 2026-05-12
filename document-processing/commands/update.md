@@ -6,7 +6,7 @@ argument-hint: "what to update and why, e.g. 'add new hearing transcript to time
 
 # Document Processing - Update
 
-Update an existing processed document with new information, corrections, or re-verification against updated sources.
+Invoke the `document-processing:update` skill. It updates an existing `3-output/` document with new information, corrections, re-applied rules, or re-verification against updated sources - and **always re-runs the grounding CLI on the changed content before declaring done** (step 5 of the skill is a gate, not optional).
 
 ## When to use
 
@@ -16,32 +16,15 @@ Update an existing processed document with new information, corrections, or re-v
 - Uniformization rules changed - re-apply to existing output
 - Additional context available - enrich existing document
 
-## Steps
+## Flow
 
-1. **Identify what exists**: Read `3-output/` for the current document, `2-wip/` for the processing history, `INSTRUCTIONS.md` and `BENCHMARK.md` for the original program
+1. The skill identifies what exists (`3-output/`, `2-wip/`, `INSTRUCTIONS.md`, `BENCHMARK.md`), asks what changed and which document, then does a targeted update (default) or a full re-run via the `process` skill
+2. Mandatory grounding pass: `extract-claims` -> review -> `ground-many` against every `1-input/` source -> `check-consistency`, via the `grounding` skill; fix every UNCONFIRMED / CONTRADICTED claim and consistency finding
+3. Re-verify against `BENCHMARK.md`, report score delta
+4. WIP manifest updated with what changed, when, and the post-update grounding score
 
-2. **ASK user**:
-   - What changed? (new source, found error, rule change, enrichment)
-   - Which output document to update?
-   - Full re-run or targeted update?
+## When NOT to use this
 
-3. **Targeted update** (default - faster):
-   - Read the existing output document
-   - Apply the specific change (new source integration, error correction, rule reapplication)
-   - Re-run grounding check on affected sections only
-   - Re-run uniformization on affected sections
-   - Update the document in place (versioned backup to `2-wip/`)
-
-4. **Full re-run** (if structural changes needed):
-   - Update INSTRUCTIONS.md with new context
-   - Re-execute from Phase 1 using existing + new sources
-   - Produces new version in `3-output/`
-
-5. **Re-verify**: Run BENCHMARK.md evaluation against the updated document. Report score delta.
-
-## Rules
-
-- Always create a backup of the current output before modifying: copy to `2-wip/<task-name>/<filename>_prev.md`
-- New source documents go to `1-input/` first - never process from arbitrary locations
-- Grounding must be re-checked for any content changes
-- Update the WIP manifest with what changed and when
+- Building a new deliverable from scratch -> use `/document-processing:process`
+- Validating a document you did not produce here -> use `/document-processing:validate`
+- Bare claim grounding -> use `/document-processing:grounding`

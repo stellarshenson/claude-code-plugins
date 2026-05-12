@@ -1,11 +1,13 @@
 ---
-name: process-documents
-description: Design and execute structured document processing workflows. Takes an objective description, refines it through dialogue, generates INSTRUCTIONS.md and BENCHMARK.md, creates WIP folder structure, then executes. Use when asked to process, analyze, synthesize, extract, reconstruct, or transform documents from 1-input/ into structured outputs in 3-output/.
+name: process
+description: Build a structured deliverable FROM source files - reconstruct a timeline, draft a statement, assemble a catalogue, synthesize a position paper from 1-input/ sources into a traceable 3-output/ document. Generates a tailored INSTRUCTIONS.md + BENCHMARK.md, scaffolds 2-wip/, runs analyze -> draft -> verify -> uniformize -> deliver. NOT for checking an existing document against a source (use the `validate` skill) and NOT for bare claim grounding (use the `grounding` skill) - this skill produces a new document.
 ---
 
-# Process Documents
+# Process - Structured Document Build
 
-Meta-skill for structured document processing. Generates tailored program (INSTRUCTIONS.md + BENCHMARK.md), scaffolds WIP folder, executes. Does not process documents directly.
+Meta-skill for structured document production. Generates a tailored program (INSTRUCTIONS.md + BENCHMARK.md), scaffolds the WIP folder, executes the four-phase workflow. Does not process documents directly - it orchestrates.
+
+**Scope boundary.** This skill *builds* a deliverable from sources. It is not the verification path: validating a finished document against its source for grounding + tone/style/format compliance is the `validate` skill; running the grounding CLI over claims (single or batch via `source_map.yaml`) is the `grounding` skill. The Verify & Ground phase below *invokes* the `grounding` skill rather than re-implementing grounding.
 
 ## Pre-flight install (MANDATORY - run every session, no asking)
 
@@ -19,12 +21,12 @@ Never ask the user whether to install - just run the line.
 
 ## Invocation
 
-`/process-documents <objective description>`
+`/document-processing:process <objective description>`
 
 Objective describes what to produce. Examples:
-- `/process-documents reconstruct complete timeline from all court documents`
-- `/process-documents draft 2-page court statement addressing mother's claims`
-- `/process-documents extract and categorize all court findings by topic`
+- `/document-processing:process reconstruct complete timeline from all court documents`
+- `/document-processing:process draft 2-page court statement addressing mother's claims`
+- `/document-processing:process extract and categorize all court findings by topic`
 
 ## Execution Flow
 
@@ -49,9 +51,13 @@ Objective describes what to produce. Examples:
 
 Load references:
 - `references/WORKFLOW.md` - 3-phase workflow template
-- `references/GROUNDING.md` - assumption verification
+- `references/GROUNDING.md` - assumption classification + verification methodology for the draft (DIRECT QUOTE / PARAPHRASE / INFERENCE / INTERPRETATION / UNSUPPORTED)
 - `references/UNIFORMIZATION.md` - quality control
 - `references/FOLDER-STRUCTURE.md` - folder conventions
+
+For CLI-assisted grounding of HIGH-impact claims during Phase 2 (Verify & Ground), invoke the **`grounding`** skill / `document-processing ground-many` - it carries the deterministic three-layer lexical grounder (+ optional semantic), the OCR fallback chain, and the verdict rules. `references/GROUNDING.md` is the classification methodology; the `grounding` skill is the operational tool.
+
+When deriving uniformization rules, load the real rule-set examples in `${CLAUDE_PLUGIN_ROOT}/examples/` - a full in-use `INSTRUCTIONS.md` with measurable rules R0-R4 (no-fluff, length range with a preferred band, focus exclusions with example quotes, text format, list-section format) plus a worked uniformization checklist. Use them to make every rule *measurable* (word ranges, per-bullet word counts, exclusion lists with example quotes, a falsifiable "does this sentence change what the reader knows" test). Adapt the shape, not the content.
 
 Generate `INSTRUCTIONS.md` at project root:
 
@@ -63,6 +69,7 @@ Generate `INSTRUCTIONS.md` at project root:
    - Domain conventions (legal citation, date formats)
    - Output format requirements
    - CLAUDE.md markdown/typography standards
+   - The rule-set examples in `${CLAUDE_PLUGIN_ROOT}/examples/` (shape reference)
 5. **Workflow Steps**: 3-phase pattern (Analyze & Draft -> Verify & Ground -> Uniformize & Deliver)
 6. **Phase Gates**: user review points
 7. **Execution Modes**: Interactive / Semi-automated / Headless

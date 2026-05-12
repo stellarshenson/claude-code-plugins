@@ -224,7 +224,7 @@ See [journal/README.md](journal/) for entry format, CLI tools, and archiving rul
 
 Structured document processing with source grounding and quality control. Takes input documents through a verified workflow (analyze, draft, ground, uniformize) and produces outputs where every factual claim is traceable to source material.
 
-**Skills**: `process-documents` (4-phase workflow), `validate-document` (grounding + compliance), `pdf` (basic operations), `pdf-pro` (production workflows)
+**Skills** (each pairs with a same-named command): `process` (build a deliverable from sources - 4-phase workflow), `grounding` (the one verification flow - runs the CLI; single claim / one document / batch via `source_map.yaml`; no compliance), `validate` (grounding + tone/style/length/format compliance), `update` (update an existing output, with a mandatory CLI-grounding closing pass), `pdf` (toolkit - extract / merge / split / forms / OCR / batch). Grounding is delegated, not duplicated: `validate`, `process`'s verify phase, and `update`'s closing step all call the `grounding` skill.
 
 **CLI**: ships the `document-processing` command with three-layer lexical grounding (regex + Levenshtein + BM25) plus an optional fourth semantic layer (multilingual-e5 + FAISS). Every hit returns line / column / paragraph / page / context snippet — the agent cites without rereading. **Saves tokens: measured 64-86% reduction vs batched generative grounding** on real sources. Semantic layer is opt-in via `pip install 'stellars-claude-code-plugins[semantic]'` + `document-processing setup`.
 
@@ -235,14 +235,17 @@ Structured document processing with source grounding and quality control. Takes 
 ### Usage
 
 ```bash
-# Full workflow from objective
-/document-processing:run synthesize expert opinions into position paper
+# Build a deliverable from input documents
+/document-processing:process synthesize expert opinions into position paper
 
-# Update existing output with new source material
+# Update existing output with new source material (re-grounds the changed content)
 /document-processing:update add new hearing transcript to timeline
 
-# Validate a document against its sources
+# Validate a document against rules and against its sources
 /document-processing:validate
+
+# Bare grounding - single claim, one document, or a batch via source_map.yaml
+/document-processing:grounding
 
 # First-run: interactive opt-in prompt for optional semantic grounding
 document-processing setup

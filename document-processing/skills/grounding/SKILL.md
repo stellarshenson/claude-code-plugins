@@ -1,15 +1,15 @@
 ---
-name: validate-document
-description: Validate a document against its source material for grounding, then check tone, style, length and format compliance. Use when asked to validate, verify, check grounding, or audit a document against a source.
+name: grounding
+description: Ground claims against source material with the deterministic grounding CLI - single claim, a whole document's claims, or a batch of documents via source_map.yaml. Pure grounding, no tone/style/format compliance (that is the `validate` skill). Use when asked to ground, do grounding, check grounding, run ground-many, or verify claims against a source / sources.
 ---
 
-# Document Validation Skill
+# Grounding Skill
 
-Two phases: (1) source grounding - extract claims, verify each; (2) compliance - tone, style, length, format.
+The grounding flow: extract claims, run the `document-processing` CLI over them, read the verdicts, apply the verdict rules, write a grounding report. Three modes - single claim, one document, or many documents (`source_map.yaml`). **Always runs the CLI** - it is the canonical operational grounder. The `validate` skill wraps this skill and adds the compliance layer on top; the `process` skill invokes this skill from its Verify & Ground phase.
 
 ## Output style (MANDATORY for all generated artefacts)
 
-Every file the skill writes (`grounding-report.md`, `compliance-checklist.md`, `validation-summary.md`, `criteria.md`) uses telegram-style: short clauses, drop articles/copulas where meaning stays clear, one fact per line, bullets not paragraphs, concrete numbers over adjectives, no hedging ("may"/"might"), imperative actions. Reviewers skim for verdicts - prose costs attention.
+Every file this skill writes (`grounding-report.md`, `consistency-report.md`, `claims.json` review notes) uses telegram-style: short clauses, drop articles/copulas where meaning stays clear, one fact per line, bullets not paragraphs, concrete numbers over adjectives, no hedging ("may"/"might"), imperative actions. Reviewers skim for verdicts - prose costs attention.
 
 ## Pre-flight install (MANDATORY - run every session, no asking)
 
@@ -19,7 +19,7 @@ Always run this single line BEFORE invoking `document-processing`. No-op when th
 python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
-Ships `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask the user whether to install - just run the line. Without install -> manual search only, no programmatic grounding.
+Ships the `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask the user whether to install - just run the line. **The CLI is mandatory.** Generative interpretation is only an on-top layer for semantic claims after the CLI ran - never a substitute for it. If the package genuinely cannot be installed, say so and stop; do not silently degrade to manual search.
 
 ## Check semantic-grounding consent (MANDATORY every run)
 
@@ -54,7 +54,7 @@ Verify generatively when ANY of:
 - Layer disagreement: semantic ≥0.85 but fuzzy <0.6 AND bm25 <0.3 → topical similarity without real support, often noise
 - Location off: pointer nowhere near where the claim should live → wrong chunk won
 - Numeric / named-entity claims: models blur "3 seconds" vs "3 minutes"; always read
-- Medium score on fake-sounding claim: reject unless named entity appears in the quoted passage — fake-entity detection is the whole point of H2
+- Medium score on fake-sounding claim: reject unless named entity appears in the quoted passage — fake-entity detection is the whole point
 
 Verdict output: quote the passage + state supports / contradicts / topical-only. Never override CONFIRMED without evidence, never accept CONFIRMED without reading.
 
@@ -70,42 +70,7 @@ Verdict output: quote the passage + state supports / contradicts / topical-only.
 
 Never silently enable — user already declined once. Offer, wait for consent, proceed.
 
-## Phase 0: Gather Criteria
-
-Ask if not provided.
-
-**Required:**
-- **Document to validate**: path
-- **Source document(s)**: path(s) for grounding
-
-**Optional (offer defaults):**
-- **Word count range**: min-max (default: no constraint)
-- **Tone**: first-person / formal / technical / conversational (default: infer)
-- **Style rules**: patterns to enforce or prohibit (default: none)
-- **Target audience**: default general
-- **Section format rules**: bullets, section lengths, heading structure (default: none)
-- **Focus rules**: excluded or prioritised content (default: none)
-- **Format rules**: encoding, spacing, links (default: UTF-8, single spacing, no links)
-- **Custom rules**: key-value pairs
-
-Store all criteria.
-
-## Phase 1: Setup
-
-Create `validation/` in project root. All artifacts here — single directory = one place to delete, diff, archive.
-
-```
-validation/
-├── criteria.md              <- collected criteria summary
-├── grounding-report.md      <- Phase 2 output
-├── compliance-checklist.md  <- Phase 3 output
-├── validation-summary.md    <- Phase 4 output
-└── <filename>_corrected.<ext> <- Phase 5 output (best-effort corrected copy)
-```
-
-Write `criteria.md`.
-
-## Source format support (Release F+)
+## Source format support
 
 Grounding tools accept these formats directly via `--source`:
 
@@ -147,9 +112,7 @@ Grounding tools accept these formats directly via `--source`:
 
 **Candidate-file convention**: `<stem>.ocr.txt` is the highest-priority sibling. Tool-generated candidates open with a `# OCR candidate for ...` header carrying quality stats, language, timestamp. Editing the candidate replaces the auto-OCR text. **Deleting the header block marks the candidate as human-reviewed and silences `OCR-CANDIDATE` on the next run** (otherwise the warning re-fires - a never-reviewed candidate cannot graduate silently to ground truth).
 
-## Phase 2: Source Grounding Check
-
-### Core rules
+## Core rules
 
 Three rules override default per-claim behaviour. Apply in order: rule 2 trumps 1, rule 3 fires after 1-2 decided.
 
@@ -169,11 +132,13 @@ first time, requires `[semantic]` extra) often resolves these. Enable?
 
 Record answer in `./.stellars-plugins/settings.json` — avoids re-asking same session.
 
-### Per-claim workflow
+## Per-claim workflow
 
-Extract every factual claim, assertion, attribution, number, date, quote.
+**What counts as a claim.** Claims are the load-bearing statements - the assertions and assumptions a document rests on that need validation, plus every quote that needs validation. Concretely: factual statements, attributions ("X said Y"), numbers, dates, named entities, direct quotes, and inferences presented as established. Not claims: structural/editorial sentences, transitions, formatting-level text, the document's own headings - skip those.
 
-**Step 0 (batch runs): extract-claims.** Let the heuristic extractor build the claims list instead of typing 30+ claims by hand - shrinks manual work from ~30 min to ~5 min plus review. Lossy: markdown headers, bullet stubs, and short sentences get dropped. Always review the generated `claims.json` before grounding. Reason: enumeration is the one step where manual work scales badly; grounding + attribute sidecar does the judgement.
+Extract every claim in that sense.
+
+**Step 0 (document / batch runs): extract-claims.** Let the heuristic extractor build the claims list instead of typing 30+ claims by hand - shrinks manual work from ~30 min to ~5 min plus review. Lossy: markdown headers, bullet stubs, and short sentences get dropped. Always review the generated `claims.json` before grounding. Reason: enumeration is the one step where manual work scales badly; grounding + attribute sidecar does the judgement.
 
 ```bash
 document-processing extract-claims \
@@ -194,11 +159,25 @@ Per claim:
    - INFERRED — reasonable inference not directly stated; explain, tool confirms absence of verbatim
    - NOT APPLICABLE — structural/editorial, not fact-based; skip tool
 
-### Using the grounding CLI
+## Using the grounding CLI
 
-Batch — builds `grounding-report.md` in one shot:
+### Mode A: single-claim probe — on-demand checks during review
 
 ```bash
+document-processing ground \
+  --claim "Kubernetes runs on 12 nodes" \
+  --source docs/architecture.md \
+  --json
+```
+
+All three scores always return, even when only one fires — layered signal distinguishes verbatim / paraphrase / topical / fabrication.
+
+### Mode B: one document — extract claims, then ground-many
+
+```bash
+document-processing extract-claims --document docs/brief.md --output validation/claims.json
+# review validation/claims.json, then:
+
 # claims.json: list of strings or [{"claim": "...", "id": "..."}]
 # Pass --semantic on if settings.semantic_enabled == true
 # Pass --primary-source to flag cross-source pollution when multiple --source flags are present
@@ -213,18 +192,39 @@ document-processing ground-many \
   --semantic on     # omit or 'off' when settings disables it
 ```
 
-Binary sources (PDF / PNG / JPG / DOCX / XLSX / ZIP) now fail loud with exit code 2 and a suggested extractor (`pdftotext`, `docx2txt`, `pandoc`). Previous silent U+FFFD decode masked this as a grounding miss.
+Binary sources (PDF / PNG / JPG / DOCX / XLSX / ZIP that fail extraction) fail loud with exit code 2 and a suggested extractor (`pdftotext`, `docx2txt`, `pandoc`).
 
-Single-claim probe — on-demand checks during review:
+### Mode C: many documents — batch via source_map.yaml
 
-```bash
-document-processing ground \
-  --claim "Kubernetes runs on 12 nodes" \
-  --source docs/architecture.md \
-  --json
+`source_map.yaml` shape:
+
+```yaml
+clients:
+  actone:
+    sources:
+      - clients/actone/transcript.md
+      - clients/actone/research_doc.md
+    document: clients/actone/opportunity_brief.md
+    primary_source: clients/actone/transcript.md   # optional; flags cross-source pollution
+  arelion:
+    sources: [clients/arelion/transcript.md]
+    document: clients/arelion/opportunity_brief.md
 ```
 
-All three scores always return, even when only one fires — layered signal distinguishes verbatim / paraphrase / topical / fabrication.
+Invoke:
+
+```bash
+document-processing validate-many \
+  --source-map source_map.yaml \
+  --output-dir validation/
+```
+
+For every client entry it runs `extract-claims`, `ground-many` (with cross-source provenance), and `check-consistency`, writing `validation/<client>/claims.json`, `validation/<client>/grounding-report.md`, and `validation/<client>/consistency-report.md`. A per-client error is logged to `validation/<client>/error.log` and the batch continues unless `--stop-on-error` is passed.
+
+Exit codes:
+- `0` every client succeeded with no unconfirmed claims and no consistency findings
+- `1` at least one client has unconfirmed claims, consistency findings, or an error
+- `2` the `source_map.yaml` itself was malformed
 
 ### verification_needed: second-guess this CONFIRMED verdict
 
@@ -257,7 +257,9 @@ Tool returns `exact_location` / `fuzzy_location` / `bm25_location` with `line_st
 
 Only when all three lexical layers return `none` AND claim is semantic (summary / synthesis / cross-passage inference). Disciplined: still cite WHICH passages contributed + acknowledge absence of verbatim/paraphrase/term match. Never let generative override lexical UNCONFIRMED for factual claims — that's fabrication territory.
 
-**Output** (`grounding-report.md`) — telegram-style template:
+## Output: grounding-report.md
+
+Telegram-style template:
 
 ```markdown
 # Source Grounding Report
@@ -313,9 +315,11 @@ Only when all three lexical layers return `none` AND claim is semantic (summary 
 
 UNCONFIRMED/CONTRADICTED: list concrete corrections.
 
-## Phase 2.5: Self-Consistency
+When invoked standalone, write the report to `validation/grounding-report.md` (create `validation/` if absent). When invoked by `validate` / `process` / `update`, write wherever the caller specifies via `--output`.
 
-Grounding catches claim-vs-source mismatch. It cannot catch same-document internal inconsistencies - the brief that lists `dev/test/staging` on one page and `dev/staging/prod` on another. Run the intra-document checker after grounding, before compliance:
+## Self-consistency check
+
+Grounding catches claim-vs-source mismatch. It cannot catch same-document internal inconsistencies - the brief that lists `dev/test/staging` on one page and `dev/staging/prod` on another. Run the intra-document checker after grounding:
 
 ```bash
 document-processing check-consistency \
@@ -330,112 +334,10 @@ Findings come in two shapes:
 
 Every finding lists line numbers. Resolve intrinsic inconsistencies before shipping - the document claims X and not-X means one of them is wrong, grounding against external source won't disambiguate. Exit code 1 when findings exist (automation-friendly).
 
-## Phase 3: Compliance Checklist
-
-Check against all criteria. Generate `compliance-checklist.md` — telegram-style template:
-
-```markdown
-# Compliance Checklist
-
-- document: <path>
-- date: <date>
-
-## word_count
-- count: XXX
-- range: [min, max]
-- pass: yes/no
-- action: trim N / expand N / ok
-
-## tone
-- expected: <tone>
-- violations: [quotes] / none
-- action: rephrase N passages / ok
-
-## style_rules
-(per rule)
-- rule: <desc>
-- status: pass/fail
-- violations: [quotes] / none
-- action: fix / ok
-
-## focus_rules
-- prohibited found: [quotes] / none
-- required present: [list] / yes/no
-- action: remove N / add N / ok
-
-## format
-- encoding: UTF-8 yes/no
-- spacing: correct yes/no
-- links: N / none
-- action: fix / ok
-
-## section_format
-(per rule)
-- rule: <desc>
-- status: pass/fail
-- details: [measurements]
-- action: fix / ok
-
-## custom_rules
-(per rule)
-- rule: <desc>
-- status: pass/fail
-- evidence: [details]
-- action: fix / ok
-```
-
-Python scripts for measurable checks (word count, point length, links) — never eyeball; human counting on long docs is unreliable, off-by-N errors cascade into wrong verdicts.
-
-## Phase 4: Validation Summary
-
-Generate `validation-summary.md` — telegram-style template:
-
-```markdown
-# Validation Summary
-
-- document: <path>
-- sources: <path(s)>
-- date: <date>
-
-## grounding
-- claims: X
-- score: X/Y (Z%)
-- issues: [list] / none
-
-## compliance
-- rules: X
-- passed: X
-- failed: X
-- issues: [list] / none
-
-## verdict
-PASS / PASS WITH WARNINGS / FAIL
-
-## required_actions
-1. <fix>
-2. <fix>
-...
-(or "none - document passes all checks")
-```
-
-## Phase 5: Apply Corrections (best effort)
-
-Always produce corrected copy — separate file so original stays reviewable:
-
-1. Copy original → `validation/<filename>_corrected.<ext>`
-2. Apply corrections:
-   - UNCONFIRMED: rephrase to align with source or remove
-   - CONTRADICTED: fix to match source
-   - Compliance failures: fix formatting, trim, adjust tone
-3. Re-run both checks against corrected version
-4. Update `validation-summary.md` with post-correction status
-5. Present diff to user
-
-## Important Notes
+## Rules
 
 - Never modify source document(s) — read-only; source integrity is the whole basis of grounding
-- All artifacts in `validation/` — single cleanup point
-- Python for measurements — never manual; eyeballing corrupts verdicts
+- Run the CLI first, every time — generative grounding is only the on-top layer for semantic claims
 - Quote evidence — actual text, not "confirmed"; verdict without quote is assertion
-- Be specific — violations cite exact offending text + location
-- Preserve originals — corrected version separate file with `_corrected` suffix; overwrite only on explicit request
+- Be specific — UNCONFIRMED / CONTRADICTED entries cite exact offending text + location + concrete fix
+- This skill produces grounding + consistency reports only; tone/style/length/format compliance is the `validate` skill

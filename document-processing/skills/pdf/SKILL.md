@@ -1,6 +1,6 @@
 ---
 name: pdf
-description: Comprehensive PDF manipulation toolkit for extracting text and tables, creating new PDFs, merging/splitting documents, and handling forms. When Claude needs to fill in a PDF form or programmatically process, generate, or analyze PDF documents at scale.
+description: Comprehensive PDF toolkit - extract text and tables, create / merge / split PDFs, fill and flatten forms, OCR scanned PDFs, batch-process many PDFs with error handling and exit codes. When Claude needs to fill in a PDF form or programmatically process, generate, analyze, or OCR PDF documents - one-off or at scale.
 license: Proprietary. LICENSE.txt has complete terms
 ---
 
@@ -8,7 +8,7 @@ license: Proprietary. LICENSE.txt has complete terms
 
 ## Overview
 
-PDF operations via Python libraries and CLI tools. Advanced features, JS libraries, detailed examples: see reference.md. Form filling: forms.md.
+PDF operations via Python libraries, pre-built scripts, and CLI tools. Advanced features, JS libraries, detailed examples: see `reference.md`. Form filling: `forms.md` (and `forms-production.md` for the production form pipeline). OCR of scanned PDFs: `ocr.md`. Advanced table extraction: `tables.md`. Pre-built scripts live in `scripts/`.
 
 ## Quick Start
 
@@ -286,9 +286,57 @@ with open("encrypted.pdf", "wb") as output:
 | OCR scanned PDFs | pytesseract | Convert to image first |
 | Fill PDF forms | pdf-lib or pypdf (see forms.md) | See forms.md |
 
-## Next Steps
+## Pre-built scripts
 
-- Advanced pypdfium2 usage: reference.md
-- JavaScript libraries (pdf-lib): reference.md
-- PDF form filling: forms.md
-- Troubleshooting: reference.md
+`scripts/` holds ready-to-run helpers - all expose `--help`, validate inputs, and return automation-friendly exit codes:
+
+- `analyze_form.py input.pdf [--output fields.json] [--verbose]` - extract all form fields, types, positions
+- `extract_form_field_info.py` - detailed per-field metadata
+- `check_fillable_fields.py` - list fillable fields and their state
+- `fill_fillable_fields.py` - fill AcroForm fields from data
+- `fill_pdf_form_with_annotations.py` - fill forms that use annotations
+- `check_bounding_boxes.py` (+ `check_bounding_boxes_test.py`) - verify text/element bounding boxes
+- `convert_pdf_to_images.py` - rasterise pages to images (for OCR or visual diff)
+- `create_validation_image.py` - render a page with overlays for visual QA
+
+## Production patterns
+
+For complex / high-volume PDF work, follow these conventions (carried over from the production toolkit):
+
+**Exit codes** (use across custom scripts and check them in automation):
+
+```
+0 - success
+1 - file not found
+2 - invalid input
+3 - processing error
+4 - validation error
+```
+
+**Batch processing** - process many PDFs, fail fast per file, keep going:
+
+```python
+import glob, subprocess
+from pathlib import Path
+
+for pdf_file in glob.glob("invoices/*.pdf"):
+    out = Path("processed") / Path(pdf_file).name
+    r = subprocess.run(["python", "scripts/convert_pdf_to_images.py", pdf_file, "--output", str(out)],
+                       capture_output=True, text=True)
+    if r.returncode == 0:
+        print(f"ok: {pdf_file}")
+    else:
+        print(f"fail ({r.returncode}): {pdf_file} - {r.stderr.strip()}")
+```
+
+**Best practices**: validate inputs before processing; wrap custom scripts in try/except; log every operation; test on sample PDFs before a production run; set timeouts on long-running ops; back up originals before modification; for PDFs >50MB stream page-by-page (`for page in pdf.pages: ...`) rather than loading the whole file.
+
+**OCR dependencies**: `pip install pytesseract pdf2image pillow` plus a system tesseract (`apt-get install tesseract-ocr` / `brew install tesseract`). See `ocr.md`.
+
+## Topic guides
+
+- Advanced pypdfium2 usage, JavaScript libraries (pdf-lib), troubleshooting: `reference.md`
+- PDF form filling (basics): `forms.md`
+- PDF form processing in production (analysis, validation, multi-page, flattening): `forms-production.md`
+- Table extraction (multi-page, merged cells, nested tables, CSV/Excel export): `tables.md`
+- OCR of scanned PDFs (tesseract, language support, preprocessing, confidence scoring, batch OCR): `ocr.md`
