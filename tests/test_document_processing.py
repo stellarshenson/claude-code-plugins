@@ -404,16 +404,6 @@ class TestCLI:
         # Location fields should be in the JSON
         assert "exact_location" in data["matches"][0]
 
-    def test_ground_many_alias_still_works(self, tmp_path):
-        # `ground-many` is the legacy alias for `batch-ground`; old scripts must keep working.
-        src = tmp_path / "src.txt"
-        src.write_text("The quick brown fox jumps.")
-        claims = tmp_path / "claims.json"
-        claims.write_text(json.dumps(["brown fox"]))
-        out = tmp_path / "report.md"
-        cli_main(["ground-many", "--claims", str(claims), "--source", str(src), "--output", str(out)])
-        assert "Grounding Report" in out.read_text()
-
     def test_ground_missing_source_errors(self, capsys):
         with pytest.raises(SystemExit):
             cli_main(["ground", "--claim", "anything", "--source", "/nonexistent/file.txt"])
@@ -1238,7 +1228,7 @@ class TestCheckConsistency:
 
 
 # -------------------------------------------------------------------------
-# WI#7: batch-validate (alias: validate-many)
+# WI#7: batch-validate
 # -------------------------------------------------------------------------
 
 

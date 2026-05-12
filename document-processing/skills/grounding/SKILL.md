@@ -182,7 +182,7 @@ Subcommands and how they fit together:
 | `batch-validate --source-map source_map.yaml --output-dir DIR` | manifest → `DIR/<client>/{claims.json,grounding-report.md,consistency-report.md}` | runs extract-claims+batch-ground+check-consistency per client; `--stop-on-error` aborts on first failure; exit 0 all clean / 1 any issue / 2 malformed yaml |
 | `setup [--force]` | interactive → `./.stellars-plugins/settings.json` | first-run semantic on/off; never re-prompts unless `--force` |
 
-Shared optional flags on `ground` / `batch-ground` / `batch-validate`: `--threshold 0.85` (fuzzy), `--bm25-threshold 0.5`, `--semantic {on,off}` (overrides settings), `--semantic-threshold` / `--semantic-threshold-percentile`. `ground` / `batch-ground` also take `--ocr-lang CODE` (scanned PDFs), `--scanned-threshold`, `--ack-warning TOKEN=reason` (the stop-and-think gate). Legacy names `ground-many` / `validate-many` still work as aliases for `batch-ground` / `batch-validate` — prefer the `batch-*` names in new work.
+Shared optional flags on `ground` / `batch-ground` / `batch-validate`: `--threshold 0.85` (fuzzy), `--bm25-threshold 0.5`, `--semantic {on,off}` (overrides settings), `--semantic-threshold` / `--semantic-threshold-percentile`. `ground` / `batch-ground` also take `--ocr-lang CODE` (scanned PDFs), `--scanned-threshold`, `--ack-warning TOKEN=reason` (the stop-and-think gate).
 
 ### Mode A: single-claim probe — on-demand checks during review
 

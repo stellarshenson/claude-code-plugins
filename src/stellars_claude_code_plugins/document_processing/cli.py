@@ -3,11 +3,9 @@
 Subcommands:
     ground             - ground a single claim against source files
     batch-ground       - ground many claims (from JSON) against sources, emit report
-                         (alias: ground-many)
     extract-claims     - heuristic sentence-to-claim extractor for a document
     check-consistency  - intra-document numeric/entity divergence detector
     batch-validate     - batch-run grounding + consistency across many clients
-                         (alias: validate-many)
     setup              - first-run: configure optional semantic grounding
 """
 
@@ -708,12 +706,11 @@ def _build_parser() -> argparse.ArgumentParser:
 
     gm = sub.add_parser(
         "batch-ground",
-        aliases=["ground-many"],
         help="Ground many claims from a JSON file against sources.",
         description=(
             "Batch grounding. Claims JSON = list of strings OR list of "
             "{'claim': str, ...} objects. Emits markdown report by default, "
-            "JSON with --json. (Alias: ground-many.)"
+            "JSON with --json."
         ),
     )
     gm.add_argument("--claims", required=True, help="Path to claims JSON")
@@ -812,12 +809,11 @@ def _build_parser() -> argparse.ArgumentParser:
     # batch-validate subcommand
     vm = sub.add_parser(
         "batch-validate",
-        aliases=["validate-many"],
         help="Batch-run grounding + consistency across clients declared in source_map.yaml.",
         description=(
             "Walk a source_map.yaml (one entry per client: sources[] and "
             "document) and produce validation/<client>/grounding-report.md + "
-            "consistency-report.md per entry. (Alias: validate-many.)"
+            "consistency-report.md per entry."
         ),
     )
     vm.add_argument("--source-map", required=True, help="Path to source_map.yaml")
