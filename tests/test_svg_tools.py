@@ -3692,6 +3692,48 @@ class TestSvgInfographicsCLI:
             r = self._run(sub, "--help")
             assert r.returncode == 0, f"{sub} --help failed"
 
+    def test_caveman_catalogue(self):
+        """`svg-infographics --caveman` lists every subcommand with a terse description."""
+        r = self._run("--caveman")
+        assert r.returncode == 0
+        assert "(caveman)" in r.stdout
+        # Every subcommand from SUBCOMMANDS appears with its caveman line.
+        for sub, expected in (
+            ("primitives", "shape factory"),
+            ("connector", "line route"),
+            ("boolean", "Inkscape ops"),
+            ("validate", "XML ok"),
+            ("background", "procedural bg patterns"),
+        ):
+            assert sub in r.stdout, f"{sub} missing from caveman catalogue"
+            assert expected in r.stdout, f"caveman line for {sub} missing"
+
+    def test_primitives_catalogue_modes(self):
+        """`svg-infographics primitives` (bare), `--list`, and `--caveman` all
+        print the grouped catalogue with the right description register."""
+        # Bare invocation -> normal catalogue, returncode 0 (not the argparse error).
+        r = self._run("primitives")
+        assert r.returncode == 0
+        assert "shape generators" in r.stdout
+        assert "2D shapes" in r.stdout
+        assert "Speech / thought bubbles" in r.stdout
+        assert "rect" in r.stdout and "speech" in r.stdout and "thought" in r.stdout
+        # Not caveman in this mode.
+        assert "(caveman)" not in r.stdout
+
+        # --list = same as bare.
+        r2 = self._run("primitives", "--list")
+        assert r2.returncode == 0
+        assert "shape generators" in r2.stdout
+        assert "(caveman)" not in r2.stdout
+
+        # --caveman = terse one-liners.
+        r3 = self._run("primitives", "--caveman")
+        assert r3.returncode == 0
+        assert "(caveman)" in r3.stdout
+        assert "box. round corners maybe" in r3.stdout  # rect caveman
+        assert "say-bubble + spike at tip" in r3.stdout  # speech caveman
+
     @pytest.mark.parametrize(
         "subcommand, fixture_name, expected_substring",
         [

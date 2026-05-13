@@ -115,16 +115,59 @@ SUBCOMMANDS = {
 }
 
 
+# Caveman-style one-liners (drop articles + copulas; keep technical accuracy).
+# Used by `svg-infographics --caveman` for a terse catalogue. Mirror this
+# whenever a subcommand lands in SUBCOMMANDS.
+CAVEMAN_DESCRIPTIONS: dict[str, str] = {
+    "preflight": "say what you build. tool give rules",
+    "check": "did build match what you said?",
+    "finalize": "ship gate. fail if bad",
+    "overlaps": "find text + shape bumps. spacing too",
+    "contrast": "WCAG colour read. light + dark",
+    "alignment": "snap grid? rhythm ok?",
+    "connectors": "lines clean? no zero. no dangle",
+    "css": "inline fills should be class. dark mode missing?",
+    "validate": "XML ok? viewBox? empty path?",
+    "primitives": "shape factory: rect circle speech thought + more",
+    "connector": "line route: straight L spline manifold",
+    "geom": "Fusion-360: attach midpoint tangent offset",
+    "boolean": "Inkscape ops: union diff cut outline",
+    "charts": "data -> SVG: line bar pie radar",
+    "empty-space": "find free spots. icons + text",
+    "callouts": "best joint layout for labels",
+    "place": "drop icon inside container. respect margins",
+    "collide": "check pairs of lines. cross? touch?",
+    "text-to-path": "text -> paths via font file",
+    "shapes": "draw.io stencils",
+    "background": "procedural bg patterns",
+}
+
+
+def _print_catalogue(caveman: bool = False) -> None:
+    """Print the subcommand catalogue, normal or caveman."""
+    header = "svg-infographics - SVG infographic validation and geometry tools"
+    if caveman:
+        header += " (caveman)"
+    print(header)
+    print()
+    print("Subcommands:")
+    desc_map = CAVEMAN_DESCRIPTIONS if caveman else {k: v[1] for k, v in SUBCOMMANDS.items()}
+    for name in SUBCOMMANDS:
+        print(f"  {name:<14} {desc_map.get(name, '')}")
+    print()
+    print("Usage: svg-infographics <subcommand> [options]")
+    print("       svg-infographics <subcommand> --help     full flags of one subcommand")
+    if not caveman:
+        print("       svg-infographics --caveman               ultra-terse catalogue")
+
+
 def main():
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("svg-infographics - SVG infographic validation and geometry tools")
-        print()
-        print("Subcommands:")
-        for name, (_, desc) in SUBCOMMANDS.items():
-            print(f"  {name:<14} {desc}")
-        print()
-        print("Usage: svg-infographics <subcommand> [options]")
-        print("       svg-infographics <subcommand> --help  for subcommand options")
+        _print_catalogue(caveman=False)
+        sys.exit(0)
+
+    if sys.argv[1] in ("--caveman", "caveman"):
+        _print_catalogue(caveman=True)
         sys.exit(0)
 
     subcommand = sys.argv[1]

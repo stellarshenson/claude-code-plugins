@@ -42,7 +42,7 @@ Skipping preflight = no rule bundle in context = rules buried in narrative prose
 Every visible pixel traces back to a CLI call. Palette:
 
 - `preflight` / `check` / `finalize` - quartermaster loop
-- `primitives` - rect / circle / hex / star / cube / cylinder / axis / spline. Returns anchors
+- `primitives` - rect / square / circle / ellipse / diamond / hexagon / star / arc / cube / cuboid / cylinder / sphere / plane / pyramid / gear / cloud / document / **speech** (bubble + callout spike, one merged path) / **thought** (lobed cloud + decreasing-bubble trail) / spline / axis. Returns anchors. **Discovery**: `primitives` (bare), `--list`, or `--caveman` for the grouped catalogue
 - `connector` - every arrow. Modes: straight, L, L-chamfer, spline, manifold, ribbon. ALWAYS pass `--direction`; for L / L-chamfer also `--start-dir + --end-dir` OR `--src-rect + --tgt-rect` (otherwise route looks garbage)
 - `geom` - align, distribute, attach, midpoint, offset, polar, bisector
 - `boolean` - union / intersection / difference / xor on path shapes (Inkscape Path menu) plus one-step `buffer` (Inset/Outset), `cutout` (cut-with-margin), `outline` (ring of width N around boundary). See `rules/shapes.md`

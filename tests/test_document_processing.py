@@ -303,6 +303,23 @@ class TestBatch:
 class TestCLI:
     """End-to-end CLI tests via the main() entrypoint."""
 
+    def test_caveman_catalogue(self, capsys):
+        """`document-processing --caveman` prints every subcommand with a terse one-liner."""
+        code = cli_main(["--caveman"])
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "(caveman)" in out
+        for sub, expected in (
+            ("ground", "one claim"),
+            ("batch-ground", "many claims"),
+            ("extract-claims", "doc -> claims.json"),
+            ("check-consistency", "doc fight self"),
+            ("batch-validate", "yaml manifest"),
+            ("setup", "first run"),
+        ):
+            assert sub in out, f"{sub} missing from caveman catalogue"
+            assert expected in out, f"caveman line for {sub} missing"
+
     def test_ground_exit_zero_on_hit(self, tmp_path, capsys):
         src = tmp_path / "src.txt"
         src.write_text("The quick brown fox jumps over the lazy dog.")

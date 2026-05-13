@@ -36,7 +36,7 @@ The plugin is organised around five capabilities. Every command, skill, and CLI 
 
 Grid-first layout, shape primitives, theme and CSS, dark mode, typography, the 6-phase mandatory workflow, and the Fusion-360-style geometry toolkit. Start here: everything else builds on top of approved theme colours, a defined grid, and exact-coordinate primitives.
 
-Grid is defined before content is placed. Shape primitives (`rect`, `circle`, `ellipse`, `hexagon`, `star`, `diamond`, `arc`, `cube`, `cylinder`, `sphere`, `axis`, `spline`) return named anchor points and paste-ready SVG snippets so positions are never eyeballed. Theme swatches define a palette with dark/light variants; the approved swatch then drives every subsequent deliverable via CSS classes and a `@media (prefers-color-scheme: dark)` block. The geometry toolkit adds sketch-constraint math (midpoint, perpendicular, parallel, tangent, intersection, polar, evenly-spaced, concentric, bisector, attachment, offset, `contains`, `rect-edge`, `curve-midpoint`, `shape-midpoint`) used by every downstream capability.
+Grid is defined before content is placed. Shape primitives (`rect`, `square`, `circle`, `ellipse`, `diamond`, `hexagon`, `star`, `arc`, `cube`, `cuboid`, `cylinder`, `sphere`, `plane`, `pyramid`, `gear`, `cloud`, `document`, `speech`, `thought`, `axis`, `spline`) return named anchor points and paste-ready SVG snippets so positions are never eyeballed. The grouped catalogue is one keystroke away: `svg-infographics primitives` (bare), `--list`, or `--caveman` for the ultra-terse register. Theme swatches define a palette with dark/light variants; the approved swatch then drives every subsequent deliverable via CSS classes and a `@media (prefers-color-scheme: dark)` block. The geometry toolkit adds sketch-constraint math (midpoint, perpendicular, parallel, tangent, intersection, polar, evenly-spaced, concentric, bisector, attachment, offset, `contains`, `rect-edge`, `curve-midpoint`, `shape-midpoint`) used by every downstream capability.
 
 Backing tools: `svg-infographics primitives`, `svg-infographics geom`.
 Commands: `/svg-infographics:theme`, `/svg-infographics:create`.
@@ -181,7 +181,7 @@ Every subcommand is invoked as `svg-infographics <subcommand> [args]`. Run `--he
 | `connectors` | validator | Connector quality: zero-length segments, edge-snap, missing chamfer, dangling endpoints |
 | `css` | validator | CSS compliance: inline fills, forbidden colours, missing dark mode overrides |
 | `collide` | validator | Pairwise connector collision detection with tolerance-aware intersection |
-| `primitives` | calculator | Named anchors and paste-ready SVG for 14 primitive shape types |
+| `primitives` | calculator | Named anchors and paste-ready SVG for 21 primitive shape types (2D / 3D / decorative / speech + thought bubbles / curves + axes). Run `primitives` (bare), `--list`, or `--caveman` for the grouped catalogue |
 | `connector` | calculator | Trimmed path and arrowhead polygons for 5 connector modes with auto edge-snap |
 | `geom` | calculator | Sketch constraints: midpoint, perpendicular, tangent, intersections, offset, contains, rect-edge, curve-midpoint |
 | `charts` | calculator | Pygal SVG charts with caller-provided palette and injected dark mode |

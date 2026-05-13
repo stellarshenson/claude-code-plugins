@@ -985,7 +985,35 @@ def cmd_setup(args: argparse.Namespace) -> int:
     return 0
 
 
+# Caveman-style one-liners (drop articles + copulas; keep technical accuracy).
+# Used by `document-processing --caveman` for a terse catalogue.
+CAVEMAN_DESCRIPTIONS: dict[str, str] = {
+    "ground": "one claim -> source. score 3 ways",
+    "batch-ground": "many claims -> source. report",
+    "extract-claims": "doc -> claims.json. lossy. review first",
+    "check-consistency": "doc fight self? same fact different number?",
+    "batch-validate": "many docs -> many reports. yaml manifest",
+    "setup": "first run. say yes/no semantic",
+}
+
+
+def _print_caveman_catalogue() -> None:
+    print("document-processing - source grounding + compliance tools (caveman)")
+    print()
+    print("Subcommands:")
+    for name, desc in CAVEMAN_DESCRIPTIONS.items():
+        print(f"  {name:<20} {desc}")
+    print()
+    print("Run 'document-processing --help' for the full flags of each subcommand.")
+
+
 def main(argv: list[str] | None = None) -> int:
+    # Caveman shortcut: terse catalogue, no argparse subcommand required.
+    effective = list(argv) if argv is not None else sys.argv[1:]
+    if effective in (["--caveman"], ["caveman"]):
+        _print_caveman_catalogue()
+        return 0
+
     parser = _build_parser()
     args = parser.parse_args(argv)
     return args.func(args)

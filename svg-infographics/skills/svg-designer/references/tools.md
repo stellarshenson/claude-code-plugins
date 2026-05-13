@@ -5,7 +5,7 @@ Tool palette for svg-infographics. Every coordinate, colour, connector, placemen
 ```
 svg-infographics
  |
- |-- primitives <shape>          Shape geometry + named anchors
+ |-- primitives <shape>          Shape geometry + named anchors (run bare or --list / --caveman for the full catalogue)
  |   |-- rect                    Rectangle. --x --y --w --h [--mode filled|outline|wire]
  |   |-- square                  Square. --x --y --size
  |   |-- circle                  Circle. --x --y --r
@@ -23,6 +23,8 @@ svg-infographics
  |   |-- cylinder                Isometric cylinder. --x --y --r --h
  |   |-- sphere                  Wireframe sphere. --x --y --r
  |   |-- plane                   Ground plane. --x --y --w --h
+ |   |-- speech                  Speech bubble + callout spike. --x --y --w --h [--tip-x --tip-y] [--shape rect|soft-rect|ellipse] [--rx --ry] [--id NAME]
+ |   |-- thought                 Thought cloud + decreasing-bubble trail. --x --y --w --h [--tip-x --tip-y] [--trail-bubbles N] [--id NAME]
  |   |-- axis                    3-axis coordinate system. --x --y --length
  |   '-- spline                  PCHIP curve through waypoints. --points "x1,y1 x2,y2 ..."
  |
@@ -151,6 +153,10 @@ svg-infographics
 | Need | Tool |
 |------|------|
 | Place a shape | `primitives <shape>` |
+| Discover all primitives | `primitives` (bare) or `primitives --list` for the grouped catalogue; `primitives --caveman` for ultra-terse one-liners |
+| Speech / quote bubble | `primitives speech --x --y --w --h [--tip-x --tip-y] [--shape rect/soft-rect/ellipse]` |
+| Thought bubble | `primitives thought --x --y --w --h [--tip-x --tip-y --trail-bubbles N]` |
+| Terse top-level catalogue | `svg-infographics --caveman` / `document-processing --caveman` |
 | Connect two shapes | `connector --mode l-chamfer --src-rect ... --tgt-rect ... --standoff 2` |
 | Route around obstacles | `connector --auto-route --svg scene.svg --standoff 2` |
 | Fan N sources to M sinks | `connector --mode manifold --standoff 2` |

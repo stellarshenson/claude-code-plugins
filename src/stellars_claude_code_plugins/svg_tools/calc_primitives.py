@@ -1601,6 +1601,89 @@ def gen_thought_bubble(
 # ---------------------------------------------------------------------------
 
 
+# Caveman-style one-liners per primitive (drop articles + copulas; keep
+# technical accuracy). Used by --caveman in the catalogue. Edit alongside
+# `_PRIMITIVE_GROUPS` whenever a new primitive lands.
+_CAVEMAN_HELP: dict[str, str] = {
+    "rect": "box. round corners maybe",
+    "square": "box. equal sides",
+    "circle": "round. 8 anchor points",
+    "ellipse": "egg. two radii",
+    "diamond": "tilted box",
+    "hexagon": "6-side. flat or pointy top",
+    "star": "spike thing. N points",
+    "arc": "pie slice",
+    "cube": "3D box. iso view",
+    "cuboid": "3D box. w/h/d each different",
+    "cylinder": "tube. ellipse top + bottom",
+    "sphere": "ball. shaded",
+    "plane": "tilted flat thing",
+    "pyramid": "3D triangle peak",
+    "gear": "tooth wheel",
+    "cloud": "lumpy puff",
+    "document": "paper. corner fold",
+    "speech": "say-bubble + spike at tip. one path",
+    "thought": "think-cloud + small-bubble trail to thinker",
+    "spline": "smooth curve thru points",
+    "axis": "x y z lines + ticks",
+}
+
+# Verbose one-liners shown when --caveman is NOT set. Mirror the help= strings
+# on the subparsers so this list is the single source of truth for the catalogue.
+_FULL_HELP: dict[str, str] = {
+    "rect": "Rectangle (optional rounded corners, accent bar)",
+    "square": "Square (equal sides)",
+    "circle": "Circle with cardinal + diagonal anchors",
+    "ellipse": "Ellipse with two radii",
+    "diamond": "Diamond / rhombus",
+    "hexagon": "Regular hexagon (flat or pointy top)",
+    "star": "Regular star polygon (N points)",
+    "arc": "Circular arc sector (pie slice)",
+    "cube": "Isometric cube (filled or wireframe)",
+    "cuboid": "Isometric cuboid (independent w/h/d)",
+    "cylinder": "Cylinder with elliptical faces (filled or wireframe)",
+    "sphere": "Sphere with shading (filled or wireframe)",
+    "plane": "Isometric plane (tilted flat surface)",
+    "pyramid": "Isometric 3D pyramid (filled or wireframe)",
+    "gear": "Toothed gear wheel (filled or outline)",
+    "cloud": "Lobed cloud shape (filled or outline)",
+    "document": "Document shape with folded top-right corner",
+    "speech": "Speech bubble (rect / soft-rect / ellipse) optionally merged with a callout spike at --tip-x, --tip-y",
+    "thought": "Thought bubble (lobed cloud) optionally followed by a trail of small ellipses pointing at --tip-x, --tip-y",
+    "spline": "Smooth PCHIP spline through control points",
+    "axis": "Coordinate axes (x / y / xy / xyz) with ticks",
+}
+
+# Catalogue groups for the --list / bare-args display.
+_PRIMITIVE_GROUPS: list[tuple[str, list[str]]] = [
+    ("2D shapes", ["rect", "square", "circle", "ellipse", "diamond", "hexagon", "star", "arc"]),
+    ("3D / isometric", ["cube", "cuboid", "cylinder", "sphere", "plane", "pyramid"]),
+    ("Decorative", ["gear", "cloud", "document"]),
+    ("Speech / thought bubbles", ["speech", "thought"]),
+    ("Curves & layout", ["spline", "axis"]),
+]
+
+
+def _print_primitives_catalogue(caveman: bool = False) -> None:
+    """Print every primitive grouped by family, one line each.
+
+    `caveman=False` uses the long help string; `caveman=True` uses the terse
+    `_CAVEMAN_HELP` variant. Both follow the same grouping.
+    """
+    desc_map = _CAVEMAN_HELP if caveman else _FULL_HELP
+    header = "svg-infographics primitives - shape generators" + (" (caveman)" if caveman else "")
+    print(header)
+    print()
+    for group, names in _PRIMITIVE_GROUPS:
+        print(f"  {group}")
+        for name in names:
+            print(f"    {name:<12} {desc_map[name]}")
+        print()
+    print("Run 'svg-infographics primitives <name> --help' for the full flags of one primitive.")
+    if not caveman:
+        print("Run 'svg-infographics primitives --caveman' for ultra-terse one-liners.")
+
+
 def _print_result(result: PrimitiveResult):
     """Print primitive result with anchors and SVG."""
     print(f"Primitive: {result.kind}")
@@ -1618,9 +1701,22 @@ def _print_result(result: PrimitiveResult):
 
 
 def main():
+    # Catalogue mode: bare invocation OR explicit --list / --caveman without a
+    # primitive name → print the grouped catalogue and exit cleanly. This is a
+    # friendlier fallback than argparse's "primitive required" error and gives
+    # users a way to discover what's available without `--help`.
+    argv = sys.argv[1:]
+    if argv in ([], ["--list"], ["list"]):
+        _print_primitives_catalogue(caveman=False)
+        return 0
+    if argv in (["--caveman"], ["caveman"], ["--list", "--caveman"], ["--caveman", "--list"]):
+        _print_primitives_catalogue(caveman=True)
+        return 0
+
     parser = argparse.ArgumentParser(
         prog="svg-infographics primitives",
-        description="Generate SVG primitive geometry with exact coordinates",
+        description="Generate SVG primitive geometry with exact coordinates. "
+        "Run with no args, '--list', or '--caveman' to see the catalogue of available primitives.",
     )
     sub = parser.add_subparsers(dest="primitive", required=True)
 
