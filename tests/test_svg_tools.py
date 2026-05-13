@@ -3359,6 +3359,284 @@ class TestDefectDetection:
         assert "FAIL" in r.stdout or "fail" in r.stdout.lower()
 
 
+class TestSpeechBubble:
+    """`primitives speech` - speech bubble (rect / soft-rect / ellipse) + callout spike.
+
+    Spike apex is whatever the caller specifies via --tip-x / --tip-y; body and
+    spike are merged via shapely union into ONE closed path so the result is a
+    single <path> with one fill and one stroke (no seam line).
+    """
+
+    def _gen(self, **kwargs):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_speech_bubble
+
+        defaults = dict(x=60, y=40, w=200, h=80, tip_x=280, tip_y=220, shape="soft-rect")
+        defaults.update(kwargs)
+        return gen_speech_bubble(**defaults)
+
+    def test_rect_tip_below_auto_anchors_bottom(self):
+        result, warnings = self._gen(shape="rect", tip_x=280, tip_y=220)
+        assert warnings == []
+        assert result.kind == "speech-rect+spike-bottom"
+        # Spike base sits on bottom edge (y = 120).
+        assert result.anchors["spike-base-l"].y == 120.0
+        assert result.anchors["spike-base-r"].y == 120.0
+        # Tip is exposed as an anchor.
+        assert (result.anchors["tip"].x, result.anchors["tip"].y) == (280.0, 220.0)
+        # Single <path> with the tip vertex baked in.
+        assert result.svg.count("<path") == 1
+        assert "280.00,220.00" in result.path_d
+
+    def test_rect_tip_right_auto_anchors_right(self):
+        result, warnings = self._gen(shape="rect", tip_x=400, tip_y=80)
+        assert warnings == []
+        assert result.kind == "speech-rect+spike-right"
+        assert result.anchors["spike-base-l"].x == 260.0  # right edge
+        assert result.anchors["spike-base-r"].x == 260.0
+        # Path is short and clean for sharp rect: 4 body corners + 3 spike vertices = 7 L-commands.
+        assert result.path_d.count(" L") == 6  # 7 segments minus the initial M
+        assert "400.00,80.00" in result.path_d
+
+    def test_soft_rect_tip_below_merges_into_one_path(self):
+        result, warnings = self._gen(shape="soft-rect", tip_x=280, tip_y=220, corner_radius=12)
+        assert warnings == []
+        assert result.kind == "speech-soft-rect+spike-bottom"
+        # Rounded-rect body has many polygonal segments; tip vertex still present once.
+        assert result.path_d.count("280.00,220.00") == 1
+        # The path closes (Z) - a single ring, not multiple subpaths.
+        assert result.path_d.count("M") == 1
+        assert result.path_d.endswith("Z")
+
+    def test_ellipse_spike_attaches_on_centre_to_tip_ray(self):
+        result, warnings = self._gen(shape="ellipse", tip_x=100, tip_y=200)
+        assert warnings == []
+        assert result.kind == "speech-ellipse+spike-ellipse-radial"
+        # The MIDPOINT of the spike base sits on the ellipse perimeter, on the
+        # centre->tip ray. Base corners are tangent-offset by spike_base_width/2.
+        bl = result.anchors["spike-base-l"]
+        br = result.anchors["spike-base-r"]
+        mid_x = (bl.x + br.x) / 2
+        mid_y = (bl.y + br.y) / 2
+        cx, cy, rx, ry = 160.0, 80.0, 100.0, 40.0
+        on_ellipse = ((mid_x - cx) / rx) ** 2 + ((mid_y - cy) / ry) ** 2
+        assert abs(on_ellipse - 1.0) < 1e-6  # midpoint exactly on perimeter
+        # And the midpoint sits on the centre->tip ray (cross product == 0).
+        cross = (tip_x_from_centre := 100 - cx) * (mid_y - cy) - (
+            tip_y_from_centre := 200 - cy
+        ) * (mid_x - cx)
+        assert abs(cross) < 1e-6 * (abs(tip_x_from_centre) + abs(tip_y_from_centre) + 1)
+        assert "100.00,200.00" in result.path_d
+
+    def test_tip_inside_body_fires_warning_and_suppresses_spike(self):
+        result, warnings = self._gen(shape="rect", tip_x=120, tip_y=70)  # tip well inside
+        assert any(w.startswith("TIP-INSIDE-BUBBLE") for w in warnings)
+        assert result.kind == "speech-rect"  # no `+spike-...`
+        assert "spike-base-l" not in result.anchors
+        # Just the rectangle: 4 corners.
+        assert result.path_d.count(" L") == 3
+
+    def test_explicit_anchor_overrides_auto(self):
+        # Tip is below the bubble; auto would pick "bottom". Force "right" instead.
+        result, warnings = self._gen(shape="rect", tip_x=280, tip_y=220, spike_anchor="right")
+        assert warnings == []
+        assert result.kind == "speech-rect+spike-right"
+        assert result.anchors["spike-base-l"].x == 260.0
+
+    def test_corner_radius_clamped_warns(self):
+        # Radius > min(w, h)/2 = 40 should clamp and warn.
+        result, warnings = self._gen(shape="soft-rect", corner_radius=200, tip_x=280, tip_y=220)
+        assert any(w.startswith("CORNER-RADIUS-CLAMPED") for w in warnings)
+        # Still produces a valid merged path.
+        assert result.path_d.startswith("M")
+        assert result.path_d.endswith("Z")
+
+    def test_ellipse_explicit_side_anchor_warns_and_overrides(self):
+        # Manual side anchors don't apply to ellipse; should warn + still produce radial spike.
+        result, warnings = self._gen(shape="ellipse", tip_x=100, tip_y=200, spike_anchor="bottom")
+        assert any(w.startswith("ELLIPSE-ANCHOR-OVERRIDDEN") for w in warnings)
+        assert result.kind == "speech-ellipse+spike-ellipse-radial"
+
+    def test_no_tip_emits_body_only(self):
+        # Both tip-x and tip-y unset -> just the body, no spike, no tip anchor.
+        result, warnings = self._gen(tip_x=None, tip_y=None, shape="soft-rect")
+        assert warnings == []
+        assert result.kind == "speech-soft-rect"
+        assert "spike-base-l" not in result.anchors
+        assert "tip" not in result.anchors
+        assert result.svg.count("<path") == 1
+        assert result.path_d.endswith("Z")
+
+    def test_incomplete_tip_warns_and_drops_to_body_only(self):
+        # Only tip-x set -> TIP-INCOMPLETE warning, body only.
+        result, warnings = self._gen(tip_x=300, tip_y=None)
+        assert any(w.startswith("TIP-INCOMPLETE") for w in warnings)
+        assert "spike-base-l" not in result.anchors
+
+    def test_id_attribute_on_path(self):
+        result, _ = self._gen(shape="rect", tip_x=None, tip_y=None, element_id="quote-card")
+        assert 'id="quote-card"' in result.svg
+
+    def test_rx_ry_elliptical_corners(self):
+        # rx != ry should produce an oblong rounded-rect distinct from circular.
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_speech_bubble
+
+        circular, _ = gen_speech_bubble(60, 40, 200, 80, shape="soft-rect", corner_radius=16)
+        elliptical, _ = gen_speech_bubble(60, 40, 200, 80, shape="soft-rect", rx=8, ry=24)
+        # Different shapes -> different path data lengths.
+        assert circular.path_d != elliptical.path_d
+        # Both still close cleanly.
+        assert elliptical.path_d.startswith("M") and elliptical.path_d.endswith("Z")
+
+    def test_rx_ry_clamped_warn(self):
+        # rx > w/2 should clamp.
+        result, warnings = self._gen(shape="soft-rect", rx=999, ry=10, tip_x=None, tip_y=None)
+        assert any(w.startswith("CORNER-RADIUS-CLAMPED") for w in warnings)
+        assert result.path_d.endswith("Z")
+
+    def test_text_padding_per_axis(self):
+        result, _ = self._gen(
+            shape="rect",
+            tip_x=None,
+            tip_y=None,
+            text_padding_x=20,
+            text_padding_y=5,
+        )
+        # body bbox: (60, 40, 260, 120); expected text area: (80, 45, 240, 115).
+        assert (result.anchors["text-top-left"].x, result.anchors["text-top-left"].y) == (80.0, 45.0)
+        assert (result.anchors["text-bottom-right"].x, result.anchors["text-bottom-right"].y) == (240.0, 115.0)
+
+    def test_cli_speech_smoke(self):
+        # CLI end-to-end: invoke the subparser and confirm exit 0 + path emitted.
+        import subprocess
+        import sys
+
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.calc_primitives",
+                "speech",
+                "--x", "60", "--y", "40", "--w", "200", "--h", "80",
+                "--tip-x", "280", "--tip-y", "220",
+                "--shape", "soft-rect",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "speech-soft-rect+spike-bottom" in proc.stdout
+        assert "280.00,220.00" in proc.stdout
+
+
+class TestThoughtBubble:
+    """`primitives thought` - lobed cloud body + trail of decreasing ellipses.
+
+    Trail bubbles are emitted as separate <ellipse> elements (NOT unioned with
+    the body) - that's what makes a thought bubble read as a thought bubble.
+    The whole thing is wrapped in one <g> so it behaves as a single primitive.
+    """
+
+    def _gen(self, **kwargs):
+        from stellars_claude_code_plugins.svg_tools.calc_primitives import gen_thought_bubble
+
+        defaults = dict(x=60, y=40, w=200, h=80, tip_x=320, tip_y=240)
+        defaults.update(kwargs)
+        return gen_thought_bubble(**defaults)
+
+    def test_default_trail_three_decreasing_bubbles(self):
+        result, warnings = self._gen(trail_bubbles=3)
+        assert warnings == []
+        assert result.kind == "thought-cloud+trail-3"
+        # Three trail anchors, march toward the tip.
+        for i in (1, 2, 3):
+            assert f"trail-{i}" in result.anchors
+        # SVG is a <g> with one cloud path + three ellipses.
+        assert result.svg.startswith("<g>")
+        assert result.svg.endswith("</g>")
+        assert result.svg.count("<ellipse") == 3
+        assert result.svg.count("<path") == 1
+        # Bubble radii decrease toward the tip (parsed from the rx="..." attrs).
+        import re
+        rxs = [float(m) for m in re.findall(r'rx="([0-9.]+)"', result.svg)]
+        assert rxs == sorted(rxs, reverse=True)  # strictly non-increasing
+
+    def test_trail_bubbles_zero_emits_just_cloud(self):
+        result, warnings = self._gen(trail_bubbles=0)
+        assert warnings == []
+        assert result.kind == "thought-cloud"
+        assert "<ellipse" not in result.svg
+        assert result.svg.count("<path") == 1
+        # No trail anchors when there are no trail bubbles.
+        assert not any(k.startswith("trail-") for k in result.anchors if k != "trail-start-side")
+
+    def test_tip_inside_body_suppresses_trail_and_warns(self):
+        result, warnings = self._gen(tip_x=120, tip_y=70, trail_bubbles=3)
+        assert any(w.startswith("TIP-INSIDE-BUBBLE") for w in warnings)
+        assert result.kind == "thought-cloud"  # no `+trail-...`
+        assert "<ellipse" not in result.svg
+
+    def test_trail_starts_at_nearest_body_edge(self):
+        # Tip down-right -> nearest body edge midpoint is `right` (260, 80).
+        result, _ = self._gen(tip_x=400, tip_y=80, trail_bubbles=3)
+        sx, sy = result.anchors["trail-start-side"].x, result.anchors["trail-start-side"].y
+        # Right-edge midpoint of bbox (60, 40, 260, 120).
+        assert (sx, sy) == (260.0, 80.0)
+
+    def test_explicit_trail_radii_honoured(self):
+        result, _ = self._gen(trail_bubbles=2, trail_r_start=10, trail_r_end=2)
+        import re
+        rxs = [float(m) for m in re.findall(r'rx="([0-9.]+)"', result.svg)]
+        assert rxs == [10.0, 2.0]
+
+    def test_no_tip_emits_bare_cloud(self):
+        result, warnings = self._gen(tip_x=None, tip_y=None)
+        assert warnings == []
+        assert result.kind == "thought-cloud"
+        assert "<ellipse" not in result.svg
+        assert "tip" not in result.anchors
+        assert "trail-start-side" not in result.anchors
+
+    def test_incomplete_tip_warns_and_drops_trail(self):
+        result, warnings = self._gen(tip_x=320, tip_y=None)
+        assert any(w.startswith("TIP-INCOMPLETE") for w in warnings)
+        assert result.kind == "thought-cloud"
+        assert "<ellipse" not in result.svg
+
+    def test_id_attribute_on_g(self):
+        result, _ = self._gen(tip_x=None, tip_y=None, element_id="thinking")
+        assert result.svg.startswith('<g id="thinking">')
+
+    def test_text_padding_per_axis_on_thought(self):
+        # text_padding_x / text_padding_y override the uniform text_padding.
+        result, _ = self._gen(tip_x=None, tip_y=None, text_padding_x=30, text_padding_y=2)
+        # Width-padding gate: max(30, w*0.10=20) = 30 -> tx=60+30=90.
+        # Height-padding gate: max(2, h*0.20=16) = 16 -> ty=40+16=56 (h*0.20 dominates here).
+        assert result.anchors["text-top-left"].x == 90.0
+        # Sanity: width-shrink applied (90 + (200 - 60) = 230 -> right edge 230)
+        assert result.anchors["text-bottom-right"].x == 230.0
+
+    def test_cli_thought_smoke(self):
+        import subprocess
+        import sys
+
+        proc = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.calc_primitives",
+                "thought",
+                "--x", "60", "--y", "40", "--w", "200", "--h", "80",
+                "--tip-x", "320", "--tip-y", "240",
+                "--trail-bubbles", "3",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert "thought-cloud+trail-3" in proc.stdout
+        assert proc.stdout.count("<ellipse") == 3
+
+
 class TestSvgInfographicsCLI:
     """Unified svg-infographics CLI dispatcher. 12 tests -> 3."""
 

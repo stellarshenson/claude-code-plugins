@@ -22,6 +22,7 @@ import re
 import sys
 
 from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.geometry import box as shapely_box
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -1050,6 +1051,552 @@ def gen_document(
 
 
 # ---------------------------------------------------------------------------
+# Speech bubble + callout spike
+# ---------------------------------------------------------------------------
+
+
+def _polygon_to_path_d(poly: ShapelyPolygon, decimals: int = 2) -> str:
+    """Convert a shapely Polygon's exterior to an SVG path `d=` (M/L ... Z)."""
+    coords = list(poly.exterior.coords)
+    if len(coords) < 3:
+        return ""
+    # shapely closes the ring with a duplicate first vertex; drop it.
+    if coords[0] == coords[-1]:
+        coords = coords[:-1]
+    parts = [f"M{coords[0][0]:.{decimals}f},{coords[0][1]:.{decimals}f}"]
+    parts.extend(f"L{x:.{decimals}f},{y:.{decimals}f}" for x, y in coords[1:])
+    parts.append("Z")
+    return " ".join(parts)
+
+
+def _ellipse_polygon(
+    cx: float, cy: float, rx: float, ry: float, segments: int = 96
+) -> ShapelyPolygon:
+    """Approximate an ellipse as a closed shapely Polygon with `segments` vertices."""
+    pts = [
+        (
+            cx + rx * math.cos(2 * math.pi * i / segments),
+            cy + ry * math.sin(2 * math.pi * i / segments),
+        )
+        for i in range(segments)
+    ]
+    return ShapelyPolygon(pts)
+
+
+def _rounded_rect_polygon(
+    bx1: float, by1: float, bx2: float, by2: float, rx: float, ry: float, corner_segs: int = 16
+) -> ShapelyPolygon:
+    """Rounded rectangle with possibly-elliptical (rx != ry) corners.
+
+    Built by walking the perimeter clockwise: 4 straight edges + 4 quarter-
+    ellipses. ``rx`` is the horizontal radius (clamped to (bx2-bx1)/2) and
+    ``ry`` the vertical radius (clamped to (by2-by1)/2). Falls back to a
+    plain rectangle when both radii collapse to 0.
+    """
+    rx = max(0.0, min(rx, (bx2 - bx1) / 2))
+    ry = max(0.0, min(ry, (by2 - by1) / 2))
+    if rx == 0 and ry == 0:
+        return shapely_box(bx1, by1, bx2, by2)
+    pts: list[tuple[float, float]] = []
+    # Top edge (left -> right), then top-right quarter (rotating from -90deg to 0deg).
+    pts.append((bx1 + rx, by1))
+    pts.append((bx2 - rx, by1))
+    cx_r, cy_r = bx2 - rx, by1 + ry  # top-right corner centre
+    for i in range(1, corner_segs + 1):
+        t = (i / corner_segs) * (math.pi / 2)
+        pts.append((cx_r + rx * math.sin(t), cy_r - ry * math.cos(t)))
+    # Right edge (top -> bottom).
+    pts.append((bx2, by2 - ry))
+    cx_r, cy_r = bx2 - rx, by2 - ry  # bottom-right centre
+    for i in range(1, corner_segs + 1):
+        t = (i / corner_segs) * (math.pi / 2)
+        pts.append((cx_r + rx * math.cos(t), cy_r + ry * math.sin(t)))
+    # Bottom edge (right -> left).
+    pts.append((bx1 + rx, by2))
+    cx_r, cy_r = bx1 + rx, by2 - ry  # bottom-left centre
+    for i in range(1, corner_segs + 1):
+        t = (i / corner_segs) * (math.pi / 2)
+        pts.append((cx_r - rx * math.sin(t), cy_r + ry * math.cos(t)))
+    # Left edge (bottom -> top).
+    pts.append((bx1, by1 + ry))
+    cx_r, cy_r = bx1 + rx, by1 + ry  # top-left centre
+    for i in range(1, corner_segs + 1):
+        t = (i / corner_segs) * (math.pi / 2)
+        pts.append((cx_r - rx * math.cos(t), cy_r - ry * math.sin(t)))
+    return ShapelyPolygon(pts)
+
+
+def _ellipse_perimeter_intersect(
+    cx: float, cy: float, rx: float, ry: float, tip_x: float, tip_y: float
+) -> tuple[float, float]:
+    """Return the point on the ellipse boundary on the ray from (cx,cy) to (tip)."""
+    dx = tip_x - cx
+    dy = tip_y - cy
+    if dx == 0 and dy == 0:
+        # degenerate: tip == centre. Pick a deterministic point on the right.
+        return (cx + rx, cy)
+    # Parametric ray: (cx + t*dx, cy + t*dy). Plug into ellipse equation:
+    #   ((t*dx)/rx)^2 + ((t*dy)/ry)^2 = 1
+    a = (dx / rx) ** 2 + (dy / ry) ** 2
+    t = 1.0 / math.sqrt(a)
+    return (cx + t * dx, cy + t * dy)
+
+
+def gen_speech_bubble(
+    x: float,
+    y: float,
+    w: float,
+    h: float,
+    tip_x: float | None = None,
+    tip_y: float | None = None,
+    shape: str = "soft-rect",
+    corner_radius: float = 12.0,
+    rx: float | None = None,
+    ry: float | None = None,
+    spike_base_width: float = 20.0,
+    spike_anchor: str = "auto",
+    text_padding: float = 10.0,
+    text_padding_x: float | None = None,
+    text_padding_y: float | None = None,
+    element_id: str | None = None,
+    mode: str = "filled",
+) -> tuple[PrimitiveResult, list[str]]:
+    """Speech bubble: rect / soft-rect / ellipse body, optionally merged with a callout spike.
+
+    When ``tip_x`` and ``tip_y`` are both supplied, a triangular spike is added
+    with apex at ``(tip_x, tip_y)`` and base on the bubble perimeter; body and
+    spike are unioned via shapely so the result is a single closed ``<path>``
+    with one fill and one stroke (no seam line). When the tip is unset, just
+    the body is emitted - a plain quote box / rounded card with no callout.
+
+    Args:
+        x, y: top-left of the body bounding box.
+        w, h: body bounding-box dimensions.
+        tip_x, tip_y: where the spike apex points. Both must be set to get a
+            spike; leave both unset for a bubble without a callout.
+        shape: ``"rect"`` (sharp corners), ``"soft-rect"`` (rounded), or
+            ``"ellipse"`` (oval body).
+        corner_radius: uniform corner radius for ``soft-rect``; clamped to
+            ``min(w, h) / 2``. Used when neither ``rx`` nor ``ry`` is set.
+        rx, ry: non-uniform corner radii for ``soft-rect`` (elliptical corners).
+            Either one alone defaults the other to itself; setting both gives
+            elliptical corners. Both are clamped to ``w/2`` / ``h/2``.
+        spike_base_width: width of the spike base along the bubble edge.
+        spike_anchor: ``"auto"`` picks the nearest edge for rect / soft-rect
+            and the ellipse perimeter point on the centre->tip ray for
+            ellipse. Explicit ``"top"`` / ``"bottom"`` / ``"left"`` /
+            ``"right"`` overrides edge selection for rect / soft-rect only.
+        text_padding: uniform inset for the ``text-area`` anchor rectangle.
+        text_padding_x, text_padding_y: per-axis overrides of ``text_padding``.
+        element_id: when set, the emitted ``<path>`` gets ``id="<element_id>"``
+            so the agent can target it via ``--replace-id`` in the boolean tool.
+        mode: ``"filled"`` or ``"outline"``.
+
+    Returns:
+        ``(PrimitiveResult, list[str])`` - the result and any warnings
+        (``TIP-INSIDE-BUBBLE``, ``SPIKE-BASE-CLAMPED``,
+        ``CORNER-RADIUS-CLAMPED``, ``ELLIPSE-ANCHOR-OVERRIDDEN``,
+        ``TIP-INCOMPLETE``).
+    """
+    warnings: list[str] = []
+
+    if shape not in ("rect", "soft-rect", "ellipse"):
+        raise ValueError(f"shape must be rect / soft-rect / ellipse, got {shape!r}")
+    if w <= 0 or h <= 0:
+        raise ValueError("width and height must be positive")
+    if spike_base_width <= 0:
+        raise ValueError("spike_base_width must be positive")
+
+    # Tip handling: both unset => no spike; exactly one set => warn + ignore.
+    has_tip = tip_x is not None and tip_y is not None
+    if (tip_x is None) ^ (tip_y is None):
+        warnings.append(
+            "TIP-INCOMPLETE: both --tip-x and --tip-y must be supplied to attach a spike; "
+            "treating as no-tip and emitting body only"
+        )
+
+    # ----- build body polygon -----
+    bx1, by1, bx2, by2 = x, y, x + w, y + h
+    cx, cy = (bx1 + bx2) / 2, (by1 + by2) / 2
+
+    if shape == "rect":
+        body = shapely_box(bx1, by1, bx2, by2)
+    elif shape == "soft-rect":
+        # Non-uniform rx/ry path: explicit elliptical corners.
+        if rx is not None or ry is not None:
+            eff_rx = rx if rx is not None else (ry if ry is not None else corner_radius)
+            eff_ry = ry if ry is not None else eff_rx
+            rx_max, ry_max = w / 2, h / 2
+            if eff_rx > rx_max:
+                warnings.append(f"CORNER-RADIUS-CLAMPED: rx={eff_rx} clamped to {rx_max:.2f}")
+                eff_rx = rx_max
+            if eff_ry > ry_max:
+                warnings.append(f"CORNER-RADIUS-CLAMPED: ry={eff_ry} clamped to {ry_max:.2f}")
+                eff_ry = ry_max
+            body = _rounded_rect_polygon(bx1, by1, bx2, by2, eff_rx, eff_ry)
+        else:
+            r_max = min(w, h) / 2
+            r = corner_radius
+            if r > r_max:
+                warnings.append(
+                    f"CORNER-RADIUS-CLAMPED: corner_radius={corner_radius} clamped to {r_max:.2f}"
+                )
+                r = r_max
+            if r <= 0:
+                body = shapely_box(bx1, by1, bx2, by2)
+            else:
+                # Inset rectangle, then outset by r with rounded joins.
+                inner = shapely_box(bx1 + r, by1 + r, bx2 - r, by2 - r)
+                body = inner.buffer(r, quad_segs=16, join_style=1)
+    else:  # ellipse
+        body = _ellipse_polygon(cx, cy, w / 2, h / 2)
+
+    # ----- decide whether the spike is feasible -----
+    spike_polygon = None
+    spike_anchor_used = None
+    spike_base_l = None
+    spike_base_r = None
+
+    if has_tip:
+        tip_inside = body.contains(_tiny_point(tip_x, tip_y))
+        if tip_inside:
+            warnings.append(
+                f"TIP-INSIDE-BUBBLE: tip ({tip_x}, {tip_y}) lies inside the body; "
+                "spike suppressed. Place the tip outside the body to attach a spike."
+            )
+        else:
+            spike_polygon, spike_anchor_used, spike_base_l, spike_base_r, more = _build_spike(
+                shape=shape,
+                bx1=bx1,
+                by1=by1,
+                bx2=bx2,
+                by2=by2,
+                cx=cx,
+                cy=cy,
+                w=w,
+                h=h,
+                tip_x=tip_x,
+                tip_y=tip_y,
+                spike_base_width=spike_base_width,
+                anchor_request=spike_anchor,
+            )
+            warnings.extend(more)
+
+    # ----- union body + spike -----
+    if spike_polygon is not None:
+        merged = body.union(spike_polygon)
+    else:
+        merged = body
+
+    # merged may be a MultiPolygon if spike is detached; take the largest piece.
+    if merged.geom_type == "MultiPolygon":
+        merged = max(merged.geoms, key=lambda p: p.area)
+
+    path_d = _polygon_to_path_d(merged)
+
+    # ----- anchors -----
+    anchors: dict[str, Point] = {
+        "centre": Point(cx, cy),
+        "top": Point(cx, by1),
+        "bottom": Point(cx, by2),
+        "left": Point(bx1, cy),
+        "right": Point(bx2, cy),
+    }
+    if has_tip:
+        anchors["tip"] = Point(tip_x, tip_y)
+    # Text area: inset by `text_padding` (or per-axis overrides). Ellipse keeps
+    # its inscribed-rect approximation (0.7 factor) since axis padding doesn't
+    # map cleanly to an oval inscribed bounds.
+    tpx = text_padding_x if text_padding_x is not None else text_padding
+    tpy = text_padding_y if text_padding_y is not None else text_padding
+    if shape == "ellipse":
+        tx, ty = bx1 + w * 0.15, by1 + h * 0.15
+        tw, th = w * 0.70, h * 0.70
+    else:
+        tx, ty = bx1 + tpx, by1 + tpy
+        tw, th = max(0, w - 2 * tpx), max(0, h - 2 * tpy)
+    anchors["text-top-left"] = Point(tx, ty)
+    anchors["text-bottom-right"] = Point(tx + tw, ty + th)
+    if spike_base_l is not None and spike_base_r is not None:
+        anchors["spike-base-l"] = Point(*spike_base_l)
+        anchors["spike-base-r"] = Point(*spike_base_r)
+
+    # ----- emit SVG -----
+    id_attr = f' id="{element_id}"' if element_id else ""
+    if mode == "filled":
+        svg = f'<path{id_attr} d="{path_d}" fill="{{accent}}" fill-opacity="0.08" stroke="{{accent}}" stroke-width="1"/>'
+    else:
+        svg = f'<path{id_attr} d="{path_d}" fill="none" stroke="{{accent}}" stroke-width="1"/>'
+
+    kind = f"speech-{shape}"
+    if spike_anchor_used is not None:
+        kind += f"+spike-{spike_anchor_used}"
+
+    return PrimitiveResult(kind, anchors, svg, path_d), warnings
+
+
+def _tiny_point(x: float, y: float) -> ShapelyPolygon:
+    """Tiny triangle proxy for shapely point-in-polygon (avoids Point import churn)."""
+    eps = 1e-6
+    return ShapelyPolygon([(x, y), (x + eps, y), (x, y + eps)])
+
+
+def _build_spike(
+    *,
+    shape: str,
+    bx1: float,
+    by1: float,
+    bx2: float,
+    by2: float,
+    cx: float,
+    cy: float,
+    w: float,
+    h: float,
+    tip_x: float,
+    tip_y: float,
+    spike_base_width: float,
+    anchor_request: str,
+) -> tuple[ShapelyPolygon, str, tuple[float, float], tuple[float, float], list[str]]:
+    """Build the spike triangle. Returns (polygon, anchor_used, base_l, base_r, warnings)."""
+    warnings: list[str] = []
+    half = spike_base_width / 2
+
+    if shape in ("rect", "soft-rect"):
+        # Decide anchor side.
+        if anchor_request == "auto":
+            # Pick side whose outward distance to tip is largest positive.
+            dists = {
+                "top": by1 - tip_y,
+                "bottom": tip_y - by2,
+                "left": bx1 - tip_x,
+                "right": tip_x - bx2,
+            }
+            anchor = max(dists, key=dists.get)
+        elif anchor_request in ("top", "bottom", "left", "right"):
+            anchor = anchor_request
+        else:
+            raise ValueError(
+                f"spike_anchor must be auto / top / bottom / left / right for {shape}, got {anchor_request!r}"
+            )
+
+        if anchor in ("top", "bottom"):
+            edge_y = by1 if anchor == "top" else by2
+            # Clamp base centre x so the base fits inside the edge.
+            min_cx = bx1 + half
+            max_cx = bx2 - half
+            if min_cx > max_cx:
+                # Bubble too narrow to fit the requested base width; clamp anyway.
+                warnings.append(
+                    f"SPIKE-BASE-CLAMPED: spike_base_width={spike_base_width} exceeds edge length; clamping"
+                )
+                base_cx = (bx1 + bx2) / 2
+                half_effective = min(half, (bx2 - bx1) / 2)
+            else:
+                base_cx = max(min_cx, min(max_cx, tip_x))
+                half_effective = half
+            base_l = (base_cx - half_effective, edge_y)
+            base_r = (base_cx + half_effective, edge_y)
+        else:  # left / right
+            edge_x = bx1 if anchor == "left" else bx2
+            min_cy = by1 + half
+            max_cy = by2 - half
+            if min_cy > max_cy:
+                warnings.append(
+                    f"SPIKE-BASE-CLAMPED: spike_base_width={spike_base_width} exceeds edge length; clamping"
+                )
+                base_cy = (by1 + by2) / 2
+                half_effective = min(half, (by2 - by1) / 2)
+            else:
+                base_cy = max(min_cy, min(max_cy, tip_y))
+                half_effective = half
+            base_l = (edge_x, base_cy - half_effective)
+            base_r = (edge_x, base_cy + half_effective)
+
+        spike = ShapelyPolygon([base_l, base_r, (tip_x, tip_y)])
+        return spike, anchor, base_l, base_r, warnings
+
+    # Ellipse: anchor is the perimeter point on the centre->tip ray. Manual
+    # side anchors don't apply geometrically; if requested, warn and override.
+    if anchor_request not in ("auto",):
+        warnings.append(
+            f"ELLIPSE-ANCHOR-OVERRIDDEN: anchor={anchor_request!r} not meaningful for ellipse; "
+            "using the perimeter point on the centre-to-tip ray instead"
+        )
+    rx, ry = w / 2, h / 2
+    px, py = _ellipse_perimeter_intersect(cx, cy, rx, ry, tip_x, tip_y)
+    # Tangent direction perpendicular to the radial (centre->tip) line.
+    dx, dy = tip_x - cx, tip_y - cy
+    length = math.hypot(dx, dy)
+    if length == 0:
+        # Degenerate (tip at centre) — should be caught upstream as tip-inside.
+        tnx, tny = 1.0, 0.0
+    else:
+        # Perpendicular: rotate (dx,dy)/length by 90deg.
+        tnx, tny = -dy / length, dx / length
+    base_l = (px - half * tnx, py - half * tny)
+    base_r = (px + half * tnx, py + half * tny)
+    spike = ShapelyPolygon([base_l, base_r, (tip_x, tip_y)])
+    return spike, "ellipse-radial", base_l, base_r, warnings
+
+
+# ---------------------------------------------------------------------------
+# Thought bubble (lobed cloud + trail of decreasing bubbles)
+# ---------------------------------------------------------------------------
+
+
+def gen_thought_bubble(
+    x: float,
+    y: float,
+    w: float,
+    h: float,
+    tip_x: float | None = None,
+    tip_y: float | None = None,
+    lobes: int = 5,
+    trail_bubbles: int = 3,
+    trail_r_start: float = 0.0,
+    trail_r_end: float = 0.0,
+    text_padding: float = 12.0,
+    text_padding_x: float | None = None,
+    text_padding_y: float | None = None,
+    element_id: str | None = None,
+    mode: str = "filled",
+) -> tuple[PrimitiveResult, list[str]]:
+    """Thought bubble: lobed cloud body + (optional) trail of small ellipses to the tip.
+
+    The trail bubbles are kept visually distinct (separate ``<ellipse>``
+    elements, NOT unioned with the body) - that's what makes a thought
+    bubble read as a thought bubble. The whole thing is wrapped in a ``<g>``
+    so callers can apply transforms or class names once. When the tip is
+    unset, just the cloud body is emitted (no trail).
+
+    Args:
+        x, y, w, h: body bounding box.
+        tip_x, tip_y: where the thought trail terminates (the "thinker"
+            position). Both must be set to get a trail; leave both unset for
+            a bare cloud body.
+        lobes: number of cloud lobes (default 5; passed to gen_cloud).
+        trail_bubbles: number of small bubbles in the trail (default 3;
+            0 disables the trail entirely even when tip is supplied).
+        trail_r_start: radius of the first (largest) trail bubble; default
+            ``min(w, h) * 0.08`` (~6 px on a 80 px-tall bubble).
+        trail_r_end: radius of the last (smallest) trail bubble; default
+            ``trail_r_start * 0.35``.
+        text_padding: uniform inset for the text-area anchor.
+        text_padding_x, text_padding_y: per-axis overrides of ``text_padding``.
+        element_id: when set, the outer ``<g>`` gets ``id="<element_id>"``.
+        mode: ``"filled"`` or ``"outline"``.
+
+    Returns: ``(PrimitiveResult, warnings)``. Warnings: ``TIP-INSIDE-BUBBLE``
+    when the tip falls inside the body bbox (trail suppressed); ``TIP-INCOMPLETE``
+    when only one of tip_x / tip_y is provided.
+    """
+    warnings: list[str] = []
+    if w <= 0 or h <= 0:
+        raise ValueError("width and height must be positive")
+    if trail_bubbles < 0:
+        raise ValueError("trail_bubbles must be >= 0")
+
+    has_tip = tip_x is not None and tip_y is not None
+    if (tip_x is None) ^ (tip_y is None):
+        warnings.append(
+            "TIP-INCOMPLETE: both --tip-x and --tip-y must be supplied to attach a trail; "
+            "treating as no-tip and emitting cloud body only"
+        )
+
+    # Body: reuse gen_cloud verbatim so we don't fork the lobed-path code.
+    body = gen_cloud(x, y, w, h, lobes=lobes, mode=mode)
+
+    # Decide whether the trail is feasible. Use the body's bounding box for
+    # the inside test (cheap + good enough; the cloud roughly fills the bbox).
+    bx1, by1, bx2, by2 = x, y, x + w, y + h
+    tip_inside = has_tip and (bx1 <= tip_x <= bx2) and (by1 <= tip_y <= by2)
+
+    anchors: dict[str, Point] = dict(body.anchors)
+    if has_tip:
+        anchors["tip"] = Point(tip_x, tip_y)
+    # Text area inscribed inside the cloud (cloud body is ~0.7h tall + lobes
+    # eat the top quarter; inset more aggressively than for soft-rect).
+    tpx = text_padding_x if text_padding_x is not None else text_padding
+    tpy = text_padding_y if text_padding_y is not None else text_padding
+    tx = bx1 + max(tpx, w * 0.10)
+    ty = by1 + max(tpy, h * 0.20)
+    tw = max(0.0, w - 2 * max(tpx, w * 0.10))
+    th = max(0.0, h * 0.70 - 2 * tpy)
+    anchors["text-top-left"] = Point(tx, ty)
+    anchors["text-bottom-right"] = Point(tx + tw, ty + th)
+
+    trail_svgs: list[str] = []
+
+    if not has_tip or tip_inside or trail_bubbles == 0:
+        if tip_inside:
+            warnings.append(
+                f"TIP-INSIDE-BUBBLE: tip ({tip_x}, {tip_y}) lies inside the body bbox; "
+                "thought trail suppressed. Place the tip outside the body."
+            )
+    else:
+        # Pick the body-bbox edge midpoint closest to the tip - that's where
+        # the trail starts.
+        candidates = {
+            "top": (bx1 + w / 2, by1),
+            "bottom": (bx1 + w / 2, by2),
+            "left": (bx1, by1 + h / 2),
+            "right": (bx2, by1 + h / 2),
+        }
+        start_side, (sx, sy) = min(
+            candidates.items(),
+            key=lambda kv: (kv[1][0] - tip_x) ** 2 + (kv[1][1] - tip_y) ** 2,
+        )
+
+        r0 = trail_r_start if trail_r_start > 0 else max(2.0, min(w, h) * 0.08)
+        r1 = trail_r_end if trail_r_end > 0 else max(1.0, r0 * 0.35)
+
+        # March from (sx, sy) toward (tip_x, tip_y). The first bubble's centre
+        # sits a small step outside the body so it doesn't overlap the cloud.
+        # The last bubble's centre sits just shy of the tip so the tip stays
+        # visible as a "pointing" terminus.
+        dx, dy = tip_x - sx, tip_y - sy
+        length = math.hypot(dx, dy)
+        ux, uy = (dx / length, dy / length) if length > 0 else (0.0, 0.0)
+
+        anchors["trail-start-side"] = Point(sx, sy)
+
+        for i in range(trail_bubbles):
+            # Position parameter t in (0, 1): 0 = at body edge, 1 = at tip.
+            if trail_bubbles == 1:
+                t = 0.5
+            else:
+                t = (i + 1) / (trail_bubbles + 1)
+            cx_i = sx + ux * length * t
+            cy_i = sy + uy * length * t
+            r_i = r0 + (r1 - r0) * (i / max(1, trail_bubbles - 1))
+            # Ellipse slightly squashed vertically for a more "puffy" feel.
+            rx_i = r_i
+            ry_i = r_i * 0.85
+            if mode == "filled":
+                trail_svgs.append(
+                    f'<ellipse cx="{cx_i:.2f}" cy="{cy_i:.2f}" rx="{rx_i:.2f}" ry="{ry_i:.2f}" '
+                    f'fill="{{accent}}" fill-opacity="0.08" stroke="{{accent}}" stroke-width="1"/>'
+                )
+            else:
+                trail_svgs.append(
+                    f'<ellipse cx="{cx_i:.2f}" cy="{cy_i:.2f}" rx="{rx_i:.2f}" ry="{ry_i:.2f}" '
+                    f'fill="none" stroke="{{accent}}" stroke-width="1"/>'
+                )
+            anchors[f"trail-{i + 1}"] = Point(cx_i, cy_i)
+
+    # Wrap body + trail in one <g>.
+    parts = [body.svg, *trail_svgs]
+    id_attr = f' id="{element_id}"' if element_id else ""
+    svg = f"<g{id_attr}>\n  " + "\n  ".join(parts) + "\n</g>"
+
+    kind = "thought-cloud"
+    if trail_svgs:
+        kind += f"+trail-{len(trail_svgs)}"
+
+    return PrimitiveResult(kind, anchors, svg, body.path_d), warnings
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -1215,6 +1762,154 @@ def main():
     p.add_argument("--fold", type=float, default=0, help="Fold size (default: min(w,h)*0.2)")
     p.add_argument("--mode", choices=["filled", "outline"], default="filled")
 
+    # speech (bubble + optional callout spike)
+    p = sub.add_parser(
+        "speech",
+        help="Speech bubble: rect / soft-rect / ellipse body, optionally merged with a callout spike at --tip-x, --tip-y. Omit tip for a bare body (quote box).",
+    )
+    p.add_argument("--x", type=float, required=True, help="Body top-left x")
+    p.add_argument("--y", type=float, required=True, help="Body top-left y")
+    p.add_argument("--w", type=float, required=True, help="Body width")
+    p.add_argument("--h", type=float, required=True, help="Body height")
+    p.add_argument(
+        "--tip-x",
+        type=float,
+        default=None,
+        help="Spike apex x. Omit (along with --tip-y) for a bubble without a callout.",
+    )
+    p.add_argument(
+        "--tip-y",
+        type=float,
+        default=None,
+        help="Spike apex y. Omit (along with --tip-x) for a bubble without a callout.",
+    )
+    p.add_argument(
+        "--shape",
+        choices=["rect", "soft-rect", "ellipse"],
+        default="soft-rect",
+        help="Body shape (default: soft-rect)",
+    )
+    p.add_argument(
+        "--corner-radius",
+        type=float,
+        default=12.0,
+        help="Uniform corner radius for soft-rect (default 12). Overridden by --rx/--ry when set.",
+    )
+    p.add_argument(
+        "--rx",
+        type=float,
+        default=None,
+        help="Soft-rect horizontal corner radius (elliptical corners). Pair with --ry.",
+    )
+    p.add_argument(
+        "--ry",
+        type=float,
+        default=None,
+        help="Soft-rect vertical corner radius (elliptical corners). Pair with --rx.",
+    )
+    p.add_argument(
+        "--spike-base-width",
+        type=float,
+        default=20.0,
+        help="Spike base width along the bubble edge in px (default 20)",
+    )
+    p.add_argument(
+        "--spike-anchor",
+        choices=["auto", "top", "bottom", "left", "right"],
+        default="auto",
+        help="rect / soft-rect: pick the edge the spike attaches to (default auto, the edge nearest the tip). Ellipse always uses the centre->tip ray; explicit values are warned and overridden.",
+    )
+    p.add_argument(
+        "--text-padding",
+        type=float,
+        default=10.0,
+        help="Uniform inset for the text-area anchor inside the bubble (default 10)",
+    )
+    p.add_argument(
+        "--text-padding-x",
+        type=float,
+        default=None,
+        help="Per-axis horizontal text-area inset (overrides --text-padding on x)",
+    )
+    p.add_argument(
+        "--text-padding-y",
+        type=float,
+        default=None,
+        help="Per-axis vertical text-area inset (overrides --text-padding on y)",
+    )
+    p.add_argument(
+        "--id",
+        dest="element_id",
+        type=str,
+        default=None,
+        help='Set id="<NAME>" on the emitted <path> so --replace-id in boolean can target it later',
+    )
+    p.add_argument("--mode", choices=["filled", "outline"], default="filled")
+
+    # thought (lobed cloud + optional trail of decreasing bubbles)
+    p = sub.add_parser(
+        "thought",
+        help="Thought bubble: lobed cloud body, optionally followed by a trail of small ellipses pointing at --tip-x, --tip-y. Omit tip for a bare cloud.",
+    )
+    p.add_argument("--x", type=float, required=True, help="Body top-left x")
+    p.add_argument("--y", type=float, required=True, help="Body top-left y")
+    p.add_argument("--w", type=float, required=True, help="Body width")
+    p.add_argument("--h", type=float, required=True, help="Body height")
+    p.add_argument(
+        "--tip-x",
+        type=float,
+        default=None,
+        help="Trail terminus x. Omit (along with --tip-y) for a cloud without a trail.",
+    )
+    p.add_argument(
+        "--tip-y",
+        type=float,
+        default=None,
+        help="Trail terminus y. Omit (along with --tip-x) for a cloud without a trail.",
+    )
+    p.add_argument("--lobes", type=int, default=5, help="Number of cloud lobes (default 5)")
+    p.add_argument(
+        "--trail-bubbles",
+        type=int,
+        default=3,
+        help="Trail bubbles between body and tip (default 3; 0 = no trail). Requires tip.",
+    )
+    p.add_argument(
+        "--trail-r-start",
+        type=float,
+        default=0.0,
+        help="First (largest) trail-bubble radius; default min(w,h)*0.08",
+    )
+    p.add_argument(
+        "--trail-r-end",
+        type=float,
+        default=0.0,
+        help="Last (smallest) trail-bubble radius; default trail-r-start * 0.35",
+    )
+    p.add_argument(
+        "--text-padding", type=float, default=12.0, help="Uniform text-area inset (default 12)"
+    )
+    p.add_argument(
+        "--text-padding-x",
+        type=float,
+        default=None,
+        help="Per-axis horizontal text-area inset (overrides --text-padding on x)",
+    )
+    p.add_argument(
+        "--text-padding-y",
+        type=float,
+        default=None,
+        help="Per-axis vertical text-area inset (overrides --text-padding on y)",
+    )
+    p.add_argument(
+        "--id",
+        dest="element_id",
+        type=str,
+        default=None,
+        help='Set id="<NAME>" on the outer <g>',
+    )
+    p.add_argument("--mode", choices=["filled", "outline"], default="filled")
+
     # spline
     p = sub.add_parser("spline", help="Smooth PCHIP spline through control points")
     p.add_argument(
@@ -1284,6 +1979,48 @@ def main():
         result = gen_cloud(args.x, args.y, args.w, args.h, lobes=args.lobes, mode=args.mode)
     elif args.primitive == "document":
         result = gen_document(args.x, args.y, args.w, args.h, fold=args.fold, mode=args.mode)
+    elif args.primitive == "speech":
+        result, warnings = gen_speech_bubble(
+            args.x,
+            args.y,
+            args.w,
+            args.h,
+            tip_x=args.tip_x,
+            tip_y=args.tip_y,
+            shape=args.shape,
+            corner_radius=args.corner_radius,
+            rx=args.rx,
+            ry=args.ry,
+            spike_base_width=args.spike_base_width,
+            spike_anchor=args.spike_anchor,
+            text_padding=args.text_padding,
+            text_padding_x=args.text_padding_x,
+            text_padding_y=args.text_padding_y,
+            element_id=args.element_id,
+            mode=args.mode,
+        )
+        for w in warnings:
+            print(f"WARNING: {w}", file=sys.stderr)
+    elif args.primitive == "thought":
+        result, warnings = gen_thought_bubble(
+            args.x,
+            args.y,
+            args.w,
+            args.h,
+            tip_x=args.tip_x,
+            tip_y=args.tip_y,
+            lobes=args.lobes,
+            trail_bubbles=args.trail_bubbles,
+            trail_r_start=args.trail_r_start,
+            trail_r_end=args.trail_r_end,
+            text_padding_x=args.text_padding_x,
+            text_padding_y=args.text_padding_y,
+            element_id=args.element_id,
+            text_padding=args.text_padding,
+            mode=args.mode,
+        )
+        for w in warnings:
+            print(f"WARNING: {w}", file=sys.stderr)
     elif args.primitive == "spline":
         coords = re.findall(r"[-+]?\d*\.?\d+", args.points)
         if len(coords) < 4 or len(coords) % 2 != 0:

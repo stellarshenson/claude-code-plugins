@@ -14,6 +14,8 @@ Usage:
     svg-infographics primitives rect --x 20 --y 30 --width 200 --height 100
     svg-infographics primitives spline --points "80,200 150,80 300,120 450,60"
     svg-infographics primitives axis --origin 80,200 --length 400 --axes xyz --ticks 5
+    svg-infographics primitives speech --x 60 --y 40 --w 200 --h 80 --tip-x 280 --tip-y 200 --shape soft-rect
+    svg-infographics primitives thought --x 60 --y 40 --w 200 --h 80 --tip-x 320 --tip-y 240 --trail-bubbles 3
     svg-infographics text-to-path --text "Hello" --font path/to/Inter.ttf --size 24 --x 100 --y 200
 """
 
