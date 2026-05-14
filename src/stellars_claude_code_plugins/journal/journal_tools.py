@@ -1,13 +1,18 @@
-"""Deterministic journal operations: parse, check, archive, sort.
+"""Deterministic journal operations: parse, check, archive, sort, standardize.
 
-No generative AI — pure string parsing, validation, and file manipulation.
+Pure string parsing, validation, and file manipulation. The `standardize`
+subcommand additionally drives an ACP subprocess (a fresh `claude -p` call)
+to make the per-entry Extended-vs-Condense decision; the orchestration is
+deterministic, the decision is the only generative step.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 # ---------------------------------------------------------------------------
@@ -23,9 +28,16 @@ ENTRY_RE = re.compile(
 
 RESULT_PREFIX = re.compile(r"^\s+\*\*Result\*\*:\s*", re.IGNORECASE)
 
+STANDARD_MIN = 70
 STANDARD_TARGET = 150
 EXTENDED_MIN = 150
 EXTENDED_MAX = 400
+
+# Bump when the rubric in prompts/standardize.yaml gets a breaking change.
+# The CLI refuses to load any other version - prevents an old wheel pinned
+# alongside a new YAML (or vice versa) from silently misfiring on the
+# subprocess decision rules.
+STANDARDIZE_YAML_VERSION = 2
 
 
 @dataclass
@@ -289,6 +301,17 @@ def check_journal(
                     "depth is real.",
                 )
             )
+        elif 0 < wc < STANDARD_MIN:
+            violations.append(
+                Violation(
+                    entry.number,
+                    "warning",
+                    f"body {wc} words, under Standard min {STANDARD_MIN}. "
+                    "Too terse to carry rationale six months out - add "
+                    "trigger / why-this-approach / cause-and-effect, or "
+                    "drop the entry.",
+                )
+            )
 
     # Continuity check (gaps)
     numbers = sorted(seen.keys())
@@ -318,7 +341,11 @@ def sort_entries(entries: list[JournalEntry], start_from: int = 1) -> list[Journ
     Returns a NEW list with corrected numbers. Does not modify the input.
     Entries are sorted by their original number first, so out-of-order
     entries are fixed. The raw_lines are NOT updated - use
-    ``render_entries`` to produce the corrected markdown.
+    ``render_entries`` to produce the corrected markdown. The
+    ``is_extended`` flag is preserved so renumbering does not strip
+    `[Extended]` markers (which would silently downgrade architectural
+    entries to Standard tier and trigger over-150 warnings on the next
+    `check` run).
     """
     sorted_entries = sorted(entries, key=lambda e: e.number)
     result: list[JournalEntry] = []
@@ -329,6 +356,8 @@ def sort_entries(entries: list[JournalEntry], start_from: int = 1) -> list[Journ
             version_tag=entry.version_tag,
             description=entry.description,
             result_body=entry.result_body,
+            is_extended=entry.is_extended,
+            result_marker_count=entry.result_marker_count,
             raw_lines=entry.raw_lines,
             line_start=entry.line_start,
         )
@@ -337,11 +366,19 @@ def sort_entries(entries: list[JournalEntry], start_from: int = 1) -> list[Journ
 
 
 def render_entries(entries: list[JournalEntry]) -> str:
-    """Render a list of JournalEntry objects back to markdown text."""
+    """Render a list of JournalEntry objects back to markdown text.
+
+    Emits the ``[Extended]`` marker between `Task` and the dash when
+    ``entry.is_extended`` is true so sort/render round-trips preserve
+    tier markers.
+    """
     parts: list[str] = []
     for entry in entries:
         version = f" ({entry.version_tag})" if entry.version_tag else ""
-        header = f"{entry.number}. **Task - {entry.title}**{version}: {entry.description}<br>"
+        marker = "[Extended] " if entry.is_extended else ""
+        header = (
+            f"{entry.number}. **Task {marker}- {entry.title}**{version}: {entry.description}<br>"
+        )
         result = f"    **Result**: {entry.result_body}"
         parts.append(f"{header}\n{result}")
     return "\n\n".join(parts)
@@ -453,10 +490,10 @@ def _load_standardize_prompt() -> dict:
             "reinstall stellars-claude-code-plugins"
         ) from exc
     data = yaml.safe_load(text)
-    if data.get("version") != 1:
+    if data.get("version") != STANDARDIZE_YAML_VERSION:
         raise RuntimeError(
             f"standardize.yaml version={data.get('version')!r} unsupported by this CLI "
-            "(expected 1); upgrade stellars-claude-code-plugins"
+            f"(expected {STANDARDIZE_YAML_VERSION}); upgrade stellars-claude-code-plugins"
         )
     return data
 
@@ -610,6 +647,313 @@ def apply_condense_body(text: str, entry: JournalEntry, new_body: str) -> str:
     return "\n".join(new_lines)
 
 
+_STANDARDIZE_CLEAN_COMMENT_RE = re.compile(r"<!--\s*standardize-clean:\s*\d{4}-\d{2}-\d{2}\s*-->")
+
+_USAGE_POLICY_REFUSAL = "violate our Usage Policy"
+_SONNET_4_MODEL = "claude-sonnet-4-20250514"
+_SUBPROCESS_TIMEOUT_SECONDS = 180
+
+
+def parse_standardize_decision(
+    response: str,
+    template: dict | None = None,
+) -> tuple[str, str | None] | None:
+    """Parse the subprocess response into ``(decision, body_or_None)``.
+
+    Uses the ``decision_grammar`` block in the shipped standardize.yaml so
+    the wire format stays the YAML's single source of truth. Returns
+    ``None`` when the response matches no format - the caller should skip
+    the entry with a SKIP log line.
+    """
+    if template is None:
+        template = _load_standardize_prompt()
+    grammar = template["decision_grammar"]
+    for fmt in grammar["formats"]:
+        flags = 0
+        if fmt.get("multiline"):
+            flags |= re.MULTILINE
+        if fmt.get("dotall"):
+            flags |= re.DOTALL
+        m = re.search(fmt["regex"], response, flags)
+        if m:
+            body = m.group(fmt["body_group"]) if "body_group" in fmt else None
+            return fmt["name"], body
+    return None
+
+
+def _spawn_standardize_subprocess(
+    prompt: str,
+    timeout: int = _SUBPROCESS_TIMEOUT_SECONDS,
+) -> str | None:
+    """Spawn ``claude -p`` to decide one entry.
+
+    Returns the subprocess stdout text, or ``None`` on refusal / timeout /
+    binary-missing. CLAUDECODE is stripped from the env (ACP rule:
+    otherwise the SDK enters degraded mode and hangs on file ops). stderr
+    is suppressed to drop the harmless "no stdin data received in 3s"
+    leak. ``--no-session-persistence`` keeps the subprocess from writing
+    a JSONL file under ``~/.claude/projects/<slug>/`` per entry - the
+    standardize decisions are one-shot and never resumed, so persisting
+    them is pure noise (one extra file per entry, 17+ per sweep).
+    On ``violate our Usage Policy`` in the first response, retries once
+    with ``--model claude-sonnet-4-20250514`` (sonnet-4 has a different
+    safety profile and clears benign technical content the default
+    model occasionally flags). Two refusals -> return None.
+    """
+    env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+    base_args = [
+        "claude",
+        "-p",
+        prompt,
+        "--output-format",
+        "text",
+        "--dangerously-skip-permissions",
+        "--max-turns",
+        "3",
+        "--no-session-persistence",
+    ]
+    try:
+        first = subprocess.run(
+            base_args,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+    out = first.stdout
+    if _USAGE_POLICY_REFUSAL not in out:
+        return out
+
+    try:
+        retry = subprocess.run(
+            base_args + ["--model", _SONNET_4_MODEL],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+    out = retry.stdout
+    if _USAGE_POLICY_REFUSAL in out:
+        return None
+    return out
+
+
+def _apply_one_decision(
+    text: str,
+    entry: JournalEntry,
+    decision: str,
+    new_body: str | None = None,
+) -> tuple[str, str]:
+    """Apply a parsed decision to the journal text. Returns ``(new_text, outcome)``.
+
+    Mirrors the existing ``--apply`` argparse branch so ``--all`` can reuse
+    the write logic without going through argparse. ``decision`` is one of
+    ``"extended" / "condense" / "drop_marker" / "drop-marker"`` (both
+    underscore and dash forms accepted for symmetry with the argparse
+    surface).
+    """
+    decision = decision.replace("_", "-")
+    if decision == "extended":
+        return apply_mark_extended(text, entry), "marked Extended"
+    if decision == "drop-marker":
+        return apply_drop_marker(text, entry), "dropped [Extended] marker"
+    if decision == "condense":
+        if new_body is None:
+            raise ValueError("condense decision requires new_body")
+        new_text = apply_condense_body(text, entry, new_body)
+        # When a previously-Extended body condenses below the Extended min,
+        # the marker becomes false advertising — drop it. Same rule used by
+        # the legacy --apply branch.
+        if entry.is_extended:
+            post_entries = parse_journal(new_text)
+            post_target = next((e for e in post_entries if e.number == entry.number), None)
+            if post_target is not None and post_target.body_word_count < EXTENDED_MIN:
+                new_text = apply_drop_marker(new_text, post_target)
+        return new_text, "condensed body"
+    raise ValueError(f"unknown decision: {decision!r}")
+
+
+def run_standardize_all(
+    journal_path: Path,
+    standard_target: int = STANDARD_TARGET,
+    extended_max: int = EXTENDED_MAX,
+    spawn: callable = _spawn_standardize_subprocess,
+    today: str | None = None,
+) -> int:
+    """Walk every standardize candidate and apply decisions in one pass.
+
+    Returns 0 if the final ``check_journal`` reports zero errors, 1
+    otherwise. The ``spawn`` parameter lets tests inject a mock subprocess
+    driver; production calls accept the module-level default.
+
+    Process per candidate:
+      - ``drop_marker`` actions apply immediately (no subprocess).
+      - ``decide`` / ``condense`` actions spawn one ``claude -p`` per
+        entry, parse via the YAML grammar, apply. Unparseable / refused /
+        timed-out responses skip the entry and surface in the summary.
+
+    After the loop, re-validates the file. On a fully clean validator
+    exit (zero errors AND zero warnings), writes the ``standardize-clean``
+    footer.
+    """
+    template = _load_standardize_prompt()
+    text = journal_path.read_text(encoding="utf-8")
+    entries = parse_journal(text)
+    candidates = list_repair_candidates(
+        entries,
+        standard_target=standard_target,
+        extended_max=extended_max,
+    )
+    if not candidates:
+        # Nothing to do; still run the final validator + footer step.
+        return _finalize_standardize(journal_path, standard_target, extended_max, [], today)
+
+    summary: list[str] = []
+    for cand in candidates:
+        # Re-parse the file each iteration so line spans stay correct after
+        # earlier applies.
+        text = journal_path.read_text(encoding="utf-8")
+        entries = parse_journal(text)
+        entry = next((e for e in entries if e.number == cand["number"]), None)
+        if entry is None:
+            summary.append(f"entry {cand['number']}: SKIP (no longer in journal)")
+            continue
+
+        action = cand["action_needed"]
+        if action == "drop_marker":
+            new_text, _ = _apply_one_decision(text, entry, "drop-marker")
+            journal_path.write_text(new_text, encoding="utf-8")
+            post_entries = parse_journal(new_text)
+            post = next((e for e in post_entries if e.number == entry.number), None)
+            wc = post.body_word_count if post else entry.body_word_count
+            summary.append(
+                f"entry {entry.number}: dropped [Extended] marker -> now Standard ({wc} words)"
+            )
+            continue
+
+        # decide or condense -> spawn subprocess
+        prompt = render_standardize_prompt(entry, template=template)
+        response = spawn(prompt)
+        if response is None:
+            summary.append(f"entry {entry.number}: SKIP (subprocess refused / timed out)")
+            continue
+
+        parsed = parse_standardize_decision(response, template=template)
+        if parsed is None:
+            summary.append(f"entry {entry.number}: SKIP (unparseable subprocess response)")
+            continue
+
+        decision, body = parsed
+        try:
+            new_text, _ = _apply_one_decision(text, entry, decision, new_body=body)
+        except ValueError as exc:
+            summary.append(f"entry {entry.number}: SKIP ({exc})")
+            continue
+        journal_path.write_text(new_text, encoding="utf-8")
+
+        post_entries = parse_journal(new_text)
+        post = next((e for e in post_entries if e.number == entry.number), None)
+        wc = post.body_word_count if post else entry.body_word_count
+        tier = "Extended" if (post and post.is_extended) else "Standard"
+        if decision == "drop_marker":
+            verb = "dropped marker"
+        elif decision == "extended":
+            verb = "marked Extended"
+        else:
+            verb = "condensed body"
+        summary.append(f"entry {entry.number}: {verb} -> now {tier} ({wc} words)")
+
+    return _finalize_standardize(journal_path, standard_target, extended_max, summary, today)
+
+
+def _finalize_standardize(
+    journal_path: Path,
+    standard_target: int,
+    extended_max: int,
+    summary: list[str],
+    today: str | None,
+) -> int:
+    """Print the per-entry summary, run the final validator, and write the
+    standardize-clean footer when fully clean. Returns 0 on clean exit, 1 if
+    any errors remain.
+    """
+    for line in summary:
+        print(line)
+
+    text = journal_path.read_text(encoding="utf-8")
+    entries, parser_violations = parse_journal_with_diagnostics(text)
+    violations = parser_violations + check_journal(
+        entries,
+        standard_target=standard_target,
+        extended_max=extended_max,
+    )
+    errors = sum(1 for v in violations if v.severity == "error")
+    warnings = sum(1 for v in violations if v.severity == "warning")
+
+    if not violations:
+        print(f"OK: {len(entries)} entries, no violations.")
+        write_standardize_clean_footer(journal_path, date=today)
+        return 0
+
+    for v in violations:
+        prefix = f"[{v.severity.upper()}]"
+        label = f"entry {v.entry_number}" if v.entry_number else "global"
+        print(f"{prefix} {label}: {v.message}")
+    print(f"\n{len(entries)} entries, {errors} errors, {warnings} warnings.")
+    return 1 if errors else 0
+
+
+def write_standardize_clean_footer(
+    journal_path: Path,
+    date: str | None = None,
+) -> None:
+    """Idempotently write `<!-- standardize-clean: YYYY-MM-DD -->` near top.
+
+    If the comment already exists anywhere in the file, its date is
+    replaced in place. Otherwise the comment is inserted on the line after
+    the journal's `**Note**:` line if present, or after the H1 title line.
+
+    Called by `standardize --all` only after a clean validator exit (zero
+    errors AND zero warnings) so forensics can grep `standardize-clean`
+    across journals to find which have a recent standardize sweep.
+    """
+    if date is None:
+        from datetime import date as _date
+
+        date = _date.today().isoformat()
+
+    text = journal_path.read_text(encoding="utf-8")
+    new_comment = f"<!-- standardize-clean: {date} -->"
+
+    if _STANDARDIZE_CLEAN_COMMENT_RE.search(text):
+        text = _STANDARDIZE_CLEAN_COMMENT_RE.sub(new_comment, text)
+        journal_path.write_text(text, encoding="utf-8")
+        return
+
+    lines = text.split("\n")
+    insert_at: int | None = None
+    for i, line in enumerate(lines):
+        if line.startswith("**Note**:"):
+            insert_at = i + 1
+            break
+    if insert_at is None:
+        for i, line in enumerate(lines):
+            if line.startswith("# "):
+                insert_at = i + 1
+                break
+    if insert_at is None:
+        insert_at = 0
+
+    lines = lines[:insert_at] + [new_comment] + lines[insert_at:]
+    journal_path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point: ``journal-tools check|archive|sort|standardize <path>``."""
     import argparse
@@ -665,18 +1009,26 @@ def main(argv: list[str] | None = None) -> int:
         "standardize",
         help="List, prompt-render, and apply repairs for oversized / mis-marked entries.",
         description=(
-            "Three modes used in sequence by the /journal:standardize slash command: "
-            "(1) --list emits a JSON array of entries needing repair (oversized "
-            "Standard, oversized Extended, false-advertising marker); "
-            "(2) --prompt N renders the per-entry ACP prompt from the shipped "
-            "prompts/standardize.yaml so a spawned `claude -p` subprocess can decide "
-            "EXTENDED vs CONDENSE vs DROP_MARKER; "
-            "(3) --apply N --decision <extended|condense|drop-marker> writes the "
-            "decision back to the file."
+            "Four modes. --all is the recommended happy path - walks every "
+            "flagged entry, spawns one focused `claude -p` subprocess per "
+            "decision (with sonnet-4 fallback on usage-policy refusal), "
+            "applies via the CLI, validates at the end. The other three "
+            "are the manual procedure the /journal:standardize slash "
+            "command used pre-`--all`: (1) --list emits a JSON array of "
+            "entries needing repair; (2) --prompt N renders the per-entry "
+            "ACP prompt from the shipped prompts/standardize.yaml; "
+            "(3) --apply N --decision <extended|condense|drop-marker> "
+            "writes the decision back to the file."
         ),
     )
     p_std.add_argument("path", help="Path to JOURNAL.md")
     p_std_mode = p_std.add_mutually_exclusive_group(required=True)
+    p_std_mode.add_argument(
+        "--all",
+        action="store_true",
+        dest="all_mode",
+        help="Walk every candidate end-to-end in one invocation (recommended).",
+    )
     p_std_mode.add_argument(
         "--list",
         action="store_true",
@@ -792,6 +1144,15 @@ def main(argv: list[str] | None = None) -> int:
 
     elif args.command == "standardize":
         import json as _json
+
+        # --all: end-to-end orchestration; spawns one subprocess per
+        # candidate, applies all decisions, validates, writes footer.
+        if args.all_mode:
+            return run_standardize_all(
+                path,
+                standard_target=args.standard_target,
+                extended_max=args.extended_max,
+            )
 
         # --list: emit JSON of repair candidates and exit.
         if args.list:

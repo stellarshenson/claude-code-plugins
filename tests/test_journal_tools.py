@@ -304,13 +304,28 @@ class TestStandardize:
 
     def test_load_prompt_yaml_ships_in_wheel(self):
         from stellars_claude_code_plugins.journal.journal_tools import (
+            STANDARDIZE_YAML_VERSION,
             _load_standardize_prompt,
         )
 
         data = _load_standardize_prompt()
-        assert data["version"] == 1
+        assert data["version"] == STANDARDIZE_YAML_VERSION
         assert "system" in data and "user_template" in data
         assert {"standard_target", "extended_min", "extended_max"} <= data["limits"].keys()
+
+    def test_rubric_includes_rule_3b_ceiling(self):
+        """Rule 3b — unmarked >400 must CONDENSE (single-pass fix from kolomolo
+        forensics: rule 3 used to have no upper bound, returning EXTENDED for
+        460-word bodies that then needed a second pass to clear)."""
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            _load_standardize_prompt,
+        )
+
+        data = _load_standardize_prompt()
+        template_text = data["user_template"]
+        assert "word_count <= 400" in template_text
+        assert "word_count > 400" in template_text
+        assert "caps at 400" in template_text
 
     def test_apply_mark_extended_inserts_marker(self):
         from stellars_claude_code_plugins.journal.journal_tools import apply_mark_extended
@@ -390,3 +405,473 @@ class TestStandardize:
         text = journal.read_text()
         assert "[Extended]" not in text
         assert "now Standard" in r.stdout
+
+
+class TestSortPreservesExtendedMarker:
+    """`sort_entries` + `render_entries` round-trip must preserve `[Extended]`.
+
+    Earlier the `JournalEntry` reconstruction in `sort_entries` dropped
+    `is_extended` (default False) and `render_entries` hard-coded
+    `**Task -` with no marker, so any `journal-tools sort` run silently
+    stripped Extended markers and fired over-150 warnings on the next
+    `check` (the entries were correctly long for their tier, but the
+    marker had been stripped). Caught preemptively before it bit
+    production.
+    """
+
+    def _journal(self, *raws: str) -> str:
+        return HEADER + "".join(raws)
+
+    def test_render_emits_marker(self):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            render_entries,
+        )
+
+        text = HEADER + _entry(1, marker="[Extended] ", words=200, title="Real depth")
+        entries = parse_journal(text)
+        rendered = render_entries(entries)
+        assert "**Task [Extended] - Real depth**" in rendered
+
+    def test_render_omits_marker_for_standard(self):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            render_entries,
+        )
+
+        text = HEADER + _entry(1, marker="", words=100, title="Standard work")
+        entries = parse_journal(text)
+        rendered = render_entries(entries)
+        assert "**Task - Standard work**" in rendered
+        assert "[Extended]" not in rendered
+
+    def test_sort_preserves_marker_on_renumber(self):
+        """Mixed-tier entries renumbered: each entry keeps its marker."""
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            render_entries,
+            sort_entries,
+        )
+
+        text = (
+            HEADER
+            + _entry(3, marker="[Extended] ", words=200, title="Architectural")
+            + _entry(1, marker="", words=100, title="Quick fix")
+            + _entry(2, marker="[Extended] ", words=250, title="Multi-thread release")
+        )
+        entries = parse_journal(text)
+        sorted_entries = sort_entries(entries)
+        rendered = render_entries(sorted_entries)
+        # Entry 1 (originally 1) keeps Standard
+        assert "1. **Task - Quick fix**" in rendered
+        # Entry 2 (originally 2) keeps Extended
+        assert "2. **Task [Extended] - Multi-thread release**" in rendered
+        # Entry 3 (originally 3) keeps Extended
+        assert "3. **Task [Extended] - Architectural**" in rendered
+
+    def test_sort_round_trip_validator_clean(self):
+        """End-to-end: write -> parse -> sort -> render -> parse -> check
+        should leave Extended entries silent in [150, 400] (not warn)."""
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            render_entries,
+            sort_entries,
+        )
+
+        text = (
+            HEADER
+            + _entry(1, marker="[Extended] ", words=250, title="Real depth")
+        )
+        entries = parse_journal(text)
+        rendered = HEADER + render_entries(sort_entries(entries)) + "\n"
+        reparsed = parse_journal(rendered)
+        assert reparsed[0].is_extended is True
+        # No word-count warning because marker preserved
+        violations = check_journal(reparsed)
+        assert not any("over Standard target" in v.message for v in violations)
+
+
+class TestStandardFloorWarning:
+    """`STANDARD_MIN = 70` floor warning (WI 4).
+
+    Forensics on the kolomolo journal exposed several sub-50-word entries
+    that carry no WHY — six months out they read as bare bullet points
+    with no rationale. The validator now warns when an unmarked body sits
+    in (0, 70). Empty bodies stay an error (existing behaviour); marker
+    + body < EXTENDED_MIN stays its own warning (existing behaviour).
+    """
+
+    def _journal(self, *raws: str) -> str:
+        return HEADER + "".join(raws)
+
+    def test_sub_70_unmarked_warns(self):
+        text = self._journal(_entry(1, marker="", words=50, title="Terse"))
+        violations = check_journal(parse_journal(text))
+        msgs = [v.message for v in violations]
+        assert any("under Standard min 70" in m for m in msgs)
+
+    def test_70_words_exactly_no_warning(self):
+        text = self._journal(_entry(1, marker="", words=70, title="Threshold"))
+        violations = check_journal(parse_journal(text))
+        assert not any("under Standard min" in v.message for v in violations)
+
+    def test_extended_marker_under_70_uses_extended_min_path(self):
+        """Marker + 50-word body should fire the existing extended-min warning,
+        not the new STANDARD_MIN warning (they would overlap otherwise)."""
+        text = self._journal(_entry(1, marker="[Extended] ", words=50, title="Marked"))
+        violations = check_journal(parse_journal(text))
+        msgs = [v.message for v in violations]
+        assert any("marked [Extended]" in m for m in msgs)
+        assert not any("under Standard min" in m for m in msgs)
+
+
+class TestStandardizeCleanFooter:
+    """`write_standardize_clean_footer` writes `<!-- standardize-clean: DATE -->`
+    near the journal top, idempotently.
+
+    Forensics need: agents and humans want a one-grep answer to "when was
+    this journal last standardize-cleaned." Inserted only when validator
+    is fully clean (driven by `--all`, not by this helper directly).
+    """
+
+    def _bare(self) -> str:
+        return "# Claude Code Journal\n\nIntro paragraph.\n\n---\n\n1. **Task - X** (v0.1.0): summary<br>\n    **Result**: body\n"
+
+    def _with_note(self) -> str:
+        return (
+            "# Claude Code Journal\n\nIntro paragraph.\n\n"
+            "**Note**: Entries 1-50 archived to [JOURNAL_ARCHIVE.md].\n\n"
+            "---\n\n51. **Task - X** (v0.1.0): summary<br>\n    **Result**: body\n"
+        )
+
+    def test_inserts_after_note_line(self, tmp_path):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            write_standardize_clean_footer,
+        )
+
+        journal = tmp_path / "J.md"
+        journal.write_text(self._with_note())
+        write_standardize_clean_footer(journal, date="2026-05-14")
+        text = journal.read_text()
+        assert "<!-- standardize-clean: 2026-05-14 -->" in text
+        # Must land after the **Note** line, before the entries
+        note_idx = text.find("**Note**:")
+        comment_idx = text.find("<!-- standardize-clean:")
+        entry_idx = text.find("\n51.")
+        assert note_idx < comment_idx < entry_idx
+
+    def test_inserts_after_h1_when_no_note(self, tmp_path):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            write_standardize_clean_footer,
+        )
+
+        journal = tmp_path / "J.md"
+        journal.write_text(self._bare())
+        write_standardize_clean_footer(journal, date="2026-05-14")
+        text = journal.read_text()
+        assert "<!-- standardize-clean: 2026-05-14 -->" in text
+        h1_idx = text.find("# Claude Code Journal")
+        comment_idx = text.find("<!-- standardize-clean:")
+        assert h1_idx < comment_idx
+
+    def test_replaces_existing_date_in_place(self, tmp_path):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            write_standardize_clean_footer,
+        )
+
+        journal = tmp_path / "J.md"
+        journal.write_text(self._bare())
+        write_standardize_clean_footer(journal, date="2026-01-01")
+        write_standardize_clean_footer(journal, date="2026-05-14")
+        text = journal.read_text()
+        # Old date gone, new date present, only one comment in file
+        assert "2026-01-01" not in text
+        assert text.count("<!-- standardize-clean:") == 1
+        assert "<!-- standardize-clean: 2026-05-14 -->" in text
+
+
+class TestStandardizeAll:
+    """`run_standardize_all` orchestrates list → render → spawn → apply → check.
+
+    Driven by the kolomolo session forensics finding (51 invocations, 1
+    full procedure executed) that agents drop after enqueueing the skill.
+    `--all` collapses the 5-step manual procedure into one CLI call.
+
+    Tests use a stub `spawn` callable so the actual subprocess is never
+    invoked; the production driver `_spawn_standardize_subprocess` is
+    covered by its own test.
+    """
+
+    def _journal(self, *raws: str) -> str:
+        return HEADER + "".join(raws)
+
+    def test_no_candidates_writes_footer(self, tmp_path):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            run_standardize_all,
+        )
+
+        journal = tmp_path / "J.md"
+        # 100 words, no marker -> Standard, no candidates, no warnings
+        journal.write_text(self._journal(_entry(1, marker="", words=100, title="OK")))
+        rc = run_standardize_all(journal, today="2026-05-14")
+        assert rc == 0
+        text = journal.read_text()
+        assert "<!-- standardize-clean: 2026-05-14 -->" in text
+
+    def test_extended_decision_applied(self, tmp_path, capsys):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            run_standardize_all,
+        )
+
+        journal = tmp_path / "J.md"
+        # 200 words unmarked -> "decide" candidate; mock subprocess returns EXTENDED
+        journal.write_text(self._journal(_entry(1, marker="", words=200, title="Real depth")))
+        rc = run_standardize_all(
+            journal,
+            spawn=lambda prompt: "DECISION: EXTENDED\n",
+            today="2026-05-14",
+        )
+        assert rc == 0
+        text = journal.read_text()
+        assert "**Task [Extended] - Real depth**" in text
+
+    def test_condense_decision_applied(self, tmp_path):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            run_standardize_all,
+        )
+
+        journal = tmp_path / "J.md"
+        # 500 words unmarked -> over-Standard; mock returns CONDENSE+short body
+        journal.write_text(self._journal(_entry(1, marker="", words=500, title="Bloated")))
+        new_body = " ".join(["word"] * 100)
+        rc = run_standardize_all(
+            journal,
+            spawn=lambda prompt: f"DECISION: CONDENSE\nBODY:\n{new_body}",
+            today="2026-05-14",
+        )
+        # Standard at 100 words is acceptable; footer should land
+        assert rc == 0
+        entries = parse_journal(journal.read_text())
+        assert entries[0].body_word_count == 100
+
+    def test_drop_marker_no_subprocess(self, tmp_path):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            run_standardize_all,
+        )
+
+        journal = tmp_path / "J.md"
+        # marker + 30 words -> drop_marker action, no subprocess needed
+        journal.write_text(
+            self._journal(_entry(1, marker="[Extended] ", words=30, title="Thin"))
+        )
+        spawn_calls = []
+
+        def stub_spawn(prompt):
+            spawn_calls.append(prompt)
+            return "DECISION: EXTENDED\n"  # should NOT fire
+
+        rc = run_standardize_all(journal, spawn=stub_spawn, today="2026-05-14")
+        # The thin marker drops, leaving a 30-word entry -> STANDARD_MIN
+        # warning fires, footer skipped, rc=0 (no errors).
+        assert rc == 0
+        assert "[Extended]" not in journal.read_text()
+        # No subprocess spawned for drop_marker
+        assert spawn_calls == []
+
+    def test_unparseable_response_skips_entry(self, tmp_path, capsys):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            run_standardize_all,
+        )
+
+        journal = tmp_path / "J.md"
+        journal.write_text(self._journal(_entry(1, marker="", words=200, title="X")))
+        rc = run_standardize_all(
+            journal,
+            spawn=lambda prompt: "this is not a valid decision response at all",
+            today="2026-05-14",
+        )
+        captured = capsys.readouterr()
+        assert "SKIP (unparseable" in captured.out
+        # Entry unchanged (still 200 words, no marker -> validator warns)
+        # So rc may be 0 (warnings only).
+        assert rc == 0
+        text = journal.read_text()
+        assert "[Extended]" not in text
+
+    def test_subprocess_refusal_skips_entry(self, tmp_path, capsys):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            run_standardize_all,
+        )
+
+        journal = tmp_path / "J.md"
+        journal.write_text(self._journal(_entry(1, marker="", words=200, title="X")))
+        # spawn returning None mirrors what _spawn_standardize_subprocess does
+        # after both default-model and sonnet-4 refusals.
+        rc = run_standardize_all(journal, spawn=lambda prompt: None, today="2026-05-14")
+        captured = capsys.readouterr()
+        assert "SKIP (subprocess refused" in captured.out
+        assert rc == 0
+
+
+class TestSpawnSubprocessSoftLanding:
+    """`_spawn_standardize_subprocess` retries with sonnet-4 on usage-policy
+    refusal. Patches `subprocess.run` so the test never spawns claude.
+    """
+
+    def test_default_model_success(self, monkeypatch):
+        from stellars_claude_code_plugins.journal import journal_tools
+
+        calls = []
+
+        class StubResult:
+            stdout = "DECISION: EXTENDED\n"
+
+        def fake_run(args, **kwargs):
+            calls.append(args)
+            return StubResult()
+
+        monkeypatch.setattr(journal_tools.subprocess, "run", fake_run)
+        out = journal_tools._spawn_standardize_subprocess("prompt-text")
+        assert out == "DECISION: EXTENDED\n"
+        assert len(calls) == 1
+        # Default model call has no --model flag
+        assert "--model" not in calls[0]
+
+    def test_usage_policy_refusal_retries_sonnet_4(self, monkeypatch):
+        from stellars_claude_code_plugins.journal import journal_tools
+
+        calls = []
+
+        class FirstResult:
+            stdout = "API Error: violate our Usage Policy ..."
+
+        class SecondResult:
+            stdout = "DECISION: EXTENDED\n"
+
+        responses = [FirstResult(), SecondResult()]
+
+        def fake_run(args, **kwargs):
+            calls.append(args)
+            return responses.pop(0)
+
+        monkeypatch.setattr(journal_tools.subprocess, "run", fake_run)
+        out = journal_tools._spawn_standardize_subprocess("prompt-text")
+        assert out == "DECISION: EXTENDED\n"
+        assert len(calls) == 2
+        # First call: no --model. Second call: includes --model claude-sonnet-4-20250514
+        assert "--model" not in calls[0]
+        assert "--model" in calls[1]
+        assert "claude-sonnet-4-20250514" in calls[1]
+
+    def test_both_models_refuse_returns_none(self, monkeypatch):
+        from stellars_claude_code_plugins.journal import journal_tools
+
+        class Refusal:
+            stdout = "API Error: violate our Usage Policy ..."
+
+        def fake_run(args, **kwargs):
+            return Refusal()
+
+        monkeypatch.setattr(journal_tools.subprocess, "run", fake_run)
+        out = journal_tools._spawn_standardize_subprocess("prompt-text")
+        assert out is None
+
+    def test_timeout_returns_none(self, monkeypatch):
+        from stellars_claude_code_plugins.journal import journal_tools
+
+        def fake_run(args, **kwargs):
+            raise journal_tools.subprocess.TimeoutExpired(cmd=args, timeout=180)
+
+        monkeypatch.setattr(journal_tools.subprocess, "run", fake_run)
+        out = journal_tools._spawn_standardize_subprocess("prompt-text")
+        assert out is None
+
+    def test_claude_binary_missing_returns_none(self, monkeypatch):
+        from stellars_claude_code_plugins.journal import journal_tools
+
+        def fake_run(args, **kwargs):
+            raise FileNotFoundError("claude")
+
+        monkeypatch.setattr(journal_tools.subprocess, "run", fake_run)
+        out = journal_tools._spawn_standardize_subprocess("prompt-text")
+        assert out is None
+
+
+class TestParseStandardizeDecision:
+    """`parse_standardize_decision` uses the YAML grammar to parse subprocess
+    output into a structured `(decision, body_or_None)` tuple."""
+
+    def test_extended(self):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            parse_standardize_decision,
+        )
+
+        result = parse_standardize_decision("DECISION: EXTENDED\n")
+        assert result == ("extended", None)
+
+    def test_condense_extracts_body(self):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            parse_standardize_decision,
+        )
+
+        text = "DECISION: CONDENSE\nBODY:\nNew condensed body text here."
+        result = parse_standardize_decision(text)
+        assert result is not None
+        decision, body = result
+        assert decision == "condense"
+        assert body == "New condensed body text here."
+
+    def test_drop_marker(self):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            parse_standardize_decision,
+        )
+
+        result = parse_standardize_decision("DECISION: DROP_MARKER\n")
+        assert result == ("drop_marker", None)
+
+    def test_unparseable_returns_none(self):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            parse_standardize_decision,
+        )
+
+        result = parse_standardize_decision("I have an opinion but no decision tag")
+        assert result is None
+
+
+class TestYamlVersionRefusal:
+    """The CLI hard-fails when the shipped YAML's `version` does not match
+    `STANDARDIZE_YAML_VERSION`. Tests an in-process override of the loader's
+    YAML source to simulate version drift.
+    """
+
+    def test_unknown_version_raises(self, monkeypatch):
+        import yaml
+
+        from stellars_claude_code_plugins.journal import journal_tools
+
+        # Force loader to read an old-v1 YAML body
+        old_yaml = yaml.safe_dump(
+            {
+                "version": 1,
+                "limits": {"standard_target": 150, "extended_min": 150, "extended_max": 400},
+                "system": "stub",
+                "user_template": "stub",
+                "decision_grammar": {"formats": []},
+            }
+        )
+
+        class FakeRef:
+            def read_text(self, encoding):
+                return old_yaml
+
+        class FakeFiles:
+            def joinpath(self, name):
+                return FakeRef()
+
+        import importlib
+
+        def fake_files(pkg):
+            return FakeFiles()
+
+        monkeypatch.setattr(importlib.resources, "files", fake_files)
+
+        import pytest
+
+        with pytest.raises(RuntimeError, match="standardize.yaml version"):
+            journal_tools._load_standardize_prompt()

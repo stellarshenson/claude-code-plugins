@@ -26,6 +26,24 @@ No-op when the package is importable. Never skip.
 
 Default journal path is `.claude/JOURNAL.md` unless an argument is passed.
 
+### Happy path — one CLI call
+
+```bash
+uv run journal-tools standardize .claude/JOURNAL.md --all
+```
+
+`--all` walks every flagged entry in order:
+
+- `drop_marker` candidates apply immediately (no subprocess).
+- `decide` / `condense` candidates spawn one focused `claude -p` subprocess each, with the CLAUDECODE env var stripped, stderr suppressed, the `--no-session-persistence` flag set (so the subprocess does NOT leave a JSONL file under `~/.claude/projects/<slug>/` per entry), and a sonnet-4 retry on usage-policy refusal.
+- Each decision is parsed via the YAML grammar and applied through the existing `--apply` write path.
+- Unparseable / refused / timed-out subprocess responses skip the entry with a `SKIP ...` log line and continue; nothing crashes mid-sweep.
+- After the loop, `check_journal` runs once. On a fully clean validator exit (zero errors AND zero warnings) the CLI writes a `<!-- standardize-clean: YYYY-MM-DD -->` comment near the journal top for forensics. Any remaining warnings or errors are surfaced for follow-up.
+
+This is the only command you need for 99% of runs. Everything below is the manual procedure for debugging individual entries — useful when `--all` skipped an entry and you want to inspect the subprocess prompt or step through one decision at a time interactively.
+
+## Debugging: manual procedure
+
 ### 1. List repair candidates
 
 ```bash
@@ -74,7 +92,7 @@ For every remaining entry (`decide` or `condense`):
 uv run journal-tools standardize .claude/JOURNAL.md --prompt <N> > /tmp/standardize-<N>.prompt.txt
 ```
 
-**3b. Spawn a focused `claude -p` subprocess** with the CLAUDECODE env var stripped (otherwise the SDK enters degraded mode and hangs on file ops - see the `acp` skill's "Critical: Strip CLAUDECODE Env Var" rule). Try the default model first; on a usage-policy refusal, retry once with `claude-sonnet-4-20250514` (soft landing — Sonnet 4 has a different safety profile and clears benign technical content the default model occasionally flags as policy-violating). Suppress stderr (`2>/dev/null`) so harmless "no stdin data received" warnings don't leak into the decision file:
+**3b. Spawn a focused `claude -p` subprocess** with the CLAUDECODE env var stripped (otherwise the SDK enters degraded mode and hangs on file ops - see the `acp` skill's "Critical: Strip CLAUDECODE Env Var" rule). Add `--no-session-persistence` so each one-shot subprocess does not write a JSONL session file under `~/.claude/projects/<slug>/` (these are unresumable single-decision calls — persisting them accumulates one extra file per entry, 17+ per sweep). Try the default model first; on a usage-policy refusal, retry once with `claude-sonnet-4-20250514` (soft landing — Sonnet 4 has a different safety profile and clears benign technical content the default model occasionally flags as policy-violating). Suppress stderr (`2>/dev/null`) so harmless "no stdin data received" warnings don't leak into the decision file:
 
 ```bash
 # Attempt 1: default model.
@@ -82,6 +100,7 @@ env -u CLAUDECODE claude -p "$(cat /tmp/standardize-<N>.prompt.txt)" \
   --output-format text \
   --dangerously-skip-permissions \
   --max-turns 3 \
+  --no-session-persistence \
   > /tmp/standardize-<N>.decision.txt 2>/dev/null
 
 # Soft landing: on "violate our Usage Policy" refusal, retry with claude-sonnet-4.
@@ -91,6 +110,7 @@ if grep -q "violate our Usage Policy" /tmp/standardize-<N>.decision.txt; then
     --dangerously-skip-permissions \
     --max-turns 3 \
     --model claude-sonnet-4-20250514 \
+    --no-session-persistence \
     > /tmp/standardize-<N>.decision.txt 2>/dev/null
 fi
 ```
@@ -144,7 +164,9 @@ Plus the post-validation summary line from `journal-tools check`.
 ## Rules
 
 - ALL subprocess calls MUST use `env -u CLAUDECODE` (or set `env={k: v for k, v in os.environ.items() if k != "CLAUDECODE"}` in Python). Without this the SDK hangs on file ops. Reference: `acp` skill, "Critical: Strip CLAUDECODE Env Var".
-- Soft landing on usage-policy refusal. Default model occasionally flags benign technical bodies (long file-path lists, words like FAIL / kill / inject as plain prose). Retry once with `--model claude-sonnet-4-20250514` before surfacing the entry to the user. Trigger: `grep -q "violate our Usage Policy"` on the decision file. One retry only - if Sonnet 4 also refuses, report the entry and skip; do not chain further model swaps.
+- Soft landing on usage-policy refusal. Default model occasionally flags benign technical bodies (long file-path lists, words like FAIL / kill / inject as plain prose). Retry once with `--model claude-sonnet-4-20250514` before surfacing the entry to the user. Trigger: `grep -q "violate our Usage Policy"` on the decision file. One retry only - if Sonnet 4 also refuses, report the entry and skip; do not chain further model swaps. `--all` already enforces this contract in code.
+- One subprocess per entry per `--all` run. If a subprocess produced a non-compliant body (e.g. condensed but still >150 without marker), do NOT manually retry inside the same session — re-run `journal-tools standardize --all` and the candidate either re-fires or settles. The rubric is deterministic enough that two manual retries chasing the same entry usually means the body needs human review, not another model spin.
+- Subprocess calls MUST add `--no-session-persistence`. The standardize decisions are one-shot and never resumed; persisting their session JSONL files accumulates one extra file per entry under `~/.claude/projects/<slug>/`. `--all` adds the flag automatically; the manual procedure block below also carries it.
 - ONE subprocess per entry. Do not bundle multiple entries into a single `claude -p` prompt - it defeats the focused-decision principle and lets the subprocess drift across boundaries.
 - Subprocess `--max-turns 3` cap. The task is a single decision; more turns means the subprocess is wandering.
 - Never edit `JOURNAL.md` directly during standardize - only via `journal-tools standardize --apply`. The CLI handles the structural rewrite (preserving indentation, joining body onto a single Result line, dropping the marker when condense pushes back into Standard).

@@ -6,10 +6,14 @@
 # entry's own body, decides Extended-vs-Condense, and returns a structured
 # response the CLI then applies via `journal-tools standardize --apply`.
 #
-# Schema version: 1. Bump on breaking changes; the CLI loads `version` and
+# Schema version: 2. Bump on breaking changes; the CLI loads `version` and
 # refuses unknown versions so an old wheel + new YAML do not silently misfire.
+# v2 split rule 3 into 3a/3b/3c (added the 400-word ceiling on the "no marker
+# AND rationale-rich" branch so the subprocess returns CONDENSE on a single
+# pass for unmarked >400-word bodies, instead of returning EXTENDED and
+# requiring a second pass to fire rule 1).
 
-version: 1
+version: 2
 
 # Word-count tiers must mirror src/stellars_claude_code_plugins/journal/journal_tools.py
 # (STANDARD_TARGET=150, EXTENDED_MIN=150, EXTENDED_MAX=400).
@@ -58,14 +62,22 @@ user_template: |
   2. If `has_marker` is true AND word_count < 150 → DROP_MARKER.
      The marker is false advertising; remove it, body unchanged.
   3. If `has_marker` is false AND word_count > 150:
-     a. EXTENDED if the body carries 3+ load-bearing rationale
-        segments — e.g. an explicit trigger, a "why this approach
-        over alternatives", a gotcha, a cause-and-effect chain, OR
-        the work spans multiple files / multiple threads / a
-        platform migration / an architectural change.
-     b. CONDENSE otherwise — the body is padded; rewrite to 70-150
-        words preserving the trigger + why-this-approach + any
-        gotchas + cause-and-effect, dropping decorative prose.
+     a. EXTENDED if word_count <= 400 AND the body carries 3+
+        load-bearing rationale segments — e.g. an explicit trigger,
+        a "why this approach over alternatives", a gotcha, a
+        cause-and-effect chain, OR the work spans multiple files /
+        multiple threads / a platform migration / an architectural
+        change. The CLI applies the [Extended] marker on apply.
+     b. CONDENSE if word_count > 400. Even when depth is real,
+        the Extended tier caps at 400 — the body must shrink to
+        150-400 words preserving the trigger + why-this-approach
+        + gotchas + cause-and-effect. Output one dense paragraph,
+        file paths + function names in backticks, telegram-style.
+        The CLI applies the [Extended] marker on apply when the
+        condensed body lands in [150, 400].
+     c. CONDENSE otherwise (word_count in (150, 400] but rationale
+        is thin) — the body is padded; rewrite to 70-150 words
+        preserving the WHY, dropping decorative prose.
 
   Respond in EXACTLY one of these three formats. NOTHING else — no
   preamble, no commentary, no markdown fences around the format.
