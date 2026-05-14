@@ -10,13 +10,13 @@ Project audit trail. Every substantive task = one entry. Append at END. Last ent
 
 ## Pre-flight install (MANDATORY - run every session, no asking)
 
-Always run this single line BEFORE invoking any `journal-tools` subcommand. It is a no-op when the package is already importable; it auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python (the failure mode where `which journal-tools` finds the shim but `journal-tools check` ImportErrors):
+Always run this single line BEFORE invoking any `journal-tools` subcommand. No-op when the package is importable; auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python (the failure mode where `which journal-tools` finds the shim but `journal-tools check` ImportErrors):
 
 ```bash
 python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
-Ships `journal-tools` CLI (`check`, `sort`, `archive`). Verify: `journal-tools --help`. Never skip this step. Never ask the user whether to install - just run the line.
+Ships `journal-tools` CLI (`check`, `sort`, `archive`, `standardize`). Verify: `journal-tools --help`. Never skip this step. Never ask the user whether to install - just run the line.
 
 ## Commands
 
@@ -25,8 +25,9 @@ Ships `journal-tools` CLI (`check`, `sort`, `archive`). Verify: `journal-tools -
 | `/journal:create` | INIT empty journal. Backfill from conversation context. Refuses if file exists. |
 | `/journal:update` | DEFAULT. Append new entry. Extend last entry only if same task, pre-release. |
 | `/journal:archive` | Move old entries to `JOURNAL_ARCHIVE.md`. Triggered >40 entries. |
+| `/journal:standardize` | REPAIR. For each entry the validator warned on (over Standard target, over Extended max, or false-advertising marker), a focused `claude -p` subprocess decides Extended vs Condense vs Drop-marker; the CLI applies it. Use after `journal-tools check` reports word-count warnings - never inline-edit oversized entries by hand. |
 
-No ambiguity. `create` = scaffold once. `update` = every write after.
+No ambiguity. `create` = scaffold once. `update` = every write after. `standardize` = repair word-count drift via an ACP subprocess driven by the shipped `prompts/standardize.yaml`.
 
 ## Append-only
 
@@ -129,6 +130,23 @@ journal-tools sort .claude/JOURNAL.md --dry-run
 ```
 
 Re-numbers sequentially. Fixes gaps (1,2,5 → 1,2,3) and ordering. `--dry-run` previews. Omit to write in-place. Flag: `--start-from N`.
+
+### standardize
+
+```bash
+# 1. List entries needing repair (JSON array on stdout).
+journal-tools standardize --list .claude/JOURNAL.md
+
+# 2. Render the ACP prompt for one offender so a `claude -p` subprocess can decide.
+journal-tools standardize --prompt N .claude/JOURNAL.md
+
+# 3. Write the subprocess's decision back to the file.
+journal-tools standardize --apply N --decision extended|condense|drop-marker [--body-file F] .claude/JOURNAL.md
+```
+
+Repairs the three failure modes `check` warns on: Standard over 150 words (decide Extended marker vs condense), Extended over 400 words (condense), spurious `[Extended]` marker on a sub-150-word body (drop marker). The CLI orchestrates; the actual editing decision comes from a focused `claude -p` subprocess driven by the shipped `prompts/standardize.yaml`. Use after `journal-tools check` reports warnings - never inline-edit oversized entries by hand. The `/journal:standardize` slash command chains the three modes for every offender in one pass.
+
+Flags: `--standard-target N` (default 150), `--extended-max N` (default 400). Same thresholds `check` uses.
 
 ## Archiving
 

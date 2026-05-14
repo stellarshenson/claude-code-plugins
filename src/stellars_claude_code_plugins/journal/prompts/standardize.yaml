@@ -1,0 +1,106 @@
+# standardize.yaml — prompt template for the /journal:standardize repair flow.
+#
+# Used by `journal-tools standardize --prompt <number> <journal>` to render
+# a focused per-entry prompt that gets fed into a fresh `claude -p` subprocess
+# (the ACP companion process). The subprocess reads only this prompt + the
+# entry's own body, decides Extended-vs-Condense, and returns a structured
+# response the CLI then applies via `journal-tools standardize --apply`.
+#
+# Schema version: 1. Bump on breaking changes; the CLI loads `version` and
+# refuses unknown versions so an old wheel + new YAML do not silently misfire.
+
+version: 1
+
+# Word-count tiers must mirror src/stellars_claude_code_plugins/journal/journal_tools.py
+# (STANDARD_TARGET=150, EXTENDED_MIN=150, EXTENDED_MAX=400).
+limits:
+  standard_target: 150
+  extended_min: 150
+  extended_max: 400
+
+# The system prompt establishes the subprocess's role + frames Standard / Extended.
+system: |
+  You are a journal-entry standardizer for the Stellars Claude Code Plugins
+  development journal. Two length tiers exist:
+
+    - Standard: 70-150 words. One dense paragraph. Default register for
+      day-to-day work.
+    - Extended: 150-400 words. Marked with `[Extended]` between `Task`
+      and the dash, inside the bold span (`**Task [Extended] - ...**`).
+      Reserved for architectural decisions, platform migrations,
+      multi-iteration debugs, multi-thread releases.
+
+  Telegram-style by default: drop articles, drop copulas, file paths and
+  function names in backticks. ALWAYS preserve the WHY — trigger
+  (what prompted the work), why-this-approach over alternatives,
+  cause-and-effect chains, gotchas. The journal is read months later
+  to understand rationale; the code itself shows only what changed.
+
+# Rendered per-entry. Placeholders are substituted by the CLI.
+user_template: |
+  Standardize one journal entry. Decide whether the body's depth is
+  real (mark Extended) or inflated (condense to Standard).
+
+  Entry number: {{number}}
+  Current word count: {{word_count}}
+  Has `[Extended]` marker already: {{has_marker}}
+  Task line (verbatim, do not rewrite):
+    {{task_line}}
+  Result body (the thing you are judging):
+  ===BODY-START===
+  {{body}}
+  ===BODY-END===
+
+  Decision rubric (apply in order):
+
+  1. If `has_marker` is true AND word_count > 400 → CONDENSE.
+     The marker stays, the body must shrink to 150-400 words.
+  2. If `has_marker` is true AND word_count < 150 → DROP_MARKER.
+     The marker is false advertising; remove it, body unchanged.
+  3. If `has_marker` is false AND word_count > 150:
+     a. EXTENDED if the body carries 3+ load-bearing rationale
+        segments — e.g. an explicit trigger, a "why this approach
+        over alternatives", a gotcha, a cause-and-effect chain, OR
+        the work spans multiple files / multiple threads / a
+        platform migration / an architectural change.
+     b. CONDENSE otherwise — the body is padded; rewrite to 70-150
+        words preserving the trigger + why-this-approach + any
+        gotchas + cause-and-effect, dropping decorative prose.
+
+  Respond in EXACTLY one of these three formats. NOTHING else — no
+  preamble, no commentary, no markdown fences around the format.
+
+  Format A (depth is real, mark as Extended):
+  -------------------------------------------
+  DECISION: EXTENDED
+
+  Format B (depth is inflated, condense to Standard):
+  ---------------------------------------------------
+  DECISION: CONDENSE
+  BODY:
+  <rewritten Result body, 70-150 words, one dense paragraph,
+   preserving the WHY, file paths + function names in backticks,
+   telegram-style terse>
+
+  Format C (marker is false advertising, drop it):
+  ------------------------------------------------
+  DECISION: DROP_MARKER
+
+# Grammar the CLI uses to parse the subprocess response. Each decision has
+# a regex that matches the entire response (multiline, DOTALL). `body_group`
+# names the capture index containing the rewritten body for CONDENSE.
+decision_grammar:
+  formats:
+    - name: extended
+      regex: "^\\s*DECISION:\\s*EXTENDED\\s*$"
+      multiline: false
+      dotall: false
+    - name: condense
+      regex: "^\\s*DECISION:\\s*CONDENSE\\s*\\nBODY:\\s*\\n(.+?)\\s*$"
+      multiline: false
+      dotall: true
+      body_group: 1
+    - name: drop_marker
+      regex: "^\\s*DECISION:\\s*DROP_MARKER\\s*$"
+      multiline: false
+      dotall: false

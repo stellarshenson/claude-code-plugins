@@ -181,7 +181,7 @@ See [datascience/README.md](datascience/) for the full list of standards enforce
 
 <img alt="journal append-only timeline with archive and continuous numbering" src="assets/svg/07_journal_audit.svg" width="100%">
 
-Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers on journal-related phrases (see below) or after substantive work, maintaining a consistent audit trail in `.claude/JOURNAL.md`. Includes a deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement - no generative AI in the loop.
+Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers on journal-related phrases (see below) or after substantive work, maintaining a consistent audit trail in `.claude/JOURNAL.md`. Includes a deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement — the three pure-string subcommands run with no generative AI in the loop, and `standardize` orchestrates a focused `claude -p` subprocess per offender to repair word-count drift on entries `check` warned on.
 
 **Skill**: `journal` (auto-triggered by the phrases below or after finishing substantive work)
 
@@ -192,8 +192,9 @@ Project journal management with append-only entry format, continuous numbering, 
 | `/journal:update` | "update journal", "add journal entry", "add entry", "log this", "journal this", "record this in the journal" |
 | `/journal:create` | "create journal", "init journal", "start journal", "new journal" (refuses if file already exists) |
 | `/journal:archive` | "archive journal", "prune journal", "compact journal" (auto-suggests when >40 entries) |
+| `/journal:standardize` | "standardize journal", "fix journal entry tiers", "repair journal" (run after `journal-tools check` reports word-count warnings) |
 
-Clear split: `create` = scaffold-from-empty one-time, `update` = every write after that (append new entry or extend the last one), `archive` = runs the CLI archiver.
+Clear split: `create` = scaffold-from-empty one-time, `update` = every write after that (append new entry or extend the last one), `archive` = runs the CLI archiver, `standardize` = ACP-driven word-count repair (oversized Standard → mark Extended or condense; oversized Extended → condense; spurious marker → drop).
 
 ### Usage
 
@@ -212,6 +213,9 @@ journal-tools check .claude/JOURNAL.md
 
 # Re-number entries sequentially (fixes gaps or reorders)
 journal-tools sort .claude/JOURNAL.md --dry-run
+
+# Repair word-count drift via an ACP `claude -p` subprocess per offender
+/journal:standardize    # chains: list -> per-entry prompt -> apply decision
 ```
 
 Two word-count tiers: **Standard** (~70-120 words, the default) and **Extended** (~250-350 words, ONLY when the user explicitly asks or the work is an architectural decision / platform migration / multi-iteration debug). The checker emits warnings (not errors) when entries exceed the standard target or the extended max — length is a nudge, never a block.
@@ -281,7 +285,7 @@ Provides these binaries:
 | `orchestrate` | `autobuild` |
 | `svg-infographics` | `svg-infographics`, `devils-advocate` (visuals) |
 | `render-png` | `svg-infographics` (Playwright-based SVG → PNG) |
-| `journal-tools` | `journal` (check / sort / archive) |
+| `journal-tools` | `journal` (check / sort / archive / standardize) |
 | `document-processing` | `document-processing` (ground / batch-ground, three-layer grounding) |
 
 As a Claude Code plugin marketplace:

@@ -250,3 +250,143 @@ class TestStructuralResultMarkerChecks:
         text = HEADER + _task_no_result(1) + _task_with_result(2) + _task_with_multiple_results(3)
         entries = parse_journal(text)
         assert [e.result_marker_count for e in entries] == [0, 1, 2]
+
+
+class TestStandardize:
+    """`journal-tools standardize` - identify + repair oversized / mis-marked entries.
+
+    Three deterministic actions wrap the ACP repair loop:
+    - drop_marker: spurious `[Extended]` on a sub-150-word body (no subprocess)
+    - mark-extended: depth is real, add the marker
+    - condense: oversized body + new shorter body from the subprocess; marker
+      auto-drops if condensed body falls into Standard.
+    """
+
+    def _journal(self, *raws: str) -> str:
+        return HEADER + "".join(raws)
+
+    def test_list_classifies_three_actions(self):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            list_repair_candidates,
+        )
+
+        # 1: ok Standard. 2: needs decide. 3: spurious marker. 4: condense.
+        text = self._journal(
+            _entry(1, marker="", words=80),
+            _entry(2, marker="", words=200),
+            _entry(3, marker="[Extended] ", words=30),
+            _entry(4, marker="[Extended] ", words=450),
+        )
+        candidates = list_repair_candidates(parse_journal(text))
+        by_num = {c["number"]: c["action_needed"] for c in candidates}
+        assert by_num == {2: "decide", 3: "drop_marker", 4: "condense"}
+        c2 = next(c for c in candidates if c["number"] == 2)
+        assert c2["body"], "body must be populated"
+        assert "**Task" in c2["task_line"]
+
+    def test_render_prompt_substitutes_placeholders(self):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            _load_standardize_prompt,
+            render_standardize_prompt,
+        )
+
+        text = self._journal(_entry(7, marker="", words=200, title="Probe entry"))
+        entry = parse_journal(text)[0]
+        template = _load_standardize_prompt()
+        rendered = render_standardize_prompt(entry, template)
+        assert "standardizer for the Stellars" in rendered
+        assert "Entry number: 7" in rendered
+        assert "Current word count: 200" in rendered
+        assert "Has `[Extended]` marker already: false" in rendered
+        assert "DECISION: EXTENDED" in rendered
+        assert "DECISION: CONDENSE" in rendered
+        assert "DECISION: DROP_MARKER" in rendered
+
+    def test_load_prompt_yaml_ships_in_wheel(self):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            _load_standardize_prompt,
+        )
+
+        data = _load_standardize_prompt()
+        assert data["version"] == 1
+        assert "system" in data and "user_template" in data
+        assert {"standard_target", "extended_min", "extended_max"} <= data["limits"].keys()
+
+    def test_apply_mark_extended_inserts_marker(self):
+        from stellars_claude_code_plugins.journal.journal_tools import apply_mark_extended
+
+        text = self._journal(_entry(1, marker="", words=200, title="X"))
+        entry = parse_journal(text)[0]
+        out = apply_mark_extended(text, entry)
+        assert "**Task [Extended] - X**" in out
+        again = apply_mark_extended(out, parse_journal(out)[0])
+        assert again == out
+
+    def test_apply_drop_marker_removes_marker(self):
+        from stellars_claude_code_plugins.journal.journal_tools import apply_drop_marker
+
+        text = self._journal(_entry(1, marker="[Extended] ", words=30, title="X"))
+        entry = parse_journal(text)[0]
+        out = apply_drop_marker(text, entry)
+        assert "[Extended]" not in out
+        again = apply_drop_marker(out, parse_journal(out)[0])
+        assert again == out
+
+    def test_apply_condense_body_replaces_result(self):
+        from stellars_claude_code_plugins.journal.journal_tools import apply_condense_body
+
+        text = self._journal(_entry(1, marker="", words=500, title="X"))
+        entry = parse_journal(text)[0]
+        new_body = "Short rewrite. Trigger: bloat. Why: brevity. Result: passes."
+        out = apply_condense_body(text, entry, new_body)
+        new_entry = parse_journal(out)[0]
+        assert new_entry.result_body == new_body
+        result_lines = [line for line in out.split("\n") if line.lstrip().startswith("**Result")]
+        assert len(result_lines) == 1
+
+    def test_cli_apply_extended_via_subprocess(self, tmp_path):
+        import json
+        import subprocess
+        import sys
+
+        journal = tmp_path / "J.md"
+        journal.write_text(self._journal(_entry(1, marker="", words=200, title="X")))
+
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.journal.journal_tools",
+             "standardize", str(journal), "--list"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0
+        candidates = json.loads(r.stdout)
+        assert candidates[0]["number"] == 1
+        assert candidates[0]["action_needed"] == "decide"
+
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.journal.journal_tools",
+             "standardize", str(journal), "--apply", "1", "--decision", "extended"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0
+        assert "now Extended" in r.stdout
+        assert "[Extended]" in journal.read_text()
+
+    def test_cli_condense_auto_drops_marker_when_body_becomes_standard(self, tmp_path):
+        import subprocess
+        import sys
+
+        journal = tmp_path / "J.md"
+        journal.write_text(self._journal(_entry(1, marker="[Extended] ", words=500, title="X")))
+        body = tmp_path / "new.txt"
+        body.write_text("Tight rewrite. Trigger: bloat. Why: testing the auto-drop path.")
+
+        r = subprocess.run(
+            [sys.executable, "-m", "stellars_claude_code_plugins.journal.journal_tools",
+             "standardize", str(journal), "--apply", "1",
+             "--decision", "condense", "--body-file", str(body)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        text = journal.read_text()
+        assert "[Extended]" not in text
+        assert "now Standard" in r.stdout

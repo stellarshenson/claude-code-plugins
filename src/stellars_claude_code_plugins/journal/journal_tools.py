@@ -425,8 +425,193 @@ def archive_journal(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Standardize - identify and repair oversized / mis-marked entries
+# ---------------------------------------------------------------------------
+
+
+def _load_standardize_prompt() -> dict:
+    """Load the standardize prompt template from package data.
+
+    The YAML ships with the wheel under
+    ``stellars_claude_code_plugins/journal/prompts/standardize.yaml``.
+    Returns the parsed dict; raises if the file is missing or the
+    ``version`` field is unsupported.
+    """
+    from importlib import resources
+
+    import yaml
+
+    try:
+        ref = resources.files("stellars_claude_code_plugins.journal.prompts").joinpath(
+            "standardize.yaml"
+        )
+        text = ref.read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError) as exc:
+        raise RuntimeError(
+            "standardize.yaml prompt template not found in package data; "
+            "reinstall stellars-claude-code-plugins"
+        ) from exc
+    data = yaml.safe_load(text)
+    if data.get("version") != 1:
+        raise RuntimeError(
+            f"standardize.yaml version={data.get('version')!r} unsupported by this CLI "
+            "(expected 1); upgrade stellars-claude-code-plugins"
+        )
+    return data
+
+
+def _classify_repair_action(
+    entry: JournalEntry,
+    standard_target: int = STANDARD_TARGET,
+    extended_max: int = EXTENDED_MAX,
+) -> str | None:
+    """Return the standardize action for an entry, or None if it is fine.
+
+    Possible actions:
+    - ``"drop_marker"``: ``[Extended]`` present but body < standard_target.
+      Deterministic; no subprocess decision needed.
+    - ``"decide"``: no marker, body > standard_target, body <= extended_max.
+      Subprocess decides EXTENDED vs CONDENSE.
+    - ``"condense"``: body > extended_max (regardless of marker). Subprocess
+      must condense.
+    """
+    wc = entry.body_word_count
+    if entry.is_extended and wc < standard_target:
+        return "drop_marker"
+    if wc > extended_max:
+        return "condense"
+    if not entry.is_extended and wc > standard_target:
+        return "decide"
+    return None
+
+
+def list_repair_candidates(
+    entries: list[JournalEntry],
+    standard_target: int = STANDARD_TARGET,
+    extended_max: int = EXTENDED_MAX,
+) -> list[dict]:
+    """Return JSON-shaped list of entries needing standardize repair."""
+    out: list[dict] = []
+    for entry in entries:
+        action = _classify_repair_action(entry, standard_target, extended_max)
+        if action is None:
+            continue
+        task_line = entry.raw_lines[0] if entry.raw_lines else ""
+        out.append(
+            {
+                "number": entry.number,
+                "line_start": entry.line_start,
+                "line_end": entry.line_start + len(entry.raw_lines) - 1,
+                "word_count": entry.body_word_count,
+                "has_extended_marker": entry.is_extended,
+                "action_needed": action,
+                "task_line": task_line.rstrip("\n"),
+                "body": entry.result_body,
+            }
+        )
+    return out
+
+
+def render_standardize_prompt(entry: JournalEntry, template: dict | None = None) -> str:
+    """Render the per-entry standardize prompt as one block of text.
+
+    Substitutes ``{{number}}``, ``{{word_count}}``, ``{{has_marker}}``,
+    ``{{task_line}}``, ``{{body}}`` in the template's ``user_template``.
+    The system prompt is prepended as a header so the subprocess sees both
+    in one ``claude -p`` invocation.
+    """
+    if template is None:
+        template = _load_standardize_prompt()
+    task_line = entry.raw_lines[0].rstrip("\n") if entry.raw_lines else ""
+    rendered = template["user_template"]
+    for key, value in (
+        ("number", str(entry.number)),
+        ("word_count", str(entry.body_word_count)),
+        ("has_marker", "true" if entry.is_extended else "false"),
+        ("task_line", task_line),
+        ("body", entry.result_body),
+    ):
+        rendered = rendered.replace("{{" + key + "}}", value)
+    return f"{template['system']}\n\n{rendered}"
+
+
+# --- Apply helpers --------------------------------------------------------
+
+
+def _entry_task_line_index(text: str, entry: JournalEntry) -> int:
+    """0-based index into ``text.split('\\n')`` for the entry's Task line."""
+    return entry.line_start - 1  # line_start is 1-based
+
+
+def apply_mark_extended(text: str, entry: JournalEntry) -> str:
+    """Insert ``[Extended]`` into entry's Task bold span. No-op if already marked."""
+    lines = text.split("\n")
+    idx = _entry_task_line_index(text, entry)
+    if idx < 0 or idx >= len(lines):
+        raise ValueError(f"entry {entry.number}: line {entry.line_start} out of range")
+    line = lines[idx]
+    if "[Extended]" in line:
+        return text  # already marked, idempotent
+    # Insert "[Extended] " after "**Task" and before " - " (or "-")
+    # ENTRY_RE shape: `N. **Task - <title>** ...`
+    pattern = re.compile(r"(\*\*Task)(\s*)(-)")
+    new_line, count = pattern.subn(r"\1 [Extended] \3", line, count=1)
+    if count != 1:
+        raise ValueError(
+            f"entry {entry.number}: could not locate '**Task - ' span in line {entry.line_start}"
+        )
+    lines[idx] = new_line
+    return "\n".join(lines)
+
+
+def apply_drop_marker(text: str, entry: JournalEntry) -> str:
+    """Remove ``[Extended]`` from entry's Task bold span. No-op if not marked."""
+    lines = text.split("\n")
+    idx = _entry_task_line_index(text, entry)
+    if idx < 0 or idx >= len(lines):
+        raise ValueError(f"entry {entry.number}: line {entry.line_start} out of range")
+    line = lines[idx]
+    new_line = re.sub(r"\s*\[Extended\]\s*", " ", line, count=1, flags=re.IGNORECASE)
+    # Collapse the double space that may result, but preserve indentation.
+    new_line = re.sub(r"(\*\*Task)\s\s+", r"\1 ", new_line)
+    lines[idx] = new_line
+    return "\n".join(lines)
+
+
+def apply_condense_body(text: str, entry: JournalEntry, new_body: str) -> str:
+    """Replace the entry's Result body with ``new_body``.
+
+    Preserves the leading indentation of the original `**Result**:` line
+    and reflows the new body onto that same line (one paragraph per the
+    journal format).
+    """
+    lines = text.split("\n")
+    # Find the Result line within the entry's raw_lines span.
+    start = _entry_task_line_index(text, entry)
+    end = start + len(entry.raw_lines)
+    result_idx = None
+    result_indent_prefix = "    "
+    for i in range(start, min(end, len(lines))):
+        m = RESULT_PREFIX.match(lines[i])
+        if m:
+            result_idx = i
+            indent_match = re.match(r"^(\s+)\*\*Result\*\*:\s*", lines[i])
+            result_indent_prefix = indent_match.group(1) if indent_match else "    "
+            break
+    if result_idx is None:
+        raise ValueError(f"entry {entry.number}: no `**Result**:` line found in span")
+
+    # Replace the Result line + any continuation lines belonging to this
+    # entry's body (everything up to `end`).
+    new_body_clean = " ".join(new_body.split())  # collapse all internal whitespace
+    new_result_line = f"{result_indent_prefix}**Result**: {new_body_clean}"
+    new_lines = lines[:result_idx] + [new_result_line] + lines[end:]
+    return "\n".join(new_lines)
+
+
 def main(argv: list[str] | None = None) -> int:
-    """CLI entry point: ``journal-tools check|archive|sort <path>``."""
+    """CLI entry point: ``journal-tools check|archive|sort|standardize <path>``."""
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -473,6 +658,62 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run",
         action="store_true",
         help="Print corrected output without writing",
+    )
+
+    # standardize - identify and repair oversized / mis-marked entries via ACP
+    p_std = sub.add_parser(
+        "standardize",
+        help="List, prompt-render, and apply repairs for oversized / mis-marked entries.",
+        description=(
+            "Three modes used in sequence by the /journal:standardize slash command: "
+            "(1) --list emits a JSON array of entries needing repair (oversized "
+            "Standard, oversized Extended, false-advertising marker); "
+            "(2) --prompt N renders the per-entry ACP prompt from the shipped "
+            "prompts/standardize.yaml so a spawned `claude -p` subprocess can decide "
+            "EXTENDED vs CONDENSE vs DROP_MARKER; "
+            "(3) --apply N --decision <extended|condense|drop-marker> writes the "
+            "decision back to the file."
+        ),
+    )
+    p_std.add_argument("path", help="Path to JOURNAL.md")
+    p_std_mode = p_std.add_mutually_exclusive_group(required=True)
+    p_std_mode.add_argument(
+        "--list",
+        action="store_true",
+        help="Emit a JSON array of entries needing repair.",
+    )
+    p_std_mode.add_argument(
+        "--prompt",
+        type=int,
+        metavar="N",
+        help="Render the per-entry ACP prompt for entry N.",
+    )
+    p_std_mode.add_argument(
+        "--apply",
+        type=int,
+        metavar="N",
+        help="Apply the subprocess decision to entry N (requires --decision).",
+    )
+    p_std.add_argument(
+        "--decision",
+        choices=["extended", "condense", "drop-marker"],
+        help="Decision to apply (only with --apply).",
+    )
+    p_std.add_argument(
+        "--body-file",
+        help="Path to a file containing the new Result body (only with --decision condense).",
+    )
+    p_std.add_argument(
+        "--standard-target",
+        type=int,
+        default=STANDARD_TARGET,
+        help=f"Word count target for Standard entries (default: {STANDARD_TARGET})",
+    )
+    p_std.add_argument(
+        "--extended-max",
+        type=int,
+        default=EXTENDED_MAX,
+        help=f"Word count ceiling for Extended entries (default: {EXTENDED_MAX})",
     )
 
     args = parser.parse_args(argv)
@@ -548,6 +789,85 @@ def main(argv: list[str] | None = None) -> int:
                 f"({sorted_entries[0].number}-{sorted_entries[-1].number})."
             )
         return 0
+
+    elif args.command == "standardize":
+        import json as _json
+
+        # --list: emit JSON of repair candidates and exit.
+        if args.list:
+            candidates = list_repair_candidates(
+                entries,
+                standard_target=args.standard_target,
+                extended_max=args.extended_max,
+            )
+            print(_json.dumps(candidates, indent=2))
+            return 0
+
+        # --prompt N: render the per-entry ACP prompt.
+        if args.prompt is not None:
+            target = next((e for e in entries if e.number == args.prompt), None)
+            if target is None:
+                print(f"ERROR: entry {args.prompt} not found", file=sys.stderr)
+                return 1
+            print(render_standardize_prompt(target))
+            return 0
+
+        # --apply N --decision ...: write the decision back to the file.
+        if args.apply is not None:
+            if args.decision is None:
+                print("ERROR: --apply requires --decision", file=sys.stderr)
+                return 1
+            target = next((e for e in entries if e.number == args.apply), None)
+            if target is None:
+                print(f"ERROR: entry {args.apply} not found", file=sys.stderr)
+                return 1
+            if args.decision == "extended":
+                new_text = apply_mark_extended(text, target)
+                outcome = "marked Extended"
+            elif args.decision == "drop-marker":
+                new_text = apply_drop_marker(text, target)
+                outcome = "dropped [Extended] marker"
+            elif args.decision == "condense":
+                if not args.body_file:
+                    print("ERROR: --decision condense requires --body-file", file=sys.stderr)
+                    return 1
+                body_path = Path(args.body_file)
+                if not body_path.exists():
+                    print(f"ERROR: body file {body_path} not found", file=sys.stderr)
+                    return 1
+                new_body = body_path.read_text(encoding="utf-8")
+                new_text = apply_condense_body(text, target, new_body)
+                # If the condensed body falls back into the Standard band, the
+                # `[Extended]` marker becomes false advertising - drop it.
+                # Re-parse the post-write text so we operate on a fresh entry
+                # at the same number with the right line positions.
+                if target.is_extended:
+                    post_entries = parse_journal(new_text)
+                    post_target = next(
+                        (e for e in post_entries if e.number == target.number), None
+                    )
+                    if post_target is not None and post_target.body_word_count < EXTENDED_MIN:
+                        new_text = apply_drop_marker(new_text, post_target)
+                outcome = "condensed body"
+            else:
+                print(f"ERROR: unknown decision {args.decision!r}", file=sys.stderr)
+                return 1
+
+            path.write_text(new_text, encoding="utf-8")
+
+            # Re-parse + re-classify to report the post-state.
+            new_entries = parse_journal(new_text)
+            new_target = next((e for e in new_entries if e.number == args.apply), None)
+            if new_target is None:
+                print(f"WARNING: entry {args.apply} not found after write", file=sys.stderr)
+                return 0
+            tier = "Extended" if new_target.is_extended else "Standard"
+            print(
+                f"entry {args.apply}: {outcome} -> now {tier} ({new_target.body_word_count} words)"
+            )
+            return 0
+
+        return 1
 
     return 1
 

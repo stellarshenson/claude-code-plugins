@@ -27,8 +27,9 @@ Clear split, no ambiguity:
 | `/journal:create` | INIT only — scaffolds empty `JOURNAL.md` and backfills entries from conversation context. Refuses if file exists. Triggers: "create journal", "init journal", "start journal" |
 | `/journal:update` | DEFAULT write — appends a new numbered entry (or extends the last entry's Result paragraph when the work is the same task). Triggers: "update journal", "add journal entry", "log this", "journal this", "record this in the journal" |
 | `/journal:archive` | Archive older entries via `journal-tools archive` (keeps last 20 in main, appends rest to `JOURNAL_ARCHIVE.md`). Triggers: "archive journal", "prune journal" |
+| `/journal:standardize` | REPAIR word-count drift for entries `check` warned on. For each offender (oversized Standard, oversized Extended, spurious `[Extended]` marker), a focused `claude -p` subprocess decides Extended vs Condense vs Drop-marker; the CLI applies the verdict. Use after `check` reports warnings — never inline-edit oversized entries by hand. Triggers: "standardize journal", "fix journal entry tiers", "repair journal" |
 
-All three commands auto-run `journal-tools check` after writing and refuse to proceed on format / numbering errors.
+All four commands auto-run `journal-tools check` after writing and refuse to proceed on format / numbering errors.
 
 ## Skills
 
@@ -38,7 +39,7 @@ All three commands auto-run `journal-tools check` after writing and refuse to pr
 
 ## CLI tools
 
-Deterministic validation, archiving, and sorting - no generative AI in the loop.
+Deterministic validation, archiving, sorting, and word-count repair - the three pure-string subcommands run with no generative AI in the loop; `standardize` orchestrates a focused `claude -p` subprocess per offender for the edit step itself.
 
 ```bash
 # Validate format, numbering, and word counts
@@ -49,6 +50,13 @@ journal-tools archive .claude/JOURNAL.md
 
 # Re-number entries sequentially (fix gaps/ordering)
 journal-tools sort .claude/JOURNAL.md --dry-run
+
+# Repair word-count drift on entries `check` warned on.
+# Three-mode invocation: list offenders, render the per-entry ACP prompt,
+# then apply the decision returned by a `claude -p` subprocess.
+journal-tools standardize --list .claude/JOURNAL.md
+journal-tools standardize --prompt N .claude/JOURNAL.md
+journal-tools standardize --apply N --decision extended|condense|drop-marker .claude/JOURNAL.md
 ```
 
 The checker enforces two word-count tiers for entry bodies (after `**Result**:`):

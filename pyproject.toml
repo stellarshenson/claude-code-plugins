@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "1.1.32"
+version = "1.1.33"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
@@ -76,6 +76,7 @@ include-package-data = true
 [tool.setuptools.package-data]
 "stellars_claude_code_plugins" = ["config_*.yaml"]
 "stellars_claude_code_plugins.autobuild" = ["resources/*.yaml"]
+"stellars_claude_code_plugins.journal" = ["prompts/*.yaml"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
