@@ -1,0 +1,145 @@
+<!--
+  header-doc-banner.svg - Document section-header banner (compact horizontal band).
+  Shows: title, subtitle, two meta lines, gradient accent bar, abstract right-side
+  decorative motif (chronology bars + envelope icons cut out of them).
+  Intent: visual header for the top of a long document or one of its sections.
+  Theme: Stellars-Tech derived - teal/cyan primary (#0096d1), orange accent (#da8230).
+  Reference example for `svg-infographics/skills/svg-designer/rules/header.md`.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 130">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    .decor { fill: #1a5a6e; }
+    .decor-teal { fill: #0096d1; stroke: #0096d1; }
+    .decor-orange { fill: #da8230; stroke: #da8230; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+      .decor { fill: #b8e4f0; }
+      .decor-teal { fill: #5cc8e0; stroke: #5cc8e0; }
+      .decor-orange { fill: #e8a560; stroke: #e8a560; }
+    }
+  </style>
+
+  <defs>
+    <linearGradient id="accent_bar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0" stop-color="#0096d1"/>
+      <stop offset="0.6" stop-color="#0096d1"/>
+      <stop offset="1" stop-color="#da8230"/>
+    </linearGradient>
+  </defs>
+
+  <g id="guide-grid" display="none">
+    <line x1="0" y1="0" x2="800" y2="0" stroke="red" stroke-width="0.5"/>
+    <line x1="400" y1="0" x2="400" y2="130" stroke="red" stroke-width="0.5"/>
+    <line x1="0" y1="130" x2="800" y2="130" stroke="red" stroke-width="0.5"/>
+  </g>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 0 0 800 130
+    Margins: L=40 R=40
+    Text column: x=40
+      title_y=36 (20px bold)
+      subtitle_y=58 (14px semi-bold)
+      meta1_y=80 (11px)
+      meta2_y=98 (10px)
+    Accent bar: y=120 h=10 full width
+    Decorative motif: x=640..760 (120px), vertically centered at y=43..81
+      Stacked-bar chronology with 3 envelope icons overlaid - each icon creates
+      a cutout (gap) in the bars beneath it via segment math, so the icons
+      appear to replace segments of the bars. Carries no information.
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: title-column (x=40..620), decorative-motif (x=640..760)
+    v-stack (title-column): title, subtitle, meta, meta2
+    decorative-motif: 7 bars stacked at y=43,49,55,61,67,73,79 + 3 envelope
+      icons (22x14) overlaid diagonally with 5px cutouts in any bar they
+      vertically intersect:
+        E1 teal   (642,44)..(664,58)   y_zone 39..63 -> cut 637..669
+        E2 teal   (689,52)..(711,66)   y_zone 47..71 -> cut 684..716
+        E3 orange (736,66)..(758,80)   y_zone 61..85 -> cut 731..763
+      Bars are at opacity 0.45 (faint chronology); envelopes at opacity 0.85
+      (clearly visible) so the parent group stays at opacity 1.0.
+    contain: accent-bar spans full width at bottom
+  === -->
+
+  <!-- Bottom accent gradient bar -->
+  <rect x="0" y="120" width="800" height="10" fill="url(#accent_bar)" opacity="0.6"/>
+
+  <!-- Title -->
+  <text x="40" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" class="fg-1">Document Title — Section Header</text>
+
+  <!-- Subtitle -->
+  <text x="40" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="600" class="fg-2">Subtitle Describing Coverage and Scope</text>
+
+  <!-- Meta line 1: tag / category -->
+  <text x="40" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="11" class="fg-3">primary tag · secondary tag</text>
+
+  <!-- Meta line 2: period + reference + version stamp -->
+  <text x="40" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-4">Period: YYYY - YYYY  |  Reference: Project-ID  |  v1</text>
+
+  <!-- Decorative motif: stacked-bar chronology with three envelope icons.
+       Bars sit in a sub-group at opacity 0.45 (faint chronology strata).
+       Envelopes sit in a sub-group at opacity 0.85 (clearly visible).
+       Each envelope creates a 5px cutout halo in any bar whose centre y
+       falls inside the envelope's vertical influence zone (y1-5..y2+5).
+       Cutouts (x_cut_start..x_cut_end):
+         E1 (642,44..664,58): cut 637..669 in bars y=43,49,55
+         E2 (689,52..711,66): cut 684..716 in bars y=55,61,67
+         E3 (736,66..758,80): cut 731..763 in bars y=61,67,73,79 -->
+  <g id="decorative-motif">
+    <!-- Stacked-bar chronology (faint) -->
+    <g id="motif-bars" opacity="0.45">
+      <!-- Bar 1 y=43, cut 637..669 -> [669..760] -->
+      <rect class="decor-teal" x="669" y="43" width="91" height="2.2" rx="1.1"/>
+      <!-- Bar 2 y=49, cut 637..669 + 684..716 -> [669..684][716..760] -->
+      <rect class="decor-teal" x="669" y="49" width="15" height="2.2" rx="1.1"/>
+      <rect class="decor-teal" x="716" y="49" width="44" height="2.2" rx="1.1"/>
+      <!-- Bar 3 y=55, cut 637..669 + 684..716 -> [669..684][716..760] -->
+      <rect class="decor-teal" x="669" y="55" width="15" height="2.2" rx="1.1"/>
+      <rect class="decor-teal" x="716" y="55" width="44" height="2.2" rx="1.1"/>
+      <!-- Bar 4 y=61, cut 637..669 + 684..716 + 731..763 -> [669..684][716..731] -->
+      <rect class="decor-teal"   x="669" y="61" width="15" height="2.2" rx="1.1"/>
+      <rect class="decor-orange" x="716" y="61" width="15" height="2.2" rx="1.1"/>
+      <!-- Bar 5 y=67, cut 684..716 + 731..763 -> [640..684][716..731] -->
+      <rect class="decor-orange" x="640" y="67" width="44" height="2.2" rx="1.1"/>
+      <rect class="decor-orange" x="716" y="67" width="15" height="2.2" rx="1.1"/>
+      <!-- Bar 6 y=73, cut 731..763 -> [640..731] -->
+      <rect class="decor-orange" x="640" y="73" width="91" height="2.2" rx="1.1"/>
+      <!-- Bar 7 y=79, cut 731..763 -> [640..731] -->
+      <rect class="decor-orange" x="640" y="79" width="91" height="2.2" rx="1.1"/>
+    </g>
+
+    <!-- Three envelope icons, body 22x14 with V-flap meeting at body centre -->
+    <g id="motif-envelopes" opacity="0.85" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <!-- E1 (teal) top-left: body (642,44)-(664,58) -->
+      <g class="icon-envelope decor-teal" fill-opacity="0.25">
+        <rect x="642" y="44" width="22" height="14" rx="1.2"/>
+        <path d="M642 44 L653 51.5 L664 44" fill="none"/>
+      </g>
+      <!-- E2 (teal) middle: body (689,52)-(711,66) -->
+      <g class="icon-envelope decor-teal" fill-opacity="0.25">
+        <rect x="689" y="52" width="22" height="14" rx="1.2"/>
+        <path d="M689 52 L700 59.5 L711 52" fill="none"/>
+      </g>
+      <!-- E3 (orange) bottom-right: body (736,66)-(758,80) -->
+      <g class="icon-envelope decor-orange" fill-opacity="0.25">
+        <rect x="736" y="66" width="22" height="14" rx="1.2"/>
+        <path d="M736 66 L747 73.5 L758 66" fill="none"/>
+      </g>
+    </g>
+  </g>
+
+</svg>

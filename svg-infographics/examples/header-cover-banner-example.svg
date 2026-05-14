@@ -1,0 +1,171 @@
+<!--
+  header-cover-banner.svg - Whitepaper / cover-page banner.
+  Shows: title, subtitle, secondary subtitle, credits line + version stamp,
+  decorative 2x2 tech-glyph cluster (git-branch, brain, shield, code) with
+  concentric aura rings, central hex hub, cardinal accent dots, and a
+  rainbow brand gradient bar flush with the viewBox bottom.
+  Intent: cover-page document header. Establish premise at first glance.
+  Theme: brand-violet primary with rainbow gradient accent bar.
+  Reference example for `svg-infographics/skills/svg-designer/rules/header.md`.
+
+  === GRID ===
+  ViewBox: 800 x 170
+  Outer margins: x=40 left, x=760 right. y=0 top, y=170 bottom.
+  Gradient accent bar: x=0..800, y=160..170 (10px tall, full width)
+  Title band (text-left column, x=40):
+    title:      x=40, y=54,  font=28, weight 700, class fg-1
+    subtitle:   x=40, y=82,  font=15, weight 600, class fg-2
+    subtitle-2: x=40, y=100, font=12, class fg-3
+    credits:    x=40, y=140, font=10, class credits
+  Decor glyph cluster (right column):
+    cluster centre: (712.5, 68)
+    glyph-grid pitch: 55px horizontal, 50px vertical
+    glyph centres (2x2):
+      top-left  (685, 43)
+      top-right (740, 43)
+      bot-left  (685, 93)
+      bot-right (740, 93)
+    glyph scale: 0.72 (drawn in local coordinates, then scaled)
+    glyph half-extent post-scale: approx 11px (fits 27.5px spacing comfortably)
+    aura circles: r=46 (dense dash), r=56 (sparse dash), centre (712.5, 68)
+    cardinal accent dots at radius 56 from centre:
+      north (712.5, 12),  east (768, 68),
+      south (712.5, 124), west (657, 68)
+    central hex hub: circumradius 4 at centre (712.5, 68)
+    diamond circuit traces: edges of the 4 glyph-centre quadrilateral
+      through centre (star polyline pattern)
+    node dots at each glyph centre: r=1.4
+
+  === LAYOUT TOPOLOGY ===
+  h-stack: text-column (left, x=40..500), decor-glyphs (right, x=650..775)
+  v-stack: title, subtitle, subtitle-2, credits within text-column
+  grid 2x2: git-branch, brain, shield, code within decor-glyphs
+  bottom-align: gradient-bar flush with viewBox bottom (y=160..170)
+  contain: root > background, text-column, cluster-accents, 4 glyphs, gradient-bar
+  aura-concentric: two dashed circles around cluster centre
+  radial-accent: 4 cardinal accent dots at N/E/S/W of cluster
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 170" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-2 { fill: #42346e; }
+    .fg-3 { fill: #70658a; }
+    .credits { fill: #70658a; }
+    .glyph-stroke { stroke: #5456f3; fill: none; }
+    .glyph-accent { stroke: #3999fd; fill: none; }
+    .aura-ring { stroke: #5456f3; fill: none; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-2 { fill: #ded2fd; }
+      .fg-3 { fill: #b5b0c0; }
+      .credits { fill: #b5b0c0; }
+      .glyph-stroke { stroke: #7374ff; }
+      .glyph-accent { stroke: #68b3ff; }
+      .aura-ring { stroke: #7374ff; }
+    }
+  </style>
+
+  <defs>
+    <linearGradient id="brand_bar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0" stop-color="#38d78c"/>
+      <stop offset=".18" stop-color="#3999fd"/>
+      <stop offset=".37" stop-color="#5456f3"/>
+      <stop offset=".58" stop-color="#d857ad"/>
+      <stop offset=".79" stop-color="#ec896e"/>
+      <stop offset="1" stop-color="#f2c852"/>
+    </linearGradient>
+  </defs>
+
+  <g id="background">
+    <rect x="0" y="0" width="800" height="170" fill="transparent"/>
+  </g>
+
+  <g id="nodes">
+    <!-- Bottom accent gradient bar -->
+    <rect x="0" y="160" width="800" height="10" fill="url(#brand_bar)" opacity="0.6"/>
+  </g>
+
+  <g id="connectors">
+    <!-- Banner has no routed connectors -->
+  </g>
+
+  <g id="content">
+    <!-- Title (text-left column) -->
+    <text x="40" y="54" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" class="fg-1">Product Name</text>
+    <text x="40" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="600" class="fg-2">Subtitle: Primary Value Proposition</text>
+    <text x="40" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="12" class="fg-3">Whitepaper from Organization Name</text>
+    <text x="40" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="credits">Prepared by Author Name  •  Topic tag  •  Domain tag  |  v1</text>
+
+    <!-- Decorative glyph cluster (right column) with circuit-aura accents.
+         Cluster centre (712.5, 68). Outer aura dashed circles + subtle circuit traces
+         connecting glyph centres, small accent dots, and a central hexagonal hub
+         rendered behind the 4 Lucide icons. -->
+    <g id="cluster-accents" opacity="0.75">
+      <!-- Outer aura: concentric dashed circles (r=46 dense, r=56 sparse).
+           Stroke via .aura-ring class (dark-mode swap); widths bumped to keep
+           decorative subtlety while clearing WCAG 3:1 object contrast. -->
+      <circle cx="712.5" cy="68" r="46" class="aura-ring" stroke-width="1.2" stroke-dasharray="3,4"/>
+      <circle cx="712.5" cy="68" r="56" class="aura-ring" stroke-width="1" stroke-dasharray="1,5"/>
+
+      <!-- Diamond circuit traces through cluster centre, visiting the 4 glyph centres
+           (top-left 685,43; top-right 740,43; bot-left 685,93; bot-right 740,93) -->
+      <polyline points="685,43 712.5,68 685,93 712.5,68 740,93 712.5,68 740,43 712.5,68" fill="none" stroke="#3999fd" stroke-width="0.6" stroke-dasharray="2,3" opacity="0.35"/>
+
+      <!-- Connection node dots at each glyph centre -->
+      <circle cx="685" cy="43" r="1.4" fill="#3999fd" opacity="0.6"/>
+      <circle cx="740" cy="43" r="1.4" fill="#3999fd" opacity="0.6"/>
+      <circle cx="685" cy="93" r="1.4" fill="#3999fd" opacity="0.6"/>
+      <circle cx="740" cy="93" r="1.4" fill="#3999fd" opacity="0.6"/>
+
+      <!-- Central hub: tiny filled hexagon in brand violet. Circumradius 4, centre (712.5, 68).
+           Vertices: (716.5,68) (714.5,71.46) (710.5,71.46) (708.5,68) (710.5,64.54) (714.5,64.54) -->
+      <polygon points="716.5,68 714.5,71.46 710.5,71.46 708.5,68 710.5,64.54 714.5,64.54" fill="#5456f3" opacity="0.5"/>
+      <polygon points="716.5,68 714.5,71.46 710.5,71.46 708.5,68 710.5,64.54 714.5,64.54" fill="none" stroke="#5456f3" stroke-width="0.6" opacity="0.8"/>
+
+      <!-- Four cardinal accent dots at r=56 from centre (brand colour rotation) -->
+      <circle cx="712.5" cy="12" r="1.2" fill="#38d78c" opacity="0.6"/>
+      <circle cx="768" cy="68" r="1.2" fill="#d857ad" opacity="0.6"/>
+      <circle cx="712.5" cy="124" r="1.2" fill="#ec896e" opacity="0.6"/>
+      <circle cx="657" cy="68" r="1.2" fill="#f2c852" opacity="0.6"/>
+    </g>
+
+    <!-- Icon: git-branch (Lucide, ISC license). Two vertical lines with a curved branch. -->
+    <g id="glyph-git-branch" transform="translate(685, 43) scale(0.72)">
+      <circle cx="-8" cy="-10" r="3" class="glyph-stroke" stroke-width="1.5"/>
+      <circle cx="-8" cy="10" r="3" class="glyph-stroke" stroke-width="1.5"/>
+      <circle cx="8" cy="-5" r="3" class="glyph-stroke" stroke-width="1.5"/>
+      <line x1="-8" y1="-7" x2="-8" y2="7" class="glyph-stroke" stroke-width="1.5"/>
+      <path d="M -8,4 Q -8,-2 -2,-2 Q 8,-2 8,-3" class="glyph-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Icon: brain (Lucide, ISC license). Two lobes with internal accents. -->
+    <g id="glyph-brain" transform="translate(740, 43) scale(0.72)">
+      <path d="M -2,-13 Q -8,-13 -10,-9 Q -14,-9 -14,-4 Q -16,-2 -14,2 Q -14,7 -10,9 Q -10,13 -4,13 Q -2,13 -2,10 L -2,-10 Q -2,-13 -2,-13 Z"
+            class="glyph-stroke" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M 2,-13 Q 8,-13 10,-9 Q 14,-9 14,-4 Q 16,-2 14,2 Q 14,7 10,9 Q 10,13 4,13 Q 2,13 2,10 L 2,-10 Q 2,-13 2,-13 Z"
+            class="glyph-stroke" stroke-width="1.5" stroke-linejoin="round"/>
+      <line x1="-2" y1="-6" x2="-6" y2="-4" class="glyph-accent" stroke-width="1"/>
+      <line x1="-2" y1="2" x2="-5" y2="4" class="glyph-accent" stroke-width="1"/>
+      <line x1="2" y1="-6" x2="6" y2="-4" class="glyph-accent" stroke-width="1"/>
+      <line x1="2" y1="2" x2="5" y2="4" class="glyph-accent" stroke-width="1"/>
+    </g>
+
+    <!-- Icon: shield (Lucide, ISC license) with dotted encircling accent. -->
+    <g id="glyph-shield" transform="translate(685, 93) scale(0.72)">
+      <circle cx="0" cy="0" r="19" class="glyph-accent" stroke-width="1.2" stroke-dasharray="1,3" opacity="0.7"/>
+      <path d="M 0,-13 L 11,-9 V 0 Q 11,9 0,14 Q -11,9 -11,0 V -9 Z" class="glyph-stroke" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M -4,-1 L -1,3 L 5,-4" class="glyph-accent" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Icon: code (Lucide, ISC license). Angle brackets with slash between. -->
+    <g id="glyph-code" transform="translate(740, 93) scale(0.72)">
+      <polyline points="-7,-7 -14,0 -7,7" class="glyph-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="7,-7 14,0 7,7" class="glyph-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="3" y1="-9" x2="-3" y2="9" class="glyph-accent" stroke-width="1.3" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <g id="callouts">
+    <!-- No callouts on banner -->
+  </g>
+</svg>
