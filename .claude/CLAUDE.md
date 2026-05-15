@@ -44,3 +44,7 @@ Same rule for `/release` step 5 - invokes `/journal:update`. Never inline-edit d
 This repo is the `stellars-claude-code-plugins` marketplace - a multi-plugin distribution that publishes both a PyPI Python package (deterministic CLIs in `src/stellars_claude_code_plugins/`) and six Claude Code plugins (`autobuild/`, `datascience/`, `devils-advocate/`, `document-processing/`, `journal/`, `svg-infographics/`). Plugin versions are kept in lockstep across all six `plugin.json` files plus the seven version strings in `.claude-plugin/marketplace.json` (metadata + 6 entries).
 
 When releasing, follow `/release` exactly: lint+format → tests → `make publish` (auto-bumps `pyproject.toml` patch + uploads wheel) → `/increment-plugin-version` (one PATCH bump across 13 strings) → `/journal:update` → commit specific files (never `git add -A`) → push.
+
+## Testing code that spawns `claude -p`
+
+CI cannot run the `claude` binary. Subprocess spawn tests (standardize ACP loop, autobuild gatekeeper/readback gates) replay real recorded responses through a cassette layer at `tests/cassettes/claude_p/<hash>.json`. Re-record via `uv run python tests/record_claude_cassettes.py` (manual, requires `claude` on PATH). Full contract + scenarios in `docs/testing_claude_cassettes.md`. Default replay mode raises on missing cassettes - never silently fall back.

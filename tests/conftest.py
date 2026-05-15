@@ -4,6 +4,53 @@ from pathlib import Path
 
 import pytest
 
+from _claude_cassette import ClaudePCassette
+
+
+def pytest_addoption(parser):
+    """Register the cassette-record CLI flag.
+
+    Cassettes for `claude -p` subprocess calls live in
+    `tests/cassettes/claude_p/<hash>.json`. Default behaviour is REPLAY:
+    missing cassettes raise, tests fail loudly. `--record-cassettes`
+    flips into RECORD mode: missing cassettes are populated by actually
+    running the `claude` binary (requires it on PATH). Maintainers run
+    this once, commit the JSON files, and CI replays them.
+    """
+    parser.addoption(
+        "--record-cassettes",
+        action="store_true",
+        default=False,
+        help=(
+            "Record claude -p cassettes by shelling out to the real "
+            "binary when a cassette is missing. Without this flag, "
+            "missing cassettes fail the test."
+        ),
+    )
+
+
+@pytest.fixture
+def claude_p_cassette(request):
+    """Yield a `ClaudePCassette` callable suitable for monkeypatching
+    `subprocess.run` in tests that exercise a `claude -p` spawn site.
+
+    Usage::
+
+        def test_extended_decision(claude_p_cassette, monkeypatch):
+            from stellars_claude_code_plugins.journal import journal_tools
+
+            monkeypatch.setattr(
+                journal_tools.subprocess, "run", claude_p_cassette
+            )
+            out = journal_tools._spawn_standardize_subprocess("...")
+            assert "EXTENDED" in out
+
+    On `pytest --record-cassettes`, the first run of a new test will
+    call the real `claude` binary and persist its response.
+    """
+    record = request.config.getoption("--record-cassettes")
+    return ClaudePCassette(record=record)
+
 
 @pytest.fixture
 def autobuild_resources():

@@ -226,9 +226,7 @@ class TestPhaseHelpers:
         assert ctx["remaining"] == 2
         assert "CMD" in ctx
         # Now add a failure, confirm prior_context picks it up
-        orch.FAILURES_FILE.write_text(
-            yaml.dump({"test_failure": _rich_failure_entry()})
-        )
+        orch.FAILURES_FILE.write_text(yaml.dump({"test_failure": _rich_failure_entry()}))
         ctx2 = orch._build_context(state, phase="ALPHA")
         assert "Prior failures" in ctx2["prior_context"]
 
@@ -428,16 +426,23 @@ class TestCmdStatusAndLogFailure:
         assert "No active iteration" in capsys.readouterr().out
         # with active
         orch._init_artifacts_dir(tmp_path)
-        orch._save_state(_base_state(current_phase="BETA", phase_status="in_progress",
-                                      completed_phases=["ALPHA"],
-                                      started_at="2026-01-01T00:00:00+00:00"))
+        orch._save_state(
+            _base_state(
+                current_phase="BETA",
+                phase_status="in_progress",
+                completed_phases=["ALPHA"],
+                started_at="2026-01-01T00:00:00+00:00",
+            )
+        )
         orch.cmd_status(argparse.Namespace())
         out = capsys.readouterr().out
         assert "status_header" in out
         assert "status_objective" in out
         assert "status_phase_item" in out
         # log-failure
-        orch.cmd_log_failure(argparse.Namespace(mode="FM-TEST", desc="something broke", context=""))
+        orch.cmd_log_failure(
+            argparse.Namespace(mode="FM-TEST", desc="something broke", context="")
+        )
         failures = orch._load_failures()
         assert len(failures) == 1
         _fid, entry = next(iter(failures.items()))
@@ -460,8 +465,10 @@ class TestRunUntilComplete:
 
         # nonzero -> advance
         state = _base_state(
-            iteration=1, total_iterations=0,
-            current_phase="GAMMA", phase_status="complete",
+            iteration=1,
+            total_iterations=0,
+            current_phase="GAMMA",
+            phase_status="complete",
             completed_phases=["ALPHA", "BETA", "GAMMA"],
             started_at="2026-01-01",
             benchmark_scores=[{"score": 5}],
@@ -472,8 +479,10 @@ class TestRunUntilComplete:
 
         # score=0 -> stop
         state2 = _base_state(
-            iteration=3, total_iterations=0,
-            current_phase="GAMMA", phase_status="complete",
+            iteration=3,
+            total_iterations=0,
+            current_phase="GAMMA",
+            phase_status="complete",
             started_at="2026-01-01",
             benchmark_scores=[{"score": 5}, {"score": 2}, {"score": 0}],
         )
@@ -484,8 +493,10 @@ class TestRunUntilComplete:
 
         # iteration 20 -> safety cap
         state3 = _base_state(
-            iteration=20, total_iterations=0,
-            current_phase="GAMMA", phase_status="complete",
+            iteration=20,
+            total_iterations=0,
+            current_phase="GAMMA",
+            phase_status="complete",
             started_at="2026-01-01",
             benchmark_scores=[{"score": 3}],
         )
@@ -650,6 +661,7 @@ class TestPluginEntrypoint:
 
     def test_entrypoint_and_resources(self):
         from stellars_claude_code_plugins.autobuild.orchestrator import main
+
         assert callable(main)
         pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
         content = pyproject.read_text()
@@ -688,8 +700,11 @@ class TestCmdInfo:
         ]
         for flags, expect_substrings in cases:
             defaults = {
-                "workflows": False, "workflow": None, "phases": False,
-                "phase": None, "agents": False,
+                "workflows": False,
+                "workflow": None,
+                "phases": False,
+                "phase": None,
+                "agents": False,
             }
             defaults.update(flags)
             orch.cmd_info(argparse.Namespace(**defaults))
@@ -822,9 +837,7 @@ class TestVersionCheck:
         # Structured YAML format
         cache = tmp_path / ".version_check"
         now = datetime.now(timezone.utc).isoformat()
-        cache.write_text(
-            yaml.dump({"latest_version": "0.8.51", "checked_at": now})
-        )
+        cache.write_text(yaml.dump({"latest_version": "0.8.51", "checked_at": now}))
         data = yaml.safe_load(cache.read_text())
         assert isinstance(data, dict)
         assert data["latest_version"] == "0.8.51"
@@ -862,7 +875,10 @@ class TestContextRichEntries:
         assert cid2 == "focus_on_x_2"
         assert cid3 == "focus_on_x_3"
         # Generative naming passthrough
-        assert orch._generate_entry_id("some message", set(), identifier="custom_name") == "custom_name"
+        assert (
+            orch._generate_entry_id("some message", set(), identifier="custom_name")
+            == "custom_name"
+        )
 
     def test_save_load_roundtrip_and_ack_lifecycle(self, minimal_resources, tmp_path):
         """Round-trip an entry; ack transitions inline without context_ack.yaml;
@@ -1065,12 +1081,14 @@ class TestFailuresRichEntries:
         assert orch._load_failures()["gate_timeout"]["solution"] == "increased timeout to 60s"
 
         # _append_failure auto-generates identifier from description
-        orch._append_failure({
-            "iteration": 1,
-            "phase": "TEST",
-            "mode": "FM-TEST-FAIL",
-            "description": "tests failed unexpectedly",
-        })
+        orch._append_failure(
+            {
+                "iteration": 1,
+                "phase": "TEST",
+                "mode": "FM-TEST-FAIL",
+                "description": "tests failed unexpectedly",
+            }
+        )
         loaded2 = orch._load_failures()
         new_id = next(k for k in loaded2 if k != "gate_timeout")
         assert "tests_failed" in new_id
@@ -1477,19 +1495,21 @@ class TestRealGaps:
         orch._initialize(minimal_resources)
 
         # Short prediction fails
-        errors = orch._validate_hypothesis_richness({
-            "h": {
-                "hypothesis": (
-                    "This is a hypothesis with enough characters to pass the minimum length check"
-                ),
-                "prediction": "",
-                "evidence": "Enough evidence text here to pass",
-                "stars": 3,
-                "status": "new",
-                "iteration_created": 1,
-                "notes": [],
+        errors = orch._validate_hypothesis_richness(
+            {
+                "h": {
+                    "hypothesis": (
+                        "This is a hypothesis with enough characters to pass the minimum length check"
+                    ),
+                    "prediction": "",
+                    "evidence": "Enough evidence text here to pass",
+                    "stars": 3,
+                    "status": "new",
+                    "iteration_created": 1,
+                    "notes": [],
+                }
             }
-        })
+        )
         assert any("prediction" in e.lower() for e in errors)
 
         # Rich valid entry passes
@@ -1528,3 +1548,42 @@ class TestRealGaps:
         }
         dismissed["h"]["hypothesis"] = "short"
         assert orch._validate_hypothesis_richness(dismissed) == []
+
+
+class TestClaudeEvaluateNoSessionPersistence:
+    """`_claude_evaluate` must spawn `claude -p` with `--no-session-persistence`.
+
+    Otherwise each readback/gatekeeper gate (multiple per phase per iteration)
+    writes a JSONL session file under `~/.claude/projects/<slug>/`. A typical
+    autobuild run accumulates dozens to hundreds of orphaned session files
+    that no one ever resumes. The flag is documented in `claude --help`
+    (works only with `--print`/`-p`, which is exactly our case).
+    """
+
+    def test_spawn_includes_no_session_persistence(self, monkeypatch, tmp_path):
+        from unittest.mock import MagicMock
+
+        from stellars_claude_code_plugins.autobuild import orchestrator
+
+        captured_args = []
+
+        def fake_run(args, **kwargs):
+            captured_args.append(args)
+            result = MagicMock()
+            result.stdout = "PASS\n"
+            result.returncode = 0
+            return result
+
+        monkeypatch.setattr(orchestrator.subprocess, "run", fake_run)
+        # Redirect artifacts log dir so the test does not pollute the repo
+        monkeypatch.setattr(orchestrator, "DEFAULT_ARTIFACTS_DIR", tmp_path)
+
+        passed, _ = orchestrator._claude_evaluate("PASS/FAIL: is the sky blue?")
+        assert passed is True
+        assert len(captured_args) == 1
+        args = captured_args[0]
+        # The flag is present and applied to the -p / --print invocation
+        assert "--no-session-persistence" in args
+        # Sanity: this is a claude -p call, not something else
+        assert args[0] == "claude"
+        assert "-p" in args

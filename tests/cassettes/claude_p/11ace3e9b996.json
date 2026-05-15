@@ -1,0 +1,18 @@
+{
+  "prompt_hash": "11ace3e9b996",
+  "prompt_preview": "Respond with PASS or FAIL on the first line, then a one-line\njustification.\n\nQuestion: Does 2 + 2 equal 4?\n\nRespond ONLY in this format:\n  PASS|FAIL: justification",
+  "args": [
+    "claude",
+    "-p",
+    "Respond with PASS or FAIL on the first line, then a one-line\njustification.\n\nQuestion: Does 2 + 2 equal 4?\n\nRespond ONLY in this format:\n  PASS|FAIL: justification",
+    "--output-format",
+    "text",
+    "--dangerously-skip-permissions",
+    "--max-turns",
+    "3",
+    "--no-session-persistence"
+  ],
+  "stdout": "PASS: Basic arithmetic confirms 2 + 2 = 4.\n",
+  "stderr": "",
+  "returncode": 0
+}

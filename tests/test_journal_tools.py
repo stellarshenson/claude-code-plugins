@@ -158,10 +158,7 @@ def _task_no_result(num: int) -> str:
 
 def _task_with_result(num: int, body_words: int = 50) -> str:
     body = " ".join(["word"] * body_words)
-    return (
-        f"{num}. **Task - Demo** (v0.1.0): one-line summary<br>\n"
-        f"    **Result**: {body}\n"
-    )
+    return f"{num}. **Task - Demo** (v0.1.0): one-line summary<br>\n    **Result**: {body}\n"
 
 
 def _task_with_multiple_results(num: int) -> str:
@@ -198,9 +195,9 @@ class TestStructuralResultMarkerChecks:
         # NO structural error for marker absence.
         assert not any("no `**Result**:` marker" in m for _s, m in msgs)
         # But the empty-body warning DOES fire.
-        assert any(
-            s == "warning" and "body is empty" in m for s, m in msgs
-        ), f"expected empty-body warning; got: {msgs}"
+        assert any(s == "warning" and "body is empty" in m for s, m in msgs), (
+            f"expected empty-body warning; got: {msgs}"
+        )
 
     def test_orphan_result_outside_entry_flagged(self):
         # **Result**: line before any Task line - the parser used to silently
@@ -223,11 +220,7 @@ class TestStructuralResultMarkerChecks:
         # surfaces a structural error.
         assert entries[0].result_marker_count == 2
         violations = check_journal(entries)
-        msgs = [
-            v.message
-            for v in violations
-            if v.entry_number == 1 and v.severity == "error"
-        ]
+        msgs = [v.message for v in violations if v.entry_number == 1 and v.severity == "error"]
         assert any("2 `**Result**:` markers" in m for m in msgs), (
             f"expected multi-marker error; got: {msgs}"
         )
@@ -368,9 +361,16 @@ class TestStandardize:
         journal.write_text(self._journal(_entry(1, marker="", words=200, title="X")))
 
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.journal.journal_tools",
-             "standardize", str(journal), "--list"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.journal.journal_tools",
+                "standardize",
+                str(journal),
+                "--list",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0
         candidates = json.loads(r.stdout)
@@ -378,9 +378,19 @@ class TestStandardize:
         assert candidates[0]["action_needed"] == "decide"
 
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.journal.journal_tools",
-             "standardize", str(journal), "--apply", "1", "--decision", "extended"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.journal.journal_tools",
+                "standardize",
+                str(journal),
+                "--apply",
+                "1",
+                "--decision",
+                "extended",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0
         assert "now Extended" in r.stdout
@@ -396,10 +406,21 @@ class TestStandardize:
         body.write_text("Tight rewrite. Trigger: bloat. Why: testing the auto-drop path.")
 
         r = subprocess.run(
-            [sys.executable, "-m", "stellars_claude_code_plugins.journal.journal_tools",
-             "standardize", str(journal), "--apply", "1",
-             "--decision", "condense", "--body-file", str(body)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.journal.journal_tools",
+                "standardize",
+                str(journal),
+                "--apply",
+                "1",
+                "--decision",
+                "condense",
+                "--body-file",
+                str(body),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert r.returncode == 0, r.stderr
         text = journal.read_text()
@@ -474,10 +495,7 @@ class TestSortPreservesExtendedMarker:
             sort_entries,
         )
 
-        text = (
-            HEADER
-            + _entry(1, marker="[Extended] ", words=250, title="Real depth")
-        )
+        text = HEADER + _entry(1, marker="[Extended] ", words=250, title="Real depth")
         entries = parse_journal(text)
         rendered = HEADER + render_entries(sort_entries(entries)) + "\n"
         reparsed = parse_journal(rendered)
@@ -657,9 +675,7 @@ class TestStandardizeAll:
 
         journal = tmp_path / "J.md"
         # marker + 30 words -> drop_marker action, no subprocess needed
-        journal.write_text(
-            self._journal(_entry(1, marker="[Extended] ", words=30, title="Thin"))
-        )
+        journal.write_text(self._journal(_entry(1, marker="[Extended] ", words=30, title="Thin")))
         spawn_calls = []
 
         def stub_spawn(prompt):
@@ -732,6 +748,10 @@ class TestSpawnSubprocessSoftLanding:
         assert len(calls) == 1
         # Default model call has no --model flag
         assert "--model" not in calls[0]
+        # Session persistence MUST be disabled - otherwise each one-shot
+        # standardize decision (17+ per sweep) writes a JSONL session file
+        # under ~/.claude/projects/<slug>/ that no one ever resumes.
+        assert "--no-session-persistence" in calls[0]
 
     def test_usage_policy_refusal_retries_sonnet_4(self, monkeypatch):
         from stellars_claude_code_plugins.journal import journal_tools

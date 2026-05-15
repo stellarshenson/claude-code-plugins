@@ -1210,6 +1210,13 @@ def _claude_evaluate(
     Uses sonnet model with max-turns 3 and 60s timeout.
     Retries up to 3 times on rate-limit responses with exponential backoff.
     Logs every prompt+response to artifacts/logs/ for debugging.
+
+    Adds ``--no-session-persistence`` so each one-shot PASS/FAIL evaluation
+    does not write a JSONL session file under ``~/.claude/projects/<slug>/``
+    - these gates fire multiple times per phase per iteration, so a typical
+    autobuild run can otherwise accumulate dozens to hundreds of orphaned
+    session files that no one ever resumes. The orchestrator already writes
+    its own prompt+response log to ``artifacts/logs/`` (see below).
     """
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
     log_dir = DEFAULT_ARTIFACTS_DIR / "logs"
@@ -1227,6 +1234,7 @@ def _claude_evaluate(
                     "sonnet",
                     "--max-turns",
                     "3",
+                    "--no-session-persistence",
                 ],
                 capture_output=True,
                 text=True,
