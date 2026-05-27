@@ -26,8 +26,9 @@ Ships `journal-tools` CLI (`check`, `sort`, `archive`, `standardize`). Verify: `
 | `/journal:update` | DEFAULT. Append new entry. Extend last entry only if same task, pre-release. |
 | `/journal:archive` | Move old entries to `JOURNAL_ARCHIVE.md`. Triggered >40 entries. |
 | `/journal:standardize` | REPAIR. For each entry the validator warned on (over Standard target, over Extended max, or false-advertising marker), a focused `claude -p` subprocess decides Extended vs Condense vs Drop-marker; the CLI applies it. Use after `journal-tools check` reports word-count warnings - never inline-edit oversized entries by hand. |
+| `/journal:article` | EXTRACT. For entries over the Extended max (>400 words), pull the depth into a standalone article under `docs/` and condense the entry to a Standard-tier summary linking to the article. Asks the user for title / location / scope / summary length via AskUserQuestion. |
 
-No ambiguity. `create` = scaffold once. `update` = every write after. `standardize` = repair word-count drift via an ACP subprocess driven by the shipped `prompts/standardize.yaml`.
+No ambiguity. `create` = scaffold once. `update` = every write after. `standardize` = repair word-count drift via an ACP subprocess driven by the shipped `prompts/standardize.yaml`. `article` = extract over-max depth into a `docs/` article and slim the entry.
 
 ## Append-only
 
@@ -49,18 +50,29 @@ Extended (opt-in via `[Extended]` marker after `Task`):
     **Result**: 250-400 word paragraph
 ```
 
+Short (opt-in via `[Short]` marker after `Task` - intentionally brief, < 50 words):
+```
+<N>. **Task [Short] - <short depiction>** (v1.2.3): one-line summary<br>
+    **Result**: 20-40 word note. Use for typo fixes, one-line URL updates,
+    trivial maintenance that has no architectural rationale to preserve.
+```
+
 Version tag only if project versioned (`package.json` / `pyproject.toml` / `Cargo.toml`).
 
 ## Levels
 
 | Level | Marker | Words | When |
 |-------|--------|-------|------|
-| Standard | none | <= 150 | DEFAULT. Feature, fix, multi-file change, investigation |
-| Extended | `[Extended]` | 150-400 | ONLY: architectural decision, platform migration, multi-iteration debug, novel algorithm |
+| Short | `[Short]` | 1 - 49 | Trivial: typo fix, one-line URL bump, dependency pin, dead-link patch. No WHY to preserve - the diff IS the WHY |
+| Standard | none | 50 - 150 | DEFAULT. Feature, fix, multi-file change, investigation |
+| Extended | `[Extended]` | 150 - 400 | ONLY: architectural decision, platform migration, multi-iteration debug, novel algorithm |
+| Article | (entry links to `docs/`) | > 400 | Move depth into a standalone `docs/<slug>.md` via `/journal:article N`; entry becomes a Standard summary + link |
 
 Match the user's own summary length. 5-bullet summary -> not 400 words. "I touched lots of files" = not Extended. "This was hard" = not Extended.
 
-Marker is mandatory for Extended. Without it `journal-tools check` warns over 150 words and tells you to either condense or add `[Extended]`. With it the gate stays silent in the [150, 400] band but warns under 150 (false advertising) or over 400 (too long for any tier).
+Marker is mandatory for Extended. Without it `journal-tools check` warns over 150 words and tells you to either condense or add `[Extended]`. With it the gate stays silent in the [150, 400] band but warns under 150 (false advertising) or over 400 (too long for any tier - use `/journal:article` to extract).
+
+`[Short]` mirror logic: mandatory when intentionally under 50 words. Without it, the validator warns "too terse" and tells you to add the marker OR expand. With it, the gate stays silent under 50 but warns if the body reaches 50+ (false advertising - the body sits in Standard tier already, drop the marker).
 
 ## Style
 

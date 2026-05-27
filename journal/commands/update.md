@@ -26,9 +26,11 @@ When in doubt: append.
 
 ## Format
 
-Default is **Standard** (~70-120 words, one dense paragraph). Use **Extended** (~250-350 words) only when the user asks ("extended entry", "full detail") or the work is an architectural decision / platform migration / multi-iteration debug.
+Default is **Standard** (50-150 words, one dense paragraph). Use **Extended** (150-400 words, mark with `[Extended]`) only when the user asks ("extended entry", "full detail") or the work is an architectural decision / platform migration / multi-iteration debug. Use **Short** (1-49 words, mark with `[Short]`) for trivial entries that have no WHY to preserve - typo fix, one-line URL bump, dependency pin, dead-link patch. Over 400 words means the entry has outgrown the journal: run `/journal:article N` to extract the depth into a `docs/` article and leave a Standard summary + link.
 
 **Extended entries MUST be marked** with `[Extended]` after `Task` so the validator and downstream readers know the wider word band is intentional, not drift. Without the marker, `journal-tools check` warns over 150 words and tells you to either condense or add the marker.
+
+**Short entries MUST be marked** with `[Short]` after `Task` for the same reason in reverse - under 50 words without the marker triggers a "too terse" warning that nudges you to either expand with WHY content or admit the entry is intentionally brief. With the marker the validator stays silent under 50 but warns at 50+ (the body sits in Standard tier already, drop the marker).
 
 ### Standard example
 

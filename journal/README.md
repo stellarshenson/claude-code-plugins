@@ -28,8 +28,9 @@ Clear split, no ambiguity:
 | `/journal:update` | DEFAULT write — appends a new numbered entry (or extends the last entry's Result paragraph when the work is the same task). Triggers: "update journal", "add journal entry", "log this", "journal this", "record this in the journal" |
 | `/journal:archive` | Archive older entries via `journal-tools archive` (keeps last 20 in main, appends rest to `JOURNAL_ARCHIVE.md`). Triggers: "archive journal", "prune journal" |
 | `/journal:standardize` | REPAIR word-count drift for entries `check` warned on. For each offender (oversized Standard, oversized Extended, spurious `[Extended]` marker), a focused `claude -p` subprocess decides Extended vs Condense vs Drop-marker; the CLI applies the verdict. Use after `check` reports warnings — never inline-edit oversized entries by hand. Triggers: "standardize journal", "fix journal entry tiers", "repair journal" |
+| `/journal:article` | EXTRACT depth from an over-Extended-max entry (>400 words) into a standalone `docs/<slug>.md` article and condense the entry to a Standard-tier summary linking to the article. Asks via `AskUserQuestion` for title / location / scope / summary length. Triggers: "create article from entry", "extract journal entry to article" |
 
-All four commands auto-run `journal-tools check` after writing and refuse to proceed on format / numbering errors.
+All five commands auto-run `journal-tools check` after writing and refuse to proceed on format / numbering errors.
 
 ## Skills
 
@@ -59,20 +60,22 @@ journal-tools standardize --prompt N .claude/JOURNAL.md
 journal-tools standardize --apply N --decision extended|condense|drop-marker .claude/JOURNAL.md
 ```
 
-The checker enforces two word-count tiers for entry bodies (after `**Result**:`):
+The checker enforces three word-count tiers for entry bodies (after `**Result**:`) plus a fourth "outgrown the journal" overflow:
 
-| Tier | Target | Use when |
-|------|--------|----------|
-| **Standard** | ~70-120 words | DEFAULT. Features, bug fixes, multi-file changes |
-| **Extended** | ~250-350 words | ONLY when the user explicitly asks ("extended entry", "full detail") or the work is an architectural decision / platform migration / multi-iteration debug |
+| Tier | Marker | Words | Use when |
+|------|--------|-------|----------|
+| **Short** | `[Short]` | 1 - 49 | Trivial: typo fix, one-line URL bump, dep pin. No WHY to preserve - the diff IS the WHY |
+| **Standard** | none | 50 - 150 | DEFAULT. Features, bug fixes, multi-file changes |
+| **Extended** | `[Extended]` | 150 - 400 | Architectural decision, platform migration, multi-iteration debug, novel algorithm |
+| **Article** | (entry links to `docs/`) | > 400 | Run `/journal:article N` to move depth into `docs/<slug>.md` and condense the entry to a Standard summary + link |
 
-Entries exceeding either threshold get a **warning** (not an error) - length is a nudge, never a block. Format violations (duplicate numbers, out-of-order entries, missing title) remain errors since they break the audit trail.
+Markers are mandatory. `[Short]` is needed under 50 words (otherwise the validator warns "too terse"); `[Extended]` is needed over 150 words (otherwise the validator warns "condense or add marker"). False-advertising markers (e.g. `[Short]` body at 100 words, `[Extended]` body at 50 words) also warn. Length warnings are nudges (never errors); format violations (duplicate numbers, out-of-order entries, missing title, missing or duplicate `**Result**:`) are errors since they break the audit trail.
 
 ## Entry format
 
 Entries follow the pattern `N. **Task - <short name>**:` / `**Result**:`, optionally tagged with a project version (e.g. `(v1.3.1)`) when the project has a `package.json`, `pyproject.toml`, or similar manifest. Numbering is continuous across the lifetime of the journal and never resets across archive boundaries.
 
-Two detail tiers (Standard and Extended) cover the span from quick fix to multi-topic release. **Standard is the default** - match the user's own summary length and do not inflate. Extended kicks in ONLY when the user explicitly asks ("extended entry", "full detail") or the work is an architectural decision / platform migration / multi-iteration debug. Full examples in `skills/journal/references/examples.md`.
+Three detail tiers (Short, Standard, Extended) cover the span from typo fix to multi-topic release; anything heavier graduates to a `docs/` article via `/journal:article`. **Standard is the default** - match the user's own summary length and do not inflate. Full examples in `skills/journal/references/examples.md`.
 
 ## Rules summary
 
@@ -80,7 +83,7 @@ Two detail tiers (Standard and Extended) cover the span from quick fix to multi-
 - Continuous numbering preserved across archive boundaries
 - Archive threshold at 40 entries, main file trimmed to last 20
 - Maintenance tasks (git commits, cleanup) are skipped, not logged
-- Standard tier <=150 words is the default; Extended only when justified
+- Standard tier (50-150 words) is the default; Short / Extended / Article when justified
 
 ## Documentation
 

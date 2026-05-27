@@ -92,13 +92,18 @@ class TestExtendedMarkerValidation:
         assert msgs, "expected a warning for over-standard unmarked entry"
         assert "Task [Extended]" in msgs[0]
 
-    def test_unmarked_over_extended_max_suggests_marker(self):
+    def test_unmarked_over_extended_max_suggests_article(self):
+        """Over the Extended ceiling, the validator no longer suggests adding
+        the [Extended] marker (the entry would still warn since Extended caps
+        at 400). Instead it points at `/journal:article` to extract the depth
+        into a `docs/` article and slim the entry to a Standard summary."""
         text = HEADER + _entry(1, "", EXTENDED_MAX + 50)
         violations = check_journal(parse_journal(text))
         msgs = [v.message for v in violations if v.entry_number == 1]
         assert msgs
         assert "over extended max" in msgs[0]
-        assert "Task [Extended]" in msgs[0]
+        assert "docs/" in msgs[0]
+        assert "/journal:article" in msgs[0]
 
     def test_marked_in_band_silent(self):
         # 300 words, marked [Extended] -> within [150, 400] band -> silent.
@@ -506,37 +511,128 @@ class TestSortPreservesExtendedMarker:
 
 
 class TestStandardFloorWarning:
-    """`STANDARD_MIN = 70` floor warning (WI 4).
+    """`STANDARD_MIN = 50` floor warning + `[Short]` marker opt-out.
 
-    Forensics on the kolomolo journal exposed several sub-50-word entries
-    that carry no WHY — six months out they read as bare bullet points
-    with no rationale. The validator now warns when an unmarked body sits
-    in (0, 70). Empty bodies stay an error (existing behaviour); marker
-    + body < EXTENDED_MIN stays its own warning (existing behaviour).
+    Tier ladder:
+      - 1-49 words unmarked   -> warn "too terse, add [Short] or expand"
+      - 1-49 words [Short]    -> silent (intentionally brief)
+      - 50+ words [Short]     -> warn "marker is false advertising, drop it"
+      - 50-150 words unmarked -> silent (Standard sweet spot)
     """
 
     def _journal(self, *raws: str) -> str:
         return HEADER + "".join(raws)
 
-    def test_sub_70_unmarked_warns(self):
-        text = self._journal(_entry(1, marker="", words=50, title="Terse"))
+    def test_sub_50_unmarked_warns(self):
+        text = self._journal(_entry(1, marker="", words=30, title="Terse"))
         violations = check_journal(parse_journal(text))
         msgs = [v.message for v in violations]
-        assert any("under Standard min 70" in m for m in msgs)
+        assert any("under Standard min 50" in m for m in msgs)
+        # Advice mentions the [Short] marker as the cheap fix
+        assert any("[Short]" in m for m in msgs)
 
-    def test_70_words_exactly_no_warning(self):
-        text = self._journal(_entry(1, marker="", words=70, title="Threshold"))
+    def test_50_words_exactly_no_warning(self):
+        text = self._journal(_entry(1, marker="", words=50, title="Threshold"))
         violations = check_journal(parse_journal(text))
         assert not any("under Standard min" in v.message for v in violations)
 
-    def test_extended_marker_under_70_uses_extended_min_path(self):
-        """Marker + 50-word body should fire the existing extended-min warning,
+    def test_extended_marker_under_50_uses_extended_min_path(self):
+        """Marker + 30-word body should fire the existing extended-min warning,
         not the new STANDARD_MIN warning (they would overlap otherwise)."""
-        text = self._journal(_entry(1, marker="[Extended] ", words=50, title="Marked"))
+        text = self._journal(_entry(1, marker="[Extended] ", words=30, title="Marked"))
         violations = check_journal(parse_journal(text))
         msgs = [v.message for v in violations]
         assert any("marked [Extended]" in m for m in msgs)
         assert not any("under Standard min" in m for m in msgs)
+
+
+class TestShortMarker:
+    """`[Short]` marker - intentionally brief opt-out for the sub-50 band."""
+
+    def _journal(self, *raws: str) -> str:
+        return HEADER + "".join(raws)
+
+    def test_parser_recognises_short_marker(self):
+        text = self._journal(_entry(1, marker="[Short] ", words=30, title="Typo fix"))
+        entries = parse_journal(text)
+        assert len(entries) == 1
+        assert entries[0].is_short is True
+        assert entries[0].is_extended is False
+
+    def test_parser_case_insensitive(self):
+        text = self._journal(_entry(1, marker="[short] ", words=30, title="X"))
+        entries = parse_journal(text)
+        assert entries[0].is_short is True
+
+    def test_short_marker_under_50_silent(self):
+        text = self._journal(_entry(1, marker="[Short] ", words=30, title="Typo"))
+        violations = check_journal(parse_journal(text))
+        assert all(v.entry_number != 1 for v in violations), (
+            f"expected no warnings for marked [Short] sub-50 entry, got: "
+            f"{[v.message for v in violations]}"
+        )
+
+    def test_short_marker_at_50_warns_false_advertising(self):
+        text = self._journal(_entry(1, marker="[Short] ", words=50, title="Over"))
+        violations = check_journal(parse_journal(text))
+        msgs = [v.message for v in violations if v.entry_number == 1]
+        assert msgs
+        assert "marked [Short]" in msgs[0]
+        assert "Drop the marker" in msgs[0]
+
+    def test_short_marker_at_100_warns_false_advertising(self):
+        text = self._journal(_entry(1, marker="[Short] ", words=100, title="Over"))
+        violations = check_journal(parse_journal(text))
+        msgs = [v.message for v in violations if v.entry_number == 1]
+        assert any("marked [Short]" in m for m in msgs)
+
+    def test_render_emits_short_marker(self):
+        from stellars_claude_code_plugins.journal.journal_tools import render_entries
+
+        text = self._journal(_entry(1, marker="[Short] ", words=30, title="Typo"))
+        entries = parse_journal(text)
+        rendered = render_entries(entries)
+        assert "**Task [Short] - Typo**" in rendered
+
+    def test_sort_preserves_short_marker(self):
+        from stellars_claude_code_plugins.journal.journal_tools import (
+            render_entries,
+            sort_entries,
+        )
+
+        text = self._journal(
+            _entry(2, marker="[Short] ", words=30, title="Quick fix"),
+            _entry(1, marker="", words=100, title="Standard work"),
+        )
+        entries = parse_journal(text)
+        rendered = render_entries(sort_entries(entries))
+        assert "1. **Task - Standard work**" in rendered
+        assert "2. **Task [Short] - Quick fix**" in rendered
+
+
+class TestOverMaxArticleAdvice:
+    """Validator advice on >400-word entries points at `/journal:article`."""
+
+    def _journal(self, *raws: str) -> str:
+        return HEADER + "".join(raws)
+
+    def test_unmarked_over_400_suggests_article(self):
+        text = self._journal(_entry(1, marker="", words=500, title="Sprawling"))
+        violations = check_journal(parse_journal(text))
+        msgs = [v.message for v in violations if v.entry_number == 1]
+        assert msgs
+        assert "docs/" in msgs[0]
+        assert "/journal:article" in msgs[0]
+
+    def test_extended_over_400_suggests_article(self):
+        text = self._journal(_entry(1, marker="[Extended] ", words=500, title="Marked"))
+        violations = check_journal(parse_journal(text))
+        msgs = [v.message for v in violations if v.entry_number == 1]
+        assert msgs
+        # Same article advice fires for both the marked and unmarked over-max
+        # branches - they go through the shared `article_advice` string.
+        assert "docs/" in msgs[0]
+        assert "/journal:article" in msgs[0]
 
 
 class TestStandardizeCleanFooter:

@@ -20,7 +20,7 @@ import sys
 # ---------------------------------------------------------------------------
 
 ENTRY_RE = re.compile(
-    r"^(\d+)\.\s+\*\*Task\s*(?P<extended>\[Extended\])?\s*-\s*(.+?)\*\*"
+    r"^(\d+)\.\s+\*\*Task\s*(?P<marker>\[(?:Extended|Short)\])?\s*-\s*(.+?)\*\*"
     r"(?:\s*\(([^)]*)\))?"
     r":\s*(.*?)(?:<br>|$)",
     re.IGNORECASE,
@@ -28,10 +28,14 @@ ENTRY_RE = re.compile(
 
 RESULT_PREFIX = re.compile(r"^\s+\*\*Result\*\*:\s*", re.IGNORECASE)
 
-STANDARD_MIN = 70
+STANDARD_MIN = 50
 STANDARD_TARGET = 150
 EXTENDED_MIN = 150
 EXTENDED_MAX = 400
+# Entries marked [Short] must sit under STANDARD_MIN (intentionally brief).
+# A [Short]-marked body at or above the threshold is false advertising -
+# warn and tell the user to drop the marker.
+SHORT_MAX = STANDARD_MIN
 
 # Bump when the rubric in prompts/standardize.yaml gets a breaking change.
 # The CLI refuses to load any other version - prevents an old wheel pinned
@@ -48,6 +52,7 @@ class JournalEntry:
     description: str
     result_body: str
     is_extended: bool = False
+    is_short: bool = False  # `[Short]` marker: intentionally brief (<STANDARD_MIN)
     result_marker_count: int = 0  # number of `**Result**:` lines seen for this Task
     raw_lines: list[str] = field(default_factory=list)
     line_start: int = 0
@@ -106,12 +111,14 @@ def parse_journal_with_diagnostics(
             if current is not None:
                 current.result_body = current.result_body.strip()
                 entries.append(current)
+            marker_text = (m.group("marker") or "").lower()
             current = JournalEntry(
                 number=int(m.group(1)),
                 title=m.group(3).strip(),
                 version_tag=m.group(4) or "",
                 description=m.group(5).strip(),
-                is_extended=m.group("extended") is not None,
+                is_extended="extended" in marker_text,
+                is_short="short" in marker_text,
                 result_body="",
                 raw_lines=[line],
                 line_start=i + 1,
@@ -258,20 +265,25 @@ def check_journal(
             )
 
         # Word count: warnings only (never errors).
-        # Marked-[Extended] band is [EXTENDED_MIN, extended_max].
-        # Unmarked default is Standard (<= standard_target); over warns and
-        # suggests the [Extended] marker.
+        # Tier ladder (any-marker = false-advertising warnings included):
+        #   - empty body              -> warning (covered above)
+        #   - [Short]: must be < STANDARD_MIN; >= STANDARD_MIN warns
+        #   - unmarked < STANDARD_MIN -> "too terse, add [Short] or expand"
+        #   - unmarked <= standard_target -> silent (Standard sweet spot)
+        #   - unmarked > standard_target, <= extended_max -> "condense or [Extended]"
+        #   - [Extended]: must be [EXTENDED_MIN, extended_max]; outside warns
+        #   - any > extended_max      -> "create article in docs/ + link"
         wc = entry.body_word_count
+        article_advice = (
+            f"body {wc} words, over extended max {extended_max}. Even Extended "
+            "caps here - move the depth into a standalone article in `docs/` "
+            "and condense this entry to a Standard-tier summary that links to "
+            f"the article (run `/journal:article {entry.number}` for the "
+            "guided flow)."
+        )
         if entry.is_extended:
             if wc > extended_max:
-                violations.append(
-                    Violation(
-                        entry.number,
-                        "warning",
-                        f"body {wc} words, over extended max {extended_max}. "
-                        "Condense - even Extended caps here.",
-                    )
-                )
+                violations.append(Violation(entry.number, "warning", article_advice))
             elif wc < EXTENDED_MIN:
                 violations.append(
                     Violation(
@@ -281,16 +293,19 @@ def check_journal(
                         f"(min {EXTENDED_MIN}). Expand or drop the marker.",
                     )
                 )
-        elif wc > extended_max:
-            violations.append(
-                Violation(
-                    entry.number,
-                    "warning",
-                    f"body {wc} words, over extended max {extended_max}. "
-                    f"Condense to Standard ({standard_target}) or add "
-                    "`**Task [Extended] - ...**` marker if depth is real.",
+        elif entry.is_short:
+            if wc >= SHORT_MAX:
+                violations.append(
+                    Violation(
+                        entry.number,
+                        "warning",
+                        f"body {wc} words but marked [Short] (intended for "
+                        f"< {SHORT_MAX}). Drop the marker - the body sits in "
+                        "Standard tier already.",
+                    )
                 )
-            )
+        elif wc > extended_max:
+            violations.append(Violation(entry.number, "warning", article_advice))
         elif wc > standard_target:
             violations.append(
                 Violation(
@@ -307,9 +322,10 @@ def check_journal(
                     entry.number,
                     "warning",
                     f"body {wc} words, under Standard min {STANDARD_MIN}. "
-                    "Too terse to carry rationale six months out - add "
-                    "trigger / why-this-approach / cause-and-effect, or "
-                    "drop the entry.",
+                    "Too terse to carry rationale six months out - add the "
+                    "`**Task [Short] - ...**` marker if intentionally brief, "
+                    "or expand with trigger / why-this-approach / "
+                    "cause-and-effect.",
                 )
             )
 
@@ -357,6 +373,7 @@ def sort_entries(entries: list[JournalEntry], start_from: int = 1) -> list[Journ
             description=entry.description,
             result_body=entry.result_body,
             is_extended=entry.is_extended,
+            is_short=entry.is_short,
             result_marker_count=entry.result_marker_count,
             raw_lines=entry.raw_lines,
             line_start=entry.line_start,
@@ -368,14 +385,21 @@ def sort_entries(entries: list[JournalEntry], start_from: int = 1) -> list[Journ
 def render_entries(entries: list[JournalEntry]) -> str:
     """Render a list of JournalEntry objects back to markdown text.
 
-    Emits the ``[Extended]`` marker between `Task` and the dash when
-    ``entry.is_extended`` is true so sort/render round-trips preserve
-    tier markers.
+    Emits the ``[Extended]`` or ``[Short]`` marker between `Task` and the
+    dash when the respective flag is true so sort/render round-trips
+    preserve tier markers (an earlier bug where sort dropped the marker
+    silently downgraded entries to Standard tier and fired bogus
+    word-count warnings on the next `check` run).
     """
     parts: list[str] = []
     for entry in entries:
         version = f" ({entry.version_tag})" if entry.version_tag else ""
-        marker = "[Extended] " if entry.is_extended else ""
+        if entry.is_extended:
+            marker = "[Extended] "
+        elif entry.is_short:
+            marker = "[Short] "
+        else:
+            marker = ""
         header = (
             f"{entry.number}. **Task {marker}- {entry.title}**{version}: {entry.description}<br>"
         )

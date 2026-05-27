@@ -9,7 +9,7 @@ argument-hint: "(optional) <journal-path>  -- default .claude/JOURNAL.md"
 The `journal-tools check` validator flags three failure modes:
 
 - **Standard over target** - body > 150 words, no `[Extended]` marker → either depth is real (add marker) or body is inflated (condense).
-- **Extended over max** - body > 400 words even with `[Extended]` marker → condense, marker can stay.
+- **Extended over max** - body > 400 words even with `[Extended]` marker → condense, marker can stay. (Alternative when the depth is worth preserving: `/journal:article N` extracts the body into `docs/<slug>.md` and slims the entry to a summary + link.)
 - **Spurious marker** - `[Extended]` present but body < 150 words → marker is false advertising → drop it.
 
 This command repairs all three via the ACP companion-process pattern: a shipped prompt YAML at `src/stellars_claude_code_plugins/journal/prompts/standardize.yaml` defines the per-entry rubric, the CLI renders it for one entry at a time, a fresh `claude -p` subprocess returns a structured decision, the CLI applies it. Run after a `journal-tools check` reports warnings; never inline-edit oversized entries by hand.
