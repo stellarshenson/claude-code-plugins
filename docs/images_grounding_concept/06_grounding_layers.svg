@@ -1,0 +1,245 @@
+<!--
+  06_grounding_layers.svg - 4-layer parallel grounding pipeline
+  Shows: claim+corpus enters left; 4 parallel layers produce individual scores;
+  consensus scoring combines them with a multi-voter bonus; 3 verdict pills emerge right.
+  Intent: visualize parallelism (4 lanes) and convergence (4-to-1 verdict).
+  Caption: "2+ voter hit beats 1-voter hit at high strength"
+  Theme: DeLaval palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 700" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #00a6ff; }
+    .accent-2 { fill: #66ccff; }
+    .arrow-fill { fill: #00a6ff; }
+    .arrow-fill-2 { fill: #66ccff; }
+    .verdict-confirmed { fill: #00a6ff; }
+    .verdict-verify { fill: #66ccff; }
+    .verdict-notfound { fill: #6b8db5; }
+    .on-verdict { fill: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #cfe6ff; }
+      .fg-2 { fill: #a8d4f0; }
+      .fg-3 { fill: #7ec0e6; }
+      .fg-4 { fill: #5aafc5; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+      .arrow-fill { fill: #4dc4ff; }
+      .arrow-fill-2 { fill: #88ddff; }
+      .verdict-confirmed { fill: #4dc4ff; }
+      .verdict-verify { fill: #88ddff; }
+      .verdict-notfound { fill: #5aafc5; }
+      .on-verdict { fill: #0a1a2e; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1300 x 700
+    Margins: L=20 R=20, top=30 bottom=30
+
+    COLUMN 1 - Source input: x=20..190 (w=170)
+      outer: x=14..196
+      Source node: x=20..190, y=270..430 (h=160)
+
+    GAP 1: x=190..280 (90px inner)
+      outer cleared: 196..274. Arrow inner x=203..267. Outer x=197..273. Clearances 1px each ✓
+
+    COLUMN 2 - 4 Layer cards: x=280..800 (w=520)
+      outer: x=274..806
+      Layer card h=80, gap=46 (enough for connectors with 6px padding)
+      Card 1 (Regex):        y=70..150   outer top=64, outer bot=156
+      Card 2 (Levenshtein):  y=196..276  outer top=190, outer bot=282
+      Card 3 (BM25):         y=322..402  outer top=316, outer bot=408
+      Card 4 (FAISS):        y=448..528  outer top=442, outer bot=534
+
+    GAP 2: x=800..880 (80px inner)
+      outer cleared: 806..874. Arrow inner x=813..867. Outer x=807..873. Clearances 1px each ✓
+      Arrows: 4 horizontal arrows, one per layer card, at mid-y of each card.
+        Card 1 mid-y=110, Card 2 mid-y=236, Card 3 mid-y=362, Card 4 mid-y=488
+
+    COLUMN 3 - Consensus node: x=880..1060 (w=180)
+      outer: x=874..1066
+      Node: x=880..1060, y=240..460 (h=220)
+
+    GAP 3: x=1060..1120 (60px inner)
+      outer cleared: 1066..1114. Arrow inner x=1073..1107. Outer x=1067..1113. Clearances 1px ✓
+      Single arrow at consensus mid-y=350
+
+    COLUMN 4 - Verdict pills: x=1120..1270 (w=150)
+      outer: x=1114..1276
+      3 pills stacked:
+        CONFIRMED:  x=1120..1270, y=270..310 (h=40, rx=20), mid=290
+        VERIFY:     x=1120..1270, y=330..370, mid=350
+        NOT FOUND:  x=1120..1270, y=390..430, mid=410
+
+    Caption: y=590
+
+    Source label: inner top at y=30. Source node outer top=264. Caption inner: y=30..40 approx.
+    Title: y=30..50
+    Subtitle/caption below title: y=50..65
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: source -> 4 layers (parallel v-stack) -> consensus -> 3 verdicts (v-stack)
+    4 arrows from source to each layer card; 4 arrows from each layer to consensus;
+    1 arrow from consensus to verdict column.
+  === -->
+
+  <!-- Title area -->
+  <text x="650" y="28" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">GROUNDING LAYERS &#8212; PARALLEL SCORING + CONSENSUS</text>
+
+  <!-- === COLUMN 1: Source input node (y=270..430) === -->
+  <g id="node-source">
+    <rect x="20" y="270" width="170" height="160" rx="8" ry="8" fill="#00a6ff" fill-opacity="0.06"/>
+    <rect x="20" y="270" width="170" height="160" rx="8" ry="8" fill="none" stroke="#00a6ff" stroke-width="1.2"/>
+    <rect x="20" y="270" width="170" height="5" fill="#00a6ff" opacity="0.7"/>
+    <text x="105" y="302" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Claim</text>
+    <text x="105" y="322" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">typed claim from</text>
+    <text x="105" y="336" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">extraction step</text>
+    <text x="105" y="360" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">./research/</text>
+    <text x="105" y="374" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">corpus files</text>
+    <text x="105" y="400" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" font-style="italic">pair per layer</text>
+  </g>
+
+  <!-- === Arrows: Source to each layer card (inner x=203..267, outer x=197..273) ===
+       At y=110 (Card1 mid), y=236 (Card2 mid), y=362 (Card3 mid), y=488 (Card4 mid)
+  -->
+  <g id="arrow-src-layer1">
+    <line x1="203" y1="110" x2="257" y2="110" stroke="#00a6ff" stroke-width="1.3" opacity="0.7"/>
+    <polygon points="267,110 257,106 257,114" class="arrow-fill" opacity="0.8"/>
+  </g>
+  <g id="arrow-src-layer2">
+    <line x1="203" y1="236" x2="257" y2="236" stroke="#00a6ff" stroke-width="1.3" opacity="0.7"/>
+    <polygon points="267,236 257,232 257,240" class="arrow-fill" opacity="0.8"/>
+  </g>
+  <g id="arrow-src-layer3">
+    <line x1="203" y1="362" x2="257" y2="362" stroke="#00a6ff" stroke-width="1.3" opacity="0.7"/>
+    <polygon points="267,362 257,358 257,366" class="arrow-fill" opacity="0.8"/>
+  </g>
+  <g id="arrow-src-layer4">
+    <line x1="203" y1="488" x2="257" y2="488" stroke="#66ccff" stroke-width="1.3" opacity="0.7"/>
+    <polygon points="267,488 257,484 257,492" class="arrow-fill-2" opacity="0.8"/>
+  </g>
+
+  <!-- === COLUMN 2: 4 Layer cards (x=280..800) === -->
+
+  <!-- Layer 1: Exact regex (y=70..150) -->
+  <g id="layer-regex">
+    <rect x="280" y="70" width="520" height="80" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="280" y="70" width="520" height="80" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="280" y="70" width="520" height="5" fill="#00a6ff" opacity="0.7"/>
+    <rect x="280" y="70" width="38" height="80" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.12"/>
+    <text x="299" y="114" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">1</text>
+    <text x="344" y="100" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700">Exact regex</text>
+    <text x="344" y="118" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">Binary score (0/1) &#8226; O(n) complexity &#8226; fast path</text>
+    <text x="344" y="136" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic">Score: confirmed / not found</text>
+  </g>
+
+  <!-- Layer 2: Fuzzy Levenshtein (y=196..276) -->
+  <g id="layer-fuzzy">
+    <rect x="280" y="196" width="520" height="80" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="280" y="196" width="520" height="80" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="280" y="196" width="520" height="5" fill="#00a6ff" opacity="0.7"/>
+    <rect x="280" y="196" width="38" height="80" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.12"/>
+    <text x="299" y="240" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">2</text>
+    <text x="344" y="226" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700">Fuzzy Levenshtein</text>
+    <text x="344" y="244" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">Continuous [0..1] score &#8226; O(n&#215;m) SIMD-optimised</text>
+    <text x="344" y="262" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic">Score: edit-distance similarity ratio</text>
+  </g>
+
+  <!-- Layer 3: BM25 lexical (y=322..402) -->
+  <g id="layer-bm25">
+    <rect x="280" y="322" width="520" height="80" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="280" y="322" width="520" height="80" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="280" y="322" width="520" height="5" fill="#00a6ff" opacity="0.7"/>
+    <rect x="280" y="322" width="38" height="80" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.12"/>
+    <text x="299" y="366" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">3</text>
+    <text x="344" y="352" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700">BM25 lexical</text>
+    <text x="344" y="370" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">IDF-weighted inverted index &#8226; top-k retrieval &#8226; O(q) query</text>
+    <text x="344" y="388" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic">Score: BM25 rank of best matching passage</text>
+  </g>
+
+  <!-- Layer 4: Semantic FAISS (y=448..528) -->
+  <g id="layer-faiss">
+    <rect x="280" y="448" width="520" height="80" rx="6" ry="6" fill="#66ccff" fill-opacity="0.04"/>
+    <rect x="280" y="448" width="520" height="80" rx="6" ry="6" fill="none" stroke="#66ccff" stroke-width="1"/>
+    <rect x="280" y="448" width="520" height="5" fill="#66ccff" opacity="0.7"/>
+    <rect x="280" y="448" width="38" height="80" rx="6" ry="6" fill="#66ccff" fill-opacity="0.10"/>
+    <text x="299" y="492" class="accent-2" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" text-anchor="middle">4</text>
+    <text x="344" y="478" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700">Semantic + FAISS (opt)</text>
+    <text x="344" y="496" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">Cosine similarity &#8226; multilingual-E5-small &#8226; ANN index</text>
+    <text x="344" y="514" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic">Score: cosine distance to nearest evidence vector</text>
+  </g>
+
+  <!-- === Arrows: Layer cards to Consensus (inner x=813..867, outer x=807..873) ===
+       At mid-y of each card: 110, 236, 362, 488
+  -->
+  <g id="arrow-layer1-consensus">
+    <line x1="813" y1="110" x2="857" y2="110" stroke="#00a6ff" stroke-width="1.3" opacity="0.7"/>
+    <polygon points="867,110 857,106 857,114" class="arrow-fill" opacity="0.8"/>
+  </g>
+  <g id="arrow-layer2-consensus">
+    <line x1="813" y1="236" x2="857" y2="236" stroke="#00a6ff" stroke-width="1.3" opacity="0.7"/>
+    <polygon points="867,236 857,232 857,240" class="arrow-fill" opacity="0.8"/>
+  </g>
+  <g id="arrow-layer3-consensus">
+    <line x1="813" y1="362" x2="857" y2="362" stroke="#00a6ff" stroke-width="1.3" opacity="0.7"/>
+    <polygon points="867,362 857,358 857,366" class="arrow-fill" opacity="0.8"/>
+  </g>
+  <g id="arrow-layer4-consensus">
+    <line x1="813" y1="488" x2="857" y2="488" stroke="#66ccff" stroke-width="1.3" opacity="0.7"/>
+    <polygon points="867,488 857,484 857,492" class="arrow-fill-2" opacity="0.8"/>
+  </g>
+
+  <!-- === COLUMN 3: Consensus node (x=880..1060, y=240..460) === -->
+  <g id="node-consensus">
+    <rect x="880" y="240" width="180" height="220" rx="8" ry="8" fill="#00a6ff" fill-opacity="0.08"/>
+    <rect x="880" y="240" width="180" height="220" rx="8" ry="8" fill="none" stroke="#00a6ff" stroke-width="1.5"/>
+    <rect x="880" y="240" width="180" height="5" fill="#00a6ff" opacity="0.8"/>
+    <text x="970" y="272" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Consensus</text>
+    <text x="970" y="288" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">scoring</text>
+    <text x="970" y="312" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">weighted sum</text>
+    <text x="970" y="326" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">of layer scores</text>
+    <text x="970" y="354" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">voter bonus</text>
+    <text x="970" y="370" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">2+ voters &#8594; boost</text>
+    <text x="970" y="404" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" font-style="italic">threshold</text>
+    <text x="970" y="418" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" font-style="italic">classification</text>
+  </g>
+
+  <!-- Arrow: Consensus to Verdicts at y=350
+       Line: x1=1074..x2=1101, tip polygon: 1107,350 1101,346 1101,354
+       Inner left = 1074-0.7 = 1073.3, outer left = 1067.3. Consensus outer right = 1066. Clearance 1.3px ✓
+       Inner right = 1107 (tip), outer right = 1113. VERIFY pill outer left = 1114. Clearance 1px ✓ -->
+  <g id="arrow-consensus-verdict">
+    <line x1="1074" y1="350" x2="1101" y2="350" stroke="#00a6ff" stroke-width="1.4" opacity="0.75"/>
+    <polygon points="1107,350 1101,346 1101,354" class="arrow-fill" opacity="0.85"/>
+  </g>
+
+  <!-- === COLUMN 4: Verdict pills (x=1120..1270) === -->
+  <!-- CONFIRMED (y=270..310) -->
+  <g id="verdict-confirmed">
+    <rect x="1120" y="270" width="150" height="40" rx="20" ry="20" class="verdict-confirmed"/>
+    <text x="1195" y="295" class="on-verdict" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">CONFIRMED</text>
+  </g>
+  <!-- VERIFY (y=330..370) -->
+  <g id="verdict-verify">
+    <rect x="1120" y="330" width="150" height="40" rx="20" ry="20" class="verdict-verify"/>
+    <text x="1195" y="355" class="on-verdict" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">VERIFY</text>
+  </g>
+  <!-- NOT FOUND (y=390..430) -->
+  <g id="verdict-notfound">
+    <rect x="1120" y="390" width="150" height="40" rx="20" ry="20" class="verdict-notfound"/>
+    <text x="1195" y="415" class="on-verdict" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">NOT FOUND</text>
+  </g>
+
+  <!-- Caption below consensus node: two lines spaced 18px apart (outer gap 8px) -->
+  <text x="970" y="480" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" font-style="italic">2+ voter hit beats 1-voter</text>
+  <text x="970" y="498" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle" font-style="italic">hit at high strength</text>
+
+  <!-- Footer -->
+  <text x="650" y="580" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10" text-anchor="middle">4 independent layers score in parallel &#8226; consensus combines scores with multi-voter bonus &#8226; one verdict per claim</text>
+
+</svg>

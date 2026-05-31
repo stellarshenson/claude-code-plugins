@@ -107,6 +107,11 @@ SUBCOMMANDS = {
         "drawio_shapes",
         "SHAPES: index, search, catalogue, and render draw.io stencil libraries as SVG snippets.",
     ),
+    # ---- BUNDLED CUSTOM ICON LIBRARY ----
+    "icons": (
+        "custom_icons",
+        "ICONS: list, search, render the plugin's bundled custom icons; catalogue every icon route (custom / Lucide / draw.io).",
+    ),
     # ---- BACKGROUND TEXTURE GENERATOR ----
     "background": (
         "gen_backgrounds",
@@ -139,6 +144,7 @@ CAVEMAN_DESCRIPTIONS: dict[str, str] = {
     "collide": "check pairs of lines. cross? touch?",
     "text-to-path": "text -> paths via font file",
     "shapes": "draw.io stencils",
+    "icons": "plugin-own icons + catalogue. custom / lucide / drawio",
     "background": "procedural bg patterns",
 }
 

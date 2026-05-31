@@ -3502,8 +3502,14 @@ class TestSpeechBubble:
             text_padding_y=5,
         )
         # body bbox: (60, 40, 260, 120); expected text area: (80, 45, 240, 115).
-        assert (result.anchors["text-top-left"].x, result.anchors["text-top-left"].y) == (80.0, 45.0)
-        assert (result.anchors["text-bottom-right"].x, result.anchors["text-bottom-right"].y) == (240.0, 115.0)
+        assert (result.anchors["text-top-left"].x, result.anchors["text-top-left"].y) == (
+            80.0,
+            45.0,
+        )
+        assert (result.anchors["text-bottom-right"].x, result.anchors["text-bottom-right"].y) == (
+            240.0,
+            115.0,
+        )
 
     def test_cli_speech_smoke(self):
         # CLI end-to-end: invoke the subparser and confirm exit 0 + path emitted.
@@ -3516,9 +3522,20 @@ class TestSpeechBubble:
                 "-m",
                 "stellars_claude_code_plugins.svg_tools.calc_primitives",
                 "speech",
-                "--x", "60", "--y", "40", "--w", "200", "--h", "80",
-                "--tip-x", "280", "--tip-y", "220",
-                "--shape", "soft-rect",
+                "--x",
+                "60",
+                "--y",
+                "40",
+                "--w",
+                "200",
+                "--h",
+                "80",
+                "--tip-x",
+                "280",
+                "--tip-y",
+                "220",
+                "--shape",
+                "soft-rect",
             ],
             capture_output=True,
             text=True,
@@ -3557,6 +3574,7 @@ class TestThoughtBubble:
         assert result.svg.count("<path") == 1
         # Bubble radii decrease toward the tip (parsed from the rx="..." attrs).
         import re
+
         rxs = [float(m) for m in re.findall(r'rx="([0-9.]+)"', result.svg)]
         assert rxs == sorted(rxs, reverse=True)  # strictly non-increasing
 
@@ -3585,6 +3603,7 @@ class TestThoughtBubble:
     def test_explicit_trail_radii_honoured(self):
         result, _ = self._gen(trail_bubbles=2, trail_r_start=10, trail_r_end=2)
         import re
+
         rxs = [float(m) for m in re.findall(r'rx="([0-9.]+)"', result.svg)]
         assert rxs == [10.0, 2.0]
 
@@ -3625,9 +3644,20 @@ class TestThoughtBubble:
                 "-m",
                 "stellars_claude_code_plugins.svg_tools.calc_primitives",
                 "thought",
-                "--x", "60", "--y", "40", "--w", "200", "--h", "80",
-                "--tip-x", "320", "--tip-y", "240",
-                "--trail-bubbles", "3",
+                "--x",
+                "60",
+                "--y",
+                "40",
+                "--w",
+                "200",
+                "--h",
+                "80",
+                "--tip-x",
+                "320",
+                "--tip-y",
+                "240",
+                "--trail-bubbles",
+                "3",
             ],
             capture_output=True,
             text=True,
@@ -6497,3 +6527,100 @@ class TestBooleanComments:
         # The "bar1 anchor x=100" comment sits inside <g id="row1"> after
         # <rect id="bar2">; near_id should be bar2 (closest preceding id).
         assert "near id=bar2" in proc.stderr
+
+
+class TestCustomIcons:
+    """Bundled custom-icon library: registry helpers + the `icons` subcommand
+    (list / search / render) and the brain-circuit seed icon."""
+
+    def test_library_has_brain_circuit_well_formed(self):
+        from stellars_claude_code_plugins.svg_tools.custom_icons import ICON_LIBRARY
+
+        assert "brain-circuit" in ICON_LIBRARY
+        meta = ICON_LIBRARY["brain-circuit"]
+        # Every entry carries the fields the CLI relies on.
+        for key in ("category", "keywords", "source", "body"):
+            assert key in meta, key
+        assert meta["category"] == "ai"
+        assert "brain" in meta["keywords"] and "circuit" in meta["keywords"]
+        # Body is stroke-grid markup, not a full <svg> or a <g> wrapper.
+        assert "<svg" not in meta["body"]
+        assert meta["body"].lstrip().startswith("<")
+
+    def test_list_and_search_helpers(self):
+        from stellars_claude_code_plugins.svg_tools.custom_icons import (
+            list_icons,
+            search_icons,
+        )
+
+        assert "brain-circuit" in list_icons()
+        assert list_icons(category="ai") == ["brain-circuit"]
+        assert list_icons(category="nonesuch") == []
+        # Search hits on name, on a keyword, and is case-insensitive.
+        assert "brain-circuit" in search_icons("brain")
+        assert "brain-circuit" in search_icons("neural")
+        assert "brain-circuit" in search_icons("BRAIN")
+        assert search_icons("teapot") == []
+
+    def test_render_scale_and_stroke(self):
+        from stellars_claude_code_plugins.svg_tools.custom_icons import render_icon
+
+        out = render_icon("brain-circuit", size=12, at=(50, 60), stroke="#00a6ff")
+        # 12px from a 24-grid => scale 0.5, anchored at (50,60), stroke passed through.
+        assert "scale(0.5)" in out
+        assert "translate(50, 60)" in out
+        assert 'stroke="#00a6ff"' in out
+        assert 'fill="none"' in out
+        assert out.startswith("<!-- Icon: brain-circuit")
+
+    def test_render_unknown_raises(self):
+        import pytest as _pytest
+
+        from stellars_claude_code_plugins.svg_tools.custom_icons import render_icon
+
+        with _pytest.raises(KeyError):
+            render_icon("does-not-exist")
+
+    def _cli(self, *args):
+        return subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "stellars_claude_code_plugins.svg_tools.cli",
+                "icons",
+                *args,
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+    def test_cli_list_normal_and_caveman(self):
+        r = self._cli("list")
+        assert r.returncode == 0, r.stderr
+        assert "brain-circuit" in r.stdout
+        # Catalogue surfaces all three routes, not just the bundled one.
+        assert "Lucide" in r.stdout
+        assert "draw.io" in r.stdout
+
+        rc = self._cli("list", "--caveman")
+        assert rc.returncode == 0, rc.stderr
+        assert "brain-circuit" in rc.stdout
+        assert "lucide" in rc.stdout
+
+    def test_cli_search_and_render(self):
+        r = self._cli("search", "brain")
+        assert r.returncode == 0, r.stderr
+        assert "brain-circuit" in r.stdout
+
+        miss = self._cli("search", "teapot")
+        assert miss.returncode == 0
+        assert "No bundled icon" in miss.stdout
+
+        rr = self._cli("render", "brain-circuit", "--size", "32", "--stroke", "#1a4d94")
+        assert rr.returncode == 0, rr.stderr
+        assert "<g transform=" in rr.stdout
+        assert 'stroke="#1a4d94"' in rr.stdout
+
+        bad = self._cli("render", "nope")
+        assert bad.returncode == 1
+        assert "Unknown icon" in bad.stderr

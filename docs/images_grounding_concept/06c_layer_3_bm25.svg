@@ -1,0 +1,224 @@
+<!--
+  06c_layer_3_bm25.svg - Layer 3 per-method banner: BM25 lexical grounding
+  Shows: query word-chips -> inverted-index lookup dots -> ranked passage tiles
+  with score bars of decreasing width. Winner tile highlighted accent-1.
+  Hypothesis: Layer 3 is term-overlap ranking with IDF weighting. The inverted-index
+  lookup dots make the O(query x candidates) mechanic visible; the ranked tiles with
+  varying bar lengths show the continuous score gradient.
+  Intent: standalone close-up of the BM25 method for the grounding brief.
+  Theme: DeLaval palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 180" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .fg-1  { fill: #1a4d94; }
+    .fg-2  { fill: #2a5f9e; }
+    .fg-3  { fill: #4a7ba7; }
+    .fg-4  { fill: #6b8db5; }
+    .accent-1 { fill: #00a6ff; }
+    .accent-2 { fill: #66ccff; }
+    .on-chip { fill: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1  { fill: #cfe6ff; }
+      .fg-2  { fill: #a8d4f0; }
+      .fg-3  { fill: #7ec0e6; }
+      .fg-4  { fill: #5aafc5; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+      .on-chip { fill: #0a1a2e; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 1100 x 180
+    Outer margins: L=20 R=20, top=18 bottom=18
+
+    LEFT panel (title): x=20..280 (w=260), y=18..162
+      accent bar: y=18, h=5
+
+    GAP: x=280..298
+
+    CENTRE panel (3-column BM25 illustration): x=298..870 (w=572), y=18..162
+      accent bar: y=18, h=5
+      inner: x=314..854 (w=540)
+
+      Sub-column A "Query": x=314..440 (w=126), centre-x=377
+        label: y=33
+        5 query-term chips, h=16, gap=5
+          chip 0: y=40..56   x=314, w=100
+          chip 1: y=61..77   x=314, w=80
+          chip 2: y=82..98   x=314, w=110
+          chip 3: y=103..119 x=314, w=70
+          chip 4: y=124..140 x=314, w=90
+
+      Sub-column B "Index": x=448..616 (w=168), centre-x=532
+        label: y=33
+        Grid of match dots: 5 rows (terms) x 4 cols (passages)
+          col origins: 460, 490, 520, 550  (spacing=30)
+          row origins (y-centre): 48, 69, 90, 111, 132
+          Dot r=3.5
+          Match pattern (1=match, 0=no match):
+            term 0: 1 1 1 0  (passage 1,2,3 match)
+            term 1: 1 0 1 0
+            term 2: 1 1 0 0
+            term 3: 1 0 0 0
+            term 4: 1 1 1 1
+          Matching dots: accent-1; non-matching: fg-4 opacity 0.20
+          Passage col labels: P1,P2,P3,P4 at y=37
+
+      Sub-column C "Ranked": x=624..854 (w=230), centre-x=739
+        label: y=33
+        3 passage tiles stacked, h=34, gap=8
+          Tile 1 (winner): y=38..72   x=624, w=230, accent-1 border+fill
+          Tile 2:          y=80..114  x=624, w=230
+          Tile 3:          y=122..156 x=624, w=230
+          Score bar track: x=634, w=180, h=6, y-centre at tile middle
+            Tile 1 bar fill width: 0.71 * 180 = 128   accent-1
+            Tile 2 bar fill width: 0.45 * 180 = 81    fg-3
+            Tile 3 bar fill width: 0.18 * 180 = 32    fg-4
+          Score text right-aligned: x=830, y at tile text row
+
+    GAP: x=870..888
+
+    RIGHT panel (score chip): x=888..1080 (w=192), y=18..162
+      accent bar: y=18, h=5
+      chip: x=908..1060, y=52..90, rx=19
+      score text: x=984, y=76
+      corpus label: y=108
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    LEFT: label panel
+    CENTRE: 3-sub-column illustration - query chips | index dots | ranked tiles
+    RIGHT: score chip
+    No inter-panel connectors - visual flow implied left-to-right
+  === -->
+
+  <!-- LEFT panel -->
+  <g id="panel-left">
+    <rect x="20" y="18" width="260" height="144" rx="6" ry="6" fill="#1a4d94" fill-opacity="0.05" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="20" y="18" width="260" height="5" fill="#00a6ff" opacity="0.7"/>
+    <text x="32" y="52" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">Layer 3: BM25 lexical</text>
+    <text x="32" y="70" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9">IDF-weighted term overlap,</text>
+    <text x="32" y="83" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9">inverted index.</text>
+    <text x="32" y="96" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9">O(query &#215; candidates).</text>
+    <text x="32" y="122" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Score = BM25 rank of</text>
+    <text x="32" y="134" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">best matching passage.</text>
+    <text x="32" y="152" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">lexical &#8226; corpus-relative rank</text>
+  </g>
+
+  <!-- CENTRE panel -->
+  <g id="panel-centre">
+    <rect x="298" y="18" width="572" height="144" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.04" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="298" y="18" width="572" height="5" fill="#00a6ff" opacity="0.7"/>
+
+    <!-- Sub-column labels -->
+    <text x="377" y="33" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" letter-spacing="0.5">QUERY</text>
+    <!-- INDEX label removed: overlapped P3/P4 sub-headers; structure is self-explanatory -->
+    <text x="739" y="33" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" text-anchor="middle" letter-spacing="0.5">RANKED</text>
+
+    <!-- Sub-column dividers (thin 1px rect) -->
+    <rect x="443" y="26" width="0.8" height="130" fill="#4a7ba7" opacity="0.20"/>
+    <rect x="619" y="26" width="0.8" height="130" fill="#4a7ba7" opacity="0.20"/>
+
+    <!-- === Sub-column A: Query chips === -->
+    <!-- chip 0: y=40, w=100 -->
+    <rect x="314" y="40" width="100" height="16" rx="3" fill="#4a7ba7" fill-opacity="0.30"/>
+    <rect x="314" y="40" width="100" height="16" rx="3" fill="none" stroke="#4a7ba7" stroke-width="0.6" opacity="0.50"/>
+    <!-- chip 1: y=61, w=80 -->
+    <rect x="314" y="61" width="80" height="16" rx="3" fill="#4a7ba7" fill-opacity="0.30"/>
+    <rect x="314" y="61" width="80" height="16" rx="3" fill="none" stroke="#4a7ba7" stroke-width="0.6" opacity="0.50"/>
+    <!-- chip 2: y=82, w=110 -->
+    <rect x="314" y="82" width="110" height="16" rx="3" fill="#4a7ba7" fill-opacity="0.30"/>
+    <rect x="314" y="82" width="110" height="16" rx="3" fill="none" stroke="#4a7ba7" stroke-width="0.6" opacity="0.50"/>
+    <!-- chip 3: y=103, w=70 -->
+    <rect x="314" y="103" width="70" height="16" rx="3" fill="#4a7ba7" fill-opacity="0.30"/>
+    <rect x="314" y="103" width="70" height="16" rx="3" fill="none" stroke="#4a7ba7" stroke-width="0.6" opacity="0.50"/>
+    <!-- chip 4: y=124, w=90 -->
+    <rect x="314" y="124" width="90" height="16" rx="3" fill="#4a7ba7" fill-opacity="0.30"/>
+    <rect x="314" y="124" width="90" height="16" rx="3" fill="none" stroke="#4a7ba7" stroke-width="0.6" opacity="0.50"/>
+
+    <!-- === Sub-column B: Inverted index dots ===
+         Cols at x: 464, 494, 524, 554  (passage 1-4)
+         Row centres-y: 48, 69, 90, 111, 132
+         Dot r=3.5 rendered as small circle (cx-r to cx+r = w=7)
+    -->
+    <!-- Passage col labels -->
+    <text x="464" y="37" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">P1</text>
+    <text x="494" y="37" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">P2</text>
+    <text x="524" y="37" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">P3</text>
+    <text x="554" y="37" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">P4</text>
+
+    <!-- term 0 (y=48): match P1,P2,P3 / no P4 -->
+    <circle cx="464" cy="48" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="494" cy="48" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="524" cy="48" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="554" cy="48" r="3.5" fill="#6b8db5" opacity="0.20"/>
+    <!-- term 1 (y=69): match P1,P3 -->
+    <circle cx="464" cy="69" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="494" cy="69" r="3.5" fill="#6b8db5" opacity="0.20"/>
+    <circle cx="524" cy="69" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="554" cy="69" r="3.5" fill="#6b8db5" opacity="0.20"/>
+    <!-- term 2 (y=90): match P1,P2 -->
+    <circle cx="464" cy="90" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="494" cy="90" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="524" cy="90" r="3.5" fill="#6b8db5" opacity="0.20"/>
+    <circle cx="554" cy="90" r="3.5" fill="#6b8db5" opacity="0.20"/>
+    <!-- term 3 (y=111): match P1 -->
+    <circle cx="464" cy="111" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="494" cy="111" r="3.5" fill="#6b8db5" opacity="0.20"/>
+    <circle cx="524" cy="111" r="3.5" fill="#6b8db5" opacity="0.20"/>
+    <circle cx="554" cy="111" r="3.5" fill="#6b8db5" opacity="0.20"/>
+    <!-- term 4 (y=132): match all -->
+    <circle cx="464" cy="132" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="494" cy="132" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="524" cy="132" r="3.5" fill="#00a6ff" opacity="0.80"/>
+    <circle cx="554" cy="132" r="3.5" fill="#00a6ff" opacity="0.80"/>
+
+    <!-- === Sub-column C: Ranked passage tiles ===
+         Tile x=624, w=222 (right edge=846), inner bar x=634 w=180
+         Tile 1 (winner): y=38..72, h=34
+         Tile 2:          y=80..114
+         Tile 3:          y=122..156
+    -->
+
+    <!-- Tile 1: winner - accent-1 border -->
+    <rect x="624" y="38" width="222" height="34" rx="3" fill="#00a6ff" fill-opacity="0.08" stroke="#00a6ff" stroke-width="1.2"/>
+    <!-- score bar track -->
+    <rect x="634" y="56" width="180" height="6" rx="3" fill="#4a7ba7" fill-opacity="0.18"/>
+    <!-- score bar fill: 0.71 * 180 = 128 -->
+    <rect x="634" y="56" width="128" height="6" rx="3" fill="#00a6ff" opacity="0.80"/>
+    <text x="834" y="62" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="700" text-anchor="end">0.71</text>
+    <!-- winner label -->
+    <text x="634" y="50" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="700">&#9679; top-1</text>
+
+    <!-- Tile 2 -->
+    <rect x="624" y="80" width="222" height="34" rx="3" fill="#4a7ba7" fill-opacity="0.06" stroke="#4a7ba7" stroke-width="0.8" opacity="0.60"/>
+    <rect x="634" y="98" width="180" height="6" rx="3" fill="#4a7ba7" fill-opacity="0.18"/>
+    <!-- 0.45 * 180 = 81 -->
+    <rect x="634" y="98" width="81" height="6" rx="3" fill="#4a7ba7" opacity="0.65"/>
+    <text x="834" y="104" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="end">0.45</text>
+
+    <!-- Tile 3 -->
+    <rect x="624" y="122" width="222" height="34" rx="3" fill="#4a7ba7" fill-opacity="0.04" stroke="#4a7ba7" stroke-width="0.8" opacity="0.40"/>
+    <rect x="634" y="140" width="180" height="6" rx="3" fill="#4a7ba7" fill-opacity="0.18"/>
+    <!-- 0.18 * 180 = 32 -->
+    <rect x="634" y="140" width="32" height="6" rx="3" fill="#6b8db5" opacity="0.55"/>
+    <text x="834" y="146" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="end">0.18</text>
+
+  </g>
+
+  <!-- RIGHT panel - score chip -->
+  <g id="panel-right">
+    <rect x="888" y="18" width="192" height="144" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.04" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="888" y="18" width="192" height="5" fill="#00a6ff" opacity="0.7"/>
+
+    <!-- Score chip -->
+    <rect x="908" y="52" width="152" height="38" rx="19" fill="#00a6ff" fill-opacity="0.90"/>
+    <text x="984" y="76" class="on-chip" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">Score: 0.71</text>
+
+    <text x="984" y="108" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">Top-1 of corpus</text>
+    <text x="984" y="124" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle">P1 wins (5/5 terms)</text>
+    <text x="984" y="148" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" font-style="italic">IDF-weighted</text>
+  </g>
+
+</svg>

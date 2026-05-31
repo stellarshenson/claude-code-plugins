@@ -56,6 +56,20 @@ Structural elements at grid positions. No text, no icons, no content.
 
 ## Phase 4 — Content
 
+**Classify every `<text>` first (MANDATORY).** Two classes, mutually exclusive. Tag each before placing:
+
+- **HEADER / LABEL** — names a region from inside it or attached to it: card title, axis label, legend row, a section header bounded by a single region. Lives within or touching its target. No leader. Place via `geom` against the region geometry
+- **CALLOUT** — points at a target from outside, across whitespace: pull quote, metric flag, warning, margin note. Callout rules apply (`rules/callout.md`) — own `<g id="callout-*">`, solver placement, text-first style. A card title is NOT a callout; do not dress it as one
+
+Header/label → place against its region, skip callout machinery. Callout → callout rules, then decide the leader:
+
+**Leader — AI decides per callout. No default.** Judge the target↔text link:
+
+- **Leader** when position alone leaves the link unclear — target buried in dense content, text parked far out in free whitespace, or many callouts crowd one zone. The line removes the ambiguity
+- **Leaderless** when position already carries it — text hugs the target, group header floats above an unboxed group, tag on a waypoint. A line would just be noise
+
+Wrong call reads as clutter (needless leader) or an orphan (missing leader). Pick on the geometry, not habit.
+
 - `<text>` with CSS classes (NEVER inline `fill=`), no opacity, font-family Segoe UI
 - Title at `accent_bar_bottom + 12px`, descriptions at `+14px` rhythm, minimum 7px
 - Unicode glyphs in every `<text>` node — `→` not `->`, `…` not `...`, `×` not `x`, `•` not `*`. ASCII fallback = FAIL
@@ -91,7 +105,7 @@ DO NOT deliver without running ALL validators. See `validation.md` for tool spec
 
 1. **File comments** — description (filename, shows, intent, theme); grid with all positions; layout topology with relationships
 2. **CSS block** — `<style>` with all classes; `@media (prefers-color-scheme: dark)` overrides for every class
-3. **Text rules** — CSS classes (zero inline fill); no opacity; `font-family="Segoe UI, Arial, sans-serif"`; Unicode glyphs only (`→` not `->`, `←` not `<-`, `↔` not `<->`, `…` not `...`, `—` not `--`, `×` not `x`, `•` not `*`); ASCII arrows in any `<text>` = FAIL
+3. **Text rules** — every `<text>` classified header/label vs callout (callout → `rules/callout.md`, leader decided per AI rule); CSS classes (zero inline fill); no opacity; `font-family="Segoe UI, Arial, sans-serif"`; Unicode glyphs only (`→` not `->`, `←` not `<-`, `↔` not `<->`, `…` not `...`, `—` not `--`, `×` not `x`, `•` not `*`); ASCII arrows in any `<text>` = FAIL
 4. **Text positions** — titles at `accent_bar_bottom + 12px`; descriptions at `+14px` rhythm; within card boundaries (12px padding); min font 7px
 5. **Card shapes** — flat top, rounded bottom r=3; fill-opacity 0.04; stroke-width 1; accent bar height 5, opacity 0.6, flush with card top
 6. **Arrow construction** — every arrow via `svg-infographics connector` with `--standoff 2`; `trimmed_path_d` as `<path>`, arrowhead polygons as `<polygon>` in world coords; no `rotate()` wrappers; `l-chamfer` mode 4px chamfer; endpoints meet card edges; `stroke-linecap`/`stroke-linejoin` round; hand-coded paths for any routed line = FAIL
@@ -182,6 +196,8 @@ svg-infographics connector --mode manifold \
 Paste `trimmed_path_d` into `<path class="connector">`, polygons into `<polygon class="arrow-head">`.
 
 ### Phase 4 depth — text placement
+
+Classify first (see Phase 4 gate): header/label vs callout. Header/label places against its region. Callout goes through the solver, leader decided per the AI rule above.
 
 Compute label position from placed geometry via:
 

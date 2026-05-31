@@ -1,0 +1,255 @@
+<!--
+  04_evidence_gathering.svg - Evidence gathering contract model
+  Shows: Agent (writer) on left making tool calls that flow into the central
+  ./research/ folder; Grounder (reader) on right consuming folder contents
+  through 4 search strategies. Folder is the explicit contract boundary.
+  Intent: two-domain split with folder as checkpoint.
+  Theme: DeLaval palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #00a6ff; }
+    .accent-2 { fill: #66ccff; }
+    .arrow-fill { fill: #00a6ff; }
+    .arrow-fill-muted { fill: #6b8db5; }
+    .folder-stroke { stroke: #00a6ff; fill: none; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #cfe6ff; }
+      .fg-2 { fill: #a8d4f0; }
+      .fg-3 { fill: #7ec0e6; }
+      .fg-4 { fill: #5aafc5; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+      .arrow-fill { fill: #4dc4ff; }
+      .arrow-fill-muted { fill: #5aafc5; }
+      .folder-stroke { stroke: #4dc4ff; fill: none; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1200 x 500
+    3-column layout:
+      LEFT (Agent writer): x=30..350 (w=320)
+      GAP 1: x=350..430 (80px)
+      CENTRE (folder): x=430..770 (w=340)
+      GAP 2: x=770..850 (80px)
+      RIGHT (Grounder reader): x=850..1170 (w=320)
+
+    Outer-bbox padding=6px:
+      LEFT outer: x=24..356
+      CENTRE outer: x=424..776
+      RIGHT outer: x=844..1176
+
+    Connector clearances:
+      GAP1 inner=350..430. For connector outer to clear both sides:
+        inner start ≥ 350+6+6+1=363, inner end ≤ 430-6-6-1=417
+        Arrow stem inner: x=363..407, head base=407 tip=417
+        Arrow outer: x=357..423. LEFT outer right=356. GAP1-floor: 357-356=1px ✓
+        RIGHT side: 424-423=1px ✓
+
+      GAP2 inner=770..850. For connector outer to clear:
+        inner start ≥ 770+13=783, inner end ≤ 850-13=837
+        Arrow stem inner: x=783..827, head base=827 tip=837.
+        Arrow outer: x=777..843. CENTRE outer right=776: 777-776=1px ✓
+        RIGHT outer left=844: 844-843=1px ✓
+
+    LEFT column nodes (no intra-column arrows - flow indicated by numbering):
+      Header:      y=30..65  (h=35)
+      Node 1 toolcall: y=100..160  (h=60)  outer bot=166
+      Node 2 persist:  y=200..290  (h=90)  outer top=194, outer bot=296
+      Node 3 save:     y=330..385  (h=55)  outer top=324
+      Node 4 discard:  y=330..385  (same row as save, right half)
+      Gap toolcall->persist: 40px outer gap = 166..194 = 28px (no arrows, use flow text)
+      Gap persist->save/disc: 34px outer gap = 296..324 = 28px (no arrows, use flow text)
+
+    CENTRE folder: x=430..770, y=100..385 (h=285)
+      Folder icon centred at x=600, y=155
+
+    RIGHT column nodes: 4 strategy nodes + connector at each mid-y
+      Node A (regex):    y=100..155  mid=127
+      Node B (bm25):     y=175..230  mid=202
+      Node C (faiss):    y=250..305  mid=277
+      Node D (consensus):y=325..380  mid=352
+
+    Arrow horizontal from CENTRE to RIGHT at each node mid-y:
+      inner x=783..827, outer x=777..843
+      At y=127: outer 121..133. Node A outer: 94..161. Clearance within RIGHT column ✓
+        (checker sees arrow outer vs RIGHT card outer: both same x range 777..843 vs 844..1176)
+        Actually: arrow outer RIGHT edge=843, RIGHT card outer LEFT=844. Clearance=1px ✓
+
+    LEFT-to-CENTRE arrow: single horizontal arrow at y=220 (persist mid-y)
+      inner x=363..407, outer x=357..423
+      LEFT outer right=356. Clearance: 357-356=1px ✓
+      CENTRE outer left=424. Clearance: 424-423=1px ✓
+      "writes" label above arrow at y=210. Label outer bottom ≈ 218.
+      Arrow stem inner y=220 (line), outer y=214..226. "writes" label outer bottom=218 < 214.
+      Label must be placed where its outer bottom ≤ 214-1=213.
+      Label font-size=9, baseline at y=x. Text inner height≈9. For outer bottom=213:
+        inner bottom = 213-4=209. Baseline y=209. OK.
+
+    CAPTION: y=460 (below all nodes)
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    3-column: LEFT (Agent, 3 nodes: toolcall, persist, save/discard) |
+              CENTRE (./research/ folder) |
+              RIGHT (Grounder, 4 reader nodes)
+    LEFT to CENTRE: single horizontal "writes" arrow at y=220
+    CENTRE to RIGHT: 4 horizontal "reads" arrows at reader node mid-y values
+  === -->
+
+  <!-- LEFT: column header -->
+  <g id="header-left">
+    <rect x="30" y="30" width="320" height="35" rx="4" ry="4" fill="#00a6ff" fill-opacity="0.15"/>
+    <rect x="30" y="30" width="320" height="35" rx="4" ry="4" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <text x="190" y="52" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">Agent (writer)</text>
+  </g>
+
+  <!-- LEFT: Node 1 - Tool call (y=100..160) -->
+  <g id="node-toolcall">
+    <rect x="30" y="100" width="320" height="60" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="30" y="100" width="320" height="60" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="30" y="100" width="320" height="5" fill="#00a6ff" opacity="0.7"/>
+    <text x="190" y="128" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">Tool call</text>
+    <text x="190" y="146" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10" text-anchor="middle">fetch_url / run_code / search</text>
+  </g>
+
+  <!-- LEFT: flow indicator (between toolcall and persist) -->
+  <text x="190" y="186" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="10" text-anchor="middle">&#9660;</text>
+
+  <!-- LEFT: Node 2 - Persist policy (y=200..290) -->
+  <g id="node-persist">
+    <rect x="30" y="200" width="320" height="90" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="30" y="200" width="320" height="90" rx="6" ry="6" fill="none" stroke="#66ccff" stroke-width="1" stroke-dasharray="5,3"/>
+    <text x="190" y="228" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">Persist-or-discard policy</text>
+    <text x="190" y="248" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10" text-anchor="middle">Relevance &#8805; threshold?</text>
+    <text x="90" y="270" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">YES &#8594; save</text>
+    <text x="290" y="270" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" text-anchor="middle">NO &#8594; discard</text>
+  </g>
+
+  <!-- LEFT: flow indicator (between persist and save/discard) -->
+  <text x="190" y="314" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="10" text-anchor="middle">&#9660;</text>
+
+  <!-- LEFT: Node 3a - Save (y=330..385, x=30..175) -->
+  <g id="node-save">
+    <rect x="30" y="330" width="145" height="55" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.10"/>
+    <rect x="30" y="330" width="145" height="55" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <text x="103" y="355" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Save to disk</text>
+    <text x="103" y="373" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">+metadata sidecar</text>
+  </g>
+
+  <!-- LEFT: Node 3b - Discard (y=330..385, x=205..350) -->
+  <g id="node-discard">
+    <rect x="205" y="330" width="145" height="55" rx="6" ry="6" fill="#6b8db5" fill-opacity="0.08"/>
+    <rect x="205" y="330" width="145" height="55" rx="6" ry="6" fill="none" stroke="#6b8db5" stroke-width="1"/>
+    <text x="278" y="355" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Discard</text>
+    <text x="278" y="373" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">ephemeral only</text>
+  </g>
+
+  <!-- LEFT -> CENTRE connector: writes arrow at y=220 (persist mid-y)
+       inner x=363..407, outer x=357..423.
+       "writes" label: inner bottom=209, baseline y=209.
+  -->
+  <g id="arrow-writes">
+    <line x1="363" y1="220" x2="407" y2="220" stroke="#00a6ff" stroke-width="1.5" opacity="0.75"/>
+    <polygon points="417,220 407,215 407,225" class="arrow-fill" opacity="0.85"/>
+  </g>
+  <text x="390" y="200" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">writes</text>
+
+  <!-- === CENTRE: ./research/ folder (x=430..770, y=100..385) === -->
+  <g id="folder-container">
+    <rect x="430" y="100" width="340" height="285" rx="8" ry="8" fill="#00a6ff" fill-opacity="0.06"/>
+    <rect x="430" y="100" width="340" height="285" rx="8" ry="8" fill="none" stroke="#00a6ff" stroke-width="1.5"/>
+    <!-- Lucide folder icon (ISC license), 44x36, centred at x=600 y=160. translate=(578,142) -->
+    <g transform="translate(578,142)" fill="none" class="folder-stroke" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+      <path d="M2 9 v26 a3 3 0 0 0 3 3 h34 a3 3 0 0 0 3 -3 v-20 a3 3 0 0 0 -3 -3 h-15 l-3 -6 h-16 a3 3 0 0 0 -3 3 z"/>
+    </g>
+    <text x="600" y="200" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">./research/</text>
+    <!-- File type indicators -->
+    <text x="490" y="234" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">HTML</text>
+    <rect x="476" y="238" width="28" height="18" rx="2" fill="none" stroke="#4a7ba7" stroke-width="0.8"/>
+    <text x="540" y="234" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">PDF</text>
+    <rect x="526" y="238" width="28" height="18" rx="2" fill="none" stroke="#4a7ba7" stroke-width="0.8"/>
+    <text x="600" y="234" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">JSON</text>
+    <rect x="586" y="238" width="28" height="18" rx="2" fill="none" stroke="#4a7ba7" stroke-width="0.8"/>
+    <text x="660" y="234" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle">TXT</text>
+    <rect x="646" y="238" width="28" height="18" rx="2" fill="none" stroke="#4a7ba7" stroke-width="0.8"/>
+    <text x="600" y="286" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">durable, auditable corpus</text>
+    <text x="600" y="302" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">metadata sidecars per file</text>
+    <text x="600" y="354" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" font-style="italic">no shared state</text>
+    <text x="600" y="367" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" font-style="italic">beyond directory contents</text>
+  </g>
+
+  <!-- RIGHT: column header -->
+  <g id="header-right">
+    <rect x="850" y="30" width="320" height="35" rx="4" ry="4" fill="#00a6ff" fill-opacity="0.15"/>
+    <rect x="850" y="30" width="320" height="35" rx="4" ry="4" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <text x="1010" y="52" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" text-anchor="middle">Grounder (reader)</text>
+  </g>
+
+  <!-- RIGHT: Node A - regex / fuzzy (y=100..155, mid=127) -->
+  <g id="node-regex">
+    <rect x="850" y="100" width="320" height="55" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="850" y="100" width="320" height="55" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="850" y="100" width="320" height="5" fill="#00a6ff" opacity="0.7"/>
+    <text x="1010" y="126" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Regex / fuzzy</text>
+    <text x="1010" y="142" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">exact + Levenshtein match</text>
+  </g>
+
+  <!-- RIGHT: Node B - BM25 (y=175..230, mid=202) -->
+  <g id="node-bm25">
+    <rect x="850" y="175" width="320" height="55" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="850" y="175" width="320" height="55" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="850" y="175" width="320" height="5" fill="#00a6ff" opacity="0.7"/>
+    <text x="1010" y="201" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">BM25</text>
+    <text x="1010" y="217" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">IDF-weighted lexical ranking</text>
+  </g>
+
+  <!-- RIGHT: Node C - FAISS (y=250..305, mid=277) -->
+  <g id="node-faiss">
+    <rect x="850" y="250" width="320" height="55" rx="6" ry="6" fill="#66ccff" fill-opacity="0.05"/>
+    <rect x="850" y="250" width="320" height="55" rx="6" ry="6" fill="none" stroke="#66ccff" stroke-width="1"/>
+    <rect x="850" y="250" width="320" height="5" fill="#66ccff" opacity="0.7"/>
+    <text x="1010" y="276" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">FAISS (opt)</text>
+    <text x="1010" y="292" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">cosine similarity, E5-small</text>
+  </g>
+
+  <!-- RIGHT: Node D - Consensus (y=325..380, mid=352) -->
+  <g id="node-consensus">
+    <rect x="850" y="325" width="320" height="55" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.10"/>
+    <rect x="850" y="325" width="320" height="55" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1.5"/>
+    <rect x="850" y="325" width="320" height="5" fill="#00a6ff" opacity="0.9"/>
+    <text x="1010" y="351" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Consensus scoring</text>
+    <text x="1010" y="367" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">multi-voter combination &#8594; verdict</text>
+  </g>
+
+  <!-- CENTRE -> RIGHT connectors (horizontal at each node mid-y)
+       inner x=783..827, outer x=777..843
+       CENTRE outer right=776. Clearance 777-776=1px ✓
+       RIGHT outer left=844. Clearance 844-843=1px ✓
+  -->
+  <g id="arrow-to-regex">
+    <line x1="783" y1="127" x2="827" y2="127" stroke="#00a6ff" stroke-width="1.4" opacity="0.7"/>
+    <polygon points="837,127 827,123 827,131" class="arrow-fill" opacity="0.8"/>
+  </g>
+  <g id="arrow-to-bm25">
+    <line x1="783" y1="202" x2="827" y2="202" stroke="#00a6ff" stroke-width="1.4" opacity="0.7"/>
+    <polygon points="837,202 827,198 827,206" class="arrow-fill" opacity="0.8"/>
+  </g>
+  <g id="arrow-to-faiss">
+    <line x1="783" y1="277" x2="827" y2="277" stroke="#66ccff" stroke-width="1.4" opacity="0.7"/>
+    <polygon points="837,277 827,273 827,281" fill="#66ccff" opacity="0.8"/>
+  </g>
+  <g id="arrow-to-consensus">
+    <line x1="783" y1="352" x2="827" y2="352" stroke="#00a6ff" stroke-width="1.4" opacity="0.7"/>
+    <polygon points="837,352 827,348 827,356" class="arrow-fill" opacity="0.8"/>
+  </g>
+
+  <!-- Caption -->
+  <text x="600" y="460" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle">Folder is the contract. No shared state beyond directory contents.</text>
+
+</svg>

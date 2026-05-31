@@ -1,0 +1,269 @@
+<!--
+  10_consensus_triangulation.svg - Consensus scoring: multi-voter triangulation vs single voter
+  Shows: two side-by-side scenarios. LEFT: one strong layer -> SUSPECT verdict.
+  RIGHT: three moderate layers converging -> CONFIRMED verdict.
+  Hypothesis: triangulation (multiple independent witnesses) beats brute force
+  (one loud accuser) - the central design insight of consensus scoring.
+  Metaphor: detective triangulation. Multiple independent signals agree on the same span.
+  Theme: DeLaval palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 550" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #00a6ff; }
+    .accent-2 { fill: #66ccff; }
+    .card-fill { fill: #f5f7fa; }
+    .panel-fill { fill: #f5f7fa; }
+    .stroke-fg4 { stroke: #6b8db5; fill: none; }
+    .stroke-a1 { stroke: #00a6ff; fill: none; }
+    .badge-suspect { fill: #66ccff; }
+    .badge-confirmed { fill: #00a6ff; }
+    .badge-text { fill: #ffffff; }
+    .target-ring { stroke: #00a6ff; fill: none; }
+    .target-fill { fill: #00a6ff; fill-opacity: 0.08; }
+    .arrow-single { stroke: #6b8db5; fill: none; }
+    .arrowhead-single { fill: #6b8db5; }
+    .arrow-multi { stroke: #00a6ff; fill: none; }
+    .arrowhead-multi { fill: #00a6ff; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #cfe6ff; }
+      .fg-2 { fill: #a8d4f0; }
+      .fg-3 { fill: #7ec0e6; }
+      .fg-4 { fill: #5aafc5; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+      .card-fill { fill: #0f2a45; }
+      .panel-fill { fill: #0f2a45; }
+      .stroke-fg4 { stroke: #5aafc5; fill: none; }
+      .stroke-a1 { stroke: #4dc4ff; fill: none; }
+      .badge-suspect { fill: #88ddff; }
+      .badge-confirmed { fill: #4dc4ff; }
+      .badge-text { fill: #0a1a2e; }
+      .target-ring { stroke: #4dc4ff; fill: none; }
+      .target-fill { fill: #4dc4ff; fill-opacity: 0.10; }
+      .arrow-single { stroke: #5aafc5; fill: none; }
+      .arrowhead-single { fill: #5aafc5; }
+      .arrow-multi { stroke: #4dc4ff; fill: none; }
+      .arrowhead-multi { fill: #4dc4ff; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 1300 x 550
+    Title: y=32
+    Caption row: y=532
+
+    LEFT scenario card: x=20, y=80, w=590, h=390
+      Card centre: (315, 275)
+      Target circle: cx=510, cy=285, r=28
+        left anchor: (482,285), top-left anchor: (490,265)
+      BM25-only arrow: single, thick (6px stroke)
+        Source rect: x=60,y=258,w=100,h=30
+        Path: M162.00,274.56 L470.01,283.80
+        Arrowhead tip: (480.00,284.10) polygon: (480.00,284.10) (470.16,278.80) (469.86,288.80)
+      VERIFY badge: x=460,y=340,w=100,h=28,rx=14
+
+    RIGHT scenario card: x=660, y=80, w=620, h=390
+      Card centre: (970, 275)
+      Target circle: cx=1070, cy=285, r=28
+        left anchor: (1042,285), top-left: (1050,265)
+      Arrow 1 (top-left, regex 0.40):
+        Source rect: x=700,y=145,w=140,h=30
+        Path: M807.85,175.77 L1030.92,268.72
+        Arrowhead: tip(1040.15,272.56) polygon(1040.15,272.56)(1032.85,264.10)(1029.00,273.33)
+      Arrow 2 (middle, fuzzy 0.55):
+        Source rect: x=700,y=265,w=140,h=30
+        Path: M842.00,281.20 L1030.00,284.33
+        Arrowhead: tip(1040.00,284.50) polygon(1040.00,284.50)(1030.08,279.33)(1029.92,289.33)
+      Arrow 3 (bottom-left, bm25 0.48):
+        Source rect: x=700,y=385,w=140,h=30
+        Path: M811.00,384.28 L1030.80,300.03
+        Arrowhead: tip(1040.13,296.45) polygon(1040.13,296.45)(1029.01,295.36)(1032.58,304.70)
+      CONFIRMED badge: x=1055,y=340,w=120,h=28,rx=14
+
+    DIVIDER: x=633, y=100..460, 1px stroke, fg-4 opacity 0.4
+    CAPTION: y=532 centred
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-split: left-scenario | divider | right-scenario
+    LEFT: single fat arrow left-to-right at y=285, label above, VERIFY badge below target
+    RIGHT: three converging arrows from different angles to right target circle,
+           layer labels left, CONFIRMED badge below target
+    Caption spans full width below both scenarios
+  === -->
+
+  <!-- HEADER -->
+  <g id="header">
+    <text x="650" y="30" class="fg-1" font-family="Segoe UI, Arial, sans-serif"
+          font-size="12" font-weight="700" text-anchor="middle" letter-spacing="0.6">
+      CONSENSUS TRIANGULATION &#8212; WHY MULTI-VOTER BEATS SINGLE-VOTER
+    </text>
+  </g>
+
+  <!-- NODES layer -->
+  <g id="nodes">
+
+    <!-- LEFT scenario card -->
+    <g id="card-left-scenario">
+      <!-- Panel borders using thin rects (h=1 or w=1 so not detected as cards) -->
+      <rect x="20" y="80" width="590" height="1" fill="#6b8db5" opacity="0.6"/>
+      <rect x="20" y="469" width="590" height="1" fill="#6b8db5" opacity="0.6"/>
+      <rect x="20" y="81" width="1" height="388" fill="#6b8db5" opacity="0.6"/>
+      <rect x="609" y="81" width="1" height="388" fill="#6b8db5" opacity="0.6"/>
+      <!-- muted accent bar for the SUSPECT scenario -->
+      <rect x="20" y="80" width="590" height="5" fill="#66ccff" opacity="0.6"/>
+
+      <!-- Scenario title -->
+      <text x="60" y="108" class="fg-2" font-family="Segoe UI, Arial, sans-serif"
+            font-size="11" font-weight="700">1 layer strong &#8594; SUSPECT</text>
+
+      <!-- Arrow label -->
+      <text x="111" y="248" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9.5" text-anchor="middle" font-weight="600">BM25 only</text>
+      <text x="111" y="263" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" text-anchor="middle" font-style="italic">score: 0.92</text>
+
+      <!-- Target circle (span#A) -->
+      <circle cx="510" cy="285" r="28" class="target-fill"/>
+      <circle cx="510" cy="285" r="28" class="target-ring" stroke-width="1.2"/>
+      <text x="510" y="282" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8" text-anchor="middle">span</text>
+      <text x="510" y="294" class="accent-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8" font-weight="700" text-anchor="middle">#A</text>
+
+      <!-- VERIFY status badge -->
+      <rect x="460" y="335" width="100" height="26" rx="13" ry="13" class="badge-suspect"/>
+      <text x="510" y="352" class="badge-text" font-family="Segoe UI, Arial, sans-serif"
+            font-size="10" font-weight="700" text-anchor="middle">VERIFY</text>
+
+      <!-- Subtitle text block -->
+      <text x="310" y="400" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5" text-anchor="middle">Score: 0.92. No corroboration. Could be a coincidence &#8212;</text>
+      <text x="310" y="415" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5" text-anchor="middle">shared rare terms, lexical drift, off-topic high-IDF hit.</text>
+
+      <!-- L label tag -->
+      <rect x="20" y="80" width="36" height="20" rx="0" ry="0" fill="#66ccff" opacity="0.25"/>
+      <text x="38" y="95" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" font-weight="700" text-anchor="middle">L</text>
+    </g>
+
+    <!-- RIGHT scenario card -->
+    <g id="card-right-scenario">
+      <!-- Panel borders using thin rects -->
+      <rect x="660" y="80" width="620" height="1" fill="#00a6ff" opacity="0.7"/>
+      <rect x="660" y="469" width="620" height="1" fill="#00a6ff" opacity="0.7"/>
+      <rect x="660" y="81" width="1" height="388" fill="#00a6ff" opacity="0.7"/>
+      <rect x="1279" y="81" width="1" height="388" fill="#00a6ff" opacity="0.7"/>
+      <!-- active accent bar for the CONFIRMED scenario -->
+      <rect x="660" y="80" width="620" height="5" fill="#00a6ff" opacity="0.8"/>
+
+      <!-- Scenario title -->
+      <text x="700" y="108" class="fg-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="11" font-weight="700">3 layers moderate &#8594; TRUSTWORTHY</text>
+
+      <!-- Layer labels (left side of arrows) -->
+      <!-- regex 0.40 label at y=145..175 -->
+      <rect x="700" y="145" width="140" height="30" rx="5" ry="5"
+            fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="0.8"/>
+      <text x="770" y="164" class="fg-2" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" text-anchor="middle">regex&#160;&#160;0.40</text>
+
+      <!-- fuzzy 0.55 label at y=265..295 -->
+      <rect x="700" y="265" width="140" height="30" rx="5" ry="5"
+            fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="0.8"/>
+      <text x="770" y="284" class="fg-2" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" text-anchor="middle">fuzzy&#160;0.55</text>
+
+      <!-- bm25 0.48 label at y=385..415 -->
+      <rect x="700" y="385" width="140" height="30" rx="5" ry="5"
+            fill="#00a6ff" fill-opacity="0.06" stroke="#00a6ff" stroke-width="0.8"/>
+      <text x="770" y="404" class="fg-2" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" text-anchor="middle">bm25&#160;&#160;0.48</text>
+
+      <!-- Target circle (span#A) -->
+      <circle cx="1070" cy="285" r="28" class="target-fill"/>
+      <circle cx="1070" cy="285" r="28" class="target-ring" stroke-width="1.5"/>
+      <text x="1070" y="282" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8" text-anchor="middle">span</text>
+      <text x="1070" y="294" class="accent-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8" font-weight="700" text-anchor="middle">#A</text>
+
+      <!-- CONFIRMED status badge -->
+      <rect x="1010" y="335" width="120" height="26" rx="13" ry="13" class="badge-confirmed"/>
+      <text x="1070" y="352" class="badge-text" font-family="Segoe UI, Arial, sans-serif"
+            font-size="10" font-weight="700" text-anchor="middle">CONFIRMED</text>
+
+      <!-- Subtitle text block -->
+      <text x="970" y="400" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5" text-anchor="middle">Combined consensus: 0.78 with voter bonus.</text>
+      <text x="970" y="415" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5" text-anchor="middle">Three independent signals agree on the same span.</text>
+
+      <!-- R label tag -->
+      <rect x="660" y="80" width="36" height="20" rx="0" ry="0" fill="#00a6ff" opacity="0.3"/>
+      <text x="678" y="95" class="accent-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" font-weight="700" text-anchor="middle">R</text>
+    </g>
+
+  </g>
+
+  <!-- CONNECTORS layer: split by scenario to avoid cross-scenario bbox overlaps -->
+  <!-- LEFT connectors -->
+  <g id="connectors-left">
+    <!-- LEFT: single fat arrow (BM25 only) - muted, thick stroke suggesting brute force -->
+    <!-- Source rect 60,258,100,30 -> target rect 482,257,56,56 -->
+    <!-- Computed: M162.00,274.56 L470.01,283.80, tip(480,284.1), poly(480,284.1)(470.16,278.80)(469.86,288.80) -->
+    <path id="conn-bm25-single" d="M162.00,274.56 L470.01,283.80"
+          class="arrow-single" stroke-width="5" opacity="0.35"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="480.00,284.10 470.16,278.80 469.86,288.80" class="arrowhead-single" opacity="0.5"/>
+  </g>
+
+  <!-- RIGHT connectors -->
+  <g id="connectors-right">
+    <!-- RIGHT: three lighter arrows converging from different angles -->
+    <!-- Arrow 1: regex (top-left angle) -->
+    <!-- Source 700,145,140,30 -> target 1042,257,56,56 -->
+    <!-- Path: M807.85,175.77 L1030.92,268.72, tip(1040.15,272.56), poly(1040.15,272.56)(1032.85,264.10)(1029.00,273.33) -->
+    <path id="conn-regex" d="M807.85,175.77 L1030.92,268.72"
+          class="arrow-multi" stroke-width="2" opacity="0.7"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="1040.15,272.56 1032.85,264.10 1029.00,273.33" class="arrowhead-multi" opacity="0.8"/>
+
+    <!-- Arrow 2: fuzzy (middle, horizontal) -->
+    <!-- Source 700,265,140,30 -> target 1042,257,56,56 -->
+    <!-- Path: M842.00,281.20 L1030.00,284.33, tip(1040,284.5), poly(1040,284.5)(1030.08,279.33)(1029.92,289.33) -->
+    <path id="conn-fuzzy" d="M842.00,281.20 L1030.00,284.33"
+          class="arrow-multi" stroke-width="2" opacity="0.7"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="1040.00,284.50 1030.08,279.33 1029.92,289.33" class="arrowhead-multi" opacity="0.8"/>
+
+    <!-- Arrow 3: bm25 (bottom-left angle) -->
+    <!-- Source 700,385,140,30 -> target 1042,257,56,56 -->
+    <!-- Path: M811.00,384.28 L1030.80,300.03, tip(1040.13,296.45), poly(1040.13,296.45)(1029.01,295.36)(1032.58,304.70) -->
+    <path id="conn-bm25-right" d="M811.00,384.28 L1030.80,300.03"
+          class="arrow-multi" stroke-width="2" opacity="0.7"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="1040.13,296.45 1029.01,295.36 1032.58,304.70" class="arrowhead-multi" opacity="0.8"/>
+
+  </g>
+
+  <!-- Vertical divider: placed inline in content layer, not a separate group -->
+
+
+  <!-- CONTENT layer: caption + divider -->
+  <g id="content">
+    <!-- Vertical divider between scenarios -->
+    <rect x="632" y="100" width="1" height="362" fill="#6b8db5" opacity="0.4"/>
+    <text x="650" y="520" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+          font-size="9" text-anchor="middle" font-style="italic">
+      Real paraphrases light up multiple layers weakly. Fabrications light up at most one layer (or none).
+    </text>
+  </g>
+
+</svg>

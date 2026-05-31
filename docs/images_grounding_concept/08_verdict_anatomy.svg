@@ -1,0 +1,296 @@
+<!--
+  08_verdict_anatomy.svg - Engineering blueprint exploded view of a single verdict record
+  Shows: a CONFIRMED verdict card at centre with 6 leader-line callouts revealing every
+  field in the verdict object - tier, consensus score, per-layer scores, winning span,
+  context window, and audit trail. Metaphor: parts diagram / spec sheet.
+  Hypothesis: a verdict is a structured record, not a scalar. Reading this diagram,
+  the viewer knows exactly what data one verdict carries and why each field exists.
+  Theme: DeLaval palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1140 570" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #00a6ff; }
+    .accent-2 { fill: #66ccff; }
+    .bg-card { fill: #f5f7fa; }
+    .stroke-accent-1 { stroke: #00a6ff; fill: none; }
+    .stroke-fg-3 { stroke: #4a7ba7; fill: none; }
+    .arrow-fill { fill: #00a6ff; }
+    .leader-dot { fill: #00a6ff; }
+    .label-bg { fill: #f5f7fa; stroke: #4a7ba7; stroke-width: 0.8; }
+    .chip-confirmed { fill: #00a6ff; }
+    .chip-text { fill: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #cfe6ff; }
+      .fg-2 { fill: #a8d4f0; }
+      .fg-3 { fill: #7ec0e6; }
+      .fg-4 { fill: #5aafc5; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+      .bg-card { fill: #0f2a45; }
+      .stroke-accent-1 { stroke: #4dc4ff; fill: none; }
+      .stroke-fg-3 { stroke: #7ec0e6; fill: none; }
+      .arrow-fill { fill: #4dc4ff; }
+      .leader-dot { fill: #4dc4ff; }
+      .label-bg { fill: #0f2a45; stroke: #7ec0e6; stroke-width: 0.8; }
+      .chip-confirmed { fill: #4dc4ff; }
+      .chip-text { fill: #0a1a2e; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 1140 x 570
+    Margins: L=20 R=20 T=30 B=30
+
+    CENTRE CARD (verdict object):
+      x=300, y=185, w=540, h=210
+      corners: TL(300,185) TR(840,185) BL(300,395) BR(840,395)
+      mid: (570, 290)
+      accent bar: y=185..190
+      inner padding: 18px
+
+    LABEL ZONES (6 callouts, splayed around card):
+      TL-label: x=20,  y=68,  w=230, h=60   center=(135,98)   right-center=(250,98)
+      TR-label: x=890, y=68,  w=230, h=60   center=(1005,98)  left-center=(890,98)
+      ML-label: x=15,  y=248, w=240, h=75   center=(135,285)  right-center=(255,285)
+      MR-label: x=885, y=238, w=240, h=85   center=(1005,280) left-center=(885,280)
+      BL-label: x=20,  y=418, w=230, h=60   center=(135,448)  right-center=(250,448)
+      BR-label: x=890, y=418, w=240, h=60   center=(1010,448) left-center=(890,448)
+
+    LEADER LINE ANCHORS (on card):
+      TL: card top edge x=400  -> (400,185)  ... label right-center(250,98)
+      TR: card top edge x=740  -> (740,185)  ... label left-center(890,98)
+      ML: card left edge y=258 -> (300,258)  ... label right-center(255,285)
+      MR: card right edge y=258-> (840,258)  ... label left-center(885,280)
+      BL: card bottom edge x=400->(400,395) ... label right-center(250,448)
+      BR: card bottom edge x=740->(740,395) ... label left-center(890,448)
+
+    LEADER DOT RADIUS: 3px (at card-side anchor)
+
+    TITLE: y=30
+    FOOTER CAPTION: y=540
+
+    Connector paths (computed):
+      TL: M328.21,199.11 L210.73,140.37 (approximated to card/label edges)
+      TR: M782.67,199.14 L906.45,140.16
+      ML: M298.00,303.85 L272.00,303.22
+      MR: M802.00,298.14 L828.01,296.92
+      BL: M298.12,401.73 L231.78,425.89
+      BR: M801.89,397.42 L884.43,426.07
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    centre: verdict-card (single large card)
+    radial: 6 label boxes placed TL, TR, ML, MR, BL, BR around the card
+    each label connected to card edge by a straight leader line (no arrowheads)
+    small filled dot at card-side anchor of each leader
+    typography: spec-sheet / parts-diagram aesthetic
+  === -->
+
+  <!-- BACKGROUND layer: transparent SVG root. No background rect. -->
+
+  <!-- HEADER -->
+  <g id="header">
+    <text x="570" y="26" class="fg-1" font-family="Segoe UI, Arial, sans-serif"
+          font-size="12" font-weight="700" text-anchor="middle" letter-spacing="0.8">
+      VERDICT ANATOMY &#8212; EXPLODED FIELD REFERENCE
+    </text>
+  </g>
+
+  <!-- NODES layer: centre card -->
+  <g id="nodes">
+    <!-- Centre verdict card -->
+    <g id="card-verdict">
+      <!-- Card body -->
+      <rect x="300" y="185" width="540" height="210" rx="8" ry="8"
+            class="bg-card" fill-opacity="1" stroke="#00a6ff" stroke-width="1.2"/>
+      <!-- Accent bar (flush top, no rx) -->
+      <rect x="300" y="185" width="540" height="5" fill="#00a6ff" opacity="0.85"/>
+
+      <!-- CONFIRMED pill at top of card -->
+      <rect x="318" y="200" width="120" height="24" rx="12" ry="12" class="chip-confirmed"/>
+      <text x="378" y="216" class="chip-text" font-family="Segoe UI, Arial, sans-serif"
+            font-size="10" font-weight="700" text-anchor="middle">CONFIRMED</text>
+
+      <!-- Claim text (representative specimen) -->
+      <text x="318" y="244" class="fg-2" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9.5" font-weight="600">Claim:</text>
+      <text x="318" y="259" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" font-style="italic">
+        &#8220;Operating margin improved by 12% in Q3 2024&#8221;
+      </text>
+
+      <!-- Divider strip (thin rect, not a connector) -->
+      <rect x="318" y="273" width="504" height="0.8" fill="#4a7ba7" opacity="0.4" class="fg-3"/>
+
+      <!-- Per-layer score bar visualization (inline) -->
+      <text x="318" y="291" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5">Layer scores:</text>
+      <!-- regex bar -->
+      <rect x="392" y="282" width="60" height="7" rx="3" fill="#00a6ff" opacity="0.9"/>
+      <text x="457" y="291" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">1.00</text>
+      <!-- fuzzy bar -->
+      <rect x="490" y="282" width="49" height="7" rx="3" fill="#00a6ff" opacity="0.7"/>
+      <text x="544" y="291" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">0.82</text>
+      <!-- bm25 bar -->
+      <rect x="575" y="282" width="43" height="7" rx="3" fill="#00a6ff" opacity="0.55"/>
+      <text x="623" y="291" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">0.71</text>
+      <!-- faiss bar -->
+      <rect x="658" y="282" width="47" height="7" rx="3" fill="#66ccff" opacity="0.7"/>
+      <text x="710" y="291" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">0.79</text>
+
+      <!-- Consensus score row -->
+      <text x="318" y="313" class="fg-2" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" font-weight="600">Consensus:</text>
+      <text x="393" y="313" class="accent-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" font-weight="700">0.87</text>
+      <text x="425" y="313" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5" font-style="italic">&#160;(threshold 0.70)</text>
+
+      <!-- Span row -->
+      <text x="318" y="333" class="fg-2" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" font-weight="600">Span:</text>
+      <text x="350" y="333" class="fg-3" font-family="monospace, Segoe UI, Arial, sans-serif"
+            font-size="8.5">./research/q3-report.pdf : 144&#8211;148</text>
+
+      <!-- Context window row -->
+      <text x="318" y="353" class="fg-2" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" font-weight="600">Context:</text>
+      <text x="365" y="353" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5">1 sentence before &#43; 1 sentence after</text>
+
+      <!-- Audit trail indicator -->
+      <text x="318" y="374" class="fg-2" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9" font-weight="600">Audit:</text>
+      <text x="355" y="374" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5">All per-layer scores preserved &#8226; disputable downstream</text>
+    </g>
+  </g>
+
+  <!-- CONNECTORS layer: leader lines from card to labels -->
+  <g id="connectors">
+    <!-- TL leader: card top-left area (400,185) -> TL-label right -->
+    <!-- Computed straight connector, direction=none, no arrowhead -->
+    <!-- Manual straight line from card anchor to label anchor -->
+    <line x1="400" y1="187" x2="250" y2="98" stroke="#4a7ba7" stroke-width="0.8" opacity="0.6"/>
+    <!-- TR leader: card top-right area (740,185) -> TR-label left -->
+    <line x1="740" y1="187" x2="890" y2="98" stroke="#4a7ba7" stroke-width="0.8" opacity="0.6"/>
+    <!-- ML leader: card left edge (300,258) -> ML-label right -->
+    <line x1="302" y1="258" x2="255" y2="278" stroke="#4a7ba7" stroke-width="0.8" opacity="0.6"/>
+    <!-- MR leader: card right edge (840,258) -> MR-label left -->
+    <line x1="838" y1="258" x2="885" y2="268" stroke="#4a7ba7" stroke-width="0.8" opacity="0.6"/>
+    <!-- BL leader: card bottom-left (400,395) -> BL-label right -->
+    <line x1="400" y1="393" x2="250" y2="448" stroke="#4a7ba7" stroke-width="0.8" opacity="0.6"/>
+    <!-- BR leader: card bottom-right (740,395) -> BR-label left -->
+    <line x1="740" y1="393" x2="890" y2="448" stroke="#4a7ba7" stroke-width="0.8" opacity="0.6"/>
+
+    <!-- Leader anchor dots ON card edges -->
+    <circle cx="400" cy="187" r="3.5" class="leader-dot"/>
+    <circle cx="740" cy="187" r="3.5" class="leader-dot"/>
+    <circle cx="302" cy="258" r="3.5" class="leader-dot"/>
+    <circle cx="838" cy="258" r="3.5" class="leader-dot"/>
+    <circle cx="400" cy="393" r="3.5" class="leader-dot"/>
+    <circle cx="740" cy="393" r="3.5" class="leader-dot"/>
+  </g>
+
+  <!-- CALLOUTS layer: 6 label boxes -->
+  <g id="callouts">
+
+    <!-- TL callout: "Verdict tier" -->
+    <g id="callout-tl">
+      <rect x="20" y="68" width="230" height="60" rx="5" ry="5" class="label-bg"/>
+      <!-- Accent chip for CONFIRMED colour swatch -->
+      <rect x="30" y="80" width="10" height="10" rx="2" ry="2" fill="#00a6ff"/>
+      <text x="46" y="90" class="fg-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9.5" font-weight="700">Verdict tier:</text>
+      <text x="116" y="90" class="accent-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9.5" font-weight="700">CONFIRMED</text>
+      <text x="30" y="107" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5">Score exceeds calibrated threshold</text>
+      <text x="30" y="120" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">3 output tiers: CONFIRMED / VERIFY / NOT FOUND</text>
+    </g>
+
+    <!-- TR callout: "Consensus score" -->
+    <g id="callout-tr">
+      <rect x="890" y="68" width="235" height="60" rx="5" ry="5" class="label-bg"/>
+      <text x="900" y="90" class="fg-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9.5" font-weight="700">Consensus score:</text>
+      <text x="1000" y="90" class="accent-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9.5" font-weight="700">0.87</text>
+      <text x="900" y="107" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5">Calibrated threshold: 0.70</text>
+      <text x="900" y="120" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">Weighted sum + voter bonus if 2&#43; layers agree</text>
+    </g>
+
+    <!-- ML callout: "Per-layer scores" -->
+    <g id="callout-ml">
+      <rect x="15" y="240" width="240" height="90" rx="5" ry="5" class="label-bg"/>
+      <text x="26" y="260" class="fg-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9.5" font-weight="700">Per-layer scores:</text>
+      <text x="26" y="277" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5">regex&#160;&#160;1.00 &#160;&#8226;&#160; fuzzy&#160;0.82</text>
+      <text x="26" y="292" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5">bm25&#160;&#160;0.71 &#160;&#8226;&#160; faiss&#160;0.79</text>
+      <text x="26" y="310" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">Each layer votes independently.</text>
+      <text x="26" y="323" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">Scores stored for full audit trail.</text>
+    </g>
+
+    <!-- MR callout: "Winning span" -->
+    <g id="callout-mr">
+      <rect x="885" y="228" width="245" height="90" rx="5" ry="5" class="label-bg"/>
+      <text x="896" y="250" class="fg-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9.5" font-weight="700">Winning span:</text>
+      <text x="896" y="267" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">./research/q3-report.pdf</text>
+      <text x="896" y="282" class="accent-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5" font-weight="600">lines 144&#8211;148</text>
+      <text x="896" y="299" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">Best-scoring passage from corpus.</text>
+      <text x="896" y="312" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">File path &#43; line range included.</text>
+    </g>
+
+    <!-- BL callout: "Context window" -->
+    <g id="callout-bl">
+      <rect x="20" y="418" width="230" height="60" rx="5" ry="5" class="label-bg"/>
+      <text x="30" y="438" class="fg-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9.5" font-weight="700">Context window:</text>
+      <text x="30" y="455" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5">1 sentence before &#43; 1 sentence after</text>
+      <text x="30" y="470" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">Gives reviewer full reading context.</text>
+    </g>
+
+    <!-- BR callout: "Audit trail" -->
+    <g id="callout-br">
+      <rect x="890" y="418" width="235" height="60" rx="5" ry="5" class="label-bg"/>
+      <text x="900" y="438" class="fg-1" font-family="Segoe UI, Arial, sans-serif"
+            font-size="9.5" font-weight="700">Audit trail:</text>
+      <text x="900" y="455" class="fg-3" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8.5">Every per-layer score preserved.</text>
+      <text x="900" y="470" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+            font-size="8">Downstream can dispute or re-weight.</text>
+    </g>
+
+  </g>
+
+  <!-- CONTENT layer: footer caption -->
+  <g id="content">
+    <text x="570" y="540" class="fg-4" font-family="Segoe UI, Arial, sans-serif"
+          font-size="9" text-anchor="middle" font-style="italic">
+      A verdict is a structured record &#8212; not a scalar flag. Six fields are preserved per claim.
+    </text>
+  </g>
+
+</svg>

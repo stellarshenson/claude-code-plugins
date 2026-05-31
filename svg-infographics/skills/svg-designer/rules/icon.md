@@ -2,15 +2,21 @@
 
 ## Source
 
-Use one of:
+Three icon libraries, preferred order, plus a primitives fallback:
 
-- **draw.io stencil library** (1000+ icons, built-in): `svg-infographics shapes render --library aws --name EC2 --size 48`. Returns a ready-to-paste `<g>`.
-- **Bundled primitives** (gear, cog, arrow, check, cross, star, etc.): `svg-infographics primitives icon --type gear --size 32`.
+- **Lucide** (1000+, ISC): paste the `<path>` from lucide.dev into `<g transform="translate(x,y) scale(s)" fill="none" stroke="<theme hex>" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`. Comment `<!-- Icon: <name> (Lucide, ISC license) -->`
+- **Custom (bundled with the plugin)**: the plugin's own icons (e.g. `brain-circuit`). `svg-infographics icons list` to browse, `svg-infographics icons render <name> --size 32 --stroke <hex>` for a paste-ready `<g>`. Same 24-grid stroke convention as Lucide, so they sit side by side. The catalogue also points at Lucide + draw.io
+- **draw.io stencils** (1000+): `svg-infographics shapes render EC2 --library aws --width 48 --height 48` (name is positional; size via `--width`/`--height`, not `--size`)
+- **Primitives fallback** (trivial geometric marks - gear, star, hexagon, diamond): each is its own subcommand (`svg-infographics primitives gear`, `primitives star`, ...); each needs explicit geometry flags, so run `primitives <shape> --help` first. `primitives --list` for the set. Not a full icon set - simple glyphs only
+
+### Lucide paths stay verbatim (MANDATORY)
+
+Copy the Lucide `d` data byte-for-byte. Size, colour, position all come from `transform` + `stroke` - NEVER from rewriting coordinates. Re-typed paths drift off the 24-grid and break stroke geometry. Touch a path only when the icon genuinely needs a bespoke change (trim a sub-glyph, merge two marks); comment the why right there. Default = paste, scale, recolour, done.
 
 DO NOT:
-- Source icons by pasting from web (SVG files may embed scripts, external font references, or a different coordinate system).
-- Draw icons by hand from basic primitives unless the icon is genuinely custom (domain-specific logo, bespoke brand mark).
-- Use emoji as icons - they render inconsistently across platforms.
+- Paste arbitrary SVG off the web (may embed scripts, external fonts, or a foreign coordinate system)
+- Hand-draw from primitives unless genuinely custom (domain logo, bespoke brand mark) - and if it earns reuse, add it to the bundled `icons` library
+- Use emoji as icons - they render inconsistently across platforms
 
 ## Sizing
 

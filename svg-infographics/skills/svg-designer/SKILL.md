@@ -50,6 +50,7 @@ Every visible pixel traces back to a CLI call. Palette:
 - `place` - position element (icon, text bbox, badge) inside a container. Uses empty-space under the hood
 - `callouts` - joint-optimal callout placement solver
 - `charts` - themed data charts via pygal
+- `icons` - bundled plugin-own icons + one-view catalogue of every icon route (custom / Lucide / draw.io). `icons list` / `icons render <name>`
 - `shapes` - 1000+ draw.io stencil icons
 - `background` - procedural textures (circuit, neural, topo, grid, celtic, organic)
 - `text-to-path` - exact text bbox via TTF outline

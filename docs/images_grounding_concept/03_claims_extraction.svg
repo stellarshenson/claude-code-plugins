@@ -1,0 +1,180 @@
+<!--
+  03_claims_extraction.svg - Claims extraction pipeline funnel
+  Shows: raw agent prose entering at top, 4 sequential processing steps,
+  4 typed claim output buckets at the bottom as coloured pills.
+  Intent: reader sees the extraction as a funnel - wide input narrows to
+  4 typed claim categories. Numbered step cards make the sequence explicit.
+  Theme: DeLaval palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 570" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #00a6ff; }
+    .accent-2 { fill: #66ccff; }
+    .arrow-fill { fill: #00a6ff; }
+    .on-pill { fill: #ffffff; }
+    .pill-1 { fill: #00a6ff; }
+    .pill-2 { fill: #2a5f9e; }
+    .pill-3 { fill: #4a7ba7; }
+    .pill-4 { fill: #6b8db5; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #cfe6ff; }
+      .fg-2 { fill: #a8d4f0; }
+      .fg-3 { fill: #7ec0e6; }
+      .fg-4 { fill: #5aafc5; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+      .arrow-fill { fill: #4dc4ff; }
+      .on-pill { fill: #0a1a2e; }
+      .pill-1 { fill: #4dc4ff; }
+      .pill-2 { fill: #a8d4f0; }
+      .pill-3 { fill: #7ec0e6; }
+      .pill-4 { fill: #5aafc5; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1100 x 570
+    Margins: L=60 R=60, top=30 bottom=30
+
+    Input bar: x=200..900 (w=700), y=30..65 (h=35)
+      outer: x=194..906, y=24..71
+
+    Step cards: x=230..870 (w=640), h=60, gap=46
+      Step 1: y=90..150   outer: y=84..156
+      Step 2: y=196..256  outer: y=190..262
+      Step 3: y=302..362  outer: y=296..368
+      Step 4: y=408..468  outer: y=402..474
+
+    Connector arrows (vertical, between consecutive cards):
+      Clearance rule: arrow inner y must be in [card_N_inner_bot+13, card_N1_inner_top-13]
+        Arrow inner height max = gap - 26 = 46 - 26 = 20px
+      Arrow 1 (step1 bot=150, step2 top=196):
+        inner y=163..182 (h=19), outer y=157..188
+        Clearance from card1 outer bot (156): 157-156=1px ✓
+        Clearance to card2 outer top (190): 190-188=2px ✓
+      Arrow 2 (step2 bot=256, step3 top=302):
+        inner y=269..288, outer y=263..294
+        Clearance from card2 outer bot (262): 263-262=1px ✓
+        Clearance to card3 outer top (296): 296-294=2px ✓
+      Arrow 3 (step3 bot=362, step4 top=408):
+        inner y=375..394, outer y=369..400
+        Clearance from card3 outer bot (368): 369-368=1px ✓
+        Clearance to card4 outer top (402): 402-400=2px ✓
+
+    Output label: y=489 (baseline), inner y=480..489, outer y=476..493
+      Clearance from card4 outer bot (474): 476-474=2px ✓
+
+    Pills: y=504..534 (h=30, rx=15)
+      pill_w=148, gap=26, total=4*148+3*26=670, left=(1100-670)/2=215
+      Pill 1 (Quote):       x=215..363
+      Pill 2 (Numeric):     x=389..537
+      Pill 3 (Attribution): x=563..711
+      Pill 4 (Assertion):   x=737..885
+      outer: y=498..540
+      Clearance from label outer bot (493): 498-493=5px ✓
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: input-bar -> step1 -arrow-> step2 -arrow-> step3 -arrow-> step4 -> label -> pills
+    Arrows: vertical straight, source-to-sink, centred at x=550
+    All step cards same width (640) and height (60), centred at x=550
+  === -->
+
+  <!-- === Input bar === -->
+  <g id="input-bar">
+    <rect x="200" y="30" width="700" height="35" rx="4" ry="4" fill="#00a6ff" fill-opacity="0.12"/>
+    <rect x="200" y="30" width="700" height="35" rx="4" ry="4" fill="none" stroke="#00a6ff" stroke-width="1.2"/>
+    <text x="550" y="52" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" text-anchor="middle">Agent output (prose)</text>
+  </g>
+
+  <!-- === Step 1: Tokenise into sentences (y=90..150) === -->
+  <g id="step-1">
+    <rect x="230" y="90" width="640" height="60" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="230" y="90" width="640" height="60" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="230" y="90" width="640" height="5" fill="#00a6ff" opacity="0.7"/>
+    <rect x="230" y="90" width="44" height="60" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.15"/>
+    <text x="252" y="126" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">1</text>
+    <text x="296" y="118" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700">Tokenise into sentences</text>
+    <text x="296" y="136" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">Split prose on sentence boundaries &#8226; strip punctuation markers &#8226; filter empties</text>
+  </g>
+
+  <!-- Arrow 1: inner y=163..182, outer y=157..188 -->
+  <g id="arrow-1-2">
+    <line x1="550" y1="163" x2="550" y2="172" stroke="#00a6ff" stroke-width="1.5" opacity="0.75"/>
+    <polygon points="550,182 544,172 556,172" class="arrow-fill" opacity="0.85"/>
+  </g>
+
+  <!-- === Step 2: Filter hedge + subjective markers (y=196..256) === -->
+  <g id="step-2">
+    <rect x="230" y="196" width="640" height="60" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="230" y="196" width="640" height="60" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="230" y="196" width="640" height="5" fill="#00a6ff" opacity="0.7"/>
+    <rect x="230" y="196" width="44" height="60" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.15"/>
+    <text x="252" y="232" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">2</text>
+    <text x="296" y="224" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700">Filter hedge + subjective markers</text>
+    <text x="296" y="242" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">Drop &#8220;may&#8221;, &#8220;might&#8221;, &#8220;I think&#8221; &#8226; remove opinion + uncertainty language &#8226; keep factual assertions only</text>
+  </g>
+
+  <!-- Arrow 2: inner y=269..288, outer y=263..294 -->
+  <g id="arrow-2-3">
+    <line x1="550" y1="269" x2="550" y2="278" stroke="#00a6ff" stroke-width="1.5" opacity="0.75"/>
+    <polygon points="550,288 544,278 556,278" class="arrow-fill" opacity="0.85"/>
+  </g>
+
+  <!-- === Step 3: Classify survivors (y=302..362) === -->
+  <g id="step-3">
+    <rect x="230" y="302" width="640" height="60" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="230" y="302" width="640" height="60" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="230" y="302" width="640" height="5" fill="#00a6ff" opacity="0.7"/>
+    <rect x="230" y="302" width="44" height="60" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.15"/>
+    <text x="252" y="338" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">3</text>
+    <text x="296" y="330" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700">Classify survivors</text>
+    <text x="296" y="348" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">Assign type: Quote &#8226; Numeric &#8226; Attribution &#8226; Assertion &#8226; using regex + heuristic rules</text>
+  </g>
+
+  <!-- Arrow 3: inner y=375..394, outer y=369..400 -->
+  <g id="arrow-3-4">
+    <line x1="550" y1="375" x2="550" y2="384" stroke="#00a6ff" stroke-width="1.5" opacity="0.75"/>
+    <polygon points="550,394 544,384 556,384" class="arrow-fill" opacity="0.85"/>
+  </g>
+
+  <!-- === Step 4: Annotate provenance (y=408..468) === -->
+  <g id="step-4">
+    <rect x="230" y="408" width="640" height="60" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="230" y="408" width="640" height="60" rx="6" ry="6" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="230" y="408" width="640" height="5" fill="#00a6ff" opacity="0.7"/>
+    <rect x="230" y="408" width="44" height="60" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.15"/>
+    <text x="252" y="444" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" text-anchor="middle">4</text>
+    <text x="296" y="436" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="700">Annotate provenance</text>
+    <text x="296" y="454" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">Record source sentence offset, token span, agent section &#8226; attach to each typed claim</text>
+  </g>
+
+  <!-- Output label: inner y=480..489, outer y=476..493. Card4 outer bot=474. Clearance=2px ✓ -->
+  <text x="550" y="489" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" text-anchor="middle" letter-spacing="0.5">OUTPUT CLAIM TYPES</text>
+
+  <!-- === Output pills (y=504..534, rx=15) ===
+       Pill 1: x=215..363, Pill 2: x=389..537, Pill 3: x=563..711, Pill 4: x=737..885
+       outer y=498..540. Label outer bot=493. Clearance=5px ✓
+  === -->
+  <g id="pill-quote">
+    <rect x="215" y="504" width="148" height="30" rx="15" ry="15" class="pill-1"/>
+    <text x="289" y="524" class="on-pill" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Quote</text>
+  </g>
+  <g id="pill-numeric">
+    <rect x="389" y="504" width="148" height="30" rx="15" ry="15" class="pill-2"/>
+    <text x="463" y="524" class="on-pill" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Numeric</text>
+  </g>
+  <g id="pill-attribution">
+    <rect x="563" y="504" width="148" height="30" rx="15" ry="15" class="pill-3"/>
+    <text x="637" y="524" class="on-pill" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Attribution</text>
+  </g>
+  <g id="pill-assertion">
+    <rect x="737" y="504" width="148" height="30" rx="15" ry="15" class="pill-4"/>
+    <text x="811" y="524" class="on-pill" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" text-anchor="middle">Assertion</text>
+  </g>
+
+</svg>

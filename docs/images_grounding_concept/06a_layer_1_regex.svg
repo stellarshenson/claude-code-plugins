@@ -1,0 +1,180 @@
+<!--
+  06a_layer_1_regex.svg - Layer 1 per-method banner: Exact regex grounding
+  Shows: claim text flows into a passage box; one row of word-rects lights up in
+  accent-1 as the matched substring; binary 1.0 score chip on the right.
+  Hypothesis: Layer 1 is the cheapest, surest signal. When it fires the match
+  is unambiguous: one highlighted span, one binary outcome. The reader should
+  immediately see "cheap path, high certainty."
+  Intent: standalone close-up of the regex method for the grounding brief.
+  Theme: DeLaval palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 180" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .fg-1  { fill: #1a4d94; }
+    .fg-2  { fill: #2a5f9e; }
+    .fg-3  { fill: #4a7ba7; }
+    .fg-4  { fill: #6b8db5; }
+    .accent-1 { fill: #00a6ff; }
+    .accent-2 { fill: #66ccff; }
+    .arrow-fill  { fill: #00a6ff; }
+    .on-chip { fill: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1  { fill: #cfe6ff; }
+      .fg-2  { fill: #a8d4f0; }
+      .fg-3  { fill: #7ec0e6; }
+      .fg-4  { fill: #5aafc5; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+      .arrow-fill  { fill: #4dc4ff; }
+      .on-chip { fill: #0a1a2e; }
+    }
+  </style>
+
+  <!-- === GRID ===
+    viewBox: 1100 x 180
+    Outer margins: L=20 R=20, top=18 bottom=18
+    Usable h=144, usable w=1060
+
+    LEFT panel (title + subtitle): x=20..280 (w=260), y=18..162
+      accent bar: x=20, y=18, w=260, h=5
+      title baseline: y=52   (bar_bottom=23, +12 pad, +17 text height)
+      subtitle line 1: y=68
+      subtitle line 2: y=82
+      bottom label: y=148
+
+    GAP 1: x=280..298 (18px) - visual breathing room, no connectors
+
+    CENTRE panel (passage illustration): x=298..870 (w=572), y=18..162
+      accent bar: x=298, y=18, w=572, h=5
+      inner padding x: 314 (left), 854 (right) = 16px from panel edges
+      passage box: x=314..750 (w=436), y=34..148 (h=114)
+        6 word-row slots, each h=15, gap=4 -> rhythm=19
+        row tops: y=38, 57, 76, 95, 114, 133
+        word-rect width nominal: 40px, 50px, 36px, 44px, 38px, 42px
+        row 3 (y=76..91): highlighted row (accent-1) - "the quarterly losses"
+          words: [314+4, 314+52, 314+110] widths [44, 52, 56]
+        non-highlighted rows: fg-4 fill-opacity 0.35
+      match label: x=314, y=158 (below passage box)
+
+    GAP 2: x=870..888 (18px)
+
+    RIGHT panel (score chip): x=888..1080 (w=192), y=18..162
+      accent bar: x=888, y=18, w=192, h=5
+      chip rect: x=908..1060 (w=152, h=38, rx=19) centred at y=72
+        chip top y=53, chip bottom y=91
+      score text: x=984, y=77
+      binary label: x=984, y=112
+      icon area: x=984, y=126 (check circle placeholder)
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    LEFT: v-stack title+subtitle (label panel)
+    CENTRE: passage box with 6 word-rows; row 3 highlighted accent-1
+    RIGHT: score chip centred vertically
+    No routed connectors across panels - panels stand alone with implied flow (L->R read order)
+  === -->
+
+  <!-- LEFT panel -->
+  <g id="panel-left">
+    <rect x="20" y="18" width="260" height="144" rx="6" ry="6" fill="#1a4d94" fill-opacity="0.05" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="20" y="18" width="260" height="5" fill="#00a6ff" opacity="0.7"/>
+    <text x="32" y="52" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">Layer 1: Exact regex</text>
+    <text x="32" y="70" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9">Whitespace-tolerant,</text>
+    <text x="32" y="83" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9">case-insensitive. O(n).</text>
+    <text x="32" y="110" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">Fires on literal substring</text>
+    <text x="32" y="122" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8">match anywhere in passage.</text>
+    <text x="32" y="148" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600">fast path &#8226; binary signal</text>
+  </g>
+
+  <!-- CENTRE panel - passage illustration -->
+  <g id="panel-centre">
+    <rect x="298" y="18" width="572" height="144" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.04" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="298" y="18" width="572" height="5" fill="#00a6ff" opacity="0.7"/>
+
+    <!-- Passage label -->
+    <text x="314" y="34" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="0.6">PASSAGE</text>
+
+    <!-- Row 1 - muted word rects (y=38..53) -->
+    <rect x="314" y="38" width="44" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="364" y="38" width="52" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="422" y="38" width="38" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="466" y="38" width="60" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="532" y="38" width="42" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="580" y="38" width="36" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+
+    <!-- Row 2 - muted (y=57..68) -->
+    <rect x="314" y="57" width="56" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="376" y="57" width="40" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="422" y="57" width="64" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="492" y="57" width="44" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="542" y="57" width="38" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+
+    <!-- Row 3 - HIGHLIGHTED (y=76..87) - "the quarterly losses" -->
+    <!-- non-match words, muted -->
+    <rect x="314" y="76" width="36" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="356" y="76" width="50" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <!-- match words, accent-1 lit -->
+    <rect x="412" y="74" width="32" height="13" rx="2" fill="#00a6ff" fill-opacity="0.70"/>
+    <rect x="450" y="74" width="66" height="13" rx="2" fill="#00a6ff" fill-opacity="0.70"/>
+    <rect x="522" y="74" width="52" height="13" rx="2" fill="#00a6ff" fill-opacity="0.70"/>
+    <!-- small accent-1 border glow on matched words -->
+    <rect x="412" y="74" width="32" height="13" rx="2" fill="none" stroke="#00a6ff" stroke-width="1.2" opacity="0.80"/>
+    <rect x="450" y="74" width="66" height="13" rx="2" fill="none" stroke="#00a6ff" stroke-width="1.2" opacity="0.80"/>
+    <rect x="522" y="74" width="52" height="13" rx="2" fill="none" stroke="#00a6ff" stroke-width="1.2" opacity="0.80"/>
+
+    <!-- Row 4 - muted (y=95..106) -->
+    <rect x="314" y="95" width="48" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="368" y="95" width="42" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="416" y="95" width="58" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="480" y="95" width="36" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+
+    <!-- Row 5 - muted (y=114..125) -->
+    <rect x="314" y="114" width="60" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="380" y="114" width="44" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="430" y="114" width="38" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="474" y="114" width="50" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+
+    <!-- Row 6 - muted (y=133..144) -->
+    <rect x="314" y="133" width="40" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="360" y="133" width="54" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+    <rect x="420" y="133" width="36" height="11" rx="2" fill="#6b8db5" fill-opacity="0.30"/>
+
+    <!-- Match label below passage -->
+    <text x="314" y="158" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic">match: &#8220;the quarterly losses&#8221;</text>
+
+    <!-- Claim label on right side of centre panel -->
+    <text x="756" y="34" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-weight="600" letter-spacing="0.6">CLAIM</text>
+    <!-- Claim word rects - right side of centre panel -->
+    <rect x="756" y="43" width="52" height="11" rx="2" fill="#4a7ba7" fill-opacity="0.50"/>
+    <rect x="756" y="60" width="40" height="11" rx="2" fill="#4a7ba7" fill-opacity="0.50"/>
+    <rect x="756" y="77" width="60" height="11" rx="2" fill="#00a6ff" fill-opacity="0.55"/>
+    <rect x="756" y="94" width="48" height="11" rx="2" fill="#4a7ba7" fill-opacity="0.50"/>
+
+    <!-- Match indicator: left-pointing arrow + label sitting just to the right of the matched word-rect at row 3 -->
+    <!-- (matched rect spans x=756..816 at y=77..88; label starts at x=822, baseline y=86, text-anchor=start so it does NOT overlap the rect) -->
+    <text x="822" y="86" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="start">&#8592; match</text>
+  </g>
+
+  <!-- RIGHT panel - score chip -->
+  <g id="panel-right">
+    <rect x="888" y="18" width="192" height="144" rx="6" ry="6" fill="#00a6ff" fill-opacity="0.04" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="888" y="18" width="192" height="5" fill="#00a6ff" opacity="0.7"/>
+
+    <!-- Score chip -->
+    <rect x="908" y="52" width="152" height="38" rx="19" fill="#00a6ff" fill-opacity="0.90"/>
+    <text x="984" y="76" class="on-chip" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" text-anchor="middle">Score: 1.0</text>
+
+    <!-- Binary signal label -->
+    <text x="984" y="108" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="9" text-anchor="middle">Binary signal</text>
+
+    <!-- check mark icon (Lucide check-circle, ISC license) -->
+    <!-- © Lucide Contributors, ISC license -->
+    <g transform="translate(972,118)" fill="none" stroke="#00a6ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.80">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="7,12 10,15 17,9"/>
+    </g>
+
+    <text x="984" y="152" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="8" text-anchor="middle" font-style="italic">match &#8594; 1.0, miss &#8594; 0.0</text>
+  </g>
+
+</svg>

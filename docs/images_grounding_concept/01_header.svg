@@ -1,0 +1,107 @@
+<!--
+  01_header.svg - Document section-header banner for grounding_concept.md
+  Shows: title "Grounding", subtitle, two meta lines, bottom gradient accent bar,
+  decorative motif of 4 dots converging into a single check-mark glyph (visual
+  metaphor for multi-signal consensus producing a single verdict).
+  Intent: opens the internal engineering brief; signals subject, brand, and the
+  90% reduction goal at a glance.
+  Theme: DeLaval palette (fg-1..fg-4 = blue grades, accent-1/2 = cyan).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 130">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #00a6ff; }
+    .accent-2 { fill: #66ccff; }
+    .decor-stroke-1 { stroke: #00a6ff; }
+    .decor-stroke-2 { stroke: #66ccff; }
+    .decor-fill-1 { fill: #00a6ff; }
+    .decor-fill-2 { fill: #66ccff; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #cfe6ff; }
+      .fg-2 { fill: #a8d4f0; }
+      .fg-3 { fill: #7ec0e6; }
+      .fg-4 { fill: #5aafc5; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+      .decor-stroke-1 { stroke: #4dc4ff; }
+      .decor-stroke-2 { stroke: #88ddff; }
+      .decor-fill-1 { fill: #4dc4ff; }
+      .decor-fill-2 { fill: #88ddff; }
+    }
+  </style>
+
+  <defs>
+    <linearGradient id="accent_bar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0" stop-color="#1a4d94"/>
+      <stop offset="0.6" stop-color="#00a6ff"/>
+      <stop offset="1" stop-color="#66ccff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 0 0 800 130
+    Margins: L=40 R=40
+    Text column: x=40
+      title_y=38 (22px bold)
+      subtitle_y=60 (13px semi-bold)
+      meta1_y=82 (10px)
+      meta2_y=98 (9px)
+    Accent bar: y=120 h=10 full width (gradient fg-1 -> accent-1 -> accent-2)
+    Decorative motif: x=640..760 (120px = 15% of width, under the 20% cap),
+      vertically centred y=43..96.
+      4 small dots (r=4) at x=652,672,692,712 with subtle convergence lines
+      drawing into a single check-mark at x=735..760.
+      Carries no information; visual metaphor only.
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: text-column (x=40..620), decorative-motif (x=640..760)
+    v-stack (text-column): title, subtitle, meta1, meta2
+    contain: accent-bar spans full width at bottom
+  === -->
+
+  <g id="header">
+  <!-- Bottom accent gradient bar -->
+  <rect x="0" y="120" width="800" height="10" fill="url(#accent_bar)" opacity="0.55"/>
+
+  <!-- Title -->
+  <text x="40" y="38" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" class="fg-1">Grounding</text>
+
+  <!-- Subtitle -->
+  <text x="40" y="60" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="600" class="fg-2">Verifying agent claims against source material</text>
+
+  <!-- Meta line 1: brief type -->
+  <text x="40" y="82" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3">Internal engineering brief</text>
+
+  <!-- Meta line 2: goal + version stamp -->
+  <text x="40" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-4">Goal: -90% ungrounded claims  |  v5</text>
+
+  <!-- Decorative motif: 4 source dots converging into a single check verdict -->
+  <g id="decorative-motif">
+    <!-- 4 source dots in a row at left of motif (parallel signals) -->
+    <g id="motif-dots">
+      <circle cx="652" cy="56" r="4" class="decor-fill-1" opacity="0.85"/>
+      <circle cx="652" cy="72" r="4" class="decor-fill-1" opacity="0.85"/>
+      <circle cx="652" cy="88" r="4" class="decor-fill-2" opacity="0.85"/>
+      <circle cx="652" cy="40" r="4" class="decor-fill-2" opacity="0.85"/>
+    </g>
+    <!-- Convergence lines from each dot toward a single merge point at x=708,y=64 -->
+    <g id="motif-converge" fill="none" stroke-width="1.2" opacity="0.45">
+      <line x1="657" y1="40" x2="708" y2="64" class="decor-stroke-2"/>
+      <line x1="657" y1="56" x2="708" y2="64" class="decor-stroke-1"/>
+      <line x1="657" y1="72" x2="708" y2="64" class="decor-stroke-1"/>
+      <line x1="657" y1="88" x2="708" y2="64" class="decor-stroke-2"/>
+    </g>
+    <!-- Merge node (small circle at junction) -->
+    <circle cx="708" cy="64" r="3" class="decor-fill-1" opacity="0.7"/>
+    <!-- Spine from merge to check-mark base -->
+    <line x1="711" y1="64" x2="728" y2="64" class="decor-stroke-1" stroke-width="1.4" opacity="0.5"/>
+    <!-- Check-mark glyph drawn as a polyline (verdict = CONFIRMED) -->
+    <path d="M730 64 L740 74 L760 50" fill="none" class="decor-stroke-1" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+  </g>
+  </g>
+
+</svg>

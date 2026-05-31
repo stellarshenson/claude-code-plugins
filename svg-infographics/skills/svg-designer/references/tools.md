@@ -126,6 +126,11 @@ svg-infographics
  |   |-- render --name X         Render at target size, returns primitives-compatible result
  |   '-- catalogue --category X  Visual SVG grid of all shapes in category
  |
+ |-- icons                       Bundled plugin-own icons + catalogue of every route
+ |   |-- list [--category X]     Bundled custom icons + pointers to Lucide / draw.io
+ |   |-- search "query"          Search bundled icons by name/keyword
+ |   '-- render NAME [--size N]  Paste-ready <g>, 24-grid stroke convention
+ |
  |-- VALIDATORS (quality panel - all six MUST pass before delivery)
  |   |-- overlaps                Text/shape overlap, spacing rhythm, font floors, callout collisions
  |   |-- contrast                WCAG 2.1 AA/AAA in both light and dark mode
@@ -172,5 +177,6 @@ svg-infographics
 | Inflate / deflate a shape | `boolean --op buffer --svg scene.svg --ids shape --margin 8` |
 | Check before delivery | `overlaps` + `contrast` + `alignment` + `connectors` + `css` + `collide` |
 | Add visual richness | `/svg-infographics:beautify file.svg medium` |
-| Search for icons | `shapes search "database"` |
+| Browse bundled custom icons | `icons list` |
+| Search for icons | `icons search "brain"` (custom) or `shapes search "database"` (draw.io) |
 | Export SVG to PNG | `render-png input.svg output.png --mode both --width 3000` |

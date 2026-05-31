@@ -1,0 +1,169 @@
+<!--
+  02_pipeline.svg - Three-stage grounding pipeline overview
+  Shows: 3 sequential stage cards (Claims extraction -> Evidence gathering ->
+  Grounding run) with the ./research/ folder positioned between stages 2 and 3
+  as the durable artifact boundary - the contract between the agent (writer)
+  and the grounder (reader).
+  Intent: at-a-glance picture of the pipeline; one concern per stage, files-on-disk
+  communication.
+  Theme: DeLaval palette.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMid meet">
+  <style>
+    .fg-1 { fill: #1a4d94; }
+    .fg-2 { fill: #2a5f9e; }
+    .fg-3 { fill: #4a7ba7; }
+    .fg-4 { fill: #6b8db5; }
+    .accent-1 { fill: #00a6ff; }
+    .accent-2 { fill: #66ccff; }
+    .stroke-accent-1 { stroke: #00a6ff; fill: none; }
+    .arrow-stroke { stroke: #00a6ff; }
+    .arrow-fill { fill: #00a6ff; }
+    .folder-stroke { stroke: #00a6ff; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #cfe6ff; }
+      .fg-2 { fill: #a8d4f0; }
+      .fg-3 { fill: #7ec0e6; }
+      .fg-4 { fill: #5aafc5; }
+      .accent-1 { fill: #4dc4ff; }
+      .accent-2 { fill: #88ddff; }
+      .stroke-accent-1 { stroke: #4dc4ff; fill: none; }
+      .arrow-stroke { stroke: #4dc4ff; }
+      .arrow-fill { fill: #4dc4ff; }
+      .folder-stroke { stroke: #4dc4ff; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1200 x 420
+    Margins: L=30 R=30, top=40 bottom=40
+    Usable width: 1140 (x=30..1170)
+    3 equal cards, gap1=80 gap2=100:
+      card_w = (1140 - 80 - 100) / 3 = 320
+      Card 1: x=30..350    (inner bbox w=320)
+      Gap 1:  x=350..430   (80px wide)
+      Card 2: x=430..750   (inner bbox w=320)
+      Gap 2:  x=750..850   (100px wide, holds folder icon at centre x=800)
+      Card 3: x=850..1170  (inner bbox w=320)
+    Outer-bbox padding (checker adds 6px per side for logos/icons):
+      Card 1 outer: x=24..356
+      Card 2 outer: x=424..756
+      Card 3 outer: x=844..1176
+    Arrow 1 inner: x=357..423, y=205..215
+      outer bbox: x=351..429 — fully between card1 outer (..356) and card2 outer (424..)
+    Folder inner bbox: 24w x 22h centred at (800,210) -> x=788..812, y=199..221
+      outer bbox: x=782..818, y=193..227
+    Arrow 2 stubs inner:
+      left stub:  x=757..782, y=210 (path; stops before folder outer)
+      right stub: x=818..845, y=205..215 (path + arrowhead tip at x=845)
+      outer bbox of right stub: x=812..851 — before card3 outer (844..)
+    Card vertical: y=80..340 (h=260)
+    Accent bars: y=80, h=5
+    Card padding-x: 24
+    Connector y: 210 (card vertical centre)
+    Title: y=44, subtitle y=64
+    Footer caption row: y=385
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: card1 -> arrow1 -> card2 -> arrow2-left -> folder -> arrow2-right -> card3
+    folder icon sits at (800,210) in gap 2 as the visual checkpoint representing
+    the ./research/ contract between writer (stage 2) and grounder (stage 3).
+  === -->
+
+  <!-- Title -->
+  <text x="600" y="44" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1" text-anchor="middle" letter-spacing="0.5">GROUNDING PIPELINE &#8212; THREE SEQUENTIAL STAGES</text>
+  <text x="600" y="64" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="fg-3" text-anchor="middle">Each stage owns one concern. Stages communicate only via files on disk.</text>
+
+  <!-- === Card 1: Claims extraction === -->
+  <g id="card-claims">
+    <rect x="30" y="80" width="320" height="260" rx="8" ry="8" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="30" y="80" width="320" height="260" rx="8" ry="8" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="30" y="80" width="320" height="5" rx="0" ry="0" fill="#00a6ff" opacity="0.7"/>
+    <text x="54" y="108" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" letter-spacing="1">STAGE 1</text>
+    <text x="54" y="134" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700">Claims extraction</text>
+    <text x="54" y="158" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="11">Tokenise &#8594; filter &#8594; classify</text>
+    <text x="54" y="198" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Sentence tokenisation</text>
+    <text x="54" y="218" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Hedge / subjective filters</text>
+    <text x="54" y="238" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Type classification</text>
+    <text x="54" y="258" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Provenance annotation</text>
+    <text x="54" y="305" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic">Output: structured claim list</text>
+  </g>
+
+  <!-- === Card 2: Evidence gathering === -->
+  <g id="card-evidence">
+    <rect x="430" y="80" width="320" height="260" rx="8" ry="8" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="430" y="80" width="320" height="260" rx="8" ry="8" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="430" y="80" width="320" height="5" rx="0" ry="0" fill="#00a6ff" opacity="0.7"/>
+    <text x="454" y="108" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" letter-spacing="1">STAGE 2</text>
+    <text x="454" y="134" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700">Evidence gathering</text>
+    <text x="454" y="158" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="11">Tool calls &#8594; ./research/</text>
+    <text x="454" y="198" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Code-execution environment</text>
+    <text x="454" y="218" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Persist-or-discard policy</text>
+    <text x="454" y="238" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Metadata sidecars</text>
+    <text x="454" y="258" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Durable, auditable corpus</text>
+    <text x="454" y="305" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic">Output: ./research/ directory</text>
+  </g>
+
+  <!-- === Card 3: Grounding run === -->
+  <g id="card-grounding">
+    <rect x="850" y="80" width="320" height="260" rx="8" ry="8" fill="#00a6ff" fill-opacity="0.05"/>
+    <rect x="850" y="80" width="320" height="260" rx="8" ry="8" fill="none" stroke="#00a6ff" stroke-width="1"/>
+    <rect x="850" y="80" width="320" height="5" rx="0" ry="0" fill="#00a6ff" opacity="0.7"/>
+    <text x="874" y="108" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="600" letter-spacing="1">STAGE 3</text>
+    <text x="874" y="134" class="fg-1" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700">Grounding run</text>
+    <text x="874" y="158" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="11">4 layers + consensus &#8594; verdict</text>
+    <text x="874" y="198" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Regex + Levenshtein</text>
+    <text x="874" y="218" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; BM25 + optional FAISS</text>
+    <text x="874" y="238" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Multi-voter consensus</text>
+    <text x="874" y="258" class="fg-3" font-family="Segoe UI, Arial, sans-serif" font-size="10">&#8226; Per-claim audit trail</text>
+    <text x="874" y="305" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic">Output: CONFIRMED / VERIFY / NOT FOUND</text>
+  </g>
+
+  <!-- Arrow 1: gap zone x=350..430.
+       card1 outer right=356 (+6 pad), card2 outer left=424 (-6 pad).
+       Arrow group outer must stay within x=357..423 (i.e., inner must stay within 363..417
+       to keep outer (inner-6)..(inner+10) clear of card outers).
+       stem inner: x=363..407, arrowhead base=407 tip=417. Group outer: x=357..423 (clean gap).
+  -->
+  <g id="arrow-1">
+    <path d="M363,210 L407,210" fill="none" class="arrow-stroke" stroke-width="1.6" opacity="0.75" stroke-linecap="round"/>
+    <polygon points="417,210 407,205 407,215" class="arrow-fill" opacity="0.85"/>
+  </g>
+
+  <!-- Arrow 2 left stub: gap zone x=750..788 (card2 right to folder left).
+       card2 outer right=756, folder outer left=784.
+       stub inner: x=763..776. Group outer: x=757..782 (fits in gap 756..784).
+  -->
+  <g id="arrow-2-left">
+    <path d="M763,210 L776,210" fill="none" class="arrow-stroke" stroke-width="1.6" opacity="0.75" stroke-linecap="round"/>
+  </g>
+
+  <!-- Arrow 2 right stub + arrowhead: gap zone x=812..850.
+       folder outer right=816, card3 outer left=844.
+       stub inner: x=823..827, arrowhead base=827 tip=837.
+       Group outer: x=817..843 (fits in gap 816..844 with 1px clearance).
+  -->
+  <g id="arrow-2-right">
+    <path d="M823,210 L827,210" fill="none" class="arrow-stroke" stroke-width="1.6" opacity="0.75" stroke-linecap="round"/>
+    <polygon points="837,210 827,205 827,215" class="arrow-fill" opacity="0.85"/>
+  </g>
+
+  <!-- === Folder icon checkpoint at (800, 210).
+       Lucide folder icon (ISC license) scaled to 24w x 22h.
+       Centred at (800,210): translate to (788, 199) for top-left of 24x22 box.
+       The folder visually marks the ./research/ contract boundary.
+  === -->
+  <g id="folder-checkpoint">
+    <g transform="translate(788,197)" fill="none" class="folder-stroke" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.95">
+      <!-- Lucide folder: original 24x24 path, offset so icon centre is at (800,210) -->
+      <path d="M2 6 v16 a2 2 0 0 0 2 2 h16 a2 2 0 0 0 2 -2 v-11 a2 2 0 0 0 -2 -2 h-7 l-2 -3 h-7 a2 2 0 0 0 -2 2 z"/>
+    </g>
+    <text x="800" y="236" class="accent-1" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" text-anchor="middle">./research/</text>
+    <text x="800" y="248" class="fg-4" font-family="Segoe UI, Arial, sans-serif" font-size="7" text-anchor="middle">durable corpus</text>
+  </g>
+
+  <!-- === Footer caption === -->
+  <text x="600" y="385" class="fg-2" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" text-anchor="middle">The folder is the contract: agent writes evidence, grounder reads it. No shared state beyond directory contents.</text>
+
+</svg>

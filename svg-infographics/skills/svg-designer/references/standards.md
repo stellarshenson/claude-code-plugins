@@ -346,14 +346,17 @@ XML comments differ: `--` breaks parsing. Keep ASCII prose in comments. Unicode 
 
 ## Icon Sourcing
 
-Prefer open-source SVG libraries.
+Prefer open-source SVG libraries. Browse every route - bundled custom, Lucide, draw.io - via `svg-infographics icons list`.
 
-| Library | License | Icons |
-|---------|---------|-------|
-| Lucide | ISC | 1000+ |
-| Feather | MIT | 280+ |
+| Source | License | Icons | Pull |
+|--------|---------|-------|------|
+| Custom (bundled) | plugin-own | small, growing | `icons list` / `icons render <name>` |
+| Lucide | ISC | 1000+ | paste path from lucide.dev |
+| draw.io stencils | varies | 1000+ | `shapes search` / `shapes render` |
 
 Embed in `<g transform="translate(x,y) scale(s)">`, override stroke. Comment: `<!-- Icon: {name} (Lucide, ISC license) -->`. Scale: 0.583 (~14px), 0.667 (~16px), 0.5 (~12px).
+
+**Lucide paths stay verbatim.** Copy the `d` data byte-for-byte. Size, colour, position come from `transform` + `stroke`, never from rewriting coordinates - re-typed paths drift off the 24-grid. Edit a path only when the icon needs a genuine bespoke change, and comment why. See `rules/icon.md`.
 
 ### Default Placement
 
@@ -563,7 +566,7 @@ Non-compliant callouts invisible to `empty-space`, `overlaps`, workflow.
 
 **Two modes: leader vs leaderless.**
 
-**Leader mode** (default, `"leader": true` or omitted):
+**Leader mode** (`"leader": true` or omitted; pick per the AI decision rule in `rules/callout.md` - no silent default):
 - Text block + visible leader line
 - Use: dense diagrams, label in free whitespace away from target
 - Standoff default 20px
@@ -571,13 +574,13 @@ Non-compliant callouts invisible to `empty-space`, `overlaps`, workflow.
 
 **Leaderless mode** (`"leader": false`):
 - Text block close to target, no connecting line. Text IS the pointer
-- Use: group headers, waypoint tags, legend entries, spatial-proximity labels
+- Use: group headers, waypoint tags, spatial-proximity labels
 - Standoff default 5px (tighter - no leader)
 - Score: pulls bbox CENTRE toward target (sweet spot 0). Symmetric labels settle centred
 - **Target trick**: to land label ABOVE shape, place target ~8-12px above shape top edge
 
 **Selection**:
-- Leaderless → group header, waypoint tag, legend, floating label
+- Leaderless → group header, waypoint tag, floating label
 - Leader → target inside dense content, label floats away with connection
 
 Three-step workflow:
