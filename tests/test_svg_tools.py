@@ -230,6 +230,44 @@ class TestCalcConnectorModule:
 
     # ----- calc_connector Python API -----
 
+    def test_sample_cubic_bezier_coordinates(self):
+        """Pin the cubic-Bezier sampler to its closed-form Bernstein values so
+        the curve math is locked independent of the backing library.
+
+        B(t) = (1-t)^3 P0 + 3(1-t)^2 t P1 + 3(1-t) t^2 P2 + t^3 P3
+        Midpoint identity: B(0.5) = (P0 + 3 P1 + 3 P2 + P3) / 8
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import (
+            _sample_cubic_bezier,
+        )
+
+        p0, p1, p2, p3 = (10.0, 20.0), (40.0, 120.0), (160.0, 5.0), (200.0, 90.0)
+        num = 61  # odd -> exact t=0.5 sample at index num//2
+        pts = _sample_cubic_bezier(p0, p1, p2, p3, num=num)
+
+        # Sample count and endpoints interpolate the outer control points
+        assert len(pts) == num
+        assert pts[0] == pytest.approx(p0, abs=1e-9)
+        assert pts[-1] == pytest.approx(p3, abs=1e-9)
+
+        # Analytic midpoint via the De Casteljau / Bernstein identity
+        mid = (
+            (p0[0] + 3 * p1[0] + 3 * p2[0] + p3[0]) / 8.0,
+            (p0[1] + 3 * p1[1] + 3 * p2[1] + p3[1]) / 8.0,
+        )
+        assert pts[num // 2] == pytest.approx(mid, abs=1e-9)
+
+        # Arbitrary interior t checked against the explicit polynomial
+        t = 0.25
+        mt = 1.0 - t
+        bx = mt**3 * p0[0] + 3 * mt**2 * t * p1[0] + 3 * mt * t**2 * p2[0] + t**3 * p3[0]
+        by = mt**3 * p0[1] + 3 * mt**2 * t * p1[1] + 3 * mt * t**2 * p2[1] + t**3 * p3[1]
+        idx = round(t * (num - 1))
+        assert pts[idx] == pytest.approx((bx, by), abs=1e-9)
+
+        # Degenerate request collapses to the start point
+        assert _sample_cubic_bezier(p0, p1, p2, p3, num=1) == [p0]
+
     def test_straight_and_edge_snap_and_arrow_and_cutout(self):
         """Covers: basic straight connector shape, default standoff 1px,
         auto edge-snap from rects (both aligned and diagonal), margin

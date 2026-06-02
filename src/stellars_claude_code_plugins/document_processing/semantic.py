@@ -1,7 +1,7 @@
-"""Optional semantic grounding layer (ModernBERT + FAISS).
+"""Optional semantic grounding layer (ONNX Runtime + FAISS).
 
 **All heavy deps are lazy-imported.** Importing this module does NOT load
-``torch``, ``transformers``, ``faiss``, or ``pyarrow``. They are only
+``onnxruntime``, ``transformers``, ``faiss``, or ``pyarrow``. They are only
 imported inside :class:`SemanticGrounder.__init__` and the first call to
 :meth:`SemanticGrounder.search`.
 
@@ -14,12 +14,18 @@ Install:
 
 Or:
 
-    pip install torch transformers faiss-cpu pyarrow
+    pip install onnxruntime transformers faiss-cpu pyarrow huggingface_hub
+
+Inference runs through ONNX Runtime on CPU using a pre-exported ONNX model
+pulled from the Hugging Face Hub (default ``intfloat/multilingual-e5-small``,
+which ships ``onnx/model.onnx``). No PyTorch dependency. A model_name without
+``onnx/model.onnx`` on the Hub raises a clear error at construction.
 
 Workflow:
 
     1. Chunk the source text recursively (via :mod:`.chunking`).
-    2. Embed each chunk with ``model_name`` (default ``jhu-clsp/mmBERT-small``).
+    2. Embed each chunk with ``model_name`` (mask-aware mean pooling + L2
+       normalisation, computed in numpy from the ONNX last_hidden_state).
     3. Cache chunks + embeddings to parquet keyed by source content hash.
     4. Build an in-memory FAISS index (IndexFlatIP for cosine similarity).
     5. For each claim, embed it and return top-K passages with similarity
@@ -47,7 +53,7 @@ class SemanticHit:
 
 def is_available() -> bool:
     """Return True iff the optional semantic deps are importable."""
-    for mod in ("torch", "transformers", "faiss", "pyarrow"):
+    for mod in ("onnxruntime", "transformers", "faiss", "pyarrow", "huggingface_hub"):
         try:
             __import__(mod)
         except ImportError:
@@ -57,7 +63,8 @@ def is_available() -> bool:
 
 def install_hint() -> str:
     return (
-        "Semantic grounding requires: torch, transformers, faiss-cpu, pyarrow.\n"
+        "Semantic grounding requires: onnxruntime, transformers, faiss-cpu, "
+        "pyarrow, huggingface_hub.\n"
         "Install via:  pip install 'stellars-claude-code-plugins[semantic]'"
     )
 
@@ -88,26 +95,33 @@ class SemanticGrounder:
         if not is_available():
             raise ImportError(install_hint())
 
-        import torch  # type: ignore
-        from transformers import AutoModel, AutoTokenizer  # type: ignore
+        import onnxruntime as ort  # type: ignore
+        from huggingface_hub import hf_hub_download  # type: ignore
+        from huggingface_hub.utils import EntryNotFoundError  # type: ignore
+        from transformers import AutoTokenizer  # type: ignore
 
-        resolved_device = device
-        if device == "auto":
-            resolved_device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.device = resolved_device
+        # ONNX Runtime runs the encoder on CPU. ``device`` is accepted for
+        # backward compatibility with the config/CLI (semantic_device) but
+        # does not select a GPU on this path.
+        self.device = "cpu"
         self.model_name = model_name
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.max_chars = max_chars
 
-        # Load model + tokenizer once; keep on the chosen device.
-        # trust_remote_code=True required by mmBERT and other recent models
-        # that ship custom modelling code.
-        self._tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-        self._model = AutoModel.from_pretrained(model_name, trust_remote_code=True).to(
-            resolved_device
-        )
-        self._model.eval()
+        # Tokenizer (transformers, no torch) + pre-exported ONNX encoder.
+        self._tokenizer = AutoTokenizer.from_pretrained(model_name)
+        try:
+            onnx_path = hf_hub_download(model_name, "onnx/model.onnx")
+        except EntryNotFoundError as exc:
+            raise RuntimeError(
+                f"{model_name!r} has no 'onnx/model.onnx' on the Hugging Face "
+                "Hub. The ONNX Runtime grounding path needs a pre-exported "
+                "ONNX model (e.g. intfloat/multilingual-e5-small). Pick a model "
+                "that ships ONNX weights, or export one offline."
+            ) from exc
+        self._session = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
+        self._input_names = {i.name for i in self._session.get_inputs()}
 
         # Index state — lazily built in index_sources()
         self._index = None
@@ -280,27 +294,38 @@ class SemanticGrounder:
         return vectors
 
     def _embed(self, texts: list[str]):
-        """Embed a batch of texts → (N, dim) numpy array, L2-normalised."""
-        import torch  # type: ignore
+        """Embed a batch of texts → (N, dim) numpy array, L2-normalised.
 
-        with torch.no_grad():
-            enc = self._tokenizer(
-                texts,
-                padding=True,
-                truncation=True,
-                max_length=512,
-                return_tensors="pt",
-            ).to(self.device)
-            outputs = self._model(**enc)
-            # Mean-pool hidden states, mask-aware
-            mask = enc["attention_mask"].unsqueeze(-1).float()
-            hidden = outputs.last_hidden_state * mask
-            summed = hidden.sum(dim=1)
-            counts = mask.sum(dim=1).clamp(min=1e-9)
-            vectors = summed / counts
-            # L2 normalise for cosine similarity via inner product
-            vectors = torch.nn.functional.normalize(vectors, p=2, dim=1)
-        return vectors.cpu().numpy().astype("float32")
+        Runs the ONNX encoder on CPU, then mask-aware mean-pools the
+        last_hidden_state and L2-normalises - all in numpy. Equivalent to the
+        prior torch pooling (verified to 1e-7 on fp32 e5-small).
+        """
+        import numpy as np  # type: ignore
+
+        enc = self._tokenizer(
+            texts,
+            padding=True,
+            truncation=True,
+            max_length=512,
+            return_tensors="np",
+        )
+        # Feed exactly the inputs the graph declares. e5/XLM-R ONNX graphs ask
+        # for token_type_ids that the tokenizer omits - supply zeros.
+        feed = {}
+        for name in self._input_names:
+            if name in enc:
+                feed[name] = enc[name]
+            elif name == "token_type_ids":
+                feed[name] = np.zeros_like(enc["input_ids"])
+        last_hidden = self._session.run(None, feed)[0]  # (N, L, dim)
+
+        mask = enc["attention_mask"][..., None].astype("float32")  # (N, L, 1)
+        summed = (last_hidden * mask).sum(axis=1)  # (N, dim)
+        counts = np.clip(mask.sum(axis=1), 1e-9, None)  # (N, 1)
+        vectors = summed / counts
+        # L2 normalise for cosine similarity via inner product
+        norms = np.clip(np.linalg.norm(vectors, axis=1, keepdims=True), 1e-12, None)
+        return (vectors / norms).astype("float32")
 
     def _build_faiss(self, matrix):
         """Build an IndexFlatIP (inner product == cosine after L2-norm)."""

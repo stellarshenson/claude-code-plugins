@@ -2062,25 +2062,20 @@ def calc_spline(
 
 
 def _sample_cubic_bezier(p0, p1, p2, p3, num=60):
-    """Sample a cubic Bezier curve using the bezier library.
+    """Sample a cubic Bezier curve using the pure-Python beziers library.
 
     Tangent at t=0 is 3*(p1 - p0) direction, at t=1 is 3*(p3 - p2) direction -
-    guaranteed by construction of the Bernstein basis. The library handles
-    the vectorised Bernstein evaluation with numpy under the hood.
+    guaranteed by construction of the Bernstein basis. beziers has no compiled
+    extension, so it installs cleanly without a Fortran/BLAS toolchain.
     """
-    import bezier
-    import numpy as np
+    from beziers.cubicbezier import CubicBezier
+    from beziers.point import Point
 
-    nodes = np.asfortranarray(
-        [
-            [p0[0], p1[0], p2[0], p3[0]],
-            [p0[1], p1[1], p2[1], p3[1]],
-        ]
-    )
-    curve = bezier.Curve.from_nodes(nodes)
-    ts = np.linspace(0.0, 1.0, num)
-    xy = curve.evaluate_multi(ts)  # shape (2, num)
-    return [(float(xy[0, i]), float(xy[1, i])) for i in range(num)]
+    curve = CubicBezier(Point(*p0), Point(*p1), Point(*p2), Point(*p3))
+    if num < 2:
+        return [(float(p0[0]), float(p0[1]))]
+    pts = [curve.pointAtTime(i / (num - 1)) for i in range(num)]
+    return [(float(pt.x), float(pt.y)) for pt in pts]
 
 
 # ---------------------------------------------------------------------------

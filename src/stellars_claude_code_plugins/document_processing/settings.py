@@ -12,12 +12,12 @@ Project-local takes precedence over home:
 Keys (all optional; defaults applied on read):
 
     - ``semantic_enabled`` (bool, default False) — allow semantic grounding
-      (ModernBERT + FAISS). Costs model download on first use (~50-150 MB)
-      and runtime CPU/GPU inference. Opt-in.
-    - ``semantic_model`` (str) — HF model id. Default
-      ``jhu-clsp/mmBERT-small`` (smallest mmBERT).
-    - ``semantic_device`` (str) — ``"auto"`` / ``"cpu"`` / ``"cuda"``.
-      ``"auto"`` picks cuda when available else cpu.
+      (ONNX Runtime + FAISS). Costs model download on first use (~50-150 MB)
+      and runtime CPU inference. Opt-in.
+    - ``semantic_model`` (str) — HF model id with a pre-exported
+      ``onnx/model.onnx``. Default ``intfloat/multilingual-e5-small``.
+    - ``semantic_device`` (str) — accepted for backward compatibility; the
+      ONNX Runtime path runs on CPU regardless of value.
     - ``cache_dir`` (str) — parquet cache for chunks + embeddings. Default
       ``./.stellars-plugins/cache``.
 """
@@ -148,7 +148,7 @@ def ensure_loaded(*, auto_prompt: bool = True) -> Settings:
 
 def is_semantic_available() -> bool:
     """Check if the semantic-grounding optional deps are importable."""
-    for mod in ("torch", "transformers", "faiss", "pyarrow"):
+    for mod in ("onnxruntime", "transformers", "faiss", "pyarrow", "huggingface_hub"):
         try:
             __import__(mod)
         except ImportError:
@@ -161,7 +161,7 @@ def semantic_install_hint() -> str:
         "Semantic grounding requires optional dependencies. Install with:\n"
         "  pip install 'stellars-claude-code-plugins[semantic]'\n"
         "or individually:\n"
-        "  pip install torch transformers faiss-cpu pyarrow\n"
+        "  pip install onnxruntime transformers faiss-cpu pyarrow huggingface_hub\n"
     )
 
 

@@ -1307,3 +1307,125 @@ class TestValidateMany:
         assert (output_dir / "alpha" / "grounding-report.md").exists()
         assert (output_dir / "alpha" / "consistency-report.md").exists()
         assert (output_dir / "beta" / "grounding-report.md").exists()
+
+
+class TestSemanticOnnx:
+    """ONNX Runtime embedding path - torch-free.
+
+    The pooling/normalisation unit tests inject a fake ONNX session +
+    tokenizer so they run without any model download (and without torch).
+    The real-model test is network-gated and skips when the e5 ONNX weights
+    are not reachable.
+    """
+
+    def _make_grounder(self, fake_session, fake_tokenizer, input_names):
+        from stellars_claude_code_plugins.document_processing.semantic import (
+            SemanticGrounder,
+        )
+
+        g = SemanticGrounder.__new__(SemanticGrounder)
+        g._session = fake_session
+        g._tokenizer = fake_tokenizer
+        g._input_names = set(input_names)
+        g.model_name = "intfloat/multilingual-e5-small"
+        return g
+
+    def test_embed_mean_pool_unit_norm_and_token_type_ids(self):
+        """_embed: mask-aware mean-pool, L2-norm, and zero token_type_ids feed."""
+        import numpy as np
+
+        def fake_tok(texts, **kw):
+            n = len(texts)
+            ids = np.array([[1, 2, 3], [4, 5, 0]], dtype="int64")[:n]
+            mask = np.array([[1, 1, 1], [1, 1, 0]], dtype="int64")[:n]
+            return {"input_ids": ids, "attention_mask": mask}
+
+        captured: dict = {}
+
+        class FakeSession:
+            def run(self, _outputs, feed):
+                captured.update(feed)
+                # (N, L, dim=2). Text1 token2 has a huge value that MUST be
+                # masked out by the attention_mask above.
+                last = np.array(
+                    [
+                        [[1.0, 0.0], [3.0, 0.0], [5.0, 0.0]],
+                        [[2.0, 2.0], [4.0, 4.0], [9.9, 9.9]],
+                    ],
+                    dtype="float32",
+                )
+                return [last]
+
+        g = self._make_grounder(
+            FakeSession(), fake_tok, {"input_ids", "attention_mask", "token_type_ids"}
+        )
+        vecs = g._embed(["a", "b"])
+
+        # token_type_ids supplied as zeros, shaped like input_ids
+        assert "token_type_ids" in captured
+        assert captured["token_type_ids"].shape == (2, 3)
+        assert int(captured["token_type_ids"].sum()) == 0
+
+        # rows are unit-norm
+        assert np.allclose(np.linalg.norm(vecs, axis=1), 1.0, atol=1e-6)
+
+        # text0: mean (1,3,5)/3 = (3,0) -> normalised (1,0)
+        assert np.allclose(vecs[0], [1.0, 0.0], atol=1e-6)
+        # text1: masked token2 excluded -> mean (2,4)/2 = (3,3) -> (0.707,0.707)
+        assert np.allclose(vecs[1], [2**-0.5, 2**-0.5], atol=1e-6)
+
+    def test_cache_round_trip_skips_reembed(self, tmp_path):
+        """_load_or_embed embeds once, then serves the parquet cache."""
+        import numpy as np
+
+        pytest.importorskip("pyarrow")
+        from stellars_claude_code_plugins.document_processing.chunking import (
+            recursive_chunk,
+        )
+        from stellars_claude_code_plugins.document_processing.semantic import (
+            SemanticGrounder,
+        )
+
+        g = SemanticGrounder.__new__(SemanticGrounder)
+        g.model_name = "intfloat/multilingual-e5-small"
+        g.cache_dir = tmp_path
+        g.max_chars = 1500
+        calls = {"n": 0}
+
+        def fake_embed(texts):
+            calls["n"] += 1
+            return np.full((len(texts), 4), 0.5, dtype="float32")
+
+        g._embed = fake_embed
+
+        text = "The estate has three walled gardens and an orchard. " * 20
+        chunks = recursive_chunk(text, max_chars=1500)
+        v1 = g._load_or_embed("doc.txt", text, chunks)
+        v2 = g._load_or_embed("doc.txt", text, chunks)
+
+        assert calls["n"] == 1  # second call hit the cache, no re-embed
+        assert np.allclose(v1, v2)
+
+    def test_real_model_paraphrase_outscores_unrelated(self, tmp_path):
+        """Network-gated: real e5 ONNX ranks a paraphrase above an unrelated line."""
+        pytest.importorskip("onnxruntime")
+        pytest.importorskip("transformers")
+        from stellars_claude_code_plugins.document_processing.semantic import (
+            SemanticGrounder,
+            is_available,
+        )
+
+        if not is_available():
+            pytest.skip("semantic extras not installed")
+        try:
+            g = SemanticGrounder(cache_dir=str(tmp_path / "cache"))
+        except Exception as exc:  # noqa: BLE001 - skip on no network / missing onnx weights
+            pytest.skip(f"e5 ONNX model unavailable: {exc}")
+
+        q = g._embed(["query: number of walled gardens on the estate"])[0]
+        p_rel = g._embed(["passage: The estate has three walled gardens."])[0]
+        p_unrel = g._embed(["passage: Rainfall averages 800 mm per year."])[0]
+
+        assert float(q @ p_rel) > float(q @ p_unrel)
+        assert g._is_e5() is True  # e5 query/passage prefixes apply
+        assert 0.0 <= g.self_score("number of walled gardens") <= 1.0

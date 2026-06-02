@@ -16,7 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "bezier",
+    "beziers",
     "fonttools",
     "numpy",
     "odfpy>=1.4",
@@ -47,8 +47,9 @@ dev = [
     "twine",
 ]
 semantic = [
-    "torch>=2.0",
+    "onnxruntime>=1.17",
     "transformers>=4.40",
+    "huggingface_hub>=0.23",
     "faiss-cpu>=1.7",
     "pyarrow>=14.0",
 ]
