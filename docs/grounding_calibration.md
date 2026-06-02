@@ -56,8 +56,31 @@ Seven features per claim plus an intercept; all exposed on `GroundingMatch.verdi
 - **Tests** - 16 calibration tests in the 592-test suite (head units, R3/R4 regression, ground() integration + back-compat, fixture calibrated-beats-prior, config-transfer round-trip, CI end-to-end)
 - **R3 / R4** - on the untrained config prior, a fabrication (low ratio, no lexical) is denied and a cross-lingual true match (high ratio, no lexical) confirms
 - **CI fixture** - a 36-row synthetic multilingual fixture; calibrated meets precision >= 0.90 / recall >= 0.80 and beats the prior on a held-out split
-- **Full-pipeline simulation** (`notebooks/simulate_calibration.py`) - runs real e5 embeddings -> `ground_many` -> calibrate -> config transfer on 20 authored en/nb/fr claims; the machinery runs end to end and config transfer is exact (10/10 identical verdicts), but on a 10-claim held-out split the calibrated metrics sit at precision 0.50 / recall 0.60 - below target
-- **Conclusion** - the system is built and tested; calibration quality requires real, sufficient labelled data. Toy-scale synthetic evidence does not produce good numbers. The real-data validation (the user's en/nb/fr corpus + LangWatch) is the remaining gate and has not been run
+- **Full-pipeline simulation** (`notebooks/simulate_calibration.py`) - runs real e5 embeddings -> `ground_many` -> calibrate -> config transfer on authored en/nb/fr claims; the machinery runs end to end and config transfer is exact (10/10 identical verdicts), but the calibrated verdict does NOT beat the deterministic baseline on this data (en precision 0.67 / recall 1.0; nb and fr recall collapse to 0)
+
+## Known limitation (proven by the simulation)
+
+The simulation surfaced a premise failure, not a tuning gap.
+
+- **Semantic similarity is a topic detector, not a truth detector** - for on-topic claims the e5 cosine of a fabrication is as high as a real match. Measured: false `"vineyard covers forty hectares"` scores 0.868 vs true `"rainfall averages 800 mm"` 0.827; nb fabrication `"stort bryggeri"` 0.799 vs nb true `"tre inngjerdede hager"` 0.790
+- **Cross-lingual is the ceiling** - nb/fr claims have no lexical overlap, so semantic is the only available signal; since it does not separate true from false, real foreign-language matches cannot be confirmed without also confirming foreign-language fabrications -> recall collapses
+- **`semantic_ratio` (match/self) systematically underrates cross-lingual** - same-language self-similarity is always higher than cross-language match similarity, so the ratio is < 1 by construction for cross-lingual hits
+- **What actually separates grounding** is lexical specificity (bm25/exact of the claim's *specific* tokens) and the deterministic numeric/entity contradiction guard - not semantics
+
+## Deterministic grounding fixes (the real lever)
+
+The investigation found and fixed two real precision bugs in the deterministic engine - the path that actually works. Both validated against the full suite with no regression.
+
+- **Contradiction completeness** - `extract_numbers` now recognises historical years (1500-2099, not just 19xx/20xx) and drops stopword context-words, so same-category years key consistently. Fixes the miss where `"built in 1650"` (source 1820) was CONFIRMED instead of CONTRADICTED. Regression: `TestYearContradiction`
+- **IDF-weighted bm25 recall** - token recall is now IDF-weighted, so corpus-ubiquitous words no longer inflate recall and a claim whose *distinctive* tokens are absent does not confirm. Fixes the `"commercial brewery"` false positive (shares only `estate`/`runs`). Regression: `TestBm25IdfRecall`
+- **End-to-end result** - `TestGroundingEndToEnd`: deterministic grounding on a realistic monolingual set (grounded / off-topic fabrication / numeric contradiction) reaches **precision 1.0, recall 1.0**
+- **Remaining levers** - word-number contradictions (`forty` vs `twelve`) still a minor gap; cross-lingual on-topic is the embedding ceiling (needs an NLI/entailment model, not similarity)
+
+## Conclusion
+
+- The deterministic grounding engine is the **working default** and now passes end-to-end on realistic monolingual claims (precision/recall 1.0) after two real bug fixes; **598 tests green**, nothing shipped degraded
+- The calibrated engine is **opt-in and not yet a proven improvement**; on adversarial on-topic data it does not beat the baseline
+- Real-data validation against the DBA corpus is the remaining gate and has not been run; before further calibration investment, reconcile the cross-lingual semantic behaviour against that real data
 
 ## Files
 

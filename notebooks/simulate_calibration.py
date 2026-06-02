@@ -27,13 +27,19 @@ from stellars_claude_code_plugins.document_processing.grounding import extract_f
 
 # One shared source corpus (English). nb/fr claims are cross-lingual paraphrases
 # of these facts - the real test of the portable semantic_ratio signal.
+# Blank-line-separated paragraphs => a multi-passage corpus, so BM25 has a
+# non-degenerate IDF (a single short passage makes bm25_recall collapse to 0).
 SOURCES = [
     (
         "estate.txt",
-        "The estate has three walled gardens and an orchard. "
-        "Rainfall in the region averages 800 millimetres per year. "
-        "The manor was built in 1820 and restored in 1998. "
-        "The vineyard covers twelve hectares on the south slope.",
+        "The estate has three walled gardens and an orchard.\n\n"
+        "Rainfall in the region averages 800 millimetres per year.\n\n"
+        "The manor was built in 1820 and restored in 1998.\n\n"
+        "The vineyard covers twelve hectares on the south slope.\n\n"
+        "Beekeeping has continued on the grounds since 1905.\n\n"
+        "The estate library holds four thousand bound volumes.\n\n"
+        "A trout stream runs along the eastern boundary.\n\n"
+        "The walled kitchen garden supplies the manor kitchen.",
     )
 ]
 
@@ -107,7 +113,7 @@ def main() -> int:
         {k: mu for k, (mu, _sd) in C.load_prior_spec().items()}, threshold=0.5
     )
     print("\n=== calibrating on the training split (bambi / PyMC) ===")
-    cal = C.fit_calibrator(train, draws=1000, tune=1000, random_seed=0, include_anchor=True)
+    cal = C.fit_calibrator(train, draws=1000, tune=1000, random_seed=0, include_anchor=False)
 
     prior_m = C.evaluate(prior, test)
     cal_m = C.evaluate(cal, test)

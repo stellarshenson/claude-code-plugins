@@ -387,10 +387,26 @@ def _bm25_match(
     raw = float(scores[best_idx])
     normalised = raw / max_score  # relative to top passage = 1.0 for winner
 
-    # Token recall: fraction of unique claim tokens present in winner passage
+    # Token recall: IDF-weighted fraction of unique claim tokens present in the
+    # winner passage. Weighting by IDF stops corpus-ubiquitous words (e.g. the
+    # domain topic word that appears in every passage) from inflating recall,
+    # and gives full weight to distinctive claim tokens that are ABSENT (a claim
+    # whose specific terms are missing should not count as grounded). Tokens not
+    # in the corpus are treated as maximally distinctive.
     claim_set = set(claim_tokens)
     passage_set = set(corpus_tokens[best_idx])
-    recall = len(claim_set & passage_set) / len(claim_set) if claim_set else 0.0
+    idf = bm25.idf
+    max_idf = max(idf.values()) if idf else 1.0
+
+    def _w(tok: str) -> float:
+        return max(0.0, idf.get(tok, max_idf))
+
+    den = sum(_w(t) for t in claim_set)
+    if den > 0:
+        recall = sum(_w(t) for t in claim_set if t in passage_set) / den
+    else:
+        # Degenerate IDF (all claim tokens ubiquitous) -> fall back to raw recall.
+        recall = len(claim_set & passage_set) / len(claim_set) if claim_set else 0.0
 
     src_idx, path, start, end, text = provenance[best_idx]
     return _BM25Hit(

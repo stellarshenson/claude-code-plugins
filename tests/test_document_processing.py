@@ -1429,3 +1429,115 @@ class TestSemanticOnnx:
         assert float(q @ p_rel) > float(q @ p_unrel)
         assert g._is_e5() is True  # e5 query/passage prefixes apply
         assert 0.0 <= g.self_score("number of walled gardens") <= 1.0
+
+
+class TestYearContradiction:
+    """Regression for the contradiction-detection bug: historical years and
+    years followed by a stopword must key on the 'year' category so a real
+    contradiction (built 1650 vs source 1820) is caught, while a supported
+    year (1998 present) is not flagged."""
+
+    def test_historical_years_tagged_year(self):
+        from stellars_claude_code_plugins.document_processing.entity_check import extract_numbers
+
+        # 16xx/18xx (outside 19xx/20xx) must still be recognised as years
+        assert ("1650", "", "year") in extract_numbers("built in 1650")
+        # a year followed by the stopword "and" must not key on "and"
+        nums = dict((v, cw) for v, _u, cw in extract_numbers("built in 1820 and restored in 1998"))
+        assert nums.get("1820") == "year"
+        assert nums.get("1998") == "year"
+
+    def test_year_contradiction_caught(self):
+        from stellars_claude_code_plugins.document_processing.entity_check import (
+            find_numeric_mismatches,
+        )
+
+        passage = "The manor was built in 1820 and restored in 1998."
+        assert find_numeric_mismatches("the manor was built in 1650", passage)  # contradiction
+        assert not find_numeric_mismatches("the manor was restored in 1998", passage)  # supported
+
+    def test_year_contradiction_through_ground(self):
+        from stellars_claude_code_plugins.document_processing.grounding import ground
+
+        src = [("e.txt", "The manor was built in 1820 and restored in 1998.")]
+        m = ground("the manor was built in 1650", src)
+        assert m.match_type == "contradicted"
+
+
+class TestBm25IdfRecall:
+    """Regression for the bm25 common-word false positive: a claim whose
+    DISTINCTIVE tokens are absent must not confirm just because it shares
+    ubiquitous words with the source (IDF-weighted recall)."""
+
+    def test_common_word_fabrication_not_confirmed(self):
+        from stellars_claude_code_plugins.document_processing.grounding import ground
+
+        src = [
+            (
+                "e.txt",
+                "The estate has three walled gardens.\n\n"
+                "A trout stream runs along the eastern boundary.",
+            )
+        ]
+        # shares only common tokens (estate, runs); distinctive (commercial,
+        # brewery) absent -> must NOT be a bm25 confirm
+        m = ground("the estate runs a commercial brewery", src)
+        assert m.match_type not in ("exact", "fuzzy", "bm25")
+
+    def test_distinctive_claim_still_confirms(self):
+        from stellars_claude_code_plugins.document_processing.grounding import ground
+
+        src = [("e.txt", "The estate has three walled gardens and an orchard.")]
+        m = ground("the estate has three walled gardens", src)
+        assert m.match_type in ("exact", "fuzzy", "bm25")
+
+
+class TestGroundingEndToEnd:
+    """Honest end-to-end test of the deterministic grounding (no model): on a
+    realistic monolingual set - grounded claims, off-topic fabrications, and
+    numeric contradictions - it meets the precision/recall targets. The
+    cross-lingual on-topic case is the documented embedding ceiling, out of
+    scope for the deterministic engine."""
+
+    SRC = [
+        (
+            "estate.txt",
+            "The estate has three walled gardens and an orchard.\n\n"
+            "Rainfall in the region averages 800 millimetres per year.\n\n"
+            "The manor was built in 1820 and restored in 1998.\n\n"
+            "The vineyard covers twelve hectares on the south slope.\n\n"
+            "A trout stream runs along the eastern boundary.",
+        )
+    ]
+    CLAIMS = [
+        ("the estate has three walled gardens", 1),
+        ("there is an orchard on the estate", 1),
+        ("rainfall averages 800 millimetres per year", 1),
+        ("the manor was restored in 1998", 1),
+        ("a trout stream runs along the eastern boundary", 1),
+        ("the vineyard covers twelve hectares on the south slope", 1),
+        ("the estate has a helicopter landing pad", 0),
+        ("the estate runs a commercial brewery", 0),
+        ("a private airport serves the estate", 0),
+        ("the manor was built in 1650", 0),
+        ("the manor was restored in 2010", 0),
+        ("rainfall averages 200 millimetres per year", 0),
+    ]
+
+    def test_precision_recall_targets(self):
+        from stellars_claude_code_plugins.document_processing.grounding import ground_many
+
+        matches = ground_many([c for c, _ in self.CLAIMS], self.SRC)
+        tp = fp = fn = 0
+        for (_c, lab), m in zip(self.CLAIMS, matches):
+            confirmed = m.match_type in ("exact", "fuzzy", "bm25")
+            if lab and confirmed:
+                tp += 1
+            elif not lab and confirmed:
+                fp += 1
+            elif lab and not confirmed:
+                fn += 1
+        precision = tp / (tp + fp) if (tp + fp) else 0.0
+        recall = tp / (tp + fn) if (tp + fn) else 0.0
+        assert precision >= 0.90, f"precision {precision}"
+        assert recall >= 0.80, f"recall {recall}"

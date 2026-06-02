@@ -52,8 +52,22 @@ _NUMBER_RE = re.compile(
 # Context word: a following noun like "nodes", "users", "GPUs" etc.
 _CONTEXT_WORD_RE = re.compile(r"\s*([A-Za-z][A-Za-z\-]{2,})")
 
-# Dates
-_YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
+# Function words that are never a meaningful numeric context (a number followed
+# by one of these has no real "context noun"). Dropping them lets year/category
+# detection key the number correctly instead of latching onto e.g. "and".
+_STOPWORDS = frozenset(
+    {
+        "and", "or", "but", "the", "a", "an", "of", "in", "on", "at", "to",
+        "for", "with", "by", "from", "as", "is", "was", "were", "are", "be",
+        "been", "that", "this", "these", "those", "then", "than", "per",
+    }
+)
+
+# Dates - cover historical years (1500-2099), not just 19xx/20xx, so a claim
+# like "built in 1650" is recognised as a year and can be compared against a
+# source year (e.g. 1820). Without this, same-category years get inconsistent
+# keys and a real contradiction is missed.
+_YEAR_RE = re.compile(r"\b(1[5-9]\d{2}|20\d{2})\b")
 
 
 def _normalise_value(raw: str) -> str:
@@ -89,9 +103,6 @@ def extract_numbers(text: str) -> list[tuple[str, str, str]]:
     out: list[tuple[str, str, str]] = []
     if not text:
         return out
-    year_spans: set[tuple[int, int]] = set()
-    for m in _YEAR_RE.finditer(text):
-        year_spans.add((m.start(), m.end()))
     for m in _NUMBER_RE.finditer(text):
         value = _normalise_value(m.group("value"))
         unit = _normalise_unit(m.group("unit"))
@@ -99,10 +110,15 @@ def extract_numbers(text: str) -> list[tuple[str, str, str]]:
         tail = text[m.end() : m.end() + 40]
         cw_match = _CONTEXT_WORD_RE.match(tail)
         context_word = cw_match.group(1).lower() if cw_match else ""
-        # If this number looks like a 4-digit year (per _YEAR_RE) and has no
-        # other unit/context, tag it as "year" so claim-vs-passage years can
-        # be compared even when both appear bare.
-        if not unit and not context_word and (m.start(), m.end()) in year_spans:
+        # A function word ("and", "the", ...) is not a real context noun - drop
+        # it so the number can key on its unit/year category instead.
+        if context_word in _STOPWORDS:
+            context_word = ""
+        # If this number looks like a year and has no other unit/context, tag
+        # it "year" so claim-vs-passage years compare even when both appear
+        # bare. Value-based (not span-based): _NUMBER_RE consumes trailing
+        # whitespace, so a span lookup into year_spans misses "1820 and ...".
+        if not unit and not context_word and re.fullmatch(r"1[5-9]\d{2}|20\d{2}", value):
             context_word = "year"
         # Filter noise: single-digit years-like tokens without unit or context are uninformative
         if not unit and not context_word and len(value) <= 1:

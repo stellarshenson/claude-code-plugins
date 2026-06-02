@@ -148,11 +148,10 @@ class CalibratedVerdict:
         """Per-coefficient (mean, sd) via arviz - used to seed the next prior."""
         import arviz as az
 
-        s = az.summary(self.idata, var_names=COEFFICIENTS, kind="stats")
+        present = [n for n in COEFFICIENTS if n in self.idata.posterior.data_vars]
+        s = az.summary(self.idata, var_names=present, kind="stats")
         return {
-            n: (float(s.loc[n, "mean"]), float(s.loc[n, "sd"]))
-            for n in COEFFICIENTS
-            if n in s.index
+            n: (float(s.loc[n, "mean"]), float(s.loc[n, "sd"])) for n in present if n in s.index
         }
 
     # -- persistence --------------------------------------------------------
@@ -172,8 +171,12 @@ class CalibratedVerdict:
         else:
             p.parent.mkdir(parents=True, exist_ok=True)
         post = self.idata.posterior
+        present = {n: np.asarray(post[n].values) for n in COEFFICIENTS if n in post.data_vars}
+        # Pad dropped (constant-in-training) coefficients with zeros so load()
+        # rebuilds the full-formula model with a matching posterior.
+        shape = next(iter(present.values())).shape
         samples = {
-            n: np.asarray(post[n].values).tolist() for n in COEFFICIENTS if n in post.data_vars
+            n: (present[n] if n in present else np.zeros(shape)).tolist() for n in COEFFICIENTS
         }
         payload = {
             "threshold": float(self.threshold),
@@ -263,7 +266,18 @@ def fit_calibrator(
     train = df[cols] if set(cols).issubset(df.columns) else df
     if include_anchor:
         train = pd.concat([train[cols], _anchor_frame()[cols]], ignore_index=True)
-    model = bmb.Model(_formula(), train, family="bernoulli", priors=_build_priors(spec))
+    # Drop predictors that are constant in the training data. bambi rejects a
+    # constant term, and its slope is unidentifiable anyway - the effect folds
+    # into the intercept. Dropped coefficients are padded with 0 on save, so at
+    # predict time a (then-varying) feature simply contributes nothing, which is
+    # the honest behaviour for something we could not estimate. This removes the
+    # need to lean on the anchor just to avoid a constant-column crash.
+    varying = [c for c in PREDICTORS if train[c].nunique() > 1]
+    if not varying:
+        raise RuntimeError("calibration: no varying predictors in the training data")
+    formula = f"{RESPONSE} ~ " + " + ".join(varying)
+    priors = {k: v for k, v in _build_priors(spec).items() if k == "Intercept" or k in varying}
+    model = bmb.Model(formula, train, family="bernoulli", priors=priors)
     idata = model.fit(
         draws=draws,
         tune=tune,
