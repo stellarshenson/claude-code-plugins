@@ -57,9 +57,35 @@ _CONTEXT_WORD_RE = re.compile(r"\s*([A-Za-z][A-Za-z\-]{2,})")
 # detection key the number correctly instead of latching onto e.g. "and".
 _STOPWORDS = frozenset(
     {
-        "and", "or", "but", "the", "a", "an", "of", "in", "on", "at", "to",
-        "for", "with", "by", "from", "as", "is", "was", "were", "are", "be",
-        "been", "that", "this", "these", "those", "then", "than", "per",
+        "and",
+        "or",
+        "but",
+        "the",
+        "a",
+        "an",
+        "of",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "with",
+        "by",
+        "from",
+        "as",
+        "is",
+        "was",
+        "were",
+        "are",
+        "be",
+        "been",
+        "that",
+        "this",
+        "these",
+        "those",
+        "then",
+        "than",
+        "per",
     }
 )
 

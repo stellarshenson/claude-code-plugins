@@ -921,7 +921,9 @@ def ground(
             result.match_type = "contradicted"
         elif nli_verdict is not None:
             # NLI is the strongest grounding signal when the layer ran.
-            result.match_type = _winning_layer_label(result) if nli_verdict == "grounded" else "none"
+            result.match_type = (
+                _winning_layer_label(result) if nli_verdict == "grounded" else "none"
+            )
         elif result.exact_score == 1.0:
             result.match_type = "exact"
         elif result.fuzzy_score >= fuzzy_threshold:

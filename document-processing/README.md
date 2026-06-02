@@ -28,51 +28,41 @@ hypothesis + falsifiers, per-iteration artefacts, forensic report,
 CV results, and corpus data all archived under
 [`references/grounding-optimisation/`](../references/grounding-optimisation/).
 
+### NLI / entailment grounding (the truth signal)
+
+Lexical tests word presence. cosine tests topic. only **entailment** tests "does evidence support claim?". A cross-encoder reads `(evidence, claim)` -> entailment / neutral / contradiction = grounded / unconfirmed / contradicted.
+
+- model `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli`, ONNX, torch-free, **multilingual**
+- confirms cross-lingual claims (NB/FR vs EN source) - lexical + cosine cannot
+- catches word-number + semantic contradictions the lexical guard misses
+- public-data check: `make grounding-validate ENGINE=nli` (VitaminC contradiction recall 0.81 vs lexical 0.05)
+
 ### Local domain calibration (Bayesian)
 
-Grounding scores are domain-shaped - what counts as a confident semantic match on legal contracts differs from farm telemetry or multilingual product docs. The verdict can be **locally calibrated to your own corpus** with a Bayesian logistic model (bambi / PyMC) over the per-layer features, and the learned weights then live in your config so every run uses them with no fitting.
-
-The meaning feature is the model- and language-portable `semantic_ratio`, so cross-lingual true matches (no word overlap) still confirm while topical fabrications do not. The fit yields a full posterior (uncertainty), updates incrementally as feedback arrives, and fuses hard labels with LLM-eval soft labels.
+Default thresholds miss your domain? calibrate per-corpus. Bayesian logistic (bambi / PyMC) over the layer features (lexical + semantic + NLI); learned weights live in config, used with no fitting at run time.
 
 ```bash
-# 1. Calibrate from labelled evidence. Each record is grounded to extract its
-#    feature vector, then the Bayesian model is fit and the posterior saved.
+# calibrate from labelled evidence, then transfer learned weights into config
 document-processing calibrate --action update \
   --evidence evidence.json --profile .stellars-plugins/calibrator.json --semantic on
-
-# 2. Inspect the learned posterior (coefficient mean +/- sd).
-document-processing calibrate --action show --profile .stellars-plugins/calibrator.json
-
-# 3. Transfer the learned weights into the project config - grounding then uses
-#    them with no fitting at run time.
 document-processing config set-calibrator --profile .stellars-plugins/calibrator.json
-document-processing config show
 ```
 
-Evidence is a JSON list of `{claim, sources:[paths] (or source_text), label:0|1, lang?, weight?}`. `config set-calibrator` writes a `calibration:` block into `.stellars-plugins/config_document_processing.yaml`:
-
-```yaml
-calibration:
-  engine: calibrated
-  threshold: 0.5
-  weights:
-    Intercept: -3.1
-    exact: 5.8
-    semantic: 4.6
-    bm25_recall: 2.4
-    # ... one per layer / voter / entity-penalty feature
-```
-
-Pass `--from <existing-profile>` to `calibrate` for an **incremental** update - the previous posterior seeds the new fit (posterior-as-prior), so feedback accumulates instead of resetting. A worked end-to-end demo is in [`notebooks/calibration_demo.ipynb`](../notebooks/calibration_demo.ipynb).
+- evidence = JSON list `{claim, sources:[paths] (or source_text), label:0|1, lang?, weight?}`; LLM-eval prob works as a soft label
+- `config set-calibrator` writes a `calibration:` block (engine, threshold, weights) into `.stellars-plugins/config_document_processing.yaml`
+- `--from <profile>` = incremental (posterior seeds the next fit, feedback accumulates)
+- prior lives in config (`calibration.prior`), not code
+- full doc: [`docs/grounding_calibration.md`](../docs/grounding_calibration.md); demo: [`notebooks/calibration_demo.ipynb`](../notebooks/calibration_demo.ipynb)
 
 | Layer | What it catches | Dep |
 |-------|-----------------|-----|
-| Exact (regex) | Whitespace-tolerant verbatim quotes | core |
-| Fuzzy (Levenshtein) | Near-verbatim paraphrases (char similarity ≥ threshold) | core |
-| BM25 (topical) | Same key terms, different word order | core |
-| Semantic (E5 + FAISS) | Same meaning, different wording AND different terms | opt-in |
+| Exact (regex) | verbatim quotes | core |
+| Fuzzy (Levenshtein) | near-verbatim paraphrase | core |
+| BM25 (IDF recall) | distinctive claim tokens present | core |
+| Semantic (e5 + FAISS) | same meaning, different words | opt-in |
+| NLI (cross-encoder) | entailment / contradiction - true grounding, multilingual | opt-in |
 
-The 4th layer needs the `[semantic]` extra (`torch`, `transformers`, `faiss-cpu`, `pyarrow`) and a ~120 MB retrieval model on first use. The `grounding` skill treats semantic as the **default** and recommends enabling it on first run (`document-processing setup`); a bare package install ships it off so nothing surprise-downloads, and the user can decline at `setup` time. Lexical-only is the path you fall to when the user has deliberately opted out.
+Semantic + NLI are opt-in (`[semantic]` extra: `onnxruntime`, `transformers`, `faiss-cpu`, `pyarrow`; calibration core deps `pymc`/`bambi`/`arviz`/`pandas`). Torch-free - models are ONNX, downloaded on first use (e5 ~120 MB, NLI ~560 MB). Bare install = lexical only; the `grounding` skill recommends enabling semantic/NLI at `document-processing setup`.
 
 ### Install (core)
 

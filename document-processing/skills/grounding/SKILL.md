@@ -287,18 +287,31 @@ Tool returns `exact_location` / `fuzzy_location` / `bm25_location` with `line_st
 
 Only when all three lexical layers return `none` AND claim is semantic (summary / synthesis / cross-passage inference). Disciplined: still cite WHICH passages contributed + acknowledge absence of verbatim/paraphrase/term match. Never let generative override lexical UNCONFIRMED for factual claims — that's fabrication territory.
 
+## NLI / entailment grounding (optional, strongest)
+
+Lexical = word presence. cosine = topic. neither = truth. NLI = truth: does evidence support claim?
+
+- cross-encoder reads `(evidence, claim)` -> entailment / neutral / contradiction = grounded / unconfirmed / contradicted
+- model `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli`, ONNX, torch-free, multilingual, ~560 MB first use
+- **multilingual** - confirms cross-lingual claim (NB/FR vs EN source); lexical+cosine cannot
+- catches word-number + semantic contradictions lexical guard misses (VitaminC contradiction recall 0.81 vs lexical 0.05)
+- in `ground()`: NLI argmax = first-class verdict; contradiction folds into guard, entailment counts as signal
+- NLI verdict drives grounding when its grounder is active; default lexical path unchanged
+- residual: NLI calls unsupported-addition "contradiction" (NEI<->contra) - calibrator tempers once trained
+
 ## Local domain calibration (optional)
 
-The verdict can be locally calibrated to the project's own corpus with a Bayesian logistic model over the per-layer features (bambi / PyMC). Reach for it when the default thresholds misjudge this domain - e.g. multilingual sources where word-overlap is legitimately absent for true cross-language matches.
+Default thresholds miss your domain? calibrate per-corpus. Bayesian logistic (bambi/PyMC) over the layer features (lexical + semantic + NLI).
 
-- **Evidence** - a JSON list of `{claim, sources:[paths] (or source_text), label:0|1, lang?, weight?}`; `label` is the gold verdict (1 grounded, 0 not), and LLM-eval probabilities work as soft labels in [0, 1]
-- **Calibrate** - `document-processing calibrate --action update --evidence evidence.json --profile .stellars-plugins/calibrator.json --semantic on`; each record is grounded to extract features, then the posterior is fit and saved
-- **Inspect** - `document-processing calibrate --action show --profile .stellars-plugins/calibrator.json` prints each coefficient mean +/- sd
-- **Transfer to config** - `document-processing config set-calibrator --profile .stellars-plugins/calibrator.json` writes a `calibration:` block (engine, threshold, learned weights) into `.stellars-plugins/config_document_processing.yaml`; grounding then uses the learned weights with no fitting at run time
-- **Incremental** - add `--from <profile>` to seed the new fit from the previous posterior, so feedback accumulates instead of resetting
-- `semantic_ratio` is the portable meaning feature - cross-lingual true matches confirm, topical fabrications do not
-- Worked demo: `notebooks/calibration_demo.ipynb`
-- Never calibrate without the user's own labelled evidence - do not invent labels to "improve" the scores
+- **evidence** - JSON list `{claim, sources:[paths] (or source_text), label:0|1, lang?, weight?}`; label = gold (1 grounded, 0 not); LLM-eval prob works as soft label
+- **calibrate** - `document-processing calibrate --action update --evidence evidence.json --profile .stellars-plugins/calibrator.json --semantic on`; grounds each record, fits posterior, saves
+- **inspect** - `calibrate --action show --profile ...` prints coefficient mean +/- sd
+- **transfer to config** - `config set-calibrator --profile ...` writes `calibration:` block (engine, threshold, weights) into `.stellars-plugins/config_document_processing.yaml`; grounding uses weights, no fitting at run time
+- **incremental** - `--from <profile>` seeds new fit from prior posterior; feedback accumulates
+- **public-data check** - `make grounding-validate ENGINE=nli` runs VitaminC; reproducible, no private corpus
+- prior lives in config (`calibration.prior`), not code
+- never calibrate without user's own labelled evidence - do not invent labels to "improve" scores
+- demo: `notebooks/calibration_demo.ipynb`; full doc: `docs/grounding_calibration.md`
 
 ## Output: grounding-report.md
 
