@@ -87,7 +87,7 @@ grounding-dataset:
 ## Validate grounding on public VitaminC (N= size default 600, ENGINE= lexical|nli)
 grounding-validate: grounding-dataset
 	@echo "$(MSG_PREFIX) validating grounding on VitaminC (N=$(or $(N),600), ENGINE=$(or $(ENGINE),lexical))"
-	@$(PROJECT_DIR)/.venv/bin/python notebooks/validate_public_grounding.py $(or $(N),600) $(or $(ENGINE),lexical)
+	@$(PROJECT_DIR)/.venv/bin/python scripts/validate_public_grounding.py $(or $(N),600) $(or $(ENGINE),lexical)
 
 #################################################################################
 # UV ENVIRONMENT MANAGEMENT                                                     #

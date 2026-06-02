@@ -56,7 +56,7 @@ Seven features per claim plus an intercept; all exposed on `GroundingMatch.verdi
 - **Tests** - 16 calibration tests in the 592-test suite (head units, R3/R4 regression, ground() integration + back-compat, fixture calibrated-beats-prior, config-transfer round-trip, CI end-to-end)
 - **R3 / R4** - on the untrained config prior, a fabrication (low ratio, no lexical) is denied and a cross-lingual true match (high ratio, no lexical) confirms
 - **CI fixture** - a 36-row synthetic multilingual fixture; calibrated meets precision >= 0.90 / recall >= 0.80 and beats the prior on a held-out split
-- **Full-pipeline simulation** (`notebooks/simulate_calibration.py`) - runs real e5 embeddings -> `ground_many` -> calibrate -> config transfer on authored en/nb/fr claims; the machinery runs end to end and config transfer is exact (10/10 identical verdicts), but the calibrated verdict does NOT beat the deterministic baseline on this data (en precision 0.67 / recall 1.0; nb and fr recall collapse to 0)
+- **Full-pipeline simulation** (`scripts/simulate_calibration.py`) - runs real e5 embeddings -> `ground_many` -> calibrate -> config transfer on authored en/nb/fr claims; the machinery runs end to end and config transfer is exact (10/10 identical verdicts), but the calibrated verdict does NOT beat the deterministic baseline on this data (en precision 0.67 / recall 1.0; nb and fr recall collapse to 0)
 
 ## Known limitation (proven by the simulation)
 
@@ -78,7 +78,7 @@ The investigation found and fixed two real precision bugs in the deterministic e
 
 ## Public-data validation (VitaminC, reproducible)
 
-The real-data gate is run on a public, reproducible corpus - **VitaminC** (FEVER-derived: `claim` + inline `evidence` + label SUPPORTS/REFUTES/NotEnoughInfo), fetched via `huggingface_hub` (a core dep), no `datasets` library. Reproduce with `make grounding-validate` (`N=` overrides the slice size; `make grounding-dataset` just caches it). Harness: `notebooks/validate_public_grounding.py`. Label map: SUPPORTS→grounded, REFUTES→contradicted, NotEnoughInfo→unconfirmed.
+The real-data gate is run on a public, reproducible corpus - **VitaminC** (FEVER-derived: `claim` + inline `evidence` + label SUPPORTS/REFUTES/NotEnoughInfo), fetched via `huggingface_hub` (a core dep), no `datasets` library. Reproduce with `make grounding-validate` (`N=` overrides the slice size; `make grounding-dataset` just caches it). Harness: `scripts/validate_public_grounding.py`. Label map: SUPPORTS→grounded, REFUTES→contradicted, NotEnoughInfo→unconfirmed.
 
 Honest result on 600 balanced dev claims (deterministic engine):
 
@@ -110,7 +110,7 @@ Grounding is fundamentally **entailment** - which neither lexical overlap nor co
 - **`document_processing/grounding.py`** - `extract_features` (incl. `nli_entail`/`nli_contra`), calibrated branch + `nli_grounder` in `ground()`/`ground_many`
 - **`document_processing/cli.py`** - `calibrate` and `config` subcommands
 - **`config_document_processing.yaml`** - `calibration` block (engine, threshold, prior incl. NLI features)
-- **`notebooks/validate_public_grounding.py`** - public-data (VitaminC) validation harness; `make grounding-validate [ENGINE=lexical|nli]`
+- **`scripts/validate_public_grounding.py`** - public-data (VitaminC) validation harness; `make grounding-validate [ENGINE=lexical|nli]`
 - **`notebooks/calibration_demo.ipynb`** - executed walkthrough
-- **`notebooks/simulate_calibration.py`** - full real-pipeline simulation / gate
+- **`scripts/simulate_calibration.py`** - full real-pipeline simulation / gate
 - **`tests/test_calibration.py`, `tests/test_calibration_cli.py`, `tests/fixtures/calibration_multilingual.jsonl`** - the suite + fixture
