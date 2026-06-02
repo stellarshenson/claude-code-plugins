@@ -458,6 +458,7 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
         semantic_threshold_percentile=getattr(args, "semantic_threshold_percentile", None),
         semantic_grounder=grounder,
         primary_source=getattr(args, "primary_source", None),
+        max_workers=getattr(args, "workers", 5),
     )
     exact = sum(1 for m in matches if m.match_type == "exact")
     fuzzy = sum(1 for m in matches if m.match_type == "fuzzy")
@@ -767,6 +768,16 @@ def _build_parser() -> argparse.ArgumentParser:
             "(cross-source pollution signal, WI#3)."
         ),
     )
+    gm.add_argument(
+        "--workers",
+        type=int,
+        default=5,
+        help=(
+            "Number of worker threads for per-claim grounding (default 5). "
+            "Parallelises the semantic path (ONNX embedding, FAISS search, NLI) "
+            "across claims; sources are indexed once up front. Set 1 to run serial."
+        ),
+    )
     _add_source_format_args(gm)
     add_ack_warning_arg(gm)
     gm.set_defaults(func=cmd_ground_many)
@@ -856,6 +867,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--stop-on-error",
         action="store_true",
         help="Abort the batch on the first client error (default: skip and continue).",
+    )
+    vm.add_argument(
+        "--workers",
+        type=int,
+        default=5,
+        help=(
+            "Number of worker threads for per-claim grounding within each client "
+            "(default 5). Parallelises the semantic path (ONNX embedding, FAISS "
+            "search, NLI). Set 1 to run serial."
+        ),
     )
     vm.set_defaults(func=cmd_validate_many)
 
@@ -1204,6 +1225,7 @@ def cmd_validate_many(args: argparse.Namespace) -> int:
         semantic_threshold_percentile=args.semantic_threshold_percentile,
         semantic=getattr(args, "semantic", None),
         stop_on_error=args.stop_on_error,
+        max_workers=getattr(args, "workers", 5),
     )
 
 

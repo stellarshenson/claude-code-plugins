@@ -33,9 +33,11 @@ Location semantics:
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 import logging
 import re
+import threading
 from typing import Literal, Sequence
 
 import numpy as np
@@ -581,6 +583,13 @@ def extract_features(
 
 _VERDICT_CACHE: dict = {}
 
+# Serialises calibrated-verdict prediction. bambi/PyMC ``model.predict`` is not
+# guaranteed thread-safe on a shared model+idata, so when ``ground_many`` runs
+# claims across a thread pool the predict call is the one section taken under a
+# lock. The expensive, thread-safe work (ONNX embedding, FAISS search, NLI
+# inference - all release the GIL) still runs concurrently.
+_VERDICT_LOCK = threading.Lock()
+
 
 def _config_calibrated_verdict():
     """Return the config-driven calibrated verdict, or None for the lexical engine.
@@ -904,7 +913,8 @@ def ground(
         # features. Contradiction still wins; otherwise CONFIRMED iff
         # P >= threshold, labelled by the strongest layer for provenance.
         feat = extract_features(result, cfg, nli_scores)
-        p, unc = verdict.predict_with_uncertainty(feat)
+        with _VERDICT_LOCK:
+            p, unc = verdict.predict_with_uncertainty(feat)
         result.verdict_probability = float(p[0] if hasattr(p, "__len__") else p)
         result.verdict_uncertainty = float(unc[0] if hasattr(unc, "__len__") else unc)
         result.verdict_features = feat
@@ -1136,12 +1146,22 @@ def ground_many(
     config: GroundingConfig | None = None,
     primary_source: str | None = None,
     nli_grounder=None,
+    max_workers: int = 1,
 ) -> list[GroundingMatch]:
     """Batch version of :func:`ground`.
 
     If ``semantic_grounder`` is provided, the source passages are indexed
     once (chunked + embedded + FAISS) and reused across all claims — major
     speedup over re-indexing per claim.
+
+    ``max_workers`` controls per-claim concurrency. With ``max_workers > 1``
+    (and more than one claim) the per-claim :func:`ground` calls run on a
+    thread pool. This parallelises the heavy semantic path — ONNX embedding,
+    FAISS search and NLI inference all release the GIL — so it is a real
+    speedup, not just interleaving. Sources are indexed once up front (before
+    the pool), and the calibrated-verdict prediction is serialised internally
+    (see ``_VERDICT_LOCK``). Result order matches ``claims``. Default ``1``
+    keeps the historical serial behaviour for library callers.
 
     When ``config.classifier_mode == "adaptive_gap"`` (H11), semantic-zone
     claims (those where no lexical layer cleared its threshold) are
@@ -1176,8 +1196,8 @@ def ground_many(
     # batch builds the bambi model at most once.
     verdict = _config_calibrated_verdict()
 
-    matches = [
-        ground(
+    def _ground_one(c: str) -> GroundingMatch:
+        return ground(
             c,
             sources,
             semantic_grounder=semantic_grounder,
@@ -1186,8 +1206,15 @@ def ground_many(
             calibrated_verdict=verdict,
             nli_grounder=nli_grounder,
         )
-        for c in claims
-    ]
+
+    workers = min(max(1, max_workers), len(claims)) if claims else 1
+    if workers > 1:
+        # ThreadPoolExecutor.map preserves input order, so matches[i] still
+        # corresponds to claims[i] (the adaptive_gap pass below relies on it).
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            matches = list(pool.map(_ground_one, claims))
+    else:
+        matches = [_ground_one(c) for c in claims]
 
     # H11: adaptive_gap classifier — reclassify semantic-zone claims (those
     # where no lexical layer cleared its threshold) using a per-batch

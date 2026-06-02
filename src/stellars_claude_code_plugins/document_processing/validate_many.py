@@ -116,6 +116,7 @@ def _run_single_client(
     semantic_threshold: float,
     semantic_threshold_percentile: float | None,
     semantic_grounder,
+    max_workers: int = 1,
 ) -> tuple[int, int]:
     """Run the full pipeline for one client.
 
@@ -144,6 +145,7 @@ def _run_single_client(
         semantic_threshold_percentile=semantic_threshold_percentile,
         semantic_grounder=semantic_grounder,
         primary_source=primary,
+        max_workers=max_workers,
     )
     grounding_report = _render_grounding_report(entry, matches)
     (client_dir / "grounding-report.md").write_text(grounding_report, encoding="utf-8")
@@ -211,6 +213,7 @@ def run_validate_many(
     semantic_threshold_percentile: float | None,
     semantic: str | None,
     stop_on_error: bool,
+    max_workers: int = 1,
 ) -> int:
     """Execute the batch described by ``source_map_path`` and return exit code."""
     try:
@@ -241,6 +244,7 @@ def run_validate_many(
                 semantic_threshold=semantic_threshold,
                 semantic_threshold_percentile=semantic_threshold_percentile,
                 semantic_grounder=grounder,
+                max_workers=max_workers,
             )
         except Exception as exc:  # noqa: BLE001 - we surface any failure per-client
             err = f"{type(exc).__name__}: {exc}"

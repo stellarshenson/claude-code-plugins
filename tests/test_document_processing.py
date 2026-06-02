@@ -299,6 +299,28 @@ class TestBatch:
         assert results[1].match_type == "exact"
         assert results[2].match_type in ("fuzzy", "none")
 
+    def test_ground_many_multithreaded_matches_serial(self):
+        # Threaded grounding must produce byte-identical results to serial and
+        # preserve claim order (the adaptive_gap pass indexes by position).
+        claims = [f"brown fox number {i}" for i in range(12)] + [
+            "lazy dog",
+            "totally unrelated claim about quantum mechanics",
+        ]
+        sources = ["The quick brown fox jumps over the lazy dog."]
+        serial = ground_many(claims, sources, fuzzy_threshold=0.85, max_workers=1)
+        threaded = ground_many(claims, sources, fuzzy_threshold=0.85, max_workers=5)
+        assert len(threaded) == len(serial) == len(claims)
+        assert [m.match_type for m in threaded] == [m.match_type for m in serial]
+        assert [m.agreement_score for m in threaded] == [m.agreement_score for m in serial]
+
+    def test_ground_many_workers_capped_to_claim_count(self):
+        # More workers than claims must not error or change results.
+        claims = ["lazy dog"]
+        sources = ["The quick brown fox jumps over the lazy dog."]
+        results = ground_many(claims, sources, fuzzy_threshold=0.85, max_workers=5)
+        assert len(results) == 1
+        assert results[0].match_type == "exact"
+
 
 class TestCLI:
     """End-to-end CLI tests via the main() entrypoint."""
@@ -420,6 +442,39 @@ class TestCLI:
         assert len(data["matches"]) == 2
         # Location fields should be in the JSON
         assert "exact_location" in data["matches"][0]
+
+    def test_ground_many_workers_flag(self, tmp_path):
+        # The --workers flag must be accepted and produce identical results to
+        # a serial run (parallelism is a perf knob, never a correctness change).
+        src = tmp_path / "src.txt"
+        src.write_text("The quick brown fox jumps over the lazy dog.")
+        claims = tmp_path / "claims.json"
+        claims.write_text(json.dumps(["brown fox", "lazy dog", "unrelated claim"]))
+
+        def run(workers):
+            out = tmp_path / f"report_{workers}.json"
+            cli_main(
+                [
+                    "batch-ground",
+                    "--claims",
+                    str(claims),
+                    "--source",
+                    str(src),
+                    "--output",
+                    str(out),
+                    "--json",
+                    "--workers",
+                    str(workers),
+                ]
+            )
+            return json.loads(out.read_text())
+
+        threaded = run(5)
+        serial = run(1)
+        assert threaded["summary"]["total"] == 3
+        assert [m["match_type"] for m in threaded["matches"]] == [
+            m["match_type"] for m in serial["matches"]
+        ]
 
     def test_ground_missing_source_errors(self, capsys):
         with pytest.raises(SystemExit):
@@ -1617,4 +1672,9 @@ class TestNLIGrounding:
         assert g.scores(ev, "There are three gardens on the estate.")["entailment"] > 0.5
         # cross-lingual entailment - the case cosine similarity could not solve
         assert g.scores(ev, "le domaine possede trois jardins clos")["entailment"] > 0.5
-        assert g.verdict("The vineyard covers twelve hectares.", "The vineyard covers forty hectares.") == "contradicted"
+        assert (
+            g.verdict(
+                "The vineyard covers twelve hectares.", "The vineyard covers forty hectares."
+            )
+            == "contradicted"
+        )
