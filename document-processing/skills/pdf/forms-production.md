@@ -1,6 +1,6 @@
 # PDF Form Processing Guide
 
-Complete guide for processing PDF forms in production environments.
+Guide for processing PDF forms in production.
 
 ## Table of contents
 
@@ -17,7 +17,7 @@ Complete guide for processing PDF forms in production environments.
 
 ### Analyze form structure
 
-Use `analyze_form.py` to extract complete form information:
+`analyze_form.py` extracts complete form info:
 
 ```bash
 python scripts/analyze_form.py application.pdf --output schema.json

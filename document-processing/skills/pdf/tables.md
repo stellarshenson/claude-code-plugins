@@ -1,6 +1,6 @@
 # PDF Table Extraction Guide
 
-Advanced table extraction strategies for production environments.
+Advanced table extraction strategies for production.
 
 ## Table of contents
 

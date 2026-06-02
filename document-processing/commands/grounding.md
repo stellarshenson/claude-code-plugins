@@ -6,13 +6,13 @@ argument-hint: "a claim + source, OR a document + source(s), OR a path to source
 
 # Grounding
 
-Invoke the `document-processing:grounding` skill. Pure grounding - no tone/style/format compliance (that is `/document-processing:validate`). The skill always runs the `document-processing` CLI; generative interpretation is only an on-top layer for semantic claims.
+Invoke `document-processing:grounding` skill. Pure grounding - no tone/style/format compliance (that = `/document-processing:validate`). Skill always runs `document-processing` CLI; generative interpretation only on-top layer for semantic claims.
 
-Three modes (the skill picks based on the argument):
+Three modes (skill picks from argument):
 
 - **Single claim** - `document-processing ground --claim "..." --source <file> --json`
-- **One document — the full grounding chain (extract → ground → consistency)** - `document-processing extract-claims --document <doc> --output validation/claims.json` -> review `claims.json` -> `document-processing ground --manifest validation/claims.json --source <src1> --source <src2> --output validation/grounding-report.md` -> `document-processing check-consistency --document <doc> --output validation/consistency-report.md`. All three steps run; the run produces both `grounding-report.md` and `consistency-report.md`.
-- **Many documents** - a `source_map.yaml` declaring `clients[].sources` + `document` (+ optional `primary_source`) -> `document-processing validate --manifest source_map.yaml --output-dir validation/`, which runs that same chain per client, producing `validation/<client>/{claims.json,grounding-report.md,consistency-report.md}`
+- **One document — full grounding chain (extract → ground → consistency)** - `document-processing extract-claims --document <doc> --output validation/claims.json` -> review `claims.json` -> `document-processing ground --manifest validation/claims.json --source <src1> --source <src2> --output validation/grounding-report.md` -> `document-processing check-consistency --document <doc> --output validation/consistency-report.md`. All three steps run; run produces both `grounding-report.md` and `consistency-report.md`.
+- **Many documents** - `source_map.yaml` declaring `clients[].sources` + `document` (+ optional `primary_source`) -> `document-processing validate --manifest source_map.yaml --output-dir validation/`, runs same chain per client, producing `validation/<client>/{claims.json,grounding-report.md,consistency-report.md}`
 
 ## Optional layers (opt-in)
 

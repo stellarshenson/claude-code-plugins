@@ -1,11 +1,11 @@
 # PDF Processing Advanced Reference
 
-This document contains advanced PDF processing features, detailed examples, and additional libraries not covered in the main skill instructions.
+Advanced PDF processing features, detailed examples, and additional libraries not covered in main skill instructions.
 
 ## pypdfium2 Library (Apache/BSD License)
 
 ### Overview
-pypdfium2 is a Python binding for PDFium (Chromium's PDF library). It's excellent for fast PDF rendering, image generation, and serves as a PyMuPDF replacement.
+pypdfium2 - Python binding for PDFium (Chromium's PDF library). Excellent for fast PDF rendering, image generation; serves as PyMuPDF replacement.
 
 ### Render PDF to Images
 ```python
@@ -47,7 +47,7 @@ for i, page in enumerate(pdf):
 
 ### pdf-lib (MIT License)
 
-pdf-lib is a powerful JavaScript library for creating and modifying PDF documents in any JavaScript environment.
+pdf-lib - powerful JavaScript library for creating and modifying PDF documents in any JavaScript environment.
 
 #### Load and Manipulate Existing PDF
 ```javascript

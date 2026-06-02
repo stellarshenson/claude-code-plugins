@@ -24,15 +24,15 @@ project-root/
 
 ## Rules
 
-**1-input/** is read-only. Never create, modify, or delete files here. All source documents remain untouched throughout the processing workflow.
+**1-input/** read-only. Never create, modify, delete files here. Source documents stay untouched through whole workflow.
 
-**2-wip/** is organized by task. Each invocation of the processing workflow creates a subfolder named after the task. All intermediate artifacts live here - drafts, assumptions registers, grounding reports, uniformization checklists, and versioned iterations.
+**2-wip/** organized by task. Each workflow invocation creates subfolder named after task. All intermediate artifacts live here - drafts, assumptions registers, grounding reports, uniformization checklists, versioned iterations.
 
-**3-output/** contains only final, reviewed, quality-checked documents. No drafts, no WIP artifacts. A document moves here only after passing all uniformization checks.
+**3-output/** holds only final, reviewed, quality-checked documents. No drafts, no WIP artifacts. Document moves here only after passing all uniformization checks.
 
-**4-references/** contains reference materials that support the processing workflow. Two subfolders:
-- `examples/` - example output documents showing expected format, structure, and style. Used as format guidance only, never as source material or content to copy
-- `facts/` - verified universal facts independent of any single source document. Legal provisions, statutory articles, court precedent summaries, scientific consensus statements. These serve as grounding anchors that do not need per-document verification
+**4-references/** holds reference materials supporting workflow. Two subfolders:
+- `examples/` - example output documents showing expected format, structure, style. Format guidance only, never source material or content to copy
+- `facts/` - verified universal facts independent of any single source document. Legal provisions, statutory articles, court precedent summaries, scientific consensus statements. Serve as grounding anchors needing no per-document verification
 
 ## Naming Conventions
 

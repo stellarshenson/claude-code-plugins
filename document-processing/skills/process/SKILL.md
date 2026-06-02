@@ -5,13 +5,13 @@ description: Build a structured deliverable FROM source files - reconstruct a ti
 
 # Process - Structured Document Build
 
-Meta-skill for structured document production. Generates a tailored program (INSTRUCTIONS.md + BENCHMARK.md), scaffolds the WIP folder, executes the four-phase workflow. Does not process documents directly - it orchestrates.
+Meta-skill for structured document production. Generates tailored program (INSTRUCTIONS.md + BENCHMARK.md), scaffolds WIP folder, executes four-phase workflow. Does not process documents directly - orchestrates.
 
-**Scope boundary.** This skill *builds* a deliverable from sources. It is not the verification path: validating a finished document against its source for grounding + tone/style/format compliance is the `validate` skill; running the grounding CLI over claims (single or batch via `source_map.yaml`) is the `grounding` skill. The Verify & Ground phase below *invokes* the `grounding` skill rather than re-implementing grounding.
+**Scope boundary.** This skill *builds* deliverable from sources. Not the verification path: validating finished document against source for grounding + tone/style/format compliance = `validate` skill; running grounding CLI over claims (single or batch via `source_map.yaml`) = `grounding` skill. Verify & Ground phase below *invokes* `grounding` skill rather than re-implementing grounding.
 
 ## Pre-flight install (MANDATORY - run every session, no asking)
 
-Always run this single line BEFORE invoking `document-processing`. No-op when the package is already importable; auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python:
+Always run this single line BEFORE invoking `document-processing`. No-op when package already importable; auto-installs when missing OR when stale shim on PATH but package uninstalled in active Python:
 
 ```bash
 python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins

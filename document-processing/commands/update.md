@@ -6,7 +6,7 @@ argument-hint: "what to update and why, e.g. 'add new hearing transcript to time
 
 # Document Processing - Update
 
-Invoke the `document-processing:update` skill. It updates an existing `3-output/` document with new information, corrections, re-applied rules, or re-verification against updated sources - and **always re-runs the grounding CLI on the changed content before declaring done** (step 5 of the skill is a gate, not optional).
+Invoke `document-processing:update` skill. Updates existing `3-output/` document with new info, corrections, re-applied rules, or re-verification against updated sources - and **always re-runs grounding CLI on changed content before declaring done** (step 5 of skill is gate, not optional).
 
 ## When to use
 
@@ -18,13 +18,13 @@ Invoke the `document-processing:update` skill. It updates an existing `3-output/
 
 ## Flow
 
-1. The skill identifies what exists (`3-output/`, `2-wip/`, `INSTRUCTIONS.md`, `BENCHMARK.md`), asks what changed and which document, then does a targeted update (default) or a full re-run via the `process` skill
-2. Mandatory grounding pass via the `grounding` skill: `document-processing extract-claims` on the changed doc -> review `claims.json` -> `document-processing ground --manifest ... --source <each 1-input/ source> --output validation/grounding-report.md` -> `document-processing check-consistency --document <doc> --output validation/consistency-report.md`; fix every UNCONFIRMED / CONTRADICTED claim and consistency finding
+1. Skill identifies what exists (`3-output/`, `2-wip/`, `INSTRUCTIONS.md`, `BENCHMARK.md`), asks what changed and which document, then does targeted update (default) or full re-run via `process` skill
+2. Mandatory grounding pass via `grounding` skill: `document-processing extract-claims` on changed doc -> review `claims.json` -> `document-processing ground --manifest ... --source <each 1-input/ source> --output validation/grounding-report.md` -> `document-processing check-consistency --document <doc> --output validation/consistency-report.md`; fix every UNCONFIRMED / CONTRADICTED claim and consistency finding
 3. Re-verify against `BENCHMARK.md`, report score delta
-4. WIP manifest updated with what changed, when, and the post-update grounding score
+4. WIP manifest updated with what changed, when, and post-update grounding score
 
 ## When NOT to use this
 
-- Building a new deliverable from scratch -> use `/document-processing:process`
-- Validating a document you did not produce here -> use `/document-processing:validate`
+- Building new deliverable from scratch -> use `/document-processing:process`
+- Validating document you did not produce here -> use `/document-processing:validate`
 - Bare claim grounding -> use `/document-processing:grounding`

@@ -1,15 +1,15 @@
 # Uniformization Methodology
 
-Uniformization ensures every output document meets consistent, measurable quality standards. Rules are task-specific but follow a common structure.
+Uniformization makes every output document meet consistent, measurable quality standards. Rules task-specific but follow common structure.
 
 ## Rule Design Principles
 
 Each uniformization rule has:
 - **ID**: Sequential identifier (R1, R2, R3...)
 - **Name**: Descriptive short name
-- **Criteria**: Measurable conditions that can be checked programmatically or by inspection
-- **Examples**: What a violation looks like and how to fix it
-- **Priority**: Rules are ordered by importance - structural first, content second, formatting last
+- **Criteria**: Measurable conditions, checkable programmatically or by inspection
+- **Examples**: What violation looks like, how to fix
+- **Priority**: Order rules by importance - structural first, content second, formatting last
 
 ## Standard Rule Categories
 

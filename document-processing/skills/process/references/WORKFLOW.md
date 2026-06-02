@@ -1,6 +1,6 @@
 # Document Processing Workflow
 
-Every document processing task follows three phases. Phase 1 produces a draft by extracting and synthesizing information from source documents. Phase 2 verifies the draft against source material, catching unsupported claims and errors. Phase 3 applies uniformization rules and produces the final polished output.
+Every document processing task runs three phases. Phase 1 produces draft - extract and synthesize from source documents. Phase 2 verifies draft against source material, catches unsupported claims and errors. Phase 3 applies uniformization rules, produces final polished output.
 
 ## Phase 1: Analyze & Draft
 
@@ -10,6 +10,7 @@ Every document processing task follows three phases. Phase 1 produces a draft by
 - Identify structure, key entities, dates, themes
 - Catalogue what each source document contains
 - Note document types (court rulings, correspondence, reports, transcriptions)
+
 
 ### Step 1.2: Create Analysis Plan
 - Based on the objective, outline what information to extract

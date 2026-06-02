@@ -5,15 +5,15 @@ description: Ground claims against source material with the deterministic ground
 
 # Grounding Skill
 
-Grounding a document is a **three-step chain**, not just step 2:
+Grounding a document = **three-step chain**, not just step 2:
 
-1. **`extract-claims`** — enumerate the load-bearing claims from the document into `claims.json` (heuristic, lossy — review it before grounding).
-2. **`ground`** — score every claim against the source(s) with the deterministic CLI (regex exact + Levenshtein fuzzy + BM25, + optional semantic); read the verdicts, apply the verdict rules; write `grounding-report.md`.
-3. **`check-consistency`** — check the document against *itself* for divergences grounding structurally can't see (`42 users` here vs `50 users` there; `dev/test/staging` vs `dev/staging/prod`); write `consistency-report.md`.
+1. **`extract-claims`** — enumerate load-bearing claims from document into `claims.json` (heuristic, lossy — review before grounding).
+2. **`ground`** — score every claim against source(s) with deterministic CLI (regex exact + Levenshtein fuzzy + BM25, + optional semantic); read verdicts, apply verdict rules; write `grounding-report.md`.
+3. **`check-consistency`** — check document against *itself* for divergences grounding structurally can't see (`42 users` here vs `50 users` there; `dev/test/staging` vs `dev/staging/prod`); write `consistency-report.md`.
 
-A document-grounding run produces **both** `grounding-report.md` and `consistency-report.md`. For a *single claim* (no document), run only step 2's single-claim form (`document-processing ground`). For *many documents*, `validate` runs the whole chain per client. **Always runs the CLI** - it is the canonical operational grounder; generative interpretation is only an on-top layer for semantic claims after the CLI ran.
+Document-grounding run produces **both** `grounding-report.md` and `consistency-report.md`. Single claim (no document) → run only step 2's single-claim form (`document-processing ground`). Many documents → `validate` runs whole chain per client. **Always run the CLI** - canonical operational grounder; generative interpretation only an on-top layer for semantic claims after CLI ran.
 
-The `validate` skill wraps this whole chain and adds a tone/style/length/format compliance layer on top; the `process` skill invokes this skill from its Verify & Ground phase; the `update` skill calls it as its mandatory closing step.
+`validate` skill wraps this whole chain, adds tone/style/length/format compliance layer on top; `process` skill invokes this skill from its Verify & Ground phase; `update` skill calls it as its mandatory closing step.
 
 ## Output style (MANDATORY for all generated artefacts)
 
@@ -21,27 +21,27 @@ Every file this skill writes (`grounding-report.md`, `consistency-report.md`, `c
 
 ## Pre-flight install (MANDATORY - run every session, no asking)
 
-Always run this single line BEFORE invoking `document-processing`. No-op when the package is already importable; auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python:
+Always run this single line BEFORE invoking `document-processing`. No-op when package already importable; auto-installs when missing OR when stale shim on PATH but package uninstalled in active Python:
 
 ```bash
 python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
-Ships the `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask the user whether to install - just run the line. **The CLI is mandatory.** Generative interpretation is only an on-top layer for semantic claims after the CLI ran - never a substitute for it. If the package genuinely cannot be installed, say so and stop; do not silently degrade to manual search.
+Ships `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask user whether to install - just run the line. **CLI mandatory.** Generative interpretation only an on-top layer for semantic claims after CLI ran - never a substitute. If package genuinely cannot install, say so and stop; do not silently degrade to manual search.
 
-## Semantic grounding (+ NLI): opt-in per call via `--semantic` (recommend it by default)
+## Semantic grounding (+ NLI): opt-in per call via `--semantic` (recommend by default)
 
-**Posture: recommend semantic, enable it per call.** There is no persisted `semantic_enabled` setting anymore — semantic is a flag on the grounder. Pass `--semantic` to bring two layers online together:
+**Posture: recommend semantic, enable per call.** No persisted setting — semantic = boolean flag on the grounder (`--semantic`, store_true, default off). Pass it to bring two layers online together:
 
 - **Retrieval embedder + FAISS** (default `intfloat/multilingual-e5-small`, set via `semantic_model` in settings) — catches meaning-match when wording AND terms diverge
-- **NLI entailment cross-encoder** (rides with semantic, no separate flag) — the truth signal: does the evidence *entail* the claim? Catches contradictions and cross-lingual matches the lexical layers structurally cannot reach. With NLI on, the verdict runs through the calibrated engine so entailment is weighed against the other layers, not a hard override
+- **NLI entailment cross-encoder** (rides with semantic, no separate flag) — truth signal: does evidence *entail* the claim? Catches contradictions and cross-lingual matches lexical layers structurally cannot reach. With NLI on, verdict runs through calibrated engine so entailment weighed against other layers, not a hard override
 
 Decision each run:
 
-- **Default → recommend `--semantic`.** Phrase it as the default: "Semantic + NLI grounding is the recommended default — the only layers that catch a passage that *means* the claim (or *contradicts* it) while sharing no wording. One-time cost: `pip install 'stellars-claude-code-plugins[semantic]'` plus model downloads on first use (~120 MB embedder + ~560 MB NLI). Use it?"
-- **User declines → lexical-only for this session.** Three lexical layers, no persistence. Don't re-ask (the re-recommend-on-struggle rule below still applies).
+- **Default → recommend `--semantic`.** Phrase as default: "Semantic + NLI grounding is the recommended default — only layers that catch a passage that *means* the claim (or *contradicts* it) while sharing no wording. One-time cost: `pip install 'stellars-claude-code-plugins[semantic]'` plus model downloads on first use (~120 MB embedder + ~560 MB NLI). Use it?"
+- **User declines → lexical-only this session.** Three lexical layers, no persistence. Don't re-ask (re-recommend-on-struggle rule below still applies).
 
-Never pass `--semantic` while the `[semantic]` extra is uninstalled — the CLI hard-fails (exit 2) on that explicit contract. Install first, then `--semantic`.
+Never pass `--semantic` while `[semantic]` extra uninstalled — CLI hard-fails (exit 2) on that explicit contract. Install first, then `--semantic`.
 
 ### Never blindly trust scores. Verify generatively when in doubt
 

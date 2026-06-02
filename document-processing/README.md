@@ -1,45 +1,44 @@
 # document-processing
 
-Structured document processing plugin for Claude Code. Turns raw source material in `1-input/` into verified, quality-controlled outputs in `3-output/` through a three-phase workflow (analyze and draft, verify and ground, uniformize and deliver) with full traceability from every claim back to its source.
+Structured document processing plugin for Claude Code. Turns raw source material in `1-input/` into verified, quality-controlled outputs in `3-output/` with full traceability from every claim back to its source.
 
-Unlike ad-hoc summarization, this plugin generates a tailored processing program (`INSTRUCTIONS.md` + `BENCHMARK.md`) for the specific objective, enforces explicit phase gates, ships a deterministic grounding CLI, and provides a complete PDF toolkit. There is exactly one verification flow - the `grounding` skill - and everything that needs grounding (the `validate` skill, the `process` skill's verify phase, the `update` skill's closing step) calls it rather than re-implementing it.
+- **Workflow** - three phases: analyze and draft, verify and ground, uniformize and deliver
+- **Tailored program** - generates `INSTRUCTIONS.md` + `BENCHMARK.md` per objective, not ad-hoc summarization
+- **Phase gates** - explicit gates enforced between phases
+- **Single verification flow** - the `grounding` skill; the `validate` skill, the `process` verify phase, and the `update` closing step all call it rather than re-implementing
+- **Tooling** - ships a deterministic grounding CLI plus a complete PDF toolkit
 
 ## Grounding CLI
 
-Ships the `document-processing` CLI with a three-layer lexical grounder plus an optional fourth semantic layer. Every hit returns line / column / paragraph / page / context snippet — the agent cites precisely without rereading the source. **Saves tokens: measured 64-86% reduction vs batched generative grounding** on real sources (SVG Medium article, Liu 2023 paper).
+Ships the `document-processing` CLI with a three-layer lexical grounder plus an optional fourth semantic layer.
+
+- **Citations** - every hit returns line / column / paragraph / page / context snippet; the agent cites without rereading the source
+- **Token saving** - measured 64-86% reduction vs batched generative grounding on real sources (SVG Medium article, Liu 2023 paper)
 
 ### Data-science calibrated
 
-The grounding classifier was tuned via a six-iteration `autobuild` cycle with
-a composite benchmark score and 3-fold cross-validation on three held-out
-academic papers (Liu 2023, Ye 2024, Han 2024 - 14 labelled claims each,
-12 real + 2 fabricated). Final CV mean accuracy 1.0 with zero overfit
-gap. Every tunable parameter (29 fields: per-layer weights, ramp
-endpoints, voter thresholds, entity-penalty factor, adaptive-gap
-classifier mode, percentile floor, etc.) is exposed in
-`stellars_claude_code_plugins/document_processing/config.yaml` and
-documented per field; override via `.stellars-plugins/config.yaml`
-project-local. A `scripts/calibrate.py` grid-search and
-`scripts/calibrate_cv.py` cross-validation harness are shipped for
-re-tuning on new corpora.
+The grounding classifier was tuned via a six-iteration `autobuild` cycle with a composite benchmark score and 3-fold cross-validation.
 
-Full optimisation record: program definition, benchmark formula,
-hypothesis + falsifiers, per-iteration artefacts, forensic report,
-CV results, and corpus data all archived under
-[`references/grounding-optimisation/`](../references/grounding-optimisation/).
+- **Corpus** - three held-out academic papers (Liu 2023, Ye 2024, Han 2024); 14 labelled claims each, 12 real + 2 fabricated
+- **Accuracy** - final CV mean 1.0 with zero overfit gap
+- **Tunables** - 29 fields exposed (per-layer weights, ramp endpoints, voter thresholds, entity-penalty factor, adaptive-gap classifier mode, percentile floor, etc.)
+- **Config** - lives in `stellars_claude_code_plugins/document_processing/config.yaml`, documented per field; override via `.stellars-plugins/config.yaml` project-local
+- **Re-tuning** - `scripts/calibrate.py` grid-search and `scripts/calibrate_cv.py` cross-validation harness shipped
+
+Full optimisation record (program definition, benchmark formula, hypothesis + falsifiers, per-iteration artefacts, forensic report, CV results, corpus data) archived under [`references/grounding-optimisation/`](../references/grounding-optimisation/).
 
 ### NLI / entailment grounding (the truth signal)
 
-Lexical tests word presence. cosine tests topic. only **entailment** tests "does evidence support claim?". A cross-encoder reads `(evidence, claim)` -> entailment / neutral / contradiction = grounded / unconfirmed / contradicted.
+Lexical tests word presence, cosine tests topic, only entailment tests "does evidence support claim?". A cross-encoder reads `(evidence, claim)` -> entailment / neutral / contradiction = grounded / unconfirmed / contradicted.
 
-- model `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli`, ONNX, torch-free, **multilingual**
-- confirms cross-lingual claims (NB/FR vs EN source) - lexical + cosine cannot
-- catches word-number + semantic contradictions the lexical guard misses
-- public-data check: `make grounding-validate ENGINE=nli` (VitaminC contradiction recall 0.81 vs lexical 0.05)
+- **Model** - `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli`, ONNX, torch-free, multilingual
+- **Cross-lingual** - confirms claims (NB/FR vs EN source) that lexical + cosine cannot
+- **Contradictions** - catches word-number + semantic contradictions the lexical guard misses
+- **Public-data check** - `make grounding-validate ENGINE=nli` (VitaminC contradiction recall 0.81 vs lexical 0.05)
 
 ### Local domain calibration (Bayesian)
 
-Default thresholds miss your domain? calibrate per-corpus. Bayesian logistic (bambi / PyMC) over the layer features (lexical + semantic + NLI); learned weights live in config, used with no fitting at run time.
+Calibrate per-corpus when default thresholds miss the domain. Bayesian logistic (bambi / PyMC) over the layer features (lexical + semantic + NLI); learned weights live in config, used with no fitting at run time.
 
 ```bash
 # calibrate from labelled evidence, then transfer learned weights into config
@@ -48,11 +47,11 @@ document-processing calibrate --action update \
 document-processing config set-calibrator --profile .stellars-plugins/calibrator.json
 ```
 
-- evidence = JSON list `{claim, sources:[paths] (or source_text), label:0|1, lang?, weight?}`; LLM-eval prob works as a soft label
-- `config set-calibrator` writes a `calibration:` block (engine, threshold, weights) into `.stellars-plugins/config_document_processing.yaml`
-- `--from <profile>` = incremental (posterior seeds the next fit, feedback accumulates)
-- prior lives in config (`calibration.prior`), not code
-- full doc: [`docs/grounding_calibration.md`](../docs/grounding_calibration.md); demo: [`notebooks/calibration_demo.ipynb`](../notebooks/calibration_demo.ipynb)
+- **Evidence** - JSON list `{claim, sources:[paths] (or source_text), label:0|1, lang?, weight?}`; LLM-eval prob works as a soft label
+- **set-calibrator** - writes a `calibration:` block (engine, threshold, weights) into `.stellars-plugins/config_document_processing.yaml`
+- **Incremental** - `--from <profile>` seeds the next fit from the posterior, feedback accumulates
+- **Prior** - lives in config (`calibration.prior`), not code
+- **Docs** - [`docs/grounding_calibration.md`](../docs/grounding_calibration.md); demo [`notebooks/calibration_demo.ipynb`](../notebooks/calibration_demo.ipynb)
 
 | Layer | What it catches | Dep |
 |-------|-----------------|-----|
@@ -62,7 +61,9 @@ document-processing config set-calibrator --profile .stellars-plugins/calibrator
 | Semantic (e5 + FAISS) | same meaning, different words | opt-in |
 | NLI (cross-encoder) | entailment / contradiction - true grounding, multilingual | opt-in |
 
-Semantic + NLI are opt-in (`[semantic]` extra: `onnxruntime`, `transformers`, `faiss-cpu`, `pyarrow`; calibration core deps `pymc`/`bambi`/`arviz`/`pandas`). Torch-free - models are ONNX, downloaded on first use (e5 ~120 MB, NLI ~560 MB). Bare install = lexical only; the `grounding` skill recommends enabling semantic/NLI at `document-processing setup`.
+- **Opt-in deps** - `[semantic]` extra: `onnxruntime`, `transformers`, `faiss-cpu`, `pyarrow`; calibration core deps `pymc`/`bambi`/`arviz`/`pandas`
+- **Torch-free** - models are ONNX, downloaded on first use (e5 ~120 MB, NLI ~560 MB)
+- **Default** - bare install = lexical only; the `grounding` skill recommends enabling semantic/NLI at `document-processing setup`
 
 ### Install (core)
 
@@ -78,7 +79,8 @@ pip install 'stellars-claude-code-plugins[semantic]'
 document-processing setup                 # interactive prompt, writes settings
 ```
 
-Settings live at `./.stellars-plugins/settings.json` (project-local, sibling to `.claude/`). Default model: `intfloat/multilingual-e5-small` (118M params, multilingual, trained for retrieval).
+- **Settings** - `./.stellars-plugins/settings.json` (project-local, sibling to `.claude/`)
+- **Default model** - `intfloat/multilingual-e5-small` (118M params, multilingual, trained for retrieval)
 
 ### Enable OCR (optional, opt-in)
 
@@ -89,9 +91,16 @@ apt install tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu  # etc per languag
 # brew install tesseract tesseract-lang                         # macOS
 ```
 
-Enables auto-OCR fallback for scanned PDFs that have no sibling text file. The agent supplies `--ocr-lang <code>` per run (`eng`, `deu`, `fra`, `chi_sim`, etc) - the tool never auto-detects language. Auto-OCR results are written as `<stem>.ocr.txt` next to the source with a header carrying quality stats (mean confidence, page count, language, timestamp). Without the `[ocr]` extras the tool falls back to a vision-OCR workflow - the agent reads the PDF via the Read tool, transcribes pages, saves to `<stem>.ocr.txt`, reruns. Either path produces the same sibling-file convention so subsequent grounding runs use the cached candidate without re-OCR.
+Enables auto-OCR fallback for scanned PDFs that have no sibling text file.
 
-**Native source formats** (no extras required): `.txt`, `.md`, `.rst`, `.pdf` (text), `.docx`, `.odt`, `.rtf`, `.html` - extracted directly. The stop-and-think warning-ack gate surfaces per-source warnings (`OCR-FALLBACK`, `OCR-CANDIDATE`, `OCR-FAILED`, `OCR-LANG-NEEDED`, `OCR-MISSING`, `SOURCE-SKIPPED`) the agent must ack with terse reasoning before grounding consumes the result.
+- **Language** - agent supplies `--ocr-lang <code>` per run (`eng`, `deu`, `fra`, `chi_sim`, etc); the tool never auto-detects
+- **Cache** - auto-OCR results written as `<stem>.ocr.txt` next to the source with a header carrying quality stats (mean confidence, page count, language, timestamp)
+- **Fallback** - without `[ocr]` extras the tool uses vision-OCR: the agent reads the PDF via the Read tool, transcribes pages, saves to `<stem>.ocr.txt`, reruns
+- **Convention** - both paths produce the same sibling-file convention so subsequent grounding runs use the cached candidate without re-OCR
+
+Native source formats (no extras required): `.txt`, `.md`, `.rst`, `.pdf` (text), `.docx`, `.odt`, `.rtf`, `.html` - extracted directly.
+
+- **Warning-ack gate** - the stop-and-think gate surfaces per-source warnings (`OCR-FALLBACK`, `OCR-CANDIDATE`, `OCR-FAILED`, `OCR-LANG-NEEDED`, `OCR-MISSING`, `SOURCE-SKIPPED`) the agent must ack with terse reasoning before grounding consumes the result
 
 ### Usage
 
@@ -117,7 +126,11 @@ document-processing validate --manifest source_map.yaml --output-dir validation/
 document-processing check-consistency --document docs/brief.md --output validation/consistency-report.md
 ```
 
-Output includes all layer scores per claim, the winning passage, and location metadata. See `skills/grounding/SKILL.md` for how the agent should read the output (including "never blindly trust scores — verify via the pointer", the three core verdict rules, and the OCR fallback chain).
+- **ground** - `--claim TEXT` XOR `--manifest FILE`, plus `--source` (repeatable)
+- **validate** - `--document FILE` (repeatable) + `--source` XOR `--manifest source_map.yaml`
+- **--semantic** - boolean flag, default off; enables e5 embedding + NLI + calibrated verdict
+- **Output** - all layer scores per claim, the winning passage, and location metadata
+- **Reading** - see `skills/grounding/SKILL.md` for how the agent reads output (including "never blindly trust scores — verify via the pointer", the three core verdict rules, the OCR fallback chain)
 
 ## Installation
 
@@ -158,7 +171,10 @@ The `process` skill walks through objective refinement, generates `INSTRUCTIONS.
 
 ## How it works
 
-The plugin operates over a fixed project layout: `1-input/` holds read-only source material, `2-wip/<task-name>/` holds per-task drafts and reports, `3-output/` holds final delivered documents, and `4-references/` holds examples and verified facts used as grounding anchors. Every intermediate artifact stays in WIP until all rules pass. See `skills/process/references/FOLDER-STRUCTURE.md` for the full convention.
+The plugin operates over a fixed project layout with grounding as the single verification flow across all skills.
+
+- **Layout** - `1-input/` read-only source material, `2-wip/<task-name>/` per-task drafts and reports, `3-output/` final delivered documents, `4-references/` examples and verified facts used as grounding anchors
+- **WIP discipline** - every intermediate artifact stays in WIP until all rules pass; full convention in `skills/process/references/FOLDER-STRUCTURE.md`
 
 Grounding is the single verification flow. The `grounding` skill runs the deterministic three-layer CLI (regex exact + Levenshtein fuzzy + BM25, plus optional semantic), reads the per-claim verdicts, applies three core rules (agreement beats magnitude; a numeric/entity contradiction is the final word; re-recommend semantic on struggle), handles the scanned-PDF OCR fallback chain, and writes a grounding report plus an intra-document self-consistency report. The `validate` skill wraps it and layers compliance on top; the `process` skill calls it from its verify phase; the `update` skill calls it as a mandatory closing step. The claim-classification methodology for the synthesis workflow (DIRECT QUOTE / PARAPHRASE / INFERENCE / INTERPRETATION / UNSUPPORTED, with HIGH/MEDIUM/LOW severity) is in `skills/process/references/GROUNDING.md`.
 

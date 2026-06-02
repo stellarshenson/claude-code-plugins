@@ -1,20 +1,20 @@
 # Grounding Methodology
 
-Every factual claim in a produced document must be traceable to a specific passage in a source document. This prevents hallucination, ensures legal defensibility, and enables quality auditing.
+Every factual claim in produced document traces to specific passage in source document. Prevents hallucination, ensures legal defensibility, enables quality auditing.
 
 ## Assumption Extraction Process
 
-Read the draft document and for each factual statement determine its relationship to source material:
+Read draft document. For each factual statement, determine relationship to source material:
 
-1. **DIRECT QUOTE** - verbatim text from a source document
-2. **PARAPHRASE** - restated content preserving original meaning
-3. **INFERENCE** - conclusion drawn from source material but not explicitly stated
+1. **DIRECT QUOTE** - verbatim text from source document
+2. **PARAPHRASE** - restated content, original meaning preserved
+3. **INFERENCE** - conclusion drawn from source material, not explicitly stated
 4. **INTERPRETATION** - author's assessment or analysis of source material
-5. **UNSUPPORTED** - claim with no identifiable source
+5. **UNSUPPORTED** - claim, no identifiable source
 
 ## Standardized Assumption Format
 
-For each claim extracted from the draft, record:
+For each claim extracted from draft, record:
 
 ```markdown
 ### [ID]: [Claim Title]

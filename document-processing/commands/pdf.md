@@ -6,14 +6,14 @@ argument-hint: "what to do, e.g. 'fill this form', 'extract tables from report.p
 
 # PDF
 
-Invoke the `document-processing:pdf` skill. It carries the PDF library reference (pypdf, pdfplumber, reportlab), the CLI tools (pdftotext, qpdf, pdftk, pdfimages), the pre-built scripts under `scripts/` (form analysis and fill, bounding-box checks, page-to-image conversion, validation images), and topic guides for forms, table extraction, and OCR.
+Invoke `document-processing:pdf` skill. Carries PDF library reference (pypdf, pdfplumber, reportlab), CLI tools (pdftotext, qpdf, pdftk, pdfimages), pre-built scripts under `scripts/` (form analysis and fill, bounding-box checks, page-to-image conversion, validation images), plus topic guides for forms, table extraction, OCR.
 
 ## Common tasks
 
-- Extract text / tables from a PDF
-- Create a PDF, merge several, split into pages, rotate, watermark, password-protect
-- Analyze a form's fields, fill it from data, flatten it
-- OCR a scanned / image-only PDF
+- Extract text / tables from PDF
+- Create PDF, merge several, split into pages, rotate, watermark, password-protect
+- Analyze form's fields, fill from data, flatten
+- OCR scanned / image-only PDF
 - Batch-process many PDFs with proper exit codes
 
-The skill auto-triggers on PDF work; this command is the explicit entry point.
+Skill auto-triggers on PDF work; this command = explicit entry point.

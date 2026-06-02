@@ -54,7 +54,7 @@ text = pytesseract.image_to_string(image, lang="spa")
 text = pytesseract.image_to_string(image, lang="eng+spa+fra")
 ```
 
-Install additional languages:
+Install more languages:
 ```bash
 # macOS
 brew install tesseract-lang
@@ -95,11 +95,11 @@ text = pytesseract.image_to_string(processed)
 ## Best practices
 
 1. **Preprocess images** for better accuracy
-2. **Use appropriate language** models
+2. **Use right language** models
 3. **Batch process** large documents
-4. **Cache results** to avoid re-processing
-5. **Validate output** - OCR is not 100% accurate
-6. **Consider confidence scores** for quality checks
+4. **Cache results** to skip re-processing
+5. **Validate output** - OCR not 100% accurate
+6. **Check confidence scores** for quality
 
 ## Production example
 

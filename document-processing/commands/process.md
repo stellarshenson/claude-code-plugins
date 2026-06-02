@@ -6,15 +6,15 @@ argument-hint: "describe what to produce from the input documents"
 
 # Document Processing - Process
 
-Invoke the `document-processing:process` skill with the user's objective. The skill refines the objective, generates `INSTRUCTIONS.md` + `BENCHMARK.md` (each for user approval), scaffolds the WIP folder, then executes the four-phase workflow.
+Invoke `document-processing:process` skill with user objective. Skill refines objective, generates `INSTRUCTIONS.md` + `BENCHMARK.md` (each for user approval), scaffolds WIP folder, then runs four-phase workflow.
 
 ## Flow
 
-1. Invoke the `process` skill with the user's objective
-2. The skill handles: objective refinement -> program generation -> benchmark generation -> scaffolding -> execution (Analyze & Draft -> Verify & Ground -> Uniformize & Deliver)
-3. The Verify & Ground phase invokes the `grounding` skill for CLI-assisted claim grounding
-4. All intermediate work goes to `2-wip/<task-name>/`
-5. Final output goes to `3-output/`
+1. Invoke `process` skill with user objective
+2. Skill handles: objective refinement -> program generation -> benchmark generation -> scaffolding -> execution (Analyze & Draft -> Verify & Ground -> Uniformize & Deliver)
+3. Verify & Ground phase invokes `grounding` skill for CLI-assisted claim grounding
+4. All intermediate work -> `2-wip/<task-name>/`
+5. Final output -> `3-output/`
 
 ## Prerequisites
 
@@ -23,9 +23,9 @@ Invoke the `document-processing:process` skill with the user's objective. The sk
 
 ## When NOT to use this
 
-- Validating a finished document against its source -> use `/document-processing:validate`
+- Validating finished document against its source -> use `/document-processing:validate`
 - Bare claim grounding (single claim or batch) -> use `/document-processing:grounding`
-- Updating an existing `3-output/` document -> use `/document-processing:update`
+- Updating existing `3-output/` document -> use `/document-processing:update`
 
 ## Examples
 

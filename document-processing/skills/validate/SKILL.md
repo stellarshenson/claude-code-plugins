@@ -7,10 +7,10 @@ description: Validate a finished document against rules AND against its source -
 
 Two layers:
 
-1. **Grounding** — the full grounding chain from the **`grounding`** skill: `extract-claims` → `ground` → `check-consistency`. Every load-bearing claim verified against the source(s), plus the document checked against itself. Outputs `claims.json`, `grounding-report.md`, `consistency-report.md`. Not re-implemented here — delegated to the `grounding` skill verbatim, including its three core verdict rules, OCR fallback chain, and semantic-consent gate.
-2. **Compliance** — tone, style, length, format, focus, custom rules (the project criteria). This is the part `grounding` does *not* do; it's what makes this the `validate` skill rather than the `grounding` skill.
+1. **Grounding** — full grounding chain from **`grounding`** skill: `extract-claims` → `ground` → `check-consistency`. Every load-bearing claim verified against source(s), plus document checked against itself. Outputs `claims.json`, `grounding-report.md`, `consistency-report.md`. Not re-implemented here — delegated to `grounding` skill verbatim, including its three core verdict rules, OCR fallback chain, semantic-consent gate.
+2. **Compliance** — tone, style, length, format, focus, custom rules (project criteria). Part `grounding` does *not* do; makes this `validate` skill rather than `grounding` skill.
 
-This skill gathers the criteria (Phase 0), runs the full grounding chain through the `grounding` skill (Phase 2), adds the compliance layer (Phase 3), produces the verdict (Phase 4), and ships a best-effort corrected copy (Phase 5).
+Skill gathers criteria (Phase 0), runs full grounding chain through `grounding` skill (Phase 2), adds compliance layer (Phase 3), produces verdict (Phase 4), ships best-effort corrected copy (Phase 5).
 
 ## Output style (MANDATORY for all generated artefacts)
 

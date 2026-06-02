@@ -1,11 +1,11 @@
-**CRITICAL: You MUST complete these steps in order. Do not skip ahead to writing code.**
+**CRITICAL: complete these steps in order. Do not skip ahead to writing code.**
 
-If you need to fill out a PDF form, first check to see if the PDF has fillable form fields. Run this script from this file's directory:
- `python scripts/check_fillable_fields <file.pdf>`, and depending on the result go to either the "Fillable fields" or "Non-fillable fields" and follow those instructions.
+To fill PDF form, first check whether PDF has fillable form fields. Run this script from this file's directory:
+ `python scripts/check_fillable_fields <file.pdf>`. Per result, go to "Fillable fields" or "Non-fillable fields"; follow those instructions.
 
 # Fillable fields
-If the PDF has fillable form fields:
-- Run this script from this file's directory: `python scripts/extract_form_field_info.py <input.pdf> <field_info.json>`. It will create a JSON file with a list of fields in this format:
+If PDF has fillable form fields:
+- Run this script from this file's directory: `python scripts/extract_form_field_info.py <input.pdf> <field_info.json>`. Creates JSON file listing fields in this format:
 ```
 [
   {
@@ -50,10 +50,10 @@ If the PDF has fillable form fields:
   }
 ]
 ```
-- Convert the PDF to PNGs (one image for each page) with this script (run from this file's directory):
+- Convert PDF to PNGs (one image per page) with this script (run from this file's directory):
 `python scripts/convert_pdf_to_images.py <file.pdf> <output_directory>`
-Then analyze the images to determine the purpose of each form field (make sure to convert the bounding box PDF coordinates to image coordinates).
-- Create a `field_values.json` file in this format with the values to be entered for each field:
+Then analyze images to determine purpose of each form field (convert bounding box PDF coordinates to image coordinates).
+- Create `field_values.json` file in this format with values to enter for each field:
 ```
 [
   {

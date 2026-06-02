@@ -8,7 +8,7 @@ license: Proprietary. LICENSE.txt has complete terms
 
 ## Overview
 
-PDF operations via Python libraries, pre-built scripts, and CLI tools. Advanced features, JS libraries, detailed examples: see `reference.md`. Form filling: `forms.md` (and `forms-production.md` for the production form pipeline). OCR of scanned PDFs: `ocr.md`. Advanced table extraction: `tables.md`. Pre-built scripts live in `scripts/`.
+PDF ops via Python libraries, pre-built scripts, CLI tools. Advanced features, JS libraries, detailed examples: see `reference.md`. Form filling: `forms.md` (and `forms-production.md` for production form pipeline). OCR of scanned PDFs: `ocr.md`. Advanced table extraction: `tables.md`. Pre-built scripts live in `scripts/`.
 
 ## Quick Start
 
@@ -288,7 +288,7 @@ with open("encrypted.pdf", "wb") as output:
 
 ## Pre-built scripts
 
-`scripts/` holds ready-to-run helpers - all expose `--help`, validate inputs, and return automation-friendly exit codes:
+`scripts/` holds ready-to-run helpers - all expose `--help`, validate inputs, return automation-friendly exit codes:
 
 - `analyze_form.py input.pdf [--output fields.json] [--verbose]` - extract all form fields, types, positions
 - `extract_form_field_info.py` - detailed per-field metadata
@@ -301,9 +301,9 @@ with open("encrypted.pdf", "wb") as output:
 
 ## Production patterns
 
-For complex / high-volume PDF work, follow these conventions (carried over from the production toolkit):
+For complex / high-volume PDF work, follow these conventions (carried over from production toolkit):
 
-**Exit codes** (use across custom scripts and check them in automation):
+**Exit codes** (use across custom scripts, check them in automation):
 
 ```
 0 - success

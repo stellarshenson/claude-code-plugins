@@ -5,7 +5,7 @@ description: Update an existing processed document in 3-output/ - add a new sour
 
 # Update Skill
 
-Update an existing processed document with new information, corrections, or re-verification against updated sources. **Every update ends with a mandatory CLI-grounding pass on the changed content** - no silent skip - because any content change can introduce an ungrounded claim.
+Update existing processed document with new info, corrections, or re-verification against updated sources. **Every update ends with mandatory CLI-grounding pass on changed content** - no silent skip - any content change can introduce ungrounded claim.
 
 ## Pre-flight install (MANDATORY - run every session, no asking)
 
@@ -13,7 +13,7 @@ Update an existing processed document with new information, corrections, or re-v
 python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
-No-op when the package is importable; auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python. Never ask - just run the line.
+No-op when package importable; auto-installs when missing OR when stale shim on PATH but package uninstalled in active Python. Never ask - just run the line.
 
 ## When to use
 
