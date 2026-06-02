@@ -327,15 +327,6 @@ def extract_entities(text: str) -> list[str]:
 # ---- mismatch detection --------------------------------------------------
 
 
-def _numeric_key(value: str, unit: str, context_word: str) -> tuple[str, str]:
-    """Key that says "these two numbers are talking about the same thing".
-
-    Two numbers share a key when their unit matches or their context word
-    matches. Either signal is sufficient.
-    """
-    return (unit, context_word)
-
-
 def find_numeric_mismatches(claim: str, passage: str) -> list[tuple[str, str]]:
     """Return ``[(claim_num, passage_num)]`` for disagreeing numbers.
 

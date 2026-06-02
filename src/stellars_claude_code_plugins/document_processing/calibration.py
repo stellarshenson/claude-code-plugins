@@ -231,11 +231,6 @@ class CalibratedVerdict:
 # ---------------------------------------------------------------------------
 
 
-def default_prior_spec() -> dict[str, tuple[float, float]]:
-    """The config-defined prior (mu, sigma) per coefficient."""
-    return load_prior_spec()
-
-
 def _balance_classes(df, *, seed: int = 0):
     """Oversample the minority label class (with replacement, seeded) up to the
     majority count so both classes contribute equally to the fit.

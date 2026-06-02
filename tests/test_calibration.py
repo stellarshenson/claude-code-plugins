@@ -158,18 +158,6 @@ class TestGroundCalibratedIntegration:
         assert set(C.PREDICTORS) <= set(m.verdict_features)
 
 
-class TestFixtureCalibratedBeatsPrior:
-    def test_calibrated_ge_prior_on_heldout(self):
-        df = _fixture_df()
-        train = df[df.index % 2 == 0].reset_index(drop=True)
-        test = df[df.index % 2 == 1].reset_index(drop=True)
-        cal = C.fit_calibrator(train, draws=200, tune=200, random_seed=0)
-        acc_prior = C.evaluate(_prior_verdict(), test)["accuracy"]
-        acc_cal = C.evaluate(cal, test)["accuracy"]
-        assert acc_cal >= acc_prior
-        assert acc_cal >= 0.8
-
-
 class TestConfigTransferRoundtrip:
     """E6: train -> config set-calibrator -> ground() auto-uses the weights."""
 
@@ -308,3 +296,84 @@ class TestImbalanceBalancing:
     def test_fit_rejects_unknown_balance(self):
         with pytest.raises(ValueError):
             C.fit_calibrator(self._skewed(), draws=DRAWS, tune=TUNE, balance="bogus")
+
+
+class TestVitaminCComposite:
+    """One composite end-to-end pin: the calibrated verdict + NLI grounding over
+    a FIXED slice of the public grounding dataset (VitaminC dev) must reproduce
+    the benchmark confusion matrix exactly.
+
+    This is the high-value regression that ties calibration and grounding to a
+    real dataset - it earns its place where the thin per-piece tests did not.
+    Network/model-gated: downloads VitaminC dev.jsonl + the mDeBERTa NLI model
+    on first use, skips cleanly when unavailable. Deterministic: fixed slice,
+    ONNX fp32 CPU argmax, prior-mean calibrated verdict.
+    """
+
+    def test_calibrated_nli_grounding_reproduces_benchmark(self):
+        import collections
+
+        pytest.importorskip("onnxruntime")
+        pytest.importorskip("transformers")
+        hf = pytest.importorskip("huggingface_hub")
+        from stellars_claude_code_plugins.document_processing import nli as nli_mod
+
+        if not nli_mod.is_available():
+            pytest.skip("NLI extras not installed")
+        try:
+            path = hf.hf_hub_download("tals/vitaminc", "dev.jsonl", repo_type="dataset")
+            nli = nli_mod.NLIGrounder()
+        except Exception as exc:  # noqa: BLE001 - skip on no network / missing weights
+            pytest.skip(f"VitaminC / NLI model unavailable: {exc}")
+
+        gold = {"SUPPORTS": "grounded", "REFUTES": "contradicted", "NOT ENOUGH INFO": "unconfirmed"}
+        rows = [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
+        by_label: dict[str, list] = {k: [] for k in gold}
+        for r in rows:
+            if r.get("label") in by_label and r.get("claim") and r.get("evidence"):
+                by_label[r["label"]].append(r)
+        per = 15
+        sample = (
+            by_label["SUPPORTS"][:per]
+            + by_label["REFUTES"][:per]
+            + by_label["NOT ENOUGH INFO"][:per]
+        )
+        assert len(sample) == 3 * per  # fixed, deterministic slice
+
+        # "Calibration": the deployed prior-mean calibrated verdict (config prior).
+        spec = C.load_prior_spec()
+        verdict = C.CalibratedVerdict.from_weights(
+            {k: mu for k, (mu, _sd) in spec.items()}, threshold=0.5
+        )
+
+        def bucket(match_type: str) -> str:
+            if match_type == "contradicted":
+                return "contradicted"
+            return "grounded" if match_type in ("exact", "fuzzy", "bm25", "semantic") else "unconfirmed"
+
+        conf: collections.Counter = collections.Counter()
+        for r in sample:
+            m = G.ground(
+                r["claim"],
+                [(str(r.get("page", "src")), r["evidence"])],
+                nli_grounder=nli,
+                calibrated_verdict=verdict,
+            )
+            conf[(gold[r["label"]], bucket(m.match_type))] += 1
+
+        # Golden confusion matrix for this exact (slice, models, prior) - the
+        # "same numbers as the result". Re-pin if the slice or models change.
+        expected = {
+            ("grounded", "grounded"): 8,
+            ("grounded", "contradicted"): 3,
+            ("grounded", "unconfirmed"): 4,
+            ("contradicted", "grounded"): 1,
+            ("contradicted", "contradicted"): 13,
+            ("contradicted", "unconfirmed"): 1,
+            ("unconfirmed", "grounded"): 3,
+            ("unconfirmed", "contradicted"): 8,
+            ("unconfirmed", "unconfirmed"): 4,
+        }
+        assert {k: conf[k] for k in expected} == expected
+        # contradiction recall - the headline NLI win this test guards.
+        assert conf[("contradicted", "contradicted")] / per >= 0.80

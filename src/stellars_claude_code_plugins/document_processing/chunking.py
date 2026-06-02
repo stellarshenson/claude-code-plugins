@@ -16,7 +16,6 @@ import re
 
 PARA_SPLIT_RE = re.compile(r"(\n\s*\n)")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
-WS_RE = re.compile(r"\s+")
 
 
 @dataclass
@@ -27,16 +26,6 @@ class Chunk:
 
     def __len__(self) -> int:
         return len(self.text)
-
-
-def _approx_tokens(text: str) -> int:
-    """Cheap token count — number of whitespace-split words.
-
-    Real transformer tokenisers chunk sub-words, so use a conservative ratio:
-    most natural-language tokenisers emit ~1.3 tokens per word. We treat
-    ``max_tokens`` as "target words × 0.75" in callers.
-    """
-    return len(WS_RE.findall(text)) + 1
 
 
 def recursive_chunk(

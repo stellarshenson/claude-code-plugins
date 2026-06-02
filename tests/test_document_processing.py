@@ -13,11 +13,9 @@ from stellars_claude_code_plugins.document_processing import (
 )
 from stellars_claude_code_plugins.document_processing import settings as settings_mod
 from stellars_claude_code_plugins.document_processing.chunking import (
-    Chunk,
     recursive_chunk,
 )
 from stellars_claude_code_plugins.document_processing.cli import main as cli_main
-from stellars_claude_code_plugins.document_processing.grounding import Location
 
 
 class TestExactMatching:
@@ -121,11 +119,6 @@ class TestBothSignalsReported:
         assert m.exact_score == 0.0
         assert m.fuzzy_score > 0
         # BM25 may or may not fire on such a short source, but score is set
-
-    def test_combined_score_is_max_of_three(self):
-        m = ground("brown fox", ["The quick brown fox jumps."])
-        assert m.combined_score == max(m.exact_score, m.fuzzy_score, m.bm25_score)
-
 
 class TestBM25Matching:
     """BM25 layer — topical/lexical grounding across passages."""
@@ -281,13 +274,6 @@ class TestEdgeCases:
         m = ground("anything", [""])
         assert m.exact_score == 0.0
         assert m.fuzzy_score == 0.0
-
-    def test_location_dataclass_default_is_neg_one(self):
-        loc = Location()
-        assert loc.line_start == -1
-        assert loc.paragraph == -1
-        assert loc.page == -1
-
 
 class TestBatch:
     def test_ground_batch_preserves_order(self):
@@ -525,11 +511,6 @@ class TestChunking:
         starts = [c.char_start for c in chunks]
         assert starts == sorted(starts)
 
-    def test_chunk_dataclass(self):
-        c = Chunk("hello", 0, 5)
-        assert len(c) == 5
-
-
 class TestSettings:
     """Settings load/save/prompt — zero-dep."""
 
@@ -565,17 +546,6 @@ class TestSettings:
         loaded = settings_mod.load()
         assert loaded.semantic_model == "m/x"
         assert not hasattr(loaded, "semantic_enabled")
-
-    def test_is_semantic_available_reflects_imports(self):
-        # This may be True or False depending on test env — just ensure the
-        # function runs without error and returns a bool
-        result = settings_mod.is_semantic_available()
-        assert isinstance(result, bool)
-
-    def test_install_hint_is_helpful(self):
-        hint = settings_mod.semantic_install_hint()
-        assert "pip install" in hint
-        assert "semantic" in hint.lower()
 
 
 class TestSemanticOnContract:

@@ -29,7 +29,6 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -149,9 +148,3 @@ def semantic_install_hint() -> str:
         "or individually:\n"
         "  pip install onnxruntime transformers faiss-cpu pyarrow huggingface_hub\n"
     )
-
-
-# Suppress environment-based override for tests via STELLARS_SETTINGS_HOME
-def _env_override() -> Path | None:
-    val = os.environ.get("STELLARS_SETTINGS_HOME")
-    return Path(val) if val else None
