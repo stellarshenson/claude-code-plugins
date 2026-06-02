@@ -60,13 +60,12 @@ def main(n: int = 600, engine: str = "lexical") -> int:
 
         nli = NLIGrounder()  # multilingual cross-encoder, ONNX, cached after first use
 
+    # Both engines run through the integrated ground() pipeline; nli mode just
+    # passes the NLI grounder, so this validates the real grounding path.
     conf: collections.Counter = collections.Counter()
     for r in sample:
-        if nli is not None:
-            pred = nli.verdict(r["evidence"], r["claim"])
-        else:
-            pred = _pred_bucket(ground(r["claim"], [(str(r.get("page", "src")), r["evidence"])]).match_type)
-        conf[(_GOLD[r["label"]], pred)] += 1
+        m = ground(r["claim"], [(str(r.get("page", "src")), r["evidence"])], nli_grounder=nli)
+        conf[(_GOLD[r["label"]], _pred_bucket(m.match_type))] += 1
 
     print(f"VitaminC dev - n={len(sample)} ({per} per label), {engine} engine\n")
     header = f"{'gold \\ pred':16}" + "".join(f"{b:>14}" for b in _BUCKETS)

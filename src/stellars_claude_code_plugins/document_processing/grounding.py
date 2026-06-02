@@ -881,6 +881,20 @@ def ground(
         except Exception as exc:
             logger.warning("NLI layer failed (claim=%r): %s", claim[:80], exc)
 
+    # NLI verdict (argmax) is a first-class grounding signal when present: its
+    # contradiction folds into the contradiction guard, and it counts as signal
+    # so a cross-lingual entailment (zero lexical) can still confirm.
+    nli_verdict = None
+    if nli_scores is not None:
+        nli_verdict = {
+            "entailment": "grounded",
+            "contradiction": "contradicted",
+            "neutral": "unconfirmed",
+        }.get(max(nli_scores, key=nli_scores.get), "unconfirmed")
+        has_any_signal = True
+        if nli_verdict == "contradicted":
+            has_contradiction = True
+
     verdict = (
         calibrated_verdict if calibrated_verdict is not None else _config_calibrated_verdict()
     )
@@ -902,9 +916,12 @@ def ground(
             result.match_type = "none"
     else:
         # Deterministic cascade (default / back-compat):
-        # priority: contradicted > exact > fuzzy > bm25 > semantic > agreement > none
+        # priority: contradicted > NLI verdict (if present) > exact > fuzzy > bm25 ...
         if has_contradiction and has_any_signal:
             result.match_type = "contradicted"
+        elif nli_verdict is not None:
+            # NLI is the strongest grounding signal when the layer ran.
+            result.match_type = _winning_layer_label(result) if nli_verdict == "grounded" else "none"
         elif result.exact_score == 1.0:
             result.match_type = "exact"
         elif result.fuzzy_score >= fuzzy_threshold:

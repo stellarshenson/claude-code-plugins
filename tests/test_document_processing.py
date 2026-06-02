@@ -1541,3 +1541,80 @@ class TestGroundingEndToEnd:
         recall = tp / (tp + fn) if (tp + fn) else 0.0
         assert precision >= 0.90, f"precision {precision}"
         assert recall >= 0.80, f"recall {recall}"
+
+
+class _FakeNLI:
+    """Stub NLI grounder with fixed scores - exercises the wiring, no model."""
+
+    def __init__(self, scores: dict):
+        self._scores = scores
+
+    def scores(self, premise: str, hypothesis: str) -> dict:
+        return dict(self._scores)
+
+
+class TestNLIGrounding:
+    """NLI verdict wiring into ground() (fast, no model download)."""
+
+    SRC = [("e.txt", "The estate has three walled gardens and an orchard.")]
+
+    def test_entailment_grounds(self):
+        from stellars_claude_code_plugins.document_processing.grounding import ground
+
+        fake = _FakeNLI({"entailment": 0.95, "neutral": 0.03, "contradiction": 0.02})
+        m = ground("le domaine possede trois jardins clos", self.SRC, nli_grounder=fake)
+        assert m.match_type in ("exact", "fuzzy", "bm25", "semantic")  # grounded
+        assert m.nli_scores["entailment"] == 0.95
+
+    def test_contradiction_flagged(self):
+        from stellars_claude_code_plugins.document_processing.grounding import ground
+
+        fake = _FakeNLI({"entailment": 0.02, "neutral": 0.03, "contradiction": 0.95})
+        m = ground("the estate has no gardens at all", self.SRC, nli_grounder=fake)
+        assert m.match_type == "contradicted"
+
+    def test_neutral_unconfirmed(self):
+        from stellars_claude_code_plugins.document_processing.grounding import ground
+
+        fake = _FakeNLI({"entailment": 0.10, "neutral": 0.80, "contradiction": 0.10})
+        m = ground("qz zztop kvqj wbrtz", self.SRC, nli_grounder=fake)
+        assert m.match_type == "none"
+
+    def test_lexical_default_unaffected_without_nli(self):
+        # No nli_grounder -> deterministic behaviour unchanged.
+        from stellars_claude_code_plugins.document_processing.grounding import ground
+
+        m = ground("the estate has three walled gardens", self.SRC)
+        assert m.match_type == "exact"
+        assert m.nli_scores == {}
+
+    def test_extract_features_includes_nli(self):
+        from stellars_claude_code_plugins.document_processing.grounding import (
+            GroundingMatch,
+            extract_features,
+        )
+
+        feat = extract_features(
+            GroundingMatch(claim="x"),
+            nli_scores={"entailment": 0.7, "neutral": 0.1, "contradiction": 0.2},
+        )
+        assert feat["nli_entail"] == 0.7
+        assert feat["nli_contra"] == 0.2
+
+    def test_real_model_entailment_and_crosslingual(self):
+        pytest.importorskip("onnxruntime")
+        pytest.importorskip("transformers")
+        from stellars_claude_code_plugins.document_processing.nli import NLIGrounder, is_available
+
+        if not is_available():
+            pytest.skip("NLI extras not installed")
+        try:
+            g = NLIGrounder()
+        except Exception as exc:  # noqa: BLE001 - skip on no network / missing weights
+            pytest.skip(f"NLI model unavailable: {exc}")
+
+        ev = "The estate has three walled gardens and an orchard."
+        assert g.scores(ev, "There are three gardens on the estate.")["entailment"] > 0.5
+        # cross-lingual entailment - the case cosine similarity could not solve
+        assert g.scores(ev, "le domaine possede trois jardins clos")["entailment"] > 0.5
+        assert g.verdict("The vineyard covers twelve hectares.", "The vineyard covers forty hectares.") == "contradicted"
