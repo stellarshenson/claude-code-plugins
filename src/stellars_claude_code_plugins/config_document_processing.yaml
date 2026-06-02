@@ -164,3 +164,38 @@ adaptive_gap_min_claims: 4
 
 context_chars: 80                # chars of before/after context captured per hit
 semantic_top_k: 3                # top-K semantic alternatives reported
+
+# ---- Bayesian calibrator ---------------------------------------------------
+# Optional block read by document_processing/calibration.py. It is NOT part of
+# the strict GroundingConfig schema (unknown keys are ignored there), so adding
+# it never breaks config loading.
+#
+#   engine     - verdict engine when grounding runs: "lexical" (the
+#                deterministic classifier, default / back-compat) or
+#                "calibrated" (use the learned `weights` below).
+#   threshold  - decision cut on the calibrated P(grounded).
+#   prior      - the Bayesian PRIOR for fitting (bambi/PyMC): per-coefficient
+#                Normal(mu, sigma). This is the single source of truth for the
+#                prior - it is NOT hardcoded in Python. `calibrate` seeds the
+#                fit from here (or from a previous posterior with --from).
+#   weights    - learned posterior means written by `config set-calibrator`.
+#                Absent until you calibrate locally. When present and
+#                engine=calibrated, grounding scores sigma(weights . features).
+#
+# Coefficients: Intercept + the seven features
+# (exact, fuzzy, bm25_recall, semantic, voters, lexical_cosupport,
+# entity_absent). `semantic` is the ramped, model/language-portable
+# semantic_ratio. Prior intent: word overlap OR a strong semantic_ratio
+# confirms; weak topical signal and entity-absent fabrications do not.
+calibration:
+  engine: lexical
+  threshold: 0.5
+  prior:
+    Intercept:          {mu: -3.0, sigma: 1.0}
+    exact:              {mu:  6.0, sigma: 2.0}
+    fuzzy:              {mu:  2.0, sigma: 2.0}
+    bm25_recall:        {mu:  2.5, sigma: 2.0}
+    semantic:           {mu:  4.5, sigma: 2.0}
+    voters:             {mu:  1.5, sigma: 1.5}
+    lexical_cosupport:  {mu:  2.0, sigma: 1.5}
+    entity_absent:      {mu: -3.0, sigma: 1.5}

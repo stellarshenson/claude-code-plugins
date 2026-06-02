@@ -28,6 +28,43 @@ hypothesis + falsifiers, per-iteration artefacts, forensic report,
 CV results, and corpus data all archived under
 [`references/grounding-optimisation/`](../references/grounding-optimisation/).
 
+### Local domain calibration (Bayesian)
+
+Grounding scores are domain-shaped - what counts as a confident semantic match on legal contracts differs from farm telemetry or multilingual product docs. The verdict can be **locally calibrated to your own corpus** with a Bayesian logistic model (bambi / PyMC) over the per-layer features, and the learned weights then live in your config so every run uses them with no fitting.
+
+The meaning feature is the model- and language-portable `semantic_ratio`, so cross-lingual true matches (no word overlap) still confirm while topical fabrications do not. The fit yields a full posterior (uncertainty), updates incrementally as feedback arrives, and fuses hard labels with LLM-eval soft labels.
+
+```bash
+# 1. Calibrate from labelled evidence. Each record is grounded to extract its
+#    feature vector, then the Bayesian model is fit and the posterior saved.
+document-processing calibrate --action update \
+  --evidence evidence.json --profile .stellars-plugins/calibrator.json --semantic on
+
+# 2. Inspect the learned posterior (coefficient mean +/- sd).
+document-processing calibrate --action show --profile .stellars-plugins/calibrator.json
+
+# 3. Transfer the learned weights into the project config - grounding then uses
+#    them with no fitting at run time.
+document-processing config set-calibrator --profile .stellars-plugins/calibrator.json
+document-processing config show
+```
+
+Evidence is a JSON list of `{claim, sources:[paths] (or source_text), label:0|1, lang?, weight?}`. `config set-calibrator` writes a `calibration:` block into `.stellars-plugins/config_document_processing.yaml`:
+
+```yaml
+calibration:
+  engine: calibrated
+  threshold: 0.5
+  weights:
+    Intercept: -3.1
+    exact: 5.8
+    semantic: 4.6
+    bm25_recall: 2.4
+    # ... one per layer / voter / entity-penalty feature
+```
+
+Pass `--from <existing-profile>` to `calibrate` for an **incremental** update - the previous posterior seeds the new fit (posterior-as-prior), so feedback accumulates instead of resetting. A worked end-to-end demo is in [`notebooks/calibration_demo.ipynb`](../notebooks/calibration_demo.ipynb).
+
 | Layer | What it catches | Dep |
 |-------|-----------------|-----|
 | Exact (regex) | Whitespace-tolerant verbatim quotes | core |

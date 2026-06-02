@@ -16,13 +16,17 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
+    "arviz>=0.17",
+    "bambi>=0.13",
     "beziers",
     "fonttools",
     "numpy",
     "odfpy>=1.4",
+    "pandas>=2.0",
     "pillow",
     "playwright",
     "pygal",
+    "pymc>=5.10",
     "pypdf>=4.0",
     "python-docx>=1.0",
     "pyyaml",

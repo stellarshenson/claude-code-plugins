@@ -177,6 +177,14 @@ class GroundingMatch:
     # Resolution
     match_type: MatchType = "none"
     combined_score: float = 0.0  # max of all enabled layers
+    # Calibrated verdict engine (opt-in via config calibration.engine=calibrated).
+    # verdict_probability stays -1.0 when the deterministic classifier was used.
+    verdict_probability: float = -1.0
+    """Calibrated P(grounded) in [0,1] when the calibrated engine ran; -1.0 otherwise."""
+    verdict_uncertainty: float = 0.0
+    """Posterior-predictive logit spread for the calibrated verdict (0 for a point-weight config)."""
+    verdict_features: dict = field(default_factory=dict)
+    """The feature vector fed to the calibrator (audit trail)."""
 
 
 def _normalize_whitespace(text: str) -> str:
@@ -493,6 +501,96 @@ def _compute_agreement_score(
     return min(1.0, raw + bonus)
 
 
+def extract_features(m: GroundingMatch, cfg: GroundingConfig | None = None) -> dict:
+    """Feature vector for the Bayesian calibrator (see ``calibration.PREDICTORS``).
+
+    The meaning feature is the *ramped semantic_ratio* - model- and
+    language-portable, because a cross-lingual true match has zero lexical
+    overlap but a high ratio. Falls back to the absolute-cosine ramp when no
+    ratio is available. The other features mirror the layers/voters/penalty
+    the deterministic classifier already computes, so the calibrator learns
+    the boundary from the same signals an auditor sees.
+    """
+    c = cfg if cfg is not None else load_config()
+
+    def _ramp(x: float, lo: float, hi: float) -> float:
+        return 0.0 if hi <= lo else max(0.0, min(1.0, (x - lo) / (hi - lo)))
+
+    if m.semantic_ratio > 0.0:
+        sem = _ramp(m.semantic_ratio, c.semantic_ratio_ramp_low, c.semantic_ratio_ramp_high)
+    else:
+        sem = _ramp(m.semantic_score, c.semantic_abs_ramp_low, c.semantic_abs_ramp_high)
+
+    if c.voter_semantic_mode == "abs_only":
+        sem_votes = m.semantic_score >= c.voter_semantic_abs
+    elif c.voter_semantic_mode == "ratio_only":
+        sem_votes = m.semantic_ratio >= c.voter_semantic_ratio
+    elif c.voter_semantic_mode == "and":
+        sem_votes = (
+            m.semantic_score >= c.voter_semantic_abs and m.semantic_ratio >= c.voter_semantic_ratio
+        )
+    else:  # "or"
+        sem_votes = (
+            m.semantic_score >= c.voter_semantic_abs or m.semantic_ratio >= c.voter_semantic_ratio
+        )
+    voters = sum(
+        (
+            m.exact_score >= c.voter_exact,
+            m.fuzzy_score >= c.voter_fuzzy,
+            m.bm25_token_recall >= c.voter_bm25,
+            bool(sem_votes),
+        )
+    )
+
+    claim_entities = list_claim_entities(m.claim)
+    entity_absent = (len(m.entities_absent) / len(claim_entities)) if claim_entities else 0.0
+
+    return {
+        "exact": 1.0 if m.exact_score >= 1.0 else 0.0,
+        "fuzzy": float(m.fuzzy_score),
+        "bm25_recall": float(m.bm25_token_recall),
+        "semantic": float(sem),
+        "voters": min(1.0, voters / 4.0),
+        "lexical_cosupport": 1.0 if m.lexical_co_support else 0.0,
+        "entity_absent": float(entity_absent),
+    }
+
+
+_VERDICT_CACHE: dict = {}
+
+
+def _config_calibrated_verdict():
+    """Return the config-driven calibrated verdict, or None for the lexical engine.
+
+    Active only when ``calibration.engine == "calibrated"`` AND learned
+    ``weights`` are present in the config. Cached per (weights, threshold) so a
+    batch builds the bambi model once. When inactive, grounding never imports
+    the Bayesian stack - the deterministic classifier runs with zero overhead.
+    """
+    from stellars_claude_code_plugins.document_processing import calibration as _cal
+
+    block = _cal.load_calibration_from_config()
+    if not block or block.get("engine") != "calibrated" or not block.get("weights"):
+        return None
+    weights = block["weights"]
+    threshold = float(block.get("threshold", 0.5))
+    key = (tuple(sorted(weights.items())), threshold)
+    v = _VERDICT_CACHE.get(key)
+    if v is None:
+        v = _cal.CalibratedVerdict.from_weights(weights, threshold=threshold)
+        _VERDICT_CACHE[key] = v
+    return v
+
+
+def _winning_layer_label(m: GroundingMatch) -> MatchType:
+    """Provenance label for a calibrated CONFIRMED verdict: the strongest layer."""
+    if m.exact_score >= 1.0:
+        return "exact"
+    cands = {"fuzzy": m.fuzzy_score, "bm25": m.bm25_score, "semantic": m.semantic_score}
+    best = max(cands, key=lambda k: cands[k])
+    return best if cands[best] > 0 else "semantic"
+
+
 def ground(
     claim: str,
     sources: Sequence[SourceInput],
@@ -507,6 +605,7 @@ def ground(
     semantic_top_k: int | None = None,
     config: GroundingConfig | None = None,
     primary_source: str | None = None,
+    calibrated_verdict=None,
 ) -> GroundingMatch:
     """Ground a single claim against one or more sources.
 
@@ -731,8 +830,8 @@ def ground(
         result.numeric_mismatches = num_mm
         result.entity_mismatches = ent_mm
 
-    # Resolve match_type:
-    # priority: contradicted (always wins) > exact > fuzzy > bm25 > semantic > agreement > none
+    # Resolve match_type. Contradiction always wins. Then either the calibrated
+    # verdict engine (opt-in) or the deterministic cascade decides CONFIRMED.
     has_contradiction = bool(result.numeric_mismatches or result.entity_mismatches)
     has_any_signal = (
         result.exact_score > 0
@@ -741,38 +840,57 @@ def ground(
         or result.semantic_score > 0
     )
 
-    if has_contradiction and has_any_signal:
-        result.match_type = "contradicted"
-    elif result.exact_score == 1.0:
-        result.match_type = "exact"
-    elif result.fuzzy_score >= fuzzy_threshold:
-        result.match_type = "fuzzy"
-    elif result.bm25_score >= bm25_threshold:
-        result.match_type = "bm25"
-    elif result.semantic_score >= effective_semantic_threshold:
-        result.match_type = "semantic"
-    elif cfg.classifier_mode == "absolute" and result.agreement_score >= agreement_threshold:
-        # Multi-layer agreement can confirm even when no single layer passed threshold
-        # Classify by highest-contributing layer for the match_type label.
-        # In adaptive_gap mode this step is skipped here and applied in
-        # ground_many using a per-batch gap-derived threshold instead.
-        if (
-            result.semantic_score >= result.bm25_score
-            and result.semantic_score >= result.fuzzy_score
-        ):
-            result.match_type = "semantic"
-        elif result.bm25_score >= result.fuzzy_score:
-            result.match_type = "bm25"
-        elif result.fuzzy_score > 0:
-            result.match_type = "fuzzy"
+    verdict = (
+        calibrated_verdict if calibrated_verdict is not None else _config_calibrated_verdict()
+    )
+
+    if verdict is not None:
+        # Calibrated engine: P(grounded) from learned weights over the per-layer
+        # features. Contradiction still wins; otherwise CONFIRMED iff
+        # P >= threshold, labelled by the strongest layer for provenance.
+        feat = extract_features(result, cfg)
+        p, unc = verdict.predict_with_uncertainty(feat)
+        result.verdict_probability = float(p[0] if hasattr(p, "__len__") else p)
+        result.verdict_uncertainty = float(unc[0] if hasattr(unc, "__len__") else unc)
+        result.verdict_features = feat
+        if has_contradiction and has_any_signal:
+            result.match_type = "contradicted"
+        elif result.verdict_probability >= verdict.threshold:
+            result.match_type = _winning_layer_label(result)
         else:
             result.match_type = "none"
     else:
-        result.match_type = "none"
+        # Deterministic cascade (default / back-compat):
+        # priority: contradicted > exact > fuzzy > bm25 > semantic > agreement > none
+        if has_contradiction and has_any_signal:
+            result.match_type = "contradicted"
+        elif result.exact_score == 1.0:
+            result.match_type = "exact"
+        elif result.fuzzy_score >= fuzzy_threshold:
+            result.match_type = "fuzzy"
+        elif result.bm25_score >= bm25_threshold:
+            result.match_type = "bm25"
+        elif result.semantic_score >= effective_semantic_threshold:
+            result.match_type = "semantic"
+        elif cfg.classifier_mode == "absolute" and result.agreement_score >= agreement_threshold:
+            # Multi-layer agreement can confirm even when no single layer passed
+            # threshold. adaptive_gap mode applies its per-batch threshold in
+            # ground_many instead.
+            if (
+                result.semantic_score >= result.bm25_score
+                and result.semantic_score >= result.fuzzy_score
+            ):
+                result.match_type = "semantic"
+            elif result.bm25_score >= result.fuzzy_score:
+                result.match_type = "bm25"
+            elif result.fuzzy_score > 0:
+                result.match_type = "fuzzy"
+            else:
+                result.match_type = "none"
+        else:
+            result.match_type = "none"
 
     # WI#3 / WI#5 / WI#6: post-match metadata populated after match_type is set.
-    # Cheap computations reused by downstream review tooling and the
-    # verification_needed flag below.
     _populate_match_metadata(
         result,
         cfg=cfg,
@@ -781,6 +899,14 @@ def ground(
         bm25_threshold=bm25_threshold,
         effective_semantic_threshold=effective_semantic_threshold,
     )
+
+    # Calibrated borderline -> flag for second-guess (P within proximity of tau).
+    if verdict is not None and result.match_type in ("exact", "fuzzy", "bm25", "semantic"):
+        if (
+            abs(result.verdict_probability - verdict.threshold)
+            < cfg.verification_threshold_proximity
+        ):
+            result.verification_needed = True
 
     return result
 
@@ -985,6 +1111,10 @@ def ground_many(
             )
             semantic_grounder = None  # disable on error
 
+    # Resolve the calibrated verdict once (cached); reused for every claim so a
+    # batch builds the bambi model at most once.
+    verdict = _config_calibrated_verdict()
+
     matches = [
         ground(
             c,
@@ -992,6 +1122,7 @@ def ground_many(
             semantic_grounder=semantic_grounder,
             config=cfg,
             primary_source=primary_source,
+            calibrated_verdict=verdict,
         )
         for c in claims
     ]
@@ -1000,8 +1131,9 @@ def ground_many(
     # where no lexical layer cleared its threshold) using a per-batch
     # threshold derived from the distribution's gap structure. Model-
     # agnostic: rank ordering of agreement_scores is stable across semantic
-    # models even when absolute scales differ wildly.
-    if cfg.classifier_mode == "adaptive_gap":
+    # models even when absolute scales differ wildly. Skipped when the
+    # calibrated engine is active (it owns the verdict).
+    if cfg.classifier_mode == "adaptive_gap" and verdict is None:
         semantic_zone_idxs = [
             i
             for i, m in enumerate(matches)

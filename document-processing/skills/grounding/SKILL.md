@@ -287,6 +287,19 @@ Tool returns `exact_location` / `fuzzy_location` / `bm25_location` with `line_st
 
 Only when all three lexical layers return `none` AND claim is semantic (summary / synthesis / cross-passage inference). Disciplined: still cite WHICH passages contributed + acknowledge absence of verbatim/paraphrase/term match. Never let generative override lexical UNCONFIRMED for factual claims — that's fabrication territory.
 
+## Local domain calibration (optional)
+
+The verdict can be locally calibrated to the project's own corpus with a Bayesian logistic model over the per-layer features (bambi / PyMC). Reach for it when the default thresholds misjudge this domain - e.g. multilingual sources where word-overlap is legitimately absent for true cross-language matches.
+
+- **Evidence** - a JSON list of `{claim, sources:[paths] (or source_text), label:0|1, lang?, weight?}`; `label` is the gold verdict (1 grounded, 0 not), and LLM-eval probabilities work as soft labels in [0, 1]
+- **Calibrate** - `document-processing calibrate --action update --evidence evidence.json --profile .stellars-plugins/calibrator.json --semantic on`; each record is grounded to extract features, then the posterior is fit and saved
+- **Inspect** - `document-processing calibrate --action show --profile .stellars-plugins/calibrator.json` prints each coefficient mean +/- sd
+- **Transfer to config** - `document-processing config set-calibrator --profile .stellars-plugins/calibrator.json` writes a `calibration:` block (engine, threshold, learned weights) into `.stellars-plugins/config_document_processing.yaml`; grounding then uses the learned weights with no fitting at run time
+- **Incremental** - add `--from <profile>` to seed the new fit from the previous posterior, so feedback accumulates instead of resetting
+- `semantic_ratio` is the portable meaning feature - cross-lingual true matches confirm, topical fabrications do not
+- Worked demo: `notebooks/calibration_demo.ipynb`
+- Never calibrate without the user's own labelled evidence - do not invent labels to "improve" the scores
+
 ## Output: grounding-report.md
 
 Telegram-style template:

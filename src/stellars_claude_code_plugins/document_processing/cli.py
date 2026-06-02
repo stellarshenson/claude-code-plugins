@@ -875,7 +875,246 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     su.set_defaults(func=cmd_setup)
 
+    # calibrate subcommand
+    ca = sub.add_parser(
+        "calibrate",
+        help="Fit/update the Bayesian grounding-verdict calibrator from labelled evidence.",
+        description=(
+            "Run the Bayesian calibrator (bambi / PyMC) over labelled grounding "
+            "evidence. Each evidence record is grounded to extract its feature "
+            "vector, then the calibrator is fit / incrementally updated and the "
+            "posterior saved as a JSON profile. Actions: init (write the default "
+            "prior profile), update (fit / update from evidence), eval (precision "
+            "/ recall vs labels), show (print the posterior)."
+        ),
+    )
+    ca.add_argument(
+        "--action",
+        choices=["init", "update", "eval", "show"],
+        default="update",
+        help="init | update (default) | eval | show",
+    )
+    ca.add_argument(
+        "--evidence",
+        help=(
+            "Path to evidence JSON - a list of records: "
+            '{"claim": str, "sources": [paths] (or "source_text": str), '
+            '"label": 0|1, "lang"?: str, "weight"?: float}. '
+            "Required for update / eval."
+        ),
+    )
+    ca.add_argument(
+        "--profile",
+        default=".stellars-plugins/calibrator.json",
+        help="Calibrator profile path to write/read (default .stellars-plugins/calibrator.json)",
+    )
+    ca.add_argument(
+        "--from",
+        dest="from_profile",
+        default=None,
+        help="Existing profile to update FROM (incremental: its posterior seeds the new prior)",
+    )
+    ca.add_argument(
+        "--semantic",
+        choices=["on", "off"],
+        default=None,
+        help="Override semantic grounding when extracting evidence features",
+    )
+    ca.add_argument(
+        "--threshold",
+        type=float,
+        default=0.5,
+        help="Decision threshold on P(grounded) (default 0.5)",
+    )
+    ca.add_argument("--draws", type=int, default=1000, help="Posterior draws (default 1000)")
+    ca.add_argument("--tune", type=int, default=1000, help="Tuning steps (default 1000)")
+    ca.set_defaults(func=cmd_calibrate)
+
+    # config subcommand
+    cf = sub.add_parser(
+        "config",
+        help="Inspect config and transfer learned calibrator weights into it.",
+        description=(
+            "show: print the resolved grounding config plus any calibration "
+            "block. set-calibrator: read a fitted calibrator profile and write "
+            "its learned coefficient means + threshold into the project config "
+            "(.stellars-plugins/config_document_processing.yaml) as a "
+            "'calibration:' block - so grounding uses the locally-learned "
+            "weights with no fitting at run time."
+        ),
+    )
+    cf.add_argument(
+        "config_action", choices=["show", "set-calibrator"], help="show | set-calibrator"
+    )
+    cf.add_argument(
+        "--profile",
+        default=".stellars-plugins/calibrator.json",
+        help="Calibrator profile to read (set-calibrator)",
+    )
+    cf.add_argument(
+        "--config",
+        default=None,
+        help="Config yaml to write (default: project .stellars-plugins/config_document_processing.yaml)",
+    )
+    cf.set_defaults(func=cmd_config)
+
     return parser
+
+
+def _load_evidence_features(args: argparse.Namespace):
+    """Ground each evidence record and assemble a calibration DataFrame.
+
+    Evidence record: ``{claim, sources:[paths] | source_text, label, lang?,
+    weight?}``. Each claim is grounded against its sources and turned into the
+    calibrator's feature vector via ``grounding.extract_features``.
+    """
+    import pandas as pd
+
+    from stellars_claude_code_plugins.config import load_document_processing_config
+    from stellars_claude_code_plugins.document_processing.grounding import (
+        extract_features,
+        ground,
+    )
+
+    if not args.evidence:
+        print("ERROR: --evidence is required for this action", file=sys.stderr)
+        raise SystemExit(2)
+    raw = json.loads(Path(args.evidence).read_text(encoding="utf-8"))
+    if not isinstance(raw, list):
+        print("ERROR: evidence file must be a JSON list of records", file=sys.stderr)
+        raise SystemExit(2)
+
+    gcfg = load_document_processing_config()
+    settings_cfg = settings_mod.ensure_loaded(auto_prompt=False)
+    grounder = _build_semantic_grounder(settings_cfg, getattr(args, "semantic", None))
+
+    rows: list[dict] = []
+    for i, item in enumerate(raw):
+        if "claim" not in item or "label" not in item:
+            print(f"ERROR: evidence[{i}] needs 'claim' and 'label'", file=sys.stderr)
+            raise SystemExit(2)
+        src_paths = item.get("sources") or ([item["source"]] if item.get("source") else [])
+        if src_paths:
+            warns: list[str] = []
+            sources = _read_sources(src_paths, warnings=warns)
+            for w in warns:
+                print(w, file=sys.stderr)
+        elif item.get("source_text"):
+            sources = [("inline", item["source_text"])]
+        else:
+            print(
+                f"ERROR: evidence[{i}] needs 'sources', 'source', or 'source_text'",
+                file=sys.stderr,
+            )
+            raise SystemExit(2)
+        m = ground(item["claim"], sources, semantic_grounder=grounder, config=gcfg)
+        feat = extract_features(m, gcfg)
+        feat["grounded"] = float(item["label"])
+        feat["lang"] = item.get("lang", "und")
+        feat["weight"] = float(item.get("weight", 1.0))
+        rows.append(feat)
+    return pd.DataFrame(rows)
+
+
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    from stellars_claude_code_plugins.document_processing import calibration as C
+
+    profile = args.profile
+
+    if args.action == "init":
+        cal = C.default_calibrator(threshold=args.threshold, draws=args.draws, tune=args.tune)
+        cal.save(profile)
+        print(f"wrote default calibrator profile -> {profile}")
+        return 0
+
+    if args.action == "show":
+        p = Path(profile)
+        if not (p.exists() or (p / "calibrator.json").exists()):
+            print(f"ERROR: profile not found: {profile}", file=sys.stderr)
+            return 1
+        cal = C.CalibratedVerdict.load(profile)
+        print(f"threshold = {cal.threshold}")
+        print("posterior (coefficient mean +/- sd):")
+        for name, (mu, sd) in cal.posterior_summary().items():
+            print(f"  {name:18s} {mu:+.3f} +/- {sd:.3f}")
+        return 0
+
+    df = _load_evidence_features(args)
+
+    if args.action == "eval":
+        cal = C.CalibratedVerdict.load(profile)
+        print(json.dumps(C.evaluate(cal, df), indent=2))
+        return 0
+
+    # update (default): incremental from --from, else a fresh fit. include_anchor
+    # keeps every predictor non-degenerate on small batches (bambi rejects a
+    # constant predictor) and anchors untrained-region behaviour.
+    if args.from_profile:
+        prior = C.CalibratedVerdict.load(args.from_profile)
+        cal = C.update_calibrator(
+            prior,
+            df,
+            draws=args.draws,
+            tune=args.tune,
+            threshold=args.threshold,
+            include_anchor=True,
+        )
+    else:
+        cal = C.fit_calibrator(
+            df, threshold=args.threshold, draws=args.draws, tune=args.tune, include_anchor=True
+        )
+    cal.save(profile)
+    print(json.dumps(C.evaluate(cal, df), indent=2))
+    print(f"wrote calibrator profile -> {profile}")
+    return 0
+
+
+def cmd_config(args: argparse.Namespace) -> int:
+    from dataclasses import asdict
+
+    import yaml
+
+    from stellars_claude_code_plugins.config import (
+        PROJECT_OVERRIDE_DIR,
+        load_document_processing_config,
+    )
+    from stellars_claude_code_plugins.document_processing import calibration as C
+
+    if args.config_action == "show":
+        cfg = load_document_processing_config()
+        print("# resolved document-processing config")
+        print(yaml.safe_dump(asdict(cfg), sort_keys=False).rstrip())
+        block = C.load_calibration_from_config()
+        print("\n# calibration block")
+        if block:
+            print(yaml.safe_dump({"calibration": block}, sort_keys=False).rstrip())
+        else:
+            print("calibration: (none - deterministic classifier / default prior in use)")
+        return 0
+
+    # set-calibrator: transfer learned weights from a profile into the config
+    p = Path(args.profile)
+    if not (p.exists() or (p / "calibrator.json").exists()):
+        print(f"ERROR: calibrator profile not found: {args.profile}", file=sys.stderr)
+        return 1
+    cal = C.CalibratedVerdict.load(args.profile)
+    weights = {name: round(mu, 6) for name, (mu, _sd) in cal.posterior_summary().items()}
+    d = asdict(load_document_processing_config())
+    d["calibration"] = {
+        "engine": "calibrated",
+        "threshold": float(cal.threshold),
+        "weights": weights,
+    }
+    out = (
+        Path(args.config)
+        if args.config
+        else (PROJECT_OVERRIDE_DIR / "config_document_processing.yaml")
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(yaml.safe_dump(d, sort_keys=False), encoding="utf-8")
+    print(f"wrote learned calibration weights ({len(weights)} coefficients) -> {out}")
+    print("grounding will now use these learned weights (calibration.engine=calibrated).")
+    return 0
 
 
 def cmd_extract_claims(args: argparse.Namespace) -> int:

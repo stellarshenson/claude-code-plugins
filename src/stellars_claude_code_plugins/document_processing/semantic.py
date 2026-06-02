@@ -95,9 +95,9 @@ class SemanticGrounder:
         if not is_available():
             raise ImportError(install_hint())
 
-        import onnxruntime as ort  # type: ignore
         from huggingface_hub import hf_hub_download  # type: ignore
         from huggingface_hub.utils import EntryNotFoundError  # type: ignore
+        import onnxruntime as ort  # type: ignore
         from transformers import AutoTokenizer  # type: ignore
 
         # ONNX Runtime runs the encoder on CPU. ``device`` is accepted for
