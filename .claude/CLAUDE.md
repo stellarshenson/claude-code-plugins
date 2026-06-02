@@ -41,9 +41,9 @@ Same rule for `/release` step 5 - invokes `/journal:update`. Never inline-edit d
 
 ## Project context
 
-This repo is the `stellars-claude-code-plugins` marketplace - a multi-plugin distribution that publishes both a PyPI Python package (deterministic CLIs in `src/stellars_claude_code_plugins/`) and six Claude Code plugins (`autobuild/`, `datascience/`, `devils-advocate/`, `document-processing/`, `journal/`, `svg-infographics/`). Plugin versions are kept in lockstep across all six `plugin.json` files plus the seven version strings in `.claude-plugin/marketplace.json` (metadata + 6 entries).
+This repo is the `stellars-claude-code-plugins` marketplace - a multi-plugin distribution that publishes both a PyPI Python package (deterministic CLIs in `src/stellars_claude_code_plugins/`) and six Claude Code plugins (`autobuild/`, `datascience/`, `devils-advocate/`, `document-processing/`, `journal/`, `svg-infographics/`). The library and all plugins share ONE synced version. The library leads: `pyproject.toml` `version` is the source of truth, and the 13 plugin strings (six `plugin.json` files + `marketplace.json` metadata + 6 entries) are set to match it.
 
-When releasing, follow `/release` exactly: lint+format → tests → `make publish` (auto-bumps `pyproject.toml` patch + uploads wheel) → `/increment-plugin-version` (one PATCH bump across 13 strings) → `/journal:update` → commit specific files (never `git add -A`) → push.
+When releasing, follow `/release` exactly: lint+format → tests → `make publish` (library leads - bumps `pyproject.toml` PATCH + uploads to PyPI; that number is `vN`) → sync the 13 plugin strings to `vN` (NEVER publish the library by hand with `uv build`/`twine` - always `make publish`) → `/journal:update` → commit specific files (never `git add -A`) → push. The PyPI/library version and the plugin version are the same number. Do NOT run `/increment-plugin-version` during release (it bumps only the plugin strings, leaving the library behind).
 
 ## Testing code that spawns `claude -p`
 
