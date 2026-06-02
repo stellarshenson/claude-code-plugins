@@ -221,3 +221,90 @@ class TestEndToEndSimulation:
             assert m["by_lang"][lang]["n"] > 0
         # calibrated must not be worse than the untrained prior.
         assert m["accuracy"] >= C.evaluate(_prior_verdict(), test)["accuracy"]
+
+
+class TestImbalanceBalancing:
+    """Class-balancing for imbalanced label sets (minority oversampling)."""
+
+    @staticmethod
+    def _skewed() -> pd.DataFrame:
+        # 8 grounded vs 2 not - a 4:1 imbalance, predictors vary within class.
+        rows = []
+        for _ in range(8):
+            rows.append(
+                {
+                    "exact": 1.0,
+                    "fuzzy": 0.9,
+                    "bm25_recall": 0.8,
+                    "semantic": 0.6,
+                    "voters": 0.75,
+                    "lexical_cosupport": 1.0,
+                    "entity_absent": 0.0,
+                    "nli_entail": 0.9,
+                    "nli_contra": 0.02,
+                    "grounded": 1.0,
+                }
+            )
+        for _ in range(2):
+            rows.append(
+                {
+                    "exact": 0.0,
+                    "fuzzy": 0.1,
+                    "bm25_recall": 0.05,
+                    "semantic": 0.1,
+                    "voters": 0.0,
+                    "lexical_cosupport": 0.0,
+                    "entity_absent": 1.0,
+                    "nli_entail": 0.02,
+                    "nli_contra": 0.9,
+                    "grounded": 0.0,
+                }
+            )
+        return pd.DataFrame(rows)
+
+    def test_balance_equalises_counts(self):
+        out = C._balance_classes(self._skewed(), seed=0)
+        pos = int((out["grounded"] >= 0.5).sum())
+        neg = int((out["grounded"] < 0.5).sum())
+        assert pos == neg == 8
+        assert len(out) == 16  # 10 originals + 6 duplicated minority rows
+
+    def test_balance_is_deterministic(self):
+        df = self._skewed()
+        assert C._balance_classes(df, seed=7).equals(C._balance_classes(df, seed=7))
+
+    def test_balance_noop_when_balanced_or_single_class(self):
+        bal = C._balance_classes(self._skewed(), seed=0)
+        assert C._balance_classes(bal, seed=0).equals(bal)  # already balanced
+        pos_only = self._skewed().query("grounded >= 0.5")
+        assert len(C._balance_classes(pos_only, seed=0)) == len(pos_only)  # single class
+
+    def test_fit_balanced_runs_and_predicts(self):
+        cal = C.fit_calibrator(
+            self._skewed(),
+            draws=DRAWS,
+            tune=TUNE,
+            random_seed=0,
+            include_anchor=True,
+            balance="balanced",
+        )
+        archetype = pd.DataFrame(
+            [
+                {
+                    "exact": 1.0,
+                    "fuzzy": 0.9,
+                    "bm25_recall": 0.8,
+                    "semantic": 0.6,
+                    "voters": 0.75,
+                    "lexical_cosupport": 1.0,
+                    "entity_absent": 0.0,
+                    "nli_entail": 0.9,
+                    "nli_contra": 0.02,
+                }
+            ]
+        ).reindex(columns=C.PREDICTORS, fill_value=0.0)
+        assert cal.predict_proba(archetype)[0] >= 0.5
+
+    def test_fit_rejects_unknown_balance(self):
+        with pytest.raises(ValueError):
+            C.fit_calibrator(self._skewed(), draws=DRAWS, tune=TUNE, balance="bogus")

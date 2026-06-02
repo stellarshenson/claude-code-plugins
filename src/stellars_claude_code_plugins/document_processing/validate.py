@@ -1,4 +1,9 @@
-"""Batch validation across multiple clients declared in ``source_map.yaml``.
+"""Validation = grounding + rules (self-consistency) over one or many documents.
+
+The CLI resolves inputs to a list of :class:`ClientEntry` from either:
+
+- ``--document FILE`` (repeatable) + ``--source`` (shared), or
+- ``--manifest source_map.yaml`` (per-document sources embedded).
 
 source_map.yaml convention::
 
@@ -47,7 +52,7 @@ from stellars_claude_code_plugins.document_processing.extract import (
     extract_claims_from_file,
 )
 from stellars_claude_code_plugins.document_processing.grounding import (
-    ground_many,
+    ground_batch,
 )
 
 
@@ -107,7 +112,7 @@ def _read_source_pairs(paths: list[Path]) -> list[tuple[str, str]]:
     return out
 
 
-def _run_single_client(
+def validate(
     entry: ClientEntry,
     output_dir: Path,
     *,
@@ -116,11 +121,15 @@ def _run_single_client(
     semantic_threshold: float,
     semantic_threshold_percentile: float | None,
     semantic_grounder,
+    nli_grounder=None,
+    calibrated_verdict=None,
     max_workers: int = 1,
 ) -> tuple[int, int]:
-    """Run the full pipeline for one client.
+    """Grounding + rules for ONE document: extract claims, ground them, and run
+    the self-consistency check; write the two reports.
 
-    Returns ``(unconfirmed_count, consistency_finding_count)``.
+    Returns ``(unconfirmed_count, consistency_finding_count)``. Grounders are
+    supplied by :func:`validate_batch` so they are built once per batch.
     """
     client_dir = output_dir / entry.name
     client_dir.mkdir(parents=True, exist_ok=True)
@@ -136,7 +145,7 @@ def _run_single_client(
     # --- Step 2: ground the claims
     source_pairs = _read_source_pairs(entry.sources)
     primary = str(entry.primary_source) if entry.primary_source else None
-    matches = ground_many(
+    matches = ground_batch(
         [c.claim for c in extracted],
         source_pairs,
         fuzzy_threshold=fuzzy_threshold,
@@ -144,6 +153,8 @@ def _run_single_client(
         semantic_threshold=semantic_threshold,
         semantic_threshold_percentile=semantic_threshold_percentile,
         semantic_grounder=semantic_grounder,
+        nli_grounder=nli_grounder,
+        calibrated_verdict=calibrated_verdict,
         primary_source=primary,
         max_workers=max_workers,
     )
@@ -160,7 +171,7 @@ def _run_single_client(
 
 
 def _render_grounding_report(entry: ClientEntry, matches) -> str:
-    """Compact per-client grounding report (same shape as batch-ground output)."""
+    """Compact per-client grounding report (same shape as the ground report)."""
     total = len(matches)
     grounded = sum(1 for m in matches if m.match_type in ("exact", "fuzzy", "bm25", "semantic"))
     verify = sum(1 for m in matches if m.verification_needed)
@@ -203,40 +214,46 @@ def _render_grounding_report(entry: ClientEntry, matches) -> str:
     return "\n".join(lines)
 
 
-def run_validate_many(
+def validate_batch(
+    entries: list[ClientEntry],
     *,
-    source_map_path: Path,
     output_dir: Path,
     fuzzy_threshold: float,
     bm25_threshold: float,
     semantic_threshold: float,
     semantic_threshold_percentile: float | None,
-    semantic: str | None,
+    semantic: bool,
     stop_on_error: bool,
     max_workers: int = 1,
 ) -> int:
-    """Execute the batch described by ``source_map_path`` and return exit code."""
-    try:
-        entries = _load_source_map(source_map_path)
-    except ValueError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
+    """Validate one or many documents (already resolved to ``ClientEntry``) and
+    return an exit code.
+
+    ``entries`` comes from the CLI: either a ``--manifest`` (source_map.yaml via
+    :func:`_load_source_map`) or one entry per ``--document`` with shared
+    ``--source``. ``semantic`` (bool) enables the bundle (embedding + NLI +
+    calibrated verdict), built once and reused across every document.
+    """
     if not entries:
-        print(f"ERROR: {source_map_path} declares no clients", file=sys.stderr)
+        print("ERROR: no documents to validate", file=sys.stderr)
         return 2
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Build semantic grounder once; reused across every client for speed.
+    # Build semantic + NLI grounders once; reused across every document for speed.
     cfg = settings_mod.ensure_loaded(auto_prompt=False)
     grounder = _maybe_build_grounder(cfg, semantic)
+    nli_grounder = _maybe_build_nli_grounder(cfg, semantic)
+    # NLI rides with semantic; weigh it against the other layers via the
+    # calibrated verdict rather than a hard cascade override.
+    verdict = _nli_calibrated_verdict() if nli_grounder is not None else None
 
     total_unconfirmed = 0
     total_findings = 0
     errors: list[tuple[str, str]] = []
     for entry in entries:
         try:
-            unconfirmed, findings_count = _run_single_client(
+            unconfirmed, findings_count = validate(
                 entry,
                 output_dir,
                 fuzzy_threshold=fuzzy_threshold,
@@ -244,31 +261,33 @@ def run_validate_many(
                 semantic_threshold=semantic_threshold,
                 semantic_threshold_percentile=semantic_threshold_percentile,
                 semantic_grounder=grounder,
+                nli_grounder=nli_grounder,
+                calibrated_verdict=verdict,
                 max_workers=max_workers,
             )
-        except Exception as exc:  # noqa: BLE001 - we surface any failure per-client
+        except Exception as exc:  # noqa: BLE001 - we surface any failure per-document
             err = f"{type(exc).__name__}: {exc}"
             errors.append((entry.name, err))
-            client_dir = output_dir / entry.name
-            client_dir.mkdir(parents=True, exist_ok=True)
-            (client_dir / "error.log").write_text(
+            doc_dir = output_dir / entry.name
+            doc_dir.mkdir(parents=True, exist_ok=True)
+            (doc_dir / "error.log").write_text(
                 err + "\n\n" + traceback.format_exc(),
                 encoding="utf-8",
             )
-            print(f"  client {entry.name!r}: FAILED - {err}", file=sys.stderr)
+            print(f"  document {entry.name!r}: FAILED - {err}", file=sys.stderr)
             if stop_on_error:
                 break
             continue
         total_unconfirmed += unconfirmed
         total_findings += findings_count
         print(
-            f"  client {entry.name!r}: ok  (unconfirmed {unconfirmed}, "
+            f"  document {entry.name!r}: ok  (unconfirmed {unconfirmed}, "
             f"consistency findings {findings_count})",
             file=sys.stderr,
         )
 
     print(
-        f"batch-validate done: {len(entries)} clients, {len(errors)} errors, "
+        f"validate done: {len(entries)} documents, {len(errors)} errors, "
         f"{total_unconfirmed} unconfirmed claims, {total_findings} consistency findings",
         file=sys.stderr,
     )
@@ -279,38 +298,54 @@ def run_validate_many(
     return 0
 
 
-def _maybe_build_grounder(cfg, semantic_override: str | None):
-    """Copy of cli._build_semantic_grounder avoiding a circular import."""
-    use = cfg.semantic_enabled
-    if semantic_override == "on":
-        use = True
-    elif semantic_override == "off":
-        use = False
-    if not use:
+def _maybe_build_grounder(cfg, enabled: bool):
+    """Copy of cli._build_semantic_grounder avoiding a circular import.
+
+    Semantic grounding is opt-in per call: only ``enabled`` (``--semantic``)
+    builds it. With the layer requested but the extras missing, hard-fail (exit 2).
+    """
+    if not enabled:
         return None
     if not settings_mod.is_semantic_available():
-        # `--semantic on` is an explicit contract: deps present -> run,
-        # deps missing -> hard fail. Silent degradation produces misleading
-        # grounding reports (rows labelled `(semantic)` with score 0.000).
-        if semantic_override == "on":
-            print(
-                "ERROR: --semantic on requires the [semantic] extras, but "
-                "dependencies are missing. Install and rerun:\n"
-                + settings_mod.semantic_install_hint(),
-                file=sys.stderr,
-            )
-            sys.exit(2)
         print(
-            "WARNING: semantic grounding enabled in settings but "
-            "dependencies missing; continuing without semantic layer.\n"
+            "ERROR: --semantic requires the [semantic] extras, but "
+            "dependencies are missing. Install and rerun:\n"
             + settings_mod.semantic_install_hint(),
             file=sys.stderr,
         )
-        return None
+        sys.exit(2)
     from stellars_claude_code_plugins.document_processing.semantic import SemanticGrounder
 
     return SemanticGrounder(
         model_name=cfg.semantic_model,
         device=cfg.semantic_device,
         cache_dir=cfg.cache_dir,
+    )
+
+
+def _maybe_build_nli_grounder(cfg, enabled: bool):
+    """NLI grounder when semantic is requested (NLI rides with semantic).
+
+    Mirrors ``cli._build_nli_grounder`` to avoid a circular import.
+    """
+    if not enabled:
+        return None
+    from stellars_claude_code_plugins.document_processing import nli
+
+    if not nli.is_available():
+        return None
+    return nli.NLIGrounder(model_name=getattr(cfg, "nli_model", None) or nli.DEFAULT_MODEL)
+
+
+def _nli_calibrated_verdict():
+    """Calibrated verdict (config-trained weights, else prior means) so NLI is
+    weighed against the other layers instead of hard-overriding the cascade."""
+    from stellars_claude_code_plugins.document_processing import calibration as C
+
+    trained = C.verdict_from_config()
+    if trained is not None:
+        return trained
+    spec = C.load_prior_spec()
+    return C.CalibratedVerdict.from_weights(
+        {k: mu for k, (mu, _sd) in spec.items()}, threshold=0.5
     )

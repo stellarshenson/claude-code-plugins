@@ -1,12 +1,11 @@
 """CLI entry point for document-processing tools.
 
 Subcommands:
-    ground             - ground a single claim against source files
-    batch-ground       - ground many claims (from JSON) against sources, emit report
+    ground             - ground claims against sources (--claim, or --manifest for many)
     extract-claims     - heuristic sentence-to-claim extractor for a document
     check-consistency  - intra-document numeric/entity divergence detector
-    batch-validate     - batch-run grounding + consistency across many clients
-    setup              - first-run: configure optional semantic grounding
+    validate           - grounding + self-consistency over one or many documents
+    setup              - first-run: write model/cache config
 """
 
 from __future__ import annotations
@@ -29,7 +28,7 @@ from stellars_claude_code_plugins.document_processing import (
 from stellars_claude_code_plugins.document_processing.grounding import (
     GroundingMatch,
     ground,
-    ground_many,
+    ground_batch,
 )
 from stellars_claude_code_plugins.svg_tools._warning_gate import (
     add_ack_warning_arg,
@@ -37,40 +36,27 @@ from stellars_claude_code_plugins.svg_tools._warning_gate import (
 )
 
 
-def _build_semantic_grounder(cfg: settings_mod.Settings, cli_override: str | None):
-    """Return a SemanticGrounder or None based on settings + CLI override.
+def _build_semantic_grounder(cfg: settings_mod.Settings, enabled: bool):
+    """Return a SemanticGrounder, or None when the layer is not requested.
 
-    ``cli_override`` may be ``"on"``, ``"off"``, or ``None``.
+    Semantic grounding is opt-in per call: only ``enabled`` (i.e. ``--semantic``)
+    turns it on. There is no persisted enable setting; ``cfg`` only supplies the
+    model / device / cache configuration when the flag turns the layer on.
+
+    ``--semantic`` is an explicit contract: deps present -> run, deps missing ->
+    hard fail (exit 2). Silent degradation would produce misleading grounding
+    reports (rows labelled ``(semantic)`` with score 0.000).
     """
-    use = cfg.semantic_enabled
-    if cli_override == "on":
-        use = True
-    elif cli_override == "off":
-        use = False
-    if not use:
+    if not enabled:
         return None
     if not settings_mod.is_semantic_available():
-        # `--semantic on` is an explicit contract: deps present -> run,
-        # deps missing -> hard fail. Silent degradation produces misleading
-        # grounding reports (rows labelled `(semantic)` with score 0.000).
-        if cli_override == "on":
-            print(
-                "ERROR: --semantic on requires the [semantic] extras, but "
-                "dependencies are missing. Install and rerun:\n"
-                + settings_mod.semantic_install_hint(),
-                file=sys.stderr,
-            )
-            sys.exit(2)
-        # Implicit enable from config (no `--semantic on` on the command
-        # line) - keep warn-and-degrade so config-default users don't get
-        # surprise exit-2 failures on machines without the extras installed.
         print(
-            "WARNING: semantic grounding enabled in settings but "
-            "dependencies missing; continuing without semantic layer.\n"
+            "ERROR: --semantic requires the [semantic] extras, but "
+            "dependencies are missing. Install and rerun:\n"
             + settings_mod.semantic_install_hint(),
             file=sys.stderr,
         )
-        return None
+        sys.exit(2)
     # Lazy import only when actually instantiating
     from stellars_claude_code_plugins.document_processing.semantic import SemanticGrounder
 
@@ -78,6 +64,44 @@ def _build_semantic_grounder(cfg: settings_mod.Settings, cli_override: str | Non
         model_name=cfg.semantic_model,
         device=cfg.semantic_device,
         cache_dir=cfg.cache_dir,
+    )
+
+
+def _build_nli_grounder(cfg: settings_mod.Settings, enabled: bool):
+    """Return an NLIGrounder when semantic grounding is requested, else None.
+
+    NLI rides with semantic (no separate switch): ``--semantic`` brings the
+    cross-encoder entailment layer online alongside the embedding retriever. The
+    NLI deps (onnxruntime, transformers, huggingface_hub) are a subset of the
+    semantic extras, so if semantic is available NLI is too; we still guard
+    defensively and return None if the NLI deps are missing.
+    """
+    if not enabled:
+        return None
+    from stellars_claude_code_plugins.document_processing import nli
+
+    if not nli.is_available():
+        return None
+    return nli.NLIGrounder(model_name=getattr(cfg, "nli_model", None) or nli.DEFAULT_MODEL)
+
+
+def _nli_calibrated_verdict():
+    """Calibrated verdict used when NLI is active so the entailment signal is
+    weighed *against* the other layers rather than hard-overriding the cascade.
+
+    Prefers config-trained weights (``calibration.engine: calibrated``); falls
+    back to the prior means so a fresh install still combines all signals
+    sensibly. Built from point weights via ``from_weights`` - no per-call PyMC
+    sampling.
+    """
+    from stellars_claude_code_plugins.document_processing import calibration as C
+
+    trained = C.verdict_from_config()
+    if trained is not None:
+        return trained
+    spec = C.load_prior_spec()
+    return C.CalibratedVerdict.from_weights(
+        {k: mu for k, (mu, _sd) in spec.items()}, threshold=0.5
     )
 
 
@@ -373,6 +397,24 @@ def _match_line(m: GroundingMatch) -> str:
     )
 
 
+def _read_claims_manifest(path_str: str) -> list[str]:
+    """Read a claims manifest: a JSON list of strings or ``{claim, ...}`` objects."""
+    claims_path = Path(path_str)
+    if not claims_path.is_file():
+        print(f"ERROR: claims manifest not found: {path_str}", file=sys.stderr)
+        raise SystemExit(1)
+    raw = json.loads(claims_path.read_text(encoding="utf-8"))
+    if isinstance(raw, list) and all(isinstance(x, str) for x in raw):
+        return raw
+    if isinstance(raw, list) and all(isinstance(x, dict) and "claim" in x for x in raw):
+        return [x["claim"] for x in raw]
+    print(
+        "ERROR: claims manifest must be a JSON list of strings or objects with a 'claim' key",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
 def cmd_ground(args: argparse.Namespace) -> int:
     source_warnings: list[str] = []
     sources = _read_sources(
@@ -393,7 +435,32 @@ def cmd_ground(args: argparse.Namespace) -> int:
         )
         return 1
     cfg = settings_mod.ensure_loaded(auto_prompt=False)
-    grounder = _build_semantic_grounder(cfg, getattr(args, "semantic", None))
+    # NLI rides with semantic; when --semantic is on, weigh it against the other
+    # layers via the calibrated verdict instead of a hard cascade override.
+    enabled = bool(getattr(args, "semantic", False))
+    grounder = _build_semantic_grounder(cfg, enabled)
+    nli_grounder = _build_nli_grounder(cfg, enabled)
+    verdict = _nli_calibrated_verdict() if enabled else None
+
+    # Batch mode: --manifest carries many claims -> ground_batch + report.
+    if getattr(args, "manifest", None):
+        claims = _read_claims_manifest(args.manifest)
+        matches = ground_batch(
+            claims,
+            sources,
+            fuzzy_threshold=args.threshold,
+            bm25_threshold=args.bm25_threshold,
+            semantic_threshold=args.semantic_threshold,
+            semantic_threshold_percentile=getattr(args, "semantic_threshold_percentile", None),
+            semantic_grounder=grounder,
+            nli_grounder=nli_grounder,
+            calibrated_verdict=verdict,
+            primary_source=getattr(args, "primary_source", None),
+            max_workers=getattr(args, "workers", 5),
+        )
+        return _emit_batch_report(matches, args)
+
+    # Single claim.
     m = ground(
         args.claim,
         sources,
@@ -402,64 +469,20 @@ def cmd_ground(args: argparse.Namespace) -> int:
         semantic_threshold=args.semantic_threshold,
         semantic_threshold_percentile=getattr(args, "semantic_threshold_percentile", None),
         semantic_grounder=grounder,
+        nli_grounder=nli_grounder,
+        calibrated_verdict=verdict,
     )
     if args.json:
         print(json.dumps(asdict(m), indent=2))
     else:
         print(_match_line(m))
-    # Exit 0 if exact/fuzzy, 1 if none
+    # Exit 0 if grounded, 1 if none
     return 0 if m.match_type != "none" else 1
 
 
-def cmd_ground_many(args: argparse.Namespace) -> int:
-    source_warnings: list[str] = []
-    sources = _read_sources(
-        args.source,
-        scanned_threshold=getattr(args, "scanned_threshold", extractors.DEFAULT_SCANNED_THRESHOLD),
-        ocr_lang=getattr(args, "ocr_lang", None),
-        warnings=source_warnings,
-    )
-    enforce_warning_acks(
-        source_warnings,
-        sys.argv[1:],
-        getattr(args, "ack_warning", []) or [],
-    )
-    if not sources:
-        print(
-            "ERROR: every source was skipped (see warnings above) or no --source was provided",
-            file=sys.stderr,
-        )
-        return 1
-    claims_path = Path(args.claims)
-    if not claims_path.is_file():
-        print(f"ERROR: claims file not found: {args.claims}", file=sys.stderr)
-        return 1
-    raw = json.loads(claims_path.read_text(encoding="utf-8"))
-    claims: list[str]
-    if isinstance(raw, list) and all(isinstance(x, str) for x in raw):
-        claims = raw
-    elif isinstance(raw, list) and all(isinstance(x, dict) and "claim" in x for x in raw):
-        claims = [x["claim"] for x in raw]
-    else:
-        print(
-            "ERROR: claims file must be JSON list of strings or objects with 'claim' key",
-            file=sys.stderr,
-        )
-        return 1
-
-    cfg = settings_mod.ensure_loaded(auto_prompt=False)
-    grounder = _build_semantic_grounder(cfg, getattr(args, "semantic", None))
-    matches = ground_many(
-        claims,
-        sources,
-        fuzzy_threshold=args.threshold,
-        bm25_threshold=args.bm25_threshold,
-        semantic_threshold=args.semantic_threshold,
-        semantic_threshold_percentile=getattr(args, "semantic_threshold_percentile", None),
-        semantic_grounder=grounder,
-        primary_source=getattr(args, "primary_source", None),
-        max_workers=getattr(args, "workers", 5),
-    )
+def _emit_batch_report(matches, args: argparse.Namespace) -> int:
+    """Render the batch grounding report (markdown or JSON) + stderr summary;
+    return exit code (0 when nothing is unconfirmed, else 1)."""
     exact = sum(1 for m in matches if m.match_type == "exact")
     fuzzy = sum(1 for m in matches if m.match_type == "fuzzy")
     bm25 = sum(1 for m in matches if m.match_type == "bm25")
@@ -606,7 +629,7 @@ def cmd_ground_many(args: argparse.Namespace) -> int:
 
 
 def _add_source_format_args(parser: argparse.ArgumentParser) -> None:
-    """Register the source-format / OCR flags shared by ground + batch-ground.
+    """Register the source-format / OCR flags shared by the grounding commands.
 
     ``--ocr-lang`` is intentionally not defaulted - the agent inspects each
     scanned PDF and supplies the right Tesseract model. The CLI fires
@@ -649,16 +672,22 @@ def _build_parser() -> argparse.ArgumentParser:
 
     g = sub.add_parser(
         "ground",
-        help="Ground a single claim against source files (regex + Levenshtein + BM25).",
+        help="Ground claims against sources (regex + Levenshtein + BM25; --semantic adds the bundle).",
         description=(
-            "Score a claim against source texts. Three layers run independently: "
-            "regex exact (score=1.0 on hit), Levenshtein partial-ratio (score in [0,1]), "
-            "BM25 Okapi on passages (token-recall in [0,1]). All scores always reported. "
-            "Priority: exact > fuzzy >= threshold > bm25 >= bm25-threshold > none. "
-            "Exit 0 if grounded, 1 if unconfirmed."
+            "Grounding only. One claim via --claim, or many via --manifest (a "
+            "claims file). Three lexical layers always run - regex exact, "
+            "Levenshtein partial-ratio, BM25 token-recall; all scores reported. "
+            "--semantic adds the embedding + NLI entailment + calibrated-verdict "
+            "bundle. Single-claim mode prints one match line (exit 0 if grounded, "
+            "1 if not); manifest mode writes a report."
         ),
     )
-    g.add_argument("--claim", required=True, help="The verbatim claim text to locate")
+    claim_src = g.add_mutually_exclusive_group(required=True)
+    claim_src.add_argument("--claim", help="A single claim to locate (single-claim mode)")
+    claim_src.add_argument(
+        "--manifest",
+        help="Claims manifest path (JSON list of strings or {claim,...}); batch mode -> report",
+    )
     g.add_argument(
         "--source",
         action="append",
@@ -696,96 +725,49 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     g.add_argument(
         "--semantic",
-        choices=["on", "off"],
-        default=None,
-        help="Override settings.semantic_enabled for this call",
-    )
-    g.add_argument("--json", action="store_true", help="Emit the full match as JSON")
-    _add_source_format_args(g)
-    add_ack_warning_arg(g)
-    g.set_defaults(func=cmd_ground)
-
-    gm = sub.add_parser(
-        "batch-ground",
-        help="Ground many claims from a JSON file against sources.",
-        description=(
-            "Batch grounding. Claims JSON = list of strings OR list of "
-            "{'claim': str, ...} objects. Emits markdown report by default, "
-            "JSON with --json."
-        ),
-    )
-    gm.add_argument("--claims", required=True, help="Path to claims JSON")
-    gm.add_argument(
-        "--source",
-        action="append",
-        default=[],
-        required=True,
-        help="Source file path (repeatable)",
-    )
-    gm.add_argument(
-        "--threshold",
-        type=float,
-        default=0.85,
-        help="Levenshtein ratio threshold for 'fuzzy' classification (default 0.85)",
-    )
-    gm.add_argument(
-        "--bm25-threshold",
-        type=float,
-        default=0.5,
-        help="BM25 token-recall threshold for 'bm25' classification (default 0.5)",
-    )
-    gm.add_argument(
-        "--semantic-threshold",
-        type=float,
-        default=0.6,
-        help="Semantic cosine-similarity threshold for 'semantic' classification (default 0.6)",
-    )
-    gm.add_argument(
-        "--semantic-threshold-percentile",
-        type=float,
-        default=None,
+        action="store_true",
         help=(
-            "Model-agnostic percentile threshold (H3): fraction of random chunk-pair "
-            "cosines that count as the tail (e.g. 0.02 = top 2%%). Overrides "
-            "--semantic-threshold when set. Self-calibrates when embedding model swaps."
+            "Enable the semantic bundle (embedding retrieval + NLI entailment + "
+            "calibrated verdict) for this call; default off = three lexical layers only"
         ),
     )
-    gm.add_argument(
-        "--semantic",
-        choices=["on", "off"],
-        default=None,
-        help="Override settings.semantic_enabled for this call",
-    )
-    gm.add_argument("--output", help="Write report to this path instead of stdout")
-    gm.add_argument("--json", action="store_true", help="Emit JSON instead of markdown")
-    gm.add_argument(
+    g.add_argument(
         "--primary-source",
         dest="primary_source",
         default=None,
         help=(
             "Path of the one source expected to ground the claims. Any claim "
             "grounded elsewhere gets flagged verification_needed=True "
-            "(cross-source pollution signal, WI#3)."
+            "(cross-source pollution signal, WI#3). Manifest mode."
         ),
     )
-    gm.add_argument(
+    g.add_argument(
+        "--output",
+        help="Manifest mode: write the report to this path instead of stdout",
+    )
+    g.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit JSON (the full match in single-claim mode, the report in manifest mode)",
+    )
+    g.add_argument(
         "--workers",
         type=int,
         default=5,
         help=(
-            "Number of worker threads for per-claim grounding (default 5). "
-            "Parallelises the semantic path (ONNX embedding, FAISS search, NLI) "
-            "across claims; sources are indexed once up front. Set 1 to run serial."
+            "Manifest mode: worker threads for per-claim grounding (default 5). "
+            "Parallelises the semantic path (ONNX embedding, FAISS search, NLI); "
+            "sources are indexed once up front. Set 1 to run serial."
         ),
     )
-    _add_source_format_args(gm)
-    add_ack_warning_arg(gm)
-    gm.set_defaults(func=cmd_ground_many)
+    _add_source_format_args(g)
+    add_ack_warning_arg(g)
+    g.set_defaults(func=cmd_ground)
 
     # extract-claims subcommand
     ex = sub.add_parser(
         "extract-claims",
-        help="Heuristic sentence-to-claim extractor; emits claims.json for batch-ground.",
+        help="Heuristic sentence-to-claim extractor; emits claims.json for `ground --manifest`.",
         description=(
             "Walk a markdown/text document and emit a list of claim candidates. "
             "Assigns stable IDs (c01, c02, ...), keeps order, drops sub-20-char "
@@ -817,21 +799,38 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     cc.set_defaults(func=cmd_check_consistency)
 
-    # batch-validate subcommand
+    # validate subcommand (grounding + self-consistency, one or many documents)
     vm = sub.add_parser(
-        "batch-validate",
-        help="Batch-run grounding + consistency across clients declared in source_map.yaml.",
+        "validate",
+        help="Validate documents: grounding + self-consistency. --document(s) or --manifest.",
         description=(
-            "Walk a source_map.yaml (one entry per client: sources[] and "
-            "document) and produce validation/<client>/grounding-report.md + "
-            "consistency-report.md per entry."
+            "Grounding + rules (self-consistency) over one or many documents. "
+            "Inline: --document FILE (repeatable) + --source (shared). Manifest: "
+            "--manifest source_map.yaml (per-document sources embedded). Each "
+            "document -> grounding-report.md + consistency-report.md under "
+            "--output-dir. --semantic adds the embedding + NLI + calibrated-"
+            "verdict bundle. (Tone/style/format compliance is layered by the "
+            "validate skill, not this CLI.)"
         ),
     )
-    vm.add_argument("--source-map", required=True, help="Path to source_map.yaml")
+    vm_in = vm.add_mutually_exclusive_group(required=True)
+    vm_in.add_argument(
+        "--document",
+        action="append",
+        default=[],
+        help="Document to validate (repeatable; >1 => batch). Pair with --source.",
+    )
+    vm_in.add_argument("--manifest", help="Path to source_map.yaml (per-document sources)")
+    vm.add_argument(
+        "--source",
+        action="append",
+        default=[],
+        help="Source file path (repeatable); shared across --document inputs",
+    )
     vm.add_argument(
         "--output-dir",
         required=True,
-        help="Root output directory; one subdirectory per client is created under it.",
+        help="Root output directory; one subdirectory per document is created under it.",
     )
     vm.add_argument(
         "--threshold",
@@ -859,34 +858,42 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     vm.add_argument(
         "--semantic",
-        choices=["on", "off"],
+        action="store_true",
+        help=(
+            "Enable the semantic bundle (embedding retrieval + NLI entailment + "
+            "calibrated verdict); default off = three lexical layers only"
+        ),
+    )
+    vm.add_argument(
+        "--primary-source",
+        dest="primary_source",
         default=None,
-        help="Override settings.semantic_enabled for this call",
+        help="Inline mode: the source expected to ground the claims (cross-source flag).",
     )
     vm.add_argument(
         "--stop-on-error",
         action="store_true",
-        help="Abort the batch on the first client error (default: skip and continue).",
+        help="Abort on the first document error (default: skip and continue).",
     )
     vm.add_argument(
         "--workers",
         type=int,
         default=5,
         help=(
-            "Number of worker threads for per-claim grounding within each client "
-            "(default 5). Parallelises the semantic path (ONNX embedding, FAISS "
-            "search, NLI). Set 1 to run serial."
+            "Worker threads for per-claim grounding within each document "
+            "(default 5). Parallelises the semantic path. Set 1 to run serial."
         ),
     )
-    vm.set_defaults(func=cmd_validate_many)
+    vm.set_defaults(func=cmd_validate)
 
     # setup subcommand
     su = sub.add_parser(
         "setup",
-        help="First-run setup: ask about semantic grounding, write settings",
+        help="First-run setup: write the model/cache config",
         description=(
-            "Interactive setup for .stellars-plugins/settings.json. Asks whether to "
-            "enable the optional semantic grounding layer (ModernBERT + FAISS)."
+            "Write .stellars-plugins/settings.json with the semantic model / cache "
+            "config. Semantic grounding (+ NLI) is opt-in per call via --semantic, "
+            "not a persisted setting."
         ),
     )
     su.add_argument(
@@ -937,9 +944,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     ca.add_argument(
         "--semantic",
-        choices=["on", "off"],
-        default=None,
-        help="Override semantic grounding when extracting evidence features",
+        action="store_true",
+        help=(
+            "Extract evidence features with the semantic bundle on (embedding + "
+            "NLI), so the calibrator learns the NLI weights it will deploy"
+        ),
     )
     ca.add_argument(
         "--threshold",
@@ -949,6 +958,17 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     ca.add_argument("--draws", type=int, default=1000, help="Posterior draws (default 1000)")
     ca.add_argument("--tune", type=int, default=1000, help="Tuning steps (default 1000)")
+    ca.add_argument(
+        "--balance",
+        choices=["balanced", "none"],
+        default="balanced",
+        help=(
+            "Imbalanced-label handling for the fit (default balanced): "
+            "'balanced' oversamples the minority class (seeded) to the majority "
+            "count so the rare class influences the learned weights; 'none' fits "
+            "the evidence as-is."
+        ),
+    )
     ca.set_defaults(func=cmd_calibrate)
 
     # config subcommand
@@ -1007,7 +1027,11 @@ def _load_evidence_features(args: argparse.Namespace):
 
     gcfg = load_document_processing_config()
     settings_cfg = settings_mod.ensure_loaded(auto_prompt=False)
-    grounder = _build_semantic_grounder(settings_cfg, getattr(args, "semantic", None))
+    enabled = bool(getattr(args, "semantic", False))
+    grounder = _build_semantic_grounder(settings_cfg, enabled)
+    # NLI rides with semantic: feed its scores into the features so the
+    # calibrator learns on the same bundle the deployed verdict uses.
+    nli_grounder = _build_nli_grounder(settings_cfg, enabled)
 
     rows: list[dict] = []
     for i, item in enumerate(raw):
@@ -1028,8 +1052,14 @@ def _load_evidence_features(args: argparse.Namespace):
                 file=sys.stderr,
             )
             raise SystemExit(2)
-        m = ground(item["claim"], sources, semantic_grounder=grounder, config=gcfg)
-        feat = extract_features(m, gcfg)
+        m = ground(
+            item["claim"],
+            sources,
+            semantic_grounder=grounder,
+            nli_grounder=nli_grounder,
+            config=gcfg,
+        )
+        feat = extract_features(m, gcfg, m.nli_scores or None)
         feat["grounded"] = float(item["label"])
         feat["lang"] = item.get("lang", "und")
         feat["weight"] = float(item.get("weight", 1.0))
@@ -1070,6 +1100,7 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     # update (default): incremental from --from, else a fresh fit. include_anchor
     # keeps every predictor non-degenerate on small batches (bambi rejects a
     # constant predictor) and anchors untrained-region behaviour.
+    balance = getattr(args, "balance", "balanced")
     if args.from_profile:
         prior = C.CalibratedVerdict.load(args.from_profile)
         cal = C.update_calibrator(
@@ -1079,10 +1110,16 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
             tune=args.tune,
             threshold=args.threshold,
             include_anchor=True,
+            balance=balance,
         )
     else:
         cal = C.fit_calibrator(
-            df, threshold=args.threshold, draws=args.draws, tune=args.tune, include_anchor=True
+            df,
+            threshold=args.threshold,
+            draws=args.draws,
+            tune=args.tune,
+            include_anchor=True,
+            balance=balance,
         )
     cal.save(profile)
     print(json.dumps(C.evaluate(cal, df), indent=2))
@@ -1172,7 +1209,7 @@ def cmd_extract_claims(args: argparse.Namespace) -> int:
     # Lossy by design - warn so the user knows to review before grounding.
     print(
         "NOTE: extract-claims uses a heuristic. Review claims.json before "
-        "running batch-ground - short/ambiguous sentences may need rewording.",
+        "running `ground --manifest` - short/ambiguous sentences may need rewording.",
         file=sys.stderr,
     )
     return 0
@@ -1212,18 +1249,49 @@ def cmd_check_consistency(args: argparse.Namespace) -> int:
     return 0 if not findings else 1
 
 
-def cmd_validate_many(args: argparse.Namespace) -> int:
-    """Batch grounding+consistency across clients declared in source_map.yaml."""
-    from stellars_claude_code_plugins.document_processing.validate_many import run_validate_many
+def cmd_validate(args: argparse.Namespace) -> int:
+    """Validate one or many documents: grounding + self-consistency.
 
-    return run_validate_many(
-        source_map_path=Path(args.source_map),
+    Resolves inputs to a list of ``ClientEntry`` from either ``--manifest``
+    (source_map.yaml) or one entry per ``--document`` with the shared
+    ``--source`` list, then runs the batch.
+    """
+    from stellars_claude_code_plugins.document_processing.validate import (
+        ClientEntry,
+        _load_source_map,
+        validate_batch,
+    )
+
+    if args.manifest:
+        try:
+            entries = _load_source_map(Path(args.manifest))
+        except ValueError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
+    else:
+        if not args.source:
+            print("ERROR: --document requires at least one --source", file=sys.stderr)
+            return 2
+        sources = [Path(s) for s in args.source]
+        primary = Path(args.primary_source) if args.primary_source else None
+        entries = [
+            ClientEntry(
+                name=Path(doc).stem,
+                sources=sources,
+                document=Path(doc),
+                primary_source=primary,
+            )
+            for doc in args.document
+        ]
+
+    return validate_batch(
+        entries,
         output_dir=Path(args.output_dir),
         fuzzy_threshold=args.threshold,
         bm25_threshold=args.bm25_threshold,
         semantic_threshold=args.semantic_threshold,
         semantic_threshold_percentile=args.semantic_threshold_percentile,
-        semantic=getattr(args, "semantic", None),
+        semantic=bool(getattr(args, "semantic", False)),
         stop_on_error=args.stop_on_error,
         max_workers=getattr(args, "workers", 5),
     )
@@ -1234,10 +1302,10 @@ def cmd_setup(args: argparse.Namespace) -> int:
         cfg = settings_mod.load()
         print(
             f"Settings already present at {settings_mod.settings_path()}.\n"
-            f"  semantic_enabled = {cfg.semantic_enabled}\n"
             f"  semantic_model   = {cfg.semantic_model}\n"
             f"  semantic_device  = {cfg.semantic_device}\n"
             f"  cache_dir        = {cfg.cache_dir}\n"
+            "Semantic grounding (+ NLI) is opt-in per call via '--semantic'.\n"
             "Re-run with --force to reconfigure.",
             file=sys.stderr,
         )
@@ -1249,12 +1317,11 @@ def cmd_setup(args: argparse.Namespace) -> int:
 # Caveman-style one-liners (drop articles + copulas; keep technical accuracy).
 # Used by `document-processing --caveman` for a terse catalogue.
 CAVEMAN_DESCRIPTIONS: dict[str, str] = {
-    "ground": "one claim -> source. score 3 ways",
-    "batch-ground": "many claims -> source. report",
+    "ground": "claims -> source. --claim one, --manifest many. score 3 ways. --semantic adds bundle",
     "extract-claims": "doc -> claims.json. lossy. review first",
     "check-consistency": "doc fight self? same fact different number?",
-    "batch-validate": "many docs -> many reports. yaml manifest",
-    "setup": "first run. say yes/no semantic",
+    "validate": "docs -> grounding + consistency reports. --document(s) or --manifest",
+    "setup": "first run. write model/cache config. semantic opt-in via --semantic",
 }
 
 

@@ -8,7 +8,7 @@
 # seed perfect, cross-layer agreement gap >= 0.10, skill rules present).
 #
 # Override order (first match wins):
-#   1. Explicit keyword argument to ground() / ground_many() / etc
+#   1. Explicit keyword argument to ground() / ground_batch() / etc
 #   2. ./.stellars-plugins/config.yaml in the project root
 #   3. This bundled default (shipped with the plugin)
 #
@@ -150,7 +150,7 @@ single_passage_fallback_length: 1500  # trigger fallback above this text length
 
 # ---- classifier mode (H11) -------------------------------------------------
 # ``absolute`` = use agreement_threshold verbatim for match_type fallback.
-# ``adaptive_gap`` = in batch mode (ground_many), compute threshold as the
+# ``adaptive_gap`` = in batch mode (ground_batch), compute threshold as the
 # midpoint of the largest gap in the semantic-zone agreement_score
 # distribution. Model-agnostic within a corpus.
 

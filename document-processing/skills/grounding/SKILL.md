@@ -1,6 +1,6 @@
 ---
 name: grounding
-description: Ground claims against source material with the deterministic grounding CLI - single claim, a whole document's claims, or a batch of documents via source_map.yaml. Pure grounding, no tone/style/format compliance (that is the `validate` skill). Use when asked to ground, do grounding, check grounding, run batch-ground, or verify claims against a source / sources.
+description: Ground claims against source material with the deterministic grounding CLI - single claim, a whole document's claims, or a batch of documents via source_map.yaml. Pure grounding, no tone/style/format compliance (that is the `validate` skill). Use when asked to ground, do grounding, check grounding, run ground, or verify claims against a source / sources.
 ---
 
 # Grounding Skill
@@ -8,10 +8,10 @@ description: Ground claims against source material with the deterministic ground
 Grounding a document is a **three-step chain**, not just step 2:
 
 1. **`extract-claims`** — enumerate the load-bearing claims from the document into `claims.json` (heuristic, lossy — review it before grounding).
-2. **`batch-ground`** — score every claim against the source(s) with the deterministic CLI (regex exact + Levenshtein fuzzy + BM25, + optional semantic); read the verdicts, apply the verdict rules; write `grounding-report.md`.
+2. **`ground`** — score every claim against the source(s) with the deterministic CLI (regex exact + Levenshtein fuzzy + BM25, + optional semantic); read the verdicts, apply the verdict rules; write `grounding-report.md`.
 3. **`check-consistency`** — check the document against *itself* for divergences grounding structurally can't see (`42 users` here vs `50 users` there; `dev/test/staging` vs `dev/staging/prod`); write `consistency-report.md`.
 
-A document-grounding run produces **both** `grounding-report.md` and `consistency-report.md`. For a *single claim* (no document), run only step 2's single-claim form (`document-processing ground`). For *many documents*, `batch-validate` runs the whole chain per client. **Always runs the CLI** - it is the canonical operational grounder; generative interpretation is only an on-top layer for semantic claims after the CLI ran.
+A document-grounding run produces **both** `grounding-report.md` and `consistency-report.md`. For a *single claim* (no document), run only step 2's single-claim form (`document-processing ground`). For *many documents*, `validate` runs the whole chain per client. **Always runs the CLI** - it is the canonical operational grounder; generative interpretation is only an on-top layer for semantic claims after the CLI ran.
 
 The `validate` skill wraps this whole chain and adds a tone/style/length/format compliance layer on top; the `process` skill invokes this skill from its Verify & Ground phase; the `update` skill calls it as its mandatory closing step.
 
@@ -29,23 +29,19 @@ python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip i
 
 Ships the `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask the user whether to install - just run the line. **The CLI is mandatory.** Generative interpretation is only an on-top layer for semantic claims after the CLI ran - never a substitute for it. If the package genuinely cannot be installed, say so and stop; do not silently degrade to manual search.
 
-## Semantic grounding: ON by default — only skip when the user has opted out (MANDATORY every run)
+## Semantic grounding (+ NLI): opt-in per call via `--semantic` (recommend it by default)
 
-**Posture: assume semantic IS used.** The 4th layer (a retrieval embedder + FAISS; default `intfloat/multilingual-e5-small`, configurable via `semantic_model` in settings) catches meaning-match when wording AND terms diverge — the case the three lexical layers structurally cannot reach. Treat it as part of grounding, not an extra. Lexical-only is the fallback you fall to only because the *user has deliberately turned semantic off*.
+**Posture: recommend semantic, enable it per call.** There is no persisted `semantic_enabled` setting anymore — semantic is a flag on the grounder. Pass `--semantic` to bring two layers online together:
 
-Read `./.stellars-plugins/settings.json` (project-local, sibling to `.claude/`) before grounding:
+- **Retrieval embedder + FAISS** (default `intfloat/multilingual-e5-small`, set via `semantic_model` in settings) — catches meaning-match when wording AND terms diverge
+- **NLI entailment cross-encoder** (rides with semantic, no separate flag) — the truth signal: does the evidence *entail* the claim? Catches contradictions and cross-lingual matches the lexical layers structurally cannot reach. With NLI on, the verdict runs through the calibrated engine so entailment is weighed against the other layers, not a hard override
 
-```bash
-test -f .stellars-plugins/settings.json && cat .stellars-plugins/settings.json
-```
+Decision each run:
 
-Decide from `semantic_enabled`:
+- **Default → recommend `--semantic`.** Phrase it as the default: "Semantic + NLI grounding is the recommended default — the only layers that catch a passage that *means* the claim (or *contradicts* it) while sharing no wording. One-time cost: `pip install 'stellars-claude-code-plugins[semantic]'` plus model downloads on first use (~120 MB embedder + ~560 MB NLI). Use it?"
+- **User declines → lexical-only for this session.** Three lexical layers, no persistence. Don't re-ask (the re-recommend-on-struggle rule below still applies).
 
-- `true` → pass `--semantic on` to every `ground` / `batch-ground` / `batch-validate` call. (This is the expected state.)
-- `false` → the user has explicitly opted out. Respect it: pass `--semantic off` or omit; three lexical layers only. Do not silently re-enable. (You may still re-recommend it on struggle — see below.)
-- **Missing file (semantic not set up yet)** → run `document-processing setup` and **recommend YES**. Phrase it as the default: "Semantic grounding is the recommended default — it's the only layer that catches a passage that *means* the claim while sharing no wording or key terms with it. One-time cost: `pip install 'stellars-claude-code-plugins[semantic]'` plus a ~120 MB model download on first use. Enable?" If the user says yes → `document-processing setup` writes `semantic_enabled: true`, ensure `pip install 'stellars-claude-code-plugins[semantic]'` is done, then `--semantic on`. If the user says no → `semantic_enabled: false` is recorded; proceed lexical-only and don't re-ask (the re-recommend-on-struggle rule below still applies).
-
-Never pass `--semantic on` while the `[semantic]` extra is uninstalled — the CLI hard-fails (exit 2) on that explicit contract. Enable-then-install, in that order.
+Never pass `--semantic` while the `[semantic]` extra is uninstalled — the CLI hard-fails (exit 2) on that explicit contract. Install first, then `--semantic`.
 
 ### Never blindly trust scores. Verify generatively when in doubt
 
@@ -70,13 +66,12 @@ Verdict output: quote the passage + state supports / contradicts / topical-only.
 
 ### When to RE-RECOMMEND semantic to the user
 
-The user opted out (`semantic_enabled=false`), but the lexical-only pass is struggling — >25% UNCONFIRMED OR any claim in the fuzzy 0.5-0.85 AND bm25 0.2-0.5 "almost grounded" zone that semantic usually rescues → stop and re-offer (the situation has changed; this isn't nagging):
+The user declined semantic for this session, but the lexical-only pass is struggling — >25% UNCONFIRMED OR any claim in the fuzzy 0.5-0.85 AND bm25 0.2-0.5 "almost grounded" zone that semantic usually rescues → stop and re-offer (the situation has changed; this isn't nagging):
 
-> Three-layer grounding left N/M UNCONFIRMED and K in the almost-grounded zone. Semantic grounding (4th layer, +~120 MB model first time, requires the `[semantic]` extra) usually resolves these. Re-enable for this document?
+> Three-layer grounding left N/M UNCONFIRMED and K in the almost-grounded zone. Semantic + NLI grounding (requires the `[semantic]` extra, model downloads first time) usually resolves these. Use it for this document?
 >
 > 1. `pip install 'stellars-claude-code-plugins[semantic]'`
-> 2. `document-processing setup --force` and answer yes
-> 3. re-run with `--semantic on`
+> 2. re-run with `--semantic`
 
 Never silently flip a deliberate opt-out — offer, wait for consent, proceed.
 
@@ -136,7 +131,7 @@ Three rules override default per-claim behaviour. Apply in order: rule 2 trumps 
 Three-layer grounding left N/M claims UNCONFIRMED and K in the
 almost-grounded zone. Semantic grounding (4th layer, +150MB model
 first time, requires `[semantic]` extra) often resolves these. Enable?
-  - yes: re-run with --semantic on
+  - yes: re-run with --semantic
   - no: keep current verdicts
 ```
 
@@ -159,7 +154,7 @@ document-processing extract-claims \
 Per claim:
 
 1. **State claim** exactly as in document
-2. **Run grounding tool FIRST.** Use `document-processing ground` for single claims, `document-processing batch-ground` for a claims.json. Three layers run independently (regex + Levenshtein + BM25), all three scores + line/column/paragraph/page/context per hit — no rereading source, huge token saving. Secondary: disciplined generative interpretation ONLY when all three lexical layers fail AND claim is semantic (summary / synthesis / cross-passage inference). Never skip the tool; run first, add generative on top when lexical signal absent.
+2. **Run grounding tool FIRST.** Use `document-processing ground` for single claims, `document-processing ground` for a claims.json. Three layers run independently (regex + Levenshtein + BM25), all three scores + line/column/paragraph/page/context per hit — no rereading source, huge token saving. Secondary: disciplined generative interpretation ONLY when all three lexical layers fail AND claim is semantic (summary / synthesis / cross-passage inference). Never skip the tool; run first, add generative on top when lexical signal absent.
 3. **Mark status** from tool output:
    - CONFIRMED — `match_type=exact` → quote `exact_matched_text` at `exact_location`
    - CONFIRMED (fuzzy) — `match_type=fuzzy` → quote `fuzzy_matched_text` at `fuzzy_location`, note paraphrase tolerance
@@ -177,12 +172,12 @@ Subcommands and how they fit together:
 |---|---|---|
 | `ground --claim TEXT --source FILE…` | one claim → match (stdout, `--json` for full object) | no `--output`; exit 0 grounded / 1 unconfirmed |
 | `extract-claims --document FILE [--output claims.json]` | a document → `claims.json` | heuristic, lossy — review before grounding |
-| `batch-ground --claims claims.json --source FILE… [--output report.md]` | claims.json → `grounding-report.md` (or `--json`) | `--primary-source FILE` flags cross-source pollution; exit 0 all grounded / 1 some unconfirmed; exit 2 if a source is binary/unextractable |
+| `ground --manifest claims.json --source FILE… [--output report.md]` | claims.json → `grounding-report.md` (or `--json`) | `--primary-source FILE` flags cross-source pollution; exit 0 all grounded / 1 some unconfirmed; exit 2 if a source is binary/unextractable |
 | `check-consistency --document FILE [--output report.md]` | a document → `consistency-report.md` | markdown only (no `--json`); exit 0 clean / 1 findings exist |
-| `batch-validate --source-map source_map.yaml --output-dir DIR` | manifest → `DIR/<client>/{claims.json,grounding-report.md,consistency-report.md}` | runs extract-claims+batch-ground+check-consistency per client; `--stop-on-error` aborts on first failure; exit 0 all clean / 1 any issue / 2 malformed yaml |
-| `setup [--force]` | interactive → `./.stellars-plugins/settings.json` | first-run semantic on/off; never re-prompts unless `--force` |
+| `validate --manifest source_map.yaml --output-dir DIR` | manifest → `DIR/<client>/{claims.json,grounding-report.md,consistency-report.md}` | runs extract-claims+ground+check-consistency per client; `--stop-on-error` aborts on first failure; exit 0 all clean / 1 any issue / 2 malformed yaml |
+| `setup [--force]` | writes `./.stellars-plugins/settings.json` | model/cache config; semantic is opt-in per call via `--semantic`, not a setting |
 
-Shared optional flags on `ground` / `batch-ground` / `batch-validate`: `--threshold 0.85` (fuzzy), `--bm25-threshold 0.5`, `--semantic {on,off}` (overrides settings), `--semantic-threshold` / `--semantic-threshold-percentile`. `ground` / `batch-ground` also take `--ocr-lang CODE` (scanned PDFs), `--scanned-threshold`, `--ack-warning TOKEN=reason` (the stop-and-think gate).
+Shared optional flags on `ground` / `validate`: `--threshold 0.85` (fuzzy), `--bm25-threshold 0.5`, `--semantic` (boolean; enables the embedding + NLI + calibrated-verdict bundle, default off), `--semantic-threshold` / `--semantic-threshold-percentile`. `ground` also takes `--ocr-lang CODE` (scanned PDFs), `--scanned-threshold`, `--ack-warning TOKEN=reason` (the stop-and-think gate).
 
 ### Mode A: single-claim probe — on-demand checks during review
 
@@ -206,17 +201,17 @@ document-processing extract-claims --document docs/brief.md --output validation/
 
 # Step 2 — ground every claim against the source(s).
 # claims.json: list of strings or [{"claim": "...", "id": "..."}]
-# Pass --semantic on if settings.semantic_enabled == true
+# Pass --semantic to enable the semantic + NLI layers (opt-in per call)
 # Pass --primary-source to flag cross-source pollution when multiple --source flags are present
-document-processing batch-ground \
-  --claims validation/claims.json \
+document-processing ground \
+  --manifest validation/claims.json \
   --source docs/source.md \
   --source docs/research.md \
   --primary-source docs/source.md \
   --output validation/grounding-report.md \
   --threshold 0.85 \
   --bm25-threshold 0.5 \
-  --semantic on     # omit or 'off' when settings disables it
+  --semantic     # add to enable the bundle; omit for lexical-only
 
 # Step 3 — check the document against itself (always; this is part of grounding a document).
 document-processing check-consistency --document docs/brief.md --output validation/consistency-report.md
@@ -244,12 +239,12 @@ clients:
 Invoke:
 
 ```bash
-document-processing batch-validate \
-  --source-map source_map.yaml \
+document-processing validate \
+  --manifest source_map.yaml \
   --output-dir validation/
 ```
 
-For every client entry it runs the full Mode B chain — `extract-claims` -> `batch-ground` (with cross-source provenance) -> `check-consistency` — writing `validation/<client>/claims.json`, `validation/<client>/grounding-report.md`, and `validation/<client>/consistency-report.md`. A per-client error is logged to `validation/<client>/error.log` and the batch continues unless `--stop-on-error` is passed.
+For every client entry it runs the full Mode B chain — `extract-claims` -> `ground` (with cross-source provenance) -> `check-consistency` — writing `validation/<client>/claims.json`, `validation/<client>/grounding-report.md`, and `validation/<client>/consistency-report.md`. A per-client error is logged to `validation/<client>/error.log` and the batch continues unless `--stop-on-error` is passed.
 
 Exit codes:
 - `0` every client succeeded with no unconfirmed claims and no consistency findings
@@ -276,7 +271,7 @@ Exit codes:
 | `exact_score=1.0` | CONFIRMED |
 | `fuzzy_score ≥ threshold`, `exact_score=0` | CONFIRMED (fuzzy) — paraphrase |
 | `bm25_score ≥ bm25_threshold`, `exact=0`, `fuzzy<threshold` | CONFIRMED (topical) — wording differs, same terms |
-| `semantic_score ≥ semantic_threshold`, lexical all below | CONFIRMED (semantic) — meaning matches, wording+terms diverge. Only with `--semantic on` |
+| `semantic_score ≥ semantic_threshold`, lexical all below | CONFIRMED (semantic) — meaning matches, wording+terms diverge. Only with `--semantic` |
 | all layers below thresholds | UNCONFIRMED — quote best available for diagnostics |
 
 Priority when multiple fire: exact > fuzzy > bm25 > semantic.
@@ -304,7 +299,7 @@ Lexical = word presence. cosine = topic. neither = truth. NLI = truth: does evid
 Default thresholds miss your domain? calibrate per-corpus. Bayesian logistic (bambi/PyMC) over the layer features (lexical + semantic + NLI).
 
 - **evidence** - JSON list `{claim, sources:[paths] (or source_text), label:0|1, lang?, weight?}`; label = gold (1 grounded, 0 not); LLM-eval prob works as soft label
-- **calibrate** - `document-processing calibrate --action update --evidence evidence.json --profile .stellars-plugins/calibrator.json --semantic on`; grounds each record, fits posterior, saves
+- **calibrate** - `document-processing calibrate --action update --evidence evidence.json --profile .stellars-plugins/calibrator.json --semantic`; grounds each record, fits posterior, saves
 - **inspect** - `calibrate --action show --profile ...` prints coefficient mean +/- sd
 - **transfer to config** - `config set-calibrator --profile ...` writes `calibration:` block (engine, threshold, weights) into `.stellars-plugins/config_document_processing.yaml`; grounding uses weights, no fitting at run time
 - **incremental** - `--from <profile>` seeds new fit from prior posterior; feedback accumulates
@@ -375,7 +370,7 @@ When invoked standalone, write the report to `validation/grounding-report.md` (c
 
 ## Self-consistency check (step 3 of grounding a document)
 
-Step 3 of the Mode B chain — run it on every document-grounding run, not just when something looks off. Grounding (steps 1-2) catches claim-vs-source mismatch; it is structurally blind to the document contradicting *itself* - the brief that lists `dev/test/staging` on one page and `dev/staging/prod` on another, or "42 users" here and "50 users" there. `batch-validate` runs this automatically per client; in Mode B you run it explicitly after `batch-ground`:
+Step 3 of the Mode B chain — run it on every document-grounding run, not just when something looks off. Grounding (steps 1-2) catches claim-vs-source mismatch; it is structurally blind to the document contradicting *itself* - the brief that lists `dev/test/staging` on one page and `dev/staging/prod` on another, or "42 users" here and "50 users" there. `validate` runs this automatically per client; in Mode B you run it explicitly after `ground`:
 
 ```bash
 document-processing check-consistency \

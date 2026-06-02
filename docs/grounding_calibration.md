@@ -25,7 +25,7 @@ Selected by config `calibration.engine`.
 - **What** - a cross-encoder scores `(premise = evidence, hypothesis = claim)` -> {entailment, neutral, contradiction} = {grounded, unconfirmed, contradicted}
 - **Model** - `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli`, multilingual (MNLI + XNLI), run via ONNX Runtime, torch-free; ships `onnx/model.onnx`, cached on first use (~560 MB)
 - **Cross-lingual** - entailment against an English source: NB 0.998, FR 0.998; the case lexical overlap and cosine similarity both cannot do
-- **Module** - `document_processing/nli.py` (`NLIGrounder.scores` / `.verdict`); pass an `nli_grounder` to `ground()` / `ground_many`
+- **Module** - `document_processing/nli.py` (`NLIGrounder.scores` / `.verdict`); pass an `nli_grounder` to `ground()` / `ground_batch`
 - **Verdict role** - NLI argmax is a first-class signal: its contradiction folds into the guard, its entailment counts as signal so a cross-lingual hit with zero lexical overlap still confirms
 
 ## Calibrator
@@ -39,7 +39,7 @@ Selected by config `calibration.engine`.
 
 ## CLI
 
-- **Calibrate** - `document-processing calibrate --action update --evidence evidence.json --profile .stellars-plugins/calibrator.json --semantic on`; each record is grounded -> features -> Bayesian fit -> saved profile
+- **Calibrate** - `document-processing calibrate --action update --evidence evidence.json --profile .stellars-plugins/calibrator.json --semantic`; each record is grounded -> features -> Bayesian fit -> saved profile
 - **Evidence** - JSON list of `{claim, sources:[paths] (or source_text), label:0|1, lang?, weight?}`
 - **Incremental** - `--from <profile>` seeds from a previous posterior
 - **Transfer to config** - `config set-calibrator --profile ...` writes the learned weights into the `calibration` block (`engine: calibrated`); grounding then uses them with no fitting
@@ -72,7 +72,7 @@ Public real data - VitaminC dev, balanced (`make grounding-validate`):
 
 - **`document_processing/nli.py`** - multilingual cross-encoder NLI grounder (ONNX, torch-free)
 - **`document_processing/calibration.py`** - the Bayesian head: fit/predict, save/load, prior loader, evaluate
-- **`document_processing/grounding.py`** - layers, `extract_features` (incl. NLI), verdict engines, `nli_grounder`/`calibrated_verdict` in `ground()`/`ground_many`
+- **`document_processing/grounding.py`** - layers, `extract_features` (incl. NLI), verdict engines, `nli_grounder`/`calibrated_verdict` in `ground()`/`ground_batch`
 - **`document_processing/cli.py`** - `calibrate` and `config` subcommands
 - **`config_document_processing.yaml`** - `calibration` block (engine, threshold, prior incl. NLI features)
 - **`scripts/validate_public_grounding.py`** - VitaminC validation harness (`make grounding-validate`)

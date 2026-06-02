@@ -168,7 +168,7 @@ class GroundingConfig:
     def overlay(self, **overrides) -> GroundingConfig:
         """Return a copy with the given fields overridden.
 
-        Used by ``ground`` / ``ground_many`` to let explicit keyword
+        Used by ``ground`` / ``ground_batch`` to let explicit keyword
         arguments win over the loaded config. ``None`` values are
         ignored ("no override for this field"), so callers can pass
         their full signature through without special-casing.

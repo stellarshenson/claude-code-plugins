@@ -9,7 +9,7 @@ import pytest
 from stellars_claude_code_plugins.document_processing import (
     GroundingMatch,
     ground,
-    ground_many,
+    ground_batch,
 )
 from stellars_claude_code_plugins.document_processing import settings as settings_mod
 from stellars_claude_code_plugins.document_processing.chunking import (
@@ -290,16 +290,16 @@ class TestEdgeCases:
 
 
 class TestBatch:
-    def test_ground_many_preserves_order(self):
+    def test_ground_batch_preserves_order(self):
         claims = ["brown fox", "lazy dog", "unrelated claim"]
         sources = ["The quick brown fox jumps over the lazy dog."]
-        results = ground_many(claims, sources, fuzzy_threshold=0.85)
+        results = ground_batch(claims, sources, fuzzy_threshold=0.85)
         assert len(results) == 3
         assert results[0].match_type == "exact"
         assert results[1].match_type == "exact"
         assert results[2].match_type in ("fuzzy", "none")
 
-    def test_ground_many_multithreaded_matches_serial(self):
+    def test_ground_batch_multithreaded_matches_serial(self):
         # Threaded grounding must produce byte-identical results to serial and
         # preserve claim order (the adaptive_gap pass indexes by position).
         claims = [f"brown fox number {i}" for i in range(12)] + [
@@ -307,17 +307,17 @@ class TestBatch:
             "totally unrelated claim about quantum mechanics",
         ]
         sources = ["The quick brown fox jumps over the lazy dog."]
-        serial = ground_many(claims, sources, fuzzy_threshold=0.85, max_workers=1)
-        threaded = ground_many(claims, sources, fuzzy_threshold=0.85, max_workers=5)
+        serial = ground_batch(claims, sources, fuzzy_threshold=0.85, max_workers=1)
+        threaded = ground_batch(claims, sources, fuzzy_threshold=0.85, max_workers=5)
         assert len(threaded) == len(serial) == len(claims)
         assert [m.match_type for m in threaded] == [m.match_type for m in serial]
         assert [m.agreement_score for m in threaded] == [m.agreement_score for m in serial]
 
-    def test_ground_many_workers_capped_to_claim_count(self):
+    def test_ground_batch_workers_capped_to_claim_count(self):
         # More workers than claims must not error or change results.
         claims = ["lazy dog"]
         sources = ["The quick brown fox jumps over the lazy dog."]
-        results = ground_many(claims, sources, fuzzy_threshold=0.85, max_workers=5)
+        results = ground_batch(claims, sources, fuzzy_threshold=0.85, max_workers=5)
         assert len(results) == 1
         assert results[0].match_type == "exact"
 
@@ -332,11 +332,10 @@ class TestCLI:
         out = capsys.readouterr().out
         assert "(caveman)" in out
         for sub, expected in (
-            ("ground", "one claim"),
-            ("batch-ground", "many claims"),
+            ("ground", "--claim one"),
             ("extract-claims", "doc -> claims.json"),
             ("check-consistency", "doc fight self"),
-            ("batch-validate", "yaml manifest"),
+            ("validate", "grounding + consistency"),
             ("setup", "first run"),
         ):
             assert sub in out, f"{sub} missing from caveman catalogue"
@@ -372,8 +371,7 @@ class TestCLI:
                 str(src),
                 "--threshold",
                 "0.95",
-                "--semantic",
-                "off",  # ensure test doesn't depend on optional model download
+                # no --semantic: lexical-only, no optional model download
             ]
         )
         assert code == 1
@@ -395,7 +393,7 @@ class TestCLI:
         assert data["exact_location"]["line_start"] == 1
         assert data["exact_location"]["paragraph"] == 1
 
-    def test_ground_many_markdown_report(self, tmp_path):
+    def test_ground_batch_markdown_report(self, tmp_path):
         src = tmp_path / "src.txt"
         src.write_text("The quick brown fox jumps over the lazy dog.")
         claims = tmp_path / "claims.json"
@@ -403,8 +401,8 @@ class TestCLI:
         out = tmp_path / "report.md"
         cli_main(
             [
-                "batch-ground",
-                "--claims",
+                "ground",
+                "--manifest",
                 str(claims),
                 "--source",
                 str(src),
@@ -418,7 +416,7 @@ class TestCLI:
         assert "L1" in report  # location in report
         assert "¶1" in report
 
-    def test_ground_many_json_report(self, tmp_path):
+    def test_ground_batch_json_report(self, tmp_path):
         src = tmp_path / "src.txt"
         src.write_text("The quick brown fox jumps.")
         claims = tmp_path / "claims.json"
@@ -426,8 +424,8 @@ class TestCLI:
         out = tmp_path / "report.json"
         cli_main(
             [
-                "batch-ground",
-                "--claims",
+                "ground",
+                "--manifest",
                 str(claims),
                 "--source",
                 str(src),
@@ -443,7 +441,7 @@ class TestCLI:
         # Location fields should be in the JSON
         assert "exact_location" in data["matches"][0]
 
-    def test_ground_many_workers_flag(self, tmp_path):
+    def test_ground_batch_workers_flag(self, tmp_path):
         # The --workers flag must be accepted and produce identical results to
         # a serial run (parallelism is a perf knob, never a correctness change).
         src = tmp_path / "src.txt"
@@ -455,8 +453,8 @@ class TestCLI:
             out = tmp_path / f"report_{workers}.json"
             cli_main(
                 [
-                    "batch-ground",
-                    "--claims",
+                    "ground",
+                    "--manifest",
                     str(claims),
                     "--source",
                     str(src),
@@ -539,7 +537,6 @@ class TestSettings:
         monkeypatch.chdir(tmp_path)
         monkeypatch.setenv("HOME", str(tmp_path))
         cfg = settings_mod.load()
-        assert cfg.semantic_enabled is False
         assert cfg.semantic_model == "intfloat/multilingual-e5-small"
         assert cfg.semantic_device == "auto"
 
@@ -548,12 +545,26 @@ class TestSettings:
         monkeypatch.setenv("HOME", str(tmp_path))
         # Create project root marker
         (tmp_path / ".claude").mkdir()
-        s = settings_mod.Settings(semantic_enabled=True, semantic_model="custom/model")
+        s = settings_mod.Settings(semantic_model="custom/model")
         path = settings_mod.save(s)
         assert path.exists()
         loaded = settings_mod.load()
-        assert loaded.semantic_enabled is True
         assert loaded.semantic_model == "custom/model"
+
+    def test_obsolete_semantic_enabled_key_is_ignored(self, tmp_path, monkeypatch):
+        # Old settings files may still carry semantic_enabled - it must load
+        # without error and simply be dropped (unknown keys filtered on read).
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("HOME", str(tmp_path))
+        (tmp_path / ".claude").mkdir()
+        d = tmp_path / ".stellars-plugins"
+        d.mkdir()
+        (d / "settings.json").write_text(
+            json.dumps({"semantic_enabled": True, "semantic_model": "m/x"})
+        )
+        loaded = settings_mod.load()
+        assert loaded.semantic_model == "m/x"
+        assert not hasattr(loaded, "semantic_enabled")
 
     def test_is_semantic_available_reflects_imports(self):
         # This may be True or False depending on test env — just ensure the
@@ -568,63 +579,38 @@ class TestSettings:
 
 
 class TestSemanticOnContract:
-    """`--semantic on` is an explicit contract:
+    """Semantic grounding is opt-in per call via the boolean ``--semantic``:
 
-    - deps present -> grounder is built, returned
-    - deps missing -> hard fail (sys.exit 2), do NOT silently degrade
-
-    `--semantic` not passed (config default takes over) keeps the old
-    warn-and-degrade behaviour for back-compat. `--semantic off` is
-    handled earlier and never reaches the deps-check.
+    - ``enabled=True`` + deps present -> grounder built
+    - ``enabled=True`` + deps missing -> hard fail (sys.exit 2)
+    - ``enabled=False`` -> None (no semantic), and the deps check is never
+      reached. There is no persisted enable setting.
     """
 
     def test_semantic_on_with_deps_missing_exits_2(self, monkeypatch, capsys):
-        """The bug we saw in the 49th-batch grounding: --semantic on,
-        deps missing, CLI proceeded silently. New contract: hard fail.
+        """--semantic with the extras missing must hard-fail, never degrade
+        silently (silent degradation produced misleading 0.000 semantic rows).
         """
         from stellars_claude_code_plugins.document_processing.cli import (
             _build_semantic_grounder,
         )
 
         monkeypatch.setattr(settings_mod, "is_semantic_available", lambda: False)
-        cfg = settings_mod.Settings(semantic_enabled=False)
 
         with pytest.raises(SystemExit) as exc_info:
-            _build_semantic_grounder(cfg, cli_override="on")
+            _build_semantic_grounder(settings_mod.Settings(), True)
         assert exc_info.value.code == 2
 
         err = capsys.readouterr().err
-        assert "ERROR: --semantic on requires the [semantic] extras" in err
+        assert "ERROR: --semantic requires the [semantic] extras" in err
         assert "pip install" in err
 
-    def test_semantic_config_default_with_deps_missing_warns_and_degrades(
-        self, monkeypatch, capsys
-    ):
-        """Config says enabled, deps missing, no explicit --semantic flag.
-        Back-compat: warn, return None, let the caller continue without
-        semantic. Don't surprise users with exit 2 just because their
-        config has semantic_enabled=true on a machine without the extras.
+    def test_semantic_not_requested_returns_none_without_deps_check(self, monkeypatch):
+        """enabled=False -> no semantic layer, and the deps check is never reached
+        (the layer is purely opt-in, no config default to honour).
         """
         from stellars_claude_code_plugins.document_processing.cli import (
-            _build_semantic_grounder,
-        )
-
-        monkeypatch.setattr(settings_mod, "is_semantic_available", lambda: False)
-        cfg = settings_mod.Settings(semantic_enabled=True)
-
-        result = _build_semantic_grounder(cfg, cli_override=None)
-        assert result is None
-
-        err = capsys.readouterr().err
-        assert "WARNING: semantic grounding enabled in settings" in err
-        # NOT the explicit-fail error
-        assert "ERROR: --semantic on" not in err
-
-    def test_semantic_off_short_circuits_before_deps_check(self, monkeypatch):
-        """--semantic off returns None before the deps check; setting the
-        availability to False should not matter because we never get there.
-        """
-        from stellars_claude_code_plugins.document_processing.cli import (
+            _build_nli_grounder,
             _build_semantic_grounder,
         )
 
@@ -634,29 +620,27 @@ class TestSemanticOnContract:
             "is_semantic_available",
             lambda: sentinel_called.append(True) or False,
         )
-        cfg = settings_mod.Settings(semantic_enabled=True)
-
-        result = _build_semantic_grounder(cfg, cli_override="off")
-        assert result is None
+        cfg = settings_mod.Settings()
+        assert _build_semantic_grounder(cfg, False) is None
+        assert _build_nli_grounder(cfg, False) is None
         assert sentinel_called == []  # deps-check never invoked
 
-    def test_validate_many_helper_honours_same_contract(self, monkeypatch, capsys):
-        """validate_many.py has a copy of the same function (to dodge a
-        circular import) - it must apply the same hard-fail rule.
+    def test_validate_helper_honours_same_contract(self, monkeypatch, capsys):
+        """validate.py has a copy of the same function (to dodge a circular
+        import) - it must apply the same hard-fail rule.
         """
-        from stellars_claude_code_plugins.document_processing.validate_many import (
+        from stellars_claude_code_plugins.document_processing.validate import (
             _maybe_build_grounder,
         )
 
         monkeypatch.setattr(settings_mod, "is_semantic_available", lambda: False)
-        cfg = settings_mod.Settings(semantic_enabled=False)
 
         with pytest.raises(SystemExit) as exc_info:
-            _maybe_build_grounder(cfg, semantic_override="on")
+            _maybe_build_grounder(settings_mod.Settings(), True)
         assert exc_info.value.code == 2
 
         err = capsys.readouterr().err
-        assert "ERROR: --semantic on requires the [semantic] extras" in err
+        assert "ERROR: --semantic requires the [semantic] extras" in err
 
 
 class TestCLISetup:
@@ -667,11 +651,11 @@ class TestCLISetup:
         monkeypatch.setenv("HOME", str(tmp_path))
         (tmp_path / ".claude").mkdir()
         # Pre-seed settings
-        settings_mod.save(settings_mod.Settings(semantic_enabled=True))
+        settings_mod.save(settings_mod.Settings())
         code = cli_main(["setup"])
         assert code == 0
         err = capsys.readouterr().err
-        assert "semantic_enabled" in err
+        assert "semantic_model" in err
 
 
 # -------------------------------------------------------------------------
@@ -694,7 +678,7 @@ class TestBinarySourceFallback:
         claim = tmp_path / "claim.json"
         claim.write_text(json.dumps(["hello world"]))
         with pytest.raises(SystemExit) as exc:
-            cli_main(["batch-ground", "--claims", str(claim), "--source", str(p)])
+            cli_main(["ground", "--manifest", str(claim), "--source", str(p)])
         # Gate exits 2 with the unacked SOURCE-SKIPPED warning.
         assert exc.value.code == 2
         err = capsys.readouterr().err
@@ -1300,11 +1284,11 @@ class TestCheckConsistency:
 
 
 # -------------------------------------------------------------------------
-# WI#7: batch-validate
+# WI#7: validate (grounding + self-consistency, manifest mode)
 # -------------------------------------------------------------------------
 
 
-class TestValidateMany:
+class TestValidate:
     def test_basic_batch(self, tmp_path, monkeypatch):
         # Redirect HOME so settings don't leak from the real user
         monkeypatch.setenv("HOME", str(tmp_path / "fake_home"))
@@ -1347,13 +1331,11 @@ class TestValidateMany:
         output_dir = tmp_path / "validation"
         code = cli_main(
             [
-                "batch-validate",
-                "--source-map",
+                "validate",
+                "--manifest",
                 str(source_map),
                 "--output-dir",
                 str(output_dir),
-                "--semantic",
-                "off",
             ]
         )
         # Code is 0 only if everything grounded AND no inconsistencies.
@@ -1362,6 +1344,30 @@ class TestValidateMany:
         assert (output_dir / "alpha" / "grounding-report.md").exists()
         assert (output_dir / "alpha" / "consistency-report.md").exists()
         assert (output_dir / "beta" / "grounding-report.md").exists()
+
+    def test_inline_documents_mode(self, tmp_path, monkeypatch):
+        # --document (repeatable) + shared --source, no manifest.
+        monkeypatch.setenv("HOME", str(tmp_path / "fake_home"))
+        (tmp_path / "fake_home").mkdir()
+        src = tmp_path / "transcript.md"
+        src.write_text("Alpha builds a payment API. Launch in Q3 2026 with 5 members.\n")
+        doc = tmp_path / "brief.md"
+        doc.write_text("Alpha builds a payment API.\nLaunch planned for Q3 2026.\n")
+        output_dir = tmp_path / "out"
+        code = cli_main(
+            [
+                "validate",
+                "--document",
+                str(doc),
+                "--source",
+                str(src),
+                "--output-dir",
+                str(output_dir),
+            ]
+        )
+        assert code in (0, 1)
+        assert (output_dir / "brief" / "grounding-report.md").exists()
+        assert (output_dir / "brief" / "consistency-report.md").exists()
 
 
 class TestSemanticOnnx:
@@ -1580,9 +1586,9 @@ class TestGroundingEndToEnd:
     ]
 
     def test_precision_recall_targets(self):
-        from stellars_claude_code_plugins.document_processing.grounding import ground_many
+        from stellars_claude_code_plugins.document_processing.grounding import ground_batch
 
-        matches = ground_many([c for c, _ in self.CLAIMS], self.SRC)
+        matches = ground_batch([c for c, _ in self.CLAIMS], self.SRC)
         tp = fp = fn = 0
         for (_c, lab), m in zip(self.CLAIMS, matches):
             confirmed = m.match_type in ("exact", "fuzzy", "bm25")
@@ -1678,3 +1684,98 @@ class TestNLIGrounding:
             )
             == "contradicted"
         )
+
+
+class TestNLICliWiring:
+    """--semantic brings NLI online and routes it through the calibrated verdict."""
+
+    def test_build_nli_grounder_off_when_semantic_off(self):
+        from stellars_claude_code_plugins.document_processing import cli as cli_mod
+
+        cfg = settings_mod.Settings()
+        assert cli_mod._build_nli_grounder(cfg, False) is None
+
+    def test_nli_calibrated_verdict_is_usable(self):
+        import pandas as pd
+
+        from stellars_claude_code_plugins.document_processing import cli as cli_mod
+        from stellars_claude_code_plugins.document_processing.calibration import PREDICTORS
+
+        v = cli_mod._nli_calibrated_verdict()
+        p = v.predict_proba(pd.DataFrame([{k: 0.0 for k in PREDICTORS}]))
+        assert 0.0 <= float(p[0]) <= 1.0
+
+    def test_cli_ground_routes_nli_through_calibrated(self, tmp_path, monkeypatch, capsys):
+        # --semantic -> NLI built and the verdict comes from the calibrated
+        # engine (verdict_probability set), not the lexical cascade (-1.0).
+        from stellars_claude_code_plugins.document_processing import cli as cli_mod
+
+        src = tmp_path / "src.txt"
+        src.write_text("The estate has three walled gardens and an orchard.")
+        fake = _FakeNLI({"entailment": 0.95, "neutral": 0.03, "contradiction": 0.02})
+        # Patch the builders so neither the e5 nor the 560MB NLI model loads.
+        monkeypatch.setattr(cli_mod, "_build_semantic_grounder", lambda cfg, en: None)
+        monkeypatch.setattr(cli_mod, "_build_nli_grounder", lambda cfg, en: fake)
+
+        rc = cli_mod.main(
+            [
+                "ground",
+                "--claim",
+                "le domaine possede trois jardins clos",
+                "--source",
+                str(src),
+                "--json",
+                "--semantic",
+            ]
+        )
+        data = json.loads(capsys.readouterr().out)
+        assert rc in (0, 1)
+        # Calibrated engine activated (lexical cascade leaves this at -1.0).
+        assert data["verdict_probability"] != -1.0
+        # NLI entailment drove a grounded-leaning probability.
+        assert data["verdict_probability"] >= 0.5
+        assert data["nli_scores"]["entailment"] == 0.95
+
+    def test_cli_ground_no_nli_means_lexical_engine(self, tmp_path, monkeypatch, capsys):
+        # No NLI grounder built -> lexical cascade, verdict_probability stays -1.0.
+        # (Forced via the builders so the result is independent of any ambient
+        # config; semantic/NLI are opt-in per call now.)
+        from stellars_claude_code_plugins.document_processing import cli as cli_mod
+
+        src = tmp_path / "src.txt"
+        src.write_text("The estate has three walled gardens and an orchard.")
+        monkeypatch.setattr(cli_mod, "_build_semantic_grounder", lambda cfg, ovr: None)
+        monkeypatch.setattr(cli_mod, "_build_nli_grounder", lambda cfg, ovr: None)
+        rc = cli_mod.main(
+            [
+                "ground",
+                "--claim",
+                "three walled gardens",
+                "--source",
+                str(src),
+                "--json",
+            ]
+        )
+        data = json.loads(capsys.readouterr().out)
+        assert rc == 0
+        assert data["verdict_probability"] == -1.0
+        assert data["match_type"] == "exact"
+
+    def test_calibrate_semantic_feeds_nli_features(self, tmp_path, monkeypatch):
+        # calibrate --semantic must extract evidence with NLI on, so the
+        # calibrator trains on the same nli_entail/nli_contra it deploys.
+        import argparse
+
+        from stellars_claude_code_plugins.document_processing import cli as cli_mod
+
+        src = tmp_path / "s.txt"
+        src.write_text("The estate has three walled gardens.")
+        ev = tmp_path / "ev.json"
+        ev.write_text(json.dumps([{"claim": "three gardens", "sources": [str(src)], "label": 1}]))
+        fake = _FakeNLI({"entailment": 0.91, "neutral": 0.06, "contradiction": 0.03})
+        monkeypatch.setattr(cli_mod, "_build_semantic_grounder", lambda cfg, en: None)
+        monkeypatch.setattr(cli_mod, "_build_nli_grounder", lambda cfg, en: fake)
+
+        df = cli_mod._load_evidence_features(argparse.Namespace(evidence=str(ev), semantic=True))
+        assert float(df.iloc[0]["nli_entail"]) == 0.91
+        assert float(df.iloc[0]["nli_contra"]) == 0.03

@@ -1,7 +1,7 @@
 """Full end-to-end calibration simulation through the REAL grounding pipeline.
 
 Unlike the CI fixture test (which feeds feature vectors directly), this runs the
-actual machinery: real e5 semantic embeddings -> ground_many() -> feature
+actual machinery: real e5 semantic embeddings -> ground_batch() -> feature
 extraction -> Bayesian calibration -> config transfer -> ground() via config.
 
 It authors a realistic multilingual (en / nb / fr) labelled set - the only thing
@@ -23,7 +23,7 @@ import pandas as pd
 
 from stellars_claude_code_plugins.config import load_document_processing_config
 from stellars_claude_code_plugins.document_processing import calibration as C
-from stellars_claude_code_plugins.document_processing.grounding import extract_features, ground_many
+from stellars_claude_code_plugins.document_processing.grounding import extract_features, ground_batch
 
 # One shared source corpus (English). nb/fr claims are cross-lingual paraphrases
 # of these facts - the real test of the portable semantic_ratio signal.
@@ -88,7 +88,7 @@ def build_evidence() -> pd.DataFrame:
     grounder = SemanticGrounder()  # default e5-small, cached after first use
     gcfg = load_document_processing_config()
     claims = [c for c, _, _ in CLAIMS]
-    matches = ground_many(claims, SOURCES, semantic_grounder=grounder, config=gcfg)
+    matches = ground_batch(claims, SOURCES, semantic_grounder=grounder, config=gcfg)
 
     rows = []
     for (claim, label, lang), m in zip(CLAIMS, matches):
@@ -100,7 +100,7 @@ def build_evidence() -> pd.DataFrame:
 
 
 def main() -> int:
-    print("=== building evidence through the real e5 + ground_many pipeline ===")
+    print("=== building evidence through the real e5 + ground_batch pipeline ===")
     df = build_evidence()
     print(f"  {len(df)} claims grounded "
           f"(en={sum(df.lang == 'en')}, nb={sum(df.lang == 'nb')}, fr={sum(df.lang == 'fr')})")

@@ -11,12 +11,12 @@ Invoke the `document-processing:grounding` skill. Pure grounding - no tone/style
 Three modes (the skill picks based on the argument):
 
 - **Single claim** - `document-processing ground --claim "..." --source <file> --json`
-- **One document — the full grounding chain (extract → ground → consistency)** - `document-processing extract-claims --document <doc> --output validation/claims.json` -> review `claims.json` -> `document-processing batch-ground --claims validation/claims.json --source <src1> --source <src2> --output validation/grounding-report.md` -> `document-processing check-consistency --document <doc> --output validation/consistency-report.md`. All three steps run; the run produces both `grounding-report.md` and `consistency-report.md`.
-- **Many documents** - a `source_map.yaml` declaring `clients[].sources` + `document` (+ optional `primary_source`) -> `document-processing batch-validate --source-map source_map.yaml --output-dir validation/`, which runs that same chain per client, producing `validation/<client>/{claims.json,grounding-report.md,consistency-report.md}`
+- **One document — the full grounding chain (extract → ground → consistency)** - `document-processing extract-claims --document <doc> --output validation/claims.json` -> review `claims.json` -> `document-processing ground --manifest validation/claims.json --source <src1> --source <src2> --output validation/grounding-report.md` -> `document-processing check-consistency --document <doc> --output validation/consistency-report.md`. All three steps run; the run produces both `grounding-report.md` and `consistency-report.md`.
+- **Many documents** - a `source_map.yaml` declaring `clients[].sources` + `document` (+ optional `primary_source`) -> `document-processing validate --manifest source_map.yaml --output-dir validation/`, which runs that same chain per client, producing `validation/<client>/{claims.json,grounding-report.md,consistency-report.md}`
 
 ## Optional layers (opt-in)
 
-- **semantic** - `--semantic on` adds e5 retrieval (ONNX, torch-free)
+- **semantic** - `--semantic` adds e5 retrieval (ONNX, torch-free)
 - **NLI / entailment** - the truth signal: cross-encoder reads `(evidence, claim)` -> grounded / unconfirmed / contradicted; multilingual, catches contradictions + cross-lingual matches lexical misses
 - **calibration** - tune the verdict to your corpus from labelled evidence: `calibrate --action update --evidence f.json` then `config set-calibrator`; learned weights live in config. Public-data check: `make grounding-validate ENGINE=nli`. Full doc: `docs/grounding_calibration.md`
 

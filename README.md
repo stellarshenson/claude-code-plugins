@@ -261,11 +261,11 @@ document-processing ground \
   --threshold 0.85 --bm25-threshold 0.5 --semantic-threshold 0.85 --json
 
 # Batch ground N claims from JSON, force semantic on for this call
-document-processing batch-ground \
-  --claims validation/claims.json \
+document-processing ground \
+  --manifest validation/claims.json \
   --source docs/source.md \
   --output validation/grounding-report.md \
-  --semantic on
+  --semantic
 ```
 
 See [document-processing/README.md](document-processing/) for the grounding methodology, folder structure, and PDF processing details.
@@ -286,7 +286,7 @@ Provides these binaries:
 | `svg-infographics` | `svg-infographics`, `devils-advocate` (visuals) |
 | `render-png` | `svg-infographics` (Playwright-based SVG → PNG) |
 | `journal-tools` | `journal` (check / sort / archive / standardize) |
-| `document-processing` | `document-processing` (ground / batch-ground, three-layer grounding) |
+| `document-processing` | `document-processing` (ground / ground, three-layer grounding) |
 
 As a Claude Code plugin marketplace:
 

@@ -236,12 +236,44 @@ def default_prior_spec() -> dict[str, tuple[float, float]]:
     return load_prior_spec()
 
 
+def _balance_classes(df, *, seed: int = 0):
+    """Oversample the minority label class (with replacement, seeded) up to the
+    majority count so both classes contribute equally to the fit.
+
+    Labels are binarised at 0.5 for the class split; soft-label values in the
+    duplicated rows are preserved. Deterministic given ``seed`` so the fit and
+    the transferred point weights are reproducible.
+
+    Caveat: oversampling narrows the posterior credible intervals (duplicated
+    rows are counted as independent evidence). That is acceptable here - the
+    deployed verdict decides on the posterior MEAN weights vs the threshold,
+    not the interval width - but an incremental posterior-as-prior update should
+    treat the resulting (over-confident) uncertainty with care.
+    """
+    import numpy as np
+    import pandas as pd
+
+    is_pos = df[RESPONSE].astype(float) >= 0.5
+    pos = df[is_pos]
+    neg = df[~is_pos]
+    # One class absent or already balanced -> nothing to do.
+    if len(pos) == 0 or len(neg) == 0 or len(pos) == len(neg):
+        return df
+    minority = pos if len(pos) < len(neg) else neg
+    n_extra = abs(len(pos) - len(neg))
+    rng = np.random.default_rng(seed)
+    take = rng.integers(0, len(minority), size=n_extra)
+    extra = minority.iloc[take]
+    return pd.concat([df, extra], ignore_index=True)
+
+
 def fit_calibrator(
     df,
     *,
     prior_spec: dict[str, tuple[float, float]] | None = None,
     threshold: float = 0.5,
     include_anchor: bool = False,
+    balance: str = "none",
     draws: int = 1000,
     tune: int = 1000,
     chains: int = 2,
@@ -259,6 +291,12 @@ def fit_calibrator(
     predictor varies (bambi rejects a constant predictor) and keeps
     untrained-region behaviour sane. With large real evidence its influence is
     proportionally small.
+
+    ``balance`` adjusts for an imbalanced label set. ``"balanced"`` oversamples
+    the minority class (seeded, via :func:`_balance_classes`) to the majority
+    count before fitting, so the rare class gets real influence on the
+    posterior-mean weights. ``"none"`` (default) fits the evidence as-is. Only
+    the real evidence is balanced - the anchor set is appended afterwards.
     """
     import bambi as bmb
     import pandas as pd
@@ -268,6 +306,10 @@ def fit_calibrator(
     # Reindex so any predictor the evidence lacks (e.g. nli_* when NLI was off)
     # is filled with 0 and then dropped as constant - no KeyError, no surprise.
     train = df.reindex(columns=cols, fill_value=0.0)
+    if balance == "balanced":
+        train = _balance_classes(train, seed=random_seed)
+    elif balance != "none":
+        raise ValueError(f"balance must be 'none' or 'balanced', got {balance!r}")
     if include_anchor:
         anchor = _anchor_frame().reindex(columns=cols, fill_value=0.0)
         train = pd.concat([train, anchor], ignore_index=True)

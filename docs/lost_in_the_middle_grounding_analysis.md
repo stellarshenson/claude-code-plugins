@@ -10,19 +10,18 @@ the 65,423-char / 18-page source PDF.
   populates for every hit.
 - Claims: `/tmp/grounding-demo/liu_claims.json` — 9 real, 2 distant
   paraphrases, 3 fabricated (negative controls).
-- Settings: `.stellars-plugins/settings.json` with
-  `semantic_enabled: true` and
+- Settings: semantic enabled for the run via `--semantic`;
   `semantic_model: intfloat/multilingual-e5-small` (118M params,
   multilingual, trained as retrieval encoder with `query:` / `passage:`
   prefixes). Recursive chunking with 25% overlap.
 
 ```bash
-document-processing ground-many \
-  --claims /tmp/grounding-demo/liu_claims.json \
+document-processing ground \
+  --manifest /tmp/grounding-demo/liu_claims.json \
   --source /tmp/grounding-demo/liu2023.txt \
   --output /tmp/grounding-demo/liu_report.md \
   --threshold 0.85 --bm25-threshold 0.4 --semantic-threshold 0.85 \
-  --semantic on
+  --semantic
 ```
 
 Runtime ~20s (includes first-use model download + embedding 47 chunks).

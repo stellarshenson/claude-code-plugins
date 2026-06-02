@@ -1,6 +1,6 @@
 # Grounding analysis: `article_02_summary.md` vs `article_02_svg-infographics.md`
 
-End-to-end test of the new `document-processing ground-many` CLI on a
+End-to-end test of the new `document-processing ground` CLI on a
 hand-written summary of the "Stop Fixing Your AI's SVGs" article. Eleven
 claims were fed in: 9 derived from the source, 2 deliberately fabricated
 as negative controls.
@@ -8,8 +8,8 @@ as negative controls.
 ## Command
 
 ```bash
-document-processing ground-many \
-  --claims /tmp/grounding-demo/claims.json \
+document-processing ground \
+  --manifest /tmp/grounding-demo/claims.json \
   --source docs/medium/article_02_svg-infographics.md \
   --output /tmp/grounding-demo/report.md \
   --threshold 0.85 \
@@ -117,6 +117,6 @@ Caveats: prompt caching on a static source tips batched generative back up somew
 
 ## Follow-ups worth trying
 
-- Re-run with `--semantic on` once a user has installed `[semantic]` extras — see whether any of the paraphrased claims move from "BM25 topical" up to "semantic" with higher confidence.
+- Re-run with `--semantic` once a user has installed `[semantic]` extras — see whether any of the paraphrased claims move from "BM25 topical" up to "semantic" with higher confidence.
 - Try the same pipeline against a longer article where paragraphs are split across pages via form-feed — verify `page` field populates.
 - Feed a deliberately fabricated claim close in wording to the source (e.g. "six-image article" → "four-image article") to confirm fuzzy + BM25 agree on the number mismatch.

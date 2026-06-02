@@ -9,11 +9,14 @@ Project-local takes precedence over home:
     1. ``./.stellars-plugins/settings.json`` (project root, cwd-rooted)
     2. ``~/.stellars-plugins/settings.json``
 
+Whether semantic grounding runs is NOT a persisted setting - it is a per-call
+flag on the grounder, controlled by ``--semantic`` (default off). The
+settings file only holds the semantic *model configuration* used when that flag
+turns the layer on. An old file that still carries a ``semantic_enabled`` key is
+loaded harmlessly: unknown keys are filtered out on read.
+
 Keys (all optional; defaults applied on read):
 
-    - ``semantic_enabled`` (bool, default False) — allow semantic grounding
-      (ONNX Runtime + FAISS). Costs model download on first use (~50-150 MB)
-      and runtime CPU inference. Opt-in.
     - ``semantic_model`` (str) — HF model id with a pre-exported
       ``onnx/model.onnx``. Default ``intfloat/multilingual-e5-small``.
     - ``semantic_device`` (str) — accepted for backward compatibility; the
@@ -36,7 +39,6 @@ SETTINGS_FILE_NAME = "settings.json"
 
 @dataclass
 class Settings:
-    semantic_enabled: bool = False
     semantic_model: str = "intfloat/multilingual-e5-small"
     semantic_device: str = "auto"
     cache_dir: str = ""  # resolved on load
@@ -100,40 +102,24 @@ def settings_exist() -> bool:
 
 
 def prompt_first_run(*, stream=sys.stderr, input_fn=input) -> Settings:
-    """Interactively ask the user whether to enable semantic grounding.
+    """Write a default settings file (model + cache config) and return it.
 
-    Writes the answer to the project-local settings file. Returns the
-    resulting Settings. Non-interactive environments (``--no-input``,
-    missing stdin) get defaults (semantic disabled) without prompting.
+    Semantic grounding is no longer a persisted on/off setting - it is enabled
+    per call via ``--semantic`` (which also brings the NLI entailment layer
+    online). So there is nothing to ask: this just seeds the model/cache config
+    and notes how to turn the layer on. ``input_fn`` is retained for signature
+    compatibility but unused.
     """
-    if not sys.stdin.isatty():
-        s = Settings()
-        s.cache_dir = str(_project_root() / SETTINGS_DIR_NAME / "cache")
-        save(s)
-        return s
-
-    print(
-        "stellars-claude-code-plugins: semantic grounding setup\n"
-        "=======================================================\n"
-        "Optional: enable ModernBERT + FAISS semantic grounding for\n"
-        "document-processing? This adds a 4th grounding layer that finds\n"
-        "passages by meaning even when wording and terms differ.\n"
-        "\n"
-        "Costs:\n"
-        "  - First use downloads ~150 MB model (jhu-clsp/mmBERT-small)\n"
-        "  - Requires: pip install stellars-claude-code-plugins[semantic]\n"
-        "  - Runtime: CPU or GPU inference per claim\n"
-        "\n"
-        "Benefit: saves tokens - agent gets the right passage directly.\n",
-        file=stream,
-    )
-    ans = input_fn("Enable semantic grounding? [y/N]: ").strip().lower()
-    enabled = ans in ("y", "yes")
-
-    s = Settings(semantic_enabled=enabled)
+    s = Settings()
     s.cache_dir = str(_project_root() / SETTINGS_DIR_NAME / "cache")
     path = save(s)
-    print(f"Saved settings → {path}", file=stream)
+    print(
+        f"Saved settings → {path}\n"
+        "Semantic grounding (+ NLI entailment) is opt-in per call: pass "
+        "'--semantic' to any grounding command. Requires the optional "
+        "extras:\n" + semantic_install_hint(),
+        file=stream,
+    )
     return s
 
 

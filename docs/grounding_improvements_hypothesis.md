@@ -206,7 +206,7 @@ OR the Liu 14-claim liu_accuracy drops below 0.90 under the adaptive
 classifier.
 
 **Scope limits:**
-- Applies to `ground_many` batch mode only. Single `ground` keeps
+- Applies to `ground_batch` batch mode only. Single `ground` keeps
   absolute threshold semantics (backward compat).
 - When fewer than 4 claims with semantic-only agreement signal are
   present in a batch, adaptive gap detection falls back to absolute
@@ -248,7 +248,7 @@ In scope:
 
 Out of scope (do not change):
 
-- The public CLI shape (`ground`, `ground-many` flags) — backward
+- The public CLI shape (`ground`, `ground` flags) — backward
   compatible.
 - The `.stellars-plugins/settings.json` schema — additive only.
 - Core layer algorithms (regex, Levenshtein, BM25, cosine) — still the

@@ -584,7 +584,7 @@ def extract_features(
 _VERDICT_CACHE: dict = {}
 
 # Serialises calibrated-verdict prediction. bambi/PyMC ``model.predict`` is not
-# guaranteed thread-safe on a shared model+idata, so when ``ground_many`` runs
+# guaranteed thread-safe on a shared model+idata, so when ``ground_batch`` runs
 # claims across a thread pool the predict call is the one section taken under a
 # lock. The expensive, thread-safe work (ONNX embedding, FAISS search, NLI
 # inference - all release the GIL) still runs concurrently.
@@ -737,7 +737,7 @@ def ground(
     effective_semantic_threshold = semantic_threshold
     if semantic_grounder is not None:
         try:
-            # Index only if not already indexed (ground_many pre-indexes once)
+            # Index only if not already indexed (ground_batch pre-indexes once)
             if getattr(semantic_grounder, "_index", None) is None:
                 semantic_grounder.index_sources(pairs)
             # H3: model-agnostic percentile-based threshold override
@@ -945,7 +945,7 @@ def ground(
         elif cfg.classifier_mode == "absolute" and result.agreement_score >= agreement_threshold:
             # Multi-layer agreement can confirm even when no single layer passed
             # threshold. adaptive_gap mode applies its per-batch threshold in
-            # ground_many instead.
+            # ground_batch instead.
             if (
                 result.semantic_score >= result.bm25_score
                 and result.semantic_score >= result.fuzzy_score
@@ -1131,7 +1131,7 @@ def _populate_match_metadata(
     m.verification_needed = any(reasons)
 
 
-def ground_many(
+def ground_batch(
     claims: Sequence[str],
     sources: Sequence[SourceInput],
     *,
@@ -1146,6 +1146,7 @@ def ground_many(
     config: GroundingConfig | None = None,
     primary_source: str | None = None,
     nli_grounder=None,
+    calibrated_verdict=None,
     max_workers: int = 1,
 ) -> list[GroundingMatch]:
     """Batch version of :func:`ground`.
@@ -1193,8 +1194,12 @@ def ground_many(
             semantic_grounder = None  # disable on error
 
     # Resolve the calibrated verdict once (cached); reused for every claim so a
-    # batch builds the bambi model at most once.
-    verdict = _config_calibrated_verdict()
+    # batch builds the bambi model at most once. An explicit ``calibrated_verdict``
+    # (e.g. the CLI's prior-mean verdict when NLI is active) takes precedence over
+    # the config-driven one.
+    verdict = (
+        calibrated_verdict if calibrated_verdict is not None else _config_calibrated_verdict()
+    )
 
     def _ground_one(c: str) -> GroundingMatch:
         return ground(

@@ -45,7 +45,7 @@ No-op when the package is importable; auto-installs when missing OR when a stale
 
 5. **MANDATORY grounding pass** (every update, no exception): run the grounding CLI on the updated content via the `grounding` skill -
    - `document-processing extract-claims --document <updated doc> --output validation/claims.json`, review `validation/claims.json`
-   - `document-processing batch-ground --claims validation/claims.json --source <src1> --source <src2> ... --output validation/grounding-report.md` (one `--source` per `1-input/` source; pass `--semantic on` — the default — unless the user has opted out, i.e. `settings.semantic_enabled == false`; see the `grounding` skill)
+   - `document-processing ground --manifest validation/claims.json --source <src1> --source <src2> ... --output validation/grounding-report.md` (one `--source` per `1-input/` source; pass `--semantic` to enable the semantic + NLI layers, opt-in per call, unless the user declined for this session; see the `grounding` skill)
    - `document-processing check-consistency --document <updated doc> --output validation/consistency-report.md`
    Fix any UNCONFIRMED / CONTRADICTED claim and any consistency finding before declaring done. Apply the `grounding` skill's verdict rules.
 

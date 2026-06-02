@@ -48,7 +48,7 @@ Artifacts created:
 
 ### Step 2.2: Verify Against Sources
 - For each claim in the assumptions register, locate the supporting evidence in source documents
-- Use the `grounding` skill / `document-processing batch-ground` for the lexical pass - it returns per-claim scores plus line/column/paragraph/page/context, so you cite without rereading source. Add disciplined generative interpretation only when all lexical layers miss AND the claim is a synthesis/inference
+- Use the `grounding` skill / `document-processing ground` for the lexical pass - it returns per-claim scores plus line/column/paragraph/page/context, so you cite without rereading source. Add disciplined generative interpretation only when all lexical layers miss AND the claim is a synthesis/inference
 - Quote the relevant source passage
 - Set status: VERIFIED / PARTIALLY VERIFIED / UNVERIFIED / CONTRADICTED
 - Determine action: Keep / Revise / Remove / Qualify
