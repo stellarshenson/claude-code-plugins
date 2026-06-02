@@ -31,6 +31,8 @@ PREDICTORS: list[str] = [
     "voters",  # n_voters / 4, in [0, 1]
     "lexical_cosupport",  # 0/1
     "entity_absent",  # fraction of claim entities absent from the source
+    "nli_entail",  # cross-encoder NLI P(entailment) - the entailment/truth signal
+    "nli_contra",  # cross-encoder NLI P(contradiction)
 ]
 RESPONSE = "grounded"
 _MEAN_VAR = "p"  # bambi's name for the bernoulli mean-probability parameter
@@ -263,9 +265,12 @@ def fit_calibrator(
 
     spec = prior_spec or load_prior_spec()
     cols = PREDICTORS + [RESPONSE]
-    train = df[cols] if set(cols).issubset(df.columns) else df
+    # Reindex so any predictor the evidence lacks (e.g. nli_* when NLI was off)
+    # is filled with 0 and then dropped as constant - no KeyError, no surprise.
+    train = df.reindex(columns=cols, fill_value=0.0)
     if include_anchor:
-        train = pd.concat([train[cols], _anchor_frame()[cols]], ignore_index=True)
+        anchor = _anchor_frame().reindex(columns=cols, fill_value=0.0)
+        train = pd.concat([train, anchor], ignore_index=True)
     # Drop predictors that are constant in the training data. bambi rejects a
     # constant term, and its slope is unidentifiable anyway - the effect folds
     # into the intercept. Dropped coefficients are padded with 0 on save, so at
@@ -357,7 +362,7 @@ def evaluate(verdict: CalibratedVerdict, df, *, group_col: str | None = "lang") 
     A per-group breakdown (e.g. per language) is included when ``group_col``
     is a column, for parity checks.
     """
-    proba = verdict.predict_proba(df[PREDICTORS])
+    proba = verdict.predict_proba(df.reindex(columns=PREDICTORS, fill_value=0.0))
     y_pred = [1 if p >= verdict.threshold else 0 for p in proba]
     y_true = [1 if float(g) >= 0.5 else 0 for g in df[RESPONSE].tolist()]
     metrics = _prf(y_true, y_pred)

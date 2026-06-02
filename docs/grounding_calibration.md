@@ -74,20 +74,43 @@ The investigation found and fixed two real precision bugs in the deterministic e
 - **Contradiction completeness** - `extract_numbers` now recognises historical years (1500-2099, not just 19xx/20xx) and drops stopword context-words, so same-category years key consistently. Fixes the miss where `"built in 1650"` (source 1820) was CONFIRMED instead of CONTRADICTED. Regression: `TestYearContradiction`
 - **IDF-weighted bm25 recall** - token recall is now IDF-weighted, so corpus-ubiquitous words no longer inflate recall and a claim whose *distinctive* tokens are absent does not confirm. Fixes the `"commercial brewery"` false positive (shares only `estate`/`runs`). Regression: `TestBm25IdfRecall`
 - **End-to-end result** - `TestGroundingEndToEnd`: deterministic grounding on a realistic monolingual set (grounded / off-topic fabrication / numeric contradiction) reaches **precision 1.0, recall 1.0**
-- **Remaining levers** - word-number contradictions (`forty` vs `twelve`) still a minor gap; cross-lingual on-topic is the embedding ceiling (needs an NLI/entailment model, not similarity)
+- **Comparative-quantifier fix** - the numeric contradiction guard now ignores comparative/approximate values (`more than`, `less than`, `over`, `~`, `<`, `>`); without it, comparative/threshold claims flooded false contradictions on real data (see below)
+
+## Public-data validation (VitaminC, reproducible)
+
+The real-data gate is run on a public, reproducible corpus - **VitaminC** (FEVER-derived: `claim` + inline `evidence` + label SUPPORTS/REFUTES/NotEnoughInfo), fetched via `huggingface_hub` (a core dep), no `datasets` library. Reproduce with `make grounding-validate` (`N=` overrides the slice size; `make grounding-dataset` just caches it). Harness: `notebooks/validate_public_grounding.py`. Label map: SUPPORTS→grounded, REFUTES→contradicted, NotEnoughInfo→unconfirmed.
+
+Honest result on 600 balanced dev claims (deterministic engine):
+
+- **Comparative fix is a real win** - NEI correctly left unconfirmed rose 0.28 → 0.845; the false-contradiction flood (139/200 NEI wrongly contradicted) is gone
+- **But CONFIRMED recall is low (~0.12) and contradiction recall ~0.03** - VitaminC is an **NLI / entailment** task; our tool is a **lexical document-grounder**. SUPPORTS claims need inference (not lexical token presence); REFUTES are mostly comparative/semantic refutations our exact-numeric guard cannot reason about
+- **The fix is entailment, not more lexical tuning** - the lexical engine is a *document grounder* ("are the claim's terms/values present?"), but real grounding is *fact verification* ("does the evidence support the claim?"). That needs an NLI model - added below
+
+## NLI / entailment layer (the real grounding primitive)
+
+Grounding is fundamentally **entailment** - which neither lexical overlap nor cosine similarity captures. A cross-encoder NLI model scores `(premise = evidence, hypothesis = claim)` into {entailment, neutral, contradiction} = {grounded, unconfirmed, contradicted}.
+
+- **Model** - `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli`, **multilingual** (MNLI + XNLI), run via ONNX Runtime (a core dep), torch-free; ships `onnx/model.onnx`, cached on first use (~560 MB). Module: `document_processing/nli.py`
+- **Wired into the calibrator** - `ground()` / `ground_many` accept an `nli_grounder`; the entailment and contradiction probabilities enter the Bayesian calibrator as the `nli_entail` / `nli_contra` features (config prior gives them strong +/- weights). The calibrator combines NLI with the lexical and semantic signals
+- **Solves cross-lingual** - measured entailment against an English source: NB 0.998, FR 0.998 - the ceiling that defeated cosine similarity
+- **Real-data result** (`make grounding-validate ENGINE=nli`) - on VitaminC: CONFIRMED precision 0.57 / recall 0.56, **contradiction recall 0.79** (vs lexical 0.33 / ~0.05); catches word-number and semantic contradictions the lexical guard cannot
+- **Residual** - NLI conflates "unsupported addition" with contradiction (NEI ↔ contradiction); that is exactly what the calibrator is positioned to temper
 
 ## Conclusion
 
-- The deterministic grounding engine is the **working default** and now passes end-to-end on realistic monolingual claims (precision/recall 1.0) after two real bug fixes; **598 tests green**, nothing shipped degraded
-- The calibrated engine is **opt-in and not yet a proven improvement**; on adversarial on-topic data it does not beat the baseline
-- Real-data validation against the DBA corpus is the remaining gate and has not been run; before further calibration investment, reconcile the cross-lingual semantic behaviour against that real data
+- The deterministic lexical engine is the **fast default** (document grounding); two real bug fixes (contradiction completeness, IDF-weighted bm25) brought it to precision/recall 1.0 on a realistic monolingual set
+- The **NLI / entailment layer is the real grounding primitive** - multilingual, torch-free, wired as calibrator features; on public real data (VitaminC) it lifts contradiction recall from ~0.05 to **0.79** and solves cross-lingual, which neither lexical nor cosine could
+- The **calibrator** combines all signals (lexical + semantic + NLI); with NLI features present it has genuine signal to weight, unlike the semantic-only version
+- **598 tests green**, nothing shipped degraded; real-data gate now run on a public corpus (`make grounding-validate`). Remaining: temper the NLI NEI↔contradiction confusion via calibration on labelled data
 
 ## Files
 
 - **`document_processing/calibration.py`** - the head, fit/predict, save/load, prior loader, evaluate
-- **`document_processing/grounding.py`** - `extract_features`, calibrated branch in `ground()`/`ground_many`
+- **`document_processing/nli.py`** - the multilingual cross-encoder NLI grounder (ONNX, torch-free)
+- **`document_processing/grounding.py`** - `extract_features` (incl. `nli_entail`/`nli_contra`), calibrated branch + `nli_grounder` in `ground()`/`ground_many`
 - **`document_processing/cli.py`** - `calibrate` and `config` subcommands
-- **`config_document_processing.yaml`** - `calibration` block (engine, threshold, prior)
+- **`config_document_processing.yaml`** - `calibration` block (engine, threshold, prior incl. NLI features)
+- **`notebooks/validate_public_grounding.py`** - public-data (VitaminC) validation harness; `make grounding-validate [ENGINE=lexical|nli]`
 - **`notebooks/calibration_demo.ipynb`** - executed walkthrough
 - **`notebooks/simulate_calibration.py`** - full real-pipeline simulation / gate
 - **`tests/test_calibration.py`, `tests/test_calibration_cli.py`, `tests/fixtures/calibration_multilingual.jsonl`** - the suite + fixture

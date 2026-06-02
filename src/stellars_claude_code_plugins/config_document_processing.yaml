@@ -199,3 +199,5 @@ calibration:
     voters:             {mu:  1.5, sigma: 1.5}
     lexical_cosupport:  {mu:  2.0, sigma: 1.5}
     entity_absent:      {mu: -3.0, sigma: 1.5}
+    nli_entail:         {mu:  5.0, sigma: 2.0}
+    nli_contra:         {mu: -5.0, sigma: 2.0}

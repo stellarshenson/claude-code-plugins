@@ -103,7 +103,10 @@ class TestCalibrationHead:
         v2 = C.update_calibrator(
             v, _fixture_df().head(8), draws=DRAWS, tune=TUNE, include_anchor=True, random_seed=1
         )
-        assert set(v2.posterior_summary()) == set(C.COEFFICIENTS)
+        # constant-in-training predictors (e.g. nli_* when NLI is off) are
+        # dropped, so the summary is a non-empty subset of all coefficients.
+        summ = v2.posterior_summary()
+        assert summ and set(summ) <= set(C.COEFFICIENTS)
 
     def test_evaluate_reports_per_language(self):
         v = C.fit_calibrator(_fixture_df(), draws=DRAWS, tune=TUNE, random_seed=0)

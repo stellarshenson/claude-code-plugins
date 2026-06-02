@@ -69,6 +69,24 @@ _STOPWORDS = frozenset(
 # keys and a real contradiction is missed.
 _YEAR_RE = re.compile(r"\b(1[5-9]\d{2}|20\d{2})\b")
 
+# Comparative / approximate quantifiers in front of a number. A number qualified
+# by one of these is a bound or estimate, not an exact value, so it must NOT be
+# treated as an exact contradiction (e.g. claim "over 5000" vs evidence "512" is
+# under-determined, not a contradiction). Without this the numeric guard floods
+# false contradictions on real comparative/threshold claims.
+_COMPARATIVE_RE = re.compile(
+    r"(?:more than|greater than|over|above|at least|at most|no more than|no fewer than|"
+    r"less than|fewer than|under|below|up to|nearly|almost|about|approximately|around|"
+    r"roughly|>=|<=|>|<|≥|≤|~)\s*"
+    r"(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)",
+    re.IGNORECASE,
+)
+
+
+def _comparative_values(text: str) -> set[str]:
+    """Normalised values that appear with a comparative/approximate quantifier."""
+    return {_normalise_value(m.group(1)) for m in _COMPARATIVE_RE.finditer(text)}
+
 
 def _normalise_value(raw: str) -> str:
     """Strip thousands separators and trailing .0 for canonical comparison."""
@@ -338,6 +356,11 @@ def find_numeric_mismatches(claim: str, passage: str) -> list[tuple[str, str]]:
                 claim_by_key.setdefault(key, []).append(cv)
                 break
 
+    # Comparative/approximate values on either side are bounds, not exact
+    # numbers - they cannot form an exact contradiction.
+    claim_comp = _comparative_values(claim)
+    pass_comp = _comparative_values(passage)
+
     mismatches: list[tuple[str, str]] = []
     for key, claim_values in claim_by_key.items():
         # Specificity gate: multi-value lists aren't contradicted by partial
@@ -348,10 +371,18 @@ def find_numeric_mismatches(claim: str, passage: str) -> list[tuple[str, str]]:
         if not passage_values:
             continue
         cv = claim_values[0]
+        # Comparative claim value (e.g. "over 5000") is a bound, not exact.
+        if cv in claim_comp:
+            continue
         # Overlap check: any claim value in passage_values means supported.
         if cv in passage_values:
             continue
-        mismatches.append((cv, passage_values[0]))
+        # Contradict only against an EXACT passage value that differs; a
+        # comparative passage value ("more than 512") doesn't pin a contradiction.
+        pv = next((v for v in passage_values if v not in pass_comp), None)
+        if pv is None:
+            continue
+        mismatches.append((cv, pv))
     return mismatches
 
 

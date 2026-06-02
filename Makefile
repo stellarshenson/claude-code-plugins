@@ -1,4 +1,4 @@
-.PHONY: clean lint format requirements upgrade build publish test install create_environment remove_environment preflight
+.PHONY: clean lint format requirements upgrade build publish test install create_environment remove_environment preflight grounding-dataset grounding-validate
 
 #################################################################################
 # GLOBALS                                                                       #
@@ -79,6 +79,16 @@ test:
 	else \
 		echo "$(WARN_PREFIX) $(WARN_STYLE)WARNING: no tests present$(NO_STYLE)"; \
 	fi
+## Download the public grounding benchmark (VitaminC dev) into the HF cache
+grounding-dataset:
+	@echo "$(MSG_PREFIX) downloading VitaminC dev (tals/vitaminc) into the HF cache"
+	@$(PROJECT_DIR)/.venv/bin/python -c "from huggingface_hub import hf_hub_download; print('cached:', hf_hub_download('tals/vitaminc', 'dev.jsonl', repo_type='dataset'))"
+
+## Validate grounding on public VitaminC (N= size default 600, ENGINE= lexical|nli)
+grounding-validate: grounding-dataset
+	@echo "$(MSG_PREFIX) validating grounding on VitaminC (N=$(or $(N),600), ENGINE=$(or $(ENGINE),lexical))"
+	@$(PROJECT_DIR)/.venv/bin/python notebooks/validate_public_grounding.py $(or $(N),600) $(or $(ENGINE),lexical)
+
 #################################################################################
 # UV ENVIRONMENT MANAGEMENT                                                     #
 #################################################################################

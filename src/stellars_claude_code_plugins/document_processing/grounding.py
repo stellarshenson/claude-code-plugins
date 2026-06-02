@@ -185,6 +185,8 @@ class GroundingMatch:
     """Posterior-predictive logit spread for the calibrated verdict (0 for a point-weight config)."""
     verdict_features: dict = field(default_factory=dict)
     """The feature vector fed to the calibrator (audit trail)."""
+    nli_scores: dict = field(default_factory=dict)
+    """Cross-encoder NLI softmax {entailment, neutral, contradiction} when the NLI layer ran."""
 
 
 def _normalize_whitespace(text: str) -> str:
@@ -517,7 +519,9 @@ def _compute_agreement_score(
     return min(1.0, raw + bonus)
 
 
-def extract_features(m: GroundingMatch, cfg: GroundingConfig | None = None) -> dict:
+def extract_features(
+    m: GroundingMatch, cfg: GroundingConfig | None = None, nli_scores: dict | None = None
+) -> dict:
     """Feature vector for the Bayesian calibrator (see ``calibration.PREDICTORS``).
 
     The meaning feature is the *ramped semantic_ratio* - model- and
@@ -561,6 +565,7 @@ def extract_features(m: GroundingMatch, cfg: GroundingConfig | None = None) -> d
     claim_entities = list_claim_entities(m.claim)
     entity_absent = (len(m.entities_absent) / len(claim_entities)) if claim_entities else 0.0
 
+    nli = nli_scores or {}
     return {
         "exact": 1.0 if m.exact_score >= 1.0 else 0.0,
         "fuzzy": float(m.fuzzy_score),
@@ -569,6 +574,8 @@ def extract_features(m: GroundingMatch, cfg: GroundingConfig | None = None) -> d
         "voters": min(1.0, voters / 4.0),
         "lexical_cosupport": 1.0 if m.lexical_co_support else 0.0,
         "entity_absent": float(entity_absent),
+        "nli_entail": float(nli.get("entailment", 0.0)),
+        "nli_contra": float(nli.get("contradiction", 0.0)),
     }
 
 
@@ -622,6 +629,7 @@ def ground(
     config: GroundingConfig | None = None,
     primary_source: str | None = None,
     calibrated_verdict=None,
+    nli_grounder=None,
 ) -> GroundingMatch:
     """Ground a single claim against one or more sources.
 
@@ -856,6 +864,23 @@ def ground(
         or result.semantic_score > 0
     )
 
+    # NLI / entailment layer (optional): score the best available passage as
+    # premise against the claim. Feeds the calibrator as nli_entail/nli_contra -
+    # the entailment/truth signal that lexical overlap and cosine similarity miss.
+    nli_scores = None
+    if nli_grounder is not None:
+        premise = (
+            result.bm25_matched_text
+            or result.semantic_matched_text
+            or result.exact_matched_text
+            or "\n".join(t for _, _, t in pairs)
+        )
+        try:
+            nli_scores = nli_grounder.scores(premise, claim)
+            result.nli_scores = nli_scores
+        except Exception as exc:
+            logger.warning("NLI layer failed (claim=%r): %s", claim[:80], exc)
+
     verdict = (
         calibrated_verdict if calibrated_verdict is not None else _config_calibrated_verdict()
     )
@@ -864,7 +889,7 @@ def ground(
         # Calibrated engine: P(grounded) from learned weights over the per-layer
         # features. Contradiction still wins; otherwise CONFIRMED iff
         # P >= threshold, labelled by the strongest layer for provenance.
-        feat = extract_features(result, cfg)
+        feat = extract_features(result, cfg, nli_scores)
         p, unc = verdict.predict_with_uncertainty(feat)
         result.verdict_probability = float(p[0] if hasattr(p, "__len__") else p)
         result.verdict_uncertainty = float(unc[0] if hasattr(unc, "__len__") else unc)
@@ -1091,6 +1116,7 @@ def ground_many(
     semantic_top_k: int | None = None,
     config: GroundingConfig | None = None,
     primary_source: str | None = None,
+    nli_grounder=None,
 ) -> list[GroundingMatch]:
     """Batch version of :func:`ground`.
 
@@ -1139,6 +1165,7 @@ def ground_many(
             config=cfg,
             primary_source=primary_source,
             calibrated_verdict=verdict,
+            nli_grounder=nli_grounder,
         )
         for c in claims
     ]
