@@ -117,3 +117,9 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 .stellars-plugins/
+
+# DeLaval grounding forensics stash - client data + session transcripts, NEVER commit
+experiments/grounding/delaval-forensics/
+
+# transient experiment run logs (keep the README)
+experiments/grounding/logs/*.log
