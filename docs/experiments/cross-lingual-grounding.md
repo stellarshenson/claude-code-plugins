@@ -68,6 +68,34 @@ Same gold and protocol, MT on unless noted; these probe the accuracy stretch and
 
 The classes are imbalanced (289 supported / 86 hallucination), so the primary metric is macro-F1, not accuracy. The majority-always-grounded predictor scores 0.771 accuracy but macro-F1 0.435 with hallucination-F1 0.000 - it never catches a fabrication, which accuracy hides. Best macro-F1 is recall_split at 0.755 TEST; full F1 scoreboard in `BENCHMARK.md`.
 
+## What we tried
+
+Every signal, combiner, and variant run, with its verdict.
+
+- **Recall representations** - word IDF best-chunk recall (kept, the protagonist); char 3-5 gram (dropped, high hallucination floor); phonetic skeleton (dropped, collision-prone)
+- **Cross-lingual bridges** - anchor recall + mismatch (dropped under MT); curated lexicon canonicalisation (not built, MT made it moot); cognate/orthographic fuzzy (dropped)
+- **Creative signals** - locale number containment (folded into anchors); negation-flip contradiction (dropped, over-fires); meta-claim inversion (dropped, hurt)
+- **MT bridge** - argos-translate per-language models (kept, the lever); OPUS opus-mt-mul-en (rejected, worse and ~9x slower)
+- **NLI** - mDeBERTa multilingual entailment (kept for hallucination detection in the ensemble)
+- **Combiners** - recall_only (winner), recall_split (best accuracy + macro-F1), recall_contra / tree / global / weighted (all lost), recall-OR-NLI (best hallucination-F1)
+- **Chunking** - swept size × overlap × strategy; 300-char recursive near-optimal, whole-doc is the floor
+- **Language ID** - langdetect (default), lingua-py (small gain, over-splits Norwegian)
+- **Splits** - stratified 50/50, leave-one-language-out (headline), fixed-prior (zero tuning)
+- **Metric** - accuracy → macro-F1 once the 289/86 imbalance was accounted for
+
+## Lessons learned
+
+What the experiment taught beyond the numbers, including its own limitations.
+
+- **MT is the dominant lever** - cross-lingual grounding here is translate-then-recall; per-language MT models beat one multilingual model on quality and speed
+- **Imbalance hides failure** - 0.771 accuracy looked fine while macro-F1 was 0.435 and hallucination-F1 0.000; choose the imbalance-robust metric before drawing conclusions
+- **Simplicity won by constraint, not by nature** - forbidding any learned weighting left only hand-set weights and per-fold thresholds, which lost to the single best signal; this is a deliberately weak model, not proof that one signal suffices
+- **Linear boundaries only** - the calibrator and every combiner are interaction-free; a logistic hyperplane cannot represent "trust bm25 when same-language, trust NLI when cross-lingual"; no nonlinear manifold was ever learned
+- **Language was a router, not a feature** - detected language only hard-switched thresholds; as a feature with interaction terms it could contextually down-weight signals, which was never tested
+- **Claims extraction untested** - claims average 2.35 sentences and were grounded whole; atomic splitting + aggregation was never built, so a multi-fact claim with one fabricated fact still scores as mostly grounded
+- **Anti-overfit is not no-modeling** - the rule bans fitting the test data, not modeling feature interactions; conflating the two is what produced the weak model
+- **Tiny negative class** - 86 hallucinations total, es/pt at n=5-6; any high-capacity learner will overfit, so leave-one-language-out plus low capacity is mandatory
+
 ## Conclusions
 
 Deterministically this is a translation problem followed by a recall-scoring problem, not one the lexical bridges solve.
@@ -80,7 +108,11 @@ Deterministically this is a translation problem followed by a recall-scoring pro
 
 ## Next steps
 
-- **Promotion** - the strongest configs (recall_split for accuracy, recall-OR-NLI for balanced) hold; propose a translation-then-recall + NLI path in the production grounder via a separate reviewed change
-- **Calibrated combine** - fold recall + NLI through the existing Bayesian calibrator (population-general prior, not fit to this gold) to get one verdict instead of an OR-rule
-- **Larger gold** - the es/pt cells are n=5-6; re-test on a bigger multilingual sample before shipping
-- **Done in this round** - chunk sweep, lingua-py, English two-threshold, fixed-prior, abstain band, NLI residual, OPUS-MT engine (all hypotheses tested; see BENCHMARK.md)
+The open levers all target the weak-model and untested-extraction gaps above.
+
+- **Learned interaction model under LOLO** - fit a shallow gradient-boosted tree or interaction-logistic over all signals + language + cross terms, trained on six languages and scored on the seventh; the direct test of whether feature interactions beat the 1-D recall floor without fitting the test data
+- **Language as a feature** - add `is_en` / `cross_lingual` plus interaction terms (`is_en × bm25`, `cross_lingual × nli_entail`) so the model down-weights signals contextually instead of hard routing
+- **Atomic claims extraction** - split multi-fact claims, ground each sub-claim, aggregate (all-supported → grounded, any-contradicted → contradicted), re-run the tournament
+- **Larger gold** - es/pt at n=5-6 are too small to trust interaction terms; re-test on a bigger multilingual sample first
+- **Promotion** - if a learned, LOLO-validated balance holds, propose translate-then-recall + NLI in the production grounder via a separate reviewed change
+- **Done so far** - chunk sweep, lingua-py, English two-threshold, fixed-prior, abstain band, NLI residual, OPUS-MT engine; metric moved to macro-F1 (see BENCHMARK.md)
