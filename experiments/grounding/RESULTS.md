@@ -1,5 +1,8 @@
 # Results: rival deterministic grounders on the DeLaval gold
 
+> **Metric note**: the classes are imbalanced (289/86), so the primary metric is now **macro-F1** (the majority predictor scores 0.771 accuracy but macro-F1 0.435 / hallucination-F1 0.000). The live F1 scoreboard is `BENCHMARK.md`; the tables below report the accuracy/balanced view from the first runs and remain valid - F1-tuned thresholds give the same ordering (recall_split leads).
+
+
 Tournament over the 375 verified gold records (289 supported / 86 hallucination, 7 claim languages, English evidence). Every number is **out-of-fold**: thresholds are chosen on a held-out fold, never on the records they score. No learner is fit to the 375. Aggregate counts only - no client data. Reproduce with `python harness.py --tournament [--mt] --ablation`.
 
 ## Metric
@@ -80,7 +83,8 @@ Run on the same gold, same anti-overfit protocol, MT bridge on unless noted.
 - **Fixed-prior, zero tuning (exp#7)** - `recall_only` at a fixed τ=0.40 over all 375, no fold, scores **0.717 accuracy / 0.776 balanced** - essentially the tuned LOLO result. A zero-config deployment generalises; the threshold is not delicately fit.
 - **Abstain band (exp#8)** - a three-way verdict (grounded / abstain / contradicted) with a fixed 0.30-0.55 band covers 68% of records at **balanced 0.838 on the covered set**. Abstaining on the low-separation middle buys precision at a known coverage cost.
 - **lingua-py language ID (exp#6)** - swapping langdetect for lingua-py cuts the noisy-`lang` disagreement 65 → 44 and lifts `recall_only` LOLO accuracy 0.725 → **0.781** (balanced ~0.768). It over-splits Norwegian into nb/nn and misfires on a few short claims, but the net is positive.
-- **Not yet run** - NLI/semantic residual (exp#4/#5) and CTranslate2 + OPUS-MT (exp#3) remain; the harness is wired for them (`--residual` scaffold, dev-source NLI import) but they need model downloads and a longer run.
+- **NLI residual (exp#4/#5)** - multilingual NLI entailment (mDeBERTa, parameter-free argmax) on the best chunk: NLI-alone scores macro-F1 0.644 and catches **99% of hallucinations**. The **`recall OR NLI` ensemble reaches macro-F1 0.737 with the best hallucination-F1 (0.64) and balanced 0.808** - no tuning - and rescues the tail recall misses: es 0.33 → 0.50, pt 0.60 → 0.80, sv 0.70 → 0.80, no 0.82 → 0.95. NLI is a small model, reported in its own tier.
+- **OPUS-MT (exp#3)** - benchmarked as an alternate engine (`--mt-engine opus`, Helsinki-NLP/opus-mt-mul-en) against argos; see BENCHMARK.md for the head-to-head.
 
 ## Takeaway
 

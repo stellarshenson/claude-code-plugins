@@ -61,6 +61,12 @@ Same gold and protocol, MT on unless noted; these probe the accuracy stretch and
 - **Fixed-prior** - recall at a fixed τ=0.40 with zero tuning scores 0.776 balanced, matching the held-out-tuned result - the threshold is not delicately fit
 - **Abstain band** - a three-way verdict with a fixed 0.30-0.55 band covers 68% of records at 0.838 balanced on the covered set
 - **lingua-py** - cuts the noisy-language disagreement 65 → 44 and lifts recall accuracy 0.725 → 0.781; over-splits Norwegian and misfires on a few short claims
+- **NLI residual** - multilingual entailment (parameter-free) catches 99% of hallucinations alone; the recall-OR-NLI ensemble reaches macro-F1 0.737 / balanced 0.808 with the best hallucination-F1 0.64, rescuing the tail (es 0.33 → 0.50, pt 0.60 → 0.80, no 0.82 → 0.95)
+- **OPUS-MT engine** - opus-mt-mul-en scores macro-F1 0.734 TEST vs argos 0.755 and is ~9x slower (1037 vs 118 ms/claim); argos per-language models win, hypothesis refuted
+
+## Metric note
+
+The classes are imbalanced (289 supported / 86 hallucination), so the primary metric is macro-F1, not accuracy. The majority-always-grounded predictor scores 0.771 accuracy but macro-F1 0.435 with hallucination-F1 0.000 - it never catches a fabrication, which accuracy hides. Best macro-F1 is recall_split at 0.755 TEST; full F1 scoreboard in `BENCHMARK.md`.
 
 ## Conclusions
 
@@ -74,8 +80,7 @@ Deterministically this is a translation problem followed by a recall-scoring pro
 
 ## Next steps
 
-- **NLI / semantic residual** - run multilingual NLI entailment on the records the deterministic+MT stack leaves unconfirmed to size the irreducible semantic gap and probe the es/pt tail (harness wired via the dev-source NLI import)
-- **MT-then-NLI** - translate, then run NLI rather than recall on the abstractive tail, which may need entailment not token overlap
-- **MT engine** - benchmark CTranslate2 + OPUS-MT int8 against argos for translation quality and latency
-- **Promotion** - if the translation-then-recall result holds, propose it as a path in the production grounder via a separate reviewed change
-- **Done in this round** - chunk sweep, lingua-py detector, English two-threshold, fixed-prior bound, abstain band
+- **Promotion** - the strongest configs (recall_split for accuracy, recall-OR-NLI for balanced) hold; propose a translation-then-recall + NLI path in the production grounder via a separate reviewed change
+- **Calibrated combine** - fold recall + NLI through the existing Bayesian calibrator (population-general prior, not fit to this gold) to get one verdict instead of an OR-rule
+- **Larger gold** - the es/pt cells are n=5-6; re-test on a bigger multilingual sample before shipping
+- **Done in this round** - chunk sweep, lingua-py, English two-threshold, fixed-prior, abstain band, NLI residual, OPUS-MT engine (all hypotheses tested; see BENCHMARK.md)

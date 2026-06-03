@@ -301,14 +301,38 @@ def is_meta_claim(claim: str) -> bool:
 
 # --- optional MT bridge (frozen pre-trained translator; flagged + timed) ------
 _MT = {}
+_OPUS: dict = {}
+MT_ENGINE = "argos"  # or "opus" (exp#3); set via --mt-engine
 # langdetect ISO -> argos model code (argos uses 'nb' for Norwegian Bokmal)
 _ISO_MT = {"no": "nb", "nn": "nb"}
 
 
+def _opus_translate(text: str) -> str:
+    """exp#3: OPUS-MT multilingual->English (one Helsinki-NLP/opus-mt-mul-en model)."""
+    if "model" not in _OPUS:
+        import torch
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+        name = "Helsinki-NLP/opus-mt-mul-en"
+        _OPUS["tok"] = AutoTokenizer.from_pretrained(name)
+        _OPUS["model"] = AutoModelForSeq2SeqLM.from_pretrained(name)
+        _OPUS["torch"] = torch
+    tok, m, torch = _OPUS["tok"], _OPUS["model"], _OPUS["torch"]
+    enc = tok([text], return_tensors="pt", truncation=True, max_length=256)
+    with torch.no_grad():
+        gen = m.generate(**enc, max_length=256, num_beams=1)
+    return tok.decode(gen[0], skip_special_tokens=True)
+
+
 def mt_to_english(text: str, src_iso2: str) -> str:
-    """Translate via argos-translate if installed and a model is present. Frozen."""
+    """Translate via a frozen offline engine (argos default, opus optional)."""
     if src_iso2 in ("en", "und", ""):
         return text
+    if MT_ENGINE == "opus":
+        try:
+            return _opus_translate(text)
+        except Exception:
+            return text
     code = _ISO_MT.get(src_iso2, src_iso2)
     if code not in _MT:
         try:
@@ -462,14 +486,13 @@ def _grids(spec: dict):
 
 
 def tune(rows: list[dict], combiner_name: str) -> dict:
-    from sklearn.metrics import balanced_accuracy_score
-
+    """Pick thresholds maximising macro-F1 on the fold (imbalance-robust)."""
     fn, spec = COMBINERS[combiner_name]
     y = [r["label"] for r in rows]
     best_t, best_b = None, -1.0
     for t in _grids(spec):
         pred = [fn(r, t) for r in rows]
-        b = balanced_accuracy_score(y, pred)
+        b = score_verdicts(y, pred)["f1_macro"]
         if b > best_b:
             best_b, best_t = b, t
     return best_t
@@ -531,16 +554,22 @@ def auc(scores: list[float], labels: list[int]) -> float:
 
 
 def score_verdicts(y_true: list[int], y_pred: list[int]) -> dict:
-    from sklearn.metrics import balanced_accuracy_score, confusion_matrix
+    from sklearn.metrics import balanced_accuracy_score, confusion_matrix, f1_score
 
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
     acc = (tp + tn) / max(1, len(y_true))
     bal = balanced_accuracy_score(y_true, y_pred)
     rec_pos = tp / max(1, tp + fn)
     rec_neg = tn / max(1, tn + fp)
+    # F1 (imbalance-robust headline): macro = mean of supported-F1 and hallucination-F1
+    f1_sup = f1_score(y_true, y_pred, pos_label=1, zero_division=0)
+    f1_hal = f1_score(y_true, y_pred, pos_label=0, zero_division=0)
     return {
         "acc": acc,
         "bal": bal,
+        "f1_macro": (f1_sup + f1_hal) / 2,
+        "f1_sup": f1_sup,
+        "f1_hal": f1_hal,
         "rec_sup": rec_pos,
         "rec_hal": rec_neg,
         "tp": int(tp),
@@ -654,7 +683,7 @@ def cmd_tournament(recs: list[Record], use_mt: bool = False) -> str:
         lolo = run_lolo(rows, name)
         test = run_heldout(rows, name)
         results.append((name, lolo, test))
-    results.sort(key=lambda x: -x[1]["bal"])
+    results.sort(key=lambda x: -x[1]["f1_macro"])
 
     lines = []
     lines.append("# Tournament results - DeLaval gold (375 records)\n")
@@ -664,19 +693,19 @@ def cmd_tournament(recs: list[Record], use_mt: bool = False) -> str:
         f"(~{ms_claim:.0f} ms/claim)\n"
     )
     lines.append(
-        "Headline = leave-one-language-out (every record scored out-of-fold). "
-        "TEST = stratified 50/50 held-out. No combiner is fit to the 375.\n"
+        "Headline = **macro-F1** (imbalance-robust) under leave-one-language-out; "
+        "every record scored out-of-fold. TEST = stratified 50/50. No combiner fit to the 375.\n"
     )
     lines.append(
-        f"Reference: majority-always-grounded acc={maj['acc']:.3f} bal={maj['bal']:.3f}\n"
+        f"Reference: majority-always-grounded macroF1={maj['f1_macro']:.3f} "
+        f"(sup-F1={maj['f1_sup']:.3f} hal-F1={maj['f1_hal']:.3f}) acc={maj['acc']:.3f}\n"
     )
-    lines.append("| combiner | LOLO acc | LOLO bal | sup-rec | hal-rec | TEST acc | TEST bal |")
+    lines.append("| combiner | LOLO macroF1 | sup-F1 | hal-F1 | LOLO acc | TEST macroF1 | TEST acc |")
     lines.append("|---|---|---|---|---|---|---|")
     for name, lo, te in results:
         lines.append(
-            f"| {name} | {lo['acc']:.3f} | **{lo['bal']:.3f}** | "
-            f"{lo['rec_sup']:.2f} | {lo['rec_hal']:.2f} | "
-            f"{te['acc']:.3f} | {te['bal']:.3f} |"
+            f"| {name} | **{lo['f1_macro']:.3f}** | {lo['f1_sup']:.2f} | {lo['f1_hal']:.2f} | "
+            f"{lo['acc']:.3f} | {te['f1_macro']:.3f} | {te['acc']:.3f} |"
         )
     # per-language LOLO for the winner
     win = results[0][0]
@@ -689,23 +718,23 @@ def cmd_tournament(recs: list[Record], use_mt: bool = False) -> str:
 
     # exp#7: fixed-prior - no tuning at all, score all 375 at a principled threshold
     lines.append("\n## Fixed-prior (zero tuning, all 375) - the 'ships untouched' bound\n")
-    lines.append("| rule | threshold | acc | bal |")
-    lines.append("|---|---|---|---|")
+    lines.append("| rule | threshold | macroF1 | acc | bal |")
+    lines.append("|---|---|---|---|---|")
     for tau in (0.4, 0.5, 0.6):
         pred = [int(r["r1"] >= tau) for r in rows]
         s = score_verdicts(labels, pred)
-        lines.append(f"| recall_only | {tau:.2f} | {s['acc']:.3f} | {s['bal']:.3f} |")
+        lines.append(f"| recall_only | {tau:.2f} | {s['f1_macro']:.3f} | {s['acc']:.3f} | {s['bal']:.3f} |")
 
-    # exp#8: abstain band - three-way verdict, fixed band, report coverage + covered acc
+    # exp#8: abstain band - three-way verdict, fixed band, report coverage + covered F1
     lines.append("\n## Abstain band (fixed lo=0.30 hi=0.55) - precision/coverage trade\n")
     lo_b, hi_b = 0.30, 0.55
     cov = [(int(r["r1"] >= hi_b), r["label"]) for r in rows if not (lo_b <= r["r1"] < hi_b)]
     coverage = len(cov) / len(rows)
     if cov:
-        cacc = sum(1 for p, y in cov if p == y) / len(cov)
         cs = score_verdicts([y for _, y in cov], [p for p, _ in cov])
         lines.append(f"coverage {coverage:.2f} ({len(cov)}/{len(rows)}), "
-                     f"accuracy-on-covered {cacc:.3f}, balanced-on-covered {cs['bal']:.3f}\n")
+                     f"macroF1-on-covered {cs['f1_macro']:.3f}, "
+                     f"balanced-on-covered {cs['bal']:.3f}\n")
     report = "\n".join(lines) + "\n"
     print(report)
     return report
@@ -715,16 +744,65 @@ def cmd_ablation(recs: list[Record], use_mt: bool = False) -> str:
     rows = featurize(recs, *CHUNK, use_mt=use_mt)
     ladder = ["recall_only", "recall_contra", "global", "weighted"]
     lines = [
-        "\n## Ablation ladder (LOLO balanced accuracy)\n",
-        "| rung | LOLO bal | delta |",
+        "\n## Ablation ladder (LOLO macro-F1)\n",
+        "| rung | LOLO macroF1 | delta |",
         "|---|---|---|",
     ]
     prev = None
     for name in ladder:
-        b = run_lolo(rows, name)["bal"]
+        b = run_lolo(rows, name)["f1_macro"]
         d = "-" if prev is None else f"{b - prev:+.3f}"
         lines.append(f"| {name} | {b:.3f} | {d} |")
         prev = b
+    report = "\n".join(lines) + "\n"
+    print(report)
+    return report
+
+
+def cmd_residual(recs: list[Record], use_mt: bool = True) -> str:
+    """exp#4/#5: NLI entailment on the residual the recall stack misses.
+
+    NLI is parameter-free (argmax of entailment/neutral/contradiction), so it is
+    scored directly on all 375 - no fold, no overfitting. Premise = best English
+    chunk (selected via the translated claim); hypothesis = original claim
+    (mDeBERTa NLI is multilingual). Ensemble = recall(MT, fixed tau) OR NLI-entail.
+    """
+    from stellars_claude_code_plugins.document_processing.nli import NLIGrounder
+
+    nli = NLIGrounder()
+    labels = [r.label for r in recs]
+    rows = featurize(recs, *CHUNK, use_mt=use_mt)
+    nli_pred, ens_pred = [], []
+    for r, row in zip(recs, rows):
+        chunks = chunk_text(r.source, *CHUNK)
+        translated = r.claim
+        if use_mt and r.det_lang not in ("en", "und", ""):
+            translated = mt_to_english(r.claim, r.det_lang)
+        _, best = idf_best_chunk_recall(translated, chunks, an_word, return_best=True)
+        sc = nli.scores(best, r.claim)
+        g = 1 if sc.get("entailment", 0) >= max(sc.get("neutral", 0), sc.get("contradiction", 0)) else 0
+        nli_pred.append(g)
+        ens_pred.append(1 if (row["r1"] >= 0.4 or g == 1) else 0)
+    rec_pred = [int(row["r1"] >= 0.4) for row in rows]
+    lines = ["## NLI residual (#4/#5) - parameter-free (argmax), all 375\n"]
+    lines.append("| rule | macroF1 | sup-F1 | hal-F1 | acc | bal |")
+    lines.append("|---|---|---|---|---|---|")
+    for name, pred in [("recall_only τ0.4", rec_pred), ("NLI-alone", nli_pred),
+                       ("recall OR NLI", ens_pred)]:
+        s = score_verdicts(labels, pred)
+        lines.append(f"| {name} | **{s['f1_macro']:.3f}** | {s['f1_sup']:.2f} | "
+                     f"{s['f1_hal']:.2f} | {s['acc']:.3f} | {s['bal']:.3f} |")
+    lines.append("\nPer-language accuracy (tail focus):\n")
+    lines.append("| lang | n | recall | NLI | ensemble |")
+    lines.append("|---|---|---|---|---|")
+    for L in sorted({r.det_lang for r in recs}):
+        idx = [i for i, r in enumerate(recs) if r.det_lang == L]
+        if len(idx) < 3:
+            continue
+        ra = sum(1 for i in idx if rec_pred[i] == labels[i]) / len(idx)
+        na = sum(1 for i in idx if nli_pred[i] == labels[i]) / len(idx)
+        ea = sum(1 for i in idx if ens_pred[i] == labels[i]) / len(idx)
+        lines.append(f"| {L} | {len(idx)} | {ra:.2f} | {na:.2f} | {ea:.2f} |")
     report = "\n".join(lines) + "\n"
     print(report)
     return report
@@ -737,7 +815,9 @@ def main() -> None:
     ap.add_argument("--sweep", metavar="SIGNAL", choices=list(ANALYZERS))
     ap.add_argument("--tournament", action="store_true")
     ap.add_argument("--ablation", action="store_true")
+    ap.add_argument("--residual", action="store_true", help="NLI residual (#4/#5)")
     ap.add_argument("--mt", action="store_true", help="enable the MT bridge (timed)")
+    ap.add_argument("--mt-engine", choices=["argos", "opus"], default="argos")
     ap.add_argument("--lingua", action="store_true", help="use lingua-py for language ID")
     ap.add_argument("--write", action="store_true", help="write RESULTS.md")
     args = ap.parse_args()
@@ -745,6 +825,9 @@ def main() -> None:
     if args.lingua:
         global DETECTOR
         DETECTOR = "lingua"
+    if args.mt_engine == "opus":
+        global MT_ENGINE
+        MT_ENGINE = "opus"
     recs = load_gold()
     out = []
     if args.profile:
@@ -757,10 +840,13 @@ def main() -> None:
         out.append(cmd_tournament(recs, use_mt=args.mt))
     if args.ablation:
         out.append(cmd_ablation(recs, use_mt=args.mt))
+    if args.residual:
+        out.append(cmd_residual(recs, use_mt=args.mt))
     if args.write and out:
         (Path(__file__).parent / "RESULTS.md").write_text("\n".join(out), encoding="utf-8")
         print("wrote RESULTS.md")
-    if not any([args.profile, args.baselines, args.sweep, args.tournament, args.ablation]):
+    if not any([args.profile, args.baselines, args.sweep, args.tournament,
+                args.ablation, args.residual]):
         ap.print_help()
 
 
