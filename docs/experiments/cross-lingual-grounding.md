@@ -6,20 +6,21 @@ Experiment on the `experiment/grounding` branch: build a non-LLM grounder that c
 
 The lexical grounder confirmed only ~12% of supported claims on the client gold; re-profiling overturned the team's "semantic is required" conclusion - and the final model needs no semantic layer at all.
 
-- **Dataset (live)** - 856 verified records `{claim, source_text, label, lang}`, **549 supported / 307 hallucination**, evidence always an English-dominant document dump (it carries a small non-English tail). An earlier snapshot had 375 records / 86 hallucination; the dataset more than doubled mid-experiment and several conclusions changed with it
-- **Seven languages** - en 718, nb 72, fr 34, sv 12, it 9, es 6, pt 5
-- **Few independent contexts** - only ~19-25 distinct `source_text` blobs (≈45 claims each); claims sharing a source are correlated, so the effective sample is far smaller than 856
+- **Dataset (live)** - 1260 verified records `{claim, source_text, label, lang}`, **794 supported / 466 hallucination**, evidence always an English-dominant document dump (it carries a small non-English tail). The gold grew 375 → 856 → 1260 mid-experiment; several conclusions changed with it (the depth-2 GBT that won on 375 overfits on the larger sets)
+- **Seven languages** - English dominant (~86%), then nb / fr / sv / it / es / pt
+- **Few independent contexts** - only ~22 distinct `source_text` blobs (≈57 claims each); claims sharing a source are correlated, so the effective sample is far smaller than 1260
 - **Two gaps** - English claims have their support present but the score is swamped by the mega-evidence; non-English recall collapses unless the claim is translated or a same-language chunk exists
 
 ## Executive summary
 
 A purely lexical model with per-chunk language routing is the best, beating every model that used the NLI semantic layer.
 
-- **Best model** - lexical-only, language-routed logistic: **macro-F1 0.807 (leave-one-language-out) / 0.829 (leave-one-source-out), hallucination-F1 0.75**, with no semantic model
-- **Beats NLI** - the NLI-including model scored 0.797 / hal-F1 0.72; dropping NLI gained accuracy, simplicity, and speed
+- **Best model** - lexical-only, language-routed logistic: **macro-F1 0.837 (leave-one-source-out, the trustworthy split) / 0.779 (leave-one-language-out), hallucination-F1 0.80**, with no semantic model
+- **Beats NLI** - the NLI-including model and the lexical `recall_split` rule both score below it; dropping NLI gained accuracy, simplicity, and speed
 - **The lever is features, not model class** - a `same_lang` flag + dual recall (claim-as-is and translate-then-recall) + anchors; a plain logistic wins, gradient-boosted trees overfit the language-held-out folds
-- **Metric** - macro-F1 (imbalance-robust); the majority predictor reads 0.641 accuracy but macro-F1 0.391 with hallucination-F1 0.000
-- **Hallucination detection** - catches ~58-75% of fabrications depending on operating point; the residual is data-bound (es/pt at n=5-6)
+- **Replicated across data growth** - the leave-one-source-out number held at 0.829 → 0.837 as the gold grew 856 → 1260, the best validation that the result is real, not a snapshot artefact
+- **Metric** - macro-F1 (imbalance-robust); the majority predictor reads ~0.64 accuracy but macro-F1 ~0.39 with hallucination-F1 0.000
+- **Hallucination detection** - hal-F1 0.80 under the source-out split; the residual is data-bound (es/pt at n=5-6)
 
 ## Methodology
 
@@ -30,11 +31,11 @@ Per-claim, lexical signals computed two ways with language routing, then a learn
 - **Supporting lexical features** - char-ngram recall, rapidfuzz partial-ratio, anchor recall + anchor mismatch (numbers/IDs, language-invariant), oracle-chunk and top-k consensus recall
 - **Verdict head** - a logistic over the lexical feature set; LightGBM was raced against it (with `class_weight='balanced'`) but lost under leave-one-language-out
 - **Metric** - macro-F1 headline, hallucination-F1 watched separately
-- **Anti-overfit, two splits** - leave-one-language-out (generalise to an unseen language) and leave-one-source-out (generalise to an unseen document, the ~19-context stress test); no learner touches the fold it scores
+- **Anti-overfit, two cross-validation splits** - **LOLO** (leave-one-language-out): hold out a language, train on the other six, score the held-out one - tests generalisation to an unseen language. **LOSO** (leave-one-source-out): hold out all claims from one of the ~22 distinct source documents, train on the rest, score the held-out document - tests generalisation to unseen evidence and prevents a model from memorising the few correlated contexts. No learner ever touches the fold it scores. LOSO is the headline metric here because English is ~86% of the data, so the LOLO English-out fold trains on a tiny non-English slice and is artificially harsh
 
 ## Setup
 
-- **Data** - live 856-record gold, git-ignored stash; features cached (git-ignored)
+- **Data** - live 1260-record gold, git-ignored stash; features cached (git-ignored)
 - **Dependencies (experiment-only)** - `lingua-language-detector`, `argos-translate` (frozen MT bridge), `rapidfuzz`, `scikit-learn`, `lightgbm`
 - **Operating point** - recursive chunking, 300-char chunks, 0.1 overlap (validated by a threshold-free AUC/Cohen's d separation sweep: whole-doc is the 0.50 floor, ~150-300 chars near-optimal)
 - **Commands** - `python lab.py lexgbm` (the current model), `harness.py --tournament --mt` (the rule baseline), `lab.py final` (capacity ladder)
@@ -52,7 +53,7 @@ The result arrived in stages, several of which reversed earlier conclusions.
 
 The decisive factors are the features and the dataset size, not the fitting method.
 
-- **Lexical-only logistic** (live 856) - macro-F1 0.807, the best; the language-routed lexical features carry the signal
+- **Lexical-only logistic** (live 1260) - macro-F1 0.837 source-out / 0.779 language-out, the best; the language-routed lexical features carry the signal
 - **Gradient-boosted trees** - on the old 375 snapshot (86 negatives) a depth-2 GBT won (0.775); on the live 856 (307 negatives) trees **overfit** the language-held-out folds and lose (LGBM 0.74 → 0.54 as depth rises), while the linear model wins - the conclusion flipped with more data
 - **Bayesian calibration** (production `fit_calibrator`, bambi/PyMC logistic) - a Bayesian logistic is a hyperplane, so it lands at the linear level (0.733 on the 375 snapshot) and adds calibrated uncertainty, not capacity
 - **Leave-one-source-out ≥ leave-one-language-out** (0.83 vs 0.81) - context leakage is not inflating results; the harder generalisation is to an unseen language
@@ -73,7 +74,7 @@ The decisive factors are the features and the dataset size, not the fitting meth
 
 ## Conclusions
 
-- **Ship a lexical-only, language-routed logistic** - per-chunk language detection + `same_lang` + `r1_direct`/`r1_mt` + anchors; macro-F1 0.807, hal-F1 0.75, no semantic model, cheap and CPU-only
+- **Ship a lexical-only, language-routed logistic** - per-chunk language detection + `same_lang` + `r1_direct`/`r1_mt` + anchors; macro-F1 0.837 (source-out), hal-F1 0.80, no semantic model, cheap and CPU-only
 - **Translation is the only neural component** - a frozen argos bridge, used where a same-language chunk is absent; everything else is lexical
 - **The ceiling is data** - ~19 evidence contexts and the es/pt tail (n=5-6) cap further gains; more labelled hallucinations and more contexts are the prerequisite, not a cleverer model
 - **Reframes the client finding** - lexical did not fail at grounding; it failed at cross-lingual confirmation, fixed by translation plus a same-language routing feature

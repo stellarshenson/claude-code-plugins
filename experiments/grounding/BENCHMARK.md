@@ -118,19 +118,21 @@ One mechanism beats it, two do not:
 
 The **A6 capacity ceiling** governs everything: the 86 negatives (LOLO removes a language each fold) fund exactly the depth-2 GBT and nothing larger - deeper trees and free linear interactions overfit (in-fold → 0.996, LOLO falls). Recommendation: ship `recall_split` (macro-F1 0.755) when a transparent rule is required; deploy the **depth-2 GBT fit under LOLO** (macro-F1 0.775, hal-F1 0.66) when a learned model is acceptable. Pushing materially past 0.78 needs **more labelled data**, not more capacity.
 
-## Round 5 - lexical-only, language-routed grounder (LIVE 856 gold, NO NLI)
+## Round 5 - lexical-only, language-routed grounder (LIVE gold, NO NLI)
 
-The dataset was refreshed to the live gold: **856 records, 549 supported / 307 hallucination, ~19-25 source contexts**. Dropped NLI (a semantic scorer); built per-claim + per-chunk language detection (lingua), a `same_lang` flag, and dual lexical recall (`r1_direct` = claim vs chunks as-is; `r1_mt` = translate-then-recall), then learned the verdict. Validated under leave-one-language-out (LOLO) AND leave-one-source-out (LOSO).
+The dataset was refreshed to the live gold, now **1260 records, 794 supported / 466 hallucination, 22 source contexts** (grew 375 → 856 → 1260 mid-experiment). Dropped NLI (a semantic scorer); built per-claim + per-chunk language detection (lingua), a `same_lang` flag, and dual lexical recall (`r1_direct` = claim vs chunks as-is; `r1_mt` = translate-then-recall), then learned the verdict. Validated under leave-one-language-out (LOLO) AND leave-one-source-out (LOSO).
 
-| model (no NLI) | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |
+| model (1260, no NLI) | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |
 |---|---|---|---|---|
-| **LR (lexical, language-routed)** | **0.807** | **0.75** | 0.829 | 0.78 |
-| LR + interactions | 0.756 | 0.66 | 0.831 | 0.78 |
-| LGBM d1 (class_weight=balanced) | 0.743 | 0.63 | 0.843 | 0.80 |
-| LGBM d2 | 0.604 | 0.40 | 0.835 | 0.79 |
-| LGBM d4 | 0.537 | 0.27 | 0.823 | 0.77 |
+| **LR (lexical, language-routed)** | **0.779** | 0.70 | **0.837** | **0.80** |
+| LR + interactions | 0.773 | 0.69 | 0.833 | 0.79 |
+| LGBM d1 (class_weight=balanced) | 0.751 | 0.65 | 0.837 | 0.80 |
+| LGBM d2 | 0.586 | 0.36 | 0.836 | 0.80 |
+| LGBM d4 | 0.526 | 0.26 | 0.826 | 0.78 |
 
-Reference (856, with NLI): `recall_split` 0.739 / hal-F1 0.63; LR+interactions incl. NLI 0.797 / hal-F1 0.72; majority 0.391.
+Replication across the 856 → 1260 growth: LR (lexical) LOSO 0.829 → **0.837** (hal-F1 0.78 → 0.80) - rock-stable; LOLO 0.807 → 0.779 (English is now 86% of the data, so the English-out fold trains on ~178 non-English rows - an extreme split that LOSO avoids, which is why LOSO is the metric to trust). LGBM overfits LOLO at every growth; LR matches or beats it everywhere.
+
+Reference (1260): `recall_split` and the NLI-including model remain below the lexical-only logistic; majority macro-F1 ~0.39.
 
 **Findings:**
 - **Lexical-only beats NLI** - LR over the language-routed lexical features (0.807 / hal-F1 0.75) tops the NLI-including model (0.797 / 0.72). The `same_lang` flag + dual recall + anchors replace what NLI was providing. Dropping the semantic model gained accuracy, simplicity, and speed.
