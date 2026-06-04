@@ -399,6 +399,152 @@ def run_final() -> None:
     print("wrote plots/05_capacity_ceiling.png")
 
 
+# --- lexical-only, language-routed feature build (NO NLI) --------------------
+_LING = {}
+
+
+def _lingua_lang(text: str, min_len: int = 25) -> str:
+    if len(text.strip()) < min_len:
+        return "und"
+    if "det" not in _LING:
+        from lingua import LanguageDetectorBuilder
+
+        _LING["det"] = LanguageDetectorBuilder.from_all_languages().build()
+    lg = _LING["det"].detect_language_of(text)
+    return lg.iso_code_639_1.name.lower() if lg else "und"
+
+
+def build_lex(refresh: bool = False) -> list[dict]:
+    """Lexical-only features with claim+chunk language detection (no NLI)."""
+    fp = CACHE / "lex.json"
+    if fp.exists() and not refresh:
+        return json.loads(fp.read_text())
+    from rapidfuzz import fuzz
+
+    recs = H.load_gold()
+    src_ids = {}
+    rows = []
+    for r in recs:
+        sid = src_ids.setdefault(r.source[:120], len(src_ids))
+        chunks = H.chunk_text(r.source, *H.CHUNK)
+        clang = _lingua_lang(r.claim)
+        # direct (original claim) recall + best-chunk language
+        rd, ad, best_d = chunk_recalls(r.claim, chunks, H.an_word)
+        r1_direct = rd[ad] if rd else 0.0
+        chunk_lang = _lingua_lang(best_d) if best_d else "und"
+        same_lang = int(clang != "und" and chunk_lang == clang)
+        # translated recall (claim -> English)
+        claim_en = r.claim
+        if r.det_lang not in ("en", "und", ""):
+            claim_en = H.mt_to_english(r.claim, r.det_lang)
+        rt, at, best_t = chunk_recalls(claim_en, chunks, H.an_word)
+        r1_mt = rt[at] if rt else 0.0
+        r1_best = max(r1_direct, r1_mt)
+        charng = H.idf_best_chunk_recall(claim_en, chunks, H.an_charngram)
+        fz = fuzz.partial_ratio(claim_en.lower(), best_t.lower()) / 100.0 if best_t else 0.0
+        oracle = max(rt) if rt else 0.0
+        top = sorted(rt, reverse=True)
+        top3 = top[1] if len(top) >= 2 else (top[0] if top else 0.0)
+        # anchors (language-invariant), on the original claim
+        ents = H.list_claim_entities(r.claim)
+        absent = set(H.find_absent_entities(r.claim, r.source))
+        num_rec, num_mm = H.number_recall(r.claim, r.source)
+        aden = len(ents) + (1 if num_rec >= 0 else 0)
+        ahit = sum(1 for e in ents if e not in absent) + (num_rec if num_rec >= 0 else 0)
+        anchor = (ahit / aden) if aden else 0.0
+        nmm, emm = H.find_mismatches(r.claim, best_t) if best_t else ([], [])
+        amm = 1 if (nmm or emm or num_mm) else 0
+        rows.append(dict(
+            label=r.label, lang=r.lang, det_lang=r.det_lang, src=sid,
+            is_en=int(r.det_lang == "en"), same_lang=same_lang,
+            r1_direct=round(r1_direct, 4), r1_mt=round(r1_mt, 4), r1_best=round(r1_best, 4),
+            charng=round(charng, 4), fuzzy=round(fz, 4), anchor=round(anchor, 4),
+            anchor_mm=amm, oracle=round(oracle, 4), top3=round(top3, 4),
+        ))
+    fp.write_text(json.dumps(rows))
+    return rows
+
+
+def group_model(rows, cols, factory, group, balanced=False, tune=True) -> dict:
+    """Generic leave-one-GROUP-out (group='det_lang' for LOLO, 'src' for LOSO)."""
+    groups = sorted({r[group] for r in rows})
+    yt, yp = [], []
+    for g in groups:
+        tr = [r for r in rows if r[group] != g]
+        te = [r for r in rows if r[group] == g]
+        if len({r["label"] for r in tr}) < 2 or not te:
+            continue
+        Xtr = np.array([[r[c] for c in cols] for r in tr], dtype=float)
+        ytr = np.array([r["label"] for r in tr])
+        m = factory()
+        if balanced:
+            n0, n1 = (ytr == 0).sum(), (ytr == 1).sum()
+            w = np.where(ytr == 1, len(ytr) / (2 * max(1, n1)), len(ytr) / (2 * max(1, n0)))
+            m.fit(Xtr, ytr, sample_weight=w)
+        else:
+            m.fit(Xtr, ytr)
+        ptr = m.predict_proba(Xtr)[:, 1]
+        thr = 0.5
+        if tune:
+            best = -1.0
+            for t in np.linspace(0.2, 0.8, 13):
+                f = _mf1(ytr.tolist(), (ptr >= t).astype(int).tolist())
+                if f > best:
+                    best, thr = f, t
+        pte = m.predict_proba(np.array([[r[c] for c in cols] for r in te], dtype=float))[:, 1]
+        yp += list((pte >= thr).astype(int))
+        yt += [r["label"] for r in te]
+    return H.score_verdicts(yt, yp)
+
+
+def run_lexgbm() -> None:
+    from lightgbm import LGBMClassifier
+    from sklearn.linear_model import LogisticRegression
+
+    rows = build_lex()
+    # H6 same-language coverage per language
+    cov = {}
+    for L in sorted({r["det_lang"] for r in rows}):
+        sub = [r for r in rows if r["det_lang"] == L]
+        cov[L] = (sum(r["same_lang"] for r in sub), len(sub))
+    for r in rows:  # interaction columns for the linear model
+        r["sl_rd"] = r["same_lang"] * r["r1_direct"]
+        r["nsl_rmt"] = (1 - r["same_lang"]) * r["r1_mt"]
+
+    feats = ["r1_direct", "r1_mt", "r1_best", "charng", "fuzzy", "anchor", "anchor_mm",
+             "oracle", "top3", "same_lang", "is_en"]
+    lin = feats + ["sl_rd", "nsl_rmt"]
+
+    def LR():
+        return LogisticRegression(max_iter=1000, class_weight="balanced")
+
+    def GBT(d):
+        return lambda: LGBMClassifier(max_depth=d, num_leaves=2**d, n_estimators=200,
+                                      learning_rate=0.05, class_weight="balanced",
+                                      min_child_samples=20, subsample=0.8,
+                                      colsample_bytree=0.8, random_state=0,
+                                      n_jobs=1, verbose=-1)
+
+    out = ["## Lexical-only language-routed grounder (856 gold, NO NLI)\n",
+           "same-language coverage: " + ", ".join(f"{k} {v[0]}/{v[1]}" for k, v in cov.items()) + "\n",
+           "| model | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |",
+           "|---|---|---|---|---|"]
+
+    def row(name, cols, fac, bal):
+        lo = group_model(rows, cols, fac, "det_lang", balanced=bal)
+        so = group_model(rows, cols, fac, "src", balanced=bal)
+        out.append(f"| {name} | **{lo['f1_macro']:.3f}** | {lo['f1_hal']:.2f} | "
+                   f"{so['f1_macro']:.3f} | {so['f1_hal']:.2f} |")
+
+    row("LR (lexical)", feats, LR, False)
+    row("LR + interactions", lin, LR, False)
+    for d in (1, 2, 3, 4):
+        row(f"LGBM d{d} (class_weight=balanced)", feats, GBT(d), False)
+    report = "\n".join(out) + "\n"
+    print(report)
+    (Path(__file__).parent / "logs" / "lab_lexgbm.md").write_text(report)
+
+
 def run_bayes() -> None:
     """Production Bayesian calibrator (bambi/PyMC logistic) under LOLO - a hyperplane."""
     import pandas as pd
@@ -505,4 +651,4 @@ def main() -> None:
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "batch1"
     {"b1": run_b1, "a4": run_a4, "final": run_final, "bayes": run_bayes,
-     "batch1": main}.get(cmd, main)()
+     "lexgbm": run_lexgbm, "batch1": main}.get(cmd, main)()

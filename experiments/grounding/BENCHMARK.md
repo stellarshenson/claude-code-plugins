@@ -4,7 +4,7 @@ Running scoreboard for every hypothesis tested on the 375-record verified gold. 
 
 **Primary metric: macro-F1** (mean of supported-F1 and hallucination-F1). The classes are imbalanced (289 supported / 86 hallucination), so accuracy flatters a "mostly grounded" predictor - the majority baseline scores 0.771 accuracy but **macro-F1 0.435 with hallucination-F1 0.000** (it never catches a hallucination). Accuracy is kept as a secondary column.
 
-**Targets**: macro-F1 as high as possible; accuracy > 0.80 (secondary). Status: **best model is a depth-2 gradient-boosted tree over {recall, NLI, anchors}, fit under LOLO: macro-F1 0.775 (mean of 5 seeds, ±0.013), hallucination-F1 0.66, accuracy 0.861** - beats the simple `recall_split` (macro-F1 0.755 / hal-F1 0.64 / acc 0.817) on all three. The simplest deployable model remains `recall_split`; the GBT is the best if a learned model fit under LOLO is acceptable.
+**Targets**: macro-F1 as high as possible. Status (LIVE 856 gold): **best model is a lexical-only, language-routed logistic - macro-F1 0.807 LOLO / 0.829 LOSO, hallucination-F1 0.75 - with NO semantic model**, beating the NLI-including model (0.797). See Round 5. (Earlier rounds on the stale 375 snapshot: depth-2 GBT 0.775 - superseded by the 856 re-run, where more data + language-routed lexical features made NLI and trees unnecessary.)
 
 **Baselines**: majority-always-grounded macro-F1 0.435 / acc 0.771; lexical-only (no MT) macro-F1 ~0.66; e5-semantic (team report) ~25% precision ceiling.
 
@@ -118,7 +118,29 @@ One mechanism beats it, two do not:
 
 The **A6 capacity ceiling** governs everything: the 86 negatives (LOLO removes a language each fold) fund exactly the depth-2 GBT and nothing larger - deeper trees and free linear interactions overfit (in-fold → 0.996, LOLO falls). Recommendation: ship `recall_split` (macro-F1 0.755) when a transparent rule is required; deploy the **depth-2 GBT fit under LOLO** (macro-F1 0.775, hal-F1 0.66) when a learned model is acceptable. Pushing materially past 0.78 needs **more labelled data**, not more capacity.
 
-## Recommendation (all 9 hypotheses tested)
+## Round 5 - lexical-only, language-routed grounder (LIVE 856 gold, NO NLI)
+
+The dataset was refreshed to the live gold: **856 records, 549 supported / 307 hallucination, ~19-25 source contexts**. Dropped NLI (a semantic scorer); built per-claim + per-chunk language detection (lingua), a `same_lang` flag, and dual lexical recall (`r1_direct` = claim vs chunks as-is; `r1_mt` = translate-then-recall), then learned the verdict. Validated under leave-one-language-out (LOLO) AND leave-one-source-out (LOSO).
+
+| model (no NLI) | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |
+|---|---|---|---|---|
+| **LR (lexical, language-routed)** | **0.807** | **0.75** | 0.829 | 0.78 |
+| LR + interactions | 0.756 | 0.66 | 0.831 | 0.78 |
+| LGBM d1 (class_weight=balanced) | 0.743 | 0.63 | 0.843 | 0.80 |
+| LGBM d2 | 0.604 | 0.40 | 0.835 | 0.79 |
+| LGBM d4 | 0.537 | 0.27 | 0.823 | 0.77 |
+
+Reference (856, with NLI): `recall_split` 0.739 / hal-F1 0.63; LR+interactions incl. NLI 0.797 / hal-F1 0.72; majority 0.391.
+
+**Findings:**
+- **Lexical-only beats NLI** - LR over the language-routed lexical features (0.807 / hal-F1 0.75) tops the NLI-including model (0.797 / 0.72). The `same_lang` flag + dual recall + anchors replace what NLI was providing. Dropping the semantic model gained accuracy, simplicity, and speed.
+- **The win is the features, not the model class** - a plain logistic is best; the LGBM overfits under LOLO and worsens with depth (d1 0.743 → d4 0.537). Holding out English trains on only ~143 non-English rows, which a tree memorises and a regularised linear model survives.
+- **LOSO ≥ LOLO (0.83 vs 0.81)** - context leakage is NOT inflating results; the harder axis is an unseen language, not an unseen document. The ~19-context worry is allayed.
+- **Same-language coverage** validates the routing: en 96%, fr 46%, sv 50% match a same-language chunk (no MT); no 5%, it 10%, es/pt low (need MT).
+
+**New recommendation**: ship the **lexical-only, language-routed logistic** (per-chunk language detection + `same_lang` + `r1_direct`/`r1_mt` + anchors) - macro-F1 0.807, hal-F1 0.75, no semantic model, beats every prior config on the live 856 gold.
+
+## Recommendation (all 9 hypotheses tested - superseded by Round 5)
 
 - **Ship**: argos-translate MT bridge + best-chunk recall, English/translated two-threshold (`recall_split`) - best macro-F1 0.755 TEST and accuracy 0.817, cheapest path
 - **Add for hallucination detection**: the `recall OR NLI` ensemble - best hallucination-F1 0.64 and balanced 0.808, parameter-free, rescues the es/pt tail
