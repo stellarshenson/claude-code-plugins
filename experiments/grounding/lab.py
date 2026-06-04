@@ -297,6 +297,108 @@ def run_a4() -> None:
     (Path(__file__).parent / "logs" / "lab_a4.md").write_text(report)
 
 
+# --- A6 capacity ceiling + C8 diversity -------------------------------------
+def _infold(rows, cols, factory) -> float:
+    X = np.array([[r[c] for c in cols] for r in rows], dtype=float)
+    y = [r["label"] for r in rows]
+    m = factory().fit(X, y)
+    p = m.predict_proba(X)[:, 1]
+    best = -1.0
+    for t in np.linspace(0.2, 0.8, 13):
+        f = _mf1(y, (p >= t).astype(int))
+        best = max(best, f)
+    return best
+
+
+def run_final() -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from sklearn.ensemble import GradientBoostingClassifier
+    from sklearn.linear_model import LogisticRegression
+
+    rows = build_features(use_mt=True)
+    _add_interactions(rows)
+
+    def LR():
+        return LogisticRegression(max_iter=1000, class_weight="balanced")
+
+    def GBT(d, seed=0):
+        return lambda: GradientBoostingClassifier(
+            max_depth=d, n_estimators=40, learning_rate=0.1, random_state=seed)
+
+    cont = ["r1", "r2", "oracle", "top3_med", "anchor", "nli_e", "nli_c"]
+    ladder = [
+        ("LR[r1]", ["r1"], LR, 1),
+        ("LR[r1,nli]", ["r1", "nli_e", "nli_c"], LR, 3),
+        ("LR+interactions", ["r1", "nli_e", "nli_c", "is_en", "isen_r1", "nonen_nlie", "r1_x_nlic"], LR, 7),
+        ("GBT d2", cont, GBT(2), 12),
+        ("GBT d4", cont, GBT(4), 30),
+    ]
+    names, lolo, infold, fulls = [], [], [], []
+    for name, cols, fac, _cap in ladder:
+        names.append(name)
+        s = lolo_model(rows, cols, fac)
+        fulls.append(s)
+        lolo.append(s["f1_macro"])
+        infold.append(_infold(rows, cols, fac))
+
+    out = ["## A6 capacity ceiling (LOLO out-of-fold vs in-fold)\n",
+           "| model | LOLO macroF1 | hal-F1 | sup-F1 | acc | in-fold | overfit gap |",
+           "|---|---|---|---|---|---|---|"]
+    for n, s, inf in zip(names, fulls, infold):
+        out.append(f"| {n} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | {s['f1_sup']:.2f} | "
+                   f"{s['acc']:.3f} | {inf:.3f} | {inf - s['f1_macro']:+.3f} |")
+    # GBT d2 is stochastic on 86 negatives - report mean +/- std over 5 seeds
+    seeds = [lolo_model(rows, cont, GBT(2, sd))["f1_macro"] for sd in range(5)]
+    out.append(f"\nGBT d2 over 5 seeds: mean {np.mean(seeds):.3f} +/- {np.std(seeds):.3f} "
+               f"(min {min(seeds):.3f}, max {max(seeds):.3f}) - vs recall_split 0.755\n")
+
+    # C8 diversity: per-channel error correlation + ensembles
+    R1 = [int(r["r1"] >= 0.4) for r in rows]
+    NLI = [1 if r["nli_e"] >= max(r["nli_c"], r["nli_n"]) else 0 for r in rows]
+    ANC = [int(r["anchor"] >= 0.5) for r in rows]
+    y = [r["label"] for r in rows]
+    eR1 = np.array([int(a != b) for a, b in zip(R1, y)])
+    eN = np.array([int(a != b) for a, b in zip(NLI, y)])
+    eA = np.array([int(a != b) for a, b in zip(ANC, y)])
+
+    def phi(a, b):
+        return float(np.corrcoef(a, b)[0, 1])
+
+    out += ["\n## C8 ensemble diversity (error-correlation phi)\n",
+            f"phi(R1,NLI)={phi(eR1, eN):.2f}  phi(R1,ANC)={phi(eR1, eA):.2f}  "
+            f"phi(NLI,ANC)={phi(eN, eA):.2f}\n",
+            "| ensemble | macroF1 |", "|---|---|"]
+    orr = [int(a or b) for a, b in zip(R1, NLI)]
+    maj = [int(a + b + c >= 2) for a, b, c in zip(R1, NLI, ANC)]
+    out.append(f"| R1 | {_mf1(y, R1):.3f} |")
+    out.append(f"| R1 OR NLI | {_mf1(y, orr):.3f} |")
+    out.append(f"| R1+NLI+ANC majority | {_mf1(y, maj):.3f} |")
+
+    report = "\n".join(out) + "\n"
+    print(report)
+    (Path(__file__).parent / "logs" / "lab_final.md").write_text(report)
+
+    # capacity scissors plot
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    x = range(len(names))
+    ax.plot(x, infold, "-o", color="#da8230", label="in-fold (optimistic)")
+    ax.plot(x, lolo, "-o", color="#0096d1", label="LOLO (out-of-fold)")
+    ax.axhline(0.755, color="#3a7", ls=":", lw=1, label="recall_split 0.755")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(names, rotation=20, ha="right", fontsize=8)
+    ax.set_ylabel("macro-F1")
+    ax.set_ylim(0.6, 1.0)
+    ax.grid(alpha=0.3)
+    ax.legend(fontsize=8)
+    ax.set_title("Capacity ceiling: out-of-fold peaks at depth-2, in-fold memorises (86 negatives)")
+    fig.tight_layout()
+    fig.savefig(Path(__file__).parent / "plots" / "05_capacity_ceiling.png", dpi=150)
+    plt.close(fig)
+    print("wrote plots/05_capacity_ceiling.png")
+
+
 def main() -> None:
     from sklearn.linear_model import LogisticRegression
 
@@ -357,4 +459,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "batch1"
-    {"b1": run_b1, "a4": run_a4, "batch1": main}.get(cmd, main)()
+    {"b1": run_b1, "a4": run_a4, "final": run_final, "batch1": main}.get(cmd, main)()

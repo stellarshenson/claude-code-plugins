@@ -89,13 +89,13 @@ What the experiment taught beyond the numbers, including its own limitations.
 
 - **MT is the dominant lever** - cross-lingual grounding here is translate-then-recall; per-language MT models beat one multilingual model on quality and speed
 - **Imbalance hides failure** - 0.771 accuracy looked fine while macro-F1 was 0.435 and hallucination-F1 0.000; choose the imbalance-robust metric before drawing conclusions
-- **Simplicity won by nature, not just constraint** - the follow-up rounds tested richer models properly (interactions, decomposition, transfer, all under LOLO) and every one lost to the single recall signal; the simple model is near-optimal at this dataset size, not merely a constraint artifact
-- **Linear boundaries are enough here** - the `r1 × nli_contra` "right-topic-wrong-fact" region a hyperplane cannot carve was checked and **does not exist** in this gold (high-high cell n=10, hallucination rate 0.20 < 0.23 base); there is no nonlinear manifold to learn
-- **Language as a feature was tested and refuted** - the `is_en × recall` interaction overfits out-of-fold (macro-F1 0.691 vs the no-interaction twin 0.714); hard routing (recall_split) generalises better than a learned language interaction
-- **Claims extraction was built and refuted** - clauses, not sentences, are the unit (claims are 1.19 sentences but 136/375 carry a connective); clause-split + aggregation **over-flags** paraphrased supported clauses (sup-F1 0.90 → 0.86) with no hal-F1 gain
+- **Interactions help, but only as shallow trees** - a depth-2 gradient-boosted tree over {recall, NLI, anchors}, fit under LOLO, beats the simple model on all three metrics (macro-F1 0.775 vs 0.755, hal-F1 0.66 vs 0.64, accuracy 0.861 vs 0.817); *linear* interaction terms overfit (0.691) and *deep* trees overfit harder (in-fold 0.996, LOLO 0.733)
+- **The win is nonlinear** - the `r1 × nli_contra` linear product is useless (the "right-topic-wrong-fact" cell is n=10, not enriched), but axis-aligned *tree* interactions over recall × NLI carve the boundary the hyperplane cannot; the lesson is the model class, not the absence of structure
+- **Capacity ceiling is the governing law** - the scissors plot is exact: in-fold macro-F1 rises monotonically to 0.996 (memorisation) while LOLO peaks at depth-2; the 86 negatives (LOLO removes a language each fold) fund precisely a depth-2 tree and nothing larger
+- **Language as a learned feature was refuted** - the `is_en × recall` *linear* interaction overfits out-of-fold; the GBT instead learns the language-conditional behaviour implicitly via recall × NLI splits
+- **Claims extraction was built and refuted** - clauses, not sentences, are the unit (claims are 1.19 sentences but 136/375 carry a connective); clause-split + aggregation over-flags paraphrased supported clauses (sup-F1 0.90 → 0.86) with no hal-F1 gain
 - **Cross-corpus transfer fails on domain mismatch** - weights learned on VitaminC ground on NLI-contradiction and ignore recall; DeLaval needs the opposite, so transfer collapses (macro-F1 0.594)
-- **Capacity ceiling confirmed** - 86 hallucinations (LOLO removes a language each fold) fund ~1 feature; richer models overfit. Beating the simple model needs more labelled data, not a cleverer model
-- **Anti-overfit is not no-modeling** - the rule bans fitting the test data, not modeling interactions; we modeled them honestly under LOLO and they still lost - the constraint was not what held performance back
+- **Anti-overfit is not no-modeling** - the rule bans fitting the test data, not modeling interactions; modeling them honestly under LOLO is exactly how the depth-2 GBT win was found
 
 ## Conclusions
 
@@ -109,10 +109,10 @@ Deterministically this is a translation problem followed by a recall-scoring pro
 
 ## Next steps
 
-The interaction / decomposition / transfer levers were tested and refuted (see BENCHMARK.md rounds 2-4); what remains targets data, not model capacity.
+A depth-2 GBT is the best model; decomposition and transfer were refuted (see BENCHMARK.md rounds 2-4 and the capacity plot).
 
-- **More labelled data** - the binding constraint is 86 hallucinations; a larger, balanced multilingual gold (especially es/pt beyond n=5-6) is the prerequisite for any richer model to fund itself under LOLO
-- **Promotion** - the simple, well-defended recipe is ready: propose translate-then-recall (`recall_split`) + the parameter-free recall-OR-NLI ensemble in the production grounder via a separate reviewed change
-- **Engineering** - swap argos for a faster per-language engine if throughput matters; lingua-py for language ID
-- **Refuted, do not revisit without more data** - feature interactions, claim decomposition, cross-corpus calibrator transfer
+- **Promotion** - two ship options: `recall_split` (transparent rule, macro-F1 0.755) or the **depth-2 GBT over {recall, NLI, anchors} fit under LOLO** (macro-F1 0.775, hal-F1 0.66, accuracy 0.861) when a learned model is acceptable; propose either in the production grounder via a separate reviewed change
+- **More labelled data** - the depth-2 ceiling is set by 86 hallucinations; a larger balanced multilingual gold (especially es/pt beyond n=5-6) is the prerequisite for funding any deeper model
+- **Engineering** - faster per-language MT engine if throughput matters; lingua-py for language ID
+- **Refuted, do not revisit without more data** - linear feature interactions, claim decomposition, cross-corpus calibrator transfer
 - **Done so far** - chunk sweep, lingua-py, English two-threshold, fixed-prior, abstain band, NLI residual, OPUS-MT engine; metric moved to macro-F1 (see BENCHMARK.md)

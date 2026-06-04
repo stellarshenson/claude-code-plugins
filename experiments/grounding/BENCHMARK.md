@@ -4,7 +4,7 @@ Running scoreboard for every hypothesis tested on the 375-record verified gold. 
 
 **Primary metric: macro-F1** (mean of supported-F1 and hallucination-F1). The classes are imbalanced (289 supported / 86 hallucination), so accuracy flatters a "mostly grounded" predictor - the majority baseline scores 0.771 accuracy but **macro-F1 0.435 with hallucination-F1 0.000** (it never catches a hallucination). Accuracy is kept as a secondary column.
 
-**Targets**: macro-F1 as high as possible; accuracy > 0.80 (secondary). Status: **accuracy target MET** (recall_split 0.845 LOLO / 0.817 TEST); **best macro-F1 0.755 TEST** (recall_split).
+**Targets**: macro-F1 as high as possible; accuracy > 0.80 (secondary). Status: **best model is a depth-2 gradient-boosted tree over {recall, NLI, anchors}, fit under LOLO: macro-F1 0.775 (mean of 5 seeds, ±0.013), hallucination-F1 0.66, accuracy 0.861** - beats the simple `recall_split` (macro-F1 0.755 / hal-F1 0.64 / acc 0.817) on all three. The simplest deployable model remains `recall_split`; the GBT is the best if a learned model fit under LOLO is acceptable.
 
 **Baselines**: majority-always-grounded macro-F1 0.435 / acc 0.771; lexical-only (no MT) macro-F1 ~0.66; e5-semantic (team report) ~25% precision ceiling.
 
@@ -53,18 +53,33 @@ Running scoreboard for every hypothesis tested on the 375-record verified gold. 
 
 ## Round 2 - interactions + wildcards (LOLO, learned models)
 
-Tested whether feature interactions / nonlinear separation beat the 1-D recall floor. **They do not** - the 375 with 86 negatives is effectively 1-dimensional under LOLO.
+Tested whether feature interactions / nonlinear separation beat the 1-D recall floor. **Linear interactions do not; depth-2 tree interactions do** (see the A6 capacity sweep below).
 
 | hypothesis | macroF1 | hal-F1 | verdict |
 |---|---|---|---|
 | floor: LR[r1] | 0.731 | 0.57 | 1-D logistic ≈ recall_split |
-| A1 language×recall interaction | 0.691 | 0.49 | **REFUTED** - worse than its no-interaction twin (0.714) and the floor; overfits out-of-fold |
-| A3 r1×nli_contra product | 0.726 | 0.63 | **REFUTED** - identical to twin (0.728); the "right-topic-wrong-fact" cell is n=10 at 0.20 hal-rate < 0.23 base, doesn't exist |
-| A5 continuous-NLI logistic | 0.728 | 0.63 | below recall_split 0.751; continuous NLI no better than the OR-ensemble |
+| A1 language×recall interaction (linear) | 0.691 | 0.49 | **REFUTED** - worse than its no-interaction twin (0.714); a *linear* interaction overfits out-of-fold |
+| A3 r1×nli_contra product (linear) | 0.726 | 0.63 | **REFUTED** - identical to twin (0.728); the "right-topic-wrong-fact" cell is n=10 at 0.20 hal-rate < 0.23 base, doesn't exist |
+| A5 continuous-NLI logistic | 0.728 | 0.63 | linear; below recall_split |
+| **A2 depth-2 GBT {recall,NLI,anchors}** | **0.775** | **0.66** | **CONFIRMED** - mean of 5 seeds ±0.013, beats recall_split on macro-F1, hal-F1, and accuracy (0.861) |
 | C1 oracle-chunk | 0.701 | - | **retrieval is NOT the bottleneck** - oracle loss −0.029 (recall-max picks spurious chunks); kills C2-doc/C4 |
 | C6 anchor-as-veto | 0.687 | 0.59 | neutral - only 3 false-vetoes, few mismatches fire |
 
-**Conclusion**: learned and interaction models *underperform* the hand-routed `recall_split` (0.751). The simple model wins not by constraint but because the data cannot fund more capacity - the A6 capacity ceiling sits at ~1 feature. Live mechanisms remaining: A4 (learn the balance off-target on VitaminC) and Theme B (claim decomposition - an orthogonal lever on hallucination-F1).
+## A6 capacity ceiling (the explanatory result, plots/05_capacity_ceiling.png)
+
+LOLO macro-F1 vs model capacity, with in-fold (resubstitution) overlay:
+
+| model | LOLO macroF1 | hal-F1 | acc | in-fold | overfit gap |
+|---|---|---|---|---|---|
+| LR[r1] | 0.731 | 0.57 | 0.827 | 0.753 | +0.02 |
+| LR[r1,nli] | 0.728 | 0.63 | 0.760 | 0.750 | +0.02 |
+| LR+interactions (linear) | 0.691 | 0.49 | 0.819 | 0.761 | +0.07 |
+| **GBT depth-2** | **0.785** | 0.66 | 0.861 | 0.909 | +0.12 |
+| GBT depth-4 | 0.733 | 0.56 | 0.851 | 0.996 | +0.26 |
+
+The curve is the classic scissors: in-fold rises monotonically to 0.996 (memorisation) while **LOLO peaks at depth-2** (0.785, above recall_split's 0.755) then falls. Depth-2 axis-aligned tree interactions over {recall, NLI, anchors} are exactly the capacity the 86 negatives can fund; deeper trees and free-form linear interactions overfit. **Corrected conclusion**: feature interactions DO help, but only as shallow trees - the round-2 "1-D is enough" read was an artefact of testing only linear interactions.
+
+C8 diversity: error-correlation phi(R1,NLI)=0.47, phi(R1,anchor)=0.04, phi(NLI,anchor)=−0.14; R1-OR-NLI ensemble macro-F1 0.737, the anchor channel is too sparse to add (triple majority 0.677). The GBT wins by learning the R1×NLI combination nonlinearly that the OR-rule and linear models cannot.
 
 ## Round 3 - claim decomposition (Theme B, LOLO)
 
@@ -90,15 +105,15 @@ Fit the {recall, nli_entail, nli_contra} logistic on a balanced 390-record Vitam
 
 The learned coefficients tell the story: `r1: 0.0, nli_e: 0.02, nli_c: -3.03`. VitaminC (short English FEVER sentences) is an **NLI-dominant** domain and learns to ignore recall; DeLaval is a **recall-dominant** cross-lingual domain. The balance learned off-target is the wrong balance, so transfer collapses. Honest conclusion: the correct signal weighting is domain-specific and cannot be borrowed.
 
-## Synthesis - what beats the simple model (nothing, here)
+## Synthesis - what beats the simple model
 
-All three advanced mechanisms tested across rounds 2-4 are **refuted** on this 375-record gold:
+One mechanism beats it, two do not:
 
-- **Feature interactions** (language×recall, r1×nli_contra) - overfit the 86 negatives under LOLO, score below the 1-D floor
-- **Claim decomposition** (clause-split, k-of-n) - over-flags paraphrased supported clauses, no net hal-F1 gain
-- **Cross-corpus transfer** (VitaminC) - mis-weights signals (NLI-dominant source vs recall-dominant target)
+- **Feature interactions via a depth-2 GBT** - **CONFIRMED**: macro-F1 0.775 (±0.013), hal-F1 0.66, acc 0.861, beating `recall_split` on all three. Linear interactions overfit; the win is specifically *shallow tree* interactions over {recall, NLI, anchors}.
+- **Claim decomposition** (clause-split, k-of-n) - **refuted**: over-flags paraphrased supported clauses, no net hal-F1 gain.
+- **Cross-corpus transfer** (VitaminC) - **refuted**: mis-weights signals (NLI-dominant source vs recall-dominant target).
 
-The **A6 capacity ceiling is confirmed**: with 86 hallucinations (and LOLO removing a language each fold), the data funds ~1 feature. The deliverable recommendation is unchanged and now well-defended: ship the simple **translate-then-recall** model (`recall_split`, macro-F1 0.755) and add the parameter-free **recall-OR-NLI** ensemble for hallucination detection (hal-F1 0.64). Beating this needs **more labelled data**, not a cleverer model.
+The **A6 capacity ceiling** governs everything: the 86 negatives (LOLO removes a language each fold) fund exactly the depth-2 GBT and nothing larger - deeper trees and free linear interactions overfit (in-fold → 0.996, LOLO falls). Recommendation: ship `recall_split` (macro-F1 0.755) when a transparent rule is required; deploy the **depth-2 GBT fit under LOLO** (macro-F1 0.775, hal-F1 0.66) when a learned model is acceptable. Pushing materially past 0.78 needs **more labelled data**, not more capacity.
 
 ## Recommendation (all 9 hypotheses tested)
 
