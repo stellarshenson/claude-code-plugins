@@ -1,0 +1,360 @@
+"""Experiment lab: next-gen grounding hypotheses (interactions, wildcards).
+
+Builds a cached per-record feature table (incl NLI, oracle-chunk, anchors) once,
+then runs hypotheses under leave-one-language-out with learned models that are
+NEVER fit to the held-out language. Aggregate metrics only; feature cache is
+git-ignored. Number to beat: macro-F1 0.755, hallucination-F1 0.64.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+import sys
+
+import numpy as np
+from rank_bm25 import BM25Okapi
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+import harness as H  # noqa: E402
+
+CACHE = Path(__file__).parent / "cache"
+CACHE.mkdir(exist_ok=True)
+
+
+def chunk_recalls(claim: str, chunks: list[str], analyzer):
+    """IDF-weighted claim recall against EACH chunk (shared corpus IDF).
+
+    Returns (recalls_per_chunk, bm25_argmax_index, best_chunk_text). Decouples
+    'which chunk' (bm25 argmax = r1) from 'best possible chunk' (max recall =
+    oracle), so the retrieval-vs-scoring gap is measurable.
+    """
+    cl = analyzer(claim)
+    if not cl:
+        return [], None, ""
+    pairs = [(c, a) for c in chunks if (a := analyzer(c))]
+    if not pairs:
+        return [], None, ""
+    raw = [c for c, _ in pairs]
+    corpus = [a for _, a in pairs]
+    bm = BM25Okapi(corpus)
+    scores = np.maximum(bm.get_scores(cl), 0.0)
+    idf = bm.idf
+    max_idf = max(idf.values()) if idf else 1.0
+    claim_set = set(cl)
+
+    def w(t: str) -> float:
+        return max(0.0, idf.get(t, max_idf))
+
+    den = sum(w(t) for t in claim_set) or 1.0
+    recalls = [sum(w(t) for t in claim_set if t in set(doc)) / den for doc in corpus]
+    arg = int(scores.argmax()) if float(scores.max()) > 0 else 0
+    return recalls, arg, raw[arg]
+
+
+def build_features(use_mt: bool = True, refresh: bool = False) -> list[dict]:
+    fp = CACHE / (f"features_{'mt' if use_mt else 'lex'}.json")
+    if fp.exists() and not refresh:
+        return json.loads(fp.read_text())
+    from stellars_claude_code_plugins.document_processing.nli import NLIGrounder
+
+    nli = NLIGrounder()
+    recs = H.load_gold()
+    rows: list[dict] = []
+    for r in recs:
+        chunks = H.chunk_text(r.source, *H.CHUNK)
+        claim = r.claim
+        if use_mt and r.det_lang not in ("en", "und", ""):
+            claim = H.mt_to_english(r.claim, r.det_lang)
+        recalls, arg, best = chunk_recalls(claim, chunks, H.an_word)
+        r1 = recalls[arg] if recalls else 0.0
+        oracle = max(recalls) if recalls else 0.0
+        top = sorted(recalls, reverse=True)
+        top3_med = top[1] if len(top) >= 2 else (top[0] if top else 0.0)
+        r2 = H.idf_best_chunk_recall(claim, chunks, H.an_charngram)
+        sc = nli.scores(best, r.claim) if best else {}
+        ne, nc, nn = (sc.get("entailment", 0.0), sc.get("contradiction", 0.0),
+                      sc.get("neutral", 0.0))
+        nmm, emm = H.find_mismatches(r.claim, best) if best else ([], [])
+        num_rec, num_mismatch = H.number_recall(r.claim, r.source)
+        veto = 1 if (nmm or num_mismatch) else 0
+        ents = H.list_claim_entities(r.claim)
+        absent = set(H.find_absent_entities(r.claim, r.source))
+        aden = len(ents) + (1 if num_rec >= 0 else 0)
+        ahit = sum(1 for e in ents if e not in absent) + (num_rec if num_rec >= 0 else 0)
+        anchor = (ahit / aden) if aden else 0.0
+        rows.append(dict(
+            label=r.label, lang=r.lang, det_lang=r.det_lang, is_en=int(r.det_lang == "en"),
+            r1=round(r1, 4), r2=round(r2, 4), oracle=round(oracle, 4),
+            top3_med=round(top3_med, 4), anchor=round(anchor, 4),
+            nli_e=round(ne, 4), nli_c=round(nc, 4), nli_n=round(nn, 4), veto=veto,
+        ))
+    fp.write_text(json.dumps(rows))
+    return rows
+
+
+# --- LOLO evaluation of a learned model (never fit on the held-out language) --
+def _mf1(yt, yp) -> float:
+    return H.score_verdicts(list(yt), list(yp))["f1_macro"]
+
+
+def lolo_model(rows, feat_cols, model_factory, tune_thresh: bool = True) -> dict:
+    langs = sorted({r["det_lang"] for r in rows})
+    yt, yp = [], []
+    for L in langs:
+        tr = [r for r in rows if r["det_lang"] != L]
+        te = [r for r in rows if r["det_lang"] == L]
+        if len({r["label"] for r in tr}) < 2 or not te:
+            continue
+        Xtr = np.array([[r[c] for c in feat_cols] for r in tr], dtype=float)
+        ytr = np.array([r["label"] for r in tr])
+        m = model_factory()
+        m.fit(Xtr, ytr)
+        Xte = np.array([[r[c] for c in feat_cols] for r in te], dtype=float)
+        ptr = m.predict_proba(Xtr)[:, 1]
+        thr = 0.5
+        if tune_thresh:
+            best = -1.0
+            for t in np.linspace(0.2, 0.8, 13):
+                f = _mf1(ytr, (ptr >= t).astype(int))
+                if f > best:
+                    best, thr = f, t
+        pte = m.predict_proba(Xte)[:, 1]
+        yp += list((pte >= thr).astype(int))
+        yt += [r["label"] for r in te]
+    return H.score_verdicts(yt, yp)
+
+
+def _add_interactions(rows):
+    for r in rows:
+        r["isen_r1"] = r["is_en"] * r["r1"]
+        r["nonen_nlie"] = (1 - r["is_en"]) * r["nli_e"]
+        r["r1_x_nlic"] = r["r1"] * r["nli_c"]
+
+
+# --- B1: claim decomposition -------------------------------------------------
+import re  # noqa: E402
+
+_CONN = re.compile(
+    r"\b(?:and|but|og|men|samt|et|mais|ainsi que|y|e|ed|pero|sino|ma|och|mas|oder|und)\b|[;:]",
+    re.I,
+)
+
+
+def split_clauses(text: str, min_len: int = 40) -> list[str]:
+    parts = [p.strip() for p in _CONN.split(text) if p and p.strip()]
+    merged: list[str] = []
+    for p in parts:
+        if merged and len(p) < min_len:
+            merged[-1] = merged[-1] + " " + p
+        else:
+            merged.append(p)
+    return merged or [text]
+
+
+def split_sentences(text: str) -> list[str]:
+    return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()] or [text]
+
+
+def build_decomp(use_mt: bool = True, refresh: bool = False) -> list[dict]:
+    """Per-record min-clause-recall + any-mismatch for whole/sentence/clause units."""
+    fp = CACHE / "decomp.json"
+    if fp.exists() and not refresh:
+        return json.loads(fp.read_text())
+    recs = H.load_gold()
+    rows = []
+    for r in recs:
+        chunks = H.chunk_text(r.source, *H.CHUNK)
+        claim = r.claim
+        if use_mt and r.det_lang not in ("en", "und", ""):
+            claim = H.mt_to_english(r.claim, r.det_lang)
+        row = {"label": r.label, "lang": r.lang, "det_lang": r.det_lang}
+        for key, units in (("whole", [claim]), ("sent", split_sentences(claim)),
+                           ("clause", split_clauses(claim))):
+            r1s, mm = [], 0
+            for u in units:
+                recalls, arg, best = chunk_recalls(u, chunks, H.an_word)
+                r1s.append(recalls[arg] if recalls else 0.0)
+                nmm, _ = H.find_mismatches(u, best) if best else ([], [])
+                _, num_mm = H.number_recall(u, r.source)
+                if nmm or num_mm:
+                    mm = 1
+            r1s = r1s or [0.0]
+            row[f"{key}_min"] = round(min(r1s), 4)
+            row[f"{key}_n"] = len(units)
+            row[f"{key}_nge"] = r1s  # per-clause recalls for k-of-n
+            row[f"{key}_mm"] = mm
+        rows.append(row)
+    fp.write_text(json.dumps(rows))
+    return rows
+
+
+def lolo_decomp(rows, key, agg="any") -> dict:
+    """Tune the recall bar per-fold (LOLO); aggregate clause verdicts to claim verdict."""
+    def verdict(r, bar):
+        if r[f"{key}_mm"]:
+            return 0
+        rs = r[f"{key}_nge"]
+        if agg == "any":  # all clauses must clear the bar (weakest-link)
+            return int(min(rs) >= bar)
+        # k-of-n: all but one
+        return int(sum(1 for x in rs if x >= bar) >= max(1, len(rs) - 1))
+
+    langs = sorted({r["det_lang"] for r in rows})
+    yt, yp = [], []
+    for L in langs:
+        tr = [r for r in rows if r["det_lang"] != L]
+        te = [r for r in rows if r["det_lang"] == L]
+        if len({r["label"] for r in tr}) < 2 or not te:
+            continue
+        best_bar, best = 0.4, -1.0
+        for bar in np.linspace(0.2, 0.7, 11):
+            f = _mf1([r["label"] for r in tr], [verdict(r, bar) for r in tr])
+            if f > best:
+                best, best_bar = f, bar
+        yp += [verdict(r, best_bar) for r in te]
+        yt += [r["label"] for r in te]
+    return H.score_verdicts(yt, yp)
+
+
+def run_b1() -> None:
+    rows = build_decomp(use_mt=True)
+    nclause = sum(1 for r in rows if r["clause_n"] > 1)
+    out = ["## Lab B1 - claim decomposition (LOLO, recall bar tuned out-of-fold)\n",
+           f"claims split into >1 clause: {nclause}/{len(rows)}\n",
+           "| unit / aggregation | macroF1 | hal-F1 | sup-F1 | acc |",
+           "|---|---|---|---|---|"]
+    for key, agg, name in [("whole", "any", "whole-claim"),
+                           ("sent", "any", "sentence-split"),
+                           ("clause", "any", "clause-split (any-contradicted)"),
+                           ("clause", "kofn", "clause-split (k-of-n)")]:
+        s = lolo_decomp(rows, key, agg)
+        out.append(f"| {name} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | "
+                   f"{s['f1_sup']:.2f} | {s['acc']:.3f} |")
+    report = "\n".join(out) + "\n"
+    print(report)
+    (Path(__file__).parent / "logs" / "lab_b1.md").write_text(report)
+
+
+# --- A4: cross-corpus calibrator transfer (fit on VitaminC, freeze) ----------
+def build_vitaminc(per_label: int = 130, refresh: bool = False) -> list[dict]:
+    fp = CACHE / "vitaminc.json"
+    if fp.exists() and not refresh:
+        return json.loads(fp.read_text())
+    import itertools
+
+    from huggingface_hub import hf_hub_download
+
+    from stellars_claude_code_plugins.document_processing.nli import NLIGrounder
+
+    nli = NLIGrounder()
+    p = hf_hub_download("tals/vitaminc", "dev.jsonl", repo_type="dataset")
+    want = {"SUPPORTS": per_label, "REFUTES": per_label, "NOT ENOUGH INFO": per_label}
+    rows = []
+    for line in open(p, encoding="utf-8"):
+        rec = json.loads(line)
+        lab = rec.get("label")
+        if lab not in want or want[lab] <= 0:
+            continue
+        want[lab] -= 1
+        claim, ev = rec["claim"], rec["evidence"]
+        recalls, arg, best = chunk_recalls(claim, [ev], H.an_word)
+        r1 = recalls[arg] if recalls else 0.0
+        sc = nli.scores(ev, claim)
+        rows.append(dict(label=1 if lab == "SUPPORTS" else 0, r1=round(r1, 4),
+                         nli_e=round(sc.get("entailment", 0.0), 4),
+                         nli_c=round(sc.get("contradiction", 0.0), 4)))
+        if all(v <= 0 for v in want.values()):
+            break
+    _ = itertools  # keep import used if loop empty
+    fp.write_text(json.dumps(rows))
+    return rows
+
+
+def run_a4() -> None:
+    from sklearn.linear_model import LogisticRegression
+
+    vit = build_vitaminc()
+    gold = build_features(use_mt=True)
+    cols = ["r1", "nli_e", "nli_c"]
+    Xv = np.array([[r[c] for c in cols] for r in vit], dtype=float)
+    yv = np.array([r["label"] for r in vit])
+    m = LogisticRegression(max_iter=1000, class_weight="balanced").fit(Xv, yv)
+    Xg = np.array([[r[c] for c in cols] for r in gold], dtype=float)
+    yg = [r["label"] for r in gold]
+    out = ["## Lab A4 - VitaminC-frozen calibrator transfer (zero gold fit)\n",
+           f"VitaminC train: {len(vit)} records; coefficients {dict(zip(cols, m.coef_[0].round(2)))} "
+           f"intercept {m.intercept_[0]:.2f}\n",
+           "| rule | macroF1 | hal-F1 | sup-F1 | acc |",
+           "|---|---|---|---|---|"]
+    for thr in (0.5, 0.4):
+        pred = (m.predict_proba(Xg)[:, 1] >= thr).astype(int)
+        s = H.score_verdicts(yg, list(pred))
+        out.append(f"| VitaminC-frozen @{thr} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | "
+                   f"{s['f1_sup']:.2f} | {s['acc']:.3f} |")
+    report = "\n".join(out) + "\n"
+    print(report)
+    (Path(__file__).parent / "logs" / "lab_a4.md").write_text(report)
+
+
+def main() -> None:
+    from sklearn.linear_model import LogisticRegression
+
+    rows = build_features(use_mt=True)
+    _add_interactions(rows)
+    labels = [r["label"] for r in rows]
+    print(f"feature table: {len(rows)} records | beat macro-F1 0.755 / hal-F1 0.64\n")
+
+    def LR():
+        return LogisticRegression(max_iter=1000, class_weight="balanced")
+
+    out = ["## Lab batch 1 - interactions + wildcards (LOLO, macro-F1)\n",
+           "| hypothesis | macroF1 | hal-F1 | sup-F1 | acc | note |",
+           "|---|---|---|---|---|---|"]
+
+    def row(name, s, note=""):
+        out.append(f"| {name} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | "
+                   f"{s['f1_sup']:.2f} | {s['acc']:.3f} | {note} |")
+
+    # floor: logistic on r1 alone
+    row("floor: LR[r1]", lolo_model(rows, ["r1"], LR))
+    # A1 language x recall
+    row("A1 +is_en,isen_r1,nonen_nlie", lolo_model(
+        rows, ["r1", "nli_e", "nli_c", "is_en", "isen_r1", "nonen_nlie"], LR),
+        "language x recall interaction")
+    row("A1 twin (no interactions)", lolo_model(rows, ["r1", "nli_e", "nli_c", "is_en"], LR),
+        "ablation: main effects only")
+    # A3 carved region
+    row("A3 +r1_x_nlic product", lolo_model(
+        rows, ["r1", "nli_e", "nli_c", "r1_x_nlic"], LR), "right-topic-wrong-fact")
+    row("A3 twin (no product)", lolo_model(rows, ["r1", "nli_e", "nli_c"], LR), "ablation")
+    # A5 continuous NLI
+    row("A5 LR[r1,nli_e,nli_c]", lolo_model(rows, ["r1", "nli_e", "nli_c"], LR),
+        "continuous NLI balance")
+    # A3 diagnostic: 2x2 enrichment
+    hi = [r for r in rows if r["r1"] >= 0.4 and r["nli_c"] >= 0.5]
+    halrate = sum(1 for r in hi if r["label"] == 0) / max(1, len(hi))
+    out.append(f"\nA3 diagnostic: high-r1 & high-nli_c cell n={len(hi)}, "
+               f"hallucination rate {halrate:.2f} (base 0.23)\n")
+    # C1 oracle vs r1 (1-feature LR)
+    r1s = lolo_model(rows, ["r1"], LR)["f1_macro"]
+    ors = lolo_model(rows, ["oracle"], LR)["f1_macro"]
+    out.append(f"C1 oracle-chunk: LR[r1]={r1s:.3f} -> LR[oracle]={ors:.3f}; "
+               f"retrieval loss {ors - r1s:+.3f}\n")
+    # C6 anchor-as-veto (parameter-free override on fixed-prior recall tau=0.4)
+    rec = [int(r["r1"] >= 0.4) for r in rows]
+    vetoed = [0 if r["veto"] else p for r, p in zip(rows, rec)]
+    fv = sum(1 for r, p, v in zip(rows, rec, vetoed) if r["label"] == 1 and p == 1 and v == 0)
+    row("C6 recall+veto (fixed tau0.4)", H.score_verdicts(labels, vetoed),
+        f"false-veto={fv}")
+    row("C6 recall-only (fixed tau0.4)", H.score_verdicts(labels, rec), "no veto")
+
+    report = "\n".join(out) + "\n"
+    print(report)
+    (Path(__file__).parent / "logs").mkdir(exist_ok=True)
+    (Path(__file__).parent / "logs" / "lab_batch1.md").write_text(report)
+
+
+if __name__ == "__main__":
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "batch1"
+    {"b1": run_b1, "a4": run_a4, "batch1": main}.get(cmd, main)()

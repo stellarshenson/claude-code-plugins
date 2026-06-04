@@ -121,5 +121,9 @@ cython_debug/
 # DeLaval grounding forensics stash - client data + session transcripts, NEVER commit
 experiments/grounding/delaval-forensics/
 
-# transient experiment run logs (keep the README)
-experiments/grounding/logs/*.log
+# transient experiment run logs and result dumps (keep only the README)
+experiments/grounding/logs/*
+!experiments/grounding/logs/README.md
+
+# cached per-record feature tables (derived from client claims)
+experiments/grounding/cache/

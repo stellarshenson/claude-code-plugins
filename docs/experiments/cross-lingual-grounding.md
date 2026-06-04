@@ -89,12 +89,13 @@ What the experiment taught beyond the numbers, including its own limitations.
 
 - **MT is the dominant lever** - cross-lingual grounding here is translate-then-recall; per-language MT models beat one multilingual model on quality and speed
 - **Imbalance hides failure** - 0.771 accuracy looked fine while macro-F1 was 0.435 and hallucination-F1 0.000; choose the imbalance-robust metric before drawing conclusions
-- **Simplicity won by constraint, not by nature** - forbidding any learned weighting left only hand-set weights and per-fold thresholds, which lost to the single best signal; this is a deliberately weak model, not proof that one signal suffices
-- **Linear boundaries only** - the calibrator and every combiner are interaction-free; a logistic hyperplane cannot represent "trust bm25 when same-language, trust NLI when cross-lingual"; no nonlinear manifold was ever learned
-- **Language was a router, not a feature** - detected language only hard-switched thresholds; as a feature with interaction terms it could contextually down-weight signals, which was never tested
-- **Claims extraction untested** - claims average 2.35 sentences and were grounded whole; atomic splitting + aggregation was never built, so a multi-fact claim with one fabricated fact still scores as mostly grounded
-- **Anti-overfit is not no-modeling** - the rule bans fitting the test data, not modeling feature interactions; conflating the two is what produced the weak model
-- **Tiny negative class** - 86 hallucinations total, es/pt at n=5-6; any high-capacity learner will overfit, so leave-one-language-out plus low capacity is mandatory
+- **Simplicity won by nature, not just constraint** - the follow-up rounds tested richer models properly (interactions, decomposition, transfer, all under LOLO) and every one lost to the single recall signal; the simple model is near-optimal at this dataset size, not merely a constraint artifact
+- **Linear boundaries are enough here** - the `r1 × nli_contra` "right-topic-wrong-fact" region a hyperplane cannot carve was checked and **does not exist** in this gold (high-high cell n=10, hallucination rate 0.20 < 0.23 base); there is no nonlinear manifold to learn
+- **Language as a feature was tested and refuted** - the `is_en × recall` interaction overfits out-of-fold (macro-F1 0.691 vs the no-interaction twin 0.714); hard routing (recall_split) generalises better than a learned language interaction
+- **Claims extraction was built and refuted** - clauses, not sentences, are the unit (claims are 1.19 sentences but 136/375 carry a connective); clause-split + aggregation **over-flags** paraphrased supported clauses (sup-F1 0.90 → 0.86) with no hal-F1 gain
+- **Cross-corpus transfer fails on domain mismatch** - weights learned on VitaminC ground on NLI-contradiction and ignore recall; DeLaval needs the opposite, so transfer collapses (macro-F1 0.594)
+- **Capacity ceiling confirmed** - 86 hallucinations (LOLO removes a language each fold) fund ~1 feature; richer models overfit. Beating the simple model needs more labelled data, not a cleverer model
+- **Anti-overfit is not no-modeling** - the rule bans fitting the test data, not modeling interactions; we modeled them honestly under LOLO and they still lost - the constraint was not what held performance back
 
 ## Conclusions
 
@@ -108,11 +109,10 @@ Deterministically this is a translation problem followed by a recall-scoring pro
 
 ## Next steps
 
-The open levers all target the weak-model and untested-extraction gaps above.
+The interaction / decomposition / transfer levers were tested and refuted (see BENCHMARK.md rounds 2-4); what remains targets data, not model capacity.
 
-- **Learned interaction model under LOLO** - fit a shallow gradient-boosted tree or interaction-logistic over all signals + language + cross terms, trained on six languages and scored on the seventh; the direct test of whether feature interactions beat the 1-D recall floor without fitting the test data
-- **Language as a feature** - add `is_en` / `cross_lingual` plus interaction terms (`is_en × bm25`, `cross_lingual × nli_entail`) so the model down-weights signals contextually instead of hard routing
-- **Atomic claims extraction** - split multi-fact claims, ground each sub-claim, aggregate (all-supported → grounded, any-contradicted → contradicted), re-run the tournament
-- **Larger gold** - es/pt at n=5-6 are too small to trust interaction terms; re-test on a bigger multilingual sample first
-- **Promotion** - if a learned, LOLO-validated balance holds, propose translate-then-recall + NLI in the production grounder via a separate reviewed change
+- **More labelled data** - the binding constraint is 86 hallucinations; a larger, balanced multilingual gold (especially es/pt beyond n=5-6) is the prerequisite for any richer model to fund itself under LOLO
+- **Promotion** - the simple, well-defended recipe is ready: propose translate-then-recall (`recall_split`) + the parameter-free recall-OR-NLI ensemble in the production grounder via a separate reviewed change
+- **Engineering** - swap argos for a faster per-language engine if throughput matters; lingua-py for language ID
+- **Refuted, do not revisit without more data** - feature interactions, claim decomposition, cross-corpus calibrator transfer
 - **Done so far** - chunk sweep, lingua-py, English two-threshold, fixed-prior, abstain band, NLI residual, OPUS-MT engine; metric moved to macro-F1 (see BENCHMARK.md)

@@ -51,6 +51,55 @@ Running scoreboard for every hypothesis tested on the 375-record verified gold. 
 - **lingua over-splitting** - Norwegian → nb/nn, a few short-claim misfires; net positive
 - **es/pt tail** - n=5-6, noisy; NLI ensemble is the lever there
 
+## Round 2 - interactions + wildcards (LOLO, learned models)
+
+Tested whether feature interactions / nonlinear separation beat the 1-D recall floor. **They do not** - the 375 with 86 negatives is effectively 1-dimensional under LOLO.
+
+| hypothesis | macroF1 | hal-F1 | verdict |
+|---|---|---|---|
+| floor: LR[r1] | 0.731 | 0.57 | 1-D logistic ≈ recall_split |
+| A1 language×recall interaction | 0.691 | 0.49 | **REFUTED** - worse than its no-interaction twin (0.714) and the floor; overfits out-of-fold |
+| A3 r1×nli_contra product | 0.726 | 0.63 | **REFUTED** - identical to twin (0.728); the "right-topic-wrong-fact" cell is n=10 at 0.20 hal-rate < 0.23 base, doesn't exist |
+| A5 continuous-NLI logistic | 0.728 | 0.63 | below recall_split 0.751; continuous NLI no better than the OR-ensemble |
+| C1 oracle-chunk | 0.701 | - | **retrieval is NOT the bottleneck** - oracle loss −0.029 (recall-max picks spurious chunks); kills C2-doc/C4 |
+| C6 anchor-as-veto | 0.687 | 0.59 | neutral - only 3 false-vetoes, few mismatches fire |
+
+**Conclusion**: learned and interaction models *underperform* the hand-routed `recall_split` (0.751). The simple model wins not by constraint but because the data cannot fund more capacity - the A6 capacity ceiling sits at ~1 feature. Live mechanisms remaining: A4 (learn the balance off-target on VitaminC) and Theme B (claim decomposition - an orthogonal lever on hallucination-F1).
+
+## Round 3 - claim decomposition (Theme B, LOLO)
+
+Tested whether splitting multi-fact claims and aggregating beats whole-claim grounding. **It does not** - decomposition over-flags paraphrased supported clauses.
+
+| unit / aggregation | macroF1 | hal-F1 | sup-F1 | verdict |
+|---|---|---|---|---|
+| whole-claim | 0.752 | 0.61 | 0.90 | baseline (≈ recall_split) |
+| sentence-split | 0.739 | 0.58 | 0.89 | no-op-to-harmful (claims are 1 sentence) |
+| clause-split, any-contradicted | 0.732 | 0.60 | 0.86 | **REFUTED** - sup-F1 drops, hal-F1 flat |
+| clause-split, k-of-n | 0.714 | 0.60 | 0.83 | **REFUTED** - worst |
+
+146/375 claims split into >1 clause; min-over-clauses recall false-flags supported claims whose clauses are legitimately paraphrased, and the hal-F1 gain the decomposition was meant to deliver never materialises (B7 honesty-check falsifier confirmed). The whole-claim 1-D recall model is robust at this dataset size.
+
+## Round 4 - cross-corpus transfer (A4, learn the balance off-target)
+
+Fit the {recall, nli_entail, nli_contra} logistic on a balanced 390-record VitaminC slice, froze it, applied to the gold at a fixed threshold (zero gold fit).
+
+| rule | macroF1 | hal-F1 | sup-F1 | verdict |
+|---|---|---|---|---|
+| VitaminC-frozen @0.5 | 0.594 | 0.34 | 0.85 | **REFUTED** - domain mismatch |
+| VitaminC-frozen @0.4 | 0.581 | 0.30 | 0.86 | **REFUTED** |
+
+The learned coefficients tell the story: `r1: 0.0, nli_e: 0.02, nli_c: -3.03`. VitaminC (short English FEVER sentences) is an **NLI-dominant** domain and learns to ignore recall; DeLaval is a **recall-dominant** cross-lingual domain. The balance learned off-target is the wrong balance, so transfer collapses. Honest conclusion: the correct signal weighting is domain-specific and cannot be borrowed.
+
+## Synthesis - what beats the simple model (nothing, here)
+
+All three advanced mechanisms tested across rounds 2-4 are **refuted** on this 375-record gold:
+
+- **Feature interactions** (language×recall, r1×nli_contra) - overfit the 86 negatives under LOLO, score below the 1-D floor
+- **Claim decomposition** (clause-split, k-of-n) - over-flags paraphrased supported clauses, no net hal-F1 gain
+- **Cross-corpus transfer** (VitaminC) - mis-weights signals (NLI-dominant source vs recall-dominant target)
+
+The **A6 capacity ceiling is confirmed**: with 86 hallucinations (and LOLO removing a language each fold), the data funds ~1 feature. The deliverable recommendation is unchanged and now well-defended: ship the simple **translate-then-recall** model (`recall_split`, macro-F1 0.755) and add the parameter-free **recall-OR-NLI** ensemble for hallucination detection (hal-F1 0.64). Beating this needs **more labelled data**, not a cleverer model.
+
 ## Recommendation (all 9 hypotheses tested)
 
 - **Ship**: argos-translate MT bridge + best-chunk recall, English/translated two-threshold (`recall_split`) - best macro-F1 0.755 TEST and accuracy 0.817, cheapest path
