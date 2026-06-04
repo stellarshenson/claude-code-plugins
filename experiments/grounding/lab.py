@@ -399,6 +399,51 @@ def run_final() -> None:
     print("wrote plots/05_capacity_ceiling.png")
 
 
+def run_bayes() -> None:
+    """Production Bayesian calibrator (bambi/PyMC logistic) under LOLO - a hyperplane."""
+    import pandas as pd
+
+    from stellars_claude_code_plugins.document_processing.calibration import (
+        PREDICTORS,
+        fit_calibrator,
+    )
+
+    rows = build_features(use_mt=True)
+
+    def to_df(rs):
+        d = {p: [0.0] * len(rs) for p in PREDICTORS}
+        d["bm25_recall"] = [r["r1"] for r in rs]
+        d["nli_entail"] = [r["nli_e"] for r in rs]
+        d["nli_contra"] = [r["nli_c"] for r in rs]
+        d["grounded"] = [float(r["label"]) for r in rs]
+        return pd.DataFrame(d)
+
+    langs = sorted({r["det_lang"] for r in rows})
+    yt, yp = [], []
+    for L in langs:
+        tr = [r for r in rows if r["det_lang"] != L]
+        te = [r for r in rows if r["det_lang"] == L]
+        if len({r["label"] for r in tr}) < 2 or not te:
+            continue
+        cal = fit_calibrator(to_df(tr), balance="balanced", draws=300, tune=300,
+                             chains=2, random_seed=0)
+        ptr = np.asarray(cal.predict_proba(to_df(tr)[PREDICTORS]))
+        thr, best = 0.5, -1.0
+        for t in np.linspace(0.2, 0.8, 13):
+            f = _mf1([r["label"] for r in tr], (ptr >= t).astype(int))
+            if f > best:
+                best, thr = f, t
+        pte = np.asarray(cal.predict_proba(to_df(te)[PREDICTORS]))
+        yp += list((pte >= thr).astype(int))
+        yt += [r["label"] for r in te]
+    s = H.score_verdicts(yt, yp)
+    line = (f"Bayesian calibrator (bambi/PyMC logistic) LOLO: "
+            f"macroF1 {s['f1_macro']:.3f} | hal-F1 {s['f1_hal']:.2f} | "
+            f"sup-F1 {s['f1_sup']:.2f} | acc {s['acc']:.3f}")
+    print(line)
+    (Path(__file__).parent / "logs" / "lab_bayes.md").write_text(line + "\n")
+
+
 def main() -> None:
     from sklearn.linear_model import LogisticRegression
 
@@ -459,4 +504,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "batch1"
-    {"b1": run_b1, "a4": run_a4, "final": run_final, "batch1": main}.get(cmd, main)()
+    {"b1": run_b1, "a4": run_a4, "final": run_final, "bayes": run_bayes,
+     "batch1": main}.get(cmd, main)()

@@ -13,14 +13,14 @@ The lexical grounder confirmed only ~12% of supported claims on a 375-record cli
 
 ## Executive summary
 
-A frozen offline translator plus best-chunk IDF recall clears the target with no model trained on the data.
+A frozen translator plus best-chunk recall solves the cross-lingual gap; a depth-2 tree over {recall, NLI, anchors} is the best model - all without training on the gold (metric: macro-F1, imbalance-robust).
 
-- **Headline** - argos-translate + best-chunk recall reaches leave-one-language-out balanced accuracy 0.777, held-out test 0.791 accuracy / 0.755 balanced
-- **Target met** - balanced-accuracy guard was ≥0.75; majority-class floor is 0.771 accuracy / 0.500 balanced
-- **MT is the lever** - per-language LOLO: nb 0.40 → 0.93, fr 0.50 → 0.81, it 0.88 → 1.00
-- **Accuracy path** - a separate recall bar for native-English vs translated claims reaches 0.845 LOLO / 0.817 test accuracy, near the 0.85 stretch
-- **Lexical-only ceiling** - ~0.67 balanced without translation
-- **Residual** - Spanish/Portuguese abstractive tail stays hard (es 0.33 on n=6)
+- **Best model** - depth-2 gradient-boosted tree, fit under leave-one-language-out: macro-F1 0.775 (5-seed mean ±0.013), hallucination-F1 0.66, accuracy 0.861
+- **Simple baseline** - argos-translate + best-chunk recall (`recall_split`): macro-F1 0.755, accuracy 0.817; the transparent fallback
+- **MT is the dominant lever** - per-language LOLO accuracy nb 0.40 → 0.93, fr 0.50 → 0.81, it 0.88 → 1.00; lexical-only ceiling ~0.67 balanced
+- **Imbalance matters** - 289/86, so accuracy misleads: majority predictor reads 0.771 accuracy but macro-F1 0.435 with hallucination-F1 0.000
+- **Refuted** - linear interactions, claim decomposition, cross-corpus transfer (all overfit or mis-weight)
+- **Residual** - Spanish/Portuguese abstractive tail stays hard (n=5-6, noisy)
 
 ## Methodology
 
@@ -97,15 +97,25 @@ What the experiment taught beyond the numbers, including its own limitations.
 - **Cross-corpus transfer fails on domain mismatch** - weights learned on VitaminC ground on NLI-contradiction and ignore recall; DeLaval needs the opposite, so transfer collapses (macro-F1 0.594)
 - **Anti-overfit is not no-modeling** - the rule bans fitting the test data, not modeling interactions; modeling them honestly under LOLO is exactly how the depth-2 GBT win was found
 
+## Model class: GBT vs linear vs Bayesian calibration
+
+The deciding factor is the model class, not the fitting method - the project's Bayesian calibrator is a linear hyperplane and shares the linear ceiling. All three fit {recall, NLI-entail, NLI-contra} under leave-one-language-out.
+
+- **Linear logistic** (sklearn) - macro-F1 0.728; adding linear interaction terms makes it *worse* (0.691), the cross terms overfit the 86 negatives
+- **Bayesian calibration** (production `fit_calibrator`, bambi/PyMC logistic) - macro-F1 0.733, hal-F1 0.63; the priors add regularisation and calibrated uncertainty, lifting it a hair over the bare logistic, but it is the **same hyperplane** and cannot carve the recall × NLI interaction
+- **Depth-2 GBT** - macro-F1 0.775, hal-F1 0.66; axis-aligned tree splits represent "high recall AND high entailment" jointly - the boundary a hyperplane cannot
+- **Takeaway** - the ~0.04 macro-F1 headroom is in the model class (shallow nonlinear), not in better-fitting a linear one; the Bayesian calibrator's value is calibrated uncertainty, not accuracy. Deeper trees overfit (capacity ceiling), so depth-2 is the operating point
+
 ## Conclusions
 
-Deterministically this is a translation problem followed by a recall-scoring problem, not one the lexical bridges solve.
+Deterministically this is a translation problem, then a recall-scoring problem, and a depth-2 nonlinear model squeezes the last gain the data can fund.
 
-- **Translate-then-recall wins** - a frozen translator plus best-chunk IDF recall is cheap (CPU-only, no training) and clears the balanced-accuracy bar
-- **Simplest signal wins** - once MT closes the language gap, the lexicon, cognate, anchor, contradiction and meta layers are neutral-to-harmful (char-ngram floor admits hallucinations, contradiction gate over-fires)
-- **Accuracy gap** - 0.791 sits below the 0.85 stretch, held back by the English slice and the small abstractive tail
-- **Hard residual** - Spanish/Portuguese anchor-less prose may still need a semantic layer; n=5-6 makes those cells noisy
-- **Reframes the client finding** - lexical did not fail at grounding generally, only at cross-lingual confirmation; the cheap fix is translation, not a richer lexical stack
+- **Translate-then-recall is the foundation** - a frozen translator plus best-chunk IDF recall is cheap (CPU-only, no training) and reaches macro-F1 0.755 / accuracy 0.817 on its own
+- **A depth-2 GBT is the best model** - over {recall, NLI, anchors}, fit under LOLO, it reaches macro-F1 0.775 / hal-F1 0.66 / accuracy 0.861, beating the simple rule on all three; the gain is shallow tree interactions, not a richer lexical stack
+- **The lexical bridges do not help** - lexicon, cognate, anchor, contradiction and meta layers are neutral-to-harmful once MT is present; decomposition and cross-corpus transfer were built and refuted
+- **The ceiling is data, not model** - the 86 hallucinations fund exactly a depth-2 tree; deeper or linear models overfit (the capacity scissors). Beating ~0.78 needs more labelled data
+- **Hard residual** - Spanish/Portuguese anchor-less prose stays the weak spot; n=5-6 makes those cells noisy
+- **Reframes the client finding** - lexical did not fail at grounding generally, only at cross-lingual confirmation; the cheap fix is translation, then a small learned model
 
 ## Next steps
 

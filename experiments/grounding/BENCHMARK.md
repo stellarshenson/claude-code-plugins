@@ -73,9 +73,12 @@ LOLO macro-F1 vs model capacity, with in-fold (resubstitution) overlay:
 |---|---|---|---|---|---|
 | LR[r1] | 0.731 | 0.57 | 0.827 | 0.753 | +0.02 |
 | LR[r1,nli] | 0.728 | 0.63 | 0.760 | 0.750 | +0.02 |
+| Bayesian calibrator (bambi/PyMC) | 0.733 | 0.63 | 0.771 | - | - |
 | LR+interactions (linear) | 0.691 | 0.49 | 0.819 | 0.761 | +0.07 |
 | **GBT depth-2** | **0.785** | 0.66 | 0.861 | 0.909 | +0.12 |
 | GBT depth-4 | 0.733 | 0.56 | 0.851 | 0.996 | +0.26 |
+
+**Model class is the lever, not the fitting method**: the production Bayesian calibrator (`fit_calibrator`, bambi/PyMC) is a Bayesian *logistic* - a hyperplane - so it lands at the linear-logistic level (0.733) and cannot carve the recall×NLI interaction the depth-2 GBT captures (0.775). The calibrator's worth is calibrated uncertainty, not higher accuracy.
 
 The curve is the classic scissors: in-fold rises monotonically to 0.996 (memorisation) while **LOLO peaks at depth-2** (0.785, above recall_split's 0.755) then falls. Depth-2 axis-aligned tree interactions over {recall, NLI, anchors} are exactly the capacity the 86 negatives can fund; deeper trees and free-form linear interactions overfit. **Corrected conclusion**: feature interactions DO help, but only as shallow trees - the round-2 "1-D is enough" read was an artefact of testing only linear interactions.
 
