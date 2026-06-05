@@ -7,7 +7,7 @@ The deployed grounder classifies each claim as supported or hallucination using 
 Eight deterministic stages, claim in → verdict + triage flag out.
 
 - **Language detection** - lingua-py per claim and per best chunk; a `same_lang` flag marks whether the source carries a chunk in the claim's language
-- **Conditional MT** - argos-translate (CTranslate2 int8, CPU) + wtpsplit SaT sentence splitter (ONNX), torch-free; fires only on heterogeneous claims (non-English claim vs English source), ~23% of the live 2631 gold (the language tail grew to ten languages)
+- **Conditional MT** - argos-translate (CTranslate2 int8, CPU) + wtpsplit SaT sentence splitter (ONNX), torch-free; fires only on heterogeneous claims (non-English claim vs English source), ~23% of the live 2752 gold (the language tail grew to ten+ languages)
 - **Chunking** - recursive, 300-char chunks, 0.1 overlap (AUC-validated operating point)
 - **Lexical recall** - BM25-best-chunk IDF-weighted token recall, computed direct (`r1_direct`) and translate-then-recall (`r1_mt`); the model learns which to trust
 - **Supporting lexical signals** - char-ngram recall, rapidfuzz partial-ratio, anchor recall + mismatch (numbers/IDs, language-invariant), oracle-chunk and top-k consensus
@@ -33,21 +33,22 @@ Lexical recall is blind to present-but-contradicted claims (high overlap, one fa
 
 ## Performance
 
-One logistic, joint DeLaval (2631) + VitaminC (800, SUPPORTS vs REFUTES), grouped CV, per-corpus-tuned threshold (one model, domain-calibrated operating point). macro-F1.
+One logistic, joint DeLaval (2752) + VitaminC (800, SUPPORTS vs REFUTES), grouped CV, per-corpus-tuned threshold (one model, domain-calibrated operating point). macro-F1.
 
 | configuration | DeLaval | VitaminC |
 |---|---|---|
-| lexical base | 0.837 | 0.545 |
-| shipped (value-conflict + WordNet antonym) | 0.826 | 0.655 |
+| lexical base | 0.832 | 0.555 |
+| shipped (value-conflict + WordNet antonym) | 0.825 | 0.661 |
 
-- **Hold, not collapse** - VitaminC rises 0.545 → 0.655 while DeLaval moves 0.837 → 0.826 (−0.011, within LOSO noise)
+- **Hold, not collapse** - VitaminC rises 0.555 → 0.661 while DeLaval moves 0.832 → 0.825 (−0.007, within LOSO noise)
 - **Triage flag** - flags 26% of VitaminC at 90% REFUTES precision (50% base rate), routing the contradiction region to a future semantic stage
 - **WordNet replaced a curated antonym list** - broader word-sense coverage; aligned value-conflict is the free component (near-zero DeLaval cost)
-- **Replicates across data growth** - the hold-vs-collapse pattern held as the gold grew 1260 → 2631 (VitaminC +0.11, DeLaval −0.01 both runs); absolutes shift slightly on the larger, more language-diverse set
+- **Replicates across data growth** - the hold-vs-collapse pattern held as the gold grew 1260 → 2631 → 2752 (VitaminC +0.10-0.13, DeLaval −0.01 every run); absolutes shift slightly on the larger, more language-diverse set
+- **Pure-lexical ceiling reached** - a round-3 deep-research sweep of parser-free structural mechanisms (role reversal, scoped negation, quantifier mismatch) found all three absent at usable density in VitaminC; the remaining residual is irreducibly semantic and routed to the (deferred) heavy stage via the triage flag
 
 ## Throughput and footprint
 
-- **~133 ms/claim** feature build, single-thread CPU on the 2631 gold; MT now leads at 66 ms amortised (288 ms per translated claim, 23% of claims), recall 58 ms (BM25 ×2), intrinsic + WordNet lookup ~7 ms
+- **~165 ms/claim** feature build, single-thread CPU on the 2752 gold; MT now leads at 86 ms amortised (~370 ms per translated claim, 23% of claims), recall 69 ms (BM25 ×2), intrinsic + WordNet lookup ~7 ms
 - **5s** one-time cold start (load SaT + first MT model); classifier fit/score negligible
 - **CPU-only, torch-free** - no GPU, no semantic model in the verdict path; argos MT models ~80-100MB loaded on demand, SaT-3l small, logistic in KB
 - **Dependencies** - lingua-py, argos-translate (CTranslate2), wtpsplit (ONNX), rapidfuzz, wordfreq, scikit-learn, and nltk + WordNet (~10MB, English; claims are MT'd to English) for the antonym lexicon

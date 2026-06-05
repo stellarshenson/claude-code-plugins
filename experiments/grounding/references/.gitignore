@@ -1,0 +1,2 @@
+# reference PDFs are large binaries - keep them local, commit only the .md sidecars
+*.pdf
