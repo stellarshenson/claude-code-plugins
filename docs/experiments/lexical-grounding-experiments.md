@@ -35,6 +35,7 @@ A purely lexical model (translate the claim, then lexical recall) is the best, b
 | R1 contradiction: value-conflict, direction-flip, interaction, polarity | DeLaval + VitaminC joint | VitaminC 0.532 → 0.673, DeLaval holds 0.841 | value-conflict + direction **ship**; interaction, polarity **refuted** |
 | R2 contradiction: minimal-substitution, numeric-comparison, WordNet antonym | DeLaval + VitaminC joint | VitaminC 0.555 → 0.661, DeLaval 0.832 → 0.825; triage 90% prec | **WordNet ships** (replaces curated list); subst + numeric **null** |
 | R3 contradiction: relation/role reversal, scoped negation, quantifier mismatch | VitaminC probe | absent at usable density (shared-entities 5%, negation 0%, quantifier 4%) | **all null** - pure-lexical contradiction signal is saturated |
+| R4 normalisation: Snowball-stemmed recall | DeLaval 2752 + VitaminC joint | +0.002 both corpora (within noise), +~35 ms/claim latency | **rejected** - char n-grams already capture morphology; not worth the recall pass |
 
 ![Progressive gains across hypothesis rounds - VitaminC climbs 0.53 to 0.69 as deterministic contradiction features are added while DeLaval holds ~0.85, then round 3 plateaus at lexical saturation](images/progressive-gains.svg)
 
@@ -46,7 +47,7 @@ A purely lexical model (translate the claim, then lexical recall) is the best, b
 - **Metric** - macro-F1 (imbalance-robust); the majority predictor reads ~0.71 accuracy but macro-F1 ~0.41 with hallucination-F1 0.000
 - **Residual** - hallucination detection is data-bound on the smallest language tails (da/pt at n=8-10)
 - **Contradiction layer holds a second corpus** - a deterministic value-conflict feature + WordNet antonym-flip lifts the lexical-blind VitaminC contrastive set (joint macro-F1 0.555 → 0.661) while DeLaval holds (0.832 → 0.825), plus a `semantic_candidate` triage flag (26% of VitaminC at 90% REFUTES precision); the hold-vs-collapse pattern replicated as the gold grew 1260 → 2631 → 2752; the full final design is in `lexical-grounding-sota.md`
-- **Lexical contradiction signal is saturated** - round 3 probed three parser-free structural mechanisms (relation/role reversal, scoped negation, quantifier mismatch); all three are **absent at usable density in VitaminC** (≥2 shared entities 5%, negation cue 0%, quantifier 4%) - a clean triple null. Value-conflict + WordNet antonym is the reachable pure-lexical ceiling; the residual is irreducibly semantic and needs the latency-deferred component (counter-fitted vectors / NLI), routed by the triage flag
+- **Lexical lever is exhausted** - round 3 probed three parser-free structural mechanisms (role reversal, scoped negation, quantifier mismatch) - all absent at usable density in VitaminC (a clean triple null); round 4 added Snowball-stemmed recall - +0.002 within noise (char n-grams already capture morphology) and rejected for latency. Value-conflict + WordNet antonym + the recall/specificity backbone is the reachable pure-lexical ceiling; the residual is irreducibly semantic and needs the latency-deferred component (counter-fitted vectors / NLI), routed by the triage flag
 
 **Performance results** - average per-claim end-to-end breakdown (lexical + MT, no semantic; live 2752 gold, CPU single-thread, torch-free). MT fires only on heterogeneous claims (non-English claim vs English source), so its per-claim cost is amortised across all 2752.
 
@@ -165,6 +166,14 @@ A deep-research round (web-authorised; key papers in `experiments/grounding/refe
 - **R3-H3 quantifier/scope-cue mismatch** - **null**; only 4% have a quantifier and it is wrong-signed (fires more on SUPPORTS)
 
 - **Conclusion - the pure-lexical contradiction signal is saturated** - value-conflict (numeric/entity edits, which the dataset confirms is 28% of hallucinations) + WordNet antonym opposition is the reachable ceiling. The remaining residual is the synonym-vs-fact-edit distinction, which static embeddings cannot make (antonyms and synonyms are distributionally close - Nguyen 2016) and only a counter-fitted lookup (Mrkšić 2016) or an NLI/cross-encoder could; all are deferred for latency. The `semantic_candidate` triage flag already routes that residual to a future heavy stage. Research write-ups: `references/{vitaminc_2021,counter_fitting_2016,antonym_synonym_2016}.md`
+
+## Normalisation, round 4: stemming (near-null, rejected)
+
+The user's idea: heavier text normalisation - stemming and spelled-out number canonicalisation - to lift the recall backbone rather than chase contradiction. A codebase map first established that the pipeline already normalises heavily (lowercase, NFKD accent-strip, punctuation, char n-grams, locale-robust numbers); the genuine gaps were stemming (none anywhere) and spelled numbers (digit-only).
+
+- **R4-H1 Snowball-stemmed recall** (symmetric - the same analyzer stems claim AND chunks) - added `r1_stem` to the joint and re-ran on 2752: **+0.002 on both corpora (DeLaval 0.825 → 0.827, VitaminC 0.661 → 0.663), within LOSO noise.** Predicted and confirmed: the char n-gram feature already matches morphological variants (`configure`/`configures`/`configuration` share `configur`), so stemming is redundant; the gain lands on the already-near-ceiling supported side, not the hard hallucination class. Rejected - it is a third BM25 recall pass (~+35 ms/claim) for no real gain, failing the latency bar
+- **R4-H2 spelled-out number canonicalisation** - skipped: the bigger lever (stemming) was null, and genuine spelled-quantity coverage is low (the 2.8% / 7.9% raw counts are inflated by "one" as a pronoun), so a narrower numeric feature cannot move macro-F1
+- **Conclusion - the pure-lexical lever is exhausted** - across four rounds the deterministic lexical ceiling is value-conflict + WordNet antonym + the recall/specificity backbone; normalisation adds nothing because the existing analyzers already extract the surface signal. The next real gain requires the latency-deferred semantic stage, gated by the triage flag
 
 ## Lessons learned
 
