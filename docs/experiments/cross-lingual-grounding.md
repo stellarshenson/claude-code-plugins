@@ -23,6 +23,24 @@ A purely lexical model (translate the claim, then lexical recall) is the best, b
 - **Metric** - macro-F1 (imbalance-robust); the majority predictor reads ~0.64 accuracy but macro-F1 ~0.39 with hallucination-F1 0.000
 - **Residual** - hallucination detection is data-bound (es/pt at n=5-6)
 
+**Performance results** - average per-claim end-to-end breakdown (lexical + MT, no semantic; live 1260 gold, CPU single-thread, torch-free). MT fires only on heterogeneous claims (non-English claim vs English source), so its per-claim cost is amortised across all 1260.
+
+| Stage | Total | Avg / claim | Notes |
+|---|---|---|---|
+| Recall (BM25 ×2) | 76.1s | 60.43 ms | the bottleneck - BM25 rebuilt per claim, direct + MT pass |
+| MT (argos) | 34.6s | 27.44 ms | 194.2 ms per translated claim, fires on 178/1260 = 14% |
+| Claim-intrinsic (lingua + specificity) | 6.5s | 5.13 ms | language ID + anchor density |
+| Anchor (numbers/IDs) | 1.0s | 0.77 ms | language-invariant |
+| **Feature build (total)** | **120.1s** | **95.3 ms** | sum of the above per claim |
+| Classifier fit + score | 1.8s | negligible | logistic, amortised at inference |
+| Cold start (load SaT + 1 MT model) | 6.8s | one-time | not per-claim |
+
+- **Throughput** - ~95 ms/claim end to end (≈10.5 claims/s single-thread); recall dominates at 60 ms, MT adds 27 ms amortised
+- **Quality at this operating point** - LOSO macro-F1 0.844 / hal-F1 0.81 / sup-F1 0.88 / acc 0.853; LOLO macro-F1 0.803 / hal-F1 0.74 / sup-F1 0.87 / acc 0.826
+- **MT is cheap in aggregate** - 86% of claims are English and skip translation; the 14% heterogeneous tail carries the 194 ms cost
+- **Footprint** - CPU-only, no torch, no GPU, no semantic; argos MT models ~80-100MB each loaded on demand, SaT-3l small, logistic in KB
+- **Headroom** - recall rebuilds BM25 per claim across only ~22 distinct sources; caching BM25 per source is a ~5-10× recall speedup left on the table
+
 ## Methodology
 
 Per-claim lexical signals (word recall with and without translation, anchors, claim-intrinsic shape), then a learned verdict head; no semantic scorer.
