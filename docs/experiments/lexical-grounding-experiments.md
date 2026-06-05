@@ -36,6 +36,8 @@ A purely lexical model (translate the claim, then lexical recall) is the best, b
 | R2 contradiction: minimal-substitution, numeric-comparison, WordNet antonym | DeLaval + VitaminC joint | VitaminC 0.555 → 0.661, DeLaval 0.832 → 0.825; triage 90% prec | **WordNet ships** (replaces curated list); subst + numeric **null** |
 | R3 contradiction: relation/role reversal, scoped negation, quantifier mismatch | VitaminC probe | absent at usable density (shared-entities 5%, negation 0%, quantifier 4%) | **all null** - pure-lexical contradiction signal is saturated |
 
+![Progressive gains across hypothesis rounds - VitaminC climbs 0.53 to 0.69 as deterministic contradiction features are added while DeLaval holds ~0.85, then round 3 plateaus at lexical saturation](images/progressive-gains.svg)
+
 - **Best model** - lexical-only logistic over translate-then-recall features + claim-intrinsic `specificity` + the contradiction layer: **macro-F1 0.827 (leave-one-source-out, the trustworthy split) / 0.769 (leave-one-language-out), hallucination-F1 0.76** on the live 2752 gold, no semantic model (was 0.845 / 0.793 on 1260; absolutes shift slightly on the larger, more language-diverse pooled set)
 - **Beats NLI** - the NLI-including model and the lexical `recall_split` rule both score below it; dropping NLI gained accuracy, simplicity, and speed
 - **The lever is MT + recall (+ specificity), not the language routing** - translate-then-recall alone scores 0.835 LOSO; the per-chunk `same_lang` flag + dual recall add only ~+0.002; a plain logistic wins, gradient-boosted trees overfit the language-held-out folds
