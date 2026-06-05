@@ -15,12 +15,13 @@ The lexical grounder confirmed only ~12% of supported claims on the client gold;
 
 A purely lexical model with per-chunk language routing is the best, beating every model that used the NLI semantic layer.
 
-- **Best model** - lexical-only, language-routed logistic: **macro-F1 0.837 (leave-one-source-out, the trustworthy split) / 0.779 (leave-one-language-out), hallucination-F1 0.80**, with no semantic model
+- **Best model** - lexical-only, language-routed logistic + a claim-intrinsic `specificity` feature: **macro-F1 0.845 (leave-one-source-out, the trustworthy split) / 0.793 (leave-one-language-out), hallucination-F1 0.81**, no semantic model
 - **Beats NLI** - the NLI-including model and the lexical `recall_split` rule both score below it; dropping NLI gained accuracy, simplicity, and speed
-- **The lever is features, not model class** - a `same_lang` flag + dual recall (claim-as-is and translate-then-recall) + anchors; a plain logistic wins, gradient-boosted trees overfit the language-held-out folds
-- **Replicated across data growth** - the leave-one-source-out number held at 0.829 → 0.837 as the gold grew 856 → 1260, the best validation that the result is real, not a snapshot artefact
+- **The lever is features, not model class** - `same_lang` flag + dual recall (claim-as-is and translate-then-recall) + anchors + claim-intrinsic specificity; a plain logistic wins, gradient-boosted trees overfit the language-held-out folds
+- **Precision-1 confirm** - `quote_flag` (a ≥40-char verbatim span in the evidence) flags supported at 98.2% precision on the 109 claims it fires for
+- **Replicated across data growth** - leave-one-source-out held 0.829 → 0.837 → 0.845 as the gold grew 856 → 1260, the best evidence the result is real, not a snapshot artefact
 - **Metric** - macro-F1 (imbalance-robust); the majority predictor reads ~0.64 accuracy but macro-F1 ~0.39 with hallucination-F1 0.000
-- **Hallucination detection** - hal-F1 0.80 under the source-out split; the residual is data-bound (es/pt at n=5-6)
+- **Residual** - hallucination detection is data-bound (es/pt at n=5-6)
 
 ## Methodology
 
@@ -29,6 +30,7 @@ Per-claim, lexical signals computed two ways with language routing, then a learn
 - **Language detection** - per claim and per source chunk (lingua-py on short text; langdetect fallback); a `same_lang` flag marks whether the best chunk is in the claim's language
 - **Dual lexical recall** - `r1_direct` (claim vs chunks as-is - the same-language path) and `r1_mt` (translate claim → English via argos, then recall - the cross-language path); the model learns which to trust per the language flag
 - **Supporting lexical features** - char-ngram recall, rapidfuzz partial-ratio, anchor recall + anchor mismatch (numbers/IDs, language-invariant), oracle-chunk and top-k consensus recall
+- **Mechanism-general features** - `specificity` (anchor density from the claim alone, evidence-independent → cannot memorise the documents) and `quote_flag` (≥40-char verbatim span = near-deterministic support); only aggregate / normalised / claim-intrinsic features, never raw tokens or document identity
 - **Verdict head** - a logistic over the lexical feature set; LightGBM was raced against it (with `class_weight='balanced'`) but lost under leave-one-language-out
 - **Metric** - macro-F1 headline, hallucination-F1 watched separately
 - **Anti-overfit, two cross-validation splits** - **LOLO** (leave-one-language-out): hold out a language, train on the other six, score the held-out one - tests generalisation to an unseen language. **LOSO** (leave-one-source-out): hold out all claims from one of the ~22 distinct source documents, train on the rest, score the held-out document - tests generalisation to unseen evidence and prevents a model from memorising the few correlated contexts. No learner ever touches the fold it scores. LOSO is the headline metric here because English is ~86% of the data, so the LOLO English-out fold trains on a tiny non-English slice and is artificially harsh
@@ -70,11 +72,13 @@ The decisive factors are the features and the dataset size, not the fitting meth
 - **The right split matters** - leave-one-language-out and leave-one-source-out measure different generalisations; here unseen-language is the harder one, and the ~19-context worry was wrong-signed
 - **Imbalance hides failure** - 0.64 accuracy looked fine while macro-F1 was 0.39 and hallucination-F1 0.00; pick the imbalance-robust metric first
 - **A semantic model was not required** - good lexical features with language routing matched and beat NLI on this task
+- **Claim-intrinsic features generalise** - `specificity` (anchor density from the claim alone) lifted the source-out split and narrowed the LOLO↔LOSO gap precisely because it cannot see the evidence, so it learns the way claims are checkable, not the documents' text; the strongest single-feature add
+- **A verbatim span is a precision-1 confirm** - a long contiguous restatement is near-deterministic support (98.2%), whereas the same words scattered across a document are not
 - **Anti-overfit is not no-modeling** - the rule bans fitting the test fold, not modeling; the win was a model fit honestly under LOLO/LOSO
 
 ## Conclusions
 
-- **Ship a lexical-only, language-routed logistic** - per-chunk language detection + `same_lang` + `r1_direct`/`r1_mt` + anchors; macro-F1 0.837 (source-out), hal-F1 0.80, no semantic model, cheap and CPU-only
+- **Ship a lexical-only, language-routed logistic** - per-chunk language detection + `same_lang` + `r1_direct`/`r1_mt` + anchors + claim-intrinsic `specificity`; macro-F1 0.845 (source-out), hal-F1 0.81, no semantic model, cheap and CPU-only; `quote_flag` as a precision-0.98 supported confirm
 - **Translation is the only neural component** - a frozen argos bridge, used where a same-language chunk is absent; everything else is lexical
 - **The ceiling is data** - ~19 evidence contexts and the es/pt tail (n=5-6) cap further gains; more labelled hallucinations and more contexts are the prerequisite, not a cleverer model
 - **Reframes the client finding** - lexical did not fail at grounding; it failed at cross-lingual confirmation, fixed by translation plus a same-language routing feature

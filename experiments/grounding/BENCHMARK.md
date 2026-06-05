@@ -4,7 +4,7 @@ Running scoreboard for every hypothesis tested on the 375-record verified gold. 
 
 **Primary metric: macro-F1** (mean of supported-F1 and hallucination-F1). The classes are imbalanced (289 supported / 86 hallucination), so accuracy flatters a "mostly grounded" predictor - the majority baseline scores 0.771 accuracy but **macro-F1 0.435 with hallucination-F1 0.000** (it never catches a hallucination). Accuracy is kept as a secondary column.
 
-**Targets**: macro-F1 as high as possible. Status (LIVE 856 gold): **best model is a lexical-only, language-routed logistic - macro-F1 0.807 LOLO / 0.829 LOSO, hallucination-F1 0.75 - with NO semantic model**, beating the NLI-including model (0.797). See Round 5. (Earlier rounds on the stale 375 snapshot: depth-2 GBT 0.775 - superseded by the 856 re-run, where more data + language-routed lexical features made NLI and trees unnecessary.)
+**Targets**: macro-F1 as high as possible. Status (LIVE 1260 gold): **best model is a lexical-only, language-routed logistic + a claim-intrinsic `specificity` feature - macro-F1 0.845 (leave-one-source-out) / 0.793 (leave-one-language-out), hallucination-F1 0.81 - with NO semantic model**. Plus a `quote_flag` precision-0.98 supported confirm. See Rounds 5-6. (Earlier rounds on the stale 375 snapshot: depth-2 GBT 0.775 - superseded by the 856 re-run, where more data + language-routed lexical features made NLI and trees unnecessary.)
 
 **Baselines**: majority-always-grounded macro-F1 0.435 / acc 0.771; lexical-only (no MT) macro-F1 ~0.66; e5-semantic (team report) ~25% precision ceiling.
 
@@ -142,7 +142,26 @@ Reference (1260): `recall_split` and the NLI-including model remain below the le
 
 **New recommendation**: ship the **lexical-only, language-routed logistic** (per-chunk language detection + `same_lang` + `r1_direct`/`r1_mt` + anchors) - macro-F1 0.807, hal-F1 0.75, no semantic model, beats every prior config on the live 856 gold.
 
-## Recommendation (all 9 hypotheses tested - superseded by Round 5)
+## Round 6 - mechanism-general features (don't memorise the text)
+
+Three features designed to capture the *way* claims are (un)supported, not the dataset's surface text. Acceptance gate: must raise leave-one-source-out (LOSO) without widening the LOLO↔LOSO gap. LR over the lexical features, 1260 gold.
+
+| model | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |
+|---|---|---|---|---|
+| base (lexical) | 0.779 | 0.70 | 0.837 | 0.80 |
+| base + H1 rarity | 0.782 | 0.71 | 0.834 | 0.80 |
+| base + H2 span | 0.780 | 0.70 | 0.838 | 0.80 |
+| **base + H3 claim-intrinsic** | **0.793** | **0.72** | **0.845** | **0.81** |
+| base + all | 0.789 | 0.71 | 0.838 | 0.80 |
+
+- **H3 `specificity` (anchor density from the claim ALONE) wins** - lifts both splits (LOSO 0.837 → 0.845, LOLO 0.779 → 0.793) and narrows the LOLO↔LOSO gap (0.058 → 0.052), the signature of generalisation not memorisation. It is evidence-independent by construction, so it cannot stick to the 22 documents. Strongest new standardized coefficient (+0.96). **Ship it.**
+- **H2 `quote_flag` is a precision-0.982 supported detector** - a ≥40-char contiguous verbatim span fires on 109/1260 claims at 98.2% supported (base 63%); a usable high-confidence confirm rule, though it does not move aggregate F1 (high precision, low coverage, recall-redundant when pooled).
+- **H1 background-rarity gap** - correctly signed (−0.86) but redundant with recall (recall AUC 0.878 already captures content presence); net neutral, drop.
+- **base + all < base + H3** - the redundant features dilute; parsimony wins.
+
+**New best**: lexical-only logistic + claim-intrinsic `specificity` - **LOSO macro-F1 0.845 / hal-F1 0.81**, with `quote_flag` as a precision-0.98 supported confirm.
+
+## Recommendation (all 9 hypotheses tested - superseded by Round 5/6)
 
 - **Ship**: argos-translate MT bridge + best-chunk recall, English/translated two-threshold (`recall_split`) - best macro-F1 0.755 TEST and accuracy 0.817, cheapest path
 - **Add for hallucination detection**: the `recall OR NLI` ensemble - best hallucination-F1 0.64 and balanced 0.808, parameter-free, rescues the es/pt tail

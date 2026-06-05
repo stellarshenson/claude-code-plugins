@@ -414,6 +414,59 @@ def _lingua_lang(text: str, min_len: int = 25) -> str:
     return lg.iso_code_639_1.name.lower() if lg else "und"
 
 
+# --- mechanism-general feature helpers (H1 rarity, H2 span, H3 claim-intrinsic) ---
+from difflib import SequenceMatcher  # noqa: E402
+import math  # noqa: E402
+
+_TOKEN_RE = re.compile(r"\w+", re.UNICODE)
+
+_HEDGE = set((
+    "typically usually generally often may might could probably possibly likely "
+    "vanligvis kanskje muligens generelt ofte sannsynligvis "
+    "typiquement generalement peut souvent probablement "
+    "tipicamente generalmente forse spesso probabilmente "
+    "normalmente quizas geralmente talvez provavelmente vanligen kanske"
+).split())
+
+
+def _bg_idf(tok: str, lang: str = "en") -> float:
+    from wordfreq import word_frequency
+
+    f = word_frequency(tok, lang)
+    return -math.log10(f) if f > 0 else 9.0  # unknown token = very rare
+
+
+def gap_rarity(claim_en: str, best: str) -> tuple[float, float]:
+    """H1: population-rarity-weighted fraction of claim content ABSENT from best chunk."""
+    toks = {t for t in _TOKEN_RE.findall(claim_en.lower()) if len(t) > 1}
+    if not toks:
+        return 0.0, 0.0
+    chunk = set(_TOKEN_RE.findall(best.lower())) if best else set()
+    idfs = {t: _bg_idf(t) for t in toks}
+    tot = sum(idfs.values()) or 1.0
+    absent = [v for t, v in idfs.items() if t not in chunk]
+    return (sum(absent) / tot, (max(absent) / 9.0) if absent else 0.0)
+
+
+def span_feats(claim_en: str, best: str) -> tuple[float, int]:
+    """H2: longest contiguous claim substring present in best chunk (verbatim restatement)."""
+    if not best:
+        return 0.0, 0
+    a, b = claim_en.lower(), best.lower()
+    m = SequenceMatcher(None, a, b, autojunk=False).find_longest_match(0, len(a), 0, len(b))
+    return (m.size / max(1, len(a)), int(m.size >= 40))
+
+
+def claim_intrinsic(claim: str) -> tuple[float, float]:
+    """H3: evidence-independent specificity + hedging (cannot memorise the documents)."""
+    toks = _TOKEN_RE.findall(claim.lower())
+    n = len(toks) or 1
+    nums = len(re.findall(r"\d+", claim))
+    spec = (len(H.list_claim_entities(claim)) + nums) / n
+    hedge = sum(1 for t in toks if t in _HEDGE) / n
+    return spec, hedge
+
+
 def build_lex(refresh: bool = False) -> list[dict]:
     """Lexical-only features with claim+chunk language detection (no NLI)."""
     fp = CACHE / "lex.json"
@@ -454,12 +507,19 @@ def build_lex(refresh: bool = False) -> list[dict]:
         anchor = (ahit / aden) if aden else 0.0
         nmm, emm = H.find_mismatches(r.claim, best_t) if best_t else ([], [])
         amm = 1 if (nmm or emm or num_mm) else 0
+        # mechanism-general features
+        unmatched_rarity, max_unmatched = gap_rarity(claim_en, best_t)
+        span_lcs, quote_flag = span_feats(claim_en, best_t)
+        spec, hedge = claim_intrinsic(r.claim)
         rows.append(dict(
             label=r.label, lang=r.lang, det_lang=r.det_lang, src=sid,
             is_en=int(r.det_lang == "en"), same_lang=same_lang,
             r1_direct=round(r1_direct, 4), r1_mt=round(r1_mt, 4), r1_best=round(r1_best, 4),
             charng=round(charng, 4), fuzzy=round(fz, 4), anchor=round(anchor, 4),
             anchor_mm=amm, oracle=round(oracle, 4), top3=round(top3, 4),
+            unmatched_rarity=round(unmatched_rarity, 4), max_unmatched=round(max_unmatched, 4),
+            span_lcs=round(span_lcs, 4), quote_flag=quote_flag,
+            specificity=round(spec, 4), hedge=round(hedge, 4),
         ))
     fp.write_text(json.dumps(rows))
     return rows
@@ -511,9 +571,11 @@ def run_lexgbm() -> None:
         r["sl_rd"] = r["same_lang"] * r["r1_direct"]
         r["nsl_rmt"] = (1 - r["same_lang"]) * r["r1_mt"]
 
-    feats = ["r1_direct", "r1_mt", "r1_best", "charng", "fuzzy", "anchor", "anchor_mm",
-             "oracle", "top3", "same_lang", "is_en"]
-    lin = feats + ["sl_rd", "nsl_rmt"]
+    base = ["r1_direct", "r1_mt", "r1_best", "charng", "fuzzy", "anchor", "anchor_mm",
+            "oracle", "top3", "same_lang", "is_en"]
+    H1 = ["unmatched_rarity", "max_unmatched"]   # gap specificity (unsupported mechanism)
+    H2 = ["span_lcs", "quote_flag"]              # verbatim restatement (precision-1 supported)
+    H3 = ["specificity", "hedge"]                # claim-intrinsic (generalisation guard)
 
     def LR():
         return LogisticRegression(max_iter=1000, class_weight="balanced")
@@ -525,21 +587,40 @@ def run_lexgbm() -> None:
                                       colsample_bytree=0.8, random_state=0,
                                       n_jobs=1, verbose=-1)
 
-    out = ["## Lexical-only language-routed grounder (856 gold, NO NLI)\n",
+    out = ["## Lexical-only + mechanism features (1260 gold, NO NLI) - LR ablation\n",
            "same-language coverage: " + ", ".join(f"{k} {v[0]}/{v[1]}" for k, v in cov.items()) + "\n",
            "| model | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |",
            "|---|---|---|---|---|"]
 
-    def row(name, cols, fac, bal):
+    def row(name, cols, fac=LR, bal=False):
         lo = group_model(rows, cols, fac, "det_lang", balanced=bal)
         so = group_model(rows, cols, fac, "src", balanced=bal)
         out.append(f"| {name} | **{lo['f1_macro']:.3f}** | {lo['f1_hal']:.2f} | "
                    f"{so['f1_macro']:.3f} | {so['f1_hal']:.2f} |")
 
-    row("LR (lexical)", feats, LR, False)
-    row("LR + interactions", lin, LR, False)
-    for d in (1, 2, 3, 4):
-        row(f"LGBM d{d} (class_weight=balanced)", feats, GBT(d), False)
+    row("base (lexical)", base)
+    row("base + H1 rarity", base + H1)
+    row("base + H2 span", base + H2)
+    row("base + H3 claim-intrinsic", base + H3)
+    row("base + all (H1+H2+H3)", base + H1 + H2 + H3)
+    row("LGBM d2 (base, control)", base, GBT(2))
+
+    # H2 acceptance: quote_flag precision for supported
+    q = [r for r in rows if r["quote_flag"] == 1]
+    qp = sum(r["label"] for r in q) / max(1, len(q))
+    out.append(f"\nH2 quote_flag==1: n={len(q)}, supported precision {qp:.3f} (base rate "
+               f"{sum(r['label'] for r in rows) / len(rows):.3f})")
+
+    # H1/H3 standardized LR coefficients (do the new features get used?)
+    from sklearn.preprocessing import StandardScaler
+    allf = base + H1 + H2 + H3
+    X = np.array([[r[c] for c in allf] for r in rows], dtype=float)
+    y = np.array([r["label"] for r in rows])
+    Xs = StandardScaler().fit_transform(X)
+    coef = LR().fit(Xs, y).coef_[0]
+    new = {c: round(float(coef[allf.index(c)]), 2) for c in H1 + H2 + H3}
+    out.append(f"new-feature standardized coefficients: {new}\n")
+
     report = "\n".join(out) + "\n"
     print(report)
     (Path(__file__).parent / "logs" / "lab_lexgbm.md").write_text(report)
