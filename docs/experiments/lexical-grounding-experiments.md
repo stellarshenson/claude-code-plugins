@@ -6,9 +6,9 @@ Experiment on the `experiment/grounding` branch: build a non-LLM grounder that c
 
 The lexical grounder confirmed only ~12% of supported claims on the client gold; re-profiling overturned the team's "semantic is required" conclusion - and the final model needs no semantic layer at all.
 
-- **Dataset (live)** - 1260 verified records `{claim, source_text, label, lang}`, **794 supported / 466 hallucination**, evidence always an English-dominant document dump (it carries a small non-English tail). The gold grew 375 → 856 → 1260 mid-experiment; several conclusions changed with it (the depth-2 GBT that won on 375 overfits on the larger sets)
-- **Seven languages** - English dominant (~86%), then nb / fr / sv / it / es / pt
-- **Few independent contexts** - only ~22 distinct `source_text` blobs (≈57 claims each); claims sharing a source are correlated, so the effective sample is far smaller than 1260
+- **Dataset (live)** - 2631 verified records `{claim, source_text, label, lang}` (parquet), **1858 supported / 773 hallucination**, evidence always an English-dominant document dump (it carries a non-English tail). The gold grew 375 → 856 → 1260 → 2631 mid-experiment; several conclusions changed with it (the depth-2 GBT that won on 375 overfits on the larger sets)
+- **Ten languages** - English dominant (~77%), then fr (10%) / no / es / nl / it / sv / de / da / pt
+- **69 independent contexts** - 69 distinct `source_text` blobs at 2631 (was ~22 at 1260); claims sharing a source are correlated, so leave-one-source-out is the trustworthy split and is now far stronger
 - **Two gaps** - English claims have their support present but the score is swamped by the mega-evidence; non-English recall collapses unless the claim is translated or a same-language chunk exists
 
 ## Executive summary
@@ -30,36 +30,36 @@ A purely lexical model (translate the claim, then lexical recall) is the best, b
 | Verbatim `quote_flag` (≥40-char span) | DeLaval 1260 | 98.2% supported precision on the 109 it fires for | **Ships** - precision-1 supported confirm |
 | Background-rarity gap (`wordfreq`) | DeLaval 1260 | redundant with recall | null - dropped |
 | SaT vs regex claim segmentation (LLM-as-judge) | DeLaval 1260 | SaT wins macro-F1 + LLM-judge 15 / 1 | **SaT preferred** |
-| Cross-corpus probe: run grounder on VitaminC | VitaminC dev 1200 | macro-F1 collapses 0.844 → 0.586 (~coin-flip) | NFL boundary - contrastive negatives need a contradiction signal |
+| Cross-corpus probe: run grounder on VitaminC | VitaminC dev 1200 | macro-F1 collapses to 0.586 (~coin-flip) vs 0.837 on DeLaval | NFL boundary - contrastive negatives need a contradiction signal |
 | R1 contradiction: value-conflict, direction-flip, interaction, polarity | DeLaval + VitaminC joint | VitaminC 0.532 → 0.673, DeLaval holds 0.841 | value-conflict + direction **ship**; interaction, polarity **refuted** |
-| R2 contradiction: minimal-substitution, numeric-comparison, WordNet antonym | DeLaval + VitaminC joint | VitaminC → 0.685, DeLaval 0.842; triage 90% prec | **WordNet ships** (replaces curated list); subst + numeric **null** |
+| R2 contradiction: minimal-substitution, numeric-comparison, WordNet antonym | DeLaval 2631 + VitaminC joint | VitaminC 0.545 → 0.655, DeLaval 0.837 → 0.826; triage 90% prec | **WordNet ships** (replaces curated list); subst + numeric **null** |
 
-- **Best model** - lexical-only logistic over translate-then-recall features + a claim-intrinsic `specificity` feature: **macro-F1 0.845 (leave-one-source-out, the trustworthy split) / 0.793 (leave-one-language-out), hallucination-F1 0.81**, no semantic model
+- **Best model** - lexical-only logistic over translate-then-recall features + claim-intrinsic `specificity` + the contradiction layer: **macro-F1 0.837 (leave-one-source-out, the trustworthy split) / 0.733 (leave-one-language-out), hallucination-F1 0.78** on the live 2631 gold, no semantic model (was 0.845 / 0.793 on 1260; LOLO dipped as the language tail grew to ten)
 - **Beats NLI** - the NLI-including model and the lexical `recall_split` rule both score below it; dropping NLI gained accuracy, simplicity, and speed
 - **The lever is MT + recall (+ specificity), not the language routing** - translate-then-recall alone scores 0.835 LOSO; the per-chunk `same_lang` flag + dual recall add only ~+0.002; a plain logistic wins, gradient-boosted trees overfit the language-held-out folds
 - **Precision-1 confirm** - `quote_flag` (a ≥40-char verbatim span in the evidence) flags supported at 98.2% precision on the 109 claims it fires for
-- **Replicated across data growth** - leave-one-source-out held 0.829 (856 records) → 0.837 (1260), then 0.845 with the `specificity` feature; stability across the growth is the best evidence the result is real, not a snapshot artefact
-- **Metric** - macro-F1 (imbalance-robust); the majority predictor reads ~0.64 accuracy but macro-F1 ~0.39 with hallucination-F1 0.000
-- **Residual** - hallucination detection is data-bound (es/pt at n=5-6)
-- **Contradiction layer holds a second corpus** - a deterministic value-conflict feature + WordNet antonym-flip lifts the lexical-blind VitaminC contrastive set (joint macro-F1 0.532 → 0.685) while DeLaval holds (0.851 → 0.842), plus a `semantic_candidate` triage flag (26% of VitaminC at 90% REFUTES precision); the full final design is in `lexical-grounding-sota.md`
+- **Replicated across data growth** - leave-one-source-out held 0.829 (856) → 0.837 (1260) → 0.845 with `specificity` → 0.837 on the live 2631 (with 69 source contexts, up from ~22); stability across four data sizes is the best evidence the result is real, not a snapshot artefact
+- **Metric** - macro-F1 (imbalance-robust); the majority predictor reads ~0.71 accuracy but macro-F1 ~0.41 with hallucination-F1 0.000
+- **Residual** - hallucination detection is data-bound on the smallest language tails (da/pt at n=8-10)
+- **Contradiction layer holds a second corpus** - a deterministic value-conflict feature + WordNet antonym-flip lifts the lexical-blind VitaminC contrastive set (joint macro-F1 0.545 → 0.655) while DeLaval holds (0.837 → 0.826), plus a `semantic_candidate` triage flag (26% of VitaminC at 90% REFUTES precision); the hold-vs-collapse pattern replicated as the gold grew 1260 → 2631; the full final design is in `lexical-grounding-sota.md`
 
-**Performance results** - average per-claim end-to-end breakdown (lexical + MT, no semantic; live 1260 gold, CPU single-thread, torch-free). MT fires only on heterogeneous claims (non-English claim vs English source), so its per-claim cost is amortised across all 1260.
+**Performance results** - average per-claim end-to-end breakdown (lexical + MT, no semantic; live 2631 gold, CPU single-thread, torch-free). MT fires only on heterogeneous claims (non-English claim vs English source), so its per-claim cost is amortised across all 2631.
 
 | Stage | Total | Avg / claim | Notes |
 |---|---|---|---|
-| Recall (BM25 ×2) | 78.8s | 62.52 ms | the bottleneck - BM25 rebuilt per claim, direct + MT pass |
-| MT (argos) | 33.9s | 26.93 ms | 190.6 ms per translated claim, fires on 178/1260 = 14% |
-| Claim-intrinsic (lingua + specificity + WordNet) | 8.7s | 6.88 ms | language ID + anchor density + antonym lookup |
-| Anchor (numbers/IDs) | 1.0s | 0.78 ms | language-invariant |
-| **Feature build (total)** | **124.5s** | **98.8 ms** | sum of the above per claim |
-| Classifier fit + score | 1.7s | negligible | logistic, amortised at inference |
+| MT (argos) | 174.3s | 66.24 ms | 288.1 ms per translated claim, fires on 605/2631 = 23% |
+| Recall (BM25 ×2) | 153.0s | 58.16 ms | BM25 rebuilt per claim, direct + MT pass |
+| Claim-intrinsic (lingua + specificity + WordNet) | 17.3s | 6.58 ms | language ID + anchor density + antonym lookup |
+| Anchor (numbers/IDs) | 2.5s | 0.95 ms | language-invariant |
+| **Feature build (total)** | **350.6s** | **133.2 ms** | sum of the above per claim |
+| Classifier fit + score | 6.0s | negligible | logistic, amortised at inference |
 | Cold start (load SaT + 1 MT model) | 5.0s | one-time | not per-claim |
 
-- **Throughput** - ~99 ms/claim end to end (≈10 claims/s single-thread); recall dominates at 63 ms, MT adds 27 ms amortised
-- **Quality at this operating point** - LOSO macro-F1 0.844 / hal-F1 0.81 / sup-F1 0.88 / acc 0.853; LOLO macro-F1 0.803 / hal-F1 0.74 / sup-F1 0.87 / acc 0.826
-- **MT is cheap in aggregate** - 86% of claims are English and skip translation; the 14% heterogeneous tail carries the 194 ms cost
+- **Throughput** - ~133 ms/claim end to end (≈7.5 claims/s single-thread); MT now leads at 66 ms (the language tail grew to 23% of claims), recall 58 ms
+- **Quality at this operating point** - LOSO macro-F1 0.837 / hal-F1 0.78 / sup-F1 0.90 / acc 0.860; LOLO macro-F1 0.733 / hal-F1 0.59 / sup-F1 0.88 / acc 0.810
+- **MT cost rose with the data** - 77% of claims are English and skip translation; the 23% heterogeneous tail (up from 14% at 1260) carries the 288 ms cost and now dominates latency
 - **Footprint** - CPU-only, no torch, no GPU, no semantic; argos MT models ~80-100MB each loaded on demand, SaT-3l small, nltk/WordNet ~10MB, logistic in KB
-- **Headroom** - recall rebuilds BM25 per claim across only ~22 distinct sources; caching BM25 per source is a ~5-10× recall speedup left on the table
+- **Headroom** - recall rebuilds BM25 per claim across 69 distinct sources; caching BM25 per source is a recall speedup left on the table
 
 ## Methodology
 
@@ -73,12 +73,12 @@ Per-claim lexical signals (word recall with and without translation, anchors, cl
 - **Metric** - macro-F1 headline, hallucination-F1 watched separately
 - **Two cross-validation splits** - no learner touches the fold it scores
 - **LOLO (leave-one-language-out)** - hold out a language, train on the other six, score it; tests generalisation to an unseen language
-- **LOSO (leave-one-source-out)** - hold out all claims from one of the ~22 source documents, train on the rest, score it; tests generalisation to unseen evidence and blocks memorising the correlated contexts
-- **LOSO is the headline split** - English is ~86% of the data, so the LOLO English-out fold trains on a tiny non-English slice and is artificially harsh
+- **LOSO (leave-one-source-out)** - hold out all claims from one of the 69 source documents, train on the rest, score it; tests generalisation to unseen evidence and blocks memorising the correlated contexts
+- **LOSO is the headline split** - English is ~77% of the data, so the LOLO English-out fold trains on a small non-English slice and is artificially harsh
 
 ## Setup
 
-- **Data** - live 1260-record gold, git-ignored stash; features cached (git-ignored)
+- **Data** - live 2631-record gold (parquet), git-ignored stash; features cached (git-ignored)
 - **Dependencies (experiment-only)** - `lingua-language-detector`, `argos-translate` (frozen MT bridge), `rapidfuzz`, `scikit-learn`, `lightgbm`, `wordfreq`
 - **MT quality** - argos is good enough: technical anchors (numbers, IDs, product names, UI strings) survive translation intact, errors are word-level (dropped/confused nouns) and cosmetic, and many "non-English" claims are langdetect misfires (near-passthrough); the routing ablation confirms MT is not the bottleneck
 - **Operating point** - recursive chunking, 300-char chunks, 0.1 overlap (validated by a threshold-free AUC/Cohen's d separation sweep: whole-doc is the 0.50 floor, ~150-300 chars near-optimal)
@@ -89,7 +89,7 @@ Per-claim lexical signals (word recall with and without translation, anchors, cl
 The result arrived in stages, several of which reversed earlier conclusions.
 
 - **MT is the cross-lingual lever** - a frozen translator lifts every non-English language (per-language LOLO accuracy nb 0.40 → 0.93, fr 0.50 → 0.81, it 0.88 → 1.00); without it the non-English claims do not ground
-- **Metric switch** - the 794/466 imbalance makes accuracy misleading; macro-F1 became primary (majority predictor: ~0.64 accuracy but macro-F1 ~0.39, hallucination-F1 0.000)
+- **Metric switch** - the 1858/773 imbalance makes accuracy misleading; macro-F1 became primary (majority predictor: ~0.71 accuracy but macro-F1 ~0.41, hallucination-F1 0.000)
 - **Per-chunk language routing is ~free on accuracy** - the source carries claim-language chunks for a subpopulation (French claims match a French chunk 46%, sv 50%), but an ablation showed `same_lang` + dual recall add only ~+0.002 LOSO over "always translate then recall" (0.835 → 0.837); MT is good enough that routing buys efficiency (skip translation for same-language claims), not accuracy
 - **Lexical-only beats NLI** - giving the model recall + anchors + claim-intrinsic specificity replaces what NLI was providing; the semantic layer became unnecessary
 
@@ -137,7 +137,7 @@ Three more hypotheses (web-researched: VitaminC's contrastive negative is a sing
 - **R2-H2 numeric comparison / date conflict** (near-value swap, year disjointness, beyond exact equality) - **null**; redundant with the round-1 exact value-conflict on this data
 - **R2-H3 WordNet antonym-flip** (deterministic word-sense antonym lexicon replacing the curated list) - **ships**; broader coverage (REFUTES 32% vs SUPPORTS 3%, DeLaval 0.8%) at equal precision
 
-Results (macro-F1 per corpus, per-corpus-tuned threshold):
+Results (macro-F1 per corpus, per-corpus-tuned threshold; the ablation below was run on the 1260 snapshot):
 
 | configuration | DeLaval | VitaminC |
 |---|---|---|
@@ -149,16 +149,16 @@ Results (macro-F1 per corpus, per-corpus-tuned threshold):
 
 - **WordNet ships, replacing the curated direction lexicon** - DeLaval holds (0.842), VitaminC 0.673 → 0.685, one principled population resource instead of a hand list; cost is an `nltk` + WordNet dependency (~10MB, English; claims are MT'd to English)
 - **The deterministic contradiction signal saturates** - value-conflict + antonym opposition is the reachable surface signal; the general single-token substitution and numeric-comparison axes add nothing, because separating a synonym restatement from a fact-edit is irreducibly semantic
-- **Triage flag** - 26% of VitaminC at 90% REFUTES precision; the final design is in `lexical-grounding-sota.md`
+- **Re-validated on the live 2631 gold** - the shipped config holds both corpora at the larger size: **DeLaval 0.837 → 0.826, VitaminC 0.545 → 0.655** (base → shipped), same hold-vs-collapse pattern; triage flag steady at 26% / 90% REFUTES precision; the final design is in `lexical-grounding-sota.md`
 
 ## Lessons learned
 
-- **Features beat model class** - the gain came from the lexical recall + claim-intrinsic features, not from a nonlinear learner; a regularised logistic is the right head for ~22 contexts
+- **Features beat model class** - the gain came from the lexical recall + claim-intrinsic features, not from a nonlinear learner; a regularised logistic is the right head for these few-context data
 - **Conclusions are dataset-size dependent** - growing the data (375 → 856 → 1260, 86 → 466 negatives) flipped "depth-2 GBT wins" into "linear wins, trees overfit"; never trust a single-snapshot conclusion on a small set
 - **The right split matters** - leave-one-language-out and leave-one-source-out measure different generalisations; here unseen-language is the harder one, and the few-context worry was wrong-signed (source-out scored higher, not lower)
 - **Imbalance hides failure** - 0.64 accuracy looked fine while macro-F1 was 0.39 and hallucination-F1 0.00; pick the imbalance-robust metric first
 - **A semantic model was not required** - good lexical features with translate-then-recall matched and beat NLI on this task
-- **The win is matched to omission-type hallucinations, not contrastive ones** - run unchanged on VitaminC (contrastive English fact-verification, negatives lexically near-identical to the evidence with one fact flipped), the lexical grounder collapses to macro-F1 0.586 (SUPPORTS vs REFUTES, ~coin-flip) from 0.844 on DeLaval; DeLaval hallucinations are absent/fabricated specifics that drop recall, VitaminC REFUTES are present-but-contradicted so recall stays high and the lexical stack is structurally blind; contradiction detection is where NLI earns its place (mirrors the A4 transfer: VitaminC is NLI-dominant, DeLaval recall-dominant)
+- **The win is matched to omission-type hallucinations, not contrastive ones** - run unchanged on VitaminC (contrastive English fact-verification, negatives lexically near-identical to the evidence with one fact flipped), the lexical grounder collapses to macro-F1 0.586 (SUPPORTS vs REFUTES, ~coin-flip) from 0.837 on DeLaval; DeLaval hallucinations are absent/fabricated specifics that drop recall, VitaminC REFUTES are present-but-contradicted so recall stays high and the lexical stack is structurally blind; contradiction detection is where NLI earns its place (mirrors the A4 transfer: VitaminC is NLI-dominant, DeLaval recall-dominant)
 - **Most of that gap is deterministically bridgeable** - a contradiction layer (aligned value-conflict feature + antonym/direction-flip triage, fuzzy-gated) trained jointly lifts VitaminC 0.532 → 0.673 while DeLaval holds (0.851 → 0.841, within LOSO noise); `direction_flip` fires on 62% of REFUTES vs 6% of SUPPORTS and 0.4% of DeLaval - active only where the contrastive negative lives, the mirror of `same_lang`/`is_en` which carry DeLaval's mechanism and go quiet on English VitaminC; one model holds both because each corpus's signal rides on features inert on the other (final design in `lexical-grounding-sota.md`)
 - **Triage beats forcing a verdict** - where deterministic features cannot settle support-vs-contradiction, a `semantic_candidate` flag (high overlap AND a conflict/direction signal) marks the claim for a downstream semantic stage: 23% of VitaminC at 92% REFUTES precision, 3× error concentration, zero classifier cost - the irreducibly semantic residual is routed, not guessed
 - **MT good enough makes routing ~free** - always-translate-then-recall matches the per-chunk `same_lang` routing on the source-out split (0.835 vs 0.837); the routing's value is cost (skip translation for same-language claims), not accuracy; better MT would mostly help the abstractive es/pt tail
@@ -170,13 +170,13 @@ Results (macro-F1 per corpus, per-corpus-tuned threshold):
 
 - **Ship the lexical-only logistic** - translate-then-recall + anchors + claim-intrinsic `specificity` (with per-chunk language detection + `same_lang` kept for efficiency); macro-F1 0.845 (source-out), hal-F1 0.81, no semantic model, cheap and CPU-only; `quote_flag` as a precision-0.98 supported confirm
 - **Translation is the only neural component** - a frozen argos bridge, used where a same-language chunk is absent; everything else is lexical
-- **The ceiling is data** - ~22 evidence contexts and the es/pt tail (n=5-6) cap further gains; more labelled hallucinations and more distinct source documents are the prerequisite, not a cleverer model
+- **The ceiling is data** - the source contexts grew to 69 (from ~22), which stabilised leave-one-source-out; the residual is now the small language tail (da/pt/de at n=8-18), where leave-one-language-out dips - more labelled data in those languages is the prerequisite, not a cleverer model
 - **Reframes the client finding** - lexical did not fail at grounding; it failed at cross-lingual confirmation, fixed by translation (the same-language routing is an efficiency lever, not an accuracy one)
 - **Bounded scope, deploy accordingly** - the lexical win is task-specific: it holds across DeLaval's data growth but does not transfer to a contrastive benchmark (VitaminC macro-F1 0.586); use it where hallucinations are fabricated or omitted specifics, keep NLI available for present-but-contradicted negatives
 
 ## Next steps
 
 - **Promote** the lexical-only logistic into the production grounder via a separate reviewed change; keep NLI optional/off
-- **More contexts and negatives** - the binding constraint is ~22 source documents and the small es/pt tail; grow the gold before chasing further model capacity
+- **More negatives in the language tail** - source contexts grew to 69 (constraint loosened); the binding constraint is now the small da/pt/de language tail; grow those before chasing further model capacity
 - **Engineering** - lingua-py for language ID, a faster per-language MT engine if throughput matters
 - **Refuted, do not revisit without more data** - NLI in the verdict, claim decomposition, cross-corpus transfer, deep trees, OPUS-MT

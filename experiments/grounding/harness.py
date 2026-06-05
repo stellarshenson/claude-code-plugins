@@ -1,11 +1,12 @@
 """Rival deterministic grounder tournament on the DeLaval cross-lingual gold.
 
 Read-only experiment harness. Loads the git-ignored verified gold
-(``delaval-forensics/gold/golden_grounding_evidence_verified.json``: 375
-records ``{claim, source_text, label, lang}``), computes rival deterministic
-grounding signals, and scores them under a hard anti-overfit protocol
-(50/50 held-out, leave-one-language-out, fixed-prior). No learner is fit to
-the 375 - thresholds come from held-out folds or fixed priors only.
+(``delaval-forensics/gold/golden_grounding_evidence_verified.parquet``:
+``{claim, source_text, label, lang}``, grew 375 → 1260 → 2631 records),
+computes rival deterministic grounding signals, and scores them under a hard
+anti-overfit protocol (50/50 held-out, leave-one-language-out, fixed-prior).
+No learner is fit to the test fold - thresholds come from held-out folds or
+fixed priors only.
 
 Signals (each a per-record scalar in [0,1] unless noted):
   R1  word IDF best-chunk recall            (Gap A: same-language)
@@ -49,7 +50,7 @@ from stellars_claude_code_plugins.document_processing.entity_check import (
 )
 from stellars_claude_code_plugins.document_processing.grounding import _tokenize
 
-GOLD = Path(__file__).parent / "delaval-forensics/gold/golden_grounding_evidence_verified.json"
+GOLD = Path(__file__).parent / "delaval-forensics/gold/golden_grounding_evidence_verified.parquet"
 
 _TOKEN_RE = re.compile(r"\w+", re.UNICODE)
 
@@ -65,13 +66,20 @@ class Record:
 
 
 def load_gold(path: Path = GOLD) -> list[Record]:
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    if path.suffix == ".parquet":
+        import pandas as pd
+
+        raw = pd.read_parquet(path, columns=["claim", "source_text", "label", "lang"]).to_dict(
+            "records"
+        )
+    else:
+        raw = json.loads(path.read_text(encoding="utf-8"))
     recs = [
         Record(
             claim=r["claim"],
             source=r["source_text"],
             label=int(r["label"]),
-            lang=r.get("lang", "und"),
+            lang=str(r.get("lang") or "und"),
         )
         for r in raw
     ]
