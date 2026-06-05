@@ -17,7 +17,7 @@ A purely lexical model with per-chunk language routing is the best, beating ever
 
 - **Best model** - lexical-only, language-routed logistic + a claim-intrinsic `specificity` feature: **macro-F1 0.845 (leave-one-source-out, the trustworthy split) / 0.793 (leave-one-language-out), hallucination-F1 0.81**, no semantic model
 - **Beats NLI** - the NLI-including model and the lexical `recall_split` rule both score below it; dropping NLI gained accuracy, simplicity, and speed
-- **The lever is features, not model class** - `same_lang` flag + dual recall (claim-as-is and translate-then-recall) + anchors + claim-intrinsic specificity; a plain logistic wins, gradient-boosted trees overfit the language-held-out folds
+- **The lever is MT + recall (+ specificity), not the language routing** - translate-then-recall alone scores 0.835 LOSO; the per-chunk `same_lang` flag + dual recall add only ~+0.002; a plain logistic wins, gradient-boosted trees overfit the language-held-out folds
 - **Precision-1 confirm** - `quote_flag` (a ≥40-char verbatim span in the evidence) flags supported at 98.2% precision on the 109 claims it fires for
 - **Replicated across data growth** - leave-one-source-out held 0.829 → 0.837 → 0.845 as the gold grew 856 → 1260, the best evidence the result is real, not a snapshot artefact
 - **Metric** - macro-F1 (imbalance-robust); the majority predictor reads ~0.64 accuracy but macro-F1 ~0.39 with hallucination-F1 0.000
@@ -38,7 +38,8 @@ Per-claim, lexical signals computed two ways with language routing, then a learn
 ## Setup
 
 - **Data** - live 1260-record gold, git-ignored stash; features cached (git-ignored)
-- **Dependencies (experiment-only)** - `lingua-language-detector`, `argos-translate` (frozen MT bridge), `rapidfuzz`, `scikit-learn`, `lightgbm`
+- **Dependencies (experiment-only)** - `lingua-language-detector`, `argos-translate` (frozen MT bridge), `rapidfuzz`, `scikit-learn`, `lightgbm`, `wordfreq`
+- **MT quality** - argos is good enough: technical anchors (numbers, IDs, product names, UI strings) survive translation intact, errors are word-level (dropped/confused nouns) and cosmetic, and many "non-English" claims are langdetect misfires (near-passthrough); the routing ablation confirms MT is not the bottleneck
 - **Operating point** - recursive chunking, 300-char chunks, 0.1 overlap (validated by a threshold-free AUC/Cohen's d separation sweep: whole-doc is the 0.50 floor, ~150-300 chars near-optimal)
 - **Commands** - `python lab.py lexgbm` (the current model), `harness.py --tournament --mt` (the rule baseline), `lab.py final` (capacity ladder)
 
@@ -48,8 +49,8 @@ The result arrived in stages, several of which reversed earlier conclusions.
 
 - **MT is the cross-lingual lever** - a frozen translator lifts every non-English language (per-language LOLO accuracy nb 0.40 → 0.93, fr 0.50 → 0.81, it 0.88 → 1.00); lexical-only without translation tops out ~0.67
 - **Metric switch** - the 549/307 imbalance makes accuracy misleading; macro-F1 became primary (majority predictor: 0.641 accuracy but macro-F1 0.435 on the old snapshot, 0.391 on the live set, hallucination-F1 0.000)
-- **Per-chunk language routing** - the source carries claim-language chunks for a real subpopulation (French claims match a French chunk 46% of the time, sv 50%); detecting chunk language lets those ground with no translation, which "always translate to English" missed
-- **Lexical-only beats NLI** - giving the model `same_lang` + dual recall + anchors replaces what NLI was providing; the semantic layer became unnecessary
+- **Per-chunk language routing is ~free on accuracy** - the source carries claim-language chunks for a subpopulation (French claims match a French chunk 46%, sv 50%), but an ablation showed `same_lang` + dual recall add only ~+0.002 LOSO over "always translate then recall" (0.835 → 0.837); MT is good enough that routing buys efficiency (skip translation for same-language claims), not accuracy
+- **Lexical-only beats NLI** - giving the model recall + anchors + claim-intrinsic specificity replaces what NLI was providing; the semantic layer became unnecessary
 
 ## Model class: lexical-LR vs GBT vs Bayesian calibration
 
@@ -71,7 +72,8 @@ The decisive factors are the features and the dataset size, not the fitting meth
 - **Conclusions are dataset-size dependent** - doubling the data (375 → 856, 86 → 307 negatives) flipped "depth-2 GBT wins" into "linear wins, trees overfit"; never trust a single-snapshot conclusion on a small set
 - **The right split matters** - leave-one-language-out and leave-one-source-out measure different generalisations; here unseen-language is the harder one, and the ~19-context worry was wrong-signed
 - **Imbalance hides failure** - 0.64 accuracy looked fine while macro-F1 was 0.39 and hallucination-F1 0.00; pick the imbalance-robust metric first
-- **A semantic model was not required** - good lexical features with language routing matched and beat NLI on this task
+- **A semantic model was not required** - good lexical features with translate-then-recall matched and beat NLI on this task
+- **MT good enough makes routing ~free** - always-translate-then-recall matches the per-chunk `same_lang` routing on the source-out split (0.835 vs 0.837); the routing's value is cost (skip translation for same-language claims), not accuracy; better MT would mostly help the abstractive es/pt tail
 - **Claim-intrinsic features generalise** - `specificity` (anchor density from the claim alone) lifted the source-out split and narrowed the LOLO↔LOSO gap precisely because it cannot see the evidence, so it learns the way claims are checkable, not the documents' text; the strongest single-feature add
 - **A verbatim span is a precision-1 confirm** - a long contiguous restatement is near-deterministic support (98.2%), whereas the same words scattered across a document are not
 - **Anti-overfit is not no-modeling** - the rule bans fitting the test fold, not modeling; the win was a model fit honestly under LOLO/LOSO
