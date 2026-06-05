@@ -19,9 +19,24 @@ import harness as H  # noqa: E402
 import lab  # noqa: E402
 import mt  # noqa: E402
 
-FEATS = ["r1_direct", "r1_mt", "r1_best", "charng", "fuzzy", "anchor", "anchor_mm",
-         "oracle", "top3", "same_lang", "is_en", "specificity",
-         "conflict_n", "conflict_flag", "num_edit_mag"]
+FEATS = [
+    "r1_direct",
+    "r1_mt",
+    "r1_best",
+    "charng",
+    "fuzzy",
+    "anchor",
+    "anchor_mm",
+    "oracle",
+    "top3",
+    "same_lang",
+    "is_en",
+    "specificity",
+    "conflict_n",
+    "conflict_flag",
+    "num_edit_mag",
+    "wn_antonym_flip",
+]
 
 
 def main() -> None:
@@ -73,19 +88,36 @@ def main() -> None:
         clang = lab._lingua_lang(r.claim)
         chunk_lang = lab._lingua_lang(bd) if bd else "und"
         same_lang = int(clang != "und" and chunk_lang == clang)
-        # contradiction layer: aligned value-conflict (feature) + direction-flip
-        # (triage); both fuzzy-gated so they stay inert on absent-content negatives
+        # contradiction layer: aligned value-conflict + WordNet antonym flip; both
+        # fuzzy-gated so they stay inert on DeLaval's absent-content negatives
         conflict_n, conflict_flag, num_edit_mag = lab.conflict_feats(r.claim, bt)
-        dir_flip = int(lab.direction_flip(claim, bt) and fz > 0.5)
-        semantic_candidate = int(fz >= 0.5 and (conflict_flag or dir_flip))
+        wn_flip = int(lab.wn_antonym_flip(claim, bt) and fz > 0.5)
+        semantic_candidate = int(fz >= 0.5 and (conflict_flag or wn_flip))
         timing["intrinsic"] += time.time() - t
-        rows.append(dict(label=r.label, det_lang=r.det_lang, src=sid,
-                         is_en=int(r.det_lang == "en"), same_lang=same_lang,
-                         r1_direct=r1_direct, r1_mt=r1_mt, r1_best=max(r1_direct, r1_mt),
-                         charng=charng, fuzzy=fz, anchor=anchor, anchor_mm=amm,
-                         oracle=oracle, top3=top3, specificity=spec,
-                         conflict_n=conflict_n, conflict_flag=conflict_flag,
-                         num_edit_mag=num_edit_mag, semantic_candidate=semantic_candidate))
+        rows.append(
+            dict(
+                label=r.label,
+                det_lang=r.det_lang,
+                src=sid,
+                is_en=int(r.det_lang == "en"),
+                same_lang=same_lang,
+                r1_direct=r1_direct,
+                r1_mt=r1_mt,
+                r1_best=max(r1_direct, r1_mt),
+                charng=charng,
+                fuzzy=fz,
+                anchor=anchor,
+                anchor_mm=amm,
+                oracle=oracle,
+                top3=top3,
+                specificity=spec,
+                conflict_n=conflict_n,
+                conflict_flag=conflict_flag,
+                num_edit_mag=num_edit_mag,
+                wn_antonym_flip=wn_flip,
+                semantic_candidate=semantic_candidate,
+            )
+        )
     feat_wall = time.time() - t_all
 
     def LR():
@@ -97,24 +129,34 @@ def main() -> None:
     eval_wall = time.time() - t
 
     print("\n=== END-TO-END LEXICAL GROUNDER (lexical + MT, NO semantic) ===\n")
-    print(f"records: {n} | translated (heterogeneous claim vs en source): {n_mt} "
-          f"({100 * n_mt / n:.0f}%)\n")
+    print(
+        f"records: {n} | translated (heterogeneous claim vs en source): {n_mt} "
+        f"({100 * n_mt / n:.0f}%)\n"
+    )
     print("QUALITY (logistic over lexical features + specificity)")
-    print(f"  LOLO  macroF1 {lolo['f1_macro']:.3f}  hal-F1 {lolo['f1_hal']:.2f}  "
-          f"sup-F1 {lolo['f1_sup']:.2f}  acc {lolo['acc']:.3f}")
-    print(f"  LOSO  macroF1 {loso['f1_macro']:.3f}  hal-F1 {loso['f1_hal']:.2f}  "
-          f"sup-F1 {loso['f1_sup']:.2f}  acc {loso['acc']:.3f}\n")
+    print(
+        f"  LOLO  macroF1 {lolo['f1_macro']:.3f}  hal-F1 {lolo['f1_hal']:.2f}  "
+        f"sup-F1 {lolo['f1_sup']:.2f}  acc {lolo['acc']:.3f}"
+    )
+    print(
+        f"  LOSO  macroF1 {loso['f1_macro']:.3f}  hal-F1 {loso['f1_hal']:.2f}  "
+        f"sup-F1 {loso['f1_sup']:.2f}  acc {loso['acc']:.3f}\n"
+    )
     print("THROUGHPUT")
     print(f"  cold start (load SaT + 1 MT model): {cold:.1f}s (one-time)")
-    print(f"  feature build wall:                 {feat_wall:.1f}s  ({1000 * feat_wall / n:.1f} ms/claim)")
+    print(
+        f"  feature build wall:                 {feat_wall:.1f}s  ({1000 * feat_wall / n:.1f} ms/claim)"
+    )
     for k, v in timing.items():
         print(f"    {k:10}: {v:6.1f}s total  | {1000 * v / n:5.2f} ms/claim avg")
     if n_mt:
         print(f"  MT per translated claim:            {1000 * timing['mt'] / n_mt:.1f} ms")
     print(f"  classifier fit+score (LOLO+LOSO):   {eval_wall:.1f}s (negligible at inference)")
     n_sc = sum(r["semantic_candidate"] for r in rows)
-    print(f"\nTRIAGE  semantic_candidate flagged: {n_sc}/{n} = {100 * n_sc / n:.0f}% "
-          "(contradiction region routed to a future semantic stage)")
+    print(
+        f"\nTRIAGE  semantic_candidate flagged: {n_sc}/{n} = {100 * n_sc / n:.0f}% "
+        "(contradiction region routed to a future semantic stage)"
+    )
 
 
 if __name__ == "__main__":

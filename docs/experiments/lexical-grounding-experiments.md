@@ -22,24 +22,24 @@ A purely lexical model (translate the claim, then lexical recall) is the best, b
 - **Replicated across data growth** - leave-one-source-out held 0.829 (856 records) → 0.837 (1260), then 0.845 with the `specificity` feature; stability across the growth is the best evidence the result is real, not a snapshot artefact
 - **Metric** - macro-F1 (imbalance-robust); the majority predictor reads ~0.64 accuracy but macro-F1 ~0.39 with hallucination-F1 0.000
 - **Residual** - hallucination detection is data-bound (es/pt at n=5-6)
-- **Contradiction layer holds a second corpus** - a deterministic value-conflict feature + antonym/direction-flip triage lifts the lexical-blind VitaminC contrastive set (joint macro-F1 0.532 → 0.673) while DeLaval holds (0.851 → 0.841); the full final design is in `lexical-grounding-sota.md`
+- **Contradiction layer holds a second corpus** - a deterministic value-conflict feature + WordNet antonym-flip lifts the lexical-blind VitaminC contrastive set (joint macro-F1 0.532 → 0.685) while DeLaval holds (0.851 → 0.842), plus a `semantic_candidate` triage flag (26% of VitaminC at 90% REFUTES precision); the full final design is in `lexical-grounding-sota.md`
 
 **Performance results** - average per-claim end-to-end breakdown (lexical + MT, no semantic; live 1260 gold, CPU single-thread, torch-free). MT fires only on heterogeneous claims (non-English claim vs English source), so its per-claim cost is amortised across all 1260.
 
 | Stage | Total | Avg / claim | Notes |
 |---|---|---|---|
-| Recall (BM25 ×2) | 76.1s | 60.43 ms | the bottleneck - BM25 rebuilt per claim, direct + MT pass |
-| MT (argos) | 34.6s | 27.44 ms | 194.2 ms per translated claim, fires on 178/1260 = 14% |
-| Claim-intrinsic (lingua + specificity) | 6.5s | 5.13 ms | language ID + anchor density |
-| Anchor (numbers/IDs) | 1.0s | 0.77 ms | language-invariant |
-| **Feature build (total)** | **120.1s** | **95.3 ms** | sum of the above per claim |
-| Classifier fit + score | 1.8s | negligible | logistic, amortised at inference |
-| Cold start (load SaT + 1 MT model) | 6.8s | one-time | not per-claim |
+| Recall (BM25 ×2) | 78.8s | 62.52 ms | the bottleneck - BM25 rebuilt per claim, direct + MT pass |
+| MT (argos) | 33.9s | 26.93 ms | 190.6 ms per translated claim, fires on 178/1260 = 14% |
+| Claim-intrinsic (lingua + specificity + WordNet) | 8.7s | 6.88 ms | language ID + anchor density + antonym lookup |
+| Anchor (numbers/IDs) | 1.0s | 0.78 ms | language-invariant |
+| **Feature build (total)** | **124.5s** | **98.8 ms** | sum of the above per claim |
+| Classifier fit + score | 1.7s | negligible | logistic, amortised at inference |
+| Cold start (load SaT + 1 MT model) | 5.0s | one-time | not per-claim |
 
-- **Throughput** - ~95 ms/claim end to end (≈10.5 claims/s single-thread); recall dominates at 60 ms, MT adds 27 ms amortised
+- **Throughput** - ~99 ms/claim end to end (≈10 claims/s single-thread); recall dominates at 63 ms, MT adds 27 ms amortised
 - **Quality at this operating point** - LOSO macro-F1 0.844 / hal-F1 0.81 / sup-F1 0.88 / acc 0.853; LOLO macro-F1 0.803 / hal-F1 0.74 / sup-F1 0.87 / acc 0.826
 - **MT is cheap in aggregate** - 86% of claims are English and skip translation; the 14% heterogeneous tail carries the 194 ms cost
-- **Footprint** - CPU-only, no torch, no GPU, no semantic; argos MT models ~80-100MB each loaded on demand, SaT-3l small, logistic in KB
+- **Footprint** - CPU-only, no torch, no GPU, no semantic; argos MT models ~80-100MB each loaded on demand, SaT-3l small, nltk/WordNet ~10MB, logistic in KB
 - **Headroom** - recall rebuilds BM25 per claim across only ~22 distinct sources; caching BM25 per source is a ~5-10× recall speedup left on the table
 
 ## Methodology
@@ -85,8 +85,8 @@ The decisive factors are the features and the dataset size, not the fitting meth
 
 ## What we tried
 
-- **Kept** - the MT bridge (argos per-language), word recall, anchors, char-ngram, fuzzy, claim-intrinsic specificity, the aligned value-conflict feature, a logistic head; the per-chunk routing / dual recall is kept for efficiency, not accuracy
-- **Dropped / refuted** - NLI entailment (superseded by lexical recall + specificity), claim decomposition (over-flags supported clauses), cross-corpus calibrator transfer (VitaminC mis-weights), oracle-chunk (retrieval is not the bottleneck), linear interaction terms and deep trees (overfit), OPUS-MT engine (worse and ~9x slower than argos), polarity/negation-XOR (wrong-signed on DeLaval - fires on 9% of supported)
+- **Kept** - the MT bridge (argos per-language), word recall, anchors, char-ngram, fuzzy, claim-intrinsic specificity, the aligned value-conflict feature, the WordNet antonym-flip, a logistic head; the per-chunk routing / dual recall is kept for efficiency, not accuracy
+- **Dropped / refuted** - NLI entailment (superseded by lexical recall + specificity), claim decomposition (over-flags supported clauses), cross-corpus calibrator transfer (VitaminC mis-weights), oracle-chunk (retrieval is not the bottleneck), linear interaction terms and deep trees (overfit), OPUS-MT engine (worse and ~9x slower than argos), polarity/negation-XOR (wrong-signed on DeLaval - fires on 9% of supported), curated antonym lexicon (superseded by WordNet), general minimal-substitution and numeric-comparison (null - can't separate synonym restatement from fact-edit deterministically)
 
 ## Contradiction features: joint hold-vs-collapse
 
@@ -108,7 +108,29 @@ Results (macro-F1 per corpus, per-corpus-tuned threshold - one model, domain-cal
 
 - **Hold, not collapse** - VitaminC 0.532 → 0.673 while DeLaval 0.851 → 0.841 (−0.010, within LOSO noise)
 - **Triage flag** - `semantic_candidate` (high overlap AND conflict/direction) flags 23% of VitaminC at 92% REFUTES precision, 3× error concentration, zero classifier cost - routes the irreducibly semantic residual to a future stage rather than guessing
-- **Conclusion** - value-conflict ships as a feature; direction-flip deploys via the triage flag where its DeLaval cost vanishes; the final design is in `lexical-grounding-sota.md`
+- **Conclusion** - value-conflict ships as a feature; direction-flip is the strong VitaminC lever; round 2 (below) supersedes the curated direction list with WordNet
+
+## Contradiction features, round 2: close the residual
+
+Three more hypotheses (web-researched: VitaminC's contrastive negative is a single localized token edit - a number, entity, date, or antonym) targeting the residual the round-1 features miss. Same protocol and two-sided acceptance.
+
+- **R2-H1 minimal-substitution** (general "one salient token differs in a matching context") - **null**; it fires on supported synonym restatements too (it cannot tell a synonym swap from a fact-edit - that distinction is itself semantic), so it adds zero VitaminC and, folded into the triage flag, bloated it to 85% coverage at base-rate precision
+- **R2-H2 numeric comparison / date conflict** (near-value swap, year disjointness, beyond exact equality) - **null**; redundant with the round-1 exact value-conflict on this data
+- **R2-H3 WordNet antonym-flip** (deterministic word-sense antonym lexicon replacing the curated list) - **ships**; broader coverage (REFUTES 32% vs SUPPORTS 3%, DeLaval 0.8%) at equal precision
+
+Results (macro-F1 per corpus, per-corpus-tuned threshold):
+
+| configuration | DeLaval | VitaminC |
+|---|---|---|
+| round-1 (curated direction) | 0.841 | 0.673 |
+| wn replaces direction | 0.842 | 0.687 |
+| round-1 + wn (augment) | 0.839 | 0.694 |
+| + subst + num-rel (R2-H1/H2) | 0.825 | 0.663 |
+| **shipped (conflict + WordNet)** | **0.842** | **0.685** |
+
+- **WordNet ships, replacing the curated direction lexicon** - DeLaval holds (0.842), VitaminC 0.673 → 0.685, one principled population resource instead of a hand list; cost is an `nltk` + WordNet dependency (~10MB, English; claims are MT'd to English)
+- **The deterministic contradiction signal saturates** - value-conflict + antonym opposition is the reachable surface signal; the general single-token substitution and numeric-comparison axes add nothing, because separating a synonym restatement from a fact-edit is irreducibly semantic
+- **Triage flag** - 26% of VitaminC at 90% REFUTES precision; the final design is in `lexical-grounding-sota.md`
 
 ## Lessons learned
 

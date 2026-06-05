@@ -73,8 +73,11 @@ def build_features(use_mt: bool = True, refresh: bool = False) -> list[dict]:
         top3_med = top[1] if len(top) >= 2 else (top[0] if top else 0.0)
         r2 = H.idf_best_chunk_recall(claim, chunks, H.an_charngram)
         sc = nli.scores(best, r.claim) if best else {}
-        ne, nc, nn = (sc.get("entailment", 0.0), sc.get("contradiction", 0.0),
-                      sc.get("neutral", 0.0))
+        ne, nc, nn = (
+            sc.get("entailment", 0.0),
+            sc.get("contradiction", 0.0),
+            sc.get("neutral", 0.0),
+        )
         nmm, emm = H.find_mismatches(r.claim, best) if best else ([], [])
         num_rec, num_mismatch = H.number_recall(r.claim, r.source)
         veto = 1 if (nmm or num_mismatch) else 0
@@ -83,12 +86,23 @@ def build_features(use_mt: bool = True, refresh: bool = False) -> list[dict]:
         aden = len(ents) + (1 if num_rec >= 0 else 0)
         ahit = sum(1 for e in ents if e not in absent) + (num_rec if num_rec >= 0 else 0)
         anchor = (ahit / aden) if aden else 0.0
-        rows.append(dict(
-            label=r.label, lang=r.lang, det_lang=r.det_lang, is_en=int(r.det_lang == "en"),
-            r1=round(r1, 4), r2=round(r2, 4), oracle=round(oracle, 4),
-            top3_med=round(top3_med, 4), anchor=round(anchor, 4),
-            nli_e=round(ne, 4), nli_c=round(nc, 4), nli_n=round(nn, 4), veto=veto,
-        ))
+        rows.append(
+            dict(
+                label=r.label,
+                lang=r.lang,
+                det_lang=r.det_lang,
+                is_en=int(r.det_lang == "en"),
+                r1=round(r1, 4),
+                r2=round(r2, 4),
+                oracle=round(oracle, 4),
+                top3_med=round(top3_med, 4),
+                anchor=round(anchor, 4),
+                nli_e=round(ne, 4),
+                nli_c=round(nc, 4),
+                nli_n=round(nn, 4),
+                veto=veto,
+            )
+        )
     fp.write_text(json.dumps(rows))
     return rows
 
@@ -169,8 +183,11 @@ def build_decomp(use_mt: bool = True, refresh: bool = False) -> list[dict]:
         if use_mt and r.det_lang not in ("en", "und", ""):
             claim = H.mt_to_english(r.claim, r.det_lang)
         row = {"label": r.label, "lang": r.lang, "det_lang": r.det_lang}
-        for key, units in (("whole", [claim]), ("sent", split_sentences(claim)),
-                           ("clause", split_clauses(claim))):
+        for key, units in (
+            ("whole", [claim]),
+            ("sent", split_sentences(claim)),
+            ("clause", split_clauses(claim)),
+        ):
             r1s, mm = [], 0
             for u in units:
                 recalls, arg, best = chunk_recalls(u, chunks, H.an_word)
@@ -191,6 +208,7 @@ def build_decomp(use_mt: bool = True, refresh: bool = False) -> list[dict]:
 
 def lolo_decomp(rows, key, agg="any") -> dict:
     """Tune the recall bar per-fold (LOLO); aggregate clause verdicts to claim verdict."""
+
     def verdict(r, bar):
         if r[f"{key}_mm"]:
             return 0
@@ -220,17 +238,23 @@ def lolo_decomp(rows, key, agg="any") -> dict:
 def run_b1() -> None:
     rows = build_decomp(use_mt=True)
     nclause = sum(1 for r in rows if r["clause_n"] > 1)
-    out = ["## Lab B1 - claim decomposition (LOLO, recall bar tuned out-of-fold)\n",
-           f"claims split into >1 clause: {nclause}/{len(rows)}\n",
-           "| unit / aggregation | macroF1 | hal-F1 | sup-F1 | acc |",
-           "|---|---|---|---|---|"]
-    for key, agg, name in [("whole", "any", "whole-claim"),
-                           ("sent", "any", "sentence-split"),
-                           ("clause", "any", "clause-split (any-contradicted)"),
-                           ("clause", "kofn", "clause-split (k-of-n)")]:
+    out = [
+        "## Lab B1 - claim decomposition (LOLO, recall bar tuned out-of-fold)\n",
+        f"claims split into >1 clause: {nclause}/{len(rows)}\n",
+        "| unit / aggregation | macroF1 | hal-F1 | sup-F1 | acc |",
+        "|---|---|---|---|---|",
+    ]
+    for key, agg, name in [
+        ("whole", "any", "whole-claim"),
+        ("sent", "any", "sentence-split"),
+        ("clause", "any", "clause-split (any-contradicted)"),
+        ("clause", "kofn", "clause-split (k-of-n)"),
+    ]:
         s = lolo_decomp(rows, key, agg)
-        out.append(f"| {name} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | "
-                   f"{s['f1_sup']:.2f} | {s['acc']:.3f} |")
+        out.append(
+            f"| {name} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | "
+            f"{s['f1_sup']:.2f} | {s['acc']:.3f} |"
+        )
     report = "\n".join(out) + "\n"
     print(report)
     (Path(__file__).parent / "logs" / "lab_b1.md").write_text(report)
@@ -261,9 +285,14 @@ def build_vitaminc(per_label: int = 130, refresh: bool = False) -> list[dict]:
         recalls, arg, best = chunk_recalls(claim, [ev], H.an_word)
         r1 = recalls[arg] if recalls else 0.0
         sc = nli.scores(ev, claim)
-        rows.append(dict(label=1 if lab == "SUPPORTS" else 0, r1=round(r1, 4),
-                         nli_e=round(sc.get("entailment", 0.0), 4),
-                         nli_c=round(sc.get("contradiction", 0.0), 4)))
+        rows.append(
+            dict(
+                label=1 if lab == "SUPPORTS" else 0,
+                r1=round(r1, 4),
+                nli_e=round(sc.get("entailment", 0.0), 4),
+                nli_c=round(sc.get("contradiction", 0.0), 4),
+            )
+        )
         if all(v <= 0 for v in want.values()):
             break
     _ = itertools  # keep import used if loop empty
@@ -282,16 +311,20 @@ def run_a4() -> None:
     m = LogisticRegression(max_iter=1000, class_weight="balanced").fit(Xv, yv)
     Xg = np.array([[r[c] for c in cols] for r in gold], dtype=float)
     yg = [r["label"] for r in gold]
-    out = ["## Lab A4 - VitaminC-frozen calibrator transfer (zero gold fit)\n",
-           f"VitaminC train: {len(vit)} records; coefficients {dict(zip(cols, m.coef_[0].round(2)))} "
-           f"intercept {m.intercept_[0]:.2f}\n",
-           "| rule | macroF1 | hal-F1 | sup-F1 | acc |",
-           "|---|---|---|---|---|"]
+    out = [
+        "## Lab A4 - VitaminC-frozen calibrator transfer (zero gold fit)\n",
+        f"VitaminC train: {len(vit)} records; coefficients {dict(zip(cols, m.coef_[0].round(2)))} "
+        f"intercept {m.intercept_[0]:.2f}\n",
+        "| rule | macroF1 | hal-F1 | sup-F1 | acc |",
+        "|---|---|---|---|---|",
+    ]
     for thr in (0.5, 0.4):
         pred = (m.predict_proba(Xg)[:, 1] >= thr).astype(int)
         s = H.score_verdicts(yg, list(pred))
-        out.append(f"| VitaminC-frozen @{thr} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | "
-                   f"{s['f1_sup']:.2f} | {s['acc']:.3f} |")
+        out.append(
+            f"| VitaminC-frozen @{thr} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | "
+            f"{s['f1_sup']:.2f} | {s['acc']:.3f} |"
+        )
     report = "\n".join(out) + "\n"
     print(report)
     (Path(__file__).parent / "logs" / "lab_a4.md").write_text(report)
@@ -312,6 +345,7 @@ def _infold(rows, cols, factory) -> float:
 
 def run_final() -> None:
     import matplotlib
+
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from sklearn.ensemble import GradientBoostingClassifier
@@ -325,13 +359,19 @@ def run_final() -> None:
 
     def GBT(d, seed=0):
         return lambda: GradientBoostingClassifier(
-            max_depth=d, n_estimators=40, learning_rate=0.1, random_state=seed)
+            max_depth=d, n_estimators=40, learning_rate=0.1, random_state=seed
+        )
 
     cont = ["r1", "r2", "oracle", "top3_med", "anchor", "nli_e", "nli_c"]
     ladder = [
         ("LR[r1]", ["r1"], LR, 1),
         ("LR[r1,nli]", ["r1", "nli_e", "nli_c"], LR, 3),
-        ("LR+interactions", ["r1", "nli_e", "nli_c", "is_en", "isen_r1", "nonen_nlie", "r1_x_nlic"], LR, 7),
+        (
+            "LR+interactions",
+            ["r1", "nli_e", "nli_c", "is_en", "isen_r1", "nonen_nlie", "r1_x_nlic"],
+            LR,
+            7,
+        ),
         ("GBT d2", cont, GBT(2), 12),
         ("GBT d4", cont, GBT(4), 30),
     ]
@@ -343,16 +383,22 @@ def run_final() -> None:
         lolo.append(s["f1_macro"])
         infold.append(_infold(rows, cols, fac))
 
-    out = ["## A6 capacity ceiling (LOLO out-of-fold vs in-fold)\n",
-           "| model | LOLO macroF1 | hal-F1 | sup-F1 | acc | in-fold | overfit gap |",
-           "|---|---|---|---|---|---|---|"]
+    out = [
+        "## A6 capacity ceiling (LOLO out-of-fold vs in-fold)\n",
+        "| model | LOLO macroF1 | hal-F1 | sup-F1 | acc | in-fold | overfit gap |",
+        "|---|---|---|---|---|---|---|",
+    ]
     for n, s, inf in zip(names, fulls, infold):
-        out.append(f"| {n} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | {s['f1_sup']:.2f} | "
-                   f"{s['acc']:.3f} | {inf:.3f} | {inf - s['f1_macro']:+.3f} |")
+        out.append(
+            f"| {n} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | {s['f1_sup']:.2f} | "
+            f"{s['acc']:.3f} | {inf:.3f} | {inf - s['f1_macro']:+.3f} |"
+        )
     # GBT d2 is stochastic on 86 negatives - report mean +/- std over 5 seeds
     seeds = [lolo_model(rows, cont, GBT(2, sd))["f1_macro"] for sd in range(5)]
-    out.append(f"\nGBT d2 over 5 seeds: mean {np.mean(seeds):.3f} +/- {np.std(seeds):.3f} "
-               f"(min {min(seeds):.3f}, max {max(seeds):.3f}) - vs recall_split 0.755\n")
+    out.append(
+        f"\nGBT d2 over 5 seeds: mean {np.mean(seeds):.3f} +/- {np.std(seeds):.3f} "
+        f"(min {min(seeds):.3f}, max {max(seeds):.3f}) - vs recall_split 0.755\n"
+    )
 
     # C8 diversity: per-channel error correlation + ensembles
     R1 = [int(r["r1"] >= 0.4) for r in rows]
@@ -366,10 +412,13 @@ def run_final() -> None:
     def phi(a, b):
         return float(np.corrcoef(a, b)[0, 1])
 
-    out += ["\n## C8 ensemble diversity (error-correlation phi)\n",
-            f"phi(R1,NLI)={phi(eR1, eN):.2f}  phi(R1,ANC)={phi(eR1, eA):.2f}  "
-            f"phi(NLI,ANC)={phi(eN, eA):.2f}\n",
-            "| ensemble | macroF1 |", "|---|---|"]
+    out += [
+        "\n## C8 ensemble diversity (error-correlation phi)\n",
+        f"phi(R1,NLI)={phi(eR1, eN):.2f}  phi(R1,ANC)={phi(eR1, eA):.2f}  "
+        f"phi(NLI,ANC)={phi(eN, eA):.2f}\n",
+        "| ensemble | macroF1 |",
+        "|---|---|",
+    ]
     orr = [int(a or b) for a, b in zip(R1, NLI)]
     maj = [int(a + b + c >= 2) for a, b, c in zip(R1, NLI, ANC)]
     out.append(f"| R1 | {_mf1(y, R1):.3f} |")
@@ -392,7 +441,9 @@ def run_final() -> None:
     ax.set_ylim(0.6, 1.0)
     ax.grid(alpha=0.3)
     ax.legend(fontsize=8)
-    ax.set_title("Capacity ceiling: out-of-fold peaks at depth-2, in-fold memorises (86 negatives)")
+    ax.set_title(
+        "Capacity ceiling: out-of-fold peaks at depth-2, in-fold memorises (86 negatives)"
+    )
     fig.tight_layout()
     fig.savefig(Path(__file__).parent / "plots" / "05_capacity_ceiling.png", dpi=150)
     plt.close(fig)
@@ -420,13 +471,15 @@ import math  # noqa: E402
 
 _TOKEN_RE = re.compile(r"\w+", re.UNICODE)
 
-_HEDGE = set((
-    "typically usually generally often may might could probably possibly likely "
-    "vanligvis kanskje muligens generelt ofte sannsynligvis "
-    "typiquement generalement peut souvent probablement "
-    "tipicamente generalmente forse spesso probabilmente "
-    "normalmente quizas geralmente talvez provavelmente vanligen kanske"
-).split())
+_HEDGE = set(
+    (
+        "typically usually generally often may might could probably possibly likely "
+        "vanligvis kanskje muligens generelt ofte sannsynligvis "
+        "typiquement generalement peut souvent probablement "
+        "tipicamente generalmente forse spesso probabilmente "
+        "normalmente quizas geralmente talvez provavelmente vanligen kanske"
+    ).split()
+)
 
 
 def _bg_idf(tok: str, lang: str = "en") -> float:
@@ -467,37 +520,11 @@ def claim_intrinsic(claim: str) -> tuple[float, float]:
     return spec, hedge
 
 
-# --- contradiction features (aligned value-conflict + polarity/direction flip) ---
-# Curated antonym / comparative-direction lexicon: a population constant, not fit
-# to either corpus. English core + a small multilingual tail; opposite-direction
-# substitution under high overlap is the prose signature of contradiction.
-_DIRECTION_PAIRS = [
-    ("increase", "decrease"), ("increased", "decreased"), ("increases", "decreases"),
-    ("increasing", "decreasing"), ("rise", "fall"), ("rose", "fell"), ("rising", "falling"),
-    ("gain", "loss"), ("gains", "losses"), ("grow", "shrink"), ("grew", "shrank"),
-    ("more", "less"), ("higher", "lower"), ("larger", "smaller"), ("largest", "smallest"),
-    ("greater", "smaller"), ("greatest", "least"), ("most", "least"), ("maximum", "minimum"),
-    ("before", "after"), ("earlier", "later"), ("first", "last"), ("oldest", "newest"),
-    ("win", "lose"), ("won", "lost"), ("winner", "loser"), ("victory", "defeat"),
-    ("up", "down"), ("above", "below"), ("positive", "negative"), ("over", "under"),
-    ("accept", "reject"), ("accepted", "rejected"), ("approve", "reject"),
-    ("approved", "rejected"), ("add", "remove"), ("added", "removed"),
-    ("open", "close"), ("opened", "closed"), ("begin", "end"), ("began", "ended"),
-    ("start", "stop"), ("started", "stopped"), ("include", "exclude"),
-    ("included", "excluded"), ("enable", "disable"), ("enabled", "disabled"),
-    ("succeed", "fail"), ("succeeded", "failed"), ("success", "failure"),
-    ("majority", "minority"), ("all", "none"), ("always", "never"), ("true", "false"),
-    # multilingual tail (es/fr/it/no/sv/pt) - opposite-direction cognates
-    ("aumenta", "disminuye"), ("mayor", "menor"), ("augmente", "diminue"),
-    ("aumenta", "diminuisce"), ("maggiore", "minore"), ("oker", "reduserer"),
-    ("okar", "minskar"), ("maior", "menor"), ("antes", "despues"), ("avant", "apres"),
-]
-_DIR_MAP: dict[str, set[str]] = {}
-for _a, _b in _DIRECTION_PAIRS:
-    _DIR_MAP.setdefault(_a, set()).add(_b)
-    _DIR_MAP.setdefault(_b, set()).add(_a)
-
-
+# --- contradiction features (aligned value-conflict + WordNet antonym flip) ---
+# Both overlap-gated: they only fire on high-overlap restatements, so they stay
+# inert on DeLaval's absent-content negatives and active on contrastive (VitaminC)
+# negatives where one fact is flipped. WordNet (below) replaced an earlier curated
+# antonym lexicon - broader coverage at equal precision (REFUTES 32% vs SUPPORTS 3%).
 def conflict_feats(claim: str, best: str) -> tuple[float, int, float]:
     """H1: aligned value-conflict (numeric + entity) from find_mismatches, graded.
 
@@ -527,19 +554,44 @@ def conflict_feats(claim: str, best: str) -> tuple[float, int, float]:
     return conflict_n, int(cnt > 0), mag
 
 
-def direction_flip(claim_en: str, best: str) -> int:
-    """H2: a claim token whose opposite-direction word sits in the best chunk.
+# WordNet-broadened lexical opposition (replaced an earlier curated antonym list).
+# WordNet antonyms are a deterministic
+# population lexicon at word-sense level; broader coverage than the curated list
+# (probe: fires on 70% of VitaminC REFUTES vs 8% SUPPORTS, vs curated 62%/6%).
+_WN: dict = {}
 
-    Requires the claim word ABSENT from the chunk (a substitution, not a passage
-    that merely mentions both directions) - reduces false fires on supported prose.
-    """
+
+def _wn_antonyms(w: str) -> set:
+    if "mod" not in _WN:
+        import nltk
+        from nltk.corpus import wordnet as wn
+
+        try:
+            wn.synsets("test")
+        except LookupError:
+            nltk.download("wordnet", quiet=True)
+        _WN["mod"], _WN["cache"] = wn, {}
+    cache = _WN["cache"]
+    if w not in cache:
+        ant = set()
+        for s in _WN["mod"].synsets(w):
+            for lemma in s.lemmas():
+                for a in lemma.antonyms():
+                    ant.add(a.name().replace("_", " ").lower())
+        cache[w] = ant
+    return cache[w]
+
+
+def wn_antonym_flip(claim_en: str, best: str) -> int:
+    """R2-H3: a claim content-token whose WordNet antonym is present in the best
+    chunk while the token itself is absent (broader than the curated direction list)."""
     if not best:
         return 0
-    ct = set(_TOKEN_RE.findall(claim_en.lower()))
-    bt = set(_TOKEN_RE.findall(best.lower()))
-    for t in ct:
-        opp = _DIR_MAP.get(t)
-        if opp and (opp & bt) and t not in bt:
+    bset = set(_TOKEN_RE.findall(best.lower()))
+    for t in _TOKEN_RE.findall(claim_en.lower()):
+        if len(t) < 3 or t in bset:
+            continue
+        if _wn_antonyms(t) & bset:
             return 1
     return 0
 
@@ -591,27 +643,40 @@ def build_lex(refresh: bool = False) -> list[dict]:
         # contradiction features (overlap-gated on fuzzy - live on single-chunk
         # evidence, unlike IDF recall which degenerates to ~0 on a 1-chunk corpus)
         conflict_n, conflict_flag, num_edit_mag = conflict_feats(r.claim, best_t)
-        pol_flip = int(best_t and (H._is_negated(claim_en) != H._is_negated(best_t))
-                       and fz > 0.5)
-        dir_flip = int(direction_flip(claim_en, best_t) and fz > 0.5)
-        # polarity_flip dropped from the signal: wrong-signed on DeLaval (fires on
-        # 9% of SUPPORTED via scope-blind negation-XOR); kept as a column only
-        conflict_any = int(conflict_flag or dir_flip)
+        wn_flip = int(wn_antonym_flip(claim_en, best_t) and fz > 0.5)
+        conflict_any = int(conflict_flag or wn_flip)
         semantic_candidate = int(fz >= 0.5 and conflict_any)
-        rows.append(dict(
-            label=r.label, lang=r.lang, det_lang=r.det_lang, src=sid,
-            is_en=int(r.det_lang == "en"), same_lang=same_lang,
-            r1_direct=round(r1_direct, 4), r1_mt=round(r1_mt, 4), r1_best=round(r1_best, 4),
-            charng=round(charng, 4), fuzzy=round(fz, 4), anchor=round(anchor, 4),
-            anchor_mm=amm, oracle=round(oracle, 4), top3=round(top3, 4),
-            unmatched_rarity=round(unmatched_rarity, 4), max_unmatched=round(max_unmatched, 4),
-            span_lcs=round(span_lcs, 4), quote_flag=quote_flag,
-            specificity=round(spec, 4), hedge=round(hedge, 4),
-            conflict_n=round(conflict_n, 4), conflict_flag=conflict_flag,
-            num_edit_mag=round(num_edit_mag, 4), polarity_flip=pol_flip,
-            direction_flip=dir_flip, r1_x_conflict=round(r1_best * conflict_any, 4),
-            semantic_candidate=semantic_candidate,
-        ))
+        rows.append(
+            dict(
+                label=r.label,
+                lang=r.lang,
+                det_lang=r.det_lang,
+                src=sid,
+                is_en=int(r.det_lang == "en"),
+                same_lang=same_lang,
+                r1_direct=round(r1_direct, 4),
+                r1_mt=round(r1_mt, 4),
+                r1_best=round(r1_best, 4),
+                charng=round(charng, 4),
+                fuzzy=round(fz, 4),
+                anchor=round(anchor, 4),
+                anchor_mm=amm,
+                oracle=round(oracle, 4),
+                top3=round(top3, 4),
+                unmatched_rarity=round(unmatched_rarity, 4),
+                max_unmatched=round(max_unmatched, 4),
+                span_lcs=round(span_lcs, 4),
+                quote_flag=quote_flag,
+                specificity=round(spec, 4),
+                hedge=round(hedge, 4),
+                conflict_n=round(conflict_n, 4),
+                conflict_flag=conflict_flag,
+                num_edit_mag=round(num_edit_mag, 4),
+                wn_antonym_flip=wn_flip,
+                r1_x_conflict=round(r1_best * conflict_any, 4),
+                semantic_candidate=semantic_candidate,
+            )
+        )
     fp.write_text(json.dumps(rows))
     return rows
 
@@ -662,32 +727,57 @@ def run_lexgbm() -> None:
         r["sl_rd"] = r["same_lang"] * r["r1_direct"]
         r["nsl_rmt"] = (1 - r["same_lang"]) * r["r1_mt"]
 
-    base = ["r1_direct", "r1_mt", "r1_best", "charng", "fuzzy", "anchor", "anchor_mm",
-            "oracle", "top3", "same_lang", "is_en"]
-    H1 = ["unmatched_rarity", "max_unmatched"]   # gap specificity (unsupported mechanism)
-    H2 = ["span_lcs", "quote_flag"]              # verbatim restatement (precision-1 supported)
-    H3 = ["specificity", "hedge"]                # claim-intrinsic (generalisation guard)
+    base = [
+        "r1_direct",
+        "r1_mt",
+        "r1_best",
+        "charng",
+        "fuzzy",
+        "anchor",
+        "anchor_mm",
+        "oracle",
+        "top3",
+        "same_lang",
+        "is_en",
+    ]
+    H1 = ["unmatched_rarity", "max_unmatched"]  # gap specificity (unsupported mechanism)
+    H2 = ["span_lcs", "quote_flag"]  # verbatim restatement (precision-1 supported)
+    H3 = ["specificity", "hedge"]  # claim-intrinsic (generalisation guard)
 
     def LR():
         return LogisticRegression(max_iter=1000, class_weight="balanced")
 
     def GBT(d):
-        return lambda: LGBMClassifier(max_depth=d, num_leaves=2**d, n_estimators=200,
-                                      learning_rate=0.05, class_weight="balanced",
-                                      min_child_samples=20, subsample=0.8,
-                                      colsample_bytree=0.8, random_state=0,
-                                      n_jobs=1, verbose=-1)
+        return lambda: LGBMClassifier(
+            max_depth=d,
+            num_leaves=2**d,
+            n_estimators=200,
+            learning_rate=0.05,
+            class_weight="balanced",
+            min_child_samples=20,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            random_state=0,
+            n_jobs=1,
+            verbose=-1,
+        )
 
-    out = ["## Lexical-only + mechanism features (1260 gold, NO NLI) - LR ablation\n",
-           "same-language coverage: " + ", ".join(f"{k} {v[0]}/{v[1]}" for k, v in cov.items()) + "\n",
-           "| model | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |",
-           "|---|---|---|---|---|"]
+    out = [
+        "## Lexical-only + mechanism features (1260 gold, NO NLI) - LR ablation\n",
+        "same-language coverage: "
+        + ", ".join(f"{k} {v[0]}/{v[1]}" for k, v in cov.items())
+        + "\n",
+        "| model | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |",
+        "|---|---|---|---|---|",
+    ]
 
     def row(name, cols, fac=LR, bal=False):
         lo = group_model(rows, cols, fac, "det_lang", balanced=bal)
         so = group_model(rows, cols, fac, "src", balanced=bal)
-        out.append(f"| {name} | **{lo['f1_macro']:.3f}** | {lo['f1_hal']:.2f} | "
-                   f"{so['f1_macro']:.3f} | {so['f1_hal']:.2f} |")
+        out.append(
+            f"| {name} | **{lo['f1_macro']:.3f}** | {lo['f1_hal']:.2f} | "
+            f"{so['f1_macro']:.3f} | {so['f1_hal']:.2f} |"
+        )
 
     row("base (lexical)", base)
     row("base + H1 rarity", base + H1)
@@ -699,11 +789,14 @@ def run_lexgbm() -> None:
     # H2 acceptance: quote_flag precision for supported
     q = [r for r in rows if r["quote_flag"] == 1]
     qp = sum(r["label"] for r in q) / max(1, len(q))
-    out.append(f"\nH2 quote_flag==1: n={len(q)}, supported precision {qp:.3f} (base rate "
-               f"{sum(r['label'] for r in rows) / len(rows):.3f})")
+    out.append(
+        f"\nH2 quote_flag==1: n={len(q)}, supported precision {qp:.3f} (base rate "
+        f"{sum(r['label'] for r in rows) / len(rows):.3f})"
+    )
 
     # H1/H3 standardized LR coefficients (do the new features get used?)
     from sklearn.preprocessing import StandardScaler
+
     allf = base + H1 + H2 + H3
     X = np.array([[r[c] for c in allf] for r in rows], dtype=float)
     y = np.array([r["label"] for r in rows])
@@ -740,8 +833,11 @@ def run_seg() -> None:
             claim = r.claim
             if r.det_lang not in ("en", "und", ""):
                 claim = mt.translate(r.claim, r.det_lang)
-            methods = {"whole": [claim], "clause": split_clauses(claim),
-                       "sat": sat.split(claim) or [claim]}
+            methods = {
+                "whole": [claim],
+                "clause": split_clauses(claim),
+                "sat": sat.split(claim) or [claim],
+            }
             row = {"label": r.label, "det_lang": r.det_lang, "src": sid}
             for k, units in methods.items():
                 r1s, mm = [], 0
@@ -765,6 +861,7 @@ def run_seg() -> None:
     def evaluate(method, group):
         def verdict(r, bar):
             return 0 if r[f"{method}_mm"] else int(r[f"{method}_min"] >= bar)
+
         groups = sorted({r[group] for r in rows})
         yt, yp = [], []
         for g in groups:
@@ -781,16 +878,25 @@ def run_seg() -> None:
             yt += [r["label"] for r in te]
         return H.score_verdicts(yt, yp)
 
-    avg_units = {m: round(np.mean([r[f"{m}_n"] for r in rows]), 2) for m in ("whole", "clause", "sat")}
-    out = ["## Claim-segmentation competition - macro-F1 (1260 gold, min-recall + any-contra)\n",
-           f"mean units/claim: {avg_units}\n",
-           "| segmentation | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |",
-           "|---|---|---|---|---|"]
-    for m, name in [("whole", "whole-claim (no split)"), ("clause", "regex clause-split (current)"),
-                    ("sat", "SaT (wtpsplit)")]:
+    avg_units = {
+        m: round(np.mean([r[f"{m}_n"] for r in rows]), 2) for m in ("whole", "clause", "sat")
+    }
+    out = [
+        "## Claim-segmentation competition - macro-F1 (1260 gold, min-recall + any-contra)\n",
+        f"mean units/claim: {avg_units}\n",
+        "| segmentation | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |",
+        "|---|---|---|---|---|",
+    ]
+    for m, name in [
+        ("whole", "whole-claim (no split)"),
+        ("clause", "regex clause-split (current)"),
+        ("sat", "SaT (wtpsplit)"),
+    ]:
         lo, so = evaluate(m, "det_lang"), evaluate(m, "src")
-        out.append(f"| {name} | **{lo['f1_macro']:.3f}** | {lo['f1_hal']:.2f} | "
-                   f"{so['f1_macro']:.3f} | {so['f1_hal']:.2f} |")
+        out.append(
+            f"| {name} | **{lo['f1_macro']:.3f}** | {lo['f1_hal']:.2f} | "
+            f"{so['f1_macro']:.3f} | {so['f1_hal']:.2f} |"
+        )
     report = "\n".join(out) + "\n"
     print(report)
     (Path(__file__).parent / "logs" / "lab_seg.md").write_text(report)
@@ -822,8 +928,9 @@ def run_bayes() -> None:
         te = [r for r in rows if r["det_lang"] == L]
         if len({r["label"] for r in tr}) < 2 or not te:
             continue
-        cal = fit_calibrator(to_df(tr), balance="balanced", draws=300, tune=300,
-                             chains=2, random_seed=0)
+        cal = fit_calibrator(
+            to_df(tr), balance="balanced", draws=300, tune=300, chains=2, random_seed=0
+        )
         ptr = np.asarray(cal.predict_proba(to_df(tr)[PREDICTORS]))
         thr, best = 0.5, -1.0
         for t in np.linspace(0.2, 0.8, 13):
@@ -834,9 +941,11 @@ def run_bayes() -> None:
         yp += list((pte >= thr).astype(int))
         yt += [r["label"] for r in te]
     s = H.score_verdicts(yt, yp)
-    line = (f"Bayesian calibrator (bambi/PyMC logistic) LOLO: "
-            f"macroF1 {s['f1_macro']:.3f} | hal-F1 {s['f1_hal']:.2f} | "
-            f"sup-F1 {s['f1_sup']:.2f} | acc {s['acc']:.3f}")
+    line = (
+        f"Bayesian calibrator (bambi/PyMC logistic) LOLO: "
+        f"macroF1 {s['f1_macro']:.3f} | hal-F1 {s['f1_hal']:.2f} | "
+        f"sup-F1 {s['f1_sup']:.2f} | acc {s['acc']:.3f}"
+    )
     print(line)
     (Path(__file__).parent / "logs" / "lab_bayes.md").write_text(line + "\n")
 
@@ -852,45 +961,63 @@ def main() -> None:
     def LR():
         return LogisticRegression(max_iter=1000, class_weight="balanced")
 
-    out = ["## Lab batch 1 - interactions + wildcards (LOLO, macro-F1)\n",
-           "| hypothesis | macroF1 | hal-F1 | sup-F1 | acc | note |",
-           "|---|---|---|---|---|---|"]
+    out = [
+        "## Lab batch 1 - interactions + wildcards (LOLO, macro-F1)\n",
+        "| hypothesis | macroF1 | hal-F1 | sup-F1 | acc | note |",
+        "|---|---|---|---|---|---|",
+    ]
 
     def row(name, s, note=""):
-        out.append(f"| {name} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | "
-                   f"{s['f1_sup']:.2f} | {s['acc']:.3f} | {note} |")
+        out.append(
+            f"| {name} | **{s['f1_macro']:.3f}** | {s['f1_hal']:.2f} | "
+            f"{s['f1_sup']:.2f} | {s['acc']:.3f} | {note} |"
+        )
 
     # floor: logistic on r1 alone
     row("floor: LR[r1]", lolo_model(rows, ["r1"], LR))
     # A1 language x recall
-    row("A1 +is_en,isen_r1,nonen_nlie", lolo_model(
-        rows, ["r1", "nli_e", "nli_c", "is_en", "isen_r1", "nonen_nlie"], LR),
-        "language x recall interaction")
-    row("A1 twin (no interactions)", lolo_model(rows, ["r1", "nli_e", "nli_c", "is_en"], LR),
-        "ablation: main effects only")
+    row(
+        "A1 +is_en,isen_r1,nonen_nlie",
+        lolo_model(rows, ["r1", "nli_e", "nli_c", "is_en", "isen_r1", "nonen_nlie"], LR),
+        "language x recall interaction",
+    )
+    row(
+        "A1 twin (no interactions)",
+        lolo_model(rows, ["r1", "nli_e", "nli_c", "is_en"], LR),
+        "ablation: main effects only",
+    )
     # A3 carved region
-    row("A3 +r1_x_nlic product", lolo_model(
-        rows, ["r1", "nli_e", "nli_c", "r1_x_nlic"], LR), "right-topic-wrong-fact")
+    row(
+        "A3 +r1_x_nlic product",
+        lolo_model(rows, ["r1", "nli_e", "nli_c", "r1_x_nlic"], LR),
+        "right-topic-wrong-fact",
+    )
     row("A3 twin (no product)", lolo_model(rows, ["r1", "nli_e", "nli_c"], LR), "ablation")
     # A5 continuous NLI
-    row("A5 LR[r1,nli_e,nli_c]", lolo_model(rows, ["r1", "nli_e", "nli_c"], LR),
-        "continuous NLI balance")
+    row(
+        "A5 LR[r1,nli_e,nli_c]",
+        lolo_model(rows, ["r1", "nli_e", "nli_c"], LR),
+        "continuous NLI balance",
+    )
     # A3 diagnostic: 2x2 enrichment
     hi = [r for r in rows if r["r1"] >= 0.4 and r["nli_c"] >= 0.5]
     halrate = sum(1 for r in hi if r["label"] == 0) / max(1, len(hi))
-    out.append(f"\nA3 diagnostic: high-r1 & high-nli_c cell n={len(hi)}, "
-               f"hallucination rate {halrate:.2f} (base 0.23)\n")
+    out.append(
+        f"\nA3 diagnostic: high-r1 & high-nli_c cell n={len(hi)}, "
+        f"hallucination rate {halrate:.2f} (base 0.23)\n"
+    )
     # C1 oracle vs r1 (1-feature LR)
     r1s = lolo_model(rows, ["r1"], LR)["f1_macro"]
     ors = lolo_model(rows, ["oracle"], LR)["f1_macro"]
-    out.append(f"C1 oracle-chunk: LR[r1]={r1s:.3f} -> LR[oracle]={ors:.3f}; "
-               f"retrieval loss {ors - r1s:+.3f}\n")
+    out.append(
+        f"C1 oracle-chunk: LR[r1]={r1s:.3f} -> LR[oracle]={ors:.3f}; "
+        f"retrieval loss {ors - r1s:+.3f}\n"
+    )
     # C6 anchor-as-veto (parameter-free override on fixed-prior recall tau=0.4)
     rec = [int(r["r1"] >= 0.4) for r in rows]
     vetoed = [0 if r["veto"] else p for r, p in zip(rows, rec)]
     fv = sum(1 for r, p, v in zip(rows, rec, vetoed) if r["label"] == 1 and p == 1 and v == 0)
-    row("C6 recall+veto (fixed tau0.4)", H.score_verdicts(labels, vetoed),
-        f"false-veto={fv}")
+    row("C6 recall+veto (fixed tau0.4)", H.score_verdicts(labels, vetoed), f"false-veto={fv}")
     row("C6 recall-only (fixed tau0.4)", H.score_verdicts(labels, rec), "no veto")
 
     report = "\n".join(out) + "\n"
@@ -900,11 +1027,24 @@ def main() -> None:
 
 
 # --- joint DeLaval + VitaminC: one model, scored per corpus (hold or collapse) ---
-_JOINT_BASE = ["r1_direct", "r1_mt", "r1_best", "charng", "fuzzy", "anchor", "anchor_mm",
-               "oracle", "top3", "same_lang", "is_en", "specificity"]
-_JOINT_H1 = ["conflict_n", "conflict_flag", "num_edit_mag"]
-_JOINT_H2 = ["direction_flip"]  # polarity_flip dropped - wrong-signed on DeLaval
-_JOINT_H3 = ["r1_x_conflict"]
+_JOINT_BASE = [
+    "r1_direct",
+    "r1_mt",
+    "r1_best",
+    "charng",
+    "fuzzy",
+    "anchor",
+    "anchor_mm",
+    "oracle",
+    "top3",
+    "same_lang",
+    "is_en",
+    "specificity",
+]
+_JOINT_H1 = ["conflict_n", "conflict_flag", "num_edit_mag"]  # aligned value-conflict
+_JOINT_H2 = ["wn_antonym_flip"]  # WordNet antonym flip (replaced curated direction)
+_JOINT_H3 = ["r1_x_conflict"]  # conflict x overlap interaction
+_JOINT_CUR = _JOINT_BASE + _JOINT_H1 + _JOINT_H2 + _JOINT_H3  # shipped contradiction layer
 
 
 def build_joint(per_label: int = 400, refresh: bool = False) -> list[dict]:
@@ -919,8 +1059,7 @@ def build_joint(per_label: int = 400, refresh: bool = False) -> list[dict]:
     vit = V.build_vitaminc_lex(per_label, refresh=refresh)
     keep = [r for r in vit if r["nat"] in ("SUPPORTS", "REFUTES")]
     for i, r in enumerate(keep):
-        rr = dict(r, label=1 if r["nat"] == "SUPPORTS" else 0,
-                  corpus="vitaminc", grp=f"v{i % 10}")
+        rr = dict(r, label=1 if r["nat"] == "SUPPORTS" else 0, corpus="vitaminc", grp=f"v{i % 10}")
         out.append(rr)
     return out
 
@@ -955,12 +1094,15 @@ def _joint_oof(rows, cols):
         m = LogisticRegression(max_iter=1000, class_weight="balanced").fit(Xtr, ytr)
         ptr = m.predict_proba(Xtr)[:, 1]
         thr_all = _tune_thr(ytr, ptr)
-        thr = {"delaval": _tune_thr(ytr[corp == "delaval"], ptr[corp == "delaval"]),
-               "vitaminc": _tune_thr(ytr[corp == "vitaminc"], ptr[corp == "vitaminc"])}
+        thr = {
+            "delaval": _tune_thr(ytr[corp == "delaval"], ptr[corp == "delaval"]),
+            "vitaminc": _tune_thr(ytr[corp == "vitaminc"], ptr[corp == "vitaminc"]),
+        }
         pte = m.predict_proba(np.array([[r[c] for c in cols] for r in te], dtype=float))[:, 1]
         for r, pp in zip(te, pte):
-            rec.append((r["corpus"], r["label"], int(pp >= thr_all),
-                        int(pp >= thr[r["corpus"]]), r))
+            rec.append(
+                (r["corpus"], r["label"], int(pp >= thr_all), int(pp >= thr[r["corpus"]]), r)
+            )
     return rec
 
 
@@ -973,27 +1115,28 @@ def run_joint(per_label: int = 400, refresh: bool = False) -> None:
     rows = build_joint(per_label, refresh=refresh)
     nd = sum(1 for r in rows if r["corpus"] == "delaval")
     nv = len(rows) - nd
-    out = ["## Joint DeLaval + VitaminC - one logistic, scored per corpus\n",
-           f"rows: {nd} delaval + {nv} vitaminc (SUPPORTS vs REFUTES); "
-           "grouped CV (delaval by src, vitaminc round-robin)\n",
-           "macro-F1 per corpus; **pc** = per-corpus-tuned threshold (one model, "
-           "domain-calibrated operating point), **sh** = single shared threshold\n",
-           "| features | DeLaval pc | DeLaval sh | VitaminC pc | VitaminC sh | pooled sh |",
-           "|---|---|---|---|---|---|"]
-    sets = [("base", _JOINT_BASE), ("base+H1 conflict", _JOINT_BASE + _JOINT_H1),
-            ("base+H2 direction", _JOINT_BASE + _JOINT_H2),
-            ("base+H3 interaction", _JOINT_BASE + _JOINT_H3),
-            ("base+all", _JOINT_BASE + _JOINT_H1 + _JOINT_H2 + _JOINT_H3)]
+    out = [
+        "## Joint DeLaval + VitaminC - one logistic, scored per corpus\n",
+        f"rows: {nd} delaval + {nv} vitaminc (SUPPORTS vs REFUTES); "
+        "grouped CV (delaval by src, vitaminc round-robin)\n",
+        "macro-F1 per corpus; **pc** = per-corpus-tuned threshold (one model, "
+        "domain-calibrated operating point), **sh** = single shared threshold\n",
+        "| features | DeLaval pc | DeLaval sh | VitaminC pc | VitaminC sh | pooled sh |",
+        "|---|---|---|---|---|---|",
+    ]
+    sets = [("base (lexical)", _JOINT_BASE), ("shipped (conflict + wn-antonym)", _JOINT_CUR)]
     base_rec = None
     for name, cols in sets:
         rec = _joint_oof(rows, cols)
-        if name == "base":
+        if name.startswith("shipped"):
             base_rec = rec
         dpc, dsh = _corpus_score(rec, "delaval", 3), _corpus_score(rec, "delaval", 2)
         vpc, vsh = _corpus_score(rec, "vitaminc", 3), _corpus_score(rec, "vitaminc", 2)
         psh = _corpus_score(rec, None, 2)
-        out.append(f"| {name} | **{dpc['f1_macro']:.3f}** | {dsh['f1_macro']:.3f} | "
-                   f"**{vpc['f1_macro']:.3f}** | {vsh['f1_macro']:.3f} | {psh['f1_macro']:.3f} |")
+        out.append(
+            f"| {name} | **{dpc['f1_macro']:.3f}** | {dsh['f1_macro']:.3f} | "
+            f"**{vpc['f1_macro']:.3f}** | {vsh['f1_macro']:.3f} | {psh['f1_macro']:.3f} |"
+        )
 
     # triage flag: does semantic_candidate concentrate VitaminC REFUTES + lexical FPs?
     vit = [r for r in rows if r["corpus"] == "vitaminc"]
@@ -1011,7 +1154,8 @@ def run_joint(per_label: int = 400, refresh: bool = False) -> None:
         f"- VitaminC coverage: {len(flagged)}/{len(vit)} = {len(flagged) / len(vit):.0%} flagged; "
         f"REFUTES inside flag {ref_in}/{len(flagged)} = {prec:.0%} (base rate {base_rate:.0%})\n"
         f"- base-model missed-hallucinations (FP) inside flag: {fp_flag}/{len(fp_rows)} = "
-        f"{(fp_flag / len(fp_rows)) if fp_rows else 0:.0%} (overall flag rate {flag_rate:.0%})\n")
+        f"{(fp_flag / len(fp_rows)) if fp_rows else 0:.0%} (overall flag rate {flag_rate:.0%})\n"
+    )
     report = "\n".join(out) + "\n"
     print(report)
     (Path(__file__).parent / "logs").mkdir(exist_ok=True)
@@ -1023,5 +1167,12 @@ if __name__ == "__main__":
     if cmd == "joint":
         run_joint(refresh="--refresh" in sys.argv)
     else:
-        {"b1": run_b1, "a4": run_a4, "final": run_final, "bayes": run_bayes,
-         "lexgbm": run_lexgbm, "seg": run_seg, "batch1": main}.get(cmd, main)()
+        {
+            "b1": run_b1,
+            "a4": run_a4,
+            "final": run_final,
+            "bayes": run_bayes,
+            "lexgbm": run_lexgbm,
+            "seg": run_seg,
+            "batch1": main,
+        }.get(cmd, main)()

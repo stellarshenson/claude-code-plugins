@@ -26,8 +26,20 @@ sys.path.insert(0, ".")
 import harness as H  # noqa: E402
 import lab  # noqa: E402
 
-FEATS = ["r1_direct", "r1_mt", "r1_best", "charng", "fuzzy", "anchor", "anchor_mm",
-         "oracle", "top3", "same_lang", "is_en", "specificity"]
+FEATS = [
+    "r1_direct",
+    "r1_mt",
+    "r1_best",
+    "charng",
+    "fuzzy",
+    "anchor",
+    "anchor_mm",
+    "oracle",
+    "top3",
+    "same_lang",
+    "is_en",
+    "specificity",
+]
 
 
 def build_vitaminc_lex(per_label: int = 400, refresh: bool = False) -> list[dict]:
@@ -71,20 +83,32 @@ def build_vitaminc_lex(per_label: int = 400, refresh: bool = False) -> list[dict
         # contradiction features (English-only; overlap-gated on fuzzy, since IDF
         # recall r1 degenerates to ~0 on VitaminC's single-sentence evidence)
         conflict_n, conflict_flag, num_edit_mag = lab.conflict_feats(claim, best)
-        pol_flip = int(best and (H._is_negated(claim) != H._is_negated(best)) and fz > 0.5)
-        dir_flip = int(lab.direction_flip(claim, best) and fz > 0.5)
-        conflict_any = int(conflict_flag or dir_flip)  # polarity dropped (DeLaval noise)
+        wn_flip = int(lab.wn_antonym_flip(claim, best) and fz > 0.5)
+        conflict_any = int(conflict_flag or wn_flip)
         semantic_candidate = int(fz >= 0.5 and conflict_any)
-        rows.append(dict(
-            nat=nat, r1_direct=round(r1, 4), r1_mt=round(r1, 4), r1_best=round(r1, 4),
-            charng=round(charng, 4), fuzzy=round(fz, 4), anchor=round(anchor, 4),
-            anchor_mm=amm, oracle=round(oracle, 4), top3=round(top3, 4),
-            same_lang=same_lang, is_en=1, specificity=round(spec, 4),
-            conflict_n=round(conflict_n, 4), conflict_flag=conflict_flag,
-            num_edit_mag=round(num_edit_mag, 4), polarity_flip=pol_flip,
-            direction_flip=dir_flip, r1_x_conflict=round(r1 * conflict_any, 4),
-            semantic_candidate=semantic_candidate,
-        ))
+        rows.append(
+            dict(
+                nat=nat,
+                r1_direct=round(r1, 4),
+                r1_mt=round(r1, 4),
+                r1_best=round(r1, 4),
+                charng=round(charng, 4),
+                fuzzy=round(fz, 4),
+                anchor=round(anchor, 4),
+                anchor_mm=amm,
+                oracle=round(oracle, 4),
+                top3=round(top3, 4),
+                same_lang=same_lang,
+                is_en=1,
+                specificity=round(spec, 4),
+                conflict_n=round(conflict_n, 4),
+                conflict_flag=conflict_flag,
+                num_edit_mag=round(num_edit_mag, 4),
+                wn_antonym_flip=wn_flip,
+                r1_x_conflict=round(r1 * conflict_any, 4),
+                semantic_candidate=semantic_candidate,
+            )
+        )
         if all(v <= 0 for v in want.values()):
             break
     fp.write_text(json.dumps(rows))
@@ -127,9 +151,11 @@ def _report(title, rows):
     yt, yp, nats = _oof_cv(rows)
     s = H.score_verdicts(yt, yp)
     print(f"\n{title}  (n={len(yt)}, supported={sum(yt)}, neg={len(yt) - sum(yt)})")
-    print(f"  macroF1 {s['f1_macro']:.3f}  hal-F1 {s['f1_hal']:.2f}  "
-          f"sup-F1 {s['f1_sup']:.2f}  acc {s['acc']:.3f}  "
-          f"sup-rec {s['rec_sup']:.2f}  hal-rec {s['rec_hal']:.2f}")
+    print(
+        f"  macroF1 {s['f1_macro']:.3f}  hal-F1 {s['f1_hal']:.2f}  "
+        f"sup-F1 {s['f1_sup']:.2f}  acc {s['acc']:.3f}  "
+        f"sup-rec {s['rec_sup']:.2f}  hal-rec {s['rec_hal']:.2f}"
+    )
     # per native-label: how often the model called it "supported"
     by = {}
     for t, p, nat in zip(yt, yp, nats):
@@ -149,8 +175,11 @@ def main(per_label: int = 400) -> None:
     print("English-only: MT never fires (is_en=1); isolates lexical recall + specificity")
 
     # primary: SUPPORTS vs REFUTES (drop NEI)
-    sr = [dict(r, label=1 if r["nat"] == "SUPPORTS" else 0)
-          for r in rows if r["nat"] in ("SUPPORTS", "REFUTES")]
+    sr = [
+        dict(r, label=1 if r["nat"] == "SUPPORTS" else 0)
+        for r in rows
+        if r["nat"] in ("SUPPORTS", "REFUTES")
+    ]
     _report("PRIMARY  SUPPORTS=1 vs REFUTES=0", sr)
 
     # secondary: SUPPORTS vs {REFUTES, NEI}
