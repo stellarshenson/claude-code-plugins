@@ -467,6 +467,83 @@ def claim_intrinsic(claim: str) -> tuple[float, float]:
     return spec, hedge
 
 
+# --- contradiction features (aligned value-conflict + polarity/direction flip) ---
+# Curated antonym / comparative-direction lexicon: a population constant, not fit
+# to either corpus. English core + a small multilingual tail; opposite-direction
+# substitution under high overlap is the prose signature of contradiction.
+_DIRECTION_PAIRS = [
+    ("increase", "decrease"), ("increased", "decreased"), ("increases", "decreases"),
+    ("increasing", "decreasing"), ("rise", "fall"), ("rose", "fell"), ("rising", "falling"),
+    ("gain", "loss"), ("gains", "losses"), ("grow", "shrink"), ("grew", "shrank"),
+    ("more", "less"), ("higher", "lower"), ("larger", "smaller"), ("largest", "smallest"),
+    ("greater", "smaller"), ("greatest", "least"), ("most", "least"), ("maximum", "minimum"),
+    ("before", "after"), ("earlier", "later"), ("first", "last"), ("oldest", "newest"),
+    ("win", "lose"), ("won", "lost"), ("winner", "loser"), ("victory", "defeat"),
+    ("up", "down"), ("above", "below"), ("positive", "negative"), ("over", "under"),
+    ("accept", "reject"), ("accepted", "rejected"), ("approve", "reject"),
+    ("approved", "rejected"), ("add", "remove"), ("added", "removed"),
+    ("open", "close"), ("opened", "closed"), ("begin", "end"), ("began", "ended"),
+    ("start", "stop"), ("started", "stopped"), ("include", "exclude"),
+    ("included", "excluded"), ("enable", "disable"), ("enabled", "disabled"),
+    ("succeed", "fail"), ("succeeded", "failed"), ("success", "failure"),
+    ("majority", "minority"), ("all", "none"), ("always", "never"), ("true", "false"),
+    # multilingual tail (es/fr/it/no/sv/pt) - opposite-direction cognates
+    ("aumenta", "disminuye"), ("mayor", "menor"), ("augmente", "diminue"),
+    ("aumenta", "diminuisce"), ("maggiore", "minore"), ("oker", "reduserer"),
+    ("okar", "minskar"), ("maior", "menor"), ("antes", "despues"), ("avant", "apres"),
+]
+_DIR_MAP: dict[str, set[str]] = {}
+for _a, _b in _DIRECTION_PAIRS:
+    _DIR_MAP.setdefault(_a, set()).add(_b)
+    _DIR_MAP.setdefault(_b, set()).add(_a)
+
+
+def conflict_feats(claim: str, best: str) -> tuple[float, int, float]:
+    """H1: aligned value-conflict (numeric + entity) from find_mismatches, graded.
+
+    Returns (conflict_n, conflict_flag, num_edit_mag). Inherently overlap-gated:
+    a mismatch only exists when a claim anchor ALIGNS with the chunk but disagrees
+    in value, so on absent-content negatives (DeLaval) nothing aligns -> all zero.
+    """
+    if not best:
+        return 0.0, 0, 0.0
+    nmm, emm = H.find_mismatches(claim, best)
+    cnt = len(nmm) + len(emm)
+    ents = H.list_claim_entities(claim)
+    bl = best.lower()
+    aligned_ent = sum(1 for e in ents if e.lower() in bl)
+    nrec, _ = H.number_recall(claim, best)
+    aligned_num = 1 if (nrec is not None and nrec > 0) else 0
+    denom = aligned_ent + aligned_num + cnt
+    conflict_n = cnt / denom if denom else 0.0
+    mag = 0.0
+    for a, b in nmm:
+        try:
+            fa, fb = float(a.replace(",", "")), float(b.replace(",", ""))
+            d = max(abs(fa), abs(fb))
+            mag = max(mag, abs(fa - fb) / d) if d else mag
+        except ValueError:
+            mag = max(mag, 1.0)
+    return conflict_n, int(cnt > 0), mag
+
+
+def direction_flip(claim_en: str, best: str) -> int:
+    """H2: a claim token whose opposite-direction word sits in the best chunk.
+
+    Requires the claim word ABSENT from the chunk (a substitution, not a passage
+    that merely mentions both directions) - reduces false fires on supported prose.
+    """
+    if not best:
+        return 0
+    ct = set(_TOKEN_RE.findall(claim_en.lower()))
+    bt = set(_TOKEN_RE.findall(best.lower()))
+    for t in ct:
+        opp = _DIR_MAP.get(t)
+        if opp and (opp & bt) and t not in bt:
+            return 1
+    return 0
+
+
 def build_lex(refresh: bool = False) -> list[dict]:
     """Lexical-only features with claim+chunk language detection (no NLI)."""
     fp = CACHE / "lex.json"
@@ -511,6 +588,16 @@ def build_lex(refresh: bool = False) -> list[dict]:
         unmatched_rarity, max_unmatched = gap_rarity(claim_en, best_t)
         span_lcs, quote_flag = span_feats(claim_en, best_t)
         spec, hedge = claim_intrinsic(r.claim)
+        # contradiction features (overlap-gated on fuzzy - live on single-chunk
+        # evidence, unlike IDF recall which degenerates to ~0 on a 1-chunk corpus)
+        conflict_n, conflict_flag, num_edit_mag = conflict_feats(r.claim, best_t)
+        pol_flip = int(best_t and (H._is_negated(claim_en) != H._is_negated(best_t))
+                       and fz > 0.5)
+        dir_flip = int(direction_flip(claim_en, best_t) and fz > 0.5)
+        # polarity_flip dropped from the signal: wrong-signed on DeLaval (fires on
+        # 9% of SUPPORTED via scope-blind negation-XOR); kept as a column only
+        conflict_any = int(conflict_flag or dir_flip)
+        semantic_candidate = int(fz >= 0.5 and conflict_any)
         rows.append(dict(
             label=r.label, lang=r.lang, det_lang=r.det_lang, src=sid,
             is_en=int(r.det_lang == "en"), same_lang=same_lang,
@@ -520,6 +607,10 @@ def build_lex(refresh: bool = False) -> list[dict]:
             unmatched_rarity=round(unmatched_rarity, 4), max_unmatched=round(max_unmatched, 4),
             span_lcs=round(span_lcs, 4), quote_flag=quote_flag,
             specificity=round(spec, 4), hedge=round(hedge, 4),
+            conflict_n=round(conflict_n, 4), conflict_flag=conflict_flag,
+            num_edit_mag=round(num_edit_mag, 4), polarity_flip=pol_flip,
+            direction_flip=dir_flip, r1_x_conflict=round(r1_best * conflict_any, 4),
+            semantic_candidate=semantic_candidate,
         ))
     fp.write_text(json.dumps(rows))
     return rows
@@ -808,7 +899,129 @@ def main() -> None:
     (Path(__file__).parent / "logs" / "lab_batch1.md").write_text(report)
 
 
+# --- joint DeLaval + VitaminC: one model, scored per corpus (hold or collapse) ---
+_JOINT_BASE = ["r1_direct", "r1_mt", "r1_best", "charng", "fuzzy", "anchor", "anchor_mm",
+               "oracle", "top3", "same_lang", "is_en", "specificity"]
+_JOINT_H1 = ["conflict_n", "conflict_flag", "num_edit_mag"]
+_JOINT_H2 = ["direction_flip"]  # polarity_flip dropped - wrong-signed on DeLaval
+_JOINT_H3 = ["r1_x_conflict"]
+
+
+def build_joint(per_label: int = 400, refresh: bool = False) -> list[dict]:
+    """Tagged union of DeLaval gold + VitaminC (primary: SUPPORTS vs REFUTES, drop NEI)."""
+    import vitaminc_eval as V
+
+    dela = build_lex(refresh=refresh)
+    out = []
+    for r in dela:
+        rr = dict(r, corpus="delaval", grp=f"d{r['src']}")
+        out.append(rr)
+    vit = V.build_vitaminc_lex(per_label, refresh=refresh)
+    keep = [r for r in vit if r["nat"] in ("SUPPORTS", "REFUTES")]
+    for i, r in enumerate(keep):
+        rr = dict(r, label=1 if r["nat"] == "SUPPORTS" else 0,
+                  corpus="vitaminc", grp=f"v{i % 10}")
+        out.append(rr)
+    return out
+
+
+def _tune_thr(yy, pp):
+    if len(set(yy.tolist())) < 2:
+        return 0.5
+    best, thr = -1.0, 0.5
+    for t in np.linspace(0.2, 0.8, 13):
+        s = _mf1(yy.tolist(), (pp >= t).astype(int).tolist())
+        if s > best:
+            best, thr = s, t
+    return thr
+
+
+def _joint_oof(rows, cols):
+    """One logistic, leave-one-group-out. Two operating points per row:
+    pred_shared (threshold tuned on the whole joint train fold) and pred_pc
+    (threshold tuned per corpus on the train fold) - same model, domain-calibrated
+    operating point. Returns (corpus, label, pred_shared, pred_pc)."""
+    from sklearn.linear_model import LogisticRegression
+
+    rec = []
+    for g in sorted({r["grp"] for r in rows}):
+        tr = [r for r in rows if r["grp"] != g]
+        te = [r for r in rows if r["grp"] == g]
+        if len({r["label"] for r in tr}) < 2 or not te:
+            continue
+        Xtr = np.array([[r[c] for c in cols] for r in tr], dtype=float)
+        ytr = np.array([r["label"] for r in tr])
+        corp = np.array([r["corpus"] for r in tr])
+        m = LogisticRegression(max_iter=1000, class_weight="balanced").fit(Xtr, ytr)
+        ptr = m.predict_proba(Xtr)[:, 1]
+        thr_all = _tune_thr(ytr, ptr)
+        thr = {"delaval": _tune_thr(ytr[corp == "delaval"], ptr[corp == "delaval"]),
+               "vitaminc": _tune_thr(ytr[corp == "vitaminc"], ptr[corp == "vitaminc"])}
+        pte = m.predict_proba(np.array([[r[c] for c in cols] for r in te], dtype=float))[:, 1]
+        for r, pp in zip(te, pte):
+            rec.append((r["corpus"], r["label"], int(pp >= thr_all),
+                        int(pp >= thr[r["corpus"]]), r))
+    return rec
+
+
+def _corpus_score(rec, corpus=None, idx=2):
+    yy = [(t[1], t[idx]) for t in rec if corpus is None or t[0] == corpus]
+    return H.score_verdicts([y for y, _ in yy], [p for _, p in yy])
+
+
+def run_joint(per_label: int = 400, refresh: bool = False) -> None:
+    rows = build_joint(per_label, refresh=refresh)
+    nd = sum(1 for r in rows if r["corpus"] == "delaval")
+    nv = len(rows) - nd
+    out = ["## Joint DeLaval + VitaminC - one logistic, scored per corpus\n",
+           f"rows: {nd} delaval + {nv} vitaminc (SUPPORTS vs REFUTES); "
+           "grouped CV (delaval by src, vitaminc round-robin)\n",
+           "macro-F1 per corpus; **pc** = per-corpus-tuned threshold (one model, "
+           "domain-calibrated operating point), **sh** = single shared threshold\n",
+           "| features | DeLaval pc | DeLaval sh | VitaminC pc | VitaminC sh | pooled sh |",
+           "|---|---|---|---|---|---|"]
+    sets = [("base", _JOINT_BASE), ("base+H1 conflict", _JOINT_BASE + _JOINT_H1),
+            ("base+H2 direction", _JOINT_BASE + _JOINT_H2),
+            ("base+H3 interaction", _JOINT_BASE + _JOINT_H3),
+            ("base+all", _JOINT_BASE + _JOINT_H1 + _JOINT_H2 + _JOINT_H3)]
+    base_rec = None
+    for name, cols in sets:
+        rec = _joint_oof(rows, cols)
+        if name == "base":
+            base_rec = rec
+        dpc, dsh = _corpus_score(rec, "delaval", 3), _corpus_score(rec, "delaval", 2)
+        vpc, vsh = _corpus_score(rec, "vitaminc", 3), _corpus_score(rec, "vitaminc", 2)
+        psh = _corpus_score(rec, None, 2)
+        out.append(f"| {name} | **{dpc['f1_macro']:.3f}** | {dsh['f1_macro']:.3f} | "
+                   f"**{vpc['f1_macro']:.3f}** | {vsh['f1_macro']:.3f} | {psh['f1_macro']:.3f} |")
+
+    # triage flag: does semantic_candidate concentrate VitaminC REFUTES + lexical FPs?
+    vit = [r for r in rows if r["corpus"] == "vitaminc"]
+    flagged = [r for r in vit if r["semantic_candidate"]]
+    ref_in = sum(1 for r in flagged if r["label"] == 0)
+    ref_all = sum(1 for r in vit if r["label"] == 0)
+    base_rate = ref_all / len(vit)
+    prec = (ref_in / len(flagged)) if flagged else 0.0
+    # base-model false positives (missed hallucinations, shared-threshold) concentration
+    fp_rows = [t[4] for t in base_rec if t[1] == 0 and t[2] == 1]
+    fp_flag = sum(1 for r in fp_rows if r["semantic_candidate"])
+    flag_rate = sum(1 for r in rows if r["semantic_candidate"]) / len(rows)
+    out.append(
+        f"\n### semantic_candidate triage flag\n"
+        f"- VitaminC coverage: {len(flagged)}/{len(vit)} = {len(flagged) / len(vit):.0%} flagged; "
+        f"REFUTES inside flag {ref_in}/{len(flagged)} = {prec:.0%} (base rate {base_rate:.0%})\n"
+        f"- base-model missed-hallucinations (FP) inside flag: {fp_flag}/{len(fp_rows)} = "
+        f"{(fp_flag / len(fp_rows)) if fp_rows else 0:.0%} (overall flag rate {flag_rate:.0%})\n")
+    report = "\n".join(out) + "\n"
+    print(report)
+    (Path(__file__).parent / "logs").mkdir(exist_ok=True)
+    (Path(__file__).parent / "logs" / "lab_joint.md").write_text(report)
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "batch1"
-    {"b1": run_b1, "a4": run_a4, "final": run_final, "bayes": run_bayes,
-     "lexgbm": run_lexgbm, "seg": run_seg, "batch1": main}.get(cmd, main)()
+    if cmd == "joint":
+        run_joint(refresh="--refresh" in sys.argv)
+    else:
+        {"b1": run_b1, "a4": run_a4, "final": run_final, "bayes": run_bayes,
+         "lexgbm": run_lexgbm, "seg": run_seg, "batch1": main}.get(cmd, main)()

@@ -22,6 +22,7 @@ A purely lexical model (translate the claim, then lexical recall) is the best, b
 - **Replicated across data growth** - leave-one-source-out held 0.829 (856 records) → 0.837 (1260), then 0.845 with the `specificity` feature; stability across the growth is the best evidence the result is real, not a snapshot artefact
 - **Metric** - macro-F1 (imbalance-robust); the majority predictor reads ~0.64 accuracy but macro-F1 ~0.39 with hallucination-F1 0.000
 - **Residual** - hallucination detection is data-bound (es/pt at n=5-6)
+- **Contradiction layer holds a second corpus** - a deterministic value-conflict feature + antonym/direction-flip triage lifts the lexical-blind VitaminC contrastive set (joint macro-F1 0.532 → 0.673) while DeLaval holds (0.851 → 0.841); the full final design is in `lexical-grounding-sota.md`
 
 **Performance results** - average per-claim end-to-end breakdown (lexical + MT, no semantic; live 1260 gold, CPU single-thread, torch-free). MT fires only on heterogeneous claims (non-English claim vs English source), so its per-claim cost is amortised across all 1260.
 
@@ -84,8 +85,30 @@ The decisive factors are the features and the dataset size, not the fitting meth
 
 ## What we tried
 
-- **Kept** - the MT bridge (argos per-language), word recall, anchors, char-ngram, fuzzy, claim-intrinsic specificity, a logistic head; the per-chunk routing / dual recall is kept for efficiency, not accuracy
-- **Dropped / refuted** - NLI entailment (superseded by lexical recall + specificity), claim decomposition (over-flags supported clauses), cross-corpus calibrator transfer (VitaminC mis-weights), oracle-chunk (retrieval is not the bottleneck), linear interaction terms and deep trees (overfit), OPUS-MT engine (worse and ~9x slower than argos)
+- **Kept** - the MT bridge (argos per-language), word recall, anchors, char-ngram, fuzzy, claim-intrinsic specificity, the aligned value-conflict feature, a logistic head; the per-chunk routing / dual recall is kept for efficiency, not accuracy
+- **Dropped / refuted** - NLI entailment (superseded by lexical recall + specificity), claim decomposition (over-flags supported clauses), cross-corpus calibrator transfer (VitaminC mis-weights), oracle-chunk (retrieval is not the bottleneck), linear interaction terms and deep trees (overfit), OPUS-MT engine (worse and ~9x slower than argos), polarity/negation-XOR (wrong-signed on DeLaval - fires on 9% of supported)
+
+## Contradiction features: joint hold-vs-collapse
+
+Hypothesis arc testing whether deterministic features can lift the contrastive corpus (VitaminC, where the lexical grounder collapses to 0.586) without degrading DeLaval. Protocol: one logistic trained on the joint DeLaval (1260) + VitaminC (800, SUPPORTS vs REFUTES) table, grouped CV, scored per corpus; acceptance is two-sided (VitaminC up AND DeLaval holds). Mechanism not data - every contradiction feature is overlap-gated so it stays inert on absent-content negatives.
+
+- **H1 aligned value-conflict** - claim anchors that align with the chunk but disagree in value (`find_mismatches`, graded); shipped - free on DeLaval (0.3% fire), +0.032 VitaminC
+- **H2 antonym/direction-flip** - curated opposite-direction lexicon; fires on 62% of VitaminC REFUTES vs 6% SUPPORTS and 0.4% of DeLaval - the lever (+0.14 VitaminC), at a ~0.01 DeLaval false-fire cost as a hard feature
+- **H3 conflict × overlap interaction** - inert; the IDF recall it multiplies is degenerate (~0) on VitaminC single-sentence evidence
+- **Refuted in passing** - polarity/negation-XOR (wrong-signed on DeLaval); the contradiction features were initially killed by gating on the degenerate recall - re-gated on fuzzy, which stays live on single-chunk evidence
+
+Results (macro-F1 per corpus, per-corpus-tuned threshold - one model, domain-calibrated operating point):
+
+| configuration | DeLaval | VitaminC |
+|---|---|---|
+| lexical base | 0.851 | 0.532 |
+| + value-conflict (H1) | 0.851 | 0.564 |
+| + direction-flip (H2) | 0.840 | 0.610 |
+| + all | 0.841 | 0.673 |
+
+- **Hold, not collapse** - VitaminC 0.532 → 0.673 while DeLaval 0.851 → 0.841 (−0.010, within LOSO noise)
+- **Triage flag** - `semantic_candidate` (high overlap AND conflict/direction) flags 23% of VitaminC at 92% REFUTES precision, 3× error concentration, zero classifier cost - routes the irreducibly semantic residual to a future stage rather than guessing
+- **Conclusion** - value-conflict ships as a feature; direction-flip deploys via the triage flag where its DeLaval cost vanishes; the final design is in `lexical-grounding-sota.md`
 
 ## Lessons learned
 
@@ -95,6 +118,8 @@ The decisive factors are the features and the dataset size, not the fitting meth
 - **Imbalance hides failure** - 0.64 accuracy looked fine while macro-F1 was 0.39 and hallucination-F1 0.00; pick the imbalance-robust metric first
 - **A semantic model was not required** - good lexical features with translate-then-recall matched and beat NLI on this task
 - **The win is matched to omission-type hallucinations, not contrastive ones** - run unchanged on VitaminC (contrastive English fact-verification, negatives lexically near-identical to the evidence with one fact flipped), the lexical grounder collapses to macro-F1 0.586 (SUPPORTS vs REFUTES, ~coin-flip) from 0.844 on DeLaval; DeLaval hallucinations are absent/fabricated specifics that drop recall, VitaminC REFUTES are present-but-contradicted so recall stays high and the lexical stack is structurally blind; contradiction detection is where NLI earns its place (mirrors the A4 transfer: VitaminC is NLI-dominant, DeLaval recall-dominant)
+- **Most of that gap is deterministically bridgeable** - a contradiction layer (aligned value-conflict feature + antonym/direction-flip triage, fuzzy-gated) trained jointly lifts VitaminC 0.532 → 0.673 while DeLaval holds (0.851 → 0.841, within LOSO noise); `direction_flip` fires on 62% of REFUTES vs 6% of SUPPORTS and 0.4% of DeLaval - active only where the contrastive negative lives, the mirror of `same_lang`/`is_en` which carry DeLaval's mechanism and go quiet on English VitaminC; one model holds both because each corpus's signal rides on features inert on the other (final design in `lexical-grounding-sota.md`)
+- **Triage beats forcing a verdict** - where deterministic features cannot settle support-vs-contradiction, a `semantic_candidate` flag (high overlap AND a conflict/direction signal) marks the claim for a downstream semantic stage: 23% of VitaminC at 92% REFUTES precision, 3× error concentration, zero classifier cost - the irreducibly semantic residual is routed, not guessed
 - **MT good enough makes routing ~free** - always-translate-then-recall matches the per-chunk `same_lang` routing on the source-out split (0.835 vs 0.837); the routing's value is cost (skip translation for same-language claims), not accuracy; better MT would mostly help the abstractive es/pt tail
 - **Claim-intrinsic features generalise** - `specificity` (anchor density from the claim alone) lifted the source-out split and narrowed the LOLO↔LOSO gap precisely because it cannot see the evidence, so it learns the way claims are checkable, not the documents' text; the strongest single-feature add
 - **A verbatim span is a precision-1 confirm** - a long contiguous restatement is near-deterministic support (98.2%), whereas the same words scattered across a document are not

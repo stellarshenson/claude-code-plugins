@@ -68,11 +68,22 @@ def build_vitaminc_lex(per_label: int = 400, refresh: bool = False) -> list[dict
         chunk_lang = lab._lingua_lang(best) if best else "und"
         same_lang = int(clang != "und" and chunk_lang == clang)
         spec, _ = lab.claim_intrinsic(claim)
+        # contradiction features (English-only; overlap-gated on fuzzy, since IDF
+        # recall r1 degenerates to ~0 on VitaminC's single-sentence evidence)
+        conflict_n, conflict_flag, num_edit_mag = lab.conflict_feats(claim, best)
+        pol_flip = int(best and (H._is_negated(claim) != H._is_negated(best)) and fz > 0.5)
+        dir_flip = int(lab.direction_flip(claim, best) and fz > 0.5)
+        conflict_any = int(conflict_flag or dir_flip)  # polarity dropped (DeLaval noise)
+        semantic_candidate = int(fz >= 0.5 and conflict_any)
         rows.append(dict(
             nat=nat, r1_direct=round(r1, 4), r1_mt=round(r1, 4), r1_best=round(r1, 4),
             charng=round(charng, 4), fuzzy=round(fz, 4), anchor=round(anchor, 4),
             anchor_mm=amm, oracle=round(oracle, 4), top3=round(top3, 4),
             same_lang=same_lang, is_en=1, specificity=round(spec, 4),
+            conflict_n=round(conflict_n, 4), conflict_flag=conflict_flag,
+            num_edit_mag=round(num_edit_mag, 4), polarity_flip=pol_flip,
+            direction_flip=dir_flip, r1_x_conflict=round(r1 * conflict_any, 4),
+            semantic_candidate=semantic_candidate,
         ))
         if all(v <= 0 for v in want.values()):
             break

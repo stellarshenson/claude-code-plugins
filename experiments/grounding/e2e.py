@@ -11,7 +11,6 @@ from __future__ import annotations
 import sys
 import time
 
-import numpy as np
 from rapidfuzz import fuzz
 from sklearn.linear_model import LogisticRegression
 
@@ -21,7 +20,8 @@ import lab  # noqa: E402
 import mt  # noqa: E402
 
 FEATS = ["r1_direct", "r1_mt", "r1_best", "charng", "fuzzy", "anchor", "anchor_mm",
-         "oracle", "top3", "same_lang", "is_en", "specificity"]
+         "oracle", "top3", "same_lang", "is_en", "specificity",
+         "conflict_n", "conflict_flag", "num_edit_mag"]
 
 
 def main() -> None:
@@ -73,12 +73,19 @@ def main() -> None:
         clang = lab._lingua_lang(r.claim)
         chunk_lang = lab._lingua_lang(bd) if bd else "und"
         same_lang = int(clang != "und" and chunk_lang == clang)
+        # contradiction layer: aligned value-conflict (feature) + direction-flip
+        # (triage); both fuzzy-gated so they stay inert on absent-content negatives
+        conflict_n, conflict_flag, num_edit_mag = lab.conflict_feats(r.claim, bt)
+        dir_flip = int(lab.direction_flip(claim, bt) and fz > 0.5)
+        semantic_candidate = int(fz >= 0.5 and (conflict_flag or dir_flip))
         timing["intrinsic"] += time.time() - t
         rows.append(dict(label=r.label, det_lang=r.det_lang, src=sid,
                          is_en=int(r.det_lang == "en"), same_lang=same_lang,
                          r1_direct=r1_direct, r1_mt=r1_mt, r1_best=max(r1_direct, r1_mt),
                          charng=charng, fuzzy=fz, anchor=anchor, anchor_mm=amm,
-                         oracle=oracle, top3=top3, specificity=spec))
+                         oracle=oracle, top3=top3, specificity=spec,
+                         conflict_n=conflict_n, conflict_flag=conflict_flag,
+                         num_edit_mag=num_edit_mag, semantic_candidate=semantic_candidate))
     feat_wall = time.time() - t_all
 
     def LR():
@@ -105,6 +112,9 @@ def main() -> None:
     if n_mt:
         print(f"  MT per translated claim:            {1000 * timing['mt'] / n_mt:.1f} ms")
     print(f"  classifier fit+score (LOLO+LOSO):   {eval_wall:.1f}s (negligible at inference)")
+    n_sc = sum(r["semantic_candidate"] for r in rows)
+    print(f"\nTRIAGE  semantic_candidate flagged: {n_sc}/{n} = {100 * n_sc / n:.0f}% "
+          "(contradiction region routed to a future semantic stage)")
 
 
 if __name__ == "__main__":
