@@ -15,6 +15,25 @@ The lexical grounder confirmed only ~12% of supported claims on the client gold;
 
 A purely lexical model (translate the claim, then lexical recall) is the best, beating every model that used the NLI semantic layer.
 
+**Research at a glance** - the full hypothesis sweep across two corpora, with datasets and outcomes (detail in the sections below and `BENCHMARK.md`):
+
+| Experiment / hypothesis | Dataset | Key result | Conclusion |
+|---|---|---|---|
+| MT bridge (argos) + best-chunk recall | DeLaval gold 375→1260 | non-EN LOLO nb 0.40→0.93, fr 0.50→0.81, it 0.88→1.00 | **Kept** - translation is the cross-lingual lever |
+| Chunk size / overlap sweep | DeLaval | class-separation AUC 0.50 whole-doc → 0.728 char/150 | recursive 300-char / 0.1 operating point |
+| Per-chunk language routing (`same_lang`) | DeLaval 1260 | +0.002 LOSO over always-translate | efficiency lever, not accuracy |
+| NLI semantic layer / recall-OR-NLI ensemble | DeLaval 375 | macro-F1 0.737, hal-F1 0.64, rescues es/pt tail | **Dropped** - lexical features supersede it |
+| Cross-corpus calibrator transfer (fit on VitaminC) | VitaminC → DeLaval | macro-F1 0.594; coefs `nli_c −3.03, r1 0.0` | **Refuted** - signal weighting is domain-specific |
+| Claim decomposition (clause / sentence split) | DeLaval 856 / 1260 | hurts at 856, SaT split helps at 1260 (hal-F1 0.61→0.71) | size-dependent; regex split refuted, SaT kept |
+| Model class: logistic vs depth-2 GBT vs Bayesian | DeLaval 375 / 856 / 1260 | GBT 0.775 at 375; linear wins at 1260 (GBT 0.74→0.54) | **Linear ships** - GBT overfits as data grows |
+| Claim-intrinsic `specificity` (mechanism-general) | DeLaval 1260 | LOSO 0.837 → 0.845, narrows LOLO↔LOSO gap | **Ships** - strongest generalisation feature |
+| Verbatim `quote_flag` (≥40-char span) | DeLaval 1260 | 98.2% supported precision on the 109 it fires for | **Ships** - precision-1 supported confirm |
+| Background-rarity gap (`wordfreq`) | DeLaval 1260 | redundant with recall | null - dropped |
+| SaT vs regex claim segmentation (LLM-as-judge) | DeLaval 1260 | SaT wins macro-F1 + LLM-judge 15 / 1 | **SaT preferred** |
+| Cross-corpus probe: run grounder on VitaminC | VitaminC dev 1200 | macro-F1 collapses 0.844 → 0.586 (~coin-flip) | NFL boundary - contrastive negatives need a contradiction signal |
+| R1 contradiction: value-conflict, direction-flip, interaction, polarity | DeLaval + VitaminC joint | VitaminC 0.532 → 0.673, DeLaval holds 0.841 | value-conflict + direction **ship**; interaction, polarity **refuted** |
+| R2 contradiction: minimal-substitution, numeric-comparison, WordNet antonym | DeLaval + VitaminC joint | VitaminC → 0.685, DeLaval 0.842; triage 90% prec | **WordNet ships** (replaces curated list); subst + numeric **null** |
+
 - **Best model** - lexical-only logistic over translate-then-recall features + a claim-intrinsic `specificity` feature: **macro-F1 0.845 (leave-one-source-out, the trustworthy split) / 0.793 (leave-one-language-out), hallucination-F1 0.81**, no semantic model
 - **Beats NLI** - the NLI-including model and the lexical `recall_split` rule both score below it; dropping NLI gained accuracy, simplicity, and speed
 - **The lever is MT + recall (+ specificity), not the language routing** - translate-then-recall alone scores 0.835 LOSO; the per-chunk `same_lang` flag + dual recall add only ~+0.002; a plain logistic wins, gradient-boosted trees overfit the language-held-out folds
