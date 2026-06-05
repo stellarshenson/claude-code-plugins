@@ -161,7 +161,24 @@ Three features designed to capture the *way* claims are (un)supported, not the d
 
 **New best**: lexical-only logistic + claim-intrinsic `specificity` - **LOSO macro-F1 0.845 / hal-F1 0.81**, with `quote_flag` as a precision-0.98 supported confirm.
 
-## Recommendation (all 9 hypotheses tested - superseded by Round 5/6)
+## Round 7 - claim-segmentation competition (SaT vs regex), two signals
+
+Tested wtpsplit SaT for claim extraction against the current regex clause-split, scored two ways: **our metric** (grounding macro-F1, LOLO + LOSO, min-recall + any-contradicted) and an **LLM-as-judge** that catches segmentation artefacts the metric cannot see. Non-English claims translated via the new torch-free `mt.py` (CTranslate2 + SaT).
+
+| segmentation | units/claim | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |
+|---|---|---|---|---|---|
+| whole-claim (no split) | 1.0 | 0.723 | 0.61 | 0.772 | 0.72 |
+| regex clause-split (current) | 1.49 | 0.764 | 0.70 | 0.764 | 0.70 |
+| **SaT (wtpsplit)** | 1.52 | **0.776** | **0.71** | **0.776** | **0.71** |
+
+**LLM-judge** (16 multi-fact claims, randomized A/B): **SaT 15, regex 1, tie 0**.
+
+- **SaT wins both signals** - ≥ regex on macro-F1 everywhere (LOLO 0.776 vs 0.764), and 15-1 on the LLM judge. Zero-risk swap: neutral-to-better on the metric, decisively cleaner units
+- **The LLM judge is the artefact signal** - regex strips `and`/`but` and garbles clauses ("T01 converts X **the** T03..."); the metric can't see this (a mangled unit still recalls tokens), the judge can
+- **Decomposition now helps - reverses Round 3** - on the small 856 set clause-split hurt; on the live 1260 (466 negatives) it lifts hallucination detection (hal-F1 0.61 → 0.71) because "split + any-contradicted-wins" catches a fabricated clause whole-claim recall masks. Another small-data conclusion that didn't survive more data
+- **Caveats** - the macro-F1 gain over whole-claim is large on LOLO (+0.053) but small on LOSO (+0.004), and this is within the simple min-recall rule, not the full lexical model (0.845). SaT is validated as the better claim-extraction method; folding it into the full model is the open follow-up
+
+## Recommendation (all 9 hypotheses tested - superseded by Round 5/6/7)
 
 - **Ship**: argos-translate MT bridge + best-chunk recall, English/translated two-threshold (`recall_split`) - best macro-F1 0.755 TEST and accuracy 0.817, cheapest path
 - **Add for hallucination detection**: the `recall OR NLI` ensemble - best hallucination-F1 0.64 and balanced 0.808, parameter-free, rescues the es/pt tail

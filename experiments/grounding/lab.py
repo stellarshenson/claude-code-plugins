@@ -626,6 +626,85 @@ def run_lexgbm() -> None:
     (Path(__file__).parent / "logs" / "lab_lexgbm.md").write_text(report)
 
 
+def run_seg() -> None:
+    """Claim-segmentation competition scored by OUR metric (macro-F1, LOLO + LOSO).
+
+    whole-claim vs regex clause-split (current) vs SaT (wtpsplit). Ground each unit,
+    aggregate any-contradicted / min-recall, tune the recall bar per fold. Uses the
+    torch-free mt.py for translation and SaT.
+    """
+    import mt
+
+    sat = mt._sat()
+    fp = CACHE / "seg.json"
+    if fp.exists():
+        rows = json.loads(fp.read_text())
+    else:
+        recs = H.load_gold()
+        src_ids: dict = {}
+        rows = []
+        for r in recs:
+            sid = src_ids.setdefault(r.source[:120], len(src_ids))
+            chunks = H.chunk_text(r.source, *H.CHUNK)
+            claim = r.claim
+            if r.det_lang not in ("en", "und", ""):
+                claim = mt.translate(r.claim, r.det_lang)
+            methods = {"whole": [claim], "clause": split_clauses(claim),
+                       "sat": sat.split(claim) or [claim]}
+            row = {"label": r.label, "det_lang": r.det_lang, "src": sid}
+            for k, units in methods.items():
+                r1s, mm = [], 0
+                for u in units:
+                    u = u.strip()
+                    if not u:
+                        continue
+                    recalls, arg, best = chunk_recalls(u, chunks, H.an_word)
+                    r1s.append(recalls[arg] if recalls else 0.0)
+                    nmm, _ = H.find_mismatches(u, best) if best else ([], [])
+                    _, num_mm = H.number_recall(u, r.source)
+                    if nmm or num_mm:
+                        mm = 1
+                r1s = r1s or [0.0]
+                row[f"{k}_min"] = round(min(r1s), 4)
+                row[f"{k}_n"] = len([u for u in units if u.strip()])
+                row[f"{k}_mm"] = mm
+            rows.append(row)
+        fp.write_text(json.dumps(rows))
+
+    def evaluate(method, group):
+        def verdict(r, bar):
+            return 0 if r[f"{method}_mm"] else int(r[f"{method}_min"] >= bar)
+        groups = sorted({r[group] for r in rows})
+        yt, yp = [], []
+        for g in groups:
+            tr = [r for r in rows if r[group] != g]
+            te = [r for r in rows if r[group] == g]
+            if len({r["label"] for r in tr}) < 2 or not te:
+                continue
+            best, bar = -1.0, 0.4
+            for b in np.linspace(0.2, 0.7, 11):
+                f = _mf1([r["label"] for r in tr], [verdict(r, b) for r in tr])
+                if f > best:
+                    best, bar = f, b
+            yp += [verdict(r, bar) for r in te]
+            yt += [r["label"] for r in te]
+        return H.score_verdicts(yt, yp)
+
+    avg_units = {m: round(np.mean([r[f"{m}_n"] for r in rows]), 2) for m in ("whole", "clause", "sat")}
+    out = ["## Claim-segmentation competition - macro-F1 (1260 gold, min-recall + any-contra)\n",
+           f"mean units/claim: {avg_units}\n",
+           "| segmentation | LOLO macroF1 | LOLO hal-F1 | LOSO macroF1 | LOSO hal-F1 |",
+           "|---|---|---|---|---|"]
+    for m, name in [("whole", "whole-claim (no split)"), ("clause", "regex clause-split (current)"),
+                    ("sat", "SaT (wtpsplit)")]:
+        lo, so = evaluate(m, "det_lang"), evaluate(m, "src")
+        out.append(f"| {name} | **{lo['f1_macro']:.3f}** | {lo['f1_hal']:.2f} | "
+                   f"{so['f1_macro']:.3f} | {so['f1_hal']:.2f} |")
+    report = "\n".join(out) + "\n"
+    print(report)
+    (Path(__file__).parent / "logs" / "lab_seg.md").write_text(report)
+
+
 def run_bayes() -> None:
     """Production Bayesian calibrator (bambi/PyMC logistic) under LOLO - a hyperplane."""
     import pandas as pd
@@ -732,4 +811,4 @@ def main() -> None:
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "batch1"
     {"b1": run_b1, "a4": run_a4, "final": run_final, "bayes": run_bayes,
-     "lexgbm": run_lexgbm, "batch1": main}.get(cmd, main)()
+     "lexgbm": run_lexgbm, "seg": run_seg, "batch1": main}.get(cmd, main)()
