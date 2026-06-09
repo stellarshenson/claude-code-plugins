@@ -4,7 +4,7 @@
   consensus scoring combines them with a multi-voter bonus; 3 verdict pills emerge right.
   Intent: visualize parallelism (4 lanes) and convergence (4-to-1 verdict).
   Caption: "2+ voter hit beats 1-voter hit at high strength"
-  Theme: DeLaval palette.
+  Theme: project palette.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1300 700" preserveAspectRatio="xMidYMid meet">
   <style>

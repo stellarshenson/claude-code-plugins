@@ -6,7 +6,7 @@
   lookup dots make the O(query x candidates) mechanic visible; the ranked tiles with
   varying bar lengths show the continuous score gradient.
   Intent: standalone close-up of the BM25 method for the grounding brief.
-  Theme: DeLaval palette.
+  Theme: project palette.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 180" preserveAspectRatio="xMidYMid meet">
   <style>

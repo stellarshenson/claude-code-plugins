@@ -3260,7 +3260,7 @@ class TestPluginStructure:
 
     def test_examples_anonymised(self):
         """Client company names must not leak into the bundled examples."""
-        forbidden = ["DeLaval", "Nordea", "Atlas Copco", "Perfekta"]
+        forbidden = ["Meridian client name leak", "Nordea", "Atlas Copco", "Perfekta"]
         for svg in (self.PLUGIN_DIR / "examples").glob("*.svg"):
             content = svg.read_text()
             for name in forbidden:

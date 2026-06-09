@@ -1,10 +1,10 @@
-# Hypothesis: a deterministic multilingual grounder for the DeLaval gold
+# Hypothesis: a deterministic multilingual grounder for the private RAG gold
 
 > **Outcome (see `RESULTS.md`)**: validated with a twist. A frozen offline translator (argos-translate) + best-chunk IDF recall reaches **LOLO balanced 0.777 / TEST 0.755** (target ≥0.75), beating the lexical-only ceiling (~0.67). A separate English-vs-translated recall bar pushes **accuracy to 0.845 LOLO / 0.817 TEST**, near the 0.85 stretch. Follow-ups: the chunk sweep confirms whole-doc is the 0.50-AUC floor; a fixed-prior threshold generalises (0.776 balanced, zero tuning); an abstain band gives 0.838 balanced at 68% coverage; lingua-py lifts accuracy to 0.781. MT collapses Gap B into Gap A; the curated lexicon / cognate / anchor bridges (X1-X3) and the contradiction/meta signals do **not** add value once MT is present (they slightly hurt). Spanish/abstractive tail stays hard; NLI residual + OPUS-MT still to run. See `RESEARCH.md` for the toolbox.
 
 ## Problem (measured, not assumed)
 
-The verified gold is `experiments/grounding/delaval-forensics/gold/golden_grounding_evidence_verified.json`
+The verified gold is `experiments/grounding/private-rag-forensics/gold/golden_grounding_evidence_verified.json`
 - 375 records `{claim, source_text, label, lang}`, **289 supported (label 1) / 86 hallucination (label 0)**.
 - Evidence (`source_text`) is always an English whole-document RAG/tool dump.
 - Claims span **seven languages**, not two:
@@ -50,7 +50,7 @@ Strong prior for A: recall 0.837 means the evidence already contains the words; 
 
 1. **Enhanced claims extraction.** Claims average **2.35 sentences (max 26)** - multi-fact. Split into atomic claims (raises per-fact recall and stops one false fact poisoning a true paragraph), each carrying its anchors `(text, {numbers, units, ids, entities})`. No disclaimer tagging (data shows it is unneeded).
 2. **Language recognition.** Per claim (and per evidence span), detect language with a deterministic statistical detector (`lingua` / `fasttext-langid` / `langdetect`, ~ms). Re-derive - do not trust `lang`. Route: detected-English → Gap-A recall scorer; detected non-English → Gap-B bridge pipeline. Expect en dominant, then nb/fr/sv/it/es/pt.
-3. **Dictionaries to keep.** (a) a **multilingual domain lexicon** mapping VMS component/part vocabulary in all six source languages → English canonical terms; (b) a **product/part-ID gazetteer** (`C`-codes, `V`/`T`-codes, product names) for anchor extraction; (c) per-language stopword lists. Bootstrap from the part catalogue (ID↔name pairs in the tool outputs), DeLaval glossaries, and held-out co-occurrence alignment mined from the gold (strict hold-out to avoid leakage).
+3. **Dictionaries to keep.** (a) a **multilingual domain lexicon** mapping VMS component/part vocabulary in all six source languages → English canonical terms; (b) a **product/part-ID gazetteer** (`C`-codes, `V`/`T`-codes, product names) for anchor extraction; (c) per-language stopword lists. Bootstrap from the part catalogue (ID↔name pairs in the tool outputs), private RAG glossaries, and held-out co-occurrence alignment mined from the gold (strict hold-out to avoid leakage).
 4. **Other deterministic layers.** Chunk the mega-evidence and score claim-recall against the best chunk (Gap A); numeric/entity **anchor recall** (confirm) and **anchor mismatch** (contradict: claim `C00000245` vs evidence `C00000246`); diacritic/transliteration normalisation; fuzzy AFTER lexicon canonicalisation.
 
 ## Experiment plan (on the verified gold, same 375, same metrics as the project reports)
@@ -74,4 +74,4 @@ Strong prior for A: recall 0.837 means the evidence already contains the words; 
 
 ## Note
 
-The DeLaval gold + transcripts stay in the git-ignored `delaval-forensics/` stash; this hypothesis carries no client data and is safe to commit. Numbers above are reproduced directly from the verified gold via the P0 probe.
+The private RAG gold + transcripts stay in the git-ignored `private-rag-forensics/` stash; this hypothesis carries no client data and is safe to commit. Numbers above are reproduced directly from the verified gold via the P0 probe.

@@ -1,4 +1,4 @@
-# Results: rival deterministic grounders on the DeLaval gold
+# Results: rival deterministic grounders on the private RAG gold
 
 > **Metric note**: the classes are imbalanced (289/86), so the primary metric is now **macro-F1** (the majority predictor scores 0.771 accuracy but macro-F1 0.435 / hallucination-F1 0.000). The live F1 scoreboard is `BENCHMARK.md`; the tables below report the accuracy/balanced view from the first runs and remain valid - F1-tuned thresholds give the same ordering (recall_split leads).
 
@@ -88,4 +88,4 @@ Run on the same gold, same anti-overfit protocol, MT bridge on unless noted.
 
 ## Takeaway
 
-The DeLaval cross-lingual grounding problem is, deterministically, a **translation problem followed by a recall-scoring problem** - not a problem the curated lexicon / cognate / anchor bridges solve on their own. A frozen offline translator plus best-chunk IDF recall is cheap (~120 ms/claim, no GPU, no training) and clears the balanced-accuracy bar; the elaborate deterministic bridge stack does not add value once MT is present.
+The private RAG cross-lingual grounding problem is, deterministically, a **translation problem followed by a recall-scoring problem** - not a problem the curated lexicon / cognate / anchor bridges solve on their own. A frozen offline translator plus best-chunk IDF recall is cheap (~120 ms/claim, no GPU, no training) and clears the balanced-accuracy bar; the elaborate deterministic bridge stack does not add value once MT is present.

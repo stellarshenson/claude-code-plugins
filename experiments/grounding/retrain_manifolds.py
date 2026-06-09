@@ -1,4 +1,4 @@
-"""Retrain the three shipped lexical manifolds on the joint DeLaval + VitaminC
+"""Retrain the three shipped lexical manifolds on the joint private RAG + VitaminC
 gold with short-source augmentation, using the SHIPPED lexical pipeline, and
 write them non-destructively into config_document_processing.yaml (preserving
 all comments - replaces only the trailing lexical_manifolds: block).
@@ -17,7 +17,7 @@ from stellars_claude_code_plugins.document_processing import lexical as L
 
 REPO = Path(__file__).resolve().parents[2]
 CONFIG = REPO / "src/stellars_claude_code_plugins/config_document_processing.yaml"
-DELAVAL = Path(__file__).parent / "delaval-forensics/gold/golden_grounding_evidence_verified.parquet"
+PRIVATE_RAG = Path(__file__).parent / "private-rag-forensics/gold/golden_grounding_evidence_verified.parquet"
 
 
 def _extract_one(args: tuple) -> dict:
@@ -30,10 +30,10 @@ def _extract_one(args: tuple) -> dict:
     return f
 
 
-def _delaval_rows() -> list[dict]:
+def _private_rag_rows() -> list[dict]:
     import pandas as pd
 
-    df = pd.read_parquet(DELAVAL, columns=["claim", "source_text", "label", "lang"])
+    df = pd.read_parquet(PRIVATE_RAG, columns=["claim", "source_text", "label", "lang"])
     return [
         {"claim": r["claim"], "source_text": r["source_text"],
          "label": int(r["label"]), "lang": (r.get("lang") or None)}
@@ -59,7 +59,7 @@ def _vitaminc_rows(per_label: int = 400) -> list[dict]:
 
 
 def main() -> None:
-    raw = _delaval_rows() + _vitaminc_rows()
+    raw = _private_rag_rows() + _vitaminc_rows()
     aug = L.short_source_augment(raw)
     rows = raw + aug
     print(f"rows: {len(raw)} gold + {len(aug)} short-source aug = {len(rows)}", flush=True)

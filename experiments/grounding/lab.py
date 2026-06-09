@@ -519,7 +519,7 @@ def claim_intrinsic(claim: str) -> tuple[float, float]:
 
 # --- contradiction features (aligned value-conflict + WordNet antonym flip) ---
 # Both overlap-gated: they only fire on high-overlap restatements, so they stay
-# inert on DeLaval's absent-content negatives and active on contrastive (VitaminC)
+# inert on private RAG's absent-content negatives and active on contrastive (VitaminC)
 # negatives where one fact is flipped. WordNet (below) replaced an earlier curated
 # antonym lexicon - broader coverage at equal precision (REFUTES 32% vs SUPPORTS 3%).
 def conflict_feats(claim: str, best: str) -> tuple[float, int, float]:
@@ -527,7 +527,7 @@ def conflict_feats(claim: str, best: str) -> tuple[float, int, float]:
 
     Returns (conflict_n, conflict_flag, num_edit_mag). Inherently overlap-gated:
     a mismatch only exists when a claim anchor ALIGNS with the chunk but disagrees
-    in value, so on absent-content negatives (DeLaval) nothing aligns -> all zero.
+    in value, so on absent-content negatives (private RAG) nothing aligns -> all zero.
     """
     if not best:
         return 0.0, 0, 0.0
@@ -1024,7 +1024,7 @@ def main() -> None:
     (Path(__file__).parent / "logs" / "lab_batch1.md").write_text(report)
 
 
-# --- joint DeLaval + VitaminC: one model, scored per corpus (hold or collapse) ---
+# --- joint private RAG + VitaminC: one model, scored per corpus (hold or collapse) ---
 _JOINT_BASE = [
     "r1_direct",
     "r1_mt",
@@ -1057,13 +1057,13 @@ def _cur_cols() -> list[str]:
 
 
 def build_joint(per_label: int = 400, refresh: bool = False) -> list[dict]:
-    """Tagged union of DeLaval gold + VitaminC (primary: SUPPORTS vs REFUTES, drop NEI)."""
+    """Tagged union of private RAG gold + VitaminC (primary: SUPPORTS vs REFUTES, drop NEI)."""
     import vitaminc_eval as V
 
     dela = build_lex(refresh=refresh)
     out = []
     for r in dela:
-        rr = dict(r, corpus="delaval", grp=f"d{r['src']}")
+        rr = dict(r, corpus="private_rag", grp=f"d{r['src']}")
         out.append(rr)
     vit = V.build_vitaminc_lex(per_label, refresh=refresh)
     keep = [r for r in vit if r["nat"] in ("SUPPORTS", "REFUTES")]
@@ -1104,7 +1104,7 @@ def _joint_oof(rows, cols):
         ptr = m.predict_proba(Xtr)[:, 1]
         thr_all = _tune_thr(ytr, ptr)
         thr = {
-            "delaval": _tune_thr(ytr[corp == "delaval"], ptr[corp == "delaval"]),
+            "private_rag": _tune_thr(ytr[corp == "private_rag"], ptr[corp == "private_rag"]),
             "vitaminc": _tune_thr(ytr[corp == "vitaminc"], ptr[corp == "vitaminc"]),
         }
         pte = m.predict_proba(np.array([[r[c] for c in cols] for r in te], dtype=float))[:, 1]
@@ -1123,15 +1123,15 @@ def _corpus_score(rec, corpus=None, idx=2):
 
 def run_joint(per_label: int = 400, refresh: bool = False) -> None:
     rows = build_joint(per_label, refresh=refresh)
-    nd = sum(1 for r in rows if r["corpus"] == "delaval")
+    nd = sum(1 for r in rows if r["corpus"] == "private_rag")
     nv = len(rows) - nd
     out = [
-        "## Joint DeLaval + VitaminC - one logistic, scored per corpus\n",
-        f"rows: {nd} delaval + {nv} vitaminc (SUPPORTS vs REFUTES); "
-        "grouped CV (delaval by src, vitaminc round-robin)\n",
+        "## Joint private RAG + VitaminC - one logistic, scored per corpus\n",
+        f"rows: {nd} private_rag + {nv} vitaminc (SUPPORTS vs REFUTES); "
+        "grouped CV (private_rag by src, vitaminc round-robin)\n",
         "macro-F1 per corpus; **pc** = per-corpus-tuned threshold (one model, "
         "domain-calibrated operating point), **sh** = single shared threshold\n",
-        "| features | DeLaval pc | DeLaval sh | VitaminC pc | VitaminC sh | pooled sh |",
+        "| features | private RAG pc | private RAG sh | VitaminC pc | VitaminC sh | pooled sh |",
         "|---|---|---|---|---|---|",
     ]
     sets = [("base (lexical)", _JOINT_BASE), ("shipped (conflict + wn-antonym)", _cur_cols())]
@@ -1140,7 +1140,7 @@ def run_joint(per_label: int = 400, refresh: bool = False) -> None:
         rec = _joint_oof(rows, cols)
         if name.startswith("shipped"):
             base_rec = rec
-        dpc, dsh = _corpus_score(rec, "delaval", 3), _corpus_score(rec, "delaval", 2)
+        dpc, dsh = _corpus_score(rec, "private_rag", 3), _corpus_score(rec, "private_rag", 2)
         vpc, vsh = _corpus_score(rec, "vitaminc", 3), _corpus_score(rec, "vitaminc", 2)
         psh = _corpus_score(rec, None, 2)
         out.append(
@@ -1308,7 +1308,7 @@ def run_aug(per_label: int = 400, n_aug: int = 200, refresh: bool = False) -> No
     cd = dict(zip(cols, LogisticRegression(max_iter=1000, class_weight="balanced").fit(Xs, y).coef_[0]))
     # Gate A: grouped-CV on the benchmark rows only (aug held out by its own grp)
     rec = _joint_oof(rows, cols)
-    dpc = _corpus_score(rec, "delaval", 3)["f1_macro"]
+    dpc = _corpus_score(rec, "private_rag", 3)["f1_macro"]
     vpc = _corpus_score(rec, "vitaminc", 3)["f1_macro"]
     # Gate B: disjoint probe
     correct, lines = 0, []
@@ -1321,7 +1321,7 @@ def run_aug(per_label: int = 400, n_aug: int = 200, refresh: bool = False) -> No
         lines.append(f"| {'Y' if ok else 'N'} | {lab_} | {pred} | {p:.3f} | {f['r1_best']:.3f} | "
                      f"{f['unmatched_rarity']:.3f} | {claim[:34]} |")
     print(f"\n## Augmentation research (lambda={H.BG_BLEND_LAMBDA}, aug={len(aug)}, thr={thr:.2f})")
-    print(f"Gate A (benchmark hold): DeLaval pc {dpc:.3f} | VitaminC pc {vpc:.3f}  "
+    print(f"Gate A (benchmark hold): private RAG pc {dpc:.3f} | VitaminC pc {vpc:.3f}  "
           f"(baseline 0.825 / 0.661)")
     print(f"coef: top3 {cd.get('top3', 0):+.2f} | unmatched_rarity {cd.get('unmatched_rarity', 0):+.2f} "
           f"| max_unmatched {cd.get('max_unmatched', 0):+.2f} | fuzzy {cd.get('fuzzy', 0):+.2f}")

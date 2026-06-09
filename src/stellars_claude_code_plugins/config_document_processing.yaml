@@ -228,7 +228,7 @@ calibration:
   # chunk_max_chars / chunk_overlap_ratio set the recursive-chunk operating
   # point (300 / 0.1) used to compute the features, independent of the general
   # cascade's 1500 / 0.25. Regenerate with `document-processing train-lexical
-  # --effort {low,medium,high} --data PATH ...`. Fit on DeLaval 2752 gold +
+  # --effort {low,medium,high} --data PATH ...`. Fit on private RAG 2752 gold +
   # VitaminC dev (SUPPORTS->1, REFUTES->0, NEI dropped).
   lexical_manifolds:
     low:

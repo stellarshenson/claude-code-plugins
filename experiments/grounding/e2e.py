@@ -89,7 +89,7 @@ def main() -> None:
         chunk_lang = lab._lingua_lang(bd) if bd else "und"
         same_lang = int(clang != "und" and chunk_lang == clang)
         # contradiction layer: aligned value-conflict + WordNet antonym flip; both
-        # fuzzy-gated so they stay inert on DeLaval's absent-content negatives
+        # fuzzy-gated so they stay inert on private RAG's absent-content negatives
         conflict_n, conflict_flag, num_edit_mag = lab.conflict_feats(r.claim, bt)
         wn_flip = int(lab.wn_antonym_flip(claim, bt) and fz > 0.5)
         semantic_candidate = int(fz >= 0.5 and (conflict_flag or wn_flip))

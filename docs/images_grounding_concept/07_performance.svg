@@ -4,7 +4,7 @@
   log-scale x-axis spanning 1µs to 1s. Lexical-first layers are 2-3 orders of magnitude
   faster than per-pair model verification.
   Intent: single-glance proof that lexical-first grounding is practical at scale.
-  Theme: DeLaval palette.
+  Theme: project palette.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 600" preserveAspectRatio="xMidYMid meet">
   <style>

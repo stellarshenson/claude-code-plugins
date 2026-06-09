@@ -21,7 +21,7 @@ Survey of installable, CPU-fast, offline, permissively-licensed Python tools for
 - **Language ID:** swap `langdetect` → **lingua-py** (`lingua-language-detector`); it is the most accurate on the short claims where the gold `lang` field was noisy. Deterministic, all six languages.
 - **MT bridge:** **argos-translate** for the simplest offline path (`argos no→en`, `sv→en`, …); **CTranslate2 + OPUS-MT int8** if speed matters. Frozen black box, not fit to the 375 → within the anti-overfit rule, but report it in its own tier (a small model, not pure-lexical). Time it; gate behind a flag.
 - **Number normalization:** **Babel** parses locale decimals (`1,5` nb/sv/fr → 1.5) - the decimal-comma fix the catalogue missed; **quantulum3** for unit-bearing quantities.
-- **Lexicon (X2):** bootstrap from **kaikki.org** per-language `*-en.jsonl` Wiktionary dumps + DeLaval catalogue/manual term pairs. Offline, label-free, leakage-safe.
+- **Lexicon (X2):** bootstrap from **kaikki.org** per-language `*-en.jsonl` Wiktionary dumps + private RAG catalogue/manual term pairs. Offline, label-free, leakage-safe.
 - **Compound split (nb/sv):** **CharSplit** / **compound-split** to expose cognate sub-parts (`melkeutskiller`→`melke`+`utskiller`).
 - **Negation:** no package covers NO/SV/FR/IT/ES/PT - hand cue lists (`ikke/inte/non/pas/não/no/ingen/aucun/kunde inte`).
 

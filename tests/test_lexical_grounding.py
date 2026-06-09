@@ -4,7 +4,7 @@ Exercises the consolidated lexical pipeline through the PUBLIC ``ground()`` API
 with the frozen-weight manifolds bundled in config_document_processing.yaml. Two
 datasets, two effort tiers:
 
-- DeLaval gold (git-ignored parquet, skip-if-absent) on the LOW tier - the cheap
+- private RAG gold (git-ignored parquet, skip-if-absent) on the LOW tier - the cheap
   monolingual recall-only tier needs no optional dependency; asserts a macro-F1
   floor on a fixed slice (omission-type negatives)
 - VitaminC dev (public HF tals/vitaminc, download-on-demand) on the MEDIUM tier -
@@ -32,12 +32,12 @@ from stellars_claude_code_plugins.document_processing import lexical as L
 
 warnings.filterwarnings("ignore")
 
-# DeLaval gold parquet - git-ignored client data; tests skip when absent.
-DELAVAL_GOLD = (
+# private RAG gold parquet - git-ignored client data; tests skip when absent.
+PRIVATE_RAG_GOLD = (
     Path(__file__).resolve().parents[1]
     / "experiments"
     / "grounding"
-    / "delaval-forensics"
+    / "private-rag-forensics"
     / "gold"
     / "golden_grounding_evidence_verified.parquet"
 )
@@ -124,15 +124,15 @@ class TestEffortKnobSelectsManifold:
         assert low[0].feature_order != med[0].feature_order
 
 
-class TestDeLavalLowTierEndToEnd:
-    """DeLaval gold on the LOW tier (no optional dep) via the public API."""
+class TestPrivateRAGLowTierEndToEnd:
+    """private RAG gold on the LOW tier (no optional dep) via the public API."""
 
     def test_low_tier_macro_f1_floor_on_fixed_slice(self):
-        if not DELAVAL_GOLD.exists():
-            pytest.skip(f"DeLaval gold parquet absent (git-ignored): {DELAVAL_GOLD}")
+        if not PRIVATE_RAG_GOLD.exists():
+            pytest.skip(f"private RAG gold parquet absent (git-ignored): {PRIVATE_RAG_GOLD}")
         pd = pytest.importorskip("pandas")
 
-        df = pd.read_parquet(DELAVAL_GOLD)
+        df = pd.read_parquet(PRIVATE_RAG_GOLD)
         assert {"claim", "source_text", "label"} <= set(df.columns)
         # fixed, deterministic slice: first 20 supported + first 20 hallucination
         sup = df[df["label"] == 1].head(20)

@@ -4,7 +4,7 @@
   Per-call bar (~150,000 tokens) vs code execution bar (~2,000 tokens) with a
   large centred callout showing "98.7% reduction". Two summary rows and source footer.
   Intent: single-glance proof that programmatic tools dramatically reduce context usage.
-  Theme: DeLaval palette.
+  Theme: project palette.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 550" preserveAspectRatio="xMidYMid meet">
   <style>

@@ -30,9 +30,9 @@ Nine deterministic stages, claim in → verdict + triage flag out.
 
 Lexical recall is blind to present-but-contradicted claims (high overlap, one fact flipped) - the failure mode on contrastive corpora. Two deterministic detectors recover it, both fuzzy-gated so they stay inert on absent-content negatives.
 
-- **Aligned value-conflict** (`conflict_n`, `conflict_flag`, `num_edit_mag`) - claim anchors that align with the chunk on key/context but disagree in value (`100 VAC` vs `240 VAC`, `GPT-4` vs `GPT-3`); shipped as a classifier feature, free on DeLaval (fires on 0.3%)
-- **WordNet antonym-flip** (`wn_antonym_flip`) - a claim content-token whose WordNet antonym sits in the best chunk while the token itself is absent (opposite-direction substitution); a deterministic population lexicon at the word-sense level, broader than a hand-curated list it replaced - fires on ~32% of VitaminC REFUTES vs 3% SUPPORTS and ~1.8% of DeLaval, active exactly where the contrastive negative lives
-- **Why it holds both** - each corpus's mechanism rides on features that go quiet on the other: `same_lang`/`is_en` carry DeLaval's cross-lingual signal and are constant on English VitaminC; the contradiction features carry VitaminC's signal and are ~0 on DeLaval's absent-content negatives
+- **Aligned value-conflict** (`conflict_n`, `conflict_flag`, `num_edit_mag`) - claim anchors that align with the chunk on key/context but disagree in value (`100 VAC` vs `240 VAC`, `GPT-4` vs `GPT-3`); shipped as a classifier feature, free on private RAG (fires on 0.3%)
+- **WordNet antonym-flip** (`wn_antonym_flip`) - a claim content-token whose WordNet antonym sits in the best chunk while the token itself is absent (opposite-direction substitution); a deterministic population lexicon at the word-sense level, broader than a hand-curated list it replaced - fires on ~32% of VitaminC REFUTES vs 3% SUPPORTS and ~1.8% of private RAG, active exactly where the contrastive negative lives
+- **Why it holds both** - each corpus's mechanism rides on features that go quiet on the other: `same_lang`/`is_en` carry private RAG's cross-lingual signal and are constant on English VitaminC; the contradiction features carry VitaminC's signal and are ~0 on private RAG's absent-content negatives
 
 ## Triage flag
 
@@ -44,19 +44,19 @@ Lexical recall is blind to present-but-contradicted claims (high overlap, one fa
 
 ## Performance
 
-One logistic, joint DeLaval (2752) + VitaminC (800, SUPPORTS vs REFUTES), grouped CV, per-corpus-tuned threshold (one model, domain-calibrated operating point). macro-F1.
+One logistic, joint private RAG (2752) + VitaminC (800, SUPPORTS vs REFUTES), grouped CV, per-corpus-tuned threshold (one model, domain-calibrated operating point). macro-F1.
 
-| configuration | DeLaval | VitaminC |
+| configuration | private RAG | VitaminC |
 |---|---|---|
 | lexical base | 0.832 | 0.555 |
 | value-conflict + WordNet antonym | 0.825 | 0.661 |
 | shipped (+ length-robust recall + distinctive-content + short-source aug) | 0.817 | 0.691 |
 
-- **Hold, not collapse** - VitaminC rises 0.555 → 0.691 while DeLaval moves 0.832 → 0.817 (−0.015 total, within LOSO noise); the short-source fix (below) added the last +0.030 on VitaminC
+- **Hold, not collapse** - VitaminC rises 0.555 → 0.691 while private RAG moves 0.832 → 0.817 (−0.015 total, within LOSO noise); the short-source fix (below) added the last +0.030 on VitaminC
 - **Short-source regime fixed** - a 12-case probe of 1-line-source inputs rose 10/12 → 11/12: a `wordfreq` background-IDF recall floor (revives recall where the in-context IDF collapses on a single chunk), the `unmatched_rarity` distinctive-content feature, and truncation-derived short-source training rows; the fix also lifts the single-sentence VitaminC corpus (+0.030), the same degenerate regime
 - **Triage flag** - flags 26% of VitaminC at 90% REFUTES precision (50% base rate), routing the contradiction region to a future semantic stage
-- **WordNet replaced a curated antonym list** - broader word-sense coverage; aligned value-conflict is the free component (near-zero DeLaval cost)
-- **Replicates across data growth** - the hold-vs-collapse pattern held as the gold grew 1260 → 2631 → 2752 (VitaminC +0.10-0.13, DeLaval −0.01 every run); absolutes shift slightly on the larger, more language-diverse set
+- **WordNet replaced a curated antonym list** - broader word-sense coverage; aligned value-conflict is the free component (near-zero private RAG cost)
+- **Replicates across data growth** - the hold-vs-collapse pattern held as the gold grew 1260 → 2631 → 2752 (VitaminC +0.10-0.13, private RAG −0.01 every run); absolutes shift slightly on the larger, more language-diverse set
 - **Pure-lexical ceiling reached** - a round-3 deep-research sweep of parser-free structural mechanisms (role reversal, scoped negation, quantifier mismatch) found all three absent at usable density in VitaminC; the remaining residual is irreducibly semantic and routed to the (deferred) heavy stage via the triage flag
 
 ## Throughput and footprint
@@ -75,7 +75,7 @@ One logistic, joint DeLaval (2752) + VitaminC (800, SUPPORTS vs REFUTES), groupe
 
 ## Implementation
 
-The grounder is consolidated into the library's existing grounding framework (`src/stellars_claude_code_plugins/document_processing/`) as the default **lexical mode**, exposed to the user as one knob - a solution tier (low / medium / high). Each tier is an indivisible bundle of algorithms plus the manifold trained for exactly that bundle, fit on the joint DeLaval + VitaminC gold. One new module, one verbatim MT copy, one test file; surgical hooks into `ground()` and config.
+The grounder is consolidated into the library's existing grounding framework (`src/stellars_claude_code_plugins/document_processing/`) as the default **lexical mode**, exposed to the user as one knob - a solution tier (low / medium / high). Each tier is an indivisible bundle of algorithms plus the manifold trained for exactly that bundle, fit on the joint private RAG + VitaminC gold. One new module, one verbatim MT copy, one test file; surgical hooks into `ground()` and config.
 
 - **Mode, not engine** - the public knob is `calibration.mode` (`lexical` default, `semantic` reserved for the heavy stage); `load_calibration_from_config` resolves it to an internal verdict-head selector. The deterministic cascade and the bambi calibrated head are internal heads reachable only via an explicit `engine:` override or the `calibrated_verdict=` API - the user never selects an algorithm, only a tier
 - **Solution tiers** - one parameterised feature path selected by the `lexical_effort` knob, ordered by cost: **low** (13 features - word + char-ngram recall, fuzzy, anchors, specificity, value-conflict, distinctive-content), **medium** (16 - low + lingua language detection and WordNet antonym-flip), **high** (18 - medium + argos MT translate-then-recall, the full cross-lingual stack); each tier loads only its own ordered feature subset and the manifold trained against it
@@ -83,11 +83,11 @@ The grounder is consolidated into the library's existing grounding framework (`s
 - **Module** - `document_processing/lexical.py` holds the consolidated feature pipeline, reusing `grounding._tokenize`, `chunking.recursive_chunk` and the `entity_check` helpers rather than duplicating them; the torch-free MT bridge is copied verbatim to `lexical_mt.py`
 - **Verdict head** - a per-tier frozen-weight logistic `LexicalVerdict` (intercept + per-feature weights + feature order + threshold + 300/0.1 chunk operating point) persisted in config under `calibration.lexical_manifolds.<tier>` and applied at inference as a dot-product through a sigmoid; no scikit-learn at runtime, sklearn imported only on the `fit_lexical_manifold` training path
 - **MT as the high tier** - cross-lingual recall (`r1_mt`, `r1_best`) runs through the torch-free `lexical_mt.py` (CTranslate2 int8 + native-OpenVINO-INT8 SaT), the highest-cost tier; the high manifold collapses `r1_direct` (−2.31) and trusts the translate-then-recall pair (+2.64 / +2.66) on the non-English tail
-- **Joint training + short-source augmentation** - the three manifolds are fit on DeLaval 2752 gold plus VitaminC dev (SUPPORTS→1, REFUTES→0, NEI dropped), so every tier holds both the omission-type (DeLaval) and contrastive (VitaminC) negatives; the fit also adds truncation-derived short-source rows (each source cut to one sentence - the max-overlap evidence sentence for supported, a low-overlap one for hallucination; label inherited, source length the only change) so the manifold learns the degenerate single-chunk regime without a hand-set threshold
+- **Joint training + short-source augmentation** - the three manifolds are fit on private RAG 2752 gold plus VitaminC dev (SUPPORTS→1, REFUTES→0, NEI dropped), so every tier holds both the omission-type (private RAG) and contrastive (VitaminC) negatives; the fit also adds truncation-derived short-source rows (each source cut to one sentence - the max-overlap evidence sentence for supported, a low-overlap one for hallucination; label inherited, source length the only change) so the manifold learns the degenerate single-chunk regime without a hand-set threshold
 - **Training CLI** - `document-processing train-lexical --effort {low,medium,high} --data PATH [--data ...]` fits one tier from one or more labelled datasets and writes the frozen weights into config via the same `lexical.py` extraction; `--data` is repeatable and concatenated; the short-source augmentation is applied automatically; `--help` documents the dataset contract (columns `claim`, `source_text`, `label` 1=supported/0=hallucination, optional `lang`; parquet or jsonl) and enforces a floor of >= 200 rows with >= 40 of each class, rejecting smaller sets with a clear error; client data is read in place and never copied or committed
 - **Dependencies in core** - all tier deps ship with the package (lingua, nltk/WordNet, scikit-learn for the fit path, pyarrow, wordfreq for the background rarity, and the MT stack - argos / CTranslate2 / openvino + tokenizers for the SaT segmenter / sentencepiece / sacremoses / subword-nmt); there is no optional extra and no onnxruntime, so all three tiers work out of the box. Each feature still neutralises (0.0) with a warning if its dep is somehow unimportable, and the training path hard-errors
 - **Grounding hook** - `ground()` gains one resolver (`_config_lexical_verdict`) plus one branch; `ground_batch` extends its adaptive_gap guard; the deterministic and calibrated paths are unchanged
-- **Test** - `tests/test_lexical_grounding.py` exercises a tier end to end through the public `ground()` API plus the shipped manifold on VitaminC (downloaded on demand, skip on no network) and DeLaval (skip-if-absent, parquet git-ignored, client data never committed)
+- **Test** - `tests/test_lexical_grounding.py` exercises a tier end to end through the public `ground()` API plus the shipped manifold on VitaminC (downloaded on demand, skip on no network) and private RAG (skip-if-absent, parquet git-ignored, client data never committed)
 
 | tier | features | algorithm bundle (all deps ship in core) |
 |---|---|---|

@@ -5,7 +5,7 @@
   context window, and audit trail. Metaphor: parts diagram / spec sheet.
   Hypothesis: a verdict is a structured record, not a scalar. Reading this diagram,
   the viewer knows exactly what data one verdict carries and why each field exists.
-  Theme: DeLaval palette.
+  Theme: project palette.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1140 570" preserveAspectRatio="xMidYMid meet">
   <style>

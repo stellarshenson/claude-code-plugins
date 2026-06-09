@@ -8,8 +8,8 @@ VitaminC is a fact-verification benchmark built from over 100,000 Wikipedia revi
 
 ## Why it matters to our grounder
 
-This is the **second corpus** in our joint hold-vs-collapse test and the diagnostic that exposed the No Free Lunch boundary: the lexical grounder collapses to macro-F1 0.586 (≈ coin-flip) on VitaminC vs 0.837 on DeLaval. The cause is exactly VitaminC's construction - its negatives are *present-but-contradicted* (recall stays high, the lexical stack is blind), whereas DeLaval's negatives are *absent/fabricated* (recall drops, the lexical stack catches them). The "minimal localized edit" insight is what drove every contradiction feature we built: aligned value-conflict (number/entity edits), WordNet antonym-flip, and the round-3 structural candidates (role reversal, scoped negation, quantifier mismatch).
+This is the **second corpus** in our joint hold-vs-collapse test and the diagnostic that exposed the No Free Lunch boundary: the lexical grounder collapses to macro-F1 0.586 (≈ coin-flip) on VitaminC vs 0.837 on private RAG. The cause is exactly VitaminC's construction - its negatives are *present-but-contradicted* (recall stays high, the lexical stack is blind), whereas private RAG's negatives are *absent/fabricated* (recall drops, the lexical stack catches them). The "minimal localized edit" insight is what drove every contradiction feature we built: aligned value-conflict (number/entity edits), WordNet antonym-flip, and the round-3 structural candidates (role reversal, scoped negation, quantifier mismatch).
 
 ## Scope
 
-**In scope** - used as the contrastive test corpus (`tals/vitaminc` dev) and the mechanism reference. We never train on its test fold; it is the held-out second domain that any new feature must lift without degrading DeLaval.
+**In scope** - used as the contrastive test corpus (`tals/vitaminc` dev) and the mechanism reference. We never train on its test fold; it is the held-out second domain that any new feature must lift without degrading private RAG.

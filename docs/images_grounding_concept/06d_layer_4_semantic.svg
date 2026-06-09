@@ -7,7 +7,7 @@
   The 2D scatter makes vector proximity intuitive: claim sits in space, nearest passage
   wins. No real axes - this is conceptual space, not data.
   Intent: standalone close-up of the semantic FAISS method for the grounding brief.
-  Theme: DeLaval palette.
+  Theme: project palette.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 180" preserveAspectRatio="xMidYMid meet">
   <style>

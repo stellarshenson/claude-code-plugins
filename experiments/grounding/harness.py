@@ -1,7 +1,7 @@
-"""Rival deterministic grounder tournament on the DeLaval cross-lingual gold.
+"""Rival deterministic grounder tournament on the private RAG cross-lingual gold.
 
 Read-only experiment harness. Loads the git-ignored verified gold
-(``delaval-forensics/gold/golden_grounding_evidence_verified.parquet``:
+(``private-rag-forensics/gold/golden_grounding_evidence_verified.parquet``:
 ``{claim, source_text, label, lang}``, grew 375 → 1260 → 2631 records),
 computes rival deterministic grounding signals, and scores them under a hard
 anti-overfit protocol (50/50 held-out, leave-one-language-out, fixed-prior).
@@ -51,7 +51,7 @@ from stellars_claude_code_plugins.document_processing.entity_check import (
 )
 from stellars_claude_code_plugins.document_processing.grounding import _tokenize
 
-GOLD = Path(__file__).parent / "delaval-forensics/gold/golden_grounding_evidence_verified.parquet"
+GOLD = Path(__file__).parent / "private-rag-forensics/gold/golden_grounding_evidence_verified.parquet"
 
 _TOKEN_RE = re.compile(r"\w+", re.UNICODE)
 
@@ -733,7 +733,7 @@ def cmd_tournament(recs: list[Record], use_mt: bool = False) -> str:
     results.sort(key=lambda x: -x[1]["f1_macro"])
 
     lines = []
-    lines.append("# Tournament results - DeLaval gold (375 records)\n")
+    lines.append("# Tournament results - private RAG gold (375 records)\n")
     lines.append(
         f"Chunk operating point: {CHUNK[2]} size={CHUNK[0]} overlap={CHUNK[1]}  "
         f"| MT bridge: {'on' if use_mt else 'off'}  | featurize {feat_s:.1f}s "

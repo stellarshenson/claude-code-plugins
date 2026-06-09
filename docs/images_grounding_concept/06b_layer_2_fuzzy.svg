@@ -6,7 +6,7 @@
   Hypothesis: Layer 2 catches paraphrases via edit-distance alignment. The visual
   makes the "2 edits" concept concrete - most words align, a few are substituted.
   Intent: standalone close-up of the fuzzy-match method for the grounding brief.
-  Theme: DeLaval palette.
+  Theme: project palette.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 180" preserveAspectRatio="xMidYMid meet">
   <style>

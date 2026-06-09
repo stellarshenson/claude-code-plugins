@@ -118,8 +118,8 @@ cython_debug/
 .pypirc
 .stellars-plugins/
 
-# DeLaval grounding forensics stash - client data + session transcripts, NEVER commit
-experiments/grounding/delaval-forensics/
+# Private RAG grounding forensics stash - client data + session transcripts, NEVER commit
+experiments/grounding/private-rag-forensics/
 
 # transient experiment run logs and result dumps (keep only the README)
 experiments/grounding/logs/*
