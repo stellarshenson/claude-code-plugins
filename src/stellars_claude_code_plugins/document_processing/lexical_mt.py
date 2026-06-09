@@ -1,8 +1,8 @@
-"""HIGH-tier machine-translation bridge: CTranslate2 + wtpsplit SaT sentence splitting.
+"""HIGH-tier machine-translation bridge: CTranslate2 + native-OpenVINO SaT sentence splitting.
 
 Translate-then-recall lever for the lexical grounder's HIGH effort tier. Torch-free:
-translation runs on CTranslate2 (int8 CPU), sentence segmentation on wtpsplit-lite's
-SaT ONNX model via onnxruntime.
+translation runs on CTranslate2 (int8 CPU), sentence segmentation on a native OpenVINO
+INT8 SaT (`document_processing.sat`, LATENCY hint) - no onnxruntime.
 
 - reuses the CTranslate2 + tokenizer models argos already downloaded under ~/.local/share/argos-translate/packages/
 - handles both argos tokenizer formats - SentencePiece (sentencepiece.model) and subword-nmt BPE (bpe.model)
@@ -24,9 +24,9 @@ _SAT = None
 def _sat():
     global _SAT
     if _SAT is None:
-        from wtpsplit_lite import SaT
+        from stellars_claude_code_plugins.document_processing.sat import SaTSegmenter
 
-        _SAT = SaT("sat-3l-sm")  # ONNX SaT, runs on onnxruntime
+        _SAT = SaTSegmenter()  # native OpenVINO INT8 SaT (LATENCY hint), no onnxruntime
     return _SAT
 
 

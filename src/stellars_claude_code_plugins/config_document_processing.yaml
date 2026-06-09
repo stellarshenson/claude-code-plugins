@@ -170,7 +170,7 @@ adaptive_gap_min_claims: 4
 #   medium - low + language id (is_en, same_lang) + WordNet antonym-flip (14)
 #   high   - medium + MT translate-then-recall for the cross-lingual tail (16)
 # Override per call via ground(..., config=cfg.overlay(lexical_effort=...)).
-lexical_effort: medium           # low | medium | high
+lexical_effort: high             # low | medium | high
 
 # ---- other -----------------------------------------------------------------
 

@@ -45,10 +45,11 @@ dependencies = [
     "striprtf>=0.0.26",
     "subword-nmt>=0.3",            # lexical high tier: MT BPE
     "svgelements>=1.9",
+    "openvino>=2025.0",            # lexical high tier: native INT8 SaT sentence splitter (LATENCY hint)
     "tiktoken",
+    "tokenizers>=0.20",            # lexical high tier: xlm-roberta tokenizer for SaT
     "transitions",
     "wordfreq>=3.0",               # lexical: length-robust background token rarity (recall + distinctive-content)
-    "wtpsplit-lite>=0.1",          # lexical high tier: ONNX sentence splitter
 ]
 
 [project.optional-dependencies]
