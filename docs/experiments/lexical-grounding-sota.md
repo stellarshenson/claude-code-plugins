@@ -51,7 +51,7 @@ One logistic, joint DeLaval (2752) + VitaminC (800, SUPPORTS vs REFUTES), groupe
 - **~165 ms/claim** feature build, single-thread CPU on the 2752 gold; MT now leads at 86 ms amortised (~370 ms per translated claim, 23% of claims), recall 69 ms (BM25 ×2), intrinsic + WordNet lookup ~7 ms
 - **5s** one-time cold start (load SaT + first MT model); classifier fit/score negligible
 - **CPU-only, torch-free** - no GPU, no semantic model in the verdict path; argos MT models ~80-100MB loaded on demand, SaT-3l small, logistic in KB
-- **Dependencies** - lingua-py, argos-translate (CTranslate2), wtpsplit (ONNX), rapidfuzz, wordfreq, scikit-learn, and nltk + WordNet (~10MB, English; claims are MT'd to English) for the antonym lexicon
+- **Dependencies** - lingua-py, argos-translate (CTranslate2), wtpsplit (ONNX), rapidfuzz, scikit-learn, and nltk + WordNet (~10MB, English; claims are MT'd to English) for the antonym lexicon
 
 ## Limitations
 
@@ -61,12 +61,21 @@ One logistic, joint DeLaval (2752) + VitaminC (800, SUPPORTS vs REFUTES), groupe
 
 ## Implementation
 
-The grounder is consolidated into the library's existing grounding framework (`src/stellars_claude_code_plugins/document_processing/`) as a config-selectable lexical mode with three effort tiers, each shipping its own frozen-weight manifold. Status: landed via an orchestrated build; the section is reconciled against the shipped code on completion.
+The grounder is consolidated into the library's existing grounding framework (`src/stellars_claude_code_plugins/document_processing/`) as a config-selectable lexical mode with three effort tiers, each shipping its own frozen-weight manifold fit on the joint DeLaval + VitaminC gold. One new module, one verbatim MT copy, one test file; surgical hooks into `ground()` and config.
 
-- **Module** - a single `lexical.py` holds the consolidated feature pipeline, reusing the existing `entity_check` / `chunking` / `grounding` helpers rather than duplicating them; `ground()` routes to lexical mode through config with a minimal hook
-- **Effort tiers** - one parameterised feature path selected by a `lexical_effort` config knob, ordered by external-model cost: **low** (no external models - word + char-ngram recall, fuzzy, anchors, specificity, value-conflict), **medium** (low + language detection and WordNet antonym-flip), **high** (medium + MT translate-then-recall, the full 16-feature cross-lingual stack)
-- **Verdict head** - a frozen-weight manifold per tier: the fitted logistic's feature order, weights, intercept and threshold persisted in config (the `calibration.weights` mechanism, keyed by effort) and applied at inference as a dot-product through a sigmoid; no scikit-learn at runtime, sklearn only in the training path
-- **Base manifolds** - the three tiers are fit on the joint DeLaval 2752 + VitaminC gold (VitaminC mapped SUPPORTS→1 / REFUTES→0), so each shipped prior holds both the omission-type and contrastive negatives
-- **Training CLI** - `document-processing train-lexical --effort {low,medium,high} --data PATH [--data ...]` refits a tier from labelled data and writes the frozen weights to config; `--data` is repeatable for combined corpora; `--help` documents the dataset contract (columns `claim`, `source_text`, `label` 1=supported/0=hallucination, optional `lang`; parquet or jsonl) and the minimum size, enforced with a clear error
-- **Dependencies** - the MT bridge plus lingua, nltk/WordNet and wordfreq ship as an optional `[grounding-lexical]` extra (rank-bm25 and rapidfuzz are already core); lexical mode degrades gracefully - low runs on the core install, medium/high light up as their extras are present
-- **Test** - an end-to-end test exercises the shipped grounder on VitaminC (downloaded on demand) and DeLaval (skip-if-absent, client data never committed)
+- **Module** - `document_processing/lexical.py` holds the consolidated feature pipeline (word/char-ngram recall, fuzzy, anchors, specificity, value-conflict, language detection, WordNet antonym-flip, MT recall), reusing `grounding._tokenize`, `chunking.recursive_chunk` and the `entity_check` helpers rather than duplicating them; the torch-free MT bridge is copied verbatim to `lexical_mt.py`
+- **Effort tiers** - one parameterised feature path selected by the `lexical_effort` config knob, ordered by external-model cost: **low** (11 features, core install only - word + char-ngram recall, fuzzy, anchors, specificity, value-conflict), **medium** (14 - low + lingua language detection and WordNet antonym-flip), **high** (16 - medium + argos MT translate-then-recall, the full cross-lingual stack); each tier loads only its own ordered feature subset
+- **Verdict head** - a per-tier frozen-weight logistic `LexicalVerdict` (intercept + per-feature weights + feature order + threshold + 300/0.1 chunk operating point) persisted in config under `calibration.lexical_manifolds.<tier>` and applied at inference as a dot-product through a sigmoid; no scikit-learn at runtime, sklearn imported only on the `fit_lexical_manifold` training path
+- **Engine reuse** - lexical mode activates on the existing `calibration.engine: lexical` string once `lexical_manifolds` are present; the bundled config ships all three manifolds live but keeps `engine: deterministic`, so the out-of-box verdict is unchanged and existing deterministic guarantees hold (opt-in via `engine: lexical`, exactly what `train-lexical` writes); the bambi `calibrated` engine is orthogonal and untouched
+- **MT as the high tier** - cross-lingual recall (`r1_mt`, `r1_best`) runs through the torch-free `lexical_mt.py` (CTranslate2 int8 + wtpsplit SaT), the highest-cost tier; the high manifold collapses `r1_direct` (−2.31) and trusts the translate-then-recall pair (+2.64 / +2.66) on the non-English tail
+- **Joint training** - the three manifolds are fit on DeLaval 2752 gold plus VitaminC dev (SUPPORTS→1, REFUTES→0, NEI dropped), so every tier holds both the omission-type (DeLaval) and contrastive (VitaminC) negatives
+- **Training CLI** - `document-processing train-lexical --effort {low,medium,high} --data PATH [--data ...]` fits one tier from one or more labelled datasets and writes the frozen weights into config via the same `lexical.py` extraction; `--data` is repeatable and concatenated; `--help` documents the dataset contract (columns `claim`, `source_text`, `label` 1=supported/0=hallucination, optional `lang`; parquet or jsonl) and enforces a floor of >= 200 rows with >= 40 of each class, rejecting smaller sets with a clear error; client data is read in place and never copied or committed
+- **Dependency extra** - the MT bridge plus lingua, nltk/WordNet, scikit-learn and pyarrow ship as an optional `[grounding-lexical]` extra (rank-bm25 and rapidfuzz are already core); low runs on the core install, medium/high skip-with-warning any missing-dep feature at inference (neutral 0.0) and hard-error in the training path
+- **Grounding hook** - `ground()` gains one resolver (`_config_lexical_verdict`) plus one branch; `ground_batch` extends its adaptive_gap guard; the deterministic and calibrated paths are unchanged
+- **Test** - `tests/test_lexical_grounding.py` exercises a tier end to end through the public `ground()` API plus the shipped manifold on VitaminC (downloaded on demand, skip on no network) and DeLaval (skip-if-absent, parquet git-ignored, client data never committed)
+
+| tier | features | external deps |
+|---|---|---|
+| low | 11 | none (core install) |
+| medium | 14 | lingua + nltk/WordNet |
+| high | 16 | + argos MT (CTranslate2 + wtpsplit) |

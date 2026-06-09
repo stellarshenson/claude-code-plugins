@@ -160,6 +160,21 @@ classifier_mode: adaptive_gap    # absolute | adaptive_gap
 # kicks in. Below this, adaptive falls back to absolute.
 adaptive_gap_min_claims: 4
 
+# ---- lexical mode effort tier ----------------------------------------------
+# Tier loaded when lexical mode is ACTIVE - i.e. calibration.engine == "lexical"
+# AND calibration.lexical_manifolds is present. The bundled default ships the
+# three manifolds (see below) but keeps engine=deterministic, so the
+# deterministic cascade stays the out-of-box verdict (zero behaviour change for
+# existing callers). Opt in to lexical mode by setting calibration.engine to
+# "lexical" (a project override, or what `train-lexical` writes).
+#   low    - 11 features, core install only (word/char-ngram recall, fuzzy, anchors,
+#            specificity, value-conflict)
+#   medium - 14 features, + lingua language id (is_en, same_lang) + WordNet antonym-flip
+#   high   - 16 features, + MT translate-then-recall (r1_mt, r1_best) for the cross-lingual tail
+# Selects which manifold loads once lexical mode is active; override per call via
+# ground(..., config=cfg.overlay(lexical_effort=...)).
+lexical_effort: medium           # low | medium | high
+
 # ---- other -----------------------------------------------------------------
 
 context_chars: 80                # chars of before/after context captured per hit
@@ -170,9 +185,14 @@ semantic_top_k: 3                # top-K semantic alternatives reported
 # the strict GroundingConfig schema (unknown keys are ignored there), so adding
 # it never breaks config loading.
 #
-#   engine     - verdict engine when grounding runs: "lexical" (the
-#                deterministic classifier, default / back-compat) or
-#                "calibrated" (use the learned `weights` below).
+#   engine     - verdict engine when grounding runs:
+#                "deterministic" (bundled default) - the layered cascade decides
+#                   CONFIRMED; the lexical_manifolds below are shipped but dormant
+#                   (back-compat: identical to historical behaviour).
+#                "lexical" - activate the frozen-weight lexical-mode manifolds
+#                   (the tier named by `lexical_effort`); requires a
+#                   lexical_manifolds block (present below).
+#                "calibrated" - use the learned `weights` below (Bayesian head).
 #   threshold  - decision cut on the calibrated P(grounded).
 #   prior      - the Bayesian PRIOR for fitting (bambi/PyMC): per-coefficient
 #                Normal(mu, sigma). This is the single source of truth for the
@@ -188,7 +208,7 @@ semantic_top_k: 3                # top-K semantic alternatives reported
 # semantic_ratio. Prior intent: word overlap OR a strong semantic_ratio
 # confirms; weak topical signal and entity-absent fabrications do not.
 calibration:
-  engine: lexical
+  engine: deterministic            # deterministic (default) | lexical | calibrated
   threshold: 0.5
   prior:
     Intercept:          {mu: -3.0, sigma: 1.0}
@@ -201,3 +221,77 @@ calibration:
     entity_absent:      {mu: -3.0, sigma: 1.5}
     nli_entail:         {mu:  5.0, sigma: 2.0}
     nli_contra:         {mu: -5.0, sigma: 2.0}
+  # ---- lexical-mode manifolds (engine=lexical) -----------------------------
+  # Per-effort-tier frozen-weight logistic verdicts. When present AND
+  # engine=lexical, grounding loads the tier named by the top-level
+  # `lexical_effort` key and scores sigmoid(Intercept + Σ w·feature), deciding
+  # CONFIRMED at >= threshold (no scikit-learn at inference). feature_order is
+  # the coefficient/audit contract and must match the tier's feature list.
+  # chunk_max_chars / chunk_overlap_ratio set the recursive-chunk operating
+  # point (300 / 0.1) used to compute the features, independent of the general
+  # cascade's 1500 / 0.25. Regenerate with `document-processing train-lexical
+  # --effort {low,medium,high} --data PATH ...`. Fit on DeLaval 2752 gold +
+  # VitaminC dev (SUPPORTS->1, REFUTES->0, NEI dropped).
+  lexical_manifolds:
+    low:
+      feature_order: [r1_direct, charng, fuzzy, anchor, anchor_mm, oracle, top3, specificity, conflict_n, conflict_flag, num_edit_mag]
+      weights:
+        Intercept: -2.607378
+        r1_direct: 0.003631
+        charng: 0.798131
+        fuzzy: 2.481743
+        anchor: 0.549468
+        anchor_mm: -0.156893
+        oracle: -1.750298
+        top3: 5.459393
+        specificity: 1.258242
+        conflict_n: -0.426565
+        conflict_flag: -1.506253
+        num_edit_mag: 1.892064
+      threshold: 0.45
+      chunk_max_chars: 300
+      chunk_overlap_ratio: 0.1
+    medium:
+      feature_order: [r1_direct, charng, fuzzy, anchor, anchor_mm, oracle, top3, specificity, conflict_n, conflict_flag, num_edit_mag, is_en, same_lang, wn_antonym_flip]
+      weights:
+        Intercept: -1.802286
+        r1_direct: -0.007546
+        charng: 0.400943
+        fuzzy: 6.081397
+        anchor: 0.380188
+        anchor_mm: 0.151169
+        oracle: -0.767538
+        top3: 5.795973
+        specificity: 1.153924
+        conflict_n: -0.528045
+        conflict_flag: -1.715656
+        num_edit_mag: 1.875498
+        is_en: -2.674041
+        same_lang: -0.575015
+        wn_antonym_flip: -2.057823
+      threshold: 0.4
+      chunk_max_chars: 300
+      chunk_overlap_ratio: 0.1
+    high:
+      feature_order: [r1_direct, r1_mt, r1_best, charng, fuzzy, anchor, anchor_mm, oracle, top3, same_lang, is_en, specificity, conflict_n, conflict_flag, num_edit_mag, wn_antonym_flip]
+      weights:
+        Intercept: -2.9128
+        r1_direct: -2.311127
+        r1_mt: 2.643974
+        r1_best: 2.661505
+        charng: -0.302857
+        fuzzy: 5.980113
+        anchor: 0.383184
+        anchor_mm: 0.236229
+        oracle: -2.404597
+        top3: 5.491029
+        same_lang: -0.359559
+        is_en: -1.805936
+        specificity: 1.37447
+        conflict_n: -0.419184
+        conflict_flag: -1.828503
+        num_edit_mag: 1.852874
+        wn_antonym_flip: -2.071469
+      threshold: 0.4
+      chunk_max_chars: 300
+      chunk_overlap_ratio: 0.1

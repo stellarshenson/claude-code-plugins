@@ -161,6 +161,13 @@ class GroundingConfig:
 
     adaptive_gap_min_claims: int
 
+    # ── lexical mode effort tier ────────────────────────────────────────
+    lexical_effort: Literal["low", "medium", "high"]
+    """Effort tier loaded when calibration.engine == 'lexical' and lexical_manifolds
+    are present: low (11 feat, core only), medium (14, + lingua + WordNet), high
+    (16, + MT translate-then-recall). The lexical chunk operating point (300/0.1)
+    lives per-manifold, not here."""
+
     # ── misc ────────────────────────────────────────────────────────────
     context_chars: int
     semantic_top_k: int

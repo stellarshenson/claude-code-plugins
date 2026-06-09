@@ -999,6 +999,58 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     cf.set_defaults(func=cmd_config)
 
+    # train-lexical subcommand
+    tl = sub.add_parser(
+        "train-lexical",
+        help="Fit a lexical-mode effort-tier manifold from labelled data; write weights into config.",
+        description=(
+            "Fit the frozen-weight verdict manifold for ONE effort tier "
+            "(low/medium/high) from one or more labelled datasets and write "
+            "intercept + per-feature weights + threshold into the document-"
+            "processing config (calibration.lexical_manifolds.<effort>).\n\n"
+            "Dataset shape (parquet or jsonl, repeatable via --data; all files "
+            "concatenated):\n"
+            "  required columns - claim:str, source_text:str, label:int "
+            "(1=supported / 0=hallucination)\n"
+            "  optional column  - lang:str (claim ISO code; used by medium/high "
+            "language features, else auto-detected)\n\n"
+            "Minimum size (enforced) - >= 200 total rows with >= 40 of EACH class "
+            "after concatenation; smaller sets are rejected with a clear error "
+            "naming the counts found.\n\n"
+            "Features use the SAME document_processing.lexical pipeline the "
+            "grounder uses, so shipped weights match shipped features. low needs no "
+            "external model; medium needs lingua + nltk/WordNet; high additionally "
+            "needs the MT stack (argos + wtpsplit). Training HARD-ERRORS with an "
+            "'install stellars-claude-code-plugins[grounding-lexical]' message if a "
+            "requested tier's feature dep is missing (no silent degradation in the "
+            "fit path). Client data is read in place, never copied or committed; "
+            "only aggregate weights are written."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    tl.add_argument("--effort", choices=["low", "medium", "high"], required=True)
+    tl.add_argument(
+        "--data",
+        action="append",
+        required=True,
+        help="Labelled dataset (parquet or jsonl); repeatable, concatenated",
+    )
+    tl.add_argument(
+        "--out",
+        default=None,
+        help=(
+            "Config yaml to write (default: project "
+            ".stellars-plugins/config_document_processing.yaml)"
+        ),
+    )
+    tl.add_argument(
+        "--threshold",
+        type=float,
+        default=None,
+        help="Decision threshold; tuned on the training data by macro-F1 when omitted",
+    )
+    tl.set_defaults(func=cmd_train_lexical)
+
     return parser
 
 
@@ -1175,6 +1227,130 @@ def cmd_config(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_lexical_dataset(paths: list[str]) -> list[dict]:
+    """Concatenate one or more labelled datasets into a list of row dicts.
+
+    Reads ``.parquet`` (pandas; clear error if pyarrow missing) and ``.jsonl``
+    (stdlib json, one object per line). Validates the required columns claim /
+    source_text / label on each file; passes through the optional lang column.
+    """
+    rows: list[dict] = []
+    required = ("claim", "source_text", "label")
+    for raw_path in paths:
+        p = Path(raw_path)
+        if not p.is_file():
+            print(f"ERROR: dataset not found: {raw_path}", file=sys.stderr)
+            raise SystemExit(2)
+        if p.suffix == ".parquet":
+            try:
+                import pandas as pd
+            except ImportError:
+                print(
+                    "ERROR: reading parquet needs pandas + pyarrow; install "
+                    "stellars-claude-code-plugins[grounding-lexical]",
+                    file=sys.stderr,
+                )
+                raise SystemExit(2) from None
+            recs = pd.read_parquet(p).to_dict("records")
+        elif p.suffix in (".jsonl", ".ndjson"):
+            recs = [
+                json.loads(line)
+                for line in p.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+        else:
+            print(
+                f"ERROR: {raw_path} - unsupported format (expected .parquet or .jsonl)",
+                file=sys.stderr,
+            )
+            raise SystemExit(2)
+        for i, r in enumerate(recs):
+            missing = [c for c in required if c not in r]
+            if missing:
+                print(
+                    f"ERROR: {raw_path} row {i} missing column(s): {', '.join(missing)}",
+                    file=sys.stderr,
+                )
+                raise SystemExit(2)
+        rows.extend(recs)
+    return rows
+
+
+def cmd_train_lexical(args: argparse.Namespace) -> int:
+    """Fit one effort tier's lexical manifold and write it into the config.
+
+    Concatenates the --data files, enforces the >=200-row / >=40-per-class floor,
+    extracts that tier's features via the SAME ``lexical.extract_lexical_features``
+    the grounder uses, fits ``lexical.fit_lexical_manifold`` (sklearn, training-
+    only), and writes the frozen weights under
+    ``calibration.lexical_manifolds.<effort>`` following the cmd_config set-
+    calibrator write pattern. Client data is read in place; only aggregate weights
+    are written.
+    """
+    from dataclasses import asdict
+
+    import yaml
+
+    from stellars_claude_code_plugins.config import (
+        PROJECT_OVERRIDE_DIR,
+        load_document_processing_config,
+    )
+    from stellars_claude_code_plugins.document_processing import calibration as C
+    from stellars_claude_code_plugins.document_processing import lexical as L
+
+    raw_rows = _load_lexical_dataset(args.data)
+
+    # Enforce the training floor (shared with the tests via the lexical constants).
+    n = len(raw_rows)
+    pos = sum(1 for r in raw_rows if int(r["label"]) == 1)
+    neg = n - pos
+    if n < L.LEXICAL_MIN_ROWS or min(pos, neg) < L.LEXICAL_MIN_PER_CLASS:
+        print(
+            f"ERROR: dataset too small to fit the {args.effort} manifold - need "
+            f">= {L.LEXICAL_MIN_ROWS} rows with >= {L.LEXICAL_MIN_PER_CLASS} of each "
+            f"class; got {n} rows ({pos} supported, {neg} hallucination).",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
+    # Extract features per row with the grounder's own pipeline. The optional-dep
+    # import for the tier must raise (no fitting on silently-zeroed features).
+    feat_rows: list[dict] = []
+    for r in raw_rows:
+        feat = L.extract_lexical_features(
+            str(r["claim"]),
+            [str(r["source_text"])],
+            effort=args.effort,
+            det_lang=(str(r["lang"]) if r.get("lang") else None),
+        )
+        feat["label"] = int(r["label"])
+        feat_rows.append(feat)
+
+    manifold = L.fit_lexical_manifold(feat_rows, effort=args.effort, threshold=args.threshold)
+
+    # Write following the cmd_config set-calibrator pattern: load the full config
+    # dict, merge the manifold into the calibration block, dump.
+    out = (
+        Path(args.out)
+        if args.out
+        else (PROJECT_OVERRIDE_DIR / "config_document_processing.yaml")
+    )
+    d = asdict(load_document_processing_config())
+    cal = C.load_calibration_from_config(args.out) or d.get("calibration") or {}
+    cal["engine"] = "lexical"
+    cal.setdefault("lexical_manifolds", {})[args.effort] = manifold
+    d["calibration"] = cal
+    d["lexical_effort"] = args.effort
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(yaml.safe_dump(d, sort_keys=False), encoding="utf-8")
+    print(
+        f"fit {args.effort} manifold ({len(manifold['feature_order'])} features, "
+        f"threshold {manifold['threshold']:.3f}) from {n} rows "
+        f"({pos} supported / {neg} hallucination) -> {out}"
+    )
+    return 0
+
+
 def cmd_extract_claims(args: argparse.Namespace) -> int:
     """Emit claims.json from a document using the heuristic extractor."""
     from stellars_claude_code_plugins.document_processing.extract import (
@@ -1322,6 +1498,7 @@ CAVEMAN_DESCRIPTIONS: dict[str, str] = {
     "check-consistency": "doc fight self? same fact different number?",
     "validate": "docs -> grounding + consistency reports. --document(s) or --manifest",
     "setup": "first run. write model/cache config. semantic opt-in via --semantic",
+    "train-lexical": "labelled data -> lexical tier manifold. --effort low/med/high. weights into config",
 }
 
 

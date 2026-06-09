@@ -623,6 +623,44 @@ def _winning_layer_label(m: GroundingMatch) -> MatchType:
     return best if cands[best] > 0 else "semantic"
 
 
+_LEXICAL_VERDICT_CACHE: dict = {}
+
+
+def _config_lexical_verdict(cfg):
+    """Resolve lexical mode: (LexicalVerdict, effort, chunk_max_chars, chunk_overlap_ratio) or None.
+
+    Active only when ``calibration.engine == "lexical"`` AND a ``lexical_manifolds``
+    block is present. Reads the effort tier from ``cfg.lexical_effort``, loads that
+    tier's frozen manifold (cached), and returns it with the manifold's chunk
+    operating point. None when manifolds are absent - the caller then falls through
+    to the deterministic cascade (today's behaviour for engine="lexical" without
+    manifolds).
+    """
+    from stellars_claude_code_plugins.document_processing import calibration as _cal
+    from stellars_claude_code_plugins.document_processing import lexical as _lx
+
+    block = _cal.load_calibration_from_config()
+    if not block or block.get("engine") != "lexical" or not block.get("lexical_manifolds"):
+        return None
+    effort = cfg.lexical_effort
+    m = block["lexical_manifolds"].get(effort)
+    if not m:
+        return None
+    key = (effort, tuple(sorted((m.get("weights") or {}).items())), float(m.get("threshold", 0.5)))
+    v = _LEXICAL_VERDICT_CACHE.get(key)
+    if v is None:
+        v = _lx.LexicalVerdict.from_config(block, effort)
+        if v is None:
+            return None
+        _LEXICAL_VERDICT_CACHE[key] = v
+    return (
+        v,
+        effort,
+        int(m.get("chunk_max_chars", _lx.CHUNK_MAX_CHARS)),
+        float(m.get("chunk_overlap_ratio", _lx.CHUNK_OVERLAP_RATIO)),
+    )
+
+
 def ground(
     claim: str,
     sources: Sequence[SourceInput],
@@ -903,6 +941,42 @@ def ground(
         has_any_signal = True
         if nli_verdict == "contradicted":
             has_contradiction = True
+
+    # Lexical mode (engine=lexical + shipped manifolds): a per-tier frozen-weight
+    # logistic owns the verdict. Tried only when no explicit calibrated_verdict was
+    # passed; mutually exclusive with the calibrated engine (distinct engine values).
+    lexical_resolved = (
+        _config_lexical_verdict(cfg) if calibrated_verdict is None else None
+    )
+    if lexical_resolved is not None:
+        from stellars_claude_code_plugins.document_processing import lexical as _lx
+
+        lv, effort, lx_max, lx_ovl = lexical_resolved
+        sources_arg = [(path, text) for _, path, text in pairs]
+        feat = _lx.extract_lexical_features(
+            claim,
+            sources_arg,
+            effort=effort,
+            chunk_max_chars=lx_max,
+            chunk_overlap_ratio=lx_ovl,
+        )
+        result.verdict_features = feat
+        result.verdict_probability = lv.predict_proba(feat)
+        if has_contradiction and has_any_signal:
+            result.match_type = "contradicted"
+        elif result.verdict_probability >= lv.threshold:
+            result.match_type = _winning_layer_label(result)
+        else:
+            result.match_type = "none"
+        _populate_match_metadata(
+            result,
+            cfg=cfg,
+            primary_source=primary_source,
+            fuzzy_threshold=fuzzy_threshold,
+            bm25_threshold=bm25_threshold,
+            effective_semantic_threshold=effective_semantic_threshold,
+        )
+        return result
 
     verdict = (
         calibrated_verdict if calibrated_verdict is not None else _config_calibrated_verdict()
@@ -1227,7 +1301,8 @@ def ground_batch(
     # agnostic: rank ordering of agreement_scores is stable across semantic
     # models even when absolute scales differ wildly. Skipped when the
     # calibrated engine is active (it owns the verdict).
-    if cfg.classifier_mode == "adaptive_gap" and verdict is None:
+    lexical_active = calibrated_verdict is None and _config_lexical_verdict(cfg) is not None
+    if cfg.classifier_mode == "adaptive_gap" and verdict is None and not lexical_active:
         semantic_zone_idxs = [
             i
             for i, m in enumerate(matches)
