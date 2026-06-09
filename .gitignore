@@ -127,3 +127,6 @@ experiments/grounding/logs/*
 
 # cached per-record feature tables (derived from client claims)
 experiments/grounding/cache/
+
+# OpenVINO IR model artifacts (large binaries; hosted on HF, never committed)
+models/
