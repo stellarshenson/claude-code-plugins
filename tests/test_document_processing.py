@@ -18,6 +18,25 @@ from stellars_claude_code_plugins.document_processing.chunking import (
 from stellars_claude_code_plugins.document_processing.cli import main as cli_main
 
 
+@pytest.fixture
+def deterministic_engine(monkeypatch):
+    """Force the deterministic-cascade verdict head.
+
+    The bundled config ships ``mode: lexical`` (the manifold verdict). A handful
+    of tests exercise the cascade's per-layer threshold semantics (fuzzy/bm25
+    below-threshold -> none, the -1.0 sentinel) on tiny toy fixtures that are
+    out-of-distribution for the manifold. Those tests pin the deterministic head
+    explicitly so they keep covering the cascade code, independent of the default.
+    """
+    from stellars_claude_code_plugins.document_processing import calibration as _C
+    from stellars_claude_code_plugins.document_processing import grounding as _G
+
+    monkeypatch.setattr(_C, "load_calibration_from_config", lambda path=None: {"engine": "deterministic"})
+    _G._LEXICAL_VERDICT_CACHE.clear()
+    yield
+    _G._LEXICAL_VERDICT_CACHE.clear()
+
+
 class TestExactMatching:
     """Regex (exact) layer — whitespace-tolerant, case-insensitive."""
 
@@ -73,7 +92,7 @@ class TestFuzzyMatching:
         assert m.fuzzy_score >= 0.80
         assert m.match_type == "fuzzy"
 
-    def test_fuzzy_below_threshold(self):
+    def test_fuzzy_below_threshold(self, deterministic_engine):
         m = ground(
             "tropical island paradise",
             ["The quick brown fox jumps over the lazy dog."],
@@ -106,7 +125,7 @@ class TestFuzzyMatching:
 class TestBothSignalsReported:
     """All three scores always in the result (user requirement)."""
 
-    def test_none_match_still_reports_fuzzy_signal(self):
+    def test_none_match_still_reports_fuzzy_signal(self, deterministic_engine):
         """Even when match_type=none, fuzzy_score shows best-effort signal."""
         m = ground("something different", ["slightly different content here"])
         assert m.match_type == "none"
@@ -175,7 +194,7 @@ class TestBM25Matching:
         assert m.bm25_token_recall >= 0.5
         assert "dolphins" in m.bm25_matched_text.lower()
 
-    def test_bm25_below_threshold_classified_none(self):
+    def test_bm25_below_threshold_classified_none(self, deterministic_engine):
         """When BM25 token-recall below threshold, match_type=none."""
         m = ground(
             "quantum physics neutrino detector",
@@ -346,17 +365,21 @@ class TestCLI:
         assert "¶1" in out  # paragraph 1
 
     def test_ground_exit_one_on_miss(self, tmp_path, capsys):
+        # Real default path (mode: lexical): an absent-content fabrication against
+        # a realistic multi-sentence source is rejected -> exit 1.
         src = tmp_path / "src.txt"
-        src.write_text("Only about horticulture.")
+        src.write_text(
+            "The estate has three walled gardens and an orchard.\n\n"
+            "The manor was built in 1820 and restored in 1998.\n\n"
+            "A trout stream runs along the eastern boundary."
+        )
         code = cli_main(
             [
                 "ground",
                 "--claim",
-                "quantum physics",
+                "the estate has a helicopter landing pad",
                 "--source",
                 str(src),
-                "--threshold",
-                "0.95",
                 # no --semantic: lexical-only, no optional model download
             ]
         )
@@ -1604,7 +1627,7 @@ class TestNLIGrounding:
         m = ground("the estate has no gardens at all", self.SRC, nli_grounder=fake)
         assert m.match_type == "contradicted"
 
-    def test_neutral_unconfirmed(self):
+    def test_neutral_unconfirmed(self, deterministic_engine):
         from stellars_claude_code_plugins.document_processing.grounding import ground
 
         fake = _FakeNLI({"entailment": 0.10, "neutral": 0.80, "contradiction": 0.10})
@@ -1706,10 +1729,10 @@ class TestNLICliWiring:
         assert data["verdict_probability"] >= 0.5
         assert data["nli_scores"]["entailment"] == 0.95
 
-    def test_cli_ground_no_nli_means_lexical_engine(self, tmp_path, monkeypatch, capsys):
-        # No NLI grounder built -> lexical cascade, verdict_probability stays -1.0.
-        # (Forced via the builders so the result is independent of any ambient
-        # config; semantic/NLI are opt-in per call now.)
+    def test_cli_ground_no_nli_uses_lexical_manifold(self, tmp_path, monkeypatch, capsys):
+        # No NLI/semantic grounder built -> the shipped lexical-mode manifold owns
+        # the verdict (mode: lexical default): verdict_probability is set in [0,1],
+        # NLI never runs (nli_scores empty), and an exact hit still labels "exact".
         from stellars_claude_code_plugins.document_processing import cli as cli_mod
 
         src = tmp_path / "src.txt"
@@ -1728,8 +1751,9 @@ class TestNLICliWiring:
         )
         data = json.loads(capsys.readouterr().out)
         assert rc == 0
-        assert data["verdict_probability"] == -1.0
+        assert 0.0 <= data["verdict_probability"] <= 1.0
         assert data["match_type"] == "exact"
+        assert data["nli_scores"] == {}
 
     def test_calibrate_semantic_feeds_nli_features(self, tmp_path, monkeypatch):
         # calibrate --semantic must extract evidence with NLI on, so the

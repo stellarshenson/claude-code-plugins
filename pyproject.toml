@@ -17,14 +17,19 @@ classifiers = [
 ]
 dependencies = [
     "arviz>=0.17",
+    "argostranslate>=1.9",          # lexical high tier: torch-free MT (CTranslate2)
     "bambi>=0.13",
     "beziers",
+    "ctranslate2>=4.0",             # lexical high tier: MT inference engine
     "fonttools",
+    "lingua-language-detector>=2.0",  # lexical medium tier: per-claim language detection
+    "nltk>=3.8",                    # lexical medium tier: WordNet antonym-flip (corpus fetched lazily)
     "numpy",
     "odfpy>=1.4",
     "pandas>=2.0",
     "pillow",
     "playwright",
+    "pyarrow>=14.0",                # lexical: parquet gold read in train-lexical
     "pygal",
     "pymc>=5.10",
     "pypdf>=4.0",
@@ -32,12 +37,17 @@ dependencies = [
     "pyyaml",
     "rank-bm25>=0.2.2",
     "rapidfuzz>=3.14.5",
+    "sacremoses>=0.1",              # lexical high tier: MT tokenisation
+    "scikit-learn>=1.3",           # lexical: manifold fit path (LogisticRegression); not imported at inference
     "scipy",
+    "sentencepiece>=0.2",          # lexical high tier: MT subword model
     "shapely",
     "striprtf>=0.0.26",
+    "subword-nmt>=0.3",            # lexical high tier: MT BPE
     "svgelements>=1.9",
     "tiktoken",
     "transitions",
+    "wtpsplit-lite>=0.1",          # lexical high tier: ONNX sentence splitter
 ]
 
 [project.optional-dependencies]
@@ -61,18 +71,6 @@ ocr = [
     "pytesseract>=0.3.10",
     "pdf2image>=1.17.0",
     "langdetect>=1.0.9",
-]
-grounding-lexical = [
-    "scikit-learn>=1.3",            # fit path only (LogisticRegression); not imported at inference
-    "lingua-language-detector>=2.0",
-    "nltk>=3.8",                    # WordNet antonyms (corpus fetched lazily on first use)
-    "argostranslate>=1.9",
-    "ctranslate2>=4.0",
-    "wtpsplit-lite>=0.1",
-    "sentencepiece>=0.2",
-    "sacremoses>=0.1",
-    "subword-nmt>=0.3",
-    "pyarrow>=14.0",                # parquet read in train-lexical
 ]
 
 [project.scripts]

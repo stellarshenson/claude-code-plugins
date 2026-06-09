@@ -629,12 +629,12 @@ _LEXICAL_VERDICT_CACHE: dict = {}
 def _config_lexical_verdict(cfg):
     """Resolve lexical mode: (LexicalVerdict, effort, chunk_max_chars, chunk_overlap_ratio) or None.
 
-    Active only when ``calibration.engine == "lexical"`` AND a ``lexical_manifolds``
-    block is present. Reads the effort tier from ``cfg.lexical_effort``, loads that
-    tier's frozen manifold (cached), and returns it with the manifold's chunk
-    operating point. None when manifolds are absent - the caller then falls through
-    to the deterministic cascade (today's behaviour for engine="lexical" without
-    manifolds).
+    Active in lexical mode (``calibration.mode == "lexical"``, the default, which
+    load_calibration_from_config resolves to the internal ``engine == "lexical"``)
+    AND a ``lexical_manifolds`` block is present. Reads the solution tier from
+    ``cfg.lexical_effort``, loads that tier's frozen manifold (cached), and returns
+    it with the manifold's chunk operating point. None when manifolds are absent -
+    the caller then falls through to the deterministic cascade.
     """
     from stellars_claude_code_plugins.document_processing import calibration as _cal
     from stellars_claude_code_plugins.document_processing import lexical as _lx
@@ -942,9 +942,9 @@ def ground(
         if nli_verdict == "contradicted":
             has_contradiction = True
 
-    # Lexical mode (engine=lexical + shipped manifolds): a per-tier frozen-weight
+    # Lexical mode (mode=lexical + shipped manifolds): a per-tier frozen-weight
     # logistic owns the verdict. Tried only when no explicit calibrated_verdict was
-    # passed; mutually exclusive with the calibrated engine (distinct engine values).
+    # passed; mutually exclusive with the calibrated head (distinct internal engine).
     lexical_resolved = (
         _config_lexical_verdict(cfg) if calibrated_verdict is None else None
     )

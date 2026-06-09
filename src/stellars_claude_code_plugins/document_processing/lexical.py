@@ -254,8 +254,8 @@ def _lingua_lang(text: str, min_len: int = 25) -> str:
         except ImportError:
             _LINGUA["det"] = None
             logger.warning(
-                "lingua-language-detector not installed - language features neutralised; "
-                "install stellars-claude-code-plugins[grounding-lexical]"
+                "lingua-language-detector not importable - language features neutralised; "
+                "it ships with the package, so reinstall stellars-claude-code-plugins"
             )
     det = _LINGUA["det"]
     if det is None:
@@ -279,8 +279,8 @@ def _wn_antonyms(w: str) -> set:
         except ImportError:
             _WN["mod"], _WN["cache"] = None, {}
             logger.warning(
-                "nltk not installed - WordNet antonym feature neutralised; "
-                "install stellars-claude-code-plugins[grounding-lexical]"
+                "nltk not importable - WordNet antonym feature neutralised; "
+                "it ships with the package, so reinstall stellars-claude-code-plugins"
             )
     if _WN["mod"] is None:
         return set()
@@ -411,8 +411,9 @@ def _default_translate(text: str, src_iso: str) -> str:
         from stellars_claude_code_plugins.document_processing.lexical_mt import translate
     except ImportError as exc:
         raise ImportError(
-            "high-tier MT recall needs stellars-claude-code-plugins[grounding-lexical] "
-            "(argostranslate, ctranslate2, wtpsplit-lite)"
+            "high-tier MT recall needs the MT stack (argostranslate, ctranslate2, "
+            "wtpsplit-lite); it ships with the package, so reinstall "
+            "stellars-claude-code-plugins"
         ) from exc
     return translate(text, src_iso)
 

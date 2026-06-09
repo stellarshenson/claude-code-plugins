@@ -1018,13 +1018,11 @@ def _build_parser() -> argparse.ArgumentParser:
             "after concatenation; smaller sets are rejected with a clear error "
             "naming the counts found.\n\n"
             "Features use the SAME document_processing.lexical pipeline the "
-            "grounder uses, so shipped weights match shipped features. low needs no "
-            "external model; medium needs lingua + nltk/WordNet; high additionally "
-            "needs the MT stack (argos + wtpsplit). Training HARD-ERRORS with an "
-            "'install stellars-claude-code-plugins[grounding-lexical]' message if a "
-            "requested tier's feature dep is missing (no silent degradation in the "
-            "fit path). Client data is read in place, never copied or committed; "
-            "only aggregate weights are written."
+            "grounder uses, so shipped weights match shipped features. All tier "
+            "deps ship with the package (lingua, nltk/WordNet, the MT stack); "
+            "training HARD-ERRORS if a feature dep is somehow unimportable (no "
+            "silent degradation in the fit path). Client data is read in place, "
+            "never copied or committed; only aggregate weights are written."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -1246,8 +1244,8 @@ def _load_lexical_dataset(paths: list[str]) -> list[dict]:
                 import pandas as pd
             except ImportError:
                 print(
-                    "ERROR: reading parquet needs pandas + pyarrow; install "
-                    "stellars-claude-code-plugins[grounding-lexical]",
+                    "ERROR: reading parquet needs pandas + pyarrow (both ship with "
+                    "the package); reinstall stellars-claude-code-plugins",
                     file=sys.stderr,
                 )
                 raise SystemExit(2) from None
@@ -1337,7 +1335,8 @@ def cmd_train_lexical(args: argparse.Namespace) -> int:
     )
     d = asdict(load_document_processing_config())
     cal = C.load_calibration_from_config(args.out) or d.get("calibration") or {}
-    cal["engine"] = "lexical"
+    cal["mode"] = "lexical"
+    cal.pop("engine", None)  # mode is the public knob; drop any derived/legacy engine key
     cal.setdefault("lexical_manifolds", {})[args.effort] = manifold
     d["calibration"] = cal
     d["lexical_effort"] = args.effort

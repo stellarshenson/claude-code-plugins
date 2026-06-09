@@ -420,6 +420,13 @@ def load_calibration_from_config(path: str | Path | None = None) -> dict | None:
     or ``None`` when no block is present. Uses the same 4-layer config
     resolution as :func:`config.load_document_processing_config`, so a
     project-local override wins over the bundled default.
+
+    The public knob is ``mode`` (``lexical`` default, ``semantic`` reserved);
+    ``engine`` is an internal verdict-head selector derived from it. An explicit
+    ``engine`` still wins for back-compat (older configs, and the calibrated
+    bambi head, set ``engine`` directly); otherwise ``mode`` maps to its head -
+    ``lexical``/``semantic`` -> the lexical verdict (semantic runs lexical until
+    the heavy stage ships).
     """
     import yaml
 
@@ -430,7 +437,13 @@ def load_calibration_from_config(path: str | Path | None = None) -> dict | None:
         return None
     raw = yaml.safe_load(Path(p).read_text(encoding="utf-8")) or {}
     block = raw.get("calibration")
-    return block if isinstance(block, dict) else None
+    if not isinstance(block, dict):
+        return None
+    if "engine" not in block:
+        block = dict(block)
+        mode = block.get("mode", "lexical")
+        block["engine"] = "lexical" if mode in ("lexical", "semantic") else "deterministic"
+    return block
 
 
 def verdict_from_config(path: str | Path | None = None) -> CalibratedVerdict | None:

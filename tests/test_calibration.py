@@ -138,32 +138,35 @@ class TestCalibratedRegression:
 
 
 class TestGroundCalibratedIntegration:
-    def test_deterministic_default_is_backcompat(self):
-        # The bundled config ships engine=deterministic (the lexical_manifolds are
-        # present but dormant), so the default verdict head is the deterministic
-        # cascade: an exact match wins and verdict_probability stays the -1.0
-        # sentinel (no verdict engine used).
-        m = G.ground(
-            "the estate has three walled gardens",
-            [("s.txt", "The estate has three walled gardens.")],
-        )
+    def test_lexical_default_is_active(self):
+        # The bundled config ships engine=lexical at the medium tier, so the
+        # default verdict head is the shipped frozen-weight manifold: an exact
+        # match still wins and the verdict sets verdict_probability in [0, 1].
+        G._LEXICAL_VERDICT_CACHE.clear()
+        try:
+            m = G.ground(
+                "the estate has three walled gardens",
+                [("s.txt", "The estate has three walled gardens.")],
+            )
+        finally:
+            G._LEXICAL_VERDICT_CACHE.clear()
         assert m.match_type == "exact"
-        assert m.verdict_probability == -1.0
+        assert 0.0 <= m.verdict_probability <= 1.0
 
-    def test_lexical_mode_active_when_engine_lexical(self):
-        # Opt-in: flip calibration.engine to "lexical" and the shipped medium
-        # manifold becomes the verdict head - exact still wins, and the
-        # frozen-weight verdict sets verdict_probability in [0, 1].
+    def test_deterministic_mode_is_backcompat_optin(self):
+        # Opt-in back-compat: flip calibration.engine to "deterministic" and the
+        # verdict head reverts to the deterministic cascade - exact wins and
+        # verdict_probability stays the -1.0 sentinel (no verdict engine used).
         from stellars_claude_code_plugins.document_processing import calibration as _C
 
         orig = _C.load_calibration_from_config
 
-        def _lexical_engine(path=None):
+        def _deterministic_engine(path=None):
             b = dict(orig(path) or {})
-            b["engine"] = "lexical"
+            b["engine"] = "deterministic"
             return b
 
-        _C.load_calibration_from_config = _lexical_engine
+        _C.load_calibration_from_config = _deterministic_engine
         G._LEXICAL_VERDICT_CACHE.clear()
         try:
             m = G.ground(
@@ -174,7 +177,7 @@ class TestGroundCalibratedIntegration:
             _C.load_calibration_from_config = orig
             G._LEXICAL_VERDICT_CACHE.clear()
         assert m.match_type == "exact"
-        assert 0.0 <= m.verdict_probability <= 1.0
+        assert m.verdict_probability == -1.0
 
     def test_calibrated_exact_confirmed_and_fields_exposed(self):
         v = _prior_verdict()
