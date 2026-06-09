@@ -2,14 +2,25 @@
 
 The deployed grounder classifies each claim as supported or hallucination using only lexical signals plus a torch-free machine-translation bridge - no semantic model in the verdict path. A deterministic contradiction layer extends it to hold on a second, contrastive corpus (VitaminC) and emits a triage flag marking claims for a future semantic stage.
 
+## Claim extraction (upstream)
+
+The grounder scores a claim that an upstream stage has already pulled from the agent's answer; it is extraction-agnostic and takes the claim text however it was produced. Extraction is two steps - sentence/claim segmentation, then filter + classify - and the solution moved from a pure-regex baseline to a neural segmenter, with an optional LLM extractor in production:
+
+- **Sentence / claim segmentation** - originally a regex sentence split; the research replaced it with **wtpsplit SaT** (`sat-3l-sm`), a torch-free ONNX neural segmenter, which beat the regex split on the held-out claims (macro-F1 up, LLM-as-judge 15/1) and is the preferred segmenter. SaT also drives the MT bridge's sentence splitting (`lexical_mt.py`), where it replaced argos's torch-based stanza segmenter - the stack's last torch dependency. The regex split (`document_processing/extract.py` `_SENT_SPLIT_RE`) remains the fully-offline fallback
+- **Filter + classify (deterministic)** - the `extract.py` heuristic (exposed as `document-processing extract-claims`): strip markdown and citation furniture, drop hedges and verb-less fragments, classify survivors into quote / numeric / attribution / assertion. No model
+- **LLM extractor (optional, production)** - a language model pulls the load-bearing claims from the answer when available, handling phrasing the heuristic splits poorly; the deterministic path remains the fallback
+
+So the historical pipeline was regex-only segmentation + the deterministic filter; the current solution uses the SaT neural segmenter (with the optional LLM extractor in production). The grounding research and the gold labels were built on this deterministic path - the `claude -p` Haiku/Sonnet model is the labelling judge, not the extractor.
+
 ## Pipeline
 
-Eight deterministic stages, claim in → verdict + triage flag out.
+Nine deterministic stages, claim in → verdict + triage flag out.
 
 - **Language detection** - lingua-py per claim and per best chunk; a `same_lang` flag marks whether the source carries a chunk in the claim's language
 - **Conditional MT** - argos-translate (CTranslate2 int8, CPU) + wtpsplit SaT sentence splitter (ONNX), torch-free; fires only on heterogeneous claims (non-English claim vs English source), ~23% of the live 2752 gold (the language tail grew to ten+ languages)
 - **Chunking** - recursive, 300-char chunks, 0.1 overlap (AUC-validated operating point)
-- **Lexical recall** - BM25-best-chunk IDF-weighted token recall, computed direct (`r1_direct`) and translate-then-recall (`r1_mt`); the model learns which to trust
+- **Lexical recall** - BM25-best-chunk IDF-weighted token recall, computed direct (`r1_direct`) and translate-then-recall (`r1_mt`); the model learns which to trust. The in-context IDF is soft-floored with a `wordfreq` background rarity (`w = max(in-context, λ·background)`, λ=0.5) so recall stays honest on a single-chunk source, where the in-context IDF would otherwise collapse to a constant
+- **Distinctive-content coverage** - `unmatched_rarity` / `max_unmatched`: the background-rarity-weighted fraction of the claim's content tokens absent from the best chunk; separates "distinctive token present" from "only common tokens overlap", the signal aggregate recall cannot isolate
 - **Supporting lexical signals** - char-ngram recall, rapidfuzz partial-ratio, anchor recall + mismatch (numbers/IDs, language-invariant), oracle-chunk and top-k consensus
 - **Claim-intrinsic specificity** - anchor density from the claim alone (evidence-independent → cannot memorise the documents); the strongest generalisation feature
 - **Contradiction layer** - aligned value-conflict + WordNet antonym-flip (below)
@@ -38,9 +49,11 @@ One logistic, joint DeLaval (2752) + VitaminC (800, SUPPORTS vs REFUTES), groupe
 | configuration | DeLaval | VitaminC |
 |---|---|---|
 | lexical base | 0.832 | 0.555 |
-| shipped (value-conflict + WordNet antonym) | 0.825 | 0.661 |
+| value-conflict + WordNet antonym | 0.825 | 0.661 |
+| shipped (+ length-robust recall + distinctive-content + short-source aug) | 0.817 | 0.691 |
 
-- **Hold, not collapse** - VitaminC rises 0.555 → 0.661 while DeLaval moves 0.832 → 0.825 (−0.007, within LOSO noise)
+- **Hold, not collapse** - VitaminC rises 0.555 → 0.691 while DeLaval moves 0.832 → 0.817 (−0.015 total, within LOSO noise); the short-source fix (below) added the last +0.030 on VitaminC
+- **Short-source regime fixed** - a 12-case probe of 1-line-source inputs rose 10/12 → 11/12: a `wordfreq` background-IDF recall floor (revives recall where the in-context IDF collapses on a single chunk), the `unmatched_rarity` distinctive-content feature, and truncation-derived short-source training rows; the fix also lifts the single-sentence VitaminC corpus (+0.030), the same degenerate regime
 - **Triage flag** - flags 26% of VitaminC at 90% REFUTES precision (50% base rate), routing the contradiction region to a future semantic stage
 - **WordNet replaced a curated antonym list** - broader word-sense coverage; aligned value-conflict is the free component (near-zero DeLaval cost)
 - **Replicates across data growth** - the hold-vs-collapse pattern held as the gold grew 1260 → 2631 → 2752 (VitaminC +0.10-0.13, DeLaval −0.01 every run); absolutes shift slightly on the larger, more language-diverse set
@@ -56,7 +69,8 @@ One logistic, joint DeLaval (2752) + VitaminC (800, SUPPORTS vs REFUTES), groupe
 ## Limitations
 
 - **Irreducibly semantic residual** - VitaminC's qualitative REFUTES with no anchor and no antonym still need the semantic classifier the triage flag routes to; a general single-token-substitution detector cannot help (it cannot tell a synonym restatement from a fact-edit - that distinction is itself semantic), so deterministic lexical features bridge the contradiction gap only as far as surface opposition allows
-- **Recall degenerates on single-sentence evidence** - IDF-over-corpus recall collapses to ~0 when the evidence is one chunk (VitaminC); the contradiction features are gated on fuzzy overlap instead, which stays live
+- **Single-sentence recall, mitigated not perfect** - the in-context IDF still degenerates on a one-chunk source, now soft-floored by the `wordfreq` background rarity so recall and the distinctive-content feature stay honest; the contradiction features remain fuzzy-gated as a second path
+- **Spelled-out-number value-conflict** - the residual short-source miss: "fifty hectares" vs "twelve hectares" reads as a near-match because the value-conflict feature is digit-based; spelled-number canonicalisation is deferred (round-4 H2, low coverage)
 - **Data-bound tail** - the source contexts grew to 69 (from ~22), stabilising leave-one-source-out; the residual is the small language tail (da/pt/de at n=8-18) where leave-one-language-out dips, so more labelled data in those languages is the prerequisite, not a cleverer model
 
 ## Implementation
@@ -64,18 +78,19 @@ One logistic, joint DeLaval (2752) + VitaminC (800, SUPPORTS vs REFUTES), groupe
 The grounder is consolidated into the library's existing grounding framework (`src/stellars_claude_code_plugins/document_processing/`) as the default **lexical mode**, exposed to the user as one knob - a solution tier (low / medium / high). Each tier is an indivisible bundle of algorithms plus the manifold trained for exactly that bundle, fit on the joint DeLaval + VitaminC gold. One new module, one verbatim MT copy, one test file; surgical hooks into `ground()` and config.
 
 - **Mode, not engine** - the public knob is `calibration.mode` (`lexical` default, `semantic` reserved for the heavy stage); `load_calibration_from_config` resolves it to an internal verdict-head selector. The deterministic cascade and the bambi calibrated head are internal heads reachable only via an explicit `engine:` override or the `calibrated_verdict=` API - the user never selects an algorithm, only a tier
-- **Solution tiers** - one parameterised feature path selected by the `lexical_effort` knob, ordered by cost: **low** (11 features - word + char-ngram recall, fuzzy, anchors, specificity, value-conflict), **medium** (14 - low + lingua language detection and WordNet antonym-flip), **high** (16 - medium + argos MT translate-then-recall, the full cross-lingual stack); each tier loads only its own ordered feature subset and the manifold trained against it
+- **Solution tiers** - one parameterised feature path selected by the `lexical_effort` knob, ordered by cost: **low** (13 features - word + char-ngram recall, fuzzy, anchors, specificity, value-conflict, distinctive-content), **medium** (16 - low + lingua language detection and WordNet antonym-flip), **high** (18 - medium + argos MT translate-then-recall, the full cross-lingual stack); each tier loads only its own ordered feature subset and the manifold trained against it
+- **Short-source robustness** - the recall features soft-floor the in-context IDF with a `wordfreq` background rarity (revives recall when a single-chunk source collapses the in-context weights), and `unmatched_rarity` / `max_unmatched` isolate distinctive-content coverage; both are in every tier. The manifolds are trained with truncation-derived short-source rows (below) so they read the degenerate regime correctly
 - **Module** - `document_processing/lexical.py` holds the consolidated feature pipeline, reusing `grounding._tokenize`, `chunking.recursive_chunk` and the `entity_check` helpers rather than duplicating them; the torch-free MT bridge is copied verbatim to `lexical_mt.py`
 - **Verdict head** - a per-tier frozen-weight logistic `LexicalVerdict` (intercept + per-feature weights + feature order + threshold + 300/0.1 chunk operating point) persisted in config under `calibration.lexical_manifolds.<tier>` and applied at inference as a dot-product through a sigmoid; no scikit-learn at runtime, sklearn imported only on the `fit_lexical_manifold` training path
 - **MT as the high tier** - cross-lingual recall (`r1_mt`, `r1_best`) runs through the torch-free `lexical_mt.py` (CTranslate2 int8 + wtpsplit SaT), the highest-cost tier; the high manifold collapses `r1_direct` (−2.31) and trusts the translate-then-recall pair (+2.64 / +2.66) on the non-English tail
-- **Joint training** - the three manifolds are fit on DeLaval 2752 gold plus VitaminC dev (SUPPORTS→1, REFUTES→0, NEI dropped), so every tier holds both the omission-type (DeLaval) and contrastive (VitaminC) negatives
-- **Training CLI** - `document-processing train-lexical --effort {low,medium,high} --data PATH [--data ...]` fits one tier from one or more labelled datasets and writes the frozen weights into config via the same `lexical.py` extraction; `--data` is repeatable and concatenated; `--help` documents the dataset contract (columns `claim`, `source_text`, `label` 1=supported/0=hallucination, optional `lang`; parquet or jsonl) and enforces a floor of >= 200 rows with >= 40 of each class, rejecting smaller sets with a clear error; client data is read in place and never copied or committed
-- **Dependencies in core** - all tier deps ship with the package (lingua, nltk/WordNet, scikit-learn for the fit path, pyarrow, and the MT stack - argos / CTranslate2 / wtpsplit / sentencepiece / sacremoses / subword-nmt); there is no optional extra, so all three tiers work out of the box. Each feature still neutralises (0.0) with a warning if its dep is somehow unimportable, and the training path hard-errors
+- **Joint training + short-source augmentation** - the three manifolds are fit on DeLaval 2752 gold plus VitaminC dev (SUPPORTS→1, REFUTES→0, NEI dropped), so every tier holds both the omission-type (DeLaval) and contrastive (VitaminC) negatives; the fit also adds truncation-derived short-source rows (each source cut to one sentence - the max-overlap evidence sentence for supported, a low-overlap one for hallucination; label inherited, source length the only change) so the manifold learns the degenerate single-chunk regime without a hand-set threshold
+- **Training CLI** - `document-processing train-lexical --effort {low,medium,high} --data PATH [--data ...]` fits one tier from one or more labelled datasets and writes the frozen weights into config via the same `lexical.py` extraction; `--data` is repeatable and concatenated; the short-source augmentation is applied automatically; `--help` documents the dataset contract (columns `claim`, `source_text`, `label` 1=supported/0=hallucination, optional `lang`; parquet or jsonl) and enforces a floor of >= 200 rows with >= 40 of each class, rejecting smaller sets with a clear error; client data is read in place and never copied or committed
+- **Dependencies in core** - all tier deps ship with the package (lingua, nltk/WordNet, scikit-learn for the fit path, pyarrow, wordfreq for the background rarity, and the MT stack - argos / CTranslate2 / wtpsplit / sentencepiece / sacremoses / subword-nmt); there is no optional extra, so all three tiers work out of the box. Each feature still neutralises (0.0) with a warning if its dep is somehow unimportable, and the training path hard-errors
 - **Grounding hook** - `ground()` gains one resolver (`_config_lexical_verdict`) plus one branch; `ground_batch` extends its adaptive_gap guard; the deterministic and calibrated paths are unchanged
 - **Test** - `tests/test_lexical_grounding.py` exercises a tier end to end through the public `ground()` API plus the shipped manifold on VitaminC (downloaded on demand, skip on no network) and DeLaval (skip-if-absent, parquet git-ignored, client data never committed)
 
 | tier | features | algorithm bundle (all deps ship in core) |
 |---|---|---|
-| low | 11 | recall, char-ngram, fuzzy, anchors, specificity, value-conflict |
-| medium | 14 | low + lingua language id + nltk/WordNet antonym-flip |
-| high | 16 | medium + argos MT translate-then-recall (CTranslate2 + wtpsplit) |
+| low | 13 | recall (wordfreq-floored), char-ngram, fuzzy, anchors, specificity, value-conflict, distinctive-content |
+| medium | 16 | low + lingua language id + nltk/WordNet antonym-flip |
+| high | 18 | medium + argos MT translate-then-recall (CTranslate2 + wtpsplit) |

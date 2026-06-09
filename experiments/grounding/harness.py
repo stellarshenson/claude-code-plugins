@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import json
+import math
 from pathlib import Path
 import re
 import sys
@@ -188,14 +189,54 @@ def an_phonetic(text: str) -> list[str]:
 ANALYZERS = {"word": an_word, "charngram": an_charngram, "phonetic": an_phonetic}
 
 
+# --- background (population) token rarity -------------------------------------
+# In-context BM25 IDF degenerates on a 1-chunk source (N=1 -> every token floors
+# to the same weight), so recall cannot tell distinctive content from filler in
+# that regime. A length-robust background IDF from wordfreq does not collapse;
+# blending it as a soft floor (max of in-context and lambda*background) only
+# bites when the in-context weight has collapsed - on normal multi-chunk sources
+# the in-context weight for a distinctive token already exceeds the floor.
+import os as _os
+
+BG_BLEND_LAMBDA = float(_os.environ.get("BG_LAMBDA", "0.0"))  # 0 = off; tuned on probe
+
+
+def bg_idf(tok: str, lang: str = "en") -> float:
+    """Background (population) IDF of a token: -log10(wordfreq). Unknown -> 9.0.
+
+    Length-robust: independent of the source being grounded, so it does not
+    collapse on a single-chunk source the way in-context BM25 IDF does."""
+    from wordfreq import word_frequency
+
+    f = word_frequency(tok, lang)
+    return -math.log10(f) if f > 0 else 9.0
+
+
+def _blend_weight(idf: dict, max_idf: float, bg_idf_fn, bg_lang: str):
+    """Token-weight closure: in-context IDF, soft-floored by lambda*background IDF
+    when ``bg_idf_fn`` is given (word analyzer only; never char n-grams)."""
+    if bg_idf_fn is None or BG_BLEND_LAMBDA <= 0.0:
+        return lambda t: max(0.0, idf.get(t, max_idf))
+    return lambda t: max(0.0, idf.get(t, max_idf), BG_BLEND_LAMBDA * bg_idf_fn(t, bg_lang))
+
+
 # --- IDF best-chunk recall (the protagonist; generalises _bm25_match) ---------
-def idf_best_chunk_recall(claim: str, chunks: list[str], analyzer, return_best: bool = False):
+def idf_best_chunk_recall(
+    claim: str,
+    chunks: list[str],
+    analyzer,
+    return_best: bool = False,
+    bg_idf_fn=None,
+    bg_lang: str = "en",
+):
     """IDF-weighted fraction of claim tokens present in the BM25-best chunk.
 
     Asymmetric, claim-anchored, peak-over-chunks. Out-of-corpus claim tokens
     get max IDF (a claim whose distinctive terms are absent cannot score high).
     Mirrors ``grounding._bm25_match`` token_recall, analyzer-pluggable.
     With ``return_best`` also returns the raw text of the BM25-best chunk.
+    ``bg_idf_fn`` (word analyzer only) soft-floors the in-context IDF with a
+    length-robust background rarity so recall stays honest on 1-chunk sources.
     """
     cl = analyzer(claim)
     if not cl:
@@ -214,9 +255,7 @@ def idf_best_chunk_recall(claim: str, chunks: list[str], analyzer, return_best: 
     claim_set = set(cl)
     idf = bm.idf
     max_idf = max(idf.values()) if idf else 1.0
-
-    def w(t: str) -> float:
-        return max(0.0, idf.get(t, max_idf))
+    w = _blend_weight(idf, max_idf, bg_idf_fn, bg_lang)
 
     den = sum(w(t) for t in claim_set)
     if den > 0:

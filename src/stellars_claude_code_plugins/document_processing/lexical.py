@@ -7,13 +7,16 @@ each its own ordered feature subset and its own shipped manifold; the grounder
 selects the tier from config (``lexical_effort``) and computes only that tier's
 features.
 
-- low - monolingual word/char-ngram recall, fuzzy, anchors, specificity, value-conflict; 11 features, core install only
-- medium - low + lingua language detection (is_en, same_lang) + WordNet antonym-flip; 14 features, needs lingua + nltk/WordNet
-- high - medium + MT translate-then-recall (r1_mt, r1_best); 16 features, additionally needs the argos/CTranslate2 MT stack
+- low - monolingual word/char-ngram recall (wordfreq-floored), fuzzy, anchors, specificity, value-conflict, distinctive-content; 13 features, core install only
+- medium - low + lingua language detection (is_en, same_lang) + WordNet antonym-flip; 16 features, needs lingua + nltk/WordNet
+- high - medium + MT translate-then-recall (r1_mt, r1_best); 18 features, additionally needs the argos/CTranslate2 MT stack
 
-Inference is scikit-learn-free: the verdict is a dot-product + logistic sigmoid
-over config-stored weights. scikit-learn is imported only on the training path
-(:func:`fit_lexical_manifold`).
+Recall is soft-floored with a wordfreq background rarity so it stays honest on a
+single-chunk source (where the in-context BM25 IDF degenerates), and the
+distinctive-content features (unmatched_rarity, max_unmatched) isolate whether a
+claim's rare tokens are present. Inference is scikit-learn-free: the verdict is a
+dot-product + logistic sigmoid over config-stored weights. scikit-learn is
+imported only on the training path (:func:`fit_lexical_manifold`).
 """
 
 from __future__ import annotations
@@ -34,6 +37,12 @@ CHARNGRAM_HI = 5
 CHUNK_MAX_CHARS = 300  # lexical operating point (harness.CHUNK = 300/0.1/recursive)
 CHUNK_OVERLAP_RATIO = 0.1  # fit/extraction default; per-manifold value can override
 
+# Background-IDF soft-floor for recall: w(t) = max(in-context, λ·background-rarity).
+# In-context BM25 IDF collapses on a single-chunk source (N=1 -> every token one
+# weight); the wordfreq background rarity does not, so the floor only bites when
+# the in-context weight has degenerated. λ=0.5 validated on the short-source probe.
+BG_BLEND_LAMBDA = 0.5
+
 EFFORT_TIERS = ("low", "medium", "high")
 
 # Per-tier ordered feature lists. The ORDER is the documented coefficient/audit
@@ -42,13 +51,15 @@ LOW_FEATURES = [
     "r1_direct", "charng", "fuzzy", "anchor", "anchor_mm",
     "oracle", "top3", "specificity",
     "conflict_n", "conflict_flag", "num_edit_mag",
-]  # 11 - core install only
-MEDIUM_FEATURES = LOW_FEATURES + ["is_en", "same_lang", "wn_antonym_flip"]  # 14 - + lingua + nltk
-HIGH_FEATURES = [  # 16 - the exact e2e.py FEATS order, + MT recall
+    "unmatched_rarity", "max_unmatched",
+]  # 13 - core install only
+MEDIUM_FEATURES = LOW_FEATURES + ["is_en", "same_lang", "wn_antonym_flip"]  # 16 - + lingua + nltk
+HIGH_FEATURES = [  # 18 - the e2e FEATS order, + MT recall + distinctive-content
     "r1_direct", "r1_mt", "r1_best", "charng", "fuzzy",
     "anchor", "anchor_mm", "oracle", "top3",
     "same_lang", "is_en", "specificity",
     "conflict_n", "conflict_flag", "num_edit_mag", "wn_antonym_flip",
+    "unmatched_rarity", "max_unmatched",
 ]
 TIER_FEATURES = {"low": LOW_FEATURES, "medium": MEDIUM_FEATURES, "high": HIGH_FEATURES}
 
@@ -61,6 +72,7 @@ _NUM_RE = re.compile(r"\d[\d.,   ]*\d|\d")
 # Lazy caches for the optional-dependency helpers (lingua detector, WordNet).
 _LINGUA: dict = {}
 _WN: dict = {}
+_LANG_CACHE: dict = {}  # text -> ISO code; detection is the per-row hot path
 
 
 # ── text normalisation + analyzers (reuse grounding/chunking primitives) ─────
@@ -104,14 +116,43 @@ def _chunk(text: str, max_chars: int, overlap_ratio: float) -> list[str]:
     ]
 
 
-# ── recall helpers (BM25/IDF token recall; reuse rank_bm25 core dep) ─────────
+# ── background (population) token rarity + recall helpers ────────────────────
+
+_BG_CACHE: dict = {}
 
 
-def _chunk_recalls(claim: str, chunks: list[str], analyzer):
+def _bg_idf(tok: str, lang: str = "en") -> float:
+    """Background (population) IDF of a token: -log10(wordfreq). Unknown -> 9.0.
+
+    Length-robust - independent of the source being grounded, so it does not
+    collapse on a single-chunk source the way in-context BM25 IDF does. Neutral
+    0.0 (no floor) if wordfreq is somehow unimportable (it ships in core)."""
+    key = (tok, lang)
+    v = _BG_CACHE.get(key)
+    if v is None:
+        try:
+            from wordfreq import word_frequency
+
+            f = word_frequency(tok, lang)
+            v = -math.log10(f) if f > 0 else 9.0
+        except ImportError:
+            logger.warning(
+                "wordfreq not importable - recall floor + distinctive-content neutralised; "
+                "it ships with the package, so reinstall stellars-claude-code-plugins"
+            )
+            v = 0.0
+        _BG_CACHE[key] = v
+    return v
+
+
+def _chunk_recalls(claim: str, chunks: list[str], analyzer, bg_lang: str | None = None):
     """IDF-weighted claim recall against each chunk. Port of lab.chunk_recalls.
 
     Returns ``(recalls_per_chunk, bm25_argmax_index, best_chunk_text)``: decouples
     'which chunk' (bm25 argmax) from 'best possible chunk' (max recall = oracle).
+    When ``bg_lang`` is given (word analyzer only), the in-context IDF is
+    soft-floored with the wordfreq background rarity so recall stays honest on a
+    single-chunk source where the in-context IDF degenerates.
     """
     import numpy as np
     from rank_bm25 import BM25Okapi
@@ -130,13 +171,34 @@ def _chunk_recalls(claim: str, chunks: list[str], analyzer):
     max_idf = max(idf.values()) if idf else 1.0
     claim_set = set(cl)
 
-    def w(t: str) -> float:
-        return max(0.0, idf.get(t, max_idf))
+    if bg_lang is None or BG_BLEND_LAMBDA <= 0.0:
+        def w(t: str) -> float:
+            return max(0.0, idf.get(t, max_idf))
+    else:
+        def w(t: str) -> float:
+            return max(0.0, idf.get(t, max_idf), BG_BLEND_LAMBDA * _bg_idf(t, bg_lang))
 
     den = sum(w(t) for t in claim_set) or 1.0
     recalls = [sum(w(t) for t in claim_set if t in set(doc)) / den for doc in corpus]
     arg = int(scores.argmax()) if float(scores.max()) > 0 else 0
     return recalls, arg, raw[arg]
+
+
+def _gap_rarity(claim: str, best: str, lang: str = "en") -> tuple[float, float]:
+    """Distinctive-content coverage. Port of lab.gap_rarity.
+
+    Returns ``(unmatched_rarity, max_unmatched)``: the background-rarity-weighted
+    fraction of the claim's content tokens absent from the best chunk, and the
+    single rarest absent token (normalised). Spikes when a claim's distinctive
+    tokens are missing - the signal aggregate recall cannot isolate."""
+    toks = {t for t in _TOKEN_RE.findall(claim.lower()) if len(t) > 1}
+    if not toks:
+        return 0.0, 0.0
+    chunk = set(_TOKEN_RE.findall(best.lower())) if best else set()
+    idfs = {t: _bg_idf(t, lang) for t in toks}
+    tot = sum(idfs.values()) or 1.0
+    absent = [v for t, v in idfs.items() if t not in chunk]
+    return (sum(absent) / tot, (max(absent) / 9.0) if absent else 0.0)
 
 
 # ── numeric / anchor / conflict helpers (reuse entity_check) ─────────────────
@@ -246,6 +308,9 @@ def _lingua_lang(text: str, min_len: int = 25) -> str:
     """
     if len(text.strip()) < min_len:
         return "und"
+    cached = _LANG_CACHE.get(text)
+    if cached is not None:
+        return cached
     if "det" not in _LINGUA:
         try:
             from lingua import LanguageDetectorBuilder
@@ -261,7 +326,9 @@ def _lingua_lang(text: str, min_len: int = 25) -> str:
     if det is None:
         return "und"
     lg = det.detect_language_of(text)
-    return lg.iso_code_639_1.name.lower() if lg else "und"
+    iso = lg.iso_code_639_1.name.lower() if lg else "und"
+    _LANG_CACHE[text] = iso
+    return iso
 
 
 def _wn_antonyms(w: str) -> set:
@@ -352,8 +419,12 @@ def extract_lexical_features(
     full_source = "\n".join(texts)
     chunks = _chunk(full_source, chunk_max_chars, chunk_overlap_ratio)
 
-    # direct (original-claim) word recall over the chunk corpus
-    rd, ad, best_text = _chunk_recalls(claim, chunks, _an_word)
+    # background-rarity language for the recall floor: the claim's own language
+    # (wordfreq is multilingual), defaulting to English when unknown
+    recall_lang = det_lang if det_lang not in (None, "und", "") else "en"
+
+    # direct (original-claim) word recall over the chunk corpus (wordfreq-floored)
+    rd, ad, best_text = _chunk_recalls(claim, chunks, _an_word, bg_lang=recall_lang)
     r1_direct = rd[ad] if rd and ad is not None else 0.0
     oracle = max(rd) if rd else 0.0
     top = sorted(rd, reverse=True)
@@ -391,16 +462,26 @@ def extract_lexical_features(
         out["same_lang"] = float(clang != "und" and chunk_lang == clang)
         out["wn_antonym_flip"] = float(_wn_antonym_flip(claim, best_text) and fuzzy > 0.5)
 
+    # distinctive-content coverage scored on the strongest recall view (English
+    # post-MT for high when the claim was translated, else the direct claim)
+    rarity_claim, rarity_best, rarity_lang = claim, best_text, recall_lang
+
     # high only: MT translate-then-recall (cross-lingual r1_mt / r1_best)
     if "r1_mt" in feats or "r1_best" in feats:
         r1_mt = r1_direct
         if clang not in ("en", "und", ""):
             tr = translate if translate is not None else _default_translate
             claim_en = tr(claim, clang)
-            rt, at, _ = _chunk_recalls(claim_en, chunks, _an_word)
+            rt, at, mt_best = _chunk_recalls(claim_en, chunks, _an_word, bg_lang="en")
             r1_mt = rt[at] if rt and at is not None else 0.0
+            rarity_claim, rarity_best, rarity_lang = claim_en, mt_best, "en"
         out["r1_mt"] = r1_mt
         out["r1_best"] = max(r1_direct, r1_mt)
+
+    if "unmatched_rarity" in feats or "max_unmatched" in feats:
+        ur, mu = _gap_rarity(rarity_claim, rarity_best, rarity_lang)
+        out["unmatched_rarity"] = ur
+        out["max_unmatched"] = mu
 
     return {k: out[k] for k in TIER_FEATURES[effort]}
 
@@ -476,6 +557,38 @@ class LexicalVerdict:
 
 
 # ── fit path (training-only; scikit-learn imported here, never at inference) ──
+
+_SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def short_source_augment(rows: list[dict], per_class: int | None = None) -> list[dict]:
+    """Truncation-derived short-source regime rows for the training set.
+
+    Each eligible source is cut to ONE sentence - the max-overlap evidence
+    sentence for a supported claim, a low-overlap one for a hallucination - so the
+    label is inherited from gold and only the source LENGTH changes (the axis of
+    the single-chunk failure mode). This teaches the manifold to read the
+    degenerate in-context-IDF regime (revived recall + distinctive-content) rather
+    than a hand-set threshold. Returns new ``{claim, source_text, label, lang}``
+    rows to concatenate onto the dataset before feature extraction.
+    """
+    pos = [r for r in rows if int(r["label"]) == 1]
+    neg = [r for r in rows if int(r["label"]) == 0]
+    if per_class is None:
+        per_class = min(250, len(pos) // 3, len(neg) // 3)
+    out: list[dict] = []
+    for r in pos[:per_class] + neg[:per_class]:
+        sents = [s.strip() for s in _SENT_SPLIT_RE.split(str(r["source_text"])) if len(s.strip()) > 10]
+        if len(sents) < 2:
+            continue
+        ctoks = set(_an_word(str(r["claim"])))
+        ov = lambda s: len(ctoks & set(_an_word(s)))  # noqa: E731
+        sent = max(sents, key=ov) if int(r["label"]) == 1 else min(sents, key=ov)
+        out.append({
+            "claim": r["claim"], "source_text": sent,
+            "label": int(r["label"]), "lang": r.get("lang"),
+        })
+    return out
 
 
 def fit_lexical_manifold(

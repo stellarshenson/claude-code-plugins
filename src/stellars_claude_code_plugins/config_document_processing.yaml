@@ -232,64 +232,117 @@ calibration:
   # VitaminC dev (SUPPORTS->1, REFUTES->0, NEI dropped).
   lexical_manifolds:
     low:
-      feature_order: [r1_direct, charng, fuzzy, anchor, anchor_mm, oracle, top3, specificity, conflict_n, conflict_flag, num_edit_mag]
-      weights:
-        Intercept: -2.607378
-        r1_direct: 0.003631
-        charng: 0.798131
-        fuzzy: 2.481743
-        anchor: 0.549468
-        anchor_mm: -0.156893
-        oracle: -1.750298
-        top3: 5.459393
-        specificity: 1.258242
-        conflict_n: -0.426565
-        conflict_flag: -1.506253
-        num_edit_mag: 1.892064
+      feature_order:
+      - r1_direct
+      - charng
+      - fuzzy
+      - anchor
+      - anchor_mm
+      - oracle
+      - top3
+      - specificity
+      - conflict_n
+      - conflict_flag
+      - num_edit_mag
+      - unmatched_rarity
+      - max_unmatched
       threshold: 0.45
+      weights:
+        Intercept: 1.970069
+        r1_direct: -3.426245
+        charng: 2.657733
+        fuzzy: 1.383015
+        anchor: 0.305115
+        anchor_mm: -0.154112
+        oracle: -0.961777
+        top3: 1.793644
+        specificity: 0.968138
+        conflict_n: -0.254483
+        conflict_flag: -1.708215
+        num_edit_mag: 1.944355
+        unmatched_rarity: -5.683108
+        max_unmatched: 1.133431
       chunk_max_chars: 300
       chunk_overlap_ratio: 0.1
     medium:
-      feature_order: [r1_direct, charng, fuzzy, anchor, anchor_mm, oracle, top3, specificity, conflict_n, conflict_flag, num_edit_mag, is_en, same_lang, wn_antonym_flip]
-      weights:
-        Intercept: -1.802286
-        r1_direct: -0.007546
-        charng: 0.400943
-        fuzzy: 6.081397
-        anchor: 0.380188
-        anchor_mm: 0.151169
-        oracle: -0.767538
-        top3: 5.795973
-        specificity: 1.153924
-        conflict_n: -0.528045
-        conflict_flag: -1.715656
-        num_edit_mag: 1.875498
-        is_en: -2.674041
-        same_lang: -0.575015
-        wn_antonym_flip: -2.057823
+      feature_order:
+      - r1_direct
+      - charng
+      - fuzzy
+      - anchor
+      - anchor_mm
+      - oracle
+      - top3
+      - specificity
+      - conflict_n
+      - conflict_flag
+      - num_edit_mag
+      - unmatched_rarity
+      - max_unmatched
+      - is_en
+      - same_lang
+      - wn_antonym_flip
       threshold: 0.4
+      weights:
+        Intercept: 1.237915
+        r1_direct: -1.500626
+        charng: 3.024769
+        fuzzy: 2.139417
+        anchor: 0.321914
+        anchor_mm: 0.179276
+        oracle: 0.353838
+        top3: 2.484652
+        specificity: 0.356991
+        conflict_n: -0.435647
+        conflict_flag: -2.102543
+        num_edit_mag: 2.285132
+        unmatched_rarity: -2.762577
+        max_unmatched: 0.446687
+        is_en: -2.305987
+        same_lang: -0.386071
+        wn_antonym_flip: -2.237083
       chunk_max_chars: 300
       chunk_overlap_ratio: 0.1
     high:
-      feature_order: [r1_direct, r1_mt, r1_best, charng, fuzzy, anchor, anchor_mm, oracle, top3, same_lang, is_en, specificity, conflict_n, conflict_flag, num_edit_mag, wn_antonym_flip]
-      weights:
-        Intercept: -2.9128
-        r1_direct: -2.311127
-        r1_mt: 2.643974
-        r1_best: 2.661505
-        charng: -0.302857
-        fuzzy: 5.980113
-        anchor: 0.383184
-        anchor_mm: 0.236229
-        oracle: -2.404597
-        top3: 5.491029
-        same_lang: -0.359559
-        is_en: -1.805936
-        specificity: 1.37447
-        conflict_n: -0.419184
-        conflict_flag: -1.828503
-        num_edit_mag: 1.852874
-        wn_antonym_flip: -2.071469
+      feature_order:
+      - r1_direct
+      - r1_mt
+      - r1_best
+      - charng
+      - fuzzy
+      - anchor
+      - anchor_mm
+      - oracle
+      - top3
+      - same_lang
+      - is_en
+      - specificity
+      - conflict_n
+      - conflict_flag
+      - num_edit_mag
+      - wn_antonym_flip
+      - unmatched_rarity
+      - max_unmatched
       threshold: 0.4
+      weights:
+        Intercept: -1.053304
+        r1_direct: -2.646833
+        r1_mt: 1.499135
+        r1_best: 2.276488
+        charng: 3.221797
+        fuzzy: 2.106161
+        anchor: 0.328275
+        anchor_mm: 0.160664
+        oracle: -0.236462
+        top3: 2.482034
+        same_lang: -0.339376
+        is_en: -2.086043
+        specificity: 0.416133
+        conflict_n: -0.379339
+        conflict_flag: -2.123892
+        num_edit_mag: 2.23366
+        wn_antonym_flip: -2.263809
+        unmatched_rarity: -0.767277
+        max_unmatched: 0.535925
       chunk_max_chars: 300
       chunk_overlap_ratio: 0.1

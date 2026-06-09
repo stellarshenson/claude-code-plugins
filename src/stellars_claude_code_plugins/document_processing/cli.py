@@ -1311,10 +1311,16 @@ def cmd_train_lexical(args: argparse.Namespace) -> int:
         )
         raise SystemExit(2)
 
+    # Short-source regime augmentation: truncate sources to one sentence so the
+    # manifold learns the degenerate single-chunk regime (label inherited, only
+    # length changes). Applied automatically; aug rows go through the same pipeline.
+    aug_rows = L.short_source_augment(raw_rows)
+    all_rows = raw_rows + aug_rows
+
     # Extract features per row with the grounder's own pipeline. The optional-dep
     # import for the tier must raise (no fitting on silently-zeroed features).
     feat_rows: list[dict] = []
-    for r in raw_rows:
+    for r in all_rows:
         feat = L.extract_lexical_features(
             str(r["claim"]),
             [str(r["source_text"])],
@@ -1325,6 +1331,7 @@ def cmd_train_lexical(args: argparse.Namespace) -> int:
         feat_rows.append(feat)
 
     manifold = L.fit_lexical_manifold(feat_rows, effort=args.effort, threshold=args.threshold)
+    print(f"  (+{len(aug_rows)} short-source augmentation rows)", file=sys.stderr)
 
     # Write following the cmd_config set-calibrator pattern: load the full config
     # dict, merge the manifold into the calibration block, dump.

@@ -29,13 +29,14 @@ A purely lexical model (translate the claim, then lexical recall) is the best, b
 | Model class: logistic vs depth-2 GBT vs Bayesian | DeLaval 375 / 856 / 1260 | GBT 0.775 at 375; linear wins at 1260 (GBT 0.74→0.54) | **Linear ships** - GBT overfits as data grows |
 | Claim-intrinsic `specificity` (mechanism-general) | DeLaval 1260 | LOSO 0.837 → 0.845, narrows LOLO↔LOSO gap | **Ships** - strongest generalisation feature |
 | Verbatim `quote_flag` (≥40-char span) | DeLaval 1260 | 98.2% supported precision on the 109 it fires for | **Ships** - precision-1 supported confirm |
-| Background-rarity gap (`wordfreq`) | DeLaval 1260 | redundant with recall | null - dropped |
+| Background-rarity gap (`wordfreq`) | DeLaval 1260 | redundant with recall on multi-sentence sources | null then - revived in R5 (regime-specific) |
 | SaT vs regex claim segmentation (LLM-as-judge) | DeLaval 1260 | SaT wins macro-F1 + LLM-judge 15 / 1 | **SaT preferred** |
 | Cross-corpus probe: run grounder on VitaminC | VitaminC dev 1200 | macro-F1 collapses to 0.586 (~coin-flip) vs 0.837 on DeLaval | NFL boundary - contrastive negatives need a contradiction signal |
 | R1 contradiction: value-conflict, direction-flip, interaction, polarity | DeLaval + VitaminC joint | VitaminC 0.532 → 0.673, DeLaval holds 0.841 | value-conflict + direction **ship**; interaction, polarity **refuted** |
 | R2 contradiction: minimal-substitution, numeric-comparison, WordNet antonym | DeLaval + VitaminC joint | VitaminC 0.555 → 0.661, DeLaval 0.832 → 0.825; triage 90% prec | **WordNet ships** (replaces curated list); subst + numeric **null** |
 | R3 contradiction: relation/role reversal, scoped negation, quantifier mismatch | VitaminC probe | absent at usable density (shared-entities 5%, negation 0%, quantifier 4%) | **all null** - pure-lexical contradiction signal is saturated |
 | R4 normalisation: Snowball-stemmed recall | DeLaval 2752 + VitaminC joint | +0.002 both corpora (within noise), +~35 ms/claim latency | **rejected** - char n-grams already capture morphology; not worth the recall pass |
+| R5 short-source: length-robust recall + distinctive-content + truncation augmentation | DeLaval 2752 + VitaminC + short-source aug | probe 10/12 → 11/12; DeLaval 0.825 → 0.817, VitaminC 0.661 → 0.691 | **ships** - background-IDF recall floor + `unmatched_rarity` + regime augmentation, all learned |
 
 ![Progressive gains across hypothesis rounds - VitaminC climbs 0.53 to 0.69 as deterministic contradiction features are added while DeLaval holds ~0.85, then round 3 plateaus at lexical saturation](images/progressive-gains.svg)
 
@@ -175,6 +176,16 @@ The user's idea: heavier text normalisation - stemming and spelled-out number ca
 - **R4-H2 spelled-out number canonicalisation** - skipped: the bigger lever (stemming) was null, and genuine spelled-quantity coverage is low (the 2.8% / 7.9% raw counts are inflated by "one" as a pronoun), so a narrower numeric feature cannot move macro-F1
 - **Conclusion - the pure-lexical lever is exhausted** - across four rounds the deterministic lexical ceiling is value-conflict + WordNet antonym + the recall/specificity backbone; normalisation adds nothing because the existing analyzers already extract the surface signal. The next real gain requires the latency-deferred semantic stage, gated by the triage flag
 
+## Short-source regime, round 5: length-robust recall + distinctive-content (ships)
+
+Once the grounder shipped as the default mode, a failure surfaced on very short single-source inputs (a 1-2 sentence claim vs a 1-line source): supported claims rejected (orchard present in the source but scored 0), fabrications confirmed (unrelated tiny strings). A 12-case short-source probe (measurement-only, never trains, never enters CV) made it falsifiable. The mechanism is exact: in-context BM25 IDF degenerates at N=1 chunks (`log(N−df+0.5)−log(df+0.5)` floors every token to one weight), so the manifold's dominant signal - `top3` recall at standardized coef +2.79 - collapses to 0; supporteds become unconfirmable and the verdict falls to miscalibrated weights.
+
+- **R5-H1 length-robust recall** - soft-floor the in-context IDF with a `wordfreq` background rarity, `w(t) = max(in-context, λ·background)`, λ=0.5; it only bites when in-context has collapsed (on multi-sentence sources the distinctive token's in-context weight already dominates). Revives recall on 1-chunk sources (orchard r1 0.000 → 0.665). **Alone it regresses the probe 10/12 → 8/12** - revived recall hands partial credit to common-token overlap, so absent-content negatives become false positives
+- **R5-H2 distinctive-content feature** (`unmatched_rarity`, `max_unmatched`) - background-rarity-weighted fraction of the claim's content absent from the best chunk. **Not null**, revising the round-2 finding: standardized coef −0.58 on the benchmark, separating supported 0.41 / hallucination 0.65 - but weakly learned, because the benchmark has no short-source rows where it is the deciding signal
+- **R5-H3 truncation augmentation** - the load-bearing piece: short-source training rows derived by truncating each gold source to one sentence (positives keep the max-overlap evidence sentence, negatives a low-overlap one; label inherited from gold, only source length changes; tagged with their own CV group so they never leak into held-out folds). Recalibrates the manifold for the degenerate regime; the rarity coef strengthens to −0.84
+- **The three together ship** - probe **10/12 → 11/12**: orchard FN fixed (recall revived), every absent-content fabrication correctly rejected. Gate A holds two-sided - DeLaval 0.825 → 0.817 (−0.008, LOSO noise), **VitaminC 0.661 → 0.691** (+0.030; the blend legitimately lifts the contrastive corpus, whose single-sentence evidence is the same degenerate regime). The one remaining probe miss is a spelled-out-number value-conflict ("fifty" vs "twelve" hectares) - the orthogonal round-4 H2 gap, not the short-source issue
+- **Conclusion** - the short-source regime is fixed by *learned* recalibration (background-IDF recall floor + distinctive-content feature + regime augmentation), not a hand-set threshold; real sentence-vs-document grounding is unaffected, and the same fix lifts VitaminC. It revises the round-2 "background-rarity null": the signal was null only on multi-sentence sources; in the degenerate regime it is the load-bearing discriminator
+
 ## Lessons learned
 
 - **Features beat model class** - the gain came from the lexical recall + claim-intrinsic features, not from a nonlinear learner; a regularised logistic is the right head for these few-context data
@@ -189,6 +200,8 @@ The user's idea: heavier text normalisation - stemming and spelled-out number ca
 - **Claim-intrinsic features generalise** - `specificity` (anchor density from the claim alone) lifted the source-out split and narrowed the LOLO↔LOSO gap precisely because it cannot see the evidence, so it learns the way claims are checkable, not the documents' text; the strongest single-feature add
 - **A verbatim span is a precision-1 confirm** - a long contiguous restatement is near-deterministic support (98.2%), whereas the same words scattered across a document are not
 - **Anti-overfit is not no-modeling** - the rule bans fitting the test fold, not modeling; the win was a model fit honestly under LOLO/LOSO
+- **A feature can be non-null yet unlearnable** - `unmatched_rarity` carried a real −0.58 benchmark coefficient but could not fix the short-source regime, because the manifold's dominant recall signal collapses to 0 there and no training row exposes the regime; the fix was regime augmentation (truncated short sources), not a stronger feature. "Null on the benchmark" can mean "the regime where it pays off is absent from training," not "useless"
+- **Fix the regime, not with a threshold** - the short-source failure was tempting to patch with a fixed recall damp; instead a learned background-IDF floor + a distinctive-content feature + regime-coverage augmentation let the manifold recalibrate itself, which generalises (it also lifted VitaminC) where a hand-set constant would not
 
 ## Conclusions
 
@@ -197,6 +210,7 @@ The user's idea: heavier text normalisation - stemming and spelled-out number ca
 - **The ceiling is data** - the source contexts grew to 75 (from ~22), which stabilised leave-one-source-out; the residual is now the small language tail (da/pt/de at n=10-22), where leave-one-language-out dips - more labelled data in those languages is the prerequisite, not a cleverer model
 - **Reframes the client finding** - lexical did not fail at grounding; it failed at cross-lingual confirmation, fixed by translation (the same-language routing is an efficiency lever, not an accuracy one)
 - **Bounded scope, deploy accordingly** - the lexical win is task-specific: it holds across DeLaval's data growth but does not transfer to a contrastive benchmark (VitaminC macro-F1 0.586); use it where hallucinations are fabricated or omitted specifics, keep NLI available for present-but-contradicted negatives
+- **Short-source regime fixed by learned recalibration (R5)** - on a 1-chunk source the in-context IDF collapses and the dominant recall feature dies; a `wordfreq` background-IDF floor revives recall, the `unmatched_rarity` distinctive-content feature discriminates, and truncation augmentation recalibrates the manifold for the regime. Probe 10/12 → 11/12, DeLaval holds (0.825 → 0.817), VitaminC lifts (0.661 → 0.691); ships in the library lexical mode. The residual miss is a spelled-out-number value-conflict, left to the deferred numeric-normalisation work
 
 ## Next steps
 

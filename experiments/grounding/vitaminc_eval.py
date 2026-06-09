@@ -61,7 +61,7 @@ def build_vitaminc_lex(per_label: int = 400, refresh: bool = False) -> list[dict
         claim, ev = rec["claim"], rec["evidence"]
         chunks = H.chunk_text(ev, *H.CHUNK)
         # English-only: claim_en == claim, MT never fires, is_en=1
-        rd, ad, best = lab.chunk_recalls(claim, chunks, H.an_word)
+        rd, ad, best = lab.chunk_recalls(claim, chunks, H.an_word, bg_idf_fn=H.bg_idf, bg_lang="en")
         r1 = rd[ad] if rd else 0.0
         charng = H.idf_best_chunk_recall(claim, chunks, H.an_charngram)
         fz = fuzz.partial_ratio(claim.lower(), best.lower()) / 100.0 if best else 0.0
@@ -86,6 +86,7 @@ def build_vitaminc_lex(per_label: int = 400, refresh: bool = False) -> list[dict
         wn_flip = int(lab.wn_antonym_flip(claim, best) and fz > 0.5)
         conflict_any = int(conflict_flag or wn_flip)
         semantic_candidate = int(fz >= 0.5 and conflict_any)
+        unmatched_rarity, max_unmatched = lab.gap_rarity(claim, best)
         rows.append(
             dict(
                 nat=nat,
@@ -106,6 +107,8 @@ def build_vitaminc_lex(per_label: int = 400, refresh: bool = False) -> list[dict
                 num_edit_mag=round(num_edit_mag, 4),
                 wn_antonym_flip=wn_flip,
                 r1_x_conflict=round(r1 * conflict_any, 4),
+                unmatched_rarity=round(unmatched_rarity, 4),
+                max_unmatched=round(max_unmatched, 4),
                 semantic_candidate=semantic_candidate,
             )
         )

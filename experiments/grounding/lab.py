@@ -22,12 +22,14 @@ CACHE = Path(__file__).parent / "cache"
 CACHE.mkdir(exist_ok=True)
 
 
-def chunk_recalls(claim: str, chunks: list[str], analyzer):
+def chunk_recalls(claim: str, chunks: list[str], analyzer, bg_idf_fn=None, bg_lang: str = "en"):
     """IDF-weighted claim recall against EACH chunk (shared corpus IDF).
 
     Returns (recalls_per_chunk, bm25_argmax_index, best_chunk_text). Decouples
     'which chunk' (bm25 argmax = r1) from 'best possible chunk' (max recall =
-    oracle), so the retrieval-vs-scoring gap is measurable.
+    oracle), so the retrieval-vs-scoring gap is measurable. ``bg_idf_fn`` (word
+    analyzer only) soft-floors the in-context IDF with length-robust background
+    rarity so recall stays honest on a single-chunk source.
     """
     cl = analyzer(claim)
     if not cl:
@@ -42,9 +44,7 @@ def chunk_recalls(claim: str, chunks: list[str], analyzer):
     idf = bm.idf
     max_idf = max(idf.values()) if idf else 1.0
     claim_set = set(cl)
-
-    def w(t: str) -> float:
-        return max(0.0, idf.get(t, max_idf))
+    w = H._blend_weight(idf, max_idf, bg_idf_fn, bg_lang)
 
     den = sum(w(t) for t in claim_set) or 1.0
     recalls = [sum(w(t) for t in claim_set if t in set(doc)) / den for doc in corpus]
@@ -483,10 +483,7 @@ _HEDGE = set(
 
 
 def _bg_idf(tok: str, lang: str = "en") -> float:
-    from wordfreq import word_frequency
-
-    f = word_frequency(tok, lang)
-    return -math.log10(f) if f > 0 else 9.0  # unknown token = very rare
+    return H.bg_idf(tok, lang)  # single source of truth (harness.bg_idf)
 
 
 def gap_rarity(claim_en: str, best: str) -> tuple[float, float]:
@@ -611,7 +608,8 @@ def build_lex(refresh: bool = False) -> list[dict]:
         chunks = H.chunk_text(r.source, *H.CHUNK)
         clang = _lingua_lang(r.claim)
         # direct (original claim) recall + best-chunk language
-        rd, ad, best_d = chunk_recalls(r.claim, chunks, H.an_word)
+        dlang = r.det_lang if r.det_lang not in ("und", "") else "en"
+        rd, ad, best_d = chunk_recalls(r.claim, chunks, H.an_word, bg_idf_fn=H.bg_idf, bg_lang=dlang)
         r1_direct = rd[ad] if rd else 0.0
         chunk_lang = _lingua_lang(best_d) if best_d else "und"
         same_lang = int(clang != "und" and chunk_lang == clang)
@@ -619,7 +617,7 @@ def build_lex(refresh: bool = False) -> list[dict]:
         claim_en = r.claim
         if r.det_lang not in ("en", "und", ""):
             claim_en = H.mt_to_english(r.claim, r.det_lang)
-        rt, at, best_t = chunk_recalls(claim_en, chunks, H.an_word)
+        rt, at, best_t = chunk_recalls(claim_en, chunks, H.an_word, bg_idf_fn=H.bg_idf, bg_lang="en")
         r1_mt = rt[at] if rt else 0.0
         r1_best = max(r1_direct, r1_mt)
         charng = H.idf_best_chunk_recall(claim_en, chunks, H.an_charngram)
@@ -1045,6 +1043,17 @@ _JOINT_H1 = ["conflict_n", "conflict_flag", "num_edit_mag"]  # aligned value-con
 _JOINT_H2 = ["wn_antonym_flip"]  # WordNet antonym flip (replaced curated direction)
 _JOINT_H3 = ["r1_x_conflict"]  # conflict x overlap interaction
 _JOINT_CUR = _JOINT_BASE + _JOINT_H1 + _JOINT_H2 + _JOINT_H3  # shipped contradiction layer
+_JOINT_RARITY = ["unmatched_rarity", "max_unmatched"]  # Phase B distinctive-content coverage
+
+
+def _cur_cols() -> list[str]:
+    """Shipped feature set, optionally + Phase-B rarity features (env ADD_RARITY=1)."""
+    import os
+
+    cols = list(_JOINT_CUR)
+    if os.environ.get("ADD_RARITY") == "1":
+        cols += _JOINT_RARITY
+    return cols
 
 
 def build_joint(per_label: int = 400, refresh: bool = False) -> list[dict]:
@@ -1101,7 +1110,8 @@ def _joint_oof(rows, cols):
         pte = m.predict_proba(np.array([[r[c] for c in cols] for r in te], dtype=float))[:, 1]
         for r, pp in zip(te, pte):
             rec.append(
-                (r["corpus"], r["label"], int(pp >= thr_all), int(pp >= thr[r["corpus"]]), r)
+                (r["corpus"], r["label"], int(pp >= thr_all),
+                 int(pp >= thr.get(r["corpus"], thr_all)), r)
             )
     return rec
 
@@ -1124,7 +1134,7 @@ def run_joint(per_label: int = 400, refresh: bool = False) -> None:
         "| features | DeLaval pc | DeLaval sh | VitaminC pc | VitaminC sh | pooled sh |",
         "|---|---|---|---|---|---|",
     ]
-    sets = [("base (lexical)", _JOINT_BASE), ("shipped (conflict + wn-antonym)", _JOINT_CUR)]
+    sets = [("base (lexical)", _JOINT_BASE), ("shipped (conflict + wn-antonym)", _cur_cols())]
     base_rec = None
     for name, cols in sets:
         rec = _joint_oof(rows, cols)
@@ -1162,10 +1172,172 @@ def run_joint(per_label: int = 400, refresh: bool = False) -> None:
     (Path(__file__).parent / "logs" / "lab_joint.md").write_text(report)
 
 
+# --- short-source probe (measurement only; never trains, never enters CV) -----
+# Tiny 1-line-source pairs that expose the degenerate-IDF failure mode. Each is
+# (claim, source, label) with label 1=supported / 0=hallucination. Spans
+# distinctive-present (should confirm) and distinctive-absent (should reject).
+_PROBE: list[tuple[str, str, int]] = [
+    # false-negative regime: distinctive token IS in the 1-line source -> supported
+    ("there is an orchard on the estate", "The estate has three walled gardens and an orchard.", 1),
+    ("the estate has three walled gardens", "The estate has three walled gardens and an orchard.", 1),
+    ("a trout stream runs along the boundary", "A trout stream runs along the eastern boundary.", 1),
+    ("the manor was restored in 1998", "The manor was built in 1820 and restored in 1998.", 1),
+    ("rainfall averages 800 millimetres", "Rainfall in the region averages 800 millimetres per year.", 1),
+    # false-positive regime: distinctive token ABSENT -> hallucination
+    ("quantum physics", "Only about horticulture.", 0),
+    ("the estate runs a commercial brewery", "The estate has three walled gardens and an orchard.", 0),
+    ("the estate has a helicopter landing pad", "The estate has three walled gardens and an orchard.", 0),
+    ("a private airport serves the estate", "The estate has three walled gardens and an orchard.", 0),
+    ("tropical island paradise", "The quick brown fox jumps over the lazy dog.", 0),
+    ("the vineyard covers fifty hectares", "The vineyard covers twelve hectares on the south slope.", 0),
+    ("the manor was built in 1650", "The manor was built in 1820 and restored in 1998.", 0),
+]
+
+
+def _probe_feats(claim: str, source: str) -> dict:
+    """_JOINT_CUR features for one English short-source pair (mirrors build_lex;
+    is_en=same_lang=1, no MT). Honours the active BG_BLEND_LAMBDA via chunk_recalls."""
+    from rapidfuzz import fuzz
+
+    chunks = H.chunk_text(source, *H.CHUNK)
+    rt, at, best = chunk_recalls(claim, chunks, H.an_word, bg_idf_fn=H.bg_idf, bg_lang="en")
+    r1 = rt[at] if rt else 0.0
+    charng = H.idf_best_chunk_recall(claim, chunks, H.an_charngram)
+    fz = fuzz.partial_ratio(claim.lower(), best.lower()) / 100.0 if best else 0.0
+    oracle = max(rt) if rt else 0.0
+    top = sorted(rt, reverse=True)
+    top3 = top[1] if len(top) >= 2 else (top[0] if top else 0.0)
+    ents = H.list_claim_entities(claim)
+    absent = set(H.find_absent_entities(claim, source))
+    num_rec, num_mm = H.number_recall(claim, source)
+    aden = len(ents) + (1 if num_rec >= 0 else 0)
+    ahit = sum(1 for e in ents if e not in absent) + (num_rec if num_rec >= 0 else 0)
+    anchor = (ahit / aden) if aden else 0.0
+    nmm, emm = H.find_mismatches(claim, best) if best else ([], [])
+    amm = 1 if (nmm or emm or num_mm) else 0
+    unmatched_rarity, max_unmatched = gap_rarity(claim, best)
+    spec, _hedge = claim_intrinsic(claim)
+    conflict_n, conflict_flag, num_edit_mag = conflict_feats(claim, best)
+    wn_flip = int(wn_antonym_flip(claim, best) and fz > 0.5)
+    conflict_any = int(conflict_flag or wn_flip)
+    return dict(
+        r1_direct=r1, r1_mt=r1, r1_best=r1, charng=charng, fuzzy=fz, anchor=anchor,
+        anchor_mm=amm, oracle=oracle, top3=top3, same_lang=1, is_en=1, specificity=spec,
+        conflict_n=conflict_n, conflict_flag=conflict_flag, num_edit_mag=num_edit_mag,
+        wn_antonym_flip=wn_flip, r1_x_conflict=r1 * conflict_any,
+        unmatched_rarity=unmatched_rarity, max_unmatched=max_unmatched,
+    )
+
+
+def run_probe(per_label: int = 400, refresh: bool = False) -> None:
+    """Score the short-source probe through the shipped (_JOINT_CUR) joint manifold.
+    Measurement only: the probe never trains and never enters the benchmark CV."""
+    from sklearn.linear_model import LogisticRegression
+
+    cols = _cur_cols()
+    rows = build_joint(per_label, refresh=refresh)
+    Xtr = np.array([[r[c] for c in cols] for r in rows], dtype=float)
+    ytr = np.array([r["label"] for r in rows])
+    m = LogisticRegression(max_iter=1000, class_weight="balanced").fit(Xtr, ytr)
+    thr = _tune_thr(ytr, m.predict_proba(Xtr)[:, 1])
+    out = [
+        f"## Short-source probe (BG_BLEND_LAMBDA={H.BG_BLEND_LAMBDA}, thr={thr:.2f})\n",
+        "| ok | lab | pred | proba | r1 | fuzzy | unmatched | claim |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    correct = 0
+    for claim, source, lab in _PROBE:
+        f = _probe_feats(claim, source)
+        proba = float(m.predict_proba(np.array([[f[c] for c in cols]], dtype=float))[0, 1])
+        pred = int(proba >= thr)
+        ok = pred == lab
+        correct += ok
+        out.append(
+            f"| {'Y' if ok else 'N'} | {lab} | {pred} | {proba:.3f} | {f['r1_best']:.3f} | "
+            f"{f['fuzzy']:.3f} | {f['unmatched_rarity']:.3f} | {claim[:38]} |"
+        )
+    out.append(f"\n**probe accuracy: {correct}/{len(_PROBE)} = {correct / len(_PROBE):.0%}**\n")
+    report = "\n".join(out) + "\n"
+    print(report)
+    (Path(__file__).parent / "logs").mkdir(exist_ok=True)
+    (Path(__file__).parent / "logs" / "lab_probe.md").write_text(report)
+
+
+_SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
+
+
+def _augment_rows(n_per_class: int = 200) -> list[dict]:
+    """Truncation-derived short-source regime rows from English gold.
+
+    Positives keep the max-overlap (evidence) source sentence; negatives keep the
+    MIN-overlap sentence (still unsupported). Label inherited from gold; only the
+    source LENGTH changes - the axis of the failure mode. Tagged corpus='aug' with
+    its own CV group so it is held out as a unit (no benchmark contamination)."""
+    gold = H.load_gold()
+    eng = [r for r in gold if r.det_lang == "en"]
+    pos = [r for r in eng if r.label == 1][:n_per_class]
+    neg = [r for r in eng if r.label == 0][:n_per_class]
+    out = []
+    for k, r in enumerate(pos + neg):
+        sents = [s.strip() for s in _SENT_SPLIT.split(r.source) if len(s.strip()) > 10]
+        if len(sents) < 2:
+            continue
+        ctoks = set(H.an_word(r.claim))
+        ov = lambda s: len(ctoks & set(H.an_word(s)))  # noqa: E731
+        sent = max(sents, key=ov) if r.label == 1 else min(sents, key=ov)
+        f = _probe_feats(r.claim, sent)
+        out.append(dict(f, label=r.label, corpus="aug", grp=f"aug{k % 10}", src=-1))
+    return out
+
+
+def run_aug(per_label: int = 400, n_aug: int = 200, refresh: bool = False) -> None:
+    """Research: does truncation augmentation un-stick the short-source regime?
+    Trains on benchmark + aug (aug in own CV group), scores the disjoint probe,
+    and reports the benchmark hold (grouped CV) + standardized coefficients."""
+    from sklearn.linear_model import LogisticRegression
+
+    cols = _cur_cols()
+    base = build_joint(per_label, refresh=refresh)
+    aug = _augment_rows(n_aug)
+    rows = base + aug
+    X = np.array([[r[c] for c in cols] for r in rows], float)
+    y = np.array([r["label"] for r in rows])
+    m = LogisticRegression(max_iter=1000, class_weight="balanced").fit(X, y)
+    thr = _tune_thr(y, m.predict_proba(X)[:, 1])
+    Xs = (X - X.mean(0)) / (X.std(0) + 1e-9)
+    cd = dict(zip(cols, LogisticRegression(max_iter=1000, class_weight="balanced").fit(Xs, y).coef_[0]))
+    # Gate A: grouped-CV on the benchmark rows only (aug held out by its own grp)
+    rec = _joint_oof(rows, cols)
+    dpc = _corpus_score(rec, "delaval", 3)["f1_macro"]
+    vpc = _corpus_score(rec, "vitaminc", 3)["f1_macro"]
+    # Gate B: disjoint probe
+    correct, lines = 0, []
+    for claim, source, lab_ in _PROBE:
+        f = _probe_feats(claim, source)
+        p = float(m.predict_proba(np.array([[f[c] for c in cols]], dtype=float))[0, 1])
+        pred = int(p >= thr)
+        ok = pred == lab_
+        correct += ok
+        lines.append(f"| {'Y' if ok else 'N'} | {lab_} | {pred} | {p:.3f} | {f['r1_best']:.3f} | "
+                     f"{f['unmatched_rarity']:.3f} | {claim[:34]} |")
+    print(f"\n## Augmentation research (lambda={H.BG_BLEND_LAMBDA}, aug={len(aug)}, thr={thr:.2f})")
+    print(f"Gate A (benchmark hold): DeLaval pc {dpc:.3f} | VitaminC pc {vpc:.3f}  "
+          f"(baseline 0.825 / 0.661)")
+    print(f"coef: top3 {cd.get('top3', 0):+.2f} | unmatched_rarity {cd.get('unmatched_rarity', 0):+.2f} "
+          f"| max_unmatched {cd.get('max_unmatched', 0):+.2f} | fuzzy {cd.get('fuzzy', 0):+.2f}")
+    print(f"Gate B probe: **{correct}/{len(_PROBE)}**")
+    print("| ok | lab | pred | proba | r1 | unmatched | claim |\n|---|---|---|---|---|---|---|")
+    print("\n".join(lines))
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "batch1"
     if cmd == "joint":
         run_joint(refresh="--refresh" in sys.argv)
+    elif cmd == "probe":
+        run_probe(refresh="--refresh" in sys.argv)
+    elif cmd == "aug":
+        run_aug(refresh="--refresh" in sys.argv)
     else:
         {
             "b1": run_b1,

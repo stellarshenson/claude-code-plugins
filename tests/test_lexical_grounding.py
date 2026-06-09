@@ -102,7 +102,7 @@ class TestEffortKnobSelectsManifold:
         assert effort == "low"
         # the shipped low manifold's feature_order IS the low tier contract
         assert verdict.feature_order == L.TIER_FEATURES["low"]
-        assert len(verdict.feature_order) == 11
+        assert len(verdict.feature_order) == len(L.LOW_FEATURES)
         assert verdict.weights.get("Intercept") is not None
         # lexical operating point, not the general-cascade 1500/0.25
         assert (chunk_max, chunk_ovl) == (300, 0.1)
@@ -119,8 +119,8 @@ class TestEffortKnobSelectsManifold:
             med = G._config_lexical_verdict(cfg_med)
         finally:
             _restore()
-        assert low[0].feature_order == L.TIER_FEATURES["low"]  # 11
-        assert med[0].feature_order == L.TIER_FEATURES["medium"]  # 14
+        assert low[0].feature_order == L.TIER_FEATURES["low"]  # 13
+        assert med[0].feature_order == L.TIER_FEATURES["medium"]  # 16
         assert low[0].feature_order != med[0].feature_order
 
 

@@ -47,6 +47,7 @@ dependencies = [
     "svgelements>=1.9",
     "tiktoken",
     "transitions",
+    "wordfreq>=3.0",               # lexical: length-robust background token rarity (recall + distinctive-content)
     "wtpsplit-lite>=0.1",          # lexical high tier: ONNX sentence splitter
 ]
 
