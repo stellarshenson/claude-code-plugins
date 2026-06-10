@@ -3,6 +3,7 @@ name: svg-designer
 description: SVG infographics design skill. Auto-triggers on any SVG / infographic / diagram / banner / timeline / flowchart / chart / graphics work. Triggers on phrases - "create svg", "make svg", "create graphics", "svg infographic", "diagram", "banner", "timeline", "flowchart", "validate svg", "fix svg", "design svg". Follows preflight-to-finalize workflow, computed geometry, theme compliance, mandatory validation gates. Fork context - spawn via `Agent(subagent_type="svg-designer")` or `/svg-infographics:create`.
 context: fork
 agent: general-purpose
+model: sonnet
 allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList]
 ---
 
