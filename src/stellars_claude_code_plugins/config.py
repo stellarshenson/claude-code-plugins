@@ -42,7 +42,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Literal, Type, TypeVar
+from typing import Literal, Type, TypeVar, get_args, get_origin, get_type_hints
 
 import yaml
 
@@ -171,6 +171,20 @@ class GroundingConfig:
     # ── misc ────────────────────────────────────────────────────────────
     context_chars: int
     semantic_top_k: int
+
+    def __post_init__(self) -> None:
+        # Literal annotations are not enforced at runtime by dataclasses; without
+        # this check an invalid value (e.g. lexical_effort: ultra) would silently
+        # fall through manifold lookup to the cascade engine instead of failing.
+        hints = get_type_hints(type(self))
+        for name, hint in hints.items():
+            if get_origin(hint) is Literal:
+                value = getattr(self, name)
+                allowed = get_args(hint)
+                if value not in allowed:
+                    raise ConfigError(
+                        f"invalid value {value!r} for {name}; allowed: {sorted(allowed)}"
+                    )
 
     def overlay(self, **overrides) -> GroundingConfig:
         """Return a copy with the given fields overridden.

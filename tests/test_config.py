@@ -182,3 +182,25 @@ def test_overlay_returns_new_instance(tmp_path, monkeypatch):
     original_agr = cfg.agreement_threshold
     _ = cfg.overlay(agreement_threshold=0.42)
     assert cfg.agreement_threshold == original_agr
+
+
+def test_invalid_literal_value_raises_config_error(tmp_path):
+    """Disallowed values for Literal-typed fields must fail loud at load time."""
+    raw = _full_config_dict()
+    raw["lexical_effort"] = "ultra"
+    yaml_path = tmp_path / "bad_effort.yaml"
+    _write_yaml(yaml_path, raw)
+
+    with pytest.raises(ConfigError) as excinfo:
+        load_document_processing_config(path=yaml_path)
+    assert "lexical_effort" in str(excinfo.value)
+    assert "'ultra'" in str(excinfo.value)
+
+
+def test_invalid_literal_value_raises_via_overlay():
+    """overlay() constructs a new instance, so it enforces Literals too."""
+    cfg = load_document_processing_config()
+    with pytest.raises(ConfigError):
+        cfg.overlay(lexical_effort="ultra")
+    with pytest.raises(ConfigError):
+        cfg.overlay(classifier_mode="quantum")
