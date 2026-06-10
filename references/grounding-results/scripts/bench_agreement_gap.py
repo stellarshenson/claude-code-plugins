@@ -18,7 +18,7 @@ import sys
 HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE))
 
-from stellars_claude_code_plugins.document_processing.grounding import ground_many
+from stellars_claude_code_plugins.document_processing.grounding import ground_batch
 
 CLAIMS_PATH = Path("/tmp/grounding-demo/liu_claims.json")
 SOURCE_PATH = Path("/tmp/grounding-demo/liu2023.txt")
@@ -53,7 +53,7 @@ def main() -> int:
         cache_dir=".stellars-plugins/cache",
     )
 
-    matches = ground_many(
+    matches = ground_batch(
         claims,
         [(str(SOURCE_PATH), source_text)],
         semantic_grounder=grounder,

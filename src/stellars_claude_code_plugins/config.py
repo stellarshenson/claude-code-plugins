@@ -276,7 +276,7 @@ def load_document_processing_config(
 #
 # ``load_config`` was the Iter 5 name when config lived inside
 # ``document_processing/``. Keep it as an alias so existing callers (and
-# the archived scripts under ``references/grounding-optimisation/``)
+# the archived scripts under ``references/grounding-results/``)
 # continue to work.
 
 load_config = load_document_processing_config

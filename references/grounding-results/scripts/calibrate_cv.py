@@ -37,7 +37,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from stellars_claude_code_plugins.config import load_document_processing_config as load_config  # noqa: E402
-from stellars_claude_code_plugins.document_processing.grounding import ground_many  # noqa: E402
+from stellars_claude_code_plugins.document_processing.grounding import ground_batch  # noqa: E402
 from stellars_claude_code_plugins.document_processing.semantic import SemanticGrounder  # noqa: E402
 
 # --------------------------------------------------------------------------
@@ -118,7 +118,7 @@ def evaluate_corpus(
     config_overrides: dict,
     grounders: dict,
 ) -> dict:
-    """Run ground_many on a corpus with two models and return metrics.
+    """Run ground_batch on a corpus with two models and return metrics.
 
     Returns ``{accuracy, portability, gap_attainment, per_model}``.
     """
@@ -140,7 +140,7 @@ def evaluate_corpus(
     for model_name in MODELS:
         grounder = grounders[(corpus_name, model_name)]
         with contextlib.redirect_stderr(io.StringIO()):
-            matches = ground_many(
+            matches = ground_batch(
                 claims,
                 [source_pair],
                 semantic_grounder=grounder,
@@ -226,7 +226,7 @@ def main() -> int:
         file=sys.stderr,
     )
 
-    # Pre-load all grounders once (each combo re-runs ground_many but the
+    # Pre-load all grounders once (each combo re-runs ground_batch but the
     # semantic index is reused via the shared grounder instance).
     grounders = _build_grounders()
 

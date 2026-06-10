@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Benchmark: portability across embedding models.
 
-Runs Liu ``ground_many`` twice, once with the default
+Runs Liu ``ground_batch`` twice, once with the default
 ``intfloat/multilingual-e5-small`` and once with
 ``sentence-transformers/paraphrase-multilingual-mpnet-base-v2``, using the
 percentile-based semantic threshold (H3) for both. Compares match types
@@ -17,7 +17,7 @@ import sys
 HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE))
 
-from stellars_claude_code_plugins.document_processing.grounding import ground_many
+from stellars_claude_code_plugins.document_processing.grounding import ground_batch
 
 CLAIMS_PATH = Path("/tmp/grounding-demo/liu_claims.json")
 SOURCE_PATH = Path("/tmp/grounding-demo/liu2023.txt")
@@ -41,7 +41,7 @@ def _run(model_name: str, claims: list[str], source_pair: tuple[str, str]):
         device="cpu",
         cache_dir=".stellars-plugins/cache",
     )
-    return ground_many(
+    return ground_batch(
         claims,
         [source_pair],
         semantic_grounder=grounder,

@@ -28,7 +28,7 @@ Read the full article: [Your AI Agent Will Cut Corners. Here's How to Stop It](h
 
 Real cycles run by this plugin against this repo (excerpts from `.claude/JOURNAL.md`):
 
-- **Document grounding optimisation** - composite benchmark score `69.3 -> 5.0`, final 1.0 cross-validation accuracy on three held-out academic papers (Liu 2023, Ye 2024, Han 2024). Six iterations, 29 tunable parameters exposed in `config.yaml`. Full PROGRAM, BENCHMARK, hypothesis + falsifiers archived under [`references/grounding-optimisation/`](../references/grounding-optimisation/) ([JOURNAL entry 114](../.claude/JOURNAL.md))
+- **Document grounding optimisation** - composite benchmark score `69.3 -> 5.0`, final 1.0 cross-validation accuracy on three held-out academic papers (Liu 2023, Ye 2024, Han 2024). Six iterations, 29 tunable parameters exposed in `config.yaml`. Full PROGRAM, BENCHMARK, hypothesis + falsifiers archived under [`references/grounding-results/`](../references/grounding-results/) ([JOURNAL entry 114](../.claude/JOURNAL.md))
 - **svg-infographics forensics** - audited 6 prior Claude Code sessions, identified 231 occurrences of "false positive" rationalisation, shipped 4 corrective work items in one release including the quartermaster preflight pattern, connector direction declaration, and stubby-arrow validator ([JOURNAL entry 124](../.claude/JOURNAL.md))
 - **document-processing forensics** - shipped all 7 work items from a forensic-review plan in a single release combining correctness fixes (binary-source rejection, lexical co-support) with workflow additions (claim extraction, intra-doc consistency, batch orchestrator) ([JOURNAL entry 123](../.claude/JOURNAL.md))
 

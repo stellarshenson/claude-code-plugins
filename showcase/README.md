@@ -36,23 +36,23 @@ Four end-to-end critical analyses ship in [`devils-advocate/examples/`](../devil
 
 Pulled verbatim from [`.claude/JOURNAL.md`](../.claude/JOURNAL.md) - this repo's own development log.
 
-- **Document-grounding optimisation** (entry 114): six-iteration `autobuild` cycle with composite benchmark + 3-fold cross-validation on three held-out academic papers (Liu 2023, Ye 2024, Han 2024). Final mean accuracy **1.0** with zero overfit gap, score arc `69.3 -> 5.0`. PROGRAM, BENCHMARK, hypothesis + falsifiers, lessons learned, CV results all archived under [`references/grounding-optimisation/`](../references/grounding-optimisation/) - read `OPTIMIZATION_SUMMARY.md` for the headline + chart, `report.md` for the full forensic
+- **Document-grounding optimisation** (entry 114): six-iteration `autobuild` cycle with composite benchmark + 3-fold cross-validation on three held-out academic papers (Liu 2023, Ye 2024, Han 2024). Final mean accuracy **1.0** with zero overfit gap, score arc `69.3 -> 5.0`. PROGRAM, BENCHMARK, hypothesis + falsifiers, lessons learned, CV results all archived under [`references/grounding-results/`](../references/grounding-results/) - read `OPTIMIZATION_SUMMARY.md` for the headline + chart, `report.md` for the full forensic
 - **svg-infographics quartermaster forensics** (entry 124): audited 6 prior Claude Code sessions, identified 231 occurrences of "false positive" rationalisation across the corpus, shipped 4 corrective work items in one release: flag-driven preflight rule-pull pattern, mandatory connector direction declaration, stubby-arrow validator (40/60 rule), and the single ship-ready `finalize` gate
 - **document-processing forensics** (entry 123): seven work items shipped from a forensic-review plan in one release combining correctness fixes (binary-source rejection, lexical co-support detection, cross-source provenance, four-signal verification flag) with workflow additions (claim extraction, intra-doc consistency check, batch orchestrator + slash command)
 
 ## document-processing: grounding receipt
 
-Cross-validated grounding pipeline with **mean accuracy 1.0 across 3 folds** on three held-out academic papers, zero overfit gap. Detailed results, CV harness, calibration data, hypothesis log, and forensic report all live under [`references/grounding-optimisation/`](../references/grounding-optimisation/):
+Cross-validated grounding pipeline with **mean accuracy 1.0 across 3 folds** on three held-out academic papers, zero overfit gap. Detailed results, CV harness, calibration data, hypothesis log, and forensic report all live under [`references/grounding-results/`](../references/grounding-results/):
 
 | File | What it contains |
 |------|-----------------|
-| [PROGRAM.md](../references/grounding-optimisation/PROGRAM.md) | Objective, scope, work-item breakdown, exit conditions |
-| [BENCHMARK.md](../references/grounding-optimisation/BENCHMARK.md) | Composite score formula, programmatic checks, CV protocol |
-| [hypothesis.md](../references/grounding-optimisation/hypothesis.md) | 10 hypotheses with falsifiers, predicted vs measured deltas |
-| [report.md](../references/grounding-optimisation/report.md) | Forensic write-up of every iteration |
-| [calibration_cv.json](../references/grounding-optimisation/calibration_cv.json) | Raw 3-fold CV result data (accuracy, precision, recall per fold) |
-| [lessons_learned.md](../references/grounding-optimisation/lessons_learned.md) | What survived contact with reality |
-| [OPTIMIZATION_SUMMARY.md](../references/grounding-optimisation/OPTIMIZATION_SUMMARY.md) | Headline summary + score arc chart |
+| [PROGRAM.md](../references/grounding-results/PROGRAM.md) | Objective, scope, work-item breakdown, exit conditions |
+| [BENCHMARK.md](../references/grounding-results/BENCHMARK.md) | Composite score formula, programmatic checks, CV protocol |
+| [hypothesis.md](../references/grounding-results/hypothesis.md) | 10 hypotheses with falsifiers, predicted vs measured deltas |
+| [report.md](../references/grounding-results/report.md) | Forensic write-up of every iteration |
+| [calibration_cv.json](../references/grounding-results/calibration_cv.json) | Raw 3-fold CV result data (accuracy, precision, recall per fold) |
+| [lessons_learned.md](../references/grounding-results/lessons_learned.md) | What survived contact with reality |
+| [OPTIMIZATION_SUMMARY.md](../references/grounding-results/OPTIMIZATION_SUMMARY.md) | Headline summary + score arc chart |
 
 ## Production feedback (in users' own words)
 

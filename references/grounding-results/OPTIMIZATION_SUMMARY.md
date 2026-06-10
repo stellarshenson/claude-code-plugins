@@ -164,7 +164,7 @@ Implementation was ~30 lines total. Verified by:
   0.0, 9/11 hypotheses landed, effective optimum reached).
 - Hypothesis verdicts documented (see table below).
 - This OPTIMIZATION_SUMMARY.md captures the end-to-end process.
-- Artefacts archived under `docs/document-processing/grounding-optimisation/`.
+- Artefacts archived under `references/grounding-results/`.
 
 ## Trajectory in one table
 
@@ -335,7 +335,7 @@ State survived two 500-error subagent crashes cleanly - `orchestrate status` kep
 
 Two orchestrator bugs were found and fixed during the program. Both are captured above.
 
-## Files archived under `docs/document-processing/grounding-optimisation/`
+## Files archived under `references/grounding-results/`
 
 - `PROGRAM.md` - program definition with work items, constraints, exit conditions.
 - `BENCHMARK.md` - scoring formula + iteration log for iters 1-6.

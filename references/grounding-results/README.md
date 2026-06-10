@@ -57,10 +57,10 @@ CONFIRMED); claims 13-14 are fabrications (expected REJECTED).
 ## Reproducing
 
 Everything needed is archived here. Paths below are relative to this
-folder (`references/grounding-optimisation/`).
+folder (`references/grounding-results/`).
 
 ```bash
-cd references/grounding-optimisation/
+cd references/grounding-results/
 
 # Install with semantic extras (from project root)
 (cd ../.. && make requirements)

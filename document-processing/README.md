@@ -25,7 +25,7 @@ The grounding classifier was tuned via a six-iteration `autobuild` cycle with a 
 - **Config** - lives in `stellars_claude_code_plugins/document_processing/config.yaml`, documented per field; override via `.stellars-plugins/config.yaml` project-local
 - **Re-tuning** - `scripts/calibrate.py` grid-search and `scripts/calibrate_cv.py` cross-validation harness shipped
 
-Full optimisation record (program definition, benchmark formula, hypothesis + falsifiers, per-iteration artefacts, forensic report, CV results, corpus data) archived under [`references/grounding-optimisation/`](../references/grounding-optimisation/).
+Full optimisation record (program definition, benchmark formula, hypothesis + falsifiers, per-iteration artefacts, forensic report, CV results, corpus data) archived under [`references/grounding-results/`](../references/grounding-results/).
 
 ### NLI / entailment grounding (the truth signal)
 
