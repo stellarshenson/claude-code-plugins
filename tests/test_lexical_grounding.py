@@ -107,8 +107,23 @@ class TestEffortKnobSelectsManifold:
         # lexical operating point, not the general-cascade 1500/0.25
         assert (chunk_max, chunk_ovl) == (300, 0.1)
 
+    def test_high_tier_resolves_to_high_manifold_and_features(self):
+        # the shipped DEFAULT tier (lexical_effort: high in the bundled config)
+        cfg = _lexical_cfg("high")
+        try:
+            resolved = G._config_lexical_verdict(cfg)
+        finally:
+            _restore()
+        assert resolved is not None
+        verdict, effort, chunk_max, chunk_ovl = resolved
+        assert effort == "high"
+        assert verdict.feature_order == L.TIER_FEATURES["high"]
+        assert len(verdict.feature_order) == 18
+        assert verdict.weights.get("Intercept") is not None
+        assert (chunk_max, chunk_ovl) == (300, 0.1)
+
     def test_effort_knob_switches_feature_set(self):
-        # low vs medium load different manifolds with different feature contracts
+        # low vs medium vs high load different manifolds with different feature contracts
         cfg_low = _lexical_cfg("low")
         try:
             low = G._config_lexical_verdict(cfg_low)
@@ -119,9 +134,17 @@ class TestEffortKnobSelectsManifold:
             med = G._config_lexical_verdict(cfg_med)
         finally:
             _restore()
+        cfg_high = _lexical_cfg("high")
+        try:
+            high = G._config_lexical_verdict(cfg_high)
+        finally:
+            _restore()
         assert low[0].feature_order == L.TIER_FEATURES["low"]  # 13
         assert med[0].feature_order == L.TIER_FEATURES["medium"]  # 16
+        assert high[0].feature_order == L.TIER_FEATURES["high"]  # 18
         assert low[0].feature_order != med[0].feature_order
+        assert high[0].feature_order != med[0].feature_order
+        assert len(high[0].feature_order) == 18
 
 
 class TestPrivateRAGLowTierEndToEnd:
@@ -197,9 +220,7 @@ class TestVitaminCMediumTierEndToEnd:
         try:
             seen = collections.Counter()
             for r in sample:
-                m = G.ground(
-                    r["claim"], [(str(r.get("page", "src")), r["evidence"])], config=cfg
-                )
+                m = G.ground(r["claim"], [(str(r.get("page", "src")), r["evidence"])], config=cfg)
                 assert m.match_type in valid
                 assert 0.0 <= m.verdict_probability <= 1.0
                 assert set(m.verdict_features) == set(L.TIER_FEATURES["medium"])
@@ -208,3 +229,64 @@ class TestVitaminCMediumTierEndToEnd:
             _restore()
         # the slice produced verdicts (machinery ran end to end over both labels)
         assert sum(seen.values()) == 2 * per
+
+
+class TestMTBridgeGating:
+    """HIGH-tier MT bridge (lexical_mt.translate) gating - offline, no model loads.
+
+    The bridge is the translate-then-recall lever lexical.py's HIGH tier calls on
+    non-English claims. Pins: (a) English/unknown source is a pass-through, (b) a
+    missing argos model degrades gracefully to the original text WITH a clear
+    logged warning (not a silent empty string), (c) the translation loop consumes
+    the SaT segmenter's split() output (mocked - no OpenVINO / argos needed).
+    """
+
+    def test_english_and_unknown_are_pass_through(self):
+        from stellars_claude_code_plugins.document_processing import lexical_mt as MT
+
+        text = "The estate has three walled gardens."
+        assert MT.translate(text, "en") == text
+        assert MT.translate(text, "und") == text
+        assert MT.translate(text, "") == text
+
+    def test_missing_argos_model_warns_and_returns_original(self, monkeypatch, caplog):
+        import logging
+
+        from stellars_claude_code_plugins.document_processing import lexical_mt as MT
+
+        # pre-seed the model cache so _load() never imports ctranslate2
+        monkeypatch.setitem(MT._MODELS, "zz", None)
+        text = "Zzyzzy zzal zzor."
+        with caplog.at_level(logging.WARNING, logger=MT.__name__):
+            out = MT.translate(text, "zz")
+        assert out == text  # graceful fallback, NOT an empty string
+        assert any("argos model" in r.message for r in caplog.records)
+
+    def test_translate_consumes_sat_segments_spm_branch(self, monkeypatch):
+        from stellars_claude_code_plugins.document_processing import lexical_mt as MT
+
+        seen: list[str] = []
+
+        class _FakeSat:
+            def split(self, text):
+                seen.append(text)
+                return ["Premiere phrase.", "Deuxieme phrase."]
+
+        class _FakeSp:
+            def encode(self, s, out_type=str):
+                return ["▁" + t for t in s.split()]
+
+        class _Hyp:
+            def __init__(self, tokens):
+                self.hypotheses = [tokens]
+
+        class _FakeTr:
+            def translate_batch(self, batches, beam_size, max_decoding_length):
+                return [_Hyp(["▁translated", "▁sentence"]) for _ in batches]
+
+        monkeypatch.setattr(MT, "_SAT", _FakeSat())
+        monkeypatch.setitem(MT._MODELS, "fr", {"tr": _FakeTr(), "kind": "spm", "sp": _FakeSp()})
+
+        out = MT.translate("Premiere phrase. Deuxieme phrase.", "fr")
+        assert seen == ["Premiere phrase. Deuxieme phrase."]  # SaT split was used
+        assert out == "translated sentence translated sentence"

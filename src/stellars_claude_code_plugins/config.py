@@ -164,8 +164,8 @@ class GroundingConfig:
     # ── solution tier ───────────────────────────────────────────────────
     lexical_effort: Literal["low", "medium", "high"]
     """Solution tier for lexical mode - the only user knob. Each tier is an
-    indivisible bundle of algorithms plus the manifold trained for it: low (11
-    feat), medium (14, + lingua + WordNet), high (16, + MT translate-then-recall).
+    indivisible bundle of algorithms plus the manifold trained for it: low (13
+    feat), medium (16, + lingua + WordNet), high (18, + MT translate-then-recall).
     The chunk operating point (300/0.1) lives per-manifold, not here."""
 
     # ── misc ────────────────────────────────────────────────────────────

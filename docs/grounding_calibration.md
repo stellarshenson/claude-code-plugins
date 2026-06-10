@@ -1,6 +1,6 @@
 # Grounding methods and calibration
 
-Grounding scores a claim against sources through three layers - lexical, semantic retrieval, and NLI entailment - whose verdict is either the deterministic cascade (default) or a Bayesian calibrator that combines all layers. NLI entailment is the truth signal: lexical matching tests word presence and cosine similarity tests topic, but only entailment tests "does the evidence support the claim?".
+Grounding scores a claim through up to 18 lexical signals plus optional semantic/NLI layers. The default verdict engine is lexical mode: a frozen-weight logistic (LexicalVerdict) over the signal set selected by the effort tier (low / medium / high, default high). The deterministic cascade and Bayesian calibrator are alternative engines reachable via explicit config override. NLI entailment is the truth signal: lexical matching tests word presence and cosine similarity tests topic, but only entailment tests "does the evidence support the claim?".
 
 ## Grounding methods (layers)
 
@@ -13,12 +13,13 @@ Grounding scores a claim against sources through three layers - lexical, semanti
 
 ## Verdict engines
 
-Selected by config `calibration.engine`.
+Selected by config `calibration.mode` / `calibration.engine`.
 
-- **lexical** (default, back-compat) - cascade: contradicted > NLI verdict (if an NLI grounder ran) > exact > fuzzy > bm25 > semantic > none; `verdict_probability` stays -1.0
-- **calibrated** - `P(grounded) = sigma(weights . features)`; CONFIRMED iff `P >= threshold`, labelled by the strongest firing layer
-- **verification_needed** - flagged when `P` is within `verification_threshold_proximity` of the threshold (borderline)
-- Both engines are byte-identical to the historical behaviour when no NLI grounder and no calibration weights are supplied
+- **lexical-mode logistic (default)** - LexicalVerdict: `P(grounded) = sigma(weights . features)` over 13-18 signals per effort tier; frozen weights from `calibration.lexical_manifolds.<tier>`; no bambi/PyMC at runtime; `verdict_probability` set to logistic output. Reached via `calibration.mode: lexical` (the default config)
+- **cascade (back-compat)** - deterministic priority: contradicted > NLI verdict (if an NLI grounder ran) > exact > fuzzy > bm25 > semantic > none; `verdict_probability` stays -1.0. Reached by removing the `calibration` block entirely or setting `calibration.engine: lexical` explicitly
+- **calibrated** - Bayesian logistic (bambi/PyMC): `P(grounded) = sigma(weights . features)` fitted from labelled evidence; CONFIRMED iff `P >= threshold`. Reached via `calibration.engine: calibrated` after running `calibrate --action update`
+- **verification_needed** - flagged when `P` is within `verification_threshold_proximity` of the threshold (borderline); applies to both logistic engines
+- The cascade engine is byte-identical to historical behaviour when no NLI grounder and no calibration weights are supplied
 
 ## NLI / entailment (the grounding primitive)
 
@@ -46,6 +47,16 @@ Selected by config `calibration.engine`.
 - **Public-data validation** - `make grounding-validate [N= ENGINE=lexical|nli]` (cache only: `make grounding-dataset`)
 
 ## Metrics
+
+### Lexical-mode logistic (default engine)
+
+- **Macro-F1** - 0.817 on private RAG (2752 gold labels, joint logistic)
+- **VitaminC** - 0.691 macro-F1 (hold-not-collapse: +0.136 vs base, -0.015 private RAG cost)
+- **Zero-shot** - 0.808 on Liu 2023 / Han 2024 / Ye 2024 academic fixtures
+- **Cold start** - ~5.6s first run (loads SaT segmenter, first MT model, WordNet)
+- **Warm latency** - ~165 ms/claim single-thread CPU (high tier); low/medium tiers faster (no MT)
+
+### Cascade + NLI (back-compat / opt-in engines)
 
 Synthetic (CI suite, `make test`):
 
@@ -77,5 +88,5 @@ Public real data - VitaminC dev, balanced (`make grounding-validate`):
 - **`config_document_processing.yaml`** - `calibration` block (engine, threshold, prior incl. NLI features)
 - **`scripts/validate_public_grounding.py`** - VitaminC validation harness (`make grounding-validate`)
 - **`scripts/simulate_calibration.py`** - full real-pipeline simulation
-- **`notebooks/calibration_demo.ipynb`** - executed calibrator walkthrough
+- **`notebooks/01-kj-calibration-demo.ipynb`** - executed calibrator walkthrough
 - **`tests/test_calibration.py`, `tests/test_calibration_cli.py`, `tests/test_document_processing.py` (TestNLIGrounding), `tests/fixtures/calibration_multilingual.jsonl`** - suite + fixture

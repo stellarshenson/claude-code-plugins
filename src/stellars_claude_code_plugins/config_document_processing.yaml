@@ -166,9 +166,9 @@ adaptive_gap_min_claims: 4
 # bundle (calibration.lexical_manifolds.<tier> below). You select effort, not
 # algorithms - the grounder chooses the combination internally.
 #   low    - core grounder: word/char-ngram recall, fuzzy, anchors, specificity,
-#            value-conflict (11 features)
-#   medium - low + language id (is_en, same_lang) + WordNet antonym-flip (14)
-#   high   - medium + MT translate-then-recall for the cross-lingual tail (16)
+#            value-conflict (13 features)
+#   medium - low + language id (is_en, same_lang) + WordNet antonym-flip (16)
+#   high   - medium + MT translate-then-recall for the cross-lingual tail (18)
 # Override per call via ground(..., config=cfg.overlay(lexical_effort=...)).
 lexical_effort: high             # low | medium | high
 

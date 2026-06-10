@@ -19,9 +19,9 @@ from stellars_claude_code_plugins.document_processing.sat._utils import (
 from stellars_claude_code_plugins.document_processing.sat.extract import extract
 from stellars_claude_code_plugins.document_processing.sat.ov_backend import OVSegModel, resolve_ir
 
-CONFIG_REPO = "segment-any-text/sat-3l-sm"        # config.json (SubwordXLMConfig)
-TOKENIZER_REPO = "facebookAI/xlm-roberta-base"    # tokenizer.json
-DEFAULT_THRESHOLD = 0.25                           # sat-3l-sm default sentence threshold
+CONFIG_REPO = "segment-any-text/sat-3l-sm"  # config.json (SubwordXLMConfig)
+TOKENIZER_REPO = "facebookAI/xlm-roberta-base"  # tokenizer.json
+DEFAULT_THRESHOLD = 0.25  # sat-3l-sm default sentence threshold
 STRIDE = 64
 BLOCK_SIZE = 512
 
@@ -37,7 +37,11 @@ class SaTSegmenter:
     def newline_probs(self, text: str) -> np.ndarray:
         """Per-character P(sentence boundary) over ``text``."""
         logits, _offsets, tok, tok_out = extract(
-            [text], self.model, stride=STRIDE, max_block_size=BLOCK_SIZE, batch_size=32,
+            [text],
+            self.model,
+            stride=STRIDE,
+            max_block_size=BLOCK_SIZE,
+            batch_size=32,
             tokenizer=self.tokenizer,
         )
         char_logits = token_to_char_probs(

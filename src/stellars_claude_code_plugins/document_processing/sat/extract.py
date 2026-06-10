@@ -53,7 +53,9 @@ def extract(
     downsampling_rate = getattr(model.config, "downsampling_rate", 1)
     block_size = math.ceil(block_size / downsampling_rate) * downsampling_rate
 
-    num_chunks = sum(math.ceil(max(length - block_size, 0) / stride) + 1 for length in text_lengths)
+    num_chunks = sum(
+        math.ceil(max(length - block_size, 0) / stride) + 1 for length in text_lengths
+    )
 
     if not use_subwords:
         input_hashes = np.zeros(
@@ -68,7 +70,9 @@ def extract(
 
     if not use_subwords:
         codec = "utf-32-le" if sys.byteorder == "little" else "utf-32-be"
-        ordinals = np.frombuffer(bytearray("".join(batch_of_texts), encoding=codec), dtype=np.int32)
+        ordinals = np.frombuffer(
+            bytearray("".join(batch_of_texts), encoding=codec), dtype=np.int32
+        )
         flat_hashed_ids = hash_encode(
             ordinals,
             num_hashes=model.config.num_hash_functions,
@@ -140,7 +144,9 @@ def extract(
         if weighting == "uniform":
             weights = np.ones(block_size, dtype=np.float16)
         elif weighting == "hat":
-            x = np.linspace(-(1 - 1 / block_size), 1 - 1 / block_size, block_size, dtype=np.float16)
+            x = np.linspace(
+                -(1 - 1 / block_size), 1 - 1 / block_size, block_size, dtype=np.float16
+            )
             weights = 1 - np.abs(x)
         for i in range(start, end):
             original_idx, start_char_idx, end_char_idx = locs[i]

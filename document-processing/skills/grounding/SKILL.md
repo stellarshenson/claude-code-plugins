@@ -5,10 +5,24 @@ description: Ground claims against source material with the deterministic ground
 
 # Grounding Skill
 
+## Default engine: lexical mode
+
+The grounder runs a frozen-weight logistic (LexicalVerdict) over 13-18 signals selected by the effort tier. High is the default tier (18 features, includes MT cross-lingual via argos CTranslate2 int8). Per-layer thresholds (`--threshold`, `--bm25-threshold`) affect the cascade fallback path only; in lexical mode the verdict comes from the logistic. Semantic (`--semantic`) and NLI are opt-in extras, unchanged.
+
+### Effort tiers (CPU-only, no extra install required)
+
+- **`low`** - 13 features; fastest; no language detection; English-only
+- **`medium`** - 16 features; adds lingua language detection + WordNet antonym contradiction
+- **`high`** - 18 features; adds argos MT for cross-lingual claims (translates non-English claim to EN then recall-scores); default
+
+Set via `lexical_effort` in `config_document_processing.yaml` or `--effort` CLI overlay.
+
+## Three-step grounding chain
+
 Grounding a document = **three-step chain**, not just step 2:
 
 1. **`extract-claims`** — enumerate load-bearing claims from document into `claims.json` (heuristic, lossy — review before grounding).
-2. **`ground`** — score every claim against source(s) with deterministic CLI (regex exact + Levenshtein fuzzy + BM25, + optional semantic); read verdicts, apply verdict rules; write `grounding-report.md`.
+2. **`ground`** — score every claim against source(s) with lexical-mode CLI (frozen-weight logistic over 13-18 signals; + optional `--semantic`); read verdicts, apply verdict rules; write `grounding-report.md`.
 3. **`check-consistency`** — check document against *itself* for divergences grounding structurally can't see (`42 users` here vs `50 users` there; `dev/test/staging` vs `dev/staging/prod`); write `consistency-report.md`.
 
 Document-grounding run produces **both** `grounding-report.md` and `consistency-report.md`. Single claim (no document) → run only step 2's single-claim form (`document-processing ground`). Many documents → `validate` runs whole chain per client. **Always run the CLI** - canonical operational grounder; generative interpretation only an on-top layer for semantic claims after CLI ran.
@@ -27,7 +41,7 @@ Always run this single line BEFORE invoking `document-processing`. No-op when pa
 python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
-Ships `document-processing` CLI with deterministic three-layer grounding (regex exact + Levenshtein fuzzy + BM25 passage ranking). All three scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask user whether to install - just run the line. **CLI mandatory.** Generative interpretation only an on-top layer for semantic claims after CLI ran - never a substitute. If package genuinely cannot install, say so and stop; do not silently degrade to manual search.
+Ships `document-processing` CLI with lexical-mode grounding (default: frozen-weight logistic, high effort tier, 18 signals including MT cross-lingual). All layer scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask user whether to install - just run the line. **CLI mandatory.** Generative interpretation only an on-top layer for semantic claims after CLI ran - never a substitute. If package genuinely cannot install, say so and stop; do not silently degrade to manual search.
 
 ## Semantic grounding (+ NLI): opt-in per call via `--semantic` (recommend by default)
 
@@ -128,9 +142,10 @@ Three rules override default per-claim behaviour. Apply in order: rule 2 trumps 
 **Rule 3: re-recommend semantic on struggle.** >25% UNCONFIRMED OR any claim in `fuzzy_score` [0.5, 0.85] AND `bm25_score` [0.2, 0.5] almost-grounded zone → ask user ONCE. Never silent auto-enable — user consent was explicit, one-way. Template:
 
 ```
-Three-layer grounding left N/M claims UNCONFIRMED and K in the
-almost-grounded zone. Semantic grounding (4th layer, +150MB model
-first time, requires `[semantic]` extra) often resolves these. Enable?
+Lexical grounding left N/M claims UNCONFIRMED and K in the
+almost-grounded zone. Semantic + NLI grounding (~120 MB embedder +
+~560 MB NLI, one-time download, requires `[semantic]` extra) often
+resolves these. Enable?
   - yes: re-run with --semantic
   - no: keep current verdicts
 ```
@@ -306,7 +321,7 @@ Default thresholds miss your domain? calibrate per-corpus. Bayesian logistic (ba
 - **public-data check** - `make grounding-validate ENGINE=nli` runs VitaminC; reproducible, no private corpus
 - prior lives in config (`calibration.prior`), not code
 - never calibrate without user's own labelled evidence - do not invent labels to "improve" scores
-- demo: `notebooks/calibration_demo.ipynb`; full doc: `docs/grounding_calibration.md`
+- demo: `notebooks/01-kj-calibration-demo.ipynb`; full doc: `docs/grounding_calibration.md`
 
 ## Output: grounding-report.md
 

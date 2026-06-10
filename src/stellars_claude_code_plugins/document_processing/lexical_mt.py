@@ -13,7 +13,10 @@ INT8 SaT (`document_processing.sat`, LATENCY hint) - no onnxruntime.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _ARGOS = Path.home() / ".local/share/argos-translate/packages"
 _ISO = {"no": "nb", "nn": "nb"}  # langdetect -> argos model code
@@ -64,8 +67,13 @@ def _load(src: str):
         from subword_nmt.apply_bpe import BPE
 
         bpe = BPE(open(d / "bpe.model", encoding="utf-8"))
-        _MODELS[src] = {"tr": tr, "kind": "bpe", "bpe": bpe,
-                        "mtok": MosesTokenizer(lang=src), "detok": MosesDetokenizer(lang="en")}
+        _MODELS[src] = {
+            "tr": tr,
+            "kind": "bpe",
+            "bpe": bpe,
+            "mtok": MosesTokenizer(lang=src),
+            "detok": MosesDetokenizer(lang="en"),
+        }
     else:
         _MODELS[src] = None
     return _MODELS[src]
@@ -78,6 +86,12 @@ def translate(text: str, src_iso: str) -> str:
         return text
     m = _load(code)
     if m is None:
+        logger.warning(
+            "argos model for %s->en not installed - translate-then-recall skipped "
+            "for this claim; run `argospm install translate-%s_en` to enable",
+            code,
+            code,
+        )
         return text
     tr = m["tr"]
     out = []

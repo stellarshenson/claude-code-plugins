@@ -31,7 +31,9 @@ def deterministic_engine(monkeypatch):
     from stellars_claude_code_plugins.document_processing import calibration as _C
     from stellars_claude_code_plugins.document_processing import grounding as _G
 
-    monkeypatch.setattr(_C, "load_calibration_from_config", lambda path=None: {"engine": "deterministic"})
+    monkeypatch.setattr(
+        _C, "load_calibration_from_config", lambda path=None: {"engine": "deterministic"}
+    )
     _G._LEXICAL_VERDICT_CACHE.clear()
     yield
     _G._LEXICAL_VERDICT_CACHE.clear()
@@ -138,6 +140,7 @@ class TestBothSignalsReported:
         assert m.exact_score == 0.0
         assert m.fuzzy_score > 0
         # BM25 may or may not fire on such a short source, but score is set
+
 
 class TestBM25Matching:
     """BM25 layer — topical/lexical grounding across passages."""
@@ -293,6 +296,7 @@ class TestEdgeCases:
         m = ground("anything", [""])
         assert m.exact_score == 0.0
         assert m.fuzzy_score == 0.0
+
 
 class TestBatch:
     def test_ground_batch_preserves_order(self):
@@ -533,6 +537,7 @@ class TestChunking:
         chunks = recursive_chunk(text, max_chars=100)
         starts = [c.char_start for c in chunks]
         assert starts == sorted(starts)
+
 
 class TestSettings:
     """Settings load/save/prompt — zero-dep."""
@@ -1547,11 +1552,12 @@ class TestBm25IdfRecall:
 
 
 class TestGroundingEndToEnd:
-    """Honest end-to-end test of the deterministic grounding (no model): on a
-    realistic monolingual set - grounded claims, off-topic fabrications, and
-    numeric contradictions - it meets the precision/recall targets. The
+    """Honest end-to-end precision/recall regression pin on the DEFAULT engine
+    (the lexical manifold - no deterministic_engine fixture, no model download):
+    on a realistic monolingual set - grounded claims, off-topic fabrications,
+    and numeric contradictions - it meets the precision/recall targets. The
     cross-lingual on-topic case is the documented embedding ceiling, out of
-    scope for the deterministic engine."""
+    scope without the HIGH-tier MT bridge."""
 
     SRC = [
         (

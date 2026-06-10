@@ -89,3 +89,7 @@ Run on the same gold, same anti-overfit protocol, MT bridge on unless noted.
 ## Takeaway
 
 The private RAG cross-lingual grounding problem is, deterministically, a **translation problem followed by a recall-scoring problem** - not a problem the curated lexicon / cognate / anchor bridges solve on their own. A frozen offline translator plus best-chunk IDF recall is cheap (~120 ms/claim, no GPU, no training) and clears the balanced-accuracy bar; the elaborate deterministic bridge stack does not add value once MT is present.
+
+## Round 7 - batch-adaptive thresholds (max-gap / Jenks)
+
+The pre-fork cascade's `adaptive_gap` idea (cut the batch's score distribution at its largest gap) was re-tested on the shipped manifold's probabilities with batch = sub-dataset kind. It fails there: corpus-scale probability distributions are unimodal, the largest gap is noise, and the unguarded cut destroys private_rag (0.829 → 0.419) and vitaminc (0.695 → 0.346). Jenks natural breaks (jenkspy) is more stable but never beats the fixed threshold. With a gap-significance floor the mechanism reduces to "fixed everywhere except genuinely bimodal small batches" - it fires only on the 42-claim articles fixture (+0.019 mean), the pre-registered overfit falsifier, so corpus-level adoption is rejected. The one genuine finding: on mixed-label natural groups (per article, per trace, n >= 4) per-group cuts beat the fixed threshold by ~0.03 macro-F1 - the cascade's mechanism lived on small per-request batches, never corpora. Full tables in BENCHMARK.md Round 7 and the notebook.

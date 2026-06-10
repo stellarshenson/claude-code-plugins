@@ -38,4 +38,4 @@ The newer lexical-tier benchmarks (manifold training, joint private RAG + Vitami
 
 - **General cascade** (this archive) - composite score 69.3 → 0.0; Liu 14/14 claims correct; 3-fold CV mean accuracy 1.0 with zero overfit gap across three held-out papers
 - **Lexical tier** (current, `docs/experiments/lexical-grounding-sota.md`) - one joint logistic, macro-F1 0.817 on private RAG (2752 gold) / 0.691 on VitaminC (hold-not-collapse: VitaminC up from 0.555 at -0.015 private RAG cost); triage flag routes 26% of VitaminC at 90% REFUTES precision; ~165 ms/claim single-thread CPU, torch-free
-- **Lexical tier on these fixtures** (zero-shot, effort high, `grounding-results/lexical-benchmark.md`) - mean accuracy 0.881 (liu 0.786 / han 1.000 / ye 0.857); misses concentrate on distant paraphrases, the semantic residual; run via `scripts/bench_lexical.py`
+- **Lexical tier on these fixtures** (zero-shot, effort high, `grounding-results/lexical-benchmark.md`) - mean macro-F1 0.808 (liu 0.714 / han 1.000 / ye 0.708; accuracy 0.881); misses concentrate on distant paraphrases, the semantic residual; run via `scripts/bench_lexical.py`

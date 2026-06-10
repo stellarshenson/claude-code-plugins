@@ -120,7 +120,7 @@
       "name": "document-processing",
       "source": "./document-processing",
       "version": "1.5.2",
-      "description": "Structured document processing with source grounding (lexical + semantic + NLI entailment), Bayesian calibration, uniformization, PDF manipulation, and validation",
+      "description": "Structured document processing with source grounding (lexical-mode default: CPU-only frozen logistic with 3 effort tiers; optional semantic + NLI entailment), uniformization, PDF manipulation, and validation",
       "keywords": [
         "document",
         "processing",

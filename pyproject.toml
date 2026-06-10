@@ -22,6 +22,7 @@ dependencies = [
     "beziers",
     "ctranslate2>=4.0",             # lexical high tier: MT inference engine
     "fonttools",
+    "huggingface_hub>=0.23",        # lexical high tier: SaT OpenVINO IR download (sat/ov_backend.py)
     "lingua-language-detector>=2.0",  # lexical medium tier: per-claim language detection
     "nltk>=3.8",                    # lexical medium tier: WordNet antonym-flip (corpus fetched lazily)
     "numpy",
@@ -56,6 +57,8 @@ dependencies = [
 dev = [
     "build",
     "ipython",
+    "jenkspy",                     # max-gap / natural-breaks batch threshold experiment
+    "jupyter",
     "pip",
     "pytest",
     "pytest-cov",

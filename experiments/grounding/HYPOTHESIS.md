@@ -75,3 +75,29 @@ Strong prior for A: recall 0.837 means the evidence already contains the words; 
 ## Note
 
 The private RAG gold + transcripts stay in the git-ignored `private-rag-forensics/` stash; this hypothesis carries no client data and is safe to commit. Numbers above are reproduced directly from the verified gold via the P0 probe.
+
+---
+
+# Hypothesis - batch-adaptive operating point (max-gap / Jenks)
+
+Claim: the pre-fork cascade's `adaptive_gap` cut (sort batch scores, threshold at the largest gap), applied unsupervised to the manifold's `p_high` per sub-dataset batch, recovers distant-paraphrase false-rejects without touching features or weights. Motivation: that mechanism scored 0.93 macro-F1 on the article fixtures where the manifold scores 0.81.
+
+- **Batch unit** - sub-dataset kind: private_rag 2,752 / vitaminc 800 / articles 42; one empirical threshold per corpus
+- **Variants** - max-gap midpoint, max-gap bottom-half (cascade's variant), Jenks 2-class (`jenkspy`)
+- **Guards** - batch >= 4 else fixed; gap-significance floor, swept not hand-set
+- **Baseline** - shipped fixed threshold 0.4; label-tuned per-corpus threshold as supervised reference
+- **Predicted** - cut lands near the label-tuned threshold on bimodal corpora; articles rises toward 0.93; private_rag holds ~0.817
+- **Falsifiers** - unimodal corpus distribution → largest gap is noise, cut worse than fixed; bottom-half prior fails to transfer; wins-on-articles-only = benchmark overfit, reject
+- **Non-goals** - no feature/weight changes, no production adoption this round
+- **Experiment** - `notebooks/03-kj-maxgap-batch-experiment.ipynb` over `data/processed/grounding_combined.parquet` (gitignored; `build_combined.py`)
+
+## Outcome (Round 7) - REJECTED at corpus granularity
+
+Unimodal falsifier fired; full tables in `BENCHMARK.md` Round 7 and the notebook.
+
+- **No gap structure at corpus scale** - largest gap 0.001-0.013 = noise; cuts land at 0.047 / 0.954, flipping 350-770 verdicts
+- **Unguarded max-gap destroys two corpora** - private_rag 0.829 → 0.419, vitaminc 0.695 → 0.346
+- **Jenks stable but never beats fixed** - mean 0.751 vs fixed 0.774
+- **Gap floor (any 0.02-0.15) reduces mechanism to fixed** - fires only on the bimodal 42-claim articles batch, +0.019 mean = the pre-registered overfit falsifier
+- **Surviving signal** - per-natural-group cuts on 63 mixed-label groups (n >= 4) beat fixed: articles 0.843 vs 0.808, traces 0.642 vs 0.609; the cascade's mechanism lived on small per-request batches, never corpora
+- **Follow-up hypothesis** - per-trace cuts with an unsupervised guard, scored on ALL traces incl. single-class; rejected unless it holds there

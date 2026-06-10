@@ -64,7 +64,9 @@ class XLMRobertaTokenizerFast:
 
     @classmethod
     @cache
-    def from_pretrained(cls, pretrained_model_name_or_path: str | Path) -> "XLMRobertaTokenizerFast":
+    def from_pretrained(
+        cls, pretrained_model_name_or_path: str | Path
+    ) -> "XLMRobertaTokenizerFast":
         if (
             isinstance(pretrained_model_name_or_path, str)
             and not Path(pretrained_model_name_or_path).exists()

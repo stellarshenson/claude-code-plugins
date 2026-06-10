@@ -130,3 +130,4 @@ experiments/grounding/cache/
 
 # OpenVINO IR model artifacts (large binaries; hosted on HF, never committed)
 models/
+data/

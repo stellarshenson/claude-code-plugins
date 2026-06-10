@@ -945,9 +945,7 @@ def ground(
     # Lexical mode (mode=lexical + shipped manifolds): a per-tier frozen-weight
     # logistic owns the verdict. Tried only when no explicit calibrated_verdict was
     # passed; mutually exclusive with the calibrated head (distinct internal engine).
-    lexical_resolved = (
-        _config_lexical_verdict(cfg) if calibrated_verdict is None else None
-    )
+    lexical_resolved = _config_lexical_verdict(cfg) if calibrated_verdict is None else None
     if lexical_resolved is not None:
         from stellars_claude_code_plugins.document_processing import lexical as _lx
 

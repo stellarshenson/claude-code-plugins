@@ -214,6 +214,7 @@ class TestConfigTransferRoundtrip:
 
         # 3. ground() from this CWD auto-detects the calibrated engine from config
         G._VERDICT_CACHE.clear()
+        G._LEXICAL_VERDICT_CACHE.clear()  # isolation: drop any manifold a prior test loaded
         m = G.ground(
             "the estate has three walled gardens",
             [("s.txt", "The estate has three walled gardens.")],
@@ -359,7 +360,11 @@ class TestVitaminCComposite:
         except Exception as exc:  # noqa: BLE001 - skip on no network / missing weights
             pytest.skip(f"VitaminC / NLI model unavailable: {exc}")
 
-        gold = {"SUPPORTS": "grounded", "REFUTES": "contradicted", "NOT ENOUGH INFO": "unconfirmed"}
+        gold = {
+            "SUPPORTS": "grounded",
+            "REFUTES": "contradicted",
+            "NOT ENOUGH INFO": "unconfirmed",
+        }
         rows = [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
         by_label: dict[str, list] = {k: [] for k in gold}
         for r in rows:
@@ -382,7 +387,11 @@ class TestVitaminCComposite:
         def bucket(match_type: str) -> str:
             if match_type == "contradicted":
                 return "contradicted"
-            return "grounded" if match_type in ("exact", "fuzzy", "bm25", "semantic") else "unconfirmed"
+            return (
+                "grounded"
+                if match_type in ("exact", "fuzzy", "bm25", "semantic")
+                else "unconfirmed"
+            )
 
         conf: collections.Counter = collections.Counter()
         for r in sample:

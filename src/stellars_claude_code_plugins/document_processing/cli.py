@@ -1336,9 +1336,7 @@ def cmd_train_lexical(args: argparse.Namespace) -> int:
     # Write following the cmd_config set-calibrator pattern: load the full config
     # dict, merge the manifold into the calibration block, dump.
     out = (
-        Path(args.out)
-        if args.out
-        else (PROJECT_OVERRIDE_DIR / "config_document_processing.yaml")
+        Path(args.out) if args.out else (PROJECT_OVERRIDE_DIR / "config_document_processing.yaml")
     )
     d = asdict(load_document_processing_config())
     cal = C.load_calibration_from_config(args.out) or d.get("calibration") or {}

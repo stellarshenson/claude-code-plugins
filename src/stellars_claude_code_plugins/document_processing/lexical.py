@@ -48,18 +48,40 @@ EFFORT_TIERS = ("low", "medium", "high")
 # Per-tier ordered feature lists. The ORDER is the documented coefficient/audit
 # contract; the config feature_order must match the tier's list exactly.
 LOW_FEATURES = [
-    "r1_direct", "charng", "fuzzy", "anchor", "anchor_mm",
-    "oracle", "top3", "specificity",
-    "conflict_n", "conflict_flag", "num_edit_mag",
-    "unmatched_rarity", "max_unmatched",
+    "r1_direct",
+    "charng",
+    "fuzzy",
+    "anchor",
+    "anchor_mm",
+    "oracle",
+    "top3",
+    "specificity",
+    "conflict_n",
+    "conflict_flag",
+    "num_edit_mag",
+    "unmatched_rarity",
+    "max_unmatched",
 ]  # 13 - core install only
 MEDIUM_FEATURES = LOW_FEATURES + ["is_en", "same_lang", "wn_antonym_flip"]  # 16 - + lingua + nltk
 HIGH_FEATURES = [  # 18 - the e2e FEATS order, + MT recall + distinctive-content
-    "r1_direct", "r1_mt", "r1_best", "charng", "fuzzy",
-    "anchor", "anchor_mm", "oracle", "top3",
-    "same_lang", "is_en", "specificity",
-    "conflict_n", "conflict_flag", "num_edit_mag", "wn_antonym_flip",
-    "unmatched_rarity", "max_unmatched",
+    "r1_direct",
+    "r1_mt",
+    "r1_best",
+    "charng",
+    "fuzzy",
+    "anchor",
+    "anchor_mm",
+    "oracle",
+    "top3",
+    "same_lang",
+    "is_en",
+    "specificity",
+    "conflict_n",
+    "conflict_flag",
+    "num_edit_mag",
+    "wn_antonym_flip",
+    "unmatched_rarity",
+    "max_unmatched",
 ]
 TIER_FEATURES = {"low": LOW_FEATURES, "medium": MEDIUM_FEATURES, "high": HIGH_FEATURES}
 
@@ -172,9 +194,11 @@ def _chunk_recalls(claim: str, chunks: list[str], analyzer, bg_lang: str | None 
     claim_set = set(cl)
 
     if bg_lang is None or BG_BLEND_LAMBDA <= 0.0:
+
         def w(t: str) -> float:
             return max(0.0, idf.get(t, max_idf))
     else:
+
         def w(t: str) -> float:
             return max(0.0, idf.get(t, max_idf), BG_BLEND_LAMBDA * _bg_idf(t, bg_lang))
 
@@ -208,7 +232,12 @@ def _num_variants(s: str) -> set[str]:
     base = s.strip(" .,  ")
     return {
         v
-        for v in {base, base.replace(",", "."), base.replace(".", ","), re.sub(r"[.,   ]", "", base)}
+        for v in {
+            base,
+            base.replace(",", "."),
+            base.replace(".", ","),
+            re.sub(r"[.,   ]", "", base),
+        }
         if v
     }
 
@@ -396,7 +425,7 @@ def extract_lexical_features(
 
     - low - monolingual word/char-ngram recall, fuzzy, anchors, specificity, value-conflict; core install only
     - medium - low + lingua language detection (is_en, same_lang) + WordNet antonym-flip
-    - high - medium + MT translate-then-recall (r1_mt, r1_best), the 16-feature stack
+    - high - medium + MT translate-then-recall (r1_mt, r1_best), the 18-feature stack
 
     Args:
         claim - claim text
@@ -578,16 +607,22 @@ def short_source_augment(rows: list[dict], per_class: int | None = None) -> list
         per_class = min(250, len(pos) // 3, len(neg) // 3)
     out: list[dict] = []
     for r in pos[:per_class] + neg[:per_class]:
-        sents = [s.strip() for s in _SENT_SPLIT_RE.split(str(r["source_text"])) if len(s.strip()) > 10]
+        sents = [
+            s.strip() for s in _SENT_SPLIT_RE.split(str(r["source_text"])) if len(s.strip()) > 10
+        ]
         if len(sents) < 2:
             continue
         ctoks = set(_an_word(str(r["claim"])))
         ov = lambda s: len(ctoks & set(_an_word(s)))  # noqa: E731
         sent = max(sents, key=ov) if int(r["label"]) == 1 else min(sents, key=ov)
-        out.append({
-            "claim": r["claim"], "source_text": sent,
-            "label": int(r["label"]), "lang": r.get("lang"),
-        })
+        out.append(
+            {
+                "claim": r["claim"],
+                "source_text": sent,
+                "label": int(r["label"]),
+                "lang": r.get("lang"),
+            }
+        )
     return out
 
 

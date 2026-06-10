@@ -10,22 +10,41 @@ Structured document processing plugin for Claude Code. Turns raw source material
 
 ## Grounding CLI
 
-Ships the `document-processing` CLI with a three-layer lexical grounder plus an optional fourth semantic layer.
+Ships the `document-processing` command with a lexical-mode grounder (default, CPU-only, torch-free): a frozen-weight logistic over 13-18 signals per effort tier (low / medium / high; high is the default). Semantic retrieval + NLI entailment are opt-in via `--semantic` and the `[semantic]` extra.
 
 - **Citations** - every hit returns line / column / paragraph / page / context snippet; the agent cites without rereading the source
 - **Token saving** - measured 64-86% reduction vs batched generative grounding on real sources (SVG Medium article, Liu 2023 paper)
+- **Performance** - ~165 ms/claim warm single-thread CPU (high tier); ~5.6s cold start (first run: loads SaT segmenter, first MT model, WordNet). Low/medium tiers faster (no MT)
 
-### Data-science calibrated
+### Effort tiers
 
-The grounding classifier was tuned via a six-iteration `autobuild` cycle with a composite benchmark score and 3-fold cross-validation.
+The `lexical_effort` config key (or `--effort` CLI overlay) selects the signal set:
 
-- **Corpus** - three held-out academic papers (Liu 2023, Ye 2024, Han 2024); 14 labelled claims each, 12 real + 2 fabricated
-- **Accuracy** - final CV mean 1.0 with zero overfit gap
-- **Tunables** - 29 fields exposed (per-layer weights, ramp endpoints, voter thresholds, entity-penalty factor, adaptive-gap classifier mode, percentile floor, etc.)
-- **Config** - lives in `stellars_claude_code_plugins/document_processing/config.yaml`, documented per field; override via `.stellars-plugins/config.yaml` project-local
-- **Re-tuning** - `scripts/calibrate.py` grid-search and `scripts/calibrate_cv.py` cross-validation harness shipped
+| Tier | Features | Cross-lingual | Notes |
+|------|----------|---------------|-------|
+| `low` | 13 | no | Fastest; English-only; no language detection |
+| `medium` | 16 | no | Adds lingua language detection + WordNet antonym contradiction |
+| `high` | 18 | yes | Adds argos-translate MT (CTranslate2 int8); default tier |
 
-Full optimisation record (program definition, benchmark formula, hypothesis + falsifiers, per-iteration artefacts, forensic report, CV results, corpus data) archived under [`references/grounding-results/`](../references/grounding-results/).
+All three tiers are CPU-only with no extra install required (argos, SaT OpenVINO INT8, and WordNet ship in core).
+
+Retrain a tier manifold on your own data:
+
+```bash
+document-processing train-lexical --effort {low,medium,high} --data PATH
+```
+
+`PATH` must be parquet or jsonl with `claim` / `source_text` / `label` columns, >= 200 rows, >= 40 per class.
+
+### Data-science validated
+
+The frozen-weight lexical manifold was validated on a held-out private RAG dataset (2752 gold labels) and VitaminC.
+
+- **Macro-F1** - 0.817 on private RAG (2752 gold, joint logistic); 0.691 on VitaminC (hold-not-collapse: +0.136 vs base, -0.015 private RAG cost)
+- **Zero-shot** - 0.808 on Liu 2023 / Han 2024 / Ye 2024 fixtures (same three academic papers as cascade archive)
+- **Config** - `calibration.mode: lexical` in `config_document_processing.yaml`; override via `.stellars-plugins/config_document_processing.yaml` project-local
+
+The six-iteration deterministic cascade archive (CV mean 1.0, three academic papers) exists under [`references/grounding-results/`](../references/grounding-results/) and is described in [`references/README.md`](../references/README.md). That engine is a back-compat fallback reachable via explicit `engine:` config override; it is not the current default.
 
 ### NLI / entailment grounding (the truth signal)
 
@@ -51,19 +70,22 @@ document-processing config set-calibrator --profile .stellars-plugins/calibrator
 - **set-calibrator** - writes a `calibration:` block (engine, threshold, weights) into `.stellars-plugins/config_document_processing.yaml`
 - **Incremental** - `--from <profile>` seeds the next fit from the posterior, feedback accumulates
 - **Prior** - lives in config (`calibration.prior`), not code
-- **Docs** - [`docs/grounding_calibration.md`](../docs/grounding_calibration.md); demo [`notebooks/calibration_demo.ipynb`](../notebooks/calibration_demo.ipynb)
+- **Docs** - [`docs/grounding_calibration.md`](../docs/grounding_calibration.md); demo [`notebooks/01-kj-calibration-demo.ipynb`](../notebooks/01-kj-calibration-demo.ipynb)
 
-| Layer | What it catches | Dep |
-|-------|-----------------|-----|
-| Exact (regex) | verbatim quotes | core |
-| Fuzzy (Levenshtein) | near-verbatim paraphrase | core |
-| BM25 (IDF recall) | distinctive claim tokens present | core |
-| Semantic (e5 + FAISS) | same meaning, different words | opt-in |
-| NLI (cross-encoder) | entailment / contradiction - true grounding, multilingual | opt-in |
+| Layer | What it catches | Dep | In lexical mode |
+|-------|-----------------|-----|-----------------|
+| Exact (regex) | verbatim quotes | core | feeds logistic[^1] |
+| Fuzzy (Levenshtein) | near-verbatim paraphrase | core | feeds logistic[^1] |
+| BM25 (IDF recall) | distinctive claim tokens present | core | feeds logistic[^1] |
+| Semantic (e5 + FAISS) | same meaning, different words | opt-in | opt-in unchanged |
+| NLI (cross-encoder) | entailment / contradiction - true grounding, multilingual | opt-in | opt-in unchanged |
+
+[^1]: In lexical mode (default), the Exact/Fuzzy/BM25 features plus 10-15 additional signals feed a frozen-weight logistic (LexicalVerdict). Individual threshold flags (`--threshold`, `--bm25-threshold`) apply to the cascade fallback path only.
 
 - **Opt-in deps** - `[semantic]` extra: `onnxruntime`, `transformers`, `faiss-cpu`, `pyarrow`; calibration core deps `pymc`/`bambi`/`arviz`/`pandas`
+- **Core package** - uses OpenVINO INT8 (SaT segmenter, high tier); `onnxruntime` is a `[semantic]` extra dependency only, not in core
 - **Torch-free** - models are ONNX, downloaded on first use (e5 ~120 MB, NLI ~560 MB)
-- **Default** - bare install = lexical only; the `grounding` skill recommends enabling semantic/NLI at `document-processing setup`
+- **Default** - bare install = lexical high-tier; the `grounding` skill recommends enabling semantic/NLI at `document-processing setup`
 
 ### Install (core)
 
@@ -176,7 +198,7 @@ The plugin operates over a fixed project layout with grounding as the single ver
 - **Layout** - `1-input/` read-only source material, `2-wip/<task-name>/` per-task drafts and reports, `3-output/` final delivered documents, `4-references/` examples and verified facts used as grounding anchors
 - **WIP discipline** - every intermediate artifact stays in WIP until all rules pass; full convention in `skills/process/references/FOLDER-STRUCTURE.md`
 
-Grounding is the single verification flow. The `grounding` skill runs the deterministic three-layer CLI (regex exact + Levenshtein fuzzy + BM25, plus optional semantic), reads the per-claim verdicts, applies three core rules (agreement beats magnitude; a numeric/entity contradiction is the final word; re-recommend semantic on struggle), handles the scanned-PDF OCR fallback chain, and writes a grounding report plus an intra-document self-consistency report. The `validate` skill wraps it and layers compliance on top; the `process` skill calls it from its verify phase; the `update` skill calls it as a mandatory closing step. The claim-classification methodology for the synthesis workflow (DIRECT QUOTE / PARAPHRASE / INFERENCE / INTERPRETATION / UNSUPPORTED, with HIGH/MEDIUM/LOW severity) is in `skills/process/references/GROUNDING.md`.
+Grounding is the single verification flow. The `grounding` skill runs the lexical-mode CLI (frozen-weight logistic over 13-18 signals per effort tier; semantic + NLI opt-in via `--semantic`), reads the per-claim verdicts, applies three core rules (agreement beats magnitude; a numeric/entity contradiction is the final word; re-recommend semantic on struggle), handles the scanned-PDF OCR fallback chain, and writes a grounding report plus an intra-document self-consistency report. The `validate` skill wraps it and layers compliance on top; the `process` skill calls it from its verify phase; the `update` skill calls it as a mandatory closing step. The claim-classification methodology for the synthesis workflow (DIRECT QUOTE / PARAPHRASE / INFERENCE / INTERPRETATION / UNSUPPORTED, with HIGH/MEDIUM/LOW severity) is in `skills/process/references/GROUNDING.md`.
 
 Uniformization applies task-specific measurable rules (R1, R2, R3...) derived from stated quality criteria and project-level standards, executed in priority order until every rule passes. See `skills/process/references/UNIFORMIZATION.md` for rule categories, and `examples/` for real, in-use rule-sets (a full `INSTRUCTIONS.md` plus a worked uniformization checklist) to load when helping a user author their own.
 

@@ -107,6 +107,8 @@ Principle: real paraphrases light up multiple layers weakly. Fabrications light 
 
 **Calibration is empirical.** Weights, voter thresholds, and bonus magnitudes are tuned against a labelled benchmark (real paraphrases, fabrications, partial-supports, off-topic distractors) via optimization on precision / recall. Hypothesis is the design input; constants are the data-science output. Re-tuning means re-running the benchmark, not editing code.
 
+The production default is lexical mode: a trained logistic over 13-18 signals replaces the hand-tuned consensus scorer described here. Semantic+FAISS (Layer 4 above) is opt-in via `--semantic`.
+
 ![Grounding architecture: claim + ./research/ feeds 4 parallel layers (regex / fuzzy / BM25 / semantic+FAISS); scores converge into consensus scoring; verdict is CONFIRMED / VERIFY / NOT FOUND](images_grounding_concept/06_grounding_layers.svg)
 
 ## Performance
@@ -116,6 +118,8 @@ Lexical layers - regex, Levenshtein, BM25 - are pure CPU, no model inference, no
 Semantic layer is the only slow component when enabled. Model inference at ~50ms per passage on CPU (~5ms on GPU); FAISS queries ~10-50ms per claim. ~100 claims against a ~10K-passage corpus runs in seconds.
 
 Compared to LLM-based verification (one model call per claim-passage pair, ~1s minimum plus token cost): 2-3 orders of magnitude faster, with consensus scoring recovering most of the precision an LLM verifier adds.
+
+Note: latency figures above reflect the base lexical layers in isolation. The shipped high-tier lexical engine (default) runs ~165 ms/claim warm (MT bridge dominates at ~86 ms amortized for non-English claims; English-only low tier is faster). Cold start ~5.6s first run (SaT segmenter + first MT model + WordNet).
 
 ![Per-claim latency by technique on a log scale: lexical layers (regex / Levenshtein / BM25) are sub-millisecond to low-millisecond; FAISS is tens of milliseconds; per-pair LLM verification dominates at ~1s](images_grounding_concept/07_performance.svg)
 

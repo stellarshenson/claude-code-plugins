@@ -14,6 +14,10 @@ Three modes (skill picks from argument):
 - **One document — full grounding chain (extract → ground → consistency)** - `document-processing extract-claims --document <doc> --output validation/claims.json` -> review `claims.json` -> `document-processing ground --manifest validation/claims.json --source <src1> --source <src2> --output validation/grounding-report.md` -> `document-processing check-consistency --document <doc> --output validation/consistency-report.md`. All three steps run; run produces both `grounding-report.md` and `consistency-report.md`.
 - **Many documents** - `source_map.yaml` declaring `clients[].sources` + `document` (+ optional `primary_source`) -> `document-processing validate --manifest source_map.yaml --output-dir validation/`, runs same chain per client, producing `validation/<client>/{claims.json,grounding-report.md,consistency-report.md}`
 
+## Default engine
+
+Lexical mode is the default: a frozen-weight logistic over 13-18 signals selected by `lexical_effort` (low / medium / high, default high). All lexical tiers are CPU-only with no extra install required. Use `--effort` CLI overlay or set `lexical_effort` in config to switch tiers.
+
 ## Optional layers (opt-in)
 
 - **semantic** - `--semantic` adds e5 retrieval (ONNX, torch-free)

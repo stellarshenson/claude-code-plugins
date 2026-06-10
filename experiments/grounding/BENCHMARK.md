@@ -190,3 +190,18 @@ Tested wtpsplit SaT for claim extraction against the current regex clause-split,
 - All headline numbers out-of-fold (LOLO) or held-out (TEST); no learner fit to the 375; thresholds tuned to maximise macro-F1 on the fold only.
 - Accuracy vs macro-F1 mostly agree now that thresholds are F1-tuned; recall_split leads on both.
 - Client gold/transcripts git-ignored; this file carries aggregate numbers only.
+
+## Round 7 - batch-adaptive operating point (max-gap / Jenks), 2026-06-10
+
+Unsupervised per-batch threshold cuts on the shipped high-manifold `p_high`, batch = sub-dataset kind. Notebook: `notebooks/03-kj-maxgap-batch-experiment.ipynb`; data: `data/processed/grounding_combined.parquet` (gitignored). Macro-F1:
+
+| strategy | articles | private_rag | vitaminc | mean |
+|---|---|---|---|---|
+| fixed (shipped 0.4) | 0.797 | 0.829 | 0.695 | 0.774 |
+| tuned per-corpus (supervised ref) | 0.903 | 0.831 | 0.702 | 0.812 |
+| maxgap | 0.816 | 0.419 | 0.346 | 0.527 |
+| maxgap bottom-half | 0.816 | 0.419 | 0.676 | 0.637 |
+| jenks (jenkspy, k=2) | 0.762 | 0.794 | 0.697 | 0.751 |
+| maxgap + gap floor >= 0.02 | 0.816 | 0.829 | 0.695 | 0.780 |
+
+**Verdict: REJECTED at corpus granularity.** Large dense corpora are unimodal (largest gap 0.001-0.013 = noise; cuts land at 0.047/0.954, flipping 350-770 verdicts). A gap-significance floor degrades gracefully to fixed and only fires on the bimodal 42-claim articles batch (+0.019 mean) - the pre-registered benchmark-overfit falsifier. Surviving signal: per-NATURAL-group cuts on the 63 mixed-label groups (n>=4) beat fixed (articles 0.843 vs 0.808, traces 0.642 vs 0.609) - follow-up hypothesis is per-trace cuts with an unsupervised guard, scored on all traces including single-class.

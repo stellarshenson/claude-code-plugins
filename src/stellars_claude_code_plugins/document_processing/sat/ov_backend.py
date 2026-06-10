@@ -29,8 +29,14 @@ def resolve_ir() -> str:
         return str(local)
     from huggingface_hub import hf_hub_download
 
-    hf_hub_download(OV_HF_REPO, OV_IR_BIN)  # cache the weights next to the graph
-    return hf_hub_download(OV_HF_REPO, OV_IR_XML)
+    try:
+        hf_hub_download(OV_HF_REPO, OV_IR_BIN)  # cache the weights next to the graph
+        return hf_hub_download(OV_HF_REPO, OV_IR_XML)
+    except Exception as exc:
+        raise RuntimeError(
+            f"could not download SaT OpenVINO IR from Hugging Face ({OV_HF_REPO}): {exc}; "
+            f"set {OV_IR_ENV}=path/to/{OV_IR_XML} to bypass the HF download"
+        ) from exc
 
 
 def _compiled(ir_xml: str):
@@ -56,6 +62,9 @@ class OVSegModel:
 
     def __call__(self, input_ids, attention_mask):
         res = self._cm(
-            {"input_ids": input_ids.astype(np.int64), "attention_mask": attention_mask.astype(np.float32)}
+            {
+                "input_ids": input_ids.astype(np.int64),
+                "attention_mask": attention_mask.astype(np.float32),
+            }
         )
         return {"logits": list(res.values())[0]}
