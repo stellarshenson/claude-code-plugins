@@ -262,24 +262,69 @@ def _arrowhead_from_polygon(el) -> Arrowhead | None:
     return Arrowhead(elem_id=el.get("id", ""), points=pts, tip=tip, length=length)
 
 
+def _is_icon_context(el) -> bool:
+    """True when the element itself looks like icon content.
+
+    Matches "icon"/"lucide" anywhere plus the common ``ic`` / ``ic-*``
+    short tokens (e.g. ``class="ic-s"`` icon groups in production decks).
+    """
+    ident = f"{el.get('id', '')} {el.get('class', '')}".lower()
+    if "icon" in ident or "lucide" in ident or "glyph" in ident:
+        return True
+    return any(tok == "ic" or tok.startswith("ic-") for tok in ident.split())
+
+
+def _has_transform(el) -> bool:
+    """True when the element carries ANY transform.
+
+    The connector tool emits trimmed paths in world coordinates pasted
+    directly into the connectors layer - a routed connector is never
+    wrapped in a transformed group. Paths under translate()/scale()/
+    matrix() ancestors are icon or decoration artwork in local
+    coordinates and must not classify as connectors.
+    """
+    return bool((el.get("transform", "") or "").strip())
+
+
 def parse_svg(
     filepath: str,
 ) -> tuple[list[CardRect], list[Connector], list[TextLabel], list[Arrowhead]]:
-    """Parse SVG and extract cards, connectors, text labels, arrowheads."""
+    """Parse SVG and extract cards, connectors, text labels, arrowheads.
+
+    Connector classification is filtered: elements inside icon groups or under
+    scale()/matrix() transforms are icon artwork in glyph units, not routed
+    connectors; filled or closed paths are shapes. Without these filters every
+    Lucide icon stroke scores as a connector (the false-positive class that
+    trained agents to ack real findings).
+    """
     tree = ET.parse(filepath)
     root = tree.getroot()
     cards: list[CardRect] = []
     connectors: list[Connector] = []
     labels: list[TextLabel] = []
     arrowheads: list[Arrowhead] = []
-    for el in root.iter():
+
+    # (element, in_icon_group, under_scaling_transform) depth-first walk so
+    # ancestor context is known when classifying.
+    stack = [(root, _is_icon_context(root), _has_transform(root))]
+    while stack:
+        el, in_icon, scaled = stack.pop()
+        for child in reversed(list(el)):
+            stack.append(
+                (
+                    child,
+                    in_icon or _is_icon_context(child),
+                    scaled or _has_transform(child),
+                )
+            )
         tag = _strip_ns(el.tag)
+        connector_candidate = not in_icon and not scaled
         if tag == "rect" and _is_card_element(el):
             x, y = _safe_float(el.get("x")), _safe_float(el.get("y"))
             w, h = _safe_float(el.get("width")), _safe_float(el.get("height"))
             if w > 0 and h > 0:
                 cards.append(CardRect(el.get("id", ""), _rect_label(el), BBox(x, y, w, h)))
-        elif tag == "line":
+        elif tag == "line" and connector_candidate:
             connectors.append(
                 Connector(
                     el.get("id", ""),
@@ -290,12 +335,18 @@ def parse_svg(
                     ],
                 )
             )
-        elif tag == "polyline":
+        elif tag == "polyline" and connector_candidate:
             pts = _parse_points(el.get("points", ""))
             if len(pts) >= 2:
                 connectors.append(Connector(el.get("id", ""), "polyline", pts))
-        elif tag == "path":
-            d = el.get("d") or ""
+        elif tag == "path" and connector_candidate:
+            fill = (el.get("fill") or "").strip().lower()
+            d = (el.get("d") or "").strip()
+            closed = d.rstrip().endswith(("Z", "z"))
+            if fill not in ("", "none"):
+                continue  # filled path = shape, not a connector
+            if closed:
+                continue  # closed outline = shape, not a connector
             pts = _parse_path_d(d)
             if len(pts) >= 2:
                 connectors.append(Connector(el.get("id", ""), "path", pts))
@@ -477,6 +528,47 @@ def check_l_chamfer_exit_direction(
 
 # Stubby-arrow rule: head must be AT MOST 40% of total connector length.
 # Hardcoded because it's a visual-quality constant, not a tunable.
+def check_manifold_candidates(connectors: list[Connector], tol: float = 6.0) -> list[str]:
+    """Suggest a manifold when >= 2 independent connectors share an endpoint.
+
+    One source fanning out (or several merging into one sink) drawn as
+    separate straight lines reads as N unrelated strokes; the house pattern
+    is a single `connector --mode manifold` fork. SOFT suggestion only -
+    the agent judges whether the shared endpoint is semantic.
+    """
+    findings: list[str] = []
+    if len(connectors) < 2:
+        return findings
+
+    def _cluster(points: list[tuple[str, tuple[float, float]]], kind: str) -> None:
+        used: set[int] = set()
+        for i, (_id_a, pa) in enumerate(points):
+            if i in used:
+                continue
+            group = [i]
+            for j in range(i + 1, len(points)):
+                if j in used:
+                    continue
+                pb = points[j][1]
+                if abs(pa[0] - pb[0]) <= tol and abs(pa[1] - pb[1]) <= tol:
+                    group.append(j)
+            if len(group) >= 2:
+                used.update(group)
+                ids = ", ".join(points[k][0] or "(no id)" for k in group)
+                findings.append(
+                    f"  manifold-candidate: {len(group)} connectors share a "
+                    f"{kind} near ({pa[0]:.0f},{pa[1]:.0f}) [{ids}] - consider "
+                    f"`connector --mode manifold` (one fork, not "
+                    f"{len(group)} separate strokes)"
+                )
+
+    starts = [(c.elem_id, c.points[0]) for c in connectors if len(c.points) >= 2]
+    ends = [(c.elem_id, c.points[-1]) for c in connectors if len(c.points) >= 2]
+    _cluster(starts, "start point")
+    _cluster(ends, "end point")
+    return findings
+
+
 _MAX_HEAD_FRACTION = 0.40
 
 

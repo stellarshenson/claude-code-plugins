@@ -50,3 +50,16 @@ Connectors linking ticks to cards must:
 - stroke-width 0.8-1.2, opacity 0.4-0.6 (subdued; the axis is the primary visual)
 
 Timeline connectors are EXCLUDED from the main connector count - they are structural, not semantic edges. Use `<g id="timeline-links">` to keep them separate from the main `<g id="connectors">`.
+
+## Signal timing hexagon style (moved from standards.md)
+
+Alternative timeline rendering as vertically symmetric hexagons (digital signal-timing diagram look). Centre line y=42, top y=34, bottom y=50, slope 3px:
+
+```xml
+<path d="M64,42 L67,34 H157 L160,42 L157,50 H67 Z" class="wave-work"/>
+```
+
+- Phase boundaries: vertical lines in brand colour
+- Module labels above hexagons
+- Cards below at uniform width (same card-equivalence rule as above)
+- Segment widths proportional to time

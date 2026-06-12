@@ -1,4 +1,4 @@
-**Shape boolean / margin operations** - rules for the `boolean` calculator.
+**Shapes rule card** - shape primitives, bar/shape consistency, data-driven curves, and the `boolean` calculator. Served when preflight declares `--shapes N`; the boolean sections also apply to any `boolean` op regardless of declaration.
 
 ## When to use
 
@@ -61,5 +61,62 @@ Acks reuse the standard pattern: `--ack-warning TOKEN='terse reason'` per warnin
 ## Cross-references
 
 - Warning ack mechanism: `SKILL.md` Warning ack gate section (top of file)
-- Z-order placement of result: `references/standards.md` five-layer rule (boolean output usually slots into `nodes` layer where the source shape lived)
+- Z-order placement of result: `references/standards-core.md` five-layer rule (boolean output usually slots into `nodes` layer where the source shape lived)
 - After running boolean: re-run `validate` + `overlaps` + `contrast` to confirm the new path doesn't break neighbouring elements' rhythm
+
+## Shape primitives (moved from standards.md)
+
+### Built-in shapes (18 types)
+
+`svg-infographics primitives <shape>` returns exact anchors + paste-ready SVG.
+
+- Basic: `rect`, `square`, `circle`, `ellipse`, `diamond`, `hexagon`, `star`, `arc`
+- 3D wireframe: `cube`, `cuboid`, `cylinder`, `sphere`, `plane`, `axis`
+- Symbolic: `gear`, `pyramid`, `cloud`, `document`
+- Curves: `spline` (PCHIP through waypoints)
+
+Each returns `{"svg": "...", "anchors": {"centre": [x,y], "top": [x,y], ...}, "bbox": [x,y,w,h]}`. Use anchors for connector attachment, labels, alignment.
+
+### draw.io shape catalogue (1000+ stencils, on demand)
+
+For shapes beyond the 18 built-ins (AWS icons, network, UML, BPMN, electrical): `shapes index --source <url>` (first use, cached, ~500KB for full draw.io set), `shapes search`, `shapes render`, `shapes catalogue` - command details in `references/tools.md`. Scaled via `transform`, returns the same `{"svg", "anchors", "bbox"}` contract.
+
+**Shape selection rule**: check built-in primitives FIRST (faster, theme-matched, anchor-rich). Use draw.io only when no built-in matches. draw.io shapes get bbox-derived anchors only - no named semantic anchors.
+
+## Bars and shapes consistency (moved from standards.md)
+
+| Primitive | Standard rx |
+|-----------|------------|
+| Data/progress bars | `rx="2"` |
+| Legend chips | `rx="2"` |
+| Grid squares | `rx="3"` |
+| Container boxes | `rx="8"` |
+| Cards (path-based) | Q curves - see `rules/card.md` |
+
+## Data-driven curves (moved from standards.md)
+
+**MANDATORY**: For ANY curve through known waypoints - decision boundaries, distributions, trends, scores, ROC/PR, isolines, sigmoid/logistic - generate with `primitives spline`. Never hand-write `C` or `Q` bezier commands for data curves. Hand-rolled beziers guess control points, overshoot waypoints, kink at joins.
+
+```bash
+svg-infographics primitives spline \
+  --points "80,200 150,80 300,120 450,60 600,140" \
+  --samples 200
+```
+
+Tool runs PCHIP: monotonicity-preserving, continuous tangents at every waypoint. Emits paste-ready `<path d="...">` + resampled points.
+
+Required:
+- **Waypoints**: 4-8 points, X strictly increasing. Visual landmarks, not control points
+- **Samples**: 200-250 for smooth (fewer for jagged debug)
+- **Render**: `stroke-linejoin="round"`, `stroke-width="2"` to `2.5`, fill segments at `fill-opacity="0.18-0.25"` if shading
+
+Hand-written `<path d="M... C... C..."/>` for data curves = workflow violation.
+
+## Group conventions (MANDATORY for check)
+
+Free-standing declared shapes (counted by `--shapes N`) MUST live in a `<g>` matching one of:
+
+- `id="shape-<slug>"` (preferred)
+- `class` containing `"shape"`
+
+`check` counts shapes by scanning for these; no convention = not counted = failed declaration. Shapes that are internal parts of another component (a card body, a connector arrowhead) belong to that component's group and are NOT declared as shapes.

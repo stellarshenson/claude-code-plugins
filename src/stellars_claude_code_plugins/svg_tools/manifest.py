@@ -67,7 +67,20 @@ KNOWN_COMPONENT_TYPES = {
     "callout",
     "ribbon",
     "header",
+    "shape",
 }
+
+# Rule card filenames that deviate from the `<type>.md` default.
+# "shape" pulls rules/shapes.md (primitives, rx consistency,
+# data-driven curves, boolean ops) - the file predates the flag
+# and is referenced as shapes.md from SKILL.md.
+_RULE_CARD_ALIASES = {"shape": "shapes"}
+
+
+def _rule_card_name(ctype: str) -> str:
+    """Markdown filename (without dir) for a component type's rule card."""
+    return f"{_RULE_CARD_ALIASES.get(ctype, ctype)}.md"
+
 
 KNOWN_CONNECTOR_MODES = {
     "straight",
@@ -249,7 +262,7 @@ def pull_rules(
     parts.append("\n## Component rule cards\n")
     missing: list[str] = []
     for ctype in declared:
-        rule_path = rdir / f"{ctype}.md"
+        rule_path = rdir / _rule_card_name(ctype)
         if not rule_path.is_file():
             missing.append(ctype)
             continue
@@ -295,6 +308,14 @@ def _contextual_warnings(decl: Declaration) -> list[str]:
             "Manifold connector declared: spine should pass through a "
             "deliberate gap in intermediate layouts (avoid card overlap). "
             "Also declare direction explicitly; see rules/connector.md."
+        )
+    if decl.counts.get("connector", 0) >= 2 and decl.connector_mode != "manifold":
+        out.append(
+            "2+ connectors declared: if they share a source or sink "
+            "(fan-out / fan-in), draw ONE `connector --mode manifold` fork, "
+            "not N separate strokes. For bipartite maps consider "
+            "`--mode spline` (organic PCHIP) over straight diagonals - "
+            "decide NOW, not in a fix round."
         )
     if decl.counts.get("ribbon", 0) > 0:
         out.append(
@@ -379,6 +400,15 @@ _TOOL_RECOMMENDATIONS: dict[str, list[str]] = {
         "roughly 30% of the time.",
         "`svg-infographics empty-space --svg <file>` to see candidate zones "
         "the solver will pick from.",
+    ],
+    "shape": [
+        "`svg-infographics primitives <shape>` (18 built-ins, anchors "
+        "returned) FIRST; `svg-infographics shapes search` / `shapes render` "
+        "for draw.io stencils only when no built-in matches.",
+        "`svg-infographics primitives spline --points ...` for ANY "
+        "data-driven curve - never hand-write C/Q bezier commands.",
+        "`svg-infographics boolean --op <union|cutout|outline|buffer>` for "
+        "merging shapes, holes, rings - never hand-edit d= strings.",
     ],
     "header": [
         "`svg-infographics primitives rect` for the header band backplate "
@@ -503,6 +533,8 @@ def _count_components_in_svg(root: ET.Element) -> dict[str, int]:
             counts["callout"] += 1
         if gid == "header" or gid.startswith("header-") or "header" in gclass:
             counts["header"] += 1
+        if gid.startswith("shape-") or "shape" in gclass:
+            counts["shape"] += 1
         # Ribbon groups: each `<path>` inside counts as one ribbon flow
         # (each ribbon is one filled-shape strand).
         if gid.endswith("-ribbons") or gid == "ribbons":
@@ -568,7 +600,8 @@ def check(decl: Declaration, svg_path: Path) -> CheckReport:
                     category="component_count",
                     message=(
                         f"declared {declared} {ctype}(s), found {found} in the "
-                        f"SVG (check <g> id / class conventions in rules/{ctype}.md)"
+                        f"SVG (check <g> id / class conventions in "
+                        f"rules/{_rule_card_name(ctype)})"
                     ),
                 )
             )
@@ -692,6 +725,14 @@ def _add_declaration_flags(p: argparse.ArgumentParser) -> None:
         type=int,
         default=0,
         help="Number of ribbon flows (Sankey-style). Same direction rules as manifold connectors.",
+    )
+    p.add_argument(
+        "--shapes",
+        type=int,
+        default=0,
+        help="Number of free-standing declared shapes (primitives / draw.io "
+        "stencils outside other components). Pulls shapes.md: primitives, "
+        "rx consistency, data-driven curves, boolean ops.",
     )
 
     # Connector mode + direction. Both mandatory when connectors or ribbons

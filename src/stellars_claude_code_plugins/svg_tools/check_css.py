@@ -37,6 +37,31 @@ class CSSViolation:
 # ---------------------------------------------------------------------------
 
 
+def _media_blocks(style_text: str) -> list[tuple[str, str, int, int]]:
+    """Extract @media blocks with balanced-brace scanning.
+
+    Returns a list of (header, body, start, end) where header is the @media
+    prelude (without the opening brace), body is everything between the
+    balanced outer braces, and [start, end) spans the whole block in
+    ``style_text``.
+    """
+    blocks: list[tuple[str, str, int, int]] = []
+    for m in re.finditer(r"@media\s*[^{]*\{", style_text):
+        depth = 1
+        i = m.end()
+        while i < len(style_text) and depth:
+            if style_text[i] == "{":
+                depth += 1
+            elif style_text[i] == "}":
+                depth -= 1
+            i += 1
+        if depth == 0:
+            header = style_text[m.start() : m.end() - 1]
+            body = style_text[m.end() : i - 1]
+            blocks.append((header, body, m.start(), i))
+    return blocks
+
+
 def parse_style_block(svg_text: str) -> tuple[dict[str, dict], dict[str, dict], set[str]]:
     """Parse CSS classes from <style> block.
 
@@ -51,8 +76,11 @@ def parse_style_block(svg_text: str) -> tuple[dict[str, dict], dict[str, dict], 
 
     style_text = style_match.group(1)
 
-    # Strip @media blocks for light mode parsing
-    light_text = re.sub(r"@media\s*\([^)]*\)\s*\{[^}]*(?:\{[^}]*\}[^}]*)*\}", "", style_text)
+    # Strip @media blocks for light mode parsing (balanced-brace scan; regex
+    # cannot match nested rule braces reliably).
+    light_text = style_text
+    for _header, _body, start, end in reversed(_media_blocks(style_text)):
+        light_text = light_text[:start] + light_text[end:]
 
     def _parse_rules(css: str) -> dict[str, dict]:
         classes = {}
@@ -66,12 +94,12 @@ def parse_style_block(svg_text: str) -> tuple[dict[str, dict], dict[str, dict], 
 
     light_classes = _parse_rules(light_text)
 
-    # Dark mode classes
+    # Dark mode classes (full balanced block body, ALL rules inside - the old
+    # non-greedy regex stopped at the first inner `}` and saw only one class).
     dark_classes = {}
-    for media_match in re.finditer(
-        r"@media\s*\(prefers-color-scheme:\s*dark\)\s*\{(.*?)\}", style_text, re.DOTALL
-    ):
-        dark_classes.update(_parse_rules(media_match.group(1)))
+    for header, body, _start, _end in _media_blocks(style_text):
+        if re.search(r"prefers-color-scheme:\s*dark", header):
+            dark_classes.update(_parse_rules(body))
 
     # Collect all hex colors
     all_colors = set(re.findall(r"#[0-9a-fA-F]{3,8}", style_text))

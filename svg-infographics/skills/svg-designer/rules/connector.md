@@ -120,3 +120,131 @@ Workflow:
 4. Audit trail prints each ack with its reason to stderr before SVG output.
 
 Fixing the geometry is ALWAYS preferred over acking. Only ack when the warning is a known trade-off tied to a specific constraint (e.g. card-column geometry fixed, desired visual pattern, adjacent element clearance). A stack of acks without specific reasoning is a signal the layout needs rework.
+
+## Connector tool reference (moved from standards.md)
+
+Every arrow, connector, routed line comes from `svg-infographics connector`. Output goes inside `<g id="connectors">`. The tool returns, in world coordinates:
+
+- `trimmed_path_d` - stem with arrowhead clearance. Paste as `<path d="...">`
+- Per-end arrowhead polygon. Paste as `<polygon points="...">`
+- `tangent` / `angle_deg` at each end
+- `samples` along path (for tangent labels, progress markers, midpoint callouts)
+
+No `rotate()` transforms. No `atan2`. No horizontal-first templating. Hand-authored `<g transform="rotate(...)">` arrow groups = workflow violation.
+
+Flags (all modes): `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (tool default 1px; see Geometry discipline above for the project sweet spot), `--color`, `--width`, `--opacity`. Spline: `--tangent-magnitude N` (default 0.5 x chord).
+
+### L-route edge-aware API (CANONICAL)
+
+`l` / `l-chamfer` between rects: pass BOTH rects AND cardinal directions. Tool snaps endpoints to edge midpoints, locks first-axis.
+
+```bash
+svg-infographics connector --mode l-chamfer \
+  --src-rect "70,90,60,40"  --start-dir E \
+  --tgt-rect "370,160,60,40" --end-dir S \
+  --chamfer 4 --standoff 4 --arrow end
+```
+
+**Cardinal direction semantics**:
+- `start_dir`: exit from src. `E`/`W` → horizontal, `N`/`S` → vertical
+- `end_dir`: travel INTO tgt. `S` = moving south → enters TOP edge. Inverse: `E`→left, `W`→right, `N`→bottom, `S`→top
+- Perpendicular pair (`start=E, end=S`) → 1-bend L, corner at `(tgt_mid_x, src_mid_y)`
+
+Missing direction = warning. Rects without directions fall back to centre-to-target ray snap. Always pass directions for L-routes.
+
+### Multi-elbow L via `controls`
+
+`--controls "[(x1,y1),(x2,y2),...]"` for explicit waypoints. Soft cap 5. Prefer auto-route over hand waypoints.
+
+### Auto-route (A*)
+
+`--auto-route --svg scene.svg` runs grid A* on SVG obstacle bitmap. Default cell=10px, margin=5px. Use when 1-bend L collides:
+
+```bash
+svg-infographics connector --mode l-chamfer \
+  --src-rect "70,90,60,40"  --start-dir E \
+  --tgt-rect "670,180,80,40" --end-dir W \
+  --auto-route --svg scene.svg \
+  --chamfer 4 --standoff 4 --arrow end
+```
+
+Flags: `--route-cell-size N` (smaller = higher fidelity + slower), `--route-margin N`, `--container-id ID`. Unroutable = fallback 1-bend L + warning. Inspect `warnings` field.
+
+### Straight-line collapse (`--straight-tolerance`)
+
+Default 20px. When src and tgt can slide along edges to a shared coordinate within tolerance, L degenerates to single straight segment. No corner, no chamfer, no twist. Slide bias: smaller geometry slides less, larger rect absorbs displacement. Disable with `--straight-tolerance 0`.
+
+### Stem preservation (`--stem-min`)
+
+Default 20px. Reserves clean cardinal stem behind each arrowhead. Three layers:
+
+- **A\* penalty zone**: turns near endpoints cost `STEM_TURN_PENALTY=100`. Zone radius `ceil(reserve / cell_size) + 1` cells
+- **Cell-centre snap**: first and last waypoints snap so non-cardinal axis matches real endpoints exactly
+- **Chamfer clamp**: first/last bevels clamped so arrowhead trim never walks into bevel
+
+Geometry-impossible = non-fatal warning with actual stem achieved. Set `--stem-min 0` for legacy.
+
+### Container-scoped routing
+
+`--container-id ID` on `empty-space`, `callouts`, `connector --auto-route` clips to interior of one closed shape. Must be rect/circle/ellipse/polygon/polyline/path - groups rejected. Container ID must name a shape whose interior contains BOTH endpoints. Outside obstacles ignored, inside obstacles respected.
+
+```bash
+svg-infographics connector --mode l --auto-route --svg scene.svg \
+  --container-id card-1 --src-rect ... --tgt-rect ... --start-dir E --end-dir W
+```
+
+### Spline waypoints
+
+`--waypoints "x1,y1 x2,y2 x3,y3 x4,y4"` for PCHIP. 3-5 waypoints enough. Showcase with markers: `<g id="cell-4-waypoints">` AFTER path in connectors layer. Tiny cross glyphs (two crossing `<line>` + `stroke-linecap: round`) in varied accent-2 shades.
+
+### Canonical manifold
+
+One merge = `spine_start`, one fork = `spine_end`. Start strands terminate at `spine_start`, tangent to spine. End strands leave `spine_end`, tangent to spine. Strands = cubic Beziers. Tangent magnitude = `tension`:
+
+- `tension=0` → long tangents → floppy bow, strands cross easily
+- `tension=1` → short tangents → stiff near-straight, max separation
+- `tension=0.75` default → clean S-curves with good separation
+- Scalar or `(start,end)` tuple for asymmetric stiffness
+
+Strands inherit spine direction. Override per endpoint via 3-tuple `(x,y,"E")` or `(x,y,45)`.
+
+### Manifold quality warnings
+
+Two non-fatal warning types. Always inspect `warnings`.
+
+**"strands CROSS each other"** - two strands in same fan intersect. Fix:
+1. Increase `tension` toward 1.0
+2. Move `spine_start`/`spine_end` further from endpoints
+3. Pass explicit `fork_points`/`merge_points`
+
+**"curves BACKWARD against spine flow"** - strand S-curve overshoots opposite spine direction before turning back. Fix:
+1. Increase `tension` (0.85-0.95)
+2. Reduce perpendicular spread of endpoints
+3. Move fork/merge point further along spine
+
+### Auto-edge mode (straight)
+
+Shapes to `calc_connector`, skip coordinates:
+
+- `src_rect=(x,y,w,h)` / `tgt_rect=(x,y,w,h)` - axis-aligned rects
+- `src_polygon=[(x,y),...]` / `tgt_polygon=[(x,y),...]` - closed polygon
+
+Straight mode: centroid → target ray → perimeter intersection. L / l-chamfer: use edge-aware API (rects + directions), NOT centroid-ray snap. Explicit coords override rects.
+
+### Edge midpoint rule
+
+Connector endpoints = shape EDGE MIDPOINTS. Never centres, never arbitrary corners. Tools:
+
+1. `geom attach --shape rect --side right|left|top|bottom --pos mid` - edge midpoint
+2. `connector ... --src-rect ... --tgt-rect ...` - auto-edge
+3. `geom curve-midpoint --points "[(x,y),...]"` - arc-length midpoint of polyline. Labels ON a connector
+4. `geom shape-midpoint --points "[(x,y),...]"` - area-weighted centroid. Direction inference only, never endpoint
+
+### Angular arrow design (chamfered L-routing)
+
+Chamfer at 90-degree bends with 4px diagonal:
+
+```
+Instead of: M{x1},{y1} V{y_mid} H{x2}
+Use:        M{x1},{y1} V{y_mid-4} L{x1+4},{y_mid} H{x2-4} L{x2},{y_mid+4}
+```

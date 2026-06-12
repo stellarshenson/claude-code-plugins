@@ -83,6 +83,51 @@ def _fits(region_bbox: tuple[float, float, float, float], icon_w: float, icon_h:
     return rw >= icon_w and rh >= icon_h
 
 
+def _ref_bbox_by_id(svg_path: Path, elem_id: str) -> tuple[float, float, float, float]:
+    """Bbox of the reference element (transforms applied, static extractor)."""
+    from stellars_claude_code_plugins.svg_tools.render_inspect import extract_static_bboxes
+
+    data = extract_static_bboxes(svg_path)
+    for el in data["elements"]:
+        if el.get("id") == elem_id:
+            return tuple(el["bbox"])  # type: ignore[return-value]
+    raise ValueError(f"--ref-id element {elem_id!r} not found in {svg_path}")
+
+
+def _clip_region_around_ref(
+    region_bbox: tuple[float, float, float, float],
+    ref_bbox: tuple[float, float, float, float],
+    pad: float,
+    width: float,
+    height: float,
+) -> tuple[float, float, float, float]:
+    """Largest sub-band of the region clear of the ref element (+pad).
+
+    This is what makes ``place --ref-id accent-bar`` measure padding from
+    the bar's bottom edge instead of the card top - the rule that took
+    three human correction rounds to converge on in production.
+    """
+    rx, ry, rw, rh = region_bbox
+    fx, fy, fw, fh = ref_bbox
+    fx, fy, fw, fh = fx - pad, fy - pad, fw + 2 * pad, fh + 2 * pad
+    # No overlap -> region unchanged.
+    if fx + fw <= rx or rx + rw <= fx or fy + fh <= ry or ry + rh <= fy:
+        return region_bbox
+    bands = [
+        (rx, fy + fh, rw, (ry + rh) - (fy + fh)),  # below ref
+        (rx, ry, rw, fy - ry),  # above ref
+        (rx, ry, fx - rx, rh),  # left of ref
+        (fx + fw, ry, (rx + rw) - (fx + fw), rh),  # right of ref
+    ]
+    fitting = [b for b in bands if b[2] >= width and b[3] >= height]
+    if not fitting:
+        raise ValueError(
+            f"no space left in the region once the --ref-id element (+{pad}px pad) "
+            f"is excluded; element {width}x{height} does not fit any remaining band"
+        )
+    return max(fitting, key=lambda b: b[2] * b[3])
+
+
 def place_element(
     svg_path: Path,
     *,
@@ -91,6 +136,7 @@ def place_element(
     height: float,
     corner: str = "top-left",
     margin: float = 8.0,
+    ref_id: str | None = None,
 ) -> dict:
     """Compute placement for an element of the given width x height.
 
@@ -116,10 +162,17 @@ def place_element(
             f"(margin={margin}). Relax margin or choose a different container."
         )
 
+    ref_bbox = _ref_bbox_by_id(svg_path, ref_id) if ref_id else None
+
     # Regions are returned sorted by area descending. Walk them and pick
     # the first that fits.
     for idx, region in enumerate(regions):
         bbox = _polygon_bbox(region["boundary"])
+        if ref_bbox is not None:
+            try:
+                bbox = _clip_region_around_ref(bbox, ref_bbox, margin, width, height)
+            except ValueError:
+                continue
         if _fits(bbox, width, height):
             x, y = _position_at_corner(bbox, width, height, corner)
             return {
@@ -130,6 +183,7 @@ def place_element(
                 "container_id": container_id,
                 "corner": corner,
                 "size": [width, height],
+                "ref_id": ref_id,
             }
 
     raise ValueError(
@@ -176,6 +230,15 @@ def main(argv: list[str] | None = None) -> int:
         default=8.0,
         help="Inward standoff from container edge AND gutter around obstacles (default: 8).",
     )
+    parser.add_argument(
+        "--ref-id",
+        default=None,
+        help=(
+            "Measure padding from this element's edge instead of the container "
+            "edge (e.g. --ref-id accent-bar places an icon margin px below the "
+            "accent bar's bottom, not flush with the card top)."
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="Emit structured JSON instead of text")
     args = parser.parse_args(argv)
 
@@ -197,6 +260,7 @@ def main(argv: list[str] | None = None) -> int:
             height=h,
             corner=args.corner,
             margin=args.margin,
+            ref_id=args.ref_id,
         )
     except ValueError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

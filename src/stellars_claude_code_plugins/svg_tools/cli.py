@@ -97,6 +97,14 @@ SUBCOMMANDS = {
         "check_collisions",
         "VALIDATE: pairwise collision detection on a set of connectors (crossing, near-miss with tolerance, touching). Uses shapely LineString geometry.",
     ),
+    "geometry": (
+        "render_inspect",
+        "VALIDATE: extract element bboxes (static parse, transforms applied, heuristic text extents) for one or more SVGs as JSON. Feeds the visual checks in finalize.",
+    ),
+    "consistency": (
+        "check_visual",
+        "VALIDATE: cross-file deck check - compares card anatomy (icons, slots, card primitives) across sibling SVGs and reports divergence.",
+    ),
     # ---- ON-REQUEST ONLY (bundled, no optional extra needed) ----
     "text-to-path": (
         "text_to_path",
@@ -142,6 +150,8 @@ CAVEMAN_DESCRIPTIONS: dict[str, str] = {
     "callouts": "best joint layout for labels",
     "place": "drop icon inside container. respect margins",
     "collide": "check pairs of lines. cross? touch?",
+    "geometry": "measure element boxes. JSON out",
+    "consistency": "compare sibling files. same card anatomy?",
     "text-to-path": "text -> paths via font file",
     "shapes": "draw.io stencils",
     "icons": "plugin-own icons + catalogue. custom / lucide / drawio",

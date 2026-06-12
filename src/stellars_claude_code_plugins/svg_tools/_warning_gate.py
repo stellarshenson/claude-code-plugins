@@ -15,17 +15,26 @@ Workflow from the caller's point of view:
    a silent bypass.
 3. Tool prints the acked list (audit trail on stderr) and proceeds to output.
 
-There is no bulk override. One ``--ack-warning`` flag per warning; each ack
-includes its own reason. The token changes whenever the input OR the warning
-text changes, so a stale ack cannot silently pass a different warning.
+One ``--ack-warning`` flag per warning; each ack includes its own reason. The
+token changes whenever the input OR the warning text changes, so a stale ack
+cannot silently pass a different warning.
+
+``--ack-class PREFIX=reason`` acknowledges every warning of one CLASS (the
+``NAME:`` prefix of the warning text, e.g. ``GRID-SNAP`` or
+``CORNER-RADIUS-CLAMPED``) with a single reason. It exists because a file
+once needed 51 identical hand-typed acks, which trained agents to acknowledge
+reflexively - the opposite of stop-and-think. Class acks still require a
+reason and still leave an audit trail per warning.
 
 Public API (four functions):
 
 - ``compute_warning_token(input_key, warning_text)`` - deterministic token.
 - ``parse_ack_warning_args(ack_values)`` - TOKEN=reason parser.
-- ``enforce_warning_acks(warnings, argv, ack_values)`` - the gate itself.
-- ``add_ack_warning_arg(parser)`` - adds the ``--ack-warning`` argparse flag
-  with standardised help text so every tool has identical UX.
+- ``enforce_warning_acks(warnings, argv, ack_values)`` - the gate itself
+  (``--ack-class`` values are extracted from ``argv`` internally).
+- ``add_ack_warning_arg(parser)`` - adds the ``--ack-warning`` and
+  ``--ack-class`` argparse flags with standardised help text so every tool
+  has identical UX.
 """
 
 from __future__ import annotations
@@ -39,14 +48,22 @@ _ACK_WARNING_HELP = (
     "emits blocks output until it is consciously acknowledged with this "
     "flag. Format: TOKEN=reason (reasoning MUST be terse - one short "
     "clause). Tokens are deterministic for the invocation - rerun to see "
-    "them. One --ack-warning flag per warning - there is no bulk override."
+    "them. One --ack-warning flag per warning; use --ack-class to cover a "
+    "whole warning class with one reason."
+)
+
+_ACK_CLASS_HELP = (
+    "Acknowledge every warning of one class with a single reason. The class "
+    "is the NAME: prefix of the warning text (e.g. CORNER-RADIUS-CLAMPED). "
+    "Format: PREFIX=reason. Reasoning is mandatory; each covered warning "
+    "still appears in the audit trail."
 )
 
 
 def add_ack_warning_arg(parser) -> None:
-    """Register the standard ``--ack-warning`` flag on an argparse parser.
+    """Register the standard ``--ack-warning`` / ``--ack-class`` flags.
 
-    Every gated tool calls this instead of defining its own flag, so the
+    Every gated tool calls this instead of defining its own flags, so the
     help text and semantics stay identical across the whole toolbox.
     """
     parser.add_argument(
@@ -55,6 +72,13 @@ def add_ack_warning_arg(parser) -> None:
         default=[],
         metavar="TOKEN=REASON",
         help=_ACK_WARNING_HELP,
+    )
+    parser.add_argument(
+        "--ack-class",
+        action="append",
+        default=[],
+        metavar="PREFIX=REASON",
+        help=_ACK_CLASS_HELP,
     )
 
 
@@ -69,15 +93,62 @@ def _canonical_input_key(argv: Sequence[str]) -> str:
     i = 0
     while i < len(argv):
         a = argv[i]
-        if a == "--ack-warning":
+        if a in ("--ack-warning", "--ack-class"):
             i += 2  # skip flag + value
             continue
-        if a.startswith("--ack-warning="):
+        if a.startswith(("--ack-warning=", "--ack-class=")):
             i += 1
             continue
         filtered.append(" ".join(str(a).split()))
         i += 1
     return "\0".join(filtered)
+
+
+def _extract_ack_class_args(argv: Sequence[str]) -> list[str]:
+    """Pull ``--ack-class`` values out of a raw argv sequence.
+
+    The gate receives the full argv anyway (for token computation), so class
+    acks are extracted here instead of threading a new parameter through
+    every caller.
+    """
+    values: list[str] = []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--ack-class" and i + 1 < len(argv):
+            values.append(str(argv[i + 1]))
+            i += 2
+            continue
+        if a.startswith("--ack-class="):
+            values.append(str(a)[len("--ack-class=") :])
+            i += 1
+            continue
+        i += 1
+    return values
+
+
+_GENERIC_PREFIXES = {"WARNING", "ERROR", "NOTE", "INFO"}
+_CLASS_RE = None  # compiled lazily to keep import cost zero
+
+
+def _warning_class(warning_text: str) -> str:
+    """The ``NAME:`` class prefix of a warning, or '' when it has none.
+
+    Only specific class tokens qualify (UPPER-CASE-HYPHENATED, e.g.
+    ``CORNER-RADIUS-CLAMPED``). Generic prefixes like ``WARNING:`` are NOT
+    classes - treating them as one would turn --ack-class into the bulk
+    override this gate explicitly refuses to provide.
+    """
+    global _CLASS_RE
+    if _CLASS_RE is None:
+        import re
+
+        _CLASS_RE = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+$")
+    head, sep, _ = warning_text.partition(":")
+    head = head.strip()
+    if not sep or head in _GENERIC_PREFIXES or not _CLASS_RE.match(head):
+        return ""
+    return head
 
 
 def compute_warning_token(input_key: str, warning_text: str) -> str:
@@ -142,11 +213,12 @@ def enforce_warning_acks(
 
     try:
         acks = parse_ack_warning_args(ack_values)
+        class_acks = parse_ack_warning_args(_extract_ack_class_args(argv))
     except ValueError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(2)
 
-    if not uniq and not acks:
+    if not uniq and not acks and not class_acks:
         return
 
     input_key = _canonical_input_key(argv)
@@ -154,8 +226,19 @@ def enforce_warning_acks(
     provided = set(acks.keys())
     expected = {tok for tok, _ in warning_tokens}
 
-    unacked = [(tok, w) for tok, w in warning_tokens if tok not in provided]
+    def _class_reason(w: str) -> str | None:
+        cls = _warning_class(w)
+        return class_acks.get(cls) if cls else None
+
+    unacked = [
+        (tok, w) for tok, w in warning_tokens if tok not in provided and _class_reason(w) is None
+    ]
     acked = [(tok, w, acks[tok]) for tok, w in warning_tokens if tok in provided]
+    acked += [
+        (tok, w, f"[class {_warning_class(w)}] {_class_reason(w)}")
+        for tok, w in warning_tokens
+        if tok not in provided and _class_reason(w) is not None
+    ]
     dead_acks = sorted(provided - expected)
 
     if unacked:
@@ -190,6 +273,24 @@ def enforce_warning_acks(
         print("Paste one of these per warning (with a real reason):", file=sys.stderr)
         for tok, _w in unacked:
             print(f"  --ack-warning {tok}='<why this is safe to ignore>'", file=sys.stderr)
+        class_counts: dict[str, int] = {}
+        for _tok, w in unacked:
+            cls = _warning_class(w)
+            if cls:
+                class_counts[cls] = class_counts.get(cls, 0) + 1
+        bulk = sorted(c for c, n in class_counts.items() if n >= 2)
+        if bulk:
+            print("", file=sys.stderr)
+            print(
+                "Warnings sharing a class can be covered with one reason:",
+                file=sys.stderr,
+            )
+            for cls in bulk:
+                print(
+                    f"  --ack-class {cls}='<why this whole class is safe here>'"
+                    f"  (covers {class_counts[cls]})",
+                    file=sys.stderr,
+                )
         if dead_acks:
             print("", file=sys.stderr)
             print(

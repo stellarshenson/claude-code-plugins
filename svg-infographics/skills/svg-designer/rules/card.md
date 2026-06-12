@@ -2,10 +2,10 @@
 
 ## Geometry
 
-- Corner radius: 3-5px for small cards (<200px wide), 8-12px for large. Consistent across the SVG - do not mix.
+- Corner radius (bottom corners of the body path; top stays square): 3-5px for small cards (<200px wide), 8-12px for large. Consistent across the SVG - do not mix.
 - Padding: 16-24px from card boundary to any content. Bigger on focal cards, smaller on dense inventories.
 - Min dimensions: 120w x 60h. Below that, use `type: callout` instead.
-- Accent bar convention: a 3-4px tall colour strip across the card top-edge acts as a colour-coded section marker. Use for role-coding (phase colour, tier colour). Width = full card width; position flush with the top rounded-corner radius.
+- Accent bar convention: a 5px tall colour strip across the card top-edge acts as a colour-coded section marker. Use for role-coding (phase colour, tier colour). Width = full card width; flush with the card top, no rx. See "Card anatomy" below.
 
 ## Role semantics
 
@@ -35,7 +35,7 @@ Manifest field `role:` drives what the card represents:
 
 - Card fill: always translucent (`fill-opacity` 0.04-0.08 on the card body). The theme colour tints the card; it never dominates.
 - Card stroke: use the `.card-stroke` class from the theme. Width 0.8-1.2px. Opacity 0.3-0.4.
-- Accent bar: full theme colour at `opacity 0.7-0.9`, no translucency.
+- Accent bar: full theme colour at `opacity="0.6"`.
 - Dark mode: every colour used on a card must have a `@media (prefers-color-scheme: dark)` override in the top `<style>` block.
 
 ## ID convention (MANDATORY for check-manifest)
@@ -47,3 +47,24 @@ Every card `<g>` MUST use one of:
 - `class="card"` (anywhere in the class list)
 
 `check-manifest` counts cards by scanning for these; no convention = no count = failed check.
+
+## Card body construction (moved from standards.md)
+
+Square-top, rounded-bottom path. Accent bar flush. Bottom corner radius r=3.
+
+```
+fill:   M{x},{y} H{x+w} V{y+h-r} Q{x+w},{y+h} {x+w-r},{y+h} H{x+r} Q{x},{y+h} {x},{y+h-r} Z
+bar:    <rect x={x} y={y} width={w} height="5" fill="{colour}" opacity="0.6"/>
+```
+
+Fill-opacity 0.04, stroke-width 1, accent bar height 5 at opacity 0.6.
+
+**Container cards** (an outer card framing smaller ones): fill-opacity 0.02, stroke-width 0.8, opacity 0.25, bar height 4 at opacity 0.15.
+
+## Card anatomy (MANDATORY - closes known production failure modes)
+
+- **Body path, not rect rx** - the card body is the square-top/rounded-bottom path above. `<rect rx="...">` is FORBIDDEN for card bodies: a rounded top corner clips the accent bar and the corner radii drift apart across the deck. `rx` stays legal for non-body primitives (chips, badges, container boxes)
+- **Accent bar** - height 5, `opacity="0.6"`, flush with the card top edge, full card width, no rx. Never floats below the top edge, never inset
+- **Icon slot top-right** - icon sits in the top-right corner with EQUAL corner padding on both axes, measured from the accent-bar bottom edge (not the card top). Position via `svg-infographics place --container <card-id> --corner top-right --ref-id accent-bar`, never by eye
+- **Slot parity across grid cards** - every card in a grid carries the SAME slot types: if one card has a stat/digit slot, all cards in that grid have one; if one has an icon slot, all do. Empty slots read as broken, mismatched slots as unrelated cards
+- **One card primitive per deck** - a single SVG (and a multi-SVG deck) uses ONE card construction. Never mix path-based bodies with rect-based bodies, or two different corner treatments, in the same deliverable

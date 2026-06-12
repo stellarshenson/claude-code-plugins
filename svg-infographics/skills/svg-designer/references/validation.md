@@ -91,15 +91,23 @@ Intentional hard fail? Add XML comment adjacent documenting reason:
 
 No justification = no ship.
 
-## Default-Bad rule (fail-first)
+## Default-Bad rule (HARD findings only)
 
-All violations assumed real defects until individually defended. Resolve each:
+HARD findings are assumed real defects until individually defended. Resolve each:
 
 - **Fixed** — repositioned, re-run confirms
 - **Accepted** — specific reason not a defect
 - **Checker limitation** — manual computation proves compliance
 
-Bulk dismissals prohibited. Examine every finding individually.
+SOFT findings (alignment, css, collide, connector style nudges) do NOT need
+per-finding defence: fix what is cheap in the batch-fix pass, then
+acknowledge a whole remaining layer with one reasoned
+`--ack-class SOFT-<LAYER>='reason'` on `finalize`. Per-token acks stay
+mandatory for HARD findings - a class ack never silences a HARD finding.
+
+Why the split: forcing an individual written defence of 50+ stylistic
+notices is what trained agents to acknowledge reflexively - and a reflexive
+ack is how a REAL flagged overlap shipped to a client deck.
 
 ## Tool: validate
 
@@ -198,7 +206,7 @@ svg-infographics connector --mode l-chamfer \
   --chamfer 4 --standoff 2 --arrow end
 ```
 
-See `standards.md` "Arrow Construction" for full modes + flags.
+See `rules/connector.md` "Connector tool reference" for full modes + flags.
 
 ## Tool: primitives (generative)
 
@@ -322,3 +330,13 @@ Generate `verification_checklist.md` per failure:
   - **Root cause**: <description>
   - **Fix**: <specific action>
 ```
+
+## Troubleshooting (moved from standards.md)
+
+- **Text invisible in dark mode**: use CSS class, not inline fill
+- **Overlapping elements**: re-verify against grid comment, run `overlaps`
+- **Arrows wrong direction**: rerun `connector` with correct `--from`/`--to`; paste `trimmed_path_d` and arrowhead polygons
+- **Colours off-theme**: check every hex against swatch, run `contrast`
+- **CSS compliance errors**: run `css --svg file.svg`
+- **Imprecise coordinates**: use `primitives <shape>` for exact anchors
+- **Wrong size in markdown**: remove `width`/`height` from `<svg>`, use `viewBox` only

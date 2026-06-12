@@ -1218,6 +1218,9 @@ def gen_speech_bubble(
     # ----- build body polygon -----
     bx1, by1, bx2, by2 = x, y, x + w, y + h
     cx, cy = (bx1 + bx2) / 2, (by1 + by2) / 2
+    # Effective corner radii; the spike base must land on the straight edge
+    # segment between the corner arcs, not on the bounding-box corners.
+    corner_rx = corner_ry = 0.0
 
     if shape == "rect":
         body = shapely_box(bx1, by1, bx2, by2)
@@ -1234,6 +1237,7 @@ def gen_speech_bubble(
                 warnings.append(f"CORNER-RADIUS-CLAMPED: ry={eff_ry} clamped to {ry_max:.2f}")
                 eff_ry = ry_max
             body = _rounded_rect_polygon(bx1, by1, bx2, by2, eff_rx, eff_ry)
+            corner_rx, corner_ry = eff_rx, eff_ry
         else:
             r_max = min(w, h) / 2
             r = corner_radius
@@ -1248,6 +1252,7 @@ def gen_speech_bubble(
                 # Inset rectangle, then outset by r with rounded joins.
                 inner = shapely_box(bx1 + r, by1 + r, bx2 - r, by2 - r)
                 body = inner.buffer(r, quad_segs=16, join_style=1)
+                corner_rx = corner_ry = r
     else:  # ellipse
         body = _ellipse_polygon(cx, cy, w / 2, h / 2)
 
@@ -1279,6 +1284,8 @@ def gen_speech_bubble(
                 tip_y=tip_y,
                 spike_base_width=spike_base_width,
                 anchor_request=spike_anchor,
+                corner_rx=corner_rx,
+                corner_ry=corner_ry,
             )
             warnings.extend(more)
 
@@ -1356,8 +1363,16 @@ def _build_spike(
     tip_y: float,
     spike_base_width: float,
     anchor_request: str,
+    corner_rx: float = 0.0,
+    corner_ry: float = 0.0,
 ) -> tuple[ShapelyPolygon, str, tuple[float, float], tuple[float, float], list[str]]:
-    """Build the spike triangle. Returns (polygon, anchor_used, base_l, base_r, warnings)."""
+    """Build the spike triangle. Returns (polygon, anchor_used, base_l, base_r, warnings).
+
+    ``corner_rx`` / ``corner_ry`` are the body's effective corner radii: the
+    spike base is clamped to the straight edge segment between the corner
+    arcs, otherwise the base lands on the bounding-box corner where the body
+    has already curved away and the union outline backtracks over the arc.
+    """
     warnings: list[str] = []
     half = spike_base_width / 2
 
@@ -1381,16 +1396,22 @@ def _build_spike(
 
         if anchor in ("top", "bottom"):
             edge_y = by1 if anchor == "top" else by2
-            # Clamp base centre x so the base fits inside the edge.
-            min_cx = bx1 + half
-            max_cx = bx2 - half
+            # Clamp base centre x so the base sits on the straight segment
+            # between the corner arcs (corner_rx wide on each side).
+            min_cx = bx1 + corner_rx + half
+            max_cx = bx2 - corner_rx - half
             if min_cx > max_cx:
-                # Bubble too narrow to fit the requested base width; clamp anyway.
+                # Straight segment too short for the requested base width.
                 warnings.append(
-                    f"SPIKE-BASE-CLAMPED: spike_base_width={spike_base_width} exceeds edge length; clamping"
+                    f"SPIKE-BASE-CLAMPED: spike_base_width={spike_base_width} exceeds the "
+                    "straight edge segment between the corner arcs; clamping"
                 )
                 base_cx = (bx1 + bx2) / 2
-                half_effective = min(half, (bx2 - bx1) / 2)
+                half_effective = min(half, max((bx2 - bx1) / 2 - corner_rx, 0.0))
+                if half_effective <= 0:
+                    # Fully-rounded edge (pill): no straight segment exists;
+                    # fall back to the bbox clamp rather than a degenerate base.
+                    half_effective = min(half, (bx2 - bx1) / 2)
             else:
                 base_cx = max(min_cx, min(max_cx, tip_x))
                 half_effective = half
@@ -1398,14 +1419,17 @@ def _build_spike(
             base_r = (base_cx + half_effective, edge_y)
         else:  # left / right
             edge_x = bx1 if anchor == "left" else bx2
-            min_cy = by1 + half
-            max_cy = by2 - half
+            min_cy = by1 + corner_ry + half
+            max_cy = by2 - corner_ry - half
             if min_cy > max_cy:
                 warnings.append(
-                    f"SPIKE-BASE-CLAMPED: spike_base_width={spike_base_width} exceeds edge length; clamping"
+                    f"SPIKE-BASE-CLAMPED: spike_base_width={spike_base_width} exceeds the "
+                    "straight edge segment between the corner arcs; clamping"
                 )
                 base_cy = (by1 + by2) / 2
-                half_effective = min(half, (by2 - by1) / 2)
+                half_effective = min(half, max((by2 - by1) / 2 - corner_ry, 0.0))
+                if half_effective <= 0:
+                    half_effective = min(half, (by2 - by1) / 2)
             else:
                 base_cy = max(min_cy, min(max_cy, tip_y))
                 half_effective = half

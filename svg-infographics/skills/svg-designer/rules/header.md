@@ -91,3 +91,11 @@ Never hide the version in an XML comment or stuff it into the title — the vers
 - Sub-element opacity ≤ 0.85 (cluster icons), ≤ 0.45 (texture / bars beneath icons), ≤ 0.75 (aura rings). Layered transparency reads as decoration, not signal.
 - Two colour rotation max: one primary brand colour + one accent. Multi-stop rainbow gradients live ONLY in the bottom accent bar, never in the motif itself.
 - Glyph half-extent post-scale should fit comfortably inside the grid pitch (e.g. `~11px` glyph in 27.5px half-cell = safe). Tight glyphs read as clutter; aim for ~40-60% cell fill.
+
+## Compact banner layout (moved from standards.md)
+
+Minimal 800x110 banner variant: left column (title 28px, subtitle 18px, credits 12px), right column (imagery + logos), accent gradient bar. Use Pattern A / B above for document headers; this compact form suits inline article banners.
+
+## Layered model style (moved from standards.md)
+
+Stacked-sections diagram (layered architecture bands): thin horizontal bands stacked vertically. Header row at layer_top+14px, sub-items at +26px. Layer height 34px, gap 4px. Left margin x=30.

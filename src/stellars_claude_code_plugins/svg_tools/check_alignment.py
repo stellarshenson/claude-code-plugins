@@ -124,10 +124,17 @@ def parse_svg_elements(filepath: str) -> list[PositionedElement]:
 
 
 def check_grid_snapping(
-    elements: list[PositionedElement], grid: int, tolerance: int = 0
+    elements: list[PositionedElement], grid: int, tolerance: float = 0.5
 ) -> list[str]:
-    """Check if element coordinates snap to grid multiples."""
+    """Check if element coordinates snap to grid multiples.
+
+    Sub-pixel offsets (<= 1px, e.g. half-pixel residue from equal-width
+    centring) are aggregated into a single summary line instead of one
+    finding per element - that residue once produced 73 notices on one file
+    and trained agents to acknowledge findings reflexively.
+    """
     issues = []
+    subpixel = 0
     for el in elements:
         x_rem = el.x % grid
         y_rem = el.y % grid
@@ -135,17 +142,30 @@ def check_grid_snapping(
         x_off = min(x_rem, grid - x_rem) if x_rem else 0
         y_off = min(y_rem, grid - y_rem) if y_rem else 0
 
+        worst = max(x_off, y_off)
+        if worst <= tolerance:
+            continue
+        if worst <= 1.0 and tolerance > 0:
+            # Aggregate; with an explicit --tolerance 0 every offender lists.
+            subpixel += 1
+            continue
+
         off_grid = []
         if x_off > tolerance:
             off_grid.append(f"x={el.x} (off by {x_off}px)")
         if y_off > tolerance:
             off_grid.append(f"y={el.y} (off by {y_off}px)")
 
-        if off_grid:
-            label = f'"{el.text}"' if el.text else f"{el.tag} {el.width:.0f}x{el.height:.0f}"
-            issues.append(
-                f"  [{el.idx:3d}] {el.tag:5s} {label} - not on {grid}px grid: {', '.join(off_grid)}"
-            )
+        label = f'"{el.text}"' if el.text else f"{el.tag} {el.width:.0f}x{el.height:.0f}"
+        issues.append(
+            f"  [{el.idx:3d}] {el.tag:5s} {label} - not on {grid}px grid: {', '.join(off_grid)}"
+        )
+
+    if subpixel:
+        issues.append(
+            f"  {subpixel} elements off-grid by <=1px (centring residue; "
+            "rerun with --tolerance 0 to list individually)"
+        )
 
     return issues
 
@@ -842,7 +862,11 @@ def main():
     parser.add_argument("--svg", required=True, help="SVG file to check")
     parser.add_argument("--grid", type=int, default=5, help="Grid step in px (default: 5)")
     parser.add_argument(
-        "--tolerance", type=int, default=0, help="Tolerance for grid snapping in px (default: 0)"
+        "--tolerance",
+        type=float,
+        default=0.5,
+        help="Tolerance for grid snapping in px (default: 0.5; pass 0 to list "
+        "every sub-pixel offender individually)",
     )
     args = parser.parse_args()
 

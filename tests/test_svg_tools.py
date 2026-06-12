@@ -2755,6 +2755,32 @@ class TestCheckConnectors:
         assert pts[0] == (100.0, 50.0)
         assert pts[2] == (300.0, 70.0)
 
+    def test_icon_scaled_filled_closed_paths_not_connectors(self, tmp_path):
+        """Icon strokes under scale(), filled badges and closed outlines must
+        not classify as connectors - this false-positive class trained agents
+        to ack real findings."""
+        from stellars_claude_code_plugins.svg_tools.check_connectors import parse_svg
+
+        svg = tmp_path / "mixed.svg"
+        svg.write_text(
+            textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">
+              <g id="icon-list" transform="translate(20,20) scale(0.75)">
+                <path d="M3 6h18M3 12h18M3 18h18" stroke="#333" fill="none"/>
+              </g>
+              <g class="card-icon">
+                <path d="M5 5L10 10L15 5" fill="none"/>
+              </g>
+              <path id="card-body" d="M10 50 H100 V120 H10 Z" fill="none"/>
+              <path id="badge" d="M5 5 L20 5 L20 20" fill="#aa3322"/>
+              <path id="conn-1" d="M120 60 L200 60 L200 100" fill="none"/>
+              <line id="conn-2" x1="10" y1="10" x2="50" y2="10" stroke="#333"/>
+            </svg>
+        """)
+        )
+        _, connectors, _, _ = parse_svg(str(svg))
+        assert sorted(c.elem_id for c in connectors) == ["conn-1", "conn-2"]
+
 
 class TestLChamferExitDirection:
     """check_l_chamfer_exit_direction: post-hoc safety net for the
@@ -3195,6 +3221,33 @@ class TestCheckAlignment:
             )
             assert r.returncode == 0, f"alignment failed with extra args {extra}"
 
+    def test_subpixel_offsets_aggregate_into_one_line(self):
+        """Half-pixel centring residue must collapse to a single summary line
+        (73 one-line notices on one file trained the ack reflex), while an
+        explicit --tolerance 0 still lists every offender."""
+        from stellars_claude_code_plugins.svg_tools.check_alignment import (
+            PositionedElement,
+            check_grid_snapping,
+        )
+
+        els = [
+            PositionedElement(tag="rect", x=10.5, y=20, width=50, height=30, idx=i)
+            for i in range(5)
+        ]
+        issues = check_grid_snapping(els, grid=5)  # default tolerance 0.5... 0.5 is silent
+        assert issues == []
+
+        els_off = [
+            PositionedElement(tag="rect", x=10.7, y=20, width=50, height=30, idx=i)
+            for i in range(5)
+        ]
+        issues = check_grid_snapping(els_off, grid=5)
+        assert len(issues) == 1
+        assert "5 elements off-grid by <=1px" in issues[0]
+
+        listed = check_grid_snapping(els_off, grid=5, tolerance=0)
+        assert len(listed) == 5  # explicit zero tolerance lists individually
+
 
 class TestExampleSVGs:
     """Smoke tests running each validator against real example SVGs. 4 -> 1
@@ -3529,6 +3582,52 @@ class TestSpeechBubble:
         # rx > w/2 should clamp.
         result, warnings = self._gen(shape="soft-rect", rx=999, ry=10, tip_x=None, tip_y=None)
         assert any(w.startswith("CORNER-RADIUS-CLAMPED") for w in warnings)
+        assert result.path_d.endswith("Z")
+
+    def test_soft_rect_spike_base_clears_corner_arc_bottom(self):
+        # Tip below-left of the bubble: the unclamped base centre would land at
+        # bbox-edge x=70, putting base-l at x=60 - ON the corner arc (which only
+        # ends at x = 60 + 22). The base must clamp to the straight segment.
+        result, warnings = self._gen(
+            shape="soft-rect", corner_radius=22, tip_x=65, tip_y=220, spike_base_width=20
+        )
+        assert warnings == []
+        assert result.kind == "speech-soft-rect+spike-bottom"
+        bl, br = result.anchors["spike-base-l"], result.anchors["spike-base-r"]
+        assert bl.y == 120.0 and br.y == 120.0  # on the bottom edge
+        assert bl.x >= 60 + 22  # past the left corner arc
+        assert br.x <= 260 - 22  # before the right corner arc
+        # Single clean ring, tip baked in.
+        assert result.path_d.count("M") == 1
+        assert "65.00,220.00" in result.path_d
+
+    def test_soft_rect_spike_base_clears_corner_arc_right(self):
+        # Tip right of the bubble near the top: base centre clamps on y using
+        # the vertical corner radius, not the bbox edge.
+        result, warnings = self._gen(
+            shape="soft-rect", corner_radius=22, tip_x=400, tip_y=45, spike_base_width=20
+        )
+        assert warnings == []
+        assert result.kind == "speech-soft-rect+spike-right"
+        bl, br = result.anchors["spike-base-l"], result.anchors["spike-base-r"]
+        assert bl.x == 260.0 and br.x == 260.0  # on the right edge
+        assert bl.y >= 40 + 22  # below the top corner arc
+        assert br.y <= 120 - 22  # above the bottom corner arc
+
+    def test_soft_rect_pill_edge_clamps_with_warning(self):
+        # w=50 with radius clamped to 25 leaves NO straight bottom segment; the
+        # base falls back to the bbox clamp and SPIKE-BASE-CLAMPED fires.
+        result, warnings = self._gen(
+            shape="soft-rect",
+            w=50,
+            corner_radius=999,
+            tip_x=85,
+            tip_y=220,
+            spike_base_width=20,
+        )
+        assert any(w.startswith("SPIKE-BASE-CLAMPED") for w in warnings)
+        assert result.kind == "speech-soft-rect+spike-bottom"
+        assert result.path_d.count("M") == 1
         assert result.path_d.endswith("Z")
 
     def test_text_padding_per_axis(self):
@@ -4244,6 +4343,40 @@ class TestCheckCSS:
         for svg in examples:
             _, stats = check_css_compliance(str(svg))
             assert stats["light_classes"] > 0, f"no CSS classes in {svg.name}"
+
+    def test_dark_block_parses_all_classes(self, tmp_path):
+        """Every rule inside the @media dark block must parse - the old
+        non-greedy regex stopped at the first inner brace and flagged every
+        later class as missing its dark override (10 false positives/file)."""
+        from stellars_claude_code_plugins.svg_tools.check_css import (
+            check_css_compliance,
+            parse_style_block,
+        )
+
+        svg = tmp_path / "dark.svg"
+        svg.write_text(
+            textwrap.dedent("""\
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
+              <style>
+                .fg-1 { fill: #1e3a5f; }
+                .fg-2 { fill: #2e4a6f; }
+                .fg-3 { fill: #3e5a7f; }
+                @media (prefers-color-scheme: dark) {
+                  .fg-1 { fill: #d0d8e0; }
+                  .fg-2 { fill: #c0c8d0; }
+                  .fg-3 { fill: #b0b8c0; }
+                }
+              </style>
+              <text x="20" y="30" font-size="12" class="fg-1">One</text>
+              <text x="20" y="50" font-size="12" class="fg-2">Two</text>
+              <text x="20" y="70" font-size="12" class="fg-3">Three</text>
+            </svg>
+        """)
+        )
+        _, dark, _ = parse_style_block(svg.read_text())
+        assert sorted(dark) == ["fg-1", "fg-2", "fg-3"]
+        violations, _ = check_css_compliance(str(svg))
+        assert [v for v in violations if v.rule == "missing-dark-override"] == []
 
     @pytest.mark.parametrize(
         "body, expected_rule, severity",
@@ -5642,6 +5775,67 @@ class TestFinalize:
         hard, _ = finalize(svg)
         assert any("[validate]" in h for h in hard)
 
+    def test_contrast_failure_is_hard(self, tmp_path):
+        """The gate now runs contrast itself - a light-grey-on-white text
+        (1.07:1) must surface as a HARD [contrast] finding."""
+        from stellars_claude_code_plugins.svg_tools.finalize import finalize
+
+        svg = tmp_path / "lowcontrast.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">\n'
+            "  <style>.fg-1 { fill: #f0f0f0; }\n"
+            "  @media (prefers-color-scheme: dark) { .fg-1 { fill: #1a1a1a; } }\n"
+            "  </style>\n"
+            '  <text x="20" y="40" font-size="12" class="fg-1" fill="#f0f0f0">'
+            "Nearly invisible</text>\n"
+            "</svg>\n"
+        )
+        hard, _ = finalize(svg)
+        assert any("[contrast]" in h for h in hard), hard
+
+    def test_css_findings_are_soft_not_hard(self, tmp_path):
+        """Missing dark override routes to SOFT - gate exit stays driven by
+        structural classes + contrast."""
+        from stellars_claude_code_plugins.svg_tools.finalize import finalize
+
+        svg = tmp_path / "nodark.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">\n'
+            "  <style>.fg-1 { fill: #1e3a5f; }</style>\n"
+            '  <text x="20" y="40" font-size="12" class="fg-1">Readable</text>\n'
+            "</svg>\n"
+        )
+        hard, soft = finalize(svg)
+        assert not any("[css]" in h for h in hard)
+        assert any("[css]" in s and "missing-dark-override" in s for s in soft)
+
+    def test_multi_file_json_report(self, tmp_path):
+        """finalize gates a whole deck in one call and --json emits a
+        machine-readable per-file report."""
+        import json as _json
+
+        from stellars_claude_code_plugins.svg_tools.finalize import main
+
+        a = tmp_path / "a.svg"
+        b = tmp_path / "b.svg"
+        # Centred content - the visual layer now flags lopsided canvases.
+        clean = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">\n'
+            '  <rect x="10" y="10" width="180" height="80" fill="#eee"/>\n'
+            "</svg>\n"
+        )
+        a.write_text(clean)
+        b.write_text(clean)
+        import contextlib
+        import io
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = main([str(a), str(b), "--json"])
+        assert rc == 0
+        report = _json.loads(buf.getvalue())
+        assert set(report["files"]) == {str(a), str(b)}
+
 
 class TestConnectorDirectionWarning:
     """WI#3: calc_connector --direction mandatory / L-mode geometry warning."""
@@ -5816,9 +6010,316 @@ class TestWarningAckGate:
         assert r2.returncode == 0, r2.stderr
         assert "stale" in r2.stderr.lower() or "no matching" in r2.stderr.lower()
 
+    def test_ack_class_covers_all_warnings_of_one_class(self, capsys):
+        from stellars_claude_code_plugins.svg_tools._warning_gate import enforce_warning_acks
+
+        warnings = [
+            "CORNER-RADIUS-CLAMPED: rx=999 clamped to 100.00",
+            "CORNER-RADIUS-CLAMPED: ry=999 clamped to 40.00",
+        ]
+        argv = ["speech", "--rx", "999", "--ack-class", "CORNER-RADIUS-CLAMPED=fixture"]
+        enforce_warning_acks(warnings, argv, [])  # must not raise SystemExit
+        err = capsys.readouterr().err
+        assert "Acknowledged 2 warning(s)" in err
+        assert "[class CORNER-RADIUS-CLAMPED]" in err
+
+    def test_ack_class_rejects_generic_warning_prefix(self):
+        # "WARNING:" is not a class - class-acking it would be a bulk override.
+        import pytest
+
+        from stellars_claude_code_plugins.svg_tools._warning_gate import enforce_warning_acks
+
+        warnings = ["WARNING: --direction not declared on mode='straight'."]
+        argv = ["--mode", "straight", "--ack-class", "WARNING=trying to cheat"]
+        with pytest.raises(SystemExit) as exc:
+            enforce_warning_acks(warnings, argv, [])
+        assert exc.value.code == 2
+
+    def test_blocked_output_suggests_class_ack_for_repeated_class(self, capsys):
+        import pytest
+
+        from stellars_claude_code_plugins.svg_tools._warning_gate import enforce_warning_acks
+
+        warnings = [
+            "GRID-SNAP-OFF: x=10.5 off by 0.5px",
+            "GRID-SNAP-OFF: x=20.5 off by 0.5px",
+            "GRID-SNAP-OFF: x=30.5 off by 0.5px",
+        ]
+        with pytest.raises(SystemExit):
+            enforce_warning_acks(warnings, ["align"], [])
+        err = capsys.readouterr().err
+        assert "--ack-class GRID-SNAP-OFF=" in err
+        assert "(covers 3)" in err
+
+
+class TestCheckVisual:
+    """Pure geometry checks over rendered bbox JSON - each reproduces a
+    documented production failure mode that the structural validators missed
+    (forensics rows 1, 3, 6, 7, 14)."""
+
+    @staticmethod
+    def _data(elements, view_box=(0, 0, 800, 400), backend="chromium"):
+        return {
+            "file": "fixture.svg",
+            "backend": backend,
+            "viewBox": list(view_box),
+            "elements": elements,
+        }
+
+    @staticmethod
+    def _el(tag, bbox, id=None, classes=(), parent=None, text=None, anchor=None):
+        return {
+            "tag": tag,
+            "id": id,
+            "classes": list(classes),
+            "parent": parent,
+            "bbox": list(bbox),
+            "text": text,
+            "anchor": anchor,
+        }
+
+    def test_text_icon_collision_fires(self):
+        # Row 1: card title runs under the icon - real glyph extents overlap.
+        from stellars_claude_code_plugins.svg_tools.check_visual import check_text_collisions
+
+        data = self._data(
+            [
+                self._el("g", (180, 20, 24, 24), id="icon-card-1"),
+                self._el("text", (40, 30, 150, 12), text="Broken reference numbering"),
+            ]
+        )
+        findings = check_text_collisions(data)
+        assert len(findings) == 1 and "collides with icon" in findings[0]
+
+        # Clear layout - silent.
+        clean = self._data(
+            [
+                self._el("g", (200, 20, 24, 24), id="icon-card-1"),
+                self._el("text", (40, 30, 150, 12), text="Broken reference numbering"),
+            ]
+        )
+        assert check_text_collisions(clean) == []
+
+    def test_icon_text_inside_own_group_not_a_collision(self):
+        from stellars_claude_code_plugins.svg_tools.check_visual import check_text_collisions
+
+        data = self._data(
+            [
+                self._el("g", (180, 20, 24, 24), id="icon-badge"),
+                self._el("text", (182, 26, 18, 10), text="7", parent="icon-badge"),
+            ]
+        )
+        assert check_text_collisions(data) == []
+
+    def test_uneven_corner_padding_fires(self):
+        # Row 3: icon 4px from top but 14px from right edge of its card.
+        from stellars_claude_code_plugins.svg_tools.check_visual import check_corner_padding
+
+        data = self._data(
+            [
+                self._el("rect", (40, 40, 200, 120), id="card-1", classes=["card"]),
+                self._el("g", (202, 44, 24, 24), id="icon-1", classes=["icon"]),
+            ]
+        )
+        findings = check_corner_padding(data)
+        assert any("uneven corner padding" in f for f in findings), findings
+
+    def test_corner_padding_inconsistent_across_cards_fires(self):
+        # Row 12: equal per-icon padding but different between sibling cards.
+        from stellars_claude_code_plugins.svg_tools.check_visual import check_corner_padding
+
+        data = self._data(
+            [
+                self._el("rect", (40, 40, 200, 120), id="card-1", classes=["card"]),
+                self._el("rect", (280, 40, 200, 120), id="card-2", classes=["card"]),
+                self._el("g", (208, 48, 24, 24), id="icon-1", classes=["icon"]),  # 8px pad
+                self._el("g", (440, 56, 24, 24), id="icon-2", classes=["icon"]),  # 16px pad
+            ]
+        )
+        findings = check_corner_padding(data)
+        assert any("inconsistent across cards" in f for f in findings), findings
+
+    def test_label_centering_fires_for_middle_anchor_only(self):
+        # Row 7: PARALLEL label visually off-centre in its container.
+        from stellars_claude_code_plugins.svg_tools.check_visual import check_label_centering
+
+        data = self._data(
+            [
+                self._el("rect", (100, 100, 200, 60), id="stage-box"),
+                self._el(
+                    "text", (110, 120, 80, 12), text="PARALLEL", anchor="middle"
+                ),  # centre 150 vs box centre 200
+            ]
+        )
+        findings = check_label_centering(data)
+        assert len(findings) == 1 and "off-centre" in findings[0]
+
+        # start-anchored title at the same spot is fine (left-aligned by design)
+        data2 = self._data(
+            [
+                self._el("rect", (100, 100, 200, 60), id="stage-box"),
+                self._el("text", (110, 120, 80, 12), text="Stage title", anchor="start"),
+            ]
+        )
+        assert check_label_centering(data2) == []
+
+    def test_canvas_balance_dead_band_fires(self):
+        # Row 6: cards cramped left, 115px dead canvas right.
+        from stellars_claude_code_plugins.svg_tools.check_visual import check_canvas_balance
+
+        data = self._data(
+            [
+                self._el("rect", (20, 40, 300, 200), id="card-1", classes=["card"]),
+                self._el("rect", (340, 40, 300, 200), id="card-2", classes=["card"]),
+            ],
+            view_box=(0, 0, 800, 280),
+        )
+        findings = check_canvas_balance(data)
+        assert any("dead canvas on the right" in f for f in findings), findings
+
+        balanced = self._data(
+            [
+                self._el("rect", (20, 40, 360, 200), id="card-1", classes=["card"]),
+                self._el("rect", (420, 40, 360, 200), id="card-2", classes=["card"]),
+            ],
+            view_box=(0, 0, 800, 280),
+        )
+        assert check_canvas_balance(balanced) == []
+
+    def test_slot_parity_fires_for_missing_stat(self):
+        # Row 14: three cards carry a big-stat slot, the fourth shows prose.
+        from stellars_claude_code_plugins.svg_tools.check_visual import check_slot_parity
+
+        els = []
+        for i, x in enumerate((20, 220, 420, 620)):
+            els.append(self._el("rect", (x, 40, 180, 120), id=f"card-{i}", classes=["card"]))
+            els.append(
+                self._el("text", (x + 12, 60, 100, 12), text=f"Title {i}", classes=["fg-1"])
+            )
+            if i < 3:  # fourth card misses the stat slot
+                els.append(
+                    self._el("text", (x + 12, 120, 80, 24), text="29%", classes=["big-stat"])
+                )
+        data = self._data(els)
+        findings = check_slot_parity(data)
+        assert any("big-stat" in f and "card-3" in f for f in findings), findings
+
+    def test_static_backend_degrades_hard_to_soft(self):
+        from stellars_claude_code_plugins.svg_tools.check_visual import check_visual
+
+        elements = [
+            self._el("g", (180, 20, 24, 24), id="icon-card-1"),
+            self._el("text", (40, 30, 150, 12), text="Colliding title"),
+        ]
+        hard, soft = check_visual(self._data(elements, backend="chromium"))
+        assert any("collides" in f for f in hard)
+        hard_s, soft_s = check_visual(self._data(elements, backend="static"))
+        assert hard_s == []
+        assert any("collides" in f for f in soft_s)
+
+    def test_cross_file_consistency_icon_divergence(self, tmp_path):
+        # Row 11: sibling graphic 01 has card icons, 03 does not.
+        from stellars_claude_code_plugins.svg_tools.check_visual import (
+            check_cross_file_consistency,
+        )
+
+        (tmp_path / "a.svg").write_text("<svg/>")
+        (tmp_path / "b.svg").write_text("<svg/>")
+        with_icons = self._data(
+            [
+                self._el("rect", (40, 40, 200, 120), id="card-1", classes=["card"]),
+                self._el("g", (208, 48, 24, 24), id="icon-1", classes=["icon"]),
+            ]
+        )
+        with_icons["file"] = str(tmp_path / "a.svg")
+        without_icons = self._data(
+            [self._el("rect", (40, 40, 200, 120), id="card-1", classes=["card"])]
+        )
+        without_icons["file"] = str(tmp_path / "b.svg")
+        findings = check_cross_file_consistency([with_icons, without_icons])
+        assert any("card icons present in a.svg" in f and "b.svg" in f for f in findings), findings
+
+    def test_manifold_candidate_suggestion(self):
+        # Row 9: two verdict diagonals from one source should be a manifold.
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            Connector,
+            check_manifold_candidates,
+        )
+
+        shared = [
+            Connector("c-1", "path", [(400, 200), (600, 120)]),
+            Connector("c-2", "path", [(402, 202), (600, 280)]),
+        ]
+        findings = check_manifold_candidates(shared)
+        assert any("manifold" in f for f in findings)
+
+        separate = [
+            Connector("c-1", "path", [(100, 100), (200, 100)]),
+            Connector("c-2", "path", [(300, 300), (400, 300)]),
+        ]
+        assert check_manifold_candidates(separate) == []
+
+    def test_render_inspect_static_extractor(self, tmp_path):
+        """Static fallback walks transforms and produces the JSON shape the
+        checks consume."""
+        from stellars_claude_code_plugins.svg_tools.render_inspect import (
+            extract_static_bboxes,
+        )
+
+        svg = tmp_path / "f.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">\n'
+            '  <rect id="card-1" class="card" x="40" y="40" width="200" height="120"/>\n'
+            '  <g id="icon-1" class="icon" transform="translate(208,48) scale(2)">\n'
+            '    <rect x="0" y="0" width="12" height="12"/>\n'
+            "  </g>\n"
+            '  <text x="52" y="70" font-size="12">Title</text>\n'
+            "</svg>\n"
+        )
+        data = extract_static_bboxes(svg)
+        assert data["backend"] == "static"
+        assert data["viewBox"] == [0.0, 0.0, 400.0, 200.0]
+        by_id = {el["id"]: el for el in data["elements"] if el["id"]}
+        assert by_id["card-1"]["bbox"] == [40.0, 40.0, 200.0, 120.0]
+        # icon rect: translate(208,48) scale(2) on a 12x12 -> 24x24 at (208,48)
+        icon_rect = next(el for el in data["elements"] if el["parent"] == "icon-1")
+        assert icon_rect["bbox"] == [208.0, 48.0, 24.0, 24.0]
+        # The icon GROUP itself is synthesised so role checks can treat it
+        # as a unit.
+        icon_group = next(el for el in data["elements"] if el["id"] == "icon-1")
+        assert icon_group["tag"] == "g"
+        assert icon_group["bbox"] == [208.0, 48.0, 24.0, 24.0]
+
 
 class TestPlaceElement:
     """Generic element placement inside a container."""
+
+    def test_ref_id_measures_padding_from_reference_edge(self, tmp_path):
+        """`place --ref-id accent-bar` must anchor the element BELOW the bar
+        (+margin), not flush with the card top - the rule that took three
+        human correction rounds to converge on in production."""
+        from stellars_claude_code_plugins.svg_tools.place_icon import place_element
+
+        svg = tmp_path / "card.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">\n'
+            '  <rect id="card-1" x="40" y="40" width="300" height="120" '
+            'fill="#eee" stroke="#000"/>\n'
+            '  <rect id="accent-bar" x="40" y="40" width="300" height="5" fill="#345"/>\n'
+            "</svg>\n"
+        )
+        result = place_element(
+            svg,
+            container_id="card-1",
+            width=24,
+            height=24,
+            corner="top-right",
+            margin=8,
+            ref_id="accent-bar",
+        )
+        # Bar bottom is y=45; +8 margin -> icon top must be >= 53, never < 45.
+        assert result["y"] >= 53.0, result
+        assert result["ref_id"] == "accent-bar"
 
     def test_place_icon_in_top_right_corner(self, tmp_path):
         from stellars_claude_code_plugins.svg_tools.place_icon import place_element

@@ -71,13 +71,15 @@ Verify: `svg-infographics --help`. Never ask the user whether to install - just 
 
 ## First steps (every session)
 
-1. Read `references/tools.md` - full tool tree
-2. Read `references/standards.md` - design rules, CSS classes, cards, connectors, typography, z-order
-3. Read `references/workflow.md` - phase gates + per-image checklist
-4. Read `references/validation.md` - checker usage, severity ladder
-5. Identify theme: look for `theme_swatch.svg` or read existing SVGs' palette
-6. Read 3-5 examples from `svg-infographics/examples/` closest to target type
-7. Beautify task? Read `./svg-infographics-beautify.md` local directive first. Follow resolved pattern verbatim. Additions live in `<g id="beautify-decorations">` + `<g id="beautify-icons">`; bg strokes width 2.5-4, opacity 0.04-0.06, HARD CAP 0.10
+Context is the budget - the old "read all four references + 3-5 full
+examples" opening cost ~130KB per spawn and is retired. Mandatory reads:
+
+1. Read `references/standards-core.md` - the essentials: CSS classes, contrast, grid, structure, z-order (≤8KB)
+2. Read `examples/INDEX.md` (geometry recipes per pattern) + ONE example closest to the target type - the recipes carry what the other 2-4 examples used to
+3. Run `svg-infographics preflight` declaring every component - it serves exactly the rule cards THIS image needs; that bundle is your component knowledge
+4. Identify theme: look for `theme_swatch.svg` or read existing SVGs' palette
+5. Everything else ON DEMAND, not up front: `references/workflow.md` (phase gates + checklist - read when the build starts), `references/validation.md` (when a finalize finding is unclear), `references/tools.md` (when unsure which tool exists). Component detail that used to live in `standards.md` now ships in the preflight rule cards
+6. Beautify task? Read `./svg-infographics-beautify.md` local directive first. Follow resolved pattern verbatim. Additions live in `<g id="beautify-decorations">` + `<g id="beautify-icons">`; bg strokes width 2.5-4, opacity 0.04-0.06, HARD CAP 0.10
 
 ## Key Principles
 

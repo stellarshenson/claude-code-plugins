@@ -66,3 +66,12 @@ The `background` tool emits this override automatically; hand-crafted background
 ## Group conventions (MANDATORY for check)
 
 The background `<g>` MUST have `id="background"` or `id` ending in `-background` (e.g. `id="circuit-background"`), or `class` containing `"background"`. Without this, `check` counts 0 backgrounds and the declaration fails.
+
+## Decorative background imagery (moved from standards.md)
+
+Faint thematic icons layered behind content (distinct from procedural textures above):
+
+- fg-1 colour at `opacity 0.10-0.35`
+- 15-20px extent per icon
+- Placement: between text and logos, never under primary text
+- Add a `.decor` CSS class so dark mode can switch the colour

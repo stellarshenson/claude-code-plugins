@@ -84,20 +84,20 @@ Wrong call reads as clutter (needless leader) or an orphan (missing leader). Pic
 2. Callout labels via `svg-infographics callouts` (joint solver). See `standards.md` for plan JSON shape + workflow
 3. File description comment before `<svg>`: filename, shows, intent, theme
 
-## Phase 6 — Validation
+## Phase 6 — Validation (batch-fix protocol)
 
-DO NOT deliver without running ALL validators. See `validation.md` for tool specifics.
+DO NOT deliver without a clean `finalize`. One consolidated call runs ALL
+checkers (validate, overlaps, connectors, contrast, collide, alignment, css)
+and tiers findings HARD / SOFT. See `validation.md` for tool specifics.
 
-1. Run `svg-infographics validate <file>` (XML + baseline geometry if `+` variant)
-2. Run `svg-infographics overlaps --svg <file>` — record summary
-3. Run `svg-infographics contrast --svg <file>` — record summary (light + dark)
-4. Run `svg-infographics alignment --svg <file>` — record
-5. Run `svg-infographics connectors --svg <file>` — record
-6. Run `svg-infographics css --svg <file>` — record
-7. Classify each violation individually (no bulk dismissals): Fixed / Accepted / Checker limitation
-8. Fix errors, re-run, record new summary
+1. Run `svg-infographics finalize <file> [<file2> …]` ONCE (whole deck in one call)
+2. Fix ALL findings in ONE editing pass — do NOT fix one finding and re-validate
+3. Re-run `finalize` ONCE
+4. Hard cap: 3 finalize iterations. Still failing after 3 → render the PNG, report the residual findings to the user, stop
+5. Classification: HARD findings defended individually (Fixed / Accepted / Checker limitation); SOFT findings may be acknowledged per layer with `--ack-class SOFT-<LAYER>=reason`
+6. **One readback, not a render loop**: after finalize passes, `render-png <file> out.png --mode both`, Read the light PNG ONCE against this checklist - (a) layout balanced, no dead band; (b) same-role elements consistent across cards and sibling files; (c) no text touching icons/bars; (d) centred things actually centred; (e) connector shapes match semantics (fork = manifold, not N strokes); (f) dark render legible. Fix anything caught, finalize once more, done. Do NOT iterate render-inspect-fix beyond this single pass - finalize's visual layer already measures element geometry deterministically; the PNG readback is for what only eyes catch
 
-**GATE**: paste validator output for all six. Scripts not run = phase incomplete.
+**GATE**: paste the final `finalize` summary. Tool not run = phase incomplete.
 
 ## Per-image checklist (required groups)
 
@@ -212,21 +212,24 @@ Place text AFTER visuals. Never eyeball label coordinates.
 
 Use `svg-infographics callouts` (joint solver) — see `standards.md` "Callout construction workflow" for plan JSON shape, leader vs leaderless selection, audit workflow.
 
-### Phase 6 depth — validation loop
+### Phase 6 depth — batch-fix protocol
 
-Loop until clean:
+One consolidated gate, not seven separate loops:
 
 ```bash
-svg-infographics validate  <file>   # XML + geometry (with --baseline for + variants)
-svg-infographics overlaps  --svg <file>
-svg-infographics contrast  --svg <file>
-svg-infographics alignment --svg <file>
-svg-infographics connectors --svg <file>
-svg-infographics css       --svg <file>
-svg-infographics collide   --svg <file>  # pairwise connector collisions (when manifold present)
+svg-infographics finalize <file> [<file2> …]   # runs ALL checkers, HARD/SOFT tiers
 ```
 
-Classify each finding individually per the default-bad rule (see `validation.md`): Fixed / Accepted / Checker limitation. Bulk dismissals prohibited.
+Protocol: finalize once → fix EVERYTHING it reports in one editing pass →
+finalize once more. Hard cap 3 iterations; after that render the PNG, report
+residuals, stop. Never fix-one-revalidate-all — that loop is the single
+biggest token burner this workflow has produced in the field.
+
+Finding discipline (see `validation.md`): HARD findings defended
+individually; SOFT findings ackable per layer
+(`--ack-class SOFT-ALIGNMENT='reason'`). Drill into a single checker
+(`svg-infographics overlaps --svg <file>` etc.) only when a finalize finding
+is unclear.
 
 ## Anti-patterns
 

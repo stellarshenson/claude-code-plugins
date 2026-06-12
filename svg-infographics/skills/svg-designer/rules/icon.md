@@ -57,3 +57,13 @@ Plural container groups (`<g id="icons">`) are NOT counted as icons - only the i
 - As pure decoration with no semantic content (use `type: background` decorative texture instead)
 - In place of labelled text - if the icon needs a caption, an explicit text label would serve better
 - Below 16px - legibility drops; use a coloured dot or shape primitive instead
+
+## Default placement (moved from standards.md)
+
+Place icons upper-right quadrant (graphic-level) or upper-right corner of each card (per-card). Western reading path terminates upper-right; the icon reinforces identity without competing with the title.
+
+- **Graphic-level**: inside header band at `x = viewBox.width - margin - icon_size`, vertically centred on title baseline
+- **Card-level**: top-right corner with equal corner padding measured from the accent-bar bottom - position via `place --corner top-right --ref-id accent-bar` (see `rules/card.md` "Card anatomy")
+- **Override only when**: symmetric grid, process flow with icon anchoring row start, timeline with icon on event marker
+
+Embed in `<g transform="translate(x,y) scale(s)">`, override stroke. Lucide scale factors: 0.5 (~12px), 0.583 (~14px), 0.667 (~16px) from the 24px grid.
