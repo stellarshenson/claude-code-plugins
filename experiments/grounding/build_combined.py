@@ -9,7 +9,7 @@ threshold experiments (max-gap / Jenks) run on precomputed columns:
 - articles    - 42 Liu/Han/Ye fixture claims (references/grounding-results/data)
 
 Importable module (multiprocessing workers need top-level functions); driven by
-notebooks/03-kj-maxgap-batch-experiment.ipynb. Output is gitignored - the parquet
+notebooks/03-kj-H12-maxgap-batch-experiment.ipynb. Output is gitignored - the parquet
 embeds private client text and must never be committed.
 """
 
@@ -149,7 +149,7 @@ def _write_sidecar(df, lv) -> None:
         "Combined grounding evaluation dataset - one row per (claim, source) pair with",
         "the full HIGH-tier lexical feature set and the shipped manifold probability.",
         "Built by `experiments/grounding/build_combined.py`; driven from",
-        "`notebooks/03-kj-maxgap-batch-experiment.ipynb`. GITIGNORED - embeds private",
+        "`notebooks/03-kj-H12-maxgap-batch-experiment.ipynb`. GITIGNORED - embeds private",
         "client text, never commit.",
         "",
         f"- **Built**: {datetime.date.today().isoformat()}, shipped high manifold threshold {lv.threshold}",

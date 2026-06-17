@@ -1,0 +1,15 @@
+{
+  "inherited": 3619,
+  "agreed": 2293,
+  "disagreed": 869,
+  "not_a_claim": 1536,
+  "unjudged": 2630
+}
+extraction precision of new admissions (agreed claims / judged): 0.488  (NOT_A_CLAIM rate 0.327)
+gold v2: 5912 rows -> /home/lab/workspace/private/ai-assistants/claude-code-plugins/experiments/grounding/private-rag-forensics/gold/golden_grounding_evidence_v2.parquet
+origin     label
+inherited  0        1005
+           1        2614
+judged     0         960
+           1        1333
+dtype: int64

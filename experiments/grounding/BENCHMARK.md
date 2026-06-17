@@ -193,7 +193,7 @@ Tested wtpsplit SaT for claim extraction against the current regex clause-split,
 
 ## Round 7 - batch-adaptive operating point (max-gap / Jenks), 2026-06-10
 
-Unsupervised per-batch threshold cuts on the shipped high-manifold `p_high`, batch = sub-dataset kind. Notebook: `notebooks/03-kj-maxgap-batch-experiment.ipynb`; data: `data/processed/grounding_combined.parquet` (gitignored). Macro-F1:
+Unsupervised per-batch threshold cuts on the shipped high-manifold `p_high`, batch = sub-dataset kind. Notebook: `notebooks/03-kj-H12-maxgap-batch-experiment.ipynb`; data: `data/processed/grounding_combined.parquet` (gitignored). Macro-F1:
 
 | strategy | articles | private_rag | vitaminc | mean |
 |---|---|---|---|---|
@@ -205,3 +205,29 @@ Unsupervised per-batch threshold cuts on the shipped high-manifold `p_high`, bat
 | maxgap + gap floor >= 0.02 | 0.816 | 0.829 | 0.695 | 0.780 |
 
 **Verdict: REJECTED at corpus granularity.** Large dense corpora are unimodal (largest gap 0.001-0.013 = noise; cuts land at 0.047/0.954, flipping 350-770 verdicts). A gap-significance floor degrades gracefully to fixed and only fires on the bimodal 42-claim articles batch (+0.019 mean) - the pre-registered benchmark-overfit falsifier. Surviving signal: per-NATURAL-group cuts on the 63 mixed-label groups (n>=4) beat fixed (articles 0.843 vs 0.808, traces 0.642 vs 0.609) - follow-up hypothesis is per-trace cuts with an unsupervised guard, scored on all traces including single-class.
+
+## Round 8 - claim-extraction mechanism (A1), 2026-06-11
+
+Extraction head-to-head on the 639 raw private RAG answer documents (trace cache; module `mechanisms.py`, logs `logs/round8-*.log`). Gates killed A2 (atomic-fact scoring), H-B (alignment-profile) and H-C (negation flag) pre-build; A1 survived.
+
+| variant | claims/doc | inflation | gold coverage | en accept | nb accept | it accept |
+|---|---|---|---|---|---|---|
+| shipped (regex + EN verb gate) | 13.03 | 1.00 | 1.000 (circular) | 0.908 | 0.496 | 0.145 |
+| gate-only (regex + agnostic gate) | 14.74 | 1.13 | 0.997 | - | - | - |
+| SaT + agnostic gate | 17.13 | 1.31 | 0.990 | - | - | - |
+
+Accept columns = per-language verb-gate acceptance rate of length-passing sentences (diagnostic). Scoring benchmarks (0.817 / 0.691 / 0.808) unaffected this round - they consume pre-extracted claims. Open follow-ups: sampled dual-judge precision pass on newly admitted sentences; gold v2 rebuild through the new extractor.
+
+## Round 8b - gold v2 re-baseline (survivorship bias removed), 2026-06-11
+
+Gold rebuilt through the H13 front door (`gold_v2.py`), dual-judged (Haiku+Sonnet), 5,912 rows / 84% trace coverage. Shipped HIGH manifold, fixed threshold 0.40.
+
+| slice | n | macro-F1 | balanced acc | supported recall | halluc recall (TNR) |
+|---|---|---|---|---|---|
+| overall | 5,912 | 0.802 | - | - | - |
+| inherited | 3,619 | 0.782 | - | - | - |
+| judged-new | 2,293 | 0.821 | - | - | - |
+| english | 4,569 | 0.803 | 0.797 | 0.884 | 0.710 |
+| non-english | 1,343 | 0.472 | 0.498 | 0.997 | 0.000 |
+
+Finding: shipped manifold is an English-only hallucination detector - non-English TNR 0.000 (confirms 1,339/1,343, catches 0/139 hallucinations). v1's 0.817 was an English-only score in disguise; v1 gold under-represented non-English because the anglocentric extractor dropped those claims pre-judging. Extraction precision of new admissions: 48.8% real claims, 32.7% noise. Round 9 candidate: retrain manifold on the non-English negative population gold v2 now exposes.

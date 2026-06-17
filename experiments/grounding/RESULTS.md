@@ -93,3 +93,42 @@ The private RAG cross-lingual grounding problem is, deterministically, a **trans
 ## Round 7 - batch-adaptive thresholds (max-gap / Jenks)
 
 The pre-fork cascade's `adaptive_gap` idea (cut the batch's score distribution at its largest gap) was re-tested on the shipped manifold's probabilities with batch = sub-dataset kind. It fails there: corpus-scale probability distributions are unimodal, the largest gap is noise, and the unguarded cut destroys private_rag (0.829 → 0.419) and vitaminc (0.695 → 0.346). Jenks natural breaks (jenkspy) is more stable but never beats the fixed threshold. With a gap-significance floor the mechanism reduces to "fixed everywhere except genuinely bimodal small batches" - it fires only on the 42-claim articles fixture (+0.019 mean), the pre-registered overfit falsifier, so corpus-level adoption is rejected. The one genuine finding: on mixed-label natural groups (per article, per trace, n >= 4) per-group cuts beat the fixed threshold by ~0.03 macro-F1 - the cascade's mechanism lived on small per-request batches, never corpora. Full tables in BENCHMARK.md Round 7 and the notebook.
+
+## Round 8 - mechanism hypotheses with diagnostic gates, 2026-06-11
+
+Three pre-registered mechanism candidates (HYPOTHESIS.md Round 8), each with a kill-gate measured before any build. Diagnostics + mechanism in `mechanisms.py`; logs `logs/round8-*.log`.
+
+**Gates killed two of three before a line of mechanism code.** A2 (atomic-fact scoring): errors do NOT concentrate in multi-sentence claims (27.0% of errors vs 28.5% of claims; multi/single error-rate ratio 0.93, needed > 1.5) - the granularity-mismatch story is falsified on private RAG, taking H-B (alignment-profile features) with it per the shared gate. H-C (negation-scope flag): negation-cue asymmetry in only 3.7% of VitaminC errors (needed >= 25%) - negation is not the VitaminC failure mode.
+
+**A1 (SaT multilingual claim extraction) survived and confirmed a real defect.** The shipped `extract_claims()` verb gate is English-only; on the 639 raw answer documents (trace cache) it rejects 9.2% of length-passing English sentences but nb 50.4%, it 85.5%, de 55.1%, da 46.7%, sv 46.2%, es 28.0%. Head-to-head over the same 639 docs:
+
+| variant | claims/doc | inflation | gold coverage | nb claims | it claims |
+|---|---|---|---|---|---|
+| shipped (regex + verb gate) | 13.03 | 1.00 | 1.000 (circular) | 126 | ~0 |
+| gate-only (regex + lang-agnostic gate) | 14.74 | 1.13 | 0.997 | 252 | 122 |
+| SaT + lang-agnostic gate | 17.13 | 1.31 | 0.990 | 266 | 169 |
+
+The language-agnostic gate alone doubles Norwegian admissions and recovers Italian from zero at 13% inflation and 99.7% gold-claim coverage. SaT boundaries admit ~16% more again but cost ~1% gold coverage (different sentence boundaries break fuzzy matching of old gold claims - benign or real, needs the precision pass). Falsifier (inflation > 2x with no recall gain) did not fire.
+
+**Methodological finding**: the gold dataset itself carries survivorship bias - it was built THROUGH the anglocentric extractor, so non-English claims are under-represented in gold exactly where the grounder is weakest. A gold v2 (re-extract with the new front door, re-judge) is the registered follow-up; it will shift all benchmark numbers because the claim population changes.
+
+**Recommendation**: ship the language-agnostic gate (conservative, pure win); hold SaT boundaries until a sampled dual-judge precision pass on the newly admitted sentences settles whether the extra admissions are load-bearing claims or noise.
+
+## Round 8b - gold v2 re-baseline, the survivorship-bias payoff, 2026-06-11
+
+The v1 gold was built THROUGH the anglocentric extractor (entry: A1 / H13), so non-English claims were dropped before judging. Gold v2 re-extracts every answer through the SaT + language-agnostic front door, inherits the verified label on claims that still fuzzy-match a v1 gold claim (partial_ratio >= 90), and dual-judges the rest (Haiku + Sonnet, SUPPORTED / UNSUPPORTED / NOT_A_CLAIM; keep only dual-agreed). Pipeline: `gold_v2.py` (units / judge / build / bench), data in the gitignored forensics stash.
+
+- **Dataset** - 5,912 rows (3,619 inherited + 2,293 new dual-agreed) over 639 traces; 84% of traces dual-judged (449/535 with new claims; judging is flaky `claude -p`, retried to convergence then stopped)
+- **Extraction precision of new admissions** - of the sentences the new front door admits that the verb gate dropped: 48.8% are real checkable claims, 32.7% NOT_A_CLAIM (noise), rest judge-split. The looser gate trades precision for the cross-lingual recall it buys
+- **Headline barely moves** - macro-F1 0.802 (v1 was 0.817). English is 77% of the unbiased population and dominates the average
+
+The split is the finding:
+
+| slice | n | acc | balanced acc | supported recall | hallucination recall (TNR) |
+|---|---|---|---|---|---|
+| english | 4,569 | 0.815 | 0.797 | 0.884 | 0.710 |
+| non-english | 1,343 | 0.894 | 0.498 | 0.997 | 0.000 |
+
+**The shipped manifold is an English-only hallucination detector.** On non-English it confirms 1,339 of 1,343 claims and catches 0 of 139 hallucinations (TN=0, FP=139) - balanced accuracy 0.498 is an exact coin flip. High accuracy (0.894) is the "confirm everything" score on a 90%-positive slice, not capability. The MT bridge lifts non-English *supported* recall (r1_mt is a support feature) but the frozen weights - trained on English-dominant private RAG + English VitaminC - encode no cross-lingual hallucination signal. v1 gold concealed this entirely: it had almost no non-English claims to be wrong about.
+
+**Implication**: the cross-lingual capability the earlier MT-bridge experiments validated (RESULTS.md Round 1, balanced ~0.78) lived in a tuned-threshold experiment harness, not the shipped fixed-0.40 manifold. To ship real multilingual hallucination detection the manifold must be retrained on a non-English negative population - which gold v2 now provides (139 non-English negatives, up from ~handful). Registered as the Round 9 candidate.

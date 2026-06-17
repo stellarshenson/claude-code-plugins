@@ -1,0 +1,77 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+=== A1: verb-gate rejection by language ===
+traces: 639, missing from cache: 0
+         n  accept_rate  reject_rate
+lang                                
+en    7663     0.907608     0.092392
+fr     584     0.881849     0.118151
+es     261     0.720307     0.279693
+nb     254     0.496063     0.503937
+und    162     0.598765     0.401235
+it     124     0.145161     0.854839
+yo     119     1.000000     0.000000
+nl      94     0.691489     0.308511
+nn      69     0.594203     0.405797
+de      69     0.449275     0.550725
+la      53     0.679245     0.320755
+sv      52     0.538462     0.461538
+da      30     0.533333     0.466667
+pt      29     0.758621     0.241379
+ts      19     1.000000     0.000000
+eo      15     0.800000     0.200000
+et      12     1.000000     0.000000
+st      10     1.000000     0.000000
+af       7     0.285714     0.714286
+ca       5     0.600000     0.400000
+mi       4     0.750000     0.250000
+pl       3     0.333333     0.666667
+cy       2     1.000000     0.000000
+hu       2     0.000000     1.000000
+tl       2     0.500000     0.500000
+ro       2     0.000000     1.000000
+cs       1     1.000000     0.000000
+sq       1     0.000000     1.000000
+tn       1     0.000000     1.000000
+sw       1     1.000000     0.000000
+vi       1     0.000000     1.000000
+xh       1     1.000000     0.000000
+
+=== A2/H-B: multi-sentence error concentration (private_rag) ===
+{
+  "corpus": "private_rag",
+  "n": 2752,
+  "n_errors": 381,
+  "share_claims_multi": 0.2852470930232558,
+  "share_errors_multi": 0.27034120734908135,
+  "err_rate_multi": 0.13121019108280255,
+  "err_rate_single": 0.14133197763091002,
+  "sent_count_distribution": {
+    "1": 1967,
+    "2": 417,
+    "3": 183,
+    "4": 78,
+    "5": 43,
+    "6": 23,
+    "7": 21,
+    "8": 8,
+    "9": 4,
+    "10": 4,
+    "11": 1,
+    "12": 1,
+    "13": 1,
+    "14": 1
+  },
+  "err_rate_ratio": 0.9283828987765201,
+  "gate_pass": false
+}
+
+=== H-C: negation asymmetry (vitaminc) ===
+{
+  "n": 800,
+  "n_errors": 244,
+  "asym_rate_errors": 0.036885245901639344,
+  "asym_rate_non_errors": 0.017985611510791366,
+  "false_accepts": 119,
+  "false_rejects": 125,
+  "gate_pass": false
+}

@@ -1,0 +1,83 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+=== A1 head-to-head: shipped vs gate-only vs SaT+gate ===
+{
+  "n_docs": 639,
+  "shipped": {
+    "claims_per_doc": 13.03,
+    "inflation_vs_shipped": 1.0,
+    "gold_coverage": 1.0,
+    "cov_by_lang": {
+      "de-DE": 1.0,
+      "en": 1.0,
+      "es-ES": 1.0,
+      "fr-FR": 1.0,
+      "it-IT": 1.0,
+      "nb-NO": 1.0,
+      "nl-NL": 1.0,
+      "pt-PT": 1.0,
+      "sv-SE": 1.0
+    },
+    "top_langs": {
+      "en": 6955,
+      "fr": 515,
+      "es": 188,
+      "nb": 126,
+      "yo": 119,
+      "und": 97,
+      "nl": 65,
+      "nn": 41
+    }
+  },
+  "gate_only": {
+    "claims_per_doc": 14.74,
+    "inflation_vs_shipped": 1.13,
+    "gold_coverage": 0.9971,
+    "cov_by_lang": {
+      "de-DE": 1.0,
+      "en": 0.996,
+      "es-ES": 1.0,
+      "fr-FR": 1.0,
+      "it-IT": 1.0,
+      "nb-NO": 1.0,
+      "nl-NL": 1.0,
+      "pt-PT": 1.0,
+      "sv-SE": 1.0
+    },
+    "top_langs": {
+      "en": 7559,
+      "fr": 574,
+      "es": 260,
+      "nb": 252,
+      "it": 122,
+      "yo": 119,
+      "nl": 94,
+      "nn": 67
+    }
+  },
+  "sat_gate": {
+    "claims_per_doc": 17.13,
+    "inflation_vs_shipped": 1.31,
+    "gold_coverage": 0.9902,
+    "cov_by_lang": {
+      "de-DE": 1.0,
+      "en": 0.991,
+      "es-ES": 1.0,
+      "fr-FR": 0.981,
+      "it-IT": 1.0,
+      "nb-NO": 1.0,
+      "nl-NL": 0.946,
+      "pt-PT": 1.0,
+      "sv-SE": 1.0
+    },
+    "top_langs": {
+      "en": 8620,
+      "fr": 641,
+      "es": 323,
+      "nb": 266,
+      "it": 169,
+      "und": 156,
+      "yo": 137,
+      "de": 101
+    }
+  }
+}

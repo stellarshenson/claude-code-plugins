@@ -1,0 +1,20 @@
+extracting high features for 5912 rows...
+
+gold v2 macro-F1 (n=5912): 0.8018
+  inherited (n=3619): 0.7821
+  judged-new (n=2293): 0.8207
+  english (n=4569): 0.8025
+  non-english (n=1343): 0.4719
+
+  per-language (n>=30):
+    en     n=4569  macro-F1 0.8025
+    es     n=  81  macro-F1 0.4636
+    es-ES  n= 166  macro-F1 0.461
+    fr     n= 110  macro-F1 0.4762
+    fr-FR  n= 340  macro-F1 0.4864
+    it     n=  89  macro-F1 0.4972
+    it-IT  n=  40  macro-F1 0.4595
+    nb     n=  81  macro-F1 0.4671
+    nb-NO  n= 190  macro-F1 0.4879
+    nl-NL  n=  39  macro-F1 0.4935
+    pt-PT  n=  47  macro-F1 0.3896

@@ -50,8 +50,8 @@ Strong prior for A: recall 0.837 means the evidence already contains the words; 
 
 1. **Enhanced claims extraction.** Claims average **2.35 sentences (max 26)** - multi-fact. Split into atomic claims (raises per-fact recall and stops one false fact poisoning a true paragraph), each carrying its anchors `(text, {numbers, units, ids, entities})`. No disclaimer tagging (data shows it is unneeded).
 2. **Language recognition.** Per claim (and per evidence span), detect language with a deterministic statistical detector (`lingua` / `fasttext-langid` / `langdetect`, ~ms). Re-derive - do not trust `lang`. Route: detected-English → Gap-A recall scorer; detected non-English → Gap-B bridge pipeline. Expect en dominant, then nb/fr/sv/it/es/pt.
-3. **Dictionaries to keep.** (a) a **multilingual domain lexicon** mapping VMS component/part vocabulary in all six source languages → English canonical terms; (b) a **product/part-ID gazetteer** (`C`-codes, `V`/`T`-codes, product names) for anchor extraction; (c) per-language stopword lists. Bootstrap from the part catalogue (ID↔name pairs in the tool outputs), private RAG glossaries, and held-out co-occurrence alignment mined from the gold (strict hold-out to avoid leakage).
-4. **Other deterministic layers.** Chunk the mega-evidence and score claim-recall against the best chunk (Gap A); numeric/entity **anchor recall** (confirm) and **anchor mismatch** (contradict: claim `C00000245` vs evidence `C00000246`); diacritic/transliteration normalisation; fuzzy AFTER lexicon canonicalisation.
+3. **Dictionaries to keep.** (a) a **multilingual domain lexicon** mapping product component/part vocabulary in all six source languages → English canonical terms; (b) a **product/part-ID gazetteer** (alphanumeric part codes, product names) for anchor extraction; (c) per-language stopword lists. Bootstrap from the part catalogue (ID↔name pairs in the tool outputs), private RAG glossaries, and held-out co-occurrence alignment mined from the gold (strict hold-out to avoid leakage).
+4. **Other deterministic layers.** Chunk the mega-evidence and score claim-recall against the best chunk (Gap A); numeric/entity **anchor recall** (confirm) and **anchor mismatch** (contradict: a part code in the claim vs a different code in the evidence); diacritic/transliteration normalisation; fuzzy AFTER lexicon canonicalisation.
 
 ## Experiment plan (on the verified gold, same 375, same metrics as the project reports)
 
@@ -78,7 +78,7 @@ The private RAG gold + transcripts stay in the git-ignored `private-rag-forensic
 
 ---
 
-# Hypothesis - batch-adaptive operating point (max-gap / Jenks)
+# Hypothesis H12 - batch-adaptive operating point (max-gap / Jenks)
 
 Claim: the pre-fork cascade's `adaptive_gap` cut (sort batch scores, threshold at the largest gap), applied unsupervised to the manifold's `p_high` per sub-dataset batch, recovers distant-paraphrase false-rejects without touching features or weights. Motivation: that mechanism scored 0.93 macro-F1 on the article fixtures where the manifold scores 0.81.
 
@@ -89,7 +89,7 @@ Claim: the pre-fork cascade's `adaptive_gap` cut (sort batch scores, threshold a
 - **Predicted** - cut lands near the label-tuned threshold on bimodal corpora; articles rises toward 0.93; private_rag holds ~0.817
 - **Falsifiers** - unimodal corpus distribution → largest gap is noise, cut worse than fixed; bottom-half prior fails to transfer; wins-on-articles-only = benchmark overfit, reject
 - **Non-goals** - no feature/weight changes, no production adoption this round
-- **Experiment** - `notebooks/03-kj-maxgap-batch-experiment.ipynb` over `data/processed/grounding_combined.parquet` (gitignored; `build_combined.py`)
+- **Experiment** - `notebooks/03-kj-H12-maxgap-batch-experiment.ipynb` over `data/processed/grounding_combined.parquet` (gitignored; `build_combined.py`)
 
 ## Outcome (Round 7) - REJECTED at corpus granularity
 
@@ -101,3 +101,83 @@ Unimodal falsifier fired; full tables in `BENCHMARK.md` Round 7 and the notebook
 - **Gap floor (any 0.02-0.15) reduces mechanism to fixed** - fires only on the bimodal 42-claim articles batch, +0.019 mean = the pre-registered overfit falsifier
 - **Surviving signal** - per-natural-group cuts on 63 mixed-label groups (n >= 4) beat fixed: articles 0.843 vs 0.808, traces 0.642 vs 0.609; the cascade's mechanism lived on small per-request batches, never corpora
 - **Follow-up hypothesis** - per-trace cuts with an unsupervised guard, scored on ALL traces incl. single-class; rejected unless it holds there
+
+---
+
+# Hypothesis H13-H16 (Round 8) - three mechanism candidates
+
+IDs: H13 = A1 SaT extraction, H14 = A2 atomic-fact scoring, H15 = H-B alignment-profile, H16 = H-C negation flag.
+
+Round 7 closed the threshold path; Round 8 targets mechanisms. Three pre-registered candidates, each with a diagnostic gate that can kill it before any build.
+
+## H-A: the claim unit is wrong end-to-end (extraction + scoring)
+
+Claim: the pipeline should extract and score atomic, language-agnostic facts, not regex-gated multi-sentence blobs. Gold claims average 2.35 sentences (max 26); every recall feature max-pools over one 300-char chunk.
+
+**A1 - SaT multilingual claim extraction.** Shipped `extract.py` uses regex sentence split + an English-only verb gate (copula list + `-s/-ed/-ing` suffixes); non-English claims fail the gate. Replace with SaT segmentation (already shipped in `document_processing/sat.py`) + a language-agnostic content gate.
+
+- **Measurement** - extraction recall vs verified gold claims on original private RAG answer documents, overall and per-language; claim-count inflation as precision proxy
+- **Predicted** - non-English extraction recall rises from near-zero to parity with English
+- **Diagnostic gate** - measure shipped `extract_claims()` recall first; kill if > 0.9 overall AND per-language
+- **Falsifier** - claim-count inflation > 2x with no recall gain = precision collapse
+
+**A2 - atomic-fact scoring.** Decompose each claim into SaT facts, score each through the existing frozen manifold against its own best chunk, aggregate per-fact probabilities into the claim verdict. No retrain - shipped weights per fact; never train on inherited fact labels.
+
+- **Aggregation tournament** - min-p, mean-p, length-weighted mean, noisy-AND; selector learned on training folds only
+- **Predicted** - private RAG multi-sentence claims recover false-rejects (facts whose evidence sits in different chunks); fabricated facts inside long true claims surface
+- **Diagnostic gate** - kill if < 30% of private RAG errors are multi-sentence claims OR multi-sentence error rate < 1.5x single-sentence
+- **Falsifiers** - anaphora-broken facts over-reject the supported side; any corpus drops > 0.01
+
+## H-B: alignment-profile features (rival to A2 - keep claim whole, fix the pooling)
+
+Claim: the evidence signal should describe the shape of the claim-evidence alignment, not just the best chunk. Three deterministic features + manifold retrain via the established joint protocol.
+
+- **r1_union** - IDF-weighted claim-token coverage over the union of top-k chunks (set-cover, not max)
+- **dispersion** - normalised span-spread of matched token positions (supported = contiguous, fabricated = scattered)
+- **max_run** - longest contiguous matched run / claim length
+- **Predicted** - lifts long multi-fact claims; dispersion adds a fabrication signal max-pooling cannot see
+- **Diagnostic gate** - shares A2's multi-sentence error-concentration gate
+- **Falsifiers** - hallucination-F1 drops (union coverage inflates false accepts); LOSO/LOLO regression; retrained weight ~0 = redundant with oracle/top3
+
+## H-C: negation-scope mismatch feature (target VitaminC 0.691)
+
+Claim: an alignment-gated polarity-flip flag separates present-but-negated evidence from support. Negation cue (multilingual closed-class list) near an aligned anchor on exactly one side of the pair, gated by fuzzy > 0.5; + retrain.
+
+- **Predicted** - VitaminC REFUTES recall rises; complements `wn_antonym_flip` (antonyms are not negation)
+- **Diagnostic gate** - kill if negation-cue asymmetry < 25% of VitaminC errors or asymmetry rate in non-errors >= half the error rate
+- **Falsifiers** - private RAG regresses (incidental negation over-flagging); retrained weight ~0
+
+## Shared protocol
+
+- **Baseline reproduction first** - 0.817 / 0.691 / 0.808 must reproduce or stop
+- **Ship bar** - target-corpus gain >= +0.02 macro-F1 AND no corpus drops > 0.01
+- **Stacking** - A2 x H-B evaluated together only if each survives alone
+- **Non-goals** - no shipped-code changes this round; no LLM; no new heavy deps
+- **Experiment** - `notebooks/04-kj-H13-H16-sat-extraction-atomic-alignment-negation.ipynb` + `experiments/grounding/mechanisms.py`
+
+## Stage 1 gate outcomes (Round 8)
+
+Diagnostics in `mechanisms.py`, log `logs/round8-diagnostics.log`. One amendment before running: gold claims were produced BY the shipped `extract_claims()` (`answer_claims()` in the forensics code), so A1's original gold-recall gate was circular; replaced with verb-gate rejection rate per language on the 639 raw answer documents (trace cache, 0 missing).
+
+- **A1 - SURVIVES** - verb gate rejects 9.2% of English sentences vs nb 50.4%, it 85.5%, de 55.1%, da 46.7%, sv 46.2%, nn 40.6%, es 28.0% (length-passing sentences only). The anglocentric defect is real and large
+- **A2 - KILLED** - errors do not concentrate in multi-sentence claims: share_errors_multi 27.0% vs share_claims_multi 28.5%; err-rate ratio multi/single 0.93 (needed > 1.5). Granularity mismatch falsified on private RAG (n=2752, 381 errors)
+- **H-B - KILLED** - shared A2's gate per pre-registration
+- **H-C - KILLED** - negation-cue asymmetry in 3.7% of VitaminC errors (needed >= 25%); non-errors 1.8%; errors split 119 false-accepts / 125 false-rejects. Negation is not the VitaminC failure mode
+
+## Outcome (Round 8) - A1 KEPT, A2 / H-B / H-C killed at the gates
+
+Full tables in RESULTS.md and BENCHMARK.md Round 8.
+
+- **A1 KEPT** - verb gate is anglocentric (en 9.2% rejection vs nb 50.4%, it 85.5%); language-agnostic gate alone doubles nb admissions, recovers it from zero, 1.13x inflation, 0.997 gold coverage; SaT boundaries add more (1.31x) at 0.990 coverage
+- **A2 / H-B REJECTED pre-build** - error concentration gate failed (ratio 0.93, needed > 1.5)
+- **H-C REJECTED pre-build** - negation asymmetry 3.7% of VitaminC errors (needed >= 25%)
+- **Follow-ups registered** - sampled dual-judge precision pass on new admissions; gold v2 re-extraction (gold carries extractor survivorship bias); ship decision: gate-only conservative, SaT+gate after precision pass
+
+## Outcome (Round 8b) - gold v2 re-baseline, the survivorship-bias payoff
+
+The A1 KEPT decision implied the v1 gold was itself biased - built THROUGH the anglocentric extractor, it dropped non-English claims before judging. Gold v2 (`gold_v2.py`) re-extracts every answer via the SaT + language-agnostic gate, inherits the verified label where a claim still fuzzy-matches v1 gold, and dual-judges the rest (Haiku + Sonnet, keep dual-agreed). Result: 5,912 rows, 84% trace coverage; extraction precision of new admissions 48.8% real claims / 32.7% noise. Benchmarking the shipped HIGH manifold on it:
+
+- **Headline barely moves** - macro-F1 0.802 vs v1 0.817; English is 77% of the unbiased population and dominates
+- **The split is the finding** - english balanced-acc 0.797 / hallucination recall 0.710 (healthy); non-english balanced-acc 0.498 / hallucination recall (TNR) 0.000, confirming 1,339 of 1,343 and catching 0 of 139 non-English hallucinations
+- **The shipped manifold is an English-only hallucination detector** - MT recall lifts non-English support but the frozen weights, trained on English-dominant data, encode no cross-lingual negative signal; v1's 0.817 was an English score in disguise
+- **Round 9 candidate** - retrain the manifold on the 139 non-English negatives gold v2 now provides (the first dataset that contains them); full tables in RESULTS.md / BENCHMARK.md Round 8b
