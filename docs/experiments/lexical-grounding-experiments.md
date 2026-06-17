@@ -1,6 +1,6 @@
 # Deterministic cross-lingual grounding on the private RAG gold
 
-Experiment on the `experiment/grounding` branch: build a non-LLM grounder that classifies each claim as supported or hallucination on a real cross-lingual dataset, without training any model on the test fold. The current best is a **lexical-only logistic** (translate the claim, then word recall) - no semantic model. Artefacts: `experiments/grounding/{harness.py, lab.py, HYPOTHESIS.md, RESEARCH.md, RESULTS.md, BENCHMARK.md}`; the labelled gold and transcripts stay in a git-ignored stash.
+Experiment on the `experiment/grounding` branch: build a non-LLM grounder that classifies each claim as supported or hallucination on a real cross-lingual dataset, without training any model on the test fold. The current best is a **lexical-only logistic** (translate the claim, then word recall) - no semantic model. This document is the canonical writeup (hypotheses, setup, results, conclusions for every round). Supporting artefacts: `experiments/grounding/{harness.py, lab.py, round9.py, synth_mt.py, RESEARCH.md, RESULTS.md, BENCHMARK.md}`; the labelled gold and transcripts stay in a git-ignored stash.
 
 ## Situational overview
 
@@ -109,10 +109,23 @@ The decisive factors are the features and the dataset size, not the fitting meth
 - **Bayesian calibration** (production `fit_calibrator`, bambi/PyMC logistic) - a Bayesian logistic is a hyperplane, so it lands at the linear level (0.733 on the 375 snapshot) and adds calibrated uncertainty, not capacity
 - **Leave-one-source-out ≥ leave-one-language-out** (0.845 vs 0.793) - context leakage is not inflating results; the harder generalisation is to an unseen language
 
+The capacity-ceiling scissors (375 snapshot, in-fold = resubstitution, the overfit gap is the tell):
+
+| model | LOLO macro-F1 | hal-F1 | in-fold | overfit gap |
+|---|---|---|---|---|
+| LR[r1] | 0.731 | 0.57 | 0.753 | +0.02 |
+| LR[r1,nli] | 0.728 | 0.63 | 0.750 | +0.02 |
+| Bayesian calibrator (bambi/PyMC) | 0.733 | 0.63 | - | - |
+| LR + linear interactions | 0.691 | 0.49 | 0.761 | +0.07 |
+| **GBT depth-2** | **0.785** | 0.66 | 0.909 | +0.12 |
+| GBT depth-4 | 0.733 | 0.56 | 0.996 | +0.26 |
+
+In-fold rises monotonically to 0.996 (memorisation) while LOLO peaks at depth-2 then falls - the model class is the lever, not the fitting method, and on the larger live gold even depth-2 overfits and the linear model wins outright.
+
 ## What we tried
 
 - **Kept** - the MT bridge (argos per-language), word recall, anchors, char-ngram, fuzzy, claim-intrinsic specificity, the aligned value-conflict feature, the WordNet antonym-flip, a logistic head; the per-chunk routing / dual recall is kept for efficiency, not accuracy
-- **Dropped / refuted** - NLI entailment (superseded by lexical recall + specificity), claim decomposition (over-flags supported clauses), cross-corpus calibrator transfer (VitaminC mis-weights), oracle-chunk (retrieval is not the bottleneck), linear interaction terms and deep trees (overfit), OPUS-MT engine (worse and ~9x slower than argos), polarity/negation-XOR (wrong-signed on private RAG - fires on 9% of supported), curated antonym lexicon (superseded by WordNet), general minimal-substitution and numeric-comparison (null - can't separate synonym restatement from fact-edit deterministically)
+- **Dropped / refuted** - NLI entailment (superseded by lexical recall + specificity), claim decomposition (over-flags supported clauses), cross-corpus calibrator transfer (VitaminC mis-weights), oracle-chunk (retrieval is not the bottleneck), linear interaction terms and deep trees (overfit), OPUS-MT engine (worse and ~9x slower than argos), polarity/negation-XOR (wrong-signed on private RAG - fires on 9% of supported), curated antonym lexicon (superseded by WordNet), general minimal-substitution and numeric-comparison (null - can't separate synonym restatement from fact-edit deterministically), batch-adaptive thresholds (max-gap / Jenks, round 7 - no gap structure at corpus scale, unguarded cuts destroy two corpora 0.829→0.419, a gap floor just reduces to the fixed threshold), atomic-fact scoring and alignment-profile pooling (round 8 - killed at the multi-sentence error-concentration gate, ratio 0.93 < 1.5)
 
 ## Contradiction features: joint hold-vs-collapse
 
@@ -186,6 +199,16 @@ Once the grounder shipped as the default mode, a failure surfaced on very short 
 - **The three together ship** - probe **10/12 → 11/12**: orchard FN fixed (recall revived), every absent-content fabrication correctly rejected. Gate A holds two-sided - private RAG 0.825 → 0.817 (−0.008, LOSO noise), **VitaminC 0.661 → 0.691** (+0.030; the blend legitimately lifts the contrastive corpus, whose single-sentence evidence is the same degenerate regime). The one remaining probe miss is a spelled-out-number value-conflict ("fifty" vs "twelve" hectares) - the orthogonal round-4 H2 gap, not the short-source issue
 - **Conclusion** - the short-source regime is fixed by *learned* recalibration (background-IDF recall floor + distinctive-content feature + regime augmentation), not a hand-set threshold; real sentence-vs-document grounding is unaffected, and the same fix lifts VitaminC. It revises the round-2 "background-rarity null": the signal was null only on multi-sentence sources; in the degenerate regime it is the load-bearing discriminator
 
+## Mechanism round, round 8: claims extraction and evidence pooling (diagnostic gates)
+
+With the threshold levers exhausted (round 7 below, refuted), round 8 targeted the scoring *unit* with three pre-registered mechanism candidates, each guarded by a diagnostic gate measured *before* any build - a cheap way to kill a phantom target. One survived and reshaped the gold.
+
+- **A1 multilingual claim extraction (KEPT)** - the shipped `extract_claims()` used an English-only verb gate (copula list + -s/-ed/-ing suffixes); on 639 raw answer documents it rejected 9.2% of English sentences but 50.4% of Norwegian, 85.5% of Italian, 55.1% of German - silently dropping non-English claims before they were ever judged. A language-agnostic content gate alone doubles Norwegian admissions at 1.13x inflation and 0.997 gold coverage; SaT boundaries add more (1.31x at 0.990). This front-door defect is what motivated the gold v2 rebuild
+- **A2 atomic-fact scoring (KILLED at gate)** - decompose multi-sentence claims into SaT facts, score each against its own best chunk. Gate: errors must concentrate in multi-sentence claims (≥30%, error-rate ratio >1.5). Measured: share of errors in multi-sentence claims 27.0% vs 28.5% of claims, ratio 0.93 - no concentration, killed pre-build
+- **H-B alignment-profile features (KILLED)** - `r1_union` / dispersion / `max_run` over the chunk set instead of best-chunk max-pooling; shared A2's error-concentration gate and died with it
+- **H-C negation-scope feature (KILLED at gate)** - gate: negation-cue asymmetry in ≥25% of VitaminC errors; measured 3.7% (non-errors 1.8%) - negation is not the VitaminC failure mode, confirming round 3's 0%-negation null now on the live gold
+- **Conclusion** - the diagnostic-gate discipline (measure the precondition before building) killed three of four mechanisms cheaply; the survivor, A1 multilingual extraction, exposed that the gold itself carried the extractor's survivorship bias - rebuilt as gold v2 (round 8b: re-extract every answer through the SaT + language-agnostic gate, inherit the verified label on fuzzy-matches, dual-judge the rest; 5,912 rows, new-admission extraction precision 48.8% real claims), the unbiased benchmark round 9 acts on
+
 ## Cross-lingual blind spot, round 9: the English-only hallucination detector (ships a language-conditional threshold)
 
 The macro-F1 headline above is English-dominant and concealed a blind spot. The old gold was built *through* an anglocentric claim extractor (an English-only verb gate that dropped non-English sentences before judging), so the benchmark had almost no non-English negatives to be wrong about. Rebuilding the gold without that gate (gold v2, 5,912 rows: claims re-extracted through a SaT + language-agnostic gate, dual-judged by Haiku + Sonnet) and scoring the shipped HIGH manifold per language exposed the failure - non-English hallucination recall (TNR) 0.000 vs English 0.710, confirming 1,339 of 1,343 non-English claims and catching 0 of 139 non-English hallucinations. Balanced accuracy 0.498 (a coin flip) hid behind 0.894 "confirm-everything" accuracy on a 90%-positive slice.
@@ -197,6 +220,17 @@ The macro-F1 headline above is English-dominant and concealed a blind spot. The 
 - **Ships threshold-only, weights untouched** - the recalibrated weights broke two English precision e2e tests (the gold-v2-optimal English cut 0.29 over-confirms borderline fabrications vs the shipped 0.40) and were unnecessary: the *shipped* weights already separate non-English, reaching TNR 0.748 at a 0.70 non-English cut with no weight change. The ship is one config line, `threshold_non_en: 0.70` on `lexical_manifolds.high`, applied via `LexicalVerdict.threshold_for(feat)`; English is byte-identical (gold_en, VitaminC, held-out articles, all e2e tests unchanged)
 - **Conclusion** - the shipped grounder was an English-only hallucination detector; the unbiased gold exposed it and a language-conditional decision threshold over the existing weights fixes it with zero English blast radius. The weight recalibration is a tradeoff (better gold-en macro-F1, worse English precision) and stays an experiment, not a ship
 
+Results - shipped weights, non-English decision-threshold sweep on the held-out gold v2 non-English slice (the shipped weights never trained on these negatives):
+
+| non-EN threshold | TNR (catch) | TPR (confirm) | balanced-acc |
+|---|---|---|---|
+| 0.40 (global, shipped) | 0.165 | 0.963 | 0.564 |
+| 0.65 | 0.669 | 0.807 | 0.738 |
+| **0.70 (shipped)** | **0.748** | **0.761** | **0.754** |
+| 0.75 | 0.806 | 0.718 | 0.762 |
+
+Per-language at 0.70: es 0.80 / fr 0.71 / nb 0.71 / pt 0.65 / sv 0.93 / it 0.71 / nl 1.00 TNR. The weight-recalibration alternative (rejected for ship) at vit-balanced oversampling held every corpus (gold_en +0.003, gold_non_en +0.138, vitaminc +0.003, articles +0.019 macro-F1) but lowered the English decision threshold to 0.29, over-confirming borderline fabrications and breaking two English precision e2e tests.
+
 ## Synthetic cross-lingual negatives, round 10: the weights learn the boundary (validated offline)
 
 The round-9 ship is a threshold patch over English-trained weights - it works because the `r1_mt` ranking transfers, but the weights still see only 139 real non-English negatives across 16 languages (sv 14, nl 5, da 2). The durable fix is to give the weights a real multilingual negative population by translation, so a single global threshold works again.
@@ -207,6 +241,14 @@ The round-9 ship is a threshold patch over English-trained weights - it works be
 - **R10-H2 it generalises to unseen languages** - LOLO at the global threshold, held-out language excluded from BOTH real and synthetic training: es 0.71 / fr 0.79 / pt 0.60 / nb 0.71 / sv 0.71, against 0.000 in round 9. Synthetic negatives from *other* languages teach a transferable cross-lingual boundary - not per-language memorisation
 - **Cost and limits** - support recall 0.768 at the global cut (rejects 23% of supported non-English claims), comparable to the shipped patch; the gain is durability, the signal living in the weights rather than a special-cased threshold. de back-translation model absent, degrading `r1_mt` for the 117 German rows at extraction; synthetic sources are gold-domain omission negatives only (no VitaminC contrastive type yet)
 - **Conclusion** - the data mechanism is validated: translated, fidelity-verified non-English negatives let the weights carry the cross-lingual signal so a single global threshold reaches TNR 0.68 and generalises across unseen languages. Shipping the synthetic-retrained weights is deferred behind the round-9 English no-regression guard (recalibration breaks English precision e2e tests)
+
+Results - real gold v2 non-English slice, single global threshold (synthetic is train-only):
+
+| training | global-threshold non-EN TNR | TPR | LOLO at global threshold (held-out lang) |
+|---|---|---|---|
+| shipped weights | 0.000 | 0.997 | fr 0.000 / nb 0.000 (round 9) |
+| retrain, no synthetic | 0.158 | 0.973 | - |
+| **retrain + 1,053 synthetic** | **0.683** | 0.768 | es 0.71 / fr 0.79 / pt 0.60 / nb 0.71 / sv 0.71 |
 
 ## Lessons learned
 

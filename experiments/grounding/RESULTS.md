@@ -96,7 +96,7 @@ The pre-fork cascade's `adaptive_gap` idea (cut the batch's score distribution a
 
 ## Round 8 - mechanism hypotheses with diagnostic gates, 2026-06-11
 
-Three pre-registered mechanism candidates (HYPOTHESIS.md Round 8), each with a kill-gate measured before any build. Diagnostics + mechanism in `mechanisms.py`; logs `logs/round8-*.log`.
+Three pre-registered mechanism candidates (Round 8, see `docs/experiments/lexical-grounding-experiments.md`), each with a kill-gate measured before any build. Diagnostics + mechanism in `mechanisms.py`; logs `logs/round8-*.log`.
 
 **Gates killed two of three before a line of mechanism code.** A2 (atomic-fact scoring): errors do NOT concentrate in multi-sentence claims (27.0% of errors vs 28.5% of claims; multi/single error-rate ratio 0.93, needed > 1.5) - the granularity-mismatch story is falsified on private RAG, taking H-B (alignment-profile features) with it per the shared gate. H-C (negation-scope flag): negation-cue asymmetry in only 3.7% of VitaminC errors (needed >= 25%) - negation is not the VitaminC failure mode.
 
