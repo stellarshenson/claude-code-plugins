@@ -181,3 +181,39 @@ The A1 KEPT decision implied the v1 gold was itself biased - built THROUGH the a
 - **The split is the finding** - english balanced-acc 0.797 / hallucination recall 0.710 (healthy); non-english balanced-acc 0.498 / hallucination recall (TNR) 0.000, confirming 1,339 of 1,343 and catching 0 of 139 non-English hallucinations
 - **The shipped manifold is an English-only hallucination detector** - MT recall lifts non-English support but the frozen weights, trained on English-dominant data, encode no cross-lingual negative signal; v1's 0.817 was an English score in disguise
 - **Round 9 candidate** - retrain the manifold on the 139 non-English negatives gold v2 now provides (the first dataset that contains them); full tables in RESULTS.md / BENCHMARK.md Round 8b
+
+---
+
+# Hypothesis H17 (Round 9) - cross-lingual manifold retrain
+
+The shipped HIGH manifold catches 0 of 139 non-English hallucinations (TNR 0.000) while English is healthy (TNR 0.710). H17 asks whether this is a weights defect curable by retraining on gold v2, or a feature defect needing a new cross-lingual signal.
+
+## Claim
+
+The 18 shipped features already separate non-English support from hallucination; the English-dominant training data (where `r1_mt == r1_direct`, collinear) left the cross-lingual signal unweighted. Retraining the same frozen 18-feature contract on gold v2 - the first gold containing non-English negatives - lifts non-English hallucination recall without regressing English.
+
+- **Probe (pre-build, decides the fork)** - shipped HIGH features on the non-EN slice (139 neg + 280 sampled pos): `r1_mt` AUC 0.802 (supp 0.525 vs halluc 0.245), `r1_best` 0.802, `unmatched_rarity` 0.796 inverted (halluc 0.734 vs supp 0.431); `r1_direct` only 0.622. Features separate → the fix is a retrain, not a new feature. MT bridge fires on 82.6% of non-EN rows
+- **Predicted** - non-EN TNR rises from 0.000 to meaningfully positive; English balanced-acc 0.797 / TNR 0.710 and VitaminC 0.691 hold
+- **Pre-registered ship bar** - held-out non-EN TNR >= 0.30 AND English balanced-acc drop <= 0.01 AND VitaminC drop <= 0.01
+- **Falsifier (generalization)** - leave-one-language-out: train without a language's negatives, measure its held-out TNR. 139 negatives across 16 languages is thin; if LOLO TNR stays ~0 while in-sample rises, the gold lacks volume to learn a transferable boundary - report, ship nothing
+- **Non-goals** - no new feature (probe killed the need), no shipped-config write until accepted, no LLM, no new heavy dep
+
+## Secondary - MT coverage (H17b)
+
+Independent deterministic lift: install the missing argos packages (sv, nl, da, ...) so `r1_mt` fires on ~100% of non-EN rows instead of 82.6%, raising real cross-lingual recall for the thin-tail languages without any retrain.
+
+## Protocol
+
+- **Baseline reproduction** - shipped HIGH on gold v2 must reproduce non-EN TNR 0.000 / EN balanced-acc 0.797 or stop
+- **Experiment** - `notebooks/05-kj-H17-crosslingual-manifold-retrain.ipynb` + `experiments/grounding/round9.py`; retrain writes `config_document_processing.experiment.yaml`, never the shipped config
+
+## Outcome (Round 9) - retrain-alone MISSES, retrain + language-conditional threshold is the fix
+
+Full tables in RESULTS.md / BENCHMARK.md Round 9. Baseline reproduced (non-EN TNR 0.000, EN bal-acc 0.797).
+
+- **Probe confirmed at full scale** - features separate non-EN classes (r1_mt AUC 0.806, unmatched_rarity 0.802 inv); per-language r1_best AUC 0.72-0.89. The defect is the weights
+- **Retrain alone MISSES the bar** - OOF non-EN TNR 0.000 -> 0.129 (bar 0.30); LOLO at the global threshold collapses (fr/nb 0.000). It does *improve* English (TNR 0.710 -> 0.850) - no regression
+- **Operating-point diagnosis** - the global threshold is calibrated to the English bulk; r1_mt ranks non-EN hallucinations below supports but their absolute probabilities clear that cut. A non-EN-specific threshold (~0.65) converts the AUC-0.80 ranking into catches: OOF TNR 0.676 at TPR 0.797
+- **It generalizes (LOLO at non-EN thr 0.65)** - es 0.743, fr 0.643, nb 0.647, pt 0.600, sv 0.929 held-out TNR; every unseen language clears 0.30 by 2-3x
+- **H17b (MT coverage) - not the lever** - es/fr/pt/nb/sv/da packages already installed (114/139 negatives); nl (5) now installed; firing gap is mis-detection/cognates
+- **The fix** - retrained weights + a language-conditional decision threshold keyed off `is_en` (already computed); deterministic, in-contract, no new feature. Shipping needs a `LexicalVerdict.confirmed` + config change - held for explicit approval. Shipped weights/config untouched this round

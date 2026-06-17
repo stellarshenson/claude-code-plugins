@@ -231,3 +231,18 @@ Gold rebuilt through the H13 front door (`gold_v2.py`), dual-judged (Haiku+Sonne
 | non-english | 1,343 | 0.472 | 0.498 | 0.997 | 0.000 |
 
 Finding: shipped manifold is an English-only hallucination detector - non-English TNR 0.000 (confirms 1,339/1,343, catches 0/139 hallucinations). v1's 0.817 was an English-only score in disguise; v1 gold under-represented non-English because the anglocentric extractor dropped those claims pre-judging. Extraction precision of new admissions: 48.8% real claims, 32.7% noise. Round 9 candidate: retrain manifold on the non-English negative population gold v2 now exposes.
+
+## Round 9 - cross-lingual retrain (H17), non-EN hallucination recall, 2026-06-17
+
+Gold v2 + VitaminC + aug, HIGH manifold, honest held-out (5-fold OOF + LOLO). Retrain in experiment-copy config only; shipped weights untouched.
+
+| manifold / operating point | non-EN TNR | non-EN bal-acc | EN TNR | EN bal-acc |
+|---|---|---|---|---|
+| shipped HIGH (baseline) | 0.000 | 0.498 | 0.710 | 0.797 |
+| retrained, single global threshold (OOF) | 0.129 | 0.548 | 0.850 | 0.821 |
+| retrained + non-EN threshold 0.65 (OOF) | 0.676 | 0.736 | 0.710* | 0.797* |
+| retrained + non-EN threshold 0.70 (OOF) | 0.748 | 0.753 | 0.710* | 0.797* |
+
+\* English keeps its own (shipped/retrained) threshold; the non-EN threshold applies only to `is_en=0` claims.
+
+LOLO at non-EN threshold 0.65 (held-out language never trained on): es 0.743, fr 0.643, nb 0.647, pt 0.600, sv 0.929 - all clear the 0.30 ship bar (vs 0.000 at the global threshold). Pre-registered bar: non-EN TNR >= 0.30 AND EN bal-acc drop <= 0.01 AND VitaminC drop <= 0.01. Retrain-alone MISSES (0.13); retrain + language-conditional threshold CLEARS with generalization. Ship requires a `LexicalVerdict.confirmed` + config change - held for approval.

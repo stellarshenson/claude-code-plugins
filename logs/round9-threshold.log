@@ -1,0 +1,32 @@
+=== non-EN threshold sweep (OOF probabilities, 1204 pos / 139 neg) ===
+  thr   TNR(catch)  TPR(confirm)  bal_acc
+  0.30   0.065       0.989        0.527 <- best @TPR>=0.90
+  0.35   0.144       0.978        0.561 <- best @TPR>=0.90
+  0.40   0.216       0.960        0.588 <- best @TPR>=0.90
+  0.45   0.295       0.924        0.610 <- best @TPR>=0.90
+  0.50   0.396       0.903        0.649 <- best @TPR>=0.90
+  0.55   0.482       0.875        0.679
+  0.60   0.590       0.842        0.716
+  0.65   0.676       0.797        0.736
+  0.70   0.748       0.758        0.753
+  0.75   0.813       0.711        0.762
+  0.80   0.863       0.659        0.761
+  0.85   0.878       0.593        0.735
+  0.90   0.921       0.512        0.717
+  0.95   0.950       0.367        0.658
+
+Reachable @TPR>=0.90: TNR=0.396 at non-EN thr=0.50 (shipped single thr catches 0.000)
+
+=== LOLO at fixed non-EN thresholds (held-out language never in training) ===
+  non-EN threshold = 0.65
+    es: held neg= 35  TNR=0.743  TPR=0.698
+    fr: held neg= 28  TNR=0.643  TPR=0.865
+    pt: held neg= 20  TNR=0.600  TPR=0.784
+    nb: held neg= 17  TNR=0.647  TPR=0.843
+    sv: held neg= 14  TNR=0.929  TPR=0.500
+  non-EN threshold = 0.7
+    es: held neg= 35  TNR=0.771  TPR=0.613
+    fr: held neg= 28  TNR=0.714  TPR=0.834
+    pt: held neg= 20  TNR=0.600  TPR=0.784
+    nb: held neg= 17  TNR=0.647  TPR=0.799
+    sv: held neg= 14  TNR=0.929  TPR=0.500

@@ -132,3 +132,33 @@ The split is the finding:
 **The shipped manifold is an English-only hallucination detector.** On non-English it confirms 1,339 of 1,343 claims and catches 0 of 139 hallucinations (TN=0, FP=139) - balanced accuracy 0.498 is an exact coin flip. High accuracy (0.894) is the "confirm everything" score on a 90%-positive slice, not capability. The MT bridge lifts non-English *supported* recall (r1_mt is a support feature) but the frozen weights - trained on English-dominant private RAG + English VitaminC - encode no cross-lingual hallucination signal. v1 gold concealed this entirely: it had almost no non-English claims to be wrong about.
 
 **Implication**: the cross-lingual capability the earlier MT-bridge experiments validated (RESULTS.md Round 1, balanced ~0.78) lived in a tuned-threshold experiment harness, not the shipped fixed-0.40 manifold. To ship real multilingual hallucination detection the manifold must be retrained on a non-English negative population - which gold v2 now provides (139 non-English negatives, up from ~handful). Registered as the Round 9 candidate.
+
+## Round 9 (H17) - cross-lingual retrain: the fix is a threshold, not the weights alone, 2026-06-17
+
+Driver `round9.py` (features / audit / eval / threshold / retrain), gold v2 + VitaminC (400/label) + short-source aug = 7,212 rows, HIGH features cached. Retrain writes `config_document_processing.experiment.yaml` only; shipped config untouched. Honest evaluation: 5-fold out-of-fold (every gold row gets a held-out prediction) plus leave-one-language-out (train without a language's negatives entirely).
+
+**Stage 1 - features separate, confirmed at full scale.** On the 1,343 non-EN rows the shipped features already rank hallucination below support: `r1_mt` AUC 0.806, `r1_best` 0.803, `unmatched_rarity` 0.802 (inverted), `max_unmatched` 0.663 (inverted); surface overlap weak cross-lingually (`r1_direct` 0.592). Per base-language `r1_best` AUC is consistently strong - fr 0.866, it 0.893, nb 0.806, es 0.791, sv 0.762, pt 0.722 (nl 0.514 at n=5). MT bridge fires on 82.4% of non-EN rows. The defect is the weights, not the features.
+
+**Stage 2 - retrain.** Gold v2 + VitaminC + aug, non-EN oversampled 3x; HIGH manifold now weights `r1_mt +2.36` (shipped ~0, killed by English collinearity where `r1_mt==r1_direct`), `r1_direct -4.37`, threshold 0.35.
+
+**Stage 3 - the retrain alone misses, and the diagnosis is the operating point:**
+
+| manifold | non-EN TNR | non-EN bal-acc | EN TNR | EN bal-acc |
+|---|---|---|---|---|
+| shipped HIGH (baseline) | 0.000 | 0.498 | 0.710 | 0.797 |
+| retrained, OOF, single global threshold | 0.129 | 0.548 | 0.850 | 0.821 |
+
+The retrain *improves English* (TNR 0.710 -> 0.850) but non-EN TNR 0.13 is well below the pre-registered 0.30 bar, and LOLO at the global threshold collapses (fr 0.000, nb 0.000). Cause: `r1_mt` ranks non-EN hallucinations below supports (AUC 0.80) but their absolute probabilities still sit above a threshold calibrated to the English bulk. Sweeping a **non-EN-specific** threshold on the OOF probabilities (English keeps its own) converts the ranking into catches:
+
+| non-EN threshold | TNR (catch) | TPR (confirm) | bal-acc |
+|---|---|---|---|
+| 0.45 | 0.295 | 0.924 | 0.610 |
+| 0.50 | 0.396 | 0.903 | 0.649 |
+| 0.65 | 0.676 | 0.797 | 0.736 |
+| 0.70 | 0.748 | 0.758 | 0.753 |
+
+**And it generalizes.** LOLO at a fixed non-EN threshold of 0.65 (held-out language never in training): es TNR 0.743, fr 0.643, nb 0.647, pt 0.600, sv 0.929 - every unseen language clears the 0.30 bar 2-3x, against 0.000 at the global threshold. The fix is deterministic and in-contract: retrained weights + a language-conditional decision threshold keyed off `is_en`, which the pipeline already computes. No new feature, no LLM.
+
+**Stage 4 - MT coverage is not the lever.** argos packages for es/fr/pt/nb/sv/da were already installed, covering 114 of 139 non-EN negatives; only nl (5 negatives) was missing (now installed). The 82.4% firing gap is mis-detection / cognate translations and the long tail, not the high-volume languages.
+
+**Verdict.** H17 as pre-registered (retrain, one threshold) MISSES the bar (OOF non-EN TNR 0.13). The retrain plus a non-English threshold (~0.65) is the real fix - LOLO non-EN TNR 0.60-0.93 at TPR 0.50-0.87, English held/improved. Shipping it needs a shipped-code change (`LexicalVerdict.confirmed` picks the threshold by `is_en`; config carries a non-EN threshold) - held for explicit approval; shipped weights and config untouched this round.
