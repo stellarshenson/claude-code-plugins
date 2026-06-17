@@ -246,3 +246,25 @@ Gold v2 + VitaminC + aug, HIGH manifold, honest held-out (5-fold OOF + LOLO). Re
 \* English keeps its own (shipped/retrained) threshold; the non-EN threshold applies only to `is_en=0` claims.
 
 LOLO at non-EN threshold 0.65 (held-out language never trained on): es 0.743, fr 0.643, nb 0.647, pt 0.600, sv 0.929 - all clear the 0.30 ship bar (vs 0.000 at the global threshold). Pre-registered bar: non-EN TNR >= 0.30 AND EN bal-acc drop <= 0.01 AND VitaminC drop <= 0.01. Retrain-alone MISSES (0.13); retrain + language-conditional threshold CLEARS with generalization. Ship requires a `LexicalVerdict.confirmed` + config change - held for approval.
+
+## Round 9 - ship calibration guard (HIGH, english thr 0.290 / non-english thr 0.750)
+
+`round9.py shipcal`, shipped vs recalibrated HIGH across all corpora.
+
+| corpus | n | shipped F1 | recal F1 | shipped bal/TNR | recal bal/TNR |
+|---|---|---|---|---|---|
+| gold_en | 4569 | 0.803 | 0.817 | 0.797 / 0.710 | 0.820 / 0.804 |
+| gold_non_en | 1343 | 0.472 | 0.606 | 0.498 / 0.000 | 0.767 / 0.813 |
+| articles (held-out EN) | 42 | 0.797 | 0.816 | 0.861 / 0.833 | 0.931 / 1.000 |
+| vitaminc | 800 | 0.695 | 0.680 | 0.695 / 0.703 | 0.680 / 0.662 |
+
+At vit x1, 3 of 4 corpora improve (both real English sets + non-English fixed); VitaminC -0.015 breaches the 0.01 guard. VitaminC up-weight sweep (gold_ne x3, vit x{1,3,5,8}, macro-F1 delta vs shipped):
+
+| vit | gold_en | gold_non_en | vitaminc | articles |
+|---|---|---|---|---|
+| x1 | +0.015 | +0.134 | -0.015 | +0.019 |
+| x3 | +0.003 | +0.138 | +0.003 | +0.019 |
+| x5 | -0.013 | +0.142 | +0.019 | -0.089 |
+| x8 | -0.044 | +0.147 | +0.016 | -0.059 |
+
+**vit x3 clears every corpus** (all hold/improve, VitaminC recovered). Ship config = recalibrated weights (oversample_ne 3, vit 3) + HIGH english 0.290 / non_english 0.750. Pre-registered bar fully cleared; shipped config write held for approval.

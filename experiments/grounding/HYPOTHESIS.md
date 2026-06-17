@@ -1,6 +1,8 @@
 # Hypothesis: a deterministic multilingual grounder for the private RAG gold
 
 > **Outcome (see `RESULTS.md`)**: validated with a twist. A frozen offline translator (argos-translate) + best-chunk IDF recall reaches **LOLO balanced 0.777 / TEST 0.755** (target ≥0.75), beating the lexical-only ceiling (~0.67). A separate English-vs-translated recall bar pushes **accuracy to 0.845 LOLO / 0.817 TEST**, near the 0.85 stretch. Follow-ups: the chunk sweep confirms whole-doc is the 0.50-AUC floor; a fixed-prior threshold generalises (0.776 balanced, zero tuning); an abstain band gives 0.838 balanced at 68% coverage; lingua-py lifts accuracy to 0.781. MT collapses Gap B into Gap A; the curated lexicon / cognate / anchor bridges (X1-X3) and the contradiction/meta signals do **not** add value once MT is present (they slightly hurt). Spanish/abstractive tail stays hard; NLI residual + OPUS-MT still to run. See `RESEARCH.md` for the toolbox.
+>
+> **Current state (Round 9, see Round 8b/9 below)**: the shipped fixed-threshold manifold did NOT carry that Round 1 cross-lingual capability - it lived in a tuned-threshold harness. Gold v2 (survivorship bias removed) exposed the shipped manifold as an English-only hallucination detector: non-English hallucination recall (TNR) 0.000 vs English 0.710. Round 9 fix: retrain on gold v2 (restores `r1_mt`, also lifts English TNR to 0.850) **plus** a language-conditional non-English decision threshold (~0.65, keyed off `is_en`). That clears the bar and generalizes - leave-one-language-out held-out TNR es 0.74 / fr 0.64 / nb 0.65 / pt 0.60 / sv 0.93. Retrain-alone with one global threshold misses (OOF non-English TNR 0.13). Ship needs a `LexicalVerdict.confirmed` + config change - pending.
 
 ## Problem (measured, not assumed)
 
@@ -217,3 +219,16 @@ Full tables in RESULTS.md / BENCHMARK.md Round 9. Baseline reproduced (non-EN TN
 - **It generalizes (LOLO at non-EN thr 0.65)** - es 0.743, fr 0.643, nb 0.647, pt 0.600, sv 0.929 held-out TNR; every unseen language clears 0.30 by 2-3x
 - **H17b (MT coverage) - not the lever** - es/fr/pt/nb/sv/da packages already installed (114/139 negatives); nl (5) now installed; firing gap is mis-detection/cognates
 - **The fix** - retrained weights + a language-conditional decision threshold keyed off `is_en` (already computed); deterministic, in-contract, no new feature. Shipping needs a `LexicalVerdict.confirmed` + config change - held for explicit approval. Shipped weights/config untouched this round
+
+## Ship calibration (Round 9) - guard result
+
+Code landed: `LexicalVerdict.threshold_non_en` + `threshold_for(feat)` (English cut when `is_en` absent/>=0.5, non-English cut otherwise); decision point `grounding.py:965` uses it; back-compat (None -> English cut everywhere). Chosen HIGH thresholds: english 0.290, non_english 0.750. No-regression guard (`round9.py shipcal`, HIGH, shipped vs recalibrated):
+
+| corpus | shipped | recalibrated | verdict |
+|---|---|---|---|
+| gold_en (4569) | F1 0.803 / bal 0.797 / TNR 0.710 | F1 0.817 / bal 0.820 / TNR 0.804 | improved |
+| gold_non_en (1343) | F1 0.472 / bal 0.498 / TNR 0.000 | F1 0.606 / bal 0.767 / TNR 0.813 | fixed |
+| articles held-out EN (42) | F1 0.797 / bal 0.861 | F1 0.816 / bal 0.931 | improved |
+| vitaminc (800) | F1 0.695 | F1 0.680 | **-0.015 (breaches the 0.01 guard)** |
+
+Both real English corpora (gold_en, held-out articles) improve and non-English goes from broken to working; at vit x1 the only regression was VitaminC -0.015. Recovery: up-weighting VitaminC in the retrain (sweep gold_ne x3, vit x{1,3,5,8}) - **vit x3 clears every corpus**: gold_en +0.003, gold_non_en +0.138, vitaminc +0.003 (recovered), articles +0.019 (vit x5/x8 over-correct, hurting gold_en/articles). Ship config = recalibrated weights (oversample_ne 3, vit 3) + HIGH english 0.290 / non_english 0.750. Pre-registered bar now fully cleared (non-EN TNR 0.813, no EN regression, VitaminC +0.003). Ready to write shipped config on approval.

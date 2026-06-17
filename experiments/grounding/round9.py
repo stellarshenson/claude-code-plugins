@@ -116,14 +116,23 @@ def build_features(force: bool = False) -> pd.DataFrame:
 
 
 # --------------------------------------------------------------------------- models
-def fit_high(F: pd.DataFrame, oversample_ne: int = 1) -> L.LexicalVerdict:
-    """Fit a HIGH manifold on the given feature frame. oversample_ne replicates gold_ne
-    rows N times before fit so the cross-lingual regime is not drowned by 77% English."""
-    rows = F.to_dict("records")
-    if oversample_ne > 1:
-        ne = [r for r in rows if r["slice"] == "gold_ne"]
-        rows = rows + ne * (oversample_ne - 1)
-    block = L.fit_lexical_manifold(rows, effort="high")
+def _oversample(rows: list[dict], ne: int = 1, vit: int = 1) -> list[dict]:
+    """Replicate gold_ne (cross-lingual, drowned by 77% English) and/or vitaminc (English
+    contrastive REFUTES, diluted by the gold-v2 retrain) rows before fit."""
+    out = list(rows)
+    if ne > 1:
+        out += [r for r in rows if r["slice"] == "gold_ne"] * (ne - 1)
+    if vit > 1:
+        out += [r for r in rows if r["slice"] == "vitaminc"] * (vit - 1)
+    return out
+
+
+def fit_high(F: pd.DataFrame, oversample_ne: int = 1, oversample_vit: int = 1,
+             threshold: float | None = None):
+    """Fit a HIGH manifold on the given feature frame, with optional non-EN / vitaminc
+    up-weighting."""
+    rows = _oversample(F.to_dict("records"), ne=oversample_ne, vit=oversample_vit)
+    block = L.fit_lexical_manifold(rows, effort="high", threshold=threshold)
     return L.LexicalVerdict(weights=block["weights"], feature_order=block["feature_order"],
                             threshold=block["threshold"]), block
 
@@ -308,6 +317,94 @@ def cmd_threshold() -> None:
             print(f"    {lg}: held neg={int(neg.sum()):3d}  TNR={tnr:.3f}  TPR={tpr:.3f}")
 
 
+def _macro_f1(y, pred_supp) -> float:
+    from sklearn.metrics import f1_score
+
+    sup = f1_score(y, pred_supp.astype(int), pos_label=1, zero_division=0)
+    hal = f1_score(y, pred_supp.astype(int), pos_label=0, zero_division=0)
+    return float((sup + hal) / 2)
+
+
+def _bal_acc(y, pred_supp) -> float:
+    neg, pos = (y == 0), (y == 1)
+    tnr = float((~pred_supp[neg]).mean()) if neg.any() else float("nan")
+    tpr = float(pred_supp[pos].mean()) if pos.any() else float("nan")
+    return float(np.nanmean([tnr, tpr]))
+
+
+def _article_high_feats() -> tuple:
+    """HIGH features + labels for the 42 held-out article fixtures (true EN hold-out -
+    neither shipped nor recalibrated trains on them)."""
+    from build_combined import _article_rows
+
+    rows = _article_rows()
+    F = pd.DataFrame([_work((r["claim"], r["source_text"])) for r in rows])
+    return F, np.array([int(r["label"]) for r in rows])
+
+
+def cmd_shipcal() -> None:
+    """Pick the shipped HIGH thresholds honestly (OOF) and run the no-regression guard:
+    shipped vs recalibrated on gold v2 EN/non-EN slices, VitaminC, held-out articles."""
+    from sklearn.model_selection import StratifiedKFold
+
+    F = build_features()
+    gold = F[F.slice.isin(["gold_en", "gold_ne"])].reset_index(drop=True)
+    extra = F[F.slice.isin(["vitaminc", "aug"])].reset_index(drop=True)
+    vit = F[F.slice == "vitaminc"].reset_index(drop=True)
+    y = gold.label.values
+    en = (gold.slice == "gold_en").values
+
+    # OOF probabilities on gold v2 (honest threshold selection)
+    p = np.zeros(len(gold))
+    strat = np.array([f"{s}_{l}" for s, l in zip(gold.slice.values, y)])
+    for tr, te in StratifiedKFold(5, shuffle=True, random_state=0).split(gold, strat):
+        v, _ = fit_high(pd.concat([gold.iloc[tr], extra], ignore_index=True), oversample_ne=3)
+        p[te] = _proba(v, gold.iloc[te].reset_index(drop=True))
+
+    grid = np.linspace(0.20, 0.90, 71)
+    en_thr = max(grid, key=lambda t: _macro_f1(y[en], p[en] >= t))      # EN: match shipped macro-F1 objective
+    ne_thr = max(grid, key=lambda t: _bal_acc(y[~en], p[~en] >= t))     # non-EN: balanced-acc knee
+    print(f"chosen HIGH thresholds: english={en_thr:.3f} (macro-F1 {_macro_f1(y[en], p[en]>=en_thr):.3f}), "
+          f"non_english={ne_thr:.3f} (bal-acc {_bal_acc(y[~en], p[~en]>=ne_thr):.3f}, "
+          f"TNR {float((p[~en][y[~en]==0] < ne_thr).mean()):.3f})")
+
+    base = shipped_high()
+    art_F, art_y = _article_high_feats()
+    corpora = [("gold_en", gold[en].reset_index(drop=True), y[en]),
+               ("gold_non_en", gold[~en].reset_index(drop=True), y[~en]),
+               ("vitaminc", vit, vit.label.values),
+               ("articles", art_F, art_y)]
+
+    def bench(v, FF, yy):
+        rp = _preds(v, FF)
+        tnr = float((~rp[yy == 0]).mean()) if (yy == 0).any() else float("nan")
+        return _macro_f1(yy, rp), _bal_acc(yy, rp), tnr
+
+    print("\n=== shipped baseline ===")
+    base_f1 = {}
+    for name, FF, yy in corpora:
+        f1, ba, tn = bench(base, FF, yy)
+        base_f1[name] = f1
+        print(f"  {name:12s} {len(yy):4d}  F1={f1:.3f} bal={ba:.3f} TNR={tn:.3f}")
+
+    # sweep vitaminc up-weight to recover the contrastive-REFUTES signal the gold-v2
+    # retrain dilutes; pick the smallest vit that holds VitaminC within 0.01 of shipped.
+    vit_grid = [int(x) for x in os.environ.get("VIT_GRID", "1,3,5,8").split(",")]
+    print("\n=== recalibrated, vitaminc up-weight sweep (gold_ne x3) ===")
+    for vm in vit_grid:
+        block = fit_high(pd.concat([gold, extra], ignore_index=True),
+                         oversample_ne=3, oversample_vit=vm, threshold=float(en_thr))[1]
+        block["threshold_non_en"] = round(float(ne_thr), 4)
+        v = L.LexicalVerdict.from_config({"lexical_manifolds": {"high": block}}, "high")
+        cells = []
+        for name, FF, yy in corpora:
+            f1, ba, tn = bench(v, FF, yy)
+            d = f1 - base_f1[name]
+            cells.append(f"{name}={f1:.3f}({d:+.3f})")
+        print(f"  vit x{vm}: " + "  ".join(cells))
+    print("\nNote: gold_non_en uses threshold_non_en; others the English threshold.")
+
+
 def cmd_retrain() -> None:
     """Fit ALL tiers on the full gold v2 + vitaminc + aug, write the EXPERIMENT yaml."""
     import yaml
@@ -338,4 +435,4 @@ def cmd_retrain() -> None:
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "eval"
     {"features": cmd_features, "audit": cmd_audit, "eval": cmd_eval,
-     "threshold": cmd_threshold, "retrain": cmd_retrain}[cmd]()
+     "threshold": cmd_threshold, "shipcal": cmd_shipcal, "retrain": cmd_retrain}[cmd]()

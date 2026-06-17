@@ -962,7 +962,7 @@ def ground(
         result.verdict_probability = lv.predict_proba(feat)
         if has_contradiction and has_any_signal:
             result.match_type = "contradicted"
-        elif result.verdict_probability >= lv.threshold:
+        elif result.verdict_probability >= lv.threshold_for(feat):
             result.match_type = _winning_layer_label(result)
         else:
             result.match_type = "none"

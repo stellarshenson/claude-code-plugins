@@ -542,12 +542,18 @@ class LexicalVerdict:
 
     - weights - {"Intercept": b0, feature: w, ...}
     - feature_order - feature names in coefficient order (the config feature_order list)
-    - threshold - decision cut on sigmoid(dot)
+    - threshold - decision cut on sigmoid(dot) for English (and the default for any claim)
+    - threshold_non_en - optional separate cut for non-English claims (is_en < 0.5). The
+      shipped weights are trained English-dominant; the cross-lingual recall signal (r1_mt)
+      ranks non-English hallucinations below support but their probabilities sit above the
+      English cut, so non-English needs its own (higher) threshold. None -> English cut for
+      all claims (back-compat; tiers without an is_en feature always take the English cut).
     """
 
     weights: dict[str, float]
     feature_order: list[str]
     threshold: float = 0.5
+    threshold_non_en: float | None = None
 
     def predict_proba(self, feat: dict[str, float]) -> float:
         """sigmoid(b0 + Σ w_i·feat_i) over the tier's ordered features."""
@@ -556,9 +562,17 @@ class LexicalVerdict:
             z += float(self.weights.get(name, 0.0)) * float(feat.get(name, 0.0))
         return 1.0 / (1.0 + math.exp(-z))
 
+    def threshold_for(self, feat: dict[str, float]) -> float:
+        """The decision cut for this claim: the non-English cut when one is configured and
+        the claim is detected non-English (``is_en`` feature < 0.5), else the English cut.
+        Absent ``is_en`` (LOW tier never computes it) -> English cut."""
+        if self.threshold_non_en is not None and float(feat.get("is_en", 1.0)) < 0.5:
+            return self.threshold_non_en
+        return self.threshold
+
     def confirmed(self, feat: dict[str, float]) -> bool:
-        """True when predict_proba >= threshold."""
-        return self.predict_proba(feat) >= self.threshold
+        """True when predict_proba >= the (language-conditional) threshold."""
+        return self.predict_proba(feat) >= self.threshold_for(feat)
 
     @classmethod
     def from_config(cls, block: dict, effort: str) -> "LexicalVerdict | None":
@@ -578,10 +592,12 @@ class LexicalVerdict:
                 f"lexical_manifolds.{effort}.feature_order does not match the {effort} tier "
                 f"contract; expected {TIER_FEATURES[effort]}, got {order}"
             )
+        thr_ne = m.get("threshold_non_en")
         return cls(
             weights={k: float(v) for k, v in (m.get("weights") or {}).items()},
             feature_order=order,
             threshold=float(m.get("threshold", 0.5)),
+            threshold_non_en=None if thr_ne is None else float(thr_ne),
         )
 
 

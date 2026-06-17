@@ -10,3 +10,4 @@ Background job logs for this repo.
 - `round9-eval.log` - Round 9 Stage 3: shipped baseline vs retrained (5-fold OOF) slice metrics + LOLO held-out TNR; `round9.py eval`
 - `round9-threshold.log` - Round 9 operating-point diagnostic: non-EN threshold sweep on OOF probabilities + LOLO at fixed non-EN thresholds; `round9.py threshold`
 - `round9-retrain.log` - Round 9 Stage 2: retrain all tiers on gold v2, write experiment-copy config; `round9.py retrain`
+- `round9-shipcal.log` - Round 9 ship calibration: chosen HIGH english/non-english thresholds + no-regression guard (shipped vs recalibrated on gold v2 EN/non-EN, VitaminC, held-out articles) + VitaminC up-weight recovery sweep; `round9.py shipcal`
