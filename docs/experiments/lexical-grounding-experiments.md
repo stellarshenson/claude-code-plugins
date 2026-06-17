@@ -37,6 +37,11 @@ A purely lexical model (translate the claim, then lexical recall) is the best, b
 | R3 contradiction: relation/role reversal, scoped negation, quantifier mismatch | VitaminC probe | absent at usable density (shared-entities 5%, negation 0%, quantifier 4%) | **all null** - pure-lexical contradiction signal is saturated |
 | R4 normalisation: Snowball-stemmed recall | private RAG 2752 + VitaminC joint | +0.002 both corpora (within noise), +~35 ms/claim latency | **rejected** - char n-grams already capture morphology; not worth the recall pass |
 | R5 short-source: length-robust recall + distinctive-content + truncation augmentation | private RAG 2752 + VitaminC + short-source aug | probe 10/12 → 11/12; private RAG 0.825 → 0.817, VitaminC 0.661 → 0.691 | **ships** - background-IDF recall floor + `unmatched_rarity` + regime augmentation, all learned |
+| R8 multilingual claim extraction + gold v2 rebuild | private RAG 639 answers / gold v2 5,912 | anglocentric verb-gate rejects en 9% vs nb 50% / it 86%; unbiased gold exposes non-EN TNR 0.000 | extraction fix **kept**; A2 atomic / H-B alignment / H-C negation **killed** at gates |
+| R9 cross-lingual blind spot: language-conditional threshold | gold v2 non-EN 139 neg | shipped manifold caught 0/139 non-EN hallucinations; `threshold_non_en 0.70` → TNR 0.748, English byte-identical | **Ships** - operating point, not signal |
+| R10 synthetic non-EN negatives by `claude -p` translation | gold v2 + 1,053 synthetic | single global threshold reaches real non-EN TNR 0.683, LOLO 0.60-0.79 | **Validated offline** - weights learn the boundary; ship gated on EN guard |
+| R11 synthetic data doubling + de back-translation | gold v2 + 2,119 synthetic | TNR 0.683 → 0.712 (+0.029, diminishing); de bridge installed, null on metric (no de in eval) | scales but bends - next gain is source diversity, not volume |
+| R12 ship the durable fix: single global cut | gold v2 + 2,119 synthetic | global 0.50: gold_en F1 0.803→0.810, non-EN TNR 0.78, VitaminC/articles hold, English e2e green | **Ships** - synthetic-retrained weights retire `threshold_non_en` |
 
 ![Progressive gains across hypothesis rounds - VitaminC climbs 0.53 to 0.69 as deterministic contradiction features are added while private RAG holds ~0.85, then round 3 plateaus at lexical saturation](images/progressive-gains.svg)
 
@@ -267,6 +272,25 @@ Results - real gold v2 non-English slice, single global threshold (synthetic is 
 | retrain + 1,053 synthetic (round 10) | 0.683 | 0.768 | es 0.71 / fr 0.79 / pt 0.60 / nb 0.71 / sv 0.71 |
 | **retrain + 2,119 synthetic (round 11)** | **0.712** | 0.719 | es 0.80 / fr 0.82 / pt 0.70 / nb 0.71 / sv 0.93 |
 
+## Ship the durable fix, round 12: synthetic-retrained weights, single global threshold (ships)
+
+Rounds 10-11 validated the data mechanism offline; round 12 reconciles it with the English no-regression guard and ships it into the library, retiring the round-9 language-conditional threshold. The blocker was that the gold-v2 recalibration broke two English precision e2e tests (the recalibrated English cut over-confirms borderline fabrications). The fix is to keep the synthetic-retrained weights but raise the single global cut until English clears, rather than dropping a permissive English threshold.
+
+- **Setup** - `round9.py shipsynth` fits the HIGH manifold on gold v2 + VitaminC (×3) + short-source aug + 2,119 synthetic non-English negatives, emits the block at one global threshold (no `threshold_non_en`). Swept the global cut against the two English e2e tests through the real `ground()` pipeline: 0.45 and below fail (over-confirm), **0.50 and above pass** - so 0.50 is the smallest cut that keeps English green
+- **R12-H1 a single global cut now satisfies both regimes** - at the shipped global 0.50, real gold v2: gold_en F1 0.803 → 0.810 (English *up*, e2e tests green), non-English TNR 0.78 at TPR 0.66, VitaminC F1 0.695 → 0.699 (holds), articles 0.797 → 0.816 (up). One threshold, both regimes - `threshold_non_en` retired
+- **The weights carry the signal, not the threshold** - the synthetic negatives moved the cross-lingual boundary into the weights (intercept −1.05 → −4.92, more conservative; `r1_best` and `same_lang` up), so the global cut no longer has to be special-cased by language; the round-9 patch was an operating-point workaround, this is the structural fix
+- **Cost** - non-English support recall 0.66 (rejects 34% of supported non-English claims) vs the round-9 patch's 0.76; the durable fix trades a little non-English support recall for a single honest operating point and English gains. de back-translation now installed, so de claims bridge at inference
+- **Shipped** - shipped config HIGH block = synthetic-retrained weights + `threshold: 0.5`, `threshold_non_en` removed; the `threshold_for` plumbing stays for back-compat (returns the global cut when no non-EN threshold is set). Full suite 651 passed, 9 pre-existing pytensor `CompileError` unrelated; the round-9 shipped-config threshold test flipped to assert the single-global-cut state
+
+Results - real gold v2, shipped single global threshold 0.50 (synthetic-retrained weights):
+
+| slice | shipped (R9: EN 0.40 / non-EN 0.70) | R12 single global 0.50 |
+|---|---|---|
+| gold_en F1 | 0.803 | **0.810** |
+| gold_ne (non-EN) TNR / TPR | 0.42 / 0.90 @0.70 | **0.78 / 0.66** |
+| vitaminc F1 | 0.695 | **0.699** |
+| articles F1 | 0.797 | **0.816** |
+
 ## Lessons learned
 
 - **Features beat model class** - the gain came from the lexical recall + claim-intrinsic features, not from a nonlinear learner; a regularised logistic is the right head for these few-context data
@@ -292,16 +316,15 @@ Results - real gold v2 non-English slice, single global threshold (synthetic is 
 - **Reframes the client finding** - lexical did not fail at grounding; it failed at cross-lingual confirmation, fixed by translation (the same-language routing is an efficiency lever, not an accuracy one)
 - **Bounded scope, deploy accordingly** - the lexical win is task-specific: it holds across private RAG's data growth but does not transfer to a contrastive benchmark (VitaminC macro-F1 0.586); use it where hallucinations are fabricated or omitted specifics, keep NLI available for present-but-contradicted negatives
 - **Short-source regime fixed by learned recalibration (R5)** - on a 1-chunk source the in-context IDF collapses and the dominant recall feature dies; a `wordfreq` background-IDF floor revives recall, the `unmatched_rarity` distinctive-content feature discriminates, and truncation augmentation recalibrates the manifold for the regime. Probe 10/12 → 11/12, private RAG holds (0.825 → 0.817), VitaminC lifts (0.661 → 0.691); ships in the library lexical mode. The residual miss is a spelled-out-number value-conflict, left to the deferred numeric-normalisation work
-- **Cross-lingual blind spot found and fixed (R9)** - the English-dominant benchmark hid that the shipped manifold caught 0 of 139 non-English hallucinations; an unbiased gold (gold v2) exposed it. A language-conditional decision threshold (`threshold_non_en: 0.70`, keyed off `is_en`) over the unchanged shipped weights lifts non-English TNR 0.000 → 0.748 with English byte-identical - shipped. The benchmark numbers above are therefore English scores; non-English needs its own operating point
-- **Synthetic translation data is the durable cross-lingual fix (R10-R11, offline)** - `claude -p`-translated, fidelity-verified non-English negatives let a single global threshold reach real-slice TNR 0.683 at 1,053 rows and 0.712 at 2,119 (R11 doubling, +0.029) with LOLO generalisation rising to 0.70-0.93, retiring the threshold patch in principle; shipping the retrained weights is gated on the English no-regression guard. The mechanism scales with diminishing return - the next gain is source diversity, not volume
+- **Cross-lingual blind spot found and fixed (R9, superseded by R12)** - the English-dominant benchmark hid that the shipped manifold caught 0 of 139 non-English hallucinations; an unbiased gold (gold v2) exposed it. R9 shipped a language-conditional decision threshold (`threshold_non_en: 0.70`, keyed off `is_en`) over the unchanged weights - non-English TNR 0.000 → 0.748, English byte-identical. R12 then retired that patch: the synthetic-retrained weights carry the signal so one global cut works. The patch was the fast fix, the retrain is the durable one
+- **Synthetic translation data is the durable cross-lingual fix - now shipped (R10-R12)** - `claude -p`-translated, fidelity-verified non-English negatives let a single global threshold reach real-slice TNR 0.683 at 1,053 rows and 0.712 at 2,119 (R11 doubling, +0.029) with LOLO generalisation 0.70-0.93. R12 ships it: the synthetic-retrained weights at a single global cut 0.50 keep English e2e tests green (English F1 *up* 0.803 → 0.810), catch non-English at TNR 0.78, hold VitaminC and articles - so `threshold_non_en` is retired and the cross-lingual signal lives in the weights. The mechanism scales with diminishing return - the next gain is source diversity, not volume
 
 ## Next steps
 
 - **Promote** the lexical-only logistic into the production grounder via a separate reviewed change; keep NLI optional/off
 - **More negatives in the language tail** - source contexts grew to 75 (constraint loosened); the binding constraint is now the small da/pt/de language tail; grow those before chasing further model capacity
-- **Reconcile the synthetic-retrain with the English guard (R10 follow-on)** - the synthetic-negative retrain lets a single global threshold work but recalibrating the weights breaks two English precision e2e tests; find a fit (e.g. freeze English-tied weights, or fold synthetic in without disturbing the English operating point) that ships the durable fix without the English regression, then retire `threshold_non_en`
 - **Diversify synthetic sources, not just volume (R11 follow-on)** - doubling the omission-negative set gave diminishing return (+0.029 TNR); add VitaminC contrastive negatives so the synthetic population covers the contradiction failure mode, before generating a third batch of the same type. de back-translation (`translate-de_en`) is now installed - the German `r1_mt` bridge fires, though the real eval slice has no de negatives to score it
 - **Get real de negatives into the eval slice** - the gold v2 non-English negatives carry zero de; the de synthetic training rows and bridge are untestable on the honest slice until de hallucinations are judged into gold, so de coverage is currently a train-side correctness claim only
-- **Install the de back-translation model** - German synthetic rows had degraded `r1_mt`; also broaden synthetic sources beyond gold-domain omission negatives (add VitaminC contrastive type)
+- **Recover the non-English support recall (R12 follow-on)** - the durable fix trades non-English TPR down to 0.66 (rejects 34% of supported non-English claims) for the single global cut; better MT on the abstractive es/pt tail or a non-English support-side feature could lift it without re-splitting the threshold
 - **Engineering** - lingua-py for language ID, a faster per-language MT engine if throughput matters
 - **Refuted, do not revisit without more data** - NLI in the verdict, claim decomposition, cross-corpus transfer, deep trees, OPUS-MT

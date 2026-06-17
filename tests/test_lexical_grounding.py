@@ -332,7 +332,12 @@ class TestLanguageConditionalThreshold:
         v2 = L.LexicalVerdict.from_config({"lexical_manifolds": {"high": block}}, "high")
         assert v2.threshold_non_en is None
 
-    def test_shipped_high_config_carries_non_en_threshold(self):
+    def test_shipped_high_config_uses_single_global_cut(self):
+        # Round 12: the synthetic-retrained weights (Round 10-11 translated non-English
+        # negatives) carry the cross-lingual signal directly, so the shipped high manifold
+        # uses ONE global threshold and threshold_non_en is retired. The threshold_for
+        # plumbing above stays for back-compat, but the shipped config no longer needs it.
         block = C.load_calibration_from_config()
         hv = L.LexicalVerdict.from_config(block, "high")
-        assert hv.threshold_non_en is not None and hv.threshold_non_en > hv.threshold
+        assert hv.threshold_non_en is None
+        assert hv.threshold_for({"is_en": 0.0}) == hv.threshold_for({"is_en": 1.0})

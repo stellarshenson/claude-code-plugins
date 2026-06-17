@@ -497,6 +497,36 @@ def cmd_shipblock() -> None:
     print("\n".join(lines))
 
 
+def cmd_shipsynth() -> None:
+    """Round 12 (ship-the-durable-fix): emit the HIGH block fit on gold v2 + vitaminc + aug +
+    SYNTHETIC non-EN negatives, at a SINGLE global threshold (no threshold_non_en), in the
+    shipped-config YAML shape. Knobs: GLOBAL_THR (0.45), SYNTH_NE_OS (1), SYNTH_VIT_OS (3).
+    The synthetic negatives let one global cut carry the cross-lingual signal, so the
+    language-conditional threshold can be retired - provided the global cut keeps the English
+    e2e precision tests green (the Round 9 guard). Sweep GLOBAL_THR to find that operating
+    point."""
+    thr = float(os.environ.get("GLOBAL_THR", "0.45"))
+    ne_os = int(os.environ.get("SYNTH_NE_OS", "1"))
+    vit_os = int(os.environ.get("SYNTH_VIT_OS", "3"))
+    F = build_features()
+    S = build_synth_features()
+    gold = F[F.slice.isin(["gold_en", "gold_ne"])].reset_index(drop=True)
+    extra = F[F.slice.isin(["vitaminc", "aug"])].reset_index(drop=True)
+    _, block = fit_high(pd.concat([gold, extra, S], ignore_index=True),
+                        oversample_ne=ne_os, oversample_vit=vit_os, threshold=thr)
+    order = block["feature_order"]
+    w = block["weights"]
+    lines = ["    high:", "      feature_order:"]
+    lines += [f"      - {f}" for f in order]
+    lines.append(f"      threshold: {thr}")
+    lines.append("      weights:")
+    lines.append(f"        Intercept: {w['Intercept']:.6f}")
+    lines += [f"        {f}: {w[f]:.6f}" for f in order]
+    lines.append(f"      chunk_max_chars: {block['chunk_max_chars']}")
+    lines.append(f"      chunk_overlap_ratio: {block['chunk_overlap_ratio']}")
+    print("\n".join(lines))
+
+
 def cmd_retrain() -> None:
     """Fit ALL tiers on the full gold v2 + vitaminc + aug, write the EXPERIMENT yaml."""
     import yaml
@@ -528,4 +558,4 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "eval"
     {"features": cmd_features, "audit": cmd_audit, "eval": cmd_eval,
      "threshold": cmd_threshold, "shipcal": cmd_shipcal, "shipblock": cmd_shipblock,
-     "synthcal": cmd_synthcal, "retrain": cmd_retrain}[cmd]()
+     "synthcal": cmd_synthcal, "shipsynth": cmd_shipsynth, "retrain": cmd_retrain}[cmd]()

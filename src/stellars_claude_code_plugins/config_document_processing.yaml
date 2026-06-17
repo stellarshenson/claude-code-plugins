@@ -323,32 +323,31 @@ calibration:
       - wn_antonym_flip
       - unmatched_rarity
       - max_unmatched
-      threshold: 0.4
-      # Non-English claims (is_en < 0.5) take a higher cut: the shipped weights rank
-      # cross-lingual hallucinations below support (r1_mt) but their probabilities sit
-      # above the English cut, so the global 0.4 confirms ~everything non-English. 0.70
-      # gives non-English hallucination recall (TNR) ~0.75 at support recall ~0.76,
-      # generalising per-language (gold v2); English is unchanged. See RESULTS.md Round 9.
-      threshold_non_en: 0.70
+      # Single global cut. The Round 10-11 synthetic non-English negatives (claude -p
+      # translate + fidelity-verify, train-only) let the weights carry the cross-lingual
+      # signal directly, so one threshold catches both English and non-English
+      # hallucinations - retiring the Round 9 language-conditional threshold_non_en.
+      # Real gold v2: non-EN TNR 0.78, EN F1 up, VitaminC/articles hold. See Round 12.
+      threshold: 0.5
       weights:
-        Intercept: -1.053304
-        r1_direct: -2.646833
-        r1_mt: 1.499135
-        r1_best: 2.276488
-        charng: 3.221797
-        fuzzy: 2.106161
-        anchor: 0.328275
-        anchor_mm: 0.160664
-        oracle: -0.236462
-        top3: 2.482034
-        same_lang: -0.339376
-        is_en: -2.086043
-        specificity: 0.416133
-        conflict_n: -0.379339
-        conflict_flag: -2.123892
-        num_edit_mag: 2.23366
-        wn_antonym_flip: -2.263809
-        unmatched_rarity: -0.767277
-        max_unmatched: 0.535925
+        Intercept: -4.923953
+        r1_direct: -3.724295
+        r1_mt: 1.372516
+        r1_best: 4.076367
+        charng: 2.434198
+        fuzzy: 2.767816
+        anchor: 0.133409
+        anchor_mm: 0.260883
+        oracle: 0.249215
+        top3: 2.222120
+        same_lang: 1.236576
+        is_en: -0.898982
+        specificity: 1.040784
+        conflict_n: 0.687994
+        conflict_flag: -2.928168
+        num_edit_mag: 2.417809
+        wn_antonym_flip: -2.704356
+        unmatched_rarity: 0.100700
+        max_unmatched: 1.038760
       chunk_max_chars: 300
       chunk_overlap_ratio: 0.1
