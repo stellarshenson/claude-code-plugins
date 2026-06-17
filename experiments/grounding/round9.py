@@ -23,9 +23,9 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 import sys
 import time
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -36,6 +36,8 @@ HERE = Path(__file__).parent
 REPO = HERE.resolve().parents[1]
 GV2 = HERE / "private-rag-forensics/gold/golden_grounding_evidence_v2.parquet"
 CACHE = HERE / "private-rag-forensics/round9_features.parquet"  # gitignored dir
+SYNTH_PARQUET = HERE / "private-rag-forensics/gold/synthetic_mt.parquet"  # Round 10, gitignored
+SYNTH_CACHE = HERE / "private-rag-forensics/round10_synth_features.parquet"
 EXP_CONFIG = REPO / "src/stellars_claude_code_plugins/config_document_processing.experiment.yaml"
 SHIPPED_CONFIG = REPO / "src/stellars_claude_code_plugins/config_document_processing.yaml"
 
@@ -230,7 +232,7 @@ def cmd_eval() -> None:
     # ---- retrained: 5-fold OOF so every gold row gets a held-out prediction ----
     for osample in (1, 3):
         oof = np.zeros(len(gold), dtype=bool)
-        strat = np.array([f"{s}_{l}" for s, l in zip(sl, y)])
+        strat = np.array([f"{s}_{lb}" for s, lb in zip(sl, y)])
         skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
         for tr, te in skf.split(gold, strat):
             train = pd.concat([gold.iloc[tr], extra], ignore_index=True)
@@ -272,7 +274,7 @@ def cmd_threshold() -> None:
     y = gold.label.values
     ne = (gold.slice == "gold_ne").values
     p = np.zeros(len(gold))
-    strat = np.array([f"{s}_{l}" for s, l in zip(gold.slice.values, y)])
+    strat = np.array([f"{s}_{lb}" for s, lb in zip(gold.slice.values, y)])
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
     for tr, te in skf.split(gold, strat):
         train = pd.concat([gold.iloc[tr], extra], ignore_index=True)
@@ -356,7 +358,7 @@ def cmd_shipcal() -> None:
 
     # OOF probabilities on gold v2 (honest threshold selection)
     p = np.zeros(len(gold))
-    strat = np.array([f"{s}_{l}" for s, l in zip(gold.slice.values, y)])
+    strat = np.array([f"{s}_{lb}" for s, lb in zip(gold.slice.values, y)])
     for tr, te in StratifiedKFold(5, shuffle=True, random_state=0).split(gold, strat):
         v, _ = fit_high(pd.concat([gold.iloc[tr], extra], ignore_index=True), oversample_ne=3)
         p[te] = _proba(v, gold.iloc[te].reset_index(drop=True))
@@ -403,6 +405,75 @@ def cmd_shipcal() -> None:
             cells.append(f"{name}={f1:.3f}({d:+.3f})")
         print(f"  vit x{vm}: " + "  ".join(cells))
     print("\nNote: gold_non_en uses threshold_non_en; others the English threshold.")
+
+
+def build_synth_features(force: bool = False) -> pd.DataFrame:
+    """HIGH features for the Round 10 synthetic non-English negatives (train-only)."""
+    if SYNTH_CACHE.exists() and not force:
+        return pd.read_parquet(SYNTH_CACHE)
+    from multiprocessing import Pool
+
+    df = pd.read_parquet(SYNTH_PARQUET)
+    print(f"extracting HIGH features for {len(df)} synthetic non-EN negatives", flush=True)
+    with Pool(min(24, os.cpu_count() or 8)) as p:
+        feats = p.map(_work, [(r["claim"], r["source_text"]) for r in df.to_dict("records")],
+                      chunksize=16)
+    F = pd.DataFrame(feats)
+    F["label"] = df["label"].values
+    F["lang"] = df["target_lang"].values
+    F["slice"] = "synth_ne"
+    F["origin"] = "synthetic_mt"
+    SYNTH_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    F.to_parquet(SYNTH_CACHE)
+    return F
+
+
+def cmd_synthcal() -> None:
+    """Round 10: does adding synthetic non-EN negatives let a SINGLE GLOBAL threshold reach
+    the non-EN TNR that today needs the language-conditional cut? Synthetic is TRAIN-ONLY;
+    every metric is on the REAL gold v2 non-EN slice (origin != synthetic_mt)."""
+    F = build_features()
+    S = build_synth_features()
+    gold = F[F.slice.isin(["gold_en", "gold_ne"])].reset_index(drop=True)
+    extra = F[F.slice.isin(["vitaminc", "aug"])].reset_index(drop=True)
+    real_ne = gold[gold.slice == "gold_ne"].reset_index(drop=True)
+    y = real_ne.label.values
+    print(f"synthetic train rows {len(S)} ({S.lang.value_counts().to_dict()})")
+    print(f"real non-EN eval rows {len(real_ne)} (neg {int((y==0).sum())})\n")
+
+    def report(v, label):
+        p = _proba(v, real_ne)
+        neg, pos = y == 0, y == 1
+        gtnr = float((p[neg] < v.threshold).mean())
+        gtpr = float((p[pos] >= v.threshold).mean())
+        print(f"{label}")
+        print(f"  global threshold {v.threshold:.2f}: real non-EN TNR={gtnr:.3f} TPR={gtpr:.3f}")
+        for t in (0.55, 0.65, 0.70):
+            tnr = float((p[neg] < t).mean())
+            tpr = float((p[pos] >= t).mean())
+            print(f"  @thr {t:.2f}: TNR={tnr:.3f} TPR={tpr:.3f}")
+
+    report(shipped_high(), "SHIPPED weights (baseline)")
+    v_nos, _ = fit_high(pd.concat([gold, extra], ignore_index=True), oversample_ne=3)
+    report(v_nos, "RETRAIN gold v2, NO synthetic (oversample_ne=3)")
+    v_syn, _ = fit_high(pd.concat([gold, extra, S], ignore_index=True), oversample_ne=1)
+    report(v_syn, "RETRAIN + synthetic (train-only)")
+
+    print("\n=== LOLO at global threshold, + synthetic (held-out lang excluded from BOTH "
+          "real and synthetic train) ===")
+    for lg in ["es", "fr", "pt", "nb", "sv"]:
+        held = real_ne[real_ne.lang == lg]
+        if (held.label == 0).sum() == 0:
+            continue
+        tr = pd.concat([gold[~((gold.lang == lg) & (gold.slice == "gold_ne"))], extra,
+                        S[S.lang != lg]], ignore_index=True)
+        v, _ = fit_high(tr, oversample_ne=1)
+        hp = _proba(v, held.reset_index(drop=True))
+        yy = held.label.values
+        neg = yy == 0
+        tnr = float((hp[neg] < v.threshold).mean())
+        print(f"  {lg}: held neg={int(neg.sum()):3d}  global-thr TNR={tnr:.3f} "
+              f"(synth for {lg}: {int((S.lang==lg).sum())})")
 
 
 def cmd_shipblock() -> None:
@@ -457,4 +528,4 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "eval"
     {"features": cmd_features, "audit": cmd_audit, "eval": cmd_eval,
      "threshold": cmd_threshold, "shipcal": cmd_shipcal, "shipblock": cmd_shipblock,
-     "retrain": cmd_retrain}[cmd]()
+     "synthcal": cmd_synthcal, "retrain": cmd_retrain}[cmd]()

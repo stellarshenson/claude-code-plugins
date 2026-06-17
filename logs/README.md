@@ -11,3 +11,6 @@ Background job logs for this repo.
 - `round9-threshold.log` - Round 9 operating-point diagnostic: non-EN threshold sweep on OOF probabilities + LOLO at fixed non-EN thresholds; `round9.py threshold`
 - `round9-retrain.log` - Round 9 Stage 2: retrain all tiers on gold v2, write experiment-copy config; `round9.py retrain`
 - `round9-shipcal.log` - Round 9 ship calibration: chosen HIGH english/non-english thresholds + no-regression guard (shipped vs recalibrated on gold v2 EN/non-EN, VitaminC, held-out articles) + VitaminC up-weight recovery sweep; `round9.py shipcal`
+- `round10-translate.log` - Round 10: `claude -p` Haiku translation of 120 English negatives into 9 languages (per-language counts only); `synth_mt.py translate`
+- `round10-verify.log` - Round 10: `claude -p` Sonnet fidelity verification of the translations (faithful counts per language); `synth_mt.py verify`
+- `round10-synthcal.log` - Round 10 integration eval: shipped vs retrain vs retrain+synthetic on the real gold v2 non-EN slice at the global threshold + LOLO; `round9.py synthcal`

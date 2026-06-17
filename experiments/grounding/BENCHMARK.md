@@ -279,3 +279,15 @@ Recalibration broke two English e2e precision tests and proved unnecessary: ship
 | 0.70 (shipped) | 0.748 | 0.761 | 0.754 |
 
 **Ship = shipped HIGH block + `threshold_non_en: 0.70`** - one config line, English byte-identical, non-English TNR 0.000 -> 0.748, generalising per-language (es 0.80 / fr 0.71 / nb 0.71 / pt 0.65 / sv 0.93). Pre-registered bar cleared on every axis with zero English blast radius.
+
+## Round 10 - synthetic translation data (H18), real non-EN slice, global threshold
+
+Synthetic = 1,053 verified non-English negatives (120 English negatives x 9 langs via claude -p, Sonnet-verified). Train-only; eval on real gold v2 non-EN.
+
+| training | global-thr TNR | TPR | LOLO global-thr TNR (held-out lang) |
+|---|---|---|---|
+| shipped | 0.000 | 0.997 | fr 0.000 / nb 0.000 (Round 9) |
+| retrain, no synthetic | 0.158 | 0.973 | - |
+| retrain + synthetic | 0.683 | 0.768 | es 0.71 / fr 0.79 / pt 0.60 / nb 0.71 / sv 0.71 |
+
+Synthetic negatives let a single global threshold reach non-EN TNR 0.68 and generalise to unseen languages - retiring the language-conditional `threshold_non_en` patch. Ship of the synthetic-retrained weights deferred (needs the Round 9 English no-regression guard).

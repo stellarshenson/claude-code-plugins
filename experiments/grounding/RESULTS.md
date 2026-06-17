@@ -199,3 +199,15 @@ The recalibrated weights would have shipped, but the ship step found a simpler f
 | 0.75 | 0.806 | 0.718 | 0.762 |
 
 Per-language at 0.70: es 0.80 / fr 0.71 / nb 0.71 / pt 0.65 / sv 0.93 / it 0.71 / nl 1.00 TNR - generalises with no weight change. **Ship = shipped HIGH block + `threshold_non_en: 0.70`**, one config line, English byte-identical (gold_en / VitaminC / articles / all e2e tests unchanged), non-English TNR 0.000 -> 0.748. The recalibration remains an experiment - it churns English and breaks precision tests for no net gain. The 4 calibration-engine test failures in this env are pre-existing (pytensor C-compile, unrelated).
+
+## Round 10 (H18) - synthetic non-English negatives by translation, 2026-06-17
+
+`synth_mt.py` (select / translate / verify / build) translated 120 English negatives (gold v2 English hallucinations) into 9 languages via `claude -p` - Haiku translates, Sonnet verifies fidelity (same numbers / entities / polarity). The verify gate dropped ~7 drifted translations, keeping 1,053 verified synthetic non-English negatives across da/de/es/fr/it/nb/nl/pt/sv. Every row carries `origin="synthetic_mt"` + source ids + target_lang + verified flag and lives in the gitignored stash; train-only, all metrics on the real gold v2 non-English slice.
+
+| training | global-thr real non-EN TNR | TPR |
+|---|---|---|
+| shipped weights (0.40) | 0.000 | 0.997 |
+| retrain, no synthetic (0.35) | 0.158 | 0.973 |
+| retrain + 1,053 synthetic (0.45) | 0.683 | 0.768 |
+
+The headline: a **single global threshold** now catches 68% of real non-English hallucinations - the language-conditional `threshold_non_en` patch is no longer required. Round 9's retrain-alone reached only 0.158 at the global cut; the synthetic negatives are what lets the weights, not a special-cased threshold, carry the cross-lingual signal. LOLO at the global threshold (held-out language excluded from both real and synthetic training) confirms transfer to unseen languages: es 0.714, fr 0.786, pt 0.600, nb 0.706, sv 0.714 (vs 0.000 in Round 9). Cost: support recall 0.768 at the global cut (rejects 23% of supported non-English claims), comparable to the shipped patch. Limitation: de back-translation model absent, so 117 de synthetic rows had degraded `r1_mt`; synthetic sources are gold-domain only (no VitaminC contrastive type). Shipping the synthetic-retrained weights needs the Round 9 English no-regression guard (recalibration breaks English precision e2e tests) - deferred; this round proves the data mechanism.
