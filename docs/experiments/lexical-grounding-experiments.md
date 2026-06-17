@@ -250,6 +250,23 @@ Results - real gold v2 non-English slice, single global threshold (synthetic is 
 | retrain, no synthetic | 0.158 | 0.973 | - |
 | **retrain + 1,053 synthetic** | **0.683** | 0.768 | es 0.71 / fr 0.79 / pt 0.60 / nb 0.71 / sv 0.71 |
 
+## Synthetic data scale, round 11: doubling the negatives (validated offline)
+
+Round 10 validated the data mechanism on one batch. Round 11 tests whether more of the same translated negatives keep lifting the non-English ceiling, or whether the curve has flattened.
+
+- **Setup** - `synth_mt.py` gained a `SYNTH_BATCH` knob: each batch selects a fresh slice of English negatives (skipping every claim used by prior batches, sids namespaced `b2s*`), namespaces its intermediates, and `build` globs all batches into the single `synthetic_mt.parquet`. Batch 2 = the next 120 gold v2 English negatives (zero overlap with batch 1, 1,811 distinct available), translated into the same 9 languages, Sonnet-verified (drop rate held: de 119/120, most 117-120), giving 1,066 new verified rows → 2,119 total, all train-only
+- **R11-H1 more data still helps, with diminishing return** - retrain + 2,119 synthetic reaches real-slice non-English TNR 0.712 at its global cut, vs 0.683 at 1,053 (+0.029 for 2× the data); the gain is real but the curve is bending - data quantity alone is approaching its ceiling for this omission-negative source
+- **R11-H2 generalisation holds and tightens** - LOLO at the global threshold (held-out language excluded from BOTH real and synthetic train): es 0.800 / fr 0.821 / pt 0.700 / nb 0.706 / sv 0.929, every language up on round 10 - the larger multilingual negative population transfers, not memorises
+- **R11-H3 de back-translation installed - correctness fix, null on the metric** - `argospm install translate-de_en` closed the round-10 gap where every German claim skipped `r1_mt` at extraction; re-extracting with the bridge active drops the skip count to 0 and properly bridges the 236 de training rows, but the global-threshold TNR holds at 0.712 (within noise, LOLO shuffles inside tiny-n folds). The real gold v2 non-English eval slice carries **zero de negatives** (139 negatives are fr 28 / es 35 / pt 20 / nb 17 / sv 14 / it 7 / nl 5 / da 2 / tail), so the de fix can only improve de *training* feature quality, not a measurable eval number - it removes a known extraction defect without a headline move
+- **Conclusion** - doubling the synthetic negatives moves real-slice TNR 0.683 → 0.712 and lifts every LOLO language; the mechanism scales but with diminishing return, pointing the next gain at source *diversity* (VitaminC contrastive negatives) rather than more of the same omission type. de back-translation is now installed, so the synthetic de rows bridge correctly going forward
+
+Results - real gold v2 non-English slice, single global threshold (synthetic is train-only):
+
+| training | global-threshold non-EN TNR | TPR | LOLO at global threshold (held-out lang) |
+|---|---|---|---|
+| retrain + 1,053 synthetic (round 10) | 0.683 | 0.768 | es 0.71 / fr 0.79 / pt 0.60 / nb 0.71 / sv 0.71 |
+| **retrain + 2,119 synthetic (round 11)** | **0.712** | 0.719 | es 0.80 / fr 0.82 / pt 0.70 / nb 0.71 / sv 0.93 |
+
 ## Lessons learned
 
 - **Features beat model class** - the gain came from the lexical recall + claim-intrinsic features, not from a nonlinear learner; a regularised logistic is the right head for these few-context data
@@ -276,13 +293,15 @@ Results - real gold v2 non-English slice, single global threshold (synthetic is 
 - **Bounded scope, deploy accordingly** - the lexical win is task-specific: it holds across private RAG's data growth but does not transfer to a contrastive benchmark (VitaminC macro-F1 0.586); use it where hallucinations are fabricated or omitted specifics, keep NLI available for present-but-contradicted negatives
 - **Short-source regime fixed by learned recalibration (R5)** - on a 1-chunk source the in-context IDF collapses and the dominant recall feature dies; a `wordfreq` background-IDF floor revives recall, the `unmatched_rarity` distinctive-content feature discriminates, and truncation augmentation recalibrates the manifold for the regime. Probe 10/12 → 11/12, private RAG holds (0.825 → 0.817), VitaminC lifts (0.661 → 0.691); ships in the library lexical mode. The residual miss is a spelled-out-number value-conflict, left to the deferred numeric-normalisation work
 - **Cross-lingual blind spot found and fixed (R9)** - the English-dominant benchmark hid that the shipped manifold caught 0 of 139 non-English hallucinations; an unbiased gold (gold v2) exposed it. A language-conditional decision threshold (`threshold_non_en: 0.70`, keyed off `is_en`) over the unchanged shipped weights lifts non-English TNR 0.000 → 0.748 with English byte-identical - shipped. The benchmark numbers above are therefore English scores; non-English needs its own operating point
-- **Synthetic translation data is the durable cross-lingual fix (R10, offline)** - 1,053 `claude -p`-translated, fidelity-verified non-English negatives let a single global threshold reach real-slice TNR 0.683 with LOLO generalisation (0.60-0.79), retiring the threshold patch in principle; shipping the retrained weights is gated on the English no-regression guard
+- **Synthetic translation data is the durable cross-lingual fix (R10-R11, offline)** - `claude -p`-translated, fidelity-verified non-English negatives let a single global threshold reach real-slice TNR 0.683 at 1,053 rows and 0.712 at 2,119 (R11 doubling, +0.029) with LOLO generalisation rising to 0.70-0.93, retiring the threshold patch in principle; shipping the retrained weights is gated on the English no-regression guard. The mechanism scales with diminishing return - the next gain is source diversity, not volume
 
 ## Next steps
 
 - **Promote** the lexical-only logistic into the production grounder via a separate reviewed change; keep NLI optional/off
 - **More negatives in the language tail** - source contexts grew to 75 (constraint loosened); the binding constraint is now the small da/pt/de language tail; grow those before chasing further model capacity
 - **Reconcile the synthetic-retrain with the English guard (R10 follow-on)** - the synthetic-negative retrain lets a single global threshold work but recalibrating the weights breaks two English precision e2e tests; find a fit (e.g. freeze English-tied weights, or fold synthetic in without disturbing the English operating point) that ships the durable fix without the English regression, then retire `threshold_non_en`
+- **Diversify synthetic sources, not just volume (R11 follow-on)** - doubling the omission-negative set gave diminishing return (+0.029 TNR); add VitaminC contrastive negatives so the synthetic population covers the contradiction failure mode, before generating a third batch of the same type. de back-translation (`translate-de_en`) is now installed - the German `r1_mt` bridge fires, though the real eval slice has no de negatives to score it
+- **Get real de negatives into the eval slice** - the gold v2 non-English negatives carry zero de; the de synthetic training rows and bridge are untestable on the honest slice until de hallucinations are judged into gold, so de coverage is currently a train-side correctness claim only
 - **Install the de back-translation model** - German synthetic rows had degraded `r1_mt`; also broaden synthetic sources beyond gold-domain omission negatives (add VitaminC contrastive type)
 - **Engineering** - lingua-py for language ID, a faster per-language MT engine if throughput matters
 - **Refuted, do not revisit without more data** - NLI in the verdict, claim decomposition, cross-corpus transfer, deep trees, OPUS-MT

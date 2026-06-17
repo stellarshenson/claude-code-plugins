@@ -14,3 +14,9 @@ Background job logs for this repo.
 - `round10-translate.log` - Round 10: `claude -p` Haiku translation of 120 English negatives into 9 languages (per-language counts only); `synth_mt.py translate`
 - `round10-verify.log` - Round 10: `claude -p` Sonnet fidelity verification of the translations (faithful counts per language); `synth_mt.py verify`
 - `round10-synthcal.log` - Round 10 integration eval: shipped vs retrain vs retrain+synthetic on the real gold v2 non-EN slice at the global threshold + LOLO; `round9.py synthcal`
+- `round11-select.log` - Round 11 batch 2: select the next 120 fresh English negatives (counts only); `SYNTH_BATCH=2 synth_mt.py select`
+- `round11-translate.log` - Round 11 batch 2: `claude -p` Haiku translation into 9 languages (per-language counts only); `synth_mt.py translate`
+- `round11-verify.log` - Round 11 batch 2: `claude -p` Sonnet fidelity verification (faithful counts per language); `synth_mt.py verify`
+- `round11-build.log` - Round 11: merge all batches into `synthetic_mt.parquet` (per-language row counts only); `synth_mt.py build`
+- `round11-synthcal.log` - Round 11 integration eval over the doubled 2,119-row synthetic set (de bridge off); `round9.py synthcal`
+- `round11-synthcal-de.log` - Round 11 re-eval after installing `translate-de_en` (de bridge active, 0 skips); `round9.py synthcal`

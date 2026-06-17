@@ -1,0 +1,2 @@
+wrote 2119 verified synthetic non-English negatives from 2 batch(es) -> /home/lab/workspace/private/ai-assistants/claude-code-plugins/experiments/grounding/private-rag-forensics/gold/synthetic_mt.parquet
+  per language: {'da': 237, 'de': 236, 'es': 240, 'fr': 239, 'it': 219, 'nb': 237, 'nl': 237, 'pt': 236, 'sv': 238}
