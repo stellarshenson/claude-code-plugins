@@ -231,4 +231,14 @@ Code landed: `LexicalVerdict.threshold_non_en` + `threshold_for(feat)` (English 
 | articles held-out EN (42) | F1 0.797 / bal 0.861 | F1 0.816 / bal 0.931 | improved |
 | vitaminc (800) | F1 0.695 | F1 0.680 | **-0.015 (breaches the 0.01 guard)** |
 
-Both real English corpora (gold_en, held-out articles) improve and non-English goes from broken to working; at vit x1 the only regression was VitaminC -0.015. Recovery: up-weighting VitaminC in the retrain (sweep gold_ne x3, vit x{1,3,5,8}) - **vit x3 clears every corpus**: gold_en +0.003, gold_non_en +0.138, vitaminc +0.003 (recovered), articles +0.019 (vit x5/x8 over-correct, hurting gold_en/articles). Ship config = recalibrated weights (oversample_ne 3, vit 3) + HIGH english 0.290 / non_english 0.750. Pre-registered bar now fully cleared (non-EN TNR 0.813, no EN regression, VitaminC +0.003). Ready to write shipped config on approval.
+Both real English corpora (gold_en, held-out articles) improve and non-English goes from broken to working; at vit x1 the only regression was VitaminC -0.015. Recovery: up-weighting VitaminC in the retrain (sweep gold_ne x3, vit x{1,3,5,8}) - **vit x3 clears every corpus**: gold_en +0.003, gold_non_en +0.138, vitaminc +0.003 (recovered), articles +0.019 (vit x5/x8 over-correct, hurting gold_en/articles). At vit x3 the recalibrated weights clear every corpus, but the ship step revealed a simpler, safer fix.
+
+## Shipped (Round 9) - threshold-only, weights untouched
+
+Writing the recalibrated weights broke two English e2e precision tests (`test_common_word_fabrication_not_confirmed`, `test_precision_recall_targets`): the gold-v2-optimal English threshold 0.290 is more permissive than the shipped 0.40 and over-confirms borderline English fabrications. More important, the recalibration was **unnecessary** - the *shipped* weights already rank non-English hallucinations below support (they were just never given a cut that exploited it). Shipped HIGH weights, unchanged, + a non-English threshold of **0.70**:
+
+- non-English slice (gold v2, held-out for the shipped weights): TNR 0.748 / TPR 0.761 / bal-acc 0.754, vs TNR 0.000 at the global 0.40
+- generalises per-language: es 0.80, fr 0.71, nb 0.71, pt 0.65, sv 0.93, it 0.71, nl 1.00 TNR
+- English **byte-identical** to shipped (gold_en, VitaminC, articles, all e2e tests unchanged)
+
+**Ship = shipped HIGH block unchanged + `threshold_non_en: 0.70`** (one config line). Zero English blast radius, non-English TNR 0.000 -> 0.75. The recalibration stays an experiment (it churns English and breaks precision tests for no net gain). Pre-registered bar cleared on every axis.

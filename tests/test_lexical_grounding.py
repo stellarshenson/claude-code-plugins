@@ -290,3 +290,49 @@ class TestMTBridgeGating:
         out = MT.translate("Premiere phrase. Deuxieme phrase.", "fr")
         assert seen == ["Premiere phrase. Deuxieme phrase."]  # SaT split was used
         assert out == "translated sentence translated sentence"
+
+
+class TestLanguageConditionalThreshold:
+    """LexicalVerdict.threshold_for picks the English vs non-English decision cut by the
+    is_en feature; from_config round-trips threshold_non_en (back-compat when absent)."""
+
+    def _verdict(self, **kw):
+        return L.LexicalVerdict(
+            weights={"Intercept": 0.0}, feature_order=["is_en"], **kw
+        )
+
+    def test_threshold_for_routes_by_is_en(self):
+        v = self._verdict(threshold=0.3, threshold_non_en=0.75)
+        assert v.threshold_for({"is_en": 1.0}) == 0.3   # english
+        assert v.threshold_for({"is_en": 0.0}) == 0.75  # non-english
+        assert v.threshold_for({}) == 0.3               # absent (LOW tier) -> english
+
+    def test_no_non_en_threshold_is_english_everywhere(self):
+        v = self._verdict(threshold=0.4)  # threshold_non_en defaults None
+        assert v.threshold_non_en is None
+        assert v.threshold_for({"is_en": 0.0}) == 0.4
+        assert v.threshold_for({"is_en": 1.0}) == 0.4
+
+    def test_confirmed_uses_language_conditional_cut(self):
+        # Intercept 0 -> predict_proba == 0.5 for an all-zero feature vector; is_en=0.
+        v = self._verdict(threshold=0.4, threshold_non_en=0.75)
+        feat = {"is_en": 0.0}
+        assert v.predict_proba(feat) == 0.5
+        assert v.confirmed(feat) is False              # 0.5 < non-en cut 0.75
+        assert v.confirmed({"is_en": 1.0}) is True     # 0.5 >= en cut 0.4
+
+    def test_from_config_round_trip_with_and_without(self):
+        order = L.TIER_FEATURES["high"]
+        weights = {"Intercept": 0.0, **{f: 0.0 for f in order}}
+        block = {"feature_order": order, "threshold": 0.29,
+                 "threshold_non_en": 0.75, "weights": weights}
+        v = L.LexicalVerdict.from_config({"lexical_manifolds": {"high": block}}, "high")
+        assert v.threshold == 0.29 and v.threshold_non_en == 0.75
+        block.pop("threshold_non_en")  # back-compat: absent -> None
+        v2 = L.LexicalVerdict.from_config({"lexical_manifolds": {"high": block}}, "high")
+        assert v2.threshold_non_en is None
+
+    def test_shipped_high_config_carries_non_en_threshold(self):
+        block = C.load_calibration_from_config()
+        hv = L.LexicalVerdict.from_config(block, "high")
+        assert hv.threshold_non_en is not None and hv.threshold_non_en > hv.threshold

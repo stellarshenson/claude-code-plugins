@@ -324,6 +324,12 @@ calibration:
       - unmatched_rarity
       - max_unmatched
       threshold: 0.4
+      # Non-English claims (is_en < 0.5) take a higher cut: the shipped weights rank
+      # cross-lingual hallucinations below support (r1_mt) but their probabilities sit
+      # above the English cut, so the global 0.4 confirms ~everything non-English. 0.70
+      # gives non-English hallucination recall (TNR) ~0.75 at support recall ~0.76,
+      # generalising per-language (gold v2); English is unchanged. See RESULTS.md Round 9.
+      threshold_non_en: 0.70
       weights:
         Intercept: -1.053304
         r1_direct: -2.646833

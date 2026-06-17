@@ -405,6 +405,27 @@ def cmd_shipcal() -> None:
     print("\nNote: gold_non_en uses threshold_non_en; others the English threshold.")
 
 
+def cmd_shipblock() -> None:
+    """Emit the recalibrated HIGH manifold block (vit x3 ship config) in the exact YAML
+    shape of config_document_processing.yaml lexical_manifolds.high, for a surgical
+    hand-replace of just that block. english thr 0.290, non_english thr 0.750."""
+    F = build_features()
+    train = F[F.slice.isin(["gold_en", "gold_ne", "vitaminc", "aug"])].reset_index(drop=True)
+    _, block = fit_high(train, oversample_ne=3, oversample_vit=3, threshold=0.29)
+    order = block["feature_order"]
+    w = block["weights"]
+    lines = ["    high:", "      feature_order:"]
+    lines += [f"      - {f}" for f in order]
+    lines.append("      threshold: 0.29")
+    lines.append("      threshold_non_en: 0.75")
+    lines.append("      weights:")
+    lines.append(f"        Intercept: {w['Intercept']:.6f}")
+    lines += [f"        {f}: {w[f]:.6f}" for f in order]
+    lines.append(f"      chunk_max_chars: {block['chunk_max_chars']}")
+    lines.append(f"      chunk_overlap_ratio: {block['chunk_overlap_ratio']}")
+    print("\n".join(lines))
+
+
 def cmd_retrain() -> None:
     """Fit ALL tiers on the full gold v2 + vitaminc + aug, write the EXPERIMENT yaml."""
     import yaml
@@ -435,4 +456,5 @@ def cmd_retrain() -> None:
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "eval"
     {"features": cmd_features, "audit": cmd_audit, "eval": cmd_eval,
-     "threshold": cmd_threshold, "shipcal": cmd_shipcal, "retrain": cmd_retrain}[cmd]()
+     "threshold": cmd_threshold, "shipcal": cmd_shipcal, "shipblock": cmd_shipblock,
+     "retrain": cmd_retrain}[cmd]()

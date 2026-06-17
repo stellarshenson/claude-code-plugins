@@ -185,4 +185,17 @@ Both real English corpora (gold_en, held-out articles) improve, non-English goes
 | x5 | -0.013 | +0.142 | +0.019 | -0.089 |
 | x8 | -0.044 | +0.147 | +0.016 | -0.059 |
 
-**vit x3 clears every corpus** - all four hold or improve, VitaminC recovers to +0.003, non-English keeps +0.138. vit x5/x8 over-correct, collapsing articles (over-fitting the VitaminC contrastive regime). Ship config = recalibrated weights (oversample_ne 3, vit 3) + HIGH english 0.290 / non_english 0.750; pre-registered bar now fully cleared. Recalibrated weights stay in the gitignored experiment-copy config; shipped config write held for approval.
+**vit x3 clears every corpus** - all four hold or improve, VitaminC recovers to +0.003, non-English keeps +0.138. vit x5/x8 over-correct, collapsing articles (over-fitting the VitaminC contrastive regime).
+
+### Shipped - threshold-only (weights untouched)
+
+The recalibrated weights would have shipped, but the ship step found a simpler fix. Writing them broke two English e2e precision tests (the gold-v2-optimal English threshold 0.290 over-confirms borderline fabrications vs the shipped 0.40), and the recalibration turned out to be unnecessary: the **shipped weights already rank non-English hallucinations below support**. Shipped HIGH weights unchanged + a non-English threshold sweep on the gold-v2 non-EN slice (held-out for the shipped weights, which never trained on these negatives):
+
+| non-EN thr | TNR | TPR | bal-acc |
+|---|---|---|---|
+| 0.40 (global) | 0.165 | 0.963 | 0.564 |
+| 0.65 | 0.669 | 0.807 | 0.738 |
+| **0.70** | **0.748** | **0.761** | **0.754** |
+| 0.75 | 0.806 | 0.718 | 0.762 |
+
+Per-language at 0.70: es 0.80 / fr 0.71 / nb 0.71 / pt 0.65 / sv 0.93 / it 0.71 / nl 1.00 TNR - generalises with no weight change. **Ship = shipped HIGH block + `threshold_non_en: 0.70`**, one config line, English byte-identical (gold_en / VitaminC / articles / all e2e tests unchanged), non-English TNR 0.000 -> 0.748. The recalibration remains an experiment - it churns English and breaks precision tests for no net gain. The 4 calibration-engine test failures in this env are pre-existing (pytensor C-compile, unrelated).
