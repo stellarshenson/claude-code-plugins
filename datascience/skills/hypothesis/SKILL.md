@@ -55,7 +55,10 @@ Each hypothesis is a record, written as this fixed bullet set. The prediction is
 - **Result** - the measured numbers, including the swept parameter and the guardrail reading
 - **Verdict** - one of Ships / Kept / Promoted / Dropped / Refuted / Refuted (null) / Killed-at-gate, with the number that justifies it
 
-Name each `R<round>-H<n>` or `E<batch>-H<n>` (docdistance uses `E01-H1`); the name states what is tested, never "try X".
+Name each `R<round>-H<n>` or `E<batch>-H<n>` (docdistance uses `E01-H1`); the name states what is tested, never "try X". `E<batch>` is an experiments batch, typically grouping 2-5 hypotheses.
+- **Global ordinal `<n>`** - one continuous ascending series across all bundles, never reset per bundle (E1-H1..H3, E2-H4..H6, E3-H7..); a unique number per hypothesis, trackable across the whole log
+- **Keep the bundle prefix** - `E<batch>` stays for context; only `H<n>` runs globally
+- **Sub-variants fold in** - a fallback or `Hxb` becomes its own ordinal, never a letter suffix
 
 ## Writing a good hypothesis
 - **Predict the result** - state the expected outcome and direction before running; a hypothesis with no stated expectation cannot be confirmed or refuted, and a result that matches a wrong prediction still teaches something
