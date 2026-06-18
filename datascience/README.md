@@ -1,6 +1,6 @@
 # datascience
 
-Data science project standards for Claude Code. Enforces notebook structure, naming conventions, rich output styling, and project layout. Scaffolds new projects from a copier template, reviews existing code for compliance, and applies research-backed prompt engineering techniques.
+Data science project standards for Claude Code. Enforces notebook structure, naming conventions, rich output styling, and project layout. Scaffolds new projects from a copier template, reviews existing code for compliance, applies research-backed prompt engineering techniques, and structures hypothesis-driven experiment documentation - a canonical experiments log plus a SOTA design doc.
 
 Unlike ad-hoc notebook cleanups, this plugin treats the notebook as a standardised artefact - fixed section order, GPU selection before torch/tf/jax imports, a single configuration cell with rich display, and completion-safe progress bars. Project scaffolding is driven by the [copier-data-science](https://github.com/stellarshenson/copier-data-science) template so new projects match existing ones on day one.
 
@@ -25,6 +25,7 @@ Unlike ad-hoc notebook cleanups, this plugin treats the notebook as a standardis
 | `/datascience:apply-footnotes` | Add JupyterLab-compatible footnotes using the anchor-link pattern |
 | `/datascience:apply-prompt-technique` | Apply a prompt engineering technique to a prompt, system instruction, or agent definition |
 | `/datascience:challenge` | Full psychological prompting stack for difficult problems - stakes, incentive, competitive framing |
+| `/datascience:hypothesis` | Write or extend a hypothesis-driven experiments log and its SOTA design doc - record a round, or conclude the design |
 
 ## Skills
 
@@ -38,6 +39,7 @@ Auto-triggered based on context.
 | `progressbars` | Adding progress bars with tqdm (classic) or rich (modern) |
 | `footnotes` | Adding references, citations, or notes in notebooks and markdown |
 | `prompt-engineering` | Crafting system prompts, agent instructions, or LLM prompts |
+| `hypothesis` | Writing up an experiment, recording a hypothesis and result, deciding which approach won, or drafting an experiments log / SOTA design doc |
 
 ## Prompt engineering techniques
 
@@ -54,6 +56,19 @@ The `prompt-engineering` skill ships seven research-backed techniques. Each refe
 | 7 | Rephrase and Respond | Ambiguous requirements, multi-part questions |
 
 Use `/datascience:apply-prompt-technique` to pick and apply a technique to an existing prompt, or `/datascience:challenge` to apply the full psychological stack.
+
+## Hypothesis-driven documentation
+
+The `hypothesis` skill structures and maintains two complementary research documents - a canonical, append-only **experiments log** (each hypothesis with its setup, prediction, result, and verdict) and a **SOTA document** that distils the winning hypotheses into a final design. The log is the system of record across runs: each run reads it, appends the next round, and never rewrites a recorded verdict.
+
+| Aspect | What it enforces |
+|--------|------------------|
+| Per-hypothesis template | Hypothesis (one falsifiable causal claim) → Lever → Mechanism → Prediction → Acceptance bar → Result → Verdict |
+| Canonical doc across runs | one log per track at `docs/experiments/<project>-experiments.md`, monotonic rounds, immutable verdicts (superseded by back-reference) |
+| SOTA shape | Abstract → Problem → Solution → Pipeline → Mechanism → Performance → Limitations → FAQ → Implementation → Conclusions → Bibliography |
+| Style | terse overview-then-bullets, numbers inline, sweeps as tables, maths as separated `$$…$$` display blocks, "private dataset" sanitisation |
+
+Four worked examples ship under [`skills/hypothesis/examples/`](skills/hypothesis/examples/) - the `wmd-docdistance-*` pair is the canonical shape, with a long 12-round arc shown by the `lexical-grounding-*` pair. Use `/datascience:hypothesis` to record a round or conclude the design.
 
 ## Example usage
 
@@ -73,4 +88,5 @@ Create a new project, scaffold the first notebook, then review it:
 - [`skills/footnotes/SKILL.md`](skills/footnotes/SKILL.md) - JupyterLab-compatible anchor pattern (standard `[^1]` does not render in JupyterLab)
 - [`skills/prompt-engineering/references/`](skills/prompt-engineering/references/) - per-technique papers, templates, and usage guidance
 - [`skills/datascience/SKILL.md`](skills/datascience/SKILL.md) - project conventions, naming, file format standards
+- [`skills/hypothesis/SKILL.md`](skills/hypothesis/SKILL.md) - hypothesis-driven experiments log + SOTA doc structure, the per-hypothesis template, and canonical-doc-across-runs management; four worked examples under [`skills/hypothesis/examples/`](skills/hypothesis/examples/) (the `wmd-docdistance-*` pair is the canonical shape)
 - [copier-data-science](https://github.com/stellarshenson/copier-data-science) - project scaffolding template used by `/datascience:new-project` and `/datascience:fix-project`
