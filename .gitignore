@@ -134,3 +134,8 @@ src/stellars_claude_code_plugins/config_document_processing.experiment.yaml
 # OpenVINO IR model artifacts (large binaries; hosted on HF, never committed)
 models/
 data/
+
+# groundrails - grounding research spun off into its own git repo; kept on disk,
+# not tracked by this marketplace repo (the shipped document_processing library
+# lives in src/stellars_claude_code_plugins/, not here)
+/groundrails/
