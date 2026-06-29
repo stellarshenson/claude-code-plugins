@@ -4538,7 +4538,7 @@ wheels = [
 
 [[package]]
 name = "stellars-claude-code-plugins"
-version = "1.5.2"
+version = "1.5.4"
 source = { editable = "." }
 dependencies = [
     { name = "argostranslate" },

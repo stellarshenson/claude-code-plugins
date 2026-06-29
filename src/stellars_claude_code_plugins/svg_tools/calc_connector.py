@@ -42,6 +42,8 @@ Output (free-curve mode):
 """
 
 import argparse
+import contextlib
+import io
 import math
 import sys
 
@@ -2749,8 +2751,163 @@ def calc_manifold(
     start_shapes=None,
     end_shapes=None,
     snap_tolerance=0.0,
+    auto_tune=False,
+    auto_tune_max=0.95,
 ):
     """Build a manifold connector.
+
+    Thin wrapper over ``_calc_manifold_build``. With ``auto_tune=False`` (the
+    default) it delegates a single build, preserving the exact legacy behaviour
+    and signature. With ``auto_tune=True`` it escalates ``tension`` toward
+    ``auto_tune_max`` until strand-crossing and backward-curve warnings clear,
+    returning the first clean build (or the best attempt). This collapses the
+    expensive manual tune-rerun loop the agent would otherwise drive: the tool
+    resolves the geometry once instead of emitting warnings that prompt N
+    re-runs. Topology errors (TWIST / FLOW REVERSED) and spine-backward hints
+    are NOT tension-fixable, so they always survive into ``warnings``.
+    """
+    params = dict(
+        starts=starts,
+        ends=ends,
+        spine_start=spine_start,
+        spine_end=spine_end,
+        shape=shape,
+        merge_points=merge_points,
+        fork_points=fork_points,
+        spine_controls=spine_controls,
+        start_controls=start_controls,
+        end_controls=end_controls,
+        align_elbows=align_elbows,
+        organic=organic,
+        organic_iterations=organic_iterations,
+        organic_repulsion=organic_repulsion,
+        organic_segments=organic_segments,
+        chamfer=chamfer,
+        samples=samples,
+        margin=margin,
+        head_len=head_len,
+        head_half_h=head_half_h,
+        arrow=arrow,
+        standoff=standoff,
+        snap_grid=snap_grid,
+        strict=strict,
+        start_shapes=start_shapes,
+        end_shapes=end_shapes,
+        snap_tolerance=snap_tolerance,
+    )
+    if not auto_tune:
+        return _calc_manifold_build(tension=tension, **params)
+    return _auto_tune_manifold(tension, auto_tune_max, params)
+
+
+def _manifold_tunable_warnings(warnings):
+    """Subset of warnings that raising tension can resolve.
+
+    Strand crossings and per-strand backward curves widen/stiffen with higher
+    tension. Spine-backward, TWIST and FLOW-REVERSED are excluded - they signal
+    spine_controls conflicts or reversed wiring that tension cannot fix.
+    """
+    out = []
+    for w in warnings or []:
+        if "strands" in w and "CROSS" in w:
+            out.append(w)
+        elif "strand" in w and "bends BACKWARD" in w:
+            out.append(w)
+    return out
+
+
+def _auto_tune_manifold(tension, auto_tune_max, params):
+    """Escalate tension until strand crossings / backward curves clear.
+
+    Builds at ascending tensions (0.05 steps from the requested value up to
+    ``auto_tune_max``), suppressing each trial's stderr so failed attempts do
+    not surface as noise. Returns the first build with zero tunable warnings,
+    else the build with the fewest. Records the outcome under ``result['auto_tune']``
+    and prints a single summary line to stderr.
+    """
+    t_s, t_e = _resolve_tension(tension)
+    base = max(t_s, t_e)
+    cap = max(base, min(auto_tune_max, 1.0))
+
+    schedule = []
+    seen = set()
+    t = base
+    while t < cap - 1e-9:
+        r = round(t, 4)
+        if r not in seen:
+            seen.add(r)
+            schedule.append(r)
+        t += 0.05
+    cap_r = round(cap, 4)
+    if cap_r not in seen:
+        schedule.append(cap_r)
+
+    best = None  # (n_tunable, tens, result)
+    for tens in schedule:
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            res = _calc_manifold_build(tension=tens, **params)
+        n_tun = len(_manifold_tunable_warnings(res.get("warnings", [])))
+        if best is None or n_tun < best[0]:
+            best = (n_tun, tens, res)
+        if n_tun == 0:
+            break
+
+    n_tun, tens, res = best
+    res["auto_tune"] = {
+        "applied": True,
+        "tension_from": round(base, 4),
+        "tension_to": tens,
+        "cleared": n_tun == 0,
+        "residual_strand_warnings": n_tun,
+    }
+    if n_tun == 0:
+        print(
+            f"AUTO-TUNED: manifold tension {base:.2f} -> {tens:.2f}; "
+            f"strand crossings/backward-curves cleared.",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"AUTO-TUNED: raised manifold tension to {tens:.2f} (max {cap:.2f}); "
+            f"{n_tun} strand crossing/backward warning(s) remain - widen endpoint "
+            f"spread or pass explicit --fork-points/--merge-points.",
+            file=sys.stderr,
+        )
+    return res
+
+
+def _calc_manifold_build(
+    starts,
+    ends,
+    spine_start,
+    spine_end,
+    shape="l-chamfer",
+    tension=0.75,
+    merge_points=None,
+    fork_points=None,
+    spine_controls=None,
+    start_controls=None,
+    end_controls=None,
+    align_elbows=False,
+    organic=None,
+    organic_iterations=25,
+    organic_repulsion=60.0,
+    organic_segments=5,
+    chamfer=4.0,
+    samples=200,
+    margin=0.0,
+    head_len=10,
+    head_half_h=5,
+    arrow="end",
+    standoff=None,
+    snap_grid=0,
+    strict=False,
+    start_shapes=None,
+    end_shapes=None,
+    snap_tolerance=0.0,
+):
+    """Build a manifold connector (single deterministic pass).
 
     REMINDER: starts, ends, spine_start, spine_end must be on shape EDGES,
     not centres (use `geom attach` to compute edge anchors).
@@ -3993,6 +4150,22 @@ def main():
         "kinks and NOT flagged.",
     )
     parser.add_argument(
+        "--auto-tune",
+        action="store_true",
+        dest="auto_tune",
+        help="Manifold only: escalate --tension toward --auto-tune-max until "
+        "strand crossings and backward curves clear, returning the first clean "
+        "build. Replaces the manual tune-then-rerun loop. Topology errors "
+        "(TWIST / FLOW REVERSED) still surface - tension cannot fix those.",
+    )
+    parser.add_argument(
+        "--auto-tune-max",
+        type=float,
+        default=0.95,
+        dest="auto_tune_max",
+        help="Upper tension bound for --auto-tune. Default 0.95.",
+    )
+    parser.add_argument(
         "--start-shapes",
         default=None,
         help="Manifold only: space-separated bboxes 'x,y,w,h x,y,w,h ...' "
@@ -4324,6 +4497,8 @@ def main():
             start_shapes=_parse_shape_list(args.start_shapes),
             end_shapes=_parse_shape_list(args.end_shapes),
             snap_tolerance=args.snap_tolerance,
+            auto_tune=args.auto_tune,
+            auto_tune_max=args.auto_tune_max,
         )
         enforce_warning_acks(
             pre_warnings + list(result.get("warnings", [])),
@@ -4568,6 +4743,13 @@ def print_manifold_result(result, args):
     print(f"Spine start:      ({result['spine_start'][0]:.1f}, {result['spine_start'][1]:.1f})")
     print(f"Spine end:        ({result['spine_end'][0]:.1f}, {result['spine_end'][1]:.1f})")
     print(f"Tension:          {result['tension']}")
+    at = result.get("auto_tune")
+    if at and at.get("applied"):
+        status = "cleared" if at["cleared"] else f"{at['residual_strand_warnings']} remain"
+        print(
+            f"Auto-tune:        {at['tension_from']:.2f} -> {at['tension_to']:.2f} "
+            f"(strand crossings/backward: {status})"
+        )
     bb = result["bbox"]
     print(f"BBox:             x={bb[0]:.1f} y={bb[1]:.1f} w={bb[2]:.1f} h={bb[3]:.1f}")
     if result["warnings"]:

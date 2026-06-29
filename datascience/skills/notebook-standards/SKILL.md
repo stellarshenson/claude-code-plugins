@@ -22,11 +22,24 @@ Patterns for Jupyter notebook creation.
 
 ## GPU Selection (MUST be first code cell)
 
+Default: pin ONE specific GPU by its **UUID** - reproducible across reboots, driver reloads, and hardware changes, immune to index reshuffling. Ask the user once at build time which behaviour they want:
+
+- **Pin a specific GPU** (default) - pick the best card (highest compute capability, then most free memory) and hardcode its UUID
+- **Auto-pick a free GPU** - only when the user says "pick whatever is free" - resolve the freest card at runtime (snippet in `GPU-SETUP.md`)
+
 ```python
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+# Deterministic ordering so a UUID/index always names the same physical card
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# Pin by UUID (from `nvidia-smi -L`) - survives reboots and hardware changes
+os.environ["CUDA_VISIBLE_DEVICES"] = "GPU-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+import torch  # CUDA reads the env vars once, here - never set them after this import
 ```
+
+Why UUID, not the integer index: CUDA's default order is `FASTEST_FIRST`, not nvidia-smi's PCI order, so `CUDA_VISIBLE_DEVICES=2` can grab a different physical card than nvidia-smi's GPU 2. A UUID names one specific card and is immune to ordering policy and to enumeration shuffling when cards are added or replaced. See `GPU-SETUP.md` for the full mechanism and the auto-pick-free snippet.
 
 ## Import Cell Pattern
 

@@ -305,9 +305,11 @@ def _contextual_warnings(decl: Declaration) -> list[str]:
         )
     if decl.counts.get("connector", 0) > 0 and decl.connector_mode == "manifold":
         out.append(
-            "Manifold connector declared: spine should pass through a "
-            "deliberate gap in intermediate layouts (avoid card overlap). "
-            "Also declare direction explicitly; see rules/connector.md."
+            "Manifold connector declared: pass `--auto-tune` so the tool "
+            "escalates tension until strand crossings / backward curves clear "
+            "in ONE call - do not hand-tune `--tension` and re-run. Spine should "
+            "pass through a deliberate gap (avoid card overlap); declare "
+            "direction explicitly. See rules/connector.md."
         )
     if decl.counts.get("connector", 0) >= 2 and decl.connector_mode != "manifold":
         out.append(
@@ -718,7 +720,7 @@ def _add_declaration_flags(p: argparse.ArgumentParser) -> None:
         type=int,
         default=0,
         help="Number of header bands (title + decorative element rows). "
-        "Pulls header.md rule with 20% horizontal rule for decorative graphics.",
+        "Pulls header.md rule with 20%% horizontal rule for decorative graphics.",
     )
     p.add_argument(
         "--ribbons",

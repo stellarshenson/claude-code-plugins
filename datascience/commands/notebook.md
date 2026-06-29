@@ -21,7 +21,7 @@ Read these skills before generating the notebook. They are the source of truth f
 1. ASK the user:
    - **Purpose** (what the notebook does - used for header narrative)
    - **Author initials** (default: kj)
-   - **GPU needed?** (yes/no)
+   - **GPU needed?** (yes/no) - if yes, **GPU selection**: pin a specific GPU by UUID (default, reproducible) or auto-pick the freest GPU at runtime? See `GPU-SETUP.md`
    - **Libraries needed** (torch, polars, sklearn, transformers, etc.)
    - **Long-running operations?** (yes/no - if yes, ask classic tqdm or modern rich per `progressbars` skill)
 

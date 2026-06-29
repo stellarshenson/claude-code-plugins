@@ -1938,6 +1938,81 @@ class TestManifoldConnector:
         assert r.returncode != 0
         assert "spine" in r.stderr.lower()
 
+    def test_manifold_auto_tune_clears_crossings(self):
+        """auto_tune escalates tension until strand crossings clear, in one
+        call - replacing the manual tune-then-rerun loop. The default
+        (auto_tune=False) path is untouched: no auto_tune key, identical
+        geometry to an explicit single build."""
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_manifold
+
+        # Direction hints make the two start strands cross at low tension.
+        cfg = dict(
+            starts=[(200, 40, "S"), (200, 260, "N")],
+            ends=[(540, 150)],
+            spine_start=(420, 150),
+            spine_end=(460, 150),
+            shape="spline",
+        )
+
+        base = calc_manifold(tension=0.0, **cfg)
+        assert any("CROSS" in w for w in base["warnings"]), base["warnings"]
+        assert "auto_tune" not in base  # legacy path carries no auto-tune metadata
+
+        tuned = calc_manifold(tension=0.0, auto_tune=True, **cfg)
+        at = tuned["auto_tune"]
+        assert at["applied"] is True
+        assert at["cleared"] is True
+        assert at["tension_to"] > at["tension_from"]
+        assert at["residual_strand_warnings"] == 0
+        assert not any("CROSS" in w for w in tuned["warnings"])
+
+        # auto_tune=False is byte-identical to a plain build
+        plain = calc_manifold(tension=0.0, **cfg)
+        assert plain["spine"]["trimmed_path_d"] == base["spine"]["trimmed_path_d"]
+
+    def test_manifold_auto_tune_control_logic(self, monkeypatch):
+        """The escalation loop returns the FIRST clean build and stops - it
+        does not keep building up to auto_tune_max once warnings clear. Proven
+        with a synthetic builder so the control flow is independent of geometry.
+        Topology-style warnings (not tension-tunable) are left in place."""
+        from stellars_claude_code_plugins.svg_tools import calc_connector as cc
+
+        calls = []
+
+        def fake_build(tension, **params):
+            calls.append(round(tension, 4))
+            ws = ["WARNING: TWIST start[0] ahead of merge."]  # never tunable
+            if tension < 0.85:
+                ws.append(f"WARNING: manifold start strands 0/1 CROSS. tension {tension:.2f}")
+            return {"warnings": ws, "tension": (tension, tension)}
+
+        monkeypatch.setattr(cc, "_calc_manifold_build", fake_build)
+        res = cc._auto_tune_manifold(0.5, 0.95, {"shape": "spline"})
+
+        assert res["auto_tune"]["cleared"] is True
+        assert res["auto_tune"]["tension_from"] == 0.5
+        assert abs(res["auto_tune"]["tension_to"] - 0.85) < 1e-6
+        # Stopped at first clean tension: 0.50..0.85 inclusive = 8 builds, never 0.95
+        assert len(calls) == 8
+        assert 0.95 not in calls and 0.9 not in calls
+        # The non-tunable TWIST warning survives auto-tune
+        assert any("TWIST" in w for w in res["warnings"])
+
+    def test_cli_manifold_auto_tune(self):
+        """--auto-tune runs end-to-end and reports the tension move in stdout."""
+        r = self._run(
+            "--mode", "manifold",
+            "--starts", "[(50,100),(50,200),(50,300)]",
+            "--ends", "[(400,200)]",
+            "--spine-start", "(200,200)",
+            "--spine-end", "(300,200)",
+            "--shape", "spline",
+            "--tension", "0.5",
+            "--auto-tune",
+        )
+        assert r.returncode == 0, r.stderr
+        assert "Auto-tune:" in r.stdout
+
     def test_polyline_result_helpers_and_options(self):
         """Engine-level helpers and polyline-result options:
         _arrowhead_polygon_world horizontal case, _trim_polyline end/start,

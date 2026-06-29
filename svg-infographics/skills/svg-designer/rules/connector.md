@@ -208,19 +208,20 @@ One merge = `spine_start`, one fork = `spine_end`. Start strands terminate at `s
 
 Strands inherit spine direction. Override per endpoint via 3-tuple `(x,y,"E")` or `(x,y,45)`.
 
-### Manifold quality warnings
+### Manifold quality - use `--auto-tune`, do NOT hand-tune
 
-Two non-fatal warning types. Always inspect `warnings`.
+Strand crossings and backward curves are both fixed by raising tension. The tool does this for you - pass `--auto-tune` and it escalates tension (up to `--auto-tune-max`, default 0.95) until those warnings clear, returning the clean build in ONE call. Output shows `Auto-tune: 0.50 -> 0.85 (... cleared)`.
 
-**"strands CROSS each other"** - two strands in same fan intersect. Fix:
-1. Increase `tension` toward 1.0
-2. Move `spine_start`/`spine_end` further from endpoints
-3. Pass explicit `fork_points`/`merge_points`
+```bash
+svg-infographics connector --mode manifold --shape spline --auto-tune \
+  --starts ... --ends ... --spine-start ... --spine-end ...
+```
 
-**"curves BACKWARD against spine flow"** - strand S-curve overshoots opposite spine direction before turning back. Fix:
-1. Increase `tension` (0.85-0.95)
-2. Reduce perpendicular spread of endpoints
-3. Move fork/merge point further along spine
+Never run a manifold, read a "CROSS" / "bends BACKWARD" warning, bump `--tension` by hand, and re-run - that manual loop is exactly what `--auto-tune` exists to eliminate. One call, not five.
+
+When auto-tune reports residual strand warnings (it hit `--auto-tune-max` and still could not clear), the geometry itself is the problem, not the tension - widen the perpendicular spread of endpoints, move `spine_start`/`spine_end` further out, or pass explicit `merge_points`/`fork_points`. Then run once more.
+
+**Not tension-fixable** (auto-tune leaves these in `warnings` - act on them): `TWIST` and `FLOW REVERSED` mean starts/ends are mis-wired (swap coords or flip the spine); `SPINE bends BACKWARD` means conflicting `spine_controls` / direction hints.
 
 ### Auto-edge mode (straight)
 

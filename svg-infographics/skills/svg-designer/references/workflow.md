@@ -186,12 +186,14 @@ svg-infographics connector --mode l-chamfer \
 Manifold (fan-in + fan-out):
 
 ```bash
-svg-infographics connector --mode manifold \
+svg-infographics connector --mode manifold --auto-tune \
   --starts "(100,100) (100,200) (100,300)" \
   --ends   "(700,100) (700,200) (700,300)" \
   --spine-start "400,200" --spine-end "500,200" \
   --tension 0.75 --standoff 2 --arrow end
 ```
+
+`--auto-tune` escalates tension until strand crossings clear in one call - do not hand-tune and re-run.
 
 Paste `trimmed_path_d` into `<path class="connector">`, polygons into `<polygon class="arrow-head">`.
 
