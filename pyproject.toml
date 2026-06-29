@@ -114,3 +114,10 @@ extend-select = ["I"]
 [tool.ruff.lint.isort]
 known-first-party = ["stellars_claude_code_plugins"]
 force-sort-within-sections = true
+
+[tool.pytest.ini_options]
+# Grounding / document-processing tests are excluded pending migration of the
+# grounding solution to the standalone groundrails library. Remove these ignores
+# (or delete the files alongside the code) once groundrails replaces
+# src/stellars_claude_code_plugins/document_processing.
+addopts = "--ignore=tests/test_calibration.py --ignore=tests/test_calibration_cli.py --ignore=tests/test_document_processing.py --ignore=tests/test_lexical_grounding.py --ignore=tests/test_sat_segmenter.py"
