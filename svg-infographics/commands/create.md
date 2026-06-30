@@ -20,7 +20,7 @@ MANDATORY: create a task list at start showing all phases for each image. Update
 
 1. **ASK the user**:
    - What infographic(s) to create? (type, content, purpose)
-   - Target directory for output files?
+   - Output folder: `images_<context>` (visible) or `.images_<context>` (hidden)? `<context>` = the document/article slug. Default to visible `images_<context>` unless the user picks hidden
    - Brand/theme? (existing swatch or new?)
    - Any specific style preferences?
    - **Model** for the svg-designer agent(s): default **sonnet** - only ask when the user raised quality or cost, then offer sonnet / opus / haiku
