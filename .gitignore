@@ -134,3 +134,7 @@ src/stellars_claude_code_plugins/config_document_processing.experiment.yaml
 # OpenVINO IR model artifacts (large binaries; hosted on HF, never committed)
 models/
 data/
+
+# exception: bundled OnnxTR OCR models shipped as package-data (offline OCR)
+!src/stellars_claude_code_plugins/document_processing/models/
+!src/stellars_claude_code_plugins/document_processing/models/*.onnx

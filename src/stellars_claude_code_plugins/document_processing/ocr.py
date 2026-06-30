@@ -1,8 +1,17 @@
-"""Optional OCR fallback for scanned PDFs.
+"""OCR fallback for scanned PDFs - pure-Python, no OS dependency.
 
-Wraps pytesseract + pdf2image so callers get full-text extraction PLUS
-quality metrics in one call. The companion ``cache_ocr_candidate``
-always writes the result to ``<stem>.ocr.txt`` next to the source so:
+Reads and rasterises each page with OnnxTR's ``DocumentFile`` (PDFium
+under the hood, no system poppler) and recognises text with an ONNX
+detection + recognition model (no system tesseract). The model weights
+are bundled in the package (``document_processing/models/*.onnx``) and
+loaded by local path, so OCR runs fully offline - no first-run
+download. The ``cpu-headless`` OnnxTR extra pulls
+``opencv-python-headless``, so there is no ``libGL`` system dependency
+either.
+
+Callers get full-text extraction PLUS quality metrics in one call. The
+companion ``cache_ocr_candidate`` always writes the result to
+``<stem>.ocr.txt`` next to the source so:
 
 1. Subsequent grounding runs find the candidate via the
    sibling-priority lookup (``.ocr.txt`` is the highest-priority match)
@@ -15,14 +24,15 @@ always writes the result to ``<stem>.ocr.txt`` next to the source so:
    OCR-CANDIDATE warning the next run; keeping it re-fires the warning
    so a never-reviewed candidate cannot graduate silently.
 
-OCR deps are optional. ``ocr_available()`` checks both Python imports
-and the system ``tesseract`` binary; missing → caller emits
+The OCR stack ships with the package (core dependencies + bundled
+models), so ``ocr_available()`` only verifies the imports and the model
+files. If either is missing (broken install), the caller emits
 OCR-MISSING and points the agent at vision-OCR via the Read tool.
 
-Language is the agent's responsibility - this module never picks one.
-``ocr_pdf`` requires ``lang`` as a positional arg; the CLI surfaces
-``--ocr-lang`` and fires OCR-LANG-NEEDED before invoking OCR if the
-flag is missing.
+``ocr_pdf`` keeps ``lang`` as a positional arg for the sidecar record
+and CLI flow, but the bundled recognition model is latin-script and is
+not switched per language - ``lang`` is advisory metadata, not a model
+selector.
 """
 
 from __future__ import annotations
@@ -40,9 +50,14 @@ FAILED_CHAR_MIN: int = 20
 
 OcrQuality = Literal["good", "candidate", "failed"]
 
+# Bundled ONNX models (shipped as package-data, loaded by local path -> offline).
+_MODELS_DIR = Path(__file__).resolve().parent / "models"
+_DET_ONNX = _MODELS_DIR / "db_mobilenet_v3_large.onnx"
+_RECO_ONNX = _MODELS_DIR / "crnn_mobilenet_v3_small.onnx"
+
 
 class OcrUnavailable(Exception):
-    """Raised when OCR is requested but deps / tesseract binary missing.
+    """Raised when OCR is requested but the engine / models are missing.
 
     Carries an install hint suitable for surfacing to the agent.
     """
@@ -66,45 +81,47 @@ class OcrResult:
 
 
 def ocr_available() -> bool:
-    """True iff every OCR dep imports AND tesseract is on PATH."""
+    """True iff the OCR engine imports AND the bundled models are present."""
     try:
-        import pdf2image  # noqa: F401
-        from PIL import Image  # noqa: F401
-        import pytesseract  # noqa: F401
+        from onnxtr.io import DocumentFile  # noqa: F401
+        from onnxtr.models import ocr_predictor  # noqa: F401
     except ImportError:
         return False
-    import shutil
-
-    return shutil.which("tesseract") is not None
+    return _DET_ONNX.is_file() and _RECO_ONNX.is_file()
 
 
 def install_hint() -> str:
-    """Human-readable install instruction for the OCR extras."""
+    """Human-readable install instruction for the OCR engine."""
     return (
-        "Install OCR extras: `pip install stellars-claude-code-plugins[ocr]` "
-        "AND the system tesseract binary "
-        "(`apt install tesseract-ocr` / `brew install tesseract` / etc)."
+        "The OCR engine (onnxtr) and its models ship with the package - "
+        "reinstall `stellars-claude-code-plugins` if the import or the "
+        "bundled models failed to load. No system binary is required."
     )
 
 
 def ocr_pdf(path: Path, lang: str, *, dpi: int = 200) -> OcrResult:
     """Run OCR on every page of the PDF, return text + quality metrics.
 
-    ``lang`` is REQUIRED - the agent always confirms the right Tesseract
-    model based on document inspection. We never auto-detect language
-    inside this function.
+    ``lang`` is recorded on the result (sidecar metadata) but does not
+    select a model - the bundled recognition model is latin-script.
 
-    Raises ``OcrUnavailable`` when deps or tesseract binary are missing,
-    so the caller can fall back to OCR-MISSING gate behaviour.
+    Raises ``OcrUnavailable`` when the OCR engine fails to import or
+    initialise, so the caller can fall back to OCR-MISSING gate
+    behaviour.
     """
     if not ocr_available():
         raise OcrUnavailable(install_hint())
 
-    import pdf2image  # type: ignore[import-not-found]
-    import pytesseract  # type: ignore[import-not-found]
+    from onnxtr.io import DocumentFile
 
     try:
-        images = pdf2image.convert_from_path(str(path), dpi=dpi)
+        engine = _engine()
+    except Exception as exc:  # model load / construction failure
+        raise OcrUnavailable(f"OnnxTR initialisation failed: {exc}") from exc
+
+    try:
+        doc = DocumentFile.from_pdf(str(path), scale=dpi / 72.0)
+        result = engine(doc)
     except Exception as exc:
         return OcrResult(
             text="",
@@ -112,30 +129,21 @@ def ocr_pdf(path: Path, lang: str, *, dpi: int = 200) -> OcrResult:
             per_page_confidence=[],
             total_chars=0,
             quality="failed",
-            failure_reason=f"pdf2image rasterisation failed: {exc}",
+            failure_reason=f"OnnxTR OCR failed: {exc}",
             lang=lang,
         )
 
     page_texts: list[str] = []
     page_confidences: list[float] = []
-    for image in images:
-        try:
-            data = pytesseract.image_to_data(image, lang=lang, output_type=pytesseract.Output.DICT)
-        except Exception as exc:
-            page_texts.append("")
-            page_confidences.append(0.0)
-            failure_reason = f"pytesseract.image_to_data failed: {exc}"
-            return OcrResult(
-                text="\n\n".join(page_texts),
-                mean_confidence=_mean(page_confidences),
-                per_page_confidence=page_confidences,
-                quality="failed",
-                failure_reason=failure_reason,
-                lang=lang,
-            )
-        page_text, page_conf = _aggregate_page(data)
-        page_texts.append(page_text)
-        page_confidences.append(page_conf)
+    for page in result.pages:
+        page_texts.append(page.render())
+        word_confidences = [
+            word.confidence * 100.0
+            for block in page.blocks
+            for line in block.lines
+            for word in line.words
+        ]
+        page_confidences.append(_mean(word_confidences))
 
     text = ""
     for i, p in enumerate(page_texts, start=1):
@@ -215,30 +223,21 @@ def has_unreviewed_header(cache_path: Path) -> bool:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+# Lazily-constructed OnnxTR predictor, reused across pages and calls so the
+# ONNX models load once per process rather than per PDF.
+_ENGINE = None
 
-def _aggregate_page(image_to_data_result: dict) -> tuple[str, float]:
-    """Reduce pytesseract.image_to_data DICT output to (text, mean_conf).
 
-    Skips entries with confidence == -1 (sentinel for layout boxes that
-    contain no text, per pytesseract's convention).
-    """
-    words: list[str] = []
-    confidences: list[float] = []
-    for text, conf in zip(
-        image_to_data_result.get("text", []),
-        image_to_data_result.get("conf", []),
-    ):
-        if not text or not text.strip():
-            continue
-        try:
-            conf_val = float(conf)
-        except (TypeError, ValueError):
-            continue
-        if conf_val < 0:
-            continue
-        words.append(text)
-        confidences.append(conf_val)
-    return " ".join(words), _mean(confidences)
+def _engine():
+    """Return the process-wide OnnxTR predictor, built from the bundled models."""
+    global _ENGINE
+    if _ENGINE is None:
+        from onnxtr.models import crnn_mobilenet_v3_small, db_mobilenet_v3_large, ocr_predictor
+
+        det = db_mobilenet_v3_large(model_path=str(_DET_ONNX))
+        reco = crnn_mobilenet_v3_small(model_path=str(_RECO_ONNX))
+        _ENGINE = ocr_predictor(det_arch=det, reco_arch=reco)
+    return _ENGINE
 
 
 def _mean(values: list[float]) -> float:

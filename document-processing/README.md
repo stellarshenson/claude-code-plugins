@@ -10,7 +10,7 @@ Structured document processing plugin for Claude Code. Turns raw source material
 
 ## Grounding CLI
 
-Ships the `document-processing` command with a lexical-mode grounder (default, CPU-only, torch-free): a frozen-weight logistic over 13-18 signals per effort tier (low / medium / high; high is the default). Semantic retrieval + NLI entailment are opt-in via `--semantic` and the `[semantic]` extra.
+Ships the `document-processing` command with a lexical-mode grounder (default, CPU-only, torch-free): a frozen-weight logistic over 13-18 signals per effort tier (low / medium / high; high is the default). Semantic retrieval + NLI entailment are opt-in via `--semantic` and the `[semantic]` extra. The grounding engine is the standalone [`groundrails`](https://pypi.org/project/groundrails/) package (a core dependency); run `document-processing setup` once to initialise it - this writes a readiness token (`groundrails.json`) the grounding calls require.
 
 - **Citations** - every hit returns line / column / paragraph / page / context snippet; the agent cites without rereading the source
 - **Token saving** - measured 64-86% reduction vs batched generative grounding on real sources (SVG Medium article, Liu 2023 paper)
@@ -82,8 +82,8 @@ document-processing config set-calibrator --profile .stellars-plugins/calibrator
 
 [^1]: In lexical mode (default), the Exact/Fuzzy/BM25 features plus 10-15 additional signals feed a frozen-weight logistic (LexicalVerdict). Individual threshold flags (`--threshold`, `--bm25-threshold`) apply to the cascade fallback path only.
 
-- **Opt-in deps** - `[semantic]` extra: `onnxruntime`, `transformers`, `faiss-cpu`, `pyarrow`; calibration core deps `pymc`/`bambi`/`arviz`/`pandas`
-- **Core package** - uses OpenVINO INT8 (SaT segmenter, high tier); `onnxruntime` is a `[semantic]` extra dependency only, not in core
+- **Opt-in deps** - the `[semantic]` extra pulls `groundrails[all]` (the OpenVINO + ONNX semantic cascade); the grounder's heavy stack (`pymc`/`bambi`/`arviz`/`openvino`/MT) installs transitively via the core `groundrails` dependency
+- **Core package** - `groundrails` ships the lexical grounder (OpenVINO INT8 SaT segmenter on the high tier); the semantic cascade is the `[semantic]` extra only, not core
 - **Torch-free** - models are ONNX, downloaded on first use (e5 ~120 MB, NLI ~560 MB)
 - **Default** - bare install = lexical high-tier; the `grounding` skill recommends enabling semantic/NLI at `document-processing setup`
 
@@ -98,26 +98,19 @@ document-processing --help
 
 ```bash
 pip install 'stellars-claude-code-plugins[semantic]'
-document-processing setup                 # interactive prompt, writes settings
+document-processing setup --semantic      # provisions groundrails + cascade models (~1.4 GB)
 ```
 
-- **Settings** - `./.stellars-plugins/settings.json` (project-local, sibling to `.claude/`)
+- **Readiness** - `document-processing setup` initialises groundrails and writes `groundrails.json` under `GROUNDRAILS_HOME` (default `~/.stellars-plugins/groundrails`); plain `setup` is offline (lexical only), `--semantic` also fetches the OpenVINO cascade. Grounding commands lazy-initialise the offline lexical path when no token exists
 - **Default model** - `intfloat/multilingual-e5-small` (118M params, multilingual, trained for retrieval)
 
-### Enable OCR (optional, opt-in)
+### Scanned-PDF OCR (built in, no OS dependency)
 
-```bash
-pip install 'stellars-claude-code-plugins[ocr]'
-# plus a system tesseract install:
-apt install tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu  # etc per language
-# brew install tesseract tesseract-lang                         # macOS
-```
+Auto-OCR fallback for scanned PDFs that have no sibling text file ships with the package - OnnxTR reads and rasterises the pages (PDFium under the hood) and recognises the text with a bundled ONNX detection + recognition model. The weights ship in the wheel and load by local path, so OCR runs fully offline with no first-run download. The `cpu-headless` build pulls `opencv-python-headless`, so there is no system `tesseract`, `poppler`, or `libGL` dependency - nothing to install.
 
-Enables auto-OCR fallback for scanned PDFs that have no sibling text file.
-
-- **Language** - agent supplies `--ocr-lang <code>` per run (`eng`, `deu`, `fra`, `chi_sim`, etc); the tool never auto-detects
+- **Language** - agent supplies `--ocr-lang <code>` per run; recorded in the sidecar header. The bundled recognition model is latin-script and is not switched per language, so the code is advisory metadata, not a model selector
 - **Cache** - auto-OCR results written as `<stem>.ocr.txt` next to the source with a header carrying quality stats (mean confidence, page count, language, timestamp)
-- **Fallback** - without `[ocr]` extras the tool uses vision-OCR: the agent reads the PDF via the Read tool, transcribes pages, saves to `<stem>.ocr.txt`, reruns
+- **Fallback** - when auto-OCR quality is poor the tool flags vision-OCR: the agent reads the PDF via the Read tool, transcribes pages, saves to `<stem>.ocr.txt`, reruns
 - **Convention** - both paths produce the same sibling-file convention so subsequent grounding runs use the cached candidate without re-OCR
 
 Native source formats (no extras required): `.txt`, `.md`, `.rst`, `.pdf` (text), `.docx`, `.odt`, `.rtf`, `.html` - extracted directly.

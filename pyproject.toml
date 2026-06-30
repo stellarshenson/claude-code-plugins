@@ -11,46 +11,32 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.12.0"
+requires-python = "~=3.12.0"  # groundrails pins ~=3.12.0; match it (3.12.x only)
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "arviz>=0.17",
-    "argostranslate>=1.9",          # lexical high tier: torch-free MT (CTranslate2)
-    "bambi>=0.13",
     "beziers",
-    "ctranslate2>=4.0",             # lexical high tier: MT inference engine
     "fonttools",
-    "huggingface_hub>=0.23",        # lexical high tier: SaT OpenVINO IR download (sat/ov_backend.py)
-    "lingua-language-detector>=2.0",  # lexical medium tier: per-claim language detection
-    "nltk>=3.8",                    # lexical medium tier: WordNet antonym-flip (corpus fetched lazily)
-    "numpy",
-    "odfpy>=1.4",
-    "pandas>=2.0",
+    "groundrails>=1.0.35",          # grounding engine (document-processing); pulls the grounder runtime stack transitively
+    "langdetect>=1.0.9",            # document-processing: source language detection (extractors.py)
+    "numpy",                        # svg_tools geometry
+    "odfpy>=1.4",                   # document-processing: ODT extraction (extractors.py)
+    "onnxtr[cpu-headless]>=0.8",    # document-processing: ONNX OCR engine (ocr.py); cpu-headless pulls opencv-python-headless -> no libGL/OS dep
+    "pandas>=2.0",                  # document-processing train-lexical dataset read
     "pillow",
     "playwright",
-    "pyarrow>=14.0",                # lexical: parquet gold read in train-lexical
+    "pyarrow>=14.0",                # document-processing train-lexical: parquet dataset read (via pandas)
     "pygal",
-    "pymc>=5.10",
-    "pypdf>=4.0",
-    "python-docx>=1.0",
+    "pypdf>=4.0",                   # document-processing: PDF extraction (extractors.py)
+    "python-docx>=1.0",            # document-processing: DOCX extraction (extractors.py)
     "pyyaml",
-    "rank-bm25>=0.2.2",
-    "rapidfuzz>=3.14.5",
-    "sacremoses>=0.1",              # lexical high tier: MT tokenisation
-    "scikit-learn>=1.3",           # lexical: manifold fit path (LogisticRegression); not imported at inference
-    "scipy",
-    "sentencepiece>=0.2",          # lexical high tier: MT subword model
+    "scipy",                        # svg_tools geometry
     "shapely",
-    "striprtf>=0.0.26",
-    "subword-nmt>=0.3",            # lexical high tier: MT BPE
+    "striprtf>=0.0.26",            # document-processing: RTF extraction (extractors.py)
     "svgelements>=1.9",
-    "openvino>=2025.0",            # lexical high tier: native INT8 SaT sentence splitter (LATENCY hint)
     "tiktoken",
-    "tokenizers>=0.20",            # lexical high tier: xlm-roberta tokenizer for SaT
     "transitions",
-    "wordfreq>=3.0",               # lexical: length-robust background token rarity (recall + distinctive-content)
 ]
 
 [project.optional-dependencies]
@@ -66,16 +52,9 @@ dev = [
     "twine",
 ]
 semantic = [
-    "onnxruntime>=1.17",
-    "transformers>=4.40",
-    "huggingface_hub>=0.23",
-    "faiss-cpu>=1.7",
-    "pyarrow>=14.0",
-]
-ocr = [
-    "pytesseract>=0.3.10",
-    "pdf2image>=1.17.0",
-    "langdetect>=1.0.9",
+    # groundrails owns the semantic cascade (OpenVINO bge-m3 + reranker + NLI);
+    # `[all]` covers both its ONNX and OpenVINO semantic paths.
+    "groundrails[all]>=1.0.35",
 ]
 
 [project.scripts]
@@ -94,9 +73,9 @@ Issues = "https://github.com/stellarshenson/claude-code-plugins/issues"
 include-package-data = true
 
 [tool.setuptools.package-data]
-"stellars_claude_code_plugins" = ["config_*.yaml"]
 "stellars_claude_code_plugins.autobuild" = ["resources/*.yaml"]
 "stellars_claude_code_plugins.journal" = ["prompts/*.yaml"]
+"stellars_claude_code_plugins.document_processing" = ["models/*.onnx"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -116,8 +95,4 @@ known-first-party = ["stellars_claude_code_plugins"]
 force-sort-within-sections = true
 
 [tool.pytest.ini_options]
-# Grounding / document-processing tests are excluded pending migration of the
-# grounding solution to the standalone groundrails library. Remove these ignores
-# (or delete the files alongside the code) once groundrails replaces
-# src/stellars_claude_code_plugins/document_processing.
-addopts = "--ignore=tests/test_calibration.py --ignore=tests/test_calibration_cli.py --ignore=tests/test_document_processing.py --ignore=tests/test_lexical_grounding.py --ignore=tests/test_sat_segmenter.py"
+testpaths = ["tests"]

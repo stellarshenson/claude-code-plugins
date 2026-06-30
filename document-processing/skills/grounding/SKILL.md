@@ -108,12 +108,12 @@ Grounding tools accept these formats directly via `--source`:
    → `.html` → `.htm` → `.rtf`. Image extensions (`.png` / `.jpg` /
    `.tiff` etc) and the original `.pdf` are excluded. First match
    wins; the tool fires `OCR-FALLBACK` warning.
-2. **Auto-OCR** (when `[ocr]` extras installed: `pip install
-   stellars-claude-code-plugins[ocr]` + system tesseract). Caller
-   MUST supply `--ocr-lang <code>` (e.g. `eng`, `deu`, `fra`,
-   `chi_sim`). Tool runs pytesseract with the supplied language,
-   caches result as `<stem>.ocr.txt` next to the source.
-3. **Vision-OCR by Claude** (when extras missing OR OCR fails).
+2. **Auto-OCR** (built in - OnnxTR with bundled ONNX models, no
+   system binary, fully offline). Caller supplies `--ocr-lang <code>`
+   for the sidecar record; the bundled recognition model is
+   latin-script so the code is advisory, not a model switch. Tool OCRs
+   every page, caches the result as `<stem>.ocr.txt` next to the source.
+3. **Vision-OCR by Claude** (when auto-OCR quality is poor OR it fails).
    Use the Read tool on the PDF with `pages=N` per page,
    transcribe each page in source language, save as
    `<stem>.ocr.txt` next to source, rerun.
@@ -125,8 +125,8 @@ Grounding tools accept these formats directly via `--source`:
 | `OCR-FALLBACK` | Sibling text file found OR auto-OCR succeeded with mean confidence ≥80% AND ≥100 chars | Optional review. Ack `'sibling-text-accepted'` or `'good-quality-OCR-accepted'` |
 | `OCR-CANDIDATE` | Auto-OCR mid-confidence (60-80%) OR sibling `.ocr.txt` still has the tool-generated header (unreviewed) | Open `<stem>.ocr.txt`, scan for transcription errors (numbers, names, technical terms), edit corrections in place, delete the header block to mark reviewed. Then ack `'candidate-reviewed'` (or `'candidate-accepted-as-is'` after a quick scan) |
 | `OCR-FAILED` | Auto-OCR mean confidence < 60% OR < 20 chars extracted | Either correct the cached `<stem>.ocr.txt` candidate manually, OR delete it and run vision-OCR via Read tool on the PDF, save corrected transcript as `<stem>.ocr.txt`, rerun. Source is SKIPPED until the candidate is replaced |
-| `OCR-LANG-NEEDED` | Scanned PDF, no sibling, `--ocr-lang` not supplied | Inspect the document (filename tokens, visible page text via Read tool), pick the right Tesseract code (the gate suggests one from sparse extraction). Rerun with `--ocr-lang <code>` |
-| `OCR-MISSING` | Scanned PDF, no sibling, OCR extras missing | Either install `[ocr]` extras + system tesseract, OR vision-OCR via Read tool, save as `<stem>.ocr.txt`, rerun |
+| `OCR-LANG-NEEDED` | Scanned PDF, no sibling, `--ocr-lang` not supplied | Inspect the document (filename tokens, visible page text via Read tool), supply the detected language code - advisory metadata, the OnnxTR model is latin-script and not switched per language (the gate suggests one from sparse extraction). Rerun with `--ocr-lang <code>` |
+| `OCR-MISSING` | Scanned PDF, no sibling, OCR engine import failed (broken install) | Reinstall `stellars-claude-code-plugins`, OR vision-OCR via Read tool, save as `<stem>.ocr.txt`, rerun |
 | `SOURCE-MISSING` / `SOURCE-SKIPPED` | File not found / unsupported format / decode error | Fix the path / convert format upstream / accept the skip with `'skip-acceptable'` |
 
 **Candidate-file convention**: `<stem>.ocr.txt` is the highest-priority sibling. Tool-generated candidates open with a `# OCR candidate for ...` header carrying quality stats, language, timestamp. Editing the candidate replaces the auto-OCR text. **Deleting the header block marks the candidate as human-reviewed and silences `OCR-CANDIDATE` on the next run** (otherwise the warning re-fires - a never-reviewed candidate cannot graduate silently to ground truth).
@@ -150,7 +150,7 @@ resolves these. Enable?
   - no: keep current verdicts
 ```
 
-Record answer in `./.stellars-plugins/settings.json` — avoids re-asking same session.
+Semantic is a per-call flag (`--semantic`), not a persisted setting — decide per document. The one-time `document-processing setup --semantic` provisions the cascade models so `--semantic` runs without a first-use download.
 
 ## Per-claim workflow
 
@@ -190,9 +190,9 @@ Subcommands and how they fit together:
 | `ground --manifest claims.json --source FILE… [--output report.md]` | claims.json → `grounding-report.md` (or `--json`) | `--primary-source FILE` flags cross-source pollution; exit 0 all grounded / 1 some unconfirmed; exit 2 if a source is binary/unextractable |
 | `check-consistency --document FILE [--output report.md]` | a document → `consistency-report.md` | markdown only (no `--json`); exit 0 clean / 1 findings exist |
 | `validate --manifest source_map.yaml --output-dir DIR` | manifest → `DIR/<client>/{claims.json,grounding-report.md,consistency-report.md}` | runs extract-claims+ground+check-consistency per client; `--stop-on-error` aborts on first failure; exit 0 all clean / 1 any issue / 2 malformed yaml |
-| `setup [--force]` | writes `./.stellars-plugins/settings.json` | model/cache config; semantic is opt-in per call via `--semantic`, not a setting |
+| `setup [--force] [--semantic]` | provisions groundrails → `groundrails.json` (readiness token under `GROUNDRAILS_HOME`) | offline lexical by default; `--semantic` also fetches the OpenVINO cascade (~1.4 GB). Grounding auto-inits the lexical path if no token exists |
 
-Shared optional flags on `ground` / `validate`: `--threshold 0.85` (fuzzy), `--bm25-threshold 0.5`, `--semantic` (boolean; enables the embedding + NLI + calibrated-verdict bundle, default off), `--semantic-threshold` / `--semantic-threshold-percentile`. `ground` also takes `--ocr-lang CODE` (scanned PDFs), `--scanned-threshold`, `--ack-warning TOKEN=reason` (the stop-and-think gate).
+Shared optional flags on `ground` / `validate`: `--threshold 0.85` (fuzzy), `--bm25-threshold 0.5`, `--semantic` (boolean; enables the embedding + NLI + calibrated-verdict bundle, default off), `--semantic-threshold` / `--semantic-threshold-percentile`, `--effort low|medium|high` (lexical tier; default = config `lexical_effort`, high). `ground` also takes `--ocr-lang CODE` (scanned PDFs), `--scanned-threshold`, `--ack-warning TOKEN=reason` (the stop-and-think gate).
 
 ### Mode A: single-claim probe — on-demand checks during review
 

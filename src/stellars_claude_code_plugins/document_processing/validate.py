@@ -26,11 +26,14 @@ For every entry the pipeline runs, in order:
 3. Self-consistency check on ``document`` into
    ``<output>/<client>/consistency-report.md``.
 
-Failures on a single client are logged to ``<output>/<client>/error.log``
-and the batch continues. Use ``--stop-on-error`` to abort on first
-failure. Exit code summarises the batch: 0 when every client succeeded,
-1 when any client produced findings/errors, 2 when the map itself was
-bad.
+Grounding, claim extraction, and the consistency check all delegate to the
+standalone :mod:`groundrails` engine; this module owns only the per-document
+orchestration and the markdown report rendering (which groundrails does not
+provide). Failures on a single client are logged to
+``<output>/<client>/error.log`` and the batch continues. Use
+``--stop-on-error`` to abort on first failure. Exit code summarises the batch:
+0 when every client succeeded, 1 when any client produced findings/errors, 2
+when the map itself was bad.
 """
 
 from __future__ import annotations
@@ -41,19 +44,10 @@ from pathlib import Path
 import sys
 import traceback
 
+from groundrails import ground_batch
+from groundrails.consistency import check_consistency_in_file, format_consistency_report
+from groundrails.extract import extract_claims_from_file
 import yaml
-
-from stellars_claude_code_plugins.document_processing import settings as settings_mod
-from stellars_claude_code_plugins.document_processing.consistency import (
-    check_consistency_in_file,
-    format_consistency_report,
-)
-from stellars_claude_code_plugins.document_processing.extract import (
-    extract_claims_from_file,
-)
-from stellars_claude_code_plugins.document_processing.grounding import (
-    ground_batch,
-)
 
 
 @dataclass
@@ -120,16 +114,16 @@ def validate(
     bm25_threshold: float,
     semantic_threshold: float,
     semantic_threshold_percentile: float | None,
-    semantic_grounder,
-    nli_grounder=None,
-    calibrated_verdict=None,
+    semantic: bool,
+    config=None,
     max_workers: int = 1,
 ) -> tuple[int, int]:
     """Grounding + rules for ONE document: extract claims, ground them, and run
     the self-consistency check; write the two reports.
 
-    Returns ``(unconfirmed_count, consistency_finding_count)``. Grounders are
-    supplied by :func:`validate_batch` so they are built once per batch.
+    Returns ``(unconfirmed_count, consistency_finding_count)``. ``semantic``
+    enables groundrails' embedding + NLI + calibrated-verdict bundle (built
+    internally by ``ground_batch`` when set).
     """
     client_dir = output_dir / entry.name
     client_dir.mkdir(parents=True, exist_ok=True)
@@ -152,9 +146,8 @@ def validate(
         bm25_threshold=bm25_threshold,
         semantic_threshold=semantic_threshold,
         semantic_threshold_percentile=semantic_threshold_percentile,
-        semantic_grounder=semantic_grounder,
-        nli_grounder=nli_grounder,
-        calibrated_verdict=calibrated_verdict,
+        semantic=semantic,
+        config=config,
         primary_source=primary,
         max_workers=max_workers,
     )
@@ -224,6 +217,7 @@ def validate_batch(
     semantic_threshold_percentile: float | None,
     semantic: bool,
     stop_on_error: bool,
+    config=None,
     max_workers: int = 1,
 ) -> int:
     """Validate one or many documents (already resolved to ``ClientEntry``) and
@@ -231,22 +225,14 @@ def validate_batch(
 
     ``entries`` comes from the CLI: either a ``--manifest`` (source_map.yaml via
     :func:`_load_source_map`) or one entry per ``--document`` with shared
-    ``--source``. ``semantic`` (bool) enables the bundle (embedding + NLI +
-    calibrated verdict), built once and reused across every document.
+    ``--source``. ``semantic`` (bool) enables groundrails' embedding + NLI +
+    calibrated-verdict bundle per grounding call.
     """
     if not entries:
         print("ERROR: no documents to validate", file=sys.stderr)
         return 2
 
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Build semantic + NLI grounders once; reused across every document for speed.
-    cfg = settings_mod.ensure_loaded(auto_prompt=False)
-    grounder = _maybe_build_grounder(cfg, semantic)
-    nli_grounder = _maybe_build_nli_grounder(cfg, semantic)
-    # NLI rides with semantic; weigh it against the other layers via the
-    # calibrated verdict rather than a hard cascade override.
-    verdict = _nli_calibrated_verdict() if nli_grounder is not None else None
 
     total_unconfirmed = 0
     total_findings = 0
@@ -260,9 +246,8 @@ def validate_batch(
                 bm25_threshold=bm25_threshold,
                 semantic_threshold=semantic_threshold,
                 semantic_threshold_percentile=semantic_threshold_percentile,
-                semantic_grounder=grounder,
-                nli_grounder=nli_grounder,
-                calibrated_verdict=verdict,
+                semantic=semantic,
+                config=config,
                 max_workers=max_workers,
             )
         except Exception as exc:  # noqa: BLE001 - we surface any failure per-document
@@ -296,56 +281,3 @@ def validate_batch(
     if total_unconfirmed or total_findings:
         return 1
     return 0
-
-
-def _maybe_build_grounder(cfg, enabled: bool):
-    """Copy of cli._build_semantic_grounder avoiding a circular import.
-
-    Semantic grounding is opt-in per call: only ``enabled`` (``--semantic``)
-    builds it. With the layer requested but the extras missing, hard-fail (exit 2).
-    """
-    if not enabled:
-        return None
-    if not settings_mod.is_semantic_available():
-        print(
-            "ERROR: --semantic requires the [semantic] extras, but "
-            "dependencies are missing. Install and rerun:\n"
-            + settings_mod.semantic_install_hint(),
-            file=sys.stderr,
-        )
-        sys.exit(2)
-    from stellars_claude_code_plugins.document_processing.semantic import SemanticGrounder
-
-    return SemanticGrounder(
-        model_name=cfg.semantic_model,
-        device=cfg.semantic_device,
-        cache_dir=cfg.cache_dir,
-    )
-
-
-def _maybe_build_nli_grounder(cfg, enabled: bool):
-    """NLI grounder when semantic is requested (NLI rides with semantic).
-
-    Mirrors ``cli._build_nli_grounder`` to avoid a circular import.
-    """
-    if not enabled:
-        return None
-    from stellars_claude_code_plugins.document_processing import nli
-
-    if not nli.is_available():
-        return None
-    return nli.NLIGrounder(model_name=getattr(cfg, "nli_model", None) or nli.DEFAULT_MODEL)
-
-
-def _nli_calibrated_verdict():
-    """Calibrated verdict (config-trained weights, else prior means) so NLI is
-    weighed against the other layers instead of hard-overriding the cascade."""
-    from stellars_claude_code_plugins.document_processing import calibration as C
-
-    trained = C.verdict_from_config()
-    if trained is not None:
-        return trained
-    spec = C.load_prior_spec()
-    return C.CalibratedVerdict.from_weights(
-        {k: mu for k, (mu, _sd) in spec.items()}, threshold=0.5
-    )

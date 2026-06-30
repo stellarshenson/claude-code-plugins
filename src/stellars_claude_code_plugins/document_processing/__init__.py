@@ -1,15 +1,14 @@
-"""Document processing tools for source grounding, compliance checks, and validation.
+"""Document processing tools: source grounding, compliance checks, validation.
 
-Core exports (zero heavy deps): :func:`ground`, :func:`ground_batch`,
-:class:`GroundingMatch`, :class:`Location`.
+The grounding engine itself lives in the standalone :mod:`groundrails` package
+(a PyPI dependency). This package provides the document-reading layer (PDF /
+DOCX / OCR, which groundrails does not cover), the multi-document ``validate``
+orchestration, and the ``document-processing`` CLI that drives groundrails.
 
-Optional semantic grounding (ModernBERT + FAISS) lives in
-:mod:`.semantic` and requires ``stellars-claude-code-plugins[semantic]``.
-It is lazy-imported — ``import stellars_claude_code_plugins.document_processing``
-does NOT load torch, transformers, or faiss.
+The core grounding API is re-exported from groundrails for convenience.
 """
 
-from stellars_claude_code_plugins.document_processing.grounding import (
+from groundrails import (
     GroundingMatch,
     Location,
     ground,

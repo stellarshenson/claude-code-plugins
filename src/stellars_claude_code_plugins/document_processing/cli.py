@@ -1,11 +1,19 @@
 """CLI entry point for document-processing tools.
 
+Grounding, claim extraction, consistency, and calibration delegate to the
+standalone ``groundrails`` engine; this CLI adds the document-reading layer
+(PDF/DOCX/OCR), the multi-document ``validate`` orchestration, and the
+``train-lexical`` manifold trainer that groundrails expects the consumer to own.
+
 Subcommands:
     ground             - ground claims against sources (--claim, or --manifest for many)
     extract-claims     - heuristic sentence-to-claim extractor for a document
     check-consistency  - intra-document numeric/entity divergence detector
     validate           - grounding + self-consistency over one or many documents
-    setup              - first-run: write model/cache config
+    calibrate          - fit/update the Bayesian grounding-verdict calibrator
+    config             - show config / transfer learned calibrator weights into it
+    train-lexical      - fit a lexical effort-tier manifold from labelled data
+    setup              - provision groundrails (init); writes the readiness token
 """
 
 from __future__ import annotations
@@ -13,96 +21,74 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict
 import json
+import os
 from pathlib import Path
 import sys
 
-from stellars_claude_code_plugins.document_processing import (
-    extractors,
-)
-from stellars_claude_code_plugins.document_processing import (
-    ocr as ocr_mod,
-)
-from stellars_claude_code_plugins.document_processing import (
-    settings as settings_mod,
-)
-from stellars_claude_code_plugins.document_processing.grounding import (
-    GroundingMatch,
-    ground,
-    ground_batch,
-)
+import groundrails
+from groundrails import GroundingMatch, ground, ground_batch
+from groundrails import settings as gr_settings
+from groundrails.config import load_document_processing_config
+
+from stellars_claude_code_plugins.document_processing import extractors
+from stellars_claude_code_plugins.document_processing import ocr as ocr_mod
 from stellars_claude_code_plugins.svg_tools._warning_gate import (
     add_ack_warning_arg,
     enforce_warning_acks,
 )
 
+# document-processing grounds against the standalone groundrails engine. The
+# project-local override dir matches groundrails' own config resolution
+# (./.stellars-plugins/config_document_processing.yaml).
+PROJECT_OVERRIDE_DIR = Path(".stellars-plugins")
 
-def _build_semantic_grounder(cfg: settings_mod.Settings, enabled: bool):
-    """Return a SemanticGrounder, or None when the layer is not requested.
 
-    Semantic grounding is opt-in per call: only ``enabled`` (i.e. ``--semantic``)
-    turns it on. There is no persisted enable setting; ``cfg`` only supplies the
-    model / device / cache configuration when the flag turns the layer on.
+def _default_home() -> str:
+    """Stable per-user home for groundrails' readiness token (``groundrails.json``).
 
-    ``--semantic`` is an explicit contract: deps present -> run, deps missing ->
-    hard fail (exit 2). Silent degradation would produce misleading grounding
-    reports (rows labelled ``(semantic)`` with score 0.000).
+    Keeps the token out of arbitrary working directories. Honours an explicit
+    ``GROUNDRAILS_HOME`` when the caller set one.
     """
-    if not enabled:
-        return None
-    if not settings_mod.is_semantic_available():
-        print(
-            "ERROR: --semantic requires the [semantic] extras, but "
-            "dependencies are missing. Install and rerun:\n"
-            + settings_mod.semantic_install_hint(),
-            file=sys.stderr,
-        )
-        sys.exit(2)
-    # Lazy import only when actually instantiating
-    from stellars_claude_code_plugins.document_processing.semantic import SemanticGrounder
-
-    return SemanticGrounder(
-        model_name=cfg.semantic_model,
-        device=cfg.semantic_device,
-        cache_dir=cfg.cache_dir,
+    return os.environ.get("GROUNDRAILS_HOME") or str(
+        Path.home() / ".stellars-plugins" / "groundrails"
     )
 
 
-def _build_nli_grounder(cfg: settings_mod.Settings, enabled: bool):
-    """Return an NLIGrounder when semantic grounding is requested, else None.
+def _ensure_ready(*, semantic: bool = False) -> None:
+    """Satisfy groundrails' readiness gate before any grounding call.
 
-    NLI rides with semantic (no separate switch): ``--semantic`` brings the
-    cross-encoder entailment layer online alongside the embedding retriever. The
-    NLI deps (onnxruntime, transformers, huggingface_hub) are a subset of the
-    semantic extras, so if semantic is available NLI is too; we still guard
-    defensively and return None if the NLI deps are missing.
+    ``ground``/``ground_batch`` raise ``NotInitializedError`` until groundrails
+    is initialised. We first try an existing ``groundrails.json`` (written by
+    ``document-processing setup``), then lazy-init the offline lexical path
+    (bundled calibration, no model downloads). Semantic grounding still needs the
+    cascade models provisioned via ``setup``; groundrails raises a clear error if
+    they are missing.
     """
-    if not enabled:
-        return None
-    from stellars_claude_code_plugins.document_processing import nli
+    os.environ.setdefault("GROUNDRAILS_HOME", _default_home())
+    if gr_settings.is_ready():
+        return
+    try:
+        gr_settings.load_config_file()
+    except Exception:  # noqa: BLE001 - absent/unreadable token -> fall through to init
+        pass
+    if gr_settings.is_ready():
+        return
+    # Lazy offline init for the lexical path. Semantic models are NOT fetched
+    # here; run `document-processing setup` (groundrails init) for the cascade.
+    groundrails.init(models="none")
 
-    if not nli.is_available():
-        return None
-    return nli.NLIGrounder(model_name=getattr(cfg, "nli_model", None) or nli.DEFAULT_MODEL)
 
+def _grounding_config(args: argparse.Namespace):
+    """Load groundrails' grounding config, overlaying the ``--effort`` tier.
 
-def _nli_calibrated_verdict():
-    """Calibrated verdict used when NLI is active so the entailment signal is
-    weighed *against* the other layers rather than hard-overriding the cascade.
-
-    Prefers config-trained weights (``calibration.engine: calibrated``); falls
-    back to the prior means so a fresh install still combines all signals
-    sensibly. Built from point weights via ``from_weights`` - no per-call PyMC
-    sampling.
+    The effort tier (low/medium/high) is the single lexical knob; groundrails
+    sets it via ``GroundingConfig.overlay`` rather than a ``ground`` kwarg.
     """
-    from stellars_claude_code_plugins.document_processing import calibration as C
-
-    trained = C.verdict_from_config()
-    if trained is not None:
-        return trained
-    spec = C.load_prior_spec()
-    return C.CalibratedVerdict.from_weights(
-        {k: mu for k, (mu, _sd) in spec.items()}, threshold=0.5
-    )
+    cfg = load_document_processing_config()
+    effort = getattr(args, "effort", None)
+    if effort:
+        cfg = cfg.overlay(lexical_effort=effort)
+    return cfg
 
 
 # Binary extensions rejected outright. Silent U+FFFD decode of a PDF/PNG
@@ -295,7 +281,7 @@ def _read_sources(
         if not ocr_mod.ocr_available():
             warnings.append(
                 f"OCR-MISSING: {path.name} is a scanned PDF, no sibling found, OCR "
-                f"extras not installed. Either install: {ocr_mod.install_hint()} "
+                f"engine unavailable. {ocr_mod.install_hint()} "
                 f"OR Claude-OCR via the Read tool with `pages=N` per page, transcribe "
                 f"in the source language ({ocr_lang}), save as {path.stem}.ocr.txt "
                 f"next to the source, rerun. Source SKIPPED."
@@ -434,13 +420,12 @@ def cmd_ground(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    cfg = settings_mod.ensure_loaded(auto_prompt=False)
-    # NLI rides with semantic; when --semantic is on, weigh it against the other
-    # layers via the calibrated verdict instead of a hard cascade override.
+    # groundrails builds the semantic + NLI + calibrated-verdict bundle internally
+    # when semantic=True; the lexical layers always run. Satisfy the readiness gate
+    # first, then apply the --effort tier via the grounding config.
     enabled = bool(getattr(args, "semantic", False))
-    grounder = _build_semantic_grounder(cfg, enabled)
-    nli_grounder = _build_nli_grounder(cfg, enabled)
-    verdict = _nli_calibrated_verdict() if enabled else None
+    _ensure_ready(semantic=enabled)
+    gcfg = _grounding_config(args)
 
     # Batch mode: --manifest carries many claims -> ground_batch + report.
     if getattr(args, "manifest", None):
@@ -452,9 +437,8 @@ def cmd_ground(args: argparse.Namespace) -> int:
             bm25_threshold=args.bm25_threshold,
             semantic_threshold=args.semantic_threshold,
             semantic_threshold_percentile=getattr(args, "semantic_threshold_percentile", None),
-            semantic_grounder=grounder,
-            nli_grounder=nli_grounder,
-            calibrated_verdict=verdict,
+            semantic=enabled,
+            config=gcfg,
             primary_source=getattr(args, "primary_source", None),
             max_workers=getattr(args, "workers", 5),
         )
@@ -468,9 +452,8 @@ def cmd_ground(args: argparse.Namespace) -> int:
         bm25_threshold=args.bm25_threshold,
         semantic_threshold=args.semantic_threshold,
         semantic_threshold_percentile=getattr(args, "semantic_threshold_percentile", None),
-        semantic_grounder=grounder,
-        nli_grounder=nli_grounder,
-        calibrated_verdict=verdict,
+        semantic=enabled,
+        config=gcfg,
     )
     if args.json:
         print(json.dumps(asdict(m), indent=2))
@@ -632,22 +615,25 @@ def _add_source_format_args(parser: argparse.ArgumentParser) -> None:
     """Register the source-format / OCR flags shared by the grounding commands.
 
     ``--ocr-lang`` is intentionally not defaulted - the agent inspects each
-    scanned PDF and supplies the right Tesseract model. The CLI fires
-    OCR-LANG-NEEDED through the warning-ack gate when a scanned PDF is
-    detected and the flag is missing, with a suggested code from filename
-    / partial-PDF inference so the agent has a starting point.
+    scanned PDF and records its language. The bundled OnnxTR recognition
+    model is latin-script and not switched per language, so the code is
+    advisory metadata for the sidecar record. The CLI fires OCR-LANG-NEEDED
+    through the warning-ack gate when a scanned PDF is detected and the flag
+    is missing, with a suggested code from filename / partial-PDF inference.
     """
     parser.add_argument(
         "--ocr-lang",
         dest="ocr_lang",
         default=None,
         help=(
-            "Tesseract language code for auto-OCR of scanned PDFs (e.g. eng, "
-            "deu, fra, spa, chi_sim). REQUIRED when any --source is a scanned "
-            "PDF without a sibling text file. Inspect the document (filename "
-            "tokens, visible page text via the Read tool) and pick the right "
-            "model. The tool will suggest a code from sparse extraction if you "
-            "omit the flag, then ask you to rerun with `--ocr-lang <code>`."
+            "Language code recorded for auto-OCR of scanned PDFs (e.g. eng, "
+            "deu, fra, spa). Advisory metadata for the sidecar record - the "
+            "bundled OnnxTR model is latin-script and is not switched per "
+            "language. REQUIRED when any --source is a scanned PDF without a "
+            "sibling text file (the OCR-LANG-NEEDED gate). Inspect the "
+            "document (filename tokens, visible page text via the Read tool) "
+            "and supply the detected language; the tool suggests a code from "
+            "sparse extraction if you omit the flag, then asks you to rerun."
         ),
     )
     parser.add_argument(
@@ -758,6 +744,16 @@ def _build_parser() -> argparse.ArgumentParser:
             "Manifest mode: worker threads for per-claim grounding (default 5). "
             "Parallelises the semantic path (ONNX embedding, FAISS search, NLI); "
             "sources are indexed once up front. Set 1 to run serial."
+        ),
+    )
+    g.add_argument(
+        "--effort",
+        choices=["low", "medium", "high"],
+        default=None,
+        help=(
+            "Lexical effort tier (the single lexical knob): low (13 feat, core "
+            "only), medium (16, +lingua +WordNet), high (18, +MT translate-then-"
+            "recall). Default = the config's lexical_effort (high)."
         ),
     )
     _add_source_format_args(g)
@@ -884,22 +880,35 @@ def _build_parser() -> argparse.ArgumentParser:
             "(default 5). Parallelises the semantic path. Set 1 to run serial."
         ),
     )
+    vm.add_argument(
+        "--effort",
+        choices=["low", "medium", "high"],
+        default=None,
+        help="Lexical effort tier (low/medium/high); default = config lexical_effort.",
+    )
     vm.set_defaults(func=cmd_validate)
 
     # setup subcommand
     su = sub.add_parser(
         "setup",
-        help="First-run setup: write the model/cache config",
+        help="Provision groundrails and write the readiness token (groundrails.json).",
         description=(
-            "Write .stellars-plugins/settings.json with the semantic model / cache "
-            "config. Semantic grounding (+ NLI) is opt-in per call via --semantic, "
-            "not a persisted setting."
+            "Initialise the groundrails grounding engine: load the bundled "
+            "calibration and write groundrails.json under GROUNDRAILS_HOME so "
+            "grounding calls pass the readiness gate. Plain setup is offline "
+            "(lexical only). Pass --semantic to also provision the OpenVINO "
+            "cascade models (~1.4 GB) for embedding/NLI grounding."
         ),
     )
     su.add_argument(
         "--force",
         action="store_true",
-        help="Re-prompt even if settings already exist",
+        help="Re-provision even if groundrails.json already exists",
+    )
+    su.add_argument(
+        "--semantic",
+        action="store_true",
+        help="Also provision the semantic cascade models (embedding + NLI; ~1.4 GB)",
     )
     su.set_defaults(func=cmd_setup)
 
@@ -1017,7 +1026,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "Minimum size (enforced) - >= 200 total rows with >= 40 of EACH class "
             "after concatenation; smaller sets are rejected with a clear error "
             "naming the counts found.\n\n"
-            "Features use the SAME document_processing.lexical pipeline the "
+            "Features use the SAME groundrails.lexical pipeline the "
             "grounder uses, so shipped weights match shipped features. All tier "
             "deps ship with the package (lingua, nltk/WordNet, the MT stack); "
             "training HARD-ERRORS if a feature dep is somehow unimportable (no "
@@ -1059,13 +1068,8 @@ def _load_evidence_features(args: argparse.Namespace):
     weight?}``. Each claim is grounded against its sources and turned into the
     calibrator's feature vector via ``grounding.extract_features``.
     """
+    from groundrails.grounding import extract_features
     import pandas as pd
-
-    from stellars_claude_code_plugins.config import load_document_processing_config
-    from stellars_claude_code_plugins.document_processing.grounding import (
-        extract_features,
-        ground,
-    )
 
     if not args.evidence:
         print("ERROR: --evidence is required for this action", file=sys.stderr)
@@ -1076,12 +1080,10 @@ def _load_evidence_features(args: argparse.Namespace):
         raise SystemExit(2)
 
     gcfg = load_document_processing_config()
-    settings_cfg = settings_mod.ensure_loaded(auto_prompt=False)
+    # NLI rides with semantic: groundrails feeds its scores into the features so
+    # the calibrator learns on the same bundle the deployed verdict uses.
     enabled = bool(getattr(args, "semantic", False))
-    grounder = _build_semantic_grounder(settings_cfg, enabled)
-    # NLI rides with semantic: feed its scores into the features so the
-    # calibrator learns on the same bundle the deployed verdict uses.
-    nli_grounder = _build_nli_grounder(settings_cfg, enabled)
+    _ensure_ready(semantic=enabled)
 
     rows: list[dict] = []
     for i, item in enumerate(raw):
@@ -1105,8 +1107,7 @@ def _load_evidence_features(args: argparse.Namespace):
         m = ground(
             item["claim"],
             sources,
-            semantic_grounder=grounder,
-            nli_grounder=nli_grounder,
+            semantic=enabled,
             config=gcfg,
         )
         feat = extract_features(m, gcfg, m.nli_scores or None)
@@ -1118,7 +1119,7 @@ def _load_evidence_features(args: argparse.Namespace):
 
 
 def cmd_calibrate(args: argparse.Namespace) -> int:
-    from stellars_claude_code_plugins.document_processing import calibration as C
+    from groundrails import calibration as C
 
     profile = args.profile
 
@@ -1180,13 +1181,8 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
 def cmd_config(args: argparse.Namespace) -> int:
     from dataclasses import asdict
 
+    from groundrails import calibration as C
     import yaml
-
-    from stellars_claude_code_plugins.config import (
-        PROJECT_OVERRIDE_DIR,
-        load_document_processing_config,
-    )
-    from stellars_claude_code_plugins.document_processing import calibration as C
 
     if args.config_action == "show":
         cfg = load_document_processing_config()
@@ -1287,14 +1283,9 @@ def cmd_train_lexical(args: argparse.Namespace) -> int:
     """
     from dataclasses import asdict
 
+    from groundrails import calibration as C
+    from groundrails import lexical as L
     import yaml
-
-    from stellars_claude_code_plugins.config import (
-        PROJECT_OVERRIDE_DIR,
-        load_document_processing_config,
-    )
-    from stellars_claude_code_plugins.document_processing import calibration as C
-    from stellars_claude_code_plugins.document_processing import lexical as L
 
     raw_rows = _load_lexical_dataset(args.data)
 
@@ -1357,9 +1348,7 @@ def cmd_train_lexical(args: argparse.Namespace) -> int:
 
 def cmd_extract_claims(args: argparse.Namespace) -> int:
     """Emit claims.json from a document using the heuristic extractor."""
-    from stellars_claude_code_plugins.document_processing.extract import (
-        extract_claims_from_file,
-    )
+    from groundrails.extract import extract_claims_from_file
 
     doc_path = Path(args.document)
     if not doc_path.is_file():
@@ -1397,7 +1386,7 @@ def cmd_extract_claims(args: argparse.Namespace) -> int:
 
 def cmd_check_consistency(args: argparse.Namespace) -> int:
     """Flag intra-document divergences: same number / entity category with different values."""
-    from stellars_claude_code_plugins.document_processing.consistency import (
+    from groundrails.consistency import (
         check_consistency_in_file,
         format_consistency_report,
     )
@@ -1464,6 +1453,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
             for doc in args.document
         ]
 
+    semantic = bool(getattr(args, "semantic", False))
+    _ensure_ready(semantic=semantic)
+
     return validate_batch(
         entries,
         output_dir=Path(args.output_dir),
@@ -1471,26 +1463,49 @@ def cmd_validate(args: argparse.Namespace) -> int:
         bm25_threshold=args.bm25_threshold,
         semantic_threshold=args.semantic_threshold,
         semantic_threshold_percentile=args.semantic_threshold_percentile,
-        semantic=bool(getattr(args, "semantic", False)),
+        semantic=semantic,
+        config=_grounding_config(args),
         stop_on_error=args.stop_on_error,
         max_workers=getattr(args, "workers", 5),
     )
 
 
 def cmd_setup(args: argparse.Namespace) -> int:
-    if settings_mod.settings_exist() and not args.force:
-        cfg = settings_mod.load()
+    """Provision groundrails and write the readiness token (``groundrails.json``).
+
+    Lexical grounding needs no downloads - the bundled calibration is enough, so
+    plain ``setup`` is offline. Pass ``--semantic`` to also provision the
+    OpenVINO cascade models (embedding + NLI); that pulls ~1.4 GB on first run.
+    The token persists under ``GROUNDRAILS_HOME`` so later grounding calls skip
+    re-provisioning.
+    """
+    os.environ.setdefault("GROUNDRAILS_HOME", _default_home())
+    already = False
+    try:
+        gr_settings.load_config_file()
+        already = gr_settings.is_ready()
+    except Exception:  # noqa: BLE001 - no token yet -> provision below
+        already = False
+    if already and not args.force:
         print(
-            f"Settings already present at {settings_mod.settings_path()}.\n"
-            f"  semantic_model   = {cfg.semantic_model}\n"
-            f"  semantic_device  = {cfg.semantic_device}\n"
-            f"  cache_dir        = {cfg.cache_dir}\n"
-            "Semantic grounding (+ NLI) is opt-in per call via '--semantic'.\n"
-            "Re-run with --force to reconfigure.",
+            f"groundrails already initialised (home={_default_home()}).\n"
+            "Re-run with --force to re-provision, or pass --semantic to add the "
+            "cascade models.",
             file=sys.stderr,
         )
         return 0
-    settings_mod.prompt_first_run()
+
+    models = None if getattr(args, "semantic", False) else "none"
+    info = groundrails.init(models=models)
+    print(
+        f"groundrails initialised -> {info.get('config_file')}\n"
+        f"  calibration: {info.get('calibration')}\n"
+        f"  models:      {info.get('models')}\n"
+        "Lexical grounding is ready. Semantic grounding (--semantic on any "
+        "grounding command) additionally needs the cascade models; run "
+        "`groundrails download` if they were not provisioned here.",
+        file=sys.stderr,
+    )
     return 0
 
 
@@ -1501,7 +1516,7 @@ CAVEMAN_DESCRIPTIONS: dict[str, str] = {
     "extract-claims": "doc -> claims.json. lossy. review first",
     "check-consistency": "doc fight self? same fact different number?",
     "validate": "docs -> grounding + consistency reports. --document(s) or --manifest",
-    "setup": "first run. write model/cache config. semantic opt-in via --semantic",
+    "setup": "provision groundrails (init). writes readiness token. --semantic adds cascade models",
     "train-lexical": "labelled data -> lexical tier manifold. --effort low/med/high. weights into config",
 }
 
