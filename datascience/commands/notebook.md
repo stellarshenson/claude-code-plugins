@@ -10,8 +10,7 @@ Scaffold a properly structured notebook. Uses skills for standards - do NOT dupl
 
 ## Skills to apply
 
-- **`datascience:notebook-standards`** - section order, GPU selection, imports, config cell
-- **`datascience:rich-output`** - color palette, print patterns, table styles
+- **`datascience:notebook-standards`** - section order, GPU selection, imports, config cell; its `references/rich-output.md` (colour palette, print patterns) and `references/equations.md` (unicode inline + display math)
 - **`datascience:progressbars`** - progress bar style and patterns (if long-running ops)
 
 Read these skills before generating the notebook. They are the source of truth for structure, colors, and patterns.
@@ -37,10 +36,12 @@ Read these skills before generating the notebook. They are the source of truth f
 
 7. **Configuration cell**: hyperparameters with inline comments + sectioned Rich render at the END of the same cell. When GPU is enabled, the render MUST include `[bold]Device[/bold]` sub-section showing `torch.cuda.get_device_name(0)` so the resolved GPU is visible in the output. See `notebook-standards/SKILL.md` Configuration template + `GPU-SETUP.md` section 5.
 
-8. **Equations and math in markdown**: render LaTeX as equations - `$inline-math$` for inline (e.g. `$P(A|B) = \frac{P(B|A) P(A)}{P(B)}$`), `$$display-math$$` for centred display. Escape stray dollar amounts as `\$` so MathJax does not eat them. Repo `.md` files OUTSIDE the notebook still use the escape-always rule.
+8. **Equations and math in markdown**: follow `notebook-standards` `references/equations.md` - write math liberally, unicode glyphs inline (`τ(i) = Σⱼ Tᵢⱼ·posⱼ / Σⱼ Tᵢⱼ`), every full/display equation as a standalone `$$...$$` block on its own line (rasterised to images later). Escape stray dollar amounts as `\$`.
 
-9. **Styling**: follow `rich-output` skill for all `rprint()` calls - semantic colors per the palette.
+9. **Styling**: follow `notebook-standards` `references/rich-output.md` for all `rprint()` calls - semantic colors per the palette.
 
 10. **Progress bars**: if long-running ops, follow `progressbars` skill for the chosen style. Setup text in separate cell.
 
 11. Report: filename created, pyproject.toml changes, next steps.
+
+**Figures**: plots render inline (`plt.show()`) - do NOT add `plt.savefig` / file export unless the user explicitly asks to export. The notebook is the artefact. See `notebook-standards/SKILL.md` "Figures (inline by default)".

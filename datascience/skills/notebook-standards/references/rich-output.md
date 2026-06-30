@@ -1,11 +1,6 @@
----
-name: rich-output
-description: Rich text styling patterns for Python notebooks and scripts. Auto-triggered when formatting output with the rich library, creating tables, status indicators, progress bars, or any colored console output in data science or ML workflows.
----
+# Rich Output - Semantic Colour Palette
 
-# Rich Output Styling
-
-Semantic color assignments for rich library.
+Resource for the `notebook-standards` skill. Semantic colour assignments for the `rich` library - colour by role, not by taste. Used in notebook Configuration renders, status output, and any `rprint()` styling; the `/datascience:apply-style` and `/datascience:fix-notebook` commands defer here for colours.
 
 ## Text Colors
 

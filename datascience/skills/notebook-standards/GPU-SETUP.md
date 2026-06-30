@@ -1,5 +1,9 @@
 # GPU Selection for Multi-GPU Systems
 
+**Contents**: Quick Start · Selection Pattern (identify → select → set → verify → Rich Device block → monitor) · How UUID Pinning Works · Auto-pick a Free GPU · Multi-GPU Training · Common Pitfalls · Template Script
+
+One-line model: pin one GPU by UUID, set the env vars before `import torch`, let the Rich Device block confirm the pick.
+
 ## Quick Start
 
 **Default: pin ONE specific GPU by its UUID.** At notebook-build time ask the user once which behaviour they want - a pinned card (default, reproducible) or auto-selection of the freest GPU. Only switch to auto-pick if they say "pick whatever is free".
@@ -106,7 +110,7 @@ rprint(f"""[bold cyan]Configuration[/bold cyan]
 """)
 ```
 
-**Verification rule**: if you import torch BEFORE setting `CUDA_VISIBLE_DEVICES`, the env var has no effect for the rest of the process. Always set the env var in the GPU Selection section (notebook section 2) BEFORE the Imports section. The Rich render's `GPU:` line is the eyes-on confirmation that this ordering worked.
+**Verification rule**: the Rich render's `GPU:` line is the eyes-on confirmation the env var took effect - set it in GPU Selection, before the Imports section (see Quick Start).
 
 ### 6. Monitor During Execution
 
@@ -118,7 +122,7 @@ watch -n 1 'nvidia-smi --query-gpu=index,name,memory.used,utilization.gpu --form
 
 - Every GPU has a persistent **UUID** assigned by the driver (`nvidia-smi -L`). Stable across reboots, driver reloads, and adding/removing/replacing other cards
 - `CUDA_VISIBLE_DEVICES` accepts a UUID, not only an index. The CUDA runtime reads it once at initialization (first CUDA call), masks every GPU whose UUID does not match, and re-indexes the survivors from 0 - so the pinned card becomes `cuda:0` and `torch.cuda.get_device_name(0)` is it
-- **Why UUID over the integer index**: CUDA's default order is `FASTEST_FIRST`, which is NOT nvidia-smi's PCI order, so `CUDA_VISIBLE_DEVICES=2` can grab a different physical card than nvidia-smi's GPU 2. `CUDA_DEVICE_ORDER=PCI_BUS_ID` realigns them, but a UUID sidesteps the whole problem - it names one specific card, immune to ordering policy and to enumeration shuffling when hardware changes
+- **Why UUID over the integer index**: CUDA's `FASTEST_FIRST` default ≠ nvidia-smi's PCI order, so an index can grab the wrong card; `CUDA_DEVICE_ORDER=PCI_BUS_ID` realigns them but a UUID sidesteps it - it names one card, immune to ordering and re-enumeration
 - **Must be set before `import torch`** - the runtime reads the variable once at context creation; setting it after the CUDA context exists has no effect
 
 ## Auto-pick a Free GPU (opt-in)

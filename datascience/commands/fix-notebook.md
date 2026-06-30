@@ -10,8 +10,7 @@ Read a notebook and fix it to comply with ALL standards. Applies changes directl
 
 ## Skills to apply
 
-- **`datascience:notebook-standards`** - section order, GPU selection, imports, config cell
-- **`datascience:rich-output`** - color palette, print patterns, table styles
+- **`datascience:notebook-standards`** - section order, GPU selection, imports, config cell; its `references/rich-output.md` (colour palette, print patterns) and `references/equations.md` (unicode inline + display math)
 - **`datascience:progressbars`** - progress bar style and patterns
 
 Read these skills before making changes. They are the source of truth. Do NOT hardcode colors or patterns in this command - always defer to the skills.
@@ -32,15 +31,13 @@ Read these skills before making changes. They are the source of truth. Do NOT ha
 - Section header without overview text below it -> add a 1-2 sentence overview (or 3-5 bullets when listy) before the first code cell of that section. File-level Header section is the sole exception
 - Configuration cell with no Rich render at end -> add the sectioned `rprint(f"""[bold cyan]Configuration[/bold cyan] ...""")` block per the canonical template in `notebook-standards/SKILL.md`
 - Configuration cell on a GPU notebook without `[bold]Device[/bold]` sub-section showing `torch.cuda.get_device_name(0)` -> add the Device block per `GPU-SETUP.md` section 5
-- Markdown cell containing equations as plain text (e.g. `P(A|B) = P(B|A) * P(A) / P(B)`) -> wrap in `$...$` for inline or `$$...$$` for display so MathJax renders them
+- Markdown cell containing equations as plain text (e.g. `P(A|B) = P(B|A) * P(A) / P(B)`) -> rewrite per `notebook-standards` `references/equations.md`: unicode glyphs inline, full/display equations as standalone `$$...$$` blocks on their own line
 - Markdown cell with odd number of unescaped `$` (heuristic for stray dollar amounts that MathJax will eat) -> surface the cell number and ask the user whether each `$` is a price (escape as `\$`) or a math delimiter (leave + verify pairs match)
 
-### Styling (per `rich-output` skill)
-- Plain `print()` for structured output -> `rprint()` with semantic colors from the skill
-- Wrong colors -> fix per the skill's palette
-- Multiple individual `rprint()` -> single multiline call
-- Missing config summary -> add styled block
-- Hex colors -> standard named colors
+### Styling (per `notebook-standards` `references/rich-output.md`)
+- Plain `print()` for structured output -> single multiline `rprint()` with semantic colours from the palette
+- Wrong or hex colours -> named colours from the palette
+- Missing config summary -> add the styled block
 
 ### Progress bars (per `progressbars` skill)
 - Long loops without progress -> add wrapper per chosen style
@@ -61,7 +58,7 @@ Read these skills before making changes. They are the source of truth. Do NOT ha
 ## Process
 
 1. Read the file and pyproject.toml
-2. Read the 3 skills above for current rules
+2. Read the 2 skills above (and their `references/`) for current rules
 3. List all violations by category
 4. Apply fixes - user confirms via tool approval
 5. Update pyproject.toml if deps missing

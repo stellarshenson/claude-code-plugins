@@ -1,5 +1,7 @@
 # Lexical cross-lingual grounder - final design
 
+**Canonical SOTA Document**
+
 The deployed grounder classifies each claim as supported or hallucination using only lexical signals plus a torch-free machine-translation bridge - no semantic model in the verdict path. A deterministic contradiction layer extends it to hold on a second, contrastive corpus (VitaminC) and emits a triage flag marking claims for a future semantic stage.
 
 ## Claim extraction (upstream)

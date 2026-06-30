@@ -1,5 +1,7 @@
 # Deterministic cross-lingual grounding on the private RAG gold
 
+**Canonical Experiments Document**
+
 Experiment on the `experiment/grounding` branch: build a non-LLM grounder that classifies each claim as supported or hallucination on a real cross-lingual dataset, without training any model on the test fold. The current best is a **lexical-only logistic** (translate the claim, then word recall) - no semantic model. This document is the canonical writeup (hypotheses, setup, results, conclusions for every bundle). Supporting artefacts: `experiments/grounding/{harness.py, lab.py, round9.py, synth_mt.py, RESEARCH.md, RESULTS.md, BENCHMARK.md}`; the labelled gold and transcripts stay in a git-ignored stash.
 
 ## Situational overview

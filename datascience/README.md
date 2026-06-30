@@ -34,8 +34,7 @@ Auto-triggered based on context.
 | Skill | Triggers when |
 |-------|--------------|
 | `datascience` | Working with data science projects, datasets, ML models, PyTorch, Polars, sklearn |
-| `notebook-standards` | Creating or modifying Jupyter notebooks (`.ipynb` or Jupytext `.py`) |
-| `rich-output` | Formatting output with the rich library - tables, status, coloured console |
+| `notebook-standards` | Creating or modifying Jupyter notebooks (`.ipynb` or Jupytext `.py`) - includes the rich colour palette and equation conventions as `references/` |
 | `progressbars` | Adding progress bars with tqdm (classic) or rich (modern) |
 | `footnotes` | Adding references, citations, or notes in notebooks and markdown |
 | `prompt-engineering` | Crafting system prompts, agent instructions, or LLM prompts |
@@ -83,7 +82,8 @@ Create a new project, scaffold the first notebook, then review it:
 ## Reference
 
 - [`skills/notebook-standards/SKILL.md`](skills/notebook-standards/SKILL.md) - section order, GPU selection, imports, configuration, naming convention. Configuration cells use a sectioned Rich render; the active GPU's name (and compute capability + memory) appears in a `[bold]Device[/bold]` sub-section when CUDA is used. Each section carries a 1-2 sentence overview below its header so a scrolling reader can navigate without expanding code. LaTeX renders as equations inside notebook markdown (`$f(x)$`, `$$P(A|B) = \frac{P(B|A) P(A)}{P(B)}$$`); dollar amounts in prose escape as `\$`
-- [`skills/rich-output/SKILL.md`](skills/rich-output/SKILL.md) - semantic colour palette and print patterns
+- [`skills/notebook-standards/references/rich-output.md`](skills/notebook-standards/references/rich-output.md) - semantic colour palette and print patterns
+- [`skills/notebook-standards/references/equations.md`](skills/notebook-standards/references/equations.md) - unicode inline math + standalone `$$` display blocks for image rasterisation
 - [`skills/progressbars/SKILL.md`](skills/progressbars/SKILL.md) - tqdm and rich progress bar recipes
 - [`skills/footnotes/SKILL.md`](skills/footnotes/SKILL.md) - JupyterLab-compatible anchor pattern (standard `[^1]` does not render in JupyterLab)
 - [`skills/prompt-engineering/references/`](skills/prompt-engineering/references/) - per-technique papers, templates, and usage guidance

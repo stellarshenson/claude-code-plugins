@@ -1,6 +1,6 @@
 ---
 name: notebook-standards
-description: Jupyter notebook structure and organization standards. Auto-triggered when creating or modifying Jupyter notebooks (.ipynb or Jupytext .py). Enforces section order, GPU selection, import grouping, configuration patterns, and rich output formatting.
+description: Jupyter notebook structure standards - section order, GPU-by-UUID selection, grouped imports, the configuration render, rich-output colours, equations, and inline figures. Use when creating or modifying a Jupyter notebook (.ipynb or Jupytext .py), or when the user mentions notebook structure, the config cell, GPU selection, rich output, notebook equations, or saving / exporting figures.
 ---
 
 # Notebook Structure Standards
@@ -39,7 +39,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import torch  # CUDA reads the env vars once, here - never set them after this import
 ```
 
-Why UUID, not the integer index: CUDA's default order is `FASTEST_FIRST`, not nvidia-smi's PCI order, so `CUDA_VISIBLE_DEVICES=2` can grab a different physical card than nvidia-smi's GPU 2. A UUID names one specific card and is immune to ordering policy and to enumeration shuffling when cards are added or replaced. See `GPU-SETUP.md` for the full mechanism and the auto-pick-free snippet.
+Why UUID not index: CUDA's `FASTEST_FIRST` order ≠ nvidia-smi PCI order, so `CUDA_VISIBLE_DEVICES=2` can grab a different card; a UUID names one card, immune to ordering and re-enumeration. Full mechanism + auto-pick-free snippet: `GPU-SETUP.md`.
 
 ## Import Cell Pattern
 
@@ -115,7 +115,7 @@ rprint(f"""[bold cyan]Configuration[/bold cyan]
 """)
 ```
 
-Colour grammar (cross-link to `datascience:rich-output` for full palette):
+Colour grammar (see `references/rich-output.md` for the full semantic palette):
 - `[bold]Section name[/bold]` - sub-section headers within the render
 - `[yellow]value[/yellow]` - numeric hyperparameters
 - `[cyan]value[/cyan]` - paths, model IDs, identifiers
@@ -124,18 +124,7 @@ Colour grammar (cross-link to `datascience:rich-output` for full palette):
 
 **GPU rule (mandatory when CUDA is used)**: the rendered Configuration MUST include the GPU's `torch.cuda.get_device_name(0)` in a `[bold]Device[/bold]` sub-section. Catches the silent wrong-device bug where `CUDA_VISIBLE_DEVICES` was set wrong but `device="cuda"` still works on the wrong GPU. See `GPU-SETUP.md` for the full Device-block template (adds compute capability + memory).
 
-**Minimal variant** (for notebooks without sub-sections, e.g. quick data-loading scripts):
-
-```python
-rprint(f"""[white]Configuration[/white]
-  Model: [cyan]{MODEL_NAME}[/cyan]
-  Batch size: [yellow]{BATCH_SIZE}[/yellow]
-  Device: [green]{device}[/green]
-  GPU: [cyan]{gpu_name}[/cyan]
-""")
-```
-
-Use this when the notebook has <5 hyperparameters and no natural sub-sections. The sectioned template above is the default.
+**Minimal variant** - notebook with <5 hyperparameters and no natural sub-sections: a flat `rprint` of Model / Batch size / Device / GPU instead of the sectioned block. The sectioned template above is the default.
 
 ## Section overviews (MANDATORY)
 
@@ -167,11 +156,9 @@ Training hyperparameters for the ModernBERT contrastive run. Lower
 temperature increases discrimination but risks gradient instability.
 ```
 
-## LaTeX in markdown cells
+## Equations in markdown cells
 
-- **Render math as equations** - inline `$f(x) = ax + b$`, display `$$P(A|B) = \frac{P(B|A) P(A)}{P(B)}$$`. JupyterLab renders both via MathJax. USE these for any actual mathematical content
-- **Escape dollar amounts in prose** - when `$` means "dollar", escape as `\$5` so MathJax does not eat everything between the two unescaped dollars
-- **In repo `.md` files OUTSIDE notebooks** (READMEs, SKILL.md, docs/): workspace rule applies - escape always with `\$`, no equations expected (the rendered Markdown surfaces don't run MathJax)
+Write math liberally - every quantitative relationship as an equation, not prose. Unicode glyphs inline (`τ(i) = Σⱼ Tᵢⱼ·posⱼ / Σⱼ Tᵢⱼ`) so they survive copy-paste; each full/display equation as a standalone `$$...$$` block on its own line, since these are rasterised to images later for export surfaces (Medium, DOCX) that do not run MathJax. Escape dollar amounts in prose as `\$`. See `references/equations.md` for the full glyph set and rules.
 
 ## Cell Rules
 
@@ -181,4 +168,13 @@ temperature increases discrimination but risks gradient instability.
 
 ## Rich Output
 
-`rich.print()` with semantic colors. Single multiline call. Never multiple individual prints for related output. See `datascience:rich-output`.
+`rich.print()` with semantic colors. Single multiline call. Never multiple individual prints for related output. See `references/rich-output.md` for the full semantic palette, status colours, ML-eval and table-column colours.
+
+## Figures (inline by default)
+
+Plots render inline in the notebook - the `.ipynb` itself is the artefact. Do NOT write figures to disk by default.
+
+- **Inline display** - end a plotting cell with `plt.show()` (or let the figure be the cell's last expression); the rendered image is captured in the notebook output
+- **No `plt.savefig` unless asked** - do not add file exports (`plt.savefig(...)`, `fig.savefig(...)`) on your own; the inline figure is enough. Add an export only when the user explicitly asks to export/save figures
+- **When export IS requested** - write to a named path (e.g. `reports/figures/<name>.png`), `dpi` 150+, `bbox_inches="tight"`, and still keep the inline `plt.show()`
+- **Section 9 Save/Export** covers model and data artefacts, not figures - figures stay inline unless an export is explicitly requested

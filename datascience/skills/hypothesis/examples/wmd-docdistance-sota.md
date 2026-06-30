@@ -1,5 +1,7 @@
 # WMD Document Distance with mmBERT (SOTA)
 
+**Canonical SOTA Document**
+
 ## Abstract
 
 An embedding-grounded, metric document distance for pipelines that cannot read model logits. Each document is segmented into statements, embedded with mmBERT, isotropy-corrected (all-but-the-top), and compared by exact optimal transport - the Statement Mover's Distance (SMD). It adapts Word Mover's Distance[<sup>ref1</sup>](#ref1) (Kusner et al. 2015, digest in `../references/papers/from-word-embeddings-to-document-distances.md`) by swapping the embedded unit (statement, not word) and the encoder (mmBERT, not word2vec), keeping the transport skeleton verbatim. SMD is a true metric, ranks the executive-summary quality tiers with zero ordering errors (batch E01, [`experiments/wmd-docdistance-experiments.md`](experiments/wmd-docdistance-experiments.md)), and runs CPU-INT8 end-to-end (~5.5 s for two A4 pages on one core). This is the conclusion doc; the experiments log is its evidence.
