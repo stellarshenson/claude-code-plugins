@@ -18,6 +18,12 @@ Maintain two research docs: a canonical **experiments log** (every hypothesis wi
 - Open the canonical doc before writing - find the last round, append the next
 - Draft, then re-read; cut any sentence a table or number carries faster
 
+## Model roles - theorise strong, execute deliberately
+Two phases, two model choices - the plan is only as good as the model that wrote it, the result only as trustworthy as the model that ran it.
+- **Theorise + plan on the strongest model** - formulating the hypothesis, mechanism, and the Experiment test-plan runs on the strongest available model, so the plan carries enough context for the agents that execute it; a thin plan from a weak model wastes the run
+- **Execute on opus, ideally** - the agents or notebooks that run the experiment default to opus; when an agent runs it, the execution model is part of the regime - record it in the Experiment block
+- **Ask when it matters** - offer the execution-model choice (opus / sonnet / haiku) before spawning experiment agents or a costly sweep; default opus when the user does not pick
+
 ## Canonical documents across runs
 The log is one durable file many runs append to - the system of record, not a fresh writeup each session.
 - **Stable location** - `docs/experiments/<project>-experiments.md` (log), `docs/<project>-sota.md` (design); one of each per track, named for the track not the date
@@ -33,7 +39,7 @@ Present two tables in the conversation - the pre-registration and the finding; t
 - **Before execution** - one row per hypothesis: ID (`E<batch>-H<n>`), overview (the one-line causal claim), prediction, setup; the user confirms the plan before any run
 - **After execution** - the same rows plus verdict and interpretation (what the number means; for a refuted or killed hypothesis, the specific failure and the gate it missed)
 - **Always show both** - before table = what the user signs off, after table = what was learned; surface in the reply, not only in the doc
-- Columns map to the per-hypothesis template (overview→Hypothesis, prediction→Prediction, setup→Setup, verdict→Verdict, interpretation→Result reading)
+- Columns map to the per-hypothesis template (overview→Hypothesis, prediction→Prediction, setup→Experiment / shared Setup, verdict→Verdict, interpretation→Result reading)
 
 ## Experiments log - section order
 Mirror `examples/wmd-docdistance-experiments.md` (compact) or `examples/lexical-grounding-experiments.md` (long multi-round arc).
@@ -50,8 +56,13 @@ Mirror `examples/wmd-docdistance-experiments.md` (compact) or `examples/lexical-
 ## Per-hypothesis template (canonical, from docdistance)
 A fixed bullet set per hypothesis. The prediction makes it falsifiable - the gap between predicted and measured is the finding.
 - **Hypothesis** - one causal claim: `because <mechanism + observed precondition>, <intervention> will <measurable outcome ≥ threshold> while <guardrail holds>`
-- **Lever** - the single thing changed and the baseline it replaces, e.g. "embedding geometry (baseline raw mmBERT)"
+- **Lever** - the single thing changed and the baseline it replaces, e.g. "embedding geometry (baseline raw mmBERT)"; when the lever is a model or fitted component, the lever names its provenance - "draft head trained here on `<corpus>`" or "downloaded pretrained `<id>`" - never a bare "trained `X`" that hides where `X` came from
 - **Mechanism** - how the lever acts, one or two concrete clauses
+- **Experiment** - the plan for testing this hypothesis, recorded so it re-runs in the same regime; scope it to what THIS document's problem needs, not a fixed field list - a GPU-inference doc records engine / quant / hardware, a distance-metric doc records the encoder and fixtures; record what a reader must know to reproduce, skip what does not apply. Judge it against these, keeping the ones that bear on the hypothesis
+  - **Execution artefact** - the exact notebook or script that runs THIS hypothesis (path + link), plus any supplementary doc; a pending hypothesis names the notebook it WILL run in - never leave the reader to find it, never point only at a shared doc-level notebook that runs a different workload
+  - **Source** - the paper the hypothesis derives from (title + arxiv / DOI link) when it is based on one; the model card / repo for any downloaded artefact - "based on `<method>`" without the citation is not reproducible
+  - **Provenance** - for any model or fitted component, say trained / fitted here (then the corpus, size, and the hyperparameters + swept ranges that matter) or downloaded pretrained (then exact ID, revision, size); never let "trained `X`" hide a downloaded checkpoint
+  - **Operating point** - the swept parameters, data / fixtures, and hardware the number depends on; when an agent runs the experiment, the model it runs on (part of the regime); omit whatever the shared Setup already fixes
 - **Prediction** - expected outcome and direction before running, e.g. "DR ≥ 1.5x, margin widens"
 - **Acceptance bar** - pre-registered pass/fail numbers, distinct from the prediction, e.g. "DR ≥ 1.5x baseline and V = 0"
 - **Result** - measured numbers, including the swept parameter and the guardrail reading
@@ -60,6 +71,12 @@ A fixed bullet set per hypothesis. The prediction makes it falsifiable - the gap
 Name each `E<batch>-H<n>` (docdistance uses `E01-H1`); the name states what is tested, never "try X". `E<batch>` groups 2-5 hypotheses.
 - **Global ordinal `<n>`** - one ascending series across all bundles, never reset (E1-H1..H3, E2-H4..H6); unique per hypothesis, trackable across the log
 - Keep the `E<batch>` prefix for context; only `H<n>` runs globally; sub-variants fold in as their own ordinal, never a letter suffix
+
+**Experiment block vs shared Setup** - reproducibility lives at whichever level is honest; the block flexes to the document's problem, never a rigid mandated field set.
+- **Shared Setup suffices** - a batch where every hypothesis differs by one toggle over one baseline (docdistance: one notebook, one encoder) - the document-level Setup carries reproducibility, the per-hypothesis Experiment block is redundant, omit it
+- **Experiment block earns its place** - a hypothesis that owns its regime - trains or downloads a model, fits a component, runs its own notebook, workload, or hardware - the shared Setup cannot describe it; carry the block and let the Lever name the provenance
+- **A per-hypothesis Setup line already in a doc** (as some logs use) is the Experiment block under another name - enrich that line with the execution artefact, source paper, and unambiguous provenance rather than adding a second block
+- A sentence of prose is fine inside the block where a bullet cannot carry the test plan cleanly
 
 ## Writing a good hypothesis
 - **Predict the result** - state outcome and direction before running; no stated expectation = cannot confirm or refute; a wrong prediction that misses still teaches
@@ -71,6 +88,7 @@ Name each `E<batch>-H<n>` (docdistance uses `E01-H1`); the name states what is t
 - **Falsifiable probe** - measurement-only; never trains, never enters cross-validation
 - **Honest splits** - leave-one-X-out; no learner touches the fold it scores; name the headline split and why
 - **Size-dependent** - re-run as the data grows; never trust a single snapshot
+- **Reproducible plan** - the hypothesis re-runs from its own text: the Experiment block links the notebook or script that tests it, cites the paper it derives from, and states model provenance (trained-here + corpus / params, or downloaded + exact ID); the Hypothesis and Lever name that provenance so the claim is never thin ("trained draft head" → "EAGLE-3 head downloaded `<id>`" or "trained here on `<corpus>`"); a short line of prose is fine where a bullet cannot carry the plan
 
 ## SOTA document - section order
 The full conclusion-doc shape; mirror `examples/wmd-docdistance-sota.md`. Drop a section only when the design has nothing for it. Each bullet names its own must-have.
@@ -99,9 +117,12 @@ Read the closest match before writing; mirror its section order.
 
 ## Rules
 - Terse technical-documentation style every section (see the style note)
+- Reasonable, not rigid - fit the structure (per-hypothesis fields, the Experiment block, section order) to the problem the canonical document solves; record what a reader needs to reproduce and understand, skip what does not apply; the templates are a checklist to judge against, never a blank form to fill
 - Tables for sweeps - hypothesis × lever × result; never prose where a table scans faster
 - Numbers inline on every claim; a verdict label on every hypothesis
 - Naive baseline mandatory - defined and described in Methodology, with its numbers on every metric; every result is a delta against it; "beats the naive baseline" is the minimum bar for a Kept / Ships verdict
+- Reproducibility - any hypothesis that owns its regime records enough to re-run - the notebook / script that tests it, the source paper when based on one, model provenance (trained-here + corpus / params, or downloaded + exact ID); a shared Setup covers only a batch where every hypothesis shares one regime
+- Model roles - theorise and plan the test on the strongest model (the plan must carry context for the executor); execute on opus by default, ask the user which model runs the experiments when cost or scale warrants; record the execution model in the Experiment block
 - Maths - equations liberally, not prose where a formula is exact; unicode glyphs inline for copy-paste (`τ(i) = Σⱼ Tᵢⱼ·posⱼ / Σⱼ Tᵢⱼ`, `√(2 − 2cos)`); every full/display equation as a separated `$$…$$` block on its own line (blank line above/below) in the Mechanism section - these are rasterised to images for surfaces that do not run MathJax (Medium, DOCX); never `$…$` inline in a sentence, never a standalone maths section
 - Sanitise - no client/customer name ("private dataset"); no em-dashes, unicode arrows (→), escape `\$`
 - Append-only - new rounds at the end; never rewrite a recorded verdict
