@@ -190,8 +190,19 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "svg",
-        nargs="+",
+        nargs="*",
+        default=[],
         help="One or more SVG files to validate.",
+    )
+    parser.add_argument(
+        "--svg",
+        dest="svg_flag",
+        action="append",
+        default=[],
+        help=(
+            "SVG file to validate (alias for the positional form, matching "
+            "the --svg grammar of the other validators)."
+        ),
     )
     parser.add_argument(
         "--quiet",
@@ -213,6 +224,9 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+    args.svg = list(args.svg) + list(args.svg_flag)
+    if not args.svg:
+        parser.error("no SVG files given (positional or --svg)")
     total_errors = 0
     total_warnings = 0
     baseline_path = Path(args.baseline) if args.baseline else None

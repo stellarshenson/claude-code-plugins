@@ -4,6 +4,16 @@
 
 Recipes below carry the geometry - read the INDEX plus ONE closest example, not 3-5.
 
+## Concept drafts (before any SVG)
+
+The plain-text spec written and approved *before* generation - canvas, theme, every band, the
+concrete facts each band carries, data sources, open questions. Draft this first for a deck; build
+the SVGs only once the spec is approved.
+
+| File | Description |
+|------|-------------|
+| `concept_draft_deck.md` | Three-slide deck spec (issues / reranker / grounder) in `svg-infographics` blocks |
+
 ## By type
 
 ### Card grids

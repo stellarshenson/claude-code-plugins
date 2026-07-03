@@ -1159,6 +1159,164 @@ def _check_soft_cap(controls, label):
     return []
 
 
+# Visible-stem clarity floor for the first / last cardinal leg of a routed
+# L / L-chamfer. Below this the path appears to exit / enter from the wrong
+# face of the shape even when the axis is correct.
+_MIN_STEM_SEGMENT_PX = 28.0
+
+_CARDINAL_LABEL = {"E": "east", "W": "west", "N": "north", "S": "south"}
+
+
+def _cardinal_of_segment(a, b):
+    """Cardinal direction of an axis-aligned segment a->b.
+
+    Returns 'E'/'W'/'N'/'S' for cardinal segments, 'diagonal' for slanted
+    ones, None for zero-length.
+    """
+    dx = b[0] - a[0]
+    dy = b[1] - a[1]
+    if dx == 0 and dy == 0:
+        return None
+    if dy == 0:
+        return "E" if dx > 0 else "W"
+    if dx == 0:
+        return "S" if dy > 0 else "N"
+    return "diagonal"
+
+
+def _direction_gate_checks(pts, start_dir, end_dir, warnings, check_stem_floors=True):
+    """Post-threading route-vs-declaration gates for BOTH ends.
+
+    For each declared cardinal (start_dir = direction the route LEAVES the
+    source; end_dir = direction the route is still MOVING at arrival):
+
+    - ROUTE-AXIS-MISMATCH[-END]: the leg's axis disagrees with the declared
+      cardinal (e.g. horizontal first leg with start_dir=N). The route
+      exits / arrives parallel to the shape edge instead of perpendicular.
+    - ROUTE-DIR-REVERSED[-END]: the axis matches but the SIGN is opposite
+      (e.g. last leg moves north with end_dir=S). The connector attaches to
+      the declared edge from the wrong side - typically piercing the shape
+      it should join. A 1-bend route cannot satisfy this direction pair for
+      this geometry; add a waypoint via --controls, use --auto-route, or
+      change the direction.
+    - SHORT-FIRST-SEGMENT / SHORT-LAST-SEGMENT: axis and sign are right but
+      the leg is below the 28px clarity floor. Suppressed when
+      ``check_stem_floors`` is False (callers pass ``stem_min=0`` to opt
+      out of stem discipline - legacy mode).
+    """
+    if len(pts) < 2:
+        return
+    checks = []
+    start_card = _direction_to_cardinal(start_dir)
+    if start_card is not None:
+        checks.append(("first", start_card, pts[0], pts[1], start_dir))
+    end_card = _direction_to_cardinal(end_dir)
+    if end_card is not None:
+        checks.append(("last", end_card, pts[-2], pts[-1], end_dir))
+
+    for which, card, a, b, declared in checks:
+        actual = _cardinal_of_segment(a, b)
+        if actual is None:
+            continue  # zero-length leg - stem checks elsewhere
+        suffix = "" if which == "first" else "-END"
+        expected_axis = "h" if card in ("E", "W") else "v"
+        actual_axis = (
+            "diagonal" if actual == "diagonal" else ("h" if actual in ("E", "W") else "v")
+        )
+        flag = "start_dir" if which == "first" else "end_dir"
+        if actual_axis != expected_axis:
+            verb = "exits" if which == "first" else "arrives"
+            face = "source" if which == "first" else "target"
+            warnings.append(
+                f"ROUTE-AXIS-MISMATCH{suffix}: {which} segment is {actual_axis} "
+                f"but {flag}={declared} expects {expected_axis}. "
+                f"The routed path {verb} parallel to the {face} edge instead "
+                "of perpendicular - visually the connector appears to join "
+                f"the wrong face of the {face}. Adjust waypoints or ack "
+                f"with reason 'topology-overrides-{flag.replace('_', '-')}'."
+            )
+        elif actual != card:
+            face = "source" if which == "first" else "target"
+            warnings.append(
+                f"ROUTE-DIR-REVERSED{suffix}: {which} segment moves "
+                f"{_CARDINAL_LABEL[actual]} but {flag}={declared} declares "
+                f"{_CARDINAL_LABEL[card]}. The route reaches the declared "
+                f"{face} edge from the WRONG side - it typically pierces the "
+                f"{face} shape on the way. A 1-bend route cannot satisfy "
+                "this direction pair here: add a waypoint via --controls "
+                "(route around the shape), use --auto-route, or change "
+                f"--{flag.replace('_', '-')}."
+            )
+        else:
+            if not check_stem_floors:
+                continue
+            leg = abs(b[0] - a[0]) + abs(b[1] - a[1])
+            if leg + 0.5 < _MIN_STEM_SEGMENT_PX:
+                name = "SHORT-FIRST-SEGMENT" if which == "first" else "SHORT-LAST-SEGMENT"
+                warnings.append(
+                    f"{name}: {which} {actual_axis} segment is {leg:.0f}px "
+                    f"(< {int(_MIN_STEM_SEGMENT_PX)}px clarity floor). Without "
+                    "a visible perpendicular stem the path appears to join "
+                    "the side of the shape, not its declared edge. Move the "
+                    "nearest control point further out, OR ack with reason "
+                    "'tight-geometry-required'."
+                )
+
+
+def _segment_rect_overlap_len(a, b, rect, shrink=2.0):
+    """Length of segment a->b that lies inside ``rect`` shrunk by ``shrink``.
+
+    Liang-Barsky parametric clip. The shrink keeps boundary-hugging
+    segments (standoff touches, edge runs) from counting as interior.
+    """
+    x0, y0, w, h = rect
+    rx1, ry1 = x0 + shrink, y0 + shrink
+    rx2, ry2 = x0 + w - shrink, y0 + h - shrink
+    if rx2 <= rx1 or ry2 <= ry1:
+        return 0.0
+    dx = b[0] - a[0]
+    dy = b[1] - a[1]
+    t0, t1 = 0.0, 1.0
+    for p, q in ((-dx, a[0] - rx1), (dx, rx2 - a[0]), (-dy, a[1] - ry1), (dy, ry2 - a[1])):
+        if p == 0:
+            if q < 0:
+                return 0.0
+        else:
+            r = q / p
+            if p < 0:
+                t0 = max(t0, r)
+            else:
+                t1 = min(t1, r)
+    if t0 >= t1:
+        return 0.0
+    return (t1 - t0) * (dx * dx + dy * dy) ** 0.5
+
+
+def _rect_traverse_checks(pts, src_rect, tgt_rect, warnings, min_traverse=4.0):
+    """ROUTE-THROUGH-SOURCE / ROUTE-THROUGH-TARGET interior-piercing gates.
+
+    A routed connector must travel OUTSIDE the shapes it joins; endpoints
+    touch edges from the outside (standoff). Any leg that crosses a shape's
+    interior means the route pierces the very card it should attach to -
+    the strongest form of the parallel-edge arrival failure.
+    """
+    for rect, name in ((src_rect, "SOURCE"), (tgt_rect, "TARGET")):
+        if rect is None:
+            continue
+        inside = sum(
+            _segment_rect_overlap_len(pts[i], pts[i + 1], rect) for i in range(len(pts) - 1)
+        )
+        if inside > min_traverse:
+            warnings.append(
+                f"ROUTE-THROUGH-{name}: routed path travels {inside:.0f}px through "
+                f"the interior of the {name.lower()} rect. The connector pierces "
+                "the shape it should attach to - the declared direction pair is "
+                "infeasible for a 1-bend route at this geometry. Add a waypoint "
+                "via --controls (route around the shape), use --auto-route, or "
+                "change --start-dir / --end-dir."
+            )
+
+
 def _thread_l_controls(
     src,
     dst,
@@ -1331,6 +1489,8 @@ def _auto_route_l_waypoints(
     margin_px=5,
     first_stem_reserve=0.0,
     last_stem_reserve=0.0,
+    route_layers=None,
+    route_ignore_layers=None,
 ):
     """Grid A* router that returns intermediate elbow waypoints avoiding
     obstacles in the SVG. Returns a list of (x, y) tuples (may be empty if
@@ -1385,15 +1545,25 @@ def _auto_route_l_waypoints(
     # Rasterise all obstacles. Skip the container itself if pinned, and
     # always skip full-canvas background plates - otherwise a single
     # bg-plate rect marks every pixel as an obstacle and the router
-    # reports "unroutable".
+    # reports "unroutable". route_layers / route_ignore_layers filter
+    # obstacles by top-level layer group (e.g. ignore callouts/content
+    # when routing between nodes).
+    from stellars_claude_code_plugins.svg_tools._layers import make_layer_filter
+
+    layer_allowed = make_layer_filter(route_layers, route_ignore_layers)
     surrogates: list = []
 
-    def walk(node):
-        if node is not container_elem and not _is_canvas_background(node, viewbox):
+    def walk(node, layer=None, depth=0):
+        if (
+            layer_allowed(layer)
+            and node is not container_elem
+            and not _is_canvas_background(node, viewbox)
+        ):
             surrogates.extend(_element_to_surrogates(node))
         if isinstance(node, _se.Group):
             for child in node:
-                walk(child)
+                child_layer = getattr(child, "id", None) if depth == 0 else layer
+                walk(child, layer=child_layer, depth=depth + 1)
 
     walk(svg_doc)
 
@@ -1640,6 +1810,8 @@ def calc_l(
     route_margin=5,
     straight_tolerance=20.0,
     stem_min=20.0,
+    route_layers=None,
+    route_ignore_layers=None,
 ):
     """Axis-aligned L connector, sharp corners.
 
@@ -1713,6 +1885,8 @@ def calc_l(
             margin_px=route_margin,
             first_stem_reserve=first_stem,
             last_stem_reserve=last_stem,
+            route_layers=route_layers,
+            route_ignore_layers=route_ignore_layers,
         )
         if auto_wp is None:
             msg = "calc_l auto_route failed - falling back to 1-bend L"
@@ -1734,6 +1908,8 @@ def calc_l(
         start_dir=start_dir,
         end_dir=end_dir,
     )
+    _direction_gate_checks(pts, start_dir, end_dir, warnings, check_stem_floors=bool(stem_min))
+    _rect_traverse_checks(pts, src_rect, tgt_rect, warnings)
     return _build_polyline_result(
         "l",
         pts,
@@ -1770,6 +1946,8 @@ def calc_l_chamfer(
     route_margin=5,
     straight_tolerance=20.0,
     stem_min=20.0,
+    route_layers=None,
+    route_ignore_layers=None,
 ):
     """Chamfered L connector. Same edge-aware semantics as ``calc_l``.
 
@@ -1844,6 +2022,8 @@ def calc_l_chamfer(
             margin_px=route_margin,
             first_stem_reserve=first_reserve,
             last_stem_reserve=last_reserve,
+            route_layers=route_layers,
+            route_ignore_layers=route_ignore_layers,
         )
         if auto_wp is None:
             msg = "calc_l_chamfer auto_route failed - falling back to 1-bend L"
@@ -1867,40 +2047,11 @@ def calc_l_chamfer(
         last_reserve=last_reserve,
     )
 
-    # ROUTE-AXIS-MISMATCH + SHORT-FIRST-SEGMENT post-threading checks.
-    # Even when start_dir is declared, the threader can occasionally
-    # produce a first segment whose axis disagrees with the declaration
-    # (e.g. when control waypoints force a different topology) or whose
-    # length is below the 28px clarity floor (visible-stem rule). Surface
-    # both as gate warnings.
-    _MIN_FIRST_SEGMENT_PX = 28.0
-    _check_start_card = _direction_to_cardinal(start_dir)
-    if _check_start_card is not None and len(pts) >= 2:
-        x0, y0 = pts[0]
-        x1, y1 = pts[1]
-        first_axis_actual = "h" if y0 == y1 else ("v" if x0 == x1 else "diagonal")
-        first_axis_expected = "h" if _check_start_card in ("E", "W") else "v"
-        if first_axis_actual != first_axis_expected:
-            warnings.append(
-                f"ROUTE-AXIS-MISMATCH: first segment is {first_axis_actual} "
-                f"but start_dir={start_dir} expects {first_axis_expected}. "
-                "The routed path exits parallel to the source edge instead "
-                "of perpendicular - visually the connector appears to leave "
-                "the wrong face of the source. Adjust waypoints or accept "
-                "with reason 'topology-overrides-start-dir'."
-            )
-        else:
-            first_segment_length = abs(x1 - x0) + abs(y1 - y0)
-            if first_segment_length + 0.5 < _MIN_FIRST_SEGMENT_PX:
-                warnings.append(
-                    f"SHORT-FIRST-SEGMENT: first {first_axis_actual} segment "
-                    f"is {first_segment_length:.0f}px (< "
-                    f"{int(_MIN_FIRST_SEGMENT_PX)}px clarity floor). Without "
-                    "a visible perpendicular stem the path appears to exit "
-                    "from the side of the source rect, not its declared edge. "
-                    "Move the next control point further out, OR ack with "
-                    "reason 'tight-geometry-required'."
-                )
+    # Post-threading route-vs-declaration gates: axis AND sign of the first
+    # and last legs against start_dir / end_dir, 28px clarity floors on
+    # both, plus interior-piercing detection against src / tgt rects.
+    _direction_gate_checks(pts, start_dir, end_dir, warnings, check_stem_floors=bool(stem_min))
+    _rect_traverse_checks(pts, src_rect, tgt_rect, warnings)
 
     # If the geometry could not accommodate stem_min behind the arrows,
     # emit a non-fatal warning so the caller knows the stem target was
@@ -4318,6 +4469,22 @@ def main():
         "Used only with --auto-route.",
     )
     parser.add_argument(
+        "--route-layers",
+        default=None,
+        help="Comma-separated canonical layers (background,nodes,connectors,"
+        "content,callouts): auto-route obstacles come ONLY from these "
+        "top-level layer groups (e.g. 'nodes' routes around cards while "
+        "ignoring text and decorations). Used only with --auto-route; "
+        "mutually exclusive with --route-ignore-layers.",
+    )
+    parser.add_argument(
+        "--route-ignore-layers",
+        default=None,
+        help="Comma-separated canonical layers whose elements are NOT "
+        "auto-route obstacles (e.g. 'callouts,content'). Used only with "
+        "--auto-route.",
+    )
+    parser.add_argument(
         "--straight-tolerance",
         type=float,
         default=20.0,
@@ -4557,6 +4724,15 @@ def main():
             parser.error(f"--to or --tgt-rect is required in {args.mode} mode")
         if args.auto_route and args.svg is None:
             parser.error("--auto-route requires --svg")
+        from stellars_claude_code_plugins.svg_tools._layers import parse_layer_list
+
+        try:
+            route_layers = parse_layer_list(args.route_layers) or None
+            route_ignore_layers = parse_layer_list(args.route_ignore_layers) or None
+            if route_layers and route_ignore_layers:
+                raise ValueError("pass either --route-layers or --route-ignore-layers, not both")
+        except ValueError as exc:
+            parser.error(str(exc))
         if args.mode == "l":
             result = calc_l(
                 src_x=src_x,
@@ -4580,6 +4756,8 @@ def main():
                 route_margin=args.route_margin,
                 straight_tolerance=args.straight_tolerance,
                 stem_min=args.stem_min,
+                route_layers=route_layers,
+                route_ignore_layers=route_ignore_layers,
             )
         else:  # l-chamfer
             result = calc_l_chamfer(
@@ -4605,6 +4783,8 @@ def main():
                 route_margin=args.route_margin,
                 straight_tolerance=args.straight_tolerance,
                 stem_min=args.stem_min,
+                route_layers=route_layers,
+                route_ignore_layers=route_ignore_layers,
             )
 
     enforce_warning_acks(

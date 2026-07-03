@@ -1,19 +1,19 @@
 ---
 name: theme
-description: SVG theme swatch generation, palette approval workflow, colour naming, and brand palette management. Auto-triggered when creating theme swatches, defining colour palettes, or working with brand-specific SVG colour schemes.
+description: Generates SVG theme swatches and manages brand palettes - shade grades (fg-1..4, accent-1/2, bg-1/2), dark-mode mappings, approval workflow before any deliverable SVG. Use when creating or updating a theme swatch, defining a colour palette for SVG infographics, or re-theming graphics to a brand. Triggers - "theme swatch", "create theme", "colour palette", "brand colours", "re-theme".
 ---
 
 # SVG Theme Management
 
 Themes define the colour palette for all SVG infographics. Every project needs approved theme before deliverables.
 
-## Install (MANDATORY)
+## Toolchain gate (refuse only if the library is unavailable - every session, no asking)
 
 ```bash
-pip install stellars-claude-code-plugins
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
-Ships `svg-infographics` CLI (used for swatch generation, contrast audit). Verify: `svg-infographics --help`.
+Ships the `svg-infographics` CLI (swatch generation, contrast audit). Verify the CLI runs: `svg-infographics --help`. **REFUSE to start** only when the library is unavailable - import fails AND install cannot fix it, so `--help` still errors. A failed *upgrade* (offline / PyPI down) while the CLI still imports is fine - run at the installed version; the plugin and library share a version, so any installed library is a compatible one. No fallback mode.
 
 ## Task Tracking
 

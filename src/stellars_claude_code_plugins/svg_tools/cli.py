@@ -35,6 +35,14 @@ SUBCOMMANDS = {
         "finalize",
         "FINALIZE: ship-ready gate. Runs XML + overlap + connector validators and returns exit 1 on any HARD finding. One answer: is this file shippable?",
     ),
+    "scaffold": (
+        "scaffold",
+        "SCAFFOLD: generate a ready-to-author skeleton for a standard format (doc-stats/doc-flow/doc-grid/slide-16x9/slide-4x3/square): viewBox, computed grid comments, theme CSS + dark mode, guide grid, five canonical layers, placeholder cards. Run AFTER preflight, BEFORE authoring.",
+    ),
+    "workflow": (
+        "workflow",
+        "WORKFLOW: infer the build phase of an SVG (scaffold/author/content/finalize/ship) from the file itself and print next actions. Stateless - run any time; no step is repeated to find out where you are.",
+    ),
     # ---- VALIDATORS (read an SVG, report problems) ----
     "overlaps": (
         "check_overlaps",
@@ -84,6 +92,10 @@ SUBCOMMANDS = {
     "empty-space": (
         "calc_empty_space",
         "CALC empty regions on an SVG canvas via svgelements + bitmap. GENERAL-PURPOSE placement tool: icons, text blocks, callouts, decorative elements, or any new content. Run before adding anything to verify it fits and to pick the target zone. Not a callout-only tool.",
+    ),
+    "map": (
+        "space_map",
+        "MAP: one-glance occupancy scan - coarse ASCII grid showing the topmost layer per cell (b/n/c/t/o, '.' free) + per-layer stats + largest free regions. ONE call replaces several empty-space scans when you need the whole spatial picture.",
     ),
     "callouts": (
         "propose_callouts",
@@ -135,6 +147,8 @@ CAVEMAN_DESCRIPTIONS: dict[str, str] = {
     "preflight": "say what you build. tool give rules",
     "check": "did build match what you said?",
     "finalize": "ship gate. fail if bad",
+    "scaffold": "skeleton for format: grid + layers + placeholders",
+    "workflow": "where am I? what next? file says",
     "overlaps": "find text + shape bumps. spacing too",
     "contrast": "WCAG colour read. light + dark",
     "alignment": "snap grid? rhythm ok?",
@@ -147,6 +161,7 @@ CAVEMAN_DESCRIPTIONS: dict[str, str] = {
     "boolean": "Inkscape ops: union diff cut outline",
     "charts": "data -> SVG: line bar pie radar",
     "empty-space": "find free spots. icons + text",
+    "map": "whole canvas at glance. letter = layer, dot = free",
     "callouts": "best joint layout for labels",
     "place": "drop icon inside container. respect margins",
     "collide": "check pairs of lines. cross? touch?",

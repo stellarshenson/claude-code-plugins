@@ -95,6 +95,12 @@ def _is_card_element(el) -> bool:
     css_class = (el.get("class") or "").lower()
     if "card" in css_class or "box" in css_class:
         return True
+    # The transparent backplate (house rule: full-canvas rect with
+    # fill="transparent"/"none") is not a card - treating it as one makes
+    # every connector endpoint "inside a card" and floods edge-snap with
+    # false positives.
+    if (el.get("fill") or "").strip().lower() in ("transparent", "none"):
+        return False
     return _safe_float(el.get("width")) > 50 and _safe_float(el.get("height")) > 50
 
 
@@ -309,6 +315,16 @@ def parse_svg(
     stack = [(root, _is_icon_context(root), _has_transform(root))]
     while stack:
         el, in_icon, scaled = stack.pop()
+        # Hidden subtrees (guide-grid and other display="none" authoring
+        # aids) are not rendered - their lines must not classify as
+        # connectors or the guide grid floods every check with phantoms.
+        # Same for <defs>: pattern/marker/gradient content is a template,
+        # not rendered geometry.
+        if _strip_ns(el.tag) == "defs":
+            continue
+        style_attr = (el.get("style") or "").replace(" ", "").lower()
+        if (el.get("display") or "").strip().lower() == "none" or "display:none" in style_attr:
+            continue
         for child in reversed(list(el)):
             stack.append(
                 (
@@ -526,6 +542,128 @@ def check_l_chamfer_exit_direction(
     return issues
 
 
+def check_edge_arrival_direction(
+    connectors: list[Connector],
+    cards: list[CardRect],
+    edge_tol: float = _EDGE_PROXIMITY_TOL_PX,
+) -> list[str]:
+    """Check: flag connector LAST segments that arrive parallel to a card edge.
+
+    Mirror of ``check_l_chamfer_exit_direction`` for the arrival side: when
+    a connector terminates within ``edge_tol`` pixels of a card edge, the
+    final segment SHOULD run perpendicular to that edge. A final segment
+    running parallel (e.g. horizontal along the target's top edge) reads as
+    a connector glued sideways onto the edge it should enter - the classic
+    parallel-arrival failure that route-time gates miss on hand-written
+    SVGs.
+    """
+    issues = []
+    for c in connectors:
+        if c.tag not in ("polyline", "path", "line"):
+            continue
+        if len(c.points) < 2:
+            continue
+        cid = c.elem_id or "(no id)"
+        xe, ye = c.points[-1]
+        xp, yp = c.points[-2]
+        dx = xe - xp
+        dy = ye - yp
+        last_len = abs(dx) + abs(dy)
+        if last_len < _PARALLEL_FIRST_SEG_MIN_PX:
+            continue
+        for card in cards:
+            bb = card.bbox
+            on_top = abs(ye - bb.y) <= edge_tol and bb.x - edge_tol <= xe <= bb.x2 + edge_tol
+            on_bottom = abs(ye - bb.y2) <= edge_tol and bb.x - edge_tol <= xe <= bb.x2 + edge_tol
+            on_left = abs(xe - bb.x) <= edge_tol and bb.y - edge_tol <= ye <= bb.y2 + edge_tol
+            on_right = abs(xe - bb.x2) <= edge_tol and bb.y - edge_tol <= ye <= bb.y2 + edge_tol
+            if on_top or on_bottom:
+                if abs(dy) <= edge_tol and abs(dx) > edge_tol:
+                    edge_label = "top" if on_top else "bottom"
+                    issues.append(
+                        f"[edge-arrival] Connector id={cid} terminates "
+                        f"at ({xe:.0f},{ye:.0f}) on card id={card.elem_id} "
+                        f"{edge_label} edge but its final segment is horizontal "
+                        f"({dx:+.0f}px) - it arrives PARALLEL to the edge it "
+                        f"joins. Expected a vertical approach perpendicular to "
+                        f"the edge. Re-route so the last segment enters the "
+                        f"edge straight-on (connector --end-dir, or add a "
+                        f"waypoint)."
+                    )
+                    break
+            if on_left or on_right:
+                if abs(dx) <= edge_tol and abs(dy) > edge_tol:
+                    edge_label = "left" if on_left else "right"
+                    issues.append(
+                        f"[edge-arrival] Connector id={cid} terminates "
+                        f"at ({xe:.0f},{ye:.0f}) on card id={card.elem_id} "
+                        f"{edge_label} edge but its final segment is vertical "
+                        f"({dy:+.0f}px) - it arrives PARALLEL to the edge it "
+                        f"joins. Expected a horizontal approach perpendicular "
+                        f"to the edge. Re-route so the last segment enters the "
+                        f"edge straight-on (connector --end-dir, or add a "
+                        f"waypoint)."
+                    )
+                    break
+    return issues
+
+
+def check_arrowhead_edge_orientation(
+    arrowheads: list[Arrowhead],
+    cards: list[CardRect],
+    edge_tol: float = _EDGE_PROXIMITY_TOL_PX,
+) -> list[str]:
+    """Check: flag arrowheads sitting on a card edge but pointing along it.
+
+    An arrowhead whose tip touches a card edge should point INTO the card
+    (perpendicular to the edge). A tip on the edge pointing parallel to it
+    is the visible symptom of a parallel arrival even when the stem is
+    curved or too short for the segment-based checks to classify.
+    """
+    issues = []
+    for head in arrowheads:
+        tx, ty = head.tip
+        # Head direction: tip minus midpoint of the opposite edge.
+        others = [p for p in head.points if p != head.tip]
+        if len(others) != 2:
+            continue
+        mx = (others[0][0] + others[1][0]) / 2.0
+        my = (others[0][1] + others[1][1]) / 2.0
+        hx, hy = tx - mx, ty - my
+        norm = (hx * hx + hy * hy) ** 0.5
+        if norm < 1e-6:
+            continue
+        hx, hy = hx / norm, hy / norm
+        for card in cards:
+            bb = card.bbox
+            on_top = abs(ty - bb.y) <= edge_tol and bb.x - edge_tol <= tx <= bb.x2 + edge_tol
+            on_bottom = abs(ty - bb.y2) <= edge_tol and bb.x - edge_tol <= tx <= bb.x2 + edge_tol
+            on_left = abs(tx - bb.x) <= edge_tol and bb.y - edge_tol <= ty <= bb.y2 + edge_tol
+            on_right = abs(tx - bb.x2) <= edge_tol and bb.y - edge_tol <= ty <= bb.y2 + edge_tol
+            edge_label = None
+            # Parallel test: |cos| of the angle between the head vector and
+            # the edge NORMAL. Below 0.5 the head is >60 degrees off the
+            # normal - visually it points along the edge, not into the card.
+            if on_top or on_bottom:
+                edge_label = "top" if on_top else "bottom"
+                cos_normal = abs(hy)
+            elif on_left or on_right:
+                edge_label = "left" if on_left else "right"
+                cos_normal = abs(hx)
+            else:
+                continue
+            if cos_normal < 0.5:
+                issues.append(
+                    f"[arrowhead-edge] Arrowhead id={head.elem_id or '(no id)'} "
+                    f"tip at ({tx:.0f},{ty:.0f}) sits on card id={card.elem_id} "
+                    f"{edge_label} edge but points ALONG the edge instead of "
+                    f"into the card. Symptom of a parallel arrival - re-route "
+                    f"the connector so it enters the edge perpendicular."
+                )
+            break
+    return issues
+
+
 # Stubby-arrow rule: head must be AT MOST 40% of total connector length.
 # Hardcoded because it's a visual-quality constant, not a tunable.
 def check_manifold_candidates(connectors: list[Connector], tol: float = 6.0) -> list[str]:
@@ -682,8 +820,11 @@ def main():
     all_issues.extend(check_edge_snap(connectors, cards))
     all_issues.extend(check_l_routing(connectors))
     all_issues.extend(check_l_chamfer_exit_direction(connectors, cards))
+    all_issues.extend(check_edge_arrival_direction(connectors, cards))
+    all_issues.extend(check_arrowhead_edge_orientation(arrowheads, cards))
     all_issues.extend(check_label_clearance(connectors, labels))
     all_issues.extend(check_stem_head_ratio(connectors, arrowheads))
+    all_issues.extend(check_manifold_candidates(connectors))
 
     if all_issues:
         print()

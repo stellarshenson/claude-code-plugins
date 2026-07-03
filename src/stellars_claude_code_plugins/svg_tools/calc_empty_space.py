@@ -658,6 +658,8 @@ def find_empty_regions(
     exclude_ids=("callout-*",),
     container_id=None,
     edges_only=False,
+    layers=None,
+    ignore_layers=None,
 ):
     """Find empty regions on an SVG canvas.
 
@@ -696,6 +698,17 @@ def find_empty_regions(
             Useful for placing decorative elements like icons, flourishes,
             and embroidery that should avoid text and strokes but may
             sit on top of filled backgrounds.
+        layers: iterable of canonical layer names (background / nodes /
+            connectors / content / callouts). When given, ONLY elements
+            inside these top-level layer groups count as obstacles -
+            e.g. ``layers=("nodes", "content")`` places against cards and
+            text while ignoring decorations. Mutually exclusive with
+            ``ignore_layers``.
+        ignore_layers: iterable of canonical layer names whose elements do
+            NOT count as obstacles - e.g. ``ignore_layers=("callouts",)``
+            re-places callouts without existing ones blocking. An element's
+            layer is the id of its top-level ``<g>`` ancestor (direct
+            child of the SVG root).
 
     Returns:
         list of ``{"boundary": [(x, y), ...], "area": float, "container_id":
@@ -714,6 +727,10 @@ def find_empty_regions(
             raise ValueError(f"container_id={container_id!r} not found in SVG")
 
     exclude_patterns = tuple(exclude_ids or ())
+
+    from stellars_claude_code_plugins.svg_tools._layers import make_layer_filter
+
+    layer_allowed = make_layer_filter(layers, ignore_layers)
 
     def _id_excluded(elem):
         if not exclude_patterns:
@@ -738,10 +755,14 @@ def find_empty_regions(
     # must be excluded via exclude_ids.
     surrogates = []
 
-    def walk(node):
+    def walk(node, layer=None, depth=0):
         if _id_excluded(node):
             return
-        if node is not container_elem and not _is_canvas_background(node, canvas):
+        if (
+            layer_allowed(layer)
+            and node is not container_elem
+            and not _is_canvas_background(node, canvas)
+        ):
             raw = _element_to_surrogates(node)
             if edges_only:
                 # Keep only strokes (polylines) and text bboxes. Drop
@@ -756,9 +777,14 @@ def find_empty_regions(
             else:
                 surrogates.extend(raw)
         # svgelements Group / SVG are iterable - recurse into children.
+        # An element's layer is the id of its top-level <g> ancestor
+        # (depth 1 = direct child of the SVG root); deeper nodes inherit.
         if isinstance(node, _se.Group):
             for child in node:
-                walk(child)
+                child_layer = layer
+                if depth == 0:
+                    child_layer = getattr(child, "id", None)
+                walk(child, layer=child_layer, depth=depth + 1)
 
     walk(svg_doc)
 
@@ -875,6 +901,26 @@ def main():
         "space WITHIN cards. Use for placing decorative elements.",
     )
     parser.add_argument(
+        "--layers",
+        default=None,
+        help="Comma-separated canonical layers (background,nodes,connectors,"
+        "content,callouts): obstacles come ONLY from these top-level layer "
+        "groups. Mutually exclusive with --ignore-layers.",
+    )
+    parser.add_argument(
+        "--ignore-layers",
+        default=None,
+        help="Comma-separated canonical layers whose elements do NOT count "
+        "as obstacles (e.g. 'callouts' to re-place callouts).",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print the full boundary polygon per region. Default output "
+        "truncates the vertex list - the bbox line is usually what "
+        "placement needs.",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit JSON output only",
@@ -892,6 +938,16 @@ def main():
 
     exclude_ids = args.exclude_id if args.exclude_id else ("callout-*",)
 
+    from stellars_claude_code_plugins.svg_tools._layers import parse_layer_list
+
+    try:
+        layers = parse_layer_list(args.layers)
+        ignore_layers = parse_layer_list(args.ignore_layers)
+        if layers and ignore_layers:
+            raise ValueError("pass either --layers or --ignore-layers, not both")
+    except ValueError as exc:
+        parser.error(str(exc))
+
     regions = find_empty_regions(
         svg=args.svg,
         tolerance=args.tolerance,
@@ -899,6 +955,8 @@ def main():
         exclude_ids=exclude_ids,
         container_id=args.container_id,
         edges_only=args.edges_only,
+        layers=layers or None,
+        ignore_layers=ignore_layers or None,
     )
 
     # Gate before emitting primary output - blocks stdout on unacked warnings.
@@ -909,6 +967,7 @@ def main():
         print()
         return
 
+    _MAX_VERTICES_SHOWN = 24
     print(f"=== EMPTY REGIONS ({len(regions)}) ===")
     for i, r in enumerate(regions):
         xs = [p[0] for p in r["boundary"]]
@@ -917,8 +976,13 @@ def main():
             f"[{i}] area={r['area']:.0f}px^2  vertices={len(r['boundary'])}  "
             f"bbox=({min(xs):.0f},{min(ys):.0f})-({max(xs):.0f},{max(ys):.0f})"
         )
-        points = " ".join(f"{x:.0f},{y:.0f}" for x, y in r["boundary"])
-        print(f"    points: {points}")
+        boundary = r["boundary"]
+        shown = boundary if args.verbose else boundary[:_MAX_VERTICES_SHOWN]
+        points = " ".join(f"{x:.0f},{y:.0f}" for x, y in shown)
+        suffix = ""
+        if len(shown) < len(boundary):
+            suffix = f" … ({len(boundary) - len(shown)} more - --verbose for all)"
+        print(f"    points: {points}{suffix}")
 
 
 if __name__ == "__main__":

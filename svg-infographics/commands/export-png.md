@@ -6,6 +6,17 @@ argument-hint: "SVG file or glob, e.g. 'docs/images/01-diagram.svg' or 'docs/ima
 
 # Export SVG to PNG
 
+## Toolchain gate (refuse only if the library is unavailable)
+
+Before anything else run:
+
+```bash
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+```
+
+Verify the CLI runs: `svg-infographics --help`. **REFUSE to run this command** only when the library is unavailable - the import fails AND the install cannot fix it, so `--help` still errors. A failed *upgrade* (offline, PyPI unreachable) while the CLI still imports is fine - run at the installed version; the plugin and library ship at the same version, so any installed library is a compatible one. No fallback, no hand-built output.
+
+
 Render SVG files to PNG using `render-png` (Playwright-based). Natively evaluates `@media (prefers-color-scheme: dark)` CSS media queries.
 
 ## Pre-flight install (MANDATORY, no asking)

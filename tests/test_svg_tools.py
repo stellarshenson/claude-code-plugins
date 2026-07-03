@@ -3081,6 +3081,219 @@ class TestLChamferExitDirection:
         )
 
 
+class TestArrivalDirectionGates:
+    """Route-time + post-hoc gates for the parallel-ARRIVAL failure mode:
+    a connector whose last segment runs parallel to (or pierces) the target
+    edge it is declared to enter. Mirror of the exit-direction safety net.
+    """
+
+    def test_calc_l_chamfer_flags_reversed_arrival_and_target_pierce(self):
+        """end_dir=S with the target at the same height as the source: a
+        1-bend route physically cannot enter the top edge moving south.
+        The old code silently emitted a wrong-way, card-piercing route;
+        now both ROUTE-DIR-REVERSED-END and ROUTE-THROUGH-TARGET fire.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
+        result = calc_l_chamfer(
+            src_rect=(100, 100, 120, 60),
+            start_dir="E",
+            tgt_rect=(400, 100, 120, 60),
+            end_dir="S",
+            chamfer=4,
+            standoff=2,
+            arrow="end",
+        )
+        warnings = result.get("warnings", [])
+        assert any("ROUTE-DIR-REVERSED-END" in w for w in warnings), (
+            f"expected ROUTE-DIR-REVERSED-END; got: {warnings}"
+        )
+        assert any("ROUTE-THROUGH-TARGET" in w for w in warnings), (
+            f"expected ROUTE-THROUGH-TARGET; got: {warnings}"
+        )
+
+    def test_calc_l_chamfer_feasible_pair_stays_clean(self):
+        """A geometrically feasible 1-bend pair (E exit, S arrival, target
+        below-right of source) produces no direction-gate warnings.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l_chamfer
+
+        result = calc_l_chamfer(
+            src_rect=(100, 100, 120, 60),
+            start_dir="E",
+            tgt_rect=(400, 300, 120, 60),
+            end_dir="S",
+            chamfer=4,
+            standoff=2,
+            arrow="end",
+        )
+        warnings = result.get("warnings", [])
+        for token in ("ROUTE-DIR-REVERSED", "ROUTE-THROUGH-", "ROUTE-AXIS-MISMATCH"):
+            assert not any(token in w for w in warnings), (
+                f"unexpected {token} on feasible geometry: {warnings}"
+            )
+
+    def test_calc_l_flags_reversed_start(self):
+        """Sign check on the START side: start_dir=W but the target lies
+        east - the first leg moves east, opposite the declaration. The old
+        axis-only check passed E and W both as 'h'.
+        """
+        from stellars_claude_code_plugins.svg_tools.calc_connector import calc_l
+
+        result = calc_l(
+            src_x=100,
+            src_y=100,
+            tgt_x=400,
+            tgt_y=300,
+            start_dir="W",
+            arrow="end",
+        )
+        warnings = result.get("warnings", [])
+        assert any("ROUTE-DIR-REVERSED:" in w for w in warnings), (
+            f"expected start-side ROUTE-DIR-REVERSED; got: {warnings}"
+        )
+
+    def _cards(self):
+        from stellars_claude_code_plugins.svg_tools.check_connectors import BBox, CardRect
+
+        return [
+            CardRect(elem_id="card-tgt", label="tgt", bbox=BBox(x=400, y=100, w=120, h=60)),
+        ]
+
+    def test_check_edge_arrival_flags_parallel_arrival(self):
+        """Post-hoc: final segment runs east along the target's top edge
+        and terminates on it - must flag [edge-arrival].
+        """
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            Connector,
+            check_edge_arrival_direction,
+        )
+
+        conn = Connector(
+            elem_id="conn-1",
+            tag="path",
+            points=[(160, 80), (160, 98), (458, 98)],
+        )
+        issues = check_edge_arrival_direction([conn], self._cards())
+        assert len(issues) == 1
+        assert "[edge-arrival]" in issues[0]
+        assert "top edge" in issues[0]
+        assert "PARALLEL" in issues[0]
+
+    def test_check_edge_arrival_perpendicular_passes(self):
+        """A perpendicular arrival into the top edge is clean."""
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            Connector,
+            check_edge_arrival_direction,
+        )
+
+        conn = Connector(
+            elem_id="conn-1",
+            tag="path",
+            points=[(160, 40), (460, 40), (460, 98)],
+        )
+        issues = check_edge_arrival_direction([conn], self._cards())
+        assert issues == []
+
+    def test_check_arrowhead_edge_orientation(self):
+        """An arrowhead tip sitting on the target's top edge pointing east
+        (along the edge) flags; one pointing south (into the card) passes.
+        """
+        from stellars_claude_code_plugins.svg_tools.check_connectors import (
+            Arrowhead,
+            check_arrowhead_edge_orientation,
+        )
+
+        sideways = Arrowhead(
+            elem_id="arr-side",
+            points=[(466, 98), (456, 93), (456, 103)],
+            tip=(466, 98),
+            length=10.0,
+        )
+        into_card = Arrowhead(
+            elem_id="arr-in",
+            points=[(460, 100), (455, 90), (465, 90)],
+            tip=(460, 100),
+            length=10.0,
+        )
+        issues = check_arrowhead_edge_orientation([sideways, into_card], self._cards())
+        assert len(issues) == 1
+        assert "arr-side" in issues[0]
+        assert "ALONG the edge" in issues[0]
+
+
+class TestScaffold:
+    """scaffold: standard-format skeletons with grid, layers, placeholders."""
+
+    def test_build_scaffold_structure(self):
+        """Scaffold parses as XML, carries the five canonical layers in
+        z-order, the computed grid comment, and grouped placeholder cards
+        that the manifest component counter recognises.
+        """
+        import xml.etree.ElementTree as ET
+
+        from stellars_claude_code_plugins.svg_tools.scaffold import (
+            FORMATS,
+            LAYERS,
+            build_scaffold,
+        )
+
+        svg = build_scaffold(FORMATS["slide-16x9"], cols=3, rows=2, cards=5, title="T")
+        root = ET.fromstring(svg)
+        assert root.get("viewBox") == "0 0 1280 720"
+        # Five layers present, in canonical bottom-up order.
+        group_ids = [
+            g.get("id")
+            for g in root
+            if g.tag.endswith("g") and g.get("id") in {n for n, _ in LAYERS}
+        ]
+        assert group_ids == [name for name, _ in LAYERS]
+        # Placeholder cards are groups (id card-N) tagged data-placeholder.
+        cards = [g for g in root.iter() if (g.get("id") or "").startswith("card-")]
+        assert len(cards) == 5
+        assert all(g.get("data-placeholder") == "true" for g in cards)
+        assert "=== GRID REFERENCE ===" in svg
+        assert "=== LAYOUT TOPOLOGY ===" in svg
+
+    def test_compute_grid_math(self):
+        """Columns and rows split the usable area exactly (margins + gaps)."""
+        from stellars_claude_code_plugins.svg_tools.scaffold import (
+            CARD_GAP,
+            FORMATS,
+            compute_grid,
+        )
+
+        fmt = FORMATS["doc-grid"]  # 1800x700, margins 40/60
+        grid = compute_grid(fmt, cols=3, rows=2)
+        assert grid["columns"][0] == fmt.margin_x
+        # Last column's right edge lands on width - margin.
+        right = grid["columns"][-1] + grid["col_w"]
+        assert abs(right - (fmt.width - fmt.margin_x)) < 0.51
+        # Column pitch = width + gap.
+        pitch = grid["columns"][1] - grid["columns"][0]
+        assert abs(pitch - (grid["col_w"] + CARD_GAP)) < 0.51
+
+    def test_cli_list_write_and_overwrite_guard(self, tmp_path):
+        from stellars_claude_code_plugins.svg_tools import scaffold
+
+        assert scaffold.main(["--list"]) == 0
+        out = tmp_path / "s.svg"
+        assert scaffold.main(["--format", "doc-flow", "--out", str(out)]) == 0
+        assert out.exists()
+        # Second write without --force must refuse.
+        assert scaffold.main(["--format", "doc-flow", "--out", str(out)]) == 1
+        assert scaffold.main(["--format", "doc-flow", "--out", str(out), "--force"]) == 0
+
+    def test_validate_accepts_svg_flag(self, tmp_path):
+        """`validate --svg file` works (grammar parity with the other
+        validators; it used to be positional-only)."""
+        from stellars_claude_code_plugins.svg_tools import check_svg_valid, scaffold
+
+        out = tmp_path / "s.svg"
+        scaffold.main(["--format", "square", "--out", str(out)])
+        assert check_svg_valid.main(["--svg", str(out)]) == 0
+
+
 class TestCheckOverlaps:
     """CLI + --inject-bounds / --strip-bounds for check_overlaps.py. 4 -> 1."""
 

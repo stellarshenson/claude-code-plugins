@@ -47,7 +47,16 @@ from stellars_claude_code_plugins.svg_tools._warning_gate import (
     enforce_warning_acks,
 )
 from stellars_claude_code_plugins.svg_tools.check_connectors import (
+    check_arrowhead_edge_orientation as cc_arrowhead_edge,
+)
+from stellars_claude_code_plugins.svg_tools.check_connectors import (
+    check_edge_arrival_direction as cc_edge_arrival,
+)
+from stellars_claude_code_plugins.svg_tools.check_connectors import (
     check_edge_snap as cc_edge_snap,
+)
+from stellars_claude_code_plugins.svg_tools.check_connectors import (
+    check_l_chamfer_exit_direction as cc_edge_exit,
 )
 from stellars_claude_code_plugins.svg_tools.check_connectors import (
     check_l_routing as cc_l_routing,
@@ -173,9 +182,11 @@ def finalize(svg_path: Path, rendered_data: dict | None = None) -> tuple[list[st
         return hard, soft
     overlap_findings = analyze_overlaps(elements)
     for i, j, a, b, pct, cls in overlap_findings:
-        # Classification "contained" is a parent-child relationship - the
-        # overlap is structural (e.g. a <g> wrapping children). Not a defect.
-        if cls == "contained":
+        # "contained" is a parent-child relationship (structural), and
+        # "connector-contact" is a routed stroke touching what it attaches
+        # to - the connectors / collide layers own those. Neither is an
+        # overlap defect.
+        if cls in ("contained", "connector-contact"):
             continue
         hard.append(f"[overlaps] #{i} <-> #{j} ({pct:.0f}%, {cls}): {a.label} vs {b.label}")
     spacing_findings = check_spacing(elements)
@@ -193,6 +204,15 @@ def finalize(svg_path: Path, rendered_data: dict | None = None) -> tuple[list[st
     for f in cc_edge_snap(connectors, cards):
         hard.append(f"[connectors] {f}")
     for f in cc_label_clearance(connectors, labels):
+        hard.append(f"[connectors] {f}")
+    # Parallel-edge contact at either end (exit or arrival) plus a
+    # sideways arrowhead on an edge are HARD visual defects: the
+    # connector joins the wrong face of the shape it should enter.
+    for f in cc_edge_exit(connectors, cards):
+        hard.append(f"[connectors] {f}")
+    for f in cc_edge_arrival(connectors, cards):
+        hard.append(f"[connectors] {f}")
+    for f in cc_arrowhead_edge(arrowheads, cards):
         hard.append(f"[connectors] {f}")
     for f in cc_l_routing(connectors):
         soft.append(f"[connectors] {f}")

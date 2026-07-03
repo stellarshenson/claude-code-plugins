@@ -35,19 +35,20 @@ If the wrong direction ships the diagram tells the wrong story. The `check` subc
 - `spline` - PCHIP through 3+ waypoints. Use when the path must curve around existing geometry.
 - `manifold` - N starts converge through a shared spine, fork to M ends. Use for "many sources produce into one pipeline" or "one source broadcasts to many consumers". Spine MUST pass through a deliberate gap between intermediate elements.
 
-## L / L-chamfer exit-direction gate (MANDATORY)
+## L / L-chamfer direction gates (MANDATORY, both ends)
 
-When passing `--src-rect` and / or `--tgt-rect` to `calc_connector --mode l` / `--mode l-chamfer`, ALWAYS pass `--start-dir` and `--end-dir` (E / W / N / S). The toolchain enforces this through THREE gates:
+When passing `--src-rect` and / or `--tgt-rect` to `calc_connector --mode l` / `--mode l-chamfer`, ALWAYS pass `--start-dir` and `--end-dir` (E / W / N / S). The route is then VERIFIED against the declaration on BOTH ends - axis, sign, stem length, and interior piercing:
 
-1. **`MISSING-START-DIR-LCHAMFER` / `MISSING-END-DIR-LCHAMFER`** (calc_l_chamfer pre-routing) - fires whenever `src_rect` / `tgt_rect` is supplied without the corresponding direction. Without the cardinal direction the router falls back to geometric inference, which can produce a path that exits parallel to the source edge (the "horizontal-out-of-bottom" failure - a connector that leaves a card's bottom edge horizontally instead of dropping south first, visually appearing to exit the side). Fix by passing the direction explicitly; ack only with reason `'inferred-axis-intended'` and confirm the geometric inference is what you actually want.
+- **`ROUTE-AXIS-MISMATCH` / `ROUTE-AXIS-MISMATCH-END`** - the first / last leg's axis disagrees with the declared cardinal: the route exits / arrives PARALLEL to the shape edge. Also fires when a same-axis direction pair (e.g. E→E) needs a 2-bend Z-route the 1-bend threader cannot produce - add a `--controls` waypoint or use `--auto-route`.
+- **`ROUTE-DIR-REVERSED` / `ROUTE-DIR-REVERSED-END`** - the axis matches but the SIGN is opposite (e.g. last leg moves north with `end_dir=S`): the connector reaches the declared edge from the WRONG side, typically piercing the shape on the way. The direction pair is infeasible for a 1-bend route at this geometry - route around (waypoint / auto-route) or change the direction. Never ack to force a wrong-face arrival.
+- **`ROUTE-THROUGH-SOURCE` / `ROUTE-THROUGH-TARGET`** - the routed path travels through the interior of the src / tgt rect. The strongest symptom of an infeasible direction pair.
+- **`SHORT-FIRST-SEGMENT` / `SHORT-LAST-SEGMENT`** - axis and sign right, but the leg is under the 28px clarity floor (suppressed with `--stem-min 0`).
 
-2. **`ROUTE-AXIS-MISMATCH`** (calc_l_chamfer post-threading) - fires when the threader produced a first segment whose axis disagrees with the declared `start_dir`. Happens when control waypoints or auto-routing override the direction lock. Ack with reason `'topology-overrides-start-dir'` if the override is intentional, otherwise fix the waypoints.
+Post-hoc, `svg-infographics connectors` (and `finalize`, as HARD findings) mirror these for hand-written SVGs: `[l-chamfer-exit]` (first segment parallel to the origin edge), `[edge-arrival]` (final segment parallel to the edge it terminates on), `[arrowhead-edge]` (arrowhead tip on a card edge pointing along it instead of into the card).
 
-3. **`SHORT-FIRST-SEGMENT`** (calc_l_chamfer post-threading) - fires when the first axis-aligned segment is shorter than 28px (the visible-stem clarity floor). Without a visible perpendicular stem the path appears to exit from the side of the source rect, not its declared edge. Move the next control point further out, OR ack with reason `'tight-geometry-required'` if the layout forces it.
+Declaration gate: **`MISSING-START-DIR-LCHAMFER` / `MISSING-END-DIR-LCHAMFER`** (pre-routing) - fires whenever `src_rect` / `tgt_rect` is supplied without the corresponding direction. Geometric inference can then exit / arrive parallel to an edge. Fix by passing the direction; ack only with reason `'inferred-axis-intended'`.
 
-4. **`check_l_chamfer_exit_direction`** (post-hoc validator in `svg-infographics connectors`) - safety net for hand-written SVGs that never invoked `calc_connector`. Detects connectors whose origin sits within 3px of a card edge AND whose first segment runs parallel to that edge. Catches the same failure mode at the validation surface.
-
-Cross-reference: the `connectors` CLI runs check #4 automatically as part of its check matrix. The other three flow through `calc_connector`'s stop-and-think gate (see "Stop-and-think warning-ack gate" section below).
+All route gates flow through `calc_connector`'s stop-and-think warning-ack mechanism (see below); the post-hoc validators run automatically in `svg-infographics connectors` and `finalize`.
 
 ## Stem-to-head ratio (40/60 rule)
 

@@ -4,6 +4,12 @@ Mandatory sequential workflow. Every SVG goes through all 6 phases in order. No 
 
 See `tools.md` for full tool inventory. See `standards.md` for rules. See `validation.md` for checker usage.
 
+## Dynamic phase tracking
+
+`svg-infographics workflow --svg <file>` infers the current phase FROM THE FILE (scaffold / author / content / finalize / ship) and prints the unmet gates with next actions. Run it when resuming work, after any interruption, or whenever unsure what remains - never redo a gate it reports as met, never guess the phase from memory.
+
+`svg-infographics map --svg <file>` is the spatial companion: one ASCII occupancy grid (letter = topmost layer per cell, `.` = free), per-layer stats, largest free placement boxes. Run before placing anything new - one scan replaces several empty-space calls.
+
 ## Task tracking (MANDATORY)
 
 TaskCreate at start with one task per phase per image. Mark in_progress on entering a phase, completed on leaving. Prevents skipped steps.
@@ -25,34 +31,36 @@ Before creating any SVG:
 
 **GATE**: write summary to user — image type, examples consulted, dimensions, colour classes. Do NOT proceed until shared.
 
-## Phase 2 — Invisible Grid
+## Phase 2 — Grid + Skeleton (via the scaffold tool)
 
-Grid BEFORE any visual elements. Blueprint.
+`svg-infographics scaffold --format <preset> --cols C --rows R --cards N [--title "..."] --out <file>` generates the whole Phase-2 deliverable in ONE call:
 
-1. Use `primitives` to calculate grid — never eyeball. `primitives rect` / `circle` / `axis` for exact anchors
-2. For ANY curve through known waypoints: run `primitives spline --points "x1,y1 x2,y2 …" --samples 200`. Paste `<path d="…">` verbatim. Hand-written `C`/`Q` beziers for data curves forbidden (PCHIP is monotonicity-preserving)
-3. For connectors: use `connector --mode <m>` with `--standoff 2`. L/L-chamfer ALWAYS pass both rects + `--start-dir`/`--end-dir` — otherwise tool infers first-axis from `|dx| vs |dy|` and vertical segment may run parallel to target edge
-4. Write `=== GRID ===` comment: viewBox, every x/y, rhythm step, margins, arrow paths
-5. Write `=== LAYOUT TOPOLOGY ===` comment: container-child, h-stack, v-stack, mirror, flow
-6. No visual elements yet — grid + topology comments only
+- viewBox + margins + column/row origins as `=== GRID REFERENCE ===` comment, everything snapped to the 5px layout grid
+- `=== LAYOUT TOPOLOGY ===` stub listing the placeholder cards
+- `<style>` block with theme classes + `@media (prefers-color-scheme: dark)` overrides (neutral palette - re-theme against the approved swatch)
+- transparent backplate + `<g id="guide-grid" display="none">` with real guide lines
+- the five canonical layers as empty named groups
+- placeholder card groups (`id="card-N"`, `data-placeholder="true"`) laid out on the grid
 
-**GATE**: SVG contains ONLY comments. No `<rect>`, `<path>`, `<text>`.
+Presets: `scaffold --list`. A fresh scaffold passes `finalize` with zero findings - if yours doesn't, report it as a tool bug instead of patching the output. Hand-typing any of the above = redo work the tool does better. For non-grid layouts (radial, organic), scaffold the nearest format and adjust the grid comment - the layers and CSS skeleton still apply.
 
-## Phase 3 — Scaffold
+**GATE**: scaffold file exists and `svg-infographics workflow --svg <file>` shows the scaffold gate met.
 
-Structural elements at grid positions. No text, no icons, no content.
+## Phase 3 — Structure
 
-1. `<style>` block with all CSS classes + `@media (prefers-color-scheme: dark)` overrides
-2. `<g id="guide-grid" display="none">` reference lines
-3. Card `<path>` outlines via `primitives rect --radius 3` (flat-top, rounded-bottom, fill-opacity 0.04, stroke 1)
-4. Accent bars (`<rect>` height 5, opacity 0.6, flush with card top, NO `rx`)
-5. **Every arrow / connector via `svg-infographics connector`** with `--standoff 2`. Paste `trimmed_path_d` + arrowhead polygons directly. Hand-coded `<path d="M…">` for any routed line = FAIL. No `rotate()` templates. No `atan2`. No "just 10 pixels"
+Replace placeholders with real structure at grid positions. No text, no icons, no content.
+
+1. Re-theme the scaffold CSS block against the approved swatch
+2. Card `<path>` outlines via `primitives rect --radius 3` (flat-top, rounded-bottom, fill-opacity 0.04, stroke 1) INSIDE the existing `card-N` groups; drop `data-placeholder` as each is realised
+3. Accent bars (`<rect>` height 5, opacity 0.6, flush with card top, NO `rx`)
+4. **Every arrow / connector via `svg-infographics connector`** with `--standoff 2`, into `<g id="connectors">`. Paste `trimmed_path_d` + arrowhead polygons directly. Hand-coded `<path d="M…">` for any routed line = FAIL. No `rotate()` templates. No `atan2`. No "just 10 pixels"
+5. L/L-chamfer: ALWAYS pass both rects + `--start-dir`/`--end-dir`. The route gates check axis AND sign on both ends and interior piercing (`ROUTE-DIR-REVERSED[-END]`, `ROUTE-THROUGH-TARGET`) - a blocked pair means the 1-bend route cannot arrive on the declared edge: add a `--controls` waypoint, use `--auto-route --svg <file>` (optionally `--route-ignore-layers callouts,content`), or change the direction
 6. Prefer `l-chamfer --chamfer 4` for any L-route. Sharp corners forbidden
-7. Track line segments with cutouts (if timeline)
-8. 3D shapes via `primitives cube/cylinder/sphere/cuboid/plane` for isometric
-9. Verify every coordinate matches grid comment
+7. For ANY curve through known waypoints: `primitives spline --points "x1,y1 x2,y2 …" --samples 200`. Hand-written `C`/`Q` beziers for data curves forbidden (PCHIP is monotonicity-preserving)
+8. Track line segments with cutouts (if timeline); 3D via `primitives cube/cylinder/sphere/cuboid/plane`
+9. Verify every coordinate matches the grid comment; `svg-infographics map --svg <file>` for a spatial readback
 
-**GATE**: style block, card outlines, accent bars, arrows — but NO `<text>`.
+**GATE**: structure + arrows in their layers — but NO `<text>`.
 
 ## Phase 4 — Content
 

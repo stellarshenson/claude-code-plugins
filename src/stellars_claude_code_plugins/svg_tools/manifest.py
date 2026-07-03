@@ -627,7 +627,57 @@ def check(decl: Declaration, svg_path: Path) -> CheckReport:
     free_findings = _find_free_graphics(root)
     findings.extend(free_findings)
 
+    findings.extend(_check_layer_discipline(root))
+
     return CheckReport(findings=findings)
+
+
+def _check_layer_discipline(root: ET.Element) -> list[CheckFinding]:
+    """WARN when canonical layer groups are missing or misordered.
+
+    The five layers (background / nodes / connectors / content / callouts)
+    are the z-order backbone - document order IS render order, so a
+    missing layer usually means content was authored ad-hoc, and a
+    misordered one means something renders on the wrong z-plane.
+    ``svg-infographics scaffold`` generates the correct skeleton.
+    """
+    from stellars_claude_code_plugins.svg_tools._layers import CANONICAL_LAYERS
+
+    findings: list[CheckFinding] = []
+    top_layer_ids = [
+        child.get("id")
+        for child in list(root)
+        if child.tag == "g" and child.get("id") in CANONICAL_LAYERS
+    ]
+    missing = [layer for layer in CANONICAL_LAYERS if layer not in top_layer_ids]
+    if missing:
+        findings.append(
+            CheckFinding(
+                severity="WARN",
+                category="layer_discipline",
+                message=(
+                    f"missing canonical layer group(s): {', '.join(missing)}. "
+                    "The five-layer z-order (background / nodes / connectors "
+                    "/ content / callouts) keeps arrows under text and "
+                    "callouts on top; `svg-infographics scaffold` generates "
+                    "the skeleton."
+                ),
+            )
+        )
+    canonical_order = [layer for layer in CANONICAL_LAYERS if layer in top_layer_ids]
+    if top_layer_ids != canonical_order:
+        findings.append(
+            CheckFinding(
+                severity="WARN",
+                category="layer_discipline",
+                message=(
+                    f"layer groups out of z-order: found {top_layer_ids}, "
+                    f"canonical bottom-up order is {list(CANONICAL_LAYERS)}. "
+                    "Document order is render order - reorder the groups."
+                ),
+            )
+        )
+    return findings
 
 
 _PRIMITIVE_TAGS = {"rect", "circle", "ellipse", "path", "polygon", "polyline", "line"}

@@ -6,6 +6,17 @@ argument-hint: "brand name or colour direction, e.g. 'corporate blue palette' or
 
 # Generate Theme Swatch
 
+## Toolchain gate (refuse only if the library is unavailable)
+
+Before anything else run:
+
+```bash
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+```
+
+Verify the CLI runs: `svg-infographics --help`. **REFUSE to run this command** only when the library is unavailable - the import fails AND the install cannot fix it, so `--help` still errors. A failed *upgrade* (offline, PyPI unreachable) while the CLI still imports is fine - run at the installed version; the plugin and library ship at the same version, so any installed library is a compatible one. No fallback, no hand-built output.
+
+
 Create a theme swatch SVG for user approval before producing infographic deliverables.
 
 ## Task Tracking

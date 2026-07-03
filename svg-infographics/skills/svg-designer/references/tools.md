@@ -111,7 +111,29 @@ svg-infographics
  |   |-- --tolerance N           Min erosion (default 20px)
  |   |-- --min-area N            Drop slivers (default 500)
  |   |-- --container-id          Clip to shape interior
- |   '-- --edges-only            Ignore fills, only edges/text as obstacles (for decoration placement)
+ |   |-- --edges-only            Ignore fills, only edges/text as obstacles (for decoration placement)
+ |   |-- --layers a,b            Obstacles ONLY from these canonical layers
+ |   |-- --ignore-layers a,b     Obstacles from everything EXCEPT these layers
+ |   '-- --verbose               Full boundary polygons (default truncates - bbox is usually enough)
+ |
+ |-- map                         One-glance occupancy scan (per-layer + global in ONE call)
+ |   |-- --svg scene.svg         Input SVG
+ |   |-- --cell N                Cell size px (default ~48 columns)
+ |   '-- ASCII grid              letter = topmost layer per cell (b/n/c/t/o), '.' = free,
+ |                               + per-layer stats + largest free placement rects
+ |
+ |-- scaffold                    Ready-to-author skeleton for a standard format
+ |   |-- --list                  Show presets (doc-stats/timeline/flow/header/grid, slide-16x9/4x3, square)
+ |   |-- --format NAME           Canvas preset (viewBox, margins, rhythm)
+ |   |-- --cols C --rows R       Grid shape (5px-snapped by design)
+ |   |-- --cards N               Placeholder card groups (data-placeholder="true")
+ |   |-- --title "..."           Title text placeholder with a reserved band
+ |   '-- --out FILE [--force]    Write (refuses overwrite without --force)
+ |
+ |-- workflow                    Phase inference + next actions from the file itself
+ |   |-- --svg file.svg          scaffold / author / content / finalize / ship
+ |   |-- --no-finalize           Skip the validator sweep (faster)
+ |   '-- --json                  Structured gate report
  |
  |-- charts <type>               Pygal SVG charts
  |   |-- line | bar | hbar       Standard chart types
@@ -170,7 +192,10 @@ svg-infographics
 | Stack vertically | `geom stack --axis v --gap 12 --rects "[...]"` |
 | Snap to card edge | `geom attach --shape rect --geometry x,y,w,h --side right` |
 | Place labels | `callouts --svg scene.svg --plan callouts.json` |
-| Find empty space | `empty-space --svg scene.svg` |
+| Find empty space | `empty-space --svg scene.svg` (`--layers` / `--ignore-layers` to scope obstacles) |
+| Whole canvas at a glance | `map --svg scene.svg` (per-layer ASCII occupancy + free placement rects) |
+| Start a new SVG | `scaffold --format slide-16x9 --cols 3 --rows 2 --cards 5 --out file.svg` |
+| Where am I / what next | `workflow --svg file.svg` |
 | Merge two shapes into one path | `boolean --op union --svg scene.svg --ids a b` |
 | Cut a hole with breathing room | `boolean --op cutout --svg scene.svg --ids container hole --margin 4` |
 | Stroked-look filled ring | `boolean --op outline --svg scene.svg --ids shape --margin 6` |

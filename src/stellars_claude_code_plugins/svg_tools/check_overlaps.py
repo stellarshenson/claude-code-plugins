@@ -540,6 +540,8 @@ def parse_svg(filepath: str) -> list[Element]:
             if desc is not el:
                 processed_descendants.add(id(desc))
 
+    from stellars_claude_code_plugins.svg_tools._layers import CANONICAL_LAYERS
+
     for child in root.iter():
         # skip already-processed descendants of groups
         if id(child) in processed_descendants:
@@ -550,6 +552,25 @@ def parse_svg(filepath: str) -> list[Element]:
         # skip verification overlay group
         if tag == "g" and child.get("id") == "text-bounds":
             _mark_descendants(child)
+            continue
+
+        # <defs> content (patterns, markers, gradients) is a template,
+        # not rendered geometry
+        if tag == "defs":
+            _mark_descendants(child)
+            continue
+
+        # hidden authoring aids (guide-grid etc.) are not visual elements
+        style_attr = (child.get("style") or "").replace(" ", "").lower()
+        if (child.get("display") or "").strip().lower() == "none" or "display:none" in style_attr:
+            _mark_descendants(child)
+            continue
+
+        # canonical layer wrappers are z-order containers, not visual
+        # units - stay transparent so their children are compared
+        # individually (otherwise a whole layer becomes one giant bbox
+        # and anything above/below it reads as an overlap)
+        if tag == "g" and child.get("id") in CANONICAL_LAYERS:
             continue
 
         if tag == "text":
@@ -647,7 +668,15 @@ def parse_svg(filepath: str) -> list[Element]:
             # include stroke in inner bbox
             if sw > 0:
                 bbox = BBox(bbox.x - sw / 2, bbox.y - sw / 2, bbox.w + sw, bbox.h + sw)
-            role = "card" if bbox.w > 100 and bbox.h > 50 else "path"
+            # An explicitly unfilled OPEN path is a routed stroke (connector,
+            # track line) no matter how large its bbox - only closed /
+            # fillable outlines qualify as cards.
+            fill = (get_attr(child, "fill", "") or "").strip().lower()
+            is_open_stroke = fill == "none" and not d.rstrip().endswith(("Z", "z"))
+            if is_open_stroke:
+                role = "path"
+            else:
+                role = "card" if bbox.w > 100 and bbox.h > 50 else "path"
             elements.append(
                 Element(
                     tag="path",
@@ -781,6 +810,16 @@ def classify_overlap(a: Element, b: Element) -> str:
     # sibling: same role and same section (grid squares, bar segments, etc.)
     if a.role == b.role and a.section == b.section:
         return "sibling"
+
+    # connector-contact: a routed stroke touching the shapes it attaches
+    # to (and their labels). Endpoint discipline, label clearance and
+    # crossings are owned by the connectors / collide checkers - bbox
+    # contact alone is not an overlap defect. Only meaningful once layer
+    # groups became transparent and raw connector paths are compared
+    # individually.
+    line_like = ("path", "arrow", "track-line", "divider")
+    if (a.role in line_like) != (b.role in line_like):
+        return "connector-contact"
 
     # everything else is a potential violation
     return "violation"

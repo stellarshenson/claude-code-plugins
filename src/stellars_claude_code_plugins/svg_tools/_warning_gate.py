@@ -2,8 +2,8 @@
 
 Every warning a tool emits blocks its primary output until the caller
 acknowledges it with a deterministic token and a terse reason. The token is
-``hash(canonical_input, warning_text)`` so reruns with the same input produce
-the same token and no server-side memory is needed.
+``hash(tool_identity, warning_text)`` so reruns produce the same token and
+no server-side memory is needed.
 
 Workflow from the caller's point of view:
 
@@ -16,8 +16,12 @@ Workflow from the caller's point of view:
 3. Tool prints the acked list (audit trail on stderr) and proceeds to output.
 
 One ``--ack-warning`` flag per warning; each ack includes its own reason. The
-token changes whenever the input OR the warning text changes, so a stale ack
-cannot silently pass a different warning.
+token changes whenever the warning text changes - and geometry warnings embed
+their coordinates and lengths, so a materially different situation yields a
+different token. Deliberately NOT keyed on the full argv: fixing one flag
+(adding ``--direction``, acking a sibling warning) used to invalidate every
+outstanding token and force a discovery rerun per edit - a pure
+repeated-steps burner with no safety benefit.
 
 ``--ack-class PREFIX=reason`` acknowledges every warning of one CLASS (the
 ``NAME:`` prefix of the warning text, e.g. ``GRID-SNAP`` or
@@ -83,25 +87,20 @@ def add_ack_warning_arg(parser) -> None:
 
 
 def _canonical_input_key(argv: Sequence[str]) -> str:
-    """Hash-stable input identity for a CLI invocation.
+    """Hash-stable tool identity for token computation.
 
-    Excludes ``--ack-warning`` arguments so adding acks does not change the
-    warning tokens. Normalises whitespace inside each arg so minor quoting
-    differences do not flip tokens.
+    Keyed on the tool prog name (``sys.argv[0]``, e.g. ``svg-infographics
+    connector``) - NOT on the flag values. Geometry warnings embed their
+    coordinates and lengths in the warning text, so the (identity, text)
+    pair still distinguishes materially different situations, while fixing
+    an unrelated flag no longer invalidates every outstanding token.
+    ``argv`` is kept as a parameter for call-site compatibility but only
+    contributes when ``sys.argv`` is unavailable.
     """
-    filtered = []
-    i = 0
-    while i < len(argv):
-        a = argv[i]
-        if a in ("--ack-warning", "--ack-class"):
-            i += 2  # skip flag + value
-            continue
-        if a.startswith(("--ack-warning=", "--ack-class=")):
-            i += 1
-            continue
-        filtered.append(" ".join(str(a).split()))
-        i += 1
-    return "\0".join(filtered)
+    prog = str(sys.argv[0]) if sys.argv else ""
+    if prog:
+        return prog
+    return "\0".join(" ".join(str(a).split()) for a in argv)
 
 
 def _extract_ack_class_args(argv: Sequence[str]) -> list[str]:
@@ -263,7 +262,7 @@ def enforce_warning_acks(
         )
         print("", file=sys.stderr)
         print(
-            "Tokens are deterministic for this input; reruns reproduce them.",
+            "Tokens are stable per warning text - fixing other flags keeps them valid.",
             file=sys.stderr,
         )
         print("", file=sys.stderr)
