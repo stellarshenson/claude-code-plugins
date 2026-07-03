@@ -1,6 +1,6 @@
 ---
 name: notebook-standards
-description: Jupyter notebook structure standards - section order, GPU-by-UUID selection, grouped imports, the configuration render, rich-output colours, equations, inline figures, and matplotlib plotting conventions. Use when creating or modifying a Jupyter notebook (.ipynb or Jupytext .py), or when the user mentions notebook structure, the config cell, GPU selection, rich output, notebook equations, matplotlib plots, colormaps, or saving / exporting figures.
+description: Jupyter notebook structure standards - section order, GPU-by-UUID selection, grouped imports, the configuration render, rich-output colours, equations, inline figures, matplotlib plotting, progress bars, and checkpointing long runs. Use when creating or modifying a Jupyter notebook (.ipynb or Jupytext .py), or when the user mentions notebook structure, the config cell, GPU selection, rich output, notebook equations, matplotlib plots, colormaps, saving / exporting figures, progress bars, or checkpointing intermediate results.
 ---
 
 # Notebook Structure Standards
@@ -85,28 +85,10 @@ Why UUID not index: CUDA's `FASTEST_FIRST` order ≠ nvidia-smi PCI order, so `C
 
 ## Import Cell Pattern
 
-```python
-%load_ext autoreload
-%autoreload 2
-
-# Standard library
-import os
-from pathlib import Path
-
-# Data processing
-import numpy as np
-import polars as pl
-
-# Deep learning
-import torch
-import torch.nn as nn
-
-# Rich console output
-import rich.jupyter as rich
-from rich.progress import Progress, BarColumn
-```
-
-ALL imports in this cell. Never import later.
+- **One cell** - all imports together, never import later; sole exception is a use case that genuinely needs an import elsewhere (e.g. `torch` in the GPU-selection cell after `CUDA_VISIBLE_DEVICES` is set, per GPU Selection)
+- **Grouped** - block by category with a blank line and a `# Category` heading per group
+- **Annotated** - inline `# comment` on each import stating what it is for
+- Full annotated template - `examples/import-cell.md`
 
 ## Configuration Cell
 
@@ -211,6 +193,17 @@ Write math liberally - every quantitative relationship as an equation, not prose
 ## Rich Output
 
 `rich.print()` with semantic colors. Single multiline call. Never multiple individual prints for related output. See `references/rich-output.md` for the full semantic palette, status colours, ML-eval and table-column colours.
+
+## Progress and checkpoints
+
+Any loop a reader would wait on shows a Rich progress bar, and any run measured in minutes writes intermediate checkpoints so a crash or a mid-run inspection never loses the work.
+
+- **Progress bar by design** - every medium or long loop (batch inference, training epochs, per-file processing, API sweeps) wraps its iterable in a Rich `Progress`; a bare loop with no visible progress is a defect, not a style choice
+- **Threshold** - a cell that runs more than a few seconds needs a bar; sub-second cells do not
+- **Fine granularity** - `total` counts the real unit of work so the bar advances often and the ETA is honest; an LLM judge over a large corpus tracks per-document (hundreds of steps), never a handful of coarse chunks - a 4-step bar that sits minutes per step is uninformative. The costlier each step, the finer the bar
+- **Separate cell** - the `Progress` block gets its own cell, away from setup prints, per Cell Rules
+- **Checkpoint long runs** - a run measured in minutes persists intermediate results (every N steps or per epoch) to a temp dir - `tempfile.gettempdir()` or a `checkpoints/` under the output dir - so partial work survives a crash and stays inspectable mid-run
+- **Named and resumable** - checkpoint files carry the step/epoch in the name (`ckpt_epoch03.pt`, `batch_00500.parquet`); on restart the cell skips work already on disk
 
 ## Figures (inline by default)
 
