@@ -10,7 +10,7 @@ Maintain two research docs: a canonical **experiments log** (every hypothesis wi
 
 > **Style (mandatory)** - terse technical-documentation: 1-2 overview sentences then factual bullets; one fact per bullet; numbers inline; no full stop ending a bullet; no em-dashes (use ` - `), unicode arrows (→), escape `\$`. Prose only where an argument needs it. Full reference: the `technical-documentation` skill.
 
-> **Canonical shapes** - two canonical logs, by case: `examples/wmd-docdistance-*.md` for the compact / shared-Setup shape (one-toggle levers, no per-hypothesis Experiment); `examples/quantized-inference-experiments.md` for the per-hypothesis-regime shape (each hypothesis owns its models / card / harness - overview + lever-detail paragraph, brief Lever, `<br>`-labelled Experiment). On any conflict with this skill's guidance (section order, layout, phrasing), follow the matching example.
+> **Canonical shapes** - two canonical logs, by case: `examples/quantized-inference-experiments.md` is the primary reference - the per-hypothesis-regime shape (each hypothesis owns its models / card / harness - overview + lever-detail paragraph, brief Lever, `<br>`-labelled Experiment); `examples/wmd-docdistance-*.md` is the compact / shared-Setup variant (one-toggle levers, no per-hypothesis Experiment). On any conflict with this skill's guidance (section order, layout, phrasing), follow the matching example.
 
 ## Workflow
 - Pick the doc - experiments log (recording work) or SOTA doc (concluding once the arc converges)
@@ -36,13 +36,22 @@ The log is one durable file many runs append to - the system of record, not a fr
 
 ## User-facing summary tables (before and after execution)
 Present two tables in the conversation - the pre-registration and the finding; this pair is the feedback that drives hypothesis testing, distinct from the in-doc research-at-a-glance table.
-- **Before execution** - one row per hypothesis: ID (`E<batch>-H<n>`), overview (the one-line causal claim), prediction, setup; the user confirms the plan before any run
+- **Before execution (pre-registration)** - state the planned hypotheses back to the user for sign-off; title it `Pre-registration - E<batch> (before execution)`, one row per hypothesis, columns in plain language a non-specialist reads at a glance: **ID** (`E<batch>-H<n>`), **Skill under test (causal claim)** - one plain, relatable sentence that names the subject whose skill is under test and the everyday outcome it should deliver, in words a non-specialist gets instantly (a touch of humour is fine): `<subject>'s <skill> actually <delivers the outcome>`; the comparison-against goes in the Lever, the hard numbers in Prediction and Falsifier, **Lever (one knob)** - the single thing changed and what is held fixed, **Prediction** - expected direction + number, **Falsifier (acceptance bar)** - the pre-registered `Refuted unless <numeric gate>` that would sink it. The user confirms this before any run
 - **After execution** - the same rows plus verdict and interpretation (what the number means; for a refuted or killed hypothesis, the specific failure and the gate it missed)
 - **Always show both** - before table = what the user signs off, after table = what was learned; surface in the reply, not only in the doc
-- Columns map to the per-hypothesis template (overview→Hypothesis, prediction→Prediction, setup→Experiment / shared Setup, verdict→Verdict, interpretation→Result reading)
+- **Plain words, hard numbers** - the claim and lever read like a colleague's sentence, not the in-doc jargon; the prediction and falsifier still carry exact thresholds - approachable wording never softens the pre-registered bar
+- Columns map to the per-hypothesis template (skill-under-test→Hypothesis, lever→Lever, prediction→Prediction, falsifier→Acceptance bar, verdict→Verdict, interpretation→Result reading)
+
+Pre-registration table to mirror:
+
+| ID | Skill under test (causal claim) | Lever (one knob) | Prediction | Falsifier (acceptance bar) |
+|----|----------------------------------|------------------|------------|-----------------------------|
+| E01-H1 | Konrad explains a model so a non-technical listener actually understands it | plain-analogy explanation vs raw scikit-learn docstring, same model + listener | comprehension C ≥ 4/5 in ≤ 3 min; docstring baseline ~1/5 | Refuted unless mean C ≥ 4.0 and explanation ≤ 3 min (killed if docstring alone ≥ 4/5) |
+| E01-H2 | Konrad's debugging intuition reaches the fix faster than blind print() spam | hypothesis-first debugging vs print()-carpet-bomb, same bug set | median time S ≤ 0.5x baseline; 0 new regressions | Refuted unless median S ≤ 0.5x and 0 regressions introduced |
+| E01-H3 | Konrad's task-time estimates are actually calibrated, not optimistic | experience-anchored estimate vs flat '2 days' for everything, same tasks | hit rate E ≥ 60% within ±25%, bias within ±0.20; baseline E ≤ 20% | Refuted unless E ≥ 60% and bias within ±0.20 (bias guardrail catches optimism) |
 
 ## Experiments log - section order
-Mirror `examples/wmd-docdistance-experiments.md` (compact, shared Setup), `examples/quantized-inference-experiments.md` (per-hypothesis regime - lever-detail paragraph + `<br>` Experiment), or `examples/lexical-grounding-experiments.md` (long multi-round arc).
+Mirror `examples/quantized-inference-experiments.md` (per-hypothesis regime - lever-detail paragraph + `<br>` Experiment - the primary reference), `examples/wmd-docdistance-experiments.md` (compact, shared Setup), or `examples/lexical-grounding-experiments.md` (long multi-round arc).
 - **Title + marker + overview** - H1, then `**Canonical Experiments Document**`, then one paragraph: what the experiment is, the branch/artefacts, where the data lives
 - **Problem overview** - dataset (size, labels, class balance, domain/language spread, exact counts), caveats (cohort effects, what the split does and does not test), the core difficulty; facts only - a reader grasps the problem from this section alone
 - **Executive summary** - headline result first; the research-at-a-glance table (one row per hypothesis: lever, mechanism, predicted, result, verdict); key findings (beats X, lever is Y, replicated across Z, residual W); the baseline/performance table anchored on the naive baseline; a gain-trajectory diagram only if it earns its place
@@ -53,7 +62,7 @@ Mirror `examples/wmd-docdistance-experiments.md` (compact, shared Setup), `examp
 - **Conclusions** - what ships and why
 - **Next steps** - open threads; a "refuted, do not revisit" list
 
-## Per-hypothesis template (canonical, from docdistance)
+## Per-hypothesis template (canonical, from quantized-inference)
 Each hypothesis opens with a one-paragraph **overview** (why this hypothesis, what it tests or converts), then - only when the regime has a story worth telling - an **unlabelled lever-detail paragraph** (what is exercised and why that isolates the effect; the setup narrative in prose, no byte counts - its position identifies it, no `Lever detail:` prefix), then the fixed bullet set. A one-toggle hypothesis on a shared Setup needs no lever-detail paragraph. The prediction makes the hypothesis falsifiable - the gap between predicted and measured is the finding.
 - **Hypothesis** - one causal claim: `because <mechanism + observed precondition>, <intervention> will <measurable outcome ≥ threshold> while <guardrail holds>`
 - **Lever** - one line: the single knob changed and the context held fixed, e.g. "GGUF quant level (q4 / q8 / fp16) at fixed model, card, harness" or "annealing temperature at fixed alloy and furnace"; a one-clause provenance hint when the lever is an artefact with an origin (a model, dataset, reagent, instrument, corpus) - "obtained `<id>`" / "produced here" - never a bare label that hides where it came from; the setup story goes in the lever-detail paragraph, the exact regime in Experiment - never dump the full regime into this bullet
@@ -107,8 +116,8 @@ The full conclusion-doc shape; mirror `examples/wmd-docdistance-sota.md`. Drop a
 
 ## Examples
 Read the closest match before writing; mirror its section order.
-- `wmd-docdistance-experiments.md` - canonical log; one batch (E01), five pre-registered levers, the template, research-at-a-glance + baseline tables, results + benchmarks
-- `quantized-inference-experiments.md` - canonical log for the per-hypothesis-regime shape (each hypothesis owns its regime); overview → lever-detail paragraph → brief Lever → `<br>`-labelled Experiment → `<br>` Result; GPU-inference domain, model provenance shown (downloaded pre-quantized vs trained here); truncated to nine hypotheses (E12-E13) with the document skeleton preserved
+- `quantized-inference-experiments.md` - primary canonical log, the per-hypothesis-regime shape (each hypothesis owns its regime); overview → lever-detail paragraph → brief Lever → `<br>`-labelled Experiment → `<br>` Result; GPU-inference domain, model provenance shown (downloaded pre-quantized vs trained here); truncated to nine hypotheses (E12-E13) with the document skeleton preserved
+- `wmd-docdistance-experiments.md` - canonical log, compact / shared-Setup variety; one batch (E01), five pre-registered levers, the template, research-at-a-glance + baseline tables, results + benchmarks
 - `wmd-docdistance-sota.md` - canonical SOTA doc; Abstract (lineage + digest) → Solution (interpretation, I/O contract, reproducibility) → Mechanism (LaTeX, why-not-cosine) → Performance → FAQ → Conclusions → Bibliography
 - `lexical-grounding-experiments.md` - long multi-round arc (12 rounds); research-at-a-glance + per-round progression across data growth and ship decisions
 - `lexical-grounding-sota.md` - deterministic-track SOTA; pipeline → performance → limitations → implementation, no maths-heavy mechanism
