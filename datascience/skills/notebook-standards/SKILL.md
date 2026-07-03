@@ -1,6 +1,6 @@
 ---
 name: notebook-standards
-description: Jupyter notebook structure standards - section order, GPU-by-UUID selection, grouped imports, the configuration render, rich-output colours, equations, and inline figures. Use when creating or modifying a Jupyter notebook (.ipynb or Jupytext .py), or when the user mentions notebook structure, the config cell, GPU selection, rich output, notebook equations, or saving / exporting figures.
+description: Jupyter notebook structure standards - section order, GPU-by-UUID selection, grouped imports, the configuration render, rich-output colours, equations, inline figures, and matplotlib plotting conventions. Use when creating or modifying a Jupyter notebook (.ipynb or Jupytext .py), or when the user mentions notebook structure, the config cell, GPU selection, rich output, notebook equations, matplotlib plots, colormaps, or saving / exporting figures.
 ---
 
 # Notebook Structure Standards
@@ -9,7 +9,7 @@ Patterns for Jupyter notebook creation.
 
 ## Mandatory Section Order
 
-1. **Header** - title, author, approach with numbered steps
+1. **Header** - mandatory title + author + date + purpose, then an optional menu (extra provenance, mechanism overview, approach, outputs) - problem-specific (see below)
 2. **GPU Selection** - `CUDA_VISIBLE_DEVICES` BEFORE any torch/tf/jax import
 3. **Imports** - ALL imports in one cell, grouped, with inline comments, autoreload enabled
 4. **Reproducibility** - `set_seed(42)` for random, numpy, torch
@@ -19,6 +19,48 @@ Patterns for Jupyter notebook creation.
 8. **Execution** (training, inference)
 9. **Save/Export**
 10. **Evaluation/Summary**
+
+## Header (first markdown cell)
+
+Orients the reader and doubles as the notebook-level overview (the Header needs no separate overview). Four blocks are mandatory; the rest is a problem-specific menu - pick what fits, drop what does not.
+
+**Mandatory - every notebook**
+- **Title** - `# <what the notebook does>`
+- **Author + Date** - bold, each on its own `<br>`-terminated line so they stack: `**Author**: Name (initials) <br>` then `**Date**: YYYY-MM-DD <br>`. Every stacked provenance line ends with `<br>` - without it markdown soft-wraps them onto one line
+- **Purpose** - one or two sentences: what the notebook produces and why it matters to the wider work; prose, not a task list
+
+**Optional menu - add when the problem calls for it**
+- **More provenance** - further `<br>`-terminated lines after Date: `**Pipeline stage**`, `**Dataset**`, `**Model**`, `**Branch**`
+- **Mechanism overview** - a short paragraph on HOW the approach works when the method is non-obvious: the key model / algorithm / technique, what it computes, the operating regime a reader needs to trust the result
+- **Approach** - `## Approach`, numbered verb-first steps, each naming its why
+- **Outputs** - `## Outputs`, persisted artefacts plus what the notebook shows inline
+
+**Math in the header** - inline expressions as unicode glyphs (`d(A,B) = Σᵢ ...`), any display equation as a standalone `$$...$$` block on its own line so it copies cleanly and rasterises for export; same rule as any markdown cell - see "Equations in markdown cells".
+
+Example - mandatory blocks (Title, Author, Date, Purpose) plus optional pipeline-stage, mechanism, approach, outputs; note the trailing `<br>` on each stacked provenance line:
+
+```markdown
+# Document Segmentation with SaT
+
+**Author**: Konrad Jelen (kj) <br>
+**Date**: 2026-05-30 <br>
+**Pipeline stage**: 1 - statement-level segmentation <br>
+
+Splits a source document into atomic statements with the SaT `sat-3l-sm` segmenter - the first stage of the document-distance pipeline, so this split bounds the quality of every later measure.
+
+Downstream each statement is embedded and two documents are compared by optimal transport over the pairwise-cost matrix C:
+
+$$W(A, B) = \min_{T \in U(a, b)} \sum_{i, j} T_{ij}\, C_{ij}$$
+
+## Approach
+1. **Extract** raw text from the PDF - the corpus arrives as PDF, SaT needs plain text
+2. **Segment** into sentence-level statements - the natural transport unit
+3. **Persist** to parquet - a typed artefact the embedding stage consumes
+
+## Outputs
+- `data/interim/01-statements.parquet` - one row per statement (id, text, length)
+- In-notebook: statement count, length stats, distribution histogram
+```
 
 ## GPU Selection (MUST be first code cell)
 
@@ -178,3 +220,12 @@ Plots render inline in the notebook - the `.ipynb` itself is the artefact. Do NO
 - **No `plt.savefig` unless asked** - do not add file exports (`plt.savefig(...)`, `fig.savefig(...)`) on your own; the inline figure is enough. Add an export only when the user explicitly asks to export/save figures
 - **When export IS requested** - write to a named path (e.g. `reports/figures/<name>.png`), `dpi` 150+, `bbox_inches="tight"`, and still keep the inline `plt.show()`
 - **Section 9 Save/Export** covers model and data artefacts, not figures - figures stay inline unless an export is explicitly requested
+
+## Plotting (matplotlib)
+
+Object-oriented API only - `fig, ax = plt.subplots(figsize=(w, h), constrained_layout=True)`, then `ax.` calls; the pyplot state machine silently draws onto the wrong axes in saved code.
+
+- **`constrained_layout=True`** - default it on; auto-spaces labels, titles and colorbars so nothing overlaps or clips
+- **Colormaps by data kind** - sequential (`viridis`) for magnitudes, diverging (`coolwarm`) for centred data, qualitative (`tab10`) for categories; never `jet`, default to colourblind-safe `viridis` / `cividis`
+- **Reuse the palette** - semantic hexes (primary `#3498DB`, secondary `#E74C3C`, tertiary `#2ECC71`) live in `references/rich-output.md`; don't invent a parallel one
+- Full conventions - plot-type quick reference, subplots, styling, saving, gotchas - in `references/matplotlib.md`
