@@ -205,6 +205,21 @@ For **Mode 1** with an adversary, prepend the no-tools line, append the inline d
 } > /tmp/review-full.txt
 ```
 
+**popular-science adversary - append the shared craft canon.** Its review standard lives in one file, shared with the `datascience:popular-science` writer skill so critique and craft never drift: `../popular-science/references/craft-canon.md` (relative to this skill). Its target is usually a prose doc, not a diff, so build the Mode 1 prompt as no-tools line + adversary body + the doc + the canon:
+
+```bash
+{
+  echo "IMPORTANT: Do NOT use any tools. Do NOT read files. The article and the craft canon are inline below - analyze ONLY what is shown."
+  body adversaries/popular-science.md
+  echo; echo "=== CRAFT CANON (your review standard) ==="; echo
+  cat ../popular-science/references/craft-canon.md
+  echo; echo "=== ARTICLE UNDER REVIEW ==="; echo
+  cat /path/to/article.md
+} > /tmp/review-full.txt
+```
+
+In Mode 2 (tools on, needed to render and judge figures) the reviewer reads that canon file directly - do not paste it. Editing the standard means editing that one file; both the writer and this adversary inherit it.
+
 Pick the mode by where the defect would live, not by the adversary: a UX afterimage bug shows in a CSS/animation diff (Mode 1) OR across the component tree (Mode 2); the architect's drift bugs almost always need Mode 2. For high stakes, run several adversaries concurrently as the perspective-diverse panel above - one lens each.
 
 ### Add your own expert

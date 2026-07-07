@@ -41,49 +41,7 @@ Sweep the target on every axis. For each finding, quote the offending text and n
 </METHODOLOGY>
 
 <CRAFT CANON>
-The standard you review against - popular-science writing and visual craft, distilled from the field's best. Do not lecture the reader with it; use it to judge, and let each finding name the specific fix.
-
-WRITING - best practices
-- The lede earns the second sentence; the nut graf lands early - the story "in a nutshell", the who/what and why-it-matters - though not always right after the lede (The Open Notebook, "Nailing the Nut Graf")
-- Climb the ladder of abstraction both ways - scenic detail (show) and summary meaning (tell); good writing constantly ascends and descends it (Hayakawa; The Open Notebook, "Using the Ladder of Abstraction")
-- One idea per sentence; verbs over nominalisations ("we investigated X", not "the investigation of X"); short paragraphs, one beat each
-- Explain a term once, plainly, the first time - or leave it out if it is not core to the story (National Geographic, "On jargon")
-- Every abstraction gets one concrete anchor - an image, a number the reader can see, a person making a choice
-- Claim + provenance + number - a bare claim is weak; the named research team and the hard figure are what sell it. Pair every empirical assertion with its source (Author, year) or an honest "our model finds", and with the demonstrated number, not an adjective
-- The kicker - end on a line that lands: short words, a callback to the opening image or question, full circle with a twist; the best endings echo the beginning in an essential but surprising way (The Open Notebook, "Good Endings: How to Write a Kicker")
-
-WRITING - anti-patterns
-- Jargon as a flex - convoluted prose reads as hiding a weak grasp, not as authority
-- Synonym-swapping a technical term (keep one name for one thing)
-- The wall of text - six-plus-line blocks the eye slides off
-- Argument dumped as bullets; a genuine list buried inside a paragraph
-- The buried lede; throat-clearing before the hook
-- An ending that stops instead of landing - a limp restatement, no callback, no forward hook
-- The naked claim - an assertion with neither a named source nor a number, asking the reader to just believe it
-
-VISUALS - best practices
-- Match the chart to the message - deviation, correlation, ranking, distribution, change-over-time, part-to-whole, magnitude, spatial, flow (FT Visual Vocabulary)
-- Maximise data-ink; erase chartjunk - every mark earns its place (Tufte)
-- Label directly on the data, not via a legend the eye must match back (NN/G, "Clutter-Free")
-- One message per figure; annotate the takeaway so the caption reads the chart without the body text
-- Redundant encoding - never colour alone; pair with shape / label / pattern; colourblind- and greyscale-safe
-- Graphical integrity - honest axes, honest area; the visual's magnitude matches the data's (Tufte's lie factor)
-
-VISUALS - anti-patterns
-- 3-D bars or pies, drop shadows, decorative gradients - distort perception, add nothing
-- Truncated or dual y-axis that inflates a thin effect
-- Rainbow / jet colourmap; colour carrying the only meaning, dead in greyscale
-- A legend of a dozen near-identical hues the reader must decode
-- Overplotting; labels too small to read; a table dressed up as a picture
-
-BEST-IN-CLASS references - compare a visual against these; when you need the bar, download one strong figure and dimension the gap
-- NYT Graphics (scrollytelling, "Snow Fall"), FT Visual Journalism (the charticle, Visual Vocabulary), The Economist Graphic Detail, Our World in Data, Quanta Magazine, Scientific American, Information is Beautiful, Datawrapper Blog, Pew Research, Mona Chalabi
-
-CALIBRATION - what a strong passage looks like
-The "myths" register: name the myth, break it with a NAMED source and a HARD number, close on a witty turn. A claim alone is weak; the research team and the numbers sell the story.
-- "The myth of the baby bonus - that a big enough cheque will do it. Cash buys a brief flurry of births ... and then the effect evaporates. Korea spent on the order of USD 270 billion over twenty years and watched its birth rate fall in every one of them."
-- "In the model a birth in a low-fertility country happens roughly only when both partners want it (Doepke & Kindermann, 2019) ... The lever is fairness, not nostalgia."
-Each carries all three: the claim, its provenance or its number, and a last line that lands (the callback / turn - "The exit is not the leak, it is the valve"). Flag any claim that has the assertion but is missing the source (axis 10), missing the demonstrated number (axis 13), or missing the turn that makes it stick (axis 15).
+Your review standard is the SHARED craft canon - the very file the `datascience:popular-science` writer skill composes from, so critique and craft never drift: `datascience/skills/popular-science/references/craft-canon.md`. It holds the writing best-practices and anti-patterns, the visual standards and best-in-class references, and the calibration exemplar (claim + provenance + number + witty turn). Read it in Mode 2 (tools on); in Mode 1 it is appended below by the review assembly. Judge against it and keep no private copy that could fall out of sync - it is the single source of truth. If the standard itself is wrong, fix THAT file and the writer inherits the fix. Map its bullets to your axes: unsourced claim → axis 10, fuzzed magnitude → axis 13, weak kicker → axis 15, visual defects → axis 14.
 </CRAFT CANON>
 
 <CONSTRAINTS>
