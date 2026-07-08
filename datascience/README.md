@@ -25,7 +25,7 @@ Unlike ad-hoc notebook cleanups, this plugin treats the notebook as a standardis
 | `/datascience:apply-footnotes` | Add JupyterLab-compatible footnotes using the anchor-link pattern |
 | `/datascience:apply-prompt-technique` | Apply a prompt engineering technique to a prompt, system instruction, or agent definition |
 | `/datascience:challenge` | Full psychological prompting stack for difficult problems - stakes, incentive, competitive framing |
-| `/datascience:hypothesis` | Write or extend a hypothesis-driven experiments log and its SOTA design doc - record a round, or conclude the design |
+| `/datascience:hypothesis` | Write or extend a hypothesis-driven experiments log and its SOTA design doc - record a round, fan out the next one, or conclude the design |
 
 ## Skills
 
@@ -38,7 +38,7 @@ Auto-triggered based on context.
 | `progressbars` | Adding progress bars with tqdm (classic) or rich (modern) |
 | `footnotes` | Adding references, citations, or notes in notebooks and markdown |
 | `prompt-engineering` | Crafting system prompts, agent instructions, or LLM prompts |
-| `hypothesis` | Writing up an experiment, recording a hypothesis and result, deciding which approach won, or drafting an experiments log / SOTA design doc |
+| `hypothesis` | Writing up an experiment, recording a hypothesis and result, fanning out the next round from persona generators, deciding which approach won, or drafting an experiments log / SOTA design doc |
 
 ## Prompt engineering techniques
 
@@ -66,8 +66,11 @@ The `hypothesis` skill structures and maintains two complementary research docum
 | Canonical doc across runs | one log per track at `docs/experiments/<project>-experiments.md`, monotonic rounds, immutable verdicts (superseded by back-reference) |
 | SOTA shape | Abstract → Problem → Solution → Pipeline → Mechanism → Performance → Limitations → FAQ → Implementation → Conclusions → Bibliography |
 | Style | terse overview-then-bullets, numbers inline, sweeps as tables, maths as separated `$$…$$` display blocks, "private dataset" sanitisation |
+| Fanout | next-round generation from the campaign kernel via persona generators; pre-registration (prediction + acceptance bar, user sign-off) is the prerequisite - nothing lands or runs before it |
 
-Four worked examples ship under [`skills/hypothesis/examples/`](skills/hypothesis/examples/) - the `wmd-docdistance-*` pair is the canonical shape, with a long 12-round arc shown by the `lexical-grounding-*` pair. Use `/datascience:hypothesis` to record a round or conclude the design.
+The skill also **generates** hypotheses, not just records them. Seven pluggable hypothesisers under [`skills/hypothesis/generators/`](skills/hypothesis/generators/) - follower, contrarian, heretical, hybridizer, mechanist, deflationist, scout - each an exploration policy over the campaign's kernel (channel vocabulary, lever record, metric panel + naive baseline, verdict protocol) with an expected verdict signature that self-tests the round. A fanout asks for scale (probe 3-5 / round 8-12 / batch 15-25) and persona, dedupes against the global H-ordinal registry, kill-gates cheaply, then pre-registers the batch for sign-off; mechanics in [`skills/hypothesis/references/fanout.md`](skills/hypothesis/references/fanout.md).
+
+Four worked examples ship under [`skills/hypothesis/examples/`](skills/hypothesis/examples/) - the `wmd-docdistance-*` pair is the canonical shape, with a long 12-round arc shown by the `lexical-grounding-*` pair. Use `/datascience:hypothesis` to record a round, fan out the next, or conclude the design.
 
 ## Example usage
 
@@ -88,5 +91,5 @@ Create a new project, scaffold the first notebook, then review it:
 - [`skills/footnotes/SKILL.md`](skills/footnotes/SKILL.md) - JupyterLab-compatible anchor pattern (standard `[^1]` does not render in JupyterLab)
 - [`skills/prompt-engineering/references/`](skills/prompt-engineering/references/) - per-technique papers, templates, and usage guidance
 - [`skills/datascience/SKILL.md`](skills/datascience/SKILL.md) - project conventions, naming, file format standards
-- [`skills/hypothesis/SKILL.md`](skills/hypothesis/SKILL.md) - hypothesis-driven experiments log + SOTA doc structure, the per-hypothesis template, and canonical-doc-across-runs management; four worked examples under [`skills/hypothesis/examples/`](skills/hypothesis/examples/) (the `wmd-docdistance-*` pair is the canonical shape)
+- [`skills/hypothesis/SKILL.md`](skills/hypothesis/SKILL.md) - hypothesis-driven experiments log + SOTA doc structure, the per-hypothesis template, and canonical-doc-across-runs management; four worked examples under [`skills/hypothesis/examples/`](skills/hypothesis/examples/) (the `wmd-docdistance-*` pair is the canonical shape); fanout mechanics in [`skills/hypothesis/references/fanout.md`](skills/hypothesis/references/fanout.md) with persona generators under [`skills/hypothesis/generators/`](skills/hypothesis/generators/)
 - [copier-data-science](https://github.com/stellarshenson/copier-data-science) - project scaffolding template used by `/datascience:new-project` and `/datascience:fix-project`

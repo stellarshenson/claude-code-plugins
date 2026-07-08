@@ -1,6 +1,6 @@
 ---
 name: hypothesis
-description: Structure and maintain hypothesis-driven research documentation - a canonical append-only experiments log (each hypothesis with a self-contained, independently reproducible experiment setup, prediction, result, verdict) and a SOTA design doc distilling the winners. Use when the user is writing up an experiment, recording a hypothesis and its result, comparing approaches to decide which wins, defining a naive baseline, running an experiment's hypotheses as agents, ablating survivors into a final design, drafting a research report with a problem overview and executive summary, or concluding a state-of-the-art / final-design doc - even without the word "hypothesis". Triggers - "document this experiment", "write up the hypothesis", "experiments doc", "sota doc", "research writeup", "which approach won", "record this round", "run this experiment", "ablation study", "update the experiments log", "structure my results".
+description: Structure and maintain hypothesis-driven research documentation - a canonical append-only experiments log (each hypothesis with a self-contained, independently reproducible experiment setup, prediction, result, verdict) and a SOTA design doc distilling the winners. Use when the user is writing up an experiment, recording a hypothesis and its result, comparing approaches to decide which wins, defining a naive baseline, running an experiment's hypotheses as agents, fanning out the next round of hypotheses, ablating survivors into a final design, drafting a research report with a problem overview and executive summary, or concluding a state-of-the-art / final-design doc - even without the word "hypothesis". Triggers - "document this experiment", "write up the hypothesis", "experiments doc", "sota doc", "research writeup", "which approach won", "record this round", "run this experiment", "fan out hypotheses", "propose the next round", "ablation study", "update the experiments log", "structure my results".
 allowed-tools: Read, Write, Edit, Glob, Grep, WebFetch
 ---
 
@@ -16,6 +16,7 @@ Maintain two research docs: a canonical **experiments log** (every hypothesis wi
 - Pick the doc - experiments log (recording work) or SOTA doc (concluding once the arc converges)
 - Read the closest `examples/` doc first, mirror its section order - do not invent structure
 - Open the canonical doc before writing - find the last round, append the next
+- Generating hypotheses (single or a fanout batch) - ask scale + persona, pre-register before anything lands or runs; see the Fanout section
 - Before concluding a SOTA - suggest an ablative study of the strongest hypothesis or all survivors, to measure each component's marginal worth and settle the final design; see `references/execution-and-ablation.md`
 - Draft, then re-read; cut any sentence a table or number carries faster
 
@@ -95,6 +96,14 @@ Name each `E<batch>-H<n>` (docdistance uses `E01-H1`); the name states what is t
 - **Size-dependent** - re-run as the data grows; never trust a single snapshot
 - **Reproducible plan** - the hypothesis re-runs from its own text: the Experiment block links the notebook / script / protocol that tests it, links the digest and original of any paper it derives from, and states the provenance of any artefact used (produced here + how, or obtained externally + exact identity); the Hypothesis and Lever name that provenance so the claim is never thin (a bare "trained draft head" → "EAGLE-3 head obtained `<id>`" or "trained here on `<corpus>`"); a short line of prose is fine where a bullet cannot carry the plan
 
+## Fanout - generating the next round
+Generate hypotheses from the campaign's kernel instead of waiting for them; pre-registration gates everything. Full mechanics, kernel definition, perturbation operators, portfolio rule in `references/fanout.md`.
+- **Two scales** - a single specific hypothesis on request, or a persona-driven `E<batch>` fanout; ask the user for scale (probe 3-5 / round 8-12 / batch 15-25) and persona, recommending both from the log state
+- **User's framework is the generative seed (key)** - a user-dictated framework (hypothesis, mechanism, lever, area, hunch) is what the fanout generates FROM - perturbed by the operators, extrapolated, explored creatively around; never filed as just one more candidate
+- **Personas** - pluggable hypothesisers in `generators/` (follower, contrarian, heretical, hybridizer, mechanist, deflationist, scout); each an exploration policy with an expected verdict signature that self-tests the round - read the chosen file before generating
+- **Kernel first** - fanout requires the log's typed interface: channel vocabulary, lever record (forcing + decay + cost), metric panel + naive baseline, verdict protocol; elicit it into Methodology on the first fanout - ask the author, never invent channels
+- **Pre-registration is the prerequisite** - every generated hypothesis, single or batch, is proposed via the pre-registration table and signed off BEFORE it is appended to the log or executed; dedupe against the global H-ordinal registry and a cheap kill-gate pass run before the proposal
+
 ## SOTA document - section order
 The conclusion doc; mirror `examples/wmd-docdistance-sota.md`, carry surviving components only, cross-link the log as evidence. Full section order and each section's must-have in `references/sota-document.md`: Title+marker → Abstract → Problem → Solution → Pipeline → Mechanism (mandatory, LaTeX + why-not) → Performance → Setup → Methods of measurement → Throughput/footprint → Limitations → FAQ → Implementation → Conclusions → Bibliography → Appendix: reference build. Drop a section only when the design has nothing for it.
 
@@ -118,4 +127,5 @@ Read the closest match before writing; mirror its section order.
 - Model roles - theorise and plan the test on the strongest model (the plan must carry context for the executor); execute on opus by default, ask the user which model runs the experiments when cost or scale warrants; record the execution model in the Experiment block
 - Maths - equations liberally, not prose where a formula is exact; unicode glyphs inline for copy-paste (`τ(i) = Σⱼ Tᵢⱼ·posⱼ / Σⱼ Tᵢⱼ`, `√(2 − 2cos)`); every full/display equation as a separated `$$…$$` block on its own line (blank line above/below) in the Mechanism section - these are rasterised to images for surfaces that do not run MathJax (Medium, DOCX); never `$…$` inline in a sentence, never a standalone maths section
 - Sanitise - no client/customer name ("private dataset"); no em-dashes, unicode arrows (→), escape `\$`
+- Fanout is pre-registration-gated - no generated hypothesis (single or batch) is appended or executed before the user signs off its prediction + acceptance bar; personas in `generators/`, mechanics in `references/fanout.md`
 - Append-only - new rounds at the end; never rewrite a recorded verdict

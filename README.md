@@ -148,7 +148,7 @@ Includes 60+ production SVG examples, 13 CLI tools (6 validators + 7 calculators
 
 Enforces data science project standards derived from production notebook workflows. Five skills auto-trigger when working with notebooks, datasets, rich output, prompts, or progress bars. Nine commands fix existing code, scaffold new projects, and apply prompt engineering techniques.
 
-**Skills**: `datascience` (project conventions), `notebook-standards` (section order, GPU-first, rich colours + equation references), `prompt-engineering` (7 research-backed techniques), `progressbars` (tqdm/rich)
+**Skills**: `datascience` (project conventions), `notebook-standards` (section order, GPU-first, rich colours + equation references), `prompt-engineering` (7 research-backed techniques), `progressbars` (tqdm/rich), `hypothesis` (experiments log + SOTA doc, pre-registered fanout of the next round via persona generators)
 
 ### Usage
 
