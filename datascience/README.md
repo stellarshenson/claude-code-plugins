@@ -23,9 +23,10 @@ Unlike ad-hoc notebook cleanups, this plugin treats the notebook as a standardis
 | `/datascience:apply-style` | Apply rich output styling - colours, print patterns, missing formatting |
 | `/datascience:apply-progressbar` | Add or fix progress bars, choosing classic (tqdm) or modern (rich) |
 | `/datascience:apply-footnotes` | Add JupyterLab-compatible footnotes using the anchor-link pattern |
-| `/datascience:apply-prompt-technique` | Apply a prompt engineering technique to a prompt, system instruction, or agent definition |
+| `/datascience:update-prompt` | Update a prompt, system instruction, or agent definition by applying a prompt engineering technique |
 | `/datascience:challenge` | Full psychological prompting stack for difficult problems - stakes, incentive, competitive framing |
 | `/datascience:hypothesis` | Write or extend a hypothesis-driven experiments log and its SOTA design doc - record a round, fan out the next one, or conclude the design |
+| `/datascience:popular-science` | Create or update an accessible, well-sourced popular-science article or explainer from technical work - spine, sourced-and-numbered claims, best-in-class figures, arc-back kicker |
 
 ## Skills
 
@@ -54,7 +55,7 @@ The `prompt-engineering` skill ships seven research-backed techniques. Each refe
 | 6 | Self-Refine | Code, documents, iterative quality improvement |
 | 7 | Rephrase and Respond | Ambiguous requirements, multi-part questions |
 
-Use `/datascience:apply-prompt-technique` to pick and apply a technique to an existing prompt, or `/datascience:challenge` to apply the full psychological stack.
+Use `/datascience:update-prompt` to pick and apply a technique to an existing prompt, or `/datascience:challenge` to apply the full psychological stack.
 
 ## Hypothesis-driven documentation
 

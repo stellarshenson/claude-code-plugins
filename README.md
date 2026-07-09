@@ -165,8 +165,8 @@ Enforces data science project standards derived from production notebook workflo
 # Add or fix progress bars (choose tqdm or rich)
 /datascience:apply-progressbar notebooks/02-kj-train.py
 
-# Apply prompt engineering technique (CoT, CoD, ToT, few-shot, etc.)
-/datascience:apply-prompt-technique
+# Update a prompt by applying a technique (CoT, CoD, ToT, few-shot, etc.)
+/datascience:update-prompt
 
 # Full psychological prompting stack for hard problems
 /datascience:challenge

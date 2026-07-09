@@ -1,12 +1,12 @@
 ---
-description: Apply a prompt engineering technique to improve a prompt, system instruction, or agent definition
+description: Update a prompt, system instruction, or agent definition by applying a research-backed prompt engineering technique
 allowed-tools: [Read, Write, Edit, Glob, Grep, Skill, AskUserQuestion]
-argument-hint: "describe the prompt or task to improve"
+argument-hint: "the prompt to update, or the task to improve"
 ---
 
-# Apply Prompt Engineering Technique
+# Update Prompt
 
-Take an existing prompt (or task description) and apply a research-backed technique to improve it.
+Take an existing prompt (or task description) and update it by applying a research-backed prompt engineering technique.
 
 ## Step 1: ASK the user
 
