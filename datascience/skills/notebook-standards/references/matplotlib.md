@@ -11,7 +11,7 @@ Resource for the `notebook-standards` skill. How to write good matplotlib figure
 ## Figure creation
 
 - **figsize** - inches, set at creation `plt.subplots(figsize=(10, 6))`; pixels = dpi × inches, so a 4×3 at dpi 300 is 1200×900 px
-- **constrained_layout=True** - default it on; auto-spaces labels, titles and colorbars so nothing overlaps or clips (replaces manual `tight_layout()` / `subplots_adjust`)
+- **constrained_layout=True** - default it on; auto-spaces labels, titles and colorbars so nothing overlaps or clips (replaces manual `tight_layout()` / `subplots_adjust`) - the exception is a full-width figure, which turns it off and sets margins by hand (see Full-width figures)
 - **dpi** - screen/notebook 72-100, web 150, print 300; only bites on export, inline uses the notebook's own dpi
 
 ## Plot types (one call each)
@@ -29,6 +29,16 @@ Resource for the `notebook-standards` skill. How to write good matplotlib figure
 - Grid: `fig, axes = plt.subplots(2, 2, figsize=(12, 10), constrained_layout=True)` → index `axes[r, c]`
 - Named / uneven: `plt.subplot_mosaic([["left", "top"], ["left", "bottom"]])` → index `axes["left"]`
 - Full control: `GridSpec` for spanning cells (`gs[0, :]` top row, `gs[1:, 0]` first column of lower rows)
+
+## Full-width figures (span the frame)
+
+Make a figure render edge-to-edge across the notebook output (or a README image) - the aspect ratio sets how wide it renders, and you reserve the margins yourself instead of letting matplotlib pad ~12% of dead space on each side.
+
+- **Wide figsize drives the width** - landscape aspect renders wide inline: single narrative panel ~1.65:1 (`figsize=(9.4, 5.6)`, `(11, 6.7)`, `(14, 6)`); a 1xN panel strip goes very wide (`(18.5, 5.0)` for 1x4); a heatmap ~2:1 (`(15.2, 7.2)`)
+- **Panel grid** - after `plt.subplots(1, 4, figsize=(18.5, 5))`, call `fig.subplots_adjust(left=0.05, right=0.99, top=0.80, bottom=0.13, wspace=0.13)` so the panels fill the full width; `top` / `bottom` reserve room for a title+subtitle and a caption, `wspace` sets the inter-panel gap
+- **Single axes / heatmap** - place the axes by hand: `ax = fig.add_axes([left, bottom, w, h])` with `left` ≈ 0.10-0.12 (room for the y-label) and `w` ≈ 0.85 so the right edge lands near 0.97; give a colorbar its own thin rect hugging the edge `fig.add_axes([0.972, bottom, 0.010, h])` so no gap opens between plot and bar
+- **`constrained_layout` OFF here** - it re-adds automatic margins and shrinks the axes back, undoing the fill; manual `subplots_adjust` / `add_axes` is what buys the edge-to-edge span. Left-aligned titles (`ax.set_title(..., loc="left", pad=38)`) and captions (`fig.text(x, -0.02, ...)`) then live in the reserved top / bottom bands
+- **Analysis vs presentation** - inline analysis figures keep `constrained_layout=True` and default margins; reach for hand-set margins only when the figure is presentation-grade and must span the width
 
 ## Colormaps - pick by data kind
 

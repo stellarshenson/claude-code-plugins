@@ -219,6 +219,7 @@ Plots render inline in the notebook - the `.ipynb` itself is the artefact. Do NO
 Object-oriented API only - `fig, ax = plt.subplots(figsize=(w, h), constrained_layout=True)`, then `ax.` calls; the pyplot state machine silently draws onto the wrong axes in saved code.
 
 - **`constrained_layout=True`** - default it on; auto-spaces labels, titles and colorbars so nothing overlaps or clips
+- **Full-width figures** - to span the notebook width edge-to-edge, use a wide landscape `figsize` and reserve the margins by hand (`fig.subplots_adjust(left=0.05, right=0.99, ...)` for a panel grid, or `fig.add_axes([...])` for a single axes) with `constrained_layout` off; see `references/matplotlib.md`
 - **Colormaps by data kind** - sequential (`viridis`) for magnitudes, diverging (`coolwarm`) for centred data, qualitative (`tab10`) for categories; never `jet`, default to colourblind-safe `viridis` / `cividis`
 - **Reuse the palette** - semantic hexes (primary `#3498DB`, secondary `#E74C3C`, tertiary `#2ECC71`) live in `references/rich-output.md`; don't invent a parallel one
 - Full conventions - plot-type quick reference, subplots, styling, saving, gotchas - in `references/matplotlib.md`
