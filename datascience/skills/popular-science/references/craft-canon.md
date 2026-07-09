@@ -15,6 +15,7 @@ The industry best practices to write to, and the anti-patterns to avoid, distill
 - **Head-to-tail transitions** - echo a word or idea from a paragraph's last sentence in the next paragraph's first, so the seams disappear (The Open Notebook, "Good Transitions")
 - **Structure before drafting** - outline what each paragraph does before writing prose; most writing problems are structure problems, not sentence problems (Ed Yong, craft interview)
 - **The kicker** - end on a line that lands: short words, a callback to the opening image or question, full circle with a twist. The best endings echo the beginning in an essential but surprising way (The Open Notebook, "Good Endings: How to Write a Kicker"). Then conclusions, then next steps where the work continues
+- **Emphasis and resting points** - lift the single most load-bearing line of a section into a *pull quote* (lift-out / call-out): a sentence pulled from the body and set apart - larger, italic, centred - to draw the eye and give the reader a place to pause. Bold a few load-bearing phrases in the running prose. Both are seasoning: a handful across a whole piece, on the lines that carry the argument, never a page of them (magazine layout; NN/g, emphasis and scannability)
 
 ## Writing - anti-patterns
 - **Jargon as a flex** - convoluted prose reads as hiding a weak grasp, not as authority
@@ -24,6 +25,7 @@ The industry best practices to write to, and the anti-patterns to avoid, distill
 - **The buried lede** - throat-clearing or a definition before the hook
 - **An ending that stops** - a limp restatement, no callback, no forward hook
 - **The naked claim** - an assertion with neither a named source nor a number, asking the reader to just believe it
+- **Emphasis inflation** - bold scattered through every paragraph, or a pull quote every screen; when everything is emphasised nothing is. Reserve both for the few lines that bear the weight
 
 ## Visuals - best practices
 - **Match the chart to the message** - deviation, correlation, ranking, distribution, change-over-time, part-to-whole, magnitude, spatial, flow (FT Visual Vocabulary)

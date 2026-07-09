@@ -36,6 +36,19 @@ Turn technical work into an article a curious, busy non-specialist reads to the 
 - **Generate figures via `svg-infographics:svg-designer`** - hand it the one message and the data; do not hand-roll a messy chart
 - **A missing figure is a defect too** - if the prose strains to describe a relationship, name the one diagram that would carry it
 
+## Emphasis and pacing
+Give the eye resting points and let the load-bearing lines stand out - a few across a whole piece, never a page of them (full rule in `references/craft-canon.md`).
+- **Pull quote** - lift the one line worth carrying out of a section and set it centred + italic, just large enough to lift off the page. On GitHub inline font-size is stripped, so a centred heading is the only way to get "larger" - use a level-4 `####` (one size smaller than a `###`, which competes with the section titles):
+  ```
+  <div align="center">
+
+  #### *The one line worth carrying out of this section.*
+
+  </div>
+  ```
+  Once or twice in a whole article, on the most load-bearing line. It joins GitHub's auto-outline; if that clutters the TOC, drop the `#` for plain centred italic (same look, no size bump)
+- **Bold** - a few load-bearing phrases in the running prose, chosen not scattered; when everything is bold nothing is
+
 ## Workflow
 1. **Frame** - name the single reader (which non-specialist) and the one thing they should carry away. Everything serves that
 2. **Source** - for every empirical claim, get its `(Author, year)` and its number. When a paper is cited, follow the `datascience:papers` skill: download the PDF and write its digest into `references/papers/` - a cited-but-undigested paper is a defect
