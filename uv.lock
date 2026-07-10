@@ -3367,7 +3367,7 @@ wheels = [
 
 [[package]]
 name = "stellars-claude-code-plugins"
-version = "1.6.13"
+version = "1.6.14"
 source = { editable = "." }
 dependencies = [
     { name = "beziers" },

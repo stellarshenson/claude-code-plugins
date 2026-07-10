@@ -55,6 +55,16 @@ Make a figure render edge-to-edge across the notebook output (or a README image)
 - Annotate a point: `ax.annotate("note", xy=(x, y), xytext=(x1, y1), arrowprops=dict(arrowstyle="->"))`
 - Brand / semantic hexes (primary `#3498DB`, secondary `#E74C3C`, tertiary `#2ECC71`) live in `rich-output.md` - reuse them, do not invent a parallel palette
 
+## Labelling key points (value pins)
+
+Put a hard number directly on a curve at a key x - readable against gridlines and neighbouring lines without a heavy opaque box, by giving the label a semi-transparent background that matches the plot's own background.
+
+- **Reusable bbox** - define the style once, reuse on every label: `PIN = dict(boxstyle="round,pad=0.15", facecolor=BG, edgecolor="none", alpha=0.85)`, where `BG` is the axes / figure background colour
+- **Why it reads** - `facecolor=BG` + `edgecolor="none"` makes the box a soft cut-out of the background, not a bordered label; `alpha=0.85` lets gridlines faintly through so the number sits in the plot yet stays legible
+- **Apply** - `ax.annotate(f"${y:,.0f}", xy=(x, y), xytext=(x*1.04, y*1.06), color=SERIES, fontsize=8, fontweight="bold", ha="left", va="bottom", bbox=PIN, zorder=6)`
+- **Colour to the series** - set the label `color` to its line's colour so the number ties to the right curve; nudge it off the point with `xytext` and `ha` / `va`
+- **High `zorder`** - pin the label above the lines and grid (`zorder=6`) so it never hides behind them
+
 ## Saving (only when the user asks - see the Figures section)
 
 - `fig.savefig("reports/figures/<name>.png", dpi=150, bbox_inches="tight")` - `bbox_inches="tight"` trims surrounding whitespace
