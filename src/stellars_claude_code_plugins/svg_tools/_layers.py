@@ -33,6 +33,28 @@ AUXILIARY_GROUPS: tuple[str, ...] = (
 )
 
 
+def is_backplate_geometry(
+    x: float, y: float, w: float, h: float, canvas_w: float, canvas_h: float
+) -> bool:
+    """True when a rect covers ~the whole canvas from ~the origin.
+
+    The full-canvas background plate is layout chrome, not a card:
+    treating it as a card/container reads every connector endpoint as
+    "inside" it and every box as "overlapping" it. Geometry-first so the
+    rule holds for transparent, solid AND gradient plates regardless of
+    naming - the fill/id conventions are honoured separately by the
+    checkers that also accept them.
+    """
+    if canvas_w <= 0 or canvas_h <= 0:
+        return False
+    return (
+        w >= 0.92 * canvas_w
+        and h >= 0.92 * canvas_h
+        and x <= 0.04 * canvas_w
+        and y <= 0.04 * canvas_h
+    )
+
+
 def parse_layer_list(raw: str | None) -> tuple[str, ...]:
     """Parse a comma-separated layer list; validates against the canon.
 

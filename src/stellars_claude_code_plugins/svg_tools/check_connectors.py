@@ -91,16 +91,72 @@ def _parse_points(points_str: str) -> list[tuple[float, float]]:
     return [(nums[i], nums[i + 1]) for i in range(0, len(nums) - 1, 2)]
 
 
-def _is_card_element(el) -> bool:
+_BG_TOKENS = ("bg", "background", "backplate", "backdrop", "backing", "banner", "plate", "canvas")
+_BG_LAYER_TOKENS = ("bg", "background", "backplate", "backdrop", "backing")
+
+
+def _ident_tokens(el) -> list[str]:
+    ident = f"{el.get('id') or ''} {el.get('class') or ''}".lower()
+    return [t for t in re.split(r"[^a-z0-9]+", ident) if t]
+
+
+def _is_background_context(el) -> bool:
+    """True when the element is a background/backplate layer group - the
+    scaffold's canonical ``<g id="background">`` (or a bg/backdrop class).
+    Every rect under it is a backplate, never a card."""
+    return any(t in _BG_LAYER_TOKENS for t in _ident_tokens(el))
+
+
+def _canvas_size(root) -> tuple[float, float]:
+    """Canvas width/height from viewBox (preferred) or width/height attrs."""
+    vb = (root.get("viewBox") or "").strip()
+    if vb:
+        parts = re.split(r"[ ,]+", vb)
+        if len(parts) == 4:
+            return _safe_float(parts[2]), _safe_float(parts[3])
+    return _safe_float(root.get("width")), _safe_float(root.get("height"))
+
+
+def _is_background_rect(el, canvas_w: float, canvas_h: float) -> bool:
+    """A full-canvas backplate is never a card - the transparent backplate OR
+    the one legitimate full-bleed gradient/solid banner plate. Treating it as
+    a card puts every connector endpoint "inside a card" and floods edge-snap
+    with false positives (the failure this guard exists to prevent). Detected
+    four ways so no fill style slips through:
+      - id/class marker (bg / background / backplate / banner / plate / canvas)
+      - fill transparent / none (attr or style) or fill-opacity 0
+      - geometry: covers ~the whole canvas from ~the origin (ANY fill - a solid
+        or gradient full-bleed plate is still a backplate, not a card)
+    """
+    if any(t in _BG_TOKENS for t in _ident_tokens(el)):
+        return True
+    fill = (el.get("fill") or "").strip().lower()
+    style = (el.get("style") or "").replace(" ", "").lower()
+    if fill in ("transparent", "none") or "fill:none" in style or "fill:transparent" in style:
+        return True
+    if _safe_float(el.get("fill-opacity"), 1.0) == 0.0 or "fill-opacity:0" in style:
+        return True
+    if canvas_w > 0 and canvas_h > 0:
+        w, h = _safe_float(el.get("width")), _safe_float(el.get("height"))
+        x, y = _safe_float(el.get("x")), _safe_float(el.get("y"))
+        if (
+            w >= 0.92 * canvas_w
+            and h >= 0.92 * canvas_h
+            and x <= 0.04 * canvas_w
+            and y <= 0.04 * canvas_h
+        ):
+            return True
+    return False
+
+
+def _is_card_element(
+    el, canvas_w: float = 0.0, canvas_h: float = 0.0, in_background: bool = False
+) -> bool:
+    if in_background or _is_background_rect(el, canvas_w, canvas_h):
+        return False
     css_class = (el.get("class") or "").lower()
     if "card" in css_class or "box" in css_class:
         return True
-    # The transparent backplate (house rule: full-canvas rect with
-    # fill="transparent"/"none") is not a card - treating it as one makes
-    # every connector endpoint "inside a card" and floods edge-snap with
-    # false positives.
-    if (el.get("fill") or "").strip().lower() in ("transparent", "none"):
-        return False
     return _safe_float(el.get("width")) > 50 and _safe_float(el.get("height")) > 50
 
 
@@ -310,11 +366,12 @@ def parse_svg(
     labels: list[TextLabel] = []
     arrowheads: list[Arrowhead] = []
 
-    # (element, in_icon_group, under_scaling_transform) depth-first walk so
-    # ancestor context is known when classifying.
-    stack = [(root, _is_icon_context(root), _has_transform(root))]
+    canvas_w, canvas_h = _canvas_size(root)
+    # (element, in_icon_group, under_scaling_transform, in_background_layer)
+    # depth-first walk so ancestor context is known when classifying.
+    stack = [(root, _is_icon_context(root), _has_transform(root), _is_background_context(root))]
     while stack:
-        el, in_icon, scaled = stack.pop()
+        el, in_icon, scaled, in_bg = stack.pop()
         # Hidden subtrees (guide-grid and other display="none" authoring
         # aids) are not rendered - their lines must not classify as
         # connectors or the guide grid floods every check with phantoms.
@@ -331,11 +388,12 @@ def parse_svg(
                     child,
                     in_icon or _is_icon_context(child),
                     scaled or _has_transform(child),
+                    in_bg or _is_background_context(child),
                 )
             )
         tag = _strip_ns(el.tag)
         connector_candidate = not in_icon and not scaled
-        if tag == "rect" and _is_card_element(el):
+        if tag == "rect" and _is_card_element(el, canvas_w, canvas_h, in_bg):
             x, y = _safe_float(el.get("x")), _safe_float(el.get("y"))
             w, h = _safe_float(el.get("width")), _safe_float(el.get("height"))
             if w > 0 and h > 0:

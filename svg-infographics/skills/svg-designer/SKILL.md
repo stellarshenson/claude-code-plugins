@@ -58,18 +58,20 @@ Every visible pixel traces back to a CLI call:
 - `overlaps` / `contrast` / `alignment` / `connectors` / `css` / `validate` / `collide` - per-defect validators, rolled up by `finalize`
 - `render-png` - SVG → PNG via Playwright
 
-## Toolchain gate (refuse only if the library is unavailable - every session, no asking)
+## Toolchain gate (reinstall every session, refuse only if the library is unavailable - no asking)
 
-Run BEFORE anything else - no-op when the package imports, installs only when missing or when a stale shim shadows an uninstalled package:
+Run BEFORE anything else, and ALWAYS upgrade. A stale-but-importable version is the exact failure this gate exists to prevent - an old CLI silently runs old validators (e.g. a pre-1.6.16 connector checker that mis-flags the full-canvas background plate as a card and floods edge-snap). An `import ... || install` guard never upgrades a version that already imports, so force the reinstall unconditionally:
 
 ```bash
-python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>/dev/null
+python3 -c "import stellars_claude_code_plugins" 2>/dev/null || { echo "svg-infographics CLI unavailable"; exit 1; }
 ```
 
 Then verify the CLI runs: `svg-infographics --help`.
 
-- **Refuse to start** only when the library is unavailable - the import fails AND the install cannot fix it, so `svg-infographics --help` still errors. Report the error and stop; there is no fallback, because every rule here assumes the CLI and a hand-built SVG without the geometry tools and validators is exactly the defect class the toolchain prevents.
-- A failed *upgrade* is NOT a refusal condition - offline or PyPI unreachable while the CLI still imports means run at the installed version. The plugin ships at the library's version, so any installed library is a compatible one; being one release behind is fine, an absent library is not.
+- **The upgrade always runs** - every session reinstalls to the latest so the validators match the current rules; never skip it because the package is already present, that is how a stale checker survives
+- **Refuse to start** only when the library is unavailable after the reinstall attempt - the import still fails, so `svg-infographics --help` still errors. Report the error and stop; there is no fallback, because every rule here assumes the CLI, and a hand-built SVG without the geometry tools and validators is exactly the defect class the toolchain prevents
+- A failed *upgrade* is NOT a refusal condition - offline or PyPI unreachable while the CLI still imports means run at the installed version; the reinstall was attempted, which is what matters. An absent library is fatal, a one-release-behind one that could not reach PyPI is not
 
 ## First steps (every session)
 

@@ -17,6 +17,7 @@ Maintain two research docs: a canonical **experiments log** (every hypothesis wi
 - Read the closest `examples/` doc first, mirror its section order - do not invent structure
 - Open the canonical doc before writing - find the last round, append the next
 - Generating hypotheses (single or a fanout batch) - ask scale + persona, pre-register before anything lands or runs; see the Fanout section
+- Updating an existing hypothesis (a re-run, a fix, a changed threshold) - append a `log:` line to its Log; the original Result and Verdict stay as recorded, a verdict flip becomes a new round
 - Before concluding a SOTA - suggest an ablative study of the strongest hypothesis or all survivors, to measure each component's marginal worth and settle the final design; see `references/execution-and-ablation.md`
 - Draft, then re-read; cut any sentence a table or number carries faster
 
@@ -32,7 +33,7 @@ The log is one durable file many runs append to - the system of record, not a fr
 - **Stable location** - `docs/experiments/<project>-experiments.md` (log), `docs/<project>-sota.md` (design); one of each per track, named for the track not the date
 - **Secondary-title marker** - under the H1, every canonical doc carries `**Canonical Experiments Document**` (log) or `**Canonical SOTA Document**` (design); marks the system of record so the skill recognises it beyond the filename
 - **Find it first** - `Glob docs/**/*experiments*.md` and `*sota*.md`, confirm by the marker (a marked doc is canonical even if the filename misses the glob); append to it, never start a parallel doc for the track
-- **Append-only** - each run adds its round at the end (`E<batch>` / `R<round>`), monotonic numbering; a recorded verdict is immutable - later evidence is a new round that supersedes it with a one-line back-reference; never renumber or rewrite an old round
+- **Append-only** - each run adds its round at the end (`E<batch>` / `R<round>`), monotonic numbering; a recorded verdict is immutable - later evidence is a new round that supersedes it with a one-line back-reference; never renumber or rewrite an old round; within a hypothesis, a dated **Log** records its own re-runs and changes append-only (`log:` lines, newest at the bottom), and a verdict flip still spawns a new round
 - **SOTA on convergence** - rewrite the SOTA doc only when the winning design changes; it carries surviving components only
 - **Cross-link the pair** - SOTA doc states the design, log proves it; each names the other by path
 - **Sanitise every run** - no client/customer name (use "private dataset"); private data paths stay git-ignored
@@ -71,6 +72,16 @@ Each hypothesis opens with a one-paragraph **overview** (why this hypothesis, wh
 - **Experiment** - the regime, recorded so it re-runs, as `<br>`-separated lowercase-labelled sub-lines whose labels fit the problem (a GPU study uses `setup:` / `models:` / `harness:` / `baseline:`; a lab or field study `apparatus:` / `materials:` / `sample:` / `procedure:` / `control:`; a data study `dataset:` / `method:` / `split:` / `source:`); include the labels that bear on the hypothesis, skip the rest - decided case-by-case. Invariants when they apply: the execution artefact (the notebook / script / protocol that runs THIS hypothesis, never a shared doc-level one that runs a different workload), the provenance of any artefact used - produced / collected here (how) or obtained externally (exact identity) - so a label never hides where a thing came from, the source / prior work the hypothesis derives from (a paper → digest + original, see the source rule), and the model an agent runs the experiment on. When the author alone knows a field, ask - never invent a plausible identity, path, parameter, or number
 - **Result** - measured numbers, including the swept parameter and the guardrail reading; `<br>` may separate logical blocks (decode vs prefill), the text otherwise byte-identical - a recorded Result is immutable, only a line break may be added
 - **Verdict** - one of Ships / Kept / Promoted / Dropped / Refuted / Refuted (null) / Killed-at-gate, with the number that justifies it
+- **Log** (optional) - a dated log of changes to THIS hypothesis - re-runs, fixes, threshold changes - one `log:` line per event, append-only, newest at the bottom: `log: YYYY-MM-DD - <change> - <result>`. Plain: date, change, result; a line may run longer when the change needs the detail - the why, what broke, what it means. The first Result and Verdict stay as recorded; a change that flips the verdict becomes a new round
+
+Log rendered under a hypothesis (append-only, newest at the bottom):
+
+```markdown
+- **Log**
+  - log: 2026-07-10 - first run, b128 - 2,910 tok/s, Refuted
+  - log: 2026-07-14 - re-ran after fixing the tokenizer padding that truncated long inputs - 3,050 tok/s, up from 2,910 but still under the 1.15x bar, verdict holds
+  - log: 2026-07-20 - batch 256 - 1.18x vLLM, clears the bar, new round E31-H120
+```
 
 Name each `E<batch>-H<n>` (docdistance uses `E01-H1`); the name states what is tested, never "try X". `E<batch>` groups 2-5 hypotheses.
 - **Global ordinal `<n>`** - one ascending series across all bundles, never reset (E1-H1..H3, E2-H4..H6); unique per hypothesis, trackable across the log
@@ -94,7 +105,7 @@ Name each `E<batch>-H<n>` (docdistance uses `E01-H1`); the name states what is t
 - **Mechanism, not data** - gate the feature inert where the mechanism is absent; test the mechanism, not memorised text
 - **Falsifiable probe** - measurement-only; never trains, never enters cross-validation
 - **Honest splits** - leave-one-X-out; no learner touches the fold it scores; name the headline split and why
-- **Size-dependent** - re-run as the data grows; never trust a single snapshot
+- **Size-dependent** - re-run as the data grows; never trust a single snapshot - record each re-run as a `log:` line in the hypothesis's Log so the trajectory stays visible, not overwritten
 - **Reproducible plan** - the hypothesis re-runs from its own text: the Experiment block links the notebook / script / protocol that tests it, links the digest and original of any paper it derives from, and states the provenance of any artefact used (produced here + how, or obtained externally + exact identity); the Hypothesis and Lever name that provenance so the claim is never thin (a bare "trained draft head" → "EAGLE-3 head obtained `<id>`" or "trained here on `<corpus>`"); a short line of prose is fine where a bullet cannot carry the plan
 
 ## Fanout - generating the next round
@@ -129,4 +140,4 @@ Read the closest match before writing; mirror its section order.
 - Maths - equations liberally, not prose where a formula is exact; unicode glyphs inline for copy-paste (`τ(i) = Σⱼ Tᵢⱼ·posⱼ / Σⱼ Tᵢⱼ`, `√(2 − 2cos)`); every full/display equation as a separated `$$…$$` block on its own line (blank line above/below) in the Mechanism section - these are rasterised to images for surfaces that do not run MathJax (Medium, DOCX); never `$…$` inline in a sentence, never a standalone maths section
 - Sanitise - no client/customer name ("private dataset"); no em-dashes, unicode arrows (→), escape `\$`
 - Fanout is pre-registration-gated - no generated hypothesis (single or batch) is appended or executed before the user signs off its prediction + acceptance bar; personas in `generators/`, mechanics in `references/fanout.md`
-- Append-only - new rounds at the end; never rewrite a recorded verdict
+- Append-only - new rounds at the end; never rewrite a recorded verdict; a hypothesis's Log is likewise append-only - re-runs and changes are new `log:` lines, never edits to old ones

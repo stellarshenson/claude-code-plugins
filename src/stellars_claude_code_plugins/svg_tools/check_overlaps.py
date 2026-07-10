@@ -35,6 +35,7 @@ ROLE_PADDING: dict[str, float] = {
     "accent-bar": 0,  # structural, flush with card top
     "bg-fill": 0,
     "background": 0,
+    "backplate": 0,  # full-canvas plate, excluded from overlap findings
     "milestone": 6,
     "divider": 4,
     "track-line": 4,
@@ -405,6 +406,22 @@ def _strip_ns(tag: str) -> str:
     return tag.replace(f"{{{SVG_NS}}}", "")
 
 
+def _canvas_size(root) -> tuple[float, float]:
+    """Canvas width/height from viewBox (preferred) or width/height attrs."""
+    vb = (root.get("viewBox") or "").strip()
+    if vb:
+        parts = re.split(r"[ ,]+", vb)
+        if len(parts) == 4:
+            try:
+                return float(parts[2]), float(parts[3])
+            except ValueError:
+                pass
+    try:
+        return float(root.get("width") or 0), float(root.get("height") or 0)
+    except ValueError:
+        return 0.0, 0.0
+
+
 def _compute_local_bbox_recursive(el) -> BBox | None:
     """Recursively compute bounding box of an element in its local coordinate space.
 
@@ -540,7 +557,12 @@ def parse_svg(filepath: str) -> list[Element]:
             if desc is not el:
                 processed_descendants.add(id(desc))
 
-    from stellars_claude_code_plugins.svg_tools._layers import CANONICAL_LAYERS
+    from stellars_claude_code_plugins.svg_tools._layers import (
+        CANONICAL_LAYERS,
+        is_backplate_geometry,
+    )
+
+    canvas_w, canvas_h = _canvas_size(root)
 
     for child in root.iter():
         # skip already-processed descendants of groups
@@ -614,6 +636,22 @@ def parse_svg(filepath: str) -> list[Element]:
 
             fill = get_attr(child, "fill", "")
             opacity = get_attr(child, "opacity", "1")
+
+            # full-canvas background plate (geometry-first: holds for
+            # transparent, solid AND gradient fills) - a backplate is
+            # never a card/container and never an overlap participant
+            if is_backplate_geometry(x, y, w, h, canvas_w, canvas_h):
+                elements.append(
+                    Element(
+                        tag="rect",
+                        label=f"backplate {fill or 'transparent'}",
+                        bbox=BBox(x, y, w, h),
+                        section=current_section,
+                        role="backplate",
+                        parent_bg=current_bg,
+                    )
+                )
+                continue
 
             # detect background strip rects (full-width)
             if w >= 780:
