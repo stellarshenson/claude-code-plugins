@@ -7,6 +7,7 @@ The pre-registration and finding tables the skill states back in the conversatio
 - The ID cell carries the numeric id and, where the cell has room, the 2-3 part memory slug (`E30-H106 turbomind-throughput`); the numeric id is primary, the slug aids memory
 - A batch may carry a 3-part focus slug in the table heading (`E30 serving-engine-levers`)
 - Domain jargon is fine when each term rides with a plain companion a non-specialist gets; the prediction and falsifier keep exact numbers regardless
+- Add a **Probe first** column when any hypothesis in the batch has a cheap pre-experiment: the cell carries the quick screen plus its generous go/no-go gate, `-` when none; omit the column entirely when no hypothesis has a probe
 
 ## Technical register - jargon carried with a plain companion
 
@@ -14,19 +15,19 @@ Pre-registration, stated back for sign-off before any run; Verdict blank (pendin
 
 ### Pre-registration - E30 serving-engine-levers (before execution)
 
-| ID | Engine under test (claim) | Lever (one knob) | Prediction | Falsifier (acceptance bar) | Verdict |
-|----|---------------------------|------------------|------------|-----------------------------|---------|
-| E30-H106 turbomind-throughput | TurboMind (LMDeploy's optimized server) out-serves vLLM's int4 once many requests pile up at once | swap engine → TurboMind AWQ-int4 vs vLLM AWQ, batch 128, 7B model | TurboMind ≤ vLLM's ~2,957 honest tok/s - no real win | Refuted unless TurboMind ≥ 1.15× vLLM AWQ b128; killed-at-gate if it won't build on the sm_120 GPU | pending |
-| E30-H107 turbomind-batch1-ceiling | TurboMind's engine tricks push a single request past the speed ceiling every stack shares | LMDeploy batch-1 decode, 7B-int4, vs the stack-agnostic 213-226 tok/s band | lands inside the 213-226 tok/s band | Refuted unless batch-1 ≥ 250 tok/s; killed if it lands inside the band | pending |
+| ID | Engine under test (claim) | Lever (one knob) | Probe first | Prediction | Falsifier (acceptance bar) | Verdict |
+|----|---------------------------|------------------|-------------|------------|-----------------------------|---------|
+| E30-H106 turbomind-throughput | TurboMind (LMDeploy's optimized server) out-serves vLLM's int4 once many requests pile up at once | swap engine → TurboMind AWQ-int4 vs vLLM AWQ, batch 128, 7B model | 10-request smoke on the sm_120 GPU; go if it builds + ≥ 1.0× vLLM (generous) | TurboMind ≤ vLLM's ~2,957 honest tok/s - no real win | Refuted unless TurboMind ≥ 1.15× vLLM AWQ b128; killed-at-gate if it won't build on the sm_120 GPU | pending |
+| E30-H107 turbomind-batch1-ceiling | TurboMind's engine tricks push a single request past the speed ceiling every stack shares | LMDeploy batch-1 decode, 7B-int4, vs the stack-agnostic 213-226 tok/s band | 50-token batch-1 spot check; go if ≥ 210 tok/s | lands inside the 213-226 tok/s band | Refuted unless batch-1 ≥ 250 tok/s; killed if it lands inside the band | pending |
 
 Finding, same rows once results exist; Verdict filled with the number that justifies it.
 
 ### Finding - E30 serving-engine-levers (after execution)
 
-| ID | Engine under test (claim) | Lever (one knob) | Prediction | Falsifier (acceptance bar) | Verdict |
-|----|---------------------------|------------------|------------|-----------------------------|---------|
-| E30-H106 turbomind-throughput | TurboMind (LMDeploy's optimized server) out-serves vLLM's int4 once many requests pile up at once | swap engine → TurboMind AWQ-int4 vs vLLM AWQ, batch 128, 7B model | TurboMind ≤ vLLM's ~2,957 honest tok/s - no real win | Refuted unless TurboMind ≥ 1.15× vLLM AWQ b128; killed-at-gate if it won't build on the sm_120 GPU | Refuted (0.98× vLLM, 2,910 tok/s) |
-| E30-H107 turbomind-batch1-ceiling | TurboMind's engine tricks push a single request past the speed ceiling every stack shares | LMDeploy batch-1 decode, 7B-int4, vs the stack-agnostic 213-226 tok/s band | lands inside the 213-226 tok/s band | Refuted unless batch-1 ≥ 250 tok/s; killed if it lands inside the band | Refuted (221 tok/s, inside band) |
+| ID | Engine under test (claim) | Lever (one knob) | Probe first | Prediction | Falsifier (acceptance bar) | Verdict |
+|----|---------------------------|------------------|-------------|------------|-----------------------------|---------|
+| E30-H106 turbomind-throughput | TurboMind (LMDeploy's optimized server) out-serves vLLM's int4 once many requests pile up at once | swap engine → TurboMind AWQ-int4 vs vLLM AWQ, batch 128, 7B model | 10-request smoke on the sm_120 GPU; go if it builds + ≥ 1.0× vLLM (generous) | TurboMind ≤ vLLM's ~2,957 honest tok/s - no real win | Refuted unless TurboMind ≥ 1.15× vLLM AWQ b128; killed-at-gate if it won't build on the sm_120 GPU | Refuted (0.98× vLLM, 2,910 tok/s) |
+| E30-H107 turbomind-batch1-ceiling | TurboMind's engine tricks push a single request past the speed ceiling every stack shares | LMDeploy batch-1 decode, 7B-int4, vs the stack-agnostic 213-226 tok/s band | 50-token batch-1 spot check; go if ≥ 210 tok/s | lands inside the 213-226 tok/s band | Refuted unless batch-1 ≥ 250 tok/s; killed if it lands inside the band | Refuted (221 tok/s, inside band) |
 
 ## Plain register - named subject, no jargon needed
 
@@ -34,8 +35,8 @@ When the subject is a person or an everyday skill, the claim reads like a collea
 
 ### Finding - E01 (after execution)
 
-| ID | Hypothesis under test (claim) | Lever (one knob) | Prediction | Falsifier (acceptance bar) | Verdict |
-|----|--------------------------------|------------------|------------|-----------------------------|---------|
-| E01-H1 model-explainer | Konrad explains a model so a non-technical listener actually understands it | plain-analogy explanation vs raw scikit-learn docstring, same model + listener | comprehension C ≥ 4/5 in ≤ 3 min; docstring baseline ~1/5 | Refuted unless mean C ≥ 4.0 and explanation ≤ 3 min (killed if docstring alone ≥ 4/5) | Kept (mean C=4.3) |
-| E01-H2 debug-intuition | Konrad's debugging intuition reaches the fix faster than blind print() spam | hypothesis-first debugging vs print()-carpet-bomb, same bug set | median time S ≤ 0.5x baseline; 0 new regressions | Refuted unless median S ≤ 0.5x and 0 regressions introduced | Refuted (S=0.7×) |
-| E01-H3 estimate-calibration | Konrad's task-time estimates are actually calibrated, not optimistic | experience-anchored estimate vs flat '2 days' for everything, same tasks | hit rate E ≥ 60% within ±25%, bias within ±0.20; baseline E ≤ 20% | Refuted unless E ≥ 60% and bias within ±0.20 (bias guardrail catches optimism) | Refuted (E=41%) |
+| ID | Hypothesis under test (claim) | Lever (one knob) | Probe first | Prediction | Falsifier (acceptance bar) | Verdict |
+|----|--------------------------------|------------------|-------------|------------|-----------------------------|---------|
+| E01-H1 model-explainer | Konrad explains a model so a non-technical listener actually understands it | plain-analogy explanation vs raw scikit-learn docstring, same model + listener | 1-listener pilot; go if C ≥ 3/5 | comprehension C ≥ 4/5 in ≤ 3 min; docstring baseline ~1/5 | Refuted unless mean C ≥ 4.0 and explanation ≤ 3 min (killed if docstring alone ≥ 4/5) | Kept (mean C=4.3) |
+| E01-H2 debug-intuition | Konrad's debugging intuition reaches the fix faster than blind print() spam | hypothesis-first debugging vs print()-carpet-bomb, same bug set | 3-bug pilot; go if any speedup | median time S ≤ 0.5x baseline; 0 new regressions | Refuted unless median S ≤ 0.5x and 0 regressions introduced | Refuted (S=0.7×) |
+| E01-H3 estimate-calibration | Konrad's task-time estimates are actually calibrated, not optimistic | experience-anchored estimate vs flat '2 days' for everything, same tasks | - | hit rate E ≥ 60% within ±25%, bias within ±0.20; baseline E ≤ 20% | Refuted unless E ≥ 60% and bias within ±0.20 (bias guardrail catches optimism) | Refuted (E=41%) |
