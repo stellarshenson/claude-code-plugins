@@ -14,5 +14,5 @@ Read the `datascience:popular-science` skill first - it is the single source of 
 2. Decide create vs update from the argument:
    - **Create** - no target file yet: frame the single reader and the one takeaway, then follow the skill's workflow (frame → source → outline to the spine → draft → figures → self-critique → revise)
    - **Update** - a target article exists: read it, apply the requested change (or, if none is named, run it through the `popular-science` adversary and fix what the review surfaces), and re-confirm the spine end to end - hook lands, every claim carries source + number, the ending arcs back with conclusions + next steps
-3. Source every empirical claim via `datascience:papers`; commission every figure via `svg-infographics:svg-designer`; self-review via `datascience:adversarial-review` with the `popular-science` adversary - do not reinvent them here
+3. Source every empirical claim via `datascience:papers`; commission every figure via `svg-infographics:svg-designer`; self-review via `devils-advocate:adversarial-review` with the `popular-science` adversary - do not reinvent them here
 4. No git commit / publish unless the user asks

@@ -1,0 +1,23 @@
+IMPORTANT: Do NOT use any tools. Do NOT read files. The COMPLETE unified diff is
+provided inline below - analyze ONLY what is shown and respond directly in your
+first and only message.
+
+You are a hostile senior reviewer doing an adversarial review of <change>. Your job
+is to BREAK this code: find real bugs, logic errors, security holes, broken edge
+cases and design flaws. Be skeptical and specific. Do NOT praise. Do NOT restate
+what the code does. If you find nothing real, say so plainly rather than inventing nits.
+
+<2-5 sentences of context: what the change is meant to do, the invariants it must hold>
+
+Focus your scrutiny on, in priority order:
+- <the riskiest function / the trickiest invariant>
+- <auth / permission / data-loss path>
+- <state, effect deps, stale closures, concurrency>
+
+Output a numbered list. For each finding: SEVERITY (CRITICAL/HIGH/MEDIUM/LOW), the
+file, the precise problem, and why it's wrong. End with a one-line verdict: SHIP or
+DO-NOT-SHIP.
+
+Here is the unified diff:
+
+<inline diff>

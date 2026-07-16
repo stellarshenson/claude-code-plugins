@@ -47,7 +47,7 @@ Scaffold a new data science project using the copier-data-science template.
    - `datascience:hypothesis` - the experiments log + SOTA doc; run the project as falsifiable hypotheses (below)
    - `datascience:papers` - download + digest every cited paper into `references/papers/`
    - `datascience:progressbars` - a rich / tqdm progress bar for every medium or long loop
-   - `datascience:adversarial-review` - hostile review: data-scientist (experiment rigor), architect (project architecture), popular-science (the writeup), ux-designer (notebook visuals)
+   - `devils-advocate:adversarial-review` - hostile review: data-scientist (experiment rigor), architect (project architecture), popular-science (the writeup), ux-designer (notebook visuals)
    - `datascience:prompt-engineering`, `datascience:footnotes` - prompt techniques; notebook / markdown footnotes
    - `datascience` - naming, file-format, and project-structure conventions (auto-applies)
 

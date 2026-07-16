@@ -1,6 +1,6 @@
 # Craft canon - popular-science writing and visuals
 
-**Single source of truth.** This file is the shared standard for two skills: the `datascience:popular-science` writer composes from it, and the `popular-science` adversary in `datascience:adversarial-review` reviews against it. Edit HERE and both inherit the change - neither keeps a private copy. When the adversary runs without tools (Mode 1) this file is appended to its prompt; with tools (Mode 2) it reads this file directly.
+**Single source of truth.** This file is the shared standard for two skills in two different plugins: the `datascience:popular-science` writer composes from it, and the `popular-science` adversary in `devils-advocate:adversarial-review` reviews against it. The link is deliberately cross-plugin - the canon stays with the writer, and the adversary reaches across to it, so install both plugins to get the pair. Edit HERE and both inherit the change - neither keeps a private copy. When the adversary runs without tools (Mode 1) this file is appended to its prompt; with tools (Mode 2) it reads this file directly.
 
 The industry best practices to write to, and the anti-patterns to avoid, distilled from the field's standard references (cited below).
 

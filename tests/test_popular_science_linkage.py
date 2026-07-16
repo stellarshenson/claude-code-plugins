@@ -7,8 +7,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILL_DIR = ROOT / "datascience" / "skills" / "popular-science"
 CANON = SKILL_DIR / "references" / "craft-canon.md"
+# The adversary lives in the devils-advocate plugin; the canon it reviews against stays
+# with the writer in datascience. The link is deliberately cross-plugin - guard it here.
 ADVERSARY = (
-    ROOT / "datascience" / "skills" / "adversarial-review" / "adversaries" / "popular-science.md"
+    ROOT
+    / "devils-advocate"
+    / "skills"
+    / "adversarial-review"
+    / "adversaries"
+    / "popular-science.md"
 )
 
 

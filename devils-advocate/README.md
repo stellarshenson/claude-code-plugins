@@ -12,6 +12,8 @@ This plugin builds an adversarial persona for the document's actual toughest aud
 
 Unlike qualitative tools like [grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) or [Devil's Advocate Protocol](https://mcpmarket.com/tools/skills/devil-s-advocate-protocol), this plugin is semi-data-science: the devil is inferred from existing conversations / emails / meeting transcripts (or described manually), every concern gets a Fibonacci risk score, and each iteration produces a measurable residual so convergence is visible. Versioned files with embedded scorecards create an audit trail.
 
+The same hostility points at code. [`adversarial-review`](#adversarial-review---the-same-hostility-pointed-at-code) spawns fresh, context-free `claude -p` subprocesses that try to BREAK a change - a diff bug-hunt for the bugs inside a hunk, a whole-repo audit for the rot between files - seeded with any of nine expert adversaries. Same principle as the scorecard half: a critic with no attachment to the work, run until a confirming round comes back clean.
+
 ## Installation
 
 ```bash
@@ -36,6 +38,26 @@ Unlike qualitative tools like [grill-me](https://github.com/mattpocock/skills/tr
 | `devils-advocate:setup` | Invoked by `run` or directly | Persona construction and fact harvesting |
 | `devils-advocate:evaluate` | Invoked after setup | Concern catalogue and baseline scorecard |
 | `devils-advocate:iterate` | Invoked per improvement cycle | Improve, version, re-score, rename |
+| `devils-advocate:adversarial-review` | "adversarial review", "red-team this", "find bugs in my change", "audit the architecture", "review before ship" | Hostile review of code and artefacts by spawning fresh `claude -p` reviewers |
+
+## Adversarial review - the same hostility, pointed at code
+
+The scorecard workflow above attacks a *document*. `adversarial-review` attacks a *change*, and it does it by spawning fresh, context-free `claude -p` subprocesses as the reviewers. A second model with no attachment to the code catches what the author rationalises away.
+
+Two modes, composable with any adversary:
+
+- **Mode 1 - diff bug-hunt.** No tools, inline diff, one turn, fast. Finds bugs, logic errors, security holes, broken edge cases in a specific change
+- **Mode 2 - architecture & quality audit.** Tools on, whole-repo, many turns. Finds the systemic rot a diff cannot show - slop, brittle architecture, hardcodings, config drift, broken separation of concerns. The finding is usually a relationship across files, invisible in any one hunk
+
+The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer argues from. Nine ship under `skills/adversarial-review/adversaries/`, one self-contained persona prompt each: `architect`, `bug-hunter`, `qa-engineer`, `ux-designer`, `tui`, `data-scientist`, `methodologist`, `popular-science`, `devops`. The file IS the plugin - drop a new `adversaries/<name>.md` and it works, no registry, no wiring (contract in `skills/adversarial-review/references/authoring-an-adversary.md`).
+
+Reviews are **multi-round** by design: one pass finds, you triage and fix, then you re-run to prove the fix cleared it and opened no new hole. A single pass is a smoke test, not a verdict. Never flip a "survived adversarial review" criterion to done on the round that still had findings - only on a clean confirming round.
+
+The `popular-science` adversary reviews against the shared craft canon that the `datascience:popular-science` writer composes from (`datascience/skills/popular-science/references/craft-canon.md`), so critique and craft never drift. That link is deliberately cross-plugin - install `datascience` too if you want that pair.
+
+```bash
+/devils-advocate:adversarial-review the auth middleware change before I merge
+```
 
 ## Reference examples
 
@@ -75,3 +97,4 @@ Every concern is scored on Fibonacci likelihood x impact (1-64), and each iterat
 - `skills/evaluate/SKILL.md` - concern catalogue and scoring model
 - `skills/iterate/SKILL.md` - the four-step iterate loop and stop conditions
 - `skills/run/SKILL.md` - end-to-end wrapper
+- `skills/adversarial-review/SKILL.md` - the two modes, the rounds protocol, spawn mechanics and gotchas, and the nine pluggable adversaries

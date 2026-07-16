@@ -40,7 +40,7 @@ Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop
 | Plugin | What it solves |
 |--------|---------------|
 | [autobuild](autobuild/) | Executes code and artefact builds toward an objective with iterations driven by a calculated outcome benchmark - enforces structured phases with multi-agent review |
-| [devils-advocate](devils-advocate/) | Produces high-quality documents for a specific audience using a scientific, measured, iterative approach - quantified critique with Fibonacci risk scoring and per-iteration residual measurement |
+| [devils-advocate](devils-advocate/) | Produces high-quality documents for a specific audience using a scientific, measured, iterative approach - quantified critique with Fibonacci risk scoring and per-iteration residual measurement. Also red-teams code and artefacts via `adversarial-review` - fresh context-free `claude -p` reviewers, nine expert adversaries, multi-round until a confirming pass is clean |
 | [svg-infographics](svg-infographics/) | Produces high-quality standardised SVG infographics - grid-first design, theme-driven styling, dark/light mode, 5 routing modes (straight/L/L-chamfer/spline/manifold) with A* auto-routing, callout placement solver, chart generation, and 6 automated checkers |
 | [datascience](datascience/) | Produces high-quality data science projects and notebooks following consistent standards - scaffolds projects from copier templates, enforces notebook structure, applies rich output styling, and supports prompt engineering techniques |
 | [document-processing](document-processing/) | Processes documents according to user requests with grounding in source materials - source tracing, compliance checking, PDF automation |
@@ -88,9 +88,11 @@ See [autobuild/README.md](autobuild/) for the full phase lifecycle, agent archit
 
 Systematically critiques documents from the perspective of their toughest audience. Builds a devil persona, harvests verifiable facts, generates a risk-scored concern catalogue, and iterates corrections until residual risk is acceptable.
 
-**Skills**: `setup` (build persona + fact repository), `evaluate` (concern catalogue + baseline scorecard), `iterate` (apply corrections or re-score), `run` (full workflow end-to-end)
+**Skills**: `setup` (build persona + fact repository), `evaluate` (concern catalogue + baseline scorecard), `iterate` (apply corrections or re-score), `run` (full workflow end-to-end), `adversarial-review` (hostile review of code and artefacts)
 
 Risk scoring uses a Fibonacci scale (1-8) for likelihood and impact, producing risk scores from 1-64. Each concern is scored 0-100% on how well the document addresses it, and the residual risk (what remains unaddressed) drives iteration priority.
+
+`adversarial-review` turns the same hostility on code. It spawns fresh, context-free `claude -p` subprocesses as reviewers - Mode 1 hunts bugs inside a diff (no tools, one turn); Mode 2 audits the whole repo with tools on for the rot that lives between files (hardcodings, config drift, broken separation of concerns). Nine pluggable adversaries supply the expert lens - `architect`, `bug-hunter`, `qa-engineer`, `ux-designer`, `tui`, `data-scientist`, `methodologist`, `popular-science`, `devops` - and any adversary runs in either mode. Reviews are multi-round: find, fix, then re-confirm clean.
 
 ### Usage
 
@@ -102,9 +104,12 @@ Risk scoring uses a Fibonacci scale (1-8) for likelihood and impact, producing r
 /devils-advocate:setup       # Build persona, harvest facts
 /devils-advocate:evaluate    # Generate concerns + baseline scorecard
 /devils-advocate:iterate     # Apply corrections, re-score (repeat)
+
+# Red-team a change or a repo
+/devils-advocate:adversarial-review the auth middleware change before I merge
 ```
 
-See [devils-advocate/README.md](devils-advocate/) for scoring formula details, artefact format, and the full concern catalogue methodology.
+See [devils-advocate/README.md](devils-advocate/) for scoring formula details, artefact format, the full concern catalogue methodology, and the adversary roster.
 
 ## svg-infographics
 

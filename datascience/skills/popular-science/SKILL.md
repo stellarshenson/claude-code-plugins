@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, Bash, Skill
 
 # Popular science - write an accessible technical article
 
-Turn technical work into an article a curious, busy non-specialist reads to the end and is glad they did. This skill is the writer; its critic is the `popular-science` adversary in `datascience:adversarial-review` - draft here, review there, revise.
+Turn technical work into an article a curious, busy non-specialist reads to the end and is glad they did. This skill is the writer; its critic is the `popular-science` adversary in `devils-advocate:adversarial-review` - draft here, review there, revise.
 
 - **Register** - a smart reader in another field: respect their intelligence, never their prior knowledge
 - **The bar** - the best of the field (Quanta, Scientific American, NYT/FT visual journalism, Our World in Data); write to it, do not settle below it
@@ -55,7 +55,7 @@ Give the eye resting points and let the load-bearing lines stand out - a few acr
 3. **Outline to the spine** - hook, nut graf, the two or three beats, the arc-back kicker; decide the one or two figures and their single message each
 4. **Draft** - climb the ladder both ways; one idea per sentence; short paragraphs; claim + provenance + number every time
 5. **Figures** - commission each via `svg-infographics:svg-designer`, matched to its message, compared against best-in-class
-6. **Self-critique** - run the draft through `datascience:adversarial-review` with the `popular-science` adversary (Mode 2 if it must render and judge the figures). Fix every BLOCKER/MAJOR; weigh the JUDGEMENTs
+6. **Self-critique** - run the draft through `devils-advocate:adversarial-review` with the `popular-science` adversary (Mode 2 if it must render and judge the figures). Fix every BLOCKER/MAJOR; weigh the JUDGEMENTs
 7. **Revise and confirm** - the hook lands, every claim is sourced and numbered, the ending arcs back and closes with conclusions + next steps
 
 ## Bringing in reference articles (license-aware, token-cheap)
