@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Hostile, independent review - spawn fresh context-free `claude -p` subprocesses that try to BREAK a change. Two modes - diff bug-hunt (no tools, inline diff - bugs, logic errors, security holes, edge cases) and whole-repo audit (tools on - slop, brittle design, hardcodings, config drift, broken SoC). Expert adversaries seed the lens - architect, bug-hunter, qa-engineer, ux-designer, tui, data-scientist, methodologist, popular-science, devops. Multi-round - find, fix, re-confirm. Use before a risky commit/merge, a UI or terminal-UI ship, a shell installer, trusting an experiment's verdicts or a green test suite, or publishing docs. Triggers - "adversarial review", "red-team this", "find bugs in my change", "review before ship", "audit the architecture", "consistency sweep", "UX review", "TUI review", "shell review", "installer review", "methodology review", "can this test fail", "QA review", "test review", "review my tests", "readability review", "review my README/docs", "docker review", "deployment review".
+description: Hostile, independent review - spawn fresh context-free `claude -p` subprocesses that try to BREAK a change. Two modes - diff bug-hunt (no tools, inline diff) and whole-repo audit (tools on - slop, brittle design, hardcodings, config drift, broken SoC). Expert adversaries seed the lens - architect, bug-hunter, qa-engineer, analyst, ux-designer, tui, data-scientist, methodologist, popular-science, devops. Multi-round - find, fix, re-confirm. Use before a risky commit/merge, a UI or terminal-UI ship, a shell installer, trusting an experiment's verdicts or a green test suite, signing off a spec, or publishing docs. Triggers - "adversarial review", "red-team this", "find bugs in my change", "review before ship", "audit the architecture", "UX review", "TUI review", "shell review", "methodology review", "can this test fail", "review my tests", "readability review", "review my README/docs", "deployment review", "review my spec", "acceptance criteria review", "find gaps in the spec", "does the code match the spec".
 ---
 
 # Adversarial Review
@@ -32,7 +32,11 @@ The "real deal" lesson: one pass is never the answer. A de-hardcode audit passed
 4. **Round 2 - re-confirm.** Run the SAME review on the fixed tree. It must come back clean. If it finds something new (your fix opened a hole, or it explored further), go back to step 2
 5. **Loop until a full pass is clean.** Routine work is usually 2 rounds. For high-stakes work keep going until two consecutive passes are clean, or run a perspective-diverse panel. Never flip a "survived adversarial review" criterion to done on the strength of the round that still had findings - only on a clean confirming round
 
-**Perspective-diverse panel (high stakes).** Instead of N identical reviewers, give each a distinct lens and run them concurrently - one on security, one on architecture/SoC, one on hardcodings/drift, one on the riskiest invariant. Diversity catches failure modes redundancy cannot. Treat a finding as real when you confirm it, not by vote - but multiple lenses surface more to confirm.
+**Perspective-diverse panel (high stakes).** Instead of N identical reviewers, give each a distinct lens and run them concurrently - say, one on security, one on architecture/SoC, one on the riskiest invariant. Diversity catches failure modes redundancy cannot. Treat a finding as real when you confirm it, not by vote - but multiple lenses surface more to confirm.
+
+**Cap the panel at 3** unless the user explicitly asks for more - say so when proposing one. Triage (step 2), not the spawn, is the bottleneck. Five lenses do not give five times the signal - they give a triage backlog you abandon half-done, which is how a real finding ships with the noise. Pick the 3 the target's risk surface actually has; run a second wave later if still uneasy.
+
+**Ask which adversary when the caller names none.** State the inferred target, list the fitting candidates with their lens, recommend one, wait. The wrong lens returns a fluent review of a risk the target does not have - worse than none, because it reads like assurance. Skip only when the prompt names the adversary, or one lens obviously fits.
 
 ## Mode 1 - Diff bug-hunt (no tools, inline diff)
 
@@ -96,13 +100,16 @@ Adversaries live in `adversaries/*.md`, one self-contained persona prompt per ex
 | `methodologist` | scientific-METHOD integrity - can the test fail, does the verdict ladder span outcomes, pre-registration honoured, can the control move, is the criterion exercised | 2 |
 | `popular-science` | readability for a curious generalist - jargon, unsourced claims, false vagueness, buried lede, pace, the visuals (judged against best-in-class article figures), the ending (arc-back, conclusions, next steps), simplification that broke the truth. Reviews against the shared craft canon in the `datascience` plugin | 1 |
 | `devops` | containers & deploy - Dockerfile hygiene, layer cache, secrets in layers, root/privileged runtime, PID-1 signals, probes, pipeline gate integrity, env drift | 2 |
+| `analyst` | specs & acceptance criteria - coverage gaps, missing edge-case fanout, unverifiable/ambiguous criteria, sibling features diverging with no stated reason (silos), spec-vs-code widows & orphans, gold plating to cut | 2 |
 
 **Boundaries** (so a panel does not return one finding three times):
 
 - `tui` judges what the framework actually does; `ux-designer` judges what the user perceives
 - `qa-engineer` judges the suite (why it would never have caught the bug); `bug-hunter` finds the bug itself; `methodologist` judges an experiment's verdict ladder, never a software suite
 - `devops` owns the image and the pipeline; `bug-hunter` owns the script that runs inside them
-- `architect` (axis 8) and `qa-engineer` (axis 7) both carry a first-class slop axis - architect cuts code and docs, qa-engineer cuts tests
+- `analyst` judges whether the RIGHT thing is specified and whether the code matches the spec (widows, orphans, drift); `qa-engineer` judges whether the suite would catch a break; `architect` judges the code's internal consistency. Spec says nothing about it → `analyst`; spec says it, tests miss it → `qa-engineer`; code contradicts its own conventions → `architect`
+- `analyst` (axis 5) challenges two *specs* diverging without reason; `architect` (axis 1) challenges two *implementations* diverging; `ux-designer` challenges what the divergence feels like to the user
+- `architect` (axis 8), `qa-engineer` (axis 7) and `analyst` (axis 8) all carry a first-class slop axis - architect cuts code and docs, qa-engineer cuts tests, analyst cuts gold-plated criteria
 
 ### Seed an adversary into a spawn
 

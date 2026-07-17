@@ -27,6 +27,7 @@ Unlike ad-hoc notebook cleanups, this plugin treats the notebook as a standardis
 | `/datascience:challenge` | Full psychological prompting stack for difficult problems - stakes, incentive, competitive framing |
 | `/datascience:hypothesis` | Write or extend a hypothesis-driven experiments log and its SOTA design doc - record a round, fan out the next one, or conclude the design |
 | `/datascience:popular-science` | Create or update an accessible, well-sourced popular-science article or explainer from technical work - spine, sourced-and-numbered claims, best-in-class figures, arc-back kicker |
+| `/datascience:adversarial-review` | Hostile independent review of an experiments log, pipeline, article or spec - the data-science entry point into the `devils-advocate:adversarial-review` skill (requires the `devils-advocate` plugin) |
 
 ## Skills
 
