@@ -6,34 +6,12 @@ argument-hint: "describe the document to critique and who the toughest reader is
 
 # Devil's Advocate - Run
 
-Full end-to-end critical analysis with improvement loop.
+Read `devils-advocate/skills/run/SKILL.md` and follow it - it is the single source of truth for the end-to-end workflow, the persona build, the Fibonacci scoring model, the versioned-file naming (`<name>_v<NN>_<residual>.md`), and the stop conditions. Do NOT duplicate it here; this command is only the explicit entry point into that workflow.
 
-## Flow
-
-1. **Setup** (`devils-advocate:setup`) - build devil persona + harvest fact repository
-2. **Evaluate** (`devils-advocate:evaluate`) - generate concern catalogue + baseline scorecard. ASK: in-session or standalone scoring
-3. **Iterate loop** (repeat until done):
-   - `devils-advocate:iterate` runs the full cycle:
-     a. ASK how to improve (user suggestions / auto-apply / planning / user already edited)
-     b. Apply changes, create `<name>_v<NN>.md`
-     c. Score (in-session or standalone)
-     d. Rename to `<name>_v<NN>_<score>.md`
-     e. Update `devils_advocate.md` with new scorecard
-     f. Check: stop if residual < 10%, stagnation, or user accepts
-
-## Versioned files
-
-Every AI correction creates a versioned file with MANDATORY score suffix:
-- `report_v01_89.md` - baseline with scorecard (residual 89)
-- `report_v02_34.md` - first correction (residual 34)
-- `report_v03_12.md` - second correction (residual 12)
-
-User edits outside Claude: no versioned copy, just re-score and update `devils_advocate.md`.
-
-## Execute
+Full setup → evaluate → iterate loop in one go. The same three steps are also available as their own thin commands when you want to drive them by hand:
 
 ```
-/devils-advocate:setup
-/devils-advocate:evaluate
-/devils-advocate:iterate   # repeat until done
+/devils-advocate:setup       # 1. build persona, harvest facts
+/devils-advocate:evaluate    # 2. concern catalogue + baseline scorecard
+/devils-advocate:iterate     # 3. improve, version, re-score (repeat until done)
 ```

@@ -6,13 +6,13 @@ argument-hint: "what to review, e.g. 'the E12 experiments log before I trust it'
 
 # Adversarial Review
 
-Read the `devils-advocate:adversarial-review` skill first - it is the single source of truth for the two modes (diff bug-hunt vs whole-repo audit), the rounds protocol, the spawn mechanics, the gotchas, and every adversary persona in its `adversaries/`. Do NOT duplicate it here. This command is only the data-science entry point into it.
+Read `devils-advocate/skills/adversarial-review/SKILL.md` first - it is the single source of truth for the two modes (diff bug-hunt vs whole-repo audit), the rounds protocol, the spawn mechanics, the gotchas, and every adversary persona beside it in `adversaries/<name>.md`. Do NOT duplicate it here. This command is only the data-science entry point into it.
 
-Requires the `devils-advocate` plugin installed - the skill and its adversaries live there.
+Requires the `devils-advocate` plugin installed - the skill and its adversaries live there. For a non-data-science target, `/devils-advocate:adversarial-review` is the same skill with the full roster up front.
 
 ## What to do
 
-1. Read the `devils-advocate:adversarial-review` skill
+1. Read `devils-advocate/skills/adversarial-review/SKILL.md`
 2. **No adversary named? ASK before spawning** - state the inferred target, list the fitting candidates with their lens, recommend one, wait. Wrong lens = fluent review of a risk the target lacks. Skip only when the prompt names it
 3. **Cap at 3** unless the user explicitly asks for more - your triage, not the spawn, is the bottleneck; 3 lenses catch most of what 5 would, at a review you finish
 4. Pick by where the risk lives - the four that earn their keep in a data science project:

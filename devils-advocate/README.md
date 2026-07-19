@@ -29,6 +29,7 @@ The same hostility points at code. [`adversarial-review`](#adversarial-review---
 | `/devils-advocate:setup` | Build the devil persona and harvest the fact repository for a target document |
 | `/devils-advocate:evaluate` | Generate the baseline concern catalogue and scorecard |
 | `/devils-advocate:iterate` | One improvement cycle: decide approach, apply changes, version, re-score, rename |
+| `/devils-advocate:adversarial-review` | Hostile independent review of code or artefacts - spawn fresh `claude -p` reviewers seeded with one of ten expert adversaries |
 
 ## Skills
 
