@@ -15,11 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: astral-sh/setup-uv@v4
+      # `uv run` resolves from uv.lock, so CI lints with the ruff version the lockfile
+      # pins. `uvx ruff` fetched the newest release instead, which turns CI red on a
+      # ruff release that adds a default rule - with no change to this repo.
       - name: Lint
         run: |
-          uvx ruff format --check
-          uvx ruff check
+          uv run --extra dev ruff format --check
+          uv run --extra dev ruff check
 
   test:
     runs-on: ubuntu-latest
@@ -49,6 +56,48 @@ jobs:
           issues = validate_model(model)
           assert not issues, f'Validation failed: {issues}'
           print('Model validation: OK')
+          "
+      # A release syncs 13 plugin strings to the library version by hand. Nothing used
+      # to verify it, so a desync would ship a broken marketplace with CI still green.
+      - name: Plugin versions match the library
+        run: |
+          .venv/bin/python -c "
+          import json, re, sys, pathlib
+          root = pathlib.Path('.')
+          v = re.search(r'^version\s*=\s*\"([^\"]+)\"', (root/'pyproject.toml').read_text(), re.M).group(1)
+          plugins = ['autobuild','datascience','devils-advocate','document-processing','journal','svg-infographics']
+          bad = []
+          for p in plugins:
+              pv = json.loads((root/p/'.claude-plugin/plugin.json').read_text())['version']
+              if pv != v: bad.append(f'{p}/.claude-plugin/plugin.json: {pv} != {v}')
+          m = json.loads((root/'.claude-plugin/marketplace.json').read_text())
+          if m['metadata']['version'] != v:
+              bad.append(f\"marketplace metadata: {m['metadata']['version']} != {v}\")
+          for p in m['plugins']:
+              if p['version'] != v: bad.append(f\"marketplace entry {p['name']}: {p['version']} != {v}\")
+          if bad:
+              print(f'Plugin versions out of sync with library {v}:')
+              [print('  ' + b) for b in bad]
+              sys.exit(1)
+          print(f'OK: all 13 plugin strings match library version {v}')
+          "
+      # Guards the phantom-command class of defect: a command advertised in a README
+      # whose target skill does not exist. Shipped once in v1.6.21, fixed in v1.6.22.
+      - name: Commands resolve to real skills
+        run: |
+          .venv/bin/python -c "
+          import re, sys, pathlib
+          root = pathlib.Path('.')
+          bad, checked = [], 0
+          for f in sorted(root.glob('*/commands/*.md')):
+              for ref in sorted(set(re.findall(r'[a-z-]+/skills/[a-z-]+/SKILL\.md', f.read_text()))):
+                  checked += 1
+                  if not (root / ref).is_file(): bad.append(f'{f} -> {ref}')
+          if bad:
+              print('BROKEN command -> skill references:')
+              [print('  ' + b) for b in bad]
+              sys.exit(1)
+          print(f'OK: {checked} command -> skill references all resolve')
           "
 
   build:
@@ -101,7 +150,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: lycheeverse/lychee-action@v2
         with:
-          args: --no-progress --exclude medium.com --exclude pepy.tech --exclude static.pepy.tech --exclude mcpmarket.com --exclude 'github\.com/stellarshenson/knowledge-graph-foundry' README.md autobuild/README.md devils-advocate/README.md
+          # --accept adds 429: a rate-limited response means the link exists but the
+          #   runner was throttled, not that the link is broken (lychee's default
+          #   accept list stops at 299, so a 429 was failing the build).
+          # --max-concurrency 8: the default 128 hammers github.com / shields.io from a
+          #   shared runner IP and provokes the throttling in the first place.
+          # Covers the root README plus all six plugin READMEs - the datascience,
+          # document-processing, journal and svg-infographics ones were unchecked, so
+          # their links could rot silently.
+          args: --no-progress --max-concurrency 8 --accept '100..=103,200..=299,429' --exclude medium.com --exclude pepy.tech --exclude static.pepy.tech --exclude mcpmarket.com --exclude 'github\.com/stellarshenson/knowledge-graph-foundry' README.md autobuild/README.md datascience/README.md devils-advocate/README.md document-processing/README.md journal/README.md svg-infographics/README.md
           fail: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
