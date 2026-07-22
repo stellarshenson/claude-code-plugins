@@ -17,6 +17,8 @@ Invoke (fork skill, via the `Skill` tool - there is no `svg-designer` agent): `S
 
 Preflight → scaffold → author → check → finalize. Skipping a phase is the #1 failure mode - hasty `<rect>`s cost more redo time than the phases themselves. Dual-theme always ships (no flag - just do it).
 
+**Output path** - write every `--out` file into the exact directory named in your args, verbatim (`<output-dir>/<NN-name>.svg`). When given an absolute `<output-dir>`, use it as-is - never prepend the working directory, `cd` into a subdir first, or repeat the directory's own relative path inside itself (that nests `.../slug/slug/images_slug`).
+
 1. **Preflight** - declare components via flags; tool returns the rule cards + warnings + tool recommendations THIS image needs. No authoring before it returns.
 
    ```bash

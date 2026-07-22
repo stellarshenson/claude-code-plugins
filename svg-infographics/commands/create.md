@@ -6,68 +6,69 @@ argument-hint: "describe the infographic, e.g. 'card grid showing 4 platform mod
 
 # Create SVG Infographic
 
-## Toolchain gate (refuse only if the library is unavailable)
+## Toolchain gate
 
-Before anything else run:
+Run first:
 
 ```bash
 python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
 ```
 
-Verify the CLI runs: `svg-infographics --help`. **REFUSE to run this command** only when the library is unavailable - the import fails AND the install cannot fix it, so `--help` still errors. A failed *upgrade* (offline, PyPI unreachable) while the CLI still imports is fine - run at the installed version; the plugin and library ship at the same version, so any installed library is a compatible one. No fallback, no hand-built output.
+Verify CLI: `svg-infographics --help`. REFUSE only if library unavailable - import fails AND install cannot fix it, so `--help` still errors. Failed *upgrade* (offline, PyPI unreachable) while CLI still imports = fine; plugin + library ship same version, so any installed library is compatible. No fallback, no hand-built output.
 
+Workflow: draft → preflight → scaffold → author → check → finalize.
 
-Create one or more SVG infographics following the mandatory draft → preflight → scaffold → author → check → finalize workflow.
+**Deck batching**: sibling images for one document = ONE deck. Invoke the `svg-infographics:svg-designer` skill ONCE per deck of ≤5 images - fork builds them sequentially (theme + recipes + rule cards loaded once, not per image), closes with a cross-file `consistency` check. One invoke per image wastes ~100KB context per fork. >5 images → split into decks.
 
-**Deck batching**: sibling images for one document are ONE deck. Invoke the `svg-infographics:svg-designer` skill ONCE per deck of up to ~5 images - the skill fork builds them sequentially (theme, recipes and rule cards loaded once, not per image) and closes with a cross-file `consistency` check. One invocation per image multiplies ~100KB of context per fork for nothing. More than ~5 images → split into multiple decks.
+**Preflight first**: builder runs `svg-infographics preflight` (all components via flags) as its first action per image - pulls the rule cards before any `<rect>`. No authoring before preflight returns.
 
-The agent MUST invoke `svg-infographics preflight` (declaring all components via flags) as its first action per image - this pulls the relevant rule cards into context before any `<rect>` is written. No authoring before preflight completes.
+## Task tracking
 
-## Task Tracking
-
-MANDATORY: create a task list at start showing all phases for each image. Update task status as you progress. Non-negotiable.
+MANDATORY: task list at start, all phases per image. Update status as you go.
 
 ## Steps
 
-1. **ASK the user** (one AskUserQuestion round):
-   - What infographic(s) to create? (type, content, purpose)
-   - **Drafting mode** - MANDATORY question, two options:
-     - **Draft approval (interactive)**: the concept draft is presented to the user as text and generation waits for their approval / edits
-     - **End-to-end (headless)**: the AI proceeds from draft to finished SVGs without stopping
-   - Output folder: `images_<context>` (visible) or `.images_<context>` (hidden)? `<context>` = the document/article slug. Default to visible `images_<context>` unless the user picks hidden
-   - Brand/theme? (existing swatch or new?)
-   - Any specific style preferences?
-   - **Model**: the `svg-infographics:svg-designer` skill runs on its own configured model (**sonnet**); the `Skill` call takes no model override, so a different model means editing the skill's frontmatter
+1. **Ask user** (one AskUserQuestion round):
+   - What infographic(s)? (type, content, purpose)
+   - **Draft mode** (MANDATORY, two options):
+     - **Interactive**: present draft as text, wait for approval/edits before generating
+     - **Headless**: proceed draft → finished SVGs, no stop
+   - **Output dir `<output-dir>`**: `images_<context>` (visible) or `.images_<context>` (hidden)? `<context>` = document basename slug ONLY (e.g. `next_best_site`), never a path. Folder is a SIBLING of the document - directly inside the document's own directory. Resolve `<output-dir>` to ONE absolute path now (`<dir-of-document>/images_<context>`); an absolute path cannot nest under itself. Default visible unless user picks hidden
+   - Brand/theme? (existing swatch or new)
+   - Style preferences?
+   - **Model**: skill runs on its own model (**sonnet**); the `Skill` call takes no model override - different model = edit the skill frontmatter
 
-2. **Concept draft** (ALWAYS written, both modes): one plain-text ```svg-infographics``` fenced content spec per image, following `examples/concept_draft_deck.md` - canvas + format preset, theme, every band, the CONCRETE facts each band carries (real numbers, not lorem), per-image data sources, open questions for the reviewer. The draft is the spec the builder consumes; headless mode skips the approval, not the draft.
-   - **Interactive mode**: present the draft(s) to the user, apply their edits, do NOT generate until they approve
-   - **Headless mode**: save the draft(s) next to the images (`<context>_concept_draft.md`) and proceed
+2. **Concept draft** (ALWAYS written, both modes): one ```svg-infographics``` fenced spec per image, per `examples/concept_draft_deck.md` - canvas + format preset, theme, every band, CONCRETE facts per band (real numbers, not lorem), per-image data sources, open questions. Draft = the spec the builder consumes; headless skips approval, not the draft.
+   - **Interactive**: present draft(s), apply edits, do NOT generate until approved
+   - **Headless**: save draft(s) into `<output-dir>` as `<context>_concept_draft.md`, proceed
 
-3. **Theme check**: If no approved swatch exists for this brand, run `/svg-infographics:theme` first.
+3. **Theme check**: no approved swatch for this brand → run `/svg-infographics:theme` first.
 
-4. **Invoke the `svg-infographics:svg-designer` SKILL once per deck** - via the `Skill` tool, NOT `Agent` / `subagent_type`: there is no `svg-designer` agent, it is a `context: fork` skill and only the `Skill` tool resolves it. Call `Skill(skill="svg-infographics:svg-designer", args="Create <deck description, all images> at <path> from the approved concept draft: <draft>. Follow the workflow per image, sequentially. Theme <swatch>. Close with the deck consistency check.")`. The skill forks and runs out-of-band on its own model (sonnet); user keeps working. The approved draft goes INTO the args - the builder builds what the draft says, not its own interpretation.
+4. **Invoke the `svg-infographics:svg-designer` SKILL once per deck** - the `Skill` tool, NOT `Agent` / `subagent_type` (no `svg-designer` agent exists; it is a `context: fork` skill, only `Skill` resolves it). Pass the absolute `<output-dir>` from step 1 verbatim; builder writes files DIRECTLY into it as `<output-dir>/<NN-name>.svg` - must NOT prepend cwd or re-derive the folder (nests the doc path inside itself; observed bug `.../next_best_site/next_best_site/.images_next_best_site`). Call:
+   `Skill(skill="svg-infographics:svg-designer", args="Create <deck description, all images> into the absolute directory <output-dir> - write files there verbatim, do NOT nest or re-derive the path - from the approved concept draft: <draft>. Follow the workflow per image, sequentially. Theme <swatch>. Close with the deck consistency check.")`
+   Fork runs out-of-band; user keeps working. Approved draft goes INTO the args - builder builds the draft, not its own interpretation.
 
-5. **Agent workflow** (runs in fork, per image):
-   - Preflight — call `svg-infographics preflight --cards N --connectors N --connector-mode X --connector-direction Y ...` with the full declared component set. Capture the returned rule bundle into the agent's context. No authoring begins until preflight returns.
-   - Research — read `examples/INDEX.md` (geometry recipes) + ONE closest example. Not 3-5
-   - Scaffold — `svg-infographics scaffold --format <preset> --cols C --rows R --cards N --title "..." --out <file>` generates the skeleton: viewBox, 5px-snapped grid comments, theme CSS + dark mode, guide grid, the five canonical layers, placeholder cards. Do NOT hand-type any of that. Re-theme the CSS block against the approved swatch, then replace placeholders (keep the `card-N` ids, drop `data-placeholder`)
-   - Author — structure from grid positions using `primitives` for shapes and `connector` for arrows. ALWAYS pass `--direction` (and for L / L-chamfer, also `--start-dir` + `--end-dir` with `--src-rect` + `--tgt-rect`) - the route gates verify axis AND sign on both ends and block card-piercing routes. Run `svg-infographics map --svg <file>` before placing anything new - one scan shows per-layer occupancy and the largest free boxes; use `empty-space --layers/--ignore-layers` for targeted placement
-   - Content — text (CSS classes only), icons (Lucide ISC, corner slots placed via `place --ref-id accent-bar`), descriptions. Unicode glyphs only — no ASCII arrows
-   - Finishing — verify connectors match tool output, place callouts via `callouts`, fill in the file description comment
-   - Check + Finalize (batch-fix) — `svg-infographics workflow --svg <file>` tells you which gates are already met (never redo a met gate), then `svg-infographics check --svg <file>` with the SAME flags used in preflight, then `svg-infographics finalize <file>` ONCE - it runs ALL validators including the visual-geometry layer. Fix everything it reports in one pass, re-run once, cap 3 iterations. Then ONE high-quality `render-png --mode both` readback against the 6-item checklist in workflow.md - the PNG is the only render artifact; no browser sessions, no screenshot loops
-   - Deck close — `svg-infographics finalize <all files>` in one call (cross-file consistency runs automatically on multi-file invocations)
+5. **Builder workflow** (fork, per image):
+   - **Preflight** - `svg-infographics preflight --cards N --connectors N --connector-mode X --connector-direction Y ...`, full declared component set. Capture the rule bundle. No authoring before it returns.
+   - **Research** - read `examples/INDEX.md` (geometry recipes) + ONE closest example. Not 3-5.
+   - **Scaffold** - `svg-infographics scaffold --format <preset> --cols C --rows R --cards N --title "..." --out <file>`: viewBox, 5px-snapped grid comments, theme CSS + dark mode, guide grid, five canonical layers, placeholder cards. Do NOT hand-type. Re-theme the CSS to the approved swatch, replace placeholders (keep `card-N` ids, drop `data-placeholder`).
+   - **Author** - structure from grid positions: `primitives` for shapes, `connector` for arrows. ALWAYS pass `--direction` (L / L-chamfer also `--start-dir` + `--end-dir` + `--src-rect` + `--tgt-rect`) - route gates verify axis + sign on both ends, block card-piercing routes. Run `svg-infographics map --svg <file>` before placing new; `empty-space --layers/--ignore-layers` for targeted placement.
+   - **Content** - text (CSS classes only), icons (Lucide ISC, corner slots via `place --ref-id accent-bar`), descriptions. Unicode glyphs only, no ASCII arrows.
+   - **Finishing** - verify connectors match tool output, place callouts via `callouts`, fill the file description comment.
+   - **Check + finalize** - `svg-infographics workflow --svg <file>` (which gates already met - never redo), then `svg-infographics check --svg <file>` with the SAME preflight flags, then `svg-infographics finalize <file>` ONCE (all validators + visual-geometry). Fix all in one pass, re-run once, cap 3. Then ONE `render-png --mode both` readback vs the 6-item checklist in workflow.md - the PNG is the only render artifact; no browser, no screenshot loops.
+   - **Deck close** - `svg-infographics finalize <all files>` in one call (cross-file consistency auto on multi-file).
 
-6. **For any smooth curve through waypoints** (decision boundaries, distributions, ROC/PR, sigmoid, trajectories, organic flow paths) the agent MUST use `svg-infographics primitives spline --points "..." --samples 200`. Hand-written `C`/`Q` bezier paths for data curves = workflow violation.
+6. **Smooth curve through waypoints** (decision boundaries, distributions, ROC/PR, sigmoid, trajectories, organic flow) → `svg-infographics primitives spline --points "..." --samples 200`. Hand-written `C` / `Q` bezier for data curves = violation.
 
-7. **Report**: created files, validation results, any remaining items. Interactive mode: note where the approved draft deviated and why, if it did.
+7. **Report**: created files, validation results, remaining items. Interactive: note where the draft deviated and why.
 
 ## Skills applied
 
-The `svg-infographics:svg-designer` skill fork reads and applies:
+Builder reads + applies:
 
-- `rules/<component>.md` — per-component rule cards (card, connector, ribbon, background, timeline, icon, callout, shapes). Pulled automatically by `svg-infographics preflight` based on declared component types - the detailed design rules live here.
-- `references/standards-core.md` — the essentials: CSS classes, contrast, grid, structure, z-order
-- `examples/INDEX.md` — geometry recipes per pattern, plus the one closest example
-- `examples/concept_draft_deck.md` — the concept-draft reference (what a good draft carries)
-- `references/workflow.md` — phase process with gate checks (read at build start)
-- `references/validation.md` / `references/tools.md` — on demand
+- `rules/<component>.md` - per-component rule cards (card, connector, ribbon, background, timeline, icon, callout, shapes). Pulled by `preflight` from declared component types.
+- `references/standards-core.md` - essentials: CSS classes, contrast, grid, structure, z-order
+- `examples/INDEX.md` - geometry recipes per pattern + the one closest example
+- `examples/concept_draft_deck.md` - concept-draft reference (what a good draft carries)
+- `references/workflow.md` - phase process + gate checks (read at build start)
+- `references/validation.md` / `references/tools.md` - on demand
