@@ -38,13 +38,18 @@ Turn technical work into an article a curious, busy non-specialist reads to the 
 
 ## Emphasis and pacing
 Give the eye resting points and let the load-bearing lines stand out - a few across a whole piece, never a page of them (full rule in `references/craft-canon.md`).
-- **Pull quote** - lift the one line worth carrying out of a section and set it centred + italic, just large enough to lift off the page. On GitHub inline font-size is stripped, so a centred heading is the only way to get "larger" - use a level-4 `####` (one size smaller than a `###`, which competes with the section titles):
+- **Pull quote** - lift the one line worth carrying out of a section and set it centred + italic, just large enough to lift off the page. On GitHub inline font-size is stripped, so a centred heading is the only way to get "larger" - use a level-4 `####` (one size smaller than a `###`, which competes with the section titles). Wrap it in `<br>` spacers above and below so it breathes; no horizontal rules around it - a `---` boxes the quote in and misreads as a section break. One line, or a short two-line stack:
   ```
+  <br>
+
   <div align="center">
 
-  #### *The one line worth carrying out of this section.*
+  #### *Warmth is roughly worth what neutrality is worth.*
+  #### *Hostility is the signal that lands.*
 
   </div>
+
+  <br>
   ```
   Once or twice in a whole article, on the most load-bearing line. It joins GitHub's auto-outline; if that clutters the TOC, drop the `#` for plain centred italic (same look, no size bump)
 - **Bold** - a few load-bearing phrases in the running prose, chosen not scattered; when everything is bold nothing is
