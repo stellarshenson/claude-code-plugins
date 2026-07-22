@@ -19,7 +19,7 @@ Verify the CLI runs: `svg-infographics --help`. **REFUSE to run this command** o
 
 Create one or more SVG infographics following the mandatory draft → preflight → scaffold → author → check → finalize workflow.
 
-**Deck batching**: sibling images for one document are ONE deck. Spawn ONE `svg-designer` agent per deck of up to ~5 images - the agent builds them sequentially inside one fork (theme, recipes and rule cards loaded once, not per image) and closes with a cross-file `consistency` check. Spawning one agent per image multiplies ~100KB of context per spawn for nothing. More than ~5 images → split into multiple decks.
+**Deck batching**: sibling images for one document are ONE deck. Invoke the `svg-infographics:svg-designer` skill ONCE per deck of up to ~5 images - the skill fork builds them sequentially (theme, recipes and rule cards loaded once, not per image) and closes with a cross-file `consistency` check. One invocation per image multiplies ~100KB of context per fork for nothing. More than ~5 images → split into multiple decks.
 
 The agent MUST invoke `svg-infographics preflight` (declaring all components via flags) as its first action per image - this pulls the relevant rule cards into context before any `<rect>` is written. No authoring before preflight completes.
 
@@ -37,7 +37,7 @@ MANDATORY: create a task list at start showing all phases for each image. Update
    - Output folder: `images_<context>` (visible) or `.images_<context>` (hidden)? `<context>` = the document/article slug. Default to visible `images_<context>` unless the user picks hidden
    - Brand/theme? (existing swatch or new?)
    - Any specific style preferences?
-   - **Model** for the svg-designer agent(s): default **sonnet** - only ask when the user raised quality or cost, then offer sonnet / opus / haiku
+   - **Model**: the `svg-infographics:svg-designer` skill runs on its own configured model (**sonnet**); the `Skill` call takes no model override, so a different model means editing the skill's frontmatter
 
 2. **Concept draft** (ALWAYS written, both modes): one plain-text ```svg-infographics``` fenced content spec per image, following `examples/concept_draft_deck.md` - canvas + format preset, theme, every band, the CONCRETE facts each band carries (real numbers, not lorem), per-image data sources, open questions for the reviewer. The draft is the spec the builder consumes; headless mode skips the approval, not the draft.
    - **Interactive mode**: present the draft(s) to the user, apply their edits, do NOT generate until they approve
@@ -45,7 +45,7 @@ MANDATORY: create a task list at start showing all phases for each image. Update
 
 3. **Theme check**: If no approved swatch exists for this brand, run `/svg-infographics:theme` first.
 
-4. **Spawn ONE `svg-designer` agent per deck** via `Agent(subagent_type="svg-designer", model="<choice, default sonnet>", prompt="Create <deck description, all images> at <path> from the approved concept draft: <draft>. Follow the workflow per image, sequentially. Theme <swatch>. Close with the deck consistency check.")`. Fork context runs out-of-band; user keeps working. The approved draft goes INTO the prompt - the agent builds what the draft says, not its own interpretation.
+4. **Invoke the `svg-infographics:svg-designer` SKILL once per deck** - via the `Skill` tool, NOT `Agent` / `subagent_type`: there is no `svg-designer` agent, it is a `context: fork` skill and only the `Skill` tool resolves it. Call `Skill(skill="svg-infographics:svg-designer", args="Create <deck description, all images> at <path> from the approved concept draft: <draft>. Follow the workflow per image, sequentially. Theme <swatch>. Close with the deck consistency check.")`. The skill forks and runs out-of-band on its own model (sonnet); user keeps working. The approved draft goes INTO the args - the builder builds what the draft says, not its own interpretation.
 
 5. **Agent workflow** (runs in fork, per image):
    - Preflight — call `svg-infographics preflight --cards N --connectors N --connector-mode X --connector-direction Y ...` with the full declared component set. Capture the returned rule bundle into the agent's context. No authoring begins until preflight returns.
@@ -63,7 +63,7 @@ MANDATORY: create a task list at start showing all phases for each image. Update
 
 ## Skills applied
 
-The spawned `svg-designer` agent reads and applies:
+The `svg-infographics:svg-designer` skill fork reads and applies:
 
 - `rules/<component>.md` — per-component rule cards (card, connector, ribbon, background, timeline, icon, callout, shapes). Pulled automatically by `svg-infographics preflight` based on declared component types - the detailed design rules live here.
 - `references/standards-core.md` — the essentials: CSS classes, contrast, grid, structure, z-order

@@ -166,7 +166,7 @@ Two skills. Both auto-trigger based on context.
 
 | Skill | Triggers when |
 |-------|---------------|
-| `svg-infographics:svg-designer` | Any SVG / infographic / diagram / banner / timeline / flowchart / chart / graphics work. Phrases: "create svg", "make svg", "create graphics", "make infographic", "validate svg", "fix svg", "design svg". Fork context — spawned via commands or `Agent(subagent_type="svg-designer")`. Holds design rules, tool palette, 6-phase workflow, validation gates |
+| `svg-infographics:svg-designer` | Any SVG / infographic / diagram / banner / timeline / flowchart / chart / graphics work. Phrases: "create svg", "make svg", "create graphics", "make infographic", "validate svg", "fix svg", "design svg". Fork context — invoked via commands or `Skill(skill="svg-infographics:svg-designer")`. Holds design rules, tool palette, 6-phase workflow, validation gates |
 | `svg-infographics:theme` | Defining colour palettes, generating swatches, working with brand themes |
 
 ## Tool inventory

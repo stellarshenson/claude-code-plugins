@@ -44,7 +44,7 @@ MANDATORY: create tasks for diagnosis, each fix category, and validation re-run.
 ## Steps
 
 1. **Classify intent** from argument. If ambiguous, ask user one clarifying question via `AskUserQuestion` before spawning
-2. **Spawn `svg-designer` agent** via `Agent(subagent_type="svg-designer", prompt="<intent + file + instructions>")`. Fork context runs out-of-band; user keeps working
+2. **Invoke the `svg-infographics:svg-designer` skill** via the `Skill` tool (NOT `Agent` / `subagent_type` - it is a `context: fork` skill, no such agent exists): `Skill(skill="svg-infographics:svg-designer", args="<intent + file + instructions>")`. The skill forks and runs out-of-band; user keeps working
 3. **Agent follows the fix workflow** (see below). On completion, reports findings + fixes back to parent
 
 ## Agent fix workflow

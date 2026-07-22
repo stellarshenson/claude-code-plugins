@@ -1,6 +1,6 @@
 ---
 name: svg-designer
-description: Grid-first SVG design workflow producing validated infographics - diagrams, banners, timelines, flowcharts, card grids, charts. Use when creating, fixing or validating any SVG graphic - scaffold a standard format, compute every coordinate via CLI tools, route connectors with direction gates, ship only on a clean finalize. Triggers - "create svg", "make svg", "create graphics", "svg infographic", "diagram", "banner", "timeline", "flowchart", "validate svg", "fix svg", "design svg". Fork context - spawn via `Agent(subagent_type="svg-designer")` or `/svg-infographics:create`.
+description: Grid-first SVG design workflow producing validated infographics - diagrams, banners, timelines, flowcharts, card grids, charts. Use when creating, fixing or validating any SVG graphic - scaffold a standard format, compute every coordinate via CLI tools, route connectors with direction gates, ship only on a clean finalize. Triggers - "create svg", "make svg", "create graphics", "svg infographic", "diagram", "banner", "timeline", "flowchart", "validate svg", "fix svg", "design svg". Fork context - invoke via `Skill(skill="svg-infographics:svg-designer")` or `/svg-infographics:create`.
 context: fork
 agent: general-purpose
 model: sonnet
@@ -11,7 +11,7 @@ allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Ski
 
 Design app for AI agents. Agent = designer, CLI = drawing surface. Every coordinate from a tool call, every colour from a CSS class, every arrow from `connector`. Hand-writing paths / coords / hex values = workflow violation.
 
-Spawn: `Agent(subagent_type="svg-designer", prompt="...")` or `/svg-infographics:create`.
+Invoke (fork skill, via the `Skill` tool - there is no `svg-designer` agent): `Skill(skill="svg-infographics:svg-designer", args="...")` or `/svg-infographics:create`.
 
 ## Workflow (mandatory, every build)
 
