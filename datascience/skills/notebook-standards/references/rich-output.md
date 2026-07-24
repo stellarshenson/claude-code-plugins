@@ -43,8 +43,25 @@ Resource for the `notebook-standards` skill. Semantic colour assignments for the
 
 ## Rules
 
-- Single multiline `rich.print()` for related output. NEVER multiple individual prints
+- Single multiline `rich.print()` for related output. NEVER multiple individual prints - each call is a separate JupyterLab output block, rendered as its own paragraph with a large vertical gap after it, so a run of prints scatters one summary across the cell instead of rendering it compact
+- `Table` / `Panel` / `Group` when the content is tabular or needs a border - still ONE call
 - `[dim]` for visual variation without changing color
 - Dynamic boolean: `"dark_sea_green" if val else "indian_red"`
 - Matplotlib hex: primary `#3498DB`, secondary `#E74C3C`, tertiary `#2ECC71`
 - Rich standard colors only (no hex) for terminal compatibility
+
+```python
+# WRONG - four output blocks, four paragraphs, large gaps between them
+rprint(f"[bold medium_purple]Run summary[/bold medium_purple]")
+rprint(f"Rows: [dark_sea_green]{n_rows:,}[/dark_sea_green]")
+rprint(f"Device: [light_sea_green]{device}[/light_sea_green]")
+rprint(f"[dark_sea_green]✓[/dark_sea_green] complete in [light_sea_green]{secs:.1f}s[/light_sea_green]")
+
+# RIGHT - one call, one compact block
+rprint(
+    f"[bold medium_purple]Run summary[/bold medium_purple]\n"
+    f"  Rows:   [dark_sea_green]{n_rows:,}[/dark_sea_green]\n"
+    f"  Device: [light_sea_green]{device}[/light_sea_green]\n"
+    f"[dark_sea_green]✓[/dark_sea_green] complete in [light_sea_green]{secs:.1f}s[/light_sea_green]"
+)
+```

@@ -20,7 +20,7 @@ Read these skills before generating the notebook. They are the source of truth f
 1. ASK the user:
    - **Purpose** (what the notebook does - used for header narrative)
    - **Author initials** (default: kj)
-   - **GPU needed?** (yes/no) - if yes, **GPU selection**: pin a specific GPU by UUID (default, reproducible) or auto-pick the freest GPU at runtime? See `GPU-SETUP.md`
+   - **GPU needed?** (yes/no) - if yes, **GPU selection**: pin a specific GPU by UUID (default, reproducible) or auto-pick the freest GPU at runtime? See `notebook-standards/references/gpu-setup.md`
    - **Libraries needed** (torch, polars, sklearn, transformers, etc.)
    - **Long-running operations?** (yes/no - if yes, ask classic tqdm or modern rich per `progressbars` skill)
 
@@ -34,7 +34,7 @@ Read these skills before generating the notebook. They are the source of truth f
 
 6. **Structure**: follow `notebook-standards` skill exactly - GPU first, imports grouped with autoreload, reproducibility seeds, config cell with sectioned Rich render. **Section overview MANDATORY** - every `## Section Name` header gets a 1-2 sentence overview (or 3-5 bullets when listy) directly below, BEFORE the first code cell.
 
-7. **Configuration cell**: hyperparameters with inline comments + sectioned Rich render at the END of the same cell. When GPU is enabled, the render MUST include `[bold]Device[/bold]` sub-section showing `torch.cuda.get_device_name(0)` so the resolved GPU is visible in the output. See `notebook-standards/SKILL.md` Configuration template + `GPU-SETUP.md` section 5.
+7. **Configuration cell**: hyperparameters with inline comments + sectioned Rich render at the END of the same cell. When GPU is enabled, the render MUST include `[bold]Device[/bold]` sub-section showing `torch.cuda.get_device_name(0)` so the resolved GPU is visible in the output. See `notebook-standards/SKILL.md` Configuration template + `notebook-standards/references/gpu-setup.md` section 5.
 
 8. **Equations and math in markdown**: follow `notebook-standards` `references/equations.md` - write math liberally, unicode glyphs inline (`τ(i) = Σⱼ Tᵢⱼ·posⱼ / Σⱼ Tᵢⱼ`), every full/display equation as a standalone `$$...$$` block on its own line (rasterised to images later). Escape stray dollar amounts as `\$`.
 

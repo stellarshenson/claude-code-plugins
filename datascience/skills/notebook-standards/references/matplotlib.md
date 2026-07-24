@@ -40,13 +40,14 @@ Make a figure render edge-to-edge across the notebook output (or a README image)
 - **`constrained_layout` OFF here** - it re-adds automatic margins and shrinks the axes back, undoing the fill; manual `subplots_adjust` / `add_axes` is what buys the edge-to-edge span. Left-aligned titles (`ax.set_title(..., loc="left", pad=38)`) and captions (`fig.text(x, -0.02, ...)`) then live in the reserved top / bottom bands
 - **Analysis vs presentation** - inline analysis figures keep `constrained_layout=True` and default margins; reach for hand-set margins only when the figure is presentation-grade and must span the width
 
-## Colormaps - pick by data kind
+## Colormaps - names per family
 
-- **Sequential** (`viridis`, `plasma`, `cividis`) - ordered magnitudes, low → high
-- **Diverging** (`coolwarm`, `RdBu`) - data with a meaningful centre (zero, a mean)
-- **Qualitative** (`tab10`, `Set2`) - unordered categories
-- Never `jet` / rainbow - not perceptually uniform, invents structure the data does not have
-- Colourblind-safe by default: `viridis` / `cividis`; for categoricals add hatch or marker shape on top of colour so the plot survives greyscale
+The rules (family by data kind, no `jet`, colourblind and greyscale safety, one palette across the notebook) are the skill's Colours section - this is only the name list.
+
+- **Sequential** (`viridis`, `plasma`, `cividis`, `magma`) - ordered magnitudes, low → high
+- **Diverging** (`coolwarm`, `RdBu`, `BrBG`) - data with a meaningful centre (zero, a mean); set `vcenter` via `TwoSlopeNorm` so the midpoint lands on the neutral colour
+- **Qualitative** (`tab10`, `tab20`, `Set2`) - UNORDERED categories, up to ~10 before colours stop being distinguishable
+- **Ordered discrete** (batch size, epoch, quantile bin) - not qualitative; sample a sequential map at N points (`viridis(np.linspace(0, 1, N))`) so the colour ramp preserves the order
 
 ## Styling
 

@@ -35,7 +35,7 @@ nvidia-smi --query-gpu=index,uuid,name,compute_cap,memory.total,memory.free --fo
 2, GPU-c15a4c9a-..., NVIDIA RTX 5000 Ada, 8.9, 32768 MiB, 32000 MiB
 ```
 
-`nvidia-smi -L` lists the same UUIDs on their own. The UUID is the stable handle: it survives reboots, driver reloads, and adding/removing/replacing other cards.
+`nvidia-smi -L` lists the same UUIDs on their own. Why the UUID is the stable handle: How UUID Pinning Works, below.
 
 ### 2. Select Best GPU
 
@@ -52,15 +52,7 @@ nvidia-smi --query-gpu=index,uuid,name,compute_cap,memory.total,memory.free --fo
 
 ### 3. Set GPU Before Import
 
-```python
-import os
-
-os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'  # align ordering to nvidia-smi
-# Pin by UUID (preferred) - names one physical card regardless of ordering policy
-os.environ['CUDA_VISIBLE_DEVICES'] = 'GPU-c15a4c9a-...'  # MUST be before torch import
-
-import torch
-```
+The Quick Start block with the chosen UUID substituted - both env vars first, `import torch` after.
 
 ### 4. Verify Selection
 
@@ -149,7 +141,7 @@ print(f"Auto-selected GPU {best_uuid}")
 import torch  # reads the env vars here
 ```
 
-The Configuration cell's Rich `Device` block (see below) then confirms which physical card was picked.
+The Configuration cell's Rich `Device` block (section 5) then confirms which physical card was picked.
 
 ## Multi-GPU Training
 
