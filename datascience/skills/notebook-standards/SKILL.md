@@ -135,6 +135,17 @@ A long-running job does both: shows a fine-grained progress bar, AND checkpoints
 
 Progress-bar mechanics (tqdm vs rich, Jupyter quirks, completion fixes): `datascience:progressbars` skill.
 
+## Two-pass build (compute, then interpret)
+
+Build in at least two passes: the first computes the numbers, the second adds the meaning. A notebook that only prints results is half-finished - the interpretation is what a reader comes for.
+
+- **Pass 1 - compute** - run the cells that generate the data and numbers: load, process, train / infer, collect metrics into variables and to disk; no conclusions yet
+- **Pass 2 - interpret** - revisit the executed notebook and add the reasoning: a conclusion for each result, plus a graph for every load-bearing number (per Figures) that demonstrates the specific feature or phenomenon the number claims
+- **What a conclusion carries** - terse `technical-documentation` shape (overview sentence, then factual bullets), grounded in the run's actual values not adjectives (`recall 0.91 vs 0.78 baseline`, not "much better"); state the **mechanism** (why the number moved) when it applies, the **meaning** (why it matters to the work), and the **impact** (effect on performance / quality / cost)
+- **Colour amplifies the key message** - the headline figure or verdict wears the notebook's semantic palette (per Colours) so the deciding number stands out on a skim - meaning-bearing, never decoration
+- **Where the conclusion lands** - a markdown cell after the result, or Rich text in the output cell directly under its graph; a headline number never stands without the sentence saying what it means
+- **More passes when a result raises a question** - a surprising number earns another compute-then-interpret pass, not an unexplained value
+
 ## Figures (inline by default)
 
 Plots render inline - the `.ipynb` itself is the artefact, so no figure goes to disk unless the user asks for it.
