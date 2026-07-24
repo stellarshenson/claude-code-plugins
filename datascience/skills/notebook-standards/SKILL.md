@@ -1,6 +1,6 @@
 ---
 name: notebook-standards
-description: Jupyter notebook structure standards - section order, GPU-by-UUID selection, grouped imports, the configuration render, rich-output colours, equations, inline figures, matplotlib plotting, progress bars, and checkpointing long runs. Use when creating or modifying a Jupyter notebook (.ipynb or Jupytext .py), or when the user mentions notebook structure, the config cell, GPU selection, rich output, notebook equations, matplotlib plots, colormaps, saving / exporting figures, progress bars, or checkpointing intermediate results.
+description: Jupyter notebook structure standards - section order, GPU-by-UUID selection, grouped imports, the configuration render, the semantic colour system (rich output + matplotlib colormaps), Polars-over-pandas dataframes, equations, inline figures, matplotlib plotting, mandatory fine-grained progress bars, and mandatory checkpointing of long runs. Use when creating or modifying a Jupyter notebook (.ipynb or Jupytext .py), or when the user mentions notebook structure, the config cell, GPU selection, rich output, colours / colour palette / colormap / plot styling, polars or pandas dataframes, notebook equations, matplotlib plots, saving / exporting figures, progress bars, a slow or long-running cell, or checkpointing / resuming / restoring an interrupted run.
 ---
 
 # Notebook Structure Standards
@@ -138,20 +138,39 @@ Write math liberally - every quantitative relationship as an equation, not prose
 - One logical operation per cell
 - Progress bars in SEPARATE cell from setup text - avoids overwriting
 
+## Dataframes - Polars by default
+
+`import polars as pl`, not pandas. Reach for pandas ONLY when genuinely required - a library returns or demands a `pd.DataFrame`, or a needed operation has no Polars equivalent - and name the reason in a comment at the import. Convert at the boundary (`pl.from_pandas()` / `.to_pandas()`) and keep the notebook body Polars.
+
+Naming (`purpose_df` / `purpose_lf`) and lazy-for-large-data conventions: `datascience:datascience` skill.
+
 ## Rich Output
 
 `rich.print()` with semantic colors. Single multiline call. Never multiple individual prints for related output. See `references/rich-output.md` for the full semantic palette, status colours, ML-eval and table-column colours.
 
-## Progress and checkpoints
+## Colours (one system, every surface)
 
-Any loop a reader would wait on shows a Rich progress bar, and any run measured in minutes writes intermediate checkpoints so a crash or a mid-run inspection never loses the work.
+Colour carries meaning or it does not appear. ONE palette spans rich output and every figure - never invent a second one per notebook. Full palette + hexes: `references/rich-output.md`.
 
-- **Progress bar by design** - every medium or long loop (batch inference, training epochs, per-file processing, API sweeps) wraps its iterable in a Rich `Progress`; a bare loop with no visible progress is a defect, not a style choice
-- **Threshold** - a cell that runs more than a few seconds needs a bar; sub-second cells do not
-- **Fine granularity** - `total` counts the real unit of work so the bar advances often and the ETA is honest; an LLM judge over a large corpus tracks per-document (hundreds of steps), never a handful of coarse chunks - a 4-step bar that sits minutes per step is uninformative. The costlier each step, the finer the bar
+- **Semantic, never decorative** - a colour encodes a state (good / warn / error), a category, or a magnitude. Colour chosen because it looks nice is a defect
+- **One palette, both surfaces** - rich semantic names for terminal output, the matching hexes for matplotlib (primary `#3498DB`, secondary `#E74C3C`, tertiary `#2ECC71`). The same concept keeps the same colour in every cell and every figure
+- **Colormap by data kind** - sequential (`viridis`) for magnitudes, diverging (`coolwarm`) for data centred on a midpoint, qualitative (`tab10`) for categories. The wrong family misreads the data
+- **Never `jet` / rainbow** - it invents banding the data does not contain; default to colourblind-safe `viridis` / `cividis`
+- **Never colour alone** - pair it with a label, marker or pattern so the figure survives greyscale print and colourblind readers
+- **Legible on both themes** - notebooks get read in light AND dark JupyterLab; avoid pale-on-white and near-black-on-dark. Rich standard colour names (not hex) keep terminal output readable across themes
+- **Consistent across figures** - a series or class keeps its colour for the whole notebook; the same label in two different colours is a defect
+
+## Progress and checkpoints (MANDATORY for every long run)
+
+Every long-running job MUST do both: show a fine-grained progress bar, AND checkpoint its partial results so an interrupted run RESTORES what it already computed instead of starting over. A long loop missing either is a defect, not a style choice.
+
+- **Progress bar - mandatory** - every medium or long loop (batch inference, training epochs, per-file processing, API sweeps) wraps its iterable in a Rich `Progress`. A cell running more than a few seconds needs a bar; sub-second cells do not
+- **Fine enough to show REAL progress** - `total` counts the actual unit of work so the bar moves often and the ETA is honest. An LLM judge over a corpus tracks per-document (hundreds of steps), never a handful of coarse chunks - a 4-step bar sitting minutes per step tells the reader nothing. The costlier each step, the finer the bar. Nested work gets a nested bar (outer epoch, inner batch)
 - **Separate cell** - the `Progress` block gets its own cell, away from setup prints, per Cell Rules
-- **Checkpoint long runs** - a run measured in minutes persists intermediate results (every N steps or per epoch) to a temp dir - `tempfile.gettempdir()` or a `checkpoints/` under the output dir - so partial work survives a crash and stays inspectable mid-run
-- **Named and resumable** - checkpoint files carry the step/epoch in the name (`ckpt_epoch03.pt`, `batch_00500.parquet`); on restart the cell skips work already on disk
+- **Checkpoint - mandatory** - any run measured in minutes persists intermediate results (every N steps or per epoch) to `checkpoints/` under the output dir, or `tempfile.gettempdir()`. Partial work then survives a crash, a kernel restart, or a mid-run inspection
+- **Restore on restart - the whole point** - checkpoint files carry the step/epoch in the name (`ckpt_epoch03.pt`, `batch_00500.parquet`); on re-run the cell scans what is already on disk, LOADS it, and computes only what is missing. A checkpoint that is written but never read back is dead weight - the restore path is part of the standard, not an optional extra
+
+Progress-bar mechanics (tqdm vs rich, Jupyter quirks, completion fixes): `datascience:progressbars` skill.
 
 ## Figures (inline by default)
 
@@ -168,7 +187,6 @@ Object-oriented API only - `fig, ax = plt.subplots(figsize=(w, h), constrained_l
 
 - **`constrained_layout=True`** - default it on; auto-spaces labels, titles and colorbars so nothing overlaps or clips
 - **Full-width figures** - to span the notebook width edge-to-edge, use a wide landscape `figsize` and reserve the margins by hand (`fig.subplots_adjust(left=0.05, right=0.99, ...)` for a panel grid, or `fig.add_axes([...])` for a single axes) with `constrained_layout` off; see `references/matplotlib.md`
-- **Colormaps by data kind** - sequential (`viridis`) for magnitudes, diverging (`coolwarm`) for centred data, qualitative (`tab10`) for categories; never `jet`, default to colourblind-safe `viridis` / `cividis`
-- **Reuse the palette** - semantic hexes (primary `#3498DB`, secondary `#E74C3C`, tertiary `#2ECC71`) live in `references/rich-output.md`; don't invent a parallel one
+- **Colours** - colormap family, palette reuse, greyscale and dark-theme safety are all the Colours section above; never invent a per-plot palette
 - **Value pins** - to label a key point with a hard number that stays readable over lines and grid, annotate with a semi-transparent background box matching the plot background (`bbox=dict(boxstyle="round,pad=0.15", facecolor=BG, edgecolor="none", alpha=0.85)`, high `zorder`); see `references/matplotlib.md`
 - Full conventions - plot-type quick reference, subplots, styling, saving, gotchas - in `references/matplotlib.md`
