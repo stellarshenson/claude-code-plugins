@@ -14,9 +14,9 @@ Focus your scrutiny on, in priority order:
 - <auth / permission / data-loss path>
 - <state, effect deps, stale closures, concurrency>
 
-Output a numbered list. For each finding: SEVERITY (CRITICAL/HIGH/MEDIUM/LOW), the
-file, the precise problem, and why it's wrong. End with a one-line verdict: SHIP or
-DO-NOT-SHIP.
+Output a numbered list. For each finding: SEVERITY (CRITICAL/MAJOR/MINOR), the
+file, the precise problem, and why it's wrong. End with the one-line verdict first:
+`VERDICT: SHIP (<n> findings)` or `VERDICT: DO-NOT-SHIP (<n> findings)`.
 
 Here is the unified diff:
 

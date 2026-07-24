@@ -46,18 +46,18 @@ Sweep the target against every axis below. For each, trace actual values through
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: CLEAN / BUGS FOUND (<n>), plus a half-sentence on the worst one.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence on the worst one.
 
 ## Findings
 Ordered by severity. For each:
-- **[CRITICAL|HIGH|MEDIUM|LOW] <short title>** - file:line, the precise problem, the failure scenario (inputs/state -> wrong behaviour), and the concrete fix. Mark SUSPICION where untested and name the settling test.
+- **[CRITICAL|MAJOR|MINOR] <short title>** - file:line, the precise problem, the failure scenario (inputs/state -> wrong behaviour), and the concrete fix. Mark SUSPICION where untested and name the settling test.
 
 ## Tested and cleared
 Bullets for suspicious patterns you tested that turned out to work, with the one-line evidence - so the next reviewer does not re-raise them.
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
-Before returning: re-walk the three user journeys (fresh machine, restart, interrupt) against your findings list - name any journey step you could not verify. Drop any finding without file:line and a failure scenario. Confirm you tested what was testable rather than speculating - a finding disproven by a test you did not run is your failure, not the author's. If the target is genuinely clean, say CLEAN plainly rather than inventing severity.
+Before returning: re-walk the three user journeys (fresh machine, restart, interrupt) against your findings list - name any journey step you could not verify. Drop any finding without file:line and a failure scenario. Confirm you tested what was testable rather than speculating - a finding disproven by a test you did not run is your failure, not the author's. If the target is genuinely clean, say SHIP plainly rather than inventing severity.
 </QUALITY CONTROL>
 
 <TASK>

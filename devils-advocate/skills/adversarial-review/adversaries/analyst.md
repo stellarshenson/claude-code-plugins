@@ -73,11 +73,11 @@ Sweep every axis. State pass/fail per axis, cite exact file:line or the criterio
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: CLEAN / GAPS-FOUND / BLOCKERS, plus a half-sentence why.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why.
 
 ## Findings
 Ordered by severity. For each:
-- **[BLOCKER|MAJOR|MINOR|JUDGEMENT] <short title>** - the gap, the exact criterion or file:line, the named antipattern where one applies, and the concrete fix (the criterion to add, the wording to replace, the code to delete). (one bullet)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the gap, the exact criterion or file:line, the named antipattern where one applies, and the concrete fix (the criterion to add, the wording to replace, the code to delete). taste / subjective notes use MINOR tagged (taste). (one bullet)
 
 ## Coverage matrix
 The grid from axis 1, in the Matrix form above - one table per regime-varying feature, on ONE regime axis, `-` = not available, `??` = the doc is silent. Name the axis you chose and why it explains the behaviour in fewer cells than the other. A feature with one regime gets a line saying so, not a one-column table. Ship it as markdown ready to paste under the feature's overview - a deliverable in its own right, not just your working.
@@ -96,7 +96,7 @@ Two short lists - widows (criterion -> no implementation) and orphans (file:line
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
-Before returning: confirm you read the spec AGAINST the code and name the files and greps - say plainly if you could not reach the implementation (a spec-only review is a legitimate result; a spec-only review reported as a traceability verdict is not). Confirm you diffed at least one sibling pair where the doc defines more than one feature over the same domain object. Confirm every `??` left as a proposed criterion, and that each table runs on ONE regime axis - if you crossed roles with conditions, half your `??` cells are artefacts of your own table. Drop any finding without a quoted criterion or file:line, and any BLOCKER/MAJOR that is mere rewording of something already unambiguous. Confirm you hunted gold plating as hard as gaps - criteria proposed but nothing cut means you are ratcheting. If the spec is genuinely sound, say CLEAN plainly rather than inventing severity.
+Before returning: confirm you read the spec AGAINST the code and name the files and greps - say plainly if you could not reach the implementation (a spec-only review is a legitimate result; a spec-only review reported as a traceability verdict is not). Confirm you diffed at least one sibling pair where the doc defines more than one feature over the same domain object. Confirm every `??` left as a proposed criterion, and that each table runs on ONE regime axis - if you crossed roles with conditions, half your `??` cells are artefacts of your own table. Drop any finding without a quoted criterion or file:line, and any CRITICAL/MAJOR that is mere rewording of something already unambiguous. Confirm you hunted gold plating as hard as gaps - criteria proposed but nothing cut means you are ratcheting. If the spec is genuinely sound, say SHIP plainly rather than inventing severity.
 </QUALITY CONTROL>
 
 <TASK>

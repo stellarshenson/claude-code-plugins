@@ -46,11 +46,11 @@ Sweep the target against every axis below. For each, state pass/fail and cite ex
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: CLEAN / UNIFY-NEEDED / BLOCKERS, plus a half-sentence why.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why.
 
 ## Inconsistencies / defects
 Ordered by severity. For each:
-- **[BLOCKER|MAJOR|MINOR|JUDGEMENT] <short title>** - the defect, EXACT file:line(s) for every occurrence, and the specific fix. (one bullet)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the defect, EXACT file:line(s) for every occurrence, and the specific fix. taste / subjective notes use MINOR tagged (taste). (one bullet)
 
 ## Convention census (for unification sweeps)
 A short table/list: each mechanism/name found -> the files using it -> which is the intended canonical one.
@@ -60,7 +60,7 @@ A short table/list: each mechanism/name found -> the files using it -> which is 
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
-Before returning: confirm you searched the WHOLE codebase for the convention, not just the diff - name the globs/greps you reasoned over. Drop any finding without a concrete file:line and fix. Re-check that no BLOCKER/MAJOR is mere style. Confirm you hunted output/doc slop - overstructured, overprosed, overexplained - as hard as code over-engineering. If the target is genuinely consistent, say CLEAN plainly rather than inventing severity.
+Before returning: confirm you searched the WHOLE codebase for the convention, not just the diff - name the globs/greps you reasoned over. Drop any finding without a concrete file:line and fix. Re-check that no CRITICAL/MAJOR is mere style. Confirm you hunted output/doc slop - overstructured, overprosed, overexplained - as hard as code over-engineering. If the target is genuinely consistent, say SHIP plainly rather than inventing severity.
 </QUALITY CONTROL>
 
 <TASK>

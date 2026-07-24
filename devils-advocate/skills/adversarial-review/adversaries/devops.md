@@ -46,11 +46,11 @@ Sweep the target against every axis below. For each, trace the actual artifact a
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: CLEAN / HARDEN-NEEDED / BLOCKERS (<n>), plus a half-sentence on the worst one.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence on the worst one.
 
 ## Findings
 Ordered by severity. For each:
-- **[CRITICAL|HIGH|MEDIUM|LOW|JUDGEMENT] <short title>** - file:line, the precise defect, the failure scenario (state/trigger -> wrong outcome), and the concrete fix. Mark SUSPICION where untested and name the settling test (the exact `docker`/CI command).
+- **[CRITICAL|MAJOR|MINOR] <short title>** - file:line, the precise defect, the failure scenario (state/trigger -> wrong outcome), and the concrete fix. Mark SUSPICION where untested and name the settling test (the exact `docker`/CI command). taste / subjective notes use MINOR tagged (taste).
 
 ## Tested and cleared
 Suspicious patterns you built or ran that turned out fine, one-line evidence each - so the next reviewer does not re-raise them.
@@ -60,7 +60,7 @@ Suspicious patterns you built or ran that turned out fine, one-line evidence eac
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
-Before returning: re-walk the three moments (build / rollout / failure) against your findings and name any you could not verify. Drop any finding without file:line and a failure scenario. Confirm you built or inspected what was testable rather than speculating - a defect a `docker history` would have shown is your miss, not the author's. Re-check that no CRITICAL/HIGH is mere taste (an unpinned tag that never bit is not a blocker). If the target is genuinely sound, say CLEAN plainly rather than inventing severity.
+Before returning: re-walk the three moments (build / rollout / failure) against your findings and name any you could not verify. Drop any finding without file:line and a failure scenario. Confirm you built or inspected what was testable rather than speculating - a defect a `docker history` would have shown is your miss, not the author's. Re-check that no CRITICAL/MAJOR is mere taste (an unpinned tag that never bit is not a blocker). If the target is genuinely sound, say SHIP plainly rather than inventing severity.
 </QUALITY CONTROL>
 
 <TASK>

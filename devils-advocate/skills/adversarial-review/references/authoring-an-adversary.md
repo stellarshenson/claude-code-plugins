@@ -18,9 +18,28 @@ The file IS the plugin - no registry, no wiring. Drop `adversaries/<name>.md` an
 | `<CHALLENGE>` | assume it is flawed and prove it; what to default to flagging |
 | `<METHODOLOGY>` | the numbered axes to sweep - the expert's real value |
 | `<CONSTRAINTS>` | critique-only, cite file:line, separate fact from judgement, terse |
-| `<OUTPUT FORMAT>` | one-line verdict + severity-ordered findings + "what's already good" |
+| `<OUTPUT FORMAT>` | `VERDICT: SHIP`/`DO-NOT-SHIP` first line + severity-ordered `[CRITICAL|MAJOR|MINOR]` findings + "what's already good" (see Signal standard below) |
 | `<QUALITY CONTROL>` | self-check before returning |
 | `<TASK>` | one generic line; the caller fills the actual target |
+
+## Signal standard (mandatory, every adversary)
+
+Two orthogonal axes, identical for every adversary and both mode templates. This is the lock: every adversary's `<OUTPUT FORMAT>` MUST emit the verdict as its first line and use ONLY these three severity labels.
+
+**VERDICT** - the one-line ship signal, the FIRST line of every review. Exactly two values:
+
+- `VERDICT: SHIP` - no CRITICAL findings; the artifact is good to ship / publish / trust (MAJOR/MINOR may remain, to be fixed, but none blocks)
+- `VERDICT: DO-NOT-SHIP` - at least one CRITICAL finding
+
+Always carry a finding count and a half-sentence why: `VERDICT: SHIP (0 findings) - <half sentence>` or `VERDICT: DO-NOT-SHIP (2 findings) - <half sentence>`.
+
+**SEVERITY** - the per-finding label, exactly three tiers: `[CRITICAL|MAJOR|MINOR]`
+
+- `CRITICAL` - ship-blocking on its own; its presence forces DO-NOT-SHIP
+- `MAJOR` - serious, fix before ship, but does not block by itself
+- `MINOR` - minor; fix when convenient. Taste / subjective observations go here, tagged with a leading `(taste)` - e.g. `[MINOR] (taste) prefer userId`
+
+**COUPLING** (the only link between the axes) - `VERDICT` = `DO-NOT-SHIP` if and only if any finding is `CRITICAL`; otherwise `SHIP`.
 
 ## What makes an adversary earn its slot
 
@@ -28,7 +47,7 @@ The file IS the plugin - no registry, no wiring. Drop `adversaries/<name>.md` an
 - **Make findings falsifiable** - demand the concrete artefact per finding (the file:line, the mutation that stays green, the missing branch, the standard tool that replaces the hand-rolled one). "Use a library" is not a finding
 - **Cut as well as add where the lens allows** - a reviewer that only ever demands MORE is a ratchet. `architect` (axis 8) and `qa-engineer` (axis 7) both carry a first-class slop axis whose fix is deletion
 - **Name the boundary** - if a sibling adversary is adjacent, say what each owns (see the boundaries note in SKILL.md), so a panel does not return the same finding three times
-- **Severity discipline** - `<QUALITY CONTROL>` must force a re-check that no BLOCKER/MAJOR is mere style, and must permit a clean verdict rather than manufactured severity
+- **Severity discipline** - `<QUALITY CONTROL>` must force a re-check that no CRITICAL/MAJOR is mere style, and must permit a clean verdict rather than manufactured severity
 
 ## Register
 

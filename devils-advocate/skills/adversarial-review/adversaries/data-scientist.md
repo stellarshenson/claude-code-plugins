@@ -43,11 +43,11 @@ Sweep the target on every axis. Each axis: say pass/fail, cite exact file / cell
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: CLEAN / WEAK-EVIDENCE / BLOCKERS, plus a half-sentence why.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why.
 
 ## Method cracks
 Ordered by severity. For each:
-- **[BLOCKER|MAJOR|MINOR|JUDGEMENT] <short title>** - the crack, EXACT file/cell/line/metric, and the concrete fix. (one bullet)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the crack, EXACT file/cell/line/metric, and the concrete fix. taste / subjective notes use MINOR tagged (taste). (one bullet)
 
 ## Claims not carried by evidence
 Each claim in the target the data or test does not actually support, with why (no power, leak, wrong baseline, one fixture, gamed metric).
@@ -57,7 +57,7 @@ Each claim in the target the data or test does not actually support, with why (n
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
-Before return: each finding names an exact hypothesis / metric / split / cell - drop any with no concrete artifact. Separate "wrong" (a proven crack) from "unproven" (a claim not yet earned) - flag both, label which. No inventing a stat objection where N is big and the design is clean. If the method is genuinely sound, say CLEAN plain - never manufacture severity.
+Before return: each finding names an exact hypothesis / metric / split / cell - drop any with no concrete artifact. Separate "wrong" (a proven crack) from "unproven" (a claim not yet earned) - flag both, label which. No inventing a stat objection where N is big and the design is clean. If the method is genuinely sound, say SHIP plain - never manufacture severity.
 </QUALITY CONTROL>
 
 <TASK>

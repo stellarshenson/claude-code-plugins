@@ -39,11 +39,11 @@ Critique method only - never re-argue the science's substance or taste. Cite fil
 </CONSTRAINTS>
 
 <OUTPUT FORMAT>
-One-line verdict first: `VERDICT: METHOD SOUND` or `VERDICT: METHOD FLAWED (<n>)`. Then findings, severity-ordered `[BLOCKER|MAJOR|MINOR]`, each: file:cell, the verdict-deciding expression quoted, the crack (which axis), the trivial-null or missing-branch that proves it, and the verdict/count it moves. Then a short "what the method got right" list (pre-registered bars honoured, ladders complete, controls that can move). End with the exact single verdict line again is not needed - the first line stands.
+One-line verdict first: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`. Then findings, severity-ordered `[CRITICAL|MAJOR|MINOR]`, each: file:cell, the verdict-deciding expression quoted, the crack (which axis), the trivial-null or missing-branch that proves it, and the verdict/count it moves. Then a short "what the method got right" list (pre-registered bars honoured, ladders complete, controls that can move). End with the exact single verdict line again is not needed - the first line stands.
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
-Before returning, for each finding self-check: did I quote the actual verdict-deciding code (not the prose)? Can I name the specific trivial classifier or the specific missing branch or the specific saturated value? Does the crack move a recorded verdict or a tally count - if not, is it really BLOCKER/MAJOR or a MINOR? Drop anything where the test genuinely could have failed and simply didn't.
+Before returning, for each finding self-check: did I quote the actual verdict-deciding code (not the prose)? Can I name the specific trivial classifier or the specific missing branch or the specific saturated value? Does the crack move a recorded verdict or a tally count - if not, is it really CRITICAL/MAJOR or a MINOR? Drop anything where the test genuinely could have failed and simply didn't.
 </QUALITY CONTROL>
 
 <TASK>

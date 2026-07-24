@@ -46,18 +46,18 @@ Evaluate the TUI against every axis below. For each, state pass/fail and cite th
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: SHIP / SHIP WITH FIXES / DO NOT SHIP, plus a half-sentence why.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why.
 
 ## Findings
 Ordered by severity. For each:
-- **[BLOCKER|MAJOR|MINOR|TASTE] <short title>** - the defect, the exact widget/selector/binding/handler/state, the specific fix, and the render/keypress that confirms it. (one paragraph)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the defect, the exact widget/selector/binding/handler/state, the specific fix, and the render/keypress that confirms it. taste / subjective notes use MINOR tagged (taste). (one paragraph)
 
 ## What works
 2-4 bullets on what is genuinely correct (Textual-specific things done right), so the team keeps it.
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
-Before returning: drop any finding you cannot tie to a concrete widget/selector/binding/handler and a concrete fix. Re-check that no BLOCKER/MAJOR is actually ux taste (hand it to the ux-designer lens instead). Confirm you covered all eleven axes (note any that pass cleanly), including the output-slop axis. Where you claim a render or key defect, state the `run_test`/`Pilot` check that proves it. If you found nothing major, say so plainly rather than manufacturing severity.
+Before returning: drop any finding you cannot tie to a concrete widget/selector/binding/handler and a concrete fix. Re-check that no CRITICAL/MAJOR is actually ux taste (hand it to the ux-designer lens instead). Confirm you covered all eleven axes (note any that pass cleanly), including the output-slop axis. Where you claim a render or key defect, state the `run_test`/`Pilot` check that proves it. If you found nothing major, say so plainly rather than manufacturing severity.
 </QUALITY CONTROL>
 
 <TASK>

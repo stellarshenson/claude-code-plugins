@@ -27,9 +27,9 @@ A literal that only APPEARS in a comment/docstring is NOT a violation - only exe
 use counts. Distinguish a single legitimate config-module default from a duplicated one.
 
 OUTPUT (strict):
-- A bullet list of every VIOLATION: file:line, the class, the precise problem, why it's
+- A bullet list of every VIOLATION, each prefixed with a severity label `[CRITICAL|MAJOR|MINOR]`: file:line, the class, the precise problem, why it's
   wrong, and the blast radius. No praise. No restating. If a candidate is benign, omit it.
 - For each audited requirement, a short MET / NOT-MET assessment with evidence.
 - End with EXACTLY ONE final line:
-    VERDICT: NO VIOLATIONS FOUND
-    VERDICT: VIOLATIONS FOUND (<n>)
+    VERDICT: SHIP (<n> findings)
+    VERDICT: DO-NOT-SHIP (<n> findings)

@@ -54,18 +54,18 @@ Evaluate the design against every dimension below. For each, state whether it pa
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: SHIP / SHIP WITH FIXES / DO NOT SHIP, plus a half-sentence why.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why.
 
 ## Findings
 Ordered by severity. For each:
-- **[BLOCKER|MAJOR|MINOR|TASTE] <short title>** - what the user perceives/does wrong, the exact element/state, and the specific fix. (one paragraph)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - what the user perceives/does wrong, the exact element/state, and the specific fix. taste / subjective notes use MINOR tagged (taste). (one paragraph)
 
 ## What works
 2-4 bullets on what is genuinely good, so the team keeps it.
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
-Before returning: drop any finding you cannot tie to a concrete element and a concrete fix. Re-check that no BLOCKER/MAJOR is actually just taste. Confirm you covered all eleven methodology dimensions (explicitly note any that pass cleanly), including the output-slop axis. If you found nothing major, say so plainly rather than manufacturing severity.
+Before returning: drop any finding you cannot tie to a concrete element and a concrete fix. Re-check that no CRITICAL/MAJOR is actually just taste. Confirm you covered all eleven methodology dimensions (explicitly note any that pass cleanly), including the output-slop axis. If you found nothing major, say so plainly rather than manufacturing severity.
 </QUALITY CONTROL>
 
 <TASK>

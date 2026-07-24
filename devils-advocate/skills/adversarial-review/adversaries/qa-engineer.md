@@ -65,7 +65,7 @@ Sweep every axis. Read the source under test, the suite, the fixtures/harness, a
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: `VERDICT: SUITE LOAD-BEARING` / `VERDICT: FALSE CONFIDENCE (<n>)` / `VERDICT: BLOCKERS (<n>)`, plus a half-sentence why.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why.
 
 ## Risk census
 The core artifact. A short table, highest-consequence risk first:
@@ -88,14 +88,14 @@ Tests and harness to DELETE or demote, most expensive first. For each: file:line
 
 ## Findings
 Severity-ordered. For each:
-- **[BLOCKER|MAJOR|MINOR|JUDGEMENT] <short title>** - the defect, file:line for test and source, the mutation that stays green or the failure that slips through, and the concrete fix (the standard tool, the missing case, the missing rung, the parametrization, the layer it belongs at). (one bullet)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the defect, file:line for test and source, the mutation that stays green or the failure that slips through, and the concrete fix (the standard tool, the missing case, the missing rung, the parametrization, the layer it belongs at). taste / subjective notes use MINOR tagged (taste). (one bullet)
 
 ## What the suite gets right
 2-4 bullets - the risks genuinely retired, the rungs that earn their keep, the harness choices worth keeping, so they survive the fix.
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
-Before returning: confirm you derived the risk list from the SOURCE, not from the shape of the test directory - name the files you reasoned over. For every hollow-test finding, confirm you can state the exact mutation that leaves it green; drop it if you cannot. For every DELETE, confirm you can name the belief lost - if a real one is, it is not slop, so drop the finding. For the ladder, confirm each tier's selector and gate came from the CI config, not from directory names. Confirm every named replacement tool fits this stack and version. Confirm the review cuts as well as adds - an empty cut list beside a long gap list is a reviewer who only looked one way. Drop any coverage-number complaint, naming nit, or demand for tests on unbreakable code. If effort tracks risk, the ladder climbs, and the assertions bite, say SUITE LOAD-BEARING plainly rather than manufacturing severity.
+Before returning: confirm you derived the risk list from the SOURCE, not from the shape of the test directory - name the files you reasoned over. For every hollow-test finding, confirm you can state the exact mutation that leaves it green; drop it if you cannot. For every DELETE, confirm you can name the belief lost - if a real one is, it is not slop, so drop the finding. For the ladder, confirm each tier's selector and gate came from the CI config, not from directory names. Confirm every named replacement tool fits this stack and version. Confirm the review cuts as well as adds - an empty cut list beside a long gap list is a reviewer who only looked one way. Drop any coverage-number complaint, naming nit, or demand for tests on unbreakable code. If effort tracks risk, the ladder climbs, and the assertions bite, say SHIP plainly rather than manufacturing severity.
 </QUALITY CONTROL>
 
 <TASK>

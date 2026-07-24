@@ -89,6 +89,16 @@ Prompt template: `examples/mode2-audit-prompt.txt` - reviewer role + REPO/scope 
 
 Adversaries live in `adversaries/*.md`, one self-contained persona prompt per expert, written to be pasted straight into a spawn as the reviewer's role + methodology + output contract. Each file's `lens:` frontmatter is the authoritative one-line summary; the table below is only the index.
 
+### Signal standard (every adversary)
+
+Every adversary emits the SAME two-axis signal, so a panel reads uniformly:
+
+- **VERDICT** (first line, always) - `VERDICT: SHIP (<n> findings)` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why
+- **SEVERITY** (per finding) - exactly `[CRITICAL|MAJOR|MINOR]`; taste / subjective notes use MINOR tagged `(taste)`
+- **Coupling** - `DO-NOT-SHIP` iff any finding is CRITICAL; otherwise `SHIP`
+
+Canonical contract: `references/authoring-an-adversary.md`.
+
 | Adversary | Catches | Mode |
 | --- | --- | --- |
 | `architect` | architecture, consistency, hardcodings & config drift, SoC, leaky abstractions, advertised-surface-vs-reality, over-engineering & doc slop | 2 |
@@ -140,5 +150,5 @@ Full authoring contract, section by section: `references/authoring-an-adversary.
 ## After the review
 
 - Triage, fix, re-confirm per the rounds protocol - flip a "review clean" criterion to done only on a clean confirming round. For each dismissed finding, know why it is wrong (caller guards it, type forbids it, a test covers it, env always provides it)
-- A `DO-NOT-SHIP` / `VIOLATIONS FOUND` verdict on a confirmed real issue blocks the ship; one driven only by false positives or style nits does not - say which, do not wave it away
+- A `DO-NOT-SHIP` verdict on a confirmed real (CRITICAL) issue blocks the ship; one driven only by false positives or style nits does not - say which, do not wave it away
 - Record what the review caught and how you fixed it (acc-crit log, journal) - the cross-file findings are the ones future-you reintroduces
