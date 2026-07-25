@@ -1,6 +1,6 @@
 # Examples Index
 
-66 production SVG references. Study before creating. Closest match to target = best starting point.
+68 production SVG references. Study before creating. Closest match to target = best starting point.
 
 Recipes below carry the geometry - read the INDEX plus ONE closest example, not 3-5.
 
@@ -101,6 +101,8 @@ the SVGs only once the spec is approved.
 | `header_banner_nexus` | Design document header |
 | `header_banner_optima_manufacturing` | Project proposal header |
 | `header_banner_titan_industries` | Presentation header |
+| `header_banner_verdant_grounds` | Engagement / architecture doc header - kicker, route-pin motif, gradient monogram |
+| `header_cover_banner_halcyon_labs` | Whitepaper cover banner (Pattern B, 800×170) - brand logo-mark variant |
 | `landscape_apex_financial` | Estate overview with key stats |
 
 ### Data visualisation

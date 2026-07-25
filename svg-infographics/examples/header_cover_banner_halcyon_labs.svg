@@ -1,0 +1,112 @@
+<!--
+  header_cover_banner_halcyon_labs.svg - Whitepaper / proposal cover banner (logo-mark variant of Pattern B).
+  Shows: title, two subtitle lines, credits line + version stamp, a brand octagon
+  logo mark in the right column, and a multi-stop brand gradient accent bar flush
+  with the viewBox bottom.
+  Intent: cover-page document header. Establish premise (private, sovereign) at first glance.
+  Theme: sample brand palette - teal foreground (fg-1/fg-2/fg-3 with dark-mode flips),
+  blue/cyan/gold/orange gradient accent bar.
+  Reference example for `svg-infographics/skills/svg-designer/rules/header.md` (Pattern B,
+  logo-mark decorative variant - the right column carries a brand logo instead of the
+  2x2 glyph cluster; logo footprint 113/800 = 14% of width, under the 20% decorative cap).
+
+  === GRID ===
+  ViewBox: 800 x 170
+  Outer margins: x=40 left, x=760 right. y=0 top, y=170 bottom.
+  Gradient accent bar: x=0..800, y=160..170 (10px tall, full width)
+  Title band (text-left column, x=40):
+    title:      x=40, y=60,  font=28, weight 700, class fg-1
+    subtitle:   x=40, y=92,  font=15, weight 600, class fg-2
+    subtitle-2: x=40, y=112, font=12, class fg-3
+    credits:    x=40, y=140, font=10, class credits (bottom-anchored, carries version stamp)
+  Brand logo mark (right column):
+    octagon mark: x=656..769, y=34..137 (113 x 103), two-tone split + concentric circles
+
+  === LAYOUT TOPOLOGY ===
+  h-stack: text-column (left, x=40..620), logo-mark (right, x=656..769) within banner
+  v-stack: title, subtitle, subtitle-2, credits within text-column
+  bottom-align: gradient-bar flush with viewBox bottom (y=160..170)
+  contain: root > background, text-column, logo-mark, gradient-bar
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 170">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .credits { fill: #236a74; }
+    .glyph-stroke { stroke: #0096d1; fill: none; }
+    .glyph-accent { stroke: #005f7a; fill: none; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .credits { fill: #5aafc5; }
+      .glyph-stroke { stroke: #5cc8e0; }
+      .glyph-accent { stroke: #4099b3; }
+    }
+  </style>
+
+  <defs>
+    <linearGradient id="brand_bar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0" stop-color="#0d96f7"/>
+      <stop offset=".3" stop-color="#5aafc5"/>
+      <stop offset=".6" stop-color="#d4a04a"/>
+      <stop offset="1" stop-color="#fe7505"/>
+    </linearGradient>
+  </defs>
+
+  <g id="guide-grid" display="none">
+    <line x1="400" y1="0" x2="400" y2="170" stroke="#ff00ff" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.4"/>
+    <line x1="0" y1="100" x2="800" y2="100" stroke="#ff00ff" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.4"/>
+    <line x1="520" y1="0" x2="520" y2="170" stroke="#ff00ff" stroke-width="0.5" stroke-dasharray="4,4" opacity="0.3"/>
+  </g>
+
+  <g id="background">
+    <rect x="0" y="0" width="800" height="170" fill="transparent"/>
+  </g>
+
+  <g id="nodes">
+    <!-- Bottom accent gradient bar -->
+    <rect x="0" y="160" width="800" height="10" fill="url(#brand_bar)" opacity="0.6"/>
+  </g>
+
+  <g id="connectors">
+    <!-- Banner has no connectors -->
+  </g>
+
+  <g id="content">
+    <!-- Title (text-left column) -->
+    <text x="40" y="60" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" class="fg-1">Halcyon Labs AI Platform</text>
+    <text x="40" y="92" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="600" class="fg-2">A private, sovereign developer platform</text>
+    <text x="40" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="12" class="fg-3">for enterprise engineering teams</text>
+    <text x="40" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="10" class="credits">Prepared by Halcyon Labs  •  Single-counterparty delivery  •  Hardware, software, training, operations  |  v3</text>
+
+    <!-- Brand octagon logo mark in the header right column (abstract two-tone mark) -->
+    <svg x="656" y="34" width="113" height="103" viewBox="0 0 560 512">
+      <defs>
+        <clipPath id="logo-octagon">
+          <path d="M148 16 H412 L544 136 V376 L412 496 H148 L16 376 V136 Z"/>
+        </clipPath>
+        <mask id="logo-motif">
+          <rect width="560" height="512" fill="white"/>
+          <rect x="262" y="0" width="36" height="512" fill="black"/>
+          <rect x="95" y="241" width="370" height="30" fill="black"/>
+          <circle cx="280" cy="256" r="82" fill="black"/>
+          <circle cx="95" cy="256" r="41" fill="black"/>
+          <circle cx="465" cy="256" r="41" fill="black"/>
+        </mask>
+      </defs>
+      <g clip-path="url(#logo-octagon)" mask="url(#logo-motif)">
+        <rect x="0" y="0" width="280" height="512" fill="#FE7505"/>
+        <rect x="280" y="0" width="280" height="512" fill="#0D96F7"/>
+      </g>
+      <circle cx="280" cy="256" r="37" fill="#FE7505"/>
+      <circle cx="95" cy="256" r="16" fill="#FE7505"/>
+      <circle cx="465" cy="256" r="16" fill="#0D96F7"/>
+    </svg>
+  </g>
+
+  <g id="callouts">
+    <!-- No callouts on banner -->
+  </g>
+</svg>

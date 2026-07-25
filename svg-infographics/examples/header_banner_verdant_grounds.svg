@@ -1,0 +1,82 @@
+<!--
+  header_banner_verdant_grounds.svg - Engagement document section-header banner (compact, 800x110).
+  Left title block: kicker (client · project) + title + meta strap carrying the version stamp.
+  Right side: a subtle route/pin "site selection" motif and a gradient monogram logo.
+  Full-width brand-gradient accent bar along the bottom.
+  Intent: section header for the top of an engagement / architecture document.
+  Theme: sample brand palette - violet foreground (fg-1 / fg-3 with dark-mode flips),
+  six-stop brand gradient (emerald->blue->violet->magenta->coral->gold) in the accent bar and logo.
+  Reference example for `svg-infographics/skills/svg-designer/rules/header.md`
+  (compact header, kicker + monogram-logo variant).
+
+  === GRID ===
+  ViewBox: 800 x 110, left/right margin 40px
+  Text column (x=40):
+    kicker: y=20, font=10.5, letter-spacing 1.5, class fg-3 (CLIENT · PROJECT)
+    title:  y=48, font=26,   weight 700, class fg-1
+    meta:   y=74, font=12.5, class fg-3 (division | scope | version stamp)
+  Route/pin motif: x=575..694, y=25..50 (4 pins on a dashed path, pin 4 highlighted)
+  Monogram logo: translate(740,14), gradient-filled, approx 42px wide (5% of width)
+  Accent bar: x=0..800, y=100..110 (10px, full width)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 110">
+  <style>
+    .fg-1 { fill: #1f0f4a; }
+    .fg-3 { fill: #70658a; }
+    .motif { stroke: #1f0f4a; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #eee7ff; }
+      .fg-3 { fill: #b5b0c0; }
+      .motif { stroke: #eee7ff; }
+    }
+  </style>
+  <defs>
+    <linearGradient id="brand_bar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38d78c"/>
+      <stop offset="18%" stop-color="#3999fd"/>
+      <stop offset="37%" stop-color="#5456f3"/>
+      <stop offset="58%" stop-color="#d857ad"/>
+      <stop offset="79%" stop-color="#ec896e"/>
+      <stop offset="100%" stop-color="#f2c852"/>
+    </linearGradient>
+    <linearGradient id="logo_grad" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#1CD77F"/>
+      <stop offset="0.229" stop-color="#1687FD"/>
+      <stop offset="0.404" stop-color="#383AF3"/>
+      <stop offset="0.6" stop-color="#D840A5"/>
+      <stop offset="0.8" stop-color="#EC7858"/>
+      <stop offset="1" stop-color="#F2C036"/>
+    </linearGradient>
+  </defs>
+
+  <!-- bottom brand-gradient accent bar -->
+  <rect x="0" y="100" width="800" height="10" fill="url(#brand_bar)" opacity="0.7"/>
+
+  <!-- left title block -->
+  <text x="40" y="20" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" letter-spacing="1.5" class="fg-3">VERDANT GROUNDS · NEXT BEST SITE</text>
+  <text x="40" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" class="fg-1">NBS System Architecture Overview</text>
+  <text x="40" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" class="fg-3">Northwind Data Science Division | System components overview | v3</text>
+
+  <!-- Next-Best-Site route motif (subtle) -->
+  <g id="route-motif">
+    <path d="M575,48 L610,40 L648,50 L686,40" fill="none" class="motif" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.3"/>
+    <!-- pin 1 -->
+    <circle cx="575" cy="37" r="4" fill="none" class="motif" stroke-width="1.2" opacity="0.3"/>
+    <path d="M571.5,40 L578.5,40 L575,48 Z" fill="none" class="motif" stroke-width="1.2" opacity="0.3"/>
+    <!-- pin 2 -->
+    <circle cx="610" cy="29" r="4" fill="none" class="motif" stroke-width="1.2" opacity="0.3"/>
+    <path d="M606.5,32 L613.5,32 L610,40 Z" fill="none" class="motif" stroke-width="1.2" opacity="0.3"/>
+    <!-- pin 3 -->
+    <circle cx="648" cy="39" r="4" fill="none" class="motif" stroke-width="1.2" opacity="0.3"/>
+    <path d="M644.5,42 L651.5,42 L648,50 Z" fill="none" class="motif" stroke-width="1.2" opacity="0.3"/>
+    <!-- pin 4 - highlighted "next best site" -->
+    <circle cx="686" cy="29" r="8" fill="none" stroke="#38d78c" stroke-width="1" opacity="0.35"/>
+    <circle cx="686" cy="29" r="5" fill="#38d78c" opacity="0.6"/>
+    <path d="M681.5,32.5 L690.5,32.5 L686,40 Z" fill="#38d78c" opacity="0.6"/>
+  </g>
+
+  <!-- Vendor gradient monogram logo (top-right, neutral placeholder mark) -->
+  <g transform="translate(740, 14)">
+    <text x="0" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="60" font-weight="800" fill="url(#logo_grad)">N</text>
+  </g>
+</svg>
