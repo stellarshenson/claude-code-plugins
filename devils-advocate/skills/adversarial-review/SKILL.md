@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Hostile, independent review - spawn fresh context-free `claude -p` subprocesses that try to BREAK a change. Two modes - diff bug-hunt (no tools, inline diff) and whole-repo audit (tools on - slop, brittle design, hardcodings, config drift, broken SoC). Expert adversaries seed the lens - architect, bug-hunter, qa-engineer, analyst, ux-designer, tui, data-scientist, methodologist, popular-science, devops. Multi-round - find, fix, re-confirm. Use before a risky commit/merge, a UI or terminal-UI ship, a shell installer, trusting an experiment's verdicts or a green test suite, signing off a spec, or publishing docs. Triggers - "adversarial review", "red-team this", "find bugs in my change", "review before ship", "audit the architecture", "UX review", "TUI review", "shell review", "methodology review", "can this test fail", "review my tests", "readability review", "review my README/docs", "deployment review", "review my spec", "acceptance criteria review", "find gaps in the spec", "does the code match the spec".
+description: Hostile, independent review - spawn fresh context-free `claude -p` subprocesses that try to BREAK a change. Two modes - diff bug-hunt (no tools, inline diff) and whole-repo audit (tools on - slop, brittle design, hardcodings, config drift, broken SoC). Expert adversaries seed the lens - architect, bug-hunter, qa-engineer, analyst, ux-designer, tui, data-scientist, methodologist, popular-science, devops, slop-hunter. Multi-round - find, fix, re-confirm. Use before a risky commit/merge, a UI or terminal-UI ship, a shell installer, trusting an experiment's verdicts or a green test suite, signing off a spec, or publishing docs. Triggers - "adversarial review", "red-team this", "find bugs in my change", "review before ship", "audit the architecture", "UX review", "TUI review", "shell review", "methodology review", "can this test fail", "review my tests", "readability review", "review my README/docs", "deployment review", "review my spec", "acceptance criteria review", "find gaps in the spec", "does the code match the spec", "hunt dead weight", "what can I delete", "is this over-engineered / bloated", "cut the bloat / slop", "find unnecessary code / tests / comments", "de-slop this", "check for fabricated citations".
 ---
 
 # Adversarial Review
@@ -101,7 +101,7 @@ Canonical contract: `references/authoring-an-adversary.md`.
 
 | Adversary | Catches | Mode |
 | --- | --- | --- |
-| `architect` | architecture, consistency, hardcodings & config drift, SoC, leaky abstractions, advertised-surface-vs-reality, over-engineering & doc slop | 2 |
+| `architect` | architecture, consistency, hardcodings & config drift, SoC, leaky abstractions, advertised-surface-vs-reality; over-engineering, gold-plating & dead weight as the primary axis, under a proportionality rule binding its own fixes | 2 |
 | `bug-hunter` | runtime bugs in shell/installers/startup - quoting, `set -e`, fresh-vs-restart asymmetry, cross-platform parity, secrets hygiene, lifecycle races | 2 |
 | `qa-engineer` | test STRATEGY - risk-based coverage, the confidence ladder (progressive tiers), can-each-test-fail, regression pinning, test slop to DELETE, harness fitness & reinvented wheels | 2 |
 | `ux-designer` | friction & intent, visual hierarchy, focus management, motion comfort & afterimages, accessibility, desktop/mobile parity, edge states | 2 |
@@ -111,6 +111,7 @@ Canonical contract: `references/authoring-an-adversary.md`.
 | `popular-science` | readability for a curious generalist - jargon, unsourced claims, false vagueness, buried lede, pace, the visuals (judged against best-in-class article figures), the ending (arc-back, conclusions, next steps), simplification that broke the truth. Reviews against the shared craft canon in the `datascience` plugin | 1 |
 | `devops` | containers & deploy - Dockerfile hygiene, layer cache, secrets in layers, root/privileged runtime, PID-1 signals, probes, pipeline gate integrity, env drift | 2 |
 | `analyst` | specs & acceptance criteria - coverage gaps, missing edge-case fanout, unverifiable/ambiguous criteria, sibling features diverging with no stated reason (silos), spec-vs-code widows & orphans, gold plating to cut | 2 |
+| `slop-hunter` | dead weight / project bloat - dead code, speculative & single-use abstractions (YAGNI), vanity & duplicate tests, comment & doc over-prose, unused deps/config; plus AI-slop tells & fabrication. Remedy = delete, gated by a load-bearing check | 2 |
 
 **Boundaries** (so a panel does not return one finding three times):
 
@@ -119,7 +120,8 @@ Canonical contract: `references/authoring-an-adversary.md`.
 - `devops` owns the image and the pipeline; `bug-hunter` owns the script that runs inside them
 - `analyst` judges whether the RIGHT thing is specified and whether the code matches the spec (widows, orphans, drift); `qa-engineer` judges whether the suite would catch a break; `architect` judges the code's internal consistency. Spec says nothing about it → `analyst`; spec says it, tests miss it → `qa-engineer`; code contradicts its own conventions → `architect`
 - `analyst` (axis 5) challenges two *specs* diverging without reason; `architect` (axis 1) challenges two *implementations* diverging; `ux-designer` challenges what the divergence feels like to the user
-- `architect` (axis 8), `qa-engineer` (axis 7) and `analyst` (axis 8) all carry a first-class slop axis - architect cuts code and docs, qa-engineer cuts tests, analyst cuts gold-plated criteria
+- `architect` (axis 8), `qa-engineer` (axis 7) and `analyst` (axis 8) all carry a first-class slop axis - architect cuts code and docs, qa-engineer cuts tests, analyst cuts gold-plated criteria. `architect` alone is also bound by proportionality on its OWN recommendations: it may not prescribe a fix bigger than the defect, and never adds speculative structure
+- `slop-hunter` is the dedicated cross-cutting bloat lens - "can this be DELETED?" across code, tests, comments, docs and dependencies, gated by a load-bearing check. It differs by REMEDY and SCOPE: `slop-hunter` runs an exhaustive delete pass over the whole tree, load-bearing check first; `architect` judges whether a *design* is proportionate to its problem - cutting the layer, knob or generalisation that no requirement demands, and unifying drift - so reach for `architect` when the question is "is this structure justified?" and `slop-hunter` when it is "what can go?"; `qa-engineer` judges whether the suite would catch a break (a missing test) and overlaps only when a test pays no rent; `popular-science` judges whether a lay reader finishes the prose, not whether it is padded. Fabrication (a fake citation, a hallucinated API) is `slop-hunter`'s alone. The per-adversary slop axes above stay domain-scoped; `slop-hunter` is the whole-project delete pass
 
 ### Seed an adversary into a spawn
 

@@ -11,10 +11,13 @@ argument-hint: "describe the infographic, e.g. 'card grid showing 4 platform mod
 Run first:
 
 ```bash
-python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
+PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && echo "STALE: library $LIB != plugin $PLUG - CLI may lack flags this skill uses; re-run the upgrade" || echo "toolkit $LIB"
 ```
 
-Verify CLI: `svg-infographics --help`. REFUSE only if library unavailable - import fails AND install cannot fix it, so `--help` still errors. Failed *upgrade* (offline, PyPI unreachable) while CLI still imports = fine; plugin + library ship same version, so any installed library is compatible. No fallback, no hand-built output.
+Verify CLI: `svg-infographics --help`. REFUSE only if library unavailable - import fails AND install cannot fix it, so `--help` still errors. Failed *upgrade* (offline, PyPI unreachable) while CLI still imports = not fatal - run at the installed version, but a `STALE:` line means the CLI can reject flags this command uses. No fallback, no hand-built output.
 
 Workflow: draft → preflight → scaffold → author → check → finalize.
 

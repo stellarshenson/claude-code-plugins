@@ -38,7 +38,10 @@ Every file this skill writes (`grounding-report.md`, `consistency-report.md`, `c
 Always run this single line BEFORE invoking `document-processing`. No-op when package already importable; auto-installs when missing OR when stale shim on PATH but package uninstalled in active Python:
 
 ```bash
-python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
+PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && echo "STALE: library $LIB != plugin $PLUG - CLI may lack flags this skill uses; re-run the upgrade" || echo "toolkit $LIB"
 ```
 
 Ships `document-processing` CLI with lexical-mode grounding (default: frozen-weight logistic, high effort tier, 18 signals including MT cross-lingual). All layer scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask user whether to install - just run the line. **CLI mandatory.** Generative interpretation only an on-top layer for semantic claims after CLI ran - never a substitute. If package genuinely cannot install, say so and stop; do not silently degrade to manual search.

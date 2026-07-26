@@ -28,10 +28,13 @@ New entry → APPENDED at end of file. New numbers above old numbers = monotonic
 **Pre-flight install (MANDATORY, no asking, every plugin CLI)** → before invoking any `stellars-claude-code-plugins` CLI (`journal-tools`, `orchestrate`, `svg-infographics`, `render-png`, `document-processing`), always run:
 
 ```bash
-python3 -c "import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install --user --upgrade stellars-claude-code-plugins
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
+REPO=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+[ "$LIB" = "$REPO" ] && echo "toolkit $LIB" || echo "STALE: installed $LIB != repo $REPO - the CLI you are testing is not the code in this tree"
 ```
 
-No-op when the package is importable; auto-installs when missing OR when a stale shim is on PATH but the package is uninstalled in the active Python (the failure mode where `which journal-tools` finds the shim but `journal-tools check` ImportErrors). Never skip. Never ask. Plugin README at `~/.claude/plugins/cache/stellarshenson-marketplace/journal/<version>/README.md`.
+**The upgrade runs unconditionally.** An `import ... || install` guard never upgrades a version that already imports - that is precisely how this box reached library 1.5.5 while shipping plugins at 1.6.31, and how a session followed current skill docs into `unrecognized arguments: --svg` on a 26-release-old CLI. A green `--help` proves nothing; only the version compare does. In this repo the compare is against `pyproject.toml` (the CLI under test must be the code in this tree); in the shipped plugins it is against `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`. Never skip. Never ask. Plugin README at `~/.claude/plugins/cache/stellarshenson-marketplace/journal/<version>/README.md`.
 
 **`journal-tools check .claude/JOURNAL.md` after EVERY write** - exit 0 + no errors is the bar. Warnings (word-count nudges) non-blocking BUT drive a condense-pass when they fire on the just-appended entry.
 

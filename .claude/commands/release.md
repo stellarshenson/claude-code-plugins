@@ -10,6 +10,7 @@ These rules are not optional. Two real incidents motivated them: a parallel-tool
 - **`.git/index.lock` means a git process is mid-flight or crashed.** If you see it: STOP, confirm no git command is still running, then `rm -f .git/index.lock` and re-verify with a single `git status` before continuing. Do not blindly retry the locked command.
 - **Distrust corrupted/garbled tool output.** If a result looks truncated, shows the wrong file, or contains content that cannot belong to the command (interleaving, control-sequence noise), do NOT draw conclusions from it. Re-run that ONE command alone with a sentinel (`echo MARKER; <cmd>`) and confirm the marker before trusting the output. A misread here once caused a wrong "make publish does not exist" conclusion - the target existed and had already run.
 - **One synced version, the library leads.** `make publish` bumps `pyproject.toml` (PATCH) and uploads to PyPI - that resulting number is `vN`, the single source of truth for the release. Step 4 then writes `vN` into the 13 plugin strings (6 `plugin.json` + `marketplace.json` metadata + 6 entries) so library and plugins always match. NEVER publish the library by hand (`uv build` / `twine`) - always `make publish`. NEVER set the plugin version independently of `vN` (do not run `/increment-plugin-version` during release).
+- **EVERY release ships BOTH the CLI and the plugins. There is no plugin-only release.** The plugins are documentation for a CLI they cannot function without: skills and commands are written against the *current* flags, so shipping plugin text without the matching library strands every user on a CLI that rejects the flags the new docs tell them to use. This is not hypothetical - it is the `unrecognized arguments: --svg` incident, where plugins at 1.6.31 drove a library at 1.5.5. A "docs-only" change is still a CLI release: run `make publish` anyway so `vN` advances on both sides together. The only case where the library does not upload is `make publish` failing, and that ABORTS the release - it never downgrades to a plugin-only push.
 - **Verify after every mutating step before proceeding.** Publish → confirm the new `pyproject.toml` version + the PyPI upload. Sync → confirm all 13 plugin strings equal `vN` and zero stale ones remain. Stage → confirm the staged set matches intent and nothing leaked in. Commit → confirm file count + clean worktree. Push → confirm `LOCAL == REMOTE`.
 
 ## Pre-flight
@@ -47,6 +48,14 @@ make publish
 
 - `make publish` auto-bumps the `pyproject.toml` PATCH, builds, and uploads the wheel + sdist to PyPI. The new `pyproject.toml` version is `vN`, the single source of truth for this release. Read it back and record it - you will cite it in the journal entry and use it in step 4.
 - ALWAYS publish the library through `make publish`. NEVER `uv build` + `twine` by hand.
+- **Then install what you just published and verify parity.** The release box must end the release running the CLI it just shipped, otherwise it keeps developing and testing against a stale binary - that is exactly how this repo came to publish 1.6.31 while its own user-level interpreter still ran 1.5.5:
+
+  ```bash
+  python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+  python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))"
+  ```
+
+  The printed version MUST equal `vN`. PyPI can take a few seconds to serve a fresh upload - if the install still reports the previous version, wait briefly and retry once before treating it as a failure.
 - **MINOR / MAJOR**: `make publish` only ever increments PATCH. For a patch-level jump, set `pyproject.toml` `version` to one patch below the target before `make publish` so the `+1` lands on it. A true minor/major (`MAJOR.MINOR.0`) cannot be produced by the auto-increment - set `pyproject.toml` to `MAJOR.MINOR.0` and `make publish` lands at `MAJOR.MINOR.1`; landing exactly on `.0` would require changing the Makefile increment (out of scope for the normal flow). Whatever number `make publish` actually produces is `vN` - read it back and sync the plugins to it.
 
 ### 4. Sync the plugin versions to the library

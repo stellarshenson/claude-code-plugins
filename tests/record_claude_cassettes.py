@@ -48,6 +48,8 @@ sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "tests"))
 
 from _cassette_prompts import (  # noqa: E402
+    build_gate_matched_prompt,
+    build_gate_stale_prompt,
     build_pass_evaluation_prompt,
     build_standardize_padded_prompt,
     build_standardize_rationale_rich_prompt,
@@ -137,6 +139,20 @@ def record_orchestrator_pass_evaluation() -> None:
     save_cassette(spawn(prompt), "pass-eval")
 
 
+def record_gate_stale() -> None:
+    """Toolchain gate reported a library/plugin mismatch.
+
+    Proves the gate's wording makes a real model refuse to trust the CLI -
+    the behaviour the old `CLI OK` false green failed to produce.
+    """
+    save_cassette(spawn(build_gate_stale_prompt()), "gate-stale")
+
+
+def record_gate_matched() -> None:
+    """Toolchain gate reported parity - discriminator for the stale case."""
+    save_cassette(spawn(build_gate_matched_prompt()), "gate-matched")
+
+
 # --- Entrypoint -----------------------------------------------------------
 
 
@@ -145,6 +161,8 @@ def main() -> int:
     record_standardize_rationale_rich()
     record_standardize_padded()
     record_orchestrator_pass_evaluation()
+    record_gate_stale()
+    record_gate_matched()
     print(f"done. cassettes in {CASSETTE_DIR.relative_to(REPO)}")
     return 0
 

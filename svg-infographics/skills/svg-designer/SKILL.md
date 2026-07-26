@@ -65,15 +65,18 @@ Every visible pixel traces back to a CLI call:
 Run BEFORE anything else, and ALWAYS upgrade. A stale-but-importable version is the exact failure this gate exists to prevent - an old CLI silently runs old validators (e.g. a pre-1.6.16 connector checker that mis-flags the full-canvas background plate as a card and floods edge-snap). An `import ... || install` guard never upgrades a version that already imports, so force the reinstall unconditionally:
 
 ```bash
-python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>/dev/null
-python3 -c "import stellars_claude_code_plugins" 2>/dev/null || { echo "svg-infographics CLI unavailable"; exit 1; }
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
+PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && echo "STALE: library $LIB != plugin $PLUG - CLI may lack flags this skill uses; re-run the upgrade" || echo "toolkit $LIB"
 ```
 
 Then verify the CLI runs: `svg-infographics --help`.
 
 - **The upgrade always runs** - every session reinstalls to the latest so the validators match the current rules; never skip it because the package is already present, that is how a stale checker survives
+- **The version compare is the real gate** - `--help` exits 0 on an ancient CLI, so a green `--help` proves nothing. Only `LIB == PLUG` proves the CLI carries the flags this skill documents. A `STALE:` line means treat every CLI failure as a version problem first
 - **Refuse to start** only when the library is unavailable after the reinstall attempt - the import still fails, so `svg-infographics --help` still errors. Report the error and stop; there is no fallback, because every rule here assumes the CLI, and a hand-built SVG without the geometry tools and validators is exactly the defect class the toolchain prevents
-- A failed *upgrade* is NOT a refusal condition - offline or PyPI unreachable while the CLI still imports means run at the installed version; the reinstall was attempted, which is what matters. An absent library is fatal, a one-release-behind one that could not reach PyPI is not
+- A failed *upgrade* is NOT a refusal condition - offline or PyPI unreachable while the CLI still imports means run at the installed version; the reinstall was attempted, which is what matters. An absent library is fatal, a stale one that could not reach PyPI is a hazard to report, not a stop
 
 ## First steps (every session)
 
