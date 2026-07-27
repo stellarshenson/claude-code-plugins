@@ -15,7 +15,12 @@ from pathlib import Path
 
 import pytest
 
-from stellars_claude_code_plugins.document_processing import cli
+# groundrails installs under a `python_version == '3.12'` marker (it pins ~=3.12.0),
+# so on every other interpreter in the toolkit's 3.11+ band the engine - and with it
+# this whole CLI - is absent by design. Skip rather than fail collection.
+pytest.importorskip("groundrails", reason="grounding engine is Python 3.12 only")
+
+from stellars_claude_code_plugins.document_processing import cli  # noqa: E402
 
 
 @pytest.fixture(scope="module", autouse=True)

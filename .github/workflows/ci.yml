@@ -32,7 +32,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        # The whole supported band. 3.11 is the floor `requires-python` advertises;
+        # 3.13 is where the plugin-facing interpreters live. groundrails (and so the
+        # document-processing suite) only installs on 3.12 - those tests skip on the
+        # other two, which is the marker working as designed.
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -42,7 +46,10 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - name: Install dependencies
         run: |
-          uv venv .venv
+          # Pin the interpreter explicitly - a bare `uv venv` resolves whatever
+          # python it finds first, which would silently run the same version in
+          # all three matrix legs and leave the band untested.
+          uv venv .venv --python ${{ matrix.python-version }}
           uv pip install --python .venv -e ".[dev]"
       - name: Run tests
         run: |
