@@ -334,7 +334,7 @@ After all 14 answers are collected, rewrite the **Resolved pattern** section in 
 
 For a single file: apply the seven dimensions per the resolved pattern directly. One task per dimension.
 
-For multiple files: spawn parallel `svg-designer` sub-agents, one per file or one per 2 files. Every sub-agent's prompt starts with:
+For multiple files: dispatch one builder per file (or per 2 files) - see *Dispatch the builder* in `/svg-infographics:create` for both call shapes and the agent-type caveat. Every builder's prompt starts with:
 
 > Read `svg-infographics-beautify.md` first. Follow every standing directive and the resolved pattern in that file.
 

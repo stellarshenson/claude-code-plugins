@@ -12,7 +12,7 @@ This plugin builds an adversarial persona for the document's actual toughest aud
 
 Unlike qualitative tools like [grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) or [Devil's Advocate Protocol](https://mcpmarket.com/tools/skills/devil-s-advocate-protocol), this plugin is semi-data-science: the devil is inferred from existing conversations / emails / meeting transcripts (or described manually), every concern gets a Fibonacci risk score, and each iteration produces a measurable residual so convergence is visible. Versioned files with embedded scorecards create an audit trail.
 
-The same hostility points at code. [`adversarial-review`](#adversarial-review---the-same-hostility-pointed-at-code) spawns fresh, context-free `claude -p` subprocesses that try to BREAK a change - a diff bug-hunt for the bugs inside a hunk, a whole-repo audit for the rot between files - seeded with any of ten expert adversaries. Same principle as the scorecard half: a critic with no attachment to the work, run until a confirming round comes back clean.
+The same hostility points at code. [`adversarial-review`](#adversarial-review---the-same-hostility-pointed-at-code) spawns fresh, context-free `claude -p` subprocesses that try to BREAK a change - a diff bug-hunt for the bugs inside a hunk, a whole-repo audit for the rot between files - seeded with any of eleven expert adversaries. Same principle as the scorecard half: a critic with no attachment to the work, run until a confirming round comes back clean.
 
 ## Installation
 
@@ -29,7 +29,7 @@ The same hostility points at code. [`adversarial-review`](#adversarial-review---
 | `/devils-advocate:setup` | Build the devil persona and harvest the fact repository for a target document |
 | `/devils-advocate:evaluate` | Generate the baseline concern catalogue and scorecard |
 | `/devils-advocate:iterate` | One improvement cycle: decide approach, apply changes, version, re-score, rename |
-| `/devils-advocate:adversarial-review` | Hostile independent review of code or artefacts - spawn fresh `claude -p` reviewers seeded with one of ten expert adversaries |
+| `/devils-advocate:adversarial-review` | Hostile independent review of code or artefacts - spawn fresh `claude -p` reviewers seeded with one of eleven expert adversaries |
 
 ## Skills
 
@@ -50,11 +50,11 @@ Two modes, composable with any adversary:
 - **Mode 1 - diff bug-hunt.** No tools, inline diff, one turn, fast. Finds bugs, logic errors, security holes, broken edge cases in a specific change
 - **Mode 2 - architecture & quality audit.** Tools on, whole-repo, many turns. Finds the systemic rot a diff cannot show - slop, brittle architecture, hardcodings, config drift, broken separation of concerns. The finding is usually a relationship across files, invisible in any one hunk
 
-The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer argues from. Ten ship under `skills/adversarial-review/adversaries/`, one self-contained persona prompt each:
+The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer argues from. Eleven ship under `skills/adversarial-review/adversaries/`, one self-contained persona prompt each:
 
 | Adversary | Catches |
 |-----------|---------|
-| `architect` | architecture, consistency, hardcodings & config drift, SoC, over-engineering |
+| `architect` | "is this structure justified?" - architecture, consistency, config plane vs scattered literals, SoC, over-engineering & gold-plating |
 | `bug-hunter` | runtime bugs in shell / installers / startup - quoting, `set -e`, lifecycle races |
 | `qa-engineer` | test strategy - risk-based coverage, can-each-test-fail, test slop to delete |
 | `analyst` | specs & acceptance criteria - coverage gaps, unverifiable criteria, sibling features siloed, spec-vs-code drift |
@@ -64,6 +64,7 @@ The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer 
 | `methodologist` | scientific-method integrity - can the test fail, does the verdict ladder span outcomes |
 | `popular-science` | readability for a generalist - jargon, unsourced claims, buried lede, the visuals |
 | `devops` | containers & deploy - Dockerfile hygiene, secrets in layers, PID-1 signals, probes |
+| `slop-hunter` | "what can go?" - an exhaustive delete pass gated by a load-bearing check: dead code, YAGNI abstractions, vanity tests, doc over-prose, unused deps; plus AI-slop tells & fabrication |
 
 The file IS the plugin - drop a new `adversaries/<name>.md` and it works, no registry, no wiring (contract in `skills/adversarial-review/references/authoring-an-adversary.md`).
 
@@ -115,4 +116,4 @@ Every concern is scored on Fibonacci likelihood x impact (1-64), and each iterat
 - `skills/evaluate/SKILL.md` - concern catalogue and scoring model
 - `skills/iterate/SKILL.md` - the four-step iterate loop and stop conditions
 - `skills/run/SKILL.md` - end-to-end wrapper
-- `skills/adversarial-review/SKILL.md` - the two modes, the rounds protocol, spawn mechanics and gotchas, and the ten pluggable adversaries
+- `skills/adversarial-review/SKILL.md` - the two modes, the rounds protocol, spawn mechanics and gotchas, and the eleven pluggable adversaries

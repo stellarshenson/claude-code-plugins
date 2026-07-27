@@ -1,5 +1,5 @@
 ---
-description: Hostile independent review by spawning fresh claude -p subprocesses that try to BREAK a change - invokes the devils-advocate:adversarial-review skill, seeding one of ten expert adversaries; find, fix, re-confirm clean
+description: Hostile independent review by spawning fresh claude -p subprocesses that try to BREAK a change - invokes the devils-advocate:adversarial-review skill, seeding one of eleven expert adversaries; find, fix, re-confirm clean
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
 argument-hint: "what to review, e.g. 'the auth middleware change before I merge' or 'audit the repo architecture' or 'my spec against the code'"
 ---

@@ -1,6 +1,6 @@
 ---
 description: Run the consolidated SVG validation gate (finalize - all checkers in one call) on one or more files. Triggers - "validate svg", "check svg", "audit svg", "validate infographic".
-allowed-tools: [Read, Bash, Glob, Grep, Agent, TaskCreate, TaskUpdate]
+allowed-tools: [Read, Bash, Glob, Grep, Skill, TaskCreate, TaskUpdate]
 argument-hint: "SVG file path or directory, e.g. 'docs/images/*.svg'"
 ---
 

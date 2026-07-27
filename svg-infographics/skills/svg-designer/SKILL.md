@@ -4,14 +4,12 @@ description: Grid-first SVG design workflow producing validated infographics - d
 context: fork
 agent: general-purpose
 model: sonnet
-allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, Skill, TaskCreate, TaskUpdate, TaskGet, TaskList]
+allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate]
 ---
 
 # SVG Designer
 
 Design app for AI agents. Agent = designer, CLI = drawing surface. Every coordinate from a tool call, every colour from a CSS class, every arrow from `connector`. Hand-writing paths / coords / hex values = workflow violation.
-
-Invoke (fork skill, via the `Skill` tool - there is no `svg-designer` agent): `Skill(skill="svg-infographics:svg-designer", args="...")` or `/svg-infographics:create`.
 
 ## Workflow (mandatory, every build)
 
@@ -41,7 +39,8 @@ Resuming or unsure what remains? `svg-infographics workflow --svg <file>` infers
 
 Every visible pixel traces back to a CLI call:
 
-- `preflight` / `check` / `finalize` - quartermaster loop
+- `preflight` / `check` / `finalize` - quartermaster loop, all per-file
+- `consistency --svg <f1> --svg <f2> …` - compares card anatomy (icons, slots, card primitives) across sibling SVGs. `finalize` runs this automatically when passed several files, so the deck close is one multi-file `finalize`; reach for the standalone command only to re-check a deck without re-running the per-file gates
 - `scaffold` - format skeleton: grid, CSS, layers, placeholders (workflow step 2)
 - `workflow` - phase inference + next actions from the file itself
 - `map` - one-glance occupancy scan: ASCII grid, letter = topmost layer per cell (b/n/c/t/o), `.` = free, plus per-layer stats + largest free placement boxes. ONE call replaces several empty-space scans

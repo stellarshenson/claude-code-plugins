@@ -1,10 +1,10 @@
 """Shared prompt builders for cassette recording + replay.
 
-Both `tests/record_claude_cassettes.py` and
-`tests/test_claude_cassette_realism.py` import from here so the prompt
-text is content-identical across record and replay. Drift between the
-two (even a single whitespace change) would invalidate the cassette
-hash and break replay.
+`tests/record_claude_cassettes.py` and the tests that replay its output
+(`test_claude_cassette_realism.py`, `test_toolchain_gate.py`) all import
+from here so the prompt text is content-identical across record and replay.
+Any drift between them (even a single whitespace change) would invalidate
+the cassette hash and break replay.
 
 Add a builder here when adding a new scenario; reference it from both
 the recording script and the consuming test.
@@ -82,26 +82,40 @@ def build_standardize_padded_prompt() -> str:
 
 # --- Toolchain gate ------------------------------------------------------
 #
-# Frozen quotation of the shipped toolchain gate. Deliberately a COPY rather
-# than a read of the live SKILL.md: cassettes are content-addressed by
-# SHA-256(prompt), so sourcing the prompt from a doc would invalidate every
-# recording on any wording tweak. `test_toolchain_gate.py` guards the copy
-# against the shipped text so the two cannot silently diverge.
+# A FROZEN snapshot of the shipped gate's normative lines (svg-designer's
+# SKILL.md, `## Toolchain gate`): the command block plus the bulleted rules.
+#
+# Frozen, not read live, because the cassette key is a SHA-256 of the prompt. A
+# live read couples the fixture identity to doc prose: rewording one bullet
+# misses the cassette and fails CI, which has no `claude` binary to re-record
+# with. That already happened - two cassettes were re-recorded mid-session for
+# verdicts that came back word-identical.
+#
+# Drift is caught without the binary: `test_shipped_gate_still_carries_its_
+# normative_lines` reads the LIVE SKILL.md and compares it against GATE_FENCE and
+# GATE_BULLETS below, so any change to the gate's commands OR rules fails loudly.
+# Editing either costs an updated snapshot and a re-record; tidying the prose
+# AROUND them is free, which is the coupling the freeze exists to break.
 
-GATE_RULES = textwrap.dedent("""\
-    Toolchain gate - run before anything else:
+GATE_FENCE = """\
+```bash
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
+PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && echo "STALE: library $LIB != plugin $PLUG - CLI may lack flags this skill uses; re-run the upgrade" || echo "toolkit $LIB"
+```"""
 
-    ```bash
-    python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
-    LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
-    PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-    [ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && echo "STALE: library $LIB != plugin $PLUG - CLI may lack flags this skill uses; re-run the upgrade" || echo "toolkit $LIB"
-    ```
+GATE_BULLETS = """\
+- **The upgrade always runs** - every session reinstalls to the latest so the validators match the current rules; never skip it because the package is already present, that is how a stale checker survives
+- **The version compare is the real gate** - `--help` exits 0 on an ancient CLI, so a green `--help` proves nothing. Only `LIB == PLUG` proves the CLI carries the flags this skill documents. A `STALE:` line means treat every CLI failure as a version problem first
+- **Refuse to start** only when the library is unavailable after the reinstall attempt - the import still fails, so `svg-infographics --help` still errors. Report the error and stop; there is no fallback, because every rule here assumes the CLI, and a hand-built SVG without the geometry tools and validators is exactly the defect class the toolchain prevents
+- A failed *upgrade* is NOT a refusal condition - offline or PyPI unreachable while the CLI still imports means run at the installed version; the reinstall was attempted, which is what matters. An absent library is fatal, a stale one that could not reach PyPI is a hazard to report, not a stop"""
 
-    - The upgrade always runs - a stale-but-importable install is the exact failure this gate prevents
-    - The version compare is the real gate: `--help` exits 0 on an ancient CLI, so a green `--help` proves nothing
-    - A `STALE:` line means treat every CLI failure as a version problem first
-    """).strip()
+
+def _shipped_gate_rules() -> str:
+    """The frozen gate text the cassette prompts are built from."""
+    return f"{GATE_FENCE}\n{GATE_BULLETS}"
+
 
 # The question must isolate the TOOLCHAIN-VERSION dimension and nothing else.
 # An earlier draft asked whether a zero exit code proved the SVG valid; the
@@ -123,7 +137,7 @@ _GATE_QUESTION = textwrap.dedent("""\
 def _build_gate_prompt(gate_output: str) -> str:
     """Assemble the gate-comprehension prompt around one gate stdout line."""
     return (
-        GATE_RULES
+        _shipped_gate_rules()
         + "\n\nYou ran the gate above inside a plugin whose plugin.json version is 1.6.31.\n"
         + "It printed:\n\n    "
         + gate_output

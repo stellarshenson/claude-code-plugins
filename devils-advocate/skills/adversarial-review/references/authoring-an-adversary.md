@@ -18,7 +18,7 @@ The file IS the plugin - no registry, no wiring. Drop `adversaries/<name>.md` an
 | `<CHALLENGE>` | assume it is flawed and prove it; what to default to flagging |
 | `<METHODOLOGY>` | the numbered axes to sweep - the expert's real value |
 | `<CONSTRAINTS>` | critique-only, cite file:line, separate fact from judgement, terse |
-| `<OUTPUT FORMAT>` | `VERDICT: SHIP`/`DO-NOT-SHIP` first line + severity-ordered `[CRITICAL|MAJOR|MINOR]` findings + "what's already good" (see Signal standard below) |
+| `<OUTPUT FORMAT>` | `VERDICT: SHIP`/`DO-NOT-SHIP` first line + severity-ordered `[CRITICAL|MAJOR|MINOR]` findings, each carrying its minimal REMEDY, + "what's already good" (see Signal standard below) |
 | `<QUALITY CONTROL>` | self-check before returning |
 | `<TASK>` | one generic line; the caller fills the actual target |
 
@@ -35,9 +35,11 @@ Always carry a finding count and a half-sentence why: `VERDICT: SHIP (0 findings
 
 **SEVERITY** - the per-finding label, exactly three tiers: `[CRITICAL|MAJOR|MINOR]`
 
-- `CRITICAL` - ship-blocking on its own; its presence forces DO-NOT-SHIP
+- `CRITICAL` - ship-blocking on its own; its presence forces DO-NOT-SHIP. MUST be load-bearing: a false claim, a nonexistent command or flag, an instruction that cannot execute, a guard with a surviving mutant, a behaviour that breaks. Taste never reaches CRITICAL, whatever its surface area
 - `MAJOR` - serious, fix before ship, but does not block by itself
 - `MINOR` - minor; fix when convenient. Taste / subjective observations go here, tagged with a leading `(taste)` - e.g. `[MINOR] (taste) prefer userId`
+
+**REMEDY** - the per-finding fix with the smallest impact radius (fewest files, fewest call sites, no new public surface), stated at diff scale: this line, this assert, this clause, plus what it leaves alone. State a wider remedy - delete, restructure, replace - as an opportunity with its evidence, never as a mandate; the implementor weighs it against the rest of the system. A remedy larger than the defect and unjustified is itself a defect; a reflexive narrow patch over a structural cause compounds debt. Both failure modes and the evidence bar: **Remedy discipline** in SKILL.md.
 
 **COUPLING** (the only link between the axes) - `VERDICT` = `DO-NOT-SHIP` if and only if any finding is `CRITICAL`; otherwise `SHIP`.
 

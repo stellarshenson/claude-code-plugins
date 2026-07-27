@@ -1,6 +1,6 @@
 ---
-description: Fix issues in SVG infographics. Argument describes what to fix (layout / style / contrast / connectors / all). Spawns svg-designer agent via fork context. Triggers - "fix svg", "fix layout", "fix style", "fix contrast", "fix connectors", "fix infographic".
-allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, Agent, TaskCreate, TaskUpdate]
+description: Fix issues in SVG infographics. Argument describes what to fix (layout / style / contrast / connectors / all). Dispatches the svg-designer builder - an in-session fork by default. Triggers - "fix svg", "fix layout", "fix style", "fix contrast", "fix connectors", "fix infographic".
+allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, Agent, Skill, TaskCreate, TaskUpdate]
 argument-hint: "SVG file path + optional intent (e.g. 'docs/fig.svg overlaps' or 'docs/*.svg style')"
 ---
 
@@ -20,7 +20,7 @@ PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2
 Verify the CLI runs: `svg-infographics --help`. **REFUSE to run this command** only when the library is unavailable - the import fails AND the install cannot fix it, so `--help` still errors. A failed *upgrade* (offline, PyPI unreachable) while the CLI still imports is not fatal - run at the installed version, but treat a `STALE:` line as a live hazard: this command documents the current plugin's flags and an older CLI can reject them. No fallback, no hand-built output.
 
 
-Diagnose and fix issues in existing SVG infographics. Argument is free-text — user describes the file and what to fix. Command classifies the intent and spawns the `svg-designer` agent via fork context so the user can continue working while the agent fixes.
+Diagnose and fix issues in existing SVG infographics. Argument is free-text — user describes the file and what to fix.
 
 ## Argument parsing
 
@@ -42,17 +42,17 @@ Common intents:
 
 ## Task tracking
 
-MANDATORY: create tasks for diagnosis, each fix category, and validation re-run. Spawned agent owns its own task list.
+MANDATORY: create tasks for diagnosis, each fix category, and validation re-run. The builder owns its own task list.
 
 ## Steps
 
 1. **Classify intent** from argument. If ambiguous, ask user one clarifying question via `AskUserQuestion` before spawning
-2. **Invoke the `svg-infographics:svg-designer` skill** via the `Skill` tool (NOT `Agent` / `subagent_type` - it is a `context: fork` skill, no such agent exists): `Skill(skill="svg-infographics:svg-designer", args="<intent + file + instructions>")`. The skill forks and runs out-of-band; user keeps working
-3. **Agent follows the fix workflow** (see below). On completion, reports findings + fixes back to parent
+2. **Dispatch the builder.** Default: `Skill(skill="svg-infographics:svg-designer", args="<intent + file + instructions>")` - forks out-of-band, user keeps working. For several files at once, or when the user wants each fix visible and individually stoppable, dispatch one background `Agent` per file instead (see *Dispatch the builder* in `/svg-infographics:create` for both call shapes and the agent-type caveat)
+3. **Builder follows the fix workflow** (see below). On completion, reports findings + fixes back to parent
 
-## Agent fix workflow
+## Builder fix workflow
 
-The spawned agent runs this workflow. Parent command does not execute these steps directly.
+The dispatched builder runs this workflow; the parent command does not execute these steps directly.
 
 ### Layout / overlaps / alignment intent
 
@@ -117,7 +117,7 @@ Run every intent workflow in order: geometry → layout → connectors → style
 
 ## Skills applied
 
-The spawned `svg-designer` agent reads and applies:
+The `svg-designer` builder reads and applies:
 
 - `references/standards.md` — grid layout, CSS-First rule, contrast rules, font opacity rule, connector modes
 - `references/workflow.md` — 6-phase process (primarily Phase 6 validation + targeted Phase 3/4 re-do)
@@ -125,7 +125,7 @@ The spawned `svg-designer` agent reads and applies:
 
 ## Rules
 
-- **Destructive** — modifies files in place. Agent backs up nothing; rely on git
+- **Destructive** — modifies files in place. The builder backs up nothing; rely on git
 - **No hand-coded paths** — every connector regenerated via tool
 - **`--standoff 2`** on every connector call (project standard)
 - **Unicode glyphs** — fix any `->` / `<-` / `...` / `--` / `x` / `*` inside `<text>` nodes to proper Unicode

@@ -1,42 +1,27 @@
 """Guard the toolchain preflight gate that every plugin ships.
 
-## Why this file exists
-
-A `kolomolo/sales/proposals` session ran `svg-infographics validate --svg …`
-against a library 26 releases behind the plugin and got
-`error: unrecognized arguments: --svg` on all seven deliverables - validation
-silently never ran. The preflight gate was present and reported success:
-
-    python3 -c "import stellars_claude_code_plugins" || pip install --upgrade …
-    → "pre-flight done"        # `||` short-circuits, pip NEVER ran
-    svg-infographics --help && echo "CLI OK"
-    → "CLI OK"                 # --help exits 0 on ancient CLIs
-
-Two green lights, zero version assertions. The correct unconditional-upgrade
-form already existed - in exactly ONE file, against 23 broken sites in 20
-files. The majority idiom won.
-
-These tests make that drift impossible to reintroduce:
-
-- static guards: no short-circuit idiom anywhere, every upgrade paired with a
-  version assertion, no false-premise compatibility prose, version single-sourced
-- behavioural: the SHIPPED gate lines are executed against fixture versions
-- realism: real recorded `claude -p` responses prove the gate text actually
-  makes an agent treat a `STALE:` line as a hazard (and, crucially, that it
-  does NOT cry wolf when versions match)
+A downstream session ran `svg-infographics validate --svg …` against a library
+26 releases behind the plugin docs and got `unrecognized arguments: --svg` on
+all seven deliverables - validation silently never ran, while the preflight
+printed success. `import X || pip install --upgrade X` short-circuits whenever
+any version imports, so pip never ran, and `--help` exits 0 on an ancient CLI,
+so the verify step was a second false green. The correct unconditional-upgrade
+form already existed - in exactly one file, against 21 sites in 20 others.
 
 Cassettes replay in CI; re-record with `uv run python tests/record_claude_cassettes.py`.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
+import os
+import re
 import subprocess
+from pathlib import Path
 
 import pytest
-
 from _cassette_prompts import (
-    GATE_RULES,
+    GATE_BULLETS,
+    GATE_FENCE,
     build_gate_matched_prompt,
     build_gate_stale_prompt,
 )
@@ -102,6 +87,68 @@ def test_every_upgrade_is_paired_with_a_version_assertion():
     )
 
 
+def test_every_cli_entry_point_is_gated():
+    """Coverage hole this closes: the test above only guards files that ALREADY
+    upgrade. A skill or command that invokes a CLI with no preflight at all
+    passed everything - `devils-advocate/skills/run/SKILL.md` did exactly that,
+    with a bare `pip install` (no `--upgrade`) verified by `--help`.
+
+    Entry points are `SKILL.md` and `commands/*.md`. References, rules, READMEs
+    and examples are exempt: they are loaded BY a gated skill, so they inherit
+    it. A command may also delegate explicitly to a gated skill instead.
+    """
+    cli = re.compile(
+        r"\b(journal-tools|svg-infographics|render-png|document-processing|orchestrate)\s"
+    )
+    ungated = []
+    for p in _plugin_markdown():
+        if p.name != "SKILL.md" and p.parent.name != "commands":
+            continue
+        body = p.read_text(encoding="utf-8")
+        if not cli.search(body):
+            continue
+        if STALE_ASSERTION in body:
+            continue
+        # Delegating to another skill inherits that skill's gate. Only an
+        # explicit "Invoke `plugin:skill` skill" counts - a prose cross-reference
+        # ("per the **`grounding`** skill") is not a delegation, and matching it
+        # exempted a file that gates itself, so stripping its gate went unnoticed.
+        if re.search(r"[Ii]nvoke `[\w-]+:[\w-]+` skill", body):
+            continue
+        ungated.append(str(p.relative_to(ROOT)))
+    assert not ungated, (
+        "entry points invoke a toolkit CLI with no version gate and no "
+        f"delegation to a gated skill: {ungated}"
+    )
+
+
+def test_shipped_gate_still_carries_its_normative_lines():
+    """Cheap, deterministic guard on the LIVE gate the cassettes quote.
+
+    The realism pair below needs the `claude` binary to re-record, so it cannot
+    be what protects the gate from deletion - in replay it can only report a
+    hash miss. This test is the protection: it fails loudly and is fixable
+    without any binary. It must read the shipped file, not the frozen snapshot,
+    or it proves only that a constant equals itself.
+    """
+    live = (
+        ROOT / "svg-infographics" / "skills" / "svg-designer" / "SKILL.md"
+    ).read_text(encoding="utf-8")
+    for required in (UPGRADE_LINE, STALE_ASSERTION):
+        assert required in live, f"shipped gate lost its {required!r} line"
+    assert "The version compare is the real gate" in live, (
+        "the gate lost the rule that a green `--help` proves nothing - the "
+        "exact false green that let a 26-release-stale CLI through"
+    )
+    for name, snapshot in (("GATE_FENCE", GATE_FENCE), ("GATE_BULLETS", GATE_BULLETS)):
+        assert snapshot in live, (
+            f"the shipped gate no longer matches the frozen {name} snapshot in "
+            "tests/_cassette_prompts.py - the recorded cassettes were built from the "
+            f"old text. Update {name} and re-record with "
+            "`uv run python tests/record_claude_cassettes.py` (needs the `claude` binary)."
+        )
+
+
 def test_gate_compares_against_the_plugins_own_manifest():
     """The comparison must read the plugin's real manifest, not a hardcoded
     number that would rot on the next release."""
@@ -145,17 +192,6 @@ def test_version_is_single_sourced():
         f"__version__ {pkg.__version__} != pyproject {declared} - the editable "
         "install is stale; run `make install`"
     )
-
-
-def test_frozen_gate_prompt_matches_shipped_text():
-    """The cassette prompt quotes the gate. Cassettes are content-addressed, so
-    the quote is a frozen copy - this guards it against silent divergence."""
-    shipped = (ROOT / "svg-infographics" / "skills" / "svg-designer" / "SKILL.md").read_text(
-        encoding="utf-8"
-    )
-    for line in (UPGRADE_LINE, STALE_ASSERTION):
-        assert line in shipped, f"shipped gate lost {line!r}"
-        assert line in GATE_RULES, f"frozen cassette prompt lost {line!r}"
 
 
 # --- Behavioural: execute the SHIPPED gate lines ---------------------------
@@ -226,7 +262,12 @@ def test_gate_does_not_cry_wolf_without_a_plugin_root(tmp_path):
 
 
 def _spawn_claude(prompt: str) -> str:
-    """Spawn site the cassette intercepts. Mirrors the recorder's flags."""
+    """Spawn site the cassette intercepts.
+
+    Must mirror `tests/record_claude_cassettes.py::spawn` - including stripping
+    CLAUDECODE from the env, or a `--record-cassettes` run here would capture a
+    different response than the recorder does (claude -p hangs with it set).
+    """
     return subprocess.run(
         [
             "claude",
@@ -239,6 +280,7 @@ def _spawn_claude(prompt: str) -> str:
             "3",
             "--no-session-persistence",
         ],
+        env={k: v for k, v in os.environ.items() if k != "CLAUDECODE"},
         capture_output=True,
         text=True,
         timeout=180,
@@ -261,9 +303,14 @@ def _verdict(response: str) -> str:
 class TestGateComprehensionRealism:
     """Does the gate's wording actually change an agent's behaviour?
 
-    The static tests prove the text is present; only a real model response
-    proves it is *understood*. The old wording produced `CLI OK` and the agent
-    sailed on into `unrecognized arguments`.
+    The static tests prove the text is present; a real model response shows the
+    guidance drives the verdict - inverting it to "a STALE line is NOT a
+    blocker" flips the recorded answer from BLOCKED to PROCEED.
+
+    The prompt quotes only the gate's commands and rules, not its prose, so
+    tidying wording costs nothing and changing an instruction demands a
+    re-record. Deletion is caught by the static guards above, which need no
+    binary; these add the evidence that the rules are understood.
     """
 
     def test_stale_output_blocks_the_run(self, claude_p_cassette, monkeypatch):

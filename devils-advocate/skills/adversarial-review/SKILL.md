@@ -29,14 +29,23 @@ The "real deal" lesson: one pass is never the answer. A de-hardcode audit passed
 1. **Round 1 - find.** Run the reviewer (right mode). Capture findings
 2. **Triage.** Confirm each finding against the code yourself - context-free reviewers raise false positives (they cannot see callers, types, invariants outside what they read). Keep the real ones
 3. **Fix** the confirmed findings
-4. **Round 2 - re-confirm.** Run the SAME review on the fixed tree. It must come back clean. If it finds something new (your fix opened a hole, or it explored further), go back to step 2
-5. **Loop until a full pass is clean.** Routine work is usually 2 rounds. For high-stakes work keep going until two consecutive passes are clean, or run a perspective-diverse panel. Never flip a "survived adversarial review" criterion to done on the strength of the round that still had findings - only on a clean confirming round
+4. **Round 2 - re-confirm.** Run the SAME review, PINNED to the fixes and the files they touched - never a fresh whole-repo sweep. Unpinned, a Mode 2 reviewer samples different ground each round, so "new findings" means it looked elsewhere, not that the tree regressed. It must come back clean; if your fix opened a hole, go back to step 2
+5. **Loop until a full pass is clean.** Routine work is 2-3 rounds. Past 3, audit the last two remedies for radius instead of spawning another reviewer - round inflation is the symptom of oversized remedies (see **Remedy discipline**). For high-stakes work keep going until two consecutive passes are clean, or run a perspective-diverse panel. Never flip a "survived adversarial review" criterion to done on the strength of the round that still had findings - only on a clean confirming round
 
 **Perspective-diverse panel (high stakes).** Instead of N identical reviewers, give each a distinct lens and run them concurrently - say, one on security, one on architecture/SoC, one on the riskiest invariant. Diversity catches failure modes redundancy cannot. Treat a finding as real when you confirm it, not by vote - but multiple lenses surface more to confirm.
 
 **Cap the panel at 3** unless the user explicitly asks for more - say so when proposing one. Triage (step 2), not the spawn, is the bottleneck. Five lenses do not give five times the signal - they give a triage backlog you abandon half-done, which is how a real finding ships with the noise. Pick the 3 the target's risk surface actually has; run a second wave later if still uneasy.
 
 **Ask which adversary when the caller names none.** State the inferred target, list the fitting candidates with their lens, recommend one, wait. The wrong lens returns a fluent review of a risk the target does not have - worse than none, because it reads like assurance. Skip only when the prompt names the adversary, or one lens obviously fits.
+
+## Remedy discipline
+
+Oversized remedies turn a review into 1 fix → 2 defects → 3 fixes → 6 defects: every remedy is new review surface, so fixing wide pushes the branching factor above one. Correct findings do not help - the growth comes from the remedies. Observed: one remedy rewrote a true statement about `finalize` into a false one across three sites.
+
+- **Conservative, surgical, strategic** - smallest impact radius that actually removes the defect, never the nearest symptom. Fewest files and call sites, no new public surface; stated at diff scale (this line, this assert, this clause); landing where the defect originates so it cannot return by another path. Small and shallow is not the goal; small and terminal is
+- **Surface the opportunity, do not mandate the shape** - report that the defect *can* be fixed within that radius; the implementor chooses, weighing it against the rest of the system
+- **Say when the small fix would paper over** - a narrow patch on a structural cause compounds debt. Advising wider needs evidence in the finding: the property the narrow fix cannot reach, the narrow fix you tried, why it failed. An untried alternative is not evidence; absent it the small fix stands
+- **Only load-bearing findings block** - a false claim, a nonexistent command or flag, an instruction that cannot execute, a surviving mutant, a broken behaviour. Word count, structure, duplication and phrasing are `MINOR (taste)`: advisory, declined with a one-line reason, never re-litigated next round
 
 ## Mode 1 - Diff bug-hunt (no tools, inline diff)
 
@@ -95,6 +104,7 @@ Every adversary emits the SAME two-axis signal, so a panel reads uniformly:
 
 - **VERDICT** (first line, always) - `VERDICT: SHIP (<n> findings)` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why
 - **SEVERITY** (per finding) - exactly `[CRITICAL|MAJOR|MINOR]`; taste / subjective notes use MINOR tagged `(taste)`
+- **REMEDY** (per finding) - the fix with the smallest impact radius, at diff scale, naming what it touches and what it leaves alone. A wider remedy (delete, restructure, replace) is an opportunity to state with evidence, never a mandate - the implementor chooses. Per **Remedy discipline** above
 - **Coupling** - `DO-NOT-SHIP` iff any finding is CRITICAL; otherwise `SHIP`
 
 Canonical contract: `references/authoring-an-adversary.md`.
@@ -153,4 +163,5 @@ Full authoring contract, section by section: `references/authoring-an-adversary.
 
 - Triage, fix, re-confirm per the rounds protocol - flip a "review clean" criterion to done only on a clean confirming round. For each dismissed finding, know why it is wrong (caller guards it, type forbids it, a test covers it, env always provides it)
 - A `DO-NOT-SHIP` verdict on a confirmed real (CRITICAL) issue blocks the ship; one driven only by false positives or style nits does not - say which, do not wave it away
+- **Shrink the remedy before applying it** - a confirmed finding does not license the reviewer's proposed fix. If a round's CRITICALs trace to the previous round's fixes, the loop is generating its own work: shrink the last remedy rather than adding another
 - Record what the review caught and how you fixed it (acc-crit log, journal) - the cross-file findings are the ones future-you reintroduces

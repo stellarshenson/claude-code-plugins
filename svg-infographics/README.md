@@ -153,10 +153,10 @@ svg-infographics overlaps --svg diagram.svg
 
 | Command | What it does |
 |---------|--------------|
-| `/svg-infographics:create` | Create SVG infographic(s) following the full grid-first workflow. Spawns `svg-designer` agent (fork context) so user keeps working |
+| `/svg-infographics:create` | Create SVG infographic(s) following the full grid-first workflow. Dispatches the `svg-designer` builder - in-session fork, or one background agent per graphic - so user keeps working |
 | `/svg-infographics:theme` | Generate or update a theme swatch SVG for brand colour approval |
 | `/svg-infographics:validate` | Run all validation checks on one or more files |
-| `/svg-infographics:fix` | Fix issues in existing SVGs (layout / style / contrast / connectors / geometry / all). Argument-driven. Spawns `svg-designer` agent |
+| `/svg-infographics:fix` | Fix issues in existing SVGs (layout / style / contrast / connectors / geometry / all). Argument-driven. Dispatches the `svg-designer` builder |
 | `/svg-infographics:beautify` | Additive decoration pass on existing SVGs across 8 dimensions - colour variation, shape flourishes, per-item icons, embroidery, abstract particles, bg texture, glow, and **shader effects** (frosted-glass, water-ripple, iridescent, chromatic-aberration, embossed-metal, light-leak, bokeh, lens-flare, holographic-foil, paper-grain). 4 intensity levels (low/medium/high/absurd). Questionnaire-driven (18 questions, 5 batches), geometry-guarded, local directive at `./svg-infographics-beautify.md`. Shader effects auto-emit a print-stripped `<file>+_print.svg` variant for Word delivery. See [`skills/svg-designer/rules/shaders.md`](skills/svg-designer/rules/shaders.md) for the 10 canonical filter recipes |
 | `/svg-infographics:export-png` | Render SVG to PNG (light/dark/both) via Playwright |
 

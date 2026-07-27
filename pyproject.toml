@@ -4,21 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "1.6.32"
+version = "1.6.33"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
 ]
 license = "MIT"
 readme = "README.md"
-requires-python = "~=3.12.0"  # groundrails pins ~=3.12.0; match it (3.12.x only)
+requires-python = ">=3.12"  # see the groundrails marker in [dependencies]
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
     "beziers",
     "fonttools",
-    "groundrails>=1.0.35",          # grounding engine (document-processing); pulls the grounder runtime stack transitively
+    # Grounding engine for document-processing; pulls the grounder runtime stack
+    # transitively. groundrails pins ~=3.12.0, and inheriting that pin project-wide
+    # capped the WHOLE toolkit at 3.12, silently downgrading 3.13 installs. The
+    # marker confines the 3.12 requirement to the one subsystem that needs it;
+    # every other CLI installs on 3.13+.
+    "groundrails>=1.0.35; python_version < '3.13'",
     "langdetect>=1.0.9",            # document-processing: source language detection (extractors.py)
     "numpy",                        # svg_tools geometry
     "odfpy>=1.4",                   # document-processing: ODT extraction (extractors.py)
@@ -53,8 +58,9 @@ dev = [
 ]
 semantic = [
     # groundrails owns the semantic cascade (OpenVINO bge-m3 + reranker + NLI);
-    # `[all]` covers both its ONNX and OpenVINO semantic paths.
-    "groundrails[all]>=1.0.35",
+    # `[all]` covers both its ONNX and OpenVINO semantic paths. Marker per the core
+    # dep above; being this extra's only member, `[semantic]` installs nothing on 3.13.
+    "groundrails[all]>=1.0.35; python_version < '3.13'",
 ]
 
 [project.scripts]

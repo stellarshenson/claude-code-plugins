@@ -55,7 +55,7 @@ Ships `document-processing` CLI with lexical-mode grounding (default: frozen-wei
 
 Decision each run:
 
-- **Default → recommend `--semantic`.** Phrase as default: "Semantic + NLI grounding is the recommended default — only layers that catch a passage that *means* the claim (or *contradicts* it) while sharing no wording. One-time cost: `pip install 'stellars-claude-code-plugins[semantic]'` plus model downloads on first use (~120 MB embedder + ~560 MB NLI). Use it?"
+- **Default → recommend `--semantic`.** Phrase as default: "Semantic + NLI grounding is the recommended default — only layers that catch a passage that *means* the claim (or *contradicts* it) while sharing no wording. One-time cost: `pip install 'stellars-claude-code-plugins[semantic]'` plus model downloads on first use (~120 MB embedder + ~560 MB NLI). Use it?" Requires **Python 3.12** - and so does every other `document-processing` subcommand, lexical included: on 3.13 the engine is skipped by an environment marker and the CLI cannot run at all. Confirm the interpreter before promising any grounding.
 - **User declines → lexical-only this session.** Three lexical layers, no persistence. Don't re-ask (re-recommend-on-struggle rule below still applies).
 
 Never pass `--semantic` while `[semantic]` extra uninstalled — CLI hard-fails (exit 2) on that explicit contract. Install first, then `--semantic`.

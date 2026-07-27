@@ -7,14 +7,6 @@ description: Run the full devil's advocate workflow end-to-end. Setup persona, e
 
 Critique a document from its toughest audience. Generate pushback, score responses, produce improvements. Visuals via `svg-infographics`.
 
-## Install (MANDATORY for visuals)
-
-```bash
-pip install stellars-claude-code-plugins
-```
-
-Ships `svg-infographics` CLI used for generating pushback-response visuals. Required when any concern triggers a visual option (cognitive load, number exhaustion, metric confusion). Verify: `svg-infographics --help`.
-
 ## Task Tracking
 
 **MANDATORY**: Use TaskCreate/TaskUpdate for setup, evaluation, each iteration. Mark in_progress/completed.
@@ -27,7 +19,7 @@ Three artefacts in target document directory:
 2. **`fact_repository.md`** - verified claims from sources + user input
 3. **Scorecard** - embedded in `devils_advocate.md`
 
-Optional: SVG infographics via `svg-infographics` skill.
+Optional visuals: Invoke `svg-infographics:svg-designer` skill - it owns its own toolchain gate, so this skill needs no install step.
 
 ## Step 1: Build Devil Persona
 
