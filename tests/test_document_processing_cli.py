@@ -12,15 +12,20 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import sys
 
 import pytest
 
 # groundrails installs under a `python_version == '3.12'` marker (it pins ~=3.12.0),
-# so on every other interpreter in the toolkit's 3.11+ band the engine - and with it
-# this whole CLI - is absent by design. Skip rather than fail collection.
-pytest.importorskip("groundrails", reason="grounding engine is Python 3.12 only")
+# so off 3.12 the engine - and with it this whole CLI - is absent by design. Gate on
+# the interpreter, NOT on `importorskip("groundrails")`: the import-based form cannot
+# tell by-design absence from a broken 3.12 install, so a groundrails that failed to
+# resolve would skip all six tests and leave the 3.12 leg green with the subsystem
+# untested. Here an import failure on 3.12 stays a hard error.
+if sys.version_info[:2] != (3, 12):
+    pytest.skip("grounding engine is Python 3.12 only", allow_module_level=True)
 
-from stellars_claude_code_plugins.document_processing import cli  # noqa: E402
+from stellars_claude_code_plugins.document_processing import cli
 
 
 @pytest.fixture(scope="module", autouse=True)

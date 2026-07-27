@@ -8,8 +8,6 @@ orchestration, and the ``document-processing`` CLI that drives groundrails.
 The core grounding API is re-exported from groundrails for convenience.
 """
 
-import sys
-
 try:
     from groundrails import (
         GroundingMatch,
@@ -27,9 +25,8 @@ except ModuleNotFoundError as exc:  # pragma: no cover
     raise ModuleNotFoundError(
         "document-processing requires the 'groundrails' engine, which is not "
         "installed. It supports Python 3.12 only, so it is absent by design on "
-        f"this interpreter ({sys.version_info.major}.{sys.version_info.minor}); "
-        "on 3.12 reinstall the toolkit. Every subcommand needs it; the other "
-        "toolkit CLIs are unaffected."
+        "every other interpreter; on 3.12 reinstall the toolkit. Every "
+        "subcommand needs it; the other toolkit CLIs are unaffected."
     ) from exc
 
 __all__ = ["GroundingMatch", "Location", "ground", "ground_batch"]

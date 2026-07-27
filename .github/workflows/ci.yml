@@ -46,9 +46,6 @@ jobs:
       - uses: astral-sh/setup-uv@v4
       - name: Install dependencies
         run: |
-          # Pin the interpreter explicitly - a bare `uv venv` resolves whatever
-          # python it finds first, which would silently run the same version in
-          # all three matrix legs and leave the band untested.
           uv venv .venv --python ${{ matrix.python-version }}
           uv pip install --python .venv -e ".[dev]"
       - name: Run tests
