@@ -207,17 +207,20 @@ def _shipped_comparison_lines() -> str:
     lines = [
         ln.strip()
         for ln in body.splitlines()
-        if ln.strip().startswith(("PLUG=", '[ -n "$PLUG" ]'))
+        if ln.strip().startswith(("PLUG=", '[ -n "$PLUG" ]', 'echo "toolkit'))
     ]
-    assert len(lines) >= 2, "could not extract the shipped comparison lines"
-    return "\n".join(lines[:2])
+    assert len(lines) >= 3, "could not extract the shipped comparison lines"
+    return "\n".join(lines[:3])
 
 
-def _run_gate(tmp_path: Path, lib_version: str, plugin_version: str | None) -> str:
+def _run_gate(
+    tmp_path: Path, lib_version: str, plugin_version: str | None
+) -> subprocess.CompletedProcess:
     """Run the shipped comparison with a fixture library/plugin version pair.
 
     The `pip install` line is omitted deliberately - the test asserts the
     verification logic, and must not mutate the machine or need a network.
+    Returns the whole result: the EXIT CODE is the contract, not just the text.
     """
     env = {"PATH": "/usr/bin:/bin"}
     if plugin_version is not None:
@@ -235,27 +238,53 @@ def _run_gate(tmp_path: Path, lib_version: str, plugin_version: str | None) -> s
         text=True,
         env=env,
         timeout=30,
-    ).stdout.strip()
+    )
 
 
-def test_gate_flags_mismatch_as_stale(tmp_path):
-    """The exact proposals-session condition: plugin ahead of the library."""
-    out = _run_gate(tmp_path, lib_version="1.5.5", plugin_version="1.6.31")
-    assert out.startswith("STALE:"), out
-    assert "1.5.5" in out and "1.6.31" in out, "both versions must be named"
+def test_gate_blocks_on_mismatch(tmp_path):
+    """The exact proposals-session condition: plugin ahead of the library.
+
+    A non-zero exit is the whole point. Printing STALE and continuing is what
+    let a session drive a 26-release-old CLI while believing it was checked.
+    """
+    r = _run_gate(tmp_path, lib_version="1.5.5", plugin_version="1.6.31")
+    assert r.returncode != 0, f"a mismatched gate must BLOCK, got exit 0: {r.stdout}"
+    assert r.stdout.strip().startswith("STALE:"), r.stdout
+    assert "1.5.5" in r.stdout and "1.6.31" in r.stdout, "both versions must be named"
+    assert "toolkit" not in r.stdout, "must not also print the success line"
 
 
 def test_gate_passes_on_parity(tmp_path):
-    out = _run_gate(tmp_path, lib_version="1.6.31", plugin_version="1.6.31")
-    assert out == "toolkit 1.6.31", out
+    r = _run_gate(tmp_path, lib_version="1.6.31", plugin_version="1.6.31")
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "toolkit 1.6.31", r.stdout
 
 
 def test_gate_does_not_cry_wolf_without_a_plugin_root(tmp_path):
     """Outside a plugin install (dev checkout, bare shell) there is nothing to
-    compare against - the gate must stay quiet, not emit a bogus STALE."""
-    out = _run_gate(tmp_path, lib_version="1.6.31", plugin_version=None)
-    assert out == "toolkit 1.6.31", out
-    assert "STALE" not in out
+    compare against - the gate must stay quiet and pass, not block on a bogus
+    STALE. Blocking here would make every dev-tree invocation unrunnable."""
+    r = _run_gate(tmp_path, lib_version="1.6.31", plugin_version=None)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "toolkit 1.6.31", r.stdout
+    assert "STALE" not in r.stdout
+
+
+def test_every_shipped_gate_blocks_rather_than_warns():
+    """All 21 sites, not just the one the behavioural test runs. A gate that
+    echoes STALE and falls through is the defect; it must exit non-zero."""
+    soft = []
+    # Scoped to the shipped plugins: an unscoped rglob also walks `.venv` and the
+    # journal, where entry 286 quotes a STALE line as prose and would fail this
+    # test on a reword.
+    for plugin in PLUGINS:
+        for path in (ROOT / plugin).rglob("*.md"):
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if "STALE: library" not in line:
+                    continue
+                if "exit 1" not in line:
+                    soft.append(f"{path.relative_to(ROOT)}: {line.strip()}")
+    assert not soft, "gate sites that warn instead of blocking:\n" + "\n".join(soft)
 
 
 # --- Realism: real recorded `claude -p` responses --------------------------

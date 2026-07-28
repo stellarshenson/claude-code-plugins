@@ -50,7 +50,7 @@ The six-iteration deterministic cascade archive (CV mean 1.0, three academic pap
 
 Lexical tests word presence, cosine tests topic, only entailment tests "does evidence support claim?". A cross-encoder reads `(evidence, claim)` -> entailment / neutral / contradiction = grounded / unconfirmed / contradicted.
 
-- **Model** - `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli`, ONNX, torch-free, multilingual
+- **Model** - `stellars/mdeberta-v3-base-mnli-xnli-openvino-int8`, OpenVINO int8, torch-free, multilingual
 - **Cross-lingual** - confirms claims (NB/FR vs EN source) that lexical + cosine cannot
 - **Contradictions** - catches word-number + semantic contradictions the lexical guard misses
 - **Public-data check** - `make grounding-validate ENGINE=nli` (VitaminC contradiction recall 0.81 vs lexical 0.05)
@@ -77,14 +77,14 @@ document-processing config set-calibrator --profile .stellars-plugins/calibrator
 | Exact (regex) | verbatim quotes | core | feeds logistic[^1] |
 | Fuzzy (Levenshtein) | near-verbatim paraphrase | core | feeds logistic[^1] |
 | BM25 (IDF recall) | distinctive claim tokens present | core | feeds logistic[^1] |
-| Semantic (e5 + FAISS) | same meaning, different words | opt-in | opt-in unchanged |
+| Semantic (bge-m3 + reranker) | same meaning, different words | opt-in | opt-in unchanged |
 | NLI (cross-encoder) | entailment / contradiction - true grounding, multilingual | opt-in | opt-in unchanged |
 
 [^1]: In lexical mode (default), the Exact/Fuzzy/BM25 features plus 10-15 additional signals feed a frozen-weight logistic (LexicalVerdict). Individual threshold flags (`--threshold`, `--bm25-threshold`) apply to the cascade fallback path only.
 
 - **Opt-in deps** - the `[semantic]` extra pulls `groundrails[all]` (the OpenVINO + ONNX semantic cascade); the grounder's heavy stack (`pymc`/`bambi`/`arviz`/`openvino`/MT) installs transitively via the core `groundrails` dependency
 - **Core package** - `groundrails` ships the lexical grounder (OpenVINO INT8 SaT segmenter on the high tier); the semantic cascade is the `[semantic]` extra only, not core
-- **Torch-free** - models are ONNX, downloaded on first use (e5 ~120 MB, NLI ~560 MB)
+- **Torch-free** - models are OpenVINO int8 IRs, provisioned by `document-processing setup --semantic` (~1.4 GB); `ground --semantic` exits 2 until they are present
 - **Default** - bare install = lexical high-tier; the `grounding` skill recommends enabling semantic/NLI at `document-processing setup`
 
 ### Install (core)
@@ -102,7 +102,7 @@ document-processing setup --semantic      # provisions groundrails + cascade mod
 ```
 
 - **Readiness** - `document-processing setup` initialises groundrails and writes `groundrails.json` under `GROUNDRAILS_HOME` (default `~/.stellars-plugins/groundrails`); plain `setup` is offline (lexical only), `--semantic` also fetches the OpenVINO cascade. Grounding commands lazy-initialise the offline lexical path when no token exists
-- **Default model** - `intfloat/multilingual-e5-small` (118M params, multilingual, trained for retrieval)
+- **Default model** - `stellars/bge-m3-openvino-int8` (multilingual, trained for retrieval)
 
 ### Scanned-PDF OCR (built in, no OS dependency)
 
@@ -143,7 +143,7 @@ document-processing check-consistency --document docs/brief.md --output validati
 
 - **ground** - `--claim TEXT` XOR `--manifest FILE`, plus `--source` (repeatable)
 - **validate** - `--document FILE` (repeatable) + `--source` XOR `--manifest source_map.yaml`
-- **--semantic** - boolean flag, default off; enables e5 embedding + NLI + calibrated verdict
+- **--semantic** - boolean flag, default off; enables bge-m3 embedding + reranker + NLI + calibrated verdict
 - **Output** - all layer scores per claim, the winning passage, and location metadata
 - **Reading** - see `skills/grounding/SKILL.md` for how the agent reads output (including "never blindly trust scores — verify via the pointer", the three core verdict rules, the OCR fallback chain)
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import asdict
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -54,17 +55,76 @@ def _default_home() -> str:
     )
 
 
+# What `--semantic` actually needs at run time. `ground_batch(semantic=True)` builds
+# `groundrails.semantic_ov.SemanticCascade` (bge-m3 + reranker + mDeBERTa NLI as
+# OpenVINO IRs) - NOT the legacy ONNX `semantic.SemanticGrounder`. Mirrors
+# `semantic_ov.is_available()`; checking the ONNX layer's deps instead blocks runs
+# that would work and misses `openvino`, the one that matters.
+_SEMANTIC_MODULES = ("openvino", "transformers", "huggingface_hub")
+
+#: File every cascade repo is loaded from; `setup --semantic` mirrors these repos.
+_SEMANTIC_MODEL_FILE = "openvino_model.xml"
+
+
+def _missing_semantic_components(*, models: bool = True) -> list[str]:
+    """Cascade components absent from this machine - modules first, then models.
+
+    Models are probed against the local cache only, never the network: the point
+    is to answer before the run starts, offline, in milliseconds. Pass
+    ``models=False`` from ``setup``, whose whole job is to fetch them - checking
+    there would make the command refuse to do the thing that satisfies the check.
+    """
+    missing = [m for m in _SEMANTIC_MODULES if importlib.util.find_spec(m) is None]
+    if missing or not models:
+        return missing  # cannot probe the cache without huggingface_hub itself
+
+    import groundrails.semantic_ov as gr_ov
+    from huggingface_hub import try_to_load_from_cache
+
+    # Read the repo list off groundrails rather than restating it: these are the
+    # same repos `setup --semantic` mirrors, so the check and the remedy cannot
+    # drift apart into a loop where the fix never satisfies the check.
+    for repo in sorted(gr_ov.HF_REPOS.values()):
+        if try_to_load_from_cache(repo, _SEMANTIC_MODEL_FILE) is None:
+            missing.append(f"model {repo}")
+    return missing
+
+
+def _preflight_semantic(*, models: bool = True) -> None:
+    """Refuse a --semantic run whose cascade is incomplete.
+
+    groundrails does not refuse: it isolates the failure per claim, substitutes an
+    empty match and still exits 0, so an incomplete cascade yields a report scoring
+    0% that reads exactly like a document grounding nowhere. Checking up front is
+    what turns that into an error the operator cannot miss.
+    """
+    missing = _missing_semantic_components(models=models)
+    if not missing:
+        return
+    print(
+        "ERROR: --semantic needs the grounding cascade; these components are "
+        f"missing: {', '.join(missing)}\n"
+        "  modules -> pip install 'stellars-claude-code-plugins[semantic]'\n"
+        "  models  -> document-processing setup --semantic   (~1.4 GB, one time)\n"
+        "Lexical grounding needs neither - drop --semantic to run it.",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+
+
 def _ensure_ready(*, semantic: bool = False) -> None:
     """Satisfy groundrails' readiness gate before any grounding call.
 
     ``ground``/``ground_batch`` raise ``NotInitializedError`` until groundrails
     is initialised. We first try an existing ``groundrails.json`` (written by
     ``document-processing setup``), then lazy-init the offline lexical path
-    (bundled calibration, no model downloads). Semantic grounding still needs the
-    cascade models provisioned via ``setup``; groundrails raises a clear error if
-    they are missing.
+    (bundled calibration, no model downloads). A ``semantic`` run is preflighted
+    first: groundrails degrades per claim instead of refusing, so the check has
+    to happen here.
     """
     os.environ.setdefault("GROUNDRAILS_HOME", _default_home())
+    if semantic:
+        _preflight_semantic()
     if gr_settings.is_ready():
         return
     try:
@@ -742,7 +802,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=5,
         help=(
             "Manifest mode: worker threads for per-claim grounding (default 5). "
-            "Parallelises the semantic path (ONNX embedding, FAISS search, NLI); "
+            "Parallelises the semantic path (bge-m3 embedding, reranker, NLI); "
             "sources are indexed once up front. Set 1 to run serial."
         ),
     )
@@ -1480,13 +1540,22 @@ def cmd_setup(args: argparse.Namespace) -> int:
     re-provisioning.
     """
     os.environ.setdefault("GROUNDRAILS_HOME", _default_home())
+    semantic = bool(getattr(args, "semantic", False))
+    if semantic:
+        # Modules only: provisioning the models IS this command's job.
+        _preflight_semantic(models=False)
     already = False
     try:
         gr_settings.load_config_file()
         already = gr_settings.is_ready()
     except Exception:  # noqa: BLE001 - no token yet -> provision below
         already = False
-    if already and not args.force:
+    # A prior lexical `setup` leaves the token in place, so `already` says nothing
+    # about the cascade. Short-circuiting on it swallowed --semantic entirely: the
+    # operator asked for the cascade, got "already initialised … or pass --semantic"
+    # advising the flag they had just passed, and grounded against an engine that
+    # was never provisioned. Only skip when this run adds nothing.
+    if already and not args.force and not semantic:
         print(
             f"groundrails already initialised (home={_default_home()}).\n"
             "Re-run with --force to re-provision, or pass --semantic to add the "
@@ -1495,7 +1564,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
         )
         return 0
 
-    models = None if getattr(args, "semantic", False) else "none"
+    models = None if semantic else "none"
     info = groundrails.init(models=models)
     print(
         f"groundrails initialised -> {info.get('config_file')}\n"

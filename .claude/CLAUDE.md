@@ -31,10 +31,11 @@ New entry → APPENDED at end of file. New numbers above old numbers = monotonic
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
 LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
 REPO=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
-[ "$LIB" = "$REPO" ] && echo "toolkit $LIB" || echo "STALE: installed $LIB != repo $REPO - the CLI you are testing is not the code in this tree"
+[ "$LIB" != "$REPO" ] && { echo "STALE: installed $LIB != repo $REPO - the CLI you are testing is not the code in this tree"; exit 1; }
+echo "toolkit $LIB"
 ```
 
-**The upgrade runs unconditionally.** An `import ... || install` guard never upgrades a version that already imports - that is precisely how this box reached library 1.5.5 while shipping plugins at 1.6.31, and how a session followed current skill docs into `unrecognized arguments: --svg` on a 26-release-old CLI. A green `--help` proves nothing; only the version compare does. In this repo the compare is against `pyproject.toml` (the CLI under test must be the code in this tree); in the shipped plugins it is against `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`. Never skip. Never ask. Plugin README at `~/.claude/plugins/cache/stellarshenson-marketplace/journal/<version>/README.md`.
+**The upgrade runs unconditionally, and the compare BLOCKS.** An `import ... || install` guard never upgrades a version that already imports - that is precisely how this box reached library 1.5.5 while shipping plugins at 1.6.31, and how a session followed current skill docs into `unrecognized arguments: --svg` on a 26-release-old CLI. A green `--help` proves nothing; only the version compare does, and a mismatch exits non-zero rather than printing a warning you will scroll past. In this repo the compare is against `pyproject.toml` (the CLI under test must be the code in this tree); in the shipped plugins it is against `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`. Never skip. Never ask. Plugin README at `~/.claude/plugins/cache/stellarshenson-marketplace/journal/<version>/README.md`.
 
 **`journal-tools check .claude/JOURNAL.md` after EVERY write** - exit 0 + no errors is the bar. Warnings (word-count nudges) non-blocking BUT drive a condense-pass when they fire on the just-appended entry.
 

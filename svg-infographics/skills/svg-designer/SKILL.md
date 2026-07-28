@@ -67,15 +67,17 @@ Run BEFORE anything else, and ALWAYS upgrade. A stale-but-importable version is 
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
 LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
 PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && echo "STALE: library $LIB != plugin $PLUG - CLI may lack flags this skill uses; re-run the upgrade" || echo "toolkit $LIB"
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+echo "toolkit $LIB"
 ```
 
 Then verify the CLI runs: `svg-infographics --help`.
 
 - **The upgrade always runs** - every session reinstalls to the latest so the validators match the current rules; never skip it because the package is already present, that is how a stale checker survives
-- **The version compare is the real gate** - `--help` exits 0 on an ancient CLI, so a green `--help` proves nothing. Only `LIB == PLUG` proves the CLI carries the flags this skill documents. A `STALE:` line means treat every CLI failure as a version problem first
-- **Refuse to start** only when the library is unavailable after the reinstall attempt - the import still fails, so `svg-infographics --help` still errors. Report the error and stop; there is no fallback, because every rule here assumes the CLI, and a hand-built SVG without the geometry tools and validators is exactly the defect class the toolchain prevents
-- A failed *upgrade* is NOT a refusal condition - offline or PyPI unreachable while the CLI still imports means run at the installed version; the reinstall was attempted, which is what matters. An absent library is fatal, a stale one that could not reach PyPI is a hazard to report, not a stop
+- **The version compare is the real gate** - `--help` exits 0 on an ancient CLI, so a green `--help` proves nothing. Only `LIB == PLUG` proves the CLI carries the flags this skill documents
+- **The gate blocks; it does not warn.** Both failure branches exit non-zero: an absent library (`FATAL`) and a version mismatch (`STALE`). Neither is advisory. A mismatch means the CLI you are about to drive is not the one this skill was written against, so every flag and every validator rule below is unverified - proceeding on it produces work that looks checked and is not. Report the line and stop
+- **Do not work around a blocked gate** - no hand-built SVG, no "run it anyway and see", no substituting your own geometry. Every rule here assumes the CLI, and skipping it is exactly the defect class the toolchain exists to prevent
+- **If the upgrade itself could not run** (offline, PyPI unreachable) the gate still decides on the versions it can read: matching means proceed, mismatched means stop. An unreachable index is a reason the mismatch cannot be fixed here, not a reason to ignore it
 
 ## First steps (every session)
 

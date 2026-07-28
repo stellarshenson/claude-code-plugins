@@ -41,7 +41,8 @@ Always run this single line BEFORE invoking `document-processing`. No-op when pa
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
 LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
 PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && echo "STALE: library $LIB != plugin $PLUG - CLI may lack flags this skill uses; re-run the upgrade" || echo "toolkit $LIB"
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+echo "toolkit $LIB"
 ```
 
 Ships `document-processing` CLI with lexical-mode grounding (default: frozen-weight logistic, high effort tier, 18 signals including MT cross-lingual). All layer scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask user whether to install - just run the line. **CLI mandatory.** Generative interpretation only an on-top layer for semantic claims after CLI ran - never a substitute. If package genuinely cannot install, say so and stop; do not silently degrade to manual search.
@@ -50,15 +51,15 @@ Ships `document-processing` CLI with lexical-mode grounding (default: frozen-wei
 
 **Posture: recommend semantic, enable per call.** No persisted setting — semantic = boolean flag on the grounder (`--semantic`, store_true, default off). Pass it to bring two layers online together:
 
-- **Retrieval embedder + FAISS** (default `intfloat/multilingual-e5-small`, set via `semantic_model` in settings) — catches meaning-match when wording AND terms diverge
+- **Retrieval embedder + reranker** (`stellars/bge-m3-openvino-int8` + `stellars/bge-reranker-v2-m3-openvino-int8`, OpenVINO int8) — catches meaning-match when wording AND terms diverge
 - **NLI entailment cross-encoder** (rides with semantic, no separate flag) — truth signal: does evidence *entail* the claim? Catches contradictions and cross-lingual matches lexical layers structurally cannot reach. With NLI on, verdict runs through calibrated engine so entailment weighed against other layers, not a hard override
 
 Decision each run:
 
-- **Default → recommend `--semantic`.** Phrase as default: "Semantic + NLI grounding is the recommended default — only layers that catch a passage that *means* the claim (or *contradicts* it) while sharing no wording. One-time cost: `pip install 'stellars-claude-code-plugins[semantic]'` plus model downloads on first use (~120 MB embedder + ~560 MB NLI). Use it?" Requires **Python 3.12 exactly** - and so does every other `document-processing` subcommand, lexical included: on any other interpreter (3.11, 3.13+) the engine is skipped by an environment marker and the CLI cannot run at all. Confirm the interpreter before promising any grounding.
+- **Default → recommend `--semantic`.** Phrase as default: "Semantic + NLI grounding is the recommended default — only layers that catch a passage that *means* the claim (or *contradicts* it) while sharing no wording. One-time cost: `pip install 'stellars-claude-code-plugins[semantic]'` plus `document-processing setup --semantic` to fetch the cascade IRs (~1.4 GB). Use it?" Requires **Python 3.12 exactly** - and so does every other `document-processing` subcommand, lexical included: on any other interpreter (3.11, 3.13+) the engine is skipped by an environment marker and the CLI cannot run at all. Confirm the interpreter before promising any grounding.
 - **User declines → lexical-only this session.** Three lexical layers, no persistence. Don't re-ask (re-recommend-on-struggle rule below still applies).
 
-Never pass `--semantic` while `[semantic]` extra uninstalled — CLI hard-fails (exit 2) on that explicit contract. Install first, then `--semantic`.
+`--semantic` preflights before the run and **exits 2** if any cascade component is missing, naming each one: the Python modules, then the model weights. Remedy is in the message — `pip install 'stellars-claude-code-plugins[semantic]'` for modules, `document-processing setup --semantic` for models (~1.4 GB, one time). This matters because groundrails does not refuse an incomplete cascade: it forces each claim to ungrounded and still exits 0, so an unchecked run yields a 0% report indistinguishable from a document that genuinely grounds nowhere. Treat exit 2 as "the engine did not run", never as a grounding result.
 
 ### Never blindly trust scores. Verify generatively when in doubt
 
@@ -146,8 +147,8 @@ Three rules override default per-claim behaviour. Apply in order: rule 2 trumps 
 
 ```
 Lexical grounding left N/M claims UNCONFIRMED and K in the
-almost-grounded zone. Semantic + NLI grounding (~120 MB embedder +
-~560 MB NLI, one-time download, requires `[semantic]` extra) often
+almost-grounded zone. Semantic + NLI grounding (~1.4 GB of OpenVINO
+IRs via `setup --semantic`, requires `[semantic]` extra) often
 resolves these. Enable?
   - yes: re-run with --semantic
   - no: keep current verdicts
@@ -305,7 +306,7 @@ Only when all three lexical layers return `none` AND claim is semantic (summary 
 Lexical = word presence. cosine = topic. neither = truth. NLI = truth: does evidence support claim?
 
 - cross-encoder reads `(evidence, claim)` -> entailment / neutral / contradiction = grounded / unconfirmed / contradicted
-- model `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli`, ONNX, torch-free, multilingual, ~560 MB first use
+- model `stellars/mdeberta-v3-base-mnli-xnli-openvino-int8`, OpenVINO int8, torch-free, multilingual; provisioned by `setup --semantic`
 - **multilingual** - confirms cross-lingual claim (NB/FR vs EN source); lexical+cosine cannot
 - catches word-number + semantic contradictions lexical guard misses (VitaminC contradiction recall 0.81 vs lexical 0.05)
 - in `ground()`: NLI argmax = first-class verdict; contradiction folds into guard, entailment counts as signal

@@ -14,10 +14,11 @@ Run first:
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
 LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
 PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && echo "STALE: library $LIB != plugin $PLUG - CLI may lack flags this skill uses; re-run the upgrade" || echo "toolkit $LIB"
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+echo "toolkit $LIB"
 ```
 
-Verify CLI: `svg-infographics --help`. REFUSE only if library unavailable - import fails AND install cannot fix it, so `--help` still errors. Failed *upgrade* (offline, PyPI unreachable) while CLI still imports = not fatal - run at the installed version, but a `STALE:` line means the CLI can reject flags this command uses. No fallback, no hand-built output.
+Verify CLI: `svg-infographics --help`. **The gate above blocks on both failures** - an absent library (`FATAL`) and a version mismatch (`STALE`) each exit non-zero. Neither is advisory: this command documents the current plugin's flags, so a mismatched CLI may reject them and anything it does produce is unverified. Report the line and stop. No fallback, no hand-built output.
 
 Workflow: draft → preflight → scaffold → author → check → finalize.
 

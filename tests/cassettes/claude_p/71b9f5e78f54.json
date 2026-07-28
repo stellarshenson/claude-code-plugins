@@ -1,0 +1,18 @@
+{
+  "prompt_hash": "71b9f5e78f54",
+  "prompt_preview": "```bash\npython3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1\nLIB=$(python3 -c \"import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))\" 2>/dev/nu",
+  "args": [
+    "claude",
+    "-p",
+    "```bash\npython3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1\nLIB=$(python3 -c \"import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))\" 2>/dev/null) || { echo \"FATAL: toolkit unavailable\"; exit 1; }\nPLUG=$(grep -m1 '\"version\"' \"${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json\" 2>/dev/null | cut -d'\"' -f4)\n[ -n \"$PLUG\" ] && [ \"$LIB\" != \"$PLUG\" ] && { echo \"STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade\"; exit 1; }\necho \"toolkit $LIB\"\n```\n- **The upgrade always runs** - every session reinstalls to the latest so the validators match the current rules; never skip it because the package is already present, that is how a stale checker survives\n- **The version compare is the real gate** - `--help` exits 0 on an ancient CLI, so a green `--help` proves nothing. Only `LIB == PLUG` proves the CLI carries the flags this skill documents\n- **The gate blocks; it does not warn.** Both failure branches exit non-zero: an absent library (`FATAL`) and a version mismatch (`STALE`). Neither is advisory. A mismatch means the CLI you are about to drive is not the one this skill was written against, so every flag and every validator rule below is unverified - proceeding on it produces work that looks checked and is not. Report the line and stop\n- **Do not work around a blocked gate** - no hand-built SVG, no \"run it anyway and see\", no substituting your own geometry. Every rule here assumes the CLI, and skipping it is exactly the defect class the toolchain exists to prevent\n- **If the upgrade itself could not run** (offline, PyPI unreachable) the gate still decides on the versions it can read: matching means proceed, mismatched means stop. An unreachable index is a reason the mismatch cannot be fixed here, not a reason to ignore it\n\nYou ran the gate above inside a plugin whose plugin.json version is 1.6.31.\nIt printed:\n\n    toolkit 1.6.31\n\nThe skill now tells you to run this, using a flag documented by the current plugin:\n\n    svg-infographics validate --svg out.svg\n\nQuestion: judging ONLY by the gate output above, is the toolchain in a fit state\nto run that command as documented, or must you repair the toolchain first?\n\nRespond ONLY in this format:\n  PROCEED|BLOCKED: one-line justification",
+    "--output-format",
+    "text",
+    "--dangerously-skip-permissions",
+    "--max-turns",
+    "3",
+    "--no-session-persistence"
+  ],
+  "stdout": "`[2026-07-28 Tue 02:53]` PROCEED: gate printed `toolkit 1.6.31` with no FATAL/STALE line, so library matches plugin 1.6.31 and the documented `--svg` flag is verified against the installed CLI.\n",
+  "stderr": "",
+  "returncode": 0
+}

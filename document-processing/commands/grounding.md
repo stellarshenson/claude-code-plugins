@@ -20,7 +20,7 @@ Lexical mode is the default: a frozen-weight logistic over 13-18 signals selecte
 
 ## Optional layers (opt-in)
 
-- **semantic** - `--semantic` adds e5 retrieval (ONNX, torch-free)
+- **semantic** - `--semantic` adds bge-m3 retrieval + reranker (OpenVINO int8, torch-free)
 - **NLI / entailment** - the truth signal: cross-encoder reads `(evidence, claim)` -> grounded / unconfirmed / contradicted; multilingual, catches contradictions + cross-lingual matches lexical misses
 - **calibration** - tune the verdict to your corpus from labelled evidence: `calibrate --action update --evidence f.json` then `config set-calibrator`; learned weights live in config. Public-data check: `make grounding-validate ENGINE=nli`. Full doc: `docs/grounding_calibration.md`
 
@@ -32,7 +32,8 @@ Before invoking `document-processing`, always run:
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
 LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
 PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && echo "STALE: library $LIB != plugin $PLUG - CLI may lack flags this skill uses; re-run the upgrade" || echo "toolkit $LIB"
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+echo "toolkit $LIB"
 ```
 
 The upgrade always runs - a stale-but-importable install is exactly the failure this gate prevents, and the reinstall also repairs a stale shim on PATH whose package is uninstalled in the active Python.

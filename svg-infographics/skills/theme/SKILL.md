@@ -13,10 +13,11 @@ Themes define the colour palette for all SVG infographics. Every project needs a
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
 LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
 PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && echo "STALE: library $LIB != plugin $PLUG - CLI may lack flags this skill uses; re-run the upgrade" || echo "toolkit $LIB"
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+echo "toolkit $LIB"
 ```
 
-Ships the `svg-infographics` CLI (swatch generation, contrast audit). Verify the CLI runs: `svg-infographics --help`. **REFUSE to start** only when the library is unavailable - import fails AND install cannot fix it, so `--help` still errors. A failed *upgrade* (offline / PyPI down) while the CLI still imports is not fatal - run at the installed version, but a `STALE:` line means the CLI can reject flags this skill uses. No fallback mode.
+Ships the `svg-infographics` CLI (swatch generation, contrast audit). Verify the CLI runs: `svg-infographics --help`. **The gate above blocks on both failures** - an absent library (`FATAL`) and a version mismatch (`STALE`) each exit non-zero. Neither is advisory: a mismatched CLI may reject flags this skill uses. Report the line and stop. No fallback mode.
 
 ## Task Tracking
 
