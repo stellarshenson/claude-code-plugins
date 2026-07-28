@@ -87,38 +87,53 @@ def test_every_upgrade_is_paired_with_a_version_assertion():
     )
 
 
+def _can_run_shell(body: str) -> bool:
+    """Whether an entry point's own frontmatter lets it execute the gate.
+
+    A file restricted to Read/Write/Edit/Glob/Grep cannot invoke any toolkit CLI,
+    so there is nothing for a gate to protect - and shipping one there would be an
+    instruction the agent has no tool to follow. Anything it delegates CLI work to
+    is itself a gated entry point. No `allowed-tools` key at all means unrestricted.
+    """
+    if not body.startswith("---\n"):
+        return True
+    end = body.find("\n---\n", 4)
+    if end == -1:
+        return True
+    for line in body[4:end].splitlines():
+        stripped = line.strip()
+        if stripped.startswith(("allowed-tools:", "tools:")):
+            value = stripped.split(":", 1)[1]
+            return "Bash" in value or "*" in value
+    return True
+
+
 def test_every_cli_entry_point_is_gated():
-    """Coverage hole this closes: the test above only guards files that ALREADY
-    upgrade. A skill or command that invokes a CLI with no preflight at all
-    passed everything - `devils-advocate/skills/run/SKILL.md` did exactly that,
-    with a bare `pip install` (no `--upgrade`) verified by `--help`.
+    """Every entry point that CAN run a CLI carries the gate - and only those.
+
+    The earlier form guarded only files that named a CLI, so a skill could reach
+    the toolkit indirectly, or gain a CLI call later, and never check the version.
+    The contract is now biconditional: shell-capable means gated, and gated means
+    shell-capable, so neither a silent hole nor an unrunnable instruction ships.
 
     Entry points are `SKILL.md` and `commands/*.md`. References, rules, READMEs
-    and examples are exempt: they are loaded BY a gated skill, so they inherit
-    it. A command may also delegate explicitly to a gated skill instead.
+    and examples stay exempt - they are loaded BY a gated entry point.
     """
-    cli = re.compile(
-        r"\b(journal-tools|svg-infographics|render-png|document-processing|orchestrate)\s"
-    )
-    ungated = []
+    ungated, undeliverable = [], []
     for p in _plugin_markdown():
         if p.name != "SKILL.md" and p.parent.name != "commands":
             continue
         body = p.read_text(encoding="utf-8")
-        if not cli.search(body):
-            continue
-        if STALE_ASSERTION in body:
-            continue
-        # Delegating to another skill inherits that skill's gate. Only an
-        # explicit "Invoke `plugin:skill` skill" counts - a prose cross-reference
-        # ("per the **`grounding`** skill") is not a delegation, and matching it
-        # exempted a file that gates itself, so stripping its gate went unnoticed.
-        if re.search(r"[Ii]nvoke `[\w-]+:[\w-]+` skill", body):
-            continue
-        ungated.append(str(p.relative_to(ROOT)))
+        gated = STALE_ASSERTION in body
+        if gated != _can_run_shell(body):
+            (ungated if not gated else undeliverable).append(str(p.relative_to(ROOT)))
     assert not ungated, (
-        "entry points invoke a toolkit CLI with no version gate and no "
-        f"delegation to a gated skill: {ungated}"
+        "shell-capable entry points missing the toolchain gate - each can drive a "
+        f"toolkit CLI and would do so unchecked: {ungated}"
+    )
+    assert not undeliverable, (
+        "entry points carry a gate their own `allowed-tools` forbids them from "
+        f"running, so the instruction is dead text: {undeliverable}"
     )
 
 

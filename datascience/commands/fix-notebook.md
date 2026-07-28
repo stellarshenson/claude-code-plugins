@@ -8,6 +8,20 @@ argument-hint: "path to notebook to fix, e.g. 'notebooks/01-kj-analysis.py'"
 
 Read a notebook and fix it to comply with ALL standards. Applies changes directly.
 
+## Toolchain gate (MANDATORY - run before anything else)
+
+Run this first, every session, before any other work. The upgrade always runs; a version mismatch blocks.
+
+```bash
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
+PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+echo "toolkit $LIB"
+```
+
+Both branches exit non-zero and neither is advisory: an absent library (`FATAL`) and a version mismatch (`STALE`). A mismatch means the CLI is not the one this file was written against, so its documented flags and rules are unverified. Report the line and stop; do not work around it.
+
 ## Skills to apply
 
 - **`datascience:notebook-standards`** - section order, GPU selection, imports, config cell; its `references/rich-output.md` (colour palette, print patterns) and `references/equations.md` (unicode inline + display math)
