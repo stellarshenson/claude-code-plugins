@@ -1,0 +1,35 @@
+{
+  "version": "2",
+  "plugins": [
+    {
+      "id": "journal",
+      "displayName": "Journal",
+      "source": "./journal"
+    },
+    {
+      "id": "devils-advocate",
+      "displayName": "Devil's Advocate",
+      "source": "./devils-advocate"
+    },
+    {
+      "id": "datascience",
+      "displayName": "Data Science",
+      "source": "./datascience"
+    },
+    {
+      "id": "svg-infographics",
+      "displayName": "SVG Infographics",
+      "source": "./svg-infographics"
+    },
+    {
+      "id": "document-processing",
+      "displayName": "Document Processing",
+      "source": "./document-processing"
+    },
+    {
+      "id": "autobuild",
+      "displayName": "Autobuild",
+      "source": "./autobuild"
+    }
+  ]
+}
