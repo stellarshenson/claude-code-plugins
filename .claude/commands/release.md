@@ -9,9 +9,9 @@ These rules are not optional. Two real incidents motivated them: a parallel-tool
 - **One step at a time. NEVER batch dependent operations in parallel.** Every git mutation (`add`, `rm`, `reset`, `commit`, `push`) and every version-bump write MUST run as its own tool call, and you MUST read its result before the next. Parallel tool calls are allowed ONLY for independent read-only inspection (e.g. several `grep`/`cat` with no ordering between them) - never for anything that writes, and never across a step boundary.
 - **`.git/index.lock` means a git process is mid-flight or crashed.** If you see it: STOP, confirm no git command is still running, then `rm -f .git/index.lock` and re-verify with a single `git status` before continuing. Do not blindly retry the locked command.
 - **Distrust corrupted/garbled tool output.** If a result looks truncated, shows the wrong file, or contains content that cannot belong to the command (interleaving, control-sequence noise), do NOT draw conclusions from it. Re-run that ONE command alone with a sentinel (`echo MARKER; <cmd>`) and confirm the marker before trusting the output. A misread here once caused a wrong "make publish does not exist" conclusion - the target existed and had already run.
-- **One synced version, the library leads.** `make publish` bumps `pyproject.toml` (PATCH) and uploads to PyPI - that resulting number is `vN`, the single source of truth for the release. Step 4 then writes `vN` into the 13 plugin strings (6 `plugin.json` + `marketplace.json` metadata + 6 entries) so library and plugins always match. NEVER publish the library by hand (`uv build` / `twine`) - always `make publish`. NEVER set the plugin version independently of `vN` (do not run `/increment-plugin-version` during release).
+- **One synced version, the library leads.** `make publish` bumps `pyproject.toml` (PATCH) and uploads to PyPI - that resulting number is `vN`, the single source of truth for the release. Step 4 then writes `vN` into the 19 plugin strings (6 `plugin.json` + 6 `kimi.plugin.json` + `marketplace.json` metadata + 6 entries) so library and plugins always match. NEVER publish the library by hand (`uv build` / `twine`) - always `make publish`. NEVER set the plugin version independently of `vN` (do not run `/increment-plugin-version` during release).
 - **EVERY release ships BOTH the CLI and the plugins. There is no plugin-only release.** The plugins are documentation for a CLI they cannot function without: skills and commands are written against the *current* flags, so shipping plugin text without the matching library strands every user on a CLI that rejects the flags the new docs tell them to use. This is not hypothetical - it is the `unrecognized arguments: --svg` incident, where plugins at 1.6.31 drove a library at 1.5.5. A "docs-only" change is still a CLI release: run `make publish` anyway so `vN` advances on both sides together. The only case where the library does not upload is `make publish` failing, and that ABORTS the release - it never downgrades to a plugin-only push.
-- **Verify after every mutating step before proceeding.** Publish → confirm the new `pyproject.toml` version + the PyPI upload. Sync → confirm all 13 plugin strings equal `vN` and zero stale ones remain. Stage → confirm the staged set matches intent and nothing leaked in. Commit → confirm file count + clean worktree. Push → confirm `LOCAL == REMOTE`.
+- **Verify after every mutating step before proceeding.** Publish → confirm the new `pyproject.toml` version + the PyPI upload. Sync → confirm all 19 plugin strings equal `vN` and zero stale ones remain. Stage → confirm the staged set matches intent and nothing leaked in. Commit → confirm file count + clean worktree. Push → confirm `LOCAL == REMOTE`.
 
 ## Pre-flight
 
@@ -60,12 +60,24 @@ make publish
 
 ### 4. Sync the plugin versions to the library
 
-Read `vN` from `pyproject.toml`, then write that exact number into all 13 plugin strings:
+Read `vN` from `pyproject.toml`, then write that exact number into all 19 plugin strings, spread across 13 files:
 
-- all 6 `plugin.json` `"version"` fields
+- all 6 `<plugin>/.claude-plugin/plugin.json` `"version"` fields
+- all 6 `<plugin>/kimi.plugin.json` `"version"` fields - the Kimi Code manifests carry the plugin version too, and they are the six that get forgotten
 - `.claude-plugin/marketplace.json` `metadata.version` plus every one of the 6 plugin-entry `"version"` fields
 
-Do NOT run `/increment-plugin-version` - it bumps the plugins independently and would desync them from the library. Verify: grep for `vN` shows all 13 strings updated, and grep for the previous plugin version returns zero hits.
+Do not hand-count. Derive the set from the tree, so a plugin or manifest added later is picked up automatically:
+
+```bash
+PREV=<previous version>; NEW=<vN>
+grep -rl "\"$PREV\"" --include=*.json . | grep -v node_modules | xargs sed -i "s/\"$PREV\"/\"$NEW\"/g"
+grep -rn "\"$NEW\"" --include=*.json . | grep -v node_modules | wc -l   # expect 19
+grep -rn "\"$PREV\"" --include=*.json . | grep -v node_modules | wc -l  # expect 0
+```
+
+**Never bump `kimi-marketplace.json`'s top-level `"version": "2"`** - that is the Kimi marketplace SCHEMA version, not a plugin version. The grep above cannot touch it (it never equals the previous release number), which is precisely why the sync is written as a match on `$PREV` rather than a blanket sweep of every `"version"` key.
+
+Do NOT run `/increment-plugin-version` - it bumps the plugins independently and would desync them from the library. Verify: the first count returns 19, the second returns 0.
 
 ### 5. Update the journal
 
