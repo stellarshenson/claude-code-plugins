@@ -1,6 +1,6 @@
 ---
 description: Fix a notebook to comply with all standards - structure, styling, progress bars, header narrative
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill, TaskCreate, TaskUpdate]
 argument-hint: "path to notebook to fix, e.g. 'notebooks/01-kj-analysis.py'"
 ---
 
@@ -76,7 +76,8 @@ Read these skills before making changes. They are the source of truth. Do NOT ha
 3. List all violations by category
 4. Apply fixes - user confirms via tool approval
 5. Update pyproject.toml if deps missing
-6. Show summary of changes
+6. Fill in the Post-write checklist from `notebook-standards/SKILL.md`; fix every unticked box before reporting
+7. Show summary of changes plus the filled-in checklist
 
 ## Rules
 

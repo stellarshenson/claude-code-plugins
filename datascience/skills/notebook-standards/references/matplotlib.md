@@ -42,7 +42,7 @@ Make a figure render edge-to-edge across the notebook output (or a README image)
 
 ## Colormaps - names per family
 
-The rules (family by data kind, no `jet`, colourblind and greyscale safety, one palette across the notebook) are the skill's Colours section - this is only the name list.
+This is only the name list. The rules live in two places: no `jet` and one palette across the notebook in the skill's Colours section; family-by-data-kind, greyscale and colourblind safety, and both-theme legibility in `rich-output.md` → Colour selection.
 
 - **Sequential** (`viridis`, `plasma`, `cividis`, `magma`) - ordered magnitudes, low → high
 - **Diverging** (`coolwarm`, `RdBu`, `BrBG`) - data with a meaningful centre (zero, a mean); set `vcenter` via `TwoSlopeNorm` so the midpoint lands on the neutral colour

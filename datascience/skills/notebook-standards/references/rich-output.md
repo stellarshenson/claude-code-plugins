@@ -41,6 +41,14 @@ Resource for the `notebook-standards` skill. Semantic colour assignments for the
 | Category B | `steel_blue` |
 | Totals | `dark_sea_green` |
 
+## Colour selection
+
+Choosing the colour, once the palette above has named the options. The SKILL.md Colours section carries the four rules governing whether a colour appears and stays consistent; these three govern which colormap family fits the data and whether the result stays readable for every reader and every theme. All seven have equal force - none of these is optional detail.
+
+- **Colormap by data kind** - sequential (`viridis`) for magnitudes, diverging (`coolwarm`) for data centred on a midpoint, qualitative (`tab10`) for UNORDERED categories. An ordered discrete variable (batch size, epoch, quantile bin) is a magnitude, not a category - sample a sequential map at N points so the ramp tracks the order; a qualitative palette throws the ordering away. The wrong family misreads the data
+- **Never colour alone** - pair it with a label, marker or pattern so the figure survives greyscale print and colourblind readers
+- **Legible on both themes** - notebooks get read in light AND dark JupyterLab; avoid pale-on-white and near-black-on-dark. Rich standard colour names (not hex) keep terminal output readable across themes
+
 ## Rules
 
 - Single multiline `rich.print()` for related output. NEVER multiple individual prints - each call is a separate JupyterLab output block, rendered as its own paragraph with a large vertical gap after it, so a run of prints scatters one summary across the cell instead of rendering it compact

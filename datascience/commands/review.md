@@ -1,6 +1,6 @@
 ---
 description: Review a notebook or script for compliance with data science standards
-allowed-tools: [Read, Glob, Grep, Bash, Skill]
+allowed-tools: [Read, Glob, Grep, Bash, Skill, TaskCreate, TaskUpdate]
 argument-hint: "path to notebook or script to review"
 ---
 
@@ -24,38 +24,25 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 ## What to check
 
-Read the target file and evaluate against this checklist:
+Read the target file, then evaluate it in two parts.
 
-### Notebook Structure (if .ipynb or Jupytext .py)
-- [ ] Header cell with title, author, approach
-- [ ] GPU selection BEFORE torch/tf/jax imports (if GPU used)
-- [ ] All imports in single cell with autoreload
-- [ ] Imports grouped by category with inline comments
-- [ ] No imports in later cells
-- [ ] Configuration in single cell with rich summary
-- [ ] Markdown header before each code section
-- [ ] Progress bars in separate cell from setup text
+### 1. Notebook standards (if `.ipynb` or Jupytext `.py`)
 
-### Data Science Conventions
-- [ ] Naming: `NN-initials-description.py` pattern
-- [ ] Jupytext percent format (not raw .ipynb)
+Read `notebook-standards/SKILL.md` and tick its **Post-write checklist** against the file - structure, output, long runs, evidence. That checklist is the single source of truth for those boxes; do not restate or fork it here, or the two copies drift apart and a reviewer enforces the stale one.
+
+### 2. Project conventions (every file)
+
+From the `datascience:datascience` skill - what the notebook checklist does not cover:
+
+- [ ] Naming: `NN-initials-description.ipynb` pattern
 - [ ] DataFrame naming: `purpose_df` / `purpose_lf`
+- [ ] Polars lazy (`scan_*` / `LazyFrame`) for large data
+- [ ] Sklearn builtins preferred over custom implementations
 - [ ] No imports in `__init__.py`
 - [ ] Google docstrings with type hints
-- [ ] Polars lazy processing for large data
-- [ ] Sklearn builtins preferred over custom implementations
-
-### Rich Output
-- [ ] Single multiline `rich.print()` (not multiple individual prints)
-- [ ] Semantic colors: `dark_sea_green` for values, `indian_red` for errors
-- [ ] No hex colors in rich (standard colors only)
-- [ ] `[dim]` for secondary information
-
-### Code Quality
-- [ ] Seeds set for reproducibility
-- [ ] No hardcoded paths (use Path objects)
-- [ ] Consistent plot sizes
-- [ ] Progress bars for long operations
+- [ ] No hardcoded paths - `Path` objects
+- [ ] Consistent figure sizes across the file
+- [ ] Rich uses standard colour names, no hex; `[dim]` for secondary text
 
 ## Output
 

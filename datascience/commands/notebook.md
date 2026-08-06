@@ -1,6 +1,6 @@
 ---
 description: Create a new Jupyter notebook with proper structure, styling, and progress bars
-allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill]
+allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, Skill, TaskCreate, TaskUpdate]
 argument-hint: "notebook purpose, e.g. 'train YOLOv8 on custom dataset'"
 ---
 
@@ -56,6 +56,8 @@ Read these skills before generating the notebook. They are the source of truth f
 
 10. **Progress bars**: if long-running ops, follow `progressbars` skill for the chosen style. Setup text in separate cell.
 
-11. Report: filename created, pyproject.toml changes, next steps.
+11. **Verify**: fill in the Post-write checklist from `notebook-standards/SKILL.md` and fix every unticked box before reporting. A box ticked without the notebook actually satisfying it is worse than an honest fail.
+
+12. Report: filename created, pyproject.toml changes, the filled-in checklist, next steps.
 
 **Figures**: plots render inline (`plt.show()`) - do NOT add `plt.savefig` / file export unless the user explicitly asks to export. The notebook is the artefact. See `notebook-standards/SKILL.md` "Figures (inline by default)".

@@ -1,6 +1,6 @@
 ---
 description: Add or fix progress bars in a notebook or script - choose classic (tqdm) or modern (rich) style
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion, Skill, TaskCreate, TaskUpdate]
 argument-hint: "path to file to add progress bars to"
 ---
 

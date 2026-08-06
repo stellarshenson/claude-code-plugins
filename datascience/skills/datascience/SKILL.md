@@ -23,17 +23,17 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 ## Notebook Naming
 
-Pattern: `NN-initials-description.py` (Jupytext percent format)
+Pattern: `NN-initials-description.ipynb`
 - Two-digit execution order: `01`, `02`, `03`
 - Author initials: `kj` for Konrad Jelen
 - Brief description: `data-exploration`, `train-yolov8m`
-- Examples: `01-kj-data-exploration.py`, `04-kj-train-yolov8m.py`
+- Examples: `01-kj-data-exploration.ipynb`, `04-kj-train-yolov8m.ipynb`
 
 Sequential numbering within groupings. Archive obsolete to `@archive/`. Never delete. `temp_` prefix for temporary notebooks excluded from Git.
 
 ## File Format
 
-Jupytext percent format (`.py`) = source of truth. `# %%` for code, `# %% [markdown]` for markdown. Add `*.ipynb` to `.gitignore`. Enables git diffs and code review.
+`.ipynb` = source of truth, committed WITH its outputs. The executed notebook - inline figures, rich renders, tables - is the artefact a reader opens, so the outputs are part of what gets reviewed and shared. Do not gitignore `.ipynb`, and do not keep the source in a paired Jupytext `.py`.
 
 ## Project Structure (cookiecutter-data-science)
 
@@ -42,7 +42,7 @@ data/raw/          # Original immutable datasets (never modify)
 data/interim/      # Intermediate transformed data
 data/processed/    # Final canonical datasets
 data/external/     # Third-party data
-notebooks/         # Jupytext notebooks
+notebooks/         # Jupyter notebooks
 src/               # Reusable Python modules extracted from notebooks
 models/            # Trained model artifacts
 reports/           # Generated analysis and figures

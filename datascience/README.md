@@ -16,7 +16,7 @@ Unlike ad-hoc notebook cleanups, this plugin treats the notebook as a standardis
 | Command | What it does |
 |---------|--------------|
 | `/datascience:new-project` | Scaffold a new project from the `copier-data-science` template |
-| `/datascience:notebook` | Create a properly structured Jupytext notebook with all standard sections |
+| `/datascience:notebook` | Create a properly structured Jupyter notebook with all standard sections |
 | `/datascience:review` | Review a notebook or script against all standards and produce a violation checklist |
 | `/datascience:fix-notebook` | Restructure a notebook to comply with every standard - layout, styling, progress bars, header |
 | `/datascience:fix-project` | Port an existing project to `copier-data-science` standards or update an existing copier project |

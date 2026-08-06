@@ -90,7 +90,7 @@ If user doesn't want a full port, fix individual issues:
 - Notebooks at root -> move to `notebooks/`
 - No `src/` modules -> extract reusable code from notebooks
 - No Makefile -> create from template
-- Missing `.gitignore` entries -> add standard DS ignores (`*.ipynb`, `data/`, `models/`)
+- Missing `.gitignore` entries -> add standard DS ignores (`data/`, `models/`); `.ipynb` is tracked, not ignored - see the `datascience:datascience` skill File Format rule
 
 ## Critical questions (ASK before proceeding)
 

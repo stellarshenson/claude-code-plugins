@@ -1,6 +1,6 @@
 ---
 description: Add or fix footnotes in a notebook or markdown file using Jupyter-compatible anchor pattern
-allowed-tools: [Read, Write, Edit, Glob, Grep, Skill]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Skill, TaskCreate, TaskUpdate]
 argument-hint: "path to file and what to footnote, e.g. 'notebooks/01-kj-analysis.ipynb add citations for papers mentioned'"
 ---
 

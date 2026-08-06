@@ -1,6 +1,6 @@
 ---
 description: Apply rich output styling standards to a notebook or script - fix colors, formatting, print patterns
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Skill]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Skill, TaskCreate, TaskUpdate]
 argument-hint: "path to file to fix, e.g. 'notebooks/01-kj-analysis.py'"
 ---
 
