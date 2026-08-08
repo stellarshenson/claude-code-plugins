@@ -1,7 +1,7 @@
 ---
 name: hypothesis
 description: Structure and maintain hypothesis-driven research documentation - a canonical append-only experiments log (each hypothesis with a self-contained, independently reproducible experiment setup, prediction, result, verdict) and a SOTA design doc distilling the winners. Use when the user is writing up an experiment, recording a hypothesis and its result, comparing approaches to decide which wins, defining a naive baseline, running an experiment's hypotheses as agents, fanning out the next round of hypotheses, ablating survivors into a final design, drafting a research report with a problem overview and executive summary, or concluding a state-of-the-art / final-design doc - even without the word "hypothesis". Triggers - "document this experiment", "write up the hypothesis", "experiments doc", "sota doc", "research writeup", "which approach won", "record this round", "run this experiment", "fan out hypotheses", "propose the next round", "ablation study", "update the experiments log", "structure my results".
-allowed-tools: Read, Write, Edit, Glob, Grep, WebFetch
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch
 ---
 
 # Hypothesis
@@ -12,9 +12,38 @@ Maintain two research docs: a canonical **experiments log** (every hypothesis wi
 
 **Mirror the closest `examples/` doc before writing** - its section order wins over this skill's guidance on any conflict. Do not invent structure. See Examples for which to pick.
 
+## Toolchain gate (MANDATORY - run before anything else)
+
+Run this first, every session, before any other work. The upgrade always runs; a version mismatch blocks.
+
+```bash
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
+PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+echo "toolkit $LIB"
+```
+
+Both branches exit non-zero and neither is advisory: an absent library (`FATAL`) and a version mismatch (`STALE`). A mismatch means the CLI is not the one this file was written against, so its documented flags and rules are unverified. Report the line and stop; do not work around it.
+
+## Ledger queries - `hypothesis-tools`
+
+Read the ledger's state through the CLI, never by re-reading the file. A twelve-round log is 300+ lines to re-read for one ordinal, and the cost grows every round. Read-only - it never writes; use Edit for that. Full command reference and the parse contract in `references/ledger-queries.md`.
+
+| command | answers |
+|---|---|
+| `hypothesis-tools next-id <log>` | next free global `H<n>` + next `E<batch>` - the fanout dedupe number |
+| `hypothesis-tools list <log> [--verdict V] [--batch E12] [--json]` | every id, slug, verdict + the tally; `--verdict none` for unverdicted |
+| `hypothesis-tools show <log> E12-H33` | one hypothesis verbatim, instead of the whole log |
+| `hypothesis-tools check <log>` | validates the ledger; exit 1 on any error - rules in `references/ledger-queries.md` |
+
+- **Never guess the next ordinal** - `next-id` reads it; a reset or reused `<n>` makes one number name several hypotheses and has to be undone later
+- **`next-id` refuses rather than guesses (exit 1)** - an unclosed code fence or an id it could not parse means the highest ordinal may not be the highest; fix what it names, never work around it
+- **A compact-shape hypothesis reports `verdict: null`** - its verdict is narrative, and the tool refuses to infer one from prose rather than return a confident wrong label; read the line with `show` when the verdict matters
+
 ## Workflow
 - Pick the doc - experiments log (recording work) or SOTA doc (concluding once the arc converges)
-- Open the canonical doc before writing - find the last round, append the next
+- Open the canonical doc before writing - `hypothesis-tools list` for the round state, `next-id` for the next ordinal, append after the last round
 - Generating hypotheses (single or fanout batch) - ask scale + persona, pre-register before anything lands or runs; see Fanout
 - Updating an existing hypothesis (re-run, fix, changed threshold) - append a `log:` line to its Log; original Result and Verdict stay as recorded, a verdict flip becomes a new round
 - Before concluding a SOTA - suggest an ablative study of the strongest hypothesis or all survivors, to measure each component's marginal worth; see `references/execution-and-ablation.md`
@@ -52,7 +81,7 @@ Section order and each section's must-have in `references/experiments-log-struct
 Each hypothesis: one-paragraph overview, optional unlabelled lever-detail paragraph (the setup story, only when the regime has one), then the fixed bullet set. Overview, lever-detail and Experiment block together must let a reader reproduce and independently test it from the doc alone. Field spec, naming/ordinal scheme, Log rendered example, and Experiment-block-vs-shared-Setup in `references/per-hypothesis-template.md`.
 - **Fields** - Hypothesis, Lever, Mechanism, Prediction, Acceptance bar, Pre-experiment probe (optional), Experiment, Result, Verdict, Log (optional)
 - **Hypothesis form** - `because <mechanism>, <intervention> will <outcome ≥ threshold> while <guardrail>`
-- **Verdicts** - Ships / Kept / Promoted / Dropped / Refuted / Killed-at-gate, each with the number
+- **Verdicts** - the closed set enumerated once in `references/per-hypothesis-template.md`, each with the number that justifies it; `hypothesis-tools check` rejects anything outside it
 - **Id** - `E<batch>|R<round>-H<n>`, one global ascending `<n>` never reset; a 2-3 part slug aids memory but the numeric id is the identity; the batch/round token groups 2-5 hypotheses. Resetting `<n>` per round makes one number name many hypotheses - it has to be undone later
 - **Experiment block vs shared Setup** - carry the block when a hypothesis owns its regime (own artefact / procedure / data); omit when a shared Setup already covers a one-toggle batch
 
@@ -74,7 +103,7 @@ Generate hypotheses from the campaign's kernel instead of waiting for them; pre-
 - **User's framework is the generative seed** - a user-dictated framework (hypothesis, mechanism, lever, area, hunch) is what the fanout generates FROM - perturbed by the operators, extrapolated, explored around; never filed as just one more candidate
 - **Personas** - pluggable hypothesisers in `generators/` (follower, contrarian, heretical, hybridizer, mechanist, deflationist, scout); each an exploration policy with an expected verdict signature that self-tests the round - read the chosen file before generating
 - **Kernel first** - fanout requires the log's typed interface: channel vocabulary, lever record (forcing + decay + cost), metric panel + naive baseline, verdict protocol; elicit into Methodology on the first fanout - ask the author, never invent channels
-- **Pre-registration is the prerequisite** - every generated hypothesis is proposed via the pre-registration table and signed off BEFORE it is appended or executed; dedupe against the global H-ordinal registry, run a cheap kill-gate pass before proposing
+- **Pre-registration is the prerequisite** - every generated hypothesis is proposed via the pre-registration table and signed off BEFORE it is appended or executed; dedupe against the global H-ordinal registry (`hypothesis-tools next-id`), run a cheap kill-gate pass before proposing
 
 ## SOTA document
 Conclusion doc; carries surviving components only, cross-links the log as evidence. Section order and each section's must-have in `references/sota-document.md` - read it before writing. Drop a section only when the design has nothing for it.

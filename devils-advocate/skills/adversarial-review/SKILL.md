@@ -5,7 +5,7 @@ description: Hostile, independent review - spawn fresh context-free `claude -p` 
 
 # Adversarial Review
 
-Spawn fresh, context-free `claude -p` subprocesses as hostile reviewers. A second model with no attachment to the code catches what the author rationalises away. Two complementary modes - run the one that fits the risk, or both:
+Spawn a hostile reviewer with no attachment to the code - a plugin subagent by default, a fresh context-free `claude -p` subprocess when the process boundary matters. A second model catches what the author rationalises away. Two complementary modes - run the one that fits the risk, or both:
 
 - **Mode 1 - Diff bug-hunt.** No tools, inline diff, one turn, fast. Finds bugs, logic errors, security holes, broken edge cases IN a specific change
 - **Mode 2 - Architecture & quality audit.** Tools ON, whole-repo, many turns. Finds systemic rot a diff cannot show - slop, brittle architecture, bad paradigms, hardcodings, config drift, broken separation of concerns. The finding is usually a RELATIONSHIP across files, invisible in any one hunk
@@ -110,7 +110,7 @@ Prompt template: `examples/mode2-audit-prompt.txt` - reviewer role + REPO/scope 
 
 ## Adversaries - pluggable expert lenses
 
-Adversaries live in `adversaries/*.md`, one self-contained persona prompt per expert, written to be pasted straight into a spawn as the reviewer's role + methodology + output contract. Each file's `lens:` frontmatter is the authoritative one-line summary; the table below is only the index.
+Adversaries live in `adversaries/*.md`, one self-contained persona prompt per expert, written to be pasted straight into a spawn as the reviewer's role + methodology + output contract. Each file's `lens:` frontmatter is the authoritative one-line summary; the table below is only the index. All are reachable through one plugin agent - see Spawn path below.
 
 ### Signal standard (every adversary)
 
@@ -147,6 +147,21 @@ Canonical contract: `references/authoring-an-adversary.md`.
 - `architect` (axis 8), `qa-engineer` (axis 7) and `analyst` (axis 8) all carry a first-class slop axis - architect cuts code and docs, qa-engineer cuts tests, analyst cuts gold-plated criteria. `architect` alone is also bound by proportionality on its OWN recommendations: it may not prescribe a fix bigger than the defect, and never adds speculative structure
 - `slop-hunter` is the dedicated cross-cutting bloat lens - "can this be DELETED?" across code, tests, comments, docs and dependencies, gated by a load-bearing check. It differs by REMEDY and SCOPE: `slop-hunter` runs an exhaustive delete pass over the whole tree, load-bearing check first; `architect` judges whether a *design* is proportionate to its problem - cutting the layer, knob or generalisation that no requirement demands, and unifying drift - so reach for `architect` when the question is "is this structure justified?" and `slop-hunter` when it is "what can go?"; `qa-engineer` judges whether the suite would catch a break (a missing test) and overlaps only when a test pays no rent; `popular-science` judges whether a lay reader finishes the prose, not whether it is padded. Fabrication (a fake citation, a hallucinated API) is `slop-hunter`'s alone. The per-adversary slop axes above stay domain-scoped; `slop-hunter` is the whole-project delete pass
 
+### Spawn path - subagent by default, `claude -p` for the process boundary
+
+One agent serves every adversary - name the lens in the prompt and it loads that persona, so a panel runs without hand-building a prompt:
+
+```
+Agent(subagent_type: "devils-advocate:adversarial-reviewer",
+      prompt: "Adversary: bug-hunter. <target, scope, locked decisions>")
+```
+
+- **Never review with `general-purpose`** - it carries no lens, so it returns a fluent summary where an adversary returns a findings list with a verdict; a review that finds nothing reads like assurance
+- **Name the adversary explicitly** - unnamed or misspelled, the agent lists the roster and stops rather than reviewing lens-less. One agent, not eleven, so the persona keeps ONE home in `adversaries/` and adding a lens stays a single file
+- **Tools are least-privilege, not a sandbox** - `Read, Grep, Glob, Bash`, no `Write`/`Edit`, no MCP. That removes the easy path to an edit; it does not remove the capability, because `Bash` still writes. "Critique only" remains the persona's own rule, restated in the agent
+- **Two lenses lose an axis on this path** - `popular-science` is Mode 1 and wants no tools plus a downloaded reference figure; `ux-designer` wants a sampled rendered pixel. Both self-declare the degradation; route them through `claude -p` when the visual bar actually decides the verdict
+- **Reach for `claude -p` when the boundary matters** - a separate process with no inherited conversation, and the only path that can genuinely forbid tools for a Mode 1 diff hunt. Note it needs `--dangerously-skip-permissions`, which a permission classifier may deny; the subagent path has no such gate
+
 ### Seed an adversary into a spawn
 
 Build the prompt as **mode mechanics + adversary body + target/scope**. The adversary supplies WHO, WHAT-TO-HUNT and the output shape; the mode supplies tools-on/off, inline-diff-vs-repo, scope and `--max-turns`. Strip the adversary's YAML frontmatter (`body() { awk 'c>=2; /^---$/{c++}' "$1"; }`) and paste the body in place of the mode prompt's generic role line.
@@ -157,7 +172,7 @@ Pick the mode by where the defect would live, not by the adversary: a UX afterim
 
 ### Add your own expert
 
-The file IS the plugin - no registry, no wiring. Drop `adversaries/<name>.md` with `name`/`lens`/`default-mode` frontmatter over the tagged body, then add a row to the table above and its triggers to the `description`.
+The file IS the plugin - no registry, no wiring. Drop `adversaries/<name>.md` with `name`/`lens`/`default-mode` frontmatter over the tagged body, then add a row to the table above and its triggers to the `description`. The subagent path picks it up for free: `devils-advocate:adversarial-reviewer` resolves whatever name it is given and reads the roster off disk, so a new adversary needs no agent file. Its `description` frontmatter still lists the lenses for discovery - add the name there too if you want it auto-suggested.
 
 Full authoring contract, section by section: `references/authoring-an-adversary.md`.
 

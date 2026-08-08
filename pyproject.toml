@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "1.6.40"
+version = "1.6.41"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
@@ -69,6 +69,7 @@ semantic = [
 orchestrate = "stellars_claude_code_plugins.autobuild.orchestrator:main"
 svg-infographics = "stellars_claude_code_plugins.svg_tools.cli:main"
 journal-tools = "stellars_claude_code_plugins.journal.journal_tools:main"
+hypothesis-tools = "stellars_claude_code_plugins.hypothesis.hypothesis_tools:main"
 render-png = "stellars_claude_code_plugins.svg_tools.render_png:main"
 document-processing = "stellars_claude_code_plugins.document_processing.cli:main"
 

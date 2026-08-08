@@ -66,7 +66,9 @@ The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer 
 | `devops` | containers & deploy - Dockerfile hygiene, secrets in layers, PID-1 signals, probes |
 | `slop-hunter` | "what can go?" - an exhaustive delete pass gated by a load-bearing check: dead code, YAGNI abstractions, vanity tests, doc over-prose, unused deps; plus AI-slop tells & fabrication |
 
-The file IS the plugin - drop a new `adversaries/<name>.md` and it works, no registry, no wiring (contract in `skills/adversarial-review/references/authoring-an-adversary.md`).
+One plugin agent serves them all - name the lens in the prompt and it loads that persona: `Agent(subagent_type: "devils-advocate:adversarial-reviewer", prompt: "Adversary: architect. ...")`. Never review with `general-purpose`: it carries no lens, so it returns a fluent summary where an adversary returns findings and a verdict.
+
+The file IS the plugin - drop a new `adversaries/<name>.md` and it works, no registry, no wiring, no agent file to pair with it (contract in `skills/adversarial-review/references/authoring-an-adversary.md`).
 
 **The panel caps at 3** unless you ask for more: triage, not the spawn, is the bottleneck, and five lenses buy a backlog you abandon rather than five times the signal. If you do not name an adversary, the skill asks before spawning - the wrong lens returns a fluent review of a risk your target does not have.
 

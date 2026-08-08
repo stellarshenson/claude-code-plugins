@@ -1,6 +1,6 @@
 ---
 description: Write or update a hypothesis-driven experiments log and its SOTA design doc - record a round, or conclude the design
-allowed-tools: [Read, Write, Edit, Glob, Grep, Skill]
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Skill]
 argument-hint: "what to document, e.g. 'record round R12: synthetic-retrained weights, single global cut, TNR 0.78' or 'conclude the SOTA doc for the docdistance track'"
 ---
 
@@ -10,13 +10,27 @@ Read the `datascience:hypothesis` skill first - it is the single source of truth
 
 Write up or extend hypothesis-driven research documentation: the canonical append-only **experiments log** (each hypothesis with setup, prediction, result, verdict) and the **SOTA document** (winning components distilled into a final design).
 
+## Toolchain gate (MANDATORY - run before anything else)
+
+Run this first, every session, before any other work. The upgrade always runs; a version mismatch blocks.
+
+```bash
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
+PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+echo "toolkit $LIB"
+```
+
+Both branches exit non-zero and neither is advisory: an absent library (`FATAL`) and a version mismatch (`STALE`). A mismatch means the CLI is not the one this file was written against, so its documented flags and rules are unverified. Report the line and stop; do not work around it.
+
 ## What to do
 
 1. Read the `datascience:hypothesis` skill, then the closest `examples/` doc for what you are writing
 2. Decide doc + action: **record a round** → experiments log (default); **conclude / update the design** → SOTA doc
 3. **Find the canonical doc first** - `Glob docs/**/*experiments*.md` and `*sota*.md`, confirm by the secondary-title marker (not the filename); if one exists for the track, append - never start a parallel doc
 4. **Experiments log (append-only)**:
-   - Find the last round (`E<batch>` / `R<round>`), append the next with a monotonic number; never rewrite a recorded verdict (supersede with a one-line back-reference)
+   - `hypothesis-tools next-id <log>` for the next free `H<n>` and batch token - never guess it, and never reset the ordinal; append after the last round, and never rewrite a recorded verdict (supersede with a one-line back-reference)
    - Write each hypothesis with the skill's per-hypothesis template; add rows to the research-at-a-glance and per-batch results tables
    - Ensure Methodology defines a naive baseline; report each result as a delta against it (skill: "Naive baseline mandatory")
    - **Show the user the before/after summary tables** (skill: "User-facing summary tables") - pre-registration before the run, verdict + interpretation after

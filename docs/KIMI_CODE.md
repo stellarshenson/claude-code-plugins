@@ -14,7 +14,7 @@ Files added (all additive, no existing file modified):
 Field mapping per manifest:
 
 - `skills: "./skills/"`, `commands: "./commands/"` - same dirs Claude uses, no content changes
-- `agents: "./agents/"` - only `autobuild` has agents
+- `agents: "./agents/"` - `autobuild` and `devils-advocate` have agents
 - `interface.displayName` / `shortDescription` / `developerName` - Kimi `/plugins` panel display metadata
 - `version` - static copy of the Claude manifest version at the time of writing (`1.6.37`)
 
