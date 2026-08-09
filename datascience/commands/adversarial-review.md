@@ -1,6 +1,6 @@
 ---
-description: Hostile independent review by spawning fresh claude -p subprocesses - invokes the devils-advocate:adversarial-review skill, picking the adversary a data science project needs (data-scientist, architect, popular-science, ux-designer); find, fix, re-confirm clean
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
+description: Hostile independent review by spawning fresh reviewer subagents - invokes the devils-advocate:adversarial-review skill, picking the adversary a data science project needs (data-scientist, architect, popular-science, ux-designer); find, fix, re-confirm clean
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Agent, TaskCreate, TaskUpdate]
 argument-hint: "what to review, e.g. 'the E12 experiments log before I trust it' or 'the architecture of the pipeline' or 'the article for a generalist reader'"
 ---
 
@@ -35,6 +35,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
    - **popular-science** → the article, story, or README, before publishing for non-specialists
    - **ux-designer** → notebook visuals, figures, dashboards
    - each is also fully generalist - use it on any target that fits its lens. The skill's roster carries more (`bug-hunter`, `qa-engineer`, `methodologist`, `tui`, `devops`, `analyst`) - reach for them when the risk is there: `methodologist` on an experiment's verdict ladder, `qa-engineer` on the test suite, `analyst` on a spec or acceptance-criteria doc
-5. Pick the mode: Mode 1 (inline diff, no tools, `--max-turns 1`) for a specific change; Mode 2 (whole-repo, tools ON, `--max-turns 50`, background) for systemic rot
-6. Spawn the reviewer per the skill's mechanics (`env -u CLAUDECODE`, `< /dev/null`, `--no-session-persistence`); seed the chosen adversary body in place of the generic reviewer role
-7. Triage every finding against the code yourself, fix the real ones, then run the re-confirm round - do not call it clean until a confirming round comes back clean
+5. Pick the mode: Mode 1 (inline diff, no tools) for a specific change; Mode 2 (whole-repo, tools ON) for systemic rot
+6. **`TaskCreate` the review before spawning**, `TaskUpdate` it each round - `completed` only on a clean confirming round. One task per review, not per lens
+7. **Spawn the `devils-advocate:adversarial-reviewer` subagent** - one per lens, naming the adversary and scope in its prompt; a panel goes in a single message so the lenses run concurrently and the user can watch each. Pass target, scope and locked decisions only - never your reasoning for the change, which is the thing under review. Drop to `claude -p` (skill's mechanics - `env -u CLAUDECODE`, `< /dev/null`, `--no-session-persistence`) only for what a subagent cannot do - genuinely deny tools in Mode 1, or pin a different model
+8. Triage every finding against the code yourself, fix the real ones, then run the re-confirm round - do not call it clean until a confirming round comes back clean

@@ -1,14 +1,21 @@
 ---
 name: adversarial-review
-description: Hostile, independent review - spawn fresh context-free `claude -p` subprocesses that try to BREAK a change. Two modes - diff bug-hunt (no tools, inline diff) and whole-repo audit (tools on - slop, brittle design, hardcodings, config drift, broken SoC). Expert adversaries seed the lens - architect, bug-hunter, qa-engineer, analyst, ux-designer, tui, data-scientist, methodologist, popular-science, devops, slop-hunter. Multi-round - find, fix, re-confirm. Use before a risky commit/merge, a UI or terminal-UI ship, a shell installer, trusting an experiment's verdicts or a green test suite, signing off a spec, or publishing docs. Triggers - "adversarial review", "red-team this", "find bugs in my change", "review before ship", "audit the architecture", "UX review", "TUI review", "shell review", "methodology review", "can this test fail", "review my tests", "readability review", "review my README/docs", "deployment review", "review my spec", "acceptance criteria review", "find gaps in the spec", "does the code match the spec", "hunt dead weight", "what can I delete", "is this over-engineered / bloated", "cut the bloat / slop", "find unnecessary code / tests / comments", "de-slop this", "check for fabricated citations".
+description: Hostile, independent review - spawn fresh context-free reviewer subagents that try to BREAK a change. Two modes - diff bug-hunt (no tools, inline diff) and whole-repo audit (tools on - slop, brittle design, hardcodings, config drift, broken SoC). Expert adversaries seed the lens - architect, bug-hunter, qa-engineer, analyst, ux-designer, tui, data-scientist, methodologist, popular-science, devops, slop-hunter. Multi-round - find, fix, re-confirm. Use before a risky commit/merge, a UI or terminal-UI ship, a shell installer, trusting an experiment's verdicts or a green test suite, signing off a spec, or publishing docs. Triggers - "adversarial review", "red-team this", "find bugs in my change", "review before ship", "audit the architecture", "UX review", "TUI review", "shell review", "methodology review", "can this test fail", "review my tests", "readability review", "review my README/docs", "deployment review", "review my spec", "acceptance criteria review", "find gaps in the spec", "does the code match the spec", "hunt dead weight", "what can I delete", "is this over-engineered / bloated", "cut the bloat / slop", "find unnecessary code / tests / comments", "de-slop this", "check for fabricated citations".
 ---
 
 # Adversarial Review
 
-Spawn a hostile reviewer with no attachment to the code - a plugin subagent by default, a fresh context-free `claude -p` subprocess when the process boundary matters. A second model catches what the author rationalises away. Two complementary modes - run the one that fits the risk, or both:
+Spawn a hostile reviewer with no attachment to the code. A second model catches what the author rationalises away. Two complementary modes - run the one that fits the risk, or both:
 
 - **Mode 1 - Diff bug-hunt.** No tools, inline diff, one turn, fast. Finds bugs, logic errors, security holes, broken edge cases IN a specific change
 - **Mode 2 - Architecture & quality audit.** Tools ON, whole-repo, many turns. Finds systemic rot a diff cannot show - slop, brittle architecture, bad paradigms, hardcodings, config drift, broken separation of concerns. The finding is usually a RELATIONSHIP across files, invisible in any one hunk
+
+**The reviewer must not inherit your context** - one that has read the author's reasoning reviews the case for the change instead of the change, absorbing the rationalisations the review exists to catch.
+
+Both paths already give this: a subagent starts on a fresh context window and never sees the parent conversation, same as a `claude -p` process. **The only thing that crosses is the prompt you write** - so that is where the discipline goes. Pass the target, the scope and the decisions the user has locked. Never pass why you think the change is right, what you already ruled out, or what an earlier round concluded.
+
+- **Default is the plugin subagent, one per lens** - the user sees it running under their prompt and can interrupt it
+- **`claude -p` for what a subagent cannot do** - genuinely deny tools for a Mode 1 diff hunt, pin a different model, or isolate at the process level. Not for context isolation; both are equal there
 
 A mode is the **HOW** (inline diff vs whole-repo, tools off/on). An **adversary** is the **WHO** - the expert lens the reviewer argues from. The default reviewer in the mode prompts is a generic hostile senior engineer; seed a specialist when the change has a specific risk surface. Modes and adversaries compose freely: any adversary runs in either mode.
 
@@ -35,6 +42,15 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 - Risky logic - auth, money, migrations, concurrency, data deletion, policy/permission resolution -> Mode 1 (+ Mode 2 if it touches structure)
 - A change that adds config, env, labels, routes, new components, or crosses service/process boundaries -> Mode 2 (the hardcoding/SoC class of bug lives between files)
 - Not for trivial mechanical edits (renames, dep bumps) - the spawn cost is not worth it
+
+## Register the review as a task (MANDATORY - before the first spawn)
+
+`TaskCreate` the review before the first spawn, `TaskUpdate` it through the loop. Multi-round by construction, so never the trivial action the task list exempts. Untracked, the re-confirm round is the step that silently never runs.
+
+- **One task per review**, not per lens - subject names target and lens; description carries adversary, mode, scope, round number, findings location, so a cold session can resume it
+- **`in_progress` before round 1** - stays so through triage, fixes, every re-confirm round
+- **`completed` only on a clean confirming round** - same bar as the rounds protocol
+- **One task per confirmed finding** when fixes exceed a single edit - triage is the bottleneck
 
 ## The rounds protocol (this is the point - do not skip)
 
@@ -63,6 +79,10 @@ Oversized remedies turn a review into 1 fix → 2 defects → 3 fixes → 6 defe
 
 ## Mode 1 - Diff bug-hunt (no tools, inline diff)
 
+Default - spawn the `devils-advocate:adversarial-reviewer` subagent with the diff pasted INTO its prompt, instructed to review only that and not open files.
+
+Tools-off is an INSTRUCTION here, not a capability - the agent still holds `Read`/`Grep`. When a reviewer that provably cannot wander is the point, use the `claude -p` fallback - the only path that genuinely denies tools:
+
 ```bash
 # 1. Capture ONLY the implementation diff (exclude docs, lockfiles, golden
 #    snapshots, generated files - they bloat the prompt and distract the reviewer).
@@ -86,7 +106,11 @@ Prompt template: `examples/mode1-diff-prompt.txt` - no-tools instruction + hosti
 
 ## Mode 2 - Architecture & quality audit (tools ON, whole-repo)
 
-This is the mode that catches the bugs living BETWEEN files. The reviewer must read and grep the real tree, so tools are granted and turns are generous. Put the prompt in a file; pass it as the argument; redirect stdin from `/dev/null`.
+This is the mode that catches the bugs living BETWEEN files. The reviewer must read and grep the real tree, so tools are granted and turns are generous.
+
+Default - spawn the `devils-advocate:adversarial-reviewer` subagent, naming the lens, the in-scope dirs and the excluded ones. It already carries `Read`/`Grep`/`Glob`/`Bash` and needs no turn cap. Run a panel by spawning one per lens in a single message, so they run concurrently.
+
+`claude -p` fallback, when the process boundary matters - prompt in a file, passed as the argument, stdin from `/dev/null`:
 
 ```bash
 # Write the audit prompt to a file first, then:
@@ -149,18 +173,13 @@ Canonical contract: `references/authoring-an-adversary.md`.
 
 ### Spawn path - subagent by default, `claude -p` for the process boundary
 
-One agent serves every adversary - name the lens in the prompt and it loads that persona, so a panel runs without hand-building a prompt:
-
-```
-Agent(subagent_type: "devils-advocate:adversarial-reviewer",
-      prompt: "Adversary: bug-hunter. <target, scope, locked decisions>")
-```
+One agent serves every adversary - spawn `devils-advocate:adversarial-reviewer`, name the lens in its prompt, and it loads that persona, so a panel runs without hand-building a prompt.
 
 - **Never review with `general-purpose`** - it carries no lens, so it returns a fluent summary where an adversary returns a findings list with a verdict; a review that finds nothing reads like assurance
 - **Name the adversary explicitly** - unnamed or misspelled, the agent lists the roster and stops rather than reviewing lens-less. One agent, not eleven, so the persona keeps ONE home in `adversaries/` and adding a lens stays a single file
 - **Tools are least-privilege, not a sandbox** - `Read, Grep, Glob, Bash`, no `Write`/`Edit`, no MCP. That removes the easy path to an edit; it does not remove the capability, because `Bash` still writes. "Critique only" remains the persona's own rule, restated in the agent
 - **Two lenses lose an axis on this path** - `popular-science` is Mode 1 and wants no tools plus a downloaded reference figure; `ux-designer` wants a sampled rendered pixel. Both self-declare the degradation; route them through `claude -p` when the visual bar actually decides the verdict
-- **Reach for `claude -p` when the boundary matters** - a separate process with no inherited conversation, and the only path that can genuinely forbid tools for a Mode 1 diff hunt. Note it needs `--dangerously-skip-permissions`, which a permission classifier may deny; the subagent path has no such gate
+- **`claude -p` needs `--dangerously-skip-permissions`** - a permission classifier may deny it; the subagent path has no such gate. When to prefer it at all is the isolation rule at the top
 
 ### Seed an adversary into a spawn
 

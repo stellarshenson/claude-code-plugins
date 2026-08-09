@@ -1,6 +1,6 @@
 ---
-description: Hostile independent review by spawning fresh claude -p subprocesses that try to BREAK a change - invokes the devils-advocate:adversarial-review skill, seeding one of eleven expert adversaries; find, fix, re-confirm clean
-allowed-tools: [Read, Write, Edit, Glob, Grep, Bash]
+description: Hostile independent review by spawning fresh reviewer subagents that try to BREAK a change - invokes the devils-advocate:adversarial-review skill, seeding one of eleven expert adversaries; find, fix, re-confirm clean
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Agent, TaskCreate, TaskUpdate]
 argument-hint: "what to review, e.g. 'the auth middleware change before I merge' or 'audit the repo architecture' or 'my spec against the code'"
 ---
 
@@ -38,6 +38,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
    - **methodologist** → scientific-method integrity - can the test fail, does the verdict ladder span outcomes
    - **popular-science** → readability for a generalist - jargon, unsourced claims, buried lede, visuals
    - **devops** → containers and deploy - Dockerfile hygiene, secrets in layers, PID-1 signals, probes
-5. Pick the mode: Mode 1 (inline diff, no tools, `--max-turns 1`) for a specific change; Mode 2 (whole-repo, tools ON, `--max-turns 50`, background) for systemic rot between files
-6. Spawn per the skill's mechanics (`env -u CLAUDECODE`, `< /dev/null`, `--no-session-persistence`), seeding the chosen adversary body in place of the generic reviewer role
-7. Triage every finding against the code yourself, fix the real ones, then run the re-confirm round - never call it clean on the round that still had findings, only on a clean confirming round
+5. Pick the mode: Mode 1 (inline diff, no tools) for a specific change; Mode 2 (whole-repo, tools ON) for systemic rot between files
+6. **`TaskCreate` the review before spawning**, `TaskUpdate` it each round - `completed` only on a clean confirming round. One task per review, not per lens
+7. **Spawn the `devils-advocate:adversarial-reviewer` subagent** - one per lens, naming the adversary and scope in its prompt; a panel goes in a single message so the lenses run concurrently and the user can watch each. Pass target, scope and locked decisions only - never your reasoning for the change, which is the thing under review. Drop to `claude -p` (skill's mechanics - `env -u CLAUDECODE`, `< /dev/null`, `--no-session-persistence`) only for what a subagent cannot do - genuinely deny tools in Mode 1, or pin a different model
+8. Triage every finding against the code yourself, fix the real ones, then run the re-confirm round - never call it clean on the round that still had findings, only on a clean confirming round
