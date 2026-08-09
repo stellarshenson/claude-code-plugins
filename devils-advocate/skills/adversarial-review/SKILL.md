@@ -12,10 +12,11 @@ Spawn a hostile reviewer with no attachment to the code. A second model catches 
 
 **The reviewer must not inherit your context** - one that has read the author's reasoning reviews the case for the change instead of the change, absorbing the rationalisations the review exists to catch.
 
-Both paths already give this: a subagent starts on a fresh context window and never sees the parent conversation, same as a `claude -p` process. **The only thing that crosses is the prompt you write** - so that is where the discipline goes. Pass the target, the scope and the decisions the user has locked. Never pass why you think the change is right, what you already ruled out, or what an earlier round concluded.
+Neither path leaks on its own: a subagent starts on a fresh context window and never sees this conversation, exactly like a `claude -p` process. The leak channel is the prompt you write, so preventing it is your job, not the boundary's.
 
 - **Default is the plugin subagent, one per lens** - the user sees it running under their prompt and can interrupt it
-- **`claude -p` for what a subagent cannot do** - genuinely deny tools for a Mode 1 diff hunt, pin a different model, or isolate at the process level. Not for context isolation; both are equal there
+- **Write every prompt as if it were a `claude -p` command line** - the model of a spawn that respects the boundary: a separate process that knows nothing but what you typed. Pass the target, the scope, the decisions the user has locked. Never why you think the change is right, what you already ruled out, or what an earlier round concluded
+- **Reach for `claude -p` itself** only for what a subagent cannot do - deny tools in a Mode 1 diff hunt, or pin a different model
 
 A mode is the **HOW** (inline diff vs whole-repo, tools off/on). An **adversary** is the **WHO** - the expert lens the reviewer argues from. The default reviewer in the mode prompts is a generic hostile senior engineer; seed a specialist when the change has a specific risk surface. Modes and adversaries compose freely: any adversary runs in either mode.
 
