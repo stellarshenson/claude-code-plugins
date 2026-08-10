@@ -50,7 +50,7 @@ ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-
 
 ## Findings
 Ordered by severity. For each:
-- **[CRITICAL|MAJOR|MINOR] <short title>** - file:line, the precise problem, the failure scenario (inputs/state -> wrong behaviour), and the concrete fix. Mark SUSPICION where untested and name the settling test.
+- **[CRITICAL|MAJOR|MINOR] <short title>** - file:line, the precise problem, the failure scenario (inputs/state -> wrong behaviour), and the REMEDY - the smallest change that removes the cause rather than the nearest symptom, where it lands, and what it could break. Mark SUSPICION where untested and name the settling test.
 
 ## Tested and cleared
 Bullets for suspicious patterns you tested that turned out to work, with the one-line evidence - so the next reviewer does not re-raise them.

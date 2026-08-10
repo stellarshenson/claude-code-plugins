@@ -61,7 +61,7 @@ The "real deal" lesson: one pass is never the answer. A de-hardcode audit passed
 2. **Triage.** Confirm each finding against the code yourself - context-free reviewers raise false positives (they cannot see callers, types, invariants outside what they read). Keep the real ones
 3. **Fix** the confirmed findings
 4. **Round 2 - re-confirm.** Run the SAME review, PINNED to the fixes and the files they touched - never a fresh whole-repo sweep. Unpinned, a Mode 2 reviewer samples different ground each round, so "new findings" means it looked elsewhere, not that the tree regressed. It must come back clean; if your fix opened a hole, go back to step 2
-5. **Loop until a full pass is clean.** Routine work is 2-3 rounds. Past 3, audit the last two remedies for radius instead of spawning another reviewer - round inflation is the symptom of oversized remedies (see **Remedy discipline**). For high-stakes work keep going until two consecutive passes are clean, or run a perspective-diverse panel. Never flip a "survived adversarial review" criterion to done on the strength of the round that still had findings - only on a clean confirming round
+5. **Loop until a full pass is clean.** Routine work is 2-3 rounds. Past 3, adjudicate before spawning another reviewer (see **Adjudicate before you fix**) - round inflation is the symptom of oversized remedies (see **Remedy discipline**). For high-stakes work keep going until two consecutive passes are clean, or run a perspective-diverse panel. Never flip a "survived adversarial review" criterion to done on the strength of the round that still had findings - only on a clean confirming round
 
 **Perspective-diverse panel (high stakes).** Instead of N identical reviewers, give each a distinct lens and run them concurrently - say, one on security, one on architecture/SoC, one on the riskiest invariant. Diversity catches failure modes redundancy cannot. Treat a finding as real when you confirm it, not by vote - but multiple lenses surface more to confirm.
 
@@ -77,6 +77,15 @@ Oversized remedies turn a review into 1 fix → 2 defects → 3 fixes → 6 defe
 - **Surface the opportunity, do not mandate the shape** - report that the defect *can* be fixed within that radius; the implementor chooses, weighing it against the rest of the system
 - **Say when the small fix would paper over** - a narrow patch on a structural cause compounds debt. Advising wider needs evidence in the finding: the property the narrow fix cannot reach, the narrow fix you tried, why it failed. An untried alternative is not evidence; absent it the small fix stands
 - **Only load-bearing findings block** - a false claim, a nonexistent command or flag, an instruction that cannot execute, a surviving mutant, a broken behaviour. Word count, structure, duplication and phrasing are `MINOR (taste)`: advisory, declined with a one-line reason, never re-litigated next round
+
+## Adjudicate before you fix
+
+Findings are input to a decision, not a work order. Spawn `devils-advocate:adjudicator` with every lens's findings and it returns ONE change plan: findings verified and grouped by root cause, the smallest change per group, the radius each stays inside, what each could break, and what is deliberately deferred. It plans, it does not edit.
+
+- **Always for a panel** - three lenses reporting one defect is one item, and only a reader of all three sees that
+- **Always past round 3** - by then the findings are usually the previous round's fixes. Its `STOP` ruling is the honest outcome there: stop reviewing, re-model the component
+- **Pass what you know** - a call graph or blast radius you already have, a domain insight, a decision already locked, the previous round's findings and the fixes applied since. Supplied context outranks its own inference, and an unbounded adjudication is the thing that goes wide
+- **Skip it** for a single lens returning one or two findings you can verify yourself
 
 ## Mode 1 - Diff bug-hunt (no tools, inline diff)
 
@@ -143,7 +152,7 @@ Every adversary emits the SAME two-axis signal, so a panel reads uniformly:
 
 - **VERDICT** (first line, always) - `VERDICT: SHIP (<n> findings)` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why
 - **SEVERITY** (per finding) - exactly `[CRITICAL|MAJOR|MINOR]`; taste / subjective notes use MINOR tagged `(taste)`
-- **REMEDY** (per finding) - the fix with the smallest impact radius, at diff scale, naming what it touches and what it leaves alone. A wider remedy (delete, restructure, replace) is an opportunity to state with evidence, never a mandate - the implementor chooses. Per **Remedy discipline** above
+- **REMEDY** (per finding) - the fix with the smallest impact radius, at diff scale, naming what it touches, what it leaves alone and what it could break. A wider remedy (delete, restructure, replace) is an opportunity to state with evidence, never a mandate - the implementor chooses. Per **Remedy discipline** above
 - **Coupling** - `DO-NOT-SHIP` iff any finding is CRITICAL; otherwise `SHIP`
 
 Canonical contract: `references/authoring-an-adversary.md`.
@@ -169,7 +178,7 @@ Canonical contract: `references/authoring-an-adversary.md`.
 - `devops` owns the image and the pipeline; `bug-hunter` owns the script that runs inside them
 - `analyst` judges whether the RIGHT thing is specified and whether the code matches the spec (widows, orphans, drift); `qa-engineer` judges whether the suite would catch a break; `architect` judges the code's internal consistency. Spec says nothing about it → `analyst`; spec says it, tests miss it → `qa-engineer`; code contradicts its own conventions → `architect`
 - `analyst` (axis 5) challenges two *specs* diverging without reason; `architect` (axis 1) challenges two *implementations* diverging; `ux-designer` challenges what the divergence feels like to the user
-- `architect` (axis 8), `qa-engineer` (axis 7) and `analyst` (axis 8) all carry a first-class slop axis - architect cuts code and docs, qa-engineer cuts tests, analyst cuts gold-plated criteria. `architect` alone is also bound by proportionality on its OWN recommendations: it may not prescribe a fix bigger than the defect, and never adds speculative structure
+- `architect` (axis 8), `qa-engineer` (axis 7) and `analyst` (axis 8) all carry a first-class slop axis - architect cuts code and docs, qa-engineer cuts tests, analyst cuts gold-plated criteria. `architect` binds proportionality at CONSTRAINTS and QUALITY CONTROL level, not only in its findings line: it may not prescribe a fix bigger than the defect, and never adds speculative structure
 - `slop-hunter` is the dedicated cross-cutting bloat lens - "can this be DELETED?" across code, tests, comments, docs and dependencies, gated by a load-bearing check. It differs by REMEDY and SCOPE: `slop-hunter` runs an exhaustive delete pass over the whole tree, load-bearing check first; `architect` judges whether a *design* is proportionate to its problem - cutting the layer, knob or generalisation that no requirement demands, and unifying drift - so reach for `architect` when the question is "is this structure justified?" and `slop-hunter` when it is "what can go?"; `qa-engineer` judges whether the suite would catch a break (a missing test) and overlaps only when a test pays no rent; `popular-science` judges whether a lay reader finishes the prose, not whether it is padded. Fabrication (a fake citation, a hallucinated API) is `slop-hunter`'s alone. The per-adversary slop axes above stay domain-scoped; `slop-hunter` is the whole-project delete pass
 
 ### Spawn path - subagent by default, `claude -p` for the process boundary

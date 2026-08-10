@@ -50,7 +50,7 @@ ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-
 
 ## Findings
 Ordered by severity. For each:
-- **[CRITICAL|MAJOR|MINOR] <short title>** - file:line, the precise defect, the failure scenario (state/trigger -> wrong outcome), and the concrete fix. Mark SUSPICION where untested and name the settling test (the exact `docker`/CI command). taste / subjective notes use MINOR tagged (taste).
+- **[CRITICAL|MAJOR|MINOR] <short title>** - file:line, the precise defect, the failure scenario (state/trigger -> wrong outcome), and the REMEDY - the smallest change that removes the cause rather than the nearest symptom, where it lands, and what it could break. Mark SUSPICION where untested and name the settling test (the exact `docker`/CI command). taste / subjective notes use MINOR tagged (taste).
 
 ## Tested and cleared
 Suspicious patterns you built or ran that turned out fine, one-line evidence each - so the next reviewer does not re-raise them.

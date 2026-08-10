@@ -72,6 +72,8 @@ The file IS the plugin - drop a new `adversaries/<name>.md` and it works, no reg
 
 **The panel caps at 3** unless you ask for more: triage, not the spawn, is the bottleneck, and five lenses buy a backlog you abandon rather than five times the signal. If you do not name an adversary, the skill asks before spawning - the wrong lens returns a fluent review of a risk your target does not have.
 
+A panel's findings go through `devils-advocate:adjudicator` before any fix - it returns one change plan grouped by root cause, and it does not edit.
+
 Reviews are **multi-round** by design: one pass finds, you triage and fix, then you re-run to prove the fix cleared it and opened no new hole. A single pass is a smoke test, not a verdict. Never flip a "survived adversarial review" criterion to done on the round that still had findings - only on a clean confirming round.
 
 The `popular-science` adversary reviews against the shared craft canon that the `datascience:popular-science` writer composes from (`datascience/skills/popular-science/references/craft-canon.md`), so critique and craft never drift. That link is deliberately cross-plugin - install `datascience` too if you want that pair.

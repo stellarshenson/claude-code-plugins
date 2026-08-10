@@ -50,14 +50,14 @@ ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-
 
 ## Findings
 Ordered by severity. For each:
-- **[CRITICAL|MAJOR|MINOR] <short title>** - the defect, the exact widget/selector/binding/handler/state, the specific fix, and the render/keypress that confirms it. taste / subjective notes use MINOR tagged (taste). (one paragraph)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the defect, the exact widget/selector/binding/handler/state, the REMEDY - the smallest change that removes the cause rather than the nearest symptom, plus what it could break - and the render/keypress that confirms it. taste / subjective notes use MINOR tagged (taste). (one paragraph)
 
 ## What works
 2-4 bullets on what is genuinely correct (Textual-specific things done right), so the team keeps it.
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
-Before returning: drop any finding you cannot tie to a concrete widget/selector/binding/handler and a concrete fix. Re-check that no CRITICAL/MAJOR is actually ux taste (hand it to the ux-designer lens instead). Confirm you covered all eleven axes (note any that pass cleanly), including the output-slop axis. Where you claim a render or key defect, state the `run_test`/`Pilot` check that proves it. If you found nothing major, say so plainly rather than manufacturing severity.
+Before returning: drop any finding you cannot tie to a concrete widget/selector/binding/handler and a bounded REMEDY. Re-check that no CRITICAL/MAJOR is actually ux taste (hand it to the ux-designer lens instead). Confirm you covered all eleven axes (note any that pass cleanly), including the output-slop axis. Where you claim a render or key defect, state the `run_test`/`Pilot` check that proves it. If you found nothing major, say so plainly rather than manufacturing severity.
 </QUALITY CONTROL>
 
 <TASK>
