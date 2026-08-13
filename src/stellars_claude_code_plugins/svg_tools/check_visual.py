@@ -308,6 +308,25 @@ def _card_body_styles(svg_path: Path) -> set[str]:
     return styles
 
 
+def consistency_subjects(datas: list[dict]) -> int:
+    """How many files ``check_cross_file_consistency`` can actually compare.
+
+    It returns no findings in two very different states: the deck agrees, and
+    neither of its two comparisons had a subject because no file holds an
+    element it reads as a card. Without this count the caller cannot tell them
+    apart, and the roster announced a 7-file deck mutually consistent on zero
+    cards and zero body styles.
+    """
+    n = 0
+    for d in datas:
+        cards = any(
+            el["tag"] in ("rect", "path") and _has_role(el, "card") for el in d["elements"]
+        )
+        if cards or _card_body_styles(Path(d["file"])):
+            n += 1
+    return n
+
+
 def check_cross_file_consistency(datas: list[dict]) -> list[str]:
     """Sibling SVGs in one deck must share card anatomy: icon presence and
     card body construction must not diverge between files."""

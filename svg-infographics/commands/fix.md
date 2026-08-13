@@ -124,8 +124,15 @@ The `svg-designer` builder reads and applies:
 - `references/workflow.md` — 6-phase process (primarily Phase 6 validation + targeted Phase 3/4 re-do)
 - `references/validation.md` — checker usage, severity ladder, justification rules
 
+## Completion gate
+
+A run ends in one of exactly two states, per finding: the file was **edited** so the checker no longer reports it, or the finding is **still present and carries a written justification comment adjacent to the element in the SVG**. Nothing else counts as finished.
+
+Re-run the checkers and compare counts against the diagnosis. A count that did not move means no fix landed - keep working, do not report. Classifying a finding "Accepted" without writing the justification into the file is the same as leaving it unhandled, because the next run re-reports it and the reason is gone.
+
 ## Rules
 
+- **Reporting is not fixing** — this command exists to change the file. A run that ends with findings, no edits and no written justifications has failed, whatever its summary said
 - **Destructive** — modifies files in place. The builder backs up nothing; rely on git
 - **No hand-coded paths** — every connector regenerated via tool
 - **`--standoff 2`** on every connector call (project standard)

@@ -10,9 +10,9 @@ Two checks run in light + dark mode:
    A shape passes if its fill OR stroke reaches the 3:1 threshold,
    so cards with near-transparent fills but strong strokes still pass.
 
-Text WCAG thresholds:
-  - AA normal text (< 18px or < 14px bold): 4.5:1
-  - AA large text  (>= 18px or >= 14px bold): 3.0:1
+Text WCAG thresholds (large-scale is 18pt / 14pt bold = 24px / 18.66px):
+  - AA normal text (< 24px or < 18.66px bold): 4.5:1
+  - AA large text  (>= 24px or >= 18.66px bold): 3.0:1
   - AAA normal text: 7.0:1
   - AAA large text:  4.5:1
 
@@ -28,8 +28,24 @@ Usage:
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 import re
 import xml.etree.ElementTree as ET
+
+from stellars_claude_code_plugins.svg_tools.check_css import (
+    _SPEC_ATTR,
+    _in_template,
+    _length,
+    _resolved_opacity,
+    _rgba,
+    build_render_model,
+    merged_rules,
+    parse_style_block,
+    theme_paint,
+)
+from stellars_claude_code_plugins.svg_tools.check_css import (
+    strip_important as _strip_important,
+)
 
 # ---------------------------------------------------------------------------
 # Colour utilities
@@ -62,9 +78,13 @@ def contrast_ratio(lum1: float, lum2: float) -> float:
 
 
 def is_large_text(font_size: float, font_weight: str) -> bool:
-    """WCAG large text: >= 18px normal or >= 14px bold."""
+    """WCAG large text: >= 18pt normal or >= 14pt bold - 24px / 18.66px in SVG
+    user units (1pt = 96/72 px). The boundary sat at 18px/14px for years while
+    `_font_size` resolved every CSS-declared size to 10px, so nothing live
+    reached the band it mis-judged; a correct resolver made 18-23.99px text
+    live, and the spec holds it to 4.5:1 where the px boundary gave it 3.0:1."""
     is_bold = font_weight in ("600", "700", "bold")
-    return font_size >= 18 or (is_bold and font_size >= 14)
+    return font_size >= 24 or (is_bold and font_size >= 18.66)
 
 
 def blend_over(fg_hex: str, opacity: float, base_hex: str) -> str:
@@ -99,22 +119,30 @@ CSS_COLORS = {
 }
 
 
-def resolve_color(color_str: str) -> str | None:
-    """Resolve a colour string to #RRGGBB or None."""
+def resolve_color(color_str: str | None) -> str | None:
+    """Resolve a colour string to `#rrggbb`, or None when it is not a colour.
+
+    Delegates the parse to `check_css._rgba`, the module that already reads
+    3/4/6/8-digit hex, `rgb()` and `rgba()`. Two readers of different capability
+    behind ONE cascade is how a legal 4-digit `#3a4c` - unreachable before the
+    cascade widened to `#id` and element rules - reached `hex_to_rgb` and killed
+    the whole contrast layer with `invalid literal for int()`. The local
+    12-name keyword table stays: `check_css` deliberately has no colour
+    dictionary, and dropping the names here would silently unmeasure them.
+    """
     if not color_str:
         return None
-    color_str = color_str.strip().lower()
-    if color_str in ("none", "transparent", ""):
+    raw = color_str.strip().lower()
+    if raw in CSS_COLORS:
+        return CSS_COLORS[raw]
+    rgba = _rgba(raw)
+    if rgba is None:
         return None
-    if color_str in CSS_COLORS:
-        return CSS_COLORS[color_str]
-    if color_str.startswith("#"):
-        return color_str
-    m = re.match(r"rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)", color_str)
-    if m:
-        r, g, b = int(m.group(1)), int(m.group(2)), int(m.group(3))
-        return f"#{r:02x}{g:02x}{b:02x}"
-    return None
+    r, g, b, a = rgba
+    # Fully transparent paints nothing; it is not a colour to score against.
+    if a == 0:
+        return None
+    return f"#{int(r):02x}{int(g):02x}{int(b):02x}"
 
 
 # ---------------------------------------------------------------------------
@@ -122,61 +150,86 @@ def resolve_color(color_str: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def parse_css_classes(style_text: str) -> dict[str, str]:
-    """Extract .class { fill: #hex; } mappings from <style> block (light mode only)."""
-    mappings = {}
-    clean = _strip_media_blocks(style_text)
-    for m in re.finditer(r"\.(\w[\w-]*)\s*\{\s*fill:\s*(#[0-9a-fA-F]{3,6})\s*;?\s*\}", clean):
-        mappings[m.group(1)] = m.group(2)
-    return mappings
+def parse_stylesheet(svg_text: str):
+    """`(light_rules, dark_rules, light_fills, dark_fills)` for one document.
+
+    ONE cascade, shared with `check_css`. The local trio this replaced
+    (`parse_css_classes` / `parse_dark_classes` / `_strip_media_blocks`) was a
+    SECOND, weaker cascade - and it gated the HARD tier, so the strictest
+    verdicts in the gate ran on the loosest model. It matched only a rule body
+    holding exactly one `fill: #hex`, took the FIRST `@media` block whether or
+    not it was a dark query, read one `<style>` element, and knew nothing of
+    `!important`, comments, grouped selectors, `#id` or element rules -
+    `charts.py` marks every colour it emits `!important`, so none of them were
+    visible to it. The shared cascade reads those values now; what it still
+    does not give most chart selectors is a cascade KEY - 30 of the 42
+    `_dark_mode_override_style` selectors are bare-element or compound shapes
+    the parser drops by design - so that gap narrowed rather than closed.
+
+    `*_rules` are the full `{selector: {property: value}}` maps the cascade
+    resolves against; `*_fills` are the flat `{class: hex}` maps the report
+    helpers use to answer "which classes paint this colour".
+    """
+    light_cls, dark_cls, _colors, meta = parse_style_block(svg_text)
+    return (
+        meta["light_rules"],
+        meta["dark_rules"],
+        class_fills(light_cls),
+        class_fills(dark_cls),
+    )
 
 
-def _strip_media_blocks(text: str) -> str:
-    """Remove all @media { ... } blocks including nested braces."""
-    result = []
-    i = 0
-    while i < len(text):
-        at_pos = text.find("@media", i)
-        if at_pos == -1:
-            result.append(text[i:])
-            break
-        result.append(text[i:at_pos])
-        brace_pos = text.find("{", at_pos)
-        if brace_pos == -1:
-            break
-        depth = 1
-        j = brace_pos + 1
-        while j < len(text) and depth > 0:
-            if text[j] == "{":
-                depth += 1
-            elif text[j] == "}":
-                depth -= 1
-            j += 1
-        i = j
-    return "".join(result)
+# SVG/CSS initial `font-size` is `medium` = 16px, not the 10 this module used to
+# assume from a missing attribute.
+_INITIAL_FONT_SIZE = 16.0
 
 
-def parse_dark_classes(style_text: str) -> dict[str, str]:
-    """Extract dark mode .class { fill: #hex; } mappings from @media block."""
-    mappings = {}
-    at_pos = style_text.find("@media")
-    if at_pos == -1:
-        return mappings
-    brace_pos = style_text.find("{", at_pos)
-    if brace_pos == -1:
-        return mappings
-    depth = 1
-    j = brace_pos + 1
-    while j < len(style_text) and depth > 0:
-        if style_text[j] == "{":
-            depth += 1
-        elif style_text[j] == "}":
-            depth -= 1
-        j += 1
-    block = style_text[brace_pos + 1 : j - 1]
-    for m in re.finditer(r"\.(\w[\w-]*)\s*\{\s*fill:\s*(#[0-9a-fA-F]{3,6})\s*;?\s*\}", block):
-        mappings[m.group(1)] = m.group(2)
-    return mappings
+def _font_size(node, rules, own_paint, parent_of) -> float:
+    """Resolved font-size in user units, with `%` and `em` against the PARENT.
+
+    `_length` resolves `em` against a fixed 16 and `%` against a span it is not
+    given, so `1.2em` under `<g font-size="12">` read as 19.2 (large text, 3.0:1
+    threshold) where it renders at 14.4 (normal, 4.5:1) - a false PASS in the
+    un-ackable tier - and `250%` collapsed to the fallback, a false FAIL.
+    """
+    parent = parent_of.get(id(node))
+    inherited = (
+        _font_size(parent, rules, own_paint, parent_of)
+        if parent is not None
+        else _INITIAL_FONT_SIZE
+    )
+    # The node's OWN declaration. `winning_paint` walks ancestors for an
+    # inherited property and hands back their SPECIFIED value, so reading it
+    # here multiplied the same `1.2em` by the parent's already-computed size
+    # once per generation - 24px rendered read as 34.56 two levels down, which
+    # crossed the large-text boundary and flipped a real AA failure to PASS.
+    raw = _strip_important(own_paint(node, "font-size", rules)[1])
+    if not raw:
+        return inherited
+    if raw.endswith("%"):
+        try:
+            return float(raw[:-1]) / 100.0 * inherited
+        except ValueError:
+            return inherited
+    if raw.endswith("em"):
+        try:
+            return float(raw[:-2]) * inherited
+        except ValueError:
+            return inherited
+    v = _length(raw, 0.0)
+    # `None` is unparseable; `0.0` is a real declaration and stays 0.
+    return inherited if v is None else v
+
+
+def class_fills(classes: dict[str, dict]) -> dict[str, str]:
+    """`{class name: fill hex}`, for reporting only - resolution goes through
+    the cascade, which a flat class map cannot express."""
+    out: dict[str, str] = {}
+    for cls, props in classes.items():
+        hex_val = resolve_color(_strip_important(props.get("fill", "")))
+        if hex_val:
+            out[cls] = hex_val
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -187,13 +240,37 @@ def parse_dark_classes(style_text: str) -> dict[str, str]:
 @dataclass
 class TextElement:
     content: str
-    fill: str
+    fill: str | None  # resolved light-mode hex, None when unreadable
     font_size: float
     font_weight: str
     x: float
     y: float
     css_class: str
     text_anchor: str = "start"
+    # Resolved at parse time through the same cascade, so the scorer never has
+    # to re-derive it from a class map that cannot see `#id` or element rules.
+    dark_fill: str | None = None
+    # The raw declaration when it is not a colour this checker can read
+    # (`var(--fg)`, `currentColor`, an unknown keyword). UNMEASURABLE IS NOT
+    # CLEAN: it is reported, never scored against an invented value.
+    unresolved: str | None = None
+    # Same for the DARK declaration. `none`/`transparent` means the text renders
+    # NOTHING in dark mode - a failure, not an unmeasurable - and a `var()` is
+    # unmeasurable. Both are reported; a silent absent dark row read as PASS.
+    dark_unresolved: str | None = None
+    # The presentation attribute is what actually paints it - no rule reaches
+    # it, so no media query can repaint it in dark mode. That, not "has no
+    # class", is what the inline-fill hint is about: once fill resolved through
+    # the cascade, `text.fill` held a value for class- and element-painted text
+    # too, and the hint fired on text that has no inline fill at all.
+    attribute_painted: bool = False
+    # Rotated or translated: the raw x/y box is not where it renders, so it can
+    # elect neither its own plate NOR the document ground. Substituting the page
+    # colour is a guess, and this module forbids guessing at an unreadable fill
+    # one branch below - it manufactured 15 findings on one shipped file, at
+    # 1.95:1 against #ffffff, for labels sitting on a #0a1a24 card at 9.1:1.
+    # UNMEASURABLE is the honest answer, and it still reaches the gate as HARD.
+    displaced: bool = False
 
 
 @dataclass
@@ -205,6 +282,25 @@ class Background:
     y: float
     w: float
     h: float
+    # The ground under `prefers-color-scheme: dark`. Without it the dark row
+    # scored dark-mode text against the LIGHT plate - dormant while backgrounds
+    # were read from attributes only and so rarely found at all, and firing on
+    # every file the moment they resolved through the cascade.
+    dark_fill: str | None = None
+    # Resolved against the MERGED sheet. A single opacity blended the dark
+    # ground at the light alpha; 137 corpus plates declare a different one.
+    dark_opacity: float | None = None
+    # The dark block DECLARED a ground and this checker cannot read it
+    # (`var()`, `url()`, an unknown keyword). Distinct from "declared nothing",
+    # where the light value correctly carries over: scoring the dark row on the
+    # light plate is judging against the wrong theme, which the module forbids
+    # one branch away for an unreadable text fill.
+    dark_unreadable: bool = False
+    # The dark block paints this plate `none`/`transparent`: under the dark
+    # query it is no ground at all, and text on it falls through to the
+    # document ground. Distinct from `dark_unreadable` - a value nobody can
+    # measure - and conflating them blocked a legible document with a HARD.
+    dark_paints_nothing: bool = False
 
 
 @dataclass
@@ -236,6 +332,16 @@ class Shape:
     w: float
     h: float
     label: str
+    # Resolved at parse time through the cascade, like TextElement's. The class
+    # lookup this replaces could not swap a stroke at all.
+    dark_fill: str | None = None
+    dark_stroke: str | None = None
+    # The dark ALPHA travels with the dark colour - resolved against the merged
+    # sheet, so it carries the light value unless the dark block declares its
+    # own. Blending the dark fill at the LIGHT opacity scored a 4%-wash plate
+    # as solid: 1.06 FAIL on a document that renders 5.35 PASS.
+    dark_fill_opacity: float | None = None
+    dark_stroke_opacity: float | None = None
 
 
 @dataclass
@@ -259,24 +365,43 @@ NS = "http://www.w3.org/2000/svg"
 # ---------------------------------------------------------------------------
 
 
+def _geo(raw: str | None, span: float) -> float | None:
+    """One geometry value in user units; 0.0 when the attribute is absent.
+
+    `x="20 32 44"` is a legal per-glyph list - the first number anchors the
+    element, the rest position glyphs. A bare `float()` raised on that and on
+    `width="100%"`, and the gate's own drill-in command died on the traceback.
+    """
+    parts = (raw or "").split()
+    return _length(parts[0], span) if parts else 0.0
+
+
 def parse_svg_for_contrast(
     filepath: str,
 ) -> tuple[list[TextElement], list[Background], dict[str, str], dict[str, str]]:
     """Parse SVG and extract text elements and background regions."""
-    tree = ET.parse(filepath)
-    root = tree.getroot()
+    svg_text = Path(filepath).read_text(encoding="utf-8", errors="replace")
+    root = ET.fromstring(svg_text)
 
     texts: list[TextElement] = []
     backgrounds: list[Background] = []
-    light_classes: dict[str, str] = {}
-    dark_classes: dict[str, str] = {}
-
-    for child in root:
-        tag = child.tag.replace(f"{{{NS}}}", "")
-        if tag == "style":
-            style_text = child.text or ""
-            light_classes = parse_css_classes(style_text)
-            dark_classes = parse_dark_classes(style_text)
+    # From the whole document, not the first direct-child <style>: a composed
+    # deck carries one <style> per merged panel, and reading one of them scored
+    # every other panel's text against colours the checker had not seen.
+    lrules, drules, light_classes, dark_classes = parse_stylesheet(svg_text)
+    _nr, is_displaced, resolve_paint, winning_paint, parent_of, own_paint = build_render_model(
+        root
+    )
+    # One merge for the whole document - rebuilding it per element cost 0.61s
+    # of a 0.80s parse on a 10k-element file.
+    mrules = merged_rules(lrules, drules)
+    # Percentages resolve against the viewport; a document without a readable
+    # viewBox gives them no span, and the element is skipped, never crashed on.
+    try:
+        vb = [float(v) for v in re.split(r"[,\s]+", (root.get("viewBox") or "").strip()) if v]
+        canvas_w, canvas_h = (vb[2], vb[3]) if len(vb) == 4 else (0.0, 0.0)
+    except ValueError:
+        canvas_w = canvas_h = 0.0
 
     # Walk the full element tree (not just direct children) to find
     # text, rect, and path elements inside nested <g> groups.
@@ -284,25 +409,52 @@ def parse_svg_for_contrast(
         tag = child.tag.replace(f"{{{NS}}}", "")
 
         if tag == "text":
-            x = float(child.get("x", "0"))
-            y = float(child.get("y", "0"))
-            fs = float(child.get("font-size", "10"))
-            fw = child.get("font-weight", "normal")
+            # The guard its three sibling branches already carry. Without it a
+            # <symbol> label was scored at raw coordinates against a fabricated
+            # ground, and `display:none` text produced a HARD finding whose
+            # message blamed a transform the element does not have.
+            if _nr(child) or _in_template(child, parent_of):
+                continue
+            x = _geo(child.get("x"), canvas_w)
+            y = _geo(child.get("y"), canvas_h)
+            if x is None or y is None:
+                continue
+            # Through the cascade like the fill. Read off the attribute, 101
+            # corpus texts declared in CSS were all scored as 10px normal - so
+            # a 34px heading was held to the 4.5:1 normal threshold instead of
+            # AA-large's 3.0, and `estimate_text_bbox` sized its box from the
+            # same wrong number, which is what elects its background.
+            fs = _font_size(child, lrules, own_paint, parent_of)
+            fw = _strip_important(winning_paint(child, "font-weight", lrules)[1]) or "normal"
             content = child.text or ""
-            fill_attr = child.get("fill", "")
             css_class = child.get("class", "")
             text_anchor = child.get("text-anchor", "start")
 
-            fill_hex = resolve_color(fill_attr) if fill_attr else None
-            if not fill_hex and css_class and css_class in light_classes:
-                fill_hex = light_classes[css_class]
-            if not fill_hex:
-                fill_hex = "#000000"
+            # Through the cascade, in BOTH themes at once. The class map this
+            # replaced was wrong three ways at the same time: it tested the
+            # whole `class` attribute for membership, so `class="card body"`
+            # never matched anything; it let the presentation attribute beat the
+            # class rule, which is the inverse of CSS; and when nothing resolved
+            # it invented `#000000`, turning an unreadable paint into the
+            # highest-contrast colour there is - a false PASS on exactly the
+            # elements nobody had measured.
+            paint = theme_paint(child, "fill", lrules, drules, winning_paint, merged=mrules)
+            fill_hex = resolve_color(_strip_important(paint.light))
+            dark_hex = resolve_color(_strip_important(paint.dark))
+            # The node's OWN declaration, not the winner's: `winning_paint` can
+            # return an ANCESTOR's attribute, and the hint then told the
+            # operator to strip an inline fill the text does not carry.
+            own_spec, own_val, _own_sel = own_paint(child, "fill", lrules)
 
             texts.append(
                 TextElement(
                     content=content,
                     fill=fill_hex,
+                    dark_fill=dark_hex,
+                    unresolved=None if fill_hex else (paint.light or ""),
+                    dark_unresolved=None if dark_hex else (paint.dark or ""),
+                    attribute_painted=own_val is not None and own_spec == _SPEC_ATTR,
+                    displaced=is_displaced(child),
                     font_size=fs,
                     font_weight=fw,
                     x=x,
@@ -313,43 +465,92 @@ def parse_svg_for_contrast(
             )
 
         elif tag == "rect":
-            x = float(child.get("x", "0"))
-            y = float(child.get("y", "0"))
-            w = float(child.get("width", "0"))
-            h = float(child.get("height", "0"))
-            fill = child.get("fill", "")
-            opacity_str = child.get("opacity", "1")
-            fill_opacity_str = child.get("fill-opacity", "")
-
+            x = _geo(child.get("x"), canvas_w)
+            y = _geo(child.get("y"), canvas_h)
+            w = _geo(child.get("width"), canvas_w)
+            h = _geo(child.get("height"), canvas_h)
+            if None in (x, y, w, h):
+                continue
+            # Through the cascade, like the text branch above. Reading the
+            # attribute alone made every ground painted the way this project's
+            # own CSS rule MANDATES invisible, and the text was then scored
+            # against a fabricated white: a #24405f label on a .panel{#1e3a5f}
+            # plate reported 10.64:1 PASS where the rendered ratio is 1.08:1.
+            # A decoration under `<g transform="translate(166,92) scale(0.13)">`
+            # renders 150 units from its raw x/y. Reading fill off the attribute
+            # used to drop these (they resolved to None); resolving them through
+            # the cascade admitted them AT RAW COORDINATES, and the ground
+            # election then handed one to text nowhere near it - 17 false HARD
+            # findings across 6 shipped files. `build_render_model` already
+            # answers this; the answer was being discarded.
+            if is_displaced(child) or _in_template(child, parent_of):
+                continue
+            bg_paint = theme_paint(child, "fill", lrules, drules, winning_paint, merged=mrules)
+            fill = _strip_important(bg_paint.light)
             fill_hex = resolve_color(fill)
             if not fill_hex:
                 continue
-
-            opacity = float(opacity_str) if opacity_str else 1.0
-            if fill_opacity_str:
-                opacity = float(fill_opacity_str)
+            dark_raw = _strip_important(bg_paint.dark)
+            dark_bg_hex = resolve_color(dark_raw)
+            # `fill:none` under the dark query is a DECISION - the plate renders
+            # nothing, and text on it falls through to the document ground.
+            # Only a genuinely unreadable value is `dark_unreadable`; conflating
+            # the two blocked a legible document with a HARD.
+            dark_paints_nothing = bg_paint.overridden and (dark_raw or "").lower() in (
+                "none",
+                "transparent",
+            )
+            dark_unreadable = (
+                bg_paint.overridden and dark_bg_hex is None and not dark_paints_nothing
+            )
+            # The module's OWN opacity resolver, not a fourth weaker copy. It
+            # takes the MIN across `fill-opacity`, `opacity`, the paint's own
+            # alpha and every ancestor's opacity - not the spec's product, which
+            # is a documented approximation (it under-reports a stacked wash) -
+            # so `fill: rgba(30,58,95,0.05)` stops being scored as a solid plate.
+            opacity = _resolved_opacity(child, "fill", lrules, resolve_paint, root, parent_of)
+            dark_opacity = _resolved_opacity(child, "fill", mrules, resolve_paint, root, parent_of)
 
             label = f"rect {w:.0f}x{h:.0f}"
             if w >= 780:
                 label = f"bg-strip {fill}"
 
             backgrounds.append(
-                Background(label=label, fill=fill_hex, opacity=opacity, x=x, y=y, w=w, h=h)
+                Background(
+                    label=label,
+                    fill=fill_hex,
+                    opacity=opacity,
+                    x=x,
+                    y=y,
+                    w=w,
+                    h=h,
+                    dark_fill=dark_bg_hex,
+                    dark_opacity=dark_opacity,
+                    dark_unreadable=dark_unreadable,
+                    dark_paints_nothing=dark_paints_nothing,
+                )
             )
 
         elif tag == "path":
+            if is_displaced(child) or _in_template(child, parent_of):
+                continue
             d = child.get("d", "")
-            fill = child.get("fill", "")
-            opacity_str = child.get("opacity", "1")
-            fill_opacity_str = child.get("fill-opacity", "")
-
+            bg_paint = theme_paint(child, "fill", lrules, drules, winning_paint, merged=mrules)
+            fill = _strip_important(bg_paint.light)
             fill_hex = resolve_color(fill)
             if not fill_hex or fill == "none":
                 continue
-
-            opacity = float(opacity_str) if opacity_str else 1.0
-            if fill_opacity_str:
-                opacity = float(fill_opacity_str)
+            dark_raw = _strip_important(bg_paint.dark)
+            dark_bg_hex = resolve_color(dark_raw)
+            dark_paints_nothing = bg_paint.overridden and (dark_raw or "").lower() in (
+                "none",
+                "transparent",
+            )
+            dark_unreadable = (
+                bg_paint.overridden and dark_bg_hex is None and not dark_paints_nothing
+            )
+            opacity = _resolved_opacity(child, "fill", lrules, resolve_paint, root, parent_of)
+            dark_opacity = _resolved_opacity(child, "fill", mrules, resolve_paint, root, parent_of)
 
             bbox = _parse_path_bbox(d)
             if bbox is not None:
@@ -363,6 +564,10 @@ def parse_svg_for_contrast(
                         y=min_y,
                         w=w,
                         h=h,
+                        dark_fill=dark_bg_hex,
+                        dark_opacity=dark_opacity,
+                        dark_unreadable=dark_unreadable,
+                        dark_paints_nothing=dark_paints_nothing,
                     )
                 )
 
@@ -568,19 +773,15 @@ def parse_svg_shapes(
 
     Returns (shapes, light_classes, dark_classes, canvas_w, canvas_h).
     """
-    tree = ET.parse(filepath)
-    root = tree.getroot()
+    svg_text = Path(filepath).read_text(encoding="utf-8", errors="replace")
+    root = ET.fromstring(svg_text)
 
     canvas_w, canvas_h = _get_canvas_size(root)
 
-    light_classes: dict[str, str] = {}
-    dark_classes: dict[str, str] = {}
-    for child in root:
-        tag = child.tag.replace(f"{{{NS}}}", "")
-        if tag == "style":
-            style_text = child.text or ""
-            light_classes = parse_css_classes(style_text)
-            dark_classes = parse_dark_classes(style_text)
+    lrules, drules, light_classes, dark_classes = parse_stylesheet(svg_text)
+    _nr, _dis, resolve_paint, winning_paint, parent_of, own_paint = build_render_model(root)
+    # Hoisted like the sibling parser's: one merge for the whole document.
+    mrules = merged_rules(lrules, drules)
 
     shapes: list[Shape] = []
 
@@ -588,29 +789,35 @@ def parse_svg_shapes(
         tag = child.tag.replace(f"{{{NS}}}", "")
         if tag not in ("rect", "path", "circle", "ellipse", "polygon"):
             continue
+        # A displaced shape still has to reach 3:1 against the page - contrast
+        # does not depend on position. Non-rendering and template contents are
+        # dropped: they paint nothing here.
+        if _nr(child) or _in_template(child, parent_of):
+            continue
 
         # bbox extraction per tag
         bbox: tuple[float, float, float, float] | None = None
         if tag == "rect":
-            bbox = (
-                float(child.get("x", "0")),
-                float(child.get("y", "0")),
-                float(child.get("width", "0")),
-                float(child.get("height", "0")),
+            vals = (
+                _geo(child.get("x"), canvas_w),
+                _geo(child.get("y"), canvas_h),
+                _geo(child.get("width"), canvas_w),
+                _geo(child.get("height"), canvas_h),
             )
+            bbox = None if None in vals else vals
         elif tag == "path":
             bbox = _parse_path_bbox(child.get("d", ""))
         elif tag == "circle":
-            cx = float(child.get("cx", "0"))
-            cy = float(child.get("cy", "0"))
-            r = float(child.get("r", "0"))
-            bbox = (cx - r, cy - r, 2 * r, 2 * r)
+            cx = _geo(child.get("cx"), canvas_w)
+            cy = _geo(child.get("cy"), canvas_h)
+            r = _geo(child.get("r"), canvas_w)
+            bbox = None if None in (cx, cy, r) else (cx - r, cy - r, 2 * r, 2 * r)
         elif tag == "ellipse":
-            cx = float(child.get("cx", "0"))
-            cy = float(child.get("cy", "0"))
-            rx = float(child.get("rx", "0"))
-            ry = float(child.get("ry", "0"))
-            bbox = (cx - rx, cy - ry, 2 * rx, 2 * ry)
+            cx = _geo(child.get("cx"), canvas_w)
+            cy = _geo(child.get("cy"), canvas_h)
+            rx = _geo(child.get("rx"), canvas_w)
+            ry = _geo(child.get("ry"), canvas_h)
+            bbox = None if None in (cx, cy, rx, ry) else (cx - rx, cy - ry, 2 * rx, 2 * ry)
         elif tag == "polygon":
             bbox = _parse_polygon_bbox(child.get("points", ""))
 
@@ -618,29 +825,42 @@ def parse_svg_shapes(
             continue
         x, y, w, h = bbox
 
-        # fill resolution
+        # Through the SAME cascade as the text branch. The lookup this replaced
+        # tested the whole `class` attribute for membership, so `class="card
+        # body"` matched nothing; let the presentation attribute beat the class
+        # rule; could not see `#id` or element rules at all; and never resolved
+        # a stroke from a class, which left `Shape.stroke_class` permanently
+        # empty and made object dark-mode stroke contrast fiction.
         css_class = child.get("class", "")
-        fill_attr = child.get("fill", "")
-        fill_hex = resolve_color(fill_attr) if fill_attr else None
-        fill_class_used = ""
-        if not fill_hex and not fill_attr and css_class and css_class in light_classes:
-            # only inherit class fill when no explicit fill attr present
-            fill_hex = light_classes[css_class]
-            fill_class_used = css_class
+        fill_paint = theme_paint(child, "fill", lrules, drules, winning_paint, merged=mrules)
+        stroke_paint = theme_paint(child, "stroke", lrules, drules, winning_paint, merged=mrules)
+        fill_hex = resolve_color(_strip_important(fill_paint.light))
+        stroke_hex = resolve_color(_strip_important(stroke_paint.light))
+        dark_fill_hex = resolve_color(_strip_important(fill_paint.dark))
+        dark_stroke_hex = resolve_color(_strip_important(stroke_paint.dark))
 
-        opacity = float(child.get("opacity", "1") or 1.0)
-        fill_op_str = child.get("fill-opacity", "")
-        fill_opacity = float(fill_op_str) if fill_op_str else opacity
-
-        # stroke resolution
-        stroke_attr = child.get("stroke", "")
-        stroke_hex = resolve_color(stroke_attr) if stroke_attr else None
-        stroke_class_used = ""
-        if not stroke_hex and not stroke_attr and css_class and css_class in light_classes:
-            stroke_hex = None  # we don't assume class targets stroke
-        stroke_op_str = child.get("stroke-opacity", "")
-        stroke_opacity = float(stroke_op_str) if stroke_op_str else opacity
-        stroke_width = float(child.get("stroke-width", "0") or 0)
+        fill_opacity = _resolved_opacity(child, "fill", lrules, resolve_paint, root, parent_of)
+        # The dark alpha is resolved against the MERGED sheet - the light value
+        # unless the dark block declares its own - so the dark row never blends
+        # a dark colour at the light alpha.
+        dark_fill_opacity = _resolved_opacity(
+            child, "fill", mrules, resolve_paint, root, parent_of
+        )
+        # SVG's initial values, not borrowed ones. `stroke-opacity` defaulting to
+        # the FILL's opacity faded a solid border to the 4% of the wash it sits
+        # on - 417 of 795 object failures had a stroke that reaches 3:1 once its
+        # real opacity is used - and `stroke-width` defaulting to 0 discarded the
+        # stroke of 149 shapes outright, inverting this module's own promise that
+        # "cards with near-transparent fills but strong strokes still pass".
+        stroke_opacity = _resolved_opacity(child, "stroke", lrules, resolve_paint, root, parent_of)
+        dark_stroke_opacity = _resolved_opacity(
+            child, "stroke", mrules, resolve_paint, root, parent_of
+        )
+        stroke_width = _length(
+            _strip_important(winning_paint(child, "stroke-width", lrules)[1]), 0.0
+        )
+        if stroke_width is None:
+            stroke_width = 1.0
 
         if not fill_hex and not stroke_hex:
             continue
@@ -650,11 +870,15 @@ def parse_svg_shapes(
                 tag=tag,
                 fill=fill_hex,
                 fill_opacity=fill_opacity,
-                fill_class=fill_class_used,
+                fill_class=css_class,
+                dark_fill=dark_fill_hex,
+                dark_fill_opacity=dark_fill_opacity,
                 stroke=stroke_hex,
                 stroke_opacity=stroke_opacity,
                 stroke_width=stroke_width,
-                stroke_class=stroke_class_used,
+                stroke_class=css_class,
+                dark_stroke=dark_stroke_hex,
+                dark_stroke_opacity=dark_stroke_opacity,
                 x=x,
                 y=y,
                 w=w,
@@ -681,11 +905,9 @@ def _merge_paired_shapes(shapes: list[Shape]) -> list[Shape]:
         by_geom.setdefault(key, []).append(idx)
 
     merged: list[Shape] = []
-    consumed: set[int] = set()
     for indices in by_geom.values():
         if len(indices) == 1:
             merged.append(shapes[indices[0]])
-            consumed.add(indices[0])
             continue
 
         base = shapes[indices[0]]
@@ -698,6 +920,11 @@ def _merge_paired_shapes(shapes: list[Shape]) -> list[Shape]:
                 merged_shape.fill = other.fill
                 merged_shape.fill_opacity = other.fill_opacity
                 merged_shape.fill_class = other.fill_class
+                # Take the donor's DARK paint with its light one, or the merged
+                # record holds sibling A's dark value beside sibling B's light
+                # one - 223 dark object rows scored on the wrong colour.
+                merged_shape.dark_fill = other.dark_fill
+                merged_shape.dark_fill_opacity = other.dark_fill_opacity
             if (
                 merged_shape.stroke is None or merged_shape.stroke_width == 0
             ) and other.stroke is not None:
@@ -705,8 +932,9 @@ def _merge_paired_shapes(shapes: list[Shape]) -> list[Shape]:
                 merged_shape.stroke_opacity = other.stroke_opacity
                 merged_shape.stroke_width = other.stroke_width
                 merged_shape.stroke_class = other.stroke_class
+                merged_shape.dark_stroke = other.dark_stroke
+                merged_shape.dark_stroke_opacity = other.dark_stroke_opacity
         merged.append(merged_shape)
-        consumed.update(indices)
 
     return merged
 
@@ -731,7 +959,18 @@ def _shape_is_doc_background(shape: Shape, canvas_w: float, canvas_h: float) -> 
 def _resolve_dark_color(
     hex_color: str | None, css_class: str, dark_classes: dict[str, str]
 ) -> str | None:
-    """Return the dark-mode equivalent of a colour, or the original."""
+    """Return the dark-mode equivalent of a colour, or the original.
+
+    Retained for callers holding a Shape built before the cascade repoint; the
+    parser now resolves `Shape.dark_fill` / `dark_stroke` directly, so this is
+    only the fallback when they are absent.
+    """
+    # A shape that declares no stroke has no dark stroke either. Returning the
+    # class's dark FILL here gave strokeless cards a phantom border, which the
+    # old `stroke_width = 0.0` default happened to discard - correcting that
+    # default to the spec's 1.0 made it live.
+    if hex_color is None:
+        return None
     if css_class and css_class in dark_classes:
         return dark_classes[css_class]
     return hex_color
@@ -742,19 +981,38 @@ def _check_one_shape(
 ) -> ObjectContrastResult:
     """Compute fill+stroke contrast for one shape vs the document bg."""
     if mode == "dark":
-        fill_hex = _resolve_dark_color(shape.fill, shape.fill_class, dark_classes)
-        stroke_hex = _resolve_dark_color(shape.stroke, shape.stroke_class, dark_classes)
+        fill_hex = shape.dark_fill or _resolve_dark_color(
+            shape.fill, shape.fill_class, dark_classes
+        )
+        stroke_hex = shape.dark_stroke or _resolve_dark_color(
+            shape.stroke, shape.stroke_class, dark_classes
+        )
+        # The dark colour blends at the DARK alpha. `Background` has carried
+        # both since its dark fields were added; `Shape` got the colour without
+        # the alpha, so a plate declared `fill-opacity:0.04` in light and `1`
+        # in dark scored the light wash at the solid's ratio - 1.06 FAIL on a
+        # document that renders 5.35 PASS.
+        fill_opacity = (
+            shape.dark_fill_opacity if shape.dark_fill_opacity is not None else shape.fill_opacity
+        )
+        stroke_opacity = (
+            shape.dark_stroke_opacity
+            if shape.dark_stroke_opacity is not None
+            else shape.stroke_opacity
+        )
     else:
         fill_hex = shape.fill
         stroke_hex = shape.stroke
+        fill_opacity = shape.fill_opacity
+        stroke_opacity = shape.stroke_opacity
 
     bg_lum = relative_luminance(*hex_to_rgb(doc_bg))
 
     fill_ratio: float | None = None
     fill_used: str | None = None
-    if fill_hex and shape.fill_opacity > 0.0:
-        if shape.fill_opacity < 1.0:
-            blended = blend_over(fill_hex, shape.fill_opacity, doc_bg)
+    if fill_hex and fill_opacity > 0.0:
+        if fill_opacity < 1.0:
+            blended = blend_over(fill_hex, fill_opacity, doc_bg)
         else:
             blended = fill_hex
         fill_used = blended
@@ -762,9 +1020,9 @@ def _check_one_shape(
 
     stroke_ratio: float | None = None
     stroke_used: str | None = None
-    if stroke_hex and shape.stroke_width > 0 and shape.stroke_opacity > 0.0:
-        if shape.stroke_opacity < 1.0:
-            blended_stroke = blend_over(stroke_hex, shape.stroke_opacity, doc_bg)
+    if stroke_hex and shape.stroke_width > 0 and stroke_opacity > 0.0:
+        if stroke_opacity < 1.0:
+            blended_stroke = blend_over(stroke_hex, stroke_opacity, doc_bg)
         else:
             blended_stroke = stroke_hex
         stroke_used = blended_stroke
@@ -805,6 +1063,11 @@ def check_object_contrasts(
     """
     results: list[ObjectContrastResult] = []
     for shape in shapes:
+        # These filters read SIZE, not position, and a translate - the common
+        # case by far - leaves width and height exact. Exempting displaced
+        # shapes admitted 829 decorative 2-6px circles as object failures on one
+        # file: precisely the "thin accent bars or decorative dividers" the
+        # filters exist to drop.
         if _shape_is_doc_background(shape, canvas_w, canvas_h):
             continue
         if shape.w * shape.h < min_area:
@@ -821,13 +1084,31 @@ def check_object_contrasts(
 # ---------------------------------------------------------------------------
 
 
-def resolve_effective_bg(bg: Background | None, doc_bg: str) -> str:
-    """Resolve the effective background colour by blending with document bg."""
+def resolve_effective_bg(bg: Background | None, doc_bg: str, dark: bool = False) -> str:
+    """The ground this text actually sits on, blended over the document bg.
+
+    ``dark`` selects the plate's dark-mode value. Scoring the dark row against
+    the light plate is not a near-miss - a light-on-dark deck reads as every
+    label failing, because the checker put the dark text back on the light
+    ground.
+    """
     if bg is None:
         return doc_bg
-    if bg.opacity < 1.0:
-        return blend_over(bg.fill, bg.opacity, doc_bg)
-    return bg.fill
+    # A plate the dark block paints `none` is no ground at all under the query -
+    # the text on it falls through to the document ground.
+    if dark and bg.dark_paints_nothing:
+        return doc_bg
+    # `is not None`, not `or`. A dark declaration that resolves to nothing
+    # readable (`var()`, `url()`, `none`) is a DECISION, not an absence, and
+    # falling back to the light plate scores the dark row against the wrong
+    # theme - the line below already got this right.
+    fill = (bg.dark_fill if bg.dark_fill is not None else bg.fill) if dark else bg.fill
+    alpha = (
+        (bg.dark_opacity if bg.dark_opacity is not None else bg.opacity) if dark else bg.opacity
+    )
+    if alpha < 1.0:
+        return blend_over(fill, alpha, doc_bg)
+    return fill
 
 
 def build_class_lookup(light_classes: dict[str, str]) -> dict[str, list[str]]:
@@ -863,6 +1144,30 @@ def check_all_contrasts(
         if not text.content.strip():
             continue
 
+        # UNMEASURABLE IS NOT CLEAN. Scoring this against a fabricated black
+        # printed 20.42:1 over text whose real ratio was 1.33:1 - a PASS in the
+        # one tier that cannot be acked away.
+        if text.displaced:
+            hints.append(
+                f'  UNMEASURABLE "{text.content[:40]}" - a transform moves it away from its '
+                f"declared x/y, so the checker cannot tell which ground it sits on and its "
+                f"contrast was NOT judged"
+            )
+            continue
+
+        if text.fill is None:
+            if text.unresolved:
+                why = (
+                    f'fill resolves to "{text.unresolved}", which this checker '
+                    f"cannot read as a colour"
+                )
+            else:
+                why = "nothing declares its fill (SVG initial: black)"
+            hints.append(
+                f'  UNMEASURABLE "{text.content[:40]}" - {why}, so its contrast was NOT judged'
+            )
+            continue
+
         large = is_large_text(text.font_size, text.font_weight)
         aa_threshold = 3.0 if large else 4.5
         aaa_threshold = 4.5 if large else 7.0
@@ -870,7 +1175,7 @@ def check_all_contrasts(
         bg = find_background_for_text(text, backgrounds)
 
         # --- Inline fill matches CSS class? ---
-        if text.fill and not text.css_class:
+        if text.fill and text.attribute_painted:
             matching = fill_to_classes.get(text.fill.lower(), [])
             if matching:
                 cls_name = matching[0]
@@ -900,16 +1205,18 @@ def check_all_contrasts(
         )
 
         # --- Dark mode ---
-        # resolve text fill for dark mode
-        dark_fill = None
-        if text.css_class and text.css_class in dark_classes:
-            dark_fill = dark_classes[text.css_class]
-        elif text.fill and not text.css_class:
-            # hardcoded fill stays the same in dark mode
-            dark_fill = text.fill
-
-        if dark_fill:
-            dark_eff_bg = resolve_effective_bg(bg, dark_doc_bg)
+        # Resolved at parse time through the cascade. Re-deriving it here from
+        # the class map missed every `#id` and element rule, and gave a
+        # `class="a b"` element no dark value at all - so its dark row was
+        # silently absent rather than failing.
+        dark_fill = text.dark_fill
+        if bg is not None and bg.dark_unreadable:
+            hints.append(
+                f'  UNMEASURABLE "{text.content[:40]}" - the dark block repaints its ground '
+                f"with a value this checker cannot read, so its dark contrast was NOT judged"
+            )
+        elif dark_fill:
+            dark_eff_bg = resolve_effective_bg(bg, dark_doc_bg, dark=True)
             dark_text_lum = relative_luminance(*hex_to_rgb(dark_fill))
             dark_bg_lum = relative_luminance(*hex_to_rgb(dark_eff_bg))
             dark_ratio = contrast_ratio(dark_text_lum, dark_bg_lum)
@@ -934,6 +1241,39 @@ def check_all_contrasts(
                     mode="dark",
                 )
             )
+        elif text.dark_unresolved is not None:
+            if text.dark_unresolved.strip().lower() in ("none", "transparent"):
+                # `fill:none` under the dark query renders NOTHING - invisible
+                # text is a failure (1.00:1), not an unmeasurable.
+                results.append(
+                    ContrastResult(
+                        text=TextElement(
+                            content=text.content,
+                            fill="none",
+                            font_size=text.font_size,
+                            font_weight=text.font_weight,
+                            x=text.x,
+                            y=text.y,
+                            css_class=text.css_class,
+                        ),
+                        background=bg or doc_bg_dark,
+                        effective_bg=resolve_effective_bg(bg, dark_doc_bg, dark=True),
+                        ratio=1.0,
+                        aa_pass=False,
+                        aaa_pass=False,
+                        large=large,
+                        mode="dark",
+                    )
+                )
+            else:
+                # The sibling branch above answers this for the ground; a dark
+                # TEXT paint nobody can read gets the same honesty - a silent
+                # absent row read as PASS.
+                hints.append(
+                    f'  UNMEASURABLE "{text.content[:40]}" - its dark fill is '
+                    f'"{text.dark_unresolved}", which this checker cannot read as a '
+                    f"colour, so its dark contrast was NOT judged"
+                )
 
     return results, hints
 

@@ -5,8 +5,12 @@ Usage: python check_connectors.py --svg path/to/file.svg
 """
 
 from dataclasses import dataclass
+import math
 import re
 import xml.etree.ElementTree as ET
+
+from stellars_claude_code_plugins.svg_tools._layers import is_backplate_geometry
+from stellars_claude_code_plugins.svg_tools.check_css import is_display_none
 
 NS = {"svg": "http://www.w3.org/2000/svg"}
 
@@ -139,12 +143,9 @@ def _is_background_rect(el, canvas_w: float, canvas_h: float) -> bool:
     if canvas_w > 0 and canvas_h > 0:
         w, h = _safe_float(el.get("width")), _safe_float(el.get("height"))
         x, y = _safe_float(el.get("x")), _safe_float(el.get("y"))
-        if (
-            w >= 0.92 * canvas_w
-            and h >= 0.92 * canvas_h
-            and x <= 0.04 * canvas_w
-            and y <= 0.04 * canvas_h
-        ):
+        # One home for the dial - `_layers` names both halves precisely because
+        # a literal copy drifts the moment either is tuned.
+        if is_backplate_geometry(x, y, w, h, canvas_w, canvas_h):
             return True
     return False
 
@@ -304,23 +305,35 @@ def _arrowhead_from_polygon(el) -> Arrowhead | None:
 
     Rules:
     - 3 vertices (common arrowhead shape)
-    - the "tip" is the vertex furthest from the centroid of the other two
+    - the "tip" is the SYMMETRY vertex - the one whose two incident edges are
+      most nearly equal. An arrowhead is isoceles: the apex is where the two
+      long sides meet
     - length = distance from tip to midpoint of the opposite edge
+
+    The tip is NOT the vertex furthest from the opposite edge's midpoint. That
+    rule holds only while ``head_half_h < head_len / sqrt(3)``; above the cliff
+    a base corner wins and every consumer inherits a tip pointing sideways,
+    plus an inflated length. Measured before this rule landed: 118 of 201 heads
+    in the project's own artwork were read off a base vertex, at head sizes the
+    connector docs recommend.
     """
     pts = _parse_points(el.get("points", ""))
     if len(pts) != 3:
         return None
-    a, b, c = pts
-    # Compute the distance from each vertex to the midpoint of the opposite edge.
-    # The tip has the max distance.
-    candidates = []
-    for i, v in enumerate([a, b, c]):
-        others = [pts[j] for j in range(3) if j != i]
-        mx = (others[0][0] + others[1][0]) / 2.0
-        my = (others[0][1] + others[1][1]) / 2.0
-        dist = ((v[0] - mx) ** 2 + (v[1] - my) ** 2) ** 0.5
-        candidates.append((dist, v))
-    length, tip = max(candidates, key=lambda c: c[0])
+
+    def _others(i: int) -> list[tuple[float, float]]:
+        return [pts[j] for j in range(3) if j != i]
+
+    def _edge_imbalance(i: int) -> float:
+        v = pts[i]
+        a, b = _others(i)
+        return abs(math.hypot(v[0] - a[0], v[1] - a[1]) - math.hypot(v[0] - b[0], v[1] - b[1]))
+
+    idx = min(range(3), key=_edge_imbalance)
+    tip = pts[idx]
+    a, b = _others(idx)
+    mx, my = (a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0
+    length = math.hypot(tip[0] - mx, tip[1] - my)
     return Arrowhead(elem_id=el.get("id", ""), points=pts, tip=tip, length=length)
 
 
@@ -379,8 +392,12 @@ def parse_svg(
         # not rendered geometry.
         if _strip_ns(el.tag) == "defs":
             continue
-        style_attr = (el.get("style") or "").replace(" ", "").lower()
-        if (el.get("display") or "").strip().lower() == "none" or "display:none" in style_attr:
+        # One predicate hides a subtree for every layer (colour scan, this
+        # walk, the overlaps model): per-layer copies diverged on the
+        # spellings - `border-display:none` hid a group here while the scan
+        # read it live, `display:none !important` went the other way, and the
+        # disagreement reached the HARD tier from both directions.
+        if is_display_none(el):
             continue
         for child in reversed(list(el)):
             stack.append(
@@ -424,7 +441,11 @@ def parse_svg(
             pts = _parse_path_d(d)
             if len(pts) >= 2:
                 connectors.append(Connector(el.get("id", ""), "path", pts))
-        elif tag == "polygon":
+        elif tag == "polygon" and connector_candidate:
+            # Same gate as the stroke branches above: a polygon under a
+            # transformed group is read at RAW coordinates, which parked 45
+            # arrowheads across 9 corpus files at the origin - unpaired, so
+            # every head row printed PASS over heads nobody judged.
             arr = _arrowhead_from_polygon(el)
             if arr is not None:
                 arrowheads.append(arr)
@@ -829,6 +850,82 @@ def check_stem_head_ratio(
     return issues
 
 
+# A head reads as rotated once its base corners shift ~1.7px sideways, which is
+# ~10deg on the default 10px head. Quoted in connector.md and validation.md.
+_AXIS_TOL_DEG = 10.0
+
+# A trimmed stroke ends one head length short of the tip, less on a curve where
+# the chord is shorter than the arc. Only endpoints inside this band around one
+# head length are candidate partners - nearest-endpoint alone binds a head to
+# whatever unrelated stroke happens to pass near its tip.
+_AXIS_PAIR_BAND = (0.6, 1.4)
+
+# Beyond this the candidate is not the head's own stroke by any reading, so the
+# head is left unpaired rather than reported against a stranger.
+_AXIS_MAX_PAIR_DEG = 90.0
+
+
+def check_arrowhead_axis_alignment(
+    connectors: list[Connector],
+    arrowheads: list[Arrowhead],
+    *,
+    tol_deg: float = _AXIS_TOL_DEG,
+) -> list[str]:
+    """Check: flag an arrowhead whose axis does not continue its own stroke.
+
+    The stroke stops short of the tip so the head has room, and the head must
+    carry on from where the stroke stopped. Compare the head's axis (back-edge
+    midpoint to tip) against the chord from its stroke's endpoint to that tip.
+    A gap between them is a head rotated off its line, which reads as a bent
+    flag rather than an arrow.
+
+    Pairing takes the best-ALIGNED endpoint inside the distance band, not the
+    nearest one. The question a head asks is "does any stroke terminate along
+    my axis", and in a dense diagram the nearest endpoint is routinely a tick
+    or divider that merely passes close to the tip.
+
+    Measured at 0 findings over 224 tool-generated heads (which are aligned by
+    construction) and 8 over 81 heads in a hand-assembled deck.
+    """
+    issues: list[str] = []
+    lo, hi = _AXIS_PAIR_BAND
+    for head in arrowheads:
+        if len(head.points) != 3 or head.length <= 0:
+            continue
+        back = [p for p in head.points if p != head.tip]
+        if len(back) != 2:
+            continue
+        back_mid = ((back[0][0] + back[1][0]) / 2, (back[0][1] + back[1][1]) / 2)
+        axis_deg = math.degrees(math.atan2(head.tip[1] - back_mid[1], head.tip[0] - back_mid[0]))
+
+        best = None
+        for c in connectors:
+            if len(c.points) < 2:
+                continue
+            for pt in (c.points[0], c.points[-1]):
+                d = math.hypot(pt[0] - head.tip[0], pt[1] - head.tip[1])
+                if not (head.length * lo <= d <= head.length * hi):
+                    continue
+                chord = math.degrees(math.atan2(head.tip[1] - pt[1], head.tip[0] - pt[0]))
+                delta = abs((axis_deg - chord + 180) % 360 - 180)
+                if best is None or delta < best[0]:
+                    best = (delta, chord, c.elem_id or "(no id)", pt)
+        if best is None or best[0] > _AXIS_MAX_PAIR_DEG:
+            continue
+
+        delta, chord_deg, cid, end = best
+        if delta > tol_deg:
+            issues.append(
+                f"[arrowhead-axis] Arrow id={head.elem_id or '(no id)'} tip at "
+                f"({head.tip[0]:.0f},{head.tip[1]:.0f}) paired with connector id={cid} "
+                f"ending ({end[0]:.0f},{end[1]:.0f}): head axis {axis_deg:.1f}deg vs stroke "
+                f"arrival {chord_deg:.1f}deg ({delta:.1f}deg off, max {tol_deg:.0f}deg). "
+                f"Head is rotated off its own line - rebuild the connector with the "
+                f"tool so the head follows the chord across the trimmed stretch."
+            )
+    return issues
+
+
 def check_label_clearance(
     connectors: list[Connector],
     labels: list[TextLabel],
@@ -880,6 +977,7 @@ def main():
     all_issues.extend(check_l_chamfer_exit_direction(connectors, cards))
     all_issues.extend(check_edge_arrival_direction(connectors, cards))
     all_issues.extend(check_arrowhead_edge_orientation(arrowheads, cards))
+    all_issues.extend(check_arrowhead_axis_alignment(connectors, arrowheads))
     all_issues.extend(check_label_clearance(connectors, labels))
     all_issues.extend(check_stem_head_ratio(connectors, arrowheads))
     all_issues.extend(check_manifold_candidates(connectors))

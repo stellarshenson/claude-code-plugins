@@ -58,7 +58,11 @@ def inspect_svg(svg_path: Path) -> dict:
     raw = svg_path.read_text(encoding="utf-8", errors="replace")
     facts["has_grid_comment"] = "=== GRID" in raw
     facts["has_topology_comment"] = ("=== LAYOUT TOPOLOGY" in raw) or ("TOPOLOGY:" in raw)
-    facts["has_dark_mode"] = "prefers-color-scheme" in raw
+    # Via the CSS parser: a whole-file substring test did not even require
+    # `: dark`, and counted the words appearing in an XML comment.
+    from stellars_claude_code_plugins.svg_tools.check_css import has_dark_block
+
+    facts["has_dark_mode"] = has_dark_block(raw)
     facts["description_placeholder"] = "<short role description>" in raw
     # A description comment is any comment BEFORE the <svg> root carrying
     # a "Shows:" line (house format). The scaffold emits one with

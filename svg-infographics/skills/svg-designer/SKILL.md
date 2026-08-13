@@ -137,6 +137,7 @@ Create tasks at start (one per phase), update as you progress - prevents skipped
 - `references/standards-core.md` - essentials (read first)
 - `references/workflow.md` - phase gates + per-image checklist
 - `references/validation.md` - checker usage, severity ladder, ack rules
+- `docs/acc-crit-claude-code-plugins.md` (repo root) - acceptance criteria: the CLI is the deterministic floor, generative judgment ships the graphic
 - `references/tools.md` - full tool palette tree
 - `rules/<component>.md` - served by `preflight` per declared type
 - `svg-infographics/examples/` - production references + `concept_draft_deck.md`

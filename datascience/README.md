@@ -41,6 +41,7 @@ Auto-triggered based on context.
 | `footnotes` | Adding references, citations, or notes in notebooks and markdown |
 | `prompt-engineering` | Crafting system prompts, agent instructions, or LLM prompts |
 | `hypothesis` | Writing up an experiment, recording a hypothesis and result, fanning out the next round from persona generators, deciding which approach won, or drafting an experiments log / SOTA design doc |
+| `dataset` | Downloading, vendoring or documenting a public or private corpus into a `data/external/<task>-datasets/` folder, or auditing what data a project holds and under what licence |
 
 ## Prompt engineering techniques
 
@@ -94,4 +95,5 @@ Create a new project, scaffold the first notebook, then review it:
 - [`skills/prompt-engineering/references/`](skills/prompt-engineering/references/) - per-technique papers, templates, and usage guidance
 - [`skills/datascience/SKILL.md`](skills/datascience/SKILL.md) - project conventions, naming, file format standards
 - [`skills/hypothesis/SKILL.md`](skills/hypothesis/SKILL.md) - hypothesis-driven experiments log + SOTA doc structure, the per-hypothesis template, and canonical-doc-across-runs management; four worked examples under [`skills/hypothesis/examples/`](skills/hypothesis/examples/) (the `wmd-docdistance-*` pair is the canonical shape); fanout mechanics in [`skills/hypothesis/references/fanout.md`](skills/hypothesis/references/fanout.md) with persona generators under [`skills/hypothesis/generators/`](skills/hypothesis/generators/)
+- [`skills/dataset/SKILL.md`](skills/dataset/SKILL.md) - two artifacts per corpus (gitignored `dataset-<name>.zip`, tracked `dataset-<name>.md` sidecar) in `data/external/<task>-datasets/` (location confirmed with the user first), the licence-first admission gate applied before downloading, and the restriction fields a private corpus carries; the sidecar is rendered from the fetcher's spec so it cannot drift from what was downloaded. Prototype sidecars and the fetcher skeleton under [`skills/dataset/examples/`](skills/dataset/examples/)
 - [copier-data-science](https://github.com/stellarshenson/copier-data-science) - project scaffolding template used by `/datascience:new-project` and `/datascience:fix-project`

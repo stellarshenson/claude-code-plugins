@@ -2646,33 +2646,82 @@ class TestContrastModule:
         assert resolve_color("transparent") is None
 
     def test_css_parser_and_large_text(self):
-        """parse_css_classes (strips media), parse_dark_classes (extracts media),
-        is_large_text thresholds."""
+        """parse_stylesheet splits light from dark through the shared parser,
+        plus is_large_text thresholds."""
         from stellars_claude_code_plugins.svg_tools.check_contrast import (
             is_large_text,
-            parse_css_classes,
-            parse_dark_classes,
+            parse_stylesheet,
         )
 
-        css = (
+        svg = (
+            "<svg><style>"
             ".fg-1 { fill: #1e3a5f; } .fg-2 { fill: #2a5f9e; } "
             "@media (prefers-color-scheme: dark) { .fg-1 { fill: #c8d6e5; } }"
+            "</style></svg>"
         )
+        _lrules, _drules, light, dark = parse_stylesheet(svg)
 
-        # Light-mode parser strips @media blocks and captures two classes
-        classes = parse_css_classes(css)
-        assert classes["fg-1"] == "#1e3a5f"
-        assert classes["fg-2"] == "#2a5f9e"
+        # Light side carries the base rules, not the @media overrides
+        assert light["fg-1"] == "#1e3a5f"
+        assert light["fg-2"] == "#2a5f9e"
 
-        # Dark-mode parser picks up only the @media override
-        dark = parse_dark_classes(css)
+        # Dark side carries only what the dark block declares
         assert dark["fg-1"] == "#c8d6e5"
+        assert "fg-2" not in dark
 
-        # is_large_text: 18+ normal, 14+ bold, else not large
-        assert is_large_text(18, "normal") is True
-        assert is_large_text(14, "bold") is True
+        # is_large_text: WCAG large scale is 18pt / 14pt bold - 24px / 18.66px
+        # in user units, so 18px normal and 14px bold are NORMAL text (4.5:1)
+        assert is_large_text(24, "normal") is True
+        assert is_large_text(18.66, "bold") is True
+        assert is_large_text(23.9, "normal") is False
+        assert is_large_text(14, "bold") is False
         assert is_large_text(12, "normal") is False
         assert is_large_text(14, "normal") is False
+
+    def test_the_contrast_layer_resolves_through_the_shared_cascade(self, tmp_path):
+        """The local class map this replaced was wrong three ways at once, and
+        it gated the HARD tier. Each clause below killed a real false PASS."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            parse_svg_for_contrast,
+        )
+
+        f = tmp_path / "cascade.svg"
+        f.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><style>'
+            ".card { fill: #fafcfe } .faint { fill: #d8dde2 } .loud { fill: #d8dde2 !important }"
+            "#named { fill: #112233 } text { fill: #445566 } .ghost { fill: var(--fg) }"
+            "@media (prefers-color-scheme: dark) { .faint { fill: #223344 } }"
+            "</style>"
+            '<text class="card faint" x="1" y="1">multi</text>'
+            '<text class="loud" x="9" y="9">loud</text>'
+            '<text id="named" class="card" x="2" y="2">id beats class</text>'
+            '<text class="faint" fill="#ff0000" x="3" y="3">class beats attribute</text>'
+            '<text x="4" y="4">element rule</text>'
+            '<text class="ghost" x="5" y="5">unreadable</text>'
+            "</svg>"
+        )
+        texts, _bg, _light, _dark = parse_svg_for_contrast(str(f))
+        by = {t.content: t for t in texts}
+
+        # class="card faint" matched NOTHING under whole-attribute membership
+        assert by["multi"].fill == "#d8dde2"
+        # the dark block overrides a NORMAL light declaration
+        assert by["multi"].dark_fill == "#223344"
+        # ...but not an `!important` one: `!important` outranks every normal
+        # declaration in both themes, so a browser keeps the light colour under
+        # `prefers-color-scheme: dark`. Reporting an override here claimed a
+        # theme the document does not have.
+        assert by["loud"].fill == "#d8dde2"
+        assert by["loud"].dark_fill == "#d8dde2"
+        # #id outranks .class - the class map could not express an id rule
+        assert by["id beats class"].fill == "#112233"
+        # the presentation attribute used to WIN, which is the inverse of CSS
+        assert by["class beats attribute"].fill == "#d8dde2"
+        # element rules were not parsed at all
+        assert by["element rule"].fill == "#445566"
+        # and an unreadable paint became #000000 - the highest contrast there is
+        assert by["unreadable"].fill is None
+        assert by["unreadable"].unresolved == "var(--fg)"
 
 
 class TestObjectContrast:
@@ -4661,7 +4710,7 @@ class TestCheckCSS:
             </svg>
         """)
         )
-        _, dark, _ = parse_style_block(svg.read_text())
+        _, dark, _, _meta = parse_style_block(svg.read_text())
         assert sorted(dark) == ["fg-1", "fg-2", "fg-3"]
         violations, _ = check_css_compliance(str(svg))
         assert [v for v in violations if v.rule == "missing-dark-override"] == []
@@ -6107,9 +6156,13 @@ class TestFinalize:
         a = tmp_path / "a.svg"
         b = tmp_path / "b.svg"
         # Centred content - the visual layer now flags lopsided canvases.
+        # A clean file carries a dark block - the project's own pre-delivery
+        # rule, and now a real `[css] missing-dark-block` finding without one.
         clean = (
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">\n'
-            '  <rect x="10" y="10" width="180" height="80" fill="#eee"/>\n'
+            "  <style>.panel { fill: #eeeeee; }\n"
+            "  @media (prefers-color-scheme: dark) { .panel { fill: #17202a; } }</style>\n"
+            '  <rect class="panel" x="10" y="10" width="180" height="80"/>\n'
             "</svg>\n"
         )
         a.write_text(clean)
@@ -7451,3 +7504,220 @@ class TestCustomIcons:
         bad = self._cli("render", "nope")
         assert bad.returncode == 1
         assert "Unknown icon" in bad.stderr
+
+
+class TestRound8ContrastCascade:
+    """Round-8 review: the contrast layer was converted only halfway.
+
+    Three lenses agreed the partial conversion was worse than none - it hid
+    real HARD findings behind honest-looking silence. Every clause here is a
+    defect that was reproduced against the working tree before it was fixed.
+    """
+
+    S = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200">'
+
+    def _write(self, tmp_path, body, name="r8.svg"):
+        f = tmp_path / name
+        f.write_text(self.S + body + "</svg>")
+        return f
+
+    def test_unmeasurable_text_reaches_the_gate(self, tmp_path):
+        """`_contrast_findings` is the ONE consumer that sets the exit code.
+        Dropping the hints printed PASS over text nobody measured."""
+        from stellars_claude_code_plugins.svg_tools.finalize import _contrast_findings
+
+        f = self._write(
+            tmp_path,
+            "<style>.plate{fill:#10161c}.lbl{fill:var(--fg)}"
+            "@media (prefers-color-scheme: dark){.plate{fill:#f5f9fc}}</style>"
+            '<rect class="plate" width="400" height="200"/>'
+            '<text class="lbl" x="20" y="40">invisible</text>',
+        )
+        findings = _contrast_findings(f)
+        assert [x for x in findings if "UNMEASURABLE" in x], findings
+
+    def test_fill_is_inherited_from_a_painted_group(self, tmp_path):
+        """`fill` is an inherited SVG property and `<g fill=…>` is the ordinary
+        way to paint a group of labels. Stopping at the node read 15 of one
+        corpus file's 48 texts as unpainted."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            parse_svg_for_contrast,
+        )
+
+        f = self._write(tmp_path, '<g fill="#e8eef4"><text x="20" y="40">inherited</text></g>')
+        texts, _bg, _l, _d = parse_svg_for_contrast(str(f))
+        assert texts[0].fill == "#e8eef4"
+
+    def test_a_class_painted_plate_is_the_ground(self, tmp_path):
+        """Reading the background off the attribute made every ground painted
+        the way this project MANDATES invisible, and scored the text against a
+        fabricated white: 10.64:1 PASS where the real ratio is 1.08:1."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            check_all_contrasts,
+            parse_svg_for_contrast,
+        )
+
+        f = self._write(
+            tmp_path,
+            "<style>.panel{fill:#1e3a5f}.label{fill:#24405f}</style>"
+            '<rect class="panel" width="400" height="200"/>'
+            '<text class="label" x="20" y="40">low</text>',
+        )
+        texts, bgs, light, dark = parse_svg_for_contrast(str(f))
+        assert bgs, "class-painted plate was not found"
+        results, _ = check_all_contrasts(texts, bgs, light, dark)
+        light_ratio = next(r.ratio for r in results if r.mode == "light")
+        assert light_ratio < 2.0, light_ratio
+
+    def test_the_dark_row_uses_the_plate_dark_value(self, tmp_path):
+        """Scoring the dark row against the LIGHT plate reads as every label
+        failing on a light-on-dark deck."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            check_all_contrasts,
+            parse_svg_for_contrast,
+        )
+
+        f = self._write(
+            tmp_path,
+            "<style>.plate{fill:#ffffff}.lbl{fill:#101010}"
+            "@media (prefers-color-scheme: dark){.plate{fill:#101010}.lbl{fill:#f0f0f0}}"
+            "</style>"
+            '<rect class="plate" width="400" height="200"/>'
+            '<text class="lbl" x="20" y="40">label</text>',
+        )
+        texts, bgs, light, dark = parse_svg_for_contrast(str(f))
+        assert bgs[0].dark_fill == "#101010"
+        results, _ = check_all_contrasts(texts, bgs, light, dark)
+        assert next(r.ratio for r in results if r.mode == "dark") > 10.0
+
+    def test_a_four_percent_wash_is_not_a_solid_plate(self, tmp_path):
+        """`.plate{fill:#005f7a;fill-opacity:0.04}` is the documented card
+        idiom. Reading the opacity off the attribute scored it as solid teal,
+        so every label on it read ~1.2:1 against a near-white ground."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            check_all_contrasts,
+            parse_svg_for_contrast,
+        )
+
+        f = self._write(
+            tmp_path,
+            "<style>.wash{fill:#005f7a;fill-opacity:0.04}.fg{fill:#236a74}</style>"
+            '<rect class="wash" width="400" height="200"/>'
+            '<text class="fg" x="20" y="40">chip</text>',
+        )
+        texts, bgs, light, dark = parse_svg_for_contrast(str(f))
+        assert bgs[0].opacity == pytest.approx(0.04)
+        results, _ = check_all_contrasts(texts, bgs, light, dark)
+        assert next(r.ratio for r in results if r.mode == "light") > 4.5
+
+    def test_a_four_digit_hex_does_not_kill_the_layer(self, tmp_path):
+        """Legal CSS, unreachable before the cascade widened to element rules,
+        and it reached `hex_to_rgb` as `invalid literal for int()`."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            parse_svg_for_contrast,
+            resolve_color,
+        )
+
+        assert resolve_color("#3a4c") == "#33aa44"
+        f = self._write(tmp_path, "<style>text{fill:#3a4c}</style><text x=\"5\" y=\"5\">t</text>")
+        texts, _b, _l, _d = parse_svg_for_contrast(str(f))
+        assert texts[0].fill == "#33aa44"
+
+    def test_object_shapes_resolve_through_the_cascade(self, tmp_path):
+        """The whole-attribute membership test matched nothing for
+        `class="card body"`, and `#id` rules were unreachable."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import parse_svg_shapes
+
+        f = self._write(
+            tmp_path,
+            "<style>.card{fill:#fafcfe}.body{fill:#f7fafc}#panel{fill:#f9fbfd}</style>"
+            '<rect class="card body" x="10" y="10" width="120" height="60"/>'
+            '<rect id="panel" x="150" y="10" width="120" height="60"/>',
+        )
+        shapes, _l, _d, _w, _h = parse_svg_shapes(str(f))
+        assert len(shapes) == 2, [s.fill for s in shapes]
+        assert {s.fill for s in shapes} == {"#f7fafc", "#f9fbfd"}
+
+    def test_the_inline_fill_hint_needs_an_actual_inline_fill(self, tmp_path):
+        """Once fill resolved through the cascade, `text.fill` held a value for
+        class- and element-painted text too, so the hint fired on text that has
+        no inline fill at all - and contradicted the dark row printed beside
+        it."""
+        from stellars_claude_code_plugins.svg_tools.check_contrast import (
+            check_all_contrasts,
+            parse_svg_for_contrast,
+        )
+
+        f = self._write(
+            tmp_path,
+            "<style>text{fill:#3a4a5a}.body{fill:#3a4a5a}"
+            "@media (prefers-color-scheme: dark){.body{fill:#d8dde2}}</style>"
+            '<text x="20" y="40">element painted</text>',
+        )
+        texts, bgs, light, dark = parse_svg_for_contrast(str(f))
+        _results, hints = check_all_contrasts(texts, bgs, light, dark)
+        assert not [h for h in hints if "inline fill" in h], hints
+
+    def test_a_dark_gradient_reads_stops_declared_in_the_base_sheet(self, tmp_path):
+        """A dark `@media` block ADDS declarations. Resolving the overridden
+        gradient's stops against the dark map alone repeats, one level down,
+        the error `theme_paint` exists to prevent."""
+        from stellars_claude_code_plugins.svg_tools.check_css import (
+            check_theme_background,
+            parse_style_block,
+        )
+        import xml.etree.ElementTree as ET
+
+        svg = (
+            self.S + "<style>.d0{stop-color:#12181e}.d1{stop-color:#151b22}"
+            ".plate{fill:url(#gl)}"
+            "@media (prefers-color-scheme: dark){.plate{fill:url(#gd)}}</style>"
+            '<defs><linearGradient id="gl"><stop offset="0" stop-color="#f5f9fc"/>'
+            '<stop offset="1" stop-color="#eef3f8"/></linearGradient>'
+            '<linearGradient id="gd"><stop offset="0" class="d0"/>'
+            '<stop offset="1" class="d1"/></linearGradient></defs>'
+            '<rect class="plate" width="400" height="200"/></svg>'
+        )
+        light, darkmap, _c, meta = parse_style_block(svg)
+        out = check_theme_background(ET.fromstring(svg), "", meta["light_rules"], meta["dark_rules"])
+        assert out == [], [v.detail for v in out]
+
+    def test_a_fully_transparent_stop_is_not_part_of_the_ground(self, tmp_path):
+        """A stop at `stop-opacity="0"` paints nothing; averaging its colour in
+        invented a ground nobody sees and produced a false SOFT FAIL."""
+        from stellars_claude_code_plugins.svg_tools.check_css import paint_luma
+        import xml.etree.ElementTree as ET
+
+        root = ET.fromstring(
+            self.S + '<defs><linearGradient id="g">'
+            '<stop offset="0" stop-color="#12181e"/>'
+            '<stop offset="1" stop-color="#e9eef4" stop-opacity="0"/>'
+            "</linearGradient></defs></svg>"
+        )
+        assert paint_luma("url(#g)", root, {}) < 40.0
+
+    def test_finalize_never_raises_when_a_connector_checker_dies(self):
+        """`finalize`'s own docstring promises it never raises. The parse was
+        guarded; the nine checkers reading its output were not."""
+        from pathlib import Path
+
+        import stellars_claude_code_plugins.svg_tools.finalize as F
+
+        def boom(*_a, **_k):
+            raise RuntimeError("boom")
+
+        original = F.cc_arrowhead_axis
+        F.cc_arrowhead_axis = boom
+        try:
+            hard, _soft = F.finalize(Path("svg-infographics/examples/flow_diagram.svg"))
+        finally:
+            F.cc_arrowhead_axis = original
+        assert [f for f in hard if "[connectors] check failed" in f], hard
+
+    def test_the_crash_diagnostic_respects_the_block_budget(self):
+        """Bounding only the message put a 119-column line under a block whose
+        own rule is 80."""
+        from stellars_claude_code_plugins.svg_tools.finalize import _one_line
+
+        prefix = "connectors checker crashed: "
+        assert len(prefix + _one_line("x" * 300, 78 - len(prefix))) <= 80

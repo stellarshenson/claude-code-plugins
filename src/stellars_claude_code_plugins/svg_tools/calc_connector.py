@@ -409,6 +409,83 @@ def _tangent_unit(points, end):
     return (dx / length, dy / length)
 
 
+_CORNER_TURN_DEG = 30.0
+
+
+def _terminal_straight_run(points, end):
+    """Arc length from the endpoint back to the first corner, or 0 if none.
+
+    A corner is a turn above `_CORNER_TURN_DEG` between consecutive segments.
+    Sampled curves turn a degree or two per step and report their whole length;
+    an L route reports just its final leg.
+    """
+    pts = list(points) if end == "end" else list(reversed(points))
+    run = 0.0
+    prev = None
+    for i in range(len(pts) - 1, 0, -1):
+        ax, ay = pts[i]
+        bx, by = pts[i - 1]
+        seg = math.hypot(ax - bx, ay - by)
+        if seg == 0:
+            continue
+        heading = math.atan2(ay - by, ax - bx)
+        if prev is not None:
+            turn = abs(math.degrees((heading - prev + math.pi) % (2 * math.pi) - math.pi))
+            if turn > _CORNER_TURN_DEG:
+                break
+        prev = heading
+        run += seg
+    return run
+
+
+def _terminal_chord_unit(points, end, distance):
+    """Unit vector from the trim point to the endpoint - the direction the eye reads.
+
+    The stroke is trimmed by `distance` (the head length) to make room for the
+    arrowhead, so the last `distance` of curve is never drawn. On a curve whose
+    tangent turns over that stretch, the tangent AT the endpoint is not the
+    direction the visible stroke arrives from, and a head built on it reads as
+    detached from its own line. The chord across the trimmed stretch is what the
+    stroke's end and the head tip have in common, so a head built on it is
+    collinear with the drawn stroke on any curve.
+
+    Identical to `_tangent_unit` on a straight run, where chord and tangent agree.
+    Falls back to the tangent when the polyline is no longer than `distance`
+    (nothing is trimmed, so there is no chord).
+    """
+    if distance <= 0 or len(points) < 2 or _polyline_length(points) <= distance:
+        return _tangent_unit(points, end)
+
+    # The chord may not span a corner. On an L route whose final leg is shorter
+    # than the head, the trimmed stretch reaches back around the bend and the
+    # chord bisects it - measured up to 84 degrees off the true arrival, aiming
+    # the head diagonally at an edge it should enter square. Shorten the chord
+    # to the terminal straight run in that case; a smooth sample run (spline,
+    # manifold) turns ~1.6 degrees per step and is never clamped.
+    # Only ever LOWERS `distance`, and the guard above already established
+    # `0 < distance < _polyline_length(points)` - so neither bound can be
+    # breached here and re-testing them was two lines and a second arc-length
+    # pass that could not change the outcome.
+    run = _terminal_straight_run(points, end)
+    distance = min(distance, run) if run > 0 else distance
+
+    trimmed = _trim_polyline(points, distance, end)
+    if not trimmed:
+        return _tangent_unit(points, end)
+    if end == "end":
+        bx, by = trimmed[-1]
+        ax, ay = points[-1]
+    else:
+        bx, by = trimmed[0]
+        ax, ay = points[0]
+    dx = ax - bx
+    dy = ay - by
+    length = math.hypot(dx, dy)
+    if length == 0:
+        return _tangent_unit(points, end)
+    return (dx / length, dy / length)
+
+
 def _pchip_slopes_1d(xs, ys):
     """PCHIP slopes for a 1D series with strictly increasing xs.
 
@@ -969,12 +1046,19 @@ def _build_endpoint_info(points, end, head_len, head_half_h, draw_arrow):
     }
 
     if draw_arrow:
-        polygon = _arrowhead_polygon_world(tip[0], tip[1], angle_rad, head_len, head_half_h)
-        stem_back = (tip[0] - tx * head_len, tip[1] - ty * head_len)
+        # The head follows the chord across the trimmed stretch, not the tangent
+        # at the endpoint - the stroke stops `head_len` short, so the tangent
+        # there describes curve the viewer never sees. See _terminal_chord_unit.
+        hx, hy = _terminal_chord_unit(points, end, head_len)
+        head_angle_rad = math.atan2(hy, hx)
+        head_angle_deg = math.degrees(head_angle_rad)
+        polygon = _arrowhead_polygon_world(tip[0], tip[1], head_angle_rad, head_len, head_half_h)
+        stem_back = (tip[0] - hx * head_len, tip[1] - hy * head_len)
         info["arrow"] = {
             "polygon": polygon,
             "stem_back": stem_back,
-            "transform": f"translate({tip[0]:.2f}, {tip[1]:.2f}) rotate({angle_deg:.2f})",
+            "angle_deg": head_angle_deg,
+            "transform": f"translate({tip[0]:.2f}, {tip[1]:.2f}) rotate({head_angle_deg:.2f})",
             "head_len": head_len,
             "head_half_h": head_half_h,
         }
@@ -4962,7 +5046,9 @@ def print_manifold_result(result, args):
         dst = result["ends"][j]
         arrow_info = ""
         if strand["end"]["arrow"] is not None:
-            arrow_info = f"  arrow angle={strand['end']['angle_deg']:.1f}deg"
+            # The head's own angle, not the path tangent - they differ by up to
+            # 18deg on a fan strand, and an agent reading this line builds a head.
+            arrow_info = f"  arrow angle={strand['end']['arrow']['angle_deg']:.1f}deg"
         print(
             f"--- end {j}: fork ({fork[0]:.1f},{fork[1]:.1f}) "
             f"-> ({dst[0]:.1f},{dst[1]:.1f})  "

@@ -2,6 +2,8 @@
 
 Twelve tools shipped in `stellars-claude-code-plugins` pip package. Install once, use via `svg-infographics` CLI. No optional extras.
 
+The CLI is the deterministic floor of the validation split - construction, geometry, colour arithmetic, roster honesty, and nothing more. Legibility, semantic fit and aesthetic quality are generative judgments made by the validator process; the full split lives in `docs/acc-crit-claude-code-plugins.md` (repo root). A CLI PASS alone is never a ship decision.
+
 ## Stop-and-think warning-ack gate (MANDATORY)
 
 Every **producer** tool in svg-tools (generates an artefact - SVG snippet, coordinates, layout, render) blocks its primary output whenever any warning fires. Output resumes only after the caller acknowledges each warning with a deterministic token and terse reasoning. This is not optional and there is no bulk override.
@@ -58,6 +60,60 @@ svg-infographics --help
 
 Task tracking MANDATORY: TaskCreate/TaskUpdate when running validation. One task per checker run + fix cycle.
 
+## The checklist (`finalize --checklist`)
+
+Findings tell you what is wrong. They cannot tell you what was never looked at, and an aspect nobody checks reads exactly like one that passed - that is how a 17-file deck shipped with a dark-mode block nobody had measured for whether it changed anything.
+
+`finalize --checklist` prints a per-aspect roster on **stderr**, one block per file, ahead of the findings. The findings go to stderr too while the ack gate is holding output, so `2>/dev/null` discards both. The `--json` report is on stdout, but it appears only once every warning is acked - until then the gate withholds it and exits 2, so a bare `| jq` gets nothing.
+
+Four states, and the differences between them are the whole point:
+
+- **PASS** - the layer ran, the subject exists in the file, nothing was found
+- **FAIL** - a finding carries this row's rule, counted per tier in the row note (`4 HARD`, or `1 HARD, 3 SOFT` when mixed)
+- **NA** - the layer ran and the file holds nothing to judge; the note names the missing input. A row is gated on *every* input its checker consumes, so `endpoints snap to edges` reads `NA (no card-rule <rect>)` rather than passing on a card-relative property with nothing to relate to. Each note names the RULE the layer applies, never the contents of the file - a note that claimed "no card `<rect>`s" was falsified by any file full of small ones. The three that need their rule spelled out:
+  - `card-rule <rect>` - a `<rect>` whose class contains `card` or `box`, **or** which exceeds 50x50 in *both* axes. Two 90x40 node rects match neither, so the connector layer has no edge to snap to and says so
+  - `canvas-covering <rect>` - a `<rect>` covering at least 92% of the canvas from within 4% of its origin, opaque once `fill-opacity`, `opacity`, any ancestor `opacity`, `rgba()` alpha and a gradient's stops are all accounted for (over 0.1), and none of: a `slot` placeholder, `data-placeholder="true"`, a `filter` (the house `paper-grain` overlay is an opaque full-bleed rect painted last on purpose), a `<pattern>` fill (the scaffold's guide grid), or anything inside `<defs>`/`<symbol>`/`<marker>`/`<pattern>`/`<mask>`/`<clipPath>`, whose contents paint where they are REFERENCED rather than in place. The LAST such rect in document order wins - that is the one on top. **Rects only**: a ground drawn as a `<path>` reads NA rather than being guessed at, because a path's `d` cannot be boxed reliably without walking every command
+  - `light/dark pair to compare` - one selector the light sheet paints AND the dark block redeclares, with both values readable as colours. A dark block that redeclares only selectors the light sheet never paints has nothing to measure
+- **SKIP** - the layer produced no verdict. Six causes, and the note distinguishes them: a layer that never executed because an earlier one aborted the pipeline (`not run` - malformed XML and a crashed parser both do this), a crashed checker that reports one diagnostic and nothing else (`checker crashed`, with the exception printed under the block), a probe that could not read the file well enough to say whether the row even has a subject (`inventory unavailable` - which is not the same as having none), geometry the connector parser declined to read (`connectors the parser skipped` - named connectors or arrowheads under a `transform`; the arrows exist, this layer cannot see them, and the overlaps layer names them by coordinate), the renderer failing on this file (`renderer unavailable` - per file, so a sibling's bad XML no longer costs this file its layer), and `--no-visual` switching the render layer off
+
+Rows sit in the group they belong to, with one exception: `other <layer> findings` catch-alls live in a trailing `other` group, so a catch-all can never render underneath a named `PASS` row that contradicts it.
+
+```
+CHECKLIST  01-four-situations.svg
+  structure
+    [PASS] xml well-formed
+    [PASS] no element overlaps
+  theme
+    [PASS] dark block present
+    ...
+  contrast
+    [FAIL] text meets WCAG AA  (2 HARD)
+  connectors
+    [PASS] no zero-length segments
+    [ NA ] endpoints snap to edges  (no card-rule <rect>)
+    ...
+    [FAIL] head continues its stroke  (4 HARD)
+    [PASS] labels clear the route
+    [PASS] routes do not cross
+  layout
+    [FAIL] alignment and rhythm  (3 SOFT)
+  render
+    [SKIP] rendered geometry  (--no-visual)
+  other
+    [FAIL] other connectors findings  (1 SOFT)
+
+  24 aspects: 15 PASS  4 FAIL  4 NA  1 SKIP
+  4 failing rows: 2 with hard findings, 2 soft-only
+```
+
+(`...` marks rows elided here; the real block always prints all of them. A block with a `SKIP` the operator did not ask for gains one more line naming the cause, e.g. `7 unjudged (7 checker crashed) - these are not passes`.)
+
+Gating several files at once adds a final `deck` block for the cross-file consistency checks, which belong to no single file and so appear in no per-file roster. It carries the same four states: `NA (no cards to compare across files)` when no file holds an element the checker reads as a card, since both of its comparisons then have zero subjects and an empty result is not agreement. Its findings are classed `SOFT-CONSISTENCY`, so one `--ack-class SOFT-CONSISTENCY=<reason>` covers the block.
+
+A `SKIP` you did not ask for is not a pass and not a clean bill - it is the absence of a verdict, and on a file that should have exercised that layer it is the first thing to chase. An `other <layer> findings` row catches anything no named row claims, so the roster can never be quieter than the findings printed beneath it.
+
+The gate's verdict line answers to the roster on every branch. Zero findings or only-acked SOFT findings beside an unasked SKIP prints `NOT VERIFIED - ... N not judged (<count> <cause>)` and exits 1; the HARD path prints the same NOT VERIFIED lines after the batch-fix protocol, so the editing pass is planned against the unjudged aspects too instead of meeting them a re-run later. A fully judged file on an acked run prints `OK - findings acked, all aspects judged.` - uniform and mixed runs alike. A SKIP the operator asked for (`--no-visual`) stays shippable with exit 0. `--json` carries the per-file `skipped` map of aspect to cause plus `totals` on both branches; a cause starting with `--` names an asked-for skip, and `totals` of `{"hard": 0, "soft": 0}` with exit 1 is a reachable state (findings clean, aspects unjudged), so a consumer reads the exit code, not totals alone.
+
 ## Failure severity ladder
 
 Three severities. Only HARD FAIL blocks delivery.
@@ -76,7 +132,8 @@ Geometry defects where rendered output is visually broken:
 2. **Edge-on-edge overlap** — two strokes crossing wrongly (axis through card border, connector through unrelated divider). Routing bug. Hard fail unless justified
 3. **Text-outside-container** — text extends past parent rectangle. Layout overflow. Hard fail
 4. **Connector-through-content** — connector mid-segment crosses content group. Hard fail
-5. **XML malformation** — broken parse (e.g. `--` in comment). Hard fail
+5. **Arrowhead off its own line** (`[arrowhead-axis]`) — head axis more than 10 degrees off the chord from its connector's endpoint to the tip. Reads as a bent flag rather than an arrow. Hard fail
+6. **XML malformation** — broken parse (e.g. `--` in comment). Hard fail
 
 ### Justifying a hard fail
 
@@ -171,7 +228,15 @@ svg-infographics connectors --svg <file>
 
 ## Tool: css
 
-CSS compliance: all colours CSS-controlled, no inline fills on text, no forbidden colours (`#000000`/`#ffffff`), dark-mode overrides present.
+CSS compliance: all colours CSS-controlled, no inline fills on text, no forbidden colours (`#000000`/`#ffffff`), dark-mode overrides present *and effective*.
+
+Three theme rules, and two of them go past presence to measurement - a dark block that exists and does nothing passes every presence check:
+
+- `inert-dark-mode` - most overrides move luminance less than 32/255, so the file renders the same in both themes. A few deliberately theme-invariant colours (text on an accent that does not itself invert) are fine; a majority of them is not
+- `unthemed-background` - the ground fails either half of the inversion test: its dark value must move at least 96/255 in brightness **and** land below mid-grey. `#d0d0d0 → #787878` crosses mid-grey but only moves 88, so it still fails. The two values are read through the full cascade - id beats class beats element beats presentation attribute, equal specificity decided by source order - and the dark value is the light winner *unless a dark declaration of equal-or-higher specificity displaces it*, because `@media` adds declarations rather than replacing the sheet. So `#bg-plate { fill: light }` with `.plate { fill: dark }` in the dark block does NOT invert: the id rule keeps winning under the query. A plate painted by a presentation `fill` (which no media query can reach, whatever its value - including `url(#gradient)`) measures identical in both themes and fails here, with the remedy naming the attribute
+- `missing-dark-block` - no `@media (prefers-color-scheme: dark)` block at all
+- `missing-dark-override` - a rule paints (`fill` or `stroke` set to something other than `none`/`transparent`, above the 0.1 composite threshold) and the dark block either never names it or names it without repainting that property. Judged per property and for **every selector shape** - `text { fill: … }` and `#plate { fill: … }` go unthemed exactly as a class does
+- `forbidden-color` - `#000`/`#fff` in any rule, any presentation attribute, or any inline `style="fill:…"`. `<mask>` and `<clipPath>` contents are exempt (white there is an alpha value); `<defs>` is **not** - a `<marker>`, `<symbol>`, `<pattern>` or gradient stop inside it paints wherever it is referenced
 
 ```bash
 svg-infographics css --svg <file>                          # check
@@ -293,14 +358,12 @@ Prints `<path>` on stdout, bbox + scale on stderr.
 
 ### Automated
 
-- [ ] `validate` — XML + baseline clean
-- [ ] `overlaps` — all violations reviewed
-- [ ] `contrast` — zero FAIL in production
-- [ ] `alignment` — topology passes
-- [ ] `connectors` — no dangling / zero-length
-- [ ] `css` — no inline fills, no forbidden colours, dark mode verified
-- [ ] `collide` — no connector crossings (when manifold present)
-- [ ] Browser visual check via Playwright
+Do not re-list the machine-checkable rows by hand - `finalize --checklist` owns them, and a second copy here drifts out of step with the checkers. Run it and read the roster:
+
+- [ ] `finalize --checklist` — every row `PASS` or `NA`; no `FAIL`, and no `SKIP` you did not ask for
+- [ ] Browser visual check via Playwright (drop `--no-visual` so the render row is judged rather than skipped)
+
+The manual boxes above stay manual: they cover intent (transparent background, guide grid, z-order, unicode glyphs, 7px minimum, card fill opacity) that no checker decides.
 
 ## Multi-agent validation workflow
 

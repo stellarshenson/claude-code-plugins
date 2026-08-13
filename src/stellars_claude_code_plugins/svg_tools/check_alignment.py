@@ -123,8 +123,17 @@ def parse_svg_elements(filepath: str) -> list[PositionedElement]:
     return elements
 
 
+# The house grid, and how far off it a coordinate may sit. One home: the CLI
+# default and the finalize gate are the same dial, and two copies of a number
+# drift the moment one of them is tuned.
+DEFAULT_GRID = 5
+DEFAULT_GRID_TOLERANCE = 0.5
+
+
 def check_grid_snapping(
-    elements: list[PositionedElement], grid: int, tolerance: float = 0.5
+    elements: list[PositionedElement],
+    grid: int = DEFAULT_GRID,
+    tolerance: float = DEFAULT_GRID_TOLERANCE,
 ) -> list[str]:
     """Check if element coordinates snap to grid multiples.
 
@@ -860,12 +869,17 @@ def main():
         description="SVG alignment, grid snapping, and topology checker"
     )
     parser.add_argument("--svg", required=True, help="SVG file to check")
-    parser.add_argument("--grid", type=int, default=5, help="Grid step in px (default: 5)")
+    parser.add_argument(
+        "--grid",
+        type=int,
+        default=DEFAULT_GRID,
+        help=f"Grid step in px (default: {DEFAULT_GRID})",
+    )
     parser.add_argument(
         "--tolerance",
         type=float,
-        default=0.5,
-        help="Tolerance for grid snapping in px (default: 0.5; pass 0 to list "
+        default=DEFAULT_GRID_TOLERANCE,
+        help=f"Tolerance for grid snapping in px (default: {DEFAULT_GRID_TOLERANCE}; pass 0 to list "
         "every sub-pixel offender individually)",
     )
     args = parser.parse_args()

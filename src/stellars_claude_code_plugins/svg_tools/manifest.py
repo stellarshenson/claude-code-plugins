@@ -572,15 +572,6 @@ def _count_components_in_svg(root: ET.Element) -> dict[str, int]:
     return counts
 
 
-def _has_dark_mode(root: ET.Element) -> bool:
-    """True when the SVG has a @media (prefers-color-scheme: dark) rule."""
-    for style in root.iter("style"):
-        text = (style.text or "") + "".join((c.text or "") for c in style)
-        if "prefers-color-scheme: dark" in text:
-            return True
-    return False
-
-
 def check(decl: Declaration, svg_path: Path) -> CheckReport:
     """Compare a flag-based declaration to an SVG; return findings.
 
@@ -608,7 +599,12 @@ def check(decl: Declaration, svg_path: Path) -> CheckReport:
                 )
             )
 
-    if not _has_dark_mode(root):
+    # Via the CSS parser, not a substring test: a local one disagreed with it in
+    # both directions - it missed the legal `(prefers-color-scheme : dark)` and
+    # counted a block that had been commented out.
+    from stellars_claude_code_plugins.svg_tools.check_css import has_dark_block
+
+    if not has_dark_block(svg_path.read_text(encoding="utf-8", errors="replace")):
         findings.append(
             CheckFinding(
                 severity="FAIL",

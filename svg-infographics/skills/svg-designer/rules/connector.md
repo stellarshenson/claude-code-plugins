@@ -44,7 +44,15 @@ When passing `--src-rect` and / or `--tgt-rect` to `calc_connector --mode l` / `
 - **`ROUTE-THROUGH-SOURCE` / `ROUTE-THROUGH-TARGET`** - the routed path travels through the interior of the src / tgt rect. The strongest symptom of an infeasible direction pair.
 - **`SHORT-FIRST-SEGMENT` / `SHORT-LAST-SEGMENT`** - axis and sign right, but the leg is under the 28px clarity floor (suppressed with `--stem-min 0`).
 
-Post-hoc, `svg-infographics connectors` (and `finalize`, as HARD findings) mirror these for hand-written SVGs: `[l-chamfer-exit]` (first segment parallel to the origin edge), `[edge-arrival]` (final segment parallel to the edge it terminates on), `[arrowhead-edge]` (arrowhead tip on a card edge pointing along it instead of into the card).
+Post-hoc, `svg-infographics connectors` (and `finalize`, as HARD findings) mirror these for hand-written SVGs: `[l-chamfer-exit]` (first segment parallel to the origin edge), `[edge-arrival]` (final segment parallel to the edge it terminates on), `[arrowhead-edge]` (arrowhead tip on a card edge pointing along it instead of into the card), `[arrowhead-axis]` (head rotated off the stroke it terminates - see below).
+
+## The head continues its own stroke
+
+The stroke stops one head length short of the tip so the head has room, so the last stretch of curve is never drawn. The head must follow the CHORD across that trimmed stretch - the direction the stroke arrives from - not the tangent at the endpoint, which describes curve nobody sees. On a straight run the two agree; on a curve whose tangent turns near the target they diverge, and a head built on the tangent reads as a bent flag hanging off the line.
+
+- The tool does this for you - the head it returns follows the chord the stroke arrives on. Paste `trimmed_path_d` and the polygon together; never re-derive an angle. A small tangent kink remains where stroke meets head, hidden under the head's width
+- `[arrowhead-axis]` fires (HARD) when a head's axis is more than 10 degrees off the chord from its connector's endpoint to the tip
+- Highest risk on manifold fans, where every outer strand must swing from the spine direction to the target approach in its last few pixels. Shipped examples ran 18-22 degrees off before the chord rule; the straight middle strand of the same fan was exact. A curved arrival now enters up to ~21 degrees off square, so straighten the last 15-20px of a strand where square arrival carries meaning
 
 Declaration gate: **`MISSING-START-DIR-LCHAMFER` / `MISSING-END-DIR-LCHAMFER`** (pre-routing) - fires whenever `src_rect` / `tgt_rect` is supplied without the corresponding direction. Geometric inference can then exit / arrive parallel to an edge. Fix by passing the direction; ack only with reason `'inferred-axis-intended'`.
 
@@ -68,7 +76,7 @@ Arrowhead must be AT MOST 40% of total connector length. Equivalently: stem leng
 
 ## Arrowhead polygon
 
-- Size: 8-12 wide, 6-9 tall. Tool default `--head-size 8,6` is correct for most cases.
+- Size: 8-12 wide, 6-9 tall. Tool default is `--head-size 10,5`.
 - Filled triangle, no stroke. Use `.arrow-fill` class for theming.
 - Opacity: 0.7-0.9 on both strokes and polygon. Never 1.0 (reads as a solid shape).
 - Dark-mode override: accent-colour fill for light, brighter tint for dark. Always paired with the connector stroke colour.

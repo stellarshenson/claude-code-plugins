@@ -33,6 +33,17 @@ AUXILIARY_GROUPS: tuple[str, ...] = (
 )
 
 
+# How far from the canvas origin a plate may start and still be the plate.
+# Exported because a caller that normalises coordinates itself needs the same
+# number for its own bounds, and two copies drift silently.
+BACKPLATE_ORIGIN_TOL = 0.04
+
+# How much of the canvas a rect must cover to be the plate. Named for the same
+# reason as the origin tolerance: the pair is one dial, and one half sitting as
+# a bare literal is how the copies drift apart.
+BACKPLATE_COVER_MIN = 0.92
+
+
 def is_backplate_geometry(
     x: float, y: float, w: float, h: float, canvas_w: float, canvas_h: float
 ) -> bool:
@@ -48,10 +59,10 @@ def is_backplate_geometry(
     if canvas_w <= 0 or canvas_h <= 0:
         return False
     return (
-        w >= 0.92 * canvas_w
-        and h >= 0.92 * canvas_h
-        and x <= 0.04 * canvas_w
-        and y <= 0.04 * canvas_h
+        w >= BACKPLATE_COVER_MIN * canvas_w
+        and h >= BACKPLATE_COVER_MIN * canvas_h
+        and x <= BACKPLATE_ORIGIN_TOL * canvas_w
+        and y <= BACKPLATE_ORIGIN_TOL * canvas_h
     )
 
 

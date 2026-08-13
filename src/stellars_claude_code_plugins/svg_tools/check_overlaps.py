@@ -23,6 +23,8 @@ import math
 import re
 import xml.etree.ElementTree as ET
 
+from stellars_claude_code_plugins.svg_tools.check_css import is_display_none
+
 # ---------------------------------------------------------------------------
 # Per-role padding table (outer bbox = inner bbox + padding on all sides)
 # ---------------------------------------------------------------------------
@@ -582,9 +584,11 @@ def parse_svg(filepath: str) -> list[Element]:
             _mark_descendants(child)
             continue
 
-        # hidden authoring aids (guide-grid etc.) are not visual elements
-        style_attr = (child.get("style") or "").replace(" ", "").lower()
-        if (child.get("display") or "").strip().lower() == "none" or "display:none" in style_attr:
+        # hidden authoring aids (guide-grid etc.) are not visual elements -
+        # one shared predicate: three layers gate on it, and the per-layer
+        # substring copy here silently dropped visible subtrees whose style
+        # carried a `*-display:none` custom property
+        if is_display_none(child):
             _mark_descendants(child)
             continue
 
