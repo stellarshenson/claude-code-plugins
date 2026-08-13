@@ -20,3 +20,4 @@ Background job logs for this repo.
 - `round11-build.log` - Round 11: merge all batches into `synthetic_mt.parquet` (per-language row counts only); `synth_mt.py build`
 - `round11-synthcal.log` - Round 11 integration eval over the doubled 2,119-row synthetic set (de bridge off); `round9.py synthcal`
 - `round11-synthcal-de.log` - Round 11 re-eval after installing `translate-de_en` (de bridge active, 0 skips); `round9.py synthcal`
+- `ci-watch-a2e3b62.log` - GitHub Actions poll for the cascade-consolidation commit a2e3b62 (30s cadence until the Build run completed success)
