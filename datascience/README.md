@@ -26,6 +26,8 @@ Unlike ad-hoc notebook cleanups, this plugin treats the notebook as a standardis
 | `/datascience:update-prompt` | Update a prompt, system instruction, or agent definition by applying a prompt engineering technique |
 | `/datascience:challenge` | Full psychological prompting stack for difficult problems - stakes, incentive, competitive framing |
 | `/datascience:hypothesis` | Write or extend a hypothesis-driven experiments log and its SOTA design doc - record a round, fan out the next one, or conclude the design |
+| `/datascience:dataset` | Acquire a dataset into `data/external/<task>-datasets/` - gitignored archive plus tracked licence sidecar rendered from one spec - or audit the corpora a project already holds |
+| `/datascience:papers` | Download every cited paper and write a structured digest into `references/papers/` - the paper reference library for design, experiment and hypothesis docs |
 | `/datascience:popular-science` | Create or update an accessible, well-sourced popular-science article or explainer from technical work - spine, sourced-and-numbered claims, best-in-class figures, arc-back kicker |
 | `/datascience:adversarial-review` | Hostile independent review of an experiments log, pipeline, article or spec - the data-science entry point into the `devils-advocate:adversarial-review` skill (requires the `devils-advocate` plugin) |
 
@@ -42,6 +44,7 @@ Auto-triggered based on context.
 | `prompt-engineering` | Crafting system prompts, agent instructions, or LLM prompts |
 | `hypothesis` | Writing up an experiment, recording a hypothesis and result, fanning out the next round from persona generators, deciding which approach won, or drafting an experiments log / SOTA design doc |
 | `dataset` | Downloading, vendoring or documenting a public or private corpus into a `data/external/<task>-datasets/` folder, or auditing what data a project holds and under what licence |
+| `papers` | A source is cited in a design / experiment / hypothesis / research doc, recommended by a research agent, or handed over by the user - downloads it and writes the structured digest with a resolvable online provenance link |
 
 ## Prompt engineering techniques
 
@@ -96,4 +99,5 @@ Create a new project, scaffold the first notebook, then review it:
 - [`skills/datascience/SKILL.md`](skills/datascience/SKILL.md) - project conventions, naming, file format standards
 - [`skills/hypothesis/SKILL.md`](skills/hypothesis/SKILL.md) - hypothesis-driven experiments log + SOTA doc structure, the per-hypothesis template, and canonical-doc-across-runs management; four worked examples under [`skills/hypothesis/examples/`](skills/hypothesis/examples/) (the `wmd-docdistance-*` pair is the canonical shape); fanout mechanics in [`skills/hypothesis/references/fanout.md`](skills/hypothesis/references/fanout.md) with persona generators under [`skills/hypothesis/generators/`](skills/hypothesis/generators/)
 - [`skills/dataset/SKILL.md`](skills/dataset/SKILL.md) - two artifacts per corpus (gitignored `dataset-<name>.zip`, tracked `dataset-<name>.md` sidecar) in `data/external/<task>-datasets/` (location confirmed with the user first), the licence-first admission gate applied before downloading, and the restriction fields a private corpus carries; the sidecar is rendered from the fetcher's spec so it cannot drift from what was downloaded. Prototype sidecars and the fetcher skeleton under [`skills/dataset/examples/`](skills/dataset/examples/)
+- [`skills/papers/SKILL.md`](skills/papers/SKILL.md) - paper reference library: every cited source downloads into `references/papers/` as a verified PDF plus a structured digest (overview, main findings, key takeaways, tags) whose `**Source**` is a resolvable online link, never a local path - a citation without both artifacts is a defect
 - [copier-data-science](https://github.com/stellarshenson/copier-data-science) - project scaffolding template used by `/datascience:new-project` and `/datascience:fix-project`
