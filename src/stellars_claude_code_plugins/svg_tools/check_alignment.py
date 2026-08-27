@@ -367,9 +367,33 @@ def _element_bbox(el: ET.Element, ns: str) -> BBox | None:
     return None
 
 
+# Coordinate count each path command consumes; used to stop cleanly on
+# truncated path data instead of indexing past the end of the token list.
+_PATH_ARGS = {
+    "M": 2,
+    "m": 2,
+    "L": 2,
+    "l": 2,
+    "H": 1,
+    "h": 1,
+    "V": 1,
+    "v": 1,
+    "C": 6,
+    "c": 6,
+    "S": 4,
+    "s": 4,
+    "Q": 4,
+    "q": 4,
+    "T": 2,
+    "t": 2,
+    "A": 7,
+    "a": 7,
+}
+
+
 def _path_bbox(d: str) -> BBox | None:
     """Compute bounding box from SVG path data string."""
-    tokens = re.findall(r"[MmLlHhVvCcSsQqTtAaZz]|[-+]?\d*\.?\d+", d)
+    tokens = re.findall(r"[MmLlHhVvCcSsQqTtAaZz]|[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?", d)
     if len(tokens) < 3:
         return None
 
@@ -388,6 +412,12 @@ def _path_bbox(d: str) -> BBox | None:
             continue
 
         val = float(t)
+
+        # Truncated path data - stop where a renderer stops rather than
+        # reading past the last token or taking a command letter as a number.
+        need = _PATH_ARGS.get(cmd, 1)
+        if i + need > len(tokens) or any(tok.isalpha() for tok in tokens[i : i + need]):
+            break
 
         if cmd == "M":
             cx, cy = val, float(tokens[i + 1])

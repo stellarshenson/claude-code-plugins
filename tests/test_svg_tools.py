@@ -3585,6 +3585,31 @@ class TestCheckAlignment:
         listed = check_grid_snapping(els_off, grid=5, tolerance=0)
         assert len(listed) == 5  # explicit zero tolerance lists individually
 
+    def test_truncated_path_data_does_not_crash(self):
+        """A path whose last command is short of coordinates must bound the box
+        at the last complete segment, the way a renderer does - example 66 ships
+        a 4-coord C and used to raise IndexError mid-run."""
+        from stellars_claude_code_plugins.svg_tools.check_alignment import _path_bbox
+
+        bbox = _path_bbox("M60,108 C65,104 73,106 81,104 C85,106 86,108")
+        assert (bbox.x, bbox.y, bbox.w, bbox.h) == (60, 104, 21, 4)
+
+        # a command letter standing where a coordinate belongs stops the walk too
+        for d in ("M0,0 L10,10 L", "M0,0 H", "M0,0 A5 5 0 0 1 10", "M0,0 H10 m 5"):
+            assert _path_bbox(d) is not None, f"truncated path returned nothing: {d}"
+
+        # complete commands are untouched
+        full = _path_bbox("M0,0 C1,1 2,2 3,3")
+        assert (full.x, full.y, full.w, full.h) == (0, 0, 3, 3)
+
+    def test_exponent_coordinates_are_one_token(self):
+        """Inkscape writes 7.996e-4; the old token regex split that into
+        7.996 and -4, shifting every later argument out of phase."""
+        from stellars_claude_code_plugins.svg_tools.check_alignment import _path_bbox
+
+        bbox = _path_bbox("M 0,0 l 1e2,5.0e-1 z")
+        assert (bbox.x, bbox.y, bbox.w, bbox.h) == (0, 0, 100, 0.5)
+
 
 class TestExampleSVGs:
     """Smoke tests running each validator against real example SVGs. 4 -> 1
@@ -3592,7 +3617,7 @@ class TestExampleSVGs:
 
     @pytest.fixture
     def example_svgs(self):
-        examples = list(EXAMPLES_DIR.glob("*.svg"))
+        examples = sorted(EXAMPLES_DIR.glob("*.svg"))
         assert len(examples) > 0, f"No example SVGs in {EXAMPLES_DIR}"
         return examples[:5]
 

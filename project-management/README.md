@@ -2,7 +2,7 @@
 
 Micro project management for a repository, a personal project or a small team. Acceptance criteria and defects live as markdown checklists in the repo, every item carrying a permanent id, an author handle and a triage level, with every derived fact computed on read by the `pm-tools` CLI.
 
-It removes the second system. A small project does not need a hosted tracker to know what is left and what is broken, but it does need more than a `TODO.md` that nobody trusts - ids that survive a reorder, a status that cannot disagree with itself, and a log that keeps the attempts that failed. This is that, entirely inside the repository and entirely agent-driven. It will not replace Jira, and it is not trying to.
+Everything stays in the repository and the agent does the editing. Ids survive a reorder and a category move. Status is the checkbox, so no second copy can contradict it. The log is append-only and keeps the attempts that failed. It is not a replacement for a hosted tracker.
 
 ## Installation
 
