@@ -45,7 +45,7 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-08-13 criterion added
 - [ ] **Process: semantic fit** - the graphic says what the hypothesis claims; metaphor and flow fit the content
   - log: 2026-08-13 criterion added
-- [ ] **Process: examples bar** - side-by-side against `svg-infographics/examples/` production references; "readable infographic" is a generative judgment
+- [ ] **Process: examples bar** - side-by-side against `plugins/svg-infographics/examples/` production references; "readable infographic" is a generative judgment
   - log: 2026-08-13 criterion added
 - [ ] **Process: label truth** - labels and numbers match the source content the graphic summarizes
   - log: 2026-08-13 criterion added

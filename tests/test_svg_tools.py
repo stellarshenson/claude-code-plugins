@@ -15,7 +15,7 @@ import pytest
 TOOLS_DIR = (
     Path(__file__).resolve().parent.parent / "src" / "stellars_claude_code_plugins" / "svg_tools"
 )
-EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "svg-infographics" / "examples"
+EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "plugins" / "svg-infographics" / "examples"
 
 
 # ---------------------------------------------------------------------------
@@ -2001,13 +2001,20 @@ class TestManifoldConnector:
     def test_cli_manifold_auto_tune(self):
         """--auto-tune runs end-to-end and reports the tension move in stdout."""
         r = self._run(
-            "--mode", "manifold",
-            "--starts", "[(50,100),(50,200),(50,300)]",
-            "--ends", "[(400,200)]",
-            "--spine-start", "(200,200)",
-            "--spine-end", "(300,200)",
-            "--shape", "spline",
-            "--tension", "0.5",
+            "--mode",
+            "manifold",
+            "--starts",
+            "[(50,100),(50,200),(50,300)]",
+            "--ends",
+            "[(400,200)]",
+            "--spine-start",
+            "(200,200)",
+            "--spine-end",
+            "(300,200)",
+            "--shape",
+            "spline",
+            "--tension",
+            "0.5",
             "--auto-tune",
         )
         assert r.returncode == 0, r.stderr
@@ -3640,7 +3647,7 @@ class TestExampleSVGs:
 class TestPluginStructure:
     """svg-infographics plugin directory layout. 9 tests -> 2."""
 
-    PLUGIN_DIR = Path(__file__).resolve().parent.parent / "svg-infographics"
+    PLUGIN_DIR = Path(__file__).resolve().parent.parent / "plugins" / "svg-infographics"
 
     def test_structure(self):
         """plugin.json, README, skills, workflow reference, commands, tools
@@ -7644,7 +7651,7 @@ class TestRound8ContrastCascade:
         )
 
         assert resolve_color("#3a4c") == "#33aa44"
-        f = self._write(tmp_path, "<style>text{fill:#3a4c}</style><text x=\"5\" y=\"5\">t</text>")
+        f = self._write(tmp_path, '<style>text{fill:#3a4c}</style><text x="5" y="5">t</text>')
         texts, _b, _l, _d = parse_svg_for_contrast(str(f))
         assert texts[0].fill == "#33aa44"
 
@@ -7704,7 +7711,9 @@ class TestRound8ContrastCascade:
             '<rect class="plate" width="400" height="200"/></svg>'
         )
         light, darkmap, _c, meta = parse_style_block(svg)
-        out = check_theme_background(ET.fromstring(svg), "", meta["light_rules"], meta["dark_rules"])
+        out = check_theme_background(
+            ET.fromstring(svg), "", meta["light_rules"], meta["dark_rules"]
+        )
         assert out == [], [v.detail for v in out]
 
     def test_a_fully_transparent_stop_is_not_part_of_the_ground(self, tmp_path):
@@ -7734,7 +7743,7 @@ class TestRound8ContrastCascade:
         original = F.cc_arrowhead_axis
         F.cc_arrowhead_axis = boom
         try:
-            hard, _soft = F.finalize(Path("svg-infographics/examples/flow_diagram.svg"))
+            hard, _soft = F.finalize(Path("plugins/svg-infographics/examples/flow_diagram.svg"))
         finally:
             F.cc_arrowhead_axis = original
         assert [f for f in hard if "[connectors] check failed" in f], hard

@@ -1,0 +1,15 @@
+{
+  "name": "project-management",
+  "version": "1.7.3",
+  "description": "Micro project management for repositories, personal projects and small teams - acceptance criteria and defects tracked as markdown checklists with permanent ids, author handles, severity triage and computed reports, all through the deterministic pm-tools CLI",
+  "license": "MIT",
+  "author": "Stellars Henson",
+  "keywords": ["acceptance-criteria", "defects", "bug-tracker", "requirements", "triage", "tracking"],
+  "skills": "./skills/",
+  "commands": "./commands/",
+  "interface": {
+    "displayName": "Project Management",
+    "shortDescription": "Acceptance criteria and defect tracking in markdown, with permanent ids, triage and computed reports",
+    "developerName": "Stellars Henson"
+  }
+}

@@ -62,8 +62,8 @@ make publish
 
 Read `vN` from `pyproject.toml`, then write that exact number into all 22 plugin strings, spread across 15 files:
 
-- all 7 `<plugin>/.claude-plugin/plugin.json` `"version"` fields
-- all 7 `<plugin>/kimi.plugin.json` `"version"` fields - the Kimi Code manifests carry the plugin version too, and they are the seven that get forgotten
+- all 7 `plugins/<plugin>/.claude-plugin/plugin.json` `"version"` fields
+- all 7 `plugins/<plugin>/kimi.plugin.json` `"version"` fields - the Kimi Code manifests carry the plugin version too, and they are the seven that get forgotten
 - `.claude-plugin/marketplace.json` `metadata.version` plus every one of the 7 plugin-entry `"version"` fields
 
 Do not hand-count. Derive the set from the tree, so a plugin or manifest added later is picked up automatically:

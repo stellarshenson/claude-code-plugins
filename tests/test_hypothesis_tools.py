@@ -26,7 +26,7 @@ from stellars_claude_code_plugins.hypothesis.hypothesis_tools import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-EXAMPLES = ROOT / "datascience" / "skills" / "hypothesis" / "examples"
+EXAMPLES = ROOT / "plugins" / "datascience" / "skills" / "hypothesis" / "examples"
 
 QUANTIZED = EXAMPLES / "quantized-inference-experiments.md"
 WMD = EXAMPLES / "wmd-docdistance-experiments.md"

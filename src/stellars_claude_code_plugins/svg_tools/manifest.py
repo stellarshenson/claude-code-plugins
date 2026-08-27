@@ -56,7 +56,7 @@ import xml.etree.ElementTree as ET
 
 # Known component types. Adding a new type requires:
 #   1. new entry here
-#   2. new file at svg-infographics/skills/svg-designer/rules/<type>.md
+#   2. new file at plugins/svg-infographics/skills/svg-designer/rules/<type>.md
 #   3. count / role logic in _count_components_in_svg
 KNOWN_COMPONENT_TYPES = {
     "card",

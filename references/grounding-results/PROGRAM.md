@@ -165,7 +165,7 @@ public CLI flag shape (additions only).
 ### Skill updates
 
 - **Rule: "agreement beats magnitude"** (hypothesis H8)
-  - Scope: `document-processing/skills/validate-document/SKILL.md`.
+  - Scope: `plugins/document-processing/skills/validate-document/SKILL.md`.
   - Acceptance: explicit rule that confidence = agreement across
     layers, NOT peak score on a single layer. Include example: "claim
     with only semantic 0.90, lexical all zero = read the pointer, do
@@ -175,7 +175,7 @@ public CLI flag shape (additions only).
   - Depends on: H1 (agreement score must exist first).
 
 - **Rule: "contradiction flag is the final word"** (hypothesis H9)
-  - Scope: `document-processing/skills/validate-document/SKILL.md`.
+  - Scope: `plugins/document-processing/skills/validate-document/SKILL.md`.
   - Acceptance: explicit rule that `numeric_mismatches` or
     `entity_mismatches` non-empty = CONTRADICTED verdict, overriding
     any positive score. Include a numeric-mismatch example in the
@@ -185,7 +185,7 @@ public CLI flag shape (additions only).
   - Depends on: H2.
 
 - **Rule: "re-recommend semantic on struggle" (strengthen)** (hypothesis H10)
-  - Scope: `document-processing/skills/validate-document/SKILL.md`.
+  - Scope: `plugins/document-processing/skills/validate-document/SKILL.md`.
   - Acceptance: existing rule tightened to require EXPLICIT user
     consent ask (not silent auto-enable) when > 25% UNCONFIRMED or any
     claim in the 0.5-0.85 fuzzy + 0.2-0.5 BM25 "almost grounded" zone.

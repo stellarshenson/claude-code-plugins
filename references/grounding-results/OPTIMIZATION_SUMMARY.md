@@ -207,7 +207,7 @@ Implementation was ~30 lines total. Verified by:
   - All silent `except Exception: pass` replaced with `logger.warning`/`logger.error` (Iter 2).
 - `semantic.py`
   - `SemanticGrounder.percentile_threshold(floor=0.65)` - protects against degenerate corpora while preserving H3's model-agnostic intent (Iter 2 -> Iter 3).
-- `document-processing/skills/validate-document/SKILL.md` (Iter 2)
+- `plugins/document-processing/skills/validate-document/SKILL.md` (Iter 2)
   - Three new rules with exact wording: "agreement beats magnitude", "contradiction flag is the final word", "re-recommend semantic on struggle".
 - `Makefile` (Iter 5)
   - `requirements` target now uses `--all-extras` so the semantic layer is always installed.

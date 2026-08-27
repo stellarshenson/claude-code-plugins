@@ -1,0 +1,24 @@
+{
+  "name": "devils-advocate",
+  "description": "Critical document analysis with persona-driven risk scoring, iterative scorecard evaluation, and versioned corrections. Includes adversarial-review - hostile red-team review of code and artefacts via fresh claude -p reviewers with eleven pluggable expert adversaries.",
+  "version": "1.7.3",
+  "license": "MIT",
+  "author": {
+    "name": "Stellars Henson",
+    "email": "konrad.jelen+github@gmail.com"
+  },
+  "keywords": [
+    "critique",
+    "analysis",
+    "scorecard",
+    "risk",
+    "devil",
+    "advocate",
+    "persona",
+    "evaluation",
+    "adversarial-review",
+    "red-team",
+    "code-review",
+    "audit"
+  ]
+}

@@ -39,13 +39,13 @@ Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop
 
 | Plugin | What it solves |
 |--------|---------------|
-| [autobuild](autobuild/) | Executes code and artefact builds toward an objective with iterations driven by a calculated outcome benchmark - enforces structured phases with multi-agent review |
-| [devils-advocate](devils-advocate/) | Produces high-quality documents for a specific audience using a scientific, measured, iterative approach - quantified critique with Fibonacci risk scoring and per-iteration residual measurement. Also red-teams code and artefacts via `adversarial-review` - fresh context-free `claude -p` reviewers, eleven expert adversaries, multi-round until a confirming pass is clean |
-| [svg-infographics](svg-infographics/) | Produces high-quality standardised SVG infographics - grid-first design, theme-driven styling, dark/light mode, 5 routing modes (straight/L/L-chamfer/spline/manifold) with A* auto-routing, callout placement solver, chart generation, and 6 automated checkers |
-| [datascience](datascience/) | Produces high-quality data science projects and notebooks following consistent standards - scaffolds projects from copier templates, enforces notebook structure, applies rich output styling, and supports prompt engineering techniques |
-| [document-processing](document-processing/) | Processes documents according to user requests with grounding in source materials - source tracing, compliance checking, PDF automation |
-| [journal](journal/) | Produces a work journal marking key changes, implementations, and decisions - append-only audit trail with continuous numbering, archiving, and deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement |
-| [project-management](project-management/) | Tracks acceptance criteria and defects for the project inside the repository - permanent ids, mandatory triage, authored append-only logs, and reports computed on read by the deterministic `pm-tools` CLI |
+| [autobuild](plugins/autobuild/) | Executes code and artefact builds toward an objective with iterations driven by a calculated outcome benchmark - enforces structured phases with multi-agent review |
+| [devils-advocate](plugins/devils-advocate/) | Produces high-quality documents for a specific audience using a scientific, measured, iterative approach - quantified critique with Fibonacci risk scoring and per-iteration residual measurement. Also red-teams code and artefacts via `adversarial-review` - fresh context-free `claude -p` reviewers, eleven expert adversaries, multi-round until a confirming pass is clean |
+| [svg-infographics](plugins/svg-infographics/) | Produces high-quality standardised SVG infographics - grid-first design, theme-driven styling, dark/light mode, 5 routing modes (straight/L/L-chamfer/spline/manifold) with A* auto-routing, callout placement solver, chart generation, and 6 automated checkers |
+| [datascience](plugins/datascience/) | Produces high-quality data science projects and notebooks following consistent standards - scaffolds projects from copier templates, enforces notebook structure, applies rich output styling, and supports prompt engineering techniques |
+| [document-processing](plugins/document-processing/) | Processes documents according to user requests with grounding in source materials - source tracing, compliance checking, PDF automation |
+| [journal](plugins/journal/) | Produces a work journal marking key changes, implementations, and decisions - append-only audit trail with continuous numbering, archiving, and deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement |
+| [project-management](plugins/project-management/) | Tracks acceptance criteria and defects for the project inside the repository - permanent ids, mandatory triage, authored append-only logs, and reports computed on read by the deterministic `pm-tools` CLI |
 
 ```bash
 # Add the marketplace once
@@ -95,7 +95,7 @@ Runs structured multi-iteration development cycles where each iteration passes t
 
 The plugin writes PROGRAM.md and BENCHMARK.md from your prompt, asks you to approve, then runs the orchestrator autonomously.
 
-See [autobuild/README.md](autobuild/) for the full phase lifecycle, agent architecture, and configuration details.
+See [plugins/autobuild/README.md](plugins/autobuild/) for the full phase lifecycle, agent architecture, and configuration details.
 
 ## devils-advocate
 
@@ -124,7 +124,7 @@ Risk scoring uses a Fibonacci scale (1-8) for likelihood and impact, producing r
 /devils-advocate:adversarial-review the auth middleware change before I merge
 ```
 
-See [devils-advocate/README.md](devils-advocate/) for scoring formula details, artefact format, the full concern catalogue methodology, and the adversary roster.
+See [plugins/devils-advocate/README.md](plugins/devils-advocate/) for scoring formula details, artefact format, the full concern catalogue methodology, and the adversary roster.
 
 ## svg-infographics
 
@@ -160,7 +160,7 @@ Five connector routing modes (`straight`, `l`, `l-chamfer`, `spline`, `manifold`
 /svg-infographics:beautify docs/images/overview.svg medium
 ```
 
-Includes 60+ production SVG examples, 13 CLI tools (6 validators + 7 calculators including the boolean / margin ops), and theme swatches. See [svg-infographics/README.md](svg-infographics/) for the capability groups and workflow details.
+Includes 60+ production SVG examples, 13 CLI tools (6 validators + 7 calculators including the boolean / margin ops), and theme swatches. See [plugins/svg-infographics/README.md](plugins/svg-infographics/) for the capability groups and workflow details.
 
 ## datascience
 
@@ -195,7 +195,7 @@ Enforces data science project standards derived from production notebook workflo
 /datascience:fix-project
 ```
 
-See [datascience/README.md](datascience/) for the full list of standards enforced.
+See [plugins/datascience/README.md](plugins/datascience/) for the full list of standards enforced.
 
 ## journal
 
@@ -240,7 +240,7 @@ journal-tools sort .claude/JOURNAL.md --dry-run
 
 Two word-count tiers: **Standard** (~70-120 words, the default) and **Extended** (~250-350 words, ONLY when the user explicitly asks or the work is an architectural decision / platform migration / multi-iteration debug). The checker emits warnings (not errors) when entries exceed the standard target or the extended max — length is a nudge, never a block.
 
-See [journal/README.md](journal/) for entry format, CLI tools, and archiving rules.
+See [plugins/journal/README.md](plugins/journal/) for entry format, CLI tools, and archiving rules.
 
 ## project-management
 
@@ -279,7 +279,7 @@ pm-tools report docs --category AUTH --detail
 pm-tools check docs --strict
 ```
 
-See [project-management/README.md](project-management/) for the item format, the CLI surface, and the report semantics.
+See [plugins/project-management/README.md](plugins/project-management/) for the item format, the CLI surface, and the report semantics.
 
 ## document-processing
 
@@ -327,7 +327,7 @@ document-processing ground \
   --semantic
 ```
 
-See [document-processing/README.md](document-processing/) for the grounding methodology, folder structure, and PDF processing details.
+See [plugins/document-processing/README.md](plugins/document-processing/) for the grounding methodology, folder structure, and PDF processing details.
 
 ## Install
 

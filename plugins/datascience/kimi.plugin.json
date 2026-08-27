@@ -1,0 +1,15 @@
+{
+  "name": "datascience",
+  "version": "1.7.3",
+  "description": "Data science project standards, notebook scaffolding, rich output styling, project creation via copier, and compliance review.",
+  "license": "MIT",
+  "author": "Stellars Henson",
+  "keywords": ["datascience", "notebook", "jupyter", "rich", "pytorch", "polars", "copier", "scaffold"],
+  "skills": "./skills/",
+  "commands": "./commands/",
+  "interface": {
+    "displayName": "Data Science",
+    "shortDescription": "Data science project standards, notebook scaffolding, and compliance review",
+    "developerName": "Stellars Henson"
+  }
+}

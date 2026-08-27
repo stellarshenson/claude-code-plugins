@@ -27,6 +27,7 @@ from _cassette_prompts import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+PLUGIN_ROOT = ROOT / "plugins"
 PLUGINS = (
     "autobuild",
     "datascience",
@@ -53,7 +54,7 @@ FALSE_PREMISE_FRAGMENTS = (
 
 
 def _plugin_markdown() -> list[Path]:
-    return sorted(p for name in PLUGINS for p in (ROOT / name).rglob("*.md"))
+    return sorted(p for name in PLUGINS for p in (PLUGIN_ROOT / name).rglob("*.md"))
 
 
 # --- Static guards --------------------------------------------------------
@@ -148,7 +149,7 @@ def test_shipped_gate_still_carries_its_normative_lines():
     or it proves only that a constant equals itself.
     """
     live = (
-        ROOT / "svg-infographics" / "skills" / "svg-designer" / "SKILL.md"
+        PLUGIN_ROOT / "svg-infographics" / "skills" / "svg-designer" / "SKILL.md"
     ).read_text(encoding="utf-8")
     for required in (UPGRADE_LINE, STALE_ASSERTION):
         assert required in live, f"shipped gate lost its {required!r} line"
@@ -219,7 +220,7 @@ def _shipped_comparison_lines() -> str:
     Running the doc's own text (rather than a retyped copy) is the point: a
     typo introduced into the markdown fails these tests.
     """
-    body = (ROOT / "svg-infographics" / "commands" / "validate.md").read_text(encoding="utf-8")
+    body = (PLUGIN_ROOT / "svg-infographics" / "commands" / "validate.md").read_text(encoding="utf-8")
     lines = [
         ln.strip()
         for ln in body.splitlines()

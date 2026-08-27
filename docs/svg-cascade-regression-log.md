@@ -2,13 +2,13 @@
 
 Raw record of every regression introduced while consolidating four partial CSS resolvers into one, across eight adversarial-review rounds. Kept for classification: each row carries the fix that caused it, the round that caught it, the lens, the pattern shape, and its measured reach.
 
-The general lessons distilled from this log live in `devils-advocate/skills/adversarial-review/references/regression-patterns.md`. This file is the evidence; that file is the conclusion. Update both together or neither. A machine-readable mirror of the table lives in `docs/svg-cascade-regression-log.csv` - update it in the same commit as the table.
+The general lessons distilled from this log live in `plugins/devils-advocate/skills/adversarial-review/references/regression-patterns.md`. This file is the evidence; that file is the conclusion. Update both together or neither. A machine-readable mirror of the table lives in `docs/svg-cascade-regression-log.csv` - update it in the same commit as the table.
 
 ## Reading the columns
 
 - **Caused by** - the change that introduced it, not the change that revealed it
 - **Shape** - the pattern from `regression-patterns.md`: partial-conversion, half-converted-record, borrowed-default, sibling-left-behind, nth-weaker-copy, no-consumer
-- **Reach** - measured, on the 71-file `svg-infographics/examples/` corpus at the time it was found. `latent` means the mechanism is real and no current file triggers it
+- **Reach** - measured, on the 71-file `plugins/svg-infographics/examples/` corpus at the time it was found. `latent` means the mechanism is real and no current file triggers it
 - **Caught by** - which lens, and whether a repo test would have caught it independently
 
 ## The log

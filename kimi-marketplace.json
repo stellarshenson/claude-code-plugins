@@ -4,37 +4,37 @@
     {
       "id": "journal",
       "displayName": "Journal",
-      "source": "./journal"
+      "source": "./plugins/journal"
     },
     {
       "id": "devils-advocate",
       "displayName": "Devil's Advocate",
-      "source": "./devils-advocate"
+      "source": "./plugins/devils-advocate"
     },
     {
       "id": "datascience",
       "displayName": "Data Science",
-      "source": "./datascience"
+      "source": "./plugins/datascience"
     },
     {
       "id": "svg-infographics",
       "displayName": "SVG Infographics",
-      "source": "./svg-infographics"
+      "source": "./plugins/svg-infographics"
     },
     {
       "id": "document-processing",
       "displayName": "Document Processing",
-      "source": "./document-processing"
+      "source": "./plugins/document-processing"
     },
     {
       "id": "autobuild",
       "displayName": "Autobuild",
-      "source": "./autobuild"
+      "source": "./plugins/autobuild"
     },
     {
       "id": "project-management",
       "displayName": "Project Management",
-      "source": "./project-management"
+      "source": "./plugins/project-management"
     }
   ]
 }

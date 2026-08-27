@@ -5,12 +5,13 @@ the adversary instead of pointing at the shared file, these fail."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_DIR = ROOT / "datascience" / "skills" / "popular-science"
+SKILL_DIR = ROOT / "plugins" / "datascience" / "skills" / "popular-science"
 CANON = SKILL_DIR / "references" / "craft-canon.md"
 # The adversary lives in the devils-advocate plugin; the canon it reviews against stays
 # with the writer in datascience. The link is deliberately cross-plugin - guard it here.
 ADVERSARY = (
     ROOT
+    / "plugins"
     / "devils-advocate"
     / "skills"
     / "adversarial-review"

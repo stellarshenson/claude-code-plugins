@@ -8,7 +8,7 @@ This repo ships Claude Code plugins. Kimi Code CLI can load the same plugins, bu
 
 Files added (all additive, no existing file modified):
 
-- `journal/kimi.plugin.json`, `devils-advocate/kimi.plugin.json`, `datascience/kimi.plugin.json`, `svg-infographics/kimi.plugin.json`, `document-processing/kimi.plugin.json`, `autobuild/kimi.plugin.json` - one Kimi manifest per plugin, mirroring the metadata of the sibling `.claude-plugin/plugin.json`
+- `plugins/journal/kimi.plugin.json`, `plugins/devils-advocate/kimi.plugin.json`, `plugins/datascience/kimi.plugin.json`, `plugins/svg-infographics/kimi.plugin.json`, `plugins/document-processing/kimi.plugin.json`, `plugins/autobuild/kimi.plugin.json` - one Kimi manifest per plugin, mirroring the metadata of the sibling `.claude-plugin/plugin.json`
 - `kimi-marketplace.json` at repo root - Kimi marketplace catalog listing all 6 plugins, so the suite installs from one file
 
 Field mapping per manifest:

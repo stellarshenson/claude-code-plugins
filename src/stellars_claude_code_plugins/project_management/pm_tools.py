@@ -9,14 +9,20 @@ list-categories, backlinks are computed by refs. No counter file, no index, no T
   docs/defects*.md    defects,             ids DEF-<CAT>-<N>, hint line `- repro:`
 
 Both disciplines also carry `- test-tags: unit, functional` - which kinds of test
-cover the item.
+cover the item - and `- evidence: <one line>`, the proof it is actually done. `close`
+demands the evidence and writes that line; `reopen` retires it.
 
 Three states: `- [ ]` open, `- [x]` closed, `- [-]` rejected (reason in the log line).
 Log lines read `- log: 2026-08-27T15:59:12Z @kj <event>` - ISO 8601 UTC, then the author.
 
 Query:
-  report [paths] [--category CODE] [--status open|closed|rejected|all] [--detail]
-         ITEMS lists open work only unless --status says otherwise, worst severity first
+  report [paths] [--category CODE] [--severity S] [--status open|closed|rejected|all]
+         [--dates filed|closed|updated] [--since DATE] [--until DATE]
+         [--detail] [--plain] [--summary]
+         ITEMS lists open work only unless --status says otherwise, worst severity first.
+         --category, --severity and the date window narrow the whole report; --status
+         narrows ITEMS alone. --plain prints the grids and nothing else; --summary stops
+         at the SUMMARY grid, listing no items at all.
   list-categories [paths]                          code, name, open/closed/rejected
   list [paths] [--open|--closed|--rejected] [--category CODE]
   refs [paths] --id ID                             every item pointing at ID
@@ -26,7 +32,7 @@ Edit (one file):
   add    FILE --category CODE --title T --text D [--name NAME] [--description D]
                     --severity S [--repro R|--test T] [--test-tags "unit, functional"]
   edit   FILE --id ID [--title T] [--text D] [--severity S] [--repro R|--test T]
-                      [--test-tags TAGS]
+                      [--test-tags TAGS] [--evidence E]
 
 --severity is CRITICAL|MAJOR|MEDIUM|MINOR, mandatory on every defect and refused on
 a criterion. An untriaged defect is a check error. Foreign vocabularies (P0-P4, S1-S4,
@@ -36,7 +42,7 @@ upgrade; anything it cannot map is named and left for a human.
   describe FILE --category CODE --text D           set the category description
   relate FILE --id ID [--related TEXT] [--blocked-by TEXT]
   log    FILE --id ID --event E
-  close  FILE --id ID [--event E]
+  close  FILE --id ID --evidence E [--event E]      evidence proves it is done
   reject FILE --id ID --event E                    not reproduced, irrelevant, wontfix
   reopen FILE --id ID [--event E]
   remove FILE --id ID [--force]                    mistakes and duplicates only
@@ -70,7 +76,10 @@ HANDLE = re.compile(r"@[a-z][a-z0-9]{1,3}")
 ROSTER = re.compile(r"^\s*- `(@[a-z][a-z0-9]{1,3})`\s+(.*)$")
 AUTHORED = re.compile(r"^(@[a-z][a-z0-9]{1,3})\s+(.*)$")
 TAGLINE = re.compile(r"^(\s+)- test-tags:\s*(.*)$")
+# the proof an item is done, written at closure and retired by a reopen
+EVIDLINE = re.compile(r"^(\s+)- evidence:\s*(.*)$")
 REJECTED = re.compile(r"^rejected:?\s*(.*)$", re.I)
+CLOSING = re.compile(r"^(closed|rejected)\b", re.I)  # the log line that ended the item
 SUB = re.compile(r"^\s+- ")
 STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")  # ISO 8601, UTC
 DATEONLY = re.compile(r"^\d{4}-\d{2}-\d{2}$")  # legacy, upgrade only
@@ -264,6 +273,8 @@ def parse(path):
                 hint_n=0,
                 tags=None,
                 tag_n=0,
+                evidence=None,
+                evid_n=0,
             )
             blocks.append(cur)
             continue
@@ -280,8 +291,9 @@ def parse(path):
                 else:
                     cur["log_authors"].append(None)
                 cur["logs"].append(rest)
-                if STAMP.match(lm.group(2)):
-                    cur["dates"].append(lm.group(2))
+                # one entry per log line, None when the stamp is malformed, so
+                # dates[i] always belongs to logs[i] - the date filters read the pair
+                cur["dates"].append(lm.group(2) if STAMP.match(lm.group(2)) else None)
             rm = RELLINE.match(ln)
             if rm:
                 for r in IDREF.finditer(rm.group(3)):
@@ -295,6 +307,10 @@ def parse(path):
             if tm:
                 cur["tag_n"] += 1
                 cur["tags"] = tm.group(2).strip()
+            em = EVIDLINE.match(ln)
+            if em:
+                cur["evid_n"] += 1
+                cur["evidence"] = em.group(2).strip()
             continue
         # the first prose line under a `##` heading, before any item, is the description
         if cur is None and sec is not None and sec["desc"] is None and ln.strip():
@@ -325,6 +341,61 @@ def reject_reason(b):
         if m:
             return m.group(1).strip()
     return ""
+
+
+def sev_of(b):
+    """The severity in this vocabulary - an un-upgraded file may still say HIGH."""
+    return SEV_ALIAS.get(b["severity"], b["severity"])
+
+
+def stamped(b, which):
+    """When the item was `filed`, `closed` or last `updated` - YYYY-MM-DD, or None.
+
+    The log is the only place a date is recorded. A closed date exists only while the
+    item is closed or rejected, so a reopen retires it rather than leaving a stale one.
+    """
+    if which == "filed":
+        return next((d[:10] for d in b["dates"] if d), None)
+    if which == "updated":
+        return next((d[:10] for d in reversed(b["dates"]) if d), None)
+    if status_of(b) not in ("closed", "rejected"):
+        return None
+    pairs = zip(reversed(b["dates"]), reversed(b["logs"]))
+    return next((d[:10] for d, txt in pairs if d and CLOSING.match(txt)), None)
+
+
+def in_window(b, which, since, until):
+    d = stamped(b, which)
+    if d is None:
+        return False
+    return (since is None or d >= since) and (until is None or d <= until)
+
+
+def scope_of(blocks, cat, sev, which, since, until):
+    """The items the report is about - every filter except --status, which narrows the
+    ITEMS queue alone so a filtered report still says where the whole scope stands."""
+    out = [b for b in blocks if not b["indent"]]
+    if cat:
+        out = [b for b in out if b["cat"] == cat]
+    if sev:
+        out = [b for b in out if sev_of(b) == sev]
+    if since or until:
+        out = [b for b in out if in_window(b, which, since, until)]
+    return out
+
+
+def window_note(which, since, until):
+    if since and until:
+        return f"{which} {since} to {until}"
+    if since:
+        return f"{which} since {since}"
+    if until:
+        return f"{which} until {until}"
+    return None
+
+
+def banner(icon, title, plain):
+    return f"## {title}" if plain else f"## {icon}{PAD}{title}"
 
 
 def fix_order(b):
@@ -394,20 +465,40 @@ def cell(text, width=64):
     return (cut[:sp] if sp > width // 2 else cut).rstrip() + "..."
 
 
-def cmd_report(files, cat, status, detail):
+def cmd_report(files, cat, status, detail, sev, dates, since, until, plain, summary):
     cat = cat.upper() if cat else None
+    plain = plain or summary  # a summary is the compact form; the blurbs are not part of it
+    # a closed-date window can only select closed and rejected items, so the default
+    # open queue would list nothing; list what the window actually found
+    if dates == "closed" and (since or until) and status is None:
+        status = "all"
     want = None if status == "all" else FLAG[status or "open"]
     for f in files:
         blocks, sections = parse(f)
         prefix = doc_prefix(f, blocks)
-        tops = [b for b in blocks if not b["indent"]]
+        if sev and prefix != "DEF":
+            print(f"{f}: skipped, --severity is a defect attribute", file=sys.stderr)
+            continue
+        scope = scope_of(blocks, cat, sev, dates, since, until)
         shown = [s for s in sections if not cat or s["code"] == cat]
-        scope = [b for b in tops if not cat or b["cat"] == cat]
+        if sev or since or until:
+            # a category the filter emptied is not part of the answer
+            shown = [s for s in shown if any(b["section"] is s for b in scope)]
         t = tally(scope)
 
-        filt = [x for x in (status, f"category {cat}" if cat else None) if x]
+        filt = [
+            x
+            for x in (
+                status,
+                f"category {cat}" if cat else None,
+                sev,
+                window_note(dates, since, until),
+            )
+            if x
+        ]
         note = f" ({', '.join(filt)})" if filt else ""
-        print(f"\n# {ICON[prefix]}{PAD}{LABEL[prefix]} - {f}{note}\n")
+        title = LABEL[prefix] if plain else f"{ICON[prefix]}{PAD}{LABEL[prefix]}"
+        print(f"\n# {title} - {f}{note}\n")
         print(
             f"{t['open']} open / {t['closed']} closed / {t['rejected']} rejected "
             f"across {len(shown)} categor" + ("y\n" if len(shown) == 1 else "ies\n")
@@ -448,15 +539,18 @@ def cmd_report(files, cat, status, detail):
             cols = rank[:8] + ([none_col] if none_col in freq else [])
 
         if scope:
-            multi = (
-                "" if prefix == "DEF" else " An item with several tags counts in several columns."
-            )
-            print(f"## \U0001f4ca{PAD}SUMMARY\n")
-            print(
-                f"Categories down, {axis} across, `open/closed` in every cell - "
-                f"`10/43` is 10 open, 43 closed. A dash means nothing in that bucket. "
-                f"Rejected items are excluded; they are listed at the end.{multi}\n"
-            )
+            print(banner("\U0001f4ca", "SUMMARY", plain) + "\n")
+            if not plain:
+                multi = (
+                    ""
+                    if prefix == "DEF"
+                    else " An item with several tags counts in several columns."
+                )
+                print(
+                    f"Categories down, {axis} across, `open/closed` in every cell - "
+                    f"`10/43` is 10 open, 43 closed. A dash means nothing in that bucket. "
+                    f"Rejected items are excluded; they are listed at the end.{multi}\n"
+                )
             head = ["Category"] + cols + ["Open/Closed"]
             print("| " + " | ".join(head) + " |")
             print("|---|" + "--:|" * (len(head) - 1))
@@ -497,7 +591,10 @@ def cmd_report(files, cat, status, detail):
             if cut:
                 print(f"\nTag columns omitted from the grid: {', '.join(cut)}")
 
-        if not solo:
+        if summary:
+            continue
+
+        if not solo and not plain:
             print(f"\n## \U0001f4c1{PAD}CATEGORIES\n")
             print("| Code | Category | Description |")
             print("|------|----------|-------------|")
@@ -514,7 +611,7 @@ def cmd_report(files, cat, status, detail):
             for t2 in ts:
                 counts[t2] = counts.get(t2, 0) + 1
         n = len(scope)
-        if n:
+        if n and not plain:
 
             def pct(k):
                 return f"{round(100 * k / n)}%"
@@ -530,8 +627,10 @@ def cmd_report(files, cat, status, detail):
             if tagged < n:
                 print(f"| (untagged) | {n - tagged} | {pct(n - tagged)} |")
 
-        print(f"\n## \U0001f4cc{PAD}ITEMS")
-        groups = [(sec, [b for b in tops if b["section"] is sec]) for sec in shown]
+        listed = [b for b in scope if want is None or b["state"].lower() == want]
+        show_evid = any(b["evidence"] for b in listed)
+        print("\n" + banner("\U0001f4cc", "ITEMS", plain))
+        groups = [(sec, [b for b in scope if b["section"] is sec]) for sec in shown]
         loose = [b for b in scope if b["section"] is None]
         if loose:
             groups.append((None, loose))
@@ -557,33 +656,33 @@ def cmd_report(files, cat, status, detail):
                         print(line)
                 continue
             sev_h, sev_r = ("Severity | ", "----------|") if prefix == "DEF" else ("", "")
+            ev_h, ev_r = (" Evidence |", "----------|") if show_evid else ("", "")
             # a column where every row reads the same carries nothing; the header
             # and the footer already say which status is being listed
             st_h, st_r = ("Status | ", "--------|") if want is None else ("", "")
             if solo:
                 print()
-            print(f"| Id | Title | Description | {sev_h}{st_h}Tests |")
-            print(f"|----|-------|-------------|{sev_r}{st_r}-------|")
+            print(f"| Id | Title | Description | {sev_h}{st_h}Tests |{ev_h}")
+            print(f"|----|-------|-------------|{sev_r}{st_r}-------|{ev_r}")
             for b in rows:
                 sev = f"{b['severity'] or '-'} | " if prefix == "DEF" else ""
                 st = f"{status_of(b)} | " if want is None else ""
+                evid = f" {cell(b['evidence'], 56)} |" if show_evid else ""
                 print(
                     f"| `{ident(b)}` | {cell(b['title'] or '?', 40)} "
-                    f"| {cell(b['plain'], 88)} | {sev}{st}{cell(b['tags'], 24)} |"
+                    f"| {cell(b['plain'], 88)} | {sev}{st}{cell(b['tags'], 24)} |{evid}"
                 )
 
         hidden = [b for b in scope if want is not None and b["state"].lower() != want]
         if hidden:
             h = tally(hidden)
             bits = [f"{h[k]} {k}" for k in ("open", "closed", "rejected") if h[k]]
-            print(
-                f"\n{', '.join(bits)} not listed - pass `--status all`, "
-                f"or `--status closed` / `rejected`"
-            )
+            tail = "" if plain else " - pass `--status all`, or `--status closed` / `rejected`"
+            print(f"\n{', '.join(bits)} not listed{tail}")
 
         rej = [b for b in scope if status_of(b) == "rejected"]
         if rej and want in (None, "-") and not detail:
-            print(f"\n## \U0001f6ab{PAD}REJECTED\n")
+            print("\n" + banner("\U0001f6ab", "REJECTED", plain) + "\n")
             print("| Id | Title | Reason |")
             print("|----|-------|--------|")
             for b in rej:
@@ -781,6 +880,17 @@ def cmd_check(files, strict):
                 e.append((b["line"], "more than one test-tags: line; keep exactly one"))
             elif not b["tags"]:
                 w.append((b["line"], "no test-tags: line under the item"))
+            if b["evid_n"] > 1:
+                e.append((b["line"], "more than one evidence: line; keep exactly one"))
+            elif status_of(b) == "closed" and not b["evidence"]:
+                w.append(
+                    (
+                        b["line"],
+                        "closed with no evidence: line; record the proof with edit --evidence",
+                    )
+                )
+            elif b["evidence"] and status_of(b) != "closed":
+                w.append((b["line"], "evidence: on an item that is not closed"))
             if status_of(b) == "rejected" and not reject_reason(b):
                 w.append((b["line"], "rejected with no reason; log `rejected: <why>`"))
             if not b["has_log"]:
@@ -850,6 +960,14 @@ def set_line(lines, b, marker, value, pat):
             return "replaced"
     lines.insert(b["line"], f"{ind}- {marker}: {value}")
     return "added"
+
+
+def drop_line(lines, b, pat):
+    """Remove the item's `- <marker>:` sub-line. Returns what it said, or None."""
+    for i in range(b["line"], block_end(lines, b)):
+        if pat.match(lines[i]):
+            return lines.pop(i).split(":", 1)[1].strip()
+    return None
 
 
 def need_author(file, handle):
@@ -950,7 +1068,7 @@ def cmd_add(file, code, name, desc, title, text, severity, repro, test, tags, au
     return 0
 
 
-def cmd_edit(file, wanted, title, text, sev, repro, test, tags, author):
+def cmd_edit(file, wanted, title, text, sev, repro, test, tags, author, evidence=None):
     lines = load(file)
     blocks, _ = parse(file)
     prefix = doc_prefix(file, blocks)
@@ -958,9 +1076,10 @@ def cmd_edit(file, wanted, title, text, sev, repro, test, tags, author):
     who = need_author(file, author)
     if sev and prefix != "DEF":
         raise SystemExit("acceptance criteria carry no severity")
-    if not (title or text or sev or kind or tags):
+    if not (title or text or sev or kind or tags or evidence):
         raise SystemExit(
-            "nothing to change; pass --title, --text, --severity, --repro/--test or --test-tags"
+            "nothing to change; pass --title, --text, --severity, "
+            "--repro/--test, --test-tags or --evidence"
         )
     b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
     done = []
@@ -982,6 +1101,8 @@ def cmd_edit(file, wanted, title, text, sev, repro, test, tags, author):
         done.append(f"{kind} ({set_line(lines, b, kind, value, HINTLINE)})")
     if tags:
         done.append(f"test-tags ({set_line(lines, b, 'test-tags', tags, TAGLINE)})")
+    if evidence:
+        done.append(f"evidence ({set_line(lines, b, 'evidence', evidence, EVIDLINE)})")
     what = " and ".join(done)
     lines.insert(block_end(lines, b), f"{sub_indent(lines, b)}- log: {now()} {who} edited {what}")
     save(file, lines)
@@ -1056,7 +1177,7 @@ def cmd_log(file, wanted, event, author):
     return 0
 
 
-def cmd_setstate(file, wanted, target, verb, event, author):
+def cmd_setstate(file, wanted, target, verb, event, author, evidence=None):
     lines = load(file)
     blocks, _ = parse(file)
     who = need_author(file, author)
@@ -1067,6 +1188,14 @@ def cmd_setstate(file, wanted, target, verb, event, author):
     idx = b["line"] - 1
     lines[idx] = re.sub(r"\[[ xX-]\]", f"[{target}]", lines[idx], count=1)
     ev = f"{verb}: {event}" if event else verb
+    if target == "x":
+        # nothing closes without a proof; the line is the proof, stored once
+        set_line(lines, b, "evidence", evidence, EVIDLINE)
+    elif target == " ":
+        # reopened means not done, so the proof no longer stands. The log keeps it
+        was = drop_line(lines, b, EVIDLINE)
+        if was:
+            ev += f"; evidence retired: {was}"
     lines.insert(block_end(lines, b), f"{sub_indent(lines, b)}- log: {now()} {who} {ev}")
     save(file, lines)
     print(f"{file}:{b['line']}: [{target}] {ident(b)} ({ev})")
@@ -1169,6 +1298,13 @@ def cmd_upgrade(file, overrides, apply, author):
         lg = LEGACY.match(b["body"])
         num = b["num"] if b["num"] is not None else (int(lg.group(2)) if lg else None)
         todo.append((b, codes[id(b["section"])], num))
+
+    unproven = sum(1 for b, _, _ in todo if b["state"].lower() == "x" and not b["evidence"])
+    if unproven:
+        manual.append(
+            f"{unproven} closed item(s) carry no evidence: line; add one with "
+            f"edit --evidence as each closure is verified"
+        )
 
     used = {n for _, _, n in todo if n is not None}
     counter = max(used) + 1 if used else 1
@@ -1291,16 +1427,40 @@ def main(argv: list[str] | None = None) -> int:
         sp = sub.add_parser(name)
         sp.add_argument("paths", nargs="*")
         if name == "report":
-            sp.add_argument("--category")
+            sp.add_argument("--category", help="narrows the whole report to one code")
+            sp.add_argument(
+                "--severity",
+                type=str.upper,
+                choices=SEVS,
+                help="narrows the whole report to one level; defect documents only",
+            )
             sp.add_argument(
                 "--status",
                 choices=("open", "closed", "rejected", "all"),
                 help="which items ITEMS lists; open by default",
             )
             sp.add_argument(
+                "--dates",
+                choices=("filed", "closed", "updated"),
+                default="filed",
+                help="which log stamp --since/--until read; filed by default",
+            )
+            sp.add_argument("--since", metavar="YYYY-MM-DD", help="on or after, inclusive")
+            sp.add_argument("--until", metavar="YYYY-MM-DD", help="on or before, inclusive")
+            sp.add_argument(
                 "--detail",
                 action="store_true",
                 help="one readable block per item instead of the table",
+            )
+            sp.add_argument(
+                "--plain",
+                action="store_true",
+                help="the grids alone - no blurbs, categories or coverage",
+            )
+            sp.add_argument(
+                "--summary",
+                action="store_true",
+                help="stop at the SUMMARY grid; list no items. Implies --plain",
             )
         if name == "list":
             g = sp.add_mutually_exclusive_group()
@@ -1347,6 +1507,7 @@ def main(argv: list[str] | None = None) -> int:
     se.add_argument("--repro")
     se.add_argument("--test")
     se.add_argument("--test-tags", dest="tags")
+    se.add_argument("--evidence", help="one line proving the item is done")
     se.add_argument("--author", required=True, metavar="@xx")
 
     sh = sub.add_parser("author")
@@ -1371,6 +1532,12 @@ def main(argv: list[str] | None = None) -> int:
         sp.add_argument("--id", required=True)
         sp.add_argument("--author", required=True, metavar="@xx")
         sp.add_argument("--event", required=(name in ("log", "reject")))
+        if name == "close":
+            sp.add_argument(
+                "--evidence",
+                required=True,
+                help="one line proving it is done - the test that passes, the run, the commit",
+            )
 
     sx = sub.add_parser("remove")
     sx.add_argument("file")
@@ -1396,7 +1563,21 @@ def main(argv: list[str] | None = None) -> int:
             print("no acc-crit*.md or defects*.md found", file=sys.stderr)
             return 2
         if a.cmd == "report":
-            return cmd_report(files, a.category, a.status, a.detail)
+            for v in (a.since, a.until):
+                if v and not DATEONLY.match(v):
+                    raise SystemExit(f"--since/--until take YYYY-MM-DD, got {v!r}")
+            return cmd_report(
+                files,
+                a.category,
+                a.status,
+                a.detail,
+                a.severity,
+                a.dates,
+                a.since,
+                a.until,
+                a.plain,
+                a.summary,
+            )
         if a.cmd == "list-categories":
             return cmd_list_categories(files)
         if a.cmd == "list":
@@ -1422,7 +1603,16 @@ def main(argv: list[str] | None = None) -> int:
         )
     if a.cmd == "edit":
         return cmd_edit(
-            a.file, a.id, a.title, a.text, a.severity, a.repro, a.test, a.tags, a.author
+            a.file,
+            a.id,
+            a.title,
+            a.text,
+            a.severity,
+            a.repro,
+            a.test,
+            a.tags,
+            a.author,
+            a.evidence,
         )
     if a.cmd == "author":
         return cmd_author(a.file, a.handle, a.name)
@@ -1433,7 +1623,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "log":
         return cmd_log(a.file, a.id, a.event, a.author)
     if a.cmd == "close":
-        return cmd_setstate(a.file, a.id, "x", "closed", a.event, a.author)
+        return cmd_setstate(a.file, a.id, "x", "closed", a.event, a.author, a.evidence)
     if a.cmd == "reject":
         return cmd_setstate(a.file, a.id, "-", "rejected", a.event, a.author)
     if a.cmd == "reopen":

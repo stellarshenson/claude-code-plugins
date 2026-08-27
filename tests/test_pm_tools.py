@@ -143,7 +143,18 @@ def test_numbers_are_unique_across_the_document_not_per_category(defects: Path):
 def test_a_closed_id_is_never_recycled(defects: Path):
     """Closing leaves the item in place, so its number is still the high-water mark."""
     add_defect(defects, "first")
-    run("close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed")
+    run(
+        "close",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "unit suite green",
+    )
     add_defect(defects, "second")
     ids = re.findall(r"`(DEF-LNCH-\d+)`", defects.read_text(encoding="utf-8"))
     assert ids == ["DEF-LNCH-1", "DEF-LNCH-2"]
@@ -235,7 +246,16 @@ def test_check_errors_on_an_untriaged_defect(defects: Path, capsys):
 def test_close_flips_the_box_and_logs_it(defects: Path):
     add_defect(defects, "token race")
     run(
-        "close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed: awaited"
+        "close",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed: awaited",
+        "--evidence",
+        "unit suite green",
     )
     body = defects.read_text(encoding="utf-8")
     assert "- [x] `DEF-LNCH-1`" in body
@@ -283,7 +303,18 @@ def test_the_log_is_append_only_and_keeps_failed_attempts(defects: Path):
         "--event",
         "attempted: 200ms delay - did NOT work",
     )
-    run("close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed")
+    run(
+        "close",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "unit suite green",
+    )
     logs = [ln for ln in defects.read_text(encoding="utf-8").splitlines() if "- log:" in ln]
     assert len(logs) == 3, "add, attempt and close each leave their own line"
     assert any("did NOT work" in ln for ln in logs), "a failed attempt is logged, never erased"
@@ -313,12 +344,127 @@ def test_refs_computes_backlinks_that_are_never_written_back(defects: Path, caps
 
 def test_list_categories_derives_the_index(defects: Path, capsys):
     add_defect(defects, "token race")
-    run("close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed")
+    run(
+        "close",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "unit suite green",
+    )
     add_defect(defects, "splash hang")
     capsys.readouterr()
     run("list-categories", str(defects))
     out = capsys.readouterr().out
     assert "LNCH" in out and "Launch" in out
+
+
+# --- Evidence -------------------------------------------------------------
+
+
+def close_with(f: Path, item: str, evidence: str, event: str = "fixed") -> int:
+    return run(
+        "close",
+        str(f),
+        "--id",
+        item,
+        "--author",
+        "@kj",
+        "--event",
+        event,
+        "--evidence",
+        evidence,
+    )
+
+
+def test_closing_a_defect_demands_evidence(defects: Path):
+    """A closure with no proof is a claim. The flag is required so it cannot be one."""
+    add_defect(defects, "token race")
+    with pytest.raises(SystemExit):
+        run("close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed")
+    assert "- [ ] `DEF-LNCH-1`" in defects.read_text(encoding="utf-8"), "and nothing was closed"
+
+
+def test_closing_a_criterion_demands_evidence_too(criteria: Path):
+    add_criterion(criteria, "password length")
+    with pytest.raises(SystemExit):
+        run("close", str(criteria), "--id", "ACC-AUTH-1", "--author", "@kj")
+    close_with(criteria, "ACC-AUTH-1", "100 generated passwords, all 16 chars", "met")
+    body = criteria.read_text(encoding="utf-8")
+    assert "- [x] `ACC-AUTH-1`" in body
+    assert "- evidence: 100 generated passwords, all 16 chars" in body
+
+
+def test_evidence_is_stored_once_on_its_own_line(defects: Path):
+    add_defect(defects, "token race")
+    close_with(defects, "DEF-LNCH-1", "test_fork_token green on build 412")
+    body = defects.read_text(encoding="utf-8")
+    assert body.count("- evidence:") == 1
+    assert "- evidence: test_fork_token green on build 412" in body
+    assert "closed: fixed" in body, "the log still records the closure event"
+
+
+def test_reopening_retires_the_evidence_and_logs_what_it_was(defects: Path):
+    """Reopened means not done, so the proof cannot stand - but the log keeps it."""
+    add_defect(defects, "token race")
+    close_with(defects, "DEF-LNCH-1", "test_fork_token green")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "regressed")
+    body = defects.read_text(encoding="utf-8")
+    assert "- evidence:" not in body, "the line goes with the closure"
+    assert "evidence retired: test_fork_token green" in body, "the log remembers it"
+
+
+def test_edit_records_evidence_after_the_fact(defects: Path, capsys):
+    """A document closed before evidence existed is fixed forward, not rewritten."""
+    add_defect(defects, "token race")
+    close_with(defects, "DEF-LNCH-1", "placeholder")
+    run(
+        "edit",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--evidence",
+        "manual retest on build 412",
+    )
+    body = defects.read_text(encoding="utf-8")
+    assert body.count("- evidence:") == 1, "replaced, never duplicated"
+    assert "- evidence: manual retest on build 412" in body
+
+
+def test_check_warns_on_a_closed_item_carrying_no_evidence(tmp_path: Path, capsys):
+    f = tmp_path / "defects-legacy.md"
+    f.write_text(
+        "# Defects - Legacy\n\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [x] `DEF-LNCH-1` **old bug** - MAJOR; fixed long ago\n"
+        "  - repro: n/a\n  - test-tags: manual\n"
+        "  - log: 2026-01-02T00:00:00Z @kj closed: fixed\n\n"
+        "## Authors\n\n- `@kj` Konrad Jelen\n",
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+    assert run("check", str(f)) == 0, "a legacy closure is a warning, not a broken document"
+    assert "closed with no evidence" in capsys.readouterr().out
+    assert run("check", str(f), "--strict") == 1, "but --strict refuses it"
+
+
+def test_report_carries_an_evidence_column_when_something_has_one(defects: Path, capsys):
+    add_defect(defects, "token race")
+    add_defect(defects, "splash flicker")
+    close_with(defects, "DEF-LNCH-1", "test_fork_token green on build 412")
+    capsys.readouterr()
+    run("report", str(defects), "--status", "closed")
+    assert "Evidence" in capsys.readouterr().out
+
+    capsys.readouterr()
+    run("report", str(defects))
+    out = capsys.readouterr().out
+    assert "Evidence" not in out, "an open queue has nothing proven yet, so no column"
 
 
 # --- Reports --------------------------------------------------------------
@@ -327,7 +473,18 @@ def test_list_categories_derives_the_index(defects: Path, capsys):
 def test_report_lists_open_work_and_counts_the_rest(defects: Path, capsys):
     add_defect(defects, "token race")
     add_defect(defects, "splash hang")
-    run("close", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "fixed")
+    run(
+        "close",
+        str(defects),
+        "--id",
+        "DEF-LNCH-2",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "unit suite green",
+    )
     capsys.readouterr()
     run("report", str(defects))
     out = capsys.readouterr().out
@@ -353,6 +510,131 @@ def test_report_detail_prints_the_whole_log(defects: Path, capsys):
     out = capsys.readouterr().out
     assert "did NOT work" in out
     assert "fork under load" in out, "--detail carries the repro line verbatim"
+
+
+def restamp(f: Path, item: str, stamp: str, event: str = "added") -> None:
+    """Set the stamp on one of an item's log lines - the file is the whole store, so a
+    test that needs a specific date writes one into it."""
+    lines = f.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, ln in enumerate(lines) if f"`{item}`" in ln and "- [" in ln)
+    for i in range(start + 1, len(lines)):
+        if "- [" in lines[i]:
+            break
+        if lines[i].strip().startswith("- log: ") and event in lines[i]:
+            lines[i] = re.sub(r"- log: \S+", f"- log: {stamp}", lines[i])
+            f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return
+    raise AssertionError(f"{item} has no {event!r} log line")
+
+
+def test_report_severity_filter_narrows_the_whole_report(defects: Path, capsys):
+    """ "show me the critical defects" is a flag, not something the reader filters."""
+    add_defect(defects, "token race", severity="CRITICAL")
+    add_defect(defects, "splash flicker", severity="MINOR")
+    capsys.readouterr()
+    run("report", str(defects), "--severity", "CRITICAL")
+    out = capsys.readouterr().out
+    assert "token race" in out and "splash flicker" not in out
+    assert "1 open / 0 closed" in out, "the counts follow the filter, not the file"
+    assert "MINOR" not in out, "an emptied severity gets no column"
+
+
+def test_report_severity_is_refused_on_a_criteria_document(criteria: Path, capsys):
+    add_criterion(criteria, "password length")
+    capsys.readouterr()
+    run("report", str(criteria), "--severity", "CRITICAL")
+    cap = capsys.readouterr()
+    assert "skipped" in cap.err, "severity is a defect attribute; say so rather than print zeros"
+    assert "SUMMARY" not in cap.out
+
+
+def test_report_filters_on_the_date_an_item_was_filed(defects: Path, capsys):
+    add_defect(defects, "token race")
+    add_defect(defects, "splash flicker")
+    restamp(defects, "DEF-LNCH-1", "2026-05-04T09:00:00Z")
+    restamp(defects, "DEF-LNCH-2", "2026-07-21T12:00:00Z")
+    capsys.readouterr()
+    run("report", str(defects), "--since", "2026-07-01", "--until", "2026-07-31")
+    out = capsys.readouterr().out
+    assert "splash flicker" in out and "token race" not in out
+    assert "filed 2026-07-01 to 2026-07-31" in out, "the header says which window was applied"
+
+
+def test_report_filters_on_the_date_an_item_was_closed(defects: Path, capsys):
+    add_defect(defects, "token race")
+    add_defect(defects, "splash flicker")
+    run(
+        "close",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "unit suite green",
+    )
+    restamp(defects, "DEF-LNCH-1", "2026-08-26T14:00:00Z", event="closed")
+    capsys.readouterr()
+    run("report", str(defects), "--dates", "closed", "--since", "2026-08-01")
+    out = capsys.readouterr().out
+    assert "token race" in out, "a closed window lists what it found without --status all"
+    assert "splash flicker" not in out, "an open item has no closed date"
+
+
+def test_a_reopened_item_has_no_closed_date(defects: Path, capsys):
+    add_defect(defects, "token race")
+    run(
+        "close",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "unit suite green",
+    )
+    restamp(defects, "DEF-LNCH-1", "2026-08-26T14:00:00Z", event="closed")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    capsys.readouterr()
+    run("report", str(defects), "--dates", "closed", "--since", "2026-08-01")
+    out = capsys.readouterr().out
+    assert "token race" not in out, "reopening retires the closed date"
+
+
+def test_report_plain_drops_the_chrome_and_keeps_the_data(defects: Path, capsys):
+    add_defect(defects, "token race")
+    capsys.readouterr()
+    run("report", str(defects), "--plain")
+    out = capsys.readouterr().out
+    assert "SUMMARY" in out and "ITEMS" in out and "DEF-LNCH-1" in out
+    assert "\U0001f4ca" not in out and "\U0001f41e" not in out, "no icons"
+    assert "Categories down" not in out, "no section blurb"
+    assert "CATEGORIES" not in out and "TEST COVERAGE" not in out
+
+
+def test_report_summary_stops_at_the_grid(defects: Path, capsys):
+    """A summary is the aggregate. Listing the items underneath is answering a
+    different question than the one that was asked."""
+    add_defect(defects, "token race")
+    add_defect(defects, "splash flicker")
+    capsys.readouterr()
+    run("report", str(defects), "--summary")
+    out = capsys.readouterr().out
+    assert "SUMMARY" in out and "2 open / 0 closed" in out
+    assert "ITEMS" not in out
+    assert "token race" not in out and "splash flicker" not in out
+    assert "CATEGORIES" not in out and "TEST COVERAGE" not in out
+    assert "Categories down" not in out, "--summary is plain by itself"
+
+
+def test_report_refuses_a_malformed_date(defects: Path):
+    add_defect(defects, "token race")
+    with pytest.raises(SystemExit):
+        run("report", str(defects), "--since", "2026-8-1")
 
 
 # --- The gate -------------------------------------------------------------

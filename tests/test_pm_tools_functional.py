@@ -152,6 +152,8 @@ def test_defect_lifecycle_from_report_to_fix(defects: Path):
         defects,
         "--id",
         "DEF-LNCH-1",
+        "--evidence",
+        "tests/test_session.py::test_fork_token green",
         "--author",
         "@kj",
         "--event",
@@ -231,7 +233,7 @@ def test_criteria_document_from_empty_to_audited(criteria: Path):
         "Edge: token deleted mid-session",
         "the next call returns 401 and the UI routes to login",
     )
-    ok("close", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "verified in v1.3.0")
+    ok("close", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "verified in v1.3.0", "--evidence", "unit suite green")
 
     assert pm("check", criteria).returncode == 0
     assert pm("check", criteria, "--strict").returncode == 0, (
@@ -483,12 +485,155 @@ def test_report_prints_paste_ready_markdown_tables(defects: Path):
 def test_status_filter_narrows_items_but_not_the_summary(defects: Path):
     file_a_defect(defects, "token race")
     file_a_defect(defects, "splash hang")
-    ok("close", defects, "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "fixed")
+    ok("close", defects, "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "fixed", "--evidence", "unit suite green")
 
     out = ok("report", defects, "--status", "closed")
     assert "splash hang" in out, "ITEMS now lists the closed work"
     summary = out[out.index("SUMMARY") : out.index("ITEMS")]
     assert "1/1" in summary, "the summary still shows the whole scope, not the filter"
+
+
+def restamp(f: Path, item: str, stamp: str, event: str = "added") -> None:
+    """Set the stamp on one of an item's log lines. The file is the whole store, so a
+    test that needs a particular date writes one into it rather than mocking a clock."""
+    lines = f.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, ln in enumerate(lines) if f"`{item}`" in ln and "- [" in ln)
+    for i in range(start + 1, len(lines)):
+        if "- [" in lines[i]:
+            break
+        if lines[i].strip().startswith("- log: ") and event in lines[i]:
+            lines[i] = re.sub(r"- log: \S+", f"- log: {stamp}", lines[i])
+            f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return
+    raise AssertionError(f"{item} has no {event!r} log line")
+
+
+def test_a_severity_ask_is_a_flag_not_a_reading_of_the_file(defects: Path):
+    """ "show me the critical defects" has to be one command. The moment the agent reads
+    the document and filters inside its answer, the counts stop being computed."""
+    file_a_defect(defects, "token race", severity="CRITICAL")
+    file_a_defect(defects, "splash flicker", severity="MINOR")
+
+    out = ok("report", defects, "--severity", "CRITICAL")
+    assert "token race" in out and "splash flicker" not in out
+    assert "1 open / 0 closed" in out, "the counts follow the filter, not the file"
+    assert "MINOR" not in out, "a severity the filter empties gets no column"
+
+
+def test_the_date_window_reads_the_log_which_is_where_dates_live(defects: Path):
+    """filed, closed and updated are three questions about the same item, and all three
+    are answered from the log lines - nothing else records a date."""
+    file_a_defect(defects, "token race")
+    file_a_defect(defects, "splash flicker")
+    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed", "--evidence", "unit suite green")
+    restamp(defects, "DEF-LNCH-1", "2026-05-04T09:00:00Z")
+    restamp(defects, "DEF-LNCH-1", "2026-08-26T14:00:00Z", event="closed")
+    restamp(defects, "DEF-LNCH-2", "2026-07-21T12:00:00Z")
+
+    filed = ok("report", defects, "--since", "2026-07-01", "--until", "2026-07-31")
+    assert "splash flicker" in filed and "token race" not in filed
+    assert "filed 2026-07-01 to 2026-07-31" in filed, "the header names the window applied"
+
+    closed = ok("report", defects, "--dates", "closed", "--since", "2026-08-01")
+    assert "token race" in closed, "a closed window lists what it found without --status all"
+    assert "splash flicker" not in closed, "an open item has no closed date"
+
+    stale = ok("report", defects, "--dates", "updated", "--until", "2026-07-31", "--status", "all")
+    assert "splash flicker" in stale and "token race" not in stale
+
+
+def test_a_reopen_retires_the_closed_date(defects: Path):
+    file_a_defect(defects, "token race")
+    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed", "--evidence", "unit suite green")
+    restamp(defects, "DEF-LNCH-1", "2026-08-26T14:00:00Z", event="closed")
+    ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj")
+
+    out = ok("report", defects, "--dates", "closed", "--since", "2026-08-01")
+    assert "token race" not in out, "the item is open again, so it has no closed date"
+
+
+def test_summary_stops_at_the_grid_and_plain_only_drops_the_chrome(defects: Path):
+    """A summary and a plain report are different asks: one removes the items, the other
+    removes the decoration around them."""
+    file_a_defect(defects, "token race")
+
+    brief = ok("report", defects, "--summary")
+    assert "SUMMARY" in brief and "1 open / 0 closed" in brief, "the grid and its counts"
+    assert "ITEMS" not in brief and "token race" not in brief
+    assert "CATEGORIES" not in brief and "TEST COVERAGE" not in brief
+
+    flat = ok("report", defects, "--plain")
+    assert "ITEMS" in flat and "token race" in flat, "plain keeps the queue"
+    assert "CATEGORIES" not in flat and "TEST COVERAGE" not in flat
+    assert "Categories down" not in flat, "no section blurb"
+    assert not any(ord(ch) > 0x2500 for ch in flat), "and no icons"
+
+
+def test_severity_on_a_criteria_document_is_named_not_reported_as_zeros(criteria: Path):
+    write_a_criterion(criteria, "session expiry", "idle 30 min ends the session")
+    r = pm("report", criteria, "--severity", "CRITICAL")
+    assert r.returncode == 0
+    assert "skipped" in r.stderr, "severity is a defect attribute; say so"
+    assert "SUMMARY" not in r.stdout, "and print no grid of zeros"
+
+
+def test_a_malformed_date_is_refused_rather_than_guessed(defects: Path):
+    file_a_defect(defects, "token race")
+    r = pm("report", defects, "--since", "2026-8-1")
+    assert r.returncode != 0
+    assert "YYYY-MM-DD" in r.stderr + r.stdout
+
+
+def test_neither_discipline_closes_without_evidence(defects: Path, criteria: Path):
+    """A closure with no proof is a claim, so the CLI refuses it on both documents and
+    the item is left exactly as it was."""
+    file_a_defect(defects, "token race")
+    write_a_criterion(criteria, "session expiry", "idle 30 min ends the session")
+
+    for f, item in ((defects, "DEF-LNCH-1"), (criteria, "ACC-AUTH-1")):
+        r = pm("close", f, "--id", item, "--author", "@kj", "--event", "done")
+        assert r.returncode != 0, f"{item} closed with no evidence"
+        assert "--evidence" in r.stderr
+        assert f"- [ ] `{item}`" in f.read_text(encoding="utf-8"), "and nothing changed"
+
+    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed",
+       "--evidence", "test_fork_token green on build 412")
+    ok("close", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "met",
+       "--evidence", "frozen clock, idle 31 min, 401 observed")
+
+    for f in (defects, criteria):
+        assert pm("check", f, "--strict").returncode == 0, "a proven closure passes the gate"
+
+    out = ok("report", defects, "--status", "closed")
+    assert "Evidence" in out and "build 412" in out, "the proof is in the report"
+
+
+def test_a_closure_proven_then_reopened_gives_the_evidence_back_to_the_log(defects: Path):
+    file_a_defect(defects, "token race")
+    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed",
+       "--evidence", "test_fork_token green on build 412")
+    ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "regressed")
+
+    body = defects.read_text(encoding="utf-8")
+    assert "- evidence:" not in body, "an open item carries no proof of being done"
+    assert "evidence retired: test_fork_token green on build 412" in body
+    assert pm("check", defects, "--strict").returncode == 0
+
+
+def test_upgrade_names_the_closed_items_that_carry_no_evidence(docs: Path):
+    """A legacy tracker closed everything without proof. upgrade cannot invent it, so it
+    says how many need one rather than fabricating a line."""
+    f = docs / "defects-legacy.md"
+    f.write_text(
+        "# Defects - Legacy\n\n## Launch\n\nCold start\n\n"
+        "- [x] **old bug** - MAJOR; fixed long ago\n"
+        "  - log: 2026-01-02T00:00:00Z @kj closed: fixed\n\n"
+        "## Authors\n\n- `@kj` Konrad Jelen\n",
+        encoding="utf-8",
+    )
+    r = pm("upgrade", f)
+    assert r.returncode == 0
+    assert "1 closed item(s) carry no evidence" in r.stderr
 
 
 def test_list_categories_is_the_derived_index(defects: Path):

@@ -1038,7 +1038,7 @@ class TestChecklistRoster:
 
         from stellars_claude_code_plugins.svg_tools.finalize import build_checklist, finalize
 
-        files = sorted(glob.glob("svg-infographics/examples/*.svg"))
+        files = sorted(glob.glob("plugins/svg-infographics/examples/*.svg"))
         assert files, "example corpus missing"
         unrepresented: list[str] = []
         for p in files:
@@ -1312,7 +1312,7 @@ class TestRosterHonestyRound3:
 
         from stellars_claude_code_plugins.svg_tools.finalize import build_checklist, finalize
 
-        p = _P("svg-infographics/examples/65_embroidery_basic_tier.svg")
+        p = _P("plugins/svg-infographics/examples/65_embroidery_basic_tier.svg")
         if not p.exists():
             pytest.skip("example corpus file missing")
         ran: set[str] = set()
@@ -2621,7 +2621,7 @@ class TestRound6MutantPins:
         its only PASS, and that PASS is false."""
         from stellars_claude_code_plugins.svg_tools.finalize import build_checklist, finalize
 
-        f = Path("svg-infographics/examples/stellars-tech_jupyterhub_logo_basic.svg")
+        f = Path("plugins/svg-infographics/examples/stellars-tech_jupyterhub_logo_basic.svg")
         if not f.is_file():
             pytest.skip("example not present")
         ran: set[str] = set()

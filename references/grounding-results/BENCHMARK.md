@@ -49,7 +49,7 @@ NUM=$(uv run python scripts/bench_numeric.py)
 PORT=$(uv run python scripts/bench_portability.py)
 
 # 5. skill_rules_present (rules found / 3)
-RULES=$(grep -c -iE "agreement beats magnitude|contradiction flag is the final word|re-recommend semantic on struggle" document-processing/skills/validate-document/SKILL.md)
+RULES=$(grep -c -iE "agreement beats magnitude|contradiction flag is the final word|re-recommend semantic on struggle" plugins/document-processing/skills/validate-document/SKILL.md)
 RULES=$(echo "scale=3; $RULES / 3" | bc)
 ```
 
@@ -157,11 +157,11 @@ component values and the resulting score.
    - Target: **1**
 
 5. **`skill_rules_present`** — count of required skill rules found in
-   `document-processing/skills/validate-document/SKILL.md` (weight 0.10)
+   `plugins/document-processing/skills/validate-document/SKILL.md` (weight 0.10)
    - Execution:
      ```bash
      grep -c -E "agreement beats magnitude|contradiction flag is the final word|re-recommend semantic on struggle" \
-       document-processing/skills/validate-document/SKILL.md
+       plugins/document-processing/skills/validate-document/SKILL.md
      ```
    - Expected strings (case-insensitive):
      - "agreement beats magnitude" (H8)
@@ -241,17 +241,17 @@ component values and the resulting score.
 
 - [ ] Rule "agreement beats magnitude" present in
       `validate-document/SKILL.md` with example of semantic-only hit
-  Execution: `grep -A 3 -i "agreement beats magnitude" document-processing/skills/validate-document/SKILL.md`
+  Execution: `grep -A 3 -i "agreement beats magnitude" plugins/document-processing/skills/validate-document/SKILL.md`
   Evidence: —
 
 - [ ] Rule "contradiction flag is the final word" present, overriding
       positive scores
-  Execution: `grep -A 3 -i "contradiction flag is the final word" document-processing/skills/validate-document/SKILL.md`
+  Execution: `grep -A 3 -i "contradiction flag is the final word" plugins/document-processing/skills/validate-document/SKILL.md`
   Evidence: —
 
 - [ ] Rule "re-recommend semantic on struggle" present with explicit
       user-consent ask template
-  Execution: `grep -A 3 -i "re-recommend semantic on struggle" document-processing/skills/validate-document/SKILL.md`
+  Execution: `grep -A 3 -i "re-recommend semantic on struggle" plugins/document-processing/skills/validate-document/SKILL.md`
   Evidence: —
 
 ---

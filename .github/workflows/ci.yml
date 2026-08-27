@@ -72,7 +72,7 @@ jobs:
           plugins = ['autobuild','datascience','devils-advocate','document-processing','journal','project-management','svg-infographics']
           bad = []
           for p in plugins:
-              pv = json.loads((root/p/'.claude-plugin/plugin.json').read_text())['version']
+              pv = json.loads((root/'plugins'/p/'.claude-plugin/plugin.json').read_text())['version']
               if pv != v: bad.append(f'{p}/.claude-plugin/plugin.json: {pv} != {v}')
           m = json.loads((root/'.claude-plugin/marketplace.json').read_text())
           if m['metadata']['version'] != v:
@@ -94,10 +94,10 @@ jobs:
           import re, sys, pathlib
           root = pathlib.Path('.')
           bad, checked = [], 0
-          for f in sorted(root.glob('*/commands/*.md')):
+          for f in sorted(root.glob('plugins/*/commands/*.md')):
               for ref in sorted(set(re.findall(r'[a-z-]+/skills/[a-z-]+/SKILL\.md', f.read_text()))):
                   checked += 1
-                  if not (root / ref).is_file(): bad.append(f'{f} -> {ref}')
+                  if not (root / 'plugins' / ref).is_file(): bad.append(f'{f} -> {ref}')
           if bad:
               print('BROKEN command -> skill references:')
               [print('  ' + b) for b in bad]
@@ -167,7 +167,7 @@ jobs:
           #   academic.oup.com) that answer a bare bot request with 403. The DOI is
           #   verified real at authoring time against api.crossref.org, which does not
           #   block; the link checker cannot repeat that check, so it skips them.
-          args: --no-progress --max-concurrency 8 --accept '100..=103,200..=299,429' --exclude medium.com --exclude pepy.tech --exclude static.pepy.tech --exclude mcpmarket.com --exclude 'github\.com/stellarshenson/knowledge-graph-foundry' --exclude 'doi\.org' README.md autobuild/README.md datascience/README.md devils-advocate/README.md document-processing/README.md journal/README.md project-management/README.md svg-infographics/README.md
+          args: --no-progress --max-concurrency 8 --accept '100..=103,200..=299,429' --exclude medium.com --exclude pepy.tech --exclude static.pepy.tech --exclude mcpmarket.com --exclude 'github\.com/stellarshenson/knowledge-graph-foundry' --exclude 'doi\.org' README.md plugins/autobuild/README.md plugins/datascience/README.md plugins/devils-advocate/README.md plugins/document-processing/README.md plugins/journal/README.md plugins/project-management/README.md plugins/svg-infographics/README.md
           fail: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
