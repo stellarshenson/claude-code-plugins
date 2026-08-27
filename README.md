@@ -47,6 +47,20 @@ Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop
 | [journal](journal/) | Produces a work journal marking key changes, implementations, and decisions - append-only audit trail with continuous numbering, archiving, and deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement |
 | [project-management](project-management/) | Tracks acceptance criteria and defects for the project inside the repository - permanent ids, mandatory triage, authored append-only logs, and reports computed on read by the deterministic `pm-tools` CLI |
 
+```bash
+# Add the marketplace once
+/plugin marketplace add stellarshenson/claude-code-plugins
+
+# Install all seven
+/plugin install autobuild@stellarshenson-marketplace
+/plugin install devils-advocate@stellarshenson-marketplace
+/plugin install svg-infographics@stellarshenson-marketplace
+/plugin install datascience@stellarshenson-marketplace
+/plugin install document-processing@stellarshenson-marketplace
+/plugin install journal@stellarshenson-marketplace
+/plugin install project-management@stellarshenson-marketplace
+```
+
 ## autobuild
 
 <img alt="autobuild 8-phase lifecycle: research, hypothesis, plan, implement, test, review, record, next" src="assets/svg/02_autobuild_phases.svg" width="100%">
