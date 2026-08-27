@@ -7,20 +7,6 @@ description: Generate baseline devil's advocate evaluation. Produces concern cat
 
 Generate concern catalogue and scorecard. Run after setup.
 
-## Toolchain gate (MANDATORY - run before anything else)
-
-Run this first, every session, before any other work. The upgrade always runs; a version mismatch blocks.
-
-```bash
-python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
-LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
-PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
-echo "toolkit $LIB"
-```
-
-Both branches exit non-zero and neither is advisory: an absent library (`FATAL`) and a version mismatch (`STALE`). A mismatch means the CLI is not the one this file was written against, so its documented flags and rules are unverified. Report the line and stop; do not work around it.
-
 ## Task Tracking
 
 **MANDATORY**: Use TaskCreate/TaskUpdate per step (read context, generate catalogue, score, create v01). Mark in_progress/completed.
@@ -139,6 +125,32 @@ Initial evaluations: in-session calibrates devil. Re-scoring iterations: standal
 4. Example: `report_v01.md` -> `report_v01_89.md`
 
 Original NOT modified.
+
+## Scoring principles
+
+**Aggression punishes.** Confrontational, accusatory, blame-shifting language drops tone scores even if facts improve. Tone registers before facts.
+
+**Reader needs WHY.** Facts without reasons = devil fills blanks, usually badly.
+
+**Transparency beats framing.** Hiding bad numbers costs more trust than showing with context.
+
+**Quality over presence.** Weak addressing scores worse than no addressing. Half-answers signal awareness without competence.
+
+**One visual replaces three paragraphs.** SVG (via the `svg-infographics:svg-designer` skill, which runs its own toolchain gate) = highest leverage for cognitive load:
+- Stacked bars for metric breakdowns
+- Before/after for value
+- Grid/field for composite metrics
+- Classification distributions
+
+## Anti-patterns
+
+- **Never soften concerns.** Write as devil - harsh, direct, their voice
+- **Never pre-judge priority.** Let math decide
+- **Never conflate scoring with approval.** 90% = 10% residual risk
+- **Never remove concerns.** Mark resolved, keep in catalogue
+- **Never score generously.** In doubt, score lower
+- **Never use generic reasoning.** Always quote specific text
+- **Never optimise in isolation.** Net effect across all concerns
 
 ## When done
 

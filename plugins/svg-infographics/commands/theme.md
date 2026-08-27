@@ -6,23 +6,6 @@ argument-hint: "brand name or colour direction, e.g. 'corporate blue palette' or
 
 # Generate Theme Swatch
 
-## Toolchain gate (refuse only if the library is unavailable)
-
-Before anything else run:
-
-```bash
-python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
-LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
-PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
-echo "toolkit $LIB"
-```
-
-Verify the CLI runs: `svg-infographics --help`. **The gate above blocks on both failures** - an absent library (`FATAL`) and a version mismatch (`STALE`) each exit non-zero. Neither is advisory: this command documents the current plugin's flags, so a mismatched CLI may reject them and anything it does produce is unverified. Report the line and stop. No fallback, no hand-built output.
-
-
-Create a theme swatch SVG for user approval before producing infographic deliverables.
-
 ## Task Tracking
 
 **MANDATORY**: Create tasks for gathering requirements, generating swatch, getting approval, and documenting palette.

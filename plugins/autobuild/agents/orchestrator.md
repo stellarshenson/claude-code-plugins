@@ -41,6 +41,7 @@ Skill(skill: "autobuild", args: "new --type full --objective \"...\" --iteration
 
 | Type | Use when |
 |------|----------|
+| `fast` | Default. Scope already known - no research or hypothesis phase |
 | `full` | Feature work, improvements, research-driven changes |
 | `gc` | Cleanup, dead code removal, refactoring |
 | `hotfix` | Targeted bug fix, minimal ceremony |

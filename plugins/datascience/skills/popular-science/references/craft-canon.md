@@ -15,7 +15,22 @@ The industry best practices to write to, and the anti-patterns to avoid, distill
 - **Head-to-tail transitions** - echo a word or idea from a paragraph's last sentence in the next paragraph's first, so the seams disappear (The Open Notebook, "Good Transitions")
 - **Structure before drafting** - outline what each paragraph does before writing prose; most writing problems are structure problems, not sentence problems (Ed Yong, craft interview)
 - **The kicker** - end on a line that lands: short words, a callback to the opening image or question, full circle with a twist. The best endings echo the beginning in an essential but surprising way (The Open Notebook, "Good Endings: How to Write a Kicker"). Then conclusions, then next steps where the work continues
-- **Emphasis and resting points** - lift the single most load-bearing line of a section into a *pull quote* (lift-out / call-out): a sentence pulled from the body and set apart - larger, italic, centred - to draw the eye and give the reader a place to pause. Render it as a centred level-4 heading (`#### *…*`) with `<br>` breathing room above and below and no horizontal rules around it - a `---` boxes the quote in and misreads as a section break; one line or a short two-line stack. Bold a few load-bearing phrases in the running prose. Both are seasoning: a handful across a whole piece, on the lines that carry the argument, never a page of them (magazine layout; NN/g, emphasis and scannability)
+- **Emphasis and resting points** - lift the single most load-bearing line of a section into a *pull quote* (lift-out / call-out): a sentence pulled from the body and set apart - larger, italic, centred - to draw the eye and give the reader a place to pause. Render it as a centred level-4 heading (`#### *…*`) inside a `<div align="center">` wrapper - GitHub strips inline font-size, so the div is what centres it - with `<br>` breathing room above and below and no horizontal rules around it - a `---` boxes the quote in and misreads as a section break; one line or a short two-line stack. Bold a few load-bearing phrases in the running prose. Both are seasoning: a handful across a whole piece, on the lines that carry the argument, never a page of them (magazine layout; NN/g, emphasis and scannability)
+
+Pull-quote shape, mirror verbatim:
+
+```
+<br>
+
+<div align="center">
+
+#### *Warmth is roughly worth what neutrality is worth.*
+#### *Hostility is the signal that lands.*
+
+</div>
+
+<br>
+```
 
 ## Writing - anti-patterns
 - **Jargon as a flex** - convoluted prose reads as hiding a weak grasp, not as authority
@@ -34,6 +49,7 @@ The industry best practices to write to, and the anti-patterns to avoid, distill
 - **One message per figure** - annotate the takeaway so the caption reads the chart without the body text
 - **Redundant encoding** - never colour alone; pair with shape / label / pattern; colourblind- and greyscale-safe
 - **Graphical integrity** - honest axes, honest area; the visual's magnitude matches the data's (Tufte's lie factor)
+- **Provenance on the figure** - cite the data source, date and method on the figure itself, not only in the caption ([Our World in Data](https://ourworldindata.org/redesigning-our-interactive-data-visualizations))
 
 ## Visuals - anti-patterns
 - 3-D bars or pies, drop shadows, decorative gradients - distort perception, add nothing

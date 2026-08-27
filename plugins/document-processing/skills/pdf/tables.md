@@ -30,20 +30,6 @@ with pdfplumber.open("report.pdf") as pdf:
             print(row)
 ```
 
-### Using included script
-
-```bash
-python scripts/extract_tables.py report.pdf --output tables.csv
-```
-
-Output:
-```csv
-Name,Age,City
-John Doe,30,New York
-Jane Smith,25,Los Angeles
-Bob Johnson,35,Chicago
-```
-
 ## Table extraction strategies
 
 ### Strategy 1: Automatic detection

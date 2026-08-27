@@ -408,14 +408,73 @@ def test_evidence_is_stored_once_on_its_own_line(defects: Path):
     assert "closed: fixed" in body, "the log still records the closure event"
 
 
-def test_reopening_retires_the_evidence_and_logs_what_it_was(defects: Path):
+def test_reopening_a_criterion_retires_the_evidence_and_logs_what_it_was(criteria: Path):
     """Reopened means not done, so the proof cannot stand - but the log keeps it."""
+    add_criterion(criteria, "session survives a refresh")
+    close_with(criteria, "ACC-AUTH-1", "test_refresh green", event="done")
+    run("reopen", str(criteria), "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "not done")
+    body = criteria.read_text(encoding="utf-8")
+    assert "- evidence:" not in body, "the line goes with the closure"
+    assert "evidence retired: test_refresh green" in body, "the log remembers it"
+
+
+def test_reopening_a_defect_mints_a_regression_and_leaves_the_closure_proven(defects: Path):
+    """A proven fix that broke again is a new fact, not a reversal of the old one."""
     add_defect(defects, "token race")
     close_with(defects, "DEF-LNCH-1", "test_fork_token green")
     run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "regressed")
     body = defects.read_text(encoding="utf-8")
-    assert "- evidence:" not in body, "the line goes with the closure"
-    assert "evidence retired: test_fork_token green" in body, "the log remembers it"
+    assert "- [x] `DEF-LNCH-1`" in body, "the parent closure stands"
+    assert "- evidence: test_fork_token green" in body, "it was proven when it was made"
+    assert "- [ ] `DEF-LNCH-1-1`" in body, "the regression is its own open item"
+    assert "regressed as DEF-LNCH-1-1" in body, "the parent names where it went"
+    assert "regression of DEF-LNCH-1: regressed" in body, "the child names its parent"
+
+
+def test_regressions_number_flat_from_the_root(defects: Path):
+    """A regression of a regression is the next ordinal on the root, never nested."""
+    add_defect(defects, "token race")
+    close_with(defects, "DEF-LNCH-1", "green on 412")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    close_with(defects, "DEF-LNCH-1-1", "green on 470")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1-1", "--author", "@kj")
+    body = defects.read_text(encoding="utf-8")
+    assert "`DEF-LNCH-1-2`" in body, "the third occurrence is -2 on the root"
+    assert "DEF-LNCH-1-1-1" not in body, "ordinals never nest"
+
+
+def test_a_rejected_defect_reopens_without_minting(defects: Path):
+    """Rejected was never fixed, so undoing it is triage, not a regression."""
+    add_defect(defects, "token race")
+    run("reject", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "not ours")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    body = defects.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-LNCH-1`" in body, "the item itself reopens"
+    assert "DEF-LNCH-1-1" not in body, "a rejection reversal is not a regression"
+
+
+def test_the_report_counts_the_regressions(defects: Path, capsys):
+    """The count is the whole point of the derived ids."""
+    add_defect(defects, "token race")
+    close_with(defects, "DEF-LNCH-1", "green on 412")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    close_with(defects, "DEF-LNCH-1-1", "green on 470")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1-1", "--author", "@kj")
+    capsys.readouterr()
+    run("report", str(defects), "--status", "all")
+    assert "2 regressions across 1 defect" in capsys.readouterr().out
+
+
+def test_a_regression_without_its_root_is_an_error(defects: Path, capsys):
+    """A regression is a fact about a defect; orphaned it counts nothing."""
+    add_defect(defects, "token race")
+    close_with(defects, "DEF-LNCH-1", "green on 412")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    body = defects.read_text(encoding="utf-8")
+    defects.write_text(body.replace("`DEF-LNCH-1`", "`DEF-LNCH-7`"), encoding="utf-8")
+    capsys.readouterr()
+    assert run("check", str(defects)) == 1
+    assert "regression DEF-LNCH-1-1 has no root item DEF-LNCH-1" in capsys.readouterr().out
 
 
 def test_edit_records_evidence_after_the_fact(defects: Path, capsys):
@@ -583,26 +642,28 @@ def test_report_filters_on_the_date_an_item_was_closed(defects: Path, capsys):
     assert "splash flicker" not in out, "an open item has no closed date"
 
 
-def test_a_reopened_item_has_no_closed_date(defects: Path, capsys):
+def test_a_reopened_criterion_has_no_closed_date(criteria: Path, capsys):
+    add_criterion(criteria, "session survives a refresh")
+    close_with(criteria, "ACC-AUTH-1", "unit suite green", event="done")
+    restamp(criteria, "ACC-AUTH-1", "2026-08-26T14:00:00Z", event="closed")
+    run("reopen", str(criteria), "--id", "ACC-AUTH-1", "--author", "@kj")
+    capsys.readouterr()
+    run("report", str(criteria), "--dates", "closed", "--since", "2026-08-01")
+    out = capsys.readouterr().out
+    assert "session survives a refresh" not in out, "reopening retires the closed date"
+
+
+def test_a_regressed_defect_keeps_its_closed_date(defects: Path, capsys):
+    """The parent really was closed on that day; the regression is a separate item."""
     add_defect(defects, "token race")
-    run(
-        "close",
-        str(defects),
-        "--id",
-        "DEF-LNCH-1",
-        "--author",
-        "@kj",
-        "--event",
-        "fixed",
-        "--evidence",
-        "unit suite green",
-    )
+    close_with(defects, "DEF-LNCH-1", "unit suite green")
     restamp(defects, "DEF-LNCH-1", "2026-08-26T14:00:00Z", event="closed")
     run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
     capsys.readouterr()
     run("report", str(defects), "--dates", "closed", "--since", "2026-08-01")
     out = capsys.readouterr().out
-    assert "token race" not in out, "reopening retires the closed date"
+    assert "`DEF-LNCH-1`" in out, "the closure happened and keeps its date"
+    assert "`DEF-LNCH-1-1`" not in out, "the open regression has no closed date"
 
 
 def test_report_plain_drops_the_chrome_and_keeps_the_data(defects: Path, capsys):

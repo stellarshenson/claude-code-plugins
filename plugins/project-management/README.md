@@ -110,7 +110,8 @@ Cold start, splash screen and the first turn after a fork
 
 - **Permanent ids** - `ACC-<CAT>-<N>` and `DEF-<CAT>-<N>`, unique across the document, never renumbered and never recycled. An item that moves category keeps the code it was born with
 - **Three states** - `[ ]` open, `[x]` closed, `[-]` rejected. Rejected is for a report that was never a defect (never reproduced, or the feature is gone); a real defect nobody will fix is a close with the reason
-- **Evidence at closure** - `close` refuses to run without `--evidence`, one line proving the item is done: the regression test that passes, the build it was verified on. Fixed stops being a claim, and `reopen` retires the line
+- **Evidence at closure** - `close` refuses to run without `--evidence`, one line proving the item is done: the regression test that passes, the build it was verified on. Fixed stops being a claim
+- **Regressions are counted, not overwritten** - reopening a closed defect files `DEF-LNCH-3-1`, then `-2`, and leaves the original closed with its proof; the report totals them, so the file says how often fixes come back
 - **Authored log lines** - ISO 8601 UTC, then the handle, then the event. Append-only, and the attempts that FAILED are the reason the file is worth keeping
 - **Mandatory triage** - `CRITICAL` / `MAJOR` / `MEDIUM` / `MINOR`, assigned by the agent as the defect is filed. There is no unset: `add` refuses one and `check` errors on one
 

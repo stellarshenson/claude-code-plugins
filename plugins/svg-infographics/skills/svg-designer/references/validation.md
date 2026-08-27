@@ -51,12 +51,7 @@ svg-infographics connector --mode manifold --starts "[...]" ... \
 # SVG output released; stderr shows audit trail.
 ```
 
-
-
-```bash
-pip install stellars-claude-code-plugins
-svg-infographics --help
-```
+Install and version check: the toolchain gate in `SKILL.md`. A green `--help` proves nothing; only the version compare does.
 
 Task tracking MANDATORY: TaskCreate/TaskUpdate when running validation. One task per checker run + fix cycle.
 
@@ -361,38 +356,9 @@ Prints `<path>` on stdout, bbox + scale on stderr.
 Do not re-list the machine-checkable rows by hand - `finalize --checklist` owns them, and a second copy here drifts out of step with the checkers. Run it and read the roster:
 
 - [ ] `finalize --checklist` — every row `PASS` or `NA`; no `FAIL`, and no `SKIP` you did not ask for
-- [ ] Browser visual check via Playwright (drop `--no-visual` so the render row is judged rather than skipped)
+- [ ] `render-png --mode both` readback - one pass, both modes; no browser or screenshot loops (`workflow.md` Phase 6)
 
 The manual boxes above stay manual: they cover intent (transparent background, guide grid, z-order, unicode glyphs, 7px minimum, card fill opacity) that no checker decides.
-
-## Multi-agent validation workflow
-
-1. **Generator** creates/edits SVG
-2. **Checker agents** run all validators in parallel (3+ concurrent)
-3. **Generator** classifies findings, writes `verification_checklist.md`
-4. **Critic agent** (separate context, fail-first) reviews every classification
-5. **Fixer** addresses rejections, re-runs checkers
-6. **Verifier** confirms with Playwright screenshots (light + dark)
-
-## Browser visual verification
-
-Playwright blocks `file://` URLs. Serve via HTTP:
-
-1. `python3 -m http.server 8768` from images directory
-2. HTML wrapper: `<body style="background:#1e1e1e"><img src="http://localhost:8768/file.svg" width="900"></body>`
-3. Serve wrapper on different port, navigate Playwright
-4. Screenshot dark + light modes
-5. Check: text overlap, contrast failures, bar misalignment, asymmetric padding
-
-## Generative failure investigation
-
-Generate `verification_checklist.md` per failure:
-
-```markdown
-- [ ] `<filename>` | `"<text>"` | <ratio/overlap%> | <mode>
-  - **Root cause**: <description>
-  - **Fix**: <specific action>
-```
 
 ## Troubleshooting (moved from standards.md)
 

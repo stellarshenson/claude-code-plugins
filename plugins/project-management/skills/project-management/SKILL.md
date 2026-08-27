@@ -97,6 +97,8 @@ A filled-in item, and what belongs in its body, is in the discipline's own refer
 
 `reject` demands a reason and writes it to the log. `check` warns on a rejected item with no reason; `report` puts every reason in its own table. `reopen` returns a rejected item to open.
 
+Reopening a **closed defect** does not reverse the closure - it files a regression. `reopen DEF-LNCH-3` leaves the parent closed with its evidence intact and opens `DEF-LNCH-3-1`, carrying the same title and severity; the next time, `-2`. Ordinals are flat, so reopening `DEF-LNCH-3-1` gives `DEF-LNCH-3-2`, never `-1-1`, and the highest ordinal is the number of times that defect has come back. `report` prints the total above the SUMMARY grid, which is how the file answers how regression-prone the system is. A rejected defect reopens normally - nothing was fixed, so nothing regressed - and criteria are unaffected.
+
 ## Category
 
 The `##` heading carries the full name and the code (`## Authentication \`AUTH\``); the line under it carries the description. Reports expand the code to the full name, so `AUTH` never has to be decoded by the reader. `describe` sets or replaces the description; `check` warns when a category has none.
@@ -107,7 +109,7 @@ Three sub-lines, one line each, one per item.
 
 - **The hint line** - one shortest-possible instruction, named by the discipline (`repro:` or `test:`); which one, and how to write it, is in that discipline's reference. The wrong hint for the discipline is an error, two of either is an error, a missing one is a warning
 - **`- test-tags:`** - which kinds of test cover the item, comma separated: `unit`, `integration`, `functional`, `e2e`, `manual`. Free vocabulary, but reuse the words - `report` counts them into the coverage table, which is how "how many items are covered by unit tests" gets answered
-- **`- evidence:`** - one line proving the item is actually done: the test that passes, the run that was observed, the commit. `close` demands it and writes the line, so a closure with no proof cannot be recorded; `reopen` retires it and the log keeps what it said. Never write it by hand and never on an open item - it is the closure's proof, not a plan
+- **`- evidence:`** - one line proving the item is actually done: the test that passes, the run that was observed, the commit. `close` demands it and writes the line, so a closure with no proof cannot be recorded. Reopening a criterion retires it and the log keeps what it said; a closed defect keeps it, because the regression is a new item and the old fix really was proven. Never write it by hand and never on an open item - it is the closure's proof, not a plan
 
 ## Authoring
 
@@ -164,7 +166,7 @@ Write - one file per call, and `--author` on every one of them:
 | `describe` | set or replace the category description |
 | `relate` | add one `related:` or `blocked-by:` line |
 | `log` | append an event to the item's log |
-| `close` / `reopen` | flip the checkbox and log it; `close` demands `--evidence`, `reopen` retires it |
+| `close` / `reopen` | `close` demands `--evidence`; `reopen` retires it on a criterion, and on a closed defect files `<id>-<n>` instead |
 | `reject` | mark `[-]`; the reason is required |
 | `remove` | delete an item created in error; refuses while anything still cites it |
 | `upgrade` | rebuild a legacy doc to this schema, dry run first; `references/upgrade.md` |

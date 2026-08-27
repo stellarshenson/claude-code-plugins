@@ -2,7 +2,20 @@
 
 Extract text from scanned PDFs and image-based documents.
 
-## Quick start
+## Bundled engine (default)
+
+The package ships an offline OCR engine - OnnxTR detection + recognition models via `onnxtr[cpu-headless]`, no system tesseract, weights fetched once on first use.
+
+- **Through grounding** - `document-processing ground --ocr-lang <code> --source scanned.pdf ...` OCRs a source whose text extraction is sparse; without `--ocr-lang` the CLI stops and names the flag with a suggested language
+- **Cache** - the candidate is always written as `<stem>.ocr.txt` next to the source, even when quality is `failed`, so there is a file to edit; later runs read that sibling before anything else
+- **Review** - the file opens with a `# OCR candidate for` header. Grounding raises `OCR-CANDIDATE` while the header is present; read the text for transcription errors (numbers, names, technical terms), fix them, delete the header - that marks it accepted and the warning stops
+- **Standalone** - `from stellars_claude_code_plugins.document_processing import ocr`, then `r = ocr.ocr_pdf(Path("scanned.pdf"), "en")` and `ocr.cache_ocr_candidate(Path("scanned.pdf"), r)` write the same sibling; `ocr.ocr_available()` reports whether the engine imports
+
+## Fallback: tesseract
+
+For a platform without an `onnxtr` wheel, or a language the bundled models do not cover.
+
+### Quick start
 
 ```python
 import pytesseract

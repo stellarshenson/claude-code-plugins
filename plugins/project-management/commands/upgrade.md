@@ -6,7 +6,7 @@ argument-hint: "the document to upgrade, e.g. 'docs/acceptance-criteria.md' or '
 
 # Upgrade
 
-Read the `project-management` skill first for the target schema, then `references/upgrade.md` - it is the single source of truth for the upgrade order and what the dry run refuses to guess. Do NOT duplicate either here.
+Read the `project-management` skill first for the target schema, then `skills/project-management/references/upgrade.md` - it is the single source of truth for the upgrade order and what the dry run refuses to guess. Do NOT duplicate either here.
 
 ## Toolchain gate (MANDATORY - run before anything else)
 
@@ -24,10 +24,10 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 ## What to do
 
-1. Read the `project-management` skill, then `references/upgrade.md`, and follow that file's numbered order literally
+1. Read the `project-management` skill, then `skills/project-management/references/upgrade.md`, and follow that file's numbered order literally
 2. **Roster first** - `pm-tools author FILE --handle @xx --name "Full Name"`; nothing else runs until a handle exists
 3. **Dry run before anything is written** - `pm-tools upgrade FILE` prints every change and every item it cannot handle, and writes nothing. Read the refusals; they are the work
 4. **Apply with `--author`** - a legacy file carries no handles, and `--author` signs every unauthored log line with the importer's handle. Without it the dry run refuses to guess
-5. **Triage every defect the dry run flags** - it prints a ready `pm-tools edit ... --severity ...` line per untriaged one. Assign the level yourself against the rubric in `references/defects.md`; the gate stays red until the file is fully triaged
+5. **Triage every defect the dry run flags** - it prints a ready `pm-tools edit ... --severity ...` line per untriaged one. Assign the level yourself against the rubric in `skills/project-management/references/defects.md`; the gate stays red until the file is fully triaged
 6. **Describe every category** - the tool never invents a description
 7. **Gate** - `pm-tools check FILE` must exit 0, and `--strict` once the per-item hints and tags are filled. That fill can take several passes on a large file; they are warnings, not errors

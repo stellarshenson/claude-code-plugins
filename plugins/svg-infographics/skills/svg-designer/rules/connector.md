@@ -69,7 +69,7 @@ Arrowhead must be AT MOST 40% of total connector length. Equivalently: stem leng
 
 ## Geometry discipline
 
-- **Standoff**: 8-24px between connector endpoint and source/target boundary. Project minimum 2px, 8-12px is the sweet spot. Standoff is SYMMETRIC by default - `--standoff N` gives N px on both start and end. Asymmetric gaps require an explicit 2-tuple (future parser work; currently scalar only). `--standoff 0` triggers a BLOCKED warning; fix or ack with a specific reason ("flush attachment intentional for cluster", "legend tail touches frame by design").
+- **Standoff**: `--standoff 2` is the project standard - 2px between connector endpoint and source/target boundary (tool default 1px); go wider only when a specific layout asks for it. Standoff is SYMMETRIC by default - `--standoff N` gives N px on both start and end. Asymmetric gaps require an explicit 2-tuple (future parser work; currently scalar only). `--standoff 0` triggers a BLOCKED warning; fix or ack with a specific reason ("flush attachment intentional for cluster", "legend tail touches frame by design").
 - **Chamfer radius**: 4-12px for L-chamfer. Matches card corner radius roughly.
 - **Spline tension**: 0.3-0.6 for dataflow curves. Higher values produce loops that look uncontrolled.
 - **Manifold spine**: place through a deliberate gap in the middle layout so the spine passes cleanly without overlapping intermediate cards. Example: if middle tier has 4 cards, plan a 40px gap between cards 2 and 3 so the spine at x=spine_x passes through.
@@ -141,7 +141,7 @@ Every arrow, connector, routed line comes from `svg-infographics connector`. Out
 
 No `rotate()` transforms. No `atan2`. No horizontal-first templating. Hand-authored `<g transform="rotate(...)">` arrow groups = workflow violation.
 
-Flags (all modes): `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (tool default 1px; see Geometry discipline above for the project sweet spot), `--color`, `--width`, `--opacity`. Spline: `--tangent-magnitude N` (default 0.5 x chord).
+Flags (all modes): `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (tool default 1px; project standard 2), `--color`, `--width`, `--opacity`. Spline: `--tangent-magnitude N` (default 0.5 x chord).
 
 ### L-route edge-aware API (CANONICAL)
 
@@ -151,7 +151,7 @@ Flags (all modes): `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin
 svg-infographics connector --mode l-chamfer \
   --src-rect "70,90,60,40"  --start-dir E \
   --tgt-rect "370,160,60,40" --end-dir S \
-  --chamfer 4 --standoff 4 --arrow end
+  --chamfer 4 --standoff 2 --arrow end
 ```
 
 **Cardinal direction semantics**:
@@ -174,7 +174,7 @@ svg-infographics connector --mode l-chamfer \
   --src-rect "70,90,60,40"  --start-dir E \
   --tgt-rect "670,180,80,40" --end-dir W \
   --auto-route --svg scene.svg \
-  --chamfer 4 --standoff 4 --arrow end
+  --chamfer 4 --standoff 2 --arrow end
 ```
 
 Flags: `--route-cell-size N` (smaller = higher fidelity + slower), `--route-margin N`, `--container-id ID`. Unroutable = fallback 1-bend L + warning. Inspect `warnings` field.
@@ -249,12 +249,3 @@ Connector endpoints = shape EDGE MIDPOINTS. Never centres, never arbitrary corne
 2. `connector ... --src-rect ... --tgt-rect ...` - auto-edge
 3. `geom curve-midpoint --points "[(x,y),...]"` - arc-length midpoint of polyline. Labels ON a connector
 4. `geom shape-midpoint --points "[(x,y),...]"` - area-weighted centroid. Direction inference only, never endpoint
-
-### Angular arrow design (chamfered L-routing)
-
-Chamfer at 90-degree bends with 4px diagonal:
-
-```
-Instead of: M{x1},{y1} V{y_mid} H{x2}
-Use:        M{x1},{y1} V{y_mid-4} L{x1+4},{y_mid} H{x2-4} L{x2},{y_mid+4}
-```

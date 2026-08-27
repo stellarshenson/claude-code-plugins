@@ -5,13 +5,13 @@ description: Build a structured deliverable FROM source files - reconstruct a ti
 
 # Process - Structured Document Build
 
-Meta-skill for structured document production. Generates tailored program (INSTRUCTIONS.md + BENCHMARK.md), scaffolds WIP folder, executes four-phase workflow. Does not process documents directly - orchestrates.
+Meta-skill for structured document production. Generates tailored program (INSTRUCTIONS.md + BENCHMARK.md), scaffolds WIP folder, runs the five-stage build flow. Does not process documents directly - orchestrates.
 
 **Scope boundary.** This skill *builds* deliverable from sources. Not the verification path: validating finished document against source for grounding + tone/style/format compliance = `validate` skill; running grounding CLI over claims (single or batch via `source_map.yaml`) = `grounding` skill. Verify & Ground phase below *invokes* `grounding` skill rather than re-implementing grounding.
 
 ## Pre-flight install (MANDATORY - run every session, no asking)
 
-Always run this single line BEFORE invoking `document-processing`. No-op when package already importable; auto-installs when missing OR when stale shim on PATH but package uninstalled in active Python:
+Always run this single line BEFORE invoking `document-processing`. The upgrade always runs; a version mismatch blocks:
 
 ```bash
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
@@ -34,7 +34,7 @@ Objective describes what to produce. Examples:
 
 ## Execution Flow
 
-### Phase 0: Objective Refinement
+### Stage 0: Objective Refinement
 
 **Step 0.1**: Read all files in `1-input/` - catalogue sources. Read `4-references/` for examples and universal facts. Read `.claude/CLAUDE.md` for project context.
 
@@ -51,7 +51,7 @@ Objective describes what to produce. Examples:
 
 **Step 0.4**: Summarize refined objective for confirmation.
 
-### Phase 1: Program Generation
+### Stage 1: Program Generation
 
 Load references:
 - `references/WORKFLOW.md` - 3-phase workflow template
@@ -80,7 +80,7 @@ Generate `INSTRUCTIONS.md` at project root:
 
 Present for approval. Do not proceed until approved.
 
-### Phase 2: Benchmark Generation
+### Stage 2: Benchmark Generation
 
 From approved INSTRUCTIONS.md, generate `BENCHMARK.md`:
 
@@ -96,21 +96,21 @@ From approved INSTRUCTIONS.md, generate `BENCHMARK.md`:
 
 Present for approval. Do not proceed until approved.
 
-### Phase 3: Scaffolding
+### Stage 3: Scaffolding
 
 - Derive task name from objective (kebab-case, e.g., `timeline-reconstruction`)
 - Create `2-wip/<task-name>/`
 - Create `2-wip/<task-name>/README.md` manifest (empty table)
 - Ask: execution mode A) Interactive, B) Semi-automated, C) Headless
 
-### Phase 4: Execution
+### Stage 4: Execution
 
 Execute INSTRUCTIONS.md step by step per mode.
 
 - Show progress after each step
 - All WIP in `2-wip/<task-name>/`
 - At each phase gate, display deliverables, wait for approval
-- After Phase 3, evaluate against BENCHMARK.md
+- After the inner Phase 3 (Uniformize & Deliver), evaluate against BENCHMARK.md
 - Deliver final to `3-output/`
 - Update manifests in both locations
 

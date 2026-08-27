@@ -25,7 +25,7 @@ If `.claude/JOURNAL.md` already exists, stop and tell the user to use `/journal:
 
    ---
    ```
-4. Append one entry per work unit, numbered from `1`, in chronological order. Use **Standard format** (~70-120 words, see example below).
+4. Append one entry per work unit, numbered from `1`, in chronological order. Use **Standard format** (50-150 words, see example below).
 5. Version tag per entry if the project is versioned (`pyproject.toml` / `package.json` / `Cargo.toml`).
 6. **Pre-flight install (MANDATORY, no asking)**:
 
@@ -39,11 +39,11 @@ If `.claude/JOURNAL.md` already exists, stop and tell the user to use `/journal:
 
    The upgrade always runs - a stale-but-importable install is exactly the failure this gate prevents, and the reinstall also repairs a stale shim on PATH whose package is uninstalled in the active Python.
 
-7. **MUST run `uv run journal-tools check .claude/JOURNAL.md`** (or plain `journal-tools check ...` if `uv` is unavailable). Exit 0 = clean. Any error → fix and re-run. Not optional.
+7. **MUST run `journal-tools check .claude/JOURNAL.md`**. Exit 0 = clean. Any error → fix and re-run. Not optional.
 
 ## Format
 
-Default is **Standard** (~70-120 words, one dense paragraph). Use **Extended** (~250-350 words) only when the user asks ("extended entry", "full detail") or the work unit is an architectural decision / platform migration / multi-iteration debug.
+Default is **Standard** (50-150 words, one dense paragraph). Use **Extended** (150-400 words, marked `[Extended]` after `Task`) only when the user asks ("extended entry", "full detail") or the work unit is an architectural decision / platform migration / multi-iteration debug.
 
 ### Standard example
 
@@ -65,9 +65,9 @@ Same shape but ~250-350 words with more depth on rationale, tradeoffs, alternati
 
 ## CLI tools (mandatory)
 
-- `uv run journal-tools check .claude/JOURNAL.md` — MANDATORY post-write validation. Not optional.
-- `uv run journal-tools sort .claude/JOURNAL.md --dry-run` — preview re-numbering if gaps are detected.
-- `uv run journal-tools archive .claude/JOURNAL.md` — archive once >40 entries (use `/journal:archive`).
+- `journal-tools check .claude/JOURNAL.md` — MANDATORY post-write validation. Not optional.
+- `journal-tools sort .claude/JOURNAL.md --dry-run` — preview re-numbering if gaps are detected.
+- `journal-tools archive .claude/JOURNAL.md` — archive once >40 entries (use `/journal:archive`).
 
 ## Rules
 

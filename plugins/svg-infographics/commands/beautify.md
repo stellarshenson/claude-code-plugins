@@ -313,7 +313,7 @@ This comment allows future agents to understand what decorations were applied, a
 
 ### Step 1: Read directive file
 
-Read `svg-infographics-beautify.md` FULLY. Standing directives (never-negotiable) live there. So does the questionnaire, the dimension reference, and the resolved-pattern slot that this run will populate.
+Read `svg-infographics-beautify.md` FULLY. Standing-directive overrides, the creative brief, the resolved-pattern slot this run will populate, and the history live there; the questionnaire and the dimension reference are in this command.
 
 ### Step 2: Read target SVG + theme
 
@@ -321,7 +321,7 @@ For each file passed in arguments, read the SVG completely. Parse the XML commen
 
 ### Step 3: Run the mandatory questionnaire
 
-Walk the user through all 18 questions from the directive file (Batch 5 skipped when shader mode = off). Use `AskUserQuestion` if available, otherwise present them as a numbered list and wait for all answers. Do NOT shortcut, do NOT use previous runs' answers. Every run re-asks. This is the guard against silent drift.
+Walk the user through all 18 questions in the Questionnaire section above (Batch 5 skipped when shader mode = off). Use `AskUserQuestion` if available, otherwise present them as a numbered list and wait for all answers. Do NOT shortcut, do NOT use previous runs' answers. Every run re-asks. This is the guard against silent drift.
 
 Defaults are allowed - the user may answer "default" to accept the Default column for any question. "Skip" marks a dimension as off for this run. Custom values are copied verbatim.
 
@@ -329,11 +329,11 @@ If the user volunteered any of these answers inline in their command invocation 
 
 ### Step 4: Rewrite the Resolved pattern
 
-After all 14 answers are collected, rewrite the **Resolved pattern** section in `svg-infographics-beautify.md` with the current run's concrete choices. Timestamp the update. This becomes the single source of truth that sub-agents will read.
+After all 18 answers are collected, rewrite the **Resolved pattern** section in `svg-infographics-beautify.md` with the current run's concrete choices. Timestamp the update. This becomes the single source of truth that sub-agents will read.
 
 ### Step 5: Apply (delegated to sub-agents for multi-file runs)
 
-For a single file: apply the seven dimensions per the resolved pattern directly. One task per dimension.
+For a single file: apply the eight dimensions per the resolved pattern directly. One task per dimension.
 
 For multiple files: dispatch one builder per file (or per 2 files) - see *Dispatch the builder* in `/svg-infographics:create` for both call shapes and the agent-type caveat. Every builder's prompt starts with:
 

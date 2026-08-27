@@ -8,9 +8,14 @@ list-categories, backlinks are computed by refs. No counter file, no index, no T
   docs/acc-crit*.md   acceptance criteria, ids ACC-<CAT>-<N>, hint line `- test:`
   docs/defects*.md    defects,             ids DEF-<CAT>-<N>, hint line `- repro:`
 
+A defect that is fixed and breaks again keeps a derived id: reopening DEF-LNCH-3
+opens DEF-LNCH-3-1, then -2, then -3. The parent stays closed with its evidence -
+it really was proven - so the ordinals count how often that defect has regressed.
+
 Both disciplines also carry `- test-tags: unit, functional` - which kinds of test
 cover the item - and `- evidence: <one line>`, the proof it is actually done. `close`
-demands the evidence and writes that line; `reopen` retires it.
+demands the evidence and writes that line; on a criterion `reopen` retires it, on a
+closed defect it mints the regression instead and the closure keeps its proof.
 
 Three states: `- [ ]` open, `- [x]` closed, `- [-]` rejected (reason in the log line).
 Log lines read `- log: 2026-08-27T15:59:12Z @kj <event>` - ISO 8601 UTC, then the author.
@@ -44,7 +49,7 @@ upgrade; anything it cannot map is named and left for a human.
   log    FILE --id ID --event E
   close  FILE --id ID --evidence E [--event E]      evidence proves it is done
   reject FILE --id ID --event E                    not reproduced, irrelevant, wontfix
-  reopen FILE --id ID [--event E]
+  reopen FILE --id ID [--event E]                  closed defect -> a numbered regression
   remove FILE --id ID [--force]                    mistakes and duplicates only
   upgrade FILE [--code "Section=CODE"]... [--author @xx] [--apply]
 
@@ -61,9 +66,12 @@ import sys
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*$")
 ITEM = re.compile(r"^(\s*)- \[([ xX-])\] (.*)$")
 CBOX = re.compile(r"^\s*- \[[^\]]{0,3}\](?:\s|$)")
-IDTOK = re.compile(r"^`(ACC|DEF)-([A-Z]{2,6})-(\d+)`\s+(.*)$")
+IDTOK = re.compile(
+    r"^`(?P<prefix>ACC|DEF)-(?P<cat>[A-Z]{2,6})-(?P<num>\d+)"
+    r"(?:-(?P<regr>\d+))?`\s+(?P<body>.*)$"
+)
 LEGACY = re.compile(r"^`(ACC|DEF)-(\d+)`\s+(.*)$")  # pre-category id, upgrade only
-IDREF = re.compile(r"\b(ACC|DEF)-([A-Z]{2,6})-(\d+)\b")
+IDREF = re.compile(r"\b(ACC|DEF)-([A-Z]{2,6})-(\d+)(?:-(\d+))?\b")
 CATCODE = re.compile(r"^(.*?)\s*`([A-Z]{2,6})`$")
 BOLD = re.compile(r"\*\*([^*]+)\*\*")
 # any all-caps token used as a severity, so upgrade can name what it cannot map
@@ -244,7 +252,7 @@ def parse(path):
         if m:
             indent, state, text = len(m.group(1)), m.group(2), m.group(3)
             idm = IDTOK.match(text)
-            body = idm.group(4) if idm else text
+            body = idm.group("body") if idm else text
             bold = BOLD.search(body)
             after = body[bold.end() :].lstrip(" -") if bold else body
             sm = SEV.match(after)
@@ -254,9 +262,10 @@ def parse(path):
                 indent=indent,
                 state=state,
                 text=text,
-                prefix=idm.group(1) if idm else None,
-                cat=idm.group(2) if idm else None,
-                num=int(idm.group(3)) if idm else None,
+                prefix=idm.group("prefix") if idm else None,
+                cat=idm.group("cat") if idm else None,
+                num=int(idm.group("num")) if idm else None,
+                regr=int(idm.group("regr")) if idm and idm.group("regr") else None,
                 body=body,
                 title=bold.group(1) if bold else None,
                 severity=sm.group(1).upper() if sm else None,
@@ -319,7 +328,10 @@ def parse(path):
 
 
 def ident(b):
-    return f"{b['prefix']}-{b['cat']}-{b['num']}" if b["prefix"] else "(no id)"
+    if not b["prefix"]:
+        return "(no id)"
+    root = f"{b['prefix']}-{b['cat']}-{b['num']}"
+    return f"{root}-{b['regr']}" if b["regr"] else root
 
 
 def author_of(b):
@@ -415,6 +427,23 @@ def tally(items):
     return {name: sum(1 for b in items if status_of(b) == name) for name in FLAG}
 
 
+def next_regr(blocks, b):
+    """The next free regression ordinal in this item's family.
+
+    Flat, not nested: a regression of a regression is the next ordinal on the same
+    root, so the count of regressions an item has suffered is the highest ordinal.
+    """
+    used = [
+        x["regr"]
+        for x in blocks
+        if x["regr"]
+        and x["prefix"] == b["prefix"]
+        and x["cat"] == b["cat"]
+        and x["num"] == b["num"]
+    ]
+    return (max(used) + 1) if used else 1
+
+
 def next_num(blocks):
     nums = [b["num"] for b in blocks if b["num"] is not None]
     return (max(nums) + 1) if nums else 1
@@ -431,7 +460,7 @@ def norm_id(raw, prefix):
     raw = raw.strip().upper()
     if IDREF.fullmatch(raw):
         return raw
-    raise SystemExit(f"malformed id {raw!r}; expected {prefix}-<CAT>-<N>")
+    raise SystemExit(f"malformed id {raw!r}; expected {prefix}-<CAT>-<N>[-<R>]")
 
 
 def block_end(lines, b):
@@ -503,6 +532,12 @@ def cmd_report(files, cat, status, detail, sev, dates, since, until, plain, summ
             f"{t['open']} open / {t['closed']} closed / {t['rejected']} rejected "
             f"across {len(shown)} categor" + ("y\n" if len(shown) == 1 else "ies\n")
         )
+        regs = [b for b in scope if b["regr"]]
+        if regs:
+            n, d = len(regs), len({(b["cat"], b["num"]) for b in regs})
+            print(
+                f"{n} regression{'' if n == 1 else 's'} across {d} defect{'' if d == 1 else 's'}\n"
+            )
         solo = shown[0] if len(shown) == 1 else None
         if solo:
             print(
@@ -851,6 +886,18 @@ def cmd_check(files, strict):
                     e.append((b["line"], f"duplicate id {key} (first at line {seen[key]})"))
                 else:
                     seen[key] = b["line"]
+                if b["regr"]:
+                    # a regression is a fact about a defect; without its root it counts
+                    # nothing and points nowhere
+                    root = f"{b['prefix']}-{b['cat']}-{b['num']}"
+                    if not any(
+                        x["prefix"] == b["prefix"]
+                        and x["cat"] == b["cat"]
+                        and x["num"] == b["num"]
+                        and not x["regr"]
+                        for x in blocks
+                    ):
+                        e.append((b["line"], f"regression {key} has no root item {root}"))
             if not b["title"]:
                 e.append((b["line"], "missing **bold title**"))
             if prefix == "DEF" and not b["severity"]:
@@ -1177,6 +1224,28 @@ def cmd_log(file, wanted, event, author):
     return 0
 
 
+def mint_regression(file, lines, blocks, b, event, who):
+    """Reopening a closed defect opens `<parent>-<next>` and leaves the parent closed.
+
+    The closure was proven when it was made, so retiring it would delete a true fact.
+    A defect that broke again is a new fact about the same defect, and giving it its
+    own item is what makes regressions countable.
+    """
+    rid = f"{b['prefix']}-{b['cat']}-{b['num']}-{next_regr(blocks, b)}"
+    pad = sub_indent(lines, b)
+    at = block_end(lines, b)
+    # the parent names its regression, so its own history is complete
+    lines.insert(at, f"{pad}- log: {now()} {who} regressed as {rid}")
+    ev = f"regression of {ident(b)}" + (f": {event}" if event else "")
+    lines[at + 1 : at + 1] = [
+        f"{' ' * b['indent']}- [ ] `{rid}` {b['body']}",
+        f"{pad}- log: {now()} {who} {ev}",
+    ]
+    save(file, lines)
+    print(f"{file}:{at + 2}: [ ] {rid} ({ev})")
+    return 0
+
+
 def cmd_setstate(file, wanted, target, verb, event, author, evidence=None):
     lines = load(file)
     blocks, _ = parse(file)
@@ -1185,6 +1254,8 @@ def cmd_setstate(file, wanted, target, verb, event, author, evidence=None):
     if b["state"] == target:
         print(f"{file}:{b['line']}: {ident(b)} already [{target}]; no change")
         return 0
+    if target == " " and b["state"].lower() == "x" and b["prefix"] == "DEF":
+        return mint_regression(file, lines, blocks, b, event, who)
     idx = b["line"] - 1
     lines[idx] = re.sub(r"\[[ xX-]\]", f"[{target}]", lines[idx], count=1)
     ev = f"{verb}: {event}" if event else verb
@@ -1356,7 +1427,7 @@ def cmd_upgrade(file, overrides, apply, author):
             body = m.group(3)
             idm = IDTOK.match(body)
             if idm:
-                body = idm.group(4)
+                body = idm.group("body")
             else:
                 lg = LEGACY.match(body)
                 if lg:

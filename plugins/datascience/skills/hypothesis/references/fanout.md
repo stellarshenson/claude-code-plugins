@@ -38,7 +38,7 @@ New hypotheses are transformations of existing ones, rarely inventions from noth
 | sweep | vary one lever's magnitude; verdict on the optimum type (interior / corner / sign-flip) | E17 swept design spans |
 | hybridize | compose winners; test `I(A,B) = effect(A+B) − effect(A) − effect(B)`, bundles run JOINTLY | E18 hybrids, E28 interaction matrix |
 | extremize | push a channel to its historical maximum, anchored to a real analogue | E34 Decree 770 → Gilead ceiling |
-| invert | attack the log's own SUPPORTED verdicts | E13 contrarian audit |
+| invert | attack the log's own Confirmed verdicts | E13 contrarian audit |
 | condition | re-run across regimes (region, generation, cohort) hunting sign-flips | Korea/Germany/France triad, gen-1 vs gen-4 |
 | transfer | import a mechanism from another field into a named channel - reach far, the best levers are other domains' solved problems | Chao1 from ecology, record-linkage from census stats, OT from mathematics |
 
@@ -52,7 +52,7 @@ Each `generators/<persona>.md` is an exploration policy over the kernel - its qu
 | contrarian | which of OUR findings is wrong? | 30-50% of attacks land; 0 = weak attacks |
 | heretical | what lives at the edge nobody will test? | REFUTE-heavy; SUPPORT-heavy = wasn't heretical |
 | hybridizer | do the winners compound or collide? | mixed; the finding is the interaction sign |
-| mechanist | what undercurrent drives the winning effect? | REFRAMED-heavy |
+| mechanist | what undercurrent drives the winning effect? | Refuted-mechanism-heavy |
 | deflationist | what's the boring explanation? | kills cheaply pre-build |
 | scout | what machinery haven't we modelled? | verdict-LEANS only, no modelled verdicts |
 

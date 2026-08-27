@@ -6,7 +6,7 @@ argument-hint: "what to report, e.g. 'where do the defects stand' or 'the AUTH c
 
 # Report
 
-Read the `project-management` skill first - it is the single source of truth for what the sections mean and how the tables are read. Do NOT duplicate its content here. `references/reports.md` carries the section shapes, the filter semantics and `--detail`.
+Read the `project-management` skill first - it is the single source of truth for what the sections mean and how the tables are read. Do NOT duplicate its content here. `skills/project-management/references/reports.md` carries the section shapes, the filter semantics and `--detail`.
 
 ## Toolchain gate (MANDATORY - run before anything else)
 
@@ -24,7 +24,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 ## What to do
 
-1. Read the `project-management` skill, then `references/reports.md`
+1. Read the `project-management` skill, then `skills/project-management/references/reports.md`
 2. **Run `pm-tools report`** on the store - `docs` scans for both disciplines, a path narrows to one
 3. **Map a filtered ask onto flags; never filter by hand.** "The critical defects" is `--severity CRITICAL`, "what closed in August" is `--dates closed --since 2026-08-01 --until 2026-08-31`, "the AUTH work" is `--category AUTH`, "what is open" is `--status open`. `--category`, `--severity` and the date window narrow the whole report; `--status` narrows ITEMS alone; `--detail` swaps the ITEMS tables for one block per item. Reading the document and filtering inside the answer is the failure this tool exists to prevent
 4. **Asked for a summary, run `--summary`** - it stops at the SUMMARY grid and lists no items, and it is plain by itself. Asked for something plain or short of a full report, `--plain` gives the two grids with no icons, no blurbs, no CATEGORIES and no TEST COVERAGE

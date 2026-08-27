@@ -150,6 +150,10 @@ Re-numbers sequentially. Fixes gaps (1,2,5 → 1,2,3) and ordering. `--dry-run` 
 ### standardize
 
 ```bash
+# The happy path - every candidate end-to-end in one invocation.
+journal-tools standardize --all .claude/JOURNAL.md
+
+# Manual steps, for debugging one entry:
 # 1. List entries needing repair (JSON array on stdout).
 journal-tools standardize --list .claude/JOURNAL.md
 
@@ -160,7 +164,7 @@ journal-tools standardize --prompt N .claude/JOURNAL.md
 journal-tools standardize --apply N --decision extended|condense|drop-marker [--body-file F] .claude/JOURNAL.md
 ```
 
-Repairs the three failure modes `check` warns on: Standard over 150 words (decide Extended marker vs condense), Extended over 400 words (condense), spurious `[Extended]` marker on a sub-150-word body (drop marker). The CLI orchestrates; the actual editing decision comes from a focused `claude -p` subprocess driven by the shipped `prompts/standardize.yaml`. Use after `journal-tools check` reports warnings - never inline-edit oversized entries by hand. The `/journal:standardize` slash command chains the three modes for every offender in one pass.
+Repairs the three failure modes `check` warns on: Standard over 150 words (decide Extended marker vs condense), Extended over 400 words (condense), spurious `[Extended]` marker on a sub-150-word body (drop marker). The CLI orchestrates; the actual editing decision comes from a focused `claude -p` subprocess driven by the shipped `prompts/standardize.yaml`. Use after `journal-tools check` reports warnings - never inline-edit oversized entries by hand. `--all` chains the three modes for every offender in one pass; `/journal:standardize` is its wrapper.
 
 Flags: `--standard-target N` (default 150), `--extended-max N` (default 400). Same thresholds `check` uses.
 

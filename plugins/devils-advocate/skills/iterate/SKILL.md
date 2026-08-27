@@ -7,20 +7,6 @@ description: Improve document based on devil's concerns, create versioned file, 
 
 One cycle: improve, version, score, rename with residual.
 
-## Toolchain gate (MANDATORY - run before anything else)
-
-Run this first, every session, before any other work. The upgrade always runs; a version mismatch blocks.
-
-```bash
-python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
-LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
-PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
-echo "toolkit $LIB"
-```
-
-Both branches exit non-zero and neither is advisory: an absent library (`FATAL`) and a version mismatch (`STALE`). A mismatch means the CLI is not the one this file was written against, so its documented flags and rules are unverified. Report the line and stop; do not work around it.
-
 ## Task Tracking
 
 **MANDATORY**: Use TaskCreate/TaskUpdate per step (decide, apply, score, finalize, update). Mark in_progress/completed.
@@ -53,7 +39,7 @@ Which? (or mix: 'auto for #1-3, discuss #4')"
    - Mode 2: recommended options from top gaps
    - Mode 3: agreed changes from planning
 4. Track concerns each change targets
-5. Track cross-concern tensions
+5. Track cross-concern tensions - some fixes break others: answering "why" may increase finger-pointing; adding evidence may increase verbosity; SOW quotes may increase defensive tone; brevity may drop supporting evidence; stronger language may improve facts but worsen tone
 
 **If user chose 4**: skip to Step 3. User's document IS current state.
 
@@ -95,6 +81,7 @@ Per concern:
    - `_<score>` MANDATORY
 
 3. Progression: `report_v01_89.md` -> `report_v02_34.md` -> `report_v03_12.md`
+4. `devils_advocate.md` and `fact_repository.md` are updated in place, never versioned; `devils_advocate.md` accumulates every scorecard for comparison. A version file without its `_<score>` suffix is INCOMPLETE
 
 **If user edited externally**: no rename. Update `devils_advocate.md` only.
 
@@ -113,6 +100,7 @@ Stopping criteria:
 - Residual < 10% of total absolute risk -> **STOP**: "Target reached."
 - Top gaps all < 3.0 -> **STOP**: "All concerns adequately addressed."
 - Score didn't improve -> **STOP**: "Stagnation - corrections creating new problems."
+- Corrections need scope changes beyond the document -> **STOP**: name the scope change and hand it back
 - User says stop -> **STOP**
 
 Otherwise: "Continue with another `/devils-advocate:iterate`."

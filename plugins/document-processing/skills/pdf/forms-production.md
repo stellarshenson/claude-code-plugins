@@ -100,14 +100,12 @@ cat > data.json << EOF
 }
 EOF
 
-# 3. Validate data
-python scripts/validate_form.py data.json schema.json
+# 3. Validate data against the schema - the validation section below
 
-# 4. Fill form
-python scripts/fill_form.py template.pdf data.json filled.pdf
+# 4. Fill form (the shipped script)
+python scripts/fill_fillable_fields.py template.pdf data.json filled.pdf
 
-# 5. Flatten (optional - makes fields non-editable)
-python scripts/flatten_form.py filled.pdf final.pdf
+# 5. Flatten (optional - makes fields non-editable) - pypdf snippet in the flattening section
 ```
 
 ### Programmatic filling
@@ -385,12 +383,6 @@ writer.flatten_fields()
 # Save flattened PDF
 with open("flattened.pdf", "wb") as output:
     writer.write(output)
-```
-
-### Using included script
-
-```bash
-python scripts/flatten_form.py filled.pdf flattened.pdf
 ```
 
 ## Error handling patterns

@@ -31,6 +31,7 @@ When the user asks to run an improvement cycle, execute these skills IN ORDER be
 2. **benchmark-writer** - Generate BENCHMARK.md from the approved PROGRAM.md. Define score formula, direction (minimize/maximize), checklist sections, evaluation instructions. Do NOT proceed until user approves the benchmark.
 
 3. **autobuild** - ASK the user which workflow to execute:
+   - `fast` - Default. Scope already known, no research or hypothesis phase
    - `full` - Feature work, improvements, research-driven changes
    - `gc` - Cleanup, dead code removal, refactoring
    - `hotfix` - Targeted bug fix, minimal ceremony

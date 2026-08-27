@@ -35,7 +35,7 @@ Every file this skill writes (`grounding-report.md`, `consistency-report.md`, `c
 
 ## Pre-flight install (MANDATORY - run every session, no asking)
 
-Always run this single line BEFORE invoking `document-processing`. No-op when package already importable; auto-installs when missing OR when stale shim on PATH but package uninstalled in active Python:
+Always run this single line BEFORE invoking `document-processing`. The upgrade always runs; a version mismatch blocks:
 
 ```bash
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
@@ -81,17 +81,6 @@ Verify generatively when ANY of:
 - Medium score on fake-sounding claim: reject unless named entity appears in the quoted passage — fake-entity detection is the whole point
 
 Verdict output: quote the passage + state supports / contradicts / topical-only. Never override CONFIRMED without evidence, never accept CONFIRMED without reading.
-
-### When to RE-RECOMMEND semantic to the user
-
-The user declined semantic for this session, but the lexical-only pass is struggling — >25% UNCONFIRMED OR any claim in the fuzzy 0.5-0.85 AND bm25 0.2-0.5 "almost grounded" zone that semantic usually rescues → stop and re-offer (the situation has changed; this isn't nagging):
-
-> Three-layer grounding left N/M UNCONFIRMED and K in the almost-grounded zone. Semantic + NLI grounding (requires the `[semantic]` extra, model downloads first time) usually resolves these. Use it for this document?
->
-> 1. `pip install 'stellars-claude-code-plugins[semantic]'`
-> 2. re-run with `--semantic`
-
-Never silently flip a deliberate opt-out — offer, wait for consent, proceed.
 
 ## Source format support
 
@@ -196,7 +185,7 @@ Subcommands and how they fit together:
 | `validate --manifest source_map.yaml --output-dir DIR` | manifest → `DIR/<client>/{claims.json,grounding-report.md,consistency-report.md}` | runs extract-claims+ground+check-consistency per client; `--stop-on-error` aborts on first failure; exit 0 all clean / 1 any issue / 2 malformed yaml |
 | `setup [--force] [--semantic]` | provisions groundrails → `groundrails.json` (readiness token under `GROUNDRAILS_HOME`) | offline lexical by default; `--semantic` also fetches the OpenVINO cascade (~1.4 GB). Grounding auto-inits the lexical path if no token exists |
 
-Shared optional flags on `ground` / `validate`: `--threshold 0.85` (fuzzy), `--bm25-threshold 0.5`, `--semantic` (boolean; enables the embedding + NLI + calibrated-verdict bundle, default off), `--semantic-threshold` / `--semantic-threshold-percentile`, `--effort low|medium|high` (lexical tier; default = config `lexical_effort`, high). `ground` also takes `--ocr-lang CODE` (scanned PDFs), `--scanned-threshold`, `--ack-warning TOKEN=reason` (the stop-and-think gate).
+Shared optional flags on `ground` / `validate`: `--threshold 0.85` (fuzzy) and `--bm25-threshold 0.5` (both cascade-fallback knobs, inert in lexical mode), `--semantic` (boolean; enables the embedding + NLI + calibrated-verdict bundle, default off), `--semantic-threshold` / `--semantic-threshold-percentile`, `--effort low|medium|high` (lexical tier; default = config `lexical_effort`, high). `ground` also takes `--ocr-lang CODE` (scanned PDFs), `--scanned-threshold`, `--ack-warning TOKEN=reason` (the stop-and-think gate).
 
 ### Mode A: single-claim probe — on-demand checks during review
 
@@ -228,8 +217,6 @@ document-processing ground \
   --source docs/research.md \
   --primary-source docs/source.md \
   --output validation/grounding-report.md \
-  --threshold 0.85 \
-  --bm25-threshold 0.5 \
   --semantic     # add to enable the bundle; omit for lexical-only
 
 # Step 3 — check the document against itself (always; this is part of grounding a document).

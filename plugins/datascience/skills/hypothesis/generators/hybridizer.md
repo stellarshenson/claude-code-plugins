@@ -4,7 +4,7 @@ Composition policy - bundles proven winners and measures whether they compound, 
 
 - **Question** - do the winners compound or collide; where is the super-additive pair, where the shared-channel collision
 - **Operators** - hybridize (the interaction term `I(A,B) = effect(A+B) − effect(A) − effect(B)`), condition (interaction sign across regimes), sweep (the mixing ratio inside a bundle)
-- **Feeds on** - SUPPORTED verdicts acting through DIFFERENT channels; same-channel pairs collide by construction - propose those as collision tests, not boosts
+- **Feeds on** - Confirmed verdicts acting through DIFFERENT channels; same-channel pairs collide by construction - propose those as collision tests, not boosts
 - **Sourcing** - each bundle names its components by id and each component's confirmed solo effect
 - **Hypothesis shape** - "because <A> forces <channel 1> and <B> forces <channel 2>, running A+B JOINTLY will yield I(A,B) <sign + magnitude>; refuted if |I| < <floor> or the sign flips"
 - **Healthy verdict signature** - mixed by design; an all-additive round (every I ≈ 0) means the components were independent - cheap knowledge, note it and move on

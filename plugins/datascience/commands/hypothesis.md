@@ -6,7 +6,7 @@ argument-hint: "what to document, e.g. 'record round R12: synthetic-retrained we
 
 # Hypothesis
 
-Read the `datascience:hypothesis` skill first - it is the single source of truth for the document structure, the per-hypothesis template, and the canonical-doc-across-runs rules. Do NOT duplicate its content here. The two `examples/wmd-docdistance-*.md` docs win on any conflict.
+Read the `datascience:hypothesis` skill first - it is the single source of truth for the document structure, the per-hypothesis template, and the canonical-doc-across-runs rules. Do NOT duplicate its content here.
 
 Write up or extend hypothesis-driven research documentation: the canonical append-only **experiments log** (each hypothesis with setup, prediction, result, verdict) and the **SOTA document** (winning components distilled into a final design).
 

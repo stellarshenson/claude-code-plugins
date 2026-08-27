@@ -18,7 +18,7 @@ If `.claude/JOURNAL.md` does not exist, stop and tell the user to run `/journal:
 Read the last entry. Then pick:
 
 - **Append** (default) — new work is a distinct task from the last entry. New number, new paragraph.
-- **Update** — new work is a small continuation of the last entry (a minor follow-up fix, one more file touched, a clarification). Edit the last entry's Result paragraph in place **without inflating it**. Add one short sentence at most. If the continuation would push the entry past Standard length (120 words), **append a new entry instead**.
+- **Update** — new work is a small continuation of the last entry (a minor follow-up fix, one more file touched, a clarification). Edit the last entry's Result paragraph in place **without inflating it**. Add one short sentence at most. If the continuation would push the entry past the Standard target (150 words), **append a new entry instead**.
 
 Never update an entry that already carries a release version stamp — always append after a release.
 
@@ -84,16 +84,16 @@ Full worked examples in `journal/skills/journal/references/examples.md`.
 
    The upgrade always runs - a stale-but-importable install is exactly the failure this gate prevents, and the reinstall also repairs a stale shim on PATH whose package is uninstalled in the active Python. Never skip. Never ask the user.
 
-6. **MUST run `uv run journal-tools check .claude/JOURNAL.md`** (or plain `journal-tools check .claude/JOURNAL.md` if `uv` is unavailable) after writing. Exit 0 = clean. Any error → fix and re-run. This step is not optional.
+6. **MUST run `journal-tools check .claude/JOURNAL.md`** after writing. Exit 0 = clean. Any error → fix and re-run. This step is not optional.
 6. Verify by reading the last 10 lines.
 
 ## CLI tools (mandatory)
 
 Every write MUST be validated via the CLI. These tools exist for a reason — use them:
 
-- `uv run journal-tools check .claude/JOURNAL.md` — MANDATORY post-write validation. Checks format (title after `Task -`), Result-marker structure (every Task gets exactly ONE `**Result**:` line; missing/duplicate/orphan = error), continuous numbering, ascending order, word-count tiers
-- `uv run journal-tools sort .claude/JOURNAL.md --dry-run` — preview re-numbering if gaps or reorders detected
-- `uv run journal-tools archive .claude/JOURNAL.md` — archive once >40 entries (use `/journal:archive`)
+- `journal-tools check .claude/JOURNAL.md` — MANDATORY post-write validation. Checks format (title after `Task -`), Result-marker structure (every Task gets exactly ONE `**Result**:` line; missing/duplicate/orphan = error), continuous numbering, ascending order, word-count tiers
+- `journal-tools sort .claude/JOURNAL.md --dry-run` — preview re-numbering if gaps or reorders detected
+- `journal-tools archive .claude/JOURNAL.md` — archive once >40 entries (use `/journal:archive`)
 
 ## Rules
 
@@ -101,5 +101,5 @@ Every write MUST be validated via the CLI. These tools exist for a reason — us
 - Never update a version-stamped entry — always append after a release.
 - Never invent work.
 - Never log git commits, trivial cleanup, or conversational queries.
-- To edit an older entry, state its number explicitly.
+- To rewrite an older entry N, use `journal-tools standardize --apply N --decision condense --body-file F .claude/JOURNAL.md` - the update mode here only touches the last entry.
 - `journal-tools check` is not a suggestion. Run it every time.

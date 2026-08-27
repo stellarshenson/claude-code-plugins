@@ -6,7 +6,7 @@ argument-hint: "the criterion work, e.g. 'add a criterion that the session times
 
 # Acceptance Criteria
 
-Read the `project-management` skill first - it is the single source of truth for the id scheme, the line format, the three states, authoring, relations and the `pm-tools` command surface. Do NOT duplicate its content here. Its `references/acceptance-criteria.md` wins on any conflict about criteria specifically.
+Read the `project-management` skill first - it is the single source of truth for the id scheme, the line format, the three states, authoring, relations and the `pm-tools` command surface. Do NOT duplicate its content here. Its `skills/project-management/references/acceptance-criteria.md` wins on any conflict about criteria specifically.
 
 ## Toolchain gate (MANDATORY - run before anything else)
 
@@ -24,7 +24,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 ## What to do
 
-1. Read the `project-management` skill, then `references/acceptance-criteria.md`
+1. Read the `project-management` skill, then `skills/project-management/references/acceptance-criteria.md`
 2. **Ask for the author handle once** and reuse it - every write takes `--author @xx`, and the handle must be on the roster (`pm-tools author FILE --handle @xx --name "Full Name"`) before it can write
 3. **Find the store before creating one** - `ls docs/acc-crit*.md`; one consolidated doc per project is the default, a scoped file only when the user asks. Never a file per criterion
 4. **One assertion per item** - a criterion needing "and" is two criteria; edge cases are their own items, enumerated across the whole fanout

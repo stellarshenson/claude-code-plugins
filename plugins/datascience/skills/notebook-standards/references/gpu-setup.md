@@ -152,7 +152,7 @@ The Configuration cell's Rich `Device` block (section 5) then confirms which phy
 
 **For multi-GPU**:
 ```python
-os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2'  # Multiple GPUs
+os.environ['CUDA_VISIBLE_DEVICES'] = 'GPU-<uuid-1>,GPU-<uuid-2>,GPU-<uuid-3>'  # UUIDs from `nvidia-smi -L`, never indices (Pitfall 1)
 ```
 
 ## Common Pitfalls

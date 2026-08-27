@@ -25,7 +25,7 @@ echo "toolkit $LIB"
 ### 1. Locate and inspect the entry
 
 ```bash
-uv run journal-tools standardize .claude/JOURNAL.md --prompt <N>
+journal-tools standardize .claude/JOURNAL.md --prompt <N>
 ```
 
 This renders the per-entry prompt (full task line + body). Read the body and identify the load-bearing rationale segments - those are the article's natural structure.
@@ -43,7 +43,7 @@ Use `AskUserQuestion` to confirm the extraction and gather article metadata. **D
 | Article filename + location? | `docs/<kebab-case-slug>.md` derived from the title; warn if the path exists and offer a date suffix |
 | Article scope? | "verbatim copy of the entry body, lightly edited for flow" / "rewritten with section headers and code blocks" / "I'll pick - prompt me again at draft time" |
 | Condense the journal entry to a summary + link? | yes (recommended; the point of extraction is to slim the entry) |
-| Target summary length? | Standard (70-150 words) |
+| Target summary length? | Standard (50-150 words) |
 
 Bundle these into 2-4 `AskUserQuestion` calls (no more than 4 questions per call per the tool's cap). Use multi-select where natural.
 
@@ -58,9 +58,9 @@ Write `docs/<slug>.md` with:
 
 Follow the workspace markdown standards (no em-dashes, no emoji, no triples, ASCII arrows, escape `$` as `\$`). Cross-link to other `docs/` articles or source files where relevant.
 
-### 4. Rewrite the journal entry via `/journal:update`
+### 4. Rewrite the journal entry through the CLI
 
-**NEVER edit `.claude/JOURNAL.md` directly.** Invoke `/journal:update` and tell it the rewrite is an in-place update to entry N (not a new append). The new body should be Standard-tier (70-150 words) and end with a link to the article:
+**NEVER edit `.claude/JOURNAL.md` directly.** `/journal:update` only appends or extends the last entry, so an older entry N goes through the deterministic path: write the new body to a file and apply it with `journal-tools standardize --apply N --decision condense --body-file <file> .claude/JOURNAL.md`. The new body is Standard-tier (50-150 words) and ends with a link to the article:
 
 ```
 See [`docs/<slug>.md`](docs/<slug>.md) for the full architectural rationale.
@@ -71,10 +71,10 @@ Match the user's approved summary length. Preserve the entry's `(vX.Y.Z)` versio
 ### 5. Validate
 
 ```bash
-uv run journal-tools check .claude/JOURNAL.md
+journal-tools check .claude/JOURNAL.md
 ```
 
-The over-Extended-max warning on entry N should be gone. If new warnings appear (e.g. the condensed body fell below the Standard min 50), address them via `/journal:update` again.
+The over-Extended-max warning on entry N should be gone. If new warnings appear (e.g. the condensed body fell below the Standard min 50), apply a corrected body the same way.
 
 ### 6. Report
 

@@ -92,7 +92,7 @@ File description comment before `<svg>`:
 
 ### Typography
 
-- `font-family="Helvetica, Arial, sans-serif"` - system fonts only
+- `font-family="Segoe UI, Arial, sans-serif"` - system fonts only; the Word-safe set is Segoe UI / Arial / Calibri
 - Sizes 7-28px. Progression: hero stats 18-28 > headings 12-14 > labels 10-11 > metadata 8-9
 - `text-anchor="middle"` for centred, explicit `x` for left-aligned
 - Never `<tspan>` for mixed styling - separate `<text>` elements

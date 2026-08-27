@@ -18,13 +18,13 @@ TaskCreate at start with one task per phase per image. Mark in_progress on enter
 
 Before creating any SVG:
 
-1. Read 3-5 examples from `examples/` closest to requested types
+1. Read `examples/INDEX.md`, then the ONE example closest to the requested type
 2. Read relevant theme swatch (`theme_swatch_*.svg`) for CSS class names + hex values
 3. Create `svg-workflow-checklist.md` in target images directory
 
 ## Phase 1 — Research
 
-- Read 3-5 relevant examples for THIS image type
+- Read `examples/INDEX.md` + the one closest example for THIS image type
 - Confirm CSS class names + hex values from theme swatch
 - Identify pattern: card grid, flow diagram, timeline, stats banner, header banner, bar chart, hub-and-spoke, layered model
 - Note conventions: card dimensions, arrow style, text sizes, spacing

@@ -22,7 +22,7 @@ Add Jupyter-compatible footnotes to a notebook or markdown file. Converts inline
 
 3. For each footnote:
    - Insert `[<sup>N</sup>](#fnN)` at the reference point in text
-   - Add `<span id="fnN"><sup>N</sup> Footnote content.</span><br>` to footnote section
+   - Add `- <span id="fnN">N Footnote content.</span>` as a bullet in the footnote section - no `<sup>` inside the target, no `<br>`; bullets space themselves
 
 4. If no footnote section exists, create one:
    - In notebooks: add `## Footnotes` markdown cell at the end, or `---` separator in the same cell
@@ -37,5 +37,5 @@ If the file has broken footnotes:
 - Missing `id` on spans -> add them
 - Mismatched numbers (sup says 3 but id says fn5) -> renumber
 - Plain `[1]` references -> convert to `[<sup>1</sup>](#fn1)` pattern
-- Footnotes without `<br>` between them -> add breaks
+- Footnotes separated by `<br>` or bare lines -> one bullet per footnote, no `<br>`
 - Standard markdown `[^1]` syntax (not supported in Jupyter) -> convert to anchor pattern

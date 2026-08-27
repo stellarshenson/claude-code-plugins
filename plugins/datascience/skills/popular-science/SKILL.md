@@ -15,20 +15,6 @@ Turn technical work into an article a curious, busy non-specialist reads to the 
 - **Structure templates** - pick one before drafting: `references/structures.md` (WSJ formula, inverted pyramid, ladder/narrative arc, braided, martini glass)
 - **Exemplar teardowns** - five best-in-class articles torn down on the spine: `examples/teardowns.md`
 
-## Toolchain gate (MANDATORY - run before anything else)
-
-Run this first, every session, before any other work. The upgrade always runs; a version mismatch blocks.
-
-```bash
-python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
-LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
-PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
-echo "toolkit $LIB"
-```
-
-Both branches exit non-zero and neither is advisory: an absent library (`FATAL`) and a version mismatch (`STALE`). A mismatch means the CLI is not the one this file was written against, so its documented flags and rules are unverified. Report the line and stop; do not work around it.
-
 ## When to use
 - Writing up an experiment, result, finding, design or README for a non-specialist or a public audience
 - Rewriting a dense internal doc into a readable article, blog post, explainer or story
@@ -53,18 +39,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 ## Emphasis and pacing
 Give the eye resting points and let the load-bearing lines stand out - a few across a whole piece, never a page of them (full rule in `references/craft-canon.md`).
 - **Pull quote** - lift the one line worth carrying out of a section and set it centred + italic, just large enough to lift off the page. On GitHub inline font-size is stripped, so a centred heading is the only way to get "larger" - use a level-4 `####` (one size smaller than a `###`, which competes with the section titles). Wrap it in `<br>` spacers above and below so it breathes; no horizontal rules around it - a `---` boxes the quote in and misreads as a section break. One line, or a short two-line stack:
-  ```
-  <br>
-
-  <div align="center">
-
-  #### *Warmth is roughly worth what neutrality is worth.*
-  #### *Hostility is the signal that lands.*
-
-  </div>
-
-  <br>
-  ```
+  Shape to mirror, with the `<div align="center">` wrapper: `references/craft-canon.md`, emphasis bullet.
   Once or twice in a whole article, on the most load-bearing line. It joins GitHub's auto-outline; if that clutters the TOC, drop the `#` for plain centred italic (same look, no size bump)
 - **Bold** - a few load-bearing phrases in the running prose, chosen not scattered; when everything is bold nothing is
 

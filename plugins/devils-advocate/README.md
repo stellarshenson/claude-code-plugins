@@ -115,7 +115,6 @@ Four worked analyses ship in `examples/`. Open them for full personas, concern c
 
 Every concern is scored on Fibonacci likelihood x impact (1-64), and each iteration computes a residual = risk x (1 - score). Versioned filenames embed the running document residual so the trajectory is visible in the file listing. For the full scoring model, persona construction, and iterate loop details, see the skills:
 
-- `skills/devils-advocate/SKILL.md` - auto-trigger, top-level workflow
 - `skills/setup/SKILL.md` - persona construction and fact harvesting
 - `skills/evaluate/SKILL.md` - concern catalogue and scoring model
 - `skills/iterate/SKILL.md` - the four-step iterate loop and stop conditions

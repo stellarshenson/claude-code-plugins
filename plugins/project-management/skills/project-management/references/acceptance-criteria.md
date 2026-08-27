@@ -49,7 +49,7 @@ The `test:` line says how it would be checked; the `evidence:` line says it was,
 
 ## API section
 
-A feature with endpoints gets one `## API` section at the end of its category, outside the checklist: method, path, payload shape, error codes.
+A feature with endpoints gets one `### API` section at the end of its category, outside the checklist: method, path, payload shape, error codes. Level three, not two - `pm-tools` reads every `##` as a category and fails `check` on one with no code.
 
 ```markdown
 - `GET sessions/branches?encoded_path=...` -> `{current, total, branches: [{session_id, file_mtime, label}]}`

@@ -80,7 +80,6 @@ document-processing ground \
   --manifest validation/claims.json \
   --source <source> [--source <other>] [--primary-source <source>] \
   --output validation/grounding-report.md \
-  --threshold 0.85 --bm25-threshold 0.5 \
   --semantic   # opt-in per call: enables the semantic + NLI bundle; omit for lexical-only
 
 document-processing check-consistency --document <doc> --output validation/consistency-report.md

@@ -1,7 +1,7 @@
 **CRITICAL: complete these steps in order. Do not skip ahead to writing code.**
 
 To fill PDF form, first check whether PDF has fillable form fields. Run this script from this file's directory:
- `python scripts/check_fillable_fields <file.pdf>`. Per result, go to "Fillable fields" or "Non-fillable fields"; follow those instructions.
+ `python scripts/check_fillable_fields.py <file.pdf>`. Per result, go to "Fillable fields" or "Non-fillable fields"; follow those instructions.
 
 # Fillable fields
 If PDF has fillable form fields:

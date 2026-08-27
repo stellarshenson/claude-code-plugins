@@ -1,6 +1,6 @@
 ---
 name: autobuild
-description: Autonomous build iteration orchestrator. Runs structured improvement cycles with multi-agent review. Use when asked to iterate, improve, fix bugs, refactor, run GC, implement features, do quality improvement, run cleanup, or execute structured development cycles. Phases - research, hypothesis, plan, implement, test, review, record. 10 commands, 2 calls per phase.
+description: Autonomous build iteration orchestrator. Runs structured improvement cycles with multi-agent review. Use when asked to iterate, improve, fix bugs, refactor, run GC, implement features, do quality improvement, run cleanup, or execute structured development cycles. Phases - research, hypothesis, plan, implement, test, review, record. 12 commands, 2 calls per phase.
 ---
 
 # Autobuild - Autonomous Iteration Orchestrator
@@ -32,7 +32,7 @@ echo "toolkit $LIB"
 `orchestrate` CLI appears after install. Or run entrypoint directly:
 
 ```bash
-python .claude/skills/autobuild/orchestrate.py
+python3 -m stellars_claude_code_plugins.autobuild.orchestrator
 ```
 
 Both share the same engine. Never ask the user whether to install - just run the pre-flight line.
@@ -50,7 +50,7 @@ Both share the same engine. Never ask the user whether to install - just run the
 - **Objective**: iteration goal. ASK if unspecified
 - **Iteration count**: cycles to run. ASK if unspecified
 - **Benchmark** (optional): ASK user: "Benchmark to evaluate each iteration? (1) No, just tests/lint, (2) Yes, provide instruction and what it measures." Pass via `--benchmark "instruction"`. `--benchmark` = **generative instruction string**, NOT a shell command. Typically references a file: `--benchmark "Read MODEL_BENCHMARK.md, evaluate each [ ] item, mark [x] if passing, report remaining [ ] count as violation score."` Benchmark runs in TEST phase ONLY. IMPLEMENT and REVIEW MUST NOT evaluate benchmark
-- **Objective** may reference files: `--objective "Implement the program defined in PROGRAM.md (read .claude/skills/autobuild/PROGRAM.md)"`. Use `PROGRAM.md` for complex objectives, `*_BENCHMARK.md` for checklists
+- **Objective** may reference files: `--objective "Implement the program defined in PROGRAM.md (read PROGRAM.md)"`. Use `PROGRAM.md` for complex objectives, `*_BENCHMARK.md` for checklists
 
 ## Program execution
 
@@ -78,7 +78,7 @@ Orchestrator reads structured objective at each phase. Benchmark tracks progress
 
 | Flag | Description |
 |------|-------------|
-| `--type` | `full`, `gc`, or `hotfix` (required) |
+| `--type` | `fast` (default), `full`, `gc` or `hotfix`; live list: `orchestrate info --workflows` |
 | `--objective` | Iteration goal (required) |
 | `--iterations` | Cycles. `0` = unlimited until benchmark passes. Default: 1 |
 | `--benchmark` | Generative instruction evaluated during TEST phase |
@@ -140,6 +140,7 @@ Gates = quality control, not human review. Trust the gates.
 
 | Type | Use when |
 |------|----------|
+| `fast` | Default. Scope already known - PLAN, IMPLEMENT, TEST, REVIEW, RECORD; no research or hypothesis phase |
 | `full` | Feature work, improvements, research-driven changes |
 | `gc` | Cleanup, dead code, refactoring |
 | `hotfix` | Targeted bug fix, minimal ceremony |
@@ -185,7 +186,6 @@ orchestrate context --message "focus on label clearance not edge-snap"
 # log a failure mode found during work
 orchestrate log-failure --mode "FM-ROTATION" --desc "rotate(-90) instead of +90 for downward arrows"
 
-# show failure log and hypothesis catalogue
+# show failure log
 orchestrate failures
-orchestrate hypotheses
 ```

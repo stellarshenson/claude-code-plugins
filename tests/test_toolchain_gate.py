@@ -14,17 +14,17 @@ Cassettes replay in CI; re-record with `uv run python tests/record_claude_casset
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import re
 import subprocess
-from pathlib import Path
 
-import pytest
 from _cassette_prompts import (
     GATE_BULLETS,
     GATE_FENCE,
     build_gate_matched_prompt,
     build_gate_stale_prompt,
 )
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_ROOT = ROOT / "plugins"
@@ -110,28 +110,68 @@ def _can_run_shell(body: str) -> bool:
     return True
 
 
-def test_every_cli_entry_point_is_gated():
-    """Every entry point that CAN run a CLI carries the gate - and only those.
+_SKILL_REF = re.compile(
+    r"/?(?:autobuild|datascience|devils-advocate|document-processing|journal|project-management|svg-infographics):[a-z-]+"
+)
 
-    The earlier form guarded only files that named a CLI, so a skill could reach
-    the toolkit indirectly, or gain a CLI call later, and never check the version.
-    The contract is now biconditional: shell-capable means gated, and gated means
-    shell-capable, so neither a silent hole nor an unrunnable instruction ships.
 
-    Entry points are `SKILL.md` and `commands/*.md`. References, rules, READMEs
-    and examples stay exempt - they are loaded BY a gated entry point.
+def _toolkit_clis() -> list[str]:
+    """The console scripts pyproject ships - the only binaries the gate protects."""
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    block = text.split("[project.scripts]", 1)[1].split("\n[", 1)[0]
+    return [ln.split("=", 1)[0].strip() for ln in block.splitlines() if "=" in ln]
+
+
+def _names_toolkit_cli(body: str) -> bool:
+    """True when the body tells the agent to run a toolkit binary.
+
+    Skill hand-offs (`svg-infographics:svg-designer`, `/journal:update`) are not
+    CLI calls - the skill they route into carries its own gate.
     """
-    ungated, undeliverable = [], []
+    prose = _SKILL_REF.sub("", body)
+    names = "|".join(re.escape(c) for c in _toolkit_clis())
+    return re.search(rf"(?<![\w/:-])(?:{names})(?![\w-])", prose) is not None
+
+
+def test_every_cli_entry_point_is_gated():
+    """An entry point carries the gate exactly when it names a toolkit CLI.
+
+    Two contracts have shipped here. The first gated only files that named a
+    CLI. The second widened that to every shell-capable file, on the argument
+    that a file could reach the toolkit indirectly or gain a CLI call later
+    and never check the version. That put 149 words and a network `pip
+    install` at the front of 36 files that run nothing - "how do I write a
+    footnote" upgraded the toolkit and could hard-exit on `STALE` before the
+    agent read a line - for a risk a test catches better than repetition does.
+
+    So the contract is back to the first form, and this test is the guard
+    the second form wanted: add a `journal-tools` call to an ungated file and
+    it fails here; an indirect reach goes through a skill that is gated
+    itself. Gated files must also be shell-capable, or the instruction is
+    dead text. Entry points are `SKILL.md` and `commands/*.md`; references,
+    rules, READMEs and examples are loaded BY an entry point and stay exempt.
+    """
+    ungated, needless, undeliverable = [], [], []
     for p in _plugin_markdown():
         if p.name != "SKILL.md" and p.parent.name != "commands":
             continue
         body = p.read_text(encoding="utf-8")
         gated = STALE_ASSERTION in body
-        if gated != _can_run_shell(body):
-            (ungated if not gated else undeliverable).append(str(p.relative_to(ROOT)))
+        names_cli = _names_toolkit_cli(body)
+        rel = str(p.relative_to(ROOT))
+        if names_cli and not gated:
+            ungated.append(rel)
+        elif gated and not names_cli:
+            needless.append(rel)
+        if gated and not _can_run_shell(body):
+            undeliverable.append(rel)
     assert not ungated, (
-        "shell-capable entry points missing the toolchain gate - each can drive a "
-        f"toolkit CLI and would do so unchecked: {ungated}"
+        "entry points that run a toolkit CLI without the gate - each would drive "
+        f"it unchecked: {ungated}"
+    )
+    assert not needless, (
+        "entry points carrying the gate while running no toolkit CLI - standing "
+        f"context and a pip upgrade for nothing: {needless}"
     )
     assert not undeliverable, (
         "entry points carry a gate their own `allowed-tools` forbids them from "
@@ -148,9 +188,9 @@ def test_shipped_gate_still_carries_its_normative_lines():
     without any binary. It must read the shipped file, not the frozen snapshot,
     or it proves only that a constant equals itself.
     """
-    live = (
-        PLUGIN_ROOT / "svg-infographics" / "skills" / "svg-designer" / "SKILL.md"
-    ).read_text(encoding="utf-8")
+    live = (PLUGIN_ROOT / "svg-infographics" / "skills" / "svg-designer" / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
     for required in (UPGRADE_LINE, STALE_ASSERTION):
         assert required in live, f"shipped gate lost its {required!r} line"
     assert "The version compare is the real gate" in live, (
@@ -220,7 +260,9 @@ def _shipped_comparison_lines() -> str:
     Running the doc's own text (rather than a retyped copy) is the point: a
     typo introduced into the markdown fails these tests.
     """
-    body = (PLUGIN_ROOT / "svg-infographics" / "commands" / "validate.md").read_text(encoding="utf-8")
+    body = (PLUGIN_ROOT / "svg-infographics" / "commands" / "validate.md").read_text(
+        encoding="utf-8"
+    )
     lines = [
         ln.strip()
         for ln in body.splitlines()

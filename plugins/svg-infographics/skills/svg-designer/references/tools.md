@@ -2,6 +2,8 @@
 
 Tool palette for svg-infographics. Every coordinate, colour, connector, placement = tool call.
 
+Live roster: `svg-infographics --help` (grouped, one line each) and `svg-infographics <subcommand> --help` (flags). The tree below is the map; when they disagree, `--help` is the truth.
+
 ```
 svg-infographics
  |
@@ -135,6 +137,13 @@ svg-infographics
  |   |-- --no-finalize           Skip the validator sweep (faster)
  |   '-- --json                  Structured gate report
  |
+ |-- preflight                   GATE 1: declare the build via flags -> matching rule bundle + warnings. Before any <rect>
+ |-- check                       GATE 2: does the SVG match its declaration? Exit 1 on component drift / missing dark mode
+ |-- finalize                    GATE 3: ship-ready. XML + overlap + connector validators in one call; exit 1 on any HARD finding
+ |   '-- --checklist             The pre-delivery roster - every row PASS / NA / FAIL / SKIP
+ |
+ |-- place                       Position an element (icon, text bbox, badge) inside a named container -> top-left (x, y)
+ |
  |-- charts <type>               Pygal SVG charts
  |   |-- line | bar | hbar       Standard chart types
  |   |-- area | radar | dot      Distribution charts
@@ -153,13 +162,20 @@ svg-infographics
  |   |-- search "query"          Search bundled icons by name/keyword
  |   '-- render NAME [--size N]  Paste-ready <g>, 24-grid stroke convention
  |
- |-- VALIDATORS (quality panel - all six MUST pass before delivery)
+ |-- background <texture>        Procedural textures: circuit, neural, topo, grid, organic, celtic, scifi, constellation, flourish, geometric, crystalline
+ |
+ |-- text-to-path                ON REQUEST: text + TTF/OTF -> <path> outlines, no font dependency
+ |
+ |-- VALIDATORS (finalize runs the gate set in one call; run one singly only to drill into a finding)
  |   |-- overlaps                Text/shape overlap, spacing rhythm, font floors, callout collisions
  |   |-- contrast                WCAG 2.1 AA/AAA in both light and dark mode
  |   |-- alignment               Grid snapping, vertical rhythm, layout topology
  |   |-- connectors              Zero-length, edge-snap, missing chamfers, dangling endpoints
  |   |-- css                     Inline fills, forbidden colours, missing dark-mode overrides
- |   '-- collide                 Pairwise connector intersection with near-miss detection
+ |   |-- collide                 Pairwise connector intersection with near-miss detection
+ |   |-- validate                XML well-formedness + structural sanity: '-- in comment', missing viewBox, empty <path d>
+ |   |-- geometry                Element bboxes as JSON, transforms applied - feeds finalize's visual checks
+ |   '-- consistency             Cross-file deck check: card anatomy across sibling SVGs
  |
  |-- render-png                    SVG to PNG via Playwright (evaluates CSS media queries)
  |   |-- --mode light|dark|both   Colour scheme. "both" creates .light.png + .dark.png
@@ -171,7 +187,7 @@ svg-infographics
      |-- /svg-infographics:theme         Generate/update theme swatch
      |-- /svg-infographics:validate      Run all validators
      |-- /svg-infographics:fix           Fix layout/style/contrast/connectors (argument describes intent)
-     |-- /svg-infographics:beautify      Additive decoration pass (7 dimensions x 4 levels, geometry-guarded)
+     |-- /svg-infographics:beautify      Additive decoration pass (8 dimensions x 4 levels, geometry-guarded)
      '-- /svg-infographics:export-png    Render SVG to PNG (light/dark/both, transparent bg)
 ```
 
@@ -200,7 +216,9 @@ svg-infographics
 | Cut a hole with breathing room | `boolean --op cutout --svg scene.svg --ids container hole --margin 4` |
 | Stroked-look filled ring | `boolean --op outline --svg scene.svg --ids shape --margin 6` |
 | Inflate / deflate a shape | `boolean --op buffer --svg scene.svg --ids shape --margin 8` |
-| Check before delivery | `overlaps` + `contrast` + `alignment` + `connectors` + `css` + `collide` |
+| Check before delivery | `finalize --checklist` - one call; the single validators are for drilling into a finding |
+| Declare before building | `preflight` with the flags that describe the build |
+| Place an icon or text block | `place --svg scene.svg --container-id ID ...` |
 | Add visual richness | `/svg-infographics:beautify file.svg medium` |
 | Browse bundled custom icons | `icons list` |
 | Search for icons | `icons search "brain"` (custom) or `shapes search "database"` (draw.io) |

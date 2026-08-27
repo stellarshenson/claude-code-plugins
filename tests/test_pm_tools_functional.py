@@ -542,14 +542,26 @@ def test_the_date_window_reads_the_log_which_is_where_dates_live(defects: Path):
     assert "splash flicker" in stale and "token race" not in stale
 
 
-def test_a_reopen_retires_the_closed_date(defects: Path):
+def test_a_reopened_criterion_retires_the_closed_date(criteria: Path):
+    write_a_criterion(criteria, "session survives a refresh", "the token is rotated in place")
+    ok("close", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "done", "--evidence", "unit suite green")
+    restamp(criteria, "ACC-AUTH-1", "2026-08-26T14:00:00Z", event="closed")
+    ok("reopen", criteria, "--id", "ACC-AUTH-1", "--author", "@kj")
+
+    out = ok("report", criteria, "--dates", "closed", "--since", "2026-08-01")
+    assert "session survives a refresh" not in out, "it is open again, so it has no closed date"
+
+
+def test_a_regressed_defect_keeps_the_closed_date_it_earned(defects: Path):
+    """The closure really happened on that day; the regression is a separate item."""
     file_a_defect(defects, "token race")
     ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed", "--evidence", "unit suite green")
     restamp(defects, "DEF-LNCH-1", "2026-08-26T14:00:00Z", event="closed")
     ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj")
 
     out = ok("report", defects, "--dates", "closed", "--since", "2026-08-01")
-    assert "token race" not in out, "the item is open again, so it has no closed date"
+    assert "`DEF-LNCH-1`" in out, "the closure stands and keeps its date"
+    assert "`DEF-LNCH-1-1`" not in out, "the open regression has no closed date"
 
 
 def test_summary_stops_at_the_grid_and_plain_only_drops_the_chrome(defects: Path):
@@ -608,16 +620,50 @@ def test_neither_discipline_closes_without_evidence(defects: Path, criteria: Pat
     assert "Evidence" in out and "build 412" in out, "the proof is in the report"
 
 
-def test_a_closure_proven_then_reopened_gives_the_evidence_back_to_the_log(defects: Path):
+def test_a_criterion_proven_then_reopened_gives_the_evidence_back_to_the_log(criteria: Path):
+    write_a_criterion(criteria, "session survives a refresh", "the token is rotated in place")
+    ok("close", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "done",
+       "--evidence", "test_refresh green on build 412")
+    ok("reopen", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "not done")
+
+    body = criteria.read_text(encoding="utf-8")
+    assert "- evidence:" not in body, "an open item carries no proof of being done"
+    assert "evidence retired: test_refresh green on build 412" in body
+    assert pm("check", criteria, "--strict").returncode == 0
+
+
+def test_reopening_a_defect_files_a_numbered_regression(defects: Path):
+    """A proven fix that broke again is a new open item, not a reversal of the old one."""
     file_a_defect(defects, "token race")
     ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed",
        "--evidence", "test_fork_token green on build 412")
-    ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "regressed")
+    out = ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "came back on 470")
 
+    assert "DEF-LNCH-1-1" in out, "the command names the item it minted"
     body = defects.read_text(encoding="utf-8")
-    assert "- evidence:" not in body, "an open item carries no proof of being done"
-    assert "evidence retired: test_fork_token green on build 412" in body
-    assert pm("check", defects, "--strict").returncode == 0
+    assert "- [x] `DEF-LNCH-1`" in body, "the parent closure stands"
+    assert "- evidence: test_fork_token green on build 412" in body, "proven when it was made"
+    assert "- [ ] `DEF-LNCH-1-1`" in body, "the regression is its own open item"
+    assert "regressed as DEF-LNCH-1-1" in body, "the parent records where it went"
+    assert "regression of DEF-LNCH-1: came back on 470" in body, "the child names its parent"
+    assert pm("check", defects).returncode == 0
+
+
+def test_the_report_says_how_regressive_the_system_is(defects: Path):
+    """Counting regressions is the reason the derived ids exist."""
+    file_a_defect(defects, "token race")
+    file_a_defect(defects, "cold start hangs")
+    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed", "--evidence", "green on 412")
+    ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj")
+    ok("close", defects, "--id", "DEF-LNCH-1-1", "--author", "@kj", "--event", "fixed", "--evidence", "green on 470")
+    ok("reopen", defects, "--id", "DEF-LNCH-1-1", "--author", "@kj")
+    ok("close", defects, "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "fixed", "--evidence", "green on 480")
+    ok("reopen", defects, "--id", "DEF-LNCH-2", "--author", "@kj")
+
+    assert "3 regressions across 2 defects" in ok("report", defects, "--status", "all")
+    assert "3 regressions across 2 defects" in ok("report", defects, "--summary", "--status", "all")
+    body = defects.read_text(encoding="utf-8")
+    assert "`DEF-LNCH-1-2`" in body and "DEF-LNCH-1-1-1" not in body, "ordinals stay flat"
 
 
 def test_upgrade_names_the_closed_items_that_carry_no_evidence(docs: Path):

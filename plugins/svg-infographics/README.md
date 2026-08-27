@@ -191,7 +191,7 @@ Every subcommand is invoked as `svg-infographics <subcommand> [args]`. Run `--he
 
 ## Examples
 
-60+ production SVG examples in [`examples/`](examples/) covering card grids, timelines, flowcharts, header banners, stats panels, architecture diagrams, delivery models, manifold flows, theme swatches, and creative organic layouts. Read the 3-5 examples closest to the target image type before creating each new SVG.
+60+ production SVG examples in [`examples/`](examples/) covering card grids, timelines, flowcharts, header banners, stats panels, architecture diagrams, delivery models, manifold flows, theme swatches, and creative organic layouts. Read `examples/INDEX.md` and the one example closest to the target image type before creating each new SVG.
 
 ## Documentation
 

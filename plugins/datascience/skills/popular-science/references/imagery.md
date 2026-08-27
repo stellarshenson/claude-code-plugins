@@ -24,9 +24,3 @@ How the visuals in a best-in-class explainer look, and where to set the bar. The
 - **The Pudding** - scrollytelling data essays, animated reveals ([site](https://pudding.cool/))
 - **Information is Beautiful** - design-forward infographic gallery ([site](https://informationisbeautiful.net/))
 
-## The non-negotiables (mirror of the canon's visual rules)
-- Match the chart to the message; one message per figure; annotate the takeaway
-- Maximise data-ink, erase chartjunk; direct labels over legends
-- Honest axes (no truncation, no misleading dual axis); colourblind- and greyscale-safe with redundant encoding
-- Never: 3-D charts, rainbow/jet colourmap, many-slice pies, tiny labels, a table dressed as a picture
-- Always cite the data source, date and method on the figure ([Our World in Data](https://ourworldindata.org/redesigning-our-interactive-data-visualizations))

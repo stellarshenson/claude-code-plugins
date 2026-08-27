@@ -55,6 +55,7 @@ journal-tools sort .claude/JOURNAL.md --dry-run
 # Repair word-count drift on entries `check` warned on.
 # Three-mode invocation: list offenders, render the per-entry ACP prompt,
 # then apply the decision returned by a `claude -p` subprocess.
+journal-tools standardize --all .claude/JOURNAL.md      # the happy path
 journal-tools standardize --list .claude/JOURNAL.md
 journal-tools standardize --prompt N .claude/JOURNAL.md
 journal-tools standardize --apply N --decision extended|condense|drop-marker .claude/JOURNAL.md

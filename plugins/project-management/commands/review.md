@@ -41,5 +41,5 @@ Both documents in one ask: spawn both, one lens each, in a single message so the
 4. **Mode 2** (tools ON) is the default here - the document is read whole, and the reviewer needs the code to test a criterion's claim against reality
 5. **Triage every finding against the document yourself.** Correctness findings (a criterion that cannot be verified, a defect with no repro, a severity that does not match the symptom, a dangling relation) get fixed. Taste findings (wording, ordering, "this could be leaner") get a stated reason for declining, not an edit
 6. **Fix through `pm-tools`, never by hand** - `edit` to amend, `log` to record what the review found, `reject` with a reason for an item the review killed. The review is itself an event worth logging on the items it touched
-7. **Re-confirm** - never call it clean on the round that still had findings; only a clean confirming round ends it. Two consecutive clean verdicts is the stop, and a round past that manufactures defects
+7. **Re-confirm** - per the rounds protocol in the adversarial-review skill: never call it clean on the round that still had findings, and the criterion or defect flips to done only on a clean confirming round. A round run past that bar manufactures defects
 8. **Gate** - `pm-tools check docs --strict` after the fixes

@@ -8,20 +8,6 @@ argument-hint: "what to review, e.g. 'the auth middleware change before I merge'
 
 Read `devils-advocate/skills/adversarial-review/SKILL.md` first - it is the single source of truth for the two modes, the rounds protocol, the spawn mechanics and gotchas, and the roster. The adversary personas live beside it in `adversaries/<name>.md`, one self-contained prompt each. Do NOT duplicate any of it here; this command only routes into it.
 
-## Toolchain gate (MANDATORY - run before anything else)
-
-Run this first, every session, before any other work. The upgrade always runs; a version mismatch blocks.
-
-```bash
-python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
-LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
-PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
-echo "toolkit $LIB"
-```
-
-Both branches exit non-zero and neither is advisory: an absent library (`FATAL`) and a version mismatch (`STALE`). A mismatch means the CLI is not the one this file was written against, so its documented flags and rules are unverified. Report the line and stop; do not work around it.
-
 ## What to do
 
 1. Read the skill
@@ -38,6 +24,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
    - **methodologist** → scientific-method integrity - can the test fail, does the verdict ladder span outcomes
    - **popular-science** → readability for a generalist - jargon, unsourced claims, buried lede, visuals
    - **devops** → containers and deploy - Dockerfile hygiene, secrets in layers, PID-1 signals, probes
+   - **slop-hunter** → what can go - dead code, YAGNI abstractions, vanity tests, doc over-prose, unused deps; AI-slop tells and fabrication
 5. Pick the mode: Mode 1 (inline diff, no tools) for a specific change; Mode 2 (whole-repo, tools ON) for systemic rot between files
 6. **`TaskCreate` the review before spawning**, `TaskUpdate` it each round - `completed` only on a clean confirming round. One task per review, not per lens
 7. **Spawn the `devils-advocate:adversarial-reviewer` subagent** - one per lens, naming the adversary and scope in its prompt; a panel goes in a single message so the lenses run concurrently and the user can watch each. Write the prompt as if it were a `claude -p` command line - a process that knows nothing but what you typed. Pass target, scope and locked decisions; never your reasoning for the change, which is the thing under review. Drop to `claude -p` (skill's mechanics - `env -u CLAUDECODE`, `< /dev/null`, `--no-session-persistence`) only for what a subagent cannot do - genuinely deny tools in Mode 1, or pin a different model

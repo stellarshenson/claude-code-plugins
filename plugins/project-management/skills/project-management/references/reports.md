@@ -47,7 +47,8 @@ A filtered ask is answered with flags. Reading the document and filtering inside
 - **`--status` narrows ITEMS only** - the summary tables always show the whole scope, so a filtered report still says where the whole thing stands
 - **A single category folds** its name and description into the header rather than printing a one-row CATEGORIES table
 - **`--severity` is a defect attribute** - a criteria document is skipped with a note on stderr instead of being reported as zeros
-- **Dates come off the log**, the only place a date is recorded: `filed` is the first stamp, `closed` the stamp that closed or rejected the item, `updated` the newest. A reopen retires the closed date. `--since` and `--until` take `YYYY-MM-DD`, both ends inclusive
+- **Dates come off the log**, the only place a date is recorded: `filed` is the first stamp, `closed` the stamp that closed or rejected the item, `updated` the newest. Reopening a criterion retires its closed date; a regressed defect keeps the one it earned, since that closure really happened. `--since` and `--until` take `YYYY-MM-DD`, both ends inclusive
+- **Regression count** - a defect report prints `N regressions across M defects` under the headline whenever any item carries a `-N` id, in the summary form as well; it is the answer to how regression-prone the work is
 - **A closed window lists what it found** - it can only select closed and rejected items, so it switches ITEMS to `--status all` by itself
 
 ## `--plain` and `--summary` are the short forms

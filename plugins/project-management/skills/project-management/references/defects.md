@@ -83,7 +83,19 @@ Three more sub-lines, one line each. The `repro:` line is the one another person
 - **`- evidence:`** - what proves the defect is gone, written by `close --evidence`: the regression test that now passes, the build it was verified on, the run that no longer reproduces. `the repro no longer fires on build 412, jest 43 green` is evidence; `fixed` is not
 - The full study, when one is warranted, goes to a details doc; the `repro:` line stays one line regardless
 
-`close` refuses to run without `--evidence`, so a defect cannot be marked fixed on assertion alone. A `reject` needs a reason, not evidence - nothing was fixed. A `reopen` deletes the line and the log records what it said.
+`close` refuses to run without `--evidence`, so a defect cannot be marked fixed on assertion alone. A `reject` needs a reason, not evidence - nothing was fixed. Reopening a closed defect keeps the evidence where it is and files a regression instead, because the fix was genuinely proven at the time and deleting that proof would erase a true fact.
+
+## Regressions
+
+A defect that was fixed and broke again gets a derived id rather than a reopened checkbox, so each occurrence is counted rather than overwritten.
+
+- **Minting** - `reopen DEF-LNCH-3` opens `DEF-LNCH-3-1` with the same title and severity, and leaves `DEF-LNCH-3` closed
+- **Flat ordinals** - reopening `DEF-LNCH-3-1` gives `DEF-LNCH-3-2`, never `-1-1`; the highest ordinal is how many times that defect has come back
+- **Both sides logged** - the parent logs `regressed as DEF-LNCH-3-1`, the child logs `regression of DEF-LNCH-3`, so the chain reads in either direction
+- **No repro is carried over** - a regression may reproduce differently, so `check` warns until the new one is recorded with `edit --repro`
+- **Rejected is not regressed** - a rejected defect reopens normally; nothing was fixed, so nothing regressed
+- **Orphans are an error** - a `-N` id whose root is missing counts nothing and points nowhere, and `check` fails on it
+- **Counting** - `report` prints `N regressions across M defects` above the SUMMARY grid, in the summary form too
 
 ## Details document
 

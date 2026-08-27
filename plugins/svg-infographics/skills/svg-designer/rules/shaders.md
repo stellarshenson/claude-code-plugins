@@ -280,11 +280,11 @@ What it mimics: anamorphic camera flare diagonal streak.
 </filter>
 
 <linearGradient id="flare-streak" x1="0%" y1="0%" x2="100%" y2="100%">
-  <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+  <stop offset="0%" stop-color="#fffaf0" stop-opacity="0"/>
   <stop offset="45%" stop-color="#ffd27a" stop-opacity="0.8"/>
-  <stop offset="50%" stop-color="#ffffff" stop-opacity="1"/>
+  <stop offset="50%" stop-color="#fffaf0" stop-opacity="1"/>
   <stop offset="55%" stop-color="#ffd27a" stop-opacity="0.8"/>
-  <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+  <stop offset="100%" stop-color="#fffaf0" stop-opacity="0"/>
 </linearGradient>
 ```
 

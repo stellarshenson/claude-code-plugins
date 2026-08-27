@@ -50,6 +50,7 @@ Artifacts created:
 ### Step 2.2: Verify Against Sources
 - For each claim in the assumptions register, locate the supporting evidence in source documents
 - Use the `grounding` skill / `document-processing ground` for the lexical pass - it returns per-claim scores plus line/column/paragraph/page/context, so you cite without rereading source. Add disciplined generative interpretation only when all lexical layers miss AND the claim is a synthesis/inference
+- Then `document-processing check-consistency --document <draft> --output 2-wip/<task-name>/<task-name>-consistency-report.md` - the third step of the grounding chain: the draft checked against itself for divergences no source comparison can see (`42 users` here, `50 users` there)
 - Quote the relevant source passage
 - Set status: VERIFIED / PARTIALLY VERIFIED / UNVERIFIED / CONTRADICTED
 - Determine action: Keep / Revise / Remove / Qualify
@@ -65,7 +66,7 @@ Artifacts created:
 - Count: total claims, verified, partially verified, unverified, contradicted
 - List all corrections made
 - Flag remaining risks
-- Save as `2-wip/<task-name>/<task-name>-grounding-report.md`
+- Save as `2-wip/<task-name>/<task-name>-grounding-report.md`; the self-consistency findings are already in `<task-name>-consistency-report.md`
 
 ### Phase 2 Gate
 Display verification summary. In interactive/semi-automated mode, wait for user review.
@@ -76,6 +77,7 @@ Claims verified: X/Y (Z contradictions found, W corrections applied)
 Artifacts created:
 - <task-name>-assumptions.md
 - <task-name>-grounding-report.md
+- <task-name>-consistency-report.md
 - <task-name>-draft-v2.md
 ```
 

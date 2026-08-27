@@ -17,7 +17,7 @@ PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2
 echo "toolkit $LIB"
 ```
 
-No-op when package importable; auto-installs when missing OR when stale shim on PATH but package uninstalled in active Python. Never ask - just run the line.
+The upgrade always runs; a version mismatch blocks. Never ask - just run the line.
 
 ## When to use
 

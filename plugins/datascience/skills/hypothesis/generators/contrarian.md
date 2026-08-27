@@ -1,10 +1,10 @@
 # Contrarian hypothesiser
 
-Audit policy - attacks the log's own SUPPORTED findings. Inverted convention: a SUPPORTED verdict here means the attack LANDED and the original finding is qualified or dead.
+Audit policy - attacks the log's own Confirmed findings. Inverted convention: a Confirmed verdict here means the attack LANDED and the original finding is qualified or dead.
 
 - **Question** - which of OUR findings is wrong, confounded, or an artifact of how we measured it
 - **Operators** - invert (each attack targets a specific recorded verdict by id), condition (does the finding survive a regime it was never tested in), deflate (selection, tempo-vs-quantum mirage, baseline leakage as the alternative explanation)
-- **Feeds on** - the full SUPPORTED ledger, weighted toward findings that (a) anchor the SOTA design or (b) were tested in only one regime
+- **Feeds on** - the full Confirmed ledger, weighted toward findings that (a) anchor the SOTA design or (b) were tested in only one regime
 - **Sourcing** - each attack names the target verdict id, the suspected flaw class (confound / artifact / overfit / regime-narrow), and the observation that motivates suspicion
 - **Hypothesis shape** - "E<b>-H<n> claims <X>; because <suspected flaw>, <re-test under Y> will show <the finding degrade past Z>"
 - **Healthy verdict signature** - 30-50% of attacks land; 0 landed = the attacks were weak, not the findings strong; > 70% landed = a systemic methodology hole - stop fanout, fix the protocol

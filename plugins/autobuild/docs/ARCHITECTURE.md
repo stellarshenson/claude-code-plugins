@@ -25,13 +25,13 @@ The `--objective` flag takes a text string that tells the orchestrating agent wh
 
 ```bash
 orchestrate new --type full \
-  --objective "Implement the program defined in PROGRAM.md (read .claude/skills/autobuild/PROGRAM.md)" \
+  --objective "Implement the program defined in PROGRAM.md (read PROGRAM.md)" \
   --iterations 3
 ```
 
 **PROGRAM.md pattern** (recommended for non-trivial work):
 
-Create a `PROGRAM.md` in the skill directory (or project root) with:
+Create `PROGRAM.md` at the repository root with:
 - What needs to happen (numbered items with concrete requirements)
 - Files to modify (table with file, action, purpose)
 - Success criteria
@@ -52,53 +52,7 @@ The benchmark runs during the TEST phase only. Claude reads the referenced file,
 
 ### Writing a Generative Benchmark
 
-When the work cannot be measured programmatically (no unit tests, no numeric scores), use a **living checklist** as the benchmark. This is the standard approach for generative work like architecture changes, workflow enforcement, and documentation improvements.
-
-**Step 1**: Create `BENCHMARK.md` with categorised `[ ]` items:
-
-```markdown
-# Project Benchmark
-
-Score = count of `[ ]` items. Goal: 0.
-
-## 1. Category Name
-
-- [ ] specific verifiable condition
-- [ ] another condition with file/function reference
-- [ ] measurable outcome (count, presence, absence)
-```
-
-**Step 2**: Reference it in `--benchmark`:
-
-```bash
---benchmark "Read BENCHMARK.md and evaluate each [ ] item. For each: verify by reading code. Mark [x] if passing. Add new [ ] items if discovered. Report remaining [ ] count."
-```
-
-**Writing effective checklist items**:
-
-- Each item must be **independently verifiable** by reading code (grep, file read, import check)
-- Use specific language: "function X exists in file Y" not "code is well structured"
-- Reference concrete artifacts: file paths, function names, YAML keys, CLI flags
-- Include both presence checks ("X exists") and absence checks ("no hardcoded Y remains")
-- Group by category so progress is trackable per area
-- Items should be **pass/fail** - no subjective quality judgments
-
-**Good items**:
-```markdown
-- [ ] `fsm.py` exists in `resources/`
-- [ ] no `if iteration == 0` checks remain in `orchestrate`
-- [ ] `--dry-run` flag exists on `new` command
-- [ ] RESEARCH exit criteria require specific files with line numbers
-```
-
-**Bad items** (subjective, unmeasurable):
-```markdown
-- [ ] code quality is good
-- [ ] architecture is clean
-- [ ] documentation is comprehensive
-```
-
-**Score tracking**: The benchmark score (count of `[ ]`) is tracked across iterations. Lower is better. The forensicist agent in REVIEW uses the trend to identify what's improving and what's stuck.
+When the work cannot be measured programmatically, the benchmark is a living checklist of `[ ]` items in `BENCHMARK.md`; the score is the count still unchecked, tracked across iterations, and the forensicist agent in REVIEW reads the trend. Write the file through the `benchmark-writer` skill, never by hand: it owns the score formula, the direction, the iteration log and the rule that keeps exit conditions out of the benchmark - `commands/run.md` names hand-written benchmarks the most common malformation.
 
 ### When You Have a Programmatic Benchmark
 

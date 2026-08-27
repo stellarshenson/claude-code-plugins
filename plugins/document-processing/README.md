@@ -44,7 +44,7 @@ The frozen-weight lexical manifold was validated on a held-out private RAG datas
 - **Zero-shot** - 0.808 on Liu 2023 / Han 2024 / Ye 2024 fixtures (same three academic papers as cascade archive)
 - **Config** - `calibration.mode: lexical` in `config_document_processing.yaml`; override via `.stellars-plugins/config_document_processing.yaml` project-local
 
-The six-iteration deterministic cascade archive (CV mean 1.0, three academic papers) exists under [`references/grounding-results/`](../references/grounding-results/) and is described in [`references/README.md`](../references/README.md). That engine is a back-compat fallback reachable via explicit `engine:` config override; it is not the current default.
+The six-iteration deterministic cascade archive (CV mean 1.0, three academic papers) exists under [`references/grounding-results/`](../../references/grounding-results/) and is described in [`references/README.md`](../../references/README.md). That engine is a back-compat fallback reachable via explicit `engine:` config override; it is not the current default.
 
 ### NLI / entailment grounding (the truth signal)
 
@@ -70,7 +70,7 @@ document-processing config set-calibrator --profile .stellars-plugins/calibrator
 - **set-calibrator** - writes a `calibration:` block (engine, threshold, weights) into `.stellars-plugins/config_document_processing.yaml`
 - **Incremental** - `--from <profile>` seeds the next fit from the posterior, feedback accumulates
 - **Prior** - lives in config (`calibration.prior`), not code
-- **Docs** - [`docs/grounding_calibration.md`](../docs/grounding_calibration.md); demo [`notebooks/01-kj-calibration-demo.ipynb`](../notebooks/01-kj-calibration-demo.ipynb)
+- **Docs** - [`docs/grounding_calibration.md`](../../docs/grounding_calibration.md); demo [`notebooks/01-kj-calibration-demo.ipynb`](../../notebooks/01-kj-calibration-demo.ipynb)
 
 | Layer | What it catches | Dep | In lexical mode |
 |-------|-----------------|-----|-----------------|
@@ -123,8 +123,7 @@ Native source formats (no extras required): `.txt`, `.md`, `.rst`, `.pdf` (text)
 # Single claim, three-layer default
 document-processing ground \
   --claim "Kubernetes runs on 12 nodes" \
-  --source docs/source.md \
-  --threshold 0.85 --bm25-threshold 0.5
+  --source docs/source.md
 
 # One document: extract claims, then ground them all
 document-processing extract-claims --document docs/brief.md --output validation/claims.json
@@ -199,7 +198,7 @@ The PDF toolkit (`pdf` skill) covers a library-focused guide (pypdf, pdfplumber,
 
 ## Documentation
 
-- `skills/process/SKILL.md` - four-phase build flow (objective refinement, program generation, benchmark generation, scaffolding, execution) and phase gates
+- `skills/process/SKILL.md` - five-stage build flow (objective refinement, program generation, benchmark generation, scaffolding, execution) and phase gates
 - `skills/process/references/FOLDER-STRUCTURE.md` - folder convention
 - `skills/process/references/WORKFLOW.md` - three-phase execution detail
 - `skills/process/references/GROUNDING.md` - claim classification and verification rules for the synthesis workflow
