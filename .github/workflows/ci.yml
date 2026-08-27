@@ -160,10 +160,14 @@ jobs:
           #   accept list stops at 299, so a 429 was failing the build).
           # --max-concurrency 8: the default 128 hammers github.com / shields.io from a
           #   shared runner IP and provokes the throttling in the first place.
-          # Covers the root README plus all six plugin READMEs - the datascience,
+          # Covers the root README plus all seven plugin READMEs - the datascience,
           # document-processing, journal and svg-infographics ones were unchecked, so
           # their links could rot silently.
-          args: --no-progress --max-concurrency 8 --accept '100..=103,200..=299,429' --exclude medium.com --exclude pepy.tech --exclude static.pepy.tech --exclude mcpmarket.com --exclude 'github\.com/stellarshenson/knowledge-graph-foundry' README.md autobuild/README.md datascience/README.md devils-advocate/README.md document-processing/README.md journal/README.md svg-infographics/README.md
+          # --exclude doi.org: DOIs redirect to publisher hosts (dl.acm.org,
+          #   academic.oup.com) that answer a bare bot request with 403. The DOI is
+          #   verified real at authoring time against api.crossref.org, which does not
+          #   block; the link checker cannot repeat that check, so it skips them.
+          args: --no-progress --max-concurrency 8 --accept '100..=103,200..=299,429' --exclude medium.com --exclude pepy.tech --exclude static.pepy.tech --exclude mcpmarket.com --exclude 'github\.com/stellarshenson/knowledge-graph-foundry' --exclude 'doi\.org' README.md autobuild/README.md datascience/README.md devils-advocate/README.md document-processing/README.md journal/README.md project-management/README.md svg-infographics/README.md
           fail: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

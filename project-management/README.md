@@ -38,20 +38,47 @@ All five carry the toolchain gate and refuse to run against a mismatched CLI.
 
 ## Philosophy
 
-This is project management for an agent to operate. The design follows from that: the operator works inside the repository, and the CLI is the whole interface.
+- **No context switch** - the session that changed the code files the defect, in the same turn.
+  Twenty minutes of interrupted work measurably raises mental workload, stress and effort[^1]
+- **One file, not a document plus a tracker** - two copies of the same facts go out of sync. Of 146
+  practitioners surveyed, 59% called code and documentation inconsistency a top recurring problem,
+  46% named duplicate content[^2]
+- **Markdown parses the same way every time** - a fixed grammar read by a parser, not a model. About
+  15 microseconds per item, linear, never cached
+- **One file for people and for the tool** - reads in an editor, diffs in git, parses into records.
+  No export, no import. Knuth's argument, 1984[^3]
+- **The file never goes into the context window** - the agent reads through the CLI, which returns
+  only the rows it asked for. On the document below, one category's report is 8.4 KB out of 4.0 MB.
+  Accuracy drops when the answer sits mid-context[^4], and falls from 0.92 to 0.68 by 3000
+  tokens[^5]
+- **Short entries** - longer input makes models reason worse[^5]. Clarity still rated highest, at
+  88%[^2]
+- **Every event is signed and timestamped** - across 2,731 Java projects, 87% of merge conflicts were
+  resolved using only lines already in the file[^6]
 
-- **No context switch** - the session that changed the code files the defect, in the same turn, from what it already holds. Nothing is restated to a second system and nothing is carried back by hand
-- **Two stores drift** - a requirements document and a tracker database holding the same facts diverge the moment either is edited alone, and keeping them in step is the recurring cost of model-driven approaches. One markdown file removes the second store, and the reconciliation with it
-- **Markdown parses deterministically** - the schema is a fixed grammar (checkbox, id, bold title, named sub-lines), so `pm-tools` reads it with a parser rather than a model. Same file, same records, every run, at no token cost and with no room for an invented field
-- **One format serves both readers** - the file renders in an editor, reviews in a pull request and diffs in git, and it also parses into records. Nothing is exported to read it and nothing is imported to write it
-- **The document stays out of the context window** - the file holds everything, and the agent reaches it through the CLI, which returns only the rows asked for. Growth shows up in a report someone asked for, never in the cost of filing or closing the next item
-- **Reports are computed from the file** - `report` renders fixed markdown tables, so one document always yields the same tables, and they read correctly pasted straight into a terminal session
-- **Terse entries suit a model** - criteria and defects are short declarative statements carrying no narrative. A dry, conservative description gives a model more to infer from and less to misread
-- **Authorship needs no server** - every event carries a handle and a UTC timestamp, so a merge conflict on a shared file already contains what resolving it requires. The agent does the resolving
+### Trivia
+
+A generated document of 10,000 acceptance criteria across 100 categories - 25,577 log lines, 4.0 MB -
+parses in 153 ms and passes `check` in 1.2 s. A 1,000-defect file parses in 13.6 ms. Interpreter
+start is 84 ms of any call, so below a few thousand items the file is not the cost. Filtering saves
+tokens rather than time: `report --category` parses everything either way, but returns 8,436 bytes
+instead of 780,567.
+
+Each point above that rests on published work cites it. `references/papers/` holds one digest per
+paper - findings, limits, and what it does and does not support for this tool. The one uncited point
+is the parsing cost, and the Trivia above is its evidence. The PDFs are not in the repo; every digest
+links to the original.
+
+[^1]: Mark, Gudith, Klocke. *The Cost of Interrupted Work*. CHI 2008. [Digest](references/papers/%5Bpaper%20digest%5D%20cost%20of%20interrupted%20work.md) - [doi](https://doi.org/10.1145/1357054.1357072)
+[^2]: Aghajani et al. *Software Documentation: The Practitioners' Perspective*. ICSE 2020. [Digest](references/papers/%5Bpaper%20digest%5D%20software%20documentation%20practitioners%20perspective.md) - [doi](https://doi.org/10.1145/3377811.3380405)
+[^3]: Knuth. *Literate Programming*. The Computer Journal 27(2), 1984. [Digest](references/papers/%5Bpaper%20digest%5D%20literate%20programming.md) - [doi](https://doi.org/10.1093/comjnl/27.2.97)
+[^4]: Liu et al. *Lost in the Middle*. TACL 12, 2024. [Digest](references/papers/%5Bpaper%20digest%5D%20lost%20in%20the%20middle.md) - [acl](https://aclanthology.org/2024.tacl-1.9/)
+[^5]: Levy, Jacoby, Goldberg. *Same Task, More Tokens*. ACL 2024. [Digest](references/papers/%5Bpaper%20digest%5D%20same%20task%20more%20tokens.md) - [acl](https://aclanthology.org/2024.acl-long.818/)
+[^6]: Ghiotto et al. *On the Nature of Merge Conflicts*. IEEE TSE, 2020. [Digest](references/papers/%5Bpaper%20digest%5D%20nature%20of%20merge%20conflicts.md) - [doi](https://doi.org/10.1109/TSE.2018.2871083)
 
 ## The design - nothing is written down twice
 
-Every fact is stored exactly once, and everything else is computed when read. That is the whole reason the file cannot drift out of step with itself.
+Every fact is stored exactly once, and everything else is computed when read. That is why the file cannot contradict itself.
 
 | Fact | Where it lives | How it is known |
 |------|----------------|-----------------|
@@ -63,7 +90,7 @@ Every fact is stored exactly once, and everything else is computed when read. Th
 | Index, contents, counts | not stored | `pm-tools list-categories` |
 | Test coverage per tag | not stored | `pm-tools report` |
 
-The consequences are deliberate: no `## Contents` table (a second index that drifts - `check` rejects one), no Open / Fixed sections (status is the checkbox, so an item never moves), and one-way links (the reverse side is computed, never written back).
+Three things follow, all deliberate: no `## Contents` table (a second index that drifts - `check` rejects one), no Open / Fixed sections (status is the checkbox, so an item never moves), and one-way links (the reverse side is computed, never written back).
 
 ## What an item looks like
 
@@ -132,3 +159,4 @@ pm-tools upgrade docs/acceptance-criteria.md --code "Authentication=AUTH" --auth
 - `skills/project-management/references/reports.md` - section shapes, filter semantics, `--detail`
 - `skills/project-management/references/upgrade.md` - migrating a legacy document
 - `skills/project-management/references/conflicts.md` - resolving a merge on a shared file
+- `references/papers/` - digests of the six papers cited in Philosophy
