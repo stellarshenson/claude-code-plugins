@@ -33,6 +33,7 @@ PLUGINS = (
     "devils-advocate",
     "document-processing",
     "journal",
+    "project-management",
     "svg-infographics",
 )
 

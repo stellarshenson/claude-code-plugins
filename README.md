@@ -33,9 +33,9 @@ This marketplace makes Claude work like a disciplined engineer instead. Each plu
 
 Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop It](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762) and [Stop Fixing Your AI's SVGs](https://medium.com/towards-artificial-intelligence/stop-fixing-your-ai-svgs-715df70ccca0). For real examples (60+ production SVGs, 4 worked devils-advocate analyses, 3 autobuild iteration trajectories, a 1.0-CV grounding result), see [`showcase/`](showcase/).
 
-## The full marketplace - six disciplines
+## The full marketplace - seven disciplines
 
-`autobuild` is the spear. The same forcing-function logic powers five more plugins, each enforcing a different kind of discipline on Claude. Install them individually or as a bundle.
+`autobuild` is the spear. The same forcing-function logic powers six more plugins, each enforcing a different kind of discipline on Claude. Install them individually or as a bundle.
 
 | Plugin | What it solves |
 |--------|---------------|
@@ -45,6 +45,7 @@ Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop
 | [datascience](datascience/) | Produces high-quality data science projects and notebooks following consistent standards - scaffolds projects from copier templates, enforces notebook structure, applies rich output styling, and supports prompt engineering techniques |
 | [document-processing](document-processing/) | Processes documents according to user requests with grounding in source materials - source tracing, compliance checking, PDF automation |
 | [journal](journal/) | Produces a work journal marking key changes, implementations, and decisions - append-only audit trail with continuous numbering, archiving, and deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement |
+| [project-management](project-management/) | Tracks acceptance criteria and defects for the project inside the repository - permanent ids, mandatory triage, authored append-only logs, and reports computed on read by the deterministic `pm-tools` CLI |
 
 ## autobuild
 
@@ -227,6 +228,45 @@ Two word-count tiers: **Standard** (~70-120 words, the default) and **Extended**
 
 See [journal/README.md](journal/) for entry format, CLI tools, and archiving rules.
 
+## project-management
+
+Acceptance criteria and defects tracked inside the repository, as markdown checklists the whole team can read and git can merge. Sized for a repository, a personal project or a small team - it removes the second system without pretending to be Jira.
+
+**Skill**: `project-management` (auto-triggered on "acceptance criteria", "acc crit", "defects list", "bug tracker", "file a bug", "what is still open")
+
+The design goal is that nothing is recorded twice, so nothing can drift out of step. The item text, its checkbox and its category are stored once each; the next free id, the backlinks, the category index and the test-coverage table are computed on read. There is deliberately no contents table, no Open / Fixed sections and no reverse links - each would be a second copy of something the file already knows.
+
+- **Permanent ids** - `ACC-AUTH-102`, `DEF-LNCH-3`. Unique across the document, never renumbered, never recycled; an item that moves category keeps the code it was born with
+- **Three states** - `[ ]` open, `[x]` closed, `[-]` rejected with a mandatory reason. A defect nobody will fix is a close; a report that was never a defect is a reject, so it does not come back next quarter as news
+- **Mandatory triage** - `CRITICAL` / `MAJOR` / `MEDIUM` / `MINOR`, assigned by the agent as the defect is filed. `add` refuses an untriaged defect and `check` errors on one
+- **Authored append-only logs** - ISO 8601 UTC, then the handle, then the event, including the attempts that FAILED and why. That record of what is already ruled out is the reason the file is worth keeping
+- **`check` is a gate** - non-zero exit on a duplicate id, an untriaged defect, a hand-kept contents table or the wrong hint line; `--strict` also fails on warnings
+
+### Usage
+
+```bash
+# Add or work a criterion
+/project-management:acc-crit add a criterion that the session times out after 30 idle minutes
+
+# File a defect - the agent triages it as it files
+/project-management:defect auth token empty on the first turn after a fork
+
+# The tables the user reads: SUMMARY, coverage, and the open fix queue
+/project-management:report where do the defects stand
+
+# Hostile review - analyst on criteria, qa-engineer on defects
+/project-management:review the acc-crit doc before the sprint starts
+
+# Migrate a legacy document to the schema (dry run first, always)
+/project-management:upgrade docs/acceptance-criteria.md
+
+# Direct CLI
+pm-tools report docs --category AUTH --detail
+pm-tools check docs --strict
+```
+
+See [project-management/README.md](project-management/) for the item format, the CLI surface, and the report semantics.
+
 ## document-processing
 
 <img alt="document-processing 3-stage flow: sources, grounding, compliant cited output" src="assets/svg/06_document_processing_grounding.svg" width="100%">
@@ -291,6 +331,7 @@ Provides these binaries:
 | `svg-infographics` | `svg-infographics`, `devils-advocate` (visuals) |
 | `render-png` | `svg-infographics` (Playwright-based SVG → PNG) |
 | `journal-tools` | `journal` (check / sort / archive / standardize) |
+| `pm-tools` | `project-management` (report / check / add / close / reject / upgrade) |
 | `document-processing` | `document-processing` (ground / ground, three-layer grounding) |
 
 As a Claude Code plugin marketplace:

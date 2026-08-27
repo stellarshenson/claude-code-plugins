@@ -30,6 +30,11 @@
       "id": "autobuild",
       "displayName": "Autobuild",
       "source": "./autobuild"
+    },
+    {
+      "id": "project-management",
+      "displayName": "Project Management",
+      "source": "./project-management"
     }
   ]
 }

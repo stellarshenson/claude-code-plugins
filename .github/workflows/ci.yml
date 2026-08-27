@@ -61,7 +61,7 @@ jobs:
           assert not issues, f'Validation failed: {issues}'
           print('Model validation: OK')
           "
-      # A release syncs 13 plugin strings to the library version by hand. Nothing used
+      # A release syncs every plugin string to the library version by hand. Nothing used
       # to verify it, so a desync would ship a broken marketplace with CI still green.
       - name: Plugin versions match the library
         run: |
@@ -69,7 +69,7 @@ jobs:
           import json, re, sys, pathlib
           root = pathlib.Path('.')
           v = re.search(r'^version\s*=\s*\"([^\"]+)\"', (root/'pyproject.toml').read_text(), re.M).group(1)
-          plugins = ['autobuild','datascience','devils-advocate','document-processing','journal','svg-infographics']
+          plugins = ['autobuild','datascience','devils-advocate','document-processing','journal','project-management','svg-infographics']
           bad = []
           for p in plugins:
               pv = json.loads((root/p/'.claude-plugin/plugin.json').read_text())['version']
@@ -83,7 +83,8 @@ jobs:
               print(f'Plugin versions out of sync with library {v}:')
               [print('  ' + b) for b in bad]
               sys.exit(1)
-          print(f'OK: all 13 plugin strings match library version {v}')
+          n = len(plugins) + 1 + len(m['plugins'])
+          print(f'OK: all {n} plugin strings match library version {v}')
           "
       # Guards the phantom-command class of defect: a command advertised in a README
       # whose target skill does not exist. Shipped once in v1.6.21, fixed in v1.6.22.
