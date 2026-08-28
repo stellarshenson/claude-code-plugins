@@ -158,7 +158,12 @@ def parse_journal_with_diagnostics(
                 # `check_journal` flags as an error.
                 current.result_body += " " + line[rm.end() :]
             continue
-        if in_result and line.strip():
+        # A heading, a horizontal rule or an HTML comment ends the Result
+        # body: it belongs to the file, not to the entry, and counting it
+        # inflated the word tier. Column-0 wrapping stays part of the body.
+        if in_result and _ENTRY_BOUNDARY.match(line):
+            in_result = False
+        elif in_result and line.strip():
             current.result_body += " " + line.strip()
 
     if current is not None:
@@ -166,6 +171,9 @@ def parse_journal_with_diagnostics(
         entries.append(current)
 
     return entries, parser_violations
+
+
+_ENTRY_BOUNDARY = re.compile(r"^(?:#{1,6}\s|---\s*$|\s*<!--)")
 
 
 def parse_journal(text: str) -> list[JournalEntry]:
@@ -385,26 +393,20 @@ def sort_entries(entries: list[JournalEntry], start_from: int = 1) -> list[Journ
 def render_entries(entries: list[JournalEntry]) -> str:
     """Render a list of JournalEntry objects back to markdown text.
 
-    Emits the ``[Extended]`` or ``[Short]`` marker between `Task` and the
-    dash when the respective flag is true so sort/render round-trips
-    preserve tier markers (an earlier bug where sort dropped the marker
-    silently downgraded entries to Standard tier and fired bogus
-    word-count warnings on the next `check` run).
+    Emits each entry's own raw lines with only the number substituted, so
+    sort and archive preserve markers, wrapping, headings and footers
+    (a missing blank separator between entries is restored). Reflowing ``result_body`` used to fold a ``## 2026``
+    heading or a nested list into the Result line while ``check`` stayed
+    green before and after.
     """
     parts: list[str] = []
     for entry in entries:
-        version = f" ({entry.version_tag})" if entry.version_tag else ""
-        if entry.is_extended:
-            marker = "[Extended] "
-        elif entry.is_short:
-            marker = "[Short] "
-        else:
-            marker = ""
-        header = (
-            f"{entry.number}. **Task {marker}- {entry.title}**{version}: {entry.description}<br>"
-        )
-        result = f"    **Result**: {entry.result_body}"
-        parts.append(f"{header}\n{result}")
+        lines = list(entry.raw_lines)
+        while lines and not lines[-1].strip():
+            lines.pop()
+        if lines:
+            lines[0] = re.sub(r"^\d+\.", f"{entry.number}.", lines[0], count=1)
+        parts.append("\n".join(lines))
     return "\n\n".join(parts)
 
 
@@ -446,7 +448,7 @@ def archive_journal(
     text = journal_path.read_text(encoding="utf-8")
     entries = parse_journal(text)
 
-    if len(entries) <= threshold:
+    if len(entries) <= threshold or keep_last <= 0 or keep_last >= len(entries):
         return None
 
     to_archive = entries[:-keep_last]
@@ -667,6 +669,16 @@ def apply_condense_body(text: str, entry: JournalEntry, new_body: str) -> str:
     # entry's body (everything up to `end`).
     new_body_clean = " ".join(new_body.split())  # collapse all internal whitespace
     new_result_line = f"{result_indent_prefix}**Result**: {new_body_clean}"
+    # raw_lines runs to the next Task line and so carries any heading or
+    # comment after the body; the parser stops at _ENTRY_BOUNDARY, the writer
+    # must stop at the same line or the sweep deletes it.
+    for i in range(result_idx + 1, end):
+        if _ENTRY_BOUNDARY.match(lines[i]):
+            end = i
+            break
+    # raw_lines carries the blank separator after the entry; keep it in place.
+    while end - 1 > result_idx and not lines[end - 1].strip():
+        end -= 1
     new_lines = lines[:result_idx] + [new_result_line] + lines[end:]
     return "\n".join(new_lines)
 
@@ -776,8 +788,7 @@ def _apply_one_decision(
 ) -> tuple[str, str]:
     """Apply a parsed decision to the journal text. Returns ``(new_text, outcome)``.
 
-    Mirrors the existing ``--apply`` argparse branch so ``--all`` can reuse
-    the write logic without going through argparse. ``decision`` is one of
+    The one write path behind both ``--apply`` and ``--all``. ``decision`` is one of
     ``"extended" / "condense" / "drop_marker" / "drop-marker"`` (both
     underscore and dash forms accepted for symmetry with the argparse
     surface).
@@ -792,8 +803,7 @@ def _apply_one_decision(
             raise ValueError("condense decision requires new_body")
         new_text = apply_condense_body(text, entry, new_body)
         # When a previously-Extended body condenses below the Extended min,
-        # the marker becomes false advertising — drop it. Same rule used by
-        # the legacy --apply branch.
+        # the marker becomes false advertising - drop it.
         if entry.is_extended:
             post_entries = parse_journal(new_text)
             post_target = next((e for e in post_entries if e.number == entry.number), None)
@@ -1141,6 +1151,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     elif args.command == "sort":
+        if not entries:
+            print("ERROR: no entries parsed; refusing to rewrite the journal", file=sys.stderr)
+            return 1
         sorted_entries = sort_entries(entries, start_from=args.start_from)
         # Preserve the header and any non-entry content before first entry
         header_end = 0
@@ -1149,9 +1162,9 @@ def main(argv: list[str] | None = None) -> int:
             if ENTRY_RE.match(line):
                 header_end = i
                 break
-        header = "\n".join(lines[:header_end])
+        header = "\n".join(lines[:header_end]).rstrip("\n")
         body = render_entries(sorted_entries)
-        output = header + "\n\n" + body + "\n"
+        output = (header + "\n\n" if header else "") + body + "\n"
 
         if args.dry_run:
             print(output)
@@ -1206,13 +1219,8 @@ def main(argv: list[str] | None = None) -> int:
             if target is None:
                 print(f"ERROR: entry {args.apply} not found", file=sys.stderr)
                 return 1
-            if args.decision == "extended":
-                new_text = apply_mark_extended(text, target)
-                outcome = "marked Extended"
-            elif args.decision == "drop-marker":
-                new_text = apply_drop_marker(text, target)
-                outcome = "dropped [Extended] marker"
-            elif args.decision == "condense":
+            new_body = None
+            if args.decision == "condense":
                 if not args.body_file:
                     print("ERROR: --decision condense requires --body-file", file=sys.stderr)
                     return 1
@@ -1221,21 +1229,10 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"ERROR: body file {body_path} not found", file=sys.stderr)
                     return 1
                 new_body = body_path.read_text(encoding="utf-8")
-                new_text = apply_condense_body(text, target, new_body)
-                # If the condensed body falls back into the Standard band, the
-                # `[Extended]` marker becomes false advertising - drop it.
-                # Re-parse the post-write text so we operate on a fresh entry
-                # at the same number with the right line positions.
-                if target.is_extended:
-                    post_entries = parse_journal(new_text)
-                    post_target = next(
-                        (e for e in post_entries if e.number == target.number), None
-                    )
-                    if post_target is not None and post_target.body_word_count < EXTENDED_MIN:
-                        new_text = apply_drop_marker(new_text, post_target)
-                outcome = "condensed body"
-            else:
-                print(f"ERROR: unknown decision {args.decision!r}", file=sys.stderr)
+            try:
+                new_text, outcome = _apply_one_decision(text, target, args.decision, new_body)
+            except ValueError as exc:
+                print(f"ERROR: {exc}", file=sys.stderr)
                 return 1
 
             path.write_text(new_text, encoding="utf-8")

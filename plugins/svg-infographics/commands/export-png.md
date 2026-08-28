@@ -48,7 +48,7 @@ The upgrade always runs - a stale-but-importable install is exactly the failure 
    Creates `<file>.light.png` and `<file>.dark.png` with transparent backgrounds.
 
 3. **Options** (pass through from user request):
-   - `--mode light|dark|both` (default: both)
+   - `--mode light|dark|both` (default: light)
    - `--width N` (default: 3000)
    - `--bg "#hex"` (default: transparent)
 

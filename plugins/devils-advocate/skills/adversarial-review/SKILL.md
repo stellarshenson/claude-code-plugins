@@ -22,6 +22,20 @@ A mode is the **HOW** (inline diff vs whole-repo, tools off/on). An **adversary*
 
 Both are **multi-round**: a single pass finds, you fix, then you re-run to confirm the fix cleared it and did not open a new hole. One pass is a smoke test, not a verdict.
 
+## Toolchain gate (MANDATORY - before any `review-tools` call)
+
+The three `review-tools` commands ship in the library; run this first, every session, before the first of them. The upgrade always runs; a version mismatch blocks.
+
+```bash
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
+PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+echo "toolkit $LIB"
+```
+
+Both branches exit non-zero and neither is advisory: an absent library (`FATAL`) and a version mismatch (`STALE`). A mismatch means the CLI is not the one this file was written against, so its documented flags are unverified. Report the line and stop; do not work around it.
+
 ## When to use
 
 - After a non-trivial feature or fix, before commit/merge
@@ -71,6 +85,7 @@ Oversized remedies turn a review into 1 fix → 2 defects → 3 fixes → 6 defe
 Findings are input to a decision, not a work order. Spawn `devils-advocate:adjudicator` with every lens's findings and it returns ONE change plan: findings verified and grouped by root cause, the smallest change per group, the radius each stays inside, what each could break, and what is deliberately deferred. It plans, it does not edit.
 
 - **Always for a panel** - three lenses reporting one defect is one item, and only a reader of all three sees that
+- **Merge the reports first** - `review-tools findings <lens>.md ... [--full]` parses each report's `VERDICT` line and severity-tagged bullets into one table keyed by `file:line` (two lenses citing the same file within 25 lines are one row), so the adjudicator reads one list with the cross-lens duplicates already joined; `--full` carries every original bullet under the table for the remedies
 - **Always past round 3** - by then the findings are usually the previous round's fixes. Its `STOP` ruling is the honest outcome there: stop reviewing, re-model the component
 - **Pass what you know** - a call graph or blast radius you already have, a domain insight, a decision already locked, the previous round's findings and the fixes applied since. Supplied context outranks its own inference, and an unbounded adjudication is the thing that goes wide
 - **Skip it** for a single lens returning one or two findings you can verify yourself
@@ -125,6 +140,9 @@ env -u CLAUDECODE claude -p "$(cat /tmp/audit-prompt.txt)" \
 - **`--max-turns 50`** (not 1). The reviewer needs to explore - grep, open several files, cross-check. Too low and it stops mid-investigation with no verdict
 - **Run it in the background** - a whole-repo audit takes minutes, not seconds
 - **Scope by instruction, not by diff.** Name the in-scope directories and the excluded ones (tests, vendored, generated) in the prompt, since it reads the live tree
+- **Refresh the code graph before the spawn, then hand it over.** If `tmp/graphify-out/graph.json` exists, run the AST-only `graphify update` (seconds, no tokens - the `graphify` skill has the exact incantation) so the reviewers read a graph that matches HEAD, and state in the prompt that it exists. A reviewer with the graph gets a symbol's callers and blast radius from one `graphify affected "<symbol>()"` call instead of a dozen greps, and a finding cited with its blast radius carries the right severity. The adjudicator uses the same graph to tell whether three lenses hit one cause. Building a graph where none exists is your call, not the reviewer's - it is LLM-billed; the reviewer only reads
+- **Build the dossier once, paste it into every reviewer.** `review-tools dossier <src dirs> --plugins <plugin docs> --graph tmp/graphify-out/graph.json --out /tmp/dossier.md` (seconds, AST only) writes the inventory a reviewer otherwise spends its first 40-60 turns rediscovering: file and symbol index with line numbers, each console script's argparse surface and the subcommands the docs advertise that no parser defines, every write / delete / subprocess / broad-except / clock / filesystem-order primitive as `file:line`, literals repeated across modules, and the most-called symbols from the graph. Paste it under a `DOSSIER:` heading in the prompt and tell the reviewer it is the inventory - it starts from the leads and spends its turns on reproduction instead of discovery
+- **Turns are the cost, not files.** A Mode 2 reviewer re-reads its whole transcript every turn, so a 100-turn review bills roughly 10M cached tokens and 20 minutes while the files it read amount to a few hundred KB. The reviewer agent is told to batch independent tool calls and to prefer one broad grep; give it a tight scope and the graph, and it converges in a third of the turns
 
 Prompt template: `examples/mode2-audit-prompt.txt` - reviewer role + REPO/scope + CONTEXT + the operator's audited REQUIREMENTS + the smell classes it must hunt + strict VERDICT line. Fill scope, context and requirements; it reads the live tree itself.
 
@@ -211,3 +229,4 @@ Full authoring contract, section by section: `references/authoring-an-adversary.
 - A `DO-NOT-SHIP` verdict on a confirmed real (CRITICAL) issue blocks the ship; one driven only by false positives or style nits does not - say which, do not wave it away
 - **Shrink the remedy before applying it** - a confirmed finding does not license the reviewer's proposed fix. If a round's CRITICALs trace to the previous round's fixes, the loop is generating its own work: shrink the last remedy rather than adding another
 - Record what the review caught and how you fixed it (acc-crit log, journal) - the cross-file findings are the ones future-you reintroduces
+- **Measure the review itself** - `review-tools cost <transcript.jsonl>...` over the subagent transcripts (`~/.claude/projects/<slug>/subagents/agent-*.jsonl`) prints turns, cached tokens, tool mix, result bytes and re-reads per reviewer, deduplicated by API message id. Cache read is the bill and it grows with turns squared; a prompt change that did not cut the turn count did not save anything

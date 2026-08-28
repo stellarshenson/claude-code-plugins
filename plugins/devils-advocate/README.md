@@ -48,7 +48,7 @@ The scorecard workflow above attacks a *document*. `adversarial-review` attacks 
 Two modes, composable with any adversary:
 
 - **Mode 1 - diff bug-hunt.** No tools, inline diff, one turn, fast. Finds bugs, logic errors, security holes, broken edge cases in a specific change
-- **Mode 2 - architecture & quality audit.** Tools on, whole-repo, many turns. Finds the systemic rot a diff cannot show - slop, brittle architecture, hardcodings, config drift, broken separation of concerns. The finding is usually a relationship across files, invisible in any one hunk
+- **Mode 2 - architecture & quality audit.** Tools on, whole-repo, many turns. Finds the systemic rot a diff cannot show - slop, brittle architecture, hardcodings, config drift, broken separation of concerns. The finding is usually a relationship across files, invisible in any one hunk. When a `graphify` code graph exists at `tmp/graphify-out/graph.json`, reviewers and the adjudicator read it for callers and blast radius instead of rediscovering them by grep
 
 The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer argues from. Eleven ship under `skills/adversarial-review/adversaries/`, one self-contained persona prompt each:
 
@@ -73,6 +73,8 @@ The file IS the plugin - drop a new `adversaries/<name>.md` and it works, no reg
 **The panel caps at 3** unless you ask for more: triage, not the spawn, is the bottleneck, and five lenses buy a backlog you abandon rather than five times the signal. If you do not name an adversary, the skill asks before spawning - the wrong lens returns a fluent review of a risk your target does not have.
 
 A panel's findings go through `devils-advocate:adjudicator` before any fix - it returns one change plan grouped by root cause, and it does not edit.
+
+Three deterministic commands from the library carry the review's bookkeeping. `review-tools dossier` writes the repository inventory (symbols, CLI surface versus documented surface, risky primitives, shared literals, most-called symbols) that each Mode 2 reviewer otherwise spends its first 40-60 turns rediscovering; pasted into the prompt it removes that discovery from every lens. `review-tools findings` merges the lens reports into one severity table keyed by `file:line` for the adjudicator. `review-tools cost` reads the subagent transcripts and reports turns, cached tokens, tool mix and re-reads per reviewer, so a change to the prompts can be shown to have saved something.
 
 Reviews are **multi-round** by design: one pass finds, you triage and fix, then you re-run to prove the fix cleared it and opened no new hole. A single pass is a smoke test, not a verdict. Never flip a "survived adversarial review" criterion to done on the round that still had findings - only on a clean confirming round.
 

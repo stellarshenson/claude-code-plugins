@@ -159,7 +159,8 @@ def validate(
     consistency_report = format_consistency_report(findings, document_path=str(entry.document))
     (client_dir / "consistency-report.md").write_text(consistency_report, encoding="utf-8")
 
-    unconfirmed = sum(1 for m in matches if m.match_type == "none")
+    # A contradicted claim is worse than an unsupported one; both fail the gate.
+    unconfirmed = sum(1 for m in matches if m.match_type in ("none", "contradicted"))
     return unconfirmed, len(findings)
 
 
@@ -266,14 +267,14 @@ def validate_batch(
         total_unconfirmed += unconfirmed
         total_findings += findings_count
         print(
-            f"  document {entry.name!r}: ok  (unconfirmed {unconfirmed}, "
+            f"  document {entry.name!r}: ok  (unconfirmed or contradicted {unconfirmed}, "
             f"consistency findings {findings_count})",
             file=sys.stderr,
         )
 
     print(
         f"validate done: {len(entries)} documents, {len(errors)} errors, "
-        f"{total_unconfirmed} unconfirmed claims, {total_findings} consistency findings",
+        f"{total_unconfirmed} unconfirmed or contradicted claims, {total_findings} consistency findings",
         file=sys.stderr,
     )
     if errors:

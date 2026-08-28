@@ -15,13 +15,6 @@
 
 version: 2
 
-# Word-count tiers must mirror src/stellars_claude_code_plugins/journal/journal_tools.py
-# (STANDARD_TARGET=150, EXTENDED_MIN=150, EXTENDED_MAX=400).
-limits:
-  standard_target: 150
-  extended_min: 150
-  extended_max: 400
-
 # The system prompt establishes the subprocess's role + frames Standard / Extended.
 system: |
   You are a journal-entry standardizer for the Stellars Claude Code Plugins

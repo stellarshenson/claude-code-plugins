@@ -40,9 +40,9 @@ app:
   prediction_min_tokens: 30         # prediction field per entry (~specific measurable outcome)
   evidence_min_tokens: 30           # evidence field per entry
   note_min_tokens: 50               # context/failure note per transition (acknowledged/dismissed/processed) (~concrete data points and code refs)
-  # cmd: the CLI command path shown in all help text and instructions.
-  # Must match the actual script location relative to project root.
-  cmd: "python .claude/skills/autobuild/orchestrate.py"
+  # cmd: the CLI command shown in all help text and instructions.
+  # The console script the library installs; must be on PATH.
+  cmd: "orchestrate"
   artifacts_dir: ".autobuild"
 
 # Display formatting - controls visual separators in CLI output

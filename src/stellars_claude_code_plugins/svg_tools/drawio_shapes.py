@@ -511,32 +511,6 @@ def _parse_format_b(shapes_el: ET.Element, library: str, category: str) -> list[
 # ---------------------------------------------------------------------------
 
 
-def build_index(source_dirs: list[str | Path]) -> ShapeIndex:
-    """Scan directories/files/URLs for .xml libraries and build a searchable index.
-
-    Compatibility wrapper that iterates sources and delegates to
-    ``index_source`` for each. Used by tests and callers that pass
-    multiple sources at once.
-    """
-    index = ShapeIndex()
-    for source in source_dirs:
-        resolved = _resolve_source(str(source))
-        if resolved.is_dir():
-            for xml_file in sorted(resolved.rglob("*.xml")):
-                for shape in parse_drawio_library(xml_file):
-                    idx = len(index.shapes)
-                    index.shapes.append(shape)
-                    index.categories.setdefault(shape.category, []).append(idx)
-        elif resolved.is_file():
-            for shape in parse_drawio_library(resolved):
-                idx = len(index.shapes)
-                index.shapes.append(shape)
-                index.categories.setdefault(shape.category, []).append(idx)
-        else:
-            _PENDING_WARNINGS.append(f"{resolved} not found, skipping.")
-    return index
-
-
 def index_source(source: str) -> ShapeIndex:
     """Index a stencil library from URL or local path.
 

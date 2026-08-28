@@ -679,7 +679,7 @@ def validate_model(model: Model) -> list[str]:
     # phases: auto_action names should reference valid actions by cli_name
     # Build cli_name -> FQN lookup for actions
     action_cli_names = set()
-    for action_fqn, action_def in model.actions.items():
+    for action_def in model.actions.values():
         if action_def.cli_name:
             action_cli_names.add(action_def.cli_name)
     known_actions = action_cli_names if action_cli_names else set(model.actions.keys())
@@ -796,11 +796,6 @@ def validate_model(model: Model) -> list[str]:
             f"but phase '{phase_key}' has no agents defined. "
             "Fix: add agents to the execution section or remove the {{required_agents}} placeholder."
         )
-
-    # Warn about old structure: phases using gates.on_start/on_end instead of start/end lifecycle
-    for phase_name in known_phases:
-        # This warning is informational - the legacy format still works
-        pass  # Legacy detection happens in _build_agents_and_gates via found_new_structure flag
 
     # app: required fields
     for field_name, val in (("name", model.app.name), ("cmd", model.app.cmd)):

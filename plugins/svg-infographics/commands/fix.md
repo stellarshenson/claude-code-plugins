@@ -100,7 +100,7 @@ Same as style intent, scoped to `svg-infographics contrast` findings only.
 
 ### Connectors intent
 
-1. Run `svg-infographics connectors --svg <file>` + `svg-infographics collide --svg <file>`
+1. Run `svg-infographics connectors --svg <file>` + `svg-infographics collide --connectors-d '[...]'` (it takes the connector path `d` strings, not the file)
 2. Find hand-coded `<path d="M...">` arrows (greppable: `<path [^>]*d="M[^"]*" [^>]*arrow`)
 3. Regenerate each via `svg-infographics connector --mode <m> --standoff 2` passing proper `--src-rect`/`--tgt-rect`/`--start-dir`/`--end-dir`
 4. Replace hand-coded paths with `trimmed_path_d` + arrowhead polygons from tool output

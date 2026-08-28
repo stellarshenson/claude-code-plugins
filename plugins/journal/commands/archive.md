@@ -28,7 +28,7 @@ The upgrade always runs - a stale-but-importable install is exactly the failure 
 journal-tools archive .claude/JOURNAL.md
 ```
 
-Default: threshold 40, keep last 20. Flags: `--keep-last N`, `--threshold N`, `--archive-path PATH`. If `uv` not available, try plain `journal-tools archive ...` or `python -m stellars_claude_code_plugins.journal_tools archive ...`.
+Default: threshold 40, keep last 20. Flags: `--keep-last N`, `--threshold N`, `--archive-path PATH`. If `uv` not available, try plain `journal-tools archive ...` or `python -m stellars_claude_code_plugins.journal.journal_tools archive ...`.
 
 After run:
 1. Read `.claude/JOURNAL.md` last 5 lines — confirm last 20 entries remain, note at top links to archive

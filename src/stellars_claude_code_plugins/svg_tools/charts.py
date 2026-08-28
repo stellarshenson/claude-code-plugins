@@ -263,11 +263,7 @@ def _dark_mode_override_style(fg_light, fg_dark, grid_light, grid_dark, bg_dark,
 def _inject_dark_mode_css(svg_text, dark_css):
     """Inject the dark-mode override <style> into the pygal SVG's <defs>."""
 
-    # Pygal emits a <defs><style> block. Append to its style content.
-    def _augment_style(m):
-        return m.group(0) + dark_css
-
-    # Match the first </style> tag inside <defs>
+    # Pygal emits a <defs><style> block; append to the first </style> inside <defs>.
     new_text = re.sub(r"(</style>)", lambda m: dark_css + m.group(1), svg_text, count=1)
     return new_text
 

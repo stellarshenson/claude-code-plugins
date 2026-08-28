@@ -478,11 +478,6 @@ def evenly_spaced_on_circle(
     return [polar_to_cartesian(center, r, start_angle_deg + 360 * i / count) for i in range(count)]
 
 
-def concentric_circles(center: Point, radii: list[float]) -> list[tuple[Point, float]]:
-    """Return (center, radius) pairs for each requested radius."""
-    return [(center, r) for r in radii]
-
-
 # ---------------------------------------------------------------------------
 # Attachment points (snap to shape edge)
 # ---------------------------------------------------------------------------

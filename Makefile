@@ -63,14 +63,14 @@ clean:
 ## Lint using ruff (use `make format` to do formatting)
 lint:
 	@echo "$(MSG_PREFIX) linting the sourcecode"
-	uvx ruff format --check
-	uvx ruff check
+	uv run --extra dev ruff format --check
+	uv run --extra dev ruff check
 
 ## Format source code with ruff
 format:
 	@echo "$(MSG_PREFIX) formatting the sourcecode"
-	uvx ruff check --fix
-	uvx ruff format
+	uv run --extra dev ruff check --fix
+	uv run --extra dev ruff format
 ## Run tests
 test:
 	@echo "$(MSG_PREFIX) checking for tests"

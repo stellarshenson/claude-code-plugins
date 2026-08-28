@@ -740,7 +740,7 @@ class TestCmdInfo:
 
 class TestEnsureProjectResources:
     def test_copy_archive_replace_and_load(self, tmp_path):
-        """Missing resources are copied, stale ones archived and replaced,
+        """Missing resources are copied, a user edit is left alone,
         and the orchestrator can then load from the project dir."""
         project_resources = tmp_path / ".autobuild" / "resources"
         result = orch._ensure_project_resources(project_resources)
@@ -748,12 +748,14 @@ class TestEnsureProjectResources:
         assert (project_resources / "workflow.yaml").exists()
         assert (project_resources / "phases.yaml").exists()
         assert (project_resources / "app.yaml").exists()
-        # Now modify to stale and re-run
+        # A user edit is customisation: re-running neither archives nor replaces it
         (project_resources / "workflow.yaml").write_text("# custom workflow")
         orch._ensure_project_resources(project_resources)
-        archives = list(tmp_path.glob(".autobuild/resources.old.*"))
-        assert len(archives) >= 1
-        # model loads from project dir
+        assert list(tmp_path.glob(".autobuild/resources.old.*")) == []
+        assert (project_resources / "workflow.yaml").read_text() == "# custom workflow"
+        # model loads from a project dir holding the bundled copy
+        shutil.rmtree(project_resources)
+        orch._ensure_project_resources(project_resources)
         model = orch.load_model(project_resources)
         assert model.app.name != ""
         assert len(model.workflow_types) > 0
@@ -779,7 +781,7 @@ class TestEnsureProjectResources:
 class TestResourceConflict:
     def test_stale_detection_and_archive(self, autobuild_resources, tmp_path):
         """Old-format triggers stale detection and archive on _ensure;
-        content-mismatch also counts as stale; matching bundled is not."""
+        a user edit to a bundled copy is not stale."""
         orch._initialize(autobuild_resources)
 
         # No phases.yaml -> not stale
@@ -809,7 +811,7 @@ class TestResourceConflict:
         content = (r3 / "phases.yaml").read_text()
         assert "start:" in content
 
-        # Content mismatch (modified bundled copy) is stale
+        # A user edit to a bundled copy is customisation, not staleness
         r4 = tmp_path / "r4"
         r4.mkdir()
         for fname in orch._RESOURCE_FILES:
@@ -817,41 +819,7 @@ class TestResourceConflict:
             if src.exists():
                 shutil.copy2(src, r4 / fname)
         (r4 / "phases.yaml").write_text((r4 / "phases.yaml").read_text() + "\n# user edit")
-        assert orch._detect_stale_resources(r4) is True
-
-        # Matching bundled is not stale
-        r5 = tmp_path / "r5"
-        r5.mkdir()
-        for fname in orch._RESOURCE_FILES:
-            src = orch._BUNDLED_RESOURCES / fname
-            if src.exists():
-                shutil.copy2(src, r5 / fname)
-        assert orch._detect_stale_resources(r5) is False
-
-
-class TestVersionCheck:
-    def test_version_check_cache_formats(self, tmp_path):
-        """Structured YAML cache with fields; plain text is stale; _check_version never raises."""
-        from datetime import datetime, timezone
-
-        # Structured YAML format
-        cache = tmp_path / ".version_check"
-        now = datetime.now(timezone.utc).isoformat()
-        cache.write_text(yaml.dump({"latest_version": "0.8.51", "checked_at": now}))
-        data = yaml.safe_load(cache.read_text())
-        assert isinstance(data, dict)
-        assert data["latest_version"] == "0.8.51"
-        checked = datetime.fromisoformat(data["checked_at"])
-        age = (datetime.now(timezone.utc) - checked).total_seconds()
-        assert age < 86400
-
-        # Legacy plain-text: loads as string, treated as stale
-        cache.write_text("0.8.50")
-        data = yaml.safe_load(cache.read_text())
-        assert isinstance(data, str)
-
-        # _check_version never raises
-        orch._check_version()
+        assert orch._detect_stale_resources(r4) is False
 
 
 # ---------- context lifecycle (rich entries) ----------

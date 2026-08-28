@@ -5,7 +5,7 @@ All content loaded from YAML resources (phases, agents, workflow types,
 guardian checklist, display strings). The engine is content-agnostic -
 each plugin provides its own YAML resource files.
 
-10-command CLI with 2 calls per phase (start + end).
+12-command CLI with 2 calls per phase (start + end).
 Stateful phases, agent review, automated testing, independent gatekeeper.
 
 State: <artifacts_dir>/state.yaml
@@ -102,7 +102,7 @@ def _initialize(resources_dir: Path) -> None:
     LOG_FILE = DEFAULT_ARTIFACTS_DIR / "log.yaml"
     FAILURES_FILE = DEFAULT_ARTIFACTS_DIR / "failures.yaml"
     CONTEXT_FILE = DEFAULT_ARTIFACTS_DIR / "context.yaml"
-    CMD = _MODEL.app.cmd or "python orchestrate.py"
+    CMD = _MODEL.app.cmd or "orchestrate"
     _SEP_CHAR = _MODEL.app.display.separator
     _SEP_WIDTH = _MODEL.app.display.separator_width
     _HDR_CHAR = _MODEL.app.display.header_char
@@ -1085,18 +1085,6 @@ def _init_artifacts_dir(artifacts_dir: Path | None = None) -> None:
     CONTEXT_FILE = d / "context.yaml"
 
 
-def _read_last_iteration(artifacts_dir: Path | None = None) -> int:
-    """Read the last iteration number before cleaning. Returns 0 if none."""
-    d = artifacts_dir or DEFAULT_ARTIFACTS_DIR
-    state_file = d / "state.yaml"
-    if state_file.exists():
-        try:
-            return yaml.safe_load(state_file.read_text()).get("iteration", 0)
-        except (yaml.YAMLError, KeyError, AttributeError):
-            pass
-    return 0
-
-
 _CLEAN_PRESERVE = {
     "context.yaml",
     "failures.yaml",
@@ -1151,9 +1139,22 @@ def _verify_test_phase(state: dict | None = None) -> tuple[bool, str]:
                 text=True,
                 timeout=120,
                 cwd=str(PROJECT_ROOT),
+                # the skip below matches make's English messages
+                env={**os.environ, "LC_ALL": "C"},
             )
             if result.returncode == 0:
                 results.append(f"{cmd_name}: PASS")
+            elif result.returncode == 127:
+                # `/bin/sh -c "make ..."` with no make on PATH
+                results.append(f"{cmd_name}: make not installed, skipping")
+            elif result.returncode == 2 and (
+                "No rule to make target" in result.stderr
+                or "no makefile found" in result.stderr.lower()
+            ):
+                # `shell=True` never raises FileNotFoundError; make reports a missing
+                # target or Makefile with exit 2. A real target whose own dependency
+                # is missing prints the same message and is skipped here too.
+                results.append(f"{cmd_name}: Makefile target not found, skipping")
             else:
                 output = result.stdout[-500:] if result.stdout else result.stderr[-500:]
                 results.append(f"{cmd_name}: FAIL\n{output}")
@@ -1161,8 +1162,6 @@ def _verify_test_phase(state: dict | None = None) -> tuple[bool, str]:
         except subprocess.TimeoutExpired:
             results.append(f"{cmd_name}: TIMEOUT (120s)")
             return False, "\n".join(results)
-        except FileNotFoundError:
-            results.append(f"{cmd_name}: Makefile target not found, skipping")
 
     # Run benchmark if configured
     # The benchmark is always a generative instruction - text that tells the
@@ -1207,7 +1206,7 @@ def _claude_evaluate(
     Used by readback and gatekeeper gates for independent validation.
     Strips the CLAUDECODE environment variable to prevent subprocess
     hang (claude-agent-sdk detects it and enters degraded mode).
-    Uses sonnet model with max-turns 3 and 60s timeout.
+    Uses sonnet model with max-turns 3 and the caller's timeout (60s default).
     Retries up to 3 times on rate-limit responses with exponential backoff.
     Logs every prompt+response to artifacts/logs/ for debugging.
 
@@ -3469,12 +3468,6 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
         default=str(resources_dir),
         help="Path to YAML resource files directory",
     )
-    parser.add_argument(
-        "--no-version-check",
-        action="store_true",
-        default=False,
-        help="Skip PyPI version check on startup",
-    )
     sub = parser.add_subparsers(dest="command")
 
     # ── new ──
@@ -3594,27 +3587,18 @@ _RESOURCE_FILES = ("workflow.yaml", "phases.yaml", "app.yaml")
 
 
 def _detect_stale_resources(resources_dir: Path) -> bool:
-    """Check if project resources are stale (old format or differ from bundled).
+    """Check if project resources use the legacy gates: format (pre-start/execution/end).
 
-    Detects two cases:
-    1. Legacy gates: format (pre-start/execution/end lifecycle)
-    2. Content differs from bundled resources (version upgrade)
+    A project-local copy that merely differs from the bundled one is NOT stale:
+    the docs tell users to edit these files, so a byte difference is the
+    customisation working, not an upgrade to undo.
     """
     phases_file = resources_dir / "phases.yaml"
     if not phases_file.exists():
         return False
     content = phases_file.read_text()
     # Old format: gates: key at phase level without start: key
-    if "  gates:" in content and "  start:" not in content:
-        return True
-    # Version upgrade: bundled resources differ from project-local
-    for fname in _RESOURCE_FILES:
-        local = resources_dir / fname
-        bundled = _BUNDLED_RESOURCES / fname
-        if local.exists() and bundled.exists():
-            if local.read_bytes() != bundled.read_bytes():
-                return True
-    return False
+    return "  gates:" in content and "  start:" not in content
 
 
 def _ensure_project_resources(project_resources: Path) -> Path:
@@ -3639,7 +3623,7 @@ def _ensure_project_resources(project_resources: Path) -> Path:
         if not archive_path.exists():
             project_resources.rename(archive_path)
             print(
-                f"WARNING: Project resources differ from bundled version. "
+                f"WARNING: Project resources use the legacy gates: format. "
                 f"Archived to {archive_name}/"
             )
             project_resources.mkdir(parents=True, exist_ok=True)
@@ -3652,47 +3636,6 @@ def _ensure_project_resources(project_resources: Path) -> Path:
     return project_resources
 
 
-def _check_version() -> None:
-    """Check if a newer version is available on PyPI. Non-blocking, 2s timeout.
-
-    Cache stored as YAML: {latest_version: str, checked_at: ISO8601}.
-    Uses checked_at for 24h expiry instead of file mtime.
-    Legacy plain-text cache is silently migrated on next check.
-    """
-    try:
-        import importlib.metadata
-        import json
-        from urllib.request import urlopen
-
-        installed = importlib.metadata.version("stellars-claude-code-plugins")
-
-        # Check cache - structured YAML with checked_at timestamp
-        cache_file = PROJECT_ROOT / ".autobuild" / ".version_check"
-        if cache_file.exists():
-            cache_data = yaml.safe_load(cache_file.read_text())
-            if isinstance(cache_data, dict) and "checked_at" in cache_data:
-                checked = datetime.fromisoformat(cache_data["checked_at"])
-                if (datetime.now(timezone.utc) - checked).total_seconds() < 86400:
-                    return
-
-        url = "https://pypi.org/pypi/stellars-claude-code-plugins/json"
-        resp = urlopen(url, timeout=2)  # noqa: S310
-        data = json.loads(resp.read())
-        latest = data["info"]["version"]
-
-        # Update cache as structured YAML
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        cache_file.write_text(yaml.dump({"latest_version": latest, "checked_at": _now()}))
-
-        if latest != installed:
-            print(
-                f"Update available: {installed} -> {latest}. "
-                f"Run: pip install --upgrade stellars-claude-code-plugins"
-            )
-    except Exception:
-        pass  # Fail silently
-
-
 def main(resources_dir: Path | None = None):
     """CLI entry point. Parses arguments and dispatches to command handlers.
 
@@ -3701,11 +3644,6 @@ def main(resources_dir: Path | None = None):
             uses resolution chain: --resources-dir CLI arg > project-local
             resources > bundled module resources.
     """
-    # Version check (before _initialize, non-blocking)
-    no_version_check = "--no-version-check" in sys.argv
-    if not no_version_check:
-        _check_version()
-
     # Resolve resources_dir: explicit arg > CLI --resources-dir > project-local > bundled
     if resources_dir is None:
         # Pre-parse --resources-dir before full argparse (it needs _initialize first)

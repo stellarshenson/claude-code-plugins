@@ -8,27 +8,27 @@ Live roster: `svg-infographics --help` (grouped, one line each) and `svg-infogra
 svg-infographics
  |
  |-- primitives <shape>          Shape geometry + named anchors (run bare or --list / --caveman for the full catalogue)
- |   |-- rect                    Rectangle. --x --y --w --h [--mode filled|outline|wire]
- |   |-- square                  Square. --x --y --size
- |   |-- circle                  Circle. --x --y --r
- |   |-- ellipse                 Ellipse. --x --y --rx --ry
- |   |-- diamond                 Diamond/rhombus. --x --y --w --h
- |   |-- hexagon                 Hexagon. --x --y --r [--flat-top]
- |   |-- star                    Star polygon. --x --y --r --points
- |   |-- arc                     Arc segment. --x --y --r --start-deg --end-deg
- |   |-- gear                    Toothed gear. --x --y --outer-r [--teeth 12 --inner-r]
- |   |-- cloud                   Cloud shape. --x --y --w --h [--lobes 5]
- |   |-- document                Dog-ear page. --x --y --w --h [--fold]
- |   |-- pyramid                 Isometric 3D pyramid. --x --y --base-w --height
- |   |-- cube                    Isometric cube. --x --y --size [--mode wire]
- |   |-- cuboid                  Isometric cuboid. --x --y --w --h --d
- |   |-- cylinder                Isometric cylinder. --x --y --r --h
- |   |-- sphere                  Wireframe sphere. --x --y --r
- |   |-- plane                   Ground plane. --x --y --w --h
+ |   |-- rect                    Rectangle. --x --y --width --height [--radius] [--accent]
+ |   |-- square                  Square. --x --y --size [--radius]
+ |   |-- circle                  Circle. --cx --cy --r
+ |   |-- ellipse                 Ellipse. --cx --cy --rx --ry
+ |   |-- diamond                 Diamond/rhombus. --cx --cy --width --height
+ |   |-- hexagon                 Hexagon. --cx --cy --r [--pointy-top]
+ |   |-- star                    Star polygon. --cx --cy --r [--inner-r --points]
+ |   |-- arc                     Arc segment. --cx --cy --r --start --end (degrees)
+ |   |-- gear                    Toothed gear. --x --y --outer-r [--inner-r --teeth --mode filled|outline]
+ |   |-- cloud                   Cloud shape. --x --y --w --h [--lobes 5 --mode filled|outline]
+ |   |-- document                Dog-ear page. --x --y --w --h [--fold --mode filled|outline]
+ |   |-- pyramid                 Isometric 3D pyramid. --x --y --base-w --height [--mode filled|wire]
+ |   |-- cube                    Isometric cube. --x --y --width --height [--depth --mode fill|wire]
+ |   |-- cuboid                  Isometric cuboid. --x --y --width --height --depth [--mode fill|wire]
+ |   |-- cylinder                Isometric cylinder. --cx --cy --rx --ry --height [--mode fill|wire]
+ |   |-- sphere                  Wireframe sphere. --cx --cy --r [--mode fill|wire]
+ |   |-- plane                   Ground plane. --x --y --width --depth [--tilt]
  |   |-- speech                  Speech bubble + callout spike. --x --y --w --h [--tip-x --tip-y] [--shape rect|soft-rect|ellipse] [--rx --ry] [--id NAME]
  |   |-- thought                 Thought cloud + decreasing-bubble trail. --x --y --w --h [--tip-x --tip-y] [--trail-bubbles N] [--id NAME]
- |   |-- axis                    3-axis coordinate system. --x --y --length
- |   '-- spline                  PCHIP curve through waypoints. --points "x1,y1 x2,y2 ..."
+ |   |-- axis                    3-axis coordinate system. --origin "x,y" --length [--axes x|y|xy|xyz --ticks --tick-spacing --no-labels]
+ |   '-- spline                  PCHIP curve through waypoints. --points "x1,y1 x2,y2 ..." [--samples --closed]
  |
  |-- connector --mode <m>        Connector routing (5 modes)
  |   |-- straight                Direct line. Auto edge-snap via --src-rect / --tgt-rect
@@ -40,10 +40,10 @@ svg-infographics
  |   |   '-- --stem-min          Min cardinal stem behind arrowhead (default 20px)
  |   |-- spline                  Smooth PCHIP or cubic Bezier with tangent dirs
  |   '-- manifold                Sankey bundle: N->merge->spine->fork->M
- |       |-- --tension           Strand stiffness 0-1 (default 0.75). Increase if crossing
+ |       |-- --tension           Strand stiffness 0-1 (default 0.5). Increase if crossing
  |       |-- --shape             Sub-strand shape: straight|l|l-chamfer|spline
  |       |-- --align-elbows      Aligned L-elbows for clean rail-style routing
- |       '-- --organic           Force-based strand relaxation
+ |       '-- --organic auto|on|off Force-based strand relaxation
  |
  |-- geom <op>                   Alignment, constraints, measurements
  |   |-- POINT/LINE
@@ -148,13 +148,12 @@ svg-infographics
  |   |-- line | bar | hbar       Standard chart types
  |   |-- area | radar | dot      Distribution charts
  |   |-- histogram | pie         Frequency charts
- |   |-- --colors / --colors-dark  BOTH required. WCAG contrast audit on every series
- |   '-- --theme                 Theme preset name
+ |   '-- --colors / --colors-dark  BOTH required. WCAG contrast audit on every series
  |
  |-- shapes                      draw.io stencil library (downloaded on demand)
  |   |-- index --source URL      Download + cache a library
  |   |-- search "query"          Fuzzy search by name/category
- |   |-- render --name X         Render at target size, returns primitives-compatible result
+ |   |-- render <name>           Render at target size, returns primitives-compatible result
  |   '-- catalogue --category X  Visual SVG grid of all shapes in category
  |
  |-- icons                       Bundled plugin-own icons + catalogue of every route
@@ -162,7 +161,7 @@ svg-infographics
  |   |-- search "query"          Search bundled icons by name/keyword
  |   '-- render NAME [--size N]  Paste-ready <g>, 24-grid stroke convention
  |
- |-- background <texture>        Procedural textures: circuit, neural, topo, grid, organic, celtic, scifi, constellation, flourish, geometric, crystalline
+ |-- background --type <texture> Procedural textures: circuit, neural, topo, grid, organic, celtic, scifi, constellation, flourish, geometric, crystalline
  |
  |-- text-to-path                ON REQUEST: text + TTF/OTF -> <path> outlines, no font dependency
  |
@@ -177,11 +176,6 @@ svg-infographics
  |   |-- geometry                Element bboxes as JSON, transforms applied - feeds finalize's visual checks
  |   '-- consistency             Cross-file deck check: card anatomy across sibling SVGs
  |
- |-- render-png                    SVG to PNG via Playwright (evaluates CSS media queries)
- |   |-- --mode light|dark|both   Colour scheme. "both" creates .light.png + .dark.png
- |   |-- --width N                Output width px (default 3000)
- |   '-- --bg "#hex"              Background colour (default: transparent)
- |
  '-- COMMANDS (user-invoked)
      |-- /svg-infographics:create        Full 6-phase workflow
      |-- /svg-infographics:theme         Generate/update theme swatch
@@ -189,6 +183,11 @@ svg-infographics
      |-- /svg-infographics:fix           Fix layout/style/contrast/connectors (argument describes intent)
      |-- /svg-infographics:beautify      Additive decoration pass (8 dimensions x 4 levels, geometry-guarded)
      '-- /svg-infographics:export-png    Render SVG to PNG (light/dark/both, transparent bg)
+
+render-png (its own console script, not an svg-infographics subcommand)
+ |-- --mode light|dark|both       Colour scheme. "both" creates .light.png + .dark.png
+ |-- --width N                    Output width px (default 3000)
+ '-- --bg "#hex"                  Background colour (default: transparent)
 ```
 
 ## Quick lookup
@@ -218,7 +217,7 @@ svg-infographics
 | Inflate / deflate a shape | `boolean --op buffer --svg scene.svg --ids shape --margin 8` |
 | Check before delivery | `finalize --checklist` - one call; the single validators are for drilling into a finding |
 | Declare before building | `preflight` with the flags that describe the build |
-| Place an icon or text block | `place --svg scene.svg --container-id ID ...` |
+| Place an icon or text block | `place --svg scene.svg --container ID --size N ...` |
 | Add visual richness | `/svg-infographics:beautify file.svg medium` |
 | Browse bundled custom icons | `icons list` |
 | Search for icons | `icons search "brain"` (custom) or `shapes search "database"` (draw.io) |

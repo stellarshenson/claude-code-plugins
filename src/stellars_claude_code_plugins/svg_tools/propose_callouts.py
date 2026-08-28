@@ -143,12 +143,6 @@ class CalloutRequest:
             return (float(x) + float(w) / 2, float(y) + float(h) / 2)
         raise ValueError(f"target must be (x, y) or (x, y, w, h); got {self.target!r}")
 
-    def target_bbox(self) -> tuple[float, float, float, float] | None:
-        """Return the target's bbox if the target is a rect, else None."""
-        if len(self.target) == 4:
-            return tuple(float(v) for v in self.target)  # type: ignore[return-value]
-        return None
-
 
 @dataclass
 class CalloutProposal:

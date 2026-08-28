@@ -243,7 +243,7 @@ svg-infographics css --svg <file> --strict                 # warnings as errors
 Pairwise collision over a set of connectors. Tolerance-aware (buffered shapely intersection). Reports crossing / near-miss / touching with coords + min distance.
 
 ```bash
-svg-infographics collide --svg <file>
+svg-infographics collide --connectors-d '["M ... L ...", ...]'   # path d strings, not a file
 ```
 
 ## Tool: connector (generative, not a validator)

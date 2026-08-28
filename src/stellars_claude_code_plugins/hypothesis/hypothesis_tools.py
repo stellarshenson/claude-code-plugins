@@ -57,6 +57,7 @@ COMPACT_RE = re.compile(rf"^\s*[-*+]\s+\*\*\s*{_ID}\b(?P<slug>[^*]*)\*\*\s*(?:[-
 # underscore-wrapped id slipped the net. Only a letter or digit before the
 # token means it is part of a longer word and not an id.
 ID_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9])([ER]\d+)-H(\d+)")
+TABLE_ID_RE = re.compile(r"^\s*\|\s*[*_]{0,4}\s*([ER]\d+)-H(\d+)")
 # One home for everything that may sit between the margin and a declaration:
 # blockquote markers, any list marker, a task-list checkbox. Chasing these one
 # decoration at a time is how three rounds of regressions happened; the prefix
@@ -100,10 +101,7 @@ SECOND_ID_RE = re.compile(r"[ER]\d+-H\d+")
 
 CANONICAL_MARKER = "**Canonical Experiments Document**"
 
-# `Confirmed` and `Blocked` are both absent from the skill's prose lists yet
-# both are declared or used by the primary reference example, which the skill
-# says wins on any conflict - rejecting them would fail the doc it tells you
-# to mirror. Matched longest-first, so `Refuted (null)` is never truncated.
+# Matched longest-first, so `Refuted (null)` is never truncated.
 VERDICTS = (
     "Killed-at-gate",
     "Refuted (null)",
@@ -179,8 +177,12 @@ def match_verdict(raw: str) -> str | None:
     # A qualifier outside the bold span (`- **Verdict** (re-run) - Ships`) is
     # kept in the value by design; the label follows it.
     text = re.sub(r"^\([^)]*\)\s*", "", text)
+    # The label must end the value or be followed by `;` - a bare prefix match
+    # read `Confirmed-partially` and `Refuted for k=1, Confirmed for k=3` as
+    # clean single verdicts, which is the mixed-regime case the acceptance
+    # rule exists to catch. Unmatched falls through to `check`'s label error.
     for label in VERDICTS:
-        if text.lower().startswith(label.lower()):
+        if re.match(rf"{re.escape(label)}\**\s*(?:;|$)", text, re.I):
             return label
     return None
 
@@ -306,7 +308,12 @@ def find_orphan_ids(text: str, declared: set[str]) -> list[tuple[int, str]]:
                 continue
             # Anywhere in the label, so an id that is not first is still caught.
             hit = ID_TOKEN_RE.search(label)
-        hit = hit or BULLET_ID_RE.match(line) or HEADING_ID_RE.match(line)
+        # A table row's first cell is a declaration position too: the skill's
+        # research-at-a-glance table carries `id + slug` per row, and an id that
+        # lives only there was reissued by `next-id`.
+        hit = (
+            hit or BULLET_ID_RE.match(line) or HEADING_ID_RE.match(line) or TABLE_ID_RE.match(line)
+        )
         if hit is None and i + 1 < len(lines) and SETEXT_RULE_RE.match(lines[i + 1]):
             hit = SETEXT_ID_RE.match(line)
         if hit and (hid := f"{hit.group(1)}-H{int(hit.group(2))}") not in declared:
@@ -496,7 +503,15 @@ def cmd_list(path: Path, verdict: str | None, batch: str | None, as_json: bool) 
             )
             return 2
         else:
+            compact = sum(1 for h in rows if h.verdict is None)
             rows = [h for h in rows if (h.verdict or "").lower() == want]
+            if compact:
+                # A compact hypothesis carries its verdict in prose the parser
+                # does not read; an empty table would look like a genuine zero.
+                print(
+                    f"note: {compact} compact hypotheses not judged (verdict unreadable)",
+                    file=sys.stderr,
+                )
 
     if as_json:
         print(json.dumps([h.to_dict() for h in rows], indent=2))

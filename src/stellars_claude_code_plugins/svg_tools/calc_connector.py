@@ -681,39 +681,6 @@ def _unpack_point_with_direction(point):
     raise ValueError(f"point must be (x, y) or (x, y, direction), got {point!r}")
 
 
-def _apply_direction_to_l(src, tgt, direction_in, direction_out):
-    """Infer first_axis from the start direction.
-
-    N/S -> v (vertical first), E/W -> h (horizontal first), diagonal -> dominant.
-    When no direction is given, fall back to the default inference from geometry.
-    """
-    unit = _direction_to_unit_vector(direction_in)
-    if unit is None:
-        return _infer_first_axis(src[0], src[1], tgt[0], tgt[1])
-    if abs(unit[0]) >= abs(unit[1]):
-        return "h"
-    return "v"
-
-
-def _apply_direction_to_spline(src, tgt, direction_in, direction_out, offset=24.0):
-    """Inject implicit PCHIP control points at offsets along the given directions.
-
-    Returns a new waypoint list: [src, injected_in?, injected_out?, tgt]. The
-    injected points are a fixed distance along the direction unit vector,
-    forcing the curve to leave (or enter) the endpoint tangent to the
-    specified direction.
-    """
-    pts = [src]
-    uin = _direction_to_unit_vector(direction_in)
-    uout = _direction_to_unit_vector(direction_out)
-    if uin is not None:
-        pts.append((src[0] + uin[0] * offset, src[1] + uin[1] * offset))
-    if uout is not None:
-        pts.append((tgt[0] - uout[0] * offset, tgt[1] - uout[1] * offset))
-    pts.append(tgt)
-    return pts
-
-
 def _infer_first_axis(src_x, src_y, tgt_x, tgt_y):
     """Pick 'h' or 'v' for an L segment based on which delta is larger.
 
@@ -978,53 +945,6 @@ def _resolve_l_endpoints_from_rects(
         first_axis = "h" if start_card in ("E", "W") else "v"
 
     return resolved_src[0], resolved_src[1], resolved_tgt[0], resolved_tgt[1], first_axis
-
-
-def _build_l_polyline(src_x, src_y, tgt_x, tgt_y, first_axis=None):
-    """Two-segment L route. first_axis='h' goes horizontal first, 'v' vertical.
-
-    When first_axis is None, it is inferred per segment from geometry
-    (dominant axis first). Collinear pairs degenerate to a two-point polyline.
-    """
-    if src_x == tgt_x or src_y == tgt_y:
-        return [(src_x, src_y), (tgt_x, tgt_y)]
-    if first_axis is None:
-        first_axis = _infer_first_axis(src_x, src_y, tgt_x, tgt_y)
-    if first_axis == "h":
-        corner = (tgt_x, src_y)
-    elif first_axis == "v":
-        corner = (src_x, tgt_y)
-    else:
-        raise ValueError(f"first_axis must be 'h' or 'v' or None, got {first_axis!r}")
-    return [(src_x, src_y), corner, (tgt_x, tgt_y)]
-
-
-def _build_l_chamfer_polyline(src_x, src_y, tgt_x, tgt_y, first_axis=None, chamfer=4.0):
-    """Chamfered L: replace the 90 corner with a small diagonal cut.
-
-    When first_axis is None, it is inferred per segment from geometry
-    (dominant axis first). Collinear pairs (Δx=0 or Δy=0) fall back to a
-    straight two-point polyline with no corner to chamfer.
-    """
-    dx = tgt_x - src_x
-    dy = tgt_y - src_y
-    if dx == 0 or dy == 0:
-        return [(src_x, src_y), (tgt_x, tgt_y)]
-
-    if first_axis is None:
-        first_axis = _infer_first_axis(src_x, src_y, tgt_x, tgt_y)
-
-    sign_x = 1 if dx >= 0 else -1
-    sign_y = 1 if dy >= 0 else -1
-    if first_axis == "h":
-        before = (tgt_x - chamfer * sign_x, src_y)
-        after = (tgt_x, src_y + chamfer * sign_y)
-    elif first_axis == "v":
-        before = (src_x, tgt_y - chamfer * sign_y)
-        after = (src_x + chamfer * sign_x, tgt_y)
-    else:
-        raise ValueError(f"first_axis must be 'h' or 'v' or None, got {first_axis!r}")
-    return [(src_x, src_y), before, after, (tgt_x, tgt_y)]
 
 
 def _build_endpoint_info(points, end, head_len, head_half_h, draw_arrow):
@@ -1981,9 +1901,8 @@ def calc_l(
             _check_soft_cap(controls, "calc_l auto_route controls")
 
     # Route BOTH 1-bend and multi-elbow cases through _thread_l_controls
-    # so end_dir is always honored on the last segment (the direct
-    # _build_l_polyline path ignores end_dir because first_axis is locked
-    # from start_dir only).
+    # so end_dir is always honored on the last segment (a direct polyline
+    # build would lock first_axis from start_dir only and ignore end_dir).
     pts = _thread_l_controls(
         (src_x, src_y),
         (tgt_x, tgt_y),
@@ -2240,7 +2159,6 @@ def calc_spline(
     standoff=None,
     start_dir=None,
     end_dir=None,
-    direction_offset=24.0,
     tangent_magnitude=None,
 ):
     """Spline connector. PCHIP through waypoints OR cubic Bezier with tangent vectors.
@@ -2410,20 +2328,6 @@ def _calc_single_strand(
             tangent_magnitude=tangent_magnitude,
         )
     raise ValueError(f"shape must be straight|l|l-chamfer|spline, got {shape!r}")
-
-
-def _centroid(points):
-    n = len(points)
-    return (sum(p[0] for p in points) / n, sum(p[1] for p in points) / n)
-
-
-def _unique_in_order(points, tol=0.01):
-    """De-duplicate adjacent waypoints within a small tolerance."""
-    out = []
-    for p in points:
-        if not out or math.hypot(p[0] - out[-1][0], p[1] - out[-1][1]) > tol:
-            out.append(tuple(p))
-    return out
 
 
 def _resolve_tension(tension):
@@ -4166,11 +4070,6 @@ def format_polyline_svg(result, stroke_color="#5456f3", stroke_width="1.2", opac
         lines.append(f'  <polygon points="{poly_pts}" fill="{stroke_color}" opacity="0.6"/>')
 
     return "\n".join(lines)
-
-
-def format_svg(result, stroke_color="#5456f3", stroke_width="1.2", opacity="0.4"):
-    """Backwards-compatible alias - straight/l/l-chamfer/spline all use the polyline renderer."""
-    return format_polyline_svg(result, stroke_color, stroke_width, opacity)
 
 
 _CONNECTOR_DESCRIPTION = """\

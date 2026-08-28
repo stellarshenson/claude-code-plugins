@@ -39,7 +39,7 @@ The `<g id="background">` group holds either:
 - `organic` - Leaf veins / river tributaries. Good for agriculture / biology / natural-system diagrams.
 - `none` - Explicitly no texture (solid or transparent backplate only).
 
-`svg-infographics background --family <family> --viewBox "0 0 800 450" --seed <int>` generates the SVG snippet. Seed makes textures reproducible across re-generation.
+`svg-infographics background --type <type> --w 800 --h 450 --seed <int>` generates the SVG snippet (`--list` prints the types). Seed makes textures reproducible across re-generation.
 
 ## Do NOT cross content with texture
 
@@ -47,8 +47,6 @@ Content elements (cards, connectors, text) should not visually sit "underneath" 
 - Increase card `fill-opacity` (0.06 -> 0.10) to occlude the trace
 - Offset the card so it sits in a lighter region of the texture
 - Regenerate the texture with a different seed
-
-The `svg-infographics background` tool can mask content bounding boxes out of the generated texture (`--mask-bboxes "x,y,w,h x,y,w,h"`). Use this on dense compositions.
 
 ## Dark mode (MANDATORY when `--dark-mode required`)
 

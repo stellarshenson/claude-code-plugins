@@ -36,18 +36,6 @@ REJECT = "reject"
 SKIP = "skip"
 ADVANCE = "advance"
 
-ALL_EVENTS = [
-    START,
-    READBACK_PASS,
-    READBACK_FAIL,
-    END,
-    GATE_PASS,
-    GATE_FAIL,
-    REJECT,
-    SKIP,
-    ADVANCE,
-]
-
 
 class FSM:
     """Finite state machine for phase lifecycle.

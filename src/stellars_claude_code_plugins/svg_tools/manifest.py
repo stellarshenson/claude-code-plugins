@@ -386,7 +386,7 @@ _TOOL_RECOMMENDATIONS: dict[str, list[str]] = {
         "annotations above / below the axis to confirm they fit.",
     ],
     "icon": [
-        "`svg-infographics shapes render --library <name> --name <icon>` for "
+        "`svg-infographics shapes render --library <name> <icon>` for "
         "existing stencil icons, OR `svg-infographics primitives icon --type "
         "<gear|check|...>` for built-in glyphs.",
         "`svg-infographics place --svg <file> --container <card-id> "

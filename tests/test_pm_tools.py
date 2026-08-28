@@ -477,6 +477,89 @@ def test_a_regression_without_its_root_is_an_error(defects: Path, capsys):
     assert "regression DEF-LNCH-1-1 has no root item DEF-LNCH-1" in capsys.readouterr().out
 
 
+def test_severity_case_is_free_but_the_delimiter_is_not(defects: Path, capsys):
+    run(
+        "add",
+        str(defects),
+        "--category",
+        "AUTH",
+        "--title",
+        "Upper",
+        "--text",
+        "upper",
+        "--severity",
+        "MAJOR",
+        "--author",
+        "@kj",
+        "--name",
+        "Authentication",
+    )
+    text = defects.read_text(encoding="utf-8")
+    text = text.replace("MAJOR; upper", "major; lower") + (
+        "- [ ] `DEF-AUTH-2` **Legacy** - High: hand kept\n"
+        "- [ ] `DEF-AUTH-3` **Prose** - Major refactor needed; no level\n"
+    )
+    defects.write_text(text, encoding="utf-8")
+    run("list", str(defects), "--status", "all", "--columns", "id,severity")
+    out = capsys.readouterr().out
+    assert "| `DEF-AUTH-1` | MAJOR |" in out
+    assert "| `DEF-AUTH-2` | MAJOR |" in out
+    assert "| `DEF-AUTH-3` | - |" in out
+
+
+def test_upgrade_writes_the_canonical_severity_form(tmp_path: Path, capsys):
+    f = tmp_path / "defects-legacy.md"
+    f.write_text(
+        "# Defects - Legacy\n\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [ ] `DEF-LNCH-1` **Legacy** - High: hand kept\n"
+        "  - log: 2026-01-02T00:00:00Z @kj filed\n"
+        "- [ ] `DEF-LNCH-2` **Lower** - major; typed by hand\n"
+        "  - log: 2026-01-02T00:00:00Z @kj filed\n\n"
+        "## Authors\n\n- `@kj` Konrad Jelen\n",
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+    run("upgrade", str(f), "--apply")
+    body = f.read_text(encoding="utf-8")
+    assert "**Legacy** - MAJOR; hand kept" in body
+    assert "**Lower** - MAJOR; typed by hand" in body
+    assert "HIGH -> MAJOR x1" in capsys.readouterr().out
+
+
+def test_upgrade_keeps_regression_ordinals_and_leaves_criteria_alone(tmp_path: Path, capsys):
+    d = tmp_path / "defects-legacy.md"
+    d.write_text(
+        "# Defects - Legacy\n\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [x] `DEF-LNCH-3` **Root** - MAJOR; fixed once\n"
+        "  - log: 2026-01-02T00:00:00Z @kj closed: fixed\n"
+        "- [ ] `DEF-LNCH-3-1` **Root again** - MAJOR; regressed\n"
+        "  - log: 2026-01-03T00:00:00Z @kj filed\n\n"
+        "## Authors\n\n- `@kj` Konrad Jelen\n",
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+    run("upgrade", str(d), "--apply")
+    assert "`DEF-LNCH-3-1`" in d.read_text(encoding="utf-8")
+    assert "0 change(s)" in capsys.readouterr().out
+    assert run("check", str(d)) == 0
+    d.write_text(d.read_text(encoding="utf-8").replace("MAJOR; regressed", "regressed"), encoding="utf-8")
+    run("upgrade", str(d))
+    res = capsys.readouterr()
+    assert "DEF-LNCH-3-1 not triaged; run pm-tools edit" in res.out + res.err
+    a = tmp_path / "acc-crit-legacy.md"
+    a.write_text(
+        "# Acceptance Criteria - Legacy\n\n## Banner `BNR`\n\nBanner\n\n"
+        "- [ ] `ACC-BNR-1` **modes** - Normal, degraded and offline modes render the banner\n"
+        "  - log: 2026-01-02T00:00:00Z @kj filed\n\n"
+        "## Authors\n\n- `@kj` Konrad Jelen\n",
+        encoding="utf-8",
+    )
+    run("upgrade", str(a), "--apply")
+    assert "Normal, degraded and offline" in a.read_text(encoding="utf-8")
+    capsys.readouterr()
+    assert run("check", str(a)) == 0
+
+
 def test_edit_records_evidence_after_the_fact(defects: Path, capsys):
     """A document closed before evidence existed is fixed forward, not rewritten."""
     add_defect(defects, "token race")

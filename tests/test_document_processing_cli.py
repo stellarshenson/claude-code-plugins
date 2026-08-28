@@ -67,6 +67,22 @@ def test_ground_single_unconfirmed(tmp_path):
     assert rc == 1  # nothing grounds -> exit 1
 
 
+def test_ground_single_contradicted_exits_one(tmp_path):
+    src = _write(tmp_path / "src.txt", "Revenue was 6 million euros in 2024.")
+    rc = cli.main(
+        [
+            "ground",
+            "--claim",
+            "Revenue was 5 million euros in 2024",
+            "--source",
+            str(src),
+            "--effort",
+            "low",
+        ]
+    )
+    assert rc == 1  # a contradicted number is not a grounded claim
+
+
 def test_ground_manifest_json_report(tmp_path):
     src = _write(tmp_path / "src.txt", "Revenue grew to 45 percent in Q3.")
     claims = _write(

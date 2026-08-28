@@ -39,7 +39,7 @@ def _entry(num: int, marker: str, words: int, title: str = "Demo task") -> str:
     """Build a synthetic entry with `words` worth of body."""
     body = " ".join(["word"] * words)
     return (
-        f"{num}. **Task{marker} - {title}** (v0.1.0): one-line summary<br>\n"
+        f"{num}. **Task {marker}- {title}** (v0.1.0): one-line summary<br>\n"
         f"    **Result**: {body}\n"
     )
 
@@ -309,7 +309,7 @@ class TestStandardize:
         data = _load_standardize_prompt()
         assert data["version"] == STANDARDIZE_YAML_VERSION
         assert "system" in data and "user_template" in data
-        assert {"standard_target", "extended_min", "extended_max"} <= data["limits"].keys()
+        assert "limits" not in data  # nothing read it; the tiers live in journal_tools.py
 
     def test_rubric_includes_rule_3b_ceiling(self):
         """Rule 3b — unmarked >400 must CONDENSE (single-pass fix from kolomolo
@@ -356,6 +356,25 @@ class TestStandardize:
         assert new_entry.result_body == new_body
         result_lines = [line for line in out.split("\n") if line.lstrip().startswith("**Result")]
         assert len(result_lines) == 1
+
+    def test_apply_condense_body_stops_at_the_entry_boundary(self):
+        from stellars_claude_code_plugins.journal.journal_tools import apply_condense_body
+
+        text = (
+            self._journal(_entry(1, marker="", words=500, title="X"))
+            + "\n## 2026-08 August\n\n"
+            + _entry(2, marker="", words=60, title="Y")
+            + "\n<!-- standardize-clean -->\n"
+        )
+        entries = parse_journal(text)
+        out = apply_condense_body(text, entries[0], "Short rewrite of one.")
+        out = apply_condense_body(out, parse_journal(out)[1], "Short rewrite of two.")
+        assert "## 2026-08 August" in out
+        assert "<!-- standardize-clean -->" in out
+        assert [e.result_body for e in parse_journal(out)] == [
+            "Short rewrite of one.",
+            "Short rewrite of two.",
+        ]
 
     def test_cli_apply_extended_via_subprocess(self, tmp_path):
         import json
@@ -468,6 +487,21 @@ class TestSortPreservesExtendedMarker:
         rendered = render_entries(entries)
         assert "**Task - Standard work**" in rendered
         assert "[Extended]" not in rendered
+
+    def test_sort_is_idempotent_on_the_header_gap(self, tmp_path):
+        from stellars_claude_code_plugins.journal.journal_tools import main
+
+        path = tmp_path / "JOURNAL.md"
+        path.write_text(
+            self._journal(_entry(1, marker="", words=60), "\n", _entry(2, marker="", words=60))
+        )
+        for _ in range(3):
+            assert main(["sort", str(path)]) == 0
+        assert path.read_text().count("\n\n\n") == 0
+        bare = tmp_path / "BARE.md"
+        bare.write_text(_entry(1, marker="", words=60))
+        assert main(["sort", str(bare)]) == 0
+        assert bare.read_text().startswith("1. **Task")
 
     def test_sort_preserves_marker_on_renumber(self):
         """Mixed-tier entries renumbered: each entry keeps its marker."""

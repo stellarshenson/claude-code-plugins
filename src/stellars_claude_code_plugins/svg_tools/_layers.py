@@ -22,16 +22,6 @@ LAYER_ROLES: dict[str, str] = {
     "callouts": "callout groups - topmost",
 }
 
-# Non-layer top-level groups that are legitimate outside the five layers:
-# authoring aids and decoration passes documented by their own commands.
-AUXILIARY_GROUPS: tuple[str, ...] = (
-    "guide-grid",
-    "beautify-decorations",
-    "beautify-icons",
-    "add-life-decorations",
-    "add-life-icons",
-)
-
 
 # How far from the canvas origin a plate may start and still be the plate.
 # Exported because a caller that normalises coordinates itself needs the same

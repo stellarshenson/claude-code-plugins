@@ -148,6 +148,16 @@ def _grounding_config(args: argparse.Namespace):
     effort = getattr(args, "effort", None)
     if effort:
         cfg = cfg.overlay(lexical_effort=effort)
+    # A threshold flag left unset reads the config, so a project override in
+    # `.stellars-plugins/config_document_processing.yaml` is honoured the same
+    # way `lexical_effort` already is, instead of being shadowed by a literal.
+    for flag, key in (
+        ("threshold", "fuzzy_threshold"),
+        ("bm25_threshold", "bm25_threshold"),
+        ("semantic_threshold", "semantic_threshold"),
+    ):
+        if getattr(args, flag, None) is None:
+            setattr(args, flag, getattr(cfg, key))
     return cfg
 
 
@@ -519,8 +529,8 @@ def cmd_ground(args: argparse.Namespace) -> int:
         print(json.dumps(asdict(m), indent=2))
     else:
         print(_match_line(m))
-    # Exit 0 if grounded, 1 if none
-    return 0 if m.match_type != "none" else 1
+    # Exit 0 if grounded, 1 if unconfirmed or contradicted
+    return 0 if m.match_type not in ("none", "contradicted") else 1
 
 
 def _emit_batch_report(matches, args: argparse.Namespace) -> int:
@@ -662,13 +672,13 @@ def _emit_batch_report(matches, args: argparse.Namespace) -> int:
 
     print(
         f"\n{total} claims: {exact} exact, {fuzzy} fuzzy, {bm25} bm25, "
-        f"{semantic} semantic, {none} unconfirmed. "
+        f"{semantic} semantic, {none} unconfirmed, {contradicted} contradicted. "
         f"score={grounded}/{total} ({100 * grounded / total:.1f}%)"
         if total
         else "0 claims",
         file=sys.stderr,
     )
-    return 0 if none == 0 else 1
+    return 0 if none == 0 and contradicted == 0 else 1
 
 
 def _add_source_format_args(parser: argparse.ArgumentParser) -> None:
@@ -744,20 +754,20 @@ def _build_parser() -> argparse.ArgumentParser:
     g.add_argument(
         "--threshold",
         type=float,
-        default=0.85,
-        help="Levenshtein ratio threshold for 'fuzzy' classification (default 0.85)",
+        default=None,
+        help="Levenshtein ratio threshold for 'fuzzy' classification (default: config fuzzy_threshold)",
     )
     g.add_argument(
         "--bm25-threshold",
         type=float,
-        default=0.5,
-        help="BM25 token-recall threshold for 'bm25' classification (default 0.5)",
+        default=None,
+        help="BM25 token-recall threshold for 'bm25' classification (default: config bm25_threshold)",
     )
     g.add_argument(
         "--semantic-threshold",
         type=float,
-        default=0.6,
-        help="Semantic cosine-similarity threshold for 'semantic' classification (default 0.6)",
+        default=None,
+        help="Semantic cosine-similarity threshold for 'semantic' classification (default: config semantic_threshold)",
     )
     g.add_argument(
         "--semantic-threshold-percentile",
@@ -891,20 +901,20 @@ def _build_parser() -> argparse.ArgumentParser:
     vm.add_argument(
         "--threshold",
         type=float,
-        default=0.85,
-        help="Levenshtein ratio threshold for 'fuzzy' classification (default 0.85)",
+        default=None,
+        help="Levenshtein ratio threshold for 'fuzzy' classification (default: config fuzzy_threshold)",
     )
     vm.add_argument(
         "--bm25-threshold",
         type=float,
-        default=0.5,
-        help="BM25 token-recall threshold for 'bm25' classification (default 0.5)",
+        default=None,
+        help="BM25 token-recall threshold for 'bm25' classification (default: config bm25_threshold)",
     )
     vm.add_argument(
         "--semantic-threshold",
         type=float,
-        default=0.6,
-        help="Semantic cosine threshold for 'semantic' classification (default 0.6)",
+        default=None,
+        help="Semantic cosine threshold for 'semantic' classification (default: config semantic_threshold)",
     )
     vm.add_argument(
         "--semantic-threshold-percentile",
@@ -1515,6 +1525,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
     semantic = bool(getattr(args, "semantic", False))
     _ensure_ready(semantic=semantic)
+    gcfg = _grounding_config(args)  # fills unset threshold flags; must run before they are read
 
     return validate_batch(
         entries,
@@ -1524,7 +1535,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         semantic_threshold=args.semantic_threshold,
         semantic_threshold_percentile=args.semantic_threshold_percentile,
         semantic=semantic,
-        config=_grounding_config(args),
+        config=gcfg,
         stop_on_error=args.stop_on_error,
         max_workers=getattr(args, "workers", 5),
     )

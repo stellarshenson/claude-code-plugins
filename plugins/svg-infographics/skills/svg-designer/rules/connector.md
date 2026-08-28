@@ -65,7 +65,6 @@ Arrowhead must be AT MOST 40% of total connector length. Equivalently: stem leng
 - `head_fraction = head_length / (stem_length + head_length)` must be `<= 0.40`
 - Rule of thumb: 8-10px head on a >= 40px connector. Short connectors (< 30px) should use straight mode without an arrowhead and rely on the geometry for direction.
 - `check_connectors` raises SOFT warning when `head_fraction > 0.40`.
-- Override via `--max-head-fraction 0.30` when a tighter ratio is needed.
 
 ## Geometry discipline
 
@@ -141,7 +140,7 @@ Every arrow, connector, routed line comes from `svg-infographics connector`. Out
 
 No `rotate()` transforms. No `atan2`. No horizontal-first templating. Hand-authored `<g transform="rotate(...)">` arrow groups = workflow violation.
 
-Flags (all modes): `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (tool default 1px; project standard 2), `--color`, `--width`, `--opacity`. Spline: `--tangent-magnitude N` (default 0.5 x chord).
+Flags (all modes): `--arrow {none,start,end,both}`, `--head-size L,H`, `--margin N`, `--standoff N|start,end` (tool default 1px; project standard 2), `--color`, `--width`, `--opacity`.
 
 ### L-route edge-aware API (CANONICAL)
 

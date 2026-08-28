@@ -138,8 +138,14 @@ SEV_ALIAS = {
     "S4": "MINOR",
     "SEV4": "MINOR",
 }
+# A severity is the word followed by the delimiter the format writes
+# (`MAJOR; text`). A bare `\b` read `Major refactor ...` as a severity and
+# silently re-triaged the item on `edit --text`; the delimiter is the guard.
+# Case stays free so a hand-kept `High:` still upgrades and `major;` still
+# parses as it did before the delimiter rule.
 SEV = re.compile(
-    r"^(" + "|".join(sorted(SEVS + tuple(SEV_ALIAS), key=len, reverse=True)) + r")\b", re.I
+    r"^(" + "|".join(sorted(SEVS + tuple(SEV_ALIAS), key=len, reverse=True)) + r")(?=\s*[;:,])",
+    re.I,
 )
 # the report exists so a reader sees what is left and in what order to fix it
 SEV_RANK = {name: i for i, name in enumerate(SEVS)}
@@ -317,7 +323,7 @@ def parse(path):
                 cur["logs"].append(rest)
                 # one entry per log line, None when the stamp is malformed, so
                 # dates[i] always belongs to logs[i] - the date filters read the pair
-                cur["dates"].append(lm.group(2) if STAMP.match(lm.group(2)) else None)
+                cur["dates"].append(lm.group(2) if _valid_stamp(lm.group(2)) else None)
             rm = RELLINE.match(ln)
             if rm:
                 for r in IDREF.finditer(rm.group(3)):
@@ -603,11 +609,16 @@ def root_of(b):
 
 
 def age_of(b, today=None):
-    """Days from filing to closure, or to today while the item is still open."""
+    """Days from filing to closure, or to today while the item is still open.
+    A closed item with no closing stamp has no age: counting it to today would
+    band a hand-ticked fix as `>90d` open."""
     filed = stamped(b, "filed")
     if not filed:
         return None
-    end = stamped(b, "closed") or today or datetime.date.today().isoformat()
+    end = stamped(b, "closed")
+    if not end and status_of(b) != "open":
+        return None
+    end = end or today or datetime.date.today().isoformat()
     return (datetime.date.fromisoformat(end) - datetime.date.fromisoformat(filed)).days
 
 
@@ -1326,7 +1337,7 @@ def cmd_check(files, strict):
                 e.append(
                     (b["line"], "defect not triaged; the body must open with " + "/".join(SEVS))
                 )
-            elif b["severity"] in SEV_ALIAS:
+            elif prefix == "DEF" and b["severity"] in SEV_ALIAS:
                 e.append(
                     (
                         b["line"],
@@ -1808,20 +1819,21 @@ def cmd_upgrade(file, overrides, apply, author):
                 counter += 1
             num, used = counter, used | {counter}
             counter += 1
-        assign[b["line"]] = (code, num)
+        assign[b["line"]] = (code, num, b["regr"])
         lg = LEGACY.match(b["body"])
         old = ident(b) if b["prefix"] else (f"{lg.group(1)}-{lg.group(2)}" if lg else "(no id)")
-        plan.append(f"line {b['line']}: {old} -> {prefix}-{code}-{num}")
+        new = f"{prefix}-{code}-{num}" + (f"-{b['regr']}" if b["regr"] else "")
+        if old != new:
+            plan.append(f"line {b['line']}: {old} -> {new}")
         if prefix == "DEF" and not b["severity"]:
             odd = SEVWORD.match(b["plain"])
             why = f"carries an unmapped severity word {odd.group(1)!r}" if odd else "not triaged"
             manual.append(
-                f"line {b['line']}: {prefix}-{code}-{num} {why}; run "
-                f"pm-tools edit {file} --id {prefix}-{code}-{num} "
-                f"--severity {'|'.join(SEVS)}"
+                f"line {b['line']}: {new} {why}; run "
+                f"pm-tools edit {file} --id {new} --severity {'|'.join(SEVS)}"
             )
         if not author_of(b) and not stamp:
-            manual.append(f"line {b['line']}: {prefix}-{code}-{num} has no authored log")
+            manual.append(f"line {b['line']}: {new} has no authored log")
 
     out, drop_toc, converted, widened, renamed = [], False, 0, 0, {}
     for i, ln in enumerate(lines, start=1):
@@ -1844,7 +1856,7 @@ def cmd_upgrade(file, overrides, apply, author):
             else:
                 continue
         if i in assign:
-            code, num = assign[i]
+            code, num, regr = assign[i]
             m = ITEM.match(ln)
             body = m.group(3)
             idm = IDTOK.match(body)
@@ -1858,13 +1870,19 @@ def cmd_upgrade(file, overrides, apply, author):
             lead, after = (body[: bm.end()], body[bm.end() :]) if bm else ("", body)
             rest = after.lstrip(" -")
             gap = after[: len(after) - len(rest)]
-            sm = SEV.match(rest)
-            if sm and sm.group(1).upper() in SEV_ALIAS:
+            sm = SEV.match(rest) if prefix == "DEF" else None
+            if sm:
+                # alias, case and delimiter all land on the form `add` writes
                 was = sm.group(1).upper()
-                rest = SEV_ALIAS[was] + rest[sm.end() :]
-                body = lead + gap + rest
-                renamed[was] = renamed.get(was, 0) + 1
-            out.append(f"- [{m.group(2).lower()}] `{prefix}-{code}-{num}` {body}")
+                canon = SEV_ALIAS.get(was, was)
+                fixed = canon + "; " + rest[sm.end() :].lstrip(" ;:,")
+                if fixed != rest:
+                    rest = fixed
+                    body = lead + gap + rest
+                    key = was if was in SEV_ALIAS else sm.group(1)
+                    renamed[key] = renamed.get(key, 0) + 1
+            new_id = f"{prefix}-{code}-{num}" + (f"-{regr}" if regr else "")
+            out.append(f"- [{m.group(2).lower()}] `{new_id}` {body}")
             continue
         dm = DATED.match(ln)
         if dm and not LOGLINE.match(ln):
@@ -1888,7 +1906,10 @@ def cmd_upgrade(file, overrides, apply, author):
     if renamed:
         plan.append(
             "severity renamed: "
-            + ", ".join(f"{w} -> {SEV_ALIAS[w]} x{n}" for w, n in sorted(renamed.items()))
+            + ", ".join(
+                f"{w} -> {SEV_ALIAS.get(w.upper(), w.upper())} x{n}"
+                for w, n in sorted(renamed.items())
+            )
         )
     if stamp and bare:
         plan.append(f"{bare} unauthored log line(s) signed {stamp}")

@@ -8,6 +8,20 @@ argument-hint: "what to review, e.g. 'the auth middleware change before I merge'
 
 Read `devils-advocate/skills/adversarial-review/SKILL.md` first - it is the single source of truth for the two modes, the rounds protocol, the spawn mechanics and gotchas, and the roster. The adversary personas live beside it in `adversaries/<name>.md`, one self-contained prompt each. Do NOT duplicate any of it here; this command only routes into it.
 
+## Toolchain gate (MANDATORY - before any `review-tools` call)
+
+The three `review-tools` commands ship in the library; run this first, every session, before the first of them. The upgrade always runs; a version mismatch blocks.
+
+```bash
+python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
+LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
+PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+echo "toolkit $LIB"
+```
+
+Both branches exit non-zero and neither is advisory: an absent library (`FATAL`) and a version mismatch (`STALE`). A mismatch means the CLI is not the one this file was written against, so its documented flags are unverified. Report the line and stop; do not work around it.
+
 ## What to do
 
 1. Read the skill
@@ -27,6 +41,7 @@ Read `devils-advocate/skills/adversarial-review/SKILL.md` first - it is the sing
    - **slop-hunter** → what can go - dead code, YAGNI abstractions, vanity tests, doc over-prose, unused deps; AI-slop tells and fabrication
 5. Pick the mode: Mode 1 (inline diff, no tools) for a specific change; Mode 2 (whole-repo, tools ON) for systemic rot between files
 6. **`TaskCreate` the review before spawning**, `TaskUpdate` it each round - `completed` only on a clean confirming round. One task per review, not per lens
-7. **Spawn the `devils-advocate:adversarial-reviewer` subagent** - one per lens, naming the adversary and scope in its prompt; a panel goes in a single message so the lenses run concurrently and the user can watch each. Write the prompt as if it were a `claude -p` command line - a process that knows nothing but what you typed. Pass target, scope and locked decisions; never your reasoning for the change, which is the thing under review. Drop to `claude -p` (skill's mechanics - `env -u CLAUDECODE`, `< /dev/null`, `--no-session-persistence`) only for what a subagent cannot do - genuinely deny tools in Mode 1, or pin a different model
-8. **Adjudicate before fixing** - for a panel, or any round past 3, spawn `devils-advocate:adjudicator` with every lens's findings plus anything you know (a blast radius you already have, a locked decision, domain insight, the previous round's findings and the fixes since). It returns one change plan grouped by root cause, with each change's radius and what it could break. Skip only for a single lens with one or two findings you can verify yourself
-9. Triage what the adjudicator left UNPROVEN and spot-check its confirmed and refuted calls - you still own the final call - then fix the real ones and run the re-confirm round - never call it clean on the round that still had findings, only on a clean confirming round
+7. **Mode 2: build the dossier first** - refresh the code graph if one exists (`graphify update`, AST only), then `review-tools dossier <in-scope dirs> --plugins <plugin docs dir> --graph tmp/graphify-out/graph.json --out /tmp/dossier.md` and paste the file into every reviewer prompt under `DOSSIER:`. It replaces the 40-60 discovery turns each reviewer would otherwise spend and it is the same inventory for every lens
+8. **Spawn the `devils-advocate:adversarial-reviewer` subagent** - one per lens, naming the adversary and scope in its prompt; a panel goes in a single message so the lenses run concurrently and the user can watch each. Write the prompt as if it were a `claude -p` command line - a process that knows nothing but what you typed. Pass target, scope and locked decisions; never your reasoning for the change, which is the thing under review. Drop to `claude -p` (skill's mechanics - `env -u CLAUDECODE`, `< /dev/null`, `--no-session-persistence`) only for what a subagent cannot do - genuinely deny tools in Mode 1, or pin a different model
+9. **Adjudicate before fixing** - save each report as `<lens>.md`, merge them with `review-tools findings <lens>.md ... --full > /tmp/findings.md`, then for a panel, or any round past 3, spawn `devils-advocate:adjudicator` with the merged table and the reports plus anything you know (a blast radius you already have, a locked decision, domain insight, the previous round's findings and the fixes since). It returns one change plan grouped by root cause, with each change's radius and what it could break. Skip only for a single lens with one or two findings you can verify yourself
+10. Triage what the adjudicator left UNPROVEN and spot-check its confirmed and refuted calls - you still own the final call - then fix the real ones and run the re-confirm round - never call it clean on the round that still had findings, only on a clean confirming round

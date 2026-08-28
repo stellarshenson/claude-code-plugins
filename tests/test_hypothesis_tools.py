@@ -143,6 +143,11 @@ def test_unknown_label_reads_as_no_verdict():
     assert match_verdict("Works great, ship it") is None
 
 
+def test_bold_label_still_reads():
+    assert match_verdict("**Confirmed**; 0.91") == "Confirmed"
+    assert match_verdict("Confirmed-partially; 0.5") is None
+
+
 # --- CLI -------------------------------------------------------------------
 
 
