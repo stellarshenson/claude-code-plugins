@@ -1,7 +1,7 @@
 ---
-description: Print the status, triage and test-coverage report for the project's acceptance criteria or defects - SUMMARY, categories, coverage, the open fix queue and the rejected reasons, computed from the file by pm-tools
+description: Print the status, triage and test-coverage report for the project's acceptance criteria or defects - SUMMARY, categories, coverage, the open fix queue and the rejected reasons - or an ad-hoc table or pivot over them, computed from the file by pm-tools
 allowed-tools: [Read, Bash, Skill]
-argument-hint: "what to report, e.g. 'where do the defects stand' or 'the AUTH criteria in detail' or 'audit both documents'"
+argument-hint: "what to report, e.g. 'where do the defects stand', 'the open defects only', 'who owns what by severity', 'the AUTH criteria in detail' or 'audit both documents'"
 ---
 
 # Report
@@ -26,8 +26,9 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 1. Read the `project-management` skill, then `skills/project-management/references/reports.md`
 2. **Run `pm-tools report`** on the store - `docs` scans for both disciplines, a path narrows to one
-3. **Map a filtered ask onto flags; never filter by hand.** "The critical defects" is `--severity CRITICAL`, "what closed in August" is `--dates closed --since 2026-08-01 --until 2026-08-31`, "the AUTH work" is `--category AUTH`, "what is open" is `--status open`. `--category`, `--severity` and the date window narrow the whole report; `--status` narrows ITEMS alone; `--detail` swaps the ITEMS tables for one block per item. Reading the document and filtering inside the answer is the failure this tool exists to prevent
-4. **Asked for a summary, run `--summary`** - it stops at the SUMMARY grid and lists no items, and it is plain by itself. Asked for something plain or short of a full report, `--plain` gives the two grids with no icons, no blurbs, no CATEGORIES and no TEST COVERAGE
-5. **Paste the tables verbatim** - they are the deliverable. Do not re-type them, do not restate them in prose beside the table, do not summarise a table the user can read
-6. Add at most one line of your own: what the reader should do next, if anything is obvious from the queue. After a `--summary`, add nothing - naming the items, the clusters or the row count underneath puts back what the flag removed
-7. **Audit mode** - asked to audit rather than report, run `pm-tools check docs --strict` first and lead with its errors and warnings; the report follows underneath. `check` reports, it does not repair, so a dangling id is something to fix deliberately, not to reconcile silently
+3. **Map a filtered ask onto flags; never filter by hand.** "The open defects only" is `--status open`, "the critical defects" is `--severity CRITICAL`, "what @kj has left in AUTH" is `--author @kj --category AUTH`, "what closed in August" is `--dates closed --since 2026-08-01 --until 2026-08-31`, "the regressions" is `--regressions`. Flags combine. Every filter narrows the whole report except `--status`, which narrows ITEMS alone; `--detail` swaps the ITEMS tables for one block per item. Reading the document and filtering inside the answer is the failure this tool exists to prevent
+4. **A question no report section answers is a `list` or a `pivot`, still a table.** Who owns what by severity is `pivot --rows author --cols severity`; the open work oldest first with owners is `list --status open --columns id,title,author,age --sort=-age`; regressions per defect is `pivot --rows root --regressions --values ids`. The ask-to-command table and the FIELDS vocabulary are in `references/reports.md`. Never tabulate by hand from the document - shape the table with the tools and paste it
+5. **Asked for a summary, run `--summary`** - it stops at the SUMMARY grid and lists no items, and it is plain by itself. Asked for something plain or short of a full report, `--plain` gives the two grids with no icons, no blurbs, no CATEGORIES and no TEST COVERAGE. Both keep the one-line `open/closed` legend, so the grid is never pasted unexplained
+6. **Paste the tables verbatim** - they are the deliverable. Do not re-type them, do not restate them in prose beside the table, do not summarise a table the user can read. A collection of items is always a table, never a bulleted list
+7. Add at most one line of your own: what the reader should do next, if anything is obvious from the queue. After a `--summary`, add nothing - naming the items, the clusters or the row count underneath puts back what the flag removed
+8. **Audit mode** - asked to audit rather than report, run `pm-tools check docs --strict` first and lead with its errors and warnings; the report follows underneath. `check` reports, it does not repair, so a dangling id is something to fix deliberately, not to reconcile silently

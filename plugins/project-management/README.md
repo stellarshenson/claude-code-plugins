@@ -123,10 +123,14 @@ Deterministic parsing, linting, editing and reporting - no generative step anywh
 # Query
 pm-tools report docs                          # the tables the user reads
 pm-tools report docs --category AUTH --detail # one block per item, whole log
-pm-tools report docs --severity CRITICAL      # also --category, --status
+pm-tools report docs --severity CRITICAL      # also --category, --status, --author, --tag, --regressions
 pm-tools report docs --dates closed --since 2026-08-01
 pm-tools report docs --plain                  # the two grids, nothing else
 pm-tools report docs --summary                # the SUMMARY grid alone, no items
+pm-tools list docs --status open --columns id,title,author,age --sort=-age   # one table, your columns
+pm-tools pivot docs --rows author --cols severity                            # an ad-hoc count grid
+pm-tools pivot docs --rows root --regressions --values ids                   # regressions per defect
+pm-tools report docs --json                   # the same facts as data; also on list, pivot, refs, list-categories
 pm-tools list-categories docs                 # the derived index
 pm-tools refs docs --id DEF-LNCH-3            # computed backlinks
 pm-tools check docs --strict                  # the gate; non-zero on errors
@@ -151,7 +155,9 @@ pm-tools upgrade docs/acceptance-criteria.md --code "Authentication=AUTH" --auth
 
 `report` prints paste-ready markdown tables. SUMMARY is the one aggregate - categories down, severity or test tag across, `open/closed` in every cell so any two compare directly. ITEMS is a fix queue rather than an inventory: open work only, worst severity first, with closed and rejected counted in a footer instead of enumerated. `--detail` swaps the tables for one block per item, carrying the repro line, the tags, the relations and the whole log.
 
-Filters are flags, so a narrowed ask stays computed rather than being filtered by hand in the answer. `--severity`, `--category` and a date window (`--dates filed|closed|updated` with `--since` and `--until`) narrow the whole report; `--status` narrows the queue alone. `--plain` prints the two grids and nothing else - no icons, no blurbs, no categories or coverage tables - and `--summary` stops at the SUMMARY grid, listing no items at all.
+Filters are flags, so a narrowed ask stays computed rather than being filtered by hand in the answer. `--severity`, `--category`, `--author`, `--tag`, `--regressions` and a date window (`--dates filed|closed|updated` with `--since` and `--until`) narrow the whole report; `--status` narrows the queue alone. `--plain` prints the two grids and nothing else - no icons, no blurbs, no categories or coverage tables - and `--summary` stops at the SUMMARY grid, listing no items at all. In every grid a zero reads as `-`, so `-/5` is nothing open and five closed, and a one-line legend under the SUMMARY heading says so on every form of the report.
+
+A question the report does not answer is still a computed table. `list` prints one table of items with the columns and sort order the question calls for, and `pivot` prints an ad-hoc grid - any field down, any field across, a count or the ids in every cell - over the same filters: who owns what by severity, open work by age band, regressions per defect, closures per month by category. `--json` on any query returns the same facts as data.
 
 ## Rules summary
 

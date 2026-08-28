@@ -233,7 +233,18 @@ def test_criteria_document_from_empty_to_audited(criteria: Path):
         "Edge: token deleted mid-session",
         "the next call returns 401 and the UI routes to login",
     )
-    ok("close", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "verified in v1.3.0", "--evidence", "unit suite green")
+    ok(
+        "close",
+        criteria,
+        "--id",
+        "ACC-AUTH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "verified in v1.3.0",
+        "--evidence",
+        "unit suite green",
+    )
 
     assert pm("check", criteria).returncode == 0
     assert pm("check", criteria, "--strict").returncode == 0, (
@@ -485,7 +496,18 @@ def test_report_prints_paste_ready_markdown_tables(defects: Path):
 def test_status_filter_narrows_items_but_not_the_summary(defects: Path):
     file_a_defect(defects, "token race")
     file_a_defect(defects, "splash hang")
-    ok("close", defects, "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "fixed", "--evidence", "unit suite green")
+    ok(
+        "close",
+        defects,
+        "--id",
+        "DEF-LNCH-2",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "unit suite green",
+    )
 
     out = ok("report", defects, "--status", "closed")
     assert "splash hang" in out, "ITEMS now lists the closed work"
@@ -525,7 +547,18 @@ def test_the_date_window_reads_the_log_which_is_where_dates_live(defects: Path):
     are answered from the log lines - nothing else records a date."""
     file_a_defect(defects, "token race")
     file_a_defect(defects, "splash flicker")
-    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed", "--evidence", "unit suite green")
+    ok(
+        "close",
+        defects,
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "unit suite green",
+    )
     restamp(defects, "DEF-LNCH-1", "2026-05-04T09:00:00Z")
     restamp(defects, "DEF-LNCH-1", "2026-08-26T14:00:00Z", event="closed")
     restamp(defects, "DEF-LNCH-2", "2026-07-21T12:00:00Z")
@@ -544,7 +577,18 @@ def test_the_date_window_reads_the_log_which_is_where_dates_live(defects: Path):
 
 def test_a_reopened_criterion_retires_the_closed_date(criteria: Path):
     write_a_criterion(criteria, "session survives a refresh", "the token is rotated in place")
-    ok("close", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "done", "--evidence", "unit suite green")
+    ok(
+        "close",
+        criteria,
+        "--id",
+        "ACC-AUTH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "done",
+        "--evidence",
+        "unit suite green",
+    )
     restamp(criteria, "ACC-AUTH-1", "2026-08-26T14:00:00Z", event="closed")
     ok("reopen", criteria, "--id", "ACC-AUTH-1", "--author", "@kj")
 
@@ -555,7 +599,18 @@ def test_a_reopened_criterion_retires_the_closed_date(criteria: Path):
 def test_a_regressed_defect_keeps_the_closed_date_it_earned(defects: Path):
     """The closure really happened on that day; the regression is a separate item."""
     file_a_defect(defects, "token race")
-    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed", "--evidence", "unit suite green")
+    ok(
+        "close",
+        defects,
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "unit suite green",
+    )
     restamp(defects, "DEF-LNCH-1", "2026-08-26T14:00:00Z", event="closed")
     ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj")
 
@@ -608,10 +663,30 @@ def test_neither_discipline_closes_without_evidence(defects: Path, criteria: Pat
         assert "--evidence" in r.stderr
         assert f"- [ ] `{item}`" in f.read_text(encoding="utf-8"), "and nothing changed"
 
-    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed",
-       "--evidence", "test_fork_token green on build 412")
-    ok("close", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "met",
-       "--evidence", "frozen clock, idle 31 min, 401 observed")
+    ok(
+        "close",
+        defects,
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "test_fork_token green on build 412",
+    )
+    ok(
+        "close",
+        criteria,
+        "--id",
+        "ACC-AUTH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "met",
+        "--evidence",
+        "frozen clock, idle 31 min, 401 observed",
+    )
 
     for f in (defects, criteria):
         assert pm("check", f, "--strict").returncode == 0, "a proven closure passes the gate"
@@ -622,8 +697,18 @@ def test_neither_discipline_closes_without_evidence(defects: Path, criteria: Pat
 
 def test_a_criterion_proven_then_reopened_gives_the_evidence_back_to_the_log(criteria: Path):
     write_a_criterion(criteria, "session survives a refresh", "the token is rotated in place")
-    ok("close", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "done",
-       "--evidence", "test_refresh green on build 412")
+    ok(
+        "close",
+        criteria,
+        "--id",
+        "ACC-AUTH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "done",
+        "--evidence",
+        "test_refresh green on build 412",
+    )
     ok("reopen", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "not done")
 
     body = criteria.read_text(encoding="utf-8")
@@ -635,9 +720,21 @@ def test_a_criterion_proven_then_reopened_gives_the_evidence_back_to_the_log(cri
 def test_reopening_a_defect_files_a_numbered_regression(defects: Path):
     """A proven fix that broke again is a new open item, not a reversal of the old one."""
     file_a_defect(defects, "token race")
-    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed",
-       "--evidence", "test_fork_token green on build 412")
-    out = ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "came back on 470")
+    ok(
+        "close",
+        defects,
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "test_fork_token green on build 412",
+    )
+    out = ok(
+        "reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "came back on 470"
+    )
 
     assert "DEF-LNCH-1-1" in out, "the command names the item it minted"
     body = defects.read_text(encoding="utf-8")
@@ -653,15 +750,50 @@ def test_the_report_says_how_regressive_the_system_is(defects: Path):
     """Counting regressions is the reason the derived ids exist."""
     file_a_defect(defects, "token race")
     file_a_defect(defects, "cold start hangs")
-    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed", "--evidence", "green on 412")
+    ok(
+        "close",
+        defects,
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "green on 412",
+    )
     ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj")
-    ok("close", defects, "--id", "DEF-LNCH-1-1", "--author", "@kj", "--event", "fixed", "--evidence", "green on 470")
+    ok(
+        "close",
+        defects,
+        "--id",
+        "DEF-LNCH-1-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "green on 470",
+    )
     ok("reopen", defects, "--id", "DEF-LNCH-1-1", "--author", "@kj")
-    ok("close", defects, "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "fixed", "--evidence", "green on 480")
+    ok(
+        "close",
+        defects,
+        "--id",
+        "DEF-LNCH-2",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "green on 480",
+    )
     ok("reopen", defects, "--id", "DEF-LNCH-2", "--author", "@kj")
 
     assert "3 regressions across 2 defects" in ok("report", defects, "--status", "all")
-    assert "3 regressions across 2 defects" in ok("report", defects, "--summary", "--status", "all")
+    assert "3 regressions across 2 defects" in ok(
+        "report", defects, "--summary", "--status", "all"
+    )
     body = defects.read_text(encoding="utf-8")
     assert "`DEF-LNCH-1-2`" in body and "DEF-LNCH-1-1-1" not in body, "ordinals stay flat"
 
@@ -707,3 +839,57 @@ def test_list_categories_is_the_derived_index(defects: Path):
     out = ok("list-categories", defects)
     assert "LNCH" in out and "AUTH" in out
     assert "Launch" in out and "Authentication" in out
+
+
+# --- Ad-hoc tables --------------------------------------------------------
+
+
+def test_an_open_defects_ask_is_a_filtered_report_not_a_reading(defects: Path):
+    file_a_defect(defects, "token race", "MAJOR")
+    file_a_defect(defects, "crash on boot", "CRITICAL")
+    ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--evidence", "clean on 412")
+    out = ok("report", defects, "--status", "open", "--plain")
+    assert "(open)" in out
+    assert "`DEF-LNCH-2`" in out and "`DEF-LNCH-1`" not in out
+    assert "1 closed not listed" in out
+    assert "| Launch `LNCH` | 1/- | -/1 | 1/1 |" in out  # a zero reads as a dash
+    assert "Cells are `open/closed`" in out  # and the legend survives --plain
+
+
+def test_a_question_no_report_answers_becomes_a_pivot(defects: Path):
+    ok("author", defects, "--handle", "@mb", "--name", "M B")
+    file_a_defect(defects, "token race", "MAJOR")
+    file_a_defect(defects, "crash on boot", "CRITICAL")
+    ok(
+        "add",
+        defects,
+        "--category",
+        "LNCH",
+        "--author",
+        "@mb",
+        "--severity",
+        "MINOR",
+        "--title",
+        "typo",
+        "--text",
+        "in the splash",
+        "--repro",
+        "boot",
+    )
+    # who owns what, by severity - not a shipped report, one pivot away
+    out = ok("pivot", defects, "--rows", "author", "--cols", "severity")
+    lines = [ln for ln in out.splitlines() if ln.startswith("|")]
+    assert lines[0] == "| Author | CRITICAL | MAJOR | MINOR | Total |"
+    assert lines[2] == "| @kj | 1 | 1 | - | 2 |"
+    assert lines[3] == "| @mb | - | - | 1 | 1 |"
+    assert lines[4] == "| **Total** | 1 | 1 | 1 | **3** |"
+
+
+def test_the_list_table_takes_a_descending_sort_in_the_equals_form(defects: Path):
+    file_a_defect(defects, "token race", "MAJOR")
+    file_a_defect(defects, "crash on boot", "CRITICAL")
+    out = ok("list", defects, "--columns", "id,severity", "--sort=-severity")
+    ids = [ln.split("|")[1].strip() for ln in out.splitlines() if ln.startswith("| `")]
+    assert ids == ["`DEF-LNCH-1`", "`DEF-LNCH-2`"]
+    r = pm("list", defects, "--sort", "-severity")  # the bare form reads as a flag
+    assert r.returncode != 0 and "expected one argument" in r.stderr

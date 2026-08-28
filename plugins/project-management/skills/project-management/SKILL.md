@@ -1,6 +1,6 @@
 ---
 name: project-management
-description: Micro project management for a repository, a personal project or a small team - acceptance criteria and defects tracked in one markdown file per discipline, every item carrying a permanent category-scoped id (ACC-AUTH-102, DEF-LNCH-3) and an author handle (@kj), all reads and writes through the pm-tools CLI. Use when the user asks for acceptance criteria, acc crit, feature criteria, a defects list, a bug tracker, an issue tracker, or asks to log, add, close, reject, reopen, relate, list, report or audit a criterion or defect; for a status, triage or test-coverage report of either, including a filtered or summary one - the critical defects, what is open, the AUTH work, what closed last month; when an old-style document needs upgrading to carry ids and handles; and when a shared acc-crit or defects file hits a git merge conflict.
+description: Micro project management for a repository, a personal project or a small team - acceptance criteria and defects tracked in one markdown file per discipline, every item carrying a permanent category-scoped id (ACC-AUTH-102, DEF-LNCH-3) and an author handle (@kj), all reads and writes through the pm-tools CLI. Use when the user asks for acceptance criteria, acc crit, feature criteria, a defects list, a bug tracker, an issue tracker, or asks to log, add, close, reject, reopen, relate, list, report or audit a criterion or defect; for a status, triage or test-coverage report of either, including a filtered or summary one - the critical defects, what is open, the AUTH work, what closed last month; for any table or pivot over them - who owns what, open work by age, regressions per defect; when an old-style document needs upgrading to carry ids and handles; and when a shared acc-crit or defects file hits a git merge conflict.
 allowed-tools: Read, Write, Bash
 ---
 
@@ -130,17 +130,23 @@ Two indicators, no more: `related` and `blocked-by`.
 - **One line per `relate` call** - lines are never merged, because a merge would bury a new id inside the previous line's prose; `check` and `refs` union them
 - Every `relate` writes one side only. Run it on the other item too when both sides deserve to read well
 
-## Reports
+## Reports and tables
 
-`report` is the surface the user reads. It prints markdown tables straight into the chat: paste them verbatim, never re-typed and never summarised in prose beside the table.
+Every collection of items the user is shown is a markdown table, computed by `pm-tools` and pasted verbatim - never a bulleted list, never prose, never re-typed. Three query surfaces, one filter vocabulary:
 
-Five sections per file: SUMMARY (the one aggregate), CATEGORIES, TEST COVERAGE, ITEMS, and REJECTED under `--status rejected` or `all`. Two rules carry the design:
+| Surface | Answers | Shape |
+|---------|---------|-------|
+| `report` | where does the work stand | SUMMARY, CATEGORIES, TEST COVERAGE, ITEMS, REJECTED |
+| `list` | which items | one table, `--columns` and `--sort` chosen to fit the question |
+| `pivot` | how many of what by what | any field down, any field across, a count or the ids per cell |
 
-- **SUMMARY answers one question** - what is still to do, and how bad. Every cell is `open/closed`, one unit across the whole grid; a dash means nothing in that bucket; an empty column does not print
-- **ITEMS is a fix queue, not an inventory** - OPEN items only, worst severity first; closed and rejected work is counted, not enumerated
-- **A narrowed ask is a flag, never a reading** - severity, category, status and dates are filters `report` applies; a summary is `--summary`. Filtering in the answer, or adding prose under a summary, puts back what the flag removed
+Three rules carry the design:
 
-Section shapes, the ask-to-flag table, the short forms and `--detail`: `references/reports.md`.
+- **A narrowed ask is a flag, never a reading** - "the open defects" is `report --status open`, "what @kj still has in AUTH" is `--author @kj --category AUTH`, "the critical ones filed since the release" is `--severity CRITICAL --since <date>`. Every filter narrows the whole report except `--status`, which narrows ITEMS alone, so a filtered report still says where the whole scope stands. Filtering in the answer, or adding prose under a summary, puts back what the flag removed
+- **A question no report answers is still a table** - who owns what by severity, how old the open work is, regressions per defect: shape it with `list --columns` or `pivot`, and paste what comes back. Tabulating by hand from the document is the failure the tools exist to prevent - the counts stop being computed and nothing tells the reader. `--json` on any query gives the same facts as data, for the rare table that has to be assembled from two queries
+- **SUMMARY answers one question** - what is still to do, and how bad. Every cell is `open/closed`, one unit across the grid; a zero reads as `-`, so `-/5` is nothing open, five closed, and a lone `-` is an empty bucket. The legend line is printed under the heading on every report, `--plain` and `--summary` included. ITEMS is a fix queue, not an inventory - OPEN items only, worst severity first; closed and rejected work is counted, not enumerated
+
+Section shapes, the ask-to-flag table, FIELDS, the short forms and `--detail`: `references/reports.md`.
 
 ## Tooling
 
@@ -150,11 +156,14 @@ Read:
 
 | Command | Does |
 |---------|------|
-| `report` | the markdown tables above; filters and short forms in `references/reports.md` |
+| `report` | the standing analysis; filters and short forms in `references/reports.md` |
+| `list` | one table of items; `--columns` and `--sort=` pick the shape, the shared filters pick the rows |
+| `pivot --rows F [--cols F]` | an ad-hoc count grid over any two fields; `--values ids` names the items instead |
 | `list-categories` | the derived index: code, name, open / closed / rejected |
-| `list` | items, one line each; filtered by state or category |
 | `refs --id ID` | every item pointing at `ID` - the computed backlinks |
 | `check` | conformity gate; non-zero exit on errors, `--strict` also fails on warnings |
+
+`--json` on any of the first five returns the same facts as data. The filters `--category`, `--severity`, `--status`, `--author`, `--tag`, `--regressions` and the `--dates` / `--since` / `--until` window are the same on `report`, `list` and `pivot`.
 
 Write - one file per call, and `--author` on every one of them:
 

@@ -752,3 +752,264 @@ def test_a_directory_is_scanned_for_both_disciplines(tmp_path: Path, capsys):
     run("report", str(docs))
     out = capsys.readouterr().out
     assert "token race" in out and "Password generation" in out
+
+
+# --- Tables, pivots, filters and --json ---------------------------------------
+
+
+def a_mixed_file(defects: Path, capsys) -> None:
+    """Two authors, three severities, one regression, one rejection, mixed tags."""
+    run("author", str(defects), "--handle", "@mb", "--name", "M B")
+    add_defect(defects, "token race", "MAJOR")  # DEF-LNCH-1, @kj, integration
+    run(
+        "add",
+        str(defects),
+        "--category",
+        "LNCH",
+        "--author",
+        "@mb",
+        "--severity",
+        "CRITICAL",
+        "--title",
+        "crash on boot",
+        "--text",
+        "segfault",
+        "--repro",
+        "boot twice",
+        "--test-tags",
+        "unit, e2e",
+    )  # DEF-LNCH-2
+    run(
+        "add",
+        str(defects),
+        "--category",
+        "UI",
+        "--name",
+        "Interface",
+        "--description",
+        "Screens",
+        "--author",
+        "@kj",
+        "--severity",
+        "MINOR",
+        "--title",
+        "misaligned button",
+        "--text",
+        "2px off",
+        "--repro",
+        "open settings",
+    )  # DEF-UI-3
+    run(
+        "close",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--evidence",
+        "clean on 412",
+    )
+    run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@mb", "--event", "back on 413")
+    run(
+        "reject",
+        str(defects),
+        "--id",
+        "DEF-UI-3",
+        "--author",
+        "@kj",
+        "--event",
+        "no repro",
+    )
+    capsys.readouterr()  # the writes above narrate to stdout; the query under test starts clean
+
+
+def table_rows(out: str) -> list[list[str]]:
+    """Every markdown table body row in the output, split into cells."""
+    rows = []
+    for ln in out.splitlines():
+        if ln.startswith("| ") and not set(ln) <= set("|-: "):
+            rows.append([c.strip() for c in ln.strip("|").split("|")])
+    return rows
+
+
+def test_list_is_a_markdown_table_by_default(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    assert run("list", str(defects)) == 0
+    out = capsys.readouterr().out
+    rows = table_rows(out)
+    assert rows[0] == ["Id", "Title", "Severity", "Status", "Category", "Author", "Filed", "Tests"]
+    assert len(rows) == 5 and "4 item(s)" in out
+    assert rows[1][0] == "`DEF-LNCH-2`"  # fix order: open first, worst first
+    assert rows[-1][3] == "rejected"
+    assert ":" not in out.split("\n# ")[1].split("\n")[0]  # no file:line prose lines
+
+
+def test_list_columns_and_sort_are_the_callers_choice(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    run("list", str(defects), "--columns", "id,author,root,regr,age", "--sort=-severity,id")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[0] == ["Id", "Author", "Root", "Regr", "Age"]
+    assert [r[0] for r in rows[1:]] == [
+        "`DEF-UI-3`",  # MINOR first when severity descends
+        "`DEF-LNCH-1`",
+        "`DEF-LNCH-1-1`",
+        "`DEF-LNCH-2`",
+    ]
+    assert rows[3][2:4] == ["`DEF-LNCH-1`", "1"]  # the regression names its root
+
+
+def test_an_unknown_field_is_refused_with_the_vocabulary(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    with pytest.raises(SystemExit) as e:
+        run("list", str(defects), "--columns", "id,bogus")
+    assert "unknown field 'bogus'" in str(e.value) and "severity" in str(e.value)
+
+
+def test_the_status_filter_narrows_the_list_and_is_named_in_its_title(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    run("list", str(defects), "--status", "open")
+    out = capsys.readouterr().out
+    assert "(open)" in out.splitlines()[1]
+    assert {r[3] for r in table_rows(out)[1:]} == {"open"}
+    assert "2 item(s)" in out
+
+
+def test_pivot_counts_one_field_by_another(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    assert run("pivot", str(defects), "--rows", "severity", "--cols", "status") == 0
+    out = capsys.readouterr().out
+    rows = table_rows(out)
+    assert rows[0] == ["Severity", "open", "closed", "rejected", "Total"]
+    assert rows[1] == ["CRITICAL", "1", "-", "-", "1"]  # worst first, zero is a dash
+    assert rows[2] == ["MAJOR", "1", "1", "-", "2"]
+    assert rows[3] == ["MINOR", "-", "-", "1", "1"]
+    assert rows[4] == ["**Total**", "2", "1", "1", "**4**"]
+    assert "severity by status" in out
+
+
+def test_pivot_can_fill_cells_with_ids(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    run("pivot", str(defects), "--rows", "author", "--values", "ids")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[0] == ["Author", "Items"]
+    assert rows[1] == ["@kj", "`DEF-LNCH-1`, `DEF-UI-3`"]
+    assert rows[2] == ["@mb", "`DEF-LNCH-1-1`, `DEF-LNCH-2`"]
+
+
+def test_pivot_counts_a_tagged_item_in_every_tag(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    run("pivot", str(defects), "--rows", "tags")
+    out = capsys.readouterr().out
+    rows = table_rows(out)
+    assert [r[0] for r in rows[1:]] == ["e2e", "integration", "unit", "untagged", "**Total**"]
+    assert rows[-1][1] == "5" and "4 item(s)" in out  # one item sits in two tag buckets
+
+
+def test_pivot_regressions_per_root_answers_how_regressive_the_system_is(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    run("pivot", str(defects), "--rows", "root", "--regressions", "--values", "ids")
+    out = capsys.readouterr().out
+    rows = table_rows(out)
+    assert rows[1] == ["`DEF-LNCH-1`", "`DEF-LNCH-1-1`"]
+    assert len(rows) == 2 and "(regressions only)" in out
+
+
+def test_pivot_category_rows_carry_the_full_name(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    run("pivot", str(defects), "--rows", "category", "--cols", "status")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[1][0] == "Launch `LNCH`" and rows[2][0] == "Interface `UI`"
+
+
+def test_author_and_tag_filters_narrow_report_list_and_pivot_alike(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    run("report", str(defects), "--author", "@mb", "--plain")
+    rep = capsys.readouterr().out
+    assert "(@mb)" in rep and "2 open / 0 closed / 0 rejected" in rep
+    assert "Interface" not in rep  # a category the filter emptied gets no row
+    run("list", str(defects), "--tag", "e2e")
+    lst = capsys.readouterr().out
+    assert [r[0] for r in table_rows(lst)[1:]] == ["`DEF-LNCH-2`"] and "(tag e2e)" in lst
+    run("pivot", str(defects), "--rows", "severity", "--tag", "integration")
+    piv = capsys.readouterr().out
+    assert table_rows(piv)[1:] == [["MAJOR", "1"]]
+
+
+def test_a_malformed_author_is_refused(defects: Path):
+    with pytest.raises(SystemExit) as e:
+        run("list", str(defects), "--author", "kj")
+    assert "@kj" in str(e.value)
+
+
+def test_a_zero_in_the_summary_pair_reads_as_a_dash_and_the_legend_says_so(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    for flag in ("--plain", "--summary"):
+        run("report", str(defects), flag)
+        out = capsys.readouterr().out
+        assert "| Launch `LNCH` | 1/- | 1/1 | 2/1 |" in out
+        assert "Cells are `open/closed`; `-` is zero" in out
+        grid = [ln for ln in out.splitlines() if ln.startswith("| ") and "/" in ln]
+        assert grid and not any(re.search(r"\b0/|/0\b", ln) for ln in grid)
+    run("report", str(defects))
+    assert "`-/5` is nothing open, 5 closed" in capsys.readouterr().out
+
+
+def test_report_json_carries_the_same_facts_as_the_tables(defects: Path, capsys):
+    import json
+
+    a_mixed_file(defects, capsys)
+    run("report", str(defects), "--json")
+    (doc,) = json.loads(capsys.readouterr().out)
+    assert doc["type"] == "DEF" and doc["counts"] == {"open": 2, "closed": 1, "rejected": 1}
+    assert doc["regressions"] == {"count": 1, "defects": 1}
+    assert doc["summary"]["columns"] == ["CRITICAL", "MAJOR"]
+    launch = doc["summary"]["rows"][0]
+    assert launch["category"] == "LNCH" and launch["cells"]["CRITICAL"] == {"open": 1, "closed": 0}
+    assert [i["id"] for i in doc["items"]] == ["DEF-LNCH-2", "DEF-LNCH-1-1"]  # the open queue
+    assert doc["rejected"] == [
+        {"id": "DEF-UI-3", "title": "misaligned button", "reason": "no repro"}
+    ]
+    assert doc["coverage"]["tags"] == {"integration": 1, "unit": 1, "e2e": 1}
+
+
+def test_list_and_pivot_json_are_records_and_cells(defects: Path, capsys):
+    import json
+
+    a_mixed_file(defects, capsys)
+    run("list", str(defects), "--status", "open", "--json")
+    recs = json.loads(capsys.readouterr().out)
+    assert [r["id"] for r in recs] == ["DEF-LNCH-2", "DEF-LNCH-1-1"]
+    assert recs[1]["root"] == "DEF-LNCH-1" and recs[1]["regr"] == 1
+    assert recs[0]["tags"] == ["unit", "e2e"] and recs[0]["file"] == str(defects)
+    run("pivot", str(defects), "--rows", "severity", "--cols", "status", "--json")
+    (piv,) = json.loads(capsys.readouterr().out)
+    assert piv["columns"] == ["open", "closed", "rejected"]
+    assert piv["table"][1] == {
+        "row": "MAJOR",
+        "cells": {"open": 1, "closed": 1, "rejected": 0},
+        "total": 2,
+    }
+    run("pivot", str(defects), "--rows", "author", "--values", "ids", "--json")
+    (piv,) = json.loads(capsys.readouterr().out)
+    assert piv["table"][0]["cells"] == {"Items": ["DEF-LNCH-1", "DEF-UI-3"]}
+
+
+def test_list_categories_and_refs_take_json_too(defects: Path, capsys):
+    import json
+
+    a_mixed_file(defects, capsys)
+    run("relate", str(defects), "--id", "DEF-LNCH-2", "--related", "DEF-LNCH-1 - same boot path")
+    capsys.readouterr()
+    run("list-categories", str(defects), "--json")
+    (doc,) = json.loads(capsys.readouterr().out)
+    assert doc["categories"][0] == {
+        "code": "LNCH",
+        "name": "Launch",
+        "description": "Cold start and the first turn",
+        "open": 2,
+        "closed": 1,
+        "rejected": 0,
+    }
+    run("refs", str(defects), "--id", "DEF-LNCH-1", "--json")
+    hits = json.loads(capsys.readouterr().out)
+    assert [(h["id"], h["kind"]) for h in hits] == [("DEF-LNCH-2", "related")]
