@@ -46,7 +46,7 @@ Sweep the target against every axis below. For each, trace actual values through
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence on the worst one.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence on the worst one. The verdict is a pure function of the severity mix: DO-NOT-SHIP iff any finding is CRITICAL or MAJOR, otherwise SHIP - the caller recomputes it from the severities and flags a disagreeing line.
 
 ## Findings
 Ordered by severity. For each:

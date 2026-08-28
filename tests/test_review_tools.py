@@ -21,6 +21,7 @@ from stellars_claude_code_plugins.review.review_tools import (
     merge_findings,
     parse_report,
     render_dossier,
+    verdict_inconsistencies,
 )
 
 # --- dossier fixtures ------------------------------------------------------
@@ -379,19 +380,48 @@ def test_merge_joins_lenses_on_the_same_file_within_a_few_lines():
 def test_findings_cli_table_and_full_text(tmp_path: Path, capsys: pytest.CaptureFixture):
     (tmp_path / "architect.md").write_text(ARCHITECT)
     (tmp_path / "bug-hunter.md").write_text(BUG_HUNTER)
-    assert main(["findings", str(tmp_path / "architect.md"), str(tmp_path / "bug-hunter.md")]) == 0
+    # bug-hunter says SHIP over a MAJOR - the coupling check makes the run exit 1
+    assert main(["findings", str(tmp_path / "architect.md"), str(tmp_path / "bug-hunter.md")]) == 1
     out = capsys.readouterr().out
     assert "| architect | DO-NOT-SHIP | 2 | 2 | 1 | 0 | 1 |" in out
     assert "## Findings (3 after merge)" in out
     assert "| architect, bug-hunter |" in out
     assert "REMEDY: record a hash" not in out
+    assert "## Verdict check" in out and "bug-hunter: VERDICT INCONSISTENT - SHIP with 1" in out
     assert (
         main(
             ["findings", str(tmp_path / "architect.md"), str(tmp_path / "bug-hunter.md"), "--full"]
         )
-        == 0
+        == 1
     )
     assert "REMEDY: record a hash" in capsys.readouterr().out
     assert main(["findings", str(tmp_path / "architect.md"), "--json"]) == 0
     data = json.loads(capsys.readouterr().out)
     assert data["reports"][0]["findings"] == 2 and data["findings"][0]["line"] == 3610
+    assert data["inconsistencies"] == []  # DO-NOT-SHIP over a CRITICAL is consistent
+
+
+def test_parse_report_reads_numbered_bold_findings():
+    numbered = (
+        "## Verdict\n\n`VERDICT: DO-NOT-SHIP (2 findings)` - worst one.\n\n## Findings\n\n"
+        "**1. [CRITICAL] A table wrapped in `<a href>` is silently deleted** - `src/turndown.ts:118`\n\n"
+        "Reproduction paragraph.\n\n"
+        "**2. [MINOR] `<thead>` after `<tbody>` swaps rows** - `src/turndown.ts:60`\n"
+    )
+    rep = parse_report(numbered, "bh")
+    assert [f["severity"] for f in rep["findings"]] == ["CRITICAL", "MINOR"]
+    assert rep["findings"][0]["file"] == "src/turndown.ts"
+    assert verdict_inconsistencies([rep]) == []
+
+
+def test_verdict_coupling_ship_needs_no_critical_and_no_major(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    inflated = "VERDICT: DO-NOT-SHIP (2 findings) - blocked.\n\n- [MAJOR] a.py:10 - real. REMEDY: x.\n- [MINOR] b.py:2 - nit.\n"
+    assert verdict_inconsistencies([parse_report(inflated, "bh")]) == []  # MAJOR blocks now
+    minors_only = "VERDICT: DO-NOT-SHIP (1 findings) - blocked.\n\n- [MINOR] a.py:10 - nit.\n"
+    (msg,) = verdict_inconsistencies([parse_report(minors_only, "bh")])
+    assert "DO-NOT-SHIP with no CRITICAL or MAJOR" in msg
+    (tmp_path / "bh.md").write_text(minors_only)
+    assert main(["findings", str(tmp_path / "bh.md"), "--json"]) == 1
+    assert json.loads(capsys.readouterr().out)["inconsistencies"]

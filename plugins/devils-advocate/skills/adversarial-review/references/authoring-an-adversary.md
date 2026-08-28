@@ -29,19 +29,19 @@ Two orthogonal axes, identical for every adversary and both mode templates. This
 **VERDICT** - the one-line ship signal, the FIRST line of every review. Exactly two values:
 
 - `VERDICT: SHIP` - no CRITICAL findings; the artifact is good to ship / publish / trust (MAJOR/MINOR may remain, to be fixed, but none blocks)
-- `VERDICT: DO-NOT-SHIP` - at least one CRITICAL finding
+- `VERDICT: DO-NOT-SHIP` - at least one CRITICAL or MAJOR finding
 
 Always carry a finding count and a half-sentence why: `VERDICT: SHIP (0 findings) - <half sentence>` or `VERDICT: DO-NOT-SHIP (2 findings) - <half sentence>`.
 
 **SEVERITY** - the per-finding label, exactly three tiers: `[CRITICAL|MAJOR|MINOR]`
 
 - `CRITICAL` - ship-blocking on its own; its presence forces DO-NOT-SHIP. MUST be load-bearing: a false claim, a nonexistent command or flag, an instruction that cannot execute, a guard with a surviving mutant, a behaviour that breaks. Taste never reaches CRITICAL, whatever its surface area
-- `MAJOR` - serious, fix before ship, but does not block by itself
+- `MAJOR` - serious and ship-blocking: it forces DO-NOT-SHIP exactly as CRITICAL does, and differs only in standing alone being repairable within the round rather than sinking the design
 - `MINOR` - minor; fix when convenient. Taste / subjective observations go here, tagged with a leading `(taste)` - e.g. `[MINOR] (taste) prefer userId`
 
-**REMEDY** - the per-finding fix with the smallest impact radius (fewest files, fewest call sites, no new public surface), stated at diff scale: this line, this assert, this clause, plus what it leaves alone and what it could break. Three personas satisfy this through an equivalent gate rather than this wording, and are not counter-examples: `architect` (its proportionality rule and "name what the fix adds" clause), `slop-hunter` (its load-bearing check before any deletion), `popular-science` (single-word remedies, no radius to bound). State a wider remedy - delete, restructure, replace - as an opportunity with its evidence, never as a mandate; the implementor weighs it against the rest of the system. A remedy larger than the defect and unjustified is itself a defect; a reflexive narrow patch over a structural cause compounds debt. Both failure modes and the evidence bar: **Remedy discipline** in SKILL.md.
+**REMEDY** - the per-finding fix with the smallest impact radius (fewest files, fewest call sites, no new public surface), stated at diff scale: this line, this assert, this clause, plus what it leaves alone and what it could break. Three personas satisfy this through an equivalent gate rather than this wording, and are not counter-examples: `architect` (its proportionality rule and "name what the fix adds" clause), `slop-hunter` (its load-bearing check before any deletion), `popular-science` (single-word remedies, no radius to bound). State a wider remedy - delete, restructure, replace - as an opportunity with its evidence, never as a mandate; the implementor weighs it against the rest of the system. A remedy larger than the defect and unjustified is itself a defect; a reflexive narrow patch over a structural cause compounds debt. A remedy that adds a cap, guard, knob or normalisation pass must name the input that makes it necessary and the measurement showing the unguarded cost - absent both, propose measure-first or delete-the-need, never the guard. Both failure modes and the evidence bar: **Remedy discipline** in SKILL.md.
 
-**COUPLING** (the only link between the axes) - `VERDICT` = `DO-NOT-SHIP` if and only if any finding is `CRITICAL`; otherwise `SHIP`.
+**COUPLING** (the only link between the axes) - `VERDICT` = `DO-NOT-SHIP` if and only if any finding is `CRITICAL` or `MAJOR`; otherwise `SHIP`. The verdict is a pure function of the severity mix - a caller (or `review-tools findings`) recomputes it from the findings and flags a report whose verdict line disagrees, so never let prose judgement leak into the verdict: put it in the severities.
 
 ## What makes an adversary earn its slot
 

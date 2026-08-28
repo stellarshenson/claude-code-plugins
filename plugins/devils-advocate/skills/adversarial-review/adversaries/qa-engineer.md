@@ -65,7 +65,7 @@ Sweep every axis. Read the source under test, the suite, the fixtures/harness, a
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why. The verdict is a pure function of the severity mix: DO-NOT-SHIP iff any finding is CRITICAL or MAJOR, otherwise SHIP - the caller recomputes it from the severities and flags a disagreeing line.
 
 ## Risk census
 The core artifact. A short table, highest-consequence risk first:

@@ -729,7 +729,7 @@ def cmd_cost(args: argparse.Namespace) -> int:
 
 VERDICT_RE = re.compile(r"VERDICT:\s*(SHIP|DO-NOT-SHIP)(?:\s*\((\d+)\s*findings?\))?", re.I)
 SEV_RE = re.compile(r"\[(CRITICAL|MAJOR|MINOR)(?:\s*\((taste)\))?\]")
-BULLET_RE = re.compile(r"^(\s*)[-*+]\s+")
+BULLET_RE = re.compile(r"^(\s*)(?:[-*+]\s+|\*{0,2}\d+\.\s+)")
 LOC_RE = re.compile(
     r"(?<![\w/])((?:[\w.-]+/)*[\w.-]+\.(?:py|md|txt|json|ya?ml|toml|sh|ts|tsx|js|css|svg|html|cfg|ini))(?::L?(\d+))?"
 )
@@ -748,7 +748,8 @@ def _location(body: str) -> tuple[str | None, int | None]:
 
 
 def parse_report(text: str, lens: str) -> dict:
-    """VERDICT + one record per severity-tagged bullet (with its continuation lines)."""
+    """VERDICT + one record per severity-tagged finding line, dash bullet or
+    numbered-bold heading (`**1. [MAJOR] ...**`), with its continuation lines."""
     verdict = None
     m = VERDICT_RE.search(text)
     if m:
@@ -790,6 +791,31 @@ def parse_report(text: str, lens: str) -> dict:
         )
         i = j
     return {"lens": lens, "verdict": verdict, "findings": findings}
+
+
+def verdict_inconsistencies(reports: list[dict]) -> list[str]:
+    """Coupling rule: SHIP iff the report carries no CRITICAL and no MAJOR finding.
+
+    Reviewer prose drifts - observed 2026-08-28: four of eight rounds returned
+    DO-NOT-SHIP on a severity mix the contract maps to SHIP, and the loop ran on.
+    """
+    out = []
+    for rep in reports:
+        v = (rep.get("verdict") or {}).get("verdict")
+        if not v:
+            continue
+        blocking = sum(1 for f in rep["findings"] if f["severity"] in ("CRITICAL", "MAJOR"))
+        if v == "SHIP" and blocking:
+            out.append(
+                f"{rep['lens']}: VERDICT INCONSISTENT - SHIP with {blocking} CRITICAL/MAJOR "
+                "finding(s); the coupling rule maps this mix to DO-NOT-SHIP"
+            )
+        elif v == "DO-NOT-SHIP" and not blocking:
+            out.append(
+                f"{rep['lens']}: VERDICT INCONSISTENT - DO-NOT-SHIP with no CRITICAL or MAJOR "
+                "finding parsed; the coupling rule maps this mix to SHIP"
+            )
+    return out
 
 
 def merge_findings(reports: list[dict]) -> list[dict]:
@@ -871,15 +897,18 @@ def render_findings(reports: list[dict], rows: list[dict], full: bool) -> str:
 def cmd_findings(args: argparse.Namespace) -> int:
     reports = [parse_report(p.read_text(encoding="utf-8"), p.stem) for p in args.reports]
     rows = merge_findings(reports)
+    bad = verdict_inconsistencies(reports)
     if args.json:
         summary = [
             {"lens": r["lens"], "verdict": r["verdict"], "findings": len(r["findings"])}
             for r in reports
         ]
-        print(json.dumps({"reports": summary, "findings": rows}, indent=2))
+        print(json.dumps({"reports": summary, "findings": rows, "inconsistencies": bad}, indent=2))
     else:
         print(render_findings(reports, rows, args.full))
-    return 0
+        if bad:
+            print("\n## Verdict check\n\n" + "\n".join(f"- {b}" for b in bad))
+    return 1 if bad else 0
 
 
 # ---------------------------------------------------------------------------

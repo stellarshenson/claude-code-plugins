@@ -5,22 +5,18 @@ description: Hostile, independent review - spawn fresh context-free reviewer sub
 
 # Adversarial Review
 
-Spawn a hostile reviewer with no attachment to the code. A second model catches what the author rationalises away. Two complementary modes - run the one that fits the risk, or both:
+Spawn a hostile reviewer with no attachment to the code - a second model catches what the author rationalises away. Two modes; run the one that fits the risk, or both:
 
-- **Mode 1 - Diff bug-hunt.** No tools, inline diff, one turn, fast. Finds bugs, logic errors, security holes, broken edge cases IN a specific change
-- **Mode 2 - Architecture & quality audit.** Tools ON, whole-repo, many turns. Finds systemic rot a diff cannot show - slop, brittle architecture, bad paradigms, hardcodings, config drift, broken separation of concerns. The finding is usually a RELATIONSHIP across files, invisible in any one hunk
+- **Mode 1 - diff bug-hunt** - no tools, inline diff, one turn. Bugs, logic errors, security holes, broken edge cases IN a specific change
+- **Mode 2 - architecture & quality audit** - tools ON, whole-repo, many turns. Systemic rot a diff cannot show; the finding is usually a RELATIONSHIP across files
 
-**The reviewer must not inherit your context** - one that has read the author's reasoning reviews the case for the change instead of the change, absorbing the rationalisations the review exists to catch.
+Mode = HOW (inline diff vs whole-repo, tools off/on). Adversary = WHO (the expert lens). They compose freely. Multi-round always: one pass is a smoke test, not a verdict.
 
-Neither path leaks on its own: a subagent starts on a fresh context window and never sees this conversation, exactly like a `claude -p` process. The leak channel is the prompt you write, so preventing it is your job, not the boundary's.
+**The reviewer must not inherit your context** - one that read the author's reasoning reviews the case for the change, not the change. A subagent starts context-free like a `claude -p` process; the leak channel is the prompt you write:
 
-- **Default is the plugin subagent, one per lens** - the user sees it running under their prompt and can interrupt it
-- **Write every prompt as if it were a `claude -p` command line** - the model of a spawn that respects the boundary: a separate process that knows nothing but what you typed. Pass the target, the scope, the decisions the user has locked. Never why you think the change is right, what you already ruled out, or what an earlier round concluded
-- **Reach for `claude -p` itself** only for what a subagent cannot do - deny tools in a Mode 1 diff hunt, or pin a different model
-
-A mode is the **HOW** (inline diff vs whole-repo, tools off/on). An **adversary** is the **WHO** - the expert lens the reviewer argues from. The default reviewer in the mode prompts is a generic hostile senior engineer; seed a specialist when the change has a specific risk surface. Modes and adversaries compose freely: any adversary runs in either mode.
-
-Both are **multi-round**: a single pass finds, you fix, then you re-run to confirm the fix cleared it and did not open a new hole. One pass is a smoke test, not a verdict.
+- Write every prompt as a `claude -p` command line - target, scope, locked decisions. Never your reasoning, what you ruled out, or what an earlier round concluded
+- Default spawn is the plugin subagent, one per lens - visible under the user's prompt, interruptible
+- `claude -p` only for what a subagent cannot do - genuinely deny tools (Mode 1), pin a model. Mechanics and gotchas: `references/spawn-mechanics.md`
 
 ## Toolchain gate (MANDATORY - before any `review-tools` call)
 
@@ -39,195 +35,148 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 ## When to use
 
-- After a non-trivial feature or fix, before commit/merge
-- A task/goal explicitly requires "survived adversarial review"
-- Risky logic - auth, money, migrations, concurrency, data deletion, policy/permission resolution -> Mode 1 (+ Mode 2 if it touches structure)
-- A change that adds config, env, labels, routes, new components, or crosses service/process boundaries -> Mode 2 (the hardcoding/SoC class of bug lives between files)
-- Not for trivial mechanical edits (renames, dep bumps) - the spawn cost is not worth it
+- Non-trivial feature or fix, before commit/merge; a goal that requires "survived adversarial review"
+- Risky logic (auth, money, migrations, concurrency, deletion, permissions) → Mode 1, + Mode 2 if it touches structure
+- New config, env, labels, routes, components, cross-service boundaries → Mode 2
+- Not for trivial mechanical edits - spawn cost exceeds the value
 
-## Register the review as a task (MANDATORY - before the first spawn)
+## Register the review as a task (before the first spawn)
 
-`TaskCreate` the review before the first spawn, `TaskUpdate` it through the loop. Multi-round by construction, so never the trivial action the task list exempts. Untracked, the re-confirm round is the step that silently never runs.
+`TaskCreate` before round 1, `TaskUpdate` through the loop - untracked, the re-confirm round silently never runs. One task per review, not per lens; description carries adversary, mode, scope, round, findings location so a cold session resumes it. `completed` only on a clean confirming round. One task per confirmed finding when fixes exceed a single edit.
 
-- **One task per review**, not per lens - subject names target and lens; description carries adversary, mode, scope, round number, findings location, so a cold session can resume it
-- **`in_progress` before round 1** - stays so through triage, fixes, every re-confirm round
-- **`completed` only on a clean confirming round** - same bar as the rounds protocol
-- **One task per confirmed finding** when fixes exceed a single edit - triage is the bottleneck
+## Workflow execution - the default multi-round path
 
-## The rounds protocol (this is the point - do not skip)
+Session has the dynamic Workflow tool → do not drive the loop by hand. The protocol - forced adjudication, computed verdicts, pinned confirming rounds, fanout stop, round cap - is code the loop cannot forget; a hand-driven loop loses it to compaction and eagerness. An 8-round manual loop on record did exactly that: target rewritten mid-review, adjudicator never spawned, inflated prose verdicts obeyed.
 
-The "real deal" lesson: one pass is never the answer. A de-hardcode audit passed a `--max-turns 1` no-tools review clean, yet a tool-using whole-repo pass found a hardcoded label-key fallback duplicating a Dockerfile ENV - a silent-drift bug invisible in the diff. The fix then needed a SECOND pass to prove it was gone.
+```
+Workflow({
+  scriptPath: "${CLAUDE_PLUGIN_ROOT}/skills/adversarial-review/workflows/adversarial-loop.js",
+  args: {
+    target: "<what is under review>",
+    scope: "<in-scope files/dirs and exclusions>",
+    bar: "<what the product must do; which inputs are out of scope>",
+    lenses: ["architect", "bug-hunter"],
+    testCmd: "<command the fixer keeps green>",
+  },
+})
+```
 
-1. **Round 1 - find.** Run the reviewer (right mode). Capture findings
-2. **Triage.** Confirm each finding against the code yourself - context-free reviewers raise false positives (they cannot see callers, types, invariants outside what they read). Keep the real ones
+- **This instruction is the Workflow opt-in** - invoking this skill or its command licenses the call
+- **`bar` is mandatory and yours to write** - what the target must do, which input classes are out of scope, what "degrade gracefully" covers. The script refuses to run without one: a review with no bar argues from "all inputs in the world" and manufactures out-of-scope MAJORs. Out-of-bar findings cap at MINOR
+- **You author arguments, never the script** - a per-task generated script is the drift channel this design closes. A different loop shape = edit the canonical script in the repo, versioned and reviewed
+- **Terminal statuses** - `SHIP`, `STOP` (adjudicator: loop is generating its own work - re-model), `FANOUT_STOP`, `ROUND_CAP`, `FIX_FAILED`. Every status returns round history, open findings, fixes, deferrals, refutations - relay them. A non-SHIP status is a user decision point, never a licence to loop again by hand
+- **Never edit the target while the workflow runs** - fixes land only through its Fix stage
+
+Execution contract + `review-tools loop` fallback-runner spec: `docs/spec-adversarial-loop-execution.md` in the library repo. No Workflow tool → manual rounds protocol below; hold its invariants yourself.
+
+## Never gate a Stop hook on "survived adversarial review"
+
+A hostile reviewer on freshly written remedy code near-never returns clean, so a Stop hook (or goal) that opens only on a clean verdict, driving an obedient fixer, is an unbounded loop by construction. Legitimate terminal states are exactly two: the configured consecutive clean confirming rounds, or an adjudicator `STOP`/`FANOUT_STOP` put to the user. A gate must accept both.
+
+## The rounds protocol (manual fallback - only without the Workflow tool)
+
+Lesson on record: a de-hardcode audit passed a no-tools review clean, yet a whole-repo pass found a hardcoded label-key fallback duplicating a Dockerfile ENV - and the fix needed a SECOND pass to prove it gone.
+
+1. **Round 1 - find.** Run the reviewer, capture findings
+2. **Triage.** Confirm each finding against the code yourself - context-free reviewers raise false positives. Keep the real ones
 3. **Fix** the confirmed findings
-4. **Round 2 - re-confirm.** Run the SAME review, PINNED to the fixes and the files they touched - never a fresh whole-repo sweep. Unpinned, a Mode 2 reviewer samples different ground each round, so "new findings" means it looked elsewhere, not that the tree regressed. It must come back clean; if your fix opened a hole, go back to step 2.
+4. **Round 2 - re-confirm.** SAME review, PINNED to the fixes and touched files - never a fresh sweep (unpinned Mode 2 samples different ground each round, so "new findings" means it looked elsewhere). Two jobs, demand both in the prompt: reproduce each closed finding (a reviewer accepting the author's account cannot catch a fix wrong in a new way), and attack what the fix broke. Seed with fix-round shapes - partial conversion, borrowed defaults, sibling left behind, Nth weaker copy - and the question under them all: what did the old code fail at, and who silently relied on that failure? Full recipe: `references/regression-patterns.md`
+5. **Loop until a full pass is clean.** Routine = 2-3 rounds. Past 3, adjudicate before spawning another reviewer - round inflation is the symptom of oversized remedies. High stakes: two consecutive clean passes. Never flip a "survived review" criterion on the round that still had findings
 
-   A confirming round has TWO jobs, and the prompt must demand both: **verify each closed finding by reproducing it** (a reviewer that accepts the author's account cannot catch a fix that is wrong in a new way), and **attack what the fix broke**. Seed it with the shapes a fix round actually produces - partial conversion, half-converted record, borrowed defaults, sibling property left behind, Nth weaker copy, channel with no consumer - and with the question underneath all of them: *what did the old code fail at, and who was silently relying on that failure?* Full pattern list and prompting recipe: `references/regression-patterns.md`
-5. **Loop until a full pass is clean.** Routine work is 2-3 rounds. Past 3, adjudicate before spawning another reviewer (see **Adjudicate before you fix**) - round inflation is the symptom of oversized remedies (see **Remedy discipline**). For high-stakes work keep going until two consecutive passes are clean, or run a perspective-diverse panel. Never flip a "survived adversarial review" criterion to done on the strength of the round that still had findings - only on a clean confirming round
+**Perspective-diverse panel (high stakes)** - one distinct lens each, concurrent; diversity catches what redundancy cannot. A finding is real when you confirm it, not by vote. **Cap the panel at 3** unless the user asks for more - triage, not the spawn, is the bottleneck; five lenses buy a half-abandoned backlog, which is how a real finding ships with the noise.
 
-**Perspective-diverse panel (high stakes).** Instead of N identical reviewers, give each a distinct lens and run them concurrently - say, one on security, one on architecture/SoC, one on the riskiest invariant. Diversity catches failure modes redundancy cannot. Treat a finding as real when you confirm it, not by vote - but multiple lenses surface more to confirm.
-
-**Cap the panel at 3** unless the user explicitly asks for more - say so when proposing one. Triage (step 2), not the spawn, is the bottleneck. Five lenses do not give five times the signal - they give a triage backlog you abandon half-done, which is how a real finding ships with the noise. Pick the 3 the target's risk surface actually has; run a second wave later if still uneasy.
-
-**Ask which adversary when the caller names none.** State the inferred target, list the fitting candidates with their lens, recommend one, wait. The wrong lens returns a fluent review of a risk the target does not have - worse than none, because it reads like assurance. Skip only when the prompt names the adversary, or one lens obviously fits.
+**Caller named no adversary → ASK.** State the inferred target, list fitting candidates, recommend one, wait. The wrong lens returns a fluent review of a risk the target does not have - worse than none, because it reads like assurance.
 
 ## Remedy discipline
 
-Oversized remedies turn a review into 1 fix → 2 defects → 3 fixes → 6 defects: every remedy is new review surface, so fixing wide pushes the branching factor above one. Correct findings do not help - the growth comes from the remedies. Observed: one remedy rewrote a true statement about `finalize` into a false one across three sites.
+Oversized remedies turn a review into 1 fix → 2 defects → 3 fixes → 6 defects: every remedy is new review surface, so fixing wide pushes the branching factor above one. The growth comes from the remedies, not the findings.
 
-- **Conservative, surgical, strategic** - smallest impact radius that actually removes the defect, never the nearest symptom. Fewest files and call sites, no new public surface; stated at diff scale (this line, this assert, this clause); landing where the defect originates so it cannot return by another path. Small and shallow is not the goal; small and terminal is
-- **Surface the opportunity, do not mandate the shape** - report that the defect *can* be fixed within that radius; the implementor chooses, weighing it against the rest of the system
-- **Say when the small fix would paper over** - a narrow patch on a structural cause compounds debt. Advising wider needs evidence in the finding: the property the narrow fix cannot reach, the narrow fix you tried, why it failed. An untried alternative is not evidence; absent it the small fix stands
-- **Only load-bearing findings block** - a false claim, a nonexistent command or flag, an instruction that cannot execute, a surviving mutant, a broken behaviour. Word count, structure, duplication and phrasing are `MINOR (taste)`: advisory, declined with a one-line reason, never re-litigated next round
+- **Conservative, surgical, strategic** - smallest impact radius that removes the defect at its origin, stated at diff scale. Small and shallow is not the goal; small and terminal is
+- **Surface the opportunity, never mandate the shape** - the implementor chooses
+- **No unmeasured machinery** - a remedy adding a cap, guard, knob or normalisation pass must name the input that makes it necessary and the measurement showing the unguarded cost; absent both, measure-first or delete-the-need, never the guard. On record: three size ceilings added as remedies fed three rounds of findings about their own bounds before a benchmark showed removing all of them cost 1.4 s on a deliberately pathological input - 235 lines deleted
+- **Say when the small fix would paper over** - advising wider needs evidence: the property the narrow fix cannot reach, the narrow fix tried, why it failed. Untried alternative is not evidence
+- **Only load-bearing findings block** - false claim, nonexistent command/flag, unexecutable instruction, surviving mutant, broken behaviour. Word count, structure, duplication, phrasing = `MINOR (taste)`: advisory, declined with one line, never re-litigated
 
 ## Adjudicate before you fix
 
-Findings are input to a decision, not a work order. Spawn `devils-advocate:adjudicator` with every lens's findings and it returns ONE change plan: findings verified and grouped by root cause, the smallest change per group, the radius each stays inside, what each could break, and what is deliberately deferred. It plans, it does not edit.
+Findings are input to a decision, not a work order. Spawn `devils-advocate:adjudicator` with every lens's findings → ONE change plan: verified, grouped by root cause, smallest change per group, radius, what each could break, what is deferred. It plans, never edits.
 
-- **Always for a panel** - three lenses reporting one defect is one item, and only a reader of all three sees that
-- **Merge the reports first** - `review-tools findings <lens>.md ... [--full]` parses each report's `VERDICT` line and severity-tagged bullets into one table keyed by `file:line` (two lenses citing the same file within 25 lines are one row), so the adjudicator reads one list with the cross-lens duplicates already joined; `--full` carries every original bullet under the table for the remedies
-- **Always past round 3** - by then the findings are usually the previous round's fixes. Its `STOP` ruling is the honest outcome there: stop reviewing, re-model the component
-- **Pass what you know** - a call graph or blast radius you already have, a domain insight, a decision already locked, the previous round's findings and the fixes applied since. Supplied context outranks its own inference, and an unbounded adjudication is the thing that goes wide
-- **Skip it** for a single lens returning one or two findings you can verify yourself
+- **Always for a panel** - three lenses reporting one defect is one item
+- **Merge reports first** - `review-tools findings <lens>.md ... [--full]` joins VERDICT lines and severity bullets into one table keyed by `file:line` (same file within 25 lines = one row); `--full` keeps original bullets for the remedies
+- **Always past round 3** - by then the findings are usually the previous round's fixes; its `STOP` ruling is the honest outcome
+- **Pass what you know** - graph, blast radius, locked decisions, previous round's findings and fixes. Supplied context outranks its inference
+- **Skip** for a single lens with one or two findings you can verify yourself
 
-## Mode 1 - Diff bug-hunt (no tools, inline diff)
+## Mode 1 - diff bug-hunt (no tools, inline diff)
 
-Default - spawn the `devils-advocate:adversarial-reviewer` subagent with the diff pasted INTO its prompt, instructed to review only that and not open files.
+Spawn `devils-advocate:adversarial-reviewer` with the diff pasted INTO the prompt, instructed to review only that. Tools-off is an INSTRUCTION on this path - the agent still holds `Read`/`Grep`; when a reviewer that provably cannot wander is the point, use the `claude -p` fallback (`references/spawn-mechanics.md`). Template: `examples/mode1-diff-prompt.txt`.
 
-Tools-off is an INSTRUCTION here, not a capability - the agent still holds `Read`/`Grep`. When a reviewer that provably cannot wander is the point, use the `claude -p` fallback - the only path that genuinely denies tools:
+## Mode 2 - architecture & quality audit (tools ON, whole-repo)
 
-```bash
-# 1. Capture ONLY the implementation diff (exclude docs, lockfiles, golden
-#    snapshots, generated files - they bloat the prompt and distract the reviewer).
-git diff -- path/to/src/a.py path/to/src/b.tsx ... > /tmp/impl.diff
+Spawn `devils-advocate:adversarial-reviewer` naming the lens, in-scope dirs and exclusions - it carries `Read`/`Grep`/`Glob`/`Bash`, no turn cap. Panel = one spawn per lens in a single message. Template: `examples/mode2-audit-prompt.txt`. `claude -p` fallback: `references/spawn-mechanics.md`.
 
-# 2. Build the prompt: a no-tools instruction + adversarial framing + the inline diff.
-{ cat /tmp/review-prompt.txt; cat /tmp/impl.diff; } > /tmp/review-full.txt
-
-# 3. Spawn the reviewer. The flags matter (see Gotchas).
-env -u CLAUDECODE claude -p "$(cat /tmp/review-full.txt)" \
-  --output-format text \
-  --dangerously-skip-permissions \
-  --max-turns 1 \
-  --no-session-persistence \
-  > /tmp/review-result.txt 2>/dev/null < /dev/null
-```
-
-Returns in well under a minute for a ~1k-line diff. Use `run_in_background: true` if the diff is large.
-
-Prompt template: `examples/mode1-diff-prompt.txt` - no-tools instruction + hostile-reviewer framing + priority focus list + SHIP/DO-NOT-SHIP verdict. Fill `<change>`, the context, and the focus bullets; append the inline diff.
-
-## Mode 2 - Architecture & quality audit (tools ON, whole-repo)
-
-This is the mode that catches the bugs living BETWEEN files. The reviewer must read and grep the real tree, so tools are granted and turns are generous.
-
-Default - spawn the `devils-advocate:adversarial-reviewer` subagent, naming the lens, the in-scope dirs and the excluded ones. It already carries `Read`/`Grep`/`Glob`/`Bash` and needs no turn cap. Run a panel by spawning one per lens in a single message, so they run concurrently.
-
-`claude -p` fallback, when the process boundary matters - prompt in a file, passed as the argument, stdin from `/dev/null`:
-
-```bash
-# Write the audit prompt to a file first, then:
-cd <repo-root>
-env -u CLAUDECODE claude -p "$(cat /tmp/audit-prompt.txt)" \
-  --output-format text \
-  --dangerously-skip-permissions \
-  --max-turns 50 \
-  --no-session-persistence \
-  > /tmp/audit-result.txt 2>/dev/null < /dev/null &
-```
-
-- **Tools ON is the whole difference.** Mode 1 forbids tools; Mode 2 REQUIRES them - the reviewer greps for a pattern across the repo, reads the call sites, and judges the relationship. Without tools it sees only what you paste, which is exactly where these bugs hide
-- **`--max-turns 50`** (not 1). The reviewer needs to explore - grep, open several files, cross-check. Too low and it stops mid-investigation with no verdict
-- **Run it in the background** - a whole-repo audit takes minutes, not seconds
-- **Scope by instruction, not by diff.** Name the in-scope directories and the excluded ones (tests, vendored, generated) in the prompt, since it reads the live tree
-- **Refresh the code graph before the spawn, then hand it over.** If `tmp/graphify-out/graph.json` exists, run the AST-only `graphify update` (seconds, no tokens - the `graphify` skill has the exact incantation) so the reviewers read a graph that matches HEAD, and state in the prompt that it exists. A reviewer with the graph gets a symbol's callers and blast radius from one `graphify affected "<symbol>()"` call instead of a dozen greps, and a finding cited with its blast radius carries the right severity. The adjudicator uses the same graph to tell whether three lenses hit one cause. Building a graph where none exists is your call, not the reviewer's - it is LLM-billed; the reviewer only reads
-- **Build the dossier once, paste it into every reviewer.** `review-tools dossier <src dirs> --plugins <plugin docs> --graph tmp/graphify-out/graph.json --out /tmp/dossier.md` (seconds, AST only) writes the inventory a reviewer otherwise spends its first 40-60 turns rediscovering: file and symbol index with line numbers, each console script's argparse surface and the subcommands the docs advertise that no parser defines, every write / delete / subprocess / broad-except / clock / filesystem-order primitive as `file:line`, literals repeated across modules, and the most-called symbols from the graph. Paste it under a `DOSSIER:` heading in the prompt and tell the reviewer it is the inventory - it starts from the leads and spends its turns on reproduction instead of discovery
-- **Turns are the cost, not files.** A Mode 2 reviewer re-reads its whole transcript every turn, so a 100-turn review bills roughly 10M cached tokens and 20 minutes while the files it read amount to a few hundred KB. The reviewer agent is told to batch independent tool calls and to prefer one broad grep; give it a tight scope and the graph, and it converges in a third of the turns
-
-Prompt template: `examples/mode2-audit-prompt.txt` - reviewer role + REPO/scope + CONTEXT + the operator's audited REQUIREMENTS + the smell classes it must hunt + strict VERDICT line. Fill scope, context and requirements; it reads the live tree itself.
-
-**Name the smell classes explicitly** - a vague "review the architecture" gets a vague answer, so the template enumerates them (slop/over-engineering, brittle architecture, security, routing, separation of concerns, hardcodings & config drift, consistency) and demands file:line evidence per finding. `adversaries/architect.md` covers the same ground as ten sharper axes - seed it when the audit is architectural. Only executable use counts as a violation, never a comment/docstring literal.
+- **Tools ON is the whole difference** - the reviewer greps the repo, reads call sites, judges the relationship; without tools it sees only what you paste, exactly where these bugs hide
+- **Scope by instruction, not diff** - name in-scope and excluded dirs (tests, vendored, generated)
+- **Refresh the code graph, hand it over** - `tmp/graphify-out/graph.json` present → run AST-only `graphify update` (seconds, no tokens) so reviewers read a graph matching HEAD; say so in the prompt. One `graphify affected "<symbol>()"` call replaces a dozen greps and prices severity by blast radius. Building a graph where none exists is your call (LLM-billed), never the reviewer's
+- **Dossier for DISCOVERY reviewers only - never a confirming round.** A pinned confirming round needs no inventory (its attack surface is the closure list and fix delta); the one A/B on record measured a pasted dossier there at +52% tokens for fewer findings. `review-tools dossier <src dirs> --plugins <plugin docs> --graph tmp/graphify-out/graph.json --out /tmp/dossier.md` (seconds, AST only) writes the inventory a discovery reviewer otherwise spends its first 40-60 turns rediscovering - symbol index, argparse surface vs documented subcommands, risky primitives as `file:line`, repeated literals, most-called symbols. Paste under `DOSSIER:`, tell the reviewer it is the inventory
+- **Turns are the cost, not files** - a reviewer re-reads its whole transcript every turn, so cost grows with turns squared; a 100-turn review bills ~10M cached tokens. Tight scope + the graph converges in a third of the turns
+- **Name the smell classes** - vague "review the architecture" gets a vague answer; the template enumerates them and demands file:line evidence. Only executable use counts as a violation, never a comment/docstring literal
 
 ## Adversaries - pluggable expert lenses
 
-Adversaries live in `adversaries/*.md`, one self-contained persona prompt per expert, written to be pasted straight into a spawn as the reviewer's role + methodology + output contract. Each file's `lens:` frontmatter is the authoritative one-line summary; the table below is only the index. All are reachable through one plugin agent - see Spawn path below.
+One self-contained persona prompt per expert in `adversaries/*.md` - role + methodology + output contract. The `lens:` frontmatter is the authoritative summary; the table is the index.
 
 ### Signal standard (every adversary)
 
-Every adversary emits the SAME two-axis signal, so a panel reads uniformly:
-
-- **VERDICT** (first line, always) - `VERDICT: SHIP (<n> findings)` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why
-- **SEVERITY** (per finding) - exactly `[CRITICAL|MAJOR|MINOR]`; taste / subjective notes use MINOR tagged `(taste)`
-- **REMEDY** (per finding) - the fix with the smallest impact radius, at diff scale, naming what it touches, what it leaves alone and what it could break. A wider remedy (delete, restructure, replace) is an opportunity to state with evidence, never a mandate - the implementor chooses. Per **Remedy discipline** above
-- **Coupling** - `DO-NOT-SHIP` iff any finding is CRITICAL; otherwise `SHIP`
+- **VERDICT** first line, always - `VERDICT: SHIP (<n> findings)` or `VERDICT: DO-NOT-SHIP (<n> findings)` + half-sentence why
+- **SEVERITY** per finding - exactly `[CRITICAL|MAJOR|MINOR]`; taste = MINOR tagged `(taste)`
+- **REMEDY** per finding - smallest impact radius at diff scale; a wider remedy is an opportunity stated with evidence, never a mandate. Per **Remedy discipline**
+- **Coupling** - `DO-NOT-SHIP` iff any finding is CRITICAL or MAJOR; otherwise `SHIP`. The verdict is a pure function of the severity mix - `review-tools findings` recomputes and flags a disagreeing verdict line
 
 Canonical contract: `references/authoring-an-adversary.md`.
 
 | Adversary | Catches | Mode |
 | --- | --- | --- |
-| `architect` | architecture, consistency, hardcodings & config drift, SoC, leaky abstractions, advertised-surface-vs-reality; over-engineering, gold-plating & dead weight as the primary axis, under a proportionality rule binding its own fixes | 2 |
+| `architect` | architecture, consistency, hardcodings & config drift, SoC, leaky abstractions, advertised-surface-vs-reality; over-engineering & dead weight as primary axis, under a proportionality rule binding its own fixes | 2 |
 | `bug-hunter` | runtime bugs in shell/installers/startup - quoting, `set -e`, fresh-vs-restart asymmetry, cross-platform parity, secrets hygiene, lifecycle races | 2 |
-| `qa-engineer` | test STRATEGY - risk-based coverage, the confidence ladder (progressive tiers), can-each-test-fail, regression pinning, test slop to DELETE, harness fitness & reinvented wheels | 2 |
-| `ux-designer` | friction & intent, visual hierarchy, focus management, motion comfort & afterimages, accessibility, desktop/mobile parity, edge states | 2 |
+| `qa-engineer` | test STRATEGY - risk-based coverage, confidence ladder, can-each-test-fail, regression pinning, test slop to DELETE, harness fitness | 2 |
+| `ux-designer` | friction & intent, visual hierarchy, focus, motion comfort, accessibility, desktop/mobile parity, edge states | 2 |
 | `tui` | Textual/Rich internals - chrome duplication, mis-wired widgets, key propagation, focus & highlight, truecolor, headless-render verification | 2 |
-| `data-scientist` | hypothesis formulation, refutation protocol, self-contained reproducibility (re-run from the doc alone), test power, data-prep & leakage, metric validity, sensitivity, blindspots | 2 |
-| `methodologist` | scientific-METHOD integrity - can the test fail, does the verdict ladder span outcomes, pre-registration honoured, can the control move, is the criterion exercised | 2 |
-| `popular-science` | readability for a curious generalist - jargon, unsourced claims, false vagueness, buried lede, pace, the visuals (judged against best-in-class article figures), the ending (arc-back, conclusions, next steps), simplification that broke the truth. Reviews against the shared craft canon in the `datascience` plugin | 1 |
-| `devops` | containers & deploy - Dockerfile hygiene, layer cache, secrets in layers, root/privileged runtime, PID-1 signals, probes, pipeline gate integrity, env drift | 2 |
-| `analyst` | specs & acceptance criteria - coverage gaps, missing edge-case fanout, unverifiable/ambiguous criteria, sibling features diverging with no stated reason (silos), spec-vs-code widows & orphans, gold plating to cut | 2 |
-| `slop-hunter` | dead weight / project bloat - dead code, speculative & single-use abstractions (YAGNI), vanity & duplicate tests, comment & doc over-prose, unused deps/config; plus AI-slop tells & fabrication. Remedy = delete, gated by a load-bearing check | 2 |
+| `data-scientist` | hypothesis formulation, refutation protocol, reproducibility from the doc alone, test power, leakage, metric validity, sensitivity | 2 |
+| `methodologist` | scientific-METHOD integrity - can the test fail, verdict ladder spans outcomes, pre-registration honoured, can the control move | 2 |
+| `popular-science` | readability for a curious generalist - jargon, unsourced claims, buried lede, pace, visuals vs best-in-class figures, the ending, simplification that broke the truth. Reviews against the `datascience` plugin craft canon | 1 |
+| `devops` | containers & deploy - Dockerfile hygiene, layer cache, secrets in layers, root runtime, PID-1 signals, probes, pipeline gates, env drift | 2 |
+| `analyst` | specs & acceptance criteria - coverage gaps, missing edge-case fanout, unverifiable criteria, sibling silos, spec-vs-code widows & orphans, gold plating | 2 |
+| `slop-hunter` | dead weight across the whole tree - dead code, YAGNI abstractions, vanity tests, comment/doc over-prose, unused deps; AI-slop tells & fabrication. Remedy = delete, gated by a load-bearing check | 2 |
 
 **Boundaries** (so a panel does not return one finding three times):
 
-- `tui` judges what the framework actually does; `ux-designer` judges what the user perceives
-- `qa-engineer` judges the suite (why it would never have caught the bug); `bug-hunter` finds the bug itself; `methodologist` judges an experiment's verdict ladder, never a software suite
-- `devops` owns the image and the pipeline; `bug-hunter` owns the script that runs inside them
-- `analyst` judges whether the RIGHT thing is specified and whether the code matches the spec (widows, orphans, drift); `qa-engineer` judges whether the suite would catch a break; `architect` judges the code's internal consistency. Spec says nothing about it → `analyst`; spec says it, tests miss it → `qa-engineer`; code contradicts its own conventions → `architect`
-- `analyst` (axis 5) challenges two *specs* diverging without reason; `architect` (axis 1) challenges two *implementations* diverging; `ux-designer` challenges what the divergence feels like to the user
-- `architect` (axis 8), `qa-engineer` (axis 7) and `analyst` (axis 8) all carry a first-class slop axis - architect cuts code and docs, qa-engineer cuts tests, analyst cuts gold-plated criteria. `architect` binds proportionality at CONSTRAINTS and QUALITY CONTROL level, not only in its findings line: it may not prescribe a fix bigger than the defect, and never adds speculative structure
-- `slop-hunter` is the dedicated cross-cutting bloat lens - "can this be DELETED?" across code, tests, comments, docs and dependencies, gated by a load-bearing check. It differs by REMEDY and SCOPE: `slop-hunter` runs an exhaustive delete pass over the whole tree, load-bearing check first; `architect` judges whether a *design* is proportionate to its problem - cutting the layer, knob or generalisation that no requirement demands, and unifying drift - so reach for `architect` when the question is "is this structure justified?" and `slop-hunter` when it is "what can go?"; `qa-engineer` judges whether the suite would catch a break (a missing test) and overlaps only when a test pays no rent; `popular-science` judges whether a lay reader finishes the prose, not whether it is padded. Fabrication (a fake citation, a hallucinated API) is `slop-hunter`'s alone. The per-adversary slop axes above stay domain-scoped; `slop-hunter` is the whole-project delete pass
+- `tui` judges what the framework does; `ux-designer` what the user perceives
+- `bug-hunter` finds the bug; `qa-engineer` judges why the suite missed it; `methodologist` judges an experiment's verdict ladder, never a software suite
+- `devops` owns image and pipeline; `bug-hunter` owns the script inside them
+- Spec says nothing about it → `analyst`; spec says it, tests miss it → `qa-engineer`; code contradicts its own conventions → `architect`. Two *specs* diverging → `analyst`; two *implementations* → `architect`; how the divergence feels → `ux-designer`
+- Slop: `architect` judges whether a *design* is proportionate ("is this structure justified?"); `slop-hunter` runs the exhaustive whole-tree delete pass ("what can go?"), load-bearing check first; `qa-engineer` cuts only tests paying no rent. Fabrication (fake citation, hallucinated API) is `slop-hunter`'s alone
 
-### Spawn path - subagent by default, `claude -p` for the process boundary
+### Spawn path
 
-One agent serves every adversary - spawn `devils-advocate:adversarial-reviewer`, name the lens in its prompt, and it loads that persona, so a panel runs without hand-building a prompt.
+One agent serves every adversary: spawn `devils-advocate:adversarial-reviewer`, name the lens in the prompt - it loads the persona itself.
 
-- **Never review with `general-purpose`** - it carries no lens, so it returns a fluent summary where an adversary returns a findings list with a verdict; a review that finds nothing reads like assurance
-- **Name the adversary explicitly** - unnamed or misspelled, the agent lists the roster and stops rather than reviewing lens-less. One agent, not eleven, so the persona keeps ONE home in `adversaries/` and adding a lens stays a single file
-- **Tools are least-privilege, not a sandbox** - `Read, Grep, Glob, Bash`, no `Write`/`Edit`, no MCP. That removes the easy path to an edit; it does not remove the capability, because `Bash` still writes. "Critique only" remains the persona's own rule, restated in the agent
-- **Two lenses lose an axis on this path** - `popular-science` is Mode 1 and wants no tools plus a downloaded reference figure; `ux-designer` wants a sampled rendered pixel. Both self-declare the degradation; route them through `claude -p` when the visual bar actually decides the verdict
-- **`claude -p` needs `--dangerously-skip-permissions`** - a permission classifier may deny it; the subagent path has no such gate. When to prefer it at all is the isolation rule at the top
-
-### Seed an adversary into a spawn
-
-Build the prompt as **mode mechanics + adversary body + target/scope**. The adversary supplies WHO, WHAT-TO-HUNT and the output shape; the mode supplies tools-on/off, inline-diff-vs-repo, scope and `--max-turns`. Strip the adversary's YAML frontmatter (`body() { awk 'c>=2; /^---$/{c++}' "$1"; }`) and paste the body in place of the mode prompt's generic role line.
-
-Runnable both-modes template: `examples/seed-adversary.sh`.
-
-Pick the mode by where the defect would live, not by the adversary: a UX afterimage bug shows in a CSS/animation diff (Mode 1) OR across the component tree (Mode 2); the architect's drift bugs almost always need Mode 2. For high stakes run several adversaries concurrently as the perspective-diverse panel above - one lens each.
+- **Never review with `general-purpose`** - no lens returns a fluent summary that reads like assurance
+- **Name the adversary explicitly** - unnamed or misspelled, the agent lists the roster and stops rather than reviewing lens-less
+- **Tools are least-privilege, not a sandbox** - `Read, Grep, Glob, Bash`, no `Write`/`Edit`, no MCP; `Bash` still writes, so "critique only" stays the persona's own rule
+- **Two lenses degrade on this path** - `popular-science` wants no tools + a downloaded reference figure; `ux-designer` wants a rendered pixel. Route through `claude -p` when the visual bar decides the verdict
+- Pick the mode by where the defect lives, not by the adversary
 
 ### Add your own expert
 
-The file IS the plugin - no registry, no wiring. Drop `adversaries/<name>.md` with `name`/`lens`/`default-mode` frontmatter over the tagged body, then add a row to the table above and its triggers to the `description`. The subagent path picks it up for free: `devils-advocate:adversarial-reviewer` resolves whatever name it is given and reads the roster off disk, so a new adversary needs no agent file. Its `description` frontmatter still lists the lenses for discovery - add the name there too if you want it auto-suggested.
-
-Full authoring contract, section by section: `references/authoring-an-adversary.md`.
-
-## Gotchas (lessons learned - each cost a wasted run)
-
-- **`env -u CLAUDECODE` is mandatory.** With `CLAUDECODE` set the SDK enters degraded mode and hangs on file ops. Strip it for every subprocess (same rule as the `acp` skill)
-- **`< /dev/null` on every spawn.** Without it the subprocess waits on stdin and the result file contains only `Warning: no stdin data received...` - a silently empty review. This exact failure wasted a real run
-- **Mode 1 only: forbid tools at the very top of the prompt** ("Do NOT use any tools... the COMPLETE diff is inline"). Otherwise the reviewer burns its turns trying to `Read` referenced files and dies with `Error: Reached max turns` and EMPTY output. **Mode 2 is the opposite - it MUST use tools**; never paste the forbid-tools line into a Mode 2 prompt
-- **Match `--max-turns` to the mode.** Mode 1 = 1 (with the no-tools instruction it answers in one turn). Mode 2 = ~50 (it needs to explore). A low cap in Mode 2 stops it mid-investigation with no verdict
-- **Mode 1: diff INLINE, never as paths.** Paths force tool use and leak repo layout instead of logic. Mode 2: no diff - it reads the tree itself; scope it by instruction
-- **Scope tightly.** Mode 1: 200-800 focused implementation lines get a sharp review; a 5k-line dump gets a vague one. Mode 2: name the in/out-of-scope dirs so it does not audit vendored or generated code
-- **`--no-session-persistence`** so the one-shot call does not litter `~/.claude/projects/<slug>/` with an unresumable JSONL per run
-- **`2>/dev/null`** suppresses the harmless "no stdin data received" stderr that otherwise pollutes the result file
-- **Soft-land on a usage-policy refusal.** The default model occasionally flags benign technical prose (words like "kill", "inject", "attack surface"). If `grep -q "violate our Usage Policy" <result>`, retry once with `--model claude-sonnet-4-20250514`; if it also refuses, surface to the user. One retry only
+The file IS the plugin - drop `adversaries/<name>.md` with `name`/`lens`/`default-mode` frontmatter, add a table row above and triggers to the `description`. The agent resolves any name from disk; no agent-file edit. Authoring contract: `references/authoring-an-adversary.md`.
 
 ## After the review
 
-- Triage, fix, re-confirm per the rounds protocol - flip a "review clean" criterion to done only on a clean confirming round. For each dismissed finding, know why it is wrong (caller guards it, type forbids it, a test covers it, env always provides it)
-- A `DO-NOT-SHIP` verdict on a confirmed real (CRITICAL) issue blocks the ship; one driven only by false positives or style nits does not - say which, do not wave it away
-- **Shrink the remedy before applying it** - a confirmed finding does not license the reviewer's proposed fix. If a round's CRITICALs trace to the previous round's fixes, the loop is generating its own work: shrink the last remedy rather than adding another
-- Record what the review caught and how you fixed it (acc-crit log, journal) - the cross-file findings are the ones future-you reintroduces
-- **Measure the review itself** - `review-tools cost <transcript.jsonl>...` over the subagent transcripts (`~/.claude/projects/<slug>/subagents/agent-*.jsonl`) prints turns, cached tokens, tool mix, result bytes and re-reads per reviewer, deduplicated by API message id. Cache read is the bill and it grows with turns squared; a prompt change that did not cut the turn count did not save anything
+- Triage, fix, re-confirm; flip a "review clean" criterion only on a clean confirming round. For each dismissed finding, know why it is wrong (caller guards it, type forbids it, test covers it, env provides it)
+- `DO-NOT-SHIP` on a confirmed CRITICAL or MAJOR blocks the ship; one driven by false positives or style nits does not - say which
+- **Shrink the remedy before applying it** - a confirmed finding does not license the reviewer's proposed fix; blocking findings tracing to the previous round's fixes mean the loop is generating its own work
+- Record what the review caught and how you fixed it (acc-crit log, journal)
+- **Measure the review** - `review-tools cost <transcript.jsonl>...` over `~/.claude/projects/<slug>/subagents/agent-*.jsonl`: turns, cached tokens, tool mix, re-reads, deduplicated by API message id. Cache read is the bill and grows with turns squared; a prompt change that did not cut turns saved nothing
+
+<!-- improved 2026-08-28 | body 5105→2872w / 260→177L | trigger n/a (skipped) | via improve-skill -->

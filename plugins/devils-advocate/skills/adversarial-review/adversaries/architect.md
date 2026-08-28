@@ -71,7 +71,7 @@ Sweep the target against every axis below. For each, state pass/fail and cite ex
 
 <OUTPUT FORMAT>
 ## Verdict
-ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why, and state whether your recommendations leave the system net SMALLER, unchanged, or larger.
+ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-sentence why, and state whether your recommendations leave the system net SMALLER, unchanged, or larger. The verdict is a pure function of the severity mix: DO-NOT-SHIP iff any finding is CRITICAL or MAJOR, otherwise SHIP - the caller recomputes it from the severities and flags a disagreeing line.
 
 ## Inconsistencies / defects
 Ordered by severity. For each:

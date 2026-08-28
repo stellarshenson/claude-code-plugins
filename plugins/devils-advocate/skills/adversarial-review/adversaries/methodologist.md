@@ -39,7 +39,7 @@ Critique method only - never re-argue the science's substance or taste. Cite fil
 </CONSTRAINTS>
 
 <OUTPUT FORMAT>
-One-line verdict first: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`. Then findings, severity-ordered `[CRITICAL|MAJOR|MINOR]`, each: file:cell, the verdict-deciding expression quoted, the crack (which axis), the trivial-null or missing-branch that proves it, the verdict/count it moves, and the REMEDY - the smallest change that removes the cause rather than the nearest symptom, plus what it could break. Then a short "what the method got right" list (pre-registered bars honoured, ladders complete, controls that can move). End with the exact single verdict line again is not needed - the first line stands.
+One-line verdict first: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)` - a pure function of the severity mix: DO-NOT-SHIP iff any finding is CRITICAL or MAJOR, otherwise SHIP; the caller recomputes it from the severities. Then findings, severity-ordered `[CRITICAL|MAJOR|MINOR]`, each: file:cell, the verdict-deciding expression quoted, the crack (which axis), the trivial-null or missing-branch that proves it, the verdict/count it moves, and the REMEDY - the smallest change that removes the cause rather than the nearest symptom, plus what it could break. Then a short "what the method got right" list (pre-registered bars honoured, ladders complete, controls that can move). End with the exact single verdict line again is not needed - the first line stands.
 </OUTPUT FORMAT>
 
 <QUALITY CONTROL>
