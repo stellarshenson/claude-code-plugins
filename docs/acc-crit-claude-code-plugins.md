@@ -304,24 +304,29 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T08:22:33Z @kj closed: verified on the sweep rounds
   - log: 2026-08-28T09:11:39Z @kj edited importance
-- [x] `ACC-REVIEW-44` **workflow loop script** - CRITICAL; the plugin ships workflows/adversarial-loop.js executing the whole review as a deterministic Workflow: phases Discover, Adjudicate, Fix, Confirm; loop exits only on two consecutive clean confirming rounds, an adjudicator STOP, a fanout stop, or the round cap
-  - evidence: workflows/adversarial-loop.js; tests/test_adversarial_workflow_script.py 8 tests green incl. exit conditions and node parse
+- [x] `ACC-REVIEW-44` **spec-constructed workflow loop** - CRITICAL; the plugin owns and ships the loop spec (references/loop-spec.md); with the dynamic Workflow capability the model constructs the workflow from that spec (worked example workflows/adversarial-loop.js consultable), phases Discover, Adjudicate, Confirm; exits SHIP, PLAN, STOP, FANOUT_STOP, ROUND_CAP
+  - evidence: loop-spec.md ships in the plugin; test_spec_ships_in_the_plugin_with_the_full_contract; 12 guardrail tests green
   - test: guardrail test parses the script and asserts the exit conditions exist
   - test-tags: UNIT
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-45` **script-computed verdict** - CRITICAL; the workflow computes the verdict in JS from schema-returned findings: blocking iff any CRITICAL or MAJOR; reviewer prose verdicts are never trusted; case observed 2026-08-28 where reviewers returned DO-NOT-SHIP on zero CRITICAL in 4 of 8 rounds
-  - evidence: blockingOf() filters CRITICAL/MAJOR in the script; test_verdict_is_computed_from_severities
+  - log: 2026-08-28T13:21:19Z @kj edited title and text and evidence (replaced)
+- [x] `ACC-REVIEW-45` **adjudicator rules what blocks** - CRITICAL; the workflow never gates on severities or reviewer prose verdicts: every round with findings goes to the adjudicator, whose change plan decides - an empty plan rules the round clean, a MINOR it judges worth fixing enters the plan, a MAJOR it refutes does not; severities are evidence only
+  - evidence: adversarial-loop.js: severityTally reporting-only, blockingOf gate removed, adj.changes.length rules clean; test_adjudicator_decides_blocking_not_a_severity_gate
   - test: guardrail test asserts the blocking filter names CRITICAL and MAJOR
   - test-tags: UNIT
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-46` **adjudication forced by control flow** - HIGH; every round with blocking findings passes through the devils-advocate:adjudicator agent before any fix is applied; the fixer receives only the adjudicated plan, never raw reviewer remedies
-  - evidence: control flow routes blocking findings through devils-advocate:adjudicator; fixer consumes adj.changes only; test_gates_present
+  - log: 2026-08-28T13:05:52Z @kj edited title and text and evidence (replaced)
+  - log: 2026-08-28T13:05:52Z @kj reworked per user ruling: adjudicator decides, not deterministic severity gate; adjudicator continuity threaded (fresh spawn each round)
+- [x] `ACC-REVIEW-46` **adjudication forced by control flow** - HIGH; every round with findings passes through the devils-advocate:adjudicator before any change; a non-empty plan EXITS the workflow as PLAN and the main session applies exactly the plan - the workflow never edits the tree; the loop threads the prior adjudication record into each fresh adjudicator spawn
+  - evidence: adversarial-loop.js PLAN exit + priorRecord(); test_workflow_never_edits_the_tree; test_adjudicator_continuity_threaded
   - test: guardrail test asserts the fix stage consumes the adjudicator result
   - test-tags: UNIT
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
+  - log: 2026-08-28T13:05:52Z @kj edited text and evidence (replaced)
+  - log: 2026-08-28T13:21:19Z @kj edited text and evidence (replaced)
 - [x] `ACC-REVIEW-47` **mandatory review bar** - HIGH; the workflow throws without args.bar; the bar (what the product must do, which inputs are out of scope) is threaded into every reviewer prompt and out-of-bar findings are capped at MINOR
   - evidence: script throws without args.bar; barBlock threaded into every reviewer prompt; test_mandatory_args_throw
   - test: guardrail test asserts the args.bar throw; manual: run without bar
@@ -364,4 +369,16 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - test-tags: MANUAL
   - log: 2026-08-28T12:11:57Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
+- [x] `ACC-REVIEW-54` **regression-protected fix application** - HIGH; fixes are applied only by the main session from the adjudicated PLAN return, visible and interruptible; the next invocation resumes via state plus appliedFixes and its first round is a pinned confirm attacking exactly the applied delta, so every fix batch is hostile-reviewed before the loop can close
+  - evidence: test_workflow_never_edits_the_tree green; PLAN instructions in adversarial-loop.js
+  - test: guardrail test asserts PLAN exit, state threading and the pinned confirm on the newest delta
+  - test-tags: UNIT
+  - log: 2026-08-28T13:21:19Z @kj added
+  - log: 2026-08-28T13:21:19Z @kj closed
+- [x] `ACC-REVIEW-55` **graph-assisted loop economy** - MEDIUM; args.graph threads a refreshed graphify graph into reviewer and adjudicator prompts (blast radius, shared-cause grouping, fewer turns); the skill instructs asking the user to build a graph when none exists, never building unasked
+  - evidence: test_graph_threaded_when_present green; SKILL.md graph-first bullet with ask-if-absent
+  - test: guardrail test asserts args.graph and graphBlock in both prompts; read the skill graph bullet
+  - test-tags: UNIT, MANUAL
+  - log: 2026-08-28T13:21:19Z @kj added
+  - log: 2026-08-28T13:21:19Z @kj closed
 

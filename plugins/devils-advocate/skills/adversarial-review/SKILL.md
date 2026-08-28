@@ -46,28 +46,17 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 ## Workflow execution - the default multi-round path
 
-Session has the dynamic Workflow tool → do not drive the loop by hand. The protocol - forced adjudication, computed verdicts, pinned confirming rounds, fanout stop, round cap - is code the loop cannot forget; a hand-driven loop loses it to compaction and eagerness. An 8-round manual loop on record did exactly that: target rewritten mid-review, adjudicator never spawned, inflated prose verdicts obeyed.
+Session has the dynamic Workflow tool → do not drive the loop by hand. **Construct the workflow for the task from the spec (`references/loop-spec.md`)** - the spec's seven invariants (mandatory bar; blocking ruled by the adjudicator, never a severity gate - an empty adjudicated plan rules the round clean; adjudication before any change with the loop's prior record threaded into each fresh adjudicator spawn; the workflow never edits the tree - a non-empty plan EXITS as status PLAN for the main session to apply; pinned confirming rounds attacking each applied delta; the clean-streak/STOP/FANOUT_STOP/ROUND_CAP exits; full history on every exit) are the contract your script MUST encode; the loop shape around them (lens count, extra stages, budget scaling) is yours to fit to the task. A hand-driven loop loses the protocol to compaction and eagerness - an 8-round manual loop on record rewrote its target mid-review, never spawned the adjudicator and obeyed inflated prose verdicts - so the invariants live in the script's control flow, never in your working memory.
 
-```
-Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/skills/adversarial-review/workflows/adversarial-loop.js",
-  args: {
-    target: "<what is under review>",
-    scope: "<in-scope files/dirs and exclusions>",
-    bar: "<what the product must do; which inputs are out of scope>",
-    lenses: ["architect", "bug-hunter"],
-    testCmd: "<command the fixer keeps green>",
-  },
-})
-```
-
+- **Spec (we own it, it ships here)** - `references/loop-spec.md`: invariants, args contract, statuses. Constructing a workflow from this spec IS the dynamic execution path
+- **Worked example** - `${CLAUDE_PLUGIN_ROOT}/skills/adversarial-review/workflows/adversarial-loop.js` implements the spec in full; consult it while constructing. Before running a constructed script, check it against the invariant list one by one - a dropped invariant is the drift this design exists to close
 - **This instruction is the Workflow opt-in** - invoking this skill or its command licenses the call
-- **`bar` is mandatory and yours to write** - what the target must do, which input classes are out of scope, what "degrade gracefully" covers. The script refuses to run without one: a review with no bar argues from "all inputs in the world" and manufactures out-of-scope MAJORs. Out-of-bar findings cap at MINOR
-- **You author arguments, never the script** - a per-task generated script is the drift channel this design closes. A different loop shape = edit the canonical script in the repo, versioned and reviewed
-- **Terminal statuses** - `SHIP`, `STOP` (adjudicator: loop is generating its own work - re-model), `FANOUT_STOP`, `ROUND_CAP`, `FIX_FAILED`. Every status returns round history, open findings, fixes, deferrals, refutations - relay them. A non-SHIP status is a user decision point, never a licence to loop again by hand
-- **Never edit the target while the workflow runs** - fixes land only through its Fix stage
+- **`bar` is mandatory and yours to write** - what the target must do, which input classes are out of scope, what "degrade gracefully" covers. Refuse to run without one: a review with no bar argues from "all inputs in the world" and manufactures out-of-scope MAJORs. Out-of-bar findings cap at MINOR
+- **Statuses** - `PLAN` (apply the adjudicated plan in the main session - exact changes, smallest radius, nothing else - run the tests, then re-invoke with `args.state` from the return plus `args.appliedFixes`; the next round is a pinned confirm attacking exactly that delta), `SHIP`, `STOP` (adjudicator: loop is generating its own work - re-model), `FANOUT_STOP`, `ROUND_CAP`. Every status returns round history, findings, closures, deferrals, refutations - relay them. `STOP`/`FANOUT_STOP`/`ROUND_CAP` are user decision points, never a licence to loop again by hand
+- **The workflow never edits your tree** - it reviews and adjudicates; changes land only between invocations, applied by the main session from the `PLAN` return, visible and interruptible. That is the regression protection the old in-workflow fixer lacked: every applied batch is hostile-reviewed and adjudicated before the loop can close
+- **Graph first - ask if absent** - a refreshed graphify graph (`graphify update`, AST-only, seconds) passed as `args.graph` cuts reviewer turns (one `graphify affected` call replaces a dozen greps - turns are the token bill) and lets the adjudicator group findings by shared cause and bound each change's radius, which is what keeps plans small and fixes clean. No graph in the repo → ASK the user whether to build one (`/graphify` - LLM-billed, their call) before the discovery round; never build it unasked
 
-Execution contract + `review-tools loop` fallback-runner spec: `docs/spec-adversarial-loop-execution.md` in the library repo. No Workflow tool → manual rounds protocol below; hold its invariants yourself.
+**No dynamic Workflow capability (different harness)** → the supplied workflow is the protocol: execute `workflows/adversarial-loop.js` stage by stage as the procedural checklist (its control flow is the round order, gates and exit conditions), holding every invariant yourself via the manual rounds protocol below. The `review-tools loop` runner specified in the execution spec will own this path once built.
 
 ## Never gate a Stop hook on "survived adversarial review"
 
