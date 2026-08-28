@@ -55,20 +55,20 @@ Cold start, splash screen and the first turn after a fork
 
 - [x] `DEF-LNCH-1` **branch name not applied at launch, false "use /rename" warning** - MEDIUM; panel warned `name "..." could not be applied` yet a manual `/rename` worked; cause: the obsolete `sessions/set-title` poll 404'd for 30s on the not-yet-written fork file and fired a false failure; fix: removed the set-title path; `src/widget.ts`
   - repro: fork a session, watch the panel for 30s
-  - test-tags: unit, e2e
+  - test-tags: UNIT, E2E
   - evidence: jest 43 + pytest 79 green on 2026-06-21, panel clean over 30 forks
   - log: 2026-06-21T16:52:10Z @kj reported: "name could not be applied - use /rename, and the rename was actually successful"
   - log: 2026-06-21T08:41:03Z @kj fixed: name owned solely by `claude -n`; jest 43 + pytest 79 green
 - [ ] `DEF-LNCH-3` **token race on relaunch** - MAJOR; auth token occasionally empty on the first turn after a fork; cause under investigation; `src/session.ts`
   - repro: fork under load, send a turn inside 2s
-  - test-tags: integration
+  - test-tags: INTEGRATION
   - related: ACC-LNCH-8 - the criterion this violates
   - log: 2026-06-22T09:14:27Z @kj reported: intermittent 401 on the first turn of a branched session
   - log: 2026-06-22T11:02:55Z @kj attempted: 200ms pre-turn delay - did NOT work, the race still fires under load
   - log: 2026-06-23T13:38:19Z @kj details: repro study in [DEF-LNCH-3 details](defects/DEF-LNCH-3-token-race.md)
 - [-] `DEF-LNCH-7` **splash hang on a cold cache** - MAJOR; splash never dismissed on first run
   - repro: wipe the profile, launch offline
-  - test-tags: manual
+  - test-tags: MANUAL
   - log: 2026-07-02T15:07:44Z @ac reported by QA
   - log: 2026-07-09T16:52:10Z @ac rejected: not reproduced on 3 devices over 40 cold starts
 ```
@@ -79,7 +79,7 @@ Three more sub-lines, one line each. The `repro:` line is the one another person
 
 - **`- repro:`** - shortest sequence that shows the defect: state, action, what appears. `airplane mode on, cold boot the app` beats a paragraph
 - **`cannot reproduce`** is a legitimate value, and it is also the argument for `reject`
-- **`- test-tags:`** - which kinds of test cover the defect once it is understood: `unit`, `integration`, `functional`, `e2e`, `manual`. On a defect the tag names the regression test that keeps it fixed
+- **`- test-tags:`** - which kinds of test cover the defect once it is understood: `UNIT`, `INTEGRATION`, `FUNCTIONAL`, `E2E`, `MANUAL`. Free vocabulary, always written upper-case (the tool upper-cases whatever it is given and reads any case back); an item with no tags line lands in the coverage grid's `NO-TEST` column. On a defect the tag names the regression test that keeps it fixed
 - **`- evidence:`** - what proves the defect is gone, written by `close --evidence`: the regression test that now passes, the build it was verified on, the run that no longer reproduces. `the repro no longer fires on build 412, jest 43 green` is evidence; `fixed` is not
 - The full study, when one is warranted, goes to a details doc; the `repro:` line stays one line regardless
 
@@ -109,7 +109,7 @@ pm-tools add docs/defects-app.md --category LNCH --name Launch --severity MAJOR 
     --description "Cold start, splash screen and the first turn after a fork" \
     --title "token race on relaunch" \
     --text "auth token empty on the first turn; cause under investigation; \`src/session.ts\`" \
-    --repro "fork under load, send a turn inside 2s" --test-tags "integration"
+    --repro "fork under load, send a turn inside 2s" --test-tags "INTEGRATION"
 pm-tools log    docs/defects-app.md --id DEF-LNCH-3 --author @kj \
     --event "attempted: 200ms pre-turn delay - did NOT work"
 pm-tools close  docs/defects-app.md --id DEF-LNCH-3 --author @kj \
@@ -120,3 +120,5 @@ pm-tools reject docs/defects-app.md --id DEF-LNCH-7 --author @ac \
 pm-tools report docs/defects-app.md
 pm-tools check docs --strict
 ```
+
+`check` on the directory resolves a `related:` or `blocked-by:` id into the file beside; on one file alone a cross-file link is reported as not found.

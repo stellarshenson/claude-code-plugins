@@ -20,7 +20,6 @@ import subprocess
 
 from _cassette_prompts import (
     GATE_BULLETS,
-    GATE_FENCE,
     build_gate_matched_prompt,
     build_gate_stale_prompt,
 )
@@ -42,7 +41,18 @@ PLUGINS = (
 # so any importable version - however old - skips the upgrade entirely.
 SHORT_CIRCUIT = 'import stellars_claude_code_plugins" 2>/dev/null || python3 -m pip install'
 UPGRADE_LINE = "pip install --user --upgrade stellars-claude-code-plugins"
-STALE_ASSERTION = "STALE: library $LIB != plugin $PLUG"
+STALE_ASSERTION = "STALE: library $LIB older than plugin $PLUG"
+
+# The comparison every gate block ships, verbatim. The library may be NEWER than
+# the plugin (a fresh `pip install --upgrade` against a not-yet-updated plugin
+# cache is healthy); only a library OLDER than the plugin is the defect - the
+# CLI would lack flags the plugin documents. `sort -V` names the older version.
+GATE_OLDER_LINE = 'OLDER=$(printf \'%s\\n%s\\n\' "$LIB" "$PLUG" | sort -V | head -1)'
+GATE_COMPARE_LINE = (
+    '[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && [ "$OLDER" = "$LIB" ] && '
+    '{ echo "STALE: library $LIB older than plugin $PLUG - refusing to run on an '
+    'outdated CLI; re-run the upgrade"; exit 1; }'
+)
 
 # Retired claim: plugin and library versions are synced at RELEASE time, which
 # says nothing about what is INSTALLED on the machine running the skill.
@@ -86,6 +96,21 @@ def test_every_upgrade_is_paired_with_a_version_assertion():
     ]
     assert not unguarded, (
         f"files upgrade the toolkit but never assert the version landed: {unguarded}"
+    )
+
+
+def test_every_gate_ships_the_version_ordered_comparison():
+    """All gate sites carry the exact two-line compare: block only when the
+    installed library is OLDER than the plugin, never when it is newer."""
+    offenders = []
+    for p in _plugin_markdown():
+        body = p.read_text(encoding="utf-8")
+        if "STALE: library" not in body:
+            continue
+        if GATE_OLDER_LINE not in body or GATE_COMPARE_LINE not in body:
+            offenders.append(str(p.relative_to(ROOT)))
+    assert not offenders, (
+        f"gate sites missing the verbatim version-ordered comparison: {offenders}"
     )
 
 
@@ -191,19 +216,22 @@ def test_shipped_gate_still_carries_its_normative_lines():
     live = (PLUGIN_ROOT / "svg-infographics" / "skills" / "svg-designer" / "SKILL.md").read_text(
         encoding="utf-8"
     )
-    for required in (UPGRADE_LINE, STALE_ASSERTION):
+    for required in (UPGRADE_LINE, STALE_ASSERTION, GATE_OLDER_LINE, GATE_COMPARE_LINE):
         assert required in live, f"shipped gate lost its {required!r} line"
     assert "The version compare is the real gate" in live, (
         "the gate lost the rule that a green `--help` proves nothing - the "
         "exact false green that let a 26-release-stale CLI through"
     )
-    for name, snapshot in (("GATE_FENCE", GATE_FENCE), ("GATE_BULLETS", GATE_BULLETS)):
-        assert snapshot in live, (
-            f"the shipped gate no longer matches the frozen {name} snapshot in "
-            "tests/_cassette_prompts.py - the recorded cassettes were built from the "
-            f"old text. Update {name} and re-record with "
-            "`uv run python tests/record_claude_cassettes.py` (needs the `claude` binary)."
-        )
+    # GATE_FENCE in tests/_cassette_prompts.py stays frozen on the pre-ordering
+    # compare: the cassette key is a SHA-256 of the prompt, and its scenario - a
+    # library OLDER than the plugin - still means BLOCKED under the new rule, so
+    # the recorded verdicts remain valid. Only the bullets must track the live doc.
+    assert GATE_BULLETS in live, (
+        "the shipped gate no longer matches the frozen GATE_BULLETS snapshot in "
+        "tests/_cassette_prompts.py - the recorded cassettes were built from the "
+        "old text. Update GATE_BULLETS and re-record with "
+        "`uv run python tests/record_claude_cassettes.py` (needs the `claude` binary)."
+    )
 
 
 def test_gate_compares_against_the_plugins_own_manifest():
@@ -266,10 +294,10 @@ def _shipped_comparison_lines() -> str:
     lines = [
         ln.strip()
         for ln in body.splitlines()
-        if ln.strip().startswith(("PLUG=", '[ -n "$PLUG" ]', 'echo "toolkit'))
+        if ln.strip().startswith(("PLUG=", "OLDER=", '[ -n "$PLUG" ]', 'echo "toolkit'))
     ]
-    assert len(lines) >= 3, "could not extract the shipped comparison lines"
-    return "\n".join(lines[:3])
+    assert len(lines) >= 4, "could not extract the shipped comparison lines"
+    return "\n".join(lines[:4])
 
 
 def _run_gate(
@@ -307,8 +335,9 @@ def test_gate_blocks_on_mismatch(tmp_path):
     let a session drive a 26-release-old CLI while believing it was checked.
     """
     r = _run_gate(tmp_path, lib_version="1.5.5", plugin_version="1.6.31")
-    assert r.returncode != 0, f"a mismatched gate must BLOCK, got exit 0: {r.stdout}"
+    assert r.returncode != 0, f"an older library must BLOCK, got exit 0: {r.stdout}"
     assert r.stdout.strip().startswith("STALE:"), r.stdout
+    assert "older than" in r.stdout, "the message names the direction that blocks"
     assert "1.5.5" in r.stdout and "1.6.31" in r.stdout, "both versions must be named"
     assert "toolkit" not in r.stdout, "must not also print the success line"
 
@@ -317,6 +346,29 @@ def test_gate_passes_on_parity(tmp_path):
     r = _run_gate(tmp_path, lib_version="1.6.31", plugin_version="1.6.31")
     assert r.returncode == 0, r.stderr
     assert r.stdout.strip() == "toolkit 1.6.31", r.stdout
+
+
+def test_gate_passes_when_the_library_is_newer_than_the_plugin(tmp_path):
+    """A fresh `pip install --upgrade` routinely lands a library ahead of a
+    not-yet-refreshed plugin cache. That direction is healthy: the CLI carries
+    at least the flags the plugin documents, so the gate must not block."""
+    r = _run_gate(tmp_path, lib_version="1.7.0", plugin_version="1.6.31")
+    assert r.returncode == 0, f"a newer library must pass, got exit {r.returncode}: {r.stdout}"
+    assert r.stdout.strip() == "toolkit 1.7.0", r.stdout
+    assert "STALE" not in r.stdout
+
+
+def test_gate_orders_versions_numerically_not_lexicographically(tmp_path):
+    """1.7.10 is newer than 1.7.9, but a plain string sort puts "1.7.10" first
+    and would block a healthy library. Only this pair separates `sort -V` from
+    lexicographic ordering - the newer-library test above cannot, because
+    "1.6.31" < "1.7.0" under both orderings."""
+    r = _run_gate(tmp_path, lib_version="1.7.10", plugin_version="1.7.9")
+    assert r.returncode == 0, f"1.7.10 is newer than 1.7.9, got exit {r.returncode}: {r.stdout}"
+    assert r.stdout.strip() == "toolkit 1.7.10", r.stdout
+    r = _run_gate(tmp_path, lib_version="1.7.9", plugin_version="1.7.10")
+    assert r.returncode != 0, f"1.7.9 is older than 1.7.10, must block: {r.stdout}"
+    assert "older than" in r.stdout, r.stdout
 
 
 def test_gate_does_not_cry_wolf_without_a_plugin_root(tmp_path):
@@ -332,17 +384,19 @@ def test_gate_does_not_cry_wolf_without_a_plugin_root(tmp_path):
 def test_every_shipped_gate_blocks_rather_than_warns():
     """All 21 sites, not just the one the behavioural test runs. A gate that
     echoes STALE and falls through is the defect; it must exit non-zero."""
-    soft = []
+    soft, walked = [], 0
     # Scoped to the shipped plugins: an unscoped rglob also walks `.venv` and the
     # journal, where entry 286 quotes a STALE line as prose and would fail this
     # test on a reword.
     for plugin in PLUGINS:
-        for path in (ROOT / plugin).rglob("*.md"):
+        for path in (PLUGIN_ROOT / plugin).rglob("*.md"):
+            walked += 1
             for line in path.read_text(encoding="utf-8").splitlines():
                 if "STALE: library" not in line:
                     continue
                 if "exit 1" not in line:
                     soft.append(f"{path.relative_to(ROOT)}: {line.strip()}")
+    assert walked, "walked no plugin files - the guard would pass vacuously"
     assert not soft, "gate sites that warn instead of blocking:\n" + "\n".join(soft)
 
 

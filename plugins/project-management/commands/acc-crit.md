@@ -16,7 +16,8 @@ Run this first, every session, before any other work. The upgrade always runs; a
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
 LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
 PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+OLDER=$(printf '%s\n%s\n' "$LIB" "$PLUG" | sort -V | head -1)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && [ "$OLDER" = "$LIB" ] && { echo "STALE: library $LIB older than plugin $PLUG - refusing to run on an outdated CLI; re-run the upgrade"; exit 1; }
 echo "toolkit $LIB"
 ```
 
@@ -28,7 +29,8 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 2. **Ask for the author handle once** and reuse it - every write takes `--author @xx`, and the handle must be on the roster (`pm-tools author FILE --handle @xx --name "Full Name"`) before it can write
 3. **Find the store before creating one** - `ls docs/acc-crit*.md`; one consolidated doc per project is the default, a scoped file only when the user asks. Never a file per criterion
 4. **One assertion per item** - a criterion needing "and" is two criteria; edge cases are their own items, enumerated across the whole fanout
-5. **Write through `pm-tools`, never by hand** - `add` assigns the next id and the log line; hand-editing loses both
-6. Fill the `--test` hint and `--test-tags` as you add, and never tag a test that does not exist
-7. **Closing needs proof** - `close` refuses without `--evidence`: one line saying the `test:` line was run and what it showed. Run it first; do not close a criterion on the strength of the code looking right
-8. **Gate** - `pm-tools check docs` after the session; exit 0 with no errors is the bar
+5. **Rate it yourself, as you file it** - `--importance CRITICAL|HIGH|MEDIUM|LOW`, read off the assertion against the rubric in `skills/project-management/references/acceptance-criteria.md`. Never ask the user for the level and never leave it unset; `add` refuses one and `check` errors on one
+6. **Write through `pm-tools`, never by hand** - `add` assigns the next id and the log line; hand-editing loses both
+7. Fill the `--test` hint and `--test-tags` as you add (tags are written upper-case - `UNIT`, `E2E`), and never tag a test that does not exist
+8. **Closing needs proof** - `close` refuses without `--evidence`: one line saying the `test:` line was run and what it showed. Run it first; do not close a criterion on the strength of the code looking right
+9. **Gate** - `pm-tools check docs` after the session; exit 0 with no errors is the bar

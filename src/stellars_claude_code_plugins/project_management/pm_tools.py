@@ -12,20 +12,29 @@ A defect that is fixed and breaks again keeps a derived id: reopening DEF-LNCH-3
 opens DEF-LNCH-3-1, then -2, then -3. The parent stays closed with its evidence -
 it really was proven - so the ordinals count how often that defect has regressed.
 
-Both disciplines also carry `- test-tags: unit, functional` - which kinds of test
-cover the item - and `- evidence: <one line>`, the proof it is actually done. `close`
-demands the evidence and writes that line; on a criterion `reopen` retires it, on a
-closed defect it mints the regression instead and the closure keeps its proof.
+Both disciplines also carry `- test-tags: UNIT, FUNCTIONAL` - which kinds of test
+cover the item (UNIT, INTEGRATION, FUNCTIONAL, E2E, MANUAL, or any word; written
+upper-case, read in any case; an item with none sits in the NO-TEST bucket) - and
+`- evidence: <one line>`, the proof it is actually done. `close` demands the
+evidence and writes that line; on a criterion `reopen` retires it, on a closed
+defect it mints the regression instead and the closure keeps its proof. check
+fails on a relation to an id that is not in the scanned files and on a blocked-by
+cycle, and warns when an open item is blocked by one that is closed or rejected; scan
+the directory, not one file, so cross-file links resolve.
 
 Three states: `- [ ]` open, `- [x]` closed, `- [-]` rejected (reason in the log line).
 Log lines read `- log: 2026-08-27T15:59:12Z @kj <event>` - ISO 8601 UTC, then the author.
 
 Query - every table is markdown, paste-ready; --json gives the same facts as data:
   report [paths] [FILTERS] [--detail] [--plain] [--summary] [--json]
-         ITEMS lists open work only unless --status says otherwise, worst severity first.
-         Every filter narrows the whole report except --status, which narrows ITEMS
-         alone. --plain prints the grids and nothing else; --summary stops at the
-         SUMMARY grid, listing no items at all.
+         ITEMS lists open work only unless --status says otherwise, worst level first.
+         The SUMMARY grid is plain counts: `| Category | Open | CRITICAL | MAJOR |
+         MEDIUM | MINOR | Fixed | Rejected |` on defects, `| Category | Open |
+         CRITICAL | HIGH | MEDIUM | LOW | Done | Rejected |` on criteria, each with
+         a Total row; the level columns count OPEN items only, and UNTRIAGED/UNRATED
+         appears only when an open item lacks a level. Every filter narrows the whole
+         report except --status, which narrows ITEMS alone. --plain prints the grids
+         and nothing else; --summary stops at the SUMMARY grid, listing no items.
   list [paths] [FILTERS] [--columns F,F,..] [--sort=F,-F,..] [--json]
          one table per file, the columns and the order chosen by the caller; a `-`
          prefix on a sort field descends (write --sort=-age, the `=` keeps argparse
@@ -33,30 +42,51 @@ Query - every table is markdown, paste-ready; --json gives the same facts as dat
   pivot [paths] --rows FIELD [--cols FIELD] [--values count|ids] [FILTERS] [--json]
          an ad-hoc grid over any two fields - severity by author, regressions per root,
          open items by age band
-  list-categories [paths] [--json]                 code, name, open/closed/rejected
-  refs [paths] --id ID [--json]                    every item pointing at ID
+  coverage [paths] [FILTERS] [--json]
+         the test-coverage grid: categories down, test tags across (UNIT,
+         INTEGRATION, FUNCTIONAL, E2E, MANUAL, then any other tag; only columns
+         that occur, NO-TEST last), open and closed items counted alike, Total row
+  search [paths] QUERY [--top N] [FILTERS] [--json]
+         the N items most relevant to QUERY, best first, one table over every scanned
+         file - BM25 over id, title, body, evidence and log lines, id and title
+         weighted 3x; a typo or a stem still hits. Quote a multi-word QUERY. FILTERS
+         narrow the candidates first: --grep is the exact filter, search is the ranking
+  list-categories [paths] [--json]                 code, name, open, closed, rejected
+  refs [paths] --id ID [--json]                    what points at ID, what ID points at,
+                                                   and the chain of what blocks it
   check [paths] [--strict]                         conformity gate
 
-FILTERS, the same on report, list and pivot:
-  --category CODE  --severity S  --status open|closed|rejected|all  --author @xx
-  --tag T  --regressions  --dates filed|closed|updated  --since DATE  --until DATE
+FILTERS, the same on report, list, pivot, search and coverage:
+  --category CODE  --severity S  --importance I  --status open|closed|rejected|all
+  --author @xx  --tag T (any case)  --regressions  --dates filed|closed|updated
+  --since DATE  --until DATE
+  --grep PATTERN   case-insensitive regex over title, body, evidence and log lines
+  --blocked        items with at least one blocked-by target that is still open
+  --related-to ID  items linked to ID in either direction, related or blocked-by
+  A mention of an id in a log line is prose; only a related:/blocked-by: line is a
+  link. --grep and search find mentions, refs, --related-to and --blocked read links.
 
 FIELDS, for --columns, --sort, --rows and --cols:
-  id title body category severity status author filed closed updated age tags
-  evidence hint regr root logs
-  tags pivots an item into every tag it carries; filed/closed/updated pivot by month,
-  age by band (<7d, 7-30d, 31-90d, >90d).
+  id title body category severity importance status author filed closed updated
+  age tags evidence hint regr root logs related blockers
+  tags, related and blockers pivot an item into every value it carries; filed/closed/
+  updated pivot by month, age by band (<7d, 7-30d, 31-90d, >90d).
 
 Edit (one file):
   add    FILE --category CODE --title T --text D [--name NAME] [--description D]
-                    --severity S [--repro R|--test T] [--test-tags "unit, functional"]
-  edit   FILE --id ID [--title T] [--text D] [--severity S] [--repro R|--test T]
-                      [--test-tags TAGS] [--evidence E]
+                    --severity S|--importance I [--repro R|--test T]
+                    [--test-tags "UNIT, FUNCTIONAL"]
+  edit   FILE --id ID [--title T] [--text D] [--severity S] [--importance I]
+                      [--repro R|--test T] [--test-tags TAGS] [--evidence E]
 
 --severity is CRITICAL|MAJOR|MEDIUM|MINOR, mandatory on every defect and refused on
 a criterion. An untriaged defect is a check error. Foreign vocabularies (P0-P4, S1-S4,
 SEV1-4, BLOCKER, URGENT, HIGH, NORMAL, LOW, TRIVIAL ...) are recognised and renamed by
 upgrade; anything it cannot map is named and left for a human.
+--importance is CRITICAL|HIGH|MEDIUM|LOW, mandatory on every criterion and refused on
+a defect. An unrated criterion is a check error. Importance is read only on ACC items
+and severity only on DEF items, so a criterion body opening with `Normal, ...` is
+prose, never a level.
   author FILE --handle @xx --name "Full Name"      add or update a roster entry
   describe FILE --category CODE --text D           set the category description
   relate FILE --id ID [--related TEXT] [--blocked-by TEXT]
@@ -66,6 +96,12 @@ upgrade; anything it cannot map is named and left for a human.
   reopen FILE --id ID [--event E]                  closed defect -> a numbered regression
   remove FILE --id ID [--force]                    mistakes and duplicates only
   upgrade FILE [--code "Section=CODE"]... [--author @xx] [--apply]
+          --apply always applies every safe rewrite (ids, codes, stamps, severity
+          and test-tag canonicalisation, Contents drop) and exits 0; every content
+          problem - missing roster or --author, unrated criteria, untriaged
+          defects, missing descriptions, hints or evidence, nested items, items
+          above the first heading - becomes a HINT line carrying the exact command
+          to run. Non-zero only for I/O errors or an unrecognisable file type.
 
 Query paths are files or dirs (a dir is scanned for acc-crit*.md and defects*.md);
 no path means ./docs when it exists, else . Stdlib only.
@@ -106,6 +142,7 @@ CLOSING = re.compile(r"^(closed|rejected)\b", re.I)  # the log line that ended t
 SUB = re.compile(r"^\s+- ")
 STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")  # ISO 8601, UTC
 DATEONLY = re.compile(r"^\d{4}-\d{2}-\d{2}$")  # legacy, upgrade only
+TOKEN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)+|[a-z0-9]+")  # search: a hyphen run stays whole
 
 # the checkbox is the whole status; nothing else records it
 STATE = {" ": "open", "x": "closed", "-": "rejected"}
@@ -147,6 +184,12 @@ SEV = re.compile(
     r"^(" + "|".join(sorted(SEVS + tuple(SEV_ALIAS), key=len, reverse=True)) + r")(?=\s*[;:,])",
     re.I,
 )
+# criterion importance mirrors defect severity: the first word of an ACC body,
+# behind the same delimiter guard. Read only on criteria, as severity is read
+# only on defects - `Normal, ...` opening a criterion body is prose, not a level
+IMPS = ("CRITICAL", "HIGH", "MEDIUM", "LOW")
+IMP = re.compile(r"^(" + "|".join(IMPS) + r")(?=\s*[;:,])", re.I)
+IMP_RANK = {name: i for i, name in enumerate(IMPS)}
 # the report exists so a reader sees what is left and in what order to fix it
 SEV_RANK = {name: i for i, name in enumerate(SEVS)}
 SEV_RANK.update({old: SEV_RANK[new] for old, new in SEV_ALIAS.items()})
@@ -246,6 +289,8 @@ def roster_of(path):
 
 def parse(path):
     """Return (blocks, sections). A block is one item plus its indented sub-lines."""
+    name = pathlib.Path(path).name
+    docp = "ACC" if name.startswith("acc-crit") else "DEF" if name.startswith("defects") else None
     blocks, sections, cur, sec = [], [], None, None
     in_authors = False
     for lineno, ln in non_fenced(load(path)):
@@ -276,8 +321,10 @@ def parse(path):
             body = idm.group("body") if idm else text
             bold = BOLD.search(body)
             after = body[bold.end() :].lstrip(" -") if bold else body
-            sm = SEV.match(after)
-            plain = SEV.sub("", after).lstrip(" ;:,-") if sm else after
+            eff = (idm.group("prefix") if idm else None) or docp
+            sm = SEV.match(after) if eff == "DEF" else None
+            im = IMP.match(after) if eff == "ACC" else None
+            plain = (SEV if sm else IMP).sub("", after).lstrip(" ;:,-") if sm or im else after
             cur = dict(
                 line=lineno,
                 indent=indent,
@@ -290,6 +337,7 @@ def parse(path):
                 body=body,
                 title=bold.group(1) if bold else None,
                 severity=sm.group(1).upper() if sm else None,
+                importance=im.group(1).upper() if im else None,
                 plain=plain,
                 subs=[],
                 section=sec,
@@ -404,7 +452,22 @@ def in_window(b, which, since, until):
     return (since is None or d >= since) and (until is None or d <= until)
 
 
-def scope_of(blocks, cat, sev, which, since, until, author=None, tag=None, regr=False):
+def scope_of(
+    blocks,
+    cat,
+    sev,
+    which,
+    since,
+    until,
+    author=None,
+    tag=None,
+    regr=False,
+    grep=None,
+    blocked=False,
+    related_to=None,
+    index=None,
+    imp=None,
+):
     """The items a query is about - every filter except --status. On `report` that one
     narrows the ITEMS queue alone, so a filtered report still says where the whole
     scope stands; `list` and `pivot` apply it through `select`."""
@@ -413,18 +476,27 @@ def scope_of(blocks, cat, sev, which, since, until, author=None, tag=None, regr=
         out = [b for b in out if b["cat"] == cat]
     if sev:
         out = [b for b in out if sev_of(b) == sev]
+    if imp:
+        out = [b for b in out if b["importance"] == imp]
     if author:
         out = [b for b in out if author_of(b) == author]
     if tag:
         out = [b for b in out if tag in tag_set(b)]
     if regr:
         out = [b for b in out if b["regr"]]
+    if grep:
+        rx = re.compile(grep, re.I)
+        out = [b for b in out if any(rx.search(t) for t in text_of(b))]
+    if blocked:
+        out = [b for b in out if is_blocked(b, index)]
+    if related_to:
+        out = [b for b in out if linked(b, related_to, index)]
     if since or until:
         out = [b for b in out if in_window(b, which, since, until)]
     return out
 
 
-def select(blocks, fl):
+def select(blocks, fl, index=None):
     """scope_of plus the status filter - the item set `list` and `pivot` work on."""
     out = scope_of(
         blocks,
@@ -436,6 +508,11 @@ def select(blocks, fl):
         fl["author"],
         fl["tag"],
         fl["regr"],
+        fl["grep"],
+        fl["blocked"],
+        fl["related_to"],
+        index,
+        fl["importance"],
     )
     if fl["status"] and fl["status"] != "all":
         out = [b for b in out if status_of(b) == fl["status"]]
@@ -448,9 +525,13 @@ def filter_note(fl, status=None):
         status,
         f"category {fl['category']}" if fl["category"] else None,
         fl["severity"],
+        fl["importance"],
         fl["author"],
         f"tag {fl['tag']}" if fl["tag"] else None,
         "regressions only" if fl["regr"] else None,
+        f"grep /{fl['grep']}/" if fl["grep"] else None,
+        "blocked" if fl["blocked"] else None,
+        f"related to {fl['related_to']}" if fl["related_to"] else None,
         window_note(fl["dates"], fl["since"], fl["until"]),
     ]
     bits = [x for x in bits if x]
@@ -475,13 +556,84 @@ def fix_order(b):
     """Open before done, worst before mild, oldest before newest."""
     return (
         STATUS_RANK.get(status_of(b), 3),
-        SEV_RANK.get(b["severity"], len(SEVS)),
+        SEV_RANK.get(b["severity"], IMP_RANK.get(b["importance"], len(SEVS))),
         b["num"] if b["num"] is not None else 0,
     )
 
 
 def tag_set(b):
-    return [t.strip().lower() for t in (b["tags"] or "").split(",") if t.strip()]
+    """Tags read case-insensitively off the file, carried upper-case everywhere,
+    once each - a hand-edited `unit, UNIT` is one tag, not two."""
+    return list(
+        dict.fromkeys(t.strip().upper() for t in (b["tags"] or "").split(",") if t.strip())
+    )
+
+
+def canon_tags(spec):
+    """The written form of a test-tags value: upper-case, comma-space separated,
+    case-duplicates dropped keeping first position."""
+    return ", ".join(dict.fromkeys(t.strip().upper() for t in spec.split(",") if t.strip()))
+
+
+def targets(b, kind):
+    """The ids this item's related: or blocked-by: lines name, file order, once each."""
+    return list(dict.fromkeys(rid for k, rid, _ in b["refs"] if k == kind))
+
+
+def text_of(b):
+    """What --grep reads: title, body, evidence and every log event."""
+    return [b["title"] or "", b["plain"] or "", b["evidence"] or "", *b["logs"]]
+
+
+def link_index(files):
+    """ident -> block over every scanned file, the cross-file view the relation
+    filters, refs and check read. Built only when a query needs it."""
+    return {ident(b): b for f in files for b in parse(f)[0] if b["prefix"]}
+
+
+def is_blocked(b, index):
+    """At least one blocked-by target that exists in the scanned files and is open.
+    A dangling target is a check error, not a block."""
+    return any(r in index and status_of(index[r]) == "open" for r in targets(b, "blocked-by"))
+
+
+def linked(b, wanted, index):
+    """Either direction, either kind; an item is not linked to itself."""
+    me = ident(b)
+    if me == wanted:
+        return False
+    if any(r == wanted for _, r, _ in b["refs"]):
+        return True
+    t = index.get(wanted)
+    return t is not None and any(r == me for _, r, _ in t["refs"])
+
+
+def blocker_cycles(index):
+    """Every blocked-by cycle one depth-first pass over the scanned items finds, each
+    as [m, ..., m] starting at its smallest id. Self-block is the one-step case.
+    Status is ignored: a loop through a closed item is still a structural error.
+    One pass, iterative: a tracker where every task is blocked by the last few, or
+    a chain hundreds deep, costs one visit per item and per link."""
+    state, cycles = {}, []  # missing: unvisited, 1: on the path, 2: done
+    for start in index:
+        if start in state:
+            continue
+        state[start] = 1
+        path, pending = [start], [iter(targets(index[start], "blocked-by"))]
+        while path:
+            rid = next(pending[-1], None)
+            if rid is None:
+                state[path.pop()] = 2
+                pending.pop()
+            elif state.get(rid) == 1:
+                loop = path[path.index(rid) :]
+                i = loop.index(min(loop))
+                cycles.append(loop[i:] + loop[:i] + [loop[i]])
+            elif rid in index and rid not in state:
+                state[rid] = 1
+                path.append(rid)
+                pending.append(iter(targets(index[rid], "blocked-by")))
+    return cycles
 
 
 def tally(items):
@@ -561,6 +713,7 @@ FIELDS = (
     "body",
     "category",
     "severity",
+    "importance",
     "status",
     "author",
     "filed",
@@ -573,6 +726,8 @@ FIELDS = (
     "regr",
     "root",
     "logs",
+    "related",
+    "blockers",
 )
 HEAD = {
     "id": "Id",
@@ -580,6 +735,7 @@ HEAD = {
     "body": "Description",
     "category": "Category",
     "severity": "Severity",
+    "importance": "Importance",
     "status": "Status",
     "author": "Author",
     "filed": "Filed",
@@ -592,16 +748,35 @@ HEAD = {
     "regr": "Regr",
     "root": "Root",
     "logs": "Logs",
+    "related": "Related",
+    "blockers": "Blockers",
 }
-WIDTH = {"title": 40, "body": 88, "evidence": 56, "tags": 24, "hint": 64}
+WIDTH = {
+    "title": 40,
+    "body": 88,
+    "evidence": 56,
+    "tags": 24,
+    "hint": 64,
+    "related": 48,
+    "blockers": 48,
+}
 NUMERIC = ("age", "regr", "logs")
 DEFAULT_COLS = {
     "DEF": ("id", "title", "severity", "status", "category", "author", "filed", "tags"),
-    "ACC": ("id", "title", "status", "category", "author", "filed", "tags"),
+    "ACC": ("id", "title", "importance", "status", "category", "author", "filed", "tags"),
 }
 AGE_BANDS = ("<7d", "7-30d", "31-90d", ">90d")
+# the canonical coverage columns, in reading order; other tags follow, NO-TEST last
+TAG_ORDER = ("UNIT", "INTEGRATION", "FUNCTIONAL", "E2E", "MANUAL")
+NO_TEST = "NO-TEST"
 # the pivot bucket an item lands in when the field is empty
-NONE_KEY = {"tags": "untagged", "severity": "untriaged"}
+NONE_KEY = {
+    "tags": NO_TEST,
+    "severity": "untriaged",
+    "importance": "unrated",
+    "related": "unlinked",
+    "blockers": "unblocked",
+}
 
 
 def root_of(b):
@@ -638,6 +813,7 @@ def record(b, today=None):
         "body": b["plain"],
         "category": (sec["code"] if sec else None) or b["cat"],
         "severity": sev_of(b),
+        "importance": b["importance"],
         "status": status_of(b),
         "author": author_of(b),
         "filed": stamped(b, "filed"),
@@ -649,6 +825,8 @@ def record(b, today=None):
         "hint": b["hint"],
         "regr": b["regr"] or 0,
         "root": root_of(b),
+        "related": targets(b, "related"),
+        "blockers": targets(b, "blocked-by"),
         "logs": len(b["logs"]),
         "line": b["line"],
     }
@@ -658,6 +836,8 @@ def field_cell(rec, field):
     v = rec.get(field)
     if field in ("id", "root") and v:
         return f"`{v}`"
+    if field in ("related", "blockers"):
+        return cell(", ".join(f"`{i}`" for i in v), WIDTH[field]) if v else "-"
     if isinstance(v, list):
         return cell(", ".join(v), WIDTH.get(field, 64))
     if v is None:
@@ -689,6 +869,8 @@ def sort_key(b, rec, field):
     """Rank-aware: severity worst first, status open first, empty values last."""
     if field == "severity":
         return (0, SEV_RANK.get(b["severity"], len(SEVS)))
+    if field == "importance":
+        return (0, IMP_RANK.get(b["importance"], len(IMPS)))
     if field == "status":
         return (0, STATUS_RANK.get(rec["status"], 3))
     if field == "id":
@@ -712,8 +894,8 @@ def sorted_items(pairs, sort):
 
 def bucket(rec, field):
     """The pivot keys an item falls in for one field - a list, since tags are many."""
-    if field == "tags":
-        return rec["tags"] or [NONE_KEY["tags"]]
+    if field in ("tags", "related", "blockers"):
+        return rec[field] or [NONE_KEY[field]]
     if field in ("filed", "closed", "updated"):
         return [rec[field][:7] if rec[field] else "-"]
     if field == "age":
@@ -729,6 +911,8 @@ def key_order(field, keys):
     with the empty bucket last."""
     if field == "severity":
         return sorted(keys, key=lambda k: (SEV_RANK.get(k, len(SEVS)), k))
+    if field == "importance":
+        return sorted(keys, key=lambda k: (IMP_RANK.get(k, len(IMPS)), k))
     if field == "status":
         return sorted(keys, key=lambda k: STATUS_RANK.get(k, 3))
     if field == "age":
@@ -740,81 +924,71 @@ def key_order(field, keys):
 
 
 def summary_grid(scope, shown, prefix):
-    """The one aggregate: categories down, severity or tag across, [open, closed] in
-    every cell so the whole grid reads in one unit. Rejected is not work - excluded
-    outright, it lives in its own section. --status never narrows this."""
-    live = [b for b in scope if status_of(b) != "rejected"]
-    if prefix == "DEF":
-        axis, none_col = "severity", "untriaged"
+    """The one aggregate, plain counts: categories down; the open items split by
+    level - severity on a defects document, importance on a criteria document -
+    then the closed and rejected totals. The level columns count OPEN items only:
+    they answer how bad what is left is. UNTRIAGED/UNRATED appears only when an
+    open item lacks a level. --status never narrows this."""
+    cols = list(SEVS if prefix == "DEF" else IMPS)
+    none_col = "UNTRIAGED" if prefix == "DEF" else "UNRATED"
 
-        def keys(b):
-            return [b["severity"] or none_col]
+    def level_of(b):
+        return sev_of(b) if prefix == "DEF" else b["importance"]
 
-        seen = {k for b in live for k in keys(b)}
-        cols = [x for x in SEVS if x in seen] + ([none_col] if none_col in seen else [])
-        cut = []
-    else:
-        axis, none_col = "test tag", "untagged"
-
-        def keys(b):
-            return tag_set(b) or [none_col]
-
-        freq = {}
-        for b in live:
-            for k in keys(b):
-                freq[k] = freq.get(k, 0) + 1
-        rank = sorted((k for k in freq if k != none_col), key=lambda k: (-freq[k], k))
-        cut = rank[8:]
-        cols = rank[:8] + ([none_col] if none_col in freq else [])
+    if any(status_of(b) == "open" and level_of(b) not in cols for b in scope):
+        cols.append(none_col)
     groups = [(sec, [b for b in scope if b["section"] is sec]) for sec in shown]
     loose = [b for b in scope if b["section"] is None]
     if loose:
         groups.append((None, loose))
-    rows, tot, tot_o, tot_c = [], {c: [0, 0] for c in cols}, 0, 0
+    rows = []
     for sec, own in groups:
-        cnt = {c: [0, 0] for c in cols}
-        op = cl = 0
+        cnt = {c: 0 for c in cols}
+        op = cl = rj = 0
         for b in own:
             st = status_of(b)
-            if st == "rejected":
-                continue
-            slot = 0 if st == "open" else 1
-            op, cl = (op + 1, cl) if slot == 0 else (op, cl + 1)
-            for k in keys(b):
-                if k in cnt:
-                    cnt[k][slot] += 1
-        rows.append(dict(section=sec, cells=cnt, open=op, closed=cl))
-        for c in cols:
-            tot[c][0] += cnt[c][0]
-            tot[c][1] += cnt[c][1]
-        tot_o += op
-        tot_c += cl
-    total = dict(cells=tot, open=tot_o, closed=tot_c)
-    return dict(axis=axis, cols=cols, rows=rows, total=total, cut=cut)
+            if st == "open":
+                op += 1
+                lv = level_of(b)
+                cnt[lv if lv in cnt else none_col] += 1
+            elif st == "closed":
+                cl += 1
+            else:
+                rj += 1
+        rows.append(dict(section=sec, cells=cnt, open=op, closed=cl, rejected=rj))
+    total = dict(
+        cells={c: sum(r["cells"][c] for r in rows) for c in cols},
+        open=sum(r["open"] for r in rows),
+        closed=sum(r["closed"] for r in rows),
+        rejected=sum(r["rejected"] for r in rows),
+    )
+    return dict(prefix=prefix, cols=cols, rows=rows, total=total)
 
 
 def grid_json(grid):
+    done = "fixed" if grid["prefix"] == "DEF" else "done"
+
     def row(r):
         sec = r["section"]
         return {
             "category": sec["code"] if sec else None,
             "name": sec["name"] if sec else None,
-            "cells": {c: {"open": o, "closed": k} for c, (o, k) in r["cells"].items()},
             "open": r["open"],
-            "closed": r["closed"],
+            "levels": dict(r["cells"]),
+            done: r["closed"],
+            "rejected": r["rejected"],
         }
 
     t = grid["total"]
     return {
-        "axis": grid["axis"],
         "columns": grid["cols"],
         "rows": [row(r) for r in grid["rows"]],
         "total": {
-            "cells": {c: {"open": o, "closed": k} for c, (o, k) in t["cells"].items()},
             "open": t["open"],
-            "closed": t["closed"],
+            "levels": dict(t["cells"]),
+            done: t["closed"],
+            "rejected": t["rejected"],
         },
-        "omitted": grid["cut"],
     }
 
 
@@ -828,17 +1002,45 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
         status = "all"
     want = None if status == "all" else FLAG[status or "open"]
     docs = []
+    index = link_index(files) if fl["blocked"] or fl["related_to"] else None
     for f in files:
         blocks, sections = parse(f)
         prefix = doc_prefix(f, blocks)
         if sev and prefix != "DEF":
             print(f"{f}: skipped, --severity is a defect attribute", file=sys.stderr)
             continue
+        if fl["importance"] and prefix != "ACC":
+            print(f"{f}: skipped, --importance is a criterion attribute", file=sys.stderr)
+            continue
         scope = scope_of(
-            blocks, cat, sev, dates, since, until, fl["author"], fl["tag"], fl["regr"]
+            blocks,
+            cat,
+            sev,
+            dates,
+            since,
+            until,
+            fl["author"],
+            fl["tag"],
+            fl["regr"],
+            fl["grep"],
+            fl["blocked"],
+            fl["related_to"],
+            index,
+            fl["importance"],
         )
         shown = [s for s in sections if not cat or s["code"] == cat]
-        if sev or since or until or fl["author"] or fl["tag"] or fl["regr"]:
+        if (
+            sev
+            or fl["importance"]
+            or since
+            or until
+            or fl["author"]
+            or fl["tag"]
+            or fl["regr"]
+            or fl["grep"]
+            or fl["blocked"]
+            or fl["related_to"]
+        ):
             # a category the filter emptied is not part of the answer
             shown = [s for s in shown if any(b["section"] is s for b in scope)]
         t = tally(scope)
@@ -851,13 +1053,6 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
         loose = [b for b in scope if b["section"] is None]
         if loose:
             groups.append((None, loose))
-        counts, tagged = {}, 0
-        for b in scope:
-            ts = tag_set(b)
-            tagged += 1 if ts else 0
-            for t2 in ts:
-                counts[t2] = counts.get(t2, 0) + 1
-        n = len(scope)
         listed = [b for b in scope if want is None or b["state"].lower() == want]
         rej = [b for b in scope if status_of(b) == "rejected"]
 
@@ -882,7 +1077,6 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
                         for sec in shown
                     ],
                     "summary": grid_json(grid),
-                    "coverage": {"tagged": tagged, "total": n, "tags": counts},
                     "items": items,
                     "rejected": [
                         {"id": ident(b), "title": b["title"], "reason": reject_reason(b)}
@@ -912,46 +1106,24 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
 
         if scope:
             cols = grid["cols"]
+            done_h = "Fixed" if prefix == "DEF" else "Done"
             print(banner("\U0001f4ca", "SUMMARY", plain) + "\n")
-            # the x/y form is never left unexplained, however short the report
-            if plain:
-                print("Cells are `open/closed`; `-` is zero, so `-/5` is nothing open, 5 closed\n")
-            else:
-                multi = (
-                    ""
-                    if prefix == "DEF"
-                    else " An item with several tags counts in several columns."
-                )
-                print(
-                    f"Categories down, {grid['axis']} across, `open/closed` in every cell - "
-                    f"`10/43` is 10 open, 43 closed. `-` is zero, so `-/5` is nothing open, "
-                    f"5 closed, and a lone dash is an empty bucket. "
-                    f"Rejected items are excluded; they are listed at the end.{multi}\n"
-                )
-            head = ["Category"] + cols + ["Open/Closed"]
+            head = ["Category", "Open"] + cols + [done_h, "Rejected"]
             print("| " + " | ".join(head) + " |")
             print("|---|" + "--:|" * (len(head) - 1))
 
-            def pair(o, c):
-                return f"{o or '-'}/{c or '-'}" if (o or c) else "-"
+            def counts_of(r):
+                return [r["open"], *(r["cells"][c] for c in cols), r["closed"], r["rejected"]]
 
             for r in grid["rows"]:
                 sec = r["section"]
                 label = f"{sec['name']} `{sec['code'] or '?'}`" if sec else "(no category)"
-                row = (
-                    [label] + [pair(*r["cells"][c]) for c in cols] + [pair(r["open"], r["closed"])]
-                )
-                print("| " + " | ".join(row) + " |")
-            if len(grid["rows"]) > 1:
-                tot = grid["total"]
-                row = (
-                    ["**Total**"]
-                    + [pair(*tot["cells"][c]) for c in cols]
-                    + [f"**{pair(tot['open'], tot['closed'])}**"]
-                )
-                print("| " + " | ".join(row) + " |")
-            if grid["cut"]:
-                print(f"\nTag columns omitted from the grid: {', '.join(grid['cut'])}")
+                print("| " + " | ".join([label] + [str(x) for x in counts_of(r)]) + " |")
+            print(
+                "| "
+                + " | ".join(["**Total**"] + [str(x) for x in counts_of(grid["total"])])
+                + " |"
+            )
 
         if summary:
             continue
@@ -965,22 +1137,6 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
                     f"| `{sec['code'] or '?'}` | {cell(sec['name'], 32)} "
                     f"| {cell(sec['desc'], 72)} |"
                 )
-
-        if n and not plain:
-
-            def pct(k):
-                return f"{round(100 * k / n)}%"
-
-            print(f"\n## \U0001f9ea{PAD}TEST COVERAGE\n")
-            print(
-                f"{tagged} of {n} items tagged ({pct(tagged)}); an item may carry several tags\n"
-            )
-            print("| Tag | Items | Share |")
-            print("|-----|------:|------:|")
-            for t2, k in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
-                print(f"| {cell(t2, 24)} | {k} | {pct(k)} |")
-            if tagged < n:
-                print(f"| (untagged) | {n - tagged} | {pct(n - tagged)} |")
 
         show_evid = any(b["evidence"] for b in listed)
         print("\n" + banner("\U0001f4cc", "ITEMS", plain))
@@ -998,29 +1154,34 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
             if detail:
                 h = "###" if solo else "####"  # one level under whatever heading precedes
                 for b in rows:
-                    head = f"{b['severity']}, {status_of(b)}" if b["severity"] else status_of(b)
+                    lvl = b["severity"] if prefix == "DEF" else b["importance"]
+                    head = f"{lvl}, {status_of(b)}" if lvl else status_of(b)
                     print(f"\n{h} `{ident(b)}` **{b['title'] or '?'}** - {head}\n")
                     if b["plain"]:
                         print(f"{b['plain']}\n")
                     for line in b["subs"]:
                         print(line)
                 continue
-            sev_h, sev_r = ("Severity | ", "----------|") if prefix == "DEF" else ("", "")
+            lvl_h, lvl_r = (
+                ("Severity | ", "----------|")
+                if prefix == "DEF"
+                else ("Importance | ", "------------|")
+            )
             ev_h, ev_r = (" Evidence |", "----------|") if show_evid else ("", "")
             # a column where every row reads the same carries nothing; the header
             # and the footer already say which status is being listed
             st_h, st_r = ("Status | ", "--------|") if want is None else ("", "")
             if solo:
                 print()
-            print(f"| Id | Title | Description | {sev_h}{st_h}Tests |{ev_h}")
-            print(f"|----|-------|-------------|{sev_r}{st_r}-------|{ev_r}")
+            print(f"| Id | Title | Description | {lvl_h}{st_h}Tests |{ev_h}")
+            print(f"|----|-------|-------------|{lvl_r}{st_r}-------|{ev_r}")
             for b in rows:
-                sev = f"{b['severity'] or '-'} | " if prefix == "DEF" else ""
+                lvl = (b["severity"] if prefix == "DEF" else b["importance"]) or "-"
                 st = f"{status_of(b)} | " if want is None else ""
                 evid = f" {cell(b['evidence'], 56)} |" if show_evid else ""
                 print(
                     f"| `{ident(b)}` | {cell(b['title'] or '?', 40)} "
-                    f"| {cell(b['plain'], 88)} | {sev}{st}{cell(b['tags'], 24)} |{evid}"
+                    f"| {cell(b['plain'], 88)} | {lvl} | {st}{cell(', '.join(tag_set(b)), 24)} |{evid}"
                 )
 
         hidden = [b for b in scope if want is not None and b["state"].lower() != want]
@@ -1087,14 +1248,18 @@ def cmd_list_categories(files, as_json=False):
 def cmd_list(files, fl, columns, sort, as_json):
     """One markdown table per file; the caller picks the columns and the order."""
     docs = []
+    index = link_index(files) if fl["blocked"] or fl["related_to"] else None
     for f in files:
         blocks, _ = parse(f)
         prefix = doc_prefix(f, blocks)
         if fl["severity"] and prefix != "DEF":
             print(f"{f}: skipped, --severity is a defect attribute", file=sys.stderr)
             continue
+        if fl["importance"] and prefix != "ACC":
+            print(f"{f}: skipped, --importance is a criterion attribute", file=sys.stderr)
+            continue
         cols = columns or list(DEFAULT_COLS[prefix])
-        pairs = sorted_items([(b, record(b)) for b in select(blocks, fl)], sort)
+        pairs = sorted_items([(b, record(b)) for b in select(blocks, fl, index)], sort)
         if as_json:
             docs += [dict(rec, file=f) for _, rec in pairs]
             continue
@@ -1112,14 +1277,18 @@ def cmd_pivot(files, rows_f, cols_f, values, fl, as_json):
     """An ad-hoc grid: one field down, another across, a count or the ids in every cell.
     A multi-valued field (tags) puts an item in every bucket it belongs to."""
     docs = []
+    index = link_index(files) if fl["blocked"] or fl["related_to"] else None
     for f in files:
         blocks, sections = parse(f)
         prefix = doc_prefix(f, blocks)
         if fl["severity"] and prefix != "DEF":
             print(f"{f}: skipped, --severity is a defect attribute", file=sys.stderr)
             continue
+        if fl["importance"] and prefix != "ACC":
+            print(f"{f}: skipped, --importance is a criterion attribute", file=sys.stderr)
+            continue
         names = {s["code"]: s["name"] for s in sections if s["code"]}
-        scope = select(blocks, fl)
+        scope = select(blocks, fl, index)
         grid = {}
         for b in scope:
             rec = record(b)
@@ -1167,7 +1336,8 @@ def cmd_pivot(files, rows_f, cols_f, values, fl, as_json):
         def label(k):
             if rows_f == "category" and k in names:
                 return f"{names[k]} `{k}`"
-            return f"`{k}`" if rows_f in ("id", "root") and k != "-" else k
+            linkish = rows_f in ("id", "root", "related", "blockers")
+            return f"`{k}`" if linkish and k not in ("-", NONE_KEY.get(rows_f)) else k
 
         head = [HEAD[rows_f]] + ckeys + (["Total"] if cols_f else [])
         lines = [
@@ -1193,20 +1363,292 @@ def cmd_pivot(files, rows_f, cols_f, values, fl, as_json):
     return 0
 
 
-def cmd_refs(files, wanted, as_json=False):
+def cmd_coverage(files, fl, as_json):
+    """The test-coverage grid: categories down, test tags across, counting the open
+    and closed items alike - coverage is a property of the whole tracked surface,
+    not of the queue. Rejected items are excluded unless --status asks for them.
+    An item with several tags counts in several columns; NO-TEST is the bucket for
+    items carrying no test-tags: line, always the last column."""
+    docs = []
+    index = link_index(files) if fl["blocked"] or fl["related_to"] else None
+    for f in files:
+        blocks, sections = parse(f)
+        prefix = doc_prefix(f, blocks)
+        if fl["severity"] and prefix != "DEF":
+            print(f"{f}: skipped, --severity is a defect attribute", file=sys.stderr)
+            continue
+        if fl["importance"] and prefix != "ACC":
+            print(f"{f}: skipped, --importance is a criterion attribute", file=sys.stderr)
+            continue
+        scope = select(blocks, fl, index)
+        if fl["status"] is None:
+            scope = [b for b in scope if status_of(b) != "rejected"]
+
+        def keys(b):
+            return tag_set(b) or [NO_TEST]
+
+        seen = {k for b in scope for k in keys(b)}
+        cols = [t for t in TAG_ORDER if t in seen]
+        cols += sorted(t for t in seen if t not in TAG_ORDER and t != NO_TEST)
+        cols += [NO_TEST] if NO_TEST in seen else []
+        groups = [(sec, [b for b in scope if b["section"] is sec]) for sec in sections]
+        loose = [b for b in scope if b["section"] is None]
+        if loose:
+            groups.append((None, loose))
+        rows = []
+        for sec, own in groups:
+            if not own:
+                continue
+            cnt = {c: 0 for c in cols}
+            for b in own:
+                for k in keys(b):
+                    cnt[k] += 1
+            rows.append(dict(section=sec, cells=cnt, items=len(own)))
+        total = dict(
+            cells={c: sum(r["cells"][c] for r in rows) for c in cols},
+            items=len(scope),
+        )
+        if as_json:
+
+            def row_json(sec, cells, items):
+                return {
+                    "category": sec["code"] if sec else None,
+                    "name": sec["name"] if sec else None,
+                    "cells": cells,
+                    "items": items,
+                }
+
+            docs.append(
+                {
+                    "file": f,
+                    "type": prefix,
+                    "columns": cols,
+                    "rows": [row_json(r["section"], r["cells"], r["items"]) for r in rows],
+                    "total": {"cells": total["cells"], "items": total["items"]},
+                }
+            )
+            continue
+        print(f"\n# TEST COVERAGE - {f}{filter_note(fl, fl['status'])}\n")
+        head = ["Category"] + cols
+        lines = []
+        for r in rows:
+            sec = r["section"]
+            label = f"{sec['name']} `{sec['code'] or '?'}`" if sec else "(no category)"
+            lines.append([label] + [str(r["cells"][c]) for c in cols])
+        lines.append(["**Total**"] + [str(total["cells"][c]) for c in cols])
+        print("\n".join(md_table(head, lines, cols)))
+        print(f"\n{len(scope)} item(s); an item with several tags counts in several columns")
+    if as_json:
+        print(json.dumps(docs, indent=2))
+    return 0
+
+
+def tokens(text):
+    """Lowercase alphanumeric runs; a hyphenated run such as an id is kept whole and
+    also split into its parts, so DEF-LNCH-3 yields def-lnch-3, def, lnch, 3."""
+    out = []
+    for t in TOKEN.findall((text or "").lower()):
+        out.append(t)
+        if "-" in t:
+            out += t.split("-")
+    return out
+
+
+SEARCH_W = {"id": 3.0, "title": 3.0, "body": 1.0, "evidence": 1.0, "log": 1.0}
+FUZZ = 0.8
+
+
+def fuzzable(t):
+    return len(t) >= 4 and "-" not in t and not any(c.isdigit() for c in t)
+
+
+def rank_items(query, cands):
+    """[(score, matched_fields, file, block)] best first; items scoring 0 are dropped."""
+    import difflib
+    import math
+
+    q = list(dict.fromkeys(tokens(query)))
+    if not q:
+        raise SystemExit("search: the query has no searchable word")
+    docs = []  # (f, b, {field: token list})
+    for f, b in cands:
+        fields = {
+            "id": tokens(ident(b)),
+            "title": tokens(b["title"]),
+            "body": tokens(b["plain"]),
+            "evidence": tokens(b["evidence"]),
+            "log": tokens(" ".join(b["logs"])),
+        }
+        docs.append((f, b, fields))
+    n = len(docs)
+    if not n:
+        return []
+    tf, dl, df = [], [], {}
+    for _, _, fields in docs:
+        counts = {}
+        for name, toks in fields.items():
+            for t in toks:
+                counts[t] = counts.get(t, 0.0) + SEARCH_W[name]
+        tf.append(counts)
+        dl.append(sum(counts.values()))
+        for t in counts:
+            df[t] = df.get(t, 0) + 1
+    avgdl = sum(dl) / n or 1.0
+    vocab = list(df)
+    k1, bb = 1.5, 0.75
+
+    def matches(w):
+        """vocabulary token -> weight for one query token."""
+        out = {w: 1.0} if w in df else {}
+        if not fuzzable(w):
+            return out
+        for v in vocab:
+            if v == w or not fuzzable(v):
+                continue
+            stem = v.startswith(w) or w.startswith(v)
+            close = 2 * max(len(w), len(v)) <= 3 * min(len(w), len(v))
+            if not (stem or close):
+                continue
+            r = difflib.SequenceMatcher(None, w, v).ratio()
+            if stem or r >= FUZZ:
+                out[v] = r
+        return out
+
     hits = []
+    qm = {w: matches(w) for w in q}
+    for i, (f, b, fields) in enumerate(docs):
+        score, seen = 0.0, set()
+        for w, ms in qm.items():
+            best = 0.0
+            for v, wt in ms.items():
+                t = tf[i].get(v)
+                if not t:
+                    continue
+                idf = math.log(1 + (n - df[v] + 0.5) / (df[v] + 0.5))
+                s = wt * idf * t * (k1 + 1) / (t + k1 * (1 - bb + bb * dl[i] / avgdl))
+                if s > best:
+                    best = s
+                seen.add(v)
+            score += best
+        if score > 0:
+            where = [name for name, toks in fields.items() if seen & set(toks)]
+            hits.append((score, where, f, b))
+    hits.sort(key=lambda h: (-h[0], fix_order(h[3]), h[2]))
+    return hits
+
+
+def cmd_search(files, fl, query, top, as_json):
+    """The items most relevant to QUERY, best first - one table over every scanned
+    file, since idf is a property of the whole candidate set."""
+    index = link_index(files) if fl["blocked"] or fl["related_to"] else None
+    cands = []
     for f in files:
         blocks, _ = parse(f)
-        for b in blocks:
-            for kind, rid, lineno in b["refs"]:
-                if rid == wanted:
-                    hits.append({"file": f, "line": lineno, "id": ident(b), "kind": kind})
+        prefix = doc_prefix(f, blocks)
+        if fl["severity"] and prefix != "DEF":
+            print(f"{f}: skipped, --severity is a defect attribute", file=sys.stderr)
+            continue
+        if fl["importance"] and prefix != "ACC":
+            print(f"{f}: skipped, --importance is a criterion attribute", file=sys.stderr)
+            continue
+        cands += [(f, b) for b in select(blocks, fl, index)]
+    hits = rank_items(query, cands)
+    rows = hits[:top]
     if as_json:
-        print(json.dumps(hits, indent=2))
+        print(
+            json.dumps(
+                [
+                    {
+                        "rank": i,
+                        "id": ident(b),
+                        "score": round(s, 3),
+                        "title": b["title"],
+                        "matched_in": where,
+                        "file": f,
+                        "line": b["line"],
+                    }
+                    for i, (s, where, f, b) in enumerate(rows, 1)
+                ],
+                indent=2,
+            )
+        )
         return 0
-    for h in hits:
+    print(f'\n# SEARCH "{query}" - {", ".join(files)}{filter_note(fl, fl["status"])}\n')
+    table = [
+        [
+            str(i),
+            f"`{ident(b)}`",
+            f"{s:.2f}",
+            cell(b["title"] or "?", WIDTH["title"]),
+            ", ".join(where),
+        ]
+        for i, (s, where, f, b) in enumerate(rows, 1)
+    ]
+    print(
+        "\n".join(
+            md_table(["Rank", "Id", "Score", "Title", "Matched in"], table, ["Rank", "Score"])
+        )
+    )
+    more = f", top {top} shown" if len(hits) > top else ""
+    print(f"\n{len(hits)} of {len(cands)} item(s) matched{more}")
+    return 0
+
+
+def cmd_refs(files, wanted, as_json=False):
+    """Both directions of the link graph around one id, plus the transitive
+    blocked-by chain. A blocker reached by a second route ends that chain with
+    `...`: its own blockers were printed the first time. Inbound is listed even
+    for an id no item carries - that is what `remove --force` leaves behind."""
+    index, inbound = {}, []
+    for f in files:
+        for b in parse(f)[0]:
+            if b["prefix"]:
+                index[ident(b)] = (f, b)
+            inbound += [
+                {"file": f, "line": ln, "id": ident(b), "kind": k}
+                for k, rid, ln in b["refs"]
+                if rid == wanted
+            ]
+    outbound, paths, blockers = [], [], []
+    if wanted in index:
+        f, b = index[wanted]
+        outbound = [{"file": f, "line": ln, "id": rid, "kind": k} for k, rid, ln in b["refs"]]
+        seen = set()
+        # (id, ids on the route so far, printed hops, depth); depth first, file order
+        todo = [(rid, [wanted], [], 1) for rid in reversed(targets(b, "blocked-by"))]
+        while todo:
+            rid, ids, hops, depth = todo.pop()
+            if rid in ids:
+                paths.append(hops + [f"{rid} (cycle)"])
+                continue
+            st = status_of(index[rid][1]) if rid in index else "not found"
+            hop = hops + [f"{rid} ({st})"]
+            nxt = targets(index[rid][1], "blocked-by") if rid in index else []
+            if rid in seen:
+                paths.append(hop + ["..."] if nxt else hop)
+                continue
+            seen.add(rid)
+            blockers.append({"id": rid, "status": st, "depth": depth})
+            if nxt:
+                todo += [(r, ids + [rid], hop, depth + 1) for r in reversed(nxt)]
+            else:
+                paths.append(hop)
+    if as_json:
+        print(
+            json.dumps(
+                {"id": wanted, "inbound": inbound, "outbound": outbound, "blockers": blockers},
+                indent=2,
+            )
+        )
+        return 0
+    for h in inbound:
         print(f"{h['file']}:{h['line']}: {h['id']} {h['kind']} -> {wanted}")
-    print(f"\n{len(hits)} inbound reference(s) to {wanted}")
+    for h in outbound:
+        print(f"{h['file']}:{h['line']}: {wanted} {h['kind']} -> {h['id']}")
+    for p in paths:
+        print("blocked-by chain: " + " -> ".join(p))
+    k = sum(1 for x in blockers if x["status"] == "open")
+    print(f"\n{len(inbound)} inbound, {len(outbound)} outbound reference(s); {k} open blocker(s)")
     return 0
 
 
@@ -1219,19 +1661,20 @@ def _valid_stamp(s):
 
 
 def cmd_check(files, strict):
-    known = set()
-    for f in files:
-        blocks, _ = parse(f)
-        known.update(ident(b) for b in blocks if b["prefix"])
+    index = link_index(files)
+    cycles = {}  # smallest id -> the cycles reported on it
+    for loop in blocker_cycles(index):
+        cycles.setdefault(loop[0], []).append(loop)
 
     errors = warns = 0
+    seen = {}  # ident -> (file, line); an id is unique across the scanned files
     for f in files:
         lines = load(f)
         blocks, sections = parse(f)
         prefix = doc_prefix(f, blocks)
         want_hint = HINT_FOR[prefix]
         known_authors = roster_of(f)
-        e, w, seen, codes = [], [], {}, {}
+        e, w, codes = [], [], {}
 
         if not any(
             len(m.group(1)) == 1 for _, ln in non_fenced(lines) if (m := HEADING.match(ln))
@@ -1316,9 +1759,11 @@ def cmd_check(files, strict):
                     e.append((b["line"], f"id prefix {b['prefix']} in a {prefix} document"))
                 key = ident(b)
                 if key in seen:
-                    e.append((b["line"], f"duplicate id {key} (first at line {seen[key]})"))
+                    sf, sl = seen[key]
+                    at = f"line {sl}" if sf == f else f"{sf}:{sl}"
+                    e.append((b["line"], f"duplicate id {key} (first at {at})"))
                 else:
-                    seen[key] = b["line"]
+                    seen[key] = (f, b["line"])
                 if b["regr"]:
                     # a regression is a fact about a defect; without its root it counts
                     # nothing and points nowhere
@@ -1345,6 +1790,10 @@ def cmd_check(files, strict):
                         f"(it becomes {SEV_ALIAS[b['severity']]})",
                     )
                 )
+            if prefix == "ACC" and not b["importance"]:
+                e.append(
+                    (b["line"], "criterion not rated; the body must open with " + "/".join(IMPS))
+                )
             if b["hint_n"] > 1:
                 e.append((b["line"], f"more than one {want_hint}: line; keep exactly one"))
             elif b["hint_kind"] and b["hint_kind"] != want_hint:
@@ -1359,7 +1808,7 @@ def cmd_check(files, strict):
             if b["tag_n"] > 1:
                 e.append((b["line"], "more than one test-tags: line; keep exactly one"))
             elif not b["tags"]:
-                w.append((b["line"], "no test-tags: line under the item"))
+                w.append((b["line"], "no test-tags: line (NO-TEST)"))
             if b["evid_n"] > 1:
                 e.append((b["line"], "more than one evidence: line; keep exactly one"))
             elif status_of(b) == "closed" and not b["evidence"]:
@@ -1376,8 +1825,28 @@ def cmd_check(files, strict):
             if not b["has_log"]:
                 e.append((b["line"], "item has no authored log: line; every entry is authored"))
             for kind, rid, lineno in b["refs"]:
-                if rid not in known:
-                    w.append((lineno, f"{kind} points at {rid}, not found in the scanned files"))
+                if rid not in index:
+                    e.append((lineno, f"{kind} points at {rid}, not found in the scanned files"))
+                elif (
+                    kind == "blocked-by"
+                    and status_of(b) == "open"
+                    and status_of(index[rid]) in ("closed", "rejected")
+                ):
+                    w.append(
+                        (
+                            lineno,
+                            f"blocked-by {rid} is {status_of(index[rid])}; "
+                            "the block no longer holds",
+                        )
+                    )
+            for loop in cycles.get(ident(b), []) if b["prefix"] else []:
+                # a duplicated id (its own check error) can hand the cycle to a
+                # copy that lacks the closing line; anchor on the item then
+                at = next(
+                    (ln for k, r, ln in b["refs"] if k == "blocked-by" and r == loop[1]),
+                    b["line"],
+                )
+                e.append((at, "blocked-by cycle: " + " -> ".join(loop)))
 
         for lineno, msg in sorted(e):
             print(f"{f}:{lineno}: ERROR {msg}")
@@ -1511,16 +1980,20 @@ def cmd_author(file, handle, name):
     return 0
 
 
-def cmd_add(file, code, name, desc, title, text, severity, repro, test, tags, author):
+def cmd_add(file, code, name, desc, title, text, severity, importance, repro, test, tags, author):
     lines = load(file)
     blocks, sections = parse(file)
     prefix = doc_prefix(file, blocks)
     kind, value = hint_kind_for(file, blocks, repro, test)
     who = need_author(file, author)
-    if prefix == "DEF" and not severity:
-        raise SystemExit("a defect must be triaged; pass --severity " + "|".join(SEVS))
     if prefix == "ACC" and severity:
         raise SystemExit("acceptance criteria carry no severity")
+    if prefix == "DEF" and importance:
+        raise SystemExit("defects carry no importance; triage with --severity")
+    if prefix == "DEF" and not severity:
+        raise SystemExit("a defect must be triaged; pass --severity " + "|".join(SEVS))
+    if prefix == "ACC" and not importance:
+        raise SystemExit("a criterion must be rated; pass --importance " + "|".join(IMPS))
     code = code.upper()
     if not re.fullmatch(r"[A-Z]{2,6}", code):
         raise SystemExit(
@@ -1529,11 +2002,12 @@ def cmd_add(file, code, name, desc, title, text, severity, repro, test, tags, au
         )
     sec, lines = section_for(sections, code, name, desc, lines)
     num = next_num(blocks)
-    body = f"{severity.upper()}; {text}" if severity else text
+    lead = severity or importance
+    body = f"{lead.upper()}; {text}" if lead else text
     item = f"- [ ] `{prefix}-{code}-{num}` **{title}** - {body}"
     at = insert_index(lines, sec)
     tail = [f"  - {kind}: {value}"] if kind else []
-    tail += [f"  - test-tags: {tags}"] if tags else []
+    tail += [f"  - test-tags: {canon_tags(tags)}"] if tags else []
     # the category description is a paragraph; a list must not butt straight onto it
     prose = (
         at > 0
@@ -1548,7 +2022,7 @@ def cmd_add(file, code, name, desc, title, text, severity, repro, test, tags, au
     return 0
 
 
-def cmd_edit(file, wanted, title, text, sev, repro, test, tags, author, evidence=None):
+def cmd_edit(file, wanted, title, text, sev, importance, repro, test, tags, author, evidence=None):
     lines = load(file)
     blocks, _ = parse(file)
     prefix = doc_prefix(file, blocks)
@@ -1556,14 +2030,16 @@ def cmd_edit(file, wanted, title, text, sev, repro, test, tags, author, evidence
     who = need_author(file, author)
     if sev and prefix != "DEF":
         raise SystemExit("acceptance criteria carry no severity")
-    if not (title or text or sev or kind or tags or evidence):
+    if importance and prefix != "ACC":
+        raise SystemExit("defects carry no importance; triage with --severity")
+    if not (title or text or sev or importance or kind or tags or evidence):
         raise SystemExit(
-            "nothing to change; pass --title, --text, --severity, "
+            "nothing to change; pass --title, --text, --severity, --importance, "
             "--repro/--test, --test-tags or --evidence"
         )
     b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
     done = []
-    if title or text or sev:
+    if title or text or sev or importance:
         body = b["body"]
         bold = BOLD.search(body)
         cur_title = bold.group(1) if bold else ""
@@ -1571,16 +2047,30 @@ def cmd_edit(file, wanted, title, text, sev, repro, test, tags, author, evidence
         new_text = text if text else cur_text
         if sev:
             new_text = f"{sev}; " + SEV.sub("", new_text).lstrip(" ;:,-")
+        elif importance:
+            new_text = f"{importance}; " + IMP.sub("", new_text).lstrip(" ;:,-")
         elif b["severity"] and not SEV.match(new_text):
             # a --text rewrite must not quietly untriage the defect
             new_text = f"{b['severity']}; {new_text}"
+        elif b["importance"] and not IMP.match(new_text):
+            # nor quietly unrate the criterion
+            new_text = f"{b['importance']}; {new_text}"
         new = f"`{ident(b)}` **{title or cur_title}** - {new_text}"
         lines[b["line"] - 1] = f"- [{b['state']}] {new}"
-        done += [x for x in (title and "title", text and "text", sev and "severity") if x]
+        done += [
+            x
+            for x in (
+                title and "title",
+                text and "text",
+                sev and "severity",
+                importance and "importance",
+            )
+            if x
+        ]
     if kind:
         done.append(f"{kind} ({set_line(lines, b, kind, value, HINTLINE)})")
     if tags:
-        done.append(f"test-tags ({set_line(lines, b, 'test-tags', tags, TAGLINE)})")
+        done.append(f"test-tags ({set_line(lines, b, 'test-tags', canon_tags(tags), TAGLINE)})")
     if evidence:
         done.append(f"evidence ({set_line(lines, b, 'evidence', evidence, EVIDLINE)})")
     what = " and ".join(done)
@@ -1751,24 +2241,47 @@ def cmd_upgrade(file, overrides, apply, author):
     blocks, sections = parse(file)
     prefix = doc_prefix(file, blocks)
     # a legacy file has no handles at all; the importer signs the imported history
-    # rather than being asked to hand-edit every log line it inherited
-    stamp = need_author(file, author) if author else None
+    # rather than being asked to hand-edit every log line it inherited. A handle
+    # that is not on the roster is a content problem: apply still runs, the
+    # signature waits, and the hint carries the commands that finish the job
+    stamp, hints = None, []
+    if author:
+        h = author if author.startswith("@") else "@" + author
+        if not HANDLE.fullmatch(h):
+            raise SystemExit(f"bad handle {author!r}; use @ plus 2-4 letters, e.g. @kj")
+        if h in roster_of(file):
+            stamp = h
+        else:
+            hints.append(
+                f"{h} is not on the ## Authors roster; run: "
+                f'pm-tools author {file} --handle {h} --name "Full Name", '
+                f"then re-run: pm-tools upgrade {file} --author {h} --apply"
+            )
+
+    def as_log(ln):
+        # a dated note counts as the log line this same rewrite turns it into,
+        # so the unsigned-history hint fires on the first run, not the second
+        dm = DATED.match(ln)
+        if dm and not LOGLINE.match(ln):
+            return f"{dm.group(1)}- log: {dm.group(2)}{dm.group(3)}"
+        return ln
+
     bare = sum(
         1
         for _, ln in non_fenced(lines)
-        if (m := LOGLINE.match(ln)) and not AUTHORED.match(m.group(3).strip())
+        if (m := LOGLINE.match(as_log(ln))) and not AUTHORED.match(m.group(3).strip())
     )
     plan, taken = [], {s["code"] for s in sections if s["code"]}
-    manual = []
     if not roster_of(file):
-        manual.append(
-            "no ## Authors roster; run "
-            f'pm-tools author {file} --handle @xx --name "Full Name" first'
+        hints.append(
+            "no ## Authors roster; run: "
+            f'pm-tools author {file} --handle @xx --name "Full Name", '
+            f"then re-run: pm-tools upgrade {file} --author @xx --apply"
         )
     if bare and not stamp:
-        manual.append(
-            f"{bare} log line(s) carry no @handle; re-run with "
-            f"--author @xx to sign the imported history"
+        hints.append(
+            f"{bare} log line(s) carry no @handle; run: "
+            f"pm-tools upgrade {file} --author @xx --apply to sign the imported history"
         )
 
     codes = {}
@@ -1784,9 +2297,9 @@ def cmd_upgrade(file, overrides, apply, author):
         codes[id(s)] = code
         taken.add(code)
         if not s["desc"]:
-            manual.append(
-                f"line {s['line']}: category '{s['name']}' needs a description; "
-                f"run describe --category {code}"
+            hints.append(
+                f"line {s['line']}: category '{s['name']}' has no description; run: "
+                f'pm-tools describe {file} --category {code} --text "<one line>"'
             )
 
     # numbers already carried by the doc win, new-style or legacy `DEF-N`; the rest
@@ -1794,10 +2307,22 @@ def cmd_upgrade(file, overrides, apply, author):
     todo = []
     for b in blocks:
         if b["indent"]:
-            manual.append(f"line {b['line']}: nested item must be promoted to its own item")
+            level = (
+                f"--severity {'|'.join(SEVS)}"
+                if prefix == "DEF"
+                else f"--importance {'|'.join(IMPS)}"
+            )
+            hints.append(
+                f"line {b['line']}: nested checklist item; file it as its own item with: "
+                f'pm-tools add {file} --category <CODE> --title "..." --text "..." '
+                f"{level} --author @xx, then delete the nested line"
+            )
             continue
         if b["section"] is None or codes[id(b["section"])] is None:
-            manual.append(f"line {b['line']}: item sits above any ## category heading")
+            hints.append(
+                f"line {b['line']}: item sits above any ## category heading; move it "
+                f"under one, then re-run: pm-tools upgrade {file} --apply"
+            )
             continue
         lg = LEGACY.match(b["body"])
         num = b["num"] if b["num"] is not None else (int(lg.group(2)) if lg else None)
@@ -1805,9 +2330,10 @@ def cmd_upgrade(file, overrides, apply, author):
 
     unproven = sum(1 for b, _, _ in todo if b["state"].lower() == "x" and not b["evidence"])
     if unproven:
-        manual.append(
-            f"{unproven} closed item(s) carry no evidence: line; add one with "
-            f"edit --evidence as each closure is verified"
+        hints.append(
+            f"{unproven} closed item(s) carry no evidence: line; run: "
+            f'pm-tools edit {file} --id <ID> --evidence "<proof>" --author @xx '
+            f"as each closure is verified"
         )
 
     used = {n for _, _, n in todo if n is not None}
@@ -1828,14 +2354,28 @@ def cmd_upgrade(file, overrides, apply, author):
         if prefix == "DEF" and not b["severity"]:
             odd = SEVWORD.match(b["plain"])
             why = f"carries an unmapped severity word {odd.group(1)!r}" if odd else "not triaged"
-            manual.append(
-                f"line {b['line']}: {new} {why}; run "
+            hints.append(
+                f"line {b['line']}: {new} {why}; run: "
                 f"pm-tools edit {file} --id {new} --severity {'|'.join(SEVS)}"
             )
+        if prefix == "ACC" and not b["importance"]:
+            hints.append(
+                f"line {b['line']}: {new} not rated; run: "
+                f"pm-tools edit {file} --id {new} --importance {'|'.join(IMPS)}"
+            )
+        if not b["hint"]:
+            want = HINT_FOR[prefix]
+            hints.append(
+                f"line {b['line']}: {new} has no {want}: line; run: "
+                f'pm-tools edit {file} --id {new} --{want} "<one line>" --author @xx'
+            )
         if not author_of(b) and not stamp:
-            manual.append(f"line {b['line']}: {new} has no authored log")
+            hints.append(
+                f"line {b['line']}: {new} has no authored log; run: "
+                f"pm-tools upgrade {file} --author @xx --apply"
+            )
 
-    out, drop_toc, converted, widened, renamed = [], False, 0, 0, {}
+    out, drop_toc, converted, widened, retagged, renamed = [], False, 0, 0, 0, {}
     for i, ln in enumerate(lines, start=1):
         h = HEADING.match(ln)
         if h and len(h.group(1)) == 2:
@@ -1884,6 +2424,10 @@ def cmd_upgrade(file, overrides, apply, author):
             new_id = f"{prefix}-{code}-{num}" + (f"-{regr}" if regr else "")
             out.append(f"- [{m.group(2).lower()}] `{new_id}` {body}")
             continue
+        tm = TAGLINE.match(ln)
+        if tm and canon_tags(tm.group(2)) != tm.group(2).strip():
+            ln = f"{tm.group(1)}- test-tags: {canon_tags(tm.group(2))}"
+            retagged += 1
         dm = DATED.match(ln)
         if dm and not LOGLINE.match(ln):
             ln = f"{dm.group(1)}- log: {dm.group(2)}{dm.group(3)}"
@@ -1903,6 +2447,8 @@ def cmd_upgrade(file, overrides, apply, author):
         plan.append(f"{converted} dated note(s) -> `- log: <stamp> ...`")
     if widened:
         plan.append(f"{widened} date-only stamp(s) -> ISO 8601 UTC at 00:00:00Z")
+    if retagged:
+        plan.append(f"{retagged} test-tags line(s) upper-cased")
     if renamed:
         plan.append(
             "severity renamed: "
@@ -1916,13 +2462,15 @@ def cmd_upgrade(file, overrides, apply, author):
 
     for p in plan:
         print(p)
-    for m in manual:
-        print(f"MANUAL {m}", file=sys.stderr)
+    for m in hints:
+        print(f"HINT {m}", file=sys.stderr)
     if not apply:
-        print(f"\ndry run: {len(plan)} change(s), {len(manual)} manual. Re-run with --apply")
+        print(f"\ndry run: {len(plan)} change(s), {len(hints)} hint(s). Re-run with --apply")
         return 0
     save(file, out)
-    print(f"\napplied {len(plan)} change(s) to {file}; {len(manual)} need a hand. Run check next")
+    print(
+        f"\napplied {len(plan)} change(s) to {file}; {len(hints)} hint(s) remain. Run check next"
+    )
     return 0
 
 
@@ -1947,6 +2495,12 @@ def main(argv: list[str] | None = None) -> int:
             help="one level, defect documents only" + whole,
         )
         sp.add_argument(
+            "--importance",
+            type=str.upper,
+            choices=IMPS,
+            help="one level, criteria documents only" + whole,
+        )
+        sp.add_argument(
             "--status",
             choices=("open", "closed", "rejected", "all"),
             help="which items ITEMS lists; open by default"
@@ -1959,6 +2513,22 @@ def main(argv: list[str] | None = None) -> int:
             "--regressions", action="store_true", help="only the -N regression items" + whole
         )
         sp.add_argument(
+            "--grep",
+            metavar="PATTERN",
+            help="case-insensitive regex over title, body, evidence and log lines" + whole,
+        )
+        sp.add_argument(
+            "--blocked",
+            action="store_true",
+            help="items with a blocked-by target that is still open" + whole,
+        )
+        sp.add_argument(
+            "--related-to",
+            dest="related_to",
+            metavar="ID",
+            help="items linked to ID either way, related or blocked-by" + whole,
+        )
+        sp.add_argument(
             "--dates",
             choices=("filed", "closed", "updated"),
             default="filed",
@@ -1967,11 +2537,15 @@ def main(argv: list[str] | None = None) -> int:
         sp.add_argument("--since", metavar="YYYY-MM-DD", help="on or after, inclusive")
         sp.add_argument("--until", metavar="YYYY-MM-DD", help="on or before, inclusive")
 
-    queries = ("report", "list", "pivot", "list-categories", "refs", "check")
+    queries = ("report", "list", "pivot", "search", "coverage", "list-categories", "refs", "check")
     for name in queries:
         sp = sub.add_parser(name)
         sp.add_argument("paths", nargs="*")
-        if name in ("report", "list", "pivot"):
+        if name == "search":
+            sp.add_argument(
+                "query", metavar="QUERY", help="what to look for; quote a multi-word query"
+            )
+        if name in ("report", "list", "pivot", "search", "coverage"):
             add_filters(sp, name == "report")
         if name != "check":
             sp.add_argument("--json", action="store_true", help="the same facts as JSON")
@@ -1984,7 +2558,7 @@ def main(argv: list[str] | None = None) -> int:
             sp.add_argument(
                 "--plain",
                 action="store_true",
-                help="the grids alone - no blurbs, categories or coverage",
+                help="the grid and the queue alone - no blurbs, no categories table",
             )
             sp.add_argument(
                 "--summary",
@@ -2010,6 +2584,14 @@ def main(argv: list[str] | None = None) -> int:
                 default="count",
                 help="what fills a cell; count by default",
             )
+        if name == "search":
+            sp.add_argument(
+                "--top",
+                type=int,
+                default=10,
+                metavar="N",
+                help="how many items to list; 10 by default",
+            )
         if name == "refs":
             sp.add_argument("--id", required=True)
         if name == "check":
@@ -2027,6 +2609,12 @@ def main(argv: list[str] | None = None) -> int:
         type=str.upper,
         choices=SEVS,
         help="mandatory on a defect, refused on a criterion",
+    )
+    sa.add_argument(
+        "--importance",
+        type=str.upper,
+        choices=IMPS,
+        help="mandatory on a criterion, refused on a defect",
     )
     sa.add_argument("--repro", help="one line saying how to reproduce, defects only")
     sa.add_argument("--test", help="one line saying how to test, criteria only")
@@ -2046,6 +2634,7 @@ def main(argv: list[str] | None = None) -> int:
     se.add_argument("--title")
     se.add_argument("--text")
     se.add_argument("--severity", type=str.upper, choices=SEVS)
+    se.add_argument("--importance", type=str.upper, choices=IMPS)
     se.add_argument("--repro")
     se.add_argument("--test")
     se.add_argument("--test-tags", dest="tags")
@@ -2094,29 +2683,63 @@ def main(argv: list[str] | None = None) -> int:
     )
     su.add_argument("--apply", action="store_true")
 
-    a = ap.parse_args(argv[1:])
+    a, extra = ap.parse_known_args(argv[1:])
+    if extra and (a.cmd != "search" or any(x.startswith("-") for x in extra)):
+        ap.error("unrecognized arguments: " + " ".join(extra))
+    if extra:
+        # `search docs --top 3 splash`: argparse stops collecting positionals at the
+        # first option, so the words after it arrive here; the last one is the query
+        words = [*a.paths, a.query, *extra]
+        a.paths, a.query = words[:-1], words[-1]
     if not a.cmd:
         ap.print_help()
         return 0
 
     if a.cmd in queries:
+        if a.cmd == "search":
+            if a.top < 1:
+                raise SystemExit("--top takes a positive count")
+            # argparse hands `paths` every positional but the last, so an unquoted
+            # `search docs token race` arrives as paths=[docs, token], query=race
+            for p in a.paths:
+                if not pathlib.Path(p).exists():
+                    raise SystemExit(
+                        f"search: no such path {p!r}; a multi-word query is one argument - "
+                        'search docs "token race"'
+                    )
+            if not a.paths and pathlib.Path(a.query).exists():
+                # `search docs` with the query forgotten; with a path given, a
+                # query word that also names a cwd entry is just a query
+                raise SystemExit(f"search: {a.query!r} is a path; the last argument is the QUERY")
         files = resolve(a.paths)
         if not files:
             print("no acc-crit*.md or defects*.md found", file=sys.stderr)
             return 2
-        if a.cmd in ("report", "list", "pivot"):
+        if a.cmd in ("report", "list", "pivot", "search", "coverage"):
             for v in (a.since, a.until):
                 if v and not DATEONLY.match(v):
                     raise SystemExit(f"--since/--until take YYYY-MM-DD, got {v!r}")
             if a.author and not HANDLE.fullmatch(a.author):
                 raise SystemExit(f"--author takes a handle like @kj, got {a.author!r}")
+            if a.grep:
+                try:
+                    re.compile(a.grep, re.I)
+                except re.error as err:
+                    raise SystemExit(f"--grep: bad pattern {a.grep!r}: {err}")
+            rid = a.related_to.strip().upper() if a.related_to else None
+            if rid and not IDREF.fullmatch(rid):
+                raise SystemExit(f"--related-to takes an id like DEF-LNCH-3, got {a.related_to!r}")
             fl = dict(
                 category=a.category.upper() if a.category else None,
                 severity=a.severity,
+                importance=a.importance,
                 status=a.status,
                 author=a.author,
-                tag=a.tag.strip().lower() if a.tag else None,
+                tag=a.tag.strip().upper() if a.tag else None,
                 regr=a.regressions,
+                grep=a.grep,
+                blocked=a.blocked,
+                related_to=rid,
                 dates=a.dates,
                 since=a.since,
                 until=a.until,
@@ -2130,6 +2753,10 @@ def main(argv: list[str] | None = None) -> int:
             rows_f = parse_fields(a.rows, "--rows")[0]
             cols_f = (parse_fields(a.cols, "--cols") or [None])[0]
             return cmd_pivot(files, rows_f, cols_f, a.values, fl, a.json)
+        if a.cmd == "search":
+            return cmd_search(files, fl, a.query, a.top, a.json)
+        if a.cmd == "coverage":
+            return cmd_coverage(files, fl, a.json)
         if a.cmd == "list-categories":
             return cmd_list_categories(files, a.json)
         if a.cmd == "refs":
@@ -2145,6 +2772,7 @@ def main(argv: list[str] | None = None) -> int:
             a.title,
             a.text,
             a.severity,
+            a.importance,
             a.repro,
             a.test,
             a.tags,
@@ -2157,6 +2785,7 @@ def main(argv: list[str] | None = None) -> int:
             a.title,
             a.text,
             a.severity,
+            a.importance,
             a.repro,
             a.test,
             a.tags,

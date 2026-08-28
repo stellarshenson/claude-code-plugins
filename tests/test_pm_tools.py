@@ -66,7 +66,7 @@ def add_defect(f: Path, title: str, severity: str = "MAJOR", category: str = "LN
     )
 
 
-def add_criterion(f: Path, title: str, category: str = "AUTH") -> int:
+def add_criterion(f: Path, title: str, category: str = "AUTH", importance: str = "HIGH") -> int:
     return run(
         "add",
         str(f),
@@ -76,6 +76,8 @@ def add_criterion(f: Path, title: str, category: str = "AUTH") -> int:
         "Authentication",
         "--author",
         "@kj",
+        "--importance",
+        importance,
         "--description",
         "Login and session lifetime",
         "--title",
@@ -507,6 +509,58 @@ def test_severity_case_is_free_but_the_delimiter_is_not(defects: Path, capsys):
     assert "| `DEF-AUTH-3` | - |" in out
 
 
+def test_check_anchors_a_cycle_even_on_a_duplicated_id(tmp_path: Path, capsys):
+    f = tmp_path / "defects-app.md"
+    f.write_text(
+        "# Defects - App\n\n## Launch `LNCH`\n\nBoot\n\n"
+        "- [ ] `DEF-LNCH-1` **a copy** - MAJOR; duplicate without the link\n"
+        "  - log: 2026-01-02T00:00:00Z @kj added\n"
+        "- [ ] `DEF-LNCH-1` **a** - MAJOR; one\n"
+        "  - blocked-by: DEF-LNCH-2\n"
+        "  - log: 2026-01-02T00:00:00Z @kj added\n"
+        "- [ ] `DEF-LNCH-2` **b** - MAJOR; two\n"
+        "  - blocked-by: DEF-LNCH-1\n"
+        "  - log: 2026-01-02T00:00:00Z @kj added\n\n"
+        "## Authors\n\n- `@kj` Konrad Jelen\n",
+        encoding="utf-8",
+    )
+    assert run("check", str(f)) == 1  # duplicate id and cycle, never a crash
+    out = capsys.readouterr().out
+    assert "duplicate id" in out
+    assert "blocked-by cycle" in out
+
+
+def test_search_query_may_share_a_name_with_a_cwd_entry(tmp_path: Path, capsys, monkeypatch):
+    f = tmp_path / "defects-app.md"
+    f.write_text(DEFECTS_HEADER, encoding="utf-8")
+    run("author", str(f), "--handle", "@kj", "--name", "Konrad Jelen")
+    run(
+        "add",
+        str(f),
+        "--category",
+        "DOCS",
+        "--name",
+        "Docs",
+        "--title",
+        "docs drift",
+        "--text",
+        "docs out of date",
+        "--severity",
+        "MINOR",
+        "--author",
+        "@kj",
+    )
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "notes.md").write_text("x", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    assert run("search", str(f), "docs") == 0  # a query word that names a cwd entry is a query
+    assert "docs drift" in capsys.readouterr().out
+    with pytest.raises(
+        SystemExit
+    ):  # no path given and the query is one: the forgotten-QUERY shape
+        run("search", "notes.md")
+
+
 def test_upgrade_writes_the_canonical_severity_form(tmp_path: Path, capsys):
     f = tmp_path / "defects-legacy.md"
     f.write_text(
@@ -542,10 +596,12 @@ def test_upgrade_keeps_regression_ordinals_and_leaves_criteria_alone(tmp_path: P
     assert "`DEF-LNCH-3-1`" in d.read_text(encoding="utf-8")
     assert "0 change(s)" in capsys.readouterr().out
     assert run("check", str(d)) == 0
-    d.write_text(d.read_text(encoding="utf-8").replace("MAJOR; regressed", "regressed"), encoding="utf-8")
+    d.write_text(
+        d.read_text(encoding="utf-8").replace("MAJOR; regressed", "regressed"), encoding="utf-8"
+    )
     run("upgrade", str(d))
     res = capsys.readouterr()
-    assert "DEF-LNCH-3-1 not triaged; run pm-tools edit" in res.out + res.err
+    assert "DEF-LNCH-3-1 not triaged; run: pm-tools edit" in res.out + res.err
     a = tmp_path / "acc-crit-legacy.md"
     a.write_text(
         "# Acceptance Criteria - Legacy\n\n## Banner `BNR`\n\nBanner\n\n"
@@ -557,7 +613,8 @@ def test_upgrade_keeps_regression_ordinals_and_leaves_criteria_alone(tmp_path: P
     run("upgrade", str(a), "--apply")
     assert "Normal, degraded and offline" in a.read_text(encoding="utf-8")
     capsys.readouterr()
-    assert run("check", str(a)) == 0
+    assert run("check", str(a)) != 0, "an unrated criterion is a check error"
+    assert "criterion not rated" in capsys.readouterr().out
 
 
 def test_edit_records_evidence_after_the_fact(defects: Path, capsys):
@@ -678,7 +735,8 @@ def test_report_severity_filter_narrows_the_whole_report(defects: Path, capsys):
     out = capsys.readouterr().out
     assert "token race" in out and "splash flicker" not in out
     assert "1 open / 0 closed" in out, "the counts follow the filter, not the file"
-    assert "MINOR" not in out, "an emptied severity gets no column"
+    assert "| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Fixed | Rejected |" in out
+    assert "| Launch `LNCH` | 1 | 1 | 0 | 0 | 0 | 0 | 0 |" in out, "an emptied level reads 0"
 
 
 def test_report_severity_is_refused_on_a_criteria_document(criteria: Path, capsys):
@@ -805,8 +863,9 @@ def test_check_reports_a_dangling_relation_without_repairing_it(defects: Path, c
     add_defect(defects, "token race")
     run("relate", str(defects), "--id", "DEF-LNCH-1", "--related", "DEF-LNCH-99")
     before = defects.read_text(encoding="utf-8")
-    run("check", str(defects))
-    assert "DEF-LNCH-99" in capsys.readouterr().out
+    assert run("check", str(defects)) != 0
+    out = capsys.readouterr().out
+    assert "DEF-LNCH-99" in out and "ERROR" in out
     assert defects.read_text(encoding="utf-8") == before, "check reports, it does not repair"
 
 
@@ -984,7 +1043,7 @@ def test_pivot_counts_a_tagged_item_in_every_tag(defects: Path, capsys):
     run("pivot", str(defects), "--rows", "tags")
     out = capsys.readouterr().out
     rows = table_rows(out)
-    assert [r[0] for r in rows[1:]] == ["e2e", "integration", "unit", "untagged", "**Total**"]
+    assert [r[0] for r in rows[1:]] == ["E2E", "INTEGRATION", "UNIT", "NO-TEST", "**Total**"]
     assert rows[-1][1] == "5" and "4 item(s)" in out  # one item sits in two tag buckets
 
 
@@ -1012,7 +1071,7 @@ def test_author_and_tag_filters_narrow_report_list_and_pivot_alike(defects: Path
     assert "Interface" not in rep  # a category the filter emptied gets no row
     run("list", str(defects), "--tag", "e2e")
     lst = capsys.readouterr().out
-    assert [r[0] for r in table_rows(lst)[1:]] == ["`DEF-LNCH-2`"] and "(tag e2e)" in lst
+    assert [r[0] for r in table_rows(lst)[1:]] == ["`DEF-LNCH-2`"] and "(tag E2E)" in lst
     run("pivot", str(defects), "--rows", "severity", "--tag", "integration")
     piv = capsys.readouterr().out
     assert table_rows(piv)[1:] == [["MAJOR", "1"]]
@@ -1024,17 +1083,18 @@ def test_a_malformed_author_is_refused(defects: Path):
     assert "@kj" in str(e.value)
 
 
-def test_a_zero_in_the_summary_pair_reads_as_a_dash_and_the_legend_says_so(defects: Path, capsys):
+def test_the_defects_grid_is_plain_open_counts_per_severity(defects: Path, capsys):
+    """The severity columns answer how bad the OPEN work is; Fixed and Rejected
+    are single counts, zeros are written as 0, and there is no legend line."""
     a_mixed_file(defects, capsys)
-    for flag in ("--plain", "--summary"):
-        run("report", str(defects), flag)
+    for args in ((), ("--plain",), ("--summary",)):
+        run("report", str(defects), *args)
         out = capsys.readouterr().out
-        assert "| Launch `LNCH` | 1/- | 1/1 | 2/1 |" in out
-        assert "Cells are `open/closed`; `-` is zero" in out
-        grid = [ln for ln in out.splitlines() if ln.startswith("| ") and "/" in ln]
-        assert grid and not any(re.search(r"\b0/|/0\b", ln) for ln in grid)
-    run("report", str(defects))
-    assert "`-/5` is nothing open, 5 closed" in capsys.readouterr().out
+        assert "| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Fixed | Rejected |" in out
+        assert "| Launch `LNCH` | 2 | 1 | 1 | 0 | 0 | 1 | 0 |" in out
+        assert "| Interface `UI` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |" in out
+        assert "| **Total** | 2 | 1 | 1 | 0 | 0 | 1 | 1 |" in out
+        assert "Cells are" not in out and "open/closed" not in out, "no legend in any form"
 
 
 def test_report_json_carries_the_same_facts_as_the_tables(defects: Path, capsys):
@@ -1045,14 +1105,16 @@ def test_report_json_carries_the_same_facts_as_the_tables(defects: Path, capsys)
     (doc,) = json.loads(capsys.readouterr().out)
     assert doc["type"] == "DEF" and doc["counts"] == {"open": 2, "closed": 1, "rejected": 1}
     assert doc["regressions"] == {"count": 1, "defects": 1}
-    assert doc["summary"]["columns"] == ["CRITICAL", "MAJOR"]
+    assert doc["summary"]["columns"] == ["CRITICAL", "MAJOR", "MEDIUM", "MINOR"]
     launch = doc["summary"]["rows"][0]
-    assert launch["category"] == "LNCH" and launch["cells"]["CRITICAL"] == {"open": 1, "closed": 0}
+    assert launch["category"] == "LNCH" and launch["open"] == 2
+    assert launch["levels"] == {"CRITICAL": 1, "MAJOR": 1, "MEDIUM": 0, "MINOR": 0}
+    assert launch["fixed"] == 1 and launch["rejected"] == 0
     assert [i["id"] for i in doc["items"]] == ["DEF-LNCH-2", "DEF-LNCH-1-1"]  # the open queue
     assert doc["rejected"] == [
         {"id": "DEF-UI-3", "title": "misaligned button", "reason": "no repro"}
     ]
-    assert doc["coverage"]["tags"] == {"integration": 1, "unit": 1, "e2e": 1}
+    assert "coverage" not in doc, "coverage is its own command now"
 
 
 def test_list_and_pivot_json_are_records_and_cells(defects: Path, capsys):
@@ -1063,7 +1125,7 @@ def test_list_and_pivot_json_are_records_and_cells(defects: Path, capsys):
     recs = json.loads(capsys.readouterr().out)
     assert [r["id"] for r in recs] == ["DEF-LNCH-2", "DEF-LNCH-1-1"]
     assert recs[1]["root"] == "DEF-LNCH-1" and recs[1]["regr"] == 1
-    assert recs[0]["tags"] == ["unit", "e2e"] and recs[0]["file"] == str(defects)
+    assert recs[0]["tags"] == ["UNIT", "E2E"] and recs[0]["file"] == str(defects)
     run("pivot", str(defects), "--rows", "severity", "--cols", "status", "--json")
     (piv,) = json.loads(capsys.readouterr().out)
     assert piv["columns"] == ["open", "closed", "rejected"]
@@ -1094,5 +1156,883 @@ def test_list_categories_and_refs_take_json_too(defects: Path, capsys):
         "rejected": 0,
     }
     run("refs", str(defects), "--id", "DEF-LNCH-1", "--json")
+    doc = json.loads(capsys.readouterr().out)
+    assert [(h["id"], h["kind"]) for h in doc["inbound"]] == [("DEF-LNCH-2", "related")]
+    assert doc["outbound"] == []
+
+
+# --- Relations in queries, --grep, search, link integrity ------------------------
+
+
+def relate(f: Path, item: str, related: str | None = None, blocked: str | None = None) -> int:
+    argv = ["relate", str(f), "--id", item]
+    if related:
+        argv += ["--related", related]
+    if blocked:
+        argv += ["--blocked-by", blocked]
+    return run(*argv)
+
+
+def ids_of(rows: list[list[str]]) -> list[str]:
+    """The ids in a table's body rows, in order; the header row is dropped."""
+    return [r[0].strip("`") for r in rows[1:]]
+
+
+def three_defects(defects: Path, capsys) -> None:
+    add_defect(defects, "token race on relaunch")  # DEF-LNCH-1
+    add_defect(defects, "splash hang")  # DEF-LNCH-2
+    add_defect(defects, "misaligned button")  # DEF-LNCH-3
+    capsys.readouterr()
+
+
+def test_related_and_blockers_are_list_columns(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    relate(defects, "DEF-LNCH-2", "DEF-LNCH-1 - same boot path", "DEF-UI-3")
+    capsys.readouterr()
+    run("list", str(defects), "--columns", "id,related,blockers", "--status", "all")
+    rows = table_rows(capsys.readouterr().out)
+    assert "Related" in rows[0] and "Blockers" in rows[0]
+    by_id = {r[0]: r for r in rows[1:]}
+    assert by_id["`DEF-LNCH-2`"] == ["`DEF-LNCH-2`", "`DEF-LNCH-1`", "`DEF-UI-3`"]
+    for rid, row in by_id.items():
+        if rid != "`DEF-LNCH-2`":
+            assert row[1:] == ["-", "-"]
+
+
+def test_pivot_puts_an_item_under_every_blocker(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-1, DEF-UI-3")
+    capsys.readouterr()
+    run("pivot", str(defects), "--rows", "blockers", "--values", "ids", "--status", "all")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[1] == ["`DEF-LNCH-1`", "`DEF-LNCH-2`"]
+    assert rows[2] == ["`DEF-UI-3`", "`DEF-LNCH-2`"]
+    assert rows[3][0] == "unblocked"
+    assert rows[4][0] == "**Total**"
+
+
+def test_blocked_lists_only_items_behind_an_open_blocker(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-1-1")
+    relate(defects, "DEF-LNCH-1-1", blocked="DEF-LNCH-1")  # closed
+    capsys.readouterr()
+    run("list", str(defects), "--blocked")
+    out = capsys.readouterr().out
+    assert ids_of(table_rows(out)) == ["DEF-LNCH-2"]
+    assert "(blocked)" in out.split("\n# ")[1].split("\n")[0]
+    run("report", str(defects), "--blocked", "--plain")
+    assert "1 open / 0 closed / 0 rejected" in capsys.readouterr().out
+
+
+def test_a_dangling_blocker_does_not_count_as_open(defects: Path, capsys):
+    add_defect(defects, "token race")
+    relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-99")
+    capsys.readouterr()
+    run("list", str(defects), "--blocked")
+    assert "0 item(s)" in capsys.readouterr().out
+
+
+def test_related_to_reads_both_directions_and_both_kinds(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    relate(defects, "DEF-LNCH-2", related="DEF-LNCH-1")
+    relate(defects, "DEF-UI-3", blocked="DEF-LNCH-1")
+    capsys.readouterr()
+    run("list", str(defects), "--related-to", "DEF-LNCH-1", "--status", "all")
+    out = capsys.readouterr().out
+    assert set(ids_of(table_rows(out))) == {"DEF-LNCH-2", "DEF-UI-3"}
+    assert "related to DEF-LNCH-1)" in out
+    run("pivot", str(defects), "--rows", "status", "--related-to", "def-lnch-1")
+    assert "2 item(s)" in capsys.readouterr().out
+
+
+def test_a_malformed_related_to_is_refused(defects: Path):
+    add_defect(defects, "token race")
+    with pytest.raises(SystemExit) as ex:
+        run("list", str(defects), "--related-to", "lnch1")
+    assert "DEF-LNCH-3" in str(ex.value)
+
+
+def test_report_detail_prints_the_relation_lines(defects: Path, capsys):
+    add_defect(defects, "token race")
+    add_defect(defects, "splash hang")
+    relate(defects, "DEF-LNCH-1", "DEF-LNCH-2", "DEF-LNCH-2")
+    capsys.readouterr()
+    run("report", str(defects), "--detail")
+    out = capsys.readouterr().out
+    assert "- related: DEF-LNCH-2" in out and "- blocked-by: DEF-LNCH-2" in out
+
+
+def test_grep_is_a_case_insensitive_regex_over_title_body_evidence_and_log(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    run("list", str(defects), "--grep", "SEG.?FAULT")
+    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-2"]
+    run("list", str(defects), "--grep", "clean on 41\\d", "--status", "all")
+    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-1"]  # evidence
+    run("list", str(defects), "--grep", "back on")
+    out = capsys.readouterr().out
+    assert ids_of(table_rows(out)) == ["DEF-LNCH-1-1"]  # the log event
+    assert "(grep /back on/)" in out
+    run("list", str(defects), "--grep", "boot twice")
+    assert "0 item(s)" in capsys.readouterr().out, "the repro line is not searched"
+
+
+def test_grep_composes_with_the_other_filters_on_every_query(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    run("list", str(defects), "--grep", "segfault|misaligned", "--author", "@mb")
+    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-2"]
+    run("report", str(defects), "--grep", "segfault", "--plain")
+    assert "Interface" not in capsys.readouterr().out, "an emptied category gets no row"
+    run("pivot", str(defects), "--rows", "severity", "--grep", "segfault")
+    assert "1 item(s)" in capsys.readouterr().out
+
+
+def test_a_bad_grep_pattern_is_refused(defects: Path):
+    add_defect(defects, "token race")
+    with pytest.raises(SystemExit) as ex:
+        run("list", str(defects), "--grep", "(")
+    assert "--grep" in str(ex.value)
+
+
+def test_search_ranks_a_title_hit_above_a_log_hit(defects: Path, capsys):
+    three_defects(defects, capsys)
+    run(
+        "log",
+        str(defects),
+        "--id",
+        "DEF-LNCH-2",
+        "--author",
+        "@kj",
+        "--event",
+        "seen after the token refresh",
+    )
+    capsys.readouterr()
+    assert run("search", str(defects), "token race") == 0
+    out = capsys.readouterr().out
+    rows = table_rows(out)
+    assert rows[0] == ["Rank", "Id", "Score", "Title", "Matched in"]
+    assert rows[1][1] == "`DEF-LNCH-1`" and rows[1][4] == "title"
+    assert rows[2][1] == "`DEF-LNCH-2`" and rows[2][4] == "log"
+    assert "2 of 3 item(s) matched" in out
+
+
+def test_search_tolerates_a_typo_and_a_stem(defects: Path, capsys):
+    three_defects(defects, capsys)
+    run("log", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "test added")
+    capsys.readouterr()
+    for q in ("relunch", "tokens", "testing"):
+        run("search", str(defects), q)
+        rows = table_rows(capsys.readouterr().out)
+        assert rows[1][1] == "`DEF-LNCH-1`", q
+    run("search", str(defects), "boo")
+    assert "0 of 3 item(s) matched" in capsys.readouterr().out, "under four characters: exact only"
+
+
+def test_search_finds_an_item_by_its_id_in_any_case(defects: Path, capsys):
+    import json
+
+    three_defects(defects, capsys)
+    run("search", str(defects), "def-lnch-2")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[1][1] == "`DEF-LNCH-2`" and rows[1][4].startswith("id")
+    run("search", str(defects), "DEF-LNCH-2", "--json")
     hits = json.loads(capsys.readouterr().out)
-    assert [(h["id"], h["kind"]) for h in hits] == [("DEF-LNCH-2", "related")]
+    assert hits[0]["rank"] == 1 and hits[0]["id"] == "DEF-LNCH-2"
+
+
+def test_search_narrows_by_the_filters_before_ranking(defects: Path, capsys):
+    a_mixed_file(defects, capsys)
+    run("search", str(defects), "token race", "--status", "closed", "--top", "1")
+    out = capsys.readouterr().out
+    rows = table_rows(out)
+    assert len(rows) == 2 and rows[1][1] == "`DEF-LNCH-1`"
+    assert "1 of 1 item(s) matched" in out
+    run("search", str(defects), "token", "--top", "1")
+    assert capsys.readouterr().out.rstrip().endswith("top 1 shown")
+
+
+def test_search_json_carries_the_same_facts(defects: Path, capsys):
+    import json
+
+    three_defects(defects, capsys)
+    run("search", str(defects), "token", "--json")
+    hits = json.loads(capsys.readouterr().out)
+    assert hits, "something matched"
+    for h in hits:
+        assert set(h) == {"rank", "id", "score", "title", "matched_in", "file", "line"}
+        assert h["file"] == str(defects)
+    assert [h["rank"] for h in hits] == list(range(1, len(hits) + 1))
+    scores = [h["score"] for h in hits]
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_search_with_nothing_matching_prints_an_empty_table(defects: Path, capsys):
+    three_defects(defects, capsys)
+    assert run("search", str(defects), "zzzz") == 0
+    out = capsys.readouterr().out
+    assert len(table_rows(out)) == 1, "the header row alone"
+    assert "0 of 3 item(s) matched" in out
+
+
+def test_search_refuses_an_empty_query_and_an_unquoted_query(defects: Path):
+    add_defect(defects, "token race")
+    with pytest.raises(SystemExit) as ex:
+        run("search", str(defects), "!!!")
+    assert "no searchable word" in str(ex.value)
+    with pytest.raises(SystemExit) as ex:
+        run("search", str(defects), "token", "race")
+    assert "token" in str(ex.value) and "one argument" in str(ex.value)
+
+
+def test_search_ranks_across_both_disciplines_in_one_table(tmp_path: Path, capsys):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    d, c = docs / "defects-app.md", docs / "acc-crit-app.md"
+    d.write_text(DEFECTS_HEADER, encoding="utf-8")
+    c.write_text(ACC_HEADER, encoding="utf-8")
+    for f in (d, c):
+        run("author", str(f), "--handle", "@kj", "--name", "Konrad Jelen")
+    add_defect(d, "password field empty")
+    add_criterion(c, "Password generation")
+    capsys.readouterr()
+    run("search", str(docs), "password")
+    out = capsys.readouterr().out
+    assert out.count("# SEARCH") == 1
+    assert {"DEF-LNCH-1", "ACC-AUTH-1"} <= set(r[1].strip("`") for r in table_rows(out)[1:])
+
+
+def test_refs_lists_both_directions_and_the_blocker_chain(defects: Path, capsys):
+    import json
+
+    three_defects(defects, capsys)
+    relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2")
+    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-3")
+    close_with(defects, "DEF-LNCH-3", "fixed on 412")
+    relate(defects, "DEF-LNCH-3", related="DEF-LNCH-1")
+    capsys.readouterr()
+    assert run("refs", str(defects), "--id", "DEF-LNCH-1") == 0
+    out = capsys.readouterr().out
+    assert "DEF-LNCH-3 related -> DEF-LNCH-1" in out
+    assert "DEF-LNCH-1 blocked-by -> DEF-LNCH-2" in out
+    assert "blocked-by chain: DEF-LNCH-2 (open) -> DEF-LNCH-3 (closed)" in out
+    assert "1 inbound, 1 outbound reference(s); 1 open blocker(s)" in out
+    run("refs", str(defects), "--id", "DEF-LNCH-1", "--json")
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["inbound"][0]["id"] == "DEF-LNCH-3"
+    assert doc["outbound"][0]["id"] == "DEF-LNCH-2"
+    assert doc["blockers"] == [
+        {"id": "DEF-LNCH-2", "status": "open", "depth": 1},
+        {"id": "DEF-LNCH-3", "status": "closed", "depth": 2},
+    ]
+
+
+def test_refs_marks_a_cycle_and_a_missing_blocker_and_stops(defects: Path, capsys):
+    add_defect(defects, "token race")
+    add_defect(defects, "splash hang")
+    relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2")
+    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-1, DEF-LNCH-99")
+    capsys.readouterr()
+    assert run("refs", str(defects), "--id", "DEF-LNCH-1") == 0
+    out = capsys.readouterr().out
+    assert "blocked-by chain: DEF-LNCH-2 (open) -> DEF-LNCH-1 (cycle)" in out
+    assert "blocked-by chain: DEF-LNCH-2 (open) -> DEF-LNCH-99 (not found)" in out
+
+
+def test_refs_on_a_removed_id_still_lists_what_points_at_it(defects: Path, capsys):
+    add_defect(defects, "token race")
+    add_defect(defects, "splash hang")
+    relate(defects, "DEF-LNCH-1", related="DEF-LNCH-2")
+    run("remove", str(defects), "--id", "DEF-LNCH-2", "--force")
+    capsys.readouterr()
+    assert run("refs", str(defects), "--id", "DEF-LNCH-2") == 0
+    out = capsys.readouterr().out
+    assert "DEF-LNCH-1 related -> DEF-LNCH-2" in out
+    assert "1 inbound, 0 outbound reference(s); 0 open blocker(s)" in out
+
+
+def test_check_errors_on_a_relation_to_an_unknown_id(defects: Path, capsys):
+    add_defect(defects, "token race")
+    relate(defects, "DEF-LNCH-1", related="DEF-LNCH-99")
+    capsys.readouterr()
+    assert run("check", str(defects)) != 0
+    assert "ERROR related points at DEF-LNCH-99, not found in the scanned files" in (
+        capsys.readouterr().out
+    )
+
+
+def test_check_errors_once_on_a_blocked_by_cycle(defects: Path, tmp_path: Path, capsys):
+    add_defect(defects, "token race")
+    add_defect(defects, "splash hang")
+    relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2")
+    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-1")
+    capsys.readouterr()
+    assert run("check", str(defects)) != 0
+    out = capsys.readouterr().out
+    assert out.count("blocked-by cycle") == 1
+    assert "blocked-by cycle: DEF-LNCH-1 -> DEF-LNCH-2 -> DEF-LNCH-1" in out
+
+    solo = tmp_path / "defects-solo.md"
+    solo.write_text(DEFECTS_HEADER, encoding="utf-8")
+    run("author", str(solo), "--handle", "@kj", "--name", "Konrad Jelen")
+    add_defect(solo, "token race")
+    relate(solo, "DEF-LNCH-1", blocked="DEF-LNCH-1")
+    capsys.readouterr()
+    assert run("check", str(solo)) != 0
+    assert "blocked-by cycle: DEF-LNCH-1 -> DEF-LNCH-1" in capsys.readouterr().out
+
+
+def test_check_warns_when_an_open_item_is_blocked_by_a_finished_one(defects: Path, capsys):
+    three_defects(defects, capsys)
+    close_with(defects, "DEF-LNCH-2", "fixed on 412")
+    relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2")
+    capsys.readouterr()
+    assert run("check", str(defects)) == 0
+    assert "warn  blocked-by DEF-LNCH-2 is closed; the block no longer holds" in (
+        capsys.readouterr().out
+    )
+    assert run("check", str(defects), "--strict") != 0
+    capsys.readouterr()
+    run(
+        "reject",
+        str(defects),
+        "--id",
+        "DEF-LNCH-3",
+        "--author",
+        "@kj",
+        "--event",
+        "rejected: wontfix",
+    )
+    relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-3")
+    capsys.readouterr()
+    run("check", str(defects))
+    assert (
+        "blocked-by DEF-LNCH-3 is rejected; the block no longer holds" in capsys.readouterr().out
+    )
+    close_with(defects, "DEF-LNCH-1", "fixed on 413")
+    capsys.readouterr()
+    run("check", str(defects))
+    assert "no longer holds" not in capsys.readouterr().out
+
+
+def test_a_cross_file_blocker_resolves_only_when_the_directory_is_scanned(tmp_path: Path, capsys):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    d, c = docs / "defects-app.md", docs / "acc-crit-app.md"
+    d.write_text(DEFECTS_HEADER, encoding="utf-8")
+    c.write_text(ACC_HEADER, encoding="utf-8")
+    for f in (d, c):
+        run("author", str(f), "--handle", "@kj", "--name", "Konrad Jelen")
+    add_defect(d, "token race")
+    add_criterion(c, "Password generation")
+    relate(c, "ACC-AUTH-1", blocked="DEF-LNCH-1")
+    capsys.readouterr()
+    assert run("check", str(docs)) == 0
+    capsys.readouterr()
+    assert run("check", str(c)) != 0
+    assert "not found in the scanned files" in capsys.readouterr().out
+    run("list", str(docs), "--blocked")
+    assert "ACC-AUTH-1" in capsys.readouterr().out
+
+
+def ladder(f: Path, blocked_by: dict[int, list[int]], n: int, cat: str = "LAD") -> None:
+    """Write n open defects straight to disk; item i is blocked by blocked_by[i]."""
+    body = [
+        DEFECTS_HEADER,
+        "\n## Authors\n\n- `@kj` Konrad\n",
+        f"\n## Ladder `{cat}`\n\nladder\n\n",
+    ]
+    for i in range(1, n + 1):
+        body.append(
+            f"- [ ] `DEF-{cat}-{i}` **step {i}** - MAJOR; step\n  - repro: r\n  - test-tags: unit\n"
+        )
+        if blocked_by.get(i):
+            body.append(
+                "  - blocked-by: " + ", ".join(f"DEF-{cat}-{j}" for j in blocked_by[i]) + "\n"
+            )
+        body.append("  - log: 2026-08-01T10:00:00Z @kj filed\n")
+    f.write_text("".join(body), encoding="utf-8")
+
+
+def test_check_reports_every_cycle_once_on_its_smallest_id(defects: Path, capsys):
+    ladder(defects, {1: [2], 2: [1, 3], 3: [2]}, 3)
+    assert run("check", str(defects)) != 0
+    out = capsys.readouterr().out
+    assert "blocked-by cycle: DEF-LAD-1 -> DEF-LAD-2 -> DEF-LAD-1" in out
+    assert "blocked-by cycle: DEF-LAD-2 -> DEF-LAD-3 -> DEF-LAD-2" in out
+    assert out.count("blocked-by cycle") == 2 and "2 error(s)" in out
+
+
+def test_check_and_refs_walk_a_dense_graph_and_a_deep_chain(defects: Path, capsys):
+    import time
+
+    # every step blocked by two of the five before it: the number of routes to the
+    # first step grows exponentially, the number of links does not
+    ladder(defects, {i: [i - 1, i - 3] for i in range(4, 81)} | {2: [1], 3: [1, 2]}, 80)
+    t = time.perf_counter()
+    assert run("check", str(defects)) == 0
+    assert run("refs", str(defects), "--id", "DEF-LAD-80") == 0
+    assert time.perf_counter() - t < 5
+    out = capsys.readouterr().out
+    assert "79 open blocker(s)" in out
+    assert "(open) -> ..." in out, "a blocker reached twice is expanded once"
+
+    ladder(defects, {i: [i - 1] for i in range(2, 1501)}, 1500)
+    assert run("check", str(defects)) == 0
+    assert run("refs", str(defects), "--id", "DEF-LAD-1500") == 0
+    assert "1499 open blocker(s)" in capsys.readouterr().out
+
+
+def test_refs_expands_a_shared_blocker_once(defects: Path, capsys):
+    ladder(defects, {1: [2, 3], 2: [4], 3: [4], 4: [5]}, 5)
+    assert run("refs", str(defects), "--id", "DEF-LAD-1") == 0
+    out = capsys.readouterr().out
+    assert "blocked-by chain: DEF-LAD-2 (open) -> DEF-LAD-4 (open) -> DEF-LAD-5 (open)" in out
+    assert "blocked-by chain: DEF-LAD-3 (open) -> DEF-LAD-4 (open) -> ..." in out
+    assert "4 open blocker(s)" in out
+
+
+def test_check_errors_on_an_id_duplicated_across_files(tmp_path: Path, capsys):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    a, b = docs / "defects-a.md", docs / "defects-b.md"
+    ladder(a, {}, 1)
+    ladder(b, {}, 1)
+    assert run("check", str(docs)) != 0
+    out = capsys.readouterr().out
+    assert re.search(rf"{b}:\d+: ERROR duplicate id DEF-LAD-1 \(first at {a}:\d+\)", out)
+    assert run("check", str(a)) == 0
+
+
+def test_search_takes_its_query_after_an_option_and_never_a_path(defects: Path, capsys):
+    three_defects(defects, capsys)
+    assert run("search", str(defects), "--top", "1", "splash") == 0
+    assert table_rows(capsys.readouterr().out)[1][1] == "`DEF-LNCH-2`"
+    assert run("search", str(defects), "--json", "token race") == 0
+    assert '"id": "DEF-LNCH-1"' in capsys.readouterr().out
+    with pytest.raises(SystemExit) as ex:
+        run("search", str(defects), "--top", "1", "splash", "--bogus")
+    assert ex.value.code == 2
+    with pytest.raises(SystemExit) as ex:
+        run("search", str(defects))
+    assert "is a path; the last argument is the QUERY" in str(ex.value)
+
+
+# --- Importance, the criteria grid, coverage and tag casing ----------------
+
+
+def test_add_refuses_an_unrated_criterion(criteria: Path):
+    """Mirrors the defect triage rule: a criterion must say how much it matters."""
+    with pytest.raises(SystemExit) as e:
+        run(
+            "add",
+            str(criteria),
+            "--category",
+            "AUTH",
+            "--name",
+            "Authentication",
+            "--author",
+            "@kj",
+            "--title",
+            "password rules",
+            "--text",
+            "16 chars",
+            "--test",
+            "generate 100",
+        )
+    assert "a criterion must be rated; pass --importance CRITICAL|HIGH|MEDIUM|LOW" in str(e.value)
+
+
+def test_importance_is_refused_on_a_defect(defects: Path):
+    with pytest.raises(SystemExit) as e:
+        run(
+            "add",
+            str(defects),
+            "--category",
+            "LNCH",
+            "--name",
+            "Launch",
+            "--author",
+            "@kj",
+            "--importance",
+            "HIGH",
+            "--title",
+            "token race",
+            "--text",
+            "symptom",
+            "--repro",
+            "boot cold",
+        )
+    assert "defects carry no importance" in str(e.value)
+    add_defect(defects, "token race")
+    with pytest.raises(SystemExit):
+        run("edit", str(defects), "--id", "DEF-LNCH-1", "--importance", "HIGH", "--author", "@kj")
+
+
+def test_edit_sets_the_importance_and_keeps_it_through_a_text_rewrite(criteria: Path):
+    add_criterion(criteria, "password rules")
+    run("edit", str(criteria), "--id", "ACC-AUTH-1", "--importance", "CRITICAL", "--author", "@kj")
+    body = criteria.read_text(encoding="utf-8")
+    assert "**password rules** - CRITICAL; 16 chars" in body
+    run("edit", str(criteria), "--id", "ACC-AUTH-1", "--text", "20 chars", "--author", "@kj")
+    body = criteria.read_text(encoding="utf-8")
+    assert "**password rules** - CRITICAL; 20 chars" in body, "a --text rewrite keeps the rating"
+
+
+def test_check_errors_on_an_unrated_criterion(criteria: Path, capsys):
+    add_criterion(criteria, "password rules")
+    body = criteria.read_text(encoding="utf-8").replace("HIGH; ", "")
+    criteria.write_text(body, encoding="utf-8")
+    capsys.readouterr()
+    assert run("check", str(criteria)) != 0
+    assert "criterion not rated; the body must open with CRITICAL/HIGH/MEDIUM/LOW" in (
+        capsys.readouterr().out
+    )
+
+
+def test_the_criteria_grid_counts_open_items_per_importance(criteria: Path, capsys):
+    add_criterion(criteria, "password rules", importance="CRITICAL")
+    add_criterion(criteria, "session timeout", importance="HIGH")
+    add_criterion(criteria, "avatar cache")  # HIGH
+    run(
+        "close",
+        str(criteria),
+        "--id",
+        "ACC-AUTH-3",
+        "--author",
+        "@kj",
+        "--evidence",
+        "unit suite green",
+    )
+    run("reject", str(criteria), "--id", "ACC-AUTH-2", "--author", "@kj", "--event", "wontfix")
+    capsys.readouterr()
+    run("report", str(criteria), "--summary")
+    out = capsys.readouterr().out
+    assert "| Category | Open | CRITICAL | HIGH | MEDIUM | LOW | Done | Rejected |" in out
+    assert "| Authentication `AUTH` | 1 | 1 | 0 | 0 | 0 | 1 | 1 |" in out
+    assert "| **Total** | 1 | 1 | 0 | 0 | 0 | 1 | 1 |" in out
+    assert "UNRATED" not in out, "every open criterion is rated, so no UNRATED column"
+
+
+def test_an_open_unrated_criterion_earns_the_unrated_column(criteria: Path, capsys):
+    add_criterion(criteria, "password rules", importance="CRITICAL")
+    body = criteria.read_text(encoding="utf-8").replace("CRITICAL; ", "")
+    criteria.write_text(body, encoding="utf-8")
+    capsys.readouterr()
+    run("report", str(criteria), "--summary")
+    out = capsys.readouterr().out
+    assert (
+        "| Category | Open | CRITICAL | HIGH | MEDIUM | LOW | UNRATED | Done | Rejected |" in out
+    )
+    assert "| Authentication `AUTH` | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |" in out
+
+
+def test_report_items_carries_an_importance_column_for_criteria(criteria: Path, capsys):
+    add_criterion(criteria, "password rules", importance="MEDIUM")
+    capsys.readouterr()
+    run("report", str(criteria))
+    out = capsys.readouterr().out
+    assert "| Id | Title | Description | Importance | Tests |" in out
+    assert "| MEDIUM |" in out
+
+
+def test_importance_filters_and_fields_mirror_severity(criteria: Path, defects: Path, capsys):
+    add_criterion(criteria, "password rules", importance="CRITICAL")
+    add_criterion(criteria, "session timeout", importance="LOW")
+    capsys.readouterr()
+    run("report", str(criteria), "--importance", "CRITICAL")
+    out = capsys.readouterr().out
+    assert "password rules" in out and "session timeout" not in out
+    assert "(CRITICAL)" in out, "the filter is named in the title"
+    run("list", str(criteria), "--columns", "id,importance", "--sort=importance")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[0] == ["Id", "Importance"]
+    assert [r[1] for r in rows[1:]] == ["CRITICAL", "LOW"], "worst first"
+    run("pivot", str(criteria), "--rows", "importance")
+    rows = table_rows(capsys.readouterr().out)
+    assert [r[0] for r in rows[1:]] == ["CRITICAL", "LOW", "**Total**"]
+    add_defect(defects, "token race")
+    capsys.readouterr()
+    run("report", str(defects), "--importance", "CRITICAL")
+    cap = capsys.readouterr()
+    assert "skipped, --importance is a criterion attribute" in cap.err
+    assert "SUMMARY" not in cap.out
+
+
+def test_a_criterion_opening_with_a_level_word_is_prose_not_a_severity(tmp_path: Path, capsys):
+    """The standing defect: parse() read `Normal, ...` on a criterion as a severity.
+    Severity is gated on DEF items now, so the body survives every command intact."""
+    f = tmp_path / "acc-crit-app.md"
+    f.write_text(
+        "# Acceptance Criteria - App\n\n## Authors\n\n- `@kj` Konrad Jelen\n\n"
+        "## Banner `BNR`\n\nBanner rendering\n\n"
+        "- [ ] `ACC-BNR-1` **modes** - Normal, degraded and offline modes render the banner\n"
+        "  - test: render all three\n"
+        "  - log: 2026-01-02T00:00:00Z @kj filed\n",
+        encoding="utf-8",
+    )
+    run("list", str(f), "--columns", "id,severity,importance,body")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[1][1] == "-", "no severity is read off a criterion"
+    assert rows[1][2] == "-", "Normal is not an importance word either"
+    assert rows[1][3].startswith("Normal, degraded"), "the body keeps its first word"
+    run("report", str(f))
+    assert "Normal, degraded and offline modes render the banner" in capsys.readouterr().out
+    run(
+        "edit",
+        str(f),
+        "--id",
+        "ACC-BNR-1",
+        "--text",
+        "Normal, degraded and offline modes render",
+        "--author",
+        "@kj",
+    )
+    body = f.read_text(encoding="utf-8")
+    assert "- [ ] `ACC-BNR-1` **modes** - Normal, degraded and offline modes render\n" in body, (
+        "edit --text neither strips the word nor prepends a level"
+    )
+
+
+def test_tags_are_written_upper_case_and_filtered_in_any_case(defects: Path, capsys):
+    add_defect(defects, "token race")  # --test-tags integration
+    assert "- test-tags: INTEGRATION" in defects.read_text(encoding="utf-8")
+    run(
+        "edit",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--test-tags",
+        "unit, Functional",
+        "--author",
+        "@kj",
+    )
+    assert "- test-tags: UNIT, FUNCTIONAL" in defects.read_text(encoding="utf-8")
+    capsys.readouterr()
+    run("list", str(defects), "--tag", "functional")
+    out = capsys.readouterr().out
+    assert "`DEF-LNCH-1`" in out and "(tag FUNCTIONAL)" in out, "--tag reads in any case"
+
+
+def test_a_legacy_lower_case_tag_line_still_parses(defects: Path, capsys):
+    add_defect(defects, "token race")
+    body = defects.read_text(encoding="utf-8").replace("INTEGRATION", "integration")
+    defects.write_text(body, encoding="utf-8")
+    capsys.readouterr()
+    run("list", str(defects), "--tag", "INTEGRATION", "--columns", "id,tags")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[1] == ["`DEF-LNCH-1`", "INTEGRATION"], "read in any case, printed upper-case"
+
+
+def test_coverage_is_a_grid_of_categories_by_tags_with_no_test_last(
+    criteria: Path, defects: Path, capsys
+):
+    add_criterion(criteria, "password rules", importance="CRITICAL")  # unit
+    add_criterion(criteria, "session timeout", category="SESS")  # unit
+    run(
+        "edit",
+        str(criteria),
+        "--id",
+        "ACC-SESS-2",
+        "--test-tags",
+        "smoke",
+        "--author",
+        "@kj",
+    )
+    add_criterion(criteria, "avatar cache")  # unit, then untagged below
+    body = criteria.read_text(encoding="utf-8")
+    at = body.rindex("  - test-tags: UNIT\n")
+    criteria.write_text(body[:at] + body[at + len("  - test-tags: UNIT\n") :], encoding="utf-8")
+    run(
+        "close",
+        str(criteria),
+        "--id",
+        "ACC-AUTH-1",
+        "--author",
+        "@kj",
+        "--evidence",
+        "unit suite green",
+    )
+    capsys.readouterr()
+    assert run("coverage", str(criteria)) == 0
+    out = capsys.readouterr().out
+    assert "# TEST COVERAGE" in out
+    rows = table_rows(out)
+    assert rows[0] == ["Category", "UNIT", "SMOKE", "NO-TEST"], (
+        "canonical tags first, free tags next, NO-TEST last"
+    )
+    assert rows[1] == ["Authentication `AUTH`", "1", "0", "1"], "closed items count too"
+    assert rows[2] == ["Authentication `SESS`", "0", "1", "0"]
+    assert rows[3] == ["**Total**", "1", "1", "1"]
+    add_defect(defects, "token race")
+    capsys.readouterr()
+    run("coverage", str(defects), "--json")
+    import json
+
+    (doc,) = json.loads(capsys.readouterr().out)
+    assert doc["columns"] == ["INTEGRATION"]
+    assert doc["rows"][0]["cells"] == {"INTEGRATION": 1}
+    assert doc["total"] == {"cells": {"INTEGRATION": 1}, "items": 1}
+
+
+def test_coverage_excludes_rejected_items_and_takes_the_shared_filters(criteria: Path, capsys):
+    add_criterion(criteria, "password rules", importance="CRITICAL")
+    add_criterion(criteria, "session timeout")
+    run("reject", str(criteria), "--id", "ACC-AUTH-2", "--author", "@kj", "--event", "wontfix")
+    capsys.readouterr()
+    run("coverage", str(criteria))
+    out = capsys.readouterr().out
+    assert "1 item(s)" in out, "a rejected item needs no test"
+    run("coverage", str(criteria), "--importance", "LOW")
+    out = capsys.readouterr().out
+    assert "0 item(s)" in out and "(LOW)" in out, "the shared filters narrow the grid"
+
+
+def test_report_no_longer_prints_test_coverage(criteria: Path, capsys):
+    add_criterion(criteria, "password rules")
+    capsys.readouterr()
+    run("report", str(criteria))
+    assert "TEST COVERAGE" not in capsys.readouterr().out
+
+
+def test_upgrade_applies_the_safe_rewrites_and_hints_the_rest(tmp_path: Path, capsys):
+    """No content problem refuses --apply: ids land, tags upper-case, and every
+    problem prints as a HINT carrying the command that fixes it. Exit 0."""
+    f = tmp_path / "acc-crit-legacy.md"
+    f.write_text(
+        "# Acceptance Criteria - Legacy\n\n## Authentication\n\nLogin\n\n"
+        "- [ ] **Password generation** - 16 chars\n"
+        "  - test-tags: unit, e2e\n"
+        "  - 2026-06-12 drafted\n",
+        encoding="utf-8",
+    )
+    assert run("upgrade", str(f), "--apply") == 0, "content problems never refuse --apply"
+    cap = capsys.readouterr()
+    body = f.read_text(encoding="utf-8")
+    assert "`ACC-AUTH-1`" in body, "the id landed"
+    assert "- test-tags: UNIT, E2E" in body, "tags upper-cased"
+    assert "- log: 2026-06-12T00:00:00Z drafted" in body, "the dated note became a log line"
+    assert "hint(s) remain. Run check next" in cap.out
+    hints = [ln for ln in cap.err.splitlines() if ln.startswith("HINT ")]
+    assert any("no ## Authors roster" in h and f"pm-tools author {f}" in h for h in hints), (
+        "the roster hint carries the exact command"
+    )
+    assert any(
+        f"pm-tools edit {f} --id ACC-AUTH-1 --importance CRITICAL|HIGH|MEDIUM|LOW" in h
+        for h in hints
+    ), "one ready edit command per unrated criterion"
+    assert any("--id ACC-AUTH-1 --test" in h for h in hints), "the missing hint line is hinted"
+
+
+def test_upgrade_with_an_unknown_author_hints_instead_of_refusing(tmp_path: Path, capsys):
+    f = tmp_path / "defects-legacy.md"
+    f.write_text(
+        "# Defects - Legacy\n\n## Launch\n\nCold start\n\n"
+        "- [ ] **token race** - MAJOR; symptom\n"
+        "  - log: 2026-06-12T00:00:00Z filed\n",
+        encoding="utf-8",
+    )
+    assert run("upgrade", str(f), "--author", "@kj", "--apply") == 0
+    cap = capsys.readouterr()
+    assert "`DEF-LAUNCH-1`" in f.read_text(encoding="utf-8"), "the rewrite still applied"
+    assert "@kj filed" not in f.read_text(encoding="utf-8"), "an unknown handle signs nothing"
+    assert "@kj is not on the ## Authors roster" in cap.err
+    assert f"pm-tools author {f} --handle @kj" in cap.err
+    assert f"pm-tools upgrade {f} --author @kj --apply" in cap.err, "the re-run command is ready"
+
+
+def test_case_duplicated_tags_collapse_to_one_on_write_and_on_read(defects: Path, capsys):
+    """The spec's named attack: an item tagged twice with different cases is one
+    tag - edit writes it once, and a hand-edited duplicate reads as one, so
+    coverage, pivot and the report never double-count."""
+    add_defect(defects, "token race")
+    run(
+        "edit",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--test-tags",
+        "unit, UNIT, Unit",
+        "--author",
+        "@kj",
+    )
+    body = defects.read_text(encoding="utf-8")
+    assert "- test-tags: UNIT\n" in body, "the written line carries the tag once"
+    assert "UNIT, UNIT" not in body
+    # the read path protects a hand-edited file the tool never touched
+    defects.write_text(body.replace("- test-tags: UNIT", "- test-tags: unit, UNIT"))
+    capsys.readouterr()
+    run("coverage", str(defects))
+    out = capsys.readouterr().out
+    row = next(ln for ln in out.splitlines() if ln.startswith("| Launch"))
+    assert row.split("|")[2].strip() == "1", "one item counts once in the UNIT column"
+
+
+def test_upgrade_first_run_hints_the_unsigned_history_behind_dated_notes(tmp_path: Path, capsys):
+    """Dated notes become log lines in the same rewrite; the no-@handle hint must
+    count them on the FIRST run, not arrive one run late."""
+    f = tmp_path / "acc-crit-legacy.md"
+    f.write_text(
+        "# Acceptance Criteria - Legacy\n\n## Authentication\n\nLogin\n\n"
+        "- [ ] **Password generation** - 16 chars\n"
+        "  - 2026-06-12 drafted\n",
+        encoding="utf-8",
+    )
+    assert run("upgrade", str(f)) == 0
+    cap = capsys.readouterr()
+    assert "1 log line(s) carry no @handle" in cap.err, "the hint fires on the first dry run"
+    # and the first --apply with an on-roster author announces the signing it does
+    run("author", str(f), "--handle", "@kj", "--name", "Konrad Jelen")
+    capsys.readouterr()
+    assert run("upgrade", str(f), "--author", "@kj", "--apply") == 0
+    cap = capsys.readouterr()
+    assert "1 unauthored log line(s) signed @kj" in cap.out
+    assert "- log: 2026-06-12T00:00:00Z @kj drafted" in f.read_text(encoding="utf-8")
+
+
+def test_upgrade_nested_item_hint_command_is_accepted_by_add(tmp_path: Path, capsys):
+    """Change 5's bar: every hint carries the exact command to run. The nested-item
+    hint must include the discipline's mandatory level flag, and the command it
+    prints must be accepted by add."""
+    f = tmp_path / "defects-legacy.md"
+    f.write_text(
+        "# Defects - Legacy\n\n## Launch\n\nCold start\n\n"
+        "- [ ] **token race** - MAJOR; symptom\n"
+        "  - [ ] nested sub-item\n",
+        encoding="utf-8",
+    )
+    run("author", str(f), "--handle", "@kj", "--name", "Konrad Jelen")
+    capsys.readouterr()
+    assert run("upgrade", str(f), "--author", "@kj", "--apply") == 0
+    cap = capsys.readouterr()
+    (hint,) = [ln for ln in cap.err.splitlines() if "nested checklist item" in ln]
+    assert "--severity CRITICAL|MAJOR|MEDIUM|MINOR" in hint, "the mandatory flag is in the hint"
+    assert (
+        run(
+            "add",
+            str(f),
+            "--category",
+            "LNCH",
+            "--name",
+            "Launch",
+            "--title",
+            "nested sub-item",
+            "--text",
+            "filed from the nested line",
+            "--severity",
+            "MAJOR",
+            "--author",
+            "@kj",
+        )
+        == 0
+    ), "the hinted command shape is accepted"
+    # the criteria discipline symmetrically hints its own mandatory flag
+    g = tmp_path / "acc-crit-legacy.md"
+    g.write_text(
+        "# Acceptance Criteria - Legacy\n\n## Authentication\n\nLogin\n\n"
+        "- [ ] **Password generation** - 16 chars\n"
+        "  - [ ] nested sub-item\n",
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+    assert run("upgrade", str(g)) == 0
+    (hint,) = [ln for ln in capsys.readouterr().err.splitlines() if "nested checklist item" in ln]
+    assert "--importance CRITICAL|HIGH|MEDIUM|LOW" in hint

@@ -92,10 +92,12 @@ def build_standardize_padded_prompt() -> str:
 # verdicts that came back word-identical.
 #
 # Drift is caught without the binary: `test_shipped_gate_still_carries_its_
-# normative_lines` reads the LIVE SKILL.md and compares it against GATE_FENCE and
-# GATE_BULLETS below, so any change to the gate's commands OR rules fails loudly.
-# Editing either costs an updated snapshot and a re-record; tidying the prose
-# AROUND them is free, which is the coupling the freeze exists to break.
+# normative_lines` reads the LIVE SKILL.md and compares it against GATE_BULLETS
+# below plus the gate's normative lines. GATE_FENCE itself stays frozen on the
+# pre-ordering compare: its scenario - a library OLDER than the plugin - still
+# means BLOCKED under the ordered rule, so the recorded verdicts remain valid.
+# Editing the bullets costs an updated snapshot and a re-record; tidying the
+# prose AROUND them is free, which is the coupling the freeze exists to break.
 
 GATE_FENCE = """\
 ```bash

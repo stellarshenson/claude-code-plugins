@@ -16,7 +16,8 @@ Run this first, every session, before any other work. The upgrade always runs; a
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
 LIB=$(python3 -c "import importlib.metadata as m;print(m.version('stellars-claude-code-plugins'))" 2>/dev/null) || { echo "FATAL: toolkit unavailable"; exit 1; }
 PLUG=$(grep -m1 '"version"' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null | cut -d'"' -f4)
-[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && { echo "STALE: library $LIB != plugin $PLUG - refusing to run on a mismatched CLI; re-run the upgrade"; exit 1; }
+OLDER=$(printf '%s\n%s\n' "$LIB" "$PLUG" | sort -V | head -1)
+[ -n "$PLUG" ] && [ "$LIB" != "$PLUG" ] && [ "$OLDER" = "$LIB" ] && { echo "STALE: library $LIB older than plugin $PLUG - refusing to run on an outdated CLI; re-run the upgrade"; exit 1; }
 echo "toolkit $LIB"
 ```
 
@@ -40,16 +41,16 @@ Nothing is recorded in two places, so nothing drifts. The item's text, its check
 | Derived fact           | Computed by                |
 |------------------------|----------------------------|
 | Next free number       | highest id in the file, plus one |
-| Backlinks              | `pm-tools refs --id`       |
+| Backlinks, outbound links, blocker chain | `pm-tools refs --id` |
 | Index, contents, counts| `pm-tools list-categories` |
-| Test coverage per tag  | `pm-tools report`          |
+| Test coverage per tag  | `pm-tools coverage`        |
 
 Consequences, stated once:
 
 - **No `## Contents`** - a hand-kept table of contents is a second index that drifts; `check` rejects one
 - **No Open / Fixed sections** - status lives in the checkbox, so an item never moves
 - **Links are one-way** - a `related:` on A is the only record; the reverse is computed, never written back
-- **`check` reports, it does not repair** - a dangling id is a warning to read, not state to reconcile
+- **`check` reports, it does not repair** - a relation to an id that is not in the scanned files, or a blocked-by cycle, is an error to fix by hand, never state to reconcile; scan the directory so cross-file links resolve
 
 ## Ids
 
@@ -72,7 +73,7 @@ One item is one top-level checklist line plus indented sub-lines. No sub-checkbo
 
 - [ ] `<ID>` **<title>** - <body>
   - <hint>: <the discipline's one-line hint>
-  - test-tags: unit, functional
+  - test-tags: UNIT, FUNCTIONAL
   - evidence: <the proof it is done - written by close, present only while closed>
   - related: <ID>, <ID> - free text around the ids
   - blocked-by: <ID>
@@ -108,7 +109,7 @@ The `##` heading carries the full name and the code (`## Authentication \`AUTH\`
 Three sub-lines, one line each, one per item.
 
 - **The hint line** - one shortest-possible instruction, named by the discipline (`repro:` or `test:`); which one, and how to write it, is in that discipline's reference. The wrong hint for the discipline is an error, two of either is an error, a missing one is a warning
-- **`- test-tags:`** - which kinds of test cover the item, comma separated: `unit`, `integration`, `functional`, `e2e`, `manual`. Free vocabulary, but reuse the words - `report` counts them into the coverage table, which is how "how many items are covered by unit tests" gets answered
+- **`- test-tags:`** - which kinds of test cover the item, comma separated: `UNIT`, `INTEGRATION`, `FUNCTIONAL`, `E2E`, `MANUAL`. Free vocabulary, always written upper-case - the tool upper-cases whatever `--test-tags` is given and reads any case back off the file - but reuse the words: `coverage` counts them into its grid, which is how "how many items are covered by unit tests" gets answered. An item with no tags line lands in the grid's `NO-TEST` column
 - **`- evidence:`** - one line proving the item is actually done: the test that passes, the run that was observed, the commit. `close` demands it and writes the line, so a closure with no proof cannot be recorded. Reopening a criterion retires it and the log keeps what it said; a closed defect keeps it, because the regression is a new item and the old fix really was proven. Never write it by hand and never on an open item - it is the closure's proof, not a plan
 
 ## Authoring
@@ -128,6 +129,8 @@ Two indicators, no more: `related` and `blocked-by`.
 - **Free text is welcome around the ids** - the parser anchors on the id shape `(ACC|DEF)-[A-Z]{2,6}-<N>`, so `- related: DEF-LNCH-3 - the race this covers` reads as both a link and a sentence
 - **Cross-type** - a criterion may cite a defect and the other way round
 - **One line per `relate` call** - lines are never merged, because a merge would bury a new id inside the previous line's prose; `check` and `refs` union them
+- **Links, not mentions** - only a `related:`/`blocked-by:` line is a link; an id in a log line is prose. `refs`, `--related-to` and `--blocked` read links; `--grep` and `search` read prose
+- **`blocked-by` is checked** - a cycle is an error, a blocker that is closed or rejected is a warning on the open item; `refs --id` prints both directions and the transitive chain
 - Every `relate` writes one side only. Run it on the other item too when both sides deserve to read well
 
 ## Reports and tables
@@ -136,7 +139,8 @@ Every collection of items the user is shown is a markdown table, computed by `pm
 
 | Surface | Answers | Shape |
 |---------|---------|-------|
-| `report` | where does the work stand | SUMMARY, CATEGORIES, TEST COVERAGE, ITEMS, REJECTED |
+| `report` | where does the work stand | SUMMARY, CATEGORIES, ITEMS, REJECTED |
+| `coverage` | which tests cover the work | categories down, tags across, `NO-TEST` last, open and closed counted alike |
 | `list` | which items | one table, `--columns` and `--sort` chosen to fit the question |
 | `pivot` | how many of what by what | any field down, any field across, a count or the ids per cell |
 
@@ -144,7 +148,7 @@ Three rules carry the design:
 
 - **A narrowed ask is a flag, never a reading** - "the open defects" is `report --status open`, "what @kj still has in AUTH" is `--author @kj --category AUTH`, "the critical ones filed since the release" is `--severity CRITICAL --since <date>`. Every filter narrows the whole report except `--status`, which narrows ITEMS alone, so a filtered report still says where the whole scope stands. Filtering in the answer, or adding prose under a summary, puts back what the flag removed
 - **A question no report answers is still a table** - who owns what by severity, how old the open work is, regressions per defect: shape it with `list --columns` or `pivot`, and paste what comes back. Tabulating by hand from the document is the failure the tools exist to prevent - the counts stop being computed and nothing tells the reader. `--json` on any query gives the same facts as data, for the rare table that has to be assembled from two queries
-- **SUMMARY answers one question** - what is still to do, and how bad. Every cell is `open/closed`, one unit across the grid; a zero reads as `-`, so `-/5` is nothing open, five closed, and a lone `-` is an empty bucket. The legend line is printed under the heading on every report, `--plain` and `--summary` included. ITEMS is a fix queue, not an inventory - OPEN items only, worst severity first; closed and rejected work is counted, not enumerated
+- **SUMMARY answers one question** - what is still to do, and how bad. Plain counts: `| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Fixed | Rejected |` on defects, `| Category | Open | CRITICAL | HIGH | MEDIUM | LOW | Done | Rejected |` on criteria, each with a Total row. The level columns count OPEN items only - Open is their sum, Fixed / Done the closed count - and an `UNTRIAGED` / `UNRATED` column appears only when an open item lacks a level. ITEMS is a fix queue, not an inventory - OPEN items only, worst level first; closed and rejected work is counted, not enumerated
 
 Section shapes, the ask-to-flag table, FIELDS, the short forms and `--detail`: `references/reports.md`.
 
@@ -157,20 +161,22 @@ Read:
 | Command | Does |
 |---------|------|
 | `report` | the standing analysis; filters and short forms in `references/reports.md` |
+| `coverage` | the test-coverage grid: categories down, occurring tags across, `NO-TEST` last, Total row |
 | `list` | one table of items; `--columns` and `--sort=` pick the shape, the shared filters pick the rows |
 | `pivot --rows F [--cols F]` | an ad-hoc count grid over any two fields; `--values ids` names the items instead |
 | `list-categories` | the derived index: code, name, open / closed / rejected |
-| `refs --id ID` | every item pointing at `ID` - the computed backlinks |
+| `search QUERY [--top N]` | the items most relevant to `QUERY`, best first - BM25 with fuzzy tokens; the shared filters narrow first |
+| `refs --id ID` | what points at `ID`, what `ID` points at, and its blocker chain |
 | `check` | conformity gate; non-zero exit on errors, `--strict` also fails on warnings |
 
-`--json` on any of the first five returns the same facts as data. The filters `--category`, `--severity`, `--status`, `--author`, `--tag`, `--regressions` and the `--dates` / `--since` / `--until` window are the same on `report`, `list` and `pivot`.
+`--json` on any of the first seven returns the same facts as data. The filters `--category`, `--severity`, `--importance`, `--status`, `--author`, `--tag` (any case), `--regressions`, `--grep`, `--blocked`, `--related-to` and the `--dates` / `--since` / `--until` window are the same on `report`, `coverage`, `list`, `pivot` and `search`.
 
 Write - one file per call, and `--author` on every one of them:
 
 | Command | Does |
 |---------|------|
-| `add` | next id, appended under the category; creates the category when named; `--severity` mandatory on a defect and refused on a criterion |
-| `edit` | amend title, body, severity, hint, tags or evidence; logged |
+| `add` | next id, appended under the category; creates the category when named; `--severity` mandatory on a defect, `--importance` mandatory on a criterion, each refused on the other |
+| `edit` | amend title, body, severity, importance, hint, tags or evidence; logged |
 | `author` | add or update a roster entry; required before that handle can write |
 | `describe` | set or replace the category description |
 | `relate` | add one `related:` or `blocked-by:` line |
@@ -178,7 +184,7 @@ Write - one file per call, and `--author` on every one of them:
 | `close` / `reopen` | `close` demands `--evidence`; `reopen` retires it on a criterion, and on a closed defect files `<id>-<n>` instead |
 | `reject` | mark `[-]`; the reason is required |
 | `remove` | delete an item created in error; refuses while anything still cites it |
-| `upgrade` | rebuild a legacy doc to this schema, dry run first; `references/upgrade.md` |
+| `upgrade` | rebuild a legacy doc to this schema, dry run first; `--apply` always applies the safe rewrites, exits 0, and prints one `HINT` with the exact command per content problem; `references/upgrade.md` |
 
 Run `check` after every edit session. It is the only gate.
 
@@ -188,6 +194,7 @@ Run `check` after every edit session. It is the only gate.
 - **Edit through `pm-tools`** - hand-editing is legal markdown but loses the id assignment and the log line; use the tool, then `check`
 - **`remove` is for mistakes and duplicates only** - never as a way to resolve something. An item that turned out to be invalid is rejected with a reason, so the trail survives
 - **Triage every defect yourself** - assign the severity as you file it, never ask the user for it and never leave it out. There is no unset: `add` refuses one and `check` errors on one. The four levels and their rubric are in `references/defects.md`
-- **In doubt, ask** - a criterion, an expected behaviour, an edge case, which category something belongs in, how a merge should resolve. A wrong entry reads exactly like a right one, so nothing downstream catches it. Two exceptions, both decided by you: a defect's severity, and a merge case `references/conflicts.md` already settles
+- **Rate every criterion yourself** - assign the `--importance` (`CRITICAL` / `HIGH` / `MEDIUM` / `LOW`) as you file it, the same way: never ask the user, never leave it out, `add` refuses one and `check` errors on one. The rubric is in `references/acceptance-criteria.md`
+- **In doubt, ask** - a criterion, an expected behaviour, an edge case, which category something belongs in, how a merge should resolve. A wrong entry reads exactly like a right one, so nothing downstream catches it. Three exceptions, all decided by you: a defect's severity, a criterion's importance, and a merge case `references/conflicts.md` already settles
 
 <!-- improved 2026-08-27 | body 2500→2075w / 189→177L (marketplace import: toolchain gate added, pm.py → pm-tools console script, Reports mechanics to references/reports.md, caveman-lite trim across every section) | quality n/a (eval skipped, token cost) | trigger n/a (eval skipped, token cost) | 47 CLI tests green | via improve-skill -->

@@ -83,7 +83,9 @@ def file_a_defect(f: Path, title: str, severity: str = "MAJOR", category: str = 
     )
 
 
-def write_a_criterion(f: Path, title: str, text: str, category: str = "AUTH") -> str:
+def write_a_criterion(
+    f: Path, title: str, text: str, category: str = "AUTH", importance: str = "HIGH"
+) -> str:
     return ok(
         "add",
         f,
@@ -93,6 +95,8 @@ def write_a_criterion(f: Path, title: str, text: str, category: str = "AUTH") ->
         "Authentication",
         "--author",
         "@kj",
+        "--importance",
+        importance,
         "--description",
         "Login, session lifetime and password handling",
         "--title",
@@ -128,6 +132,7 @@ def test_an_unknown_command_fails_loudly():
 def test_defect_lifecycle_from_report_to_fix(defects: Path):
     """The whole trail a defect leaves: filed, attempted (and failed), fixed."""
     file_a_defect(defects, "token race on relaunch")
+    file_a_defect(defects, "splash hang")
 
     ok(
         "log",
@@ -145,7 +150,7 @@ def test_defect_lifecycle_from_report_to_fix(defects: Path):
         "--id",
         "DEF-LNCH-1",
         "--related",
-        "ACC-LNCH-8 - the criterion this violates",
+        "DEF-LNCH-2 - same subsystem",
     )
     ok(
         "close",
@@ -163,7 +168,7 @@ def test_defect_lifecycle_from_report_to_fix(defects: Path):
     body = defects.read_text(encoding="utf-8")
     assert "- [x] `DEF-LNCH-1`" in body
     assert "MAJOR;" in body, "severity survives the lifecycle as the first word of the body"
-    assert body.count("- log:") == 3, "add, the failed attempt, and the close"
+    assert body.count("- log:") == 4, "two adds, the failed attempt, and the close"
     assert "did NOT work" in body, "the ruled-out attempt is the reason the file exists"
     assert body.index("attempted") < body.index("fixed:"), "log lines append in order"
     assert pm("check", defects).returncode == 0
@@ -207,9 +212,8 @@ def test_severity_spreads_across_the_summary_columns(defects: Path):
     ):
         file_a_defect(defects, title, severity=sev)
     out = ok("report", defects)
-    for sev in ("CRITICAL", "MAJOR", "MINOR"):
-        assert sev in out
-    assert "MEDIUM" not in out, "a severity with no items gets no column"
+    assert "| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Fixed | Rejected |" in out
+    assert "| Launch `LNCH` | 3 | 1 | 1 | 0 | 1 | 0 | 0 |" in out, "open counts per level"
 
 
 def test_items_is_a_fix_queue_worst_first(defects: Path):
@@ -252,10 +256,14 @@ def test_criteria_document_from_empty_to_audited(criteria: Path):
     )
 
     out = ok("report", criteria)
-    assert "TEST COVERAGE" in out
-    assert "unit" in out and "integration" in out
+    assert "TEST COVERAGE" not in out, "coverage left the report; it is its own command"
     assert "Session timeout" in out, "open criteria are listed"
     assert "1 closed not listed" in out, "closed work is counted, not enumerated"
+
+    cov = ok("coverage", criteria)
+    assert "TEST COVERAGE" in cov
+    assert "| Category | UNIT | INTEGRATION |" in cov, "only the tags that occur, upper-case"
+    assert "| Authentication `AUTH` | 3 | 3 |" in cov, "open and closed items counted alike"
 
 
 def test_detail_view_carries_every_sub_line(criteria: Path):
@@ -278,6 +286,8 @@ def test_category_filter_narrows_every_section(criteria: Path):
         "Branch Switching",
         "--author",
         "@kj",
+        "--importance",
+        "MEDIUM",
         "--description",
         "Switching between conversation branches",
         "--title",
@@ -409,9 +419,8 @@ def test_remove_refuses_while_something_still_cites_the_item(docs: Path, defects
 
     assert pm("remove", defects, "--id", "DEF-LNCH-2", "--force").returncode == 0
     r = pm("check", defects)
-    assert r.returncode == 0, "a dangling id is a warning to read, not an error to fix blind"
-    assert "DEF-LNCH-2" in r.stdout and "warn" in r.stdout
-    assert pm("check", defects, "--strict").returncode != 0, "--strict is where it bites"
+    assert r.returncode != 0, "a dangling id is an error to fix by hand, never state to reconcile"
+    assert "DEF-LNCH-2" in r.stdout and "ERROR" in r.stdout
 
 
 # --- Workflow: upgrade a legacy document ----------------------------------
@@ -512,7 +521,9 @@ def test_status_filter_narrows_items_but_not_the_summary(defects: Path):
     out = ok("report", defects, "--status", "closed")
     assert "splash hang" in out, "ITEMS now lists the closed work"
     summary = out[out.index("SUMMARY") : out.index("ITEMS")]
-    assert "1/1" in summary, "the summary still shows the whole scope, not the filter"
+    assert "| Launch `LNCH` | 1 | 0 | 1 | 0 | 0 | 1 | 0 |" in summary, (
+        "the summary still shows the whole scope, not the filter"
+    )
 
 
 def restamp(f: Path, item: str, stamp: str, event: str = "added") -> None:
@@ -539,7 +550,7 @@ def test_a_severity_ask_is_a_flag_not_a_reading_of_the_file(defects: Path):
     out = ok("report", defects, "--severity", "CRITICAL")
     assert "token race" in out and "splash flicker" not in out
     assert "1 open / 0 closed" in out, "the counts follow the filter, not the file"
-    assert "MINOR" not in out, "a severity the filter empties gets no column"
+    assert "| Launch `LNCH` | 1 | 1 | 0 | 0 | 0 | 0 | 0 |" in out, "an emptied level reads 0"
 
 
 def test_the_date_window_reads_the_log_which_is_where_dates_live(defects: Path):
@@ -852,8 +863,8 @@ def test_an_open_defects_ask_is_a_filtered_report_not_a_reading(defects: Path):
     assert "(open)" in out
     assert "`DEF-LNCH-2`" in out and "`DEF-LNCH-1`" not in out
     assert "1 closed not listed" in out
-    assert "| Launch `LNCH` | 1/- | -/1 | 1/1 |" in out  # a zero reads as a dash
-    assert "Cells are `open/closed`" in out  # and the legend survives --plain
+    assert "| Launch `LNCH` | 1 | 1 | 0 | 0 | 0 | 1 | 0 |" in out  # plain counts, 0 allowed
+    assert "Cells are" not in out and "open/closed" not in out  # the legend is gone
 
 
 def test_a_question_no_report_answers_becomes_a_pivot(defects: Path):
