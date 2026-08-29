@@ -151,6 +151,32 @@ def test_the_plugin_docs_carry_the_lock_discipline():
     assert "--locked" in reports and "Worked on" in reports
 
 
+def test_locking_is_the_default_not_an_offer():
+    """The lock surface shipped complete and nobody reached for it, because the
+    docs described a feature rather than stating a default. Every procedure an
+    agent follows to work on an item now says: lock before the first write,
+    release when you stop - and `review`, which touches items in bulk, said
+    nothing about locking at all."""
+    plugin = Path(__file__).parent.parent / "plugins/project-management"
+    skill = (plugin / "skills/project-management/SKILL.md").read_text(encoding="utf-8")
+    assert "**Default - lock what you are about to work on.**" in skill
+    assert "unlock when you stop" in skill
+    assert "Do this unasked" in skill
+    # every procedure that writes to an item carries the default, review included
+    for name in ("skills/acc-crit/SKILL.md", "skills/defect/SKILL.md", "skills/review/SKILL.md"):
+        body = (plugin / name).read_text(encoding="utf-8")
+        assert "pm-tools lock" in body, name
+        assert "unlock" in body, name
+    for name in ("skills/acc-crit/SKILL.md", "skills/defect/SKILL.md"):
+        body = (plugin / name).read_text(encoding="utf-8")
+        assert "release when you stop" in body, name
+        assert "default, unasked" in body, name
+    # the passive phrasings this replaced - a revert fails here
+    for name in ("skills/acc-crit/SKILL.md", "skills/defect/SKILL.md"):
+        body = (plugin / name).read_text(encoding="utf-8")
+        assert "when you pick it up** -" not in body, name
+
+
 def test_help_documents_the_whole_lock_surface():
     """ACC-PMLOCK-69: --help is the only lock documentation an agent reads at run time."""
     out = ok("--help")

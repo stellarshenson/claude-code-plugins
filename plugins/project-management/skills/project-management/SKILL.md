@@ -138,8 +138,10 @@ Two indicators, no more: `related` and `blocked-by`.
 
 An open item may carry one `- lock: <stamp> @xx [note]` sub-line: @xx is likely working on it until the stamp. The lock is a courtesy signal, never a gate.
 
+**Default - lock what you are about to work on.** Before the first write to an item - a criterion you are about to satisfy, a defect you are about to fix, a finding you are about to act on - lock it under your handle, and unlock when you stop. Do this unasked: the lock blocks nobody and expires on its own, so holding one costs nothing, while not holding one costs two agents writing the same item without either seeing the other. Lock the ids you intend to touch, one call each, not the file.
+
 - **A read names the items in flight** - `report`, `list`, `search` and `refs` print one stderr line, `N item(s) currently worked on: DEF-X by @xx until <stamp>` (ten ids at most, then `+M more`), whenever an item they show holds an active lock, so the choice of what to pick up is informed before the work starts; `--json` prints no notice
-- **Lock an item when you pick it up** - `pm-tools lock FILE --id ID --author @xx`, 24 hours by default; `--hours N` or `--until STAMP` sets another span, locking again as the same author extends it
+- **The call** - `pm-tools lock FILE --id ID --author @xx`, 24 hours by default; `--hours N` or `--until STAMP` sets another span, locking again as the same author extends it
 - **Ask before working on an item locked by someone else** - a lock held by another handle is a person mid-change; ask them before continuing
 - **The lock never blocks a write** - a write on an item locked by another author prints one warning on stderr naming the holder and the expiry, then proceeds; exit code and file result are those of the unlocked case. A lock is refused only on a closed or rejected item
 - **Expired locks clear themselves on the next write** - any write command but `upgrade` first removes every lock whose stamp is past, silently and unlogged; `close` and `reject` clear the item's lock whatever its expiry. `check` is read-only and reports an expired lock as a warning

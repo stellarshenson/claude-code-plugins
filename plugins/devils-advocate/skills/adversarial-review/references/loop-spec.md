@@ -59,9 +59,17 @@ Its args contract (target, bar, lenses mandatory; the script throws without them
 
 Its statuses: `PLAN` (the adjudicated change plan for the main session to apply - `reverts` first, then `plan`; `mechanisms` lists the changes that add review surface, for veto; carries `state` for the re-invocation), `SHIP`, `STOP` (adjudicator ruling), `FANOUT_STOP`, `ROUND_CAP`, `ADJUDICATOR_DIED`. `STOP` and `FANOUT_STOP` carry `reverts` - the adjudicator's list (`{mechanism, site, dissolves, defers}`), else every applied change in closure shape (`{site, summary, files}`), entries whose summary starts `reverted:` being reverts already applied and skipped - so the main session reverts deterministically. Every status returns the full round history, findings, closures, deferrals and refutations.
 
+## The invariant map - required before a constructed loop runs
+
+A constructed loop emits its invariant map before the first spawn: nine lines, `INV-1` .. `INV-9`, each naming the site in its own script that carries that invariant - the throw, the filter, the counter, the schema field, the return. Mark each of those sites in the script with the same `INV-n`.
+
+The map is the check. An invariant list read and believed leaves no evidence, so neither the model nor the user can tell afterwards whether it happened; a map is an artifact both can read against the script. A loop that cannot produce one has not been checked, whatever went into writing it.
+
+The unobservable version lost in the field. Told only to check the script against the invariant list, a capable session ran the shipped example instead, and said afterwards that it had skipped the check rather than performed it - the example carries tests, so the fallback route was the one that felt provably safe (DEF-ADVR-48).
+
 ## Execution paths
 
-1. **Dynamic (default)** - the session has the dynamic Workflow capability: the model constructs the workflow from this spec using the harness's workflow guidance (the worked example is consultable for invariant mechanics), verifies it against the invariant list, passes it inline, and runs it. A slash-command instruction to do so is legitimate Workflow opt-in. Running the shipped script by path on a harness that has the capability is the fallback route taken by mistake
+1. **Dynamic (default)** - the session has the dynamic Workflow capability: the model constructs the workflow from this spec using the harness's workflow guidance (the worked example is consultable for invariant mechanics), emits the invariant map above, passes it inline, and runs it. A slash-command instruction to do so is legitimate Workflow opt-in. Running the shipped script by path on a harness that has the capability is the fallback route taken by mistake
 2. **Supplied (no dynamic capability - different harness)** - the worked example is the protocol: a library runner `review-tools loop` executes it by driving `claude -p` subprocesses (spec below, not implemented)
 3. **Manual (interim, until the runner ships)** - a harness without dynamic capability follows the worked example stage by stage as a procedural checklist through the skill's rounds protocol; known-weaker, which is what this spec exists to retire
 

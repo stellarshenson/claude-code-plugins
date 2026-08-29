@@ -285,6 +285,30 @@ def test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback():
     assert not offenders, offenders
 
 
+def test_the_invariant_check_produces_an_artifact():
+    """DEF-ADVR-48: a constructed loop emits an invariant map before it runs.
+
+    The check used to be `check the script against the invariant list`, which
+    leaves nothing behind - a model can skip it and nobody, itself included,
+    can tell afterwards. The shipped script carries tests, so the unobservable
+    check made the fallback route the one that felt provably safe, and a
+    capable session took it. The map is the artifact that makes constructing
+    as checkable as copying."""
+    skill = (PLUGIN / "skills/adversarial-review/SKILL.md").read_text(encoding="utf-8")
+    command = (PLUGIN / "commands/adversarial-review.md").read_text(encoding="utf-8")
+    spec = SPEC.read_text(encoding="utf-8")
+    marker = "`INV-1` .. `INV-9`"
+    for name, surface in (("skill", skill), ("command", command), ("spec", spec)):
+        assert marker in surface, name
+    assert "## The invariant map - required before a constructed loop runs" in spec
+    assert "emits the invariant map above, passes it inline, and runs it" in spec
+    assert "before the first spawn" in skill
+    # the exact unobservable phrasings this defect removed - a revert fails here
+    assert "verifies it against the invariant list" not in spec
+    assert "check the script against the spec's invariant list one by one" not in skill
+    assert "check the constructed script against its invariant list" not in command
+
+
 def _return_block(status: str) -> str:
     """The full `return { ... }` object literal that carries a given status.
 

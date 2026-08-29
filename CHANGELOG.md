@@ -4,6 +4,22 @@ One synced version for the library and the seven plugins. Entries summarise; the
 
 ## [Unreleased]
 
+### Fixed
+
+- **devils-advocate** - the invariant check a constructed loop must pass now produces an artifact. It used to read "check the script against the invariant list one by one", which leaves nothing behind, so it could be skipped in silence while the shipped worked example carried 22 passing tests - the fallback route was the one that felt provably safe, and a capable session with the dynamic Workflow capability took it. A constructed loop now emits its invariant map before the first spawn: nine lines, `INV-1` .. `INV-9`, each naming the site in its own script that carries that invariant. `adversarial-loop.js` is unchanged - this is a contract change, not a protocol change (DEF-ADVR-48)
+
+### Changed
+
+- **project-management** - soft locking is stated as a default, not offered as a feature. The lock surface shipped complete in 1.7.10 and nobody reached for it, because the docs described what a lock is instead of saying when to take one. Every procedure that writes to an item now says lock before the first write and release when you stop, `review` included - it touches items in bulk and previously said nothing about locking at all (ACC-PMLOCK-81)
+
+## [1.7.11] - 2026-08-29
+
+### Fixed
+
+- **devils-advocate** - a round whose whole reviewer panel died is no longer read as a clean review. `mergeFindings` mapped a null agent return to an empty findings list, so a round in which every reviewer errored produced no findings, skipped adjudication entirely and exited `SHIP` - the loop reporting a clean review it never performed. Observed live as a 3-agent, 3-errored, 82ms run returning `SHIP`. Every panel call now routes through a checked wrapper and a whole-panel death exits `PANEL_DIED` carrying full history (DEF-ADVR-47, ACC-REVIEW-80)
+
+## [1.7.10] - 2026-08-29
+
 ### Added
 
 - **all plugins** - every command procedure is now also a callable skill. 27 of 42 commands had no same-named skill, so an agent could not invoke through the Skill tool what a user can type as `/plugin:name`. Each command body moved verbatim into `skills/<name>/SKILL.md` and the command became a router that points at it, giving one procedure and two surfaces; plugin skills went 27 to 54. `tests/test_command_skill_parity.py` pins parity, addressability and routing across all 42

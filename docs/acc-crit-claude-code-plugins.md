@@ -537,6 +537,12 @@ work-in-progress soft locks on acceptance criteria and defects
   - test-tags: UNIT
   - log: 2026-08-29T12:09:01Z @kj added
   - log: 2026-08-29T13:25:10Z @kj closed
+- [x] `ACC-PMLOCK-81` **locking is the default behaviour, not an offered feature** - HIGH; The skill states locking as a standing default rather than describing it as available: before the first write to an item - a criterion being satisfied, a defect being fixed, a finding being acted on - the agent locks it under its handle unasked, and unlocks when it stops. Every procedure that writes to an item carries it, including review, which touches items in bulk and previously said nothing about locking at all
+  - evidence: tests/test_pm_tools_functional.py::test_locking_is_the_default_not_an_offer - 43 passed in that file, suite 1191 passed + 1 skipped, ruff clean. Guard proven non-vacuous: removing the lock step from skills/review/SKILL.md fails it on that file, restoring it passes
+  - test: plugins/project-management/skills/project-management/SKILL.md opens its Soft lock section with the default and the release half; skills/acc-crit, skills/defect and skills/review each name pm-tools lock and unlock in their procedure
+  - test-tags: UNIT
+  - log: 2026-08-29T21:10:27Z @kj added
+  - log: 2026-08-29T21:10:31Z @kj closed
 
 ## command and skill parity `SKILLC`
 
