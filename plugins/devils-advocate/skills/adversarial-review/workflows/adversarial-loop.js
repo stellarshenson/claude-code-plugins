@@ -160,6 +160,16 @@ const capImmaterial = (findings) => {
   return findings
 }
 
+// DEF-ADVR-47: a null return is a DEAD agent, never an empty review. A round
+// whose whole panel died must not reach the clean path - it reviewed nothing.
+const panelDied = (perLens) => perLens.every((rep) => !rep)
+let panelDeath = null
+const runPanelChecked = async (phase, body) => {
+  const raw = await runPanel(phase, body)
+  if (panelDied(raw)) panelDeath = { phase, lenses: LENSES.length }
+  return raw
+}
+
 const mergeFindings = (perLens) => {
   const rows = []
   perLens.forEach((rep, i) => {
@@ -299,7 +309,7 @@ if (!S) {
   phase('Discover')
   log(`round 1 discovery: ${LENSES.join(', ')} over ${TARGET}`)
   findings = mergeFindings(
-    await runPanel(
+    await runPanelChecked(
       'Discover',
       `This is a discovery round: the full scope against the bar.`
     )
@@ -307,9 +317,12 @@ if (!S) {
   history.push({ round, kind: 'discover', findings: findings.length, severities: severityTally(findings) })
 } else {
   log(`round ${round} confirming: pinned to ${closures.length} closure(s), ${newDelta.length} new`)
-  findings = pinFilter(mergeFindings(await runPanel('Confirm', confirmBody())))
+  findings = pinFilter(mergeFindings(await runPanelChecked('Confirm', confirmBody())))
   history.push({ round, kind: 'confirm', findings: findings.length, severities: severityTally(findings) })
 }
+
+  if (panelDeath)
+    return { status: 'PANEL_DIED', reason: `every reviewer in the ${panelDeath.phase} panel died - this round reviewed NOTHING; relaunch it, never read it as clean`, round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
 
 while (true) {
   if (!findings.length) {
@@ -399,7 +412,9 @@ while (true) {
   // --- Another pinned confirming round (no new delta - clean must hold) ---
   round += 1
   log(`round ${round} confirming: pinned to ${closures.length} closure(s)`)
-  findings = pinFilter(mergeFindings(await runPanel('Confirm', confirmBody())))
+  findings = pinFilter(mergeFindings(await runPanelChecked('Confirm', confirmBody())))
+  if (panelDeath)
+    return { status: 'PANEL_DIED', reason: `every reviewer in the ${panelDeath.phase} panel died - this round reviewed NOTHING; relaunch it, never read it as clean`, round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
   history.push({ round, kind: 'confirm', findings: findings.length, severities: severityTally(findings) })
 }
 

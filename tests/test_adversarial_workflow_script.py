@@ -382,3 +382,28 @@ def test_method_is_not_stated_in_both_the_script_and_an_agent_file():
             if phrase in body:
                 offenders.append(f"'{phrase}' is in the script AND {name}.md")
     assert not offenders, offenders
+
+
+def test_a_dead_panel_is_never_a_clean_round():
+    """DEF-ADVR-47. A null agent return means the reviewer DIED, not that it
+    reviewed and found nothing. Observed live: an agentType that did not
+    resolve killed all three lenses, and the run exited SHIP in 82ms having
+    reviewed nothing. The clean path is reachable only through adjudication
+    (invariant 2); a panel that never returned must reach neither.
+    """
+    t = text()
+    assert "panelDied" in t, "no dead-panel detection at all"
+    assert "PANEL_DIED" in t, "a dead panel has no distinct terminal status"
+    # every panel call goes through the checked wrapper, never the raw one
+    raw_calls = re.findall(r"await runPanel\(", t)
+    assert len(raw_calls) == 1, (
+        f"{len(raw_calls)} raw runPanel calls - every panel must route through "
+        "runPanelChecked so a dead panel cannot reach the clean path"
+    )
+    # the death check sits between the panel and the clean/adjudicate branch
+    assert t.index("if (panelDeath)") < t.index("while (true) {"), (
+        "the discovery panel's death is checked after the loop begins - too late"
+    )
+    died = _return_block("PANEL_DIED")
+    for key in ("history", "closures", "deferred", "refuted", "state"):
+        assert re.search(rf"\b{key}[,:]", died), f"PANEL_DIED drops `{key}` (invariant 7)"

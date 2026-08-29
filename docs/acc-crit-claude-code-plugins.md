@@ -477,6 +477,12 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-29T13:38:22Z @kj added
   - log: 2026-08-29T15:02:02Z @kj closed
   - log: 2026-08-29T15:02:02Z @kj premise correction from the run: graphify is NOT a stellarshenson project - 0.8.18 METADATA carries 'Copyright (c) 2026 Safi Shamsi' and the homepage redirects to github.com/Graphify-Labs/graphify. I had briefed the workflow with the wrong upstream; the skill now cites the real one. Also recorded: PyPI is at 0.9.51 while this box runs 0.8.18, and 0.9.51's paths.py names issue #1423 as fixing the GRAPHIFY_OUT override defect - the skill documents 0.8.18, which is what is installed
+- [x] `ACC-REVIEW-80` **a round that reviewed nothing is never clean** - CRITICAL; a null agent return means the reviewer died, not that it reviewed and found nothing: a round in which the whole panel dies reaches a distinct terminal status carrying full history, never the clean path, because ACC-REVIEW-45's empty plan and ACC-REVIEW-46's forced adjudication are both satisfied vacuously when no findings exist to adjudicate
+  - evidence: Discovered live, not by inspection: wf_00afc000-19a returned status SHIP in 82ms with 0 findings because all three lens agents died on an unresolvable agentType, and the loop read three nulls as a clean review. Fixed in adversarial-loop.js with panelDied, the runPanelChecked wrapper routing all four panel calls, and a PANEL_DIED terminal status carrying full history per invariant 7. Pinned by test_a_dead_panel_is_never_a_clean_round, proven non-vacuous by restoring one raw runPanel call and watching it fail with '2 raw runPanel calls'. Suite 1189 passed
+  - test: tests/test_adversarial_workflow_script.py::test_a_dead_panel_is_never_a_clean_round - asserts panelDied/PANEL_DIED exist, that exactly one raw runPanel call remains so every panel routes through the checked wrapper, that the death check precedes the loop, and that PANEL_DIED carries history/closures/deferred/refuted/state
+  - test-tags: UNIT
+  - log: 2026-08-29T18:30:30Z @kj added
+  - log: 2026-08-29T18:30:38Z @kj closed
 
 ## pm-tools soft lock `PMLOCK`
 
