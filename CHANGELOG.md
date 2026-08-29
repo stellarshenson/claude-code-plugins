@@ -4,10 +4,26 @@ One synced version for the library and the seven plugins. Entries summarise; the
 
 ## [Unreleased]
 
+### Added
+
+- **all plugins** - every command procedure is now also a callable skill. 27 of 42 commands had no same-named skill, so an agent could not invoke through the Skill tool what a user can type as `/plugin:name`. Each command body moved verbatim into `skills/<name>/SKILL.md` and the command became a router that points at it, giving one procedure and two surfaces; plugin skills went 27 to 54. `tests/test_command_skill_parity.py` pins parity, addressability and routing across all 42
+- **devils-advocate** - `adversaries/ai-engineer.md`, a vendor-neutral lens on the instruction layer that steers AI assistants (skills, agent prompts, instruction files, tool and MCP descriptions, workflow scripts, context layout), judged against open standards and published paradigms rather than one vendor's practice
+- **devils-advocate** - `references/agentic-engineering-canon.md`, the adversary's evidence base: 93 source URLs, every entry quote-verified against fetched bytes
+- **devils-advocate** - `references/code-graph-instrument.md`, describing what a code-graph index offers a reviewer without pinning a command surface
+- **project-management** - work-in-progress soft locks on acceptance criteria and defects: `pm-tools lock` / `unlock`, a `- lock: <until> @xx` line, warnings (never refusals) when writing to an item someone else holds, automatic expiry on the next write, `--locked` / `--locked-by` filters, a `lock` field and a `Worked on` count in reports
+- `CHANGELOG.md` itself
+
 ### Changed
 
 - **devils-advocate** - the adversarial-review skill, its spec, agent prompts and command are restructured per Anthropic's context-engineering guidance for Claude 5-generation models: the nine loop invariants are stated once (`references/loop-spec.md`) with pointers from SKILL.md, the README and the command; the adjudicator's and reviewer's method lives in their agent files and the workflow script passes data only; SKILL.md is a lightweight guide with the manual rounds protocol and remedy discipline moved to `references/`; incident narratives kept in the spec alone. Reference: [The new rules of context engineering for Claude 5 generation models](https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models) - one placement per rule, outcomes over guardrails, progressive disclosure, code over prose
-- **project-management** - work-in-progress soft locks on acceptance criteria and defects: `pm-tools lock` / `unlock`, a `- lock: <until> @xx` line, warnings (never refusals) when writing to an item someone else holds, automatic expiry on the next write, `--locked` / `--locked-by` filters, a `lock` field and a `Worked on` count in reports
+- **devils-advocate** - no tool command surface is pinned anywhere in the plugin. An instrument reaches an agent as data - what exists, where - never as a written invocation, because a spelled-out command pins an API that moves; `test_instrument_threaded_as_data_never_prescribed` fails if one returns
+
+### Fixed
+
+- **tests** - the toolchain-gate guard no longer reads its reference gate block from one named file, and its CLI-name scan ignores YAML frontmatter, so a router that merely names a CLI in its menu description is not required to carry a network upgrade
+- **devils-advocate** - invariant 7 (full history on every return) is now true and guarded. `closures` was absent from four of the five returns and `ADJUDICATOR_DIED`, the killed-loop case the invariant names, carried neither `deferred` nor `refuted`; every exit now returns all four
+- **devils-advocate** - `ai-engineer` gained a MEDIUM severity, an activation-and-trigger-surface axis, and a deletion axis that scores always-loaded bytes separately from activation-time prose - all three from its first real outing
+- **devils-advocate** - two method rules stated in both the workflow script and the agent files were removed from the script, which loads those agent files by `agentType`
 
 ## [1.7.9] - 2026-08-29
 

@@ -158,10 +158,10 @@ def test_workflow_never_edits_the_tree():
     assert "FIX_SCHEMA" not in t and "'Fix'" not in t  # no fixer stage at all
     assert "Apply ONLY this plan in the main session" in t
     assert "args.state" in t and "appliedFixes" in t and "stateOut" in t  # cross-invocation state
-    assert (
-        "never modify any file" in t
-    )  # reviewers in the script prompt; the adjudicator in its agent file
+    # the rule is stated ONCE, in the agent files both roles load via agentType
+    assert "never modify any file" not in t, "the script restates a rule the agent files own"
     assert "Never modify a file in the repo under review" in agent("adjudicator")
+    assert "never modify a file in the repo under review" in agent("adversarial-reviewer").lower()
 
 
 def test_instrument_threaded_as_data_never_prescribed():
@@ -282,4 +282,103 @@ def test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback():
         for p in PLUGIN.rglob("*")
         if p.is_file() and p != SPEC and "<select>" in p.read_text(encoding="utf-8")
     ]
+    assert not offenders, offenders
+
+
+def _return_block(status: str) -> str:
+    """The full `return { ... }` object literal that carries a given status.
+
+    Walks back from the status token to its `return {` and forward with brace
+    matching, so the assertion reads the real object rather than a line window.
+    """
+    body = text()
+    # anchor on the STATUS FIELD - the bare token also appears in a schema enum
+    idx = body.index(f"status: '{status}'")
+    start = body.rindex("return {", 0, idx)
+    depth, i = 0, start + len("return ")
+    while i < len(body):
+        if body[i] == "{":
+            depth += 1
+        elif body[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return body[start : i + 1]
+        i += 1
+    raise AssertionError(f"unbalanced return block for {status}")
+
+
+def test_full_history_on_every_return():
+    """Invariant 7: a killed loop still reports what it knew.
+
+    This test is filed late and its absence was recorded as present, which is
+    how invariant 7 went unguarded while the record said otherwise. Writing it
+    found the gap it was supposed to have closed: `closures` was missing from
+    four of five returns, and ADJUDICATOR_DIED - the killed-loop case the
+    invariant names - carried neither `deferred` nor `refuted`.
+    """
+    for status in ("ADJUDICATOR_DIED", "STOP", "FANOUT_STOP", "PLAN"):
+        block = _return_block(status)
+        for key in ("history", "closures", "deferred", "refuted", "state"):
+            assert re.search(rf"\b{key}[,:]", block), f"{status} return drops `{key}`"
+    # the terminal return is a ternary over SHIP / ROUND_CAP
+    final = text()[text().rindex("\nreturn {") :]
+    for key in ("history", "closures", "deferred", "refuted", "state"):
+        assert re.search(rf"\b{key}[,:]", final), f"the SHIP/ROUND_CAP return drops `{key}`"
+
+
+def test_the_invariants_are_stated_once():
+    """ACC-REVIEW-61: the nine invariants live in the spec, nowhere else.
+
+    A verifier proved this unenforced by pasting all nine invariants verbatim
+    into the plugin README with the whole suite still green. Pointers are the
+    contract; a second copy is the defect. Matching is on the invariant TEXT,
+    so a paraphrase that reproduces the list still trips it.
+    """
+    spec = SPEC.read_text(encoding="utf-8")
+    # the distinguishing clause of each invariant, taken from the spec itself
+    marks = re.findall(r"^\d+\.\s+([^-\[\n]{20,60})", spec, re.M)
+    assert len(marks) >= 8, f"only found {len(marks)} invariant openings in the spec"
+    offenders = []
+    for path in PLUGIN.rglob("*"):
+        if not path.is_file() or path == SPEC or path.suffix not in (".md", ".js", ".txt"):
+            continue
+        body = path.read_text(encoding="utf-8")
+        hits = [m.strip() for m in marks if m.strip() in body]
+        if len(hits) >= 3:
+            offenders.append(f"{path.relative_to(PLUGIN)} restates {len(hits)} invariants")
+    assert not offenders, (
+        "the invariant list is stated somewhere other than the spec - state it once "
+        f"and point at it: {offenders}"
+    )
+
+
+def test_method_is_not_stated_in_both_the_script_and_an_agent_file():
+    """ACC-REVIEW-62: method in the agent file, data in the script prompt.
+
+    A verifier proved this unenforced by inserting eight lines of the
+    adjudicator's method into the script's adjudicator prompt with the whole
+    suite still green. Each phrase below is a rule an agent file owns; finding
+    it in the script means the rule is stated twice and the two will drift.
+    """
+    body = text()
+    owned = {
+        "adjudicator": (
+            "Materiality triage",
+            "Revert before refine",
+            "REVERT CANDIDATE",
+            "contested semantics",
+            "Technical truth is not materiality",
+        ),
+        "adversarial-reviewer": (
+            "Materiality before severity",
+            "who alone decides what blocks",
+        ),
+    }
+    offenders = []
+    for name, phrases in owned.items():
+        agent_file = agent(name)
+        for phrase in phrases:
+            assert phrase in agent_file, f"{name}.md no longer owns '{phrase}'"
+            if phrase in body:
+                offenders.append(f"'{phrase}' is in the script AND {name}.md")
     assert not offenders, offenders

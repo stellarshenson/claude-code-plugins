@@ -1,0 +1,28 @@
+---
+name: adversarial-review
+description: Hostile independent review by spawning fresh reviewer subagents - invokes the devils-advocate:adversarial-review skill, picking the adversary a data science project needs (data-scientist, architect, popular-science, ux-designer); find, fix, re-confirm clean
+allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Agent, Skill, TaskCreate, TaskUpdate]
+---
+
+# Adversarial Review
+
+Invoke the `devils-advocate:adversarial-review` skill first - it is the single source of truth for the two modes (diff bug-hunt vs whole-repo audit), the rounds protocol, the spawn mechanics, the gotchas, and every adversary persona beside it in `adversaries/<name>.md`. Do NOT duplicate it here. This skill is only the data-science entry point into it.
+
+Requires the `devils-advocate` plugin installed - the skill and its adversaries live there. For a non-data-science target, `/devils-advocate:adversarial-review` is the same skill with the full roster up front.
+
+## What to do
+
+1. Invoke the `devils-advocate:adversarial-review` skill
+2. **No adversary named? ASK before spawning** - state the inferred target, list the fitting candidates with their lens, recommend one, wait. Wrong lens = fluent review of a risk the target lacks. Skip only when the prompt names it
+3. **Cap at 3** unless the user explicitly asks for more - your triage, not the spawn, is the bottleneck; 3 lenses catch most of what 5 would, at a review you finish
+4. Pick by where the risk lives - the four that earn their keep in a data science project:
+   - **data-scientist** → an experiments log, notebook, data-prep pipeline, or metric/eval design, before trusting a conclusion
+   - **architect** → the project / pipeline architecture, config, repo structure
+   - **popular-science** → the article, story, or README, before publishing for non-specialists
+   - **ux-designer** → notebook visuals, figures, dashboards
+   - each is also fully generalist - use it on any target that fits its lens. The skill's roster carries more (`bug-hunter`, `qa-engineer`, `methodologist`, `tui`, `devops`, `analyst`) - reach for them when the risk is there: `methodologist` on an experiment's verdict ladder, `qa-engineer` on the test suite, `analyst` on a spec or acceptance-criteria doc
+5. Pick the mode: Mode 1 (inline diff, no tools) for a specific change; Mode 2 (whole-repo, tools ON) for systemic rot
+6. **`TaskCreate` the review before spawning**, `TaskUpdate` it each round - `completed` only on a clean confirming round. One task per review, not per lens
+7. **Spawn the `devils-advocate:adversarial-reviewer` subagent** - one per lens, naming the adversary and scope in its prompt; a panel goes in a single message so the lenses run concurrently and the user can watch each. Write the prompt as if it were a `claude -p` command line - a process that knows nothing but what you typed. Pass target, scope and locked decisions; never your reasoning for the change, which is the thing under review. Drop to `claude -p` (skill's mechanics - `env -u CLAUDECODE`, `< /dev/null`, `--no-session-persistence`) only for what a subagent cannot do - genuinely deny tools in Mode 1, or pin a different model
+8. **Adjudicate before fixing** - for a panel, or any round past 3, spawn `devils-advocate:adjudicator` with every lens's findings plus anything you know (a blast radius you already have, a locked decision, domain insight, the previous round's findings and the fixes since). It returns one change plan grouped by root cause, with each change's radius and what it could break. Skip only for a single lens with one or two findings you can verify yourself
+9. Triage what the adjudicator left UNPROVEN and spot-check its confirmed and refuted calls - you still own the final call - then fix the real ones and run the re-confirm round - do not call it clean until a confirming round comes back clean

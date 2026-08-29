@@ -131,9 +131,11 @@ def test_the_plugin_docs_carry_the_lock_discipline():
         "skills/project-management/references/acceptance-criteria.md",
         "skills/project-management/references/defects.md",
         "skills/project-management/references/reports.md",
-        "commands/acc-crit.md",
-        "commands/defect.md",
-        "commands/report.md",
+        # the command bodies are routers; the procedure they route into is
+        # where the discipline has to be stated
+        "skills/acc-crit/SKILL.md",
+        "skills/defect/SKILL.md",
+        "skills/report/SKILL.md",
     ]
     for name in files:
         body = (plugin / name).read_text(encoding="utf-8")

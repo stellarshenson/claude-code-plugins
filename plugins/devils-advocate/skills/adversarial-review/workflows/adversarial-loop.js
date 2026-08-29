@@ -71,7 +71,7 @@ const MAX_CHANGES = args.maxChanges || 3
 // causes - but a hardcoded tool overfits to the problems it was written for and
 // misclassifies the rest, and any one tool drifts on its own timeline.
 const graphBlock = GRAPH
-  ? `INSTRUMENT AVAILABLE - a refreshed code graph matching HEAD at ${GRAPH}. It answers callers, dependents and whether two sites share one cause faster than grepping. Use it as your method sees fit and point it at that path; if it errors, looks stale or does not answer your question, say so in one line and reach the same answer another way.`
+  ? `INSTRUMENT AVAILABLE - a refreshed code graph matching HEAD at ${GRAPH}. It answers callers, dependents and whether two sites share one cause faster than grepping. Use it as your method sees fit and point it at that path.`
   : null
 
 const FINDINGS_SCHEMA = {
@@ -201,7 +201,7 @@ const reviewerPrompt = (lens, body) =>
     barBlock,
     graphBlock,
     body,
-    `Critique only - never modify any file. Return your findings through the structured output tool; no prose report.`,
+    `Return your findings through the structured output tool; no prose report.`,
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -338,7 +338,8 @@ while (true) {
         .join('\n\n'),
       { label: `adjudicate:r${round}`, phase: 'Adjudicate', schema: ADJUDICATION_SCHEMA, agentType: 'devils-advocate:adjudicator' }
     )
-    if (!adj) return { status: 'ADJUDICATOR_DIED', history, findings, state: stateOut() }
+    if (!adj)
+      return { status: 'ADJUDICATOR_DIED', round, history, findings, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
     const reverts = adj.reverts || []
     allDeferred.push(...(adj.deferred || []))
     allRefuted.push(...(adj.refuted || []))
@@ -350,7 +351,7 @@ while (true) {
     if (fanout > 0.5 && !reverts.length) log(`round ${round}: fanout ${adj.fanoutTraced}/${adj.fanoutTotal} above 0.5 with NO revert ruled - the plan refines loop-introduced code; veto at PLAN or revert by hand`)
     if (adj.changes.length > MAX_CHANGES) log(`round ${round}: plan carries ${adj.changes.length} changes against a budget of ${MAX_CHANGES} - apply the top ${MAX_CHANGES}, defer the rest`)
     if (adj.ruling === 'STOP') {
-      return { status: 'STOP', reason: 'adjudicator: the loop is generating its own work - re-model instead of another round - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+      return { status: 'STOP', reason: 'adjudicator: the loop is generating its own work - re-model instead of another round - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
     }
     // Fanout counts only while the adjudicator keeps ordering changes.
     const refining = adj.changes.length > 0 || reverts.length > 0
@@ -361,7 +362,7 @@ while (true) {
       // ({site, summary, files}) - the findings live in the loop's own fixes
       // by definition; entries whose summary starts "reverted:" are reverts
       // already applied and are skipped by the main session.
-      return { status: 'FANOUT_STOP', reason: 'over half the findings traced to this loop\'s own fixes in two consecutive rounds - revert the listed mechanisms, defer what they answered, then re-model if anything material remains - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+      return { status: 'FANOUT_STOP', reason: 'over half the findings traced to this loop\'s own fixes in two consecutive rounds - revert the listed mechanisms, defer what they answered, then re-model if anything material remains - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
     }
 
     if (adj.changes.length || reverts.length) {
@@ -377,6 +378,7 @@ while (true) {
           'Apply ONLY this plan in the main session: first `reverts` (remove each listed mechanism, record its deferred originals), then `plan` - these exact changes, smallest radius, nothing else; do not apply reviewer remedies the plan does not name. Read `mechanisms` before applying: each adds review surface and is yours to veto unless it answers a material CRITICAL/MAJOR. Run the test suite. Then re-invoke this workflow with args.state set to the `state` object below, verbatim, and args.appliedFixes = [{site, summary, files}] describing what you actually applied, reverts included - record each applied revert with summary starting "reverted: <mechanism>"; STOP and FANOUT_STOP skip those entries - the next round is a pinned confirm attacking exactly that delta.',
         round,
         history,
+        closures,
         deferred: allDeferred,
         refuted: allRefuted,
         state: stateOut(),

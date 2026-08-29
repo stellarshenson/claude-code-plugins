@@ -147,13 +147,27 @@ def _toolkit_clis() -> list[str]:
     return [ln.split("=", 1)[0].strip() for ln in block.splitlines() if "=" in ln]
 
 
+def _strip_frontmatter(body: str) -> str:
+    """Drop the YAML header - it is menu metadata, not instructions to the agent.
+
+    A router command's `description` may name the CLI its skill runs
+    (`Archive older journal entries via journal-tools archive`) while the
+    router itself runs nothing. Gating on that text would put a network `pip
+    install` in front of a file whose whole body is one Skill invocation.
+    """
+    if not body.startswith("---\n"):
+        return body
+    end = body.find("\n---\n", 4)
+    return body if end == -1 else body[end + 5 :]
+
+
 def _names_toolkit_cli(body: str) -> bool:
     """True when the body tells the agent to run a toolkit binary.
 
     Skill hand-offs (`svg-infographics:svg-designer`, `/journal:update`) are not
     CLI calls - the skill they route into carries its own gate.
     """
-    prose = _SKILL_REF.sub("", body)
+    prose = _SKILL_REF.sub("", _strip_frontmatter(body))
     names = "|".join(re.escape(c) for c in _toolkit_clis())
     return re.search(rf"(?<![\w/:-])(?:{names})(?![\w-])", prose) is not None
 
@@ -286,18 +300,21 @@ def _shipped_comparison_lines() -> str:
     """Extract the PLUG-assignment and comparison from a shipped gate block.
 
     Running the doc's own text (rather than a retyped copy) is the point: a
-    typo introduced into the markdown fails these tests.
+    typo introduced into the markdown fails these tests. The block is FOUND
+    rather than read from a pinned path - naming one file made this test fail
+    the day that file became a router and its gate moved into the skill.
     """
-    body = (PLUGIN_ROOT / "svg-infographics" / "commands" / "validate.md").read_text(
-        encoding="utf-8"
+    wanted = ("PLUG=", "OLDER=", '[ -n "$PLUG" ]', 'echo "toolkit')
+    for path in _plugin_markdown():
+        if STALE_ASSERTION not in (body := path.read_text(encoding="utf-8")):
+            continue
+        lines = [ln.strip() for ln in body.splitlines() if ln.strip().startswith(wanted)]
+        if len(lines) >= 4:
+            return "\n".join(lines[:4])
+    raise AssertionError(
+        "no shipped gate block carries the four comparison lines - the gate was "
+        "deleted, or its wording drifted from what this test executes"
     )
-    lines = [
-        ln.strip()
-        for ln in body.splitlines()
-        if ln.strip().startswith(("PLUG=", "OLDER=", '[ -n "$PLUG" ]', 'echo "toolkit'))
-    ]
-    assert len(lines) >= 4, "could not extract the shipped comparison lines"
-    return "\n".join(lines[:4])
 
 
 def _run_gate(
