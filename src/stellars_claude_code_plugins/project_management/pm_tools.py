@@ -25,6 +25,16 @@ the directory, not one file, so cross-file links resolve.
 Three states: `- [ ]` open, `- [x]` closed, `- [-]` rejected (reason in the log line).
 Log lines read `- log: 2026-08-27T15:59:12Z @kj <event>` - ISO 8601 UTC, then the author.
 
+An open item may carry one `- lock: 2026-08-30T10:11:29Z @kj <note>` line: @kj is likely
+working on it until the stamp. The lock is a courtesy signal, never a gate - a write by
+another author warns once on stderr and proceeds, exit code and file result unchanged.
+Every write command except `upgrade` first removes every lock whose stamp is past,
+silently; close and reject remove the item's lock whatever its expiry. Locking is never
+logged. report, list, search and refs open with `N item(s) currently worked on: DEF-X by
+@xx until <stamp>` on stderr whenever an item they show holds an active lock, ten ids at
+most and then `+M more` - the write-time warning is late, the read is when the item is
+chosen; --json carries no notice.
+
 Query - every table is markdown, paste-ready; --json gives the same facts as data:
   report [paths] [FILTERS] [--detail] [--plain] [--summary] [--json]
          ITEMS lists open work only unless --status says otherwise, worst level first.
@@ -63,14 +73,20 @@ FILTERS, the same on report, list, pivot, search and coverage:
   --grep PATTERN   case-insensitive regex over title, body, evidence and log lines
   --blocked        items with at least one blocked-by target that is still open
   --related-to ID  items linked to ID in either direction, related or blocked-by
+  --locked         items carrying an active lock (stamp still in the future)
+  --locked-by @xx  items whose active lock is held by @xx
   A mention of an id in a log line is prose; only a related:/blocked-by: line is a
   link. --grep and search find mentions, refs, --related-to and --blocked read links.
 
 FIELDS, for --columns, --sort, --rows and --cols:
   id title body category severity importance status author filed closed updated
-  age tags evidence hint regr root logs related blockers
+  age tags evidence hint regr root logs related blockers lock
   tags, related and blockers pivot an item into every value it carries; filed/closed/
-  updated pivot by month, age by band (<7d, 7-30d, 31-90d, >90d).
+  updated pivot by month, age by band (<7d, 7-30d, 31-90d, >90d); lock reads
+  `@xx until <stamp>` for an active lock and `-` otherwise. report marks a locked
+  item `wip @xx until <stamp>` and its SUMMARY grid counts open locked items in a
+  `Worked on` column, present when any item in scope is locked; --json carries
+  lock as {by, until, note} or null.
 
 Edit (one file):
   add    FILE --category CODE --title T --text D [--name NAME] [--description D]
@@ -94,7 +110,16 @@ prose, never a level.
   close  FILE --id ID --evidence E [--event E]      evidence proves it is done
   reject FILE --id ID --event E                    not reproduced, irrelevant, wontfix
   reopen FILE --id ID [--event E]                  closed defect -> a numbered regression
-  remove FILE --id ID [--force]                    mistakes and duplicates only
+  remove FILE --id ID [--force] [--author @xx]     mistakes and duplicates only
+  lock   FILE --id ID --author @xx [--hours N | --until STAMP] [--note TEXT]
+          write the lock: line, 24 hours by default; the same author again extends
+          it, another author's active lock prints one TRANSFER line and is replaced,
+          the note reading `taken over from @yy` unless --note says otherwise;
+          refused only on a closed or rejected item
+  unlock FILE --author @xx (--id ID | --all | --expired)
+          remove lock lines: one item, every item, or only the expired ones;
+          clearing another author's active lock prints one TRANSFER line and proceeds
+  relate and remove take --author only to keep a lock held by that handle silent.
   upgrade FILE [--code "Section=CODE"]... [--author @xx] [--apply]
           --apply always applies every safe rewrite (ids, codes, stamps, severity
           and test-tag canonicalisation, Contents drop) and exits 0; every content
@@ -137,6 +162,8 @@ AUTHORED = re.compile(r"^(@[a-z][a-z0-9]{1,3})\s+(.*)$")
 TAGLINE = re.compile(r"^(\s+)- test-tags:\s*(.*)$")
 # the proof an item is done, written at closure and retired by a reopen
 EVIDLINE = re.compile(r"^(\s+)- evidence:\s*(.*)$")
+# `- lock: <stamp> @xx [note]` - who is likely working on the item, until when
+LOCKLINE = re.compile(r"^(\s+)- lock:\s*(\S*)(.*)$")
 REJECTED = re.compile(r"^rejected:?\s*(.*)$", re.I)
 CLOSING = re.compile(r"^(closed|rejected)\b", re.I)  # the log line that ended the item
 SUB = re.compile(r"^\s+- ")
@@ -353,6 +380,9 @@ def parse(path):
                 tag_n=0,
                 evidence=None,
                 evid_n=0,
+                lock=None,
+                lock_n=0,
+                lock_bad=False,
             )
             blocks.append(cur)
             continue
@@ -389,6 +419,14 @@ def parse(path):
             if em:
                 cur["evid_n"] += 1
                 cur["evidence"] = em.group(2).strip()
+            km = LOCKLINE.match(ln)
+            if km:
+                cur["lock_n"] += 1
+                by, _, note = km.group(3).strip().partition(" ")
+                if _valid_stamp(km.group(2)) and HANDLE.fullmatch(by):
+                    cur["lock"] = {"by": by, "until": km.group(2), "note": note.strip() or None}
+                else:
+                    cur["lock_bad"] = True
             continue
         # the first prose line under a `##` heading, before any item, is the description
         if cur is None and sec is not None and sec["desc"] is None and ln.strip():
@@ -452,6 +490,86 @@ def in_window(b, which, since, until):
     return (since is None or d >= since) and (until is None or d <= until)
 
 
+def lock_active(b):
+    """The lock that still holds - stamp in the future - or None. ISO 8601 UTC stamps
+    compare as plain strings, so no clock arithmetic is needed."""
+    k = b["lock"]
+    return k if k and k["until"] > now() else None
+
+
+def expire_locks(file):
+    """Drop every lock line whose stamp is past - the first step of every write but
+    `upgrade`, which leaves lock lines untouched.
+    Silent and unlogged: an expired lock is a courtesy that ran out, not an event.
+    Returns how many were dropped."""
+    lines = load(file)
+    at = now()
+    gone = [
+        i - 1
+        for i, ln in non_fenced(lines)
+        if (m := LOCKLINE.match(ln)) and _valid_stamp(m.group(2)) and m.group(2) <= at
+    ]
+    for i in reversed(gone):
+        del lines[i]
+    if gone:
+        save(file, lines)
+    return len(gone)
+
+
+def as_handle(author):
+    """`kj` or `@kj` to `@kj`; None stays None. No roster check - used only to tell
+    whether a lock is the caller's own."""
+    return None if not author else author if author.startswith("@") else "@" + author
+
+
+def warn_lock(file, b, who):
+    """One stderr line when an active lock is held by someone other than `who`. The
+    write goes ahead regardless: the lock is a signal, never a gate."""
+    k = lock_active(b)
+    if k and k["by"] != who:
+        print(
+            f"{file}:{b['line']}: {ident(b)} locked by {k['by']} until {k['until']} - "
+            "someone is likely working on it; ask before continuing",
+            file=sys.stderr,
+        )
+
+
+def notice_locked(items):
+    """One stderr line naming the items a read is about to show that someone else is on.
+    The write-time warning is late by design - the work is already done by then; the
+    choice of what to pick up happens while reading, so that is where the signal goes.
+    Silent when nothing shown is locked, and stderr keeps a piped table clean."""
+    held = [(b, k) for b in items if (k := lock_active(b))]
+    if not held:
+        return
+    named = [f"{ident(b)} by {k['by']} until {k['until']}" for b, k in held[:10]]
+    more = f", +{len(held) - 10} more" if len(held) > 10 else ""
+    print(f"{len(held)} item(s) currently worked on: {', '.join(named)}{more}", file=sys.stderr)
+
+
+def warn_transfer(b, k, doing):
+    """`lock` or `unlock` over another author's active lock: taking their work over is
+    allowed, going quiet about it is not. Replaces warn_lock on those two commands."""
+    print(
+        f"TRANSFER: {ident(b)} was locked by {k['by']} until {k['until']} - "
+        f"you are {doing}; ask {k['by']}",
+        file=sys.stderr,
+    )
+
+
+def set_lock(lines, b, value):
+    """Replace the item's lock: line, or add one above its first log: line - the lock
+    sits with the other sub-lines, before the history."""
+    ind = sub_indent(lines, b)
+    end = block_end(lines, b)
+    for i in range(b["line"], end):
+        if LOCKLINE.match(lines[i]):
+            lines[i] = f"{ind}- lock: {value}"
+            return
+    at = next((i for i in range(b["line"], end) if LOGLINE.match(lines[i])), end)
+    lines.insert(at, f"{ind}- lock: {value}")
+
+
 def scope_of(
     blocks,
     cat,
@@ -467,11 +585,17 @@ def scope_of(
     related_to=None,
     index=None,
     imp=None,
+    locked=False,
+    locked_by=None,
 ):
     """The items a query is about - every filter except --status. On `report` that one
     narrows the ITEMS queue alone, so a filtered report still says where the whole
     scope stands; `list` and `pivot` apply it through `select`."""
     out = [b for b in blocks if not b["indent"]]
+    if locked:
+        out = [b for b in out if lock_active(b)]
+    if locked_by:
+        out = [b for b in out if (lock_active(b) or {}).get("by") == locked_by]
     if cat:
         out = [b for b in out if b["cat"] == cat]
     if sev:
@@ -513,6 +637,8 @@ def select(blocks, fl, index=None):
         fl["related_to"],
         index,
         fl["importance"],
+        fl["locked"],
+        fl["locked_by"],
     )
     if fl["status"] and fl["status"] != "all":
         out = [b for b in out if status_of(b) == fl["status"]]
@@ -532,6 +658,8 @@ def filter_note(fl, status=None):
         f"grep /{fl['grep']}/" if fl["grep"] else None,
         "blocked" if fl["blocked"] else None,
         f"related to {fl['related_to']}" if fl["related_to"] else None,
+        "locked" if fl["locked"] else None,
+        f"locked by {fl['locked_by']}" if fl["locked_by"] else None,
         window_note(fl["dates"], fl["since"], fl["until"]),
     ]
     bits = [x for x in bits if x]
@@ -728,6 +856,7 @@ FIELDS = (
     "logs",
     "related",
     "blockers",
+    "lock",
 )
 HEAD = {
     "id": "Id",
@@ -750,6 +879,7 @@ HEAD = {
     "logs": "Logs",
     "related": "Related",
     "blockers": "Blockers",
+    "lock": "Lock",
 }
 WIDTH = {
     "title": 40,
@@ -828,12 +958,20 @@ def record(b, today=None):
         "related": targets(b, "related"),
         "blockers": targets(b, "blocked-by"),
         "logs": len(b["logs"]),
+        "lock": lock_active(b),
         "line": b["line"],
     }
 
 
+def lock_text(k):
+    """`@kj until 2026-08-30T10:11:29Z`, or `-` when no lock holds."""
+    return f"{k['by']} until {k['until']}" if k else "-"
+
+
 def field_cell(rec, field):
     v = rec.get(field)
+    if field == "lock":
+        return lock_text(v)
     if field in ("id", "root") and v:
         return f"`{v}`"
     if field in ("related", "blockers"):
@@ -876,6 +1014,8 @@ def sort_key(b, rec, field):
     if field == "id":
         return (0, (b["cat"] or "", b["num"] or 0, b["regr"] or 0))
     v = rec.get(field)
+    if field == "lock":
+        return (0, v["until"]) if v else (1, "")
     if v is None or v == []:
         return (1, "")
     return (0, ", ".join(v) if isinstance(v, list) else v)
@@ -902,6 +1042,8 @@ def bucket(rec, field):
         return [age_band(rec["age"])]
     if field == "regr":
         return ["regression" if rec["regr"] else "original"]
+    if field == "lock":
+        return [lock_text(rec["lock"])]
     v = rec.get(field)
     return [str(v) if v not in (None, "", []) else NONE_KEY.get(field, "-")]
 
@@ -944,25 +1086,28 @@ def summary_grid(scope, shown, prefix):
     rows = []
     for sec, own in groups:
         cnt = {c: 0 for c in cols}
-        op = cl = rj = 0
+        op = cl = rj = wip = 0
         for b in own:
             st = status_of(b)
             if st == "open":
                 op += 1
                 lv = level_of(b)
                 cnt[lv if lv in cnt else none_col] += 1
+                wip += 1 if lock_active(b) else 0
             elif st == "closed":
                 cl += 1
             else:
                 rj += 1
-        rows.append(dict(section=sec, cells=cnt, open=op, closed=cl, rejected=rj))
+        rows.append(dict(section=sec, cells=cnt, open=op, closed=cl, rejected=rj, worked=wip))
     total = dict(
         cells={c: sum(r["cells"][c] for r in rows) for c in cols},
         open=sum(r["open"] for r in rows),
         closed=sum(r["closed"] for r in rows),
         rejected=sum(r["rejected"] for r in rows),
+        worked=sum(r["worked"] for r in rows),
     )
-    return dict(prefix=prefix, cols=cols, rows=rows, total=total)
+    # like UNTRIAGED: a column of zeros carries nothing, so it appears only when it counts
+    return dict(prefix=prefix, cols=cols, rows=rows, total=total, worked=total["worked"] > 0)
 
 
 def grid_json(grid):
@@ -975,6 +1120,7 @@ def grid_json(grid):
             "name": sec["name"] if sec else None,
             "open": r["open"],
             "levels": dict(r["cells"]),
+            "worked_on": r["worked"],
             done: r["closed"],
             "rejected": r["rejected"],
         }
@@ -986,6 +1132,7 @@ def grid_json(grid):
         "total": {
             "open": t["open"],
             "levels": dict(t["cells"]),
+            "worked_on": t["worked"],
             done: t["closed"],
             "rejected": t["rejected"],
         },
@@ -1027,6 +1174,8 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
             fl["related_to"],
             index,
             fl["importance"],
+            fl["locked"],
+            fl["locked_by"],
         )
         shown = [s for s in sections if not cat or s["code"] == cat]
         if (
@@ -1040,6 +1189,8 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
             or fl["grep"]
             or fl["blocked"]
             or fl["related_to"]
+            or fl["locked"]
+            or fl["locked_by"]
         ):
             # a category the filter emptied is not part of the answer
             shown = [s for s in shown if any(b["section"] is s for b in scope)]
@@ -1108,12 +1259,20 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
             cols = grid["cols"]
             done_h = "Fixed" if prefix == "DEF" else "Done"
             print(banner("\U0001f4ca", "SUMMARY", plain) + "\n")
-            head = ["Category", "Open"] + cols + [done_h, "Rejected"]
+            wip_h = ["Worked on"] if grid["worked"] else []
+            head = ["Category", "Open"] + cols + wip_h + [done_h, "Rejected"]
             print("| " + " | ".join(head) + " |")
             print("|---|" + "--:|" * (len(head) - 1))
 
             def counts_of(r):
-                return [r["open"], *(r["cells"][c] for c in cols), r["closed"], r["rejected"]]
+                wip = [r["worked"]] if grid["worked"] else []
+                return [
+                    r["open"],
+                    *(r["cells"][c] for c in cols),
+                    *wip,
+                    r["closed"],
+                    r["rejected"],
+                ]
 
             for r in grid["rows"]:
                 sec = r["section"]
@@ -1139,6 +1298,8 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
                 )
 
         show_evid = any(b["evidence"] for b in listed)
+        show_lock = any(lock_active(b) for b in listed)
+        notice_locked(listed)
         print("\n" + banner("\U0001f4cc", "ITEMS", plain))
         for sec, own in groups:
             rows = [b for b in own if want is None or b["state"].lower() == want]
@@ -1168,20 +1329,24 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
                 else ("Importance | ", "------------|")
             )
             ev_h, ev_r = (" Evidence |", "----------|") if show_evid else ("", "")
+            lk_h, lk_r = (" Lock |", "------|") if show_lock else ("", "")
             # a column where every row reads the same carries nothing; the header
             # and the footer already say which status is being listed
             st_h, st_r = ("Status | ", "--------|") if want is None else ("", "")
             if solo:
                 print()
-            print(f"| Id | Title | Description | {lvl_h}{st_h}Tests |{ev_h}")
-            print(f"|----|-------|-------------|{lvl_r}{st_r}-------|{ev_r}")
+            print(f"| Id | Title | Description | {lvl_h}{st_h}Tests |{ev_h}{lk_h}")
+            print(f"|----|-------|-------------|{lvl_r}{st_r}-------|{ev_r}{lk_r}")
             for b in rows:
                 lvl = (b["severity"] if prefix == "DEF" else b["importance"]) or "-"
                 st = f"{status_of(b)} | " if want is None else ""
                 evid = f" {cell(b['evidence'], 56)} |" if show_evid else ""
+                k = lock_active(b)
+                wip = (f" wip {lock_text(k)} |" if k else " - |") if show_lock else ""
                 print(
                     f"| `{ident(b)}` | {cell(b['title'] or '?', 40)} "
-                    f"| {cell(b['plain'], 88)} | {lvl} | {st}{cell(', '.join(tag_set(b)), 24)} |{evid}"
+                    f"| {cell(b['plain'], 88)} | {lvl} | {st}{cell(', '.join(tag_set(b)), 24)} |"
+                    f"{evid}{wip}"
                 )
 
         hidden = [b for b in scope if want is not None and b["state"].lower() != want]
@@ -1263,6 +1428,7 @@ def cmd_list(files, fl, columns, sort, as_json):
         if as_json:
             docs += [dict(rec, file=f) for _, rec in pairs]
             continue
+        notice_locked([b for b, _ in pairs])
         heads = [(HINT_FOR[prefix].title() if c == "hint" else HEAD[c]) for c in cols]
         rows = [[field_cell(rec, c) for c in cols] for _, rec in pairs]
         print(f"\n# {LABEL[prefix]} - {f}{filter_note(fl, fl['status'])}\n")
@@ -1573,6 +1739,7 @@ def cmd_search(files, fl, query, top, as_json):
             )
         )
         return 0
+    notice_locked([b for _, _, _, b in rows])
     print(f'\n# SEARCH "{query}" - {", ".join(files)}{filter_note(fl, fl["status"])}\n')
     table = [
         [
@@ -1641,6 +1808,8 @@ def cmd_refs(files, wanted, as_json=False):
             )
         )
         return 0
+    shown = [wanted, *(h["id"] for h in inbound + outbound), *(x["id"] for x in blockers)]
+    notice_locked([index[i][1] for i in dict.fromkeys(shown) if i in index])
     for h in inbound:
         print(f"{h['file']}:{h['line']}: {h['id']} {h['kind']} -> {wanted}")
     for h in outbound:
@@ -1822,6 +1991,20 @@ def cmd_check(files, strict):
                 w.append((b["line"], "evidence: on an item that is not closed"))
             if status_of(b) == "rejected" and not reject_reason(b):
                 w.append((b["line"], "rejected with no reason; log `rejected: <why>`"))
+            # read-only: an expired or stray lock is reported, never removed here
+            if b["lock_n"] > 1:
+                e.append((b["line"], "more than one lock: line; keep exactly one"))
+            if b["lock_bad"]:
+                e.append(
+                    (
+                        b["line"],
+                        "lock: line is malformed; use `- lock: <ISO 8601 UTC stamp> @xx [note]`",
+                    )
+                )
+            if b["lock"] and not lock_active(b):
+                w.append((b["line"], "expired lock, cleared on the next write"))
+            elif b["lock"] and status_of(b) != "open":
+                w.append((b["line"], f"lock on a {status_of(b)} item; run unlock"))
             if not b["has_log"]:
                 e.append((b["line"], "item has no authored log: line; every entry is authored"))
             for kind, rid, lineno in b["refs"]:
@@ -1940,6 +2123,7 @@ def cmd_author(file, handle, name):
     h = handle if handle.startswith("@") else "@" + handle
     if not HANDLE.fullmatch(h):
         raise SystemExit(f"bad handle {handle!r}; use @ plus 2-4 letters, e.g. @kj")
+    expire_locks(file)
     lines = load(file)
     entry = f"- `{h}` {name}"
     start = end = None
@@ -1981,6 +2165,7 @@ def cmd_author(file, handle, name):
 
 
 def cmd_add(file, code, name, desc, title, text, severity, importance, repro, test, tags, author):
+    expire_locks(file)
     lines = load(file)
     blocks, sections = parse(file)
     prefix = doc_prefix(file, blocks)
@@ -2023,6 +2208,7 @@ def cmd_add(file, code, name, desc, title, text, severity, importance, repro, te
 
 
 def cmd_edit(file, wanted, title, text, sev, importance, repro, test, tags, author, evidence=None):
+    expire_locks(file)
     lines = load(file)
     blocks, _ = parse(file)
     prefix = doc_prefix(file, blocks)
@@ -2038,6 +2224,7 @@ def cmd_edit(file, wanted, title, text, sev, importance, repro, test, tags, auth
             "--repro/--test, --test-tags or --evidence"
         )
     b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
+    warn_lock(file, b, who)
     done = []
     if title or text or sev or importance:
         body = b["body"]
@@ -2081,6 +2268,7 @@ def cmd_edit(file, wanted, title, text, sev, importance, repro, test, tags, auth
 
 
 def cmd_describe(file, code, text):
+    expire_locks(file)
     lines = load(file)
     _, sections = parse(file)
     code = code.upper()
@@ -2112,12 +2300,14 @@ def cmd_describe(file, code, text):
     return 0
 
 
-def cmd_relate(file, wanted, related, blocked):
+def cmd_relate(file, wanted, related, blocked, author=None):
     if not (related or blocked):
         raise SystemExit("nothing to link; pass --related and/or --blocked-by")
+    expire_locks(file)
     lines = load(file)
     blocks, _ = parse(file)
     b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
+    warn_lock(file, b, as_handle(author))
     ind = sub_indent(lines, b)
     # one line per call, never merged into an existing one: a relation line may end in
     # free text, and appending an id after that prose would bury it. check unions them
@@ -2136,10 +2326,12 @@ def cmd_relate(file, wanted, related, blocked):
 
 
 def cmd_log(file, wanted, event, author):
+    expire_locks(file)
     lines = load(file)
     blocks, _ = parse(file)
     who = need_author(file, author)
     b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
+    warn_lock(file, b, who)
     line = f"{sub_indent(lines, b)}- log: {now()} {who} {event}"
     lines.insert(block_end(lines, b), line)
     save(file, lines)
@@ -2170,10 +2362,12 @@ def mint_regression(file, lines, blocks, b, event, who):
 
 
 def cmd_setstate(file, wanted, target, verb, event, author, evidence=None):
+    expire_locks(file)
     lines = load(file)
     blocks, _ = parse(file)
     who = need_author(file, author)
     b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
+    warn_lock(file, b, who)
     if b["state"] == target:
         print(f"{file}:{b['line']}: {ident(b)} already [{target}]; no change")
         return 0
@@ -2182,6 +2376,9 @@ def cmd_setstate(file, wanted, target, verb, event, author, evidence=None):
     idx = b["line"] - 1
     lines[idx] = re.sub(r"\[[ xX-]\]", f"[{target}]", lines[idx], count=1)
     ev = f"{verb}: {event}" if event else verb
+    if target in ("x", "-"):
+        # nobody works on a finished item; the lock goes whatever its expiry, unlogged
+        drop_line(lines, b, LOCKLINE)
     if target == "x":
         # nothing closes without a proof; the line is the proof, stored once
         set_line(lines, b, "evidence", evidence, EVIDLINE)
@@ -2196,11 +2393,13 @@ def cmd_setstate(file, wanted, target, verb, event, author, evidence=None):
     return 0
 
 
-def cmd_remove(file, wanted, force):
+def cmd_remove(file, wanted, force, author=None):
+    expire_locks(file)
     lines = load(file)
     blocks, _ = parse(file)
     wanted = norm_id(wanted, doc_prefix(file, blocks))
     b = find_id(blocks, wanted)
+    warn_lock(file, b, as_handle(author))
     # a criterion may cite a defect and back, so scan every tracking doc beside this one
     inbound = []
     for f in resolve([str(pathlib.Path(file).parent)]):
@@ -2214,6 +2413,61 @@ def cmd_remove(file, wanted, force):
     del lines[b["line"] - 1 : end]
     save(file, lines)
     print(f"{file}: removed {wanted} ({end - b['line'] + 1} line(s))")
+    return 0
+
+
+def cmd_lock(file, wanted, author, hours, until, note):
+    """Write `- lock: <stamp> @xx [note]` on an open item. Never logged: the lock is a
+    signal about the near future, not an event in the item's history."""
+    if hours is not None and until:
+        raise SystemExit("pass --hours or --until, not both")
+    if until and not (STAMP.match(until) and _valid_stamp(until)):
+        raise SystemExit(f"--until takes ISO 8601 UTC, YYYY-MM-DDTHH:MM:SSZ, got {until!r}")
+    expire_locks(file)
+    lines = load(file)
+    blocks, _ = parse(file)
+    who = need_author(file, author)
+    b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
+    if status_of(b) != "open":
+        raise SystemExit(f"{ident(b)} is {status_of(b)}; only an open item can be locked")
+    held = lock_active(b)
+    if held and held["by"] != who:
+        warn_transfer(b, held, "taking it over")
+        note = note or f"taken over from {held['by']}"
+    if not until:
+        span = datetime.timedelta(hours=24 if hours is None else hours)
+        until = (datetime.datetime.now(datetime.timezone.utc) + span).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+    set_lock(lines, b, f"{until} {who}" + (f" {note}" if note else ""))
+    what = "extended" if held and held["by"] == who else "locked"
+    save(file, lines)
+    print(f"{file}:{b['line']}: {ident(b)} {what} by {who} until {until}")
+    return 0
+
+
+def cmd_unlock(file, author, wanted, every, expired):
+    """Remove lock lines - one item, every item, or only the expired ones. Never
+    logged, never refused; another author's active lock is named once on the way out."""
+    if sum(1 for x in (wanted, every, expired) if x) != 1:
+        raise SystemExit("pass exactly one of --id, --all or --expired")
+    who = need_author(file, author)
+    gone = expire_locks(file)
+    if expired:
+        print(f"{file}: {gone} expired lock(s) cleared")
+        return 0
+    lines = load(file)
+    blocks, _ = parse(file)
+    if wanted:
+        blocks = [find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))]
+    cleared = 0
+    for b in sorted((b for b in blocks if b["lock_n"]), key=lambda b: -b["line"]):
+        if (k := lock_active(b)) and k["by"] != who:
+            warn_transfer(b, k, "clearing it")
+        while drop_line(lines, b, LOCKLINE) is not None:
+            cleared += 1
+    save(file, lines)
+    print(f"{file}: {cleared} lock(s) cleared")
     return 0
 
 
@@ -2529,6 +2783,15 @@ def main(argv: list[str] | None = None) -> int:
             help="items linked to ID either way, related or blocked-by" + whole,
         )
         sp.add_argument(
+            "--locked", action="store_true", help="items carrying an active lock" + whole
+        )
+        sp.add_argument(
+            "--locked-by",
+            dest="locked_by",
+            metavar="@xx",
+            help="items whose active lock is held by this handle" + whole,
+        )
+        sp.add_argument(
             "--dates",
             choices=("filed", "closed", "updated"),
             default="filed",
@@ -2656,6 +2919,7 @@ def main(argv: list[str] | None = None) -> int:
     sr.add_argument("--id", required=True)
     sr.add_argument("--related")
     sr.add_argument("--blocked-by", dest="blocked")
+    sr.add_argument("--author", metavar="@xx", help="your handle; keeps your own lock silent")
 
     for name in ("log", "close", "reject", "reopen"):
         sp = sub.add_parser(name)
@@ -2674,6 +2938,22 @@ def main(argv: list[str] | None = None) -> int:
     sx.add_argument("file")
     sx.add_argument("--id", required=True)
     sx.add_argument("--force", action="store_true")
+    sx.add_argument("--author", metavar="@xx", help="your handle; keeps your own lock silent")
+
+    sl = sub.add_parser("lock")
+    sl.add_argument("file")
+    sl.add_argument("--id", required=True)
+    sl.add_argument("--author", required=True, metavar="@xx", help="who is working on it")
+    sl.add_argument("--hours", type=float, metavar="N", help="how long from now; 24 by default")
+    sl.add_argument("--until", metavar="STAMP", help="the expiry as ISO 8601 UTC instead")
+    sl.add_argument("--note", help="what is being done, one line")
+
+    sn = sub.add_parser("unlock")
+    sn.add_argument("file")
+    sn.add_argument("--author", required=True, metavar="@xx")
+    sn.add_argument("--id", help="clear this item's lock")
+    sn.add_argument("--all", action="store_true", help="clear every lock in the file")
+    sn.add_argument("--expired", action="store_true", help="clear only the expired locks")
 
     su = sub.add_parser("upgrade")
     su.add_argument("file")
@@ -2721,6 +3001,8 @@ def main(argv: list[str] | None = None) -> int:
                     raise SystemExit(f"--since/--until take YYYY-MM-DD, got {v!r}")
             if a.author and not HANDLE.fullmatch(a.author):
                 raise SystemExit(f"--author takes a handle like @kj, got {a.author!r}")
+            if a.locked_by and not HANDLE.fullmatch(a.locked_by):
+                raise SystemExit(f"--locked-by takes a handle like @kj, got {a.locked_by!r}")
             if a.grep:
                 try:
                     re.compile(a.grep, re.I)
@@ -2740,6 +3022,8 @@ def main(argv: list[str] | None = None) -> int:
                 grep=a.grep,
                 blocked=a.blocked,
                 related_to=rid,
+                locked=a.locked,
+                locked_by=a.locked_by,
                 dates=a.dates,
                 since=a.since,
                 until=a.until,
@@ -2797,7 +3081,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "describe":
         return cmd_describe(a.file, a.category, a.text)
     if a.cmd == "relate":
-        return cmd_relate(a.file, a.id, a.related, a.blocked)
+        return cmd_relate(a.file, a.id, a.related, a.blocked, a.author)
     if a.cmd == "log":
         return cmd_log(a.file, a.id, a.event, a.author)
     if a.cmd == "close":
@@ -2807,7 +3091,11 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "reopen":
         return cmd_setstate(a.file, a.id, " ", "reopened", a.event, a.author)
     if a.cmd == "remove":
-        return cmd_remove(a.file, a.id, a.force)
+        return cmd_remove(a.file, a.id, a.force, a.author)
+    if a.cmd == "lock":
+        return cmd_lock(a.file, a.id, a.author, a.hours, a.until, a.note)
+    if a.cmd == "unlock":
+        return cmd_unlock(a.file, a.author, a.id, a.all, a.expired)
     if a.cmd == "upgrade":
         ov = {}
         for spec in a.code:

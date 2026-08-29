@@ -4,10 +4,10 @@ files directly to investigate the LIVE tree - do not guess. Do not modify anythi
 
 REPO: <root>
 IN SCOPE: <dirs/files>   OUT OF SCOPE: tests/, generated/, vendored/
-CODE GRAPH: tmp/graphify-out/graph.json <exists, refreshed at HEAD | absent>. If present, use
-  `graphify affected "<symbol>()" --graph tmp/graphify-out/graph.json` for callers and blast
-  radius before citing a finding; `graphify explain` / `graphify path` for a node's connections
-  and shared causes. Batch independent greps and reads in one message.
+CODE GRAPH: tmp/graphify-out/graph.json <exists, refreshed at HEAD | absent>. If present, it
+  answers callers, dependents and shared causes faster than grepping - use it as your method
+  sees fit and read its own help for the surface it has today. Batch independent greps and
+  reads in one message.
 
 CONTEXT: <2-5 sentences - what the change/feature is, the architecture it lives in,
 the invariants and design rules it must hold>

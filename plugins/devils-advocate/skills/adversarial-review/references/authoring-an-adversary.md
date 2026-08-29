@@ -39,9 +39,9 @@ Always carry a finding count and a half-sentence why: `VERDICT: SHIP (0 findings
 - `MAJOR` - serious and ship-blocking: it forces DO-NOT-SHIP exactly as CRITICAL does, and differs only in standing alone being repairable within the round rather than sinking the design
 - `MINOR` - minor; fix when convenient. Taste / subjective observations go here, tagged with a leading `(taste)` - e.g. `[MINOR] (taste) prefer userId`
 
-**MATERIALITY** - the per-finding line that comes BEFORE the severity is set: who is harmed, doing what the product is for, on an input inside the product's input universe (the caller's bar names purpose, input universe and primary path). `NONE` is a legitimate answer and it fixes the severity at `MINOR` (out of bar) whatever the reproduction shows - technical truth is not materiality. A guarantee clause in the bar never promotes an out-of-universe input into scope. On record: a `<select>` pasted into a notebook cell, rated MAJOR under "never fuse two values", became a normalisation pass that hosted 100% of the next two rounds' findings. Every adversary's `<OUTPUT FORMAT>` carries this line beside the remedy.
+**MATERIALITY** - the per-finding line, set before the severity: who is harmed, doing what the product is for, on which in-universe input - or `NONE`, which fixes the severity at `MINOR` (out of bar). The rule lives in `agents/adversarial-reviewer.md`; every adversary's `<OUTPUT FORMAT>` carries the line beside the remedy.
 
-**REMEDY** - the per-finding fix with the smallest impact radius (fewest files, fewest call sites, no new public surface), stated at diff scale: this line, this assert, this clause, plus what it leaves alone and what it could break. Three personas satisfy this through an equivalent gate rather than this wording, and are not counter-examples: `architect` (its proportionality rule and "name what the fix adds" clause), `slop-hunter` (its load-bearing check before any deletion), `popular-science` (single-word remedies, no radius to bound). State a wider remedy - delete, restructure, replace - as an opportunity with its evidence, never as a mandate; the implementor weighs it against the rest of the system. A remedy larger than the defect and unjustified is itself a defect; a reflexive narrow patch over a structural cause compounds debt. A remedy that adds a cap, guard, knob or normalisation pass must name the input that makes it necessary and the measurement showing the unguarded cost - absent both, propose measure-first or delete-the-need, never the guard. Both failure modes and the evidence bar: **Remedy discipline** in SKILL.md.
+**REMEDY** - the per-finding fix with the smallest impact radius (fewest files, fewest call sites, no new public surface), stated at diff scale: this line, this assert, this clause, plus what it leaves alone and what it could break. Three personas satisfy this through an equivalent gate rather than this wording, and are not counter-examples: `architect` (its proportionality rule and "name what the fix adds" clause), `slop-hunter` (its load-bearing check before any deletion), `popular-science` (single-word remedies, no radius to bound). The failure modes and the evidence bar: `remedy-discipline.md`.
 
 **COUPLING** (the only link between the axes) - `VERDICT` = `DO-NOT-SHIP` if and only if any finding is `CRITICAL` or `MAJOR`; otherwise `SHIP`. The verdict is a pure function of the severity mix - a caller (or `review-tools findings`) recomputes it from the findings and flags a report whose verdict line disagrees, so never let prose judgement leak into the verdict: put it in the severities.
 
@@ -50,8 +50,19 @@ Always carry a finding count and a half-sentence why: `VERDICT: SHIP (0 findings
 - **METHODOLOGY is the heart** - the axes THIS expert hunts that a generalist misses. Generic axes ("check for bugs") make the adversary worthless; it must encode what only this expert knows to look at
 - **Make findings falsifiable** - demand the concrete artefact per finding (the file:line, the mutation that stays green, the missing branch, the standard tool that replaces the hand-rolled one). "Use a library" is not a finding
 - **Cut as well as add where the lens allows** - a reviewer that only ever demands MORE is a ratchet. `architect` (axis 8) and `qa-engineer` (axis 7) both carry a first-class slop axis whose fix is deletion
-- **Name the boundary** - if a sibling adversary is adjacent, say what each owns (see the boundaries note in SKILL.md), so a panel does not return the same finding three times
+- **Name the boundary** - if a sibling adversary is adjacent, say what each owns (see Boundaries between lenses below), so a panel does not return the same finding three times
 - **Severity discipline** - `<QUALITY CONTROL>` must force a re-check that no CRITICAL/MAJOR is mere style, and must permit a clean verdict rather than manufactured severity
+
+## Boundaries between lenses
+
+So a panel does not return one finding three times:
+
+- `tui` judges what the framework does; `ux-designer` what the user perceives
+- `bug-hunter` finds the bug; `qa-engineer` judges why the suite missed it; `methodologist` judges an experiment's verdict ladder, never a software suite
+- `devops` owns image and pipeline; `bug-hunter` owns the script inside them
+- Spec says nothing about it → `analyst`; spec says it, tests miss it → `qa-engineer`; code contradicts its own conventions → `architect`. Two *specs* diverging → `analyst`; two *implementations* → `architect`; how the divergence feels → `ux-designer`
+- The instruction layer as an instrument (instruction files, skills, agent prompts, tool descriptions, workflow graphs, loops) → `ai-engineer`; the code it steers → `architect`; spec against code → `analyst`; the product's own test suite → `qa-engineer`. On deletion the two split by readership: `slop-hunter` cuts what nothing reads, `ai-engineer` cuts what the agent reads and does not need
+- Slop: `architect` judges whether a *design* is proportionate ("is this structure justified?"); `slop-hunter` runs the exhaustive whole-tree delete pass ("what can go?"), load-bearing check first; `qa-engineer` cuts only tests paying no rent. Fabrication (fake citation, hallucinated API) is `slop-hunter`'s alone
 
 ## Register
 
@@ -61,4 +72,4 @@ Voice is free - `data-scientist` is a caveman-voiced method-shaman, `popular-sci
 
 1. Add a row to the SKILL.md roster table - short "catches" clause plus mode, NOT a restatement of the lens
 2. Add its primary trigger phrases to the SKILL.md `description` (the only discovery signal), keeping it under 1024 chars
-3. If it is adjacent to an existing adversary, add the demarcation to the boundaries note
+3. If it is adjacent to an existing adversary, add the demarcation to Boundaries between lenses above

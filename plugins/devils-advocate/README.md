@@ -12,7 +12,7 @@ This plugin builds an adversarial persona for the document's actual toughest aud
 
 Unlike qualitative tools like [grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) or [Devil's Advocate Protocol](https://mcpmarket.com/tools/skills/devil-s-advocate-protocol), this plugin is semi-data-science: the devil is inferred from existing conversations / emails / meeting transcripts (or described manually), every concern gets a Fibonacci risk score, and each iteration produces a measurable residual so convergence is visible. Versioned files with embedded scorecards create an audit trail.
 
-The same hostility points at code. [`adversarial-review`](#adversarial-review---the-same-hostility-pointed-at-code) spawns fresh, context-free `claude -p` subprocesses that try to BREAK a change - a diff bug-hunt for the bugs inside a hunk, a whole-repo audit for the rot between files - seeded with any of eleven expert adversaries. Same principle as the scorecard half: a critic with no attachment to the work, run until a confirming round comes back clean.
+The same hostility points at code. [`adversarial-review`](#adversarial-review---the-same-hostility-pointed-at-code) spawns fresh, context-free `claude -p` subprocesses that try to BREAK a change - a diff bug-hunt for the bugs inside a hunk, a whole-repo audit for the rot between files - seeded with any of twelve expert adversaries. Same principle as the scorecard half: a critic with no attachment to the work, run until a confirming round comes back clean.
 
 ## Installation
 
@@ -29,7 +29,7 @@ The same hostility points at code. [`adversarial-review`](#adversarial-review---
 | `/devils-advocate:setup` | Build the devil persona and harvest the fact repository for a target document |
 | `/devils-advocate:evaluate` | Generate the baseline concern catalogue and scorecard |
 | `/devils-advocate:iterate` | One improvement cycle: decide approach, apply changes, version, re-score, rename |
-| `/devils-advocate:adversarial-review` | Hostile independent review of code or artefacts - spawn fresh `claude -p` reviewers seeded with one of eleven expert adversaries |
+| `/devils-advocate:adversarial-review` | Hostile independent review of code or artefacts - spawn fresh `claude -p` reviewers seeded with one of twelve expert adversaries |
 
 ## Skills
 
@@ -50,7 +50,7 @@ Two modes, composable with any adversary:
 - **Mode 1 - diff bug-hunt.** No tools, inline diff, one turn, fast. Finds bugs, logic errors, security holes, broken edge cases in a specific change
 - **Mode 2 - architecture & quality audit.** Tools on, whole-repo, many turns. Finds the systemic rot a diff cannot show - slop, brittle architecture, hardcodings, config drift, broken separation of concerns. The finding is usually a relationship across files, invisible in any one hunk. When a `graphify` code graph exists at `tmp/graphify-out/graph.json`, reviewers and the adjudicator read it for callers and blast radius instead of rediscovering them by grep
 
-The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer argues from. Eleven ship under `skills/adversarial-review/adversaries/`, one self-contained persona prompt each:
+The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer argues from. Twelve ship under `skills/adversarial-review/adversaries/`, one self-contained persona prompt each:
 
 | Adversary | Catches |
 |-----------|---------|
@@ -65,6 +65,7 @@ The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer 
 | `popular-science` | readability for a generalist - jargon, unsourced claims, buried lede, the visuals |
 | `devops` | containers & deploy - Dockerfile hygiene, secrets in layers, PID-1 signals, probes |
 | `slop-hunter` | "what can go?" - an exhaustive delete pass gated by a load-bearing check: dead code, YAGNI abstractions, vanity tests, doc over-prose, unused deps; plus AI-slop tells & fabrication |
+| `ai-engineer` | "will this still steer any assistant tomorrow?" - the instruction layer itself: vendor lock-in, pinned command surfaces, drifted rule copies, unbounded loops |
 
 One plugin agent serves them all - name the lens in the prompt and it loads that persona: `Agent(subagent_type: "devils-advocate:adversarial-reviewer", prompt: "Adversary: architect. ...")`. Never review with `general-purpose`: it carries no lens, so it returns a fluent summary where an adversary returns findings and a verdict.
 
@@ -74,7 +75,7 @@ The file IS the plugin - drop a new `adversaries/<name>.md` and it works, no reg
 
 A panel's findings go through `devils-advocate:adjudicator` before any fix - it returns one change plan grouped by root cause, and it does not edit.
 
-**Multi-round reviews run as a deterministic workflow** where the session has the dynamic Workflow capability: the model authors the workflow from the execution spec, whose invariants - a product `bar` naming purpose, input universe and primary path; materiality before severity (a true defect on an input the product is not for is capped at MINOR, and the adjudicator refutes immaterial findings before verifying anything); every found defect adjudicated before any fix, blocking ruled by the adjudicator (severities are evidence, never the gate; reviewer prose verdicts never consumed); confirming rounds pinned to the closure list and fix delta, with out-of-delta findings discarded by the script; revert before refine (machinery the loop itself introduced is removed, not polished - plans carry `reverts` and flag each `newMechanism`); hard exits (`STOP`, `FANOUT_STOP`, `ROUND_CAP`) when the loop starts generating its own work - must live in the script's control flow, never in session memory, so the protocol cannot drift with a long session's context. The workflow never edits the tree: a non-empty plan exits as `PLAN` for the main session to apply, and the next invocation's pinned confirming round attacks exactly that delta. `skills/adversarial-review/workflows/adversarial-loop.js` is the reference implementation: the starting template, runnable verbatim, and the supplied fallback protocol for harnesses without the dynamic capability.
+**Multi-round reviews run as a workflow** - with the dynamic Workflow capability, construct the workflow from the spec and pass it inline; without it, run the shipped `adversarial-loop.js` as the supplied protocol. The loop's nine invariants live in the script's control flow, never in session memory, so the protocol cannot drift with a long session's context; `plugins/devils-advocate/skills/adversarial-review/references/loop-spec.md` is the one full statement of the contract - invariants, args, statuses, execution paths and the incidents behind each rule.
 
 Three deterministic commands from the library carry the review's bookkeeping. `review-tools dossier` writes the repository inventory (symbols, CLI surface versus documented surface, risky primitives, shared literals, most-called symbols) that each Mode 2 reviewer otherwise spends its first 40-60 turns rediscovering; pasted into the prompt it removes that discovery from every lens. `review-tools findings` merges the lens reports into one severity table keyed by `file:line` for the adjudicator. `review-tools cost` reads the subagent transcripts and reports turns, cached tokens, tool mix and re-reads per reviewer, so a change to the prompts can be shown to have saved something.
 
@@ -123,4 +124,4 @@ Every concern is scored on Fibonacci likelihood x impact (1-64), and each iterat
 - `skills/evaluate/SKILL.md` - concern catalogue and scoring model
 - `skills/iterate/SKILL.md` - the four-step iterate loop and stop conditions
 - `skills/run/SKILL.md` - end-to-end wrapper
-- `skills/adversarial-review/SKILL.md` - the two modes, the rounds protocol, spawn mechanics and gotchas, and the eleven pluggable adversaries
+- `skills/adversarial-review/SKILL.md` - the two modes, the rounds protocol, spawn mechanics and gotchas, and the twelve pluggable adversaries

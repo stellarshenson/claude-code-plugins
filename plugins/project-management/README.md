@@ -115,6 +115,8 @@ Cold start, splash screen and the first turn after a fork
 - **Authored log lines** - ISO 8601 UTC, then the handle, then the event. Append-only, and the attempts that FAILED are the reason the file is worth keeping
 - **Mandatory triage** - every defect carries a severity (`CRITICAL` / `MAJOR` / `MEDIUM` / `MINOR`) and every criterion an importance (`CRITICAL` / `HIGH` / `MEDIUM` / `LOW`), assigned by the agent as the item is filed. There is no unset: `add` refuses one and `check` errors on one
 
+An open item may also carry one `- lock: 2026-08-30T10:11:29Z @kj optional note` line: @kj is likely working on it until the stamp. Lock an item when you pick it up (`pm-tools lock FILE --id ID --author @xx`, 24 hours by default) and ask before working on an item locked by someone else. The lock never blocks a write - another author's write warns once on stderr and proceeds, and only a closed or rejected item refuses a lock. Expired locks clear themselves on the next write, `close` and `reject` clear the lock they find, and `pm-tools unlock FILE --author @xx --id ID` (or `--all`, `--expired`) clears at will; taking or clearing an active lock held by another handle is a transfer - `lock` and `unlock` print `TRANSFER: DEF-LNCH-1 was locked by @yy until <stamp> - you are taking it over; ask @yy` and proceed, and a takeover with no `--note` records `taken over from @yy`. `report`, `list`, `search` and `refs` print `N item(s) currently worked on: DEF-LNCH-1 by @xx until <stamp>` on stderr before the table - read it before choosing what to pick up. `report` marks a locked item `wip @xx until <stamp>`, counts them in a `Worked on` column, and `--locked` / `--locked-by @xx` filter on them.
+
 ## CLI tools
 
 Deterministic parsing, linting, editing and reporting - no generative step anywhere in `pm-tools`.
@@ -143,6 +145,7 @@ pm-tools author docs/defects-app.md --handle @kj --name "Konrad Jelen"
 pm-tools add docs/defects-app.md --category LNCH --name Launch --severity MAJOR \
     --author @kj --title "token race on relaunch" --text "symptom; cause under investigation" \
     --repro "fork under load, send a turn inside 2s" --test-tags "INTEGRATION"
+pm-tools lock  docs/defects-app.md --id DEF-LNCH-1 --author @kj --hours 4 --note "bisecting"
 pm-tools log   docs/defects-app.md --id DEF-LNCH-1 --author @kj --event "attempted: ... did NOT work"
 pm-tools close docs/defects-app.md --id DEF-LNCH-1 --author @kj --event "fixed: ..." \
     --evidence "the repro no longer fires on build 412; 79 pytest green"

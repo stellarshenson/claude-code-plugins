@@ -2036,3 +2036,454 @@ def test_upgrade_nested_item_hint_command_is_accepted_by_add(tmp_path: Path, cap
     assert run("upgrade", str(g)) == 0
     (hint,) = [ln for ln in capsys.readouterr().err.splitlines() if "nested checklist item" in ln]
     assert "--importance CRITICAL|HIGH|MEDIUM|LOW" in hint
+
+
+# --- Soft lock (ACC-PMLOCK-64..71) ------------------------------------------
+
+
+def stamp(hours: float) -> str:
+    """An ISO 8601 UTC stamp `hours` from now; negative is the past."""
+    import datetime as dt
+
+    at = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=hours)
+    return at.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def lock_lines(f: Path) -> list[str]:
+    return [ln.strip() for ln in f.read_text(encoding="utf-8").splitlines() if "- lock:" in ln]
+
+
+def log_lines(f: Path) -> list[str]:
+    return [ln.strip() for ln in f.read_text(encoding="utf-8").splitlines() if "- log:" in ln]
+
+
+def two_authors_two_defects(defects: Path, capsys) -> None:
+    run("author", str(defects), "--handle", "@xy", "--name", "X Y")
+    add_defect(defects, "token race")  # DEF-LNCH-1
+    add_defect(defects, "splash hang")  # DEF-LNCH-2
+    capsys.readouterr()
+
+
+def test_lock_writes_one_line_24h_ahead_before_the_log_and_never_logs(defects: Path, capsys):
+    """ACC-PMLOCK-64. Fails without the change on `run("lock", ...)`: argparse knows no
+    such command and raises SystemExit(2)."""
+    two_authors_two_defects(defects, capsys)
+    assert (
+        run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--note", "bisect") == 0
+    )
+    (line,) = lock_lines(defects)
+    m = re.fullmatch(r"- lock: (\S+) @kj bisect", line)
+    assert m, line
+    assert stamp(23.99) <= m.group(1) <= stamp(24.01), "24 hours from now by default"
+    body = defects.read_text(encoding="utf-8")
+    assert body.index("- lock:") < body.index("- log:"), "the lock sits before the history"
+    assert body.index("- test-tags:") < body.index("- lock:"), "and after the other sub-lines"
+    assert len(log_lines(defects)) == 2, "locking is never logged"
+    assert capsys.readouterr().err == "", "own lock, fresh item: nothing to warn about"
+
+
+def test_lock_hours_and_until_are_honoured_and_a_relock_extends(defects: Path, capsys):
+    """ACC-PMLOCK-64. The `len(lock_lines) == 1` after the relock is the assertion that
+    pins replace-not-append."""
+    two_authors_two_defects(defects, capsys)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--hours", "2")
+    (line,) = lock_lines(defects)
+    assert stamp(1.99) <= line.split()[2] <= stamp(2.01)
+    later = stamp(72)
+    assert (
+        run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--until", later) == 0
+    )
+    assert lock_lines(defects) == [f"- lock: {later} @kj"], "the same author replaces the line"
+    assert capsys.readouterr().err == "", "extending your own lock is silent"
+    with pytest.raises(SystemExit):
+        run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--until", "2026-09-01")
+    with pytest.raises(SystemExit):
+        run(
+            "lock",
+            str(defects),
+            "--id",
+            "DEF-LNCH-1",
+            "--author",
+            "@kj",
+            "--hours",
+            "1",
+            "--until",
+            later,
+        )
+
+
+def test_locking_over_another_authors_lock_warns_and_replaces(defects: Path, capsys):
+    """ACC-PMLOCK-64, the warning now worded as the transfer it is (ACC-PMLOCK-71)."""
+    two_authors_two_defects(defects, capsys)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    until = lock_lines(defects)[0].split()[2]
+    capsys.readouterr()
+    assert run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy") == 0
+    err = capsys.readouterr().err
+    assert err.count("\n") == 1 and f"locked by @kj until {until}" in err
+    assert "you are taking it over; ask @kj" in err
+    (line,) = lock_lines(defects)
+    assert line.endswith(" @xy taken over from @kj"), "warned, then replaced anyway"
+
+
+def test_lock_refuses_a_closed_or_rejected_item(defects: Path, capsys):
+    """ACC-PMLOCK-64 - the one refusal in the feature."""
+    two_authors_two_defects(defects, capsys)
+    run("close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--evidence", "green")
+    run("reject", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "no repro")
+    for rid, st in (("DEF-LNCH-1", "closed"), ("DEF-LNCH-2", "rejected")):
+        with pytest.raises(SystemExit) as ex:
+            run("lock", str(defects), "--id", rid, "--author", "@kj")
+        assert st in str(ex.value)
+    assert lock_lines(defects) == []
+
+
+def test_a_foreign_lock_warns_once_and_every_write_lands_unchanged(defects: Path, capsys):
+    """ACC-PMLOCK-65. Without the change `log` by @kj on @xy's lock prints nothing to
+    stderr, so the `"locked by @xy"` assertion fails."""
+    two_authors_two_defects(defects, capsys)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy")
+    until = lock_lines(defects)[0].split()[2]
+    capsys.readouterr()
+    writes = [
+        ["log", "--author", "@kj", "--event", "attempted: retry - did NOT work"],
+        ["edit", "--author", "@kj", "--title", "token race on relaunch"],
+        ["relate", "--author", "@kj", "--related", "DEF-LNCH-2 - same boot path"],
+    ]
+    for argv in writes:
+        assert run(argv[0], str(defects), "--id", "DEF-LNCH-1", *argv[1:]) == 0
+        err = capsys.readouterr().err
+        assert err.count("\n") == 1, f"{argv[0]}: exactly one warning line"
+        assert f"DEF-LNCH-1 locked by @xy until {until}" in err
+    body = defects.read_text(encoding="utf-8")
+    assert "@kj attempted: retry - did NOT work" in body
+    assert "**token race on relaunch**" in body
+    assert "- related: DEF-LNCH-2 - same boot path" in body
+    assert lock_lines(defects) == [f"- lock: {until} @xy"], "the lock itself is untouched"
+    # the holder writes in silence
+    assert (
+        run("log", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy", "--event", "mine") == 0
+    )
+    assert capsys.readouterr().err == ""
+    # an unlocked item writes in silence too - the warning is the only difference
+    assert run("log", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "x") == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_close_reject_reopen_and_remove_warn_and_proceed_on_a_foreign_lock(defects: Path, capsys):
+    """ACC-PMLOCK-65 and 66: close and reject also clear the lock they find, whatever
+    its expiry. Without the change close leaves the lock line in place."""
+    two_authors_two_defects(defects, capsys)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy", "--hours", "100")
+    run("lock", str(defects), "--id", "DEF-LNCH-2", "--author", "@xy", "--hours", "100")
+    capsys.readouterr()
+    assert (
+        run("close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--evidence", "ok")
+        == 0
+    )
+    assert "locked by @xy" in capsys.readouterr().err
+    assert (
+        run("reject", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "dup") == 0
+    )
+    assert "locked by @xy" in capsys.readouterr().err
+    body = defects.read_text(encoding="utf-8")
+    assert "- [x] `DEF-LNCH-1`" in body and "- [-] `DEF-LNCH-2`" in body
+    assert lock_lines(defects) == [], "close and reject clear the lock, active or not"
+    assert not any("lock" in ln for ln in log_lines(defects)), "clearing is not logged"
+    # reopen, then remove, on a fresh foreign lock
+    run("reopen", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj")
+    run("lock", str(defects), "--id", "DEF-LNCH-2", "--author", "@xy")
+    capsys.readouterr()
+    # reopen on an already-open item still runs the shared warn, and leaves the lock
+    assert run("reopen", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj") == 0
+    err = capsys.readouterr().err
+    assert err.count("\n") == 1 and "DEF-LNCH-2 locked by @xy" in err
+    assert len(lock_lines(defects)) == 1, "only close and reject clear the lock"
+    assert run("remove", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj") == 0
+    assert "DEF-LNCH-2 locked by @xy" in capsys.readouterr().err
+    assert "DEF-LNCH-2" not in defects.read_text(encoding="utf-8")
+
+
+def test_an_expired_lock_is_cleared_by_the_next_write_silently(defects: Path, capsys):
+    """ACC-PMLOCK-66. A past-dated --until makes the expired lock without sleeping.
+    Without the change the lock line survives the `log` and `lock_lines == []` fails."""
+    two_authors_two_defects(defects, capsys)
+    past = stamp(-1)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy", "--until", past)
+    assert lock_lines(defects) == [f"- lock: {past} @xy"], "lock itself writes what it is told"
+    capsys.readouterr()
+    # reads leave it in place; check names it
+    run("list", str(defects))
+    assert lock_lines(defects) == [f"- lock: {past} @xy"]
+    assert run("check", str(defects)) == 0
+    assert "expired lock, cleared on the next write" in capsys.readouterr().out
+    assert lock_lines(defects) == [f"- lock: {past} @xy"], "check is read-only"
+    # a write on ANOTHER item sweeps it, with no warning and no log line
+    before = len(log_lines(defects))
+    assert run("log", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "x") == 0
+    assert capsys.readouterr().err == ""
+    assert lock_lines(defects) == []
+    assert len(log_lines(defects)) == before + 1, "only the event itself was logged"
+
+
+def test_check_errors_on_a_malformed_or_duplicate_lock_and_warns_on_a_finished_item(
+    defects: Path, capsys
+):
+    """ACC-PMLOCK-66. Without the change check ignores lock lines and exits 0."""
+    two_authors_two_defects(defects, capsys)
+    run("close", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj", "--evidence", "ok")
+    body = defects.read_text(encoding="utf-8")
+    future = stamp(5)
+    body = body.replace(
+        "  - log: ",
+        f"  - lock: {future} @kj\n  - lock: 2026-13-01T00:00:00Z @kj\n  - lock: {future} nobody\n  - log: ",
+        1,
+    )
+    # a hand-written lock on the closed item
+    at = body.index("- [x] `DEF-LNCH-2`")
+    at = body.index("  - log: ", at)
+    body = body[:at] + f"  - lock: {future} @xy\n" + body[at:]
+    defects.write_text(body, encoding="utf-8")
+    capsys.readouterr()
+    assert run("check", str(defects)) == 1
+    out = capsys.readouterr().out
+    assert "ERROR more than one lock: line; keep exactly one" in out
+    assert out.count("ERROR lock: line is malformed") == 1, "one item, one malformed report"
+    assert "warn  lock on a closed item" in out
+    assert defects.read_text(encoding="utf-8") == body, "check never removes anything"
+
+
+def test_unlock_clears_one_every_or_only_the_expired_locks(defects: Path, capsys):
+    """ACC-PMLOCK-67. Without the change `run("unlock", ...)` raises SystemExit(2)."""
+    two_authors_two_defects(defects, capsys)
+    add_defect(defects, "misaligned button")  # DEF-LNCH-3
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    run("lock", str(defects), "--id", "DEF-LNCH-2", "--author", "@xy")
+    run("lock", str(defects), "--id", "DEF-LNCH-3", "--author", "@xy", "--until", stamp(-2))
+    logs = len(log_lines(defects))
+    capsys.readouterr()
+    with pytest.raises(SystemExit):
+        run("unlock", str(defects), "--author", "@kj")
+    with pytest.raises(SystemExit):
+        run("unlock", str(defects), "--author", "@kj", "--all", "--expired")
+    assert run("unlock", str(defects), "--author", "@kj", "--expired") == 0
+    assert capsys.readouterr().err == ""
+    assert [ln.split()[3] for ln in lock_lines(defects)] == ["@kj", "@xy"]
+    assert run("unlock", str(defects), "--author", "@kj", "--id", "DEF-LNCH-1") == 0
+    assert capsys.readouterr().err == "", "your own lock goes quietly"
+    assert [ln.split()[3] for ln in lock_lines(defects)] == ["@xy"]
+    assert run("unlock", str(defects), "--author", "@kj", "--all") == 0
+    err = capsys.readouterr().err
+    assert err.count("\n") == 1 and "DEF-LNCH-2 was locked by @xy" in err, (
+        "warned once, cleared anyway"
+    )
+    assert lock_lines(defects) == []
+    assert len(log_lines(defects)) == logs, "unlock never logs"
+
+
+def test_lock_is_a_field_and_an_expired_one_reads_as_a_dash(defects: Path, capsys):
+    """ACC-PMLOCK-68. Without the change parse_fields refuses `lock` as an unknown
+    field and raises SystemExit."""
+    two_authors_two_defects(defects, capsys)
+    add_defect(defects, "misaligned button")  # DEF-LNCH-3
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--hours", "48")
+    run("lock", str(defects), "--id", "DEF-LNCH-2", "--author", "@xy", "--hours", "1")
+    run("lock", str(defects), "--id", "DEF-LNCH-3", "--author", "@xy", "--until", stamp(-1))
+    kj = lock_lines(defects)[0].split()[2]
+    xy = lock_lines(defects)[1].split()[2]
+    capsys.readouterr()
+    assert run("list", str(defects), "--columns", "id,lock", "--sort=lock") == 0
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[0] == ["Id", "Lock"]
+    assert rows[1:] == [
+        ["`DEF-LNCH-2`", f"@xy until {xy}"],
+        ["`DEF-LNCH-1`", f"@kj until {kj}"],
+        ["`DEF-LNCH-3`", "-"],
+    ], "soonest expiry first, the expired lock is no lock"
+    run("pivot", str(defects), "--rows", "lock", "--cols", "status")
+    rows = table_rows(capsys.readouterr().out)
+    assert [r[0] for r in rows[1:]] == [f"@kj until {kj}", f"@xy until {xy}", "-", "**Total**"]
+    run("pivot", str(defects), "--rows", "author", "--cols", "lock")
+    assert f"@xy until {xy}" in table_rows(capsys.readouterr().out)[0]
+
+
+def test_locked_and_locked_by_narrow_every_query(defects: Path, capsys):
+    """ACC-PMLOCK-68. Without the change argparse rejects --locked with exit 2."""
+    two_authors_two_defects(defects, capsys)
+    add_defect(defects, "misaligned button")  # DEF-LNCH-3
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    run("lock", str(defects), "--id", "DEF-LNCH-2", "--author", "@xy")
+    run("lock", str(defects), "--id", "DEF-LNCH-3", "--author", "@xy", "--until", stamp(-1))
+    capsys.readouterr()
+    run("list", str(defects), "--locked")
+    out = capsys.readouterr().out
+    assert ids_of(table_rows(out)) == ["DEF-LNCH-1", "DEF-LNCH-2"], "expired is not active"
+    assert "(locked)" in out
+    run("list", str(defects), "--locked-by", "@xy")
+    out = capsys.readouterr().out
+    assert ids_of(table_rows(out)) == ["DEF-LNCH-2"] and "(locked by @xy)" in out
+    run("report", str(defects), "--locked-by", "@kj", "--plain")
+    assert "1 open / 0 closed / 0 rejected" in capsys.readouterr().out
+    run("pivot", str(defects), "--rows", "severity", "--locked")
+    assert "2 item(s)" in capsys.readouterr().out
+    run("coverage", str(defects), "--locked-by", "@kj")
+    assert "1 item(s)" in capsys.readouterr().out
+    run("search", str(defects), "race", "--locked-by", "@xy")
+    assert "0 of 1 item(s) matched" in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        run("list", str(defects), "--locked-by", "xy")
+
+
+def test_report_marks_wip_rows_and_counts_them_in_a_worked_on_column(defects: Path, capsys):
+    """ACC-PMLOCK-68. Without the change the ITEMS row carries no `wip` cell and the
+    `"Worked on"` header assertion fails."""
+    two_authors_two_defects(defects, capsys)
+    add_defect(defects, "misaligned button", category="UI")  # DEF-UI-3
+    run("report", str(defects), "--plain")
+    out = capsys.readouterr().out
+    assert "Worked on" not in out and "Lock" not in out, "no lock, no column - like UNTRIAGED"
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    run("lock", str(defects), "--id", "DEF-UI-3", "--author", "@xy", "--until", stamp(-1))
+    until = lock_lines(defects)[0].split()[2]
+    capsys.readouterr()
+    run("report", str(defects), "--plain")
+    out = capsys.readouterr().out
+    assert (
+        "| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Worked on | Fixed | Rejected |"
+        in out
+    )
+    assert "| Launch `LNCH` | 2 | 0 | 2 | 0 | 0 | 1 | 0 | 0 |" in out
+    assert "| Launch `UI` | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |" in out, (
+        "an expired lock counts nothing"
+    )
+    assert "| **Total** | 3 | 0 | 3 | 0 | 0 | 1 | 0 | 0 |" in out
+    rows = table_rows(out)
+    assert rows[-1][0] == "`DEF-UI-3`" and rows[-1][-1] == "-"
+    (wip,) = [r for r in rows if r[0] == "`DEF-LNCH-1`"]
+    assert wip[-1] == f"wip @kj until {until}"
+    (other,) = [r for r in rows if r[0] == "`DEF-LNCH-2`"]
+    assert other[-1] == "-"
+    run("report", str(defects), "--detail", "--category", "LNCH")
+    assert f"- lock: {until} @kj" in capsys.readouterr().out, "detail prints the sub-line"
+
+
+def test_json_carries_the_lock_as_a_record_or_null(defects: Path, capsys):
+    """ACC-PMLOCK-68. Without the change the record has no `lock` key (KeyError)."""
+    import json
+
+    two_authors_two_defects(defects, capsys)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--note", "bisecting")
+    run("lock", str(defects), "--id", "DEF-LNCH-2", "--author", "@xy", "--until", stamp(-1))
+    until = lock_lines(defects)[0].split()[2]
+    capsys.readouterr()
+    run("list", str(defects), "--json")
+    recs = {r["id"]: r for r in json.loads(capsys.readouterr().out)}
+    assert recs["DEF-LNCH-1"]["lock"] == {"by": "@kj", "until": until, "note": "bisecting"}
+    assert recs["DEF-LNCH-2"]["lock"] is None, "expired is null"
+    run("report", str(defects), "--json")
+    (doc,) = json.loads(capsys.readouterr().out)
+    assert doc["summary"]["rows"][0]["worked_on"] == 1
+    assert doc["summary"]["total"]["worked_on"] == 1
+    assert doc["items"][0]["lock"]["by"] == "@kj"
+
+
+def test_upgrade_leaves_lock_lines_untouched(defects: Path, capsys):
+    """ACC-PMLOCK-66 corollary: upgrade is not a lock sweep."""
+    two_authors_two_defects(defects, capsys)
+    past = stamp(-1)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--until", past)
+    assert run("upgrade", str(defects), "--apply") == 0
+    assert lock_lines(defects) == [f"- lock: {past} @kj"]
+
+
+def test_a_read_announces_the_items_someone_is_working_on(defects: Path, capsys):
+    """ACC-PMLOCK-70. Without the change no read writes anything to stderr, so every
+    notice assertion below fails on an empty string."""
+    two_authors_two_defects(defects, capsys)
+    add_defect(defects, "misaligned button")  # DEF-LNCH-3
+    relate(defects, "DEF-LNCH-3", related="DEF-LNCH-1 - same boot path")
+    run("list", str(defects))
+    assert capsys.readouterr().err == "", "nothing locked, nothing announced"
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy", "--note", "bisecting")
+    until = lock_lines(defects)[0].split()[2]
+    capsys.readouterr()
+    notice = f"1 item(s) currently worked on: DEF-LNCH-1 by @xy until {until}\n"
+    reads = [
+        ["report", str(defects)],
+        ["list", str(defects)],
+        ["search", str(defects), "token"],
+        ["refs", str(defects), "--id", "DEF-LNCH-3"],  # reached through the link
+    ]
+    for argv in reads:
+        assert run(*argv) == 0
+        assert capsys.readouterr().err == notice, argv[0]
+        assert run(*argv, "--json") == 0
+        assert capsys.readouterr().err == "", f"{argv[0]} --json is data, not a notice"
+    # the notice is about what the read shows, not what the file holds
+    run("list", str(defects), "--grep", "misaligned")
+    assert capsys.readouterr().err == "", "the locked item is out of scope"
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy", "--until", stamp(-1))
+    capsys.readouterr()
+    run("report", str(defects))
+    assert capsys.readouterr().err == "", "an expired lock is nobody working on anything"
+
+
+def test_the_pick_up_notice_names_ten_items_at_most(defects: Path, capsys):
+    """ACC-PMLOCK-70. Without the change stderr stays empty and the first assertion
+    fails."""
+    two_authors_two_defects(defects, capsys)
+    for i in range(3, 15):
+        add_defect(defects, f"defect {i}")
+    for i in range(1, 13):
+        run("lock", str(defects), "--id", f"DEF-LNCH-{i}", "--author", "@xy")
+    capsys.readouterr()
+    run("list", str(defects))
+    err = capsys.readouterr().err
+    assert err.startswith("12 item(s) currently worked on: DEF-LNCH-1 by @xy until ")
+    assert err.count("DEF-LNCH-") == 10, "ten ids at most"
+    assert err.rstrip().endswith(", +2 more") and "DEF-LNCH-11" not in err
+
+
+def test_taking_another_authors_lock_over_is_named_a_transfer(defects: Path, capsys):
+    """ACC-PMLOCK-71. Without the change the ordinary warning prints and the new lock
+    line carries no note, so the `TRANSFER:` and `taken over from` assertions fail."""
+    two_authors_two_defects(defects, capsys)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    until = lock_lines(defects)[0].split()[2]
+    capsys.readouterr()
+    assert run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy") == 0, "never refused"
+    assert capsys.readouterr().err == (
+        f"TRANSFER: DEF-LNCH-1 was locked by @kj until {until} - you are taking it over; ask @kj\n"
+    )
+    (line,) = lock_lines(defects)
+    assert line.endswith(" @xy taken over from @kj"), "the previous holder stays on the item"
+    assert len(log_lines(defects)) == 2, "a transfer is not an event either"
+    # an explicit note wins over the default
+    until = line.split()[2]
+    assert (
+        run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--note", "mine now")
+        == 0
+    )
+    assert f"TRANSFER: DEF-LNCH-1 was locked by @xy until {until}" in capsys.readouterr().err
+    assert lock_lines(defects)[0].endswith(" @kj mine now")
+
+
+def test_clearing_another_authors_lock_is_named_a_transfer(defects: Path, capsys):
+    """ACC-PMLOCK-71. Without the change unlock prints the ordinary warning, so the
+    `TRANSFER:` assertion fails."""
+    two_authors_two_defects(defects, capsys)
+    add_defect(defects, "misaligned button")  # DEF-LNCH-3
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy")
+    run("lock", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj")
+    run("lock", str(defects), "--id", "DEF-LNCH-3", "--author", "@xy")
+    one, _, three = (ln.split()[2] for ln in lock_lines(defects))
+    capsys.readouterr()
+    assert run("unlock", str(defects), "--author", "@kj", "--id", "DEF-LNCH-1") == 0
+    assert capsys.readouterr().err == (
+        f"TRANSFER: DEF-LNCH-1 was locked by @xy until {one} - you are clearing it; ask @xy\n"
+    )
+    assert run("unlock", str(defects), "--author", "@kj", "--all") == 0
+    err = capsys.readouterr().err
+    assert err.count("\n") == 1, "one line per foreign active lock, none for your own"
+    assert f"TRANSFER: DEF-LNCH-3 was locked by @xy until {three} - you are clearing it" in err
+    assert lock_lines(defects) == []

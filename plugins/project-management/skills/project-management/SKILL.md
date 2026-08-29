@@ -77,6 +77,7 @@ One item is one top-level checklist line plus indented sub-lines. No sub-checkbo
   - evidence: <the proof it is done - written by close, present only while closed>
   - related: <ID>, <ID> - free text around the ids
   - blocked-by: <ID>
+  - lock: 2026-08-30T10:11:29Z @kj optional note
   - log: 2026-08-26T08:41:03Z @kj added
 ```
 
@@ -133,6 +134,20 @@ Two indicators, no more: `related` and `blocked-by`.
 - **`blocked-by` is checked** - a cycle is an error, a blocker that is closed or rejected is a warning on the open item; `refs --id` prints both directions and the transitive chain
 - Every `relate` writes one side only. Run it on the other item too when both sides deserve to read well
 
+## Soft lock
+
+An open item may carry one `- lock: <stamp> @xx [note]` sub-line: @xx is likely working on it until the stamp. The lock is a courtesy signal, never a gate.
+
+- **A read names the items in flight** - `report`, `list`, `search` and `refs` print one stderr line, `N item(s) currently worked on: DEF-X by @xx until <stamp>` (ten ids at most, then `+M more`), whenever an item they show holds an active lock, so the choice of what to pick up is informed before the work starts; `--json` prints no notice
+- **Lock an item when you pick it up** - `pm-tools lock FILE --id ID --author @xx`, 24 hours by default; `--hours N` or `--until STAMP` sets another span, locking again as the same author extends it
+- **Ask before working on an item locked by someone else** - a lock held by another handle is a person mid-change; ask them before continuing
+- **The lock never blocks a write** - a write on an item locked by another author prints one warning on stderr naming the holder and the expiry, then proceeds; exit code and file result are those of the unlocked case. A lock is refused only on a closed or rejected item
+- **Expired locks clear themselves on the next write** - any write command but `upgrade` first removes every lock whose stamp is past, silently and unlogged; `close` and `reject` clear the item's lock whatever its expiry. `check` is read-only and reports an expired lock as a warning
+- **Unlock at will** - `pm-tools unlock FILE --author @xx --id ID`, or `--all`, or `--expired`; clearing another author's active lock warns once and proceeds
+- **Taking or clearing someone else's active lock is a transfer** - `lock` and `unlock` say so on stderr, `TRANSFER: DEF-X was locked by @yy until <stamp> - you are taking it over; ask @yy`, and proceed; a takeover with no `--note` records `taken over from @yy` on the new lock line, so the previous holder stays visible on the item
+
+Locking is never logged. `report` marks a locked item `wip @xx until <stamp>` and counts open locked items in a `Worked on` column; `--locked` and `--locked-by @xx` filter on an active lock, and `lock` is a field.
+
 ## Reports and tables
 
 Every collection of items the user is shown is a markdown table, computed by `pm-tools` and pasted verbatim - never a bulleted list, never prose, never re-typed. Three query surfaces, one filter vocabulary:
@@ -169,7 +184,7 @@ Read:
 | `refs --id ID` | what points at `ID`, what `ID` points at, and its blocker chain |
 | `check` | conformity gate; non-zero exit on errors, `--strict` also fails on warnings |
 
-`--json` on any of the first seven returns the same facts as data. The filters `--category`, `--severity`, `--importance`, `--status`, `--author`, `--tag` (any case), `--regressions`, `--grep`, `--blocked`, `--related-to` and the `--dates` / `--since` / `--until` window are the same on `report`, `coverage`, `list`, `pivot` and `search`.
+`--json` on any of the first seven returns the same facts as data. The filters `--category`, `--severity`, `--importance`, `--status`, `--author`, `--tag` (any case), `--regressions`, `--grep`, `--blocked`, `--related-to`, `--locked`, `--locked-by` and the `--dates` / `--since` / `--until` window are the same on `report`, `coverage`, `list`, `pivot` and `search`.
 
 Write - one file per call, and `--author` on every one of them:
 
@@ -184,6 +199,7 @@ Write - one file per call, and `--author` on every one of them:
 | `close` / `reopen` | `close` demands `--evidence`; `reopen` retires it on a criterion, and on a closed defect files `<id>-<n>` instead |
 | `reject` | mark `[-]`; the reason is required |
 | `remove` | delete an item created in error; refuses while anything still cites it |
+| `lock` / `unlock` | write or remove the `lock:` line; `lock` refuses only on a closed or rejected item, neither is logged |
 | `upgrade` | rebuild a legacy doc to this schema, dry run first; `--apply` always applies the safe rewrites, exits 0, and prints one `HINT` with the exact command per content problem; `references/upgrade.md` |
 
 Run `check` after every edit session. It is the only gate.

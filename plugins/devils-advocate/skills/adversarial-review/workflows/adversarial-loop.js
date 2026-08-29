@@ -1,6 +1,6 @@
 export const meta = {
   name: 'adversarial-review-loop',
-  description: 'Managed adversarial review: lens panel, adjudicator rules what blocks, exits with a change PLAN for the main session to apply - the workflow never edits the tree; pinned confirming rounds attack each applied delta',
+  description: 'lens panel, adjudicator rules what blocks, exits with a change plan for the main session to apply - the workflow never edits the tree; pinned confirming rounds attack each applied delta',
   phases: [
     { title: 'Discover', detail: 'one reviewer per lens over the full scope' },
     { title: 'Adjudicate', detail: 'the adjudicator rules what blocks and returns the change plan' },
@@ -8,32 +8,25 @@ export const meta = {
   ],
 }
 
-// The loop's SEQUENCING lives in this script's control flow - adjudication
-// always before any change, pinned confirming rounds, hard exits - so no
-// round can be skipped and a compacted orchestrator cannot forget the rules.
-// The BLOCKING JUDGMENT is the adjudicator's: severities are reviewer
-// evidence, never a gate, and an empty change plan rules the round clean.
+// meta must be a pure literal (the harness parses it before the script runs),
+// so a CONSTRUCTED loop hardcodes its own name for its own target - kebab-case,
+// lowercase, saying what is under review: `review-turndown-diff`,
+// `audit-clipboard-path`. These two strings belong to this worked example only.
+
+// The loop's protocol lives in this script's control flow, never in an
+// orchestrator's working memory. The BLOCKING JUDGMENT is the adjudicator's:
+// severities are reviewer evidence, never a gate, and an empty change plan
+// rules the round clean. The nine invariants and the incidents behind each
+// are stated once in ../references/loop-spec.md; the review method lives in
+// the agent files (agents/adjudicator.md, agents/adversarial-reviewer.md) -
+// the prompts built here carry data only.
 //
-// THE WORKFLOW NEVER EDITS THE TREE. When the adjudicator orders changes it
-// exits with status PLAN; the main session applies the plan (visible to the
-// user), runs the tests, and re-invokes with the returned state plus what it
-// applied - the next invocation's first round is the pinned confirm attacking
-// exactly that delta. That is the regression protection: every fix batch is
-// hostile-reviewed and adjudicated before the loop can close.
+// THE WORKFLOW NEVER EDITS THE TREE: a non-empty plan exits with status PLAN,
+// the main session applies it and re-invokes with the state plus what it
+// applied, and the next invocation opens with a pinned confirm on that delta.
 //
-// MATERIALITY BEFORE SEVERITY. A finding must name who is harmed, doing what
-// the product is for, on an input inside the input universe - or it is
-// immaterial and the script caps it at MINOR/outOfBar whatever its technical
-// truth. Case on record (2026-08-28, wf_a1812379): a <select> pasted into a
-// notebook cell was rated MAJOR under an output-only bar, became a
-// normalisation pass, and that pass hosted 100% of the next two rounds'
-// findings - 1.4M tokens on an input nobody pastes. The user deleted the pass
-// in one glance; the loop had no ruling that could.
-//
-// REVERT BEFORE REFINE. A finding living in code a previous plan introduced is
-// first tested as "remove that mechanism, defer the original finding"; the
-// adjudicator refines only when the original was material. FANOUT_STOP and
-// PLAN carry the revert candidates so the main session reverts deterministically.
+// REVERT BEFORE REFINE: FANOUT_STOP, STOP and PLAN carry the revert candidates
+// so the main session reverts deterministically.
 //
 // args - first invocation (bar, lenses, target mandatory):
 //   target     what is under review, e.g. "src/turndown.ts and its tests"
@@ -44,7 +37,7 @@ export const meta = {
 //              Optional: guarantees (output guarantees), outOfScope (input
 //              classes explicitly out), degrade (what "degrade gracefully" covers)
 //   lenses     array of adversary names, e.g. ["architect", "bug-hunter"]
-//   graph      optional path to a refreshed graphify graph.json - reviewers
+//   graph      optional path to a refreshed code-graph index - reviewers
 //              price blast radius from it instead of grepping (fewer turns),
 //              the adjudicator uses it to group findings by shared cause and
 //              bound each change's radius (cleaner fixes)
@@ -61,7 +54,7 @@ if (!args || !args.target || !args.bar || !Array.isArray(args.lenses) || !args.l
   throw new Error('args.target, args.bar and args.lenses are mandatory - the bar is the review\'s scope anchor, refuse to review without one')
 }
 if (typeof args.bar !== 'object' || !args.bar.purpose || !args.bar.inputs || !args.bar.primaryPath) {
-  throw new Error('args.bar must be an object with purpose, inputs and primaryPath - an output-only bar gives reviewers nothing to test materiality against (case on record: a <select> rated MAJOR under "never fuse two values")')
+  throw new Error('args.bar must be an object with purpose, inputs and primaryPath - an output-only bar gives reviewers nothing to test materiality against')
 }
 const TARGET = args.target
 const SCOPE = args.scope || 'the named target only'
@@ -72,12 +65,13 @@ const MAX_ROUNDS = args.maxRounds || 6
 const CLEAN_REQUIRED = args.cleanRequired || 2
 const MAX_CHANGES = args.maxChanges || 3
 
-// Turns are the token bill (each agent re-reads its transcript every turn),
-// so the graph is the cheap path to scope: one `graphify affected` call
-// replaces a dozen greps for a reviewer, and tells the adjudicator whether
-// three lenses hit one cause - which is what keeps the plan small and clean.
+// An instrument is DATA, never a prescribed command: the caller says what
+// exists and where, the agent decides whether and how to use it. Turns are the
+// token bill, so a code graph is usually the cheap path to callers and shared
+// causes - but a hardcoded tool overfits to the problems it was written for and
+// misclassifies the rest, and any one tool drifts on its own timeline.
 const graphBlock = GRAPH
-  ? `CODE GRAPH: ${GRAPH} exists and matches HEAD. Use \`graphify affected "<symbol>()" --graph ${GRAPH}\` for callers and blast radius, \`graphify path\` to test whether two sites share one cause - prefer these over broad greps; they cost one turn where grepping costs many.`
+  ? `INSTRUMENT AVAILABLE - a refreshed code graph matching HEAD at ${GRAPH}. It answers callers, dependents and whether two sites share one cause faster than grepping. Use it as your method sees fit and point it at that path; if it errors, looks stale or does not answer your question, say so in one line and reach the same answer another way.`
   : null
 
 const FINDINGS_SCHEMA = {
@@ -149,16 +143,11 @@ const ADJUDICATION_SCHEMA = {
   },
 }
 
-// Severity tally - REPORTING ONLY. Whether anything blocks is the
-// adjudicator's ruling, never a severity filter; reviewer prose verdicts are
-// never consumed either (four of eight rounds in the case on record carried a
-// prose verdict their own severity mix contradicted).
+// Severity tally - REPORTING ONLY; reviewer prose verdicts are never consumed.
 const severityTally = (findings) =>
   ['CRITICAL', 'MAJOR', 'MINOR'].map((s) => `${s}:${findings.filter((f) => f.severity === s).length}`).join(' ')
 
-// Materiality cap - SCOPE, not blocking. A finding the reviewer itself marks
-// immaterial (material === false) cannot carry CRITICAL or MAJOR into
-// adjudication: it is MINOR with outOfBar, whatever its technical truth.
+// Materiality cap - SCOPE, not blocking.
 const capImmaterial = (findings) => {
   let capped = 0
   findings.forEach((f) => {
@@ -199,9 +188,7 @@ const barBlock = [
   BAR.guarantees ? `GUARANTEES (on the primary path, for the input universe): ${BAR.guarantees}` : null,
   BAR.outOfScope ? `OUT OF SCOPE (explicitly): ${BAR.outOfScope}` : null,
   BAR.degrade ? `DEGRADE GRACEFULLY COVERS: ${BAR.degrade}` : null,
-  `MATERIALITY, before severity, for every finding: who is harmed, doing what the product is for, on an input inside the input universe? Nobody → material=false, and the script caps it at MINOR/outOfBar whatever the reproduction shows. A technically true defect on an input the product is not for is not a MAJOR; a guarantee clause never promotes an out-of-universe input into the bar.`,
-  `A defect on an input class outside the bar is MINOR with outOfBar=true, whatever its behaviour.`,
-  `Severity is evidence for the adjudicator, who alone decides what blocks; taste is always MINOR. Report findings only - no prose verdict.`,
+  `The script caps material=false at MINOR/outOfBar whatever the reproduction shows.`,
 ]
   .filter(Boolean)
   .join('\n')
@@ -214,7 +201,7 @@ const reviewerPrompt = (lens, body) =>
     barBlock,
     graphBlock,
     body,
-    `Critique only - never modify any file. Return your findings through the structured output tool - severities, file:line, evidence, material + materiality, smallest-radius remedy (EDIT or DEFER; NEW MECHANISM named as such). No prose report.`,
+    `Critique only - never modify any file. Return your findings through the structured output tool; no prose report.`,
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -282,11 +269,7 @@ const confirmBody = () =>
     newDelta.length ? newDelta.map((c) => `- ${c.site}: ${c.summary}${c.files && c.files.length ? ` [${c.files.join(', ')}]` : ''}`).join('\n') : '(none new)',
   ].join('\n')
 
-// Confirm-round filter - SCOPE, not blocking. Pinning was prompt-only on
-// record and reviewers swept anyway (README wording, log-prefix literals,
-// doc comments, test style - 19 raw findings per confirming round). A
-// confirming finding survives only if it names a failing closure or sits in a
-// file the applied changes touched, and is not taste.
+// Confirm-round filter - SCOPE, not blocking.
 const stem = (p) => (p || '').split('/').pop().replace(/\.[^.]+$/, '').toLowerCase()
 const inDelta = (f) => {
   const s = stem(f.file)
@@ -318,7 +301,7 @@ if (!S) {
   findings = mergeFindings(
     await runPanel(
       'Discover',
-      `This is a discovery round. Review the target against the bar; reproduce what is testable before reporting it. Answer materiality for every finding before you set its severity.`
+      `This is a discovery round: the full scope against the bar.`
     )
   )
   history.push({ round, kind: 'discover', findings: findings.length, severities: severityTally(findings) })
@@ -341,20 +324,15 @@ while (true) {
     // --- Adjudicate: always, on every finding - the adjudicator decides ---
     const adj = await agent(
       [
-        `You adjudicate adversarial-review findings for ${TARGET}. YOU decide what blocks - severities are the reviewers' evidence, not a gate: a MINOR worth fixing may enter the plan, a MAJOR you refute does not. An EMPTY changes array rules the round clean - use it when nothing warrants a change. Rulings: PROCEED, PROCEED_WITH_DEFERRALS, or STOP when the loop is generating its own work and the component should be re-modelled instead. Critique and plan only - never modify any file.`,
+        `You adjudicate adversarial-review findings for ${TARGET}.`,
         barBlock,
         graphBlock,
         priorRecord(),
-        `STEP 0 - MATERIALITY TRIAGE, before verifying anything: for each finding ask whether a user on the primary path, with an input inside the input universe, is harmed. Not harmed → refute it as immaterial (list it under refuted with that reason) and spend no verification on it. A reviewer's material=true is a claim, not a fact - test it against the bar. Only then verify the survivors against the code, group by root cause, and return the smallest terminal changes.`,
         `FINDINGS (round ${round}, ${findings.length}: ${severityTally(findings)}; findings carrying cappedFrom were reduced by the script for material=false):`,
         JSON.stringify(findings, null, 2),
-        `CHANGES APPLIED IN PREVIOUS ROUNDS (trace fanout against these - fanoutTraced = findings living in code these introduced):`,
+        `CHANGES APPLIED IN PREVIOUS ROUNDS (the revert candidates; fanoutTraced counts against these):`,
         closures.length ? closures.map((c) => `round ${c.round} ${c.site}: ${c.summary}`).join('\n') : '(none - round 1)',
-        closures.length
-          ? `REVERT BEFORE REFINE: every applied change above is a REVERT CANDIDATE. For each finding that lives in code an applied change introduced, first test the ruling "remove that mechanism and defer the original finding it answered" - that is a \`reverts\` entry, with the findings it dissolves and the originals it defers. Refine the mechanism only when the original finding was material CRITICAL or MAJOR and the refinement is smaller than the removal. Two rounds of conflicting findings on one loop-introduced site are contested semantics: always a revert, never a third refinement. Fanout above 0.5 with no revert must be justified in the ruling.`
-          : null,
-        `CHANGE BUDGET: rank changes by the materiality of what they answer; at most ${MAX_CHANGES} per round, the rest deferred with a reason to the next invocation. Mark newMechanism=true on any change that adds a pass, plugin, branch, helper, guard or data shape - a new mechanism enters the plan only when it answers a material CRITICAL or MAJOR; otherwise defer it with the finding. Every applied change is next round's attack surface: the round-1 plan on record touched six sites and introduced four mechanisms, and all four hosted the next round's findings.`,
-        `A remedy that adds a cap, guard, knob or normalisation pass must name the input that makes it necessary and the measurement showing the unguarded cost; otherwise plan measure-first or delete-the-need, never the guard.`,
+        `CHANGE BUDGET: ${MAX_CHANGES}`,
       ]
         .filter(Boolean)
         .join('\n\n'),
@@ -374,11 +352,7 @@ while (true) {
     if (adj.ruling === 'STOP') {
       return { status: 'STOP', reason: 'adjudicator: the loop is generating its own work - re-model instead of another round - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
     }
-    // Fanout counts only while the adjudicator keeps ordering changes: a round
-    // it rules clean means the loop stopped generating work, whatever the
-    // findings' lineage (case on record: round 3 of the loop's own review -
-    // PROCEED, 0 changes, 3 refuted, fanout 3/3 - exited FANOUT_STOP instead
-    // of SHIP because this streak was counted before the clean check).
+    // Fanout counts only while the adjudicator keeps ordering changes.
     const refining = adj.changes.length > 0 || reverts.length > 0
     highFanoutStreak = fanout > 0.5 && refining ? highFanoutStreak + 1 : 0
     if (highFanoutStreak >= 2) {

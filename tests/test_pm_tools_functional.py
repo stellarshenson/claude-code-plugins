@@ -121,6 +121,50 @@ def test_the_console_entry_point_runs(tmp_path: Path):
     assert "report" in r.stdout and "check" in r.stdout
 
 
+def test_the_plugin_docs_carry_the_lock_discipline():
+    """ACC-PMLOCK-69 is a conjunction: the eight plugin docs AND --help. Without
+    this, every one of them could revert to HEAD with the suite still green."""
+    plugin = Path(__file__).parent.parent / "plugins/project-management"
+    files = [
+        "README.md",
+        "skills/project-management/SKILL.md",
+        "skills/project-management/references/acceptance-criteria.md",
+        "skills/project-management/references/defects.md",
+        "skills/project-management/references/reports.md",
+        "commands/acc-crit.md",
+        "commands/defect.md",
+        "commands/report.md",
+    ]
+    for name in files:
+        body = (plugin / name).read_text(encoding="utf-8")
+        assert "pm-tools lock" in body, name  # lock when you pick an item up
+        assert "unlock" in body, name
+    # the rules that only need saying where the discipline is explained in full
+    skill = (plugin / "skills/project-management/SKILL.md").read_text(encoding="utf-8")
+    for rule in ("never block", "currently worked on", "transfer", "expire"):
+        assert rule in skill.lower(), rule
+    reports = (plugin / "skills/project-management/references/reports.md").read_text(
+        encoding="utf-8"
+    )
+    assert "--locked" in reports and "Worked on" in reports
+
+
+def test_help_documents_the_whole_lock_surface():
+    """ACC-PMLOCK-69: --help is the only lock documentation an agent reads at run time."""
+    out = ok("--help")
+    for token in (
+        "- lock:",
+        "lock   FILE",
+        "unlock FILE",
+        "--locked ",
+        "--locked-by",
+        "currently worked on",
+        "TRANSFER",
+        "lock reads",
+    ):
+        assert token in out, token
+
+
 def test_an_unknown_command_fails_loudly():
     r = pm("frobnicate", "docs")
     assert r.returncode != 0
@@ -904,3 +948,103 @@ def test_the_list_table_takes_a_descending_sort_in_the_equals_form(defects: Path
     assert ids == ["`DEF-LNCH-1`", "`DEF-LNCH-2`"]
     r = pm("list", defects, "--sort", "-severity")  # the bare form reads as a flag
     assert r.returncode != 0 and "expected one argument" in r.stderr
+
+
+# --- Soft lock ------------------------------------------------------------
+
+
+def test_a_soft_lock_signals_who_is_working_and_never_blocks_anyone(defects: Path):
+    """ACC-PMLOCK-64..68 end to end: @kj locks, @xy logs and is warned but lands the
+    line, an expired lock is swept by the next write, close clears the lock it finds,
+    unlock --all clears the rest. Fails without the change on the first `ok("lock", ..)`,
+    since the command does not exist."""
+    import datetime as dt
+
+    ok("author", defects, "--handle", "@xy", "--name", "X Y")
+    file_a_defect(defects, "token race")  # DEF-LNCH-1
+    file_a_defect(defects, "splash hang")  # DEF-LNCH-2
+    file_a_defect(defects, "misaligned button", "MINOR")  # DEF-LNCH-3
+
+    # pick it up: 24 hours, a note, no log line
+    ok("lock", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--note", "bisecting the fork")
+    body = defects.read_text(encoding="utf-8")
+    (until,) = re.findall(r"- lock: (\S+) @kj bisecting the fork", body)
+    assert body.count("- log:") == 3, "locking is not an event"
+    out = ok("report", defects, "--plain")
+    assert f"wip @kj until {until}" in out and "| Worked on |" in out
+    assert "| **Total** | 3 | 0 | 2 | 0 | 1 | 1 | 0 | 0 |" in out
+    assert ok("list", defects, "--locked-by", "@kj", "--columns", "id,lock").count("`DEF-") == 1
+
+    # a second author writes: warned on stderr, exit 0, the line lands
+    r = pm("log", defects, "--id", "DEF-LNCH-1", "--author", "@xy", "--event", "attempted: retry")
+    assert r.returncode == 0
+    assert r.stderr.count("\n") == 1 and f"locked by @kj until {until}" in r.stderr
+    assert "@xy attempted: retry" in defects.read_text(encoding="utf-8")
+
+    # an expired lock survives reads and check, and the next write sweeps it
+    past = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=3)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    ok("lock", defects, "--id", "DEF-LNCH-2", "--author", "@xy", "--until", past)
+    r = pm("check", defects)
+    assert r.returncode == 0 and "expired lock, cleared on the next write" in r.stdout
+    assert f"- lock: {past} @xy" in defects.read_text(encoding="utf-8"), "check is read-only"
+    assert "`DEF-LNCH-2`" not in ok("list", defects, "--locked"), "expired is not active"
+    r = pm("log", defects, "--id", "DEF-LNCH-3", "--author", "@kj", "--event", "looked")
+    assert r.returncode == 0 and r.stderr == ""
+    assert f"- lock: {past}" not in defects.read_text(encoding="utf-8")
+
+    # close clears the lock it finds, whoever holds it
+    r = pm("close", defects, "--id", "DEF-LNCH-1", "--author", "@xy", "--evidence", "green on 412")
+    assert r.returncode == 0 and "locked by @kj" in r.stderr
+    body = defects.read_text(encoding="utf-8")
+    assert "- [x] `DEF-LNCH-1`" in body and "- lock:" not in body
+    r = pm("lock", defects, "--id", "DEF-LNCH-1", "--author", "@kj")
+    assert r.returncode == 1 and "closed" in r.stderr, "the one refusal: a finished item"
+
+    # unlock --all: a foreign active lock is named once and cleared anyway
+    ok("lock", defects, "--id", "DEF-LNCH-2", "--author", "@xy")
+    ok("lock", defects, "--id", "DEF-LNCH-3", "--author", "@kj")
+    r = pm("unlock", defects, "--author", "@kj", "--all")
+    assert r.returncode == 0 and "2 lock(s) cleared" in r.stdout
+    assert r.stderr.count("\n") == 1 and "DEF-LNCH-2 was locked by @xy" in r.stderr
+    body = defects.read_text(encoding="utf-8")
+    assert "- lock:" not in body and body.count("- log:") == 6
+    assert "Worked on" not in ok("report", defects, "--plain")
+    assert pm("check", defects).returncode == 0
+
+
+def test_a_second_agent_is_told_who_is_on_what_and_takes_the_item_over(defects: Path):
+    """ACC-PMLOCK-70 and 71 end to end: @kj picks an item up, @xy reads the queue and is
+    told before choosing anything, takes the lock over and is told that is a transfer,
+    and @kj reads the same queue back. Fails without the change on the first stderr
+    assertion, since a read says nothing about who is working."""
+    ok("author", defects, "--handle", "@xy", "--name", "X Y")
+    file_a_defect(defects, "token race")  # DEF-LNCH-1
+    file_a_defect(defects, "splash hang")  # DEF-LNCH-2
+
+    r = pm("list", defects)
+    assert r.returncode == 0 and r.stderr == "", "nothing locked, nothing announced"
+    ok("lock", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--note", "bisecting the fork")
+    (until,) = re.findall(r"- lock: (\S+) @kj", defects.read_text(encoding="utf-8"))
+
+    # @xy reads the queue before choosing an item, and the read says who is on what
+    r = pm("report", defects, "--plain")
+    assert r.returncode == 0
+    assert r.stderr == f"1 item(s) currently worked on: DEF-LNCH-1 by @kj until {until}\n"
+    assert f"wip @kj until {until}" in r.stdout, "the table itself is unchanged"
+
+    # @xy takes it anyway: named as a transfer, and the item keeps the previous holder
+    r = pm("lock", defects, "--id", "DEF-LNCH-1", "--author", "@xy")
+    assert r.returncode == 0, "a transfer is never refused"
+    assert r.stderr == (
+        f"TRANSFER: DEF-LNCH-1 was locked by @kj until {until} - you are taking it over; ask @kj\n"
+    )
+    body = defects.read_text(encoding="utf-8")
+    assert re.search(r"- lock: \S+ @xy taken over from @kj", body)
+    assert body.count("- log:") == 2, "neither the lock nor the transfer is an event"
+
+    # @kj reads the same queue later and finds @xy on it
+    r = pm("list", defects, "--columns", "id,lock")
+    assert r.returncode == 0 and "currently worked on: DEF-LNCH-1 by @xy" in r.stderr
+    assert pm("check", defects).returncode == 0

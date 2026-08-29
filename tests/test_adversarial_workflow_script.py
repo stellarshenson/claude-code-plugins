@@ -25,6 +25,12 @@ def text() -> str:
     return SCRIPT.read_text(encoding="utf-8")
 
 
+def agent(name: str) -> str:
+    """ACC-REVIEW-62: the review method lives in the agent files; the script's
+    prompts carry data only. Method guardrails assert against the agent file."""
+    return (SCRIPT.parents[3] / "agents" / f"{name}.md").read_text(encoding="utf-8")
+
+
 def test_script_exists_with_pure_literal_meta():
     t = text()
     assert t.startswith("export const meta = {")
@@ -62,8 +68,13 @@ def test_materiality_before_severity():
         "return capImmaterial(rows)" in t
     )  # the cap is wired into mergeFindings, not just defined
     assert "severity: 'MINOR', outOfBar: true" in t
-    assert "MATERIALITY TRIAGE" in t and "refute it as immaterial" in t
-    assert "Technical truth is not materiality" in t or "technically true defect" in t
+    assert "caps material=false" in t  # the reviewer prompt names the script's cap
+    adj = agent("adjudicator")
+    assert "Materiality triage" in adj and "refute it as immaterial" in adj
+    assert "Technical truth is not materiality" in adj or "technically true defect" in adj
+    rev = agent("adversarial-reviewer")
+    assert "Materiality before severity" in rev and "technically true defect" in rev
+    assert "EDIT" in rev and "DEFER" in rev and "NEW MECHANISM" in rev
 
 
 def test_new_mechanism_flag_and_change_budget():
@@ -80,8 +91,11 @@ def test_revert_before_refine():
     adjudication carries reverts, and PLAN / STOP / FANOUT_STOP hand them to
     the main session (every applied change when the adjudicator ruled none)."""
     t = text()
-    assert "'reverts'" in t and "REVERT BEFORE REFINE" in t and "REVERT CANDIDATE" in t
-    assert "contested semantics" in t
+    assert "'reverts'" in t and "REVERT BEFORE REFINE" in t
+    adj = agent("adjudicator")
+    assert "Revert before refine" in adj and "REVERT CANDIDATE" in adj
+    assert "contested semantics" in adj and "`reverted:`" in adj
+    assert "above 0.5 with no revert must be justified" in adj
     assert t.count("reverts: reverts.length ? reverts : closures") == 2  # STOP and FANOUT_STOP
     assert "status: 'PLAN',\n        reverts," in t
     assert "NO revert ruled" in t  # fanout above 0.5 without a revert is called out
@@ -102,7 +116,9 @@ def test_adjudicator_decides_blocking_not_a_severity_gate():
     t = text()
     assert "REPORTING ONLY" in t and "severityTally" in t  # severities never gate
     assert "blockingOf" not in t  # the old deterministic gate is gone
-    assert "YOU decide what blocks" in t and "not a gate" in t
+    assert "never a gate" in t
+    assert "An empty change plan rules the round clean" in agent("adjudicator")
+    assert "who alone decides what blocks" in agent("adversarial-reviewer")
     assert "adj.changes.length" in t  # empty plan rules the round clean
     assert "adjudicated clean" in t
     assert "prose verdict" in t.lower()  # reviewer verdicts never consumed
@@ -142,14 +158,30 @@ def test_workflow_never_edits_the_tree():
     assert "FIX_SCHEMA" not in t and "'Fix'" not in t  # no fixer stage at all
     assert "Apply ONLY this plan in the main session" in t
     assert "args.state" in t and "appliedFixes" in t and "stateOut" in t  # cross-invocation state
-    assert "never modify any file" in t  # reviewers and adjudicator both
+    assert (
+        "never modify any file" in t
+    )  # reviewers in the script prompt; the adjudicator in its agent file
+    assert "Never modify a file in the repo under review" in agent("adjudicator")
 
 
-def test_graph_threaded_when_present():
+def test_instrument_threaded_as_data_never_prescribed():
+    """ACC-REVIEW-72. An instrument reaches the agents as data - what exists,
+    where, what it answers - and the agent decides whether and how to use it,
+    reading the tool's own help for its current surface. A command spelled out
+    here pins an API that moves, and a hardcoded approach overfits to the
+    problems it was written for and misclassifies the rest. So the pins are the
+    threading and the outcome, never a vendor command string."""
     t = text()
     assert "args.graph" in t and "graphBlock" in t
-    assert "graphify affected" in t
+    assert "${GRAPH}" in t  # the caller's own path reaches the prompt
+    assert "INSTRUMENT AVAILABLE" in t and "as your method sees fit" in t
     assert t.count(".filter(Boolean)") >= 2  # optional block dropped cleanly from both prompts
+    assert "blast radius" in agent("adversarial-reviewer")
+    for name in ("adversarial-reviewer", "adjudicator"):
+        body = agent(name)
+        assert "whatever instrument answers fastest" in body
+        assert "tmp/graphify-out/graph.json" not in body  # no hardcoded path
+        assert "graphify " not in body  # no pinned command surface
 
 
 def test_confirm_round_is_pinned():
@@ -218,28 +250,36 @@ def test_spec_ships_in_the_plugin_with_the_full_contract():
 PLUGIN = Path(__file__).parent.parent / "plugins/devils-advocate"
 
 
+ROUTING = (
+    "construct the workflow from the spec and pass it inline; "
+    "without it, run the shipped `adversarial-loop.js` as the supplied protocol"
+)
+
+
 def test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback():
-    """The directive: a harness WITH the dynamic Workflow capability constructs
-    the workflow from the spec (guidelines only); a harness WITHOUT it runs the
-    shipped pre-built script. Every routing surface must say exactly that, and
-    the shipped script must be named as the fallback, never the default."""
+    """ACC-REVIEW-61: one routing sentence on every surface read on its own
+    (skill, command, README) plus a pointer to the spec; the spec alone carries
+    the full contract and the incident record, so the `<select>` anecdote
+    appears in no other plugin file."""
     skill = (PLUGIN / "skills/adversarial-review/SKILL.md").read_text(encoding="utf-8")
     command = (PLUGIN / "commands/adversarial-review.md").read_text(encoding="utf-8")
-    spec = SPEC.read_text(encoding="utf-8")
     readme = (PLUGIN / "README.md").read_text(encoding="utf-8")
-    # dynamic path: construct from the spec
-    assert "Construct the workflow for the task from the spec" in skill
-    assert "construct the workflow from the spec" in command
-    assert "**Dynamic (default)**" in spec and "constructs the workflow from this spec" in spec
-    assert "authors the workflow from the execution spec" in readme
-    # fallback path: the shipped script, only without the capability
-    assert "No dynamic Workflow capability (different harness)" in skill
-    assert (
-        "the supplied workflow is the protocol: execute `workflows/adversarial-loop.js`" in skill
-    )
+    spec = SPEC.read_text(encoding="utf-8")
+    for surface in (skill, command, readme):
+        assert ROUTING in surface
+        assert "references/loop-spec.md" in surface
+    assert "**Dynamic (default)**" in spec
     assert "**Supplied (no dynamic capability - different harness)**" in spec
-    assert "supplied fallback for harnesses without the dynamic Workflow capability" in command
-    assert "fallback protocol for harnesses without the dynamic capability" in readme
-    # the shipped script never presents itself as the default path
-    assert "worked example" in spec.lower() and "Worked example" in skill
-    assert "Managed adversarial review" in text()
+    # the worked example's meta names are its own - a constructed loop names
+    # itself for its target - so pin the harness convention, not the string
+    meta = text()[: text().index("\n}") + 2]
+    name = re.search(r"name: '([^']+)'", meta).group(1)
+    desc = re.search(r"description: '([^']+)'", meta).group(1)
+    assert re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name), name  # kebab-case, lowercase
+    assert desc[0].islower(), desc[:40]  # no sentence case in a meta description
+    offenders = [
+        str(p.relative_to(PLUGIN))
+        for p in PLUGIN.rglob("*")
+        if p.is_file() and p != SPEC and "<select>" in p.read_text(encoding="utf-8")
+    ]
+    assert not offenders, offenders

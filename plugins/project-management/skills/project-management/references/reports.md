@@ -21,6 +21,7 @@ It answers one question - what is still to do, and how bad - and every choice fo
 - **The level columns count OPEN items only** - they answer how bad what is left is. On a defects document the grid is `| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Fixed | Rejected |`; on a criteria document `| Category | Open | CRITICAL | HIGH | MEDIUM | LOW | Done | Rejected |`
 - **Open is the sum of the level columns**; Fixed / Done is the closed count, Rejected the rejected count
 - **An `UNTRIAGED` / `UNRATED` column appears only when an open item lacks a level** - on a clean file it is absent, and `check` fails until it is
+- **A `Worked on` column counts the open items with an active lock**, Total included, and appears only when an item in scope is locked; an active lock is a `lock:` line whose stamp is still in the future
 - **A Total row closes every grid**
 - **Regression count** - a defect report prints `N regressions across M defects` above the grid whenever any item carries a `-N` id, in the summary form as well
 
@@ -33,6 +34,7 @@ The reader wants what is left and what to fix first, so ITEMS lists OPEN items o
 - **The Status column disappears** whenever every row shares one status - a constant column carries nothing
 - **The Evidence column appears** only when something listed carries one, which in practice means a listing that includes closed work. `--status closed` is how a reader checks what the closures were actually proven on
 - **Tags print upper-case** - `UNIT, E2E` - however the file spells them
+- **A locked item's row carries `wip @xx until <stamp>`** - @xx is likely working on it; ask before picking it up, and lock an item when you pick it up yourself (`pm-tools lock FILE --id ID --author @xx`). The lock never blocks a write, expired locks clear themselves on the next write, and `pm-tools unlock` clears one at will. The read announces them first: `report`, `list`, `search` and `refs` print `N item(s) currently worked on: DEF-X by @xx until <stamp>` on stderr whenever a shown item is locked, so the notice arrives while the item is still being chosen; taking or clearing an active lock held by another handle is a transfer - `lock` and `unlock` print `TRANSFER: DEF-X was locked by @yy until <stamp> - you are taking it over; ask @yy` and proceed, and a takeover with no `--note` records `taken over from @yy`
 
 ## `coverage` - the test-coverage grid
 
@@ -59,13 +61,15 @@ A filtered ask is answered with flags. Reading the document and filtering inside
 | anything mentioning the token | `--grep token` - case-insensitive regex over title, body, evidence and log lines |
 | what is waiting on open work | `--blocked` - at least one blocked-by target still open |
 | everything around DEF-LNCH-3 | `--related-to DEF-LNCH-3` - linked either way, related or blocked-by |
+| what is being worked on | `--locked` - an active lock, whoever holds it |
+| what @kj is working on | `--locked-by @kj` |
 | filed since the release | `--since 2026-08-01` |
 | closed in August | `--dates closed --since 2026-08-01 --until 2026-08-31` |
 | untouched since June | `--dates updated --until 2026-06-30` |
 
 Filters combine: "what @kj still has open in AUTH" is `--author @kj --category AUTH --status open`. The same flags work unchanged on `coverage`, `list`, `pivot` and `search`.
 
-- **`--category`, `--severity`, `--importance`, `--author`, `--tag`, `--regressions`, `--grep`, `--blocked`, `--related-to` and the date window narrow the whole report** - the counts, SUMMARY and ITEMS all follow, and a category the filter empties gets no row; the level columns stay and read 0
+- **`--category`, `--severity`, `--importance`, `--author`, `--tag`, `--regressions`, `--grep`, `--blocked`, `--related-to`, `--locked`, `--locked-by` and the date window narrow the whole report** - the counts, SUMMARY and ITEMS all follow, and a category the filter empties gets no row; the level columns stay and read 0
 - **`--status` narrows ITEMS only** - the summary tables always show the whole scope, so a filtered report still says where the whole thing stands
 - **A single category folds** its name and description into the header rather than printing a one-row CATEGORIES table
 - **`--severity` is a defect attribute and `--importance` a criterion attribute** - the other discipline's document is skipped with a note on stderr instead of being reported as zeros
@@ -86,7 +90,7 @@ A question the report sections do not answer is still answered with a computed t
 
 - **`list [--columns F,F,..] [--sort=F,-F,..]`** - one row per item. Default columns are id, title, severity (defects) or importance (criteria), status, category, author, filed and tags; `--columns` replaces them in the order given. Default order is the fix order (open first, worst first, oldest first); `--sort` takes fields in priority order, and a `-` prefix descends - write it `--sort=-age`, since a bare `-age` reads as a flag. Severity or importance ascending is worst first
 - **`pivot --rows F [--cols F] [--values count|ids]`** - one field down, another across, a count in every cell (`-` for zero), a Total column and row. Without `--cols` it is a one-column tally. `--values ids` puts the ids in the cells instead, for the reader who wants to click through
-- **FIELDS**, the one vocabulary for `--columns`, `--sort`, `--rows` and `--cols`: `id title body category severity importance status author filed closed updated age tags evidence hint regr root logs related blockers`. `root` is the parent id a regression descends from (an original is its own root), `regr` its ordinal, `logs` the number of log lines, `hint` the repro or test line, `related` and `blockers` the linked ids
+- **FIELDS**, the one vocabulary for `--columns`, `--sort`, `--rows` and `--cols`: `id title body category severity importance status author filed closed updated age tags evidence hint regr root logs related blockers lock`. `root` is the parent id a regression descends from (an original is its own root), `regr` its ordinal, `logs` the number of log lines, `hint` the repro or test line, `related` and `blockers` the linked ids, `lock` renders `@xx until <stamp>` for an active lock and `-` otherwise
 - **Multi-valued and bucketed fields** - `tags` puts an item in every tag it carries (the empty bucket is `NO-TEST`), and `related` / `blockers` under every id they name; `filed`, `closed` and `updated` pivot by month; `age` pivots by band (`<7d`, `7-30d`, `31-90d`, `>90d`), counting days from filing to closure or to today while open
 
 | The ask | The command |
@@ -98,6 +102,7 @@ A question the report sections do not answer is still answered with a computed t
 | coverage by category | `coverage` - the shipped grid; `pivot --rows category --cols tags` when a different cut is needed |
 | criteria by importance and status | `pivot --rows importance --cols status` |
 | what is waiting on open work | `list --blocked --columns id,title,blockers` |
+| who is working on what | `list --locked --columns id,title,lock` |
 
 ## `search` ranks, `--grep` filters
 
@@ -107,7 +112,7 @@ A question the report sections do not answer is still answered with a computed t
 
 `refs --id ID` prints what points at `ID`, what `ID` points at, and the transitive blocked-by chain - each path hop carrying the blocker's status, a repeated blocker ending its chain with `...`, a cycle named where it closes. Inbound references are listed even for an id no item carries any more, which is what `remove --force` leaves behind.
 
-- **`--json`** on `report`, `coverage`, `list`, `pivot`, `search`, `list-categories` and `refs` returns the same facts as data - a list of documents, one per file. Use it only for the rare table that has to be assembled from two queries; a single query's markdown is the deliverable, and re-rendering its JSON by hand invites the format drift the tools exist to remove
+- **`--json`** on `report`, `coverage`, `list`, `pivot`, `search`, `list-categories` and `refs` returns the same facts as data - a list of documents, one per file; the `report` and `list` item records carry `lock` as `{by, until, note}` or `null`. Use it only for the rare table that has to be assembled from two queries; a single query's markdown is the deliverable, and re-rendering its JSON by hand invites the format drift the tools exist to remove
 
 ## `--detail` is the drill-down
 
