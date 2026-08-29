@@ -6,7 +6,9 @@ Written by `/brace`. The newest BRACE section is the one to act on. Read it befo
 
 ### HORIZON
 
-**SERVER RESTART** (assumed - the Star Colonel did not state one, so the stricter reading was taken). Nothing was detached and nothing needs reattaching: this session ran no experiments, no training, no servers. Everything of value is on disk in the working tree. If it was in fact SESSION-ONLY, nothing changes - there was no surviving compute either way.
+**LIMIT** - CORRECTED ON RESUME 2026-08-29T14:13Z. Recorded at brace time as SERVER RESTART, assumed rather than probed, and that was wrong: the five-hour usage window sat at 98% and reset at 4:10pm, the host never went down, and the SAME session returned. Both workflows were therefore resumable from cache, not relaunch fodder. This is the mistake `~/.claude/bin/brace-horizon` now exists to prevent - probe the limit state, and read a near-ceiling window as LIMIT unless told otherwise, because the harsher horizon throws away resumable work. Nothing was detached and nothing needed reattaching: this session ran no experiments, no training, no servers. Everything of value is on disk in the working tree.
+
+**Resumed:** both runs relaunched with `Workflow({scriptPath, resumeFromRunId})` in the same session at 16:13, replaying their completed agents from cache.
 
 ### FIRST ACTION
 
@@ -59,7 +61,13 @@ Suite **1058 passed + 1 skipped**, `ruff check .` clean, `pm-tools check docs` 0
 
 ### Outside the project tree
 
-`~/.claude/commands/brace.md` and `~/.claude/commands/brace-resume.md` were edited this session (workflow halt step; `/brace resume` dispatch). They are in the home dotfiles repo, not this one - commit them there separately.
+Edited this session, all in the home dotfiles repo rather than this one - commit them there separately:
+
+- `~/.claude/skills/brace/SKILL.md` - NEW. `/brace` is now a skill carrying both procedures; the dispatch, the workflow halt step, the horizon probe and the pause-versus-kill rule all live here
+- `~/.claude/commands/brace.md` - reduced to three lines that invoke the skill and pass the remainder through
+- `~/.claude/commands/brace-resume.md` - REMOVED; its procedure moved into the skill's `## Brace Resume` section verbatim
+- `~/.claude/bin/brace-horizon` - NEW, executable. Reads the rate-limit state and prints `LIMIT <pct>% <window> resets <time> (<mins>m)` for any window at or past 85% and not yet reset, else `CLEAR`
+- `~/.claude/skills/graphify/SKILL.md` - to be refreshed by the resumed graphify run (ACC-REVIEW-76)
 
 ### Pending recordings and decisions
 
