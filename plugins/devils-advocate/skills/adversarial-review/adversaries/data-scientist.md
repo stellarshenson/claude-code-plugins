@@ -47,7 +47,7 @@ ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-
 
 ## Method cracks
 Ordered by severity. For each:
-- **[CRITICAL|MAJOR|MINOR] <short title>** - the crack, EXACT file/cell/line/metric, and the REMEDY - the smallest change that removes the cause rather than the nearest symptom, plus what it could break. taste / subjective notes use MINOR tagged (taste). (one bullet)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the crack, EXACT file/cell/line/metric, and the REMEDY - the smallest change that removes the cause rather than the nearest symptom, plus what it could break. taste / subjective notes use MINOR tagged (taste). (one bullet) MATERIALITY first, before the severity: who is harmed, doing what the product is for, on an input inside its input universe - NONE makes the finding MINOR (out of bar) whatever the reproduction shows.
 
 ## Claims not carried by evidence
 Each claim in the target the data or test does not actually support, with why (no power, leak, wrong baseline, one fixture, gamed metric).

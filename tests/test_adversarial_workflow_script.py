@@ -8,10 +8,10 @@ pin the gates so an edit cannot silently drop one.
 
 from __future__ import annotations
 
+from pathlib import Path
 import re
 import shutil
 import subprocess
-from pathlib import Path
 
 import pytest
 
@@ -43,6 +43,61 @@ def test_mandatory_args_throw():
     assert re.search(r"args\.target.*args\.bar.*args\.lenses.*mandatory", text(), re.S)
 
 
+def test_bar_must_name_purpose_inputs_and_primary_path():
+    """DEF-ADVR-40: an output-only bar promotes every input in the world into
+    scope. The script refuses a bar without purpose, inputs and primaryPath."""
+    t = text()
+    assert re.search(r"args\.bar\.purpose.*args\.bar\.inputs.*args\.bar\.primaryPath", t)
+    assert "PURPOSE" in t and "INPUT UNIVERSE" in t and "PRIMARY PATH" in t
+
+
+def test_materiality_before_severity():
+    """DEF-ADVR-40: every finding answers who is harmed on the primary path;
+    material=false is capped by the script at MINOR/outOfBar - scope, not
+    blocking - and the adjudicator triages materiality before verifying."""
+    t = text()
+    assert "'material'" in t and "'materiality'" in t
+    assert "material === false" in t and "capImmaterial" in t
+    assert (
+        "return capImmaterial(rows)" in t
+    )  # the cap is wired into mergeFindings, not just defined
+    assert "severity: 'MINOR', outOfBar: true" in t
+    assert "MATERIALITY TRIAGE" in t and "refute it as immaterial" in t
+    assert "Technical truth is not materiality" in t or "technically true defect" in t
+
+
+def test_new_mechanism_flag_and_change_budget():
+    """DEF-ADVR-41: every planned change says whether it adds review surface;
+    the plan is budgeted and mechanisms are surfaced in the PLAN payload."""
+    t = text()
+    assert "'newMechanism'" in t and "newMechanism: { type: 'boolean'" in t
+    assert "MAX_CHANGES" in t and "CHANGE BUDGET" in t
+    assert "mechanisms," in t and "NEW MECHANISM" in t
+
+
+def test_revert_before_refine():
+    """DEF-ADVR-42: loop-introduced machinery is removed, not polished - the
+    adjudication carries reverts, and PLAN / STOP / FANOUT_STOP hand them to
+    the main session (every applied change when the adjudicator ruled none)."""
+    t = text()
+    assert "'reverts'" in t and "REVERT BEFORE REFINE" in t and "REVERT CANDIDATE" in t
+    assert "contested semantics" in t
+    assert t.count("reverts: reverts.length ? reverts : closures") == 2  # STOP and FANOUT_STOP
+    assert "status: 'PLAN',\n        reverts," in t
+    assert "NO revert ruled" in t  # fanout above 0.5 without a revert is called out
+
+
+def test_confirm_round_filter_is_script_enforced():
+    """DEF-ADVR-43: pinning was prompt-only on record and reviewers swept
+    anyway; a confirming finding survives only if it names a failing closure
+    or sits in the applied delta, and is not taste - dropped ones are logged."""
+    t = text()
+    assert "pinFilter" in t and t.count("pinFilter(mergeFindings(") == 2  # both confirm panels
+    assert "f.closure" in t and "inDelta(f)" in t and "!f.taste" in t
+    assert "confirm filter:" in t and "confirm-filter" in t  # logged and in history
+    assert "TURN BUDGET" in t and "DISCARDS" in t
+
+
 def test_adjudicator_decides_blocking_not_a_severity_gate():
     t = text()
     assert "REPORTING ONLY" in t and "severityTally" in t  # severities never gate
@@ -66,6 +121,13 @@ def test_gates_present():
     t = text()
     assert "'STOP'" in t and "FANOUT_STOP" in t and "ROUND_CAP" in t and "'PLAN'" in t
     assert "highFanoutStreak >= 2" in t and "> 0.5" in t  # two consecutive rounds over half
+    assert (
+        "fanout > 0.5 && refining" in t
+    )  # DEF-ADVR-46: an adjudicated-clean round never trips the fanout gate
+    assert (
+        "const refining = adj.changes.length > 0 || reverts.length > 0" in t
+    )  # the definition, not just its use
+    assert "highFanoutStreak = 0" in t  # the no-findings clean branch resets the streak too
     assert "cleanStreak >= CLEAN_REQUIRED" in t
     assert "devils-advocate:adjudicator" in t and "devils-advocate:adversarial-reviewer" in t
 
@@ -143,6 +205,41 @@ def test_spec_ships_in_the_plugin_with_the_full_contract():
         "FANOUT_STOP",
         "ROUND_CAP",
         "prior record",
+        "Materiality before severity",
+        "Revert before refine",
+        "`reverts`",
+        "newMechanism",
+        "discarded before adjudication",
     ):
         assert marker in t, marker
     assert "docs/spec-adversarial-loop-execution" not in t  # old repo-only home is gone
+
+
+PLUGIN = Path(__file__).parent.parent / "plugins/devils-advocate"
+
+
+def test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback():
+    """The directive: a harness WITH the dynamic Workflow capability constructs
+    the workflow from the spec (guidelines only); a harness WITHOUT it runs the
+    shipped pre-built script. Every routing surface must say exactly that, and
+    the shipped script must be named as the fallback, never the default."""
+    skill = (PLUGIN / "skills/adversarial-review/SKILL.md").read_text(encoding="utf-8")
+    command = (PLUGIN / "commands/adversarial-review.md").read_text(encoding="utf-8")
+    spec = SPEC.read_text(encoding="utf-8")
+    readme = (PLUGIN / "README.md").read_text(encoding="utf-8")
+    # dynamic path: construct from the spec
+    assert "Construct the workflow for the task from the spec" in skill
+    assert "construct the workflow from the spec" in command
+    assert "**Dynamic (default)**" in spec and "constructs the workflow from this spec" in spec
+    assert "authors the workflow from the execution spec" in readme
+    # fallback path: the shipped script, only without the capability
+    assert "No dynamic Workflow capability (different harness)" in skill
+    assert (
+        "the supplied workflow is the protocol: execute `workflows/adversarial-loop.js`" in skill
+    )
+    assert "**Supplied (no dynamic capability - different harness)**" in spec
+    assert "supplied fallback for harnesses without the dynamic Workflow capability" in command
+    assert "fallback protocol for harnesses without the dynamic capability" in readme
+    # the shipped script never presents itself as the default path
+    assert "worked example" in spec.lower() and "Worked example" in skill
+    assert "Managed adversarial review" in text()

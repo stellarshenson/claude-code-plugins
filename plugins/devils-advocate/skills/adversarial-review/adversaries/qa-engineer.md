@@ -88,7 +88,7 @@ Tests and harness to DELETE or demote, most expensive first. For each: file:line
 
 ## Findings
 Severity-ordered. For each:
-- **[CRITICAL|MAJOR|MINOR] <short title>** - the defect, file:line for test and source, the mutation that stays green or the failure that slips through, and the REMEDY - the smallest change that removes the cause rather than the nearest symptom (the standard tool, the missing case, the missing rung, the parametrization, the layer it belongs at), plus what it could break. taste / subjective notes use MINOR tagged (taste). (one bullet)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the defect, file:line for test and source, the mutation that stays green or the failure that slips through, and the REMEDY - the smallest change that removes the cause rather than the nearest symptom (the standard tool, the missing case, the missing rung, the parametrization, the layer it belongs at), plus what it could break. taste / subjective notes use MINOR tagged (taste). (one bullet) MATERIALITY first, before the severity: who is harmed, doing what the product is for, on an input inside its input universe - NONE makes the finding MINOR (out of bar) whatever the reproduction shows.
 
 ## What the suite gets right
 2-4 bullets - the risks genuinely retired, the rungs that earn their keep, the harness choices worth keeping, so they survive the fix.

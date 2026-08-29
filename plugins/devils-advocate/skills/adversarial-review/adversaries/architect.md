@@ -75,7 +75,7 @@ ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-
 
 ## Inconsistencies / defects
 Ordered by severity. For each:
-- **[CRITICAL|MAJOR|MINOR] <short title>** - the defect, EXACT file:line(s) for every occurrence, and the specific fix. For anything over-built, name the requirement it fails to trace to and the smaller construct that replaces it. Where the fix adds code, say what it adds in one clause. taste / subjective notes use MINOR tagged (taste). (one bullet)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the defect, EXACT file:line(s) for every occurrence, and the specific fix. For anything over-built, name the requirement it fails to trace to and the smaller construct that replaces it. Where the fix adds code, say what it adds in one clause. taste / subjective notes use MINOR tagged (taste). (one bullet) MATERIALITY first, before the severity: who is harmed, doing what the product is for, on an input inside its input universe - NONE makes the finding MINOR (out of bar) whatever the reproduction shows.
 
 ## Convention census (for unification sweeps)
 A short table/list: each mechanism/name found -> the files using it -> which is the intended canonical one.

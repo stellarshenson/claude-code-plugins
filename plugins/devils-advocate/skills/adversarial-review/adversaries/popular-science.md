@@ -84,7 +84,7 @@ ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-
 
 ## Where the reader stops
 Ordered by severity. For each:
-- **[CRITICAL|MAJOR|MINOR] <short title>** - quote the offending text, name the reader-response (the term they hit, the list they skip, the place they leave), and the concrete fix. taste / subjective notes use MINOR tagged (taste). (one bullet)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - quote the offending text, name the reader-response (the term they hit, the list they skip, the place they leave), and the concrete fix. taste / subjective notes use MINOR tagged (taste). (one bullet) MATERIALITY first, before the severity: who is harmed, doing what the product is for, on an input inside its input universe - NONE makes the finding MINOR (out of bar) whatever the reproduction shows.
 
 ## The visuals
 Each figure judged against the best-in-class bar: what it does well, what falls short (legibility, caption, honest ink, hierarchy), the concrete fix - flagging where the remedy is to regenerate via svg-infographics:svg-designer, and naming any figure the piece needs but does not have. Say if a judgement is caption-only.

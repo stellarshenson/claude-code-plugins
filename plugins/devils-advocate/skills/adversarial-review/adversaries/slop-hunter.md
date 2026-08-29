@@ -56,7 +56,7 @@ ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-
 
 ## Findings
 Ordered by severity, biggest surface removed first. For each:
-- **[CRITICAL|MAJOR|MINOR] <short title>** - the symbol / file:line or quoted text, which axis, the concrete cut, the delete-test evidence, and "load-bearing check: cleared" for any deletion. taste / subjective notes use MINOR tagged (taste). (one bullet)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the symbol / file:line or quoted text, which axis, the concrete cut, the delete-test evidence, and "load-bearing check: cleared" for any deletion. taste / subjective notes use MINOR tagged (taste). (one bullet) MATERIALITY first, before the severity: who is harmed, doing what the product is for, on an input inside its input universe - NONE makes the finding MINOR (out of bar) whatever the reproduction shows.
 
 Severity: **CRITICAL** = dead weight the change under review ADDS (a new speculative abstraction, shipped dead code, an added unused dependency, a vanity-test file) OR a trust falsehood (fabricated source, hallucinated API) - it should never merge; **MAJOR** = real pre-existing dead weight to delete (redundant function, parrot comments, over-prosed doc, duplicated test, hollow padding); **MINOR** = cosmetic slop (formulaic phrasing, filler, vocabulary tells).
 

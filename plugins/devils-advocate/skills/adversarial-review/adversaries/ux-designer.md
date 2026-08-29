@@ -58,7 +58,7 @@ ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-
 
 ## Findings
 Ordered by severity. For each:
-- **[CRITICAL|MAJOR|MINOR] <short title>** - what the user perceives/does wrong, the exact element/state, and the REMEDY - the smallest change that removes the cause rather than the nearest symptom, where it lands, and what it could break. taste / subjective notes use MINOR tagged (taste). (one paragraph)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - what the user perceives/does wrong, the exact element/state, and the REMEDY - the smallest change that removes the cause rather than the nearest symptom, where it lands, and what it could break. taste / subjective notes use MINOR tagged (taste). (one paragraph) MATERIALITY first, before the severity: who is harmed, doing what the product is for, on an input inside its input universe - NONE makes the finding MINOR (out of bar) whatever the reproduction shows.
 
 ## What works
 2-4 bullets on what is genuinely good, so the team keeps it.

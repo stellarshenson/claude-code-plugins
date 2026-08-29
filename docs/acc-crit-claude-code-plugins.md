@@ -311,6 +311,7 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
   - log: 2026-08-28T13:21:19Z @kj edited title and text and evidence (replaced)
+  - log: 2026-08-29T09:57:47Z @kj session 2026-08-29: the review of the ADVR fixes was driven via scriptPath to the shipped script - the fallback route, not the constructed one; routing pinned by ACC-REVIEW-60 and a live constructed run follows
 - [x] `ACC-REVIEW-45` **adjudicator rules what blocks** - CRITICAL; the workflow never gates on severities or reviewer prose verdicts: every round with findings goes to the adjudicator, whose change plan decides - an empty plan rules the round clean, a MINOR it judges worth fixing enters the plan, a MAJOR it refutes does not; severities are evidence only
   - evidence: adversarial-loop.js: severityTally reporting-only, blockingOf gate removed, adj.changes.length rules clean; test_adjudicator_decides_blocking_not_a_severity_gate
   - test: guardrail test asserts the blocking filter names CRITICAL and MAJOR
@@ -339,12 +340,13 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - test-tags: UNIT, MANUAL
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-49` **fanout stop** - HIGH; the adjudicator reports how many findings trace to the previous round's fixes; two consecutive rounds above 50 percent end the loop with FANOUT_STOP recommending re-modelling instead of another round
-  - evidence: highFanoutStreak at fanout above 0.5 twice returns FANOUT_STOP; test_gates_present
+- [x] `ACC-REVIEW-49` **fanout stop** - HIGH; FANOUT_STOP exits the loop when over half of a round's findings sit in code the loop's own fixes introduced, for two consecutive rounds - counted only for rounds whose adjudication still ordered changes or reverts; a clean round (no findings, or adjudicated clean) resets the streak (DEF-ADVR-46)
+  - evidence: highFanoutStreak advances on fanout > 0.5 && refining, resets on either clean path; test_gates_present
   - test: guardrail test asserts the fanout threshold and stop path
   - test-tags: UNIT
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
+  - log: 2026-08-29T10:03:35Z @kj edited text and evidence (replaced)
 - [x] `ACC-REVIEW-50` **round cap returns history** - MEDIUM; hitting maxRounds (default 6) ends the loop with ROUND_CAP and the full round history rather than looping on
   - evidence: ROUND_CAP status returns full history at maxRounds; test_gates_present
   - test: guardrail test asserts the cap path
@@ -381,4 +383,35 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - test-tags: UNIT, MANUAL
   - log: 2026-08-28T13:21:19Z @kj added
   - log: 2026-08-28T13:21:19Z @kj closed
+- [x] `ACC-REVIEW-56` **Bar names purpose, input universe and primary path; materiality before severity** - HIGH; The workflow script throws on a bar missing purpose, inputs or primaryPath; every finding carries material + materiality; material=false is capped by the script at MINOR/outOfBar; the adjudicator's step 0 refutes immaterial findings before verification (DEF-ADVR-40)
+  - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
+  - test: test_bar_must_name_purpose_inputs_and_primary_path, test_materiality_before_severity
+  - test-tags: UNIT
+  - log: 2026-08-29T09:22:05Z @kj added
+  - log: 2026-08-29T09:22:06Z @kj closed
+- [x] `ACC-REVIEW-57` **Plan changes flag newMechanism inside a per-round budget** - HIGH; Every adjudicated change carries newMechanism; every change flagged newMechanism is returned under mechanisms and logged, for the main session to veto unless it answers a material CRITICAL/MAJOR; the plan is ranked by materiality within maxChanges (default 3); PLAN logs an over-budget plan (DEF-ADVR-41)
+  - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
+  - test: test_new_mechanism_flag_and_change_budget
+  - test-tags: UNIT
+  - log: 2026-08-29T09:22:05Z @kj added
+  - log: 2026-08-29T09:22:06Z @kj closed
+  - log: 2026-08-29T09:46:14Z @kj edited text
+- [x] `ACC-REVIEW-58` **Revert before refine - reverts in adjudication, PLAN, STOP and FANOUT_STOP** - HIGH; Findings on loop-introduced code are ruled as reverts (mechanism, site, dissolved findings, deferred originals) unless the original was material; contested semantics always revert; PLAN, STOP and FANOUT_STOP carry reverts, falling back to every applied change; fanout above 0.5 with no revert is logged (DEF-ADVR-42)
+  - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
+  - test: test_revert_before_refine
+  - test-tags: UNIT
+  - log: 2026-08-29T09:22:05Z @kj added
+  - log: 2026-08-29T09:22:06Z @kj closed
+- [x] `ACC-REVIEW-59` **Confirm-round filter enforced by the script** - MEDIUM; A confirming finding survives only if it names a failing closure or sits in a file the applied delta touched (appliedFixes.files or the closure site), and is not taste; dropped findings are logged by title and recorded in history; the confirm prompt carries a turn budget (DEF-ADVR-43)
+  - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
+  - test: test_confirm_round_filter_is_script_enforced
+  - test-tags: UNIT
+  - log: 2026-08-29T09:22:06Z @kj added
+  - log: 2026-08-29T09:22:06Z @kj closed
+- [x] `ACC-REVIEW-60` **Routing: dynamic capability constructs from the spec, shipped script only as fallback** - CRITICAL; Every routing surface (SKILL.md, commands/adversarial-review.md, references/loop-spec.md, README.md) states: a harness with the dynamic Workflow capability constructs the workflow from the spec; a harness without it executes the shipped adversarial-loop.js as the supplied protocol; the shipped script is named worked example and fallback, never the default. Live check: a review run under Claude Code passes the constructed script inline (Workflow script=...), never scriptPath to the shipped file
+  - evidence: test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback passes; live constructed run wf_67c56c05-595 (script passed inline, pipeline per lens + materiality refutation votes + adjudication) returned SHIP on the ADVR delta - 9 agents, 512k tokens
+  - test: test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback; live run wf_ record in the journal
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-08-29T09:57:47Z @kj added
+  - log: 2026-08-29T10:11:29Z @kj closed
 

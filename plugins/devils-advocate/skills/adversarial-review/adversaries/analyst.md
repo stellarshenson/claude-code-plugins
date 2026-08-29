@@ -77,7 +77,7 @@ ONE line: `VERDICT: SHIP` or `VERDICT: DO-NOT-SHIP (<n> findings)`, plus a half-
 
 ## Findings
 Ordered by severity. For each:
-- **[CRITICAL|MAJOR|MINOR] <short title>** - the gap, the exact criterion or file:line, the named antipattern where one applies, and the REMEDY - the smallest change that removes the cause rather than the nearest symptom (the criterion to add, the wording to replace, the code to delete), plus what it could break. taste / subjective notes use MINOR tagged (taste). (one bullet)
+- **[CRITICAL|MAJOR|MINOR] <short title>** - the gap, the exact criterion or file:line, the named antipattern where one applies, and the REMEDY - the smallest change that removes the cause rather than the nearest symptom (the criterion to add, the wording to replace, the code to delete), plus what it could break. taste / subjective notes use MINOR tagged (taste). (one bullet) MATERIALITY first, before the severity: who is harmed, doing what the product is for, on an input inside its input universe - NONE makes the finding MINOR (out of bar) whatever the reproduction shows.
 
 ## Coverage matrix
 The grid from axis 1, in the Matrix form above - one table per regime-varying feature, on ONE regime axis, `-` = not available, `??` = the doc is silent. Name the axis you chose and why it explains the behaviour in fewer cells than the other. A feature with one regime gets a line saying so, not a one-column table. Ship it as markdown ready to paste under the feature's overview - a deliverable in its own right, not just your working.
