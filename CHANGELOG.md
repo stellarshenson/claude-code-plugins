@@ -6,6 +6,7 @@ One synced version for the library and the seven plugins. Entries summarise; the
 
 ### Fixed
 
+- **all plugins** - the toolchain gate now says how to invoke the CLI it just installed. The gate puts the command on PATH, but in a uv-managed repository the reflex invocation is `uv run <cli>`, which resolves the caller's project first and writes `uv.lock` and `.venv` into it - an edit to the user's tree that no plugin asked for. All 31 gate sites now carry the rule: bare command name, and `uv run --no-project` if uv is used at all, which writes neither file and resolves the same binary (`--no-sync` and `--frozen` still create `.venv`). Two guards in `tests/test_toolchain_gate.py` pin the rule at every gate and fail on any project-scoped `uv run` of a toolkit CLI in the shipped docs
 - **devils-advocate** - the invariant check a constructed loop must pass now produces an artifact. It used to read "check the script against the invariant list one by one", which leaves nothing behind, so it could be skipped in silence while the shipped worked example carried 22 passing tests - the fallback route was the one that felt provably safe, and a capable session with the dynamic Workflow capability took it. A constructed loop now emits its invariant map before the first spawn: nine lines, `INV-1` .. `INV-9`, each naming the site in its own script that carries that invariant. `adversarial-loop.js` is unchanged - this is a contract change, not a protocol change (DEF-ADVR-48)
 
 ### Changed

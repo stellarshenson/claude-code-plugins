@@ -27,6 +27,8 @@ OLDER=$(printf '%s\n%s\n' "$LIB" "$PLUG" | sort -V | head -1)
 echo "toolkit $LIB"
 ```
 
+**Run the CLI without touching the caller's project.** The gate above puts it on PATH, so the bare command name is the whole invocation. `uv run` instead resolves whatever project the working directory sits in and writes `uv.lock` and `.venv` into it, so if you reach for uv pass `--no-project` (`uv run --no-project <cli> ...`) - it skips project discovery, leaves the tree untouched and still finds the same PATH binary. `--no-sync` and `--frozen` are not substitutes; both still create `.venv`.
+
 The upgrade always runs - a stale-but-importable install is exactly the failure this gate prevents, and the reinstall also repairs a stale shim on PATH whose package is uninstalled in the active Python. Never ask - just run the line. The CLI is mandatory for the grounding layer; without it, say so and stop rather than degrade to manual search.
 
 ## Phase 0: Gather Criteria

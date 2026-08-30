@@ -218,6 +218,47 @@ def test_every_cli_entry_point_is_gated():
     )
 
 
+# The gate installs the CLIs on PATH; how they are then invoked decides whether
+# the caller's repository is modified. Measured against uv 0.12.7 in a directory
+# holding a `pyproject.toml`: `uv run journal-tools --help` created `uv.lock` and
+# `.venv` there and then fell through to the same PATH binary, `uv run --no-sync`
+# and `uv run --frozen` still created `.venv`, and `uv run --no-project` created
+# neither while resolving the identical binary.
+NO_PROJECT_RULE = "**Run the CLI without touching the caller's project.**"
+
+_UV_RUN = re.compile(r"uv run((?:\s+--?[\w-]+(?:=\S+)?)*)\s+(?P<cmd>[\w-]+)")
+
+
+def test_every_gate_states_the_no_project_invocation_rule():
+    """A gate that installs a CLI must also say how to call it.
+
+    Without the rule the natural invocation in a uv-managed repository is
+    `uv run <cli>`, which writes `uv.lock` and `.venv` into that repository -
+    an edit to the user's tree that no plugin asked for, and one the user has
+    to notice and revert themselves.
+    """
+    missing = [
+        str(p.relative_to(ROOT))
+        for p in _plugin_markdown()
+        if UPGRADE_LINE in (t := p.read_text(encoding="utf-8")) and NO_PROJECT_RULE not in t
+    ]
+    assert not missing, f"gate sites that install a CLI without saying how to invoke it: {missing}"
+
+
+def test_no_plugin_doc_runs_a_toolkit_cli_through_a_project_scoped_uv():
+    """The rule must not be contradicted by an example three lines below it."""
+    clis = set(_toolkit_clis())
+    offenders = []
+    for p in _plugin_markdown():
+        for m in _UV_RUN.finditer(p.read_text(encoding="utf-8")):
+            if m.group("cmd") in clis and "--no-project" not in m.group(1):
+                offenders.append(f"{p.relative_to(ROOT)}: {m.group(0)}")
+    assert not offenders, (
+        "toolkit CLI invoked through a project-scoped `uv run` - it writes "
+        f"`uv.lock` and `.venv` into whatever repo the agent is standing in: {offenders}"
+    )
+
+
 def test_shipped_gate_still_carries_its_normative_lines():
     """Cheap, deterministic guard on the LIVE gate the cassettes quote.
 

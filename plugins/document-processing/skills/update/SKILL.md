@@ -18,6 +18,8 @@ OLDER=$(printf '%s\n%s\n' "$LIB" "$PLUG" | sort -V | head -1)
 echo "toolkit $LIB"
 ```
 
+**Run the CLI without touching the caller's project.** The gate above puts it on PATH, so the bare command name is the whole invocation. `uv run` instead resolves whatever project the working directory sits in and writes `uv.lock` and `.venv` into it, so if you reach for uv pass `--no-project` (`uv run --no-project <cli> ...`) - it skips project discovery, leaves the tree untouched and still finds the same PATH binary. `--no-sync` and `--frozen` are not substitutes; both still create `.venv`.
+
 The upgrade always runs; a version mismatch blocks. Never ask - just run the line.
 
 ## When to use

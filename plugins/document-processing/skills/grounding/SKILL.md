@@ -46,6 +46,8 @@ OLDER=$(printf '%s\n%s\n' "$LIB" "$PLUG" | sort -V | head -1)
 echo "toolkit $LIB"
 ```
 
+**Run the CLI without touching the caller's project.** The gate above puts it on PATH, so the bare command name is the whole invocation. `uv run` instead resolves whatever project the working directory sits in and writes `uv.lock` and `.venv` into it, so if you reach for uv pass `--no-project` (`uv run --no-project <cli> ...`) - it skips project discovery, leaves the tree untouched and still finds the same PATH binary. `--no-sync` and `--frozen` are not substitutes; both still create `.venv`.
+
 Ships `document-processing` CLI with lexical-mode grounding (default: frozen-weight logistic, high effort tier, 18 signals including MT cross-lingual). All layer scores reported every call + line/column/paragraph/page/context per hit. Verify: `document-processing --help`. Never ask user whether to install - just run the line. **CLI mandatory.** Generative interpretation only an on-top layer for semantic claims after CLI ran - never a substitute. If package genuinely cannot install, say so and stop; do not silently degrade to manual search.
 
 ## Semantic grounding (+ NLI): opt-in per call via `--semantic` (recommend by default)
