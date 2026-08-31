@@ -1,6 +1,6 @@
 ---
 name: acc-crit
-description: Add, close, reject, relate or audit acceptance criteria in the project's acc-crit document - permanent ACC-<CAT>-<N> ids, author handles, test hints and tags, all through the pm-tools CLI
+description: Add, close, reject, relate or audit acceptance criteria in the project's acc-crit document - permanent category-scoped ids (ACC-AUTH-102), author handles, test hints and tags, all through the pm-tools CLI
 allowed-tools: [Read, Write, Bash, Skill]
 ---
 
@@ -34,6 +34,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 5. **One assertion per item** - a criterion needing "and" is two criteria; edge cases are their own items, enumerated across the whole fanout
 6. **Rate it yourself, as you file it** - `--importance CRITICAL|HIGH|MEDIUM|LOW`, read off the assertion against the rubric in `skills/project-management/references/acceptance-criteria.md`. Never ask the user for the level and never leave it unset; `add` refuses one and `check` errors on one
 7. **Write through `pm-tools`, never by hand** - `add` assigns the next id and the log line; hand-editing loses both
-8. Fill the `--test` hint and `--test-tags` as you add (tags are written upper-case - `UNIT`, `E2E`), and never tag a test that does not exist
-9. **Closing needs proof** - `close` refuses without `--evidence`: one line saying the `test:` line was run and what it showed. Run it first; do not close a criterion on the strength of the code looking right
-10. **Gate** - `pm-tools check docs` after the session; exit 0 with no errors is the bar
+8. **Record the mechanism once the approach is decided** - `pm-tools mechanism FILE --id ID --text "<how it is made true>" --author @xx`, or `add --mechanism` when it is known at filing time. Changing approach OVERRIDES: the new record goes above the old one and the old one stays, so the approach that was abandoned is still readable. `--update` only rewords the newest record
+9. Fill the `--test` hint and `--test-tags` as you add (tags are written upper-case - `UNIT`, `E2E`), and never tag a test that does not exist
+10. **Closing needs proof** - `close` refuses without `--evidence`: one line saying the `test:` line was run and what it showed. Run it first; do not close a criterion on the strength of the code looking right
+11. **Gate** - `pm-tools check docs` after the session; exit 0 with no errors is the bar

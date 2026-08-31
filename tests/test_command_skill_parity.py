@@ -85,3 +85,19 @@ def test_skill_declares_its_name_and_description(command: Path) -> None:
         f"{skill.relative_to(ROOT)} declares name '{declared}' but sits in "
         f"skills/{command.stem}/ - the directory is what makes it addressable"
     )
+
+
+def test_no_frontmatter_description_carries_angle_brackets() -> None:
+    """skill-creator's frontmatter gate refuses `<` and `>` in a description, so a
+    skill shipped with `ACC-<CAT>-<N>` or `analyze -> draft` in its description
+    fails validation downstream. Commands are held to the same rule: several share
+    their description with their skill verbatim, and a divergence here would put
+    the pair on opposite sides of the gate."""
+    fronts = sorted(PLUGIN_ROOT.glob("*/skills/*/SKILL.md")) + COMMANDS
+    assert len(fronts) > 80, f"only {len(fronts)} files swept; the glob is wrong"
+    offenders = []
+    for path in fronts:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("description:") and ("<" in line or ">" in line):
+                offenders.append(str(path.relative_to(ROOT)))
+    assert not offenders, f"angle brackets in a description: {offenders}"

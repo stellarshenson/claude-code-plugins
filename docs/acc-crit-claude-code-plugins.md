@@ -569,3 +569,83 @@ every plugin command procedure is also reachable as a callable skill, so an agen
   - log: 2026-08-29T15:28:07Z @kj closed
   - log: 2026-08-29T15:49:14Z @kj CORRECTION: the evidence line was copied from the two criteria above and does not bear on this one - deleting a skill directory exercises the parity test, not the frontmatter strip. Real evidence: the strip changes the classification of exactly 6 files, all routers whose bodies run no CLI and which name a toolkit binary only in their menu description; no file whose body drives a CLI changed classification. Gate deletion is still caught by test_shipped_gate_still_carries_its_normative_lines, wording drift by test_every_gate_ships_the_version_ordered_comparison
 
+## pm-tools mechanism and root-cause `PMWHY`
+
+A registered explanation line on every item: how a criterion is meant to work, why a defect happens. Records stack newest first, so a superseded theory stays readable through a long debugging run.
+
+- [x] `ACC-PMWHY-82` **Mechanism line on a criterion** - HIGH; a criterion carries `- mechanism: <stamp> @xx <text>` saying how it is meant to work, written by `pm-tools mechanism` and refused on a defect document
+  - evidence: test_each_record_belongs_to_one_discipline passes: pm-tools mechanism writes the line on ACC-AUTH-1 and exits 1 on a defects document
+  - test: pm-tools mechanism on an ACC item writes the line; the same command on a defects document exits non-zero
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-08-31T11:41:38Z @kj added
+  - log: 2026-08-31T11:49:02Z @kj closed
+  - log: 2026-08-31T13:13:10Z @kj edited text
+- [x] `ACC-PMWHY-83` **Root-cause line on a defect** - HIGH; a defect carries `- root-cause: <stamp> @xx <text>` saying why it happens, written by `pm-tools root-cause` and refused on a criteria document
+  - evidence: test_each_record_belongs_to_one_discipline passes: pm-tools root-cause writes the line on DEF-LNCH-1 and exits 1 on an acc-crit document
+  - test: pm-tools root-cause on a DEF item writes the line; the same command on an acc-crit document exits non-zero
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-08-31T11:41:48Z @kj added
+  - log: 2026-08-31T11:49:02Z @kj closed
+  - log: 2026-08-31T13:13:10Z @kj edited text
+- [x] `ACC-PMWHY-84` **A second record overrides by default** - CRITICAL; writing a mechanism or root cause on an item that already has one prepends a new record and leaves the previous one in place, so nothing that was believed earlier is lost
+  - evidence: test_a_second_record_overrides_and_keeps_the_first passes; reverted to always-replace and watched it fail on both the status word and the surviving record
+  - test: two consecutive writes leave two lines, newest first, the earlier text intact
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-08-31T11:41:48Z @kj added
+  - log: 2026-08-31T11:49:02Z @kj closed
+  - log: 2026-08-31T13:13:10Z @kj edited text
+- [x] `ACC-PMWHY-85` **--update replaces the current record** - HIGH; `--update` rewrites the newest record in place with a fresh stamp and author instead of stacking a new one, for correcting the wording of a theory that has not changed
+  - evidence: test_update_replaces_the_current_record passes: one line after --update, text replaced; test_update_refuses_when_there_is_nothing_to_update covers the empty case
+  - test: a write with --update leaves the line count unchanged and the text replaced
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-08-31T11:41:48Z @kj added
+  - log: 2026-08-31T11:49:03Z @kj closed
+  - log: 2026-08-31T13:13:10Z @kj edited text
+- [x] `ACC-PMWHY-86` **Newest record is the current one** - HIGH; the topmost record is what every query reports as the item's mechanism or root cause; older records are history and are never reported as current
+  - evidence: test_every_query_reports_the_newest_record passes: the table and --json both read the top record after an override
+  - test: list --columns mechanism and --json both report the newest record after an override
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-08-31T11:41:49Z @kj added
+  - log: 2026-08-31T11:49:03Z @kj closed
+  - log: 2026-08-31T13:13:10Z @kj edited text
+- [x] `ACC-PMWHY-87` **Filed with the first record** - MEDIUM; `add` takes `--mechanism` on a criterion and `--root-cause` on a defect, writing the first record at filing time without a second call
+  - evidence: test_a_record_is_written_at_filing_time passes: add --root-cause writes one stamped record; add --mechanism on a defects file exits 1
+  - test: add --root-cause writes the record and the stamp; add --mechanism on a defects file exits non-zero
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-08-31T11:42:01Z @kj added
+  - log: 2026-08-31T11:49:03Z @kj closed
+  - log: 2026-08-31T13:13:10Z @kj edited text
+- [x] `ACC-PMWHY-88` **Readable from every query** - MEDIUM; the current record is a `--columns` field under both its own name and `cause`, is read by `--grep` and ranked by `search`, and `--json` carries the whole record history with stamps and authors
+  - evidence: test_every_query_reports_the_newest_record passes: --columns root-cause renders it, --grep matches a superseded record, search ranks it, --json carries causes[]
+  - test: list --columns root-cause prints it, --grep matches its text, --json carries causes[]
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-08-31T11:42:01Z @kj added
+  - log: 2026-08-31T11:49:03Z @kj closed
+  - log: 2026-08-31T13:13:10Z @kj edited text
+- [x] `ACC-PMWHY-89` **Never logged twice** - MEDIUM; writing a record adds no log: line - the record carries its own stamp and author, and the format records nothing twice
+  - evidence: test_the_record_carries_its_own_stamp_and_is_never_logged passes: the log line count is unchanged by a root-cause write
+  - test: a mechanism write leaves the item's log line count unchanged
+  - test-tags: UNIT
+  - log: 2026-08-31T11:42:01Z @kj added
+  - log: 2026-08-31T11:49:03Z @kj closed
+  - log: 2026-08-31T13:13:10Z @kj edited text
+- [x] `ACC-PMWHY-90` **check guards the record format** - HIGH; check errors on a record in the wrong discipline and on a malformed stamp or handle, and warns when records are not newest-first, because order is what makes one of them current
+  - evidence: test_check_guards_the_record_format passes: wrong discipline and malformed line exit 1, out-of-order records warn and exit 0
+  - test: pm-tools check reports each of the three conditions on a crafted file
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-08-31T11:42:01Z @kj added
+  - log: 2026-08-31T11:49:03Z @kj closed
+  - log: 2026-08-31T13:13:10Z @kj edited text
+- [x] `ACC-PMWHY-91` **Detail prints the record history** - MEDIUM; `report --detail` prints every mechanism or root-cause record on the item, newest first, so a whole hunt reads back from one command
+  - evidence: test_detail_prints_the_whole_record_history green; breaking report --detail to print one record fails it
+  - test: write two root causes on one defect, assert both appear in report --detail with the newest first
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T13:13:28Z @kj added
+  - log: 2026-08-31T13:13:34Z @kj closed: covered by the functional suite
+- [x] `ACC-PMWHY-92` **A state change never disturbs the record** - MEDIUM; close, reopen and the regression they mint leave the records untouched - a defect closed on a proven cause keeps that cause, and the minted regression inherits none
+  - evidence: test_a_state_change_never_disturbs_the_record green; a close that drops the record and a regression that copies it each fail it
+  - test: close then reopen a defect carrying a root cause; assert the parent keeps it and the regression carries none
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T13:13:28Z @kj added
+  - log: 2026-08-31T13:13:34Z @kj closed: covered by the functional suite
+

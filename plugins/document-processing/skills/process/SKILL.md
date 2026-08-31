@@ -1,6 +1,6 @@
 ---
 name: process
-description: Build a structured deliverable FROM source files - reconstruct a timeline, draft a statement, assemble a catalogue, synthesize a position paper from 1-input/ sources into a traceable 3-output/ document. Generates a tailored INSTRUCTIONS.md + BENCHMARK.md, scaffolds 2-wip/, runs analyze -> draft -> verify -> uniformize -> deliver. NOT for checking an existing document against a source (use the `validate` skill) and NOT for bare claim grounding (use the `grounding` skill) - this skill produces a new document.
+description: Build a structured deliverable FROM source files - reconstruct a timeline, draft a statement, assemble a catalogue, synthesize a position paper from 1-input/ sources into a traceable 3-output/ document. Generates a tailored INSTRUCTIONS.md + BENCHMARK.md, scaffolds 2-wip/, runs analyze, draft, verify, uniformize, deliver. NOT for checking an existing document against a source (use the `validate` skill) and NOT for bare claim grounding (use the `grounding` skill) - this skill produces a new document.
 ---
 
 # Process - Structured Document Build

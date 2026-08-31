@@ -84,6 +84,7 @@ Every fact is stored exactly once, and everything else is computed when read. Th
 |------|----------------|-----------------|
 | Item text, title, log | the checklist line and its sub-lines | stored once |
 | Proof it is done | the `evidence:` line, written by `close` | stored once |
+| Why it happens, how it works | the newest `root-cause:` / `mechanism:` record | stored once, older records kept |
 | Open, closed or rejected | the `[ ]` / `[x]` / `[-]` box | stored once |
 | Category membership | the `##` section the line sits under | stored once |
 | Next free number | not stored | highest id in the file, plus one |
@@ -102,6 +103,7 @@ Cold start, splash screen and the first turn after a fork
 
 - [ ] `DEF-LNCH-3` **token race on relaunch** - MAJOR; auth token occasionally empty on the first turn after a fork; cause under investigation; `src/session.ts`
   - repro: fork under load, send a turn inside 2s
+  - root-cause: 2026-08-31T09:12:44Z @kj the fork races the token loader
   - test-tags: INTEGRATION
   - related: ACC-LNCH-8 - the criterion this violates
   - log: 2026-06-22T09:14:27Z @kj reported: intermittent 401 on the first turn
@@ -110,6 +112,7 @@ Cold start, splash screen and the first turn after a fork
 
 - **Permanent ids** - `ACC-<CAT>-<N>` and `DEF-<CAT>-<N>`, unique across the document, never renumbered and never recycled. An item that moves category keeps the code it was born with
 - **Three states** - `[ ]` open, `[x]` closed, `[-]` rejected. Rejected is for a report that was never a defect (never reproduced, or the feature is gone); a real defect nobody will fix is a close with the reason
+- **One registered explanation, and it keeps its history** - `mechanism:` on a criterion says how it is meant to work, `root-cause:` on a defect says why it happens. Writing a second one puts it above the first and keeps the first, so on a hunt that runs for days the theory that was disproved on Tuesday is still readable on Friday; `--update` rewords the newest record instead of stacking. The top record is the current one
 - **Evidence at closure** - `close` refuses to run without `--evidence`, one line proving the item is done: the regression test that passes, the build it was verified on. Fixed stops being a claim
 - **Regressions are counted, not overwritten** - reopening a closed defect files `DEF-LNCH-3-1`, then `-2`, and leaves the original closed with its proof; the report totals them, so the file says how often fixes come back
 - **Authored log lines** - ISO 8601 UTC, then the handle, then the event. Append-only, and the attempts that FAILED are the reason the file is worth keeping

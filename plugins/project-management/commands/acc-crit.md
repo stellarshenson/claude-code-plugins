@@ -1,5 +1,5 @@
 ---
-description: Add, close, reject, relate or audit acceptance criteria in the project's acc-crit document - permanent ACC-<CAT>-<N> ids, author handles, test hints and tags, all through the pm-tools CLI
+description: Add, close, reject, relate or audit acceptance criteria in the project's acc-crit document - permanent category-scoped ids (ACC-AUTH-102), author handles, test hints and tags, all through the pm-tools CLI
 allowed-tools: [Read, Write, Bash, Skill]
 argument-hint: "the criterion work, e.g. 'add a criterion that the session times out after 30 idle minutes' or 'close ACC-AUTH-4, verified in v1.3.0'"
 ---

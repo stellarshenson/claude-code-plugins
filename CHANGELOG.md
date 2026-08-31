@@ -4,9 +4,25 @@ One synced version for the library and the seven plugins. Entries summarise; the
 
 ## [Unreleased]
 
+### Added
+
+- **project-management** - one registered explanation per item, and it keeps its history: `- mechanism: <stamp> @xx <text>` on a criterion says how it is meant to work, `- root-cause: <stamp> @xx <text>` on a defect says why it happens. A second write puts the new record ABOVE the previous one and keeps it, so on a hunt that runs for days the theory disproved on Tuesday is still readable on Friday and nobody explores that dead end twice; `--update` rewrites the newest record instead, for a rewording of an unchanged theory. The top record is what every query reports, `--grep` and `search` read the superseded ones too, and `--json` carries the whole history under `causes`. Written by `pm-tools mechanism` / `pm-tools root-cause`, or by `add --mechanism` / `add --root-cause` at filing time; refused on the other discipline; never logged, because the record carries its own stamp and author (ACC-PMWHY-82..90)
+
+### Changed
+
+- **project-management** - the record's shared rules (a second write overrides, `--update` replaces, the top record is current, never logged) are stated once in the skill; both discipline references keep only what is specific to them and point at it. The `acc-crit` and `defect` skill and command descriptions now carry a concrete id (`ACC-AUTH-102`, `DEF-LNCH-3`) - the `ACC-<CAT>-<N>` form they used fails the skill frontmatter gate, which refuses angle brackets in a description (ACC-PMWHY-91, -92). The record column's rendered header carries the discipline's own name - `Mechanism` on a criteria file, `Root cause` on a defects file - whatever spelling asked for it
+- **all plugins** - no skill or command frontmatter description carries `<` or `>` any more (`dataset-<name>.zip` and `analyze -> draft` were the last two, in `datascience:dataset` and `document-processing:process`); `tests/test_command_skill_parity.py` now pins the rule across every skill and command, because skill-creator's frontmatter gate refuses such descriptions
+
+## [1.7.13] - 2026-08-30
+
 ### Fixed
 
 - **all plugins** - the toolchain gate now says how to invoke the CLI it just installed. The gate puts the command on PATH, but in a uv-managed repository the reflex invocation is `uv run <cli>`, which resolves the caller's project first and writes `uv.lock` and `.venv` into it - an edit to the user's tree that no plugin asked for. All 31 gate sites now carry the rule: bare command name, and `uv run --no-project` if uv is used at all, which writes neither file and resolves the same binary (`--no-sync` and `--frozen` still create `.venv`). Two guards in `tests/test_toolchain_gate.py` pin the rule at every gate and fail on any project-scoped `uv run` of a toolkit CLI in the shipped docs
+
+## [1.7.12] - 2026-08-29
+
+### Fixed
+
 - **devils-advocate** - the invariant check a constructed loop must pass now produces an artifact. It used to read "check the script against the invariant list one by one", which leaves nothing behind, so it could be skipped in silence while the shipped worked example carried 22 passing tests - the fallback route was the one that felt provably safe, and a capable session with the dynamic Workflow capability took it. A constructed loop now emits its invariant map before the first spawn: nine lines, `INV-1` .. `INV-9`, each naming the site in its own script that carries that invariant. `adversarial-loop.js` is unchanged - this is a contract change, not a protocol change (DEF-ADVR-48)
 
 ### Changed

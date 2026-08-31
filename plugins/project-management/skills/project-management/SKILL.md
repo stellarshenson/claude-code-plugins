@@ -1,6 +1,6 @@
 ---
 name: project-management
-description: Micro project management for a repository, a personal project or a small team - acceptance criteria and defects tracked in one markdown file per discipline, every item carrying a permanent category-scoped id (ACC-AUTH-102, DEF-LNCH-3) and an author handle (@kj), all reads and writes through the pm-tools CLI. Use when the user asks for acceptance criteria, acc crit, feature criteria, a defects list, a bug tracker, an issue tracker, or asks to log, add, close, reject, reopen, relate, list, report or audit a criterion or defect; for a status, triage or test-coverage report of either, including a filtered or summary one - the critical defects, what is open, the AUTH work, what closed last month; for any table or pivot over them - who owns what, open work by age, regressions per defect; when an old-style document needs upgrading to carry ids and handles; and when a shared acc-crit or defects file hits a git merge conflict.
+description: Micro project management for a repository, a personal project or a small team - acceptance criteria and defects tracked in one markdown file per discipline, every item carrying a permanent category-scoped id (ACC-AUTH-102, DEF-LNCH-3) and an author handle (@kj), all reads and writes through the pm-tools CLI. Use when the user asks for acceptance criteria, acc crit, feature criteria, a defects list, a bug tracker, an issue tracker, or asks to log, add, close, reject, reopen, relate, list, report or audit a criterion or defect; to record a defect's root cause or a criterion's mechanism; for a status, triage or test-coverage report of either, including a filtered or summary one - the critical defects, what is open, the AUTH work, what closed last month; for any table or pivot over them - who owns what, open work by age, regressions per defect; when an old-style document needs upgrading to carry ids and handles; and when a shared acc-crit or defects file hits a git merge conflict.
 allowed-tools: Read, Write, Bash
 ---
 
@@ -76,6 +76,7 @@ One item is one top-level checklist line plus indented sub-lines. No sub-checkbo
 - [ ] `<ID>` **<title>** - <body>
   - <hint>: <the discipline's one-line hint>
   - test-tags: UNIT, FUNCTIONAL
+  - <mechanism|root-cause>: 2026-08-31T09:12:44Z @kj <how it works, or why it breaks>
   - evidence: <the proof it is done - written by close, present only while closed>
   - related: <ID>, <ID> - free text around the ids
   - blocked-by: <ID>
@@ -114,6 +115,24 @@ Three sub-lines, one line each, one per item.
 - **The hint line** - one shortest-possible instruction, named by the discipline (`repro:` or `test:`); which one, and how to write it, is in that discipline's reference. The wrong hint for the discipline is an error, two of either is an error, a missing one is a warning
 - **`- test-tags:`** - which kinds of test cover the item, comma separated: `UNIT`, `INTEGRATION`, `FUNCTIONAL`, `E2E`, `MANUAL`. Free vocabulary, always written upper-case - the tool upper-cases whatever `--test-tags` is given and reads any case back off the file - but reuse the words: `coverage` counts them into its grid, which is how "how many items are covered by unit tests" gets answered. An item with no tags line lands in the grid's `NO-TEST` column
 - **`- evidence:`** - one line proving the item is actually done: the test that passes, the run that was observed, the commit. `close` demands it and writes the line, so a closure with no proof cannot be recorded. Reopening a criterion retires it and the log keeps what it said; a closed defect keeps it, because the regression is a new item and the old fix really was proven. Never write it by hand and never on an open item - it is the closure's proof, not a plan
+
+## Mechanism and root cause
+
+One registered explanation per item, named by the discipline: `mechanism:` on a criterion says how it is meant to work, `root-cause:` on a defect says why it happens. Unlike the three lines above it, this one stacks.
+
+```markdown
+- [ ] `DEF-LNCH-3` **Splash never closes** - MAJOR; the window stays up after the app is ready
+  - root-cause: 2026-08-31T14:02:10Z @kj the splash waits on a timer the loader stopped setting
+  - root-cause: 2026-08-30T09:41:55Z @kj the loader holds the lock the splash waits on
+```
+
+- **The newest record is on top and is the current one** - every query reports that one; the records under it are what was believed before
+- **A second write overrides by default** - `pm-tools root-cause FILE --id ID --text "..." --author @xx` puts a new record above the old one and keeps it. On a hunt that runs for days this is the whole value: the theory that was disproved on Tuesday is still readable on Friday, so nobody tests it again
+- **`--update` replaces instead** - the same call with `--update` rewrites the newest record in place, for a rewording of a theory that has not changed. It refuses when there is no record to update
+- **Written at filing time too** - `add --mechanism` on a criterion, `add --root-cause` on a defect
+- **Never logged** - the record carries its own stamp and author, and nothing is recorded twice
+- **One discipline each** - `mechanism` on a defect and `root-cause` on a criterion are both refused, and `check` errors on either line in the wrong document
+- **A full study is still a document** - the record is one line. Where the reasoning needs pages, it goes in `docs/<discipline>/<ID>-<slug>.md` and the record names the conclusion
 
 ## Authoring
 
@@ -199,6 +218,7 @@ Write - one file per call, and `--author` on every one of them:
 | `author` | add or update a roster entry; required before that handle can write |
 | `describe` | set or replace the category description |
 | `relate` | add one `related:` or `blocked-by:` line |
+| `mechanism` / `root-cause` | write the discipline's explanation; a new record above the previous one, or `--update` to replace the newest; not logged |
 | `log` | append an event to the item's log |
 | `close` / `reopen` | `close` demands `--evidence`; `reopen` retires it on a criterion, and on a closed defect files `<id>-<n>` instead |
 | `reject` | mark `[-]`; the reason is required |
@@ -217,4 +237,4 @@ Run `check` after every edit session. It is the only gate.
 - **Rate every criterion yourself** - assign the `--importance` (`CRITICAL` / `HIGH` / `MEDIUM` / `LOW`) as you file it, the same way: never ask the user, never leave it out, `add` refuses one and `check` errors on one. The rubric is in `references/acceptance-criteria.md`
 - **In doubt, ask** - a criterion, an expected behaviour, an edge case, which category something belongs in, how a merge should resolve. A wrong entry reads exactly like a right one, so nothing downstream catches it. Three exceptions, all decided by you: a defect's severity, a criterion's importance, and a merge case `references/conflicts.md` already settles
 
-<!-- improved 2026-08-27 | body 2500→2075w / 189→177L (marketplace import: toolchain gate added, pm.py → pm-tools console script, Reports mechanics to references/reports.md, caveman-lite trim across every section) | quality n/a (eval skipped, token cost) | trigger n/a (eval skipped, token cost) | 47 CLI tests green | via improve-skill -->
+<!-- improved 2026-08-31 | body 3763w / 235L unchanged, references 3403->3263w (the record's shared rules deduped from both references into SKILL.md) | description 945->991 chars, mechanism/root-cause trigger added | quality n/a (benchmark skipped by request) | trigger n/a (benchmark skipped by request) | quick_validate pass on all three skills, 1207 library tests green | via improve-skill -->

@@ -10,6 +10,7 @@ gate, so its status is asserted, never just its output.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import re
 import subprocess
@@ -149,6 +150,338 @@ def test_the_plugin_docs_carry_the_lock_discipline():
         encoding="utf-8"
     )
     assert "--locked" in reports and "Worked on" in reports
+
+
+# --- mechanism and root-cause: the registered explanation, and its history ------
+#
+# One field per discipline, stacked newest first. The point is a long hunt: the
+# theory held on Tuesday is still readable on Friday, so nobody re-tests it.
+
+
+def _causes(f: Path, ident: str) -> list[str]:
+    """Every mechanism/root-cause record on the item, in file order."""
+    out, seen = [], False
+    for ln in f.read_text(encoding="utf-8").splitlines():
+        if ln.startswith(f"- [") and f"`{ident}`" in ln:
+            seen = True
+            continue
+        if seen:
+            if not ln.startswith(" "):
+                break
+            m = re.match(r"\s+- (?:mechanism|root-cause):\s*(.*)$", ln)
+            if m:
+                out.append(m.group(1))
+    return out
+
+
+def test_a_second_record_overrides_and_keeps_the_first(defects: Path):
+    """ACC-PMWHY-84: nothing believed earlier is lost."""
+    file_a_defect(defects, "Token empty on first turn")
+    ok("root-cause", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "the fork races")
+    out = ok(
+        "root-cause", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "stale timer"
+    )
+    assert "root-cause overridden" in out
+    recs = _causes(defects, "DEF-LNCH-1")
+    assert len(recs) == 2
+    assert recs[0].endswith("stale timer"), "the newest record must be on top"
+    assert recs[1].endswith("the fork races"), "the superseded record must survive"
+
+
+def test_update_replaces_the_current_record(defects: Path):
+    """ACC-PMWHY-85: a rewording of the same theory does not stack."""
+    file_a_defect(defects, "Token empty on first turn")
+    ok("root-cause", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "the fork races")
+    out = ok(
+        "root-cause",
+        defects,
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--text",
+        "the fork races the loader",
+        "--update",
+    )
+    assert "root-cause updated" in out
+    recs = _causes(defects, "DEF-LNCH-1")
+    assert len(recs) == 1 and recs[0].endswith("the fork races the loader")
+
+
+def test_update_refuses_when_there_is_nothing_to_update(defects: Path):
+    file_a_defect(defects, "Token empty on first turn")
+    r = pm(
+        "root-cause", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "x", "--update"
+    )
+    assert r.returncode != 0 and "no root-cause: record to update" in r.stderr
+
+
+def test_each_record_belongs_to_one_discipline(defects: Path, criteria: Path):
+    """ACC-PMWHY-82/83: mechanism is a criterion's, root-cause is a defect's."""
+    file_a_defect(defects, "Token empty on first turn")
+    write_a_criterion(criteria, "Session expires", "HIGH; a session expires after 30 min idle")
+    wrong = pm("mechanism", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "x")
+    assert wrong.returncode != 0 and "root-cause" in wrong.stderr
+    wrong = pm("root-cause", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--text", "x")
+    assert wrong.returncode != 0 and "mechanism" in wrong.stderr
+    ok("mechanism", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--text", "one idle timer")
+    assert len(_causes(criteria, "ACC-AUTH-1")) == 1
+
+
+def test_a_record_is_written_at_filing_time(defects: Path):
+    """ACC-PMWHY-87: no second call to record what is already known."""
+    ok(
+        "add",
+        defects,
+        "--category",
+        "LNCH",
+        "--name",
+        "Launch",
+        "--author",
+        "@kj",
+        "--severity",
+        "MAJOR",
+        "--title",
+        "Token empty",
+        "--text",
+        "empty on the first turn",
+        "--repro",
+        "fork under load",
+        "--root-cause",
+        "the fork races the loader",
+    )
+    recs = _causes(defects, "DEF-LNCH-1")
+    assert len(recs) == 1 and recs[0].endswith("the fork races the loader")
+    assert re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z @kj ", recs[0]), recs[0]
+
+
+def test_the_record_carries_its_own_stamp_and_is_never_logged(defects: Path):
+    """ACC-PMWHY-89: the format records nothing twice."""
+    file_a_defect(defects, "Token empty on first turn")
+    before = defects.read_text(encoding="utf-8").count("- log:")
+    ok("root-cause", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "the fork races")
+    assert defects.read_text(encoding="utf-8").count("- log:") == before
+
+
+def test_every_query_reports_the_newest_record(defects: Path):
+    """ACC-PMWHY-86/88: current is the top one; the history stays reachable."""
+    file_a_defect(defects, "Token empty on first turn")
+    ok("root-cause", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "the fork races")
+    ok("root-cause", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "a stale timer")
+    table = ok("list", defects, "--columns", "id,root-cause")
+    assert "a stale timer" in table and "the fork races" not in table
+    doc = json.loads(ok("list", defects, "--json"))[0]
+    assert doc["cause"] == "a stale timer" and doc["cause_kind"] == "root-cause"
+    assert [c["text"] for c in doc["causes"]] == ["a stale timer", "the fork races"]
+    # --grep reads the superseded record too - that is what the history is for
+    assert "DEF-LNCH-1" in ok("list", defects, "--grep", "fork races", "--columns", "id,cause")
+    assert "DEF-LNCH-1" in ok("search", defects, "stale timer")
+
+
+def test_check_guards_the_record_format(criteria: Path):
+    """ACC-PMWHY-90: wrong discipline and a malformed line are errors, a wrong
+    order is a warning - order is what makes one record the current one."""
+    write_a_criterion(criteria, "Session expires", "HIGH; a session expires after 30 min idle")
+    body = criteria.read_text(encoding="utf-8")
+    criteria.write_text(
+        body.replace(
+            "  - test-tags:",
+            "  - root-cause: 2026-08-31T10:00:00Z @kj belongs on a defect\n"
+            "  - mechanism: yesterday\n"
+            "  - test-tags:",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    r = pm("check", criteria)
+    assert r.returncode != 0
+    assert "`root-cause:` line in a ACC document" in r.stdout
+    assert "mechanism: line is malformed" in r.stdout
+    # the same file with two well-formed records in the wrong order warns, not errors
+    criteria.write_text(body, encoding="utf-8")
+    ok("mechanism", criteria, "--id", "ACC-AUTH-1", "--author", "@kj", "--text", "newer")
+    swapped = criteria.read_text(encoding="utf-8").replace(
+        "  - test-tags:",
+        "  - mechanism: 2099-01-01T00:00:00Z @kj newer than the one above it\n  - test-tags:",
+        1,
+    )
+    criteria.write_text(swapped, encoding="utf-8")
+    r = pm("check", criteria)
+    assert r.returncode == 0, r.stdout
+    assert "records are not newest first" in r.stdout
+
+
+def test_the_filing_time_flag_is_refused_on_the_wrong_discipline(defects: Path, criteria: Path):
+    """ACC-PMWHY-82/83 have to reach the `add` flags too. Scoped only on the two
+    record commands, a criterion's field could still be written onto a defect at
+    filing time, and the discipline would be half true."""
+    wrong = pm(
+        "add",
+        defects,
+        "--category",
+        "LNCH",
+        "--name",
+        "Launch",
+        "--author",
+        "@kj",
+        "--severity",
+        "MAJOR",
+        "--title",
+        "Token empty",
+        "--text",
+        "empty on the first turn",
+        "--repro",
+        "fork under load",
+        "--mechanism",
+        "how it is meant to work",
+    )
+    assert wrong.returncode != 0 and "use --root-cause" in wrong.stderr
+    both = pm(
+        "add",
+        criteria,
+        "--category",
+        "AUTH",
+        "--name",
+        "Authentication",
+        "--author",
+        "@kj",
+        "--importance",
+        "HIGH",
+        "--title",
+        "Session expires",
+        "--text",
+        "a session expires after 30 min idle",
+        "--mechanism",
+        "one idle timer",
+        "--root-cause",
+        "the loader holds the lock",
+    )
+    assert both.returncode != 0 and "not both" in both.stderr
+    # the flag that belongs to the discipline writes the record
+    ok(
+        "add",
+        criteria,
+        "--category",
+        "AUTH",
+        "--name",
+        "Authentication",
+        "--author",
+        "@kj",
+        "--importance",
+        "HIGH",
+        "--title",
+        "Session expires",
+        "--text",
+        "a session expires after 30 min idle",
+        "--mechanism",
+        "one idle timer on the gateway",
+    )
+    assert _causes(criteria, "ACC-AUTH-1")[0].endswith("one idle timer on the gateway")
+
+
+def test_the_record_answers_to_either_name_and_to_cause(criteria: Path, defects: Path):
+    """One field, three spellings. An agent that reads `mechanism` in the criteria
+    reference must be able to ask for it by that name, without knowing that the
+    tool stores both disciplines in one column - and the rendered header carries
+    the discipline's own name, never the storage name."""
+    write_a_criterion(criteria, "Session expires", "HIGH; a session expires after 30 min idle")
+    ok(
+        "mechanism",
+        criteria,
+        "--id",
+        "ACC-AUTH-1",
+        "--author",
+        "@kj",
+        "--text",
+        "one idle timer on the gateway",
+    )
+    rendered = [
+        ok("list", criteria, "--columns", f"id,{spelling}")
+        for spelling in ("mechanism", "root-cause", "cause")
+    ]
+    assert all("one idle timer on the gateway" in table for table in rendered)
+    assert rendered[0] == rendered[1] == rendered[2]
+    assert "| Mechanism |" in rendered[0]
+    file_a_defect(defects, "Token empty on first turn")
+    ok("root-cause", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "a stale timer")
+    assert "| Root cause |" in ok("list", defects, "--columns", "id,cause")
+
+
+def test_detail_prints_the_whole_record_history(defects: Path):
+    """The table shows the current record; `report --detail` is where the hunt is
+    read back, so it shows every theory in the order they were held."""
+    file_a_defect(defects, "Token empty on first turn")
+    ok("root-cause", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "the fork races")
+    ok("root-cause", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "a stale timer")
+    body = ok("report", defects, "--detail")
+    assert "the fork races" in body and "a stale timer" in body
+    assert body.index("a stale timer") < body.index("the fork races"), "current record first"
+
+
+def test_a_state_change_never_disturbs_the_record(defects: Path):
+    """Closing writes evidence and reopening files a regression; neither rewrites
+    the sub-lines around them. A defect closed on a proven cause keeps that cause."""
+    file_a_defect(defects, "Token empty on first turn")
+    ok(
+        "root-cause",
+        defects,
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--text",
+        "the fork races the loader",
+    )
+    ok(
+        "close",
+        defects,
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--event",
+        "fixed",
+        "--evidence",
+        "the repro no longer fires on v2",
+    )
+    assert len(_causes(defects, "DEF-LNCH-1")) == 1
+    ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "regressed on v3")
+    assert _causes(defects, "DEF-LNCH-1")[0].endswith("the fork races the loader")
+    # the regression is a fresh hunt and inherits no theory
+    assert _causes(defects, "DEF-LNCH-1-1") == []
+
+
+def test_the_override_rule_is_documented_where_the_agent_reads_it():
+    """A record that silently replaced the previous one would lose exactly what a
+    long hunt needs. The default is stated in the procedure the agent follows, not
+    only in the CLI reference it may never open."""
+    plugin = Path(__file__).parent.parent / "plugins/project-management"
+    skill = (plugin / "skills/project-management/SKILL.md").read_text(encoding="utf-8")
+    assert "## Mechanism and root cause" in skill
+    assert "A second write overrides by default" in skill
+    assert "`--update` replaces instead" in skill
+    for name, call in (
+        ("skills/acc-crit/SKILL.md", "pm-tools mechanism"),
+        ("skills/defect/SKILL.md", "pm-tools root-cause"),
+    ):
+        body = (plugin / name).read_text(encoding="utf-8")
+        assert call in body, name
+        assert "OVERRIDES" in body, name
+    for name, head in (
+        ("skills/project-management/references/acceptance-criteria.md", "## Mechanism"),
+        ("skills/project-management/references/defects.md", "## Root cause"),
+    ):
+        assert head in (plugin / name).read_text(encoding="utf-8"), name
+    assert "root-cause:" in (plugin / "README.md").read_text(encoding="utf-8")
+
+
+def test_help_lists_both_record_commands():
+    """A command absent from --help is a command nobody finds."""
+    out = ok("--help")
+    assert "mechanism" in out and "root-cause" in out
+    for name in ("mechanism", "root-cause"):
+        h = ok(name, "--help")
+        assert "--update" in h and "--text" in h
 
 
 def test_locking_is_the_default_not_an_offer():

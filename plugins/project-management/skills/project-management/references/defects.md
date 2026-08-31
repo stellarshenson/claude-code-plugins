@@ -85,6 +85,13 @@ Three more sub-lines, one line each. The `repro:` line is the one another person
 
 `close` refuses to run without `--evidence`, so a defect cannot be marked fixed on assertion alone. A `reject` needs a reason, not evidence - nothing was fixed. Reopening a closed defect keeps the evidence where it is and files a regression instead, because the fix was genuinely proven at the time and deleting that proof would erase a true fact.
 
+## Root cause
+
+`- root-cause: <stamp> @xx <one line>` is the standing answer to why the defect happens, written by `pm-tools root-cause FILE --id ID --text "..." --author @xx`, or by `add --root-cause` at filing time. The record's own rules - a second write overrides, `--update` replaces, the top one is current, never logged - are in `SKILL.md`.
+
+- **It is the field a long hunt is built on** - three days in, the file still shows what was believed on day one and what replaced it, which is what stops the same dead end being explored twice
+- **Not the same as the repro** - `repro:` is what another person does to see it, `root-cause:` is why it happens. `cause under investigation` in the body is what an unwritten root cause looks like
+
 ## Regressions
 
 A defect that was fixed and broke again gets a derived id rather than a reopened checkbox, so each occurrence is counted rather than overwritten.

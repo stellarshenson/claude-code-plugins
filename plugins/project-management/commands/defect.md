@@ -1,5 +1,5 @@
 ---
-description: File, triage, log, close or reject a defect in the project's defects document - permanent DEF-<CAT>-<N> ids, mandatory CRITICAL/MAJOR/MEDIUM/MINOR severity, repro line and the append-only attempt trail, all through the pm-tools CLI
+description: File, triage, log, close or reject a defect in the project's defects document - permanent category-scoped ids (DEF-LNCH-3), mandatory CRITICAL/MAJOR/MEDIUM/MINOR severity, repro line and the append-only attempt trail, all through the pm-tools CLI
 allowed-tools: [Read, Write, Bash, Skill]
 argument-hint: "the defect work, e.g. 'file: auth token empty on the first turn after a fork' or 'log on DEF-LNCH-3: the 200ms delay did not fix it'"
 ---

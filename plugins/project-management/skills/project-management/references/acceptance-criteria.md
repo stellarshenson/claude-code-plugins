@@ -60,6 +60,13 @@ Every criterion carries three more sub-lines. Each is one line, and the first tw
 
 The `test:` line says how it would be checked; the `evidence:` line says it was, and what happened. A criterion rejected because the feature was cut needs a reason, not evidence.
 
+## Mechanism
+
+`- mechanism: <stamp> @xx <one line>` says how the criterion is meant to be satisfied - the design decision behind it, not a restatement of the assertion. Written by `pm-tools mechanism FILE --id ID --text "..." --author @xx`, or by `add --mechanism` at filing time. The record's own rules - a second write overrides, `--update` replaces, the top one is current, never logged - are in `SKILL.md`.
+
+- **The assertion is what must be true, the mechanism is how it is made true** - `a session expires after 30 min idle` is the criterion; `one idle timer on the gateway, reset by any authenticated call` is the mechanism
+- **It changes during implementation, and the change is the record** - the approach that was tried and abandoned stays readable under the one that replaced it, which is what answers "why not the simple version" months later
+
 ## API section
 
 A feature with endpoints gets one `### API` section at the end of its category, outside the checklist: method, path, payload shape, error codes. Level three, not two - `pm-tools` reads every `##` as a category and fails `check` on one with no code.

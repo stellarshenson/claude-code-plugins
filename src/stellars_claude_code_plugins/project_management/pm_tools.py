@@ -22,6 +22,14 @@ fails on a relation to an id that is not in the scanned files and on a blocked-b
 cycle, and warns when an open item is blocked by one that is closed or rejected; scan
 the directory, not one file, so cross-file links resolve.
 
+Each discipline registers one explanation, and it stacks: `- mechanism: <stamp> @xx
+<text>` on a criterion says how it is meant to work, `- root-cause: <stamp> @xx <text>`
+on a defect says why it happens. A second write puts a new record ABOVE the old one and
+keeps it, so a theory that was superseded halfway through a long hunt is still readable;
+`--update` rewrites the newest record instead, for a rewording of the same theory. The
+topmost record is the current one - every query reports that one. Writing a record is
+never logged; it carries its own stamp and author.
+
 Three states: `- [ ]` open, `- [x]` closed, `- [-]` rejected (reason in the log line).
 Log lines read `- log: 2026-08-27T15:59:12Z @kj <event>` - ISO 8601 UTC, then the author.
 
@@ -58,7 +66,8 @@ Query - every table is markdown, paste-ready; --json gives the same facts as dat
          that occur, NO-TEST last), open and closed items counted alike, Total row
   search [paths] QUERY [--top N] [FILTERS] [--json]
          the N items most relevant to QUERY, best first, one table over every scanned
-         file - BM25 over id, title, body, evidence and log lines, id and title
+         file - BM25 over id, title, body, evidence, mechanism/root-cause and log
+         lines, id and title
          weighted 3x; a typo or a stem still hits. Quote a multi-word QUERY. FILTERS
          narrow the candidates first: --grep is the exact filter, search is the ranking
   list-categories [paths] [--json]                 code, name, open, closed, rejected
@@ -70,7 +79,8 @@ FILTERS, the same on report, list, pivot, search and coverage:
   --category CODE  --severity S  --importance I  --status open|closed|rejected|all
   --author @xx  --tag T (any case)  --regressions  --dates filed|closed|updated
   --since DATE  --until DATE
-  --grep PATTERN   case-insensitive regex over title, body, evidence and log lines
+  --grep PATTERN   case-insensitive regex over title, body, evidence, every
+                   mechanism/root-cause record and log lines
   --blocked        items with at least one blocked-by target that is still open
   --related-to ID  items linked to ID in either direction, related or blocked-by
   --locked         items carrying an active lock (stamp still in the future)
@@ -80,18 +90,20 @@ FILTERS, the same on report, list, pivot, search and coverage:
 
 FIELDS, for --columns, --sort, --rows and --cols:
   id title body category severity importance status author filed closed updated
-  age tags evidence hint regr root logs related blockers lock
+  age tags evidence cause hint regr root logs related blockers lock
+  cause is the current mechanism/root-cause record and answers to either name;
   tags, related and blockers pivot an item into every value it carries; filed/closed/
   updated pivot by month, age by band (<7d, 7-30d, 31-90d, >90d); lock reads
   `@xx until <stamp>` for an active lock and `-` otherwise. report marks a locked
   item `wip @xx until <stamp>` and its SUMMARY grid counts open locked items in a
   `Worked on` column, present when any item in scope is locked; --json carries
-  lock as {by, until, note} or null.
+  lock as {by, until, note} or null, and cause with cause_kind plus the whole
+  record history under causes.
 
 Edit (one file):
   add    FILE --category CODE --title T --text D [--name NAME] [--description D]
                     --severity S|--importance I [--repro R|--test T]
-                    [--test-tags "UNIT, FUNCTIONAL"]
+                    [--test-tags "UNIT, FUNCTIONAL"] [--mechanism M|--root-cause R]
   edit   FILE --id ID [--title T] [--text D] [--severity S] [--importance I]
                       [--repro R|--test T] [--test-tags TAGS] [--evidence E]
 
@@ -103,6 +115,10 @@ upgrade; anything it cannot map is named and left for a human.
 a defect. An unrated criterion is a check error. Importance is read only on ACC items
 and severity only on DEF items, so a criterion body opening with `Normal, ...` is
 prose, never a level.
+  mechanism  FILE --id ID --text T --author @xx [--update]   criteria only
+  root-cause FILE --id ID --text T --author @xx [--update]   defects only
+          a new record above the previous one by default, which is kept; --update
+          rewrites the newest record in place. Refused on the other discipline
   author FILE --handle @xx --name "Full Name"      add or update a roster entry
   describe FILE --category CODE --text D           set the category description
   relate FILE --id ID [--related TEXT] [--blocked-by TEXT]
@@ -162,6 +178,10 @@ AUTHORED = re.compile(r"^(@[a-z][a-z0-9]{1,3})\s+(.*)$")
 TAGLINE = re.compile(r"^(\s+)- test-tags:\s*(.*)$")
 # the proof an item is done, written at closure and retired by a reopen
 EVIDLINE = re.compile(r"^(\s+)- evidence:\s*(.*)$")
+# `- mechanism: <stamp> @xx <text>` on a criterion, `- root-cause: ...` on a defect -
+# how the item is meant to work, or why it breaks. Records stack newest first: the
+# topmost is current, the ones under it are what was believed before it.
+CAUSELINE = re.compile(r"^(\s+)- (mechanism|root-cause):\s*(\S*)(.*)$")
 # `- lock: <stamp> @xx [note]` - who is likely working on the item, until when
 LOCKLINE = re.compile(r"^(\s+)- lock:\s*(\S*)(.*)$")
 REJECTED = re.compile(r"^rejected:?\s*(.*)$", re.I)
@@ -175,6 +195,7 @@ TOKEN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)+|[a-z0-9]+")  # search: a hyphen ru
 STATE = {" ": "open", "x": "closed", "-": "rejected"}
 FLAG = {"open": " ", "closed": "x", "rejected": "-"}
 HINT_FOR = {"ACC": "test", "DEF": "repro"}
+CAUSE_FOR = {"ACC": "mechanism", "DEF": "root-cause"}
 SEVS = ("CRITICAL", "MAJOR", "MEDIUM", "MINOR")
 # the vocabularies a tracker is likely to arrive carrying. Recognised so an old file
 # parses and gets a precise error instead of "not triaged", and so upgrade can rename
@@ -380,6 +401,11 @@ def parse(path):
                 tag_n=0,
                 evidence=None,
                 evid_n=0,
+                cause=None,
+                cause_kind=None,
+                causes=[],
+                cause_bad=False,
+                cause_order=True,
                 lock=None,
                 lock_n=0,
                 lock_bad=False,
@@ -419,6 +445,25 @@ def parse(path):
             if em:
                 cur["evid_n"] += 1
                 cur["evidence"] = em.group(2).strip()
+            cm = CAUSELINE.match(ln)
+            if cm:
+                rest = cm.group(4).strip()
+                am = AUTHORED.match(rest)
+                rec = {
+                    "kind": cm.group(2),
+                    "stamp": cm.group(3),
+                    "author": am.group(1) if am else None,
+                    "text": (am.group(2).strip() if am else rest),
+                }
+                if not (_valid_stamp(rec["stamp"]) and rec["author"]):
+                    cur["cause_bad"] = True
+                elif cur["causes"] and rec["stamp"] > cur["causes"][-1]["stamp"]:
+                    # written newest first, so a later stamp below an earlier one
+                    # means the current record is not the one at the top
+                    cur["cause_order"] = False
+                cur["causes"].append(rec)
+                if cur["cause"] is None:
+                    cur["cause"], cur["cause_kind"] = rec["text"], rec["kind"]
             km = LOCKLINE.match(ln)
             if km:
                 cur["lock_n"] += 1
@@ -709,8 +754,14 @@ def targets(b, kind):
 
 
 def text_of(b):
-    """What --grep reads: title, body, evidence and every log event."""
-    return [b["title"] or "", b["plain"] or "", b["evidence"] or "", *b["logs"]]
+    """What --grep reads: title, body, evidence, every record and every log event."""
+    return [
+        b["title"] or "",
+        b["plain"] or "",
+        b["evidence"] or "",
+        *[c["text"] for c in b["causes"]],
+        *b["logs"],
+    ]
 
 
 def link_index(files):
@@ -850,6 +901,7 @@ FIELDS = (
     "age",
     "tags",
     "evidence",
+    "cause",
     "hint",
     "regr",
     "root",
@@ -873,6 +925,7 @@ HEAD = {
     "age": "Age",
     "tags": "Tests",
     "evidence": "Evidence",
+    "cause": "Cause",
     "hint": "Hint",
     "regr": "Regr",
     "root": "Root",
@@ -885,6 +938,7 @@ WIDTH = {
     "title": 40,
     "body": 88,
     "evidence": 56,
+    "cause": 64,
     "tags": 24,
     "hint": 64,
     "related": 48,
@@ -952,6 +1006,9 @@ def record(b, today=None):
         "age": age_of(b, today),
         "tags": tag_set(b),
         "evidence": b["evidence"],
+        "cause": b["cause"],
+        "cause_kind": b["cause_kind"],
+        "causes": b["causes"],
         "hint": b["hint"],
         "regr": b["regr"] or 0,
         "root": root_of(b),
@@ -991,12 +1048,19 @@ def md_table(headers, rows, numeric=()):
     return out
 
 
+# both discipline names reach the one field, so a caller writes what the document
+# calls it rather than the internal name
+FIELD_ALIAS = {"mechanism": "cause", "root-cause": "cause"}
+
+
 def parse_fields(spec, what):
     out = []
     for raw in (spec or "").split(","):
         f = raw.strip().lower()
         if not f:
             continue
+        desc = f.startswith("-")
+        f = ("-" if desc else "") + FIELD_ALIAS.get(f.lstrip("-"), f.lstrip("-"))
         if f.lstrip("-") not in FIELDS:
             raise SystemExit(f"{what}: unknown field {f!r}; one of {', '.join(FIELDS)}")
         out.append(f)
@@ -1429,7 +1493,17 @@ def cmd_list(files, fl, columns, sort, as_json):
             docs += [dict(rec, file=f) for _, rec in pairs]
             continue
         notice_locked([b for b, _ in pairs])
-        heads = [(HINT_FOR[prefix].title() if c == "hint" else HEAD[c]) for c in cols]
+        heads = [
+            (
+                HINT_FOR[prefix].title()
+                if c == "hint"
+                # one stored field, named per discipline: Mechanism / Root cause
+                else CAUSE_FOR[prefix].replace("-", " ").capitalize()
+                if c == "cause"
+                else HEAD[c]
+            )
+            for c in cols
+        ]
         rows = [[field_cell(rec, c) for c in cols] for _, rec in pairs]
         print(f"\n# {LABEL[prefix]} - {f}{filter_note(fl, fl['status'])}\n")
         print("\n".join(md_table(heads, rows, [HEAD[c] for c in NUMERIC])))
@@ -1620,7 +1694,14 @@ def tokens(text):
     return out
 
 
-SEARCH_W = {"id": 3.0, "title": 3.0, "body": 1.0, "evidence": 1.0, "log": 1.0}
+SEARCH_W = {
+    "id": 3.0,
+    "title": 3.0,
+    "body": 1.0,
+    "evidence": 1.0,
+    "cause": 1.0,
+    "log": 1.0,
+}
 FUZZ = 0.8
 
 
@@ -1643,6 +1724,7 @@ def rank_items(query, cands):
             "title": tokens(b["title"]),
             "body": tokens(b["plain"]),
             "evidence": tokens(b["evidence"]),
+            "cause": tokens(" ".join(c["text"] for c in b["causes"])),
             "log": tokens(" ".join(b["logs"])),
         }
         docs.append((f, b, fields))
@@ -1989,6 +2071,32 @@ def cmd_check(files, strict):
                 )
             elif b["evidence"] and status_of(b) != "closed":
                 w.append((b["line"], "evidence: on an item that is not closed"))
+            if b["causes"]:
+                want_cause = CAUSE_FOR[prefix]
+                foreign = sorted({c["kind"] for c in b["causes"]} - {want_cause})
+                if foreign:
+                    e.append(
+                        (
+                            b["line"],
+                            f"`{foreign[0]}:` line in a {prefix} document; use `{want_cause}:`",
+                        )
+                    )
+                if b["cause_bad"]:
+                    e.append(
+                        (
+                            b["line"],
+                            f"{want_cause}: line is malformed; use "
+                            f"`- {want_cause}: <ISO 8601 UTC stamp> @xx <text>`",
+                        )
+                    )
+                if not b["cause_order"]:
+                    w.append(
+                        (
+                            b["line"],
+                            f"{want_cause}: records are not newest first; the topmost "
+                            "record is the one read as current",
+                        )
+                    )
             if status_of(b) == "rejected" and not reject_reason(b):
                 w.append((b["line"], "rejected with no reason; log `rejected: <why>`"))
             # read-only: an expired or stray lock is reported, never removed here
@@ -2083,6 +2191,41 @@ def hint_kind_for(file, blocks, repro, test):
     return kind, value
 
 
+def cause_kind_for(file, blocks, mechanism, root_cause):
+    """Which record the flags asked for, checked against the discipline of the doc."""
+    if mechanism and root_cause:
+        raise SystemExit("pass --mechanism or --root-cause, not both")
+    kind, value = (
+        ("mechanism", mechanism)
+        if mechanism
+        else ("root-cause", root_cause)
+        if root_cause
+        else (None, None)
+    )
+    if kind:
+        want = CAUSE_FOR[doc_prefix(file, blocks)]
+        if kind != want:
+            raise SystemExit(f"this is a {want}: document; use --{want}")
+    return kind, value
+
+
+def set_cause(lines, b, kind, value, update):
+    """Write a record. By default it goes above the ones already there - the previous
+    theory stays readable, which is the whole point of the field on a long hunt.
+    --update rewrites the newest record instead, for a rewording of the same theory."""
+    ind = sub_indent(lines, b)
+    line = f"{ind}- {kind}: {value}"
+    for i in range(b["line"], block_end(lines, b)):
+        if CAUSELINE.match(lines[i]):
+            if update:
+                lines[i] = line
+                return "updated"
+            lines.insert(i, line)
+            return "overridden"
+    lines.insert(b["line"], line)
+    return "recorded"
+
+
 def set_line(lines, b, marker, value, pat):
     """Replace the item's `- <marker>:` sub-line, or add one under the item line."""
     ind = sub_indent(lines, b)
@@ -2164,12 +2307,28 @@ def cmd_author(file, handle, name):
     return 0
 
 
-def cmd_add(file, code, name, desc, title, text, severity, importance, repro, test, tags, author):
+def cmd_add(
+    file,
+    code,
+    name,
+    desc,
+    title,
+    text,
+    severity,
+    importance,
+    repro,
+    test,
+    tags,
+    author,
+    mechanism=None,
+    root_cause=None,
+):
     expire_locks(file)
     lines = load(file)
     blocks, sections = parse(file)
     prefix = doc_prefix(file, blocks)
     kind, value = hint_kind_for(file, blocks, repro, test)
+    ckind, cvalue = cause_kind_for(file, blocks, mechanism, root_cause)
     who = need_author(file, author)
     if prefix == "ACC" and severity:
         raise SystemExit("acceptance criteria carry no severity")
@@ -2191,8 +2350,10 @@ def cmd_add(file, code, name, desc, title, text, severity, importance, repro, te
     body = f"{lead.upper()}; {text}" if lead else text
     item = f"- [ ] `{prefix}-{code}-{num}` **{title}** - {body}"
     at = insert_index(lines, sec)
+    stamp = now()
     tail = [f"  - {kind}: {value}"] if kind else []
     tail += [f"  - test-tags: {canon_tags(tags)}"] if tags else []
+    tail += [f"  - {ckind}: {stamp} {who} {cvalue.strip()}"] if ckind else []
     # the category description is a paragraph; a list must not butt straight onto it
     prose = (
         at > 0
@@ -2201,9 +2362,32 @@ def cmd_add(file, code, name, desc, title, text, severity, importance, repro, te
         and not SUB.match(lines[at - 1])
     )
     lead = [""] if prose else []
-    lines[at:at] = lead + [item] + tail + [f"  - log: {now()} {who} added"]
+    lines[at:at] = lead + [item] + tail + [f"  - log: {stamp} {who} added"]
     save(file, lines)
     print(f"{file}:{at + len(lead) + 1}: {prefix}-{code}-{num} added")
+    return 0
+
+
+def cmd_cause(file, wanted, kind, text, author, update):
+    expire_locks(file)
+    lines = load(file)
+    blocks, _ = parse(file)
+    prefix = doc_prefix(file, blocks)
+    want = CAUSE_FOR[prefix]
+    if kind != want:
+        raise SystemExit(f"this is a {want}: document; run pm-tools {want}")
+    who = need_author(file, author)
+    b = find_id(blocks, norm_id(wanted, prefix))
+    warn_lock(file, b, who)
+    if update and not b["causes"]:
+        raise SystemExit(
+            f"{ident(b)} carries no {want}: record to update; write one without --update"
+        )
+    did = set_cause(lines, b, kind, f"{now()} {who} {text.strip()}", update)
+    save(file, lines)
+    # never logged: the record carries its own stamp and author, and the format
+    # records nothing twice
+    print(f"{file}:{b['line']}: {ident(b)} {want} {did}")
     return 0
 
 
@@ -2881,6 +3065,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     sa.add_argument("--repro", help="one line saying how to reproduce, defects only")
     sa.add_argument("--test", help="one line saying how to test, criteria only")
+    sa.add_argument("--mechanism", help="how it is meant to work, criteria only")
+    sa.add_argument("--root-cause", dest="root_cause", help="why it happens, defects only")
     sa.add_argument(
         "--author",
         required=True,
@@ -2933,6 +3119,18 @@ def main(argv: list[str] | None = None) -> int:
                 required=True,
                 help="one line proving it is done - the test that passes, the run, the commit",
             )
+
+    for name in ("mechanism", "root-cause"):
+        sp = sub.add_parser(name)
+        sp.add_argument("file")
+        sp.add_argument("--id", required=True)
+        sp.add_argument("--text", required=True, help="the explanation, one line")
+        sp.add_argument("--author", required=True, metavar="@xx")
+        sp.add_argument(
+            "--update",
+            action="store_true",
+            help="rewrite the newest record instead of writing a new one above it",
+        )
 
     sx = sub.add_parser("remove")
     sx.add_argument("file")
@@ -3061,6 +3259,8 @@ def main(argv: list[str] | None = None) -> int:
             a.test,
             a.tags,
             a.author,
+            a.mechanism,
+            a.root_cause,
         )
     if a.cmd == "edit":
         return cmd_edit(
@@ -3076,6 +3276,8 @@ def main(argv: list[str] | None = None) -> int:
             a.author,
             a.evidence,
         )
+    if a.cmd in ("mechanism", "root-cause"):
+        return cmd_cause(a.file, a.id, a.cmd, a.text, a.author, a.update)
     if a.cmd == "author":
         return cmd_author(a.file, a.handle, a.name)
     if a.cmd == "describe":
