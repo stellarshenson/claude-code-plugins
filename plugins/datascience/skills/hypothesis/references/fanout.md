@@ -71,7 +71,7 @@ Read the log's last 1-2 rounds and recommend; the user overrides freely.
 1. Find the canonical log, tally the current verdict state, extract the kernel (elicit it if absent)
 2. Ask scale + persona - recommend both; if the user dictated a framework (hypothesis, mechanism, lever, area, hunch), it becomes the round's generative seed - the batch is perturbed, extrapolated and explored from it
 3. Generate candidates - each a FULL per-hypothesis record (Hypothesis, Lever, Mechanism, Prediction, Acceptance bar; Experiment block where it owns a regime); no bare "try X"
-4. Dedupe against the global H-ordinal registry (`hypothesis-tools next-id <log>` for the next free `H<n>`, `list` for what is taken) - a collision is dropped or explicitly supersedes with a back-reference, never silently re-tested
+4. Dedupe against the global H-ordinal registry (`hypothesis-tools next-id <log>` for the next free `H<n>`, `list` for what is taken) - a collision is dropped or explicitly supersedes with a back-reference, never silently re-tested; land each signed-off hypothesis with `hypothesis-tools register --author @xx`, which reads and burns the ordinal itself
 5. Cheap kill-gate pass - drop candidates whose precondition is measurably absent before proposing them
 6. **Pre-register (the gate)** - present the pre-registration table (SKILL.md format); the user signs off, edits fold in; nothing is appended or executed before this
 7. On approval - append the new `E<batch>` to the log, execute per `references/execution-and-ablation.md`

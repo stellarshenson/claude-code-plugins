@@ -649,3 +649,187 @@ A registered explanation line on every item: how a criterion is meant to work, w
   - log: 2026-08-31T13:13:28Z @kj added
   - log: 2026-08-31T13:13:34Z @kj closed: covered by the functional suite
 
+## Hypothesis tools `HYPTL`
+
+hypothesis-tools: flexible parsing, registration and append-only outcome recording, reporting and measured-quantity readback over canonical experiment ledgers
+
+- [x] `ACC-HYPTL-93` **Three declaration shapes parse** - HIGH; a hypothesis declares as a full block, a compact bullet, or a row of a table whose header names claim/verdict columns; a timing table maps to nothing and can never mint a phantom
+  - evidence: test_an_at_a_glance_row_declares_with_its_verdict and test_a_timing_table_declares_nothing green; forcing every table to declare fails the latter
+  - test: parse an at-a-glance table and a timing table, assert only the former declares
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:10Z @kj added
+  - log: 2026-08-31T22:32:10Z @kj closed: covered by the functional suite
+- [x] `ACC-HYPTL-94` **Full block outranks a table row** - HIGH; when an id is declared by both a table row and a full block, the block's fields and verdict win
+  - evidence: test_a_full_block_outranks_its_table_row green
+  - test: declare in a table then a block, assert shape full and the block's verdict
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:10Z @kj added
+  - log: 2026-08-31T22:32:10Z @kj closed: covered by the functional suite
+- [x] `ACC-HYPTL-95` **Canonical verdicts read through variants** - HIGH; case, bold/underscore emphasis, dated parenthetical qualifiers and hyphen/space swaps all fold to the canonical spelling; a qualified label is returned as written, never coerced to its canonical neighbour
+  - evidence: test_canonical_labels_read_through_case_emphasis_and_hyphens green
+  - test: match REFUTED, **Confirmed**, (2026-07-12) Confirmed, Killed at gate (proxy), Confirmed-partially
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:10Z @kj added
+  - log: 2026-08-31T22:32:10Z @kj closed: covered by the functional suite
+- [x] `ACC-HYPTL-96` **Verdict vocabulary is open** - HIGH; a short word-like label the ledger grew (SUPPORTED, PARTIAL, Inconclusive) is read as written; check warns once with aggregated counts; a verdict with no readable label at all is the only error
+  - evidence: test_a_short_head_is_an_open_label_and_a_story_is_none and test_check_warns_on_a_grown_label_and_fails_only_when_none_reads green
+  - test: check a grown label (exit 0, one warning) and a mixed-regime narrative (exit 1)
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:10Z @kj added
+  - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
+- [x] `ACC-HYPTL-97` **Register burns the next free ordinal safely** - CRITICAL; register appends at next-id's ordinal, verifies the block parses back before writing, and refuses to write while any declaration is unparsed - an ordinal is never burnt twice
+  - evidence: test_register_appends_a_parseable_block_and_burns_the_next_ordinal and test_register_refuses_while_a_declaration_is_unparsed green; disabling the orphan refusal fails the latter
+  - test: register on a clean ledger then on one with an unparsed heading; assert advance and refusal with the file unchanged
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:11Z @kj added
+  - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
+  - log: 2026-09-01T10:17:07Z @kj adversarial review round 1: FALSIFIED on the real kgf ledger - bare `- **H655**` bullets carry no batch prefix, so neither the parser nor the orphan net saw 25 assigned ordinals and next-id re-issued H655; fixed by _claimed_bare_ordinals folding them into the high-water mark, next_h now H657
+- [x] `ACC-HYPTL-98` **Registration precedes its outcome** - HIGH; register refuses Result, Verdict and Log fields - outcomes are recorded by result/verdict/log-event after the run
+  - evidence: test_register_refuses_an_outcome_field green
+  - test: register with --field Verdict=..., assert exit 2 and no write
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:11Z @kj added
+  - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
+  - log: 2026-09-01T10:17:07Z @kj adversarial review round 1: bypassed by a parenthesised name - register --field 'Verdict (interim)=...' cleared the guard because it tested the raw name while the parser strips the qualifier; fixed by _base_name at both write guards
+- [x] `ACC-HYPTL-99` **Recorded outcomes are immutable** - CRITICAL; a second Result needs a --qualifier and lands as a distinguishable bullet; a second verdict is refused outright because a flip is a new round
+  - evidence: test_a_recorded_result_is_immutable_and_a_second_needs_a_qualifier and test_a_recorded_verdict_refuses_a_second green; skipping the verdict guard fails the latter
+  - test: record then re-record a Result and a verdict, assert refusal texts and file content
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:11Z @kj added
+  - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
+  - log: 2026-09-01T10:17:07Z @kj adversarial review round 1: defeated two ways - verdict guarded on the field VALUE so an empty placeholder bullet let three verdicts stack, and field --name 'Verdict (date)' landed a second verdict above the recorded one where first-wins made it canonical; both fixed
+- [x] `ACC-HYPTL-100` **Log lines append newest last** - MEDIUM; log-event creates the Log bullet at block end when absent and appends each dated line after the existing ones
+  - evidence: test_log_event_creates_then_appends_newest_last green
+  - test: log two events, assert one Log bullet and chronological order
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:11Z @kj added
+  - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
+- [x] `ACC-HYPTL-101` **Report tallies batches by verdict** - MEDIUM; report renders one paste-ready table, batches down and verdict labels across - canonical first then grown by frequency, capped with an other column, unverdicted last, with a Total row
+  - evidence: test_report_tallies_batches_down_and_verdicts_across green
+  - test: report a three-hypothesis ledger, assert header and rows
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:11Z @kj added
+  - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
+- [x] `ACC-HYPTL-102` **Measured quantities read back with context** - HIGH; values returns every reading of one named quantity across declared blocks - backticked/bolded names, = and : forms, parenthetical arguments, comparators and % - with id, line and context so a false hit is visible
+  - evidence: test_values_reads_a_quantity_off_every_block and test_values_restricts_by_batch_and_id_and_says_when_dry green; verified live on the kgf store (theta(0.08) = 0.7644 read from line 4317 of 6,432)
+  - test: read DR, margin, theta and a multi-word quantity off a fixture; filter by batch and id
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:11Z @kj added
+  - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
+- [x] `ACC-HYPTL-103` **Edge: escaped pipe in a table cell** - MEDIUM; a \| inside a cell is CommonMark's escaped pipe, not a delimiter - a formula cell never shifts the verdict column
+  - evidence: test_an_escaped_pipe_does_not_shift_the_verdict_column green; reverting to a naive split fails it
+  - test: parse a row carrying max\|dTFR\| in its evidence cell, assert the verdict column reads
+  - test-tags: FUNCTIONAL
+  - log: 2026-08-31T22:32:12Z @kj added
+  - log: 2026-08-31T22:32:12Z @kj closed: covered by the functional suite
+- [x] `ACC-HYPTL-104` **Every write is authored** - HIGH; register, result, verdict, field and log-event require --author @xx and refuse a handle that is not on the ## Authors roster, leaving the file untouched
+  - evidence: test_every_write_refuses_a_handle_that_is_not_on_the_roster and test_a_malformed_handle_is_refused_before_the_roster_is_read green; forcing need_author to accept any handle fails the former
+  - test: call each write with an unrostered handle; assert exit 2, the roster message and an unchanged file
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-01T09:13:41Z @kj added
+  - log: 2026-09-01T09:13:52Z @kj closed
+- [x] `ACC-HYPTL-105` **The roster is document metadata** - MEDIUM; author adds or updates one `@xx` entry, creating the ## Authors section under the overview and above the first round; a second call for the same handle updates it rather than doubling it
+  - evidence: test_author_creates_the_roster_above_the_first_round and test_a_second_author_joins_the_roster green; validated live on a copy of the 6,432-line kgf ledger, roster landed at line 11 above the first round
+  - test: author twice on a ledger with no roster; assert one entry, placement above the first ## round, and that the ledger still parses
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-01T09:13:41Z @kj added
+  - log: 2026-09-01T09:13:52Z @kj closed
+- [x] `ACC-HYPTL-106` **Every write records who made it** - HIGH; each write appends its own dated log line naming the author - registered, result recorded, verdict recorded: LABEL, field N added/updated - newest last under one Log bullet
+  - evidence: test_every_write_stamps_an_authored_log_line and test_a_qualified_result_names_its_qualifier_in_the_audit_line green; dropping the stamp from cmd_result fails the former
+  - test: register then result, verdict and field; assert the four authored log lines in order under a single Log bullet
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-01T09:13:41Z @kj added
+  - log: 2026-09-01T09:13:52Z @kj closed
+- [x] `ACC-HYPTL-107` **Free-form fields on a recorded hypothesis** - MEDIUM; field adds any name the research needs, placed before Result/Verdict/Log; a name already recorded needs --update, which replaces the value and keeps the label and its qualifier
+  - evidence: test_field_adds_a_free_form_field_before_the_outcomes, test_field_refuses_to_overwrite_without_update and test_field_keeps_a_qualifier_when_it_updates green; removing the duplicate refusal and the outcome-relative placement each fail their own test
+  - test: add a field, re-add it without --update (exit 2), then with --update; assert placement, single occurrence and preserved qualifier
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-01T09:13:41Z @kj added
+  - log: 2026-09-01T09:13:52Z @kj closed
+  - log: 2026-09-01T10:32:45Z @kj confirming round: FALSIFIED - _field_lines keys by base name but cmd_field looked up the raw label, so --name 'Grounding (v2)' missed an existing Grounding and appended a second bullet the parser could never reach, --update appending a third; fixed by looking up on _base_name(label) while still rendering the name as given
+- [x] `ACC-HYPTL-108` **Outcome fields keep their own commands** - MEDIUM; field refuses Result, Verdict and Log so their immutability rules cannot be routed around
+  - evidence: test_field_refuses_an_outcome_name green over Result, verdict and Log, each asserting the file is byte-identical afterwards
+  - test: field --name Result/verdict/Log; assert exit 2 and an unchanged file
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-01T09:13:41Z @kj added
+  - log: 2026-09-01T09:13:52Z @kj closed
+- [x] `ACC-HYPTL-109` **Unauthored history stays legitimate** - MEDIUM; check errors on a log handle that is not on the roster, aggregated per handle, and warns once with a count on log lines carrying no handle - the ledgers predate the roster
+  - evidence: test_check_warns_once_on_unauthored_lines_and_errors_on_an_unknown_handle green; skipping the unknown-handle branch fails it. The four real ledgers gain zero errors - they carry no log lines at all
+  - test: a ledger with two unauthored lines and one stranger handle; assert one aggregated warning and the roster error
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-01T09:13:41Z @kj added
+  - log: 2026-09-01T09:13:52Z @kj closed
+- [x] `ACC-HYPTL-110` **Written values are single-line** - CRITICAL; every write refuses a value containing ANY line break - not just the newline: the parser splits with str.splitlines(), which breaks on CR, VT, FF, the file/group/record separators and U+2028/9, so a bare CR from a captured run log or a PDF paste minted a phantom hypothesis exactly as a newline did; slug, batch, batch-slug, name, text, event, qualifier and any --field string, with <br> named as the ledger's own line break
+  - evidence: test_a_newline_in_any_written_value_is_refused green over all 7 write forms; the original reproduction (field --text with an embedded ### E09-H99) now exits 2 with the ledger byte-identical
+  - test: drive each write command with a value carrying an embedded declaration; assert exit 2 and a byte-identical file
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-01T10:17:25Z @kj added
+  - log: 2026-09-01T10:17:25Z @kj closed
+  - log: 2026-09-01T10:32:45Z @kj edited text
+- [x] `ACC-HYPTL-111` **A claimed ordinal is never re-issued, whatever dialect declared it** - CRITICAL; the high-water mark counts bare bold-label H<n> bullets as well as parsed declarations, so a ledger that registers gated hypotheses without the batch prefix cannot have an ordinal handed out twice; counted rather than refused, so the ledger stays readable
+  - evidence: test_a_bare_bold_h_bullet_still_claims_its_ordinal and test_a_prose_citation_of_a_bare_ordinal_does_not_claim_it green; on a copy of the real 6,432-line kgf ledger next-id moved H655 to H657 and check still reads all 554 hypotheses with its error count unchanged at 65
+  - test: a ledger with bare - **H655** / - **H656** bullets; assert next-id answers H657 and a prose citation of H655 does not claim it
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-01T10:17:25Z @kj added
+  - log: 2026-09-01T10:17:25Z @kj closed
+- [x] `ACC-HYPTL-112` **The write guards use the parser's field identity** - HIGH; an outcome name carrying a trailing parenthetical is still that outcome - field and register --field refuse Verdict (date) and Result (gate) as they refuse the bare names - and verdict refuses on the PRESENCE of a Verdict bullet, so an empty placeholder cannot swallow the one verdict a hypothesis gets
+  - evidence: test_a_parenthesised_outcome_name_is_still_an_outcome (Verdict/Result/Log forms), test_register_refuses_a_parenthesised_outcome_field and test_verdict_refuses_an_empty_placeholder_bullet green; all four real ledgers parse identically after _base_name entered the parser path
+  - test: field --name 'Verdict (2026-09-01)' on a Confirmed hypothesis; assert exit 2, unchanged file and unchanged verdict. verdict against an empty placeholder bullet; assert exit 2
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-01T10:17:25Z @kj added
+  - log: 2026-09-01T10:17:25Z @kj closed
+- [x] `ACC-HYPTL-113` **A plain field bullet outranks a qualified one** - HIGH; where a block carries both, the unqualified bullet is the field of record - a real ledger writes - **Verdict (interim)** above the - **Verdict** that supersedes it, and first-wins alone reported a refuted hypothesis as passed on the round-state tally
+  - evidence: test_a_plain_bullet_outranks_a_qualified_one_already_stored green; on the real kgf ledger R23-H248 now reports its recorded 'PARTIAL final' and R24-H260 returns None with one honest new error naming its unreadable Verdict, where it previously reported 'gate PASSED decisively' against a recorded 'REFUTED by 1.7 pts' (65 to 66 errors, no other ledger moved)
+  - test: a block with Verdict (interim) Confirmed above Verdict Refuted; assert the parsed verdict is Refuted and a qualified-only field is still recognised
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-01T10:32:45Z @kj added
+  - log: 2026-09-01T10:32:45Z @kj closed
+- [x] `ACC-HYPTL-114` **Scoped canonical label** - HIGH; a canonical verdict label followed by scoping prose up to the first delimiter (`Refuted on the replacement bar;`, `**Refuted** as an order measure (...)`, `Refuted for int8-dynamic;`) reads as that label; `.` is a delimiter and a comma inside a number is not
+  - evidence: uv run --extra dev pytest: 1258 passed; check on the two docdistance ledgers exits 0; corpus diff script over 14 ledgers, 0 readable labels lost
+  - test: test_a_canonical_label_followed_by_scoping_prose_reads_as_that_label; corpus diff vs HEAD over 1259 hypotheses: 67 none-to-label, 23 label-to-canonical, 0 label-to-none
+  - test-tags: UNIT, CORPUS
+  - log: 2026-09-01T23:19:33Z @kj added
+  - log: 2026-09-01T23:19:34Z @kj closed
+- [x] `ACC-HYPTL-115` **Regime is next-clause label** - HIGH; a verdict whose next clause opens with another canonical label (`Refuted for k=1, Confirmed for k=3`, `Refuted for bf16, kept for the recipe`) is a regime and reads as no label; a number in the scope alone does not make one
+  - evidence: uv run --extra dev pytest: 1258 passed; check on the two docdistance ledgers exits 0; corpus diff script over 14 ledgers, 0 readable labels lost
+  - test: same test, the four regime assertions; quantized ledger 7 errors to 4, every survivor a genuine mixed verdict
+  - test-tags: UNIT, CORPUS
+  - log: 2026-09-01T23:19:33Z @kj added
+  - log: 2026-09-01T23:19:34Z @kj closed
+- [x] `ACC-HYPTL-116` **Unrun counted not warned** - HIGH; a full block with neither Result nor Verdict is unrun; check carries the count in its summary line (`14 unrun`) and emits no per-hypothesis warning for it
+  - evidence: uv run --extra dev pytest: 1258 passed; check on the two docdistance ledgers exits 0; corpus diff script over 14 ledgers, 0 readable labels lost
+  - test: test_check_counts_unrun_and_aggregates_missing_fields; docdistance ledger OK 38 hypotheses, 14 unrun, 6 warnings
+  - test-tags: UNIT, CORPUS
+  - log: 2026-09-01T23:19:33Z @kj added
+  - log: 2026-09-01T23:19:34Z @kj closed
+- [x] `ACC-HYPTL-117` **Missing fields one line per field** - HIGH; check reports full-block hypotheses missing a required field as one warning per field naming the ids (first five, +N more), never one line per hypothesis; an unrun hypothesis never appears in the Result or Verdict lines
+  - evidence: uv run --extra dev pytest: 1258 passed; check on the two docdistance ledgers exits 0; corpus diff script over 14 ledgers, 0 readable labels lost
+  - test: same test; docdistance 23 warning lines to 6, structure ledger 33 to 5
+  - test-tags: UNIT, CORPUS
+  - log: 2026-09-01T23:19:33Z @kj added
+  - log: 2026-09-01T23:19:34Z @kj closed
+- [x] `ACC-HYPTL-118` **Standing guardrails once per batch** - HIGH; the template and SKILL state that a guardrail every hypothesis in a batch holds is declared once in the batch section's opening line and the per-block while clause and Acceptance bar name only what is specific to the block
+  - evidence: uv run --extra dev pytest: 1258 passed; check on the two docdistance ledgers exits 0; corpus diff script over 14 ledgers, 0 readable labels lost
+  - test: docs read: per-hypothesis-template.md Hypothesis bullet, SKILL.md Hypothesis form, experiments-log-structure.md batch line; measured on docdistance E12: 714 of 7658 words were restated guardrails
+  - test-tags: UNIT, CORPUS
+  - log: 2026-09-01T23:19:33Z @kj added
+  - log: 2026-09-01T23:19:34Z @kj closed
+- [x] `ACC-HYPTL-119` **A write that would not read back is refused** - HIGH; result and field build the bullet they are about to land and exit 2 without touching the file when FIELD_RE would not read it as the field it claims (a star in the label) or when the parser would take it for a compact declaration (a name opening with a hypothesis id); register exits 1 unwritten when a field name is given twice, once plain and once qualified, or opens with an id, and its message names those causes
+  - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 151 passed incl. the three named tests; adversarial review rounds 2-4 (wf_77e10307-4d3, wf_6c4ec364-631) reproduced the refusals on scratch ledgers with the ledger byte-identical
+  - test: tests/test_hypothesis_tools.py: test_a_bullet_no_reader_matches_is_refused_before_the_write (3 cases), test_register_refuses_a_field_name_given_twice (2 cases), test_register_refuses_a_field_name_opening_with_an_id_and_says_so; ledger byte-identical after every refusal
+  - test-tags: UNIT
+  - log: 2026-09-02T01:02:47Z @kj added
+  - log: 2026-09-02T01:02:47Z @kj closed
+- [x] `ACC-HYPTL-120` **The registrant is the registered event's author** - HIGH; Hypothesis.author, show --json author and list --author read the handle only from a log line whose event opens with registered - the event register writes; a hand-written block that later receives a result, verdict or field write answers no author and is not listed under the writer
+  - evidence: uv run --extra dev pytest: test_author_is_the_registrant_never_the_first_writer and test_list_filters_by_author pass; scratch ledger: hand-written block answers author null after result --author @ab, CLI-registered block answers @ab
+  - test: tests/test_hypothesis_tools.py: test_author_is_the_registrant_never_the_first_writer, test_list_filters_by_author
+  - test-tags: UNIT
+  - log: 2026-09-02T01:02:47Z @kj added
+  - log: 2026-09-02T01:02:47Z @kj closed
+- [x] `ACC-HYPTL-121` **A blank qualifier is no qualifier** - MEDIUM; result strips --qualifier before the immutability test, so a whitespace-only qualifier on a block that already records a Result exits 2 with the immutability message instead of landing a second plain Result
+  - evidence: uv run --extra dev pytest: test_a_blank_qualifier_is_no_qualifier passes; scratch ledger: result --qualifier ' ' on a block with a Result exits 2 with the immutability message and writes nothing
+  - test: tests/test_hypothesis_tools.py: test_a_blank_qualifier_is_no_qualifier
+  - test-tags: UNIT
+  - log: 2026-09-02T01:02:47Z @kj added
+  - log: 2026-09-02T01:02:47Z @kj closed
+

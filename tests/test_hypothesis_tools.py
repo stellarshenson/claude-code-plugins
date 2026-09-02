@@ -13,6 +13,7 @@ the parser over the real examples, not hypothetical:
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ from stellars_claude_code_plugins.hypothesis.hypothesis_tools import (
     main,
     match_verdict,
     parse_ledger,
+    roster_of,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,6 +82,7 @@ def test_lexical_grounding_compact_shape_is_unverdicted_not_guessed():
     assert len(hyps) == 27
     assert all(h.shape == "compact" for h in hyps)
     assert all(h.verdict is None for h in hyps)
+    assert all(h.author is None for h in hyps)  # written before authorship existed
     assert [h.ordinal for h in hyps] == list(range(1, 28))
 
 
@@ -139,13 +142,55 @@ def test_confirmed_is_in_the_vocabulary():
     assert match_verdict("Confirmed; the memory-bound decode win is real") == "Confirmed"
 
 
-def test_unknown_label_reads_as_no_verdict():
-    assert match_verdict("Works great, ship it") is None
+def test_a_short_head_is_an_open_label_and_a_story_is_none():
+    """Real ledgers grow their own vocabulary - SUPPORTED, PARTIAL,
+    Inconclusive - and reading it beats calling a third of a store
+    unverdicted. The line still holds where reading would be guessing:
+    a mixed-regime narrative carries no single label."""
+    assert match_verdict("Works great, ship it") == "Works great"
+    assert match_verdict("SUPPORTED") == "SUPPORTED"
+    assert match_verdict("**PARTIAL** - closing the three result blocks") == "PARTIAL"
+    assert match_verdict("**Inconclusive** (applicability: Low) - fails") == "Inconclusive"
+    assert match_verdict("Refuted for k=1, Confirmed for k=3") is None
+    assert match_verdict("pending final vs H121, but leaning REFUTED: x") is None
 
 
-def test_bold_label_still_reads():
+def test_canonical_labels_read_through_case_emphasis_and_hyphens():
     assert match_verdict("**Confirmed**; 0.91") == "Confirmed"
-    assert match_verdict("Confirmed-partially; 0.5") is None
+    assert match_verdict("REFUTED (the registered clause)") == "Refuted"
+    assert match_verdict("Killed at gate (proxy)") == "Killed-at-gate"
+    assert match_verdict("(2026-07-12) Confirmed; the number") == "Confirmed"
+    assert match_verdict("Refuted (null); no signal") == "Refuted (null)"
+    # a qualified label is returned AS WRITTEN, never coerced to its canonical
+    # neighbour - "Confirmed-partially" is not Confirmed
+    assert match_verdict("Confirmed-partially; 0.5") == "Confirmed-partially"
+
+
+def test_a_canonical_label_followed_by_scoping_prose_reads_as_that_label():
+    """Three real verdicts - `Refuted on the replacement bar;`, `**Refuted**
+    as an order measure (applicability: Low) - ...`, `**Refuted** as a
+    metric (...)` - were the last errors standing on two ledgers: the head
+    ran past three words and no label could be read. The scope is prose the
+    way `(killed at gate)` is; only a number in it makes a regime, and a
+    regime stays a story."""
+    assert match_verdict("Refuted on the replacement bar; Spearman 0.9636") == "Refuted"
+    assert (
+        match_verdict("**Refuted** as an order measure (applicability: Low) - rises") == "Refuted"
+    )
+    assert (
+        match_verdict("**Refuted** as a metric (applicability: Low) - 6.7% violations")
+        == "Refuted"
+    )
+    assert match_verdict("CONFIRMED on both articles - band 0.91-0.93") == "Confirmed"
+    assert match_verdict("Refuted for int8-dynamic; the size effect does not show") == "Refuted"
+    assert match_verdict("Refuted at the +10% bar; ±5% wash") == "Refuted"
+    assert match_verdict("Promoted. The identity-gap class closes") == "Promoted"
+    assert match_verdict("Refuted (null) on direction, mechanism confirmed; x") == "Refuted (null)"
+    # a regime: the next clause opens with another label
+    assert match_verdict("Refuted for k=1, Confirmed for k=3") is None
+    assert match_verdict("Refuted for bf16, kept for the recipe; x") is None
+    assert match_verdict("Refuted at the 1,000 bar, Confirmed as a deployment pattern") is None
+    assert match_verdict("Confirmed-partially; 0.5") == "Confirmed-partially"
 
 
 # --- CLI -------------------------------------------------------------------
@@ -182,15 +227,25 @@ def test_check_fails_on_a_duplicate_ordinal(tmp_path, capsys):
     assert "reuses ordinal H7" in capsys.readouterr().err
 
 
-def test_check_fails_on_a_verdict_outside_the_vocabulary(tmp_path, capsys):
+def test_check_warns_on_a_grown_label_and_fails_only_when_none_reads(tmp_path, capsys):
+    """The vocabulary is open: a ledger-grown label is one aggregated warning,
+    and check errors only where no label can be read at all."""
     ledger = tmp_path / "bad.md"
     ledger.write_text(
         "# L\n\n**Canonical Experiments Document**\n\n"
         "### E1-H1 slug\n\n- **Verdict** - Works great; 1.0\n",
         encoding="utf-8",
     )
+    assert main(["check", str(ledger)]) == 0
+    err = capsys.readouterr().err
+    assert "non-canonical verdict labels: Works great (1)" in err
+    ledger.write_text(
+        "# L\n\n**Canonical Experiments Document**\n\n"
+        "### E1-H1 slug\n\n- **Verdict** - Refuted for k=1, Confirmed for k=3\n",
+        encoding="utf-8",
+    )
     assert main(["check", str(ledger)]) == 1
-    assert "is not one of" in capsys.readouterr().err
+    assert "carries no readable label" in capsys.readouterr().err
 
 
 def test_check_warns_but_passes_on_a_compact_ledger(capsys):
@@ -205,6 +260,33 @@ def test_check_warns_but_passes_on_a_compact_ledger(capsys):
     assert "verdicts not machine-readable" in captured.err
     assert captured.err.count("machine-readable") == 1
     assert "1 warnings" in captured.out
+
+
+def test_check_counts_unrun_and_aggregates_missing_fields(tmp_path, capsys):
+    """Eleven pre-registered hypotheses drew eleven `has no Result, Verdict`
+    lines on the ledger they were registered into - a state the skill
+    designs for, reported as a defect eleven times. Unrun is a count in the
+    summary; a genuinely missing field is one line per field naming the ids,
+    and an unrun hypothesis never appears in the `no Result` line."""
+    full = (
+        "- **Hypothesis** - h\n- **Lever** - l\n- **Mechanism** - m\n"
+        "- **Prediction** - p\n- **Acceptance bar** - a\n"
+    )
+    ledger = tmp_path / "unrun.md"
+    ledger.write_text(
+        "# L\n\n**Canonical Experiments Document**\n\n"
+        "### E1-H1 bare\n\n- **Hypothesis** - h\n\n"
+        f"### E1-H2 registered\n\n{full}\n"
+        f"### E1-H3 verdicted\n\n{full}- **Verdict** - Confirmed; 1.0\n",
+        encoding="utf-8",
+    )
+    assert main(["check", str(ledger)]) == 0
+    captured = capsys.readouterr()
+    assert "OK: 3 hypotheses, no errors, 2 unrun, 5 warnings" in captured.out
+    assert "has no" not in captured.err
+    assert "1 hypotheses have no Lever (E1-H1)" in captured.err
+    assert "1 hypotheses have no Result (E1-H3)" in captured.err
+    assert "Verdict" not in captured.err
 
 
 def test_show_returns_the_block_verbatim(capsys):
@@ -274,6 +356,20 @@ def _ledger(tmp_path, body: str, name: str = "l.md"):
     p = tmp_path / name
     p.write_text(f"# L\n\n{MARKER}\n\n{body}", encoding="utf-8")
     return p
+
+
+ROSTER = "## Authors\n\n- `@kj` Konrad Jelen\n\n"
+
+
+def _writable(tmp_path, body: str, name: str = "l.md"):
+    """A ledger carrying a roster - every write names an author on it."""
+    return _ledger(tmp_path, ROSTER + body, name)
+
+
+def _log(path, hid: str, event: str, date: str, author: str = "@kj"):
+    return main(
+        ["log-event", str(path), hid, "--event", event, "--date", date, "--author", author]
+    )
 
 
 def test_supersede_back_reference_still_declares(tmp_path):
@@ -402,7 +498,9 @@ def test_an_empty_field_bullet_counts_as_missing(tmp_path, capsys):
     satisfied the missing-field check and the vocabulary check at once."""
     p = _ledger(tmp_path, "### E1-H1 slug\n\n- **Hypothesis** - x\n- **Verdict** -\n")
     assert main(["check", str(p)]) == 0
-    assert "Verdict" in capsys.readouterr().err
+    # missing Verdict + missing Result = unrun, counted; a blank bullet read
+    # as a recorded verdict would leave only `no Result` and no unrun count
+    assert "1 unrun" in capsys.readouterr().out
 
 
 def test_a_qualifier_on_verdict_is_not_an_error(tmp_path):
@@ -608,3 +706,950 @@ def test_a_loose_nested_list_field_is_not_reported_missing(tmp_path, capsys):
     )
     main(["check", str(p)])
     assert "Acceptance bar" not in capsys.readouterr().err
+
+
+# --- Table-declared hypotheses ---------------------------------------------
+#
+# One real store declares most of its hypotheses nowhere but in per-batch
+# at-a-glance tables. A row declares only when the table's header names
+# hypothesis columns, so a timing table can never mint a phantom.
+
+AT_A_GLANCE = (
+    "## E14 at a glance\n\n"
+    "| id | claim (what is under test) | evidence | verdict |\n"
+    "|---|---|---|---|\n"
+    "| E14-H46 | no single lever reverses | best lever -50% | SUPPORTED |\n"
+    "| E14-H47 | a bundle reverses | +129% | REFUTED |\n"
+)
+
+
+def test_an_at_a_glance_row_declares_with_its_verdict(tmp_path, capsys):
+    p = _ledger(tmp_path, AT_A_GLANCE)
+    hyps = parse_ledger(p.read_text(encoding="utf-8"))
+    assert [(h.hid, h.shape, h.verdict) for h in hyps] == [
+        ("E14-H46", "table", "SUPPORTED"),
+        ("E14-H47", "table", "Refuted"),
+    ]
+    assert hyps[0].fields["Hypothesis"] == "no single lever reverses"
+    assert main(["check", str(p)]) == 0
+    assert "declared only by a table row" in capsys.readouterr().err
+
+
+def test_a_timing_table_declares_nothing(tmp_path, capsys):
+    """Header `| id | ms/pair |` maps to no hypothesis field, so its rows are
+    citations - and an id declared nowhere else is an orphan, not a phantom."""
+    p = _ledger(tmp_path, "## timings\n\n| id | ms/pair |\n|---|---|\n| E1-H9 | 0.08 |\n")
+    assert parse_ledger(p.read_text(encoding="utf-8")) == []
+    assert main(["check", str(p)]) == 1
+    assert "E1-H9" in capsys.readouterr().err
+
+
+def test_a_full_block_outranks_its_table_row():
+    text = AT_A_GLANCE + "\n### E14-H47 a-bundle-reverses\n\n- **Verdict** - Confirmed; +129%\n"
+    h47 = next(h for h in parse_ledger(text) if h.hid == "E14-H47")
+    assert (h47.shape, h47.verdict) == ("full", "Confirmed")
+
+
+def test_an_escaped_pipe_does_not_shift_the_verdict_column():
+    text = (
+        "| id | claim | evidence | verdict |\n|---|---|---|---|\n"
+        "| E35-H339 | operator is inert | max\\|ΔTFR\\| = 0 on the anchor | REFUTED |\n"
+    )
+    (h,) = parse_ledger(text)
+    assert h.verdict == "Refuted"  # canonical spelling, normalized from REFUTED
+
+
+# --- register ---------------------------------------------------------------
+
+
+def test_register_appends_a_parseable_block_and_burns_the_next_ordinal(tmp_path, capsys):
+    p = _writable(tmp_path, "## E1\n\n### E1-H1 first\n\n- **Verdict** - Ships; 1\n")
+    assert (
+        main(
+            [
+                "register",
+                str(p),
+                "--author",
+                "@kj",
+                "--slug",
+                "gate-cheap-kill",
+                "--field",
+                "Hypothesis=because the gate is cheap, killing early saves the run",
+                "--field",
+                "Prediction=kill rate >= 30%",
+                "--field",
+                "Persona=contrarian",
+            ]
+        )
+        == 0
+    )
+    assert "registered E1-H2" in capsys.readouterr().out
+    body = p.read_text(encoding="utf-8")
+    assert "### E1-H2 gate-cheap-kill" in body
+    # canonical order first, unknown fields after
+    assert body.index("**Hypothesis**") < body.index("**Prediction**") < body.index("**Persona**")
+    assert main(["next-id", str(p)]) == 0
+    assert "next_h: H3" in capsys.readouterr().out
+
+
+def test_register_opens_the_next_batch_with_its_heading(tmp_path):
+    p = _writable(tmp_path, "## E01\n\n### E01-H1 first\n\n- **Verdict** - Ships; 1\n")
+    main(
+        [
+            "register",
+            str(p),
+            "--author",
+            "@kj",
+            "--new-batch",
+            "--batch-slug",
+            "gate levers",
+            "--slug",
+            "s",
+            "--field",
+            "Hypothesis=x",
+        ]
+    )
+    body = p.read_text(encoding="utf-8")
+    assert "## E02 - gate levers" in body
+    assert "### E02-H2 s" in body
+
+
+def test_register_refuses_an_outcome_field(tmp_path, capsys):
+    p = _writable(tmp_path, "### E1-H1 s\n\n- **Verdict** - Ships; 1\n")
+    assert (
+        main(
+            [
+                "register",
+                str(p),
+                "--author",
+                "@kj",
+                "--slug",
+                "s",
+                "--field",
+                "Verdict=Confirmed; 1",
+            ]
+        )
+        == 2
+    )
+    assert "precedes its outcome" in capsys.readouterr().err
+    assert "Confirmed" not in p.read_text(encoding="utf-8").split("### E1-H1")[0]
+
+
+def test_register_refuses_while_a_declaration_is_unparsed(tmp_path, capsys):
+    """The same refusal as next-id: writing past an unparsed id burns an
+    ordinal twice."""
+    p = _writable(tmp_path, "### E1-H1 s\n\n- **Verdict** - Ships; 1\n\n# E1-H2 broken\n")
+    before = p.read_text(encoding="utf-8")
+    assert (
+        main(["register", str(p), "--author", "@kj", "--slug", "s", "--field", "Hypothesis=x"])
+        == 1
+    )
+    assert "refusing -" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before
+
+
+# --- result / verdict / log-event -------------------------------------------
+
+
+def _registered(tmp_path):
+    p = _writable(
+        tmp_path,
+        "### E1-H1 s\n\n- **Hypothesis** - x\n- **Acceptance bar** - DR >= 1.5x\n",
+    )
+    return p
+
+
+def test_result_then_verdict_land_in_canonical_order(tmp_path):
+    p = _registered(tmp_path)
+    assert main(["result", str(p), "E1-H1", "--text", "DR 2.7x, V = 0", "--author", "@kj"]) == 0
+    assert (
+        main(["verdict", str(p), "E1-H1", "--text", "Confirmed; DR 2.7x", "--author", "@kj"]) == 0
+    )
+    body = p.read_text(encoding="utf-8")
+    assert body.index("**Acceptance bar**") < body.index("**Result**") < body.index("**Verdict**")
+    (h,) = parse_ledger(body)
+    assert h.verdict == "Confirmed"
+
+
+def test_a_recorded_result_is_immutable_and_a_second_needs_a_qualifier(tmp_path, capsys):
+    p = _registered(tmp_path)
+    main(["result", str(p), "E1-H1", "--text", "DR 2.7x", "--author", "@kj"])
+    assert main(["result", str(p), "E1-H1", "--text", "DR 2.9x", "--author", "@kj"]) == 2
+    assert "immutable" in capsys.readouterr().err
+    assert (
+        main(
+            [
+                "result",
+                str(p),
+                "E1-H1",
+                "--text",
+                "DR 2.9x",
+                "--qualifier",
+                "re-run b256",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 0
+    )
+    body = p.read_text(encoding="utf-8")
+    assert "- **Result** - DR 2.7x" in body
+    assert "- **Result (re-run b256)** - DR 2.9x" in body
+
+
+def test_a_recorded_verdict_refuses_a_second(tmp_path, capsys):
+    p = _registered(tmp_path)
+    main(["verdict", str(p), "E1-H1", "--text", "Refuted; DR 0.9x", "--author", "@kj"])
+    assert (
+        main(["verdict", str(p), "E1-H1", "--text", "Confirmed; DR 2.7x", "--author", "@kj"]) == 2
+    )
+    assert "a flip is a new round" in capsys.readouterr().err
+    assert "Confirmed" not in p.read_text(encoding="utf-8")
+
+
+def test_verdict_refuses_an_unreadable_label_and_notes_a_grown_one(tmp_path, capsys):
+    p = _registered(tmp_path)
+    assert (
+        main(
+            [
+                "verdict",
+                str(p),
+                "E1-H1",
+                "--text",
+                "went fine at k=1, worse at k=3",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 2
+    )
+    assert "no readable label" in capsys.readouterr().err
+    assert (
+        main(["verdict", str(p), "E1-H1", "--text", "SUPPORTED; 4/4 windows", "--author", "@kj"])
+        == 0
+    )
+    assert "not canonical" in capsys.readouterr().err
+
+
+def test_writes_refuse_a_table_declared_hypothesis(tmp_path, capsys):
+    p = _writable(tmp_path, AT_A_GLANCE)
+    assert main(["verdict", str(p), "E14-H46", "--text", "Confirmed; 1", "--author", "@kj"]) == 1
+    assert "table row" in capsys.readouterr().err
+
+
+def test_log_event_creates_then_appends_newest_last(tmp_path):
+    p = _registered(tmp_path)
+    _log(p, "E1-H1", "first run, b128 - 2,910 tok/s", "2026-07-10")
+    _log(p, "E1-H1", "re-ran after padding fix", "2026-07-14")
+    body = p.read_text(encoding="utf-8")
+    assert body.count("- **Log**") == 1
+    assert body.index("2026-07-10") < body.index("2026-07-14")
+    assert "  - log: 2026-07-14 @kj - re-ran after padding fix" in body
+
+
+# --- report and values -------------------------------------------------------
+
+
+def test_report_tallies_batches_down_and_verdicts_across(tmp_path, capsys):
+    p = _ledger(
+        tmp_path,
+        "### E1-H1 a\n\n- **Verdict** - Confirmed; 1\n\n"
+        "### E1-H2 b\n\n- **Verdict** - SUPPORTED\n\n"
+        "### E2-H3 c\n\n- **Hypothesis** - open\n",
+    )
+    assert main(["report", str(p)]) == 0
+    out = capsys.readouterr().out
+    assert "| Batch | N | Confirmed | SUPPORTED | other | unverdicted |" in out
+    assert "| E1 | 2 | 1 | 1 |  |  |" in out
+    assert "| E2 | 1 |  |  |  | 1 |" in out
+    assert "| **Total** | 3 | 1 | 1 |  | 1 |" in out
+
+
+def test_values_reads_a_quantity_off_every_block(tmp_path, capsys):
+    p = _ledger(
+        tmp_path,
+        "### E1-H1 a\n\n- **Result** - `DR` 0.2286 = 2.7x baseline, margin `+18.48`\n"
+        "- **Verdict** - Confirmed; DR 2.7x\n\n"
+        "### E1-H2 b\n\n- **Result** (k=1) - DR 0.180, pop residual < 0.58%\n"
+        "- **Verdict** - Refuted; theta(0.08) = 0.7644\n",
+    )
+    assert main(["values", str(p), "DR"]) == 0
+    out = capsys.readouterr().out
+    assert "0.2286" in out and "0.180" in out
+    assert "E1-H1" in out and "E1-H2" in out
+    main(["values", str(p), "pop residual"])
+    assert "< 0.58%" in capsys.readouterr().out
+    main(["values", str(p), "theta"])
+    assert "0.7644" in capsys.readouterr().out
+    main(["values", str(p), "margin"])
+    assert "+18.48" in capsys.readouterr().out
+
+
+def test_values_restricts_by_batch_and_id_and_says_when_dry(tmp_path, capsys):
+    p = _ledger(
+        tmp_path,
+        "### E1-H1 a\n\n- **Result** - DR 0.1\n\n### E2-H2 b\n\n- **Result** - DR 0.2\n",
+    )
+    main(["values", str(p), "DR", "--batch", "E2"])
+    out = capsys.readouterr().out
+    assert "0.2" in out and "0.1" not in out
+    main(["values", str(p), "DR", "--id", "E1-H1"])
+    out = capsys.readouterr().out
+    assert "0.1" in out and "0.2" not in out
+    main(["values", str(p), "gold_full"])
+    assert "no readings of 'gold_full'" in capsys.readouterr().out
+
+
+# --- authorship --------------------------------------------------------------
+
+
+def test_author_creates_the_roster_above_the_first_round(tmp_path, capsys):
+    """The roster is document metadata, so it lands under the overview and
+    above the rounds - never between a round heading and its hypotheses."""
+    p = _ledger(tmp_path, "## E1\n\n### E1-H1 first\n\n- **Verdict** - Ships; 1\n")
+    assert main(["author", str(p), "--handle", "kj", "--name", "Konrad Jelen"]) == 0
+    assert "roster created" in capsys.readouterr().out
+    body = p.read_text(encoding="utf-8")
+    assert body.index("## Authors") < body.index("## E1")
+    assert "- `@kj` Konrad Jelen" in body
+    # a second call for the same handle updates the entry, never doubles it
+    assert main(["author", str(p), "--handle", "@kj", "--name", "K. Jelen"]) == 0
+    body = p.read_text(encoding="utf-8")
+    assert body.count("`@kj`") == 1
+    assert "- `@kj` K. Jelen" in body
+    # and the ledger still parses - the roster is not a declaration
+    assert [h.hid for h in parse_ledger(body)] == ["E1-H1"]
+
+
+def test_a_second_author_joins_the_roster(tmp_path):
+    p = _writable(tmp_path, "### E1-H1 s\n\n- **Hypothesis** - x\n")
+    assert main(["author", str(p), "--handle", "@ab", "--name", "Ada B"]) == 0
+    body = p.read_text(encoding="utf-8")
+    assert "- `@kj` Konrad Jelen" in body and "- `@ab` Ada B" in body
+
+
+def test_every_write_refuses_a_handle_that_is_not_on_the_roster(tmp_path, capsys):
+    """A handle nobody is rostered for is a typo far more often than a new
+    researcher, and after the fact the ledger cannot tell them apart."""
+    p = _writable(tmp_path, "### E1-H1 s\n\n- **Hypothesis** - x\n")
+    before = p.read_text(encoding="utf-8")
+    for argv in (
+        ["register", str(p), "--slug", "s", "--field", "Hypothesis=x", "--author", "@zz"],
+        ["result", str(p), "E1-H1", "--text", "DR 2.7x", "--author", "@zz"],
+        ["verdict", str(p), "E1-H1", "--text", "Confirmed; 1", "--author", "@zz"],
+        ["field", str(p), "E1-H1", "--name", "Grounding", "--text", "x", "--author", "@zz"],
+        ["log-event", str(p), "E1-H1", "--event", "x", "--author", "@zz"],
+    ):
+        assert main(argv) == 2, f"{argv[0]} accepted an unrostered handle"
+        assert "not on the ## Authors roster" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before
+
+
+def test_a_malformed_handle_is_refused_before_the_roster_is_read(tmp_path, capsys):
+    p = _writable(tmp_path, "### E1-H1 s\n\n- **Hypothesis** - x\n")
+    assert main(["result", str(p), "E1-H1", "--text", "x", "--author", "@Konrad"]) == 2
+    assert "bad handle" in capsys.readouterr().err
+
+
+def test_every_write_stamps_an_authored_log_line(tmp_path):
+    """The audit trail IS the provenance - nothing else records who wrote
+    what, so a write that skips it loses the fact permanently."""
+    p = _writable(tmp_path, "## E1\n\n### E1-H1 first\n\n- **Verdict** - Ships; 1\n")
+    main(["register", str(p), "--slug", "s", "--field", "Hypothesis=x", "--author", "@kj"])
+    main(["result", str(p), "E1-H2", "--text", "DR 2.7x", "--author", "@kj"])
+    main(["verdict", str(p), "E1-H2", "--text", "Confirmed; DR 2.7x", "--author", "@kj"])
+    main(
+        ["field", str(p), "E1-H2", "--name", "Persona", "--text", "contrarian", "--author", "@kj"]
+    )
+    block = next(h for h in parse_ledger(p.read_text(encoding="utf-8")) if h.hid == "E1-H2").block
+    logged = [ln.split("@kj - ", 1)[1] for ln in block.splitlines() if "- log:" in ln]
+    assert logged == [
+        "registered",
+        "result recorded",
+        "verdict recorded: Confirmed",
+        "field Persona added",
+    ]
+    assert block.count("- **Log**") == 1
+    assert all("@kj" in ln for ln in block.splitlines() if "- log:" in ln)
+
+
+def test_a_qualified_result_names_its_qualifier_in_the_audit_line(tmp_path):
+    p = _registered(tmp_path)
+    main(["result", str(p), "E1-H1", "--text", "DR 2.7x", "--author", "@kj"])
+    main(
+        [
+            "result",
+            str(p),
+            "E1-H1",
+            "--text",
+            "DR 2.9x",
+            "--qualifier",
+            "re-run b256",
+            "--author",
+            "@kj",
+        ]
+    )
+    body = p.read_text(encoding="utf-8")
+    assert "result recorded (re-run b256)" in body
+
+
+def test_list_filters_by_author(tmp_path, capsys):
+    p = _writable(tmp_path, "### E1-H1 old\n\n- **Hypothesis** - x\n")
+    main(["author", str(p), "--handle", "@ab", "--name", "Ada B"])
+    main(["register", str(p), "--slug", "mine", "--field", "Hypothesis=x", "--author", "@kj"])
+    main(["register", str(p), "--slug", "theirs", "--field", "Hypothesis=x", "--author", "@ab"])
+    capsys.readouterr()  # the register lines name both ids; only the list is under test
+    assert main(["list", str(p), "--author", "kj"]) == 0
+    out = capsys.readouterr().out
+    assert "E1-H2" in out and "E1-H3" not in out and "E1-H1" not in out
+    assert main(["list", str(p), "--author", "@ab", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert [r["id"] for r in payload] == ["E1-H3"]
+    assert payload[0]["author"] == "@ab"
+
+
+def test_check_warns_once_on_unauthored_lines_and_errors_on_an_unknown_handle(tmp_path, capsys):
+    """Thousands of unauthored lines are legitimate history in the ledgers
+    that predate the roster - one aggregated warning, never an error each."""
+    p = _writable(
+        tmp_path,
+        "### E1-H1 s\n\n- **Hypothesis** - x\n- **Log**\n"
+        "  - log: 2026-07-10 - first run\n"
+        "  - log: 2026-07-11 - second run\n"
+        "  - log: 2026-07-12 @zz - by a stranger\n",
+    )
+    assert main(["check", str(p)]) == 1
+    err = capsys.readouterr().err
+    assert err.count("carry no @handle") == 1
+    assert "2 log lines carry no @handle" in err
+    assert "@zz is not on the ## Authors roster" in err
+
+
+# --- field -------------------------------------------------------------------
+
+
+def test_field_adds_a_free_form_field_before_the_outcomes(tmp_path):
+    """The template's field set is a checklist, not a form - the real ledgers
+    carry 520 field names of their own."""
+    p = _registered(tmp_path)
+    main(["result", str(p), "E1-H1", "--text", "DR 2.7x", "--author", "@kj"])
+    assert (
+        main(
+            [
+                "field",
+                str(p),
+                "E1-H1",
+                "--name",
+                "Grounding",
+                "--text",
+                "SOTA x",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 0
+    )
+    body = p.read_text(encoding="utf-8")
+    assert (
+        body.index("**Acceptance bar**") < body.index("**Grounding**") < body.index("**Result**")
+    )
+    (h,) = parse_ledger(body)
+    assert h.fields["Grounding"] == "SOTA x"
+
+
+def test_field_refuses_to_overwrite_without_update(tmp_path, capsys):
+    p = _registered(tmp_path)
+    main(["field", str(p), "E1-H1", "--name", "Status", "--text", "open", "--author", "@kj"])
+    assert (
+        main(["field", str(p), "E1-H1", "--name", "Status", "--text", "closed", "--author", "@kj"])
+        == 2
+    )
+    assert "pass --update" in capsys.readouterr().err
+    assert "**Status** - open" in p.read_text(encoding="utf-8")
+    assert (
+        main(
+            [
+                "field",
+                str(p),
+                "E1-H1",
+                "--name",
+                "Status",
+                "--text",
+                "closed",
+                "--update",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 0
+    )
+    body = p.read_text(encoding="utf-8")
+    assert "**Status** - closed" in body
+    assert body.count("**Status**") == 1
+    assert "field Status updated" in body
+
+
+def test_field_keeps_a_qualifier_when_it_updates(tmp_path):
+    """`- **Acceptance bar** (v2)` is that field with a qualifier; rewriting
+    the label would change what the field is."""
+    p = _writable(tmp_path, "### E1-H1 s\n\n- **Acceptance bar** (v2) - DR >= 1.5x\n")
+    assert (
+        main(
+            [
+                "field",
+                str(p),
+                "E1-H1",
+                "--name",
+                "Acceptance bar",
+                "--text",
+                "DR >= 2.0x",
+                "--update",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 0
+    )
+    assert "- **Acceptance bar** (v2) - DR >= 2.0x" in p.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("name", ["Result", "verdict", "Log"])
+def test_field_refuses_an_outcome_name(tmp_path, capsys, name):
+    """Each outcome has its own command and its own immutability rule;
+    reaching them through `field` would route around both."""
+    p = _registered(tmp_path)
+    before = p.read_text(encoding="utf-8")
+    assert main(["field", str(p), "E1-H1", "--name", name, "--text", "x", "--author", "@kj"]) == 2
+    assert "own command" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before
+
+
+def test_field_refuses_a_table_declared_hypothesis(tmp_path, capsys):
+    p = _writable(tmp_path, AT_A_GLANCE)
+    assert (
+        main(["field", str(p), "E14-H46", "--name", "Persona", "--text", "x", "--author", "@kj"])
+        == 1
+    )
+    assert "table row" in capsys.readouterr().err
+
+
+# --- round-1 adversarial review fixes ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["register", "--slug", "s\n### E9-H99 forged", "--field", "Hypothesis=x"],
+        ["register", "--slug", "s", "--field", "Hypothesis=a\n### E9-H99 forged"],
+        ["result", "E1-H1", "--text", "DR 2.7x\n\n### E9-H99 forged"],
+        ["verdict", "E1-H1", "--text", "Confirmed; 1\n### E9-H99 forged"],
+        ["field", "E1-H1", "--name", "Note", "--text", "see\n### E9-H99 forged"],
+        ["field", "E1-H1", "--name", "No\nte", "--text", "x"],
+        ["log-event", "E1-H1", "--event", "ran\n### E9-H99 forged"],
+    ],
+)
+def test_a_newline_in_any_written_value_is_refused(tmp_path, capsys, argv):
+    """A value is embedded as ONE line of the ledger, so a newline splits the
+    block: the forged id below minted a hypothesis nobody registered, handed it
+    the real one's Result and Verdict, burnt an ordinal - and `check` reported
+    the file clean. Every write command, one guard."""
+    p = _writable(tmp_path, "### E1-H1 s\n\n- **Hypothesis** - x\n")
+    before = p.read_text(encoding="utf-8")
+    cmd, rest = argv[0], argv[1:]
+    assert main([cmd, str(p), *rest, "--author", "@kj"]) == 2
+    assert "single line" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before
+    assert [h.hid for h in parse_ledger(before)] == ["E1-H1"]
+
+
+def test_a_bare_bold_h_bullet_still_claims_its_ordinal(tmp_path, capsys):
+    """`- **H655** - ...` is how a real 6,432-line ledger writes a gated
+    registration. It carries no batch prefix, so neither the parser nor the
+    orphan net sees it - and `next-id` handed back an ordinal the document had
+    already assigned. Counted, not refused: refusing would block every read and
+    write on that ledger until 25 recorded lines were rewritten by hand."""
+    p = _writable(
+        tmp_path,
+        "### E1-H1 first\n\n- **Hypothesis** - x\n\n"
+        "### E1-H2 gated-registrations\n\n"
+        "- **H655** - cross-query associative memory\n"
+        "- **H656** - ingest-time answerable-question nodes\n",
+    )
+    assert main(["next-id", str(p)]) == 0
+    assert "next_h: H657" in capsys.readouterr().out
+    assert (
+        main(["register", str(p), "--slug", "after", "--field", "Hypothesis=x", "--author", "@kj"])
+        == 0
+    )
+    assert "registered E1-H657" in capsys.readouterr().out
+
+
+def test_a_prose_citation_of_a_bare_ordinal_does_not_claim_it(tmp_path, capsys):
+    """The claim is scoped to a bullet's bold label, so a sentence about H655
+    cannot silently skip 600 ordinals."""
+    p = _writable(tmp_path, "### E1-H1 s\n\n- **Result** - H655 recovers 92/110, see H700\n")
+    assert main(["next-id", str(p)]) == 0
+    assert "next_h: H2" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("name", ["Verdict (2026-09-01)", "Result (rerun)", "Log (old)"])
+def test_a_parenthesised_outcome_name_is_still_an_outcome(tmp_path, capsys, name):
+    """The parser strips a trailing parenthetical when it decides what a field
+    IS, so a guard that tests the raw name lets `Verdict (2026-09-01)` past -
+    and it lands ABOVE the recorded verdict, where first-wins makes the new
+    text the verdict every reader sees."""
+    p = _writable(
+        tmp_path,
+        "### E1-H1 s\n\n- **Hypothesis** - x\n- **Verdict** - Confirmed; DR 2.7x\n",
+    )
+    before = p.read_text(encoding="utf-8")
+    assert (
+        main(
+            [
+                "field",
+                str(p),
+                "E1-H1",
+                "--name",
+                name,
+                "--text",
+                "Refuted; re-read",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 2
+    )
+    assert "own command" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before
+    (h,) = parse_ledger(before)
+    assert h.verdict == "Confirmed"
+
+
+def test_register_refuses_a_parenthesised_outcome_field(tmp_path, capsys):
+    p = _writable(tmp_path, "### E1-H1 s\n\n- **Hypothesis** - x\n")
+    assert (
+        main(
+            [
+                "register",
+                str(p),
+                "--slug",
+                "s",
+                "--field",
+                "Verdict (interim)=Confirmed; 1",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 2
+    )
+    assert "precedes its outcome" in capsys.readouterr().err
+
+
+def test_verdict_refuses_an_empty_placeholder_bullet(tmp_path, capsys):
+    """Guarding on the field VALUE let an empty `- **Verdict** -` through: the
+    write reported success, first-wins kept the blank bullet as the canonical
+    verdict, `list` still read unverdicted, and the guard never fired again -
+    three calls stacked three Verdict bullets."""
+    p = _writable(
+        tmp_path,
+        "### E1-H1 s\n\n- **Hypothesis** - x\n- **Result** -\n- **Verdict** -\n",
+    )
+    before = p.read_text(encoding="utf-8")
+    assert (
+        main(["verdict", str(p), "E1-H1", "--text", "Confirmed; DR 1.8x", "--author", "@kj"]) == 2
+    )
+    err = capsys.readouterr().err
+    assert "already carries a Verdict bullet" in err and "empty" in err
+    assert p.read_text(encoding="utf-8") == before
+
+
+def test_a_fenced_roster_grants_nobody_write_authority(tmp_path, capsys):
+    """A ledger that documents the roster format in a ```markdown example must
+    not thereby roster the handle in the example."""
+    p = _ledger(
+        tmp_path,
+        "```markdown\n## Authors\n\n- `@ab` Ada B\n```\n\n### E1-H1 s\n\n- **Hypothesis** - x\n",
+    )
+    assert main(["log-event", str(p), "E1-H1", "--event", "x", "--author", "@ab"]) == 2
+    assert "not on the ## Authors roster" in capsys.readouterr().err
+
+
+def test_a_fence_inside_the_roster_section_does_not_empty_it(tmp_path):
+    """The mirror case, and the worse one: reading raw, a fenced example inside
+    a real `## Authors` section refused every write by the author on it."""
+    p = _ledger(
+        tmp_path,
+        "## Authors\n\n- `@kj` Konrad Jelen\n\n```markdown\n- `@xx` Example Entry\n```\n\n"
+        "### E1-H1 s\n\n- **Hypothesis** - x\n",
+    )
+    assert main(["log-event", str(p), "E1-H1", "--event", "x", "--author", "@kj"]) == 0
+    assert main(["author", str(p), "--handle", "@ab", "--name", "Ada B"]) == 0
+    body = p.read_text(encoding="utf-8")
+    assert "- `@xx` Example Entry" in body  # the fenced example is untouched, never updated
+    assert body.index("- `@ab` Ada B") < body.index("### E1-H1")  # inside the Authors section
+    assert set(roster_of(body)) == {"@kj", "@ab"}
+
+
+# --- confirming-round fixes ---------------------------------------------------
+
+
+@pytest.mark.parametrize("brk", ["\r", "\v", "\f", "\x1c", "\x85", " ", " "])
+def test_any_line_break_is_refused_not_only_the_newline(tmp_path, capsys, brk):
+    """The guard tested `"\\n" in value` while the parser splits with
+    `str.splitlines()`, which breaks on nine characters. A bare CR - what a
+    captured run log or a PDF paste carries - minted a phantom hypothesis
+    exactly as the newline did. Guard and mechanism must ask one question."""
+    p = _writable(tmp_path, "### E01-H1 s\n\n- **Hypothesis** - x\n")
+    before = p.read_text(encoding="utf-8")
+    assert (
+        main(
+            [
+                "verdict",
+                str(p),
+                "E01-H1",
+                "--text",
+                f"Confirmed; 1{brk}### E09-H99 minted",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 2
+    )
+    assert "single line" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before
+    assert [h.hid for h in parse_ledger(before)] == ["E01-H1"]
+
+
+def test_a_qualified_name_finds_the_field_it_qualifies(tmp_path, capsys):
+    """`_field_lines` keys by base name, so a raw-label lookup let
+    `--name "Grounding (v2)"` miss the existing `Grounding` and append a second
+    bullet the parser could never reach - with `--update` appending a third."""
+    p = _writable(tmp_path, "### E01-H1 s\n\n- **Hypothesis** - x\n- **Grounding** - original\n")
+    assert (
+        main(
+            [
+                "field",
+                str(p),
+                "E01-H1",
+                "--name",
+                "Grounding (v2)",
+                "--text",
+                "new",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 2
+    )
+    assert "pass --update" in capsys.readouterr().err
+    assert (
+        main(
+            [
+                "field",
+                str(p),
+                "E01-H1",
+                "--name",
+                "Grounding (v2)",
+                "--text",
+                "new",
+                "--update",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 0
+    )
+    body = p.read_text(encoding="utf-8")
+    assert body.count("**Grounding**") == 1
+    (h,) = parse_ledger(body)
+    assert h.fields["Grounding"] == "new"
+    # the audit line names the bullet as written, not the key that found it
+    assert "field Grounding updated" in body
+
+
+def test_a_plain_bullet_outranks_a_qualified_one_already_stored(tmp_path):
+    """A real ledger writes `- **Verdict (interim)**` ABOVE the `- **Verdict**`
+    that supersedes it. First-wins alone reported the interim as the record:
+    one kgf hypothesis read "gate PASSED decisively" while its own recorded
+    verdict was "REFUTED by 1.7 pts". Confidently wrong on the round-state
+    tally is what this parser refuses everywhere else."""
+    p = _ledger(
+        tmp_path,
+        "### E01-H1 s\n\n"
+        "- **Verdict (interim)** - Confirmed; gate passed\n"
+        "- **Verdict** - Refuted; the adjudication clause fails by 1.7 pts\n"
+        "- **Result (gate)** - DR 1.1x\n",
+    )
+    (h,) = parse_ledger(p.read_text(encoding="utf-8"))
+    assert h.verdict == "Refuted"
+    assert h.fields["Verdict"].startswith("Refuted")
+    # and the qualified-only field is still recognised - that is what the fold buys
+    assert h.fields["Result"] == "DR 1.1x"
+
+
+# --- round-3 confirming fixes -------------------------------------------------
+
+
+def test_the_reader_and_the_writer_agree_which_bullet_is_the_field(tmp_path):
+    """`_read_block` preferred the plain bullet while `_field_lines` stayed
+    first-wins, so `field --update` rewrote the SUPERSEDED bullet while every
+    reader kept returning the plain one - the write was lost and the audit line
+    reported success. The two must answer one question."""
+    p = _writable(
+        tmp_path,
+        "### E01-H1 s\n\n"
+        "- **Grounding (superseded)** - the old grounding\n"
+        "- **Grounding** - the REAL grounding\n",
+    )
+    assert (
+        main(
+            [
+                "field",
+                str(p),
+                "E01-H1",
+                "--name",
+                "Grounding",
+                "--text",
+                "THE UPDATED VALUE",
+                "--update",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 0
+    )
+    body = p.read_text(encoding="utf-8")
+    (h,) = parse_ledger(body)
+    assert h.fields["Grounding"] == "THE UPDATED VALUE", (
+        "the write landed on a bullet no reader returns"
+    )
+    assert "- **Grounding (superseded)** - the old grounding" in body
+
+
+def test_a_trailing_line_break_in_a_qualifier_cannot_tear_the_bullet(tmp_path):
+    """A trailing break is deliberately allowed - it merges into the line
+    terminator everywhere else. `--qualifier` was the one value embedded
+    unstripped, so `- **Result (rerun<CR>)**` parsed as neither a Result nor
+    anything else while `check` called the file clean."""
+    p = _writable(tmp_path, "### E01-H1 s\n\n- **Result** - first reading\n")
+    assert (
+        main(
+            [
+                "result",
+                str(p),
+                "E01-H1",
+                "--text",
+                "second reading 7",
+                "--qualifier",
+                "rerun\r",
+                "--author",
+                "@kj",
+            ]
+        )
+        == 0
+    )
+    body = p.read_text(encoding="utf-8")
+    assert "- **Result (rerun)** - second reading 7" in body
+    assert "\r" not in body
+    assert main(["check", str(p)]) == 0
+
+
+@pytest.mark.parametrize("name", ["(v2)", "   ", "()"])
+def test_a_name_that_is_empty_once_qualified_is_refused(tmp_path, capsys, name):
+    """`- **** - ghost` matches no regex in the module, so the field is
+    invisible to every reader while the tool reports success."""
+    p = _writable(tmp_path, "### E01-H1 s\n\n- **Hypothesis** - x\n")
+    before = p.read_text(encoding="utf-8")
+    assert (
+        main(["field", str(p), "E01-H1", "--name", name, "--text", "ghost", "--author", "@kj"])
+        == 2
+    )
+    assert "not a field name" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before
+
+
+def test_the_duplicate_refusal_names_the_bullet_as_written(tmp_path, capsys):
+    p = _writable(tmp_path, "### E01-H1 s\n\n- **Notes (v2)** - x\n")
+    assert (
+        main(["field", str(p), "E01-H1", "--name", "Notes", "--text", "y", "--author", "@kj"]) == 2
+    )
+    assert "already carries 'Notes (v2)'" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "argv, refused",
+    [
+        (["result", "--text", "r 0.9", "--qualifier", "n*2"], "read back as a Result"),
+        (["field", "--name", "Grounding (k*2)", "--text", "x"], "read back as 'Grounding'"),
+        (
+            ["field", "--name", "E01-H2 comparison", "--text", "x"],
+            "read back as 'E01-H2 comparison'",
+        ),
+    ],
+)
+def test_a_bullet_no_reader_matches_is_refused_before_the_write(tmp_path, capsys, argv, refused):
+    """`- **Result (n*2)** - ...` landed, `show` listed one Result and `check`
+    called the file clean: four of five writes never parse-back verified. The
+    line is now read with the same FIELD_RE every query uses before write_text."""
+    p = _writable(tmp_path, "### E01-H1 s\n\n- **Hypothesis** - x\n- **Result** - r 0.5\n")
+    before = p.read_text(encoding="utf-8")
+    cmd, rest = argv[0], argv[1:]
+    assert main([cmd, str(p), "E01-H1", *rest, "--author", "@kj"]) == 2
+    assert refused in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before
+
+
+@pytest.mark.parametrize("second", ["Hypothesis", "Hypothesis (v2)"])
+def test_register_refuses_a_field_name_given_twice(tmp_path, capsys, second):
+    """The parser returns one bullet per base name, so the second value no
+    query returns and no --update reaches; `field` refuses the same shape."""
+    p = _writable(tmp_path, "### E01-H1 s\n\n- **Hypothesis** - x\n")
+    before = p.read_text(encoding="utf-8")
+    argv = ["register", str(p), "--slug", "dup", "--field", "Hypothesis=a"]
+    argv += ["--field", f"{second}=b", "--author", "@kj"]
+    assert main(argv) == 1
+    assert "a name given twice" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before
+
+
+def test_author_is_the_registrant_never_the_first_writer(tmp_path, capsys):
+    """A hand-written block answered `@kj` after its first result write: the
+    property took the first authored log line, whatever its event. Only a
+    `registered` event names the registrant; anything else answers None."""
+    p = _writable(tmp_path, "### E01-H1 s\n\n- **Hypothesis** - x\n")
+    assert main(["result", str(p), "E01-H1", "--text", "r 0.7", "--author", "@kj"]) == 0
+    assert (
+        main(["register", str(p), "--slug", "mine", "--field", "Hypothesis=y", "--author", "@kj"])
+        == 0
+    )
+    by_id = {h.hid: h for h in parse_ledger(p.read_text(encoding="utf-8"))}
+    assert by_id["E01-H1"].author is None
+    assert by_id["E01-H2"].author == "@kj"
+    capsys.readouterr()
+    assert main(["list", str(p), "--author", "@kj"]) == 0
+    out = capsys.readouterr().out
+    assert "E01-H2" in out and "E01-H1" not in out
+
+
+def test_a_blank_qualifier_is_no_qualifier(tmp_path, capsys):
+    """`--qualifier " "` passed the `not qualifier` immutability test, was
+    stripped to nothing, and landed a second plain Result."""
+    p = _writable(tmp_path, "### E01-H1 s\n\n- **Result** - r 0.5\n")
+    before = p.read_text(encoding="utf-8")
+    argv = ["result", str(p), "E01-H1", "--text", "r 0.9", "--qualifier", " ", "--author", "@kj"]
+    assert main(argv) == 2
+    assert "immutable" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before
+
+
+def test_register_refuses_a_field_name_opening_with_an_id_and_says_so(tmp_path, capsys):
+    """The count check already refused the block (the reader takes the bullet
+    for a declaration that ends it), but the message named `*` and a repeated
+    name as the only causes - a diagnosis none of which applied."""
+    p = _writable(tmp_path, "### E01-H1 s\n\n- **Hypothesis** - x\n")
+    before = p.read_text(encoding="utf-8")
+    argv = ["register", str(p), "--slug", "cmp", "--field", "Hypothesis=a"]
+    argv += ["--field", "E01-H1 comparison=b", "--author", "@kj"]
+    assert main(argv) == 1
+    assert "an opening hypothesis id" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8") == before

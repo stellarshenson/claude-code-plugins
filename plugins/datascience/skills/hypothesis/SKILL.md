@@ -29,26 +29,35 @@ echo "toolkit $LIB"
 
 Both branches exit non-zero and neither is advisory: an absent library (`FATAL`) and a version mismatch (`STALE`). A mismatch means the CLI is not the one this file was written against, so its documented flags and rules are unverified. Report the line and stop; do not work around it.
 
-## Ledger queries - `hypothesis-tools`
+## Ledger queries and appends - `hypothesis-tools`
 
-Read the ledger's state through the CLI, never by re-reading the file. A twelve-round log is 300+ lines to re-read for one ordinal, and the cost grows every round. Read-only - it never writes; use Edit for that. Full command reference and the parse contract in `references/ledger-queries.md`.
+Work the ledger through the CLI, never by re-reading or free-editing the file. A real log runs to 6,400 lines to re-read for one ordinal, and the cost grows every round. Writes are append-only, mirroring the ledger's own discipline - nothing rewrites recorded text. Full command reference and the parse contract in `references/ledger-queries.md`.
 
-| command | answers |
+| command | does |
 |---|---|
 | `hypothesis-tools next-id <log>` | next free global `H<n>` + next `E<batch>` - the fanout dedupe number |
 | `hypothesis-tools list <log> [--verdict V] [--batch E12] [--json]` | every id, slug, verdict + the tally; `--verdict none` for unverdicted |
 | `hypothesis-tools show <log> E12-H33` | one hypothesis verbatim, instead of the whole log |
+| `hypothesis-tools report <log>` | batches down, verdict labels across - the round state as one paste-ready table |
+| `hypothesis-tools values <log> <quantity>` | every reading of one measured quantity (`DR`, `gold_full`) with id, line and context |
+| `hypothesis-tools author <log> --handle @xx --name N` | add or update a `## Authors` roster entry - do this once before the first write |
+| `hypothesis-tools register <log> --slug S --field N=V ... --author @xx` | append a pre-registered hypothesis at the next free ordinal; `--new-batch` opens the next round |
+| `hypothesis-tools result / verdict / log-event <log> <id> --author @xx` | record the outcome after the run - Result (immutable, re-runs need `--qualifier`), the one Verdict (a flip is a new round), a dated log line |
+| `hypothesis-tools field <log> <id> --name N --text V [--update] --author @xx` | add a field the template does not name, or replace one already recorded |
 | `hypothesis-tools check <log>` | validates the ledger; exit 1 on any error - rules in `references/ledger-queries.md` |
 
-- **Never guess the next ordinal** - `next-id` reads it; a reset or reused `<n>` makes one number name several hypotheses and has to be undone later
-- **`next-id` refuses rather than guesses (exit 1)** - an unclosed code fence or an id it could not parse means the highest ordinal may not be the highest; fix what it names, never work around it
-- **A compact-shape hypothesis reports `verdict: null`** - its verdict is narrative, and the tool refuses to infer one from prose rather than return a confident wrong label; read the line with `show` when the verdict matters
+- **Register through the CLI, never by guessing the ordinal** - `register` reads the next free `H<n>`, writes the block and verifies it parses back; a reset or reused `<n>` makes one number name several hypotheses and has to be undone later. Prose around the block (overview paragraph, tables) stays Edit's job
+- **Every write is authored - ask for the handle once and reuse it** - `--author @xx` is required and must already be on the `## Authors` roster (`author` puts it there), the same handle the `project-management` toolkit uses. Each write appends its own dated `log:` line naming the author, so who recorded a result or a verdict survives the session that recorded it
+- **The field set is a checklist, not a form** - `register --field` and `field` take any name the research needs (`Grounding`, `Persona`, `Status`); the template's names render in canonical order and the rest follow. `check` never warns about a name it does not know - only the outcome fields have fixed rules, and `field` refuses them so `result` / `verdict` / `log-event` keep them
+- **`next-id` and `register` refuse rather than guess (exit 1)** - an unclosed code fence or an id they could not parse means the highest ordinal may not be the highest; fix what `check` names, never work around it. The writes that name a hypothesis already declared allocate no ordinal and do not refuse on those grounds
+- **Verdict labels read flexibly, and the vocabulary is open** - case, bold, dated qualifiers and hyphen variants fold to the canonical labels; a ledger-grown label (`SUPPORTED`, `PARTIAL`) is read as written and `check` warns once, aggregated. Only a verdict with no readable label at all is an error
+- **A compact-shape hypothesis reports `verdict: null`** - its verdict is narrative, and the tool refuses to infer one from prose rather than return a confident wrong label; read the line with `show` when the verdict matters. An at-a-glance table row can declare, and its verdict column is read
 
 ## Workflow
 - Pick the doc - experiments log (recording work) or SOTA doc (concluding once the arc converges)
-- Open the canonical doc before writing - `hypothesis-tools list` for the round state, `next-id` for the next ordinal, append after the last round
+- Open the canonical doc before writing - `hypothesis-tools list` for the round state, `next-id` for the next ordinal, append after the last round; ask for the author handle once and reuse it for every write in the session
 - Generating hypotheses (single or fanout batch) - ask scale + persona, pre-register before anything lands or runs; see Fanout
-- Updating an existing hypothesis (re-run, fix, changed threshold) - append a `log:` line to its Log; original Result and Verdict stay as recorded, a verdict flip becomes a new round
+- Updating an existing hypothesis (re-run, fix, changed threshold) - `hypothesis-tools log-event`; original Result and Verdict stay as recorded, a verdict flip becomes a new round
 - Before concluding a SOTA - suggest an ablative study of the strongest hypothesis or all survivors, to measure each component's marginal worth; see `references/execution-and-ablation.md`
 - Draft, then re-read; cut any sentence a table or number carries faster
 
@@ -83,8 +92,8 @@ Section order and each section's must-have in `references/experiments-log-struct
 ## Per-hypothesis template
 Each hypothesis: one-paragraph overview, optional unlabelled lever-detail paragraph (the setup story, only when the regime has one), then the fixed bullet set. Overview, lever-detail and Experiment block together must let a reader reproduce and independently test it from the doc alone. Field spec, naming/ordinal scheme, Log rendered example, and Experiment-block-vs-shared-Setup in `references/per-hypothesis-template.md`.
 - **Fields** - Hypothesis, Lever, Mechanism, Prediction, Acceptance bar, Pre-experiment probe (optional), Experiment, Result, Verdict, Log (optional)
-- **Hypothesis form** - `because <mechanism>, <intervention> will <outcome ≥ threshold> while <guardrail>`
-- **Verdicts** - the closed set enumerated once in `references/per-hypothesis-template.md`, each with the number that justifies it; `hypothesis-tools check` rejects anything outside it
+- **Hypothesis form** - `because <mechanism>, <intervention> will <outcome ≥ threshold> while <guardrail>`; guardrails the whole batch shares are declared once in the batch's opening line, never restated per block
+- **Verdicts** - the canonical set is enumerated once in `references/per-hypothesis-template.md`, each verdict carrying the number that justifies it
 - **Id** - `E<batch>|R<round>-H<n>`, one global ascending `<n>` never reset; a 2-3 part slug aids memory but the numeric id is the identity; the batch/round token groups 2-5 hypotheses. Resetting `<n>` per round makes one number name many hypotheses - it has to be undone later
 - **Experiment block vs shared Setup** - carry the block when a hypothesis owns its regime (own artefact / procedure / data); omit when a shared Setup already covers a one-toggle batch
 
@@ -106,7 +115,7 @@ Generate hypotheses from the campaign's kernel instead of waiting for them; pre-
 - **User's framework is the generative seed** - a user-dictated framework (hypothesis, mechanism, lever, area, hunch) is what the fanout generates FROM - perturbed by the operators, extrapolated, explored around; never filed as just one more candidate
 - **Personas** - pluggable hypothesisers in `generators/` (follower, contrarian, heretical, hybridizer, mechanist, deflationist, scout); each an exploration policy with an expected verdict signature that self-tests the round - read the chosen file before generating
 - **Kernel first** - fanout requires the log's typed interface: channel vocabulary, lever record (forcing + decay + cost), metric panel + naive baseline, verdict protocol; elicit into Methodology on the first fanout - ask the author, never invent channels
-- **Pre-registration is the prerequisite** - every generated hypothesis is proposed via the pre-registration table and signed off BEFORE it is appended or executed; dedupe against the global H-ordinal registry (`hypothesis-tools next-id`), run a cheap kill-gate pass before proposing
+- **Pre-registration is the prerequisite** - every generated hypothesis is proposed via the pre-registration table and signed off BEFORE it is appended or executed; dedupe against the global H-ordinal registry and land each signed-off hypothesis with `hypothesis-tools register`, run a cheap kill-gate pass before proposing
 
 ## SOTA document
 Conclusion doc; carries surviving components only, cross-links the log as evidence. Section order and each section's must-have in `references/sota-document.md` - read it before writing. Drop a section only when the design has nothing for it.

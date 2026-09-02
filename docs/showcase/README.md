@@ -4,33 +4,33 @@ Real production output from the plugins in this marketplace. Direct links to exi
 
 ## svg-infographics: production diagrams
 
-Ten examples picked from the [`plugins/svg-infographics/examples/`](../plugins/svg-infographics/examples/) set (68 total). Every coordinate Python-calculated, every colour from a CSS theme class, every file passes the six validators (overlaps / contrast / alignment / connectors / CSS / collisions).
+Ten examples picked from the [`plugins/svg-infographics/examples/`](../../plugins/svg-infographics/examples/) set (68 total). Every coordinate Python-calculated, every colour from a CSS theme class, every file passes the six validators (overlaps / contrast / alignment / connectors / CSS / collisions).
 
 | File | Type | Notes |
 |------|------|-------|
-| [architecture_overview_titan_industries.svg](../plugins/svg-infographics/examples/architecture_overview_titan_industries.svg) | Architecture overview | Multi-layer stack with manifold connectors converging on a shared platform spine |
-| [delivery_model_optima_manufacturing.svg](../plugins/svg-infographics/examples/delivery_model_optima_manufacturing.svg) | Delivery model | Card grid with phase-staged headers, light/dark dual mode |
-| [hybrid_architecture_nexus.svg](../plugins/svg-infographics/examples/hybrid_architecture_nexus.svg) | Hybrid architecture | L-chamfer routing through obstacles, container-scoped paths |
-| [methodology_flow_meridian.svg](../plugins/svg-infographics/examples/methodology_flow_meridian.svg) | Process flow | Phase progression with leader-mode callouts |
-| [delivery_timeline_meridian.svg](../plugins/svg-infographics/examples/delivery_timeline_meridian.svg) | Timeline | Phase bars with milestones, headline + subtitle typography |
-| [03_mature_retrieval_pipeline.svg](../plugins/svg-infographics/examples/03_mature_retrieval_pipeline.svg) | Pipeline diagram | Sankey-style manifold ribbon merging 4 sources into 1 spine |
-| [06_hybrid_scorecard.svg](../plugins/svg-infographics/examples/06_hybrid_scorecard.svg) | Scorecard | Numeric grid with per-cell colour mapping, accessible contrast |
-| [17_fibonacci_scoring.svg](../plugins/svg-infographics/examples/17_fibonacci_scoring.svg) | Risk matrix | Likelihood x impact matrix with risk-banded fills |
-| [header_banner_apex_financial.svg](../plugins/svg-infographics/examples/header_banner_apex_financial.svg) | Header banner | Title + decorative graphics under the 20% horizontal rule |
-| [card_grid.svg](../plugins/svg-infographics/examples/card_grid.svg) | Generic card grid | Reference layout for the 4-card-row pattern, with anchor labels |
+| [architecture_overview_titan_industries.svg](../../plugins/svg-infographics/examples/architecture_overview_titan_industries.svg) | Architecture overview | Multi-layer stack with manifold connectors converging on a shared platform spine |
+| [delivery_model_optima_manufacturing.svg](../../plugins/svg-infographics/examples/delivery_model_optima_manufacturing.svg) | Delivery model | Card grid with phase-staged headers, light/dark dual mode |
+| [hybrid_architecture_nexus.svg](../../plugins/svg-infographics/examples/hybrid_architecture_nexus.svg) | Hybrid architecture | L-chamfer routing through obstacles, container-scoped paths |
+| [methodology_flow_meridian.svg](../../plugins/svg-infographics/examples/methodology_flow_meridian.svg) | Process flow | Phase progression with leader-mode callouts |
+| [delivery_timeline_meridian.svg](../../plugins/svg-infographics/examples/delivery_timeline_meridian.svg) | Timeline | Phase bars with milestones, headline + subtitle typography |
+| [03_mature_retrieval_pipeline.svg](../../plugins/svg-infographics/examples/03_mature_retrieval_pipeline.svg) | Pipeline diagram | Sankey-style manifold ribbon merging 4 sources into 1 spine |
+| [06_hybrid_scorecard.svg](../../plugins/svg-infographics/examples/06_hybrid_scorecard.svg) | Scorecard | Numeric grid with per-cell colour mapping, accessible contrast |
+| [17_fibonacci_scoring.svg](../../plugins/svg-infographics/examples/17_fibonacci_scoring.svg) | Risk matrix | Likelihood x impact matrix with risk-banded fills |
+| [header_banner_apex_financial.svg](../../plugins/svg-infographics/examples/header_banner_apex_financial.svg) | Header banner | Title + decorative graphics under the 20% horizontal rule |
+| [card_grid.svg](../../plugins/svg-infographics/examples/card_grid.svg) | Generic card grid | Reference layout for the 4-card-row pattern, with anchor labels |
 
 Plus the rest of `plugins/svg-infographics/examples/` (68 SVGs total, mix of pipelines, scorecards, timelines, headers, embroidery / decoration tiers, and per-client themed variants).
 
 ## devils-advocate: worked analyses
 
-Four end-to-end critical analyses ship in [`plugins/devils-advocate/examples/`](../plugins/devils-advocate/examples/). Each opens with the devil persona, then the concern catalogue with Fibonacci risk scores, then the per-iteration scorecard showing residual convergence.
+Four end-to-end critical analyses ship in [`plugins/devils-advocate/examples/`](../../plugins/devils-advocate/examples/). Each opens with the devil persona, then the concern catalogue with Fibonacci risk scores, then the per-iteration scorecard showing residual convergence.
 
 | File | Target | Trajectory |
 |------|--------|-----------|
-| [executive-pushback-analysis.md](../plugins/devils-advocate/examples/executive-pushback-analysis.md) | Executive summary defending a missed KPI | 21 concerns, 8 iterations, residual 269 -> 2 |
-| [readme-rewrite-analysis.md](../plugins/devils-advocate/examples/readme-rewrite-analysis.md) | PROGRAM.md + BENCHMARK.md drafts | 7 concerns, baseline 121.3 |
-| [kg-builder-design-analysis.md](../plugins/devils-advocate/examples/kg-builder-design-analysis.md) | Architecture design doc | 10 concerns, 88.9 -> 15.5 (2 fully shown) |
-| [kg-builder-full-analysis.md](../plugins/devils-advocate/examples/kg-builder-full-analysis.md) | Same target as above | All 10 concerns + 6 scorecards, 88.9 -> 15.5 |
+| [executive-pushback-analysis.md](../../plugins/devils-advocate/examples/executive-pushback-analysis.md) | Executive summary defending a missed KPI | 21 concerns, 8 iterations, residual 269 -> 2 |
+| [readme-rewrite-analysis.md](../../plugins/devils-advocate/examples/readme-rewrite-analysis.md) | PROGRAM.md + BENCHMARK.md drafts | 7 concerns, baseline 121.3 |
+| [kg-builder-design-analysis.md](../../plugins/devils-advocate/examples/kg-builder-design-analysis.md) | Architecture design doc | 10 concerns, 88.9 -> 15.5 (2 fully shown) |
+| [kg-builder-full-analysis.md](../../plugins/devils-advocate/examples/kg-builder-full-analysis.md) | Same target as above | All 10 concerns + 6 scorecards, 88.9 -> 15.5 |
 
 ## autobuild: real iteration trajectories
 

@@ -1,5 +1,0 @@
-[NbConvertApp] Converting notebook notebooks/05-kj-H17-crosslingual-manifold-retrain.ipynb to notebook
-/home/lab/workspace/private/ai-assistants/claude-code-plugins/.venv/lib/python3.12/site-packages/nbformat/__init__.py:96: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.
-  validate(nb)
-[IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
-[NbConvertApp] Writing 12855 bytes to notebooks/05-kj-H17-crosslingual-manifold-retrain.ipynb

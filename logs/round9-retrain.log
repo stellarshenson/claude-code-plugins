@@ -1,4 +1,0 @@
-  low: thr 0.45  r1_mt +0.00  r1_direct -3.99  unmatched_rarity -6.97
-  medium: thr 0.40  r1_mt +0.00  r1_direct -2.97  unmatched_rarity -4.61
-  high: thr 0.35  r1_mt +2.36  r1_direct -4.37  unmatched_rarity -0.86
-wrote EXPERIMENT config (oversample_ne=3) -> /home/lab/workspace/private/ai-assistants/claude-code-plugins/src/stellars_claude_code_plugins/config_document_processing.experiment.yaml

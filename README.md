@@ -5,7 +5,7 @@
 [![Total PyPI downloads](https://static.pepy.tech/badge/stellars-claude-code-plugins)](https://pepy.tech/project/stellars-claude-code-plugins)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 
-<img alt="stellars-claude-code-plugins marketplace overview - 6 plugins grouped by category" src="assets/svg/01_marketplace_overview.svg" width="100%">
+<img alt="stellars-claude-code-plugins marketplace overview - 6 plugins grouped by category" src=".resources/svg/01_marketplace_overview.svg" width="100%">
 
 ## Your AI agent will cut corners. This is the forcing function.
 
@@ -63,7 +63,7 @@ Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop
 
 ## autobuild
 
-<img alt="autobuild 8-phase lifecycle: research, hypothesis, plan, implement, test, review, record, next" src="assets/svg/02_autobuild_phases.svg" width="100%">
+<img alt="autobuild 8-phase lifecycle: research, hypothesis, plan, implement, test, review, record, next" src=".resources/svg/02_autobuild_phases.svg" width="100%">
 
 Runs structured multi-iteration development cycles where each iteration passes through a full phase lifecycle with quality gates. A program defines what to build, a benchmark measures progress, and the engine enforces the workflow until the objective is met or iterations are exhausted.
 
@@ -99,7 +99,7 @@ See [plugins/autobuild/README.md](plugins/autobuild/) for the full phase lifecyc
 
 ## devils-advocate
 
-<img alt="devils-advocate Fibonacci risk matrix and sample concerns iterating to resolved" src="assets/svg/03_devils_advocate_scoring.svg" width="100%">
+<img alt="devils-advocate Fibonacci risk matrix and sample concerns iterating to resolved" src=".resources/svg/03_devils_advocate_scoring.svg" width="100%">
 
 Systematically critiques documents from the perspective of their toughest audience. Builds a devil persona, harvests verifiable facts, generates a risk-scored concern catalogue, and iterates corrections until residual risk is acceptable.
 
@@ -128,7 +128,7 @@ See [plugins/devils-advocate/README.md](plugins/devils-advocate/) for scoring fo
 
 ## svg-infographics
 
-<img alt="svg-infographics 6-phase workflow and 8 shipped CLI tools (validators + calculators)" src="assets/svg/04_svg_infographics_workflow.svg" width="100%">
+<img alt="svg-infographics 6-phase workflow and 8 shipped CLI tools (validators + calculators)" src=".resources/svg/04_svg_infographics_workflow.svg" width="100%">
 
 Creates production-quality SVG infographics with a mandatory 6-phase workflow (research, grid, scaffold, content, finishing, validation). Every coordinate is Python-calculated, every colour traces to an approved theme swatch, and six validation tools check overlaps, WCAG contrast, alignment, connector quality, CSS compliance, and pairwise connector collisions before delivery.
 
@@ -164,7 +164,7 @@ Includes 60+ production SVG examples, 13 CLI tools (6 validators + 7 calculators
 
 ## datascience
 
-<img alt="datascience project scaffold and notebook section pipeline (header, GPU, imports, config, data, model, eval)" src="assets/svg/05_datascience_pipeline.svg" width="100%">
+<img alt="datascience project scaffold and notebook section pipeline (header, GPU, imports, config, data, model, eval)" src=".resources/svg/05_datascience_pipeline.svg" width="100%">
 
 Enforces data science project standards derived from production notebook workflows. Five skills auto-trigger when working with notebooks, datasets, rich output, prompts, or progress bars. Nine commands fix existing code, scaffold new projects, and apply prompt engineering techniques.
 
@@ -199,7 +199,7 @@ See [plugins/datascience/README.md](plugins/datascience/) for the full list of s
 
 ## journal
 
-<img alt="journal append-only timeline with archive and continuous numbering" src="assets/svg/07_journal_audit.svg" width="100%">
+<img alt="journal append-only timeline with archive and continuous numbering" src=".resources/svg/07_journal_audit.svg" width="100%">
 
 Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers on journal-related phrases (see below) or after substantive work, maintaining a consistent audit trail in `.claude/JOURNAL.md`. Includes a deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement — the three pure-string subcommands run with no generative AI in the loop, and `standardize` orchestrates a focused `claude -p` subprocess per offender to repair word-count drift on entries `check` warned on.
 
@@ -283,7 +283,7 @@ See [plugins/project-management/README.md](plugins/project-management/) for the 
 
 ## document-processing
 
-<img alt="document-processing 3-stage flow: sources, grounding, compliant cited output" src="assets/svg/06_document_processing_grounding.svg" width="100%">
+<img alt="document-processing 3-stage flow: sources, grounding, compliant cited output" src=".resources/svg/06_document_processing_grounding.svg" width="100%">
 
 Structured document processing with source grounding and quality control. Takes input documents through a verified workflow (analyze, draft, ground, uniformize) and produces outputs where every factual claim is traceable to source material.
 

@@ -181,6 +181,11 @@ ledger parser, verdict reading and orphan checks
   - repro: hypothesis-tools check plugins/datascience/skills/hypothesis/examples/summary-table.md
   - test-tags: MANUAL
   - log: 2026-08-28T08:22:14Z @kj added
+- [ ] `DEF-HYPO-49` **A summary table written to the skill's own ID-cell spec cannot declare** - MAJOR; the skill prescribes an ID cell carrying the id AND the memory slug (summary-table.md:6, 'E30-H106 turbomind-throughput'), but _table_declarations only accepts a first cell that is exactly one id with nothing else, so such a row declares nothing while TABLE_ID_RE reports it as a failed declaration; a ledger whose hypotheses live only in such a table gets an error per row from check and a refusal from next-id and register
+  - repro: hypothesis-tools check plugins/datascience/skills/hypothesis/examples/summary-table.md - 7 errors, 0 hypotheses; the same file is the skill's own worked example of the format
+  - test-tags: FUNCTIONAL
+  - root-cause: 2026-09-01T10:33:41Z @kj the at-a-glance table shape was added against sci-demographic-collapse, whose ID cells are bare ids; the shipped example's documented id-plus-slug form was never in that evidence base
+  - log: 2026-09-01T10:33:41Z @kj added
 
 ## autobuild orchestrator `BUILD`
 

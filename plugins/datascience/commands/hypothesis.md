@@ -30,15 +30,16 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 ## What to do
 
 1. Read the `datascience:hypothesis` skill, then the closest `examples/` doc for what you are writing
-2. Decide doc + action: **record a round** → experiments log (default); **conclude / update the design** → SOTA doc
-3. **Find the canonical doc first** - `Glob docs/**/*experiments*.md` and `*sota*.md`, confirm by the secondary-title marker (not the filename); if one exists for the track, append - never start a parallel doc
-4. **Experiments log (append-only)**:
-   - `hypothesis-tools next-id <log>` for the next free `H<n>` and batch token - never guess it, and never reset the ordinal; append after the last round, and never rewrite a recorded verdict (supersede with a one-line back-reference)
+2. **Ask for the author handle once** and reuse it - every write takes `--author @xx`, and the handle must be on the ledger's `## Authors` roster (`hypothesis-tools author LOG --handle @xx --name "Full Name"`) before it can write
+3. Decide doc + action: **record a round** → experiments log (default); **conclude / update the design** → SOTA doc
+4. **Find the canonical doc first** - `Glob docs/**/*experiments*.md` and `*sota*.md`, confirm by the secondary-title marker (not the filename); if one exists for the track, append - never start a parallel doc
+5. **Experiments log (append-only)**:
+   - Land each signed-off hypothesis with `hypothesis-tools register` (it reads the next free `H<n>` itself - never guess it, never reset the ordinal); record outcomes with `result` / `verdict` / `log-event`, add a field the template does not name with `field`, and never rewrite a recorded verdict (a flip is a new round with a one-line back-reference)
    - Write each hypothesis with the skill's per-hypothesis template; add rows to the research-at-a-glance and per-batch results tables
    - Ensure Methodology defines a naive baseline; report each result as a delta against it (skill: "Naive baseline mandatory")
    - **Show the user the before/after summary tables** (skill: "User-facing summary tables") - pre-registration before the run, verdict + interpretation after
-5. **SOTA doc (rewrite on convergence)**: mirror the docdistance SOTA section order; carry surviving components only; cross-link the log as evidence
-6. Apply the skill's Rules (sanitise, equations, terse style); re-read and cut any sentence a table or number carries faster
+6. **SOTA doc (rewrite on convergence)**: mirror the docdistance SOTA section order; carry surviving components only; cross-link the log as evidence
+7. Apply the skill's Rules (sanitise, equations, terse style); re-read and cut any sentence a table or number carries faster
 
 ## Creating a new canonical doc
 

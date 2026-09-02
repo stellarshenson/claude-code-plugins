@@ -3,6 +3,9 @@
 .auto-build-claw/
 tmp/
 .playwright-mcp/
+logs/
+experiments/
+graphify-out/
 
 # Mac OS-specific storage files
 .DS_Store
@@ -117,16 +120,6 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 .stellars-plugins/
-
-# Private RAG grounding forensics stash - client data + session transcripts, NEVER commit
-experiments/grounding/private-rag-forensics/
-
-# transient experiment run logs and result dumps (keep only the README)
-experiments/grounding/logs/*
-!experiments/grounding/logs/README.md
-
-# cached per-record feature tables (derived from client claims)
-experiments/grounding/cache/
 
 # experiment-only retrained manifold weights - never the shipped config
 src/stellars_claude_code_plugins/config_document_processing.experiment.yaml
