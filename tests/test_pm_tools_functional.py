@@ -617,8 +617,10 @@ def test_severity_spreads_across_the_summary_columns(defects: Path):
     ):
         file_a_defect(defects, title, severity=sev)
     out = ok("report", defects)
-    assert "| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Fixed | Rejected |" in out
-    assert "| Launch `LNCH` | 3 | 1 | 1 | 0 | 1 | 0 | 0 |" in out, "open counts per level"
+    assert "| Category | Open | Fixed | Rejected | Total |" in out
+    assert "| Launch `LNCH` | 3 | 0 | 0 | 3 |" in out
+    assert "| Category | CRITICAL | MAJOR | MEDIUM | MINOR | Open |" in out
+    assert "| Launch `LNCH` | 1 | 1 | 0 | 1 | 3 |" in out, "open counts per level"
 
 
 def test_items_is_a_fix_queue_worst_first(defects: Path):
@@ -926,7 +928,7 @@ def test_status_filter_narrows_items_but_not_the_summary(defects: Path):
     out = ok("report", defects, "--status", "closed")
     assert "splash hang" in out, "ITEMS now lists the closed work"
     summary = out[out.index("SUMMARY") : out.index("ITEMS")]
-    assert "| Launch `LNCH` | 1 | 0 | 1 | 0 | 0 | 1 | 0 |" in summary, (
+    assert "| Launch `LNCH` | 1 | 1 | 0 | 2 |" in summary, (
         "the summary still shows the whole scope, not the filter"
     )
 
@@ -955,7 +957,8 @@ def test_a_severity_ask_is_a_flag_not_a_reading_of_the_file(defects: Path):
     out = ok("report", defects, "--severity", "CRITICAL")
     assert "token race" in out and "splash flicker" not in out
     assert "1 open / 0 closed" in out, "the counts follow the filter, not the file"
-    assert "| Launch `LNCH` | 1 | 1 | 0 | 0 | 0 | 0 | 0 |" in out, "an emptied level reads 0"
+    assert "| Launch `LNCH` | 1 | 0 | 0 | 1 |" in out
+    assert "| Launch `LNCH` | 1 | 0 | 0 | 0 | 1 |" in out, "an emptied level reads 0"
 
 
 def test_the_date_window_reads_the_log_which_is_where_dates_live(defects: Path):
@@ -1268,7 +1271,8 @@ def test_an_open_defects_ask_is_a_filtered_report_not_a_reading(defects: Path):
     assert "(open)" in out
     assert "`DEF-LNCH-2`" in out and "`DEF-LNCH-1`" not in out
     assert "1 closed not listed" in out
-    assert "| Launch `LNCH` | 1 | 1 | 0 | 0 | 0 | 1 | 0 |" in out  # plain counts, 0 allowed
+    assert "| Launch `LNCH` | 1 | 1 | 0 | 2 |" in out  # plain counts, 0 allowed
+    assert "| Launch `LNCH` | 1 | 0 | 0 | 0 | 1 |" in out
     assert "Cells are" not in out and "open/closed" not in out  # the legend is gone
 
 
@@ -1333,7 +1337,8 @@ def test_a_soft_lock_signals_who_is_working_and_never_blocks_anyone(defects: Pat
     assert body.count("- log:") == 3, "locking is not an event"
     out = ok("report", defects, "--plain")
     assert f"wip @kj until {until}" in out and "| Worked on |" in out
-    assert "| **Total** | 3 | 0 | 2 | 0 | 1 | 1 | 0 | 0 |" in out
+    assert "| **Total** | 3 | 1 | 0 | 0 | 3 |" in out
+    assert "| **Total** | 0 | 2 | 0 | 1 | 3 |" in out
     assert ok("list", defects, "--locked-by", "@kj", "--columns", "id,lock").count("`DEF-") == 1
 
     # a second author writes: warned on stderr, exit 0, the line lands

@@ -735,8 +735,9 @@ def test_report_severity_filter_narrows_the_whole_report(defects: Path, capsys):
     out = capsys.readouterr().out
     assert "token race" in out and "splash flicker" not in out
     assert "1 open / 0 closed" in out, "the counts follow the filter, not the file"
-    assert "| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Fixed | Rejected |" in out
-    assert "| Launch `LNCH` | 1 | 1 | 0 | 0 | 0 | 0 | 0 |" in out, "an emptied level reads 0"
+    assert "| Category | Open | Fixed | Rejected | Total |" in out
+    assert "| Launch `LNCH` | 1 | 0 | 0 | 1 |" in out
+    assert "| Launch `LNCH` | 1 | 0 | 0 | 0 | 1 |" in out, "an emptied level reads 0"
 
 
 def test_report_severity_is_refused_on_a_criteria_document(criteria: Path, capsys):
@@ -1084,17 +1085,36 @@ def test_a_malformed_author_is_refused(defects: Path):
 
 
 def test_the_defects_grid_is_plain_open_counts_per_severity(defects: Path, capsys):
-    """The severity columns answer how bad the OPEN work is; Fixed and Rejected
-    are single counts, zeros are written as 0, and there is no legend line."""
+    """Status and level are two grids (DEF-PMGT-51): Fixed and Rejected are single
+    counts beside Open, the severity columns break Open down and end in it, zeros
+    are written as 0, and there is no legend line."""
     a_mixed_file(defects, capsys)
     for args in ((), ("--plain",), ("--summary",)):
         run("report", str(defects), *args)
         out = capsys.readouterr().out
-        assert "| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Fixed | Rejected |" in out
-        assert "| Launch `LNCH` | 2 | 1 | 1 | 0 | 0 | 1 | 0 |" in out
-        assert "| Interface `UI` | 0 | 0 | 0 | 0 | 0 | 0 | 1 |" in out
-        assert "| **Total** | 2 | 1 | 1 | 0 | 0 | 1 | 1 |" in out
+        assert "| Category | Open | Fixed | Rejected | Total |" in out
+        assert "| Launch `LNCH` | 2 | 1 | 0 | 3 |" in out
+        assert "| Interface `UI` | 0 | 0 | 1 | 1 |" in out
+        assert "| **Total** | 2 | 1 | 1 | 4 |" in out
+        assert "**Open by severity**" in out
+        assert "| Category | CRITICAL | MAJOR | MEDIUM | MINOR | Open |" in out
+        assert "| Launch `LNCH` | 1 | 1 | 0 | 0 | 2 |" in out
+        assert "| Interface `UI` | 0 | 0 | 0 | 0 | 0 |" in out
+        assert "| **Total** | 1 | 1 | 0 | 0 | 2 |" in out
+        assert "| Open | CRITICAL" not in out, "status and level never share a row"
         assert "Cells are" not in out and "open/closed" not in out, "no legend in any form"
+
+
+def test_the_level_grid_is_absent_when_nothing_is_open(defects: Path, capsys):
+    """A grid of zeros carries nothing - like UNTRIAGED, the level split is printed
+    only when something is open (DEF-PMGT-51)."""
+    add_defect(defects, "token race")
+    run("close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--evidence", "1.2 green")
+    capsys.readouterr()
+    run("report", str(defects), "--summary")
+    out = capsys.readouterr().out
+    assert "| Launch `LNCH` | 0 | 1 | 0 | 1 |" in out
+    assert "Open by severity" not in out and "| CRITICAL |" not in out
 
 
 def test_report_json_carries_the_same_facts_as_the_tables(defects: Path, capsys):
@@ -1706,9 +1726,12 @@ def test_the_criteria_grid_counts_open_items_per_importance(criteria: Path, caps
     capsys.readouterr()
     run("report", str(criteria), "--summary")
     out = capsys.readouterr().out
-    assert "| Category | Open | CRITICAL | HIGH | MEDIUM | LOW | Done | Rejected |" in out
-    assert "| Authentication `AUTH` | 1 | 1 | 0 | 0 | 0 | 1 | 1 |" in out
-    assert "| **Total** | 1 | 1 | 0 | 0 | 0 | 1 | 1 |" in out
+    assert "| Category | Open | Done | Rejected | Total |" in out
+    assert "| Authentication `AUTH` | 1 | 1 | 1 | 3 |" in out
+    assert "| **Total** | 1 | 1 | 1 | 3 |" in out
+    assert "**Open by importance**" in out
+    assert "| Category | CRITICAL | HIGH | MEDIUM | LOW | Open |" in out
+    assert "| Authentication `AUTH` | 1 | 0 | 0 | 0 | 1 |" in out
     assert "UNRATED" not in out, "every open criterion is rated, so no UNRATED column"
 
 
@@ -1719,10 +1742,8 @@ def test_an_open_unrated_criterion_earns_the_unrated_column(criteria: Path, caps
     capsys.readouterr()
     run("report", str(criteria), "--summary")
     out = capsys.readouterr().out
-    assert (
-        "| Category | Open | CRITICAL | HIGH | MEDIUM | LOW | UNRATED | Done | Rejected |" in out
-    )
-    assert "| Authentication `AUTH` | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |" in out
+    assert "| Category | CRITICAL | HIGH | MEDIUM | LOW | UNRATED | Open |" in out
+    assert "| Authentication `AUTH` | 0 | 0 | 0 | 0 | 1 | 1 |" in out
 
 
 def test_report_items_carries_an_importance_column_for_criteria(criteria: Path, capsys):
@@ -2348,15 +2369,10 @@ def test_report_marks_wip_rows_and_counts_them_in_a_worked_on_column(defects: Pa
     capsys.readouterr()
     run("report", str(defects), "--plain")
     out = capsys.readouterr().out
-    assert (
-        "| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Worked on | Fixed | Rejected |"
-        in out
-    )
-    assert "| Launch `LNCH` | 2 | 0 | 2 | 0 | 0 | 1 | 0 | 0 |" in out
-    assert "| Launch `UI` | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |" in out, (
-        "an expired lock counts nothing"
-    )
-    assert "| **Total** | 3 | 0 | 3 | 0 | 0 | 1 | 0 | 0 |" in out
+    assert "| Category | Open | Worked on | Fixed | Rejected | Total |" in out
+    assert "| Launch `LNCH` | 2 | 1 | 0 | 0 | 2 |" in out
+    assert "| Launch `UI` | 1 | 0 | 0 | 0 | 1 |" in out, "an expired lock counts nothing"
+    assert "| **Total** | 3 | 1 | 0 | 0 | 3 |" in out
     rows = table_rows(out)
     assert rows[-1][0] == "`DEF-UI-3`" and rows[-1][-1] == "-"
     (wip,) = [r for r in rows if r[0] == "`DEF-LNCH-1`"]

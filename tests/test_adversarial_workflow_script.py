@@ -1,8 +1,8 @@
 """Guardrails for the canonical adversarial-review workflow script.
 
 The script IS the loop protocol - plugins/devils-advocate ships it so the
-control flow (forced adjudication, computed verdict, pinned confirms, fanout
-and round caps) is versioned code instead of orchestrator context. These tests
+control flow (forced adjudication, computed verdict, pinned confirms, the
+trajectory stop and round caps) is versioned code instead of orchestrator context. These tests
 pin the gates so an edit cannot silently drop one.
 """
 
@@ -95,10 +95,8 @@ def test_revert_before_refine():
     adj = agent("adjudicator")
     assert "Revert before refine" in adj and "REVERT CANDIDATE" in adj
     assert "contested semantics" in adj and "`reverted:`" in adj
-    assert "above 0.5 with no revert must be justified" in adj
     assert t.count("reverts: reverts.length ? reverts : closures") == 2  # STOP and FANOUT_STOP
     assert "status: 'PLAN',\n        reverts," in t
-    assert "NO revert ruled" in t  # fanout above 0.5 without a revert is called out
 
 
 def test_confirm_round_filter_is_script_enforced():
@@ -136,14 +134,16 @@ def test_adjudicator_continuity_threaded():
 def test_gates_present():
     t = text()
     assert "'STOP'" in t and "FANOUT_STOP" in t and "ROUND_CAP" in t and "'PLAN'" in t
-    assert "highFanoutStreak >= 2" in t and "> 0.5" in t  # two consecutive rounds over half
+    assert "spiralStreak >= 2" in t  # two consecutive rounds the adjudicator judges spiralling
     assert (
-        "fanout > 0.5 && refining" in t
-    )  # DEF-ADVR-46: an adjudicated-clean round never trips the fanout gate
+        "adj.trajectory === 'spiralling' && refining" in t
+    )  # DEF-ADVR-50: the judgment gates, the ratio is evidence; DEF-ADVR-46: a clean round never trips it
+    assert "'trajectory', 'trajectoryReason'" in t  # required of every adjudication
+    assert "highFanoutStreak" not in t and "fanout > 0.5" not in t  # no ratio gate or ratio log left
     assert (
         "const refining = adj.changes.length > 0 || reverts.length > 0" in t
     )  # the definition, not just its use
-    assert "highFanoutStreak = 0" in t  # the no-findings clean branch resets the streak too
+    assert "spiralStreak = 0" in t  # the no-findings clean branch resets the streak too
     assert "cleanStreak >= CLEAN_REQUIRED" in t
     assert "devils-advocate:adjudicator" in t and "devils-advocate:adversarial-reviewer" in t
 

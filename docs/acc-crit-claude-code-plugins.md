@@ -340,13 +340,16 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - test-tags: UNIT, MANUAL
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-49` **fanout stop** - HIGH; FANOUT_STOP exits the loop when over half of a round's findings sit in code the loop's own fixes introduced, for two consecutive rounds - counted only for rounds whose adjudication still ordered changes or reverts; a clean round (no findings, or adjudicated clean) resets the streak (DEF-ADVR-46)
-  - evidence: highFanoutStreak advances on fanout > 0.5 && refining, resets on either clean path; test_gates_present
-  - test: guardrail test asserts the fanout threshold and stop path
+- [x] `ACC-REVIEW-49` **trajectory stop** - HIGH; FANOUT_STOP exits the loop on two consecutive rounds the adjudicator judges spiralling whose adjudication still ordered changes or reverts; every adjudication carries trajectory (converging or spiralling) and trajectoryReason as required schema fields and the prompt names the judgment; a clean round (no findings, or adjudicated clean) resets the streak (DEF-ADVR-46); fanoutTraced/fanoutTotal remain evidence the adjudicator cites, never the gate, because a pinned confirm admits only in-delta findings and the ratio is total by construction whenever any finding exists (DEF-ADVR-50)
+  - evidence: tests/test_adversarial_workflow_script.py::test_gates_present asserts spiralStreak >= 2, adj.trajectory === 'spiralling' && refining, the required 'trajectory', 'trajectoryReason' fields and the absence of highFanoutStreak; 23 passed in the file; full suite 1267 passed 2 skipped, ruff clean
+  - test: guardrail test asserts the spiralStreak gate on adj.trajectory === 'spiralling' && refining, the required schema fields, the clean-branch reset, and that no ratio gate (highFanoutStreak, fanout > 0.5 && refining) remains
   - test-tags: UNIT
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
   - log: 2026-08-29T10:03:35Z @kj edited text and evidence (replaced)
+  - log: 2026-09-02T06:17:19Z @kj reopened: gate replaced: the adjudicator's trajectory judgment supersedes the fanout ratio (DEF-ADVR-50); re-closed below on the new gate; evidence retired: highFanoutStreak advances on fanout > 0.5 && refining, resets on either clean path; test_gates_present
+  - log: 2026-09-02T06:17:19Z @kj edited title and text and test (replaced)
+  - log: 2026-09-02T06:17:20Z @kj closed
 - [x] `ACC-REVIEW-50` **round cap returns history** - MEDIUM; hitting maxRounds (default 6) ends the loop with ROUND_CAP and the full round history rather than looping on
   - evidence: ROUND_CAP status returns full history at maxRounds; test_gates_present
   - test: guardrail test asserts the cap path
@@ -832,4 +835,21 @@ hypothesis-tools: flexible parsing, registration and append-only outcome recordi
   - test-tags: UNIT
   - log: 2026-09-02T01:02:47Z @kj added
   - log: 2026-09-02T01:02:47Z @kj closed
+
+## pm-tools report `PMREP`
+
+the report surface - SUMMARY grids, ITEMS queue, coverage
+
+- [x] `ACC-PMREP-122` **Status and level are separate SUMMARY grids** - HIGH; report prints a status grid | Category | Open | Fixed | Rejected | Total | (Done on criteria, a Worked on column after Open when an item in scope is locked, Total the category size) and, under the line Open by severity or Open by importance, a level grid | Category | CRITICAL | MAJOR | MEDIUM | MINOR | Open | (HIGH/LOW on criteria, UNTRIAGED/UNRATED only when an open item lacks a level) whose cells break the Open column down and sum to its last column; no row carries a status count beside a level count; --json keeps its nested shape unchanged
+  - evidence: tests/test_pm_tools.py::test_the_defects_grid_is_plain_open_counts_per_severity, ::test_the_level_grid_is_absent_when_nothing_is_open, the criteria and UNRATED grid tests and the tests/test_pm_tools_functional.py header tests; pm-tools suites 190 passed; full suite 1267 passed 2 skipped, ruff clean
+  - test: report on a mixed file in default, --plain and --summary form: both headers present, '| Open | CRITICAL' absent, the level row ends in the Open count, the status Total row sums open plus closed plus rejected
+  - test-tags: UNIT
+  - log: 2026-09-02T06:17:20Z @kj added
+  - log: 2026-09-02T06:17:20Z @kj closed
+- [x] `ACC-PMREP-123` **The level grid is printed only when something is open** - MEDIUM; a report whose scope holds no open item prints the status grid alone - no Open by severity or Open by importance line and no level header - because a grid of zeros carries nothing, the rule UNTRIAGED and Worked on already follow
+  - evidence: tests/test_pm_tools.py::test_the_defects_grid_is_plain_open_counts_per_severity, ::test_the_level_grid_is_absent_when_nothing_is_open, the criteria and UNRATED grid tests and the tests/test_pm_tools_functional.py header tests; pm-tools suites 190 passed; full suite 1267 passed 2 skipped, ruff clean
+  - test: close the only defect, report --summary: the status row reads 0 | 1 | 0 | 1 and neither the level line nor a level header appears
+  - test-tags: UNIT
+  - log: 2026-09-02T06:17:20Z @kj added
+  - log: 2026-09-02T06:17:20Z @kj closed
 

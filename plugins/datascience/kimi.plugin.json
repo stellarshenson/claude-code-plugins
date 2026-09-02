@@ -1,6 +1,6 @@
 {
   "name": "datascience",
-  "version": "1.7.15",
+  "version": "1.7.16",
   "description": "Data science project standards, notebook scaffolding, rich output styling, project creation via copier, and compliance review.",
   "license": "MIT",
   "author": "Stellars Henson",

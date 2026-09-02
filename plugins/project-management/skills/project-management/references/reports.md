@@ -6,7 +6,7 @@
 
 | Section           | Carries |
 |-------------------|---------|
-| **SUMMARY**       | the one aggregate - categories down, plain counts: open per level, then done and rejected |
+| **SUMMARY**       | the one aggregate - two grids of plain counts: status per category, then the open items per level |
 | **CATEGORIES**    | code, full name, description |
 | **ITEMS**         | one table per category - id, title, description, severity on defects, importance on criteria, status, tags, evidence |
 | **REJECTED**      | id, title, reason; printed under `--status all` or `--status rejected`, never on a default report |
@@ -15,13 +15,13 @@ Test coverage is not a report section; it is its own command, `coverage`, below.
 
 ## SUMMARY
 
-It answers one question - what is still to do, and how bad - and every choice follows from that.
+It answers two questions - how much is left, and how bad - with one grid for each, so a status count never sits beside a level count as if they partitioned the same thing.
 
-- **Plain integer counts, 0 allowed** - no compound cells and no legend line; the grid explains itself
-- **The level columns count OPEN items only** - they answer how bad what is left is. On a defects document the grid is `| Category | Open | CRITICAL | MAJOR | MEDIUM | MINOR | Fixed | Rejected |`; on a criteria document `| Category | Open | CRITICAL | HIGH | MEDIUM | LOW | Done | Rejected |`
-- **Open is the sum of the level columns**; Fixed / Done is the closed count, Rejected the rejected count
+- **Plain integer counts, 0 allowed** - no compound cells and no legend line; the grids explain themselves
+- **The status grid comes first** - `| Category | Open | Fixed | Rejected | Total |` on a defects document, `Done` in place of `Fixed` on a criteria document; Total is the category size, open plus closed plus rejected
+- **The level grid follows, under the line `Open by severity` or `Open by importance`** - `| Category | CRITICAL | MAJOR | MEDIUM | MINOR | Open |` on defects, `| Category | CRITICAL | HIGH | MEDIUM | LOW | Open |` on criteria. It breaks the Open column down alone - the last column is that Open count, the sum of the level cells - and it is printed only when something is open
 - **An `UNTRIAGED` / `UNRATED` column appears only when an open item lacks a level** - on a clean file it is absent, and `check` fails until it is
-- **A `Worked on` column counts the open items with an active lock**, Total included, and appears only when an item in scope is locked; an active lock is a `lock:` line whose stamp is still in the future
+- **A `Worked on` column counts the open items with an active lock** - after Open in the status grid, Total row included, and only when an item in scope is locked; an active lock is a `lock:` line whose stamp is still in the future
 - **A Total row closes every grid**
 - **Regression count** - a defect report prints `N regressions across M defects` above the grid whenever any item carries a `-N` id, in the summary form as well
 
@@ -69,7 +69,7 @@ A filtered ask is answered with flags. Reading the document and filtering inside
 
 Filters combine: "what @kj still has open in AUTH" is `--author @kj --category AUTH --status open`. The same flags work unchanged on `coverage`, `list`, `pivot` and `search`.
 
-- **`--category`, `--severity`, `--importance`, `--author`, `--tag`, `--regressions`, `--grep`, `--blocked`, `--related-to`, `--locked`, `--locked-by` and the date window narrow the whole report** - the counts, SUMMARY and ITEMS all follow, and a category the filter empties gets no row; the level columns stay and read 0
+- **`--category`, `--severity`, `--importance`, `--author`, `--tag`, `--regressions`, `--grep`, `--blocked`, `--related-to`, `--locked`, `--locked-by` and the date window narrow the whole report** - the counts, SUMMARY and ITEMS all follow, and a category the filter empties gets no row; the level columns stay and read 0 while anything in scope is open, and a filter that leaves nothing open drops the level grid
 - **`--status` narrows ITEMS only** - the summary tables always show the whole scope, so a filtered report still says where the whole thing stands
 - **A single category folds** its name and description into the header rather than printing a one-row CATEGORIES table
 - **`--severity` is a defect attribute and `--importance` a criterion attribute** - the other discipline's document is skipped with a note on stderr instead of being reported as zeros

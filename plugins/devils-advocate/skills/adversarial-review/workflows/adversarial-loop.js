@@ -28,6 +28,10 @@ export const meta = {
 // REVERT BEFORE REFINE: FANOUT_STOP, STOP and PLAN carry the revert candidates
 // so the main session reverts deterministically.
 //
+// THE STOP IS A JUDGMENT: FANOUT_STOP fires on two consecutive refining rounds
+// the adjudicator judges spiralling; the fanout ratio is evidence it cites,
+// never the gate (DEF-ADVR-50).
+//
 // args - first invocation (bar, lenses, target mandatory):
 //   target     what is under review, e.g. "src/turndown.ts and its tests"
 //   scope      in-scope dirs/files and the exclusions, stated as prose
@@ -104,7 +108,7 @@ const FINDINGS_SCHEMA = {
 
 const ADJUDICATION_SCHEMA = {
   type: 'object',
-  required: ['ruling', 'changes', 'reverts', 'fanoutTraced', 'fanoutTotal'],
+  required: ['ruling', 'changes', 'reverts', 'fanoutTraced', 'fanoutTotal', 'trajectory', 'trajectoryReason'],
   properties: {
     ruling: { type: 'string', enum: ['PROCEED', 'PROCEED_WITH_DEFERRALS', 'STOP'] },
     changes: {
@@ -140,6 +144,8 @@ const ADJUDICATION_SCHEMA = {
     refuted: { type: 'array', items: { type: 'string' }, description: 'findings refuted, each with the evidence - immaterial findings land here' },
     fanoutTraced: { type: 'integer', description: 'how many of this round\'s findings sit in code a previous plan\'s applied fix introduced' },
     fanoutTotal: { type: 'integer' },
+    trajectory: { type: 'string', enum: ['converging', 'spiralling'], description: 'your judgment of the loop from the prior rulings and this round: converging when the delta shrinks, the worst severity falls and the plan edits what exists; spiralling when findings sit in mechanisms a previous plan added and the plan enlarges or refines them, or severity holds or rises across rounds' },
+    trajectoryReason: { type: 'string', description: 'one line saying why - the evidence weighed, fanoutTraced/fanoutTotal included' },
   },
 }
 
@@ -237,7 +243,7 @@ const rulings = S ? S.rulings : []
 const closures = S ? S.closures : []
 let round = S ? S.round : 0
 let cleanStreak = S ? S.cleanStreak : 0
-let highFanoutStreak = S ? S.highFanoutStreak : 0
+let spiralStreak = S ? S.spiralStreak : 0
 let shipped = false
 
 const newDelta = S && Array.isArray(args.appliedFixes) ? args.appliedFixes : []
@@ -246,7 +252,7 @@ newDelta.forEach((f) => closures.push({ round, site: f.site, summary: f.summary,
 const stateOut = () => ({
   round,
   cleanStreak,
-  highFanoutStreak,
+  spiralStreak,
   history,
   deferred: allDeferred,
   refuted: allRefuted,
@@ -260,7 +266,7 @@ const stateOut = () => ({
 const priorRecord = () =>
   [
     `PRIOR ADJUDICATIONS (you start fresh each round - this record is your own continuity; do not re-litigate what it settled unless this round brings NEW evidence):`,
-    `Rulings: ${rulings.length ? rulings.map((r) => `round ${r.round} ${r.ruling} (${r.changes} changes, ${r.reverts} reverts, fanout ${r.fanout})`).join('; ') : '(none - first adjudication)'}`,
+    `Rulings: ${rulings.length ? rulings.map((r) => `round ${r.round} ${r.ruling} (${r.changes} changes, ${r.reverts} reverts, fanout ${r.fanout}, ${r.trajectory})`).join('; ') : '(none - first adjudication)'}`,
     `Refuted (stay refuted absent new evidence):`,
     allRefuted.length ? allRefuted.map((r) => `- ${r}`).join('\n') : '(none)',
     `Deferred (stay deferred absent new evidence; do not silently promote):`,
@@ -327,7 +333,7 @@ if (!S) {
 while (true) {
   if (!findings.length) {
     cleanStreak += 1
-    highFanoutStreak = 0
+    spiralStreak = 0
     log(`round ${round} clean - no findings (${cleanStreak}/${CLEAN_REQUIRED} consecutive)`)
     if (cleanStreak >= CLEAN_REQUIRED || (round === 1 && !S)) {
       shipped = true
@@ -346,6 +352,7 @@ while (true) {
         `CHANGES APPLIED IN PREVIOUS ROUNDS (the revert candidates; fanoutTraced counts against these):`,
         closures.length ? closures.map((c) => `round ${c.round} ${c.site}: ${c.summary}`).join('\n') : '(none - round 1)',
         `CHANGE BUDGET: ${MAX_CHANGES}`,
+        `TRAJECTORY: judge it - converging or spiralling - and say why; two consecutive refining rounds you judge spiralling stop the loop.`,
       ]
         .filter(Boolean)
         .join('\n\n'),
@@ -356,26 +363,27 @@ while (true) {
     const reverts = adj.reverts || []
     allDeferred.push(...(adj.deferred || []))
     allRefuted.push(...(adj.refuted || []))
-    const fanout = adj.fanoutTotal ? adj.fanoutTraced / adj.fanoutTotal : 0
-    rulings.push({ round, ruling: adj.ruling, changes: adj.changes.length, reverts: reverts.length, fanout: `${adj.fanoutTraced}/${adj.fanoutTotal}` })
-    log(`round ${round} adjudicated: ${adj.ruling}, ${adj.changes.length} changes, ${reverts.length} reverts, fanout ${adj.fanoutTraced}/${adj.fanoutTotal}`)
+    rulings.push({ round, ruling: adj.ruling, changes: adj.changes.length, reverts: reverts.length, fanout: `${adj.fanoutTraced}/${adj.fanoutTotal}`, trajectory: adj.trajectory })
+    log(`round ${round} adjudicated: ${adj.ruling}, ${adj.changes.length} changes, ${reverts.length} reverts, fanout ${adj.fanoutTraced}/${adj.fanoutTotal}, ${adj.trajectory} - ${adj.trajectoryReason}`)
     const mechanisms = adj.changes.filter((c) => c.newMechanism)
     if (mechanisms.length) log(`round ${round}: ${mechanisms.length} change(s) add a NEW MECHANISM - veto at PLAN unless each answers a material CRITICAL/MAJOR: ${mechanisms.map((m) => m.site).join(' | ')}`)
-    if (fanout > 0.5 && !reverts.length) log(`round ${round}: fanout ${adj.fanoutTraced}/${adj.fanoutTotal} above 0.5 with NO revert ruled - the plan refines loop-introduced code; veto at PLAN or revert by hand`)
     if (adj.changes.length > MAX_CHANGES) log(`round ${round}: plan carries ${adj.changes.length} changes against a budget of ${MAX_CHANGES} - apply the top ${MAX_CHANGES}, defer the rest`)
     if (adj.ruling === 'STOP') {
       return { status: 'STOP', reason: 'adjudicator: the loop is generating its own work - re-model instead of another round - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
     }
-    // Fanout counts only while the adjudicator keeps ordering changes.
+    // The stop is the adjudicator's judgment, not a ratio: two consecutive
+    // rounds it calls spiralling while still ordering changes or reverts. A
+    // clean round resets (DEF-ADVR-46); the fanout ratio is evidence the
+    // adjudicator cites, never the gate (DEF-ADVR-50).
     const refining = adj.changes.length > 0 || reverts.length > 0
-    highFanoutStreak = fanout > 0.5 && refining ? highFanoutStreak + 1 : 0
-    if (highFanoutStreak >= 2) {
+    spiralStreak = adj.trajectory === 'spiralling' && refining ? spiralStreak + 1 : 0
+    if (spiralStreak >= 2) {
       // Revert candidates: what the adjudicator ruled ({mechanism, site,
       // dissolves, defers}), else every applied change in closure shape
       // ({site, summary, files}) - the findings live in the loop's own fixes
       // by definition; entries whose summary starts "reverted:" are reverts
       // already applied and are skipped by the main session.
-      return { status: 'FANOUT_STOP', reason: 'over half the findings traced to this loop\'s own fixes in two consecutive rounds - revert the listed mechanisms, defer what they answered, then re-model if anything material remains - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+      return { status: 'FANOUT_STOP', reason: 'the adjudicator judged the loop spiralling in two consecutive rounds (' + adj.trajectoryReason + ') - revert the listed mechanisms, defer what they answered, then re-model if anything material remains - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
     }
 
     if (adj.changes.length || reverts.length) {
@@ -387,6 +395,7 @@ while (true) {
         mechanisms,
         plan: adj.changes,
         fanout: `${adj.fanoutTraced}/${adj.fanoutTotal}`,
+        trajectory: adj.trajectory,
         instructions:
           'Apply ONLY this plan in the main session: first `reverts` (remove each listed mechanism, record its deferred originals), then `plan` - these exact changes, smallest radius, nothing else; do not apply reviewer remedies the plan does not name. Read `mechanisms` before applying: each adds review surface and is yours to veto unless it answers a material CRITICAL/MAJOR. Run the test suite. Then re-invoke this workflow with args.state set to the `state` object below, verbatim, and args.appliedFixes = [{site, summary, files}] describing what you actually applied, reverts included - record each applied revert with summary starting "reverted: <mechanism>"; STOP and FANOUT_STOP skip those entries - the next round is a pinned confirm attacking exactly that delta.',
         round,

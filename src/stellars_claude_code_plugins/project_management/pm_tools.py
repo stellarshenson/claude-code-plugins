@@ -46,11 +46,14 @@ chosen; --json carries no notice.
 Query - every table is markdown, paste-ready; --json gives the same facts as data:
   report [paths] [FILTERS] [--detail] [--plain] [--summary] [--json]
          ITEMS lists open work only unless --status says otherwise, worst level first.
-         The SUMMARY grid is plain counts: `| Category | Open | CRITICAL | MAJOR |
-         MEDIUM | MINOR | Fixed | Rejected |` on defects, `| Category | Open |
-         CRITICAL | HIGH | MEDIUM | LOW | Done | Rejected |` on criteria, each with
-         a Total row; the level columns count OPEN items only, and UNTRIAGED/UNRATED
-         appears only when an open item lacks a level. Every filter narrows the whole
+         SUMMARY is plain counts in two grids, one per axis: status - `| Category |
+         Open | Fixed | Rejected | Total |` (`Done` on criteria, `Worked on` after
+         Open when an item is locked) - then the open items by level under `Open by
+         severity` (`| Category | CRITICAL | MAJOR | MEDIUM | MINOR | Open |`) or
+         `Open by importance` (CRITICAL | HIGH | MEDIUM | LOW), each with a Total
+         row. The level grid breaks the Open column down alone, is printed only
+         when something is open, and carries UNTRIAGED/UNRATED only when an open
+         item lacks a level. Every filter narrows the whole
          report except --status, which narrows ITEMS alone. --plain prints the grids
          and nothing else; --summary stops at the SUMMARY grid, listing no items.
   list [paths] [FILTERS] [--columns F,F,..] [--sort=F,-F,..] [--json]
@@ -1130,10 +1133,10 @@ def key_order(field, keys):
 
 
 def summary_grid(scope, shown, prefix):
-    """The one aggregate, plain counts: categories down; the open items split by
-    level - severity on a defects document, importance on a criteria document -
-    then the closed and rejected totals. The level columns count OPEN items only:
-    they answer how bad what is left is. UNTRIAGED/UNRATED appears only when an
+    """The one aggregate, plain counts, rendered as two grids: status - open,
+    closed, rejected and the category size - then the open items split by level
+    (severity on a defects document, importance on a criteria document), a
+    breakdown of the Open column alone. UNTRIAGED/UNRATED appears only when an
     open item lacks a level. --status never narrows this."""
     cols = list(SEVS if prefix == "DEF" else IMPS)
     none_col = "UNTRIAGED" if prefix == "DEF" else "UNRATED"
@@ -1322,31 +1325,38 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
         if scope:
             cols = grid["cols"]
             done_h = "Fixed" if prefix == "DEF" else "Done"
+            level_h = "severity" if prefix == "DEF" else "importance"
             print(banner("\U0001f4ca", "SUMMARY", plain) + "\n")
             wip_h = ["Worked on"] if grid["worked"] else []
-            head = ["Category", "Open"] + cols + wip_h + [done_h, "Rejected"]
-            print("| " + " | ".join(head) + " |")
-            print("|---|" + "--:|" * (len(head) - 1))
 
-            def counts_of(r):
+            def table(head, cells):
+                print("| " + " | ".join(head) + " |")
+                print("|---|" + "--:|" * (len(head) - 1))
+                for r in grid["rows"]:
+                    sec = r["section"]
+                    label = f"{sec['name']} `{sec['code'] or '?'}`" if sec else "(no category)"
+                    print("| " + " | ".join([label] + [str(x) for x in cells(r)]) + " |")
+                print(
+                    "| "
+                    + " | ".join(["**Total**"] + [str(x) for x in cells(grid["total"])])
+                    + " |"
+                )
+
+            def by_status(r):
                 wip = [r["worked"]] if grid["worked"] else []
-                return [
-                    r["open"],
-                    *(r["cells"][c] for c in cols),
-                    *wip,
-                    r["closed"],
-                    r["rejected"],
-                ]
+                size = r["open"] + r["closed"] + r["rejected"]
+                return [r["open"], *wip, r["closed"], r["rejected"], size]
 
-            for r in grid["rows"]:
-                sec = r["section"]
-                label = f"{sec['name']} `{sec['code'] or '?'}`" if sec else "(no category)"
-                print("| " + " | ".join([label] + [str(x) for x in counts_of(r)]) + " |")
-            print(
-                "| "
-                + " | ".join(["**Total**"] + [str(x) for x in counts_of(grid["total"])])
-                + " |"
-            )
+            # Two axes, two grids (DEF-PMGT-51): status answers how much is left,
+            # the level split answers how bad. On one row the level cells read
+            # as peers of Done and Rejected when they only break Open down.
+            table(["Category", "Open"] + wip_h + [done_h, "Rejected", "Total"], by_status)
+            if grid["total"]["open"]:
+                print(f"\n**Open by {level_h}**\n")
+                table(
+                    ["Category"] + cols + ["Open"],
+                    lambda r: [*(r["cells"][c] for c in cols), r["open"]],
+                )
 
         if summary:
             continue
