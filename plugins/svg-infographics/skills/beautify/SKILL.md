@@ -40,7 +40,7 @@ If the user explicitly requests a geometry change ("widen the spine", "move the 
 
 **Input**: SVG file(s) + intensity level (low / medium / high / absurd). Default: medium.
 
-**MANDATORY**: This command follows the svg-infographics skill and workflow. All placement uses tools (`empty-space`, `geom align`), all colours use CSS classes with dark mode, all elements respect topology and grouping. Read `svg-designer/references/standards.md` principles - they apply here.
+**MANDATORY**: This command follows the svg-infographics skill and workflow. All placement uses tools (`empty-space`, `geom align`), all colours use CSS classes with dark mode, all elements respect topology and grouping. Read `skills/svg-infographics/references/standards.md` principles - they apply here.
 
 ## Local directive file (user's project)
 
@@ -143,7 +143,7 @@ If the user skips the free-text brief (empty answer), note in the brief "no user
 | Print compat | `strip-on-export` / `preserve-effects` | `strip-on-export` |
 | Animation | `off` / `subtle` | `off` |
 
-If shader mode is `off` (default), skip Batch 5 entirely — no other Batch-5 questions are asked. When `shader mode != off`, the agent reads `skills/svg-designer/rules/shaders.md` and picks the SVG filter recipe(s) matching the chosen theme (or composes from the creative brief when `theme=auto`). When `print compat = strip-on-export`, beautify writes BOTH `<file>+.svg` (with filters) and `<file>+_print.svg` (filters stripped) per file. Animation default `off` because SMIL filter animations break print rasterisers entirely; `subtle` opts in to one-element water-ripple `seed` animation only.
+If shader mode is `off` (default), skip Batch 5 entirely — no other Batch-5 questions are asked. When `shader mode != off`, the agent reads `skills/svg-infographics/rules/shaders.md` and picks the SVG filter recipe(s) matching the chosen theme (or composes from the creative brief when `theme=auto`). When `print compat = strip-on-export`, beautify writes BOTH `<file>+.svg` (with filters) and `<file>+_print.svg` (filters stripped) per file. Animation default `off` because SMIL filter animations break print rasterisers entirely; `subtle` opts in to one-element water-ripple `seed` animation only.
 
 The questionnaire now totals 18 questions across 5 batches. `AskUserQuestion` still batches at up to 4 per call.
 
@@ -164,7 +164,7 @@ Questionnaire asked every run. Resolved pattern rewrites. Directive overrides pe
 1. Read target SVG completely
 2. Read XML comment block - understand intent and theme
 3. Identify theme swatch (CSS classes, palette, dark-mode overrides)
-4. Reference `svg-infographics/skills/svg-designer/references/standards.md` for palette and placement rules
+4. Reference `svg-infographics/skills/svg-infographics/references/standards.md` for palette and placement rules
 5. Run `empty-space --svg <file> --edges-only --tolerance 8 --min-area 100` to map available space
 
 **Never break layout.** Enhancements = additive only.
@@ -275,7 +275,7 @@ Shader-style atmospheric treatments via native SVG filter primitives — no Java
 
 **Default OFF.** Most infographics don't need shader effects - they add file size and break print rasterisers (Word / LibreOffice drop SVG filters entirely). Opt-in via questionnaire Batch 5. When `shader mode != off` AND `print compat = strip-on-export` (the default), beautify produces TWO files: `<file>+.svg` with filters and `<file>+_print.svg` with all `<filter>` defs and `filter=` attributes stripped. The article skill picks the print variant for Word delivery, the live variant for web.
 
-**Recipe file**: `skills/svg-designer/rules/shaders.md` — 10 canonical SVG filter chains with copy-paste-ready `<defs>` blocks, level guidance, anti-patterns, and 5 worked combination examples (underwater report card, premium proposal, vintage photo article, blueprint diagram, holographic banner). Read this BEFORE writing any filter.
+**Recipe file**: `skills/svg-infographics/rules/shaders.md` — 10 canonical SVG filter chains with copy-paste-ready `<defs>` blocks, level guidance, anti-patterns, and 5 worked combination examples (underwater report card, premium proposal, vintage photo article, blueprint diagram, holographic banner). Read this BEFORE writing any filter.
 
 **Compatible combinations** (2-3 effects compose well; >3 stops rendering correctly):
 - water-ripple + frosted-glass + bokeh = "submerged" theme

@@ -3657,10 +3657,10 @@ class TestPluginStructure:
         p = self.PLUGIN_DIR
         assert (p / ".claude-plugin" / "plugin.json").is_file()
         assert (p / "README.md").is_file()
-        for skill in ("svg-designer", "theme"):
+        for skill in ("svg-infographics", "theme"):
             assert (p / "skills" / skill / "SKILL.md").is_file(), f"missing skill {skill}"
         for ref in ("tools", "standards", "workflow", "validation"):
-            assert (p / "skills" / "svg-designer" / "references" / f"{ref}.md").is_file(), (
+            assert (p / "skills" / "svg-infographics" / "references" / f"{ref}.md").is_file(), (
                 f"missing reference {ref}"
             )
         for cmd in ("create", "fix", "validate", "theme", "beautify", "export-png"):

@@ -64,4 +64,4 @@ Create ONE task per finalize run (not per checker - finalize runs all checkers i
 
 ## Skill applied
 
-The `svg-infographics:svg-designer` skill (fork context) reads `references/validation.md` for checker usage, severity ladder (HARD FAIL / SOFT / HINT), justification rules, pre-delivery checklist. For heavy validation work across many files, invoke it via the `Skill` tool (NOT `Agent` / `subagent_type`): `Skill(skill="svg-infographics:svg-designer", args="Validate <paths>. Run finalize, batch-fix, classify findings.")` to keep main session responsive.
+The `svg-infographics:svg-infographics` skill (fork context) reads `references/validation.md` for checker usage, severity ladder (HARD FAIL / SOFT / HINT), justification rules, pre-delivery checklist. For heavy validation work across many files, invoke it via the `Skill` tool (NOT `Agent` / `subagent_type`): `Skill(skill="svg-infographics:svg-infographics", args="Validate <paths>. Run finalize, batch-fix, classify findings.")` to keep main session responsive.

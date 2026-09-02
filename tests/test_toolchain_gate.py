@@ -164,7 +164,7 @@ def _strip_frontmatter(body: str) -> str:
 def _names_toolkit_cli(body: str) -> bool:
     """True when the body tells the agent to run a toolkit binary.
 
-    Skill hand-offs (`svg-infographics:svg-designer`, `/journal:update`) are not
+    Skill hand-offs (`svg-infographics:svg-infographics`, `/journal:update`) are not
     CLI calls - the skill they route into carries its own gate.
     """
     prose = _SKILL_REF.sub("", _strip_frontmatter(body))
@@ -268,9 +268,9 @@ def test_shipped_gate_still_carries_its_normative_lines():
     without any binary. It must read the shipped file, not the frozen snapshot,
     or it proves only that a constant equals itself.
     """
-    live = (PLUGIN_ROOT / "svg-infographics" / "skills" / "svg-designer" / "SKILL.md").read_text(
-        encoding="utf-8"
-    )
+    live = (
+        PLUGIN_ROOT / "svg-infographics" / "skills" / "svg-infographics" / "SKILL.md"
+    ).read_text(encoding="utf-8")
     for required in (UPGRADE_LINE, STALE_ASSERTION, GATE_OLDER_LINE, GATE_COMPARE_LINE):
         assert required in live, f"shipped gate lost its {required!r} line"
     assert "The version compare is the real gate" in live, (

@@ -138,7 +138,7 @@ Five connector routing modes (`straight`, `l`, `l-chamfer`, `spline`, `manifold`
 
 **Stop-and-think warning-ack gate**: every producer tool (`calc_connector`, `charts`, `drawio_shapes`, `empty-space`, `finalize`) blocks its primary output whenever any warning fires. The caller must acknowledge each warning explicitly with `--ack-warning TOKEN=reason` - one flag per warning, terse reasoning required, no bulk override. Tokens are deterministic per invocation so reruns reproduce them. Forces a conscious per-finding decision instead of letting warnings scroll past unread.
 
-**Skills**: `svg-designer` (fork-context design agent with tool palette, 6-phase workflow, design rules, validation gates), `theme` (palette approval + swatch generation)
+**Skills**: `svg-infographics` (fork-context design agent with tool palette, 6-phase workflow, design rules, validation gates), `theme` (palette approval + swatch generation)
 
 ### Usage
 

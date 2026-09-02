@@ -69,4 +69,4 @@ All ribbons in one group. The group's `id` must end in `-ribbons` or be exactly 
 
 ## Reference example
 
-See `svg-infographics/skills/svg-designer/references/examples/ribbon_flow.svg` (based on the scandi_standard/broilers_growth_optimisation multivariate-to-growth SVG): four funnel ribbons converge from signal cards into a central hexagon, two divergence ribbons fan out from the hexagon to outcome panels. Study this pattern before authoring ribbons from scratch.
+See `svg-infographics/skills/svg-infographics/references/examples/ribbon_flow.svg` (based on the scandi_standard/broilers_growth_optimisation multivariate-to-growth SVG): four funnel ribbons converge from signal cards into a central hexagon, two divergence ribbons fan out from the hexagon to outcome panels. Study this pattern before authoring ribbons from scratch.

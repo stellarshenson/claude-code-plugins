@@ -33,7 +33,7 @@ Turn technical work into an article a curious, busy non-specialist reads to the 
 ## Visuals
 - **Match the chart to the message** - deviation, correlation, ranking, distribution, change-over-time, part-to-whole, magnitude, spatial, flow (FT Visual Vocabulary)
 - **Build to the bar** - one message per figure, direct labels over legends, honest axes, colourblind- and greyscale-safe, maximise data-ink and erase chartjunk (no 3-D, no truncated axis, no rainbow colourmap)
-- **Generate figures via `svg-infographics:svg-designer`** - hand it the one message and the data; do not hand-roll a messy chart
+- **Generate figures via `svg-infographics:svg-infographics`** - hand it the one message and the data; do not hand-roll a messy chart
 - **A missing figure is a defect too** - if the prose strains to describe a relationship, name the one diagram that would carry it
 
 ## Emphasis and pacing
@@ -48,7 +48,7 @@ Give the eye resting points and let the load-bearing lines stand out - a few acr
 2. **Source** - for every empirical claim, get its `(Author, year)` and its number. When a paper is cited, follow the `datascience:papers` skill: download the PDF and write its digest into `references/papers/` - a cited-but-undigested paper is a defect
 3. **Outline to the spine** - hook, nut graf, the two or three beats, the arc-back kicker; decide the one or two figures and their single message each
 4. **Draft** - climb the ladder both ways; one idea per sentence; short paragraphs; claim + provenance + number every time
-5. **Figures** - commission each via `svg-infographics:svg-designer`, matched to its message, compared against best-in-class
+5. **Figures** - commission each via `svg-infographics:svg-infographics`, matched to its message, compared against best-in-class
 6. **Self-critique** - run the draft through `devils-advocate:adversarial-review` with the `popular-science` adversary (Mode 2 if it must render and judge the figures). Fix every BLOCKER/MAJOR; weigh the JUDGEMENTs
 7. **Revise and confirm** - the hook lands, every claim is sourced and numbered, the ending arcs back and closes with conclusions + next steps
 
@@ -72,5 +72,5 @@ The target register - myth stated, broken with a NAMED source and a HARD number,
 - Never dumb down the substance - make it readable, not shallow; the idea stays, the fog goes
 - Every empirical claim carries its source and its number, or it is cut
 - One default register (curious educated generalist), not a menu; explain the why, do not lecture
-- Figures go through `svg-infographics:svg-designer`; prose sourcing goes through `datascience:papers`; self-review goes through the `popular-science` adversary - do not reinvent them here
+- Figures go through `svg-infographics:svg-infographics`; prose sourcing goes through `datascience:papers`; self-review goes through the `popular-science` adversary - do not reinvent them here
 - No git commit / publish unless the user asks

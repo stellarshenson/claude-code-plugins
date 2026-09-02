@@ -238,7 +238,7 @@ orchestrate CLI, resources and the TEST phase
 
 ## svg-infographics `SVG`
 
-svg-designer skill docs and svg_tools
+svg-infographics umbrella skill docs and svg_tools
 
 - [x] `DEF-SVG-26` **svg-designer docs cited flags the CLI rejects** - MAJOR; tools.md, fix.md, validation.md, background.md, connector.md and export-png.md named flags such as --x on circle, --container-id, background <texture>, --tangent-magnitude; an agent following them gets unrecognized arguments; fix flag columns regenerated from --help
   - evidence: fixed in commit 1416159; suite 962 green; confirming round CLOSED; round-5 diff of all 21 primitives rows against --help
@@ -256,6 +256,13 @@ svg-designer skill docs and svg_tools
   - repro: run check_contrast on an example; echo \$?
   - test-tags: MANUAL
   - log: 2026-08-28T08:22:14Z @kj added
+- [x] `DEF-SVG-55` **Skill(svg-infographics:svg-infographics) fails with Unknown skill** - MEDIUM; the plugin:plugin form that resolves for datascience, journal, project-management and autobuild had no target in svg-infographics, whose umbrella skill was named svg-designer; a caller following the convention of the other four plugins got Unknown skill and had to discover the real name
+  - evidence: skills/svg-infographics/SKILL.md carries name: svg-infographics; test_svg_tools structure check and test_toolchain_gate read the new path; suite 1268 passed, 2 skipped; grep svg-designer over the tree finds only journal history and DEF-SVG-26
+  - repro: Skill(skill="svg-infographics:svg-infographics") on plugin 1.7.16 - Error: Unknown skill: svg-infographics:svg-infographics
+  - root-cause: 2026-09-02T07:59:22Z @kj the umbrella skill directory and frontmatter were named svg-designer while every other umbrella plugin names its skill after the plugin
+  - log: 2026-09-02T07:59:22Z @kj added
+  - log: 2026-09-02T07:59:22Z @kj renamed skills/svg-designer to skills/svg-infographics (git mv), frontmatter name and every live reference in the plugin, devils-advocate, datascience, svg_tools/manifest.py, tests and docs updated
+  - log: 2026-09-02T07:59:22Z @kj closed
 
 ## build tooling `MAKE`
 

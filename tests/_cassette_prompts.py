@@ -82,7 +82,7 @@ def build_standardize_padded_prompt() -> str:
 
 # --- Toolchain gate ------------------------------------------------------
 #
-# A FROZEN snapshot of the shipped gate's normative lines (svg-designer's
+# A FROZEN snapshot of the shipped gate's normative lines (the svg-infographics skill's
 # SKILL.md, `## Toolchain gate`): the command block plus the bulleted rules.
 #
 # Frozen, not read live, because the cassette key is a SHA-256 of the prompt. A

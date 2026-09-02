@@ -4,7 +4,7 @@
   decorative motif (chronology bars + envelope icons cut out of them).
   Intent: visual header for the top of a long document or one of its sections.
   Theme: Stellars-Tech derived - teal/cyan primary (#0096d1), orange accent (#da8230).
-  Reference example for `svg-infographics/skills/svg-designer/rules/header.md`.
+  Reference example for `svg-infographics/skills/svg-infographics/rules/header.md`.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 130">
   <style>

@@ -13,7 +13,7 @@ End-to-end wrapper: build the devil, score the baseline, iterate until the resid
 
 ## Artefacts
 
-Three, in the target document's directory: `devils_advocate.md` (persona, concerns, every scorecard), `fact_repository.md` (verified claims from sources and the user), and the versioned document with its embedded scorecard. Shapes and file naming live in the `setup`, `evaluate` and `iterate` skills. Optional visuals: the `svg-infographics:svg-designer` skill, which owns its own toolchain gate - this workflow needs no install step.
+Three, in the target document's directory: `devils_advocate.md` (persona, concerns, every scorecard), `fact_repository.md` (verified claims from sources and the user), and the versioned document with its embedded scorecard. Shapes and file naming live in the `setup`, `evaluate` and `iterate` skills. Optional visuals: the `svg-infographics:svg-infographics` skill, which owns its own toolchain gate - this workflow needs no install step.
 
 ## Sequence
 

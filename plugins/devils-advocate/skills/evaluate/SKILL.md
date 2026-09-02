@@ -136,7 +136,7 @@ Original NOT modified.
 
 **Quality over presence.** Weak addressing scores worse than no addressing. Half-answers signal awareness without competence.
 
-**One visual replaces three paragraphs.** SVG (via the `svg-infographics:svg-designer` skill, which runs its own toolchain gate) = highest leverage for cognitive load:
+**One visual replaces three paragraphs.** SVG (via the `svg-infographics:svg-infographics` skill, which runs its own toolchain gate) = highest leverage for cognitive load:
 - Stacked bars for metric breakdowns
 - Before/after for value
 - Grid/field for composite metrics

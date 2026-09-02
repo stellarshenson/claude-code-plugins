@@ -1,6 +1,6 @@
 {
   "name": "journal",
-  "version": "1.7.16",
+  "version": "1.7.17",
   "description": "Project journal management - create entries, update existing entries, and archive older entries. Enforces append-only format, continuous numbering, and entry verification.",
   "license": "MIT",
   "author": "Stellars Henson",

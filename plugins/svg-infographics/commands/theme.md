@@ -13,7 +13,7 @@ argument-hint: "brand name or colour direction, e.g. 'corporate blue palette' or
 ## Skills to apply
 
 - **`theme` skill** — theme structure, swatch template, colour naming, approval workflow
-- **`svg-designer` skill, `references/standards.md`** — CSS classes, dark mode, contrast rules
+- **`svg-infographics:svg-infographics` skill, `references/standards.md`** — CSS classes, dark mode, contrast rules
 
 ## Steps
 

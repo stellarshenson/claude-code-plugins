@@ -1,6 +1,6 @@
 # Imagery - how the figures should look
 
-How the visuals in a best-in-class explainer look, and where to set the bar. The shared `craft-canon.md` carries the review-level visual rules; this file is the writer's deeper guide. Generate figures via `svg-infographics:svg-designer` - hand it the one message and the data.
+How the visuals in a best-in-class explainer look, and where to set the bar. The shared `craft-canon.md` carries the review-level visual rules; this file is the writer's deeper guide. Generate figures via `svg-infographics:svg-infographics` - hand it the one message and the data.
 
 ## How it should look - patterns of great explainer graphics
 - **Annotated-takeaway chart** - one focused chart, a bold title that STATES the insight, callout boxes on the key values, an arrow linking text to the point; the reader gets the finding before studying the graphic ([Storytelling with Data](https://www.storytellingwithcharts.com/blog/context-is-key-using-data-visualization-annotation-and-labels-effectively/))

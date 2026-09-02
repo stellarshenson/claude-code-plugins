@@ -6,7 +6,7 @@
   Intent: section header for the top of an engagement / architecture document.
   Theme: sample brand palette - violet foreground (fg-1 / fg-3 with dark-mode flips),
   six-stop brand gradient (emerald->blue->violet->magenta->coral->gold) in the accent bar and logo.
-  Reference example for `svg-infographics/skills/svg-designer/rules/header.md`
+  Reference example for `svg-infographics/skills/svg-infographics/rules/header.md`
   (compact header, kicker + monogram-logo variant).
 
   === GRID ===
