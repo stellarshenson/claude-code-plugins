@@ -189,7 +189,11 @@ def help_subcommands(module: str) -> set[str] | None:
         return None
     m = re.search(r"choose from (.+?)\)", probe.stderr + probe.stdout, re.S)
     if m:
-        return set(re.findall(r"'([\w-]+)'", m.group(1)))
+        # argparse quotes each choice on some interpreter versions and lists them
+        # bare on others; read both shapes, or the probe returns an empty set and
+        # the --help fallback never runs
+        names = {c.strip().strip("'\"") for c in m.group(1).split(",")}
+        return {n for n in names if re.fullmatch(r"[\w-]+", n)}
     help_ = run("--help")
     if help_ is None or help_.returncode != 0:
         return None

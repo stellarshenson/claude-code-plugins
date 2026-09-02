@@ -31,7 +31,7 @@ This marketplace makes Claude work like a disciplined engineer instead. Each plu
 /plugin install autobuild@stellarshenson-marketplace
 ```
 
-Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop It](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762) and [Stop Fixing Your AI's SVGs](https://medium.com/towards-artificial-intelligence/stop-fixing-your-ai-svgs-715df70ccca0). For real examples (60+ production SVGs, 4 worked devils-advocate analyses, 3 autobuild iteration trajectories, a 1.0-CV grounding result), see [`showcase/`](showcase/).
+Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop It](https://medium.com/@konradwitowskijele/your-ai-agent-will-cut-corners-heres-how-to-stop-it-40f3bc7a4762) and [Stop Fixing Your AI's SVGs](https://medium.com/towards-artificial-intelligence/stop-fixing-your-ai-svgs-715df70ccca0). For real examples (60+ production SVGs, 4 worked devils-advocate analyses, 3 autobuild iteration trajectories, a 1.0-CV grounding result), see [`showcase/`](docs/showcase/).
 
 ## The full marketplace - seven disciplines
 

@@ -267,6 +267,11 @@ Makefile targets and CI parity
   - test-tags: MANUAL
   - log: 2026-08-28T08:22:14Z @kj added
   - log: 2026-08-28T08:22:14Z @kj closed: fixed
+- [x] `DEF-MAKE-54` **README links showcase/ after the directory moved to docs/showcase/** - MINOR; the v1.7.15 repository cleanup moved showcase/ under docs/ but README.md line 34 still linked showcase/, so the check-links CI job (lychee) failed with File not found on release runs 33579299161 (v1.7.15) and 33601564782 (v1.7.16); every other checked link resolved (90 successful, 13 excluded)
+  - evidence: README.md line 34 now links docs/showcase/, which exists; grep -c '](showcase/)' README.md returns 0
+  - repro: ls showcase -> No such file; grep -n '](showcase/)' README.md matches line 34; the lychee job reports file:///.../showcase File not found
+  - log: 2026-09-02T07:10:02Z @kj added
+  - log: 2026-09-02T07:10:02Z @kj closed
 
 ## devils-advocate adversarial-review `ADVR`
 
@@ -339,4 +344,12 @@ Adversarial-review loop: reviewer, adjudicator, workflow script, spec
 - [ ] `DEF-ADVR-52` **loop-spec status list omits PANEL_DIED** - MINOR; references/loop-spec.md line 60 lists the loop statuses as PLAN, SHIP, STOP, FANOUT_STOP, ROUND_CAP and ADJUDICATOR_DIED; adversarial-loop.js also returns PANEL_DIED (every reviewer in a panel died - the round reviewed nothing) and tests/test_adversarial_workflow_script.py pins it, so a loop constructed from the spec's status list omits the dead-panel status. Pre-existing since the DEF-ADVR-47 fix; surfaced by the round-1 review of DEF-ADVR-50 (wf_812326e5-afd) and deferred there as outside that fix
   - repro: grep -n PANEL_DIED plugins/devils-advocate/skills/adversarial-review/references/loop-spec.md returns nothing; grep -n PANEL_DIED plugins/devils-advocate/skills/adversarial-review/workflows/adversarial-loop.js returns two return sites
   - log: 2026-09-02T06:33:55Z @kj added
+- [x] `DEF-ADVR-53` **review-tools dossier finds no subcommands on Python 3.12 - the help probe reads only quoted choices** - MAJOR; help_subcommands runs the console script with a probe subcommand and parses argparse's invalid-choice error for the choice list with the regex '([\w-]+)', which needs quotes around each name. Python 3.12.13 prints the list bare - (choose from run, fly) - while 3.11.14 and 3.13.15 print 'run', 'fly', so on 3.12 the probe returns an empty set, the --help fallback never runs, and the dossier reports every console script as defining no subcommands and every advertised command as undefined. CI: test (3.12) red on tests/test_review_tools.py::test_cli_surface_reads_flags_and_help_finds_the_loop_built_subcommand (assert [] == ['fly', 'run']) and ::test_advertised_surface_counts_code_spans_not_prose (assert [] == ['soar']) on release runs 33579299161 (v1.7.15) and 33601564782 (v1.7.16); 3.11 and 3.13 green
+  - evidence: help_subcommands splits the choice list on commas and strips quotes, accepting both renderings; tests/test_review_tools.py::test_help_probe_reads_bare_and_quoted_choice_lists feeds a module printing each shape and expects {'run','fly'}; the review-tools file passes 14/14 on a scratch 3.12.13 venv built like CI and on 3.13.15
+  - test-tags: UNIT
+  - repro: python3.12 -c "import argparse,sys; p=argparse.ArgumentParser(); s=p.add_subparsers(dest='c',required=True); s.add_parser('run'); s.add_parser('fly'); p.parse_args(['x'])" prints (choose from run, fly); on 3.13 the same prints (choose from 'run', 'fly'); review-tools dossier on any package with a console script then lists no subcommands on 3.12
+  - root-cause: 2026-09-02T07:10:01Z @kj the choice-list parser assumed argparse's quoted rendering; the interpreter's argparse changed the rendering between patch releases and nothing pinned the bare shape
+  - log: 2026-09-02T07:10:01Z @kj added
+  - log: 2026-09-02T07:10:01Z @kj edited test-tags (added)
+  - log: 2026-09-02T07:10:02Z @kj closed
 

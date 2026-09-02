@@ -17,6 +17,7 @@ import pytest
 from stellars_claude_code_plugins.review.review_tools import (
     build_dossier,
     cost_of,
+    help_subcommands,
     main,
     merge_findings,
     parse_report,
@@ -149,6 +150,22 @@ def test_cli_surface_reads_flags_and_help_finds_the_loop_built_subcommand(tree: 
     live = dossier(tree)["surface_check"][0]
     assert live["source"] == "--help"
     assert live["defined"] == ["fly", "run"]
+
+
+def test_help_probe_reads_bare_and_quoted_choice_lists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """argparse quoted the choices on 3.11 and 3.13 and listed them bare on 3.12.13;
+    the probe read only quoted names, so on 3.12 it returned an empty set and the
+    `--help` fallback never ran. Both shapes must yield the subcommand names."""
+    for shape in ("run, fly", "'run', 'fly'"):
+        mod = tmp_path / "shaped.py"
+        mod.write_text(
+            "import sys\n"
+            f"sys.stderr.write(\"mytool: error: argument cmd: invalid choice: '__probe__' (choose from {shape})\\n\")\n"
+            "sys.exit(2)\n"
+        )
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.syspath_prepend(str(tmp_path))
+        assert help_subcommands("shaped") == {"run", "fly"}, shape
 
 
 def test_advertised_surface_counts_code_spans_not_prose(tree: Path):
