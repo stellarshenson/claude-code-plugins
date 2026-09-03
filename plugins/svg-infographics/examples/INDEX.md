@@ -1,6 +1,6 @@
 # Examples Index
 
-68 production SVG references. Study before creating. Closest match to target = best starting point.
+69 production SVG references. Study before creating. Closest match to target = best starting point.
 
 Recipes below carry the geometry - read the INDEX plus ONE closest example, not 3-5.
 
@@ -174,6 +174,7 @@ the SVGs only once the spec is approved.
 | `theme_swatch_1_kolomolo` | Kolomolo brand palette |
 | `theme_swatch_3_meridian` | Meridian brand palette |
 | `theme_swatch_5_optima_manufacturing` | Optima Manufacturing palette |
+| `theme_swatch_6_stackrails` | StackRails palette (emerald on near-black; light mode derived, dark mode brand-verbatim) |
 
 ### Embroidery / decorative
 

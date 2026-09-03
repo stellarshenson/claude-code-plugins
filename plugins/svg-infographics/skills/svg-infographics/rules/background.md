@@ -37,6 +37,7 @@ The `<g id="background">` group holds either:
 - `grid` - Engineering grid (coordinate ticks). Good for technical drawings / schematics.
 - `celtic` - Interlocking knotwork. Decorative; use for heritage / craft themes only.
 - `organic` - Leaf veins / river tributaries. Good for agriculture / biology / natural-system diagrams.
+- `dotsea` - A sea of dots on a perspective lattice rolling toward a hazy horizon: markers shrink and fade with depth, a slow swell lifts the rows. Good for cover plates, hero banners and slide backgrounds. Its own flags: `--horizon` (fraction of the canvas, from the near edge, where the dots vanish; 0.5), `--fade-rate` (depth falloff, 0.3-3.0; 1.0), `--opacity` (the nearest dots; 0.6), `--waviness` (`calm` / `moderate` / `rough` or a float 0-1), `--connections` (faint mesh lines - a square grid for dots, hexagon outlines for hexagons; off), `--shape dot|hex` (circles on a square lattice, or flat-top hexagons at the vertices of a honeycomb). `--direction` is the side the field recedes toward - `up` puts the horizon at the top and the near edge at the bottom; `radial` recedes from the centre outward. Each marker carries its own `opacity` and radius because the fade is geometry; colour still comes from the CSS class you wrap it in.
 - `none` - Explicitly no texture (solid or transparent backplate only).
 
 `svg-infographics background --type <type> --w 800 --h 450 --seed <int>` generates the SVG snippet (`--list` prints the types). Seed makes textures reproducible across re-generation.

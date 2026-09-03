@@ -17,6 +17,8 @@ Usage:
     svg-infographics primitives speech --x 60 --y 40 --w 200 --h 80 --tip-x 280 --tip-y 200 --shape soft-rect
     svg-infographics primitives thought --x 60 --y 40 --w 200 --h 80 --tip-x 320 --tip-y 240 --trail-bubbles 3
     svg-infographics text-to-path --text "Hello" --font path/to/Inter.ttf --size 24 --x 100 --y 200
+    svg-infographics mesh search "sports car" --top 5
+    svg-infographics wireframe --model anvil --style hidden --w 400 --h 400
 """
 
 import sys
@@ -135,7 +137,16 @@ SUBCOMMANDS = {
     # ---- BACKGROUND TEXTURE GENERATOR ----
     "background": (
         "gen_backgrounds",
-        "BG: procedural background textures (circuit, neural, topo, grid, organic, celtic, scifi, constellation, flourish, geometric, crystalline).",
+        "BG: procedural background textures (circuit, neural, topo, grid, organic, celtic, scifi, constellation, flourish, geometric, crystalline, dotsea).",
+    ),
+    # ---- CC0 MESH CATALOGUE + WIREFRAME DRAWING ----
+    "mesh": (
+        "mesh",
+        "MESH: index, search, list and fetch CC0 meshes from thebasemesh.com - 1,254 props over 30 categories (furniture, buildings, tools, kitchen, industrial, decorative). Feeds `wireframe`.",
+    ),
+    "wireframe": (
+        "wireframe",
+        "WIREFRAME: draw a real object (a catalogue slug or an .obj file) as SVG edges - `wire` fades with depth, `hidden` culls back faces and paints far to near.",
     ),
 }
 
@@ -171,6 +182,8 @@ CAVEMAN_DESCRIPTIONS: dict[str, str] = {
     "shapes": "draw.io stencils",
     "icons": "plugin-own icons + catalogue. custom / lucide / drawio",
     "background": "procedural bg patterns",
+    "mesh": "free 3D models. find, grab, keep",
+    "wireframe": "3D thing -> line drawing",
 }
 
 

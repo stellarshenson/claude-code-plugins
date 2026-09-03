@@ -5,13 +5,15 @@ CLI over a canonical experiments log, so an agent answers "what is taken, what w
 ## Read commands
 
 - **`hypothesis-tools next-id <log> [--json]`** - the next free global `H<n>` and the next `E<batch>`, plus the current hypothesis and batch counts
-- **`hypothesis-tools list <log> [--verdict V] [--batch E12] [--author @xx] [--json]`** - one row per hypothesis (id, slug, shape, verdict) and a verdict tally; `--verdict` matches one label case-insensitively (`Refuted` does not return `Refuted (null)`), takes the ledger's own grown labels, and `none` returns the unverdicted; `--author` matches the handle that registered it
+- **`hypothesis-tools list <log> [--verdict V] [--batch E12] [--author @xx] [--locked] [--locked-by @xx] [--json]`** - one row per hypothesis (id, slug, shape, verdict) and a verdict tally; `--verdict` matches one label case-insensitively (`Refuted` does not return `Refuted (null)`), takes the ledger's own grown labels, and `none` returns the unverdicted; `--author` matches the handle that registered it; `--locked` keeps the hypotheses carrying an active lock, `--locked-by` narrows to one holder
 - **`hypothesis-tools show <log> <id> [--json]`** - the hypothesis's markdown verbatim (extent under *What counts as a declaration*); accepts `E12-H33` or the bare ordinal `33`, which is unambiguous because `<n>` is global
 - **`hypothesis-tools report <log> [--json]`** - one paste-ready table, batches down and verdict labels across, canonical labels first then the ledger's own by frequency (capped at 8 columns, the tail folds into `other`), `unverdicted` last, with a Total row
 - **`hypothesis-tools values <log> <quantity> [--batch B] [--id ID] [--json]`** - every reading of one measured quantity (`DR`, `gold_full`, `theta`, `pop residual`) across the declared blocks: id, value, line, context. Reads `` `DR` 0.2286 ``, `theta(0.08) = 0.7644`, `pop residual < 0.58%`, backticked or bolded names and values alike. The match is textual on purpose - the context column makes a false hit visible instead of silently averaged into an answer
 - **`hypothesis-tools check <log>`** - validate; exit 1 on any error, 0 with warnings
 
 `list`, `show`, `report` and `values` take `--json` and emit structured records; `next-id --json` emits `{next_h, next_batch, hypotheses, batches}`; `check` has no `--json`.
+
+**`list`, `show` and `report` name the hypotheses in flight first.** Whenever a hypothesis they are about to show carries an active lock, one stderr line precedes the table: `N hypothesis(es) currently worked on: E14-H42 by @kj until 2026-09-03T10:11:29Z, ...` - ten ids at most, then `+M more`. The choice of what to pick up happens while reading, so the signal goes there; stderr keeps a piped table clean and `--json` prints no notice, carrying `lock` as `{by, until, note}` or `null` on each record instead.
 
 **`next-id` refuses rather than guesses.** An unclosed code fence, or any id-shaped token sitting in a declaration position that did not parse, exits 1 with the line - because a wrong answer here silently burns an ordinal twice, and the skill says that has to be undone later. `register` refuses on the same grounds, because it is the write that allocates an ordinal; the other writes name a hypothesis that already exists and do not.
 
@@ -25,8 +27,18 @@ Every write but `author` takes `--author @xx` and refuses without one. The handl
 - **`hypothesis-tools verdict <log> <id> --text "Label; number" --author @xx`** - record the one verdict. A second is refused: a flip is a new round with a back-reference. The label must open the text; a non-canonical label records with a note
 - **`hypothesis-tools field <log> <id> --name N --text V [--update] --author @xx`** - add one field, placed before Result/Verdict/Log so the block reads declaration, measurement, judgment. Any name the research needs: the five real ledgers carry hundreds of their own (`Grounding`, `Persona`, `Status`, `Vet`). A name already recorded needs `--update`, which replaces the value and keeps the label and its qualifier untouched. `Result`, `Verdict` and `Log` are refused - each has its own command and its own immutability rule
 - **`hypothesis-tools log-event <log> <id> --event E [--date YYYY-MM-DD] --author @xx`** - append one dated `log:` line under the hypothesis's Log, creating the `- **Log**` bullet at block end when absent; newest lands last
+- **`hypothesis-tools lock <log> <id> --author @xx [--hours N | --until STAMP] [--note TEXT]`** - write `- lock: <ISO 8601 UTC stamp> @xx [note]` as the block's first bullet: @xx is likely working on this until the stamp, 24 hours from now by default. Locking again as the same author extends it (the line is replaced); refused on a hypothesis that carries a Verdict, because a verdict closes it and a flip is a new round
+- **`hypothesis-tools unlock <log> [<id> | --all | --expired] --author @xx`** - remove lock lines: one hypothesis, every one in the ledger, or only those whose stamp is past; exactly one selector
 
 Writes land only on a full-block hypothesis - a table row or compact bullet cannot take appended fields; give it a `### id slug` block first (the tool says so). `register` therefore always writes a full block.
+
+**A lock is a courtesy signal, never a gate** - the `project-management` toolkit's discipline, unchanged. Lock a hypothesis when you pick it up, before its first write, and unlock when you stop; ask the holder before working on one somebody else holds. What the tool does with it:
+
+- **A write by another author warns once and lands** - `result`, `field` and `log-event` on a hypothesis locked by a different handle print `<log>:<line>: E14-H42 locked by @yy until <stamp> - someone is likely working on it; ask before continuing` on stderr and proceed; exit code and file result are those of the unlocked case
+- **Expired locks clear themselves** - every write first removes the lock lines whose stamp is past, silently and unlogged; `verdict` removes the hypothesis's lock whatever its expiry, since the verdict closes it
+- **Taking or clearing someone else's active lock is a transfer** - `lock` and `unlock` print `TRANSFER: E14-H42 was locked by @yy until <stamp> - you are taking it over; ask @yy` (or `you are clearing it`) and proceed; a takeover with no `--note` records `taken over from @yy` on the new line, so the previous holder stays visible on the block
+- **Locking is never logged** - the lock line carries its own stamp and author, and it is meant to disappear; a `log:` line would outlive the lock it records
+- **The note is one line** - `lock` verifies the line reads back as written before touching the file and refuses a note that breaks the shape
 
 ## What counts as a declaration
 
@@ -64,7 +76,9 @@ Errors (exit 1) are unambiguous defects; warnings are shapes the skill permits b
 | error | two hypotheses claim the same `H<n>` - the ordinal is global and never reset |
 | error | a `Verdict` bullet carrying no readable label at all |
 | error | a `log:` line naming a handle that is not on the `## Authors` roster, aggregated per handle - a handle nobody is rostered for is a typo, and a typo credits a researcher who does not exist |
+| error | a `lock:` line that does not read as `- lock: <ISO 8601 UTC stamp> @xx [note]`, or a second lock line on one hypothesis - the holder or the expiry is unreadable |
 | warning | non-canonical verdict labels, aggregated with counts - a grown vocabulary is legitimate but drifts |
+| warning | an expired lock (`check` is read-only; the next write clears it), or a lock on a hypothesis that carries a Verdict - a verdict closes the hypothesis, so unlock it |
 | warning | `log:` lines carrying no `@handle`, in one aggregated count - the ledgers predate the roster and their history is legitimate; every CLI write records its author |
 | warning | no `**Canonical Experiments Document**` marker - this may not be the canonical log |
 | warning | how many compact and table-declared hypotheses there are - readable, but not the full field set |
@@ -92,10 +106,15 @@ hypothesis-tools register docs/experiments/grounding-experiments.md --author @kj
     --field "Persona=contrarian"
 # registered E14-H42 at line 312 by @kj
 
+hypothesis-tools lock    docs/experiments/grounding-experiments.md E14-H42 --author @kj --note "running the sweep"
+# docs/experiments/grounding-experiments.md:313: E14-H42 locked by @kj until 2026-09-03T10:11:29Z   (24 hours; --hours 4 or --until STAMP for another span)
+
 hypothesis-tools result  docs/experiments/grounding-experiments.md E14-H42 --author @kj --text "kill rate 41%, control clean"
 hypothesis-tools verdict docs/experiments/grounding-experiments.md E14-H42 --author @kj --text "Confirmed; 41% >= 30%, control clean"
 hypothesis-tools field   docs/experiments/grounding-experiments.md E14-H42 --author @kj --name Grounding --text "SOTA: the cheap-gate line"
 hypothesis-tools log-event docs/experiments/grounding-experiments.md E14-H42 --author @kj --event "re-ran at n=2x, holds"
+# verdict cleared the lock; a hypothesis put down before its verdict is released by hand:
+hypothesis-tools unlock  docs/experiments/grounding-experiments.md E14-H42 --author @kj
 
 hypothesis-tools report docs/experiments/grounding-experiments.md
 hypothesis-tools values docs/experiments/grounding-experiments.md "kill rate"

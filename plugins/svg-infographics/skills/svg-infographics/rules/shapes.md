@@ -1,4 +1,4 @@
-**Shapes rule card** - shape primitives, bar/shape consistency, data-driven curves, and the `boolean` calculator. Served when preflight declares `--shapes N`; the boolean sections also apply to any `boolean` op regardless of declaration.
+**Shapes rule card** - shape primitives, bar/shape consistency, data-driven curves, wireframe objects from the mesh catalogue, and the `boolean` calculator. Served when preflight declares `--shapes N`; the boolean sections also apply to any `boolean` op regardless of declaration.
 
 ## When to use
 
@@ -111,6 +111,33 @@ Required:
 - **Render**: `stroke-linejoin="round"`, `stroke-width="2"` to `2.5`, fill segments at `fill-opacity="0.18-0.25"` if shading
 
 Hand-written `<path d="M... C... C..."/>` for data curves = workflow violation.
+
+## Wireframe objects
+
+A real object - a chair, an anvil, a church, a boat - drawn as edges from a 3D mesh. Source: `svg-infographics mesh`, a bundled catalogue of 1,254 CC0 props from thebasemesh.com in 30 categories (urban, home, decorative, industrial, architectural, kitchen, tools, furniture, buildings, ...). It holds no people, no trees or plants and two whole vehicles, so run `mesh search` before promising an object.
+
+1. **Find** - `svg-infographics mesh search "wooden chair" --top 5` ranks by name and category (BM25; a one-letter typo still matches, a run-together word matches on its leading word); `--category Furniture` narrows, `--json` adds `tri_count` and the page URL
+2. **Draw** - `svg-infographics wireframe --model dining-chair-01 --style hidden --w 360 --h 360` downloads the OBJ once into `~/.cache/svg-infographics/meshes/` and prints a `<g class="wireframe" data-model="..." data-bbox="x y w h">` fragment fitted into the canvas you name, `--fit` (0.06) of each side kept as margin
+3. **Place** - paste the fragment into the `content` layer and position it with `transform="translate(x,y)"`. `--w` / `--h` are the slot the drawing fills, so size with them; a `scale()` is for a late nudge only. `data-bbox` is the drawn extent inside that slot, for `place`, `empty-space` and callout checks
+
+### Style
+
+| Style | Emits | Use |
+|-------|-------|-----|
+| `wire` (default) | one `<line>` per unique edge, opacity 0.95 nearest to 0.18 furthest | ghosted, see-through technical look - decoration, watermarks, plates |
+| `hidden` | one `<polygon>` per front face, painted far to near | a clean line drawing at card size - nearer faces cover the edges behind them |
+
+Colour is the caller's: no element carries a `stroke` or a `fill`, so style the class - `.wireframe { fill: none; stroke: <theme hex>; stroke-linejoin: round }` and, for `hidden`, `.wireframe polygon { fill: <light plate> }` so nearer faces cover the lines behind; the dark-mode block sets `.wireframe polygon { fill: <dark plate> }`. Without the polygon rule the faces are transparent and nothing is hidden.
+
+### View and weight
+
+- `--yaw` (35) turns the object about its up axis, `--pitch` (20) tips it toward the viewer, `--roll` (0) spins the picture, `--fov` (25) sets the perspective and `0` is orthographic, for isometric-style plates
+- Models are not oriented alike, so a default view can read as a blob (a deer head facing the camera). `--preview` wraps the fragment in a full SVG on a light plate; render it with `render-png` and adjust `--yaw` before placing. `--json` reports `bbox`, `edge_count` and `face_count` without drawing
+- A dense mesh is a big file: `dining-chair-01` is 3,729 lines in `wire` and 923 polygons in `hidden`, `church-01` is 186 and 37. Prefer `hidden` at card size and the lower `tri_count` when several assets fit
+- `--stroke-width` (0.8) is in the fragment's own units and scales with any `transform`, one more reason to size with `--w` / `--h` rather than scale a 400 px drawing down to 80
+- `finalize` reports every `wire` line off the 5 px grid (SOFT-ALIGNMENT, one per edge); acknowledge the layer once with `--ack-class SOFT-ALIGNMENT='wireframe edges are projected 3D geometry'`. `hidden` polygons raise no alignment warning
+- Word compatibility holds: lines and polygons only, no filter or mask
+- Every entry is CC0, so no attribution comment is needed; `data-model` keeps the provenance in the file. `mesh fetch SLUG...` warms the cache before a multi-file build, `mesh path SLUG` prints the cached OBJ, `mesh index --rebuild` re-crawls the site (maintainers only, about 45 minutes)
 
 ## Group conventions (MANDATORY for check)
 

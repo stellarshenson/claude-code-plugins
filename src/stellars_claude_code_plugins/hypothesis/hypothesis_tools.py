@@ -20,6 +20,15 @@ roster) and appends a dated log line saying what it did, because a research
 ledger with several hands on it needs to say whose reading a number is - and
 that fact is unrecoverable once the session that wrote it is gone.
 
+Several hands also means two of them can pick up the same hypothesis. `lock`
+writes `- lock: <ISO 8601 UTC stamp> @xx [note]` as the block's first bullet -
+the pm-tools discipline, unchanged: any rostered author, 24 hours by default,
+a courtesy signal and never a gate. A write by someone else warns once on
+stderr and lands unchanged; every write first drops the locks whose stamp is
+past; `verdict` drops the hypothesis's lock whatever its expiry; `list`, `show`
+and `report` open with `N hypothesis(es) currently worked on: ...` on stderr
+when something they show is locked. Locking is never logged.
+
 Three hypothesis shapes exist in the wild and all parse:
 
     full-block   ### E12-H33 slug          + `- **Verdict** - Confirmed; ...`
@@ -139,6 +148,13 @@ LOG_LINE_RE = re.compile(
     r"(?P<author>@[a-z][a-z0-9]{1,3})?\s*(?:-\s*)?(?P<event>.*)$"
 )
 
+# `- lock: 2026-09-03T10:11:29Z @kj optional note` - who is likely working on the
+# hypothesis, until when. The pm-tools lock, same shape and same spirit: a
+# courtesy signal read at pick-up time, never a gate. The bullet carries no
+# bold label, so no field reader sees it, and `lock:` is not `log:`.
+LOCK_LINE_RE = re.compile(r"^\s*[-*+]\s+lock:\s*(?P<until>\S*)(?P<rest>.*)$")
+STAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+
 # Matched longest-first, so `Refuted (null)` is never truncated.
 VERDICTS = (
     "Killed-at-gate",
@@ -178,6 +194,11 @@ class Hypothesis:
     line: int  # 1-indexed line of the declaration
     fields: dict[str, str] = field(default_factory=dict)
     block: str = ""
+    # The lock line as parsed: {by, until, note} or None; how many lock lines
+    # the block carries; whether one of them could not be read.
+    lock: dict | None = None
+    lock_n: int = 0
+    lock_bad: bool = False
 
     @property
     def verdict(self) -> str | None:
@@ -216,6 +237,7 @@ class Hypothesis:
             "verdict": self.verdict,
             "author": self.author,
             "fields": self.fields,
+            "lock": _active_lock(self),
         }
 
 
@@ -460,10 +482,13 @@ def parse_ledger(text: str) -> list[Hypothesis]:
             continue  # a later mention is a reference, not a declaration
 
         if heading is not None:
-            body, block = _read_block(lines, raw_lines, i, len(m.group("hashes")))
+            body, block, locks = _read_block(lines, raw_lines, i, len(m.group("hashes")))
             hyp = Hypothesis(hid, m.group("batch"), int(m.group("ordinal")), slug, "full", i + 1)
             hyp.fields = body
             hyp.block = block
+            hyp.lock_n = len(locks)
+            hyp.lock = next((k for k in locks if k), None)
+            hyp.lock_bad = any(k is None for k in locks)
         else:
             hyp = Hypothesis(
                 hid, m.group("batch"), int(m.group("ordinal")), slug, "compact", i + 1
@@ -547,8 +572,9 @@ def find_duplicate_declarations(text: str) -> list[tuple[int, str]]:
 
 def _read_block(
     lines: list[str], raw_lines: list[str], start: int, level: int
-) -> tuple[dict[str, str], str]:
-    """Collect a full-block hypothesis: its fields and its verbatim text.
+) -> tuple[dict[str, str], str, list[dict | None]]:
+    """Collect a full-block hypothesis: its fields, its verbatim text and its
+    lock lines (parsed, or None for one that cannot be read).
 
     The block runs to the next heading at the same level or shallower, so a
     deeper sub-heading stays inside the hypothesis it belongs to - EXCEPT when
@@ -572,7 +598,12 @@ def _read_block(
     # Names whose stored value came from a `- **Name (qualifier)**` bullet.
     from_qualified: set[str] = set()
     body = lines[start + 1 : end]
+    locks: list[dict | None] = []
     for offset, line in enumerate(body):
+        lm = LOCK_LINE_RE.match(line)
+        if lm:
+            locks.append(_parse_lock(lm))
+            continue
         fm = FIELD_RE.match(line)
         if not fm:
             continue
@@ -607,7 +638,35 @@ def _read_block(
             qualifier = fm.group("qualifier")
             fields[name] = f"{qualifier} {value}".strip() if qualifier else value
 
-    return fields, "\n".join(raw_lines[start:end]).rstrip()
+    return fields, "\n".join(raw_lines[start:end]).rstrip(), locks
+
+
+def _parse_lock(m: re.Match) -> dict | None:
+    """`{by, until, note}` off a matched lock line, or None when the stamp is not
+    ISO 8601 UTC or no handle follows it - `check` reports that, no write repairs it."""
+    until = m.group("until")
+    handle, _, note = m.group("rest").strip().partition(" ")
+    if not _valid_stamp(until) or not HANDLE_RE.fullmatch(handle):
+        return None
+    return {"by": handle, "until": until, "note": note.strip() or None}
+
+
+def _now_stamp() -> str:
+    import datetime
+
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _valid_stamp(stamp: str) -> bool:
+    import datetime
+
+    if not STAMP_RE.match(stamp):
+        return False
+    try:
+        datetime.datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -670,7 +729,13 @@ def cmd_next_id(path: Path, as_json: bool) -> int:
 
 
 def cmd_list(
-    path: Path, verdict: str | None, batch: str | None, author: str | None, as_json: bool
+    path: Path,
+    verdict: str | None,
+    batch: str | None,
+    author: str | None,
+    as_json: bool,
+    locked: bool = False,
+    locked_by: str | None = None,
 ) -> int:
     """Every hypothesis with its verdict - the round-state tally in one call."""
     loaded = _load(path)
@@ -681,6 +746,11 @@ def cmd_list(
     rows = hyps
     if batch:
         rows = [h for h in rows if h.batch.lower() == batch.lower()]
+    if locked:
+        rows = [h for h in rows if _active_lock(h)]
+    if locked_by:
+        holder = locked_by if locked_by.startswith("@") else "@" + locked_by
+        rows = [h for h in rows if (k := _active_lock(h)) and k["by"] == holder]
     if author:
         want_author = author if author.startswith("@") else "@" + author
         rows = [h for h in rows if h.author == want_author]
@@ -716,6 +786,7 @@ def cmd_list(
         print(json.dumps([h.to_dict() for h in rows], indent=2))
         return 0
 
+    _notice_locked(rows)
     if not rows:
         print("no hypotheses match")
         return 0
@@ -756,6 +827,7 @@ def cmd_show(path: Path, hid: str, as_json: bool) -> int:
     if as_json:
         print(json.dumps({**hit.to_dict(), "block": hit.block}, indent=2))
     else:
+        _notice_locked([hit])
         print(hit.block)
     return 0
 
@@ -871,6 +943,25 @@ def cmd_check(path: Path) -> int:
             "written before the roster or by hand; every CLI write records its author"
         )
 
+    # Locks: read-only here - an expired or stray lock is reported, never removed.
+    for h in hyps:
+        if h.lock_n > 1:
+            errors.append(
+                f"line {h.line}: {h.hid} carries more than one lock: line; keep exactly one"
+            )
+        if h.lock_bad:
+            errors.append(
+                f"line {h.line}: {h.hid} lock: line is malformed; use "
+                "`- lock: <ISO 8601 UTC stamp> @xx [note]`"
+            )
+        if h.lock and not _active_lock(h):
+            warnings.append(f"line {h.line}: {h.hid} expired lock, cleared on the next write")
+        elif h.lock and h.fields.get("Verdict"):
+            warnings.append(
+                f"line {h.line}: {h.hid} is locked but carries a Verdict - a verdict closes "
+                "the hypothesis; unlock it"
+            )
+
     # A hypothesis with neither Result nor Verdict is unrun - a state the
     # skill designs for (register, sign off, then execute), so it is counted
     # in the summary rather than warned about eleven times per fanout.
@@ -972,6 +1063,7 @@ def need_author(path: Path, text: str, handle: str) -> str | None:
 
 def cmd_author(path: Path, handle: str, name: str) -> int:
     """Add or update one roster entry, creating the `## Authors` section."""
+    _expire_locks(path)
     loaded = _load(path)
     if loaded is None:
         return 1
@@ -1127,6 +1219,7 @@ def cmd_register(
     record the outcome later, and passing them here is refused rather than
     letting a "registration" arrive already decided.
     """
+    _expire_locks(path)
     ready = _next_free(path)
     if ready is None:
         return 1
@@ -1221,7 +1314,9 @@ def _locate(hyps: list[Hypothesis], hid: str) -> Hypothesis | None:
 
 
 def _writable_block(path: Path, hid: str) -> tuple[list[str], Hypothesis] | None:
-    """The raw lines and the FULL-block hypothesis a write may append into."""
+    """The raw lines and the FULL-block hypothesis a write may append into. Every
+    write starts here, so this is where the expired locks are dropped first."""
+    _expire_locks(path)
     loaded = _load(path)
     if loaded is None:
         return None
@@ -1310,6 +1405,219 @@ def _insert_log_line(lines: list[str], h: Hypothesis, entry: str) -> int:
     return at + 1
 
 
+# ---------------------------------------------------------------------------
+# Locks - who is likely working on a hypothesis, until when
+# ---------------------------------------------------------------------------
+#
+# The pm-tools discipline, unchanged: any rostered author may lock any
+# unverdicted full-block hypothesis, 24 hours by default; the lock is a signal
+# read at pick-up time and never a gate, so a write by someone else warns once
+# on stderr and lands unchanged. Every write first drops the locks whose stamp
+# is past, silently; a verdict drops the hypothesis's lock whatever its expiry,
+# because a verdict closes the hypothesis. Locking is never logged - it says
+# something about the near future, not about the hypothesis's history.
+
+
+def _active_lock(h: Hypothesis) -> dict | None:
+    """The lock that still holds - stamp in the future - or None. ISO 8601 UTC
+    stamps compare as plain strings, so no clock arithmetic is needed."""
+    k = h.lock
+    return k if k and k["until"] > _now_stamp() else None
+
+
+def _expire_locks(path: Path) -> int:
+    """Drop every lock line whose stamp is past - the first step of every write.
+    Silent and unlogged: an expired lock is a courtesy that ran out, not an event.
+    Returns how many were dropped. An unreadable file is left for `_load` to report."""
+    try:
+        raw = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return 0
+    scan, _ = _strip_fences(raw)
+    at = _now_stamp()
+    gone = [
+        i
+        for i, ln in enumerate(scan)
+        if (m := LOCK_LINE_RE.match(ln))
+        and _valid_stamp(m.group("until"))
+        and m.group("until") <= at
+    ]
+    for i in reversed(gone):
+        del raw[i]
+    if gone:
+        path.write_text("\n".join(raw) + "\n", encoding="utf-8")
+    return len(gone)
+
+
+def _lock_line_at(lines: list[str], h: Hypothesis) -> int | None:
+    """0-indexed line of the block's lock line, read off the fence-stripped view."""
+    scan = _strip_fences(lines)[0]
+    start, end = _block_span(lines, h)
+    return next((i for i in range(start + 1, end) if LOCK_LINE_RE.match(scan[i])), None)
+
+
+def _warn_lock(path: Path, h: Hypothesis, who: str) -> None:
+    """One stderr line when an active lock is held by someone other than `who`.
+    The write goes ahead regardless: the lock is a signal, never a gate."""
+    k = _active_lock(h)
+    if k and k["by"] != who:
+        print(
+            f"{path}:{h.line}: {h.hid} locked by {k['by']} until {k['until']} - "
+            "someone is likely working on it; ask before continuing",
+            file=sys.stderr,
+        )
+
+
+def _warn_transfer(h: Hypothesis, k: dict, doing: str) -> None:
+    """`lock` or `unlock` over another author's active lock: taking their work
+    over is allowed, going quiet about it is not."""
+    print(
+        f"TRANSFER: {h.hid} was locked by {k['by']} until {k['until']} - "
+        f"you are {doing}; ask {k['by']}",
+        file=sys.stderr,
+    )
+
+
+def _notice_locked(hyps: list[Hypothesis]) -> None:
+    """One stderr line naming the hypotheses a read is about to show that someone
+    is on. The write-time warning is late by design - the work is already done by
+    then; the choice of what to pick up happens while reading, so the signal goes
+    there. Silent when nothing shown is locked; stderr keeps a piped table clean."""
+    held = [(h, k) for h in hyps if (k := _active_lock(h))]
+    if not held:
+        return
+    named = [f"{h.hid} by {k['by']} until {k['until']}" for h, k in held[:10]]
+    more = f", +{len(held) - 10} more" if len(held) > 10 else ""
+    print(
+        f"{len(held)} hypothesis(es) currently worked on: {', '.join(named)}{more}",
+        file=sys.stderr,
+    )
+
+
+def _relocate(lines: list[str], hid: str) -> Hypothesis:
+    """The same hypothesis re-read from `lines` after a line inside its block was
+    removed - the block span is a line count, so the old record is stale by one."""
+    hit = _locate(parse_ledger("\n".join(lines)), hid)
+    assert hit is not None, hid
+    return hit
+
+
+def cmd_lock(
+    path: Path, hid: str, author: str, hours: float | None, until: str | None, note: str | None
+) -> int:
+    """Write `- lock: <stamp> @xx [note]` as the block's first bullet, so `show`
+    opens with who is on it. Never logged: the lock is a signal about the near
+    future, not an event in the hypothesis's history."""
+    if hours is not None and until:
+        print("ERROR: pass --hours or --until, not both", file=sys.stderr)
+        return 2
+    if until and not _valid_stamp(until):
+        print(
+            f"ERROR: --until takes ISO 8601 UTC, YYYY-MM-DDTHH:MM:SSZ, got {until!r}",
+            file=sys.stderr,
+        )
+        return 2
+    ready = _writable_block(path, hid)
+    if ready is None:
+        return 1
+    lines, h = ready
+    who = need_author(path, "\n".join(lines), author)
+    if who is None:
+        return 2
+    if "Verdict" in h.fields:
+        print(
+            f"ERROR: {h.hid} already carries a Verdict - a verdict closes the hypothesis "
+            "and a flip is a new round; only an unverdicted hypothesis can be locked",
+            file=sys.stderr,
+        )
+        return 2
+    held = _active_lock(h)
+    if held and held["by"] != who:
+        _warn_transfer(h, held, "taking it over")
+        note = note or f"taken over from {held['by']}"
+    if not until:
+        import datetime
+
+        span = datetime.timedelta(hours=24 if hours is None else hours)
+        until = (datetime.datetime.now(datetime.timezone.utc) + span).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+    value = f"{until} {who}" + (f" {note.strip()}" if note and note.strip() else "")
+    at = _lock_line_at(lines, h)
+    if at is None:
+        start, end = _block_span(lines, h)
+        scan = _strip_fences(lines)[0]
+        at = next(
+            (i for i in range(start + 1, end) if FIELD_RE.match(scan[i])),
+            _last_content(lines, h),
+        )
+        lines.insert(at, f"- lock: {value}")
+    else:
+        lines[at] = f"- lock: {value}"
+    # Verify before writing, as `register` does: the line must read back as the
+    # lock just written, or a note that breaks the shape would sit there unread.
+    back = _relocate(lines, h.hid).lock
+    if back != {"by": who, "until": until, "note": (note.strip() or None) if note else None}:
+        print(
+            "ERROR: the lock line would not read back as written - not written; "
+            "check the note for characters that break `- lock: <stamp> @xx [note]`",
+            file=sys.stderr,
+        )
+        return 2
+    what = "extended" if held and held["by"] == who else "locked"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"{path}:{at + 1}: {h.hid} {what} by {who} until {until}")
+    return 0
+
+
+def cmd_unlock(path: Path, hid: str | None, author: str, every: bool, expired: bool) -> int:
+    """Remove lock lines - one hypothesis, every hypothesis, or only the expired
+    ones. Never logged, never refused; another author's active lock is named once
+    on the way out."""
+    if sum(1 for x in (hid, every, expired) if x) != 1:
+        print("ERROR: pass exactly one of an id, --all or --expired", file=sys.stderr)
+        return 2
+    loaded = _load(path)
+    if loaded is None:
+        return 1
+    who = need_author(path, loaded[0], author)
+    if who is None:
+        return 2
+    gone = _expire_locks(path)
+    if expired:
+        print(f"{path}: {gone} expired lock(s) cleared")
+        return 0
+    loaded = _load(path)
+    if loaded is None:
+        return 1
+    text, hyps = loaded
+    if hid:
+        hit = _locate(hyps, hid)
+        if hit is None:
+            print(f"ERROR: {hid} not found in {path}", file=sys.stderr)
+            return 1
+        targets = [hit]
+    else:
+        targets = [h for h in hyps if h.lock_n]
+    lines = text.splitlines()
+    scan = _strip_fences(lines)[0]
+    cleared = 0
+    # Highest block first and bottom-up inside it, so every index still to be
+    # visited is untouched by the deletions already made.
+    for h in sorted(targets, key=lambda h: -h.line):
+        if (k := _active_lock(h)) and k["by"] != who:
+            _warn_transfer(h, k, "clearing it")
+        start, end = _block_span(lines, h)
+        for i in range(end - 1, start, -1):
+            if LOCK_LINE_RE.match(scan[i]):
+                del lines[i]
+                cleared += 1
+    if cleared:
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"{path}: {cleared} lock(s) cleared")
+    return 0
+
+
 def cmd_result(path: Path, hid: str, text_value: str, qualifier: str | None, author: str) -> int:
     """Append a Result bullet. A recorded Result is immutable, so a re-run or a
     second phase appends another bullet, distinguished by its qualifier - the
@@ -1321,6 +1629,7 @@ def cmd_result(path: Path, hid: str, text_value: str, qualifier: str | None, aut
     who = need_author(path, "\n".join(lines), author)
     if who is None:
         return 2
+    _warn_lock(path, h, who)
     fields = _field_lines(lines, h)
     qualifier = qualifier.strip() if qualifier else qualifier
     if "Result" in fields and not qualifier:
@@ -1397,6 +1706,12 @@ def cmd_verdict(path: Path, hid: str, text_value: str, author: str) -> int:
             f"note: {label!r} is not canonical ({', '.join(VERDICTS)}) - recorded as given",
             file=sys.stderr,
         )
+    # A verdict closes the hypothesis, so its lock goes with it whatever the
+    # expiry - after the warning, which needs the lock still there to read.
+    _warn_lock(path, h, who)
+    if (lock_i := _lock_line_at(lines, h)) is not None:
+        del lines[lock_i]
+        h = _relocate(lines, h.hid)
     fields = _field_lines(lines, h)
     at = fields.get("Log", _last_content(lines, h))
     _insert_log_line(lines, h, _log_entry(who, f"verdict recorded: {label}"))
@@ -1420,6 +1735,7 @@ def cmd_log_event(path: Path, hid: str, event: str, date: str | None, author: st
     who = need_author(path, "\n".join(lines), author)
     if who is None:
         return 2
+    _warn_lock(path, h, who)
     at = _insert_log_line(lines, h, _log_entry(who, event, stamp))
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"{path}:{at + 1}: {h.hid} logged by {who}")
@@ -1455,6 +1771,7 @@ def cmd_field(path: Path, hid: str, name: str, text_value: str, update: bool, au
     who = need_author(path, "\n".join(lines), author)
     if who is None:
         return 2
+    _warn_lock(path, h, who)
     fields = _field_lines(lines, h)
     label = name.strip()
     # `_field_lines` keys by base name, so the lookup must too: comparing the
@@ -1566,6 +1883,8 @@ def cmd_report(path: Path, as_json: bool) -> int:
         )
         return 0
 
+    _notice_locked(hyps)
+
     def row(name: str, t: dict[str, int]) -> str:
         n = sum(t.values())
         cells = [str(t.get(c, 0) or "") for c in cols]
@@ -1676,6 +1995,10 @@ def main(argv: list[str] | None = None) -> int:
     p_list.add_argument("--verdict", help="Filter by verdict label, or 'none' for unverdicted.")
     p_list.add_argument("--batch", help="Filter by batch token, e.g. E12.")
     p_list.add_argument("--author", help="Filter by the handle that registered it, e.g. @kj.")
+    p_list.add_argument(
+        "--locked", action="store_true", help="Only hypotheses carrying an active lock."
+    )
+    p_list.add_argument("--locked-by", help="Only hypotheses whose active lock @xx holds.")
     p_list.add_argument("--json", action="store_true")
 
     p_auth = sub.add_parser("author", help="Add or update a `## Authors` roster entry.")
@@ -1747,6 +2070,23 @@ def main(argv: list[str] | None = None) -> int:
     p_log.add_argument("--date", help="YYYY-MM-DD; default today.")
     p_log.add_argument("--author", required=True, help="Roster handle, e.g. @kj.")
 
+    p_lock = sub.add_parser(
+        "lock", help="Say you are working on a hypothesis - 24 hours by default; never a gate."
+    )
+    p_lock.add_argument("ledger", type=Path)
+    p_lock.add_argument("id")
+    p_lock.add_argument("--author", required=True, help="Roster handle, e.g. @kj.")
+    p_lock.add_argument("--hours", type=float, help="Hours from now; default 24.")
+    p_lock.add_argument("--until", help="ISO 8601 UTC stamp, YYYY-MM-DDTHH:MM:SSZ.")
+    p_lock.add_argument("--note", help="Why, in a few words.")
+
+    p_unlock = sub.add_parser("unlock", help="Remove lock lines: one id, --all or --expired.")
+    p_unlock.add_argument("ledger", type=Path)
+    p_unlock.add_argument("id", nargs="?", help="One hypothesis; or pass --all / --expired.")
+    p_unlock.add_argument("--author", required=True, help="Roster handle, e.g. @kj.")
+    p_unlock.add_argument("--all", action="store_true", help="Every lock line in the ledger.")
+    p_unlock.add_argument("--expired", action="store_true", help="Only the expired ones.")
+
     p_rep = sub.add_parser("report", help="Batches down, verdicts across - one table.")
     p_rep.add_argument("ledger", type=Path)
     p_rep.add_argument("--json", action="store_true")
@@ -1767,7 +2107,7 @@ def main(argv: list[str] | None = None) -> int:
     # Refused, never folded: rewriting the researcher's text is the one thing
     # this module promises not to do. The ledger's own multi-line form is
     # `<br>` (per-hypothesis-template.md, the Result bullet).
-    for name in ("slug", "batch", "batch_slug", "name", "text", "event", "qualifier"):
+    for name in ("slug", "batch", "batch_slug", "name", "text", "event", "qualifier", "note"):
         value = getattr(args, name, None)
         # `splitlines`, not `"\n" in ...` - the parser splits on nine characters
         # (CR, VT, FF, the separators, U+2028/9), so testing for the newline alone
@@ -1793,7 +2133,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "next-id":
         return cmd_next_id(args.ledger, args.json)
     if args.command == "list":
-        return cmd_list(args.ledger, args.verdict, args.batch, args.author, args.json)
+        return cmd_list(
+            args.ledger,
+            args.verdict,
+            args.batch,
+            args.author,
+            args.json,
+            args.locked,
+            args.locked_by,
+        )
     if args.command == "author":
         return cmd_author(args.ledger, args.handle, args.name)
     if args.command == "show":
@@ -1826,6 +2174,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_field(args.ledger, args.id, args.name, args.text, args.update, args.author)
     if args.command == "log-event":
         return cmd_log_event(args.ledger, args.id, args.event, args.date, args.author)
+    if args.command == "lock":
+        return cmd_lock(args.ledger, args.id, args.author, args.hours, args.until, args.note)
+    if args.command == "unlock":
+        return cmd_unlock(args.ledger, args.id, args.author, args.all, args.expired)
     if args.command == "report":
         return cmd_report(args.ledger, args.json)
     if args.command == "values":

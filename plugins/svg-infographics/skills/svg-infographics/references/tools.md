@@ -161,7 +161,22 @@ svg-infographics
  |   |-- search "query"          Search bundled icons by name/keyword
  |   '-- render NAME [--size N]  Paste-ready <g>, 24-grid stroke convention
  |
- |-- background --type <texture> Procedural textures: circuit, neural, topo, grid, organic, celtic, scifi, constellation, flourish, geometric, crystalline
+ |-- background --type <texture> Procedural textures: circuit, neural, topo, grid, organic, celtic, scifi, constellation, flourish, geometric, crystalline, dotsea (perspective dot / hex sea: --horizon --fade-rate --opacity --waviness --connections --shape)
+ |
+ |-- mesh <op>                   CC0 mesh catalogue: 1,254 props from thebasemesh.com in 30 categories, bundled, search is offline
+ |   |-- search "query"          BM25 rank with fuzzy tokens. [--category C --top N --json]
+ |   |-- list [--category C]     Every entry: slug, name, categories
+ |   |-- categories              Categories with asset counts
+ |   |-- fetch SLUG...           Download + cache the OBJ at ~/.cache/svg-infographics/meshes/<slug>.obj
+ |   |-- path SLUG               Cached OBJ path; exit 1 when cold
+ |   '-- index [--rebuild]       Bundled tally; --rebuild re-crawls the site (maintainers)
+ |
+ |-- wireframe --model <slug|file.obj>  Real object as an unstyled <g class="wireframe"> edge fragment (rules/shapes.md)
+ |   |-- --style wire|hidden     wire = every edge, depth-faded (default); hidden = back faces culled, painted far to near; a `.wireframe polygon { fill }` rule gives the faces their plate
+ |   |-- --w --h --fit           Canvas the drawing is fitted into (400 x 400), margin fraction (0.06)
+ |   |-- --yaw --pitch --roll    View angles in degrees (35 / 20 / 0)
+ |   |-- --fov                   Perspective in degrees, 0 = orthographic (25)
+ |   '-- --preview / --json      Full SVG on a light plate for a look / bbox + edge and face counts
  |
  |-- text-to-path                ON REQUEST: text + TTF/OTF -> <path> outlines, no font dependency
  |
@@ -221,4 +236,6 @@ render-png (its own console script, not an svg-infographics subcommand)
 | Add visual richness | `/svg-infographics:beautify file.svg medium` |
 | Browse bundled custom icons | `icons list` |
 | Search for icons | `icons search "brain"` (custom) or `shapes search "database"` (draw.io) |
+| Find a real object (chair, anvil, church) | `mesh search "wooden chair" --top 5` |
+| Draw an object as line art | `wireframe --model dining-chair-01 --style hidden --w 360 --h 360` |
 | Export SVG to PNG | `render-png input.svg output.png --mode both --width 3000` |

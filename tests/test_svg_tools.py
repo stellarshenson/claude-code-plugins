@@ -3650,8 +3650,8 @@ class TestPluginStructure:
     PLUGIN_DIR = Path(__file__).resolve().parent.parent / "plugins" / "svg-infographics"
 
     def test_structure(self):
-        """plugin.json, README, skills, workflow reference, commands, tools
-        directory all present. plugin.json is valid JSON with expected fields."""
+        """plugin.json, README, skills, workflow reference, commands, the builder
+        agent, tools directory all present. plugin.json is valid JSON with expected fields."""
         import json
 
         p = self.PLUGIN_DIR
@@ -3665,6 +3665,22 @@ class TestPluginStructure:
             )
         for cmd in ("create", "fix", "validate", "theme", "beautify", "export-png"):
             assert (p / "commands" / f"{cmd}.md").is_file(), f"missing command {cmd}"
+        # Both dispatch planes run on the plugin's own agent: the umbrella skill
+        # forks onto it and create dispatches it per graphic. A general-purpose
+        # fork loaded every tool schema the session held before its first SVG line.
+        agent = p / "agents" / "svg-builder.md"
+        assert agent.is_file(), "missing builder agent"
+        agent_head = agent.read_text(encoding="utf-8").split("---")[1]
+        assert "name: svg-builder" in agent_head
+        assert "tools: Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate" in agent_head
+        skill_head = (
+            (p / "skills" / "svg-infographics" / "SKILL.md")
+            .read_text(encoding="utf-8")
+            .split("---")[1]
+        )
+        assert "agent: svg-infographics:svg-builder" in skill_head, (
+            "the umbrella skill must fork onto the plugin agent, not general-purpose"
+        )
         # Plugin uses the svg-infographics CLI binary from the PyPI package,
         # not standalone tool scripts - tools/ folder was removed.
         assert not (p / "tools").exists(), "plugin tools/ folder should not exist; use CLI instead"

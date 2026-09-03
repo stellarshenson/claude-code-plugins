@@ -2,7 +2,7 @@
 name: svg-infographics
 description: Grid-first SVG design workflow producing validated infographics - diagrams, banners, timelines, flowcharts, card grids, charts. Use when creating, fixing or validating any SVG graphic - scaffold a standard format, compute every coordinate via CLI tools, route connectors with direction gates, ship only on a clean finalize. Triggers - "create svg", "make svg", "create graphics", "svg infographic", "diagram", "banner", "timeline", "flowchart", "validate svg", "fix svg", "design svg". Fork context - invoke via `Skill(skill="svg-infographics:svg-infographics")` or `/svg-infographics:create`.
 context: fork
-agent: general-purpose
+agent: svg-infographics:svg-builder
 model: sonnet
 allowed-tools: [Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate]
 ---
@@ -54,6 +54,7 @@ Every visible pixel traces back to a CLI call:
 - `charts` - themed data charts via pygal
 - `icons` - bundled icons + catalogue of every icon route (custom / Lucide / draw.io); `shapes` - 1000+ draw.io stencils
 - `background` - procedural textures (circuit, neural, topo, grid, celtic, organic)
+- `mesh` / `wireframe` - 1,254 CC0 props from thebasemesh.com, found by words and drawn as an unstyled edge fragment (`rules/shapes.md`)
 - `text-to-path` - exact text bbox via TTF outline
 - `shaders` (beautify dimension 8) - 10 filter recipes: frosted-glass, water-ripple, iridescent, chromatic-aberration, embossed-metal, light-leak, bokeh, lens-flare, holographic-foil, paper-grain (`rules/shaders.md`)
 - `overlaps` / `contrast` / `alignment` / `connectors` / `css` / `validate` / `collide` - per-defect validators, rolled up by `finalize`

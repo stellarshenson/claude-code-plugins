@@ -131,3 +131,7 @@ data/
 # exception: bundled OnnxTR OCR models shipped as package-data (offline OCR)
 !src/stellars_claude_code_plugins/document_processing/models/
 !src/stellars_claude_code_plugins/document_processing/models/*.onnx
+
+# exception: bundled CC0 mesh catalogue shipped as package-data (offline mesh search)
+!src/stellars_claude_code_plugins/svg_tools/data/
+!src/stellars_claude_code_plugins/svg_tools/data/*.json

@@ -36,9 +36,9 @@ The plugin is organised around five capabilities. Every command, skill, and CLI 
 
 Grid-first layout, shape primitives, theme and CSS, dark mode, typography, the 6-phase mandatory workflow, and the Fusion-360-style geometry toolkit. Start here: everything else builds on top of approved theme colours, a defined grid, and exact-coordinate primitives.
 
-Grid is defined before content is placed. Shape primitives (`rect`, `square`, `circle`, `ellipse`, `diamond`, `hexagon`, `star`, `arc`, `cube`, `cuboid`, `cylinder`, `sphere`, `plane`, `pyramid`, `gear`, `cloud`, `document`, `speech`, `thought`, `axis`, `spline`) return named anchor points and paste-ready SVG snippets so positions are never eyeballed. The grouped catalogue is one keystroke away: `svg-infographics primitives` (bare), `--list`, or `--caveman` for the ultra-terse register. Theme swatches define a palette with dark/light variants; the approved swatch then drives every subsequent deliverable via CSS classes and a `@media (prefers-color-scheme: dark)` block. The geometry toolkit adds sketch-constraint math (midpoint, perpendicular, parallel, tangent, intersection, polar, evenly-spaced, concentric, bisector, attachment, offset, `contains`, `rect-edge`, `curve-midpoint`, `shape-midpoint`) used by every downstream capability.
+Grid is defined before content is placed. Shape primitives (`rect`, `square`, `circle`, `ellipse`, `diamond`, `hexagon`, `star`, `arc`, `cube`, `cuboid`, `cylinder`, `sphere`, `plane`, `pyramid`, `gear`, `cloud`, `document`, `speech`, `thought`, `axis`, `spline`) return named anchor points and paste-ready SVG snippets so positions are never eyeballed. The grouped catalogue is one keystroke away: `svg-infographics primitives` (bare), `--list`, or `--caveman` for the ultra-terse register. Theme swatches define a palette with dark/light variants; the approved swatch then drives every subsequent deliverable via CSS classes and a `@media (prefers-color-scheme: dark)` block. Real objects come from a bundled catalogue of 1,254 CC0 meshes (thebasemesh.com): `svg-infographics mesh search` finds one by words and `svg-infographics wireframe` draws it as an unstyled edge fragment in a wire or hidden-line style. The geometry toolkit adds sketch-constraint math (midpoint, perpendicular, parallel, tangent, intersection, polar, evenly-spaced, concentric, bisector, attachment, offset, `contains`, `rect-edge`, `curve-midpoint`, `shape-midpoint`) used by every downstream capability.
 
-Backing tools: `svg-infographics primitives`, `svg-infographics geom`.
+Backing tools: `svg-infographics primitives`, `svg-infographics geom`, `svg-infographics mesh`, `svg-infographics wireframe`.
 Commands: `/svg-infographics:theme`, `/svg-infographics:create`.
 Skills: `svg-infographics:svg-infographics`, `svg-infographics:theme`.
 Reference: `skills/svg-infographics/references/standards.md`, `skills/svg-infographics/references/workflow.md`, `examples/`.
@@ -169,6 +169,12 @@ Two skills. Both auto-trigger based on context.
 | `svg-infographics:svg-infographics` | Any SVG / infographic / diagram / banner / timeline / flowchart / chart / graphics work. Phrases: "create svg", "make svg", "create graphics", "make infographic", "validate svg", "fix svg", "design svg". Fork context — invoked via commands or `Skill(skill="svg-infographics:svg-infographics")`. Holds design rules, tool palette, 6-phase workflow, validation gates |
 | `svg-infographics:theme` | Defining colour palettes, generating swatches, working with brand themes |
 
+## Agents
+
+One plugin agent builds, fixes and validates, and both dispatch planes route to it. The umbrella skill forks onto it (`context: fork`, `agent: svg-infographics:svg-builder`), and `/svg-infographics:create` dispatches one per graphic for a deck built in parallel: `Agent(subagent_type: "svg-infographics:svg-builder", prompt: "Build EXACTLY ONE graphic: ...")`. It declares eight tools - Read, Write, Edit, Bash, Glob, Grep, TaskCreate, TaskUpdate - and no MCP server, so a fork loads the skill and the task rather than every tool schema the session holds. It reads `skills/svg-infographics/SKILL.md` itself, so a prompt carries only the task, the absolute output directory and the theme.
+
+- [`agents/svg-builder.md`](agents/svg-builder.md) - the builder agent definition
+
 ## Tool inventory
 
 Every subcommand is invoked as `svg-infographics <subcommand> [args]`. Run `--help` on any subcommand for flags.
@@ -187,6 +193,8 @@ Every subcommand is invoked as `svg-infographics <subcommand> [args]`. Run `--he
 | `charts` | calculator | Pygal SVG charts with caller-provided palette and injected dark mode |
 | `empty-space` | calculator | SVG-native free-region detection, returns boundary polygons for callout/legend/badge placement |
 | `callouts` | calculator | Joint placement for a list of leader + leaderless callouts via greedy solver with pairwise constraints |
+| `mesh` | calculator | CC0 mesh catalogue, 1,254 props from thebasemesh.com: BM25 search with fuzzy tokens, list, categories, fetch into `~/.cache/svg-infographics/meshes/`, path, index |
+| `wireframe` | calculator | A catalogue slug or an OBJ file as an unstyled `<g class="wireframe">` fragment - `wire` (every edge, depth-faded) or `hidden` (back faces culled, painted far to near); yaw, pitch, roll, fov, fit |
 | `text-to-path` | on request | Render text as SVG `<path>` glyph outlines via fontTools |
 
 ## Examples

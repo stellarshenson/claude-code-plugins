@@ -26,6 +26,7 @@ argument-hint: "brand name or colour direction, e.g. 'corporate blue palette' or
    - `theme_swatch_1_kolomolo.svg` (blue/violet)
    - `theme_swatch_3_meridian.svg` (blue)
    - `theme_swatch_5_optima_manufacturing.svg` (burgundy)
+   - `theme_swatch_6_stackrails.svg` (emerald on near-black, semantic warn/risk/info)
 
 3. **Generate theme swatch SVG** with three sections:
    - Palette reference (transparent background)

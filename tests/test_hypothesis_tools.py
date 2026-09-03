@@ -13,6 +13,7 @@ the parser over the real examples, not hypothetical:
 
 from __future__ import annotations
 
+import datetime as _dt
 import json
 from pathlib import Path
 
@@ -1653,3 +1654,329 @@ def test_register_refuses_a_field_name_opening_with_an_id_and_says_so(tmp_path, 
     assert main(argv) == 1
     assert "an opening hypothesis id" in capsys.readouterr().err
     assert p.read_text(encoding="utf-8") == before
+
+
+# --- Locks: who is working on what, the pm-tools discipline ----------------
+
+
+def _stamp(hours: float) -> str:
+    return (_dt.datetime.now(_dt.timezone.utc) + _dt.timedelta(hours=hours)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+
+TWO_AUTHORS = "## Authors\n\n- `@kj` Konrad Jelen\n- `@ab` Ann Bee\n\n"
+
+
+def _two(tmp_path):
+    """Two rostered authors, two registered hypotheses, no lock."""
+    return _ledger(
+        tmp_path,
+        TWO_AUTHORS + "### E1-H1 s\n\nOverview: why, what it tests.\n\n"
+        "- **Hypothesis** - x\n- **Acceptance bar** - DR >= 1.5x\n"
+        "- **Log**\n  - log: 2026-09-01 @kj - registered\n\n"
+        "### E1-H2 t\n\n- **Hypothesis** - y\n- **Log**\n  - log: 2026-09-01 @kj - registered\n",
+    )
+
+
+def _lock_lines(p):
+    return [ln.strip() for ln in p.read_text(encoding="utf-8").splitlines() if "- lock:" in ln]
+
+
+def _log_count(p):
+    return p.read_text(encoding="utf-8").count("- log:")
+
+
+def test_lock_writes_one_line_24h_ahead_as_the_first_bullet_and_never_logs(tmp_path, capsys):
+    p = _two(tmp_path)
+    assert main(["lock", str(p), "E1-H1", "--author", "@kj", "--note", "bisect"]) == 0
+    (line,) = _lock_lines(p)
+    stamp = line.split()[2]
+    assert line == f"- lock: {stamp} @kj bisect"
+    assert _stamp(23.99) <= stamp <= _stamp(24.01), "24 hours from now by default"
+    body = p.read_text(encoding="utf-8")
+    assert body.index("### E1-H1") < body.index("- lock:") < body.index("**Hypothesis**"), (
+        "the lock is the block's first bullet, so `show` opens with it"
+    )
+    assert body.index("Overview") < body.index("- lock:"), (
+        "first BULLET - the overview paragraph stays a paragraph, never the lock's text"
+    )
+    assert _log_count(p) == 2, "locking is never logged"
+    out = capsys.readouterr()
+    assert "E1-H1 locked by @kj until " + stamp in out.out
+    assert out.err == "", "own lock on a free hypothesis: nothing to warn about"
+    (h1, h2) = parse_ledger(body)
+    assert h1.lock == {"by": "@kj", "until": stamp, "note": "bisect"}
+    assert "lock" not in {k.lower() for k in h1.fields}, "no field reader sees the lock line"
+    assert h2.lock is None
+
+
+def test_lock_lands_after_a_fenced_bold_bullet_in_the_overview(tmp_path):
+    p = _ledger(
+        tmp_path,
+        TWO_AUTHORS + "### E1-H3 u\n\nOverview paragraph.\n\n"
+        "```\n- **Verdict** - <label>; <number>\n```\n\n"
+        "- **Hypothesis** - z\n- **Log**\n  - log: 2026-09-01 @kj - registered\n",
+    )
+    assert main(["lock", str(p), "E1-H3", "--author", "@kj", "--note", "bisect"]) == 0
+    body = p.read_text(encoding="utf-8")
+    fence_close = body.index("<number>\n```")
+    assert fence_close < body.index("- lock:") < body.index("**Hypothesis**"), (
+        "the insert scan and the Verdict guard read the fence-stripped view, as every other lock path does"
+    )
+    (h,) = parse_ledger(body)
+    assert h.lock["by"] == "@kj" and h.lock["note"] == "bisect"
+    assert main(["check", str(p)]) == 0
+
+
+def test_lock_hours_and_until_are_honoured_and_a_relock_extends(tmp_path, capsys):
+    p = _two(tmp_path)
+    main(["lock", str(p), "E1-H1", "--author", "@kj", "--hours", "2"])
+    (line,) = _lock_lines(p)
+    assert _stamp(1.99) <= line.split()[2] <= _stamp(2.01)
+    later = _stamp(72)
+    assert main(["lock", str(p), "E1-H1", "--author", "@kj", "--until", later]) == 0
+    assert _lock_lines(p) == [f"- lock: {later} @kj"], "the same author replaces the line"
+    out = capsys.readouterr()
+    assert "extended by @kj" in out.out and out.err == "", "extending your own lock is silent"
+    assert main(["lock", str(p), "E1-H1", "--author", "@kj", "--until", "2026-09-01"]) == 2
+    assert "ISO 8601" in capsys.readouterr().err
+    assert (
+        main(["lock", str(p), "E1-H1", "--author", "@kj", "--hours", "1", "--until", later]) == 2
+    )
+    assert "not both" in capsys.readouterr().err
+    assert _lock_lines(p) == [f"- lock: {later} @kj"], "a refused call changes nothing"
+
+
+def test_locking_over_another_authors_lock_is_a_transfer_and_is_called_out(tmp_path, capsys):
+    p = _two(tmp_path)
+    main(["lock", str(p), "E1-H1", "--author", "@kj"])
+    capsys.readouterr()
+    assert main(["lock", str(p), "E1-H1", "--author", "@ab"]) == 0
+    err = capsys.readouterr().err
+    assert err.startswith("TRANSFER: E1-H1 was locked by @kj until ") and "ask @kj" in err
+    (line,) = _lock_lines(p)
+    assert line.endswith(" @ab taken over from @kj"), line
+    assert main(["lock", str(p), "E1-H1", "--author", "@kj", "--note", "mine again"]) == 0
+    (line,) = _lock_lines(p)
+    assert line.endswith(" @kj mine again"), "a given note wins over the default"
+    assert _log_count(p) == 2
+
+
+def test_lock_refuses_a_verdicted_hypothesis_and_a_compact_one(tmp_path, capsys):
+    p = _two(tmp_path)
+    main(["verdict", str(p), "E1-H1", "--text", "Confirmed; DR 2x", "--author", "@kj"])
+    assert main(["lock", str(p), "E1-H1", "--author", "@ab"]) == 2
+    assert "only an unverdicted hypothesis" in capsys.readouterr().err
+    assert _lock_lines(p) == []
+    q = _writable(tmp_path, "- **E2-H9 compact** - prose\n", name="c.md")
+    assert main(["lock", str(q), "E2-H9", "--author", "@kj"]) == 1
+    assert "only a full block" in capsys.readouterr().err
+    r = _ledger(
+        tmp_path,
+        TWO_AUTHORS + "### E1-H1 s\n\n- **Hypothesis** - x\n- **Verdict** -\n"
+        "- **Log**\n  - log: 2026-09-01 @kj - registered\n",
+        name="e.md",
+    )
+    assert main(["lock", str(r), "E1-H1", "--author", "@kj"]) == 2, (
+        "presence, not value: an empty Verdict placeholder still closes the block to a lock"
+    )
+    assert "only an unverdicted hypothesis" in capsys.readouterr().err
+
+
+def test_a_foreign_lock_warns_once_and_every_write_lands_unchanged(tmp_path, capsys):
+    p = _two(tmp_path)
+    main(["lock", str(p), "E1-H1", "--author", "@ab"])
+    capsys.readouterr()
+    writes = [
+        ["result", str(p), "E1-H1", "--text", "DR 2.0x", "--author", "@kj"],
+        ["field", str(p), "E1-H1", "--name", "Grounding", "--text", "g", "--author", "@kj"],
+        ["log-event", str(p), "E1-H1", "--event", "re-ran", "--author", "@kj"],
+    ]
+    for argv in writes:
+        assert main(argv) == 0, argv
+        err = capsys.readouterr().err
+        assert err.count("locked by @ab until") == 1, argv
+        assert "ask before continuing" in err
+    body = p.read_text(encoding="utf-8")
+    assert "**Result** - DR 2.0x" in body and "**Grounding** - g" in body and "re-ran" in body
+    assert len(_lock_lines(p)) == 1, "the lock survives another author's writes"
+    assert main(["log-event", str(p), "E1-H1", "--event", "mine", "--author", "@ab"]) == 0
+    assert capsys.readouterr().err == "", "the holder is never warned about their own lock"
+
+
+def test_verdict_clears_the_lock_whatever_its_expiry_after_warning(tmp_path, capsys):
+    p = _two(tmp_path)
+    main(["lock", str(p), "E1-H1", "--author", "@ab", "--until", _stamp(500)])
+    capsys.readouterr()
+    assert main(["verdict", str(p), "E1-H1", "--text", "Refuted; DR 1.1x", "--author", "@kj"]) == 0
+    assert "locked by @ab" in capsys.readouterr().err
+    assert _lock_lines(p) == [], "a verdict closes the hypothesis, so the lock goes"
+    h1, h2 = parse_ledger(p.read_text(encoding="utf-8"))
+    assert h1.verdict == "Refuted" and h1.fields["Hypothesis"] == "x"
+    assert h2.fields["Hypothesis"] == "y", "the next block is untouched by the line removal"
+    assert _log_count(p) == 3
+
+
+def test_an_expired_lock_is_cleared_by_the_next_write_silently(tmp_path, capsys):
+    p = _two(tmp_path)
+    main(["lock", str(p), "E1-H1", "--author", "@ab", "--until", "2020-01-01T00:00:00Z"])
+    capsys.readouterr()
+    assert main(["log-event", str(p), "E1-H2", "--event", "ping", "--author", "@kj"]) == 0
+    assert _lock_lines(p) == [], "any write drops every expired lock, not only its own item's"
+    assert capsys.readouterr().err == "", "an expired lock is a courtesy that ran out"
+    assert _log_count(p) == 3
+    main(["lock", str(p), "E1-H1", "--author", "@ab", "--until", "2020-01-01T00:00:00Z"])
+    assert main(["author", str(p), "--handle", "@cd", "--name", "C D"]) == 0
+    assert _lock_lines(p) == [], "the roster write clears it too"
+    main(["lock", str(p), "E1-H1", "--author", "@ab", "--until", "2020-01-01T00:00:00Z"])
+    assert main(["register", str(p), "--slug", "a-b", "--author", "@kj"]) == 0
+    assert _lock_lines(p) == [], "and so does register"
+    assert main(["lock", str(p), "E1-H1", "--author", "@kj"]) == 0
+    assert "TRANSFER" not in capsys.readouterr().err, "no transfer over a lock that has expired"
+
+
+def test_check_errors_on_a_malformed_or_duplicate_lock_and_warns_on_an_expired_or_finished_one(
+    tmp_path, capsys
+):
+    p = _two(tmp_path)
+    good = f"- lock: {_stamp(1)} @kj"
+    body = p.read_text(encoding="utf-8").replace(
+        "### E1-H1 s\n\n", f"### E1-H1 s\n\n- lock: notastamp @kj\n{good}\n"
+    )
+    p.write_text(body, encoding="utf-8")
+    assert main(["check", str(p)]) == 1
+    err = capsys.readouterr().err
+    assert "E1-H1 carries more than one lock: line" in err
+    assert "E1-H1 lock: line is malformed" in err
+    assert len(_lock_lines(p)) == 2, "check reports, it never repairs"
+    p.write_text(body.replace("- lock: notastamp @kj\n", ""), encoding="utf-8")
+    assert main(["check", str(p)]) == 0
+    assert "lock" not in capsys.readouterr().err
+    p.write_text(
+        body.replace("- lock: notastamp @kj\n", "").replace(
+            good, "- lock: 2020-01-01T00:00:00Z @kj"
+        ),
+        encoding="utf-8",
+    )
+    main(["check", str(p)])
+    assert "E1-H1 expired lock, cleared on the next write" in capsys.readouterr().err
+    p.write_text(
+        body.replace("- lock: notastamp @kj\n", "").replace(
+            "- **Acceptance bar** - DR >= 1.5x\n",
+            "- **Acceptance bar** - DR >= 1.5x\n- **Verdict** - Confirmed; 2x\n",
+        ),
+        encoding="utf-8",
+    )
+    main(["check", str(p)])
+    assert "E1-H1 is locked but carries a Verdict" in capsys.readouterr().err
+
+
+def test_unlock_clears_one_every_or_only_the_expired_locks(tmp_path, capsys):
+    p = _two(tmp_path)
+    main(["lock", str(p), "E1-H1", "--author", "@kj"])
+    main(["lock", str(p), "E1-H2", "--author", "@ab"])
+    body = p.read_text(encoding="utf-8").replace(
+        "### E1-H2 t\n\n", "### E1-H2 t\n\n- lock: 2020-01-01T00:00:00Z @kj stale\n"
+    )
+    p.write_text(body, encoding="utf-8")
+    assert len(_lock_lines(p)) == 3
+    capsys.readouterr()
+    assert main(["unlock", str(p), "--author", "@kj", "--expired"]) == 0
+    assert "1 expired lock(s) cleared" in capsys.readouterr().out
+    assert len(_lock_lines(p)) == 2
+    assert main(["unlock", str(p), "E1-H2", "--author", "@kj"]) == 0
+    out = capsys.readouterr()
+    assert out.err.startswith("TRANSFER: E1-H2 was locked by @ab") and "clearing it" in out.err
+    assert "1 lock(s) cleared" in out.out
+    (line,) = _lock_lines(p)
+    assert " @kj" in line
+    main(["lock", str(p), "E1-H2", "--author", "@kj"])
+    assert main(["unlock", str(p), "--author", "@kj", "--all"]) == 0
+    assert _lock_lines(p) == []
+    assert "2 lock(s) cleared" in capsys.readouterr().out
+    assert main(["unlock", str(p), "--author", "@kj"]) == 2
+    assert main(["unlock", str(p), "E1-H1", "--author", "@kj", "--all"]) == 2
+    assert main(["unlock", str(p), "E1-H1", "--author", "@zz"]) == 2, "the roster still applies"
+    assert main(["unlock", str(p), "E9-H99", "--author", "@kj"]) == 1
+    assert _log_count(p) == 2, "unlocking is never logged"
+    h1, h2 = parse_ledger(p.read_text(encoding="utf-8"))
+    assert h1.fields["Hypothesis"] == "x" and h2.fields["Hypothesis"] == "y"
+
+
+def test_reads_announce_worked_on_hypotheses_and_json_carries_the_lock(tmp_path, capsys):
+    p = _two(tmp_path)
+    for argv in (["list", str(p)], ["show", str(p), "E1-H1"], ["report", str(p)]):
+        main(argv)
+        assert "currently worked on" not in capsys.readouterr().err, argv
+    main(["lock", str(p), "E1-H1", "--author", "@kj", "--note", "bisect"])
+    stamp = _lock_lines(p)[0].split()[2]
+    capsys.readouterr()
+    for argv in (["list", str(p)], ["show", str(p), "E1-H1"], ["report", str(p)]):
+        main(argv)
+        out = capsys.readouterr()
+        assert out.err == f"1 hypothesis(es) currently worked on: E1-H1 by @kj until {stamp}\n", (
+            argv
+        )
+        assert "currently worked on" not in out.out, "the notice keeps a piped table clean"
+    main(["show", str(p), "E1-H2"])
+    assert capsys.readouterr().err == "", "silent when nothing shown is locked"
+    main(["list", str(p), "--json"])
+    out = capsys.readouterr()
+    assert out.err == "", "--json carries no notice"
+    rows = {r["id"]: r["lock"] for r in json.loads(out.out)}
+    assert rows == {"E1-H1": {"by": "@kj", "until": stamp, "note": "bisect"}, "E1-H2": None}
+    main(["show", str(p), "E1-H1", "--json"])
+    assert json.loads(capsys.readouterr().out)["lock"]["by"] == "@kj"
+    p.write_text(
+        p.read_text(encoding="utf-8").replace(stamp, "2020-01-01T00:00:00Z"), encoding="utf-8"
+    )
+    main(["list", str(p)])
+    assert capsys.readouterr().err == "", "an expired lock is not announced"
+    main(["list", str(p), "--json"])
+    rows = {r["id"]: r["lock"] for r in json.loads(capsys.readouterr().out)}
+    assert rows["E1-H1"] is None, "--json carries the active lock, never an expired one"
+
+
+def test_the_notice_names_ten_and_counts_the_rest(tmp_path, capsys):
+    blocks = "".join(
+        f"### E1-H{n} s{n}\n\n- lock: {_stamp(1)} @kj\n- **Hypothesis** - x\n\n"
+        for n in range(1, 13)
+    )
+    p = _ledger(tmp_path, TWO_AUTHORS + blocks)
+    main(["list", str(p)])
+    err = capsys.readouterr().err
+    assert err.startswith("12 hypothesis(es) currently worked on: E1-H1 by @kj")
+    assert err.rstrip().endswith(", +2 more") and "E1-H10 " in err and "E1-H11" not in err
+
+
+def test_locked_and_locked_by_narrow_list(tmp_path, capsys):
+    p = _two(tmp_path)
+    main(["lock", str(p), "E1-H1", "--author", "@kj"])
+    capsys.readouterr()
+    main(["list", str(p), "--locked", "--json"])
+    assert [r["id"] for r in json.loads(capsys.readouterr().out)] == ["E1-H1"]
+    main(["list", str(p), "--locked-by", "kj", "--json"])
+    assert [r["id"] for r in json.loads(capsys.readouterr().out)] == ["E1-H1"]
+    main(["list", str(p), "--locked-by", "@ab", "--json"])
+    assert json.loads(capsys.readouterr().out) == []
+    main(["list", str(p), "--locked", "--verdict", "none", "--batch", "E1", "--json"])
+    assert [r["id"] for r in json.loads(capsys.readouterr().out)] == ["E1-H1"]
+
+
+def test_a_lock_note_must_be_one_line(tmp_path, capsys):
+    p = _two(tmp_path)
+    assert main(["lock", str(p), "E1-H1", "--author", "@kj", "--note", "two\nlines"]) == 2
+    assert "single line" in capsys.readouterr().err
+    assert _lock_lines(p) == []
+
+
+def test_the_hypothesis_skill_carries_the_lock_discipline():
+    skill = (ROOT / "plugins" / "datascience" / "skills" / "hypothesis").resolve()
+    body = (skill / "SKILL.md").read_text(encoding="utf-8")
+    ref = (skill / "references" / "ledger-queries.md").read_text(encoding="utf-8")
+    assert "hypothesis-tools lock" in body and "never a gate" in body
+    assert "hypothesis-tools lock <log> <id> --author @xx" in ref
+    assert "hypothesis-tools unlock <log>" in ref
+    assert "currently worked on" in ref and "TRANSFER" in ref
+    assert "24 hours" in body and "24 hours" in ref

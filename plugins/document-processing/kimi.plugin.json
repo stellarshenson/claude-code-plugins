@@ -1,6 +1,6 @@
 {
   "name": "document-processing",
-  "version": "1.7.17",
+  "version": "1.8.1",
   "description": "Structured document processing: source grounding (lexical + semantic + NLI entailment), Bayesian calibration, uniformization, PDF manipulation, and validation. Process input documents into verified, quality-controlled outputs.",
   "license": "MIT",
   "author": "Stellars Henson",

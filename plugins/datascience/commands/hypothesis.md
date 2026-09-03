@@ -34,6 +34,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 3. Decide doc + action: **record a round** → experiments log (default); **conclude / update the design** → SOTA doc
 4. **Find the canonical doc first** - `Glob docs/**/*experiments*.md` and `*sota*.md`, confirm by the secondary-title marker (not the filename); if one exists for the track, append - never start a parallel doc
 5. **Experiments log (append-only)**:
+   - Lock each hypothesis before its first write - `hypothesis-tools lock LOG ID --author @xx`, 24 hours by default - and `unlock` when you stop; `list` names the hypotheses currently worked on before its table, so read that first and ask before writing to one another author holds. The lock never blocks a write: a foreign write warns once and lands, and `verdict` clears the lock it finds
    - Land each signed-off hypothesis with `hypothesis-tools register` (it reads the next free `H<n>` itself - never guess it, never reset the ordinal); record outcomes with `result` / `verdict` / `log-event`, add a field the template does not name with `field`, and never rewrite a recorded verdict (a flip is a new round with a one-line back-reference)
    - Write each hypothesis with the skill's per-hypothesis template; add rows to the research-at-a-glance and per-batch results tables
    - Ensure Methodology defines a naive baseline; report each result as a delta against it (skill: "Naive baseline mandatory")

@@ -1,7 +1,7 @@
 {
   "name": "project-management",
   "description": "Micro project management for repositories, personal projects and small teams - acceptance criteria and defects tracked as markdown checklists with permanent ids, author handles, severity triage and computed reports, all through the deterministic pm-tools CLI",
-  "version": "1.7.17",
+  "version": "1.8.1",
   "license": "MIT",
   "author": {
     "name": "Stellars Henson",

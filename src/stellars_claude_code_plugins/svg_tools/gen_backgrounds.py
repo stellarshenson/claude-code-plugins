@@ -20,6 +20,7 @@ Types:
     flourish     - Bezier scrollwork with spiral caps
     geometric    - Hex/triangle/diamond tessellation
     crystalline  - Voronoi cell edges
+    dotsea       - Perspective dot/hex lattice rolling to a hazy horizon
 
 Usage:
     svg-infographics background --type circuit --w 1000 --h 280 --density medium
@@ -108,6 +109,7 @@ BG_TYPES = [
     "flourish",
     "geometric",
     "crystalline",
+    "dotsea",
 ]
 
 
@@ -1744,6 +1746,386 @@ def _gen_crystalline(w, h, density, direction, rng):
 
 
 # ---------------------------------------------------------------------------
+# Dotsea: perspective marker lattice rolling toward a hazy horizon
+# ---------------------------------------------------------------------------
+
+_DOTSEA_WAVINESS = {"calm": 0.15, "moderate": 0.40, "rough": 0.85}
+_DOTSEA_SHAPES = ("dot", "hex")
+
+# Near-edge marker spacing at medium density on a 1280px lateral span.
+_DOTSEA_BASE_SPACING = 16.0
+_DOTSEA_REF_SPAN = 1280.0
+# Far/near depth ratio across the visible band - how hard the lattice converges.
+_DOTSEA_DEPTH_RATIO = 1.55
+_DOTSEA_TILT = 0.72  # near row gap as a fraction of the near column spacing
+_DOTSEA_RADIUS_RATIO = 0.09  # near marker radius as a fraction of near spacing
+_DOTSEA_MIN_RADIUS = 0.25
+_DOTSEA_MIN_ALPHA = 0.02  # markers fainter than this are dropped, not drawn
+_DOTSEA_FADE_EXP = 0.58  # opacity falloff exponent at fade_rate=1
+_DOTSEA_SWELL_AMP = 0.14  # near-edge swell amplitude as a fraction of the depth span
+_DOTSEA_CONNECTION_ALPHA = 0.35  # mesh opacity as a fraction of the joined markers'
+_DOTSEA_RING_TWIST = math.pi * (3 - math.sqrt(5))  # per-ring rotation, radial frame
+_HEX_ROW_RATIO = math.sqrt(3) / 2
+
+
+def _dotsea_waviness(value):
+    """Resolve a waviness preset name or number to a swell amplitude scale.
+
+    Args:
+        value: "calm" / "moderate" / "rough", or a number (or numeric string) in 0-1.
+
+    Returns:
+        float: amplitude scale, 0 (flat rows) to 1 (heaving rows).
+
+    Raises:
+        ValueError: value is neither a known preset nor a number in 0-1.
+    """
+    if isinstance(value, str):
+        key = value.strip().lower()
+        if key in _DOTSEA_WAVINESS:
+            return _DOTSEA_WAVINESS[key]
+        try:
+            value = float(key)
+        except ValueError:
+            raise ValueError(
+                f"Unknown waviness {value!r}. Use {'/'.join(_DOTSEA_WAVINESS)} or a float 0-1."
+            ) from None
+    if not 0.0 <= value <= 1.0:
+        raise ValueError(f"Waviness {value} out of range - use 0-1.")
+    return float(value)
+
+
+def _dotsea_frame(w, h, direction):
+    """Map the canonical (lateral, depth) field onto the canvas for one direction.
+
+    Args:
+        w: Canvas width.
+        h: Canvas height.
+        direction: right / down / left / up / radial - taken literally as the side
+            the field recedes toward.
+
+    Returns:
+        tuple: ``(lateral_span, depth_span, place, radial)``. ``place(lat, dep)``
+        turns a lateral offset and a depth offset into screen (x, y); for the
+        radial frame ``lat`` is an angle in radians. ``radial`` selects the ring
+        lattice in the caller.
+    """
+    half_w, half_h = w / 2, h / 2
+    if direction == "up":
+        return w, h, lambda lat, dep: (half_w + lat, h - dep), False
+    if direction == "down":
+        return w, h, lambda lat, dep: (half_w + lat, dep), False
+    if direction == "left":
+        return h, w, lambda lat, dep: (w - dep, half_h + lat), False
+    if direction == "right":
+        return h, w, lambda lat, dep: (dep, half_h + lat), False
+    return (
+        (w + h) / 2,
+        math.hypot(w, h) / 2,
+        lambda lat, dep: (half_w + dep * math.cos(lat), half_h + dep * math.sin(lat)),
+        True,
+    )
+
+
+def _dotsea_swell(rng, lateral_span, waviness, radial):
+    """Build the swell height field: one broad wave plus two finer ripples.
+
+    Layered sines rather than simplex noise - the field only needs a smooth,
+    seeded, numpy-free 2D wave, and three sines give the broad-plus-ripple shape
+    directly with no optional dependency. The radial frame measures its lateral
+    coordinate as an angle, so it uses whole numbers of cycles per turn; a
+    fractional wavelength would leave a step where a ring closes on itself.
+
+    Args:
+        rng: random.Random supplying the wave phases.
+        lateral_span: canvas extent across the field (px), sets the wavelengths.
+        waviness: amplitude scale; 0 returns a flat field.
+        radial: True when the lateral coordinate is an angle in radians.
+
+    Returns:
+        callable: ``(lateral, z) -> float`` in roughly -1..1.
+    """
+    if waviness <= 0:
+        return lambda lateral, z: 0.0
+
+    phase = [rng.uniform(0, math.tau) for _ in range(3)]
+    if radial:
+        k_broad, k_mid, k_fine = 3.0, 7.0, 13.0
+    else:
+        k_broad = math.tau / (0.75 * lateral_span)
+        k_mid = math.tau / (0.28 * lateral_span)
+        k_fine = math.tau / (0.13 * lateral_span)
+
+    def swell(lateral, z):
+        return (
+            0.60 * math.sin(k_broad * lateral + phase[0])
+            + 0.28 * math.sin(k_mid * lateral + 6.0 * z + phase[1])
+            + 0.12 * math.sin(k_fine * lateral - 9.0 * z + phase[2])
+        )
+
+    return swell
+
+
+def _dotsea_rows(depth_extent, spacing, row_ratio, radius0, fade_rate, opacity, overscan):
+    """Depth table for the lattice rows, nearest first.
+
+    Rows sit on a pinhole ground plane: depth ``z`` advances arithmetically, the
+    screen offset from the vanishing line falls as 1/z, so rows and columns both
+    compress toward the horizon. Rows stop once the fade takes them below
+    ``_DOTSEA_MIN_ALPHA`` - a little before the vanish point.
+
+    Args:
+        depth_extent: screen distance from near edge to vanish point (px).
+        spacing: near-edge lateral marker spacing (px).
+        row_ratio: near-edge row gap as a multiple of ``spacing``.
+        radius0: near-edge marker radius (px).
+        fade_rate: depth falloff exponent for opacity and radius.
+        opacity: opacity of the nearest markers.
+        overscan: extra depth (px) generated behind the near edge so the swell
+            cannot open a gap along the canvas edge.
+
+    Returns:
+        list[tuple]: ``(z, depth_px, row_spacing_px, radius_px, alpha)`` per row.
+
+    Raises:
+        ValueError: the near row gap is not smaller than the vanishing distance.
+    """
+    e0 = depth_extent * _DOTSEA_DEPTH_RATIO / (_DOTSEA_DEPTH_RATIO - 1)
+    gap0 = spacing * row_ratio
+    if gap0 >= e0:
+        raise ValueError(
+            f"Near row gap {gap0:.1f}px is too coarse for a {depth_extent:.1f}px "
+            f"horizon - raise --horizon or the density."
+        )
+
+    step = gap0 / (e0 - gap0)
+    rows = []
+    n = -int(overscan / gap0) - 1
+    while True:
+        z = 1 + n * step
+        depth = e0 - e0 / z
+        alpha = _dotsea_alpha(depth, depth_extent, opacity, fade_rate)
+        if alpha < _DOTSEA_MIN_ALPHA:
+            return rows
+        radius = min(radius0, max(_DOTSEA_MIN_RADIUS, radius0 * (1 / z) ** fade_rate))
+        rows.append((z, depth, spacing / z, radius, alpha))
+        n += 1
+
+
+def _dotsea_alpha(depth, depth_extent, opacity, fade_rate):
+    """Atmospheric haze fade: opacity as a function of a row's lattice depth.
+
+    Haze thickens with distance, not with screen height, so a whole lattice row
+    fades together and the swell carries the field's faint upper edge up and down
+    with it instead of cutting it along a straight line.
+
+    Returns:
+        float: 0 at the vanish point, ``opacity`` at and in front of the near edge.
+    """
+    if depth >= depth_extent:
+        return 0.0
+    return min(opacity, opacity * (1 - depth / depth_extent) ** (_DOTSEA_FADE_EXP * fade_rate))
+
+
+def _dotsea_hex_centre(row_index, i):
+    """True for the one point in three that sits at a hexagon's centre.
+
+    Half-shifted rows form a triangular lattice, and a triangular lattice is the
+    set of hexagon centres plus the set of hexagon vertices. In axial coordinates
+    (q = i - row // 2) the three cosets of (q - row) mod 3 are each a centre
+    set; dropping one leaves the honeycomb, where every marker is a hexagon
+    vertex with exactly three lattice neighbours, so the mesh traces hexagon
+    outlines instead of triangles.
+    """
+    return (i - row_index // 2 - row_index) % 3 == 0
+
+
+def _dotsea_columns(radial, depth, row_spacing, lateral_span):
+    """Lattice column indices that can reach the canvas at one row's depth."""
+    if radial:
+        return range(max(1, round(math.tau * depth / row_spacing)))
+    reach = int(lateral_span / (2 * row_spacing)) + 2
+    return range(-reach, reach + 1)
+
+
+def _dotsea_marker(x, y, radius, alpha, shape):
+    """Build one marker element - a circle, or a flat-top hexagon of circumradius."""
+    if shape == "hex":
+        points = " ".join(
+            f"{x + radius * math.cos(k * math.pi / 3):.1f},"
+            f"{y + radius * math.sin(k * math.pi / 3):.1f}"
+            for k in range(6)
+        )
+        half = _HEX_ROW_RATIO * radius
+        return BackgroundElement(
+            "polygon",
+            f'<polygon points="{points}" opacity="{alpha:.3f}"/>',
+            "hex",
+            (x - radius, y - half, 2 * radius, 2 * half),
+        )
+    return BackgroundElement(
+        "circle",
+        f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{radius:.2f}" opacity="{alpha:.3f}"/>',
+        "dot",
+        (x - radius, y - radius, 2 * radius, 2 * radius),
+    )
+
+
+def _dotsea_neighbours(i, row_index, radial, shape, count, next_count):
+    """Lattice neighbours of column ``i``: (same-row indices, next-row indices)."""
+    if radial:
+        ahead = [round(i * next_count / count) % next_count] if next_count else []
+        return [(i + 1) % count], ahead
+    if shape == "hex":
+        return [i + 1], [i, i - 1] if row_index % 2 == 0 else [i, i + 1]
+    return [i + 1], [i]
+
+
+def _dotsea_link(a, b):
+    """Build one mesh line joining two markers, fading with their mean opacity."""
+    ax, ay, a_radius, a_alpha = a
+    bx, by, b_radius, b_alpha = b
+    alpha = _DOTSEA_CONNECTION_ALPHA * (a_alpha + b_alpha) / 2
+    width = max(0.12, 0.30 * (a_radius + b_radius) / 2)
+    return BackgroundElement(
+        "line",
+        f'<line x1="{ax:.1f}" y1="{ay:.1f}" x2="{bx:.1f}" y2="{by:.1f}" '
+        f'stroke-width="{width:.2f}" opacity="{alpha:.3f}"/>',
+        "connection",
+        (min(ax, bx), min(ay, by), abs(bx - ax), abs(by - ay)),
+    )
+
+
+def _dotsea_mesh(rows, radial, shape):
+    """Mesh lines between neighbouring markers, skipping clipped-away partners."""
+    lines = []
+    for row_index, (points, count) in enumerate(rows):
+        ahead, next_count = rows[row_index + 1] if row_index + 1 < len(rows) else ({}, 0)
+        for i, marker in points.items():
+            same, across = _dotsea_neighbours(i, row_index, radial, shape, count, next_count)
+            for j in same:
+                if j in points and j != i:
+                    lines.append(_dotsea_link(marker, points[j]))
+            for j in across:
+                if j in ahead:
+                    lines.append(_dotsea_link(marker, ahead[j]))
+    return lines
+
+
+def _gen_dotsea(
+    w,
+    h,
+    density,
+    direction,
+    rng,
+    horizon=0.5,
+    fade_rate=1.0,
+    opacity=0.6,
+    waviness="moderate",
+    connections=False,
+    shape="dot",
+):
+    """Sea of markers on a perspective lattice rolling toward a hazy horizon.
+
+    A square (``dot``) or honeycomb (``hex``) lattice on a pinhole ground plane:
+    rows compress as 1/depth, columns converge toward the vanishing point, radius
+    and opacity fall with depth so the field dissolves a little before the
+    horizon, and a layered-sine swell lifts the rows into a slow wave. Markers
+    carry their own ``opacity`` and radius because the fade is geometry here;
+    colour still comes from the caller's CSS.
+
+    Args:
+        w: Canvas width.
+        h: Canvas height.
+        density: sparse / low / medium / high / dense - sets near-edge spacing.
+        direction: side the field recedes toward; every value is taken literally,
+            so ``up`` puts the horizon at the top and the near edge at the bottom.
+        rng: random.Random supplying the swell phases.
+        horizon: fraction of the canvas, from the near edge, where markers vanish.
+        fade_rate: depth falloff of opacity and radius. Useful range 0.3-3.0;
+            1.0 is the default look, lower carries dots further toward the
+            horizon, higher kills them early.
+        opacity: opacity of the nearest markers; every other marker scales from it.
+        waviness: calm / moderate / rough, or a float 0-1 swell amplitude.
+        connections: emit faint mesh lines - a square grid for dots, hexagon
+            outlines for hex.
+        shape: "dot" for circles on a square lattice, "hex" for flat-top
+            hexagons at the vertices of a honeycomb.
+
+    Returns:
+        list[BackgroundElement]: markers (role "dot" or "hex") then, when
+        requested, mesh lines (role "connection").
+
+    Raises:
+        ValueError: shape, horizon, fade_rate, opacity or waviness out of range,
+            or the density is too coarse for the requested horizon.
+    """
+    if shape not in _DOTSEA_SHAPES:
+        raise ValueError(f"Unknown shape {shape!r}. Choose from: {', '.join(_DOTSEA_SHAPES)}")
+    if not 0 < horizon <= 1:
+        raise ValueError(f"horizon {horizon} out of range - use 0 < horizon <= 1.")
+    if fade_rate <= 0:
+        raise ValueError(f"fade_rate {fade_rate} out of range - use a positive number.")
+    if not _DOTSEA_MIN_ALPHA < opacity <= 1:
+        raise ValueError(
+            f"opacity {opacity} out of range - use {_DOTSEA_MIN_ALPHA} < opacity <= 1."
+        )
+
+    wave_scale = _dotsea_waviness(waviness)
+    lateral_span, depth_span, place, radial = _dotsea_frame(w, h, direction)
+    depth_extent = horizon * depth_span
+    spacing = (
+        _DOTSEA_BASE_SPACING
+        * lateral_span
+        / _DOTSEA_REF_SPAN
+        / math.sqrt(_DENSITY[density]["factor"])
+    )
+    radius0 = max(_DOTSEA_MIN_RADIUS, _DOTSEA_RADIUS_RATIO * spacing)
+    row_ratio = _DOTSEA_TILT * (_HEX_ROW_RATIO if shape == "hex" else 1.0)
+    amplitude = _DOTSEA_SWELL_AMP * depth_span * wave_scale
+    # The radial field starts at the canvas centre, so it needs no overscan.
+    overscan = 0.0 if radial else amplitude
+
+    rows = _dotsea_rows(depth_extent, spacing, row_ratio, radius0, fade_rate, opacity, overscan)
+    swell = _dotsea_swell(rng, lateral_span, wave_scale, radial)
+
+    lattice = []
+    for row_index, (z, depth, row_spacing, radius, alpha) in enumerate(rows):
+        shift = 0.5 if shape == "hex" and row_index % 2 else 0.0
+        # Looking down the radial field, a swell near the centre barely moves a
+        # marker on screen, so the lift grows outward instead of shrinking.
+        lift = amplitude * depth / depth_extent if radial else amplitude / z
+        twist = row_index * _DOTSEA_RING_TWIST
+        columns = _dotsea_columns(radial, depth, row_spacing, lateral_span)
+        points = {}
+        for i in columns:
+            if shape == "hex" and not radial and _dotsea_hex_centre(row_index, i):
+                continue
+            world_lat = (i + shift) * spacing
+            if radial:
+                lat = twist + world_lat / (z * max(depth, 1e-6))
+            else:
+                lat = world_lat / z
+            dep = depth + lift * swell(lat if radial else world_lat, z)
+            if not 0 <= dep <= depth_extent:
+                continue
+            x, y = place(lat, dep)
+            if not (0 <= x <= w and 0 <= y <= h):
+                continue
+            points[i] = (x, y, radius, alpha)
+        lattice.append((points, len(columns)))
+
+    elements = [
+        _dotsea_marker(x, y, radius, alpha, shape)
+        for points, _ in lattice
+        for x, y, radius, alpha in points.values()
+    ]
+    if connections:
+        elements.extend(_dotsea_mesh(lattice, radial, shape))
+    return elements
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
@@ -1759,6 +2141,7 @@ _GENERATORS = {
     "flourish": _gen_flourish,
     "geometric": _gen_geometric,
     "crystalline": _gen_crystalline,
+    "dotsea": _gen_dotsea,
 }
 
 
@@ -1832,8 +2215,8 @@ def main():
     parser.add_argument(
         "--direction",
         choices=_DIRECTIONS,
-        default="right",
-        help="Growth direction (default: right)",
+        default=None,
+        help="Growth direction (default: right, or up for dotsea)",
     )
     parser.add_argument("--seed", type=int, default=None, help="Random seed")
     parser.add_argument(
@@ -1887,6 +2270,41 @@ def main():
         default=2,
         help="Grid subdivision rounds 0-3 (default: 2)",
     )
+    parser.add_argument(
+        "--horizon",
+        type=float,
+        default=0.5,
+        help="dotsea: fraction of the canvas, from the near edge, where dots vanish (default: 0.5)",
+    )
+    parser.add_argument(
+        "--fade-rate",
+        type=float,
+        default=1.0,
+        help="dotsea: depth falloff of opacity and radius, 0.3-3.0 (default: 1.0)",
+    )
+    parser.add_argument(
+        "--opacity",
+        type=float,
+        default=0.6,
+        help="dotsea: opacity of the nearest dots (default: 0.6)",
+    )
+    parser.add_argument(
+        "--waviness",
+        type=str,
+        default="moderate",
+        help="dotsea: swell amplitude - calm/moderate/rough or a float 0-1 (default: moderate)",
+    )
+    parser.add_argument(
+        "--connections",
+        action="store_true",
+        help="dotsea: faint mesh lines - a square grid for dots, hexagon outlines for hex (default: off)",
+    )
+    parser.add_argument(
+        "--shape",
+        choices=_DOTSEA_SHAPES,
+        default="dot",
+        help="dotsea: marker shape (default: dot)",
+    )
     parser.add_argument("--list", action="store_true", help="List types and exit")
     parser.add_argument("--preview", action="store_true", help="Wrap in full SVG for preview")
     parser.add_argument("--json", action="store_true", help="Output element metadata as JSON")
@@ -1912,12 +2330,14 @@ def main():
             if len(vals) == 3:
                 dp.append(tuple(vals))
 
+    direction = args.direction or ("up" if args.type == "dotsea" else "right")
+
     result = generate_background(
         bg_type=args.type,
         w=args.w,
         h=args.h,
         density=args.density,
-        direction=args.direction,
+        direction=direction,
         seed=args.seed,
         bend_angle=args.bend_angle,
         origin_directions=origin_dirs,
@@ -1930,6 +2350,12 @@ def main():
         density_gradient=args.density_gradient,
         density_points=dp,
         subdivision_rounds=args.subdivision_rounds,
+        horizon=args.horizon,
+        fade_rate=args.fade_rate,
+        opacity=args.opacity,
+        waviness=args.waviness,
+        connections=args.connections,
+        shape=args.shape,
     )
 
     if args.json:
@@ -1961,6 +2387,8 @@ def main():
                 "seed",
                 "star",
                 "marker",
+                "dot",
+                "hex",
             ):
                 print(f"      {e.svg}")
         print("    </g>")

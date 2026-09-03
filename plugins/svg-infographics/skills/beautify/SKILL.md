@@ -123,7 +123,7 @@ If the user skips the free-text brief (empty answer), note in the brief "no user
 |----------|---------|---------|
 | Embroidery | `off` / `sparse` / `moderate` / `dense` | `moderate` |
 | Abstract graphics | `off` / `sparse` / `moderate` / `rich` | `moderate` |
-| Bg texture theme | `none` / `circuit` / `neural` / `topo` / `grid` / `organic` / `constellation` | match article domain |
+| Bg texture theme | `none` / `circuit` / `neural` / `topo` / `grid` / `organic` / `constellation` / `dotsea` | match article domain |
 | Bg opacity cap | `0.05` / `0.08` / `0.10` | `0.10` (directive #4 cap) |
 
 **Batch 4: glow + validation**
@@ -186,7 +186,7 @@ Apply to BOTH fills AND strokes. Introduce `card-body-1 / -2 / -3 ...` classes w
 
 ### 2. Shape and creative elements
 
-Visual hierarchy, depth cues, compositional interest.
+Visual hierarchy, depth cues, compositional interest. From **medium** up, a real object from the mesh catalogue can stand in whitespace as a ghosted illustration - `svg-infographics mesh search "<object>"` then `wireframe --model <slug> --style wire`, low opacity, inside `beautify-decorations`; a `--style hidden` object beside a focal card is a **high** move (`rules/shapes.md`).
 
 | Level | Character |
 |-------|-----------|
@@ -242,6 +242,7 @@ Faded organic patterns behind content adding visual depth. Low opacity, backgrou
 - Geographic / topographic - contour lines, map-like undulations
 - Grid / technical - faded engineering grid, coordinate markers
 - Organic / natural - flowing curves, leaf veins, water ripples
+- Dot sea - a perspective field of dots (or hexagons) rolling to a hazy horizon, fading into the distance; `svg-infographics background --type dotsea` with `--waviness calm|moderate|rough`, `--fade-rate`, `--opacity`, `--connections` for a faint mesh (a grid for dots, hexagon outlines for hexagons; off by default), `--shape hex` for the honeycomb variant. Covers, hero banners, slide plates
 - None - skip this dimension
 
 | Level | Character |
@@ -338,7 +339,7 @@ After all 18 answers are collected, rewrite the **Resolved pattern** section in 
 
 For a single file: apply the eight dimensions per the resolved pattern directly. One task per dimension.
 
-For multiple files: dispatch one builder per file (or per 2 files) - see *Dispatch the builder* in `/svg-infographics:create` for both call shapes and the agent-type caveat. Every builder's prompt starts with:
+For multiple files: dispatch one builder per file (or per 2 files) - see *Dispatch the builder* in `/svg-infographics:create` for both call shapes. Every builder's prompt starts with:
 
 > Read `svg-infographics-beautify.md` first. Follow every standing directive and the resolved pattern in that file.
 

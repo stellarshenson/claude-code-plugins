@@ -93,3 +93,4 @@ New colour procedure:
 | `theme_swatch_1_kolomolo.svg` | Kolomolo (deep blue/violet) |
 | `theme_swatch_3_meridian.svg` | Meridian (blue palette) |
 | `theme_swatch_5_optima_manufacturing.svg` | Optima Manufacturing (burgundy + gray) |
+| `theme_swatch_6_stackrails.svg` | StackRails (emerald + hue-228 near-black; dark-only brand, light mode derived) |

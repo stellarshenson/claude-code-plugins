@@ -51,7 +51,7 @@ MANDATORY: create tasks for diagnosis, each fix category, and validation re-run.
 ## Steps
 
 1. **Classify intent** from argument. If ambiguous, ask user one clarifying question via `AskUserQuestion` before spawning
-2. **Dispatch the builder.** Default: `Skill(skill="svg-infographics:svg-infographics", args="<intent + file + instructions>")` - forks out-of-band, user keeps working. For several files at once, or when the user wants each fix visible and individually stoppable, dispatch one background `Agent` per file instead (see *Dispatch the builder* in `/svg-infographics:create` for both call shapes and the agent-type caveat)
+2. **Dispatch the builder.** Default: `Skill(skill="svg-infographics:svg-infographics", args="<intent + file + instructions>")` - forks out-of-band, user keeps working. For several files at once, or when the user wants each fix visible and individually stoppable, dispatch one background `Agent` per file instead (see *Dispatch the builder* in `/svg-infographics:create` for both call shapes)
 3. **Builder follows the fix workflow** (see below). On completion, reports findings + fixes back to parent
 
 ## Builder fix workflow

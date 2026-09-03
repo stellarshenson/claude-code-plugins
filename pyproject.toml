@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "1.7.17"
+version = "1.8.1"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
@@ -87,6 +87,7 @@ include-package-data = true
 "stellars_claude_code_plugins.autobuild" = ["resources/*.yaml"]
 "stellars_claude_code_plugins.journal" = ["prompts/*.yaml"]
 "stellars_claude_code_plugins.document_processing" = ["models/*.onnx"]
+"stellars_claude_code_plugins.svg_tools" = ["data/*.json"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -835,6 +835,54 @@ hypothesis-tools: flexible parsing, registration and append-only outcome recordi
   - test-tags: UNIT
   - log: 2026-09-02T01:02:47Z @kj added
   - log: 2026-09-02T01:02:47Z @kj closed
+- [x] `ACC-HYPTL-124` **Soft lock line on any unverdicted hypothesis** - HIGH; hypothesis-tools lock LOG ID --author @xx [--hours N | --until STAMP] [--note TEXT] writes exactly one '- lock: <until ISO-8601 UTC stamp> @xx [note]' line as the block's first bullet meaning @xx is likely working on it until the stamp, 24 hours by default, any span accepted; locking again by the same author replaces the line (extend); a hypothesis carrying a Verdict, or a compact or table-declared one, is refused with a message; the line is verified to read back before the file is written and a note that breaks the shape is refused; never a log line
+  - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. the four lock-write tests; scratch ledger: lock lands 24h ahead as the first bullet, relock by the same author extends, a verdicted block is refused with exit 2
+  - test: tests/test_hypothesis_tools.py: test_lock_writes_one_line_24h_ahead_as_the_first_bullet_and_never_logs, test_lock_hours_and_until_are_honoured_and_a_relock_extends, test_lock_refuses_a_verdicted_hypothesis_and_a_compact_one, test_a_lock_note_must_be_one_line
+  - test-tags: UNIT
+  - log: 2026-09-02T11:24:57Z @kj added
+  - log: 2026-09-02T11:24:58Z @kj closed
+- [x] `ACC-HYPTL-125` **Soft lock is inconsequential - warn, never refuse** - HIGH; result, field, log-event and verdict on a hypothesis locked by a DIFFERENT author than --author print one warning line to stderr naming the holder and the expiry and proceed unchanged; exit code and file result are identical to the unlocked case; the same author is not warned
+  - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_a_foreign_lock_warns_once_and_every_write_lands_unchanged; scratch ledger: result by @ab on @kj's lock warns on stderr and the Result lands with exit 0
+  - test: tests/test_hypothesis_tools.py: test_a_foreign_lock_warns_once_and_every_write_lands_unchanged
+  - test-tags: UNIT
+  - log: 2026-09-02T11:24:57Z @kj added
+  - log: 2026-09-02T11:24:58Z @kj closed
+- [x] `ACC-HYPTL-126` **Expired locks are cleared on any write; verdict clears the lock** - HIGH; every write command (register, author, result, field, log-event, verdict, lock, unlock) first removes every lock line whose stamp is in the past, silently and unlogged; verdict removes the hypothesis's lock whatever its expiry; check stays read-only and reports an expired lock as a warning, a lock on a verdicted hypothesis as a warning, and a malformed or duplicate lock line as an error
+  - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. the expired-lock, verdict-clears and check-lock tests; scratch ledger: an hour-old lock is gone after any write with no log line, verdict drops an active lock, check errors on a malformed line
+  - test: tests/test_hypothesis_tools.py: test_an_expired_lock_is_cleared_by_the_next_write_silently, test_verdict_clears_the_lock_whatever_its_expiry_after_warning, test_check_errors_on_a_malformed_or_duplicate_lock_and_warns_on_an_expired_or_finished_one
+  - test-tags: UNIT
+  - log: 2026-09-02T11:24:57Z @kj added
+  - log: 2026-09-02T11:24:58Z @kj closed
+- [x] `ACC-HYPTL-127` **unlock clears one, all, or expired locks** - MEDIUM; hypothesis-tools unlock LOG (ID | --all | --expired) --author @xx removes lock lines: one hypothesis, every hypothesis, or only the expired ones; exactly one selector is accepted; clearing another author's active lock is allowed and warns once; never a log line; prints the count cleared
+  - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_unlock_clears_one_every_or_only_the_expired_locks; scratch ledger: unlock ID, --all and --expired each print the count cleared and no selector or two selectors is refused
+  - test: tests/test_hypothesis_tools.py: test_unlock_clears_one_every_or_only_the_expired_locks
+  - test-tags: UNIT
+  - log: 2026-09-02T11:24:57Z @kj added
+  - log: 2026-09-02T11:24:58Z @kj closed
+- [x] `ACC-HYPTL-128` **Locks in list filters and json** - MEDIUM; list --locked keeps hypotheses carrying an active lock and --locked-by @xx narrows to one holder; list, show and report --json carry lock as {by, until, note} or null on every hypothesis record; an expired lock is not active for any of these
+  - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_locked_and_locked_by_narrow_list and test_reads_announce_worked_on_hypotheses_and_json_carries_the_lock; scratch ledger: list --locked returns the locked block only, show --json carries lock {by, until, note}
+  - test: tests/test_hypothesis_tools.py: test_locked_and_locked_by_narrow_list, test_reads_announce_worked_on_hypotheses_and_json_carries_the_lock
+  - test-tags: UNIT
+  - log: 2026-09-02T11:24:57Z @kj added
+  - log: 2026-09-02T11:24:58Z @kj closed
+- [x] `ACC-HYPTL-129` **Read commands announce worked-on hypotheses at pick-up** - HIGH; list, show and report print one notice line to stderr before their output whenever a hypothesis they show carries an active lock: 'N hypothesis(es) currently worked on: E14-H42 by @kj until <stamp>, ...' (ids listed, at most ten, then '+M more'); nothing is printed when no shown hypothesis is locked; --json prints no notice
+  - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_reads_announce_worked_on_hypotheses_and_json_carries_the_lock; scratch ledger: list, show and report open with the notice on stderr, silent when nothing is locked and under --json
+  - test: tests/test_hypothesis_tools.py: test_reads_announce_worked_on_hypotheses_and_json_carries_the_lock
+  - test-tags: UNIT
+  - log: 2026-09-02T11:24:57Z @kj added
+  - log: 2026-09-02T11:24:58Z @kj closed
+- [x] `ACC-HYPTL-130` **Locking a hypothesis someone else holds is a transfer and is called out** - HIGH; lock on a hypothesis with an active lock held by another author prints a distinct stderr line 'TRANSFER: E14-H42 was locked by @yy until <stamp> - you are taking it over; ask @yy' and proceeds (no refusal); the new lock line's note opens with 'taken over from @yy' unless --note is given, so the previous holder stays visible on the block; unlock of another author's active lock warns the same way with 'you are clearing it'
+  - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_locking_over_another_authors_lock_is_a_transfer_and_is_called_out; scratch ledger: @ab locking @kj's active lock prints the TRANSFER line and records 'taken over from @kj'
+  - test: tests/test_hypothesis_tools.py: test_locking_over_another_authors_lock_is_a_transfer_and_is_called_out
+  - test-tags: UNIT
+  - log: 2026-09-02T11:24:57Z @kj added
+  - log: 2026-09-02T11:24:58Z @kj closed
+- [x] `ACC-HYPTL-131` **Skill, reference and command carry the lock discipline as a standing default** - MEDIUM; plugins/datascience/skills/hypothesis/SKILL.md, its references/ledger-queries.md and commands/hypothesis.md state: lock a hypothesis when you pick it up, before its first write, unasked; ask before working on one locked by someone else; the lock never blocks a write; expired locks clear themselves; verdict clears the lock; unlock at will; list, show and report announce the hypotheses currently worked on; 24 hours default; the CLI --help documents lock, unlock, --locked and --locked-by
+  - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_the_hypothesis_skill_carries_the_lock_discipline, which reads the three files for the lock command, 'never a gate', 'currently worked on', 'TRANSFER' and '24 hours'
+  - test: tests/test_hypothesis_tools.py: test_the_hypothesis_skill_carries_the_lock_discipline
+  - test-tags: UNIT
+  - log: 2026-09-02T11:24:57Z @kj added
+  - log: 2026-09-02T11:24:58Z @kj closed
 
 ## pm-tools report `PMREP`
 

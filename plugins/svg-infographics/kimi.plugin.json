@@ -1,12 +1,13 @@
 {
   "name": "svg-infographics",
-  "version": "1.7.17",
+  "version": "1.8.1",
   "description": "SVG infographic creation with grid-first design, CSS theme classes, dark/light mode, validation tools, and 60+ reference examples. Create card grids, timelines, flowcharts, banners, stats panels, and creative diagrams.",
   "license": "MIT",
   "author": "Stellars Henson",
   "keywords": ["svg", "infographic", "diagram", "visualization", "timeline", "flowchart", "banner", "card-grid", "dark-mode", "theme", "validation"],
   "skills": "./skills/",
   "commands": "./commands/",
+  "agents": "./agents/",
   "interface": {
     "displayName": "SVG Infographics",
     "shortDescription": "SVG infographic creation with grid-first design, themes, and validation",
