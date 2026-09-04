@@ -62,7 +62,7 @@ So a panel does not return one finding three times:
 - `devops` owns image and pipeline; `bug-hunter` owns the script inside them
 - Spec says nothing about it → `analyst`; spec says it, tests miss it → `qa-engineer`; code contradicts its own conventions → `architect`. Two *specs* diverging → `analyst`; two *implementations* → `architect`; how the divergence feels → `ux-designer`
 - The instruction layer as an instrument (instruction files, skills, agent prompts, tool descriptions, workflow graphs, loops) → `ai-engineer`; the code it steers → `architect`; spec against code → `analyst`; the product's own test suite → `qa-engineer`. On deletion the two split by readership: `slop-hunter` cuts what nothing reads, `ai-engineer` cuts what the agent reads and does not need
-- Slop: `architect` judges whether a *design* is proportionate ("is this structure justified?"); `slop-hunter` runs the exhaustive whole-tree delete pass ("what can go?"), load-bearing check first; `qa-engineer` cuts only tests paying no rent. Fabrication (fake citation, hallucinated API) is `slop-hunter`'s alone
+- Slop: `architect` judges whether a *design* is proportionate ("is this structure justified?"); `slop-hunter` runs the exhaustive whole-tree delete pass ("what can go?"), load-bearing check first; `qa-engineer` cuts only tests paying no rent. On a diff, a hunk no requirement reaches is `slop-hunter`'s (a fact: revert); a construct a requirement reaches but that is bigger than needed is `architect`'s proportionality call (a judgement). Fabrication (fake citation, hallucinated API or package, a fake pass, an unverified verification claim) is `slop-hunter`'s alone
 
 ## Register
 

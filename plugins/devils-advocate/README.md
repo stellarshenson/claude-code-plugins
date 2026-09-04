@@ -64,7 +64,7 @@ The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer 
 | `methodologist` | scientific-method integrity - can the test fail, does the verdict ladder span outcomes |
 | `popular-science` | readability for a generalist - jargon, unsourced claims, buried lede, the visuals |
 | `devops` | containers & deploy - Dockerfile hygiene, secrets in layers, PID-1 signals, probes |
-| `slop-hunter` | "what can go?" - an exhaustive delete pass gated by a load-bearing check: dead code, YAGNI abstractions, vanity tests, doc over-prose, unused deps; plus AI-slop tells & fabrication |
+| `slop-hunter` | "what can go?" - an exhaustive delete pass gated by a load-bearing check: dead code, duplicated blocks, YAGNI abstractions, defensive guards, over-mocked tests, unrequested hunks, doc over-prose, unused deps; plus AI-slop tells, fabrication & fake passes - the measured evidence per axis in `references/slop-catalogue.md` |
 | `ai-engineer` | "will this still steer any assistant tomorrow?" - the instruction layer itself: vendor lock-in, pinned command surfaces, drifted rule copies, unbounded loops |
 
 One plugin agent serves them all - name the lens in the prompt and it loads that persona: `Agent(subagent_type: "devils-advocate:adversarial-reviewer", prompt: "Adversary: architect. ...")`. Never review with `general-purpose`: it carries no lens, so it returns a fluent summary where an adversary returns findings and a verdict.

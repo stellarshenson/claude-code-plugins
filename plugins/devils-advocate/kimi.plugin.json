@@ -1,6 +1,6 @@
 {
   "name": "devils-advocate",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "Critical document analysis with persona-driven risk scoring, iterative scorecard evaluation, and versioned corrections. Includes adversarial-review - hostile red-team review of code and artefacts via fresh reviewers with eleven pluggable expert adversaries.",
   "license": "MIT",
   "author": "Stellars Henson",

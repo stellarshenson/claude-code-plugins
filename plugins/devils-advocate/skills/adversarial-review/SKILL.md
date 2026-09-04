@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Hostile, independent review - spawn fresh context-free reviewer subagents that try to BREAK a change. Two modes - diff bug-hunt (no tools, inline diff) and whole-repo audit (tools on - slop, brittle design, hardcodings, config drift, broken SoC). Multi-round - find, fix, re-confirm. Use before a risky commit/merge, a UI or terminal-UI ship, a shell installer, trusting an experiment's verdicts or a green test suite, signing off a spec, or publishing docs. Triggers - "adversarial review", "red-team this", "find bugs in my change", "review before ship", "audit the architecture", "UX review", "TUI review", "shell review", "methodology review", "can this test fail", "review my tests", "readability review", "review my README/docs", "deployment review", "review my spec", "acceptance criteria review", "does the code match the spec", "hunt dead weight", "what can I delete", "de-slop this", "check for fabricated citations", "review my agent instructions", "audit my skills", "is my harness portable".
+description: Hostile, independent review - spawn fresh context-free reviewer subagents that try to BREAK a change. Two modes - diff bug-hunt (no tools, inline diff) and whole-repo audit (tools on - slop, brittle design, hardcodings, config drift, broken SoC). Multi-round - find, fix, re-confirm. Use before a risky commit/merge, a UI or terminal-UI ship, a shell installer, trusting an experiment's verdicts or a green test suite, signing off a spec, or publishing docs. Triggers - "adversarial review", "red-team this", "find bugs in my change", "review before ship", "audit the architecture", "UX review", "TUI review", "shell review", "methodology review", "can this test fail", "review my tests", "readability review", "review my README/docs", "deployment review", "review my spec", "acceptance criteria review", "does the code match the spec", "hunt dead weight", "what can I delete", "de-slop this", "find duplicates", "fake citations or fake passes", "review my agent instructions", "audit my skills", "is my harness portable".
 ---
 
 # Adversarial Review
@@ -118,7 +118,7 @@ One self-contained persona prompt per expert in `adversaries/*.md`. The `lens:` 
 | `popular-science` | readability for a curious generalist - jargon, unsourced claims, buried lede, visuals | 1 |
 | `devops` | containers & deploy - Dockerfile hygiene, secrets in layers, root runtime, env drift | 2 |
 | `analyst` | specs & acceptance criteria - coverage gaps, unverifiable criteria, silos, spec-vs-code drift | 2 |
-| `slop-hunter` | whole-tree dead weight - dead code, YAGNI, vanity tests, over-prose; AI-slop tells & fabrication | 2 |
+| `slop-hunter` | whole-tree dead weight - dead code, duplicated blocks, YAGNI, defensive guards, over-mocked tests, unrequested hunks, over-prose; AI-slop tells, fabrication & fake passes | 2 |
 | `ai-engineer` | the instruction layer for any assistant - lock-in, pinned commands, drifted rules, unbounded loops, costly fan-out | 2 |
 
 Which lens owns an overlap: Boundaries between lenses in `references/authoring-an-adversary.md`.
