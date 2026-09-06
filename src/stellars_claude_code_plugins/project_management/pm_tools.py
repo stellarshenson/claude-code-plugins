@@ -45,7 +45,9 @@ chosen; --json carries no notice.
 
 Query - every table is markdown, paste-ready; --json gives the same facts as data:
   report [paths] [FILTERS] [--detail] [--plain] [--summary] [--json]
-         ITEMS lists open work only unless --status says otherwise, worst level first.
+         ITEMS lists open work only unless --status says otherwise, grouped by
+         category and worst level first inside each category; `list --status open`
+         is the globally worst-first queue.
          SUMMARY is plain counts in two grids, one per axis: status - `| Category |
          Open | Fixed | Rejected | Total |` (`Done` on criteria, `Worked on` after
          Open when an item is locked) - then the open items by level under `Open by
@@ -55,7 +57,8 @@ Query - every table is markdown, paste-ready; --json gives the same facts as dat
          when something is open, and carries UNTRIAGED/UNRATED only when an open
          item lacks a level. Every filter narrows the whole
          report except --status, which narrows ITEMS alone. --plain prints the grids
-         and nothing else; --summary stops at the SUMMARY grid, listing no items.
+         and the ITEMS queue without the icons or the categories table; --summary
+         stops at the SUMMARY grid, listing no items.
   list [paths] [FILTERS] [--columns F,F,..] [--sort=F,-F,..] [--json]
          one table per file, the columns and the order chosen by the caller; a `-`
          prefix on a sort field descends (write --sort=-age, the `=` keeps argparse
@@ -94,6 +97,10 @@ FILTERS, the same on report, list, pivot, search and coverage:
 FIELDS, for --columns, --sort, --rows and --cols:
   id title body category severity importance status author filed closed updated
   age tags evidence cause hint regr root logs related blockers lock
+  severity, importance and status are ranked, not alphabetical - severity runs
+  CRITICAL, MAJOR, MEDIUM, MINOR, importance runs CRITICAL, HIGH, MEDIUM, LOW and
+  status runs open, closed, rejected; --sort and a pivot axis both follow that
+  order, so ascending is worst first and open first;
   cause is the current mechanism/root-cause record and answers to either name;
   tags, related and blockers pivot an item into every value it carries; filed/closed/
   updated pivot by month, age by band (<7d, 7-30d, 31-90d, >90d); lock reads
@@ -1857,7 +1864,8 @@ def cmd_refs(files, wanted, as_json=False):
     """Both directions of the link graph around one id, plus the transitive
     blocked-by chain. A blocker reached by a second route ends that chain with
     `...`: its own blockers were printed the first time. Inbound is listed even
-    for an id no item carries - that is what `remove --force` leaves behind."""
+    for an id no item carries - that is what `remove --force` leaves behind, and
+    what separates it from a typo, which is refused."""
     index, inbound = {}, []
     for f in files:
         for b in parse(f)[0]:
@@ -1868,6 +1876,10 @@ def cmd_refs(files, wanted, as_json=False):
                 for k, rid, ln in b["refs"]
                 if rid == wanted
             ]
+    if wanted not in index and not inbound:
+        raise SystemExit(
+            f"no item with id {wanted} in the scanned files, and nothing points at it"
+        )
     outbound, paths, blockers = [], [], []
     if wanted in index:
         f, b = index[wanted]
@@ -3015,7 +3027,7 @@ def main(argv: list[str] | None = None) -> int:
             sp.add_argument(
                 "--plain",
                 action="store_true",
-                help="the grid and the queue alone - no blurbs, no categories table",
+                help="the grids and the queue without the icons or the categories table",
             )
             sp.add_argument(
                 "--summary",
@@ -3030,10 +3042,19 @@ def main(argv: list[str] | None = None) -> int:
                 "--sort",
                 metavar="F,-F,..",
                 help="sort fields; a `-` prefix descends, written --sort=-age so the "
-                "shell does not read it as a flag. Fix order by default",
+                "shell does not read it as a flag. severity, importance and status are "
+                "ranked, not alphabetical - ascending is worst first and open first, so "
+                "--sort=-severity lists MINOR first. Fix order by default - open, worst, "
+                "oldest",
             )
         if name == "pivot":
-            sp.add_argument("--rows", required=True, type=str.lower, help="the field down")
+            sp.add_argument(
+                "--rows",
+                required=True,
+                type=str.lower,
+                help="the field down; a ranked or banded field keeps its own order - "
+                "severity and importance worst first, status open first, age by band",
+            )
             sp.add_argument("--cols", type=str.lower, help="the field across; one column without")
             sp.add_argument(
                 "--values",

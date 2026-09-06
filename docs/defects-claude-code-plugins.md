@@ -164,6 +164,54 @@ pm-tools parser, edit, upgrade and reports
   - log: 2026-09-02T06:17:20Z @kj edited test-tags (added)
   - log: 2026-09-02T06:17:20Z @kj closed
   - log: 2026-09-02T06:52:39Z @kj survived the same loop (wf_812326e5-afd, wf_5c7c86a1-d53, SHIP); round 1 found two doc sentences still describing the one-row grid (skills/report/SKILL.md step 6, references/reports.md filter clause) - corrected; the reviewers reproduced the two-grid output on scratch stores in default, --plain, --summary and filtered forms
+- [x] `DEF-PMGT-56` **no help surface says severity, importance and status sort by rank** - MAJOR; A reviewer ran a descending severity sort, saw MINOR above MEDIUM and reported the sort as alphabetical. The sort is rank-based and correct; nothing at any CLI surface says the three fields carry a worst-first / open-first order, so a `-` prefix reads as give me the most severe first. The contract is stated once in the repository, at references/reports.md:91, which a CLI user never loads, and that sentence omits status and never states the inverse.
+  - test-tags: FUNCTIONAL
+  - evidence: list --help, pm-tools --help, pivot --help and reports.md now state the rank; tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes and fails on reverting any clause
+  - repro: pm-tools list docs/defects-claude-code-plugins.md --columns id,severity --sort=-severity prints MINOR before MEDIUM before MAJOR before CRITICAL, while list --help says only that a `-` prefix descends and pm-tools --help lists the three fields as bare names
+  - root-cause: 2026-09-06T16:19:16Z @kj the rank order lives in SEV_RANK, IMP_RANK and STATUS_RANK and is stated only in code docstrings and one plugin reference, never in argparse help
+  - log: 2026-09-06T16:19:16Z @kj added
+  - log: 2026-09-06T16:25:50Z @kj closed
+  - log: 2026-09-06T16:26:10Z @kj edited test-tags (added)
+- [x] `DEF-PMGT-57` **top-level help says --plain prints the grids and nothing else, which is false** - MEDIUM; The module docstring printed by pm-tools --help states that --plain prints the grids and nothing else. --plain prints the SUMMARY grids and the whole ITEMS queue; the flag that stops at the grids is --summary. The subcommand help for the same flag is accurate, so the two help surfaces disagree about one flag.
+  - test-tags: UNIT
+  - evidence: the module docstring now says --plain prints the grids and the ITEMS queue; tests/test_pm_tools.py::test_report_plain_drops_the_chrome_and_keeps_the_data already pins ITEMS in --plain output
+  - repro: pm-tools report docs/defects-claude-code-plugins.md --plain continues past the grids into ## ITEMS at output line 34
+  - root-cause: 2026-09-06T16:19:16Z @kj cmd_report computes plain = plain or summary, so only --summary drops the items; the docstring describes --summary behaviour under --plain
+  - log: 2026-09-06T16:19:16Z @kj added
+  - log: 2026-09-06T16:25:50Z @kj closed
+  - log: 2026-09-06T16:26:10Z @kj edited test-tags (added)
+- [x] `DEF-PMGT-58` **refs on an unknown id is indistinguishable from an item with no links** - MEDIUM; A mistyped id returns the same summary line and the same exit code as a real item carrying no references, so a reader concludes an item has no blockers when the id was never found in any scanned file.
+  - test-tags: UNIT
+  - evidence: refs on an absent id exits 1 with no item with id DEF-NOPE-999 in the scanned files, and nothing points at it; tests/test_pm_tools.py::test_refs_refuses_an_unknown_id passes and fails with DID NOT RAISE when the guard is dropped
+  - repro: pm-tools refs docs/defects-claude-code-plugins.md --id DEF-NOPE-999 and --id DEF-ADVR-47 both print 0 inbound, 0 outbound reference(s); 0 open blocker(s) and both exit 0
+  - root-cause: 2026-09-06T16:19:16Z @kj cmd_refs reports the reference counts without first asserting that the requested id exists in the scanned files
+  - log: 2026-09-06T16:19:16Z @kj added
+  - log: 2026-09-06T16:25:50Z @kj closed
+  - log: 2026-09-06T16:26:10Z @kj edited test-tags (added)
+  - log: 2026-09-06T16:46:49Z @kj edited evidence (replaced)
+- [x] `DEF-PMGT-59` **report help calls ITEMS worst level first without saying category grouping outranks severity** - MINOR; The help describes ITEMS as listing open work worst level first. Items are grouped by category first and sorted inside each group, so a MAJOR prints below six MINORs from earlier categories. A reader who expects one global fix queue reads the report as unsorted.
+  - evidence: the report entry now says grouped by category and worst level first inside each category, and names list --status open as the global queue
+  - repro: pm-tools report docs/defects-claude-code-plugins.md --plain lists MEDIUM MINOR MEDIUM MEDIUM MEDIUM MINOR MINOR MINOR MINOR MAJOR MINOR, while pm-tools list --status open is the globally worst-first queue
+  - root-cause: 2026-09-06T16:19:16Z @kj ITEMS is emitted per category section and fix_order sorts inside a section only
+  - log: 2026-09-06T16:19:16Z @kj added
+  - log: 2026-09-06T16:25:50Z @kj closed
+  - log: 2026-09-06T18:05:12Z @kj edited repro (replaced) and evidence (replaced)
+- [x] `DEF-PMGT-60` **reports.md FIELDS list omits cause, under-reporting the vocabulary by one field** - MINOR; The plugin reference restates the FIELDS vocabulary for --columns, --sort, --rows and --cols and leaves out cause, which the CLI accepts. An agent reading the reference believes the field does not exist.
+  - evidence: reports.md FIELDS now lists cause and glosses it as the current mechanism or root-cause record
+  - repro: reports.md:93 lists the fields without cause, while pm-tools list docs/defects-claude-code-plugins.md --columns id,cause prints the column
+  - root-cause: 2026-09-06T16:19:16Z @kj the reference copy of FIELDS was not updated when the mechanism/root-cause field was added
+  - log: 2026-09-06T16:19:16Z @kj added
+  - log: 2026-09-06T16:25:50Z @kj closed
+- [x] `DEF-PMGT-61` **SKILL.md announces three query surfaces then tabulates four** - MINOR; The Reports and tables section opens with Three query surfaces, one filter vocabulary and the table beneath it has four rows: report, coverage, list and pivot. A reader counting rows against the sentence cannot tell which row is the intruder.
+  - evidence: SKILL.md now reads Four query surfaces above the four-row table
+  - repro: SKILL.md:176 states three, the table at :178-183 has four rows
+  - root-cause: 2026-09-06T16:19:16Z @kj pivot was added to the table without updating the count in the sentence above it
+  - log: 2026-09-06T16:19:16Z @kj added
+  - log: 2026-09-06T16:25:50Z @kj closed
+- [ ] `DEF-PMGT-62` **refs --id reports a shape-invalid id as absent instead of refusing the shape** - MINOR; cmd_refs is the only --id consumer that skips the norm_id shape validator, so an id carrying markdown code-span backticks - the exact form pm-tools' own tables render - is reported as not present in the scanned files when the item is present. Every sibling surface names the shape instead.
+  - repro: uv run pm-tools refs docs/defects-claude-code-plugins.md --id '`DEF-PMGT-60`' prints 'no item with id `DEF-PMGT-60` in the scanned files, and nothing points at it' and exits 1, while refs --id DEF-PMGT-60 exits 0; the same string through list --related-to '`DEF-PMGT-60`' prints '--related-to takes an id like DEF-LNCH-3, got ...'
+  - log: 2026-09-06T18:41:49Z @kj added
+  - log: 2026-09-06T18:41:57Z @kj root cause: pm_tools.py:3276 dispatches cmd_refs(files, a.id.strip().upper(), a.json), bypassing norm_id (pm_tools.py:861) which all eight write commands route through. Surfaced by the adversarial review's round-7 open list, ruled immaterial there because the pre-change path returned a silent '0 inbound, 0 outbound' at exit 0 - also wrong, but not a positive absence claim. NOT fixed in the sort-contract change: that change reached SHIP on two clean rounds and a further edit would reopen the review.
 
 ## hypothesis-tools `HYPO`
 

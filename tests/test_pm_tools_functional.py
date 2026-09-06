@@ -526,6 +526,23 @@ def test_help_documents_the_whole_lock_surface():
         assert token in out, token
 
 
+def test_the_rank_contract_is_stated_where_sort_is_read():
+    """DEF-PMGT-56: no help surface said the three level fields carry a rank, so a
+    reader took `--sort=-severity` for most-severe-first. argparse rewraps subcommand
+    help at terminal width, so every assertion runs on whitespace-normalised text."""
+    flat = " ".join(ok("list", "--help").split())
+    assert "severity, importance and status are ranked, not alphabetical" in flat
+    assert "--sort=-severity lists MINOR first" in flat
+    top = " ".join(ok("--help").split())
+    assert "severity runs CRITICAL, MAJOR, MEDIUM, MINOR" in top
+    assert "importance runs CRITICAL, HIGH, MEDIUM, LOW" in top
+    assert "status runs open, closed, rejected" in top
+    assert "keeps its own order" in " ".join(ok("pivot", "--help").split())
+    ref = Path(__file__).resolve().parents[1] / "plugins/project-management/skills"
+    ref = ref / "project-management/references/reports.md"
+    assert "Severity, importance and status are ranked" in ref.read_text(encoding="utf-8")
+
+
 def test_an_unknown_command_fails_loudly():
     r = pm("frobnicate", "docs")
     assert r.returncode != 0

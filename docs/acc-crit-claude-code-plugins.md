@@ -250,6 +250,12 @@ related/blocked-by links in every query surface, an exact --grep filter, a ranke
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
+- [x] `ACC-PMREL-140` **refs refuses an unknown id** - MEDIUM; `refs --id` on an id that is in no scanned file and that nothing points at exits non-zero with a no item with id message
+  - evidence: tests/test_pm_tools.py::test_refs_refuses_an_unknown_id passes; dropping the guard fails it with DID NOT RAISE
+  - test: refs on a filed id exits 0 with the zero-reference summary, refs on an absent id raises SystemExit
+  - test-tags: UNIT
+  - log: 2026-09-06T16:25:30Z @kj added
+  - log: 2026-09-06T16:25:50Z @kj closed
 
 ## adversarial review tooling `REVIEW`
 
@@ -900,4 +906,52 @@ the report surface - SUMMARY grids, ITEMS queue, coverage
   - test-tags: UNIT
   - log: 2026-09-02T06:17:20Z @kj added
   - log: 2026-09-02T06:17:20Z @kj closed
+- [x] `ACC-PMREP-132` **sort help names the ranked fields** - HIGH; `pm-tools list --help` states that severity, importance and status are ranked rather than alphabetical
+  - evidence: tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes; reverting the help clause fails it
+  - test: render list --help as a subprocess, normalise whitespace, assert the phrase severity, importance and status are ranked, not alphabetical
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-06T16:25:29Z @kj added
+  - log: 2026-09-06T16:25:49Z @kj closed
+- [x] `ACC-PMREP-133` **sort help states the inverse** - HIGH; `pm-tools list --help` states that `--sort=-severity` lists MINOR first
+  - evidence: tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes; reverting the help clause fails it
+  - test: same rendered help, whitespace normalised, assert --sort=-severity lists MINOR first
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-06T16:25:30Z @kj added
+  - log: 2026-09-06T16:25:49Z @kj closed
+- [x] `ACC-PMREP-134` **FIELDS carries the rank sequences** - MEDIUM; the FIELDS block in `pm-tools --help` gives the rank sequence for severity, importance and status
+  - evidence: tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes; reverting the help clause fails it
+  - test: render pm-tools --help, assert severity runs CRITICAL, MAJOR, MEDIUM, MINOR and status runs open, closed, rejected
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-06T16:25:30Z @kj added
+  - log: 2026-09-06T16:25:49Z @kj closed
+- [x] `ACC-PMREP-135` **pivot help states the axis order** - MEDIUM; `pm-tools pivot --help` states that a ranked or banded field keeps its own order on the axis
+  - evidence: tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes; reverting the help clause fails it
+  - test: render pivot --help, normalise whitespace, assert keeps its own order
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-06T16:25:30Z @kj added
+  - log: 2026-09-06T16:25:49Z @kj closed
+- [x] `ACC-PMREP-136` **the reference covers status** - MEDIUM; references/reports.md states that severity, importance and status are ranked, not alphabetical
+  - evidence: tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes; reverting the help clause fails it
+  - test: read the reference and assert Severity, importance and status are ranked
+  - test-tags: FUNCTIONAL
+  - log: 2026-09-06T16:25:30Z @kj added
+  - log: 2026-09-06T16:25:49Z @kj closed
+- [x] `ACC-PMREP-137` **importance sorts by rank** - HIGH; `list --sort=importance` over criteria at CRITICAL, MEDIUM and LOW returns them in that order
+  - evidence: tests/test_pm_tools.py::test_the_importance_order_is_the_rank_not_the_alphabet passes; an alphabetical sort_key importance branch fails it
+  - test: three criteria, one per level; an alphabetical sort returns CRITICAL, LOW, MEDIUM
+  - test-tags: UNIT
+  - log: 2026-09-06T16:25:30Z @kj added
+  - log: 2026-09-06T16:25:49Z @kj closed
+- [x] `ACC-PMREP-138` **importance pivot axis by rank** - MEDIUM; `pivot --rows importance` over criteria at CRITICAL, MEDIUM and LOW returns the axis in that order
+  - evidence: tests/test_pm_tools.py::test_the_importance_order_is_the_rank_not_the_alphabet passes; sorted(keys) in key_order fails it
+  - test: assert the row labels in order; sorted(keys) in key_order returns CRITICAL, LOW, MEDIUM
+  - test-tags: UNIT
+  - log: 2026-09-06T16:25:30Z @kj added
+  - log: 2026-09-06T16:25:49Z @kj closed
+- [x] `ACC-PMREP-139` **severity sort spans four levels** - MEDIUM; `list --sort=severity` over one defect per level returns CRITICAL, MAJOR, MEDIUM, MINOR
+  - evidence: tests/test_pm_tools.py::test_the_severity_sort_spans_every_level_in_rank_order passes; swapping MEDIUM and MINOR in SEV_RANK fails it
+  - test: four defects, one per level; swapping MEDIUM and MINOR inside SEV_RANK returns CRITICAL, MAJOR, MINOR, MEDIUM
+  - test-tags: UNIT
+  - log: 2026-09-06T16:25:30Z @kj added
+  - log: 2026-09-06T16:25:49Z @kj closed
 

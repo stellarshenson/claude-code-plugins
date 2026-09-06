@@ -1778,6 +1778,54 @@ def test_importance_filters_and_fields_mirror_severity(criteria: Path, defects: 
     assert "SUMMARY" not in cap.out
 
 
+def test_the_importance_order_is_the_rank_not_the_alphabet(criteria: Path, capsys):
+    """ACC: MEDIUM before LOW is the one level pair where the rank and the alphabet
+    disagree, so this is the assertion a plain string sort fails. It pins both
+    consumers of IMP_RANK - `sort_key` for a sorted list, `key_order` for a pivot axis."""
+    add_criterion(criteria, "password rules", importance="CRITICAL")
+    add_criterion(criteria, "session timeout", importance="MEDIUM")
+    add_criterion(criteria, "remember me", importance="LOW")
+    capsys.readouterr()
+    run("list", str(criteria), "--columns", "id,importance", "--sort=importance")
+    rows = table_rows(capsys.readouterr().out)
+    assert [r[1] for r in rows[1:]] == ["CRITICAL", "MEDIUM", "LOW"], "sort_key ranks"
+    run("pivot", str(criteria), "--rows", "importance")
+    rows = table_rows(capsys.readouterr().out)
+    assert [r[0] for r in rows[1:]] == ["CRITICAL", "MEDIUM", "LOW", "**Total**"], "key_order ranks"
+
+
+def test_the_severity_sort_spans_every_level_in_rank_order(defects: Path, capsys):
+    """Pins SEV_RANK against drift from the SEVS tuple, and pins the `-` prefix as
+    the inverse of that rank. It cannot catch a severity sort that went alphabetical:
+    the rank order is byte-identical to the alphabetical one."""
+    for title, sev in (
+        ("token race", "MINOR"),
+        ("splash hang", "CRITICAL"),
+        ("stale cache", "MEDIUM"),
+        ("dropped event", "MAJOR"),
+    ):
+        add_defect(defects, title, severity=sev)
+    capsys.readouterr()
+    run("list", str(defects), "--columns", "id,severity", "--sort=severity")
+    rows = table_rows(capsys.readouterr().out)
+    assert [r[1] for r in rows[1:]] == ["CRITICAL", "MAJOR", "MEDIUM", "MINOR"], "worst first"
+    run("list", str(defects), "--columns", "id,severity", "--sort=-severity")
+    rows = table_rows(capsys.readouterr().out)
+    assert [r[1] for r in rows[1:]] == ["MINOR", "MEDIUM", "MAJOR", "CRITICAL"], "`-` inverts"
+
+
+def test_refs_refuses_an_unknown_id(defects: Path, capsys):
+    """DEF-PMGT-58: a mistyped id returned the same silent zero as a real item
+    carrying no links, so a reader concluded an item had no blockers."""
+    add_defect(defects, "token race")
+    capsys.readouterr()
+    assert run("refs", str(defects), "--id", "DEF-LNCH-1") == 0
+    assert "0 inbound, 0 outbound reference(s)" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as e:
+        run("refs", str(defects), "--id", "DEF-LNCH-99")
+    assert "no item with id DEF-LNCH-99" in str(e.value)
+
+
 def test_a_criterion_opening_with_a_level_word_is_prose_not_a_severity(tmp_path: Path, capsys):
     """The standing defect: parse() read `Normal, ...` on a criterion as a severity.
     Severity is gated on DEF items now, so the body survives every command intact."""
