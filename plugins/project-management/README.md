@@ -174,6 +174,7 @@ A question the report does not answer is still a computed table. `list` prints o
 - Every write goes through `pm-tools` - hand-editing is legal markdown but loses the id assignment and the log line
 - `remove` is for mistakes and duplicates only; an item that turned out to be invalid is rejected with a reason so the trail survives
 - The agent triages every defect and rates every criterion itself, and never asks the user for the level
+- Every field is written in plain language - everyday words, one reading only, terse compression welcome; numbers, ids, paths and error strings copied exactly
 - In doubt about a criterion, an edge case or a category, ask - a wrong entry reads exactly like a right one
 
 ## Documentation

@@ -1,0 +1,227 @@
+<!--
+  03-lifecycle-regressions.svg - Defect lifecycle state-flow for the project-management plugin
+  Shows: six markdown-checkbox states (open, closed, rejected, two regressions) linked by
+         labelled transitions - close, reject, reopen - ending on a flat regression ordinal.
+  Intent: visualize how `pm-tools` reopen mints a flat `-N` suffix instead of nesting, for the
+          "lifecycle and regressions" section of the project-management-plugin Medium article.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 cyan (closed/default), accent-2=#da8230 orange
+         (regression), neutral grey #6b7280 (rejected/muted) - transparent backplate, dark-mode CSS.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .muted { fill: #5b6472; }
+    .on-fill { fill: #e0f2f7; }
+    .callout-text { font-family: "Segoe UI", Arial, sans-serif; font-size: 8.5px; font-style: italic; fill: #24697e; }
+    .callout-line { stroke: #24697e; stroke-width: 0.9; fill: none; opacity: 0.5; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .muted { fill: #9aa7b5; }
+      .on-fill { fill: #e0f2f7; }
+      .callout-text { fill: #8fd4e6; }
+      .callout-line { stroke: #8fd4e6; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 400
+    Margin: 25px left/right
+    Title band: y=0..55 (title baseline y=30)
+    Row 1 (top chain): y=90..160 (card height 70), 5 cards w=150, gap=50
+      card-a: x=25   centre_x=100
+      card-b: x=225  centre_x=300
+      card-d: x=425  centre_x=500
+      card-e: x=625  centre_x=700
+      card-f: x=825  centre_x=900
+    Row 1 -> Row 2 gap: y=160..250 (h=90, callout zone)
+    Row 2: card-c x=25 y=250 w=150 h=70 centre_x=100 (below card-a)
+    Footer band: y=320..400 (footer baseline y=350)
+    Card internals (h=70): accent bar y=card_y h=5; id text baseline card_y+25;
+      single-line caption baseline card_y+43; two-line caption baselines card_y+43 / card_y+60
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: card-a, card-b, card-d, card-e, card-f (row 1, gap=50)
+    v-stack: card-a, card-c (gap=90, card-c below card-a, same column x)
+    contain: each card -> accent-bar, id-text, caption-text
+    flow: card-a -> card-b (close, evidence flag, cyan)
+    flow: card-a -> card-c (reject, event flag, muted)
+    flow: card-b -> card-d (reopen mints -1, orange)
+    flow: card-d -> card-e (close, evidence flag, cyan)
+    flow: card-e -> card-f (reopen mints -2, orange)
+  === -->
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="0" y1="0" x2="1000" y2="0" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="400" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="400" x2="1000" y2="400" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Card A: [ ] DEF-LNCH-3 - open - x=25 y=90 w=150 h=70 (cyan) -->
+    <g id="card-a">
+      <path d="M25,90 H175 V156 Q175,160 171,160 H29 Q25,160 25,156 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M25,90 H175 V156 Q175,160 171,160 H29 Q25,160 25,156 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="25" y="90" width="150" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Card B: [x] DEF-LNCH-3 - closed, carries evidence - x=225 y=90 w=150 h=70 (cyan) -->
+    <g id="card-b">
+      <path d="M225,90 H375 V156 Q375,160 371,160 H229 Q225,160 225,156 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M225,90 H375 V156 Q375,160 371,160 H229 Q225,160 225,156 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="225" y="90" width="150" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Card D: [ ] DEF-LNCH-3-1 - regression 1 - x=425 y=90 w=150 h=70 (orange) -->
+    <g id="card-d">
+      <path d="M425,90 H575 V156 Q575,160 571,160 H429 Q425,160 425,156 Z" fill="#da8230" fill-opacity="0.05"/>
+      <path d="M425,90 H575 V156 Q575,160 571,160 H429 Q425,160 425,156 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="425" y="90" width="150" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Card E: [x] DEF-LNCH-3-1 - closed again - x=625 y=90 w=150 h=70 (cyan) -->
+    <g id="card-e">
+      <path d="M625,90 H775 V156 Q775,160 771,160 H629 Q625,160 625,156 Z" fill="#0096d1" fill-opacity="0.04"/>
+      <path d="M625,90 H775 V156 Q775,160 771,160 H629 Q625,160 625,156 Z" fill="none" stroke="#0096d1" stroke-width="1"/>
+      <rect x="625" y="90" width="150" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Card F: [ ] DEF-LNCH-3-2 - regression 2 - x=825 y=90 w=150 h=70 (orange) -->
+    <g id="card-f">
+      <path d="M825,90 H975 V156 Q975,160 971,160 H829 Q825,160 825,156 Z" fill="#da8230" fill-opacity="0.05"/>
+      <path d="M825,90 H975 V156 Q975,160 971,160 H829 Q825,160 825,156 Z" fill="none" stroke="#da8230" stroke-width="1"/>
+      <rect x="825" y="90" width="150" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Card C: [-] DEF-LNCH-3 - rejected, never a defect - x=25 y=250 w=150 h=70 (muted) -->
+    <g id="card-c">
+      <path d="M25,250 H175 V316 Q175,320 171,320 H29 Q25,320 25,316 Z" fill="#6b7280" fill-opacity="0.025"/>
+      <path d="M25,250 H175 V316 Q175,320 171,320 H29 Q25,320 25,316 Z" fill="none" stroke="#6b7280" stroke-width="0.8"/>
+      <rect x="25" y="250" width="150" height="5" fill="#6b7280" opacity="0.3"/>
+    </g>
+
+  </g>
+
+  <g id="connectors" data-connector-pattern="mixed">
+    <!-- card-a -> card-b: close, evidence flag (cyan). L-chamfer, src-rect 25,90,150,70 start-dir E,
+         tgt-rect 225,90,150,70 end-dir E, standoff 2, chamfer 4, collapses to a single straight run. -->
+    <path d="M177.00,125.00 L213.00,125.00" fill="none" stroke="#0096d1" stroke-width="1.5" opacity="0.85" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="223.00,125.00 213.00,120.00 213.00,130.00" fill="#0096d1" opacity="0.6"/>
+
+    <!-- card-a -> card-c: reject, event flag (muted). L-chamfer, src-rect 25,90,150,70 start-dir S,
+         tgt-rect 25,250,150,70 end-dir S, standoff 2, chamfer 4, vertical run. -->
+    <path d="M100.00,162.00 L100.00,238.00" fill="none" stroke="#6b7280" stroke-width="1.5" opacity="0.85" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="100.00,248.00 105.00,238.00 95.00,238.00" fill="#6b7280" opacity="0.6"/>
+
+    <!-- card-b -> card-d: reopen mints -1 (orange). L-chamfer, src-rect 225,90,150,70 start-dir E,
+         tgt-rect 425,90,150,70 end-dir E, standoff 2, chamfer 4. -->
+    <path d="M377.00,125.00 L413.00,125.00" fill="none" stroke="#da8230" stroke-width="1.5" opacity="0.85" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="423.00,125.00 413.00,120.00 413.00,130.00" fill="#da8230" opacity="0.6"/>
+
+    <!-- card-d -> card-e: close, evidence flag (cyan). L-chamfer, src-rect 425,90,150,70 start-dir E,
+         tgt-rect 625,90,150,70 end-dir E, standoff 2, chamfer 4. -->
+    <path d="M577.00,125.00 L613.00,125.00" fill="none" stroke="#0096d1" stroke-width="1.5" opacity="0.85" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="623.00,125.00 613.00,120.00 613.00,130.00" fill="#0096d1" opacity="0.6"/>
+
+    <!-- card-e -> card-f: reopen mints -2 (orange). L-chamfer, src-rect 625,90,150,70 start-dir E,
+         tgt-rect 825,90,150,70 end-dir E, standoff 2, chamfer 4. -->
+    <path d="M777.00,125.00 L813.00,125.00" fill="none" stroke="#da8230" stroke-width="1.5" opacity="0.85" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="823.00,125.00 813.00,120.00 813.00,130.00" fill="#da8230" opacity="0.6"/>
+  </g>
+
+  <g id="content">
+
+    <!-- Title -->
+    <text x="500" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" class="fg-1" text-anchor="middle">Three states, and a fix that comes back is counted</text>
+
+    <!-- Card A content -->
+    <g id="label-a">
+      <text x="100" y="115" font-family="Consolas, 'Courier New', monospace" font-size="12" font-weight="700" class="fg-1" text-anchor="middle">[ ] DEF-LNCH-3</text>
+      <text x="100" y="133" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-style="italic" class="fg-3" text-anchor="middle">open</text>
+    </g>
+
+    <!-- Card B content -->
+    <g id="label-b">
+      <text x="300" y="115" font-family="Consolas, 'Courier New', monospace" font-size="12" font-weight="700" class="fg-1" text-anchor="middle">[x] DEF-LNCH-3</text>
+      <text x="300" y="133" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-style="italic" class="accent-1" text-anchor="middle">closed - carries evidence:</text>
+    </g>
+
+    <!-- Card D content (two-line caption) -->
+    <g id="label-d">
+      <text x="500" y="115" font-family="Consolas, 'Courier New', monospace" font-size="12" font-weight="700" class="fg-1" text-anchor="middle">[ ] DEF-LNCH-3-1</text>
+      <text x="500" y="133" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-style="italic" class="accent-2" text-anchor="middle">regression 1 -</text>
+      <text x="500" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-style="italic" class="accent-2" text-anchor="middle">parent stays closed</text>
+    </g>
+
+    <!-- Card E content -->
+    <g id="label-e">
+      <text x="700" y="115" font-family="Consolas, 'Courier New', monospace" font-size="12" font-weight="700" class="fg-1" text-anchor="middle">[x] DEF-LNCH-3-1</text>
+      <text x="700" y="133" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-style="italic" class="accent-1" text-anchor="middle">closed again, with evidence</text>
+    </g>
+
+    <!-- Card F content (two-line caption) -->
+    <g id="label-f">
+      <text x="900" y="115" font-family="Consolas, 'Courier New', monospace" font-size="12" font-weight="700" class="fg-1" text-anchor="middle">[ ] DEF-LNCH-3-2</text>
+      <text x="900" y="133" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-style="italic" class="accent-2" text-anchor="middle">regression 2 - highest ordinal =</text>
+      <text x="900" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-style="italic" class="accent-2" text-anchor="middle">times it came back</text>
+    </g>
+
+    <!-- Card C content -->
+    <g id="label-c">
+      <text x="100" y="275" font-family="Consolas, 'Courier New', monospace" font-size="12" font-weight="700" class="fg-1" text-anchor="middle">[-] DEF-LNCH-3</text>
+      <text x="100" y="293" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-style="italic" class="muted" text-anchor="middle">rejected - never a defect</text>
+    </g>
+
+    <!-- Footer -->
+    <text x="500" y="350" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3" text-anchor="middle">Ordinals are flat: reopening -1 gives -2, never -1-1</text>
+
+  </g>
+
+  <g id="callouts">
+
+    <!-- Vertical leaders (row-gap labels): straight down from the connector midpoint (y=125,
+         mid-row1) to y=175 (15px below row1 bottom at y=160), text centred directly beneath.
+         x stays constant along the whole leader, so it never drifts into a neighbouring card. -->
+    <g id="callout-close-ab">
+      <line x1="200" y1="125" x2="200" y2="175" class="callout-line"/>
+      <text x="200" y="195" text-anchor="middle" class="callout-text">close --evidence</text>
+    </g>
+
+    <g id="callout-reopen-bd">
+      <line x1="400" y1="125" x2="400" y2="175" class="callout-line"/>
+      <text x="400" y="195" text-anchor="middle" class="callout-text">reopen mints -1</text>
+    </g>
+
+    <g id="callout-close-de">
+      <line x1="600" y1="125" x2="600" y2="175" class="callout-line"/>
+      <text x="600" y="195" text-anchor="middle" class="callout-text">close --evidence</text>
+    </g>
+
+    <g id="callout-reopen-ef">
+      <line x1="800" y1="125" x2="800" y2="175" class="callout-line"/>
+      <text x="800" y="195" text-anchor="middle" class="callout-text">reopen mints -2</text>
+    </g>
+
+    <!-- card-a -> card-c connector midpoint (100,205) sits in the open row1/row2 gap band -
+         horizontal leader to the right clears both card-a and card-c on the y axis alone. -->
+    <g id="callout-reject-ac">
+      <line x1="100" y1="205" x2="145" y2="205" class="callout-line"/>
+      <text x="155" y="210" class="callout-text">reject --event</text>
+    </g>
+
+  </g>
+
+</svg>

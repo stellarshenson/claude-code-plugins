@@ -92,6 +92,33 @@ One item is one top-level checklist line plus indented sub-lines. No sub-checkbo
 
 A filled-in item, and what belongs in its body, is in the discipline's own reference.
 
+## Writing the text
+
+Every free-text field is written in plain language: title, body, the `repro:` / `test:` hint, `evidence:`, `root-cause:` / `mechanism:`, the log event, the category description. The bar is the shortest wording a reader who was not there acts on correctly, first read.
+
+- **Everyday words** - `stops`, not `terminates`; `two tokens issued`, not `duplicate credential emission`. Call each thing what the code calls it, so the reader can search for it
+- **One reading only** - a sentence with a second possible meaning is rewritten, not clarified later. `refresh fails after logout` says neither which refresh nor whose logout
+- **Compression is welcome** - drop articles and filler, fragments are fine: `auth token sometimes empty on first turn after fork` is a whole body. This store is the exception to the rule that ticket text is written in full prose; it sits next to the code and is read by whoever works the code, agent or person
+- **Compression never touches meaning** - `not`, `never`, `only`, `except`, `sometimes` stay whatever they cost. Numbers, units, ids, paths, symbol names and quoted error strings are copied exactly: never paraphrased, never rounded, never shortened
+- **Compression that does not compress is not compression** - invented short forms (`cfg`, `impl`, `req`) and mangled grammar cost the same as the plain words and make the reader decode; well-known acronyms (`API`, `HTTP`, `UUID`) are already plain. Where the plain phrasing is already the shortest, that is the wording
+
+| Instead of | Write |
+|------------|-------|
+| The authentication token is intermittently empty on the first turn following a session fork | auth token sometimes empty on first turn after fork |
+| Ensure the password generation functionality produces compliant passwords | generated password: 16 chars, 3 character classes |
+| Fixed the issue by addressing the underlying race condition | token awaited before first turn; 79 pytest green |
+
+The register, on filed items:
+
+```markdown
+- [ ] `ACC-ANIM-143` **Typing animation default** - MEDIUM; typing animation on by default, 25 characters per second instead of 10; saved settings keep their value
+- [ ] `ACC-NOTES-144` **Broken marks are removed** - HIGH; a mark is broken when a rewrite removed one marker, both markers, or the whole passage between them; a broken mark is not listed, has no tick, is not painted, and its leftover marker is deleted from the file on the next read; a mark whose passage text merely changed stays
+- [ ] `DEF-CUE-68` **Tab marker does not turn** - MEDIUM; likely cause: the stylesheet obeys the operating system's reduced-motion flag, which Windows sets when show-animations is off; fix: the marker turns regardless, only the extension's own settings stop it
+- [ ] `DEF-NOTES-66` **Tick on a document note** - MINOR; a document note shows a tick on the minimap; cause unknown, the source already skips document notes; reproduce first
+```
+
+Four things those show: everyday words for the behaviour, exact numbers and setting names, the term defined at the point it is used (`a mark is broken when ...`), and a cause marked as a guess for as long as it is one - `likely cause:` and `cause unknown` are both legitimate values, and neither is dressed up as a finding
+
 ## Three states
 
 | Box     | Status   | Means                                                                          |

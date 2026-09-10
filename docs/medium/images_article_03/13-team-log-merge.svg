@@ -1,0 +1,250 @@
+<!--
+  team-log-merge.svg - Two people, one file: append-only log, git merge, id collision
+  Shows: panel 1 - one item's append-only log with interleaved timestamped lines from two authors;
+         panel 2 - a git merge on the same tracker file resolving to a union of both authors'
+         lines; panel 3 - the one case union cannot settle (two authors mint the same id on the
+         same commit) and its resolution; footer - the advisory soft lock.
+  Intent: for the project-management plugin Medium article, show that a team is handled by
+          recording - timestamped, attributed, append-only lines - rather than by locking.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 cyan (@kj / the file), accent-2=#da8230 orange
+         (@am), transparent backplate, light default + dark override.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000x1000
+    Margin: 30px left/right
+    Title band: y=0..40 (baseline y=27)
+
+    Panel 1 "Two authors, one item": header baseline y=48, divider y=60
+      item card: x=30 y=70 w=940 h=130 (bottom=200), accent-1
+        id baseline y=96, legend swatches x=860/915, divider y=108
+        4 log lines baseline 126,146,166,186 (monospace 12, colour by author)
+      caption 2 lines: y=218, y=238
+
+    Panel 2 "The git merge": header baseline y=262, divider y=274
+      branch-kj card x=30 y=284 w=460 h=78 (bottom=362), accent-1
+      branch-am card x=510 y=284 w=460 h=78 (bottom=362), accent-2
+      manifold (sources-to-sinks): both bottom-centres -> standoff(y=382) -> merge(500,398)
+        -> spine -> (500,414) -> merged card top (500,452)
+      merged card x=200 y=452 w=600 h=104 (bottom=556), accent-1
+      caption 2 lines: y=578, y=598
+
+    Panel 3 "The one case union cannot settle": header baseline y=624, divider y=636
+      mint-A card x=160 y=646 w=320 h=72 (bottom=718), accent-1 (@kj, earlier)
+      mint-B card x=520 y=646 w=320 h=72 (bottom=718), accent-2 (@am, later)
+      manifold (sources-to-sinks): both bottom-centres -> standoff(y=738) -> merge(500,754)
+        -> spine -> (500,770) -> resolved card top (500,808)
+      resolved card x=160 y=808 w=680 h=110 (bottom=918)
+
+    Footer: divider y=938, lock line baseline y=958, caption baseline y=980
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: title-band, panel-1, panel-2, panel-3, footer
+    contain: item-card -> id, legend, divider, 4 log-line rows
+    h-stack: branch-kj, branch-am (gap=20)
+    fan (manifold, sources-to-sinks): branch-kj.bottom-centre, branch-am.bottom-centre ->
+      merged-card.top-centre
+    contain: merged-card -> header, divider, 3 log-line rows
+    h-stack: mint-a, mint-b (gap=40, centred)
+    fan (manifold, sources-to-sinks): mint-a.bottom-centre, mint-b.bottom-centre ->
+      resolved-card.top-centre
+    contain: resolved-card -> header, divider, 2 outcome rows, caption
+  === -->
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="1000" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="1000" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="1000" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Panel 1: item card x=30 y=70 w=940 h=134 (accent-1) -->
+    <g id="card-item">
+      <path d="M30.0,70.0 H970.0 V196.0 Q970.0,204.0 962.0,204.0 H38.0 Q30.0,204.0 30.0,196.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="30.0" y="70.0" width="940.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Panel 2: branch cards x=30/510 y=284 w=460 h=78 -->
+    <g id="card-branch-kj">
+      <path d="M30.0,284.0 H490.0 V354.0 Q490.0,362.0 482.0,362.0 H38.0 Q30.0,362.0 30.0,354.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="30.0" y="284.0" width="460.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+    <g id="card-branch-am">
+      <path d="M510.0,284.0 H970.0 V354.0 Q970.0,362.0 962.0,362.0 H518.0 Q510.0,362.0 510.0,354.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="510.0" y="284.0" width="460.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Panel 2: merged card x=200 y=452 w=600 h=104 -->
+    <g id="card-merged">
+      <path d="M200.0,452.0 H800.0 V548.0 Q800.0,556.0 792.0,556.0 H208.0 Q200.0,556.0 200.0,548.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="200.0" y="452.0" width="600.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Panel 3: mint cards x=160/520 y=646 w=320 h=72 -->
+    <g id="card-mint-a">
+      <path d="M160.0,646.0 H480.0 V710.0 Q480.0,718.0 472.0,718.0 H168.0 Q160.0,718.0 160.0,710.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="160.0" y="646.0" width="320.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+    <g id="card-mint-b">
+      <path d="M520.0,646.0 H840.0 V710.0 Q840.0,718.0 832.0,718.0 H528.0 Q520.0,718.0 520.0,710.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="520.0" y="646.0" width="320.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Panel 3: resolved card x=160 y=808 w=680 h=110 -->
+    <g id="card-resolved">
+      <path d="M160.0,808.0 H840.0 V910.0 Q840.0,918.0 832.0,918.0 H168.0 Q160.0,918.0 160.0,910.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="160.0" y="808.0" width="680.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+  </g>
+
+  <g id="connectors">
+
+    <!-- Panel 2 fan-in: branch-kj + branch-am bottom-centres -> merged card top-centre.
+         svg-infographics connector, mode manifold, shape l-chamfer, direction sources-to-sinks,
+         starts (260,382) (740,382), spine (500,398)-(500,414), end (500,452), auto-tuned,
+         standoff 2 - zero warnings. -->
+    <g class="manifold-connector" fill="none" stroke="#0096d1" stroke-width="1.3" opacity="0.6" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M262.00,382.00 L500.00,382.00 L500.00,398.00"/>
+      <path d="M738.00,382.00 L500.00,382.00 L500.00,398.00"/>
+      <path d="M500.00,398.00 L500.00,414.00"/>
+      <path d="M500.00,414.00 L500.00,440.00"/>
+    </g>
+    <polygon points="500.00,450.00 505.00,440.00 495.00,440.00" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Panel 3 fan-in: mint-a + mint-b bottom-centres -> resolved card top-centre.
+         svg-infographics connector, mode manifold, shape l-chamfer, direction sources-to-sinks,
+         starts (320,738) (680,738), spine (500,754)-(500,770), end (500,808), auto-tuned,
+         standoff 2 - zero warnings. -->
+    <g class="manifold-connector" fill="none" stroke="#0096d1" stroke-width="1.3" opacity="0.6" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M322.00,738.00 L500.00,738.00 L500.00,754.00"/>
+      <path d="M678.00,738.00 L500.00,738.00 L500.00,754.00"/>
+      <path d="M500.00,754.00 L500.00,770.00"/>
+      <path d="M500.00,770.00 L500.00,796.00"/>
+    </g>
+    <polygon points="500.00,806.00 505.00,796.00 495.00,796.00" fill="#0096d1" opacity="0.6"/>
+
+  </g>
+
+  <g id="content">
+
+    <!-- Main title -->
+    <text x="500" y="27" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" class="fg-1" text-anchor="middle" letter-spacing="0.4">Two people, one file</text>
+
+    <!-- ============ PANEL 1: item card ============ -->
+    <text x="30" y="48" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" letter-spacing="0.3">1 - Two authors, one item</text>
+    <line x1="30" y1="60" x2="970" y2="60" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+    <g id="content-item">
+      <text x="50" y="96" font-family="Consolas, 'Courier New', monospace" font-size="14" font-weight="700" class="fg-1">DEF-LNCH-3</text>
+      <text x="150" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">append-only log</text>
+
+      <circle cx="860" cy="92" r="4" fill="#0096d1" opacity="0.8"/>
+      <text x="870" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">@kj</text>
+      <circle cx="915" cy="92" r="4" fill="#da8230" opacity="0.8"/>
+      <text x="925" y="96" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-2">@am</text>
+
+      <line x1="50" y1="112" x2="950" y2="112" stroke="#0096d1" stroke-width="0.8" opacity="0.3"/>
+
+      <text x="50" y="134" font-family="Consolas, 'Courier New', monospace" font-size="12" class="accent-1">log: 2026-06-22T09:14:27Z @kj reported: intermittent 401 on the first turn</text>
+      <text x="50" y="154" font-family="Consolas, 'Courier New', monospace" font-size="12" class="accent-1">log: 2026-06-22T11:02:55Z @kj attempted: 200ms pre-turn delay - did NOT work</text>
+      <text x="50" y="174" font-family="Consolas, 'Courier New', monospace" font-size="12" class="accent-2">log: 2026-06-23T08:40:11Z @am attempted: retry the loader once - did NOT work</text>
+      <text x="50" y="194" font-family="Consolas, 'Courier New', monospace" font-size="12" class="accent-2">root-cause: 2026-06-24T14:22:09Z @am the fork races the token loader</text>
+    </g>
+
+    <text x="500" y="224" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3" text-anchor="middle">the stamp is ISO 8601 UTC, the handle names the author, lines are appended and never rewritten -</text>
+    <text x="500" y="244" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3" text-anchor="middle">who did what, and in what order, is readable straight off the file - by a person, or an agent through the CLI</text>
+
+    <!-- ============ PANEL 2: the git merge ============ -->
+    <text x="30" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" letter-spacing="0.3">2 - The git merge</text>
+    <line x1="30" y1="274" x2="970" y2="274" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+    <g id="content-branch-kj">
+      <text x="50" y="306" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="accent-1">branch @kj</text>
+      <line x1="50" y1="318" x2="470" y2="318" stroke="#0096d1" stroke-width="0.7" opacity="0.3"/>
+      <text x="50" y="336" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="accent-1">09:14:27Z @kj reported: intermittent 401</text>
+      <text x="50" y="352" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="accent-1">11:02:55Z @kj attempted: pre-turn delay - failed</text>
+    </g>
+
+    <g id="content-branch-am">
+      <text x="530" y="306" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="accent-2">branch @am</text>
+      <line x1="530" y1="318" x2="950" y2="318" stroke="#da8230" stroke-width="0.7" opacity="0.3"/>
+      <text x="530" y="336" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="accent-1">09:14:27Z @kj reported: intermittent 401</text>
+      <text x="530" y="352" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="accent-2">08:40:11Z @am attempted: retry the loader - failed</text>
+    </g>
+
+    <text x="512" y="408" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-3">union - keep both</text>
+
+    <g id="content-merged">
+      <text x="220" y="474" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">DEF-LNCH-3 - after merge (union keeps both)</text>
+      <line x1="220" y1="488" x2="780" y2="488" stroke="#0096d1" stroke-width="0.7" opacity="0.3"/>
+      <text x="220" y="506" font-family="Consolas, 'Courier New', monospace" font-size="10" class="accent-1">09:14:27Z @kj reported: intermittent 401</text>
+      <text x="220" y="524" font-family="Consolas, 'Courier New', monospace" font-size="10" class="accent-1">11:02:55Z @kj attempted: pre-turn delay - failed</text>
+      <text x="220" y="542" font-family="Consolas, 'Courier New', monospace" font-size="10" class="accent-2">08:40:11Z @am attempted: retry the loader - failed</text>
+    </g>
+
+    <text x="500" y="578" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3" text-anchor="middle">two people appending to the same item produce two lines - both are correct</text>
+    <text x="500" y="598" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3" text-anchor="middle">default resolution is union: keep both sides</text>
+
+    <!-- ============ PANEL 3: the one case union cannot settle ============ -->
+    <text x="30" y="624" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" letter-spacing="0.3">3 - The one case union cannot settle</text>
+    <line x1="30" y1="636" x2="970" y2="636" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+    <g id="content-mint-a">
+      <text x="180" y="666" font-family="Consolas, 'Courier New', monospace" font-size="13" font-weight="700" class="fg-1">DEF-LNCH-9</text>
+      <text x="460" y="666" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="accent-1" text-anchor="end">@kj</text>
+      <text x="180" y="684" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="accent-1">commit 9f21a - 2026-06-25T10:03:44Z</text>
+      <text x="180" y="704" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">opened: intermittent 500 after redeploy</text>
+    </g>
+
+    <g id="content-mint-b">
+      <text x="540" y="666" font-family="Consolas, 'Courier New', monospace" font-size="13" font-weight="700" class="fg-1">DEF-LNCH-9</text>
+      <text x="820" y="666" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="600" class="accent-2" text-anchor="end">@am</text>
+      <text x="540" y="684" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="accent-2">commit 9f21a - 2026-06-25T10:07:12Z</text>
+      <text x="540" y="704" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">opened: 500 spike after the same deploy</text>
+    </g>
+
+    <text x="512" y="764" font-family="Segoe UI, Arial, sans-serif" font-size="8" font-style="italic" class="fg-3">resolve</text>
+
+    <g id="content-resolved">
+      <text x="180" y="828" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Resolution - the earlier commit keeps the id</text>
+      <line x1="180" y1="840" x2="820" y2="840" stroke="#0096d1" stroke-width="0.7" opacity="0.3"/>
+      <text x="180" y="858" font-family="Consolas, 'Courier New', monospace" font-size="11" class="accent-1">DEF-LNCH-9 stays - @kj, 10:03:44Z (earlier)</text>
+      <text x="180" y="878" font-family="Consolas, 'Courier New', monospace" font-size="11" class="accent-2">DEF-LNCH-9 &#8594; DEF-LNCH-12 (@am) - refs repointed</text>
+      <text x="500" y="900" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3" text-anchor="middle">never the other way round - journals and commit messages already cite the earlier id</text>
+    </g>
+
+    <!-- ============ FOOTER: the soft lock ============ -->
+    <line x1="30" y1="938" x2="970" y2="938" stroke="#0096d1" stroke-width="0.8" opacity="0.2"/>
+    <text x="500" y="958" font-family="Consolas, 'Courier New', monospace" font-size="11" class="accent-2" text-anchor="middle">lock: 2026-06-24T09:00:00Z @am owns DEF-LNCH-3 until 2026-06-25T09:00:00Z</text>
+    <text x="500" y="980" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3" text-anchor="middle">advisory only - never blocks a write; another author's write warns once and proceeds; a takeover is announced as a transfer</text>
+
+  </g>
+
+  <g id="callouts">
+  </g>
+
+</svg>

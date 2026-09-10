@@ -6,6 +6,7 @@ A criterion is one assertion about behaviour that a reviewer can call met or not
 
 - **One assertion per item** - if a bullet needs "and", it is two criteria
 - **Terse wording, complete coverage** - every behaviour, display rule, persistence rule and failure path gets its own item. Terseness is a property of the sentence, never of the fanout
+- **Plain words a reviewer can act on** - no term the codebase does not use, no sentence with a second reading. The wording rules for every field are in `SKILL.md`, under Writing the text
 - **Edge cases are explicit items** - `**Edge: <case>** - expected behaviour`; enumerate the whole fanout: removed, stale, concurrent, empty, already-done, invalid input
 - **Overview stays at one or two sentences** under the H1: what the feature is, what mechanism carries it
 

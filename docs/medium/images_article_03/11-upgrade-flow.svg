@@ -1,0 +1,255 @@
+<!--
+  upgrade-flow.svg - pm-tools upgrade divides labour between the deterministic tool and the agent
+  Shows: four left-to-right stage cards - the legacy file as it arrives, what the tool derives and
+         applies automatically, what it refuses to guess and hands back as hint commands, and the
+         agent working those hints down to a clean pm-tools check exit 0 - joined by three forward
+         connectors and a dotted progress rule under the row.
+  Intent: for the project-management plugin Medium article, show that pm-tools upgrade rewrites
+          every change that follows deterministically from the legacy file and never guesses the
+          rest - it prints the exact command that clears each gap instead.
+  Theme: Stellars-Tech derived, warm variant - accent-1 hue shifted ~20deg warmer than the sibling
+         files' cyan (H196.9 -> H176.9, same S/L) to #00d1c6 teal (derived / structure), accent-2 =
+         #da8230 orange unchanged (the refusal / hint stage), transparent backplate, light default
+         + dark override.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 500">
+  <style>
+    .fg-1 { fill: #1a6e66; }
+    .fg-2 { fill: #247e75; }
+    .fg-3 { fill: #237463; }
+    .fg-4 { fill: #2b806e; }
+    .accent-1 { fill: #007a6c; }
+    .accent-2 { fill: #7a4a15; }
+    .muted { fill: #5b6472; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8f0e9; }
+      .fg-2 { fill: #8fe6db; }
+      .fg-3 { fill: #5ac5b7; }
+      .fg-4 { fill: #40b3a7; }
+      .accent-1 { fill: #5ce0cc; }
+      .accent-2 { fill: #d4a04a; }
+      .muted { fill: #9aa7b5; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000x500
+    Margin: 30px left/right
+    Title band: y=0..55 (baseline y=30)
+
+    Row (4 cards, svg-infographics primitives rect, radius=8, accent): y=70..410 (h=340)
+      card-1 "The legacy file":          x=30,  right=250, accent=#00d1c6
+      card-2 "Derived, automatically":   x=270, right=490, accent=#00d1c6
+      card-3 "Refuses to guess":         x=510, right=730, accent=#da8230
+      card-4 "The agent closes it":      x=750, right=970, accent=#00d1c6
+      gap=20 (geom distribute, axis h, mode gap - confirmed even)
+
+    Card internal rhythm (from card top=70, content_x = card_x+20), all on 5px grid:
+      title y=100, subtitle y=115, divider y=125, label y=140
+      mono/code block: stride 10 starting y=155
+      bullet/prose block: stride 15, gap 20 between labelled sections
+
+    Connectors (svg-infographics connector, mode straight, standoff 2, direction forward, y=240):
+      conn-1: card-1.right(250) -> card-2.left(270), color #00d1c6
+      conn-2: card-2.right(490) -> card-3.left(510), color #da8230
+      conn-3: card-3.right(730) -> card-4.left(750), color #00d1c6
+
+    Decoration (ornament only, no data): dotted progress rule y=425 x=30..970 with 4 dots at
+      card centre-x (140,380,620,860)
+
+    Footer: dry-run line y=450, gloss line y=470, centred x=500
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: card-1, card-2, card-3, card-4 (gap=20)
+    v-align: card-1, card-2, card-3, card-4 top=70 bottom=410
+    flow: card-1 -> card-2 (auto-derived, forward, warm accent-1)
+    flow: card-2 -> card-3 (hands off what it refuses, forward, accent-2 orange)
+    flow: card-3 -> card-4 (agent resolves the hints, forward, warm accent-1)
+    contain: each card -> accent-bar, title, subtitle, divider, label, mono/bullet content
+    decorate: dotted-progress-rule (under all 4 cards, ornament only)
+  === -->
+
+  <rect x="0" y="0" width="1000" height="500" fill="transparent"/>
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="500" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="500" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="500" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Card 1: The legacy file -->
+    <g id="card-1">
+      <path d="M30.0,70.0 H250.0 V402.0 Q250.0,410.0 242.0,410.0 H38.0 Q30.0,410.0 30.0,402.0 Z" fill="#00d1c6" fill-opacity="0.04" stroke="#00d1c6" stroke-width="1"/>
+      <rect x="30.0" y="70.0" width="220.0" height="5" fill="#00d1c6" opacity="0.6"/>
+    </g>
+
+    <!-- Card 2: Derived, automatically -->
+    <g id="card-2">
+      <path d="M270.0,70.0 H490.0 V402.0 Q490.0,410.0 482.0,410.0 H278.0 Q270.0,410.0 270.0,402.0 Z" fill="#00d1c6" fill-opacity="0.04" stroke="#00d1c6" stroke-width="1"/>
+      <rect x="270.0" y="70.0" width="220.0" height="5" fill="#00d1c6" opacity="0.6"/>
+    </g>
+
+    <!-- Card 3: Refuses to guess -->
+    <g id="card-3">
+      <path d="M510.0,70.0 H730.0 V402.0 Q730.0,410.0 722.0,410.0 H518.0 Q510.0,410.0 510.0,402.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="510.0" y="70.0" width="220.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Card 4: The agent closes it -->
+    <g id="card-4">
+      <path d="M750.0,70.0 H970.0 V402.0 Q970.0,410.0 962.0,410.0 H758.0 Q750.0,410.0 750.0,402.0 Z" fill="#00d1c6" fill-opacity="0.04" stroke="#00d1c6" stroke-width="1"/>
+      <rect x="750.0" y="70.0" width="220.0" height="5" fill="#00d1c6" opacity="0.6"/>
+      <!-- gate pill: pm-tools check is the only closing gate -->
+      <path d="M770.0,245.0 H950.0 V277.0 Q950.0,285.0 942.0,285.0 H778.0 Q770.0,285.0 770.0,277.0 Z" fill="#00d1c6" fill-opacity="0.08" stroke="#00d1c6" stroke-width="1"/>
+    </g>
+
+  </g>
+
+  <g id="connectors">
+    <!-- conn-1: card-1 -> card-2, svg-infographics connector, mode straight, standoff 2, direction forward -->
+    <path d="M252.00,240.00 L258.00,240.00" fill="none" stroke="#00d1c6" stroke-width="1.4" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="268.00,240.00 258.00,235.00 258.00,245.00" fill="#00d1c6" opacity="0.6"/>
+
+    <!-- conn-2: card-2 -> card-3, same recipe, colour switches to accent-2 (hands off to the refusal) -->
+    <path d="M492.00,240.00 L498.00,240.00" fill="none" stroke="#da8230" stroke-width="1.4" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="508.00,240.00 498.00,235.00 498.00,245.00" fill="#da8230" opacity="0.6"/>
+
+    <!-- conn-3: card-3 -> card-4, colour returns to accent-1 (agent resolves it) -->
+    <path d="M732.00,240.00 L738.00,240.00" fill="none" stroke="#00d1c6" stroke-width="1.4" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="748.00,240.00 738.00,235.00 738.00,245.00" fill="#00d1c6" opacity="0.6"/>
+  </g>
+
+  <g id="content">
+
+    <!-- Title -->
+    <text x="500" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" class="fg-1" text-anchor="middle">Migrating a list you already have</text>
+
+    <!-- === Card 1 content: The legacy file === -->
+    <g id="content-card-1">
+      <text x="50" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">The legacy file</text>
+      <text x="50" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">what pm-tools upgrade reads</text>
+      <line x1="50" y1="125" x2="230" y2="125" stroke="#00d1c6" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="50" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="muted">RAW MARKDOWN</text>
+      <text x="50" y="155" font-family="Consolas, 'Courier New', monospace" font-size="7" class="fg-1">## Contents</text>
+      <text x="50" y="165" font-family="Consolas, 'Courier New', monospace" font-size="7" class="fg-1">### Launch</text>
+      <text x="50" y="175" font-family="Consolas, 'Courier New', monospace" font-size="7" class="fg-1">- P1 token race in login</text>
+      <text x="50" y="185" font-family="Consolas, 'Courier New', monospace" font-size="7" class="fg-1">  2026-06-22 reported: seen</text>
+      <text x="50" y="195" font-family="Consolas, 'Courier New', monospace" font-size="7" class="fg-1">  test-tags: unit, e2e</text>
+      <text x="50" y="205" font-family="Consolas, 'Courier New', monospace" font-size="7" class="fg-1">### URGENT rollback bug</text>
+
+      <text x="50" y="225" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="muted">WHAT'S MISSING</text>
+      <circle cx="55" cy="237" r="2" fill="#00d1c6" opacity="0.8"/>
+      <text x="65" y="240" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">hand-kept ## Contents index</text>
+      <circle cx="55" cy="252" r="2" fill="#00d1c6" opacity="0.8"/>
+      <text x="65" y="255" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">heading has no category code</text>
+      <circle cx="55" cy="267" r="2" fill="#00d1c6" opacity="0.8"/>
+      <text x="65" y="270" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">item has no id</text>
+      <circle cx="55" cy="282" r="2" fill="#00d1c6" opacity="0.8"/>
+      <text x="65" y="285" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">severity as a plain word</text>
+      <circle cx="55" cy="297" r="2" fill="#00d1c6" opacity="0.8"/>
+      <text x="65" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">date only, no author</text>
+      <circle cx="55" cy="312" r="2" fill="#00d1c6" opacity="0.8"/>
+      <text x="65" y="315" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">lower-case test-tags</text>
+
+      <text x="50" y="335" font-family="Consolas, 'Courier New', monospace" font-size="8" class="accent-1">pm-tools upgrade</text>
+      <text x="50" y="345" font-family="Consolas, 'Courier New', monospace" font-size="8" class="accent-1">defects-app.md --dry-run</text>
+    </g>
+
+    <!-- === Card 2 content: Derived, automatically === -->
+    <g id="content-card-2">
+      <text x="290" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Derived, automatically</text>
+      <text x="290" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">applied without asking</text>
+      <line x1="290" y1="125" x2="470" y2="125" stroke="#00d1c6" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="290" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-1">APPLIED AUTOMATICALLY</text>
+      <text x="290" y="155" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">line 8: category 'Launch'</text>
+      <text x="290" y="165" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">-&gt; code `LAUNCH`</text>
+      <text x="290" y="175" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">line 13: DEF-3 -&gt; DEF-LAUNCH-3</text>
+      <text x="290" y="185" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">line 10: (no id) -&gt; DEF-LAUNCH-4</text>
+      <text x="290" y="195" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">line 3: drop the ## Contents</text>
+      <text x="290" y="205" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">section (index is derived)</text>
+      <text x="290" y="215" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">3 date-only stamp(s) -&gt;</text>
+      <text x="290" y="225" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">ISO 8601 UTC at 00:00:00Z</text>
+      <text x="290" y="235" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">severity renamed: P1 -&gt; MAJOR x1,</text>
+      <text x="290" y="245" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">URGENT -&gt; CRITICAL x1</text>
+      <text x="290" y="255" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-1">1 test-tags line(s) upper-cased</text>
+
+      <text x="290" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="1" class="accent-1">RULE</text>
+      <text x="290" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">an existing number is kept, so</text>
+      <text x="290" y="305" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">DEF-3 stays 3 and a commit</text>
+      <text x="290" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">citing DEF-3 still reads true.</text>
+    </g>
+
+    <!-- === Card 3 content: Refuses to guess === -->
+    <g id="content-card-3">
+      <text x="530" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Refuses to guess</text>
+      <text x="530" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">prints the fix command instead</text>
+      <line x1="530" y1="125" x2="710" y2="125" stroke="#da8230" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="530" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-2">HINT (VERBATIM)</text>
+      <text x="530" y="155" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-2">HINT line 8: category 'Launch'</text>
+      <text x="530" y="165" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-2">has no description; run:</text>
+      <text x="530" y="175" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-2">pm-tools describe defects-app.md</text>
+      <text x="530" y="185" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-2">--category LAUNCH --text</text>
+      <text x="530" y="195" font-family="Consolas, 'Courier New', monospace" font-size="7" class="accent-2">"&lt;one line&gt;"</text>
+
+      <text x="530" y="215" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-2">CANNOT DERIVE</text>
+      <circle cx="535" cy="227" r="2" fill="#da8230" opacity="0.8"/>
+      <text x="545" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">category description</text>
+      <circle cx="535" cy="242" r="2" fill="#da8230" opacity="0.8"/>
+      <text x="545" y="245" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">repro hint</text>
+      <circle cx="535" cy="257" r="2" fill="#da8230" opacity="0.8"/>
+      <text x="545" y="260" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">evidence line on a closure</text>
+      <circle cx="535" cy="272" r="2" fill="#da8230" opacity="0.8"/>
+      <text x="545" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">criterion importance</text>
+      <text x="545" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">(severity word outside</text>
+      <text x="545" y="305" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">the map, e.g. WISHLIST)</text>
+
+      <text x="530" y="325" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="accent-2">invents nothing - exits 0,</text>
+      <text x="530" y="340" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="accent-2">prints the fix command.</text>
+    </g>
+
+    <!-- === Card 4 content: The agent closes it === -->
+    <g id="content-card-4">
+      <text x="770" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">The agent closes it</text>
+      <text x="770" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">closes what the tool won't guess</text>
+      <line x1="770" y1="125" x2="950" y2="125" stroke="#00d1c6" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="770" y="140" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-1">AGENT WORKS THE HINTS</text>
+      <circle cx="775" cy="157" r="2" fill="#00d1c6" opacity="0.8"/>
+      <text x="785" y="160" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">runs each hinted command</text>
+      <circle cx="775" cy="172" r="2" fill="#00d1c6" opacity="0.8"/>
+      <text x="785" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">rates each criterion</text>
+      <circle cx="775" cy="187" r="2" fill="#00d1c6" opacity="0.8"/>
+      <text x="785" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">triages each defect by symptom</text>
+
+      <text x="770" y="210" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">the tool named every gap;</text>
+      <text x="770" y="225" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3">nothing is silently assumed.</text>
+
+      <text x="860" y="265" font-family="Consolas, 'Courier New', monospace" font-size="9" font-weight="700" class="accent-1" text-anchor="middle">pm-tools check</text>
+      <text x="860" y="280" font-family="Consolas, 'Courier New', monospace" font-size="8" class="fg-3" text-anchor="middle">exit 0 &#8594; migration done</text>
+    </g>
+
+    <!-- Decoration: dotted progress rule under the four stages + per-stage dots (ornament only) -->
+    <line x1="30" y1="425" x2="970" y2="425" stroke="#00d1c6" stroke-width="1.2" opacity="0.3" stroke-dasharray="1 5" stroke-linecap="round"/>
+    <circle cx="140" cy="425" r="2.5" fill="#00d1c6" opacity="0.4"/>
+    <circle cx="380" cy="425" r="2.5" fill="#00d1c6" opacity="0.4"/>
+    <circle cx="620" cy="425" r="2.5" fill="#00d1c6" opacity="0.4"/>
+    <circle cx="860" cy="425" r="2.5" fill="#00d1c6" opacity="0.4"/>
+
+    <!-- Footer -->
+    <text x="500" y="450" font-family="Consolas, 'Courier New', monospace" font-size="11" font-weight="700" class="accent-1" text-anchor="middle">dry run: 10 change(s), 12 hint(s). Re-run with --apply</text>
+    <text x="500" y="470" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3" text-anchor="middle">10 automatic rewrites; 12 things the tool would not guess, printed as commands</text>
+
+  </g>
+
+  <g id="callouts">
+  </g>
+
+</svg>

@@ -1,0 +1,173 @@
+<!--
+  02-item-anatomy.svg - Anatomy of one tracked item in the project-management plugin's markdown ledger
+  Shows: one code card rendering a literal item entry (checkbox, permanent id, severity, repro,
+         root-cause, test-tags, related link, two timestamped log lines), with 7 callouts explaining
+         the tokens: status checkbox, permanent id, MAJOR triage, repro:, root-cause:, related:,
+         and the append-only log: pair.
+  Intent: inline visual for the Medium article section walking through one bug-tracker item.
+  Theme: Stellars-Tech (teal/cyan primary #0096d1 family, burnt-orange accent-2 #da8230 family for
+         callouts and token highlights), transparent backplate, dual light/dark CSS.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 320">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    .callout-text { fill: #7a4a15; font-family: Segoe UI, Arial, sans-serif; font-size: 8.5px; font-style: italic; font-weight: 600; }
+    .callout-line { fill: none; stroke: #7a4a15; stroke-width: 1; opacity: 0.75; stroke-linecap: round; }
+    .callout-arrow { fill: #7a4a15; opacity: 0.75; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+      .callout-text { fill: #d4a04a; }
+      .callout-line { stroke: #d4a04a; }
+      .callout-arrow { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 320 (cropped to content bottom ~299 + ~20px margin, matching the tight-fill
+      convention of sibling deck files 01/03/04 - no geometry below y=299 exists, so the crop
+      removes only dead canvas, not a repositioning)
+    Title band: y=0..40 (title y=28, centred x=500); buffer gap y=40..90 (clear of the title's
+      279px-wide bbox except a callout row directly beneath it, used by 4 of the 7 callouts)
+    Card: x=138 y=90 w=724 h=158 (right edge 862, bottom edge 248), accent bar y=90 h=5
+      text column x=158 (20px pad from card left edge)
+      line baselines: 114, 133, 153, 172, 191, 210, 229 (pitch 19, one 20px gap
+      between lines 2/3 so their padded text bboxes clear each other with margin)
+    Token highlight boxes (accent-2 tint, computed via primitives rect, char-width 6.601074 at
+      font-size 11 on the measured Courier-metric-compatible monospace font):
+      checkbox  x=171.20 y=106 w=19.80 h=10  (line 1, chars 2-5  "[ ]")
+      id        x=204.21 y=106 w=66.01 h=10  (line 1, chars 7-17 "DEF-LNCH-3")
+      major     x=474.85 y=106 w=33.01 h=10  (line 1, chars 48-53 "MAJOR")
+      repro     x=184.40 y=125 w=39.61 h=10  (line 2, chars 4-10 "repro:")
+      rootcause x=184.40 y=145 w=72.61 h=10  (line 3, chars 4-15 "root-cause:")
+      related   x=184.40 y=183 w=52.81 h=10  (line 5, chars 4-12 "related:")
+      log-6     x=184.40 y=202 w=26.40 h=10  (line 6, chars 4-8  "log:")
+      log-7     x=184.40 y=221 w=26.40 h=10  (line 7, chars 4-8  "log:")
+    Callout zones (from `svg-infographics callouts`, restarts=60 n-candidates=200): all 7 targets
+      sit in the left half / centre of the 724px card (nothing past x=508 on a 138..862 card), so
+      the joint-optimal layout clusters callouts in the buffer gap above the card and the open band
+      below it rather than a literal left/right split - see build note below.
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: title, buffer-gap, card-item
+    contain: card-item > accent-bar, code-lines, token-highlights
+    point: callout-checkbox, callout-id, callout-major -> buffer gap above card
+    point: callout-repro, callout-rootcause -> left margin, mid-height (stacked)
+    point: callout-related, callout-log -> open band below card
+  === -->
+
+  <g id="background">
+    <rect x="0" y="0" width="1000" height="320" fill="transparent"/>
+    <g id="guide-grid" display="none">
+      <line x1="138" y1="0" x2="138" y2="320" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="862" y1="0" x2="862" y2="320" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="90" x2="1000" y2="90" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="248" x2="1000" y2="248" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+    <!-- Code card: x=138 y=90 w=724 h=158, bottom-rounded r=8, accent-1 (computed via primitives rect) -->
+    <g id="card-item">
+      <path d="M138.0,90.0 H862.0 V240.0 Q862.0,248.0 854.0,248.0 H146.0 Q138.0,248.0 138.0,240.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="138.0" y="90.0" width="724.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+    <!-- Token highlight boxes (accent-2 tint), behind text, computed via primitives rect.
+         Standalone rects (not grouped) so each nests fully inside its own code line's bbox. -->
+    <rect id="hl-checkbox" x="171.20" y="106.0" width="19.80" height="10" rx="2" fill="#da8230" fill-opacity="0.16" stroke="#da8230" stroke-width="0.8" opacity="0.55"/>
+    <rect id="hl-id" x="204.21" y="106.0" width="66.01" height="10" rx="2" fill="#da8230" fill-opacity="0.16" stroke="#da8230" stroke-width="0.8" opacity="0.55"/>
+    <rect id="hl-major" x="474.85" y="106.0" width="33.01" height="10" rx="2" fill="#da8230" fill-opacity="0.16" stroke="#da8230" stroke-width="0.8" opacity="0.55"/>
+    <rect id="hl-repro" x="184.40" y="125.0" width="39.61" height="10" rx="2" fill="#da8230" fill-opacity="0.16" stroke="#da8230" stroke-width="0.8" opacity="0.55"/>
+    <rect id="hl-rootcause" x="184.40" y="145.0" width="72.61" height="10" rx="2" fill="#da8230" fill-opacity="0.16" stroke="#da8230" stroke-width="0.8" opacity="0.55"/>
+    <rect id="hl-related" x="184.40" y="183.0" width="52.81" height="10" rx="2" fill="#da8230" fill-opacity="0.16" stroke="#da8230" stroke-width="0.8" opacity="0.55"/>
+    <rect id="hl-log6" x="184.40" y="202.0" width="26.40" height="10" rx="2" fill="#da8230" fill-opacity="0.16" stroke="#da8230" stroke-width="0.8" opacity="0.55"/>
+    <rect id="hl-log7" x="184.40" y="221.0" width="26.40" height="10" rx="2" fill="#da8230" fill-opacity="0.16" stroke="#da8230" stroke-width="0.8" opacity="0.55"/>
+  </g>
+
+  <g id="connectors">
+  </g>
+
+  <g id="content">
+    <text x="500" y="28" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="700" class="fg-1">Anatomy of one tracked item</text>
+
+    <g id="code-lines">
+      <text x="158" y="114" xml:space="preserve" font-family="Consolas, Courier New, monospace" font-size="11" class="fg-1">- [ ] `DEF-LNCH-3` **token race on relaunch** - MAJOR; auth token empty on the first turn after a fork</text>
+      <text x="158" y="133" xml:space="preserve" font-family="Consolas, Courier New, monospace" font-size="11" class="fg-1">  - repro: fork under load, send a turn inside 2s</text>
+      <text x="158" y="153" xml:space="preserve" font-family="Consolas, Courier New, monospace" font-size="11" class="fg-1">  - root-cause: 2026-08-31T09:12:44Z @kj the fork races the token loader</text>
+      <text x="158" y="172" xml:space="preserve" font-family="Consolas, Courier New, monospace" font-size="11" class="fg-1">  - test-tags: INTEGRATION</text>
+      <text x="158" y="191" xml:space="preserve" font-family="Consolas, Courier New, monospace" font-size="11" class="fg-1">  - related: ACC-LNCH-8 - the criterion this violates</text>
+      <text x="158" y="210" xml:space="preserve" font-family="Consolas, Courier New, monospace" font-size="11" class="fg-1">  - log: 2026-06-22T09:14:27Z @kj reported: intermittent 401 on the first turn</text>
+      <text x="158" y="229" xml:space="preserve" font-family="Consolas, Courier New, monospace" font-size="11" class="fg-1">  - log: 2026-06-22T11:02:55Z @kj attempted: 200ms pre-turn delay - did NOT work</text>
+    </g>
+  </g>
+
+  <g id="callouts">
+    <!-- Placements 1/2/4/6/7 from `svg-infographics callouts` (restarts=60, n-candidates=200, seed=11).
+         callout-major placed via the documented manual fallback (callout.md "Debug path: manual
+         primitives"): the solver's candidate sampler never proposed the open, unobstructed slot
+         directly above its target even though `geom contains` confirms it fits - verified by hand
+         with empty-space + geom contains, then a short straight vertical leader connects target
+         top-edge to text bottom-edge. -->
+    <g id="callout-checkbox">
+      <text x="24" y="45.5" class="callout-text">Status is the checkbox -</text>
+      <text x="24" y="54" class="callout-text">open, [x] closed,</text>
+      <text x="24" y="62.5" class="callout-text">[-] rejected</text>
+      <line x1="176.28" y1="108.35" x2="114.70" y2="74.5" class="callout-line"/>
+      <polygon points="181.10,111.00 175.80,109.23 176.76,107.47" class="callout-arrow"/>
+    </g>
+    <g id="callout-id">
+      <text x="262" y="45.5" class="callout-text">Permanent id - never</text>
+      <text x="262" y="54" class="callout-text">renumbered, never</text>
+      <text x="262" y="62.5" class="callout-text">recycled</text>
+      <line x1="241.33" y1="107.35" x2="278.28" y2="74.5" class="callout-line"/>
+      <polygon points="237.22,111.00 240.66,106.60 241.99,108.09" class="callout-arrow"/>
+    </g>
+    <g id="callout-major">
+      <text x="447.85" y="60" class="callout-text">Triage is mandatory -</text>
+      <text x="447.85" y="68.5" class="callout-text">the agent assigns it</text>
+      <text x="447.85" y="77" class="callout-text">when filing</text>
+      <line x1="491.36" y1="96.00" x2="491.355" y2="84" class="callout-line"/>
+      <polygon points="491.36,101.50 490.36,96.00 492.36,96.00" class="callout-arrow"/>
+    </g>
+    <g id="callout-repro">
+      <text x="32" y="130.5" class="callout-text">Written for whoever</text>
+      <text x="32" y="139" class="callout-text">will act on it</text>
+      <line x1="198.71" y1="130.06" x2="123.0" y2="130.92" class="callout-line"/>
+      <polygon points="204.21,130.00 198.72,131.06 198.69,129.06" class="callout-arrow"/>
+    </g>
+    <g id="callout-rootcause">
+      <text x="32" y="160" class="callout-text">One registered</text>
+      <text x="32" y="168.5" class="callout-text">explanation - a new</text>
+      <text x="32" y="177" class="callout-text">record stacks on top,</text>
+      <text x="32" y="185.5" class="callout-text">the old one stays</text>
+      <line x1="215.26" y1="150.78" x2="147.00" y2="160.55" class="callout-line"/>
+      <polygon points="220.71,150.00 215.40,151.77 215.12,149.79" class="callout-arrow"/>
+    </g>
+    <g id="callout-related">
+      <text x="177" y="280.5" class="callout-text">One-way link - the</text>
+      <text x="177" y="289" class="callout-text">reverse side is</text>
+      <text x="177" y="297.5" class="callout-text">computed by refs</text>
+      <line x1="210.96" y1="193.50" x2="212.85" y2="262.0" class="callout-line"/>
+      <polygon points="210.81,188.00 211.96,193.47 209.96,193.53" class="callout-arrow"/>
+    </g>
+    <g id="callout-log">
+      <text x="70" y="280.5" class="callout-text">Authored, UTC-stamped,</text>
+      <text x="70" y="289" class="callout-text">append-only - failed</text>
+      <text x="70" y="297.5" class="callout-text">attempts stay</text>
+      <line x1="193.33" y1="219.97" x2="141.55" y2="262.0" class="callout-line"/>
+      <polygon points="197.60,216.50 193.96,220.74 192.70,219.19" class="callout-arrow"/>
+    </g>
+  </g>
+</svg>

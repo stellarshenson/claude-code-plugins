@@ -1,0 +1,273 @@
+<!--
+  two-sources-vs-one.svg - Two sources of truth, and one, for the project-management plugin article
+  Shows: left panel - a repository box and a hosted-tracker box holding copies of the same facts,
+         linked by a bidirectional drift connector and a stat card citing a 146-practitioner survey;
+         right panel - one repository box holding code plus docs/acc-crit.md and docs/defects.md,
+         moved together by a single commit, fanning to two readers of the same file (a person in an
+         editor, pm-tools parsing records).
+  Intent: for the project-management plugin Medium article - contrast a split store that drifts
+          against one store two consumers read without an export/import step.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 cyan (the single store, the default), accent-2=#da8230
+         orange (the drift / the second store), transparent backplate, light default + dark override.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    .callout-text { font-family: "Segoe UI", Arial, sans-serif; font-size: 9px; font-weight: 700; fill: #7a4a15; }
+    .callout-line { stroke: #7a4a15; stroke-width: 0.9; fill: none; opacity: 0.5; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+      .callout-text { fill: #d4a04a; }
+      .callout-line { stroke: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 480
+    Margins: 30 left/right (content x=30..970)
+    Title band: y=0..40 (title baseline y=26)
+    Panel subheaders: y=60 ("Two stores" @ x=255 accent-2, "One store" @ x=745 accent-1)
+    Divider: x=500 y=70..415 (dashed, muted, structural - background layer)
+
+    LEFT PANEL x=30..480 (centre=255):
+      Box A "Repository" (cyan): x=50 y=90 w=160 h=150
+        title y=115, subtitle y=130, divider y=140
+        row1 bullet cy=155 label y=160 gloss y=175; row2 bullet cy=195 label y=200 gloss y=215
+      Box B "Hosted tracker" (orange): x=300 y=90 w=160 h=150 (same internal rhythm)
+      Drift connector: (210,165)-(300,165) direction both, standoff 2
+      Drift callout: leader (255,160)-(255,150), text y=135
+      Drift card (orange, wide): x=50 y=280 w=410 h=130
+        title y=305, divider y=320, body y=340, stat1 y=355, stat2 y=370, attribution y=390
+
+    RIGHT PANEL x=520..970 (centre=745):
+      Commit label x=610 y=60, commit arrow (610,75)-(610,87) into repo box top edge, standoff 3
+      Repo box (cyan): x=520 y=90 w=450 h=110
+        title y=115, subtitle y=130, divider y=140
+        chip row y=150 h=40: chip-code x=540 w=130, chip-criteria x=680 w=130, chip-defects x=820 w=130 (gap=10)
+      Fan connector (manifold, sources-to-sinks): repo box bottom-centre (745,200) -> standoff stub (745,214)
+        -> spine point (745,214) -> fork tips at (620,246), (870,246), 14px clear of the reader cards (y=260)
+      Reader cards y=260 h=110: person x=520 w=200 (title y=285, subtitle y=300, divider y=310, body y=330)
+                                 pmtools x=770 w=200 (same rhythm)
+      Caption y=390 "readable by a person, parseable by a tool, in the same pass"
+      Caption y=410 "no export step, no import step"
+
+    Footer: y=440, centred x=500
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: card-repo, card-tracker (gap=90)
+    v-align: card-repo, card-tracker top=90 bottom=240
+    connect: card-repo <-> card-tracker (drift, both, orange, muted)
+    v-stack: [card-repo/card-tracker row], card-drift (gap=40)
+    contain: card-drift -> title, divider, body, stat rows, attribution
+    contain: card-repo-single -> title, subtitle, divider, chip-code, chip-criteria, chip-defects (h-stack gap=10)
+    connect: commit-label -> card-repo-single (forward, single arrow, "1 commit")
+    fan (manifold, sources-to-sinks): card-repo-single.bottom-centre -> spine -> card-person.top-centre, card-pmtools.top-centre
+    h-stack: card-person, card-pmtools (gap=50)
+    v-align: card-person, card-pmtools top=260 bottom=370
+    mirror: left panel (2 cards + 1 wide annotation card) <-> right panel (1 wide card + 2 cards)
+  === -->
+
+  <rect x="0" y="0" width="1000" height="480" fill="transparent"/>
+
+  <g id="background">
+    <line x1="500" y1="70" x2="500" y2="415" stroke="#6b7280" stroke-width="1" stroke-dasharray="4 4" opacity="0.4"/>
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="480" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="480" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="480" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Box A: Repository (cyan) x=50 y=90 w=160 h=150 -->
+    <g id="card-repo">
+      <path d="M50.0,90.0 H210.0 V232.0 Q210.0,240.0 202.0,240.0 H58.0 Q50.0,240.0 50.0,232.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="50.0" y="90.0" width="160.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Box B: Hosted tracker (orange) x=300 y=90 w=160 h=150 -->
+    <g id="card-tracker">
+      <path d="M300.0,90.0 H460.0 V232.0 Q460.0,240.0 452.0,240.0 H308.0 Q300.0,240.0 300.0,232.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="300.0" y="90.0" width="160.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Drift card (orange, wide) x=50 y=280 w=410 h=130 -->
+    <g id="card-drift">
+      <path d="M50.0,280.0 H460.0 V402.0 Q460.0,410.0 452.0,410.0 H58.0 Q50.0,410.0 50.0,402.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="50.0" y="280.0" width="410.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Repo box, single (cyan) x=520 y=90 w=450 h=110 -->
+    <g id="card-repo-single">
+      <path d="M520.0,90.0 H970.0 V192.0 Q970.0,200.0 962.0,200.0 H528.0 Q520.0,200.0 520.0,192.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="520.0" y="90.0" width="450.0" height="5" fill="#0096d1" opacity="0.6"/>
+      <!-- three file chips inside, gap=10 -->
+      <path d="M540.0,150.0 H670.0 V184.0 Q670.0,190.0 664.0,190.0 H546.0 Q540.0,190.0 540.0,184.0 Z" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="0.8" stroke-opacity="0.4"/>
+      <path d="M680.0,150.0 H810.0 V184.0 Q810.0,190.0 804.0,190.0 H686.0 Q680.0,190.0 680.0,184.0 Z" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="0.8" stroke-opacity="0.4"/>
+      <path d="M820.0,150.0 H950.0 V184.0 Q950.0,190.0 944.0,190.0 H826.0 Q820.0,190.0 820.0,184.0 Z" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="0.8" stroke-opacity="0.4"/>
+    </g>
+
+    <!-- Reader card: person, in an editor (cyan) x=520 y=260 w=200 h=110 -->
+    <g id="card-person">
+      <path d="M520.0,260.0 H720.0 V362.0 Q720.0,370.0 712.0,370.0 H528.0 Q520.0,370.0 520.0,362.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="520.0" y="260.0" width="200.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Reader card: pm-tools, parsing (cyan) x=770 y=260 w=200 h=110 -->
+    <g id="card-pmtools">
+      <path d="M770.0,260.0 H970.0 V362.0 Q970.0,370.0 962.0,370.0 H778.0 Q770.0,370.0 770.0,362.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="770.0" y="260.0" width="200.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+  </g>
+
+  <g id="connectors">
+    <!-- Drift connector: card-repo.right-centre (210,165) <-> card-tracker.left-centre (300,165).
+         svg-infographics connector, mode straight, direction both, arrow both, standoff 2, color #da8230. -->
+    <path d="M212.00,165.00 L288.00,165.00" fill="none" stroke="#da8230" stroke-width="1.2" opacity="0.75" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="212.00,165.00 222.00,160.00 222.00,170.00" fill="#da8230" opacity="0.6"/>
+    <polygon points="298.00,165.00 288.00,160.00 288.00,170.00" fill="#da8230" opacity="0.6"/>
+
+    <!-- Commit arrow: "1 commit" label -> card-repo-single top edge. svg-infographics connector,
+         mode straight, from 610,74 to 610,88, direction forward, arrow end, standoff 1, color #0096d1. -->
+    <path d="M610.00,75.00 L610.00,77.00" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.85" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="610.00,87.00 615.00,77.00 605.00,77.00" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Fan: card-repo-single.bottom-centre (745,200) -> bare standoff stub (745,200)-(745,214),
+         14px clear of the card edge -> spine point (745,214) -> fork to card-person.top-centre
+         approach (620,236), card-pmtools.top-centre approach (870,236), arrow tips at y=246,
+         14px clear of the reader-card tops (y=260). svg-infographics connector, mode manifold,
+         shape l-chamfer, direction sources-to-sinks, auto-tuned, stem-min 13; the 14px clearance
+         at both ends keeps the strand-group bbox clear of the card bboxes it connects. -->
+    <path d="M745.00,200.00 L745.00,214.00" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <g class="manifold-connector" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.4" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M745.00,214.00"/>
+      <path d="M745.00,214.00"/>
+      <path d="M745.00,214.00 L622.00,214.00 L620.00,216.00 L620.00,236.00"/>
+      <polygon points="620.00,246.00 625.00,236.00 615.00,236.00" fill="#0096d1" stroke="none" opacity="0.6"/>
+      <path d="M745.00,214.00 L868.00,214.00 L870.00,216.00 L870.00,236.00"/>
+      <polygon points="870.00,246.00 875.00,236.00 865.00,236.00" fill="#0096d1" stroke="none" opacity="0.6"/>
+    </g>
+  </g>
+
+  <g id="content">
+
+    <!-- Title -->
+    <text x="500" y="26" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" class="fg-1" text-anchor="middle" letter-spacing="0.4">Two sources of truth, and one</text>
+
+    <!-- Panel subheaders -->
+    <text x="255" y="60" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="accent-2" text-anchor="middle">Two stores</text>
+    <text x="745" y="60" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="accent-1" text-anchor="middle">One store</text>
+
+    <!-- === Box A content: Repository === -->
+    <g id="content-repo">
+      <text x="70" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Repository</text>
+      <text x="70" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">version-controlled</text>
+      <line x1="70" y1="140" x2="190" y2="140" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <circle cx="75" cy="155" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="85" y="160" font-family="Consolas, 'Courier New', monospace" font-size="10" font-weight="700" class="accent-1">src/session.ts</text>
+      <text x="85" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">creates the session</text>
+
+      <circle cx="75" cy="195" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="85" y="200" font-family="Consolas, 'Courier New', monospace" font-size="10" font-weight="700" class="accent-1">src/fork.ts</text>
+      <text x="85" y="215" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">forgets it on fork</text>
+    </g>
+
+    <!-- === Box B content: Hosted tracker === -->
+    <g id="content-tracker">
+      <text x="320" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Hosted tracker</text>
+      <text x="320" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">outside the repo</text>
+      <line x1="320" y1="140" x2="440" y2="140" stroke="#da8230" stroke-width="0.8" opacity="0.35"/>
+
+      <circle cx="325" cy="155" r="2" fill="#da8230" opacity="0.8"/>
+      <text x="335" y="160" font-family="Consolas, 'Courier New', monospace" font-size="10" font-weight="700" class="accent-2">DEF-142</text>
+      <text x="335" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">fork forgets session</text>
+
+      <circle cx="325" cy="195" r="2" fill="#da8230" opacity="0.8"/>
+      <text x="335" y="200" font-family="Consolas, 'Courier New', monospace" font-size="10" font-weight="700" class="accent-2">AC-88</text>
+      <text x="335" y="215" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">fork must keep it</text>
+    </g>
+
+    <!-- === Drift card content === -->
+    <g id="content-drift">
+      <text x="70" y="305" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="accent-2">Drift</text>
+      <line x1="70" y1="320" x2="440" y2="320" stroke="#da8230" stroke-width="0.8" opacity="0.35"/>
+      <text x="70" y="340" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3">Same facts, two places - neither says which is stale</text>
+
+      <circle cx="75" cy="352" r="2" fill="#da8230" opacity="0.8"/>
+      <text x="85" y="355" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="accent-2">59% named code &#8596; doc inconsistency</text>
+
+      <circle cx="75" cy="367" r="2" fill="#da8230" opacity="0.8"/>
+      <text x="85" y="370" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" class="accent-2">46% named duplicate content</text>
+
+      <text x="70" y="390" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-style="italic" class="fg-4">Aghajani et al., ICSE 2020 - survey of 146 practitioners</text>
+    </g>
+
+    <!-- Commit label -->
+    <text x="610" y="60" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-weight="700" class="accent-1" text-anchor="middle">1 commit</text>
+
+    <!-- === Repo box (single) content === -->
+    <g id="content-repo-single">
+      <text x="540" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Repository</text>
+      <text x="540" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="accent-1">one commit moves code + record together</text>
+      <line x1="540" y1="140" x2="950" y2="140" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="605" y="165" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="accent-1" text-anchor="middle">Code</text>
+      <text x="605" y="180" font-family="Consolas, 'Courier New', monospace" font-size="7.5" class="fg-3" text-anchor="middle">src/*.ts</text>
+
+      <text x="745" y="165" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="accent-1" text-anchor="middle">Criteria</text>
+      <text x="745" y="180" font-family="Consolas, 'Courier New', monospace" font-size="7.5" class="fg-3" text-anchor="middle">docs/acc-crit.md</text>
+
+      <text x="885" y="165" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-weight="700" class="accent-1" text-anchor="middle">Defects</text>
+      <text x="885" y="180" font-family="Consolas, 'Courier New', monospace" font-size="7.5" class="fg-3" text-anchor="middle">docs/defects.md</text>
+    </g>
+
+    <!-- === Reader card content: person === -->
+    <g id="content-person">
+      <text x="540" y="285" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Reads it</text>
+      <text x="540" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">a person, in an editor</text>
+      <line x1="540" y1="310" x2="700" y2="310" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+      <text x="540" y="330" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" class="fg-3">opens the same markdown file</text>
+    </g>
+
+    <!-- === Reader card content: pm-tools === -->
+    <g id="content-pmtools">
+      <text x="790" y="285" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Parses it</text>
+      <text x="790" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">pm-tools, into records</text>
+      <line x1="790" y1="310" x2="950" y2="310" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+      <text x="790" y="330" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" class="fg-3">same markdown file, one pass</text>
+    </g>
+
+    <!-- Right-panel captions -->
+    <text x="745" y="390" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-1" text-anchor="middle">readable by a person, parseable by a tool, in the same pass</text>
+    <text x="745" y="410" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-4" text-anchor="middle">no export step, no import step</text>
+
+    <!-- Footer -->
+    <text x="500" y="440" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-style="italic" class="fg-2" text-anchor="middle">The left side manages a split - the right side has none</text>
+
+  </g>
+
+  <g id="callouts">
+    <!-- Drift callout: leader from near the connector midpoint (255,165) up to the label. -->
+    <g id="callout-drift">
+      <line x1="255" y1="160" x2="255" y2="150" class="callout-line"/>
+      <text x="255" y="135" text-anchor="middle" class="callout-text">drift</text>
+    </g>
+  </g>
+
+</svg>

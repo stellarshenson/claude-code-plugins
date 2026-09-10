@@ -1,0 +1,10 @@
+## v1 - 2026-09-08 21:43
+Abstract digital art, dark background (#0a1a24), cyan (#0096d1, #5cc8e0) and orange (#da8230, #d4a04a) colour scheme. A single luminous ledger page floating in space, its lines rendered as glowing cyan strokes on a subtle grid mesh, a few rows lit orange as markers, thin light filaments fanning out from the page to small floating tiles that echo its rows, glowing particles drifting along the filaments, depth of field, soft radial glow. Technical but artistic. No text, no letters, no UI elements, no charts, no human figures. 16:9 aspect ratio. High quality, 4K.
+
+## v3 - local render
+Bedrock image models unavailable on the account (nova-canvas-v1 legacy-locked, titan-v2 end-of-life, no ListFoundationModels permission to find a live id). Rendered locally with PIL from the v1 prompt: glow-on-dark grid mesh, a floating ledger page of glowing cyan rows with three orange marker rows, filaments fanning to small tiles that echo the rows, particles, radial glow. 1280x720. Replace with a generative render when a model is reachable.
+
+## v4 - 2026-09-08 21:50 - SHIPPED
+Generated with stability.stable-image-ultra-v1:1 on Bedrock, us-west-2, seed 7, aspect 16:9, resized 1344x768 to 1280x720. Nova Canvas v1 is legacy-locked on this account and no newer Nova image id resolved; the account cannot list models. Same prompt as v1:
+Abstract digital art, dark background (#0a1a24), cyan (#0096d1, #5cc8e0) and orange (#da8230, #d4a04a) colour scheme. A single luminous ledger page floating in space, its lines rendered as glowing cyan strokes on a subtle grid mesh, a few rows lit orange as markers, thin light filaments fanning out from the page to small floating tiles that echo its rows, glowing particles drifting along the filaments, depth of field, soft radial glow. Technical but artistic. No text, no letters, no UI elements, no charts, no human figures. 16:9 aspect ratio. High quality, 4K.
+

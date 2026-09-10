@@ -11,6 +11,7 @@ The body is one dense line: symptom, then cause, then fix, then the file.
 ```
 
 - **Symptom first, in the reporter's terms** - what was seen, not what was theorised
+- **Plain words, exact strings** - the symptom as the person who saw it would say it, and any message it printed quoted character for character. The wording rules for every field are in `SKILL.md`, under Writing the text
 - **`cause under investigation`** is a legitimate value until it is not
 - **Severity is the first word of the body** and it is never omitted - `CRITICAL` / `MAJOR` / `MEDIUM` / `MINOR`, see Triage below
 - **No investigation dumps in the line** - depth goes to a details doc, see below

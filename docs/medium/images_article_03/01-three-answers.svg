@@ -1,0 +1,149 @@
+<!--
+  three-answers.svg - Three answers, three costs, for the project-management plugin article
+  Shows: a one-line scenario setup, then three cards side by side - a hosted tracker, a notes
+         file beside the code, the whole tracker pasted into context - each naming the answer
+         and, weighted larger, the cost that answer carries. A closing line names the split
+         all three costs come from.
+  Intent: for the project-management plugin Medium article - the three usual places an agent's
+          mid-session finding could go, and what each one costs, before introducing the plugin's
+          own answer elsewhere in the article.
+  Theme: Stellars-Tech derived - accent-1=#005f7a/#5cc8e0 cyan (structural, the three cards),
+         accent-2=#7a4a15/#d4a04a warm (the cost line in every card, given the visual weight),
+         transparent backplate, light default + dark override.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 320">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 320, all coordinates on a 5px grid
+    Margins: 30 left/right (content x=30..970)
+    Title band: y=0..40 (title baseline y=25)
+    Subhead: y=55, centred x=500, single line
+
+    3 cards, x=30 y=75 w=290 h=175, gap=35 (30, 355, 680 - right edge of card 3 = 970):
+      card-tracker  x=30  right=320
+      card-notes    x=355 right=645
+      card-context  x=680 right=970
+      content pad=20 each side: content_x = card_x+20, divider x = content_x..(card_right-20)
+      internal rhythm (identical in all 3 cards, cy=card top=75):
+        title y=105, subtitle y=120, divider y=130
+        cost label y=155, cost payload y=180 (larger, bold, the weighted line)
+        detail row1 y=205, detail row2 y=220
+      card bottom = 250
+
+    Footer: y=290, centred x=500, single line
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: card-tracker, card-notes, card-context (gap=35)
+    v-align: card-tracker, card-notes, card-context top=75 bottom=250
+    contain: each card -> accent-bar, title, subtitle, divider, cost-label, cost-payload, detail row1, detail row2
+    mirror: 3 cards share identical internal anatomy - only text differs
+  === -->
+
+  <rect x="0" y="0" width="1000" height="320" fill="transparent"/>
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="320" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="320" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="320" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Card 1: hosted tracker x=30 y=75 w=290 h=175 -->
+    <g id="card-tracker">
+      <path d="M30.0,75.0 H320.0 V242.0 Q320.0,250.0 312.0,250.0 H38.0 Q30.0,250.0 30.0,242.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="30.0" y="75.0" width="290.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Card 2: notes file beside the code x=355 y=75 w=290 h=175 -->
+    <g id="card-notes">
+      <path d="M355.0,75.0 H645.0 V242.0 Q645.0,250.0 637.0,250.0 H363.0 Q355.0,250.0 355.0,242.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="355.0" y="75.0" width="290.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Card 3: whole tracker pasted into context x=680 y=75 w=290 h=175 -->
+    <g id="card-context">
+      <path d="M680.0,75.0 H970.0 V242.0 Q970.0,250.0 962.0,250.0 H688.0 Q680.0,250.0 680.0,242.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="680.0" y="75.0" width="290.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+  </g>
+
+  <g id="connectors">
+  </g>
+
+  <g id="content">
+
+    <!-- Title -->
+    <text x="500" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" class="fg-1" text-anchor="middle" letter-spacing="0.4">Three answers, three costs</text>
+
+    <!-- Subhead: scenario setup -->
+    <text x="500" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-style="italic" class="fg-2" text-anchor="middle">An agent finds a defect it wasn&#8217;t asked to fix, or finishes work the prompt never scoped. Where does the record go?</text>
+
+    <!-- === Card 1 content: hosted tracker === -->
+    <g id="content-tracker">
+      <text x="50" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Hosted tracker</text>
+      <text x="50" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">Jira, Linear, GitHub Issues</text>
+      <line x1="50" y1="130" x2="300" y2="130" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="50" y="155" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-weight="700" letter-spacing="1.5" class="accent-2">COST</text>
+      <text x="50" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="accent-2">A context switch</text>
+
+      <text x="50" y="205" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3">leaves the session, files it</text>
+      <text x="50" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3">elsewhere, and comes back</text>
+    </g>
+
+    <!-- === Card 2 content: notes file beside the code === -->
+    <g id="content-notes">
+      <text x="375" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Notes file beside the code</text>
+      <text x="375" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">TODO.md, NOTES.md, a comment</text>
+      <line x1="375" y1="130" x2="625" y2="130" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="375" y="155" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-weight="700" letter-spacing="1.5" class="accent-2">COST</text>
+      <text x="375" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="accent-2">A second copy that drifts</text>
+
+      <text x="375" y="205" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3">same facts twice - neither</text>
+      <text x="375" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3">file says which is stale</text>
+    </g>
+
+    <!-- === Card 3 content: whole tracker pasted into context === -->
+    <g id="content-context">
+      <text x="700" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">Whole tracker, pasted in</text>
+      <text x="700" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">exported into the prompt</text>
+      <line x1="700" y1="130" x2="950" y2="130" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="700" y="155" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-weight="700" letter-spacing="1.5" class="accent-2">COST</text>
+      <text x="700" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="accent-2">A context window of noise</text>
+
+      <text x="700" y="205" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3">rows nobody asked for, crowding</text>
+      <text x="700" y="220" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3">out the ones that matter</text>
+    </g>
+
+    <!-- Footer -->
+    <text x="500" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-2" text-anchor="middle">All three come from one split: the code lives in the repository, the record of what&#8217;s wrong with it lives somewhere else</text>
+
+  </g>
+
+  <g id="callouts">
+  </g>
+
+</svg>

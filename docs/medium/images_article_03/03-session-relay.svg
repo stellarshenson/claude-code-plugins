@@ -1,0 +1,225 @@
+<!--
+  session-relay.svg - What crosses a session boundary, and what does not
+  Shows: three session lanes left to right, two boundary lines between them, a
+         context-window box at the start of each lane (session 2's clearly wider),
+         and an orange file capsule after each of the first two lanes plus one after
+         the third, each showing the growing, never-shrinking log of DEF-LNCH-3.
+  Intent: close the project-management plugin article - a bigger context window does
+          not survive a session boundary; only the file on disk does.
+  Theme: Stellars-Tech derived - accent-1 rotated -10deg H (#0096d1 -> #00b9d1) for
+         this figure's structural cyan; accent-2 orange (#da8230) unchanged, reserved
+         for the file capsule, the one thing that crosses every boundary.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 550">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #00737a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cdee0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000x550
+    Margin: 30px left/right
+    Title band: y=0..45 (title at y=28); boundary captions at y=58
+    Lane row: y=65..310 (h=245)
+      lanes: x=30 w=260 (right 290) | x=370 w=260 (right 630) | x=710 w=260 (right 970)
+      boundary lines: x=330 (gap 290-370 centre) and x=670 (gap 630-710 centre)
+      lane rhythm from top=65: accent bar 65-70, header y=100, divider y=112,
+        context box y=133-228 (h=95), note (lane 2 only) y=255, motion mark y=280-294
+      context box width: lane 1/3 = 170 (centred, x=laneX+130-85), lane 2 = 220 (full, x=390)
+      boundary lines: y=72..298 (short of the lane edges, clears the caption above and
+        the connector start point below)
+    Capsule row: top=345 for all three, bottom grows: capsule-1=435, capsule-2=452, capsule-3=486
+      capsule-1 x=30 w=280 | capsule-2 x=360 w=280 | capsule-3 x=690 w=280
+      capsule text left pad=16 (textX = capsuleX+16); rows: filename y=+16, id y=+34,
+        events start y=+53, step 17 (evidence wraps to two of those steps)
+      connectors: boundary-1 bottom(330,310) -> capsule-1 top(170,345); boundary-2
+        bottom(670,310) -> capsule-2 top(500,345); lane-3 bottom-centre(840,310) ->
+        capsule-3 top(830,345) - all svg-infographics connector mode spline, direction
+        forward, arrow end, margin 3
+    Footer: y=510 / y=529, centred x=500
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: lane-1, lane-2, lane-3 (gap=80, boundary line centred in each gap)
+    v-align: lane-1..lane-3 top=65 bottom=310
+    contain: lane-N > accent-bar, header, divider, context-box, (lane-2: note), motion-mark
+    connect: boundary-1 to capsule-1 (forward), boundary-2 to capsule-2 (forward),
+             lane-3-end to capsule-3 (forward) - spline, drawn after the lane row
+    h-stack: capsule-1, capsule-2, capsule-3 (gap=50 / 50, top-aligned, growing height)
+  === -->
+
+  <rect x="0" y="0" width="1000" height="550" fill="transparent"/>
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="550" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="330" y1="0" x2="330" y2="550" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="550" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="670" y1="0" x2="670" y2="550" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="550" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="65" x2="1000" y2="65" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="310" x2="1000" y2="310" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="345" x2="1000" y2="345" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+
+    <!-- boundary lines: session ends, spans most of the lane row height, short of the
+         caption above and the connector start point below -->
+    <line x1="330" y1="72" x2="330" y2="298" stroke="#00b9d1" stroke-width="1" stroke-dasharray="4 4" opacity="0.35"/>
+    <line x1="670" y1="72" x2="670" y2="298" stroke="#00b9d1" stroke-width="1" stroke-dasharray="4 4" opacity="0.35"/>
+
+    <!-- decorative: dotted lane-bottom rhythm lines, non-semantic -->
+    <line x1="50" y1="300" x2="270" y2="300" stroke="#00b9d1" stroke-width="1" stroke-dasharray="1 3" opacity="0.12"/>
+    <line x1="390" y1="300" x2="610" y2="300" stroke="#00b9d1" stroke-width="1" stroke-dasharray="1 3" opacity="0.12"/>
+    <line x1="730" y1="300" x2="950" y2="300" stroke="#00b9d1" stroke-width="1" stroke-dasharray="1 3" opacity="0.12"/>
+
+    <!-- decorative: small forward motion marks, non-semantic -->
+    <polygon points="230,280 230,294 244,287" fill="#00b9d1" opacity="0.18"/>
+    <polygon points="570,280 570,294 584,287" fill="#00b9d1" opacity="0.18"/>
+    <polygon points="910,280 910,294 924,287" fill="#00b9d1" opacity="0.18"/>
+  </g>
+
+  <g id="nodes">
+    <!-- Lane 1 card: x=30 y=65 w=260 h=245, contains its own context-window box -->
+    <g id="card-lane-1">
+      <path d="M30.0,65.0 H290.0 V307.0 Q290.0,310.0 287.0,310.0 H33.0 Q30.0,310.0 30.0,307.0 Z" fill="#00b9d1" fill-opacity="0.04" stroke="#00b9d1" stroke-width="1"/>
+      <rect x="30" y="65" width="260" height="5" fill="#00b9d1" opacity="0.6"/>
+      <path id="box-context-1" d="M75.0,133.0 H245.0 V220.0 Q245.0,228.0 237.0,228.0 H83.0 Q75.0,228.0 75.0,220.0 Z" fill="#00b9d1" fill-opacity="0.03" stroke="#00b9d1" stroke-width="1" stroke-dasharray="5 4" stroke-opacity="0.55"/>
+    </g>
+    <!-- Lane 2 card: x=370 y=65 w=260 h=245, contains its own context-window box -->
+    <g id="card-lane-2">
+      <path d="M370.0,65.0 H630.0 V307.0 Q630.0,310.0 627.0,310.0 H373.0 Q370.0,310.0 370.0,307.0 Z" fill="#00b9d1" fill-opacity="0.04" stroke="#00b9d1" stroke-width="1"/>
+      <rect x="370" y="65" width="260" height="5" fill="#00b9d1" opacity="0.6"/>
+      <path id="box-context-2" d="M390.0,133.0 H610.0 V220.0 Q610.0,228.0 602.0,228.0 H398.0 Q390.0,228.0 390.0,220.0 Z" fill="#00b9d1" fill-opacity="0.03" stroke="#00b9d1" stroke-width="1" stroke-dasharray="5 4" stroke-opacity="0.55"/>
+    </g>
+    <!-- Lane 3 card: x=710 y=65 w=260 h=245, contains its own context-window box -->
+    <g id="card-lane-3">
+      <path d="M710.0,65.0 H970.0 V307.0 Q970.0,310.0 967.0,310.0 H713.0 Q710.0,310.0 710.0,307.0 Z" fill="#00b9d1" fill-opacity="0.04" stroke="#00b9d1" stroke-width="1"/>
+      <rect x="710" y="65" width="260" height="5" fill="#00b9d1" opacity="0.6"/>
+      <path id="box-context-3" d="M755.0,133.0 H925.0 V220.0 Q925.0,228.0 917.0,228.0 H763.0 Q755.0,228.0 755.0,220.0 Z" fill="#00b9d1" fill-opacity="0.03" stroke="#00b9d1" stroke-width="1" stroke-dasharray="5 4" stroke-opacity="0.55"/>
+    </g>
+
+    <!-- file capsules (solid = persisted on disk), height grows with accumulated content -->
+    <g id="card-capsule-1">
+      <path d="M30.0,345.0 H310.0 V423.0 Q310.0,435.0 298.0,435.0 H42.0 Q30.0,435.0 30.0,423.0 Z" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1" stroke-opacity="0.4"/>
+      <polyline points="36,345 30,345 30,351" fill="none" stroke="#da8230" stroke-width="1" opacity="0.35"/>
+      <polyline points="304,345 310,345 310,351" fill="none" stroke="#da8230" stroke-width="1" opacity="0.35"/>
+    </g>
+    <g id="card-capsule-2">
+      <path d="M360.0,345.0 H640.0 V440.0 Q640.0,452.0 628.0,452.0 H372.0 Q360.0,452.0 360.0,440.0 Z" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1" stroke-opacity="0.4"/>
+      <polyline points="366,345 360,345 360,351" fill="none" stroke="#da8230" stroke-width="1" opacity="0.35"/>
+      <polyline points="634,345 640,345 640,351" fill="none" stroke="#da8230" stroke-width="1" opacity="0.35"/>
+    </g>
+    <g id="card-capsule-3">
+      <path d="M690.0,345.0 H970.0 V474.0 Q970.0,486.0 958.0,486.0 H702.0 Q690.0,486.0 690.0,474.0 Z" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1" stroke-opacity="0.4"/>
+      <polyline points="696,345 690,345 690,351" fill="none" stroke="#da8230" stroke-width="1" opacity="0.35"/>
+      <polyline points="964,345 970,345 970,351" fill="none" stroke="#da8230" stroke-width="1" opacity="0.35"/>
+    </g>
+  </g>
+
+  <g id="connectors">
+    <!-- boundary-1 (330,310) -> capsule-1 top (170,345). svg-infographics connector
+         mode spline, waypoints "330,310 250,326 170,345", direction forward,
+         arrow end, margin 3 -->
+    <path d="M327.05,310.54 L319.26,311.98 L308.52,314.01 L297.80,316.09 L287.09,318.23 L276.39,320.41 L265.70,322.64 L255.02,324.91 L244.36,327.23 L233.70,329.61 L223.06,332.04 L212.42,334.53 L201.80,337.07 L191.19,339.67 L182.60,341.81" fill="none" stroke="#da8230" stroke-width="1.2" opacity="0.55" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="172.91,344.26 183.83,346.65 181.37,336.96" fill="#da8230" opacity="0.6"/>
+
+    <!-- boundary-2 (670,310) -> capsule-2 top (500,345). Same recipe,
+         waypoints "670,310 585,326 500,345" -->
+    <path d="M667.04,310.51 L658.59,311.98 L647.20,314.01 L635.81,316.09 L624.43,318.22 L613.07,320.40 L601.72,322.63 L590.37,324.91 L579.04,327.23 L567.72,329.60 L556.40,332.04 L545.10,334.53 L533.81,337.07 L522.53,339.66 L512.64,341.98" fill="none" stroke="#da8230" stroke-width="1.2" opacity="0.55" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="502.92,344.30 513.80,346.85 511.48,337.12" fill="#da8230" opacity="0.6"/>
+
+    <!-- lane-3 bottom-centre (840,310) -> capsule-3 top (830,345).
+         waypoints "840,310 835,326 830,345" -->
+    <path d="M839.06,312.85 L838.73,313.84 L837.50,317.70 L836.31,321.56 L835.16,325.44 L834.06,329.33 L833.21,332.40" fill="none" stroke="#da8230" stroke-width="1.2" opacity="0.55" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="830.71,342.08 838.06,333.66 828.37,331.15" fill="#da8230" opacity="0.6"/>
+  </g>
+
+  <g id="content">
+
+    <!-- Title -->
+    <text x="500" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" class="fg-1" text-anchor="middle">Across three sessions, only the file crosses</text>
+
+    <!-- Boundary captions -->
+    <text x="330" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3" text-anchor="middle">session ends</text>
+    <text x="670" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3" text-anchor="middle">session ends</text>
+
+    <!-- Lane 1 content -->
+    <g id="content-lane-1">
+      <text x="160" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" text-anchor="middle">session 1</text>
+      <line x1="50" y1="112" x2="270" y2="112" stroke="#00b9d1" stroke-width="0.8" opacity="0.35"/>
+      <text x="160" y="153" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1" class="accent-1" text-anchor="middle">CONTEXT WINDOW</text>
+      <text x="160" y="176" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">context at start:</text>
+      <text x="160" y="194" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">nothing from the previous session</text>
+    </g>
+
+    <!-- Lane 2 content -->
+    <g id="content-lane-2">
+      <text x="500" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" text-anchor="middle">session 2</text>
+      <line x1="390" y1="112" x2="610" y2="112" stroke="#00b9d1" stroke-width="0.8" opacity="0.35"/>
+      <text x="500" y="153" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1" class="accent-1" text-anchor="middle">CONTEXT WINDOW</text>
+      <text x="500" y="176" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">larger context window -</text>
+      <text x="500" y="194" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">still nothing from session 1</text>
+      <text x="500" y="255" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3" text-anchor="middle">reads the file first; does not retry the 200ms delay</text>
+    </g>
+
+    <!-- Lane 3 content -->
+    <g id="content-lane-3">
+      <text x="840" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" text-anchor="middle">session 3</text>
+      <line x1="730" y1="112" x2="950" y2="112" stroke="#00b9d1" stroke-width="0.8" opacity="0.35"/>
+      <text x="840" y="153" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1" class="accent-1" text-anchor="middle">CONTEXT WINDOW</text>
+      <text x="840" y="176" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">context at start:</text>
+      <text x="840" y="194" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">nothing from the previous session</text>
+    </g>
+
+    <!-- Capsule 1 content: leaving session 1 -->
+    <g id="content-capsule-1">
+      <text x="46" y="361" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="9.5" font-weight="700" class="accent-2">docs/defects-app.md</text>
+      <text x="46" y="379" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="9" font-weight="700" class="accent-2">[ ] DEF-LNCH-3</text>
+      <text x="46" y="398" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="fg-2">reported: intermittent 401 on the first turn</text>
+      <text x="46" y="415" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="fg-2">attempted: 200ms pre-turn delay - did NOT work</text>
+    </g>
+
+    <!-- Capsule 2 content: leaving session 2 -->
+    <g id="content-capsule-2">
+      <text x="376" y="361" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="9.5" font-weight="700" class="accent-2">docs/defects-app.md</text>
+      <text x="376" y="379" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="9" font-weight="700" class="accent-2">[ ] DEF-LNCH-3</text>
+      <text x="376" y="398" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="fg-2">reported: intermittent 401 on the first turn</text>
+      <text x="376" y="415" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="fg-2">attempted: 200ms pre-turn delay - did NOT work</text>
+      <text x="376" y="432" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="fg-2">root-cause: the fork races the token loader</text>
+    </g>
+
+    <!-- Capsule 3 content: end of session 3 -->
+    <g id="content-capsule-3">
+      <text x="706" y="361" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="9.5" font-weight="700" class="accent-2">docs/defects-app.md</text>
+      <text x="706" y="379" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="9" font-weight="700" class="accent-2">[x] DEF-LNCH-3</text>
+      <text x="706" y="398" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="fg-2">reported: intermittent 401 on the first turn</text>
+      <text x="706" y="415" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="fg-2">attempted: 200ms pre-turn delay - did NOT work</text>
+      <text x="706" y="432" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="fg-2">root-cause: the fork races the token loader</text>
+      <text x="706" y="449" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="fg-2">evidence: the 2s repro no longer</text>
+      <text x="706" y="466" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="fg-2">fires on build 412; 79 pytest green</text>
+    </g>
+
+    <!-- Footer -->
+    <text x="500" y="510" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" class="fg-2" text-anchor="middle">A new session starts with nothing from the previous one, whatever its context size.</text>
+    <text x="500" y="529" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" class="fg-2" text-anchor="middle">What was found, tried and proved reaches it only through the file.</text>
+
+  </g>
+
+  <g id="callouts">
+  </g>
+
+</svg>

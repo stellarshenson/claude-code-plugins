@@ -1,0 +1,211 @@
+<!--
+  evidence-basis.svg - The evidentiary spine behind seven design choices in the project-management plugin
+  Shows: seven rows, each a metric chip (the measured number, large) paired with the design choice it
+         supports (small italic label) and the finding sentence plus author/year citation, closed by a
+         footer band naming the limits of the evidence.
+  Intent: for the project-management plugin Medium article - let a skimming reader see the numbers
+          first (48, 59%, 15 microseconds, 1984, 56.1%, 92% to 68%, 87%), then the claim, then what
+          it is not proof of.
+  Theme: Stellars-Tech derived, warm variant - accent-1 hue rotated -15deg from the sibling files' cyan
+         (#0096d1, H197 S100 L41 -> #00cad1, H182 S100 L41; same S/L, contrast unchanged), accent-2
+         orange #da8230 unchanged as counter-accent, transparent backplate, light default + dark override.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #007a77; }
+    .accent-2 { fill: #7a4a15; }
+    .muted { fill: #5b6472; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5ce0d7; }
+      .accent-2 { fill: #d4a04a; }
+      .muted { fill: #9aa7b5; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 700
+    Margin: 30px left/right (content x=30..970, width 940)
+    Title band: y=0..40 (baseline y=26)
+
+    Row cycle 80px (row height 70 + gap 10), row tops r_i = 55 + 80*i for i=0..6:
+      r0=55  r1=135 r2=215 r3=295 r4=375 r5=455 r6=535 (row bottom = r+70)
+
+    Hero metric chip (svg-infographics primitives rect, w=180 h=64 r=5, accent flag), per row:
+      x=30 y=r+5 (chip spans r+5..r+69), center x=120
+      value baseline = r+40 (font 26 bold accent-1), label baseline = r+65 (font 9 fg-3)
+
+    Text zone x=240..970 (width 730), per row:
+      choice label baseline = r+15 (font 10.5 italic fg-3)
+      finding sentence baseline = r+40, aligned with hero value (font 13 bold fg-1)
+      citation baseline = r+65, aligned with hero label (font 8.5 italic fg-4)
+
+    All baselines land on 5px multiples (r itself is a 5px multiple, and 15/40/65 are too) so the
+    chip y and text y all pass the alignment checker's 5px-grid rule outright. The vertical gaps
+    (25px, choice->finding and finding->citation and value->label) still clear the overlap
+    checker's own text-metrics formula (ascent=0.78*size, descent=0.22*size, 4px pad each side):
+    the tightest pair (hero value 26px bold -> hero label 9px) needs >=20.74px, 25px clears every
+    pair with margin. Finding-sentence character counts are capped so each row's checker-estimated
+    width (chars * font-size * 0.57 for bold) stays under the 730px zone with margin.
+
+    Dotted row dividers (decoration, background layer) at gap midpoints r_i+75 for i=0..5:
+      130, 210, 290, 370, 450, 530 (x=30..970, accent-2 raw, dasharray 2 3, opacity 0.25)
+
+    Footer: rule y=630 (x=30..970), line-1 baseline y=650, line-2 baseline y=670 (class muted)
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: title-band, row-1..row-7 (gap=10, cycle=80), footer-band
+    contain: each row -> hero-chip (accent-bar, value, label), choice-label, finding-sentence, citation
+    h-align: hero-chip.center-x = 120 for all 7 rows; text-zone.x = 240 for all 7 rows
+    v-align: value.baseline = finding-sentence.baseline; label.baseline = citation.baseline (per row)
+    decoration: dotted-divider between each adjacent row pair (non-semantic, background layer)
+    contain: footer-band -> rule, line-1, line-2
+  === -->
+
+  <rect x="0" y="0" width="1000" height="700" fill="transparent"/>
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="700" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="700" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="700" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+
+    <!-- Decoration: light dotted rule between each pair of adjacent rows, gap midpoints, ornament only -->
+    <line x1="30" y1="130" x2="970" y2="130" stroke="#da8230" stroke-width="1" stroke-dasharray="2 3" opacity="0.25"/>
+    <line x1="30" y1="210" x2="970" y2="210" stroke="#da8230" stroke-width="1" stroke-dasharray="2 3" opacity="0.25"/>
+    <line x1="30" y1="290" x2="970" y2="290" stroke="#da8230" stroke-width="1" stroke-dasharray="2 3" opacity="0.25"/>
+    <line x1="30" y1="370" x2="970" y2="370" stroke="#da8230" stroke-width="1" stroke-dasharray="2 3" opacity="0.25"/>
+    <line x1="30" y1="450" x2="970" y2="450" stroke="#da8230" stroke-width="1" stroke-dasharray="2 3" opacity="0.25"/>
+    <line x1="30" y1="530" x2="970" y2="530" stroke="#da8230" stroke-width="1" stroke-dasharray="2 3" opacity="0.25"/>
+
+    <!-- Footer rule -->
+    <line x1="30" y1="630" x2="970" y2="630" stroke="#6b7280" stroke-width="1" opacity="0.25"/>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Hero metric chips: svg-infographics primitives rect, x=30 y in {60,140,220,300,380,460,540},
+         width=180 height=64 radius=5, accent flag, raw accent hex #00cad1 (warm-shifted accent-1) -->
+    <g id="card-metric-1">
+      <path d="M30.0,60.0 H210.0 V119.0 Q210.0,124.0 205.0,124.0 H35.0 Q30.0,124.0 30.0,119.0 Z" fill="#00cad1" fill-opacity="0.04" stroke="#00cad1" stroke-width="1"/>
+      <rect x="30.0" y="60.0" width="180.0" height="5" fill="#00cad1" opacity="0.6"/>
+    </g>
+    <g id="card-metric-2">
+      <path d="M30.0,140.0 H210.0 V199.0 Q210.0,204.0 205.0,204.0 H35.0 Q30.0,204.0 30.0,199.0 Z" fill="#00cad1" fill-opacity="0.04" stroke="#00cad1" stroke-width="1"/>
+      <rect x="30.0" y="140.0" width="180.0" height="5" fill="#00cad1" opacity="0.6"/>
+    </g>
+    <g id="card-metric-3">
+      <path d="M30.0,220.0 H210.0 V279.0 Q210.0,284.0 205.0,284.0 H35.0 Q30.0,284.0 30.0,279.0 Z" fill="#00cad1" fill-opacity="0.04" stroke="#00cad1" stroke-width="1"/>
+      <rect x="30.0" y="220.0" width="180.0" height="5" fill="#00cad1" opacity="0.6"/>
+    </g>
+    <g id="card-metric-4">
+      <path d="M30.0,300.0 H210.0 V359.0 Q210.0,364.0 205.0,364.0 H35.0 Q30.0,364.0 30.0,359.0 Z" fill="#00cad1" fill-opacity="0.04" stroke="#00cad1" stroke-width="1"/>
+      <rect x="30.0" y="300.0" width="180.0" height="5" fill="#00cad1" opacity="0.6"/>
+    </g>
+    <g id="card-metric-5">
+      <path d="M30.0,380.0 H210.0 V439.0 Q210.0,444.0 205.0,444.0 H35.0 Q30.0,444.0 30.0,439.0 Z" fill="#00cad1" fill-opacity="0.04" stroke="#00cad1" stroke-width="1"/>
+      <rect x="30.0" y="380.0" width="180.0" height="5" fill="#00cad1" opacity="0.6"/>
+    </g>
+    <g id="card-metric-6">
+      <path d="M30.0,460.0 H210.0 V519.0 Q210.0,524.0 205.0,524.0 H35.0 Q30.0,524.0 30.0,519.0 Z" fill="#00cad1" fill-opacity="0.04" stroke="#00cad1" stroke-width="1"/>
+      <rect x="30.0" y="460.0" width="180.0" height="5" fill="#00cad1" opacity="0.6"/>
+    </g>
+    <g id="card-metric-7">
+      <path d="M30.0,540.0 H210.0 V599.0 Q210.0,604.0 205.0,604.0 H35.0 Q30.0,604.0 30.0,599.0 Z" fill="#00cad1" fill-opacity="0.04" stroke="#00cad1" stroke-width="1"/>
+      <rect x="30.0" y="540.0" width="180.0" height="5" fill="#00cad1" opacity="0.6"/>
+    </g>
+
+  </g>
+
+  <g id="connectors">
+  </g>
+
+  <g id="content">
+
+    <!-- Title -->
+    <text x="500" y="26" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" class="fg-1" text-anchor="middle">Seven design choices, and what each one rests on</text>
+
+    <!-- Row 1: chip center x=120, text zone x=240 -->
+    <g id="content-row-1">
+      <text x="120" y="95" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" class="accent-1" text-anchor="middle">48</text>
+      <text x="120" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">subjects</text>
+      <text x="240" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-style="italic" class="fg-3">The session that changed the code files the defect, no context switch</text>
+      <text x="240" y="95" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">20 minutes of interrupted work raised measured stress, frustration and effort</text>
+      <text x="240" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-4">Mark et al., CHI 2008</text>
+    </g>
+
+    <!-- Row 2 -->
+    <g id="content-row-2">
+      <text x="120" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" class="accent-1" text-anchor="middle">59%</text>
+      <text x="120" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">of 146 practitioners</text>
+      <text x="240" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-style="italic" class="fg-3">One source of truth, not a document plus a tracker</text>
+      <text x="240" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Code-versus-documentation inconsistency named a recurring issue; 46% named duplicate content</text>
+      <text x="240" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-4">Aghajani et al., ICSE 2020</text>
+    </g>
+
+    <!-- Row 3 -->
+    <g id="content-row-3">
+      <text x="120" y="255" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" class="accent-1" text-anchor="middle">15 &#956;s</text>
+      <text x="120" y="280" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">per item</text>
+      <text x="240" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-style="italic" class="fg-3">Markdown, read by a parser and never by a model</text>
+      <text x="240" y="255" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">About 15 microseconds per item, rising linearly with the item count, never cached</text>
+      <text x="240" y="280" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-4">measured, this project</text>
+    </g>
+
+    <!-- Row 4 -->
+    <g id="content-row-4">
+      <text x="120" y="335" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" class="accent-1" text-anchor="middle">1984</text>
+      <text x="120" y="360" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">the argument</text>
+      <text x="240" y="310" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-style="italic" class="fg-3">One file for people and for the tool, no export and no import</text>
+      <text x="240" y="335" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">One source, derived outputs, so they cannot fall out of step</text>
+      <text x="240" y="360" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-4">Knuth, 1984</text>
+    </g>
+
+    <!-- Row 5 -->
+    <g id="content-row-5">
+      <text x="120" y="415" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" class="accent-1" text-anchor="middle">56.1%</text>
+      <text x="120" y="440" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">closed-book baseline</text>
+      <text x="240" y="390" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-style="italic" class="fg-3">The file never enters the context window; the CLI returns only the rows asked for</text>
+      <text x="240" y="415" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">With the answer placed mid-context, GPT-3.5-Turbo scored below its own baseline</text>
+      <text x="240" y="440" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-4">Liu et al., TACL 2024</text>
+    </g>
+
+    <!-- Row 6 -->
+    <g id="content-row-6">
+      <text x="120" y="495" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" class="accent-1" text-anchor="middle">92%&#8594;68%</text>
+      <text x="120" y="520" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">accuracy, padded</text>
+      <text x="240" y="470" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-style="italic" class="fg-3">Short entries</text>
+      <text x="240" y="495" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Accuracy fell as padding grew; clarity remained the top documentation issue, at 88%</text>
+      <text x="240" y="520" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-4">Levy et al., ACL 2024</text>
+    </g>
+
+    <!-- Row 7 -->
+    <g id="content-row-7">
+      <text x="120" y="575" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" class="accent-1" text-anchor="middle">87%</text>
+      <text x="120" y="600" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3" text-anchor="middle">of conflicting chunks</text>
+      <text x="240" y="550" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-style="italic" class="fg-3">Every event timestamped and attributed, so a git collision is resolvable</text>
+      <text x="240" y="575" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Resolved from lines already on one side, across 2,731 Java projects</text>
+      <text x="240" y="600" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-4">Ghiotto et al., IEEE TSE 2020</text>
+    </g>
+
+    <!-- Footer band -->
+    <text x="500" y="650" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="muted" text-anchor="middle">none of these papers measured this tool, and the merge study measured Java source rather than markdown checklists.</text>
+    <text x="500" y="670" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="muted" text-anchor="middle">Each supports a choice; none proves the tool beats the alternatives.</text>
+
+  </g>
+
+  <g id="callouts">
+  </g>
+
+</svg>

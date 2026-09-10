@@ -1,0 +1,198 @@
+<!--
+  01-stored-once-computed.svg - Stored facts vs computed views in the project-management plugin
+  Shows: one tall card listing the five facts the markdown file actually stores, fanning via a
+         manifold connector into four smaller cards listing values pm-tools computes on read.
+  Intent: illustrate "nothing is written down twice" for the project-management plugin article -
+          the markdown file is the single source of truth, everything else is derived on read.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 cyan, accent-2=#da8230 orange.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 460">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000x460
+    Margin: 30px left/right
+    Title band: y=0..40 (title baseline y=26)
+    Content band: y=55..415 (height 360)
+
+    Left card "Stored once" (accent-1 cyan #0096d1): x=30 y=55 w=350 h=360, right_edge=380, centre_y=235
+      content pad=20: content_x=50, divider x=50..360
+      title y=80, divider y=95
+      5 rows: label y=112,180,248,316,384 (stride 68); gloss y=label+14
+      bullet circle: cx=55 cy=label-3 r=2; text_x=65
+
+    Manifold gap: x=380..650 (270px), spine y=235
+      spine-start=(400,235) spine-end=(515,235)
+
+    Right column "Computed on read" (accent-2 orange #da8230): x=650 w=320, right_edge=970
+      content pad=20: content_x=670, divider x=670..950
+      header title y=80, divider y=95
+      4 cards x=650 w=320 h=65 radius=8, gap=15:
+        card-1 y=110..175 (title y=130, gloss y=148)
+        card-2 y=190..255 (title y=210, gloss y=228)
+        card-3 y=270..335 (title y=290, gloss y=308)
+        card-4 y=350..415 (title y=370, gloss y=388)
+
+    Footer: y=444, centred x=500
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: title-band, content-band, footer
+    v-stack: card-computed-1, card-computed-2, card-computed-3, card-computed-4 (gap=15)
+    v-align: 4 computed cards share x=650 w=320
+    contain: card-stored -> accent-bar, title, divider, 5 label/gloss rows
+    contain: each computed card -> accent-bar, title, gloss
+    fan (manifold, sources-to-sinks): card-stored.right-centre -> spine -> 4 computed cards.left-centre
+  === -->
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="460" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="460" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="460" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Left card: "Stored once" x=30 y=55 w=350 h=360 (accent-1 cyan) -->
+    <g id="card-stored">
+      <path d="M30.0,55.0 H380.0 V407.0 Q380.0,415.0 372.0,415.0 H38.0 Q30.0,415.0 30.0,407.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="30.0" y="55.0" width="350.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Right cards: "Computed on read" x=650 w=320 h=65 (accent-2 orange) -->
+    <g id="card-computed-1">
+      <path d="M650.0,110.0 H970.0 V167.0 Q970.0,175.0 962.0,175.0 H658.0 Q650.0,175.0 650.0,167.0 Z" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="1"/>
+      <rect x="650.0" y="110.0" width="320.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+    <g id="card-computed-2">
+      <path d="M650.0,190.0 H970.0 V247.0 Q970.0,255.0 962.0,255.0 H658.0 Q650.0,255.0 650.0,247.0 Z" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="1"/>
+      <rect x="650.0" y="190.0" width="320.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+    <g id="card-computed-3">
+      <path d="M650.0,270.0 H970.0 V327.0 Q970.0,335.0 962.0,335.0 H658.0 Q650.0,335.0 650.0,327.0 Z" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="1"/>
+      <rect x="650.0" y="270.0" width="320.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+    <g id="card-computed-4">
+      <path d="M650.0,350.0 H970.0 V407.0 Q970.0,415.0 962.0,415.0 H658.0 Q650.0,415.0 650.0,407.0 Z" fill="#da8230" fill-opacity="0.04" stroke="#da8230" stroke-width="1"/>
+      <rect x="650.0" y="350.0" width="320.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+  </g>
+
+  <g id="connectors">
+    <!-- Manifold fan: card-stored right-centre (380,235) -> spine (400,235)-(515,235) ->
+         4 forks at x=515 -> 4 computed-card left-centres. Generated via svg-infographics
+         connector, mode manifold, direction sources to sinks, shape l chamfer, auto tuned.
+         The 2px standoff stub sits as a bare stroke directly under this canonical layer, and
+         the spine+fork bundle sits in its own manifold-connector group starting at x=400,
+         clear of card-stored on one side and touching-not-overlapping the computed cards on
+         the other - keeps every strand a single tool-computed path with no hand-edited
+         geometry. -->
+    <!-- start 0: card-stored -> merge (bare stroke, standoff stub) -->
+    <path d="M382.00,235.00 L400.00,235.00" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <g class="manifold-connector" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.5" stroke-linejoin="round" stroke-linecap="round">
+      <!-- spine: merge_anchor -> fork_anchor -->
+      <path d="M400.00,235.00 L515.00,235.00"/>
+      <!-- end 0: fork -> card-computed-1 -->
+      <path d="M515.00,235.00 L515.00,146.50 L519.00,142.50 L638.00,142.50"/>
+      <!-- end 1: fork -> card-computed-2 -->
+      <path d="M515.00,235.00 L515.00,222.50 L638.00,222.50"/>
+      <!-- end 2: fork -> card-computed-3 -->
+      <path d="M515.00,235.00 L515.00,302.50 L638.00,302.50"/>
+      <!-- end 3: fork -> card-computed-4 -->
+      <path d="M515.00,235.00 L515.00,378.50 L519.00,382.50 L638.00,382.50"/>
+    </g>
+    <polygon points="648.00,142.50 638.00,137.50 638.00,147.50" fill="#0096d1" opacity="0.6"/>
+    <polygon points="648.00,222.50 638.00,217.50 638.00,227.50" fill="#0096d1" opacity="0.6"/>
+    <polygon points="648.00,302.50 638.00,297.50 638.00,307.50" fill="#0096d1" opacity="0.6"/>
+    <polygon points="648.00,382.50 638.00,377.50 638.00,387.50" fill="#0096d1" opacity="0.6"/>
+  </g>
+
+  <g id="content">
+
+    <!-- Main title -->
+    <text x="500" y="26" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" class="fg-1" text-anchor="middle" letter-spacing="0.4">Nothing is written down twice</text>
+
+    <!-- === LEFT CARD CONTENT: Stored once === -->
+    <g id="content-stored">
+      <text x="50" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" letter-spacing="0.3">Stored once - in the markdown file</text>
+      <line x1="50" y1="95" x2="360" y2="95" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <!-- Row 1 -->
+      <circle cx="55" cy="109" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="65" y="112" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">Checklist line</text>
+      <text x="65" y="126" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">item text, title, level</text>
+
+      <!-- Row 2 -->
+      <circle cx="55" cy="177" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="65" y="180" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">evidence: line</text>
+      <text x="65" y="194" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">proof it is done, written by close</text>
+
+      <!-- Row 3 -->
+      <circle cx="55" cy="245" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="65" y="248" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">root-cause: / mechanism:</text>
+      <text x="65" y="262" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">newest record on top, older kept</text>
+
+      <!-- Row 4 -->
+      <circle cx="55" cy="313" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="65" y="316" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">Checkbox [ ] [x] [-]</text>
+      <text x="65" y="330" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">open, closed, rejected</text>
+
+      <!-- Row 5 -->
+      <circle cx="55" cy="381" r="2" fill="#0096d1" opacity="0.8"/>
+      <text x="65" y="384" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1">## section</text>
+      <text x="65" y="398" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">category membership</text>
+    </g>
+
+    <!-- === RIGHT COLUMN HEADER: Computed on read === -->
+    <g id="computed-header">
+      <text x="670" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" letter-spacing="0.3">Computed on read - never stored</text>
+      <line x1="670" y1="95" x2="950" y2="95" stroke="#da8230" stroke-width="0.8" opacity="0.35"/>
+    </g>
+
+    <!-- === RIGHT CARDS CONTENT === -->
+    <g id="content-computed-1">
+      <text x="670" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-2" letter-spacing="0.3">Next free id</text>
+      <text x="670" y="148" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">highest number in the file + 1</text>
+    </g>
+    <g id="content-computed-2">
+      <text x="670" y="210" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-2" letter-spacing="0.3">Backlinks and blocker chain</text>
+      <text x="670" y="228" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">pm-tools refs</text>
+    </g>
+    <g id="content-computed-3">
+      <text x="670" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-2" letter-spacing="0.3">Contents, counts, coverage</text>
+      <text x="670" y="308" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">report, coverage, list-categories</text>
+    </g>
+    <g id="content-computed-4">
+      <text x="670" y="370" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-2" letter-spacing="0.3">Regression count</text>
+      <text x="670" y="388" font-family="Segoe UI, Arial, sans-serif" font-size="9" class="fg-3">the highest ordinal on DEF-X-N-k</text>
+    </g>
+
+    <!-- Footer -->
+    <text x="500" y="444" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3" text-anchor="middle">One source, derived outputs - the file cannot contradict itself</text>
+
+  </g>
+
+  <g id="callouts">
+  </g>
+
+</svg>

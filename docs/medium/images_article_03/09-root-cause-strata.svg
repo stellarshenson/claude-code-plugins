@@ -1,0 +1,228 @@
+<!--
+  root-cause-strata.svg - Why the older root-cause: record stays in the file, for the
+    project-management plugin Medium article.
+  Shows: the item line for DEF-LNCH-4, drawn as a ground line; below it a cross-section of two
+    wavy-bounded bands - the newest root-cause: record on top (current), the record it replaced
+    below (ruled out on Tuesday, still readable); a side panel showing the two pm-tools root-cause
+    operations that produce this stack; a footer caption stating the rule.
+  Intent: answer "a defect's newest root-cause: record is the current one - so why keep the older
+    ones" by showing physical order (top = newest = current) matches file order (new record lands
+    above the old one, which is kept, not overwritten).
+  Theme: Stellars-Tech derived, hue-shifted for this figure - accent-1 rotated +20deg in HSL from
+    the family's #0096d1 (H~197) to #0050d1 (H~217), same S/L, applied to the raw shape hue and to
+    the paired light/dark .accent-1 text classes; accent-2 orange (#da8230) unchanged, used for the
+    ruled-out record. Transparent backplate, dual light/dark via prefers-color-scheme.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #00367a; }
+    .accent-2 { fill: #7a4a15; }
+    .muted { fill: #5b6472; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5c9ce0; }
+      .accent-2 { fill: #d4a04a; }
+      .muted { fill: #9aa7b5; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 480. Margins 30px left/right (content x=30..970, w=940).
+    Title band: y=0..46 (baseline y=30, centred x=500).
+
+    No explicit backplate rect - an unpainted canvas is already transparent, and an explicit
+      full-canvas rect only feeds the overlap checker's containment-overflow heuristic a "child"
+      whose centre sits inside the cut-face band by coincidence (canvas centre falls inside a
+      band that spans most of the canvas height). Omitting it changes no pixel.
+
+    Item line: text baseline y=65 x=30 (Consolas, literal markdown item line).
+      Ground line: y=80, x=30..590 (cut-face width only), stroke-width 2, muted. Held 5px above the
+        frame's own top edge (85, and on the 5px grid) so its centre falls outside the frame's bbox -
+        on the edge itself it would satisfy the overlap checker's "centre inside container" test and
+        its 1px stroke half-width would then read as escaping the container by exactly that 1px.
+      Side-panel top divider: y=80, x=630..970, stroke-width 1, muted, lighter (visual parity only,
+        not part of the ground metaphor).
+      Both lines, plus the dotted rule below, carry `transform="translate(0,0)"` - a no-op that
+      marks them decoration artwork per the connector checker's own documented exclusion (transformed
+      elements are icon/decoration in local coordinates, never a routed connector), so a rule lying
+      along a card's top edge or floating inside one is not swept in as a mis-snapped connector.
+
+    Cut face (left column): frame x=30 y=85 w=560 h=330 (bottom=415), fill 0.02 / stroke 0.8 op 0.55
+      (container-band recipe, square-top / rounded-bottom, radius 6). Wave boundary (primitives
+      spline, points "30,235 150,225 310,245 450,220 590,238", samples 40) defines two clipPath
+      shapes over one full-bound rect each. Both rects declare x=29.6 y=84.6 w=560.8 h=330.8 - outset
+      0.4px past the frame to absorb the frame's own 0.8 stroke half-width, so the stroked frame
+      never reads as escaping its unstroked siblings; the clip shapes stay in absolute coordinates
+      and crop the extra 0.4px away, so the outset is geometry-only, invisible in the render:
+        clip-cap-current: sharp top, wave bottom - accent-1 fill 0.04 (the current record)
+        clip-base-ruledout: wave top, rounded bottom (matches frame) - accent-2 fill 0.05 (ruled out)
+      Wave boundary stroke drawn separately on top, width 0.8 (matches frame stroke so the outer
+      bbox never exceeds the frame's), opacity 0.6.
+      layer-current text: caption baseline y=115, record line-1 y=135, record line-2 y=155 (20px
+        pitch), all x=50.
+      layer-ruled-out text: caption baseline y=275, record line-1 y=300, record line-2 y=320 (20px
+        pitch), all x=50. Decoration below y=320: dotted rule y=350 x=50..560; 4 pebble dots
+        scattered x=80..540 y=360..400 (empty-space verified clear of all text bboxes).
+
+    Side panel (right column): x=630 y=85 w=340 h=330 (bottom=415), two operation cards
+      (primitives rect radius 6, accent flag, fill 0.04 / stroke 1, accent-1):
+      card-1: x=630 y=115 w=340 h=130 (bottom=245) - badge cx=654 cy=137 r=9
+        cmd line-1 y=165, cmd line-2 y=185 (20px pitch), caption y=205, all x=650
+      card-2: x=630 y=275 w=340 h=130 (bottom=405) - badge cx=654 cy=297 r=9
+        cmd line-1 y=325, cmd line-2 y=345 (20px pitch), caption y=365, all x=650
+
+    Footer band: baseline y=450, centred x=500.
+
+    Hairline corner ticks (decoration): 12px legs, 10px inset from each of the 4 viewBox corners,
+      each drawn as one polyline (not two lines) so the shared vertex reads as ornament, not a
+      2-strand connector fork.
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: title, item-line, ground-line, main-band, footer
+    h-stack: cut-face, side-panel (main-band, gap=40)
+    v-stack (cut-face): layer-current, layer-ruled-out (split by wave boundary, clip-path pair)
+    contain: layer-current > caption, record-line-1, record-line-2
+    contain: layer-ruled-out > caption, record-line-1, record-line-2, dotted-rule, pebble-dots
+    v-stack (side-panel): card-1, card-2 (gap=30)
+    contain: card-N > badge, cmd-line-1, cmd-line-2, caption
+    mirror: card-1 <-> card-2 (identical anatomy, first write vs record update)
+  === -->
+
+  <defs>
+    <clipPath id="clip-cap-current">
+      <path d="M30,85 H590 V238.0 L575.64,235.98 L561.28,233.71 L546.92,231.28 L532.56,228.83 L518.21,226.46 L503.85,224.3 L489.49,222.46 L475.13,221.06 L460.77,220.2 L446.41,220.05 L432.05,221.13 L417.69,223.38 L403.33,226.48 L388.97,230.11 L374.62,233.94 L360.26,237.65 L345.9,240.91 L331.54,243.41 L317.18,244.81 L302.82,244.88 L288.46,244.01 L274.1,242.43 L259.74,240.32 L245.38,237.85 L231.03,235.19 L216.67,232.52 L202.31,230.02 L187.95,227.84 L173.59,226.18 L159.23,225.19 L144.87,225.04 L130.51,225.48 L116.15,226.37 L101.79,227.58 L87.44,229.02 L73.08,230.58 L58.72,232.17 L44.36,233.68 L30.0,235.0 Z"/>
+    </clipPath>
+    <clipPath id="clip-base-ruledout">
+      <path d="M30,235.0 L44.36,233.68 L58.72,232.17 L73.08,230.58 L87.44,229.02 L101.79,227.58 L116.15,226.37 L130.51,225.48 L144.87,225.04 L159.23,225.19 L173.59,226.18 L187.95,227.84 L202.31,230.02 L216.67,232.52 L231.03,235.19 L245.38,237.85 L259.74,240.32 L274.1,242.43 L288.46,244.01 L302.82,244.88 L317.18,244.81 L331.54,243.41 L345.9,240.91 L360.26,237.65 L374.62,233.94 L388.97,230.11 L403.33,226.48 L417.69,223.38 L432.05,221.13 L446.41,220.05 L460.77,220.2 L475.13,221.06 L489.49,222.46 L503.85,224.3 L518.21,226.46 L532.56,228.83 L546.92,231.28 L561.28,233.71 L575.64,235.98 L590.0,238.0 V409.0 Q590.0,415.0 584.0,415.0 H36.0 Q30.0,415.0 30.0,409.0 Z"/>
+    </clipPath>
+  </defs>
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="480" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="590" y1="0" x2="590" y2="480" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="630" y1="0" x2="630" y2="480" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="480" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="85" x2="1000" y2="85" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="415" x2="1000" y2="415" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+
+    <!-- Hairline corner ticks (decoration only) - one polyline per corner -->
+    <g fill="none" stroke="#5b6472" stroke-width="1" opacity="0.35">
+      <polyline points="22,10 10,10 10,22"/>
+      <polyline points="978,10 990,10 990,22"/>
+      <polyline points="22,470 10,470 10,458"/>
+      <polyline points="978,470 990,470 990,458"/>
+    </g>
+
+    <!-- Dotted rule inside the ruled-out layer (decoration only; a no-op transform marks it
+         decoration artwork so the connector checker does not sweep it in as a mis-snapped
+         connector endpoint) -->
+    <line x1="50" y1="350" x2="560" y2="350" stroke="#5b6472" stroke-width="0.8" stroke-dasharray="1,4" opacity="0.3" transform="translate(0,0)"/>
+
+    <!-- Pebble dots inside the ruled-out layer (decoration only, empty-space verified) -->
+    <g fill="#5b6472" opacity="0.3">
+      <circle cx="120" cy="368" r="2.5"/>
+      <circle cx="260" cy="392" r="2"/>
+      <circle cx="400" cy="374" r="2.5"/>
+      <circle cx="510" cy="396" r="2"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+    <!-- Cut face: one full-bound rect per record, clipped to the wave-bounded half it owns. Both
+         rects declare the SAME bounds (outset 0.4px past the frame's own 30,85,560,330 to absorb
+         its 0.8 stroke half-width, so the stroked frame never reads as escaping its unstroked
+         siblings), so the overlap checker reads every pair here as contained, never as
+         partially-overlapping siblings. The clip shapes stay in absolute coordinates and crop the
+         extra 0.4px away, so the outset is geometry-only, invisible in the render. -->
+    <rect id="layer-current" x="29.6" y="84.6" width="560.8" height="330.8" fill="#0050d1" fill-opacity="0.04" clip-path="url(#clip-cap-current)"/>
+    <rect id="layer-ruled-out" x="29.6" y="84.6" width="560.8" height="330.8" fill="#da8230" fill-opacity="0.05" clip-path="url(#clip-base-ruledout)"/>
+
+    <!-- Wave boundary (visible divider between the two records), stroke matched to the frame's -->
+    <path d="M30.0,235.0 L44.36,233.68 L58.72,232.17 L73.08,230.58 L87.44,229.02 L101.79,227.58 L116.15,226.37 L130.51,225.48 L144.87,225.04 L159.23,225.19 L173.59,226.18 L187.95,227.84 L202.31,230.02 L216.67,232.52 L231.03,235.19 L245.38,237.85 L259.74,240.32 L274.1,242.43 L288.46,244.01 L302.82,244.88 L317.18,244.81 L331.54,243.41 L345.9,240.91 L360.26,237.65 L374.62,233.94 L388.97,230.11 L403.33,226.48 L417.69,223.38 L432.05,221.13 L446.41,220.05 L460.77,220.2 L475.13,221.06 L489.49,222.46 L503.85,224.3 L518.21,226.46 L532.56,228.83 L546.92,231.28 L561.28,233.71 L575.64,235.98 L590.0,238.0" fill="none" stroke="#5b6472" stroke-width="0.8" opacity="0.6"/>
+
+    <!-- Cut-face outer frame, drawn last so its stroke stays crisp over the fills (container-band
+         recipe: fill 0.02, stroke 0.8) -->
+    <path d="M30.0,85.0 H590.0 V409.0 Q590.0,415.0 584.0,415.0 H36.0 Q30.0,415.0 30.0,409.0 Z" fill="#5b6472" fill-opacity="0.02" stroke="#5b6472" stroke-width="0.8" opacity="0.55"/>
+
+    <!-- Side panel: card-1 (first write) -->
+    <g id="card-1">
+      <path d="M630.0,115.0 H970.0 V239.0 Q970.0,245.0 964.0,245.0 H636.0 Q630.0,245.0 630.0,239.0 Z" fill="#0050d1" fill-opacity="0.04" stroke="#0050d1" stroke-width="1"/>
+      <rect x="630.0" y="115.0" width="340.0" height="5" fill="#0050d1" opacity="0.6"/>
+      <circle cx="654.0" cy="137.0" r="9.0" fill="#0050d1" fill-opacity="0.15" stroke="#0050d1" stroke-width="1.2"/>
+    </g>
+
+    <!-- Side panel: card-2 (record update write) -->
+    <g id="card-2">
+      <path d="M630.0,275.0 H970.0 V399.0 Q970.0,405.0 964.0,405.0 H636.0 Q630.0,405.0 630.0,399.0 Z" fill="#0050d1" fill-opacity="0.04" stroke="#0050d1" stroke-width="1"/>
+      <rect x="630.0" y="275.0" width="340.0" height="5" fill="#0050d1" opacity="0.6"/>
+      <circle cx="654.0" cy="297.0" r="9.0" fill="#0050d1" fill-opacity="0.15" stroke="#0050d1" stroke-width="1.2"/>
+    </g>
+  </g>
+
+  <g id="connectors">
+  </g>
+
+  <g id="content">
+
+    <!-- Title -->
+    <text x="500" y="30" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="700" class="fg-1">Why keep the older root-cause records?</text>
+
+    <!-- Item line (ground line label) -->
+    <text x="30" y="65" font-family="Consolas, 'Courier New', monospace" font-size="13" class="fg-1">- [ ] `DEF-LNCH-4` **Splash never closes** - MAJOR</text>
+    <!-- Ground line and side-panel divider: no-op transform marks both decoration artwork so the
+         connector checker does not read a full-width rule sitting on a card's own top edge as a
+         mis-arriving connector. -->
+    <line x1="30" y1="80" x2="590" y2="80" stroke="#5b6472" stroke-width="2" opacity="0.6" transform="translate(0,0)"/>
+    <line x1="630" y1="80" x2="970" y2="80" stroke="#5b6472" stroke-width="1" opacity="0.35" transform="translate(0,0)"/>
+
+    <!-- Layer current (top): caption + two-line record -->
+    <g id="label-current">
+      <text x="50" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="accent-1">current record - every query reports this one</text>
+      <text x="50" y="135" font-family="Consolas, 'Courier New', monospace" font-size="11" class="accent-1">root-cause: 2026-09-04T14:02:10Z @kj</text>
+      <text x="50" y="155" font-family="Consolas, 'Courier New', monospace" font-size="11" class="accent-1">the splash waits on a timer the loader stopped setting</text>
+    </g>
+
+    <!-- Layer ruled-out (bottom): caption + two-line record -->
+    <g id="label-ruled-out">
+      <text x="50" y="275" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="accent-2">ruled out on Tuesday - still in the file</text>
+      <text x="50" y="300" font-family="Consolas, 'Courier New', monospace" font-size="11" class="accent-2">root-cause: 2026-09-01T09:41:55Z @kj</text>
+      <text x="50" y="320" font-family="Consolas, 'Courier New', monospace" font-size="11" class="accent-2">the loader holds the lock the splash waits on</text>
+    </g>
+
+    <!-- Side panel: card-1 content -->
+    <g id="ops-1">
+      <text x="654" y="141" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1">1</text>
+      <text x="650" y="165" font-family="Consolas, 'Courier New', monospace" font-size="10.5" class="fg-1">pm-tools root-cause FILE --id DEF-LNCH-4</text>
+      <text x="650" y="185" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="10.5" class="fg-1">  --text "..." --author @kj</text>
+      <text x="650" y="205" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3">new record goes on top; older records stay</text>
+    </g>
+
+    <!-- Side panel: card-2 content -->
+    <g id="ops-2">
+      <text x="654" y="301" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1">2</text>
+      <text x="650" y="325" font-family="Consolas, 'Courier New', monospace" font-size="10.5" class="fg-1">pm-tools root-cause FILE --id DEF-LNCH-4</text>
+      <text x="650" y="345" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="10.5" class="fg-1">  --text "..." --author @kj --update</text>
+      <text x="650" y="365" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3">rewords the top record in place; nothing is added</text>
+    </g>
+
+    <!-- Footer -->
+    <text x="500" y="450" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-style="italic" class="fg-3">The newest record is the current one. The older records stay, so a disproven theory is not tested twice.</text>
+
+  </g>
+
+  <g id="callouts">
+  </g>
+
+</svg>

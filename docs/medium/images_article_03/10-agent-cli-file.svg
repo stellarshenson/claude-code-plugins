@@ -1,0 +1,191 @@
+<!--
+  04-agent-cli-file.svg - The file never enters the context window
+  Shows: three node cards (AI agent, pm-tools CLI, markdown files on disk) linked by
+         two-way connectors labelled with the flags/rows and read/parse exchange, plus a
+         dashed muted connector marking the direct file-to-agent path that never happens.
+  Intent: for the project-management plugin article, visualize why pm-tools filters on disk
+          before anything reaches the AI agent's context window - only small slices travel.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 cyan (structure/flow), accent-2=#da8230
+         orange (cost/size emphasis), transparent backplate, light default + dark override.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    .conn-muted { stroke-dasharray: 6 5; }
+    .callout-text { font-family: Segoe UI, Arial, sans-serif; font-size: 8.5px; font-style: italic; fill: #7a4a15; }
+    .callout-line { stroke: #7a4a15; stroke-width: 1; fill: none; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+      .callout-text { fill: #d4a04a; }
+      .callout-line { stroke: #d4a04a; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000x400
+    Margin: 30px left/right
+    Title band: y=0..40 (title at y=24)
+    Card row: y=55..255 (card height 200)
+    Cards: 3 x (w=260 h=200), gap=80 (geom distribute, axis h, mode gap)
+      Card 1 (AI agent):            x=30,  centre_x=160, right_edge=290
+      Card 2 (pm-tools CLI):        x=370, centre_x=500, right_edge=630
+      Card 3 (markdown on disk):    x=710, centre_x=840, right_edge=970
+    Card internals (rhythm from card top):
+      accent bar: y=+0 h=5
+      title:      y=+35 (font 14, 700, fg-1)
+      subtitle:   y=+52 (font 10, italic, fg-3)
+      divider:    y=+64
+      inner box:  y=+78 h=92 (badge/chips), inset 20px from card edges
+    Connector A (card1 to card2): (304,155)-(356,155) len=52, direction both, standoff 14
+    Connector B (card2 to card3): (644,155)-(696,155) len=52, direction both, standoff 14
+    Connector labels: A centred x=330 y=135, B centred x=670 y=135 (single line each)
+    Connector C (card3 to card1, dashed, direction none): (838,275)-(162,275)
+      geom offset-line, line 160,255,840,255, distance 20, side right
+    Footer line: y=358, centred x=500
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    h-stack: card-1, card-2, card-3 (gap=80)
+    v-align: card-1, card-2, card-3 top=55 bottom=255
+    connect: card-1 to card-2 (flags/rows, both), card-2 to card-3 (read/parse, both)
+    connect: card-3 to card-1 (dashed, muted, direction none - "never pasted whole")
+    contain: each card -> accent-bar, title, subtitle, divider, inner box (badge or chips)
+  === -->
+
+  <rect x="0" y="0" width="1000" height="400" fill="transparent"/>
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="400" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="400" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="400" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Card 1: AI agent -->
+    <g id="card-1">
+      <path d="M30.0,55.0 H290.0 V251.0 Q290.0,255.0 286.0,255.0 H34.0 Q30.0,255.0 30.0,251.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="30" y="55" width="260" height="5" fill="#0096d1" opacity="0.6"/>
+      <!-- inner badge: context window (dashed = ephemeral) -->
+      <path d="M50.0,133.0 H270.0 V219.0 Q270.0,225.0 264.0,225.0 H56.0 Q50.0,225.0 50.0,219.0 Z" fill="#0096d1" fill-opacity="0.03" stroke="#0096d1" stroke-width="1" stroke-dasharray="5 4" stroke-opacity="0.55"/>
+    </g>
+
+    <!-- Card 2: pm-tools CLI -->
+    <g id="card-2">
+      <path d="M370.0,55.0 H630.0 V251.0 Q630.0,255.0 626.0,255.0 H374.0 Q370.0,255.0 370.0,251.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="370" y="55" width="260" height="5" fill="#0096d1" opacity="0.6"/>
+      <!-- inner chip rows: report/list/pivot, search/refs/coverage, check (the gate) -->
+      <path d="M390.0,137.0 H610.0 V158.0 Q610.0,163.0 605.0,163.0 H395.0 Q390.0,163.0 390.0,158.0 Z" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="0.8" stroke-opacity="0.35"/>
+      <path d="M390.0,175.0 H610.0 V196.0 Q610.0,201.0 605.0,201.0 H395.0 Q390.0,201.0 390.0,196.0 Z" fill="#0096d1" fill-opacity="0.05" stroke="#0096d1" stroke-width="0.8" stroke-opacity="0.35"/>
+      <path d="M390.0,213.0 H610.0 V234.0 Q610.0,239.0 605.0,239.0 H395.0 Q390.0,239.0 390.0,234.0 Z" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="0.8" stroke-opacity="0.4"/>
+    </g>
+
+    <!-- Card 3: markdown files on disk -->
+    <g id="card-3">
+      <path d="M710.0,55.0 H970.0 V251.0 Q970.0,255.0 966.0,255.0 H714.0 Q710.0,255.0 710.0,251.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="710" y="55" width="260" height="5" fill="#0096d1" opacity="0.6"/>
+      <!-- inner badge: solid = persisted on disk -->
+      <path d="M730.0,133.0 H950.0 V219.0 Q950.0,225.0 944.0,225.0 H736.0 Q730.0,225.0 730.0,219.0 Z" fill="#da8230" fill-opacity="0.06" stroke="#da8230" stroke-width="1" stroke-opacity="0.4"/>
+    </g>
+
+  </g>
+
+  <g id="connectors">
+    <!-- Connector A: card-1 to card-2, direction both. svg-infographics connector, mode l-chamfer,
+         src-rect 30,55,260,200, start-dir E, tgt-rect 370,55,260,200, end-dir E, direction both,
+         standoff 14 (widened past the 2px project default so the arrowhead group's icon-role
+         padding clears the card's own padding - see finalize note), chamfer 4 -->
+    <g>
+      <path d="M314.00,155.00 L346.00,155.00" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.75" stroke-linejoin="round" stroke-linecap="round"/>
+      <polygon points="304.00,155.00 314.00,160.00 314.00,150.00" fill="#0096d1" opacity="0.6"/>
+      <polygon points="356.00,155.00 346.00,150.00 346.00,160.00" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Connector B: card-2 to card-3, direction both. Same recipe:
+         src-rect 370,55,260,200, start-dir E, tgt-rect 710,55,260,200, end-dir E, direction both,
+         standoff 14 -->
+    <g>
+      <path d="M654.00,155.00 L686.00,155.00" fill="none" stroke="#0096d1" stroke-width="1.2" opacity="0.75" stroke-linejoin="round" stroke-linecap="round"/>
+      <polygon points="644.00,155.00 654.00,160.00 654.00,150.00" fill="#0096d1" opacity="0.6"/>
+      <polygon points="696.00,155.00 686.00,150.00 686.00,160.00" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Connector C: card-3 to card-1, dashed muted, direction none ("never pasted whole").
+         svg-infographics connector, mode l-chamfer, from 840,275, to 160,275,
+         start-dir W, end-dir W, direction none, standoff 2, chamfer 4 -->
+    <g>
+      <path class="conn-muted" d="M838.00,275.00 L162.00,275.00" fill="none" stroke="#da8230" stroke-width="1.2" opacity="0.45" stroke-linejoin="round" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <g id="content">
+
+    <!-- Title -->
+    <text x="500" y="24" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1" text-anchor="middle">The file never enters the context window</text>
+
+    <!-- Connector labels (single line, centred in each card gap) -->
+    <text x="330" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-1" text-anchor="middle">flags &#8596; rows</text>
+    <text x="670" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="7" font-weight="600" class="accent-1" text-anchor="middle">153ms &#8596; 10k</text>
+
+    <!-- === Card 1 content: AI agent === -->
+    <g id="content-card-1">
+      <text x="50" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">AI agent</text>
+      <text x="50" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">asks a question, reads a table</text>
+      <line x1="50" y1="119" x2="270" y2="119" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="160" y="149" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-weight="700" letter-spacing="1" class="accent-1" text-anchor="middle">CONTEXT WINDOW</text>
+
+      <text x="64" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="700" class="accent-2">8,527 B</text>
+      <text x="256" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3" text-anchor="end">full report</text>
+
+      <text x="64" y="201" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="700" class="accent-1">1,300 B</text>
+      <text x="256" y="201" font-family="Segoe UI, Arial, sans-serif" font-size="8.5" font-style="italic" class="fg-3" text-anchor="end">one category</text>
+    </g>
+
+    <!-- === Card 2 content: pm-tools CLI === -->
+    <g id="content-card-2">
+      <text x="390" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">pm-tools CLI</text>
+      <text x="390" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">parses, filters, computes - no generative step</text>
+      <line x1="390" y1="119" x2="610" y2="119" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="500" y="154" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1" text-anchor="middle">report &#183; list &#183; pivot</text>
+      <text x="500" y="190" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-1" text-anchor="middle">search &#183; refs &#183; coverage</text>
+      <text x="500" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-weight="600" class="accent-2" text-anchor="middle">check - the gate</text>
+    </g>
+
+    <!-- === Card 3 content: markdown files on disk === -->
+    <g id="content-card-3">
+      <text x="730" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1">markdown files on disk</text>
+      <text x="730" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="10" font-style="italic" class="fg-3">docs/acc-crit*.md &#183; docs/defects*.md</text>
+      <line x1="730" y1="119" x2="950" y2="119" stroke="#0096d1" stroke-width="0.8" opacity="0.35"/>
+
+      <text x="840" y="186" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" class="accent-2" text-anchor="middle">171,572 B</text>
+      <text x="840" y="204" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3" text-anchor="middle">stays on disk</text>
+    </g>
+
+    <!-- Footer -->
+    <text x="500" y="360" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" class="fg-2" text-anchor="middle">Filtering saves tokens, not time: one category returns 1,300 bytes of 171,572</text>
+  </g>
+
+  <g id="callouts">
+    <!-- svg-infographics callouts solver: target 500,275 (connector-C midpoint), leaderless,
+         preferred_side above -> text=(459.0,291.5) penalty=45.16 -->
+    <g id="callout-never">
+      <text x="459.0" y="294.0" class="callout-text">never pasted whole</text>
+    </g>
+  </g>
+</svg>

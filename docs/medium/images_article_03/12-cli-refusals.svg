@@ -1,0 +1,225 @@
+<!--
+  cli-refusals.svg - What the CLI refuses to do
+  Shows: three refusal rows (tried command -> CLI's answer -> what the agent must do instead)
+         for closing without proof, filing without triage, and reopening a closed defect,
+         plus a footer band naming pm-tools check as the only gate.
+  Intent: for the project-management plugin Medium article, show that the CLI's own error
+          messages are the discipline, not agent judgement, so it holds across sessions.
+  Theme: Stellars-Tech derived - accent-1=#0096d1 cyan (attempted / corrected path), accent-2=
+         #da8230 orange (the refusal), transparent backplate, light default + dark override.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 630">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #005f7a; }
+    .accent-2 { fill: #7a4a15; }
+    .muted { fill: #5b6472; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5cc8e0; }
+      .accent-2 { fill: #d4a04a; }
+      .muted { fill: #9aa7b5; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 630
+    Margin: 30px left/right (content x=30..970, width 940)
+    Title band: y=0..45 (baseline y=30)
+
+    Row blocks (badge/title/divider 50px + chip row 90px = 140px each), gap 25px between blocks:
+      row-1: badge cx=40 cy=70 r=10, title baseline y=74 x=65, divider y=90, chips y=105..195
+      row-2: badge cx=40 cy=235 r=10, title baseline y=239 x=65, divider y=255, chips y=270..360
+      row-3: badge cx=40 cy=400 r=10, title baseline y=404 x=65, divider y=420, chips y=435..525
+    Footer band: y=550..630 (cmd baseline y=570, gloss-1 y=590, gloss-2 y=610)
+
+    Chip columns (3 per row, gap=35, from svg-infographics primitives rect + connector):
+      col-A "Tried":        x=30   w=290  right=320
+      col-B "CLI answers":  x=355  w=290  right=645
+      col-C "Agent must":   x=680  w=290  right=970
+    Chip height 90: label baseline +18, line-1 +38, line-2 +58, line-3 +78 (row-3 col-B only)
+    Chip text x = chip x + 20 (left padding)
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: row-1, row-2, row-3, footer (gap=25 between row blocks)
+    h-stack: card-1a, card-1b, card-1c (row 1, gap=35)
+    h-stack: card-2a, card-2b, card-2c (row 2, gap=35)
+    h-stack: card-3a, card-3b, card-3c (row 3, gap=35)
+    v-align: card-1a, card-2a, card-3a share x (and likewise columns b, c)
+    contain: each card -> accent-bar, role-label, 2-3 text lines
+    contain: each row -> numbered badge, title, divider, 3 cards
+    flow: card-*a -> card-*b (tried leads to the CLI's answer, orange, direction forward)
+    flow: card-*b -> card-*c (the answer leads to what the agent must do, cyan, direction forward)
+  === -->
+
+  <rect x="0" y="0" width="1000" height="630" fill="transparent"/>
+
+  <g id="background">
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="630" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="630" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="630" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+
+    <!-- Row badges: svg-infographics primitives circle, r=10, translucent accent-1 fill so the
+         digit (text class accent-1) keeps the same contrast pairing used everywhere else in
+         the file, rather than a solid fill needing a separate on-fill treatment. -->
+    <g id="badge-1">
+      <circle cx="40.0" cy="70.0" r="10.0" fill="#0096d1" fill-opacity="0.15" stroke="#0096d1" stroke-width="1.2"/>
+    </g>
+    <g id="badge-2">
+      <circle cx="40.0" cy="235.0" r="10.0" fill="#0096d1" fill-opacity="0.15" stroke="#0096d1" stroke-width="1.2"/>
+    </g>
+    <g id="badge-3">
+      <circle cx="40.0" cy="400.0" r="10.0" fill="#0096d1" fill-opacity="0.15" stroke="#0096d1" stroke-width="1.2"/>
+    </g>
+
+    <!-- Row 1 chips: svg-infographics primitives rect, x=30/355/680 y=105 w=290 h=90 radius=5 -->
+    <g id="card-1a">
+      <path d="M30.0,105.0 H320.0 V190.0 Q320.0,195.0 315.0,195.0 H35.0 Q30.0,195.0 30.0,190.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="30.0" y="105.0" width="290.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+    <g id="card-1b">
+      <path d="M355.0,105.0 H645.0 V190.0 Q645.0,195.0 640.0,195.0 H360.0 Q355.0,195.0 355.0,190.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="355.0" y="105.0" width="290.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+    <g id="card-1c">
+      <path d="M680.0,105.0 H970.0 V190.0 Q970.0,195.0 965.0,195.0 H685.0 Q680.0,195.0 680.0,190.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="680.0" y="105.0" width="290.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Row 2 chips: same recipe, y=270 -->
+    <g id="card-2a">
+      <path d="M30.0,270.0 H320.0 V355.0 Q320.0,360.0 315.0,360.0 H35.0 Q30.0,360.0 30.0,355.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="30.0" y="270.0" width="290.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+    <g id="card-2b">
+      <path d="M355.0,270.0 H645.0 V355.0 Q645.0,360.0 640.0,360.0 H360.0 Q355.0,360.0 355.0,355.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="355.0" y="270.0" width="290.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+    <g id="card-2c">
+      <path d="M680.0,270.0 H970.0 V355.0 Q970.0,360.0 965.0,360.0 H685.0 Q680.0,360.0 680.0,355.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="680.0" y="270.0" width="290.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+    <!-- Row 3 chips: same recipe, y=435 -->
+    <g id="card-3a">
+      <path d="M30.0,435.0 H320.0 V520.0 Q320.0,525.0 315.0,525.0 H35.0 Q30.0,525.0 30.0,520.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="30.0" y="435.0" width="290.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+    <g id="card-3b">
+      <path d="M355.0,435.0 H645.0 V520.0 Q645.0,525.0 640.0,525.0 H360.0 Q355.0,525.0 355.0,520.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="355.0" y="435.0" width="290.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+    <g id="card-3c">
+      <path d="M680.0,435.0 H970.0 V520.0 Q970.0,525.0 965.0,525.0 H685.0 Q680.0,525.0 680.0,520.0 Z" fill="#0096d1" fill-opacity="0.04" stroke="#0096d1" stroke-width="1"/>
+      <rect x="680.0" y="435.0" width="290.0" height="5" fill="#0096d1" opacity="0.6"/>
+    </g>
+
+  </g>
+
+  <g id="connectors">
+    <!-- Row 1: card-1a -> card-1b (orange, tried leads to the refusal), card-1b -> card-1c (cyan,
+         the answer leads to the fix). svg-infographics connector, mode l-chamfer, src-rect/tgt-rect
+         per chip, start-dir E, end-dir E, direction forward, standoff 2, chamfer 4. -->
+    <path d="M322.00,150.00 L343.00,150.00" fill="none" stroke="#da8230" stroke-width="1.4" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="353.00,150.00 343.00,145.00 343.00,155.00" fill="#da8230" opacity="0.6"/>
+    <path d="M647.00,150.00 L668.00,150.00" fill="none" stroke="#0096d1" stroke-width="1.4" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="678.00,150.00 668.00,145.00 668.00,155.00" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Row 2: same recipe, y=315 -->
+    <path d="M322.00,315.00 L343.00,315.00" fill="none" stroke="#da8230" stroke-width="1.4" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="353.00,315.00 343.00,310.00 343.00,320.00" fill="#da8230" opacity="0.6"/>
+    <path d="M647.00,315.00 L668.00,315.00" fill="none" stroke="#0096d1" stroke-width="1.4" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="678.00,315.00 668.00,310.00 668.00,320.00" fill="#0096d1" opacity="0.6"/>
+
+    <!-- Row 3: same recipe, y=480 -->
+    <path d="M322.00,480.00 L343.00,480.00" fill="none" stroke="#da8230" stroke-width="1.4" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="353.00,480.00 343.00,475.00 343.00,485.00" fill="#da8230" opacity="0.6"/>
+    <path d="M647.00,480.00 L668.00,480.00" fill="none" stroke="#0096d1" stroke-width="1.4" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="678.00,480.00 668.00,475.00 668.00,485.00" fill="#0096d1" opacity="0.6"/>
+  </g>
+
+  <g id="content">
+
+    <!-- Title -->
+    <text x="500" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" class="fg-1" text-anchor="middle">What the CLI refuses to do</text>
+
+    <!-- Row 1: badge digit, title, divider -->
+    <text x="40.0" y="74.0" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1" text-anchor="middle">1</text>
+    <text x="65" y="74" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Closing without proof</text>
+    <line x1="30" y1="90" x2="970" y2="90" stroke="#0096d1" stroke-width="0.8" opacity="0.3"/>
+
+    <!-- Row 1 chip content -->
+    <text x="50" y="123" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="muted">TRIED</text>
+    <text x="50" y="143" font-family="Consolas, 'Courier New', monospace" font-size="9" class="fg-1">pm-tools close docs</text>
+    <text x="50" y="163" font-family="Consolas, 'Courier New', monospace" font-size="9" class="fg-1">--id DEF-LNCH-3 --author @kj</text>
+
+    <text x="375" y="123" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-2">CLI ANSWERS</text>
+    <text x="375" y="143" font-family="Consolas, 'Courier New', monospace" font-size="9" class="accent-2">pm-tools close: error: the following</text>
+    <text x="375" y="163" font-family="Consolas, 'Courier New', monospace" font-size="9" class="accent-2">arguments are required: --evidence</text>
+
+    <text x="700" y="123" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-1">AGENT MUST</text>
+    <text x="700" y="143" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="accent-1">Run the test and record what it printed as one</text>
+    <text x="700" y="163" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="accent-1">evidence: line - writing the fix is not evidence.</text>
+
+    <!-- Row 2: badge digit, title, divider -->
+    <text x="40.0" y="239.0" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1" text-anchor="middle">2</text>
+    <text x="65" y="239" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Filing without triage</text>
+    <line x1="30" y1="255" x2="970" y2="255" stroke="#0096d1" stroke-width="0.8" opacity="0.3"/>
+
+    <!-- Row 2 chip content -->
+    <text x="50" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="muted">TRIED</text>
+    <text x="50" y="308" font-family="Consolas, 'Courier New', monospace" font-size="9" class="fg-1">pm-tools add docs --category LNCH</text>
+    <text x="50" y="328" font-family="Consolas, 'Courier New', monospace" font-size="9" class="fg-1">--title "token race" --author @kj</text>
+
+    <text x="375" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-2">CLI ANSWERS</text>
+    <text x="375" y="308" font-family="Consolas, 'Courier New', monospace" font-size="9" class="accent-2">a defect must be triaged; pass --severity</text>
+    <text x="375" y="328" font-family="Consolas, 'Courier New', monospace" font-size="9" class="accent-2">CRITICAL|MAJOR|MEDIUM|MINOR</text>
+
+    <text x="700" y="288" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-1">AGENT MUST</text>
+    <text x="700" y="308" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="accent-1">Read the severity off the symptom, never unset - a</text>
+    <text x="700" y="328" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="accent-1">criterion takes CRITICAL, HIGH, MEDIUM or LOW too.</text>
+
+    <!-- Row 3: badge digit, title, divider -->
+    <text x="40.0" y="404.0" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1" text-anchor="middle">3</text>
+    <text x="65" y="404" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Reopening a closed defect</text>
+    <line x1="30" y1="420" x2="970" y2="420" stroke="#0096d1" stroke-width="0.8" opacity="0.3"/>
+
+    <!-- Row 3 chip content -->
+    <text x="50" y="453" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="muted">TRIED</text>
+    <text x="50" y="473" font-family="Consolas, 'Courier New', monospace" font-size="9" class="fg-1">pm-tools reopen docs</text>
+    <text x="50" y="493" font-family="Consolas, 'Courier New', monospace" font-size="9" class="fg-1">--id DEF-LNCH-3 --author @kj</text>
+
+    <text x="375" y="453" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-2">CLI ANSWERS</text>
+    <text x="375" y="473" font-family="Consolas, 'Courier New', monospace" font-size="9" class="accent-2">CLI does not flip the checkbox back.</text>
+    <text x="375" y="493" font-family="Consolas, 'Courier New', monospace" font-size="9" class="accent-2">mints DEF-LNCH-3-1 as a new open item,</text>
+    <text x="375" y="513" font-family="Consolas, 'Courier New', monospace" font-size="9" class="accent-2">DEF-LNCH-3 stays closed, evidence kept.</text>
+
+    <text x="700" y="453" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-1">AGENT MUST</text>
+    <text x="700" y="473" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="accent-1">A fix that comes back is a counted regression, not</text>
+    <text x="700" y="493" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="accent-1">an overwrite - reopen mints -2, never -1-1.</text>
+
+    <!-- Footer band -->
+    <text x="500" y="570" font-family="Consolas, 'Courier New', monospace" font-size="11" font-weight="700" class="accent-1" text-anchor="middle">pm-tools check docs</text>
+    <text x="500" y="590" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3" text-anchor="middle">is the only gate - non-zero exit on duplicate id, untriaged defect, unrated criterion,</text>
+    <text x="500" y="610" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="fg-3" text-anchor="middle">hand-kept contents table, dangling relation, or blocked-by cycle; --strict also fails on warnings.</text>
+
+  </g>
+
+  <g id="callouts">
+  </g>
+
+</svg>

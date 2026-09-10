@@ -1,0 +1,304 @@
+<!--
+  criterion-vs-defect.svg - Two disciplines, one format, in the project-management plugin's ledger
+  Shows: a shared-spine band stating the one checklist line format, id scheme and three states used
+         by both acceptance criteria and defects; a four-row, two-column comparison (criterion left,
+         defect right) covering assertion-vs-symptom, importance-vs-severity, test:-vs-repro: and
+         mechanism:-vs-root-cause:; a miniature coverage grid showing how test-tags: lands cells in a
+         category x tag grid with a NO-TEST column for what nothing covers.
+  Intent: for the project-management plugin Medium article, show criteria and defects are the same
+          format read two ways, not two formats - the four differences are the whole delta.
+  Theme: Stellars-Tech derived, hue-shifted for this figure - accent-1 rotated ~15deg cooler than the
+         sibling deck's cyan (#0096d1 -> #0062d1, same S/L, more blue/less cyan-green) so contrast is
+         unchanged and the file still reads as part of the set; accent-2 orange (#da8230) unchanged,
+         used as the counter-accent marking the defect column. Transparent backplate, dual light/dark.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1140">
+  <style>
+    .fg-1 { fill: #1a5a6e; }
+    .fg-2 { fill: #24697e; }
+    .fg-3 { fill: #236a74; }
+    .fg-4 { fill: #2b7680; }
+    .accent-1 { fill: #00407a; }
+    .accent-2 { fill: #7a4a15; }
+    .on-fill { fill: #e0f2f7; }
+    @media (prefers-color-scheme: dark) {
+      .fg-1 { fill: #b8e4f0; }
+      .fg-2 { fill: #8fd4e6; }
+      .fg-3 { fill: #5aafc5; }
+      .fg-4 { fill: #4099b3; }
+      .accent-1 { fill: #5ca7e0; }
+      .accent-2 { fill: #d4a04a; }
+      .on-fill { fill: #e0f2f7; }
+    }
+  </style>
+
+  <!-- === GRID REFERENCE ===
+    viewBox: 1000 x 1140. Margin 30px left/right (content x=30..970, width 940).
+    Title band: y=0..40 (baseline y=30, centred x=500).
+
+    Shared-spine band (stated once, applies to both disciplines):
+      heading baseline y=70 x=30; divider y=90 x=30..970 (split: blue x=30..495, orange x=505..970,
+        10px gap at centre so the two halves do not touch)
+      card: x=30 y=95 w=940 h=110 (bottom=205), accent bar y=95 h=5 split blue x=30 w=470 / orange
+        x=500 w=470; 4 monospace code lines x=50, baseline y=119,139,159,179 (pitch 20)
+
+    "Four differences" heading: baseline y=245 x=30; divider y=270 x=30..970, split at centre
+      (30..495 / 505..970) so the vertical decoration below can pass through the gap
+    Dotted centre divider (decoration, criterion/defect split): x=500, y=272..910, one continuous
+      line - every horizontal divider it crosses (270, 310, 475, 640, 805) is itself split with a
+      10px gap at x=495..505, so the two never share a pixel
+
+    Row rhythm (4 rows, row_h=140 top-to-chip-bottom, gap=25): row-N top = 275 + (N-1)*165
+      row-1 top=275 row-2 top=440 row-3 top=605 row-4 top=770
+      per row: badge cx=40 cy=top+15 r=9; title baseline=top+20 x=65; divider y=top+35 x=30..970
+        (accent-1 blue, split at centre like the section dividers); chip pair y=top+50 h=90 - left
+        (criterion) x=30 w=450, right (defect) x=520 w=450, 40px gap between (500 = divider centre)
+        chip content baselines relative to chip y: label +15, line-1 +35, line-2 +55, line-3 +75
+
+    Coverage grid panel: x=30 y=935 w=940 h=180 (bottom=1115), accent bar y=935 h=5 (blue)
+      title baseline y=960 x=50; subtitle baseline y=980 x=50; divider y=990 x=50..950 (full width,
+        the vertical decoration ends at 910 so no split needed here)
+      grid: row-label col x=50; 6 data columns start x=140, col_w=90 (UNIT, INTEGRATION,
+        FUNCTIONAL, E2E, MANUAL, NO-TEST last); header baseline y=1015; NO-TEST separator
+        x=590 y=1005..1105; 4 category rows, baseline y=1035,1055,1075,1095 (pitch 20)
+        cell: w=70 h=12, x=col_left+10, y=baseline-10
+      caption x=700, baseline y=1035,1055,1075,1095 (matches grid row pitch)
+
+    Hairline corner ticks (decoration): 12px legs, 10px inset from each of the 4 viewBox corners,
+      each drawn as one polyline (not two lines) so the shared vertex reads as ornament, not a
+      2-strand connector fork.
+  === -->
+
+  <!-- === LAYOUT TOPOLOGY ===
+    v-stack: title, shared-spine-band, differences-heading, row-1, row-2, row-3, row-4,
+      coverage-panel (gap=25 between major bands)
+    contain: shared-spine-band > accent-bar(split), heading, divider, 4 code lines
+    h-stack: card-N-criterion, card-N-defect (per row, gap=40, dotted divider between)
+    v-align: card-N-criterion (rows 1-4) share x=30 w=450; card-N-defect (rows 1-4) share x=520 w=450
+    contain: each card-chip > accent-bar, role label, 2-4 content lines
+    contain: card-panel-coverage > accent-bar, title, subtitle, divider, grid(header + 4 rows +
+      NO-TEST column + separator), caption
+    mirror: card-N-criterion <-> card-N-defect (identical anatomy, accent-1 vs accent-2)
+  === -->
+
+  <g id="background">
+    <rect x="0" y="0" width="1000" height="1140" fill="transparent"/>
+    <g id="guide-grid" display="none">
+      <line x1="30" y1="0" x2="30" y2="1140" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="500" y1="0" x2="500" y2="1140" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="970" y1="0" x2="970" y2="1140" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="95" x2="1000" y2="95" stroke="#da8230" stroke-width="0.5"/>
+      <line x1="0" y1="935" x2="1000" y2="935" stroke="#da8230" stroke-width="0.5"/>
+    </g>
+
+    <!-- Dotted centre divider between criterion / defect columns (decoration only) - single
+         continuous line; every horizontal divider it crosses is itself split at the centre. -->
+    <line x1="500" y1="275" x2="500" y2="910" stroke="#2b7680" stroke-width="1" stroke-dasharray="1,4" opacity="0.3"/>
+
+    <!-- Hairline corner ticks (decoration only) - one polyline per corner -->
+    <g fill="none" stroke="#2b7680" stroke-width="1" opacity="0.35">
+      <polyline points="22,10 10,10 10,22"/>
+      <polyline points="978,10 990,10 990,22"/>
+      <polyline points="22,1130 10,1130 10,1118"/>
+      <polyline points="978,1130 990,1130 990,1118"/>
+    </g>
+  </g>
+
+  <g id="nodes">
+    <!-- Shared-spine card: x=30 y=95 w=940 h=110, split accent bar -->
+    <g id="card-shared">
+      <path d="M30.0,95.0 H970.0 V197.0 Q970.0,205.0 962.0,205.0 H38.0 Q30.0,205.0 30.0,197.0 Z" fill="#0062d1" fill-opacity="0.03" stroke="#0062d1" stroke-width="1"/>
+      <rect x="30.0" y="95.0" width="470.0" height="5" fill="#0062d1" opacity="0.6"/>
+      <rect x="500.0" y="95.0" width="470.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Row badges -->
+    <g id="badge-1"><circle cx="40.0" cy="290.0" r="9.0" fill="#0062d1" fill-opacity="0.15" stroke="#0062d1" stroke-width="1.2"/></g>
+    <g id="badge-2"><circle cx="40.0" cy="455.0" r="9.0" fill="#0062d1" fill-opacity="0.15" stroke="#0062d1" stroke-width="1.2"/></g>
+    <g id="badge-3"><circle cx="40.0" cy="620.0" r="9.0" fill="#0062d1" fill-opacity="0.15" stroke="#0062d1" stroke-width="1.2"/></g>
+    <g id="badge-4"><circle cx="40.0" cy="785.0" r="9.0" fill="#0062d1" fill-opacity="0.15" stroke="#0062d1" stroke-width="1.2"/></g>
+
+    <!-- Row 1 chips -->
+    <g id="card-1-criterion">
+      <path d="M30.0,325.0 H480.0 V407.0 Q480.0,415.0 472.0,415.0 H38.0 Q30.0,415.0 30.0,407.0 Z" fill="#0062d1" fill-opacity="0.04" stroke="#0062d1" stroke-width="1"/>
+      <rect x="30.0" y="325.0" width="450.0" height="5" fill="#0062d1" opacity="0.6"/>
+    </g>
+    <g id="card-1-defect">
+      <path d="M520.0,325.0 H970.0 V407.0 Q970.0,415.0 962.0,415.0 H528.0 Q520.0,415.0 520.0,407.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="520.0" y="325.0" width="450.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Row 2 chips -->
+    <g id="card-2-criterion">
+      <path d="M30.0,490.0 H480.0 V572.0 Q480.0,580.0 472.0,580.0 H38.0 Q30.0,580.0 30.0,572.0 Z" fill="#0062d1" fill-opacity="0.04" stroke="#0062d1" stroke-width="1"/>
+      <rect x="30.0" y="490.0" width="450.0" height="5" fill="#0062d1" opacity="0.6"/>
+    </g>
+    <g id="card-2-defect">
+      <path d="M520.0,490.0 H970.0 V572.0 Q970.0,580.0 962.0,580.0 H528.0 Q520.0,580.0 520.0,572.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="520.0" y="490.0" width="450.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Row 3 chips -->
+    <g id="card-3-criterion">
+      <path d="M30.0,655.0 H480.0 V737.0 Q480.0,745.0 472.0,745.0 H38.0 Q30.0,745.0 30.0,737.0 Z" fill="#0062d1" fill-opacity="0.04" stroke="#0062d1" stroke-width="1"/>
+      <rect x="30.0" y="655.0" width="450.0" height="5" fill="#0062d1" opacity="0.6"/>
+    </g>
+    <g id="card-3-defect">
+      <path d="M520.0,655.0 H970.0 V737.0 Q970.0,745.0 962.0,745.0 H528.0 Q520.0,745.0 520.0,737.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="520.0" y="655.0" width="450.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Row 4 chips -->
+    <g id="card-4-criterion">
+      <path d="M30.0,820.0 H480.0 V902.0 Q480.0,910.0 472.0,910.0 H38.0 Q30.0,910.0 30.0,902.0 Z" fill="#0062d1" fill-opacity="0.04" stroke="#0062d1" stroke-width="1"/>
+      <rect x="30.0" y="820.0" width="450.0" height="5" fill="#0062d1" opacity="0.6"/>
+    </g>
+    <g id="card-4-defect">
+      <path d="M520.0,820.0 H970.0 V902.0 Q970.0,910.0 962.0,910.0 H528.0 Q520.0,910.0 520.0,902.0 Z" fill="#da8230" fill-opacity="0.05" stroke="#da8230" stroke-width="1"/>
+      <rect x="520.0" y="820.0" width="450.0" height="5" fill="#da8230" opacity="0.6"/>
+    </g>
+
+    <!-- Coverage grid panel -->
+    <g id="card-panel-coverage">
+      <path d="M30.0,935.0 H970.0 V1107.0 Q970.0,1115.0 962.0,1115.0 H38.0 Q30.0,1115.0 30.0,1107.0 Z" fill="#0062d1" fill-opacity="0.03" stroke="#0062d1" stroke-width="1"/>
+      <rect x="30.0" y="935.0" width="940.0" height="5" fill="#0062d1" opacity="0.6"/>
+    </g>
+
+    <!-- Coverage grid: NO-TEST column separator -->
+    <line x1="590" y1="1005" x2="590" y2="1105" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+
+    <!-- Coverage grid cells: empty = outline only, covered = solid accent-1, NO-TEST gap = solid accent-2 -->
+    <!-- row LNCH y=1035, cell y=1025 -->
+    <rect x="150" y="1025" width="70" height="12" rx="2" fill="#0062d1"/>
+    <rect x="240" y="1025" width="70" height="12" rx="2" fill="#0062d1"/>
+    <rect x="330" y="1025" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="420" y="1025" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="510" y="1025" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="600" y="1025" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <!-- row CORE y=1055, cell y=1045 -->
+    <rect x="150" y="1045" width="70" height="12" rx="2" fill="#0062d1"/>
+    <rect x="240" y="1045" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="330" y="1045" width="70" height="12" rx="2" fill="#0062d1"/>
+    <rect x="420" y="1045" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="510" y="1045" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="600" y="1045" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <!-- row DOCS y=1075, cell y=1065 -->
+    <rect x="150" y="1065" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="240" y="1065" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="330" y="1065" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="420" y="1065" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="510" y="1065" width="70" height="12" rx="2" fill="#0062d1"/>
+    <rect x="600" y="1065" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <!-- row PERF y=1095, cell y=1085 -->
+    <rect x="150" y="1085" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="240" y="1085" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="330" y="1085" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="420" y="1085" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="510" y="1085" width="70" height="12" rx="2" fill="none" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <rect x="600" y="1085" width="70" height="12" rx="2" fill="#da8230"/>
+  </g>
+
+  <g id="connectors">
+  </g>
+
+  <g id="content">
+    <text x="500" y="30" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" class="fg-1">Two disciplines, one format</text>
+
+    <!-- Shared spine band -->
+    <text x="30" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" letter-spacing="0.3">The shared spine - stated once</text>
+    <line x1="30" y1="90" x2="495" y2="90" stroke="#0062d1" stroke-width="0.8" opacity="0.35"/>
+    <line x1="505" y1="90" x2="970" y2="90" stroke="#da8230" stroke-width="0.8" opacity="0.35"/>
+
+    <g id="shared-lines">
+      <text x="50" y="119" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="11" class="fg-1">- [ ] `ACC/DEF-&lt;CAT&gt;-&lt;N&gt;` **title** - body</text>
+      <text x="50" y="139" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="11" class="fg-1">  id: `ACC-&lt;CAT&gt;-&lt;N&gt;` / `DEF-&lt;CAT&gt;-&lt;N&gt;` - permanent, never recycled</text>
+      <text x="50" y="159" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="11" class="fg-1">  states: `[ ]` open   `[x]` closed   `[-]` rejected</text>
+      <text x="50" y="179" xml:space="preserve" font-family="Consolas, 'Courier New', monospace" font-size="11" class="fg-1">  log: `&lt;timestamp&gt;` `@who` `&lt;verb&gt;`: `&lt;text&gt;` - append-only</text>
+    </g>
+
+    <!-- Four differences heading -->
+    <text x="30" y="245" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" letter-spacing="0.3">The four differences</text>
+    <line x1="30" y1="270" x2="480" y2="270" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+    <line x1="520" y1="270" x2="970" y2="270" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+
+    <!-- Row 1: Assertion vs symptom -->
+    <text x="40.0" y="295.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1">1</text>
+    <text x="65" y="295" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Assertion vs symptom</text>
+    <line x1="30" y1="310" x2="480" y2="310" stroke="#0062d1" stroke-width="0.8" opacity="0.3"/>
+    <line x1="520" y1="310" x2="970" y2="310" stroke="#0062d1" stroke-width="0.8" opacity="0.3"/>
+    <text x="50" y="340" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-1">CRITERION</text>
+    <text x="50" y="360" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-1">One statement a reviewer can call met or not met.</text>
+    <text x="50" y="380" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-1">"And" inside one item means two criteria.</text>
+    <text x="540" y="340" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-2">DEFECT</text>
+    <text x="540" y="360" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-2">A symptom, described in the reporter's own words.</text>
+    <text x="540" y="380" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-2">Not yet a diagnosis of the cause.</text>
+
+    <!-- Row 2: Importance vs severity -->
+    <text x="40.0" y="460.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1">2</text>
+    <text x="65" y="460" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" class="fg-1">Importance vs severity</text>
+    <line x1="30" y1="475" x2="480" y2="475" stroke="#0062d1" stroke-width="0.8" opacity="0.3"/>
+    <line x1="520" y1="475" x2="970" y2="475" stroke="#0062d1" stroke-width="0.8" opacity="0.3"/>
+    <text x="50" y="505" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-1">CRITERION</text>
+    <text x="50" y="525" font-family="Consolas, 'Courier New', monospace" font-size="10" class="accent-1">CRITICAL • HIGH • MEDIUM • LOW</text>
+    <text x="50" y="545" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-1">Opens every criterion - never left unset.</text>
+    <text x="540" y="505" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-2">DEFECT</text>
+    <text x="540" y="525" font-family="Consolas, 'Courier New', monospace" font-size="10" class="accent-2">CRITICAL • MAJOR • MEDIUM • MINOR</text>
+    <text x="540" y="545" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-2">Opens every defect - never left unset.</text>
+
+    <!-- Row 3: test: vs repro: -->
+    <text x="40.0" y="625.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1">3</text>
+    <text x="65" y="625" font-family="Consolas, 'Courier New', monospace" font-size="12" font-weight="700" class="fg-1">test: vs repro:</text>
+    <line x1="30" y1="640" x2="480" y2="640" stroke="#0062d1" stroke-width="0.8" opacity="0.3"/>
+    <line x1="520" y1="640" x2="970" y2="640" stroke="#0062d1" stroke-width="0.8" opacity="0.3"/>
+    <text x="50" y="670" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-1">CRITERION</text>
+    <text x="50" y="690" font-family="Consolas, 'Courier New', monospace" font-size="10.5" class="accent-1">test:</text>
+    <text x="50" y="710" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-1">how a reviewer would check it</text>
+    <text x="50" y="730" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="accent-1">test-tags:</text>
+    <text x="540" y="670" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-2">DEFECT</text>
+    <text x="540" y="690" font-family="Consolas, 'Courier New', monospace" font-size="10.5" class="accent-2">repro:</text>
+    <text x="540" y="710" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-2">how to make it happen</text>
+    <text x="540" y="730" font-family="Consolas, 'Courier New', monospace" font-size="8.5" class="accent-2">test-tags:</text>
+
+    <!-- Row 4: mechanism: vs root-cause: -->
+    <text x="40.0" y="790.0" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" class="accent-1">4</text>
+    <text x="65" y="790" font-family="Consolas, 'Courier New', monospace" font-size="12" font-weight="700" class="fg-1">mechanism: vs root-cause:</text>
+    <line x1="30" y1="805" x2="480" y2="805" stroke="#0062d1" stroke-width="0.8" opacity="0.3"/>
+    <line x1="520" y1="805" x2="970" y2="805" stroke="#0062d1" stroke-width="0.8" opacity="0.3"/>
+    <text x="50" y="835" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-1">CRITERION</text>
+    <text x="50" y="855" font-family="Consolas, 'Courier New', monospace" font-size="10.5" class="accent-1">mechanism:</text>
+    <text x="50" y="875" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-1">how the behaviour is meant to work</text>
+    <text x="540" y="835" font-family="Segoe UI, Arial, sans-serif" font-size="7.5" font-weight="700" letter-spacing="0.5" class="accent-2">DEFECT</text>
+    <text x="540" y="855" font-family="Consolas, 'Courier New', monospace" font-size="10.5" class="accent-2">root-cause:</text>
+    <text x="540" y="875" font-family="Segoe UI, Arial, sans-serif" font-size="9.5" font-style="italic" class="accent-2">why it fails - newest on top, older kept</text>
+
+    <!-- Coverage grid panel -->
+    <text x="50" y="960" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700" class="fg-1" letter-spacing="0.3">Coverage grid</text>
+    <text x="50" y="980" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">Every test-tags: line feeds a row below - NO-TEST is what nothing covers.</text>
+    <line x1="50" y1="990" x2="950" y2="990" stroke="#2b7680" stroke-width="0.8" opacity="0.3"/>
+
+    <g id="coverage-grid-labels">
+      <text x="50" y="1015" font-family="Consolas, 'Courier New', monospace" font-size="7.3" font-weight="700" class="fg-1">CATEGORY</text>
+      <text x="185" y="1015" text-anchor="middle" font-family="Consolas, 'Courier New', monospace" font-size="7.3" font-weight="700" class="fg-1">UNIT</text>
+      <text x="275" y="1015" text-anchor="middle" font-family="Consolas, 'Courier New', monospace" font-size="7.3" font-weight="700" class="fg-1">INTEGRATION</text>
+      <text x="365" y="1015" text-anchor="middle" font-family="Consolas, 'Courier New', monospace" font-size="7.3" font-weight="700" class="fg-1">FUNCTIONAL</text>
+      <text x="455" y="1015" text-anchor="middle" font-family="Consolas, 'Courier New', monospace" font-size="7.3" font-weight="700" class="fg-1">E2E</text>
+      <text x="545" y="1015" text-anchor="middle" font-family="Consolas, 'Courier New', monospace" font-size="7.3" font-weight="700" class="fg-1">MANUAL</text>
+      <text x="635" y="1015" text-anchor="middle" font-family="Consolas, 'Courier New', monospace" font-size="7.3" font-weight="700" class="accent-2">NO-TEST</text>
+
+      <text x="50" y="1035" font-family="Consolas, 'Courier New', monospace" font-size="8.5" font-weight="600" class="fg-1">LNCH</text>
+      <text x="50" y="1055" font-family="Consolas, 'Courier New', monospace" font-size="8.5" font-weight="600" class="fg-1">CORE</text>
+      <text x="50" y="1075" font-family="Consolas, 'Courier New', monospace" font-size="8.5" font-weight="600" class="fg-1">DOCS</text>
+      <text x="50" y="1095" font-family="Consolas, 'Courier New', monospace" font-size="8.5" font-weight="600" class="fg-1">PERF</text>
+    </g>
+
+    <g id="coverage-caption">
+      <text x="700" y="1035" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">Filled cells = tags present</text>
+      <text x="700" y="1055" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">in an item's test-tags: line.</text>
+      <text x="700" y="1075" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">NO-TEST flags what nothing</text>
+      <text x="700" y="1095" font-family="Segoe UI, Arial, sans-serif" font-size="9" font-style="italic" class="fg-3">covers at all.</text>
+    </g>
+  </g>
+
+  <g id="callouts">
+  </g>
+</svg>
