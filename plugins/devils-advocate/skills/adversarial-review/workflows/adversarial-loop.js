@@ -32,6 +32,9 @@ export const meta = {
 // the adjudicator judges spiralling; the fanout ratio is evidence it cites,
 // never the gate (DEF-ADVR-50).
 //
+// A CLEAN ROUND SHIPS: nothing edits the tree inside the workflow, so a second
+// panel after a clean round would review identical code (DEF-ADVR-65).
+//
 // args - first invocation (bar, lenses, target mandatory):
 //   target     what is under review, e.g. "src/turndown.ts and its tests"
 //   scope      in-scope dirs/files and the exclusions, stated as prose
@@ -46,13 +49,15 @@ export const meta = {
 //              the adjudicator uses it to group findings by shared cause and
 //              bound each change's radius (cleaner fixes)
 //   maxRounds  total reviewer rounds before ROUND_CAP (default 6)
-//   cleanRequired  consecutive clean rounds to exit (default 2)
 //   maxChanges     advisory plan budget per round (default 3)
 // args - re-invocation after applying a PLAN:
-//   state         the `state` object from the previous PLAN return, verbatim
-//   appliedFixes  [{site, summary, files?}] - what the main session actually
-//                 applied (reverts included, as "reverted: <mechanism>");
-//                 `files` lists the touched paths and sharpens the confirm filter
+//   state         the `state` object from the previous PLAN return, verbatim;
+//                 refused when its `contract` is not this script's LOOP_CONTRACT
+//   appliedFixes  [{site, summary, files, patch}] - what the main session
+//                 actually applied (reverts included, as "reverted: <mechanism>");
+//                 `files` lists the touched paths, `patch` is the path of a file
+//                 holding the diff of exactly that change - the confirming
+//                 reviewers read it instead of the whole delta (DEF-ADVR-63)
 
 if (!args || !args.target || !args.bar || !Array.isArray(args.lenses) || !args.lenses.length) {
   throw new Error('args.target, args.bar and args.lenses are mandatory - the bar is the review\'s scope anchor, refuse to review without one')
@@ -60,13 +65,26 @@ if (!args || !args.target || !args.bar || !Array.isArray(args.lenses) || !args.l
 if (typeof args.bar !== 'object' || !args.bar.purpose || !args.bar.inputs || !args.bar.primaryPath) {
   throw new Error('args.bar must be an object with purpose, inputs and primaryPath - an output-only bar gives reviewers nothing to test materiality against')
 }
+
+// The shape of `state` and `appliedFixes` this script reads. Bump it whenever
+// either changes, so a state written by another version - or this script run
+// from a stale copy - is refused instead of misread (DEF-ADVR-66).
+const LOOP_CONTRACT = 1
+if (args.state) {
+  if (args.state.contract !== LOOP_CONTRACT) {
+    throw new Error(`args.state was written under loop contract ${args.state.contract} and this script reads contract ${LOOP_CONTRACT} - the state and the script come from different versions; run the installed adversarial-loop.js and start the review again`)
+  }
+  const fixes = args.appliedFixes
+  if (!Array.isArray(fixes) || !fixes.length || fixes.some((f) => !f.site || !f.summary || !f.patch || !Array.isArray(f.files) || !f.files.length)) {
+    throw new Error('args.appliedFixes must list every applied change as {site, summary, files, patch} - files the change touched, patch the path of a file holding the diff of exactly that change; without them a confirming reviewer re-reads the whole delta')
+  }
+}
 const TARGET = args.target
 const SCOPE = args.scope || 'the named target only'
 const BAR = args.bar
 const LENSES = args.lenses
 const GRAPH = args.graph || null
 const MAX_ROUNDS = args.maxRounds || 6
-const CLEAN_REQUIRED = args.cleanRequired || 2
 const MAX_CHANGES = args.maxChanges || 3
 
 // An instrument is DATA, never a prescribed command: the caller says what
@@ -176,15 +194,22 @@ const runPanelChecked = async (phase, body) => {
   return raw
 }
 
+// One finding reported twice: the same file within 25 lines, or the same
+// title. A path one reviewer gives absolute and another relative is one file.
+const sameFile = (a, b) => {
+  const x = (a || '').replace(/\\/g, '/')
+  const y = (b || '').replace(/\\/g, '/')
+  return !!x && !!y && (x === y || x.endsWith(`/${y}`) || y.endsWith(`/${x}`))
+}
+const sameSite = (a, b) =>
+  (sameFile(a.file, b.file) && a.line != null && b.line != null && Math.abs(a.line - b.line) <= 25) ||
+  a.title.toLowerCase().trim() === b.title.toLowerCase().trim()
+
 const mergeFindings = (perLens) => {
   const rows = []
   perLens.forEach((rep, i) => {
     ;(rep && rep.findings ? rep.findings : []).forEach((f) => {
-      const hit = rows.find(
-        (r) =>
-          (r.file === f.file && r.line != null && f.line != null && Math.abs(r.line - f.line) <= 25) ||
-          r.title.toLowerCase().trim() === f.title.toLowerCase().trim()
-      )
+      const hit = rows.find((r) => sameSite(r, f))
       if (hit) {
         hit.lenses.push(LENSES[i])
         if (f.severity === 'CRITICAL' && hit.severity !== 'CRITICAL') Object.assign(hit, { severity: 'CRITICAL' })
@@ -209,10 +234,12 @@ const barBlock = [
   .filter(Boolean)
   .join('\n')
 
-const reviewerPrompt = (lens, body) =>
+const reviewerPrompt = (lens, body, confirming) =>
   [
     `Adversary lens: ${lens}. Adopt that persona file exactly.`,
-    `TARGET: ${TARGET}`,
+    confirming
+      ? `TARGET (reviewed in full in round 1 - orientation only; do not re-read it): ${TARGET}`
+      : `TARGET: ${TARGET}`,
     `SCOPE: ${SCOPE}`,
     barBlock,
     graphBlock,
@@ -225,7 +252,7 @@ const reviewerPrompt = (lens, body) =>
 const runPanel = (phase, body) =>
   parallel(
     LENSES.map((lens) => () =>
-      agent(reviewerPrompt(lens, body), {
+      agent(reviewerPrompt(lens, body, phase === 'Confirm'), {
         label: `${phase.toLowerCase()}:${lens}`,
         phase,
         schema: FINDINGS_SCHEMA,
@@ -241,23 +268,23 @@ const allDeferred = S ? S.deferred : []
 const allRefuted = S ? S.refuted : []
 const rulings = S ? S.rulings : []
 const closures = S ? S.closures : []
+const settled = S ? S.settled : []
 let round = S ? S.round : 0
-let cleanStreak = S ? S.cleanStreak : 0
 let spiralStreak = S ? S.spiralStreak : 0
-let shipped = false
 
-const newDelta = S && Array.isArray(args.appliedFixes) ? args.appliedFixes : []
-newDelta.forEach((f) => closures.push({ round, site: f.site, summary: f.summary, files: f.files || [] }))
+const newDelta = S ? args.appliedFixes : []
+newDelta.forEach((f) => closures.push({ round, site: f.site, summary: f.summary, files: f.files, patch: f.patch }))
 
 const stateOut = () => ({
+  contract: LOOP_CONTRACT,
   round,
-  cleanStreak,
   spiralStreak,
   history,
   deferred: allDeferred,
   refuted: allRefuted,
   rulings,
   closures,
+  settled,
 })
 
 // The adjudicator starts fresh every round (new spawn, no memory) - this
@@ -273,16 +300,18 @@ const priorRecord = () =>
     allDeferred.length ? allDeferred.map((d) => `- ${d}`).join('\n') : '(none)',
   ].join('\n')
 
+// A confirm runs only on a re-invocation, which the contract check above
+// guarantees carries at least one applied fix with its files and patch.
 const confirmBody = () =>
   [
     `This is a CONFIRMING round, pinned - not a fresh sweep. Two jobs only:`,
     `1. Reproduce each closure below and verify the defect is gone - a closure that is NOT closed is reported with its text in the \`closure\` field.`,
     `2. Attack what the applied changes could have broken - the applied delta is your only attack surface; do not review code the changes did not touch. A regression the change caused outside its own files - a caller, a test - is reported with the causing closure quoted in \`closure\`; the filter keeps a finding by that field, so an unnamed closure means the finding is discarded.`,
-    `TURN BUDGET: read the delta, reproduce the closures, run the test command once if one is named, report. Do not rebuild the inventory, do not audit prose, naming, comments or test style, do not write scratch specs beyond what reproduces a closure. The script DISCARDS any finding that is taste, or sits outside the applied delta without naming a failing closure - do not spend turns producing one.`,
+    `TURN BUDGET: read the patch of each NEWEST DELTA entry, then only the lines a closure you reproduce needs; run the test command once if one is named; report. Never re-read the whole delta - no diff against the base, no re-reading of documents the target names - it was reviewed in full in round 1. Do not rebuild the inventory, do not audit prose, naming, comments or test style, do not write scratch specs beyond what reproduces a closure. The script DISCARDS any finding that is taste, sits outside the applied delta without naming a failing closure, or repeats a finding already ruled at a site no fix has touched since - do not spend turns producing one.`,
     `CLOSURES (all applied so far):`,
-    closures.length ? closures.map((c) => `- ${c.site}: ${c.summary}`).join('\n') : '(none applied - verify the clean state holds)',
-    `NEWEST DELTA (this invocation's primary attack surface):`,
-    newDelta.length ? newDelta.map((c) => `- ${c.site}: ${c.summary}${c.files && c.files.length ? ` [${c.files.join(', ')}]` : ''}`).join('\n') : '(none new)',
+    closures.map((c) => `- ${c.site}: ${c.summary} [patch: ${c.patch}]`).join('\n'),
+    `NEWEST DELTA (this invocation's attack surface - read these patches first):`,
+    newDelta.map((c) => `- ${c.site}: ${c.summary} [${c.files.join(', ')}] patch: ${c.patch}`).join('\n'),
   ].join('\n')
 
 // Confirm-round filter - SCOPE, not blocking.
@@ -308,12 +337,34 @@ const pinFilter = (findings) => {
   return kept
 }
 
-// --- First panel of this invocation ---------------------------------------
+// Settled record - SCOPE, not blocking. A finding the adjudicator ruled
+// without a change stays ruled while no fix applied since that ruling has
+// touched its file; a later finding at that site is discarded unless it names
+// a closure it fails (DEF-ADVR-64).
+const touchedSince = (s) => closures.some((c) => c.round >= s.round && c.files.some((p) => sameFile(p, s.file)))
+const settledFilter = (findings) => {
+  const kept = []
+  const dropped = []
+  findings.forEach((f) => {
+    const ruled = !(f.closure && f.closure.trim()) && settled.some((s) => sameSite(s, f) && !touchedSince(s))
+    ;(ruled ? dropped : kept).push(f)
+  })
+  if (dropped.length) {
+    log(`settled filter: ${dropped.length} finding(s) discarded - already ruled at a site no fix has touched since: ${dropped.map((d) => d.title).join(' | ')}`)
+    history.push({ round, kind: 'settled-filter', discarded: dropped.map((d) => `${d.file}: ${d.title}`) })
+  }
+  return kept
+}
+
+// --- The one panel of this invocation -------------------------------------
+if (S && round >= MAX_ROUNDS)
+  return { status: 'ROUND_CAP', reason: `${round} reviewer rounds reached maxRounds ${MAX_ROUNDS} - the last applied delta is unconfirmed; put it to the user`, rounds: round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+
 let findings
 round += 1
 if (!S) {
   phase('Discover')
-  log(`round 1 discovery: ${LENSES.join(', ')} over ${TARGET}`)
+  log(`round 1 discovery (loop contract ${LOOP_CONTRACT}): ${LENSES.join(', ')} over ${TARGET}`)
   findings = mergeFindings(
     await runPanelChecked(
       'Discover',
@@ -322,113 +373,97 @@ if (!S) {
   )
   history.push({ round, kind: 'discover', findings: findings.length, severities: severityTally(findings) })
 } else {
-  log(`round ${round} confirming: pinned to ${closures.length} closure(s), ${newDelta.length} new`)
-  findings = pinFilter(mergeFindings(await runPanelChecked('Confirm', confirmBody())))
+  log(`round ${round} confirming (loop contract ${LOOP_CONTRACT}): pinned to ${closures.length} closure(s), ${newDelta.length} new`)
+  findings = settledFilter(pinFilter(mergeFindings(await runPanelChecked('Confirm', confirmBody()))))
   history.push({ round, kind: 'confirm', findings: findings.length, severities: severityTally(findings) })
 }
 
-  if (panelDeath)
-    return { status: 'PANEL_DIED', reason: `every reviewer in the ${panelDeath.phase} panel died - this round reviewed NOTHING; relaunch it, never read it as clean`, round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+if (panelDeath)
+  return { status: 'PANEL_DIED', reason: `every reviewer in the ${panelDeath.phase} panel died - this round reviewed NOTHING; relaunch it, never read it as clean`, round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
 
-while (true) {
-  if (!findings.length) {
-    cleanStreak += 1
-    spiralStreak = 0
-    log(`round ${round} clean - no findings (${cleanStreak}/${CLEAN_REQUIRED} consecutive)`)
-    if (cleanStreak >= CLEAN_REQUIRED || (round === 1 && !S)) {
-      shipped = true
-      break
-    }
-  } else {
-    // --- Adjudicate: always, on every finding - the adjudicator decides ---
-    const adj = await agent(
-      [
-        `You adjudicate adversarial-review findings for ${TARGET}.`,
-        barBlock,
-        graphBlock,
-        priorRecord(),
-        `FINDINGS (round ${round}, ${findings.length}: ${severityTally(findings)}; findings carrying cappedFrom were reduced by the script for material=false):`,
-        JSON.stringify(findings, null, 2),
-        `CHANGES APPLIED IN PREVIOUS ROUNDS (the revert candidates; fanoutTraced counts against these):`,
-        closures.length ? closures.map((c) => `round ${c.round} ${c.site}: ${c.summary}`).join('\n') : '(none - round 1)',
-        `CHANGE BUDGET: ${MAX_CHANGES}`,
-        `TRAJECTORY: judge it - converging or spiralling - and say why; two consecutive refining rounds you judge spiralling stop the loop.`,
-      ]
-        .filter(Boolean)
-        .join('\n\n'),
-      { label: `adjudicate:r${round}`, phase: 'Adjudicate', schema: ADJUDICATION_SCHEMA, agentType: 'devils-advocate:adjudicator' }
-    )
-    if (!adj)
-      return { status: 'ADJUDICATOR_DIED', round, history, findings, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
-    const reverts = adj.reverts || []
-    allDeferred.push(...(adj.deferred || []))
-    allRefuted.push(...(adj.refuted || []))
-    rulings.push({ round, ruling: adj.ruling, changes: adj.changes.length, reverts: reverts.length, fanout: `${adj.fanoutTraced}/${adj.fanoutTotal}`, trajectory: adj.trajectory })
-    log(`round ${round} adjudicated: ${adj.ruling}, ${adj.changes.length} changes, ${reverts.length} reverts, fanout ${adj.fanoutTraced}/${adj.fanoutTotal}, ${adj.trajectory} - ${adj.trajectoryReason}`)
-    const mechanisms = adj.changes.filter((c) => c.newMechanism)
-    if (mechanisms.length) log(`round ${round}: ${mechanisms.length} change(s) add a NEW MECHANISM - veto at PLAN unless each answers a material CRITICAL/MAJOR: ${mechanisms.map((m) => m.site).join(' | ')}`)
-    if (adj.changes.length > MAX_CHANGES) log(`round ${round}: plan carries ${adj.changes.length} changes against a budget of ${MAX_CHANGES} - apply the top ${MAX_CHANGES}, defer the rest`)
-    if (adj.ruling === 'STOP') {
-      return { status: 'STOP', reason: 'adjudicator: the loop is generating its own work - re-model instead of another round - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
-    }
-    // The stop is the adjudicator's judgment, not a ratio: two consecutive
-    // rounds it calls spiralling while still ordering changes or reverts. A
-    // clean round resets (DEF-ADVR-46); the fanout ratio is evidence the
-    // adjudicator cites, never the gate (DEF-ADVR-50).
-    const refining = adj.changes.length > 0 || reverts.length > 0
-    spiralStreak = adj.trajectory === 'spiralling' && refining ? spiralStreak + 1 : 0
-    if (spiralStreak >= 2) {
-      // Revert candidates: what the adjudicator ruled ({mechanism, site,
-      // dissolves, defers}), else every applied change in closure shape
-      // ({site, summary, files}) - the findings live in the loop's own fixes
-      // by definition; entries whose summary starts "reverted:" are reverts
-      // already applied and are skipped by the main session.
-      return { status: 'FANOUT_STOP', reason: 'the adjudicator judged the loop spiralling in two consecutive rounds (' + adj.trajectoryReason + ') - revert the listed mechanisms, defer what they answered, then re-model if anything material remains - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
-    }
+if (findings.length) {
+  // --- Adjudicate: always, on every finding - the adjudicator decides ------
+  const adj = await agent(
+    [
+      `You adjudicate adversarial-review findings for ${TARGET}.`,
+      barBlock,
+      graphBlock,
+      priorRecord(),
+      `FINDINGS (round ${round}, ${findings.length}: ${severityTally(findings)}; findings carrying cappedFrom were reduced by the script for material=false):`,
+      JSON.stringify(findings, null, 2),
+      `CHANGES APPLIED IN PREVIOUS ROUNDS (the revert candidates; fanoutTraced counts against these):`,
+      closures.length ? closures.map((c) => `round ${c.round} ${c.site}: ${c.summary}`).join('\n') : '(none - round 1)',
+      `CHANGE BUDGET: ${MAX_CHANGES}`,
+      `TRAJECTORY: judge it - converging or spiralling - and say why; two consecutive refining rounds you judge spiralling stop the loop.`,
+    ]
+      .filter(Boolean)
+      .join('\n\n'),
+    { label: `adjudicate:r${round}`, phase: 'Adjudicate', schema: ADJUDICATION_SCHEMA, agentType: 'devils-advocate:adjudicator' }
+  )
+  if (!adj)
+    return { status: 'ADJUDICATOR_DIED', round, history, findings, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+  const reverts = adj.reverts || []
+  allDeferred.push(...(adj.deferred || []))
+  allRefuted.push(...(adj.refuted || []))
+  // Every finding no planned change answers is now ruled - refuted, deferred
+  // or taste - and the settled record keeps its site for the next confirm.
+  const answered = new Set(adj.changes.flatMap((c) => c.answers || []).map((a) => a.toLowerCase().trim()))
+  findings
+    .filter((f) => !answered.has(f.title.toLowerCase().trim()))
+    .forEach((f) => settled.push({ round, file: f.file, line: f.line, title: f.title }))
+  rulings.push({ round, ruling: adj.ruling, changes: adj.changes.length, reverts: reverts.length, fanout: `${adj.fanoutTraced}/${adj.fanoutTotal}`, trajectory: adj.trajectory })
+  log(`round ${round} adjudicated: ${adj.ruling}, ${adj.changes.length} changes, ${reverts.length} reverts, fanout ${adj.fanoutTraced}/${adj.fanoutTotal}, ${adj.trajectory} - ${adj.trajectoryReason}`)
+  const mechanisms = adj.changes.filter((c) => c.newMechanism)
+  if (mechanisms.length) log(`round ${round}: ${mechanisms.length} change(s) add a NEW MECHANISM - veto at PLAN unless each answers a material CRITICAL/MAJOR: ${mechanisms.map((m) => m.site).join(' | ')}`)
+  if (adj.changes.length > MAX_CHANGES) log(`round ${round}: plan carries ${adj.changes.length} changes against a budget of ${MAX_CHANGES} - apply the top ${MAX_CHANGES}, defer the rest`)
+  if (adj.ruling === 'STOP') {
+    return { status: 'STOP', reason: 'adjudicator: the loop is generating its own work - re-model instead of another round - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+  }
+  // The stop is the adjudicator's judgment, not a ratio: two consecutive
+  // rounds it calls spiralling while still ordering changes or reverts. A
+  // clean round ships before it can count (DEF-ADVR-46); the fanout ratio is
+  // evidence the adjudicator cites, never the gate (DEF-ADVR-50).
+  const refining = adj.changes.length > 0 || reverts.length > 0
+  spiralStreak = adj.trajectory === 'spiralling' && refining ? spiralStreak + 1 : 0
+  if (spiralStreak >= 2) {
+    // Revert candidates: what the adjudicator ruled ({mechanism, site,
+    // dissolves, defers}), else every applied change in closure shape
+    // ({site, summary, files}) - the findings live in the loop's own fixes
+    // by definition; entries whose summary starts "reverted:" are reverts
+    // already applied and are skipped by the main session.
+    return { status: 'FANOUT_STOP', reason: 'the adjudicator judged the loop spiralling in two consecutive rounds (' + adj.trajectoryReason + ') - revert the listed mechanisms, defer what they answered, then re-model if anything material remains - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+  }
 
-    if (adj.changes.length || reverts.length) {
-      // --- Exit with the PLAN: the workflow NEVER edits the tree ----------
-      cleanStreak = 0
-      return {
-        status: 'PLAN',
-        reverts,
-        mechanisms,
-        plan: adj.changes,
-        fanout: `${adj.fanoutTraced}/${adj.fanoutTotal}`,
-        trajectory: adj.trajectory,
-        instructions:
-          'Apply ONLY this plan in the main session: first `reverts` (remove each listed mechanism, record its deferred originals), then `plan` - these exact changes, smallest radius, nothing else; do not apply reviewer remedies the plan does not name. Read `mechanisms` before applying: each adds review surface and is yours to veto unless it answers a material CRITICAL/MAJOR. Run the test suite. Then re-invoke this workflow with args.state set to the `state` object below, verbatim, and args.appliedFixes = [{site, summary, files}] describing what you actually applied, reverts included - record each applied revert with summary starting "reverted: <mechanism>"; STOP and FANOUT_STOP skip those entries - the next round is a pinned confirm attacking exactly that delta.',
-        round,
-        history,
-        closures,
-        deferred: allDeferred,
-        refuted: allRefuted,
-        state: stateOut(),
-      }
-    }
-
-    // Adjudicator ruled the round clean: every finding refuted, deferred or taste.
-    cleanStreak += 1
-    log(`round ${round} adjudicated clean - no change warranted (${cleanStreak}/${CLEAN_REQUIRED} consecutive)`)
-    if (cleanStreak >= CLEAN_REQUIRED || (round === 1 && !S)) {
-      shipped = true
-      break
+  if (adj.changes.length || reverts.length) {
+    // --- Exit with the PLAN: the workflow NEVER edits the tree ------------
+    return {
+      status: 'PLAN',
+      reverts,
+      mechanisms,
+      plan: adj.changes,
+      fanout: `${adj.fanoutTraced}/${adj.fanoutTotal}`,
+      trajectory: adj.trajectory,
+      instructions:
+        'Apply ONLY this plan in the main session: first `reverts` (remove each listed mechanism, record its deferred originals), then `plan` - these exact changes, smallest radius, nothing else; do not apply reviewer remedies the plan does not name. Read `mechanisms` before applying: each adds review surface and is yours to veto unless it answers a material CRITICAL/MAJOR. As you apply each change, write the diff of exactly that change to a file - the uncommitted tree cannot separate it from earlier rounds. Run the test suite. Then re-invoke this workflow with args.state set to the `state` object below, verbatim, and args.appliedFixes = [{site, summary, files, patch}] describing what you actually applied, reverts included - `files` the paths the change touched, `patch` the path of its diff file; record each applied revert with summary starting "reverted: <mechanism>"; STOP and FANOUT_STOP skip those entries. The script refuses a re-invocation without files and patch; the next round is a pinned confirm that reads exactly those patches.',
+      round,
+      history,
+      closures,
+      deferred: allDeferred,
+      refuted: allRefuted,
+      state: stateOut(),
     }
   }
 
-  if (round >= MAX_ROUNDS) break
-
-  // --- Another pinned confirming round (no new delta - clean must hold) ---
-  round += 1
-  log(`round ${round} confirming: pinned to ${closures.length} closure(s)`)
-  findings = pinFilter(mergeFindings(await runPanelChecked('Confirm', confirmBody())))
-  if (panelDeath)
-    return { status: 'PANEL_DIED', reason: `every reviewer in the ${panelDeath.phase} panel died - this round reviewed NOTHING; relaunch it, never read it as clean`, round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
-  history.push({ round, kind: 'confirm', findings: findings.length, severities: severityTally(findings) })
+  // Adjudicator ruled the round clean: every finding refuted, deferred or taste.
+  log(`round ${round} adjudicated clean - no change warranted`)
+} else {
+  log(`round ${round} clean - no findings`)
 }
 
+// A clean round ships: nothing edits the tree inside the workflow, so a panel
+// run now would review exactly the code this one did (DEF-ADVR-65).
 return {
-  status: shipped ? 'SHIP' : 'ROUND_CAP',
+  status: 'SHIP',
   rounds: round,
   history,
   openFindings: findings,

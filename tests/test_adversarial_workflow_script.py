@@ -8,6 +8,7 @@ pin the gates so an edit cannot silently drop one.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import re
 import shutil
@@ -96,7 +97,7 @@ def test_revert_before_refine():
     assert "Revert before refine" in adj and "REVERT CANDIDATE" in adj
     assert "contested semantics" in adj and "`reverted:`" in adj
     assert t.count("reverts: reverts.length ? reverts : closures") == 2  # STOP and FANOUT_STOP
-    assert "status: 'PLAN',\n        reverts," in t
+    assert re.search(r"status: 'PLAN',\s+reverts,", t)
 
 
 def test_confirm_round_filter_is_script_enforced():
@@ -104,7 +105,7 @@ def test_confirm_round_filter_is_script_enforced():
     anyway; a confirming finding survives only if it names a failing closure
     or sits in the applied delta, and is not taste - dropped ones are logged."""
     t = text()
-    assert "pinFilter" in t and t.count("pinFilter(mergeFindings(") == 2  # both confirm panels
+    assert "pinFilter" in t and t.count("pinFilter(mergeFindings(") == 1  # the one confirm panel
     assert "f.closure" in t and "inDelta(f)" in t and "!f.taste" in t
     assert "confirm filter:" in t and "confirm-filter" in t  # logged and in history
     assert "TURN BUDGET" in t and "DISCARDS" in t
@@ -139,12 +140,12 @@ def test_gates_present():
         "adj.trajectory === 'spiralling' && refining" in t
     )  # DEF-ADVR-50: the judgment gates, the ratio is evidence; DEF-ADVR-46: a clean round never trips it
     assert "'trajectory', 'trajectoryReason'" in t  # required of every adjudication
-    assert "highFanoutStreak" not in t and "fanout > 0.5" not in t  # no ratio gate or ratio log left
+    assert (
+        "highFanoutStreak" not in t and "fanout > 0.5" not in t
+    )  # no ratio gate or ratio log left
     assert (
         "const refining = adj.changes.length > 0 || reverts.length > 0" in t
     )  # the definition, not just its use
-    assert "spiralStreak = 0" in t  # the no-findings clean branch resets the streak too
-    assert "cleanStreak >= CLEAN_REQUIRED" in t
     assert "devils-advocate:adjudicator" in t and "devils-advocate:adversarial-reviewer" in t
 
 
@@ -340,14 +341,14 @@ def test_full_history_on_every_return():
     four of five returns, and ADJUDICATOR_DIED - the killed-loop case the
     invariant names - carried neither `deferred` nor `refuted`.
     """
-    for status in ("ADJUDICATOR_DIED", "STOP", "FANOUT_STOP", "PLAN"):
+    for status in ("ADJUDICATOR_DIED", "STOP", "FANOUT_STOP", "PLAN", "ROUND_CAP"):
         block = _return_block(status)
         for key in ("history", "closures", "deferred", "refuted", "state"):
             assert re.search(rf"\b{key}[,:]", block), f"{status} return drops `{key}`"
-    # the terminal return is a ternary over SHIP / ROUND_CAP
+    # the terminal return is SHIP
     final = text()[text().rindex("\nreturn {") :]
     for key in ("history", "closures", "deferred", "refuted", "state"):
-        assert re.search(rf"\b{key}[,:]", final), f"the SHIP/ROUND_CAP return drops `{key}`"
+        assert re.search(rf"\b{key}[,:]", final), f"the SHIP return drops `{key}`"
 
 
 def test_the_invariants_are_stated_once():
@@ -425,9 +426,223 @@ def test_a_dead_panel_is_never_a_clean_round():
         "runPanelChecked so a dead panel cannot reach the clean path"
     )
     # the death check sits between the panel and the clean/adjudicate branch
-    assert t.index("if (panelDeath)") < t.index("while (true) {"), (
-        "the discovery panel's death is checked after the loop begins - too late"
+    assert t.index("if (panelDeath)") < t.index("const adj = await agent("), (
+        "the panel's death is checked after adjudication begins - too late"
     )
     died = _return_block("PANEL_DIED")
     for key in ("history", "closures", "deferred", "refuted", "state"):
         assert re.search(rf"\b{key}[,:]", died), f"PANEL_DIED drops `{key}` (invariant 7)"
+
+
+def test_confirm_reads_the_applied_patch_not_the_whole_delta():
+    """DEF-ADVR-63. Lab-mounts forensics 2026-09-06: 53% of confirming-round
+    tool output was diff against the base commit. The prompt repeated the
+    target's reading instructions and carried no diff of the applied change, so
+    every reviewer read the whole uncommitted delta again. A re-invocation now
+    names files and a patch per fix, and the confirm prompt reads those."""
+    t = text()
+    assert "!f.patch" in t and "!f.files.length" in t  # refused without them
+    assert "orientation only; do not re-read it" in t
+    assert "Never re-read the whole delta" in t and "patch: ${c.patch}" in t
+
+
+def test_a_ruled_finding_stays_ruled_while_its_site_is_unchanged():
+    """DEF-ADVR-64. 34 of 80 confirming-round findings repeated an earlier one,
+    and each went back to the adjudicator. The settled record keeps the site of
+    every finding ruled without a change; its filter runs after pinFilter."""
+    t = text()
+    assert "settledFilter(pinFilter(mergeFindings(" in t
+    assert "touchedSince" in t and "settled-filter" in t
+
+
+def test_a_clean_round_ships():
+    """DEF-ADVR-65. Round 6 of the lab-mounts review re-ran every lens on a tree
+    nothing had changed since round 5: 20% of the campaign's cache reads for no
+    change. One panel per invocation, and a clean round returns SHIP."""
+    t = text()
+    assert "CLEAN_REQUIRED" not in t and "cleanStreak" not in t and "while (true)" not in t
+    assert t.count("await runPanelChecked(") == 2  # discovery or confirm, never both
+    assert "S && round >= MAX_ROUNDS" in t  # the cap is checked before a panel spawns
+
+
+def test_state_carries_the_loop_contract():
+    """DEF-ADVR-66. A copy of the 1.7.8 script ran a whole review against
+    plugin 1.8.2 and nothing said so. The state names the contract it was
+    written under, and a state from another contract is refused. Change the
+    state keys pinned here only together with LOOP_CONTRACT."""
+    t = text()
+    contract = int(re.search(r"const LOOP_CONTRACT = (\d+)", t).group(1))
+    block = t[t.index("const stateOut = () => ({") :]
+    keys = re.findall(r"^\s+(\w+)[,:]", block[: block.index("})")], re.M)
+    assert (contract, keys) == (
+        1,
+        [
+            "contract",
+            "round",
+            "spiralStreak",
+            "history",
+            "deferred",
+            "refuted",
+            "rulings",
+            "closures",
+            "settled",
+        ],
+    )
+    assert "args.state.contract !== LOOP_CONTRACT" in t
+
+
+BAR = {"purpose": "p", "inputs": "i", "primaryPath": "pp"}
+
+DRIVER = r"""
+const fs = require('fs')
+const body = fs.readFileSync(process.argv[2], 'utf8').replace('export const meta', 'const meta')
+const scenario = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'))
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
+const run = new AsyncFunction('args', 'budget', 'agent', 'parallel', 'pipeline', 'phase', 'log', 'workflow', body)
+const logs = []
+const prompts = []
+const agent = async (prompt, opts) => {
+  prompts.push(prompt)
+  return scenario.replies[opts.label.split(':')[0]].shift()
+}
+const parallel = (thunks) => Promise.all(thunks.map((thunk) => thunk()))
+run(scenario.args, null, agent, parallel, null, () => {}, (line) => logs.push(line), null).then(
+  (result) => console.log(JSON.stringify({ result, logs, prompts })),
+  (error) => console.log(JSON.stringify({ error: error.message, logs, prompts }))
+)
+"""
+
+
+def _finding(title: str, file: str, line: int) -> dict:
+    return {
+        "severity": "MINOR",
+        "title": title,
+        "file": file,
+        "line": line,
+        "evidence": "e",
+        "material": True,
+        "materiality": "m",
+        "remedy": "r",
+    }
+
+
+def _ruling(*answers: str) -> dict:
+    changes = [
+        {"answers": [a], "site": a, "change": "edit", "radius": "one file", "newMechanism": False}
+        for a in answers
+    ]
+    return {
+        "ruling": "PROCEED",
+        "changes": changes,
+        "reverts": [],
+        "deferred": [],
+        "refuted": [],
+        "fanoutTraced": 0,
+        "fanoutTotal": 1,
+        "trajectory": "converging",
+        "trajectoryReason": "shrinking",
+    }
+
+
+def _invoke(tmp_path: Path, args: dict, replies: dict) -> dict:
+    """One workflow invocation with stub agents: each label prefix (discover,
+    confirm, adjudicate) pops its next reply."""
+    driver, scenario = tmp_path / "driver.js", tmp_path / "scenario.json"
+    driver.write_text(DRIVER, encoding="utf-8")
+    scenario.write_text(json.dumps({"args": args, "replies": replies}), encoding="utf-8")
+    r = subprocess.run(
+        ["node", str(driver), str(SCRIPT), str(scenario)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert r.returncode == 0, r.stderr
+    return json.loads(r.stdout)
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_invocations_read_patches_skip_ruled_sites_and_ship_on_a_clean_round(tmp_path):
+    """DEF-ADVR-63..66 end to end. Discovery exits PLAN; a confirm reads the
+    patches and exits PLAN; the next confirm drops a finding at a ruled site no
+    fix touched, keeps one whose file a fix changed, and ships on the clean
+    adjudication without spawning a second panel."""
+    base = {"target": "src and its tests", "bar": BAR, "lenses": ["architect"]}
+    one = _invoke(
+        tmp_path,
+        base,
+        {
+            "discover": [{"findings": [_finding("a breaks", "src/a.py", 10)]}],
+            "adjudicate": [_ruling("a breaks")],
+        },
+    )
+    assert one["result"]["status"] == "PLAN" and one["result"]["state"]["contract"] == 1
+
+    fix_a = [
+        {
+            "site": "src/a.py",
+            "summary": "fixed a",
+            "files": ["src/a.py", "src/b.py"],
+            "patch": "/tmp/r1.patch",
+        }
+    ]
+    two = _invoke(
+        tmp_path,
+        {**base, "state": one["result"]["state"], "appliedFixes": fix_a},
+        {
+            "confirm": [
+                {
+                    "findings": [
+                        _finding("a stale name", "src/a.py", 40),
+                        _finding("b stale name", "src/b.py", 40),
+                        _finding("b leaks", "src/b.py", 200),
+                    ]
+                }
+            ],
+            "adjudicate": [_ruling("b leaks")],
+        },
+    )
+    assert two["result"]["status"] == "PLAN"
+    confirm = two["prompts"][0]
+    assert "orientation only" in confirm
+    assert "fixed a [patch: /tmp/r1.patch]" in confirm  # the closure list names its patch
+    assert "[src/a.py, src/b.py] patch: /tmp/r1.patch" in confirm  # so does the newest delta
+    settled = [s["title"] for s in two["result"]["state"]["settled"]]
+    assert settled == ["a stale name", "b stale name"]
+
+    fix_b = [
+        {
+            "site": "src/b.py",
+            "summary": "closed the leak",
+            "files": ["src/b.py"],
+            "patch": "/tmp/r2.patch",
+        }
+    ]
+    args_three = {**base, "state": two["result"]["state"], "appliedFixes": fix_b}
+    three = _invoke(
+        tmp_path,
+        args_three,
+        {
+            "confirm": [
+                {
+                    "findings": [
+                        _finding("a name is stale", "/repo/src/a.py", 45),
+                        _finding("b name is stale", "src/b.py", 42),
+                    ]
+                }
+            ],
+            "adjudicate": [_ruling()],
+        },
+    )
+    assert three["result"]["status"] == "SHIP" and three["result"]["rounds"] == 3
+    assert len(three["prompts"]) == 2  # one reviewer, one adjudicator - no second panel
+    adjudication = three["prompts"][1]
+    assert "b name is stale" in adjudication and "a name is stale" not in adjudication
+    assert any(line.startswith("settled filter: 1") for line in three["logs"])
+
+    capped = _invoke(tmp_path, {**args_three, "maxRounds": 2}, {})
+    assert capped["result"]["status"] == "ROUND_CAP" and capped["prompts"] == []
+
+    stale = {k: v for k, v in two["result"]["state"].items() if k != "contract"}
+    assert "loop contract" in _invoke(tmp_path, {**args_three, "state": stale}, {})["error"]
+    no_patch = [{k: v for k, v in fix_b[0].items() if k != "patch"}]
+    assert "patch" in _invoke(tmp_path, {**args_three, "appliedFixes": no_patch}, {})["error"]
