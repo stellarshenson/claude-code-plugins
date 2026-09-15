@@ -50,6 +50,13 @@ export const meta = {
 //              bound each change's radius (cleaner fixes)
 //   maxRounds  total reviewer rounds before ROUND_CAP (default 6)
 //   maxChanges     advisory plan budget per round (default 3)
+//   research   optional - the user's research permission, asked once per review
+//              by the main session and carried in `state` once given:
+//              {allowed: false} (no means no) or {allowed: true, budget: 1|3|5,
+//              used: {<lens>: n}}; absent = not asked. Research covers best
+//              practices, paradigms and patterns only: a reviewer requests it,
+//              the adjudicator approves it, the main session researches between
+//              invocations and passes the updated `used` back here
 // args - re-invocation after applying a PLAN:
 //   state         the `state` object from the previous PLAN return, verbatim;
 //                 refused when its `contract` is not this script's LOOP_CONTRACT
@@ -69,7 +76,7 @@ if (typeof args.bar !== 'object' || !args.bar.purpose || !args.bar.inputs || !ar
 // The shape of `state` and `appliedFixes` this script reads. Bump it whenever
 // either changes, so a state written by another version - or this script run
 // from a stale copy - is refused instead of misread (DEF-ADVR-66).
-const LOOP_CONTRACT = 1
+const LOOP_CONTRACT = 2
 if (args.state) {
   if (args.state.contract !== LOOP_CONTRACT) {
     throw new Error(`args.state was written under loop contract ${args.state.contract} and this script reads contract ${LOOP_CONTRACT} - the state and the script come from different versions; run the installed adversarial-loop.js and start the review again`)
@@ -78,6 +85,12 @@ if (args.state) {
   if (!Array.isArray(fixes) || !fixes.length || fixes.some((f) => !f.site || !f.summary || !f.patch || !Array.isArray(f.files) || !f.files.length)) {
     throw new Error('args.appliedFixes must list every applied change as {site, summary, files, patch} - files the change touched, patch the path of a file holding the diff of exactly that change; without them a confirming reviewer re-reads the whole delta')
   }
+}
+// Research permission - the user's answer to the one research question per
+// review. A yes grants each lens 1, 3 or 5 research units.
+const RESEARCH = args.research !== undefined ? args.research : args.state ? args.state.research : null
+if (RESEARCH && (typeof RESEARCH.allowed !== 'boolean' || (RESEARCH.allowed && ![1, 3, 5].includes(RESEARCH.budget)) || Object.values(RESEARCH.used || {}).some((n) => !Number.isInteger(n) || n < 0))) {
+  throw new Error('args.research must be {allowed: false} or {allowed: true, budget: 1, 3 or 5, used: {<lens>: n}} - the budget is the number of research units the user granted each lens')
 }
 const TARGET = args.target
 const SCOPE = args.scope || 'the named target only'
@@ -95,6 +108,11 @@ const MAX_CHANGES = args.maxChanges || 3
 const graphBlock = GRAPH
   ? `INSTRUMENT AVAILABLE - a refreshed code graph matching HEAD at ${GRAPH}. It answers callers, dependents and whether two sites share one cause faster than grepping. Use it as your method sees fit and point it at that path.`
   : null
+
+// A denied permission reaches both prompts as data, so no turn goes into a
+// request nobody will act on.
+const researchBlock =
+  RESEARCH && RESEARCH.allowed === false ? 'RESEARCH: denied by the user for this review - no research request is acted on.' : null
 
 const FINDINGS_SCHEMA = {
   type: 'object',
@@ -116,6 +134,7 @@ const FINDINGS_SCHEMA = {
           materiality: { type: 'string', description: 'who is harmed, doing what the product is for, on which input - or NONE and why' },
           remedy: { type: 'string', description: 'smallest EDIT that removes the cause, or DEFER; a remedy that would add a pass, plugin, branch, helper or data shape opens with NEW MECHANISM' },
           outOfBar: { type: 'boolean', description: 'true when the input class sits outside the stated bar' },
+          research: { type: 'string', description: 'one-line best-practice, paradigm or pattern question this finding rests on that no research file carries; empty otherwise' },
           closure: { type: 'string', description: 'confirming rounds only: the closure this finding fails, quoted from the closure list - a closure that is NOT closed, or the closure whose change caused a regression elsewhere (a broken caller or test in a file the change did not touch); empty only for a regression inside the closure\'s own files' },
         },
       },
@@ -164,6 +183,19 @@ const ADJUDICATION_SCHEMA = {
     fanoutTotal: { type: 'integer' },
     trajectory: { type: 'string', enum: ['converging', 'spiralling'], description: 'your judgment of the loop from the prior rulings and this round: converging when the delta shrinks, the worst severity falls and the plan edits what exists; spiralling when findings sit in mechanisms a previous plan added and the plan enlarges or refines them, or severity holds or rises across rounds' },
     trajectoryReason: { type: 'string', description: 'one line saying why - the evidence weighed, fanoutTraced/fanoutTotal included' },
+    research: {
+      type: 'array',
+      description: 'the reviewer research requests you approve; EMPTY when none is approved',
+      items: {
+        type: 'object',
+        required: ['lens', 'question', 'reason'],
+        properties: {
+          lens: { type: 'string' },
+          question: { type: 'string' },
+          reason: { type: 'string', description: 'the ruling the answer could change' },
+        },
+      },
+    },
   },
 }
 
@@ -243,6 +275,7 @@ const reviewerPrompt = (lens, body, confirming) =>
     `SCOPE: ${SCOPE}`,
     barBlock,
     graphBlock,
+    researchBlock,
     body,
     `Return your findings through the structured output tool; no prose report.`,
   ]
@@ -285,7 +318,27 @@ const stateOut = () => ({
   rulings,
   closures,
   settled,
+  research: RESEARCH,
 })
+
+// Research routing - the adjudicator approves each request on merit; the
+// user's permission decides where an approved one goes. Denied: dropped and
+// logged. The lens's budget used up: a suggestion the user may accept.
+// Otherwise: the queue the main session checks against the cache first.
+const research = { queue: [], suggestions: [] }
+const routeResearch = (approved) => {
+  const denied = RESEARCH && RESEARCH.allowed === false
+  const seen = new Set()
+  ;(approved || []).forEach((r) => {
+    const key = `${r.lens}|${(r.question || '').toLowerCase().trim()}`
+    if (denied || !LENSES.includes(r.lens) || !r.question || seen.has(key)) return
+    seen.add(key)
+    const spent = RESEARCH && (RESEARCH.used || {})[r.lens] >= RESEARCH.budget
+    ;(spent ? research.suggestions : research.queue).push(r)
+  })
+  if (denied && approved && approved.length) log(`research: ${approved.length} approved request(s) dropped - the user denied research for this review`)
+  else if (research.queue.length || research.suggestions.length) log(`research: ${research.queue.length} queued, ${research.suggestions.length} suggested`)
+}
 
 // The adjudicator starts fresh every round (new spawn, no memory) - this
 // record IS its continuity, threaded into every adjudication prompt so a
@@ -358,7 +411,7 @@ const settledFilter = (findings) => {
 
 // --- The one panel of this invocation -------------------------------------
 if (S && round >= MAX_ROUNDS)
-  return { status: 'ROUND_CAP', reason: `${round} reviewer rounds reached maxRounds ${MAX_ROUNDS} - the last applied delta is unconfirmed; put it to the user`, rounds: round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+  return { status: 'ROUND_CAP', reason: `${round} reviewer rounds reached maxRounds ${MAX_ROUNDS} - the last applied delta is unconfirmed; put it to the user`, rounds: round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
 
 let findings
 round += 1
@@ -379,7 +432,7 @@ if (!S) {
 }
 
 if (panelDeath)
-  return { status: 'PANEL_DIED', reason: `every reviewer in the ${panelDeath.phase} panel died - this round reviewed NOTHING; relaunch it, never read it as clean`, round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+  return { status: 'PANEL_DIED', reason: `every reviewer in the ${panelDeath.phase} panel died - this round reviewed NOTHING; relaunch it, never read it as clean`, round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
 
 if (findings.length) {
   // --- Adjudicate: always, on every finding - the adjudicator decides ------
@@ -388,6 +441,7 @@ if (findings.length) {
       `You adjudicate adversarial-review findings for ${TARGET}.`,
       barBlock,
       graphBlock,
+      researchBlock,
       priorRecord(),
       `FINDINGS (round ${round}, ${findings.length}: ${severityTally(findings)}; findings carrying cappedFrom were reduced by the script for material=false):`,
       JSON.stringify(findings, null, 2),
@@ -401,7 +455,8 @@ if (findings.length) {
     { label: `adjudicate:r${round}`, phase: 'Adjudicate', schema: ADJUDICATION_SCHEMA, agentType: 'devils-advocate:adjudicator' }
   )
   if (!adj)
-    return { status: 'ADJUDICATOR_DIED', round, history, findings, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+    return { status: 'ADJUDICATOR_DIED', round, history, findings, closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
+  routeResearch(adj.research)
   const reverts = adj.reverts || []
   allDeferred.push(...(adj.deferred || []))
   allRefuted.push(...(adj.refuted || []))
@@ -417,7 +472,7 @@ if (findings.length) {
   if (mechanisms.length) log(`round ${round}: ${mechanisms.length} change(s) add a NEW MECHANISM - veto at PLAN unless each answers a material CRITICAL/MAJOR: ${mechanisms.map((m) => m.site).join(' | ')}`)
   if (adj.changes.length > MAX_CHANGES) log(`round ${round}: plan carries ${adj.changes.length} changes against a budget of ${MAX_CHANGES} - apply the top ${MAX_CHANGES}, defer the rest`)
   if (adj.ruling === 'STOP') {
-    return { status: 'STOP', reason: 'adjudicator: the loop is generating its own work - re-model instead of another round - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+    return { status: 'STOP', reason: 'adjudicator: the loop is generating its own work - re-model instead of another round - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
   }
   // The stop is the adjudicator's judgment, not a ratio: two consecutive
   // rounds it calls spiralling while still ordering changes or reverts. A
@@ -431,7 +486,7 @@ if (findings.length) {
     // ({site, summary, files}) - the findings live in the loop's own fixes
     // by definition; entries whose summary starts "reverted:" are reverts
     // already applied and are skipped by the main session.
-    return { status: 'FANOUT_STOP', reason: 'the adjudicator judged the loop spiralling in two consecutive rounds (' + adj.trajectoryReason + ') - revert the listed mechanisms, defer what they answered, then re-model if anything material remains - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, state: stateOut() }
+    return { status: 'FANOUT_STOP', reason: 'the adjudicator judged the loop spiralling in two consecutive rounds (' + adj.trajectoryReason + ') - revert the listed mechanisms, defer what they answered, then re-model if anything material remains - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
   }
 
   if (adj.changes.length || reverts.length) {
@@ -444,12 +499,13 @@ if (findings.length) {
       fanout: `${adj.fanoutTraced}/${adj.fanoutTotal}`,
       trajectory: adj.trajectory,
       instructions:
-        'Apply ONLY this plan in the main session: first `reverts` (remove each listed mechanism, record its deferred originals), then `plan` - these exact changes, smallest radius, nothing else; do not apply reviewer remedies the plan does not name. Read `mechanisms` before applying: each adds review surface and is yours to veto unless it answers a material CRITICAL/MAJOR. As you apply each change, write the diff of exactly that change to a file - the uncommitted tree cannot separate it from earlier rounds. Run the test suite. Then re-invoke this workflow with args.state set to the `state` object below, verbatim, and args.appliedFixes = [{site, summary, files, patch}] describing what you actually applied, reverts included - `files` the paths the change touched, `patch` the path of its diff file; record each applied revert with summary starting "reverted: <mechanism>"; STOP and FANOUT_STOP skip those entries. The script refuses a re-invocation without files and patch; the next round is a pinned confirm that reads exactly those patches.',
+        'Apply ONLY this plan in the main session: first `reverts` (remove each listed mechanism, record its deferred originals), then `plan` - these exact changes, smallest radius, nothing else; do not apply reviewer remedies the plan does not name. Read `mechanisms` before applying: each adds review surface and is yours to veto unless it answers a material CRITICAL/MAJOR. As you apply each change, write the diff of exactly that change to a file - the uncommitted tree cannot separate it from earlier rounds. Run the test suite. Then re-invoke this workflow with args.state set to the `state` object below, verbatim, and args.appliedFixes = [{site, summary, files, patch}] describing what you actually applied, reverts included - `files` the paths the change touched, `patch` the path of its diff file; record each applied revert with summary starting "reverted: <mechanism>"; STOP and FANOUT_STOP skip those entries. The script refuses a re-invocation without files and patch; the next round is a pinned confirm that reads exactly those patches. Handle a non-empty `research.queue` or `research.suggestions` per the skill before re-invoking, and pass the permission as args.research.',
       round,
       history,
       closures,
       deferred: allDeferred,
       refuted: allRefuted,
+      research,
       state: stateOut(),
     }
   }
@@ -470,5 +526,6 @@ return {
   closures,
   deferred: allDeferred,
   refuted: allRefuted,
+  research,
   state: stateOut(),
 }

@@ -475,7 +475,7 @@ def test_state_carries_the_loop_contract():
     block = t[t.index("const stateOut = () => ({") :]
     keys = re.findall(r"^\s+(\w+)[,:]", block[: block.index("})")], re.M)
     assert (contract, keys) == (
-        1,
+        2,
         [
             "contract",
             "round",
@@ -486,6 +486,7 @@ def test_state_carries_the_loop_contract():
             "rulings",
             "closures",
             "settled",
+            "research",
         ],
     )
     assert "args.state.contract !== LOOP_CONTRACT" in t
@@ -575,7 +576,7 @@ def test_invocations_read_patches_skip_ruled_sites_and_ship_on_a_clean_round(tmp
             "adjudicate": [_ruling("a breaks")],
         },
     )
-    assert one["result"]["status"] == "PLAN" and one["result"]["state"]["contract"] == 1
+    assert one["result"]["status"] == "PLAN" and one["result"]["state"]["contract"] == 2
 
     fix_a = [
         {
@@ -646,3 +647,46 @@ def test_invocations_read_patches_skip_ruled_sites_and_ship_on_a_clean_round(tmp
     assert "loop contract" in _invoke(tmp_path, {**args_three, "state": stale}, {})["error"]
     no_patch = [{k: v for k, v in fix_b[0].items() if k != "patch"}]
     assert "patch" in _invoke(tmp_path, {**args_three, "appliedFixes": no_patch}, {})["error"]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_research_is_approved_by_the_adjudicator_and_routed_by_the_permission(tmp_path):
+    """Research is opt-in and budgeted. The adjudicator approves a request; the
+    user's permission routes it: not asked yet - the queue; the lens's budget
+    used up - a suggestion; denied - dropped, logged, and both prompts say so.
+    A budget other than 1, 3 or 5 is refused."""
+    base = {"target": "ui", "bar": BAR, "lenses": ["ux-designer"]}
+    asked = {
+        **_finding("helper text above the form", "src/form.tsx", 12),
+        "research": "where does form help go",
+    }
+    approved = [
+        {"lens": "ux-designer", "question": "Where does form help go", "reason": "r"},
+        {"lens": "ux-designer", "question": "where does form help go ", "reason": "r"},
+        {"lens": "architect", "question": "not a lens in this review", "reason": "r"},
+    ]
+
+    def replies() -> dict:
+        return {
+            "discover": [{"findings": [asked]}],
+            "adjudicate": [{**_ruling(), "research": approved}],
+        }
+
+    fresh = _invoke(tmp_path, base, replies())["result"]
+    assert fresh["status"] == "SHIP" and fresh["state"]["research"] is None
+    assert [r["question"] for r in fresh["research"]["queue"]] == ["Where does form help go"]
+    assert fresh["research"]["suggestions"] == []
+
+    spent = {"allowed": True, "budget": 1, "used": {"ux-designer": 1}}
+    out = _invoke(tmp_path, {**base, "research": spent}, replies())["result"]
+    assert out["research"]["queue"] == [] and len(out["research"]["suggestions"]) == 1
+    assert out["state"]["research"] == spent
+
+    denied = _invoke(tmp_path, {**base, "research": {"allowed": False}}, replies())
+    assert denied["result"]["research"] == {"queue": [], "suggestions": []}
+    assert len(denied["prompts"]) == 2
+    assert all("RESEARCH: denied" in p for p in denied["prompts"])
+    assert any("dropped - the user denied research" in line for line in denied["logs"])
+
+    bad = {**base, "research": {"allowed": True, "budget": 2}}
+    assert "budget" in _invoke(tmp_path, bad, {})["error"]

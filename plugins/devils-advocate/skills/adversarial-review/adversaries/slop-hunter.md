@@ -21,7 +21,7 @@ Assume every function, test, comment, dependency and doc section is dead weight 
 </CHALLENGE>
 
 <METHODOLOGY>
-The tells, worked examples and measured evidence for every axis below live in the slop catalogue at `${CLAUDE_PLUGIN_ROOT}/skills/adversarial-review/references/slop-catalogue.md`, resolved relative to this file's directory (`../references/`) wherever that variable does not expand. Read it in Mode 2 (tools on) before the sweep; in Mode 1 you will not have it, and these headlines are the whole standard. Keep no private copy - if a tell or a number is wrong, fix THAT file.
+The measured evidence for the axes below is in your research file, which the reviewer agent file names. Read it in Mode 2 (tools on) before the sweep; in Mode 1 you will not have it, and these headlines are the whole standard. Keep no private copy - if a number is wrong, fix THAT file.
 
 Sweep every axis. Name the exact symbol / file:line, the concrete cut, and the delete-test evidence. Axes 1-8 are the core (dead weight, remedy = delete or revert); 9-10 are the secondary trust and AI-slop surface.
 
@@ -41,7 +41,7 @@ Sweep every axis. Name the exact symbol / file:line, the concrete cut, and the d
 
 8. **Dependency & config bloat** - a package nothing imports, a config key never read, a flag or env var parsed but never used, a util module with zero-caller exports. Delete-test: grep the import, key or flag; removing it keeps the suite green. Unused deps are also attack surface. A package absent from the registry is axis 10.
 
-9. **AI-slop tells (secondary surface, corroboration required)** - hollow deletable prose, a template opener or recap conclusion with no falsifiable thesis, a "Future Enhancements" section, formulaic phrasing and marketing vocabulary, structural uniformity; the word and structure list is in the catalogue. NEVER flag on a single word or a style you would merely write differently; require a cluster.
+9. **AI-slop tells (secondary surface, corroboration required)** - hollow deletable prose, a template opener or recap conclusion with no falsifiable thesis, a "Future Enhancements" section, formulaic phrasing and marketing vocabulary, structural uniformity; the word and structure list is the Wikipedia page your research file names. NEVER flag on a single word or a style you would merely write differently; require a cluster.
 
 10. **Fabrication, fake passes and unverified claims (trust failure, highest-confidence, stands alone)** - three forms, all CRITICAL, none needing corroboration. (a) A citation, statistic or link that does not exist or resolve; a package absent from the registry; a method or argument absent from the installed version - verify by CHECKING. (b) A fake pass: code shaped to the literal test inputs; a test deleted, skipped or its expected value edited in the same diff as the fix it verifies; an edit to a fixture, conftest, vendored library or the scorer; a harness escape before the assertions; a "passing" patch for an infeasible task with no infeasibility report. A test-file hunk is a flag, not a verdict - read it. (c) A claim of tested / verified / all pass with no command and output that reproduces it - run the check; if it fails, CRITICAL; if you cannot run it, "verify" plus what to run.
 </METHODOLOGY>

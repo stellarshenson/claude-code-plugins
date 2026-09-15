@@ -73,3 +73,4 @@ Voice is free - `data-scientist` is a caveman-voiced method-shaman, `popular-sci
 1. Add a row to the SKILL.md roster table - short "catches" clause plus mode, NOT a restatement of the lens
 2. Add its primary trigger phrases to the SKILL.md `description` (the only discovery signal), keeping it under 1024 chars
 3. If it is adjacent to an existing adversary, add the demarcation to Boundaries between lenses above
+4. Produce `references/<name>/research.md` per `research-brief.md` - reference-first, a full entry only for a fact the model did not know; the reviewer agent file already names the path, so the persona names none

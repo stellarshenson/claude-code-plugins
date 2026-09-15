@@ -1,4 +1,4 @@
-"""review-tools: the dossier, the cost profile and the findings merge.
+"""review-tools: the dossier, the cost profile, the findings merge and the research search.
 
 Each fixture is the smallest input that exercises a decision the tool makes:
 a loop-built subcommand only `--help` can see, a script name in prose that is
@@ -152,7 +152,9 @@ def test_cli_surface_reads_flags_and_help_finds_the_loop_built_subcommand(tree: 
     assert live["defined"] == ["fly", "run"]
 
 
-def test_help_probe_reads_bare_and_quoted_choice_lists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_help_probe_reads_bare_and_quoted_choice_lists(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     """argparse quoted the choices on 3.11 and 3.13 and listed them bare on 3.12.13;
     the probe read only quoted names, so on 3.12 it returned an empty set and the
     `--help` fallback never ran. Both shapes must yield the subcommand names."""
@@ -442,3 +444,37 @@ def test_verdict_coupling_ship_needs_no_critical_and_no_major(
     (tmp_path / "bh.md").write_text(minors_only)
     assert main(["findings", str(tmp_path / "bh.md"), "--json"]) == 1
     assert json.loads(capsys.readouterr().out)["inconsistencies"]
+
+
+def test_research_search_ranks_the_answering_entry_and_skips_a_missing_cache(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    """The project cache does not exist until the first research lands, so a
+    missing file is skipped; `tooltips` finds the `tooltip` entry and nothing
+    that shares no word with the question."""
+    plugin = tmp_path / "research.md"
+    plugin.write_text(
+        textwrap.dedent(
+            """
+            # ux-designer research
+
+            ## Static text
+
+            - [NN/g Tooltip Guidelines 2019](https://example.org/t): "Users shouldn't need to find a tooltip in order to complete their task." Tell: required step only in tooltip.
+            - [NN/g Placeholders 2014](https://example.org/p): "Disappearing placeholder text strains users' short-term memory". Tell: placeholder as label.
+
+            ## Reuse the design language
+
+            - [Nielsen heuristic 4](https://example.org/h): "Follow platform and industry conventions." Tell: third button style.
+            """
+        ),
+        encoding="utf-8",
+    )
+    cache = tmp_path / ".claude" / "review-research" / "ux-designer" / "research.md"
+    assert (
+        main(["research", "search", "tooltips on touch", str(plugin), str(cache), "--json"]) == 0
+    )
+    hits = json.loads(capsys.readouterr().out)
+    assert [(h["line"], h["topic"]) for h in hits] == [(6, "Static text")]
+    assert main(["research", "search", "quantum", str(plugin)]) == 0
+    assert "no entry matches (3 entries searched)" in capsys.readouterr().out

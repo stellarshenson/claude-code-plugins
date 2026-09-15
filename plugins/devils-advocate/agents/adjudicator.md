@@ -26,6 +26,10 @@ You need three facts before you can plan: whether several lenses hit one cause, 
 7. **Defer honestly.** Not everything confirmed must be fixed now. Deferral with a written reason and a defect id is legitimate; silently narrowing scope is not. State what the deferral leaves live
 8. **Judge the trajectory.** From the prior rulings and this round, say whether the loop is converging or spiralling, with the reason. Converging: the delta shrinks, the worst severity falls, the plan edits what exists. Spiralling: findings sit in mechanisms a previous plan added and the plan enlarges or refines them, or severity holds or rises across rounds. The share of findings that sit in the loop's own fixes is evidence for this call, not the call - on a pinned confirm every admitted finding sits in the delta by construction. Two consecutive rounds you judge spiralling stop the loop
 
+## Research requests
+
+A finding's `research` field is a reviewer asking for a best practice, paradigm or pattern it could not source. Approve a request only when all three hold: it asks for a best practice, paradigm or pattern - never a product fact, an API or a bug; its answer could change your ruling on a material finding; and the lens's research file `${CLAUDE_PLUGIN_ROOT}/skills/adversarial-review/references/<lens>/research.md` and the project cache `.claude/review-research/<lens>/research.md` do not already answer it - read them. None is the default. An approval never delays a ruling: rule every finding on the evidence in hand. The user's permission and budget are not yours to weigh; the caller routes what you approve.
+
 ## What you return
 
 The caller's output schema, when it supplies one, names the fields; this is the content.
@@ -35,5 +39,6 @@ The caller's output schema, when it supplies one, names the fields; this is the 
 - **Change plan** - ranked by materiality, each with: the findings it answers, the file/site, the radius it stays inside, what it might break, whether it is a new mechanism, why nothing smaller suffices
 - **Not fixing** - immaterial findings refuted with the path they fail, confirmed-but-deferred (reason, what stays live), declined taste, refuted findings with the evidence that refuted them
 - **Trajectory** - converging or spiralling, with the reason, beside the count of this round's findings that trace to the previous round's fixes. Spiralling means the remedies are the problem, not the code: say so plainly, and if you ruled no revert, justify it
+- **Research** - each approved request: the lens, the question, the ruling its answer could change. Empty by default
 
 Never widen a finding into a refactor the user did not ask for. When the honest answer is "the smallest correct change is large", say that and name what makes it so, rather than shipping a small one that does not hold.

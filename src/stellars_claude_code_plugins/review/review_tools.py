@@ -7,7 +7,8 @@ turns, 9-16M cached input tokens and 15-25 minutes each, of which roughly
 1-2% was file content. Forty to sixty of those turns rediscover the same
 inventory every time - which files exist, where the symbols are, what the
 CLI surface is, where the risky primitives live, which literal is duplicated
-across modules. Three commands remove that cost or make it measurable:
+across modules. Three commands remove that cost or make it measurable, and a
+fourth keeps researched best practices from being researched twice:
 
     dossier   one markdown document with the inventory, produced by AST in
               seconds, pasted into every reviewer's prompt
@@ -16,6 +17,9 @@ across modules. Three commands remove that cost or make it measurable:
     findings  the VERDICT line and severity-tagged bullets of N reviewer
               reports merged by file:line, so the adjudicator starts from
               one table rather than four prose reports
+    research  the entries of adversary research files ranked against a
+              question, so a cached best practice is found before anyone
+              researches it again
 
 Everything here is read-only over the repository; the only file it writes is
 the one `--out` names.
@@ -28,6 +32,7 @@ import ast
 import collections
 import datetime as dt
 import json
+import math
 from pathlib import Path
 import re
 import statistics
@@ -916,6 +921,79 @@ def cmd_findings(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Research
+# ---------------------------------------------------------------------------
+
+WORD = re.compile(r"[a-z0-9]+")
+
+
+def research_entries(paths: list[Path]) -> list[dict]:
+    """Every `- [title](url): ...` line of the research files that exist, with its
+    `## ` topic. A project that has no cache yet is not an error."""
+    rows = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        topic = ""
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if line.startswith("## "):
+                topic = line[3:].strip()
+            elif line.startswith("- ["):
+                rows.append({"file": str(path), "line": n, "topic": topic, "text": line[2:]})
+    return rows
+
+
+def rank_research(query: str, rows: list[dict]) -> list[tuple[float, dict]]:
+    """BM25 over topic plus entry, best first; entries scoring 0 are dropped. A query
+    word of four letters or more also matches a word it prefixes or that prefixes
+    it, so `tooltips` finds `tooltip`."""
+    query_words = set(WORD.findall(query.lower()))
+    docs = [WORD.findall(f"{r['topic']} {r['text']}".lower()) for r in rows]
+    if not query_words or not docs:
+        return []
+    n, avgdl = len(docs), sum(map(len, docs)) / len(docs)
+    df = collections.Counter(w for d in docs for w in set(d))
+    k1, b = 1.5, 0.75
+    hits = []
+    for row, doc in zip(rows, docs, strict=True):
+        tf = collections.Counter(doc)
+        score = 0.0
+        for w in query_words:
+            variants = [
+                v
+                for v in tf
+                if v == w or (min(len(v), len(w)) >= 4 and (v.startswith(w) or w.startswith(v)))
+            ]
+            score += max(
+                (
+                    math.log(1 + (n - df[v] + 0.5) / (df[v] + 0.5))
+                    * tf[v]
+                    * (k1 + 1)
+                    / (tf[v] + k1 * (1 - b + b * len(doc) / avgdl))
+                    for v in variants
+                ),
+                default=0.0,
+            )
+        if score > 0:
+            hits.append((score, row))
+    hits.sort(key=lambda h: -h[0])
+    return hits
+
+
+def cmd_research_search(args: argparse.Namespace) -> int:
+    rows = research_entries(args.files)
+    hits = rank_research(args.query, rows)[: args.top]
+    if args.json:
+        print(json.dumps([{"score": round(s, 3), **r} for s, r in hits], indent=2))
+    elif not hits:
+        print(f"no entry matches ({len(rows)} entries searched)")
+    else:
+        for s, r in hits:
+            print(f"{s:.2f}  {r['file']}:{r['line']}  [{r['topic']}]  {r['text']}")
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -973,6 +1051,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_f.add_argument("--json", action="store_true")
 
+    p_r = sub.add_parser("research", help="Adversary research files: the cache of best practices.")
+    research_sub = p_r.add_subparsers(dest="research_command", required=True)
+    p_rs = research_sub.add_parser(
+        "search", help="Rank research entries against a question, best first."
+    )
+    p_rs.add_argument("query", help="The best practice, paradigm or pattern asked for.")
+    p_rs.add_argument(
+        "files",
+        nargs="+",
+        type=Path,
+        help="Research files; one that does not exist yet is skipped.",
+    )
+    p_rs.add_argument("--top", type=int, default=5, help="Entries to show.")
+    p_rs.add_argument("--json", action="store_true")
+
     args = parser.parse_args(argv)
     if args.command == "dossier":
         return cmd_dossier(args)
@@ -980,6 +1073,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_cost(args)
     if args.command == "findings":
         return cmd_findings(args)
+    if args.command == "research":
+        return cmd_research_search(args)
     return 1
 
 

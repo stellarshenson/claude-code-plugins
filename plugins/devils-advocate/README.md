@@ -58,13 +58,13 @@ The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer 
 | `bug-hunter` | runtime bugs in shell / installers / startup - quoting, `set -e`, lifecycle races |
 | `qa-engineer` | test strategy - risk-based coverage, can-each-test-fail, test slop to delete |
 | `analyst` | specs & acceptance criteria - coverage gaps, unverifiable criteria, sibling features siloed, spec-vs-code drift |
-| `ux-designer` | friction & intent, visual hierarchy, focus, motion comfort, accessibility |
+| `ux-designer` | friction & intent, visual hierarchy, cognitive load, static text & tooltips, design-language reuse, motion comfort, accessibility |
 | `tui` | Textual/Rich internals - chrome duplication, key propagation, headless verification |
 | `data-scientist` | hypothesis rigor, leakage, metric validity, reproducibility |
 | `methodologist` | scientific-method integrity - can the test fail, does the verdict ladder span outcomes |
 | `popular-science` | readability for a generalist - jargon, unsourced claims, buried lede, the visuals |
 | `devops` | containers & deploy - Dockerfile hygiene, secrets in layers, PID-1 signals, probes |
-| `slop-hunter` | "what can go?" - an exhaustive delete pass gated by a load-bearing check: dead code, duplicated blocks, YAGNI abstractions, defensive guards, over-mocked tests, unrequested hunks, doc over-prose, unused deps; plus AI-slop tells, fabrication & fake passes - the measured evidence per axis in `references/slop-catalogue.md` |
+| `slop-hunter` | "what can go?" - an exhaustive delete pass gated by a load-bearing check: dead code, duplicated blocks, YAGNI abstractions, defensive guards, over-mocked tests, unrequested hunks, doc over-prose, unused deps; plus AI-slop tells, fabrication & fake passes - the measured evidence per axis in `references/slop-hunter/research.md` |
 | `ai-engineer` | "will this still steer any assistant tomorrow?" - the instruction layer itself: vendor lock-in, pinned command surfaces, drifted rule copies, unbounded loops |
 
 One plugin agent serves them all - name the lens in the prompt and it loads that persona: `Agent(subagent_type: "devils-advocate:adversarial-reviewer", prompt: "Adversary: architect. ...")`. Never review with `general-purpose`: it carries no lens, so it returns a fluent summary where an adversary returns findings and a verdict.
@@ -77,7 +77,9 @@ A panel's findings go through `devils-advocate:adjudicator` before any fix - it 
 
 **Multi-round reviews run as a workflow** - with the dynamic Workflow capability, construct the workflow from the spec and pass it inline; without it, run the shipped `adversarial-loop.js` as the supplied protocol. The loop's nine invariants live in the script's control flow, never in session memory, so the protocol cannot drift with a long session's context; `plugins/devils-advocate/skills/adversarial-review/references/loop-spec.md` is the one full statement of the contract - invariants, args, statuses, execution paths and the incidents behind each rule.
 
-Three deterministic commands from the library carry the review's bookkeeping. `review-tools dossier` writes the repository inventory (symbols, CLI surface versus documented surface, risky primitives, shared literals, most-called symbols) that each Mode 2 reviewer otherwise spends its first 40-60 turns rediscovering; pasted into the prompt it removes that discovery from every lens. `review-tools findings` merges the lens reports into one severity table keyed by `file:line` for the adjudicator. `review-tools cost` reads the subagent transcripts and reports turns, cached tokens, tool mix and re-reads per reviewer, so a change to the prompts can be shown to have saved something.
+Four deterministic commands from the library carry the review's bookkeeping. `review-tools dossier` writes the repository inventory (symbols, CLI surface versus documented surface, risky primitives, shared literals, most-called symbols) that each Mode 2 reviewer otherwise spends its first 40-60 turns rediscovering; pasted into the prompt it removes that discovery from every lens. `review-tools findings` merges the lens reports into one severity table keyed by `file:line` for the adjudicator. `review-tools cost` reads the subagent transcripts and reports turns, cached tokens, tool mix and re-reads per reviewer, so a change to the prompts can be shown to have saved something. `review-tools research search` ranks the entries of an adversary's research files against a question, so a best practice already cached is not researched again.
+
+Research is opt-in. When a reviewer needs a best practice, paradigm or pattern its research files do not carry and the adjudicator approves the request, the skill asks once whether to allow 1, 3 or 5 researched questions per adversary, and appends what it finds to `.claude/review-research/<adversary>/research.md` in the reviewed project. No means no for that review; an adversary whose budget is used up can only return a suggestion, which defaults to no.
 
 Reviews are **multi-round** by design: one pass finds, you triage and fix, then you re-run to prove the fix cleared it and opened no new hole. A single pass is a smoke test, not a verdict. Never flip a "survived adversarial review" criterion to done on the round that still had findings - only on a clean confirming round.
 
