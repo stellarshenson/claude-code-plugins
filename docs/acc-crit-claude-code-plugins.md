@@ -956,3 +956,32 @@ the report surface - SUMMARY grids, ITEMS queue, coverage
   - log: 2026-09-06T16:25:30Z @kj added
   - log: 2026-09-06T16:25:49Z @kj closed
 
+## pm-tools amend `PMAMD`
+
+Rewording an item while its history stays in the file.
+
+- [x] `ACC-PMAMD-141` **amend rewords and keeps the old wording** - HIGH; amend FILE --id ID --title/--text --author @xx replaces the item's title or body and appends a log line carrying the old and the new wording, so the item line holds the current wording and the log holds every earlier one
+  - evidence: tests/test_pm_tools.py 195 passed on 2026-09-17; review run wf_68c63b1f-700 confirmed clean
+  - test: tests/test_pm_tools.py::test_amend_keeps_every_earlier_wording_in_the_log - three renames and a text change; the item line shows the latest, the log the four old->new pairs
+  - test-tags: UNIT
+  - log: 2026-09-17T20:02:44Z @kj added
+  - log: 2026-09-17T20:02:58Z @kj closed: verified: test_amend_keeps_every_earlier_wording_in_the_log green; adversarial review (bug-hunter, slop-hunter, architect) SHIP after 2 rounds
+- [x] `ACC-PMAMD-142` **an amended file passes check** - CRITICAL; the amend log line is written with ASCII -> so check exits 0 on the amended file; the arrow glyph U+2192 is a forbidden glyph in tracking documents
+  - evidence: tests/test_pm_tools.py 195 passed on 2026-09-17; review run wf_68c63b1f-700 confirmed clean
+  - test: tests/test_pm_tools.py::test_amend_keeps_every_earlier_wording_in_the_log - check exits 0 after four amends
+  - test-tags: UNIT
+  - log: 2026-09-17T20:02:44Z @kj added
+  - log: 2026-09-17T20:02:58Z @kj closed: verified: test_amend_keeps_every_earlier_wording_in_the_log green; adversarial review (bug-hunter, slop-hunter, architect) SHIP after 2 rounds
+- [x] `ACC-PMAMD-143` **search and reports read the current wording** - MEDIUM; after an amend, search ranks the item on its current title and the earlier wording is still found through the log field; list and report show the current wording
+  - evidence: tests/test_pm_tools.py 195 passed on 2026-09-17; review run wf_68c63b1f-700 confirmed clean
+  - test: tests/test_pm_tools.py::test_amend_keeps_every_earlier_wording_in_the_log - search on the new title matches in title, search on the first title matches in log
+  - test-tags: UNIT
+  - log: 2026-09-17T20:02:44Z @kj added
+  - log: 2026-09-17T20:02:58Z @kj closed: verified: test_amend_keeps_every_earlier_wording_in_the_log green; adversarial review (bug-hunter, slop-hunter, architect) SHIP after 2 rounds
+- [x] `ACC-PMAMD-144` **no ordinal on amendments** - HIGH; amendment log lines carry no ordinal and the id never changes; the two-branch union merge of two amendments of one item leaves a file that parses, passes check and reads unambiguously by date, author and attribute (simulation of four schemes, 2026-09-17: item and attribute ordinals duplicate on a concurrent merge, an id suffix collides with the regression ordinal)
+  - evidence: workflow wf_893563b3-f56, four simulators drove the CLI through a two-branch union merge; only no-ordinal left no duplicated key
+  - test: manual - the four-scheme simulation record in the journal; no automated merge test
+  - test-tags: MANUAL
+  - log: 2026-09-17T20:02:45Z @kj added
+  - log: 2026-09-17T20:02:58Z @kj closed: decided by simulation: no-ordinal 12 points, attribute-ordinal 9, item-ordinal 6, id-suffix 3; unanimous on traceability, simplicity and merge safety
+

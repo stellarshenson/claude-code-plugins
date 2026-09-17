@@ -1791,7 +1791,9 @@ def test_the_importance_order_is_the_rank_not_the_alphabet(criteria: Path, capsy
     assert [r[1] for r in rows[1:]] == ["CRITICAL", "MEDIUM", "LOW"], "sort_key ranks"
     run("pivot", str(criteria), "--rows", "importance")
     rows = table_rows(capsys.readouterr().out)
-    assert [r[0] for r in rows[1:]] == ["CRITICAL", "MEDIUM", "LOW", "**Total**"], "key_order ranks"
+    assert [r[0] for r in rows[1:]] == ["CRITICAL", "MEDIUM", "LOW", "**Total**"], (
+        "key_order ranks"
+    )
 
 
 def test_the_severity_sort_spans_every_level_in_rank_order(defects: Path, capsys):
@@ -2551,3 +2553,51 @@ def test_clearing_another_authors_lock_is_named_a_transfer(defects: Path, capsys
     assert err.count("\n") == 1, "one line per foreign active lock, none for your own"
     assert f"TRANSFER: DEF-LNCH-3 was locked by @xy until {three} - you are clearing it" in err
     assert lock_lines(defects) == []
+
+
+def test_amend_keeps_every_earlier_wording_in_the_log(defects: Path, capsys):
+    """Reports, list and search read the current wording off the item line; the
+    log under it holds each wording it replaced, so a title renamed three times
+    shows three log lines and the file still answers what the defect was called."""
+    add_defect(defects, "login hangs")
+    for i, name in enumerate(("login stalls", "login times out", "token refresh race"), 1):
+        capsys.readouterr()
+        assert (
+            run("amend", str(defects), "--id", "DEF-LNCH-1", "--title", name, "--author", "@kj")
+            == 0
+        )
+        assert "DEF-LNCH-1 amended title" in capsys.readouterr().out
+    run(
+        "amend",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--text",
+        "refresh races the logout",
+        "--author",
+        "@kj",
+    )
+    assert run("check", str(defects)) == 0, "the amended file passes the gate"
+    body = defects.read_text(encoding="utf-8")
+    assert "**token refresh race** - MAJOR; refresh races the logout" in body, (
+        "latest wording, severity kept"
+    )
+    assert body.count("**login") == 0, "an earlier title never stays on the item line"
+    logs = [ln.strip() for ln in body.splitlines() if "amended" in ln]
+    assert [ln.split(" @kj ", 1)[1] for ln in logs] == [
+        'amended title "login hangs" -> "login stalls"',
+        'amended title "login stalls" -> "login times out"',
+        'amended title "login times out" -> "token refresh race"',
+        'amended text "symptom; cause under investigation" -> "refresh races the logout"',
+    ]
+    capsys.readouterr()
+    assert run("search", str(defects), "token refresh race") == 0
+    out = capsys.readouterr().out
+    assert table_rows(out)[1][1] == "`DEF-LNCH-1`" and "title" in table_rows(out)[1][4]
+    capsys.readouterr()
+    assert run("search", str(defects), "login hangs") == 0
+    assert table_rows(capsys.readouterr().out)[1][4] == "log", (
+        "the first wording is still findable"
+    )
+    with pytest.raises(SystemExit, match="nothing to amend"):
+        run("amend", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")

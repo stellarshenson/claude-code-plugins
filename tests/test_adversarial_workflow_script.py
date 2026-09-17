@@ -339,15 +339,16 @@ def test_full_history_on_every_return():
     how invariant 7 went unguarded while the record said otherwise. Writing it
     found the gap it was supposed to have closed: `closures` was missing from
     four of five returns, and ADJUDICATOR_DIED - the killed-loop case the
-    invariant names - carried neither `deferred` nor `refuted`.
+    invariant names - carried neither `deferred` nor `refuted`. `research` joined
+    the invariant with LOOP_CONTRACT 2 (loop-spec invariant 7).
     """
     for status in ("ADJUDICATOR_DIED", "STOP", "FANOUT_STOP", "PLAN", "ROUND_CAP"):
         block = _return_block(status)
-        for key in ("history", "closures", "deferred", "refuted", "state"):
+        for key in ("history", "closures", "deferred", "refuted", "research", "state"):
             assert re.search(rf"\b{key}[,:]", block), f"{status} return drops `{key}`"
     # the terminal return is SHIP
     final = text()[text().rindex("\nreturn {") :]
-    for key in ("history", "closures", "deferred", "refuted", "state"):
+    for key in ("history", "closures", "deferred", "refuted", "research", "state"):
         assert re.search(rf"\b{key}[,:]", final), f"the SHIP return drops `{key}`"
 
 
@@ -430,7 +431,7 @@ def test_a_dead_panel_is_never_a_clean_round():
         "the panel's death is checked after adjudication begins - too late"
     )
     died = _return_block("PANEL_DIED")
-    for key in ("history", "closures", "deferred", "refuted", "state"):
+    for key in ("history", "closures", "deferred", "refuted", "research", "state"):
         assert re.search(rf"\b{key}[,:]", died), f"PANEL_DIED drops `{key}` (invariant 7)"
 
 

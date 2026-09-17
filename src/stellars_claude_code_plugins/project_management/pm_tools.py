@@ -116,6 +116,7 @@ Edit (one file):
                     [--test-tags "UNIT, FUNCTIONAL"] [--mechanism M|--root-cause R]
   edit   FILE --id ID [--title T] [--text D] [--severity S] [--importance I]
                       [--repro R|--test T] [--test-tags TAGS] [--evidence E]
+  amend  FILE --id ID [--title T] [--text D]   reword; the log keeps the old wording
 
 --severity is CRITICAL|MAJOR|MEDIUM|MINOR, mandatory on every defect and refused on
 a criterion. An untriaged defect is a check error. Foreign vocabularies (P0-P4, S1-S4,
@@ -2413,6 +2414,26 @@ def cmd_cause(file, wanted, kind, text, author, update):
     return 0
 
 
+def rewrite_head(lines, b, title=None, text=None, sev=None, importance=None):
+    """Rewrite the item line with a new title, text, severity or importance."""
+    body = b["body"]
+    bold = BOLD.search(body)
+    cur_title = bold.group(1) if bold else ""
+    cur_text = body[bold.end() :].lstrip(" -") if bold else body
+    new_text = text if text else cur_text
+    if sev:
+        new_text = f"{sev}; " + SEV.sub("", new_text).lstrip(" ;:,-")
+    elif importance:
+        new_text = f"{importance}; " + IMP.sub("", new_text).lstrip(" ;:,-")
+    elif b["severity"] and not SEV.match(new_text):
+        # a --text rewrite must not quietly untriage the defect
+        new_text = f"{b['severity']}; {new_text}"
+    elif b["importance"] and not IMP.match(new_text):
+        # nor quietly unrate the criterion
+        new_text = f"{b['importance']}; {new_text}"
+    lines[b["line"] - 1] = f"- [{b['state']}] `{ident(b)}` **{title or cur_title}** - {new_text}"
+
+
 def cmd_edit(file, wanted, title, text, sev, importance, repro, test, tags, author, evidence=None):
     expire_locks(file)
     lines = load(file)
@@ -2433,23 +2454,7 @@ def cmd_edit(file, wanted, title, text, sev, importance, repro, test, tags, auth
     warn_lock(file, b, who)
     done = []
     if title or text or sev or importance:
-        body = b["body"]
-        bold = BOLD.search(body)
-        cur_title = bold.group(1) if bold else ""
-        cur_text = body[bold.end() :].lstrip(" -") if bold else body
-        new_text = text if text else cur_text
-        if sev:
-            new_text = f"{sev}; " + SEV.sub("", new_text).lstrip(" ;:,-")
-        elif importance:
-            new_text = f"{importance}; " + IMP.sub("", new_text).lstrip(" ;:,-")
-        elif b["severity"] and not SEV.match(new_text):
-            # a --text rewrite must not quietly untriage the defect
-            new_text = f"{b['severity']}; {new_text}"
-        elif b["importance"] and not IMP.match(new_text):
-            # nor quietly unrate the criterion
-            new_text = f"{b['importance']}; {new_text}"
-        new = f"`{ident(b)}` **{title or cur_title}** - {new_text}"
-        lines[b["line"] - 1] = f"- [{b['state']}] {new}"
+        rewrite_head(lines, b, title, text, sev, importance)
         done += [
             x
             for x in (
@@ -2470,6 +2475,34 @@ def cmd_edit(file, wanted, title, text, sev, importance, repro, test, tags, auth
     lines.insert(block_end(lines, b), f"{sub_indent(lines, b)}- log: {now()} {who} edited {what}")
     save(file, lines)
     print(f"{file}:{b['line']}: {ident(b)} {what} updated")
+    return 0
+
+
+def cmd_amend(file, wanted, title, text, author):
+    """Reword an item; the log line keeps the wording it replaced, so a title
+    renamed three times shows three log lines under the current one."""
+    expire_locks(file)
+    lines = load(file)
+    blocks, _ = parse(file)
+    who = need_author(file, author)
+    if not (title or text):
+        raise SystemExit("nothing to amend; pass --title and/or --text")
+    b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
+    warn_lock(file, b, who)
+    was = [
+        f'{what} "{old}" -> "{new}"'
+        for what, old, new in (("title", b["title"] or "", title), ("text", b["plain"], text))
+        if new
+    ]
+    rewrite_head(lines, b, title, text)
+    lines.insert(
+        block_end(lines, b),
+        f"{sub_indent(lines, b)}- log: {now()} {who} amended {'; '.join(was)}",
+    )
+    save(file, lines)
+    print(
+        f"{file}:{b['line']}: {ident(b)} amended {' and '.join(w.split(' ', 1)[0] for w in was)}"
+    )
     return 0
 
 
@@ -3121,6 +3154,13 @@ def main(argv: list[str] | None = None) -> int:
     se.add_argument("--evidence", help="one line proving the item is done")
     se.add_argument("--author", required=True, metavar="@xx")
 
+    sm = sub.add_parser("amend")
+    sm.add_argument("file")
+    sm.add_argument("--id", required=True)
+    sm.add_argument("--title")
+    sm.add_argument("--text")
+    sm.add_argument("--author", required=True, metavar="@xx")
+
     sh = sub.add_parser("author")
     sh.add_argument("file")
     sh.add_argument("--handle", required=True, metavar="@xx")
@@ -3307,6 +3347,8 @@ def main(argv: list[str] | None = None) -> int:
             a.author,
             a.evidence,
         )
+    if a.cmd == "amend":
+        return cmd_amend(a.file, a.id, a.title, a.text, a.author)
     if a.cmd in ("mechanism", "root-cause"):
         return cmd_cause(a.file, a.id, a.cmd, a.text, a.author, a.update)
     if a.cmd == "author":

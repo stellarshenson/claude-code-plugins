@@ -241,7 +241,8 @@ Write - one file per call, and `--author` on every one of them:
 | Command | Does |
 |---------|------|
 | `add` | next id, appended under the category; creates the category when named; `--severity` mandatory on a defect, `--importance` mandatory on a criterion, each refused on the other |
-| `edit` | amend title, body, severity, importance, hint, tags or evidence; logged |
+| `edit` | correct title, body, severity, importance, hint, tags or evidence; logged as `edited <fields>`, the old value not kept |
+| `amend` | reword title or body; the log line keeps the old wording (`amended title "old" -> "new"`), so an item renamed three times shows three lines under the current one; report, list and search read the current wording |
 | `author` | add or update a roster entry; required before that handle can write |
 | `describe` | set or replace the category description |
 | `relate` | add one `related:` or `blocked-by:` line |

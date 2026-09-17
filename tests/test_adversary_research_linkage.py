@@ -10,11 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 REVIEW = ROOT / "plugins" / "devils-advocate" / "skills" / "adversarial-review"
 AGENT = ROOT / "plugins" / "devils-advocate" / "agents" / "adversarial-reviewer.md"
-# popular-science reviews against the craft canon it shares with the datascience writer skill
-SHARED_CANON = {"popular-science"}
-ADVERSARIES = sorted(
-    p.stem for p in (REVIEW / "adversaries").glob("*.md") if p.stem not in SHARED_CANON
-)
+ADVERSARIES = sorted(p.stem for p in (REVIEW / "adversaries").glob("*.md"))
 
 
 def test_the_reviewer_agent_names_the_research_path():

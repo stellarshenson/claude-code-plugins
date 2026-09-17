@@ -212,6 +212,10 @@ pm-tools parser, edit, upgrade and reports
   - repro: uv run pm-tools refs docs/defects-claude-code-plugins.md --id '`DEF-PMGT-60`' prints 'no item with id `DEF-PMGT-60` in the scanned files, and nothing points at it' and exits 1, while refs --id DEF-PMGT-60 exits 0; the same string through list --related-to '`DEF-PMGT-60`' prints '--related-to takes an id like DEF-LNCH-3, got ...'
   - log: 2026-09-06T18:41:49Z @kj added
   - log: 2026-09-06T18:41:57Z @kj root cause: pm_tools.py:3276 dispatches cmd_refs(files, a.id.strip().upper(), a.json), bypassing norm_id (pm_tools.py:861) which all eight write commands route through. Surfaced by the adversarial review's round-7 open list, ruled immaterial there because the pre-change path returned a silent '0 inbound, 0 outbound' at exit 0 - also wrong, but not a positive absence claim. NOT fixed in the sort-contract change: that change reached SHIP on two clean rounds and a further edit would reopen the review.
+- [ ] `DEF-PMGT-67` **a newline inside a free-text argument is written verbatim and silently truncated on read** - MAJOR; any write command given a multi-line --text, --title, --event, --evidence, --repro, --test, --reason, --note, --description or cause text writes it verbatim; parse keeps the first line only, list, report and search show only that line, and check stays silent. About twenty argparse free-text arguments share the hole; six say one line in their help and none enforces it
+  - repro: uv run pm-tools add docs/defects-x.md --category LNCH --title t --text $'first line\nsecond line' --severity MAJOR --author @kj; then list shows the first line and check exits 0
+  - test-tags: UNIT
+  - log: 2026-09-17T20:02:59Z @kj added
 
 ## hypothesis-tools `HYPO`
 

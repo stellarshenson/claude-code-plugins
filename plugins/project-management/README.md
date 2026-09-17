@@ -149,6 +149,7 @@ pm-tools add docs/defects-app.md --category LNCH --name Launch --severity MAJOR 
     --author @kj --title "token race on relaunch" --text "symptom; cause under investigation" \
     --repro "fork under load, send a turn inside 2s" --test-tags "INTEGRATION"
 pm-tools lock  docs/defects-app.md --id DEF-LNCH-1 --author @kj --hours 4 --note "bisecting"
+pm-tools amend docs/defects-app.md --id DEF-LNCH-1 --author @kj --title "token refresh race"   # old title kept in the log
 pm-tools log   docs/defects-app.md --id DEF-LNCH-1 --author @kj --event "attempted: ... did NOT work"
 pm-tools close docs/defects-app.md --id DEF-LNCH-1 --author @kj --event "fixed: ..." \
     --evidence "the repro no longer fires on build 412; 79 pytest green"
