@@ -38,7 +38,7 @@ One index directory per repository - `tmp/graphify-out/` here, `graphify-out/` b
 - `manifest.json` - a file inventory `update` only writes, never reads; the readers are `graphify extract`'s incremental mode and the LLM-billed `/graphify --update` semantic pass. `update`'s own skip decision is a post-rebuild topology comparison, so it re-extracts the whole code corpus either way
 - dated subdirectories (`2026-08-29/`) - prior builds, kept for comparison, never the one to hand over
 
-Refresh at one point in the loop: after a fix round lands and before the confirming round spawns. `graphify update <path>` re-extracts the whole code corpus from AST in seconds at no token cost, so it never needs deliberating over. A confirming round handed the pre-fix index re-reports the findings the fixes closed.
+Install: `uv tool install graphifyy` (binary `graphify`). Build from nothing and refresh, AST-only, free: `mkdir -p tmp && (cd tmp && GRAPHIFY_OUT=tmp/graphify-out graphify update ..)` - run from `tmp/` so `manifest.json` lands beside the graph. LLM-billed semantic layer: `graphify extract`, `/graphify`; only when the user picked it. Refresh after a fix round lands, before the confirming round spawns - a confirming round handed the pre-fix index re-reports the findings the fixes closed.
 
 ## Gotchas
 

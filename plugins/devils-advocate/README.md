@@ -48,7 +48,7 @@ The scorecard workflow above attacks a *document*. `adversarial-review` attacks 
 Two modes, composable with any adversary:
 
 - **Mode 1 - diff bug-hunt.** No tools, inline diff, one turn, fast. Finds bugs, logic errors, security holes, broken edge cases in a specific change
-- **Mode 2 - architecture & quality audit.** Tools on, whole-repo, many turns. Finds the systemic rot a diff cannot show - slop, brittle architecture, hardcodings, config drift, broken separation of concerns. The finding is usually a relationship across files, invisible in any one hunk. When a `graphify` code graph exists at `tmp/graphify-out/graph.json`, reviewers and the adjudicator read it for callers and blast radius instead of rediscovering them by grep
+- **Mode 2 - architecture & quality audit.** Tools on, whole-repo, many turns. Finds the systemic rot a diff cannot show - slop, brittle architecture, hardcodings, config drift, broken separation of concerns. The finding is usually a relationship across files, invisible in any one hunk. An existing `graphify` code graph at `tmp/graphify-out/graph.json` is refreshed and used without asking; with none, the skill offers one at launch - AST-only by default (free), the LLM-assisted pass on request, installing `graphify` on request - and reviewers and the adjudicator read it for callers and blast radius instead of rediscovering them by grep
 
 The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer argues from. Twelve ship under `skills/adversarial-review/adversaries/`, one self-contained persona prompt each:
 
