@@ -7,8 +7,10 @@ turns, 9-16M cached input tokens and 15-25 minutes each, of which roughly
 1-2% was file content. Forty to sixty of those turns rediscover the same
 inventory every time - which files exist, where the symbols are, what the
 CLI surface is, where the risky primitives live, which literal is duplicated
-across modules. Three commands remove that cost or make it measurable, and a
-fourth keeps researched best practices from being researched twice:
+across modules. Three commands remove that cost or make it measurable, a
+fourth keeps researched best practices from being researched twice, and a
+fifth prints the reviewer prompt the workflow script would send, for a
+reviewer spawned by hand:
 
     dossier   one markdown document with the inventory, produced by AST in
               seconds, pasted into every reviewer's prompt
@@ -20,6 +22,11 @@ fourth keeps researched best practices from being researched twice:
     research  the entries of adversary research files ranked against a
               question, so a cached best practice is found before anyone
               researches it again
+    prompt    the reviewer prompt for one lens from the same args object the
+              workflow script takes - target, scope, bar, graph, closures -
+              so a hand-spawned reviewer gets the context the script gives
+              (DEF-ADVR-68); the block text is a copy of the script's and a
+              test holds the two equal
 
 Everything here is read-only over the repository; the only file it writes is
 the one `--out` names.
@@ -998,6 +1005,169 @@ def cmd_research_search(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Reviewer prompt
+# ---------------------------------------------------------------------------
+
+# The shape of `state` and `appliedFixes` the workflow script reads; the same
+# number as the script's LOOP_CONTRACT, so a state from another version is
+# refused here as it is there.
+LOOP_CONTRACT = 2
+
+# The finding fields of the script's FINDINGS_SCHEMA, in its order. A hand
+# spawn has no structured-output tool, so the prompt ends by naming them.
+FINDING_FIELDS = (
+    "severity",
+    "taste",
+    "title",
+    "file",
+    "line",
+    "evidence",
+    "material",
+    "materiality",
+    "remedy",
+    "outOfBar",
+    "research",
+    "closure",
+)
+
+
+def validate_review_args(args: dict) -> None:
+    """The workflow script's own checks on its args, raised as ValueError."""
+    bar = args.get("bar")
+    lenses = args.get("lenses")
+    if not args.get("target") or not bar or not isinstance(lenses, list) or not lenses:
+        raise ValueError(
+            "args.target, args.bar and args.lenses are mandatory - the bar is the review's "
+            "scope anchor, refuse to review without one"
+        )
+    if not isinstance(bar, dict) or not all(
+        bar.get(k) for k in ("purpose", "inputs", "primaryPath")
+    ):
+        raise ValueError(
+            "args.bar must be an object with purpose, inputs and primaryPath - an output-only "
+            "bar gives reviewers nothing to test materiality against"
+        )
+    state = args.get("state")
+    if state:
+        if state.get("contract") != LOOP_CONTRACT:
+            raise ValueError(
+                f"args.state was written under loop contract {state.get('contract')} and this "
+                f"command reads contract {LOOP_CONTRACT} - the state and the command come from "
+                "different versions"
+            )
+        fixes = args.get("appliedFixes")
+        if (
+            not isinstance(fixes, list)
+            or not fixes
+            or any(
+                not f.get("site")
+                or not f.get("summary")
+                or not f.get("patch")
+                or not isinstance(f.get("files"), list)
+                or not f["files"]
+                for f in fixes
+            )
+        ):
+            raise ValueError(
+                "args.appliedFixes must list every applied change as {site, summary, files, "
+                "patch} - files the change touched, patch the path of a file holding the diff "
+                "of exactly that change; without them a confirming reviewer re-reads the whole "
+                "delta"
+            )
+
+
+def bar_block(bar: dict) -> str:
+    lines = [
+        "BAR (the product bar - severity is judged against THIS, not against all inputs in the world):",
+        f"PURPOSE (what the product is for, and for whom): {bar['purpose']}",
+        f"INPUT UNIVERSE (what it handles - anything outside is out of bar): {bar['inputs']}",
+        f"PRIMARY PATH (every CRITICAL or MAJOR must sit on it): {bar['primaryPath']}",
+        f"GUARANTEES (on the primary path, for the input universe): {bar['guarantees']}"
+        if bar.get("guarantees")
+        else None,
+        f"OUT OF SCOPE (explicitly): {bar['outOfScope']}" if bar.get("outOfScope") else None,
+        f"DEGRADE GRACEFULLY COVERS: {bar['degrade']}" if bar.get("degrade") else None,
+        "The script caps material=false at MINOR/outOfBar whatever the reproduction shows.",
+    ]
+    return "\n".join(line for line in lines if line)
+
+
+def confirm_body(closures: list[dict], new_delta: list[dict]) -> str:
+    return "\n".join(
+        [
+            "This is a CONFIRMING round, pinned - not a fresh sweep. Two jobs only:",
+            "1. Reproduce each closure below and verify the defect is gone - a closure that is NOT closed is reported with its text in the `closure` field.",
+            "2. Attack what the applied changes could have broken - the applied delta is your only attack surface; do not review code the changes did not touch. A regression the change caused outside its own files - a caller, a test - is reported with the causing closure quoted in `closure`; the filter keeps a finding by that field, so an unnamed closure means the finding is discarded.",
+            "TURN BUDGET: read the patch of each NEWEST DELTA entry, then only the lines a closure you reproduce needs; run the test command once if one is named; report. Never re-read the whole delta - no diff against the base, no re-reading of documents the target names - it was reviewed in full in round 1. Do not rebuild the inventory, do not audit prose, naming, comments or test style, do not write scratch specs beyond what reproduces a closure. The script DISCARDS any finding that is taste, sits outside the applied delta without naming a failing closure, or repeats a finding already ruled at a site no fix has touched since - do not spend turns producing one.",
+            "CLOSURES (all applied so far):",
+            "\n".join(f"- {c['site']}: {c['summary']} [patch: {c['patch']}]" for c in closures),
+            "NEWEST DELTA (this invocation's attack surface - read these patches first):",
+            "\n".join(
+                f"- {c['site']}: {c['summary']} [{', '.join(c['files'])}] patch: {c['patch']}"
+                for c in new_delta
+            ),
+        ]
+    )
+
+
+def reviewer_prompt(args: dict, lens: str) -> str:
+    """The prompt the workflow script sends to one lens, for the same args.
+
+    Every block is the script's text; only the last line differs, because a
+    hand-spawned reviewer returns prose and the script's reviewer returns
+    structured output.
+    """
+    validate_review_args(args)
+    state = args.get("state")
+    confirming = bool(state)
+    research = args.get("research", state.get("research") if state else None)
+    if confirming:
+        closures = list(state.get("closures") or []) + list(args["appliedFixes"])
+        body = confirm_body(closures, args["appliedFixes"])
+    else:
+        body = "This is a discovery round: the full scope against the bar."
+    graph = args.get("graph")
+    blocks = [
+        f"Adversary lens: {lens}. Adopt that persona file exactly.",
+        f"TARGET (reviewed in full in round 1 - orientation only; do not re-read it): {args['target']}"
+        if confirming
+        else f"TARGET: {args['target']}",
+        f"SCOPE: {args.get('scope') or 'the named target only'}",
+        bar_block(args["bar"]),
+        f"INSTRUMENT AVAILABLE - a refreshed code graph matching HEAD at {graph}. It answers callers, dependents and whether two sites share one cause faster than grepping. Use it as your method sees fit and point it at that path."
+        if graph
+        else None,
+        "RESEARCH: denied by the user for this review - no research request is acted on."
+        if research and research.get("allowed") is False
+        else None,
+        body,
+        "Return your findings in the adversary file's output format, one finding per entry with: "
+        + ", ".join(FINDING_FIELDS)
+        + ".",
+    ]
+    return "\n\n".join(b for b in blocks if b)
+
+
+def cmd_prompt(args: argparse.Namespace) -> int:
+    review_args = json.loads(args.args.read_text(encoding="utf-8"))
+    try:
+        prompt = reviewer_prompt(review_args, args.lens)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    if args.lens not in review_args["lenses"]:
+        print(
+            f"warning: {args.lens} is not in args.lenses {review_args['lenses']}", file=sys.stderr
+        )
+    if args.out:
+        args.out.write_text(prompt + "\n", encoding="utf-8")
+        print(f"{args.out}: {len(prompt.splitlines())} lines")
+    else:
+        print(prompt)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="review-tools", description="Deterministic helpers around an adversarial code review."
@@ -1066,6 +1236,18 @@ def main(argv: list[str] | None = None) -> int:
     p_rs.add_argument("--top", type=int, default=5, help="Entries to show.")
     p_rs.add_argument("--json", action="store_true")
 
+    p_p = sub.add_parser(
+        "prompt",
+        help="Print the reviewer prompt the workflow script would send to one lens, from its args JSON.",
+    )
+    p_p.add_argument(
+        "args",
+        type=Path,
+        help="JSON with the workflow args: target, scope, bar, lenses, graph, research, state, appliedFixes.",
+    )
+    p_p.add_argument("--lens", required=True, help="The adversary the prompt is for.")
+    p_p.add_argument("--out", type=Path, help="Write here instead of stdout.")
+
     args = parser.parse_args(argv)
     if args.command == "dossier":
         return cmd_dossier(args)
@@ -1075,6 +1257,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_findings(args)
     if args.command == "research":
         return cmd_research_search(args)
+    if args.command == "prompt":
+        return cmd_prompt(args)
     return 1
 
 

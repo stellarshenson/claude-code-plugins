@@ -9,6 +9,7 @@ untriaged defect fails the gate, and every derived fact is computed on read.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import re
 
@@ -2601,3 +2602,131 @@ def test_amend_keeps_every_earlier_wording_in_the_log(defects: Path, capsys):
     )
     with pytest.raises(SystemExit, match="nothing to amend"):
         run("amend", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+
+
+def test_a_line_break_in_free_text_is_written_as_backslash_n(defects: Path, capsys):
+    """An item and each sub-line is one line of the file, so a real line break in any
+    free-text argument is stored as the two characters backslash-n: the second half is
+    neither lost on read nor turned into an unparsed line, and check stays clean."""
+    assert (
+        run(
+            "add",
+            str(defects),
+            "--category",
+            "LNCH",
+            "--name",
+            "Launch",
+            "--author",
+            "@kj",
+            "--severity",
+            "MAJOR",
+            "--title",
+            "first\nsecond",
+            "--text",
+            "line one\r\nline two",
+            "--repro",
+            "step 1\nstep 2",
+        )
+        == 0
+    )
+    run("log", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "a\nb")
+    run("amend", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--text", "x\ny")
+    body = defects.read_text(encoding="utf-8")
+    assert "**first\\nsecond** - MAJOR; x\\ny" in body
+    assert "- repro: step 1\\nstep 2" in body
+    assert "@kj a\\nb" in body
+    assert 'amended text "line one\\nline two" -> "x\\ny"' in body
+    assert "\nsecond" not in body and "\nline two" not in body, "no stray unparsed line"
+    assert run("check", str(defects)) == 0
+    capsys.readouterr()
+    assert run("list", str(defects), "--columns", "id,title,body,hint") == 0
+    assert ["`DEF-LNCH-1`", "first\\nsecond", "x\\ny", "step 1\\nstep 2"] == table_rows(
+        capsys.readouterr().out
+    )[1][:4]
+
+
+def test_attach_records_checksum_and_edit_stamp_and_check_reports_drift(
+    defects: Path, tmp_path: Path, capsys
+):
+    """An attachment line names the artefact relative to the tracker, its sha256 prefix
+    and its last-edit stamp; check recomputes both and warns when the artefact changed
+    or went missing; attaching the same path again refreshes the line and the log keeps
+    the checksum it replaced."""
+    shots = tmp_path / "shots"
+    shots.mkdir()
+    png = shots / "login screen.png"
+    png.write_bytes(b"\x89PNG one")
+    doc = tmp_path / "notes.md"
+    doc.write_text("repro notes\n", encoding="utf-8")
+    add_defect(defects, "login hangs")
+    assert (
+        run(
+            "attach",
+            str(defects),
+            "--id",
+            "DEF-LNCH-1",
+            "--author",
+            "@kj",
+            "--path",
+            str(png),
+            "--path",
+            str(doc),
+        )
+        == 0
+    )
+    out = capsys.readouterr().out
+    assert "DEF-LNCH-1 attached shots/login screen.png sha256:" in out
+    assert "DEF-LNCH-1 attached notes.md sha256:" in out
+    body = defects.read_text(encoding="utf-8")
+    att = [ln.strip() for ln in body.splitlines() if ln.strip().startswith("- attachment:")]
+    assert len(att) == 2 and att[0].startswith("- attachment: shots/login screen.png sha256:")
+    sha_old = re.search(r"sha256:([0-9a-f]{16}) edited:\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$", att[0])
+    assert sha_old, att[0]
+    assert run("check", str(defects)) == 0
+    capsys.readouterr()
+
+    png.write_bytes(b"\x89PNG two")
+    assert run("check", str(defects)) == 0, "drift is a warning, not an error"
+    out = capsys.readouterr().out
+    assert "warn  attachment shots/login screen.png changed since" in out
+    assert f"sha256 {sha_old.group(1)} is now" in out and "notes.md" not in out
+    assert run("check", str(defects), "--strict") == 1
+
+    capsys.readouterr()
+    assert (
+        run("attach", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--path", str(png))
+        == 0
+    )
+    out = capsys.readouterr().out
+    assert (
+        f"refreshed attachment shots/login screen.png sha256:{sha_old.group(1)} -> sha256:" in out
+    )
+    body = defects.read_text(encoding="utf-8")
+    assert body.count("- attachment:") == 2, "a refresh rewrites the line, never adds one"
+    assert sha_old.group(1) not in [ln for ln in body.splitlines() if "- attachment:" in ln][0]
+    assert f"refreshed attachment shots/login screen.png sha256:{sha_old.group(1)} ->" in body
+    capsys.readouterr()
+    assert run("check", str(defects)) == 0 and "0 warning(s)" in capsys.readouterr().out
+
+    capsys.readouterr()
+    assert (
+        run("attach", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--path", str(doc))
+        == 0
+    )
+    assert "notes.md unchanged" in capsys.readouterr().out
+    assert defects.read_text(encoding="utf-8").count("- log:") == 4, (
+        "added, attached, attached, refreshed - an unchanged artefact is not logged"
+    )
+
+    doc.unlink()
+    capsys.readouterr()
+    run("check", str(defects))
+    assert "warn  attachment notes.md is missing" in capsys.readouterr().out
+    capsys.readouterr()
+    assert run("list", str(defects), "--json") == 0
+    rec = json.loads(capsys.readouterr().out)[0]
+    assert rec["attachments"] == ["shots/login screen.png", "notes.md"]
+    assert [f["path"] for f in rec["fingerprints"]] == rec["attachments"]
+    assert set(rec["fingerprints"][0]) == {"path", "sha256", "edited"}
+    with pytest.raises(SystemExit, match="attachment not found"):
+        run("attach", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--path", "nope.png")

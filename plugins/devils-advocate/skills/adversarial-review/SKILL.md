@@ -20,7 +20,7 @@ The reviewer must not inherit your context - one that read the author's reasonin
 
 ## Toolchain gate (MANDATORY - before any `review-tools` call)
 
-The three `review-tools` commands ship in the library; run this first, every session, before the first of them. The upgrade always runs; a version mismatch blocks.
+The `review-tools` commands ship in the library; run this first, every session, before the first of them. The upgrade always runs; a version mismatch blocks.
 
 ```bash
 python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
@@ -129,6 +129,7 @@ Which lens owns an overlap: Boundaries between lenses in `references/authoring-a
 One agent serves every adversary: `devils-advocate:adversarial-reviewer` loads the persona for the lens named in the prompt.
 
 - **Never review with `general-purpose`** - no lens returns a fluent summary that reads like assurance
+- **Hand spawns carry the script's context** - `review-tools prompt <args.json> --lens <name>` prints the prompt the workflow would send (target, scope, bar, graph, closures with patch paths) from the same args object; the agent stops on a prompt with no bar or a confirming prompt with no closures
 - **Name the adversary explicitly** - unnamed or misspelled, the agent lists the roster and stops. Caller named none → state the inferred target, recommend a lens, wait
 - **Tools are least-privilege, not a sandbox** - `Read, Grep, Glob, Bash`, no `Write`/`Edit`, no MCP; `Bash` still writes, so critique-only stays the persona's rule
 - **Two lenses degrade here** - `popular-science` wants no tools + a reference figure; `ux-designer` a rendered pixel. Route through `claude -p` when the visual bar decides the verdict

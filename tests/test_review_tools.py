@@ -10,11 +10,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
+import shutil
+import subprocess
 import textwrap
 
 import pytest
 
 from stellars_claude_code_plugins.review.review_tools import (
+    FINDING_FIELDS,
     build_dossier,
     cost_of,
     help_subcommands,
@@ -22,6 +26,7 @@ from stellars_claude_code_plugins.review.review_tools import (
     merge_findings,
     parse_report,
     render_dossier,
+    reviewer_prompt,
     verdict_inconsistencies,
 )
 
@@ -478,3 +483,141 @@ def test_research_search_ranks_the_answering_entry_and_skips_a_missing_cache(
     assert [(h["line"], h["topic"]) for h in hits] == [(6, "Static text")]
     assert main(["research", "search", "quantum", str(plugin)]) == 0
     assert "no entry matches (3 entries searched)" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# prompt - the workflow script's reviewer prompt for a hand spawn (DEF-ADVR-68)
+# ---------------------------------------------------------------------------
+
+LOOP_SCRIPT = (
+    Path(__file__).parent.parent
+    / "plugins/devils-advocate/skills/adversarial-review/workflows/adversarial-loop.js"
+)
+
+REVIEW_ARGS = {
+    "target": "the amend change",
+    "scope": "pm_tools.py only",
+    "bar": {
+        "purpose": "p",
+        "inputs": "i",
+        "primaryPath": "pp",
+        "outOfScope": "hand-edited files",
+    },
+    "lenses": ["bug-hunter", "architect"],
+    "graph": "tmp/graphify-out/graph.json",
+    "research": {"allowed": False},
+}
+
+CONFIRM_ARGS = {
+    **REVIEW_ARGS,
+    "state": {
+        "contract": 2,
+        "round": 1,
+        "spiralStreak": 0,
+        "history": [],
+        "deferred": [],
+        "refuted": [],
+        "rulings": [],
+        "closures": [
+            {
+                "round": 1,
+                "site": "a.py:1",
+                "summary": "s1",
+                "files": ["a.py"],
+                "patch": "/tmp/r1.patch",
+            }
+        ],
+        "settled": [],
+        "research": {"allowed": False},
+    },
+    "appliedFixes": [
+        {"site": "b.py:2", "summary": "s2", "files": ["b.py"], "patch": "/tmp/r2.patch"}
+    ],
+}
+
+PROMPT_DRIVER = r"""
+const fs = require('fs')
+const body = fs.readFileSync(process.argv[2], 'utf8').replace('export const meta', 'const meta')
+const args = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'))
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
+const run = new AsyncFunction('args', 'budget', 'agent', 'parallel', 'pipeline', 'phase', 'log', 'workflow', body)
+const prompts = []
+const agent = async (prompt, opts) => { prompts.push({ label: opts.label, prompt }); throw new Error('captured') }
+const parallel = (thunks) => Promise.all(thunks.map((thunk) => thunk()))
+run(args, null, agent, parallel, null, () => {}, () => {}, null).then(
+  () => console.log(JSON.stringify(prompts)),
+  () => console.log(JSON.stringify(prompts))
+)
+"""
+
+
+def _script_prompts(tmp_path: Path, args: dict) -> dict[str, str]:
+    driver, scenario = tmp_path / "driver.js", tmp_path / "args.json"
+    driver.write_text(PROMPT_DRIVER, encoding="utf-8")
+    scenario.write_text(json.dumps(args), encoding="utf-8")
+    r = subprocess.run(
+        ["node", str(driver), str(LOOP_SCRIPT), str(scenario)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert r.returncode == 0, r.stderr
+    return {p["label"]: p["prompt"] for p in json.loads(r.stdout)}
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+@pytest.mark.parametrize("args, label", [(REVIEW_ARGS, "discover"), (CONFIRM_ARGS, "confirm")])
+def test_prompt_equals_the_script_prompt_up_to_the_output_line(tmp_path: Path, args, label):
+    """DEF-ADVR-68: the prompt text lives twice - in the script, which cannot
+    read a file, and here. The two are held equal on every block but the
+    last: the script's reviewer returns structured output, a hand spawn
+    returns prose."""
+    script = _script_prompts(tmp_path, args)
+    for lens in args["lenses"]:
+        expected = script[f"{label}:{lens}"].rsplit("\n\n", 1)[0]
+        assert reviewer_prompt(args, lens).rsplit("\n\n", 1)[0] == expected
+
+
+def test_prompt_blocks_are_verbatim_from_the_script_and_name_every_finding_field():
+    """Node-free half of the parity check: each static sentence and the field
+    list are in the script's source."""
+    js = LOOP_SCRIPT.read_text(encoding="utf-8").replace("\\`", "`")  # template-literal escapes
+    prompt = reviewer_prompt(CONFIRM_ARGS, "bug-hunter")
+    for line in prompt.splitlines():
+        static = (
+            line.split(":")[0]
+            if line.startswith(
+                ("PURPOSE", "INPUT UNIVERSE", "PRIMARY PATH", "OUT OF SCOPE", "SCOPE", "TARGET")
+            )
+            else line
+        )
+        if static.startswith(
+            ("Adversary lens", "- ", "Return your findings", "INSTRUMENT AVAILABLE")
+        ):
+            continue
+        assert static in js, f"not in the script: {static[:60]!r}"
+    fields = re.search(r"required: \[('severity'.*?)\]", js).group(1)
+    assert all(f"'{f}'" in fields or f"{f}:" in js for f in FINDING_FIELDS)
+    assert prompt.endswith(", ".join(FINDING_FIELDS) + ".")
+
+
+def test_prompt_cli_refuses_the_script_refusals(tmp_path: Path, capsys: pytest.CaptureFixture):
+    no_bar = tmp_path / "no-bar.json"
+    no_bar.write_text(json.dumps({**REVIEW_ARGS, "bar": {"purpose": "p"}}), encoding="utf-8")
+    assert main(["prompt", str(no_bar), "--lens", "bug-hunter"]) == 2
+    assert "purpose, inputs and primaryPath" in capsys.readouterr().err
+    stale = tmp_path / "stale.json"
+    stale.write_text(
+        json.dumps({**CONFIRM_ARGS, "state": {**CONFIRM_ARGS["state"], "contract": 1}}),
+        encoding="utf-8",
+    )
+    assert main(["prompt", str(stale), "--lens", "bug-hunter"]) == 2
+    assert "loop contract 1" in capsys.readouterr().err
+    good = tmp_path / "good.json"
+    good.write_text(json.dumps(CONFIRM_ARGS), encoding="utf-8")
+    out = tmp_path / "prompt.txt"
+    assert main(["prompt", str(good), "--lens", "architect", "--out", str(out)]) == 0
+    text = out.read_text(encoding="utf-8")
+    assert "Adversary lens: architect." in text
+    assert "- b.py:2: s2 [b.py] patch: /tmp/r2.patch" in text
+    assert "OUT OF SCOPE (explicitly): hand-edited files" in text

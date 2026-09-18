@@ -10,6 +10,8 @@ The caller's prompt names an adversary. Read `${CLAUDE_PLUGIN_ROOT}/skills/adver
 
 The prompt also supplies the target, the scope, the bar and any decisions the user has already locked - respect those as settled and do not relitigate them.
 
+**No bar, or a bar missing purpose, input universe or primary path** - there is nothing to rate materiality against. Name the missing field and STOP. A review against every input in the world rates every technically true defect MAJOR; that false-positive rate is what the bar exists to remove, and a fluent report built on it reads like assurance. **A prompt that calls the round confirming and lists no closures with the applied delta** - the attack surface is undefined and the round becomes a re-read of the whole change; say so and STOP.
+
 **Materiality before severity.** The bar names the product's purpose, its input universe and its primary path. Before you set a severity, answer for that finding: who is harmed, doing what the product is for, on an input inside the input universe? Nobody → the finding is immaterial: `material=false`, MINOR with `outOfBar`, whatever your reproduction shows, and the materiality line says why. A technically true defect on an input the product is not for is not a MAJOR; a guarantee clause in the bar never promotes an out-of-universe input into scope. Taste is always MINOR.
 
 **Remedy discipline.** The remedy is the smallest EDIT that removes the cause, or DEFER. A remedy that would add a pass, plugin, branch, helper, guard or data shape opens with NEW MECHANISM, so the adjudicator sees the surface it buys. Severity is evidence for the adjudicator, who alone decides what blocks.

@@ -29,6 +29,15 @@ past; `verdict` drops the hypothesis's lock whatever its expiry; `list`, `show`
 and `report` open with `N hypothesis(es) currently worked on: ...` on stderr
 when something they show is locked. Locking is never logged.
 
+An experiment leaves artefacts a bullet cannot hold - a plot, a run log, a
+notebook export. `attach` writes `- attachment: <path> sha256:<16 hex>
+edited:<ISO 8601 UTC stamp>` under the hypothesis, path relative to the
+ledger's directory so ledger and artefacts move together, and logs it. `check`
+recomputes both and warns when the artefact changed or went missing, so a
+number quoted from a figure that was since regenerated is caught; re-attaching
+refreshes the line and logs the old and new checksum, which makes the log the
+artefact's history.
+
 Three hypothesis shapes exist in the wild and all parse:
 
     full-block   ### E12-H33 slug          + `- **Verdict** - Confirmed; ...`
@@ -52,7 +61,9 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass, field
+import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -155,6 +166,14 @@ LOG_LINE_RE = re.compile(
 LOCK_LINE_RE = re.compile(r"^\s*[-*+]\s+lock:\s*(?P<until>\S*)(?P<rest>.*)$")
 STAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
+# `- attachment: plots/dr curve.png sha256:0123456789abcdef edited:2026-09-18T10:00:00Z`
+# - the pm-tools attachment, same shape. Two fixed tokens end the line so a path
+# with spaces parses; the path is relative to the ledger's directory.
+ATT_LINE_RE = re.compile(
+    r"^\s*[-*+]\s+attachment:\s*(?P<path>.+?)\s+sha256:(?P<sha>[0-9a-f]{16})\s+edited:(?P<edited>\S+)\s*$"
+)
+ATT_ANY_RE = re.compile(r"^\s*[-*+]\s+attachment:")
+
 # Matched longest-first, so `Refuted (null)` is never truncated.
 VERDICTS = (
     "Killed-at-gate",
@@ -199,6 +218,9 @@ class Hypothesis:
     lock: dict | None = None
     lock_n: int = 0
     lock_bad: bool = False
+    # Attachment lines as parsed: [{path, sha256, edited}]; whether one could not be read.
+    attachments: list[dict] = field(default_factory=list)
+    att_bad: bool = False
 
     @property
     def verdict(self) -> str | None:
@@ -238,6 +260,8 @@ class Hypothesis:
             "author": self.author,
             "fields": self.fields,
             "lock": _active_lock(self),
+            "attachments": [a["path"] for a in self.attachments],
+            "fingerprints": self.attachments,
         }
 
 
@@ -482,13 +506,15 @@ def parse_ledger(text: str) -> list[Hypothesis]:
             continue  # a later mention is a reference, not a declaration
 
         if heading is not None:
-            body, block, locks = _read_block(lines, raw_lines, i, len(m.group("hashes")))
+            body, block, locks, atts = _read_block(lines, raw_lines, i, len(m.group("hashes")))
             hyp = Hypothesis(hid, m.group("batch"), int(m.group("ordinal")), slug, "full", i + 1)
             hyp.fields = body
             hyp.block = block
             hyp.lock_n = len(locks)
             hyp.lock = next((k for k in locks if k), None)
             hyp.lock_bad = any(k is None for k in locks)
+            hyp.attachments = [a for a in atts if a]
+            hyp.att_bad = any(a is None for a in atts)
         else:
             hyp = Hypothesis(
                 hid, m.group("batch"), int(m.group("ordinal")), slug, "compact", i + 1
@@ -572,9 +598,10 @@ def find_duplicate_declarations(text: str) -> list[tuple[int, str]]:
 
 def _read_block(
     lines: list[str], raw_lines: list[str], start: int, level: int
-) -> tuple[dict[str, str], str, list[dict | None]]:
-    """Collect a full-block hypothesis: its fields, its verbatim text and its
-    lock lines (parsed, or None for one that cannot be read).
+) -> tuple[dict[str, str], str, list[dict | None], list[dict | None]]:
+    """Collect a full-block hypothesis: its fields, its verbatim text, its
+    lock lines and its attachment lines (each parsed, or None for one that
+    cannot be read).
 
     The block runs to the next heading at the same level or shallower, so a
     deeper sub-heading stays inside the hypothesis it belongs to - EXCEPT when
@@ -599,10 +626,19 @@ def _read_block(
     from_qualified: set[str] = set()
     body = lines[start + 1 : end]
     locks: list[dict | None] = []
+    attachments: list[dict | None] = []
     for offset, line in enumerate(body):
         lm = LOCK_LINE_RE.match(line)
         if lm:
             locks.append(_parse_lock(lm))
+            continue
+        if ATT_ANY_RE.match(line):
+            am = ATT_LINE_RE.match(line)
+            attachments.append(
+                {"path": am.group("path"), "sha256": am.group("sha"), "edited": am.group("edited")}
+                if am
+                else None
+            )
             continue
         fm = FIELD_RE.match(line)
         if not fm:
@@ -638,7 +674,7 @@ def _read_block(
             qualifier = fm.group("qualifier")
             fields[name] = f"{qualifier} {value}".strip() if qualifier else value
 
-    return fields, "\n".join(raw_lines[start:end]).rstrip(), locks
+    return fields, "\n".join(raw_lines[start:end]).rstrip(), locks, attachments
 
 
 def _parse_lock(m: re.Match) -> dict | None:
@@ -961,6 +997,35 @@ def cmd_check(path: Path) -> int:
                 f"line {h.line}: {h.hid} is locked but carries a Verdict - a verdict closes "
                 "the hypothesis; unlock it"
             )
+
+    # Attachments: the fingerprint is recomputed, never rewritten here.
+    for h in hyps:
+        if h.att_bad:
+            errors.append(
+                f"line {h.line}: {h.hid} attachment: line is malformed; use "
+                "`- attachment: <path> sha256:<16 hex> edited:<ISO 8601 UTC stamp>`"
+            )
+        seen: set[str] = set()
+        for a in h.attachments:
+            if not _valid_stamp(a["edited"]):
+                errors.append(
+                    f"line {h.line}: {h.hid} attachment {a['path']} has an invalid edited "
+                    f"stamp {a['edited']!r}"
+                )
+            if a["path"] in seen:
+                errors.append(f"line {h.line}: {h.hid} attaches {a['path']} twice")
+            seen.add(a["path"])
+            target = _att_path(path, a["path"])
+            if not target.is_file():
+                warnings.append(f"line {h.line}: {h.hid} attachment {a['path']} is missing")
+                continue
+            sha, edited = _fingerprint(target)
+            if sha != a["sha256"]:
+                warnings.append(
+                    f"line {h.line}: {h.hid} attachment {a['path']} changed since "
+                    f"{a['edited']} (sha256 {a['sha256']} is now {sha}, edited {edited}); "
+                    "run attach to refresh"
+                )
 
     # A hypothesis with neither Result nor Verdict is unrun - a state the
     # skill designs for (register, sign off, then execute), so it is counted
@@ -1836,6 +1901,99 @@ def cmd_field(path: Path, hid: str, name: str, text_value: str, update: bool, au
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Attachments - the artefacts a hypothesis rests on, fingerprinted
+# ---------------------------------------------------------------------------
+
+
+def _fingerprint(target: Path) -> tuple[str, str]:
+    """(sha256 prefix, last-edit stamp) of an artefact - what an attachment line
+    records and what `check` recomputes to tell whether it changed."""
+    import datetime
+
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()[:16]
+    mtime = datetime.datetime.fromtimestamp(os.path.getmtime(target), datetime.timezone.utc)
+    return digest, mtime.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _att_path(ledger: Path, rel: str) -> Path:
+    """An attachment path is relative to the ledger's own directory."""
+    return ledger.resolve().parent / rel
+
+
+def _att_lines(lines: list[str], h: Hypothesis) -> dict[str, int]:
+    """0-indexed line of each attachment bullet in the block, by path."""
+    scan = _strip_fences(lines)[0]
+    start, end = _block_span(lines, h)
+    out: dict[str, int] = {}
+    for i in range(start + 1, end):
+        m = ATT_LINE_RE.match(scan[i])
+        if m and m.group("path") not in out:
+            out[m.group("path")] = i
+    return out
+
+
+def cmd_attach(path: Path, hid: str, paths: list[str], author: str) -> int:
+    """Write one `- attachment:` line per artefact after the lock line and before
+    the fields, or refresh the line an already attached path has. Every write
+    and refresh is logged with the checksum, an unchanged artefact writes
+    nothing."""
+    ready = _writable_block(path, hid)
+    if ready is None:
+        return 1
+    lines, h = ready
+    who = need_author(path, "\n".join(lines), author)
+    if who is None:
+        return 2
+    _warn_lock(path, h, who)
+    targets = []
+    for raw in paths:
+        target = Path(raw).expanduser().resolve()
+        if not target.is_file():
+            print(f"ERROR: attachment not found: {raw}", file=sys.stderr)
+            return 2
+        targets.append(target)
+    ledger_dir = path.resolve().parent
+    written = 0
+    for target in targets:
+        rel = Path(os.path.relpath(target, ledger_dir)).as_posix()
+        sha, edited = _fingerprint(target)
+        entry = f"- attachment: {rel} sha256:{sha} edited:{edited}"
+        existing = _att_lines(lines, h)
+        if rel in existing:
+            at = existing[rel]
+            old = ATT_LINE_RE.match(_strip_fences(lines)[0][at]).group("sha")
+            if old == sha:
+                print(f"{path}:{at + 1}: {h.hid} attachment {rel} unchanged")
+                continue
+            lines[at] = entry
+            event = f"refreshed attachment {rel} sha256:{old} -> sha256:{sha}"
+        else:
+            if existing:
+                at = max(existing.values()) + 1
+            else:
+                lock_at = _lock_line_at(lines, h)
+                if lock_at is not None:
+                    at = lock_at + 1
+                else:
+                    start, end = _block_span(lines, h)
+                    scan = _strip_fences(lines)[0]
+                    at = next(
+                        (i for i in range(start + 1, end) if FIELD_RE.match(scan[i])),
+                        _last_content(lines, h),
+                    )
+            lines.insert(at, entry)
+            h = _relocate(lines, h.hid)
+            event = f"attached {rel} sha256:{sha}"
+        _insert_log_line(lines, h, _log_entry(who, event))
+        h = _relocate(lines, h.hid)
+        written += 1
+        print(f"{path}:{at + 1}: {h.hid} {event}")
+    if written:
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return 0
+
+
 def cmd_report(path: Path, as_json: bool) -> int:
     """The round state as one paste-ready table: batches down, verdicts across.
 
@@ -2087,6 +2245,16 @@ def main(argv: list[str] | None = None) -> int:
     p_unlock.add_argument("--all", action="store_true", help="Every lock line in the ledger.")
     p_unlock.add_argument("--expired", action="store_true", help="Only the expired ones.")
 
+    p_att = sub.add_parser(
+        "attach", help="Attach artefacts (a plot, a log, a document) with checksum and edit stamp."
+    )
+    p_att.add_argument("ledger", type=Path)
+    p_att.add_argument("id")
+    p_att.add_argument(
+        "--path", action="append", required=True, metavar="P", help="An artefact file; repeatable."
+    )
+    p_att.add_argument("--author", required=True, help="Roster handle, e.g. @kj.")
+
     p_rep = sub.add_parser("report", help="Batches down, verdicts across - one table.")
     p_rep.add_argument("ledger", type=Path)
     p_rep.add_argument("--json", action="store_true")
@@ -2178,6 +2346,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_lock(args.ledger, args.id, args.author, args.hours, args.until, args.note)
     if args.command == "unlock":
         return cmd_unlock(args.ledger, args.id, args.author, args.all, args.expired)
+    if args.command == "attach":
+        return cmd_attach(args.ledger, args.id, args.path, args.author)
     if args.command == "report":
         return cmd_report(args.ledger, args.json)
     if args.command == "values":

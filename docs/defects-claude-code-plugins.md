@@ -212,10 +212,12 @@ pm-tools parser, edit, upgrade and reports
   - repro: uv run pm-tools refs docs/defects-claude-code-plugins.md --id '`DEF-PMGT-60`' prints 'no item with id `DEF-PMGT-60` in the scanned files, and nothing points at it' and exits 1, while refs --id DEF-PMGT-60 exits 0; the same string through list --related-to '`DEF-PMGT-60`' prints '--related-to takes an id like DEF-LNCH-3, got ...'
   - log: 2026-09-06T18:41:49Z @kj added
   - log: 2026-09-06T18:41:57Z @kj root cause: pm_tools.py:3276 dispatches cmd_refs(files, a.id.strip().upper(), a.json), bypassing norm_id (pm_tools.py:861) which all eight write commands route through. Surfaced by the adversarial review's round-7 open list, ruled immaterial there because the pre-change path returned a silent '0 inbound, 0 outbound' at exit 0 - also wrong, but not a positive absence claim. NOT fixed in the sort-contract change: that change reached SHIP on two clean rounds and a further edit would reopen the review.
-- [ ] `DEF-PMGT-67` **a newline inside a free-text argument is written verbatim and silently truncated on read** - MAJOR; any write command given a multi-line --text, --title, --event, --evidence, --repro, --test, --reason, --note, --description or cause text writes it verbatim; parse keeps the first line only, list, report and search show only that line, and check stays silent. About twenty argparse free-text arguments share the hole; six say one line in their help and none enforces it
+- [x] `DEF-PMGT-67` **a newline inside a free-text argument is written verbatim and silently truncated on read** - MAJOR; any write command given a multi-line --text, --title, --event, --evidence, --repro, --test, --reason, --note, --description or cause text writes it verbatim; parse keeps the first line only, list, report and search show only that line, and check stays silent. About twenty argparse free-text arguments share the hole; six say one line in their help and none enforces it
+  - evidence: tests/test_pm_tools.py::test_a_line_break_in_free_text_is_written_as_backslash_n passes: add, log and amend given multi-line text; check exits 0; list shows the whole text
   - repro: uv run pm-tools add docs/defects-x.md --category LNCH --title t --text $'first line\nsecond line' --severity MAJOR --author @kj; then list shows the first line and check exits 0
   - test-tags: UNIT
   - log: 2026-09-17T20:02:59Z @kj added
+  - log: 2026-09-17T22:31:52Z @kj closed: fixed: one argparse type=oneline on all 23 free-text arguments writes a real line break (LF or CRLF) as the two characters backslash-n; nothing is lost and no unparsed line is written
 
 ## hypothesis-tools `HYPO`
 
@@ -443,4 +445,13 @@ Adversarial-review loop: reviewer, adjudicator, workflow script, spec
   - log: 2026-09-13T10:06:26Z @kj added
   - log: 2026-09-13T10:16:17Z @kj edited test-tags (added)
   - log: 2026-09-13T10:16:17Z @kj closed: fixed: LOOP_CONTRACT = 1 is written into state and the round log line, and a state written under another contract is refused
+- [x] `DEF-ADVR-68` **Hand-spawned reviewers receive no bar, graph or closure list** - MAJOR; The workflow script gives every reviewer the bar (purpose, input universe, primary path, out of scope), the code graph when args.graph is set, and in a confirming round the CLOSURES list with patch paths; the settledFilter drops findings already ruled. None of that reaches a reviewer spawned outside the script: examples/mode1-diff-prompt.txt has no bar, graph or closure slot, examples/mode2-audit-prompt.txt has a CODE GRAPH line but no bar, command adversarial-review.md step 8 ties the graph to Mode 2 only and step 9 says pass target, scope and locked decisions. A galaxahub session on 2026-09-18 hand-wrote a BUG-HUNTER confirming prompt with Read and Grep granted, no bar, no graph and no closure list; the prompt itself cites 15 of 22 earlier findings as false positives, which is the materiality test the bar carries. Without the bar a reviewer has no basis to call a finding immaterial; without the closure list a confirming round cannot separate the fix delta from the rest of the diff; without the graph blast radius is grep.
+  - test-tags: UNIT
+  - evidence: tests/test_adversarial_workflow_script.py::test_hand_spawn_paths_carry_the_bar_and_closure_slots; suite 1397 passed
+  - repro: Read examples/mode1-diff-prompt.txt and search for bar, purpose, graph, closure: no slot. Read commands/adversarial-review.md step 9: bar and graph absent from the list of what to pass.
+  - log: 2026-09-18T14:51:11Z @kj added
+  - log: 2026-09-18T20:34:00Z @kj closed: fixed: BAR block (three mandatory labels, three optional, cap sentence) and a CONFIRMING ROUND ONLY block with CLOSURES in mode1-diff-prompt.txt and mode2-audit-prompt.txt; both output formats ask MATERIALITY and CLOSURE; command step 9 passes bar, graph path and closure list, step 10 gives the adjudicator the bar; adversarial-reviewer.md STOPs on a missing bar field and on a confirming prompt with no closures; spawn-mechanics slot lists, manual-rounds step 4 and seed-adversary.sh updated; research at tmp/research/def-advr-68-context-plumbing.md
+  - log: 2026-09-18T20:34:04Z @kj edited test-tags (added)
+  - log: 2026-09-18T20:34:13Z @kj edited test-tags (replaced)
+  - log: 2026-09-18T20:51:51Z @kj candidate (c) built after all at the user's word: review-tools prompt ARGS.json --lens NAME prints the script's reviewer prompt from the workflow args; ACC-REVIEW-150
 

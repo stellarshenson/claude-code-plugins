@@ -45,6 +45,7 @@ Work the ledger through the CLI, never by re-reading or free-editing the file. A
 | `hypothesis-tools result / verdict / log-event <log> <id> --author @xx` | record the outcome after the run - Result (immutable, re-runs need `--qualifier`), the one Verdict (a flip is a new round), a dated log line |
 | `hypothesis-tools field <log> <id> --name N --text V [--update] --author @xx` | add a field the template does not name, or replace one already recorded |
 | `hypothesis-tools lock / unlock <log> <id> --author @xx` | mark a hypothesis as being worked on, 24 hours by default - a courtesy signal, never a gate; `unlock` releases it, `list --locked` shows who holds what |
+| `hypothesis-tools attach <log> <id> --path P [--path P]... --author @xx` | attach a plot, a run log or a document: one `- attachment: <path> sha256:<16 hex> edited:<stamp>` line per artefact, path relative to the ledger; `check` warns when the artefact changed or went missing, re-attach refreshes and logs the old and new checksum |
 | `hypothesis-tools check <log>` | validates the ledger; exit 1 on any error - rules in `references/ledger-queries.md` |
 
 - **Register through the CLI, never by guessing the ordinal** - `register` reads the next free `H<n>`, writes the block and verifies it parses back; a reset or reused `<n>` makes one number name several hypotheses and has to be undone later. Prose around the block (overview paragraph, tables) stays Edit's job

@@ -9,6 +9,16 @@ CODE GRAPH: tmp/graphify-out/graph.json <exists, refreshed at HEAD | absent>. If
   sees fit and read its own help for the surface it has today. Batch independent greps and
   reads in one message.
 
+BAR (the product bar - severity is judged against THIS, not against all inputs in the world):
+PURPOSE (what the product is for, and for whom): <one sentence>
+INPUT UNIVERSE (what it handles - anything outside is out of bar): <one sentence>
+PRIMARY PATH (every CRITICAL or MAJOR must sit on it): <the command or use>
+GUARANTEES (on the primary path, for the input universe): <optional - delete the line>
+OUT OF SCOPE (explicitly): <optional - delete the line>
+DEGRADE GRACEFULLY COVERS: <optional - delete the line>
+A finding nobody on the primary path can hit is material=false: MINOR, outOfBar, whatever
+the reproduction shows.
+
 CONTEXT: <2-5 sentences - what the change/feature is, the architecture it lives in,
 the invariants and design rules it must hold>
 
@@ -30,9 +40,18 @@ Hunt for every class below; for EACH, grep the repo and read the call sites:
 A literal that only APPEARS in a comment/docstring is NOT a violation - only executable
 use counts. Distinguish a single legitimate config-module default from a duplicated one.
 
+CONFIRMING ROUND ONLY (delete this block in a discovery round). This round is pinned -
+not a fresh sweep. Two jobs: reproduce each closure below and report one that is NOT
+closed, quoting its text; attack what the applied changes could have broken. The patches
+below are your only attack surface - read them first, then only the lines a closure needs;
+never diff against the base or re-read the whole target.
+CLOSURES (all applied so far):
+- <site>: <summary of the fix> [patch: <path to the fix's diff file>]
+
 OUTPUT (strict):
 - A bullet list of every VIOLATION, each prefixed with a severity label `[CRITICAL|MAJOR|MINOR]`: file:line, the class, the precise problem, why it's
-  wrong, and the blast radius. No praise. No restating. If a candidate is benign, omit it.
+  wrong, the blast radius, MATERIALITY (who is harmed on the primary path, or material=false),
+  and in a confirming round the CLOSURE it reproduces or breaks. No praise. No restating. If a candidate is benign, omit it.
 - For each audited requirement, a short MET / NOT-MET assessment with evidence.
 - End with EXACTLY ONE final line:
     VERDICT: SHIP (<n> findings)

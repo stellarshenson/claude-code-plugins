@@ -286,6 +286,37 @@ def test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback():
     assert not offenders, offenders
 
 
+def test_hand_spawn_paths_carry_the_bar_and_closure_slots():
+    """DEF-ADVR-68: a reviewer spawned outside the script gets the same context.
+
+    The script prints the bar into every prompt and, in a confirming round,
+    the closure list with patch paths; the hand paths (both example templates,
+    the command's fallback step and a freehand prompt) carried none of it, so a
+    hand-spawned reviewer rated every technically true defect against every
+    input in the world. Both templates carry the slots, step 9 names them, and
+    the agent file stops without a bar so the freehand path is covered too.
+    """
+    examples = PLUGIN / "skills/adversarial-review/examples"
+    for name in ("mode1-diff-prompt.txt", "mode2-audit-prompt.txt"):
+        body = (examples / name).read_text(encoding="utf-8")
+        for slot in (
+            "PURPOSE (",
+            "INPUT UNIVERSE (",
+            "PRIMARY PATH (",
+            "CLOSURES (all applied so far):",
+        ):
+            assert slot in body, f"{name} lacks the {slot!r} slot"
+        assert "MATERIALITY" in body, f"{name} asks for no materiality line"
+    assert "CODE GRAPH:" in (examples / "mode2-audit-prompt.txt").read_text(encoding="utf-8")
+    command = (PLUGIN / "commands/adversarial-review.md").read_text(encoding="utf-8")
+    step9 = next(line for line in command.splitlines() if line.startswith("9. "))
+    for word in ("the bar", "code graph", "closure list"):
+        assert word in step9, f"step 9 does not name {word!r}"
+    reviewer = agent("adversarial-reviewer")
+    assert "nothing to rate materiality against" in reviewer
+    assert "calls the round confirming and lists no closures" in reviewer
+
+
 def test_the_invariant_check_produces_an_artifact():
     """DEF-ADVR-48: a constructed loop emits an invariant map before it runs.
 

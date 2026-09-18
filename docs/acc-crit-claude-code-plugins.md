@@ -493,6 +493,12 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - test-tags: UNIT
   - log: 2026-08-29T18:30:30Z @kj added
   - log: 2026-08-29T18:30:38Z @kj closed
+- [x] `ACC-REVIEW-150` **review-tools prompt prints the script's reviewer prompt for one lens** - HIGH; review-tools prompt ARGS.json --lens NAME prints, from the workflow args object, the prompt adversarial-loop.js sends: lens line, TARGET, SCOPE, BAR, INSTRUMENT AVAILABLE when graph is set, RESEARCH denial, the discovery or confirming body with CLOSURES and NEWEST DELTA, and a prose output contract naming every FINDINGS_SCHEMA field; the same refusals as the script (missing bar field, stale loop contract, appliedFixes without patch) exit 2
+  - evidence: tests/test_review_tools.py::test_prompt_equals_the_script_prompt_up_to_the_output_line (discover, confirm), ::test_prompt_blocks_are_verbatim_from_the_script_and_name_every_finding_field, ::test_prompt_cli_refuses_the_script_refusals pass
+  - test: parity test runs the script under node and compares every block but the last; a node-free test checks each static sentence is in the script source
+  - test-tags: UNIT
+  - log: 2026-09-18T20:51:42Z @kj added
+  - log: 2026-09-18T20:51:51Z @kj closed: met: reviewer_prompt and cmd_prompt in review_tools.py
 
 ## pm-tools soft lock `PMLOCK`
 
@@ -890,6 +896,18 @@ hypothesis-tools: flexible parsing, registration and append-only outcome recordi
   - test-tags: UNIT
   - log: 2026-09-02T11:24:57Z @kj added
   - log: 2026-09-02T11:24:58Z @kj closed
+- [x] `ACC-HYPTL-148` **attach writes one fingerprinted attachment line per artefact** - HIGH; hypothesis-tools attach LOG ID --path P... --author @xx writes - attachment: <path> sha256:<16 hex> edited:<ISO stamp> per artefact after the lock line and before the fields, path relative to the ledger's directory, one log line per write; a path already attached is refreshed in place with the old and new checksum in the log; an unchanged artefact writes nothing; a missing file is refused before any write
+  - evidence: tests/test_hypothesis_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift passes
+  - test: attach test: two artefacts incl. a path with a space, placement, log count, unchanged, refresh, refusal
+  - test-tags: UNIT
+  - log: 2026-09-18T20:51:42Z @kj added
+  - log: 2026-09-18T20:51:50Z @kj closed: met: cmd_attach in hypothesis_tools.py
+- [x] `ACC-HYPTL-149` **check reports a changed or missing attachment** - CRITICAL; check recomputes every attachment's sha256 and warns changed since <stamp> ... run attach to refresh or is missing (exit 0); a malformed attachment line or a path attached twice is an error (exit 1)
+  - evidence: tests/test_hypothesis_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift passes
+  - test: attach test: drift warning, missing warning, malformed and duplicate errors
+  - test-tags: UNIT
+  - log: 2026-09-18T20:51:42Z @kj added
+  - log: 2026-09-18T20:51:50Z @kj closed: met: attachment checks in cmd_check
 
 ## pm-tools report `PMREP`
 
@@ -984,4 +1002,30 @@ Rewording an item while its history stays in the file.
   - test-tags: MANUAL
   - log: 2026-09-17T20:02:45Z @kj added
   - log: 2026-09-17T20:02:58Z @kj closed: decided by simulation: no-ordinal 12 points, attribute-ordinal 9, item-ordinal 6, id-suffix 3; unanimous on traceability, simplicity and merge safety
+
+## pm-tools attach `PMATT`
+
+Artefacts referenced from an item with the checksum and last-edit stamp they had when attached
+
+- [x] `ACC-PMATT-145` **attach writes one attachment line per artefact with its checksum and last-edit stamp** - HIGH; attach FILE --id ID --path P [--path P]... --author @xx writes one '- attachment: <path> sha256:<16 hex> edited:<ISO 8601 UTC>' line per artefact directly under the item, the path relative to the tracker's directory, and logs 'attached <path> sha256:<hex>'; a path that is not a file is refused
+  - evidence: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift passes; pytest tests/test_pm_tools.py 139 passed
+  - test: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift
+  - test-tags: UNIT
+  - mechanism: 2026-09-17T22:31:36Z @kj fingerprint() hashes the bytes and reads the mtime; the line format ends in two fixed tokens so a path with spaces parses
+  - log: 2026-09-17T22:31:36Z @kj added
+  - log: 2026-09-17T22:31:52Z @kj closed: verified
+- [x] `ACC-PMATT-146` **check reports a changed or missing attachment** - CRITICAL; check recomputes every attachment's sha256 and warns 'attachment <path> changed since <stamp> (sha256 <old> is now <new>, edited <stamp>)' or 'attachment <path> is missing'; a warning, so --strict is what fails the gate; a malformed or duplicated attachment line is an error
+  - evidence: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift passes; pytest tests/test_pm_tools.py 139 passed
+  - test: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift
+  - test-tags: UNIT
+  - mechanism: 2026-09-17T22:31:45Z @kj drift is a fact about the artefact, not a fault in the tracker, so it is a warning like an expired lock; the item's assessment may need repeating, which the warning says
+  - log: 2026-09-17T22:31:45Z @kj added
+  - log: 2026-09-17T22:31:52Z @kj closed: verified
+- [x] `ACC-PMATT-147` **re-attaching a path refreshes its line and logs the old checksum** - MEDIUM; attach on a path already under the item rewrites that line with the current checksum and stamp and logs 'refreshed attachment <path> sha256:<old> -> sha256:<new>'; an unchanged artefact prints 'unchanged' and writes nothing, so the log is the checksum history and never carries a no-op
+  - evidence: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift passes; pytest tests/test_pm_tools.py 139 passed
+  - test: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift
+  - test-tags: UNIT
+  - mechanism: 2026-09-17T22:31:45Z @kj the existing line is found by its path through ATTLINE, never by its remembered line number, because earlier inserts in the same call shift it
+  - log: 2026-09-17T22:31:45Z @kj added
+  - log: 2026-09-17T22:31:52Z @kj closed: verified
 

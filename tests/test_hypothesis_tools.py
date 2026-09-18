@@ -1980,3 +1980,87 @@ def test_the_hypothesis_skill_carries_the_lock_discipline():
     assert "hypothesis-tools unlock <log>" in ref
     assert "currently worked on" in ref and "TRANSFER" in ref
     assert "24 hours" in body and "24 hours" in ref
+
+
+# ---------------------------------------------------------------------------
+# Attachments - artefacts fingerprinted, drift reported by check
+# ---------------------------------------------------------------------------
+
+
+def test_attach_records_checksum_and_edit_stamp_and_check_reports_drift(tmp_path, capsys):
+    p = _two(tmp_path)
+    shots = tmp_path / "plots"
+    shots.mkdir()
+    curve = shots / "dr curve.png"
+    curve.write_bytes(b"png-1")
+    log = tmp_path / "run.log"
+    log.write_text("n=2x\n", encoding="utf-8")
+    assert main(["lock", str(p), "E1-H1", "--author", "@kj"]) == 0
+    assert (
+        main(
+            [
+                "attach",
+                str(p),
+                "E1-H1",
+                "--author",
+                "@kj",
+                "--path",
+                str(curve),
+                "--path",
+                str(log),
+            ]
+        )
+        == 0
+    )
+    body = p.read_text(encoding="utf-8")
+    att = [ln for ln in body.splitlines() if ln.startswith("- attachment:")]
+    assert len(att) == 2 and att[0].startswith("- attachment: plots/dr curve.png sha256:")
+    assert body.index("- lock:") < body.index("- attachment:") < body.index("**Hypothesis**"), (
+        "attachments sit after the lock and before the fields"
+    )
+    (h1, _) = parse_ledger(body)
+    assert [a["path"] for a in h1.attachments] == ["plots/dr curve.png", "run.log"]
+    assert h1.to_dict()["attachments"] == ["plots/dr curve.png", "run.log"]
+    assert all(len(a["sha256"]) == 16 and a["edited"].endswith("Z") for a in h1.attachments)
+    assert _log_count(p) == 4, "registered x2, attached x2"
+    assert main(["check", str(p)]) == 0
+    assert "attachment" not in capsys.readouterr().err
+
+    # Unchanged: nothing written, nothing logged.
+    assert main(["attach", str(p), "E1-H1", "--author", "@kj", "--path", str(curve)]) == 0
+    assert "unchanged" in capsys.readouterr().out and _log_count(p) == 4
+
+    # Drift: check warns, exit stays 0; refresh logs old -> new and keeps one line per path.
+    old = h1.attachments[0]["sha256"]
+    curve.write_bytes(b"png-2")
+    assert main(["check", str(p)]) == 0
+    err = capsys.readouterr().err
+    assert "attachment plots/dr curve.png changed since" in err and "run attach to refresh" in err
+    assert main(["attach", str(p), "E1-H1", "--author", "@kj", "--path", str(curve)]) == 0
+    body = p.read_text(encoding="utf-8")
+    assert body.count("- attachment:") == 2
+    assert f"refreshed attachment plots/dr curve.png sha256:{old} -> sha256:" in body
+    (h1, _) = parse_ledger(body)
+    assert h1.attachments[0]["sha256"] != old
+    assert main(["check", str(p)]) == 0
+    assert "changed since" not in capsys.readouterr().err
+
+    # Missing artefact: a warning; a malformed line and a duplicate path: errors.
+    log.unlink()
+    assert main(["check", str(p)]) == 0
+    assert "attachment run.log is missing" in capsys.readouterr().err
+    body = p.read_text(encoding="utf-8").replace(
+        "- attachment: run.log", "- attachment: plots/dr curve.png", 1
+    )
+    p.write_text(body + "- attachment: broken\n", encoding="utf-8")
+    assert main(["check", str(p)]) == 1
+    err = capsys.readouterr().err
+    assert "attaches plots/dr curve.png twice" in err and "attachment: line is malformed" in err
+
+    # An absent file is refused before anything is written.
+    assert (
+        main(["attach", str(p), "E1-H2", "--author", "@kj", "--path", str(tmp_path / "no.png")])
+        == 2
+    )
+    assert "attachment not found" in capsys.readouterr().err
+    assert p.read_text(encoding="utf-8").count("- attachment:") == 3, "nothing written"

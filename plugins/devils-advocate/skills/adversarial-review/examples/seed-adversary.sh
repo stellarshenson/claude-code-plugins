@@ -15,6 +15,7 @@ body() { awk 'c>=2; /^---$/{c++}' "$1"; }   # everything below the frontmatter
   echo "Use ripgrep and read files directly to investigate the LIVE tree - do not guess. Do not modify anything."
   echo "REPO: $(pwd)"
   echo "IN SCOPE: <dirs/files>   OUT OF SCOPE: tests/, generated/, vendored/"
+  echo "BAR - PURPOSE: <...>  INPUT UNIVERSE: <...>  PRIMARY PATH: <...>"   # full block: mode2-audit-prompt.txt
   echo "CONTEXT: <2-5 sentences - the change/feature, its architecture, the rules it must hold>"
   body "$ADV"
 } > /tmp/audit-prompt.txt
@@ -34,6 +35,7 @@ git diff -- path/to/src/a.py path/to/src/b.tsx > /tmp/impl.diff
 
 {
   echo "IMPORTANT: Do NOT use any tools. Do NOT read files. The COMPLETE unified diff is inline below - analyze ONLY what is shown."
+  echo "BAR - PURPOSE: <...>  INPUT UNIVERSE: <...>  PRIMARY PATH: <...>"   # full block: mode1-diff-prompt.txt
   body "$ADV"
   echo; echo "Here is the unified diff:"; echo
   cat /tmp/impl.diff

@@ -143,6 +143,15 @@ Three sub-lines, one line each, one per item.
 - **`- test-tags:`** - which kinds of test cover the item, comma separated: `UNIT`, `INTEGRATION`, `FUNCTIONAL`, `E2E`, `MANUAL`. Free vocabulary, always written upper-case - the tool upper-cases whatever `--test-tags` is given and reads any case back off the file - but reuse the words: `coverage` counts them into its grid, which is how "how many items are covered by unit tests" gets answered. An item with no tags line lands in the grid's `NO-TEST` column
 - **`- evidence:`** - one line proving the item is actually done: the test that passes, the run that was observed, the commit. `close` demands it and writes the line, so a closure with no proof cannot be recorded. Reopening a criterion retires it and the log keeps what it said; a closed defect keeps it, because the regression is a new item and the old fix really was proven. Never write it by hand and never on an open item - it is the closure's proof, not a plan
 
+## Attachments
+
+Any number of `- attachment: <path> sha256:<16 hex> edited:<stamp>` lines under an item - a screenshot, a document, a log - written by `pm-tools attach FILE --id ID --path P [--path P]... --author @xx`.
+
+- **The path is relative to the tracker's directory**, so the file and its artefacts move together; the tool computes it from whatever path it is given
+- **The checksum and the last-edit stamp are the artefact's at attach time** - `check` recomputes both and warns when the artefact changed (`sha256 <old> is now <new>`) or is missing, so a screenshot replaced after the item was assessed does not pass as the one that was assessed
+- **The same path again refreshes the line** and logs `refreshed attachment <path> sha256:<old> -> sha256:<new>`; an unchanged artefact is reported and nothing is written. The log is therefore the checksum history
+- **`list --columns attachments`** shows the paths; `--json` carries them under `attachments` and each path's checksum and stamp under `fingerprints`
+
 ## Mechanism and root cause
 
 One registered explanation per item, named by the discipline: `mechanism:` on a criterion says how it is meant to work, `root-cause:` on a defect says why it happens. Unlike the three lines above it, this one stacks.
@@ -246,6 +255,7 @@ Write - one file per call, and `--author` on every one of them:
 | `author` | add or update a roster entry; required before that handle can write |
 | `describe` | set or replace the category description |
 | `relate` | add one `related:` or `blocked-by:` line |
+| `attach` | one `attachment:` line per artefact with its checksum and last-edit stamp; the same path again refreshes the line and the log keeps the old checksum; `check` warns when an artefact changed or is missing |
 | `mechanism` / `root-cause` | write the discipline's explanation; a new record above the previous one, or `--update` to replace the newest; not logged |
 | `log` | append an event to the item's log |
 | `close` / `reopen` | `close` demands `--evidence`; `reopen` retires it on a criterion, and on a closed defect files `<id>-<n>` instead |
@@ -253,6 +263,8 @@ Write - one file per call, and `--author` on every one of them:
 | `remove` | delete an item created in error; refuses while anything still cites it |
 | `lock` / `unlock` | write or remove the `lock:` line; `lock` refuses only on a closed or rejected item, neither is logged |
 | `upgrade` | rebuild a legacy doc to this schema, dry run first; `--apply` always applies the safe rewrites, exits 0, and prints one `HINT` with the exact command per content problem; `references/upgrade.md` |
+
+Every free-text argument is one line of the file; a real line break inside one is written as the two characters `\n`, never dropped.
 
 Run `check` after every edit session. It is the only gate.
 

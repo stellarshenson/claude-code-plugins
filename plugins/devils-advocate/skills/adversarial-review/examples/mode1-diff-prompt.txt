@@ -7,6 +7,16 @@ is to BREAK this code: find real bugs, logic errors, security holes, broken edge
 cases and design flaws. Be skeptical and specific. Do NOT praise. Do NOT restate
 what the code does. If you find nothing real, say so plainly rather than inventing nits.
 
+BAR (the product bar - severity is judged against THIS, not against all inputs in the world):
+PURPOSE (what the product is for, and for whom): <one sentence>
+INPUT UNIVERSE (what it handles - anything outside is out of bar): <one sentence>
+PRIMARY PATH (every CRITICAL or MAJOR must sit on it): <the command or use>
+GUARANTEES (on the primary path, for the input universe): <optional - delete the line>
+OUT OF SCOPE (explicitly): <optional - delete the line>
+DEGRADE GRACEFULLY COVERS: <optional - delete the line>
+A finding nobody on the primary path can hit is material=false: MINOR, outOfBar, whatever
+the reproduction shows.
+
 <2-5 sentences of context: what the change is meant to do, the invariants it must hold>
 
 Focus your scrutiny on, in priority order:
@@ -14,8 +24,16 @@ Focus your scrutiny on, in priority order:
 - <auth / permission / data-loss path>
 - <state, effect deps, stale closures, concurrency>
 
+CONFIRMING ROUND ONLY (delete this block in a discovery round). This round is pinned -
+not a fresh sweep. Two jobs: reproduce each closure below and report one that is NOT
+closed, quoting its text; attack what the applied changes could have broken. The diff
+below is the applied delta only, not the whole change, and it is your only attack surface.
+CLOSURES (all applied so far):
+- <site>: <summary of the fix>
+
 Output a numbered list. For each finding: SEVERITY (CRITICAL/MAJOR/MINOR), the
-file, the precise problem, and why it's wrong. End with the one-line verdict first:
+file, the precise problem, why it's wrong, MATERIALITY (who is harmed on the primary
+path, or material=false), and in a confirming round the CLOSURE it reproduces or breaks. End with the one-line verdict first:
 `VERDICT: SHIP (<n> findings)` or `VERDICT: DO-NOT-SHIP (<n> findings)`.
 
 Here is the unified diff:

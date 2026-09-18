@@ -43,6 +43,15 @@ logged. report, list, search and refs open with `N item(s) currently worked on: 
 most and then `+M more` - the write-time warning is late, the read is when the item is
 chosen; --json carries no notice.
 
+An item may carry any number of `- attachment: <path> sha256:<16 hex> edited:<stamp>`
+lines - a screenshot, a document - the path relative to the tracker's directory, the
+checksum and last-edit stamp the artefact had when attached. check recomputes both and
+warns when an artefact changed or is missing; attach on the same path refreshes the
+line and logs the checksum it replaced.
+
+Every free-text argument is one line of the file; a real line break inside one is
+written as the two characters `\n`, never dropped.
+
 Query - every table is markdown, paste-ready; --json gives the same facts as data:
   report [paths] [FILTERS] [--detail] [--plain] [--summary] [--json]
          ITEMS lists open work only unless --status says otherwise, grouped by
@@ -96,19 +105,20 @@ FILTERS, the same on report, list, pivot, search and coverage:
 
 FIELDS, for --columns, --sort, --rows and --cols:
   id title body category severity importance status author filed closed updated
-  age tags evidence cause hint regr root logs related blockers lock
+  age tags evidence cause hint regr root logs related blockers lock attachments
   severity, importance and status are ranked, not alphabetical - severity runs
   CRITICAL, MAJOR, MEDIUM, MINOR, importance runs CRITICAL, HIGH, MEDIUM, LOW and
   status runs open, closed, rejected; --sort and a pivot axis both follow that
   order, so ascending is worst first and open first;
   cause is the current mechanism/root-cause record and answers to either name;
-  tags, related and blockers pivot an item into every value it carries; filed/closed/
-  updated pivot by month, age by band (<7d, 7-30d, 31-90d, >90d); lock reads
+  tags, related, blockers and attachments pivot an item into every value it carries;
+  filed/closed/updated pivot by month, age by band (<7d, 7-30d, 31-90d, >90d); lock reads
   `@xx until <stamp>` for an active lock and `-` otherwise. report marks a locked
   item `wip @xx until <stamp>` and its SUMMARY grid counts open locked items in a
   `Worked on` column, present when any item in scope is locked; --json carries
   lock as {by, until, note} or null, and cause with cause_kind plus the whole
-  record history under causes.
+  record history under causes, and attachments as paths with the checksum and
+  edit stamp of each under fingerprints.
 
 Edit (one file):
   add    FILE --category CODE --title T --text D [--name NAME] [--description D]
@@ -133,6 +143,8 @@ prose, never a level.
   author FILE --handle @xx --name "Full Name"      add or update a roster entry
   describe FILE --category CODE --text D           set the category description
   relate FILE --id ID [--related TEXT] [--blocked-by TEXT]
+  attach FILE --id ID --path P [--path P]... --author @xx
+          one attachment: line per artefact; the same path again refreshes it
   log    FILE --id ID --event E
   close  FILE --id ID --evidence E [--event E]      evidence proves it is done
   reject FILE --id ID --event E                    not reproduced, irrelevant, wontfix
@@ -161,7 +173,9 @@ no path means ./docs when it exists, else . Stdlib only.
 
 import argparse
 import datetime
+import hashlib
 import json
+import os
 import pathlib
 import re
 import sys
@@ -195,6 +209,9 @@ EVIDLINE = re.compile(r"^(\s+)- evidence:\s*(.*)$")
 CAUSELINE = re.compile(r"^(\s+)- (mechanism|root-cause):\s*(\S*)(.*)$")
 # `- lock: <stamp> @xx [note]` - who is likely working on the item, until when
 LOCKLINE = re.compile(r"^(\s+)- lock:\s*(\S*)(.*)$")
+# the path may hold spaces, so it is whatever sits before the two fixed tokens
+ATTLINE = re.compile(r"^(\s+)- attachment:\s*(.+?)\s+sha256:([0-9a-f]{16})\s+edited:(\S+)\s*$")
+ATTANY = re.compile(r"^(\s+)- attachment:")
 REJECTED = re.compile(r"^rejected:?\s*(.*)$", re.I)
 CLOSING = re.compile(r"^(closed|rejected)\b", re.I)  # the log line that ended the item
 SUB = re.compile(r"^\s+- ")
@@ -286,6 +303,27 @@ def save(path, lines):
 def now():
     """ISO 8601 in UTC - one unambiguous instant, comparable as a plain string."""
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def oneline(text):
+    """argparse type for every free-text argument: an item and each of its sub-lines
+    is one line of the file, so a real line break inside the text is written as the
+    two characters `\\n` - nothing is lost, and the reader sees where the break was."""
+    return text.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\\n")
+
+
+def fingerprint(path):
+    """(sha256 prefix, last-edit stamp) of an artefact - what an attachment line records
+    and what check recomputes to tell whether the artefact changed since it was attached."""
+    digest = hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()[:16]
+    mtime = datetime.datetime.fromtimestamp(os.path.getmtime(path), datetime.timezone.utc)
+    return digest, mtime.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def att_path(file, rel):
+    """An attachment line's path is relative to the tracker's own directory, so the
+    file and its artefacts move together."""
+    return pathlib.Path(file).resolve().parent / rel
 
 
 def non_fenced(lines):
@@ -420,6 +458,8 @@ def parse(path):
                 lock=None,
                 lock_n=0,
                 lock_bad=False,
+                attachments=[],
+                att_bad=False,
             )
             blocks.append(cur)
             continue
@@ -483,6 +523,18 @@ def parse(path):
                     cur["lock"] = {"by": by, "until": km.group(2), "note": note.strip() or None}
                 else:
                     cur["lock_bad"] = True
+            xm = ATTLINE.match(ln)
+            if xm:
+                cur["attachments"].append(
+                    {
+                        "path": xm.group(2),
+                        "sha256": xm.group(3),
+                        "edited": xm.group(4),
+                        "line": lineno,
+                    }
+                )
+            elif ATTANY.match(ln):
+                cur["att_bad"] = True
             continue
         # the first prose line under a `##` heading, before any item, is the description
         if cur is None and sec is not None and sec["desc"] is None and ln.strip():
@@ -920,6 +972,7 @@ FIELDS = (
     "related",
     "blockers",
     "lock",
+    "attachments",
 )
 HEAD = {
     "id": "Id",
@@ -944,6 +997,7 @@ HEAD = {
     "related": "Related",
     "blockers": "Blockers",
     "lock": "Lock",
+    "attachments": "Attachments",
 }
 WIDTH = {
     "title": 40,
@@ -954,6 +1008,7 @@ WIDTH = {
     "hint": 64,
     "related": 48,
     "blockers": 48,
+    "attachments": 56,
 }
 NUMERIC = ("age", "regr", "logs")
 DEFAULT_COLS = {
@@ -971,6 +1026,7 @@ NONE_KEY = {
     "importance": "unrated",
     "related": "unlinked",
     "blockers": "unblocked",
+    "attachments": "unattached",
 }
 
 
@@ -1027,6 +1083,10 @@ def record(b, today=None):
         "blockers": targets(b, "blocked-by"),
         "logs": len(b["logs"]),
         "lock": lock_active(b),
+        "attachments": [a["path"] for a in b["attachments"]],
+        "fingerprints": [
+            {k: a[k] for k in ("path", "sha256", "edited")} for a in b["attachments"]
+        ],
         "line": b["line"],
     }
 
@@ -1109,7 +1169,7 @@ def sorted_items(pairs, sort):
 
 def bucket(rec, field):
     """The pivot keys an item falls in for one field - a list, since tags are many."""
-    if field in ("tags", "related", "blockers"):
+    if field in ("tags", "related", "blockers", "attachments"):
         return rec[field] or [NONE_KEY[field]]
     if field in ("filed", "closed", "updated"):
         return [rec[field][:7] if rec[field] else "-"]
@@ -2136,6 +2196,37 @@ def cmd_check(files, strict):
                 w.append((b["line"], "expired lock, cleared on the next write"))
             elif b["lock"] and status_of(b) != "open":
                 w.append((b["line"], f"lock on a {status_of(b)} item; run unlock"))
+            if b["att_bad"]:
+                e.append(
+                    (
+                        b["line"],
+                        "attachment: line is malformed; use "
+                        "`- attachment: <path> sha256:<16 hex> edited:<ISO 8601 UTC stamp>`",
+                    )
+                )
+            seen_att = set()
+            for a in b["attachments"]:
+                if not _valid_stamp(a["edited"]):
+                    e.append(
+                        (a["line"], f"attachment {a['path']}: edited stamp is not ISO 8601 UTC")
+                    )
+                if a["path"] in seen_att:
+                    e.append((a["line"], f"attachment {a['path']} listed twice; keep one line"))
+                seen_att.add(a["path"])
+                target = att_path(f, a["path"])
+                if not target.is_file():
+                    w.append((a["line"], f"attachment {a['path']} is missing"))
+                    continue
+                sha, edited = fingerprint(target)
+                if sha != a["sha256"]:
+                    w.append(
+                        (
+                            a["line"],
+                            f"attachment {a['path']} changed since {a['edited']} "
+                            f"(sha256 {a['sha256']} is now {sha}, edited {edited}); "
+                            "run attach to refresh",
+                        )
+                    )
             if not b["has_log"]:
                 e.append((b["line"], "item has no authored log: line; every entry is authored"))
             for kind, rid, lineno in b["refs"]:
@@ -2560,6 +2651,54 @@ def cmd_relate(file, wanted, related, blocked, author=None):
         lines.insert(at, f"{ind}- {kind}: {value}")
         at += 1
         print(f"{file}:{b['line']}: {ident(b)} {kind}: {value}")
+    save(file, lines)
+    return 0
+
+
+def cmd_attach(file, wanted, paths, author):
+    """Record artefacts - a screenshot, a document - under an item with the checksum and
+    last-edit stamp they had when attached, so check can tell when one changed. The
+    same path again refreshes its line and the log keeps the checksum it replaced."""
+    expire_locks(file)
+    lines = load(file)
+    blocks, _ = parse(file)
+    who = need_author(file, author)
+    b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
+    warn_lock(file, b, who)
+    ind = sub_indent(lines, b)
+    base = pathlib.Path(file).resolve().parent
+    for raw in paths:
+        ap = pathlib.Path(raw).resolve()
+        if not ap.is_file():
+            raise SystemExit(f"attachment not found: {raw}")
+        rel = pathlib.PurePath(os.path.relpath(ap, base)).as_posix()
+        sha, edited = fingerprint(ap)
+        line = f"{ind}- attachment: {rel} sha256:{sha} edited:{edited}"
+        had = next((a for a in b["attachments"] if a["path"] == rel), None)
+        if had and (had["sha256"], had["edited"]) == (sha, edited):
+            print(f"{file}:{b['line']}: {ident(b)} attachment {rel} unchanged")
+            continue
+        if had:
+            # earlier inserts in this loop shift the line, so find it by its path
+            at = next(
+                i
+                for i in range(b["line"], block_end(lines, b))
+                if (m := ATTLINE.match(lines[i])) and m.group(2) == rel
+            )
+            lines[at] = line
+            event = f"refreshed attachment {rel} sha256:{had['sha256']} -> sha256:{sha}"
+            had.update(sha256=sha, edited=edited)
+        else:
+            # one line per artefact, kept together directly under the item line
+            at = b["line"]
+            for i in range(b["line"], block_end(lines, b)):
+                if ATTANY.match(lines[i]):
+                    at = i + 1
+            lines.insert(at, line)
+            b["attachments"].append({"path": rel, "sha256": sha, "edited": edited})
+            event = f"attached {rel} sha256:{sha}"
+        lines.insert(block_end(lines, b), f"{ind}- log: {now()} {who} {event}")
+        print(f"{file}:{b['line']}: {ident(b)} {event}")
     save(file, lines)
     return 0
 
@@ -3111,10 +3250,12 @@ def main(argv: list[str] | None = None) -> int:
     sa = sub.add_parser("add")
     sa.add_argument("file")
     sa.add_argument("--category", required=True, help="category CODE, e.g. AUTH")
-    sa.add_argument("--title", required=True)
-    sa.add_argument("--text", required=True)
-    sa.add_argument("--name", help="category name, needed only when the code is new")
-    sa.add_argument("--description", help="category description, when the code is new")
+    sa.add_argument("--title", type=oneline, required=True)
+    sa.add_argument("--text", type=oneline, required=True)
+    sa.add_argument("--name", type=oneline, help="category name, needed only when the code is new")
+    sa.add_argument(
+        "--description", type=oneline, help="category description, when the code is new"
+    )
     sa.add_argument(
         "--severity",
         type=str.upper,
@@ -3127,10 +3268,12 @@ def main(argv: list[str] | None = None) -> int:
         choices=IMPS,
         help="mandatory on a criterion, refused on a defect",
     )
-    sa.add_argument("--repro", help="one line saying how to reproduce, defects only")
-    sa.add_argument("--test", help="one line saying how to test, criteria only")
-    sa.add_argument("--mechanism", help="how it is meant to work, criteria only")
-    sa.add_argument("--root-cause", dest="root_cause", help="why it happens, defects only")
+    sa.add_argument("--repro", type=oneline, help="one line saying how to reproduce, defects only")
+    sa.add_argument("--test", type=oneline, help="one line saying how to test, criteria only")
+    sa.add_argument("--mechanism", type=oneline, help="how it is meant to work, criteria only")
+    sa.add_argument(
+        "--root-cause", type=oneline, dest="root_cause", help="why it happens, defects only"
+    )
     sa.add_argument(
         "--author",
         required=True,
@@ -3138,38 +3281,41 @@ def main(argv: list[str] | None = None) -> int:
         help="handle of the person filing this, must be on the roster",
     )
     sa.add_argument(
-        "--test-tags", dest="tags", help='which tests cover it, e.g. "unit, functional"'
+        "--test-tags",
+        type=oneline,
+        dest="tags",
+        help='which tests cover it, e.g. "unit, functional"',
     )
 
     se = sub.add_parser("edit")
     se.add_argument("file")
     se.add_argument("--id", required=True)
-    se.add_argument("--title")
-    se.add_argument("--text")
+    se.add_argument("--title", type=oneline)
+    se.add_argument("--text", type=oneline)
     se.add_argument("--severity", type=str.upper, choices=SEVS)
     se.add_argument("--importance", type=str.upper, choices=IMPS)
-    se.add_argument("--repro")
-    se.add_argument("--test")
-    se.add_argument("--test-tags", dest="tags")
-    se.add_argument("--evidence", help="one line proving the item is done")
+    se.add_argument("--repro", type=oneline)
+    se.add_argument("--test", type=oneline)
+    se.add_argument("--test-tags", type=oneline, dest="tags")
+    se.add_argument("--evidence", type=oneline, help="one line proving the item is done")
     se.add_argument("--author", required=True, metavar="@xx")
 
     sm = sub.add_parser("amend")
     sm.add_argument("file")
     sm.add_argument("--id", required=True)
-    sm.add_argument("--title")
-    sm.add_argument("--text")
+    sm.add_argument("--title", type=oneline)
+    sm.add_argument("--text", type=oneline)
     sm.add_argument("--author", required=True, metavar="@xx")
 
     sh = sub.add_parser("author")
     sh.add_argument("file")
     sh.add_argument("--handle", required=True, metavar="@xx")
-    sh.add_argument("--name", required=True)
+    sh.add_argument("--name", type=oneline, required=True)
 
     sd = sub.add_parser("describe")
     sd.add_argument("file")
     sd.add_argument("--category", required=True)
-    sd.add_argument("--text", required=True)
+    sd.add_argument("--text", type=oneline, required=True)
 
     sr = sub.add_parser("relate")
     sr.add_argument("file")
@@ -3178,15 +3324,28 @@ def main(argv: list[str] | None = None) -> int:
     sr.add_argument("--blocked-by", dest="blocked")
     sr.add_argument("--author", metavar="@xx", help="your handle; keeps your own lock silent")
 
+    st = sub.add_parser("attach")
+    st.add_argument("file")
+    st.add_argument("--id", required=True)
+    st.add_argument(
+        "--path",
+        action="append",
+        required=True,
+        metavar="P",
+        help="an artefact to attach; repeat for several",
+    )
+    st.add_argument("--author", required=True, metavar="@xx")
+
     for name in ("log", "close", "reject", "reopen"):
         sp = sub.add_parser(name)
         sp.add_argument("file")
         sp.add_argument("--id", required=True)
         sp.add_argument("--author", required=True, metavar="@xx")
-        sp.add_argument("--event", required=(name in ("log", "reject")))
+        sp.add_argument("--event", type=oneline, required=(name in ("log", "reject")))
         if name == "close":
             sp.add_argument(
                 "--evidence",
+                type=oneline,
                 required=True,
                 help="one line proving it is done - the test that passes, the run, the commit",
             )
@@ -3195,7 +3354,7 @@ def main(argv: list[str] | None = None) -> int:
         sp = sub.add_parser(name)
         sp.add_argument("file")
         sp.add_argument("--id", required=True)
-        sp.add_argument("--text", required=True, help="the explanation, one line")
+        sp.add_argument("--text", type=oneline, required=True, help="the explanation, one line")
         sp.add_argument("--author", required=True, metavar="@xx")
         sp.add_argument(
             "--update",
@@ -3215,7 +3374,7 @@ def main(argv: list[str] | None = None) -> int:
     sl.add_argument("--author", required=True, metavar="@xx", help="who is working on it")
     sl.add_argument("--hours", type=float, metavar="N", help="how long from now; 24 by default")
     sl.add_argument("--until", metavar="STAMP", help="the expiry as ISO 8601 UTC instead")
-    sl.add_argument("--note", help="what is being done, one line")
+    sl.add_argument("--note", type=oneline, help="what is being done, one line")
 
     sn = sub.add_parser("unlock")
     sn.add_argument("file")
@@ -3357,6 +3516,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_describe(a.file, a.category, a.text)
     if a.cmd == "relate":
         return cmd_relate(a.file, a.id, a.related, a.blocked, a.author)
+    if a.cmd == "attach":
+        return cmd_attach(a.file, a.id, a.path, a.author)
     if a.cmd == "log":
         return cmd_log(a.file, a.id, a.event, a.author)
     if a.cmd == "close":

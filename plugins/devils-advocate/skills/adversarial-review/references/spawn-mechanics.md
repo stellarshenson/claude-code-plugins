@@ -21,7 +21,7 @@ env -u CLAUDECODE claude -p "$(cat /tmp/review-full.txt)" \
   > /tmp/review-result.txt 2>/dev/null < /dev/null
 ```
 
-Returns well under a minute for a ~1k-line diff; `run_in_background: true` when large. Prompt template: `../examples/mode1-diff-prompt.txt` - fill `<change>`, context, focus bullets; append the diff inline.
+Returns well under a minute for a ~1k-line diff; `run_in_background: true` when large. Prompt: `review-tools prompt <args.json> --lens <name>` from the workflow args (bar, scope, graph, closures), or the template `../examples/mode1-diff-prompt.txt` - fill `<change>`, the BAR block, context, focus bullets, and in a confirming round the CLOSURES block; append the diff inline.
 
 ## Mode 2 fallback - when the process boundary matters
 
@@ -36,7 +36,7 @@ env -u CLAUDECODE claude -p "$(cat /tmp/audit-prompt.txt)" \
   > /tmp/audit-result.txt 2>/dev/null < /dev/null &
 ```
 
-Prompt template: `../examples/mode2-audit-prompt.txt` - reviewer role + REPO/scope + CONTEXT + audited REQUIREMENTS + smell classes + strict VERDICT line.
+Prompt: `review-tools prompt <args.json> --lens <name>` from the workflow args, or the template `../examples/mode2-audit-prompt.txt` - reviewer role + REPO/scope + CODE GRAPH + BAR + CONTEXT + audited REQUIREMENTS + smell classes + CLOSURES in a confirming round + strict VERDICT line.
 
 ## Gotchas
 
