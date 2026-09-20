@@ -21,12 +21,15 @@ from stellars_claude_code_plugins.review.review_tools import (
     FINDING_FIELDS,
     build_dossier,
     cost_of,
+    group_cost,
     help_subcommands,
     main,
     merge_findings,
     parse_report,
     render_dossier,
     reviewer_prompt,
+    stage_and_lens,
+    transcript_files,
     verdict_inconsistencies,
 )
 
@@ -356,6 +359,89 @@ def test_cost_cli_renders_a_table(tmp_path: Path, capsys: pytest.CaptureFixture)
     assert main(["cost", str(path)]) == 0
     out = capsys.readouterr().out
     assert "| `t.jsonl` | 1 |" in out and "Cache read is the bill" in out
+
+
+def _spawn(run: Path, name: str, meta: dict, start: str, end: str) -> None:
+    """One transcript plus the meta sidecar the harness writes beside it."""
+    usage = {"cache_read_input_tokens": 1000, "output_tokens": 100}
+    (run / f"{name}.jsonl").write_text(
+        _event("assistant", [{"type": "text", "text": "a"}], "m1", usage, start)
+        + "\n"
+        + _event("assistant", [{"type": "text", "text": "b"}], "m2", usage, end)
+        + "\n"
+    )
+    (run / f"{name}.meta.json").write_text(json.dumps(meta))
+
+
+def test_stage_and_lens_read_the_label_and_name_the_adjudicator():
+    reviewer = "devils-advocate:adversarial-reviewer"
+    # A hand spawn carries no workflow phase, so the label's prefix is the stage.
+    assert stage_and_lens({"agentType": reviewer, "description": "discover:qa-engineer"}) == (
+        "discover",
+        "qa-engineer",
+    )
+    # Every lens runs the same agent, so only the label can name the adversary;
+    # for anything else the agent type names it, and r3 is a round, not a lens.
+    assert stage_and_lens(
+        {
+            "agentType": "devils-advocate:adjudicator",
+            "description": "adjudicate:r3",
+            "workflowPhase": "Adjudicate",
+        }
+    ) == ("Adjudicate", "adjudicator")
+    assert stage_and_lens({}) == ("-", "-")
+
+
+def test_cost_groups_a_run_directory_by_stage_and_by_adversary(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+):
+    run = tmp_path / "wf_a1b2c3"
+    run.mkdir()
+    reviewer = "devils-advocate:adversarial-reviewer"
+    # The two lenses overlap - a panel runs at once - so the stage's elapsed
+    # wall clock must come out under the agent minutes inside it.
+    _spawn(
+        run,
+        "agent-a1",
+        {"agentType": reviewer, "description": "discover:bug-hunter", "workflowPhase": "Discover"},
+        "2026-08-28T08:00:00Z",
+        "2026-08-28T08:05:00Z",
+    )
+    _spawn(
+        run,
+        "agent-a2",
+        {"agentType": reviewer, "description": "discover:architect", "workflowPhase": "Discover"},
+        "2026-08-28T08:01:00Z",
+        "2026-08-28T08:07:00Z",
+    )
+    _spawn(
+        run,
+        "agent-a3",
+        {
+            "agentType": "devils-advocate:adjudicator",
+            "description": "adjudicate:r1",
+            "workflowPhase": "Adjudicate",
+        },
+        "2026-08-28T08:08:00Z",
+        "2026-08-28T08:10:00Z",
+    )
+
+    rows = [cost_of(p) for p in transcript_files([run])]
+    assert [r["lens"] for r in rows] == ["bug-hunter", "architect", "adjudicator"]
+    assert [r["stage"] for r in rows] == ["Discover", "Discover", "Adjudicate"]
+    assert rows[0]["run"] == "wf_a1b2c3" and rows[0]["label"] == "discover:bug-hunter"
+
+    by_stage = {g["stage"]: g for g in group_cost(rows, "stage")}
+    assert by_stage["Discover"]["agents"] == 2 and by_stage["Discover"]["turns"] == 4
+    assert by_stage["Discover"]["wall_min"] == 11.0
+    assert by_stage["Discover"]["elapsed_min"] == 7.0
+    assert by_stage["Discover"]["output_tokens"] == 400
+    assert by_stage["Adjudicate"]["cache_read"] == 2000
+
+    assert main(["cost", str(run), "--by", "lens"]) == 0
+    out = capsys.readouterr().out
+    assert "| lens |" in out and "| `bug-hunter` | 1 | 2 | 5.0 | 5.0 |" in out
+    assert "| **total** | 3 | 6 | 10.0 | 13.0 |" in out
 
 
 # --- findings --------------------------------------------------------------

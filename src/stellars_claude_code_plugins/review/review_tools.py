@@ -15,7 +15,10 @@ reviewer spawned by hand:
     dossier   one markdown document with the inventory, produced by AST in
               seconds, pasted into every reviewer's prompt
     cost      turns, tokens, tool mix and re-reads per subagent transcript,
-              so a prompt change can be shown to have saved something
+              grouped by stage, adversary or round from the meta sidecar the
+              harness writes beside each transcript, so a review's bill and
+              its wall time are read per lens and a prompt change can be
+              shown to have saved something
     findings  the VERDICT line and severity-tagged bullets of N reviewer
               reports merged by file:line, so the adjudicator starts from
               one table rather than four prose reports
@@ -586,6 +589,53 @@ def _bash_verb(cmd: str) -> str:
     return "?"
 
 
+# The harness writes `agent-<id>.meta.json` beside every subagent transcript:
+# `description` is the label the caller gave the spawn, `workflowPhase` the
+# phase a workflow ran it under, `agentType` the agent definition. A label
+# written `<stage>:<lens>` - what the loop script uses - is what turns a heap
+# of transcripts into a ledger per stage and per adversary, so a hand spawn
+# names itself the same way.
+def spawn_meta(path: Path) -> dict:
+    """The `<transcript>.meta.json` sidecar, or empty when there is none."""
+    try:
+        meta = json.loads(path.with_suffix(".meta.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return meta if isinstance(meta, dict) else {}
+
+
+def stage_and_lens(meta: dict) -> tuple[str, str]:
+    """Stage and adversary of one spawn.
+
+    Stage is the workflow phase when a workflow ran it, else the label's part
+    before the colon. The adversary is the label's part after the colon for a
+    reviewer - every lens runs the same agent, so the type cannot name it -
+    and the agent type for everything else, which is what makes the
+    adjudicator's round label (`adjudicate:r2`) read as `adjudicator`.
+    """
+    label = (meta.get("description") or "").strip()
+    kind = (meta.get("agentType") or "").strip()
+    head, colon, tail = label.partition(":")
+    stage = (meta.get("workflowPhase") or "").strip() or (head.strip() if colon else "") or "-"
+    if kind.endswith("adversarial-reviewer"):
+        lens = tail.strip() or label or "-"
+    else:
+        lens = kind.split(":")[-1] or label or "-"
+    return stage, lens
+
+
+def transcript_files(paths: list[Path]) -> list[Path]:
+    """Transcripts to profile: a directory contributes the ones inside it.
+
+    One workflow run directory is one round of the loop - its reviewers, its
+    adjudicator - so a round is measured by naming its directory.
+    """
+    out: list[Path] = []
+    for p in paths:
+        out.extend(sorted(p.glob("agent-*.jsonl")) if p.is_dir() else [p])
+    return out
+
+
 def cost_of(path: Path) -> dict:
     """Per-transcript cost profile, deduplicated by API message id.
 
@@ -667,8 +717,17 @@ def cost_of(path: Path) -> dict:
         tool_calls.update(turn["tools"])
         tool_turns += bool(turn["tools"])
         multi += len(turn["tools"]) > 1
+    meta = spawn_meta(path)
+    stage, lens = stage_and_lens(meta)
     return {
         "file": str(path),
+        "label": (meta.get("description") or "").strip() or path.name,
+        "stage": stage,
+        "lens": lens,
+        "run": path.parent.name,
+        "agent_type": (meta.get("agentType") or "").strip() or "-",
+        "started": first.isoformat() if first else None,
+        "ended": last.isoformat() if last else None,
         "turns": len(turns),
         "events": events,
         "wall_min": round((last - first).total_seconds() / 60, 1) if first and last else None,
@@ -703,7 +762,9 @@ def render_cost(rows: list[dict]) -> str:
         )
 
     for r in rows:
-        out.append(line(f"`{Path(r['file']).name}`", r, f"{r['context_median']:,}"))
+        out.append(
+            line(f"`{r.get('label') or Path(r['file']).name}`", r, f"{r['context_median']:,}")
+        )
     if len(rows) > 1:
         total = {
             "turns": sum(r["turns"] for r in rows),
@@ -727,15 +788,136 @@ def render_cost(rows: list[dict]) -> str:
     out.append("")
     for r in rows:
         out.append(
-            f"- `{Path(r['file']).name}`: {r['tool_turns']} tool turns of {r['turns']} ({r['multi_tool_turns']} batched), "
+            f"- `{r.get('label') or Path(r['file']).name}`: {r['tool_turns']} tool turns of {r['turns']} ({r['multi_tool_turns']} batched), "
             f"{r['tiny_results']} near-empty results, tools {r['tool_calls']}, bash {r['bash_verbs']}"
         )
     return "\n".join(out)
 
 
+GROUP_KEYS = ("file", "stage", "lens", "run")
+
+
+def group_cost(rows: list[dict], by: str) -> list[dict]:
+    """Sum the transcripts by stage, adversary or round.
+
+    `elapsed_min` is the wall clock the group took; `wall_min` is the agent
+    minutes inside it. A panel runs its lenses at once, so the two differ by
+    the concurrency, and reporting one alone either hides how long the review
+    made someone wait or hides what it spent.
+    """
+    groups: dict[str, dict] = collections.OrderedDict()
+    for r in rows:
+        key = r.get(by) or "-"
+        g = groups.setdefault(
+            key,
+            {
+                by: key,
+                "agents": 0,
+                "turns": 0,
+                "wall_min": 0.0,
+                "input_tokens": 0,
+                "cache_read": 0,
+                "cache_create": 0,
+                "output_tokens": 0,
+                "tool_calls": collections.Counter(),
+                "result_kb": collections.Counter(),
+                "rereads": 0,
+                "started": None,
+                "ended": None,
+            },
+        )
+        g["agents"] += 1
+        for k in (
+            "turns",
+            "input_tokens",
+            "cache_read",
+            "cache_create",
+            "output_tokens",
+            "rereads",
+        ):
+            g[k] += r[k]
+        g["wall_min"] += r["wall_min"] or 0
+        g["tool_calls"].update(r["tool_calls"])
+        g["result_kb"].update(r["result_kb"])
+        if r["started"] and (g["started"] is None or _ts(r["started"]) < _ts(g["started"])):
+            g["started"] = r["started"]
+        if r["ended"] and (g["ended"] is None or _ts(r["ended"]) > _ts(g["ended"])):
+            g["ended"] = r["ended"]
+    for g in groups.values():
+        g["wall_min"] = round(g["wall_min"], 1)
+        g["elapsed_min"] = _span(g["started"], g["ended"])
+        g["tool_calls"] = dict(g["tool_calls"].most_common())
+        g["result_kb"] = {k: round(v, 1) for k, v in g["result_kb"].most_common()}
+    return list(groups.values())
+
+
+def _span(started: str | None, ended: str | None) -> float | None:
+    return (
+        round((_ts(ended) - _ts(started)).total_seconds() / 60, 1) if started and ended else None
+    )
+
+
+def render_grouped(groups: list[dict], by: str) -> str:
+    out = [
+        f"| {by} | agents | turns | elapsed min | agent min | cache read | cache create | output | tool calls | re-reads |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+
+    def line(name: str, g: dict) -> str:
+        elapsed = g["elapsed_min"] if g["elapsed_min"] is not None else "-"
+        return (
+            f"| {name} | {g['agents']} | {g['turns']} | {elapsed} | {g['wall_min']} | {g['cache_read']:,} "
+            f"| {g['cache_create']:,} | {g['output_tokens']:,} | {sum(g['tool_calls'].values())} | {g['rereads']} |"
+        )
+
+    for g in groups:
+        out.append(line(f"`{g[by]}`", g))
+    if len(groups) > 1:
+        started = [g["started"] for g in groups if g["started"]]
+        ended = [g["ended"] for g in groups if g["ended"]]
+        calls: collections.Counter = collections.Counter()
+        for g in groups:
+            calls.update(g["tool_calls"])
+        out.append(
+            line(
+                "**total**",
+                {
+                    "agents": sum(g["agents"] for g in groups),
+                    "turns": sum(g["turns"] for g in groups),
+                    "wall_min": round(sum(g["wall_min"] for g in groups), 1),
+                    "cache_read": sum(g["cache_read"] for g in groups),
+                    "cache_create": sum(g["cache_create"] for g in groups),
+                    "output_tokens": sum(g["output_tokens"] for g in groups),
+                    "rereads": sum(g["rereads"] for g in groups),
+                    "tool_calls": calls,
+                    "elapsed_min": _span(
+                        min(started, key=_ts, default=None), max(ended, key=_ts, default=None)
+                    ),
+                },
+            )
+        )
+    out.append("")
+    out.append(
+        "Elapsed is the wall clock from the group's first agent to its last, agent minutes the time inside it - a panel runs its lenses at once. "
+        "Cache read is the bill: every turn re-reads the whole transcript, so it grows with turns squared."
+    )
+    return "\n".join(out)
+
+
 def cmd_cost(args: argparse.Namespace) -> int:
-    rows = [cost_of(p) for p in args.transcripts]
-    print(json.dumps(rows, indent=2) if args.json else render_cost(rows))
+    files = transcript_files(args.transcripts)
+    if not files:
+        print(
+            "no transcripts - name JSONL files, or a directory holding agent-*.jsonl",
+            file=sys.stderr,
+        )
+        return 2
+    rows = [cost_of(p) for p in files]
+    if args.by == "file":
+        print(json.dumps(rows, indent=2) if args.json else render_cost(rows))
+        return 0
+    groups = group_cost(rows, args.by)
+    print(json.dumps(groups, indent=2) if args.json else render_grouped(groups, args.by))
     return 0
 
 
@@ -1205,9 +1387,21 @@ def main(argv: list[str] | None = None) -> int:
     p_d.add_argument("--json", action="store_true")
 
     p_c = sub.add_parser(
-        "cost", help="Turns, tokens, tool mix and re-reads per subagent transcript (JSONL)."
+        "cost",
+        help="Wall time, tokens, tool mix and re-reads per transcript, stage, adversary or round.",
     )
-    p_c.add_argument("transcripts", nargs="+", type=Path)
+    p_c.add_argument(
+        "transcripts",
+        nargs="+",
+        type=Path,
+        help="Transcript JSONL files, or a directory holding agent-*.jsonl - one workflow run directory is one round of the loop.",
+    )
+    p_c.add_argument(
+        "--by",
+        choices=GROUP_KEYS,
+        default="file",
+        help="Group the table: stage (Discover, Adjudicate, Confirm), lens (the adversary), run (the round), file (default, one row per transcript).",
+    )
     p_c.add_argument("--json", action="store_true")
 
     p_f = sub.add_parser(

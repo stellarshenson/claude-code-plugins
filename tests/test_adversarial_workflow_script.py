@@ -317,6 +317,29 @@ def test_hand_spawn_paths_carry_the_bar_and_closure_slots():
     assert "calls the round confirming and lists no closures" in reviewer
 
 
+def test_every_spawn_is_labelled_stage_and_lens():
+    """ACC-REVIEW-152: the label is what makes a finished round measurable.
+
+    The harness records each spawn's label beside its transcript, and every
+    lens runs the same agent, so the label is the only thing that says which
+    adversary spent which minutes and tokens. The script labels its panel
+    `<stage>:<lens>` and its adjudicator by round; the hand paths and a
+    constructed loop are held to the same shape, because a renamed label
+    turns the ledger back into a heap of agent ids.
+    """
+    t = text()
+    assert "label: `${phase.toLowerCase()}:${lens}`" in t
+    assert "label: `adjudicate:r${round}`" in t
+    for name, path in (
+        ("skill", PLUGIN / "skills/adversarial-review/SKILL.md"),
+        ("command", PLUGIN / "commands/adversarial-review.md"),
+        ("spec", SPEC),
+    ):
+        assert "<stage>:<lens>" in path.read_text(encoding="utf-8"), (
+            f"the {name} does not state the label shape"
+        )
+
+
 def test_the_invariant_check_produces_an_artifact():
     """DEF-ADVR-48: a constructed loop emits an invariant map before it runs.
 

@@ -282,6 +282,9 @@ const reviewerPrompt = (lens, body, confirming) =>
     .filter(Boolean)
     .join('\n\n')
 
+// The label is the ledger key: the harness records it beside each spawn's
+// transcript, so `<stage>:<lens>` is what lets a finished round be read per
+// stage and per adversary rather than per opaque agent id. Keep the shape.
 const runPanel = (phase, body) =>
   parallel(
     LENSES.map((lens) => () =>

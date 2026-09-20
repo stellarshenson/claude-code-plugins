@@ -499,6 +499,18 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - test-tags: UNIT
   - log: 2026-09-18T20:51:42Z @kj added
   - log: 2026-09-18T20:51:51Z @kj closed: met: reviewer_prompt and cmd_prompt in review_tools.py
+- [x] `ACC-REVIEW-151` **review-tools cost groups a review by stage, adversary and round** - HIGH; review-tools cost accepts a transcript directory as well as files - a workflow run directory is one round of the loop - reads the label, workflow phase and agent type from the meta sidecar the harness writes beside each transcript, and --by stage|lens|run prints wall time and tokens per group: elapsed (the group's first agent to its last) alongside the agent minutes inside it, cache read, cache create, output, tool calls and re-reads, with a total row
+  - evidence: tests/test_review_tools.py::test_cost_groups_a_run_directory_by_stage_and_by_adversary and ::test_stage_and_lens_read_the_label_and_name_the_adjudicator pass; smoked on a real run directory: Discover 3 lenses, elapsed 6.1 min against 14.6 agent minutes; suite 1404 passed
+  - test: two transcripts with meta sidecars overlapping in time: the stage's elapsed comes out under its agent minutes, the lens is read from the label and the adjudicator from the agent type
+  - test-tags: UNIT
+  - log: 2026-09-20T13:27:13Z @kj added
+  - log: 2026-09-20T13:27:20Z @kj closed
+- [x] `ACC-REVIEW-152` **every spawn is labelled stage and lens so the round can be measured** - MEDIUM; the loop script labels each reviewer <stage>:<lens> and each adjudicator <stage>:r<round>, the skill's spawn path and the command's step 9 require the same of a hand spawn, and the spec names the label as the one name a constructed loop may not rename - the harness records it beside the transcript and it is what makes the ledger read per adversary
+  - evidence: tests/test_adversarial_workflow_script.py::test_every_spawn_is_labelled_stage_and_lens pins the script's panel and adjudicator labels and the rule in the skill, the command and the spec; 31 passed in that file
+  - test: the workflow script's panel label is phase and lens; the skill, the command and the spec state the rule
+  - test-tags: UNIT
+  - log: 2026-09-20T13:27:20Z @kj added
+  - log: 2026-09-20T13:27:50Z @kj closed
 
 ## pm-tools soft lock `PMLOCK`
 
