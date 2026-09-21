@@ -1400,7 +1400,7 @@ def main(argv: list[str] | None = None) -> int:
         "--by",
         choices=GROUP_KEYS,
         default="file",
-        help="Group the table: stage (Discover, Adjudicate, Confirm), lens (the adversary), run (the round), file (default, one row per transcript).",
+        help="Group the table: stage (Discover, Adjudicate, Confirm), lens (the adversary), run (the transcripts' parent directory - one workflow `wf_*` directory is one round), file (default, one row per transcript).",
     )
     p_c.add_argument("--json", action="store_true")
 

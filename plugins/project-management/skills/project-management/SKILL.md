@@ -94,11 +94,12 @@ A filled-in item, and what belongs in its body, is in the discipline's own refer
 
 ## Writing the text
 
-Every free-text field is written in plain language: title, body, the `repro:` / `test:` hint, `evidence:`, `root-cause:` / `mechanism:`, the log event, the category description. The bar is the shortest wording a reader who was not there acts on correctly, first read.
+Every free-text field is written in plain language: title, body, the `repro:` / `test:` hint, `evidence:`, `root-cause:` / `mechanism:`, the log event, the category description. The bar is laconic: the shortest wording a reader who was not there acts on correctly, first read, and nothing past it.
 
 - **Everyday words** - `stops`, not `terminates`; `two tokens issued`, not `duplicate credential emission`. Call each thing what the code calls it, so the reader can search for it
 - **One reading only** - a sentence with a second possible meaning is rewritten, not clarified later. `refresh fails after logout` says neither which refresh nor whose logout
 - **Compression is welcome** - drop articles and filler, fragments are fine: `auth token sometimes empty on first turn after fork` is a whole body. This store is the exception to the rule that ticket text is written in full prose; it sits next to the code and is read by whoever works the code, agent or person
+- **Nothing past the minimum** - a clause earns its place by naming a mechanism, a site, a number or the harm. Everything else goes: the reasoning behind the item, what the title already said, why it matters, how the fix was arrived at. Delete it, do not shorten it. Past roughly 40 words a body is usually explaining itself - run the test again on each clause
 - **Compression never touches meaning** - `not`, `never`, `only`, `except`, `sometimes` stay whatever they cost. Numbers, units, ids, paths, symbol names and quoted error strings are copied exactly: never paraphrased, never rounded, never shortened
 - **Compression that does not compress is not compression** - invented short forms (`cfg`, `impl`, `req`) and mangled grammar cost the same as the plain words and make the reader decode; well-known acronyms (`API`, `HTTP`, `UUID`) are already plain. Where the plain phrasing is already the shortest, that is the wording
 
@@ -107,6 +108,7 @@ Every free-text field is written in plain language: title, body, the `repro:` / 
 | The authentication token is intermittently empty on the first turn following a session fork | auth token sometimes empty on first turn after fork |
 | Ensure the password generation functionality produces compliant passwords | generated password: 16 chars, 3 character classes |
 | Fixed the issue by addressing the underlying race condition | token awaited before first turn; 79 pytest green |
+| The workflow script gives every reviewer the bar, the graph when one is set, and in a confirming round the closure list with patch paths; none of that reaches a reviewer spawned outside the script, so without the bar a reviewer has no basis to call a finding immaterial | hand spawns get no bar, graph or closure list; nothing rates materiality |
 
 The register, on filed items:
 

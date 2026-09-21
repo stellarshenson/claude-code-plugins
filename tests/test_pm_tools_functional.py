@@ -475,6 +475,23 @@ def test_the_override_rule_is_documented_where_the_agent_reads_it():
     assert "root-cause:" in (plugin / "README.md").read_text(encoding="utf-8")
 
 
+def test_the_laconic_rule_is_documented_where_the_agent_writes():
+    """An entry sits next to the code and is read by whoever works it, so every
+    word past the mechanism, the site, the numbers and the harm is a standing
+    cost. The rule was permissive ("compression is welcome") and three entries
+    still shipped at 60 to 170 words; the bar is stated as laconic in the skill
+    that owns the wording, and both authoring checklists say it imperatively."""
+    plugin = Path(__file__).parent.parent / "plugins/project-management"
+    skill = (plugin / "skills/project-management/SKILL.md").read_text(encoding="utf-8")
+    assert "The bar is laconic" in skill
+    assert "**Nothing past the minimum**" in skill
+    assert "Delete it, do not shorten it" in skill
+    for name in ("skills/acc-crit/SKILL.md", "skills/defect/SKILL.md"):
+        body = (plugin / name).read_text(encoding="utf-8")
+        assert "Write every field laconic" in body, name
+        assert "nothing past the mechanism, the site, the numbers and the harm" in body, name
+
+
 def test_help_lists_both_record_commands():
     """A command absent from --help is a command nobody finds."""
     out = ok("--help")
