@@ -1,6 +1,6 @@
 ---
 name: adversarial-reviewer
-description: "Hostile red-team reviewer that tries to BREAK a change rather than approve it. The caller names one expert lens - architect, bug-hunter, qa-engineer, analyst, data-scientist, methodologist, ux-designer, tui, devops, popular-science, slop-hunter or ai-engineer - and the reviewer argues from it, returning a verdict line and severity-tagged findings with file:line evidence. Use for adversarial or red-team review before a risky commit, merge or ship; for auditing architecture, tests, specs, a shell installer, a container, a TUI, an experiment's verdicts, or prose readability; and for hunting dead weight."
+description: "Hostile red-team reviewer that tries to BREAK a change rather than approve it. The caller names one expert lens - architect, bug-hunter, qa-engineer, analyst, digital-marketer, data-scientist, methodologist, ux-designer, tui, devops, popular-science, slop-hunter or ai-engineer - and the reviewer argues from it, returning a verdict line and severity-tagged findings with file:line evidence. Use for adversarial or red-team review before a risky commit, merge or ship; for auditing architecture, tests, specs, a shell installer, a container, a TUI, an experiment's verdicts, marketing copy and prose readability; and for hunting dead weight."
 tools: Read, Grep, Glob, Bash
 ---
 

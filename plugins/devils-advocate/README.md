@@ -12,7 +12,7 @@ This plugin builds an adversarial persona for the document's actual toughest aud
 
 Unlike qualitative tools like [grill-me](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me) or [Devil's Advocate Protocol](https://mcpmarket.com/tools/skills/devil-s-advocate-protocol), this plugin is semi-data-science: the devil is inferred from existing conversations / emails / meeting transcripts (or described manually), every concern gets a Fibonacci risk score, and each iteration produces a measurable residual so convergence is visible. Versioned files with embedded scorecards create an audit trail.
 
-The same hostility points at code. [`adversarial-review`](#adversarial-review---the-same-hostility-pointed-at-code) spawns fresh, context-free `claude -p` subprocesses that try to BREAK a change - a diff bug-hunt for the bugs inside a hunk, a whole-repo audit for the rot between files - seeded with any of twelve expert adversaries. Same principle as the scorecard half: a critic with no attachment to the work, run until a confirming round comes back clean.
+The same hostility points at code. [`adversarial-review`](#adversarial-review---the-same-hostility-pointed-at-code) spawns fresh, context-free `claude -p` subprocesses that try to BREAK a change - a diff bug-hunt for the bugs inside a hunk, a whole-repo audit for the rot between files - seeded with any of the expert adversaries. Same principle as the scorecard half: a critic with no attachment to the work, run until a confirming round comes back clean.
 
 ## Installation
 
@@ -29,7 +29,7 @@ The same hostility points at code. [`adversarial-review`](#adversarial-review---
 | `/devils-advocate:setup` | Build the devil persona and harvest the fact repository for a target document |
 | `/devils-advocate:evaluate` | Generate the baseline concern catalogue and scorecard |
 | `/devils-advocate:iterate` | One improvement cycle: decide approach, apply changes, version, re-score, rename |
-| `/devils-advocate:adversarial-review` | Hostile independent review of code or artefacts - spawn fresh `claude -p` reviewers seeded with one of twelve expert adversaries |
+| `/devils-advocate:adversarial-review` | Hostile independent review of code or artefacts - spawn fresh `claude -p` reviewers seeded with one of the expert adversaries |
 
 ## Skills
 
@@ -50,7 +50,7 @@ Two modes, composable with any adversary:
 - **Mode 1 - diff bug-hunt.** No tools, inline diff, one turn, fast. Finds bugs, logic errors, security holes, broken edge cases in a specific change
 - **Mode 2 - architecture & quality audit.** Tools on, whole-repo, many turns. Finds the systemic rot a diff cannot show - slop, brittle architecture, hardcodings, config drift, broken separation of concerns. The finding is usually a relationship across files, invisible in any one hunk. An existing `graphify` code graph at `tmp/graphify-out/graph.json` is refreshed and used without asking; with none, the skill offers one at launch - AST-only by default (free), the LLM-assisted pass on request, installing `graphify` on request - and reviewers and the adjudicator read it for callers and blast radius instead of rediscovering them by grep
 
-The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer argues from. Twelve ship under `skills/adversarial-review/adversaries/`, one self-contained persona prompt each:
+The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer argues from. They ship under `skills/adversarial-review/adversaries/`, one self-contained persona prompt each:
 
 | Adversary | Catches |
 |-----------|---------|
@@ -58,6 +58,7 @@ The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer 
 | `bug-hunter` | runtime bugs in shell / installers / startup - quoting, `set -e`, lifecycle races |
 | `qa-engineer` | test strategy - risk-based coverage, can-each-test-fail, test slop to delete |
 | `analyst` | specs & acceptance criteria - coverage gaps, unverifiable criteria, sibling features siloed, spec-vs-code drift |
+| `digital-marketer` | marketing copy and assets - message and positioning, concreteness, calls to action, claim substantiation and consumer law, search, email and ad mechanics, the gap to a best-in-class example, AI-sounding phrasing |
 | `ux-designer` | friction & intent, visual hierarchy, cognitive load, static text & tooltips, design-language reuse, motion comfort, accessibility |
 | `tui` | Textual/Rich internals - chrome duplication, key propagation, headless verification |
 | `data-scientist` | hypothesis rigor, leakage, metric validity, reproducibility |
@@ -126,4 +127,4 @@ Every concern is scored on Fibonacci likelihood x impact (1-64), and each iterat
 - `skills/evaluate/SKILL.md` - concern catalogue and scoring model
 - `skills/iterate/SKILL.md` - the four-step iterate loop and stop conditions
 - `skills/run/SKILL.md` - end-to-end wrapper
-- `skills/adversarial-review/SKILL.md` - the two modes, the rounds protocol, spawn mechanics and gotchas, and the twelve pluggable adversaries
+- `skills/adversarial-review/SKILL.md` - the two modes, the rounds protocol, spawn mechanics and gotchas, and the pluggable adversaries

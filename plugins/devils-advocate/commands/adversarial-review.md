@@ -1,5 +1,5 @@
 ---
-description: Hostile independent review by spawning fresh reviewer subagents that try to BREAK a change - invokes the devils-advocate:adversarial-review skill, seeding one of twelve expert adversaries; find, fix, re-confirm clean
+description: Hostile independent review by spawning fresh reviewer subagents that try to BREAK a change - invokes the devils-advocate:adversarial-review skill, seeding one of the expert adversaries; find, fix, re-confirm clean
 allowed-tools: [Read, Write, Edit, Glob, Grep, Bash, Agent, TaskCreate, TaskUpdate]
 argument-hint: "what to review, e.g. 'the auth middleware change before I merge' or 'audit the repo architecture' or 'my spec against the code'"
 ---
@@ -35,6 +35,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
    - **bug-hunter** → shell, installers, startup - quoting, `set -e`, lifecycle races
    - **qa-engineer** → test strategy - risk-based coverage, can-each-test-fail, tests to delete
    - **analyst** → specs and acceptance criteria - coverage gaps, unverifiable criteria, silos, spec-vs-code drift
+   - **digital-marketer** → marketing copy - message, concrete claims, calls to action, consumer law, AI-sounding phrasing
    - **ux-designer** → friction, hierarchy, focus, accessibility
    - **tui** → Textual/Rich internals - chrome duplication, key propagation, headless verification
    - **data-scientist** → hypothesis rigor, leakage, metric validity, reproducibility
