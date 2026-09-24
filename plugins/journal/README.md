@@ -7,7 +7,7 @@ Unlike ad-hoc changelog updates, this plugin enforces a single entry shape, guar
 ## Installation
 
 ```bash
-/plugin marketplace add stellarshenson/claude-code-plugins
+/plugin marketplace add https://github.com/stellarshenson/claude-code-plugins.git
 /plugin install journal@stellarshenson-marketplace
 ```
 

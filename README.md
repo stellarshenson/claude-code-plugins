@@ -35,7 +35,7 @@ Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop
 
 ## The full marketplace - seven disciplines
 
-`autobuild` is the spear. The same forcing-function logic powers six more plugins, each enforcing a different kind of discipline on Claude. Install them individually or as a bundle.
+`autobuild` is the spear. The same forcing-function logic powers six more plugins, each enforcing a different kind of discipline on Claude. [Install](#install) adds the marketplace first, then the plugins.
 
 | Plugin | What it solves |
 |--------|---------------|
@@ -46,20 +46,6 @@ Read the long-form articles: [Your AI Agent Will Cut Corners. Here's How to Stop
 | [document-processing](plugins/document-processing/) | Processes documents according to user requests with grounding in source materials - source tracing, compliance checking, PDF automation |
 | [journal](plugins/journal/) | Produces a work journal marking key changes, implementations, and decisions - append-only audit trail with continuous numbering, archiving, and deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement |
 | [project-management](plugins/project-management/) | Tracks acceptance criteria and defects for the project inside the repository - permanent ids, mandatory triage, authored append-only logs, and reports computed on read by the deterministic `pm-tools` CLI |
-
-```bash
-# Add the marketplace once
-/plugin marketplace add stellarshenson/claude-code-plugins
-
-# Install all seven
-/plugin install autobuild@stellarshenson-marketplace
-/plugin install devils-advocate@stellarshenson-marketplace
-/plugin install svg-infographics@stellarshenson-marketplace
-/plugin install datascience@stellarshenson-marketplace
-/plugin install document-processing@stellarshenson-marketplace
-/plugin install journal@stellarshenson-marketplace
-/plugin install project-management@stellarshenson-marketplace
-```
 
 ## autobuild
 
@@ -331,7 +317,22 @@ See [plugins/document-processing/README.md](plugins/document-processing/) for th
 
 ## Install
 
-The library ships the deterministic CLIs that every plugin depends on — install it alongside the plugin marketplace. Without the library the skills fall back to manual work and lose all automation.
+In Claude Code, add the marketplace first, then install the plugins:
+
+```bash
+# 1. Add the marketplace - the HTTPS URL clones without a GitHub SSH key
+/plugin marketplace add https://github.com/stellarshenson/claude-code-plugins.git
+
+# 2. Install the plugins
+/plugin install devils-advocate@stellarshenson-marketplace
+/plugin install svg-infographics@stellarshenson-marketplace
+/plugin install datascience@stellarshenson-marketplace
+/plugin install document-processing@stellarshenson-marketplace
+/plugin install journal@stellarshenson-marketplace
+/plugin install project-management@stellarshenson-marketplace
+```
+
+The plugins drive the deterministic CLIs in the library. Each skill that calls one installs or upgrades the library first; without it the skills fall back to manual work. To install it yourself:
 
 ```bash
 pip install stellars-claude-code-plugins
@@ -347,12 +348,6 @@ Provides these binaries:
 | `journal-tools` | `journal` (check / sort / archive / standardize) |
 | `pm-tools` | `project-management` (report / check / add / close / reject / upgrade) |
 | `document-processing` | `document-processing` (ground / ground, three-layer grounding) |
-
-As a Claude Code plugin marketplace:
-
-```bash
-/plugin marketplace add stellarshenson/claude-code-plugins
-```
 
 ## Building a new plugin
 

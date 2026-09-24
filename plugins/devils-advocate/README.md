@@ -17,7 +17,7 @@ The same hostility points at code. [`adversarial-review`](#adversarial-review---
 ## Installation
 
 ```bash
-/plugin marketplace add stellarshenson/claude-code-plugins
+/plugin marketplace add https://github.com/stellarshenson/claude-code-plugins.git
 /plugin install devils-advocate@stellarshenson-marketplace
 ```
 

@@ -149,7 +149,7 @@ document-processing check-consistency --document docs/brief.md --output validati
 ## Installation
 
 ```bash
-/plugin marketplace add stellarshenson/claude-code-plugins
+/plugin marketplace add https://github.com/stellarshenson/claude-code-plugins.git
 /plugin install document-processing@stellarshenson-marketplace
 ```
 

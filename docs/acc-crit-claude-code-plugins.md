@@ -1070,3 +1070,28 @@ how an acceptance criterion or defect is worded
   - log: 2026-09-24T13:26:04Z @kj added
   - log: 2026-09-24T13:30:31Z @kj closed
 
+## pm-tools guard hooks `PMGRD`
+
+the project-management plugin hooks that keep pm-tools the only writer of a tracker
+
+- [x] `ACC-PMGRD-156` **a hand edit of an existing tracker is asked once** - HIGH; the first Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md gets a deny naming pm-tools; the same call sent again in the session passes; reads and pm-tools commands pass
+  - evidence: tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped
+  - test: tests/test_pm_guard.py: first Edit/Write/MultiEdit and shell write denied, the repeat passes, a different edit or session is asked again; reads and pm-tools pass
+  - test-tags: UNIT
+  - log: 2026-09-24T16:59:58Z @kj added
+  - log: 2026-09-24T17:00:03Z @kj closed
+  - log: 2026-09-24T17:03:44Z @kj amended title "a hand edit of an existing tracker is denied" -> "a hand edit of an existing tracker is asked once"; text "Edit, Write, MultiEdit and in-place shell writes on acc-crit*.md or defects*.md get a deny naming pm-tools; reads and pm-tools commands pass" -> "the first Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md gets a deny naming pm-tools; the same call sent again in the session passes; reads and pm-tools commands pass"; reason: Star Colonel: softer guard, a good reason may still hand-edit
+  - log: 2026-09-24T17:03:44Z @kj edited test "tests/test_pm_guard.py: Edit, Write, MultiEdit, sed -i, >>, tee, cp onto, python write_text denied; grep, sed -n, pm-tools pass" -> "tests/test_pm_guard.py: first Edit/Write/MultiEdit and shell write denied, the repeat passes, a different edit or session is asked again; reads and pm-tools pass"
+- [x] `ACC-PMGRD-157` **a new tracker, a merge conflict and the user override pass** - MEDIUM; the guard lets through a tracker that does not exist yet, one holding git conflict markers, and any edit when PM_TOOLS_HAND_EDIT=1 is in Claude Code's environment
+  - evidence: tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped
+  - test: tests/test_pm_guard.py: Write of a new tracker, Edit during a conflict and Edit with the override get no deny
+  - test-tags: UNIT
+  - log: 2026-09-24T16:59:58Z @kj added
+  - log: 2026-09-24T17:00:03Z @kj closed
+- [x] `ACC-PMGRD-158` **a tracker prompt is told to load the skill** - HIGH; a prompt naming acc crit, acceptance criteria, a defect, a bug or issue tracker, an ACC-/DEF- id or pm-tools gets context to load the project-management skill; other prompts get nothing
+  - evidence: tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped
+  - test: tests/test_pm_guard.py: six tracker prompts get the context; an unrelated prompt gets none
+  - test-tags: UNIT
+  - log: 2026-09-24T16:59:58Z @kj added
+  - log: 2026-09-24T17:00:03Z @kj closed
+

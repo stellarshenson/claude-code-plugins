@@ -1,6 +1,6 @@
 ---
 name: defect
-description: File, triage, log, close or reject a defect in the project's defects document - permanent category-scoped ids (DEF-LNCH-3), mandatory CRITICAL/MAJOR/MEDIUM/MINOR severity, repro line and the append-only attempt trail, all through the pm-tools CLI
+description: File, triage, log, close or reject a defect in the project's defects document - permanent category-scoped ids (DEF-LNCH-3), mandatory CRITICAL/MAJOR/MEDIUM/MINOR severity, repro line and the append-only attempt trail, all through the pm-tools CLI. Use when the user reports a bug or defect to file or track, names a DEF- id, or asks to change the defects file
 allowed-tools: [Read, Write, Bash, Skill]
 ---
 

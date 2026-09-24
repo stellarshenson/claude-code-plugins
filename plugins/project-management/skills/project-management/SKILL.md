@@ -1,6 +1,6 @@
 ---
 name: project-management
-description: Micro project management for a repository, a personal project or a small team - acceptance criteria and defects tracked in one markdown file per discipline, every item carrying a permanent category-scoped id (ACC-AUTH-102, DEF-LNCH-3) and an author handle (@kj), all reads and writes through the pm-tools CLI. Use when the user asks for acceptance criteria, acc crit, feature criteria, a defects list, a bug tracker, an issue tracker, or asks to log, add, close, reject, reopen, relate, list, report or audit a criterion or defect; to record a defect's root cause or a criterion's mechanism; for a status, triage or test-coverage report of either, including a filtered or summary one - the critical defects, what is open, the AUTH work, what closed last month; for any table or pivot over them - who owns what, open work by age, regressions per defect; when an old-style document needs upgrading to carry ids and handles; and when a shared acc-crit or defects file hits a git merge conflict.
+description: Acceptance criteria and defects for a repository, a personal project or a small team - one markdown tracker per discipline (acc-crit*.md, defects*.md), each item with a permanent id (ACC-AUTH-102, DEF-LNCH-3) and an author handle (@kj), every read and write through the pm-tools CLI, never a hand edit. Use whenever the user mentions acceptance criteria, acc crit, a criterion, a defect, defects, a bug to file or track, a bug or issue tracker, or an ACC-/DEF- id, and before any read or write of an acc-crit or defects file: to add, log, close, reject, reopen, relate, lock or audit a criterion or defect; to record a root cause or a mechanism; for a status, triage or test-coverage report, filtered or summary - the critical defects, what is open, what closed last month; for any table or pivot - who owns what, open work by age, regressions per defect; to upgrade an old-style document; and when a shared acc-crit or defects file hits a git merge conflict.
 allowed-tools: Read, Write, Bash
 ---
 
@@ -52,7 +52,7 @@ Consequences, stated once:
 - **No `## Contents`** - a hand-kept table of contents is a second index that drifts; `check` rejects one
 - **No Open / Fixed sections** - status lives in the checkbox, so an item never moves
 - **Links are one-way** - a `related:` on A is the only record; the reverse is computed, never written back
-- **`check` reports, it does not repair** - a relation to an id that is not in the scanned files, or a blocked-by cycle, is an error to fix by hand, never state to reconcile; scan the directory so cross-file links resolve
+- **`check` reports, it does not repair** - a relation to an id that is not in the scanned files, or a blocked-by cycle, is an error to fix by hand (Rules: the hand-edit guard), never state to reconcile; scan the directory so cross-file links resolve
 
 ## Ids
 
@@ -274,7 +274,7 @@ Run `check` after every edit session. It is the only gate.
 ## Rules
 
 - **Ask before the first file** - one consolidated doc per project is the default; a scoped `acc-crit-<scope>.md` or `defects-<scope>.md` only when the user asks. Never a file per item
-- **Edit through `pm-tools`** - hand-editing is legal markdown but loses the id assignment and the log line; use the tool, then `check`
+- **Edit through `pm-tools`** - hand-editing is legal markdown but loses the id assignment and the log line; use the tool, then `check`. A plugin hook denies the first Edit, Write or in-place shell write on an existing `acc-crit*.md` or `defects*.md` and names the pm-tools way; with a good reason - a repair pm-tools cannot make - tell the user why and send the same call again, and it passes. A new file, a file holding git conflict markers, and `PM_TOOLS_HAND_EDIT=1` in Claude Code's environment pass at once
 - **`remove` is for mistakes and duplicates only** - never as a way to resolve something. An item that turned out to be invalid is rejected with a reason, so the trail survives
 - **Triage every defect yourself** - assign the severity as you file it, never ask the user for it and never leave it out. There is no unset: `add` refuses one and `check` errors on one. The four levels and their rubric are in `references/defects.md`
 - **Rate every criterion yourself** - assign the `--importance` (`CRITICAL` / `HIGH` / `MEDIUM` / `LOW`) as you file it, the same way: never ask the user, never leave it out, `add` refuses one and `check` errors on one. The rubric is in `references/acceptance-criteria.md`

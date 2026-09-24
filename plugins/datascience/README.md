@@ -7,7 +7,7 @@ Unlike ad-hoc notebook cleanups, this plugin treats the notebook as a standardis
 ## Installation
 
 ```bash
-/plugin marketplace add stellarshenson/claude-code-plugins
+/plugin marketplace add https://github.com/stellarshenson/claude-code-plugins.git
 /plugin install datascience@stellarshenson-marketplace
 ```
 

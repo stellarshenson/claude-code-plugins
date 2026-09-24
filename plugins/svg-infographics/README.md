@@ -17,7 +17,7 @@ Real session feedback after using the v1.4.14 boolean tool to cut 9 lightning-gl
 ## Installation
 
 ```bash
-/plugin marketplace add stellarshenson/claude-code-plugins
+/plugin marketplace add https://github.com/stellarshenson/claude-code-plugins.git
 /plugin install svg-infographics@stellarshenson-marketplace
 ```
 

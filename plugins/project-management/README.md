@@ -7,7 +7,7 @@ Everything stays in the repository and the agent does the editing. Ids survive a
 ## Installation
 
 ```bash
-/plugin marketplace add stellarshenson/claude-code-plugins
+/plugin marketplace add https://github.com/stellarshenson/claude-code-plugins.git
 /plugin install project-management@stellarshenson-marketplace
 ```
 
@@ -174,7 +174,7 @@ A question the report does not answer is still a computed table. `list` prints o
 ## Rules summary
 
 - One consolidated document per discipline per project is the default; never a file per item
-- Every write goes through `pm-tools` - hand-editing is legal markdown but loses the id assignment and the log line
+- Every write goes through `pm-tools` - hand-editing is legal markdown but loses the id assignment and the log line. In Claude Code a plugin hook asks Claude once to use pm-tools instead of hand-editing an existing tracker, and tells Claude to load the skill when a prompt names criteria, defects or an ACC-/DEF- id
 - `remove` is for mistakes and duplicates only; an item that turned out to be invalid is rejected with a reason so the trail survives
 - The agent triages every defect and rates every criterion itself, and never asks the user for the level
 - Every field is written laconic - the wording rules are in `skills/project-management/SKILL.md`, under Writing the text

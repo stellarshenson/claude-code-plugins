@@ -1,6 +1,6 @@
 ---
 name: acc-crit
-description: Add, close, reject, relate or audit acceptance criteria in the project's acc-crit document - permanent category-scoped ids (ACC-AUTH-102), author handles, test hints and tags, all through the pm-tools CLI
+description: Add, close, reject, relate or audit acceptance criteria in the project's acc-crit document - permanent category-scoped ids (ACC-AUTH-102), author handles, test hints and tags, all through the pm-tools CLI. Use when the user says acc crit or acceptance criteria, names a criterion or an ACC- id, or asks to change the acc-crit file
 allowed-tools: [Read, Write, Bash, Skill]
 ---
 

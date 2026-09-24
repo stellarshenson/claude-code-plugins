@@ -9,6 +9,8 @@ One markdown file per discipline means two people editing the same tracker will 
 - **Every log line names its author** - `- log: 2026-08-27 @kj closed: ...`, so "whose line is this" is never a guess
 - **Ids are permanent and never reused** - the same id on both sides is the same item
 
+Hand edits pass while the file holds conflict markers; after the last marker is gone the guard asks once per edit (SKILL.md, Rules).
+
 ## Default resolution: union
 
 Keep both sides. This settles most conflicts outright.
