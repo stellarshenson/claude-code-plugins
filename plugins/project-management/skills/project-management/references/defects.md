@@ -88,7 +88,7 @@ Three more sub-lines, one line each. The `repro:` line is the one another person
 
 ## Root cause
 
-`- root-cause: <stamp> @xx <one line>` is the standing answer to why the defect happens, written by `pm-tools root-cause FILE --id ID --text "..." --author @xx`, or by `add --root-cause` at filing time. The record's own rules - a second write overrides, `--update` replaces, the top one is current, never logged - are in `SKILL.md`.
+`- root-cause: <stamp> @xx <one line>` is the standing answer to why the defect happens, written by `pm-tools root-cause FILE --id ID --text "..." --author @xx`, or by `add --root-cause` at filing time. The record's own rules - a second write overrides, `--update` replaces, the top one is current - are in `SKILL.md`.
 
 - **It is the field a long hunt is built on** - three days in, the file still shows what was believed on day one and what replaced it, which is what stops the same dead end being explored twice
 - **Not the same as the repro** - `repro:` is what another person does to see it, `root-cause:` is why it happens. `cause under investigation` in the body is what an unwritten root cause looks like

@@ -312,6 +312,44 @@ def oneline(text):
     return text.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\\n")
 
 
+# a writeup past this many words is explaining itself; --reason must say why it needs the length
+WRITEUP_WORDS = 50
+
+
+def words(text):
+    # oneline writes a line break as the two characters \n; count it as a space
+    return len(text.replace("\\n", " ").split())
+
+
+def because(reason):
+    """The tail a write's log line carries when the author gave a reason."""
+    return f"; reason: {reason}" if reason else ""
+
+
+def gate_writeups(parser, a):
+    """Refuse a free-text argument over WRITEUP_WORDS unless --reason is given; with one
+    it is written and warned. The reason is capped too, and a command that writes no
+    log line has nowhere to keep a reason, so it takes none."""
+    reason = getattr(a, "reason", None)
+    for act in parser._actions:
+        value = getattr(a, act.dest, None) if act.type is oneline else None
+        n = words(value) if value else 0
+        if n <= WRITEUP_WORDS:
+            continue
+        flag = act.option_strings[0]
+        if act.dest == "reason" or not hasattr(a, "reason"):
+            raise SystemExit(f"{flag} is {n} words; the limit is {WRITEUP_WORDS} - shorten it")
+        if not reason:
+            raise SystemExit(
+                f"{flag} is {n} words; the limit is {WRITEUP_WORDS} - shorten it, "
+                "or pass --reason saying why it needs the length"
+            )
+        print(
+            f"warning: {flag} is {n} words, over {WRITEUP_WORDS}; written because --reason was given",
+            file=sys.stderr,
+        )
+
+
 def fingerprint(path):
     """(sha256 prefix, last-edit stamp) of an artefact - what an attachment line records
     and what check recomputes to tell whether the artefact changed since it was attached."""
@@ -2341,14 +2379,16 @@ def set_cause(lines, b, kind, value, update):
 
 
 def set_line(lines, b, marker, value, pat):
-    """Replace the item's `- <marker>:` sub-line, or add one under the item line."""
+    """Replace the item's `- <marker>:` sub-line, or add one under the item line.
+    Returns the value it replaced, or None when it added the line."""
     ind = sub_indent(lines, b)
     for i in range(b["line"], block_end(lines, b)):
         if pat.match(lines[i]):
+            old = lines[i].split(":", 1)[1].strip()
             lines[i] = f"{ind}- {marker}: {value}"
-            return "replaced"
+            return old
     lines.insert(b["line"], f"{ind}- {marker}: {value}")
-    return "added"
+    return None
 
 
 def drop_line(lines, b, pat):
@@ -2436,6 +2476,7 @@ def cmd_add(
     author,
     mechanism=None,
     root_cause=None,
+    reason=None,
 ):
     expire_locks(file)
     lines = load(file)
@@ -2476,13 +2517,13 @@ def cmd_add(
         and not SUB.match(lines[at - 1])
     )
     lead = [""] if prose else []
-    lines[at:at] = lead + [item] + tail + [f"  - log: {stamp} {who} added"]
+    lines[at:at] = lead + [item] + tail + [f"  - log: {stamp} {who} added{because(reason)}"]
     save(file, lines)
     print(f"{file}:{at + len(lead) + 1}: {prefix}-{code}-{num} added")
     return 0
 
 
-def cmd_cause(file, wanted, kind, text, author, update):
+def cmd_cause(file, wanted, kind, text, author, update, reason=None):
     expire_locks(file)
     lines = load(file)
     blocks, _ = parse(file)
@@ -2497,10 +2538,20 @@ def cmd_cause(file, wanted, kind, text, author, update):
         raise SystemExit(
             f"{ident(b)} carries no {want}: record to update; write one without --update"
         )
+    # --update rewrites the newest record, which set_cause finds first, as parse does
+    c = b["causes"][0] if update else None
+    old = " ".join(filter(None, (c["stamp"], c["author"], c["text"]))) if c else None
     did = set_cause(lines, b, kind, f"{now()} {who} {text.strip()}", update)
+    if reason or old:
+        # after an update the replaced record's stamp, author and wording exist nowhere
+        # else, so the log keeps them; a new record carries its own and is logged only
+        # for a --reason
+        what = f'{kind} {did} "{old}" -> "{text.strip()}"' if old else f"{kind} {did}"
+        lines.insert(
+            block_end(lines, b),
+            f"{sub_indent(lines, b)}- log: {now()} {who} {what}{because(reason)}",
+        )
     save(file, lines)
-    # never logged: the record carries its own stamp and author, and the format
-    # records nothing twice
     print(f"{file}:{b['line']}: {ident(b)} {want} {did}")
     return 0
 
@@ -2525,7 +2576,25 @@ def rewrite_head(lines, b, title=None, text=None, sev=None, importance=None):
     lines[b["line"] - 1] = f"- [{b['state']}] `{ident(b)}` **{title or cur_title}** - {new_text}"
 
 
-def cmd_edit(file, wanted, title, text, sev, importance, repro, test, tags, author, evidence=None):
+def changed(field, old, new):
+    """One field's change as a log fragment - the old value kept, or marked as added."""
+    return f'{field} "{old}" -> "{new}"' if old else f'{field} added "{new}"'
+
+
+def cmd_edit(
+    file,
+    wanted,
+    title,
+    text,
+    sev,
+    importance,
+    repro,
+    test,
+    tags,
+    author,
+    evidence=None,
+    reason=None,
+):
     expire_locks(file)
     lines = load(file)
     blocks, _ = parse(file)
@@ -2543,33 +2612,40 @@ def cmd_edit(file, wanted, title, text, sev, importance, repro, test, tags, auth
         )
     b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
     warn_lock(file, b, who)
-    done = []
+    # the log keeps each value the edit replaces, so the item's history survives it
+    done = [
+        changed(field, old, new)
+        for field, old, new in (
+            ("title", b["title"], title),
+            ("text", b["plain"], text),
+            ("severity", b["severity"], sev),
+            ("importance", b["importance"], importance),
+        )
+        if new
+    ]
     if title or text or sev or importance:
         rewrite_head(lines, b, title, text, sev, importance)
-        done += [
-            x
-            for x in (
-                title and "title",
-                text and "text",
-                sev and "severity",
-                importance and "importance",
-            )
-            if x
-        ]
     if kind:
-        done.append(f"{kind} ({set_line(lines, b, kind, value, HINTLINE)})")
+        done.append(changed(kind, set_line(lines, b, kind, value, HINTLINE), value))
     if tags:
-        done.append(f"test-tags ({set_line(lines, b, 'test-tags', canon_tags(tags), TAGLINE)})")
+        tagged = canon_tags(tags)
+        done.append(changed("test-tags", set_line(lines, b, "test-tags", tagged, TAGLINE), tagged))
     if evidence:
-        done.append(f"evidence ({set_line(lines, b, 'evidence', evidence, EVIDLINE)})")
-    what = " and ".join(done)
-    lines.insert(block_end(lines, b), f"{sub_indent(lines, b)}- log: {now()} {who} edited {what}")
+        done.append(
+            changed("evidence", set_line(lines, b, "evidence", evidence, EVIDLINE), evidence)
+        )
+    lines.insert(
+        block_end(lines, b),
+        f"{sub_indent(lines, b)}- log: {now()} {who} edited {'; '.join(done)}{because(reason)}",
+    )
     save(file, lines)
-    print(f"{file}:{b['line']}: {ident(b)} {what} updated")
+    print(
+        f"{file}:{b['line']}: {ident(b)} {' and '.join(d.split(' ', 1)[0] for d in done)} updated"
+    )
     return 0
 
 
-def cmd_amend(file, wanted, title, text, author):
+def cmd_amend(file, wanted, title, text, author, reason=None):
     """Reword an item; the log line keeps the wording it replaced, so a title
     renamed three times shows three log lines under the current one."""
     expire_locks(file)
@@ -2588,7 +2664,7 @@ def cmd_amend(file, wanted, title, text, author):
     rewrite_head(lines, b, title, text)
     lines.insert(
         block_end(lines, b),
-        f"{sub_indent(lines, b)}- log: {now()} {who} amended {'; '.join(was)}",
+        f"{sub_indent(lines, b)}- log: {now()} {who} amended {'; '.join(was)}{because(reason)}",
     )
     save(file, lines)
     print(
@@ -2703,21 +2779,21 @@ def cmd_attach(file, wanted, paths, author):
     return 0
 
 
-def cmd_log(file, wanted, event, author):
+def cmd_log(file, wanted, event, author, reason=None):
     expire_locks(file)
     lines = load(file)
     blocks, _ = parse(file)
     who = need_author(file, author)
     b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
     warn_lock(file, b, who)
-    line = f"{sub_indent(lines, b)}- log: {now()} {who} {event}"
+    line = f"{sub_indent(lines, b)}- log: {now()} {who} {event}{because(reason)}"
     lines.insert(block_end(lines, b), line)
     save(file, lines)
     print(f"{file}:{b['line']}: {ident(b)} logged -> {line.strip()}")
     return 0
 
 
-def mint_regression(file, lines, blocks, b, event, who):
+def mint_regression(file, lines, blocks, b, event, who, reason=None):
     """Reopening a closed defect opens `<parent>-<next>` and leaves the parent closed.
 
     The closure was proven when it was made, so retiring it would delete a true fact.
@@ -2729,7 +2805,7 @@ def mint_regression(file, lines, blocks, b, event, who):
     at = block_end(lines, b)
     # the parent names its regression, so its own history is complete
     lines.insert(at, f"{pad}- log: {now()} {who} regressed as {rid}")
-    ev = f"regression of {ident(b)}" + (f": {event}" if event else "")
+    ev = f"regression of {ident(b)}" + (f": {event}" if event else "") + because(reason)
     lines[at + 1 : at + 1] = [
         f"{' ' * b['indent']}- [ ] `{rid}` {b['body']}",
         f"{pad}- log: {now()} {who} {ev}",
@@ -2739,7 +2815,7 @@ def mint_regression(file, lines, blocks, b, event, who):
     return 0
 
 
-def cmd_setstate(file, wanted, target, verb, event, author, evidence=None):
+def cmd_setstate(file, wanted, target, verb, event, author, evidence=None, reason=None):
     expire_locks(file)
     lines = load(file)
     blocks, _ = parse(file)
@@ -2750,7 +2826,7 @@ def cmd_setstate(file, wanted, target, verb, event, author, evidence=None):
         print(f"{file}:{b['line']}: {ident(b)} already [{target}]; no change")
         return 0
     if target == " " and b["state"].lower() == "x" and b["prefix"] == "DEF":
-        return mint_regression(file, lines, blocks, b, event, who)
+        return mint_regression(file, lines, blocks, b, event, who, reason)
     idx = b["line"] - 1
     lines[idx] = re.sub(r"\[[ xX-]\]", f"[{target}]", lines[idx], count=1)
     ev = f"{verb}: {event}" if event else verb
@@ -2765,6 +2841,7 @@ def cmd_setstate(file, wanted, target, verb, event, author, evidence=None):
         was = drop_line(lines, b, EVIDLINE)
         if was:
             ev += f"; evidence retired: {was}"
+    ev += because(reason)
     lines.insert(block_end(lines, b), f"{sub_indent(lines, b)}- log: {now()} {who} {ev}")
     save(file, lines)
     print(f"{file}:{b['line']}: [{target}] {ident(b)} ({ev})")
@@ -3286,6 +3363,11 @@ def main(argv: list[str] | None = None) -> int:
         dest="tags",
         help='which tests cover it, e.g. "unit, functional"',
     )
+    sa.add_argument(
+        "--reason",
+        type=oneline,
+        help="why; needed for a free-text argument over 50 words, kept on the log line",
+    )
 
     se = sub.add_parser("edit")
     se.add_argument("file")
@@ -3299,6 +3381,11 @@ def main(argv: list[str] | None = None) -> int:
     se.add_argument("--test-tags", type=oneline, dest="tags")
     se.add_argument("--evidence", type=oneline, help="one line proving the item is done")
     se.add_argument("--author", required=True, metavar="@xx")
+    se.add_argument(
+        "--reason",
+        type=oneline,
+        help="why; needed for a free-text argument over 50 words, kept on the log line",
+    )
 
     sm = sub.add_parser("amend")
     sm.add_argument("file")
@@ -3306,6 +3393,11 @@ def main(argv: list[str] | None = None) -> int:
     sm.add_argument("--title", type=oneline)
     sm.add_argument("--text", type=oneline)
     sm.add_argument("--author", required=True, metavar="@xx")
+    sm.add_argument(
+        "--reason",
+        type=oneline,
+        help="why; needed for a free-text argument over 50 words, kept on the log line",
+    )
 
     sh = sub.add_parser("author")
     sh.add_argument("file")
@@ -3342,6 +3434,11 @@ def main(argv: list[str] | None = None) -> int:
         sp.add_argument("--id", required=True)
         sp.add_argument("--author", required=True, metavar="@xx")
         sp.add_argument("--event", type=oneline, required=(name in ("log", "reject")))
+        sp.add_argument(
+            "--reason",
+            type=oneline,
+            help="why; needed for a free-text argument over 50 words, kept on the log line",
+        )
         if name == "close":
             sp.add_argument(
                 "--evidence",
@@ -3360,6 +3457,11 @@ def main(argv: list[str] | None = None) -> int:
             "--update",
             action="store_true",
             help="rewrite the newest record instead of writing a new one above it",
+        )
+        sp.add_argument(
+            "--reason",
+            type=oneline,
+            help="why; needed for a free-text argument over 50 words, kept on the log line",
         )
 
     sx = sub.add_parser("remove")
@@ -3475,6 +3577,7 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_refs(files, a.id.strip().upper(), a.json)
         return cmd_check(files, a.strict)
 
+    gate_writeups(sub.choices[a.cmd], a)
     if a.cmd == "add":
         return cmd_add(
             a.file,
@@ -3491,6 +3594,7 @@ def main(argv: list[str] | None = None) -> int:
             a.author,
             a.mechanism,
             a.root_cause,
+            a.reason,
         )
     if a.cmd == "edit":
         return cmd_edit(
@@ -3505,11 +3609,12 @@ def main(argv: list[str] | None = None) -> int:
             a.tags,
             a.author,
             a.evidence,
+            a.reason,
         )
     if a.cmd == "amend":
-        return cmd_amend(a.file, a.id, a.title, a.text, a.author)
+        return cmd_amend(a.file, a.id, a.title, a.text, a.author, a.reason)
     if a.cmd in ("mechanism", "root-cause"):
-        return cmd_cause(a.file, a.id, a.cmd, a.text, a.author, a.update)
+        return cmd_cause(a.file, a.id, a.cmd, a.text, a.author, a.update, a.reason)
     if a.cmd == "author":
         return cmd_author(a.file, a.handle, a.name)
     if a.cmd == "describe":
@@ -3519,13 +3624,13 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "attach":
         return cmd_attach(a.file, a.id, a.path, a.author)
     if a.cmd == "log":
-        return cmd_log(a.file, a.id, a.event, a.author)
+        return cmd_log(a.file, a.id, a.event, a.author, a.reason)
     if a.cmd == "close":
-        return cmd_setstate(a.file, a.id, "x", "closed", a.event, a.author, a.evidence)
+        return cmd_setstate(a.file, a.id, "x", "closed", a.event, a.author, a.evidence, a.reason)
     if a.cmd == "reject":
-        return cmd_setstate(a.file, a.id, "-", "rejected", a.event, a.author)
+        return cmd_setstate(a.file, a.id, "-", "rejected", a.event, a.author, reason=a.reason)
     if a.cmd == "reopen":
-        return cmd_setstate(a.file, a.id, " ", "reopened", a.event, a.author)
+        return cmd_setstate(a.file, a.id, " ", "reopened", a.event, a.author, reason=a.reason)
     if a.cmd == "remove":
         return cmd_remove(a.file, a.id, a.force, a.author)
     if a.cmd == "lock":

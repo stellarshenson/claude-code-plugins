@@ -63,7 +63,7 @@ The `test:` line says how it would be checked; the `evidence:` line says it was,
 
 ## Mechanism
 
-`- mechanism: <stamp> @xx <one line>` says how the criterion is meant to be satisfied - the design decision behind it, not a restatement of the assertion. Written by `pm-tools mechanism FILE --id ID --text "..." --author @xx`, or by `add --mechanism` at filing time. The record's own rules - a second write overrides, `--update` replaces, the top one is current, never logged - are in `SKILL.md`.
+`- mechanism: <stamp> @xx <one line>` says how the criterion is meant to be satisfied - the design decision behind it, not a restatement of the assertion. Written by `pm-tools mechanism FILE --id ID --text "..." --author @xx`, or by `add --mechanism` at filing time. The record's own rules - a second write overrides, `--update` replaces, the top one is current - are in `SKILL.md`.
 
 - **The assertion is what must be true, the mechanism is how it is made true** - `a session expires after 30 min idle` is the criterion; `one idle timer on the gateway, reset by any authenticated call` is the mechanism
 - **It changes during implementation, and the change is the record** - the approach that was tried and abandoned stays readable under the one that replaced it, which is what answers "why not the simple version" months later

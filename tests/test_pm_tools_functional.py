@@ -206,6 +206,11 @@ def test_update_replaces_the_current_record(defects: Path):
     assert "root-cause updated" in out
     recs = _causes(defects, "DEF-LNCH-1")
     assert len(recs) == 1 and recs[0].endswith("the fork races the loader")
+    logs = [ln for ln in defects.read_text(encoding="utf-8").splitlines() if "- log:" in ln]
+    assert any(
+        re.search(r'root-cause updated "\S+Z @kj the fork races" -> "the fork races the loader"', ln)
+        for ln in logs
+    ), "the log keeps the record the update replaced, with its stamp, author and wording"
 
 
 def test_update_refuses_when_there_is_nothing_to_update(defects: Path):

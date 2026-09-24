@@ -2730,3 +2730,88 @@ def test_attach_records_checksum_and_edit_stamp_and_check_reports_drift(
     assert set(rec["fingerprints"][0]) == {"path", "sha256", "edited"}
     with pytest.raises(SystemExit, match="attachment not found"):
         run("attach", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--path", "nope.png")
+
+
+LONG = " ".join(["word"] * 51)
+
+
+def test_edit_logs_the_old_value_of_every_field_it_replaces(defects: Path):
+    """DEF-PMGT-70. Without the change the log line reads `edited title and text and
+    severity and repro (replaced) ...` and no old value below is found."""
+    add_defect(defects, "login hangs")
+    run(
+        "edit",
+        str(defects),
+        "--id",
+        "DEF-LNCH-1",
+        "--author",
+        "@kj",
+        "--title",
+        "token race",
+        "--text",
+        "refresh races the logout",
+        "--severity",
+        "CRITICAL",
+        "--repro",
+        "relaunch twice",
+        "--test-tags",
+        "unit",
+        "--evidence",
+        "run 7",
+    )
+    body = defects.read_text(encoding="utf-8")
+    log = next(ln for ln in body.splitlines() if " edited " in ln)
+    for part in (
+        'title "login hangs" -> "token race"',
+        'text "symptom; cause under investigation" -> "refresh races the logout"',
+        'severity "MAJOR" -> "CRITICAL"',
+        'repro "fork under load, send a turn inside 2s" -> "relaunch twice"',
+        'test-tags "INTEGRATION" -> "UNIT"',
+        'evidence added "run 7"',
+    ):
+        assert part in log, part
+    assert "**token race** - CRITICAL; refresh races the logout" in body
+    assert run("check", str(defects)) == 0
+
+
+def test_a_writeup_over_50_words_is_refused_without_a_reason(defects: Path):
+    """ACC-PMTXT-154. Without the gate every write below lands and exits 0."""
+    add_defect(defects, "login hangs")
+    before = defects.read_text(encoding="utf-8")
+    writes = [
+        ["add", "--category", "LNCH", "--severity", "MINOR", "--title", "t", "--text", LONG],
+        ["log", "--id", "DEF-LNCH-1", "--event", LONG],
+        ["edit", "--id", "DEF-LNCH-1", "--text", LONG],
+        ["amend", "--id", "DEF-LNCH-1", "--title", LONG],
+        ["root-cause", "--id", "DEF-LNCH-1", "--text", LONG],
+        ["close", "--id", "DEF-LNCH-1", "--evidence", LONG],
+    ]
+    for argv in writes:
+        with pytest.raises(SystemExit) as e:
+            run(argv[0], str(defects), "--author", "@kj", *argv[1:])
+        assert "is 51 words" in str(e.value) and "--reason" in str(e.value), argv[0]
+    with pytest.raises(SystemExit) as e:
+        run("describe", str(defects), "--category", "LNCH", "--text", LONG)
+    assert "is 51 words" in str(e.value), "a command with no log line takes no reason"
+    assert defects.read_text(encoding="utf-8") == before, "nothing is written"
+    fifty = " ".join(["word"] * 50)
+    assert run("log", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", fifty) == 0
+
+
+def test_a_reason_lets_a_long_writeup_through_warned_and_logged(defects: Path, capsys):
+    """ACC-PMTXT-155. The reason lands on the log line of the write it justifies."""
+    add_defect(defects, "login hangs")
+    capsys.readouterr()
+    argv = ["--id", "DEF-LNCH-1", "--author", "@kj"]
+    assert run("log", str(defects), *argv, "--event", LONG, "--reason", "trace quoted") == 0
+    assert "--event is 51 words" in capsys.readouterr().err
+    assert run("root-cause", str(defects), *argv, "--text", LONG, "--reason", "two causes") == 0
+    assert run("edit", str(defects), *argv, "--text", "short", "--reason", "operator ruling") == 0
+    body = defects.read_text(encoding="utf-8")
+    assert f"@kj {LONG}; reason: trace quoted" in body
+    assert "@kj root-cause recorded; reason: two causes" in body
+    assert '-> "short"; reason: operator ruling' in body, "a short edit may carry its why"
+    with pytest.raises(SystemExit) as e:
+        run("log", str(defects), *argv, "--event", "short", "--reason", LONG)
+    assert "--reason is 51 words" in str(e.value)
+    assert run("check", str(defects)) == 0

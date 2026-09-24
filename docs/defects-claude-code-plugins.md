@@ -218,6 +218,14 @@ pm-tools parser, edit, upgrade and reports
   - test-tags: UNIT
   - log: 2026-09-17T20:02:59Z @kj added
   - log: 2026-09-17T22:31:52Z @kj closed: fixed: one argparse type=oneline on all 23 free-text arguments writes a real line break (LF or CRLF) as the two characters backslash-n; nothing is lost and no unparsed line is written
+- [x] `DEF-PMGT-70` **edit overwrites a field and drops its old value** - MAJOR; edit rewrites title, text, severity, importance, hint, tags or evidence and logs only 'edited <field>'; amend keeps the old wording, but review/SKILL.md tells agents to use edit
+  - evidence: tests/test_pm_tools.py::test_edit_logs_the_old_value_of_every_field_it_replaces passes; suite 1410 passed, 2 skipped
+  - test-tags: UNIT
+  - repro: pm-tools edit FILE --id ID --text new --author @kj; the log reads 'edited text' and the old text is gone
+  - log: 2026-09-24T13:25:41Z @kj added
+  - log: 2026-09-24T13:30:31Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-24T13:30:31Z @kj closed: fixed: edit logs each replaced value as old -> new; review/SKILL.md now sends rewording to amend
+  - log: 2026-09-24T13:58:31Z @kj review wf_b041a10d-451 to wf_731cdc09-014 (ai-engineer, architect): same loss in root-cause/mechanism --update, now logs the whole replaced record; SHIP at round 3
 
 ## hypothesis-tools `HYPO`
 

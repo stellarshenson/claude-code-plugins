@@ -654,13 +654,15 @@ A registered explanation line on every item: how a criterion is meant to work, w
   - log: 2026-08-31T11:42:01Z @kj added
   - log: 2026-08-31T11:49:03Z @kj closed
   - log: 2026-08-31T13:13:10Z @kj edited text
-- [x] `ACC-PMWHY-89` **Never logged twice** - MEDIUM; writing a record adds no log: line - the record carries its own stamp and author, and the format records nothing twice
+- [x] `ACC-PMWHY-89` **Never logged twice** - MEDIUM; a record's stamp and author are never repeated in a log: line; the log keeps only what the record cannot - the whole record an --update replaced, and a --reason
   - evidence: test_the_record_carries_its_own_stamp_and_is_never_logged passes: the log line count is unchanged by a root-cause write
   - test: a mechanism write leaves the item's log line count unchanged
   - test-tags: UNIT
   - log: 2026-08-31T11:42:01Z @kj added
   - log: 2026-08-31T11:49:03Z @kj closed
   - log: 2026-08-31T13:13:10Z @kj edited text
+  - log: 2026-09-24T13:45:58Z @kj amended text "writing a record adds no log: line - the record carries its own stamp and author, and the format records nothing twice" -> "a record's stamp and author are never repeated in a log: line; the log keeps only what the record cannot - the wording an --update replaced, and a --reason"; reason: review round 1: the --update and --reason log lines made the old text false
+  - log: 2026-09-24T13:54:40Z @kj amended text "a record's stamp and author are never repeated in a log: line; the log keeps only what the record cannot - the wording an --update replaced, and a --reason" -> "a record's stamp and author are never repeated in a log: line; the log keeps only what the record cannot - the whole record an --update replaced, and a --reason"; reason: review round 2: an --update also erased the replaced record's stamp and author
 - [x] `ACC-PMWHY-90` **check guards the record format** - HIGH; check errors on a record in the wrong discipline and on a malformed stamp or handle, and warns when records are not newest-first, because order is what makes one of them current
   - evidence: test_check_guards_the_record_format passes: wrong discipline and malformed line exit 1, out-of-order records warn and exit 0
   - test: pm-tools check reports each of the three conditions on a crafted file
@@ -1055,4 +1057,16 @@ how an acceptance criterion or defect is worded
   - test-tags: UNIT
   - log: 2026-09-21T11:43:16Z @kj added
   - log: 2026-09-21T11:43:20Z @kj closed
+- [x] `ACC-PMTXT-154` **a writeup over 50 words is refused without --reason** - HIGH; every free-text argument of a write command is counted; over 50 words without --reason exits 1, names the field and its count, and writes nothing
+  - evidence: tests/test_pm_tools.py::test_a_writeup_over_50_words_is_refused_without_a_reason passes; suite 1410 passed, 2 skipped
+  - test: tests/test_pm_tools.py: add, log and edit with a 51-word value and no --reason exit 1; the file is unchanged
+  - test-tags: UNIT
+  - log: 2026-09-24T13:26:04Z @kj added
+  - log: 2026-09-24T13:30:31Z @kj closed
+- [x] `ACC-PMTXT-155` **--reason lets a long writeup through, warned and logged** - HIGH; with --reason the write lands, stderr warns with the field and its word count, and the item's log line ends in 'reason: <text>'
+  - evidence: tests/test_pm_tools.py::test_a_reason_lets_a_long_writeup_through_warned_and_logged passes; suite 1410 passed, 2 skipped
+  - test: tests/test_pm_tools.py: a 51-word --text with --reason is written; stderr warns; the log line carries the reason
+  - test-tags: UNIT
+  - log: 2026-09-24T13:26:04Z @kj added
+  - log: 2026-09-24T13:30:31Z @kj closed
 

@@ -100,6 +100,7 @@ Every free-text field is written in plain language: title, body, the `repro:` / 
 - **One reading only** - a sentence with a second possible meaning is rewritten, not clarified later. `refresh fails after logout` says neither which refresh nor whose logout
 - **Compression is welcome** - drop articles and filler, fragments are fine: `auth token sometimes empty on first turn after fork` is a whole body. This store is the exception to the rule that ticket text is written in full prose; it sits next to the code and is read by whoever works the code, agent or person
 - **Nothing past the minimum** - a clause earns its place by naming a mechanism, a site, a number or the harm. Everything else goes: the reasoning behind the item, what the title already said, why it matters, how the fix was arrived at. Delete it, do not shorten it. Past roughly 40 words a body is usually explaining itself - run the test again on each clause
+- **Short is the default; stop once it is enough** - a title is a few words, a body one or two sentences, a log event one line. `pm-tools` refuses a free-text argument over 50 words unless `--reason` says why it needs the length; the reason is kept on the item's log line. `describe`, `lock` and `author` take no `--reason` and refuse a text over 50 words. A long writeup almost always needs deleting, not a reason
 - **Compression never touches meaning** - `not`, `never`, `only`, `except`, `sometimes` stay whatever they cost. Numbers, units, ids, paths, symbol names and quoted error strings are copied exactly: never paraphrased, never rounded, never shortened
 - **Compression that does not compress is not compression** - invented short forms (`cfg`, `impl`, `req`) and mangled grammar cost the same as the plain words and make the reader decode; well-known acronyms (`API`, `HTTP`, `UUID`) are already plain. Where the plain phrasing is already the shortest, that is the wording
 
@@ -114,7 +115,7 @@ The register, on filed items:
 
 ```markdown
 - [ ] `ACC-ANIM-143` **Typing animation default** - MEDIUM; typing animation on by default, 25 characters per second instead of 10; saved settings keep their value
-- [ ] `ACC-NOTES-144` **Broken marks are removed** - HIGH; a mark is broken when a rewrite removed one marker, both markers, or the whole passage between them; a broken mark is not listed, has no tick, is not painted, and its leftover marker is deleted from the file on the next read; a mark whose passage text merely changed stays
+- [ ] `ACC-NOTES-144` **Broken marks are removed** - HIGH; a mark is broken when a rewrite removed one marker, both markers, or the whole passage between them; a broken mark is not listed, has no tick, is not painted, and its leftover marker is deleted from the file on next read; a mark whose passage text merely changed stays
 - [ ] `DEF-CUE-68` **Tab marker does not turn** - MEDIUM; likely cause: the stylesheet obeys the operating system's reduced-motion flag, which Windows sets when show-animations is off; fix: the marker turns regardless, only the extension's own settings stop it
 - [ ] `DEF-NOTES-66` **Tick on a document note** - MINOR; a document note shows a tick on the minimap; cause unknown, the source already skips document notes; reproduce first
 ```
@@ -168,7 +169,7 @@ One registered explanation per item, named by the discipline: `mechanism:` on a 
 - **A second write overrides by default** - `pm-tools root-cause FILE --id ID --text "..." --author @xx` puts a new record above the old one and keeps it. On a hunt that runs for days this is the whole value: the theory that was disproved on Tuesday is still readable on Friday, so nobody tests it again
 - **`--update` replaces instead** - the same call with `--update` rewrites the newest record in place, for a rewording of a theory that has not changed. It refuses when there is no record to update
 - **Written at filing time too** - `add --mechanism` on a criterion, `add --root-cause` on a defect
-- **Never logged** - the record carries its own stamp and author, and nothing is recorded twice
+- **Logged for what it would lose** - the record carries its own stamp and author, so `--update` logs the record it replaced, and a new record above the old one is logged only when `--reason` is given
 - **One discipline each** - `mechanism` on a defect and `root-cause` on a criterion are both refused, and `check` errors on either line in the wrong document
 - **A full study is still a document** - the record is one line. Where the reasoning needs pages, it goes in `docs/<discipline>/<ID>-<slug>.md` and the record names the conclusion
 
@@ -252,13 +253,13 @@ Write - one file per call, and `--author` on every one of them:
 | Command | Does |
 |---------|------|
 | `add` | next id, appended under the category; creates the category when named; `--severity` mandatory on a defect, `--importance` mandatory on a criterion, each refused on the other |
-| `edit` | correct title, body, severity, importance, hint, tags or evidence; logged as `edited <fields>`, the old value not kept |
+| `edit` | correct title, body, severity, importance, hint, tags or evidence; the log line keeps each value it replaced (`edited severity "MAJOR" -> "CRITICAL"`) |
 | `amend` | reword title or body; the log line keeps the old wording (`amended title "old" -> "new"`), so an item renamed three times shows three lines under the current one; report, list and search read the current wording |
 | `author` | add or update a roster entry; required before that handle can write |
 | `describe` | set or replace the category description |
 | `relate` | add one `related:` or `blocked-by:` line |
 | `attach` | one `attachment:` line per artefact with its checksum and last-edit stamp; the same path again refreshes the line and the log keeps the old checksum; `check` warns when an artefact changed or is missing |
-| `mechanism` / `root-cause` | write the discipline's explanation; a new record above the previous one, or `--update` to replace the newest; not logged |
+| `mechanism` / `root-cause` | write the discipline's explanation; a new record above the previous one, or `--update` to replace the newest, logging the record it replaced; a new record is logged only with `--reason` |
 | `log` | append an event to the item's log |
 | `close` / `reopen` | `close` demands `--evidence`; `reopen` retires it on a criterion, and on a closed defect files `<id>-<n>` instead |
 | `reject` | mark `[-]`; the reason is required |
