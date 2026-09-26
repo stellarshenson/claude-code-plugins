@@ -6,6 +6,6 @@ argument-hint: "what to report, e.g. 'where do the defects stand', 'the open def
 
 # Report
 
-Invoke the `project-management:report` skill and follow it exactly. It owns the whole procedure; this command only routes into it.
+Read this plugin's skill file `skills/report/SKILL.md` and follow it exactly. It owns the whole procedure; this command only routes into it.
 
 Pass the remainder of this invocation through unchanged as the skill's arguments.

@@ -588,6 +588,7 @@ REVIEW_ARGS = {
         "inputs": "i",
         "primaryPath": "pp",
         "outOfScope": "hand-edited files",
+        "heuristics": "the regex tier",
     },
     "lenses": ["bug-hunter", "architect"],
     "graph": "tmp/graphify-out/graph.json",
@@ -597,9 +598,8 @@ REVIEW_ARGS = {
 CONFIRM_ARGS = {
     **REVIEW_ARGS,
     "state": {
-        "contract": 2,
+        "contract": 3,
         "round": 1,
-        "spiralStreak": 0,
         "history": [],
         "deferred": [],
         "refuted": [],
@@ -673,7 +673,15 @@ def test_prompt_blocks_are_verbatim_from_the_script_and_name_every_finding_field
         static = (
             line.split(":")[0]
             if line.startswith(
-                ("PURPOSE", "INPUT UNIVERSE", "PRIMARY PATH", "OUT OF SCOPE", "SCOPE", "TARGET")
+                (
+                    "PURPOSE",
+                    "INPUT UNIVERSE",
+                    "PRIMARY PATH",
+                    "OUT OF SCOPE",
+                    "HEURISTIC COMPONENTS",
+                    "SCOPE",
+                    "TARGET",
+                )
             )
             else line
         )

@@ -1194,7 +1194,7 @@ def cmd_research_search(args: argparse.Namespace) -> int:
 # The shape of `state` and `appliedFixes` the workflow script reads; the same
 # number as the script's LOOP_CONTRACT, so a state from another version is
 # refused here as it is there.
-LOOP_CONTRACT = 2
+LOOP_CONTRACT = 3
 
 # The finding fields of the script's FINDINGS_SCHEMA, in its order. A hand
 # spawn has no structured-output tool, so the prompt ends by naming them.
@@ -1270,6 +1270,11 @@ def bar_block(bar: dict) -> str:
         else None,
         f"OUT OF SCOPE (explicitly): {bar['outOfScope']}" if bar.get("outOfScope") else None,
         f"DEGRADE GRACEFULLY COVERS: {bar['degrade']}" if bar.get("degrade") else None,
+        "HEURISTIC COMPONENTS (accuracy is a rate measured on data - one misread input is not "
+        "a finding unless it crashes, regresses against HEAD or breaks a guarantee): "
+        f"{bar['heuristics']}"
+        if bar.get("heuristics")
+        else None,
         "The script caps material=false at MINOR/outOfBar whatever the reproduction shows.",
     ]
     return "\n".join(line for line in lines if line)

@@ -6,6 +6,6 @@ argument-hint: "the criterion work, e.g. 'add a criterion that the session times
 
 # Acceptance Criteria
 
-Invoke the `project-management:acc-crit` skill and follow it exactly. It owns the whole procedure; this command only routes into it.
+Read this plugin's skill file `skills/acc-crit/SKILL.md` and follow it exactly. It owns the whole procedure; this command only routes into it.
 
 Pass the remainder of this invocation through unchanged as the skill's arguments.

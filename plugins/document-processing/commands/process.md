@@ -6,11 +6,11 @@ argument-hint: "describe what to produce from the input documents"
 
 # Document Processing - Process
 
-Invoke `document-processing:process` skill with user objective. Skill refines objective, generates `INSTRUCTIONS.md` + `BENCHMARK.md` (each for user approval), scaffolds WIP folder, then runs four-phase workflow.
+Read this plugin's skill file `skills/process/SKILL.md` and follow it with the user objective. Skill refines objective, generates `INSTRUCTIONS.md` + `BENCHMARK.md` (each for user approval), scaffolds WIP folder, then runs four-phase workflow.
 
 ## Flow
 
-1. Invoke `process` skill with user objective
+1. Read this plugin's skill file `skills/process/SKILL.md` and follow it with the user objective
 2. Skill handles: objective refinement -> program generation -> benchmark generation -> scaffolding -> execution (Analyze & Draft -> Verify & Ground -> Uniformize & Deliver)
 3. Verify & Ground phase invokes `grounding` skill for CLI-assisted claim grounding
 4. All intermediate work -> `2-wip/<task-name>/`

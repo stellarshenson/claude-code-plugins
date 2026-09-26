@@ -95,9 +95,9 @@ jobs:
           root = pathlib.Path('.')
           bad, checked = [], 0
           for f in sorted(root.glob('plugins/*/commands/*.md')):
-              for ref in sorted(set(re.findall(r'[a-z-]+/skills/[a-z-]+/SKILL\.md', f.read_text()))):
+              for ref in sorted(set(re.findall(r'skills/[a-z-]+/SKILL\.md', f.read_text()))):
                   checked += 1
-                  if not (root / 'plugins' / ref).is_file(): bad.append(f'{f} -> {ref}')
+                  if not (f.parents[1] / ref).is_file(): bad.append(f'{f} -> {ref}')
           if bad:
               print('BROKEN command -> skill references:')
               [print('  ' + b) for b in bad]

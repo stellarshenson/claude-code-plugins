@@ -6,6 +6,6 @@ argument-hint: "the document to upgrade, e.g. 'docs/acceptance-criteria.md' or '
 
 # Upgrade
 
-Invoke the `project-management:upgrade` skill and follow it exactly. It owns the whole procedure; this command only routes into it.
+Read this plugin's skill file `skills/upgrade/SKILL.md` and follow it exactly. It owns the whole procedure; this command only routes into it.
 
 Pass the remainder of this invocation through unchanged as the skill's arguments.

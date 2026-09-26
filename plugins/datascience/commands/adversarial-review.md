@@ -6,6 +6,6 @@ argument-hint: "what to review, e.g. 'the E12 experiments log before I trust it'
 
 # Adversarial Review
 
-Invoke the `datascience:adversarial-review` skill and follow it exactly. It owns the whole procedure; this command only routes into it.
+Read this plugin's skill file `skills/adversarial-review/SKILL.md` and follow it exactly. It owns the whole procedure; this command only routes into it.
 
 Pass the remainder of this invocation through unchanged as the skill's arguments.

@@ -6,6 +6,6 @@ argument-hint: "path to file and what to footnote, e.g. 'notebooks/01-kj-analysi
 
 # Apply Footnotes
 
-Invoke the `datascience:apply-footnotes` skill and follow it exactly. It owns the whole procedure; this command only routes into it.
+Read this plugin's skill file `skills/apply-footnotes/SKILL.md` and follow it exactly. It owns the whole procedure; this command only routes into it.
 
 Pass the remainder of this invocation through unchanged as the skill's arguments.

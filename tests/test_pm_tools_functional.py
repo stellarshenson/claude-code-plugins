@@ -497,6 +497,36 @@ def test_the_laconic_rule_is_documented_where_the_agent_writes():
         assert "nothing past the mechanism, the site, the numbers and the harm" in body, name
 
 
+
+def test_a_statistical_components_miss_is_rejected_not_filed():
+    """DEF-PMGT-75. A groundrails review filed per-input accuracy misses of a regex
+    tier as defects; fixing them tuned rules on the evaluation data, and 16 were
+    rejected on the author's ruling that a failure mode is not a defect. The
+    definition and every statement of the reject cases now carry that case."""
+    plugin = Path(__file__).parent.parent / "plugins/project-management"
+    ref = (plugin / "skills/project-management/references/defects.md").read_text(encoding="utf-8")
+    assert "is not a defect: it is a sample of an error rate" in ref
+    assert "The three cases:" in ref and "failure mode of a statistical or heuristic" in ref
+    for name in ("skills/defect/SKILL.md", "README.md"):
+        body = (plugin / name).read_text(encoding="utf-8")
+        assert "a failure mode measured as a rate" in body, name
+
+
+def test_the_commands_point_at_their_skill_files():
+    """DEF-SKILLC-76. Each command shares its name with a skill, and the Skill tool
+    resolves that name to the command: 8 of 8 project-management Skill calls in a
+    galaxahub session returned the command, which pointed back at the same name, and
+    after 4 of them Claude wrote with no skill text loaded. Each command names its
+    skill's file instead, which Claude reads directly."""
+    plugin = Path(__file__).parent.parent / "plugins/project-management"
+    commands = sorted((plugin / "commands").glob("*.md"))
+    assert [c.stem for c in commands] == ["acc-crit", "defect", "report", "review", "upgrade"]
+    for c in commands:
+        body = c.read_text(encoding="utf-8")
+        assert f"this plugin's skill file `skills/{c.stem}/SKILL.md`" in body, c.name
+        assert f"`project-management:{c.stem}` skill" not in body, c.name
+        assert (plugin / "skills" / c.stem / "SKILL.md").is_file(), c.name
+
 def test_help_lists_both_record_commands():
     """A command absent from --help is a command nobody finds."""
     out = ok("--help")

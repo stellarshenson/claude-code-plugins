@@ -6,7 +6,7 @@ argument-hint: "what to do, e.g. 'fill this form', 'extract tables from report.p
 
 # PDF
 
-Invoke `document-processing:pdf` skill. Carries PDF library reference (pypdf, pdfplumber, reportlab), CLI tools (pdftotext, qpdf, pdftk, pdfimages), pre-built scripts under `scripts/` (form analysis and fill, bounding-box checks, page-to-image conversion, validation images), plus topic guides for forms, table extraction, OCR.
+Read this plugin's skill file `skills/pdf/SKILL.md` and follow it. Carries PDF library reference (pypdf, pdfplumber, reportlab), CLI tools (pdftotext, qpdf, pdftk, pdfimages), pre-built scripts under `scripts/` (form analysis and fill, bounding-box checks, page-to-image conversion, validation images), plus topic guides for forms, table extraction, OCR.
 
 ## Common tasks
 

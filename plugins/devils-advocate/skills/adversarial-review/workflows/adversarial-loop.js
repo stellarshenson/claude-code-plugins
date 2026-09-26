@@ -28,9 +28,9 @@ export const meta = {
 // REVERT BEFORE REFINE: FANOUT_STOP, STOP and PLAN carry the revert candidates
 // so the main session reverts deterministically.
 //
-// THE STOP IS A JUDGMENT: FANOUT_STOP fires on two consecutive refining rounds
-// the adjudicator judges spiralling; the fanout ratio is evidence it cites,
-// never the gate (DEF-ADVR-50).
+// THE STOP IS A JUDGMENT: FANOUT_STOP fires when two of the last three
+// refining rounds are judged spiralling by the adjudicator; the fanout ratio is
+// evidence it cites, never the gate (DEF-ADVR-50).
 //
 // A CLEAN ROUND SHIPS: nothing edits the tree inside the workflow, so a second
 // panel after a clean round would review identical code (DEF-ADVR-65).
@@ -42,7 +42,9 @@ export const meta = {
 //              for and for whom), inputs (the input universe it converts /
 //              handles), primaryPath (the use every CRITICAL/MAJOR must sit on).
 //              Optional: guarantees (output guarantees), outOfScope (input
-//              classes explicitly out), degrade (what "degrade gracefully" covers)
+//              classes explicitly out), degrade (what "degrade gracefully" covers),
+//              heuristics (the statistical or heuristic components, whose
+//              accuracy is a rate measured on data, not a per-input guarantee)
 //   lenses     array of adversary names, e.g. ["architect", "bug-hunter"]
 //   graph      optional path to a refreshed code-graph index - reviewers
 //              price blast radius from it instead of grepping (fewer turns),
@@ -76,7 +78,7 @@ if (typeof args.bar !== 'object' || !args.bar.purpose || !args.bar.inputs || !ar
 // The shape of `state` and `appliedFixes` this script reads. Bump it whenever
 // either changes, so a state written by another version - or this script run
 // from a stale copy - is refused instead of misread (DEF-ADVR-66).
-const LOOP_CONTRACT = 2
+const LOOP_CONTRACT = 3
 if (args.state) {
   if (args.state.contract !== LOOP_CONTRACT) {
     throw new Error(`args.state was written under loop contract ${args.state.contract} and this script reads contract ${LOOP_CONTRACT} - the state and the script come from different versions; run the installed adversarial-loop.js and start the review again`)
@@ -132,7 +134,7 @@ const FINDINGS_SCHEMA = {
           evidence: { type: 'string', description: 'what was observed or reproduced, with the exact input' },
           material: { type: 'boolean', description: 'true ONLY when a user on the primary path, with an input inside the input universe, is harmed; false for a technically true defect on an input the product is not for' },
           materiality: { type: 'string', description: 'who is harmed, doing what the product is for, on which input - or NONE and why' },
-          remedy: { type: 'string', description: 'smallest EDIT that removes the cause, or DEFER; a remedy that would add a pass, plugin, branch, helper or data shape opens with NEW MECHANISM' },
+          remedy: { type: 'string', description: 'smallest EDIT that removes the cause, or DEFER; a remedy that would add a pass, plugin, branch, helper, guard, data shape, or a special case for one input (a regex arm, word-list entry or threshold) opens with NEW MECHANISM' },
           outOfBar: { type: 'boolean', description: 'true when the input class sits outside the stated bar' },
           research: { type: 'string', description: 'one-line best-practice, paradigm or pattern question this finding rests on that no research file carries; empty otherwise' },
           closure: { type: 'string', description: 'confirming rounds only: the closure this finding fails, quoted from the closure list - a closure that is NOT closed, or the closure whose change caused a regression elsewhere (a broken caller or test in a file the change did not touch); empty only for a regression inside the closure\'s own files' },
@@ -159,7 +161,7 @@ const ADJUDICATION_SCHEMA = {
           site: { type: 'string' },
           change: { type: 'string' },
           radius: { type: 'string', description: 'what it stays inside and what it could break' },
-          newMechanism: { type: 'boolean', description: 'true when the change adds a pass, plugin, branch, helper, guard or data shape that did not exist - new review surface' },
+          newMechanism: { type: 'boolean', description: 'true when the change adds a pass, plugin, branch, helper, guard, data shape, or a special case for one input (a regex arm, word-list entry or threshold) that did not exist - new review surface' },
         },
       },
     },
@@ -261,6 +263,7 @@ const barBlock = [
   BAR.guarantees ? `GUARANTEES (on the primary path, for the input universe): ${BAR.guarantees}` : null,
   BAR.outOfScope ? `OUT OF SCOPE (explicitly): ${BAR.outOfScope}` : null,
   BAR.degrade ? `DEGRADE GRACEFULLY COVERS: ${BAR.degrade}` : null,
+  BAR.heuristics ? `HEURISTIC COMPONENTS (accuracy is a rate measured on data - one misread input is not a finding unless it crashes, regresses against HEAD or breaks a guarantee): ${BAR.heuristics}` : null,
   `The script caps material=false at MINOR/outOfBar whatever the reproduction shows.`,
 ]
   .filter(Boolean)
@@ -306,7 +309,6 @@ const rulings = S ? S.rulings : []
 const closures = S ? S.closures : []
 const settled = S ? S.settled : []
 let round = S ? S.round : 0
-let spiralStreak = S ? S.spiralStreak : 0
 
 const newDelta = S ? args.appliedFixes : []
 newDelta.forEach((f) => closures.push({ round, site: f.site, summary: f.summary, files: f.files, patch: f.patch }))
@@ -314,7 +316,6 @@ newDelta.forEach((f) => closures.push({ round, site: f.site, summary: f.summary,
 const stateOut = () => ({
   contract: LOOP_CONTRACT,
   round,
-  spiralStreak,
   history,
   deferred: allDeferred,
   refuted: allRefuted,
@@ -451,7 +452,7 @@ if (findings.length) {
       `CHANGES APPLIED IN PREVIOUS ROUNDS (the revert candidates; fanoutTraced counts against these):`,
       closures.length ? closures.map((c) => `round ${c.round} ${c.site}: ${c.summary}`).join('\n') : '(none - round 1)',
       `CHANGE BUDGET: ${MAX_CHANGES}`,
-      `TRAJECTORY: judge it - converging or spiralling - and say why; two consecutive refining rounds you judge spiralling stop the loop.`,
+      `TRAJECTORY: judge it - converging or spiralling - and say why; two of the last three refining rounds you judge spiralling stop the loop.`,
     ]
       .filter(Boolean)
       .join('\n\n'),
@@ -477,19 +478,20 @@ if (findings.length) {
   if (adj.ruling === 'STOP') {
     return { status: 'STOP', reason: 'adjudicator: the loop is generating its own work - re-model instead of another round - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
   }
-  // The stop is the adjudicator's judgment, not a ratio: two consecutive
-  // rounds it calls spiralling while still ordering changes or reverts. A
-  // clean round ships before it can count (DEF-ADVR-46); the fanout ratio is
-  // evidence the adjudicator cites, never the gate (DEF-ADVR-50).
-  const refining = adj.changes.length > 0 || reverts.length > 0
-  spiralStreak = adj.trajectory === 'spiralling' && refining ? spiralStreak + 1 : 0
-  if (spiralStreak >= 2) {
+  // The stop is the adjudicator's judgment, not a ratio: two of the last
+  // three rounds it calls spiralling while still ordering changes or reverts.
+  // A window, not a streak - one converging round between two spiralling ones
+  // reset a streak and the stop never fired (DEF-ADVR-74). A clean round ships
+  // before it can count (DEF-ADVR-46); the fanout ratio is evidence the
+  // adjudicator cites, never the gate (DEF-ADVR-50).
+  const spiralling = rulings.slice(-3).filter((r) => r.trajectory === 'spiralling' && (r.changes > 0 || r.reverts > 0))
+  if (adj.trajectory === 'spiralling' && (adj.changes.length > 0 || reverts.length > 0) && spiralling.length >= 2) {
     // Revert candidates: what the adjudicator ruled ({mechanism, site,
     // dissolves, defers}), else every applied change in closure shape
     // ({site, summary, files}) - the findings live in the loop's own fixes
     // by definition; entries whose summary starts "reverted:" are reverts
     // already applied and are skipped by the main session.
-    return { status: 'FANOUT_STOP', reason: 'the adjudicator judged the loop spiralling in two consecutive rounds (' + adj.trajectoryReason + ') - revert the listed mechanisms, defer what they answered, then re-model if anything material remains - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
+    return { status: 'FANOUT_STOP', reason: 'the adjudicator judged the loop spiralling in two of the last three rounds (' + adj.trajectoryReason + ') - revert the listed mechanisms, defer what they answered, then re-model if anything material remains - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
   }
 
   if (adj.changes.length || reverts.length) {

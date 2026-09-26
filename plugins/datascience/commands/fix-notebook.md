@@ -6,6 +6,6 @@ argument-hint: "path to notebook to fix, e.g. 'notebooks/01-kj-analysis.py'"
 
 # Fix Notebook
 
-Invoke the `datascience:fix-notebook` skill and follow it exactly. It owns the whole procedure; this command only routes into it.
+Read this plugin's skill file `skills/fix-notebook/SKILL.md` and follow it exactly. It owns the whole procedure; this command only routes into it.
 
 Pass the remainder of this invocation through unchanged as the skill's arguments.

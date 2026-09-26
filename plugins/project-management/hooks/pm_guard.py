@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """project-management plugin hooks: pm-tools is the only writer of a tracker file.
 
-pre-tool-use - ask Claude once not to hand-edit acc-crit*.md or defects*.md, the files
-pm-tools reads: the first Edit, Write, MultiEdit or in-place shell write is denied with the
-pm-tools way, because a hand edit loses the id assignment and the authored log line. The
-same call sent again in the session passes - Claude with a good reason says it and repeats.
-Three cases pass at once: a tracker that does not exist yet (pm-tools needs a file to write
-into), a tracker holding git conflict markers (references/conflicts.md resolves those by
-hand), and PM_TOOLS_HAND_EDIT=1 in Claude Code's own environment.
+pre-tool-use - deny a hand edit of acc-crit*.md or defects*.md, the files pm-tools reads:
+an Edit, Write, MultiEdit or in-place shell write is denied with the pm-tools way, because a
+hand edit loses the id assignment and the authored log line. A hand edit with a reason gets
+through once `pm-tools ack` has logged the reason with the token pm-tools derives from the
+file: the log line carries the file's content digest, which this hook matches, so the next
+state of the file needs a new token. Three cases pass at once: a tracker that does not exist
+yet (pm-tools needs a file to write into), a tracker holding git conflict markers
+(references/conflicts.md resolves those by hand), and PM_TOOLS_HAND_EDIT=1 in Claude Code's
+own environment.
 
 prompt - when the prompt names acceptance criteria, defects, a tracker or an ACC-/DEF-
 id, tell Claude to load the project-management skill before it acts.
@@ -23,7 +25,6 @@ import os
 from pathlib import Path
 import re
 import sys
-import tempfile
 
 TRACKER = r"(?:acc-crit|defects)[\w.-]*\.md"  # pm-tools GLOBS: acc-crit*.md, defects*.md
 NAME = re.compile(rf"{TRACKER}$")
@@ -45,13 +46,19 @@ PROMPT = re.compile(
     r"|\b(?:bug|issue)[\s_-]+(?:tracker|list)\b|\b(?:ACC|DEF)-[A-Z]{2,6}-\d+|\bpm-tools\b",
     re.I,
 )
-WAY = (
-    "Use pm-tools instead (add, edit, amend, log, close, reject, reopen, relate, mechanism, "
-    "root-cause), as the project-management skill describes: a hand edit loses the id "
-    "assignment and the authored log line. If a hand edit is really needed - a repair "
-    "pm-tools cannot make - tell the user why in one sentence and send the same call again; "
-    "the repeat goes through. Then run pm-tools check."
-)
+HAND_EDITS = "pm-hand-edits.log"  # beside the tracker; pm-tools ack writes it
+
+
+def way(path: Path) -> str:
+    return (
+        "Use pm-tools instead (add, edit, amend, log, close, reject, reopen, relate, "
+        "mechanism, root-cause), as the project-management skill describes: a hand edit "
+        "loses the id assignment and the authored log line. If a hand edit is really needed "
+        f"- a repair pm-tools cannot make - run `pm-tools ack {path}`, which prints a token "
+        f"for the file as it is now, then `pm-tools ack {path} --token TOKEN --author @xx "
+        '--reason "<why>"` to log why, and send the same call again. The next hand edit '
+        "needs a new token. Then run pm-tools check."
+    )
 
 
 def conflicted(path: Path) -> bool:
@@ -64,6 +71,18 @@ def conflicted(path: Path) -> bool:
 def guarded(path: Path) -> bool:
     """An existing tracker outside a merge conflict - the files the guard protects."""
     return bool(NAME.fullmatch(path.name)) and path.is_file() and not conflicted(path)
+
+
+def acknowledged(path: Path) -> bool:
+    """True when pm-hand-edits.log beside the tracker has a line `pm-tools ack` wrote for
+    the file as it is now. The hook matches the content digest; only pm-tools derives the
+    token."""
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    try:
+        lines = (path.parent / HAND_EDITS).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+    return any(f" {path.name} " in ln and f" sha256:{digest}: " in ln for ln in lines)
 
 
 def segments(command: str) -> list[str]:
@@ -91,33 +110,18 @@ def segments(command: str) -> list[str]:
     return [s.strip() for s in out if s.strip()]
 
 
-def shell_target(command: str, cwd: Path) -> str | None:
-    """The tracker a shell command writes to in place, or None."""
+def shell_target(command: str, cwd: Path) -> Path | None:
+    """The unacknowledged tracker a shell command writes to in place, or None."""
     for seg in segments(command):
         if PM_TOOLS.match(seg) or not WRITES.search(seg):
             continue
         for m in MENTION.finditer(seg):
             start = max(seg.rfind(c, 0, m.start()) for c in " \t\n'\"=<>(") + 1
             path = Path(seg[start : m.end()])
-            if guarded(path if path.is_absolute() else cwd / path):
-                return m.group(0)
+            path = path if path.is_absolute() else cwd / path
+            if guarded(path) and not acknowledged(path):
+                return path
     return None
-
-
-def repeated(event: dict) -> bool:
-    """True when this exact call was denied before in this session, and records it if not."""
-    call = json.dumps([event.get("tool_name"), event.get("tool_input")], sort_keys=True)
-    key = hashlib.sha256(call.encode()).hexdigest()
-    session = re.sub(r"[^\w-]", "", str(event.get("session_id") or "none"))
-    seen = Path(tempfile.gettempdir()) / f"pm-guard-{session}"
-    try:
-        if key in seen.read_text(encoding="utf-8").split():
-            return True
-    except OSError:
-        pass
-    with seen.open("a", encoding="utf-8") as f:
-        f.write(key + "\n")
-    return False
 
 
 def deny(reason: str) -> None:
@@ -131,13 +135,14 @@ def pre_tool_use(event: dict) -> None:
     tool, args = event.get("tool_name"), event.get("tool_input") or {}
     cwd = Path(event.get("cwd") or ".")
     if tool == "Bash":
-        name = shell_target(args.get("command") or "", cwd)
-        if name and not repeated(event):
-            deny(f"This command writes to {name}, a pm-tools tracker. {WAY}")
+        path = shell_target(args.get("command") or "", cwd)
+        if path:
+            deny(f"This command writes to {path}, a pm-tools tracker. {way(path)}")
     elif args.get("file_path"):
         path = Path(args["file_path"])
-        if guarded(path if path.is_absolute() else cwd / path) and not repeated(event):
-            deny(f"{path} is a pm-tools tracker. {WAY}")
+        path = path if path.is_absolute() else cwd / path
+        if guarded(path) and not acknowledged(path):
+            deny(f"{path} is a pm-tools tracker. {way(path)}")
 
 
 def prompt(event: dict) -> None:
@@ -145,8 +150,8 @@ def prompt(event: dict) -> None:
         context = (
             "The prompt mentions acceptance criteria, defects or a tracker id. If it concerns "
             "the project's acc-crit or defects tracker, load the project-management skill "
-            "before acting: every write goes through pm-tools, and a hook asks before a hand "
-            "edit of acc-crit*.md or defects*.md."
+            "before acting: every write goes through pm-tools, and a hook denies a hand edit "
+            "of acc-crit*.md or defects*.md until pm-tools ack has logged why."
         )
         out = {"hookEventName": "UserPromptSubmit", "additionalContext": context}
         print(json.dumps({"hookSpecificOutput": out}))

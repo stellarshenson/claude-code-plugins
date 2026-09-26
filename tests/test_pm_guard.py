@@ -9,10 +9,13 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
 import pytest
+
+from stellars_claude_code_plugins.project_management.pm_tools import main as pm_tools
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugins" / "project-management"
@@ -37,12 +40,8 @@ def denied(reply: dict | None) -> bool:
     return bool(reply) and reply["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
-@pytest.fixture(autouse=True)
-def own_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """The guard remembers what it denied in the temp dir; each test gets its own."""
-    state = tmp_path / "state"
-    state.mkdir()
-    monkeypatch.setenv("TMPDIR", str(state))
+def pm(*args: str) -> int:
+    return pm_tools(["pm-tools", *args])
 
 
 @pytest.fixture
@@ -50,7 +49,21 @@ def tracker(tmp_path: Path) -> Path:
     f = tmp_path / "docs" / "defects-app.md"
     f.parent.mkdir()
     f.write_text("# Defects - App\n", encoding="utf-8")
+    assert pm("author", str(f), "--handle", "@kj", "--name", "Konrad Jelen") == 0
     return f
+
+
+def token_of(tracker: Path, capsys: pytest.CaptureFixture) -> str:
+    """The token pm-tools prints for the tracker as it is now - the only source of it."""
+    capsys.readouterr()
+    before = tracker.read_bytes()
+    assert pm("ack", str(tracker)) == 0
+    assert tracker.read_bytes() == before, "asking for a token writes nothing"
+    return re.search(r"--token (\w+)", capsys.readouterr().out).group(1)
+
+
+def ack(tracker: Path, token: str, reason: str = "repair a line two merges broke") -> int:
+    return pm("ack", str(tracker), "--token", token, "--author", "@kj", "--reason", reason)
 
 
 def edit(path: Path, tool: str = "Edit", new: str = "b") -> dict:
@@ -77,21 +90,71 @@ def test_hooks_json_wires_the_guard_for_both_events() -> None:
 
 
 @pytest.mark.parametrize("tool", ["Edit", "Write", "MultiEdit"])
-def test_a_hand_edit_of_a_tracker_is_denied_with_the_way_out(tracker: Path, tool: str) -> None:
+def test_a_hand_edit_of_a_tracker_is_denied_with_the_way_out(
+    tracker: Path, tool: str, capsys: pytest.CaptureFixture
+) -> None:
     reply = hook("pre-tool-use", edit(tracker, tool))
     assert denied(reply), f"{tool} on a tracker must be denied"
     reason = reply["hookSpecificOutput"]["permissionDecisionReason"]
     assert "pm-tools" in reason and "project-management" in reason
-    assert "same call again" in reason, "the deny says how a justified edit gets through"
+    assert f"pm-tools ack {tracker}" in reason, "the deny names the command that logs why"
+    assert token_of(tracker, capsys) not in reason, "only pm-tools gives the token"
 
 
-def test_the_same_edit_sent_again_passes_and_a_new_one_is_asked_again(tracker: Path) -> None:
-    """The first deny asks Claude to reconsider; repeating the exact call is the decision."""
+def test_sending_the_same_edit_again_is_not_a_justification(tracker: Path) -> None:
+    """DEF-PMGT-77. The ask-once guard passed the identical call on its second try and
+    recorded nothing, and its key hashed the Bash description too, so a reworded
+    description was denied twice. Repeating a call now proves nothing."""
     assert denied(hook("pre-tool-use", edit(tracker)))
-    assert hook("pre-tool-use", edit(tracker)) is None, "the repeat passes"
-    assert denied(hook("pre-tool-use", edit(tracker, new="c"))), "a different edit is asked again"
-    other = edit(tracker) | {"session_id": "s2"}
-    assert denied(hook("pre-tool-use", other)), "another session starts over"
+    assert denied(hook("pre-tool-use", edit(tracker))), "the repeat is denied too"
+
+
+def test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file(
+    tracker: Path, capsys: pytest.CaptureFixture
+) -> None:
+    """DEF-PMGT-77. pm-tools derives the token from the file, prints it on request and
+    logs the reason beside the tracker; the guard then lets a hand edit through until
+    the file changes, and the next hand edit needs a token of its own."""
+    assert denied(hook("pre-tool-use", edit(tracker)))
+    token = token_of(tracker, capsys)
+    assert not (tracker.parent / "pm-hand-edits.log").exists(), "no token was acknowledged yet"
+    assert ack(tracker, token) == 0
+    log = (tracker.parent / "pm-hand-edits.log").read_text(encoding="utf-8")
+    assert f" @kj defects-app.md {token} sha256:" in log
+    assert log.rstrip().endswith(": repair a line two merges broke")
+    assert hook("pre-tool-use", edit(tracker)) is None, "the acknowledged edit passes"
+    tracker.write_text(tracker.read_text(encoding="utf-8") + "- edited\n", encoding="utf-8")
+    assert denied(hook("pre-tool-use", edit(tracker))), "a new state needs a new token"
+    assert token_of(tracker, capsys) != token
+
+
+def test_ack_refuses_what_it_cannot_log(tracker: Path, capsys: pytest.CaptureFixture) -> None:
+    """The token must be the file's current one, the author a well-formed handle, the reason
+    given and short, and the file a tracker; each refusal leaves the log unwritten."""
+    token = token_of(tracker, capsys)
+    with pytest.raises(SystemExit, match="not the token"):
+        ack(tracker, "0" * 8)
+    with pytest.raises(SystemExit, match="--reason"):
+        pm("ack", str(tracker), "--token", token, "--author", "@kj")
+    with pytest.raises(SystemExit, match="bad handle"):
+        pm("ack", str(tracker), "--token", token, "--author", "@1x", "--reason", "r")
+    with pytest.raises(SystemExit, match="limit is 50"):
+        ack(tracker, token, " ".join(["word"] * 51))
+    notes = tracker.parent / "notes.md"
+    notes.write_text("x\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="not a tracker"):
+        pm("ack", str(notes))
+    assert not (tracker.parent / "pm-hand-edits.log").exists()
+
+
+def test_ack_works_when_the_roster_is_unreadable(
+    tracker: Path, capsys: pytest.CaptureFixture
+) -> None:
+    """An unclosed code fence above ## Authors hides the roster from pm-tools; that is a
+    repair only a hand edit can make, so ack must not depend on reading the roster."""
+    head, rest = tracker.read_text(encoding="utf-8").split("\n", 1)
+    tracker.write_text(f"{head}\n```\n{rest}", encoding="utf-8")
+    assert ack(tracker, token_of(tracker, capsys)) == 0
 
 
 def test_other_files_and_new_trackers_pass(tracker: Path) -> None:
@@ -123,9 +186,13 @@ def test_the_user_override_lets_a_hand_edit_through(tracker: Path) -> None:
         "grep -c x docs/defects-app.md && sed -i 's/a/b/' docs/defects-app.md",
     ],
 )
-def test_an_in_place_shell_write_to_a_tracker_is_denied(tracker: Path, command: str) -> None:
+def test_an_in_place_shell_write_to_a_tracker_is_denied(
+    tracker: Path, command: str, capsys: pytest.CaptureFixture
+) -> None:
     assert denied(hook("pre-tool-use", bash(command, tracker.parents[1])))
-    assert hook("pre-tool-use", bash(command, tracker.parents[1])) is None, "the repeat passes"
+    assert denied(hook("pre-tool-use", bash(command, tracker.parents[1]))), "so is the repeat"
+    assert ack(tracker, token_of(tracker, capsys)) == 0
+    assert hook("pre-tool-use", bash(command, tracker.parents[1])) is None, "acknowledged"
 
 
 @pytest.mark.parametrize(

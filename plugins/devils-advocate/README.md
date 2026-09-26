@@ -61,7 +61,7 @@ The mode is the HOW; an **adversary** is the WHO - the expert lens the reviewer 
 | `digital-marketer` | marketing copy and assets - message and positioning, concreteness, calls to action, claim substantiation and consumer law, search, email and ad mechanics, the gap to a best-in-class example, AI-sounding phrasing |
 | `ux-designer` | friction & intent, visual hierarchy, cognitive load, static text & tooltips, design-language reuse, motion comfort, accessibility |
 | `tui` | Textual/Rich internals - chrome duplication, key propagation, headless verification |
-| `data-scientist` | hypothesis rigor, leakage, metric validity, reproducibility |
+| `data-scientist` | hypothesis rigor, leakage, metric validity, reproducibility, heuristic rules tuned on the inputs that test them |
 | `methodologist` | scientific-method integrity - can the test fail, does the verdict ladder span outcomes |
 | `popular-science` | readability for a generalist - jargon, unsourced claims, buried lede, the visuals |
 | `devops` | containers & deploy - Dockerfile hygiene, secrets in layers, PID-1 signals, probes |

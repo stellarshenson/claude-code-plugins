@@ -6,6 +6,6 @@ argument-hint: "describe the problem that needs solving"
 
 # Challenge Mode
 
-Invoke the `datascience:challenge` skill and follow it exactly. It owns the whole procedure; this command only routes into it.
+Read this plugin's skill file `skills/challenge/SKILL.md` and follow it exactly. It owns the whole procedure; this command only routes into it.
 
 Pass the remainder of this invocation through unchanged as the skill's arguments.

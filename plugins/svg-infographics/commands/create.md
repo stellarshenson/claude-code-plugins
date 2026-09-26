@@ -6,6 +6,6 @@ argument-hint: "describe the infographic, e.g. 'card grid showing 4 platform mod
 
 # Create SVG Infographic
 
-Invoke the `svg-infographics:create` skill and follow it exactly. It owns the whole procedure; this command only routes into it.
+Read this plugin's skill file `skills/create/SKILL.md` and follow it exactly. It owns the whole procedure; this command only routes into it.
 
 Pass the remainder of this invocation through unchanged as the skill's arguments.

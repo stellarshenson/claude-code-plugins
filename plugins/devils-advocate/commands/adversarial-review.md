@@ -6,7 +6,7 @@ argument-hint: "what to review, e.g. 'the auth middleware change before I merge'
 
 # Adversarial Review
 
-Read `devils-advocate/skills/adversarial-review/SKILL.md` first - it is the single source of truth for the two modes, the rounds protocol, the spawn mechanics and gotchas, and the roster. The adversary personas live beside it in `adversaries/<name>.md`, one self-contained prompt each. Do NOT duplicate any of it here; this command only routes into it.
+Read this plugin's skill file `skills/adversarial-review/SKILL.md` first - it is the single source of truth for the two modes, the rounds protocol, the spawn mechanics and gotchas, and the roster. The adversary personas live beside it in `adversaries/<name>.md`, one self-contained prompt each. Do NOT duplicate any of it here; this command only routes into it.
 
 ## Toolchain gate (MANDATORY - before any `review-tools` call)
 
@@ -38,7 +38,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
    - **digital-marketer** → marketing copy - message, concrete claims, calls to action, consumer law, AI-sounding phrasing
    - **ux-designer** → friction, hierarchy, focus, accessibility
    - **tui** → Textual/Rich internals - chrome duplication, key propagation, headless verification
-   - **data-scientist** → hypothesis rigor, leakage, metric validity, reproducibility
+   - **data-scientist** → hypothesis rigor, leakage, metric validity, reproducibility, heuristic rules tuned on the inputs that test them
    - **methodologist** → scientific-method integrity - can the test fail, does the verdict ladder span outcomes
    - **popular-science** → readability for a generalist - jargon, unsourced claims, buried lede, visuals
    - **devops** → containers and deploy - Dockerfile hygiene, secrets in layers, PID-1 signals, probes

@@ -6,6 +6,6 @@ argument-hint: "(optional) <journal-path>  -- default .claude/JOURNAL.md"
 
 # Standardize Journal Entries
 
-Invoke the `journal:standardize` skill and follow it exactly. It owns the whole procedure; this command only routes into it.
+Read this plugin's skill file `skills/standardize/SKILL.md` and follow it exactly. It owns the whole procedure; this command only routes into it.
 
 Pass the remainder of this invocation through unchanged as the skill's arguments.

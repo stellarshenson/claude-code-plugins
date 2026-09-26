@@ -6,7 +6,7 @@ argument-hint: "path to document to validate, and source material to check again
 
 # Validate Document
 
-Invoke `document-processing:validate` skill. Runs two layers:
+Read this plugin's skill file `skills/validate/SKILL.md` and follow it. Runs two layers:
 
 1. **Grounding** - extract every claim, verify each against source(s) via grounding CLI (delegated to `grounding` skill), plus intra-document self-consistency check
 2. **Compliance** - tone, style, length, format, focus, plus any custom rules supplied as criteria

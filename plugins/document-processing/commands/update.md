@@ -6,7 +6,7 @@ argument-hint: "what to update and why, e.g. 'add new hearing transcript to time
 
 # Document Processing - Update
 
-Invoke `document-processing:update` skill. Updates existing `3-output/` document with new info, corrections, re-applied rules, or re-verification against updated sources - and **always re-runs grounding CLI on changed content before declaring done** (step 5 of skill is gate, not optional).
+Read this plugin's skill file `skills/update/SKILL.md` and follow it. Updates existing `3-output/` document with new info, corrections, re-applied rules, or re-verification against updated sources - and **always re-runs grounding CLI on changed content before declaring done** (step 5 of skill is gate, not optional).
 
 ## Toolchain gate (MANDATORY - run before anything else)
 

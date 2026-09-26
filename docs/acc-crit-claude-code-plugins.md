@@ -346,9 +346,9 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - test-tags: UNIT, MANUAL
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-49` **trajectory stop** - HIGH; FANOUT_STOP exits the loop on two consecutive rounds the adjudicator judges spiralling whose adjudication still ordered changes or reverts; every adjudication carries trajectory (converging or spiralling) and trajectoryReason as required schema fields and the prompt names the judgment; a clean round (no findings, or adjudicated clean) resets the streak (DEF-ADVR-46); fanoutTraced/fanoutTotal remain evidence the adjudicator cites, never the gate, because a pinned confirm admits only in-delta findings and the ratio is total by construction whenever any finding exists (DEF-ADVR-50)
-  - evidence: tests/test_adversarial_workflow_script.py::test_gates_present asserts spiralStreak >= 2, adj.trajectory === 'spiralling' && refining, the required 'trajectory', 'trajectoryReason' fields and the absence of highFanoutStreak; 23 passed in the file; full suite 1267 passed 2 skipped, ruff clean
-  - test: guardrail test asserts the spiralStreak gate on adj.trajectory === 'spiralling' && refining, the required schema fields, the clean-branch reset, and that no ratio gate (highFanoutStreak, fanout > 0.5 && refining) remains
+- [x] `ACC-REVIEW-49` **trajectory stop** - HIGH; FANOUT_STOP fires when the adjudicator judges two of the last three rounds spiralling while each still ordered changes or reverts - a window, not a streak (DEF-ADVR-74); trajectory and trajectoryReason are required fields; a clean round ships before it counts (DEF-ADVR-46); the fanout ratio is evidence, never the gate (DEF-ADVR-50)
+  - evidence: test_the_spiral_stop_counts_two_of_the_last_three_rounds: S,C,S stops, S,C,C,S plans, S,S stops, S,S,C plans after the stop; test_gates_present pins the window; suite 1442 passed 2 skipped; review wf_db2a3efc-cce SHIP
+  - test: test_the_spiral_stop_counts_two_of_the_last_three_rounds drives spiralling, converging, spiralling to FANOUT_STOP and a spiralling round two back plus converging ones to PLAN; test_gates_present asserts the rulings window and no spiralStreak
   - test-tags: UNIT
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
@@ -356,6 +356,10 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-09-02T06:17:19Z @kj reopened: gate replaced: the adjudicator's trajectory judgment supersedes the fanout ratio (DEF-ADVR-50); re-closed below on the new gate; evidence retired: highFanoutStreak advances on fanout > 0.5 && refining, resets on either clean path; test_gates_present
   - log: 2026-09-02T06:17:19Z @kj edited title and text and test (replaced)
   - log: 2026-09-02T06:17:20Z @kj closed
+  - log: 2026-09-26T18:45:15Z @kj amended text "FANOUT_STOP exits the loop on two consecutive rounds the adjudicator judges spiralling whose adjudication still ordered changes or reverts; every adjudication carries trajectory (converging or spiralling) and trajectoryReason as required schema fields and the prompt names the judgment; a clean round (no findings, or adjudicated clean) resets the streak (DEF-ADVR-46); fanoutTraced/fanoutTotal remain evidence the adjudicator cites, never the gate, because a pinned confirm admits only in-delta findings and the ratio is total by construction whenever any finding exists (DEF-ADVR-50)" -> "FANOUT_STOP fires when the adjudicator judges two of the last three rounds spiralling while each still ordered changes or reverts - a window, not a streak (DEF-ADVR-74); trajectory and trajectoryReason are required fields; a clean round ships before it counts (DEF-ADVR-46); the fanout ratio is evidence, never the gate (DEF-ADVR-50)"
+  - log: 2026-09-26T18:45:29Z @kj edited test "guardrail test asserts the spiralStreak gate on adj.trajectory === 'spiralling' && refining, the required schema fields, the clean-branch reset, and that no ratio gate (highFanoutStreak, fanout > 0.5 && refining) remains" -> "test_the_spiral_stop_counts_two_of_the_last_three_rounds drives spiralling, converging, spiralling to FANOUT_STOP and a spiralling round two back plus converging ones to PLAN; test_gates_present asserts the rulings window and no spiralStreak"
+  - log: 2026-09-26T19:23:30Z @kj reopened: the stop became a window of two of the last three rounds (DEF-ADVR-74); the closing evidence names the old streak; evidence retired: tests/test_adversarial_workflow_script.py::test_gates_present asserts spiralStreak >= 2, adj.trajectory === 'spiralling' && refining, the required 'trajectory', 'trajectoryReason' fields and the absence of highFanoutStreak; 23 passed in the file; full suite 1267 passed 2 skipped, ruff clean
+  - log: 2026-09-26T19:23:35Z @kj closed: window stop verified
 - [x] `ACC-REVIEW-50` **round cap returns history** - MEDIUM; hitting maxRounds (default 6) ends the loop with ROUND_CAP and the full round history rather than looping on
   - evidence: ROUND_CAP status returns full history at maxRounds; test_gates_present
   - test: guardrail test asserts the cap path
@@ -515,6 +519,22 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-09-20T13:27:50Z @kj closed
   - log: 2026-09-21T09:40:54Z @kj amended title "every spawn is labelled stage and lens so the round can be measured" -> "spawn label is `<stage>:<lens>`, the ledger key"; text "the loop script labels each reviewer <stage>:<lens> and each adjudicator <stage>:r<round>, the skill's spawn path and the command's step 9 require the same of a hand spawn, and the spec names the label as the one name a constructed loop may not rename - the harness records it beside the transcript and it is what makes the ledger read per adversary" -> "script labels reviewers `<stage>:<lens>`, adjudicators `adjudicate:r<round>`; SKILL.md, command step 9 and loop-spec bind hand spawns and constructed loops to it - the harness stores the label beside the transcript"
   - log: 2026-09-21T09:40:54Z @kj edited test (replaced) and evidence (replaced)
+- [ ] `ACC-REVIEW-159` **a heuristic's miss is a rate** - HIGH; the bar may name its heuristic components under heuristics, rendered in every reviewer and adjudicator prompt; reviewer and adjudicator treat one input such a component misreads as a sample of an error rate, immaterial unless it crashes, regresses against HEAD or breaks a stated guarantee (DEF-ADVR-71)
+  - test: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism; test_prompt_equals_the_script_prompt_up_to_the_output_line with heuristics in the bar
+  - test-tags: UNIT
+  - log: 2026-09-26T18:45:29Z @kj added
+- [x] `ACC-REVIEW-160` **a rule fitted to its own counterexample is overfitting** - HIGH; the data-scientist lens flags a rule, arm, word or threshold added for one counterexample and checked on it as overfitting, and names a held-out measurement against a pre-registered bar as the only evidence for a rule change (DEF-ADVR-72)
+  - evidence: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism reads axis 9 (own fold, held-out measurement); review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
+  - test: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism reads axis 9 of adversaries/data-scientist.md
+  - test-tags: UNIT
+  - log: 2026-09-26T18:45:29Z @kj added
+  - log: 2026-09-26T19:24:18Z @kj closed: met
+- [x] `ACC-REVIEW-161` **a special case for one input is a new mechanism** - HIGH; every statement of the newMechanism list names a special case for one input (a regex arm, word-list entry or threshold); a deferred failure mode of a heuristic component carries no defect id (DEF-ADVR-73)
+  - evidence: same test checks the mechanism list in the adjudicator, reviewer, remedy-discipline.md, loop-spec.md and twice in the script, and 'carries none'; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
+  - test: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism checks the list in the adjudicator, the reviewer, remedy-discipline.md, loop-spec.md and twice in the script
+  - test-tags: UNIT
+  - log: 2026-09-26T18:45:29Z @kj added
+  - log: 2026-09-26T19:24:18Z @kj closed: met
 
 ## pm-tools soft lock `PMLOCK`
 
@@ -580,19 +600,24 @@ work-in-progress soft locks on acceptance criteria and defects
 
 every plugin command procedure is also reachable as a callable skill, so an agent can invoke what a human can type
 
-- [x] `ACC-SKILLC-77` **Parity: every command has a same-named skill** - HIGH; each of the 42 plugin commands has a skills/<name>/SKILL.md beside it, so the Skill tool can resolve every procedure a slash command exposes
-  - evidence: tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure
+- [x] `ACC-SKILLC-77` **Parity: every command has a same-named skill** - HIGH; each of the 42 plugin commands has a skills/<name>/SKILL.md beside it that owns its procedure; the Skill tool resolves the shared name to the command, so the command points at the file (ACC-SKILLC-78)
+  - evidence: tests/test_command_skill_parity.py 128 passed over 42 commands; suite 1444 passed, 2 skipped (2026-09-26)
   - test: tests/test_command_skill_parity.py::test_command_has_a_same_named_skill, parametrized over every commands/*.md
   - test-tags: UNIT
   - log: 2026-08-29T15:27:55Z @kj added
   - log: 2026-08-29T15:28:07Z @kj closed
-- [x] `ACC-SKILLC-78` **Skill owns the procedure, the command routes into it** - HIGH; a converted command's body moved into its skill byte-for-byte and the command names the skill it routes into, so one procedure exists rather than two that drift
-  - evidence: tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure
-  - test: tests/test_command_skill_parity.py::test_command_points_at_its_skill; conversion verified by diffing each new SKILL.md body against the command body at the parent commit
+  - log: 2026-09-26T19:53:20Z @kj amended text "each of the 42 plugin commands has a skills/<name>/SKILL.md beside it, so the Skill tool can resolve every procedure a slash command exposes" -> "each of the 42 plugin commands has a skills/<name>/SKILL.md beside it that owns its procedure; the Skill tool resolves the shared name to the command, so the command points at the file (ACC-SKILLC-78)"
+  - log: 2026-09-26T20:13:42Z @kj edited evidence "tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure" -> "tests/test_command_skill_parity.py 128 passed over 42 commands; suite 1444 passed, 2 skipped (2026-09-26)"
+- [x] `ACC-SKILLC-78` **Skill owns the procedure, the command routes into it** - HIGH; a converted command's body moved into its skill byte-for-byte, and the command names its skill's file, 'this plugin's skill file skills/<name>/SKILL.md', never the plugin:name it shares with the command (DEF-SKILLC-76), so one procedure exists rather than two that drift
+  - evidence: test_command_points_at_its_skill passes on all 42; break test: journal:update restored to 'Invoke the journal:update skill' in a scratch copy fails it (1 failed, 127 passed); suite 1444 passed
+  - test: tests/test_command_skill_parity.py::test_command_points_at_its_skill requires the file wording and refuses a pointer by the shared name, over every commands/*.md
   - test-tags: UNIT
   - log: 2026-08-29T15:27:59Z @kj added
   - log: 2026-08-29T15:28:07Z @kj closed
   - log: 2026-08-29T15:49:14Z @kj Criterion overclaimed what its test proves. test_command_points_at_its_skill is a substring check, so no addition to a command body can make it fail - it cannot detect drift. Verified no live drift exists today (the three highest-stakes fat commands were traced; their content is in the skill or one reference deep). The criterion is wrong about its proof, not about the tree
+  - log: 2026-09-26T19:53:20Z @kj amended text "a converted command's body moved into its skill byte-for-byte and the command names the skill it routes into, so one procedure exists rather than two that drift" -> "a converted command's body moved into its skill byte-for-byte, and the command names its skill's file, 'this plugin's skill file skills/<name>/SKILL.md', never the plugin:name it shares with the command (DEF-SKILLC-76), so one procedure exists rather than two that drift"
+  - log: 2026-09-26T19:53:20Z @kj edited test "tests/test_command_skill_parity.py::test_command_points_at_its_skill; conversion verified by diffing each new SKILL.md body against the command body at the parent commit" -> "tests/test_command_skill_parity.py::test_command_points_at_its_skill requires the file wording and refuses a pointer by the shared name, over every commands/*.md"
+  - log: 2026-09-26T20:13:42Z @kj edited evidence "tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure" -> "test_command_points_at_its_skill passes on all 42; break test: journal:update restored to 'Invoke the journal:update skill' in a scratch copy fails it (1 failed, 127 passed); suite 1444 passed"
 - [x] `ACC-SKILLC-79` **Gate sites follow the procedure, never a pinned path** - MEDIUM; the toolchain-gate test finds a shipped gate block rather than reading one named file, and the CLI-name scan reads the body not the frontmatter description, so a router that only names a CLI in its menu text is not asked to carry a pip upgrade
   - evidence: tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure
   - test: tests/test_toolchain_gate.py::test_every_cli_entry_point_is_gated and the five behavioural gate tests
@@ -1069,19 +1094,29 @@ how an acceptance criterion or defect is worded
   - test-tags: UNIT
   - log: 2026-09-24T13:26:04Z @kj added
   - log: 2026-09-24T13:30:31Z @kj closed
+- [x] `ACC-PMTXT-162` **a statistical component's miss is rejected, not filed** - HIGH; the defects reference, the defect skill and the README state that a statistical or heuristic component's miss on one input, or a score below target, is a failure mode measured as a rate, and a third reject case (DEF-PMGT-75)
+  - evidence: test_a_statistical_components_miss_is_rejected_not_filed; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
+  - test: test_a_statistical_components_miss_is_rejected_not_filed
+  - test-tags: UNIT
+  - log: 2026-09-26T18:45:30Z @kj added
+  - log: 2026-09-26T19:24:18Z @kj edited test-tags "FUNCTIONAL" -> "UNIT"
+  - log: 2026-09-26T19:24:18Z @kj closed: met
 
 ## pm-tools guard hooks `PMGRD`
 
 the project-management plugin hooks that keep pm-tools the only writer of a tracker
 
-- [x] `ACC-PMGRD-156` **a hand edit of an existing tracker is asked once** - HIGH; the first Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md gets a deny naming pm-tools; the same call sent again in the session passes; reads and pm-tools commands pass
-  - evidence: tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped
-  - test: tests/test_pm_guard.py: first Edit/Write/MultiEdit and shell write denied, the repeat passes, a different edit or session is asked again; reads and pm-tools pass
+- [x] `ACC-PMGRD-156` **a hand edit of an existing tracker needs a logged reason** - HIGH; an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.log holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77); reads and pm-tools commands pass
+  - evidence: tests/test_pm_guard.py 30 passed: the repeat denied, passed after ack, denied again once the file changes; suite 1444 passed, 2 skipped
+  - test: tests/test_pm_guard.py: Edit/Write/MultiEdit and shell writes denied, the repeat denied, passed after ack, denied again once the file changes; reads and pm-tools pass
   - test-tags: UNIT
   - log: 2026-09-24T16:59:58Z @kj added
   - log: 2026-09-24T17:00:03Z @kj closed
   - log: 2026-09-24T17:03:44Z @kj amended title "a hand edit of an existing tracker is denied" -> "a hand edit of an existing tracker is asked once"; text "Edit, Write, MultiEdit and in-place shell writes on acc-crit*.md or defects*.md get a deny naming pm-tools; reads and pm-tools commands pass" -> "the first Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md gets a deny naming pm-tools; the same call sent again in the session passes; reads and pm-tools commands pass"; reason: Star Colonel: softer guard, a good reason may still hand-edit
   - log: 2026-09-24T17:03:44Z @kj edited test "tests/test_pm_guard.py: Edit, Write, MultiEdit, sed -i, >>, tee, cp onto, python write_text denied; grep, sed -n, pm-tools pass" -> "tests/test_pm_guard.py: first Edit/Write/MultiEdit and shell write denied, the repeat passes, a different edit or session is asked again; reads and pm-tools pass"
+  - log: 2026-09-26T19:11:41Z @kj amended title "a hand edit of an existing tracker is asked once" -> "a hand edit of an existing tracker needs a logged reason"; text "the first Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md gets a deny naming pm-tools; the same call sent again in the session passes; reads and pm-tools commands pass" -> "an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.log holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77); reads and pm-tools commands pass"
+  - log: 2026-09-26T19:11:41Z @kj edited test "tests/test_pm_guard.py: first Edit/Write/MultiEdit and shell write denied, the repeat passes, a different edit or session is asked again; reads and pm-tools pass" -> "tests/test_pm_guard.py: Edit/Write/MultiEdit and shell writes denied, the repeat denied, passed after ack, denied again once the file changes; reads and pm-tools pass"
+  - log: 2026-09-26T19:39:14Z @kj edited evidence "tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped" -> "tests/test_pm_guard.py 30 passed: the repeat denied, passed after ack, denied again once the file changes; suite 1444 passed, 2 skipped"
 - [x] `ACC-PMGRD-157` **a new tracker, a merge conflict and the user override pass** - MEDIUM; the guard lets through a tracker that does not exist yet, one holding git conflict markers, and any edit when PM_TOOLS_HAND_EDIT=1 is in Claude Code's environment
   - evidence: tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped
   - test: tests/test_pm_guard.py: Write of a new tracker, Edit during a conflict and Edit with the override get no deny
@@ -1094,4 +1129,12 @@ the project-management plugin hooks that keep pm-tools the only writer of a trac
   - test-tags: UNIT
   - log: 2026-09-24T16:59:58Z @kj added
   - log: 2026-09-24T17:00:03Z @kj closed
+- [x] `ACC-PMGRD-163` **pm-tools ack gives the token and logs the reason** - HIGH; pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.log (DEF-PMGT-77)
+  - evidence: tests/test_pm_guard.py 30 passed; scratch run: deny, repeat deny, wrong token refused, ack, pass, deny after the file changed; review wf_899a5d01-536 to wf_b873ef4c-0da SHIP, 10/3/0 findings; suite 1444 passed 2 skipped
+  - test: tests/test_pm_guard.py::test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file, ::test_ack_refuses_what_it_cannot_log and ::test_ack_works_when_the_roster_is_unreadable
+  - test-tags: UNIT
+  - log: 2026-09-26T19:11:47Z @kj added
+  - log: 2026-09-26T19:37:58Z @kj amended text "pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, an author off the roster, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.log (DEF-PMGT-77)" -> "pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.log (DEF-PMGT-77)"
+  - log: 2026-09-26T19:46:22Z @kj edited test "tests/test_pm_guard.py::test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file and ::test_ack_refuses_what_it_cannot_log" -> "tests/test_pm_guard.py::test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file, ::test_ack_refuses_what_it_cannot_log and ::test_ack_works_when_the_roster_is_unreadable"
+  - log: 2026-09-26T19:50:13Z @kj closed: met
 

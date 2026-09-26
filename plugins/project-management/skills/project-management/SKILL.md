@@ -265,6 +265,7 @@ Write - one file per call, and `--author` on every one of them:
 | `reject` | mark `[-]`; the reason is required |
 | `remove` | delete an item created in error; refuses while anything still cites it |
 | `lock` / `unlock` | write or remove the `lock:` line; `lock` refuses only on a closed or rejected item, neither is logged |
+| `ack` | a hand edit of a tracker: without `--token`, print the token for the file as it is now; with it, log the reason in `pm-hand-edits.log` beside the file, which the guard hook reads |
 | `upgrade` | rebuild a legacy doc to this schema, dry run first; `--apply` always applies the safe rewrites, exits 0, and prints one `HINT` with the exact command per content problem; `references/upgrade.md` |
 
 Every free-text argument is one line of the file; a real line break inside one is written as the two characters `\n`, never dropped.
@@ -274,7 +275,7 @@ Run `check` after every edit session. It is the only gate.
 ## Rules
 
 - **Ask before the first file** - one consolidated doc per project is the default; a scoped `acc-crit-<scope>.md` or `defects-<scope>.md` only when the user asks. Never a file per item
-- **Edit through `pm-tools`** - hand-editing is legal markdown but loses the id assignment and the log line; use the tool, then `check`. A plugin hook denies the first Edit, Write or in-place shell write on an existing `acc-crit*.md` or `defects*.md` and names the pm-tools way; with a good reason - a repair pm-tools cannot make - tell the user why and send the same call again, and it passes. A new file, a file holding git conflict markers, and `PM_TOOLS_HAND_EDIT=1` in Claude Code's environment pass at once
+- **Edit through `pm-tools`** - hand-editing is legal markdown but loses the id assignment and the log line; use the tool, then `check`. A plugin hook denies an Edit, Write or in-place shell write on an existing `acc-crit*.md` or `defects*.md` and names the pm-tools way. With a good reason - a repair pm-tools cannot make - run `pm-tools ack FILE` for the token of the file as it is now, log why with `pm-tools ack FILE --token TOKEN --author @xx --reason "<why>"`, and send the call again; the next hand edit needs a new token. A new file, a file holding git conflict markers, and `PM_TOOLS_HAND_EDIT=1` in Claude Code's environment pass at once
 - **`remove` is for mistakes and duplicates only** - never as a way to resolve something. An item that turned out to be invalid is rejected with a reason, so the trail survives
 - **Triage every defect yourself** - assign the severity as you file it, never ask the user for it and never leave it out. There is no unset: `add` refuses one and `check` errors on one. The four levels and their rubric are in `references/defects.md`
 - **Rate every criterion yourself** - assign the `--importance` (`CRITICAL` / `HIGH` / `MEDIUM` / `LOW`) as you file it, the same way: never ask the user, never leave it out, `add` refuses one and `check` errors on one. The rubric is in `references/acceptance-criteria.md`

@@ -6,7 +6,7 @@ argument-hint: "what to document, e.g. 'record round R12: synthetic-retrained we
 
 # Hypothesis
 
-Read the `datascience:hypothesis` skill first - it is the single source of truth for the document structure, the per-hypothesis template, and the canonical-doc-across-runs rules. Do NOT duplicate its content here.
+Read this plugin's skill file `skills/hypothesis/SKILL.md` first - it is the single source of truth for the document structure, the per-hypothesis template, and the canonical-doc-across-runs rules. Do NOT duplicate its content here.
 
 Write up or extend hypothesis-driven research documentation: the canonical append-only **experiments log** (each hypothesis with setup, prediction, result, verdict) and the **SOTA document** (winning components distilled into a final design).
 
@@ -29,7 +29,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 ## What to do
 
-1. Read the `datascience:hypothesis` skill, then the closest `examples/` doc for what you are writing
+1. Read this plugin's skill file `skills/hypothesis/SKILL.md`, then the closest `examples/` doc for what you are writing
 2. **Ask for the author handle once** and reuse it - every write takes `--author @xx`, and the handle must be on the ledger's `## Authors` roster (`hypothesis-tools author LOG --handle @xx --name "Full Name"`) before it can write
 3. Decide doc + action: **record a round** → experiments log (default); **conclude / update the design** → SOTA doc
 4. **Find the canonical doc first** - `Glob docs/**/*experiments*.md` and `*sota*.md`, confirm by the secondary-title marker (not the filename); if one exists for the track, append - never start a parallel doc

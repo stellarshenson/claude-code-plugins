@@ -1,6 +1,6 @@
 # Defects
 
-A defect is one observed wrong behaviour plus the trail of what has been tried against it. The store is `docs/defects-<project>.md`, ids are `DEF-<CAT>-<N>`. Shared format, ids, relations and tooling live in `SKILL.md`; this file carries only what is specific to defects.
+A defect is one observed wrong behaviour plus the trail of what has been tried against it. A miss by a statistical or heuristic component - a classifier, a ranker, a regex tier, a threshold - on one input, or a score below its target, is not a defect: it is a sample of an error rate, measured on held-out data rather than fixed per input. A crash, a regression against HEAD, or a breach of a guarantee the product states, still is one. The store is `docs/defects-<project>.md`, ids are `DEF-<CAT>-<N>`. Shared format, ids, relations and tooling live in `SKILL.md`; this file carries only what is specific to defects.
 
 ## Writing a defect
 
@@ -43,7 +43,7 @@ Every event gets a dated line and nothing is ever rewritten or deleted.
 
 `wontfix` on a real, reproducible defect is a **close** with the reason - it was a defect, and the decision is not to fix it.
 
-A defect that turned out not to be a defect is **rejected**, not closed: `reject` marks it `[-]` and records why. The two cases: it never reproduced, or the functionality it broke no longer exists. Rejecting keeps the trail, so the same report does not come back next quarter as news. Criteria reject for their own reason, in `acceptance-criteria.md`.
+A defect that turned out not to be a defect is **rejected**, not closed: `reject` marks it `[-]` and records why. The three cases: it never reproduced, the functionality it broke no longer exists, or it is a failure mode of a statistical or heuristic component (see the top of this file). Rejecting keeps the trail, so the same report does not come back next quarter as news. Criteria reject for their own reason, in `acceptance-criteria.md`.
 
 ## Categories
 

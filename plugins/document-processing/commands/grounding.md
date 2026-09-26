@@ -6,7 +6,7 @@ argument-hint: "a claim + source, OR a document + source(s), OR a path to source
 
 # Grounding
 
-Invoke `document-processing:grounding` skill. Pure grounding - no tone/style/format compliance (that = `/document-processing:validate`). Skill always runs `document-processing` CLI; generative interpretation only on-top layer for semantic claims.
+Read this plugin's skill file `skills/grounding/SKILL.md` and follow it. Pure grounding - no tone/style/format compliance (that = `/document-processing:validate`). Skill always runs `document-processing` CLI; generative interpretation only on-top layer for semantic claims.
 
 Three modes (skill picks from argument):
 

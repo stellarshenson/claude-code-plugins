@@ -226,6 +226,21 @@ pm-tools parser, edit, upgrade and reports
   - log: 2026-09-24T13:30:31Z @kj edited test-tags added "UNIT"
   - log: 2026-09-24T13:30:31Z @kj closed: fixed: edit logs each replaced value as old -> new; review/SKILL.md now sends rewording to amend
   - log: 2026-09-24T13:58:31Z @kj review wf_b041a10d-451 to wf_731cdc09-014 (ai-engineer, architect): same loss in root-cause/mechanism --update, now logs the whole replaced record; SHIP at round 3
+- [x] `DEF-PMGT-75` **defects reference makes a statistical component's miss a defect** - MAJOR; groundrails filed per-input accuracy misses as defects, then rejected 16 on the author's ruling that a failure mode is not a defect; `skills/project-management/references/defects.md:3,46`
+  - evidence: test_a_statistical_components_miss_is_rejected_not_filed; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
+  - repro: ask for a defect on one input a regex tier misreads; the reference gives no reason to refuse it
+  - test-tags: UNIT
+  - root-cause: 2026-09-26T18:41:53Z @kj 'one observed wrong behaviour' fits any miss, and reject covers only never reproduced and removed functionality
+  - log: 2026-09-26T18:41:53Z @kj added
+  - log: 2026-09-26T19:24:12Z @kj closed: fixed: defects reference, defect skill and README name the failure-mode reject case
+- [x] `DEF-PMGT-77` **Claude keeps hand-editing trackers despite the skill and the guard** - MAJOR; reported by the Star Colonel on 1.8.13; the ask-once guard lets the identical call through on the second try and records no reason, so a hand edit leaves no trace; `plugins/project-management/hooks/pm_guard.py`
+  - evidence: tests/test_pm_guard.py 30 passed; scratch run: deny, repeat deny, wrong token refused, ack, pass, deny after the file changed; review wf_899a5d01-536 to wf_b873ef4c-0da SHIP, 10/3/0 findings; suite 1444 passed 2 skipped
+  - repro: hand-edit an existing defects*.md with Edit, get the deny, send the same Edit again; it passes and nothing records why
+  - test-tags: UNIT
+  - root-cause: 2026-09-26T19:03:09Z @kj repeated() passes any call seen before in the session; the justification goes only to the user in chat, never to a record
+  - log: 2026-09-26T19:03:09Z @kj added
+  - log: 2026-09-26T19:07:09Z @kj reproduced 2026-09-26 in this repo: the repeat key hashes the whole Bash input, description included, so the same command with a reworded description was denied twice
+  - log: 2026-09-26T19:50:13Z @kj closed: fixed: pm-tools ack token from the file plus a logged reason; the hook matches the logged content digest
 
 ## hypothesis-tools `HYPO`
 
@@ -471,4 +486,51 @@ Adversarial-review loop: reviewer, adjudicator, workflow script, spec
   - log: 2026-09-21T12:25:09Z @kj added
   - log: 2026-09-21T12:25:16Z @kj closed
   - log: 2026-09-21T12:25:28Z @kj edited repro (replaced) and evidence (replaced)
+- [ ] `DEF-ADVR-71` **a heuristic's miss on one input is rated a material finding** - MAJOR; groundrails review 2026-09-25/26: 56 of 113 findings material, 39 remedies edit a regex arm or word list for one input; forensics `docs/forensics/2026-09-26-groundrails-adversarial-review.md`; `adversarial-loop.js`, `agents/adversarial-reviewer.md`
+  - repro: review a regex-tier grounder under a bar that lists every text shape; each misread sample returns MAJOR with a special-case remedy
+  - test-tags: UNIT
+  - root-cause: 2026-09-26T18:41:37Z @kj the bar has no field for statistical or heuristic components, so every listed input shape is in scope and every miss is material
+  - log: 2026-09-26T18:41:37Z @kj added
+- [x] `DEF-ADVR-72` **data-scientist lens never flags a rule fitted to its own counterexample** - MAJOR; groundrails remedies were verified on the input that motivated them ('both repro cases clear'); 0 of 113 findings mention overfitting; `adversaries/data-scientist.md`
+  - evidence: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism reads axis 9; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
+  - repro: review a diff that adds a regex arm for one reported input and tests only that input; no finding names overfitting
+  - test-tags: UNIT
+  - root-cause: 2026-09-26T18:41:42Z @kj the own-fold rule (axis 4) covers learners and splits, not hand-written rules tuned on a reviewer's counterexample
+  - log: 2026-09-26T18:41:42Z @kj added
+  - log: 2026-09-26T19:24:12Z @kj closed: fixed: data-scientist axis 9 flags a rule fitted to its own counterexample
+- [x] `DEF-ADVR-73` **adjudicator turns deferred accuracy misses into defects and passes per-input rules as no new mechanism** - MAJOR; groundrails deferrals became DEF-NUMBER-32..34 and DEF-CLAIM-35..41, all later rejected; 39 regex or word-list remedies, 13 flagged NEW MECHANISM; `agents/adjudicator.md:24,26`
+  - evidence: same test checks the adjudicator rules and the mechanism list in five places; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
+  - repro: adjudicate a round of per-input regex misses; the plan defers them with defect ids and marks special-case arms newMechanism=false
+  - test-tags: UNIT
+  - root-cause: 2026-09-26T18:41:53Z @kj step 7 grants every deferral a defect id; step 5's newMechanism list omits a regex arm, word-list entry, threshold or special case
+  - log: 2026-09-26T18:41:53Z @kj added
+  - log: 2026-09-26T19:24:12Z @kj closed: fixed: adjudicator steps 0, 5 and 7; newMechanism names a special case for one input in all five statements
+- [x] `DEF-ADVR-74` **spiral stop never fires when spiralling and converging rounds alternate** - MEDIUM; groundrails rounds 3-6 were judged spiralling, converging, spiralling, converging and the loop ran on; `adversarial-loop.js`, `references/loop-spec.md` invariant 5
+  - evidence: test_the_spiral_stop_counts_two_of_the_last_three_rounds: S,C,S stops, S,C,C,S plans; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
+  - repro: feed four adjudications judged spiralling, converging, spiralling, converging, each ordering changes; no FANOUT_STOP
+  - test-tags: UNIT
+  - root-cause: 2026-09-26T18:41:53Z @kj FANOUT_STOP counts consecutive spiralling rounds and one converging round resets the count
+  - log: 2026-09-26T18:41:53Z @kj added
+  - log: 2026-09-26T19:24:12Z @kj closed: fixed: FANOUT_STOP counts two of the last three rulings, current round spiralling
+
+## command and skill parity `SKILLC`
+
+plugin commands and the same-named skills that own their procedures
+
+- [x] `DEF-SKILLC-76` **Skill tool returns the same-named command, so the skill never loads** - MAJOR; Skill on project-management:defect or journal:update returns the command, which says to invoke that same name again; galaxahub filed DEF-GPRO-674 before reading the pm rules (1.8.13); 37 of 42 commands pointed by name, the 5 devils-advocate commands by path; `plugins/*/commands/*.md`
+  - evidence: unprimed sandbox, Opus 5.5, 20 runs: skill read before the first write 10/10 new vs 2/10 old (p=0.0007); primed run the same; limit: one cached version; test_command_points_at_its_skill; suite 1444 passed
+  - repro: call the Skill tool with journal:update; the result is the command's 'Invoke the journal:update skill' text, not skills/update/SKILL.md
+  - test-tags: UNIT
+  - root-cause: 2026-09-26T18:59:44Z @kj a command and a skill share one name and the Skill tool resolves it to the command; the command points at the skill by that name, not by its file
+  - log: 2026-09-26T18:59:44Z @kj added
+  - log: 2026-09-26T19:03:41Z @kj rejected: the Star Colonel ruled 2026-09-26 it is not the issue: Claude reads the skill file; the pointer change to 42 commands was reverted
+  - log: 2026-09-26T19:31:23Z @kj reopened: galaxahub forensics 2026-09-26 (session 01377ef2): 8 of 8 project-management Skill calls returned the command wrapper; after 4 Claude wrote with no skill text loaded
+  - log: 2026-09-26T19:35:41Z @kj attempted: all 42 commands name ${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md; whether Claude reads it is tracked through later forensics
+  - log: 2026-09-26T19:52:50Z @kj wording made agent-neutral: 'Read this plugin's skill file skills/<name>/SKILL.md'; controlled experiment tmp/experiments/skill-pointer/report.md
+  - log: 2026-09-26T19:52:50Z @kj closed: fixed: all 42 commands name their skill file
+  - log: 2026-09-26T19:53:20Z @kj edited evidence "sandbox experiment, Opus 5.5, 20 runs: skill text read before the first write 10/10 new wording vs 2/10 old (Fisher p=0.0007), all 20 filed via pm-tools; test_command_point_at_its_skill over 42 commands; suite 1444 passed" -> "sandbox experiment, Opus 5.5, 20 runs: skill text read before the first write 10/10 new wording vs 2/10 old (Fisher p=0.0007), all 20 filed via pm-tools; test_command_points_at_its_skill over 42 commands; suite 1444 passed"
+  - log: 2026-09-26T20:13:42Z @kj amended text "Skill on project-management:defect or journal:update returns the command, which says to invoke that same name again; galaxahub filed DEF-GPRO-674 before reading the pm rules (1.8.13); 41 of 42 commands point by name; `plugins/*/commands/*.md`" -> "Skill on project-management:defect or journal:update returns the command, which says to invoke that same name again; galaxahub filed DEF-GPRO-674 before reading the pm rules (1.8.13); 37 of 42 commands pointed by name, the 5 devils-advocate commands by path; `plugins/*/commands/*.md`"
+  - log: 2026-09-26T20:13:42Z @kj edited evidence "sandbox experiment, Opus 5.5, 20 runs: skill text read before the first write 10/10 new wording vs 2/10 old (Fisher p=0.0007), all 20 filed via pm-tools; test_command_points_at_its_skill over 42 commands; suite 1444 passed" -> "sandbox, Opus 5.5, 20 runs: skill read before the first write 10/10 new vs 2/10 old (p=0.0007); limits: one cached version, runs inside this repo whose CLAUDE.md names the cache path; test_command_points_at_its_skill; suite 1444 passed"
+  - log: 2026-09-26T20:20:30Z @kj edited evidence "sandbox, Opus 5.5, 20 runs: skill read before the first write 10/10 new vs 2/10 old (p=0.0007); limits: one cached version, runs inside this repo whose CLAUDE.md names the cache path; test_command_points_at_its_skill; suite 1444 passed" -> "unprimed sandbox, Opus 5.5, 20 runs: skill read before the first write 10/10 new vs 1/10 old (p=0.0001); primed run 10/10 vs 2/10; limit: one cached version; test_command_points_at_its_skill; suite 1444 passed"
+  - log: 2026-09-26T20:31:26Z @kj edited evidence "unprimed sandbox, Opus 5.5, 20 runs: skill read before the first write 10/10 new vs 1/10 old (p=0.0001); primed run 10/10 vs 2/10; limit: one cached version; test_command_points_at_its_skill; suite 1444 passed" -> "unprimed sandbox, Opus 5.5, 20 runs: skill read before the first write 10/10 new vs 2/10 old (p=0.0007); primed run the same; limit: one cached version; test_command_points_at_its_skill; suite 1444 passed"
 

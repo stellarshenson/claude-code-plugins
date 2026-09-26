@@ -159,6 +159,10 @@ prose, never a level.
           remove lock lines: one item, every item, or only the expired ones;
           clearing another author's active lock prints one TRANSFER line and proceeds
   relate and remove take --author only to keep a lock held by that handle silent.
+  ack    FILE [--token T --author @xx --reason R]
+          a hand edit of a tracker: without --token, print the token for the file as
+          it is now; with it, log the reason in pm-hand-edits.log beside FILE. The
+          project-management guard hook passes a hand edit of that state of the file
   upgrade FILE [--code "Section=CODE"]... [--author @xx] [--apply]
           --apply always applies every safe rewrite (ids, codes, stamps, severity
           and test-tag canonicalisation, Contents drop) and exits 0; every content
@@ -173,6 +177,7 @@ no path means ./docs when it exists, else . Stdlib only.
 
 import argparse
 import datetime
+import fnmatch
 import hashlib
 import json
 import os
@@ -2871,6 +2876,54 @@ def cmd_remove(file, wanted, force, author=None):
     return 0
 
 
+# beside the tracker; the project-management guard hook reads it
+HAND_EDITS = "pm-hand-edits.log"
+
+
+def edit_token(file):
+    """(token, content digest) of a tracker as it is now. Only pm-tools derives the
+    token; the guard hook matches the digest `ack` logs beside it."""
+    digest = hashlib.sha256(pathlib.Path(file).read_bytes()).hexdigest()
+    name = pathlib.Path(file).name
+    return hashlib.sha256(f"{name} {digest}".encode()).hexdigest()[:8], digest
+
+
+def cmd_ack(file, token, author, reason):
+    """Log why a hand edit of a tracker is needed. Without a token, print the one for
+    the file as it is now; with it, check it and append the line the guard hook reads."""
+    name = pathlib.Path(file).name
+    if not any(fnmatch.fnmatch(name, g) for g in GLOBS):
+        raise SystemExit(f"{file} is not a tracker (acc-crit*.md, defects*.md)")
+    if not os.path.isfile(file):
+        raise SystemExit(f"{file}: no such file")
+    current, digest = edit_token(file)
+    if not token:
+        print(
+            f"{file}: token {current} for the file as it is now; log why with: "
+            f'pm-tools ack {file} --token {current} --author @xx --reason "<why>"'
+        )
+        return 0
+    # a handle check only: ack exists for repairs, and the roster may sit in the part
+    # of the file being repaired, where pm-tools cannot read it
+    if not author:
+        raise SystemExit("every entry is authored; pass --author @xx")
+    who = author if author.startswith("@") else "@" + author
+    if not HANDLE.fullmatch(who):
+        raise SystemExit(f"bad handle {author!r}; use @ plus 2-4 letters, e.g. @kj")
+    if token != current:
+        raise SystemExit(
+            f"--token {token} is not the token of {file} as it is now - "
+            f"run pm-tools ack {file} for the current one"
+        )
+    if not reason:
+        raise SystemExit("pass --reason: why pm-tools cannot make this change")
+    log = pathlib.Path(file).parent / HAND_EDITS
+    with open(log, "a", encoding="utf-8") as fh:
+        fh.write(f"{now()} {who} {name} {token} sha256:{digest}: {reason}\n")
+    print(f"{file}: hand edit acknowledged, logged in {log}; send the edit again")
+    return 0
+
+
 def cmd_lock(file, wanted, author, hours, until, note):
     """Write `- lock: <stamp> @xx [note]` on an open item. Never logged: the lock is a
     signal about the near future, not an event in the item's history."""
@@ -3485,6 +3538,12 @@ def main(argv: list[str] | None = None) -> int:
     sn.add_argument("--all", action="store_true", help="clear every lock in the file")
     sn.add_argument("--expired", action="store_true", help="clear only the expired locks")
 
+    sk = sub.add_parser("ack")
+    sk.add_argument("file")
+    sk.add_argument("--token", help="the token `pm-tools ack FILE` printed; omit it to print one")
+    sk.add_argument("--author", metavar="@xx")
+    sk.add_argument("--reason", type=oneline, help="why pm-tools cannot make this change")
+
     su = sub.add_parser("upgrade")
     su.add_argument("file")
     su.add_argument("--code", action="append", default=[], metavar='"Section=CODE"')
@@ -3637,6 +3696,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_lock(a.file, a.id, a.author, a.hours, a.until, a.note)
     if a.cmd == "unlock":
         return cmd_unlock(a.file, a.author, a.id, a.all, a.expired)
+    if a.cmd == "ack":
+        return cmd_ack(a.file, a.token, a.author, a.reason)
     if a.cmd == "upgrade":
         ov = {}
         for spec in a.code:

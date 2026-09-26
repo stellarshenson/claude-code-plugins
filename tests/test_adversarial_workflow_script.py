@@ -135,17 +135,18 @@ def test_adjudicator_continuity_threaded():
 def test_gates_present():
     t = text()
     assert "'STOP'" in t and "FANOUT_STOP" in t and "ROUND_CAP" in t and "'PLAN'" in t
-    assert "spiralStreak >= 2" in t  # two consecutive rounds the adjudicator judges spiralling
-    assert (
-        "adj.trajectory === 'spiralling' && refining" in t
-    )  # DEF-ADVR-50: the judgment gates, the ratio is evidence; DEF-ADVR-46: a clean round never trips it
+    # DEF-ADVR-74: two of the last three rounds the adjudicator judges spiralling, a window
+    # not a streak; DEF-ADVR-50: the judgment gates, the ratio is evidence; DEF-ADVR-46: a
+    # clean round ships before it can count
+    assert "rulings.slice(-3)" in t and "spiralling.length >= 2" in t
+    assert "spiralStreak" not in t
     assert "'trajectory', 'trajectoryReason'" in t  # required of every adjudication
     assert (
         "highFanoutStreak" not in t and "fanout > 0.5" not in t
     )  # no ratio gate or ratio log left
     assert (
-        "const refining = adj.changes.length > 0 || reverts.length > 0" in t
-    )  # the definition, not just its use
+        "r.trajectory === 'spiralling' && (r.changes > 0 || r.reverts > 0)" in t
+    )  # a spiralling round counts only while it still orders changes or reverts
     assert "devils-advocate:adjudicator" in t and "devils-advocate:adversarial-reviewer" in t
 
 
@@ -530,11 +531,10 @@ def test_state_carries_the_loop_contract():
     block = t[t.index("const stateOut = () => ({") :]
     keys = re.findall(r"^\s+(\w+)[,:]", block[: block.index("})")], re.M)
     assert (contract, keys) == (
-        2,
+        3,
         [
             "contract",
             "round",
-            "spiralStreak",
             "history",
             "deferred",
             "refuted",
@@ -631,7 +631,7 @@ def test_invocations_read_patches_skip_ruled_sites_and_ship_on_a_clean_round(tmp
             "adjudicate": [_ruling("a breaks")],
         },
     )
-    assert one["result"]["status"] == "PLAN" and one["result"]["state"]["contract"] == 2
+    assert one["result"]["status"] == "PLAN" and one["result"]["state"]["contract"] == 3
 
     fix_a = [
         {
@@ -745,3 +745,59 @@ def test_research_is_approved_by_the_adjudicator_and_routed_by_the_permission(tm
 
     bad = {**base, "research": {"allowed": True, "budget": 2}}
     assert "budget" in _invoke(tmp_path, bad, {})["error"]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_the_spiral_stop_counts_two_of_the_last_three_rounds(tmp_path):
+    """DEF-ADVR-74. Groundrails rounds 3-6 were judged spiralling, converging,
+    spiralling, converging; a streak of consecutive spiralling rounds reset on
+    every converging one and the stop never fired. Two spiralling rounds among
+    the last three, each still ordering changes, stop the loop."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+
+    def statuses(trajectories: list[str]) -> list[str]:
+        out, state = [], None
+        for n, trajectory in enumerate(trajectories, 1):
+            ruling = {**_ruling(f"f{n}"), "trajectory": trajectory}
+            finding = {"findings": [_finding(f"f{n}", "src/a.py", 100 * n)]}
+            if state is None:
+                args, replies = base, {"discover": [finding], "adjudicate": [ruling]}
+            else:
+                fix = {"site": "src/a.py", "summary": f"fix {n}", "files": ["src/a.py"]}
+                args = {**base, "state": state, "appliedFixes": [{**fix, "patch": "/tmp/p"}]}
+                replies = {"confirm": [finding], "adjudicate": [ruling]}
+            result = _invoke(tmp_path, args, replies)["result"]
+            out.append(result["status"])
+            state = result["state"]
+        return out
+
+    assert statuses(["spiralling", "converging", "spiralling"]) == ["PLAN", "PLAN", "FANOUT_STOP"]
+    assert statuses(["spiralling", "converging", "converging", "spiralling"]) == ["PLAN"] * 4
+    assert statuses(["spiralling", "spiralling"]) == ["PLAN", "FANOUT_STOP"]
+    assert statuses(["spiralling", "spiralling", "converging"]) == ["PLAN", "FANOUT_STOP", "PLAN"]
+
+
+MECHANISM = "a special case for one input (a regex arm, word-list entry or threshold)"
+
+
+def test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism():
+    """DEF-ADVR-71..73. The groundrails review rated 56 of 113 per-input misses of a
+    regex tier material, verified each special-case fix on the input that
+    motivated it, passed those fixes as no new mechanism and deferred the rest
+    with defect ids. The bar names the heuristic components, the reviewer and the
+    adjudicator treat a miss there as a sample of a rate, the data-scientist lens
+    flags a rule fitted to its own counterexample, and the mechanism list names
+    a special case for one input wherever it is stated."""
+    assert "BAR.heuristics ?" in text() and "HEURISTIC COMPONENTS" in text()
+    judge = agent("adjudicator")
+    assert "one sample of an error rate" in judge and "carries none" in judge
+    assert "one sample of an error rate" in agent("adversarial-reviewer")
+    persona = (SCRIPT.parents[1] / "adversaries/data-scientist.md").read_text(encoding="utf-8")
+    assert "learner scoring its own fold" in persona and "held-out measurement" in persona
+    stated = [
+        agent("adjudicator"),
+        agent("adversarial-reviewer"),
+        (SCRIPT.parents[1] / "references/remedy-discipline.md").read_text(encoding="utf-8"),
+        SPEC.read_text(encoding="utf-8"),
+    ]
+    assert all(MECHANISM in body for body in stated) and text().count(MECHANISM) == 2

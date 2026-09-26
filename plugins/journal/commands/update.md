@@ -6,6 +6,6 @@ argument-hint: "(optional) work description - otherwise infer from context"
 
 # Update Journal
 
-Invoke the `journal:update` skill and follow it exactly. It owns the whole procedure; this command only routes into it.
+Read this plugin's skill file `skills/update/SKILL.md` and follow it exactly. It owns the whole procedure; this command only routes into it.
 
 Pass the remainder of this invocation through unchanged as the skill's arguments.

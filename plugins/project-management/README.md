@@ -111,7 +111,7 @@ Cold start, splash screen and the first turn after a fork
 ```
 
 - **Permanent ids** - `ACC-<CAT>-<N>` and `DEF-<CAT>-<N>`, unique across the document, never renumbered and never recycled. An item that moves category keeps the code it was born with
-- **Three states** - `[ ]` open, `[x]` closed, `[-]` rejected. Rejected is for a report that was never a defect (never reproduced, or the feature is gone); a real defect nobody will fix is a close with the reason
+- **Three states** - `[ ]` open, `[x]` closed, `[-]` rejected. Rejected is for a report that was never a defect (never reproduced, the feature is gone, or a statistical or heuristic component's miss - a failure mode measured as a rate, unless it crashes, regresses against HEAD or breaks a stated guarantee); a real defect nobody will fix is a close with the reason
 - **One registered explanation, and it keeps its history** - `mechanism:` on a criterion says how it is meant to work, `root-cause:` on a defect says why it happens. Writing a second one puts it above the first and keeps the first, so on a hunt that runs for days the theory that was disproved on Tuesday is still readable on Friday; `--update` rewords the newest record instead of stacking. The top record is the current one
 - **Evidence at closure** - `close` refuses to run without `--evidence`, one line proving the item is done: the regression test that passes, the build it was verified on. Fixed stops being a claim
 - **Regressions are counted, not overwritten** - reopening a closed defect files `DEF-LNCH-3-1`, then `-2`, and leaves the original closed with its proof; the report totals them, so the file says how often fixes come back
@@ -174,7 +174,7 @@ A question the report does not answer is still a computed table. `list` prints o
 ## Rules summary
 
 - One consolidated document per discipline per project is the default; never a file per item
-- Every write goes through `pm-tools` - hand-editing is legal markdown but loses the id assignment and the log line. In Claude Code a plugin hook asks Claude once to use pm-tools instead of hand-editing an existing tracker, and tells Claude to load the skill when a prompt names criteria, defects or an ACC-/DEF- id
+- Every write goes through `pm-tools` - hand-editing is legal markdown but loses the id assignment and the log line. In Claude Code a plugin hook denies a hand edit of an existing tracker until `pm-tools ack` has logged why, with a token pm-tools derives from the file as it is now, and tells Claude to load the skill when a prompt names criteria, defects or an ACC-/DEF- id
 - `remove` is for mistakes and duplicates only; an item that turned out to be invalid is rejected with a reason so the trail survives
 - The agent triages every defect and rates every criterion itself, and never asks the user for the level
 - Every field is written laconic - the wording rules are in `skills/project-management/SKILL.md`, under Writing the text
