@@ -117,10 +117,11 @@ def test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file(
     the file changes, and the next hand edit needs a token of its own."""
     assert denied(hook("pre-tool-use", edit(tracker)))
     token = token_of(tracker, capsys)
-    assert not (tracker.parent / "pm-hand-edits.log").exists(), "no token was acknowledged yet"
+    assert not (tracker.parent / "pm-hand-edits.md").exists(), "no token was acknowledged yet"
     assert ack(tracker, token) == 0
-    log = (tracker.parent / "pm-hand-edits.log").read_text(encoding="utf-8")
+    log = (tracker.parent / "pm-hand-edits.md").read_text(encoding="utf-8")
     assert f" @kj defects-app.md {token} sha256:" in log
+    assert log.startswith("- "), "one markdown list item per acknowledged edit"
     assert log.rstrip().endswith(": repair a line two merges broke")
     assert hook("pre-tool-use", edit(tracker)) is None, "the acknowledged edit passes"
     tracker.write_text(tracker.read_text(encoding="utf-8") + "- edited\n", encoding="utf-8")
@@ -144,7 +145,7 @@ def test_ack_refuses_what_it_cannot_log(tracker: Path, capsys: pytest.CaptureFix
     notes.write_text("x\n", encoding="utf-8")
     with pytest.raises(SystemExit, match="not a tracker"):
         pm("ack", str(notes))
-    assert not (tracker.parent / "pm-hand-edits.log").exists()
+    assert not (tracker.parent / "pm-hand-edits.md").exists()
 
 
 def test_ack_works_when_the_roster_is_unreadable(

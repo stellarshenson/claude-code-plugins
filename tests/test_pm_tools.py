@@ -2815,3 +2815,96 @@ def test_a_reason_lets_a_long_writeup_through_warned_and_logged(defects: Path, c
         run("log", str(defects), *argv, "--event", "short", "--reason", LONG)
     assert "--reason is 51 words" in str(e.value)
     assert run("check", str(defects)) == 0
+
+
+ROSTER = "## Authors\n\n- `@kj` Konrad Jelen\n"
+
+
+def test_upgrade_keeps_a_legacy_regression_ordinal(tmp_path: Path):
+    """DEF-PMGT-30. A pre-category `DEF-7-1` did not match the legacy id pattern, so
+    upgrade gave it a fresh number and the link to its root was lost."""
+    d = tmp_path / "defects-legacy.md"
+    d.write_text(
+        "# Defects - Legacy\n\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [x] `DEF-7` **Root** - MAJOR; fixed once\n"
+        "- [ ] `DEF-7-1` **Root again** - MAJOR; regressed\n\n" + ROSTER,
+        encoding="utf-8",
+    )
+    run("upgrade", str(d), "--apply")
+    body = d.read_text(encoding="utf-8")
+    assert "`DEF-LNCH-7` **Root**" in body
+    assert "- [ ] `DEF-LNCH-7-1` **Root again**" in body
+
+
+def test_upgrade_reports_the_lines_it_edited(tmp_path: Path, capsys):
+    """DEF-PMGT-31. The applied count was the number of plan lines: three severity
+    renames folded into one line and the lower-cased [X] was not counted at all."""
+    d = tmp_path / "defects-count.md"
+    d.write_text(
+        "# Defects - Count\n\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [X] `DEF-LNCH-1` **a** - P1; x\n"
+        "- [ ] `DEF-LNCH-2` **b** - P2; x\n"
+        "- [ ] `DEF-LNCH-3` **c** - P3; x\n\n" + ROSTER,
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+    run("upgrade", str(d), "--apply")
+    assert "3 line(s) edited" in capsys.readouterr().out
+
+
+def test_upgrade_leaves_fenced_example_lines_alone(tmp_path: Path):
+    """DEF-PMGT-38. A dated note and a tag line inside a code fence were converted and
+    signed like real history; a fence is an example, not the item's log."""
+    fence = "```\n  - 2026-06-12 note\n  - test-tags: unit\n```\n"
+    d = tmp_path / "defects-fence.md"
+    d.write_text(
+        "# Defects - Fence\n\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [ ] `DEF-LNCH-1` **t** - MAJOR; x\n  - log: 2026-01-02T00:00:00Z @kj added\n\n"
+        + fence
+        + "\n"
+        + ROSTER,
+        encoding="utf-8",
+    )
+    run("upgrade", str(d), "--apply", "--author", "@kj")
+    assert fence in d.read_text(encoding="utf-8")
+
+
+def test_add_does_not_double_a_level_word_the_text_opens_with(defects: Path, criteria: Path):
+    """DEF-PMGT-39. add prefixed the level to a text that already opened with it."""
+    assert add_defect(defects, "token race") == 0
+    run(
+        "add", str(defects), "--category", "LNCH", "--author", "@kj", "--severity", "MAJOR",
+        "--title", "splash hang", "--text", "MAJOR; splash never dismissed",
+    )  # fmt: skip
+    assert "**splash hang** - MAJOR; splash never dismissed\n" in defects.read_text(
+        encoding="utf-8"
+    )
+    run(
+        "add", str(criteria), "--category", "AUTH", "--name", "Auth", "--author", "@kj",
+        "--importance", "HIGH", "--title", "login", "--text", "high; the login form submits",
+    )  # fmt: skip
+    assert "**login** - HIGH; the login form submits\n" in criteria.read_text(encoding="utf-8")
+    # a different level word opening the text is prose, and stays
+    run(
+        "add", str(defects), "--category", "LNCH", "--author", "@kj", "--severity", "MAJOR",
+        "--title", "resume", "--text", "Normal, degraded mode drops frames on resume",
+    )  # fmt: skip
+    assert "- MAJOR; Normal, degraded mode drops frames on resume\n" in defects.read_text(
+        encoding="utf-8"
+    )
+    run(
+        "add", str(criteria), "--category", "AUTH", "--author", "@kj", "--importance", "HIGH",
+        "--title", "badges", "--text", "Low, medium and high tiers each render their own badge",
+    )  # fmt: skip
+    assert "- HIGH; Low, medium and high tiers each render their own badge\n" in (
+        criteria.read_text(encoding="utf-8")
+    )
+
+
+def test_refs_refuses_a_malformed_id_like_its_siblings(defects: Path):
+    """DEF-PMGT-62. refs was the only --id consumer that skipped the shape check, so an id
+    in backticks - the form pm-tools' own tables print - was reported as absent."""
+    add_defect(defects, "token race")
+    with pytest.raises(SystemExit, match="--id takes an id like DEF-LNCH-3"):
+        run("refs", str(defects), "--id", "`DEF-LNCH-1`")
+    assert run("refs", str(defects), "--id", "DEF-LNCH-1") == 0

@@ -148,7 +148,7 @@ Prefer over manual edit.
 journal-tools sort .claude/JOURNAL.md --dry-run
 ```
 
-Re-numbers sequentially. Fixes gaps (1,2,5 → 1,2,3) and ordering. `--dry-run` previews. Omit to write in-place. Flag: `--start-from N`.
+Re-numbers sequentially from the lowest entry number, so an archived journal keeps its numbering. Fixes gaps (1,2,5 → 1,2,3) and ordering. `--dry-run` previews. Omit to write in-place. Flag: `--start-from N` to start elsewhere.
 
 ### standardize
 

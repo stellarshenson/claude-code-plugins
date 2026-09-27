@@ -1692,6 +1692,9 @@ def main():
     parser.add_argument(
         "--raw", action="store_true", help="Compare raw inner bboxes only (skip per-role padding)"
     )
+    parser.add_argument(
+        "--strict", action="store_true", help="Exit 1 when a finding is reported (default: exit 0)"
+    )
     args = parser.parse_args()
 
     # support legacy --padding flag
@@ -1742,6 +1745,7 @@ def main():
     overlaps = analyze_overlaps(elements, extra_padding=extra_padding, use_outer=not args.raw)
     shown = 0
     ignored = 0
+    violations = 0
 
     # group overlaps by classification
     CLASS_ORDER = ["violation", "sibling", "label-on-fill", "contained"]
@@ -1765,6 +1769,7 @@ def main():
                 continue
             by_class.setdefault(cls, []).append(entry)
 
+        violations = len(by_class.get("violation", []))
         for cls in CLASS_ORDER:
             entries = by_class.get(cls, [])
             if not entries:
@@ -1893,6 +1898,8 @@ def main():
 
         with open(args.svg, "w") as f:
             f.write(svg_content)
+    found = violations + len(spacing_issues) + len(callout_issues) + len(overflow_issues)
+    return 1 if args.strict and found else 0
 
 
 if __name__ == "__main__":

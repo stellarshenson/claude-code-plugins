@@ -503,6 +503,21 @@ class TestSortPreservesExtendedMarker:
         assert main(["sort", str(bare)]) == 0
         assert bare.read_text().startswith("1. **Task")
 
+    def test_sort_keeps_an_archived_journal_numbered_from_its_first_entry(self, tmp_path):
+        """DEF-JRNL-34. After archiving, a journal starts at entry 110; a bare sort
+        renumbered it from 1, one missed flag away from rewriting every reference."""
+        from stellars_claude_code_plugins.journal.journal_tools import main
+
+        path = tmp_path / "JOURNAL.md"
+        path.write_text(
+            self._journal(_entry(110, marker="", words=60), "\n", _entry(112, marker="", words=60))
+        )
+        assert main(["sort", str(path)]) == 0
+        numbers = [e.number for e in parse_journal(path.read_text())]
+        assert numbers == [110, 111]
+        assert main(["sort", str(path), "--start-from", "1"]) == 0
+        assert [e.number for e in parse_journal(path.read_text())] == [1, 2]
+
     def test_sort_preserves_marker_on_renumber(self):
         """Mixed-tier entries renumbered: each entry keeps its marker."""
         from stellars_claude_code_plugins.journal.journal_tools import (
@@ -904,10 +919,11 @@ class TestSpawnSubprocessSoftLanding:
         out = journal_tools._spawn_standardize_subprocess("prompt-text")
         assert out == "DECISION: EXTENDED\n"
         assert len(calls) == 2
-        # First call: no --model. Second call: includes --model claude-sonnet-4-20250514
+        # First call: no --model. Second call: --model sonnet - an alias, because a
+        # dated id is withdrawn (claude-sonnet-4-20250514 was, 2026-06-15; DEF-JRNL-78)
         assert "--model" not in calls[0]
         assert "--model" in calls[1]
-        assert "claude-sonnet-4-20250514" in calls[1]
+        assert calls[1][calls[1].index("--model") + 1] == "sonnet"
 
     def test_both_models_refuse_returns_none(self, monkeypatch):
         from stellars_claude_code_plugins.journal import journal_tools
@@ -1025,3 +1041,32 @@ class TestYamlVersionRefusal:
 
         with pytest.raises(RuntimeError, match="standardize.yaml version"):
             journal_tools._load_standardize_prompt()
+
+
+def test_the_standardize_prompt_states_the_validators_standard_band():
+    """DEF-JRNL-36. The prompt told the repair subprocess to rewrite to 70-150 words
+    after the validator's Standard floor had moved to 50."""
+    from importlib.resources import files
+
+    from stellars_claude_code_plugins.journal.journal_tools import STANDARD_MIN, STANDARD_TARGET
+
+    text = (files("stellars_claude_code_plugins.journal") / "prompts/standardize.yaml").read_text()
+    assert f"{STANDARD_MIN}-{STANDARD_TARGET} words" in text
+    assert "70-150" not in text
+
+
+def test_no_shipped_file_names_the_retired_sonnet_4_id():
+    """DEF-JRNL-78. The standardize fallback and its docs pinned
+    claude-sonnet-4-20250514, which the CLI reports retired on 2026-06-15."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    retired = "claude-sonnet-4-" + "20250514"
+    shipped = [p for d in ("plugins", "src") for p in (root / d).rglob("*") if p.is_file()]
+    hits = [
+        str(p.relative_to(root))
+        for p in shipped
+        if p.suffix in {".md", ".py", ".yaml", ".js"}
+        and retired in p.read_text(encoding="utf-8", errors="ignore")
+    ]
+    assert not hits, hits

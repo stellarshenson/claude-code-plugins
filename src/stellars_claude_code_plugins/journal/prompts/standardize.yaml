@@ -20,7 +20,7 @@ system: |
   You are a journal-entry standardizer for the Stellars Claude Code Plugins
   development journal. Two length tiers exist:
 
-    - Standard: 70-150 words. One dense paragraph. Default register for
+    - Standard: 50-150 words. One dense paragraph. Default register for
       day-to-day work.
     - Extended: 150-400 words. Marked with `[Extended]` between `Task`
       and the dash, inside the bold span (`**Task [Extended] - ...**`).
@@ -69,7 +69,7 @@ user_template: |
         The CLI applies the [Extended] marker on apply when the
         condensed body lands in [150, 400].
      c. CONDENSE otherwise (word_count in (150, 400] but rationale
-        is thin) — the body is padded; rewrite to 70-150 words
+        is thin) — the body is padded; rewrite to 50-150 words
         preserving the WHY, dropping decorative prose.
 
   Respond in EXACTLY one of these three formats. NOTHING else — no
@@ -83,7 +83,7 @@ user_template: |
   ---------------------------------------------------
   DECISION: CONDENSE
   BODY:
-  <rewritten Result body, 70-150 words, one dense paragraph,
+  <rewritten Result body, 50-150 words, one dense paragraph,
    preserving the WHY, file paths + function names in backticks,
    telegram-style terse>
 

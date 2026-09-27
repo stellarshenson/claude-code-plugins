@@ -46,7 +46,7 @@ PROMPT = re.compile(
     r"|\b(?:bug|issue)[\s_-]+(?:tracker|list)\b|\b(?:ACC|DEF)-[A-Z]{2,6}-\d+|\bpm-tools\b",
     re.I,
 )
-HAND_EDITS = "pm-hand-edits.log"  # beside the tracker; pm-tools ack writes it
+HAND_EDITS = "pm-hand-edits.md"  # beside the tracker; pm-tools ack writes it
 
 
 def way(path: Path) -> str:
@@ -74,7 +74,7 @@ def guarded(path: Path) -> bool:
 
 
 def acknowledged(path: Path) -> bool:
-    """True when pm-hand-edits.log beside the tracker has a line `pm-tools ack` wrote for
+    """True when pm-hand-edits.md beside the tracker has a line `pm-tools ack` wrote for
     the file as it is now. The hook matches the content digest; only pm-tools derives the
     token."""
     digest = hashlib.sha256(path.read_bytes()).hexdigest()

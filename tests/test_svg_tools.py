@@ -7570,8 +7570,7 @@ class TestRound8ContrastCascade:
         return f
 
     def test_unmeasurable_text_reaches_the_gate(self, tmp_path):
-        """`_contrast_findings` is the ONE consumer that sets the exit code.
-        Dropping the hints printed PASS over text nobody measured."""
+        """Dropping the hints printed PASS over text nobody measured."""
         from stellars_claude_code_plugins.svg_tools.finalize import _contrast_findings
 
         f = self._write(

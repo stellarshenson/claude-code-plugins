@@ -504,6 +504,24 @@ class TestRunUntilComplete:
         orch._run_next_iteration(state3)
         assert "20 iterations" in capsys.readouterr().out
 
+    def test_end_score_is_recorded_and_stops_the_run(self, minimal_resources, tmp_path, capsys):
+        """DEF-BUILD-37: nothing wrote benchmark_scores, so --iterations 0 never
+        reached its score-0 stop. `end --score` records the score."""
+        orch._initialize(minimal_resources)
+        orch.DEFAULT_ARTIFACTS_DIR = tmp_path
+        orch._init_artifacts_dir(tmp_path)
+        orch._save_state(_base_state(total_iterations=0, phase_status="in_progress"))
+        parser = orch._build_cli_parser(minimal_resources)
+        argv = ["end", "--evidence", "benchmark score: 0", "--agents", "researcher", "--score", "0"]
+        args = parser.parse_args(argv)
+        with patch.object(orch, "_claude_evaluate", return_value=(True, "PASS")):
+            orch.cmd_end(args)
+        state = orch._load_state()
+        assert state["benchmark_scores"] == [{"iteration": 1, "phase": "ALPHA", "score": 0.0}]
+        capsys.readouterr()
+        orch._run_next_iteration(state)
+        assert "Benchmark conditions met" in capsys.readouterr().out
+
 
 class TestGenerativeActionDispatch:
     """Verify generative and standalone actions dispatch via _claude_evaluate."""

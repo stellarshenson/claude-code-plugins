@@ -102,9 +102,8 @@ def _contrast_findings(svg_path: Path) -> list[str]:
                 f'[contrast] {r.mode} {r.ratio:.2f}:1 "{r.text.content[:40]}" '
                 f"text {r.text.fill} on {r.effective_bg}"
             )
-    # UNMEASURABLE IS NOT CLEAN, and this is the ONE consumer that decides the
-    # exit code. Dropping these printed `[PASS] text meets WCAG AA` over a file
-    # where 15 of 48 texts were never judged - and because the checker used to
+    # UNMEASURABLE IS NOT CLEAN. Dropping these printed `[PASS] text meets WCAG
+    # AA` over a file where 15 of 48 texts were never judged - and because the checker used to
     # score an unreadable fill as #000000, which failed on a dark ground, the
     # honest refusal to guess turned 63 real HARD findings into silence.
     # `check_css` already answers the identical situation this way on the

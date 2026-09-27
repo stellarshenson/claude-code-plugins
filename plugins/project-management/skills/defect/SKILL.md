@@ -6,7 +6,7 @@ allowed-tools: [Read, Write, Bash, Skill]
 
 # Defect
 
-Read the `project-management` skill first - it is the single source of truth for the id scheme, the line format, the three states, authoring, relations and the `pm-tools` command surface. Do NOT duplicate its content here. Its `skills/project-management/references/defects.md` wins on any conflict about defects specifically.
+Read the `project-management` skill first - it is the single source of truth for the id scheme, the line format, the three states, authoring, relations and the `pm-tools` command surface. Do NOT duplicate its content here. Its `skills/project-management/references/defect-tracking.md` wins on any conflict about defects specifically.
 
 ## Toolchain gate (MANDATORY - run before anything else)
 
@@ -27,7 +27,7 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 ## What to do
 
-1. Read the `project-management` skill, then `skills/project-management/references/defects.md`
+1. Read the `project-management` skill, then `skills/project-management/references/defect-tracking.md`
 2. **Ask for the author handle once** and reuse it - every write takes `--author @xx`, and the handle must be on the roster (`pm-tools author FILE --handle @xx --name "Full Name"`) before it can write
 3. **Find the store before creating one** - `ls docs/defects*.md`; one consolidated doc per project is the default. An area is a category, never a separate file
 4. **Lock what you work on, release when you stop** - default, unasked: `pm-tools lock FILE --id ID --author @xx` writes its `lock:` line before your first write to a defect, `unlock` when you are done with it; ask before working on a defect locked by someone else. The lock never blocks a write, expired locks clear themselves on the next write, and `pm-tools unlock FILE --author @xx --id ID` clears one at will; taking or clearing an active lock held by another handle is a transfer - `lock` and `unlock` print `TRANSFER: DEF-LNCH-3 was locked by @yy until <stamp> - you are taking it over; ask @yy` and proceed, and a takeover with no `--note` records `taken over from @yy`. `report`, `list`, `search` and `refs` print `N item(s) currently worked on: DEF-LNCH-3 by @xx until <stamp>` on stderr before the table - read it before choosing what to pick up

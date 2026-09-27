@@ -12,7 +12,7 @@
     "3",
     "--no-session-persistence"
   ],
-  "stdout": "`[2026-07-28 Tue 02:52]` BLOCKED: the gate reported STALE (library 1.5.5 != plugin 1.6.31), so the installed CLI is 26 releases behind the skill's documented flags and must be upgraded to match before `validate --svg` can be trusted.\n",
+  "stdout": "BLOCKED: the gate printed STALE (library 1.5.5 does not match plugin 1.6.31), and that line stops the run, so `--svg` may not exist in this CLI until the upgrade brings the library to 1.6.31.\n",
   "stderr": "",
   "returncode": 0
 }

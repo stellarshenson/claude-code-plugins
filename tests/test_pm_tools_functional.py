@@ -130,7 +130,7 @@ def test_the_plugin_docs_carry_the_lock_discipline():
         "README.md",
         "skills/project-management/SKILL.md",
         "skills/project-management/references/acceptance-criteria.md",
-        "skills/project-management/references/defects.md",
+        "skills/project-management/references/defect-tracking.md",
         "skills/project-management/references/reports.md",
         # the command bodies are routers; the procedure they route into is
         # where the discipline has to be stated
@@ -474,7 +474,7 @@ def test_the_override_rule_is_documented_where_the_agent_reads_it():
         assert "OVERRIDES" in body, name
     for name, head in (
         ("skills/project-management/references/acceptance-criteria.md", "## Mechanism"),
-        ("skills/project-management/references/defects.md", "## Root cause"),
+        ("skills/project-management/references/defect-tracking.md", "## Root cause"),
     ):
         assert head in (plugin / name).read_text(encoding="utf-8"), name
     assert "root-cause:" in (plugin / "README.md").read_text(encoding="utf-8")
@@ -504,7 +504,7 @@ def test_a_statistical_components_miss_is_rejected_not_filed():
     rejected on the author's ruling that a failure mode is not a defect. The
     definition and every statement of the reject cases now carry that case."""
     plugin = Path(__file__).parent.parent / "plugins/project-management"
-    ref = (plugin / "skills/project-management/references/defects.md").read_text(encoding="utf-8")
+    ref = (plugin / "skills/project-management/references/defect-tracking.md").read_text(encoding="utf-8")
     assert "is not a defect: it is a sample of an error rate" in ref
     assert "The three cases:" in ref and "failure mode of a statistical or heuristic" in ref
     for name in ("skills/defect/SKILL.md", "README.md"):
@@ -1483,3 +1483,12 @@ def test_a_second_agent_is_told_who_is_on_what_and_takes_the_item_over(defects: 
     r = pm("list", defects, "--columns", "id,lock")
     assert r.returncode == 0 and "currently worked on: DEF-LNCH-1 by @xy" in r.stderr
     assert pm("check", defects).returncode == 0
+
+
+def test_no_plugin_skill_file_is_named_like_a_tracker():
+    """DEF-PMGT-32. The defects reference was named defects.md, so pm-tools read it as
+    a tracker (check failed it with 9 errors) and the edit guard treated the plugin's
+    own documentation as a tracker."""
+    plugins = Path(__file__).parent.parent / "plugins"
+    named = [p for g in ("acc-crit*.md", "defects*.md") for p in plugins.glob(f"*/skills/**/{g}")]
+    assert named == []

@@ -960,6 +960,9 @@ def main():
 
     parser = argparse.ArgumentParser(description="SVG connector quality checker")
     parser.add_argument("--svg", required=True, help="SVG file to check")
+    parser.add_argument(
+        "--strict", action="store_true", help="Exit 1 when a finding is reported (default: exit 0)"
+    )
     args = parser.parse_args()
 
     print(f"Connector check: {args.svg}")
@@ -989,6 +992,7 @@ def main():
         print(f"\nSUMMARY: {len(all_issues)} connector violations found")
     else:
         print("\nSUMMARY: no connector violations found")
+    return 1 if args.strict and all_issues else 0
 
 
 if __name__ == "__main__":

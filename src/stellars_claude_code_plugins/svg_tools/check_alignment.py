@@ -912,6 +912,9 @@ def main():
         help=f"Tolerance for grid snapping in px (default: {DEFAULT_GRID_TOLERANCE}; pass 0 to list "
         "every sub-pixel offender individually)",
     )
+    parser.add_argument(
+        "--strict", action="store_true", help="Exit 1 when a finding is reported (default: exit 0)"
+    )
     args = parser.parse_args()
 
     print(f"Alignment check: {args.svg}  (grid={args.grid}px, tolerance={args.tolerance}px)")
@@ -1032,6 +1035,7 @@ def main():
         print("SUMMARY: no alignment issues found")
     else:
         print(f"SUMMARY: {total_issues} alignment issues found")
+    return 1 if args.strict and total_issues else 0
 
 
 if __name__ == "__main__":

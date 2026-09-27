@@ -2666,6 +2666,11 @@ def cmd_end(args) -> None:
     if not gk_passed:
         return
 
+    score = getattr(args, "score", None)
+    if score is not None:
+        state.setdefault("benchmark_scores", []).append(
+            {"iteration": state.get("iteration"), "phase": phase, "score": score}
+        )
     _advance_phase(state, phase)
     _print_phase_summary(state, phase)
 
@@ -3512,6 +3517,7 @@ def _build_cli_parser(resources_dir: Path) -> argparse.ArgumentParser:
     p_end.add_argument("--evidence", default="", help=_cli("args", "evidence"))
     p_end.add_argument("--agents", default="", help=_cli("args", "agents"))
     p_end.add_argument("--output-file", default="", help=_cli("args", "output_file"))
+    p_end.add_argument("--score", type=float, default=None, help=_cli("args", "score"))
 
     # ── status ──
     sub.add_parser("status", help=_cli("commands", "status"))

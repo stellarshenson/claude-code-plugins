@@ -161,7 +161,7 @@ prose, never a level.
   relate and remove take --author only to keep a lock held by that handle silent.
   ack    FILE [--token T --author @xx --reason R]
           a hand edit of a tracker: without --token, print the token for the file as
-          it is now; with it, log the reason in pm-hand-edits.log beside FILE. The
+          it is now; with it, log the reason in pm-hand-edits.md beside FILE. The
           project-management guard hook passes a hand edit of that state of the file
   upgrade FILE [--code "Section=CODE"]... [--author @xx] [--apply]
           --apply always applies every safe rewrite (ids, codes, stamps, severity
@@ -177,6 +177,7 @@ no path means ./docs when it exists, else . Stdlib only.
 
 import argparse
 import datetime
+import difflib
 import fnmatch
 import hashlib
 import json
@@ -192,7 +193,7 @@ IDTOK = re.compile(
     r"^`(?P<prefix>ACC|DEF)-(?P<cat>[A-Z]{2,6})-(?P<num>\d+)"
     r"(?:-(?P<regr>\d+))?`\s+(?P<body>.*)$"
 )
-LEGACY = re.compile(r"^`(ACC|DEF)-(\d+)`\s+(.*)$")  # pre-category id, upgrade only
+LEGACY = re.compile(r"^`(ACC|DEF)-(\d+)(?:-(\d+))?`\s+(.*)$")  # pre-category id, upgrade only
 IDREF = re.compile(r"\b(ACC|DEF)-([A-Z]{2,6})-(\d+)(?:-(\d+))?\b")
 CATCODE = re.compile(r"^(.*?)\s*`([A-Z]{2,6})`$")
 BOLD = re.compile(r"\*\*([^*]+)\*\*")
@@ -2507,6 +2508,10 @@ def cmd_add(
     sec, lines = section_for(sections, code, name, desc, lines)
     num = next_num(blocks)
     lead = severity or importance
+    opening = (SEV if prefix == "DEF" else IMP).match(text)
+    # the text repeats the flag's level; drop the repeat
+    if opening and opening.group(1).upper() == lead.upper():
+        text = text[opening.end() :].lstrip(" ;:,")
     body = f"{lead.upper()}; {text}" if lead else text
     item = f"- [ ] `{prefix}-{code}-{num}` **{title}** - {body}"
     at = insert_index(lines, sec)
@@ -2877,7 +2882,7 @@ def cmd_remove(file, wanted, force, author=None):
 
 
 # beside the tracker; the project-management guard hook reads it
-HAND_EDITS = "pm-hand-edits.log"
+HAND_EDITS = "pm-hand-edits.md"
 
 
 def edit_token(file):
@@ -2919,7 +2924,7 @@ def cmd_ack(file, token, author, reason):
         raise SystemExit("pass --reason: why pm-tools cannot make this change")
     log = pathlib.Path(file).parent / HAND_EDITS
     with open(log, "a", encoding="utf-8") as fh:
-        fh.write(f"{now()} {who} {name} {token} sha256:{digest}: {reason}\n")
+        fh.write(f"- {now()} {who} {name} {token} sha256:{digest}: {reason}\n")
     print(f"{file}: hand edit acknowledged, logged in {log}; send the edit again")
     return 0
 
@@ -3107,10 +3112,11 @@ def cmd_upgrade(file, overrides, apply, author):
                 counter += 1
             num, used = counter, used | {counter}
             counter += 1
-        assign[b["line"]] = (code, num, b["regr"])
         lg = LEGACY.match(b["body"])
-        old = ident(b) if b["prefix"] else (f"{lg.group(1)}-{lg.group(2)}" if lg else "(no id)")
-        new = f"{prefix}-{code}-{num}" + (f"-{b['regr']}" if b["regr"] else "")
+        regr = b["regr"] or (int(lg.group(3)) if lg and lg.group(3) else None)
+        assign[b["line"]] = (code, num, regr)
+        old = ident(b) if b["prefix"] else (lg.group(0).split("`")[1] if lg else "(no id)")
+        new = f"{prefix}-{code}-{num}" + (f"-{regr}" if regr else "")
         if old != new:
             plan.append(f"line {b['line']}: {old} -> {new}")
         if prefix == "DEF" and not b["severity"]:
@@ -3138,7 +3144,14 @@ def cmd_upgrade(file, overrides, apply, author):
             )
 
     out, drop_toc, converted, widened, retagged, renamed = [], False, 0, 0, 0, {}
+    fenced = False
     for i, ln in enumerate(lines, start=1):
+        # a code fence holds examples, never the item's own history
+        if re.match(r"^\s*```", ln):
+            fenced = not fenced
+        if fenced or re.match(r"^\s*```", ln):
+            out.append(ln)
+            continue
         h = HEADING.match(ln)
         if h and len(h.group(1)) == 2:
             drop_toc = h.group(2).strip().lower() == "contents"
@@ -3167,7 +3180,7 @@ def cmd_upgrade(file, overrides, apply, author):
             else:
                 lg = LEGACY.match(body)
                 if lg:
-                    body = lg.group(3)
+                    body = lg.group(4)
             bm = BOLD.search(body)
             lead, after = (body[: bm.end()], body[bm.end() :]) if bm else ("", body)
             rest = after.lstrip(" -")
@@ -3230,8 +3243,16 @@ def cmd_upgrade(file, overrides, apply, author):
         print(f"\ndry run: {len(plan)} change(s), {len(hints)} hint(s). Re-run with --apply")
         return 0
     save(file, out)
+    edited = sum(
+        max(i2 - i1, j2 - j1)
+        for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(
+            a=lines, b=out, autojunk=False
+        ).get_opcodes()
+        if tag != "equal"
+    )
     print(
-        f"\napplied {len(plan)} change(s) to {file}; {len(hints)} hint(s) remain. Run check next"
+        f"\napplied {len(plan)} change(s) to {file}, {edited} line(s) edited; "
+        f"{len(hints)} hint(s) remain. Run check next"
     )
     return 0
 
@@ -3633,7 +3654,10 @@ def main(argv: list[str] | None = None) -> int:
         if a.cmd == "list-categories":
             return cmd_list_categories(files, a.json)
         if a.cmd == "refs":
-            return cmd_refs(files, a.id.strip().upper(), a.json)
+            rid = a.id.strip().upper()
+            if not IDREF.fullmatch(rid):
+                raise SystemExit(f"--id takes an id like DEF-LNCH-3, got {a.id!r}")
+            return cmd_refs(files, rid, a.json)
         return cmd_check(files, a.strict)
 
     gate_writeups(sub.choices[a.cmd], a)

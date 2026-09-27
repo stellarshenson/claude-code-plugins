@@ -12,7 +12,7 @@
     "3",
     "--no-session-persistence"
   ],
-  "stdout": "`[2026-07-28 Tue 02:53]` PROCEED: gate printed `toolkit 1.6.31` with no FATAL/STALE line, so library matches plugin 1.6.31 and the documented `--svg` flag is verified against the installed CLI.\n",
+  "stdout": "PROCEED: The gate printed `toolkit 1.6.31` with no `STALE` or `FATAL` line, so the installed library matches this plugin's `plugin.json` version, 1.6.31, and the CLI has the `--svg` flag that this plugin documents.\n",
   "stderr": "",
   "returncode": 0
 }

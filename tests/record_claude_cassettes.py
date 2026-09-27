@@ -124,13 +124,13 @@ def record_standardize_rationale_rich() -> None:
     real CONDENSE+BODY response shape end-to-end.
     """
     prompt = build_standardize_rationale_rich_prompt()
-    save_cassette(spawn(prompt, model="claude-sonnet-4-20250514"), "rationale-rich")
+    save_cassette(spawn(prompt, model="sonnet"), "rationale-rich")
 
 
 def record_standardize_padded() -> None:
     """500-word unmarked boilerplate body -> CONDENSE."""
     prompt = build_standardize_padded_prompt()
-    save_cassette(spawn(prompt, model="claude-sonnet-4-20250514"), "padded")
+    save_cassette(spawn(prompt, model="sonnet"), "padded")
 
 
 def record_orchestrator_pass_evaluation() -> None:

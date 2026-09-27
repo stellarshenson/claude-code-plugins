@@ -801,3 +801,25 @@ def test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism():
         SPEC.read_text(encoding="utf-8"),
     ]
     assert all(MECHANISM in body for body in stated) and text().count(MECHANISM) == 2
+
+
+def test_the_spec_names_every_status_the_script_returns():
+    """DEF-ADVR-52. The spec's status list omitted PANEL_DIED, so a loop constructed
+    from the spec had no status for a round that reviewed nothing."""
+    returned = set(re.findall(r"status: '([A-Z_]+)'", text()))
+    statuses = SPEC.read_text(encoding="utf-8").split("Its statuses:", 1)[1].split("\n", 1)[0]
+    assert returned and all(f"`{s}`" in statuses for s in returned), sorted(returned)
+    # invariant 5 lists the exits, and the skill says what to do on each
+    inv5 = next(ln for ln in SPEC.read_text(encoding="utf-8").splitlines() if ln.startswith("5. "))
+    skill = (PLUGIN / "skills/adversarial-review/SKILL.md").read_text(encoding="utf-8")
+    for dead in ("ADJUDICATOR_DIED", "PANEL_DIED"):
+        assert f"`{dead}`" in inv5 and f"`{dead}`" in skill, dead
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_a_panel_that_returned_nothing_ends_panel_died_not_ship(tmp_path):
+    """DEF-ADVR-47. A null agent return was read as an empty review, so a round whose
+    every reviewer died reached the clean path and shipped."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect", "bug-hunter"]}
+    result = _invoke(tmp_path, base, {"discover": [None, None]})["result"]
+    assert result["status"] == "PANEL_DIED"

@@ -17,7 +17,7 @@ Every **producer** tool in svg-tools (generates an artefact - SVG snippet, coord
 | `drawio_shapes` | YES | indexer warnings (file not found, parse errors, unrecognised root tag) |
 | `empty-space` | YES | tolerance-below-20px warning |
 | `finalize` | YES | every HARD + SOFT finding surfaced from sub-validators |
-| `check_*` validators (overlaps, contrast, alignment, connectors, css, svg_valid) | NO | findings are the primary output; exit code signals severity |
+| `check_*` validators (overlaps, contrast, alignment, connectors, css, svg_valid) | NO | findings are the primary output |
 | `primitives`, `place`, `text-to-path`, `gen_backgrounds` | NO | only emit hard-error messages before `sys.exit(1)` or pure-info lines |
 
 **Contract** (identical across every gated tool):
@@ -220,6 +220,8 @@ Connector quality: zero-length segments, edge-snap, L-routing, label clearance, 
 ```bash
 svg-infographics connectors --svg <file>
 ```
+
+`overlaps`, `contrast`, `alignment` and `connectors` exit 0 when they report findings; add `--strict` to exit 1 on a finding when a script gates on the result.
 
 ## Tool: css
 

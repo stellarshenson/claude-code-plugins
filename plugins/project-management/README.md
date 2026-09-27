@@ -184,7 +184,7 @@ A question the report does not answer is still a computed table. `list` prints o
 
 - `skills/project-management/SKILL.md` - ids, line format, three states, authoring, relations, the CLI surface
 - `skills/project-management/references/acceptance-criteria.md` - writing criteria, the test hint, the API section, the regime matrix
-- `skills/project-management/references/defects.md` - writing defects, the triage rubric, the repro line, details documents
+- `skills/project-management/references/defect-tracking.md` - writing defects, the triage rubric, the repro line, details documents
 - `skills/project-management/references/reports.md` - section shapes, filter semantics, `--detail`
 - `skills/project-management/references/upgrade.md` - migrating a legacy document
 - `skills/project-management/references/conflicts.md` - resolving a merge on a shared file

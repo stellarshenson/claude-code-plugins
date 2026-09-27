@@ -1317,6 +1317,9 @@ def main():
         default=20.0,
         help="Minimum bbox dimension (px) for object contrast checks (default: 20)",
     )
+    parser.add_argument(
+        "--strict", action="store_true", help="Exit 1 when a finding is reported (default: exit 0)"
+    )
     args = parser.parse_args()
 
     print(f"Contrast check: {args.svg}  (WCAG {args.level})")
@@ -1473,6 +1476,8 @@ def main():
             "  Fix: raise fill opacity, switch fill to a CSS class with dark-mode "
             "swap, or strengthen stroke."
         )
+    unjudged = any(h.lstrip().startswith("UNMEASURABLE") for h in hints)
+    return 1 if args.strict and (fails or object_fails or unjudged) else 0
 
 
 if __name__ == "__main__":

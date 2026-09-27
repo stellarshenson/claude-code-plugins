@@ -48,7 +48,7 @@ Switching a project row between its conversation branches
   - log: 2026-06-14T11:02:55Z @kj rejected: the panel no longer caches rows, so the window cannot open
 ```
 
-The rejected item stays in place with its reason. It is the record that the case was considered. A criterion is rejected when the feature it asserts no longer exists or was cut; a criterion that was met is closed. Defect-side rejection is a different case, in `defects.md`.
+The rejected item stays in place with its reason. It is the record that the case was considered. A criterion is rejected when the feature it asserts no longer exists or was cut; a criterion that was met is closed. Defect-side rejection is a different case, in `defect-tracking.md`.
 
 ## Test hint, tags and evidence
 

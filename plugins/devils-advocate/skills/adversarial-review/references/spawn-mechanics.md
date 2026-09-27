@@ -48,7 +48,7 @@ Prompt: `review-tools prompt <args.json> --lens <name>` from the workflow args, 
 - **Scope tightly** - Mode 1: 200-800 focused implementation lines get a sharp review, a 5k-line dump gets a vague one. Mode 2: name in/out-of-scope dirs so it skips vendored and generated code
 - **`--no-session-persistence`** - else each one-shot call litters `~/.claude/projects/<slug>/` with an unresumable JSONL
 - **`2>/dev/null`** - suppresses the harmless "no stdin data received" stderr that pollutes the result file
-- **Soft-land a usage-policy refusal** - the model occasionally flags benign technical prose ("kill", "inject", "attack surface"). `grep -q "violate our Usage Policy" <result>` → retry once with `--model claude-sonnet-4-20250514`; still refused → surface to the user. One retry only
+- **Soft-land a usage-policy refusal** - the model occasionally flags benign technical prose ("kill", "inject", "attack surface"). `grep -q "violate our Usage Policy" <result>` → retry once with `--model sonnet`; still refused → surface to the user. One retry only
 
 ## Seed an adversary into a `claude -p` prompt
 

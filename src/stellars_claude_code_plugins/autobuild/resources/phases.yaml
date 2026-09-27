@@ -798,8 +798,9 @@ TEST:
 
       **WHEN DONE**:
       ```
-      {CMD} end --evidence "tests pass, lint clean, benchmark score: N"
+      {CMD} end --evidence "tests pass, lint clean, benchmark score: N" --score N
       ```
+      Drop `--score N` when no benchmark is configured.
 
       **Output**: green tests, clean lint, benchmark score (if configured).
 

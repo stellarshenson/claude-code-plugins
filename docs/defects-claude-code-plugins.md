@@ -46,14 +46,26 @@ journal parser, standardize, sort and archive
   - test-tags: UNIT
   - log: 2026-08-28T08:22:11Z @kj added
   - log: 2026-08-28T08:22:11Z @kj closed: fixed
-- [ ] `DEF-JRNL-34` **sort without --start-from renumbers an archived journal from 1** - MEDIUM; a journal starting at entry 110 after archiving is renumbered 1-227 by a bare sort; every plugin doc invokes sort with --dry-run only, so the trap is one missed flag; fix default start from the first entry's number; journal_tools.py
+- [x] `DEF-JRNL-34` **sort without --start-from renumbers an archived journal from 1** - MEDIUM; a journal starting at entry 110 after archiving is renumbered 1-227 by a bare sort; every plugin doc invokes sort with --dry-run only, so the trap is one missed flag; fix default start from the first entry's number; journal_tools.py
+  - evidence: sort --start-from defaults to the lowest entry number; test_sort_keeps_an_archived_journal_numbered_from_its_first_entry
   - repro: archived journal; sort --dry-run; read the first number
   - test-tags: UNIT
   - log: 2026-08-28T08:22:14Z @kj added
-- [ ] `DEF-JRNL-36` **standardize prompt says 70 where the floor is 50** - MINOR; standardize.yaml lines 30, 79, 93 name the old Standard floor; the prompt is cassette-hashed so the edit needs claude on PATH to re-record; journal/prompts/standardize.yaml
+  - log: 2026-09-26T21:17:16Z @kj closed
+- [x] `DEF-JRNL-36` **standardize prompt says 70 where the floor is 50** - MINOR; standardize.yaml lines 30, 79, 93 name the old Standard floor; the prompt is cassette-hashed so the edit needs claude on PATH to re-record; journal/prompts/standardize.yaml
+  - evidence: standardize.yaml states 50-150 at 3 sites; cassettes re-recorded wf_e0aceeeb-42d; test_the_standardize_prompt_states_the_validators_standard_band
   - repro: grep 70 standardize.yaml
-  - test-tags: MANUAL
+  - test-tags: UNIT
   - log: 2026-08-28T08:22:14Z @kj added
+  - log: 2026-09-26T21:17:16Z @kj closed
+  - log: 2026-09-26T22:12:56Z @kj edited test-tags "MANUAL" -> "UNIT"
+- [x] `DEF-JRNL-78` **standardize falls back to a retired model** - MEDIUM; on a usage-policy refusal the standardize subprocess retries with claude-sonnet-4-20250514, which the CLI reports retired on 2026-06-15, so the fallback fails too; found re-recording cassettes for DEF-JRNL-36; `journal_tools.py` _SONNET_4_MODEL, standardize docs, cassette recorder
+  - evidence: fallback model is the sonnet alias; recorder and docs updated; test_no_shipped_file_names_the_retired_sonnet_4_id; full suite 1456 passed after re-record
+  - repro: claude -p 'Reply OK' --model claude-sonnet-4-20250514 prints 'Claude Sonnet 4 was retired on June 15, 2026'
+  - test-tags: UNIT
+  - root-cause: 2026-09-26T21:01:47Z @kj the fallback pins a dated model id instead of the sonnet alias, so it breaks when that version is withdrawn
+  - log: 2026-09-26T21:01:47Z @kj added
+  - log: 2026-09-26T21:17:16Z @kj closed
 
 ## document-processing `DOCP`
 
@@ -130,30 +142,43 @@ pm-tools parser, edit, upgrade and reports
   - test-tags: UNIT
   - log: 2026-08-28T08:22:13Z @kj added
   - log: 2026-08-28T08:22:13Z @kj closed: fixed
-- [ ] `DEF-PMGT-29` **parser assigns a severity to criteria opening with a level word** - MEDIUM; an ACC item 'Normal, degraded ...' shows MEDIUM in list --columns severity, report --detail prints NORMAL as its head, and edit --text writes NORMAL; as a prefix; cause parse() reads SEV for every prefix; fix gate on prefix DEF in parse(); pm_tools.py
+- [x] `DEF-PMGT-29` **parser assigns a severity to criteria opening with a level word** - MEDIUM; an ACC item 'Normal, degraded ...' shows MEDIUM in list --columns severity, report --detail prints NORMAL as its head, and edit --text writes NORMAL; as a prefix; cause parse() reads SEV for every prefix; fix gate on prefix DEF in parse(); pm_tools.py
+  - evidence: test_a_criterion_opening_with_a_level_word_is_prose_not_a_severity: list shows no severity, report keeps the body, edit --text writes no level; reproduced clean 2026-09-26 on a scratch tracker
   - repro: ACC item opening Normal,; list --columns id,severity
   - test-tags: UNIT
   - log: 2026-08-28T08:22:14Z @kj added
-- [ ] `DEF-PMGT-30` **LEGACY regex drops a legacy regression ordinal** - MINOR; a pre-category DEF-7-1 upgrades to a fresh id and the root link is lost; legacy files never carried regressions so the input is theoretical; pm_tools.py LEGACY
+  - log: 2026-09-26T21:04:38Z @kj closed: fixed earlier: severity is read on DEF items only
+- [x] `DEF-PMGT-30` **LEGACY regex drops a legacy regression ordinal** - MINOR; a pre-category DEF-7-1 upgrades to a fresh id and the root link is lost; legacy files never carried regressions so the input is theoretical; pm_tools.py LEGACY
+  - evidence: LEGACY matches DEF-7-1 and keeps the ordinal as the regression link; test_upgrade_keeps_a_legacy_regression_ordinal
   - repro: legacy file with DEF-7-1; upgrade
   - test-tags: UNIT
   - log: 2026-08-28T08:22:14Z @kj added
-- [ ] `DEF-PMGT-31` **upgrade counts plan lines, not edited lines** - MINOR; applied N change(s) aggregates severity renames into one line and omits [X] lower-casing; pm_tools.py cmd_upgrade
+  - log: 2026-09-26T21:17:16Z @kj closed
+- [x] `DEF-PMGT-31` **upgrade counts plan lines, not edited lines** - MINOR; applied N change(s) aggregates severity renames into one line and omits [X] lower-casing; pm_tools.py cmd_upgrade
+  - evidence: upgrade reports lines edited by SequenceMatcher diff, not plan lines; test_upgrade_reports_the_lines_it_edited
   - repro: file with 3 renames; read the count
   - test-tags: UNIT
   - log: 2026-08-28T08:22:14Z @kj added
-- [ ] `DEF-PMGT-32` **shipped tracker examples fail check** - MINOR; check exits 1 on plugins/project-management README.md, references/defects.md, references/acceptance-criteria.md (dangling example ids, no evidence); cause examples cite ids that do not exist in the file; fix either self-consistent examples or a skip marker
+  - log: 2026-09-26T21:17:16Z @kj closed
+- [x] `DEF-PMGT-32` **shipped tracker examples fail check** - MINOR; check exits 1 on plugins/project-management README.md, references/defects.md, references/acceptance-criteria.md (dangling example ids, no evidence); cause examples cite ids that do not exist in the file; fix either self-consistent examples or a skip marker
+  - evidence: reference renamed references/defect-tracking.md, 9 path mentions updated; test_no_plugin_skill_file_is_named_like_a_tracker; guard passes an edit of it; pm_tools functional + guard + parity 220 passed
   - repro: pm-tools check plugins/project-management
-  - test-tags: MANUAL
+  - test-tags: UNIT
   - log: 2026-08-28T08:22:14Z @kj added
-- [ ] `DEF-PMGT-38` **upgrade rewrites indented lines inside fenced code blocks** - MEDIUM; a fenced example containing an indented dated note or tag line is converted and signed by upgrade --apply like real history; cause the output loop never tracks fence state; fix toggle on ``` lines and pass fenced lines through; pm_tools.py cmd_upgrade
+  - log: 2026-09-26T21:11:55Z @kj closed
+  - log: 2026-09-26T22:12:56Z @kj edited test-tags "MANUAL" -> "UNIT"
+- [x] `DEF-PMGT-38` **upgrade rewrites indented lines inside fenced code blocks** - MEDIUM; a fenced example containing an indented dated note or tag line is converted and signed by upgrade --apply like real history; cause the output loop never tracks fence state; fix toggle on ``` lines and pass fenced lines through; pm_tools.py cmd_upgrade
+  - evidence: upgrade output loop tracks fences and passes fenced lines through; test_upgrade_leaves_fenced_example_lines_alone
   - repro: tracker with a fenced '  - 2026-06-12 note' line; upgrade --apply; read the fence
   - test-tags: UNIT
   - log: 2026-08-28T09:44:20Z @kj added
-- [ ] `DEF-PMGT-39` **add writes a doubled level word when the text repeats it** - MINOR; add --importance HIGH --text 'HIGH; ...' writes HIGH; HIGH; ...; same for --severity on defects; cause add prefixes the level without stripping one already opening the text; fix strip a leading level word before prefixing; pm_tools.py cmd_add
+  - log: 2026-09-26T21:17:16Z @kj closed
+- [x] `DEF-PMGT-39` **add writes a doubled level word when the text repeats it** - MINOR; add --importance HIGH --text 'HIGH; ...' writes HIGH; HIGH; ...; same for --severity on defects; cause add prefixes the level without stripping one already opening the text; fix strip a leading level word before prefixing; pm_tools.py cmd_add
+  - evidence: add strips a leading level word before prefixing; test_add_does_not_double_a_level_word_the_text_opens_with
   - repro: add --severity MAJOR --text 'MAJOR; x'; read the body
   - test-tags: UNIT
   - log: 2026-08-28T09:44:20Z @kj added
+  - log: 2026-09-26T21:17:16Z @kj closed
 - [x] `DEF-PMGT-51` **report SUMMARY grid mixes status with level - the level columns split Open only, yet sit as peers of Open, Done and Rejected** - MAJOR; The SUMMARY header reads | Category | Open | CRITICAL | HIGH | MEDIUM | LOW | Done | Rejected | (Fixed on defects, plus Worked on when a lock is active). Two axes share one row: status (Open, Worked on, Done, Rejected) and level, where the four level cells are a breakdown of the Open column alone and sum to it. Nothing in the table says so - eight count columns render as peers, so a reader takes CRITICAL..LOW as the whole category split by level, sees Done as a fifth level or a second count, and Rejected trailing Done as a lifecycle stage. Observed 2026-09-02 on docs/acc-crit-docdistance.md: the owner read Done as 2+2 against a Total of 13, then asked why severity sits between Open and Done; the explanation needed a five-row legend. The --json shape already keeps the nesting (open, levels, worked_on, closed, rejected per category) - only the markdown flattens it. The layout is documented as intended (pm_tools.py docstring, SKILL.md:189, references/reports.md:21) and pinned by seven header assertions in tests/test_pm_tools*.py, so this is a design defect, not drift
   - evidence: uv run pm-tools report docs/defects-claude-code-plugins.md --summary prints | Category | Open | Fixed | Rejected | Total | and then Open by severity with | Category | CRITICAL | MAJOR | MEDIUM | MINOR | Open |; tests/test_pm_tools.py::test_the_defects_grid_is_plain_open_counts_per_severity asserts '| Open | CRITICAL' absent in every report form; pm-tools suites 190 passed, full suite 1267 passed 2 skipped, ruff clean; ACC-PMREP-122, ACC-PMREP-123
   - test-tags: UNIT
@@ -208,10 +233,14 @@ pm-tools parser, edit, upgrade and reports
   - root-cause: 2026-09-06T16:19:16Z @kj pivot was added to the table without updating the count in the sentence above it
   - log: 2026-09-06T16:19:16Z @kj added
   - log: 2026-09-06T16:25:50Z @kj closed
-- [ ] `DEF-PMGT-62` **refs --id reports a shape-invalid id as absent instead of refusing the shape** - MINOR; cmd_refs is the only --id consumer that skips the norm_id shape validator, so an id carrying markdown code-span backticks - the exact form pm-tools' own tables render - is reported as not present in the scanned files when the item is present. Every sibling surface names the shape instead.
+- [x] `DEF-PMGT-62` **refs --id reports a shape-invalid id as absent instead of refusing the shape** - MINOR; cmd_refs is the only --id consumer that skips the norm_id shape validator, so an id carrying markdown code-span backticks - the exact form pm-tools' own tables render - is reported as not present in the scanned files when the item is present. Every sibling surface names the shape instead.
+  - test-tags: UNIT
+  - evidence: refs refuses an id outside the IDREF shape; test_refs_refuses_a_malformed_id_like_its_siblings
   - repro: uv run pm-tools refs docs/defects-claude-code-plugins.md --id '`DEF-PMGT-60`' prints 'no item with id `DEF-PMGT-60` in the scanned files, and nothing points at it' and exits 1, while refs --id DEF-PMGT-60 exits 0; the same string through list --related-to '`DEF-PMGT-60`' prints '--related-to takes an id like DEF-LNCH-3, got ...'
   - log: 2026-09-06T18:41:49Z @kj added
   - log: 2026-09-06T18:41:57Z @kj root cause: pm_tools.py:3276 dispatches cmd_refs(files, a.id.strip().upper(), a.json), bypassing norm_id (pm_tools.py:861) which all eight write commands route through. Surfaced by the adversarial review's round-7 open list, ruled immaterial there because the pre-change path returned a silent '0 inbound, 0 outbound' at exit 0 - also wrong, but not a positive absence claim. NOT fixed in the sort-contract change: that change reached SHIP on two clean rounds and a further edit would reopen the review.
+  - log: 2026-09-26T21:17:16Z @kj closed
+  - log: 2026-09-26T21:17:53Z @kj edited test-tags added "UNIT"
 - [x] `DEF-PMGT-67` **a newline inside a free-text argument is written verbatim and silently truncated on read** - MAJOR; any write command given a multi-line --text, --title, --event, --evidence, --repro, --test, --reason, --note, --description or cause text writes it verbatim; parse keeps the first line only, list, report and search show only that line, and check stays silent. About twenty argparse free-text arguments share the hole; six say one line in their help and none enforces it
   - evidence: tests/test_pm_tools.py::test_a_line_break_in_free_text_is_written_as_backslash_n passes: add, log and amend given multi-line text; check exits 0; list shows the whole text
   - repro: uv run pm-tools add docs/defects-x.md --category LNCH --title t --text $'first line\nsecond line' --severity MAJOR --author @kj; then list shows the first line and check exits 0
@@ -241,6 +270,10 @@ pm-tools parser, edit, upgrade and reports
   - log: 2026-09-26T19:03:09Z @kj added
   - log: 2026-09-26T19:07:09Z @kj reproduced 2026-09-26 in this repo: the repeat key hashes the whole Bash input, description included, so the same command with a reworded description was denied twice
   - log: 2026-09-26T19:50:13Z @kj closed: fixed: pm-tools ack token from the file plus a logged reason; the hook matches the logged content digest
+- [ ] `DEF-PMGT-79` **edit drops an opening prose word when a level flag is given** - MINOR; edit --severity MAJOR --text 'Normal, degraded mode drops frames' writes 'MAJOR; degraded mode drops frames'; rewrite_head strips any leading level word, so prose opening with one is lost; a fix must also keep stripping a stale 'LEVEL;' heading on re-triage; pm_tools.py rewrite_head
+  - repro: pm-tools edit FILE --id DEF-X-1 --severity MAJOR --text 'Normal, degraded mode drops frames'; read the line
+  - test-tags: UNIT
+  - log: 2026-09-26T22:30:52Z @kj added
 
 ## hypothesis-tools `HYPO`
 
@@ -264,15 +297,20 @@ ledger parser, verdict reading and orphan checks
   - test-tags: UNIT
   - log: 2026-08-28T08:22:13Z @kj added
   - log: 2026-08-28T08:22:13Z @kj closed: fixed
-- [ ] `DEF-HYPO-33` **summary-table example fails check with orphan errors** - MINOR; examples/summary-table.md cites ids from other ledgers so the new table arm reports 5 orphans; SKILL.md says such tables live in the conversation, so check on it is out of contract; fix document or exclude
+- [x] `DEF-HYPO-33` **summary-table example fails check with orphan errors** - MINOR; examples/summary-table.md cites ids from other ledgers so the new table arm reports 5 orphans; SKILL.md says such tables live in the conversation, so check on it is out of contract; fix document or exclude
+  - evidence: shipped summary-table example passes check; test_the_shipped_summary_table_example_passes_check
   - repro: hypothesis-tools check plugins/datascience/skills/hypothesis/examples/summary-table.md
-  - test-tags: MANUAL
+  - test-tags: UNIT
   - log: 2026-08-28T08:22:14Z @kj added
-- [ ] `DEF-HYPO-49` **A summary table written to the skill's own ID-cell spec cannot declare** - MAJOR; the skill prescribes an ID cell carrying the id AND the memory slug (summary-table.md:6, 'E30-H106 turbomind-throughput'), but _table_declarations only accepts a first cell that is exactly one id with nothing else, so such a row declares nothing while TABLE_ID_RE reports it as a failed declaration; a ledger whose hypotheses live only in such a table gets an error per row from check and a refusal from next-id and register
+  - log: 2026-09-26T21:17:16Z @kj closed
+  - log: 2026-09-26T22:12:56Z @kj edited test-tags "MANUAL" -> "UNIT"
+- [x] `DEF-HYPO-49` **A summary table written to the skill's own ID-cell spec cannot declare** - MAJOR; the skill prescribes an ID cell carrying the id AND the memory slug (summary-table.md:6, 'E30-H106 turbomind-throughput'), but _table_declarations only accepts a first cell that is exactly one id with nothing else, so such a row declares nothing while TABLE_ID_RE reports it as a failed declaration; a ledger whose hypotheses live only in such a table gets an error per row from check and a refusal from next-id and register
+  - evidence: an ID cell carrying the id and its memory slug declares; test_an_id_cell_with_its_memory_slug_declares
   - repro: hypothesis-tools check plugins/datascience/skills/hypothesis/examples/summary-table.md - 7 errors, 0 hypotheses; the same file is the skill's own worked example of the format
   - test-tags: FUNCTIONAL
   - root-cause: 2026-09-01T10:33:41Z @kj the at-a-glance table shape was added against sci-demographic-collapse, whose ID cells are bare ids; the shipped example's documented id-plus-slug form was never in that evidence base
   - log: 2026-09-01T10:33:41Z @kj added
+  - log: 2026-09-26T21:17:16Z @kj closed
 
 ## autobuild orchestrator `BUILD`
 
@@ -308,10 +346,13 @@ orchestrate CLI, resources and the TEST phase
   - test-tags: MANUAL
   - log: 2026-08-28T08:22:13Z @kj added
   - log: 2026-08-28T08:22:13Z @kj closed: fixed
-- [ ] `DEF-BUILD-37` **orchestrate end with iterations 0 records no benchmark score** - MEDIUM; the TEST phase in --iterations 0 mode has no way to pass a score, so benchmark_scores stays empty; alternatives --score flag or deleting the mode, decision pending; orchestrator.py cmd_end
+- [x] `DEF-BUILD-37` **orchestrate end with iterations 0 records no benchmark score** - MEDIUM; the TEST phase in --iterations 0 mode has no way to pass a score, so benchmark_scores stays empty; alternatives --score flag or deleting the mode, decision pending; orchestrator.py cmd_end
+  - evidence: orchestrate end --score N appends {iteration, phase, score} to benchmark_scores; TEST phase and autobuild skills name it; test_end_score_is_recorded_and_stops_the_run; test_orchestrator 56 passed
   - repro: orchestrate new --iterations 0; end the TEST phase; read benchmark_scores
-  - test-tags: MANUAL
+  - test-tags: UNIT
   - log: 2026-08-28T08:22:14Z @kj added
+  - log: 2026-09-26T21:13:50Z @kj closed
+  - log: 2026-09-26T22:12:56Z @kj edited test-tags "MANUAL" -> "UNIT"
 
 ## svg-infographics `SVG`
 
@@ -329,10 +370,14 @@ svg-infographics umbrella skill docs and svg_tools
   - test-tags: MANUAL
   - log: 2026-08-28T08:22:14Z @kj added
   - log: 2026-08-28T08:22:14Z @kj closed: fixed
-- [ ] `DEF-SVG-35` **validators exit 0 on findings** - MEDIUM; check_overlaps, check_alignment, check_connectors and check_contrast return 0 with findings printed, so a pipeline cannot gate on them; contrast would fail 27 of 30 shipped examples if made hard, so it needs calibration first; svg_tools
+- [x] `DEF-SVG-35` **validators exit 0 on findings** - MEDIUM; check_overlaps, check_alignment, check_connectors and check_contrast return 0 with findings printed, so a pipeline cannot gate on them; contrast would fail 27 of 30 shipped examples if made hard, so it needs calibration first; svg_tools
+  - evidence: opt-in --strict on overlaps (violation class, spacing, callout, overflow), contrast (text and object FAIL, UNMEASURABLE text), alignment, connectors exits 1 on a finding; default exit 0 kept; test_strict_exits_1_on_findings x4, test_strict_overlaps_ignores_sibling_overlaps, test_strict_contrast_counts_unmeasurable_text
   - repro: run check_contrast on an example; echo \$?
-  - test-tags: MANUAL
+  - test-tags: FUNCTIONAL
   - log: 2026-08-28T08:22:14Z @kj added
+  - log: 2026-09-26T21:16:50Z @kj closed
+  - log: 2026-09-26T22:12:56Z @kj edited test-tags "MANUAL" -> "FUNCTIONAL"
+  - log: 2026-09-26T22:12:56Z @kj edited evidence "opt-in --strict on overlaps (violation class, spacing, callout, overflow), contrast (text and object FAIL), alignment, connectors exits 1 on a finding; default exit 0 kept; test_strict_exits_1_on_findings x4, test_strict_overlaps_ignores_sibling_overlaps" -> "opt-in --strict on overlaps (violation class, spacing, callout, overflow), contrast (text and object FAIL, UNMEASURABLE text), alignment, connectors exits 1 on a finding; default exit 0 kept; test_strict_exits_1_on_findings x4, test_strict_overlaps_ignores_sibling_overlaps, test_strict_contrast_counts_unmeasurable_text"
 - [x] `DEF-SVG-55` **Skill(svg-infographics:svg-infographics) fails with Unknown skill** - MEDIUM; the plugin:plugin form that resolves for datascience, journal, project-management and autobuild had no target in svg-infographics, whose umbrella skill was named svg-designer; a caller following the convention of the other four plugins got Unknown skill and had to discover the real name
   - evidence: skills/svg-infographics/SKILL.md carries name: svg-infographics; test_svg_tools structure check and test_toolchain_gate read the new path; suite 1268 passed, 2 skipped; grep svg-designer over the tree finds only journal history and DEF-SVG-26
   - repro: Skill(skill="svg-infographics:svg-infographics") on plugin 1.7.16 - Error: Unknown skill: svg-infographics:svg-infographics
@@ -388,7 +433,8 @@ Adversarial-review loop: reviewer, adjudicator, workflow script, spec
   - repro: Run the 1.7.7 adversarial-loop.js with findings that produce a non-empty plan; observe src/ modified before the workflow returns
   - log: 2026-08-28T17:36:18Z @kj added
   - log: 2026-08-28T17:36:29Z @kj closed: fixed in 1.7.8: Fix stage deleted; a non-empty plan exits as status PLAN for the main session to apply, re-invocation pinned-confirms the applied delta
-- [ ] `DEF-ADVR-45` **Loop cost - 1.41M tokens over 14 agents for a 300-line target** - MAJOR; wf_a1812379: 77.7 minutes, 14 agents, 1,406,526 tokens; confirm-round reviewers 260-390KB transcripts, adjudicator ~320KB per round, reviewers writing Jest scratch specs and running headless Chrome to verify findings that were immaterial. Every finding was verified at full depth regardless of materiality; the 1.7.7 script had no args.graph so reviewers rediscovered the repo by grep. Rounds 2-3 (about two thirds of the bill) attacked machinery that should never have existed
+- [x] `DEF-ADVR-45` **Loop cost - 1.41M tokens over 14 agents for a 300-line target** - MAJOR; wf_a1812379: 77.7 minutes, 14 agents, 1,406,526 tokens; confirm-round reviewers 260-390KB transcripts, adjudicator ~320KB per round, reviewers writing Jest scratch specs and running headless Chrome to verify findings that were immaterial. Every finding was verified at full depth regardless of materiality; the 1.7.7 script had no args.graph so reviewers rediscovered the repo by grep. Rounds 2-3 (about two thirds of the bill) attacked machinery that should never have existed
+  - evidence: test_bar_must_name_purpose_inputs_and_primary_path, test_materiality_before_severity, test_confirm_reads_the_applied_patch_not_the_whole_delta, test_a_clean_round_ships; 2026-09-26 five-lens confirm rounds cost 171k-412k tokens
   - related: DEF-ADVR-40, DEF-ADVR-42, DEF-ADVR-43
   - repro: Run the loop on a small target with a bar of output guarantees only; read totalTokens from the workflow run json and the per-agent transcript sizes under subagents/workflows/<runId>/
   - log: 2026-08-28T17:36:18Z @kj added
@@ -397,15 +443,20 @@ Adversarial-review loop: reviewer, adjudicator, workflow script, spec
   - log: 2026-08-29T15:57:45Z @kj Held open by decision, not by oversight. Measuring the hardened loop's cost needs a re-run against the original external target (the paste extension), which is a separate campaign outside this repository; the Star Colonel has elected to keep this open rather than name a target now. The fixes that should lower it are shipped and guarded: pinFilter discards taste and out-of-delta confirm findings, capImmaterial forces immaterial findings to MINOR, the fanout streak counts only refining rounds, and the confirm round is pinned to the applied delta
   - log: 2026-08-29T16:27:34Z @kj MEASURED on copier-tui (wf_2ce1c6b3-868, 2026-08-29): 19 agents, 0 errors, 1,214,188 tokens, 205 tool calls, 17.6 min wall clock, one invocation, exit PLAN with 2 changes. Verdict: the 1.7.9 hardening fixed WHAT the loop spends on, not HOW MUCH. Pre-fix the run burned most of 1.4M refining a non-issue; this run raised 11 findings, refuted or deferred 9 as immaterial, planned 2 changes with empirical verification and zero reverts. But one round now costs 86 percent of what the entire pre-fix campaign cost, so cost is NOT closed. Attribution by role: materiality skeptics 15 agents / 764,792 tokens / 63 percent; lens reviewers 3 agents / 360,823 / 30 percent; adjudicator 1 / 88,573 / 7 percent. Token burn is therefore dominated by the skeptic-per-finding fan-out, and latency by the slowest single lens (12.5 min of a 17.6 min wall clock). Caveat on comparability: different repository and a single invocation, so this is per-round cost of the hardened loop, not a like-for-like rerun of the paste-extension campaign
   - log: 2026-09-13T10:09:24Z @kj lab-mounts forensics 2026-09-06 (galaxahub, 6 rounds, 30 agents, 4,021,904 tokens, 57.5 min) ran a copy of the 1.7.8 script, so it does not measure the current loop and does not close this; the waste it shows is filed as DEF-ADVR-63 to DEF-ADVR-66
+  - log: 2026-09-26T21:04:48Z @kj closed: fixed by the causes' removal: output-only bar refused, materiality triage and cap, args.graph, pinned confirms reading patches, settled filter, one panel per invocation
 - [x] `DEF-ADVR-46` **FANOUT_STOP pre-empts an adjudicated-clean round** - MAJOR; The script evaluates the fanout streak before the clean check, so a confirming round the adjudicator rules clean (empty plan, every finding refuted) still exits FANOUT_STOP when its findings sat on the previous delta. Found by running the loop on its own change set (wf_f61c8fde-144, round 3: PROCEED, 0 changes, 3 refuted, fanout 3/3 -> FANOUT_STOP instead of SHIP with cleanRequired 1). Fanout is evidence only while the adjudicator keeps ordering changes; a clean ruling means the loop stopped generating work
   - evidence: tests/test_adversarial_workflow_script.py::test_gates_present asserts 'fanout > 0.5 && refining'; 17 passed
   - repro: Run a pinned confirm whose findings all sit in the applied delta and have the adjudicator refute them all; the script returns FANOUT_STOP, not a clean round
   - log: 2026-08-29T09:55:42Z @kj added
   - log: 2026-08-29T09:55:42Z @kj closed: fixed: highFanoutStreak advances only when the adjudication ordered changes or reverts (const refining); spec invariant 5 reworded
-- [ ] `DEF-ADVR-47` **a dead reviewer panel is read as a clean round** - CRITICAL; mergeFindings maps a null agent return (agent died, terminal API error, skipped) to an empty findings list, so a round in which every reviewer died produces findings=[], skips adjudication entirely and exits SHIP - the loop reports a clean review it never performed
+- [x] `DEF-ADVR-47` **a dead reviewer panel is read as a clean round** - CRITICAL; mergeFindings maps a null agent return (agent died, terminal API error, skipped) to an empty findings list, so a round in which every reviewer died produces findings=[], skips adjudication entirely and exits SHIP - the loop reports a clean review it never performed
+  - test-tags: UNIT
+  - evidence: test_a_panel_that_returned_nothing_ends_panel_died_not_ship: two null reviewers end PANEL_DIED, never SHIP; test_a_dead_panel_is_never_a_clean_round; 35 script tests pass
   - repro: Construct or run the loop with an agentType that does not resolve in the session (e.g. 'devils-advocate:adversarial-reviewer' when the plugin agents are not registered). All lens agents error; parallel/pipeline yield null; the run returns status SHIP with findings 0. Observed live as wf_00afc000-19a: 3 agents, 3 errored, 0 tokens, 82ms, returned {"status":"SHIP","note":"no findings survived the materiality skeptics"}
   - log: 2026-08-29T16:06:00Z @kj added
   - log: 2026-08-29T18:30:38Z @kj guarantee recorded as ACC-REVIEW-80 - the criterion the loop spec requires for every invariant; this defect is its discovery record
+  - log: 2026-09-26T21:04:38Z @kj closed: fixed earlier (panelDied and the PANEL_DIED return); closed on a behavioural test
+  - log: 2026-09-26T21:17:53Z @kj edited test-tags added "UNIT"
 - [x] `DEF-ADVR-48` **the constructed-loop invariant check produces no artifact, so the supplied script wins on perceived safety** - MAJOR; The spec routes a harness WITH the dynamic Workflow capability to construct the loop from loop-spec.md, and names running the shipped adversarial-loop.js by path 'the fallback route taken by mistake'. Its mitigation for the risk of construction - 'check the script against the spec's invariant list one by one before running it' (SKILL.md:52), 'verifies it against the invariant list' (loop-spec.md:64) - produces NO observable artifact, so it can be skipped silently and cannot be shown to have happened. The shipped script meanwhile carries 22 passing tests, so the fallback route is the one that feels provably safe and the instructed route feels like a memory test. A capable session weighing 127 lines of same-evening protocol churn takes the script. Two alternative causes were tested and are NOT supported: prominence ('construct' 37 times across the plugin markdown against 6 mentions of the script path, 4 of those 6 inside the same sentence as the construct rule) and skill length (SKILL.md 146 lines / 2259 words, routing at line 49 under its own heading, 654 words in, progressive disclosure already across 8 reference files)
   - evidence: tests/test_adversarial_workflow_script.py::test_the_invariant_check_produces_an_artifact - 23 passed in that file, suite 1190 passed + 1 skipped, ruff clean. Guard proven non-vacuous: restoring the old wording 'check the script against the spec's invariant list one by one' fails it on the skill surface, restoring the map passes
   - test-tags: UNIT
@@ -426,9 +477,13 @@ Adversarial-review loop: reviewer, adjudicator, workflow script, spec
   - log: 2026-09-02T06:17:20Z @kj edited test-tags (added)
   - log: 2026-09-02T06:17:20Z @kj closed
   - log: 2026-09-02T06:52:39Z @kj survived the architect + bug-hunter loop constructed from the updated spec (wf_812326e5-afd round 1: 8 findings, 1 MAJOR, PLAN with 2 changes, converging; wf_5c7c86a1-d53 rounds 2-3: adjudicated clean twice, converging, SHIP). The round-1 MAJOR was this fix's own leftover - the advisory 'fanout above 0.5 ... veto at PLAN or revert by hand' log line and the ratio const still steered the operator by the removed ratio; deleted with its two test pins. The new gate ran live: three adjudications each carried trajectory + reason, spiralStreak stayed 0
-- [ ] `DEF-ADVR-52` **loop-spec status list omits PANEL_DIED** - MINOR; references/loop-spec.md line 60 lists the loop statuses as PLAN, SHIP, STOP, FANOUT_STOP, ROUND_CAP and ADJUDICATOR_DIED; adversarial-loop.js also returns PANEL_DIED (every reviewer in a panel died - the round reviewed nothing) and tests/test_adversarial_workflow_script.py pins it, so a loop constructed from the spec's status list omits the dead-panel status. Pre-existing since the DEF-ADVR-47 fix; surfaced by the round-1 review of DEF-ADVR-50 (wf_812326e5-afd) and deferred there as outside that fix
+- [x] `DEF-ADVR-52` **loop-spec status list omits PANEL_DIED** - MINOR; references/loop-spec.md line 60 lists the loop statuses as PLAN, SHIP, STOP, FANOUT_STOP, ROUND_CAP and ADJUDICATOR_DIED; adversarial-loop.js also returns PANEL_DIED (every reviewer in a panel died - the round reviewed nothing) and tests/test_adversarial_workflow_script.py pins it, so a loop constructed from the spec's status list omits the dead-panel status. Pre-existing since the DEF-ADVR-47 fix; surfaced by the round-1 review of DEF-ADVR-50 (wf_812326e5-afd) and deferred there as outside that fix
+  - test-tags: UNIT
+  - evidence: loop-spec.md statuses name PANEL_DIED; test_the_spec_names_every_status_the_script_returns, test_a_panel_that_returned_nothing_ends_panel_died_not_ship
   - repro: grep -n PANEL_DIED plugins/devils-advocate/skills/adversarial-review/references/loop-spec.md returns nothing; grep -n PANEL_DIED plugins/devils-advocate/skills/adversarial-review/workflows/adversarial-loop.js returns two return sites
   - log: 2026-09-02T06:33:55Z @kj added
+  - log: 2026-09-26T21:17:16Z @kj closed
+  - log: 2026-09-26T21:17:54Z @kj edited test-tags added "UNIT"
 - [x] `DEF-ADVR-53` **review-tools dossier finds no subcommands on Python 3.12 - the help probe reads only quoted choices** - MAJOR; help_subcommands runs the console script with a probe subcommand and parses argparse's invalid-choice error for the choice list with the regex '([\w-]+)', which needs quotes around each name. Python 3.12.13 prints the list bare - (choose from run, fly) - while 3.11.14 and 3.13.15 print 'run', 'fly', so on 3.12 the probe returns an empty set, the --help fallback never runs, and the dossier reports every console script as defining no subcommands and every advertised command as undefined. CI: test (3.12) red on tests/test_review_tools.py::test_cli_surface_reads_flags_and_help_finds_the_loop_built_subcommand (assert [] == ['fly', 'run']) and ::test_advertised_surface_counts_code_spans_not_prose (assert [] == ['soar']) on release runs 33579299161 (v1.7.15) and 33601564782 (v1.7.16); 3.11 and 3.13 green
   - evidence: help_subcommands splits the choice list on commas and strips quotes, accepting both renderings; tests/test_review_tools.py::test_help_probe_reads_bare_and_quoted_choice_lists feeds a module printing each shape and expects {'run','fly'}; the review-tools file passes 14/14 on a scratch 3.12.13 venv built like CI and on 3.13.15
   - test-tags: UNIT
@@ -486,11 +541,13 @@ Adversarial-review loop: reviewer, adjudicator, workflow script, spec
   - log: 2026-09-21T12:25:09Z @kj added
   - log: 2026-09-21T12:25:16Z @kj closed
   - log: 2026-09-21T12:25:28Z @kj edited repro (replaced) and evidence (replaced)
-- [ ] `DEF-ADVR-71` **a heuristic's miss on one input is rated a material finding** - MAJOR; groundrails review 2026-09-25/26: 56 of 113 findings material, 39 remedies edit a regex arm or word list for one input; forensics `docs/forensics/2026-09-26-groundrails-adversarial-review.md`; `adversarial-loop.js`, `agents/adversarial-reviewer.md`
+- [x] `DEF-ADVR-71` **a heuristic's miss on one input is rated a material finding** - MAJOR; groundrails review 2026-09-25/26: 56 of 113 findings material, 39 remedies edit a regex arm or word list for one input; forensics `docs/forensics/2026-09-26-groundrails-adversarial-review.md`; `adversarial-loop.js`, `agents/adversarial-reviewer.md`
+  - evidence: replay wf_aa37307f-f3c (tmp/experiments/adjudicator-replay/report.md): pre-existing heuristic misses F11, F17 filed as defects 6/6 with old adjudicator text, refuted as rate failure modes 6/6 with new; per run 3/3 vs 0/3, Fisher p = 0.10; test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism
   - repro: review a regex-tier grounder under a bar that lists every text shape; each misread sample returns MAJOR with a special-case remedy
   - test-tags: UNIT
   - root-cause: 2026-09-26T18:41:37Z @kj the bar has no field for statistical or heuristic components, so every listed input shape is in scope and every miss is material
   - log: 2026-09-26T18:41:37Z @kj added
+  - log: 2026-09-26T21:10:36Z @kj closed
 - [x] `DEF-ADVR-72` **data-scientist lens never flags a rule fitted to its own counterexample** - MAJOR; groundrails remedies were verified on the input that motivated them ('both repro cases clear'); 0 of 113 findings mention overfitting; `adversaries/data-scientist.md`
   - evidence: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism reads axis 9; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
   - repro: review a diff that adds a regex arm for one reported input and tests only that input; no finding names overfitting

@@ -95,6 +95,8 @@ COMPACT_RE = re.compile(rf"^\s*[-*+]\s+\*\*\s*{_ID}\b(?P<slug>[^*]*)\*\*\s*(?:[-
 # token means it is part of a longer word and not an id.
 ID_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9])([ER]\d+)-H(\d+)")
 TABLE_ID_RE = re.compile(r"^\s*\|\s*[*_]{0,4}\s*([ER]\d+)-H(\d+)")
+# the memory slug an ID cell may carry beside the id (`E30-H106 turbomind-throughput`)
+MEMORY_SLUG_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+){1,2}")
 # One home for everything that may sit between the margin and a declaration:
 # blockquote markers, any list marker, a task-list checkbox. Chasing these one
 # decoration at a time is how three rounds of regressions happened; the prefix
@@ -438,8 +440,9 @@ def _table_declarations(lines: list[str]) -> dict[int, tuple[str, str, dict[str,
     A real ledger's at-a-glance table (`| id | claim | evidence | verdict |`)
     is the only declaration some hypotheses ever get - in one real store it is
     the only declaration most of them ever get. A row declares when the table's header maps to
-    hypothesis fields AND the row's first cell is exactly one id; everything
-    else stays a citation.
+    hypothesis fields AND the row's first cell is exactly one id, alone or with
+    the 2-3 part memory slug summary-table.md puts beside it; everything else
+    stays a citation.
     """
     out: dict[int, tuple[str, str, dict[str, str]]] = {}
     headers: list[str] | None = None
@@ -458,7 +461,8 @@ def _table_declarations(lines: list[str]) -> dict[int, tuple[str, str, dict[str,
         if not headers or _TABLE_SEP_RE.match(line):
             continue
         ids = ID_TOKEN_RE.findall(cells[0])
-        if len(ids) != 1 or ID_TOKEN_RE.sub("", cells[0]).strip(" `*_"):
+        rest = ID_TOKEN_RE.sub("", cells[0]).strip(" `*_")
+        if len(ids) != 1 or (rest and not MEMORY_SLUG_RE.fullmatch(rest)):
             continue  # several ids, or prose around the id - a citation row
         hid = f"{ids[0][0]}-H{int(ids[0][1])}"
         fields: dict[str, str] = {}
@@ -466,7 +470,7 @@ def _table_declarations(lines: list[str]) -> dict[int, tuple[str, str, dict[str,
             name = _table_field(header)
             if name and cell and name not in fields:
                 fields[name] = cell
-        out[i] = (hid, fields.get("Hypothesis", ""), fields)
+        out[i] = (hid, rest or fields.get("Hypothesis", ""), fields)
     return out
 
 

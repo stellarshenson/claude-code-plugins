@@ -745,6 +745,19 @@ def test_a_timing_table_declares_nothing(tmp_path, capsys):
     assert "E1-H9" in capsys.readouterr().err
 
 
+
+def test_an_id_cell_with_its_memory_slug_declares():
+    """DEF-HYPO-49. summary-table.md puts the 2-3 part memory slug beside the id
+    (`E30-H106 turbomind-throughput`); the parser read that cell as prose around a
+    citation, so every such row declared nothing and check failed it."""
+    text = (
+        "| ID | Hypothesis under test (claim) | Verdict |\n|---|---|---|\n"
+        "| E30-H106 turbomind-throughput | TurboMind out-serves vLLM | pending |\n"
+        "| E30-H107 see E30-H106 | two ids make a citation | pending |\n"
+        "| E30-H108 is refuted here | prose beside the id is a citation | pending |\n"
+    )
+    assert [(h.hid, h.slug) for h in parse_ledger(text)] == [("E30-H106", "turbomind-throughput")]
+
 def test_a_full_block_outranks_its_table_row():
     text = AT_A_GLANCE + "\n### E14-H47 a-bundle-reverses\n\n- **Verdict** - Confirmed; +129%\n"
     h47 = next(h for h in parse_ledger(text) if h.hid == "E14-H47")
@@ -2064,3 +2077,9 @@ def test_attach_records_checksum_and_edit_stamp_and_check_reports_drift(tmp_path
     )
     assert "attachment not found" in capsys.readouterr().err
     assert p.read_text(encoding="utf-8").count("- attachment:") == 3, "nothing written"
+
+
+def test_the_shipped_summary_table_example_passes_check():
+    """DEF-HYPO-33. The skill's own worked example of the summary table failed check
+    with 7 errors and 0 hypotheses; its id-plus-slug rows now declare."""
+    assert main(["check", str(EXAMPLES / "summary-table.md")]) == 0

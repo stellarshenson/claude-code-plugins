@@ -12,7 +12,7 @@
     "3",
     "--no-session-persistence"
   ],
-  "stdout": "PASS: Basic arithmetic confirms 2 + 2 = 4.\n",
+  "stdout": "PASS: 2 + 2 equals 4 by basic integer addition.\n",
   "stderr": "",
   "returncode": 0
 }

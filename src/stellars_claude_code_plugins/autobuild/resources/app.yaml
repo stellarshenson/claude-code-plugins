@@ -368,6 +368,7 @@ cli:
     evidence: "Brief execution report for gatekeeper"
     agents: "Comma-separated agent names spawned in this phase"
     output_file: "Path to file with phase output (resolved to absolute)"
+    score: "Benchmark score for this iteration, lower is better; --iterations 0 stops at 0"
     reason: "What needs fixing"
     skip_reason: "Why skipping"
     force: "Force-skip a REQUIRED phase (conservative gatekeeper)"

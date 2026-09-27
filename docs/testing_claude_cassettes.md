@@ -36,7 +36,7 @@ Adding a new scenario:
 
 ## Model choice at record time
 
-The standardize prompts trigger the default-model usage-policy refusal (`"violate our Usage Policy"`) on benign technical content — this is exactly the soft-landing case the slash command + CLI handle in production. For RECORDING, pass `model="claude-sonnet-4-20250514"` to `spawn()` so the cassette captures a parseable response. The retry logic itself is tested via synthetic mocks in `test_journal_tools.py::TestSpawnSubprocessSoftLanding`, which mocks the refusal text directly without needing a recorded refusal cassette.
+The standardize prompts trigger the default-model usage-policy refusal (`"violate our Usage Policy"`) on benign technical content — this is exactly the soft-landing case the slash command + CLI handle in production. For RECORDING, pass `model="sonnet"` to `spawn()` (the alias; `claude-sonnet-4-20250514` was retired on 2026-06-15) so the cassette captures a parseable response. The retry logic itself is tested via synthetic mocks in `test_journal_tools.py::TestSpawnSubprocessSoftLanding`, which mocks the refusal text directly without needing a recorded refusal cassette.
 
 The orchestrator's `_claude_evaluate` PASS/FAIL prompts do not hit the refusal — record those with default model.
 

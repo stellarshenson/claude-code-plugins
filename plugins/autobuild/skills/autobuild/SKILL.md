@@ -75,7 +75,7 @@ orchestrate new --type full \
 
 Orchestrator reads structured objective at each phase. Benchmark tracks progress. TEST phase verifies each checklist item against codebase, reports violation count.
 
-`--iterations 0` runs until score = 0 (all conditions met). Safety cap: 20 iterations.
+`--iterations 0` runs until score = 0 (all conditions met). The TEST phase records the score with `orchestrate end ... --score N`. Safety cap: 20 iterations.
 
 ### `new` command flags
 

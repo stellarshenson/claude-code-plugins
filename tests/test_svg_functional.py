@@ -729,6 +729,34 @@ class TestCliGrammar:
         for sub in ("scaffold", "workflow", "map"):
             assert sub in r.stdout
 
+    @pytest.mark.parametrize("validator", ["overlaps", "contrast", "alignment", "connectors"])
+    def test_strict_exits_1_on_findings(self, validator, tmp_path):
+        """DEF-SVG-35: the validators exit 0 with findings printed, so a pipeline
+        cannot gate on them. --strict is opt-in; the default exit stays 0."""
+        findings = "plugins/svg-infographics/examples/arrow_patterns.svg"
+        clean = tmp_path / "empty.svg"
+        clean.write_text('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"></svg>')
+        assert run_cli(validator, "--svg", findings).returncode == 0
+        assert run_cli(validator, "--svg", findings, "--strict").returncode == 1
+        assert run_cli(validator, "--svg", clean, "--strict").returncode == 0
+
+    def test_strict_contrast_counts_unmeasurable_text(self, tmp_path):
+        """Text the checker could not judge is not clean, as in finalize."""
+        svg = tmp_path / "u.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">'
+            "<style>.t{fill:var(--fg)}</style>"
+            '<rect x="0" y="0" width="200" height="100" fill="#ffffff"/>'
+            '<text class="t" x="20" y="50" font-size="14">unjudged</text></svg>'
+        )
+        assert run_cli("contrast", "--svg", svg).returncode == 0
+        assert run_cli("contrast", "--svg", svg, "--strict").returncode == 1
+
+    def test_strict_overlaps_ignores_sibling_overlaps(self):
+        """Only the violation class is a finding; this banner has 2 sibling overlaps."""
+        banner = "plugins/svg-infographics/examples/header_banner_nexus.svg"
+        assert run_cli("overlaps", "--svg", banner, "--strict").returncode == 0
+
 
 class TestArrowheadAxisFunctional:
     """The arrowhead must continue the stroke that stops short of it.

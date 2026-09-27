@@ -686,7 +686,8 @@ def apply_condense_body(text: str, entry: JournalEntry, new_body: str) -> str:
 _STANDARDIZE_CLEAN_COMMENT_RE = re.compile(r"<!--\s*standardize-clean:\s*\d{4}-\d{2}-\d{2}\s*-->")
 
 _USAGE_POLICY_REFUSAL = "violate our Usage Policy"
-_SONNET_4_MODEL = "claude-sonnet-4-20250514"
+# an alias, not a dated id: the dated Sonnet 4 id was withdrawn on 2026-06-15 (DEF-JRNL-78)
+_FALLBACK_MODEL = "sonnet"
 _SUBPROCESS_TIMEOUT_SECONDS = 180
 
 
@@ -732,9 +733,9 @@ def _spawn_standardize_subprocess(
     standardize decisions are one-shot and never resumed, so persisting
     them is pure noise (one extra file per entry, 17+ per sweep).
     On ``violate our Usage Policy`` in the first response, retries once
-    with ``--model claude-sonnet-4-20250514`` (sonnet-4 has a different
-    safety profile and clears benign technical content the default
-    model occasionally flags). Two refusals -> return None.
+    with ``--model sonnet`` (a different model's safety profile often clears
+    benign technical content the default model flags). Two refusals ->
+    return None.
     """
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
     base_args = [
@@ -765,7 +766,7 @@ def _spawn_standardize_subprocess(
 
     try:
         retry = subprocess.run(
-            base_args + ["--model", _SONNET_4_MODEL],
+            base_args + ["--model", _FALLBACK_MODEL],
             env=env,
             capture_output=True,
             text=True,
@@ -1031,7 +1032,11 @@ def main(argv: list[str] | None = None) -> int:
     # sort
     p_sort = sub.add_parser("sort", help="Re-number entries sequentially.")
     p_sort.add_argument("path", help="Path to JOURNAL.md")
-    p_sort.add_argument("--start-from", type=int, default=1, help="Starting number (default: 1)")
+    p_sort.add_argument(
+        "--start-from",
+        type=int,
+        help="Starting number (default: the lowest entry number, so an archived journal keeps its numbering)",
+    )
     p_sort.add_argument(
         "--dry-run",
         action="store_true",
@@ -1045,7 +1050,7 @@ def main(argv: list[str] | None = None) -> int:
         description=(
             "Four modes. --all is the recommended happy path - walks every "
             "flagged entry, spawns one focused `claude -p` subprocess per "
-            "decision (with sonnet-4 fallback on usage-policy refusal), "
+            "decision (with a sonnet fallback on usage-policy refusal), "
             "applies via the CLI, validates at the end. The other three "
             "are the manual procedure the /journal:standardize slash "
             "command used pre-`--all`: (1) --list emits a JSON array of "
@@ -1154,7 +1159,8 @@ def main(argv: list[str] | None = None) -> int:
         if not entries:
             print("ERROR: no entries parsed; refusing to rewrite the journal", file=sys.stderr)
             return 1
-        sorted_entries = sort_entries(entries, start_from=args.start_from)
+        start = args.start_from if args.start_from is not None else min(e.number for e in entries)
+        sorted_entries = sort_entries(entries, start_from=start)
         # Preserve the header and any non-entry content before first entry
         header_end = 0
         lines = text.split("\n")

@@ -51,7 +51,7 @@ For every remaining entry (`decide` or `condense`):
 journal-tools standardize .claude/JOURNAL.md --prompt <N> > /tmp/standardize-<N>.prompt.txt
 ```
 
-**3b. Spawn a focused `claude -p` subprocess** with the CLAUDECODE env var stripped (otherwise the SDK enters degraded mode and hangs on file ops - see the `acp` skill's "Critical: Strip CLAUDECODE Env Var" rule). Add `--no-session-persistence` so each one-shot subprocess does not write a JSONL session file under `~/.claude/projects/<slug>/` (these are unresumable single-decision calls — persisting them accumulates one extra file per entry, 17+ per sweep). Try the default model first; on a usage-policy refusal, retry once with `claude-sonnet-4-20250514` (soft landing — Sonnet 4 has a different safety profile and clears benign technical content the default model occasionally flags as policy-violating). Suppress stderr (`2>/dev/null`) so harmless "no stdin data received" warnings don't leak into the decision file:
+**3b. Spawn a focused `claude -p` subprocess** with the CLAUDECODE env var stripped (otherwise the SDK enters degraded mode and hangs on file ops - see the `acp` skill's "Critical: Strip CLAUDECODE Env Var" rule). Add `--no-session-persistence` so each one-shot subprocess does not write a JSONL session file under `~/.claude/projects/<slug>/` (these are unresumable single-decision calls — persisting them accumulates one extra file per entry, 17+ per sweep). Try the default model first; on a usage-policy refusal, retry once with `--model sonnet` (soft landing — another model's safety profile often clears benign technical content the default model flags as policy-violating; the alias keeps working when a dated model id is retired). Suppress stderr (`2>/dev/null`) so harmless "no stdin data received" warnings don't leak into the decision file:
 
 ```bash
 # Attempt 1: default model.
@@ -62,13 +62,13 @@ env -u CLAUDECODE claude -p "$(cat /tmp/standardize-<N>.prompt.txt)" \
   --no-session-persistence \
   > /tmp/standardize-<N>.decision.txt 2>/dev/null
 
-# Soft landing: on "violate our Usage Policy" refusal, retry with claude-sonnet-4.
+# Soft landing: on "violate our Usage Policy" refusal, retry with the sonnet alias.
 if grep -q "violate our Usage Policy" /tmp/standardize-<N>.decision.txt; then
   env -u CLAUDECODE claude -p "$(cat /tmp/standardize-<N>.prompt.txt)" \
     --output-format text \
     --dangerously-skip-permissions \
     --max-turns 3 \
-    --model claude-sonnet-4-20250514 \
+    --model sonnet \
     --no-session-persistence \
     > /tmp/standardize-<N>.decision.txt 2>/dev/null
 fi

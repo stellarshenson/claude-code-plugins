@@ -58,7 +58,7 @@ If PROGRAM.md and BENCHMARK.md already exist, skip to step 3:
 ```bash
 /autobuild:run new --type full --objective "..." --iterations N [--benchmark "..."]
 /autobuild:run start --understanding "brief summary"
-/autobuild:run end --evidence "what was done" --agents "a,b,c" --output-file "path"
+/autobuild:run end --evidence "what was done" --agents "a,b,c" --output-file "path" [--score N]
 /autobuild:run status
 /autobuild:run skip --reason "why" [--force]
 /autobuild:run reject --reason "what needs fixing"
