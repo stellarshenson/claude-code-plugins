@@ -1,0 +1,567 @@
+{
+  "summary": "old vs new adjudicator text on one groundrails round, three runs each",
+  "agentCount": 6,
+  "logs": [],
+  "result": [
+    {
+      "arm": "old",
+      "i": 1,
+      "ruling": {
+        "ruling": "PROCEED_WITH_DEFERRALS",
+        "changes": [
+          {
+            "answers": [
+              "F2 whole-range comparison marks '2019-2020 season' CONTRADICTED against '2019-20 season' (entity_check.py:661)",
+              "F10 '2020-21' against '2020-2021' graded CONTRADICTED (entity_check.py:250)",
+              "F16 '5--10' against '5-10' graded CONTRADICTED (entity_check.py:148)",
+              "F12 range strings entering numeric_mismatches and the fitted lexical features (dissolved)"
+            ],
+            "site": "src/groundrails/entity_check.py: the whole-range comparison block at the end of find_numeric_mismatches (delta lines 648-668) and `_year_span_key` (lines 250-256), which has no callers once the block is gone",
+            "change": "Delete the whole-range comparison block and the orphaned `_year_span_key`. This returns range handling in find_numeric_mismatches to 65451f1: range ends are range parts and never pin a contradiction. Keep `_compounds`, the signed ends, the spaced-dash rule and `_merged_numbers`, because check_consistency uses them. Delete `TestNumericAgreementLimits.test_changes_are_compared_whole`. In the tracker, reopen DEF-NUMBER-34 scoped to 'a change from X to Y against a different change is not contradicted' (MINOR), and mark DEF-NUMBER-44 superseded, since no whole-range comparison is left to disagree on order. Nothing smaller holds. The mechanism answers a MINOR recall defect and already has three families of false CONTRADICTED from notation alone: reversed spans (DEF-NUMBER-44, patched inside this delta), abbreviated spans (F2/F10; '1999-00' against '1999-2000' also reproduces) and the doubled hyphen (F16). Refining it takes an unmeasured new normalisation pass (year expansion with century rollover) plus a separate separator edit, and it leaves the family open. Verified on a scratch tree (65451f1 + r8-delta.patch + this removal): F2, F10 and F16 return HEAD's fuzzy verdict with no mismatch.",
+            "radius": "find_numeric_mismatches → find_mismatches (lexical.py:343, lexical.py:373, grounding.py:1257) and grounding.py:1744; `_year_span_key` had only the 2 call sites inside the removed block. Source of the radius: grep over the reconstructed tree. The named graph.json (2026-09-25 04:45) predates base 65451f1 and this delta, so it is stale. Scratch suite: 504 passed, 2 skipped; the only failures are the three tests that pin the removed rules (this one plus C2 and C3). What it may break: it loses measured recall, namely the 32 VitaminC contradictions the rule added (81% REFUTES) and the PsiloQA year-span conflicts. 'fell from 200 to 150 ms' against '200 to 120 ms' and '-5 to 10 C' against '5 to 10 C' go back to not contradicted. That is HEAD behaviour and a missed contradiction, which is not the bar's worst class.",
+            "newMechanism": false
+          },
+          {
+            "answers": [
+              "F4 lettered outline prefix strips 'E.' from 'E. coli' and splits hard-wrapped lines (extract.py:191)",
+              "F22 roman-numeral half of test_outline_items_stay_apart (dissolved)"
+            ],
+            "site": "src/groundrails/extract.py:191 `_LIST_PREFIX_RE`",
+            "change": "Remove the `[A-Za-z][.)]` and `[IVX]+\\.` arms, which restores `^\\s*(?:[-*+]|\\d+[.)])\\s+` from 65451f1. Keep the `lstrip(\"> \")` change at line 498 (DEF-CLAIM-38). Delete `test_outline_items_stay_apart` and reopen DEF-CLAIM-45 (MINOR). The reviewer proposed a capital-next lookahead on the letter arm; that is not terminal, because the roman arm also strips 'V. cholerae' → 'cholerae infections rose 12% in 2023.' and 'X. laevis' (both reproduced). The rule answers a MINOR defect and had 0 changed units in the held-out test, so removal is smaller than refinement. Verified on the scratch tree: 'E. coli ...', 'V. cholerae ...' and the hard-wrapped 'C. difficile' document each come back as one whole claim.",
+            "radius": "_strip_markdown_noise (extract.py:232) and the walker's list-item break (extract.py:498). Nothing outside extract.py reads `_LIST_PREFIX_RE`. What it may break: lettered outline items weld again ('... in March B.', DEF-CLAIM-45 as at HEAD).",
+            "newMechanism": false
+          },
+          {
+            "answers": [
+              "F3 opening-parenthesis boundary drops or cuts a sentence after Ph.D., B.Sc., Mt., etc. (extract.py:70)"
+            ],
+            "site": "src/groundrails/extract.py:70-73 `_SENT_SPLIT_RE` lookahead character class and extract.py:149-150 (the `shaped and text.startswith(\"(\")` exemption)",
+            "change": "Remove `(` from the lookahead class `[\"'“‘(]`, and delete the exemption line, which has no purpose once the arm is gone. Keep the citation-marker `tail` group, the half of DEF-CLAIM-41 that stays fixed. Delete `test_sentence_in_brackets_is_its_own_claim` and reopen DEF-CLAIM-41 (MEDIUM), with a note that the citation-marker half remains fixed. Widening `_ABBREV_SHAPE_RE` is not the smaller change. That regex also gates the held-out-validated DEF-CLAIM-39/40 rejoin, and every abbreviation outside the list (Ph.D., M.Sc., etc., Mt., Dept., Univ.) keeps the cut reachable. The prior review loop already removed the opening-bracket arm once for the same failure ('4 p.m. (EST)', recorded under DEF-CLAIM-28), so this site has contested semantics: revert it rather than refine it a third time. Verified on the scratch tree: 'She earned a Ph.D. (Stanford) ...' and 'etc. (Table 2) ...' each stay one claim, and the DEF-CLAIM-39/40 repros still stay whole.",
+            "radius": "_split_sentences → _split_document (extract.py:441) only. chunking.py and grounding.py keep their own splitters. What it may break: a sentence that opens with '(' welds to the sentence before it (DEF-CLAIM-41, MEDIUM, HEAD behaviour).",
+            "newMechanism": false
+          }
+        ],
+        "reverts": [],
+        "deferred": [
+          "F9 CRLF fence regex (extract.py:403): CONFIRMED regression. On the CRLF form of the quoted document, the HTML comment becomes a claim graded contradicted [('900','1200')]; the LF form and 65451f1 both give 2 exact claims. Deferred over the budget because it has the rarest trigger among the confirmed worst-class findings: a CRLF string passed directly, plus a fenced block, plus a later comment that carries a conflicting number. The fix is the two `\\r?` fragments at lines 403-404 and adds no new mechanism; it is first in the next round's queue. Still live: comments after a fenced block in CRLF strings become claims (extract_claims_from_file is unaffected).",
+          "F5 currency comparative (entity_check.py:110-116): CONFIRMED regression. 'cover $5 million' against '$7 million' is now fuzzy, and 65451f1 returns contradicted [('5','7')]; 'launder' and 'turnover' reproduce the same way. This is a missed contradiction, not the bar's worst class, so it is deferred on budget. The fix is a leading `\\b` on the word quantifiers in `_COMPARATIVE_RE`, with no new mechanism, second in the queue. Also record the design-data FAIL on HaluEval summarisation in DEF-NUMBER-46's evidence. The direction-blind bound ('under $5 million' against '$7 million') is pre-existing for plain numbers and is not part of this fix. Still live: money amounts after cover, launder or turnover read as bounds.",
+          "F1 Latin re-check (lexical.py:458-467): CONFIRMED. Four PsiloQA train/validation answers (ca 210 chars, ca 176, sv 1497, sv 299) read 'la' at 65451f1 and 'en' now. The proposed revert is rejected because it restores a worse error. At 65451f1 on the HIGH tier, 'Hypoglycaemia is the principal adverse effect.' against English evidence raises UnsupportedLanguageError('la'); with the delta it grounds 'exact' (reproduced offline). A revert would bring back that crash on English input, the bar's worst class, to recover a warning on 4 of 328 Latin reads out of 50,142 non-English answers. Adjusting `_LATIN_ENGLISH_MIN` is a threshold change, so measure first: English-confidence distribution of the PsiloQA train/validation Latin reads against the English Latin reads. Reopen DEF-CLAIM-37's evidence: '0 of 13,998 stop warning' could not have failed, because that corpus holds 0 Latin reads. Still live: about 1.2% of Latin-read non-English documents get no warning.",
+          "F11 title abbreviations Gov./Sen. (extract.py:106): CONFIRMED but pre-existing. 65451f1 cuts both sentences identically, so this delta did not regress it. File it as a new defect. Moving the 16 titles into `_ABBREV_BEFORE_RE` adds no new mechanism and suits a later round; its risk is welding sentences that really end in 'Col.' or 'Rev.'.",
+          "F17 (and the DEF-CLAIM-40 part of F6): code behaviour is identical at 65451f1, and a code fix needs a new boundary rule that does not depend on `_looks_like_claim`, so it is deferred. The tracker statement is false: narrow DEF-CLAIM-40's closure to 'a verbless side rejoins', and file the both-sides-pass shape with the 'U.S. Treasury' repro.",
+          "Record fixes (F6 counts, F7 snapshot hashes and closed-on-INCONCLUSIVE, F15 and F20 HEAD against 65451f1, F21 `working_tree` label): these are false statements or commands that stop working, all in experiments/defects and docs/defects.md, with no library output change. Deferred as one docs-only item. HELDOUT2 should say 18 of 20 for the parenthesis gate (the rule is reverted by C3; the record should still be exact). DEF-NUMBER-32 and DEF-NUMBER-46 should be marked closed-unverified. Rename the JSON key. Note that C1-C3 change src/, so hash 8a1b776d8f49a535 no longer reproduces from the working tree under HEAD or 65451f1. The record must pin the frozen source itself (a stored patch or a commit), not only swap the base ref."
+        ],
+        "refuted": [
+          "F8 modal-conditional criterion (HELDOUT.md:46): immaterial. The removal skips fewer claims, which is the safe direction; the weak criterion is a note on method, and no primary-path output is harmed.",
+          "F12 range strings in lexical features (lexical.py:383): dissolved by C1, because range strings no longer enter numeric_mismatches. Before that, the reviewer showed no wrong verdict.",
+          "F13 inline Decimal('0.05') (entity_check.py:294): declined as taste. The value is correct and only discoverability is affected.",
+          "F14 `_compounds` kind string and duplicated end selection (entity_check.py:174): declined as taste. Behaviour is correct, and a refactor was not asked for.",
+          "F18 quadratic rejoin carry chain (extract.py:165): immaterial. Thousands of consecutive verbless abbreviation boundaries in one paragraph are outside the input universe.",
+          "F19 duplicate test_close_values_still_round (test_defect_regressions.py:1331): declined. It is duplication with no effect on behaviour or coverage.",
+          "F22 roman-numeral test half (test_defect_regressions.py:1460): dissolved by C2, which removes both the roman arm and its test.",
+          "F23 misfiled bracket test (test_defect_regressions.py:1498): declined as taste. The problem is placement only; after C3 the test still correctly pins 'Inc. (PPG)' staying whole."
+        ],
+        "fanoutTraced": 9,
+        "fanoutTotal": 9,
+        "trajectory": "converging",
+        "trajectoryReason": "This is round 1 with no applied changes, so 0 of 23 findings trace to a previous round's fix. There is no CRITICAL; the worst severity is MAJOR, and 10 of the 23 findings are MAJOR. The plan adds no mechanism. It deletes three rules this delta added, each answering a MINOR or MEDIUM defect, so the next round's surface shrinks. One risk is named plainly: 8 of the 10 MAJOR findings sit in rules this delta added (whole-range comparison, outline arm, opening-bracket arm, currency arm, Latin re-check, fence regex). The whole-range comparison was already patched once inside the delta (DEF-NUMBER-44). Refining these rules again would repeat the pattern of fixes generating new findings, and that is why this plan removes rather than refines. Instrument note: the named graph.json predates the base commit, so the radius comes from grep over a reconstructed tree (git archive 65451f1 + r8-delta.patch). The three removals were applied to a scratch copy: 504 passed, 2 skipped, and only the 3 tests pinning the removed rules fail."
+      }
+    },
+    {
+      "arm": "old",
+      "i": 2,
+      "ruling": {
+        "ruling": "PROCEED_WITH_DEFERRALS",
+        "changes": [
+          {
+            "answers": [
+              "F2 MAJOR: whole-range comparison marks '2019-2020 season' CONTRADICTED against '2019-20 season' (entity_check.py:661)",
+              "F10 MAJOR: '2020-21' against '2020-2021' graded CONTRADICTED (entity_check.py:250)"
+            ],
+            "site": "src/groundrails/entity_check.py `_year_span_key` (line 250)",
+            "change": "Before the existing order sort, expand a two-digit right end that follows a four-digit year start to the full year when the expansion is later than the start: '2019-20' becomes '2019-2020', '1998-99' becomes '1998-1999', '2010-05' is left as it is. Pin both directions ('2019-20' against '2019-2020' and the reverse) in TestNumericAgreementLimits. Verified before planning: find_numeric_mismatches returns [('2019-2020','2019-20')], [('2019-20','2019-2020')] and [('2020-21','2020-2021')] on the change set, [] on HEAD 65451f1. Scratch test of this edit: all three return [], '1998-99' against '1998-1999' returns [], and 'fell from 200 to 150 ms' against '200 to 120 ms' is still contradicted (the DEF-NUMBER-34 purpose is kept). Nothing smaller holds: taking year spans out of the whole-range rule was already measured and rejected (DEF-NUMBER-34 log: 35 of 37 labelled year-span conflicts on PsiloQA were real), so the abbreviated form has to be known somewhere, and `_year_span_key` is the one function that keys both sides. Input that makes it necessary: an abbreviated season, fiscal or academic year against the full form under the same context word. Unguarded cost: one false CONTRADICTED per such pair, a regression against HEAD. How often it happens across corpora is not measured.",
+            "radius": "Graph instrument not usable for this: tmp/graphify-out/graph.json is built_at_commit d671df2, so it predates both 65451f1 and the delta and has no `_year_span_key` node. I traced by grep over a scratch copy of 65451f1 with the delta applied. `_year_span_key` has 2 call sites, both in the whole-range block of find_numeric_mismatches (entity_check.py:661, 665). The block feeds find_mismatches and grounding._populate_match_metadata, then the ground, ground_batch and grounding_document verdicts. check_consistency does not reach it (it uses _merged_numbers). extract_numbers and _lingua_lang are not touched. The edit can only remove a range mismatch, never add one. Possible breakage: a non-year range with a left end that looks like a year (1500-2099) and a two-digit right end, for example '1500-60', would compare as '1500-1560'. That changes a verdict only when the other side prints that exact expanded form. New surface: one branch.",
+            "newMechanism": true
+          },
+          {
+            "answers": [
+              "F3 MAJOR: opening-parenthesis boundary drops or cuts a sentence after an unlisted abbreviation (Ph.D., B.Sc., Mt., etc.) (extract.py:70)"
+            ],
+            "site": "src/groundrails/extract.py `_SENT_SPLIT_RE` lookahead (lines 70-72) and the exemption line in `_split_sentences` (about line 150)",
+            "change": "reverted: restore the HEAD 65451f1 lookahead so an opening parenthesis does not start a sentence. Change `(?=[\\\"'“‘(]?[A-Z0-9])` to `(?=[\\\"'“‘]?[A-Z0-9])`. Delete `if shaped and text.startswith(\"(\", m.end()): continue`, which the lookahead change makes unreachable (`shaped` stays in use by the rejoin). Restore the HEAD comment that explains why '(' is not accepted. Keep the citation-marker `tail` group, which is the part of DEF-CLAIM-41 that works. Delete the test that pins the removed split (`TestAbbreviationBoundaries::test_sentence_in_brackets_is_its_own_claim`). Reopen DEF-CLAIM-41 (MEDIUM, its HEAD state) in docs/defects.md. Verified: at the delta, 'She earned a Ph.D. (Stanford) ...' keeps only '(Stanford) and joined the lab in 2019.', 'B.Sc. (Hons)' drops the subject, and 'Mt.' and 'etc.' split in two. The cause is not limited to the reviewer's list: 'the Finance Dept. (Treasury)', 'the Univ. (Oxford)' and 'Fifth Ave. (Manhattan)' are also cut, and all of these are whole at HEAD. The reviewer's remedy (widen `_ABBREV_SHAPE_RE`) leaves every other unlisted abbreviation able to cause the cut, and it widens the DEF-CLAIM-39/40 rejoin gate. HEAD's own comment records that '(' was removed once before for this failure ('4 p.m. (EST)'). Scratch test: all seven reproductions return one whole claim.",
+            "radius": "`_SENT_SPLIT_RE` in extract.py has one consumer, `_split_sentences` (line 139). Its only caller is `_split_document` (line 441), which extract_claims calls. The regexes named `_SENT_SPLIT_RE` in lexical.py:726 and grounding.py:430 are separate objects in other modules and are not touched. Possible breakage: DEF-CLAIM-41 comes back. 'Costs rose 12% in 2023. (Demand fell 8% in 2023.) Prices ...' joins the first two sentences into one unit, which is MEDIUM and is how HEAD behaves. Full offline suite on the scratch copy with all three changes: 505 passed, 2 skipped. The only 2 failures are the two pin tests this plan deletes. New surface: none, because this is a removal.",
+            "newMechanism": false
+          },
+          {
+            "answers": [
+              "F4 MAJOR: lettered outline prefix strips a species abbreviation or initial that opens a line and splits hard-wrapped sentences (extract.py:191)",
+              "F22 MINOR: roman-numeral half of test_outline_items_stay_apart (dissolved by removing the test)"
+            ],
+            "site": "src/groundrails/extract.py `_LIST_PREFIX_RE` (line 191)",
+            "change": "reverted: restore the HEAD 65451f1 regex `^\\s*(?:[-*+]|\\d+[.)])\\s+`. This removes both the letter arm and the roman arm, and the comment that cites DEF-CLAIM-45. Keep the separate `.lstrip(\"> \")` change at line 498 (DEF-CLAIM-38). Delete `test_outline_items_stay_apart` and reopen DEF-CLAIM-45 (MINOR) in docs/defects.md. Verified: at the delta, 'E. coli infections rose 12% in 2023.' gives 'coli infections ...', and the hard-wrapped 'C. difficile' line is split and loses 'C.'. HEAD keeps both whole. The reviewer's refinement (`[A-Za-z]\\)|[A-Z]\\.(?=\\s+[A-Z])`) does not end the cause. The roman arm `[IVX]+\\.` also matches single-letter genus abbreviations, and at the delta 'V. cholerae ...' and 'X. laevis ...' lose the letter through it. The arms have no measured benefit to keep: DEF-CLAIM-45 had 0 changed units in 24,974 held-out documents (HELDOUT2.md:47, INCONCLUSIVE). Scratch test: E. coli, C. difficile, V. cholerae, X. laevis and S. aureus all stay whole.",
+            "radius": "`_LIST_PREFIX_RE` has 2 uses: `_strip_markdown_noise` (line 232, the per-line prefix strip) and the list-item flush in `_split_document` (line 498). Both lead to extract_claims. Possible breakage: DEF-CLAIM-45 comes back. Lettered or roman outline lines with no closing full stop join again ('... in March B.'), which is MINOR and is how HEAD behaves. Bullets and numbered items are unchanged. New surface: none, because this is a removal.",
+            "newMechanism": false
+          }
+        ],
+        "reverts": [],
+        "fanoutTraced": 5,
+        "fanoutTotal": 5,
+        "trajectory": "converging",
+        "trajectoryReason": "This is round 1 and the loop has applied no changes, so 0 of the 23 findings come from a previous round's fixes. There are no CRITICAL findings. The plan edits code that already exists: two of its three changes remove mechanisms from the change set under review, and one adds a single branch inside an existing function. Risk to check in the next round: before this loop started, the whole-range comparison (DEF-NUMBER-34) had already produced reversed year spans (DEF-NUMBER-44). This round it produced abbreviated year spans (F2, F10) and double-hyphen ranges (F16, deferred). If round 2 finds another notation variant in that block, the right ruling is to re-model the comparison, not to add a fourth normalisation. The '(' sentence boundary is another repeat: HEAD had removed it once for this same failure, and the change set added it back.",
+        "deferred": [
+          "F16 MAJOR ('5--10' against '5-10' CONTRADICTED, entity_check.py:148): CONFIRMED regression. find_numeric_mismatches returns [('5--10','5-10')] in both directions; HEAD returns []. Deferred because the budget is used by three higher-ranked items: this is the same error class as F2 on a rarer input. Record it under DEF-NUMBER-34 (reopen) or a new id related to it. Still wrong until fixed: a range written with a doubled hyphen on one side and a single hyphen on the other, under the same key, is CONTRADICTED. Remedy warning, tested in scratch: the reviewer's `--?` separator alone makes 'in 2023 -- 40% of it' a range '2023-40', because the spaced-dash test lists only '-', en dash and em dash. The fix must either add '--' to that test or put the sign on the left end only.",
+          "F9 MAJOR (CRLF text: HTML comment after a fenced block becomes a claim, extract.py:403): CONFIRMED regression. With CRLF line endings, the comment is extracted as a claim; with LF, and at HEAD, it is removed. Deferred on budget because the input needs three conditions together: a CRLF string passed directly (extract_claims_from_file is not affected), a fenced code block, and a later comment whose text reads as a claim with a number that disagrees with the source. File a new defect related to DEF-CLAIM-35. Recorded remedy: `\\r?` in the two fragments at extract.py:403-404 (the reviewer ran the suite green with it). Still wrong until fixed: such a comment can be graded CONTRADICTED.",
+          "F1 MAJOR (Latin re-check silences the non-English warning, lexical.py:458): CONFIRMED in part. On the four PsiloQA answers the reviewer named, extract_claims warns 4 times at HEAD and 2 times on the change set. detect_lang_confident reads the Catalan 'Hans Siggaard Jensen' answer and the Swedish 'Paragus mariae' answer (16 claims) as 'en'. Deferred, and the revert remedy is declined. At HEAD, the English claim 'Hypoglycaemia is the principal adverse effect.' reads 'la' and has_model('la') is False. At the HIGH tier that sends ground to ensure_model('la') and raises UnsupportedLanguageError when the model cannot be installed. The revert therefore trades a missing warning on about 4 of 50,142 non-English answers for a possible exception on English claims, which is a worse error under the bar. Reopen DEF-CLAIM-37 for Latin-read non-English documents, and record that the pre-registered criterion at HELDOUT2.md:32 fails on PsiloQA train and validation. Still wrong until fixed: a non-English document read as Latin that scores English confidence >= 0.2 among spoken languages gets no warning, and the HIGH-tier guard reads it as English.",
+          "F5 MAJOR (currency comparative: 'cover/launder/turnover $5 million' no longer contradicted, entity_check.py:116): CONFIRMED regression. The change set returns []; HEAD returns [('5','7')]. Deferred: the result is a wrong supported verdict, which is not the bar's worst class, and the cause predates the change. The word quantifiers in `_COMPARATIVE_RE` have no leading word boundary, so 'cover 5 million' without '$' already returns [] at HEAD. Reopen DEF-NUMBER-46. Recorded remedy: a leading \\b on the word-quantifier group. The reviewer also asks to record the HaluEval-summarisation FAIL from the design data in DEF-NUMBER-46's evidence. Still wrong until fixed: a money amount after cover, launder, turnover or a similar word is read as a bound and is not contradicted.",
+          "F11 + F17 MAJOR (one cause, present before this change): a sentence is still cut after 'Gov.', 'Sen.', 'U.S.' or 'Corp.' when both sides pass `_looks_like_claim` (extract.py:106, docs/defects.md:157). CONFIRMED, and HEAD gives the same output for every reproduction, so this is not a regression. The rejoin repairs only a side that has no verb. Deferred: the code is unchanged from HEAD and the budget is spent. Reopen DEF-CLAIM-40, because its closure is false while the title shape still reproduces, and file the Gov./Sen. title shape under it. Candidate for the next invocation: the reviewer's remedy of moving the 16 title tokens into `_ABBREV_BEFORE_RE`. Still wrong until fixed: the claim is cut, and the fragment with the value can ground against the wrong subject."
+        ],
+        "refuted": [
+          "F6 MINOR (HELDOUT2 counts 20/20 where 18/20 is correct; DEF-CLAIM-40 evidence record): immaterial. It concerns the accuracy of the research record, not library output. The DEF-CLAIM-40 part is covered by the F11+F17 deferral.",
+          "F7 MINOR (harness selects the dataset revision from the local cache; rules closed on INCONCLUSIVE evidence): immaterial. It affects the reproducibility of the record; no ground or extract_claims output changes.",
+          "F8 MINOR (modal-conditional removal criterion cannot measure its target class): immaterial. The removal only makes fewer claims skipped, which is the safe direction.",
+          "F12 MINOR (range strings feed the fitted lexical features): immaterial. The reviewer could not construct a wrong verdict; a range conflict already forces CONTRADICTED through has_contradiction. Measure the fitted tier before its next refit.",
+          "F13 MINOR (inline 0.05 tolerance): immaterial, a style preference; the value is correct.",
+          "F14 MINOR taste (_compounds kind string and duplicated end selection): declined as a style preference; behaviour is correct.",
+          "F15 MINOR (measure_open_defects BASE_REF is HEAD): immaterial for library users; it affects only re-running the harness.",
+          "F18 MINOR (quadratic rejoin carry chain): immaterial. The input needs thousands of consecutive verbless boundaries shaped like abbreviations, which is outside the input universe.",
+          "F19 MINOR (duplicate rounding test): immaterial; no caller sees a different verdict.",
+          "F20 MINOR (pre-registration hash against HEAD): immaterial for library users; it affects only re-running the pre-registered check.",
+          "F21 MINOR (measure_open_defects labels the reverted non-Latin rule as the working tree): immaterial; it is a harness label.",
+          "F22 MINOR (roman half of test_outline_items_stay_apart survives a mutant): removed together with the test in change 3.",
+          "F23 MINOR taste (bracket-after-abbreviation test filed under TestCurrencyComparatives): declined as a style preference. The test still passes after change 2 and still pins that 'Inc. (PPG)' stays whole."
+        ]
+      }
+    },
+    {
+      "arm": "old",
+      "i": 3,
+      "ruling": {
+        "ruling": "PROCEED_WITH_DEFERRALS",
+        "changes": [
+          {
+            "answers": [
+              "F2 (MAJOR) 2019-2020 vs 2019-20 graded CONTRADICTED - dissolved",
+              "F10 (MAJOR) 2020-21 vs 2020-2021 graded CONTRADICTED - same cause as F2, dissolved",
+              "F16 (MAJOR) 5--10 vs 5-10 graded CONTRADICTED - reaches ground only through this block, dissolved",
+              "F12 (MINOR, immaterial) range strings entering numeric_mismatches and the fitted num_edit_mag feature - dissolved as a side effect"
+            ],
+            "site": "src/groundrails/entity_check.py: the whole-range comparison block at the end of find_numeric_mismatches (lines 649-668) and the helper _year_span_key (lines 250-257), which the removal leaves with no caller",
+            "change": "revert: delete the whole-range comparison block and _year_span_key. Keep the signed _VALUE, the spaced-dash rule, _compounds and _merged_numbers (consistency.py:55 still reads it; its 4th element 'kind' becomes unread - name it, do not widen the edit into consistency.py). Delete the pin TestNumericAgreementLimits.test_changes_are_compared_whole. In docs/defects.md reopen DEF-NUMBER-34 for the 'fell from 200 to 150 ms' against 'from 200 to 120 ms' shape (deferred: any range comparison must first be measured on a corpus that pairs one range in two notations), and record on DEF-NUMBER-44 that its cause was removed with the comparison. Why nothing smaller: the comparison decides equality on rendered strings; it already needed one normalisation (DEF-NUMBER-44, 43 in-sample false CONTRADICTED) and now needs two more (two-digit year end, doubled hyphen). It answers DEF-NUMBER-34, which is MINOR (a missed contradiction). A third refinement leaves the next notation (2019/20, FY19-FY20) live for the next round.",
+            "radius": "find_numeric_mismatches output for claims that hold a range returns to HEAD 65451f1 values. Consumers traced: grounding.py:1253-1257 (has_contradiction verdict), grounding.py:1744 (verification), lexical.py:329-373 (_conflict_feats via find_mismatches, entity_check.py:773), consistency.py:55 (_merged_numbers, unchanged). Source: grep over a scratch rebuild (65451f1 + r8-delta.patch). The supplied graph.json is stale: built 2025-09-25 at an earlier commit, it holds none of _year_span_key, _merged_numbers or _compounds. Verified on the scratch copy: F2, F10, F16 return fuzzy with no mismatch. The offline suite fails only the one pin named above; test_reversed_year_span_is_the_same_period still passes. What may break: real range conflicts are no longer caught (VitaminC 32 added contradictions at 81% REFUTES; PsiloQA year-span conflicts, 35 of 37 labelled real). These are missed contradictions, which the bar ranks below a false CONTRADICTED.",
+            "newMechanism": false
+          },
+          {
+            "answers": [
+              "F4 (MAJOR) lettered outline prefix cuts 'E. coli', 'C. difficile' and hard-wrapped lines that open with an initial",
+              "F22 (MINOR, immaterial) roman-numeral half of test_outline_items_stay_apart - dissolved, the test is deleted"
+            ],
+            "site": "src/groundrails/extract.py:191 _LIST_PREFIX_RE",
+            "change": "revert: restore the HEAD regex r\"^\\s*(?:[-*+]|\\d+[.)])\\s+\" by removing both the [A-Za-z][.)] arm and the [IVX]+\\. arm. Keep the .lstrip(\"> \") DEF-CLAIM-38 fix at line 498. Delete test_outline_items_stay_apart. Reopen DEF-CLAIM-45 (MINOR), deferred. Why nothing smaller: the capital-next-word refinement still strips a capital initial before a capitalised word at line start. The roman arm on its own strips 'V.' in 'V. cholerae' and 'I.'/'X.' labels. DEF-CLAIM-45 is MINOR, and its fresh test saw 0 changed units in 24,974 documents, so no measured benefit is lost.",
+            "radius": "extract.py:232 (_strip_markdown_noise) and extract.py:498 (list-item flush in _split_document) are the only readers. Lines that open with a letter or roman numeral plus '.' or ')' return to HEAD handling. Verified on the scratch copy: 'E. coli is a bacterium...', 'C. difficile' wrapped, 'S. aureus'/'V. cholerae' and 'H. pylori' each stay whole. The offline suite fails only the deleted pin. What may break: lettered outline items weld again ('... in March B.'), which is DEF-CLAIM-45 at HEAD.",
+            "newMechanism": false
+          },
+          {
+            "answers": [
+              "F3 (MAJOR) opening-parenthesis boundary drops or cuts the sentence after Ph.D., B.Sc., Mt., etc."
+            ],
+            "site": "src/groundrails/extract.py:71 _SENT_SPLIT_RE lookahead and extract.py:150-151 (the 'shaped and text.startswith(\"(\")' exemption, which the revert leaves with no purpose)",
+            "change": "revert: remove '(' from the lookahead class so it reads (?=[\\\"'“‘]?[A-Z0-9]), and delete the two-line exemption. Keep the citation 'tail' group (the fixed part of DEF-CLAIM-41). Delete test_sentence_in_brackets_is_its_own_claim. Reopen DEF-CLAIM-41 for the '(' shape (MEDIUM), deferred. Why nothing smaller: the reviewer's remedy widens _ABBREV_SHAPE_RE, which is an open list: after Ph.D., B.Sc., Mt. and etc. come approx., vs., Fig. and No. The same regex also gates the DEF-CLAIM-39/40 rejoin, so each widening moves those boundaries too. DEF-CLAIM-41 is MEDIUM.",
+            "radius": "_split_sentences in extract.py has one caller, extract.py:441 (chunking.py and grounding.py use their own splitters). Boundaries before '(' return to HEAD. Verified on the scratch copy: the four F3 sentences each return one whole claim. The offline suite fails only the deleted pin; test_bracket_after_an_abbreviation_is_not_a_new_sentence still passes. What may break: '(Demand fell 8% in 2023.)' welds to the sentence before it again, which is DEF-CLAIM-41 at HEAD.",
+            "newMechanism": false
+          }
+        ],
+        "reverts": [
+          {
+            "mechanism": "whole-range comparison (DEF-NUMBER-34 fix, refined once by _year_span_key for DEF-NUMBER-44)",
+            "site": "src/groundrails/entity_check.py:649-668 and 250-257",
+            "appliedAs": "change 1 - same edit, apply once",
+            "dissolves": [
+              "F2",
+              "F10",
+              "F16",
+              "F12"
+            ],
+            "defers": [
+              "DEF-NUMBER-34 (MINOR): 'fell from 200 to 150 ms' against 'from 200 to 120 ms' is not contradicted"
+            ],
+            "note": "This round has no prior loop changes. The mechanism is this delta's own, and the tracker shows earlier review rounds built it and refined it once already. It is removed instead of refined a second time."
+          },
+          {
+            "mechanism": "lettered and roman outline arms of _LIST_PREFIX_RE (DEF-CLAIM-45 fix)",
+            "site": "src/groundrails/extract.py:191",
+            "appliedAs": "change 2 - same edit, apply once",
+            "dissolves": [
+              "F4",
+              "F22"
+            ],
+            "defers": [
+              "DEF-CLAIM-45 (MINOR): lettered outline items weld into one unit"
+            ]
+          },
+          {
+            "mechanism": "opening-parenthesis boundary arm and its abbreviation exemption (DEF-CLAIM-41 '(' part)",
+            "site": "src/groundrails/extract.py:71 and 150-151",
+            "appliedAs": "change 3 - same edit, apply once",
+            "dissolves": [
+              "F3"
+            ],
+            "defers": [
+              "DEF-CLAIM-41 (MEDIUM), '(' part only: a sentence opening with '(' welds to the one before; the citation-marker part stays fixed"
+            ]
+          }
+        ],
+        "fanoutTraced": 7,
+        "fanoutTotal": 7,
+        "trajectory": "converging",
+        "trajectoryReason": "This is the first adjudication, so 0 of 23 findings trace to a previous round's fix in this loop. Of the 10 MAJOR findings, 8 are regressions in mechanisms this delta added: the Latin re-check, the whole-range comparison, the sign in _VALUE, the '(' arm, the outline arms, the currency arm and the comment/code regex. The other 2 (F11, F17) are behaviour already present at HEAD. The plan is three reverts: net deletions, no new mechanism, each verified on a scratch copy, and the offline suite fails only the three pins of the reverted rules (504 passed). After the plan, the worst live severity is MAJOR, in the three deferred confirmed regressions (F9, F5, F1), each with a recorded remedy of one token to ten lines. There is no CRITICAL. One sign of a spiral exists before this round: the tracker shows the whole-range comparison was already refined once (DEF-NUMBER-44) and has now drawn three more findings. The plan removes that mechanism instead of refining it a third time.",
+        "deferred": [
+          "F9 (MAJOR, confirmed: a CRLF document with a fence followed by an HTML comment turns the comment into a claim, graded contradicted [('900','1200')]; HEAD strips it). Deferred on budget, ranked 4th because it needs a rare combination of inputs. Remedy for the next invocation: at extract.py:403-404 change '[ \\t]*$' to '[ \\t]*\\r?$' and '\\n[ \\t]*\\n' to '\\n[ \\t]*\\r?\\n'; no new mechanism. File a defect. Still live: a CRLF string input can carry an author note into grounding as a false CONTRADICTED",
+          "F5 (MAJOR, confirmed: 'cover $5 million' against '$7 million' is now fuzzy, contradicted at HEAD; the same holds for launder and turnover). Cause: _COMPARATIVE_RE has no leading word boundary, which predates the delta ('cover 5 million' was already missed at HEAD); the currency arm extends it to money. Deferred on budget. Remedy: add \\b before the word-quantifier alternation (entity_check.py:111), which closes the plain-number case too, and record the HaluEval-summarisation design FAIL in DEF-NUMBER-46. Still live: a wrong money amount after cover, launder or turnover reads as supported. 'under $5M' against '$7M' being unflagged is the comparative rule's existing design (a bound ignores direction), now extended to currency",
+          "F1 (MAJOR, confirmed on the four quoted PsiloQA train documents: HEAD reads 'la' and warns, the delta reads 'en' and is silent, and the HIGH-tier guard also reads 'en'). Deferred on budget: a missing warning is outside the bar's worst class, and the rate is 4 of 328 Latin reads in 50,142 non-English answers. Remedy for the next invocation: revert the Latin block (lexical.py:458-467 and _LATIN_ENGLISH_MIN) and reopen DEF-CLAIM-37 (MINOR). Refinement is not indicated because the original defect is MINOR. Still live: those Catalan and Swedish documents get no non-English warning",
+          "F11 (MAJOR as filed, confirmed; not a regression - HEAD cuts 'Gov. Newsom, who ...' identically). File a new defect. Deferred on budget and because the change set did not introduce it. Recorded remedy: move the 16 title tokens from _ABBREV_SHAPE_RE into the honorific arm of _ABBREV_BEFORE_RE. Still live: a title before a name and a relative clause cuts the claim",
+          "F17 with the DEF-CLAIM-40 part of F6 (confirmed; the code is unchanged from HEAD). 'Tax receipts reported by the U.S. Treasury rose 8%' still splits, and docs/defects.md:157 closes DEF-CLAIM-40 over that shape. The code fix needs a boundary rule independent of _looks_like_claim, which is a new mechanism: deferred. Reopen DEF-CLAIM-40, or narrow its closure to 'a verbless side is no longer dropped', at the next tracker edit. Still live: the cut after U.S., Corp. or Inc. when both sides pass the verb heuristic"
+        ],
+        "refuted": [
+          "F6 (MINOR, immaterial): the HELDOUT2.md counts (18 of 20, not 20 of 20) and the unaudited judgements are the research record, with no library output involved. Its DEF-CLAIM-40 part is carried with F17",
+          "F7 (MINOR, immaterial): the cache-snapshot hash and closures on INCONCLUSIVE evidence concern the research record. Changes 1 and 2 reopen DEF-NUMBER-34 and DEF-CLAIM-45 in any case",
+          "F8 (MINOR, immaterial): the removed modal-conditional rule can only skip fewer claims, which is the safe direction. The criterion wording is a record matter",
+          "F12 (MINOR, immaterial): the reviewer could construct no wrong verdict. Change 1 dissolves it, because range strings no longer enter numeric_mismatches",
+          "F13 (MINOR, immaterial, style): the inline Decimal('0.05') literal is correct. Declined as taste",
+          "F14 (MINOR, taste): _compounds 'kind' and the duplicated end selection have no behaviour effect. Declined",
+          "F15 and F20 (MINOR, immaterial, one cause): the harness diffs against a moving HEAD instead of 65451f1. This affects only re-running the recorded verdicts after commit, with no library output involved. It is a one-token harness fix for the author to take at will",
+          "F18 (MINOR, outside the input universe): the quadratic cost needs thousands of consecutive verbless abbreviation-shaped boundaries in one paragraph",
+          "F19 (MINOR, immaterial): the duplicate test costs CI time only",
+          "F21 (MINOR, immaterial): the harness JSON key label has no product output",
+          "F22 (MINOR, immaterial): dissolved by change 2, which deletes the test",
+          "F23 (MINOR, taste): which class the test is filed under. Declined"
+        ]
+      }
+    },
+    {
+      "arm": "new",
+      "i": 1,
+      "ruling": {
+        "ruling": "PROCEED_WITH_DEFERRALS",
+        "changes": [
+          {
+            "answers": [
+              "F2: whole-range comparison marks '2019-2020 season' CONTRADICTED against '2019-20 season' (MAJOR, CONFIRMED: reviewed tree contradicted [('2019-2020','2019-20')] in both directions; HEAD 65451f1 fuzzy [])",
+              "F10: same cause, '2020-21' against '2020-2021' (MAJOR, CONFIRMED: reviewed tree contradicted; HEAD fuzzy)"
+            ],
+            "site": "src/groundrails/entity_check.py:250 `_year_span_key` (plus one pin test in tests/test_defect_regressions.py TestNumericAgreementLimits)",
+            "change": "Rank 1. In `_year_span_key`, when the left end is a four-digit year (`_YEAR_RE`) and the right end has two digits, expand the right end to the first later year with those last two digits before the existing order-sort. '2019-20' becomes 2019-2020, and '1999-00' becomes 1999-2000. Pin both directions ('2019-2020 season' against '2019-20 season') in TestNumericAgreementLimits. When applying, record the changed-pair count on the design corpora with the existing harness; this measures the change and does not gate it. Scratch check (65451f1 plus r8-delta.patch, then this edit): F2 and F10 return fuzzy with no mismatch in both directions, and every existing test passes. Nothing smaller works. Removing year spans from the whole-range comparison was already measured by the author: it removes mostly real conflicts (PsiloQA 35 of 37 labelled, DEF-NUMBER-34 log). Removing the whole block reopens DEF-NUMBER-34 (32 VitaminC contradictions at 81% REFUTES). The expansion treats two notations of one period as equal, so it cannot remove a true conflict.",
+            "radius": "`_year_span_key` has two call sites, both in the range block of `find_numeric_mismatches` (entity_check.py:661, 665), and no other consumer. `check_consistency`, `_merged_numbers` and the rendered mismatch strings are unchanged. Possible breakage: a range with a four-digit non-year start (1500-2099) and a two-digit end, such as '1800-50 rpm', now equals '1800-1850 rpm'. That is the same reading, so the risk is negligible. New surface: one normalisation branch, which is the next round's attack point for other span notations.",
+            "newMechanism": true
+          },
+          {
+            "answers": [
+              "F3: opening-parenthesis boundary cuts or drops a sentence after an abbreviation the shape regex misses (MAJOR, CONFIRMED: 'She earned a Ph.D. (Stanford) and joined the lab in 2019.' gives ['(Stanford) and joined the lab in 2019.'], and the 'B.Sc. (Hons)', 'Mt. (Mount)' and 'etc. (Table 2)' sentences are cut; HEAD returns each sentence whole)"
+            ],
+            "site": "src/groundrails/extract.py:72 `_SENT_SPLIT_RE` lookahead, and extract.py:150-151 in `_split_sentences`",
+            "change": "Rank 2. Remove `(` from the lookahead character class: `(?=[\"'“‘(]?[A-Z0-9])` becomes `(?=[\"'“‘]?[A-Z0-9])`. Delete the `if shaped and text.startswith(\"(\", m.end()): continue` exemption, which this edit makes unreachable. Remove `test_sentence_in_brackets_is_its_own_claim` or turn it into a known-limitation pin. Reopen DEF-CLAIM-41 (MEDIUM) and keep its citation-marker part, which the separate `tail` group delivers. Scratch check: all four F3 reproductions return the whole sentence; 506 tests pass and the only failure is that DEF-CLAIM-41 pin. The reviewer's remedy (1-3 letter dotted segments plus `etc|Mt` in `_ABBREV_SHAPE_RE`) adds word-list entries. Every other unlisted abbreviation before a capitalised parenthetical (No., Vol., Ave., Dept., Univ.) would still cut the sentence. It would also change the gate of the DEF-CLAIM-39/40 rejoin, which the author judged on 499 changed units. HEAD's own comment gives this failure as the reason `(` was excluded. Removing the arm fixes the whole class.",
+            "radius": "`_split_sentences` in extract.py has one caller, `_split_document` (extract.py:441), which feeds extract_claims; chunking.py and grounding.py have their own splitters. Breakage: a sentence that opens with a capitalised parenthesis after a full stop ('... 2023. (Demand fell 8% in 2023.) ...') joins the sentence before it again. This is the HEAD behaviour of DEF-CLAIM-41, a merge rather than a cut. Removes surface; adds none.",
+            "newMechanism": false
+          },
+          {
+            "answers": [
+              "F16: the signed range end makes '5--10' differ from '5-10' (MAJOR, CONFIRMED: find_numeric_mismatches gives [('5--10','5-10')] and ground returns contradicted, in both directions; HEAD returns [] and fuzzy)"
+            ],
+            "site": "src/groundrails/entity_check.py:148 `_VALUE`; the signed-end lines in `_compound_part_values` (entity_check.py:210-215); the sign sentence in the `_compounds` docstring",
+            "change": "Rank 3. Drop the leading `-?` from `_VALUE`, which restores HEAD's unsigned range ends. Delete the signed-end update in `_compound_part_values`, which this change leaves unused. Delete the sign sentence in the `_compounds` docstring and `test_range_keeps_the_sign_of_its_ends` (tests/test_defect_regressions.py:1354). Narrow the DEF-NUMBER-34 evidence line: signed ends are no longer kept, 3 tests remain, and the sign shape stays open as part of that MINOR. Scratch check: F16 returns [] and fuzzy in both directions, as at HEAD; the only other failure is the removed sign pin. Nothing smaller works. HELDOUT.md:32 lists the sign rule as not under test. The smaller-looking edits (a `--?` separator, or a lookbehind that forbids a sign after a dash) each add a guard to an unmeasured rule. The `--?` separator also turns a spaced plain-text dash ('2023 -- 40%') into a range unless the spaced-dash test in `_compounds` is widened as well. Removing the sign fixes every shape where a sign follows a dash.",
+            "radius": "`_COMPOUND_RE` → `_compounds` → `_compound_part_values` (find_numeric_mismatches:605-606) and `_merged_numbers` (find_numeric_mismatches:654, 658; consistency.py:55 check_consistency). Breakage: 'from -5 to 10' against 'from 5 to 10' is no longer contradicted, which is HEAD behaviour. check_consistency on that pair still reports a finding, with HEAD's occurrence list ('-5 winter', '5-10 winter', ...). extract_numbers is untouched, so its guarantee holds. Removes surface; adds none.",
+            "newMechanism": false
+          }
+        ],
+        "reverts": [],
+        "deferred": [
+          "F4 (lettered outline prefix strips 'E. coli' and cuts hard-wrapped lines; MAJOR, CONFIRMED regression against HEAD). The roman arm `[IVX]+\\.` also strips 'V. cholerae' (verified), so the reviewer's capital-next-word refinement of the letter arm does not fix the class. Deferred past the budget because the outline rule changed 0 units in 24,974 English test documents (HELDOUT2.md), the lowest measured exposure of the confirmed cut/CONTRADICTED items. Next remedy: remove both new arms (`[A-Za-z][.)]`, `[IVX]+\\.`) from `_LIST_PREFIX_RE` (extract.py:191) and reopen DEF-CLAIM-45 (MINOR). Still live: a paragraph or wrapped line that opens with an initial or a genus abbreviation loses that token or is cut in two. File as a regression defect (related: DEF-CLAIM-45).",
+          "F9 (CRLF: the regex copy of the fence grammar never closes a fence, so a later HTML comment becomes a claim; MAJOR, CONFIRMED: the comment is graded contradicted [('900','1200')] on CRLF and stripped at HEAD). Deferred past the budget because the harm needs a CRLF string with a fenced block followed by a comment that holds a conflicting number; extract_claims_from_file is not affected. Next remedy: the reviewer's tested edits, `[ \\t]*\\r?$` and `\\n[ \\t]*\\r?\\n`, at extract.py:403-404; no new mechanism. Still live: CRLF strings keep every comment after a fence as a claim. File as a regression defect (related: DEF-CLAIM-35).",
+          "F5 ('cover/launder/turnover $X' now reads as a bound: CONTRADICTED at HEAD becomes fuzzy; MAJOR, CONFIRMED). The substring cause already exists at HEAD for bare numbers ('cover 5 million' returns [] in both trees); the new currency arm extends it to money. A missed contradiction is outside the bar's worst class, so this ranks below the three planned changes. Next remedy: a leading `\\b` on the word quantifiers in `_COMPARATIVE_RE` (entity_check.py:110-116), and add the HaluEval-summarisation design FAIL (0.70 against 0.53) to DEF-NUMBER-46's evidence. Still live: a wrong amount after cover, recover, turnover or launder followed by a currency sign is read as supported. File as a regression defect (related: DEF-NUMBER-46).",
+          "F1 (Latin re-check silences the non-English warning; MAJOR, CONFIRMED: 2 Catalan and 2 Swedish PsiloQA train/validation answers warn 'la' at HEAD and return None now). A missing warning changes no verdict and is outside the bar's worst class. Measured size: 4 of 50,142 non-English answers lose the warning, against 18 of 24,974 English documents that stop warning falsely. The pre-registered test corpus contained no non-English Latin reads, so its PASS could not have failed. Next remedy: revert the `if lg.name == \"LATIN\":` block (lexical.py:458-467) and reopen DEF-CLAIM-37 (MINOR). The author's round-1 attempt at DEF-CLAIM-37 was reverted for the same failure. Still live: these documents are extracted with no warning, and the HIGH-tier language guard reads them as English. File as a regression defect (related: DEF-CLAIM-37)."
+        ],
+        "refuted": [
+          "F11 (Gov./Sen. titles in the rejoin-only list): immaterial. The output is identical at HEAD (both trees cut 'The law was signed by Gov.'), so it is not a regression. It is a failure mode of the abbreviation heuristic and breaks no stated guarantee. Moving 16 tokens into the never-split list would be an unmeasured word-list change.",
+          "F17 (DEF-CLAIM-40 closed while 'U.S. Treasury' still splits) and the DEF-CLAIM-40 part of F6: immaterial. The extractor output is identical at HEAD (verified), so this is a failure mode of the heuristic splitter, which is measured as a rate and carries no per-input defect id. The tracker wording is a record outside the product path.",
+          "F6 (judged count 18 of 20, not 20 of 20; unaudited judgements), F7 (cache snapshot revision; INCONCLUSIVE rules marked closed), F8 (the modal-conditional criterion cannot measure its target), F15 and F20 (the harness diffs against a moving HEAD instead of 65451f1), F21 (a measure_open_defects key mislabels the reverted rule): immaterial. Each concerns the measurement record in experiments/defects or docs, and no output of ground, extract_claims or check_consistency changes. F6's corrected count (18 of 20) still passes the threshold of 16.",
+          "F12 (range strings reach num_edit_mag and the fitted lexical features): immaterial. The reviewer could not construct a wrong verdict; a range conflict already forces CONTRADICTED (grounding.py:1263), and the golden-set tests pass. The warning to re-measure before the next refit stays with the author.",
+          "F13 (the 5% tolerance is an inline literal), F14 (the kind string of `_compounds` and the duplicated end selection), F23 (a test filed under the wrong class): declined as taste, with no behaviour change.",
+          "F18 (quadratic rejoin on thousands of consecutive verbless abbreviation boundaries): immaterial. An English answer document does not contain such runs, so the input is outside the input universe.",
+          "F19 (duplicate rounding test) and F22 (the roman half of the outline test cannot detect removal of the roman arm): immaterial, test hygiene only. F22 becomes moot if the deferred F4 remedy removes the roman arm."
+        ],
+        "fanoutTraced": 10,
+        "fanoutTotal": 10,
+        "trajectory": "converging",
+        "trajectoryReason": "This is the first adjudication. 0 of 23 findings trace to a fix from a previous round, because no round has applied one. Every confirmed MAJOR is a regression that this change set introduced against HEAD 65451f1, and the plan removes more surface than it adds. It removes two mechanisms (the '(' boundary arm and the range-end sign) and adds one normalisation, which treats two notations of the same year span as equal. The graph at groundrails/tmp/graphify-out/graph.json is out of date (built_at_commit d671df2, before both 65451f1 and the delta; it still lists the removed `_compound_value`). I got the radius instead from grep over a scratch rebuild of 65451f1 plus r8-delta.patch, and I ran every reproduction and the offline suite in that rebuild (507 passed, 2 skipped at baseline). Risk to watch: the whole-range comparison from DEF-NUMBER-34 has now had two notation-equivalence false CONTRADICTED families (reversed spans, DEF-NUMBER-44; abbreviated spans, F2/F10) and the sign-glue parse. If another such family appears in it, re-model the comparison instead of adding a third normalisation."
+      }
+    },
+    {
+      "arm": "new",
+      "i": 2,
+      "ruling": {
+        "ruling": "PROCEED_WITH_DEFERRALS",
+        "changes": [
+          {
+            "answers": [
+              "F2 (MAJOR) '2019-2020' against '2019-20' graded CONTRADICTED",
+              "F10 (MAJOR) '2020-21' against '2020-2021' graded CONTRADICTED",
+              "F16 (MAJOR) '5--10' against '5-10' graded CONTRADICTED",
+              "F12 (MINOR) range strings entering numeric_mismatches and the fitted num_edit_mag feature - dissolved"
+            ],
+            "site": "src/groundrails/entity_check.py: delete the whole-range comparison block at the end of find_numeric_mismatches (round-8 lines 649-668) and _year_span_key (lines 250-256), which only that block reads; tests/test_defect_regressions.py: delete TestNumericAgreementLimits::test_changes_are_compared_whole; docs/defects.md: reopen DEF-NUMBER-34 for the 'change compared whole' shape and record DEF-NUMBER-44 as dissolved with the mechanism (its test stays as a pin)",
+            "change": "Remove the whole-range comparison instead of adding the two proposed normalisations. I reproduced all three findings on a reconstructed round-8 tree (65451f1 + r8-delta.patch): each returns CONTRADICTED where HEAD returns fuzzy. The same string-equality cause fires on more notation variants that the proposed year-expansion and '--?' separator edits would not cover: '1999-00' against '1999-2000' (a naive two-digit expansion gives 1900), '19-20' against '2019-20', and '2019-20' against a source that writes '2019/20' and also names '2018-19' - all CONTRADICTED on round-8, all clean at HEAD. The block already needed one notation patch inside this delta (_year_span_key for DEF-NUMBER-44, 41-43 in-sample false contradictions). It answers DEF-NUMBER-34, which the tracker rates MINOR, while it produces the bar's worst error. Refining it would add special cases to a mechanism that keeps producing false CONTRADICTED verdicts; removing it is terminal. The signed-end and spaced-dash rules in _compounds stay; without the block, '5--10' can no longer produce a mismatch. _merged_numbers keeps its shape because consistency.py consumes it; its kind element is then read by nobody (F14 taste, left as it is)",
+            "radius": "Consumers of find_numeric_mismatches: grounding.py (import at line 59, the contradiction check at line 1744) and the lexical conflict features (range pairs no longer reach _conflict_feats). _year_span_key has no other reader. The radius comes from grep and a scratch-tree test run. The named graphify graph (graph.json dated 2026-09-25 04:45) is older than the tree under review, so I did not use it. Scratch verification with changes A+B+C applied: F2/F10/F16 return fuzzy with no mismatch; suite 504 passed, 3 failed, and the 3 failures are exactly the pins of the three removed features (baseline 507 passed, 2 skipped). Risk: the contradictions this block added go back to HEAD's unflagged verdict (VitaminC 32 added at 81% REFUTES; PsiloQA year spans 35 of 37 labelled). That trades recall for precision, the direction the bar ranks as the safer error. check_consistency output is unchanged (it flags '5--10' against '5-10' and '2019-20' against '2019-2020' at HEAD as well)",
+            "newMechanism": false
+          },
+          {
+            "answers": [
+              "F3 (MAJOR) opening-parenthesis boundary cuts or drops a sentence after Ph.D., B.Sc., Mt., etc.",
+              "F6 (MINOR) HELDOUT2 parenthesis-gate count 20/20 vs 18/20 - moot once the arm is removed"
+            ],
+            "site": "src/groundrails/extract.py: _SENT_SPLIT_RE lookahead - drop '(' from [\"'“‘(]? (round-8 line 72) and delete the now-unreachable line `if shaped and text.startswith(\"(\", m.end()): continue` in _split_sentences (lines 150-151), and restore the comment above _SENT_SPLIT_RE to say an opening bracket is not accepted; tests/test_defect_regressions.py: delete TestAbbreviationBoundaries::test_sentence_in_brackets_is_its_own_claim; docs/defects.md: reopen DEF-CLAIM-41 (MEDIUM) for the '(' shape. The citation-tail part stays closed",
+            "change": "Remove the '(' arm of the sentence boundary; do not widen _ABBREV_SHAPE_RE as proposed. I reproduced all four examples on round-8 as regressions against HEAD ('She earned a Ph.D.' is dropped, and the Mt./etc. sentences are cut). A word-list or shape widening does not end the cause: any abbreviation outside the list and the shape still splits before '('. 'Main Ave. (Suite 4) and opened in 2019' is cut on round-8, and 'Ave.' is in neither the current list nor the proposed etc|Mt addition. The tracker already recorded this exact failure as the reason the '(' arm was deferred (DEF-CLAIM-41 log: 'breaking before a bracket drops the subject after unlisted abbreviations'). With the arm removed, all four F3 examples and the Ave./etc. probes return one whole claim",
+            "radius": "_split_sentences has one caller, _split_document (chunking.py has its own splitter). The citation 'tail' group, the verbless-side rejoin and _ABBREV_SHAPE_RE stay in place. In the scratch run 1 test fails: the DEF-CLAIM-41 pin deleted above. test_bracket_after_an_abbreviation_is_not_a_new_sentence still passes. Risk: a sentence that opens with '(' welds to the one before again, as at HEAD. That undoes the 81 changed units in HELDOUT2's test split; the tracker rates this MEDIUM, a coarser unit rather than a cut claim",
+            "newMechanism": false
+          },
+          {
+            "answers": [
+              "F4 (MAJOR) lettered outline prefix strips 'E.'/'C.' genus abbreviations and initials that open a line and splits hard-wrapped sentences",
+              "F21 (MINOR) roman half of test_outline_items_stay_apart does not pin the roman arm - dissolved"
+            ],
+            "site": "src/groundrails/extract.py: _LIST_PREFIX_RE (round-8 line 191) - restore HEAD's r\"^\\s*(?:[-*+]|\\d+[.)])\\s+\" and its comment; keep the separate .lstrip(\"> \") fix at the list-item break (DEF-CLAIM-38); tests/test_defect_regressions.py: delete test_outline_items_stay_apart; docs/defects.md: reopen DEF-CLAIM-45 (MINOR)",
+            "change": "Remove both the letter arm and the roman arm instead of adding a capital-letter lookahead. I reproduced both F4 examples as regressions against HEAD. The roman arm [IVX]+\\. has the same collision: 'V. cholerae infections rose 12% in 2023.' becomes 'cholerae infections ...' on round-8. The proposed [A-Z]\\.(?=\\s+[A-Z]) refinement would still cut initials before a capitalised name at the start of a line. DEF-CLAIM-45 is MINOR, and its held-out test found 0 outline lines in 24,974 documents, so the arms had no measured benefit, while the failure they cause is the bar's worst error. Restoring HEAD's regex is terminal for this cause",
+            "radius": "_LIST_PREFIX_RE has two readers, both in extract.py: _strip_markdown_noise (prefix strip, line 232) and the list-item flush in _split_document (line 498). In the scratch run 1 test fails: the outline pin deleted above. With it, the F21 test-strength finding also goes. Risk: lettered and roman outline items weld into one unit again, as at HEAD (the next label lands on the previous claim), which the tracker rates MINOR",
+            "newMechanism": false
+          }
+        ],
+        "reverts": [],
+        "fanoutTraced": 0,
+        "fanoutTotal": 23,
+        "trajectory": "converging",
+        "trajectoryReason": "This is the first adjudication. 0 of this round's 23 findings trace to an earlier adjudicated round's fixes, because none exist, and the revert list is empty for the same reason. The worst severity is MAJOR (10 MAJOR, 13 MINOR, no CRITICAL). The plan only removes code: three removals, no new mechanism, each removal failing only the test that pins the removed feature. Inside the delta, the heaviest findings sit in mechanisms the delta built and then patched: the whole-range comparison with its _year_span_key patch, the '(' boundary with its shape exemption, and the lettered outline arms. Refining those mechanisms would be the spiralling pattern, so the plan deletes them. The next round can be expected to shrink to the deferred items (CRLF fence, currency word boundary, Latin re-check measurement) and not to report findings in new surface",
+        "deferred": [
+          "F9 (MAJOR, regression, false CONTRADICTED) CRLF text keeps HTML comments after a fenced block as claims: reproduced on round-8 (the comment is graded contradicted [('900','1200')]; HEAD and LF input are clean). Deferred past the budget of 3 because it has the narrowest reach of the four worst-class regressions: it needs a string input with CRLF line endings, a fence and a later comment that carries a conflicting number, and extract_claims_from_file is unaffected. The fix is ready and adds no mechanism: `[ \\t]*\\r?$` and `\\n[ \\t]*\\r?\\n` in _COMMENT_OR_CODE_RE (extract.py:403-404). Reopen DEF-CLAIM-35 and take it first next round. Still live: CRLF string documents with a fenced block turn every later HTML comment into claim text",
+          "F5 (MAJOR, regression, wrong verdict but not the worst class) 'cover/launder/turnover $5 million' against '$7 million' grades fuzzy where HEAD grades CONTRADICTED: reproduced. The cause is the missing leading word boundary on _COMPARATIVE_RE's word quantifiers. It predates this delta ('cover 5 million' is already misread at HEAD), and the DEF-NUMBER-46 currency arm extends it to '$' amounts. The fix is ready and adds no mechanism: \\b before the word-quantifier group, with the symbol quantifiers left outside it. Reopen DEF-NUMBER-46 and record the HaluEval-summarisation design FAIL in its evidence. Still live: a wrong money amount after 'cover', 'launder', 'turnover' or a word ending in 'under' passes as fuzzy",
+          "F1 (MAJOR, regression inside the language-guard heuristic, not the worst class) the Latin re-check reads 4 PsiloQA train answers as 'en' where HEAD read 'la': reproduced (ca x2, sv x2), so those documents extract without a warning. Claim output does not change. This is a rate trade inside a heuristic component: 4 of 328 Latin reads lose the warning, while English clinical prose stops reading 'la'. The DEF-CLAIM-37 repro reads 'la' at HEAD at document level and on the claim 'Hypoglycaemia is the principal adverse effect.', which the HIGH-tier unsupported-language guard acts on. So the proposed revert brings back that English false read. Deferred to a measurement on PsiloQA train/validation against DEF-CLAIM-37's pre-registered criterion (HELDOUT2.md:32). HELDOUT2.md:44's '0 of 13,998 stop warning' could not have failed on its corpus, and the record should say so. Still live: some Catalan and Swedish documents extract with no warning"
+        ],
+        "refuted": [
+          "F11 (MAJOR claimed) 'Gov. Newsom, who ...' and 'Sen. Warren, who ...' are cut: HEAD gives the identical split (reproduced on both trees). This is a miss by the claim-extraction regex tier that neither regresses against HEAD, crashes, nor breaks a stated guarantee, so it is a failure mode measured as a rate and is immaterial",
+          "F17 (MAJOR claimed) DEF-CLAIM-40 is closed while 'U.S. Treasury' and 'U.S. Midwest' still split: the output is identical at HEAD and round-8 (reproduced), so this is a heuristic failure mode that is not a regression and is immaterial for the product. The overstated closure in docs/defects.md is an evidence-record correction off the primary path (the same record fix as F6)",
+          "F6 (MINOR, material=false) judged-gate counts and the DEF-CLAIM-40 closure: evidence record only, and the parenthesis-gate count is moot once change B removes the arm",
+          "F7 (MINOR, material=false) harness snapshot revision and INCONCLUSIVE closures: research record, no library output changes",
+          "F8 (MINOR, material=false) the modal-conditional removal criterion cannot measure its target class: research record; the removal moves in the safe direction",
+          "F12 (MINOR, material=false) range strings in numeric_mismatches feeding fitted features: dissolved by change A, because range pairs are no longer appended",
+          "F13 (MINOR, taste) inline Decimal('0.05'): the value is correct; discoverability only",
+          "F14 (MINOR, taste) _compounds kind strings and the duplicated end selection: behaviour is correct; maintenance only",
+          "F15 (MINOR, material=false) measure_open_defects BASE_REF defaults to HEAD: reproducing the harness only; no product path",
+          "F18 (MINOR, material=false) quadratic rejoin carry chain: needs thousands of consecutive verbless abbreviation boundaries in one paragraph, which is outside the input universe",
+          "F19 (MINOR, taste) duplicate rounding test: no verdict changes",
+          "F20 (MINOR, material=false) measure_heldout2 hashes against HEAD: reproducing the harness only (same cause as F15)",
+          "F21 (MINOR, material=false) the roman half of the outline test survives removing the roman arm: dissolved by change C, which removes the arms and their test",
+          "F22 (MINOR, material=false) measure_open_defects labels the reverted non-Latin rule 'working_tree': harness record only",
+          "F23 (MINOR, taste) bracket-after-abbreviation test filed under TestCurrencyComparatives: placement only; the test still passes after change B"
+        ]
+      }
+    },
+    {
+      "arm": "new",
+      "i": 3,
+      "ruling": {
+        "ruling": "PROCEED_WITH_DEFERRALS",
+        "changes": [
+          {
+            "answers": [
+              "F2 MAJOR: '2019-2020' against '2019-20' is graded CONTRADICTED",
+              "F10 MAJOR: '2020-21' against '2020-2021' is graded CONTRADICTED",
+              "F16 MAJOR: '5--10' against '5-10' is graded CONTRADICTED",
+              "dissolves F12 MINOR: range strings no longer reach numeric_mismatches or the fitted _conflict_feats"
+            ],
+            "site": "src/groundrails/entity_check.py: remove the whole-range comparison block at the end of find_numeric_mismatches (reviewed-tree lines 649-668, from the comment '# Both ends of a range are range parts' through the final mismatches.append), and remove _year_span_key (lines 250-256), which the removal leaves without a caller. In tests/test_defect_regressions.py, delete TestNumericAgreementLimits.test_changes_are_compared_whole, which pins the removed behaviour. In docs/defects.md through pm-tools: reopen DEF-NUMBER-34 for the range-change shape only (repro: 'Latency fell from 200 to 150 ms.' against 'from 200 to 120 ms.' gives []); its spaced-dash and sign parts stay fixed. Log DEF-NUMBER-44 as dissolved, because the comparison that caused it is removed",
+            "change": "Removal that restores HEAD 65451f1 range grading. It adds nothing. The _compounds function, _merged_numbers, _compound_part_values, the signed-value `-?` in _VALUE and the spaced-dash rule all stay. I verified this in a scratch rebuild of the reviewed tree. F2, F10 and F16 return fuzzy or []. A variant I found returns [] as well: '-5 to 10' against '−5 to 10' with U+2212 gave contradicted [('-5-10','5-10')] in the reviewed tree. The offline suite ran with all three planned removals applied: 504 passed. The 3 failures are exactly the pin tests of the removed mechanisms. Nothing smaller holds. The offered refinement adds two special cases (expanding a two-digit year end, and a '--' separator). The cause stays live: equal rendered strings are required across notations, and the U+2212 minus variant already reaches it by another path. The comparison answers a MINOR missed contradiction (DEF-NUMBER-34). It has already needed one patch (DEF-NUMBER-44, _year_span_key) for a false-CONTRADICTED regression, and that patch now hosts F2 and F10",
+            "radius": "The consumers of find_numeric_mismatches: find_mismatches (entity_check.py:773), leading to has_contradiction (grounding.py:1257), the verification check (grounding.py:1744) and the lexical features _conflict_feats (lexical.py:343, 373). consistency.py:55 still reads _merged_numbers and is unchanged. Range grading on all of these returns to HEAD. Found by grep over the reconstructed reviewed tree, because the named graph.json predates the change set. What it might break: the range conflicts the comparison caught are missed again, as at HEAD. These are the held-out VitaminC set of 32 added contradictions (81% REFUTES) and the PsiloQA year-span conflicts (35 of 37 labelled). They become missed contradictions, not false ones. The kind element of _merged_numbers has no reader in src afterwards. It is named here and not removed (F14 territory)",
+            "newMechanism": false
+          },
+          {
+            "answers": [
+              "F3 MAJOR: an opening-parenthesis boundary after an unlisted, unshaped abbreviation (Ph.D., B.Sc., Mt., etc.) cuts the sentence or silently drops a claim"
+            ],
+            "site": "src/groundrails/extract.py: in the _SENT_SPLIT_RE lookahead (line 71), change `[\\\"'“‘(]?` to `[\\\"'“‘]?`. Delete lines 150-151 (`if shaped and text.startswith(\"(\", m.end()): continue`), which are dead once '(' cannot follow a boundary. Drop 'or parenthesis' and the '(' part of the DEF-CLAIM-41 mention from the comment at lines 64-68. In tests/test_defect_regressions.py, delete TestAbbreviationBoundaries.test_sentence_in_brackets_is_its_own_claim. In docs/defects.md: DEF-CLAIM-41 goes back to fixed in part, with the '(' shape open (MEDIUM, HEAD behaviour)",
+            "change": "Removal of the '(' arm and its exemption. The citation-marker tail group (the fixed part of DEF-CLAIM-41) stays, and so do the _ABBREV_SHAPE_RE rejoin and the `shaped` flag (DEF-CLAIM-39/40). Verified in scratch: all four F3 inputs return one whole claim, as at HEAD. The DEF-CLAIM-39 and DEF-CLAIM-40 repros still stay whole, and the citation-tail split still holds. Nothing smaller holds. The offered widening of _ABBREV_SHAPE_RE adds word-list entries, which is a new mechanism. The same regex gates the rejoin, so the widening changes rejoin behaviour too. Every other unlisted, unshaped abbreviation before '(' plus a capital still cuts. The arm answers a MEDIUM defect. Its failure is the bar's worst error: 'She earned a Ph.D.' is 18 characters and is dropped silently",
+            "radius": "_SENT_SPLIT_RE in extract.py has one consumer, _split_sentences (extract.py:139), which feeds _split_document and then extract_claims. The regexes named _SENT_SPLIT_RE in lexical.py:726 and grounding.py:430 are separate local copies and are untouched. What it might break: a sentence that opens with '(' welds to the sentence before again, as at HEAD ('Costs rose 12% in 2023. (Demand fell 8% in 2023.)'). The 81 changed test units, 20 judged correct, are given back",
+            "newMechanism": false
+          },
+          {
+            "answers": [
+              "F4 MAJOR: the lettered outline prefix strips a line-initial initial or genus abbreviation (E. coli, C. difficile) and splits hard-wrapped sentences",
+              "dissolves F22 MINOR: the roman-numeral test half becomes moot"
+            ],
+            "site": "src/groundrails/extract.py:191: set _LIST_PREFIX_RE back to the HEAD form `r\"^\\s*(?:[-*+]|\\d+[.)])\\s+\"`, with the HEAD comment. In tests/test_defect_regressions.py, delete test_outline_items_stay_apart. In docs/defects.md: reopen DEF-CLAIM-45 (MINOR)",
+            "change": "Removal of the letter arm and the roman arm. Verified in scratch: 'E. coli ...', 'V. cholerae ...', 'X. laevis ...', 'S. aureus ...' and the hard-wrapped C. difficile document all return the HEAD output. Nothing smaller holds. The offered refinement `[A-Za-z]\\)|[A-Z]\\.(?=\\s+[A-Z])` keeps the roman arm `[IVX]+\\.`, and that arm still strips 'V.' from 'V. cholerae' and 'X.' from 'X. laevis' (reproduced in the reviewed tree). DEF-CLAIM-45 is MINOR, and the rule changed 0 units in 24,974 held-out test documents, so no measured gain is lost",
+            "radius": "Two consumers: _strip_markdown_noise (extract.py:232) and the list-item break in _split_document (extract.py:498). The DEF-CLAIM-38 `.lstrip(\"> \")` fix on that line stays. What it might break: consecutive lettered outline items weld again ('... in March B.'), as at HEAD",
+            "newMechanism": false
+          }
+        ],
+        "reverts": [],
+        "deferred": [
+          "F9 MAJOR (CRLF fence closer in _COMMENT_OR_CODE_RE): CONFIRMED. In the reviewed tree, the CRLF document gives 3 claims and the HTML comment is graded contradicted [('900','1200')]. HEAD gives 2 claims. Deferred past the budget of 3: it is in the bar's worst class, but it has the narrowest reach of the four worst-class items, because it needs a CRLF string plus a fenced block plus a later comment. Next invocation: in extract.py:403-404, change `[ \\t]*$` to `[ \\t]*\\r?$` and `\\n[ \\t]*\\n` to `\\n[ \\t]*\\r?\\n`. This refines the DEF-CLAIM-35 (MAJOR) mechanism and is smaller than removing it. I verified it in scratch: the comment is dropped and 507 passed. What stays live: in a CRLF string passed to extract_claims, every HTML comment after the first fenced block becomes claim text. Defect id: file a new DEF-CLAIM id, related to DEF-CLAIM-27 and DEF-CLAIM-35",
+          "F1 MAJOR (Latin re-check silences the non-English warning): CONFIRMED on the four cited PsiloQA train/validation answers (2 Catalan, 2 Swedish). HEAD reads 'la' and warns. The reviewed tree reads 'en', and warn_if_not_english returns None on each. This breaks the pre-registered criterion at HELDOUT2.md:32. The registered test corpus had no Latin reads, so it could not fail. Deferred: a missing warning is below the bar's worst class, and the budget is spent on worst-class regressions. Next invocation: remove the `if lg.name == \"LATIN\":` block and _LATIN_ENGLISH_MIN (lexical.py:427-429, 458-467), and reopen DEF-CLAIM-37 (MINOR), per the pre-registration's own rule 'A rule that fails is reverted'. That revert also restores HEAD's HIGH-tier behaviour: a claim read as 'la' can raise UnsupportedLanguageError (grounding.py:1043-1058). This is HEAD behaviour, not a regression. What stays live: a non-English document that lingua reads as Latin, with English confidence of 0.2 or more among spoken languages, gets no warning and passes the HIGH-tier guard as 'en'. Id: DEF-CLAIM-37 (reopen)",
+          "F5 MAJOR (currency comparative on cover/launder/turnover): CONFIRMED. 'cover $5 million' against '$7 million' gives fuzzy []; HEAD gives contradicted [('5','7')]. launder and turnover behave the same way. The cause predates the change: _COMPARATIVE_RE has no word boundary. 'cover 5 million' without a currency sign is already [] at HEAD. The currency arm only widens its reach. Deferred: a wrong supported verdict is below the bar's worst class. Next invocation: wrap the word quantifiers as `\\b(?:more than|...|roughly)`, with the symbol quantifiers outside the group. I verified this in scratch: 'cover $5 million' gives [('5','7')], 'over $5 million' stays a bound, and 507 passed. Also record the HaluEval-summarisation design FAIL (0.70 against 0.53) in the DEF-NUMBER-46 evidence. What stays live: a wrong amount after cover, launder, turnover or similar words, followed by a currency sign, is graded supported. Defect id: file a new DEF-NUMBER id, related to DEF-NUMBER-46",
+          "Record items, deferred to one record pass with no product harm: F6 (the parenthesis gate count 20/20 should be 18/20; this becomes moot after change 2), F7 (snapshot hashes, and rules closed on INCONCLUSIVE evidence; after this plan the INCONCLUSIVE closures that remain are DEF-NUMBER-32 and DEF-NUMBER-46), F15 and F19 (one cause: the harness diffs against the moving HEAD; pin both to 65451f1), F17 tracker part (narrow the DEF-CLAIM-40 closure to 'a verbless side is no longer dropped'), and F20 (rename the working_tree key). This plan changes src after the frozen-code hash 8a1b776d8f49a535. HELDOUT2.md therefore needs a note after the review that lists the three removed rules, next to 'Nothing was changed after it'"
+        ],
+        "refuted": [
+          "F11 MAJOR (Gov./Sen. titles in the rejoin-only list): immaterial. HEAD 65451f1 gives the identical two-part split for both cited sentences (verified). This is a failure mode of the abbreviation heuristic. It does not crash, does not regress against HEAD and breaks no guarantee the bar states. It is measured as a rate and has no defect id",
+          "F17 MAJOR (the U.S. Treasury split persists after DEF-CLAIM-40 closed): the code part is immaterial. HEAD gives the identical output (verified). It is a failure mode of the _looks_like_claim verb heuristic, and this change did not cause it. The tracker wording goes to the record pass",
+          "F18 MINOR (quadratic carry chain): outside the input universe. It needs thousands of consecutive verbless abbreviation boundaries in one paragraph",
+          "F8 MINOR (modal-conditional criterion): immaterial. Removing the rule means fewer claims are skipped, which is the safe direction under precision-over-recall",
+          "F12 MINOR (range strings in the fitted features): dissolved by change 1. Range pairs no longer enter numeric_mismatches",
+          "F22 MINOR (weak roman-numeral test half): dissolved by change 3. The roman arm and its test are removed",
+          "F21 MINOR (duplicate rounding test): true, but no ground or extract_claims caller is affected. Declined for this round",
+          "F13 MINOR (inline 5% literal), F14 MINOR taste (_compounds kind string) and F23 MINOR taste (test filed in the wrong class): declined as taste. The behaviour is correct"
+        ],
+        "fanoutTraced": 9,
+        "fanoutTotal": 9,
+        "trajectory": "converging",
+        "trajectoryReason": "This is the first adjudication, so 0 of this round's 23 findings trace to a previous round's adjudicated fix. Inside the change set, 8 of the 10 MAJOR findings sit in rules the delta added (the range comparison, the '(' arm, the outline arms, the Latin re-check, the currency arm, and the comment/code scan). F2 and F10 sit in _year_span_key, which is itself a patch the delta laid on the range comparison (DEF-NUMBER-44). That pattern is evidence of spiralling inside the delta: a rule for a MINOR defect, refined once, now hosting new false-CONTRADICTED findings. The plan answers it by deletion, not by a third refinement. All three changes remove delta mechanisms back to HEAD code and add no new mechanism, so the next delta is smaller and the worst-class regressions they cover are gone. The three material items still open each have a terminal fix already verified in scratch: one removal and two regex edits. The instrument I was given (tmp/graphify-out/graph.json, dated 2026-09-25 04:45) predates the change set and holds none of its symbols (_merged_numbers, _year_span_key, _ABBREV_SHAPE_RE, _COMMENT_OR_CODE_RE). I established the blast radius with grep over a scratch rebuild of 65451f1 plus tmp/adv-review/r8-delta.patch."
+      }
+    }
+  ],
+  "workflowProgress": [
+    {
+      "type": "workflow_phase",
+      "index": 1,
+      "title": "Replay"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 1,
+      "label": "adjudicate:old-1",
+      "phaseIndex": 1,
+      "phaseTitle": "Replay",
+      "agentId": "ad825efceb5738126",
+      "model": "claude-opus-5-5[1m]",
+      "state": "done",
+      "startedAt": 1790455843969,
+      "queuedAt": 1790455843951,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "PROCEED_WITH_DEFERRALS",
+      "promptPreview": "Read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/adjudicator-old.md in full: it is your role and method as an adjudicator; adopt it exactly.\n\nThen read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/prompt-a.txt in full: it is the adjudication task.\n\nThis is a replay of a past adjudication. The r…",
+      "promptFramed": true,
+      "lastProgressAt": 1790456695207,
+      "tokens": 197057,
+      "toolCalls": 46,
+      "durationMs": 851235,
+      "resultPreview": "{\"ruling\":\"PROCEED_WITH_DEFERRALS\",\"changes\":[{\"answers\":[\"F2 whole-range comparison marks '2019-2020 season' CONTRADICTED against '2019-20 season' (entity_check.py:661)\",\"F10 '2020-21' against '2020-2021' graded CONTRADICTED (entity_check.py:250)\",\"F16 '5--10' against '5-10' graded CONTRADICTED (entity_check.py:148)\",\"F12 range strings entering numeric_mismatches and the fitted lexical features (…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 2,
+      "label": "adjudicate:old-2",
+      "phaseIndex": 1,
+      "phaseTitle": "Replay",
+      "agentId": "a3f4b3cb9d0639da5",
+      "model": "claude-opus-5-5[1m]",
+      "state": "done",
+      "startedAt": 1790455843969,
+      "queuedAt": 1790455843951,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "PROCEED_WITH_DEFERRALS",
+      "promptPreview": "Read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/adjudicator-old.md in full: it is your role and method as an adjudicator; adopt it exactly.\n\nThen read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/prompt-a.txt in full: it is the adjudication task.\n\nThis is a replay of a past adjudication. The r…",
+      "promptFramed": true,
+      "lastProgressAt": 1790456633936,
+      "tokens": 163215,
+      "toolCalls": 31,
+      "durationMs": 788911,
+      "resultPreview": "{\"ruling\":\"PROCEED_WITH_DEFERRALS\",\"changes\":[{\"answers\":[\"F2 MAJOR: whole-range comparison marks '2019-2020 season' CONTRADICTED against '2019-20 season' (entity_check.py:661)\",\"F10 MAJOR: '2020-21' against '2020-2021' graded CONTRADICTED (entity_check.py:250)\"],\"site\":\"src/groundrails/entity_check.py `_year_span_key` (line 250)\",\"change\":\"Before the existing order sort, expand a two-digit right …"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 3,
+      "label": "adjudicate:old-3",
+      "phaseIndex": 1,
+      "phaseTitle": "Replay",
+      "agentId": "a149a816be0aeec1a",
+      "model": "claude-opus-5-5[1m]",
+      "state": "done",
+      "startedAt": 1790455843970,
+      "queuedAt": 1790455843951,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "PROCEED_WITH_DEFERRALS",
+      "promptPreview": "Read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/adjudicator-old.md in full: it is your role and method as an adjudicator; adopt it exactly.\n\nThen read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/prompt-a.txt in full: it is the adjudication task.\n\nThis is a replay of a past adjudication. The r…",
+      "promptFramed": true,
+      "lastProgressAt": 1790456630118,
+      "tokens": 184344,
+      "toolCalls": 46,
+      "durationMs": 785092,
+      "resultPreview": "{\"ruling\":\"PROCEED_WITH_DEFERRALS\",\"changes\":[{\"answers\":[\"F2 (MAJOR) 2019-2020 vs 2019-20 graded CONTRADICTED - dissolved\",\"F10 (MAJOR) 2020-21 vs 2020-2021 graded CONTRADICTED - same cause as F2, dissolved\",\"F16 (MAJOR) 5--10 vs 5-10 graded CONTRADICTED - reaches ground only through this block, dissolved\",\"F12 (MINOR, immaterial) range strings entering numeric_mismatches and the fitted num_edit_…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 4,
+      "label": "adjudicate:new-1",
+      "phaseIndex": 1,
+      "phaseTitle": "Replay",
+      "agentId": "a6a39e8e721f24c9a",
+      "model": "claude-opus-5-5[1m]",
+      "state": "done",
+      "startedAt": 1790455843971,
+      "queuedAt": 1790455843951,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "PROCEED_WITH_DEFERRALS",
+      "promptPreview": "Read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/adjudicator-new.md in full: it is your role and method as an adjudicator; adopt it exactly.\n\nThen read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/prompt-b.txt in full: it is the adjudication task.\n\nThis is a replay of a past adjudication. The r…",
+      "promptFramed": true,
+      "lastProgressAt": 1790456902151,
+      "tokens": 188963,
+      "toolCalls": 41,
+      "durationMs": 1057125,
+      "resultPreview": "{\"ruling\":\"PROCEED_WITH_DEFERRALS\",\"changes\":[{\"answers\":[\"F2: whole-range comparison marks '2019-2020 season' CONTRADICTED against '2019-20 season' (MAJOR, CONFIRMED: reviewed tree contradicted [('2019-2020','2019-20')] in both directions; HEAD 65451f1 fuzzy [])\",\"F10: same cause, '2020-21' against '2020-2021' (MAJOR, CONFIRMED: reviewed tree contradicted; HEAD fuzzy)\"],\"site\":\"src/groundrails/en…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 5,
+      "label": "adjudicate:new-2",
+      "phaseIndex": 1,
+      "phaseTitle": "Replay",
+      "agentId": "ab8360c8488f267c0",
+      "model": "claude-opus-5-5[1m]",
+      "state": "done",
+      "startedAt": 1790455843971,
+      "queuedAt": 1790455843951,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "PROCEED_WITH_DEFERRALS",
+      "promptPreview": "Read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/adjudicator-new.md in full: it is your role and method as an adjudicator; adopt it exactly.\n\nThen read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/prompt-b.txt in full: it is the adjudication task.\n\nThis is a replay of a past adjudication. The r…",
+      "promptFramed": true,
+      "lastProgressAt": 1790456574850,
+      "tokens": 167389,
+      "toolCalls": 34,
+      "durationMs": 729823,
+      "resultPreview": "{\"ruling\":\"PROCEED_WITH_DEFERRALS\",\"changes\":[{\"answers\":[\"F2 (MAJOR) '2019-2020' against '2019-20' graded CONTRADICTED\",\"F10 (MAJOR) '2020-21' against '2020-2021' graded CONTRADICTED\",\"F16 (MAJOR) '5--10' against '5-10' graded CONTRADICTED\",\"F12 (MINOR) range strings entering numeric_mismatches and the fitted num_edit_mag feature - dissolved\"],\"site\":\"src/groundrails/entity_check.py: delete the w…"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 6,
+      "label": "adjudicate:new-3",
+      "phaseIndex": 1,
+      "phaseTitle": "Replay",
+      "agentId": "aca31e577619bfeed",
+      "model": "claude-opus-5-5[1m]",
+      "state": "done",
+      "startedAt": 1790455843972,
+      "queuedAt": 1790455843952,
+      "attempt": 1,
+      "lastToolName": "StructuredOutput",
+      "lastToolSummary": "PROCEED_WITH_DEFERRALS",
+      "promptPreview": "Read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/adjudicator-new.md in full: it is your role and method as an adjudicator; adopt it exactly.\n\nThen read /home/lab/workspace/private/ai-assistants/claude-code-plugins/tmp/experiments/adjudicator-replay/prompt-b.txt in full: it is the adjudication task.\n\nThis is a replay of a past adjudication. The r…",
+      "promptFramed": true,
+      "lastProgressAt": 1790456933180,
+      "tokens": 205201,
+      "toolCalls": 45,
+      "durationMs": 1088153,
+      "resultPreview": "{\"ruling\":\"PROCEED_WITH_DEFERRALS\",\"changes\":[{\"answers\":[\"F2 MAJOR: '2019-2020' against '2019-20' is graded CONTRADICTED\",\"F10 MAJOR: '2020-21' against '2020-2021' is graded CONTRADICTED\",\"F16 MAJOR: '5--10' against '5-10' is graded CONTRADICTED\",\"dissolves F12 MINOR: range strings no longer reach numeric_mismatches or the fitted _conflict_feats\"],\"site\":\"src/groundrails/entity_check.py: remove t…"
+    }
+  ],
+  "totalTokens": 1106169,
+  "totalToolCalls": 243
+}

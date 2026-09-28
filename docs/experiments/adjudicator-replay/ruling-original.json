@@ -1,0 +1,61 @@
+{
+ "ruling": "PROCEED_WITH_DEFERRALS",
+ "changes": [
+  {
+   "answers": [
+    "F3 opening-parenthesis boundary cuts or drops a sentence after an unlisted abbreviation (Ph.D., B.Sc., Mt., etc.) - CONFIRMED regression; also cuts unit conversions: 'The bridge spans 1,280 ft. (390 m) across the bay' becomes 'The bridge spans 1,280 ft.' plus '(390 m) across the bay and opened in 1937.', and the same happens with lbs., mi. and sq. ft. HEAD 65451f1 keeps every one of these whole"
+   ],
+   "site": "src/groundrails/extract.py: _SENT_SPLIT_RE lookahead (lines 70-73) and the exemption `if shaped and text.startswith(\"(\", m.end()): continue` (lines 150-151); tests/test_defect_regressions.py TestAbbreviationBoundaries.test_sentence_in_brackets_is_its_own_claim; docs/defects.md DEF-CLAIM-41",
+   "change": "Remove `(` from the lookahead character class so an opening parenthesis never starts a sentence: `r\"\\s+(?=[\\\"'\u201c\u2018]?[A-Z0-9])\"`. This is HEAD's behaviour, and HEAD's comment named this exact failure ('4 p.m. (EST)'). Delete the exemption line, which the removal makes dead, and restore the comment saying an opening bracket is not accepted. Keep the citation-marker `tail` group. Replace test_sentence_in_brackets_is_its_own_claim with a pin that 'She earned a Ph.D. (Stanford) and joined the lab in 2019.' and 'The bridge spans 1,280 ft. (390 m) across the bay and opened in 1937.' each stay one claim. Reopen DEF-CLAIM-41 for the parenthesised-sentence shape; its citation-marker part stays fixed. I checked this on a scratch copy of src: all reported and extended reproductions stay whole, and the offline suite gives 505 passed, with the only 2 failures being the tests that pin the removed arms (this one and the outline test in change 3)",
+   "radius": "_SENT_SPLIT_RE has one consumer in src, _split_sentences (extract.py:139), which feeds _split_document and then extract_claims. grounding.py and lexical.py define their own separate _SENT_SPLIT_RE. experiments/defects/measure_heldout2.py:37-38 asserts that the pattern contains `\u2018(]`, so it will raise at import. It already exits on the frozen-src hash check once src changes, so the harness stays a record of the frozen code. What could break: 'Costs rose 12% in 2023. (Demand fell 8% in 2023.)' welds into one claim again (DEF-CLAIM-41, MEDIUM, HEAD behaviour)",
+   "newMechanism": false
+  },
+  {
+   "answers": [
+    "F2 whole-range comparison contradicts '2019-2020 season' against '2019-20 season' - CONFIRMED regression (HEAD fuzzy)",
+    "F10 same cause, '2020-21' against '2020-2021' - CONFIRMED regression; merged with F2",
+    "F16 the signed range end reads '5--10' as 5 to -10 and contradicts '5-10' in both directions - CONFIRMED regression (HEAD fuzzy)"
+   ],
+   "site": "src/groundrails/entity_check.py: _VALUE (line 148), the _COMPOUND_RE groups a/ba/bb (lines 155-157), and _year_span_key (lines 250-256); tests in TestNumericAgreementLimits",
+   "change": "(a) Allow a sign on the first end only. Restore `_VALUE` to its HEAD text (unsigned) and write `(?P<a>-?(?:{_VALUE}))`, `(?P<ba>-?(?:{_VALUE}))` and `(?P<bb>-?(?:{_VALUE}))`, with `b` unsigned. '5--10' is then not a range (HEAD behaviour), and '-5 to 10' keeps its sign. (b) In _year_span_key, before the existing order normalisation, expand a two-digit end that follows a four-digit year: `full = int(ends[0][:2] + ends[1]); ends[1] = str(full + 100 if full < int(ends[0]) else full)`, so '2019-20' becomes 2019-2020 and '1999-00' becomes 1999-2000. Pin: both span directions give []; '5--10 mg' against '5-10 mg' gives [] in both directions; '2019-20' against '2018-2019' still conflicts. I checked this on the scratch copy: F2, F10 and F16 give fuzzy with no mismatch, test_range_keeps_the_sign_of_its_ends passes, and the lexical golden-set and equivalence tests pass",
+   "radius": "_COMPOUND_RE feeds _compounds (entity_check.py:184), which feeds _compound_part_values (209) and _merged_numbers (227). _merged_numbers is read by the range block of find_numeric_mismatches (654, 658) and by consistency._line_numbers (consistency.py:55). find_numeric_mismatches is called by grounding.populate_match_metadata and by entity_check.find_mismatches (the fitted lexical features). _year_span_key is used only at entity_check.py:661 and 665. extract_numbers is not touched, so its guarantee holds. What could break: a range with a negative upper end ('-10 to -5') is no longer one compound (HEAD behaviour). A non-year 'NNNN-NN' is read as a year span, but only inside the range-equality test",
+   "newMechanism": true
+  },
+  {
+   "answers": [
+    "F4 lettered and roman outline prefix strips a line-initial species abbreviation or initial ('E. coli' becomes 'coli ...'; 'V. cholerae' matches the roman arm) and splits hard-wrapped prose ('C. difficile') - CONFIRMED regression",
+    "F21 the roman-numeral half of test_outline_items_stay_apart does not detect removal of the roman arm - dissolved, because the arm is removed and the test is rewritten"
+   ],
+   "site": "src/groundrails/extract.py _LIST_PREFIX_RE (line 191) and its comment; tests/test_defect_regressions.py test_outline_items_stay_apart; docs/defects.md DEF-CLAIM-45",
+   "change": "Remove the dotted single-letter arm and the roman-numeral arm, and keep the unambiguous `[A-Za-z]\\)` arm: `re.compile(r\"^\\s*(?:[-*+]|\\d+[.)]|[A-Za-z]\\))\\s+\")`. Rewrite the test to use 'a) Revenue rose 5% in 2023\\nb) Costs fell 3% in 2023' (2 claims). Pin that 'E. coli infections rose 12% in 2023.' and the hard-wrapped 'C. difficile' paragraph each stay one claim. Reopen DEF-CLAIM-45 for dotted-letter and roman labels. I checked this on the scratch copy: 'E. coli', 'C. difficile' and the a)/b) items give the expected claims",
+   "radius": "_LIST_PREFIX_RE at extract.py:232 (_strip_markdown_noise) and extract.py:498 (list-item flush in _split_document), plus the harness switch at measure_heldout2.py:48 (record only). What could break: 'A. The committee ... B. The board ...' welds again, with 'B.' on the previous claim (DEF-CLAIM-45, MINOR, HEAD behaviour)",
+   "newMechanism": false
+  }
+ ],
+ "reverts": [],
+ "fanoutTraced": 14,
+ "fanoutTotal": 14,
+ "trajectory": "converging",
+ "trajectoryReason": "This is round 1, so 0 of the 23 findings trace to a fix the loop applied. The worst severity is MAJOR, with no CRITICAL. The plan edits what exists. Two of the three changes remove rules the change set added (the parenthesis split arm and the dotted outline arms), and both return to HEAD 65451f1 behaviour. Only one small normalisation branch is added (_year_span_key), and it answers a reproduced false CONTRADICTED. The code graph at tmp/graphify-out/graph.json is stale: it is dated Sep 25 04:45 and has no nodes for _compounds, _merged_numbers or _year_span_key. I used it only to confirm the callers of find_numeric_mismatches, and traced every other consumer with grep and by reading the call sites. The rounded-range shape I found while verifying sits in the same range block as F2, F10 and F16. If the next round reports it, decide between per-end precision agreement and removing the block by measurement, not by adding another normalisation.",
+ "deferred": [
+  "F9 CRLF fence (MAJOR, CONFIRMED regression): on a CRLF string, an HTML comment after a fenced block becomes a claim, and the reported case grades it contradicted [('900','1200')]; HEAD strips it. It is past the budget and first in line for the next invocation. The remedy is two tokens at extract.py:403-404: `[ \\t]*\\r?$` and `\\n[ \\t]*\\r?\\n`. It stays live for CRLF strings passed to extract_claims when a fenced block is followed by an HTML comment. extract_claims_from_file is not affected",
+  "F5 currency comparative (CONFIRMED regression): 'cover/launder/turnover $5 million' against $7 million now reads fuzzy, where HEAD returned contradicted. This is a missed contradiction, not one of the bar's worst errors, so it ranks below the three planned changes. The remedy is a leading `\\b` on the word quantifiers in _COMPARATIVE_RE, plus recording the HaluEval-summarisation design FAIL (46 removed, 0.70 labelled against P 0.53) in the DEF-NUMBER-46 evidence. It stays live for any money amount after cover, recover, launder or turnover",
+  "F1 Latin re-check (CONFIRMED, revert declined): I measured all three PsiloQA splits (70,044 answers). 7 non-English-labelled answers stop warning; 3 of them are English text, so 4 genuine non-English answers (2 Catalan, 2 Swedish) lose the warning. On the same corpus the rule removes 84 of 207 false warnings on English answers. HEAD already gives no warning on 14,395 of 51,941 non-English answers. Reverting would restore 84 false warnings on English documents, the product's main input, to recover 4 warnings on non-English ones. What stays live: those 4 read as 'en', both for the warning and for the HIGH-tier guard. Deferred record fix: the DEF-CLAIM-37 evidence and HELDOUT2.md:44 should state that the test corpus had 0 Latin reads (the PASS had no power to fail) and give the PsiloQA figures",
+  "F11 Gov./Sen. title cut (CONFIRMED, pre-existing): HEAD 65451f1 gives the same two-part output, so this change did not cause it. Moving the titles into _ABBREV_BEFORE_RE changes a never-split rule used on every boundary, so measure first. It stays live for 'signed by Gov. Newsom, who ...'",
+  "F17 DEF-CLAIM-40 closure overstates the fix (the code is unchanged from HEAD; the tracker is inaccurate): narrow the closure to 'a side without a verb rejoins its neighbour' and file the case where both sides pass _looks_like_claim ('U.S. Treasury rose 8%'). This is a tracker-only edit for the next invocation. The cut stays live",
+  "F6 HELDOUT2.md:46 parenthesis gate counted 20 of 20 where the strict criterion gives 18 of 20, and per-item judgements are not in the JSON: a record correction. Change 1 removes the parenthesis rule, so the count no longer supports a live rule",
+  "F7 dataset snapshot hashes are not recorded, and rules were closed on INCONCLUSIVE evidence: record-only, for the next record pass",
+  "F15 and F20 harness compares against the moving HEAD rather than 65451f1: record-only. Any src change in this plan also changes the frozen-src hash, so re-running the harness means re-freezing it on the new code",
+  "F12 range strings now enter numeric_mismatches, which the fitted num_edit_mag feature reads: no wrong verdict was shown. Measure the fitted tier on its golden parquet before the next refit",
+  "Unreported, found while verifying F2 and F10: the whole-range block compares rendered strings, so rounded or approximate ranges contradict. '1.5-2.5 m' against '1.47-2.53 m', '2-5%' against '2.3-4.8%' and 'About 20-30%' against '22-31%' each give a mismatch; HEAD gives []. This stays live. Before choosing between per-end precision agreement and removing the block, count on the design corpora how often the block contradicts ranges whose ends agree at a coarser precision. The case for keeping the block is round-1 VitaminC (32 added, 81% REFUTES) and the PsiloQA year-span conflicts (35 of 37 labelled)"
+ ],
+ "refuted": [
+  "F8 modal-conditional removal criterion (immaterial): removing the rule means fewer claims are skipped as hypothetical, which is the safe direction. No product path is harmed, so no change is needed",
+  "F18 quadratic rejoin carry chain (immaterial): it needs thousands of consecutive verbless abbreviation boundaries in one paragraph, which is outside the input universe of English answer documents",
+  "F13 inline Decimal('0.05') literal (taste): the value is correct and no verdict changes",
+  "F14 _compounds returns an unread kind string and the raw Match (taste): behaviour is correct and the cost is maintenance only",
+  "F19 duplicate rounding test (declined): the duplicate costs CI time only and no caller of ground or extract_claims sees a different verdict",
+  "F22 bracket test filed under TestCurrencyComparatives (taste): the test still passes after change 1, where it pins HEAD behaviour; where it is filed does not affect any verdict"
+ ],
+ "research": []
+}

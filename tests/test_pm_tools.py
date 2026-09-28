@@ -2899,6 +2899,13 @@ def test_add_does_not_double_a_level_word_the_text_opens_with(defects: Path, cri
     assert "- HIGH; Low, medium and high tiers each render their own badge\n" in (
         criteria.read_text(encoding="utf-8")
     )
+    # a `LEVEL;` heading of another level or an alias is a heading, and the flag replaces it
+    for opening in ("MINOR; frames drop", "SEV2; frames drop"):
+        run(
+            "add", str(defects), "--category", "LNCH", "--author", "@kj", "--severity", "MAJOR",
+            "--title", opening[:4], "--text", opening,
+        )  # fmt: skip
+        assert f"**{opening[:4]}** - MAJOR; frames drop\n" in defects.read_text(encoding="utf-8")
 
 
 def test_refs_refuses_a_malformed_id_like_its_siblings(defects: Path):
@@ -2908,3 +2915,49 @@ def test_refs_refuses_a_malformed_id_like_its_siblings(defects: Path):
     with pytest.raises(SystemExit, match="--id takes an id like DEF-LNCH-3"):
         run("refs", str(defects), "--id", "`DEF-LNCH-1`")
     assert run("refs", str(defects), "--id", "DEF-LNCH-1") == 0
+
+
+def test_edit_keeps_an_opening_prose_word_under_a_level_flag(defects: Path, criteria: Path):
+    """DEF-PMGT-79. edit stripped any opening level word from supplied text, so
+    'Normal, degraded ...' under --severity MAJOR lost 'Normal,'. Only a `LEVEL;`
+    heading is a level; a comma or colon after the word is prose."""
+    add_defect(defects, "resume")
+    run(
+        "edit", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--severity", "MAJOR",
+        "--text", "Normal, degraded mode drops frames on resume",
+    )  # fmt: skip
+    assert "- MAJOR; Normal, degraded mode drops frames on resume\n" in defects.read_text(
+        encoding="utf-8"
+    )
+    run(
+        "edit", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--severity", "MINOR",
+        "--text", "MAJOR; frames drop on resume",
+    )  # fmt: skip
+    assert "- MINOR; frames drop on resume\n" in defects.read_text(encoding="utf-8")
+    run("edit", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--severity", "MAJOR")
+    assert "- MAJOR; frames drop on resume\n" in defects.read_text(encoding="utf-8")
+    run(
+        "add", str(criteria), "--category", "AUTH", "--name", "Auth", "--author", "@kj",
+        "--importance", "HIGH", "--title", "badges", "--text", "each tier has a badge",
+    )  # fmt: skip
+    run(
+        "edit", str(criteria), "--id", "ACC-AUTH-1", "--author", "@kj", "--importance", "HIGH",
+        "--text", "Low, medium and high tiers each render their own badge",
+    )  # fmt: skip
+    assert "- HIGH; Low, medium and high tiers each render their own badge\n" in (
+        criteria.read_text(encoding="utf-8")
+    )
+    run(
+        "edit", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj",
+        "--text", "Minor, degraded mode drops frames on resume",
+    )  # fmt: skip
+    assert "- MAJOR; Minor, degraded mode drops frames on resume\n" in defects.read_text(
+        encoding="utf-8"
+    )
+    run(
+        "edit", str(criteria), "--id", "ACC-AUTH-1", "--author", "@kj",
+        "--text", "Low, medium and high tiers each render their own badge",
+    )  # fmt: skip
+    assert "- HIGH; Low, medium and high tiers each render their own badge\n" in (
+        criteria.read_text(encoding="utf-8")
+    )

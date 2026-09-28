@@ -1,0 +1,383 @@
+You adjudicate adversarial-review findings for the uncommitted change set of the groundrails repository at /home/lab/workspace/private/ai-assistants/groundrails versus HEAD 65451f1: src/groundrails/entity_check.py, src/groundrails/extract.py, src/groundrails/lexical.py, src/groundrails/consistency.py, tests/test_defect_regressions.py, tests/test_out_of_scope_claims.py, tests/test_calibration.py, the tracker docs/defects.md, and the new measurement harness experiments/defects/ (measure_open_defects.py, measure_heldout.py, measure_heldout2.py and the pre-registrations HELDOUT.md, HELDOUT2.md with their result JSON files). The whole diff, including the new harness files, is at tmp/adv-review/r8-delta.patch (1,962 lines)..
+
+BAR (severity is judged against THIS, not against all inputs in the world):
+PURPOSE: groundrails is a deterministic claim-grounding library: developers and agentic RAG pipelines extract claims from a generated answer document and verify each against source texts, receiving a verdict (supported, contradicted or unconfirmed) and the exact support location. A false CONTRADICTED verdict, a crash, or a real claim silently skipped or cut is the worst error it can make.
+INPUT UNIVERSE: English markdown or plain-text answer documents (lists, outlines, headings, quotes, parentheses, citation markers, HTML comments, abbreviations, numbers, currency, percentages, ranges, dates) and their source texts, passed to ground, ground_batch or grounding_document as a list of strings, a list of (path, text) tuples, or a {path: text} mapping. A non-English document is in the universe only for the warning.
+PRIMARY PATH (every CRITICAL or MAJOR must sit on it): extract_claims(document) -> ground / ground_batch / grounding_document(claims, sources) -> GroundingMatch verdict and location; check_consistency(document) for numbers that disagree inside one document; warn_if_not_english and the HIGH-tier unsupported-language guard, both through lexical.detect_lang_confident.
+GUARANTEES: extract_numbers returns the same triples as before (the grounding tier and pinned golden set read it); the lexical language features (_lingua_lang) are unchanged; a value the source states verbatim is never CONTRADICTED; no input raises from find_numeric_mismatches.
+OUT OF SCOPE: claim-extraction quality for non-English documents (warned only, by the author's ruling); the stellars-claude-code-plugins repository; experiments/ outside experiments/defects; the private folders.
+The script caps material=false at MINOR/outOfBar whatever the reproduction shows.
+
+INSTRUMENT AVAILABLE - a refreshed AST code graph of src/groundrails at /home/lab/workspace/private/ai-assistants/groundrails/tmp/graphify-out/graph.json. It answers callers, dependents and shared causes faster than grepping. Use it as your method sees fit.
+
+RESEARCH: denied by the user for this review - no research request is acted on.
+
+PRIOR ADJUDICATIONS (you start fresh each round - this record is your continuity; do not re-litigate what it settled absent NEW evidence):
+Rulings: (none - first adjudication)
+Refuted:
+(none)
+Deferred:
+(none)
+
+FINDINGS (round 1, 23: CRITICAL:0 MAJOR:10 MINOR:13; findings carrying cappedFrom were reduced by the script for material=false):
+
+[
+  {
+    "severity": "MAJOR",
+    "title": "Latin re-check silences the non-English warning on Catalan and Swedish documents; the round-2 test could not detect it",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/lexical.py",
+    "line": 458,
+    "evidence": "I ran the new code on the PsiloQA train and validation splits. Neither round read them. They hold 50,142 non-English answers, and the committed code reads 328 of them as Latin. Four genuinely non-English documents warn at HEAD ('la') and are silent now: warn_if_not_english returns None and extract_claims logs nothing.\n- Catalan: 'El detectiu moribund és una novel·la de misteri escrita per Robert Galbraith i publicada el 2013. La novel·la va ser publicada per Hachette ...' (2 claims, no warning)\n- Catalan: 'Hans Siggaard Jensen va exercir el paper de president de l'European Doctoral Programme Association ...' (1 claim)\n- Swedish: 'Ja, Paragus mariae har flera underarter som är listade i Catalogue of Life. Dessa underarter är: ...' (16 claims, no warning)\n- Swedish: 'Ja, Catalogue of Life listar fem underarter för Malaconothrus foliatus: ...' (1 claim)\n\nThe round-2 test had no power for this failure. Of its 14,000 RAGTruth-translated train answers, the committed code read 0 as Latin; its only off-language reads were pl→en 1, es→tl 1, cn→en/und/hi 1 each. So 'PASS: 0 of 13,998 stop warning' in HELDOUT2.md:44 could not have failed.\n\nThe --design language check also used RAGTruth test rather than PsiloQA. The redesign therefore fixed exactly the 11 known round-1 test-split failures (0 stop warning on that split) and fails on unread splits of the same corpus. That breaks the pre-registered criterion at HELDOUT2.md:32 ('no non-English test document that warned with the committed code stops warning').",
+    "material": true,
+    "materiality": "Affects a developer who runs extract_claims on a Catalan or Swedish answer document. They get up to 16 claims and no warning that extraction is English-only. This is the silent-extraction shape of DEF-CLAIM-26 that the warning exists to expose, and the locked decision promises a non-English document a warning. The input is in the universe (non-English documents are in scope for the warning). The path is primary: warn_if_not_english → detect_lang_confident. The HIGH-tier guard now also reads these documents as 'en'.",
+    "remedy": "Revert the `if lg.name == \"LATIN\":` block (lexical.py:458-467) to the committed confident read, and reopen DEF-CLAIM-37. Any redesign needs a pre-registered test corpus that contains non-English Latin reads (PsiloQA train/validation has 328), and the report should state how many documents entered the branch. Risk of the revert: the 18 English documents that stopped warning falsely (65→47) warn again, which is the direction the locked ruling accepts.",
+    "outOfBar": false,
+    "taste": false,
+    "lenses": [
+      "data-scientist"
+    ]
+  },
+  {
+    "severity": "MAJOR",
+    "title": "Whole-range comparison marks an abbreviated year span CONTRADICTED ('2019-2020 season' against '2019-20 season')",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/entity_check.py",
+    "line": 661,
+    "evidence": "New code: ground('The club finished third in the 2019-2020 season.', ['The club finished third in the 2019-20 season, its best result in a decade.'], semantic=False) returns match_type 'contradicted' with numeric_mismatches [('2019-2020', '2019-20')]. HEAD 65451f1 returns 'fuzzy' with no mismatch. The reverse direction (claim '2019-20', source '2019-2020') is also flagged by find_numeric_mismatches.\n\nThis is the same notation-equivalence family as DEF-NUMBER-44 (reversed spans). That one was found in-sample: 41 false contradictions on RAGBench finqa/tatqa after the round-1 PASS. `_year_span_key` (line 250) normalises order only.\n\nThe round-1 PASS evidence was VitaminC (32 added) and HaluEval summarisation (14). Span notation rarely varies there, although round 1's own gained sample contains a '2019–20 season' claim. No measured corpus pairs an answer and a source that write the same span in two notations.",
+    "material": true,
+    "materiality": "This is the bar's worst error: a false CONTRADICTED on a claim whose period the source states in the common abbreviated form (sports seasons, fiscal and academic years). The input is in the universe (ranges, dates) and the path is primary: ground → GroundingMatch. It is a regression; HEAD did not contradict.",
+    "remedy": "NEW MECHANISM: in `_year_span_key`, expand a two-digit right end that follows a four-digit year ('2019-20' → '2019-2020') before the stated-range comparison, and pin the shape in TestNumericAgreementLimits. The kept whole-range rule is otherwise unchanged. Risk: a span like '1998-99' is read as 1998-1999, which is its meaning.",
+    "outOfBar": false,
+    "taste": false,
+    "lenses": [
+      "data-scientist",
+      "architect",
+      "bug-hunter"
+    ]
+  },
+  {
+    "severity": "MAJOR",
+    "title": "Opening-parenthesis boundary drops or cuts a sentence after an abbreviation the shape regex misses (Ph.D., B.Sc., Mt., etc.)",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/extract.py",
+    "line": 70,
+    "evidence": "Each of these returned one whole claim at HEAD:\n- extract_claims('She earned a Ph.D. (Stanford) and joined the lab in 2019.') → ['(Stanford) and joined the lab in 2019.']. 'She earned a Ph.D.' is 18 characters, below _MIN_CLAIM_CHARS 20, so it is silently dropped.\n- 'He holds a B.Sc. (Hons) in physics from Leeds.' → ['(Hons) in physics from Leeds.']\n- 'The summit sits on Mt. (Mount) Kenya and rises 5,199 m.' → two units.\n- 'Tech firms such as Apple, Google, etc. (Table 2) reported 12% growth in 2023.' → two units.\n\nCause: `_ABBREV_SHAPE_RE` (line 104) needs single dotted letters, so `\\b` fails inside 'Ph' and 'Sc'. 'Mt.' and 'etc.' are neither listed nor shaped, so the line-150 exemption does not apply and the new '(' arm of the lookahead splits.\n\nThe validation is thin:\n- Design data had 3 changed units (measure_heldout2_design.json).\n- The test had 81 changed units, and all 20 judged units come from one corpus (DROP game recaps).\n- 0 errors in 20 bounds the error share only below about 14% (rule of three), which allows up to about 11 of the 81.",
+    "material": true,
+    "materiality": "This is the bar's worst error: a real claim silently cut, or its subject and predicate dropped. It hits English prose with a degree or abbreviation before a parenthesis, which is in the universe (parentheses, abbreviations), on the primary path extract_claims. It is a regression from HEAD.",
+    "remedy": "Edit `_ABBREV_SHAPE_RE`: let the dotted arm accept 1-3 letter segments, `(?:\\b[A-Za-z]{1,3}\\.){2,}$`, so 'Ph.D.' and 'B.Sc.' count as shaped, and add `etc|Mt` to its word list. Then re-judge a sample drawn from at least two corpora. Risk: the same regex gates the rejoin (DEF-CLAIM-39/40), so a verbless side may now also rejoin at these boundaries.",
+    "outOfBar": false,
+    "taste": false,
+    "lenses": [
+      "data-scientist"
+    ]
+  },
+  {
+    "severity": "MAJOR",
+    "title": "Lettered outline prefix strips a species abbreviation or initial that opens a line, and splits hard-wrapped sentences",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/extract.py",
+    "line": 191,
+    "evidence": "- extract_claims('E. coli infections rose 12% in 2023.') → ['coli infections rose 12% in 2023.']. HEAD returns the whole sentence.\n- The hard-wrapped document 'Hospital-acquired infections were tracked, and\\nC. difficile cases fell 20% in 2022 across the network.' → ['Hospital-acquired infections were tracked, and', 'difficile cases fell 20% in 2022 across the network.']. HEAD returns one claim.\n\n`[A-Za-z][.)]\\s+` reads any initial or genus abbreviation (E. coli, S. aureus, C. difficile, H. pylori) at the start of a line as an outline label. It flushes the paragraph and strips the letter.\n\nEvidence for the rule: 0 changed units in 24,974 test documents (INCONCLUSIVE, kept, HELDOUT2.md:47). On design data, 20 of 108 changed units were judged. Every measured corpus is one-line JSON answers, so a wrapped line opening with an initial never occurs in them. The failure shape is absent from all evaluation data, which is a train→deploy distribution shift.",
+    "material": true,
+    "materiality": "This is the bar's worst error: a real claim cut in two, or its subject cut. It hits biomedical answers and hard-wrapped markdown or plain text, both in the universe, on the primary path extract_claims. It is a regression from HEAD. DEF-CLAIM-45, which the rule fixes, is only MINOR.",
+    "remedy": "Edit `_LIST_PREFIX_RE` so that the dotted single-letter form needs a capitalised next word: replace `[A-Za-z][.)]` with `[A-Za-z]\\)|[A-Z]\\.(?=\\s+[A-Z])`. Otherwise revert the letter arm to the committed regex (DEFER DEF-CLAIM-45). Risk: 'A. The committee ...' still splits, and 'J. Robert' at the start of a line still splits, as it already did at HEAD.",
+    "outOfBar": false,
+    "taste": false,
+    "lenses": [
+      "data-scientist",
+      "bug-hunter"
+    ]
+  },
+  {
+    "severity": "MAJOR",
+    "title": "Currency comparative arm turns a correct CONTRADICTED into supported for 'cover/launder/turnover $X'; its design-data FAIL was exempted asymmetrically and left out of the tracker",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/entity_check.py",
+    "line": 116,
+    "evidence": "Reproductions:\n- ground('The insurer agreed to cover $5 million in damages.', ['The insurer agreed to cover $7 million in damages after the ruling.']) returns 'fuzzy' with no mismatch. HEAD returns 'contradicted' with [('5','7')].\n- find_numeric_mismatches gives [] now against [('5','7')] at HEAD for 'conspiring to launder $5 million' and 'reported turnover $5 million'.\n- Cause: `_COMPARATIVE_RE` (line 110) has no word boundary, so 'over'/'under' inside cover, launder and turnover act as quantifiers, and the new arm extends that to '$' amounts.\n- 'The fund lost under $5 million' against '$7 million' also drops from contradicted to fuzzy, because a bound ignores direction.\n\nMethod crack:\n- On design data the rule FAILED the round-1 loss criterion on HaluEval summarisation: 46 removed, 32 labelled, 0.70 against P 0.53 (measure_heldout2_design.json).\n- HELDOUT2.md:8 exempted it because HaluEval labels mark a whole summary. Round 1 accepted the same corpus and labels as PASS evidence for DEF-NUMBER-34 (14 added, 10 labelled).\n- The test then had 4 pairs, so it was INCONCLUSIVE and kept.\n- docs/defects.md:356 cites only VitaminC ('1,130 removed, 41% against 47%'). It omits the failing corpus and the 461 REFUTES pairs among those removals.",
+    "material": true,
+    "materiality": "Affects a developer verifying an answer whose money amount is wrong ('cover $5 million' against a source's $7 million). They now get a supported (fuzzy) verdict where HEAD returned CONTRADICTED. The input is in the universe (currency) and the path is primary (ground). This is a wrong verdict on the product's core use, though not the bar's worst class.",
+    "remedy": "Edit `_COMPARATIVE_RE` so the word quantifiers need a leading word boundary: `(?:\\b(?:more than|...|roughly)|>=|<=|>|<|≥|≤|~)\\s*`. Record the HaluEval-summarisation FAIL in DEF-NUMBER-46's evidence. Risk: none for real quantifiers; the symbol quantifiers stay outside the \\b group.",
+    "outOfBar": false,
+    "taste": false,
+    "lenses": [
+      "data-scientist",
+      "data-scientist",
+      "architect",
+      "bug-hunter"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "Judged gates overstate their counts and cannot be audited; DEF-CLAIM-40 is closed though its shape persists",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/experiments/defects/HELDOUT2.md",
+    "line": 46,
+    "evidence": "- HELDOUT2.md:46 reports the parenthesis gate as '20 of 20'. Line 52 admits two judged units weld a bracketed note to the next sentence: '(With the 2-point conversion successful as Ryan passed to White) This was followed by ...' and '(The game was jokingly nicknamed \"The Harbaugh Bowl.\") Baltimore delivered ...'. Under the pre-registered criterion at line 33 ('both sides are whole sentences') those two fail, so the count is 18/20. That still passes the 16 threshold.\n- The rejoin sample's first item, 'Census), 0.69%  Native American (U.S.Census), and 0.14% Pacific Islander (U.S. Census).', was counted correct although the unit starts mid-sentence. The criterion judges the rejoined side, not whether the unit is whole.\n- docs/defects.md:157 closes DEF-CLAIM-40, yet 'Retail sales in the U.S. Northeast rose 5% in 2023.' still gives ['Retail sales in the U.S.', 'Northeast rose 5% in 2023.'] at both HEAD and now.\n- Per-item judgements are not written to measure_heldout2.json, and the judge is the rule's author, unblinded.",
+    "material": false,
+    "materiality": "NONE for this change. The DEF-CLAIM-40 cut predates it; the finding is the accuracy of the evidence record.",
+    "remedy": "Correct HELDOUT2.md:46 to 18 of 20. Reopen DEF-CLAIM-40, scoped to a split where both sides pass _looks_like_claim. Write each judged item's verdict into the result JSON.",
+    "outOfBar": true,
+    "taste": false,
+    "lenses": [
+      "data-scientist"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "Harness depends on the local cache revision; rules closed on INCONCLUSIVE evidence",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/experiments/defects/measure_heldout2.py",
+    "line": 52,
+    "evidence": "- `_file()` returns `sorted(glob(HUB/.../snapshots/*/...))[0]`, as measure_heldout.py:67 also does. HELDOUT.md and HELDOUT2.md name dataset ids but no snapshot hash, so another cache can select a different revision.\n- DEF-NUMBER-32, -44 and -46 and DEF-CLAIM-45 are marked [x] with 'fresh test inconclusive'. Their test counts were 0, 0, 4 and 0 changed units, so the held-out data does not support the closed status.",
+    "material": false,
+    "materiality": "NONE. This concerns the research record, not library behaviour.",
+    "remedy": "Record the snapshot hashes in HELDOUT*.md and the JSON. Mark INCONCLUSIVE rules as closed-unverified in docs/defects.md.",
+    "outOfBar": true,
+    "taste": false,
+    "lenses": [
+      "data-scientist",
+      "slop-hunter"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "Modal-conditional removal criterion cannot measure the rule's target class",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/experiments/defects/HELDOUT.md",
+    "line": 46,
+    "evidence": "The criterion compares firing rates on source sentences (HaluEval, VitaminC) with firing rates on LLM answers (HaluEval, PsiloQA): 0.067% against 0.055% (measure_heldout.py:246-264). Neither corpus contains authored hypotheticals, the rule's target. That class was measured only on the private prose set (16→15 of 27). Equal rates are expected whether or not the rule works.",
+    "material": false,
+    "materiality": "NONE. The removal means fewer claims skipped as hypothetical, which is the safe direction under the locked precision-over-recall ruling.",
+    "remedy": "No code change. State in HELDOUT.md that the criterion tests only how often the rule fires on sources.",
+    "outOfBar": true,
+    "taste": false,
+    "lenses": [
+      "data-scientist"
+    ]
+  },
+  {
+    "severity": "MAJOR",
+    "title": "The fence grammar now exists twice, and the new copy fails on CRLF text: HTML comments after a code block become claims and can be graded CONTRADICTED",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/extract.py",
+    "line": 403,
+    "evidence": "FACT. The comment above `_COMMENT_OR_CODE_RE` (extract.py:402-406) says it 'mirrors `_FENCE_RE` and the closer rule in `_split_document`'. The walker (extract.py:187, 453-470) reads lines through `str.splitlines()`, which accepts CRLF. The regex copy does not: its closer `[ \\t]*$` (line 403) and its blank-line guard `\\n[ \\t]*\\n` (line 404) have no `\\r`. On CRLF text a fence therefore never closes and runs to `\\Z`, so every comment after it survives. Reproduction: `extract_claims` on `\"# Setup\\n\\nThe service handles 1,200 requests per second on one node.\\n\\n```bash\\nmake run\\n```\\n\\n<!-- draft note: the service handles 900 requests per second on one node -->\\n\\nThe cache holds 64 GB of data in memory.\\n\".replace(\"\\n\",\"\\r\\n\")`, then `ground` each claim against the source `\"Benchmarks show the service handles 1,200 requests per second on one node. The cache holds 64 GB of data in memory.\"`. Result: the comment becomes a claim, graded `contradicted [('900','1200')]`. The same document with LF gives 2 claims, both exact. HEAD 65451f1 (`_HTML_COMMENT_RE`) also strips the comment on CRLF, so this is a regression introduced by this change. `extract_claims_from_file` is not affected, because `read_text` converts newlines.",
+    "material": true,
+    "materiality": "Harmed: a developer or pipeline that passes a markdown answer with CRLF line endings as a string to extract_claims → ground. The input is a Windows-authored answer or an HTTP body with a fenced block followed by an HTML comment, which is inside the universe. The author's note is graded as an asserted claim and receives a false CONTRADICTED verdict, the worst error the bar names.",
+    "remedy": "Edit two regex fragments in extract.py:403-404: change `[ \\t]*$` to `[ \\t]*\\r?$` and change `\\n[ \\t]*\\n` to `\\n[ \\t]*\\r?\\n`. I tested this on a scratch copy of src: the CRLF document drops the comment, and the offline suite passes (508 passed, 1 skipped). No new code.",
+    "outOfBar": false,
+    "taste": false,
+    "lenses": [
+      "architect"
+    ]
+  },
+  {
+    "severity": "MAJOR",
+    "title": "The whole-range comparison treats an abbreviated year span ('2020-21') as a different range from the same span written in full ('2020-2021') and grades it CONTRADICTED",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/entity_check.py",
+    "line": 250,
+    "evidence": "FACT. The range block (entity_check.py:653-668) decides equality by comparing rendered strings after `_year_span_key`. `_year_span_key` (line 250) only reorders two full years. Reproduction: `ground(\"The 2020-21 season drew 38,000 fans per match.\", [\"Attendance records: the 2020-2021 season drew 38,000 fans per match, a club record at the time.\"])` returns `contradicted [('2020-21', '2020-2021')]`. HEAD 65451f1 returns `fuzzy []` for the same pair. The claim with the full span returns `fuzzy []` on both. The failure needs both ranges to share a key: a 'FY 2022-23 was' / 'FY 2022-2023 was' pair keys differently and passes by accident.",
+    "material": true,
+    "materiality": "Harmed: any user whose English answer writes a season, fiscal year or academic year in the standard abbreviated form while the source prints it in full under the same context word. Ranges and dates are inside the universe, extract_claims → ground is the primary path, and the result is a false CONTRADICTED on a correct claim. This is a failing input for the kept DEF-NUMBER-34 rule, not a preference about a threshold.",
+    "remedy": "NEW MECHANISM: add one normalisation to the existing `_year_span_key`. A two-digit end after a four-digit year start expands to the full year before sorting (`2020-21` → `2020-2021`). Everything else stays as it is.",
+    "outOfBar": false,
+    "taste": false,
+    "lenses": [
+      "architect",
+      "slop-hunter"
+    ]
+  },
+  {
+    "severity": "MAJOR",
+    "title": "Title abbreviations are in the rejoin-only list, while the same class (Dr, Prof, Mr) is in the never-split list, so 'Gov. Newsom, who ...' is cut and 'Dr. Warren, who ...' is not",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/extract.py",
+    "line": 106,
+    "evidence": "FACT. The module now keeps two abbreviation lists with different policies. `_ABBREV_BEFORE_RE` (extract.py:84) never splits after Dr|Prof|Mr|Mrs|Ms|St|Jr|Sr. The new `_ABBREV_SHAPE_RE` (extract.py:106) splits after Gen|Gov|Lt|Col|Sgt|Capt|Cmdr|Adm|Maj|Cpl|Pvt|Spc|Rep|Sen|Rev|Hon and rejoins only a side that has no verb. When both sides carry a verb, the claim is cut. `extract_claims(\"The law was signed by Gov. Newsom, who announced it on May 3, 2023.\")` → ['The law was signed by Gov.', 'Newsom, who announced it on May 3, 2023.']. `extract_claims(\"The bill was backed by Sen. Warren, who said it would pass in 2024.\")` → 2 parts. The same sentence with 'Dr.' stays whole. HEAD 65451f1 cuts the title cases too, so this is not a regression. The change created the list and put this class of word under the weaker policy.",
+    "material": true,
+    "materiality": "Harmed: a user grounding a news-style English answer that contains a title, a name and a relative clause (abbreviations are inside the universe). The claim is cut in two. 'The law was signed by Gov.' then grounds against any governor, which is the DEF-CLAIM-39 shape the change set out to close. A real claim cut is the worst error the bar names.",
+    "remedy": "Move the 16 title tokens from `_ABBREV_SHAPE_RE` (extract.py:106) into the honorific arm of `_ABBREV_BEFORE_RE` (extract.py:84). Company suffixes, months, dotted letters and initials stay in the rejoin list. No new mechanism. I tested this on a scratch copy of src: both sentences stay whole, and the offline suite passes (508 passed, 1 skipped).",
+    "outOfBar": false,
+    "taste": false,
+    "lenses": [
+      "architect"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "Range strings now enter numeric_mismatches, which is also an input to fitted lexical features; num_edit_mag reads every range conflict as its maximum",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/lexical.py",
+    "line": 383,
+    "evidence": "FACT. Before this change, `numeric_mismatches` pairs were plain numbers. The range block (entity_check.py:668) now appends pairs such as ('200-150','200-120'). `_conflict_feats` (lexical.py:383-389) parses them with `float`, lands in the `except ValueError: mag = 1.0` branch, and records the maximum edit magnitude, whose fitted weight is +1.944 (config_document_processing.yaml:301). More generally, `anchor_mm`, `conflict_flag` and `num_edit_mag` (config_document_processing.yaml:279-331) were fitted on HEAD's `find_mismatches`. The date-bound rule alone removes 1,122 VitaminC contradictions. Both pre-registrations measure only the deterministic contradiction count, not the fitted tier. JUDGEMENT: one function now serves as both a verdict rule and a fitted-model feature, so every rule change silently redefines a feature.",
+    "material": false,
+    "materiality": "NONE shown. A range conflict already forces CONTRADICTED through has_contradiction (grounding.py:1263), and joint.py:159 keeps that verdict. The lexical golden-set tests still pass. I could not construct a wrong verdict.",
+    "remedy": "DEFER. Before the next refit, measure the fitted tier on its golden parquet with the new find_mismatches.",
+    "outOfBar": true,
+    "taste": false,
+    "lenses": [
+      "architect"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "The 5% same-quantity tolerance is an inline literal; every other threshold in this change is a named module constant",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/entity_check.py",
+    "line": 294,
+    "evidence": "FACT. `Decimal(\"0.05\")` is inline in `_same_quantity_agrees`. The pre-registration refers to this rule as 'within 5%'. The module convention is a named constant, for example `_LATIN_ENGLISH_MIN` (lexical.py:428), `_MIN_CLAIM_CHARS`, `_ABBREV_WINDOW` and `_LANG_SAMPLE_CHARS`.",
+    "material": false,
+    "materiality": "NONE. The value is correct. Only the tolerance's discoverability is affected.",
+    "remedy": "Move the literal into a module constant (for example `_SAME_QUANTITY_TOLERANCE = Decimal(\"0.05\")`) next to the other numeric constants, and reference it at line 294.",
+    "outOfBar": true,
+    "taste": false,
+    "lenses": [
+      "architect",
+      "bug-hunter",
+      "slop-hunter"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "(taste) _compounds returns a kind string whose 'date' and 'time' values are never read, and it returns the raw re.Match, so range ends are derived twice",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/entity_check.py",
+    "line": 174,
+    "evidence": "FACT. The only test of `kind` anywhere is `== \"range\"` (lines 211, 655, 659), and consistency.py:55 discards it. The selection 'ba/bb, else a/b' is copied at lines 188 and 212-214, because `_compounds` returns the Match instead of the range ends.",
+    "material": false,
+    "materiality": "NONE. Behaviour is correct. The cost is maintenance only.",
+    "remedy": "Have `_compounds` return the range ends (None for a date or time) instead of the kind string and the Match. That removes the string, the value that is never read and the duplicated selection. Optional: leaving it as it is costs little.",
+    "outOfBar": true,
+    "taste": true,
+    "lenses": [
+      "architect"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "The measurement harness compares against the moving HEAD rather than the base commit 65451f1 named in the pre-registrations",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/experiments/defects/measure_open_defects.py",
+    "line": 36,
+    "evidence": "FACT. `BASE_REF` defaults to \"HEAD\" (measure_open_defects.py:36). The frozen-code hashes use `git diff HEAD -- src` (measure_heldout.py:271, measure_heldout2.py:206). HELDOUT.md and HELDOUT2.md name the base commit 65451f1. Once this change is committed, HEAD is the new code. The documented run commands then exit on a hash mismatch. measure_open_defects.py would silently compare the new code with itself and report zero deltas. In `--design` mode, measure_heldout2 would also turn the DEF-NUMBER-46 switch (`ec_old._COMPARATIVE_RE`) into a no-op. The hash does match today (8a1b776d8f49a535).",
+    "material": false,
+    "materiality": "NONE for library users. Only reproduction of the recorded verdicts after commit is affected.",
+    "remedy": "Replace \"HEAD\" with \"65451f1\" at the three sites. No new code.",
+    "outOfBar": true,
+    "taste": false,
+    "lenses": [
+      "architect"
+    ]
+  },
+  {
+    "severity": "MAJOR",
+    "title": "Signed range end makes a double-hyphen range '5--10' differ from '5-10'",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/entity_check.py",
+    "line": 148,
+    "evidence": "FACT (tested). find_numeric_mismatches('Doses of 5--10 mg were used.', 'Doses of 5-10 mg were used.') → [('5--10','5-10')], and ground() returns contradicted. The reverse direction (claim '5-10 mg', source '5--10 mg') is also contradicted. At HEAD both return [] and fuzzy. Cause: the new `-?` at the start of `_VALUE` (line 148) lets the b end of the separator arm (line 157) take the second hyphen as a sign. '5--10' becomes a range with ends 5 and -10, rendered '5--10', which never equals '5-10'. No second range is needed for the contradiction. HELDOUT.md lists 'the spaced-dash and sign rules (DEF-NUMBER-34)' as not under test, so no held-out verdict covers this rule.",
+    "material": true,
+    "materiality": "Harmed: a developer grounding plain text in which one side writes a range with a doubled hyphen (the plain-text and LaTeX en-dash convention, common in sources converted from LaTeX or typed as plain text) and the other side uses one hyphen. The result is a false CONTRADICTED on a range the source states verbatim, a regression from HEAD. The shape is less common than finding 1, but it needs no other range to fire.",
+    "remedy": "Edit the separator on line 157 to accept a doubled hyphen, `(?:--?|–|—|\\bto\\b)`, so '5--10' reads as ends 5 and 10. Alternatively, allow the sign on the a end only. Both are edits to the existing regex. Re-run TestNumericAgreementLimits for the '-5 to 10' sign case.",
+    "lenses": [
+      "bug-hunter"
+    ]
+  },
+  {
+    "severity": "MAJOR",
+    "title": "DEF-CLAIM-40 closed, but the sentence is still cut after 'U.S.' or 'Corp.' when both sides pass the verb heuristic",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/docs/defects.md",
+    "line": 157,
+    "evidence": "FACT (tested; HEAD gives the same output, so this is behaviour the change did not reach). extract_claims('Tax receipts reported by the U.S. Treasury rose 8% in 2023.') → ['Tax receipts reported by the U.S.', 'Treasury rose 8% in 2023.']. 'Home prices in the U.S. Midwest rose 5% in 2023.' → ['Home prices in the U.S.', 'Midwest rose 5% in 2023.']. 'Shares of Acme Corp. Class B stock fell 4% on Monday.' → split in two. The rejoin in extract.py:156-170 runs only for a part that fails `_looks_like_claim`, and a plural noun or an -ed word ('receipts', 'reported', 'prices', 'Shares') passes the suffix test. Measured harm: grounding the two fragments against the source 'Spending reported by the U.S. Treasury rose 8% in 2023, while tax receipts fell 2% in 2023.' returns fuzzy for both. The whole claim, which is false by that source, is reported supported. The tracker entry closes the title shape 'unlisted abbreviation before a capital ends the sentence', and that shape still reproduces.",
+    "material": true,
+    "materiality": "Harmed: any user extracting claims from an English answer that has 'U.S.', 'Corp.' or 'Inc.' before a capitalised noun (U.S. Treasury, U.S. Census Bureau, U.S. Senate). The claim is cut, and the value is detached from its subject, which the bar names as the worst error; the reproduction shows a false claim verified as supported. The code is unchanged from HEAD. The new part is the tracker closure, which tells readers the defect is fixed.",
+    "remedy": "Edit docs/defects.md: reopen DEF-CLAIM-40, or narrow its closure to 'a verbless side is no longer dropped', and file the shape where both sides pass the verb heuristic with the repro above. DEFER the code change. A code fix would need a boundary rule that does not depend on `_looks_like_claim`, which would be NEW MECHANISM.",
+    "lenses": [
+      "bug-hunter"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "Rejoin carry chain is quadratic on long runs of verbless abbreviation-shaped boundaries",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/src/groundrails/extract.py",
+    "line": 165,
+    "evidence": "FACT (timed). _split_sentences on a paragraph of N repetitions of 'Acme Inc. Beta Corp.' followed by a claim: N=500 took 2.4 s, N=1000 took 3.5 s, N=2000 took 12.5 s. extract_claims on N=3000 took 28 s and produced one claim of 63,024 characters. HEAD took 0.0 s for every N. Branch 3 prepends the carried part to parts[i+1], then runs `_looks_like_claim` over the growing string on every step. The O(1) `_ABBREV_WINDOW` guard exists to prevent this quadratic cost.",
+    "material": false,
+    "materiality": "NONE - English answer documents do not have thousands of consecutive verbless abbreviation-shaped boundaries in one paragraph. Out of the input universe.",
+    "remedy": "DEFER. If addressed: collect the carried parts in a list and join once, which is an edit inside the existing loop.",
+    "outOfBar": true,
+    "lenses": [
+      "bug-hunter"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "Exact duplicate test left over from the reverted round-1 rounding rule",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/tests/test_defect_regressions.py",
+    "line": 1331,
+    "evidence": "Axis 5 (duplicated test). `TestNumericAgreementLimits.test_close_values_still_round` (lines 1331-1333, followed by a stray second blank line) has the same two assertions as `TestSameQuantityRounding.test_close_value_of_the_same_quantity_still_rounds` (lines 1399-1401): the 66.76%/67% pair and the 7.1%/7% pair. The 66.76/67 assertion is also a copy of the existing `test_rounded_restatement_agrees` (line 1194), which was already present at HEAD. The test sits under a banner that names only DEF-NUMBER-33/34, yet it tests DEF-NUMBER-32 rounding, which is what the round-1 5% rule left behind when it was reverted. Delete-test: the two bodies are identical, so any mutant one test kills, the other kills too. Load-bearing check cleared: pytest finds it by discovery only, nothing refers to the name, and after the delete the tracker's 'DEF-NUMBER-34 ... 4 tests in TestNumericAgreementLimits' still holds (changes_compared_whole, range_stated_in_another_form, spaced_dash, keeps_the_sign).",
+    "material": false,
+    "materiality": "NONE - this costs CI time and adds a place to edit on the next change to the rounding rule. No ground/extract_claims caller sees a different verdict.",
+    "remedy": "Delete lines 1331-1334: the `test_close_values_still_round` method and the extra blank line after it",
+    "outOfBar": true,
+    "taste": false,
+    "lenses": [
+      "slop-hunter"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "Pre-registration gate hashes against HEAD, so the documented test run stops working once the change is committed",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/experiments/defects/measure_heldout2.py",
+    "line": 206,
+    "evidence": "Axis 10(c) (a verification claim that can no longer be re-run). Line 206 (and measure_heldout.py:271) hash `git diff HEAD -- src` and exit when the hash differs from FROZEN_SRC. I ran it today: `git diff HEAD -- src | sha256sum` → 8a1b776d8f49a535, which matches HELDOUT2.md, so 'Nothing was changed after it' holds now. After this change set is committed, `git diff HEAD -- src` is empty, and the run command documented in HELDOUT2.md exits with 'src/ does not match HELDOUT2.md'. The keep-or-revert verdicts that the author's locked decision relies on then have no re-runnable command in the repository. Both pre-registrations already name the fixed base commit 65451f1.",
+    "material": false,
+    "materiality": "NONE for library users - this affects only the measurement record, which the author intends to publish. No verdict from ground or extract_claims changes.",
+    "remedy": "Change \"HEAD\" to \"65451f1\" in the git diff call at measure_heldout2.py:206 and in the frozen-code line of HELDOUT2.md. The hash stays equal after the commit as long as src/ is unchanged",
+    "outOfBar": true,
+    "taste": false,
+    "lenses": [
+      "slop-hunter"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "measure_open_defects labels the reverted non-Latin rule as the working tree",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/experiments/defects/measure_open_defects.py",
+    "line": 124,
+    "evidence": "Axis 10(c)/7. The docstring (lines 3-5) says 'Each section runs the committed code ... and the working tree on the same public data'. `measure_language` (lines 107-127) never calls the working-tree `detect_lang_confident`. It emulates the round-1 rule 'top language other than Latin', which HELDOUT.md records as FAIL and reverted, and it writes that rule's counts under the key `working_tree` in measure_open_defects.json. The shipped rule (a Latin read re-checked among spoken languages, `_LATIN_ENGLISH_MIN`) is measured only in measure_heldout2.py. The .py (mtime 18:18) is also newer than its .json (18:09). Load-bearing check: measure_heldout2 imports only HUB, _numeric_pairs, ec_new, ec_old and ex_new from this module. It does not import measure_language.",
+    "material": false,
+    "materiality": "NONE - harness record only. A reader of the JSON would take the column for the shipped language rule, but no product output changes.",
+    "remedy": "At line 124 and line 117/127, rename the key `working_tree` to `non_latin_top`, and qualify the docstring sentence for the language section",
+    "outOfBar": true,
+    "taste": false,
+    "lenses": [
+      "slop-hunter"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "Roman-numeral half of test_outline_items_stay_apart survives removing the roman arm",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/tests/test_defect_regressions.py",
+    "line": 1460,
+    "evidence": "Axis 5 (a test that stays green under a deliberate bug). Mutant M12 removed `|[IVX]+\\.` from `_LIST_PREFIX_RE` → 263 passed. \"V.\" already matches the single-letter arm, and with the mutant the IV/V document still gives the same two claims, so `len(extract_claims(doc)) == 2` cannot detect the removal. With the mutant, \"II. ...\\nIII. ...\" gives 'The committee approved the budget in March III.'. The live code gives two clean claims.",
+    "material": false,
+    "materiality": "NONE today - the roman arm works on the live tree. The test only gives a false impression that the arm is pinned.",
+    "remedy": "At line 1460, use \"II. The committee approved the budget in March\\nIII. The board rejected the merger in May\" and assert the exact two-claim list, as the lettered half does",
+    "outOfBar": true,
+    "taste": false,
+    "lenses": [
+      "slop-hunter"
+    ]
+  },
+  {
+    "severity": "MINOR",
+    "title": "Sentence-splitter test filed under the currency-comparative class",
+    "file": "/home/lab/workspace/private/ai-assistants/groundrails/tests/test_defect_regressions.py",
+    "line": 1498,
+    "evidence": "`TestCurrencyComparatives.test_bracket_after_an_abbreviation_is_not_a_new_sentence` tests the `_split_sentences` rule `shaped and text.startswith(\"(\")` (the DEF-CLAIM-41 boundary). The class banner names only DEF-NUMBER-46. The test itself earns its place: mutant M11 (the bracket rule removed) fails it.",
+    "material": false,
+    "materiality": "NONE - only where the test is filed. A reader looking for the DEF-CLAIM-41 pins will not find it in TestAbbreviationBoundaries.",
+    "remedy": "Move the method into TestAbbreviationBoundaries (line 1419 onward)",
+    "outOfBar": true,
+    "taste": true,
+    "lenses": [
+      "slop-hunter"
+    ]
+  }
+]
+
+CHANGES APPLIED IN PREVIOUS ROUNDS (the revert candidates):
+
+(none - round 1)
+
+CHANGE BUDGET: 3
+
+TRAJECTORY: judge it - converging or spiralling - and say why; two consecutive refining rounds you judge spiralling stop the loop.

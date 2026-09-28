@@ -272,6 +272,14 @@ SEV = re.compile(
 IMPS = ("CRITICAL", "HIGH", "MEDIUM", "LOW")
 IMP = re.compile(r"^(" + "|".join(IMPS) + r")(?=\s*[;:,])", re.I)
 IMP_RANK = {name: i for i, name in enumerate(IMPS)}
+
+
+def level_heading(rx, text):
+    """The level word heading supplied text as `LEVEL;`; a comma or colon after it is prose."""
+    m = rx.match(text)
+    return m if m and text[m.end() :].lstrip().startswith(";") else None
+
+
 # the report exists so a reader sees what is left and in what order to fix it
 SEV_RANK = {name: i for i, name in enumerate(SEVS)}
 SEV_RANK.update({old: SEV_RANK[new] for old, new in SEV_ALIAS.items()})
@@ -2508,9 +2516,8 @@ def cmd_add(
     sec, lines = section_for(sections, code, name, desc, lines)
     num = next_num(blocks)
     lead = severity or importance
-    opening = (SEV if prefix == "DEF" else IMP).match(text)
-    # the text repeats the flag's level; drop the repeat
-    if opening and opening.group(1).upper() == lead.upper():
+    opening = level_heading(SEV if prefix == "DEF" else IMP, text)
+    if opening:  # a `LEVEL;` heading on the text; the flag's level replaces it
         text = text[opening.end() :].lstrip(" ;:,")
     body = f"{lead.upper()}; {text}" if lead else text
     item = f"- [ ] `{prefix}-{code}-{num}` **{title}** - {body}"
@@ -2573,14 +2580,16 @@ def rewrite_head(lines, b, title=None, text=None, sev=None, importance=None):
     cur_title = bold.group(1) if bold else ""
     cur_text = body[bold.end() :].lstrip(" -") if bold else body
     new_text = text if text else cur_text
-    if sev:
-        new_text = f"{sev}; " + SEV.sub("", new_text).lstrip(" ;:,-")
-    elif importance:
-        new_text = f"{importance}; " + IMP.sub("", new_text).lstrip(" ;:,-")
-    elif b["severity"] and not SEV.match(new_text):
+    if sev or importance:
+        rx = SEV if sev else IMP
+        # the kept body is headed by its old level; supplied text only by a `LEVEL;` heading
+        head = level_heading(rx, new_text) if text else rx.match(new_text)
+        rest = new_text[head.end() :] if head else new_text
+        new_text = f"{sev or importance}; " + rest.lstrip(" ;:,-")
+    elif text and b["severity"] and not level_heading(SEV, new_text):
         # a --text rewrite must not quietly untriage the defect
         new_text = f"{b['severity']}; {new_text}"
-    elif b["importance"] and not IMP.match(new_text):
+    elif text and b["importance"] and not level_heading(IMP, new_text):
         # nor quietly unrate the criterion
         new_text = f"{b['importance']}; {new_text}"
     lines[b["line"] - 1] = f"- [{b['state']}] `{ident(b)}` **{title or cur_title}** - {new_text}"
