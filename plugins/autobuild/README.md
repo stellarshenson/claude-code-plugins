@@ -35,7 +35,7 @@ Real cycles run by this plugin against this repo (excerpts from `.claude/JOURNAL
 ## Installation
 
 ```bash
-/plugin marketplace add stellarshenson/claude-code-plugins
+/plugin marketplace add https://github.com/stellarshenson/claude-code-plugins.git
 /plugin install autobuild@stellarshenson-marketplace
 ```
 

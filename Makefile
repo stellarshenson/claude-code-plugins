@@ -7,7 +7,7 @@
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 PROJECT_NAME = claude-code-plugins
 MODULE_NAME = stellars_claude_code_plugins
-# The package supports 3.11+, but 3.12 is the only interpreter where
+# The package supports 3.10+, but 3.12 is the only interpreter where
 # document-processing is exercised - groundrails pins ~=3.12.0 and is absent elsewhere.
 PYTHON_VERSION = 3.12
 PYTHON_INTERPRETER = python

@@ -32,11 +32,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # The whole supported band. 3.11 is the floor `requires-python` advertises;
+        # The whole supported band. 3.10 is the floor `requires-python` advertises;
         # 3.13 is where the plugin-facing interpreters live. groundrails (and so the
         # document-processing suite) only installs on 3.12 - those tests skip on the
-        # other two, which is the marker working as designed.
-        python-version: ["3.11", "3.12", "3.13"]
+        # other three, which is the marker working as designed.
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}

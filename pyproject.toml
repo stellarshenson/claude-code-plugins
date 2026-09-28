@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "stellars_claude_code_plugins"
-version = "1.8.13"
+version = "1.8.14"
 description = "Claude Code plugins for autonomous development workflows"
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
 ]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.11"  # see the groundrails marker in [dependencies]
+requires-python = ">=3.10"  # see the groundrails marker in [dependencies]
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
@@ -22,9 +22,9 @@ dependencies = [
     # transitively. groundrails pins ~=3.12.0, and inheriting that pin project-wide
     # capped the WHOLE toolkit at 3.12, silently downgrading 3.13 installs. The
     # marker confines the 3.12 requirement to the one subsystem that needs it;
-    # every other CLI installs across the whole 3.11+ band. `python_version` is
+    # every other CLI installs across the whole 3.10+ band. `python_version` is
     # always MAJOR.MINOR, so `== '3.12'` still matches 3.12.7; a `< '3.13'` bound
-    # would also catch 3.11 and fail resolution there.
+    # would also catch 3.10 and 3.11 and fail resolution there.
     "groundrails>=1.0.35; python_version == '3.12'",
     "langdetect>=1.0.9",            # document-processing: source language detection (extractors.py)
     "numpy",                        # svg_tools geometry
@@ -43,6 +43,7 @@ dependencies = [
     "striprtf>=0.0.26",            # document-processing: RTF extraction (extractors.py)
     "svgelements>=1.9",
     "tiktoken",
+    "tomli>=1.1; python_version < '3.11'",  # review-tools: tomllib on 3.10
     "transitions",
 ]
 

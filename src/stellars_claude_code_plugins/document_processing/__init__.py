@@ -17,7 +17,7 @@ try:
     )
 except ModuleNotFoundError as exc:  # pragma: no cover
     # groundrails is 3.12-only, so it installs under an environment marker and is
-    # simply absent everywhere else in the toolkit's 3.11+ band - where the bare
+    # simply absent everywhere else in the toolkit's 3.10+ band - where the bare
     # "No module named 'groundrails'" gives no hint why. Narrow to groundrails
     # itself so a broken transitive dep keeps its own name.
     if exc.name != "groundrails":
