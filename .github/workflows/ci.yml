@@ -14,12 +14,12 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
       # `uv run` resolves from uv.lock, so CI lints with the ruff version the lockfile
       # pins. `uvx ruff` fetched the newest release instead, which turns CI red on a
       # ruff release that adds a default rule - with no change to this repo.
@@ -38,12 +38,18 @@ jobs:
         # other three, which is the marker working as designed.
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: astral-sh/setup-uv@v4
+      # Two test files run the adversarial-review workflow script under node; use the
+      # Node.js major the local build uses.
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '26'
+      - uses: astral-sh/setup-uv@v7
       - name: Install dependencies
         run: |
           uv venv .venv --python ${{ matrix.python-version }}
@@ -109,12 +115,12 @@ jobs:
     needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
       - name: Install dependencies
         run: |
           uv venv .venv
@@ -124,7 +130,7 @@ jobs:
           uv pip install --python .venv build
           .venv/bin/python -m build --wheel
       - name: Upload package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: package-artifacts
           path: dist/stellars_claude_code_plugins*.whl
@@ -135,10 +141,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: package-artifacts
       - name: Install from wheel and verify
@@ -152,7 +158,7 @@ jobs:
   check-links:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: lycheeverse/lychee-action@v2
         with:
           # --accept adds 429: a rate-limited response means the link exists but the
