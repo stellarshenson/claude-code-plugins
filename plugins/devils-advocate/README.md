@@ -90,6 +90,8 @@ The `popular-science` adversary reviews against the shared craft canon that the 
 /devils-advocate:adversarial-review the auth middleware change before I merge
 ```
 
+The [marketplace README](../../README.md#advantages-over-ad-hoc-review) compares `adversarial-review` with an ad hoc adversarial review, with the effects measured in real runs.
+
 ## Reference examples
 
 Four worked analyses ship in `examples/`. Open them for full personas, concern catalogues, and score trajectories.

@@ -574,6 +574,10 @@ Adversarial-review loop: reviewer, adjudicator, workflow script, spec
   - root-cause: 2026-09-26T18:41:53Z @kj FANOUT_STOP counts consecutive spiralling rounds and one converging round resets the count
   - log: 2026-09-26T18:41:53Z @kj added
   - log: 2026-09-26T19:24:12Z @kj closed: fixed: FANOUT_STOP counts two of the last three rulings, current round spiralling
+- [ ] `DEF-ADVR-80` **Loop merge drops findings within 25 lines before adjudication** - MAJOR; mergeFindings in adversarial-loop.js merges findings in one file within 25 lines, or with one title, and keeps only the first finding's text. The merged findings never reach the adjudicator, against loop invariant 3.
+  - repro: Round 1 of the README/CI delta review, wf_ac099342-785, 2026-09-29: 18 reviewer findings merged into 4 rows; the adjudicator ruled 4, and 14 (one MAJOR) went unruled.
+  - root-cause: 2026-09-29T17:38:42Z @kj sameSite matches by position (same file, line delta 25 or less) or an equal title; mergeFindings keeps the first finding's fields and records only the lens name of each merged finding.
+  - log: 2026-09-29T17:38:42Z @kj added
 
 ## command and skill parity `SKILLC`
 

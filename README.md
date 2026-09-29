@@ -96,19 +96,37 @@ Risk scoring uses a Fibonacci scale (1-8) for likelihood and impact, producing r
 
 `adversarial-review` turns the same hostility on code. It spawns fresh, context-free reviewer subagents, or `claude -p` subprocesses where tools must be denied - Mode 1 hunts bugs inside a diff (no tools, one turn); Mode 2 audits the whole repo with tools on for the rot that lives between files (hardcodings, config drift, broken separation of concerns). Pluggable adversaries supply the expert lens - `architect`, `bug-hunter`, `qa-engineer`, `analyst`, `ux-designer`, `tui`, `data-scientist`, `methodologist`, `popular-science`, `devops`, `slop-hunter`, `ai-engineer`, `digital-marketer` - and any adversary runs in either mode. Reviews are multi-round: find, fix, then re-confirm clean, and the panel caps at 3 lenses unless you ask for more. The `adjudicator` turns each round's findings into one change plan grouped by root cause, and the shipped `adversarial-loop.js` workflow runs the rounds until a confirming round is clean.
 
+### Advantages over ad hoc review
+
+This section compares `adversarial-review` with an ad hoc adversarial review, where the session or a generic subagent is asked to attack a change and continue until nothing is left.
+
+| Area | Plugin | Ad hoc review |
+|---|---|---|
+| Reviewer | A fresh agent with one of 13 expert lenses. Each lens has its own method and a file of rules with their sources. The reviewer never sees the author's reasoning for the change | The author's own session, or a generic agent told to be critical |
+| Findings | Each finding carries a severity, `file:line`, the input that reproduces it, who is harmed and the smallest fix. Findings from all lenses merge into one table | Prose reports, merged by hand |
+| Scope | A bar states the product's purpose, its inputs and its main use path. The script caps a finding outside the bar at MINOR | No stated scope, so every input counts |
+| Fixes | An adjudicator turns the findings into one change plan grouped by root cause. It removes a fix that caused new findings before it refines it, and it flags each fix that adds a new mechanism so the user can reject it | Every reviewer suggestion becomes code |
+| Repeat rounds | A confirming round reads only the applied patches. The script discards taste, findings outside the fix and findings already ruled | Every round reviews the whole target again |
+| Target | Nothing edits the code during a round. The main session applies the plan between rounds | The code changes while it is reviewed |
+| End | The loop ends on a clean round, an adjudicator stop, a round cap, or when the adjudicator judges the loop spiralling in two of the last three rounds. A round whose reviewers all died is reported, never counted as clean | The loop ends when someone stops it |
+| Discovery | `review-tools dossier` builds the Python file, symbol and CLI inventory by AST in seconds, and a code graph answers callers and dependents | Each reviewer finds the same facts with its own reads and searches |
+| Cost | `review-tools cost` reports turns, tokens and time per lens and per round | The cost is unknown |
+
+Real review runs measured these effects:
+
+- **Scope** - without a bar, one loop rated a `<select>` pasted into a notebook cell MAJOR and spent most of a 1.41M-token run refining a fix that the user then deleted
+- **Fixes** - a manual 8-round loop without adjudication grew its target from 302 to 537 lines, and the user stopped it at round 8. In two recent reviews of this repository the adjudicator refuted 6 and 8 findings as immaterial
+- **Repeat rounds** - confirming rounds took 13-15 turns, whole-repo reviews 67-115. Before the ruled-finding filter, 34 of 80 confirming findings repeated an earlier ruling
+- **Target** - the manual 8-round loop rewrote its target during the review
+- **End** - two recent reviews of this repository ended clean at round 3, with 10, 3, 1 and 9, 2, 0 findings per round
+- **Discovery** - across 69 whole-repo reviews, each reviewer spent 40-60 of its 67-115 turns rediscovering the same inventory
+- **Cost** - the same 69 reviews used 9-16M cached tokens each, and file content was 1-2% of that, so the number of turns sets the cost
+
 ### Usage
 
 ```bash
-# Full end-to-end workflow
-/devils-advocate:run
-
-# Step by step
-/devils-advocate:setup       # Build persona, harvest facts
-/devils-advocate:evaluate    # Generate concerns + baseline scorecard
-/devils-advocate:iterate     # Apply corrections, re-score (repeat)
-
-# Red-team a change or a repo
-/devils-advocate:adversarial-review the auth middleware change before I merge
+# Review a change with named adversaries
+/devils-advocate:adversarial-review architect and bug-hunter on the auth middleware change before I merge
 ```
 
 See [plugins/devils-advocate/README.md](plugins/devils-advocate/) for scoring formula details, artefact format, the full concern catalogue methodology, and the adversary roster.
@@ -132,24 +150,14 @@ The standalone validators `overlaps`, `contrast`, `alignment` and `connectors` e
 ### Usage
 
 ```bash
-# Create infographic(s) with full workflow
+# Describe the graphic
 /svg-infographics:create card grid showing 4 platform modules
 
-# Generate theme swatch for approval
-/svg-infographics:theme corporate blue palette
+# Or name the document the graphics are for
+/svg-infographics:create docs/architecture.md
 
-# Run validation on existing SVGs
-/svg-infographics:validate docs/images/*.svg
-
-# Fix issues in existing SVGs (layout / style / contrast / connectors / all)
-/svg-infographics:fix docs/images/overview.svg style
-/svg-infographics:fix docs/images/overview.svg layout
-
-# Additive decoration pass on existing SVGs
+# Add decoration to an existing graphic (low, medium, high or absurd)
 /svg-infographics:beautify docs/images/overview.svg medium
-
-# Export to PNG in light and dark mode
-/svg-infographics:export-png docs/images/overview.svg
 ```
 
 Includes 60+ production SVG examples, the `svg-infographics` CLI with 29 subcommands (workflow gates, validators, calculators including the boolean / margin ops, draw.io shapes, icons and backgrounds), and theme swatches. See [plugins/svg-infographics/README.md](plugins/svg-infographics/) for the capability groups and workflow details.
@@ -375,3 +383,5 @@ make publish          # build + twine upload to PyPI
 ## License
 
 MIT License
+
+<!-- marks:settings panel=hidden -->
