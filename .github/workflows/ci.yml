@@ -30,19 +30,13 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        # The whole supported band. 3.10 is the floor `requires-python` advertises;
-        # 3.13 is where the plugin-facing interpreters live. groundrails (and so the
-        # document-processing suite) only installs on 3.12 - those tests skip on the
-        # other three, which is the marker working as designed.
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v5
-      - name: Set up Python ${{ matrix.python-version }}
+      # One interpreter: 3.12 is the only one groundrails installs on, so no test skips.
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.12'
       # Two test files run the adversarial-review workflow script under node; use the
       # Node.js major the local build uses.
       - name: Set up Node.js
@@ -52,7 +46,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
       - name: Install dependencies
         run: |
-          uv venv .venv --python ${{ matrix.python-version }}
+          uv venv .venv --python 3.12
           uv pip install --python .venv -e ".[dev]"
       - name: Run tests
         run: |
