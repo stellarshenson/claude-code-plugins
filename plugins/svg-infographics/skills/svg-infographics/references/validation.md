@@ -123,7 +123,7 @@ Three severities. Only HARD FAIL blocks delivery.
 
 Geometry defects where rendered output is visually broken:
 
-1. **Text-on-edge overlap** — text glyph bbox crosses a stroke (axis, card border, divider). Unreadable where crossed. Hard fail unless justified
+1. **Text-on-edge overlap** — painted text crosses a stroke (axis, card border, divider). Unreadable where crossed. Hard fail unless justified
 2. **Edge-on-edge overlap** — two strokes crossing wrongly (axis through card border, connector through unrelated divider). Routing bug. Hard fail unless justified
 3. **Text-outside-container** — text extends past parent rectangle. Layout overflow. Hard fail
 4. **Connector-through-content** — connector mid-segment crosses content group. Hard fail
@@ -176,16 +176,22 @@ Exit 0 = clean. 1 = errors.
 
 ## Tool: overlaps
 
-Parses all visual elements, computes bboxes (text with font metrics, paths, rotated arrows, circles, rects), reports ALL overlaps.
+Draws the file in headless Chromium and decides overlaps from the painted pixels. A collision tree (shapely STRtree over the browser's element boxes) picks the pairs within the clearance; only those pairs get the pixel test.
 
-Classifications: `violation` (fix), `sibling` (adjacent), `label-on-fill` (intentional), `contained` (child in parent).
+- **HARD** - `shapes-partly-overlap`, `edge-crosses-text`, `text-on-text`, `text-straddles-shape`
+- **SOFT** - `clearance`: text within 3 px of text, a stroke or a line; an arrowhead within 3 px of a shape it does not point into
+- **Each finding** - both elements by id or text with their SVG source line, and the overlap box in SVG units
+- **Not judged** - the backdrop (`background` layer, full-canvas plates); faint unstroked tint bands against shapes and lines; parts of one icon-sized group (at most 100 units a side and 6400 square units) against each other; shape overlaps shallower than 2 units; plain lines against shapes, which the connector and collide checks own
 
 ```bash
 svg-infographics overlaps --svg <file>
-svg-infographics overlaps --svg <file> --ignore "21x23,24x25"   # skip reviewed pairs
-svg-infographics overlaps --svg <file> --inject-bounds           # bbox overlay
-svg-infographics overlaps --svg <file> --strip-bounds            # remove overlay
+svg-infographics overlaps --svg <file> --overlay findings.png   # numbered boxes: HARD magenta, SOFT orange
+svg-infographics overlaps --svg <file> --clearance 4            # near-miss distance, default 3
+svg-infographics overlaps --svg <file> --inject-bounds          # parsed-element bbox overlay
+svg-infographics overlaps --svg <file> --strip-bounds           # remove overlay
 ```
+
+Needs the Playwright Chromium build: `playwright install chromium`.
 
 Also checks **container overflow** (text escaping parent rect, including under compound transforms) and **callout cross-collisions** (leader-vs-text, leader-vs-leader, text-vs-text across `callout-*` groups).
 

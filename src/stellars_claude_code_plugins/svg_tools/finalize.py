@@ -8,7 +8,8 @@ invocation loop for the agent.
 Layers run:
 
 - **validate** (XML well-formedness, root, viewBox) - HARD
-- **overlaps** (element bounding-box collisions, spacing) - HARD
+- **overlaps** (collisions of the rendered ink, spacing) - HARD; near-misses
+  under 3 px - SOFT
 - **connectors** (zero-length, edge-snap, label clearance) - HARD
 - **contrast** (WCAG 2.1 AA text contrast, light + dark) - HARD
 - **visual** (text/icon collisions, corner padding, label centering,
@@ -20,10 +21,10 @@ Layers run:
 - **css** (inline fills, forbidden colours, dark-mode coverage) - SOFT
 
 The visual layer runs over statically-extracted element geometry
-(``render_inspect`` - transforms applied, heuristic text extents). No
-browser involved; the human-visible render stays a plain high-quality
-``render-png`` the agent reads ONCE after the gate passes.
-``--no-visual`` skips the layer.
+(``render_inspect`` - transforms applied, heuristic text extents); the
+overlaps layer draws the file in headless Chromium (``check_ink``). The
+human-visible render stays a plain high-quality ``render-png`` the agent
+reads ONCE after the gate passes. ``--no-visual`` skips the visual layer.
 
 HARD findings flip the exit code and must be acknowledged per-token.
 SOFT findings print but do not block delivery; they carry a
@@ -76,8 +77,8 @@ from stellars_claude_code_plugins.svg_tools.check_connectors import (
 from stellars_claude_code_plugins.svg_tools.check_connectors import (
     parse_svg as cc_parse,
 )
+from stellars_claude_code_plugins.svg_tools.check_ink import inspect as inspect_ink
 from stellars_claude_code_plugins.svg_tools.check_overlaps import (
-    analyze_overlaps,
     check_spacing,
 )
 from stellars_claude_code_plugins.svg_tools.check_overlaps import (
@@ -200,21 +201,16 @@ def finalize(
     if errors > 0:
         return hard, soft
 
-    # --- overlaps (HARD)
+    # --- overlaps (HARD; near-misses SOFT) from the rendered ink - padded
+    # bounding boxes reported 182 HARD overlaps on 12 clean shipped files
     try:
         elements = co_parse(str(svg_path))
+        ink = inspect_ink(svg_path)
     except Exception as exc:
         hard.append(f"[overlaps] check failed: {exc}")
         return hard, soft
-    overlap_findings = analyze_overlaps(elements)
-    for i, j, a, b, pct, cls in overlap_findings:
-        # "contained" is a parent-child relationship (structural), and
-        # "connector-contact" is a routed stroke touching what it attaches
-        # to - the connectors / collide layers own those. Neither is an
-        # overlap defect.
-        if cls in ("contained", "connector-contact"):
-            continue
-        hard.append(f"[overlaps] #{i} <-> #{j} ({pct:.0f}%, {cls}): {a.label} vs {b.label}")
+    for f in ink.findings:
+        (hard if f.hard else soft).append(f"[overlaps] {f.message()}")
     spacing_findings = check_spacing(elements)
     for f in spacing_findings:
         hard.append(f"[overlaps] {f}")

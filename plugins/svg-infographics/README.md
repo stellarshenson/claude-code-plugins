@@ -101,7 +101,7 @@ Backing tools: `svg-infographics charts`.
 
 Mandatory pre-delivery gate with five checkers plus a pairwise connector collision detector. Nothing ships without a clean pass.
 
-- **Overlap** detection catches text/shape overlaps, spacing rhythm violations, and font-size floors, and surfaces a `CALLOUT CROSS-COLLISIONS` block that checks leader-vs-text, leader-vs-leader, and text-vs-text across every `<g id="callout-*">` group.
+- **Overlap** detection draws the file in headless Chromium and reports where painted pixels collide - text on text, an edge across text, text half outside its shape, shapes partly overlapping - plus near-misses under 3 px. It also checks spacing rhythm and font-size floors, and surfaces a `CALLOUT CROSS-COLLISIONS` block that checks leader-vs-text, leader-vs-leader, and text-vs-text across every `<g id="callout-*">` group.
 - **Contrast** enforces WCAG 2.1 AA/AAA for text AND object-vs-background in both light and dark mode.
 - **Alignment** enforces grid snapping, vertical rhythm, and topology (x-alignment, rect alignment).
 - **Connector quality** catches zero-length segments, edge-snap violations, missing chamfers, and dangling endpoints.
@@ -181,7 +181,7 @@ Every subcommand is invoked as `svg-infographics <subcommand> [args]`. Run `--he
 
 | Subcommand | Kind | What it gives you |
 |------------|------|-------------------|
-| `overlaps` | validator | Text/shape overlap, spacing rhythm, font-size floors, callout cross-collisions audit |
+| `overlaps` | validator | Rendered-ink overlaps and near-misses, spacing rhythm, font-size floors, callout cross-collisions audit |
 | `contrast` | validator | WCAG 2.1 contrast for text and objects vs background in both light and dark mode |
 | `alignment` | validator | Grid snapping, vertical rhythm, x-alignment, rect alignment, layout topology |
 | `connectors` | validator | Connector quality: zero-length segments, edge-snap, missing chamfer, dangling endpoints |

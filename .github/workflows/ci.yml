@@ -48,6 +48,9 @@ jobs:
         run: |
           uv venv .venv --python 3.12
           uv pip install --python .venv -e ".[dev]"
+      # The svg overlap check draws each file in headless Chromium (check_ink).
+      - name: Install Chromium for Playwright
+        run: .venv/bin/playwright install --with-deps --only-shell chromium
       - name: Run tests
         run: |
           .venv/bin/pytest tests/ -v --tb=short --cov

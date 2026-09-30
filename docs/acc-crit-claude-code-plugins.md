@@ -98,6 +98,78 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-08-13T00:00:00Z @kj doctrine set by the Star Colonel
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
+- [x] `ACC-SVG-164` **Partial shape overlap is HARD** - HIGH; Two shapes whose painted fills partly overlap give a HARD finding; a shape fully inside another gives none.
+  - evidence: tests/test_check_ink.py::test_planted_overlaps_are_hard passes; pass-chip inside pass-card gives no finding
+  - test-tags: UNIT
+  - test: fixture ink_overlaps.svg: fail-badge with fail-pill reported, pass-chip inside pass-card silent
+  - log: 2026-09-30T11:18:54Z @kj added
+  - log: 2026-09-30T12:12:43Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:43Z @kj closed
+- [x] `ACC-SVG-165` **Edge across text is HARD** - HIGH; A shape edge or line whose painted stroke crosses painted text gives a HARD finding.
+  - evidence: tests/test_check_ink.py::test_planted_overlaps_are_hard passes for fail-edge-pill with fail-edge-text
+  - test-tags: UNIT
+  - test: fixture ink_overlaps.svg: fail-edge-pill with fail-edge-text reported
+  - log: 2026-09-30T11:18:54Z @kj added
+  - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:44Z @kj closed
+- [x] `ACC-SVG-166` **Text on text is HARD** - HIGH; Two texts whose painted glyphs overlap give a HARD finding.
+  - evidence: tests/test_check_ink.py::test_planted_overlaps_are_hard passes for fail-text-a with fail-text-b
+  - test-tags: UNIT
+  - test: fixture ink_overlaps.svg: fail-text-a with fail-text-b reported
+  - log: 2026-09-30T11:18:54Z @kj added
+  - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:44Z @kj closed
+- [x] `ACC-SVG-167` **Text partly outside its shape is HARD** - HIGH; Text whose glyphs lie partly inside and partly outside a shape's fill gives a HARD finding.
+  - evidence: tests/test_check_ink.py::test_planted_overlaps_are_hard passes for fail-short-box with fail-long-text
+  - test-tags: UNIT
+  - test: fixture ink_overlaps.svg: fail-short-box with fail-long-text reported
+  - log: 2026-09-30T11:18:54Z @kj added
+  - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:44Z @kj closed
+- [x] `ACC-SVG-168` **Near-miss under 3 px is SOFT** - MEDIUM; Text closer than 3 px to text, a stroke or a line, or an arrowhead that close to a shape it does not point into, gives a SOFT finding with the measured gap.
+  - evidence: tests/test_check_ink.py::test_near_misses_are_soft_with_the_gap passes; arrowhead 0.5 px, text 1.5 px
+  - test-tags: UNIT
+  - test: fixture ink_overlaps.svg: near-connector with near-box and tight-text with tight-box reported SOFT
+  - log: 2026-09-30T11:18:54Z @kj added
+  - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:44Z @kj closed
+  - log: 2026-09-30T12:12:53Z @kj edited text "Text, connectors and shape edges closer than 3 px without touching give a SOFT finding with the measured gap." -> "Text closer than 3 px to text, a stroke or a line, or an arrowhead that close to a shape it does not point into, gives a SOFT finding with the measured gap."
+- [x] `ACC-SVG-169` **Clean graphics give no overlap findings** - HIGH; Labels inside their shapes, nested shapes and connectors touching their ends give no finding.
+  - evidence: tests/test_check_ink.py clean-case and shipped-corpus tests pass; 0 HARD on all 12 files
+  - test-tags: UNIT
+  - test: fixture pass cases silent; the 12 shipped SVGs in .resources/svg and the plugin examples report zero HARD overlaps
+  - log: 2026-09-30T11:18:54Z @kj added
+  - log: 2026-09-30T12:12:43Z @kj edited test "fixture ink_overlaps.svg pass cases silent; the 12 shipped SVGs in .resources/svg and the plugin examples report zero" -> "fixture pass cases silent; the 12 shipped SVGs in .resources/svg and the plugin examples report zero HARD overlaps"
+  - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:44Z @kj closed
+- [x] `ACC-SVG-170` **Finding names both elements and the place** - MEDIUM; Each finding names both elements by id or text with their SVG source line, and the overlap box in SVG units.
+  - evidence: tests/test_check_ink.py::test_finding_names_both_elements_and_the_place passes
+  - test-tags: UNIT
+  - test: unit test on the fixture asserts ids, line numbers and box for fail-badge with fail-pill
+  - log: 2026-09-30T11:18:54Z @kj added
+  - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:44Z @kj closed
+- [x] `ACC-SVG-171` **Overlay image marks each finding** - MEDIUM; overlaps --overlay PATH writes a PNG of the graphic with a numbered box on each finding.
+  - evidence: tests/test_check_ink.py::test_overlay_marks_each_finding passes; overlaps --overlay writes the PNG
+  - test-tags: UNIT
+  - test: run overlaps --overlay on the fixture; PNG exists with one box per finding
+  - log: 2026-09-30T11:18:54Z @kj added
+  - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:44Z @kj closed
+- [x] `ACC-SVG-172` **Collision tree limits exact tests** - MEDIUM; A spatial tree over element boxes yields the candidate pairs; pairs farther apart than the clearance get no exact test.
+  - evidence: tests/test_check_ink.py collision-tree tests pass; judge runs once per STRtree candidate pair
+  - test-tags: UNIT
+  - test: unit test counts exact tests against the pairs the tree returns
+  - log: 2026-09-30T11:18:55Z @kj added
+  - log: 2026-09-30T12:12:45Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:45Z @kj closed
+- [x] `ACC-SVG-173` **Finalize uses the ink check for overlaps** - HIGH; finalize reports overlaps from the ink check; padded-box pair findings are gone from its output.
+  - evidence: tests/test_check_ink.py::test_finalize_reports_ink_findings passes; 4 HARD and 2 SOFT ink findings, no box pair
+  - test-tags: UNIT
+  - test: finalize on the fixture lists the 4 HARD and 2 SOFT ink findings and no box-pair finding
+  - log: 2026-09-30T11:18:55Z @kj added
+  - log: 2026-09-30T12:12:45Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:45Z @kj closed
 
 ## pm-tools relations and search `PMREL`
 

@@ -62,7 +62,7 @@ The dispatched builder runs this workflow; the parent command does not execute t
 
 1. Read SVG + grid comment to understand intended layout
 2. Run diagnostics:
-   - `svg-infographics overlaps --svg <file>` — bounding box violations + container overflow
+   - `svg-infographics overlaps --svg <file>` — overlaps of the rendered ink (HARD), near-misses under 3 px (SOFT), container overflow
    - `svg-infographics alignment --svg <file>` — grid snap, rhythm, topology
    - `svg-infographics connectors --svg <file>` — connector quality
 3. Apply fixes directly:
@@ -74,7 +74,7 @@ The dispatched builder runs this workflow; the parent command does not execute t
    - Use `svg-infographics primitives <shape>` for exact anchor coordinates when repositioning
    - Update grid comment to match actual positions
 4. Re-run validation to confirm resolution
-5. Optional: `svg-infographics overlaps --inject-bounds` for visual bbox overlay, then `--strip-bounds` after verification
+5. Optional: `svg-infographics overlaps --overlay out.png` boxes each finding on the render; `--inject-bounds` / `--strip-bounds` draw the parsed element boxes
 6. Report: fixes applied, before/after violation counts
 
 ### Style / css / dark mode intent

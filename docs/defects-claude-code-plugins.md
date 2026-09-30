@@ -387,6 +387,14 @@ svg-infographics umbrella skill docs and svg_tools
   - log: 2026-09-02T07:59:22Z @kj added
   - log: 2026-09-02T07:59:22Z @kj renamed skills/svg-designer to skills/svg-infographics (git mv), frontmatter name and every live reference in the plugin, devils-advocate, datascience, svg_tools/manifest.py, tests and docs updated
   - log: 2026-09-02T07:59:22Z @kj closed
+- [x] `DEF-SVG-81` **Overlap gate reports padded-box contacts as HARD** - MAJOR; finalize turns every padded bounding-box contact into a HARD overlap. Real overlaps drown in false ones.
+  - evidence: finalize overlaps now from rendered ink (check_ink.py); 12 shipped SVGs 0 HARD (was 182), deck slide 5 HARD all real (was 54)
+  - test-tags: UNIT
+  - repro: finalize on 12 shipped SVGs: 182 HARD overlaps, none visible. A deck slide: 54 HARD, 5 real.
+  - root-cause: 2026-09-30T11:18:54Z @kj Text width is estimated from character count, curves count as their bounding rectangles, and every box is padded 4 to 10 px.
+  - log: 2026-09-30T11:18:54Z @kj added
+  - log: 2026-09-30T12:12:45Z @kj edited test-tags added "UNIT"
+  - log: 2026-09-30T12:12:45Z @kj closed
 
 ## build tooling `MAKE`
 

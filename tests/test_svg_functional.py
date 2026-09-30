@@ -464,21 +464,12 @@ class TestLayerAwareness:
         assert "Found 0 connectors" in r.stdout
 
     def test_layer_groups_transparent_in_overlaps(self, layered_scene):
-        """The five layer wrappers must not be compared as atomic bboxes -
-        the callout blob inside <g id="callouts"> would otherwise overlap
-        the whole nodes-layer bbox."""
-        from stellars_claude_code_plugins.svg_tools.check_overlaps import (
-            analyze_overlaps,
-            parse_svg,
-        )
+        """The five layer wrappers are not drawn as units - the callout blob
+        inside <g id="callouts"> must not read as overlapping the nodes layer."""
+        from stellars_claude_code_plugins.svg_tools.check_ink import inspect
 
-        elements = parse_svg(str(layered_scene))
-        violations = [
-            (a.label, b.label)
-            for _i, _j, a, b, _pct, cls in analyze_overlaps(elements)
-            if cls == "violation"
-        ]
-        assert violations == [], violations
+        hard = [f.message() for f in inspect(layered_scene).findings if f.hard]
+        assert hard == [], hard
 
     def test_empty_space_layer_filters(self, layered_scene):
         """Include / exclude semantics move free area the right way."""
@@ -734,6 +725,9 @@ class TestCliGrammar:
         """DEF-SVG-35: the validators exit 0 with findings printed, so a pipeline
         cannot gate on them. --strict is opt-in; the default exit stays 0."""
         findings = "plugins/svg-infographics/examples/arrow_patterns.svg"
+        if validator == "overlaps":
+            # arrow_patterns is clean ink; its old "overlaps" were padded boxes (DEF-SVG-81)
+            findings = "tests/fixtures/ink_overlaps.svg"
         clean = tmp_path / "empty.svg"
         clean.write_text('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"></svg>')
         assert run_cli(validator, "--svg", findings).returncode == 0
@@ -753,7 +747,7 @@ class TestCliGrammar:
         assert run_cli("contrast", "--svg", svg, "--strict").returncode == 1
 
     def test_strict_overlaps_ignores_sibling_overlaps(self):
-        """Only the violation class is a finding; this banner has 2 sibling overlaps."""
+        """A clean banner gates green: touching siblings are not an ink overlap."""
         banner = "plugins/svg-infographics/examples/header_banner_nexus.svg"
         assert run_cli("overlaps", "--svg", banner, "--strict").returncode == 0
 
@@ -2655,7 +2649,8 @@ class TestRound6MutantPins:
         ran: set[str] = set()
         rows, _ = build_checklist(f, *finalize(f, None, ran), rendered=False, ran=ran)
         by = {label: status for _g, label, status, _n in rows}
-        assert by["no element overlaps"] == "FAIL"
+        # judged, not NA; the logo's ink is clean (its old FAIL was padded boxes, DEF-SVG-81)
+        assert by["no element overlaps"] in ("PASS", "FAIL")
         assert by["alignment and rhythm"] == "NA"
 
 

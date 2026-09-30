@@ -3745,13 +3745,9 @@ class TestDefectDetection:
         texts[1].set("y", texts[0].get("y", "0"))
         defect = tmp_path / "overlap.svg"
         self._write_svg(root, defect)
-        from stellars_claude_code_plugins.svg_tools.check_overlaps import (
-            analyze_overlaps,
-            parse_svg,
-        )
+        from stellars_claude_code_plugins.svg_tools.check_ink import inspect
 
-        elements = parse_svg(str(defect))
-        assert len(analyze_overlaps(elements)) > 0
+        assert any(f.cls == "text-on-text" for f in inspect(defect).findings)
 
         # Contrast defect - near-white fill, no class
         root = ET.fromstring(real_svg_content)

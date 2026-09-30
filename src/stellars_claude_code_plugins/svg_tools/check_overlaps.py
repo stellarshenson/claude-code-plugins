@@ -1,24 +1,23 @@
-"""SVG element overlap detector for infographic layout verification.
+"""SVG layout verification for infographics.
 
-Parses all visual elements, computes approximate bounding boxes using
-Segoe UI font metrics, and tests every element pair for overlap and
-spacing violations. Generates diagnostic reports and optional bounding
-box verification overlays.
+Overlaps come from the rendered ink (``check_ink``: Chromium draws the file,
+a collision tree picks the candidate pairs, painted pixels decide). This
+module adds the static checks that read the SVG source - spacing rhythm,
+typography, callout cross-collisions, text escaping its container - and the
+``--inject-bounds`` overlay of the parsed element boxes.
 
-Inner/outer bounding box model:
-- Inner bbox: rendered extent including stroke width
+Inner/outer bounding box model of the parsed elements:
+- Inner bbox: estimated extent including stroke width
 - Outer bbox: inner bbox + per-element-type padding
-- Overlap detection compares outer bboxes by default
 
 Usage:
     python check_overlaps.py --svg path/to/file.svg
+    python check_overlaps.py --svg file.svg --overlay findings.png
     python check_overlaps.py --svg file.svg --inject-bounds
     python check_overlaps.py --svg file.svg --strip-bounds
-    python check_overlaps.py --svg file.svg --extra-padding 2
 """
 
 from dataclasses import dataclass
-from itertools import combinations
 import math
 import re
 import xml.etree.ElementTree as ET
@@ -827,121 +826,6 @@ def parse_svg(filepath: str) -> list[Element]:
 
 
 # ---------------------------------------------------------------------------
-# Overlap analysis
-# ---------------------------------------------------------------------------
-
-
-def classify_overlap(a: Element, b: Element) -> str:
-    """Classify the relationship between two overlapping elements.
-
-    Returns one of:
-    - 'contained'     : one element fully inside the other (child in parent)
-    - 'label-on-fill' : text element on a filled shape (intended label)
-    - 'sibling'       : same-role elements touching (e.g. grid squares, bar segments)
-    - 'violation'     : unexpected overlap that likely needs fixing
-    """
-    # contained: one inner bbox fully inside the other
-    if a.bbox.contains(b.bbox) or b.bbox.contains(a.bbox):
-        return "contained"
-
-    # label-on-fill: text on a rect/path/circle (intentional label placement)
-    fill_roles = ("rect", "color-chip", "bg-fill", "card", "accent-bar", "milestone", "background")
-    if (a.tag == "text" and b.role in fill_roles) or (b.tag == "text" and a.role in fill_roles):
-        return "label-on-fill"
-
-    # sibling: same role and same section (grid squares, bar segments, etc.)
-    if a.role == b.role and a.section == b.section:
-        return "sibling"
-
-    # connector-contact: a routed stroke touching the shapes it attaches
-    # to (and their labels). Endpoint discipline, label clearance and
-    # crossings are owned by the connectors / collide checkers - bbox
-    # contact alone is not an overlap defect. Only meaningful once layer
-    # groups became transparent and raw connector paths are compared
-    # individually.
-    line_like = ("path", "arrow", "track-line", "divider")
-    if (a.role in line_like) != (b.role in line_like):
-        return "connector-contact"
-
-    # everything else is a potential violation
-    return "violation"
-
-
-def analyze_overlaps(
-    elements: list[Element],
-    extra_padding: float = 0.0,
-    use_outer: bool = True,
-) -> list[tuple[int, int, Element, Element, float, str]]:
-    """Report ALL overlapping element pairs with indices and classification.
-
-    By default, compares outer bboxes (inner + per-role padding).
-    When use_outer=False, compares raw inner bboxes (legacy mode).
-    extra_padding adds uniform inflation on top of role-specific padding.
-
-    Each result tuple includes a classification string from classify_overlap().
-    """
-    overlaps = []
-    indexed = list(enumerate(elements))
-    for (i, a), (j, b) in combinations(indexed, 2):
-        if use_outer:
-            ba = a.outer_bbox
-            bb = b.outer_bbox
-        else:
-            ba = a.bbox
-            bb = b.bbox
-
-        if extra_padding:
-            ba = ba.padded(extra_padding)
-            bb = bb.padded(extra_padding)
-
-        if not ba.overlaps(bb):
-            continue
-        pct = ba.overlap_pct(bb)
-        if pct > 0:
-            cls = classify_overlap(a, b)
-            overlaps.append((i, j, a, b, pct, cls))
-    overlaps.sort(key=lambda x: -x[4])
-    return overlaps
-
-
-# ---------------------------------------------------------------------------
-# Proximity report
-# ---------------------------------------------------------------------------
-
-
-def proximity_report(
-    elements: list[Element], threshold: float = 20.0
-) -> list[tuple[Element, Element, float, str, float, str]]:
-    """Find same-section element pairs within threshold px distance.
-
-    Uses outer bboxes to measure spacing between elements.
-    """
-    results = []
-    for a, b in combinations(elements, 2):
-        if a.section != b.section:
-            continue
-        if a.role == "background" or b.role == "background":
-            continue
-
-        h_gap, h_dir, v_gap, v_dir = a.outer_bbox.gap_to(b.outer_bbox)
-
-        # report the relevant gap (non-overlapping axis)
-        if h_gap >= 0 and h_gap <= threshold:
-            results.append((a, b, h_gap, h_dir, v_gap, v_dir))
-        elif v_gap >= 0 and v_gap <= threshold:
-            results.append((a, b, h_gap, h_dir, v_gap, v_dir))
-
-    # sort by smallest positive gap
-    def sort_key(item):
-        _, _, h, _, v, _ = item
-        gaps = [g for g in [h, v] if g >= 0]
-        return min(gaps) if gaps else 999
-
-    results.sort(key=sort_key)
-    return results
-
-
-# ---------------------------------------------------------------------------
 # Spacing checks (from Theme Validation Checklist)
 # ---------------------------------------------------------------------------
 
@@ -1661,9 +1545,20 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="SVG overlap detector with inner/outer bbox model"
+        description="SVG overlap check from the rendered ink, plus the static layout checks"
     )
     parser.add_argument("--svg", default="theme_swatch.svg", help="SVG file to check")
+    parser.add_argument(
+        "--clearance",
+        type=float,
+        default=3.0,
+        help="Near-miss distance in SVG units reported as SOFT (default 3)",
+    )
+    parser.add_argument(
+        "--overlay",
+        metavar="PNG",
+        help="Write the graphic with a numbered box on each finding (HARD magenta, SOFT orange)",
+    )
     parser.add_argument(
         "--inject-bounds",
         action="store_true",
@@ -1675,149 +1570,33 @@ def main():
         help="Remove bounding box verification overlay from SVG",
     )
     parser.add_argument(
-        "--ignore",
-        type=str,
-        default="",
-        help="Comma-separated overlap IDs to skip (e.g. '21x23,24x25')",
-    )
-    parser.add_argument(
-        "--extra-padding",
-        type=float,
-        default=0.0,
-        help="Additional uniform inflation on top of per-role padding (catches near-misses)",
-    )
-    parser.add_argument(
-        "--padding", type=float, default=0.0, help="(Legacy) Alias for --extra-padding"
-    )
-    parser.add_argument(
-        "--raw", action="store_true", help="Compare raw inner bboxes only (skip per-role padding)"
-    )
-    parser.add_argument(
         "--strict", action="store_true", help="Exit 1 when a finding is reported (default: exit 0)"
     )
     args = parser.parse_args()
 
-    # support legacy --padding flag
-    extra_padding = args.extra_padding or args.padding
-
-    # parse ignore set
-    ignore_set = set()
-    if args.ignore:
-        for pair in args.ignore.split(","):
-            pair = pair.strip()
-            if "x" in pair:
-                ignore_set.add(pair)
+    from stellars_claude_code_plugins.svg_tools.check_ink import inspect, write_overlay
 
     print(f"Parsing: {args.svg}")
-    mode = "raw inner" if args.raw else "outer (inner + per-role padding)"
-    print(f"Bbox mode: {mode}")
-    if extra_padding:
-        print(f"Extra padding: {extra_padding:.0f}px")
     print("=" * 72)
-
     elements = parse_svg(args.svg)
-    print(f"Found {len(elements)} elements\n")
+    ink = inspect(args.svg, clearance=args.clearance)
 
-    # role padding summary
-    print("ROLE PADDING TABLE")
+    # overlaps from the rendered ink
+    hard = [f for f in ink.findings if f.hard]
+    print(
+        f"OVERLAPS (rendered ink: {len(ink.elements)} elements, "
+        f"{ink.pairs} candidate pairs within {args.clearance:g} px)"
+    )
     print("-" * 72)
-    roles_seen = sorted(set(e.role for e in elements))
-    for role in roles_seen:
-        pad = ROLE_PADDING.get(role, 4)
-        print(f"  {role:12s}  {pad:2.0f}px")
-    print()
-
-    # list all elements with inner and outer bboxes
-    print("ELEMENT INVENTORY")
-    print("-" * 72)
-    for i, e in enumerate(elements):
-        ob = e.outer_bbox
-        print(
-            f"  [{i:2d}] {e.tag:8s} {e.role:12s} {e.section:12s} inner={e.bbox}  outer={ob}  {e.label}"
-        )
-
-    # overlap analysis
-    print(f"\n{'=' * 72}")
-    mode_note = " (raw inner)" if args.raw else " (outer bbox)"
-    pad_note = f" +{extra_padding:.0f}px" if extra_padding else ""
-    print(f"OVERLAPS{mode_note}{pad_note}")
-    print("-" * 72)
-    overlaps = analyze_overlaps(elements, extra_padding=extra_padding, use_outer=not args.raw)
-    shown = 0
-    ignored = 0
-    violations = 0
-
-    # group overlaps by classification
-    CLASS_ORDER = ["violation", "sibling", "label-on-fill", "contained"]
-    CLASS_LABELS = {
-        "violation": "VIOLATION (unexpected overlap - likely needs fixing)",
-        "sibling": "SIBLING (same-role elements touching)",
-        "label-on-fill": "LABEL-ON-FILL (text on filled shape)",
-        "contained": "CONTAINED (child inside parent)",
-    }
-
-    if not overlaps:
+    if not ink.findings:
         print("  None found!")
-    else:
-        # partition by class
-        by_class: dict[str, list] = {c: [] for c in CLASS_ORDER}
-        for entry in overlaps:
-            i, j, a, b, pct, cls = entry
-            oid = f"{i}x{j}"
-            if oid in ignore_set:
-                ignored += 1
-                continue
-            by_class.setdefault(cls, []).append(entry)
-
-        violations = len(by_class.get("violation", []))
-        for cls in CLASS_ORDER:
-            entries = by_class.get(cls, [])
-            if not entries:
-                continue
-            print(f"\n  --- {CLASS_LABELS.get(cls, cls)} ({len(entries)}) ---")
-            for i, j, a, b, pct, _ in entries:
-                oid = f"{i}x{j}"
-                shown += 1
-                severity = "!!!" if pct > 30 else "! " if pct > 10 else "  "
-                h_gap, h_dir, v_gap, v_dir = a.outer_bbox.gap_to(b.outer_bbox)
-                print(f"  {severity} [{oid}] {pct:5.1f}% overlap:")
-                print(f"       A: [{a.role:12s}] [{i:2d}] {a.label}")
-                print(f"          inner={a.bbox}  outer={a.outer_bbox}")
-                print(f"       B: [{b.role:12s}] [{j:2d}] {b.label}")
-                print(f"          inner={b.bbox}  outer={b.outer_bbox}")
-                print(
-                    f"       gaps (outer): h={h_gap:+.1f}px ({h_dir})  v={v_gap:+.1f}px ({v_dir})"
-                )
-                if cls == "violation" and h_gap < 0 and v_gap < 0:
-                    fix_h = abs(h_gap) + 1
-                    fix_v = abs(v_gap) + 1
-                    print(
-                        f"       FIX: shift B right by {fix_h:.0f}px OR down by {fix_v:.0f}px to clear"
-                    )
-                print()
-        if ignored:
-            print(f"  ({ignored} overlaps ignored via --ignore)")
-
-    # proximity report
-    print(f"{'=' * 72}")
-    print("PROXIMITY REPORT (same-section pairs within 20px, outer bboxes)")
-    print("-" * 72)
-    prox = proximity_report(elements)
-    if not prox:
-        print("  No tight proximities found.")
-    else:
-        for a, b, h_gap, h_dir, v_gap, v_dir in prox:
-            # report the meaningful gap
-            if h_gap >= 0 and (v_gap < 0 or h_gap <= v_gap):
-                print(f"  h_gap=+{h_gap:.1f}px ({h_dir})")
-            else:
-                print(f"  v_gap=+{v_gap:.1f}px ({v_dir})")
-            print(f"    A: [{a.role:12s}] inner={a.bbox}  outer={a.outer_bbox}  {a.label}")
-            print(f"    B: [{b.role:12s}] inner={b.bbox}  outer={b.outer_bbox}  {b.label}")
-            print()
+    for n, f in enumerate(ink.findings, 1):
+        print(f"  {n:2d}. {'HARD' if f.hard else 'SOFT'} {f.message()}")
+    if args.overlay:
+        print(f"\n  Overlay: {write_overlay(ink, args.overlay)}")
 
     # spacing checks
-    print(f"{'=' * 72}")
+    print(f"\n{'=' * 72}")
     print("SPACING & CHECKLIST VIOLATIONS")
     print("-" * 72)
     spacing_issues = check_spacing(elements)
@@ -1857,25 +1636,11 @@ def main():
         for issue in overflow_issues:
             print(f"  - {issue}")
 
-    # summary
-    total_prox = len(prox)
     print(f"\n{'=' * 72}")
-    ign_note = f" ({ignored} ignored)" if ignored else ""
-    # classification breakdown
-    if overlaps:
-        cls_counts = {}
-        for _, _, _, _, _, cls in overlaps:
-            cls_counts[cls] = cls_counts.get(cls, 0) + 1
-        cls_parts = [
-            f"{cls_counts.get(c, 0)} {c}" for c in CLASS_ORDER if cls_counts.get(c, 0) > 0
-        ]
-        cls_summary = f" [{', '.join(cls_parts)}]"
-    else:
-        cls_summary = ""
     print(
-        f"SUMMARY: {shown} overlaps{ign_note}{cls_summary}, {total_prox} tight proximities, "
+        f"SUMMARY: {len(hard)} overlaps, {len(ink.findings) - len(hard)} near-misses, "
         f"{len(spacing_issues)} spacing violations, {len(callout_issues)} callout cross-collisions, "
-        f"{len(elements)} elements parsed"
+        f"{len(overflow_issues)} container overflows, {len(elements)} elements parsed"
     )
 
     # handle inject/strip bounds
@@ -1898,7 +1663,7 @@ def main():
 
         with open(args.svg, "w") as f:
             f.write(svg_content)
-    found = violations + len(spacing_issues) + len(callout_issues) + len(overflow_issues)
+    found = len(hard) + len(spacing_issues) + len(callout_issues) + len(overflow_issues)
     return 1 if args.strict and found else 0
 
 
