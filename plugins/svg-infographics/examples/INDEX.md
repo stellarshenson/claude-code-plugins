@@ -188,6 +188,8 @@ the SVGs only once the spec is approved.
 |------|-------------|
 | `65_embroidery_basic_tier` | 32 basic stroke glyphs (electronics, AI, science, abstract) |
 | `66_embroidery_midtier_scifi` | 32 intricate sci-fi/cyberpunk glyphs with glow + gradients |
+| `68_embroidery_victorian_flourishes` | 32 Victorian flourish glyphs (scrolls, lace and filigree corners, laurel wreath, tassel) |
+| `69_embroidery_gothic_grimdark` | 32 gothic grimdark glyphs (winged skull, pointed arch, censer, chained tome, spiked corner) |
 
 ### Reference / patterns
 

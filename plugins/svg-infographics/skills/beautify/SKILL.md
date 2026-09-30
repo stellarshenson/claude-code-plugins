@@ -122,14 +122,15 @@ If the user skips the free-text brief (empty answer), note in the brief "no user
 | Question | Options | Default |
 |----------|---------|---------|
 | Embroidery | `off` / `sparse` / `moderate` / `dense` | `moderate` |
+| Embroidery style | `auto` / `tech` / `sci-fi` / `victorian` / `gothic` | `auto` (creative brief and SVG content decide) |
 | Abstract graphics | `off` / `sparse` / `moderate` / `rich` | `moderate` |
 | Bg texture theme | `none` / `circuit` / `neural` / `topo` / `grid` / `organic` / `constellation` / `dotsea` | match article domain |
-| Bg opacity cap | `0.05` / `0.08` / `0.10` | `0.10` (directive #4 cap) |
 
 **Batch 4: glow + validation**
 
 | Question | Options | Default |
 |----------|---------|---------|
+| Bg opacity cap | `0.05` / `0.08` / `0.10` | `0.10` (directive #4 cap) |
 | Glow mode | `off` / `focal-only` / `connectors+titles` / `everywhere` | `connectors+titles` |
 | Glow palette | `cool` / `warm` / `dual` | `dual` |
 | Validation strictness | `strict` / `strict-errors-only` | `strict-errors-only` |
@@ -145,14 +146,14 @@ If the user skips the free-text brief (empty answer), note in the brief "no user
 
 If shader mode is `off` (default), skip Batch 5 entirely — no other Batch-5 questions are asked. When `shader mode != off`, the agent reads `skills/svg-infographics/rules/shaders.md` and picks the SVG filter recipe(s) matching the chosen theme (or composes from the creative brief when `theme=auto`). When `print compat = strip-on-export`, beautify writes BOTH `<file>+.svg` (with filters) and `<file>+_print.svg` (filters stripped) per file. Animation default `off` because SMIL filter animations break print rasterisers entirely; `subtle` opts in to one-element water-ripple `seed` animation only.
 
-The questionnaire now totals 18 questions across 5 batches. `AskUserQuestion` still batches at up to 4 per call.
+The questionnaire now totals 19 questions across 5 batches. `AskUserQuestion` still batches at up to 4 per call.
 
 If the user's initial command invocation volunteered any answers inline (e.g. "medium intensity, icons per item, circuit texture, water-ripple shader"), pre-fill those into the `AskUserQuestion` defaults so the user only confirms the rest.
 
 Workflow:
 1. If `./svg-infographics-beautify.md` missing: generate the minimal template above.
 2. Read it. Apply any standing-directive overrides from the local file on top of the shipped defaults.
-3. Walk the 18-question questionnaire (Batch 5 skipped when shader mode = off). Collect answers.
+3. Walk the 19-question questionnaire (Batch 5 skipped when shader mode = off). Collect answers.
 4. Rewrite the local file's "Resolved pattern" section with the answers.
 5. Append history entry when done.
 6. Sub-agents told: "Read `./svg-infographics-beautify.md` and apply the Resolved pattern."
@@ -210,7 +211,12 @@ Detailed multi-stroke iconic glyphs reinforcing element meaning. NOT simple silh
 
 Futuristic flourishes, tech-line accents, ornamental detail. Choose a domain theme from the embroidery gallery that matches SVG content.
 
-**Domain themes**: electronics/circuit, AI/neural, cyberpunk HUD, sci-fi abstract, decorative flourishes, science/math
+**Styles** (questionnaire "Embroidery style"; `auto` picks by creative brief and SVG content):
+
+- `tech` - gallery sheet `65_embroidery_basic_tier`: plain stroke glyphs for electronics, AI, science
+- `sci-fi` - gallery sheet `66_embroidery_midtier_scifi`: intricate cyberpunk HUD and sci-fi abstract glyphs with glow and gradients
+- `victorian` - gallery sheet `68_embroidery_victorian_flourishes`: calligraphic flourishes, scrolls, lace and filigree corners, laurel wreaths, tassels
+- `gothic` - gallery sheet `69_embroidery_gothic_grimdark`: grimdark gothic motifs (winged skull, pointed arches, censer, chained tome, spiked corners, studded shield), no Warhammer 40k trademarks
 
 **Organic circuitry**: faded circuit-trace paths that grow organically across the background - branching lines with node dots at intersections, like PCB traces or neural dendrites. Low opacity, placed in the background layer behind all content. Density scales with level.
 
@@ -325,7 +331,7 @@ For each file passed in arguments, read the SVG completely. Parse the XML commen
 
 ### Step 3: Run the mandatory questionnaire
 
-Walk the user through all 18 questions in the Questionnaire section above (Batch 5 skipped when shader mode = off). Use `AskUserQuestion` if available, otherwise present them as a numbered list and wait for all answers. Do NOT shortcut, do NOT use previous runs' answers. Every run re-asks. This is the guard against silent drift.
+Walk the user through all 19 questions in the Questionnaire section above (Batch 5 skipped when shader mode = off). Use `AskUserQuestion` if available, otherwise present them as a numbered list and wait for all answers. Do NOT shortcut, do NOT use previous runs' answers. Every run re-asks. This is the guard against silent drift.
 
 Defaults are allowed - the user may answer "default" to accept the Default column for any question. "Skip" marks a dimension as off for this run. Custom values are copied verbatim.
 
@@ -333,7 +339,7 @@ If the user volunteered any of these answers inline in their command invocation 
 
 ### Step 4: Rewrite the Resolved pattern
 
-After all 18 answers are collected, rewrite the **Resolved pattern** section in `svg-infographics-beautify.md` with the current run's concrete choices. Timestamp the update. This becomes the single source of truth that sub-agents will read.
+After all 19 answers are collected, rewrite the **Resolved pattern** section in `svg-infographics-beautify.md` with the current run's concrete choices. Timestamp the update. This becomes the single source of truth that sub-agents will read.
 
 ### Step 5: Apply (delegated to sub-agents for multi-file runs)
 
