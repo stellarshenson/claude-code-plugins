@@ -328,6 +328,84 @@ related/blocked-by links in every query surface, an exact --grep filter, a ranke
   - test-tags: UNIT
   - log: 2026-09-06T16:25:30Z @kj added
   - log: 2026-09-06T16:25:50Z @kj closed
+- [x] `ACC-PMREL-174` **override written on both items** - HIGH; relate --overrides B on A writes overrides: B on A and overridden-by: A on B; --overridden-by is the same link made from B
+  - evidence: tests/test_pm_tools.py::test_an_override_is_written_on_both_items passes
+  - test: relate one item, read the sub-lines of both
+  - test-tags: UNIT
+  - log: 2026-10-01T21:42:25Z @kj added
+  - log: 2026-10-01T21:42:25Z @kj closed
+- [x] `ACC-PMREL-175` **override crosses trackers** - HIGH; a defect overrides a criterion and a criterion a defect; the second line lands in the tracker beside FILE
+  - evidence: tests/test_pm_tools.py::test_a_defect_overrides_a_criterion_and_back_across_files and tests/test_pm_tools_functional.py::test_an_override_runs_across_both_trackers_and_the_newest_link_holds pass
+  - test: relate a defect over a criterion in docs/, read the criteria file
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-01T21:42:25Z @kj added
+  - log: 2026-10-01T21:42:25Z @kj closed
+- [x] `ACC-PMREL-176` **Edge: override target must exist** - MEDIUM; relate refuses an override that names no id or an id not in the trackers beside FILE; nothing is written
+  - evidence: tests/test_pm_tools.py::test_an_override_needs_its_target_beside_the_file passes
+  - test: relate --overrides ACC-AUTH-9 with no such item, compare the file
+  - test-tags: UNIT
+  - log: 2026-10-01T21:42:25Z @kj added
+  - log: 2026-10-01T21:42:25Z @kj closed
+- [x] `ACC-PMREL-177` **many overrides per item** - MEDIUM; an item may override many items and be overridden by many; a link outside a cycle is never removed
+  - evidence: tests/test_pm_tools.py::test_many_overrides_stay_and_only_the_cycle_is_cut passes
+  - test: one item overrides two, a cycle is closed elsewhere, both links remain
+  - test-tags: UNIT
+  - log: 2026-10-01T21:42:25Z @kj added
+  - log: 2026-10-01T21:42:25Z @kj closed
+- [x] `ACC-PMREL-178` **override cycle: newest link holds** - HIGH; an override link that closes a cycle is written; every older link into the item that takes it, from the item it points at or anything that item leads to, is removed on both items
+  - evidence: tests/test_pm_tools.py::test_a_reversed_override_replaces_the_old_pair and test_many_overrides_stay_and_only_the_cycle_is_cut pass
+  - test: A overrides B, then relate B --overrides A --author; the old pair is gone
+  - test-tags: UNIT
+  - log: 2026-10-01T21:42:25Z @kj added
+  - log: 2026-10-01T21:42:25Z @kj closed
+- [x] `ACC-PMREL-179` **blocked-by cycle: newest link holds** - HIGH; a blocked-by link that closes a cycle is written and the older link into the item that takes it is removed; other ids on that line stay
+  - evidence: tests/test_pm_tools.py::test_a_blocked_by_cycle_is_broken_and_the_newest_link_holds and test_cutting_one_id_keeps_the_others_on_the_line pass
+  - test: 1 blocked-by 2, 2 blocked-by 3, relate 3 --blocked-by 1 --author; check exits 0
+  - test-tags: UNIT
+  - log: 2026-10-01T21:42:25Z @kj added
+  - log: 2026-10-01T21:42:25Z @kj closed
+- [x] `ACC-PMREL-180` **removed link is logged, and authored** - HIGH; each removed link is logged on the item that lost the line, with the line's wording; without --author relate refuses and writes nothing
+  - evidence: tests/test_pm_tools.py::test_a_blocked_by_cycle_is_broken_and_the_newest_link_holds and test_a_reversed_override_replaces_the_old_pair pass
+  - test: close a cycle without --author, compare the files; repeat with --author, read the log lines
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-01T21:42:26Z @kj added
+  - log: 2026-10-01T21:42:26Z @kj closed
+- [x] `ACC-PMREL-181` **Edge: link to itself refused** - MEDIUM; relate refuses a blocked-by or override link from an item to itself; nothing is written
+  - evidence: tests/test_pm_tools.py::test_relate_refuses_a_link_from_an_item_to_itself passes
+  - test: relate --id X --blocked-by X, then --overrides X
+  - test-tags: UNIT
+  - log: 2026-10-01T21:42:26Z @kj added
+  - log: 2026-10-01T21:42:26Z @kj closed
+- [x] `ACC-PMREL-182` **check: override cycle is an error** - HIGH; an override cycle left by a hand edit fails check once and names relate as the repair; relate for the link that holds clears it
+  - evidence: tests/test_pm_tools.py::test_check_errors_on_an_override_cycle_left_by_hand passes
+  - test: hand-write both directions, run check, relate one direction with --author, run check
+  - test-tags: UNIT
+  - log: 2026-10-01T21:42:26Z @kj added
+  - log: 2026-10-01T21:42:26Z @kj closed
+- [x] `ACC-PMREL-183` **check: one-sided override is an error** - HIGH; an override line whose other item lacks the second line fails check and names the relate call; that call writes only the missing line, a repeat writes nothing
+  - evidence: tests/test_pm_tools.py::test_relate_again_writes_only_the_missing_side passes
+  - test: delete one line of a pair, run check, run the named call, compare the file
+  - test-tags: UNIT
+  - log: 2026-10-01T21:42:26Z @kj added
+  - log: 2026-10-01T21:42:26Z @kj closed
+- [x] `ACC-PMREL-184` **check: open overridden item warns** - MEDIUM; an open item with an overridden-by line gets a warning; --strict fails on it
+  - evidence: tests/test_pm_tools.py::test_a_defect_overrides_a_criterion_and_back_across_files and tests/test_pm_tools_functional.py::test_an_override_runs_across_both_trackers_and_the_newest_link_holds pass
+  - test: override an open criterion, run check and check --strict
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-01T21:42:26Z @kj added
+  - log: 2026-10-01T21:42:26Z @kj closed
+- [x] `ACC-PMREL-185` **override fields and filters** - MEDIUM; list, pivot and --json carry overrides and overridden-by, each the ids on the item's own lines; --related-to and refs read both kinds
+  - evidence: tests/test_pm_tools.py::test_an_override_is_written_on_both_items and test_override_fields_pivot_and_json pass
+  - test: list --columns id,overrides,overridden-by; pivot --rows overridden-by; refs --id
+  - test-tags: UNIT
+  - log: 2026-10-01T21:42:26Z @kj added
+  - log: 2026-10-01T21:42:26Z @kj closed
+- [x] `ACC-PMREL-186` **override link documented** - MEDIUM; the override link and the cycle rule are stated in SKILL.md, both procedure skills, both references, the README and relate --help
+  - evidence: tests/test_pm_tools_functional.py::test_the_override_link_is_documented_where_the_agent_reads_it passes
+  - test: grep the eight files and relate --help
+  - test-tags: FUNCTIONAL
+  - log: 2026-10-01T21:42:26Z @kj added
+  - log: 2026-10-01T21:42:27Z @kj closed
 
 ## adversarial review tooling `REVIEW`
 

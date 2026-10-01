@@ -92,7 +92,7 @@ Every fact is stored exactly once, and everything else is computed when read. Th
 | Index, contents, counts | not stored | `pm-tools list-categories` |
 | Test coverage per tag | not stored | `pm-tools coverage` |
 
-Three things follow, all deliberate: no `## Contents` table (a second index that drifts - `check` rejects one), no Open / Fixed sections (status is the checkbox, so an item never moves), and one-way links (the reverse side is computed, never written back).
+Three things follow, all deliberate: no `## Contents` table (a second index that drifts - `check` rejects one), no Open / Fixed sections (status is the checkbox, so an item never moves), and one-way `related` / `blocked-by` links (the reverse side is computed, never written back). An override is the one link written on both items, `overrides:` on the item that replaces and `overridden-by:` on the one replaced; `relate` writes the pair and `check` fails a pair with one line missing.
 
 ## What an item looks like
 
@@ -138,6 +138,7 @@ pm-tools list docs --status open --columns id,title,author,age --sort=-age   # o
 pm-tools pivot docs --rows author --cols severity                            # an ad-hoc count grid
 pm-tools pivot docs --rows root --regressions --values ids                   # regressions per defect
 pm-tools list docs --blocked --columns id,title,blockers   # waiting on open work
+pm-tools relate docs/defects-app.md --id DEF-LNCH-3 --overrides ACC-LNCH-8   # both items get a line, across files
 pm-tools search docs "token race"            # ranked by relevance; a typo still hits
 pm-tools report docs --json                   # the same facts as data; also on coverage, list, pivot, search, refs, list-categories
 pm-tools list-categories docs                 # the derived index
@@ -161,7 +162,7 @@ pm-tools upgrade docs/acceptance-criteria.md
 pm-tools upgrade docs/acceptance-criteria.md --code "Authentication=AUTH" --author @kj --apply
 ```
 
-`check` is the only gate and it is a gate, not a reporter: non-zero exit on errors (a duplicate id, an untriaged defect, an unrated criterion, a hand-kept contents table, the wrong hint line for the discipline, a dangling relation, a blocked-by cycle), and `--strict` also fails on warnings (a missing repro, an undescribed category, an open item blocked by a finished one). Run it on the directory, so a link into the file beside resolves.
+`check` is the only gate and it is a gate, not a reporter: non-zero exit on errors (a duplicate id, an untriaged defect, an unrated criterion, a hand-kept contents table, the wrong hint line for the discipline, a dangling relation, a blocked-by or override cycle, an override on one item only), and `--strict` also fails on warnings (a missing repro, an undescribed category, an open item blocked by a finished one or overridden). `relate` keeps both dependency graphs free of cycles as it writes: a new link that closes a cycle holds, and the older links into the item that takes it are removed and logged. Run it on the directory, so a link into the file beside resolves.
 
 ## Reports
 
@@ -169,7 +170,7 @@ pm-tools upgrade docs/acceptance-criteria.md --code "Authentication=AUTH" --auth
 
 Filters are flags, so a narrowed ask stays computed rather than being filtered by hand in the answer. `--severity`, `--importance`, `--category`, `--author`, `--tag` (any case), `--regressions` and a date window (`--dates filed|closed|updated` with `--since` and `--until`) narrow the whole report; `--status` narrows the queue alone. `--grep PATTERN` (a case-insensitive regex over title, body, evidence and log lines), `--blocked` (an open blocked-by target) and `--related-to ID` (linked either way) narrow the same way. `--plain` prints the grids and the queue without the icons or the categories table - and `--summary` stops at the SUMMARY grid, listing no items at all.
 
-A question the report does not answer is still a computed table. `list` prints one table of items with the columns and sort order the question calls for, and `pivot` prints an ad-hoc grid - any field down, any field across, a count or the ids in every cell - over the same filters: who owns what by severity, open work by age band, regressions per defect, closures per month by category. `related` and `blockers` are fields like `tags`. `search "QUERY"` ranks items by relevance (BM25, fuzzy on typos and stems) after the same filters narrow the candidates; `--grep` filters, `search` ranks. `--json` on any query returns the same facts as data.
+A question the report does not answer is still a computed table. `list` prints one table of items with the columns and sort order the question calls for, and `pivot` prints an ad-hoc grid - any field down, any field across, a count or the ids in every cell - over the same filters: who owns what by severity, open work by age band, regressions per defect, closures per month by category. `related`, `blockers`, `overrides` and `overridden-by` are fields like `tags`. `search "QUERY"` ranks items by relevance (BM25, fuzzy on typos and stems) after the same filters narrow the candidates; `--grep` filters, `search` ranks. `--json` on any query returns the same facts as data.
 
 ## Rules summary
 

@@ -108,6 +108,7 @@ pm-tools add docs/acc-crit-app.md --category AUTH --name Authentication --author
     --title "Password generation" --text "16 chars, 3 character classes" \
     --test "generate 100 passwords, assert length and class count" --test-tags "UNIT"
 pm-tools relate docs/acc-crit-app.md --id ACC-AUTH-1 --blocked-by "DEF-LNCH-3"
+pm-tools relate docs/acc-crit-app.md --id ACC-AUTH-12 --overrides "ACC-AUTH-1 - 20 chars since 2.0"
 pm-tools lock   docs/acc-crit-app.md --id ACC-AUTH-1 --author @kj
 pm-tools close  docs/acc-crit-app.md --id ACC-AUTH-1 --author @kj --event "verified in v1.3.0" \
     --evidence "100 generated passwords, all 16 chars and 3 classes"
@@ -118,5 +119,7 @@ pm-tools check docs --strict
 ```
 
 `check docs` resolves the `blocked-by: DEF-LNCH-3` line against the defects file beside; `check docs/acc-crit-app.md` alone reports it as not found, and a closed or rejected blocker on an open criterion is a warning.
+
+A criterion that a later criterion or defect replaces is not edited to say the new thing: file the new item and `relate` it with `--overrides`. Both items get a line, and the old criterion keeps its text, its evidence and its log. Reject it if it was still open (SKILL.md, Relations).
 
 Lock a criterion when you pick it up - `pm-tools lock FILE --id ID --author @xx` writes its `lock:` line - and ask before working on one locked by someone else. The lock never blocks a write: another author's write warns once and proceeds. Expired locks clear themselves on the next write, `close` clears the lock it finds, and `pm-tools unlock FILE --author @xx --id ID` clears one at will; taking or clearing an active lock held by another handle is a transfer - `lock` and `unlock` print `TRANSFER: ACC-AUTH-1 was locked by @yy until <stamp> - you are taking it over; ask @yy` and proceed, and a takeover with no `--note` records `taken over from @yy`. `report`, `list`, `search` and `refs` print `N item(s) currently worked on: ACC-AUTH-1 by @xx until <stamp>` on stderr before the table - read it before choosing what to pick up.

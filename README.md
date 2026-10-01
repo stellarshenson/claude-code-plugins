@@ -55,7 +55,7 @@ The design goal is that nothing is recorded twice, so nothing can drift out of s
 - **Mandatory triage** - `CRITICAL` / `MAJOR` / `MEDIUM` / `MINOR`, assigned by the agent as the defect is filed. `add` refuses an untriaged defect and `check` errors on one
 - **Authored append-only logs** - ISO 8601 UTC, then the handle, then the event, including the attempts that FAILED and why. That record of what is already ruled out is the reason the file is worth keeping
 - **`check` is a gate** - non-zero exit on a duplicate id, an untriaged defect, a hand-kept contents table or the wrong hint line; `--strict` also fails on warnings
-- **Relations and search** - `relate` records related and blocking items, `refs` prints what points at an id and its blocker chain, `search` ranks items by BM25 relevance, and `list` / `pivot` build ad-hoc tables; `check` errors on a relation to a missing id or a blocked-by cycle
+- **Relations and search** - `relate` records related, blocking and overriding items, writes an override on both items and removes the older link when a new one closes a cycle; `refs` prints what points at an id and its blocker chain, `search` ranks items by BM25 relevance, and `list` / `pivot` build ad-hoc tables; `check` errors on a relation to a missing id, on a blocked-by or override cycle and on an override written on one item only
 - **Regressions, locks and attachments** - `reopen` on a closed defect opens a numbered regression (`DEF-LNCH-3-1`) and keeps the closure's proof; `lock` marks an item as being worked on; `attach` records a file with its checksum
 - **Hand edits are logged** - the guard hook stops a hand edit of a tracker until `pm-tools ack` logs its reason in `pm-hand-edits.md`
 

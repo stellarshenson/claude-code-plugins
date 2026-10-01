@@ -60,7 +60,7 @@ A filtered ask is answered with flags. Reading the document and filtering inside
 | the regressions | `--regressions` - only the `-N` items |
 | anything mentioning the token | `--grep token` - case-insensitive regex over title, body, evidence and log lines |
 | what is waiting on open work | `--blocked` - at least one blocked-by target still open |
-| everything around DEF-LNCH-3 | `--related-to DEF-LNCH-3` - linked either way, related or blocked-by |
+| everything around DEF-LNCH-3 | `--related-to DEF-LNCH-3` - linked either way, by any relation line |
 | what is being worked on | `--locked` - an active lock, whoever holds it |
 | what @kj is working on | `--locked-by @kj` |
 | filed since the release | `--since 2026-08-01` |
@@ -73,7 +73,7 @@ Filters combine: "what @kj still has open in AUTH" is `--author @kj --category A
 - **`--status` narrows ITEMS only** - the summary tables always show the whole scope, so a filtered report still says where the whole thing stands
 - **A single category folds** its name and description into the header rather than printing a one-row CATEGORIES table
 - **`--severity` is a defect attribute and `--importance` a criterion attribute** - the other discipline's document is skipped with a note on stderr instead of being reported as zeros
-- **Links, not mentions** - `--related-to` and `--blocked` read `related:`/`blocked-by:` lines; an id in a log line is prose, found by `--grep` and `search`
+- **Links, not mentions** - `--related-to` and `--blocked` read relation lines (`related:`, `blocked-by:`, `overrides:`, `overridden-by:`); an id in a log line is prose, found by `--grep` and `search`
 - **Dates come off the log**, the only place a date is recorded: `filed` is the first stamp, `closed` the stamp that closed or rejected the item, `updated` the newest. Reopening a criterion retires its closed date; a regressed defect keeps the one it earned, since that closure really happened. `--since` and `--until` take `YYYY-MM-DD`, both ends inclusive
 - **A closed window lists what it found** - it can only select closed and rejected items, so it switches ITEMS to `--status all` by itself
 
@@ -90,8 +90,8 @@ A question the report sections do not answer is still answered with a computed t
 
 - **`list [--columns F,F,..] [--sort=F,-F,..]`** - one row per item. Default columns are id, title, severity (defects) or importance (criteria), status, category, author, filed and tags; `--columns` replaces them in the order given. Default order is the fix order (open first, worst first, oldest first); `--sort` takes fields in priority order, and a `-` prefix descends - write it `--sort=-age`, since a bare `-age` reads as a flag. Severity, importance and status are ranked, not alphabetical - ascending is worst first and open first, so `--sort=-severity` lists MINOR first
 - **`pivot --rows F [--cols F] [--values count|ids]`** - one field down, another across, a count in every cell (`-` for zero), a Total column and row. Without `--cols` it is a one-column tally. `--values ids` puts the ids in the cells instead, for the reader who wants to click through
-- **FIELDS**, the one vocabulary for `--columns`, `--sort`, `--rows` and `--cols`: `id title body category severity importance status author filed closed updated age tags evidence cause hint regr root logs related blockers lock`. `root` is the parent id a regression descends from (an original is its own root), `regr` its ordinal, `logs` the number of log lines, `hint` the repro or test line, `cause` the current mechanism or root-cause record, `related` and `blockers` the linked ids, `lock` renders `@xx until <stamp>` for an active lock and `-` otherwise
-- **Multi-valued and bucketed fields** - `tags` puts an item in every tag it carries (the empty bucket is `NO-TEST`), and `related` / `blockers` under every id they name; `filed`, `closed` and `updated` pivot by month; `age` pivots by band (`<7d`, `7-30d`, `31-90d`, `>90d`), counting days from filing to closure or to today while open
+- **FIELDS**, the one vocabulary for `--columns`, `--sort`, `--rows` and `--cols`: `id title body category severity importance status author filed closed updated age tags evidence cause hint regr root logs related blockers overrides overridden-by lock attachments`. `root` is the parent id a regression descends from (an original is its own root), `regr` its ordinal, `logs` the number of log lines, `hint` the repro or test line, `cause` the current mechanism or root-cause record, `related` and `blockers` the linked ids, `lock` renders `@xx until <stamp>` for an active lock and `-` otherwise
+- **Multi-valued and bucketed fields** - `tags` puts an item in every tag it carries (the empty bucket is `NO-TEST`), and `related`, `blockers`, `overrides` and `overridden-by` under every id they name; `filed`, `closed` and `updated` pivot by month; `age` pivots by band (`<7d`, `7-30d`, `31-90d`, `>90d`), counting days from filing to closure or to today while open
 
 | The ask | The command |
 |---------|-------------|
@@ -102,6 +102,7 @@ A question the report sections do not answer is still answered with a computed t
 | coverage by category | `coverage` - the shipped grid; `pivot --rows category --cols tags` when a different cut is needed |
 | criteria by importance and status | `pivot --rows importance --cols status` |
 | what is waiting on open work | `list --blocked --columns id,title,blockers` |
+| what no longer holds, and what replaced it | `list --status all --columns id,title,status,overridden-by --sort=overridden-by` |
 | who is working on what | `list --locked --columns id,title,lock` |
 
 ## `search` ranks, `--grep` filters

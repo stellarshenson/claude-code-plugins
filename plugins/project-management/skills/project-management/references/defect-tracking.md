@@ -130,6 +130,8 @@ pm-tools report docs/defects-app.md
 pm-tools check docs --strict
 ```
 
-`check` on the directory resolves a `related:` or `blocked-by:` id into the file beside; on one file alone a cross-file link is reported as not found.
+`check` on the directory resolves a relation id into the file beside; on one file alone a cross-file link is reported as not found.
+
+A defect that shows a criterion wrong overrides it: `pm-tools relate docs/defects-app.md --id DEF-LNCH-3 --overrides ACC-LNCH-8` writes `overrides:` here and `overridden-by:` on the criterion in the file beside. A later criterion may override the defect back; the newest link holds (SKILL.md, Relations).
 
 Lock a defect when you pick it up - `pm-tools lock FILE --id ID --author @xx` writes its `lock:` line - and ask before working on one locked by someone else. The lock never blocks a write: another author's `log`, `edit` or `close` warns once and proceeds. Expired locks clear themselves on the next write, `close` and `reject` clear the lock they find, and `pm-tools unlock FILE --author @xx --id ID` clears one at will; taking or clearing an active lock held by another handle is a transfer - `lock` and `unlock` print `TRANSFER: DEF-LNCH-3 was locked by @yy until <stamp> - you are taking it over; ask @yy` and proceed, and a takeover with no `--note` records `taken over from @yy`. `report`, `list`, `search` and `refs` print `N item(s) currently worked on: DEF-LNCH-3 by @xx until <stamp>` on stderr before the table - read it before choosing what to pick up.

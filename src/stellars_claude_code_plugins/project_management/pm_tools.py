@@ -18,9 +18,10 @@ upper-case, read in any case; an item with none sits in the NO-TEST bucket) - an
 `- evidence: <one line>`, the proof it is actually done. `close` demands the
 evidence and writes that line; on a criterion `reopen` retires it, on a closed
 defect it mints the regression instead and the closure keeps its proof. check
-fails on a relation to an id that is not in the scanned files and on a blocked-by
-cycle, and warns when an open item is blocked by one that is closed or rejected; scan
-the directory, not one file, so cross-file links resolve.
+fails on a relation to an id that is not in the scanned files, on a blocked-by or
+override cycle and on an override written on one item only, and warns when an open
+item is blocked by one that is closed or rejected, or is overridden; scan the
+directory, not one file, so cross-file links resolve.
 
 Each discipline registers one explanation, and it stacks: `- mechanism: <stamp> @xx
 <text>` on a criterion says how it is meant to work, `- root-cause: <stamp> @xx <text>`
@@ -97,21 +98,24 @@ FILTERS, the same on report, list, pivot, search and coverage:
   --grep PATTERN   case-insensitive regex over title, body, evidence, every
                    mechanism/root-cause record and log lines
   --blocked        items with at least one blocked-by target that is still open
-  --related-to ID  items linked to ID in either direction, related or blocked-by
+  --related-to ID  items linked to ID in either direction, by any relation line
   --locked         items carrying an active lock (stamp still in the future)
   --locked-by @xx  items whose active lock is held by @xx
-  A mention of an id in a log line is prose; only a related:/blocked-by: line is a
-  link. --grep and search find mentions, refs, --related-to and --blocked read links.
+  A mention of an id in a log line is prose; only a relation line (related:,
+  blocked-by:, overrides:, overridden-by:) is a link. --grep and search find
+  mentions, refs, --related-to and --blocked read links.
 
 FIELDS, for --columns, --sort, --rows and --cols:
   id title body category severity importance status author filed closed updated
-  age tags evidence cause hint regr root logs related blockers lock attachments
+  age tags evidence cause hint regr root logs related blockers overrides
+  overridden-by lock attachments
   severity, importance and status are ranked, not alphabetical - severity runs
   CRITICAL, MAJOR, MEDIUM, MINOR, importance runs CRITICAL, HIGH, MEDIUM, LOW and
   status runs open, closed, rejected; --sort and a pivot axis both follow that
   order, so ascending is worst first and open first;
   cause is the current mechanism/root-cause record and answers to either name;
-  tags, related, blockers and attachments pivot an item into every value it carries;
+  tags, related, blockers, overrides, overridden-by and attachments pivot an item
+  into every value it carries;
   filed/closed/updated pivot by month, age by band (<7d, 7-30d, 31-90d, >90d); lock reads
   `@xx until <stamp>` for an active lock and `-` otherwise. report marks a locked
   item `wip @xx until <stamp>` and its SUMMARY grid counts open locked items in a
@@ -142,7 +146,16 @@ prose, never a level.
           rewrites the newest record in place. Refused on the other discipline
   author FILE --handle @xx --name "Full Name"      add or update a roster entry
   describe FILE --category CODE --text D           set the category description
-  relate FILE --id ID [--related TEXT] [--blocked-by TEXT]
+  relate FILE --id ID [--related TEXT] [--blocked-by TEXT] [--overrides TEXT]
+              [--overridden-by TEXT] [--author @xx]
+          related and blocked-by are written on this item only. An override is
+          written on both items - `overrides:` on the one that replaces,
+          `overridden-by:` on the one replaced - in the tracker beside FILE when the
+          other item lives there; a defect may override a criterion and back, and an
+          item may override, or be overridden by, many. A new blocked-by or override
+          link that closes a cycle wins: every older link into the item taking the
+          new one, from the item it now points at or anything that item leads to, is
+          removed and logged where it stood, which needs --author
   attach FILE --id ID --path P [--path P]... --author @xx
           one attachment: line per artefact; the same path again refreshes it
   log    FILE --id ID --event E
@@ -158,7 +171,8 @@ prose, never a level.
   unlock FILE --author @xx (--id ID | --all | --expired)
           remove lock lines: one item, every item, or only the expired ones;
           clearing another author's active lock prints one TRANSFER line and proceeds
-  relate and remove take --author only to keep a lock held by that handle silent.
+  relate and remove take --author to keep a lock held by that handle silent; relate
+  also signs with it the log line of a link it removes to break a cycle.
   ack    FILE [--token T --author @xx --reason R]
           a hand edit of a tracker: without --token, print the token for the file as
           it is now; with it, log the reason in pm-hand-edits.md beside FILE. The
@@ -201,7 +215,9 @@ BOLD = re.compile(r"\*\*([^*]+)\*\*")
 SEVWORD = re.compile(r"^([A-Z][A-Z0-9-]{0,11})\s*[;:,]")
 LOGLINE = re.compile(r"^(\s+)- log:\s*(\S*)(.*)$")
 DATED = re.compile(r"^(\s+)- (\d{4}-\d{2}-\d{2})\b(.*)$")
-RELLINE = re.compile(r"^(\s+)- (related|blocked-by):\s*(.*)$")
+RELLINE = re.compile(r"^(\s+)- (related|blocked-by|overrides|overridden-by):\s*(.*)$")
+# an override is written on both items; each kind names the line the other item carries
+MIRROR = {"overrides": "overridden-by", "overridden-by": "overrides"}
 HINTLINE = re.compile(r"^(\s+)- (repro|test):\s*(.*)$")
 HANDLE = re.compile(r"@[a-z][a-z0-9]{1,3}")
 ROSTER = re.compile(r"^\s*- `(@[a-z][a-z0-9]{1,3})`\s+(.*)$")
@@ -864,7 +880,7 @@ def canon_tags(spec):
 
 
 def targets(b, kind):
-    """The ids this item's related: or blocked-by: lines name, file order, once each."""
+    """The ids this item's relation lines of one kind name, file order, once each."""
     return list(dict.fromkeys(rid for k, rid, _ in b["refs"] if k == kind))
 
 
@@ -902,18 +918,31 @@ def linked(b, wanted, index):
     return t is not None and any(r == me for _, r, _ in t["refs"])
 
 
-def blocker_cycles(index):
-    """Every blocked-by cycle one depth-first pass over the scanned items finds, each
-    as [m, ..., m] starting at its smallest id. Self-block is the one-step case.
+def graph(index, kind):
+    """id -> the ids it points at in one dependency graph, read off the scanned items.
+    `blocked-by`: an item points at its blockers. `overrides`: an item points at what
+    it overrides, a link either line of the pair states."""
+    adj = {i: targets(b, kind) for i, b in index.items()}
+    if kind == "overrides":
+        for i, b in index.items():
+            for r in targets(b, "overridden-by"):
+                if r in adj and i not in adj[r]:
+                    adj[r].append(i)
+    return adj
+
+
+def cycles_in(adj):
+    """Every cycle one depth-first pass over a dependency graph finds, each as
+    [m, ..., m] starting at its smallest id. A self-link is the one-step case.
     Status is ignored: a loop through a closed item is still a structural error.
     One pass, iterative: a tracker where every task is blocked by the last few, or
     a chain hundreds deep, costs one visit per item and per link."""
     state, cycles = {}, []  # missing: unvisited, 1: on the path, 2: done
-    for start in index:
+    for start in adj:
         if start in state:
             continue
         state[start] = 1
-        path, pending = [start], [iter(targets(index[start], "blocked-by"))]
+        path, pending = [start], [iter(adj[start])]
         while path:
             rid = next(pending[-1], None)
             if rid is None:
@@ -923,10 +952,10 @@ def blocker_cycles(index):
                 loop = path[path.index(rid) :]
                 i = loop.index(min(loop))
                 cycles.append(loop[i:] + loop[:i] + [loop[i]])
-            elif rid in index and rid not in state:
+            elif rid in adj and rid not in state:
                 state[rid] = 1
                 path.append(rid)
-                pending.append(iter(targets(index[rid], "blocked-by")))
+                pending.append(iter(adj[rid]))
     return cycles
 
 
@@ -1023,9 +1052,13 @@ FIELDS = (
     "logs",
     "related",
     "blockers",
+    "overrides",
+    "overridden-by",
     "lock",
     "attachments",
 )
+# the fields that hold ids of other items, one per relation kind
+LINK_FIELDS = ("related", "blockers", "overrides", "overridden-by")
 HEAD = {
     "id": "Id",
     "title": "Title",
@@ -1048,6 +1081,8 @@ HEAD = {
     "logs": "Logs",
     "related": "Related",
     "blockers": "Blockers",
+    "overrides": "Overrides",
+    "overridden-by": "Overridden by",
     "lock": "Lock",
     "attachments": "Attachments",
 }
@@ -1060,6 +1095,8 @@ WIDTH = {
     "hint": 64,
     "related": 48,
     "blockers": 48,
+    "overrides": 48,
+    "overridden-by": 48,
     "attachments": 56,
 }
 NUMERIC = ("age", "regr", "logs")
@@ -1078,6 +1115,8 @@ NONE_KEY = {
     "importance": "unrated",
     "related": "unlinked",
     "blockers": "unblocked",
+    "overrides": "overrides none",
+    "overridden-by": "not overridden",
     "attachments": "unattached",
 }
 
@@ -1133,6 +1172,8 @@ def record(b, today=None):
         "root": root_of(b),
         "related": targets(b, "related"),
         "blockers": targets(b, "blocked-by"),
+        "overrides": targets(b, "overrides"),
+        "overridden-by": targets(b, "overridden-by"),
         "logs": len(b["logs"]),
         "lock": lock_active(b),
         "attachments": [a["path"] for a in b["attachments"]],
@@ -1154,7 +1195,7 @@ def field_cell(rec, field):
         return lock_text(v)
     if field in ("id", "root") and v:
         return f"`{v}`"
-    if field in ("related", "blockers"):
+    if field in LINK_FIELDS:
         return cell(", ".join(f"`{i}`" for i in v), WIDTH[field]) if v else "-"
     if isinstance(v, list):
         return cell(", ".join(v), WIDTH.get(field, 64))
@@ -1221,7 +1262,7 @@ def sorted_items(pairs, sort):
 
 def bucket(rec, field):
     """The pivot keys an item falls in for one field - a list, since tags are many."""
-    if field in ("tags", "related", "blockers", "attachments"):
+    if field in ("tags", *LINK_FIELDS, "attachments"):
         return rec[field] or [NONE_KEY[field]]
     if field in ("filed", "closed", "updated"):
         return [rec[field][:7] if rec[field] else "-"]
@@ -1706,7 +1747,7 @@ def cmd_pivot(files, rows_f, cols_f, values, fl, as_json):
         def label(k):
             if rows_f == "category" and k in names:
                 return f"{names[k]} `{k}`"
-            linkish = rows_f in ("id", "root", "related", "blockers")
+            linkish = rows_f in ("id", "root", *LINK_FIELDS)
             return f"`{k}`" if linkish and k not in ("-", NONE_KEY.get(rows_f)) else k
 
         head = [HEAD[rows_f]] + ckeys + (["Total"] if cols_f else [])
@@ -2048,9 +2089,10 @@ def _valid_stamp(s):
 
 def cmd_check(files, strict):
     index = link_index(files)
-    cycles = {}  # smallest id -> the cycles reported on it
-    for loop in blocker_cycles(index):
-        cycles.setdefault(loop[0], []).append(loop)
+    cycles = {}  # smallest id -> the (kind, cycle) pairs reported on it
+    for kind in ("blocked-by", "overrides"):
+        for loop in cycles_in(graph(index, kind)):
+            cycles.setdefault(loop[0], []).append((kind, loop))
 
     errors = warns = 0
     seen = {}  # ident -> (file, line); an id is unique across the scanned files
@@ -2284,7 +2326,8 @@ def cmd_check(files, strict):
             for kind, rid, lineno in b["refs"]:
                 if rid not in index:
                     e.append((lineno, f"{kind} points at {rid}, not found in the scanned files"))
-                elif (
+                    continue
+                if (
                     kind == "blocked-by"
                     and status_of(b) == "open"
                     and status_of(index[rid]) in ("closed", "rejected")
@@ -2296,14 +2339,38 @@ def cmd_check(files, strict):
                             "the block no longer holds",
                         )
                     )
-            for loop in cycles.get(ident(b), []) if b["prefix"] else []:
+                if kind in MIRROR and ident(b) not in targets(index[rid], MIRROR[kind]):
+                    e.append(
+                        (
+                            lineno,
+                            f"{kind} {rid}, but {rid} has no `{MIRROR[kind]}: {ident(b)}` "
+                            f"line; run: pm-tools relate {f} --id {ident(b)} --{kind} {rid}",
+                        )
+                    )
+                if kind == "overridden-by" and status_of(b) == "open":
+                    w.append(
+                        (
+                            lineno,
+                            f"overridden-by {rid} but still open; an overridden item "
+                            "no longer holds, reject it or close it",
+                        )
+                    )
+            for kind, loop in cycles.get(ident(b), []) if b["prefix"] else []:
                 # a duplicated id (its own check error) can hand the cycle to a
                 # copy that lacks the closing line; anchor on the item then
                 at = next(
-                    (ln for k, r, ln in b["refs"] if k == "blocked-by" and r == loop[1]),
+                    (ln for k, r, ln in b["refs"] if k == kind and r == loop[1]),
                     b["line"],
                 )
-                e.append((at, "blocked-by cycle: " + " -> ".join(loop)))
+                e.append(
+                    (
+                        at,
+                        f"{'override' if kind == 'overrides' else kind} cycle: "
+                        + " -> ".join(loop)
+                        + "; run relate again for the link that holds, "
+                        "it removes the older one",
+                    )
+                )
 
         for lineno, msg in sorted(e):
             print(f"{f}:{lineno}: ERROR {msg}")
@@ -2725,28 +2792,168 @@ def cmd_describe(file, code, text):
     return 0
 
 
-def cmd_relate(file, wanted, related, blocked, author=None):
-    if not (related or blocked):
-        raise SystemExit("nothing to link; pass --related and/or --blocked-by")
-    expire_locks(file)
+def siblings(file):
+    """FILE first, then every other tracker beside it: a link may run from a criterion
+    to a defect, so a dependency graph spans the directory."""
+    here = pathlib.Path(file).resolve()
+    beside = resolve([str(pathlib.Path(file).parent)])
+    return [file, *(f for f in beside if pathlib.Path(f).resolve() != here)]
+
+
+def put_rel(file, wanted, kind, value):
+    """One relation line under an item, after its last one. Never merged into an
+    existing line: a relation line may end in free text, and appending an id after
+    that prose would bury it. check unions them."""
     lines = load(file)
-    blocks, _ = parse(file)
-    b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
-    warn_lock(file, b, as_handle(author))
-    ind = sub_indent(lines, b)
-    # one line per call, never merged into an existing one: a relation line may end in
-    # free text, and appending an id after that prose would bury it. check unions them
+    b = find_id(parse(file)[0], wanted)
     at = b["line"]
     for i in range(b["line"], block_end(lines, b)):
         if RELLINE.match(lines[i]):
             at = i + 1
-    for kind, value in (("related", related), ("blocked-by", blocked)):
+    lines.insert(at, f"{sub_indent(lines, b)}- {kind}: {value}")
+    save(file, lines)
+    print(f"{file}:{b['line']}: {wanted} {kind}: {value}")
+
+
+def cut_rel(file, wanted, kind, rid, who, why):
+    """Remove the link to `rid` from an item's lines of one kind and log what stood
+    there. A line that names other ids keeps them."""
+    lines = load(file)
+    b = find_id(parse(file)[0], wanted)
+    was = []
+    for i in range(block_end(lines, b) - 1, b["line"] - 1, -1):
+        m = RELLINE.match(lines[i])
+        if not m or m.group(2) != kind:
+            continue
+        spans = [r.span() for r in IDREF.finditer(m.group(3)) if r[0] == rid]
+        if not spans:
+            continue
+        was.insert(0, m.group(3).strip())
+        rest = m.group(3)
+        for start, end in reversed(spans):
+            rest = rest[:start] + rest[end:]
+        rest = re.sub(r"^[\s,]+|,\s*(?=,)|,\s*(?=$| - )", "", rest).strip()
+        if IDREF.search(rest):
+            lines[i] = f"{m.group(1)}- {kind}: {rest}"
+        else:
+            del lines[i]
+    if not was:
+        return
+    said = "; ".join(was)
+    event = f"{kind} {rid} removed" + ("" if said == rid else f', line read "{said}"')
+    lines.insert(
+        block_end(lines, b), f"{sub_indent(lines, b)}- log: {now()} {who} {event} - {why}"
+    )
+    save(file, lines)
+    print(f"{file}:{b['line']}: {wanted} {event} - {why}")
+
+
+def cmd_relate(file, wanted, related, blocked, overrides=None, overridden=None, author=None):
+    """Write relation lines, and keep both dependency graphs free of cycles while doing
+    it. An override is written on both items. When a new blocked-by or override link
+    closes a cycle the newest link holds: every older link into the item that takes
+    the new one, from the item it now points at or from anything that item leads to,
+    is removed and logged where it stood. Planned on the graph first, so a refusal
+    writes nothing."""
+    if not (related or blocked or overrides or overridden):
+        raise SystemExit(
+            "nothing to link; pass --related, --blocked-by, --overrides or --overridden-by"
+        )
+    expire_locks(file)
+    blocks, _ = parse(file)
+    me = norm_id(wanted, doc_prefix(file, blocks))
+    warn_lock(file, find_id(blocks, me), as_handle(author))
+    where, index = {}, {}
+    for f in siblings(file):
+        for b in parse(f)[0]:
+            if b["prefix"]:
+                where.setdefault(ident(b), f)
+                index.setdefault(ident(b), b)
+
+    def ids(value):
+        return list(dict.fromkeys(r[0] for r in IDREF.finditer(value or "")))
+
+    for kind, value in (("overrides", overrides), ("overridden-by", overridden)):
+        if value and not ids(value):
+            raise SystemExit(f"--{kind} names no id")
+        absent = [t for t in ids(value) if t not in where]
+        if absent:
+            raise SystemExit(
+                f"{absent[0]} is not in the trackers beside {file}; "
+                "an override is written on both items"
+            )
+    both = sorted(set(ids(overrides)) & set(ids(overridden)))
+    if both:
+        raise SystemExit(f"{both[0]} is named by --overrides and by --overridden-by; pick one")
+    # (graph, from, to): blocked-by points at the blocker, overrides at the overridden
+    links = [("blocked-by", me, t) for t in ids(blocked)]
+    links += [("overrides", me, t) for t in ids(overrides)]
+    links += [("overrides", t, me) for t in ids(overridden)]
+    if any(src == dst for _, src, dst in links):
+        raise SystemExit(f"{me} cannot link to itself")
+
+    adj = {kind: graph(index, kind) for kind in ("blocked-by", "overrides")}
+    cuts = []
+    for kind, src, dst in links:
+        g = adj[kind]
+        reach, todo = set(), [dst]
+        while todo:
+            n = todo.pop()
+            if n not in reach:
+                reach.add(n)
+                todo += g.get(n, [])
+        for n in sorted(x for x in reach if src in g.get(x, [])):
+            g[n].remove(src)
+            cuts.append((kind, n, src, dst))
+        g.setdefault(src, []).append(dst)
+    if cuts and not author:
+        kind, n, src, dst = cuts[0]
+        raise SystemExit(
+            f"{src} {kind} {dst} closes a cycle; the older link {n} {kind} {src} "
+            "is removed and logged, so pass --author @xx"
+        )
+    fresh = {file}
+
+    def ready(f, item):
+        """Another item is about to be written: its file drops expired locks once, and
+        a lock someone else holds on it is named."""
+        if f not in fresh:
+            fresh.add(f)
+            expire_locks(f)
+        if item != me:
+            warn_lock(f, find_id(parse(f)[0], item), as_handle(author))
+
+    who = {
+        f: need_author(f, author) for f in {where[x] for kind, n, src, _ in cuts for x in (n, src)}
+    }
+    for kind, n, src, dst in cuts:
+        why = f"cycle with newer link {src} {kind} {dst}"
+        ready(where[n], n)
+        cut_rel(where[n], n, kind, src, who[where[n]], why)
+        if kind == "overrides":
+            ready(where[src], src)
+            cut_rel(where[src], src, "overridden-by", n, who[where[src]], why)
+
+    for kind, value in (
+        ("related", related),
+        ("blocked-by", blocked),
+        ("overrides", overrides),
+        ("overridden-by", overridden),
+    ):
         if not value:
             continue
-        lines.insert(at, f"{ind}- {kind}: {value}")
-        at += 1
-        print(f"{file}:{b['line']}: {ident(b)} {kind}: {value}")
-    save(file, lines)
+        if kind not in MIRROR:
+            put_rel(file, me, kind, value)
+            continue
+        # run again on a pair that lost one line: the missing line alone is written
+        if all(t in targets(find_id(parse(file)[0], me), kind) for t in ids(value)):
+            print(f"{file}: {me} {kind}: {value} is already recorded")
+        else:
+            put_rel(file, me, kind, value)
+        for t in ids(value):
+            if me not in targets(find_id(parse(where[t])[0], t), MIRROR[kind]):
+                ready(where[t], t)
+                put_rel(where[t], t, MIRROR[kind], me)
     return 0
 
 
@@ -3318,7 +3525,7 @@ def main(argv: list[str] | None = None) -> int:
             "--related-to",
             dest="related_to",
             metavar="ID",
-            help="items linked to ID either way, related or blocked-by" + whole,
+            help="items linked to ID either way, by any relation line" + whole,
         )
         sp.add_argument(
             "--locked", action="store_true", help="items carrying an active lock" + whole
@@ -3497,7 +3704,18 @@ def main(argv: list[str] | None = None) -> int:
     sr.add_argument("--id", required=True)
     sr.add_argument("--related")
     sr.add_argument("--blocked-by", dest="blocked")
-    sr.add_argument("--author", metavar="@xx", help="your handle; keeps your own lock silent")
+    sr.add_argument("--overrides", help="this item overrides ID; both items get a line")
+    sr.add_argument(
+        "--overridden-by",
+        dest="overridden",
+        help="ID overrides this item; both items get a line",
+    )
+    sr.add_argument(
+        "--author",
+        metavar="@xx",
+        help="your handle; keeps your own lock silent, and signs the log line when "
+        "an older link is removed to break a cycle",
+    )
 
     st = sub.add_parser("attach")
     st.add_argument("file")
@@ -3712,7 +3930,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "describe":
         return cmd_describe(a.file, a.category, a.text)
     if a.cmd == "relate":
-        return cmd_relate(a.file, a.id, a.related, a.blocked, a.author)
+        return cmd_relate(a.file, a.id, a.related, a.blocked, a.overrides, a.overridden, a.author)
     if a.cmd == "attach":
         return cmd_attach(a.file, a.id, a.path, a.author)
     if a.cmd == "log":

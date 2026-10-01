@@ -16,7 +16,7 @@ Hand edits pass while the file holds conflict markers; after the last marker is 
 Keep both sides. This settles most conflicts outright.
 
 - **Both appended log lines** - keep every line from both sides, ordered by date. Never drop one; a failed attempt is exactly the record the file exists for
-- **Both added relations** - keep both `related:` / `blocked-by:` lines; `check` and `refs` union them anyway
+- **Both added relations** - keep every relation line from both sides; `check` and `refs` union them anyway. When the union closes a `blocked-by` or override cycle, or leaves an override on one item only, `check` errors and names the `relate` call that repairs it: run it for the link that holds
 - **Both added items** - keep both, then check the numbering below
 
 ## Two people filed the same number

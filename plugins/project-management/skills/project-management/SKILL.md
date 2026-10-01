@@ -51,8 +51,9 @@ Consequences, stated once:
 
 - **No `## Contents`** - a hand-kept table of contents is a second index that drifts; `check` rejects one
 - **No Open / Fixed sections** - status lives in the checkbox, so an item never moves
-- **Links are one-way** - a `related:` on A is the only record; the reverse is computed, never written back
-- **`check` reports, it does not repair** - a relation to an id that is not in the scanned files, or a blocked-by cycle, is an error to fix by hand (Rules: the hand-edit guard), never state to reconcile; scan the directory so cross-file links resolve
+- **`related` and `blocked-by` are one-way** - the line on A is the only record; the reverse is computed, never written back
+- **An override is the one link stored on both items** - `relate` writes the pair and `check` fails a pair with one line missing, so the two lines cannot drift unseen
+- **`check` reports, it does not repair** - a relation to an id that is not in the scanned files is an error to fix by hand (Rules: the hand-edit guard), never state to reconcile; a cycle or a one-sided override is an error that names the `relate` call which repairs it; scan the directory so cross-file links resolve
 
 ## Ids
 
@@ -80,6 +81,8 @@ One item is one top-level checklist line plus indented sub-lines. No sub-checkbo
   - evidence: <the proof it is done - written by close, present only while closed>
   - related: <ID>, <ID> - free text around the ids
   - blocked-by: <ID>
+  - overrides: <ID>
+  - overridden-by: <ID>
   - lock: 2026-08-30T10:11:29Z @kj optional note
   - log: 2026-08-26T08:41:03Z @kj added
 ```
@@ -185,14 +188,18 @@ Every entry is authored. The handle sits on the log line between the stamp and t
 
 ## Relations
 
-Two indicators, no more: `related` and `blocked-by`.
+Four line kinds: `related`, `blocked-by`, and the pair `overrides` / `overridden-by`.
 
 - **Free text is welcome around the ids** - the parser anchors on the id shape `(ACC|DEF)-[A-Z]{2,6}-<N>`, so `- related: DEF-LNCH-3 - the race this covers` reads as both a link and a sentence
 - **Cross-type** - a criterion may cite a defect and the other way round
 - **One line per `relate` call** - lines are never merged, because a merge would bury a new id inside the previous line's prose; `check` and `refs` union them
-- **Links, not mentions** - only a `related:`/`blocked-by:` line is a link; an id in a log line is prose. `refs`, `--related-to` and `--blocked` read links; `--grep` and `search` read prose
-- **`blocked-by` is checked** - a cycle is an error, a blocker that is closed or rejected is a warning on the open item; `refs --id` prints both directions and the transitive chain
-- Every `relate` writes one side only. Run it on the other item too when both sides deserve to read well
+- **Links, not mentions** - only a relation line is a link; an id in a log line is prose. `refs`, `--related-to` and `--blocked` read links; `--grep` and `search` read prose
+- **`related` and `blocked-by` are written on one item** - run `relate` on the other item too when both sides deserve to read well; `refs --id` prints both directions and the transitive blocked-by chain
+- **An override means the other item no longer holds** - `overrides: B` on A says A states something that replaces what B states. Use it when a later item contradicts an earlier one; a defect may override a criterion and a criterion a defect. An item may override many and be overridden by many
+- **An override is written on both items** - `relate FILE --id A --overrides B` writes `overrides: B` on A and `overridden-by: A` on B, in the tracker beside FILE when B lives there; `--overridden-by` is the same call made from B. Each item then shows the link in `list`, `pivot` and `--json` (fields `overrides`, `overridden-by`) without a scan. B must exist; a repeat call writes only a line that is missing
+- **An overridden item that is still open** - reject it with the overriding id as the reason; `check` warns until then. A closed one stays closed with its evidence
+- **No cycles; the newest link holds** - a `blocked-by` or override link that closes a cycle is written, and `relate` removes every older link into the item that takes it, from the item it now points at or from anything that item leads to. Each removal is logged on the item that lost the line, so that call needs `--author`; without it nothing is written. Links outside the cycle stay
+- **`check` covers what `relate` did not write** - a cycle or a one-sided override left by a hand edit or a merge is an error naming the `relate` call that repairs it; a closed or rejected blocker is a warning on the open item
 
 ## Soft lock
 
@@ -248,7 +255,7 @@ Read:
 
 `--json` on any of the first seven returns the same facts as data. The filters `--category`, `--severity`, `--importance`, `--status`, `--author`, `--tag` (any case), `--regressions`, `--grep`, `--blocked`, `--related-to`, `--locked`, `--locked-by` and the `--dates` / `--since` / `--until` window are the same on `report`, `coverage`, `list`, `pivot` and `search`.
 
-Write - one file per call, and `--author` on every one of them:
+Write - one file per call, and `--author` on every one of them. `relate` alone may write a second tracker beside the first: the other line of an override, or the older link of a cycle it breaks:
 
 | Command | Does |
 |---------|------|
@@ -257,7 +264,7 @@ Write - one file per call, and `--author` on every one of them:
 | `amend` | reword title or body; the log line keeps the old wording (`amended title "old" -> "new"`), so an item renamed three times shows three lines under the current one; report, list and search read the current wording |
 | `author` | add or update a roster entry; required before that handle can write |
 | `describe` | set or replace the category description |
-| `relate` | add one `related:` or `blocked-by:` line |
+| `relate` | add one `related:` or `blocked-by:` line, or an override on both items (`--overrides`, `--overridden-by`); breaks the cycle a new link closes |
 | `attach` | one `attachment:` line per artefact with its checksum and last-edit stamp; the same path again refreshes the line and the log keeps the old checksum; `check` warns when an artefact changed or is missing |
 | `mechanism` / `root-cause` | write the discipline's explanation; a new record above the previous one, or `--update` to replace the newest, logging the record it replaced; a new record is logged only with `--reason` |
 | `log` | append an event to the item's log |

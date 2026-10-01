@@ -1485,6 +1485,83 @@ def test_a_second_agent_is_told_who_is_on_what_and_takes_the_item_over(defects: 
     assert pm("check", defects).returncode == 0
 
 
+# --- overrides: one link on both items, and no cycles ------------------------------
+
+
+def test_an_override_runs_across_both_trackers_and_the_newest_link_holds(
+    defects: Path, criteria: Path, docs: Path
+):
+    """The walk an agent runs when a defect shows a criterion wrong and the criterion
+    is later restated: each link lands on both items, in both files, and the link that
+    would close a cycle replaces the older one instead of being refused."""
+    write_a_criterion(criteria, "Session timeout", "session expires after 30 idle minutes")
+    file_a_defect(defects, "sessions die during an upload")
+    out = ok(
+        "relate", defects, "--id", "DEF-LNCH-1", "--overrides", "ACC-AUTH-1 - 30 min kills uploads"
+    )
+    assert "DEF-LNCH-1 overrides: ACC-AUTH-1 - 30 min kills uploads" in out
+    assert "ACC-AUTH-1 overridden-by: DEF-LNCH-1" in out, "the other tracker got its line"
+    r = pm("check", docs)
+    assert r.returncode == 0, r.stdout
+    assert "warn  overridden-by DEF-LNCH-1 but still open" in r.stdout
+    assert pm("check", docs, "--strict").returncode != 0, "an open overridden item is a warning"
+
+    # the criterion is restated and overrides the defect back
+    before = defects.read_text(encoding="utf-8"), criteria.read_text(encoding="utf-8")
+    r = pm("relate", criteria, "--id", "ACC-AUTH-1", "--overrides", "DEF-LNCH-1")
+    assert r.returncode != 0 and "closes a cycle" in r.stderr and "--author" in r.stderr
+    assert (defects.read_text(encoding="utf-8"), criteria.read_text(encoding="utf-8")) == before
+    ok("relate", criteria, "--id", "ACC-AUTH-1", "--overrides", "DEF-LNCH-1", "--author", "@kj")
+
+    rows = ok("list", docs, "--status", "all", "--columns", "id,overrides,overridden-by")
+    assert "| `ACC-AUTH-1` | `DEF-LNCH-1` | - |" in rows
+    assert "| `DEF-LNCH-1` | - | `ACC-AUTH-1` |" in rows
+    body = defects.read_text(encoding="utf-8")
+    assert "- overrides: ACC-AUTH-1" not in body
+    assert re.search(
+        r"- log: \S+ @kj overrides ACC-AUTH-1 removed, line read "
+        r'"ACC-AUTH-1 - 30 min kills uploads" - cycle with newer link '
+        r"ACC-AUTH-1 overrides DEF-LNCH-1",
+        body,
+    ), "the removed link and its wording survive in the log"
+    r = pm("check", docs)
+    assert r.returncode == 0 and "ERROR" not in r.stdout
+    # the shape the reports reference names for this question
+    cols = "id,title,status,overridden-by"
+    out = ok("list", docs, "--status", "all", "--columns", cols, "--sort=overridden-by")
+    assert "Overridden by" in out
+
+
+def test_the_override_link_is_documented_where_the_agent_reads_it():
+    """The rule changes what an agent does with a contradicted item - file a new one
+    and link it, never rewrite the old one - so it is stated in the procedures the
+    agent follows, in the references, and in --help."""
+    plugin = Path(__file__).parent.parent / "plugins/project-management"
+    skill = (plugin / "skills/project-management/SKILL.md").read_text(encoding="utf-8")
+    for rule in (
+        "An override is written on both items",
+        "the newest link holds",
+        "--overridden-by",
+        "- overrides: <ID>",
+    ):
+        assert rule in skill, rule
+    for name in (
+        "README.md",
+        "skills/acc-crit/SKILL.md",
+        "skills/defect/SKILL.md",
+        "skills/project-management/references/acceptance-criteria.md",
+        "skills/project-management/references/defect-tracking.md",
+    ):
+        assert "--overrides" in (plugin / name).read_text(encoding="utf-8"), name
+    reports = (plugin / "skills/project-management/references/reports.md").read_text(
+        encoding="utf-8"
+    )
+    assert "blockers overrides overridden-by lock" in reports
+    helped = ok("relate", "--help")
+    assert "--overrides" in helped and "--overridden-by" in helped
+    assert "overrides" in ok("--help")
+
+
 def test_no_plugin_skill_file_is_named_like_a_tracker():
     """DEF-PMGT-32. The defects reference was named defects.md, so pm-tools read it as
     a tracker (check failed it with 9 errors) and the edit guard treated the plugin's

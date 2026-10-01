@@ -1185,13 +1185,47 @@ def test_list_categories_and_refs_take_json_too(defects: Path, capsys):
 # --- Relations in queries, --grep, search, link integrity ------------------------
 
 
-def relate(f: Path, item: str, related: str | None = None, blocked: str | None = None) -> int:
+def relate(
+    f: Path,
+    item: str,
+    related: str | None = None,
+    blocked: str | None = None,
+    overrides: str | None = None,
+    overridden: str | None = None,
+    author: str | None = None,
+) -> int:
     argv = ["relate", str(f), "--id", item]
-    if related:
-        argv += ["--related", related]
-    if blocked:
-        argv += ["--blocked-by", blocked]
+    for flag, value in (
+        ("--related", related),
+        ("--blocked-by", blocked),
+        ("--overrides", overrides),
+        ("--overridden-by", overridden),
+        ("--author", author),
+    ):
+        if value:
+            argv += [flag, value]
     return run(*argv)
+
+
+def hand_line(f: Path, item: str, line: str) -> None:
+    """A sub-line put straight into the file, the way a hand edit or a git merge
+    leaves one. relate itself refuses or repairs the states these tests need."""
+    lines = f.read_text(encoding="utf-8").splitlines()
+    at = next(i for i, ln in enumerate(lines) if f"`{item}`" in ln)
+    lines.insert(at + 1, f"  - {line}")
+    f.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def sub_lines(f: Path, item: str) -> list[str]:
+    """The sub-lines under one item, without indent and list marker, in file order."""
+    lines = f.read_text(encoding="utf-8").splitlines()
+    at = next(i for i, ln in enumerate(lines) if f"`{item}`" in ln)
+    out = []
+    for ln in lines[at + 1 :]:
+        if not ln.startswith("  "):
+            break
+        out.append(ln.strip().removeprefix("- "))
+    return out
 
 
 def ids_of(rows: list[list[str]]) -> list[str]:
@@ -1450,7 +1484,7 @@ def test_refs_marks_a_cycle_and_a_missing_blocker_and_stops(defects: Path, capsy
     add_defect(defects, "token race")
     add_defect(defects, "splash hang")
     relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2")
-    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-1, DEF-LNCH-99")
+    hand_line(defects, "DEF-LNCH-2", "blocked-by: DEF-LNCH-1, DEF-LNCH-99")
     capsys.readouterr()
     assert run("refs", str(defects), "--id", "DEF-LNCH-1") == 0
     out = capsys.readouterr().out
@@ -1484,7 +1518,7 @@ def test_check_errors_once_on_a_blocked_by_cycle(defects: Path, tmp_path: Path, 
     add_defect(defects, "token race")
     add_defect(defects, "splash hang")
     relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2")
-    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-1")
+    hand_line(defects, "DEF-LNCH-2", "blocked-by: DEF-LNCH-1")
     capsys.readouterr()
     assert run("check", str(defects)) != 0
     out = capsys.readouterr().out
@@ -1495,10 +1529,197 @@ def test_check_errors_once_on_a_blocked_by_cycle(defects: Path, tmp_path: Path, 
     solo.write_text(DEFECTS_HEADER, encoding="utf-8")
     run("author", str(solo), "--handle", "@kj", "--name", "Konrad Jelen")
     add_defect(solo, "token race")
-    relate(solo, "DEF-LNCH-1", blocked="DEF-LNCH-1")
+    hand_line(solo, "DEF-LNCH-1", "blocked-by: DEF-LNCH-1")
     capsys.readouterr()
     assert run("check", str(solo)) != 0
     assert "blocked-by cycle: DEF-LNCH-1 -> DEF-LNCH-1" in capsys.readouterr().out
+
+
+# --- Overrides and cycle breaking -------------------------------------------
+
+
+def test_relate_refuses_a_link_from_an_item_to_itself(defects: Path):
+    add_defect(defects, "token race")
+    before = defects.read_text(encoding="utf-8")
+    for kwargs in ({"blocked": "DEF-LNCH-1"}, {"overrides": "DEF-LNCH-1"}):
+        with pytest.raises(SystemExit, match="cannot link to itself"):
+            relate(defects, "DEF-LNCH-1", **kwargs)
+    assert defects.read_text(encoding="utf-8") == before
+
+
+def test_a_blocked_by_cycle_is_broken_and_the_newest_link_holds(defects: Path, capsys):
+    three_defects(defects, capsys)
+    relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2")
+    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-3 - needs the fix first")
+    before = defects.read_text(encoding="utf-8")
+    with pytest.raises(SystemExit, match="closes a cycle.*--author"):
+        relate(defects, "DEF-LNCH-3", blocked="DEF-LNCH-1")
+    assert defects.read_text(encoding="utf-8") == before, "a refusal writes nothing"
+
+    relate(defects, "DEF-LNCH-3", blocked="DEF-LNCH-1", author="@kj")
+    # the link into DEF-LNCH-3 on the cycle goes; the rest of the chain stays
+    assert "blocked-by: DEF-LNCH-1" in sub_lines(defects, "DEF-LNCH-3")
+    assert "blocked-by: DEF-LNCH-2" in sub_lines(defects, "DEF-LNCH-1")
+    two = sub_lines(defects, "DEF-LNCH-2")
+    assert not [ln for ln in two if ln.startswith("blocked-by:")]
+    assert re.search(
+        r'log: \S+ @kj blocked-by DEF-LNCH-3 removed, line read "DEF-LNCH-3 - needs the '
+        r'fix first" - cycle with newer link DEF-LNCH-3 blocked-by DEF-LNCH-1',
+        two[-1],
+    )
+    capsys.readouterr()
+    assert run("check", str(defects)) == 0
+
+
+def test_cutting_one_id_keeps_the_others_on_the_line(defects: Path, capsys):
+    three_defects(defects, capsys)
+    relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2, DEF-LNCH-3 - both first")
+    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-1", author="@kj")
+    assert "blocked-by: DEF-LNCH-3 - both first" in sub_lines(defects, "DEF-LNCH-1")
+
+
+def test_an_override_is_written_on_both_items(defects: Path, capsys):
+    three_defects(defects, capsys)
+    relate(defects, "DEF-LNCH-3", overrides="DEF-LNCH-1 - the fix changed the rule")
+    relate(defects, "DEF-LNCH-2", overridden="DEF-LNCH-3")
+    assert "overrides: DEF-LNCH-1 - the fix changed the rule" in sub_lines(defects, "DEF-LNCH-3")
+    assert "overrides: DEF-LNCH-2" in sub_lines(defects, "DEF-LNCH-3")
+    assert "overridden-by: DEF-LNCH-3" in sub_lines(defects, "DEF-LNCH-1")
+    assert "overridden-by: DEF-LNCH-3" in sub_lines(defects, "DEF-LNCH-2")
+    capsys.readouterr()
+    run("list", str(defects), "--columns", "id,overrides,overridden-by", "--status", "all")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[0] == ["Id", "Overrides", "Overridden by"]
+    by_id = {r[0]: r[1:] for r in rows[1:]}
+    assert by_id["`DEF-LNCH-3`"] == ["`DEF-LNCH-1`, `DEF-LNCH-2`", "-"]
+    assert by_id["`DEF-LNCH-1`"] == ["-", "`DEF-LNCH-3`"]
+    run("list", str(defects), "--related-to", "DEF-LNCH-3", "--status", "all")
+    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-1", "DEF-LNCH-2"]
+    run("refs", str(defects), "--id", "DEF-LNCH-1")
+    out = capsys.readouterr().out
+    assert "DEF-LNCH-3 overrides -> DEF-LNCH-1" in out
+    assert "DEF-LNCH-1 overridden-by -> DEF-LNCH-3" in out
+
+
+def test_a_defect_overrides_a_criterion_and_back_across_files(
+    defects: Path, criteria: Path, capsys
+):
+    add_defect(defects, "token race")
+    add_criterion(criteria, "password length")
+    add_criterion(criteria, "password classes")
+    relate(defects, "DEF-LNCH-1", overrides="ACC-AUTH-1")
+    relate(criteria, "ACC-AUTH-2", overrides="DEF-LNCH-1")
+    assert "overridden-by: DEF-LNCH-1" in sub_lines(criteria, "ACC-AUTH-1")
+    assert sub_lines(defects, "DEF-LNCH-1")[:2] == [
+        "overrides: ACC-AUTH-1",
+        "overridden-by: ACC-AUTH-2",
+    ]
+    capsys.readouterr()
+    run("check", str(defects.parent))
+    out = capsys.readouterr().out
+    assert "ERROR" not in out
+    assert "warn  overridden-by ACC-AUTH-2 but still open" in out
+    assert "warn  overridden-by DEF-LNCH-1 but still open" in out
+
+
+def test_an_override_needs_its_target_beside_the_file(defects: Path):
+    add_defect(defects, "token race")
+    before = defects.read_text(encoding="utf-8")
+    with pytest.raises(SystemExit, match="ACC-AUTH-9 is not in the trackers beside"):
+        relate(defects, "DEF-LNCH-1", overrides="ACC-AUTH-9")
+    with pytest.raises(SystemExit, match="names no id"):
+        relate(defects, "DEF-LNCH-1", overrides="the old rule")
+    assert defects.read_text(encoding="utf-8") == before
+
+
+def test_a_reversed_override_replaces_the_old_pair(defects: Path, criteria: Path, capsys):
+    add_defect(defects, "token race")
+    add_criterion(criteria, "password length")
+    relate(defects, "DEF-LNCH-1", overrides="ACC-AUTH-1")
+    before = defects.read_text(encoding="utf-8"), criteria.read_text(encoding="utf-8")
+    with pytest.raises(SystemExit, match="closes a cycle"):
+        relate(criteria, "ACC-AUTH-1", overrides="DEF-LNCH-1")
+    assert (defects.read_text(encoding="utf-8"), criteria.read_text(encoding="utf-8")) == before
+
+    relate(criteria, "ACC-AUTH-1", overrides="DEF-LNCH-1", author="@kj")
+    acc, dfc = sub_lines(criteria, "ACC-AUTH-1"), sub_lines(defects, "DEF-LNCH-1")
+    assert "overrides: DEF-LNCH-1" in acc and "overridden-by: DEF-LNCH-1" not in acc
+    assert "overridden-by: ACC-AUTH-1" in dfc and "overrides: ACC-AUTH-1" not in dfc
+    why = "cycle with newer link ACC-AUTH-1 overrides DEF-LNCH-1"
+    assert acc[-1].endswith(f"@kj overridden-by DEF-LNCH-1 removed - {why}")
+    assert dfc[-1].endswith(f"@kj overrides ACC-AUTH-1 removed - {why}")
+    capsys.readouterr()
+    run("check", str(defects.parent))
+    assert "ERROR" not in capsys.readouterr().out
+
+
+def test_many_overrides_stay_and_only_the_cycle_is_cut(defects: Path, capsys):
+    three_defects(defects, capsys)
+    add_defect(defects, "late crash")  # DEF-LNCH-4
+    relate(defects, "DEF-LNCH-1", overrides="DEF-LNCH-2, DEF-LNCH-4")
+    relate(defects, "DEF-LNCH-2", overrides="DEF-LNCH-3")
+    relate(defects, "DEF-LNCH-3", overrides="DEF-LNCH-1", author="@kj")
+    # 3 took the newest link, so the one link into 3 on the cycle is gone
+    assert not [ln for ln in sub_lines(defects, "DEF-LNCH-2") if ln.startswith("overrides:")]
+    assert not [ln for ln in sub_lines(defects, "DEF-LNCH-3") if ln.startswith("overridden-by:")]
+    assert "overrides: DEF-LNCH-2, DEF-LNCH-4" in sub_lines(defects, "DEF-LNCH-1")
+    assert "overridden-by: DEF-LNCH-3" in sub_lines(defects, "DEF-LNCH-1")
+    assert "overridden-by: DEF-LNCH-1" in sub_lines(defects, "DEF-LNCH-4")
+    capsys.readouterr()
+    run("check", str(defects))
+    assert "ERROR" not in capsys.readouterr().out
+
+
+def test_relate_again_writes_only_the_missing_side(defects: Path, capsys):
+    add_defect(defects, "token race")
+    add_defect(defects, "splash hang")
+    relate(defects, "DEF-LNCH-2", overrides="DEF-LNCH-1")
+    whole = defects.read_text(encoding="utf-8")
+    relate(defects, "DEF-LNCH-2", overrides="DEF-LNCH-1")
+    relate(defects, "DEF-LNCH-1", overridden="DEF-LNCH-2")
+    assert defects.read_text(encoding="utf-8") == whole, "a repeat adds nothing"
+
+    defects.write_text(whole.replace("  - overridden-by: DEF-LNCH-2\n", ""), encoding="utf-8")
+    capsys.readouterr()
+    assert run("check", str(defects)) != 0
+    out = capsys.readouterr().out
+    assert "overrides DEF-LNCH-1, but DEF-LNCH-1 has no `overridden-by: DEF-LNCH-2` line" in out
+    assert f"run: pm-tools relate {defects} --id DEF-LNCH-2 --overrides DEF-LNCH-1" in out
+    relate(defects, "DEF-LNCH-2", overrides="DEF-LNCH-1")
+    assert defects.read_text(encoding="utf-8") == whole
+
+
+def test_check_errors_on_an_override_cycle_left_by_hand(defects: Path, capsys):
+    add_defect(defects, "token race")
+    add_defect(defects, "splash hang")
+    relate(defects, "DEF-LNCH-2", overrides="DEF-LNCH-1")
+    hand_line(defects, "DEF-LNCH-1", "overrides: DEF-LNCH-2")
+    hand_line(defects, "DEF-LNCH-2", "overridden-by: DEF-LNCH-1")
+    capsys.readouterr()
+    assert run("check", str(defects)) != 0
+    out = capsys.readouterr().out
+    assert out.count("override cycle") == 1
+    assert "override cycle: DEF-LNCH-1 -> DEF-LNCH-2 -> DEF-LNCH-1; run relate again" in out
+    # the documented repair: name the link that holds
+    relate(defects, "DEF-LNCH-1", overrides="DEF-LNCH-2", author="@kj")
+    capsys.readouterr()
+    run("check", str(defects))
+    assert "ERROR" not in capsys.readouterr().out
+    assert "overrides: DEF-LNCH-1" not in sub_lines(defects, "DEF-LNCH-2")
+
+
+def test_override_fields_pivot_and_json(defects: Path, capsys):
+    three_defects(defects, capsys)
+    relate(defects, "DEF-LNCH-3", overrides="DEF-LNCH-1, DEF-LNCH-2")
+    capsys.readouterr()
+    run("pivot", str(defects), "--rows", "overridden-by", "--values", "ids", "--status", "all")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[1] == ["`DEF-LNCH-3`", "`DEF-LNCH-1`, `DEF-LNCH-2`"]
+    assert rows[2][0] == "not overridden"
+    run("list", str(defects), "--json", "--status", "all")
+    doc = {d["id"]: d for d in json.loads(capsys.readouterr().out)}
+    assert doc["DEF-LNCH-3"]["overrides"] == ["DEF-LNCH-1", "DEF-LNCH-2"]
+    assert doc["DEF-LNCH-1"]["overridden-by"] == ["DEF-LNCH-3"]
 
 
 def test_check_warns_when_an_open_item_is_blocked_by_a_finished_one(defects: Path, capsys):
