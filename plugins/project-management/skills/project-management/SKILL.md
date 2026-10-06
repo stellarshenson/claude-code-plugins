@@ -147,7 +147,7 @@ Three sub-lines, one line each, one per item.
 
 - **The hint line** - one shortest-possible instruction, named by the discipline (`repro:` or `test:`); which one, and how to write it, is in that discipline's reference. The wrong hint for the discipline is an error, two of either is an error, a missing one is a warning
 - **`- test-tags:`** - which kinds of test cover the item, comma separated: `UNIT`, `INTEGRATION`, `FUNCTIONAL`, `E2E`, `MANUAL`. Free vocabulary, always written upper-case - the tool upper-cases whatever `--test-tags` is given and reads any case back off the file - but reuse the words: `coverage` counts them into its grid, which is how "how many items are covered by unit tests" gets answered. An item with no tags line lands in the grid's `NO-TEST` column
-- **`- evidence:`** - one line proving the item is actually done: the test that passes, the run that was observed, the commit. `close` demands it and writes the line, so a closure with no proof cannot be recorded. Reopening a criterion retires it and the log keeps what it said; a closed defect keeps it, because the regression is a new item and the old fix really was proven. Never write it by hand and never on an open item - it is the closure's proof, not a plan
+- **`- evidence:`** - one line proving the item is actually done: the test that passes, the run that was observed, the commit. `close` demands it and writes the line, so a closure with no proof cannot be recorded. Reopening a criterion, or rejecting a closed item, retires it and the log keeps what it said; a reopened closed defect keeps it, because the regression is a new item and the old fix really was proven. Never write it by hand and never on an open item - it is the closure's proof, not a plan
 
 ## Attachments
 
@@ -269,7 +269,7 @@ Write - one file per call, and `--author` on every one of them. `relate` alone m
 | `mechanism` / `root-cause` | write the discipline's explanation; a new record above the previous one, or `--update` to replace the newest, logging the record it replaced; a new record is logged only with `--reason` |
 | `log` | append an event to the item's log |
 | `close` / `reopen` | `close` demands `--evidence`; `reopen` retires it on a criterion, and on a closed defect files `<id>-<n>` instead |
-| `reject` | mark `[-]`; the reason is required |
+| `reject` | mark `[-]`; the reason is required; on a closed item the `evidence:` line is retired into the log |
 | `remove` | delete an item created in error; refuses while anything still cites it |
 | `lock` / `unlock` | write or remove the `lock:` line; `lock` refuses only on a closed or rejected item, neither is logged |
 | `ack` | a hand edit of a tracker: without `--token`, print the token for the file as it is now; with it, log the reason in `pm-hand-edits.md` beside the file, which the guard hook reads |

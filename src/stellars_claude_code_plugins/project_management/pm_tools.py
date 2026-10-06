@@ -16,8 +16,9 @@ Both disciplines also carry `- test-tags: UNIT, FUNCTIONAL` - which kinds of tes
 cover the item (UNIT, INTEGRATION, FUNCTIONAL, E2E, MANUAL, or any word; written
 upper-case, read in any case; an item with none sits in the NO-TEST bucket) - and
 `- evidence: <one line>`, the proof it is actually done. `close` demands the
-evidence and writes that line; on a criterion `reopen` retires it, on a closed
-defect it mints the regression instead and the closure keeps its proof. check
+evidence and writes that line; `reject` on a closed item retires it into the log,
+and so does `reopen` on a criterion, while on a closed defect `reopen` mints the
+regression instead and the closure keeps its proof. check
 fails on a relation to an id that is not in the scanned files, on a blocked-by or
 override cycle and on an override written on one item only, and warns when an open
 item is blocked by one that is closed or rejected, or is overridden; scan the
@@ -160,7 +161,8 @@ prose, never a level.
           one attachment: line per artefact; the same path again refreshes it
   log    FILE --id ID --event E
   close  FILE --id ID --evidence E [--event E]      evidence proves it is done
-  reject FILE --id ID --event E                    not reproduced, irrelevant, wontfix
+  reject FILE --id ID --event E                    not reproduced, irrelevant, wontfix;
+                                                   a closed item's evidence moves to the log
   reopen FILE --id ID [--event E]                  closed defect -> a numbered regression
   remove FILE --id ID [--force] [--author @xx]     mistakes and duplicates only
   lock   FILE --id ID --author @xx [--hours N | --until STAMP] [--note TEXT]
@@ -3062,8 +3064,9 @@ def cmd_setstate(file, wanted, target, verb, event, author, evidence=None, reaso
     if target == "x":
         # nothing closes without a proof; the line is the proof, stored once
         set_line(lines, b, "evidence", evidence, EVIDLINE)
-    elif target == " ":
-        # reopened means not done, so the proof no longer stands. The log keeps it
+    else:
+        # reopened or rejected means not done, so the proof no longer stands. The log
+        # keeps it
         was = drop_line(lines, b, EVIDLINE)
         if was:
             ev += f"; evidence retired: {was}"

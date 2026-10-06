@@ -276,6 +276,14 @@ pm-tools parser, edit, upgrade and reports
   - test-tags: UNIT
   - log: 2026-09-26T22:30:52Z @kj added
   - log: 2026-09-27T19:34:57Z @kj closed
+- [x] `DEF-PMGT-82` **reject keeps the evidence line of a closed item** - MEDIUM; reject on a closed item leaves its evidence: line; check then warns 'evidence: on an item that is not closed' and check --strict fails. Seen on 8 criteria in another project on 1.8.17.
+  - evidence: tests/test_pm_tools.py::test_rejecting_a_closed_item_retires_the_evidence_and_logs_what_it_was passes; failed before the fix
+  - test-tags: UNIT
+  - repro: add, close --evidence E, reject, check: 1 warning on the item
+  - root-cause: 2026-10-06T11:26:35Z @kj cmd_setstate retires the evidence line only for reopen (target ' '), not for reject (target '-')
+  - log: 2026-10-06T11:26:35Z @kj added
+  - log: 2026-10-06T11:34:01Z @kj edited test-tags added "UNIT"
+  - log: 2026-10-06T11:34:01Z @kj closed: fixed: reject retires the evidence line into the log, as reopen does on a criterion
 
 ## hypothesis-tools `HYPO`
 

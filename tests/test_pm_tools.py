@@ -421,6 +421,29 @@ def test_reopening_a_criterion_retires_the_evidence_and_logs_what_it_was(criteri
     assert "evidence retired: test_refresh green" in body, "the log remembers it"
 
 
+def test_rejecting_a_closed_item_retires_the_evidence_and_logs_what_it_was(
+    criteria: Path, defects: Path, capsys
+):
+    """DEF-PMGT-82. Rejected is not done either, so the closure's proof moves to the
+    log. Left on the item it is a line pm-tools wrote and its own check then flags."""
+    add_criterion(criteria, "session survives a refresh")
+    close_with(criteria, "ACC-AUTH-1", "test_refresh green", event="done")
+    run("reject", str(criteria), "--id", "ACC-AUTH-1", "--author", "@kj", "--event", "superseded")
+    add_defect(defects, "token race")
+    close_with(defects, "DEF-LNCH-1", "test_fork_token green")
+    run("reject", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "not ours")
+    for f, event, was in (
+        (criteria, "superseded", "test_refresh green"),
+        (defects, "not ours", "test_fork_token green"),
+    ):
+        body = f.read_text(encoding="utf-8")
+        assert "- evidence:" not in body, "the line goes with the closure"
+        assert f"rejected: {event}; evidence retired: {was}" in body, "the log remembers it"
+    capsys.readouterr()
+    assert run("check", str(criteria.parent), "--strict") == 0
+    assert "evidence: on an item that is not closed" not in capsys.readouterr().out
+
+
 def test_reopening_a_defect_mints_a_regression_and_leaves_the_closure_proven(defects: Path):
     """A proven fix that broke again is a new fact, not a reversal of the old one."""
     add_defect(defects, "token race")
