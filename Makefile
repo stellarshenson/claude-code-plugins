@@ -136,10 +136,10 @@ publish: build
 	$(PROJECT_DIR)/.venv/bin/twine upload dist/*
 	@echo "$(OK_STYLE)>>> $(MODULE_NAME) published$(NO_STYLE)"
 
-## Increment build number
+## Increment the package version and synchronize every plugin descriptor
 increment_version_number:
 	@echo "$(MSG_PREFIX) incrementing build number"
-	@$(PROJECT_DIR)/.venv/bin/python -c "import re; c=open('pyproject.toml').read(); m=re.search(r'version = \"(\\d+)\\.(\\d+)\\.(\\d+)\"',c); v=f'{m[1]}.{m[2]}.{int(m[3])+1}'; c=re.sub(r'version = \"\\d+\\.\\d+\\.\\d+\"',f'version = \"{v}\"',c,count=1); open('pyproject.toml','w').write(c); print('New version:',v)"
+	@$(PROJECT_DIR)/.venv/bin/python scripts/sync_plugin_versions.py --bump
 
 #################################################################################
 # Self Documenting Commands                                                     #

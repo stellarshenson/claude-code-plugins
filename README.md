@@ -9,6 +9,8 @@
 
 This repository is a Claude Code plugin marketplace. It contains the plugins and a Python library, `stellars-claude-code-plugins`, whose command-line tools the plugins call. Each plugin gives Claude a set procedure for one kind of work, with checks it has to pass before it reports the work as done. The plugins cover acceptance criteria and defects, data science projects, SVG diagrams, document critique and code review, grounding claims in their sources, and a project journal.
 
+It is also packaged as a Codex plugin marketplace. Each plugin keeps its existing `skills/` directory and adds a `.codex-plugin/plugin.json` manifest. The local Codex marketplace index is [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json); add that marketplace in Codex to install the plugins individually. Claude Code manifests and command files remain unchanged.
+
 <img alt="stellars-claude-code-plugins marketplace overview - six plugins grouped by category" src=".resources/svg/01_marketplace_overview.svg" width="100%">
 
 ```bash
@@ -361,6 +363,7 @@ Plugins are pure configuration - no Python code required. Create a directory wit
 ```
 my-plugin/
   .claude-plugin/plugin.json           # Plugin registration and skill triggers
+  .codex-plugin/plugin.json            # Codex plugin registration
   skills/
     my-skill/SKILL.md                  # Skill definition with description and instructions
 ```
@@ -368,6 +371,7 @@ my-plugin/
 The `plugin.json` registers your skills with Claude Code, defining when they trigger and what tools they have access to. Each `SKILL.md` contains the instructions Claude follows when the skill is invoked. The shared orchestration engine (`pip install stellars-claude-code-plugins`) provides the `orchestrate` CLI command that handles state management, FSM transitions, gate execution, and audit logging.
 
 Register your plugin in the marketplace by adding an entry to `.claude-plugin/marketplace.json`.
+For Codex, use `.agents/plugins/marketplace.json`; each plugin is exposed through its `.codex-plugin/plugin.json` manifest.
 
 ## Development
 
@@ -378,6 +382,7 @@ make lint             # ruff format + check
 make format           # auto-fix formatting
 make build            # clean, test, bump version, build wheel
 make publish          # build + twine upload to PyPI
+python scripts/sync_plugin_versions.py --bump  # bump and sync Claude, Kimi, and Codex descriptors
 ```
 
 ## License
