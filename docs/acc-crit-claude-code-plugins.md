@@ -406,6 +406,30 @@ related/blocked-by links in every query surface, an exact --grep filter, a ranke
   - test-tags: FUNCTIONAL
   - log: 2026-10-01T21:42:26Z @kj added
   - log: 2026-10-01T21:42:27Z @kj closed
+- [x] `ACC-PMREL-191` **unrelate removes a link and logs it** - HIGH; unrelate removes the id from the item's lines of that kind; the log line keeps the line it read and the --event reason
+  - evidence: tests/test_pm_tools.py::test_unrelate_removes_a_link_and_logs_the_line_it_read passes
+  - test: relate two links, unrelate one, read the sub-lines
+  - test-tags: UNIT
+  - log: 2026-10-16T15:12:45Z @kj added
+  - log: 2026-10-16T15:12:45Z @kj closed
+- [x] `ACC-PMREL-192` **unrelate removes an override from both items** - HIGH; an override goes from both items, across the trackers beside FILE; each item logs the removal
+  - evidence: tests/test_pm_tools.py::test_unrelate_removes_an_override_from_both_items_across_files passes
+  - test: relate a defect over a criterion, unrelate from the criterion, read both files
+  - test-tags: UNIT
+  - log: 2026-10-16T15:12:45Z @kj added
+  - log: 2026-10-16T15:12:46Z @kj closed
+- [x] `ACC-PMREL-193` **Edge: unrelate refuses a link that is not there** - MEDIUM; a link the item does not carry is refused and nothing is written, the other links named in the call included
+  - evidence: tests/test_pm_tools.py::test_unrelate_refuses_a_link_the_item_does_not_carry_and_writes_nothing passes
+  - test: unrelate one carried and one absent link, compare the file
+  - test-tags: UNIT
+  - log: 2026-10-16T15:12:46Z @kj added
+  - log: 2026-10-16T15:12:46Z @kj closed
+- [x] `ACC-PMREL-194` **unrelate repairs a dangling relation** - MEDIUM; a link to an id that is in no tracker is removed by unrelate, and check passes again
+  - evidence: tests/test_pm_tools.py::test_unrelate_removes_a_dangling_link_that_check_errors_on passes
+  - test: link to a missing id, check, unrelate, check
+  - test-tags: UNIT
+  - log: 2026-10-16T15:12:46Z @kj added
+  - log: 2026-10-16T15:12:46Z @kj closed
 
 ## adversarial review tooling `REVIEW`
 
@@ -1294,4 +1318,33 @@ the project-management plugin hooks that keep pm-tools the only writer of a trac
   - log: 2026-09-26T19:46:22Z @kj edited test "tests/test_pm_guard.py::test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file and ::test_ack_refuses_what_it_cannot_log" -> "tests/test_pm_guard.py::test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file, ::test_ack_refuses_what_it_cannot_log and ::test_ack_works_when_the_roster_is_unreadable"
   - log: 2026-09-26T19:50:13Z @kj closed: met
   - log: 2026-09-26T20:49:14Z @kj amended text "pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.log (DEF-PMGT-77)" -> "pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.md, which git keeps (DEF-PMGT-77)"
+
+## pm-tools category prose `PMCAT`
+
+Writing the prose under a category heading
+
+- [x] `ACC-PMCAT-187` **describe --text-file replaces the prose block** - HIGH; every line between the category heading and the first item is replaced by the file's text; the items stay
+  - evidence: tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block passes
+  - test: replace a block twice, read the file and run check
+  - test-tags: UNIT
+  - log: 2026-10-16T15:12:45Z @kj added
+  - log: 2026-10-16T15:12:45Z @kj closed
+- [x] `ACC-PMCAT-188` **--text-file - reads stdin** - MEDIUM; describe --text-file - < prose.md reads the block from stdin
+  - evidence: tests/test_pm_tools.py::test_describe_text_file_reads_stdin passes
+  - test: pass the block on stdin, read the file
+  - test-tags: UNIT
+  - log: 2026-10-16T15:12:45Z @kj added
+  - log: 2026-10-16T15:12:45Z @kj closed
+- [x] `ACC-PMCAT-189` **Edge: the prose block takes prose only** - HIGH; an empty text, a heading, a checklist item or an unclosed code fence is refused; nothing is written
+  - evidence: tests/test_pm_tools.py::test_describe_text_file_takes_prose_only passes for empty, heading, item and open-fence
+  - test: one case per refusal, compare the file
+  - test-tags: UNIT
+  - log: 2026-10-16T15:12:45Z @kj added
+  - log: 2026-10-16T15:12:45Z @kj closed
+- [x] `ACC-PMCAT-190` **describe --text keeps the lines below** - MEDIUM; describe --text replaces the description line only; a list under it stays
+  - evidence: tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block asserts the list stays after --text
+  - test: write a block, then --text, read the file
+  - test-tags: UNIT
+  - log: 2026-10-16T15:12:45Z @kj added
+  - log: 2026-10-16T15:12:45Z @kj closed
 

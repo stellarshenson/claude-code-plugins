@@ -53,7 +53,7 @@ Consequences, stated once:
 - **No Open / Fixed sections** - status lives in the checkbox, so an item never moves
 - **`related` and `blocked-by` are one-way** - the line on A is the only record; the reverse is computed, never written back
 - **An override is the one link stored on both items** - `relate` writes the pair and `check` fails a pair with one line missing, so the two lines cannot drift unseen
-- **`check` reports, it does not repair** - a relation to an id that is not in the scanned files is an error to fix by hand (Rules: the hand-edit guard), never state to reconcile; a cycle or a one-sided override is an error that names the `relate` call which repairs it; scan the directory so cross-file links resolve
+- **`check` reports, it does not repair** - a relation to an id that is not in the scanned files is an error that `unrelate` removes, never state to reconcile; a cycle or a one-sided override is an error that names the `relate` call which repairs it; scan the directory so cross-file links resolve
 
 ## Ids
 
@@ -103,7 +103,7 @@ Every free-text field is written in plain language: title, body, the `repro:` / 
 - **One reading only** - a sentence with a second possible meaning is rewritten, not clarified later. `refresh fails after logout` says neither which refresh nor whose logout
 - **Compression is welcome** - drop articles and filler, fragments are fine: `auth token sometimes empty on first turn after fork` is a whole body. This store is the exception to the rule that ticket text is written in full prose; it sits next to the code and is read by whoever works the code, agent or person
 - **Nothing past the minimum** - a clause earns its place by naming a mechanism, a site, a number or the harm. Everything else goes: the reasoning behind the item, what the title already said, why it matters, how the fix was arrived at. Delete it, do not shorten it. Past roughly 40 words a body is usually explaining itself - run the test again on each clause
-- **Short is the default; stop once it is enough** - a title is a few words, a body one or two sentences, a log event one line. `pm-tools` refuses a free-text argument over 50 words unless `--reason` says why it needs the length; the reason is kept on the item's log line. `describe`, `lock` and `author` take no `--reason` and refuse a text over 50 words. A long writeup almost always needs deleting, not a reason
+- **Short is the default; stop once it is enough** - a title is a few words, a body one or two sentences, a log event one line. `pm-tools` refuses a free-text argument over 50 words unless `--reason` says why it needs the length; the reason is kept on the item's log line. `describe --text`, `lock` and `author` take no `--reason` and refuse a text over 50 words; `describe --text-file` writes a prose block and has no word limit. A long writeup almost always needs deleting, not a reason
 - **Compression never touches meaning** - `not`, `never`, `only`, `except`, `sometimes` stay whatever they cost. Numbers, units, ids, paths, symbol names and quoted error strings are copied exactly: never paraphrased, never rounded, never shortened
 - **Compression that does not compress is not compression** - invented short forms (`cfg`, `impl`, `req`) and mangled grammar cost the same as the plain words and make the reader decode; well-known acronyms (`API`, `HTTP`, `UUID`) are already plain. Where the plain phrasing is already the shortest, that is the wording
 
@@ -139,7 +139,7 @@ Reopening a **closed defect** does not reverse the closure - it files a regressi
 
 ## Category
 
-The `##` heading carries the full name and the code (`## Authentication \`AUTH\``); the line under it carries the description. Reports expand the code to the full name, so `AUTH` never has to be decoded by the reader. `describe` sets or replaces the description; `check` warns when a category has none.
+The `##` heading carries the full name and the code (`## Authentication \`AUTH\``); the line under it carries the description. Reports expand the code to the full name, so `AUTH` never has to be decoded by the reader. `describe --text` sets or replaces that line; `describe --text-file F` replaces every line from the heading down to the first item, for a list or a note under the description, read from F or with `-` from stdin. `check` warns when a category has no description.
 
 ## Hint, tags and evidence
 
@@ -199,6 +199,7 @@ Four line kinds: `related`, `blocked-by`, and the pair `overrides` / `overridden
 - **An override is written on both items** - `relate FILE --id A --overrides B` writes `overrides: B` on A and `overridden-by: A` on B, in the tracker beside FILE when B lives there; `--overridden-by` is the same call made from B. Each item then shows the link in `list`, `pivot` and `--json` (fields `overrides`, `overridden-by`) without a scan. B must exist; a repeat call writes only a line that is missing
 - **An overridden item that is still open** - reject it with the overriding id as the reason; `check` warns until then. A closed one stays closed with its evidence
 - **No cycles; the newest link holds** - a `blocked-by` or override link that closes a cycle is written, and `relate` removes every older link into the item that takes it, from the item it now points at or from anything that item leads to. Each removal is logged on the item that lost the line, so that call needs `--author`; without it nothing is written. Links outside the cycle stay
+- **`unrelate` removes a link** - `unrelate FILE --id A --related B --author @xx [--event E]` removes B from A's lines of that kind and logs the line it read; an override goes from both items. A link A does not carry is refused and nothing is written
 - **`check` covers what `relate` did not write** - a cycle or a one-sided override left by a hand edit or a merge is an error naming the `relate` call that repairs it; a closed or rejected blocker is a warning on the open item
 
 ## Soft lock
@@ -255,7 +256,7 @@ Read:
 
 `--json` on any of the first seven returns the same facts as data. The filters `--category`, `--severity`, `--importance`, `--status`, `--author`, `--tag` (any case), `--regressions`, `--grep`, `--blocked`, `--related-to`, `--locked`, `--locked-by` and the `--dates` / `--since` / `--until` window are the same on `report`, `coverage`, `list`, `pivot` and `search`.
 
-Write - one file per call, and `--author` on every one of them. `relate` alone may write a second tracker beside the first: the other line of an override, or the older link of a cycle it breaks:
+Write - one file per call, and `--author` on every one of them. `relate` and `unrelate` alone may write a second tracker beside the first: the other line of an override, or the older link of a cycle `relate` breaks:
 
 | Command | Does |
 |---------|------|
@@ -263,8 +264,9 @@ Write - one file per call, and `--author` on every one of them. `relate` alone m
 | `edit` | correct title, body, severity, importance, hint, tags or evidence; the log line keeps each value it replaced (`edited severity "MAJOR" -> "CRITICAL"`) |
 | `amend` | reword title or body; the log line keeps the old wording (`amended title "old" -> "new"`), so an item renamed three times shows three lines under the current one; report, list and search read the current wording |
 | `author` | add or update a roster entry; required before that handle can write |
-| `describe` | set or replace the category description |
+| `describe` | `--text` sets or replaces the category description line; `--text-file` replaces the whole prose block under the heading |
 | `relate` | add one `related:` or `blocked-by:` line, or an override on both items (`--overrides`, `--overridden-by`); breaks the cycle a new link closes |
+| `unrelate` | remove a link and log the line it read; an override from both items |
 | `attach` | one `attachment:` line per artefact with its checksum and last-edit stamp; the same path again refreshes the line and the log keeps the old checksum; `check` warns when an artefact changed or is missing |
 | `mechanism` / `root-cause` | write the discipline's explanation; a new record above the previous one, or `--update` to replace the newest, logging the record it replaced; a new record is logged only with `--reason` |
 | `log` | append an event to the item's log |

@@ -9,6 +9,7 @@ untriaged defect fails the gate, and every derived fact is computed on read.
 
 from __future__ import annotations
 
+import io
 import json
 from pathlib import Path
 import re
@@ -1743,6 +1744,107 @@ def test_override_fields_pivot_and_json(defects: Path, capsys):
     doc = {d["id"]: d for d in json.loads(capsys.readouterr().out)}
     assert doc["DEF-LNCH-3"]["overrides"] == ["DEF-LNCH-1", "DEF-LNCH-2"]
     assert doc["DEF-LNCH-1"]["overridden-by"] == ["DEF-LNCH-3"]
+
+
+def unrelate(f: Path, item: str, *flags: str) -> int:
+    return run("unrelate", str(f), "--id", item, "--author", "@kj", *flags)
+
+
+def test_unrelate_removes_a_link_and_logs_the_line_it_read(defects: Path, capsys):
+    three_defects(defects, capsys)
+    relate(defects, "DEF-LNCH-1", related="DEF-LNCH-2 - same boot path")
+    relate(defects, "DEF-LNCH-1", related="DEF-LNCH-3")
+    why = ("--event", "cause known")
+    assert unrelate(defects, "DEF-LNCH-1", "--related", "DEF-LNCH-2", *why) == 0
+    subs = sub_lines(defects, "DEF-LNCH-1")
+    assert "related: DEF-LNCH-3" in subs
+    assert not any(s.startswith("related: DEF-LNCH-2") for s in subs)
+    assert subs[-1].endswith(
+        'related DEF-LNCH-2 removed, line read "DEF-LNCH-2 - same boot path" - cause known'
+    )
+
+
+def test_unrelate_removes_an_override_from_both_items_across_files(
+    defects: Path, criteria: Path, capsys
+):
+    add_defect(defects, "token race")
+    add_criterion(criteria, "password length")
+    relate(defects, "DEF-LNCH-1", overrides="ACC-AUTH-1")
+    assert unrelate(criteria, "ACC-AUTH-1", "--overridden-by", "DEF-LNCH-1") == 0
+    assert not any(s.startswith("overrides") for s in sub_lines(defects, "DEF-LNCH-1"))
+    assert not any(s.startswith("overridden-by") for s in sub_lines(criteria, "ACC-AUTH-1"))
+    assert sub_lines(defects, "DEF-LNCH-1")[-1].endswith("overrides ACC-AUTH-1 removed")
+    assert sub_lines(criteria, "ACC-AUTH-1")[-1].endswith("overridden-by DEF-LNCH-1 removed")
+    capsys.readouterr()
+    assert run("check", str(defects.parent)) == 0
+
+
+def test_unrelate_removes_a_dangling_link_that_check_errors_on(defects: Path, capsys):
+    three_defects(defects, capsys)
+    relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-9")
+    assert run("check", str(defects)) != 0
+    unrelate(defects, "DEF-LNCH-1", "--blocked-by", "DEF-LNCH-9")
+    assert run("check", str(defects)) == 0
+
+
+def test_unrelate_refuses_a_link_the_item_does_not_carry_and_writes_nothing(
+    defects: Path, capsys
+):
+    three_defects(defects, capsys)
+    relate(defects, "DEF-LNCH-1", related="DEF-LNCH-2")
+    before = defects.read_text(encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        unrelate(defects, "DEF-LNCH-1", "--related", "DEF-LNCH-2", "--blocked-by", "DEF-LNCH-3")
+    assert "has no `blocked-by: DEF-LNCH-3` line" in str(e.value)
+    assert defects.read_text(encoding="utf-8") == before
+
+
+ROUTES = "Launch routes.\n\n- `GET status` -> `{root}`\n- `POST launch` -> `{name}`\n"
+
+
+def test_describe_text_file_replaces_the_whole_prose_block(defects: Path, tmp_path: Path, capsys):
+    add_defect(defects, "token race")
+    block = tmp_path / "prose.md"
+    block.write_text(ROUTES, encoding="utf-8")
+    assert run("describe", str(defects), "--category", "LNCH", "--text-file", str(block)) == 0
+    text = defects.read_text(encoding="utf-8")
+    assert "Cold start and the first turn" not in text
+    assert "- `POST launch` -> `{name}`\n\n- [ ] `DEF-LNCH-1`" in text
+    block.write_text("Routes of the launch service.\n\n- `GET status` -> `{root}`\n")
+    run("describe", str(defects), "--category", "LNCH", "--text-file", str(block))
+    text = defects.read_text(encoding="utf-8")
+    assert "POST launch" not in text and "- `GET status` -> `{root}`" in text
+    run("describe", str(defects), "--category", "LNCH", "--text", "Launch routes")
+    text = defects.read_text(encoding="utf-8")
+    assert "Launch routes\n\n- `GET status`" in text, "--text keeps the lines below"
+    assert run("check", str(defects)) == 0
+    capsys.readouterr()
+    run("list-categories", str(defects), "--json")
+    doc = json.loads(capsys.readouterr().out)
+    assert doc[0]["categories"][0]["description"] == "Launch routes"
+
+
+def test_describe_text_file_reads_stdin(defects: Path, monkeypatch):
+    add_defect(defects, "token race")
+    monkeypatch.setattr("sys.stdin", io.StringIO(ROUTES))
+    assert run("describe", str(defects), "--category", "LNCH", "--text-file", "-") == 0
+    assert "- `GET status` -> `{root}`" in defects.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "block",
+    ["", "Routes\n\n## Other `OTH`\n", "Routes\n- [ ] `DEF-LNCH-9` **stray**\n", "Routes\n```\n"],
+    ids=["empty", "heading", "item", "open-fence"],
+)
+def test_describe_text_file_takes_prose_only(defects: Path, tmp_path: Path, block: str):
+    add_defect(defects, "token race")
+    before = defects.read_text(encoding="utf-8")
+    f = tmp_path / "prose.md"
+    f.write_text(block, encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        run("describe", str(defects), "--category", "LNCH", "--text-file", str(f))
+    assert str(e.value).startswith("--text-file ")
+    assert defects.read_text(encoding="utf-8") == before
 
 
 def test_check_warns_when_an_open_item_is_blocked_by_a_finished_one(defects: Path, capsys):

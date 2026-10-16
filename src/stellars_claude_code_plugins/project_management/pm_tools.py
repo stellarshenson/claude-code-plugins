@@ -146,7 +146,10 @@ prose, never a level.
           a new record above the previous one by default, which is kept; --update
           rewrites the newest record in place. Refused on the other discipline
   author FILE --handle @xx --name "Full Name"      add or update a roster entry
-  describe FILE --category CODE --text D           set the category description
+  describe FILE --category CODE (--text D | --text-file F)
+          --text sets the description, the one line under the heading; --text-file
+          replaces the whole prose block from the heading down to the first item,
+          read from F or, with -, from stdin
   relate FILE --id ID [--related TEXT] [--blocked-by TEXT] [--overrides TEXT]
               [--overridden-by TEXT] [--author @xx]
           related and blocked-by are written on this item only. An override is
@@ -157,6 +160,10 @@ prose, never a level.
           link that closes a cycle wins: every older link into the item taking the
           new one, from the item it now points at or anything that item leads to, is
           removed and logged where it stood, which needs --author
+  unrelate FILE --id ID [--related ID] [--blocked-by ID] [--overrides ID]
+              [--overridden-by ID] --author @xx [--event E]
+          remove a link and log the line it read; an override goes from both items.
+          A link the item does not carry is refused and nothing is written
   attach FILE --id ID --path P [--path P]... --author @xx
           one attachment: line per artefact; the same path again refreshes it
   log    FILE --id ID --event E
@@ -2761,7 +2768,10 @@ def cmd_amend(file, wanted, title, text, author, reason=None):
     return 0
 
 
-def cmd_describe(file, code, text):
+def cmd_describe(file, code, text, block=None):
+    """--text sets the description line; `block` replaces every line from the heading
+    down to the first item or heading, so a list or note under the description has a
+    write command too."""
     expire_locks(file)
     lines = load(file)
     _, sections = parse(file)
@@ -2770,6 +2780,32 @@ def cmd_describe(file, code, text):
     if sec is None:
         have = ", ".join(s["code"] or "?" for s in sections) or "(none)"
         raise SystemExit(f"unknown category code {code}; have: {have}")
+    if block is not None:
+        new = [ln.rstrip() for ln in block.splitlines()]
+        while new and not new[-1]:
+            new.pop()
+        while new and not new[0]:
+            new.pop(0)
+        if not new:
+            raise SystemExit("--text-file is empty; the prose block needs at least one line")
+        fences = sum(1 for ln in new if re.match(r"^\s*```", ln))
+        if fences % 2 or any(HEADING.match(ln) or ITEM.match(ln) for _, ln in non_fenced(new)):
+            raise SystemExit(
+                "--text-file holds a heading, a checklist item or an unclosed code fence; "
+                "the prose block takes prose only"
+            )
+        start = end = sec["line"]  # 0-based index of the line after the heading
+        fence = False
+        while end < len(lines):
+            if re.match(r"^\s*```", lines[end]):
+                fence = not fence
+            elif not fence and (HEADING.match(lines[end]) or ITEM.match(lines[end])):
+                break
+            end += 1
+        lines[start:end] = ["", *new, *([""] if end < len(lines) else [])]
+        save(file, lines)
+        print(f"{file}:{sec['line']}: {code} prose block replaced, {len(new)} lines")
+        return 0
     i = sec["line"]  # 0-based index of the line after the heading
     while i < len(lines) and not lines[i].strip():
         i += 1
@@ -2843,11 +2879,10 @@ def cut_rel(file, wanted, kind, rid, who, why):
         return
     said = "; ".join(was)
     event = f"{kind} {rid} removed" + ("" if said == rid else f', line read "{said}"')
-    lines.insert(
-        block_end(lines, b), f"{sub_indent(lines, b)}- log: {now()} {who} {event} - {why}"
-    )
+    event += f" - {why}" if why else ""
+    lines.insert(block_end(lines, b), f"{sub_indent(lines, b)}- log: {now()} {who} {event}")
     save(file, lines)
-    print(f"{file}:{b['line']}: {wanted} {event} - {why}")
+    print(f"{file}:{b['line']}: {wanted} {event}")
 
 
 def cmd_relate(file, wanted, related, blocked, overrides=None, overridden=None, author=None):
@@ -2956,6 +2991,59 @@ def cmd_relate(file, wanted, related, blocked, overrides=None, overridden=None, 
             if me not in targets(find_id(parse(where[t])[0], t), MIRROR[kind]):
                 ready(where[t], t)
                 put_rel(where[t], t, MIRROR[kind], me)
+    return 0
+
+
+def cmd_unrelate(file, wanted, related, blocked, overrides, overridden, author, event):
+    """Remove links and log each on the item that lost it; an override goes from both
+    items. Planned first, so a link the item does not carry writes nothing."""
+    asked = [
+        (kind, value)
+        for kind, value in (
+            ("related", related),
+            ("blocked-by", blocked),
+            ("overrides", overrides),
+            ("overridden-by", overridden),
+        )
+        if value
+    ]
+    if not asked:
+        raise SystemExit(
+            "nothing to unlink; pass --related, --blocked-by, --overrides or --overridden-by"
+        )
+    expire_locks(file)
+    blocks, _ = parse(file)
+    me = norm_id(wanted, doc_prefix(file, blocks))
+    b = find_id(blocks, me)
+    who = need_author(file, author)
+    warn_lock(file, b, who)
+    where = {}
+    for f in siblings(file):
+        for x in parse(f)[0]:
+            if x["prefix"]:
+                where.setdefault(ident(x), f)
+    cuts = []
+    for kind, value in asked:
+        rids = list(dict.fromkeys(r[0] for r in IDREF.finditer(value)))
+        if not rids:
+            raise SystemExit(f"--{kind} names no id")
+        for rid in rids:
+            if rid not in targets(b, kind):
+                raise SystemExit(f"{me} has no `{kind}: {rid}` line; nothing was removed")
+            mirror = None
+            if kind in MIRROR and rid in where:
+                f = where[rid]
+                if f != file:
+                    expire_locks(f)
+                other = find_id(parse(f)[0], rid)
+                if me in targets(other, MIRROR[kind]):
+                    mirror = (f, need_author(f, author))
+                    warn_lock(f, other, who)
+            cuts.append((kind, rid, mirror))
+    for kind, rid, mirror in cuts:
+        cut_rel(file, me, kind, rid, who, event)
+        if mirror:
+            cut_rel(mirror[0], rid, MIRROR[kind], me, mirror[1], event)
     return 0
 
 
@@ -3700,7 +3788,14 @@ def main(argv: list[str] | None = None) -> int:
     sd = sub.add_parser("describe")
     sd.add_argument("file")
     sd.add_argument("--category", required=True)
-    sd.add_argument("--text", type=oneline, required=True)
+    sdw = sd.add_mutually_exclusive_group(required=True)
+    sdw.add_argument("--text", type=oneline, help="the description, one line")
+    sdw.add_argument(
+        "--text-file",
+        dest="block",
+        metavar="F",
+        help="the whole prose block under the heading; - reads stdin",
+    )
 
     sr = sub.add_parser("relate")
     sr.add_argument("file")
@@ -3719,6 +3814,16 @@ def main(argv: list[str] | None = None) -> int:
         help="your handle; keeps your own lock silent, and signs the log line when "
         "an older link is removed to break a cycle",
     )
+
+    su = sub.add_parser("unrelate")
+    su.add_argument("file")
+    su.add_argument("--id", required=True)
+    su.add_argument("--related")
+    su.add_argument("--blocked-by", dest="blocked")
+    su.add_argument("--overrides", help="removed from both items")
+    su.add_argument("--overridden-by", dest="overridden", help="removed from both items")
+    su.add_argument("--author", required=True, metavar="@xx", help="signs the log line")
+    su.add_argument("--event", type=oneline, help="why, kept on the log line")
 
     st = sub.add_parser("attach")
     st.add_argument("file")
@@ -3931,9 +4036,20 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "author":
         return cmd_author(a.file, a.handle, a.name)
     if a.cmd == "describe":
-        return cmd_describe(a.file, a.category, a.text)
+        block = None
+        if a.block == "-":
+            block = sys.stdin.read()
+        elif a.block is not None:
+            if not pathlib.Path(a.block).is_file():
+                raise SystemExit(f"--text-file not found: {a.block}")
+            block = pathlib.Path(a.block).read_text(encoding="utf-8")
+        return cmd_describe(a.file, a.category, a.text, block)
     if a.cmd == "relate":
         return cmd_relate(a.file, a.id, a.related, a.blocked, a.overrides, a.overridden, a.author)
+    if a.cmd == "unrelate":
+        return cmd_unrelate(
+            a.file, a.id, a.related, a.blocked, a.overrides, a.overridden, a.author, a.event
+        )
     if a.cmd == "attach":
         return cmd_attach(a.file, a.id, a.path, a.author)
     if a.cmd == "log":

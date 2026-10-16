@@ -154,6 +154,8 @@ pm-tools lock  docs/defects-app.md --id DEF-LNCH-1 --author @kj --hours 4 --note
 pm-tools amend docs/defects-app.md --id DEF-LNCH-1 --author @kj --title "token refresh race"   # old title kept in the log
 pm-tools attach docs/defects-app.md --id DEF-LNCH-1 --author @kj --path shots/relaunch.png --path notes.md   # checksum and edit stamp; check warns on drift
 pm-tools log   docs/defects-app.md --id DEF-LNCH-1 --author @kj --event "attempted: ... did NOT work"
+pm-tools unrelate docs/defects-app.md --id DEF-LNCH-1 --related DEF-LNCH-4 --author @kj   # the line it read goes to the log
+pm-tools describe docs/defects-app.md --category LNCH --text-file - < lnch-prose.md   # the whole prose block under the heading
 pm-tools close docs/defects-app.md --id DEF-LNCH-1 --author @kj --event "fixed: ..." \
     --evidence "the repro no longer fires on build 412; 79 pytest green"
 
