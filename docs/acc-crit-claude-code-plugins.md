@@ -714,6 +714,12 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - test-tags: UNIT
   - log: 2026-09-26T18:45:29Z @kj added
   - log: 2026-09-26T19:24:18Z @kj closed: met
+- [x] `ACC-REVIEW-195` **One clean round ships; the user decides on a confirmation round** - HIGH; SHIP ends the review and tells the main session to ask the user, with a recommendation from the campaign's complexity; a re-invocation with the SHIP state and no applied fixes runs one confirmation round; a PLAN state without applied fixes is refused
+  - evidence: tests/test_adversarial_workflow_script.py::test_a_shipped_review_runs_one_confirmation_round_only_on_request and the SHIP parity cases in tests/test_review_tools.py pass; suite 1515 passed 2 skipped
+  - test: ship on round 1, re-invoke without fixes, re-invoke a shipped state with closures, re-invoke a PLAN state without fixes
+  - test-tags: UNIT
+  - log: 2026-10-16T18:21:14Z @kj added
+  - log: 2026-10-16T18:21:14Z @kj closed
 
 ## pm-tools soft lock `PMLOCK`
 

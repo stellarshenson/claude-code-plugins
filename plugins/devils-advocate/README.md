@@ -82,7 +82,7 @@ Five deterministic commands from the library carry the review's bookkeeping. `re
 
 Research is opt-in. When a reviewer needs a best practice, paradigm or pattern its research files do not carry and the adjudicator approves the request, the skill asks once whether to allow 1, 3 or 5 researched questions per adversary, and appends what it finds to `.claude/review-research/<adversary>/research.md` in the reviewed project. No means no for that review; an adversary whose budget is used up can only return a suggestion, which defaults to no.
 
-Reviews are **multi-round** by design: one pass finds, you triage and fix, then you re-run to prove the fix cleared it and opened no new hole. A single pass is a smoke test, not a verdict. Never flip a "survived adversarial review" criterion to done on the round that still had findings - only on a clean confirming round.
+Reviews are **multi-round** by design: one pass finds, you triage and fix, then you re-run to prove the fix cleared it and opened no new hole. One clean round ends the review; the skill then asks whether to run one confirmation round and recommends one from the complexity of the campaign. Never flip a "survived adversarial review" criterion to done on the round that still had findings.
 
 The `popular-science` adversary reviews against the shared craft canon that the `datascience:popular-science` writer composes from (`datascience/skills/popular-science/references/craft-canon.md`), so critique and craft never drift. That link is deliberately cross-plugin - install `datascience` too if you want that pair.
 

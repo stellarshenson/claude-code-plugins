@@ -1198,7 +1198,7 @@ def cmd_research_search(args: argparse.Namespace) -> int:
 # The shape of `state` and `appliedFixes` the workflow script reads; the same
 # number as the script's LOOP_CONTRACT, so a state from another version is
 # refused here as it is there.
-LOOP_CONTRACT = 3
+LOOP_CONTRACT = 4
 
 # The finding fields of the script's FINDINGS_SCHEMA, in its order. A hand
 # spawn has no structured-output tool, so the prompt ends by naming them.
@@ -1243,7 +1243,8 @@ def validate_review_args(args: dict) -> None:
                 "different versions"
             )
         fixes = args.get("appliedFixes")
-        if (
+        confirmation = state.get("shipped") and not fixes
+        if not confirmation and (
             not isinstance(fixes, list)
             or not fixes
             or any(
@@ -1259,7 +1260,7 @@ def validate_review_args(args: dict) -> None:
                 "args.appliedFixes must list every applied change as {site, summary, files, "
                 "patch} - files the change touched, patch the path of a file holding the diff "
                 "of exactly that change; without them a confirming reviewer re-reads the whole "
-                "delta"
+                "delta. Only a confirmation round after SHIP omits them"
             )
 
 
@@ -1293,11 +1294,13 @@ def confirm_body(closures: list[dict], new_delta: list[dict]) -> str:
             "TURN BUDGET: read the patch of each NEWEST DELTA entry, then only the lines a closure you reproduce needs; run the test command once if one is named; report. Never re-read the whole delta - no diff against the base, no re-reading of documents the target names - it was reviewed in full in round 1. Do not rebuild the inventory, do not audit prose, naming, comments or test style, do not write scratch specs beyond what reproduces a closure. The script DISCARDS any finding that is taste, sits outside the applied delta without naming a failing closure, or repeats a finding already ruled at a site no fix has touched since - do not spend turns producing one.",
             "CLOSURES (all applied so far):",
             "\n".join(f"- {c['site']}: {c['summary']} [patch: {c['patch']}]" for c in closures),
-            "NEWEST DELTA (this invocation's attack surface - read these patches first):",
-            "\n".join(
+            "NEWEST DELTA (this invocation's attack surface - read these patches first):\n"
+            + "\n".join(
                 f"- {c['site']}: {c['summary']} [{', '.join(c['files'])}] patch: {c['patch']}"
                 for c in new_delta
-            ),
+            )
+            if new_delta
+            else "NEWEST DELTA: none - the previous round shipped and nothing changed since. The user asked for this confirmation round, so every closure above is the attack surface.",
         ]
     )
 
@@ -1311,11 +1314,14 @@ def reviewer_prompt(args: dict, lens: str) -> str:
     """
     validate_review_args(args)
     state = args.get("state")
-    confirming = bool(state)
+    fixes = args.get("appliedFixes") or []
+    # No closure means no change was ever applied: the first round, or a
+    # confirmation round after a review that shipped without a PLAN.
+    closures = list(state.get("closures") or []) + list(fixes) if state else []
+    confirming = bool(closures)
     research = args.get("research", state.get("research") if state else None)
     if confirming:
-        closures = list(state.get("closures") or []) + list(args["appliedFixes"])
-        body = confirm_body(closures, args["appliedFixes"])
+        body = confirm_body(closures, fixes)
     else:
         body = "This is a discovery round: the full scope against the bar."
     graph = args.get("graph")

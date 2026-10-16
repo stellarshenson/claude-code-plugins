@@ -598,7 +598,7 @@ REVIEW_ARGS = {
 CONFIRM_ARGS = {
     **REVIEW_ARGS,
     "state": {
-        "contract": 3,
+        "contract": 4,
         "round": 1,
         "history": [],
         "deferred": [],
@@ -620,6 +620,11 @@ CONFIRM_ARGS = {
         {"site": "b.py:2", "summary": "s2", "files": ["b.py"], "patch": "/tmp/r2.patch"}
     ],
 }
+
+# A confirmation round after SHIP: no applied fixes, every closure pinned -
+# or discovery again when the review never applied a change.
+SHIP_CONFIRM_ARGS = {**REVIEW_ARGS, "state": {**CONFIRM_ARGS["state"], "shipped": True}}
+SHIP_DISCOVER_ARGS = {**REVIEW_ARGS, "state": {**SHIP_CONFIRM_ARGS["state"], "closures": []}}
 
 PROMPT_DRIVER = r"""
 const fs = require('fs')
@@ -652,7 +657,15 @@ def _script_prompts(tmp_path: Path, args: dict) -> dict[str, str]:
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
-@pytest.mark.parametrize("args, label", [(REVIEW_ARGS, "discover"), (CONFIRM_ARGS, "confirm")])
+@pytest.mark.parametrize(
+    "args, label",
+    [
+        (REVIEW_ARGS, "discover"),
+        (CONFIRM_ARGS, "confirm"),
+        (SHIP_CONFIRM_ARGS, "confirm"),
+        (SHIP_DISCOVER_ARGS, "discover"),
+    ],
+)
 def test_prompt_equals_the_script_prompt_up_to_the_output_line(tmp_path: Path, args, label):
     """DEF-ADVR-68: the prompt text lives twice - in the script, which cannot
     read a file, and here. The two are held equal on every block but the

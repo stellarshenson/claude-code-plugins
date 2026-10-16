@@ -531,7 +531,7 @@ def test_state_carries_the_loop_contract():
     block = t[t.index("const stateOut = () => ({") :]
     keys = re.findall(r"^\s+(\w+)[,:]", block[: block.index("})")], re.M)
     assert (contract, keys) == (
-        3,
+        4,
         [
             "contract",
             "round",
@@ -631,7 +631,7 @@ def test_invocations_read_patches_skip_ruled_sites_and_ship_on_a_clean_round(tmp
             "adjudicate": [_ruling("a breaks")],
         },
     )
-    assert one["result"]["status"] == "PLAN" and one["result"]["state"]["contract"] == 3
+    assert one["result"]["status"] == "PLAN" and one["result"]["state"]["contract"] == 4
 
     fix_a = [
         {
@@ -702,6 +702,33 @@ def test_invocations_read_patches_skip_ruled_sites_and_ship_on_a_clean_round(tmp
     assert "loop contract" in _invoke(tmp_path, {**args_three, "state": stale}, {})["error"]
     no_patch = [{k: v for k, v in fix_b[0].items() if k != "patch"}]
     assert "patch" in _invoke(tmp_path, {**args_three, "appliedFixes": no_patch}, {})["error"]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_a_shipped_review_runs_one_confirmation_round_only_on_request(tmp_path):
+    """One clean round is enough: SHIP ends the review and tells the main
+    session to ask the user. A re-invocation with the SHIP state and no applied
+    fixes is the confirmation round - discovery again when nothing was ever
+    applied, otherwise a pinned confirm over every closure. A PLAN state
+    without applied fixes is still refused."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    clean = _invoke(tmp_path, base, {"discover": [{"findings": []}]})["result"]
+    assert clean["status"] == "SHIP" and clean["state"]["shipped"] is True
+    assert "confirmation round" in clean["instructions"]
+
+    again = _invoke(tmp_path, {**base, "state": clean["state"]}, {"discover": [{"findings": []}]})
+    assert again["result"]["status"] == "SHIP" and again["result"]["rounds"] == 2
+    assert any(line.startswith("round 2 discovery") for line in again["logs"])
+
+    closure = {"round": 1, "site": "src/a.py", "summary": "fixed a", "files": ["src/a.py"], "patch": "/tmp/r1.patch"}
+    shipped = {**clean["state"], "round": 2, "closures": [closure]}
+    confirm = _invoke(tmp_path, {**base, "state": shipped}, {"confirm": [{"findings": []}]})
+    assert confirm["result"]["status"] == "SHIP" and confirm["result"]["rounds"] == 3
+    assert "fixed a [patch: /tmp/r1.patch]" in confirm["prompts"][0]
+    assert "NEWEST DELTA: none" in confirm["prompts"][0]
+
+    planned = {k: v for k, v in shipped.items() if k != "shipped"}
+    assert "appliedFixes" in _invoke(tmp_path, {**base, "state": planned}, {})["error"]
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")

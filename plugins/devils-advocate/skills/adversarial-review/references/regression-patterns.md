@@ -35,8 +35,8 @@ State plainly what was changed and why, then require both halves:
 1. **Verify each closed finding by reproducing it** - not by reading the diff. A reviewer that accepts the author's account of a fix cannot catch a fix that is wrong in a new way.
 2. **Attack what the fix broke** - name the six shapes above and ask which apply. Ask specifically: what did the old code fail at, and who relied on that failure?
 
-Require the reviewer to say which previous findings are closed, with evidence. A round that only lists new findings gives no signal about convergence, and the loop cannot be stopped on "two consecutive clean verdicts" if nobody says what got clean.
+Require the reviewer to say which previous findings are closed, with evidence. A round that only lists new findings gives no signal about convergence, and the loop cannot be stopped on a clean verdict if nobody says what got clean.
 
 ## Stopping
 
-Findings that are correctness defects with a reproduction get fixed. Findings that are taste get declined with the reason stated. A round whose findings are all taste is a clean round. Two consecutive clean rounds ends the loop - continuing past that rewrites prose that was not broken and the next round flags the rewrite.
+Findings that are correctness defects with a reproduction get fixed. Findings that are taste get declined with the reason stated. A round whose findings are all taste is a clean round. One clean round ends the loop, and a confirmation round runs only when the user asks for one. Running rounds past that rewrites prose that was not broken, and the next round flags the rewrite.

@@ -110,7 +110,7 @@ This section compares `adversarial-review` with an ad hoc adversarial review, wh
 | Fixes | An adjudicator turns the findings into one change plan grouped by root cause. It removes a fix that caused new findings before it refines it, and it flags each fix that adds a new mechanism so the user can reject it | Every reviewer suggestion becomes code |
 | Repeat rounds | A confirming round reads only the applied patches. The script discards taste, findings outside the fix and findings already ruled | Every round reviews the whole target again |
 | Target | Nothing edits the code during a round. The main session applies the plan between rounds | The code changes while it is reviewed |
-| End | The loop ends on a clean round, an adjudicator stop, a round cap, or when the adjudicator judges the loop spiralling in two of the last three rounds. A round whose reviewers all died is reported, never counted as clean | The loop ends when someone stops it |
+| End | The loop ends on one clean round, an adjudicator stop, a round cap, or when the adjudicator judges the loop spiralling in two of the last three rounds. After a clean round the user decides whether to run one confirmation round. A round whose reviewers all died is reported, never counted as clean | The loop ends when someone stops it |
 | Discovery | `review-tools dossier` builds the Python file, symbol and CLI inventory by AST in seconds, and a code graph answers callers and dependents | Each reviewer finds the same facts with its own reads and searches |
 | Cost | `review-tools cost` reports turns, tokens and time per lens and per round | The cost is unknown |
 

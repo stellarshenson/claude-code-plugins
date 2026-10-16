@@ -1,6 +1,6 @@
 {
   "name": "project-management",
-  "version": "1.8.20",
+  "version": "1.8.21",
   "description": "Acceptance criteria and defect tracking with permanent IDs, severity triage, markdown checklists, and computed reports.",
   "author": { "name": "Stellars Henson", "email": "konrad.jelen+github@gmail.com" },
   "repository": "https://github.com/stellarshenson/claude-code-plugins",

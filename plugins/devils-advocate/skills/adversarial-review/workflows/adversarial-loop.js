@@ -32,8 +32,10 @@ export const meta = {
 // refining rounds are judged spiralling by the adjudicator; the fanout ratio is
 // evidence it cites, never the gate (DEF-ADVR-50).
 //
-// A CLEAN ROUND SHIPS: nothing edits the tree inside the workflow, so a second
-// panel after a clean round would review identical code (DEF-ADVR-65).
+// ONE CLEAN ROUND SHIPS: nothing edits the tree inside the workflow, so a
+// second panel after a clean round would review identical code (DEF-ADVR-65).
+// The main session asks the user whether to run one confirmation round, and
+// re-invokes with the SHIP state only on a yes.
 //
 // args - first invocation (bar, lenses, target mandatory):
 //   target     what is under review, e.g. "src/turndown.ts and its tests"
@@ -67,6 +69,10 @@ export const meta = {
 //                 `files` lists the touched paths, `patch` is the path of a file
 //                 holding the diff of exactly that change - the confirming
 //                 reviewers read it instead of the whole delta (DEF-ADVR-63)
+// args - re-invocation after SHIP, when the user asked for a confirmation round:
+//   state         the `state` object from the SHIP return, verbatim, and no
+//                 appliedFixes - the round attacks every closure, or repeats
+//                 discovery when the review applied no change
 
 if (!args || !args.target || !args.bar || !Array.isArray(args.lenses) || !args.lenses.length) {
   throw new Error('args.target, args.bar and args.lenses are mandatory - the bar is the review\'s scope anchor, refuse to review without one')
@@ -78,14 +84,15 @@ if (typeof args.bar !== 'object' || !args.bar.purpose || !args.bar.inputs || !ar
 // The shape of `state` and `appliedFixes` this script reads. Bump it whenever
 // either changes, so a state written by another version - or this script run
 // from a stale copy - is refused instead of misread (DEF-ADVR-66).
-const LOOP_CONTRACT = 3
+const LOOP_CONTRACT = 4
 if (args.state) {
   if (args.state.contract !== LOOP_CONTRACT) {
     throw new Error(`args.state was written under loop contract ${args.state.contract} and this script reads contract ${LOOP_CONTRACT} - the state and the script come from different versions; run the installed adversarial-loop.js and start the review again`)
   }
   const fixes = args.appliedFixes
-  if (!Array.isArray(fixes) || !fixes.length || fixes.some((f) => !f.site || !f.summary || !f.patch || !Array.isArray(f.files) || !f.files.length)) {
-    throw new Error('args.appliedFixes must list every applied change as {site, summary, files, patch} - files the change touched, patch the path of a file holding the diff of exactly that change; without them a confirming reviewer re-reads the whole delta')
+  const confirmation = args.state.shipped && !fixes
+  if (!confirmation && (!Array.isArray(fixes) || !fixes.length || fixes.some((f) => !f.site || !f.summary || !f.patch || !Array.isArray(f.files) || !f.files.length))) {
+    throw new Error('args.appliedFixes must list every applied change as {site, summary, files, patch} - files the change touched, patch the path of a file holding the diff of exactly that change; without them a confirming reviewer re-reads the whole delta. Only a confirmation round after SHIP omits them')
   }
 }
 // Research permission - the user's answer to the one research question per
@@ -310,7 +317,7 @@ const closures = S ? S.closures : []
 const settled = S ? S.settled : []
 let round = S ? S.round : 0
 
-const newDelta = S ? args.appliedFixes : []
+const newDelta = (S && args.appliedFixes) || []
 newDelta.forEach((f) => closures.push({ round, site: f.site, summary: f.summary, files: f.files, patch: f.patch }))
 
 const stateOut = () => ({
@@ -357,8 +364,9 @@ const priorRecord = () =>
     allDeferred.length ? allDeferred.map((d) => `- ${d}`).join('\n') : '(none)',
   ].join('\n')
 
-// A confirm runs only on a re-invocation, which the contract check above
-// guarantees carries at least one applied fix with its files and patch.
+// A confirm runs only on a re-invocation. After a PLAN the contract check
+// above guarantees at least one applied fix with its files and patch; a
+// confirmation round after SHIP carries none and attacks every closure.
 const confirmBody = () =>
   [
     `This is a CONFIRMING round, pinned - not a fresh sweep. Two jobs only:`,
@@ -367,8 +375,9 @@ const confirmBody = () =>
     `TURN BUDGET: read the patch of each NEWEST DELTA entry, then only the lines a closure you reproduce needs; run the test command once if one is named; report. Never re-read the whole delta - no diff against the base, no re-reading of documents the target names - it was reviewed in full in round 1. Do not rebuild the inventory, do not audit prose, naming, comments or test style, do not write scratch specs beyond what reproduces a closure. The script DISCARDS any finding that is taste, sits outside the applied delta without naming a failing closure, or repeats a finding already ruled at a site no fix has touched since - do not spend turns producing one.`,
     `CLOSURES (all applied so far):`,
     closures.map((c) => `- ${c.site}: ${c.summary} [patch: ${c.patch}]`).join('\n'),
-    `NEWEST DELTA (this invocation's attack surface - read these patches first):`,
-    newDelta.map((c) => `- ${c.site}: ${c.summary} [${c.files.join(', ')}] patch: ${c.patch}`).join('\n'),
+    newDelta.length
+      ? `NEWEST DELTA (this invocation's attack surface - read these patches first):\n${newDelta.map((c) => `- ${c.site}: ${c.summary} [${c.files.join(', ')}] patch: ${c.patch}`).join('\n')}`
+      : `NEWEST DELTA: none - the previous round shipped and nothing changed since. The user asked for this confirmation round, so every closure above is the attack surface.`,
   ].join('\n')
 
 // Confirm-round filter - SCOPE, not blocking.
@@ -419,15 +428,17 @@ if (S && round >= MAX_ROUNDS)
 
 let findings
 round += 1
-if (!S) {
+// No closure means no change was ever applied: the first round, or a
+// confirmation round after a review that shipped without a PLAN - discovery.
+if (!closures.length) {
   phase('Discover')
-  log(`round 1 discovery (loop contract ${LOOP_CONTRACT}): ${LENSES.join(', ')} over ${TARGET}`)
-  findings = mergeFindings(
+  log(`round ${round} discovery (loop contract ${LOOP_CONTRACT}): ${LENSES.join(', ')} over ${TARGET}`)
+  findings = settledFilter(mergeFindings(
     await runPanelChecked(
       'Discover',
       `This is a discovery round: the full scope against the bar.`
     )
-  )
+  ))
   history.push({ round, kind: 'discover', findings: findings.length, severities: severityTally(findings) })
 } else {
   log(`round ${round} confirming (loop contract ${LOOP_CONTRACT}): pinned to ${closures.length} closure(s), ${newDelta.length} new`)
@@ -521,16 +532,19 @@ if (findings.length) {
   log(`round ${round} clean - no findings`)
 }
 
-// A clean round ships: nothing edits the tree inside the workflow, so a panel
-// run now would review exactly the code this one did (DEF-ADVR-65).
+// One clean round ships: nothing edits the tree inside the workflow, so a
+// panel run now would review exactly the code this one did (DEF-ADVR-65).
+// Whether to run one confirmation round anyway is the user's decision.
 return {
   status: 'SHIP',
   rounds: round,
+  instructions:
+    'One clean round is enough. Ask the user whether to accept it or to run one confirmation round, and recommend one from the complexity of the campaign. On a confirmation round, re-invoke with args.state set to the `state` object below, verbatim, and no args.appliedFixes: the round attacks every closure, or repeats discovery when the review applied no change.',
   history,
   openFindings: findings,
   closures,
   deferred: allDeferred,
   refuted: allRefuted,
   research,
-  state: stateOut(),
+  state: Object.assign(stateOut(), { shipped: true }),
 }
