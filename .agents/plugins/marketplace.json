@@ -1,55 +1,55 @@
 {
   "name": "stellars-claude-code-plugins",
-  "version": "1.8.21",
+  "version": "1.8.22",
   "interface": {
     "displayName": "Stellars AI engineering plugins"
   },
   "plugins": [
     {
       "name": "autobuild",
-      "version": "1.8.21",
+      "version": "1.8.22",
       "source": { "source": "local", "path": "./plugins/autobuild" },
       "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
       "category": "Developer Tools"
     },
     {
       "name": "datascience",
-      "version": "1.8.21",
+      "version": "1.8.22",
       "source": { "source": "local", "path": "./plugins/datascience" },
       "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
       "category": "Developer Tools"
     },
     {
       "name": "devils-advocate",
-      "version": "1.8.21",
+      "version": "1.8.22",
       "source": { "source": "local", "path": "./plugins/devils-advocate" },
       "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
       "category": "Developer Tools"
     },
     {
       "name": "document-processing",
-      "version": "1.8.21",
+      "version": "1.8.22",
       "source": { "source": "local", "path": "./plugins/document-processing" },
       "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
       "category": "Productivity"
     },
     {
       "name": "journal",
-      "version": "1.8.21",
+      "version": "1.8.22",
       "source": { "source": "local", "path": "./plugins/journal" },
       "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
       "category": "Productivity"
     },
     {
       "name": "project-management",
-      "version": "1.8.21",
+      "version": "1.8.22",
       "source": { "source": "local", "path": "./plugins/project-management" },
       "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
       "category": "Developer Tools"
     },
     {
       "name": "svg-infographics",
-      "version": "1.8.21",
+      "version": "1.8.22",
       "source": { "source": "local", "path": "./plugins/svg-infographics" },
       "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
       "category": "Creativity"

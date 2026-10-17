@@ -1,6 +1,6 @@
 ---
 name: papers
-description: Paper reference workflow - download every cited paper, article, report or book and write a structured digest (overview, main findings, key takeaways, tags) carrying a resolvable online provenance link into the project's references/papers/ library. Use whenever a source is cited in a design / experiment / hypothesis / research document, recommended by a research agent, or handed over by the user - even without the word "paper". Triggers - "paper", "digest", "arxiv", "cite this paper", "reference this paper", "summarize this article", "digest this book", any citation added to project docs.
+description: Paper reference workflow - download every cited paper, article, report or book and write a structured digest (overview, main findings, key takeaways, tags) carrying a resolvable online provenance link into the project's references/papers/ library. The digest is named for the source kind - paper digest, book digest, article digest, course digest or presentation digest - never paper digest for a book or an article. Use whenever a source is cited in a design / experiment / hypothesis / research document, recommended by a research agent, or handed over by the user - even without the word "paper". Triggers - "paper", "digest", "arxiv", "cite this paper", "reference this paper", "summarize this article", "digest this book", any citation added to project docs.
 allowed-tools: Read, Write, Edit, Glob, Grep, WebFetch, Bash
 ---
 
@@ -8,10 +8,24 @@ allowed-tools: Read, Write, Edit, Glob, Grep, WebFetch, Bash
 
 Every source cited in a project document (design docs, experiment registrations, hypothesis groundings, research notes) gets TWO artifacts in the project's `references/papers/` directory. A cited source that is not downloaded and digested is a defect - no citation without both.
 
-- `[paper] <short name>, <year>.pdf` - the downloaded PDF
-- `[paper digest] <short name>.md` - the structured digest
+- `[<type>] <short name>, <year>.pdf` - the downloaded PDF
+- `[<type> digest] <short name>.md` - the structured digest
 
-`<short name>` is a compact human-readable title (not the arXiv id), identical between the two files - e.g. `[paper] automem memory as cognitive skill, 2026.pdf` and `[paper digest] automem memory as cognitive skill.md`.
+`<type>` states what the source actually is, and the digest carries the same type as its PDF:
+
+| Source | PDF prefix | Digest prefix |
+|--------|-----------|---------------|
+| paper, preprint, technical report | `[paper]` | `[paper digest]` |
+| book, ebook, book chapter | `[book]` | `[book digest]` |
+| article, blog post, vendor post, newsletter | `[article]` | `[article digest]` |
+| course, lecture notes, syllabus | `[course]` | `[course digest]` |
+| slide deck | `[presentation]` | `[presentation digest]` |
+
+Never write a `[paper digest]` for a book or an article: the prefix is how a reader tells from the filename what the digest covers. Classify before naming - a work with an ISBN, publisher imprint or book length is a book; prose published on a site under a byline is an article; an abstract with numbered sections is a paper.
+
+`<short name>` is a compact human-readable title (not the arXiv id), identical between the two files - e.g. `[book] the rust programming language, 2019.pdf` and `[book digest] the rust programming language.md`.
+
+A digest already written under the wrong prefix is renamed to match its source; the short name and the file body do not change. When several digests are mislabelled, rename them in one pass and report the count.
 
 ## Provenance link - hard requirement
 
@@ -32,7 +46,7 @@ The digest's `**Source**` section carries the online provenance link: the actual
 
 ## Digest prompt - the authoring contract
 
-Apply this verbatim to produce the body of every `[paper digest] <short name>.md`. It governs papers, articles, reports, and books alike. Plain markdown with ASCII bullets, so the digest survives being quoted, diffed, and grounded against by tooling that does not render tables or Unicode decoration.
+Apply this verbatim to produce the body of every `[<type> digest] <short name>.md`. It governs papers, articles, reports, and books alike. Plain markdown with ASCII bullets, so the digest survives being quoted, diffed, and grounded against by tooling that does not render tables or Unicode decoration.
 
 ---
 
