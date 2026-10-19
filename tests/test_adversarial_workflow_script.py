@@ -681,8 +681,8 @@ def test_invocations_read_patches_skip_ruled_sites_and_ship_on_a_clean_round(tmp
             "confirm": [
                 {
                     "findings": [
-                        _finding("a name is stale", "/repo/src/a.py", 45),
-                        _finding("b name is stale", "src/b.py", 42),
+                        _finding("a stale name", "/repo/src/a.py", 45),
+                        _finding("b stale name", "src/b.py", 42),
                     ]
                 }
             ],
@@ -692,7 +692,7 @@ def test_invocations_read_patches_skip_ruled_sites_and_ship_on_a_clean_round(tmp
     assert three["result"]["status"] == "SHIP" and three["result"]["rounds"] == 3
     assert len(three["prompts"]) == 2  # one reviewer, one adjudicator - no second panel
     adjudication = three["prompts"][1]
-    assert "b name is stale" in adjudication and "a name is stale" not in adjudication
+    assert "b stale name" in adjudication and "a stale name" not in adjudication
     assert any(line.startswith("settled filter: 1") for line in three["logs"])
 
     capped = _invoke(tmp_path, {**args_three, "maxRounds": 2}, {})
@@ -802,6 +802,67 @@ def test_the_spiral_stop_counts_two_of_the_last_three_rounds(tmp_path):
     assert statuses(["spiralling", "converging", "converging", "spiralling"]) == ["PLAN"] * 4
     assert statuses(["spiralling", "spiralling"]) == ["PLAN", "FANOUT_STOP"]
     assert statuses(["spiralling", "spiralling", "converging"]) == ["PLAN", "FANOUT_STOP", "PLAN"]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_different_titles_within_25_lines_in_one_file_stay_separate(tmp_path):
+    """DEF-ADVR-80. mergeFindings merged by position: two reviewers reporting
+    different defects 20 lines apart in one file became one row carrying the
+    first finding's text alone, so the second never reached the adjudicator."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect", "bug-hunter"]}
+    out = _invoke(
+        tmp_path,
+        base,
+        {
+            "discover": [
+                {"findings": [_finding("drops the retry budget", "src/a.py", 10)]},
+                {"findings": [_finding("leaks the socket on error", "src/a.py", 30)]},
+            ],
+            "adjudicate": [_ruling()],
+        },
+    )
+    assert [f["title"] for f in out["result"]["openFindings"]] == [
+        "drops the retry budget",
+        "leaks the socket on error",
+    ]
+    adjudication = next(p for p in out["prompts"] if p.startswith("You adjudicate"))
+    assert "leaks the socket on error" in adjudication
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_a_merged_finding_keeps_every_lens_evidence_and_remedy(tmp_path):
+    """DEF-ADVR-80. An equal-title merge kept only the first finding's fields,
+    so the adjudicator never saw the other lens's evidence or remedy."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect", "bug-hunter"]}
+    first = {
+        **_finding("leaks the socket on error", "src/a.py", 10),
+        "evidence": "architect saw the fd leak",
+        "remedy": "close in the error branch",
+    }
+    second = {
+        **_finding("Leaks the socket on error ", "/repo/src/a.py", 40),
+        "evidence": "bug-hunter reproduced it with curl",
+        "remedy": "defer the close to a context manager",
+    }
+    out = _invoke(
+        tmp_path,
+        base,
+        {"discover": [{"findings": [first]}, {"findings": [second]}], "adjudicate": [_ruling()]},
+    )
+    rows = out["result"]["openFindings"]
+    assert len(rows) == 1
+    assert rows[0]["evidence"] == "architect saw the fd leak"
+    assert rows[0]["remedy"] == "close in the error branch"
+    assert rows[0]["also"] == [
+        {
+            "lens": "bug-hunter",
+            "evidence": "bug-hunter reproduced it with curl",
+            "remedy": "defer the close to a context manager",
+        }
+    ]
+    adjudication = next(p for p in out["prompts"] if p.startswith("You adjudicate"))
+    assert "bug-hunter reproduced it with curl" in adjudication
+    assert "defer the close to a context manager" in adjudication
 
 
 MECHANISM = "a special case for one input (a regex arm, word-list entry or threshold)"

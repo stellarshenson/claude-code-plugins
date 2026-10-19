@@ -1,6 +1,6 @@
 {
   "name": "autobuild",
-  "version": "1.8.21",
+  "version": "1.8.23",
   "description": "Autonomous build iteration orchestrator with multi-agent review, FSM-driven phases, quality gates, and YAML-configured workflows.",
   "author": { "name": "Stellars Henson", "email": "konrad.jelen+github@gmail.com" },
   "repository": "https://github.com/stellarshenson/claude-code-plugins",

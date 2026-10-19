@@ -1,6 +1,6 @@
 # Increment Plugin Versions
 
-Bump the patch version of every plugin in this marketplace. Does NOT touch `pyproject.toml` - the PyPI version is managed by `make publish`, and a release syncs the plugins to it. Use this only for a plugin-only bump outside a release; `/release` does its own sync.
+Bump the patch version of every plugin in this marketplace. Does NOT touch `pyproject.toml` - the PyPI version is managed by `make publish`, and a release syncs the plugins to it. Use this only for a plugin-only bump outside a release; `/release-plugin` does its own sync.
 
 ## What to update
 

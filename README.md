@@ -52,13 +52,13 @@ Acceptance criteria and defects tracked inside the repository, as markdown check
 
 The design goal is that nothing is recorded twice, so nothing can drift out of step. The item text, its checkbox and its category are stored once each; the next free id, the backlinks, the category index and the test-coverage table are computed on read. There is deliberately no contents table, no Open / Fixed sections and no reverse links - each would be a second copy of something the file already knows.
 
-- **Permanent ids** - `ACC-AUTH-102`, `DEF-LNCH-3`. Unique across the document, never renumbered, never recycled; an item that moves category keeps the code it was born with
+- **Permanent ids** - `ACC-AUTH-102-LOGIN`, `DEF-LNCH-3-TOKEN`. Type prefix, category code, number and item code; unique across the document, never renumbered, never recycled; an item that moves category keeps the code it was born with, and `add --code` is required. An existing document gains codes with the idempotent `migrate-codes` from a `BASE-ID CODE` mapping, and `rename-code` corrects a code and rewrites the relation lines that name the old full id
 - **Three states** - `[ ]` open, `[x]` closed, `[-]` rejected with a mandatory reason. A defect nobody will fix is a close; a report that was never a defect is a reject, so it does not come back next quarter as news
 - **Mandatory triage** - `CRITICAL` / `MAJOR` / `MEDIUM` / `MINOR`, assigned by the agent as the defect is filed. `add` refuses an untriaged defect and `check` errors on one
 - **Authored append-only logs** - ISO 8601 UTC, then the handle, then the event, including the attempts that FAILED and why. That record of what is already ruled out is the reason the file is worth keeping
 - **`check` is a gate** - non-zero exit on a duplicate id, an untriaged defect, a hand-kept contents table or the wrong hint line; `--strict` also fails on warnings
 - **Relations and search** - `relate` records related, blocking and overriding items, writes an override on both items and removes the older link when a new one closes a cycle; `unrelate` removes a link and logs it; `refs` prints what points at an id and its blocker chain, `search` ranks items by BM25 relevance, and `list` / `pivot` build ad-hoc tables; `check` errors on a relation to a missing id, on a blocked-by or override cycle and on an override written on one item only
-- **Regressions, locks and attachments** - `reopen` on a closed defect opens a numbered regression (`DEF-LNCH-3-1`) and keeps the closure's proof; `lock` marks an item as being worked on; `attach` records a file with its checksum
+- **Regressions, locks and attachments** - `reopen` on a closed defect opens a numbered regression (`DEF-LNCH-3-TOKEN-1`) and keeps the closure's proof; `lock` marks an item as being worked on; `attach` records a file with its checksum
 - **Hand edits are logged** - the guard hook stops a hand edit of a tracker until `pm-tools ack` logs its reason in `pm-hand-edits.md`
 
 ### Usage

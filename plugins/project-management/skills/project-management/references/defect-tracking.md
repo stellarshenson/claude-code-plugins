@@ -1,13 +1,13 @@
 # Defects
 
-A defect is one observed wrong behaviour plus the trail of what has been tried against it. A miss by a statistical or heuristic component - a classifier, a ranker, a regex tier, a threshold - on one input, or a score below its target, is not a defect: it is a sample of an error rate, measured on held-out data rather than fixed per input. A crash, a regression against HEAD, or a breach of a guarantee the product states, still is one. The store is `docs/defects-<project>.md`, ids are `DEF-<CAT>-<N>`. Shared format, ids, relations and tooling live in `SKILL.md`; this file carries only what is specific to defects.
+A defect is one observed wrong behaviour plus the trail of what has been tried against it. A miss by a statistical or heuristic component - a classifier, a ranker, a regex tier, a threshold - on one input, or a score below its target, is not a defect: it is a sample of an error rate, measured on held-out data rather than fixed per input. A crash, a regression against HEAD, or a breach of a guarantee the product states, still is one. The store is `docs/defects-<project>.md`, ids are `DEF-<CAT>-<N>-<CODE>`. Shared format, ids, relations and tooling live in `SKILL.md`; this file carries only what is specific to defects.
 
 ## Writing a defect
 
 The body is one dense line: symptom, then cause, then fix, then the file.
 
 ```
-- [ ] `DEF-<CAT>-<N>` **<title>** - <SEVERITY>; <symptom>; cause <...>; fix <...>; `<file>`
+- [ ] `DEF-<CAT>-<N>-<CODE>` **<title>** - <SEVERITY>; <symptom>; cause <...>; fix <...>; `<file>`
 ```
 
 - **Symptom first, in the reporter's terms** - what was seen, not what was theorised
@@ -54,20 +54,20 @@ One `##` per component, subsystem or symptom class, code declared on the heading
 
 Cold start, splash screen and the first turn after a fork
 
-- [x] `DEF-LNCH-1` **branch name not applied at launch, false "use /rename" warning** - MEDIUM; panel warned `name "..." could not be applied` yet a manual `/rename` worked; cause: the obsolete `sessions/set-title` poll 404'd for 30s on the not-yet-written fork file and fired a false failure; fix: removed the set-title path; `src/widget.ts`
+- [x] `DEF-LNCH-1-NAMEPOLL` **branch name not applied at launch, false "use /rename" warning** - MEDIUM; panel warned `name "..." could not be applied` yet a manual `/rename` worked; cause: the obsolete `sessions/set-title` poll 404'd for 30s on the not-yet-written fork file and fired a false failure; fix: removed the set-title path; `src/widget.ts`
   - repro: fork a session, watch the panel for 30s
   - test-tags: UNIT, E2E
   - evidence: jest 43 + pytest 79 green on 2026-06-21, panel clean over 30 forks
   - log: 2026-06-21T16:52:10Z @kj reported: "name could not be applied - use /rename, and the rename was actually successful"
   - log: 2026-06-21T08:41:03Z @kj fixed: name owned solely by `claude -n`; jest 43 + pytest 79 green
-- [ ] `DEF-LNCH-3` **token race on relaunch** - MAJOR; auth token occasionally empty on the first turn after a fork; cause under investigation; `src/session.ts`
+- [ ] `DEF-LNCH-3-TOKEN` **token race on relaunch** - MAJOR; auth token occasionally empty on the first turn after a fork; cause under investigation; `src/session.ts`
   - repro: fork under load, send a turn inside 2s
   - test-tags: INTEGRATION
-  - related: ACC-LNCH-8 - the criterion this violates
+  - related: ACC-LNCH-8-LOGIN - the criterion this violates
   - log: 2026-06-22T09:14:27Z @kj reported: intermittent 401 on the first turn of a branched session
   - log: 2026-06-22T11:02:55Z @kj attempted: 200ms pre-turn delay - did NOT work, the race still fires under load
-  - log: 2026-06-23T13:38:19Z @kj details: repro study in [DEF-LNCH-3 details](defects/DEF-LNCH-3-token-race.md)
-- [-] `DEF-LNCH-7` **splash hang on a cold cache** - MAJOR; splash never dismissed on first run
+  - log: 2026-06-23T13:38:19Z @kj details: repro study in [DEF-LNCH-3-TOKEN details](defects/DEF-LNCH-3-TOKEN-token-race.md)
+- [-] `DEF-LNCH-7-SPLASH` **splash hang on a cold cache** - MAJOR; splash never dismissed on first run
   - repro: wipe the profile, launch offline
   - test-tags: MANUAL
   - log: 2026-07-02T15:07:44Z @ac reported by QA
@@ -97,12 +97,13 @@ Three more sub-lines, one line each. The `repro:` line is the one another person
 
 A defect that was fixed and broke again gets a derived id rather than a reopened checkbox, so each occurrence is counted rather than overwritten.
 
-- **Minting** - `reopen DEF-LNCH-3` opens `DEF-LNCH-3-1` with the same title and severity, and leaves `DEF-LNCH-3` closed
-- **Flat ordinals** - reopening `DEF-LNCH-3-1` gives `DEF-LNCH-3-2`, never `-1-1`; the highest ordinal is how many times that defect has come back
-- **Both sides logged** - the parent logs `regressed as DEF-LNCH-3-1`, the child logs `regression of DEF-LNCH-3`, so the chain reads in either direction
+- **Minting** - `reopen DEF-LNCH-3-TOKEN` opens `DEF-LNCH-3-TOKEN-1` with the same title and severity, and leaves `DEF-LNCH-3-TOKEN` closed
+- **Flat ordinals** - reopening `DEF-LNCH-3-TOKEN-1` gives `DEF-LNCH-3-TOKEN-2`, never `-1-1`; the highest ordinal is how many times that defect has come back
+- **Both sides logged** - the parent logs `regressed as DEF-LNCH-3-TOKEN-1`, the child logs `regression of DEF-LNCH-3-TOKEN`, so the chain reads in either direction
 - **No repro is carried over** - a regression may reproduce differently, so `check` warns until the new one is recorded with `edit --repro`
 - **Rejected is not regressed** - a rejected defect reopens normally; nothing was fixed, so nothing regressed
 - **Orphans are an error** - a `-N` id whose root is missing counts nothing and points nowhere, and `check` fails on it
+- **One root per base id** - a second root claiming an already-used base with a different full id makes base-id links ambiguous; `check` names both files and ids. A regression shares its root's base and is not a second root
 - **Counting** - `report` prints `N regressions across M defects` above the SUMMARY grid, in the summary form too
 
 ## Details document
@@ -113,18 +114,18 @@ What earns one: a deep root-cause analysis, a design tradeoff, or a reproduction
 
 ```bash
 pm-tools author docs/defects-app.md --handle @kj --name "Konrad Jelen"
-pm-tools add docs/defects-app.md --category LNCH --name Launch --severity MAJOR --author @kj \
+pm-tools add docs/defects-app.md --category LNCH --code TOKEN --name Launch --severity MAJOR --author @kj \
     --description "Cold start, splash screen and the first turn after a fork" \
     --title "token race on relaunch" \
     --text "auth token empty on the first turn; cause under investigation; \`src/session.ts\`" \
     --repro "fork under load, send a turn inside 2s" --test-tags "INTEGRATION"
-pm-tools lock   docs/defects-app.md --id DEF-LNCH-3 --author @kj --note "bisecting the fork path"
-pm-tools log    docs/defects-app.md --id DEF-LNCH-3 --author @kj \
+pm-tools lock   docs/defects-app.md --id DEF-LNCH-3-TOKEN --author @kj --note "bisecting the fork path"
+pm-tools log    docs/defects-app.md --id DEF-LNCH-3-TOKEN --author @kj \
     --event "attempted: 200ms pre-turn delay - did NOT work"
-pm-tools close  docs/defects-app.md --id DEF-LNCH-3 --author @kj \
+pm-tools close  docs/defects-app.md --id DEF-LNCH-3-TOKEN --author @kj \
     --event "fixed: token awaited before the first turn" \
     --evidence "the 2s repro no longer fires on build 412; 79 pytest green"
-pm-tools reject docs/defects-app.md --id DEF-LNCH-7 --author @ac \
+pm-tools reject docs/defects-app.md --id DEF-LNCH-7-SPLASH --author @ac \
     --event "not reproduced on 3 devices over 40 cold starts"
 pm-tools report docs/defects-app.md
 pm-tools check docs --strict
@@ -132,6 +133,6 @@ pm-tools check docs --strict
 
 `check` on the directory resolves a relation id into the file beside; on one file alone a cross-file link is reported as not found.
 
-A defect that shows a criterion wrong overrides it: `pm-tools relate docs/defects-app.md --id DEF-LNCH-3 --overrides ACC-LNCH-8` writes `overrides:` here and `overridden-by:` on the criterion in the file beside. A later criterion may override the defect back; the newest link holds (SKILL.md, Relations).
+A defect that shows a criterion wrong overrides it: `pm-tools relate docs/defects-app.md --id DEF-LNCH-3-TOKEN --overrides ACC-LNCH-8-LOGIN` writes `overrides:` here and `overridden-by:` on the criterion in the file beside. A later criterion may override the defect back; the newest link holds (SKILL.md, Relations).
 
-Lock a defect when you pick it up - `pm-tools lock FILE --id ID --author @xx` writes its `lock:` line - and ask before working on one locked by someone else. The lock never blocks a write: another author's `log`, `edit` or `close` warns once and proceeds. Expired locks clear themselves on the next write, `close` and `reject` clear the lock they find, and `pm-tools unlock FILE --author @xx --id ID` clears one at will; taking or clearing an active lock held by another handle is a transfer - `lock` and `unlock` print `TRANSFER: DEF-LNCH-3 was locked by @yy until <stamp> - you are taking it over; ask @yy` and proceed, and a takeover with no `--note` records `taken over from @yy`. `report`, `list`, `search` and `refs` print `N item(s) currently worked on: DEF-LNCH-3 by @xx until <stamp>` on stderr before the table - read it before choosing what to pick up.
+Lock a defect when you pick it up - `pm-tools lock FILE --id ID --author @xx` writes its `lock:` line - and ask before working on one locked by someone else. The lock never blocks a write: another author's `log`, `edit` or `close` warns once and proceeds. Expired locks clear themselves on the next write, `close` and `reject` clear the lock they find, and `pm-tools unlock FILE --author @xx --id ID` clears one at will; taking or clearing an active lock held by another handle is a transfer - `lock` and `unlock` print `TRANSFER: DEF-LNCH-3-TOKEN was locked by @yy until <stamp> - you are taking it over; ask @yy` and proceed, and a takeover with no `--note` records `taken over from @yy`. `report`, `list`, `search` and `refs` print `N item(s) currently worked on: DEF-LNCH-3-TOKEN by @xx until <stamp>` on stderr before the table - read it before choosing what to pick up.

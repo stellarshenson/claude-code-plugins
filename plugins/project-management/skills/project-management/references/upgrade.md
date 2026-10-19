@@ -18,7 +18,7 @@ Apply, read the hints, run the commands they carry, gate.
    - **Describe every category** - `pm-tools describe FILE --category CODE --text "..."`; the tool never invents a description
    - **Fill the per-item lines** - `pm-tools edit FILE --id ID --repro/--test "..." --test-tags "..."` and `edit --evidence` on closures that carry no proof; these are `check` warnings, not errors, so a large file can be filled over several passes
    - **Restructure by hand where the schema cannot** - a nested `- [ ]` sub-item is promoted to its own item (`add`, then delete the nested line) or folded into its parent's body; an item above every `##` heading is moved under one, then `upgrade --apply` is re-run
-5. **Gate** - `pm-tools check FILE` must exit 0, and `--strict` once the fill is done
+5. **Gate** - `pm-tools check FILE` must exit 0; after `migrate-codes` (`references/codes.md`) and once the fill is done, `pm-tools check FILE --strict`
 
 ## What it changes
 

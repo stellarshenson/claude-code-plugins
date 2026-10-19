@@ -87,7 +87,7 @@ Every fact is stored exactly once, and everything else is computed when read. Th
 | Why it happens, how it works | the newest `root-cause:` / `mechanism:` record | stored once, older records kept |
 | Open, closed or rejected | the `[ ]` / `[x]` / `[-]` box | stored once |
 | Category membership | the `##` section the line sits under | stored once |
-| Next free number | not stored | highest id in the file, plus one |
+| Next free number | not stored | one past the highest in the file or in a sibling tracker for the same prefix and category |
 | Backlinks, outbound links, blocker chain | not stored | `pm-tools refs --id` |
 | Index, contents, counts | not stored | `pm-tools list-categories` |
 | Test coverage per tag | not stored | `pm-tools coverage` |
@@ -101,20 +101,20 @@ Three things follow, all deliberate: no `## Contents` table (a second index that
 
 Cold start, splash screen and the first turn after a fork
 
-- [ ] `DEF-LNCH-3` **token race on relaunch** - MAJOR; auth token occasionally empty on the first turn after a fork; cause under investigation; `src/session.ts`
+- [ ] `DEF-LNCH-3-TOKEN` **token race on relaunch** - MAJOR; auth token occasionally empty on the first turn after a fork; cause under investigation; `src/session.ts`
   - repro: fork under load, send a turn inside 2s
   - root-cause: 2026-08-31T09:12:44Z @kj the fork races the token loader
   - test-tags: INTEGRATION
-  - related: ACC-LNCH-8 - the criterion this violates
+  - related: ACC-LNCH-8-LOGIN - the criterion this violates
   - log: 2026-06-22T09:14:27Z @kj reported: intermittent 401 on the first turn
   - log: 2026-06-22T11:02:55Z @kj attempted: 200ms pre-turn delay - did NOT work
 ```
 
-- **Permanent ids** - `ACC-<CAT>-<N>` and `DEF-<CAT>-<N>`, unique across the document, never renumbered and never recycled. An item that moves category keeps the code it was born with
+- **Permanent ids** - `ACC-<CAT>-<N>-<CODE>` and `DEF-<CAT>-<N>-<CODE>` (`ACC-AUTH-102-LOGIN`, `DEF-LNCH-3-TOKEN`), unique across the document, never renumbered and never recycled. The item code is required on `add --code`, sits at the end of the id and is what `--code`, the `code` column and `pivot --rows code` read; a base id without it still resolves in every link and `--id`, and `check` warns on an item that carries none. An item that moves category keeps the code it was born with. An existing document gains codes with `migrate-codes`, which appends one code per `BASE-ID CODE` mapping line, logs each item it changes and is idempotent; `rename-code` replaces a wrong code and rewrites every relation line that names the old full id; `references/codes.md` carries the mapping format, the order of operations and the checks
 - **Three states** - `[ ]` open, `[x]` closed, `[-]` rejected. Rejected is for a report that was never a defect (never reproduced, the feature is gone, or a statistical or heuristic component's miss - a failure mode measured as a rate, unless it crashes, regresses against HEAD or breaks a stated guarantee); a real defect nobody will fix is a close with the reason
 - **One registered explanation, and it keeps its history** - `mechanism:` on a criterion says how it is meant to work, `root-cause:` on a defect says why it happens. Writing a second one puts it above the first and keeps the first, so on a hunt that runs for days the theory that was disproved on Tuesday is still readable on Friday; `--update` rewords the newest record instead of stacking. The top record is the current one
 - **Evidence at closure** - `close` refuses to run without `--evidence`, one line proving the item is done: the regression test that passes, the build it was verified on. Fixed stops being a claim
-- **Regressions are counted, not overwritten** - reopening a closed defect files `DEF-LNCH-3-1`, then `-2`, and leaves the original closed with its proof; the report totals them, so the file says how often fixes come back
+- **Regressions are counted, not overwritten** - reopening a closed defect files `DEF-LNCH-3-TOKEN-1`, then `-2`, and leaves the original closed with its proof; the report totals them, so the file says how often fixes come back
 - **Authored log lines** - ISO 8601 UTC, then the handle, then the event. Append-only, and the attempts that FAILED are the reason the file is worth keeping
 - **Attachments with a fingerprint** - `attach` writes one `attachment:` line per screenshot or document with the artefact's sha256 prefix and last-edit stamp; `check` recomputes both and warns when the artefact changed or is missing, and a re-attach logs the old checksum next to the new one
 - **Mandatory triage** - every defect carries a severity (`CRITICAL` / `MAJOR` / `MEDIUM` / `MINOR`) and every criterion an importance (`CRITICAL` / `HIGH` / `MEDIUM` / `LOW`), assigned by the agent as the item is filed. There is no unset: `add` refuses one and `check` errors on one
@@ -129,50 +129,54 @@ Deterministic parsing, linting, editing and reporting - no generative step anywh
 # Query
 pm-tools report docs                          # the tables the user reads
 pm-tools report docs --category AUTH --detail # one block per item, whole log
-pm-tools report docs --severity CRITICAL      # also --category, --importance, --status, --author, --tag, --regressions, --grep, --blocked, --related-to
+pm-tools report docs --severity CRITICAL      # also --category, --code, --importance, --status, --author, --tag, --regressions, --grep, --blocked, --related-to
 pm-tools report docs --dates closed --since 2026-08-01
 pm-tools report docs --plain                  # the grids and the queue, no icons or CATEGORIES
 pm-tools report docs --summary                # the SUMMARY grid alone, no items
 pm-tools coverage docs                        # the test-coverage grid: categories down, tags across, NO-TEST last
-pm-tools list docs --status open --columns id,title,author,age --sort=-age   # one table, your columns
+pm-tools list docs --status open --columns id,code,title,author,age --sort=-age   # one table, your columns
 pm-tools pivot docs --rows author --cols severity                            # an ad-hoc count grid
 pm-tools pivot docs --rows root --regressions --values ids                   # regressions per defect
 pm-tools list docs --blocked --columns id,title,blockers   # waiting on open work
-pm-tools relate docs/defects-app.md --id DEF-LNCH-3 --overrides ACC-LNCH-8   # both items get a line, across files
+pm-tools relate docs/defects-app.md --id DEF-LNCH-3-TOKEN --overrides ACC-LNCH-8-LOGIN   # both items get a line, across files
 pm-tools search docs "token race"            # ranked by relevance; a typo still hits
 pm-tools report docs --json                   # the same facts as data; also on coverage, list, pivot, search, refs, list-categories
 pm-tools list-categories docs                 # the derived index
-pm-tools refs docs --id DEF-LNCH-3            # inbound, outbound and the blocker chain
+pm-tools refs docs --id DEF-LNCH-3-TOKEN      # inbound, outbound and the blocker chain
 pm-tools check docs --strict                  # the gate; non-zero on errors
 
 # Edit (all writes take --author)
 pm-tools author docs/defects-app.md --handle @kj --name "Konrad Jelen"
-pm-tools add docs/defects-app.md --category LNCH --name Launch --severity MAJOR \
+pm-tools add docs/defects-app.md --category LNCH --code TOKEN --name Launch --severity MAJOR \
     --author @kj --title "token race on relaunch" --text "symptom; cause under investigation" \
     --repro "fork under load, send a turn inside 2s" --test-tags "INTEGRATION"
-pm-tools lock  docs/defects-app.md --id DEF-LNCH-1 --author @kj --hours 4 --note "bisecting"
-pm-tools amend docs/defects-app.md --id DEF-LNCH-1 --author @kj --title "token refresh race"   # old title kept in the log
-pm-tools attach docs/defects-app.md --id DEF-LNCH-1 --author @kj --path shots/relaunch.png --path notes.md   # checksum and edit stamp; check warns on drift
-pm-tools log   docs/defects-app.md --id DEF-LNCH-1 --author @kj --event "attempted: ... did NOT work"
-pm-tools unrelate docs/defects-app.md --id DEF-LNCH-1 --related DEF-LNCH-4 --author @kj   # the line it read goes to the log
+pm-tools lock  docs/defects-app.md --id DEF-LNCH-1-TOKEN --author @kj --hours 4 --note "bisecting"
+pm-tools amend docs/defects-app.md --id DEF-LNCH-1-TOKEN --author @kj --title "token refresh race"   # old title kept in the log
+pm-tools attach docs/defects-app.md --id DEF-LNCH-1-TOKEN --author @kj --path shots/relaunch.png --path notes.md   # checksum and edit stamp; check warns on drift
+pm-tools log   docs/defects-app.md --id DEF-LNCH-1-TOKEN --author @kj --event "attempted: ... did NOT work"
+pm-tools unrelate docs/defects-app.md --id DEF-LNCH-1-TOKEN --related DEF-LNCH-4-RETRY --author @kj   # the line it read goes to the log
 pm-tools describe docs/defects-app.md --category LNCH --text-file - < lnch-prose.md   # the whole prose block under the heading
-pm-tools close docs/defects-app.md --id DEF-LNCH-1 --author @kj --event "fixed: ..." \
+pm-tools close docs/defects-app.md --id DEF-LNCH-1-TOKEN --author @kj --event "fixed: ..." \
     --evidence "the repro no longer fires on build 412; 79 pytest green"
 
 # Migrate a legacy document (dry run first, always)
 pm-tools upgrade docs/acceptance-criteria.md
 pm-tools upgrade docs/acceptance-criteria.md --code "Authentication=AUTH" --author @kj --apply
+
+# Migrate ids to codes (mapping format and order in references/codes.md)
+pm-tools migrate-codes docs/defects-app.md --map defects.map --author @kj   # idempotent; reports gaps
+pm-tools rename-code docs/defects-app.md --id DEF-LNCH-1 --code TOKEN --author @kj   # rewrites the links
 ```
 
-`check` is the only gate and it is a gate, not a reporter: non-zero exit on errors (a duplicate id, an untriaged defect, an unrated criterion, a hand-kept contents table, the wrong hint line for the discipline, a dangling relation, a blocked-by or override cycle, an override on one item only), and `--strict` also fails on warnings (a missing repro, an undescribed category, an open item blocked by a finished one or overridden). `relate` keeps both dependency graphs free of cycles as it writes: a new link that closes a cycle holds, and the older links into the item that takes it are removed and logged. Run it on the directory, so a link into the file beside resolves.
+`check` is the only gate and it is a gate, not a reporter: non-zero exit on errors (a duplicate id, a malformed item code, an untriaged defect, an unrated criterion, a hand-kept contents table, the wrong hint line for the discipline, a dangling relation, a blocked-by or override cycle, an override on one item only), and `--strict` also fails on warnings (an id with no code, a missing repro, an undescribed category, an open item blocked by a finished one or overridden). `relate` keeps both dependency graphs free of cycles as it writes: a new link that closes a cycle holds, and the older links into the item that takes it are removed and logged. Run it on the directory, so a link into the file beside resolves.
 
 ## Reports
 
 `report` prints paste-ready markdown tables. SUMMARY is the one aggregate, in plain counts and two grids, one per axis: status - `| Category | Open | Fixed | Rejected | Total |` (`Done` on criteria) - then the open items split per level under `Open by severity` (`| Category | CRITICAL | MAJOR | MEDIUM | MINOR | Open |`) or `Open by importance` (CRITICAL, HIGH, MEDIUM, LOW), each with a Total row; the level grid breaks the Open column down alone, is printed only when something is open, and carries an `UNTRIAGED` / `UNRATED` column only when an open item lacks a level. ITEMS is a fix queue rather than an inventory: open work only, grouped by category and worst level first inside each category, with closed and rejected counted in a footer instead of enumerated. `--detail` swaps the tables for one block per item, carrying the repro line, the tags, the relations and the whole log. `coverage` prints the test-coverage grid - categories down, occurring tags across (`UNIT`, `INTEGRATION`, `FUNCTIONAL`, `E2E`, `MANUAL`, then any other, `NO-TEST` last), counting open and closed items alike.
 
-Filters are flags, so a narrowed ask stays computed rather than being filtered by hand in the answer. `--severity`, `--importance`, `--category`, `--author`, `--tag` (any case), `--regressions` and a date window (`--dates filed|closed|updated` with `--since` and `--until`) narrow the whole report; `--status` narrows the queue alone. `--grep PATTERN` (a case-insensitive regex over title, body, evidence and log lines), `--blocked` (an open blocked-by target) and `--related-to ID` (linked either way) narrow the same way. `--plain` prints the grids and the queue without the icons or the categories table - and `--summary` stops at the SUMMARY grid, listing no items at all.
+Filters are flags, so a narrowed ask stays computed rather than being filtered by hand in the answer. `--severity`, `--importance`, `--category`, `--code`, `--author`, `--tag` (any case), `--regressions` and a date window (`--dates filed|closed|updated` with `--since` and `--until`) narrow the whole report; `--status` narrows the queue alone. `--grep PATTERN` (a case-insensitive regex over title, body, evidence and log lines), `--blocked` (an open blocked-by target) and `--related-to ID` (linked either way) narrow the same way. `--plain` prints the grids and the queue without the icons or the categories table - and `--summary` stops at the SUMMARY grid, listing no items at all.
 
-A question the report does not answer is still a computed table. `list` prints one table of items with the columns and sort order the question calls for, and `pivot` prints an ad-hoc grid - any field down, any field across, a count or the ids in every cell - over the same filters: who owns what by severity, open work by age band, regressions per defect, closures per month by category. `related`, `blockers`, `overrides` and `overridden-by` are fields like `tags`. `search "QUERY"` ranks items by relevance (BM25, fuzzy on typos and stems) after the same filters narrow the candidates; `--grep` filters, `search` ranks. `--json` on any query returns the same facts as data.
+A question the report does not answer is still a computed table. `list` prints one table of items with the columns and sort order the question calls for, and `pivot` prints an ad-hoc grid - any field down, any field across, a count or the ids in every cell - over the same filters: who owns what by severity, open work by age band, work by item code, regressions per defect, closures per month by category. `code`, `related`, `blockers`, `overrides` and `overridden-by` are fields like `tags`. `search "QUERY"` ranks items by relevance (BM25, fuzzy on typos and stems) after the same filters narrow the candidates; `--grep` filters, `search` ranks. `--json` on any query returns the same facts as data, each record carrying its `code`.
 
 ## Rules summary
 

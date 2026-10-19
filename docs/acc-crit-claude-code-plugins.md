@@ -23,110 +23,129 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
 | Aesthetic quality vs the examples/ bar | - | owns |
 | Label/number truth against source content | - | owns |
 
-- [x] `ACC-SVG-1` **CLI: document construction** - HIGH; parseable XML, canvas/viewBox read, per-tag geometry sane
+- [x] `ACC-SVG-1-CONSTRUCT` **CLI: document construction** - HIGH; parseable XML, canvas/viewBox read, per-tag geometry sane
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj in place (v1.6.45)
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:11:40Z @kj edited test-tags (added)
-- [x] `ACC-SVG-2` **CLI: connector construction** - HIGH; stem attaches to card edge, arrowhead aligned to stem and sized from it, zero-length stems flagged
+  - log: 2026-10-18T15:14:44Z @kj coded CONSTRUCT
+- [x] `ACC-SVG-2-CONNECTOR` **CLI: connector construction** - HIGH; stem attaches to card edge, arrowhead aligned to stem and sized from it, zero-length stems flagged
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj in place (v1.6.45)
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:40Z @kj edited test-tags (added)
-- [x] `ACC-SVG-3` **CLI: overlap geometry** - HIGH; rendered boxes of visible elements do not overlap; hidden subtrees excluded via one shared `is_display_none` predicate across colour scan, connector walk and overlaps model
+  - log: 2026-10-18T15:14:44Z @kj coded CONNECTOR
+- [x] `ACC-SVG-3-OVERLAP` **CLI: overlap geometry** - HIGH; rendered boxes of visible elements do not overlap; hidden subtrees excluded via one shared `is_display_none` predicate across colour scan, connector walk and overlaps model
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj predicate unified across the three layers (round-8 fix)
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:11:40Z @kj edited test-tags (added)
-- [x] `ACC-SVG-4` **CLI: colour arithmetic** - HIGH; WCAG contrast ratios in both themes against the elected background; unreadable paint is reported UNMEASURABLE, never silently passed
+  - log: 2026-10-18T15:14:44Z @kj coded OVERLAP
+- [x] `ACC-SVG-4-COLOUR` **CLI: colour arithmetic** - HIGH; WCAG contrast ratios in both themes against the elected background; unreadable paint is reported UNMEASURABLE, never silently passed
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj in place (v1.6.45)
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:11:40Z @kj edited test-tags (added)
-- [x] `ACC-SVG-5` **CLI: CSS discipline** - MEDIUM; class-based paint, no forbidden colours, dark-mode declarations where light ones exist
+  - log: 2026-10-18T15:14:44Z @kj coded COLOUR
+- [x] `ACC-SVG-5-CSS` **CLI: CSS discipline** - MEDIUM; class-based paint, no forbidden colours, dark-mode declarations where light ones exist
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj in place (v1.6.45)
   - log: 2026-08-28T09:11:39Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [x] `ACC-SVG-6` **CLI: roster honesty** - HIGH; every aspect reports PASS/FAIL/NA/SKIP; an unasked SKIP flips the verdict to NOT VERIFIED plus exit 1 on every branch, HARD path included; `--json` carries the per-file `skipped` map and `totals`
+  - log: 2026-10-18T15:14:44Z @kj coded CSS
+- [x] `ACC-SVG-6-ROSTER` **CLI: roster honesty** - HIGH; every aspect reports PASS/FAIL/NA/SKIP; an unasked SKIP flips the verdict to NOT VERIFIED plus exit 1 on every branch, HARD path included; `--json` carries the per-file `skipped` map and `totals`
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj HARD-path stderr gap closed (round-8 fix)
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [x] `ACC-SVG-7` **CLI: no generative evals** - HIGH; the CLI never attempts readability, semantic or aesthetic judgment; checks stay deterministic (construction, geometry, colour arithmetic)
+  - log: 2026-10-18T15:14:44Z @kj coded ROSTER
+- [x] `ACC-SVG-7-GEN-EVAL` **CLI: no generative evals** - HIGH; the CLI never attempts readability, semantic or aesthetic judgment; checks stay deterministic (construction, geometry, colour arithmetic)
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj doctrine set by the Star Colonel
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [ ] `ACC-SVG-8` **CLI: verdict names the floor** - MEDIUM; verdict lines assert what was checked, never overall quality
+  - log: 2026-10-18T15:14:44Z @kj coded GEN-EVAL
+- [ ] `ACC-SVG-8-VERDICT` **CLI: verdict names the floor** - MEDIUM; verdict lines assert what was checked, never overall quality
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added - the current "OK - shippable" wording predates the split; reword decision pending the Star Colonel
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [x] `ACC-SVG-9` **Process: hypothesis first** - HIGH; every graphic states its rationale before any wireframing; the CLI cannot check this
+  - log: 2026-10-18T15:14:44Z @kj coded VERDICT
+- [x] `ACC-SVG-9-HYPOTHESIS` **Process: hypothesis first** - HIGH; every graphic states its rationale before any wireframing; the CLI cannot check this
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj in place (standing directive)
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [ ] `ACC-SVG-10` **Process: legibility at ship size** - HIGH; generative review of the rendered PNG; no deterministic proxy exists
+  - log: 2026-10-18T15:14:44Z @kj coded HYPOTHESIS
+- [ ] `ACC-SVG-10-LEGIBILITY` **Process: legibility at ship size** - HIGH; generative review of the rendered PNG; no deterministic proxy exists
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [ ] `ACC-SVG-11` **Process: semantic fit** - HIGH; the graphic says what the hypothesis claims; metaphor and flow fit the content
+  - log: 2026-10-18T15:14:44Z @kj coded LEGIBILITY
+- [ ] `ACC-SVG-11-SEMANTIC` **Process: semantic fit** - HIGH; the graphic says what the hypothesis claims; metaphor and flow fit the content
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [ ] `ACC-SVG-12` **Process: examples bar** - HIGH; side-by-side against `plugins/svg-infographics/examples/` production references; "readable infographic" is a generative judgment
+  - log: 2026-10-18T15:14:44Z @kj coded SEMANTIC
+- [ ] `ACC-SVG-12-EXAMPLES` **Process: examples bar** - HIGH; side-by-side against `plugins/svg-infographics/examples/` production references; "readable infographic" is a generative judgment
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [ ] `ACC-SVG-13` **Process: label truth** - CRITICAL; labels and numbers match the source content the graphic summarizes
+  - log: 2026-10-18T15:14:44Z @kj coded EXAMPLES
+- [ ] `ACC-SVG-13-LABEL` **Process: label truth** - CRITICAL; labels and numbers match the source content the graphic summarizes
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [ ] `ACC-SVG-14` **Process: ambiguity adjudication** - MEDIUM; intentional layering vs overlap defect, decorative density vs clutter: judged by the model, never the CLI
+  - log: 2026-10-18T15:14:44Z @kj coded LABEL
+- [ ] `ACC-SVG-14-AMBIGUITY` **Process: ambiguity adjudication** - MEDIUM; intentional layering vs overlap defect, decorative density vs clutter: judged by the model, never the CLI
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [x] `ACC-SVG-15` **Ship = floor AND judgment** - CRITICAL; a graphic ships when the CLI floor passes AND the generative review accepts; a CLI PASS alone is never a ship decision
+  - log: 2026-10-18T15:14:44Z @kj coded AMBIGUITY
+- [x] `ACC-SVG-15-SHIP` **Ship = floor AND judgment** - CRITICAL; a graphic ships when the CLI floor passes AND the generative review accepts; a CLI PASS alone is never a ship decision
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj doctrine set by the Star Colonel
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
-- [x] `ACC-SVG-164` **Partial shape overlap is HARD** - HIGH; Two shapes whose painted fills partly overlap give a HARD finding; a shape fully inside another gives none.
+  - log: 2026-10-18T15:14:44Z @kj coded SHIP
+- [x] `ACC-SVG-164-PARTIAL-OVERLAP` **Partial shape overlap is HARD** - HIGH; Two shapes whose painted fills partly overlap give a HARD finding; a shape fully inside another gives none.
   - evidence: tests/test_check_ink.py::test_planted_overlaps_are_hard passes; pass-chip inside pass-card gives no finding
   - test-tags: UNIT
   - test: fixture ink_overlaps.svg: fail-badge with fail-pill reported, pass-chip inside pass-card silent
   - log: 2026-09-30T11:18:54Z @kj added
   - log: 2026-09-30T12:12:43Z @kj edited test-tags added "UNIT"
   - log: 2026-09-30T12:12:43Z @kj closed
-- [x] `ACC-SVG-165` **Edge across text is HARD** - HIGH; A shape edge or line whose painted stroke crosses painted text gives a HARD finding.
+  - log: 2026-10-18T15:14:44Z @kj coded PARTIAL-OVERLAP
+- [x] `ACC-SVG-165-EDGE-TEXT` **Edge across text is HARD** - HIGH; A shape edge or line whose painted stroke crosses painted text gives a HARD finding.
   - evidence: tests/test_check_ink.py::test_planted_overlaps_are_hard passes for fail-edge-pill with fail-edge-text
   - test-tags: UNIT
   - test: fixture ink_overlaps.svg: fail-edge-pill with fail-edge-text reported
   - log: 2026-09-30T11:18:54Z @kj added
   - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
   - log: 2026-09-30T12:12:44Z @kj closed
-- [x] `ACC-SVG-166` **Text on text is HARD** - HIGH; Two texts whose painted glyphs overlap give a HARD finding.
+  - log: 2026-10-18T15:14:44Z @kj coded EDGE-TEXT
+- [x] `ACC-SVG-166-TEXT-TEXT` **Text on text is HARD** - HIGH; Two texts whose painted glyphs overlap give a HARD finding.
   - evidence: tests/test_check_ink.py::test_planted_overlaps_are_hard passes for fail-text-a with fail-text-b
   - test-tags: UNIT
   - test: fixture ink_overlaps.svg: fail-text-a with fail-text-b reported
   - log: 2026-09-30T11:18:54Z @kj added
   - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
   - log: 2026-09-30T12:12:44Z @kj closed
-- [x] `ACC-SVG-167` **Text partly outside its shape is HARD** - HIGH; Text whose glyphs lie partly inside and partly outside a shape's fill gives a HARD finding.
+  - log: 2026-10-18T15:14:44Z @kj coded TEXT-TEXT
+- [x] `ACC-SVG-167-TEXT-OUTSIDE` **Text partly outside its shape is HARD** - HIGH; Text whose glyphs lie partly inside and partly outside a shape's fill gives a HARD finding.
   - evidence: tests/test_check_ink.py::test_planted_overlaps_are_hard passes for fail-short-box with fail-long-text
   - test-tags: UNIT
   - test: fixture ink_overlaps.svg: fail-short-box with fail-long-text reported
   - log: 2026-09-30T11:18:54Z @kj added
   - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
   - log: 2026-09-30T12:12:44Z @kj closed
-- [x] `ACC-SVG-168` **Near-miss under 3 px is SOFT** - MEDIUM; Text closer than 3 px to text, a stroke or a line, or an arrowhead that close to a shape it does not point into, gives a SOFT finding with the measured gap.
+  - log: 2026-10-18T15:14:44Z @kj coded TEXT-OUTSIDE
+- [x] `ACC-SVG-168-NEAR-MISS` **Near-miss under 3 px is SOFT** - MEDIUM; Text closer than 3 px to text, a stroke or a line, or an arrowhead that close to a shape it does not point into, gives a SOFT finding with the measured gap.
   - evidence: tests/test_check_ink.py::test_near_misses_are_soft_with_the_gap passes; arrowhead 0.5 px, text 1.5 px
   - test-tags: UNIT
   - test: fixture ink_overlaps.svg: near-connector with near-box and tight-text with tight-box reported SOFT
@@ -134,7 +153,8 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
   - log: 2026-09-30T12:12:44Z @kj closed
   - log: 2026-09-30T12:12:53Z @kj edited text "Text, connectors and shape edges closer than 3 px without touching give a SOFT finding with the measured gap." -> "Text closer than 3 px to text, a stroke or a line, or an arrowhead that close to a shape it does not point into, gives a SOFT finding with the measured gap."
-- [x] `ACC-SVG-169` **Clean graphics give no overlap findings** - HIGH; Labels inside their shapes, nested shapes and connectors touching their ends give no finding.
+  - log: 2026-10-18T15:14:44Z @kj coded NEAR-MISS
+- [x] `ACC-SVG-169-CLEAN-GRAPHIC` **Clean graphics give no overlap findings** - HIGH; Labels inside their shapes, nested shapes and connectors touching their ends give no finding.
   - evidence: tests/test_check_ink.py clean-case and shipped-corpus tests pass; 0 HARD on all 12 files
   - test-tags: UNIT
   - test: fixture pass cases silent; the 12 shipped SVGs in .resources/svg and the plugin examples report zero HARD overlaps
@@ -142,349 +162,400 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-09-30T12:12:43Z @kj edited test "fixture ink_overlaps.svg pass cases silent; the 12 shipped SVGs in .resources/svg and the plugin examples report zero" -> "fixture pass cases silent; the 12 shipped SVGs in .resources/svg and the plugin examples report zero HARD overlaps"
   - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
   - log: 2026-09-30T12:12:44Z @kj closed
-- [x] `ACC-SVG-170` **Finding names both elements and the place** - MEDIUM; Each finding names both elements by id or text with their SVG source line, and the overlap box in SVG units.
+  - log: 2026-10-18T15:14:44Z @kj coded CLEAN-GRAPHIC
+- [x] `ACC-SVG-170-FINDING-NAMES` **Finding names both elements and the place** - MEDIUM; Each finding names both elements by id or text with their SVG source line, and the overlap box in SVG units.
   - evidence: tests/test_check_ink.py::test_finding_names_both_elements_and_the_place passes
   - test-tags: UNIT
   - test: unit test on the fixture asserts ids, line numbers and box for fail-badge with fail-pill
   - log: 2026-09-30T11:18:54Z @kj added
   - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
   - log: 2026-09-30T12:12:44Z @kj closed
-- [x] `ACC-SVG-171` **Overlay image marks each finding** - MEDIUM; overlaps --overlay PATH writes a PNG of the graphic with a numbered box on each finding.
+  - log: 2026-10-18T15:14:44Z @kj coded FINDING-NAMES
+- [x] `ACC-SVG-171-OVERLAY` **Overlay image marks each finding** - MEDIUM; overlaps --overlay PATH writes a PNG of the graphic with a numbered box on each finding.
   - evidence: tests/test_check_ink.py::test_overlay_marks_each_finding passes; overlaps --overlay writes the PNG
   - test-tags: UNIT
   - test: run overlaps --overlay on the fixture; PNG exists with one box per finding
   - log: 2026-09-30T11:18:54Z @kj added
   - log: 2026-09-30T12:12:44Z @kj edited test-tags added "UNIT"
   - log: 2026-09-30T12:12:44Z @kj closed
-- [x] `ACC-SVG-172` **Collision tree limits exact tests** - MEDIUM; A spatial tree over element boxes yields the candidate pairs; pairs farther apart than the clearance get no exact test.
+  - log: 2026-10-18T15:14:44Z @kj coded OVERLAY
+- [x] `ACC-SVG-172-COLLISION-TREE` **Collision tree limits exact tests** - MEDIUM; A spatial tree over element boxes yields the candidate pairs; pairs farther apart than the clearance get no exact test.
   - evidence: tests/test_check_ink.py collision-tree tests pass; judge runs once per STRtree candidate pair
   - test-tags: UNIT
   - test: unit test counts exact tests against the pairs the tree returns
   - log: 2026-09-30T11:18:55Z @kj added
   - log: 2026-09-30T12:12:45Z @kj edited test-tags added "UNIT"
   - log: 2026-09-30T12:12:45Z @kj closed
-- [x] `ACC-SVG-173` **Finalize uses the ink check for overlaps** - HIGH; finalize reports overlaps from the ink check; padded-box pair findings are gone from its output.
+  - log: 2026-10-18T15:14:44Z @kj coded COLLISION-TREE
+- [x] `ACC-SVG-173-FINALIZE` **Finalize uses the ink check for overlaps** - HIGH; finalize reports overlaps from the ink check; padded-box pair findings are gone from its output.
   - evidence: tests/test_check_ink.py::test_finalize_reports_ink_findings passes; 4 HARD and 2 SOFT ink findings, no box pair
   - test-tags: UNIT
   - test: finalize on the fixture lists the 4 HARD and 2 SOFT ink findings and no box-pair finding
   - log: 2026-09-30T11:18:55Z @kj added
   - log: 2026-09-30T12:12:45Z @kj edited test-tags added "UNIT"
   - log: 2026-09-30T12:12:45Z @kj closed
+  - log: 2026-10-18T15:14:44Z @kj coded FINALIZE
 
 ## pm-tools relations and search `PMREL`
 
 related/blocked-by links in every query surface, an exact --grep filter, a ranked search and link integrity in check
 
-- [x] `ACC-PMREL-16` **related field** - HIGH; list --columns related shows the outbound related: ids of each item, - when none
+- [x] `ACC-PMREL-16-RELATED` **related field** - HIGH; list --columns related shows the outbound related: ids of each item, - when none
   - evidence: tests/test_pm_tools.py 114 green incl. the 16 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: tracker with one related: line; list --columns id,related
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:36Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-17` **blockers field** - HIGH; list --columns blockers shows the outbound blocked-by: ids of each item
+  - log: 2026-10-18T15:14:44Z @kj coded RELATED
+- [x] `ACC-PMREL-17-BLOCKERS` **blockers field** - HIGH; list --columns blockers shows the outbound blocked-by: ids of each item
   - evidence: tests/test_pm_tools.py 114 green incl. the 17 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: tracker with one blocked-by: line; list --columns id,blockers
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:36Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-18` **pivot on relation fields** - MEDIUM; pivot --rows blockers buckets one row per target id and names the empty bucket
+  - log: 2026-10-18T15:14:44Z @kj coded BLOCKERS
+- [x] `ACC-PMREL-18-PIVOT` **pivot on relation fields** - MEDIUM; pivot --rows blockers buckets one row per target id and names the empty bucket
   - evidence: tests/test_pm_tools.py 114 green incl. the 18 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: two items, one blocked; pivot --rows blockers
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-19` **report detail shows links** - MEDIUM; report --detail prints the related: and blocked-by: lines under the item
+  - log: 2026-10-18T15:14:44Z @kj coded PIVOT
+- [x] `ACC-PMREL-19-REPORT-DETAIL` **report detail shows links** - MEDIUM; report --detail prints the related: and blocked-by: lines under the item
   - evidence: tests/test_pm_tools.py 114 green incl. the 19 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: item with both kinds of link; report --detail
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-20` **--blocked filter** - HIGH; blocked keeps only items with at least one blocked-by target that is still open
+  - log: 2026-10-18T15:14:44Z @kj coded REPORT-DETAIL
+- [x] `ACC-PMREL-20-FILTER-BLOCKED` **--blocked filter** - HIGH; blocked keeps only items with at least one blocked-by target that is still open
   - evidence: tests/test_pm_tools.py 114 green incl. the 20 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: blocker open then closed; list --blocked before and after
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:40Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-21` **--related-to filter** - HIGH; related-to ID keeps items linked to ID in either direction and either kind, never ID itself
+  - log: 2026-10-18T15:14:44Z @kj coded FILTER-BLOCKED
+- [x] `ACC-PMREL-21-FILTER-RELATED` **--related-to filter** - HIGH; related-to ID keeps items linked to ID in either direction and either kind, never ID itself
   - evidence: tests/test_pm_tools.py 114 green incl. the 21 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: A related: B; list --related-to A and --related-to B
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:40Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-22` **refs outbound** - HIGH; refs --id lists what ID points at as well as what points at it
+  - log: 2026-10-18T15:14:44Z @kj coded FILTER-RELATED
+- [x] `ACC-PMREL-22-REFS-OUT` **refs outbound** - HIGH; refs --id lists what ID points at as well as what points at it
   - evidence: tests/test_pm_tools.py 114 green incl. the 22 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: item with a related: line; refs --id on it
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:40Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-23` **refs blocker chain** - HIGH; refs --id prints the transitive blocked-by chain with each hop's status
+  - log: 2026-10-18T15:14:44Z @kj coded REFS-OUT
+- [x] `ACC-PMREL-23-BLOCKER-CHAIN` **refs blocker chain** - HIGH; refs --id prints the transitive blocked-by chain with each hop's status
   - evidence: tests/test_pm_tools.py 114 green incl. the 23 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: A blocked-by B blocked-by C; refs --id A
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:40Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-24` **--grep filter** - HIGH; grep PATTERN keeps items whose title, body, evidence or a log line matches the case-insensitive regex, on report, list and pivot
+  - log: 2026-10-18T15:14:44Z @kj coded BLOCKER-CHAIN
+- [x] `ACC-PMREL-24-GREP` **--grep filter** - HIGH; grep PATTERN keeps items whose title, body, evidence or a log line matches the case-insensitive regex, on report, list and pivot
   - evidence: tests/test_pm_tools.py 114 green incl. the 24 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: two items; list --grep on a word only one carries
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:39Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-25` **Edge: invalid --grep** - MEDIUM; an unparseable --grep pattern is refused with the regex error, exit non-zero
+  - log: 2026-10-18T15:14:44Z @kj coded GREP
+- [x] `ACC-PMREL-25-EDGE-GREP` **Edge: invalid --grep** - MEDIUM; an unparseable --grep pattern is refused with the regex error, exit non-zero
   - evidence: tests/test_pm_tools.py 114 green incl. the 25 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: list --grep '('
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:40Z @kj edited importance
   - log: 2026-08-28T09:44:21Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-26` **search ranks by BM25** - HIGH; search QUERY orders items by BM25 over id, title, body, evidence and logs with id and title weighted higher
+  - log: 2026-10-18T15:14:44Z @kj coded EDGE-GREP
+- [x] `ACC-PMREL-26-BM25` **search ranks by BM25** - HIGH; search QUERY orders items by BM25 over id, title, body, evidence and logs with id and title weighted higher
   - evidence: tests/test_pm_tools.py 114 green incl. the 26 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: two items sharing a body word, one carrying it in the title; search that word
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:40Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-27` **search tolerates a typo** - MEDIUM; a query token with one typo or a stem still matches through fuzzy token matching
+  - log: 2026-10-18T15:14:44Z @kj coded BM25
+- [x] `ACC-PMREL-27-TYPO` **search tolerates a typo** - MEDIUM; a query token with one typo or a stem still matches through fuzzy token matching
   - evidence: tests/test_pm_tools.py 114 green incl. the 27 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: title 'token race'; search tokne
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:40Z @kj edited importance
   - log: 2026-08-28T09:44:21Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-28` **search --top** - LOW; top N truncates the rows and the footer states how many matched
+  - log: 2026-10-18T15:14:44Z @kj coded TYPO
+- [x] `ACC-PMREL-28-TOP-N` **search --top** - LOW; top N truncates the rows and the footer states how many matched
   - evidence: tests/test_pm_tools.py 114 green incl. the 28 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: 12 hits; search --top 3
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:39Z @kj edited importance
   - log: 2026-08-28T09:44:21Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-29` **search --json** - MEDIUM; search --json returns rank, id, score, title, matched_in, file and line per row
+  - log: 2026-10-18T15:14:44Z @kj coded TOP-N
+- [x] `ACC-PMREL-29-JSON` **search --json** - MEDIUM; search --json returns rank, id, score, title, matched_in, file and line per row
   - evidence: tests/test_pm_tools.py 114 green incl. the 29 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: search --json; parse
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:39Z @kj edited importance
   - log: 2026-08-28T09:44:21Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-30` **search takes FILTERS** - HIGH; search accepts the shared FILTERS and ranks only what they leave
+  - log: 2026-10-18T15:14:44Z @kj coded JSON
+- [x] `ACC-PMREL-30-SEARCH-FILTERS` **search takes FILTERS** - HIGH; search accepts the shared FILTERS and ranks only what they leave
   - evidence: tests/test_pm_tools.py 114 green incl. the 30 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: search --status open on a mixed tracker
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:39Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-31` **Edge: empty query** - LOW; a query with no searchable token is refused with a message
+  - log: 2026-10-18T15:14:44Z @kj coded SEARCH-FILTERS
+- [x] `ACC-PMREL-31-EDGE-EMPTY` **Edge: empty query** - LOW; a query with no searchable token is refused with a message
   - evidence: tests/test_pm_tools.py 114 green incl. the 31 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: search ' '
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:44:21Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-32` **Edge: unquoted multi-word query** - MEDIUM; search docs token race is refused with the quoting hint instead of ranking race
+  - log: 2026-10-18T15:14:44Z @kj coded EDGE-EMPTY
+- [x] `ACC-PMREL-32-EDGE-QUOTE` **Edge: unquoted multi-word query** - MEDIUM; search docs token race is refused with the quoting hint instead of ranking race
   - evidence: tests/test_pm_tools.py 114 green incl. the 32 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: search docs token race
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:44:21Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-33` **check: dangling link is an error** - HIGH; a related: or blocked-by: target absent from the scanned files fails check
+  - log: 2026-10-18T15:14:44Z @kj coded EDGE-QUOTE
+- [x] `ACC-PMREL-33-CHECK-DANGLING` **check: dangling link is an error** - HIGH; a related: or blocked-by: target absent from the scanned files fails check
   - evidence: tests/test_pm_tools.py 114 green incl. the 33 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: link to DEF-NONE-9; check
   - test-tags: UNIT
   - log: 2026-08-28T08:20:49Z @kj added
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-34` **check: cycle is an error** - HIGH; a blocked-by cycle fails check, reported once on its smallest id
+  - log: 2026-10-18T15:14:44Z @kj coded CHECK-DANGLING
+- [x] `ACC-PMREL-34-CHECK-CYCLE` **check: cycle is an error** - HIGH; a blocked-by cycle fails check, reported once on its smallest id
   - evidence: tests/test_pm_tools.py 114 green incl. the 34 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: A blocked-by B, B blocked-by A; check
   - test-tags: UNIT
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-35` **check: closed blocker warns** - MEDIUM; an open item blocked by a closed or rejected target gets a warning naming the target
+  - log: 2026-10-18T15:14:44Z @kj coded CHECK-CYCLE
+- [x] `ACC-PMREL-35-CHECK-BLOCKER` **check: closed blocker warns** - MEDIUM; an open item blocked by a closed or rejected target gets a warning naming the target
   - evidence: tests/test_pm_tools.py 114 green incl. the 35 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: close the blocker; check
   - test-tags: UNIT
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:44:21Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-36` **stdlib only** - HIGH; the search and relation code adds no dependency and no import cost at startup
+  - log: 2026-10-18T15:14:44Z @kj coded CHECK-BLOCKER
+- [x] `ACC-PMREL-36-STDLIB` **stdlib only** - HIGH; the search and relation code adds no dependency and no import cost at startup
   - evidence: tests/test_pm_tools.py 114 green incl. the 36 contract tests; confirming reviews SHIP on wf_62aa2929 fixes and wf_da9438b2
   - test: grep imports in pm_tools.py; time pm-tools --help
   - test-tags: MANUAL
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:44:20Z @kj closed: shipped with the relations/search and reporting passes
-- [x] `ACC-PMREL-140` **refs refuses an unknown id** - MEDIUM; `refs --id` on an id that is in no scanned file and that nothing points at exits non-zero with a no item with id message
+  - log: 2026-10-18T15:14:44Z @kj coded STDLIB
+- [x] `ACC-PMREL-140-REFS-UNKNOWN` **refs refuses an unknown id** - MEDIUM; `refs --id` on an id that is in no scanned file and that nothing points at exits non-zero with a no item with id message
   - evidence: tests/test_pm_tools.py::test_refs_refuses_an_unknown_id passes; dropping the guard fails it with DID NOT RAISE
   - test: refs on a filed id exits 0 with the zero-reference summary, refs on an absent id raises SystemExit
   - test-tags: UNIT
   - log: 2026-09-06T16:25:30Z @kj added
   - log: 2026-09-06T16:25:50Z @kj closed
-- [x] `ACC-PMREL-174` **override written on both items** - HIGH; relate --overrides B on A writes overrides: B on A and overridden-by: A on B; --overridden-by is the same link made from B
+  - log: 2026-10-18T15:14:44Z @kj coded REFS-UNKNOWN
+- [x] `ACC-PMREL-174-OVERRIDE-BOTH` **override written on both items** - HIGH; relate --overrides B on A writes overrides: B on A and overridden-by: A on B; --overridden-by is the same link made from B
   - evidence: tests/test_pm_tools.py::test_an_override_is_written_on_both_items passes
   - test: relate one item, read the sub-lines of both
   - test-tags: UNIT
   - log: 2026-10-01T21:42:25Z @kj added
   - log: 2026-10-01T21:42:25Z @kj closed
-- [x] `ACC-PMREL-175` **override crosses trackers** - HIGH; a defect overrides a criterion and a criterion a defect; the second line lands in the tracker beside FILE
+  - log: 2026-10-18T15:14:44Z @kj coded OVERRIDE-BOTH
+- [x] `ACC-PMREL-175-OVERRIDE-CROSS` **override crosses trackers** - HIGH; a defect overrides a criterion and a criterion a defect; the second line lands in the tracker beside FILE
   - evidence: tests/test_pm_tools.py::test_a_defect_overrides_a_criterion_and_back_across_files and tests/test_pm_tools_functional.py::test_an_override_runs_across_both_trackers_and_the_newest_link_holds pass
   - test: relate a defect over a criterion in docs/, read the criteria file
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-01T21:42:25Z @kj added
   - log: 2026-10-01T21:42:25Z @kj closed
-- [x] `ACC-PMREL-176` **Edge: override target must exist** - MEDIUM; relate refuses an override that names no id or an id not in the trackers beside FILE; nothing is written
+  - log: 2026-10-18T15:14:44Z @kj coded OVERRIDE-CROSS
+- [x] `ACC-PMREL-176-EDGE-TARGET` **Edge: override target must exist** - MEDIUM; relate refuses an override that names no id or an id not in the trackers beside FILE; nothing is written
   - evidence: tests/test_pm_tools.py::test_an_override_needs_its_target_beside_the_file passes
   - test: relate --overrides ACC-AUTH-9 with no such item, compare the file
   - test-tags: UNIT
   - log: 2026-10-01T21:42:25Z @kj added
   - log: 2026-10-01T21:42:25Z @kj closed
-- [x] `ACC-PMREL-177` **many overrides per item** - MEDIUM; an item may override many items and be overridden by many; a link outside a cycle is never removed
+  - log: 2026-10-18T15:14:44Z @kj coded EDGE-TARGET
+- [x] `ACC-PMREL-177-OVERRIDE-MANY` **many overrides per item** - MEDIUM; an item may override many items and be overridden by many; a link outside a cycle is never removed
   - evidence: tests/test_pm_tools.py::test_many_overrides_stay_and_only_the_cycle_is_cut passes
   - test: one item overrides two, a cycle is closed elsewhere, both links remain
   - test-tags: UNIT
   - log: 2026-10-01T21:42:25Z @kj added
   - log: 2026-10-01T21:42:25Z @kj closed
-- [x] `ACC-PMREL-178` **override cycle: newest link holds** - HIGH; an override link that closes a cycle is written; every older link into the item that takes it, from the item it points at or anything that item leads to, is removed on both items
+  - log: 2026-10-18T15:14:44Z @kj coded OVERRIDE-MANY
+- [x] `ACC-PMREL-178-CYCLE-OVERRIDE` **override cycle: newest link holds** - HIGH; an override link that closes a cycle is written; every older link into the item that takes it, from the item it points at or anything that item leads to, is removed on both items
   - evidence: tests/test_pm_tools.py::test_a_reversed_override_replaces_the_old_pair and test_many_overrides_stay_and_only_the_cycle_is_cut pass
   - test: A overrides B, then relate B --overrides A --author; the old pair is gone
   - test-tags: UNIT
   - log: 2026-10-01T21:42:25Z @kj added
   - log: 2026-10-01T21:42:25Z @kj closed
-- [x] `ACC-PMREL-179` **blocked-by cycle: newest link holds** - HIGH; a blocked-by link that closes a cycle is written and the older link into the item that takes it is removed; other ids on that line stay
+  - log: 2026-10-18T15:14:44Z @kj coded CYCLE-OVERRIDE
+- [x] `ACC-PMREL-179-CYCLE-BLOCKED` **blocked-by cycle: newest link holds** - HIGH; a blocked-by link that closes a cycle is written and the older link into the item that takes it is removed; other ids on that line stay
   - evidence: tests/test_pm_tools.py::test_a_blocked_by_cycle_is_broken_and_the_newest_link_holds and test_cutting_one_id_keeps_the_others_on_the_line pass
   - test: 1 blocked-by 2, 2 blocked-by 3, relate 3 --blocked-by 1 --author; check exits 0
   - test-tags: UNIT
   - log: 2026-10-01T21:42:25Z @kj added
   - log: 2026-10-01T21:42:25Z @kj closed
-- [x] `ACC-PMREL-180` **removed link is logged, and authored** - HIGH; each removed link is logged on the item that lost the line, with the line's wording; without --author relate refuses and writes nothing
+  - log: 2026-10-18T15:14:44Z @kj coded CYCLE-BLOCKED
+- [x] `ACC-PMREL-180-LINK-LOGGED` **removed link is logged, and authored** - HIGH; each removed link is logged on the item that lost the line, with the line's wording; without --author relate refuses and writes nothing
   - evidence: tests/test_pm_tools.py::test_a_blocked_by_cycle_is_broken_and_the_newest_link_holds and test_a_reversed_override_replaces_the_old_pair pass
   - test: close a cycle without --author, compare the files; repeat with --author, read the log lines
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-01T21:42:26Z @kj added
   - log: 2026-10-01T21:42:26Z @kj closed
-- [x] `ACC-PMREL-181` **Edge: link to itself refused** - MEDIUM; relate refuses a blocked-by or override link from an item to itself; nothing is written
+  - log: 2026-10-18T15:14:44Z @kj coded LINK-LOGGED
+- [x] `ACC-PMREL-181-EDGE-SELF` **Edge: link to itself refused** - MEDIUM; relate refuses a blocked-by or override link from an item to itself; nothing is written
   - evidence: tests/test_pm_tools.py::test_relate_refuses_a_link_from_an_item_to_itself passes
   - test: relate --id X --blocked-by X, then --overrides X
   - test-tags: UNIT
   - log: 2026-10-01T21:42:26Z @kj added
   - log: 2026-10-01T21:42:26Z @kj closed
-- [x] `ACC-PMREL-182` **check: override cycle is an error** - HIGH; an override cycle left by a hand edit fails check once and names relate as the repair; relate for the link that holds clears it
+  - log: 2026-10-18T15:14:44Z @kj coded EDGE-SELF
+- [x] `ACC-PMREL-182-CHECK-OVERRIDE` **check: override cycle is an error** - HIGH; an override cycle left by a hand edit fails check once and names relate as the repair; relate for the link that holds clears it
   - evidence: tests/test_pm_tools.py::test_check_errors_on_an_override_cycle_left_by_hand passes
   - test: hand-write both directions, run check, relate one direction with --author, run check
   - test-tags: UNIT
   - log: 2026-10-01T21:42:26Z @kj added
   - log: 2026-10-01T21:42:26Z @kj closed
-- [x] `ACC-PMREL-183` **check: one-sided override is an error** - HIGH; an override line whose other item lacks the second line fails check and names the relate call; that call writes only the missing line, a repeat writes nothing
+  - log: 2026-10-18T15:14:44Z @kj coded CHECK-OVERRIDE
+- [x] `ACC-PMREL-183-CHECK-ONESIDED` **check: one-sided override is an error** - HIGH; an override line whose other item lacks the second line fails check and names the relate call; that call writes only the missing line, a repeat writes nothing
   - evidence: tests/test_pm_tools.py::test_relate_again_writes_only_the_missing_side passes
   - test: delete one line of a pair, run check, run the named call, compare the file
   - test-tags: UNIT
   - log: 2026-10-01T21:42:26Z @kj added
   - log: 2026-10-01T21:42:26Z @kj closed
-- [x] `ACC-PMREL-184` **check: open overridden item warns** - MEDIUM; an open item with an overridden-by line gets a warning; --strict fails on it
+  - log: 2026-10-18T15:14:44Z @kj coded CHECK-ONESIDED
+- [x] `ACC-PMREL-184-CHECK-OPEN` **check: open overridden item warns** - MEDIUM; an open item with an overridden-by line gets a warning; --strict fails on it
   - evidence: tests/test_pm_tools.py::test_a_defect_overrides_a_criterion_and_back_across_files and tests/test_pm_tools_functional.py::test_an_override_runs_across_both_trackers_and_the_newest_link_holds pass
   - test: override an open criterion, run check and check --strict
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-01T21:42:26Z @kj added
   - log: 2026-10-01T21:42:26Z @kj closed
-- [x] `ACC-PMREL-185` **override fields and filters** - MEDIUM; list, pivot and --json carry overrides and overridden-by, each the ids on the item's own lines; --related-to and refs read both kinds
+  - log: 2026-10-18T15:14:44Z @kj coded CHECK-OPEN
+- [x] `ACC-PMREL-185-OVERRIDE-FIELDS` **override fields and filters** - MEDIUM; list, pivot and --json carry overrides and overridden-by, each the ids on the item's own lines; --related-to and refs read both kinds
   - evidence: tests/test_pm_tools.py::test_an_override_is_written_on_both_items and test_override_fields_pivot_and_json pass
   - test: list --columns id,overrides,overridden-by; pivot --rows overridden-by; refs --id
   - test-tags: UNIT
   - log: 2026-10-01T21:42:26Z @kj added
   - log: 2026-10-01T21:42:26Z @kj closed
-- [x] `ACC-PMREL-186` **override link documented** - MEDIUM; the override link and the cycle rule are stated in SKILL.md, both procedure skills, both references, the README and relate --help
+  - log: 2026-10-18T15:14:44Z @kj coded OVERRIDE-FIELDS
+- [x] `ACC-PMREL-186-OVERRIDE-DOCS` **override link documented** - MEDIUM; the override link and the cycle rule are stated in SKILL.md, both procedure skills, both references, the README and relate --help
   - evidence: tests/test_pm_tools_functional.py::test_the_override_link_is_documented_where_the_agent_reads_it passes
   - test: grep the eight files and relate --help
   - test-tags: FUNCTIONAL
   - log: 2026-10-01T21:42:26Z @kj added
   - log: 2026-10-01T21:42:27Z @kj closed
-- [x] `ACC-PMREL-191` **unrelate removes a link and logs it** - HIGH; unrelate removes the id from the item's lines of that kind; the log line keeps the line it read and the --event reason
+  - log: 2026-10-18T15:14:44Z @kj coded OVERRIDE-DOCS
+- [x] `ACC-PMREL-191-UNRELATE` **unrelate removes a link and logs it** - HIGH; unrelate removes the id from the item's lines of that kind; the log line keeps the line it read and the --event reason
   - evidence: tests/test_pm_tools.py::test_unrelate_removes_a_link_and_logs_the_line_it_read passes
   - test: relate two links, unrelate one, read the sub-lines
   - test-tags: UNIT
   - log: 2026-10-16T15:12:45Z @kj added
   - log: 2026-10-16T15:12:45Z @kj closed
-- [x] `ACC-PMREL-192` **unrelate removes an override from both items** - HIGH; an override goes from both items, across the trackers beside FILE; each item logs the removal
+  - log: 2026-10-18T15:14:44Z @kj coded UNRELATE
+- [x] `ACC-PMREL-192-UNRELATE-OVERRIDE` **unrelate removes an override from both items** - HIGH; an override goes from both items, across the trackers beside FILE; each item logs the removal
   - evidence: tests/test_pm_tools.py::test_unrelate_removes_an_override_from_both_items_across_files passes
   - test: relate a defect over a criterion, unrelate from the criterion, read both files
   - test-tags: UNIT
   - log: 2026-10-16T15:12:45Z @kj added
   - log: 2026-10-16T15:12:46Z @kj closed
-- [x] `ACC-PMREL-193` **Edge: unrelate refuses a link that is not there** - MEDIUM; a link the item does not carry is refused and nothing is written, the other links named in the call included
+  - log: 2026-10-18T15:14:44Z @kj coded UNRELATE-OVERRIDE
+- [x] `ACC-PMREL-193-EDGE-MISSING` **Edge: unrelate refuses a link that is not there** - MEDIUM; a link the item does not carry is refused and nothing is written, the other links named in the call included
   - evidence: tests/test_pm_tools.py::test_unrelate_refuses_a_link_the_item_does_not_carry_and_writes_nothing passes
   - test: unrelate one carried and one absent link, compare the file
   - test-tags: UNIT
   - log: 2026-10-16T15:12:46Z @kj added
   - log: 2026-10-16T15:12:46Z @kj closed
-- [x] `ACC-PMREL-194` **unrelate repairs a dangling relation** - MEDIUM; a link to an id that is in no tracker is removed by unrelate, and check passes again
+  - log: 2026-10-18T15:14:44Z @kj coded EDGE-MISSING
+- [x] `ACC-PMREL-194-REPAIR-DANGLING` **unrelate repairs a dangling relation** - MEDIUM; a link to an id that is in no tracker is removed by unrelate, and check passes again
   - evidence: tests/test_pm_tools.py::test_unrelate_removes_a_dangling_link_that_check_errors_on passes
   - test: link to a missing id, check, unrelate, check
   - test-tags: UNIT
   - log: 2026-10-16T15:12:46Z @kj added
   - log: 2026-10-16T15:12:46Z @kj closed
+  - log: 2026-10-18T15:14:44Z @kj coded REPAIR-DANGLING
 
 ## adversarial review tooling `REVIEW`
 
 review-tools CLI, graphify wiring in the devils-advocate reviewer and the measured cost rules for review rounds
 
-- [x] `ACC-REVIEW-37` **review-tools dossier** - HIGH; dossier builds an AST inventory of the given files: symbols, argparse surface versus documented subcommands, risky primitives, cross-module literals and top callers from graph.json
+- [x] `ACC-REVIEW-37-DOSSIER` **review-tools dossier** - HIGH; dossier builds an AST inventory of the given files: symbols, argparse surface versus documented subcommands, risky primitives, cross-module literals and top callers from graph.json
   - evidence: tests/test_review_tools.py dossier tests (11 tests green); 86 KB dossier of src/ built in 1.8 s
   - test: review-tools dossier on a fixture tree; assert each section
   - test-tags: UNIT
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T08:22:33Z @kj closed: verified on the sweep rounds
   - log: 2026-08-28T09:11:39Z @kj edited importance
-- [x] `ACC-REVIEW-38` **review-tools cost** - HIGH; cost profiles a subagent transcript deduplicated by API message id: turns, cache read, output, context median, tool mix, re-reads
+  - log: 2026-10-18T15:14:44Z @kj coded DOSSIER
+- [x] `ACC-REVIEW-38-COST` **review-tools cost** - HIGH; cost profiles a subagent transcript deduplicated by API message id: turns, cache read, output, context median, tool mix, re-reads
   - evidence: tests/test_review_tools.py cost test; round-2 transcripts profiled to 14 and 15 turns
   - test: jsonl with two lines sharing a message id; assert one turn
   - test-tags: UNIT
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T08:22:33Z @kj closed: verified on the sweep rounds
   - log: 2026-08-28T09:11:39Z @kj edited importance
-- [x] `ACC-REVIEW-39` **review-tools findings** - HIGH; findings merges VERDICT lines and severity bullets from N reports by file:line within 25 lines or normalised title
+  - log: 2026-10-18T15:14:44Z @kj coded COST
+- [x] `ACC-REVIEW-39-FINDINGS` **review-tools findings** - HIGH; findings merges VERDICT lines and severity bullets from N reports by file:line within 25 lines or normalised title
   - evidence: tests/test_review_tools.py findings merge test; round-1 panel reports merged for the adjudicator
   - test: two reports citing the same line; assert one merged finding
   - test-tags: UNIT
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T08:22:33Z @kj closed: verified on the sweep rounds
   - log: 2026-08-28T09:11:39Z @kj edited importance
-- [x] `ACC-REVIEW-40` **graphify in the reviewer** - MEDIUM; the adversarial-reviewer agent reads graphify affected, explain and path before grep when tmp/graphify-out/graph.json exists
+  - log: 2026-10-18T15:14:44Z @kj coded FINDINGS
+- [x] `ACC-REVIEW-40-GRAPHIFY` **graphify in the reviewer** - MEDIUM; the adversarial-reviewer agent reads graphify affected, explain and path before grep when tmp/graphify-out/graph.json exists
   - evidence: plugins/devils-advocate/agents/adversarial-reviewer.md code-graph paragraph; used by rounds 1-5
   - test: read the agent file; spawn a Mode 2 review with a graph present
   - test-tags: MANUAL
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T08:22:33Z @kj closed: verified on the sweep rounds
   - log: 2026-08-28T09:11:39Z @kj edited importance
-- [x] `ACC-REVIEW-41` **graph refreshed before a panel** - MEDIUM; the orchestrator runs the AST-only graphify update before spawning reviewers
+  - log: 2026-10-18T15:14:44Z @kj coded GRAPHIFY
+- [x] `ACC-REVIEW-41-GRAPH-REFRESH` **graph refreshed before a panel** - MEDIUM; the orchestrator runs the AST-only graphify update before spawning reviewers
   - evidence: SKILL.md Mode 2 bullet; graphify update run before rounds 1-5
   - test: SKILL.md Mode 2 bullet; observe a panel spawn
   - test-tags: MANUAL
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T08:22:33Z @kj closed: verified on the sweep rounds
   - log: 2026-08-28T09:11:39Z @kj edited importance
-- [x] `ACC-REVIEW-42` **confirming round is pinned** - HIGH; a confirming round carries the closure list, frozen md5 hashes and the batching rule, and finishes in about 15 turns rather than 67-115
+  - log: 2026-10-18T15:14:44Z @kj coded GRAPH-REFRESH
+- [x] `ACC-REVIEW-42-PINNED` **confirming round is pinned** - HIGH; a confirming round carries the closure list, frozen md5 hashes and the batching rule, and finishes in about 15 turns rather than 67-115
   - evidence: rounds 2-5 measured 13-15 turns by review-tools cost against 67-115 in round 1
   - test: review-tools cost on the round transcript
   - test-tags: MANUAL
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T08:22:33Z @kj closed: verified on the sweep rounds
   - log: 2026-08-28T09:11:39Z @kj edited importance
-- [x] `ACC-REVIEW-43` **dossier is optional** - LOW; the pasted dossier block is not required by the skill; a round measures its own cost with review-tools cost
+  - log: 2026-10-18T15:14:44Z @kj coded PINNED
+- [x] `ACC-REVIEW-43-DOSSIER-OPTIONAL` **dossier is optional** - LOW; the pasted dossier block is not required by the skill; a round measures its own cost with review-tools cost
   - evidence: round-2 A/B: with dossier 14 turns 1.56M cache read 4 findings, without 15 turns 1.02M 9 findings
   - test: SKILL.md wording; round-2 A/B numbers
   - test-tags: MANUAL
   - log: 2026-08-28T08:20:50Z @kj added
   - log: 2026-08-28T08:22:33Z @kj closed: verified on the sweep rounds
   - log: 2026-08-28T09:11:39Z @kj edited importance
-- [x] `ACC-REVIEW-44` **spec-constructed workflow loop** - CRITICAL; the plugin owns and ships the loop spec (references/loop-spec.md); with the dynamic Workflow capability the model constructs the workflow from that spec (worked example workflows/adversarial-loop.js consultable), phases Discover, Adjudicate, Confirm; exits SHIP, PLAN, STOP, FANOUT_STOP, ROUND_CAP
+  - log: 2026-10-18T15:14:44Z @kj coded DOSSIER-OPTIONAL
+- [x] `ACC-REVIEW-44-LOOP-SPEC` **spec-constructed workflow loop** - CRITICAL; the plugin owns and ships the loop spec (references/loop-spec.md); with the dynamic Workflow capability the model constructs the workflow from that spec (worked example workflows/adversarial-loop.js consultable), phases Discover, Adjudicate, Confirm; exits SHIP, PLAN, STOP, FANOUT_STOP, ROUND_CAP
   - evidence: loop-spec.md ships in the plugin; test_spec_ships_in_the_plugin_with_the_full_contract; 12 guardrail tests green
   - test: guardrail test parses the script and asserts the exit conditions exist
   - test-tags: UNIT
@@ -492,7 +563,8 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-28T12:20:46Z @kj closed
   - log: 2026-08-28T13:21:19Z @kj edited title and text and evidence (replaced)
   - log: 2026-08-29T09:57:47Z @kj session 2026-08-29: the review of the ADVR fixes was driven via scriptPath to the shipped script - the fallback route, not the constructed one; routing pinned by ACC-REVIEW-60 and a live constructed run follows
-- [x] `ACC-REVIEW-45` **adjudicator rules what blocks** - CRITICAL; the workflow never gates on severities or reviewer prose verdicts: every round with findings goes to the adjudicator, whose change plan decides - an empty plan rules the round clean, a MINOR it judges worth fixing enters the plan, a MAJOR it refutes does not; severities are evidence only
+  - log: 2026-10-18T15:14:44Z @kj coded LOOP-SPEC
+- [x] `ACC-REVIEW-45-ADJUDICATOR` **adjudicator rules what blocks** - CRITICAL; the workflow never gates on severities or reviewer prose verdicts: every round with findings goes to the adjudicator, whose change plan decides - an empty plan rules the round clean, a MINOR it judges worth fixing enters the plan, a MAJOR it refutes does not; severities are evidence only
   - evidence: adversarial-loop.js: severityTally reporting-only, blockingOf gate removed, adj.changes.length rules clean; test_adjudicator_decides_blocking_not_a_severity_gate
   - test: guardrail test asserts the blocking filter names CRITICAL and MAJOR
   - test-tags: UNIT
@@ -500,7 +572,8 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-28T12:20:46Z @kj closed
   - log: 2026-08-28T13:05:52Z @kj edited title and text and evidence (replaced)
   - log: 2026-08-28T13:05:52Z @kj reworked per user ruling: adjudicator decides, not deterministic severity gate; adjudicator continuity threaded (fresh spawn each round)
-- [x] `ACC-REVIEW-46` **adjudication forced by control flow** - HIGH; every round with findings passes through the devils-advocate:adjudicator before any change; a non-empty plan EXITS the workflow as PLAN and the main session applies exactly the plan - the workflow never edits the tree; the loop threads the prior adjudication record into each fresh adjudicator spawn
+  - log: 2026-10-18T15:14:44Z @kj coded ADJUDICATOR
+- [x] `ACC-REVIEW-46-CONTROL-FLOW` **adjudication forced by control flow** - HIGH; every round with findings passes through the devils-advocate:adjudicator before any change; a non-empty plan EXITS the workflow as PLAN and the main session applies exactly the plan - the workflow never edits the tree; the loop threads the prior adjudication record into each fresh adjudicator spawn
   - evidence: adversarial-loop.js PLAN exit + priorRecord(); test_workflow_never_edits_the_tree; test_adjudicator_continuity_threaded
   - test: guardrail test asserts the fix stage consumes the adjudicator result
   - test-tags: UNIT
@@ -508,19 +581,22 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-28T12:20:46Z @kj closed
   - log: 2026-08-28T13:05:52Z @kj edited text and evidence (replaced)
   - log: 2026-08-28T13:21:19Z @kj edited text and evidence (replaced)
-- [x] `ACC-REVIEW-47` **mandatory review bar** - HIGH; the workflow throws without args.bar; the bar (what the product must do, which inputs are out of scope) is threaded into every reviewer prompt and out-of-bar findings are capped at MINOR
+  - log: 2026-10-18T15:14:44Z @kj coded CONTROL-FLOW
+- [x] `ACC-REVIEW-47-BAR` **mandatory review bar** - HIGH; the workflow throws without args.bar; the bar (what the product must do, which inputs are out of scope) is threaded into every reviewer prompt and out-of-bar findings are capped at MINOR
   - evidence: script throws without args.bar; barBlock threaded into every reviewer prompt; test_mandatory_args_throw
   - test: guardrail test asserts the args.bar throw; manual: run without bar
   - test-tags: UNIT, MANUAL
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-48` **confirming rounds pinned by construction** - HIGH; confirm-round prompts are generated by the script from loop state: closure list to reproduce plus the fix delta as the only attack surface; a confirming reviewer never gets a fresh whole-repo sweep
+  - log: 2026-10-18T15:14:44Z @kj coded BAR
+- [x] `ACC-REVIEW-48-CONFIRM-PIN` **confirming rounds pinned by construction** - HIGH; confirm-round prompts are generated by the script from loop state: closure list to reproduce plus the fix delta as the only attack surface; a confirming reviewer never gets a fresh whole-repo sweep
   - evidence: confirm prompt built from closures plus fix delta with no-sweep instruction; test_confirm_round_is_pinned
   - test: read the confirm prompt builder; manual: inspect a live confirm round prompt
   - test-tags: UNIT, MANUAL
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-49` **trajectory stop** - HIGH; FANOUT_STOP fires when the adjudicator judges two of the last three rounds spiralling while each still ordered changes or reverts - a window, not a streak (DEF-ADVR-74); trajectory and trajectoryReason are required fields; a clean round ships before it counts (DEF-ADVR-46); the fanout ratio is evidence, never the gate (DEF-ADVR-50)
+  - log: 2026-10-18T15:14:44Z @kj coded CONFIRM-PIN
+- [x] `ACC-REVIEW-49-TRAJECTORY` **trajectory stop** - HIGH; FANOUT_STOP fires when the adjudicator judges two of the last three rounds spiralling while each still ordered changes or reverts - a window, not a streak (DEF-ADVR-74); trajectory and trajectoryReason are required fields; a clean round ships before it counts (DEF-ADVR-46); the fanout ratio is evidence, never the gate (DEF-ADVR-50)
   - evidence: test_the_spiral_stop_counts_two_of_the_last_three_rounds: S,C,S stops, S,C,C,S plans, S,S stops, S,S,C plans after the stop; test_gates_present pins the window; suite 1442 passed 2 skipped; review wf_db2a3efc-cce SHIP
   - test: test_the_spiral_stop_counts_two_of_the_last_three_rounds drives spiralling, converging, spiralling to FANOUT_STOP and a spiralling round two back plus converging ones to PLAN; test_gates_present asserts the rulings window and no spiralStreak
   - test-tags: UNIT
@@ -534,74 +610,86 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-09-26T18:45:29Z @kj edited test "guardrail test asserts the spiralStreak gate on adj.trajectory === 'spiralling' && refining, the required schema fields, the clean-branch reset, and that no ratio gate (highFanoutStreak, fanout > 0.5 && refining) remains" -> "test_the_spiral_stop_counts_two_of_the_last_three_rounds drives spiralling, converging, spiralling to FANOUT_STOP and a spiralling round two back plus converging ones to PLAN; test_gates_present asserts the rulings window and no spiralStreak"
   - log: 2026-09-26T19:23:30Z @kj reopened: the stop became a window of two of the last three rounds (DEF-ADVR-74); the closing evidence names the old streak; evidence retired: tests/test_adversarial_workflow_script.py::test_gates_present asserts spiralStreak >= 2, adj.trajectory === 'spiralling' && refining, the required 'trajectory', 'trajectoryReason' fields and the absence of highFanoutStreak; 23 passed in the file; full suite 1267 passed 2 skipped, ruff clean
   - log: 2026-09-26T19:23:35Z @kj closed: window stop verified
-- [x] `ACC-REVIEW-50` **round cap returns history** - MEDIUM; hitting maxRounds (default 6) ends the loop with ROUND_CAP and the full round history rather than looping on
+  - log: 2026-10-18T15:14:44Z @kj coded TRAJECTORY
+- [x] `ACC-REVIEW-50-ROUND-CAP` **round cap returns history** - MEDIUM; hitting maxRounds (default 6) ends the loop with ROUND_CAP and the full round history rather than looping on
   - evidence: ROUND_CAP status returns full history at maxRounds; test_gates_present
   - test: guardrail test asserts the cap path
   - test-tags: UNIT
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-51` **findings CLI verdict validation** - MEDIUM; review-tools findings flags a report whose VERDICT contradicts its severity mix (SHIP with a CRITICAL or MAJOR, DO-NOT-SHIP without one) as VERDICT INCONSISTENT and exits non-zero
+  - log: 2026-10-18T15:14:44Z @kj coded ROUND-CAP
+- [x] `ACC-REVIEW-51-VERDICT-VALID` **findings CLI verdict validation** - MEDIUM; review-tools findings flags a report whose VERDICT contradicts its severity mix (SHIP with a CRITICAL or MAJOR, DO-NOT-SHIP without one) as VERDICT INCONSISTENT and exits non-zero
   - evidence: verdict_inconsistencies() in review_tools.py, exit 1 plus Verdict check section; 3 unit tests; replayed on the 2026-08-28 case reports
   - test: unit test with an inconsistent report fixture
   - test-tags: UNIT
   - log: 2026-08-28T12:11:57Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-52` **remedy anti-machinery rule** - HIGH; the adversary contract requires a remedy that adds a cap, guard, knob or normalisation pass to name the input that makes it necessary and the measurement showing the unguarded cost; absent that the remedy is measure-first or delete-the-need
+  - log: 2026-10-18T15:14:44Z @kj coded VERDICT-VALID
+- [x] `ACC-REVIEW-52-ANTI-MACHINERY` **remedy anti-machinery rule** - HIGH; the adversary contract requires a remedy that adds a cap, guard, knob or normalisation pass to name the input that makes it necessary and the measurement showing the unguarded cost; absent that the remedy is measure-first or delete-the-need
   - evidence: authoring-an-adversary.md REMEDY rule plus SKILL.md Remedy discipline bullet plus adjudicator prompt in the script
   - test: read authoring-an-adversary.md REMEDY rules
   - test-tags: MANUAL
   - log: 2026-08-28T12:11:57Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-53` **stop-hook guidance** - MEDIUM; the skill warns never to gate a Stop hook or goal on survived adversarial review alone and names the two legitimate terminal states
+  - log: 2026-10-18T15:14:44Z @kj coded ANTI-MACHINERY
+- [x] `ACC-REVIEW-53-STOP-HOOK` **stop-hook guidance** - MEDIUM; the skill warns never to gate a Stop hook or goal on survived adversarial review alone and names the two legitimate terminal states
   - evidence: SKILL.md section: Never gate a Stop hook on survived adversarial review
   - test: read SKILL.md
   - test-tags: MANUAL
   - log: 2026-08-28T12:11:57Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
-- [x] `ACC-REVIEW-54` **regression-protected fix application** - HIGH; fixes are applied only by the main session from the adjudicated PLAN return, visible and interruptible; the next invocation resumes via state plus appliedFixes and its first round is a pinned confirm attacking exactly the applied delta, so every fix batch is hostile-reviewed before the loop can close
+  - log: 2026-10-18T15:14:44Z @kj coded STOP-HOOK
+- [x] `ACC-REVIEW-54-FIX-PROTECT` **regression-protected fix application** - HIGH; fixes are applied only by the main session from the adjudicated PLAN return, visible and interruptible; the next invocation resumes via state plus appliedFixes and its first round is a pinned confirm attacking exactly the applied delta, so every fix batch is hostile-reviewed before the loop can close
   - evidence: test_workflow_never_edits_the_tree green; PLAN instructions in adversarial-loop.js
   - test: guardrail test asserts PLAN exit, state threading and the pinned confirm on the newest delta
   - test-tags: UNIT
   - log: 2026-08-28T13:21:19Z @kj added
   - log: 2026-08-28T13:21:19Z @kj closed
-- [x] `ACC-REVIEW-55` **graph-assisted loop economy** - MEDIUM; args.graph threads a refreshed graphify graph into reviewer and adjudicator prompts (blast radius, shared-cause grouping, fewer turns); the skill instructs asking the user to build a graph when none exists, never building unasked
+  - log: 2026-10-18T15:14:44Z @kj coded FIX-PROTECT
+- [x] `ACC-REVIEW-55-LOOP-ECONOMY` **graph-assisted loop economy** - MEDIUM; args.graph threads a refreshed graphify graph into reviewer and adjudicator prompts (blast radius, shared-cause grouping, fewer turns); the skill instructs asking the user to build a graph when none exists, never building unasked
   - evidence: test_graph_threaded_when_present green; SKILL.md graph-first bullet with ask-if-absent
   - test: guardrail test asserts args.graph and graphBlock in both prompts; read the skill graph bullet
   - test-tags: UNIT, MANUAL
   - log: 2026-08-28T13:21:19Z @kj added
   - log: 2026-08-28T13:21:19Z @kj closed
-- [x] `ACC-REVIEW-56` **Bar names purpose, input universe and primary path; materiality before severity** - HIGH; The workflow script throws on a bar missing purpose, inputs or primaryPath; every finding carries material + materiality; material=false is capped by the script at MINOR/outOfBar; the adjudicator's step 0 refutes immaterial findings before verification (DEF-ADVR-40)
+  - log: 2026-10-18T15:14:44Z @kj coded LOOP-ECONOMY
+- [x] `ACC-REVIEW-56-BAR-PURPOSE` **Bar names purpose, input universe and primary path; materiality before severity** - HIGH; The workflow script throws on a bar missing purpose, inputs or primaryPath; every finding carries material + materiality; material=false is capped by the script at MINOR/outOfBar; the adjudicator's step 0 refutes immaterial findings before verification (DEF-ADVR-40)
   - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
   - test: test_bar_must_name_purpose_inputs_and_primary_path, test_materiality_before_severity
   - test-tags: UNIT
   - log: 2026-08-29T09:22:05Z @kj added
   - log: 2026-08-29T09:22:06Z @kj closed
-- [x] `ACC-REVIEW-57` **Plan changes flag newMechanism inside a per-round budget** - HIGH; Every adjudicated change carries newMechanism; every change flagged newMechanism is returned under mechanisms and logged, for the main session to veto unless it answers a material CRITICAL/MAJOR; the plan is ranked by materiality within maxChanges (default 3); PLAN logs an over-budget plan (DEF-ADVR-41)
+  - log: 2026-10-18T15:14:44Z @kj coded BAR-PURPOSE
+- [x] `ACC-REVIEW-57-NEW-MECHANISM` **Plan changes flag newMechanism inside a per-round budget** - HIGH; Every adjudicated change carries newMechanism; every change flagged newMechanism is returned under mechanisms and logged, for the main session to veto unless it answers a material CRITICAL/MAJOR; the plan is ranked by materiality within maxChanges (default 3); PLAN logs an over-budget plan (DEF-ADVR-41)
   - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
   - test: test_new_mechanism_flag_and_change_budget
   - test-tags: UNIT
   - log: 2026-08-29T09:22:05Z @kj added
   - log: 2026-08-29T09:22:06Z @kj closed
   - log: 2026-08-29T09:46:14Z @kj edited text
-- [x] `ACC-REVIEW-58` **Revert before refine - reverts in adjudication, PLAN, STOP and FANOUT_STOP** - HIGH; Findings on loop-introduced code are ruled as reverts (mechanism, site, dissolved findings, deferred originals) unless the original was material; contested semantics always revert; PLAN, STOP and FANOUT_STOP carry reverts, falling back to every applied change; fanout above 0.5 with no revert is logged (DEF-ADVR-42)
+  - log: 2026-10-18T15:14:44Z @kj coded NEW-MECHANISM
+- [x] `ACC-REVIEW-58-REVERT` **Revert before refine - reverts in adjudication, PLAN, STOP and FANOUT_STOP** - HIGH; Findings on loop-introduced code are ruled as reverts (mechanism, site, dissolved findings, deferred originals) unless the original was material; contested semantics always revert; PLAN, STOP and FANOUT_STOP carry reverts, falling back to every applied change; fanout above 0.5 with no revert is logged (DEF-ADVR-42)
   - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
   - test: test_revert_before_refine
   - test-tags: UNIT
   - log: 2026-08-29T09:22:05Z @kj added
   - log: 2026-08-29T09:22:06Z @kj closed
-- [x] `ACC-REVIEW-59` **Confirm-round filter enforced by the script** - MEDIUM; A confirming finding survives only if it names a failing closure or sits in a file the applied delta touched (appliedFixes.files or the closure site), and is not taste; dropped findings are logged by title and recorded in history; the confirm prompt carries a turn budget (DEF-ADVR-43)
+  - log: 2026-10-18T15:14:44Z @kj coded REVERT
+- [x] `ACC-REVIEW-59-CONFIRM-FILTER` **Confirm-round filter enforced by the script** - MEDIUM; A confirming finding survives only if it names a failing closure or sits in a file the applied delta touched (appliedFixes.files or the closure site), and is not taste; dropped findings are logged by title and recorded in history; the confirm prompt carries a turn budget (DEF-ADVR-43)
   - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
   - test: test_confirm_round_filter_is_script_enforced
   - test-tags: UNIT
   - log: 2026-08-29T09:22:06Z @kj added
   - log: 2026-08-29T09:22:06Z @kj closed
-- [x] `ACC-REVIEW-60` **Routing: dynamic capability constructs from the spec, shipped script only as fallback** - CRITICAL; Every routing surface (SKILL.md, commands/adversarial-review.md, references/loop-spec.md, README.md) states: a harness with the dynamic Workflow capability constructs the workflow from the spec; a harness without it executes the shipped adversarial-loop.js as the supplied protocol; the shipped script is named worked example and fallback, never the default. Live check: a review run under Claude Code passes the constructed script inline (Workflow script=...), never scriptPath to the shipped file
+  - log: 2026-10-18T15:14:44Z @kj coded CONFIRM-FILTER
+- [x] `ACC-REVIEW-60-ROUTING` **Routing: dynamic capability constructs from the spec, shipped script only as fallback** - CRITICAL; Every routing surface (SKILL.md, commands/adversarial-review.md, references/loop-spec.md, README.md) states: a harness with the dynamic Workflow capability constructs the workflow from the spec; a harness without it executes the shipped adversarial-loop.js as the supplied protocol; the shipped script is named worked example and fallback, never the default. Live check: a review run under Claude Code passes the constructed script inline (Workflow script=...), never scriptPath to the shipped file
   - evidence: test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback passes; live constructed run wf_67c56c05-595 (script passed inline, pipeline per lens + materiality refutation votes + adjudication) returned SHIP on the ADVR delta - 9 agents, 512k tokens
   - test: test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback; live run wf_ record in the journal
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-08-29T09:57:47Z @kj added
   - log: 2026-08-29T10:11:29Z @kj closed
-- [x] `ACC-REVIEW-61` **Single authoritative statement of invariants and routing** - HIGH; The nine invariants, the routing rule (dynamic capability constructs from the spec; shipped script is the fallback) and the incident anecdotes are stated ONCE, in references/loop-spec.md, and no other plugin file restates the invariant list; SKILL.md, README.md, commands/adversarial-review.md and the script header each point at the spec and may carry only the operational detail their own reader needs to act - a surface that restates three or more invariants is the defect, a sentence count is not
+  - log: 2026-10-18T15:14:44Z @kj coded ROUTING
+- [x] `ACC-REVIEW-61-INVARIANTS` **Single authoritative statement of invariants and routing** - HIGH; The nine invariants, the routing rule (dynamic capability constructs from the spec; shipped script is the fallback) and the incident anecdotes are stated ONCE, in references/loop-spec.md, and no other plugin file restates the invariant list; SKILL.md, README.md, commands/adversarial-review.md and the script header each point at the spec and may carry only the operational detail their own reader needs to act - a surface that restates three or more invariants is the defect, a sentence count is not
   - evidence: Amended criterion met. The anecdote clause holds (the <select> narrative and wf_a1812379 appear in no plugin file but the spec, pinned by the routing test). The invariant-list clause is now guarded by test_the_invariants_are_stated_once, proven non-vacuous against the verifier's own experiment: pasting all nine invariants verbatim into README.md now fails with 'README.md restates 9 invariants', where before the whole suite stayed green. The routing rule and the spec pointer are present in SKILL.md, README.md and the command. Suite 1188 passed
   - test: test_the_invariants_are_stated_once (fails when three or more invariant openings appear outside the spec, proven on a 629-word verbatim paste into README.md); test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback pins the pointers
   - test-tags: UNIT
@@ -611,7 +699,8 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-29T15:57:26Z @kj edited text and test (replaced)
   - log: 2026-08-29T15:57:26Z @kj Clause amended on the Star Colonel's approval. The 'at most one sentence plus a pointer' budget is replaced by the property it was proxying: no second copy of the invariant list. The sentence count failed on three surfaces whose extra sentences carry operational detail a reader needs (the command's fallback steps, the script header's never-edits-the-tree rule), so meeting it literally would have deleted working instruction to satisfy a metric. The property is now guarded; the metric never was
   - log: 2026-08-29T15:57:37Z @kj closed
-- [x] `ACC-REVIEW-62` **Method in the agent files, data in the script prompts** - HIGH; agents/adjudicator.md owns materiality triage, revert-before-refine, the change budget and the anti-machinery rule; agents/adversarial-reviewer.md owns the materiality question and the remedy discipline; the workflow script's prompts pass only the bar, the findings, the prior record, the closures, the delta and the computed numbers - no method text is stated in both places; every guardrail assertion that pinned method prose in the script is relocated to the file that now carries it, never deleted
+  - log: 2026-10-18T15:14:44Z @kj coded INVARIANTS
+- [x] `ACC-REVIEW-62-PROMPT-DATA` **Method in the agent files, data in the script prompts** - HIGH; agents/adjudicator.md owns materiality triage, revert-before-refine, the change budget and the anti-machinery rule; agents/adversarial-reviewer.md owns the materiality question and the remedy discipline; the workflow script's prompts pass only the bar, the findings, the prior record, the closures, the delta and the computed numbers - no method text is stated in both places; every guardrail assertion that pinned method prose in the script is relocated to the file that now carries it, never deleted
   - evidence: Ownership half verified by an independent verifier: rewording eleven method phrases in agents/adjudicator.md fails five tests, and rewording them in agents/adversarial-reviewer.md fails three - the relocations are real, not vacuous. Duplication half now guarded by test_method_is_not_stated_in_both_the_script_and_an_agent_file, proven non-vacuous against the verifier's own insertion of adjudicator method into the script prompt. Both plain-prose duplications removed from the script ('Critique only - never modify any file', the graphBlock fallback sentence), safe because the script sets agentType for both roles so the agent files load; the never-edits assertion was relocated to both agent files, never deleted. Residual and deliberately accepted: the material and remedy FINDINGS_SCHEMA field descriptions restate the reviewer's rule - they are the structured-output data contract the script must carry to validate returns, and removing them would leave the schema undocumented at the point of use
   - related: ACC-REVIEW-72
   - test: test_adversarial_workflow_script.py guardrails relocated to the agent files; control-flow assertions unchanged
@@ -622,7 +711,8 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-29T13:02:50Z @kj the graph fix logged above was itself an overfit and has been superseded by ACC-REVIEW-72: pinning 'graphify affected' as a required literal in the agent files pins a moving API. The guardrail now pins the paradigm and forbids the literal; the behavioural half (the caller's path reaching the agents) is kept as data in the prompt
   - log: 2026-08-29T15:49:02Z @kj reopened: RETRACTED on an independent verifier: PARTIAL. The ownership half holds and is genuinely guarded (breaking eleven method phrases in the agent files fails five tests). The 'no method text in both places' half was UNGUARDED - the verifier inserted eight lines of the adjudicator's method into the script prompt and the whole suite stayed green - and four live duplication sites existed. Now: guardrail added (test_method_is_not_stated_in_both_the_script_and_an_agent_file, proven to fail on that same insertion), and the two plain-prose duplications removed from the script ('Critique only - never modify any file' at the reviewer prompt, the graph fallback sentence in graphBlock), with the never-edits assertion relocated to both agent files rather than deleted. Confirmed the removal is safe: the script sets agentType for both roles, so the agent files do load; evidence retired: verified 2026-08-29 after wf_182b59db-622; suite 1051 passed, ruff clean; the adjudicator prompt block is 13 lines carrying data only (role sentence, bar, prior record, findings, closures, CHANGE BUDGET: N); materiality triage, REVERT CANDIDATE and contested-semantics rules live in agents/adjudicator.md; git diff shows no schema or control-flow change in the script
   - log: 2026-08-29T15:57:37Z @kj closed
-- [x] `ACC-REVIEW-63` **SKILL.md as a lightweight guide under 2200 words** - MEDIUM; The manual rounds protocol and Remedy discipline move to references/; capitalised MUST/NEVER emphasis is dropped where the sentence already states the rule; the toolchain-gate section stays byte-identical; every moved section is pointed to from where it stood; SKILL.md body is under 2200 words
+  - log: 2026-10-18T15:14:44Z @kj coded PROMPT-DATA
+- [x] `ACC-REVIEW-63-SKILL-SIZE` **SKILL.md as a lightweight guide under 2200 words** - MEDIUM; The manual rounds protocol and Remedy discipline move to references/; capitalised MUST/NEVER emphasis is dropped where the sentence already states the rule; the toolchain-gate section stays byte-identical; every moved section is pointed to from where it stood; SKILL.md body is under 2200 words
   - evidence: verified 2026-08-29 after wf_182b59db-622; suite 1051 passed, ruff clean; SKILL.md 3793 -> 2196 words, manual rounds and remedy discipline moved to references/manual-rounds.md and references/remedy-discipline.md with pointers at their former positions, toolchain gate byte-identical
   - test: wc -w on SKILL.md; test_toolchain_gate pin unchanged; references exist at the pointed paths
   - test-tags: UNIT, MANUAL
@@ -630,14 +720,16 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-29T12:31:02Z @kj closed
   - log: 2026-08-29T12:53:08Z @kj the same verifier confirmed invariant 7 (full history on every return) had no guardrail at HEAD either; added test_full_history_on_every_return, a pre-existing gap not caused by this change
   - log: 2026-08-29T15:49:14Z @kj CORRECTION to this item's own record. The 2026-08-29T12:53 log line claimed test_full_history_on_every_return was added; it never existed, so invariant 7 was unguarded while the record said otherwise. The test is now written, and writing it found the gap it was meant to have closed: closures was absent from four of five returns and ADJUDICATOR_DIED - the killed-loop case invariant 7 names - carried neither deferred nor refuted; the script now returns all four on every exit. Also correcting the word count: the recorded 2196 reproduces under no measure and traces to a stale trailer comment in the file. Measured on the committed file: body after frontmatter 2096-2107 words (under the 2200 bar, criterion still MET), whole file including frontmatter 2259
-- [x] `ACC-REVIEW-72` **Instruments are named as examples, never prescribed - the agent chooses** - HIGH; No tool, command or vendor name is a required literal anywhere the loop binds behaviour. The script passes an instrument as DATA (what exists, where, what it is good for); the agent files state the OUTCOME the agent must reach (know the callers, dependents and shared causes before bounding a change; price the radius from evidence, not inference) and name graphify, grep or an LSP as instruments that have worked, with the explicit licence to use another, to skip one that errors or looks stale, and to say so in a line. Guardrail tests pin that an instrument is threaded and that the outcome is stated - never that a particular command string is present. Rationale: a hardcoded approach overfits to the problem class it was written for and misclassifies the rest (no free lunch), and any single tool drifts on its own timeline
+  - log: 2026-10-18T15:14:44Z @kj coded SKILL-SIZE
+- [x] `ACC-REVIEW-72-INSTRUMENTS` **Instruments are named as examples, never prescribed - the agent chooses** - HIGH; No tool, command or vendor name is a required literal anywhere the loop binds behaviour. The script passes an instrument as DATA (what exists, where, what it is good for); the agent files state the OUTCOME the agent must reach (know the callers, dependents and shared causes before bounding a change; price the radius from evidence, not inference) and name graphify, grep or an LSP as instruments that have worked, with the explicit licence to use another, to skip one that errors or looks stale, and to say so in a line. Guardrail tests pin that an instrument is threaded and that the outcome is stated - never that a particular command string is present. Rationale: a hardcoded approach overfits to the problem class it was written for and misclassifies the rest (no free lunch), and any single tool drifts on its own timeline
   - evidence: test_instrument_threaded_as_data_never_prescribed asserts the threading (args.graph, graphBlock, the caller's path, INSTRUMENT AVAILABLE, 'as your method sees fit') and the outcome ('whatever instrument answers fastest', 'blast radius'), and asserts the ABSENCE of 'graphify ' and of a hardcoded index path in both agent files - it fails if anyone re-pins an API; grep confirms no command surface left in the plugin; 18 guardrail tests, full suite 1057 passed, ruff clean
   - test: test_adversarial_workflow_script.py asserts the instrument-as-data threading and the blast-radius outcome, and asserts no vendor command literal is required; grep the agent files for a hardcoded default graph path
   - test-tags: UNIT
   - log: 2026-08-29T12:59:03Z @kj added
   - log: 2026-08-29T13:02:50Z @kj implemented: the script passes an instrument as data (INSTRUMENT AVAILABLE - what it is, where, what it answers, use it as your method sees fit, say so in a line and route around it if it errors or looks stale); both agent files state the outcome (know what a site reaches, by whatever instrument answers fastest) and tell the agent to read the tool's own --help for its current surface; every pinned command surface removed from the agent files, the script, SKILL.md, loop-spec.md, the Mode 2 example prompt and the command; loop-spec.md Freedom section gained 'Instruments are data, never prescriptions' so a constructed loop inherits it
   - log: 2026-08-29T13:02:50Z @kj closed
-- [x] `ACC-REVIEW-73` **ai-engineer adversary - vendor-neutral agentic harness lens** - HIGH; A twelfth adversary at adversaries/ai-engineer.md reviewing the instruction layer that steers AI assistants - skills, agent prompts, instruction files, tool and MCP descriptions, slash commands, workflow scripts, fan-out designs, context layout - against the open standards and published paradigms (AGENTS.md and the .agents conventions, MCP, Google's agentic software delivery lifecycle, Anthropic's context-engineering rules as one input among several), never against one vendor's practice. Its METHODOLOGY encodes axes a generalist misses: pinned tool API surfaces, vendor lock-in in the instruction layer, one rule stated in several places, method duplicated between harness and agent file, context loaded upfront that is rarely used, instruction that constrains judgment where the model would do better, examples that narrow the exploration space, guardrails asserting vendor command strings, fan-out that multiplies cost without signal, missing or unfalsifiable success criteria for an agent step. It carries the standard frontmatter and the nine tagged sections, the Signal standard verdict coupling and materiality line, a named boundary against architect, slop-hunter and analyst, and a deletion axis. SKILL.md and README roster rows added
+  - log: 2026-10-18T15:14:44Z @kj coded INSTRUMENTS
+- [x] `ACC-REVIEW-73-LENS-AI` **ai-engineer adversary - vendor-neutral agentic harness lens** - HIGH; A twelfth adversary at adversaries/ai-engineer.md reviewing the instruction layer that steers AI assistants - skills, agent prompts, instruction files, tool and MCP descriptions, slash commands, workflow scripts, fan-out designs, context layout - against the open standards and published paradigms (AGENTS.md and the .agents conventions, MCP, Google's agentic software delivery lifecycle, Anthropic's context-engineering rules as one input among several), never against one vendor's practice. Its METHODOLOGY encodes axes a generalist misses: pinned tool API surfaces, vendor lock-in in the instruction layer, one rule stated in several places, method duplicated between harness and agent file, context loaded upfront that is rarely used, instruction that constrains judgment where the model would do better, examples that narrow the exploration space, guardrails asserting vendor command strings, fan-out that multiplies cost without signal, missing or unfalsifiable success criteria for an agent step. It carries the standard frontmatter and the nine tagged sections, the Signal standard verdict coupling and materiality line, a named boundary against architect, slop-hunter and analyst, and a deletion axis. SKILL.md and README roster rows added
   - evidence: Exercised on a real target: the 27-command to skill conversion in this repo. Returned SHIP with 7 findings, no CRITICAL or MAJOR, net -74 lines recommended. Four were material and are fixed: svg-infographics:fix instructed AskUserQuestion while its own allowed-tools forbade it (the only true instance in 96 entry points); beautify's moved body pointed at 'the command' for defaults that are now in the skill itself; datascience:adversarial-review had to reach another plugin's skill with neither the Skill tool nor a resolvable path, so it would have fallen through to a narrowed roster and skipped the toolchain gate; datascience:challenge's description gated on a situation rather than a request, making an opt-in framing model-activated. Three were correctly declined or deferred by the lens itself, and it priced the deferred context cost at 1152 tokens rather than asserting it. Its own axis feedback is applied: MEDIUM added to the severity ladder (four findings sat above MINOR and below MAJOR, and the verdict rule hinges on that line), a new activation-and-trigger-surface axis added for the defect that fitted none of the thirteen, and the deletion axis now scores always-loaded bytes separately from activation-time prose. Suite 1188 passed
   - test: the file exists with all nine tagged sections and the coupling plus materiality lines; SKILL.md and README roster rows; a live review run naming the lens returns findings on a harness target
   - test-tags: UNIT, MANUAL
@@ -645,39 +737,45 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-29T13:13:05Z @kj scope extended: the lens also knows the current agentic paradigms as practised - graph engineering (the agent's work as a stage graph: fan-out and barriers, pipelines over barriers, dependency edges, where a verifier belongs), loop engineering (termination conditions, clean-streak and fanout gates, budgets and round caps, resume and checkpoint, the loop generating its own work), and the agentic patterns catalogue (adversarial verification, judge panels, perspective-diverse verifiers, loop-until-dry, planner-executor split, reflection, critic and repair passes, tool-use and retrieval patterns, human-in-the-loop gates). It flags a harness that hand-rolls a pattern the catalogue already names, a loop with no falsifiable exit, a barrier where a pipeline would do, and a verifier that cannot fail
   - log: 2026-08-29T13:52:27Z @kj authored by wf_5b8d6d23-229 (12 agents, ~60 sources: agents.md, MCP spec, agentskills.io, DORA/Google, LangGraph, OpenAI Agents SDK, AutoGen, CrewAI); 110 lines, 13 axes each carrying a falsifiable Artefact label, a CONSTRAINTS not-defects list encoding the research conflicts, boundaries against architect, slop-hunter, analyst and qa-engineer, and a deletion axis scored on net line count. The expert-value verifier then caught five substantive defects I have fixed: a false universal on self-critique (Self-Refine reports gains; the canon files it as a judgement call) replaced with the canon's agreed rule that a model grading its own output is not a verifier; an unsourced claim that a same-model panel is one opinion repeated, contradicted by multiagent-debate and by the product itself, replaced with the canon's sourced question; a pattern list naming constructs the canon cannot source (map-reduce dispatch, reducer at fan-in, tripwire guardrail) trimmed to what it carries; a canon pointer that would not resolve outside one vendor, given a relative fallback; and an instruction that could not execute - both this persona and popular-science claimed the Mode 1 assembly appends the canon, which nothing does - now telling a Mode 1 reviewer to report standards claims as unsourced. Remaining known gap: the SKILL.md description is 1314 chars against the contract's 1024 cap, pre-existing at 1224 before this lens
   - log: 2026-08-29T15:50:55Z @kj closed
-- [x] `ACC-REVIEW-74` **Agentic-engineering canon - verified references the ai-engineer lens argues from** - MEDIUM; adversaries/ references/agentic-engineering-canon.md collects the best vendor-neutral references and worked exemplars for agentic engineering, mirroring how popular-science reviews against its craft canon: the open standards (AGENTS.md, MCP), the vendor paradigm writing (Google agentic SDLC, Anthropic context engineering, others) marked where they agree and where they conflict, the graph and loop engineering material, the agentic patterns catalogue, and exemplar harnesses worth imitating with one line on what each does well. Every entry carries a resolvable online link and a one-line note on what a reviewer takes from it; no invented citations, no dead links. ai-engineer.md points at it rather than restating it
+  - log: 2026-10-18T15:14:44Z @kj coded LENS-AI
+- [x] `ACC-REVIEW-74-CANON` **Agentic-engineering canon - verified references the ai-engineer lens argues from** - MEDIUM; adversaries/ references/agentic-engineering-canon.md collects the best vendor-neutral references and worked exemplars for agentic engineering, mirroring how popular-science reviews against its craft canon: the open standards (AGENTS.md, MCP), the vendor paradigm writing (Google agentic SDLC, Anthropic context engineering, others) marked where they agree and where they conflict, the graph and loop engineering material, the agentic patterns catalogue, and exemplar harnesses worth imitating with one line on what each does well. Every entry carries a resolvable online link and a one-line note on what a reviewer takes from it; no invented citations, no dead links. ai-engineer.md points at it rather than restating it
   - evidence: references/agentic-engineering-canon.md, 242 lines: link audit PASSED - 93 unique URLs all HTTP 200, 139 entries quote-verified against fetched bytes (arXiv via export mirror, GitHub raw, one PDF via PyMuPDF), numeric claims independently recomputed exact (codex 3141 words, langgraph 299, OpenHands 14765, thirteen scoped files, eleven references through a twelve-row table), 9 redirects all same-document, 0 dead and 0 secondary-as-primary. Seven usefulness findings then applied: the instruction-artifacts rule cut to the clauses its quotes carry, the MCP consent gloss re-written to what its quote says, three entries removed that carried no reviewable rule or sat in the wrong section (reflection store, AgentBench standalone, OpenHands filed as an exemplar the research had excluded), the fan-out conflict given the task-shape reconciliation the file already held, Anthropic-lineage citations marked inline so three sources are not presented as four, and a 'Verified and deliberately not carried' list added beside the unverified drops. The MCP revision break was added as an Open standards entry - it is the only source for a defect the lens is told to hunt
   - test: every link in the canon resolves; the file states agreement versus conflict explicitly; ai-engineer.md carries one pointer and no restatement
   - test-tags: MANUAL
   - log: 2026-08-29T13:14:27Z @kj added
   - log: 2026-08-29T15:05:41Z @kj closed
   - log: 2026-09-15T13:32:42Z @kj references/agentic-engineering-canon.md was condensed into references/ai-engineer/research.md and then deleted. The new file keeps a full quote only where the model did not already know the fact, and a one-line reference otherwise. The link audit in this item's evidence covered the deleted file, not the new one.
-- [x] `ACC-REVIEW-75` **Code-graph instrument reference ships with the plugin** - MEDIUM; references/code-graph-instrument.md carries the how of using a code graph in a review - what an index answers, which query serves which review question (blast radius before rating severity, shared cause across lenses, radius before bounding a change), and graphify as the worked instrument with its CURRENT surface refreshed from the graphify repository and the installed CLI, plus its version and the date read. SKILL.md's session-level instruction points at it instead of naming a slash command, so the instrument stays usable without any prompt pinning an API. The reference states in its own opening that it is a snapshot to re-read from source, and that agent prompts pass the index as data and never a command
+  - log: 2026-10-18T15:14:44Z @kj coded CANON
+- [x] `ACC-REVIEW-75-GRAPH-DOC` **Code-graph instrument reference ships with the plugin** - MEDIUM; references/code-graph-instrument.md carries the how of using a code graph in a review - what an index answers, which query serves which review question (blast radius before rating severity, shared cause across lenses, radius before bounding a change), and graphify as the worked instrument with its CURRENT surface refreshed from the graphify repository and the installed CLI, plus its version and the date read. SKILL.md's session-level instruction points at it instead of naming a slash command, so the instrument stays usable without any prompt pinning an API. The reference states in its own opening that it is a snapshot to re-read from source, and that agent prompts pass the index as data and never a command
   - evidence: references/code-graph-instrument.md (58 lines) written from the installed graphify 0.8.18 - every command, flag, default and measurement run or read from source, none from memory; opens with the SNAPSHOT stamp (0.8.18, read 2026-08-29, upstream already 0.9.x) and closes with the rule that a prompt passes the index as data, never a command; SKILL.md's instrument bullet points at it and names no slash command while keeping args.graph and ask-before-building. One false claim the verifier caught (the per-subcommand --help exempt set is six, not four) corrected and re-checked against the binary
   - test: the reference exists, names the version it was read against, and every documented subcommand and flag appears in the installed graphify --help; SKILL.md carries a pointer and no slash-command name in the instrument bullet
   - test-tags: UNIT, MANUAL
   - log: 2026-08-29T13:38:22Z @kj added
   - log: 2026-08-29T15:02:02Z @kj closed
-- [x] `ACC-REVIEW-76` **Home graphify skill refreshed against the repository** - MEDIUM; ~/.claude/skills/graphify/SKILL.md is refreshed against the graphify repository and the installed CLI (0.8.18): every documented command and flag verified present, commands and flags that exist but are undocumented added where they earn a line, anything removed upstream deleted, the artefact-location and impact-analysis discipline preserved, and the version plus the date it was read recorded at the top so the next reader knows how stale it is. Outside the project tree, edited under the Star Colonel's explicit instruction
+  - log: 2026-10-18T15:14:44Z @kj coded GRAPH-DOC
+- [x] `ACC-REVIEW-76-GRAPH-HOME` **Home graphify skill refreshed against the repository** - MEDIUM; ~/.claude/skills/graphify/SKILL.md is refreshed against the graphify repository and the installed CLI (0.8.18): every documented command and flag verified present, commands and flags that exist but are undocumented added where they earn a line, anything removed upstream deleted, the artefact-location and impact-analysis discipline preserved, and the version plus the date it was read recorded at the top so the next reader knows how stale it is. Outside the project tree, edited under the Star Colonel's explicit instruction
   - evidence: ~/.claude/skills/graphify/SKILL.md refreshed against the installed 0.8.18 binary and its source: version and date stamped, 13 anchored edits, corrections to --directed (required for a complete affected walk; this repo's own graph is undirected), the GRAPHIFY_OUT honoured/ignored lists, and the MCP tool count (7 -> 10 plus six resources); additions earning a line (bare-path silently becomes the billed extract, query --context noise control with measured 729 -> 40 nodes, --budget is a ceiling, affected depth-saturation 97/141/148/149); artefact-location and impact-controlled-change sections preserved verbatim. One false behaviour claim the verifier caught and reproduced (the post-commit hook was documented as never firing under the tmp layout; it fires, writes a second root graph and silently staleness the tmp one) rewritten to the verified diagnosis
   - test: every command in the skill appears in graphify --help; the version stamp is present
   - test-tags: MANUAL
   - log: 2026-08-29T13:38:22Z @kj added
   - log: 2026-08-29T15:02:02Z @kj closed
   - log: 2026-08-29T15:02:02Z @kj premise correction from the run: graphify is NOT a stellarshenson project - 0.8.18 METADATA carries 'Copyright (c) 2026 Safi Shamsi' and the homepage redirects to github.com/Graphify-Labs/graphify. I had briefed the workflow with the wrong upstream; the skill now cites the real one. Also recorded: PyPI is at 0.9.51 while this box runs 0.8.18, and 0.9.51's paths.py names issue #1423 as fixing the GRAPHIFY_OUT override defect - the skill documents 0.8.18, which is what is installed
-- [x] `ACC-REVIEW-80` **a round that reviewed nothing is never clean** - CRITICAL; a null agent return means the reviewer died, not that it reviewed and found nothing: a round in which the whole panel dies reaches a distinct terminal status carrying full history, never the clean path, because ACC-REVIEW-45's empty plan and ACC-REVIEW-46's forced adjudication are both satisfied vacuously when no findings exist to adjudicate
+  - log: 2026-10-18T15:14:44Z @kj coded GRAPH-HOME
+- [x] `ACC-REVIEW-80-DEAD-PANEL` **a round that reviewed nothing is never clean** - CRITICAL; a null agent return means the reviewer died, not that it reviewed and found nothing: a round in which the whole panel dies reaches a distinct terminal status carrying full history, never the clean path, because ACC-REVIEW-45's empty plan and ACC-REVIEW-46's forced adjudication are both satisfied vacuously when no findings exist to adjudicate
   - evidence: Discovered live, not by inspection: wf_00afc000-19a returned status SHIP in 82ms with 0 findings because all three lens agents died on an unresolvable agentType, and the loop read three nulls as a clean review. Fixed in adversarial-loop.js with panelDied, the runPanelChecked wrapper routing all four panel calls, and a PANEL_DIED terminal status carrying full history per invariant 7. Pinned by test_a_dead_panel_is_never_a_clean_round, proven non-vacuous by restoring one raw runPanel call and watching it fail with '2 raw runPanel calls'. Suite 1189 passed
   - test: tests/test_adversarial_workflow_script.py::test_a_dead_panel_is_never_a_clean_round - asserts panelDied/PANEL_DIED exist, that exactly one raw runPanel call remains so every panel routes through the checked wrapper, that the death check precedes the loop, and that PANEL_DIED carries history/closures/deferred/refuted/state
   - test-tags: UNIT
   - log: 2026-08-29T18:30:30Z @kj added
   - log: 2026-08-29T18:30:38Z @kj closed
-- [x] `ACC-REVIEW-150` **review-tools prompt prints the script's reviewer prompt for one lens** - HIGH; review-tools prompt ARGS.json --lens NAME prints, from the workflow args object, the prompt adversarial-loop.js sends: lens line, TARGET, SCOPE, BAR, INSTRUMENT AVAILABLE when graph is set, RESEARCH denial, the discovery or confirming body with CLOSURES and NEWEST DELTA, and a prose output contract naming every FINDINGS_SCHEMA field; the same refusals as the script (missing bar field, stale loop contract, appliedFixes without patch) exit 2
+  - log: 2026-10-18T15:14:44Z @kj coded DEAD-PANEL
+- [x] `ACC-REVIEW-150-PROMPT-CLI` **review-tools prompt prints the script's reviewer prompt for one lens** - HIGH; review-tools prompt ARGS.json --lens NAME prints, from the workflow args object, the prompt adversarial-loop.js sends: lens line, TARGET, SCOPE, BAR, INSTRUMENT AVAILABLE when graph is set, RESEARCH denial, the discovery or confirming body with CLOSURES and NEWEST DELTA, and a prose output contract naming every FINDINGS_SCHEMA field; the same refusals as the script (missing bar field, stale loop contract, appliedFixes without patch) exit 2
   - evidence: tests/test_review_tools.py::test_prompt_equals_the_script_prompt_up_to_the_output_line (discover, confirm), ::test_prompt_blocks_are_verbatim_from_the_script_and_name_every_finding_field, ::test_prompt_cli_refuses_the_script_refusals pass
   - test: parity test runs the script under node and compares every block but the last; a node-free test checks each static sentence is in the script source
   - test-tags: UNIT
   - log: 2026-09-18T20:51:42Z @kj added
   - log: 2026-09-18T20:51:51Z @kj closed: met: reviewer_prompt and cmd_prompt in review_tools.py
-- [x] `ACC-REVIEW-151` **review-tools cost groups a review by stage, adversary and round** - HIGH; takes files or a run directory (one round); reads each transcript meta sidecar; --by stage|lens|run totals elapsed, agent minutes, tokens, tool calls, re-reads
+  - log: 2026-10-18T15:14:44Z @kj coded PROMPT-CLI
+- [x] `ACC-REVIEW-151-COST-STAGE` **review-tools cost groups a review by stage, adversary and round** - HIGH; takes files or a run directory (one round); reads each transcript meta sidecar; --by stage|lens|run totals elapsed, agent minutes, tokens, tool calls, re-reads
   - evidence: test_cost_groups_a_run_directory_by_stage_and_by_adversary, test_stage_and_lens_read_the_label_and_name_the_adjudicator; real run dir: 3 lenses, 6.1 min elapsed, 14.6 agent min
   - test: two overlapping transcripts with meta sidecars: stage elapsed under its agent minutes, lens from the label, adjudicator from the agent type
   - test-tags: UNIT
@@ -685,7 +783,8 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-09-20T13:27:20Z @kj closed
   - log: 2026-09-21T09:40:49Z @kj amended text "review-tools cost accepts a transcript directory as well as files - a workflow run directory is one round of the loop - reads the label, workflow phase and agent type from the meta sidecar the harness writes beside each transcript, and --by stage|lens|run prints wall time and tokens per group: elapsed (the group's first agent to its last) alongside the agent minutes inside it, cache read, cache create, output, tool calls and re-reads, with a total row" -> "takes files or a run directory (one round); reads each transcript meta sidecar; --by stage|lens|run totals elapsed, agent minutes, tokens, tool calls, re-reads"
   - log: 2026-09-21T09:40:49Z @kj edited test (replaced) and evidence (replaced)
-- [x] `ACC-REVIEW-152` **spawn label is `<stage>:<lens>`, the ledger key** - MEDIUM; script labels reviewers `<stage>:<lens>`, adjudicators `adjudicate:r<round>`; SKILL.md, command step 9 and loop-spec bind hand spawns and constructed loops to it - the harness stores the label beside the transcript
+  - log: 2026-10-18T15:14:44Z @kj coded COST-STAGE
+- [x] `ACC-REVIEW-152-SPAWN-LABEL` **spawn label is `<stage>:<lens>`, the ledger key** - MEDIUM; script labels reviewers `<stage>:<lens>`, adjudicators `adjudicate:r<round>`; SKILL.md, command step 9 and loop-spec bind hand spawns and constructed loops to it - the harness stores the label beside the transcript
   - evidence: test_every_spawn_is_labelled_stage_and_lens; 31 passed in tests/test_adversarial_workflow_script.py
   - test: script panel label is phase and lens; rule present in SKILL.md, the command and loop-spec
   - test-tags: UNIT
@@ -693,7 +792,8 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-09-20T13:27:50Z @kj closed
   - log: 2026-09-21T09:40:54Z @kj amended title "every spawn is labelled stage and lens so the round can be measured" -> "spawn label is `<stage>:<lens>`, the ledger key"; text "the loop script labels each reviewer <stage>:<lens> and each adjudicator <stage>:r<round>, the skill's spawn path and the command's step 9 require the same of a hand spawn, and the spec names the label as the one name a constructed loop may not rename - the harness records it beside the transcript and it is what makes the ledger read per adversary" -> "script labels reviewers `<stage>:<lens>`, adjudicators `adjudicate:r<round>`; SKILL.md, command step 9 and loop-spec bind hand spawns and constructed loops to it - the harness stores the label beside the transcript"
   - log: 2026-09-21T09:40:54Z @kj edited test (replaced) and evidence (replaced)
-- [x] `ACC-REVIEW-159` **a heuristic's miss is a rate** - HIGH; the bar may name its heuristic components under heuristics, rendered in every reviewer and adjudicator prompt; reviewer and adjudicator treat one input such a component misreads as a sample of an error rate, immaterial unless it crashes, regresses against HEAD or breaks a stated guarantee (DEF-ADVR-71)
+  - log: 2026-10-18T15:14:44Z @kj coded SPAWN-LABEL
+- [x] `ACC-REVIEW-159-HEURISTIC-RATE` **a heuristic's miss is a rate** - HIGH; the bar may name its heuristic components under heuristics, rendered in every reviewer and adjudicator prompt; reviewer and adjudicator treat one input such a component misreads as a sample of an error rate, immaterial unless it crashes, regresses against HEAD or breaks a stated guarantee (DEF-ADVR-71)
   - evidence: adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with new adjudicator text plus heuristics bar line, 0/6 with neither (factors not separated), outcome coded after reading; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism
   - test: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism; test_prompt_equals_the_script_prompt_up_to_the_output_line with heuristics in the bar
   - test-tags: UNIT
@@ -702,90 +802,103 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-09-27T19:35:40Z @kj edited evidence "test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism; replay wf_aa37307f-f3c: with the heuristics bar line the adjudicator refuted F11, F17 as rate failure modes 6/6, old text 0/6 (tmp/experiments/adjudicator-replay/report.md)" -> "adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with the heuristics bar line, 0/6 without; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism"
   - log: 2026-09-28T07:19:13Z @kj edited evidence "adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with the heuristics bar line, 0/6 without; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism" -> "adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with the heuristics bar line, 0/6 without, outcome coded after reading; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism"
   - log: 2026-09-28T07:34:14Z @kj edited evidence "adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with the heuristics bar line, 0/6 without, outcome coded after reading; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism" -> "adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with new adjudicator text plus heuristics bar line, 0/6 with neither (factors not separated), outcome coded after reading; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism"
-- [x] `ACC-REVIEW-160` **a rule fitted to its own counterexample is overfitting** - HIGH; the data-scientist lens flags a rule, arm, word or threshold added for one counterexample and checked on it as overfitting, and names a held-out measurement against a pre-registered bar as the only evidence for a rule change (DEF-ADVR-72)
+  - log: 2026-10-18T15:14:44Z @kj coded HEURISTIC-RATE
+- [x] `ACC-REVIEW-160-OVERFIT-RULE` **a rule fitted to its own counterexample is overfitting** - HIGH; the data-scientist lens flags a rule, arm, word or threshold added for one counterexample and checked on it as overfitting, and names a held-out measurement against a pre-registered bar as the only evidence for a rule change (DEF-ADVR-72)
   - evidence: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism reads axis 9 (own fold, held-out measurement); review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
   - test: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism reads axis 9 of adversaries/data-scientist.md
   - test-tags: UNIT
   - log: 2026-09-26T18:45:29Z @kj added
   - log: 2026-09-26T19:24:18Z @kj closed: met
-- [x] `ACC-REVIEW-161` **a special case for one input is a new mechanism** - HIGH; every statement of the newMechanism list names a special case for one input (a regex arm, word-list entry or threshold); a deferred failure mode of a heuristic component carries no defect id (DEF-ADVR-73)
+  - log: 2026-10-18T15:14:44Z @kj coded OVERFIT-RULE
+- [x] `ACC-REVIEW-161-SPECIAL-CASE` **a special case for one input is a new mechanism** - HIGH; every statement of the newMechanism list names a special case for one input (a regex arm, word-list entry or threshold); a deferred failure mode of a heuristic component carries no defect id (DEF-ADVR-73)
   - evidence: same test checks the mechanism list in the adjudicator, reviewer, remedy-discipline.md, loop-spec.md and twice in the script, and 'carries none'; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
   - test: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism checks the list in the adjudicator, the reviewer, remedy-discipline.md, loop-spec.md and twice in the script
   - test-tags: UNIT
   - log: 2026-09-26T18:45:29Z @kj added
   - log: 2026-09-26T19:24:18Z @kj closed: met
-- [x] `ACC-REVIEW-195` **One clean round ships; the user decides on a confirmation round** - HIGH; SHIP ends the review and tells the main session to ask the user, with a recommendation from the campaign's complexity; a re-invocation with the SHIP state and no applied fixes runs one confirmation round; a PLAN state without applied fixes is refused
+  - log: 2026-10-18T15:14:44Z @kj coded SPECIAL-CASE
+- [x] `ACC-REVIEW-195-ONE-CLEAN` **One clean round ships; the user decides on a confirmation round** - HIGH; SHIP ends the review and tells the main session to ask the user, with a recommendation from the campaign's complexity; a re-invocation with the SHIP state and no applied fixes runs one confirmation round; a PLAN state without applied fixes is refused
   - evidence: tests/test_adversarial_workflow_script.py::test_a_shipped_review_runs_one_confirmation_round_only_on_request and the SHIP parity cases in tests/test_review_tools.py pass; suite 1515 passed 2 skipped
   - test: ship on round 1, re-invoke without fixes, re-invoke a shipped state with closures, re-invoke a PLAN state without fixes
   - test-tags: UNIT
   - log: 2026-10-16T18:21:14Z @kj added
   - log: 2026-10-16T18:21:14Z @kj closed
+  - log: 2026-10-18T15:14:44Z @kj coded ONE-CLEAN
 
 ## pm-tools soft lock `PMLOCK`
 
 work-in-progress soft locks on acceptance criteria and defects
 
-- [x] `ACC-PMLOCK-64` **Soft lock line on any open item** - HIGH; An open ACC or DEF item may carry exactly one `- lock: <until ISO-8601 UTC stamp> @xx [note]` sub-line meaning: @xx is likely working on this until the stamp. pm-tools lock FILE --id ID --author @xx [--hours N | --until STAMP] [--note TEXT] writes it, default 24 hours, any duration accepted; locking again by the same author replaces the line (extend); locking an item another author holds warns and replaces; lock on a closed or rejected item is refused with a message
+- [x] `ACC-PMLOCK-64-LOCK-LINE` **Soft lock line on any open item** - HIGH; An open ACC or DEF item may carry exactly one `- lock: <until ISO-8601 UTC stamp> @xx [note]` sub-line meaning: @xx is likely working on this until the stamp. pm-tools lock FILE --id ID --author @xx [--hours N | --until STAMP] [--note TEXT] writes it, default 24 hours, any duration accepted; locking again by the same author replaces the line (extend); locking an item another author holds warns and replaces; lock on a closed or rejected item is refused with a message
   - evidence: verified black-box on a scratch copy 2026-08-29 plus 15 new tests in tests/test_pm_tools*.py; full suite 1051 passed, ruff clean; lock line written with a 24h stamp, --hours 2 and --until honoured, re-lock replaces, lock on a closed item refused exit 1
   - test: test_pm_tools: lock writes the line with a stamp 24h ahead; --hours 2 and --until honoured; re-lock replaces; closed item refused
   - test-tags: UNIT
   - log: 2026-08-29T12:03:24Z @kj added
   - log: 2026-08-29T12:30:51Z @kj closed
-- [x] `ACC-PMLOCK-65` **Soft lock is inconsequential - warn, never refuse** - HIGH; Every write command (log, edit, close, reject, reopen, relate, remove) on an item locked by a DIFFERENT author than --author prints one warning line to stderr naming the holder and the expiry and proceeds unchanged; exit code and file result are identical to the unlocked case; the same author is not warned
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-LINE
+- [x] `ACC-PMLOCK-65-LOCK-WARN` **Soft lock is inconsequential - warn, never refuse** - HIGH; Every write command (log, edit, close, reject, reopen, relate, remove) on an item locked by a DIFFERENT author than --author prints one warning line to stderr naming the holder and the expiry and proceeds unchanged; exit code and file result are identical to the unlocked case; the same author is not warned
   - evidence: verified black-box on a scratch copy 2026-08-29 plus 15 new tests in tests/test_pm_tools*.py; full suite 1051 passed, ruff clean; log by @xy on a @kj-locked item exits 0, writes the log line, stderr carries 'locked by @kj until <stamp> - someone is likely working on it'; same author silent
   - test: test_pm_tools: log/edit/relate on an item locked by @xy with --author @kj exit 0, write the change, stderr carries 'locked' with @xy and the stamp; same author silent
   - test-tags: UNIT
   - log: 2026-08-29T12:03:24Z @kj added
   - log: 2026-08-29T12:30:51Z @kj closed
-- [x] `ACC-PMLOCK-66` **Expired locks are cleared automatically; close and reject clear the lock** - HIGH; Any write command on a file removes every lock line whose stamp is in the past before applying its own change (a lock line removal is not logged); close and reject remove the item's lock whatever its expiry; check stays read-only and reports an expired lock as a warning, a malformed or duplicate lock line as an error
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-WARN
+- [x] `ACC-PMLOCK-66-LOCK-EXPIRY` **Expired locks are cleared automatically; close and reject clear the lock** - HIGH; Any write command on a file removes every lock line whose stamp is in the past before applying its own change (a lock line removal is not logged); close and reject remove the item's lock whatever its expiry; check stays read-only and reports an expired lock as a warning, a malformed or duplicate lock line as an error
   - evidence: verified black-box on a scratch copy 2026-08-29 plus 15 new tests in tests/test_pm_tools*.py; full suite 1051 passed, ruff clean; an expired @xy lock disappeared on an unrelated write, close cleared an active lock, check reported 'expired lock, cleared on the next write' as a warning without removing it
   - test: test_pm_tools: a past-dated lock disappears on the next log; close clears an active lock; check warns on expired, errors on two lock lines
   - test-tags: UNIT
   - log: 2026-08-29T12:03:24Z @kj added
   - log: 2026-08-29T12:30:52Z @kj closed
-- [x] `ACC-PMLOCK-67` **unlock clears one, all, or expired locks** - MEDIUM; pm-tools unlock FILE --author @xx (--id ID | --all | --expired) removes lock lines: one item, every item, or only expired ones; clearing another author's lock is allowed and warns once; never a log line
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-EXPIRY
+- [x] `ACC-PMLOCK-67-UNLOCK` **unlock clears one, all, or expired locks** - MEDIUM; pm-tools unlock FILE --author @xx (--id ID | --all | --expired) removes lock lines: one item, every item, or only expired ones; clearing another author's lock is allowed and warns once; never a log line
   - evidence: verified black-box on a scratch copy 2026-08-29 plus 15 new tests in tests/test_pm_tools*.py; full suite 1051 passed, ruff clean; unlock --id cleared 1, --all cleared 2, --expired reported 0 with no active lock touched
   - test: test_pm_tools: unlock --id, --all, --expired; count of remaining lock lines
   - test-tags: UNIT
   - log: 2026-08-29T12:03:24Z @kj added
   - log: 2026-08-29T12:30:52Z @kj closed
-- [x] `ACC-PMLOCK-68` **Locks in reports, list, pivot, filters and json** - MEDIUM; field `lock` (for --columns, --sort, --rows, --cols) renders as '@xx until <stamp>' or '-'; filter --locked keeps items with an active lock, --locked-by @xx narrows to a holder; report ITEMS marks a locked item with 'wip @xx until <stamp>' and the SUMMARY grid gains a 'Worked on' count of open items with an active lock; --json carries lock: {by, until, note} or null; expired locks are not active for any of these
+  - log: 2026-10-18T15:14:44Z @kj coded UNLOCK
+- [x] `ACC-PMLOCK-68-LOCK-REPORT` **Locks in reports, list, pivot, filters and json** - MEDIUM; field `lock` (for --columns, --sort, --rows, --cols) renders as '@xx until <stamp>' or '-'; filter --locked keeps items with an active lock, --locked-by @xx narrows to a holder; report ITEMS marks a locked item with 'wip @xx until <stamp>' and the SUMMARY grid gains a 'Worked on' count of open items with an active lock; --json carries lock: {by, until, note} or null; expired locks are not active for any of these
   - evidence: verified black-box on a scratch copy 2026-08-29 plus 15 new tests in tests/test_pm_tools*.py; full suite 1051 passed, ruff clean; list --columns id,lock rendered '@kj until <stamp>' and '-' for expired, --locked and --locked-by excluded the expired lock, SUMMARY carried 'Worked on 1', --json gave {by, until, note}
   - test: test_pm_tools: list --columns id,lock; report --locked; pivot --rows lock; --json shape
   - test-tags: UNIT
   - log: 2026-08-29T12:03:24Z @kj added
   - log: 2026-08-29T12:30:52Z @kj closed
-- [x] `ACC-PMLOCK-69` **Plugin docs and skill carry the lock discipline** - MEDIUM; plugins/project-management SKILL.md, references (acceptance-criteria.md, defects.md, reports.md), README.md and the commands (acc-crit.md, defect.md, report.md) state: lock an item when you pick it up, ask before working on an item locked by someone else, the lock never blocks a write, expired locks clear themselves, unlock at will; the pm-tools --help text documents lock, unlock, the lock: line, --locked, --locked-by and the lock field
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-REPORT
+- [x] `ACC-PMLOCK-69-LOCK-DOCS` **Plugin docs and skill carry the lock discipline** - MEDIUM; plugins/project-management SKILL.md, references (acceptance-criteria.md, defects.md, reports.md), README.md and the commands (acc-crit.md, defect.md, report.md) state: lock an item when you pick it up, ask before working on an item locked by someone else, the lock never blocks a write, expired locks clear themselves, unlock at will; the pm-tools --help text documents lock, unlock, the lock: line, --locked, --locked-by and the lock field
   - evidence: the lock discipline is stated once in each of the 8 plugins/project-management docs (SKILL.md, 3 references, README, 3 commands); pm-tools --help documents lock, unlock and the lock field
   - test: grep the docs for 'lock:'; pm-tools --help lists lock and unlock
   - test-tags: MANUAL
   - log: 2026-08-29T12:03:24Z @kj added
   - log: 2026-08-29T12:31:02Z @kj closed
   - log: 2026-08-29T13:25:10Z @kj independent verification (wf_330885f9-91e) found the doc half untested - all eight plugin docs could revert to HEAD with the suite green - and one false claim in references/reports.md that --json carries lock on search and refs (only report and list do, confirmed against the CLI). Both fixed: the claim is scoped, and test_the_plugin_docs_carry_the_lock_discipline reads all eight files; proven to fail when README.md reverts
-- [x] `ACC-PMLOCK-70` **Read commands announce worked-on items at pick-up** - HIGH; report, list, search and refs print one notice line to stderr whenever an item they show carries an active lock: 'N item(s) currently worked on: DEF-X by @kj until <stamp>, ...' (ids listed, at most ten, then '+M more'); the notice is emitted before the table so an agent choosing work sees it first; nothing is printed when no shown item is locked; --json is unaffected
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-DOCS
+- [x] `ACC-PMLOCK-70-LOCK-NOTICE` **Read commands announce worked-on items at pick-up** - HIGH; report, list, search and refs print one notice line to stderr whenever an item they show carries an active lock: 'N item(s) currently worked on: DEF-X by @kj until <stamp>, ...' (ids listed, at most ten, then '+M more'); the notice is emitted before the table so an agent choosing work sees it first; nothing is printed when no shown item is locked; --json is unaffected
   - evidence: verified independently by wf_330885f9-91e black-box: notice printed by report, list, search and refs with the ten-id cap (12 locked -> ten ids + '+2 more'), silent on expired, on filtered-out items and under --json; TRANSFER line verbatim on lock and unlock with the 'taken over from @yy' default note, --note winning, no spurious transfer over an expired lock; suite 1057 passed
   - test: test_pm_tools: report/list/search/refs stderr carries 'currently worked on' with the id and holder when a lock is active, nothing when expired
   - test-tags: UNIT
   - log: 2026-08-29T12:09:00Z @kj added
   - log: 2026-08-29T13:25:10Z @kj closed
-- [x] `ACC-PMLOCK-71` **Locking an item someone else holds is a transfer and is called out** - HIGH; lock on an item with an active lock held by another author prints a distinct warning to stderr: 'TRANSFER: DEF-X was locked by @yy until <stamp> - you are taking it over; ask @yy' and proceeds (still no refusal); the new lock line's note opens with 'taken over from @yy' unless --note is given, so the previous holder stays visible on the item; unlock of another author's active lock warns the same way with 'you are clearing it'
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-NOTICE
+- [x] `ACC-PMLOCK-71-LOCK-TRANSFER` **Locking an item someone else holds is a transfer and is called out** - HIGH; lock on an item with an active lock held by another author prints a distinct warning to stderr: 'TRANSFER: DEF-X was locked by @yy until <stamp> - you are taking it over; ask @yy' and proceeds (still no refusal); the new lock line's note opens with 'taken over from @yy' unless --note is given, so the previous holder stays visible on the item; unlock of another author's active lock warns the same way with 'you are clearing it'
   - evidence: verified independently by wf_330885f9-91e black-box: notice printed by report, list, search and refs with the ten-id cap (12 locked -> ten ids + '+2 more'), silent on expired, on filtered-out items and under --json; TRANSFER line verbatim on lock and unlock with the 'taken over from @yy' default note, --note winning, no spurious transfer over an expired lock; suite 1057 passed
   - test: test_pm_tools: lock by @kj over @xy's active lock exits 0, stderr has TRANSFER and @xy, the lock line note reads 'taken over from @xy'; unlock by another author warns
   - test-tags: UNIT
   - log: 2026-08-29T12:09:01Z @kj added
   - log: 2026-08-29T13:25:10Z @kj closed
-- [x] `ACC-PMLOCK-81` **locking is the default behaviour, not an offered feature** - HIGH; The skill states locking as a standing default rather than describing it as available: before the first write to an item - a criterion being satisfied, a defect being fixed, a finding being acted on - the agent locks it under its handle unasked, and unlocks when it stops. Every procedure that writes to an item carries it, including review, which touches items in bulk and previously said nothing about locking at all
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-TRANSFER
+- [x] `ACC-PMLOCK-81-LOCK-DEFAULT` **locking is the default behaviour, not an offered feature** - HIGH; The skill states locking as a standing default rather than describing it as available: before the first write to an item - a criterion being satisfied, a defect being fixed, a finding being acted on - the agent locks it under its handle unasked, and unlocks when it stops. Every procedure that writes to an item carries it, including review, which touches items in bulk and previously said nothing about locking at all
   - evidence: tests/test_pm_tools_functional.py::test_locking_is_the_default_not_an_offer - 43 passed in that file, suite 1191 passed + 1 skipped, ruff clean. Guard proven non-vacuous: removing the lock step from skills/review/SKILL.md fails it on that file, restoring it passes
   - test: plugins/project-management/skills/project-management/SKILL.md opens its Soft lock section with the default and the release half; skills/acc-crit, skills/defect and skills/review each name pm-tools lock and unlock in their procedure
   - test-tags: UNIT
   - log: 2026-08-29T21:10:27Z @kj added
   - log: 2026-08-29T21:10:31Z @kj closed
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-DEFAULT
 
 ## command and skill parity `SKILLC`
 
 every plugin command procedure is also reachable as a callable skill, so an agent can invoke what a human can type
 
-- [x] `ACC-SKILLC-77` **Parity: every command has a same-named skill** - HIGH; each of the 42 plugin commands has a skills/<name>/SKILL.md beside it that owns its procedure; the Skill tool resolves the shared name to the command, so the command points at the file (ACC-SKILLC-78)
+- [x] `ACC-SKILLC-77-PARITY` **Parity: every command has a same-named skill** - HIGH; each of the 42 plugin commands has a skills/<name>/SKILL.md beside it that owns its procedure; the Skill tool resolves the shared name to the command, so the command points at the file (ACC-SKILLC-78)
   - evidence: tests/test_command_skill_parity.py 128 passed over 42 commands; suite 1444 passed, 2 skipped (2026-09-26)
   - test: tests/test_command_skill_parity.py::test_command_has_a_same_named_skill, parametrized over every commands/*.md
   - test-tags: UNIT
@@ -793,7 +906,8 @@ every plugin command procedure is also reachable as a callable skill, so an agen
   - log: 2026-08-29T15:28:07Z @kj closed
   - log: 2026-09-26T19:53:20Z @kj amended text "each of the 42 plugin commands has a skills/<name>/SKILL.md beside it, so the Skill tool can resolve every procedure a slash command exposes" -> "each of the 42 plugin commands has a skills/<name>/SKILL.md beside it that owns its procedure; the Skill tool resolves the shared name to the command, so the command points at the file (ACC-SKILLC-78)"
   - log: 2026-09-26T20:13:42Z @kj edited evidence "tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure" -> "tests/test_command_skill_parity.py 128 passed over 42 commands; suite 1444 passed, 2 skipped (2026-09-26)"
-- [x] `ACC-SKILLC-78` **Skill owns the procedure, the command routes into it** - HIGH; a converted command's body moved into its skill byte-for-byte, and the command names its skill's file, 'this plugin's skill file skills/<name>/SKILL.md', never the plugin:name it shares with the command (DEF-SKILLC-76), so one procedure exists rather than two that drift
+  - log: 2026-10-18T15:14:44Z @kj coded PARITY
+- [x] `ACC-SKILLC-78-ROUTING` **Skill owns the procedure, the command routes into it** - HIGH; a converted command's body moved into its skill byte-for-byte, and the command names its skill's file, 'this plugin's skill file skills/<name>/SKILL.md', never the plugin:name it shares with the command (DEF-SKILLC-76), so one procedure exists rather than two that drift
   - evidence: test_command_points_at_its_skill passes on all 42; break test: journal:update restored to 'Invoke the journal:update skill' in a scratch copy fails it (1 failed, 127 passed); suite 1444 passed
   - test: tests/test_command_skill_parity.py::test_command_points_at_its_skill requires the file wording and refuses a pointer by the shared name, over every commands/*.md
   - test-tags: UNIT
@@ -803,68 +917,77 @@ every plugin command procedure is also reachable as a callable skill, so an agen
   - log: 2026-09-26T19:53:20Z @kj amended text "a converted command's body moved into its skill byte-for-byte and the command names the skill it routes into, so one procedure exists rather than two that drift" -> "a converted command's body moved into its skill byte-for-byte, and the command names its skill's file, 'this plugin's skill file skills/<name>/SKILL.md', never the plugin:name it shares with the command (DEF-SKILLC-76), so one procedure exists rather than two that drift"
   - log: 2026-09-26T19:53:20Z @kj edited test "tests/test_command_skill_parity.py::test_command_points_at_its_skill; conversion verified by diffing each new SKILL.md body against the command body at the parent commit" -> "tests/test_command_skill_parity.py::test_command_points_at_its_skill requires the file wording and refuses a pointer by the shared name, over every commands/*.md"
   - log: 2026-09-26T20:13:42Z @kj edited evidence "tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure" -> "test_command_points_at_its_skill passes on all 42; break test: journal:update restored to 'Invoke the journal:update skill' in a scratch copy fails it (1 failed, 127 passed); suite 1444 passed"
-- [x] `ACC-SKILLC-79` **Gate sites follow the procedure, never a pinned path** - MEDIUM; the toolchain-gate test finds a shipped gate block rather than reading one named file, and the CLI-name scan reads the body not the frontmatter description, so a router that only names a CLI in its menu text is not asked to carry a pip upgrade
+  - log: 2026-10-18T15:14:44Z @kj coded ROUTING
+- [x] `ACC-SKILLC-79-GATES` **Gate sites follow the procedure, never a pinned path** - MEDIUM; the toolchain-gate test finds a shipped gate block rather than reading one named file, and the CLI-name scan reads the body not the frontmatter description, so a router that only names a CLI in its menu text is not asked to carry a pip upgrade
   - evidence: tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure
   - test: tests/test_toolchain_gate.py::test_every_cli_entry_point_is_gated and the five behavioural gate tests
   - test-tags: UNIT
   - log: 2026-08-29T15:28:03Z @kj added
   - log: 2026-08-29T15:28:07Z @kj closed
   - log: 2026-08-29T15:49:14Z @kj CORRECTION: the evidence line was copied from the two criteria above and does not bear on this one - deleting a skill directory exercises the parity test, not the frontmatter strip. Real evidence: the strip changes the classification of exactly 6 files, all routers whose bodies run no CLI and which name a toolkit binary only in their menu description; no file whose body drives a CLI changed classification. Gate deletion is still caught by test_shipped_gate_still_carries_its_normative_lines, wording drift by test_every_gate_ships_the_version_ordered_comparison
+  - log: 2026-10-18T15:14:44Z @kj coded GATES
 
 ## pm-tools mechanism and root-cause `PMWHY`
 
 A registered explanation line on every item: how a criterion is meant to work, why a defect happens. Records stack newest first, so a superseded theory stays readable through a long debugging run.
 
-- [x] `ACC-PMWHY-82` **Mechanism line on a criterion** - HIGH; a criterion carries `- mechanism: <stamp> @xx <text>` saying how it is meant to work, written by `pm-tools mechanism` and refused on a defect document
+- [x] `ACC-PMWHY-82-MECHANISM` **Mechanism line on a criterion** - HIGH; a criterion carries `- mechanism: <stamp> @xx <text>` saying how it is meant to work, written by `pm-tools mechanism` and refused on a defect document
   - evidence: test_each_record_belongs_to_one_discipline passes: pm-tools mechanism writes the line on ACC-AUTH-1 and exits 1 on a defects document
   - test: pm-tools mechanism on an ACC item writes the line; the same command on a defects document exits non-zero
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-08-31T11:41:38Z @kj added
   - log: 2026-08-31T11:49:02Z @kj closed
   - log: 2026-08-31T13:13:10Z @kj edited text
-- [x] `ACC-PMWHY-83` **Root-cause line on a defect** - HIGH; a defect carries `- root-cause: <stamp> @xx <text>` saying why it happens, written by `pm-tools root-cause` and refused on a criteria document
+  - log: 2026-10-18T15:14:44Z @kj coded MECHANISM
+- [x] `ACC-PMWHY-83-ROOT-CAUSE` **Root-cause line on a defect** - HIGH; a defect carries `- root-cause: <stamp> @xx <text>` saying why it happens, written by `pm-tools root-cause` and refused on a criteria document
   - evidence: test_each_record_belongs_to_one_discipline passes: pm-tools root-cause writes the line on DEF-LNCH-1 and exits 1 on an acc-crit document
   - test: pm-tools root-cause on a DEF item writes the line; the same command on an acc-crit document exits non-zero
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-08-31T11:41:48Z @kj added
   - log: 2026-08-31T11:49:02Z @kj closed
   - log: 2026-08-31T13:13:10Z @kj edited text
-- [x] `ACC-PMWHY-84` **A second record overrides by default** - CRITICAL; writing a mechanism or root cause on an item that already has one prepends a new record and leaves the previous one in place, so nothing that was believed earlier is lost
+  - log: 2026-10-18T15:14:44Z @kj coded ROOT-CAUSE
+- [x] `ACC-PMWHY-84-RECORD-STACK` **A second record overrides by default** - CRITICAL; writing a mechanism or root cause on an item that already has one prepends a new record and leaves the previous one in place, so nothing that was believed earlier is lost
   - evidence: test_a_second_record_overrides_and_keeps_the_first passes; reverted to always-replace and watched it fail on both the status word and the surviving record
   - test: two consecutive writes leave two lines, newest first, the earlier text intact
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-08-31T11:41:48Z @kj added
   - log: 2026-08-31T11:49:02Z @kj closed
   - log: 2026-08-31T13:13:10Z @kj edited text
-- [x] `ACC-PMWHY-85` **--update replaces the current record** - HIGH; `--update` rewrites the newest record in place with a fresh stamp and author instead of stacking a new one, for correcting the wording of a theory that has not changed
+  - log: 2026-10-18T15:14:44Z @kj coded RECORD-STACK
+- [x] `ACC-PMWHY-85-UPDATE` **--update replaces the current record** - HIGH; `--update` rewrites the newest record in place with a fresh stamp and author instead of stacking a new one, for correcting the wording of a theory that has not changed
   - evidence: test_update_replaces_the_current_record passes: one line after --update, text replaced; test_update_refuses_when_there_is_nothing_to_update covers the empty case
   - test: a write with --update leaves the line count unchanged and the text replaced
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-08-31T11:41:48Z @kj added
   - log: 2026-08-31T11:49:03Z @kj closed
   - log: 2026-08-31T13:13:10Z @kj edited text
-- [x] `ACC-PMWHY-86` **Newest record is the current one** - HIGH; the topmost record is what every query reports as the item's mechanism or root cause; older records are history and are never reported as current
+  - log: 2026-10-18T15:14:44Z @kj coded UPDATE
+- [x] `ACC-PMWHY-86-NEWEST` **Newest record is the current one** - HIGH; the topmost record is what every query reports as the item's mechanism or root cause; older records are history and are never reported as current
   - evidence: test_every_query_reports_the_newest_record passes: the table and --json both read the top record after an override
   - test: list --columns mechanism and --json both report the newest record after an override
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-08-31T11:41:49Z @kj added
   - log: 2026-08-31T11:49:03Z @kj closed
   - log: 2026-08-31T13:13:10Z @kj edited text
-- [x] `ACC-PMWHY-87` **Filed with the first record** - MEDIUM; `add` takes `--mechanism` on a criterion and `--root-cause` on a defect, writing the first record at filing time without a second call
+  - log: 2026-10-18T15:14:44Z @kj coded NEWEST
+- [x] `ACC-PMWHY-87-FILED` **Filed with the first record** - MEDIUM; `add` takes `--mechanism` on a criterion and `--root-cause` on a defect, writing the first record at filing time without a second call
   - evidence: test_a_record_is_written_at_filing_time passes: add --root-cause writes one stamped record; add --mechanism on a defects file exits 1
   - test: add --root-cause writes the record and the stamp; add --mechanism on a defects file exits non-zero
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-08-31T11:42:01Z @kj added
   - log: 2026-08-31T11:49:03Z @kj closed
   - log: 2026-08-31T13:13:10Z @kj edited text
-- [x] `ACC-PMWHY-88` **Readable from every query** - MEDIUM; the current record is a `--columns` field under both its own name and `cause`, is read by `--grep` and ranked by `search`, and `--json` carries the whole record history with stamps and authors
+  - log: 2026-10-18T15:14:44Z @kj coded FILED
+- [x] `ACC-PMWHY-88-QUERIES` **Readable from every query** - MEDIUM; the current record is a `--columns` field under both its own name and `cause`, is read by `--grep` and ranked by `search`, and `--json` carries the whole record history with stamps and authors
   - evidence: test_every_query_reports_the_newest_record passes: --columns root-cause renders it, --grep matches a superseded record, search ranks it, --json carries causes[]
   - test: list --columns root-cause prints it, --grep matches its text, --json carries causes[]
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-08-31T11:42:01Z @kj added
   - log: 2026-08-31T11:49:03Z @kj closed
   - log: 2026-08-31T13:13:10Z @kj edited text
-- [x] `ACC-PMWHY-89` **Never logged twice** - MEDIUM; a record's stamp and author are never repeated in a log: line; the log keeps only what the record cannot - the whole record an --update replaced, and a --reason
+  - log: 2026-10-18T15:14:44Z @kj coded QUERIES
+- [x] `ACC-PMWHY-89-LOG-ONCE` **Never logged twice** - MEDIUM; a record's stamp and author are never repeated in a log: line; the log keeps only what the record cannot - the whole record an --update replaced, and a --reason
   - evidence: test_the_record_carries_its_own_stamp_and_is_never_logged passes: the log line count is unchanged by a root-cause write
   - test: a mechanism write leaves the item's log line count unchanged
   - test-tags: UNIT
@@ -873,425 +996,489 @@ A registered explanation line on every item: how a criterion is meant to work, w
   - log: 2026-08-31T13:13:10Z @kj edited text
   - log: 2026-09-24T13:45:58Z @kj amended text "writing a record adds no log: line - the record carries its own stamp and author, and the format records nothing twice" -> "a record's stamp and author are never repeated in a log: line; the log keeps only what the record cannot - the wording an --update replaced, and a --reason"; reason: review round 1: the --update and --reason log lines made the old text false
   - log: 2026-09-24T13:54:40Z @kj amended text "a record's stamp and author are never repeated in a log: line; the log keeps only what the record cannot - the wording an --update replaced, and a --reason" -> "a record's stamp and author are never repeated in a log: line; the log keeps only what the record cannot - the whole record an --update replaced, and a --reason"; reason: review round 2: an --update also erased the replaced record's stamp and author
-- [x] `ACC-PMWHY-90` **check guards the record format** - HIGH; check errors on a record in the wrong discipline and on a malformed stamp or handle, and warns when records are not newest-first, because order is what makes one of them current
+  - log: 2026-10-18T15:14:44Z @kj coded LOG-ONCE
+- [x] `ACC-PMWHY-90-CHECK-FORMAT` **check guards the record format** - HIGH; check errors on a record in the wrong discipline and on a malformed stamp or handle, and warns when records are not newest-first, because order is what makes one of them current
   - evidence: test_check_guards_the_record_format passes: wrong discipline and malformed line exit 1, out-of-order records warn and exit 0
   - test: pm-tools check reports each of the three conditions on a crafted file
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-08-31T11:42:01Z @kj added
   - log: 2026-08-31T11:49:03Z @kj closed
   - log: 2026-08-31T13:13:10Z @kj edited text
-- [x] `ACC-PMWHY-91` **Detail prints the record history** - MEDIUM; `report --detail` prints every mechanism or root-cause record on the item, newest first, so a whole hunt reads back from one command
+  - log: 2026-10-18T15:14:44Z @kj coded CHECK-FORMAT
+- [x] `ACC-PMWHY-91-HISTORY` **Detail prints the record history** - MEDIUM; `report --detail` prints every mechanism or root-cause record on the item, newest first, so a whole hunt reads back from one command
   - evidence: test_detail_prints_the_whole_record_history green; breaking report --detail to print one record fails it
   - test: write two root causes on one defect, assert both appear in report --detail with the newest first
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T13:13:28Z @kj added
   - log: 2026-08-31T13:13:34Z @kj closed: covered by the functional suite
-- [x] `ACC-PMWHY-92` **A state change never disturbs the record** - MEDIUM; close, reopen and the regression they mint leave the records untouched - a defect closed on a proven cause keeps that cause, and the minted regression inherits none
+  - log: 2026-10-18T15:14:44Z @kj coded HISTORY
+- [x] `ACC-PMWHY-92-STATE-SAFE` **A state change never disturbs the record** - MEDIUM; close, reopen and the regression they mint leave the records untouched - a defect closed on a proven cause keeps that cause, and the minted regression inherits none
   - evidence: test_a_state_change_never_disturbs_the_record green; a close that drops the record and a regression that copies it each fail it
   - test: close then reopen a defect carrying a root cause; assert the parent keeps it and the regression carries none
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T13:13:28Z @kj added
   - log: 2026-08-31T13:13:34Z @kj closed: covered by the functional suite
+  - log: 2026-10-18T15:14:44Z @kj coded STATE-SAFE
 
 ## Hypothesis tools `HYPTL`
 
 hypothesis-tools: flexible parsing, registration and append-only outcome recording, reporting and measured-quantity readback over canonical experiment ledgers
 
-- [x] `ACC-HYPTL-93` **Three declaration shapes parse** - HIGH; a hypothesis declares as a full block, a compact bullet, or a row of a table whose header names claim/verdict columns; a timing table maps to nothing and can never mint a phantom
+- [x] `ACC-HYPTL-93-FORMS` **Three declaration shapes parse** - HIGH; a hypothesis declares as a full block, a compact bullet, or a row of a table whose header names claim/verdict columns; a timing table maps to nothing and can never mint a phantom
   - evidence: test_an_at_a_glance_row_declares_with_its_verdict and test_a_timing_table_declares_nothing green; forcing every table to declare fails the latter
   - test: parse an at-a-glance table and a timing table, assert only the former declares
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:10Z @kj added
   - log: 2026-08-31T22:32:10Z @kj closed: covered by the functional suite
-- [x] `ACC-HYPTL-94` **Full block outranks a table row** - HIGH; when an id is declared by both a table row and a full block, the block's fields and verdict win
+  - log: 2026-10-18T15:14:44Z @kj coded FORMS
+- [x] `ACC-HYPTL-94-PRECEDENCE` **Full block outranks a table row** - HIGH; when an id is declared by both a table row and a full block, the block's fields and verdict win
   - evidence: test_a_full_block_outranks_its_table_row green
   - test: declare in a table then a block, assert shape full and the block's verdict
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:10Z @kj added
   - log: 2026-08-31T22:32:10Z @kj closed: covered by the functional suite
-- [x] `ACC-HYPTL-95` **Canonical verdicts read through variants** - HIGH; case, bold/underscore emphasis, dated parenthetical qualifiers and hyphen/space swaps all fold to the canonical spelling; a qualified label is returned as written, never coerced to its canonical neighbour
+  - log: 2026-10-18T15:14:44Z @kj coded PRECEDENCE
+- [x] `ACC-HYPTL-95-VERDICT-VARIANTS` **Canonical verdicts read through variants** - HIGH; case, bold/underscore emphasis, dated parenthetical qualifiers and hyphen/space swaps all fold to the canonical spelling; a qualified label is returned as written, never coerced to its canonical neighbour
   - evidence: test_canonical_labels_read_through_case_emphasis_and_hyphens green
   - test: match REFUTED, **Confirmed**, (2026-07-12) Confirmed, Killed at gate (proxy), Confirmed-partially
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:10Z @kj added
   - log: 2026-08-31T22:32:10Z @kj closed: covered by the functional suite
-- [x] `ACC-HYPTL-96` **Verdict vocabulary is open** - HIGH; a short word-like label the ledger grew (SUPPORTED, PARTIAL, Inconclusive) is read as written; check warns once with aggregated counts; a verdict with no readable label at all is the only error
+  - log: 2026-10-18T15:14:44Z @kj coded VERDICT-VARIANTS
+- [x] `ACC-HYPTL-96-VOCABULARY` **Verdict vocabulary is open** - HIGH; a short word-like label the ledger grew (SUPPORTED, PARTIAL, Inconclusive) is read as written; check warns once with aggregated counts; a verdict with no readable label at all is the only error
   - evidence: test_a_short_head_is_an_open_label_and_a_story_is_none and test_check_warns_on_a_grown_label_and_fails_only_when_none_reads green
   - test: check a grown label (exit 0, one warning) and a mixed-regime narrative (exit 1)
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:10Z @kj added
   - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
-- [x] `ACC-HYPTL-97` **Register burns the next free ordinal safely** - CRITICAL; register appends at next-id's ordinal, verifies the block parses back before writing, and refuses to write while any declaration is unparsed - an ordinal is never burnt twice
+  - log: 2026-10-18T15:14:44Z @kj coded VOCABULARY
+- [x] `ACC-HYPTL-97-ORDINAL-SAFE` **Register burns the next free ordinal safely** - CRITICAL; register appends at next-id's ordinal, verifies the block parses back before writing, and refuses to write while any declaration is unparsed - an ordinal is never burnt twice
   - evidence: test_register_appends_a_parseable_block_and_burns_the_next_ordinal and test_register_refuses_while_a_declaration_is_unparsed green; disabling the orphan refusal fails the latter
   - test: register on a clean ledger then on one with an unparsed heading; assert advance and refusal with the file unchanged
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:11Z @kj added
   - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
   - log: 2026-09-01T10:17:07Z @kj adversarial review round 1: FALSIFIED on the real kgf ledger - bare `- **H655**` bullets carry no batch prefix, so neither the parser nor the orphan net saw 25 assigned ordinals and next-id re-issued H655; fixed by _claimed_bare_ordinals folding them into the high-water mark, next_h now H657
-- [x] `ACC-HYPTL-98` **Registration precedes its outcome** - HIGH; register refuses Result, Verdict and Log fields - outcomes are recorded by result/verdict/log-event after the run
+  - log: 2026-10-18T15:14:44Z @kj coded ORDINAL-SAFE
+- [x] `ACC-HYPTL-98-ORDER` **Registration precedes its outcome** - HIGH; register refuses Result, Verdict and Log fields - outcomes are recorded by result/verdict/log-event after the run
   - evidence: test_register_refuses_an_outcome_field green
   - test: register with --field Verdict=..., assert exit 2 and no write
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:11Z @kj added
   - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
   - log: 2026-09-01T10:17:07Z @kj adversarial review round 1: bypassed by a parenthesised name - register --field 'Verdict (interim)=...' cleared the guard because it tested the raw name while the parser strips the qualifier; fixed by _base_name at both write guards
-- [x] `ACC-HYPTL-99` **Recorded outcomes are immutable** - CRITICAL; a second Result needs a --qualifier and lands as a distinguishable bullet; a second verdict is refused outright because a flip is a new round
+  - log: 2026-10-18T15:14:44Z @kj coded ORDER
+- [x] `ACC-HYPTL-99-IMMUTABLE` **Recorded outcomes are immutable** - CRITICAL; a second Result needs a --qualifier and lands as a distinguishable bullet; a second verdict is refused outright because a flip is a new round
   - evidence: test_a_recorded_result_is_immutable_and_a_second_needs_a_qualifier and test_a_recorded_verdict_refuses_a_second green; skipping the verdict guard fails the latter
   - test: record then re-record a Result and a verdict, assert refusal texts and file content
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:11Z @kj added
   - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
   - log: 2026-09-01T10:17:07Z @kj adversarial review round 1: defeated two ways - verdict guarded on the field VALUE so an empty placeholder bullet let three verdicts stack, and field --name 'Verdict (date)' landed a second verdict above the recorded one where first-wins made it canonical; both fixed
-- [x] `ACC-HYPTL-100` **Log lines append newest last** - MEDIUM; log-event creates the Log bullet at block end when absent and appends each dated line after the existing ones
+  - log: 2026-10-18T15:14:44Z @kj coded IMMUTABLE
+- [x] `ACC-HYPTL-100-LOG-ORDER` **Log lines append newest last** - MEDIUM; log-event creates the Log bullet at block end when absent and appends each dated line after the existing ones
   - evidence: test_log_event_creates_then_appends_newest_last green
   - test: log two events, assert one Log bullet and chronological order
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:11Z @kj added
   - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
-- [x] `ACC-HYPTL-101` **Report tallies batches by verdict** - MEDIUM; report renders one paste-ready table, batches down and verdict labels across - canonical first then grown by frequency, capped with an other column, unverdicted last, with a Total row
+  - log: 2026-10-18T15:14:44Z @kj coded LOG-ORDER
+- [x] `ACC-HYPTL-101-REPORT` **Report tallies batches by verdict** - MEDIUM; report renders one paste-ready table, batches down and verdict labels across - canonical first then grown by frequency, capped with an other column, unverdicted last, with a Total row
   - evidence: test_report_tallies_batches_down_and_verdicts_across green
   - test: report a three-hypothesis ledger, assert header and rows
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:11Z @kj added
   - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
-- [x] `ACC-HYPTL-102` **Measured quantities read back with context** - HIGH; values returns every reading of one named quantity across declared blocks - backticked/bolded names, = and : forms, parenthetical arguments, comparators and % - with id, line and context so a false hit is visible
+  - log: 2026-10-18T15:14:44Z @kj coded REPORT
+- [x] `ACC-HYPTL-102-CONTEXT` **Measured quantities read back with context** - HIGH; values returns every reading of one named quantity across declared blocks - backticked/bolded names, = and : forms, parenthetical arguments, comparators and % - with id, line and context so a false hit is visible
   - evidence: test_values_reads_a_quantity_off_every_block and test_values_restricts_by_batch_and_id_and_says_when_dry green; verified live on the kgf store (theta(0.08) = 0.7644 read from line 4317 of 6,432)
   - test: read DR, margin, theta and a multi-word quantity off a fixture; filter by batch and id
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:11Z @kj added
   - log: 2026-08-31T22:32:11Z @kj closed: covered by the functional suite
-- [x] `ACC-HYPTL-103` **Edge: escaped pipe in a table cell** - MEDIUM; a \| inside a cell is CommonMark's escaped pipe, not a delimiter - a formula cell never shifts the verdict column
+  - log: 2026-10-18T15:14:44Z @kj coded CONTEXT
+- [x] `ACC-HYPTL-103-EDGE-PIPE` **Edge: escaped pipe in a table cell** - MEDIUM; a \| inside a cell is CommonMark's escaped pipe, not a delimiter - a formula cell never shifts the verdict column
   - evidence: test_an_escaped_pipe_does_not_shift_the_verdict_column green; reverting to a naive split fails it
   - test: parse a row carrying max\|dTFR\| in its evidence cell, assert the verdict column reads
   - test-tags: FUNCTIONAL
   - log: 2026-08-31T22:32:12Z @kj added
   - log: 2026-08-31T22:32:12Z @kj closed: covered by the functional suite
-- [x] `ACC-HYPTL-104` **Every write is authored** - HIGH; register, result, verdict, field and log-event require --author @xx and refuse a handle that is not on the ## Authors roster, leaving the file untouched
+  - log: 2026-10-18T15:14:44Z @kj coded EDGE-PIPE
+- [x] `ACC-HYPTL-104-AUTHORED` **Every write is authored** - HIGH; register, result, verdict, field and log-event require --author @xx and refuse a handle that is not on the ## Authors roster, leaving the file untouched
   - evidence: test_every_write_refuses_a_handle_that_is_not_on_the_roster and test_a_malformed_handle_is_refused_before_the_roster_is_read green; forcing need_author to accept any handle fails the former
   - test: call each write with an unrostered handle; assert exit 2, the roster message and an unchanged file
   - test-tags: FUNCTIONAL
   - log: 2026-09-01T09:13:41Z @kj added
   - log: 2026-09-01T09:13:52Z @kj closed
-- [x] `ACC-HYPTL-105` **The roster is document metadata** - MEDIUM; author adds or updates one `@xx` entry, creating the ## Authors section under the overview and above the first round; a second call for the same handle updates it rather than doubling it
+  - log: 2026-10-18T15:14:44Z @kj coded AUTHORED
+- [x] `ACC-HYPTL-105-ROSTER-META` **The roster is document metadata** - MEDIUM; author adds or updates one `@xx` entry, creating the ## Authors section under the overview and above the first round; a second call for the same handle updates it rather than doubling it
   - evidence: test_author_creates_the_roster_above_the_first_round and test_a_second_author_joins_the_roster green; validated live on a copy of the 6,432-line kgf ledger, roster landed at line 11 above the first round
   - test: author twice on a ledger with no roster; assert one entry, placement above the first ## round, and that the ledger still parses
   - test-tags: FUNCTIONAL
   - log: 2026-09-01T09:13:41Z @kj added
   - log: 2026-09-01T09:13:52Z @kj closed
-- [x] `ACC-HYPTL-106` **Every write records who made it** - HIGH; each write appends its own dated log line naming the author - registered, result recorded, verdict recorded: LABEL, field N added/updated - newest last under one Log bullet
+  - log: 2026-10-18T15:14:44Z @kj coded ROSTER-META
+- [x] `ACC-HYPTL-106-AUTHOR` **Every write records who made it** - HIGH; each write appends its own dated log line naming the author - registered, result recorded, verdict recorded: LABEL, field N added/updated - newest last under one Log bullet
   - evidence: test_every_write_stamps_an_authored_log_line and test_a_qualified_result_names_its_qualifier_in_the_audit_line green; dropping the stamp from cmd_result fails the former
   - test: register then result, verdict and field; assert the four authored log lines in order under a single Log bullet
   - test-tags: FUNCTIONAL
   - log: 2026-09-01T09:13:41Z @kj added
   - log: 2026-09-01T09:13:52Z @kj closed
-- [x] `ACC-HYPTL-107` **Free-form fields on a recorded hypothesis** - MEDIUM; field adds any name the research needs, placed before Result/Verdict/Log; a name already recorded needs --update, which replaces the value and keeps the label and its qualifier
+  - log: 2026-10-18T15:14:44Z @kj coded AUTHOR
+- [x] `ACC-HYPTL-107-FREE-FIELDS` **Free-form fields on a recorded hypothesis** - MEDIUM; field adds any name the research needs, placed before Result/Verdict/Log; a name already recorded needs --update, which replaces the value and keeps the label and its qualifier
   - evidence: test_field_adds_a_free_form_field_before_the_outcomes, test_field_refuses_to_overwrite_without_update and test_field_keeps_a_qualifier_when_it_updates green; removing the duplicate refusal and the outcome-relative placement each fail their own test
   - test: add a field, re-add it without --update (exit 2), then with --update; assert placement, single occurrence and preserved qualifier
   - test-tags: FUNCTIONAL
   - log: 2026-09-01T09:13:41Z @kj added
   - log: 2026-09-01T09:13:52Z @kj closed
   - log: 2026-09-01T10:32:45Z @kj confirming round: FALSIFIED - _field_lines keys by base name but cmd_field looked up the raw label, so --name 'Grounding (v2)' missed an existing Grounding and appended a second bullet the parser could never reach, --update appending a third; fixed by looking up on _base_name(label) while still rendering the name as given
-- [x] `ACC-HYPTL-108` **Outcome fields keep their own commands** - MEDIUM; field refuses Result, Verdict and Log so their immutability rules cannot be routed around
+  - log: 2026-10-18T15:14:44Z @kj coded FREE-FIELDS
+- [x] `ACC-HYPTL-108-OUTCOME-CMD` **Outcome fields keep their own commands** - MEDIUM; field refuses Result, Verdict and Log so their immutability rules cannot be routed around
   - evidence: test_field_refuses_an_outcome_name green over Result, verdict and Log, each asserting the file is byte-identical afterwards
   - test: field --name Result/verdict/Log; assert exit 2 and an unchanged file
   - test-tags: FUNCTIONAL
   - log: 2026-09-01T09:13:41Z @kj added
   - log: 2026-09-01T09:13:52Z @kj closed
-- [x] `ACC-HYPTL-109` **Unauthored history stays legitimate** - MEDIUM; check errors on a log handle that is not on the roster, aggregated per handle, and warns once with a count on log lines carrying no handle - the ledgers predate the roster
+  - log: 2026-10-18T15:14:44Z @kj coded OUTCOME-CMD
+- [x] `ACC-HYPTL-109-LEGACY-AUTHOR` **Unauthored history stays legitimate** - MEDIUM; check errors on a log handle that is not on the roster, aggregated per handle, and warns once with a count on log lines carrying no handle - the ledgers predate the roster
   - evidence: test_check_warns_once_on_unauthored_lines_and_errors_on_an_unknown_handle green; skipping the unknown-handle branch fails it. The four real ledgers gain zero errors - they carry no log lines at all
   - test: a ledger with two unauthored lines and one stranger handle; assert one aggregated warning and the roster error
   - test-tags: FUNCTIONAL
   - log: 2026-09-01T09:13:41Z @kj added
   - log: 2026-09-01T09:13:52Z @kj closed
-- [x] `ACC-HYPTL-110` **Written values are single-line** - CRITICAL; every write refuses a value containing ANY line break - not just the newline: the parser splits with str.splitlines(), which breaks on CR, VT, FF, the file/group/record separators and U+2028/9, so a bare CR from a captured run log or a PDF paste minted a phantom hypothesis exactly as a newline did; slug, batch, batch-slug, name, text, event, qualifier and any --field string, with <br> named as the ledger's own line break
+  - log: 2026-10-18T15:14:44Z @kj coded LEGACY-AUTHOR
+- [x] `ACC-HYPTL-110-SINGLE-LINE` **Written values are single-line** - CRITICAL; every write refuses a value containing ANY line break - not just the newline: the parser splits with str.splitlines(), which breaks on CR, VT, FF, the file/group/record separators and U+2028/9, so a bare CR from a captured run log or a PDF paste minted a phantom hypothesis exactly as a newline did; slug, batch, batch-slug, name, text, event, qualifier and any --field string, with <br> named as the ledger's own line break
   - evidence: test_a_newline_in_any_written_value_is_refused green over all 7 write forms; the original reproduction (field --text with an embedded ### E09-H99) now exits 2 with the ledger byte-identical
   - test: drive each write command with a value carrying an embedded declaration; assert exit 2 and a byte-identical file
   - test-tags: FUNCTIONAL
   - log: 2026-09-01T10:17:25Z @kj added
   - log: 2026-09-01T10:17:25Z @kj closed
   - log: 2026-09-01T10:32:45Z @kj edited text
-- [x] `ACC-HYPTL-111` **A claimed ordinal is never re-issued, whatever dialect declared it** - CRITICAL; the high-water mark counts bare bold-label H<n> bullets as well as parsed declarations, so a ledger that registers gated hypotheses without the batch prefix cannot have an ordinal handed out twice; counted rather than refused, so the ledger stays readable
+  - log: 2026-10-18T15:14:44Z @kj coded SINGLE-LINE
+- [x] `ACC-HYPTL-111-ORDINAL-CLAIM` **A claimed ordinal is never re-issued, whatever dialect declared it** - CRITICAL; the high-water mark counts bare bold-label H<n> bullets as well as parsed declarations, so a ledger that registers gated hypotheses without the batch prefix cannot have an ordinal handed out twice; counted rather than refused, so the ledger stays readable
   - evidence: test_a_bare_bold_h_bullet_still_claims_its_ordinal and test_a_prose_citation_of_a_bare_ordinal_does_not_claim_it green; on a copy of the real 6,432-line kgf ledger next-id moved H655 to H657 and check still reads all 554 hypotheses with its error count unchanged at 65
   - test: a ledger with bare - **H655** / - **H656** bullets; assert next-id answers H657 and a prose citation of H655 does not claim it
   - test-tags: FUNCTIONAL
   - log: 2026-09-01T10:17:25Z @kj added
   - log: 2026-09-01T10:17:25Z @kj closed
-- [x] `ACC-HYPTL-112` **The write guards use the parser's field identity** - HIGH; an outcome name carrying a trailing parenthetical is still that outcome - field and register --field refuse Verdict (date) and Result (gate) as they refuse the bare names - and verdict refuses on the PRESENCE of a Verdict bullet, so an empty placeholder cannot swallow the one verdict a hypothesis gets
+  - log: 2026-10-18T15:14:44Z @kj coded ORDINAL-CLAIM
+- [x] `ACC-HYPTL-112-FIELD-ID` **The write guards use the parser's field identity** - HIGH; an outcome name carrying a trailing parenthetical is still that outcome - field and register --field refuse Verdict (date) and Result (gate) as they refuse the bare names - and verdict refuses on the PRESENCE of a Verdict bullet, so an empty placeholder cannot swallow the one verdict a hypothesis gets
   - evidence: test_a_parenthesised_outcome_name_is_still_an_outcome (Verdict/Result/Log forms), test_register_refuses_a_parenthesised_outcome_field and test_verdict_refuses_an_empty_placeholder_bullet green; all four real ledgers parse identically after _base_name entered the parser path
   - test: field --name 'Verdict (2026-09-01)' on a Confirmed hypothesis; assert exit 2, unchanged file and unchanged verdict. verdict against an empty placeholder bullet; assert exit 2
   - test-tags: FUNCTIONAL
   - log: 2026-09-01T10:17:25Z @kj added
   - log: 2026-09-01T10:17:25Z @kj closed
-- [x] `ACC-HYPTL-113` **A plain field bullet outranks a qualified one** - HIGH; where a block carries both, the unqualified bullet is the field of record - a real ledger writes - **Verdict (interim)** above the - **Verdict** that supersedes it, and first-wins alone reported a refuted hypothesis as passed on the round-state tally
+  - log: 2026-10-18T15:14:44Z @kj coded FIELD-ID
+- [x] `ACC-HYPTL-113-BULLET-PLAIN` **A plain field bullet outranks a qualified one** - HIGH; where a block carries both, the unqualified bullet is the field of record - a real ledger writes - **Verdict (interim)** above the - **Verdict** that supersedes it, and first-wins alone reported a refuted hypothesis as passed on the round-state tally
   - evidence: test_a_plain_bullet_outranks_a_qualified_one_already_stored green; on the real kgf ledger R23-H248 now reports its recorded 'PARTIAL final' and R24-H260 returns None with one honest new error naming its unreadable Verdict, where it previously reported 'gate PASSED decisively' against a recorded 'REFUTED by 1.7 pts' (65 to 66 errors, no other ledger moved)
   - test: a block with Verdict (interim) Confirmed above Verdict Refuted; assert the parsed verdict is Refuted and a qualified-only field is still recognised
   - test-tags: FUNCTIONAL
   - log: 2026-09-01T10:32:45Z @kj added
   - log: 2026-09-01T10:32:45Z @kj closed
-- [x] `ACC-HYPTL-114` **Scoped canonical label** - HIGH; a canonical verdict label followed by scoping prose up to the first delimiter (`Refuted on the replacement bar;`, `**Refuted** as an order measure (...)`, `Refuted for int8-dynamic;`) reads as that label; `.` is a delimiter and a comma inside a number is not
+  - log: 2026-10-18T15:14:44Z @kj coded BULLET-PLAIN
+- [x] `ACC-HYPTL-114-SCOPED-LABEL` **Scoped canonical label** - HIGH; a canonical verdict label followed by scoping prose up to the first delimiter (`Refuted on the replacement bar;`, `**Refuted** as an order measure (...)`, `Refuted for int8-dynamic;`) reads as that label; `.` is a delimiter and a comma inside a number is not
   - evidence: uv run --extra dev pytest: 1258 passed; check on the two docdistance ledgers exits 0; corpus diff script over 14 ledgers, 0 readable labels lost
   - test: test_a_canonical_label_followed_by_scoping_prose_reads_as_that_label; corpus diff vs HEAD over 1259 hypotheses: 67 none-to-label, 23 label-to-canonical, 0 label-to-none
   - test-tags: UNIT, CORPUS
   - log: 2026-09-01T23:19:33Z @kj added
   - log: 2026-09-01T23:19:34Z @kj closed
-- [x] `ACC-HYPTL-115` **Regime is next-clause label** - HIGH; a verdict whose next clause opens with another canonical label (`Refuted for k=1, Confirmed for k=3`, `Refuted for bf16, kept for the recipe`) is a regime and reads as no label; a number in the scope alone does not make one
+  - log: 2026-10-18T15:14:44Z @kj coded SCOPED-LABEL
+- [x] `ACC-HYPTL-115-REGIME` **Regime is next-clause label** - HIGH; a verdict whose next clause opens with another canonical label (`Refuted for k=1, Confirmed for k=3`, `Refuted for bf16, kept for the recipe`) is a regime and reads as no label; a number in the scope alone does not make one
   - evidence: uv run --extra dev pytest: 1258 passed; check on the two docdistance ledgers exits 0; corpus diff script over 14 ledgers, 0 readable labels lost
   - test: same test, the four regime assertions; quantized ledger 7 errors to 4, every survivor a genuine mixed verdict
   - test-tags: UNIT, CORPUS
   - log: 2026-09-01T23:19:33Z @kj added
   - log: 2026-09-01T23:19:34Z @kj closed
-- [x] `ACC-HYPTL-116` **Unrun counted not warned** - HIGH; a full block with neither Result nor Verdict is unrun; check carries the count in its summary line (`14 unrun`) and emits no per-hypothesis warning for it
+  - log: 2026-10-18T15:14:44Z @kj coded REGIME
+- [x] `ACC-HYPTL-116-UNRUN` **Unrun counted not warned** - HIGH; a full block with neither Result nor Verdict is unrun; check carries the count in its summary line (`14 unrun`) and emits no per-hypothesis warning for it
   - evidence: uv run --extra dev pytest: 1258 passed; check on the two docdistance ledgers exits 0; corpus diff script over 14 ledgers, 0 readable labels lost
   - test: test_check_counts_unrun_and_aggregates_missing_fields; docdistance ledger OK 38 hypotheses, 14 unrun, 6 warnings
   - test-tags: UNIT, CORPUS
   - log: 2026-09-01T23:19:33Z @kj added
   - log: 2026-09-01T23:19:34Z @kj closed
-- [x] `ACC-HYPTL-117` **Missing fields one line per field** - HIGH; check reports full-block hypotheses missing a required field as one warning per field naming the ids (first five, +N more), never one line per hypothesis; an unrun hypothesis never appears in the Result or Verdict lines
+  - log: 2026-10-18T15:14:44Z @kj coded UNRUN
+- [x] `ACC-HYPTL-117-MISSING-FIELDS` **Missing fields one line per field** - HIGH; check reports full-block hypotheses missing a required field as one warning per field naming the ids (first five, +N more), never one line per hypothesis; an unrun hypothesis never appears in the Result or Verdict lines
   - evidence: uv run --extra dev pytest: 1258 passed; check on the two docdistance ledgers exits 0; corpus diff script over 14 ledgers, 0 readable labels lost
   - test: same test; docdistance 23 warning lines to 6, structure ledger 33 to 5
   - test-tags: UNIT, CORPUS
   - log: 2026-09-01T23:19:33Z @kj added
   - log: 2026-09-01T23:19:34Z @kj closed
-- [x] `ACC-HYPTL-118` **Standing guardrails once per batch** - HIGH; the template and SKILL state that a guardrail every hypothesis in a batch holds is declared once in the batch section's opening line and the per-block while clause and Acceptance bar name only what is specific to the block
+  - log: 2026-10-18T15:14:44Z @kj coded MISSING-FIELDS
+- [x] `ACC-HYPTL-118-GUARDRAILS` **Standing guardrails once per batch** - HIGH; the template and SKILL state that a guardrail every hypothesis in a batch holds is declared once in the batch section's opening line and the per-block while clause and Acceptance bar name only what is specific to the block
   - evidence: uv run --extra dev pytest: 1258 passed; check on the two docdistance ledgers exits 0; corpus diff script over 14 ledgers, 0 readable labels lost
   - test: docs read: per-hypothesis-template.md Hypothesis bullet, SKILL.md Hypothesis form, experiments-log-structure.md batch line; measured on docdistance E12: 714 of 7658 words were restated guardrails
   - test-tags: UNIT, CORPUS
   - log: 2026-09-01T23:19:33Z @kj added
   - log: 2026-09-01T23:19:34Z @kj closed
-- [x] `ACC-HYPTL-119` **A write that would not read back is refused** - HIGH; result and field build the bullet they are about to land and exit 2 without touching the file when FIELD_RE would not read it as the field it claims (a star in the label) or when the parser would take it for a compact declaration (a name opening with a hypothesis id); register exits 1 unwritten when a field name is given twice, once plain and once qualified, or opens with an id, and its message names those causes
+  - log: 2026-10-18T15:14:44Z @kj coded GUARDRAILS
+- [x] `ACC-HYPTL-119-READBACK` **A write that would not read back is refused** - HIGH; result and field build the bullet they are about to land and exit 2 without touching the file when FIELD_RE would not read it as the field it claims (a star in the label) or when the parser would take it for a compact declaration (a name opening with a hypothesis id); register exits 1 unwritten when a field name is given twice, once plain and once qualified, or opens with an id, and its message names those causes
   - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 151 passed incl. the three named tests; adversarial review rounds 2-4 (wf_77e10307-4d3, wf_6c4ec364-631) reproduced the refusals on scratch ledgers with the ledger byte-identical
   - test: tests/test_hypothesis_tools.py: test_a_bullet_no_reader_matches_is_refused_before_the_write (3 cases), test_register_refuses_a_field_name_given_twice (2 cases), test_register_refuses_a_field_name_opening_with_an_id_and_says_so; ledger byte-identical after every refusal
   - test-tags: UNIT
   - log: 2026-09-02T01:02:47Z @kj added
   - log: 2026-09-02T01:02:47Z @kj closed
-- [x] `ACC-HYPTL-120` **The registrant is the registered event's author** - HIGH; Hypothesis.author, show --json author and list --author read the handle only from a log line whose event opens with registered - the event register writes; a hand-written block that later receives a result, verdict or field write answers no author and is not listed under the writer
+  - log: 2026-10-18T15:14:44Z @kj coded READBACK
+- [x] `ACC-HYPTL-120-REGISTRANT` **The registrant is the registered event's author** - HIGH; Hypothesis.author, show --json author and list --author read the handle only from a log line whose event opens with registered - the event register writes; a hand-written block that later receives a result, verdict or field write answers no author and is not listed under the writer
   - evidence: uv run --extra dev pytest: test_author_is_the_registrant_never_the_first_writer and test_list_filters_by_author pass; scratch ledger: hand-written block answers author null after result --author @ab, CLI-registered block answers @ab
   - test: tests/test_hypothesis_tools.py: test_author_is_the_registrant_never_the_first_writer, test_list_filters_by_author
   - test-tags: UNIT
   - log: 2026-09-02T01:02:47Z @kj added
   - log: 2026-09-02T01:02:47Z @kj closed
-- [x] `ACC-HYPTL-121` **A blank qualifier is no qualifier** - MEDIUM; result strips --qualifier before the immutability test, so a whitespace-only qualifier on a block that already records a Result exits 2 with the immutability message instead of landing a second plain Result
+  - log: 2026-10-18T15:14:44Z @kj coded REGISTRANT
+- [x] `ACC-HYPTL-121-BLANK-QUAL` **A blank qualifier is no qualifier** - MEDIUM; result strips --qualifier before the immutability test, so a whitespace-only qualifier on a block that already records a Result exits 2 with the immutability message instead of landing a second plain Result
   - evidence: uv run --extra dev pytest: test_a_blank_qualifier_is_no_qualifier passes; scratch ledger: result --qualifier ' ' on a block with a Result exits 2 with the immutability message and writes nothing
   - test: tests/test_hypothesis_tools.py: test_a_blank_qualifier_is_no_qualifier
   - test-tags: UNIT
   - log: 2026-09-02T01:02:47Z @kj added
   - log: 2026-09-02T01:02:47Z @kj closed
-- [x] `ACC-HYPTL-124` **Soft lock line on any unverdicted hypothesis** - HIGH; hypothesis-tools lock LOG ID --author @xx [--hours N | --until STAMP] [--note TEXT] writes exactly one '- lock: <until ISO-8601 UTC stamp> @xx [note]' line as the block's first bullet meaning @xx is likely working on it until the stamp, 24 hours by default, any span accepted; locking again by the same author replaces the line (extend); a hypothesis carrying a Verdict, or a compact or table-declared one, is refused with a message; the line is verified to read back before the file is written and a note that breaks the shape is refused; never a log line
+  - log: 2026-10-18T15:14:44Z @kj coded BLANK-QUAL
+- [x] `ACC-HYPTL-124-LOCK-LINE` **Soft lock line on any unverdicted hypothesis** - HIGH; hypothesis-tools lock LOG ID --author @xx [--hours N | --until STAMP] [--note TEXT] writes exactly one '- lock: <until ISO-8601 UTC stamp> @xx [note]' line as the block's first bullet meaning @xx is likely working on it until the stamp, 24 hours by default, any span accepted; locking again by the same author replaces the line (extend); a hypothesis carrying a Verdict, or a compact or table-declared one, is refused with a message; the line is verified to read back before the file is written and a note that breaks the shape is refused; never a log line
   - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. the four lock-write tests; scratch ledger: lock lands 24h ahead as the first bullet, relock by the same author extends, a verdicted block is refused with exit 2
   - test: tests/test_hypothesis_tools.py: test_lock_writes_one_line_24h_ahead_as_the_first_bullet_and_never_logs, test_lock_hours_and_until_are_honoured_and_a_relock_extends, test_lock_refuses_a_verdicted_hypothesis_and_a_compact_one, test_a_lock_note_must_be_one_line
   - test-tags: UNIT
   - log: 2026-09-02T11:24:57Z @kj added
   - log: 2026-09-02T11:24:58Z @kj closed
-- [x] `ACC-HYPTL-125` **Soft lock is inconsequential - warn, never refuse** - HIGH; result, field, log-event and verdict on a hypothesis locked by a DIFFERENT author than --author print one warning line to stderr naming the holder and the expiry and proceed unchanged; exit code and file result are identical to the unlocked case; the same author is not warned
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-LINE
+- [x] `ACC-HYPTL-125-LOCK-WARN` **Soft lock is inconsequential - warn, never refuse** - HIGH; result, field, log-event and verdict on a hypothesis locked by a DIFFERENT author than --author print one warning line to stderr naming the holder and the expiry and proceed unchanged; exit code and file result are identical to the unlocked case; the same author is not warned
   - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_a_foreign_lock_warns_once_and_every_write_lands_unchanged; scratch ledger: result by @ab on @kj's lock warns on stderr and the Result lands with exit 0
   - test: tests/test_hypothesis_tools.py: test_a_foreign_lock_warns_once_and_every_write_lands_unchanged
   - test-tags: UNIT
   - log: 2026-09-02T11:24:57Z @kj added
   - log: 2026-09-02T11:24:58Z @kj closed
-- [x] `ACC-HYPTL-126` **Expired locks are cleared on any write; verdict clears the lock** - HIGH; every write command (register, author, result, field, log-event, verdict, lock, unlock) first removes every lock line whose stamp is in the past, silently and unlogged; verdict removes the hypothesis's lock whatever its expiry; check stays read-only and reports an expired lock as a warning, a lock on a verdicted hypothesis as a warning, and a malformed or duplicate lock line as an error
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-WARN
+- [x] `ACC-HYPTL-126-LOCK-EXPIRY` **Expired locks are cleared on any write; verdict clears the lock** - HIGH; every write command (register, author, result, field, log-event, verdict, lock, unlock) first removes every lock line whose stamp is in the past, silently and unlogged; verdict removes the hypothesis's lock whatever its expiry; check stays read-only and reports an expired lock as a warning, a lock on a verdicted hypothesis as a warning, and a malformed or duplicate lock line as an error
   - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. the expired-lock, verdict-clears and check-lock tests; scratch ledger: an hour-old lock is gone after any write with no log line, verdict drops an active lock, check errors on a malformed line
   - test: tests/test_hypothesis_tools.py: test_an_expired_lock_is_cleared_by_the_next_write_silently, test_verdict_clears_the_lock_whatever_its_expiry_after_warning, test_check_errors_on_a_malformed_or_duplicate_lock_and_warns_on_an_expired_or_finished_one
   - test-tags: UNIT
   - log: 2026-09-02T11:24:57Z @kj added
   - log: 2026-09-02T11:24:58Z @kj closed
-- [x] `ACC-HYPTL-127` **unlock clears one, all, or expired locks** - MEDIUM; hypothesis-tools unlock LOG (ID | --all | --expired) --author @xx removes lock lines: one hypothesis, every hypothesis, or only the expired ones; exactly one selector is accepted; clearing another author's active lock is allowed and warns once; never a log line; prints the count cleared
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-EXPIRY
+- [x] `ACC-HYPTL-127-UNLOCK` **unlock clears one, all, or expired locks** - MEDIUM; hypothesis-tools unlock LOG (ID | --all | --expired) --author @xx removes lock lines: one hypothesis, every hypothesis, or only the expired ones; exactly one selector is accepted; clearing another author's active lock is allowed and warns once; never a log line; prints the count cleared
   - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_unlock_clears_one_every_or_only_the_expired_locks; scratch ledger: unlock ID, --all and --expired each print the count cleared and no selector or two selectors is refused
   - test: tests/test_hypothesis_tools.py: test_unlock_clears_one_every_or_only_the_expired_locks
   - test-tags: UNIT
   - log: 2026-09-02T11:24:57Z @kj added
   - log: 2026-09-02T11:24:58Z @kj closed
-- [x] `ACC-HYPTL-128` **Locks in list filters and json** - MEDIUM; list --locked keeps hypotheses carrying an active lock and --locked-by @xx narrows to one holder; list, show and report --json carry lock as {by, until, note} or null on every hypothesis record; an expired lock is not active for any of these
+  - log: 2026-10-18T15:14:44Z @kj coded UNLOCK
+- [x] `ACC-HYPTL-128-LOCK-REPORT` **Locks in list filters and json** - MEDIUM; list --locked keeps hypotheses carrying an active lock and --locked-by @xx narrows to one holder; list, show and report --json carry lock as {by, until, note} or null on every hypothesis record; an expired lock is not active for any of these
   - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_locked_and_locked_by_narrow_list and test_reads_announce_worked_on_hypotheses_and_json_carries_the_lock; scratch ledger: list --locked returns the locked block only, show --json carries lock {by, until, note}
   - test: tests/test_hypothesis_tools.py: test_locked_and_locked_by_narrow_list, test_reads_announce_worked_on_hypotheses_and_json_carries_the_lock
   - test-tags: UNIT
   - log: 2026-09-02T11:24:57Z @kj added
   - log: 2026-09-02T11:24:58Z @kj closed
-- [x] `ACC-HYPTL-129` **Read commands announce worked-on hypotheses at pick-up** - HIGH; list, show and report print one notice line to stderr before their output whenever a hypothesis they show carries an active lock: 'N hypothesis(es) currently worked on: E14-H42 by @kj until <stamp>, ...' (ids listed, at most ten, then '+M more'); nothing is printed when no shown hypothesis is locked; --json prints no notice
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-REPORT
+- [x] `ACC-HYPTL-129-LOCK-NOTICE` **Read commands announce worked-on hypotheses at pick-up** - HIGH; list, show and report print one notice line to stderr before their output whenever a hypothesis they show carries an active lock: 'N hypothesis(es) currently worked on: E14-H42 by @kj until <stamp>, ...' (ids listed, at most ten, then '+M more'); nothing is printed when no shown hypothesis is locked; --json prints no notice
   - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_reads_announce_worked_on_hypotheses_and_json_carries_the_lock; scratch ledger: list, show and report open with the notice on stderr, silent when nothing is locked and under --json
   - test: tests/test_hypothesis_tools.py: test_reads_announce_worked_on_hypotheses_and_json_carries_the_lock
   - test-tags: UNIT
   - log: 2026-09-02T11:24:57Z @kj added
   - log: 2026-09-02T11:24:58Z @kj closed
-- [x] `ACC-HYPTL-130` **Locking a hypothesis someone else holds is a transfer and is called out** - HIGH; lock on a hypothesis with an active lock held by another author prints a distinct stderr line 'TRANSFER: E14-H42 was locked by @yy until <stamp> - you are taking it over; ask @yy' and proceeds (no refusal); the new lock line's note opens with 'taken over from @yy' unless --note is given, so the previous holder stays visible on the block; unlock of another author's active lock warns the same way with 'you are clearing it'
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-NOTICE
+- [x] `ACC-HYPTL-130-LOCK-TRANSFER` **Locking a hypothesis someone else holds is a transfer and is called out** - HIGH; lock on a hypothesis with an active lock held by another author prints a distinct stderr line 'TRANSFER: E14-H42 was locked by @yy until <stamp> - you are taking it over; ask @yy' and proceeds (no refusal); the new lock line's note opens with 'taken over from @yy' unless --note is given, so the previous holder stays visible on the block; unlock of another author's active lock warns the same way with 'you are clearing it'
   - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_locking_over_another_authors_lock_is_a_transfer_and_is_called_out; scratch ledger: @ab locking @kj's active lock prints the TRANSFER line and records 'taken over from @kj'
   - test: tests/test_hypothesis_tools.py: test_locking_over_another_authors_lock_is_a_transfer_and_is_called_out
   - test-tags: UNIT
   - log: 2026-09-02T11:24:57Z @kj added
   - log: 2026-09-02T11:24:58Z @kj closed
-- [x] `ACC-HYPTL-131` **Skill, reference and command carry the lock discipline as a standing default** - MEDIUM; plugins/datascience/skills/hypothesis/SKILL.md, its references/ledger-queries.md and commands/hypothesis.md state: lock a hypothesis when you pick it up, before its first write, unasked; ask before working on one locked by someone else; the lock never blocks a write; expired locks clear themselves; verdict clears the lock; unlock at will; list, show and report announce the hypotheses currently worked on; 24 hours default; the CLI --help documents lock, unlock, --locked and --locked-by
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-TRANSFER
+- [x] `ACC-HYPTL-131-LOCK-DOCS` **Skill, reference and command carry the lock discipline as a standing default** - MEDIUM; plugins/datascience/skills/hypothesis/SKILL.md, its references/ledger-queries.md and commands/hypothesis.md state: lock a hypothesis when you pick it up, before its first write, unasked; ask before working on one locked by someone else; the lock never blocks a write; expired locks clear themselves; verdict clears the lock; unlock at will; list, show and report announce the hypotheses currently worked on; 24 hours default; the CLI --help documents lock, unlock, --locked and --locked-by
   - evidence: uv run --extra dev pytest tests/test_hypothesis_tools.py: 165 passed, incl. test_the_hypothesis_skill_carries_the_lock_discipline, which reads the three files for the lock command, 'never a gate', 'currently worked on', 'TRANSFER' and '24 hours'
   - test: tests/test_hypothesis_tools.py: test_the_hypothesis_skill_carries_the_lock_discipline
   - test-tags: UNIT
   - log: 2026-09-02T11:24:57Z @kj added
   - log: 2026-09-02T11:24:58Z @kj closed
-- [x] `ACC-HYPTL-148` **attach writes one fingerprinted attachment line per artefact** - HIGH; hypothesis-tools attach LOG ID --path P... --author @xx writes - attachment: <path> sha256:<16 hex> edited:<ISO stamp> per artefact after the lock line and before the fields, path relative to the ledger's directory, one log line per write; a path already attached is refreshed in place with the old and new checksum in the log; an unchanged artefact writes nothing; a missing file is refused before any write
+  - log: 2026-10-18T15:14:44Z @kj coded LOCK-DOCS
+- [x] `ACC-HYPTL-148-ATTACH` **attach writes one fingerprinted attachment line per artefact** - HIGH; hypothesis-tools attach LOG ID --path P... --author @xx writes - attachment: <path> sha256:<16 hex> edited:<ISO stamp> per artefact after the lock line and before the fields, path relative to the ledger's directory, one log line per write; a path already attached is refreshed in place with the old and new checksum in the log; an unchanged artefact writes nothing; a missing file is refused before any write
   - evidence: tests/test_hypothesis_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift passes
   - test: attach test: two artefacts incl. a path with a space, placement, log count, unchanged, refresh, refusal
   - test-tags: UNIT
   - log: 2026-09-18T20:51:42Z @kj added
   - log: 2026-09-18T20:51:50Z @kj closed: met: cmd_attach in hypothesis_tools.py
-- [x] `ACC-HYPTL-149` **check reports a changed or missing attachment** - CRITICAL; check recomputes every attachment's sha256 and warns changed since <stamp> ... run attach to refresh or is missing (exit 0); a malformed attachment line or a path attached twice is an error (exit 1)
+  - log: 2026-10-18T15:14:44Z @kj coded ATTACH
+- [x] `ACC-HYPTL-149-CHECK-ATTACH` **check reports a changed or missing attachment** - CRITICAL; check recomputes every attachment's sha256 and warns changed since <stamp> ... run attach to refresh or is missing (exit 0); a malformed attachment line or a path attached twice is an error (exit 1)
   - evidence: tests/test_hypothesis_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift passes
   - test: attach test: drift warning, missing warning, malformed and duplicate errors
   - test-tags: UNIT
   - log: 2026-09-18T20:51:42Z @kj added
   - log: 2026-09-18T20:51:50Z @kj closed: met: attachment checks in cmd_check
+  - log: 2026-10-18T15:14:44Z @kj coded CHECK-ATTACH
 
 ## pm-tools report `PMREP`
 
 the report surface - SUMMARY grids, ITEMS queue, coverage
 
-- [x] `ACC-PMREP-122` **Status and level are separate SUMMARY grids** - HIGH; report prints a status grid | Category | Open | Fixed | Rejected | Total | (Done on criteria, a Worked on column after Open when an item in scope is locked, Total the category size) and, under the line Open by severity or Open by importance, a level grid | Category | CRITICAL | MAJOR | MEDIUM | MINOR | Open | (HIGH/LOW on criteria, UNTRIAGED/UNRATED only when an open item lacks a level) whose cells break the Open column down and sum to its last column; no row carries a status count beside a level count; --json keeps its nested shape unchanged
+- [x] `ACC-PMREP-122-SUMMARY` **Status and level are separate SUMMARY grids** - HIGH; report prints a status grid | Category | Open | Fixed | Rejected | Total | (Done on criteria, a Worked on column after Open when an item in scope is locked, Total the category size) and, under the line Open by severity or Open by importance, a level grid | Category | CRITICAL | MAJOR | MEDIUM | MINOR | Open | (HIGH/LOW on criteria, UNTRIAGED/UNRATED only when an open item lacks a level) whose cells break the Open column down and sum to its last column; no row carries a status count beside a level count; --json keeps its nested shape unchanged
   - evidence: tests/test_pm_tools.py::test_the_defects_grid_is_plain_open_counts_per_severity, ::test_the_level_grid_is_absent_when_nothing_is_open, the criteria and UNRATED grid tests and the tests/test_pm_tools_functional.py header tests; pm-tools suites 190 passed; full suite 1267 passed 2 skipped, ruff clean
   - test: report on a mixed file in default, --plain and --summary form: both headers present, '| Open | CRITICAL' absent, the level row ends in the Open count, the status Total row sums open plus closed plus rejected
   - test-tags: UNIT
   - log: 2026-09-02T06:17:20Z @kj added
   - log: 2026-09-02T06:17:20Z @kj closed
-- [x] `ACC-PMREP-123` **The level grid is printed only when something is open** - MEDIUM; a report whose scope holds no open item prints the status grid alone - no Open by severity or Open by importance line and no level header - because a grid of zeros carries nothing, the rule UNTRIAGED and Worked on already follow
+  - log: 2026-10-18T15:14:44Z @kj coded SUMMARY
+- [x] `ACC-PMREP-123-LEVEL-GRID` **The level grid is printed only when something is open** - MEDIUM; a report whose scope holds no open item prints the status grid alone - no Open by severity or Open by importance line and no level header - because a grid of zeros carries nothing, the rule UNTRIAGED and Worked on already follow
   - evidence: tests/test_pm_tools.py::test_the_defects_grid_is_plain_open_counts_per_severity, ::test_the_level_grid_is_absent_when_nothing_is_open, the criteria and UNRATED grid tests and the tests/test_pm_tools_functional.py header tests; pm-tools suites 190 passed; full suite 1267 passed 2 skipped, ruff clean
   - test: close the only defect, report --summary: the status row reads 0 | 1 | 0 | 1 and neither the level line nor a level header appears
   - test-tags: UNIT
   - log: 2026-09-02T06:17:20Z @kj added
   - log: 2026-09-02T06:17:20Z @kj closed
-- [x] `ACC-PMREP-132` **sort help names the ranked fields** - HIGH; `pm-tools list --help` states that severity, importance and status are ranked rather than alphabetical
+  - log: 2026-10-18T15:14:44Z @kj coded LEVEL-GRID
+- [x] `ACC-PMREP-132-SORT-HELP` **sort help names the ranked fields** - HIGH; `pm-tools list --help` states that severity, importance and status are ranked rather than alphabetical
   - evidence: tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes; reverting the help clause fails it
   - test: render list --help as a subprocess, normalise whitespace, assert the phrase severity, importance and status are ranked, not alphabetical
   - test-tags: FUNCTIONAL
   - log: 2026-09-06T16:25:29Z @kj added
   - log: 2026-09-06T16:25:49Z @kj closed
-- [x] `ACC-PMREP-133` **sort help states the inverse** - HIGH; `pm-tools list --help` states that `--sort=-severity` lists MINOR first
+  - log: 2026-10-18T15:14:44Z @kj coded SORT-HELP
+- [x] `ACC-PMREP-133-SORT-INVERSE` **sort help states the inverse** - HIGH; `pm-tools list --help` states that `--sort=-severity` lists MINOR first
   - evidence: tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes; reverting the help clause fails it
   - test: same rendered help, whitespace normalised, assert --sort=-severity lists MINOR first
   - test-tags: FUNCTIONAL
   - log: 2026-09-06T16:25:30Z @kj added
   - log: 2026-09-06T16:25:49Z @kj closed
-- [x] `ACC-PMREP-134` **FIELDS carries the rank sequences** - MEDIUM; the FIELDS block in `pm-tools --help` gives the rank sequence for severity, importance and status
+  - log: 2026-10-18T15:14:44Z @kj coded SORT-INVERSE
+- [x] `ACC-PMREP-134-FIELDS` **FIELDS carries the rank sequences** - MEDIUM; the FIELDS block in `pm-tools --help` gives the rank sequence for severity, importance and status
   - evidence: tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes; reverting the help clause fails it
   - test: render pm-tools --help, assert severity runs CRITICAL, MAJOR, MEDIUM, MINOR and status runs open, closed, rejected
   - test-tags: FUNCTIONAL
   - log: 2026-09-06T16:25:30Z @kj added
   - log: 2026-09-06T16:25:49Z @kj closed
-- [x] `ACC-PMREP-135` **pivot help states the axis order** - MEDIUM; `pm-tools pivot --help` states that a ranked or banded field keeps its own order on the axis
+  - log: 2026-10-18T15:14:44Z @kj coded FIELDS
+- [x] `ACC-PMREP-135-PIVOT-HELP` **pivot help states the axis order** - MEDIUM; `pm-tools pivot --help` states that a ranked or banded field keeps its own order on the axis
   - evidence: tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes; reverting the help clause fails it
   - test: render pivot --help, normalise whitespace, assert keeps its own order
   - test-tags: FUNCTIONAL
   - log: 2026-09-06T16:25:30Z @kj added
   - log: 2026-09-06T16:25:49Z @kj closed
-- [x] `ACC-PMREP-136` **the reference covers status** - MEDIUM; references/reports.md states that severity, importance and status are ranked, not alphabetical
+  - log: 2026-10-18T15:14:44Z @kj coded PIVOT-HELP
+- [x] `ACC-PMREP-136-REFERENCE` **the reference covers status** - MEDIUM; references/reports.md states that severity, importance and status are ranked, not alphabetical
   - evidence: tests/test_pm_tools_functional.py::test_the_rank_contract_is_stated_where_sort_is_read passes; reverting the help clause fails it
   - test: read the reference and assert Severity, importance and status are ranked
   - test-tags: FUNCTIONAL
   - log: 2026-09-06T16:25:30Z @kj added
   - log: 2026-09-06T16:25:49Z @kj closed
-- [x] `ACC-PMREP-137` **importance sorts by rank** - HIGH; `list --sort=importance` over criteria at CRITICAL, MEDIUM and LOW returns them in that order
+  - log: 2026-10-18T15:14:44Z @kj coded REFERENCE
+- [x] `ACC-PMREP-137-RANK-IMPORTANCE` **importance sorts by rank** - HIGH; `list --sort=importance` over criteria at CRITICAL, MEDIUM and LOW returns them in that order
   - evidence: tests/test_pm_tools.py::test_the_importance_order_is_the_rank_not_the_alphabet passes; an alphabetical sort_key importance branch fails it
   - test: three criteria, one per level; an alphabetical sort returns CRITICAL, LOW, MEDIUM
   - test-tags: UNIT
   - log: 2026-09-06T16:25:30Z @kj added
   - log: 2026-09-06T16:25:49Z @kj closed
-- [x] `ACC-PMREP-138` **importance pivot axis by rank** - MEDIUM; `pivot --rows importance` over criteria at CRITICAL, MEDIUM and LOW returns the axis in that order
+  - log: 2026-10-18T15:14:44Z @kj coded RANK-IMPORTANCE
+- [x] `ACC-PMREP-138-PIVOT-RANK` **importance pivot axis by rank** - MEDIUM; `pivot --rows importance` over criteria at CRITICAL, MEDIUM and LOW returns the axis in that order
   - evidence: tests/test_pm_tools.py::test_the_importance_order_is_the_rank_not_the_alphabet passes; sorted(keys) in key_order fails it
   - test: assert the row labels in order; sorted(keys) in key_order returns CRITICAL, LOW, MEDIUM
   - test-tags: UNIT
   - log: 2026-09-06T16:25:30Z @kj added
   - log: 2026-09-06T16:25:49Z @kj closed
-- [x] `ACC-PMREP-139` **severity sort spans four levels** - MEDIUM; `list --sort=severity` over one defect per level returns CRITICAL, MAJOR, MEDIUM, MINOR
+  - log: 2026-10-18T15:14:44Z @kj coded PIVOT-RANK
+- [x] `ACC-PMREP-139-RANK-SEVERITY` **severity sort spans four levels** - MEDIUM; `list --sort=severity` over one defect per level returns CRITICAL, MAJOR, MEDIUM, MINOR
   - evidence: tests/test_pm_tools.py::test_the_severity_sort_spans_every_level_in_rank_order passes; swapping MEDIUM and MINOR in SEV_RANK fails it
   - test: four defects, one per level; swapping MEDIUM and MINOR inside SEV_RANK returns CRITICAL, MAJOR, MINOR, MEDIUM
   - test-tags: UNIT
   - log: 2026-09-06T16:25:30Z @kj added
   - log: 2026-09-06T16:25:49Z @kj closed
+  - log: 2026-10-18T15:14:44Z @kj coded RANK-SEVERITY
 
 ## pm-tools amend `PMAMD`
 
 Rewording an item while its history stays in the file.
 
-- [x] `ACC-PMAMD-141` **amend rewords and keeps the old wording** - HIGH; amend FILE --id ID --title/--text --author @xx replaces the item's title or body and appends a log line carrying the old and the new wording, so the item line holds the current wording and the log holds every earlier one
+- [x] `ACC-PMAMD-141-AMEND` **amend rewords and keeps the old wording** - HIGH; amend FILE --id ID --title/--text --author @xx replaces the item's title or body and appends a log line carrying the old and the new wording, so the item line holds the current wording and the log holds every earlier one
   - evidence: tests/test_pm_tools.py 195 passed on 2026-09-17; review run wf_68c63b1f-700 confirmed clean
   - test: tests/test_pm_tools.py::test_amend_keeps_every_earlier_wording_in_the_log - three renames and a text change; the item line shows the latest, the log the four old->new pairs
   - test-tags: UNIT
   - log: 2026-09-17T20:02:44Z @kj added
   - log: 2026-09-17T20:02:58Z @kj closed: verified: test_amend_keeps_every_earlier_wording_in_the_log green; adversarial review (bug-hunter, slop-hunter, architect) SHIP after 2 rounds
-- [x] `ACC-PMAMD-142` **an amended file passes check** - CRITICAL; the amend log line is written with ASCII -> so check exits 0 on the amended file; the arrow glyph U+2192 is a forbidden glyph in tracking documents
+  - log: 2026-10-18T15:14:44Z @kj coded AMEND
+- [x] `ACC-PMAMD-142-CHECK-AMEND` **an amended file passes check** - CRITICAL; the amend log line is written with ASCII -> so check exits 0 on the amended file; the arrow glyph U+2192 is a forbidden glyph in tracking documents
   - evidence: tests/test_pm_tools.py 195 passed on 2026-09-17; review run wf_68c63b1f-700 confirmed clean
   - test: tests/test_pm_tools.py::test_amend_keeps_every_earlier_wording_in_the_log - check exits 0 after four amends
   - test-tags: UNIT
   - log: 2026-09-17T20:02:44Z @kj added
   - log: 2026-09-17T20:02:58Z @kj closed: verified: test_amend_keeps_every_earlier_wording_in_the_log green; adversarial review (bug-hunter, slop-hunter, architect) SHIP after 2 rounds
-- [x] `ACC-PMAMD-143` **search and reports read the current wording** - MEDIUM; after an amend, search ranks the item on its current title and the earlier wording is still found through the log field; list and report show the current wording
+  - log: 2026-10-18T15:14:44Z @kj coded CHECK-AMEND
+- [x] `ACC-PMAMD-143-CURRENT-TEXT` **search and reports read the current wording** - MEDIUM; after an amend, search ranks the item on its current title and the earlier wording is still found through the log field; list and report show the current wording
   - evidence: tests/test_pm_tools.py 195 passed on 2026-09-17; review run wf_68c63b1f-700 confirmed clean
   - test: tests/test_pm_tools.py::test_amend_keeps_every_earlier_wording_in_the_log - search on the new title matches in title, search on the first title matches in log
   - test-tags: UNIT
   - log: 2026-09-17T20:02:44Z @kj added
   - log: 2026-09-17T20:02:58Z @kj closed: verified: test_amend_keeps_every_earlier_wording_in_the_log green; adversarial review (bug-hunter, slop-hunter, architect) SHIP after 2 rounds
-- [x] `ACC-PMAMD-144` **no ordinal on amendments** - HIGH; amendment log lines carry no ordinal and the id never changes; the two-branch union merge of two amendments of one item leaves a file that parses, passes check and reads unambiguously by date, author and attribute (simulation of four schemes, 2026-09-17: item and attribute ordinals duplicate on a concurrent merge, an id suffix collides with the regression ordinal)
+  - log: 2026-10-18T15:14:44Z @kj coded CURRENT-TEXT
+- [x] `ACC-PMAMD-144-NO-ORDINAL` **no ordinal on amendments** - HIGH; amendment log lines carry no ordinal and the id never changes; the two-branch union merge of two amendments of one item leaves a file that parses, passes check and reads unambiguously by date, author and attribute (simulation of four schemes, 2026-09-17: item and attribute ordinals duplicate on a concurrent merge, an id suffix collides with the regression ordinal)
   - evidence: workflow wf_893563b3-f56, four simulators drove the CLI through a two-branch union merge; only no-ordinal left no duplicated key
   - test: manual - the four-scheme simulation record in the journal; no automated merge test
   - test-tags: MANUAL
   - log: 2026-09-17T20:02:45Z @kj added
   - log: 2026-09-17T20:02:58Z @kj closed: decided by simulation: no-ordinal 12 points, attribute-ordinal 9, item-ordinal 6, id-suffix 3; unanimous on traceability, simplicity and merge safety
+  - log: 2026-10-18T15:14:44Z @kj coded NO-ORDINAL
 
 ## pm-tools attach `PMATT`
 
 Artefacts referenced from an item with the checksum and last-edit stamp they had when attached
 
-- [x] `ACC-PMATT-145` **attach writes one attachment line per artefact with its checksum and last-edit stamp** - HIGH; attach FILE --id ID --path P [--path P]... --author @xx writes one '- attachment: <path> sha256:<16 hex> edited:<ISO 8601 UTC>' line per artefact directly under the item, the path relative to the tracker's directory, and logs 'attached <path> sha256:<hex>'; a path that is not a file is refused
+- [x] `ACC-PMATT-145-ATTACH` **attach writes one attachment line per artefact with its checksum and last-edit stamp** - HIGH; attach FILE --id ID --path P [--path P]... --author @xx writes one '- attachment: <path> sha256:<16 hex> edited:<ISO 8601 UTC>' line per artefact directly under the item, the path relative to the tracker's directory, and logs 'attached <path> sha256:<hex>'; a path that is not a file is refused
   - evidence: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift passes; pytest tests/test_pm_tools.py 139 passed
   - test: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift
   - test-tags: UNIT
   - mechanism: 2026-09-17T22:31:36Z @kj fingerprint() hashes the bytes and reads the mtime; the line format ends in two fixed tokens so a path with spaces parses
   - log: 2026-09-17T22:31:36Z @kj added
   - log: 2026-09-17T22:31:52Z @kj closed: verified
-- [x] `ACC-PMATT-146` **check reports a changed or missing attachment** - CRITICAL; check recomputes every attachment's sha256 and warns 'attachment <path> changed since <stamp> (sha256 <old> is now <new>, edited <stamp>)' or 'attachment <path> is missing'; a warning, so --strict is what fails the gate; a malformed or duplicated attachment line is an error
+  - log: 2026-10-18T15:14:44Z @kj coded ATTACH
+- [x] `ACC-PMATT-146-CHECK-ATTACH` **check reports a changed or missing attachment** - CRITICAL; check recomputes every attachment's sha256 and warns 'attachment <path> changed since <stamp> (sha256 <old> is now <new>, edited <stamp>)' or 'attachment <path> is missing'; a warning, so --strict is what fails the gate; a malformed or duplicated attachment line is an error
   - evidence: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift passes; pytest tests/test_pm_tools.py 139 passed
   - test: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift
   - test-tags: UNIT
   - mechanism: 2026-09-17T22:31:45Z @kj drift is a fact about the artefact, not a fault in the tracker, so it is a warning like an expired lock; the item's assessment may need repeating, which the warning says
   - log: 2026-09-17T22:31:45Z @kj added
   - log: 2026-09-17T22:31:52Z @kj closed: verified
-- [x] `ACC-PMATT-147` **re-attaching a path refreshes its line and logs the old checksum** - MEDIUM; attach on a path already under the item rewrites that line with the current checksum and stamp and logs 'refreshed attachment <path> sha256:<old> -> sha256:<new>'; an unchanged artefact prints 'unchanged' and writes nothing, so the log is the checksum history and never carries a no-op
+  - log: 2026-10-18T15:14:44Z @kj coded CHECK-ATTACH
+- [x] `ACC-PMATT-147-REFRESH` **re-attaching a path refreshes its line and logs the old checksum** - MEDIUM; attach on a path already under the item rewrites that line with the current checksum and stamp and logs 'refreshed attachment <path> sha256:<old> -> sha256:<new>'; an unchanged artefact prints 'unchanged' and writes nothing, so the log is the checksum history and never carries a no-op
   - evidence: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift passes; pytest tests/test_pm_tools.py 139 passed
   - test: tests/test_pm_tools.py::test_attach_records_checksum_and_edit_stamp_and_check_reports_drift
   - test-tags: UNIT
   - mechanism: 2026-09-17T22:31:45Z @kj the existing line is found by its path through ATTLINE, never by its remembered line number, because earlier inserts in the same call shift it
   - log: 2026-09-17T22:31:45Z @kj added
   - log: 2026-09-17T22:31:52Z @kj closed: verified
+  - log: 2026-10-18T15:14:44Z @kj coded REFRESH
 
 ## entry wording `PMTXT`
 
 how an acceptance criterion or defect is worded
 
-- [x] `ACC-PMTXT-153` **entries are laconic** - MEDIUM; a clause earns its place by naming a mechanism, a site, a number or the harm; everything else is deleted, not shortened; past ~40 words a body is explaining itself
+- [x] `ACC-PMTXT-153-LACONIC` **entries are laconic** - MEDIUM; a clause earns its place by naming a mechanism, a site, a number or the harm; everything else is deleted, not shortened; past ~40 words a body is explaining itself
   - evidence: test_the_laconic_rule_is_documented_where_the_agent_writes; 198 passed in tests/test_pm_tools_functional.py and tests/test_pm_tools.py
   - test: SKILL.md Writing the text states the bar; both authoring checklists say it imperatively
   - test-tags: UNIT
   - log: 2026-09-21T11:43:16Z @kj added
   - log: 2026-09-21T11:43:20Z @kj closed
-- [x] `ACC-PMTXT-154` **a writeup over 50 words is refused without --reason** - HIGH; every free-text argument of a write command is counted; over 50 words without --reason exits 1, names the field and its count, and writes nothing
+  - log: 2026-10-18T15:14:44Z @kj coded LACONIC
+- [x] `ACC-PMTXT-154-WORD-LIMIT` **a writeup over 50 words is refused without --reason** - HIGH; every free-text argument of a write command is counted; over 50 words without --reason exits 1, names the field and its count, and writes nothing
   - evidence: tests/test_pm_tools.py::test_a_writeup_over_50_words_is_refused_without_a_reason passes; suite 1410 passed, 2 skipped
   - test: tests/test_pm_tools.py: add, log and edit with a 51-word value and no --reason exit 1; the file is unchanged
   - test-tags: UNIT
   - log: 2026-09-24T13:26:04Z @kj added
   - log: 2026-09-24T13:30:31Z @kj closed
-- [x] `ACC-PMTXT-155` **--reason lets a long writeup through, warned and logged** - HIGH; with --reason the write lands, stderr warns with the field and its word count, and the item's log line ends in 'reason: <text>'
+  - log: 2026-10-18T15:14:44Z @kj coded WORD-LIMIT
+- [x] `ACC-PMTXT-155-REASON` **--reason lets a long writeup through, warned and logged** - HIGH; with --reason the write lands, stderr warns with the field and its word count, and the item's log line ends in 'reason: <text>'
   - evidence: tests/test_pm_tools.py::test_a_reason_lets_a_long_writeup_through_warned_and_logged passes; suite 1410 passed, 2 skipped
   - test: tests/test_pm_tools.py: a 51-word --text with --reason is written; stderr warns; the log line carries the reason
   - test-tags: UNIT
   - log: 2026-09-24T13:26:04Z @kj added
   - log: 2026-09-24T13:30:31Z @kj closed
-- [x] `ACC-PMTXT-162` **a statistical component's miss is rejected, not filed** - HIGH; the defects reference, the defect skill and the README state that a statistical or heuristic component's miss on one input, or a score below target, is a failure mode measured as a rate, and a third reject case (DEF-PMGT-75)
+  - log: 2026-10-18T15:14:44Z @kj coded REASON
+- [x] `ACC-PMTXT-162-STAT-MISS` **a statistical component's miss is rejected, not filed** - HIGH; the defects reference, the defect skill and the README state that a statistical or heuristic component's miss on one input, or a score below target, is a failure mode measured as a rate, and a third reject case (DEF-PMGT-75)
   - evidence: test_a_statistical_components_miss_is_rejected_not_filed; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
   - test: test_a_statistical_components_miss_is_rejected_not_filed
   - test-tags: UNIT
   - log: 2026-09-26T18:45:30Z @kj added
   - log: 2026-09-26T19:24:18Z @kj edited test-tags "FUNCTIONAL" -> "UNIT"
   - log: 2026-09-26T19:24:18Z @kj closed: met
+  - log: 2026-10-18T15:14:44Z @kj coded STAT-MISS
 
 ## pm-tools guard hooks `PMGRD`
 
 the project-management plugin hooks that keep pm-tools the only writer of a tracker
 
-- [x] `ACC-PMGRD-156` **a hand edit of an existing tracker needs a logged reason** - HIGH; an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.md holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77); reads and pm-tools commands pass
+- [x] `ACC-PMGRD-156-ACK` **a hand edit of an existing tracker needs a logged reason** - HIGH; an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.md holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77); reads and pm-tools commands pass
   - evidence: tests/test_pm_guard.py 30 passed: the repeat denied, passed after ack, denied again once the file changes; suite 1444 passed, 2 skipped
   - test: tests/test_pm_guard.py: Edit/Write/MultiEdit and shell writes denied, the repeat denied, passed after ack, denied again once the file changes; reads and pm-tools pass
   - test-tags: UNIT
@@ -1303,19 +1490,22 @@ the project-management plugin hooks that keep pm-tools the only writer of a trac
   - log: 2026-09-26T19:11:41Z @kj edited test "tests/test_pm_guard.py: first Edit/Write/MultiEdit and shell write denied, the repeat passes, a different edit or session is asked again; reads and pm-tools pass" -> "tests/test_pm_guard.py: Edit/Write/MultiEdit and shell writes denied, the repeat denied, passed after ack, denied again once the file changes; reads and pm-tools pass"
   - log: 2026-09-26T19:39:14Z @kj edited evidence "tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped" -> "tests/test_pm_guard.py 30 passed: the repeat denied, passed after ack, denied again once the file changes; suite 1444 passed, 2 skipped"
   - log: 2026-09-26T20:49:14Z @kj amended text "an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.log holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77); reads and pm-tools commands pass" -> "an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.md holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77); reads and pm-tools commands pass"
-- [x] `ACC-PMGRD-157` **a new tracker, a merge conflict and the user override pass** - MEDIUM; the guard lets through a tracker that does not exist yet, one holding git conflict markers, and any edit when PM_TOOLS_HAND_EDIT=1 is in Claude Code's environment
+  - log: 2026-10-18T15:14:44Z @kj coded ACK
+- [x] `ACC-PMGRD-157-PASS-THROUGH` **a new tracker, a merge conflict and the user override pass** - MEDIUM; the guard lets through a tracker that does not exist yet, one holding git conflict markers, and any edit when PM_TOOLS_HAND_EDIT=1 is in Claude Code's environment
   - evidence: tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped
   - test: tests/test_pm_guard.py: Write of a new tracker, Edit during a conflict and Edit with the override get no deny
   - test-tags: UNIT
   - log: 2026-09-24T16:59:58Z @kj added
   - log: 2026-09-24T17:00:03Z @kj closed
-- [x] `ACC-PMGRD-158` **a tracker prompt is told to load the skill** - HIGH; a prompt naming acc crit, acceptance criteria, a defect, a bug or issue tracker, an ACC-/DEF- id or pm-tools gets context to load the project-management skill; other prompts get nothing
+  - log: 2026-10-18T15:14:44Z @kj coded PASS-THROUGH
+- [x] `ACC-PMGRD-158-PROMPT-HINT` **a tracker prompt is told to load the skill** - HIGH; a prompt naming acc crit, acceptance criteria, a defect, a bug or issue tracker, an ACC-/DEF- id or pm-tools gets context to load the project-management skill; other prompts get nothing
   - evidence: tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped
   - test: tests/test_pm_guard.py: six tracker prompts get the context; an unrelated prompt gets none
   - test-tags: UNIT
   - log: 2026-09-24T16:59:58Z @kj added
   - log: 2026-09-24T17:00:03Z @kj closed
-- [x] `ACC-PMGRD-163` **pm-tools ack gives the token and logs the reason** - HIGH; pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.md, which git keeps (DEF-PMGT-77)
+  - log: 2026-10-18T15:14:44Z @kj coded PROMPT-HINT
+- [x] `ACC-PMGRD-163-ACK-TOKEN` **pm-tools ack gives the token and logs the reason** - HIGH; pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.md, which git keeps (DEF-PMGT-77)
   - evidence: tests/test_pm_guard.py 30 passed; scratch run: deny, repeat deny, wrong token refused, ack, pass, deny after the file changed; review wf_899a5d01-536 to wf_b873ef4c-0da SHIP, 10/3/0 findings; suite 1444 passed 2 skipped
   - test: tests/test_pm_guard.py::test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file, ::test_ack_refuses_what_it_cannot_log and ::test_ack_works_when_the_roster_is_unreadable
   - test-tags: UNIT
@@ -1324,33 +1514,97 @@ the project-management plugin hooks that keep pm-tools the only writer of a trac
   - log: 2026-09-26T19:46:22Z @kj edited test "tests/test_pm_guard.py::test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file and ::test_ack_refuses_what_it_cannot_log" -> "tests/test_pm_guard.py::test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file, ::test_ack_refuses_what_it_cannot_log and ::test_ack_works_when_the_roster_is_unreadable"
   - log: 2026-09-26T19:50:13Z @kj closed: met
   - log: 2026-09-26T20:49:14Z @kj amended text "pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.log (DEF-PMGT-77)" -> "pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.md, which git keeps (DEF-PMGT-77)"
+  - log: 2026-10-18T15:14:44Z @kj coded ACK-TOKEN
 
 ## pm-tools category prose `PMCAT`
 
 Writing the prose under a category heading
 
-- [x] `ACC-PMCAT-187` **describe --text-file replaces the prose block** - HIGH; every line between the category heading and the first item is replaced by the file's text; the items stay
+- [x] `ACC-PMCAT-187-TEXT-FILE` **describe --text-file replaces the prose block** - HIGH; every line between the category heading and the first item is replaced by the file's text; the items stay
   - evidence: tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block passes
   - test: replace a block twice, read the file and run check
   - test-tags: UNIT
   - log: 2026-10-16T15:12:45Z @kj added
   - log: 2026-10-16T15:12:45Z @kj closed
-- [x] `ACC-PMCAT-188` **--text-file - reads stdin** - MEDIUM; describe --text-file - < prose.md reads the block from stdin
+  - log: 2026-10-18T15:14:44Z @kj coded TEXT-FILE
+- [x] `ACC-PMCAT-188-STDIN` **--text-file - reads stdin** - MEDIUM; describe --text-file - < prose.md reads the block from stdin
   - evidence: tests/test_pm_tools.py::test_describe_text_file_reads_stdin passes
   - test: pass the block on stdin, read the file
   - test-tags: UNIT
   - log: 2026-10-16T15:12:45Z @kj added
   - log: 2026-10-16T15:12:45Z @kj closed
-- [x] `ACC-PMCAT-189` **Edge: the prose block takes prose only** - HIGH; an empty text, a heading, a checklist item or an unclosed code fence is refused; nothing is written
+  - log: 2026-10-18T15:14:44Z @kj coded STDIN
+- [x] `ACC-PMCAT-189-EDGE-PROSE` **Edge: the prose block takes prose only** - HIGH; an empty text, a heading, a checklist item or an unclosed code fence is refused; nothing is written
   - evidence: tests/test_pm_tools.py::test_describe_text_file_takes_prose_only passes for empty, heading, item and open-fence
   - test: one case per refusal, compare the file
   - test-tags: UNIT
   - log: 2026-10-16T15:12:45Z @kj added
   - log: 2026-10-16T15:12:45Z @kj closed
-- [x] `ACC-PMCAT-190` **describe --text keeps the lines below** - MEDIUM; describe --text replaces the description line only; a list under it stays
+  - log: 2026-10-18T15:14:44Z @kj coded EDGE-PROSE
+- [x] `ACC-PMCAT-190-KEEP-LINES` **describe --text keeps the lines below** - MEDIUM; describe --text replaces the description line only; a list under it stays
   - evidence: tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block asserts the list stays after --text
   - test: write a block, then --text, read the file
   - test-tags: UNIT
   - log: 2026-10-16T15:12:45Z @kj added
   - log: 2026-10-16T15:12:45Z @kj closed
+  - log: 2026-10-18T15:14:44Z @kj coded KEEP-LINES
+
+## pm-tools coded ids `PMCODE`
+
+Code after the id number, part of the id
+
+- [x] `ACC-PMCODE-196-GRAMMAR` **Coded id grammar** - HIGH; `ACC-CAT-N-CODE` and `DEF-CAT-N-CODE-REGR` parse; code and regression are stored separately; a malformed code is refused
+  - evidence: tests/test_pm_tools.py::test_parse_stores_the_code_and_regression_read_from_the_right and ::test_ident_round_trips_base_code_and_regression pass; pytest -q -k coded 2 passed
+  - test: parse and ident round-trip tests
+  - test-tags: UNIT
+  - log: 2026-10-18T15:21:13Z @kj added
+  - log: 2026-10-18T15:21:48Z @kj closed
+- [x] `ACC-PMCODE-197-REWRITE` **Code survives a rewrite** - HIGH; `amend` and `edit` keep the code; `ident` emits it
+  - evidence: tests/test_pm_tools.py::test_edit_and_amend_keep_the_code_and_accept_the_base_id passes; tests/test_pm_tools.py 196 passed
+  - test: rewrite test
+  - test-tags: UNIT
+  - log: 2026-10-18T15:21:21Z @kj added
+  - log: 2026-10-18T15:21:48Z @kj closed
+- [x] `ACC-PMCODE-198-ADD` **add requires a code** - HIGH; `add` without `--code` is refused; with `--code` the code is appended; a malformed code is refused
+  - evidence: tests/test_pm_tools.py::test_add_requires_a_code, ::test_add_writes_the_code_after_the_number and ::test_add_refuses_a_code_that_breaks_the_grammar pass
+  - test: add tests
+  - test-tags: UNIT
+  - log: 2026-10-18T15:21:21Z @kj added
+  - log: 2026-10-18T15:21:48Z @kj closed
+- [x] `ACC-PMCODE-199-RENAME` **rename-code renames and updates links** - HIGH; the id changes, link lines naming the old full id update, the rename is logged
+  - evidence: tests/test_pm_tools.py::test_rename_code_rewrites_the_id_and_every_relation_line_naming_it passes with the four other rename-code tests
+  - test: rename tests
+  - test-tags: UNIT
+  - log: 2026-10-18T15:21:21Z @kj added
+  - log: 2026-10-18T15:21:48Z @kj closed
+- [x] `ACC-PMCODE-200-MIGRATE` **migrate-codes applies a mapping** - HIGH; one log line per item, idempotent, unmatched mapping and file items reported
+  - evidence: tests/test_pm_tools.py::test_migrate_codes_appends_the_code_to_every_item_sharing_a_base_id, ::test_migrate_codes_is_idempotent and ::test_migrate_codes_reports_uncovered_items_and_unknown_mapping_ids pass
+  - test: migration tests
+  - test-tags: UNIT
+  - log: 2026-10-18T15:21:21Z @kj added
+  - log: 2026-10-18T15:21:48Z @kj closed
+- [x] `ACC-PMCODE-201-QUERY` **Coded id is queryable** - MEDIUM; `list --columns code`, `--code` filter, JSON, pivot and search read it
+  - evidence: tests/test_pm_tools.py::test_the_code_is_a_list_column, ::test_the_code_filter_narrows_and_the_pivot_groups_by_code, ::test_json_carries_the_code and ::test_search_indexes_the_code pass
+  - test: list and filter tests
+  - test-tags: UNIT
+  - log: 2026-10-18T15:21:21Z @kj added
+  - log: 2026-10-18T15:21:48Z @kj closed
+- [x] `ACC-PMCODE-202-CHECK` **check guards the code** - MEDIUM; a malformed code is an error, a missing code a warning
+  - evidence: tests/test_pm_tools.py::test_check_warns_on_a_missing_code and ::test_check_errors_on_a_malformed_code pass
+  - test: check tests
+  - test-tags: UNIT
+  - log: 2026-10-18T15:21:21Z @kj added
+  - log: 2026-10-18T15:21:48Z @kj closed
+- [x] `ACC-PMCODE-203-TRACKERS` **Trackers migrated** - HIGH; all 277 ids carry their code and every link resolves; `pm-tools check docs` exits 0
+  - evidence: migrate-codes stdout '195 item(s) coded' plus '82 item(s) coded' = 277; pm-tools check docs exits 0 with 0 errors
+  - test: manual observation: tracker scan and check docs
+  - test-tags: MANUAL
+  - log: 2026-10-18T15:21:21Z @kj added
+  - log: 2026-10-18T15:21:48Z @kj closed
+- [x] `ACC-PMCODE-204-DOCS` **Migration instructions** - MEDIUM; the project-management references name the mapping format, the commands and the checks
+  - evidence: grep of plugins/project-management/skills/project-management finds migrate-codes, rename-code, add --code, PREFIX-CAT-N-CODE, code column and pivot --rows code
+  - test: docs inspection
+  - test-tags: UNIT
+  - log: 2026-10-18T15:21:21Z @kj added
+  - log: 2026-10-18T15:21:48Z @kj closed
 

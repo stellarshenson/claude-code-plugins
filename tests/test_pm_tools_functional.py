@@ -59,12 +59,16 @@ def criteria(docs: Path) -> Path:
     return f
 
 
-def file_a_defect(f: Path, title: str, severity: str = "MAJOR", category: str = "LNCH") -> str:
+def file_a_defect(
+    f: Path, title: str, severity: str = "MAJOR", category: str = "LNCH", code: str = "TEST"
+) -> str:
     return ok(
         "add",
         f,
         "--category",
         category,
+        "--code",
+        code,
         "--name",
         "Launch",
         "--author",
@@ -85,13 +89,20 @@ def file_a_defect(f: Path, title: str, severity: str = "MAJOR", category: str = 
 
 
 def write_a_criterion(
-    f: Path, title: str, text: str, category: str = "AUTH", importance: str = "HIGH"
+    f: Path,
+    title: str,
+    text: str,
+    category: str = "AUTH",
+    importance: str = "HIGH",
+    code: str = "TEST",
 ) -> str:
     return ok(
         "add",
         f,
         "--category",
         category,
+        "--code",
+        code,
         "--name",
         "Authentication",
         "--author",
@@ -162,7 +173,7 @@ def _causes(f: Path, ident: str) -> list[str]:
     """Every mechanism/root-cause record on the item, in file order."""
     out, seen = [], False
     for ln in f.read_text(encoding="utf-8").splitlines():
-        if ln.startswith(f"- [") and f"`{ident}`" in ln:
+        if ln.startswith("- [") and (f"`{ident}`" in ln or f"`{ident}-" in ln):
             seen = True
             continue
         if seen:
@@ -208,7 +219,9 @@ def test_update_replaces_the_current_record(defects: Path):
     assert len(recs) == 1 and recs[0].endswith("the fork races the loader")
     logs = [ln for ln in defects.read_text(encoding="utf-8").splitlines() if "- log:" in ln]
     assert any(
-        re.search(r'root-cause updated "\S+Z @kj the fork races" -> "the fork races the loader"', ln)
+        re.search(
+            r'root-cause updated "\S+Z @kj the fork races" -> "the fork races the loader"', ln
+        )
         for ln in logs
     ), "the log keeps the record the update replaced, with its stamp, author and wording"
 
@@ -240,6 +253,8 @@ def test_a_record_is_written_at_filing_time(defects: Path):
         defects,
         "--category",
         "LNCH",
+        "--code",
+        "TEST",
         "--name",
         "Launch",
         "--author",
@@ -325,6 +340,8 @@ def test_the_filing_time_flag_is_refused_on_the_wrong_discipline(defects: Path, 
         defects,
         "--category",
         "LNCH",
+        "--code",
+        "TEST",
         "--name",
         "Launch",
         "--author",
@@ -346,6 +363,8 @@ def test_the_filing_time_flag_is_refused_on_the_wrong_discipline(defects: Path, 
         criteria,
         "--category",
         "AUTH",
+        "--code",
+        "TEST",
         "--name",
         "Authentication",
         "--author",
@@ -368,6 +387,8 @@ def test_the_filing_time_flag_is_refused_on_the_wrong_discipline(defects: Path, 
         criteria,
         "--category",
         "AUTH",
+        "--code",
+        "TEST",
         "--name",
         "Authentication",
         "--author",
@@ -453,7 +474,7 @@ def test_a_state_change_never_disturbs_the_record(defects: Path):
     ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "regressed on v3")
     assert _causes(defects, "DEF-LNCH-1")[0].endswith("the fork races the loader")
     # the regression is a fresh hunt and inherits no theory
-    assert _causes(defects, "DEF-LNCH-1-1") == []
+    assert _causes(defects, "DEF-LNCH-1-TEST-1") == []
 
 
 def test_the_override_rule_is_documented_where_the_agent_reads_it():
@@ -497,14 +518,15 @@ def test_the_laconic_rule_is_documented_where_the_agent_writes():
         assert "nothing past the mechanism, the site, the numbers and the harm" in body, name
 
 
-
 def test_a_statistical_components_miss_is_rejected_not_filed():
     """DEF-PMGT-75. A groundrails review filed per-input accuracy misses of a regex
     tier as defects; fixing them tuned rules on the evaluation data, and 16 were
     rejected on the author's ruling that a failure mode is not a defect. The
     definition and every statement of the reject cases now carry that case."""
     plugin = Path(__file__).parent.parent / "plugins/project-management"
-    ref = (plugin / "skills/project-management/references/defect-tracking.md").read_text(encoding="utf-8")
+    ref = (plugin / "skills/project-management/references/defect-tracking.md").read_text(
+        encoding="utf-8"
+    )
     assert "is not a defect: it is a sample of an error rate" in ref
     assert "The three cases:" in ref and "failure mode of a statistical or heuristic" in ref
     for name in ("skills/defect/SKILL.md", "README.md"):
@@ -526,6 +548,7 @@ def test_the_commands_point_at_their_skill_files():
         assert f"this plugin's skill file `skills/{c.stem}/SKILL.md`" in body, c.name
         assert f"`project-management:{c.stem}` skill" not in body, c.name
         assert (plugin / "skills" / c.stem / "SKILL.md").is_file(), c.name
+
 
 def test_help_lists_both_record_commands():
     """A command absent from --help is a command nobody finds."""
@@ -640,7 +663,7 @@ def test_defect_lifecycle_from_report_to_fix(defects: Path):
     )
 
     body = defects.read_text(encoding="utf-8")
-    assert "- [x] `DEF-LNCH-1`" in body
+    assert "- [x] `DEF-LNCH-1-TEST`" in body
     assert "MAJOR;" in body, "severity survives the lifecycle as the first word of the body"
     assert body.count("- log:") == 4, "two adds, the failed attempt, and the close"
     assert "did NOT work" in body, "the ruled-out attempt is the reason the file exists"
@@ -662,7 +685,7 @@ def test_a_defect_that_was_never_a_defect_is_rejected_not_closed(defects: Path):
     )
 
     body = defects.read_text(encoding="utf-8")
-    assert "- [-] `DEF-LNCH-1`" in body
+    assert "- [-] `DEF-LNCH-1-TEST`" in body
     assert "not reproduced on 3 devices" in body, "the reason stays with the item"
 
     out = ok("report", defects)
@@ -758,6 +781,8 @@ def test_category_filter_narrows_every_section(criteria: Path):
         criteria,
         "--category",
         "BRSW",
+        "--code",
+        "TEST",
         "--name",
         "Branch Switching",
         "--author",
@@ -846,6 +871,8 @@ def test_strict_promotes_warnings_to_failures(defects: Path):
         defects,
         "--category",
         "LNCH",
+        "--code",
+        "TEST",
         "--name",
         "Launch",
         "--author",
@@ -866,7 +893,7 @@ def test_strict_promotes_warnings_to_failures(defects: Path):
 def test_a_duplicate_id_is_caught(defects: Path):
     file_a_defect(defects, "token race")
     body = defects.read_text(encoding="utf-8")
-    dupe = [ln for ln in body.splitlines() if "`DEF-LNCH-1`" in ln][0]
+    dupe = [ln for ln in body.splitlines() if "`DEF-LNCH-1-" in ln][0]
     defects.write_text(body + "\n" + dupe + "\n", encoding="utf-8")
     r = pm("check", defects)
     assert r.returncode != 0
@@ -953,7 +980,7 @@ def test_a_merge_that_duplicated_a_number_is_caught_by_the_gate(defects: Path):
     """Two contributors adding offline both take the same next id."""
     file_a_defect(defects, "token race")
     theirs = defects.read_text(encoding="utf-8").splitlines()
-    mine = [ln.replace("token race", "splash hang") for ln in theirs if "`DEF-LNCH-1`" in ln]
+    mine = [ln.replace("token race", "splash hang") for ln in theirs if "`DEF-LNCH-1-" in ln]
     defects.write_text("\n".join(theirs + mine) + "\n", encoding="utf-8")
 
     r = pm("check", defects)
@@ -1006,7 +1033,9 @@ def restamp(f: Path, item: str, stamp: str, event: str = "added") -> None:
     """Set the stamp on one of an item's log lines. The file is the whole store, so a
     test that needs a particular date writes one into it rather than mocking a clock."""
     lines = f.read_text(encoding="utf-8").splitlines()
-    start = next(i for i, ln in enumerate(lines) if f"`{item}`" in ln and "- [" in ln)
+    start = next(
+        i for i, ln in enumerate(lines) if (f"`{item}`" in ln or f"`{item}-" in ln) and "- [" in ln
+    )
     for i in range(start + 1, len(lines)):
         if "- [" in lines[i]:
             break
@@ -1103,8 +1132,8 @@ def test_a_regressed_defect_keeps_the_closed_date_it_earned(defects: Path):
     ok("reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj")
 
     out = ok("report", defects, "--dates", "closed", "--since", "2026-08-01")
-    assert "`DEF-LNCH-1`" in out, "the closure stands and keeps its date"
-    assert "`DEF-LNCH-1-1`" not in out, "the open regression has no closed date"
+    assert "`DEF-LNCH-1-TEST`" in out, "the closure stands and keeps its date"
+    assert "`DEF-LNCH-1-TEST-1`" not in out, "the open regression has no closed date"
 
 
 def test_summary_stops_at_the_grid_and_plain_only_drops_the_chrome(defects: Path):
@@ -1149,7 +1178,7 @@ def test_neither_discipline_closes_without_evidence(defects: Path, criteria: Pat
         r = pm("close", f, "--id", item, "--author", "@kj", "--event", "done")
         assert r.returncode != 0, f"{item} closed with no evidence"
         assert "--evidence" in r.stderr
-        assert f"- [ ] `{item}`" in f.read_text(encoding="utf-8"), "and nothing changed"
+        assert f"- [ ] `{item}" in f.read_text(encoding="utf-8"), "and nothing changed"
 
     ok(
         "close",
@@ -1224,13 +1253,13 @@ def test_reopening_a_defect_files_a_numbered_regression(defects: Path):
         "reopen", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "came back on 470"
     )
 
-    assert "DEF-LNCH-1-1" in out, "the command names the item it minted"
+    assert "DEF-LNCH-1-TEST-1" in out, "the command names the item it minted"
     body = defects.read_text(encoding="utf-8")
-    assert "- [x] `DEF-LNCH-1`" in body, "the parent closure stands"
+    assert "- [x] `DEF-LNCH-1-TEST`" in body, "the parent closure stands"
     assert "- evidence: test_fork_token green on build 412" in body, "proven when it was made"
-    assert "- [ ] `DEF-LNCH-1-1`" in body, "the regression is its own open item"
-    assert "regressed as DEF-LNCH-1-1" in body, "the parent records where it went"
-    assert "regression of DEF-LNCH-1: came back on 470" in body, "the child names its parent"
+    assert "- [ ] `DEF-LNCH-1-TEST-1`" in body, "the regression is its own open item"
+    assert "regressed as DEF-LNCH-1-TEST-1" in body, "the parent records where it went"
+    assert "regression of DEF-LNCH-1-TEST: came back on 470" in body, "the child names its parent"
     assert pm("check", defects).returncode == 0
 
 
@@ -1255,7 +1284,7 @@ def test_the_report_says_how_regressive_the_system_is(defects: Path):
         "close",
         defects,
         "--id",
-        "DEF-LNCH-1-1",
+        "DEF-LNCH-1-TEST-1",
         "--author",
         "@kj",
         "--event",
@@ -1263,7 +1292,7 @@ def test_the_report_says_how_regressive_the_system_is(defects: Path):
         "--evidence",
         "green on 470",
     )
-    ok("reopen", defects, "--id", "DEF-LNCH-1-1", "--author", "@kj")
+    ok("reopen", defects, "--id", "DEF-LNCH-1-TEST-1", "--author", "@kj")
     ok(
         "close",
         defects,
@@ -1283,7 +1312,9 @@ def test_the_report_says_how_regressive_the_system_is(defects: Path):
         "report", defects, "--summary", "--status", "all"
     )
     body = defects.read_text(encoding="utf-8")
-    assert "`DEF-LNCH-1-2`" in body and "DEF-LNCH-1-1-1" not in body, "ordinals stay flat"
+    assert "`DEF-LNCH-1-TEST-2`" in body and "DEF-LNCH-1-TEST-1-1" not in body, (
+        "ordinals stay flat"
+    )
 
 
 def test_upgrade_names_the_closed_items_that_carry_no_evidence(docs: Path):
@@ -1309,6 +1340,8 @@ def test_list_categories_is_the_derived_index(defects: Path):
         defects,
         "--category",
         "AUTH",
+        "--code",
+        "TEST",
         "--name",
         "Authentication",
         "--author",
@@ -1338,7 +1371,7 @@ def test_an_open_defects_ask_is_a_filtered_report_not_a_reading(defects: Path):
     ok("close", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--evidence", "clean on 412")
     out = ok("report", defects, "--status", "open", "--plain")
     assert "(open)" in out
-    assert "`DEF-LNCH-2`" in out and "`DEF-LNCH-1`" not in out
+    assert "`DEF-LNCH-2-TEST`" in out and "`DEF-LNCH-1-TEST`" not in out
     assert "1 closed not listed" in out
     assert "| Launch `LNCH` | 1 | 1 | 0 | 2 |" in out  # plain counts, 0 allowed
     assert "| Launch `LNCH` | 1 | 0 | 0 | 0 | 1 |" in out
@@ -1354,6 +1387,8 @@ def test_a_question_no_report_answers_becomes_a_pivot(defects: Path):
         defects,
         "--category",
         "LNCH",
+        "--code",
+        "TEST",
         "--author",
         "@mb",
         "--severity",
@@ -1379,7 +1414,7 @@ def test_the_list_table_takes_a_descending_sort_in_the_equals_form(defects: Path
     file_a_defect(defects, "crash on boot", "CRITICAL")
     out = ok("list", defects, "--columns", "id,severity", "--sort=-severity")
     ids = [ln.split("|")[1].strip() for ln in out.splitlines() if ln.startswith("| `")]
-    assert ids == ["`DEF-LNCH-1`", "`DEF-LNCH-2`"]
+    assert ids == ["`DEF-LNCH-1-TEST`", "`DEF-LNCH-2-TEST`"]
     r = pm("list", defects, "--sort", "-severity")  # the bare form reads as a flag
     assert r.returncode != 0 and "expected one argument" in r.stderr
 
@@ -1424,7 +1459,7 @@ def test_a_soft_lock_signals_who_is_working_and_never_blocks_anyone(defects: Pat
     r = pm("check", defects)
     assert r.returncode == 0 and "expired lock, cleared on the next write" in r.stdout
     assert f"- lock: {past} @xy" in defects.read_text(encoding="utf-8"), "check is read-only"
-    assert "`DEF-LNCH-2`" not in ok("list", defects, "--locked"), "expired is not active"
+    assert "`DEF-LNCH-2-TEST`" not in ok("list", defects, "--locked"), "expired is not active"
     r = pm("log", defects, "--id", "DEF-LNCH-3", "--author", "@kj", "--event", "looked")
     assert r.returncode == 0 and r.stderr == ""
     assert f"- lock: {past}" not in defects.read_text(encoding="utf-8")
@@ -1433,7 +1468,7 @@ def test_a_soft_lock_signals_who_is_working_and_never_blocks_anyone(defects: Pat
     r = pm("close", defects, "--id", "DEF-LNCH-1", "--author", "@xy", "--evidence", "green on 412")
     assert r.returncode == 0 and "locked by @kj" in r.stderr
     body = defects.read_text(encoding="utf-8")
-    assert "- [x] `DEF-LNCH-1`" in body and "- lock:" not in body
+    assert "- [x] `DEF-LNCH-1-TEST`" in body and "- lock:" not in body
     r = pm("lock", defects, "--id", "DEF-LNCH-1", "--author", "@kj")
     assert r.returncode == 1 and "closed" in r.stderr, "the one refusal: a finished item"
 
@@ -1442,7 +1477,7 @@ def test_a_soft_lock_signals_who_is_working_and_never_blocks_anyone(defects: Pat
     ok("lock", defects, "--id", "DEF-LNCH-3", "--author", "@kj")
     r = pm("unlock", defects, "--author", "@kj", "--all")
     assert r.returncode == 0 and "2 lock(s) cleared" in r.stdout
-    assert r.stderr.count("\n") == 1 and "DEF-LNCH-2 was locked by @xy" in r.stderr
+    assert r.stderr.count("\n") == 1 and "DEF-LNCH-2-TEST was locked by @xy" in r.stderr
     body = defects.read_text(encoding="utf-8")
     assert "- lock:" not in body and body.count("- log:") == 6
     assert "Worked on" not in ok("report", defects, "--plain")
@@ -1466,14 +1501,15 @@ def test_a_second_agent_is_told_who_is_on_what_and_takes_the_item_over(defects: 
     # @xy reads the queue before choosing an item, and the read says who is on what
     r = pm("report", defects, "--plain")
     assert r.returncode == 0
-    assert r.stderr == f"1 item(s) currently worked on: DEF-LNCH-1 by @kj until {until}\n"
+    assert r.stderr == f"1 item(s) currently worked on: DEF-LNCH-1-TEST by @kj until {until}\n"
     assert f"wip @kj until {until}" in r.stdout, "the table itself is unchanged"
 
     # @xy takes it anyway: named as a transfer, and the item keeps the previous holder
     r = pm("lock", defects, "--id", "DEF-LNCH-1", "--author", "@xy")
     assert r.returncode == 0, "a transfer is never refused"
     assert r.stderr == (
-        f"TRANSFER: DEF-LNCH-1 was locked by @kj until {until} - you are taking it over; ask @kj\n"
+        f"TRANSFER: DEF-LNCH-1-TEST was locked by @kj until {until} - "
+        f"you are taking it over; ask @kj\n"
     )
     body = defects.read_text(encoding="utf-8")
     assert re.search(r"- lock: \S+ @xy taken over from @kj", body)
@@ -1481,7 +1517,7 @@ def test_a_second_agent_is_told_who_is_on_what_and_takes_the_item_over(defects: 
 
     # @kj reads the same queue later and finds @xy on it
     r = pm("list", defects, "--columns", "id,lock")
-    assert r.returncode == 0 and "currently worked on: DEF-LNCH-1 by @xy" in r.stderr
+    assert r.returncode == 0 and "currently worked on: DEF-LNCH-1-TEST by @xy" in r.stderr
     assert pm("check", defects).returncode == 0
 
 
@@ -1499,11 +1535,13 @@ def test_an_override_runs_across_both_trackers_and_the_newest_link_holds(
     out = ok(
         "relate", defects, "--id", "DEF-LNCH-1", "--overrides", "ACC-AUTH-1 - 30 min kills uploads"
     )
-    assert "DEF-LNCH-1 overrides: ACC-AUTH-1 - 30 min kills uploads" in out
-    assert "ACC-AUTH-1 overridden-by: DEF-LNCH-1" in out, "the other tracker got its line"
+    assert "DEF-LNCH-1-TEST overrides: ACC-AUTH-1 - 30 min kills uploads" in out
+    assert "ACC-AUTH-1-TEST overridden-by: DEF-LNCH-1-TEST" in out, (
+        "the other tracker got its line"
+    )
     r = pm("check", docs)
     assert r.returncode == 0, r.stdout
-    assert "warn  overridden-by DEF-LNCH-1 but still open" in r.stdout
+    assert "warn  overridden-by DEF-LNCH-1-TEST but still open" in r.stdout
     assert pm("check", docs, "--strict").returncode != 0, "an open overridden item is a warning"
 
     # the criterion is restated and overrides the defect back
@@ -1514,14 +1552,14 @@ def test_an_override_runs_across_both_trackers_and_the_newest_link_holds(
     ok("relate", criteria, "--id", "ACC-AUTH-1", "--overrides", "DEF-LNCH-1", "--author", "@kj")
 
     rows = ok("list", docs, "--status", "all", "--columns", "id,overrides,overridden-by")
-    assert "| `ACC-AUTH-1` | `DEF-LNCH-1` | - |" in rows
-    assert "| `DEF-LNCH-1` | - | `ACC-AUTH-1` |" in rows
+    assert "| `ACC-AUTH-1-TEST` | `DEF-LNCH-1-TEST` | - |" in rows
+    assert "| `DEF-LNCH-1-TEST` | - | `ACC-AUTH-1-TEST` |" in rows
     body = defects.read_text(encoding="utf-8")
     assert "- overrides: ACC-AUTH-1" not in body
     assert re.search(
-        r"- log: \S+ @kj overrides ACC-AUTH-1 removed, line read "
+        r"- log: \S+ @kj overrides ACC-AUTH-1-TEST removed, line read "
         r'"ACC-AUTH-1 - 30 min kills uploads" - cycle with newer link '
-        r"ACC-AUTH-1 overrides DEF-LNCH-1",
+        r"ACC-AUTH-1-TEST overrides DEF-LNCH-1-TEST",
         body,
     ), "the removed link and its wording survive in the log"
     r = pm("check", docs)

@@ -235,15 +235,17 @@ const runPanelChecked = async (phase, body) => {
   return raw
 }
 
-// One finding reported twice: the same file within 25 lines, or the same
-// title. A path one reviewer gives absolute and another relative is one file.
+// One finding reported twice: the same title, case-insensitive and trimmed
+// (DEF-ADVR-80). A shared file and a line within 25 is NOT a duplicate - two
+// different findings 20 lines apart in one file both reach the adjudicator.
+// sameFile still treats a path one reviewer gives absolute and another
+// relative as one file, for the settled record.
 const sameFile = (a, b) => {
   const x = (a || '').replace(/\\/g, '/')
   const y = (b || '').replace(/\\/g, '/')
   return !!x && !!y && (x === y || x.endsWith(`/${y}`) || y.endsWith(`/${x}`))
 }
 const sameSite = (a, b) =>
-  (sameFile(a.file, b.file) && a.line != null && b.line != null && Math.abs(a.line - b.line) <= 25) ||
   a.title.toLowerCase().trim() === b.title.toLowerCase().trim()
 
 const mergeFindings = (perLens) => {
@@ -252,6 +254,9 @@ const mergeFindings = (perLens) => {
     ;(rep && rep.findings ? rep.findings : []).forEach((f) => {
       const hit = rows.find((r) => sameSite(r, f))
       if (hit) {
+        // The first row's fields stay primary and every merged lens's text is
+        // kept in `also`, so the adjudicator sees all of it (DEF-ADVR-80).
+        ;(hit.also = hit.also || []).push({ lens: LENSES[i], evidence: f.evidence, remedy: f.remedy })
         hit.lenses.push(LENSES[i])
         if (f.severity === 'CRITICAL' && hit.severity !== 'CRITICAL') Object.assign(hit, { severity: 'CRITICAL' })
       } else {

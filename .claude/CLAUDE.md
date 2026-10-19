@@ -41,13 +41,13 @@ echo "toolkit $LIB"
 
 No manual word-count checks - CLI is deterministic; catches numbering / ordering / format drift manual checks miss.
 
-Same rule for `/release` step 5 - invokes `/journal:update`. Never inline-edit during release; gate exists to keep release journals consistent with day-to-day appends.
+Same rule for `/release-plugin` step 5 - invokes `/journal:update`. Never inline-edit during release; gate exists to keep release journals consistent with day-to-day appends.
 
 ## Project context
 
 This repo is the `stellars-claude-code-plugins` marketplace - a multi-plugin distribution that publishes both a PyPI Python package (deterministic CLIs in `src/stellars_claude_code_plugins/`) and seven Claude Code plugins under `plugins/` (`autobuild`, `datascience`, `devils-advocate`, `document-processing`, `journal`, `project-management`, `svg-infographics`). The library and all plugins share ONE synced version. The library leads: `pyproject.toml` `version` is the source of truth, and the 22 plugin strings (seven `plugin.json` + seven `kimi.plugin.json` + `marketplace.json` metadata + 7 entries) are set to match it.
 
-When releasing, follow `/release` exactly: lint+format → tests → `make publish` (library leads - bumps `pyproject.toml` PATCH + uploads to PyPI; that number is `vN`) → sync the 22 plugin strings to `vN`, derived from the tree by grepping the previous version rather than hand-counted (NEVER publish the library by hand with `uv build`/`twine` - always `make publish`) → `/journal:update` → commit specific files (never `git add -A`) → push. The PyPI/library version and the plugin version are the same number. Do NOT run `/increment-plugin-version` during release (it bumps only the plugin strings, leaving the library behind).
+When releasing, follow `/release-plugin` exactly: lint+format → tests → `make publish` (library leads - bumps `pyproject.toml` PATCH + uploads to PyPI; that number is `vN`) → sync the 22 plugin strings to `vN`, derived from the tree by grepping the previous version rather than hand-counted (NEVER publish the library by hand with `uv build`/`twine` - always `make publish`) → `/journal:update` → commit specific files (never `git add -A`) → push. The PyPI/library version and the plugin version are the same number. Do NOT run `/increment-plugin-version` during release (it bumps only the plugin strings, leaving the library behind).
 
 ## Testing code that spawns `claude -p`
 

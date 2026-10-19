@@ -2,15 +2,17 @@
 """pm-tools - query, lint, report and edit project-management tracking docs.
 
 The markdown file is the entire store. Nothing is recorded twice: the next id is the
-highest id already in the file plus one, the category index is computed by
-list-categories, backlinks are computed by refs. No counter file, no index, no TOC.
+highest in the file plus one, and also above every sibling tracker's id of the same
+prefix and category; the category index is computed by list-categories, backlinks are
+computed by refs. No counter file, no index, no TOC.
 
-  docs/acc-crit*.md   acceptance criteria, ids ACC-<CAT>-<N>, hint line `- test:`
-  docs/defects*.md    defects,             ids DEF-<CAT>-<N>, hint line `- repro:`
+  docs/acc-crit*.md   acceptance criteria, ids ACC-<CAT>-<N>-<CODE>, hint line `- test:`
+  docs/defects*.md    defects,             ids DEF-<CAT>-<N>-<CODE>, hint line `- repro:`
 
-A defect that is fixed and breaks again keeps a derived id: reopening DEF-LNCH-3
-opens DEF-LNCH-3-1, then -2, then -3. The parent stays closed with its evidence -
-it really was proven - so the ordinals count how often that defect has regressed.
+A defect that is fixed and breaks again keeps a derived id: reopening
+DEF-LNCH-3-PARSER opens DEF-LNCH-3-PARSER-1, then -2, then -3. The parent stays
+closed with its evidence - it really was proven - so the ordinals count how often
+that defect has regressed.
 
 Both disciplines also carry `- test-tags: UNIT, FUNCTIONAL` - which kinds of test
 cover the item (UNIT, INTEGRATION, FUNCTIONAL, E2E, MANUAL, or any word; written
@@ -83,17 +85,17 @@ Query - every table is markdown, paste-ready; --json gives the same facts as dat
          that occur, NO-TEST last), open and closed items counted alike, Total row
   search [paths] QUERY [--top N] [FILTERS] [--json]
          the N items most relevant to QUERY, best first, one table over every scanned
-         file - BM25 over id, title, body, evidence, mechanism/root-cause and log
-         lines, id and title
-         weighted 3x; a typo or a stem still hits. Quote a multi-word QUERY. FILTERS
-         narrow the candidates first: --grep is the exact filter, search is the ranking
+         file - BM25 over the full and base id, the code, title, body, evidence,
+         mechanism/root-cause and log lines; id, code and title weighted 3x; a typo
+         or a stem still hits. Quote a multi-word QUERY. FILTERS narrow the
+         candidates first: --grep is the exact filter, search is the ranking
   list-categories [paths] [--json]                 code, name, open, closed, rejected
   refs [paths] --id ID [--json]                    what points at ID, what ID points at,
                                                    and the chain of what blocks it
   check [paths] [--strict]                         conformity gate
 
 FILTERS, the same on report, list, pivot, search and coverage:
-  --category CODE  --severity S  --importance I  --status open|closed|rejected|all
+  --category CODE  --code C  --severity S  --importance I  --status open|closed|rejected|all
   --author @xx  --tag T (any case)  --regressions  --dates filed|closed|updated
   --since DATE  --until DATE
   --grep PATTERN   case-insensitive regex over title, body, evidence, every
@@ -107,7 +109,7 @@ FILTERS, the same on report, list, pivot, search and coverage:
   mentions, refs, --related-to and --blocked read links.
 
 FIELDS, for --columns, --sort, --rows and --cols:
-  id title body category severity importance status author filed closed updated
+  id code title body category severity importance status author filed closed updated
   age tags evidence cause hint regr root logs related blockers overrides
   overridden-by lock attachments
   severity, importance and status are ranked, not alphabetical - severity runs
@@ -126,7 +128,7 @@ FIELDS, for --columns, --sort, --rows and --cols:
   edit stamp of each under fingerprints.
 
 Edit (one file):
-  add    FILE --category CODE --title T --text D [--name NAME] [--description D]
+  add    FILE --category CODE --code C --title T --text D [--name NAME] [--description D]
                     --severity S|--importance I [--repro R|--test T]
                     [--test-tags "UNIT, FUNCTIONAL"] [--mechanism M|--root-cause R]
   edit   FILE --id ID [--title T] [--text D] [--severity S] [--importance I]
@@ -193,6 +195,20 @@ prose, never a level.
           defects, missing descriptions, hints or evidence, nested items, items
           above the first heading - becomes a HINT line carrying the exact command
           to run. Non-zero only for I/O errors or an unrecognisable file type.
+  migrate-codes FILE --map MAPPING --author @xx
+          append the code each `BASE-ID CODE` mapping line names to that item's id,
+          before any regression ordinal, logging `coded CODE` on every item changed.
+          Idempotent: a second run writes nothing. Reports the items that carry no
+          code and are not named by the mapping, and the mapping ids that match no
+          item, and exits non-zero while either remains; an item already carrying a
+          different code is reported for rename-code. One mapping file per tracker;
+          references/codes.md
+  rename-code FILE --id ID --code NEW --author @xx
+          rename the item and its regressions - every item sharing its root and
+          code - keeping each ordinal; rewrite every related, blocked-by, overrides
+          and overridden-by line in the scanned files that names an old full id,
+          and log the rename on each item. A base-id link is left alone - it still
+          resolves; references/codes.md
 
 Query paths are files or dirs (a dir is scanned for acc-crit*.md and defects*.md);
 no path means ./docs when it exists, else . Stdlib only.
@@ -212,12 +228,26 @@ import sys
 HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*#*$")
 ITEM = re.compile(r"^(\s*)- \[([ xX-])\] (.*)$")
 CBOX = re.compile(r"^\s*- \[[^\]]{0,3}\](?:\s|$)")
+# An id is `PREFIX-CAT-N[-CODE][-REGR]`. CODE is one or two hyphen-separated
+# segments, each starting with a letter; a trailing all-digit segment is the
+# regression ordinal, read from the right, so a code can never end in one.
 IDTOK = re.compile(
     r"^`(?P<prefix>ACC|DEF)-(?P<cat>[A-Z]{2,6})-(?P<num>\d+)"
+    r"(?:-(?P<code>[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?))?"
     r"(?:-(?P<regr>\d+))?`\s+(?P<body>.*)$"
 )
 LEGACY = re.compile(r"^`(ACC|DEF)-(\d+)(?:-(\d+))?`\s+(.*)$")  # pre-category id, upgrade only
-IDREF = re.compile(r"\b(ACC|DEF)-([A-Z]{2,6})-(\d+)(?:-(\d+))?\b")
+IDREF = re.compile(
+    r"\b(?P<prefix>ACC|DEF)-(?P<cat>[A-Z]{2,6})-(?P<num>\d+)"
+    r"(?:-(?P<code>[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?))?"
+    r"(?:-(?P<regr>\d+))?\b"
+)
+# an id-shaped backticked token whose tail IDTOK refused, so check can name the
+# malformed code rather than call the whole id missing
+IDBAD = re.compile(r"^`(?P<tok>(?:ACC|DEF)-[A-Z]{2,6}-\d+(?:-[^`]*))`")
+# the item code grammar, and the base id a mapping file names
+CODE = re.compile(r"[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?")
+BASEID = re.compile(r"(?:ACC|DEF)-[A-Z]{2,6}-\d+")
 CATCODE = re.compile(r"^(.*?)\s*`([A-Z]{2,6})`$")
 BOLD = re.compile(r"\*\*([^*]+)\*\*")
 # any all-caps token used as a severity, so upgrade can name what it cannot map
@@ -245,6 +275,8 @@ ATTLINE = re.compile(r"^(\s+)- attachment:\s*(.+?)\s+sha256:([0-9a-f]{16})\s+edi
 ATTANY = re.compile(r"^(\s+)- attachment:")
 REJECTED = re.compile(r"^rejected:?\s*(.*)$", re.I)
 CLOSING = re.compile(r"^(closed|rejected)\b", re.I)  # the log line that ended the item
+# the log line a rename writes, read back to finish the link rewrite a failed run left
+RENAMED = re.compile(r'^renamed code "(%s)" -> "(%s)"$' % (CODE.pattern, CODE.pattern))
 SUB = re.compile(r"^\s+- ")
 STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")  # ISO 8601, UTC
 DATEONLY = re.compile(r"^\d{4}-\d{2}-\d{2}$")  # legacy, upgrade only
@@ -492,6 +524,7 @@ def parse(path):
         if m:
             indent, state, text = len(m.group(1)), m.group(2), m.group(3)
             idm = IDTOK.match(text)
+            badid = IDBAD.match(text)
             body = idm.group("body") if idm else text
             bold = BOLD.search(body)
             after = body[bold.end() :].lstrip(" -") if bold else body
@@ -507,7 +540,9 @@ def parse(path):
                 prefix=idm.group("prefix") if idm else None,
                 cat=idm.group("cat") if idm else None,
                 num=int(idm.group("num")) if idm else None,
+                code=idm.group("code") if idm else None,
                 regr=int(idm.group("regr")) if idm and idm.group("regr") else None,
+                bad_id=bool(badid and not idm),
                 body=body,
                 title=bold.group(1) if bold else None,
                 severity=sm.group(1).upper() if sm else None,
@@ -623,6 +658,8 @@ def ident(b):
     if not b["prefix"]:
         return "(no id)"
     root = f"{b['prefix']}-{b['cat']}-{b['num']}"
+    if b["code"]:
+        root += f"-{b['code']}"
     return f"{root}-{b['regr']}" if b["regr"] else root
 
 
@@ -772,6 +809,7 @@ def scope_of(
     imp=None,
     locked=False,
     locked_by=None,
+    code=None,
 ):
     """The items a query is about - every filter except --status. On `report` that one
     narrows the ITEMS queue alone, so a filtered report still says where the whole
@@ -783,6 +821,8 @@ def scope_of(
         out = [b for b in out if (lock_active(b) or {}).get("by") == locked_by]
     if cat:
         out = [b for b in out if b["cat"] == cat]
+    if code:
+        out = [b for b in out if b["code"] == code]
     if sev:
         out = [b for b in out if sev_of(b) == sev]
     if imp:
@@ -824,6 +864,7 @@ def select(blocks, fl, index=None):
         fl["importance"],
         fl["locked"],
         fl["locked_by"],
+        code=fl["code"],
     )
     if fl["status"] and fl["status"] != "all":
         out = [b for b in out if status_of(b) == fl["status"]]
@@ -835,6 +876,7 @@ def filter_note(fl, status=None):
     bits = [
         status,
         f"category {fl['category']}" if fl["category"] else None,
+        f"code {fl['code']}" if fl["code"] else None,
         fl["severity"],
         fl["importance"],
         fl["author"],
@@ -871,6 +913,8 @@ def fix_order(b):
         STATUS_RANK.get(status_of(b), 3),
         SEV_RANK.get(b["severity"], IMP_RANK.get(b["importance"], len(SEVS))),
         b["num"] if b["num"] is not None else 0,
+        b["code"] or "",
+        b["regr"] or 0,
     )
 
 
@@ -910,31 +954,49 @@ def link_index(files):
     return {ident(b): b for f in files for b in parse(f)[0] if b["prefix"]}
 
 
+def resolve_ref(index, rid):
+    """The full id a reference names. The full id itself wins; otherwise the family
+    root whose base id it is, so `DEF-X-1` resolves `DEF-X-1-CODE`. A regression is
+    named by its full id; a dangling reference comes back unchanged for check to
+    report."""
+    if rid in index:
+        return rid
+    return next((i for i in index if root_of(index[i]) == rid and not index[i]["regr"]), rid)
+
+
 def is_blocked(b, index):
     """At least one blocked-by target that exists in the scanned files and is open.
     A dangling target is a check error, not a block."""
-    return any(r in index and status_of(index[r]) == "open" for r in targets(b, "blocked-by"))
+    return any(
+        t in index and status_of(index[t]) == "open"
+        for t in (resolve_ref(index, r) for r in targets(b, "blocked-by"))
+    )
 
 
 def linked(b, wanted, index):
     """Either direction, either kind; an item is not linked to itself."""
     me = ident(b)
-    if me == wanted:
+    target = resolve_ref(index, wanted)
+    if me == target:
         return False
-    if any(r == wanted for _, r, _ in b["refs"]):
+    if any(resolve_ref(index, r) == target for _, r, _ in b["refs"]):
         return True
-    t = index.get(wanted)
-    return t is not None and any(r == me for _, r, _ in t["refs"])
+    t = index.get(target)
+    return t is not None and any(resolve_ref(index, r) == me for _, r, _ in t["refs"])
 
 
 def graph(index, kind):
     """id -> the ids it points at in one dependency graph, read off the scanned items.
     `blocked-by`: an item points at its blockers. `overrides`: an item points at what
     it overrides, a link either line of the pair states."""
-    adj = {i: targets(b, kind) for i, b in index.items()}
+    adj = {
+        i: list(dict.fromkeys(resolve_ref(index, r) for r in targets(b, kind)))
+        for i, b in index.items()
+    }
     if kind == "overrides":
         for i, b in index.items():
-            for r in targets(b, "overridden-by"):
+            for raw in targets(b, "overridden-by"):
+                r = resolve_ref(index, raw)
                 if r in adj and i not in adj[r]:
                     adj[r].append(i)
     return adj
@@ -995,7 +1057,11 @@ def next_num(blocks):
 
 
 def find_id(blocks, wanted):
+    """The item a full id names, else the item a base id names. Full first, so an
+    uncoded `DEF-X-1` wins over a coded `DEF-X-1-CODE` when both exist."""
     hits = [b for b in blocks if ident(b) == wanted]
+    if not hits:
+        hits = [b for b in blocks if root_of(b) == wanted and not b["regr"]]
     if not hits:
         raise SystemExit(f"no item with id {wanted}")
     return hits[0]
@@ -1005,7 +1071,19 @@ def norm_id(raw, prefix):
     raw = raw.strip().upper()
     if IDREF.fullmatch(raw):
         return raw
-    raise SystemExit(f"malformed id {raw!r}; expected {prefix}-<CAT>-<N>[-<R>]")
+    raise SystemExit(f"malformed id {raw!r}; expected {prefix}-<CAT>-<N>[-<CODE>][-<R>]")
+
+
+def norm_code(raw):
+    """An item code as the id grammar carries it. A trailing all-digit segment is the
+    regression ordinal, so a code ending in one is refused rather than read as a code."""
+    code = raw.strip().upper()
+    if not CODE.fullmatch(code):
+        raise SystemExit(
+            f"code {raw!r} must be one or two hyphen-separated segments of "
+            "A-Z0-9, each starting with a letter"
+        )
+    return code
 
 
 def block_end(lines, b):
@@ -1041,6 +1119,7 @@ def cell(text, width=64):
 
 FIELDS = (
     "id",
+    "code",
     "title",
     "body",
     "category",
@@ -1070,6 +1149,7 @@ FIELDS = (
 LINK_FIELDS = ("related", "blockers", "overrides", "overridden-by")
 HEAD = {
     "id": "Id",
+    "code": "Code",
     "title": "Title",
     "body": "Description",
     "category": "Category",
@@ -1119,6 +1199,7 @@ TAG_ORDER = ("UNIT", "INTEGRATION", "FUNCTIONAL", "E2E", "MANUAL")
 NO_TEST = "NO-TEST"
 # the pivot bucket an item lands in when the field is empty
 NONE_KEY = {
+    "code": "uncoded",
     "tags": NO_TEST,
     "severity": "untriaged",
     "importance": "unrated",
@@ -1154,12 +1235,15 @@ def age_band(days):
     return AGE_BANDS[0 if days < 7 else 1 if days <= 30 else 2 if days <= 90 else 3]
 
 
-def record(b, today=None):
+def record(b, today=None, index=None):
     """One item as data - what every table, pivot cell and --json document is built from.
-    `category` is the live section the item sits under, not the segment in its id."""
+    `category` is the live section the item sits under, not the segment in its id. With
+    `index`, every link is the full id it names, once: a target spelled as a base id and
+    as its full id is one link, not two."""
     sec = b["section"]
-    return {
+    out = {
         "id": ident(b),
+        "code": b["code"],
         "title": b["title"],
         "body": b["plain"],
         "category": (sec["code"] if sec else None) or b["cat"],
@@ -1191,6 +1275,10 @@ def record(b, today=None):
         ],
         "line": b["line"],
     }
+    if index is not None:
+        for field in LINK_FIELDS:
+            out[field] = list(dict.fromkeys(resolve_ref(index, rid) for rid in out[field]))
+    return out
 
 
 def lock_text(k):
@@ -1249,7 +1337,7 @@ def sort_key(b, rec, field):
     if field == "status":
         return (0, STATUS_RANK.get(rec["status"], 3))
     if field == "id":
-        return (0, (b["cat"] or "", b["num"] or 0, b["regr"] or 0))
+        return (0, (b["cat"] or "", b["num"] or 0, b["code"] or "", b["regr"] or 0))
     v = rec.get(field)
     if field == "lock":
         return (0, v["until"]) if v else (1, "")
@@ -1386,7 +1474,7 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
         status = "all"
     want = None if status == "all" else FLAG[status or "open"]
     docs = []
-    index = link_index(files) if fl["blocked"] or fl["related_to"] else None
+    index = link_index(files) if fl["blocked"] or fl["related_to"] or as_json else None
     for f in files:
         blocks, sections = parse(f)
         prefix = doc_prefix(f, blocks)
@@ -1413,11 +1501,13 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
             fl["importance"],
             fl["locked"],
             fl["locked_by"],
+            code=fl["code"],
         )
         shown = [s for s in sections if not cat or s["code"] == cat]
         if (
             sev
             or fl["importance"]
+            or fl["code"]
             or since
             or until
             or fl["author"]
@@ -1447,7 +1537,9 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
         if as_json:
             items = []
             for _, own in groups:
-                items += [record(b) for b in sorted(own, key=fix_order) if b in listed]
+                items += [
+                    record(b, index=index) for b in sorted(own, key=fix_order) if b in listed
+                ]
             docs.append(
                 {
                     "file": f,
@@ -1657,7 +1749,7 @@ def cmd_list_categories(files, as_json=False):
 def cmd_list(files, fl, columns, sort, as_json):
     """One markdown table per file; the caller picks the columns and the order."""
     docs = []
-    index = link_index(files) if fl["blocked"] or fl["related_to"] else None
+    index = link_index(files)
     for f in files:
         blocks, _ = parse(f)
         prefix = doc_prefix(f, blocks)
@@ -1668,7 +1760,9 @@ def cmd_list(files, fl, columns, sort, as_json):
             print(f"{f}: skipped, --importance is a criterion attribute", file=sys.stderr)
             continue
         cols = columns or list(DEFAULT_COLS[prefix])
-        pairs = sorted_items([(b, record(b)) for b in select(blocks, fl, index)], sort)
+        pairs = sorted_items(
+            [(b, record(b, index=index)) for b in select(blocks, fl, index)], sort
+        )
         if as_json:
             docs += [dict(rec, file=f) for _, rec in pairs]
             continue
@@ -1697,7 +1791,7 @@ def cmd_pivot(files, rows_f, cols_f, values, fl, as_json):
     """An ad-hoc grid: one field down, another across, a count or the ids in every cell.
     A multi-valued field (tags) puts an item in every bucket it belongs to."""
     docs = []
-    index = link_index(files) if fl["blocked"] or fl["related_to"] else None
+    index = link_index(files)
     for f in files:
         blocks, sections = parse(f)
         prefix = doc_prefix(f, blocks)
@@ -1711,7 +1805,7 @@ def cmd_pivot(files, rows_f, cols_f, values, fl, as_json):
         scope = select(blocks, fl, index)
         grid = {}
         for b in scope:
-            rec = record(b)
+            rec = record(b, index=index)
             for r in bucket(rec, rows_f):
                 for c in bucket(rec, cols_f) if cols_f else ("Items",):
                     grid.setdefault(r, {}).setdefault(c, []).append(rec["id"])
@@ -1876,6 +1970,7 @@ def tokens(text):
 
 SEARCH_W = {
     "id": 3.0,
+    "code": 3.0,
     "title": 3.0,
     "body": 1.0,
     "evidence": 1.0,
@@ -1900,7 +1995,10 @@ def rank_items(query, cands):
     docs = []  # (f, b, {field: token list})
     for f, b in cands:
         fields = {
-            "id": tokens(ident(b)),
+            # the base id is indexed too, so a search for DEF-LNCH-2 finds the
+            # coded DEF-LNCH-2-PARSER as well as the full id does
+            "id": tokens(ident(b)) + tokens(root_of(b)),
+            "code": tokens(b["code"]),
             "title": tokens(b["title"]),
             "body": tokens(b["plain"]),
             "evidence": tokens(b["evidence"]),
@@ -2029,16 +2127,20 @@ def cmd_refs(files, wanted, as_json=False):
     `...`: its own blockers were printed the first time. Inbound is listed even
     for an id no item carries - that is what `remove --force` leaves behind, and
     what separates it from a typo, which is refused."""
-    index, inbound = {}, []
+    index, scanned, inbound = {}, [], []
     for f in files:
         for b in parse(f)[0]:
+            scanned.append((f, b))
             if b["prefix"]:
                 index[ident(b)] = (f, b)
-            inbound += [
-                {"file": f, "line": ln, "id": ident(b), "kind": k}
-                for k, rid, ln in b["refs"]
-                if rid == wanted
-            ]
+    blocks_by_id = {i: b for i, (_, b) in index.items()}
+    wanted = resolve_ref(blocks_by_id, wanted)
+    inbound = [
+        {"file": f, "line": ln, "id": ident(b), "kind": k}
+        for f, b in scanned
+        for k, rid, ln in b["refs"]
+        if resolve_ref(blocks_by_id, rid) == wanted
+    ]
     if wanted not in index and not inbound:
         raise SystemExit(
             f"no item with id {wanted} in the scanned files, and nothing points at it"
@@ -2046,10 +2148,16 @@ def cmd_refs(files, wanted, as_json=False):
     outbound, paths, blockers = [], [], []
     if wanted in index:
         f, b = index[wanted]
-        outbound = [{"file": f, "line": ln, "id": rid, "kind": k} for k, rid, ln in b["refs"]]
+        outbound = [
+            {"file": f, "line": ln, "id": resolve_ref(blocks_by_id, rid), "kind": k}
+            for k, rid, ln in b["refs"]
+        ]
         seen = set()
         # (id, ids on the route so far, printed hops, depth); depth first, file order
-        todo = [(rid, [wanted], [], 1) for rid in reversed(targets(b, "blocked-by"))]
+        todo = [
+            (resolve_ref(blocks_by_id, rid), [wanted], [], 1)
+            for rid in reversed(targets(b, "blocked-by"))
+        ]
         while todo:
             rid, ids, hops, depth = todo.pop()
             if rid in ids:
@@ -2057,7 +2165,11 @@ def cmd_refs(files, wanted, as_json=False):
                 continue
             st = status_of(index[rid][1]) if rid in index else "not found"
             hop = hops + [f"{rid} ({st})"]
-            nxt = targets(index[rid][1], "blocked-by") if rid in index else []
+            nxt = (
+                [resolve_ref(blocks_by_id, r) for r in targets(index[rid][1], "blocked-by")]
+                if rid in index
+                else []
+            )
             if rid in seen:
                 paths.append(hop + ["..."] if nxt else hop)
                 continue
@@ -2105,6 +2217,8 @@ def cmd_check(files, strict):
 
     errors = warns = 0
     seen = {}  # ident -> (file, line); an id is unique across the scanned files
+    roots = {}  # base id -> (file, line, ident); one root family per base, store-wide
+    root_bases = {root_of(b) for b in index.values() if not b["regr"]}
     for f in files:
         lines = load(f)
         blocks, sections = parse(f)
@@ -2190,8 +2304,25 @@ def cmd_check(files, strict):
             if b["section"] is None:
                 e.append((b["line"], "item is not under a ## category heading"))
             if not b["prefix"]:
-                e.append((b["line"], f"item has no `{prefix}-<CAT>-<N>` id; run upgrade"))
+                if b["bad_id"]:
+                    tok = IDBAD.match(b["text"]).group("tok")
+                    e.append(
+                        (
+                            b["line"],
+                            f"malformed code in id `{tok}`; a code is one or two "
+                            "hyphen-separated A-Z0-9 segments, each starting with a letter",
+                        )
+                    )
+                else:
+                    e.append((b["line"], f"item has no `{prefix}-<CAT>-<N>` id; run upgrade"))
             else:
+                if not b["code"]:
+                    w.append(
+                        (
+                            b["line"],
+                            "id has no code; every id carries one - run migrate-codes",
+                        )
+                    )
                 if b["prefix"] != prefix:
                     e.append((b["line"], f"id prefix {b['prefix']} in a {prefix} document"))
                 key = ident(b)
@@ -2201,17 +2332,28 @@ def cmd_check(files, strict):
                     e.append((b["line"], f"duplicate id {key} (first at {at})"))
                 else:
                     seen[key] = (f, b["line"])
+                if not b["regr"]:
+                    # a base id names one family: its root and every regression.
+                    # Two roots with different full ids would make a base-id link
+                    # ambiguous across the store, so the second is an error.
+                    base = root_of(b)
+                    prev = roots.get(base)
+                    if prev is None:
+                        roots[base] = (f, b["line"], key)
+                    elif prev[2] != key:
+                        pf, pl, pid = prev
+                        e.append(
+                            (
+                                b["line"],
+                                f"duplicate base id {base}: roots {pid} ({pf}:{pl}) "
+                                f"and {key} ({f}:{b['line']})",
+                            )
+                        )
                 if b["regr"]:
-                    # a regression is a fact about a defect; without its root it counts
-                    # nothing and points nowhere
-                    root = f"{b['prefix']}-{b['cat']}-{b['num']}"
-                    if not any(
-                        x["prefix"] == b["prefix"]
-                        and x["cat"] == b["cat"]
-                        and x["num"] == b["num"]
-                        and not x["regr"]
-                        for x in blocks
-                    ):
+                    # a regression is a fact about a defect; without its root anywhere
+                    # in the scanned files it counts nothing and points nowhere
+                    root = root_of(b)
+                    if root not in root_bases:
                         e.append((b["line"], f"regression {key} has no root item {root}"))
             if not b["title"]:
                 e.append((b["line"], "missing **bold title**"))
@@ -2333,34 +2475,37 @@ def cmd_check(files, strict):
             if not b["has_log"]:
                 e.append((b["line"], "item has no authored log: line; every entry is authored"))
             for kind, rid, lineno in b["refs"]:
-                if rid not in index:
+                tgt = resolve_ref(index, rid)
+                if tgt not in index:
                     e.append((lineno, f"{kind} points at {rid}, not found in the scanned files"))
                     continue
                 if (
                     kind == "blocked-by"
                     and status_of(b) == "open"
-                    and status_of(index[rid]) in ("closed", "rejected")
+                    and status_of(index[tgt]) in ("closed", "rejected")
                 ):
                     w.append(
                         (
                             lineno,
-                            f"blocked-by {rid} is {status_of(index[rid])}; "
+                            f"blocked-by {tgt} is {status_of(index[tgt])}; "
                             "the block no longer holds",
                         )
                     )
-                if kind in MIRROR and ident(b) not in targets(index[rid], MIRROR[kind]):
+                if kind in MIRROR and not any(
+                    resolve_ref(index, r) == ident(b) for r in targets(index[tgt], MIRROR[kind])
+                ):
                     e.append(
                         (
                             lineno,
-                            f"{kind} {rid}, but {rid} has no `{MIRROR[kind]}: {ident(b)}` "
-                            f"line; run: pm-tools relate {f} --id {ident(b)} --{kind} {rid}",
+                            f"{kind} {tgt}, but {tgt} has no `{MIRROR[kind]}: {ident(b)}` "
+                            f"line; run: pm-tools relate {f} --id {ident(b)} --{kind} {tgt}",
                         )
                     )
                 if kind == "overridden-by" and status_of(b) == "open":
                     w.append(
                         (
                             lineno,
-                            f"overridden-by {rid} but still open; an overridden item "
+                            f"overridden-by {tgt} but still open; an overridden item "
                             "no longer holds, reject it or close it",
                         )
                     )
@@ -2368,7 +2513,11 @@ def cmd_check(files, strict):
                 # a duplicated id (its own check error) can hand the cycle to a
                 # copy that lacks the closing line; anchor on the item then
                 at = next(
-                    (ln for k, r, ln in b["refs"] if k == kind and r == loop[1]),
+                    (
+                        ln
+                        for k, r, ln in b["refs"]
+                        if k == kind and resolve_ref(index, r) == loop[1]
+                    ),
                     b["line"],
                 )
                 e.append(
@@ -2553,7 +2702,7 @@ def cmd_author(file, handle, name):
 
 def cmd_add(
     file,
-    code,
+    cat,
     name,
     desc,
     title,
@@ -2564,6 +2713,7 @@ def cmd_add(
     test,
     tags,
     author,
+    code,
     mechanism=None,
     root_cause=None,
     reason=None,
@@ -2583,20 +2733,27 @@ def cmd_add(
         raise SystemExit("a defect must be triaged; pass --severity " + "|".join(SEVS))
     if prefix == "ACC" and not importance:
         raise SystemExit("a criterion must be rated; pass --importance " + "|".join(IMPS))
-    code = code.upper()
-    if not re.fullmatch(r"[A-Z]{2,6}", code):
+    cat = cat.upper()
+    if not re.fullmatch(r"[A-Z]{2,6}", cat):
         raise SystemExit(
-            f"category code {code!r} must be 2-6 uppercase letters; "
+            f"category code {cat!r} must be 2-6 uppercase letters; "
             f"three to five is the normal range, six the ceiling"
         )
-    sec, lines = section_for(sections, code, name, desc, lines)
-    num = next_num(blocks)
+    code = norm_code(code)
+    sec, lines = section_for(sections, cat, name, desc, lines)
+    beside = [
+        b
+        for f in siblings(file)[1:]
+        for b in parse(f)[0]
+        if b["prefix"] == prefix and b["cat"] == cat
+    ]
+    num = next_num(blocks + beside)
     lead = severity or importance
     opening = level_heading(SEV if prefix == "DEF" else IMP, text)
     if opening:  # a `LEVEL;` heading on the text; the flag's level replaces it
         text = text[opening.end() :].lstrip(" ;:,")
     body = f"{lead.upper()}; {text}" if lead else text
-    item = f"- [ ] `{prefix}-{code}-{num}` **{title}** - {body}"
+    item = f"- [ ] `{prefix}-{cat}-{num}-{code}` **{title}** - {body}"
     at = insert_index(lines, sec)
     stamp = now()
     tail = [f"  - {kind}: {value}"] if kind else []
@@ -2612,7 +2769,7 @@ def cmd_add(
     lead = [""] if prose else []
     lines[at:at] = lead + [item] + tail + [f"  - log: {stamp} {who} added{because(reason)}"]
     save(file, lines)
-    print(f"{file}:{at + len(lead) + 1}: {prefix}-{code}-{num} added")
+    print(f"{file}:{at + len(lead) + 1}: {prefix}-{cat}-{num}-{code} added")
     return 0
 
 
@@ -2850,20 +3007,23 @@ def put_rel(file, wanted, kind, value):
             at = i + 1
     lines.insert(at, f"{sub_indent(lines, b)}- {kind}: {value}")
     save(file, lines)
-    print(f"{file}:{b['line']}: {wanted} {kind}: {value}")
+    print(f"{file}:{b['line']}: {ident(b)} {kind}: {value}")
 
 
 def cut_rel(file, wanted, kind, rid, who, why):
     """Remove the link to `rid` from an item's lines of one kind and log what stood
-    there. A line that names other ids keeps them."""
+    there. A line that names other ids keeps them; `rid` and the line may name the
+    same item by its base id or its full id."""
     lines = load(file)
     b = find_id(parse(file)[0], wanted)
+    index = link_index(siblings(file))
+    rid = resolve_ref(index, rid)
     was = []
     for i in range(block_end(lines, b) - 1, b["line"] - 1, -1):
         m = RELLINE.match(lines[i])
         if not m or m.group(2) != kind:
             continue
-        spans = [r.span() for r in IDREF.finditer(m.group(3)) if r[0] == rid]
+        spans = [r.span() for r in IDREF.finditer(m.group(3)) if resolve_ref(index, r[0]) == rid]
         if not spans:
             continue
         was.insert(0, m.group(3).strip())
@@ -2882,7 +3042,7 @@ def cut_rel(file, wanted, kind, rid, who, why):
     event += f" - {why}" if why else ""
     lines.insert(block_end(lines, b), f"{sub_indent(lines, b)}- log: {now()} {who} {event}")
     save(file, lines)
-    print(f"{file}:{b['line']}: {wanted} {event}")
+    print(f"{file}:{b['line']}: {ident(b)} {event}")
 
 
 def cmd_relate(file, wanted, related, blocked, overrides=None, overridden=None, author=None):
@@ -2899,7 +3059,9 @@ def cmd_relate(file, wanted, related, blocked, overrides=None, overridden=None, 
     expire_locks(file)
     blocks, _ = parse(file)
     me = norm_id(wanted, doc_prefix(file, blocks))
-    warn_lock(file, find_id(blocks, me), as_handle(author))
+    mine = find_id(blocks, me)
+    me = ident(mine)
+    warn_lock(file, mine, as_handle(author))
     where, index = {}, {}
     for f in siblings(file):
         for b in parse(f)[0]:
@@ -2913,19 +3075,22 @@ def cmd_relate(file, wanted, related, blocked, overrides=None, overridden=None, 
     for kind, value in (("overrides", overrides), ("overridden-by", overridden)):
         if value and not ids(value):
             raise SystemExit(f"--{kind} names no id")
-        absent = [t for t in ids(value) if t not in where]
+        absent = [t for t in ids(value) if resolve_ref(index, t) not in where]
         if absent:
             raise SystemExit(
                 f"{absent[0]} is not in the trackers beside {file}; "
                 "an override is written on both items"
             )
-    both = sorted(set(ids(overrides)) & set(ids(overridden)))
+    both = sorted(
+        {resolve_ref(index, t) for t in ids(overrides)}
+        & {resolve_ref(index, t) for t in ids(overridden)}
+    )
     if both:
         raise SystemExit(f"{both[0]} is named by --overrides and by --overridden-by; pick one")
     # (graph, from, to): blocked-by points at the blocker, overrides at the overridden
-    links = [("blocked-by", me, t) for t in ids(blocked)]
-    links += [("overrides", me, t) for t in ids(overrides)]
-    links += [("overrides", t, me) for t in ids(overridden)]
+    links = [("blocked-by", me, resolve_ref(index, t)) for t in ids(blocked)]
+    links += [("overrides", me, resolve_ref(index, t)) for t in ids(overrides)]
+    links += [("overrides", resolve_ref(index, t), me) for t in ids(overridden)]
     if any(src == dst for _, src, dst in links):
         raise SystemExit(f"{me} cannot link to itself")
 
@@ -2983,12 +3148,15 @@ def cmd_relate(file, wanted, related, blocked, overrides=None, overridden=None, 
             put_rel(file, me, kind, value)
             continue
         # run again on a pair that lost one line: the missing line alone is written
-        if all(t in targets(find_id(parse(file)[0], me), kind) for t in ids(value)):
+        recorded = {resolve_ref(index, r) for r in targets(find_id(parse(file)[0], me), kind)}
+        if all(resolve_ref(index, t) in recorded for t in ids(value)):
             print(f"{file}: {me} {kind}: {value} is already recorded")
         else:
             put_rel(file, me, kind, value)
         for t in ids(value):
-            if me not in targets(find_id(parse(where[t])[0], t), MIRROR[kind]):
+            t = resolve_ref(index, t)
+            other = find_id(parse(where[t])[0], t)
+            if me not in {resolve_ref(index, r) for r in targets(other, MIRROR[kind])}:
                 ready(where[t], t)
                 put_rel(where[t], t, MIRROR[kind], me)
     return 0
@@ -3015,20 +3183,23 @@ def cmd_unrelate(file, wanted, related, blocked, overrides, overridden, author, 
     blocks, _ = parse(file)
     me = norm_id(wanted, doc_prefix(file, blocks))
     b = find_id(blocks, me)
+    me = ident(b)
     who = need_author(file, author)
     warn_lock(file, b, who)
-    where = {}
+    where, index = {}, {}
     for f in siblings(file):
         for x in parse(f)[0]:
             if x["prefix"]:
                 where.setdefault(ident(x), f)
+                index.setdefault(ident(x), x)
     cuts = []
     for kind, value in asked:
         rids = list(dict.fromkeys(r[0] for r in IDREF.finditer(value)))
         if not rids:
             raise SystemExit(f"--{kind} names no id")
         for rid in rids:
-            if rid not in targets(b, kind):
+            rid = resolve_ref(index, rid)
+            if rid not in {resolve_ref(index, r) for r in targets(b, kind)}:
                 raise SystemExit(f"{me} has no `{kind}: {rid}` line; nothing was removed")
             mirror = None
             if kind in MIRROR and rid in where:
@@ -3036,7 +3207,7 @@ def cmd_unrelate(file, wanted, related, blocked, overrides, overridden, author, 
                 if f != file:
                     expire_locks(f)
                 other = find_id(parse(f)[0], rid)
-                if me in targets(other, MIRROR[kind]):
+                if me in {resolve_ref(index, r) for r in targets(other, MIRROR[kind])}:
                     mirror = (f, need_author(f, author))
                     warn_lock(f, other, who)
             cuts.append((kind, rid, mirror))
@@ -3116,7 +3287,9 @@ def mint_regression(file, lines, blocks, b, event, who, reason=None):
     A defect that broke again is a new fact about the same defect, and giving it its
     own item is what makes regressions countable.
     """
-    rid = f"{b['prefix']}-{b['cat']}-{b['num']}-{next_regr(blocks, b)}"
+    rid = f"{b['prefix']}-{b['cat']}-{b['num']}"
+    rid += f"-{b['code']}" if b["code"] else ""
+    rid += f"-{next_regr(blocks, b)}"
     pad = sub_indent(lines, b)
     at = block_end(lines, b)
     # the parent names its regression, so its own history is complete
@@ -3171,12 +3344,17 @@ def cmd_remove(file, wanted, force, author=None):
     blocks, _ = parse(file)
     wanted = norm_id(wanted, doc_prefix(file, blocks))
     b = find_id(blocks, wanted)
+    wanted = ident(b)
     warn_lock(file, b, as_handle(author))
     # a criterion may cite a defect and back, so scan every tracking doc beside this one
-    inbound = []
-    for f in resolve([str(pathlib.Path(file).parent)]):
-        for o, _ in [(x, 0) for x in parse(f)[0]]:
-            inbound += [(f, o, lineno) for k, rid, lineno in o["refs"] if rid == wanted]
+    scanned = [(f, o) for f in resolve([str(pathlib.Path(file).parent)]) for o in parse(f)[0]]
+    index = {ident(o): o for f, o in scanned if o["prefix"]}
+    inbound = [
+        (f, o, lineno)
+        for f, o in scanned
+        for k, rid, lineno in o["refs"]
+        if resolve_ref(index, rid) == wanted
+    ]
     if inbound and not force:
         for f, o, lineno in inbound:
             print(f"{f}:{lineno}: {ident(o)} still points at {wanted}", file=sys.stderr)
@@ -3388,7 +3566,8 @@ def cmd_upgrade(file, overrides, apply, author):
             )
             hints.append(
                 f"line {b['line']}: nested checklist item; file it as its own item with: "
-                f'pm-tools add {file} --category <CODE> --title "..." --text "..." '
+                f'pm-tools add {file} --category <CODE> --code <CODE> --title "..." '
+                f'--text "..." '
                 f"{level} --author @xx, then delete the nested line"
             )
             continue
@@ -3421,9 +3600,11 @@ def cmd_upgrade(file, overrides, apply, author):
             counter += 1
         lg = LEGACY.match(b["body"])
         regr = b["regr"] or (int(lg.group(3)) if lg and lg.group(3) else None)
-        assign[b["line"]] = (code, num, regr)
+        assign[b["line"]] = (code, num, regr, b["code"])
         old = ident(b) if b["prefix"] else (lg.group(0).split("`")[1] if lg else "(no id)")
-        new = f"{prefix}-{code}-{num}" + (f"-{regr}" if regr else "")
+        new = f"{prefix}-{code}-{num}"
+        new += f"-{b['code']}" if b["code"] else ""
+        new += f"-{regr}" if regr else ""
         if old != new:
             plan.append(f"line {b['line']}: {old} -> {new}")
         if prefix == "DEF" and not b["severity"]:
@@ -3478,7 +3659,7 @@ def cmd_upgrade(file, overrides, apply, author):
             else:
                 continue
         if i in assign:
-            code, num, regr = assign[i]
+            code, num, regr, item_code = assign[i]
             m = ITEM.match(ln)
             body = m.group(3)
             idm = IDTOK.match(body)
@@ -3503,7 +3684,9 @@ def cmd_upgrade(file, overrides, apply, author):
                     body = lead + gap + rest
                     key = was if was in SEV_ALIAS else sm.group(1)
                     renamed[key] = renamed.get(key, 0) + 1
-            new_id = f"{prefix}-{code}-{num}" + (f"-{regr}" if regr else "")
+            new_id = f"{prefix}-{code}-{num}"
+            new_id += f"-{item_code}" if item_code else ""
+            new_id += f"-{regr}" if regr else ""
             out.append(f"- [{m.group(2).lower()}] `{new_id}` {body}")
             continue
         tm = TAGLINE.match(ln)
@@ -3564,6 +3747,214 @@ def cmd_upgrade(file, overrides, apply, author):
     return 0
 
 
+# -------------------------------------------------------------------- migration
+
+
+def read_mapping(path):
+    """`BASE-ID CODE` pairs, one per line, with the mapping line each came from.
+    Blank lines and `#` comments are skipped; the base id is the id without its code
+    or regression ordinal, as root_of reads it."""
+    pairs = {}
+    for n, ln in enumerate(load(path), start=1):
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split()
+        if len(parts) != 2:
+            raise SystemExit(f'{path}:{n}: expected "BASE-ID CODE", got {ln.strip()!r}')
+        base, code = parts[0].upper(), norm_code(parts[1])
+        if not BASEID.fullmatch(base):
+            raise SystemExit(
+                f"{path}:{n}: {parts[0]!r} is not a base id; write PREFIX-CAT-N "
+                "without the code or the regression ordinal"
+            )
+        if base in pairs and pairs[base][0] != code:
+            raise SystemExit(f"{path}:{n}: {base} is mapped twice with different codes")
+        pairs[base] = (code, n)
+    return pairs
+
+
+def cmd_migrate_codes(file, mapping, author):
+    """Append the code each mapping line names to that item's id, one log line per
+    item changed. Re-running the same mapping writes nothing; the report names the
+    items that carry no code and are not named by the mapping and the mapping ids
+    that match no item, and the exit code is non-zero while either remains."""
+    if not pathlib.Path(mapping).is_file():
+        raise SystemExit(f"--map not found: {mapping}")
+    pairs = read_mapping(mapping)
+    expire_locks(file)
+    lines = load(file)
+    blocks, _ = parse(file)
+    who = need_author(file, author)
+    plan, conflicts, already = {}, [], 0
+    for b in blocks:
+        if b["indent"] or not b["prefix"]:
+            continue
+        hit = pairs.get(root_of(b))
+        if hit is None:
+            continue
+        code = hit[0]
+        if b["code"] == code:
+            already += 1
+            continue
+        if b["code"]:
+            conflicts.append(b)
+            continue
+        new = f"{root_of(b)}-{code}" + (f"-{b['regr']}" if b["regr"] else "")
+        plan[b["line"]] = (new, code)
+    roots = {root_of(b) for b in blocks if b["prefix"] and not b["indent"]}
+    uncovered = [
+        b
+        for b in blocks
+        if not b["indent"] and (not b["prefix"] or (b["code"] is None and root_of(b) not in pairs))
+    ]
+    missing = [(base, code, n) for base, (code, n) in pairs.items() if base not in roots]
+    if plan:
+        heads = {b["line"]: b for b in blocks if b["line"] in plan}
+        # block_end is a 0-based index into lines; after 1-based line i is where it lands
+        inserts = {block_end(lines, b): (b, plan[b["line"]][1]) for b in heads.values()}
+        out = []
+        for i, ln in enumerate(lines, start=1):
+            b = heads.get(i)
+            if b is not None:
+                m = ITEM.match(ln)
+                body = m.group(3)
+                ln = f"{m.group(1)}- [{m.group(2)}] `{plan[i][0]}`{body[len(ident(b)) + 2 :]}"
+            out.append(ln)
+            at = inserts.get(i)
+            if at is not None:
+                b, code = at
+                out.append(f"{sub_indent(lines, b)}- log: {now()} {who} coded {code}")
+        save(file, out)
+        files = siblings(file)
+        for f in files:
+            expire_locks(f)
+        for b in heads.values():
+            rewrite_links(ident(b), plan[b["line"]][0], files)
+    print(f"{file}: {len(plan)} item(s) coded, {already} already carried the code")
+    for b in uncovered:
+        if b["prefix"]:
+            print(f"{file}:{b['line']}: {ident(b)} is not in the mapping", file=sys.stderr)
+        elif b["bad_id"]:
+            print(f"{file}:{b['line']}: id is malformed; run check", file=sys.stderr)
+        else:
+            print(f"{file}:{b['line']}: item has no id; run upgrade", file=sys.stderr)
+    for b in conflicts:
+        code = pairs[root_of(b)][0]
+        print(
+            f"{file}:{b['line']}: {ident(b)} already carries {b['code']}, "
+            f"mapping says {code} - run rename-code",
+            file=sys.stderr,
+        )
+    for base, code, n in missing:
+        print(f"{mapping}:{n}: {base} is not in {file}", file=sys.stderr)
+    return 1 if uncovered or conflicts or missing else 0
+
+
+def rewrite_links(old, new, files):
+    """Replace the full id `old` with `new` on every relation line that names it,
+    across `files`. Returns the (file, line, kind) triples rewritten. A base-id
+    reference is left alone: it still resolves to the renamed item."""
+    touched = []
+    for f in files:
+        lines = load(f)
+        edited = False
+        for i, ln in enumerate(lines, start=1):
+            m = RELLINE.match(ln)
+            if not m:
+                continue
+            spans = [r.span() for r in IDREF.finditer(m.group(3)) if r.group(0) == old]
+            if not spans:
+                continue
+            rest = m.group(3)
+            for start, end in reversed(spans):
+                rest = rest[:start] + new + rest[end:]
+            lines[i - 1] = f"{m.group(1)}- {m.group(2)}: {rest}"
+            touched.append((f, i, m.group(2)))
+            edited = True
+        if edited:
+            save(f, lines)
+    return touched
+
+
+def cmd_rename_code(file, wanted, code, author):
+    """Rename the code on an item and on every regression sharing its root, rewrite
+    every relation line in the scanned trackers that names an old full id, and log the
+    rename on each item. A regression shares its parent's code: renaming the parent
+    alone would split the family."""
+    code = norm_code(code)
+    expire_locks(file)
+    blocks = parse(file)[0]
+    b = find_id(blocks, norm_id(wanted, doc_prefix(file, blocks)))
+    who = need_author(file, author)
+    if not b["code"]:
+        raise SystemExit(f"{ident(b)} carries no code; run migrate-codes first")
+    # the parent and its regressions are one family: same root, same code, top level
+    family = [
+        x
+        for x in blocks
+        if not x["indent"] and root_of(x) == root_of(b) and x["code"] == b["code"]
+    ]
+    if not any(x is b for x in family):
+        family.insert(0, b)
+    if b["code"] == code:
+        # The rename logs are the durable record of the codes this family used to
+        # carry, so a run that renamed the items and died before rewriting their
+        # links is finished by the same command with the same code even though the
+        # item already carries it.
+        olds = [m.group(1) for txt in b["logs"] if (m := RENAMED.match(txt))]
+        files = siblings(file)
+        touched = []
+        for x in family:
+            current = ident(x)
+            for old_code in olds:
+                old = f"{root_of(x)}-{old_code}" + (f"-{x['regr']}" if x["regr"] else "")
+                if old != current:
+                    touched += [(old, current, *hit) for hit in rewrite_links(old, current, files)]
+        for old, new, f, lineno, kind in touched:
+            print(f"{f}:{lineno}: {kind}: {old} -> {new}")
+        print(f"{file}: {ident(b)} already carries code {code}; no change")
+        return 0
+    renames = {}
+    for x in family:
+        new = f"{root_of(x)}-{code}" + (f"-{x['regr']}" if x["regr"] else "")
+        renames[x["line"]] = (ident(x), new)
+    where = link_index(siblings(file))
+    for old, new in renames.values():
+        if new in where:
+            raise SystemExit(f"{new} already exists; pick another code")
+    lines = load(file)
+    stamp = now()
+    for x in family:
+        old, new = renames[x["line"]]
+        warn_lock(file, x, who)
+        m = ITEM.match(lines[x["line"] - 1])
+        body = m.group(3)
+        lines[x["line"] - 1] = f"{m.group(1)}- [{m.group(2)}] `{new}`{body[len(old) + 2 :]}"
+    logs = [
+        (
+            block_end(lines, x),
+            f'{sub_indent(lines, x)}- log: {stamp} {who} renamed code "{b["code"]}" -> "{code}"',
+        )
+        for x in family
+    ]
+    for at, text in sorted(logs, reverse=True):
+        lines.insert(at, text)
+    save(file, lines)
+    files = siblings(file)
+    for f in files:
+        expire_locks(f)
+    touched = []
+    for old, new in renames.values():
+        touched += [(old, new, *hit) for hit in rewrite_links(old, new, files)]
+    for x in family:
+        old, new = renames[x["line"]]
+        print(f"{file}:{x['line']}: {old} renamed to {new}")
+    for old, new, f, lineno, kind in touched:
+        print(f"{f}:{lineno}: {kind}: {old} -> {new}")
+    return 0
+
+
 # -------------------------------------------------------------------------- cli
 
 
@@ -3578,6 +3969,12 @@ def main(argv: list[str] | None = None) -> int:
     def add_filters(sp, on_report):
         whole = " - narrows the whole report" if on_report else ""
         sp.add_argument("--category", help="one category code" + whole)
+        sp.add_argument(
+            "--code",
+            type=str.upper,
+            metavar="CODE",
+            help="one item code, e.g. PARSER" + whole,
+        )
         sp.add_argument(
             "--severity",
             type=str.upper,
@@ -3708,6 +4105,13 @@ def main(argv: list[str] | None = None) -> int:
     sa = sub.add_parser("add")
     sa.add_argument("file")
     sa.add_argument("--category", required=True, help="category CODE, e.g. AUTH")
+    sa.add_argument(
+        "--code",
+        required=True,
+        type=str.upper,
+        metavar="CODE",
+        help="the item's code, e.g. PARSER; one or two hyphen-separated segments",
+    )
     sa.add_argument("--title", type=oneline, required=True)
     sa.add_argument("--text", type=oneline, required=True)
     sa.add_argument("--name", type=oneline, help="category name, needed only when the code is new")
@@ -3908,6 +4312,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     su.add_argument("--apply", action="store_true")
 
+    smc = sub.add_parser("migrate-codes")
+    smc.add_argument("file")
+    smc.add_argument(
+        "--map", required=True, metavar="MAPPING", help='a file of "BASE-ID CODE" lines'
+    )
+    smc.add_argument("--author", required=True, metavar="@xx")
+
+    src = sub.add_parser("rename-code")
+    src.add_argument("file")
+    src.add_argument("--id", required=True)
+    src.add_argument("--code", required=True, metavar="NEW")
+    src.add_argument("--author", required=True, metavar="@xx")
+
     a, extra = ap.parse_known_args(argv[1:])
     if extra and (a.cmd != "search" or any(x.startswith("-") for x in extra)):
         ap.error("unrecognized arguments: " + " ".join(extra))
@@ -3958,6 +4375,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise SystemExit(f"--related-to takes an id like DEF-LNCH-3, got {a.related_to!r}")
             fl = dict(
                 category=a.category.upper() if a.category else None,
+                code=a.code.upper() if a.code else None,
                 severity=a.severity,
                 importance=a.importance,
                 status=a.status,
@@ -4010,6 +4428,7 @@ def main(argv: list[str] | None = None) -> int:
             a.test,
             a.tags,
             a.author,
+            a.code,
             a.mechanism,
             a.root_cause,
             a.reason,
@@ -4076,6 +4495,10 @@ def main(argv: list[str] | None = None) -> int:
                 raise SystemExit(f"--code needs Section=CODE, got {spec!r}")
             ov[k.strip().lower()] = v.strip().upper()
         return cmd_upgrade(a.file, ov, a.apply, a.author)
+    if a.cmd == "migrate-codes":
+        return cmd_migrate_codes(a.file, a.map, a.author)
+    if a.cmd == "rename-code":
+        return cmd_rename_code(a.file, a.id, a.code, a.author)
 
 
 if __name__ == "__main__":

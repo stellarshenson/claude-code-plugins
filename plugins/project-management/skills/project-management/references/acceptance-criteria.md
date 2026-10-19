@@ -1,6 +1,6 @@
 # Acceptance Criteria
 
-A criterion is one assertion about behaviour that a reviewer can call met or not met. The store is `docs/acc-crit-<project>.md`, ids are `ACC-<CAT>-<N>`. Shared format, ids, relations and tooling live in `SKILL.md`; this file carries only what is specific to criteria.
+A criterion is one assertion about behaviour that a reviewer can call met or not met. The store is `docs/acc-crit-<project>.md`, ids are `ACC-<CAT>-<N>-<CODE>`. Shared format, ids, relations and tooling live in `SKILL.md`; this file carries only what is specific to criteria.
 
 ## Writing a criterion
 
@@ -25,24 +25,24 @@ The level is the first word of the body - `HIGH; <assertion>...` - and it is rea
 
 ## Categories
 
-One `##` per feature or area, code declared on the heading. A criterion sits under the category it belongs to today; its id keeps the code it was born with.
+One `##` per feature or area, code declared on the heading. A criterion sits under the category it belongs to today; its id keeps the code it was born with. A base id `ACC-<CAT>-<N>` names one criterion and its regressions; `check` errors when two roots in the scanned files claim the same base with different full ids, naming both files and ids.
 
 ```markdown
 ## Branch Switching `BRSW`
 
 Switching a project row between its conversation branches
 
-- [x] `ACC-BRSW-1` **Submenu** - HIGH; row with >1 conversation JSONL shows "Switch Conversation Branch"
+- [x] `ACC-BRSW-1-MENU` **Submenu** - HIGH; row with >1 conversation JSONL shows "Switch Conversation Branch"
   - test: seed a project with 2 JSONLs, right-click the row
   - test-tags: UNIT, E2E
   - evidence: jest 43 green, submenu observed on a 2-branch project in v1.3.0
   - log: 2026-06-12T08:41:03Z @kj implemented (v1.2.2)
-- [ ] `ACC-BRSW-2` **Names** - MEDIUM; submenu entries show conversation names, never the shared project path
+- [ ] `ACC-BRSW-2-NAMES` **Names** - MEDIUM; submenu entries show conversation names, never the shared project path
   - test: seed two named branches, assert the labels differ from the path
   - test-tags: UNIT
-  - related: DEF-BRSW-14 - the mislabelled-row defect this closes
+  - related: DEF-BRSW-14-LABELS - the mislabelled-row defect this closes
   - log: 2026-06-12T09:14:27Z @kj added, in progress
-- [-] `ACC-BRSW-3` **Edge: branch removed before click** - MEDIUM; switch returns 404, panel shows the error and refreshes
+- [-] `ACC-BRSW-3-REMOVED` **Edge: branch removed before click** - MEDIUM; switch returns 404, panel shows the error and refreshes
   - test: delete the JSONL between render and click
   - test-tags: MANUAL
   - log: 2026-06-14T11:02:55Z @kj rejected: the panel no longer caches rows, so the window cannot open
@@ -93,9 +93,9 @@ When one functionality behaves differently per role, mode or state, a table show
 | Switch        | switches, persists mtime | switches, no persist | -              |
 | Rename branch | allowed                  | -                    | -              |
 
-- [ ] `ACC-BRSW-8` **Read-only: no submenu** - HIGH; a read-only link never renders "Switch Conversation Branch"
+- [ ] `ACC-BRSW-8-READONLY` **Read-only: no submenu** - HIGH; a read-only link never renders "Switch Conversation Branch"
   - log: 2026-06-12T13:38:19Z @kj added
-- [ ] `ACC-BRSW-9` **Viewer: switch without persist** - MEDIUM; a viewer switch updates the panel and leaves the JSONL mtime untouched
+- [ ] `ACC-BRSW-9-VIEWER` **Viewer: switch without persist** - MEDIUM; a viewer switch updates the panel and leaves the JSONL mtime untouched
   - log: 2026-06-12T15:07:44Z @kj added
 ```
 
@@ -103,23 +103,23 @@ When one functionality behaves differently per role, mode or state, a table show
 
 ```bash
 pm-tools author docs/acc-crit-app.md --handle @kj --name "Konrad Jelen"
-pm-tools add docs/acc-crit-app.md --category AUTH --name Authentication --author @kj \
+pm-tools add docs/acc-crit-app.md --category AUTH --code PASSGEN --name Authentication --author @kj \
     --importance HIGH --description "Login, session lifetime and password handling" \
     --title "Password generation" --text "16 chars, 3 character classes" \
     --test "generate 100 passwords, assert length and class count" --test-tags "UNIT"
-pm-tools relate docs/acc-crit-app.md --id ACC-AUTH-1 --blocked-by "DEF-LNCH-3"
-pm-tools relate docs/acc-crit-app.md --id ACC-AUTH-12 --overrides "ACC-AUTH-1 - 20 chars since 2.0"
-pm-tools lock   docs/acc-crit-app.md --id ACC-AUTH-1 --author @kj
-pm-tools close  docs/acc-crit-app.md --id ACC-AUTH-1 --author @kj --event "verified in v1.3.0" \
+pm-tools relate docs/acc-crit-app.md --id ACC-AUTH-1-PASSGEN --blocked-by "DEF-LNCH-3-PARSER"
+pm-tools relate docs/acc-crit-app.md --id ACC-AUTH-12-OVERRIDE --overrides "ACC-AUTH-1-PASSGEN - 20 chars since 2.0"
+pm-tools lock   docs/acc-crit-app.md --id ACC-AUTH-1-PASSGEN --author @kj
+pm-tools close  docs/acc-crit-app.md --id ACC-AUTH-1-PASSGEN --author @kj --event "verified in v1.3.0" \
     --evidence "100 generated passwords, all 16 chars and 3 classes"
-pm-tools reject docs/acc-crit-app.md --id ACC-AUTH-9 --author @kj \
+pm-tools reject docs/acc-crit-app.md --id ACC-AUTH-9-CUT --author @kj \
     --event "the password screen was cut from 2.0"
 pm-tools report docs/acc-crit-app.md
 pm-tools check docs --strict
 ```
 
-`check docs` resolves the `blocked-by: DEF-LNCH-3` line against the defects file beside; `check docs/acc-crit-app.md` alone reports it as not found, and a closed or rejected blocker on an open criterion is a warning.
+`check docs` resolves the `blocked-by: DEF-LNCH-3-PARSER` line against the defects file beside; `check docs/acc-crit-app.md` alone reports it as not found, and a closed or rejected blocker on an open criterion is a warning.
 
 A criterion that a later criterion or defect replaces is not edited to say the new thing: file the new item and `relate` it with `--overrides`. Both items get a line, and the old criterion keeps its text, its evidence and its log. Reject it if it was still open (SKILL.md, Relations).
 
-Lock a criterion when you pick it up - `pm-tools lock FILE --id ID --author @xx` writes its `lock:` line - and ask before working on one locked by someone else. The lock never blocks a write: another author's write warns once and proceeds. Expired locks clear themselves on the next write, `close` clears the lock it finds, and `pm-tools unlock FILE --author @xx --id ID` clears one at will; taking or clearing an active lock held by another handle is a transfer - `lock` and `unlock` print `TRANSFER: ACC-AUTH-1 was locked by @yy until <stamp> - you are taking it over; ask @yy` and proceed, and a takeover with no `--note` records `taken over from @yy`. `report`, `list`, `search` and `refs` print `N item(s) currently worked on: ACC-AUTH-1 by @xx until <stamp>` on stderr before the table - read it before choosing what to pick up.
+Lock a criterion when you pick it up - `pm-tools lock FILE --id ID --author @xx` writes its `lock:` line - and ask before working on one locked by someone else. The lock never blocks a write: another author's write warns once and proceeds. Expired locks clear themselves on the next write, `close` clears the lock it finds, and `pm-tools unlock FILE --author @xx --id ID` clears one at will; taking or clearing an active lock held by another handle is a transfer - `lock` and `unlock` print `TRANSFER: ACC-AUTH-1-PASSGEN was locked by @yy until <stamp> - you are taking it over; ask @yy` and proceed, and a takeover with no `--note` records `taken over from @yy`. `report`, `list`, `search` and `refs` print `N item(s) currently worked on: ACC-AUTH-1-PASSGEN by @xx until <stamp>` on stderr before the table - read it before choosing what to pick up.

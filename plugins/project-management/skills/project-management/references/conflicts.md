@@ -24,7 +24,7 @@ Keep both sides. This settles most conflicts outright.
 Both sides ran `add` against the same head, so the merged file carries one id twice with different content. `check` reports it as a duplicate.
 
 - **The earlier commit keeps the number** - `git log -S'DEF-AUTH-14' --format='%ai %an %s'` dates both sides
-- **The later one is renumbered** to the highest number in the merged file plus one; nothing else about it changes
+- **The later one is renumbered** to one past the highest number in the merged file or in a sibling tracker for the same prefix and category; nothing else about it changes
 - **Repoint inbound references** - run `pm-tools refs docs --id DEF-AUTH-14` before editing to see what cites it
 - **Never renumber the earlier one** - journals, tasks and commits already cite it, and those citations must stay true
 

@@ -43,12 +43,16 @@ def criteria(tmp_path: Path) -> Path:
     return f
 
 
-def add_defect(f: Path, title: str, severity: str = "MAJOR", category: str = "LNCH") -> int:
+def add_defect(
+    f: Path, title: str, severity: str = "MAJOR", category: str = "LNCH", code: str = "TEST"
+) -> int:
     return run(
         "add",
         str(f),
         "--category",
         category,
+        "--code",
+        code,
         "--name",
         "Launch",
         "--author",
@@ -68,12 +72,16 @@ def add_defect(f: Path, title: str, severity: str = "MAJOR", category: str = "LN
     )
 
 
-def add_criterion(f: Path, title: str, category: str = "AUTH", importance: str = "HIGH") -> int:
+def add_criterion(
+    f: Path, title: str, category: str = "AUTH", importance: str = "HIGH", code: str = "TEST"
+) -> int:
     return run(
         "add",
         str(f),
         "--category",
         category,
+        "--code",
+        code,
         "--name",
         "Authentication",
         "--author",
@@ -115,7 +123,7 @@ def test_author_creates_the_roster_section(defects: Path):
 
 def test_add_assigns_the_next_id_and_the_category_code(defects: Path):
     add_defect(defects, "token race on relaunch")
-    assert "`DEF-LNCH-1`" in defects.read_text(encoding="utf-8")
+    assert "`DEF-LNCH-1-TEST`" in defects.read_text(encoding="utf-8")
 
 
 def test_numbers_are_unique_across_the_document_not_per_category(defects: Path):
@@ -125,6 +133,8 @@ def test_numbers_are_unique_across_the_document_not_per_category(defects: Path):
         str(defects),
         "--category",
         "AUTH",
+        "--code",
+        "TEST",
         "--name",
         "Authentication",
         "--author",
@@ -140,8 +150,10 @@ def test_numbers_are_unique_across_the_document_not_per_category(defects: Path):
         "--repro",
         "log in twice",
     )
-    ids = re.findall(r"`(DEF-[A-Z]+-\d+)`", defects.read_text(encoding="utf-8"))
-    assert ids == ["DEF-LNCH-1", "DEF-AUTH-2"], "the counter is the whole file, not the category"
+    ids = re.findall(r"`(DEF-[A-Z]+-\d+-TEST)`", defects.read_text(encoding="utf-8"))
+    assert ids == ["DEF-LNCH-1-TEST", "DEF-AUTH-2-TEST"], (
+        "the counter is the whole file, not the category"
+    )
 
 
 def test_a_closed_id_is_never_recycled(defects: Path):
@@ -160,13 +172,14 @@ def test_a_closed_id_is_never_recycled(defects: Path):
         "unit suite green",
     )
     add_defect(defects, "second")
-    ids = re.findall(r"`(DEF-LNCH-\d+)`", defects.read_text(encoding="utf-8"))
-    assert ids == ["DEF-LNCH-1", "DEF-LNCH-2"]
+    ids = re.findall(r"`(DEF-LNCH-\d+-TEST)`", defects.read_text(encoding="utf-8"))
+    assert ids == ["DEF-LNCH-1-TEST", "DEF-LNCH-2-TEST"]
 
 
 def test_removing_the_highest_id_frees_that_number(defects: Path):
-    """The consequence of storing no counter: the next id is the highest IN THE FILE
-    plus one, so deleting the highest hands its number back.
+    """The consequence of storing no counter: the next id is one past the highest in
+    the file or in a sibling tracker for the same prefix and category, so deleting
+    the highest hands its number back.
 
     That is why `remove` is documented for mistakes and duplicates only - an item
     that turned out to be invalid is `reject`ed, which keeps it (and its number) in
@@ -177,7 +190,10 @@ def test_removing_the_highest_id_frees_that_number(defects: Path):
     run("remove", str(defects), "--id", "DEF-LNCH-2")
     add_defect(defects, "third")
     body = defects.read_text(encoding="utf-8")
-    assert re.findall(r"`(DEF-LNCH-\d+)`", body) == ["DEF-LNCH-1", "DEF-LNCH-2"]
+    assert re.findall(r"`(DEF-LNCH-\d+-TEST)`", body) == [
+        "DEF-LNCH-1-TEST",
+        "DEF-LNCH-2-TEST",
+    ]
     assert "third" in body and "second" not in body
 
 
@@ -187,8 +203,624 @@ def test_rejecting_keeps_the_number_out_of_circulation(defects: Path):
     add_defect(defects, "second")
     run("reject", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "no repro")
     add_defect(defects, "third")
-    ids = re.findall(r"`(DEF-LNCH-\d+)`", defects.read_text(encoding="utf-8"))
-    assert ids == ["DEF-LNCH-1", "DEF-LNCH-2", "DEF-LNCH-3"]
+    ids = re.findall(r"`(DEF-LNCH-\d+-TEST)`", defects.read_text(encoding="utf-8"))
+    assert ids == ["DEF-LNCH-1-TEST", "DEF-LNCH-2-TEST", "DEF-LNCH-3-TEST"]
+
+
+# --- Coded ids ------------------------------------------------------------
+
+
+CODED_ITEMS = (
+    "# Defects - Coded\n\nCoded ids.\n\n## Journal `JRNL`\n\nJournal tools\n\n"
+    "- [ ] `DEF-JRNL-1-BM25` **search** - MAJOR; ranking\n"
+    "  - repro: search\n  - test-tags: UNIT\n  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "- [ ] `DEF-JRNL-1-PARSER-1` **parser again** - MAJOR; regression\n"
+    "  - repro: parse\n  - test-tags: UNIT\n  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "- [ ] `DEF-JRNL-1-1` **plain regression** - MAJOR; regression\n"
+    "  - repro: parse\n  - test-tags: UNIT\n  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "- [ ] `DEF-JRNL-2-RETRY-LOOP` **retry** - MINOR; two segments\n"
+    "  - repro: retry\n  - test-tags: UNIT\n  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+
+def coded_file(tmp_path: Path, name: str, body: str) -> Path:
+    f = tmp_path / f"{name}.md"
+    f.write_text(body, encoding="utf-8")
+    return f
+
+
+def test_parse_stores_the_code_and_regression_read_from_the_right(tmp_path: Path):
+    """A trailing all-digit segment is the regression; the one or two segments
+    before it are the code, so `DEF-JRNL-1-1` is a regression and not a code."""
+    f = coded_file(tmp_path, "defects-coded", CODED_ITEMS)
+    blocks, _ = pm_tools.parse(f)
+    assert [(b["prefix"], b["cat"], b["num"], b["code"], b["regr"]) for b in blocks] == [
+        ("DEF", "JRNL", 1, "BM25", None),
+        ("DEF", "JRNL", 1, "PARSER", 1),
+        ("DEF", "JRNL", 1, None, 1),
+        ("DEF", "JRNL", 2, "RETRY-LOOP", None),
+    ]
+
+
+def test_a_code_ending_in_a_digit_only_segment_is_not_an_id(tmp_path: Path):
+    """A final all-digit segment is consumed as the regression, so the shape
+    cannot also spell a code ending in digits."""
+    body = (
+        "# Defects - Bad\n\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [ ] `DEF-JRNL-3-CODE-2-3` **bad** - MAJOR; x\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added\n"
+        "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+    )
+    blocks, _ = pm_tools.parse(coded_file(tmp_path, "defects-bad", body))
+    assert blocks[0]["prefix"] is None
+
+
+def test_ident_round_trips_base_code_and_regression(tmp_path: Path):
+    f = coded_file(tmp_path, "defects-coded", CODED_ITEMS)
+    blocks, _ = pm_tools.parse(f)
+    assert [pm_tools.ident(b) for b in blocks] == [
+        "DEF-JRNL-1-BM25",
+        "DEF-JRNL-1-PARSER-1",
+        "DEF-JRNL-1-1",
+        "DEF-JRNL-2-RETRY-LOOP",
+    ]
+
+
+def test_find_id_matches_the_full_id_then_the_base_id(tmp_path: Path):
+    body = (
+        "# Defects - Find\n\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [ ] `DEF-LNCH-1` **uncoded** - MAJOR; x\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added\n"
+        "- [ ] `DEF-LNCH-1-CODE` **coded** - MAJOR; x\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added\n"
+        "- [ ] `DEF-LNCH-2-TOKEN` **other** - MAJOR; x\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added\n"
+        "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+    )
+    blocks, _ = pm_tools.parse(coded_file(tmp_path, "defects-find", body))
+    assert pm_tools.ident(pm_tools.find_id(blocks, "DEF-LNCH-2")) == "DEF-LNCH-2-TOKEN"
+    assert pm_tools.ident(pm_tools.find_id(blocks, "DEF-LNCH-2-TOKEN")) == "DEF-LNCH-2-TOKEN"
+    assert pm_tools.ident(pm_tools.find_id(blocks, "DEF-LNCH-1")) == "DEF-LNCH-1"
+    with pytest.raises(SystemExit):
+        pm_tools.find_id(blocks, "DEF-LNCH-9")
+
+
+def test_a_base_id_resolves_to_the_root_not_its_regression(tmp_path: Path):
+    """The family root wins over a regression even when the file lists the
+    regression first, for find_id and for a relation written by base id."""
+    body = (
+        "# Defects - Root\n\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [ ] `DEF-LNCH-1-PARSER-1` **regression first** - MAJOR; x\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added\n"
+        "- [ ] `DEF-LNCH-1-PARSER` **root** - MAJOR; x\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added\n"
+        "- [ ] `DEF-LNCH-2-TOKEN` **blocker** - MAJOR; x\n"
+        "  - blocked-by: DEF-LNCH-1\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added\n"
+        "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+    )
+    blocks, _ = pm_tools.parse(coded_file(tmp_path, "defects-root", body))
+    assert pm_tools.ident(pm_tools.find_id(blocks, "DEF-LNCH-1")) == "DEF-LNCH-1-PARSER"
+    index = {pm_tools.ident(b): b for b in blocks}
+    assert pm_tools.resolve_ref(index, "DEF-LNCH-1") == "DEF-LNCH-1-PARSER"
+    assert pm_tools.graph(index, "blocked-by")["DEF-LNCH-2-TOKEN"] == ["DEF-LNCH-1-PARSER"]
+
+
+def test_edit_and_amend_keep_the_code_and_accept_the_base_id(defects: Path):
+    """rewrite_head rebuilds the line from ident, which carries the code."""
+    body = defects.read_text(encoding="utf-8")
+    defects.write_text(
+        body + "\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [ ] `DEF-LNCH-1-PARSER` **coded** - MAJOR; x\n"
+        "  - repro: a\n  - test-tags: UNIT\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added\n",
+        encoding="utf-8",
+    )
+    run("edit", str(defects), "--id", "DEF-LNCH-1", "--title", "renamed", "--author", "@kj")
+    assert "- [ ] `DEF-LNCH-1-PARSER` **renamed** - MAJOR; x" in defects.read_text(
+        encoding="utf-8"
+    )
+    run(
+        "amend", str(defects), "--id", "DEF-LNCH-1-PARSER", "--text", "new text", "--author", "@kj"
+    )
+    body = defects.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-LNCH-1-PARSER` **renamed** - MAJOR; new text" in body
+
+
+def test_reopen_on_a_coded_defect_appends_the_regression_after_the_code(defects: Path):
+    """The ordinal follows the code: `DEF-LNCH-1-PARSER-1`, then `-PARSER-2`."""
+    body = defects.read_text(encoding="utf-8")
+    defects.write_text(
+        body + "\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [x] `DEF-LNCH-1-PARSER` **coded** - MAJOR; x\n"
+        "  - evidence: green on 412\n"
+        "  - repro: a\n  - test-tags: UNIT\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added\n"
+        "  - log: 2026-08-28T08:22:11Z @kj closed: fixed\n",
+        encoding="utf-8",
+    )
+    run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
+    body = defects.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-LNCH-1-PARSER-1`" in body
+    assert "regressed as DEF-LNCH-1-PARSER-1" in body
+    assert "DEF-LNCH-1-1" not in body, "the code is never dropped from the id"
+    close_with(defects, "DEF-LNCH-1-PARSER-1", "green on 470")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1-PARSER-1", "--author", "@kj")
+    body = defects.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-LNCH-1-PARSER-2`" in body
+    assert "DEF-LNCH-1-PARSER-1-1" not in body, "ordinals stay flat on the base"
+
+
+LINKED_CODED = (
+    "# Defects - Links\n\nLinks.\n\n## Launch `LNCH`\n\nCold start\n\n"
+    "- [ ] `DEF-LNCH-1-PARSER` **first** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "  - related: DEF-LNCH-2\n"
+    "- [ ] `DEF-LNCH-2-TOKEN` **second** - MAJOR; x\n"
+    "  - repro: b\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+
+def test_a_base_id_link_resolves_to_the_coded_item(tmp_path: Path, capsys):
+    """IDREF and the readers accept the base shape of a coded id in either
+    direction: check, refs and --related-to all find the item."""
+    f = coded_file(tmp_path, "defects-links", LINKED_CODED)
+    assert run("check", str(f)) == 0
+    capsys.readouterr()
+    run("refs", str(f), "--id", "DEF-LNCH-2")
+    out = capsys.readouterr().out
+    assert "DEF-LNCH-1-PARSER" in out and "-> DEF-LNCH-2-TOKEN" in out
+    run("refs", str(f), "--json", "--id", "DEF-LNCH-2")
+    assert json.loads(capsys.readouterr().out)["id"] == "DEF-LNCH-2-TOKEN"
+    run("list", str(f), "--related-to", "DEF-LNCH-2")
+    out = capsys.readouterr().out
+    assert "`DEF-LNCH-1-PARSER`" in out
+    assert "`DEF-LNCH-2-TOKEN`" not in out, "an item is not linked to itself"
+
+
+# --- Coded ids - the tool surface -----------------------------------------
+
+
+def test_add_requires_a_code(defects: Path, capsys):
+    """A base id is no longer enough; every new item names its code."""
+    with pytest.raises(SystemExit) as e:
+        run(
+            "add",
+            str(defects),
+            "--category",
+            "LNCH",
+            "--title",
+            "token race",
+            "--text",
+            "symptom",
+            "--severity",
+            "MAJOR",
+            "--author",
+            "@kj",
+        )
+    assert e.value.code == 2
+    assert "--code" in capsys.readouterr().err
+
+
+def test_add_writes_the_code_after_the_number(defects: Path, capsys):
+    add_defect(defects, "token race", code="PARSER")
+    body = defects.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-LNCH-1-PARSER` **token race**" in body
+    assert "DEF-LNCH-1-PARSER added" in capsys.readouterr().out
+
+
+def test_add_refuses_a_code_that_breaks_the_grammar(defects: Path):
+    with pytest.raises(SystemExit) as e:
+        add_defect(defects, "token race", code="2FAST")
+    assert "each starting with a letter" in str(e.value)
+
+
+def test_the_code_is_a_list_column(defects: Path, capsys):
+    add_defect(defects, "token race", code="PARSER")
+    capsys.readouterr()
+    run("list", str(defects), "--columns", "id,code")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[0] == ["Id", "Code"]
+    assert rows[1] == ["`DEF-LNCH-1-PARSER`", "PARSER"]
+
+
+def test_the_code_filter_narrows_and_the_pivot_groups_by_code(defects: Path, capsys):
+    add_defect(defects, "token race", code="PARSER")
+    add_defect(defects, "splash hang", code="RENDER")
+    capsys.readouterr()
+    run("list", str(defects), "--code", "parser")
+    out = capsys.readouterr().out
+    assert ids_of(table_rows(out)) == ["DEF-LNCH-1-PARSER"]
+    assert "(code PARSER)" in out
+    run("pivot", str(defects), "--rows", "code")
+    rows = table_rows(capsys.readouterr().out)
+    assert [r[0] for r in rows[1:]] == ["PARSER", "RENDER", "**Total**"]
+    assert rows[1][1] == "1" and rows[2][1] == "1"
+
+
+def test_json_carries_the_code(defects: Path, capsys):
+    add_defect(defects, "token race", code="PARSER")
+    capsys.readouterr()
+    run("list", str(defects), "--json")
+    (rec,) = json.loads(capsys.readouterr().out)
+    assert rec["code"] == "PARSER"
+    run("report", str(defects), "--json")
+    (doc,) = json.loads(capsys.readouterr().out)
+    assert doc["items"][0]["code"] == "PARSER"
+
+
+def test_search_indexes_the_code(defects: Path, capsys):
+    add_defect(defects, "token race", code="PARSER")
+    capsys.readouterr()
+    run("search", str(defects), "parser")
+    rows = table_rows(capsys.readouterr().out)
+    assert rows[1][1] == "`DEF-LNCH-1-PARSER`" and "code" in rows[1][4]
+
+
+UNCODED_ITEM = (
+    "# Defects - App\n\n## Launch `LNCH`\n\nCold start\n\n"
+    "- [ ] `DEF-LNCH-1` **token race** - MAJOR; symptom\n"
+    "  - repro: relaunch twice\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+
+def test_check_warns_on_a_missing_code(tmp_path: Path, capsys):
+    f = coded_file(tmp_path, "defects-uncoded", UNCODED_ITEM)
+    assert run("check", str(f)) == 0, "a missing code is a warning, not an error"
+    assert "warn  id has no code; every id carries one" in capsys.readouterr().out
+    assert run("check", str(f), "--strict") == 1
+
+
+def test_check_errors_on_a_malformed_code(tmp_path: Path, capsys):
+    body = UNCODED_ITEM.replace("`DEF-LNCH-1`", "`DEF-LNCH-1-parser`")
+    f = coded_file(tmp_path, "defects-malformed", body)
+    assert run("check", str(f)) == 1
+    out = capsys.readouterr().out
+    assert "ERROR malformed code in id `DEF-LNCH-1-parser`" in out
+    assert "item has no" not in out, "the code is named, not the whole id called missing"
+
+
+# --- Coded ids - migration -------------------------------------------------
+
+
+MIGRATION_UNCODED = (
+    "# Defects - Migration\n\nMigration.\n\n## Launch `LNCH`\n\nCold start\n\n"
+    "- [ ] `DEF-LNCH-1` **token race** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "- [ ] `DEF-LNCH-1-1` **again** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "- [ ] `DEF-LNCH-2` **splash** - MINOR; x\n"
+    "  - repro: b\n  - test-tags: UNIT\n"
+    "  - related: `DEF-LNCH-1-1`\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+
+def migration_map(tmp_path: Path, body: str) -> Path:
+    f = tmp_path / "codes.map"
+    f.write_text(body, encoding="utf-8")
+    return f
+
+
+def test_migrate_codes_appends_the_code_to_every_item_sharing_a_base_id(tmp_path: Path, capsys):
+    """A mapping line names the base id; the parent and each regression item sharing
+    it get the code before the ordinal, and each changed item logs one line."""
+    f = coded_file(tmp_path, "defects-migration", MIGRATION_UNCODED)
+    m = migration_map(tmp_path, "# item codes\nDEF-LNCH-1 TOKEN\nDEF-LNCH-2 RENDER\n")
+    assert run("migrate-codes", str(f), "--map", str(m), "--author", "@kj") == 0
+    body = f.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-LNCH-1-TOKEN` **token race**" in body
+    assert "- [ ] `DEF-LNCH-1-TOKEN-1` **again**" in body, "the code goes before the ordinal"
+    assert "- [ ] `DEF-LNCH-2-RENDER` **splash**" in body
+    assert body.count(" @kj coded TOKEN") == 2, "one log line per item the mapping covers"
+    assert body.count(" @kj coded RENDER") == 1
+    assert "  - related: `DEF-LNCH-1-TOKEN-1`" in body, "a relation to an old full id is rewritten"
+    assert "`DEF-LNCH-1-1`" not in body
+    assert "3 item(s) coded" in capsys.readouterr().out
+    assert run("check", str(f)) == 0
+
+
+def test_migrate_codes_is_idempotent(tmp_path: Path, capsys):
+    """The second run writes nothing: same ids, same log, byte-identical file."""
+    f = coded_file(tmp_path, "defects-migration", MIGRATION_UNCODED)
+    m = migration_map(tmp_path, "DEF-LNCH-1 TOKEN\nDEF-LNCH-2 RENDER\n")
+    assert run("migrate-codes", str(f), "--map", str(m), "--author", "@kj") == 0
+    once = f.read_text(encoding="utf-8")
+    capsys.readouterr()
+    assert run("migrate-codes", str(f), "--map", str(m), "--author", "@kj") == 0
+    assert f.read_text(encoding="utf-8") == once
+    assert once.count(" @kj coded TOKEN") == 2
+    assert "0 item(s) coded, 3 already carried the code" in capsys.readouterr().out
+
+
+MIGRATION_SIBLING_LINK_ALPHA = (
+    "# Defects - Alpha\n\nAlpha.\n\n## Launch `LNCH`\n\nCold start\n\n"
+    "- [ ] `DEF-LNCH-3-OTHER` **third** - MINOR; x\n"
+    "  - repro: b\n  - test-tags: UNIT\n"
+    "  - overrides: DEF-LNCH-1\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+MIGRATION_SIBLING_LINK_BETA = (
+    "# Defects - Beta\n\nBeta.\n\n## Launch `LNCH`\n\nCold start\n\n"
+    "- [ ] `DEF-LNCH-1` **token race** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - overridden-by: DEF-LNCH-3-OTHER\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+
+def test_migrate_codes_rewrites_a_sibling_link_to_the_migrated_id(tmp_path: Path, capsys):
+    """The pre-migration full id stops existing once the item is coded, so a
+    sibling's link must follow it; left behind, it is a dangling reference and
+    check fails."""
+    a = coded_file(tmp_path, "defects-alpha", MIGRATION_SIBLING_LINK_ALPHA)
+    b = coded_file(tmp_path, "defects-beta", MIGRATION_SIBLING_LINK_BETA)
+    m = migration_map(tmp_path, "DEF-LNCH-1 TOKEN\n")
+    assert run("check", str(tmp_path)) == 0
+    capsys.readouterr()
+    assert run("migrate-codes", str(b), "--map", str(m), "--author", "@kj") == 0
+    assert "  - overrides: DEF-LNCH-1-TOKEN" in a.read_text(encoding="utf-8")
+    assert "1 item(s) coded, 0 already carried the code" in capsys.readouterr().out
+    assert run("check", str(tmp_path)) == 0
+
+
+def test_migrate_codes_reports_uncovered_items_and_unknown_mapping_ids(tmp_path: Path, capsys):
+    """Both directions of a gap are named; the covered items still migrate."""
+    f = coded_file(tmp_path, "defects-migration", MIGRATION_UNCODED)
+    m = migration_map(tmp_path, "DEF-LNCH-1 TOKEN\nDEF-LNCH-9 GHOST\n")
+    assert run("migrate-codes", str(f), "--map", str(m), "--author", "@kj") == 1
+    err = capsys.readouterr().err
+    assert "DEF-LNCH-2 is not in the mapping" in err
+    assert f"{m}:2: DEF-LNCH-9 is not in {f}" in err
+    body = f.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-LNCH-1-TOKEN`" in body, "a report does not stop the covered items"
+    assert "- [ ] `DEF-LNCH-2`" in body
+
+
+def test_migrate_codes_names_an_item_already_carrying_a_different_code(tmp_path: Path, capsys):
+    body = MIGRATION_UNCODED.replace("`DEF-LNCH-1`", "`DEF-LNCH-1-OTHER`")
+    f = coded_file(tmp_path, "defects-migration", body)
+    m = migration_map(tmp_path, "DEF-LNCH-1 TOKEN\nDEF-LNCH-2 RENDER\n")
+    assert run("migrate-codes", str(f), "--map", str(m), "--author", "@kj") == 1
+    err = capsys.readouterr().err
+    assert "DEF-LNCH-1-OTHER already carries OTHER, mapping says TOKEN - run rename-code" in err
+    assert "`DEF-LNCH-1-OTHER`" in f.read_text(encoding="utf-8")
+
+
+def test_migrate_codes_refuses_a_malformed_code_before_writing(tmp_path: Path):
+    f = coded_file(tmp_path, "defects-migration", MIGRATION_UNCODED)
+    m = migration_map(tmp_path, "DEF-LNCH-1 2FAST\n")
+    with pytest.raises(SystemExit) as e:
+        run("migrate-codes", str(f), "--map", str(m), "--author", "@kj")
+    assert "each starting with a letter" in str(e.value)
+    assert "`DEF-LNCH-1`" in f.read_text(encoding="utf-8"), "nothing was written"
+
+
+RENAME_DEFECTS = (
+    "# Defects - Rename\n\nRename.\n\n## Launch `LNCH`\n\nCold start\n\n"
+    "- [ ] `DEF-LNCH-1-PARSER` **first** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "  - overrides: ACC-AUTH-1-LOGIN\n"
+    "- [ ] `DEF-LNCH-2-RENDER` **second** - MINOR; x\n"
+    "  - repro: b\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "  - related: DEF-LNCH-1-PARSER, DEF-LNCH-3-SPLASH\n"
+    "  - blocked-by: DEF-LNCH-1-PARSER - the parse it needs\n"
+    "- [ ] `DEF-LNCH-3-SPLASH` **third** - MINOR; x\n"
+    "  - repro: c\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+RENAME_CRITERIA = (
+    "# Acceptance Criteria - Rename\n\nRename.\n\n## Auth `AUTH`\n\nLogin\n\n"
+    "- [ ] `ACC-AUTH-1-LOGIN` **login** - HIGH; x\n"
+    "  - test: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "  - related: DEF-LNCH-1\n"
+    "  - overridden-by: DEF-LNCH-1-PARSER\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+
+def test_rename_code_rewrites_the_id_and_every_relation_line_naming_it(tmp_path: Path, capsys):
+    """The full old id is rewritten on all four relation kinds, in both trackers;
+    a base-id link is left alone because it still resolves."""
+    d = coded_file(tmp_path, "defects-rename", RENAME_DEFECTS)
+    c = coded_file(tmp_path, "acc-crit-rename", RENAME_CRITERIA)
+    assert (
+        run("rename-code", str(d), "--id", "DEF-LNCH-1", "--code", "TOKEN", "--author", "@kj") == 0
+    )
+    out = capsys.readouterr().out
+    assert "related: DEF-LNCH-1-PARSER -> DEF-LNCH-1-TOKEN" in out
+    assert "blocked-by: DEF-LNCH-1-PARSER -> DEF-LNCH-1-TOKEN" in out
+    assert "overridden-by: DEF-LNCH-1-PARSER -> DEF-LNCH-1-TOKEN" in out
+    dbody = d.read_text(encoding="utf-8")
+    cbody = c.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-LNCH-1-TOKEN` **first**" in dbody
+    assert "- related: DEF-LNCH-1-TOKEN, DEF-LNCH-3-SPLASH" in dbody, (
+        "other ids on the line survive"
+    )
+    assert "- blocked-by: DEF-LNCH-1-TOKEN - the parse it needs" in dbody
+    assert "- overridden-by: DEF-LNCH-1-TOKEN" in cbody
+    assert "- related: DEF-LNCH-1" in cbody, "a base-id link is left alone"
+    assert 'renamed code "PARSER" -> "TOKEN"' in dbody
+    assert run("check", str(tmp_path)) == 0
+
+
+def test_rename_code_to_the_same_code_writes_nothing(tmp_path: Path, capsys):
+    d = coded_file(tmp_path, "defects-rename", RENAME_DEFECTS)
+    coded_file(tmp_path, "acc-crit-rename", RENAME_CRITERIA)
+    before = d.read_text(encoding="utf-8")
+    assert (
+        run(
+            "rename-code",
+            str(d),
+            "--id",
+            "DEF-LNCH-1-PARSER",
+            "--code",
+            "PARSER",
+            "--author",
+            "@kj",
+        )
+        == 0
+    )
+    assert d.read_text(encoding="utf-8") == before
+    assert "already carries code PARSER" in capsys.readouterr().out
+
+
+def test_rename_code_needs_an_existing_code(tmp_path: Path):
+    f = coded_file(tmp_path, "defects-uncoded", UNCODED_ITEM)
+    with pytest.raises(SystemExit) as e:
+        run("rename-code", str(f), "--id", "DEF-LNCH-1", "--code", "TOKEN", "--author", "@kj")
+    assert "run migrate-codes first" in str(e.value)
+
+
+def test_rename_code_refuses_a_code_that_breaks_the_grammar(tmp_path: Path):
+    d = coded_file(tmp_path, "defects-rename", RENAME_DEFECTS)
+    coded_file(tmp_path, "acc-crit-rename", RENAME_CRITERIA)
+    with pytest.raises(SystemExit) as e:
+        run("rename-code", str(d), "--id", "DEF-LNCH-1", "--code", "2FAST", "--author", "@kj")
+    assert "each starting with a letter" in str(e.value)
+
+
+def test_rename_code_refuses_a_code_already_taken(tmp_path: Path):
+    body = RENAME_DEFECTS.replace("- [ ] `DEF-LNCH-2-RENDER`", "- [ ] `DEF-LNCH-1-RENDER`")
+    d = coded_file(tmp_path, "defects-rename", body)
+    with pytest.raises(SystemExit) as e:
+        run(
+            "rename-code",
+            str(d),
+            "--id",
+            "DEF-LNCH-1-PARSER",
+            "--code",
+            "RENDER",
+            "--author",
+            "@kj",
+        )
+    assert "DEF-LNCH-1-RENDER already exists" in str(e.value)
+
+
+RENAME_FAMILY = (
+    "# Defects - Rename\n\nRename.\n\n## Launch `LNCH`\n\nCold start\n\n"
+    "- [ ] `DEF-LNCH-1-PARSER` **first** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "- [ ] `DEF-LNCH-1-PARSER-1` **first again** - MAJOR; x\n"
+    "  - repro: a again\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:12Z @kj added\n"
+    "- [ ] `DEF-LNCH-2-RENDER` **second** - MINOR; x\n"
+    "  - repro: b\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "  - related: DEF-LNCH-1-PARSER, DEF-LNCH-1-PARSER-1\n"
+    "  - blocked-by: DEF-LNCH-1-PARSER-1\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+
+def test_rename_code_renames_the_whole_family_and_rewrites_both_old_ids(tmp_path: Path, capsys):
+    """A code is shared by the parent and its regressions, so a rename renames every
+    item in the family, keeps each ordinal, and rewrites links naming either old id."""
+    d = coded_file(tmp_path, "defects-rename", RENAME_FAMILY)
+    assert (
+        run("rename-code", str(d), "--id", "DEF-LNCH-1", "--code", "TOKEN", "--author", "@kj") == 0
+    )
+    body = d.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-LNCH-1-TOKEN` **first**" in body
+    assert "- [ ] `DEF-LNCH-1-TOKEN-1` **first again**" in body, "the ordinal is kept"
+    assert "DEF-LNCH-1-PARSER" not in body
+    assert "- related: DEF-LNCH-1-TOKEN, DEF-LNCH-1-TOKEN-1" in body
+    assert "- blocked-by: DEF-LNCH-1-TOKEN-1" in body
+    assert body.count('renamed code "PARSER" -> "TOKEN"') == 2, "one log line per item"
+    capsys.readouterr()
+    run("list", str(d), "--code", "TOKEN", "--columns", "id")
+    assert ids_of(table_rows(capsys.readouterr().out)) == [
+        "DEF-LNCH-1-TOKEN",
+        "DEF-LNCH-1-TOKEN-1",
+    ]
+    run("list", str(d), "--code", "PARSER", "--columns", "id")
+    assert ids_of(table_rows(capsys.readouterr().out)) == []
+    assert run("check", str(d)) == 0
+
+
+RENAME_AFTER_CRASH = (
+    "# Defects - Rename\n\nRename.\n\n## Launch `LNCH`\n\nCold start\n\n"
+    "- [ ] `DEF-LNCH-1-TOKEN` **first** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    '  - log: 2026-08-28T08:22:13Z @kj renamed code "PARSER" -> "TOKEN"\n'
+    "- [ ] `DEF-LNCH-1-TOKEN-1` **first again** - MAJOR; x\n"
+    "  - repro: a again\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:12Z @kj added\n"
+    '  - log: 2026-08-28T08:22:13Z @kj renamed code "PARSER" -> "TOKEN"\n'
+    "- [ ] `DEF-LNCH-2-RENDER` **second** - MINOR; x\n"
+    "  - repro: b\n  - test-tags: UNIT\n"
+    "  - related: DEF-LNCH-1-PARSER, DEF-LNCH-1-PARSER-1\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+
+def test_rename_code_repairs_a_link_left_by_an_interrupted_run(tmp_path: Path, capsys):
+    """A run that renamed the items and died before rewriting their links leaves the
+    old ids in a relation line. The re-run reads the old codes from the rename logs,
+    so the same --code finishes the rewrite although the item already carries it."""
+    d = coded_file(tmp_path, "defects-rename", RENAME_AFTER_CRASH)
+    assert run("check", str(d)) == 1, "the stale links are the error the repair removes"
+    capsys.readouterr()
+    assert (
+        run("rename-code", str(d), "--id", "DEF-LNCH-1", "--code", "TOKEN", "--author", "@kj") == 0
+    )
+    out = capsys.readouterr().out
+    assert "related: DEF-LNCH-1-PARSER -> DEF-LNCH-1-TOKEN" in out
+    assert "related: DEF-LNCH-1-PARSER-1 -> DEF-LNCH-1-TOKEN-1" in out
+    body = d.read_text(encoding="utf-8")
+    assert "- related: DEF-LNCH-1-TOKEN, DEF-LNCH-1-TOKEN-1" in body
+    assert "DEF-LNCH-1-PARSER" not in body
+    assert run("check", str(d)) == 0
+
+
+RENAME_SIBLING_LINK_ALPHA = (
+    "# Defects - Alpha\n\nAlpha.\n\n## Launch `LNCH`\n\nCold start\n\n"
+    "- [ ] `DEF-LNCH-1-TOKEN` **first** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - overridden-by: DEF-LNCH-2-RENDER\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    '  - log: 2026-08-28T08:22:13Z @kj renamed code "PARSER" -> "TOKEN"\n'
+    "- [ ] `DEF-LNCH-2-RENDER` **second** - MINOR; x\n"
+    "  - repro: b\n  - test-tags: UNIT\n"
+    "  - overrides: `DEF-LNCH-1-PARSER`\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+
+def test_rename_code_rewrites_a_stale_link_from_the_rename_log(tmp_path: Path, capsys):
+    """A rename that died before rewriting its links leaves the old full id dangling.
+    The same-code repair reads the rename log and rewrites it, so the directory check
+    goes from failing to passing."""
+    a = coded_file(tmp_path, "defects-alpha", RENAME_SIBLING_LINK_ALPHA)
+    assert run("check", str(tmp_path)) == 1, "the stale link is the error the repair removes"
+    capsys.readouterr()
+    assert (
+        run("rename-code", str(a), "--id", "DEF-LNCH-1", "--code", "TOKEN", "--author", "@kj") == 0
+    )
+    assert "overrides: DEF-LNCH-1-PARSER -> DEF-LNCH-1-TOKEN" in capsys.readouterr().out
+    assert "  - overrides: `DEF-LNCH-1-TOKEN`" in a.read_text(encoding="utf-8")
+    assert run("check", str(tmp_path)) == 0
 
 
 # --- Triage ---------------------------------------------------------------
@@ -201,6 +833,8 @@ def test_add_refuses_a_defect_with_no_severity(defects: Path):
             str(defects),
             "--category",
             "LNCH",
+            "--code",
+            "TEST",
             "--name",
             "Launch",
             "--author",
@@ -221,6 +855,8 @@ def test_severity_is_refused_on_a_criterion(criteria: Path):
             str(criteria),
             "--category",
             "AUTH",
+            "--code",
+            "TEST",
             "--name",
             "Authentication",
             "--author",
@@ -262,7 +898,7 @@ def test_close_flips_the_box_and_logs_it(defects: Path):
         "unit suite green",
     )
     body = defects.read_text(encoding="utf-8")
-    assert "- [x] `DEF-LNCH-1`" in body
+    assert "- [x] `DEF-LNCH-1-TEST`" in body
     assert "closed: fixed: awaited" in body
 
 
@@ -281,7 +917,7 @@ def test_reject_requires_a_reason_and_records_it(defects: Path):
         "not reproduced on 3 devices",
     )
     body = defects.read_text(encoding="utf-8")
-    assert "- [-] `DEF-LNCH-1`" in body
+    assert "- [-] `DEF-LNCH-1-TEST`" in body
     assert "not reproduced on 3 devices" in body
 
 
@@ -289,7 +925,7 @@ def test_reopen_returns_a_rejected_item_to_open(defects: Path):
     add_defect(defects, "splash hang")
     run("reject", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "no repro")
     run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
-    assert "- [ ] `DEF-LNCH-1`" in defects.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-LNCH-1-TEST`" in defects.read_text(encoding="utf-8")
 
 
 # --- The log --------------------------------------------------------------
@@ -390,7 +1026,9 @@ def test_closing_a_defect_demands_evidence(defects: Path):
     add_defect(defects, "token race")
     with pytest.raises(SystemExit):
         run("close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "fixed")
-    assert "- [ ] `DEF-LNCH-1`" in defects.read_text(encoding="utf-8"), "and nothing was closed"
+    assert "- [ ] `DEF-LNCH-1-TEST`" in defects.read_text(encoding="utf-8"), (
+        "and nothing was closed"
+    )
 
 
 def test_closing_a_criterion_demands_evidence_too(criteria: Path):
@@ -399,7 +1037,7 @@ def test_closing_a_criterion_demands_evidence_too(criteria: Path):
         run("close", str(criteria), "--id", "ACC-AUTH-1", "--author", "@kj")
     close_with(criteria, "ACC-AUTH-1", "100 generated passwords, all 16 chars", "met")
     body = criteria.read_text(encoding="utf-8")
-    assert "- [x] `ACC-AUTH-1`" in body
+    assert "- [x] `ACC-AUTH-1-TEST`" in body
     assert "- evidence: 100 generated passwords, all 16 chars" in body
 
 
@@ -451,11 +1089,11 @@ def test_reopening_a_defect_mints_a_regression_and_leaves_the_closure_proven(def
     close_with(defects, "DEF-LNCH-1", "test_fork_token green")
     run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "regressed")
     body = defects.read_text(encoding="utf-8")
-    assert "- [x] `DEF-LNCH-1`" in body, "the parent closure stands"
+    assert "- [x] `DEF-LNCH-1-TEST`" in body, "the parent closure stands"
     assert "- evidence: test_fork_token green" in body, "it was proven when it was made"
-    assert "- [ ] `DEF-LNCH-1-1`" in body, "the regression is its own open item"
-    assert "regressed as DEF-LNCH-1-1" in body, "the parent names where it went"
-    assert "regression of DEF-LNCH-1: regressed" in body, "the child names its parent"
+    assert "- [ ] `DEF-LNCH-1-TEST-1`" in body, "the regression is its own open item"
+    assert "regressed as DEF-LNCH-1-TEST-1" in body, "the parent names where it went"
+    assert "regression of DEF-LNCH-1-TEST: regressed" in body, "the child names its parent"
 
 
 def test_regressions_number_flat_from_the_root(defects: Path):
@@ -463,11 +1101,11 @@ def test_regressions_number_flat_from_the_root(defects: Path):
     add_defect(defects, "token race")
     close_with(defects, "DEF-LNCH-1", "green on 412")
     run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
-    close_with(defects, "DEF-LNCH-1-1", "green on 470")
-    run("reopen", str(defects), "--id", "DEF-LNCH-1-1", "--author", "@kj")
+    close_with(defects, "DEF-LNCH-1-TEST-1", "green on 470")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1-TEST-1", "--author", "@kj")
     body = defects.read_text(encoding="utf-8")
-    assert "`DEF-LNCH-1-2`" in body, "the third occurrence is -2 on the root"
-    assert "DEF-LNCH-1-1-1" not in body, "ordinals never nest"
+    assert "`DEF-LNCH-1-TEST-2`" in body, "the third occurrence is -2 on the root"
+    assert "DEF-LNCH-1-TEST-1-1" not in body, "ordinals never nest"
 
 
 def test_a_rejected_defect_reopens_without_minting(defects: Path):
@@ -476,8 +1114,8 @@ def test_a_rejected_defect_reopens_without_minting(defects: Path):
     run("reject", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "not ours")
     run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
     body = defects.read_text(encoding="utf-8")
-    assert "- [ ] `DEF-LNCH-1`" in body, "the item itself reopens"
-    assert "DEF-LNCH-1-1" not in body, "a rejection reversal is not a regression"
+    assert "- [ ] `DEF-LNCH-1-TEST`" in body, "the item itself reopens"
+    assert "DEF-LNCH-1-TEST-1" not in body, "a rejection reversal is not a regression"
 
 
 def test_the_report_counts_the_regressions(defects: Path, capsys):
@@ -485,8 +1123,8 @@ def test_the_report_counts_the_regressions(defects: Path, capsys):
     add_defect(defects, "token race")
     close_with(defects, "DEF-LNCH-1", "green on 412")
     run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
-    close_with(defects, "DEF-LNCH-1-1", "green on 470")
-    run("reopen", str(defects), "--id", "DEF-LNCH-1-1", "--author", "@kj")
+    close_with(defects, "DEF-LNCH-1-TEST-1", "green on 470")
+    run("reopen", str(defects), "--id", "DEF-LNCH-1-TEST-1", "--author", "@kj")
     capsys.readouterr()
     run("report", str(defects), "--status", "all")
     assert "2 regressions across 1 defect" in capsys.readouterr().out
@@ -498,10 +1136,10 @@ def test_a_regression_without_its_root_is_an_error(defects: Path, capsys):
     close_with(defects, "DEF-LNCH-1", "green on 412")
     run("reopen", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj")
     body = defects.read_text(encoding="utf-8")
-    defects.write_text(body.replace("`DEF-LNCH-1`", "`DEF-LNCH-7`"), encoding="utf-8")
+    defects.write_text(body.replace("`DEF-LNCH-1-TEST`", "`DEF-LNCH-7`"), encoding="utf-8")
     capsys.readouterr()
     assert run("check", str(defects)) == 1
-    assert "regression DEF-LNCH-1-1 has no root item DEF-LNCH-1" in capsys.readouterr().out
+    assert "regression DEF-LNCH-1-TEST-1 has no root item DEF-LNCH-1" in capsys.readouterr().out
 
 
 def test_severity_case_is_free_but_the_delimiter_is_not(defects: Path, capsys):
@@ -510,6 +1148,8 @@ def test_severity_case_is_free_but_the_delimiter_is_not(defects: Path, capsys):
         str(defects),
         "--category",
         "AUTH",
+        "--code",
+        "TEST",
         "--title",
         "Upper",
         "--text",
@@ -529,7 +1169,7 @@ def test_severity_case_is_free_but_the_delimiter_is_not(defects: Path, capsys):
     defects.write_text(text, encoding="utf-8")
     run("list", str(defects), "--status", "all", "--columns", "id,severity")
     out = capsys.readouterr().out
-    assert "| `DEF-AUTH-1` | MAJOR |" in out
+    assert "| `DEF-AUTH-1-TEST` | MAJOR |" in out
     assert "| `DEF-AUTH-2` | MAJOR |" in out
     assert "| `DEF-AUTH-3` | - |" in out
 
@@ -564,6 +1204,8 @@ def test_search_query_may_share_a_name_with_a_cwd_entry(tmp_path: Path, capsys, 
         str(f),
         "--category",
         "DOCS",
+        "--code",
+        "TEST",
         "--name",
         "Docs",
         "--title",
@@ -740,7 +1382,9 @@ def restamp(f: Path, item: str, stamp: str, event: str = "added") -> None:
     """Set the stamp on one of an item's log lines - the file is the whole store, so a
     test that needs a specific date writes one into it."""
     lines = f.read_text(encoding="utf-8").splitlines()
-    start = next(i for i, ln in enumerate(lines) if f"`{item}`" in ln and "- [" in ln)
+    start = next(
+        i for i, ln in enumerate(lines) if (f"`{item}`" in ln or f"`{item}-" in ln) and "- [" in ln
+    )
     for i in range(start + 1, len(lines)):
         if "- [" in lines[i]:
             break
@@ -829,8 +1473,8 @@ def test_a_regressed_defect_keeps_its_closed_date(defects: Path, capsys):
     capsys.readouterr()
     run("report", str(defects), "--dates", "closed", "--since", "2026-08-01")
     out = capsys.readouterr().out
-    assert "`DEF-LNCH-1`" in out, "the closure happened and keeps its date"
-    assert "`DEF-LNCH-1-1`" not in out, "the open regression has no closed date"
+    assert "`DEF-LNCH-1-TEST`" in out, "the closure happened and keeps its date"
+    assert "`DEF-LNCH-1-TEST-1`" not in out, "the open regression has no closed date"
 
 
 def test_report_plain_drops_the_chrome_and_keeps_the_data(defects: Path, capsys):
@@ -934,6 +1578,8 @@ def a_mixed_file(defects: Path, capsys) -> None:
         str(defects),
         "--category",
         "LNCH",
+        "--code",
+        "TEST",
         "--author",
         "@mb",
         "--severity",
@@ -952,6 +1598,8 @@ def a_mixed_file(defects: Path, capsys) -> None:
         str(defects),
         "--category",
         "UI",
+        "--code",
+        "TEST",
         "--name",
         "Interface",
         "--description",
@@ -1007,7 +1655,7 @@ def test_list_is_a_markdown_table_by_default(defects: Path, capsys):
     rows = table_rows(out)
     assert rows[0] == ["Id", "Title", "Severity", "Status", "Category", "Author", "Filed", "Tests"]
     assert len(rows) == 5 and "4 item(s)" in out
-    assert rows[1][0] == "`DEF-LNCH-2`"  # fix order: open first, worst first
+    assert rows[1][0] == "`DEF-LNCH-2-TEST`"  # fix order: open first, worst first
     assert rows[-1][3] == "rejected"
     assert ":" not in out.split("\n# ")[1].split("\n")[0]  # no file:line prose lines
 
@@ -1018,10 +1666,10 @@ def test_list_columns_and_sort_are_the_callers_choice(defects: Path, capsys):
     rows = table_rows(capsys.readouterr().out)
     assert rows[0] == ["Id", "Author", "Root", "Regr", "Age"]
     assert [r[0] for r in rows[1:]] == [
-        "`DEF-UI-3`",  # MINOR first when severity descends
-        "`DEF-LNCH-1`",
-        "`DEF-LNCH-1-1`",
-        "`DEF-LNCH-2`",
+        "`DEF-UI-3-TEST`",  # MINOR first when severity descends
+        "`DEF-LNCH-1-TEST`",
+        "`DEF-LNCH-1-TEST-1`",
+        "`DEF-LNCH-2-TEST`",
     ]
     assert rows[3][2:4] == ["`DEF-LNCH-1`", "1"]  # the regression names its root
 
@@ -1060,8 +1708,8 @@ def test_pivot_can_fill_cells_with_ids(defects: Path, capsys):
     run("pivot", str(defects), "--rows", "author", "--values", "ids")
     rows = table_rows(capsys.readouterr().out)
     assert rows[0] == ["Author", "Items"]
-    assert rows[1] == ["@kj", "`DEF-LNCH-1`, `DEF-UI-3`"]
-    assert rows[2] == ["@mb", "`DEF-LNCH-1-1`, `DEF-LNCH-2`"]
+    assert rows[1] == ["@kj", "`DEF-LNCH-1-TEST`, `DEF-UI-3-TEST`"]
+    assert rows[2] == ["@mb", "`DEF-LNCH-1-TEST-1`, `DEF-LNCH-2-TEST`"]
 
 
 def test_pivot_counts_a_tagged_item_in_every_tag(defects: Path, capsys):
@@ -1078,7 +1726,7 @@ def test_pivot_regressions_per_root_answers_how_regressive_the_system_is(defects
     run("pivot", str(defects), "--rows", "root", "--regressions", "--values", "ids")
     out = capsys.readouterr().out
     rows = table_rows(out)
-    assert rows[1] == ["`DEF-LNCH-1`", "`DEF-LNCH-1-1`"]
+    assert rows[1] == ["`DEF-LNCH-1`", "`DEF-LNCH-1-TEST-1`"]
     assert len(rows) == 2 and "(regressions only)" in out
 
 
@@ -1097,7 +1745,7 @@ def test_author_and_tag_filters_narrow_report_list_and_pivot_alike(defects: Path
     assert "Interface" not in rep  # a category the filter emptied gets no row
     run("list", str(defects), "--tag", "e2e")
     lst = capsys.readouterr().out
-    assert [r[0] for r in table_rows(lst)[1:]] == ["`DEF-LNCH-2`"] and "(tag E2E)" in lst
+    assert [r[0] for r in table_rows(lst)[1:]] == ["`DEF-LNCH-2-TEST`"] and "(tag E2E)" in lst
     run("pivot", str(defects), "--rows", "severity", "--tag", "integration")
     piv = capsys.readouterr().out
     assert table_rows(piv)[1:] == [["MAJOR", "1"]]
@@ -1155,9 +1803,12 @@ def test_report_json_carries_the_same_facts_as_the_tables(defects: Path, capsys)
     assert launch["category"] == "LNCH" and launch["open"] == 2
     assert launch["levels"] == {"CRITICAL": 1, "MAJOR": 1, "MEDIUM": 0, "MINOR": 0}
     assert launch["fixed"] == 1 and launch["rejected"] == 0
-    assert [i["id"] for i in doc["items"]] == ["DEF-LNCH-2", "DEF-LNCH-1-1"]  # the open queue
+    assert [i["id"] for i in doc["items"]] == [
+        "DEF-LNCH-2-TEST",
+        "DEF-LNCH-1-TEST-1",
+    ]  # the open queue
     assert doc["rejected"] == [
-        {"id": "DEF-UI-3", "title": "misaligned button", "reason": "no repro"}
+        {"id": "DEF-UI-3-TEST", "title": "misaligned button", "reason": "no repro"}
     ]
     assert "coverage" not in doc, "coverage is its own command now"
 
@@ -1168,7 +1819,7 @@ def test_list_and_pivot_json_are_records_and_cells(defects: Path, capsys):
     a_mixed_file(defects, capsys)
     run("list", str(defects), "--status", "open", "--json")
     recs = json.loads(capsys.readouterr().out)
-    assert [r["id"] for r in recs] == ["DEF-LNCH-2", "DEF-LNCH-1-1"]
+    assert [r["id"] for r in recs] == ["DEF-LNCH-2-TEST", "DEF-LNCH-1-TEST-1"]
     assert recs[1]["root"] == "DEF-LNCH-1" and recs[1]["regr"] == 1
     assert recs[0]["tags"] == ["UNIT", "E2E"] and recs[0]["file"] == str(defects)
     run("pivot", str(defects), "--rows", "severity", "--cols", "status", "--json")
@@ -1181,7 +1832,7 @@ def test_list_and_pivot_json_are_records_and_cells(defects: Path, capsys):
     }
     run("pivot", str(defects), "--rows", "author", "--values", "ids", "--json")
     (piv,) = json.loads(capsys.readouterr().out)
-    assert piv["table"][0]["cells"] == {"Items": ["DEF-LNCH-1", "DEF-UI-3"]}
+    assert piv["table"][0]["cells"] == {"Items": ["DEF-LNCH-1-TEST", "DEF-UI-3-TEST"]}
 
 
 def test_list_categories_and_refs_take_json_too(defects: Path, capsys):
@@ -1202,7 +1853,7 @@ def test_list_categories_and_refs_take_json_too(defects: Path, capsys):
     }
     run("refs", str(defects), "--id", "DEF-LNCH-1", "--json")
     doc = json.loads(capsys.readouterr().out)
-    assert [(h["id"], h["kind"]) for h in doc["inbound"]] == [("DEF-LNCH-2", "related")]
+    assert [(h["id"], h["kind"]) for h in doc["inbound"]] == [("DEF-LNCH-2-TEST", "related")]
     assert doc["outbound"] == []
 
 
@@ -1235,7 +1886,7 @@ def hand_line(f: Path, item: str, line: str) -> None:
     """A sub-line put straight into the file, the way a hand edit or a git merge
     leaves one. relate itself refuses or repairs the states these tests need."""
     lines = f.read_text(encoding="utf-8").splitlines()
-    at = next(i for i, ln in enumerate(lines) if f"`{item}`" in ln)
+    at = next(i for i, ln in enumerate(lines) if f"`{item}`" in ln or f"`{item}-" in ln)
     lines.insert(at + 1, f"  - {line}")
     f.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -1243,7 +1894,7 @@ def hand_line(f: Path, item: str, line: str) -> None:
 def sub_lines(f: Path, item: str) -> list[str]:
     """The sub-lines under one item, without indent and list marker, in file order."""
     lines = f.read_text(encoding="utf-8").splitlines()
-    at = next(i for i, ln in enumerate(lines) if f"`{item}`" in ln)
+    at = next(i for i, ln in enumerate(lines) if f"`{item}`" in ln or f"`{item}-" in ln)
     out = []
     for ln in lines[at + 1 :]:
         if not ln.startswith("  "):
@@ -1272,9 +1923,13 @@ def test_related_and_blockers_are_list_columns(defects: Path, capsys):
     rows = table_rows(capsys.readouterr().out)
     assert "Related" in rows[0] and "Blockers" in rows[0]
     by_id = {r[0]: r for r in rows[1:]}
-    assert by_id["`DEF-LNCH-2`"] == ["`DEF-LNCH-2`", "`DEF-LNCH-1`", "`DEF-UI-3`"]
+    assert by_id["`DEF-LNCH-2-TEST`"] == [
+        "`DEF-LNCH-2-TEST`",
+        "`DEF-LNCH-1-TEST`",
+        "`DEF-UI-3-TEST`",
+    ]
     for rid, row in by_id.items():
-        if rid != "`DEF-LNCH-2`":
+        if rid != "`DEF-LNCH-2-TEST`":
             assert row[1:] == ["-", "-"]
 
 
@@ -1284,20 +1939,20 @@ def test_pivot_puts_an_item_under_every_blocker(defects: Path, capsys):
     capsys.readouterr()
     run("pivot", str(defects), "--rows", "blockers", "--values", "ids", "--status", "all")
     rows = table_rows(capsys.readouterr().out)
-    assert rows[1] == ["`DEF-LNCH-1`", "`DEF-LNCH-2`"]
-    assert rows[2] == ["`DEF-UI-3`", "`DEF-LNCH-2`"]
+    assert rows[1] == ["`DEF-LNCH-1-TEST`", "`DEF-LNCH-2-TEST`"]
+    assert rows[2] == ["`DEF-UI-3-TEST`", "`DEF-LNCH-2-TEST`"]
     assert rows[3][0] == "unblocked"
     assert rows[4][0] == "**Total**"
 
 
 def test_blocked_lists_only_items_behind_an_open_blocker(defects: Path, capsys):
     a_mixed_file(defects, capsys)
-    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-1-1")
-    relate(defects, "DEF-LNCH-1-1", blocked="DEF-LNCH-1")  # closed
+    relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-1-TEST-1")
+    relate(defects, "DEF-LNCH-1-TEST-1", blocked="DEF-LNCH-1")  # closed
     capsys.readouterr()
     run("list", str(defects), "--blocked")
     out = capsys.readouterr().out
-    assert ids_of(table_rows(out)) == ["DEF-LNCH-2"]
+    assert ids_of(table_rows(out)) == ["DEF-LNCH-2-TEST"]
     assert "(blocked)" in out.split("\n# ")[1].split("\n")[0]
     run("report", str(defects), "--blocked", "--plain")
     assert "1 open / 0 closed / 0 rejected" in capsys.readouterr().out
@@ -1318,7 +1973,7 @@ def test_related_to_reads_both_directions_and_both_kinds(defects: Path, capsys):
     capsys.readouterr()
     run("list", str(defects), "--related-to", "DEF-LNCH-1", "--status", "all")
     out = capsys.readouterr().out
-    assert set(ids_of(table_rows(out))) == {"DEF-LNCH-2", "DEF-UI-3"}
+    assert set(ids_of(table_rows(out))) == {"DEF-LNCH-2-TEST", "DEF-UI-3-TEST"}
     assert "related to DEF-LNCH-1)" in out
     run("pivot", str(defects), "--rows", "status", "--related-to", "def-lnch-1")
     assert "2 item(s)" in capsys.readouterr().out
@@ -1344,12 +1999,12 @@ def test_report_detail_prints_the_relation_lines(defects: Path, capsys):
 def test_grep_is_a_case_insensitive_regex_over_title_body_evidence_and_log(defects: Path, capsys):
     a_mixed_file(defects, capsys)
     run("list", str(defects), "--grep", "SEG.?FAULT")
-    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-2"]
+    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-2-TEST"]
     run("list", str(defects), "--grep", "clean on 41\\d", "--status", "all")
-    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-1"]  # evidence
+    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-1-TEST"]  # evidence
     run("list", str(defects), "--grep", "back on")
     out = capsys.readouterr().out
-    assert ids_of(table_rows(out)) == ["DEF-LNCH-1-1"]  # the log event
+    assert ids_of(table_rows(out)) == ["DEF-LNCH-1-TEST-1"]  # the log event
     assert "(grep /back on/)" in out
     run("list", str(defects), "--grep", "boot twice")
     assert "0 item(s)" in capsys.readouterr().out, "the repro line is not searched"
@@ -1358,7 +2013,7 @@ def test_grep_is_a_case_insensitive_regex_over_title_body_evidence_and_log(defec
 def test_grep_composes_with_the_other_filters_on_every_query(defects: Path, capsys):
     a_mixed_file(defects, capsys)
     run("list", str(defects), "--grep", "segfault|misaligned", "--author", "@mb")
-    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-2"]
+    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-2-TEST"]
     run("report", str(defects), "--grep", "segfault", "--plain")
     assert "Interface" not in capsys.readouterr().out, "an emptied category gets no row"
     run("pivot", str(defects), "--rows", "severity", "--grep", "segfault")
@@ -1389,8 +2044,8 @@ def test_search_ranks_a_title_hit_above_a_log_hit(defects: Path, capsys):
     out = capsys.readouterr().out
     rows = table_rows(out)
     assert rows[0] == ["Rank", "Id", "Score", "Title", "Matched in"]
-    assert rows[1][1] == "`DEF-LNCH-1`" and rows[1][4] == "title"
-    assert rows[2][1] == "`DEF-LNCH-2`" and rows[2][4] == "log"
+    assert rows[1][1] == "`DEF-LNCH-1-TEST`" and rows[1][4] == "title"
+    assert rows[2][1] == "`DEF-LNCH-2-TEST`" and rows[2][4] == "log"
     assert "2 of 3 item(s) matched" in out
 
 
@@ -1401,7 +2056,7 @@ def test_search_tolerates_a_typo_and_a_stem(defects: Path, capsys):
     for q in ("relunch", "tokens", "testing"):
         run("search", str(defects), q)
         rows = table_rows(capsys.readouterr().out)
-        assert rows[1][1] == "`DEF-LNCH-1`", q
+        assert rows[1][1] == "`DEF-LNCH-1-TEST`", q
     run("search", str(defects), "boo")
     assert "0 of 3 item(s) matched" in capsys.readouterr().out, "under four characters: exact only"
 
@@ -1412,10 +2067,10 @@ def test_search_finds_an_item_by_its_id_in_any_case(defects: Path, capsys):
     three_defects(defects, capsys)
     run("search", str(defects), "def-lnch-2")
     rows = table_rows(capsys.readouterr().out)
-    assert rows[1][1] == "`DEF-LNCH-2`" and rows[1][4].startswith("id")
+    assert rows[1][1] == "`DEF-LNCH-2-TEST`" and rows[1][4].startswith("id")
     run("search", str(defects), "DEF-LNCH-2", "--json")
     hits = json.loads(capsys.readouterr().out)
-    assert hits[0]["rank"] == 1 and hits[0]["id"] == "DEF-LNCH-2"
+    assert hits[0]["rank"] == 1 and hits[0]["id"] == "DEF-LNCH-2-TEST"
 
 
 def test_search_narrows_by_the_filters_before_ranking(defects: Path, capsys):
@@ -1423,7 +2078,7 @@ def test_search_narrows_by_the_filters_before_ranking(defects: Path, capsys):
     run("search", str(defects), "token race", "--status", "closed", "--top", "1")
     out = capsys.readouterr().out
     rows = table_rows(out)
-    assert len(rows) == 2 and rows[1][1] == "`DEF-LNCH-1`"
+    assert len(rows) == 2 and rows[1][1] == "`DEF-LNCH-1-TEST`"
     assert "1 of 1 item(s) matched" in out
     run("search", str(defects), "token", "--top", "1")
     assert capsys.readouterr().out.rstrip().endswith("top 1 shown")
@@ -1476,7 +2131,9 @@ def test_search_ranks_across_both_disciplines_in_one_table(tmp_path: Path, capsy
     run("search", str(docs), "password")
     out = capsys.readouterr().out
     assert out.count("# SEARCH") == 1
-    assert {"DEF-LNCH-1", "ACC-AUTH-1"} <= set(r[1].strip("`") for r in table_rows(out)[1:])
+    assert {"DEF-LNCH-1-TEST", "ACC-AUTH-1-TEST"} <= set(
+        r[1].strip("`") for r in table_rows(out)[1:]
+    )
 
 
 def test_refs_lists_both_directions_and_the_blocker_chain(defects: Path, capsys):
@@ -1490,17 +2147,17 @@ def test_refs_lists_both_directions_and_the_blocker_chain(defects: Path, capsys)
     capsys.readouterr()
     assert run("refs", str(defects), "--id", "DEF-LNCH-1") == 0
     out = capsys.readouterr().out
-    assert "DEF-LNCH-3 related -> DEF-LNCH-1" in out
-    assert "DEF-LNCH-1 blocked-by -> DEF-LNCH-2" in out
-    assert "blocked-by chain: DEF-LNCH-2 (open) -> DEF-LNCH-3 (closed)" in out
+    assert "DEF-LNCH-3-TEST related -> DEF-LNCH-1-TEST" in out
+    assert "DEF-LNCH-1-TEST blocked-by -> DEF-LNCH-2-TEST" in out
+    assert "blocked-by chain: DEF-LNCH-2-TEST (open) -> DEF-LNCH-3-TEST (closed)" in out
     assert "1 inbound, 1 outbound reference(s); 1 open blocker(s)" in out
     run("refs", str(defects), "--id", "DEF-LNCH-1", "--json")
     doc = json.loads(capsys.readouterr().out)
-    assert doc["inbound"][0]["id"] == "DEF-LNCH-3"
-    assert doc["outbound"][0]["id"] == "DEF-LNCH-2"
+    assert doc["inbound"][0]["id"] == "DEF-LNCH-3-TEST"
+    assert doc["outbound"][0]["id"] == "DEF-LNCH-2-TEST"
     assert doc["blockers"] == [
-        {"id": "DEF-LNCH-2", "status": "open", "depth": 1},
-        {"id": "DEF-LNCH-3", "status": "closed", "depth": 2},
+        {"id": "DEF-LNCH-2-TEST", "status": "open", "depth": 1},
+        {"id": "DEF-LNCH-3-TEST", "status": "closed", "depth": 2},
     ]
 
 
@@ -1512,8 +2169,8 @@ def test_refs_marks_a_cycle_and_a_missing_blocker_and_stops(defects: Path, capsy
     capsys.readouterr()
     assert run("refs", str(defects), "--id", "DEF-LNCH-1") == 0
     out = capsys.readouterr().out
-    assert "blocked-by chain: DEF-LNCH-2 (open) -> DEF-LNCH-1 (cycle)" in out
-    assert "blocked-by chain: DEF-LNCH-2 (open) -> DEF-LNCH-99 (not found)" in out
+    assert "blocked-by chain: DEF-LNCH-2-TEST (open) -> DEF-LNCH-1-TEST (cycle)" in out
+    assert "blocked-by chain: DEF-LNCH-2-TEST (open) -> DEF-LNCH-99 (not found)" in out
 
 
 def test_refs_on_a_removed_id_still_lists_what_points_at_it(defects: Path, capsys):
@@ -1524,7 +2181,7 @@ def test_refs_on_a_removed_id_still_lists_what_points_at_it(defects: Path, capsy
     capsys.readouterr()
     assert run("refs", str(defects), "--id", "DEF-LNCH-2") == 0
     out = capsys.readouterr().out
-    assert "DEF-LNCH-1 related -> DEF-LNCH-2" in out
+    assert "DEF-LNCH-1-TEST related -> DEF-LNCH-2" in out
     assert "1 inbound, 0 outbound reference(s); 0 open blocker(s)" in out
 
 
@@ -1547,16 +2204,18 @@ def test_check_errors_once_on_a_blocked_by_cycle(defects: Path, tmp_path: Path, 
     assert run("check", str(defects)) != 0
     out = capsys.readouterr().out
     assert out.count("blocked-by cycle") == 1
-    assert "blocked-by cycle: DEF-LNCH-1 -> DEF-LNCH-2 -> DEF-LNCH-1" in out
+    assert "blocked-by cycle: DEF-LNCH-1-TEST -> DEF-LNCH-2-TEST -> DEF-LNCH-1-TEST" in out
 
-    solo = tmp_path / "defects-solo.md"
+    solo_dir = tmp_path / "solo"
+    solo_dir.mkdir()
+    solo = solo_dir / "defects-solo.md"
     solo.write_text(DEFECTS_HEADER, encoding="utf-8")
     run("author", str(solo), "--handle", "@kj", "--name", "Konrad Jelen")
     add_defect(solo, "token race")
     hand_line(solo, "DEF-LNCH-1", "blocked-by: DEF-LNCH-1")
     capsys.readouterr()
     assert run("check", str(solo)) != 0
-    assert "blocked-by cycle: DEF-LNCH-1 -> DEF-LNCH-1" in capsys.readouterr().out
+    assert "blocked-by cycle: DEF-LNCH-1-TEST -> DEF-LNCH-1-TEST" in capsys.readouterr().out
 
 
 # --- Overrides and cycle breaking -------------------------------------------
@@ -1587,8 +2246,8 @@ def test_a_blocked_by_cycle_is_broken_and_the_newest_link_holds(defects: Path, c
     two = sub_lines(defects, "DEF-LNCH-2")
     assert not [ln for ln in two if ln.startswith("blocked-by:")]
     assert re.search(
-        r'log: \S+ @kj blocked-by DEF-LNCH-3 removed, line read "DEF-LNCH-3 - needs the '
-        r'fix first" - cycle with newer link DEF-LNCH-3 blocked-by DEF-LNCH-1',
+        r'log: \S+ @kj blocked-by DEF-LNCH-3-TEST removed, line read "DEF-LNCH-3 - needs the '
+        r"fix first\" - cycle with newer link DEF-LNCH-3-TEST blocked-by DEF-LNCH-1-TEST",
         two[-1],
     )
     capsys.readouterr()
@@ -1607,22 +2266,25 @@ def test_an_override_is_written_on_both_items(defects: Path, capsys):
     relate(defects, "DEF-LNCH-3", overrides="DEF-LNCH-1 - the fix changed the rule")
     relate(defects, "DEF-LNCH-2", overridden="DEF-LNCH-3")
     assert "overrides: DEF-LNCH-1 - the fix changed the rule" in sub_lines(defects, "DEF-LNCH-3")
-    assert "overrides: DEF-LNCH-2" in sub_lines(defects, "DEF-LNCH-3")
-    assert "overridden-by: DEF-LNCH-3" in sub_lines(defects, "DEF-LNCH-1")
+    assert "overrides: DEF-LNCH-2-TEST" in sub_lines(defects, "DEF-LNCH-3")
+    assert "overridden-by: DEF-LNCH-3-TEST" in sub_lines(defects, "DEF-LNCH-1")
     assert "overridden-by: DEF-LNCH-3" in sub_lines(defects, "DEF-LNCH-2")
     capsys.readouterr()
     run("list", str(defects), "--columns", "id,overrides,overridden-by", "--status", "all")
     rows = table_rows(capsys.readouterr().out)
     assert rows[0] == ["Id", "Overrides", "Overridden by"]
     by_id = {r[0]: r[1:] for r in rows[1:]}
-    assert by_id["`DEF-LNCH-3`"] == ["`DEF-LNCH-1`, `DEF-LNCH-2`", "-"]
-    assert by_id["`DEF-LNCH-1`"] == ["-", "`DEF-LNCH-3`"]
+    assert by_id["`DEF-LNCH-3-TEST`"] == ["`DEF-LNCH-1-TEST`, `DEF-LNCH-2-TEST`", "-"]
+    assert by_id["`DEF-LNCH-1-TEST`"] == ["-", "`DEF-LNCH-3-TEST`"]
     run("list", str(defects), "--related-to", "DEF-LNCH-3", "--status", "all")
-    assert ids_of(table_rows(capsys.readouterr().out)) == ["DEF-LNCH-1", "DEF-LNCH-2"]
+    assert ids_of(table_rows(capsys.readouterr().out)) == [
+        "DEF-LNCH-1-TEST",
+        "DEF-LNCH-2-TEST",
+    ]
     run("refs", str(defects), "--id", "DEF-LNCH-1")
     out = capsys.readouterr().out
-    assert "DEF-LNCH-3 overrides -> DEF-LNCH-1" in out
-    assert "DEF-LNCH-1 overridden-by -> DEF-LNCH-3" in out
+    assert "DEF-LNCH-3-TEST overrides -> DEF-LNCH-1-TEST" in out
+    assert "DEF-LNCH-1-TEST overridden-by -> DEF-LNCH-3-TEST" in out
 
 
 def test_a_defect_overrides_a_criterion_and_back_across_files(
@@ -1633,17 +2295,17 @@ def test_a_defect_overrides_a_criterion_and_back_across_files(
     add_criterion(criteria, "password classes")
     relate(defects, "DEF-LNCH-1", overrides="ACC-AUTH-1")
     relate(criteria, "ACC-AUTH-2", overrides="DEF-LNCH-1")
-    assert "overridden-by: DEF-LNCH-1" in sub_lines(criteria, "ACC-AUTH-1")
+    assert "overridden-by: DEF-LNCH-1-TEST" in sub_lines(criteria, "ACC-AUTH-1")
     assert sub_lines(defects, "DEF-LNCH-1")[:2] == [
         "overrides: ACC-AUTH-1",
-        "overridden-by: ACC-AUTH-2",
+        "overridden-by: ACC-AUTH-2-TEST",
     ]
     capsys.readouterr()
     run("check", str(defects.parent))
     out = capsys.readouterr().out
     assert "ERROR" not in out
-    assert "warn  overridden-by ACC-AUTH-2 but still open" in out
-    assert "warn  overridden-by DEF-LNCH-1 but still open" in out
+    assert "warn  overridden-by ACC-AUTH-2-TEST but still open" in out
+    assert "warn  overridden-by DEF-LNCH-1-TEST but still open" in out
 
 
 def test_an_override_needs_its_target_beside_the_file(defects: Path):
@@ -1668,10 +2330,12 @@ def test_a_reversed_override_replaces_the_old_pair(defects: Path, criteria: Path
     relate(criteria, "ACC-AUTH-1", overrides="DEF-LNCH-1", author="@kj")
     acc, dfc = sub_lines(criteria, "ACC-AUTH-1"), sub_lines(defects, "DEF-LNCH-1")
     assert "overrides: DEF-LNCH-1" in acc and "overridden-by: DEF-LNCH-1" not in acc
-    assert "overridden-by: ACC-AUTH-1" in dfc and "overrides: ACC-AUTH-1" not in dfc
-    why = "cycle with newer link ACC-AUTH-1 overrides DEF-LNCH-1"
-    assert acc[-1].endswith(f"@kj overridden-by DEF-LNCH-1 removed - {why}")
-    assert dfc[-1].endswith(f"@kj overrides ACC-AUTH-1 removed - {why}")
+    assert "overridden-by: ACC-AUTH-1-TEST" in dfc and "overrides: ACC-AUTH-1" not in dfc
+    why = "cycle with newer link ACC-AUTH-1-TEST overrides DEF-LNCH-1-TEST"
+    assert acc[-1].endswith(f"@kj overridden-by DEF-LNCH-1-TEST removed - {why}")
+    assert dfc[-1].endswith(
+        f'@kj overrides ACC-AUTH-1-TEST removed, line read "ACC-AUTH-1" - {why}'
+    )
     capsys.readouterr()
     run("check", str(defects.parent))
     assert "ERROR" not in capsys.readouterr().out
@@ -1687,8 +2351,8 @@ def test_many_overrides_stay_and_only_the_cycle_is_cut(defects: Path, capsys):
     assert not [ln for ln in sub_lines(defects, "DEF-LNCH-2") if ln.startswith("overrides:")]
     assert not [ln for ln in sub_lines(defects, "DEF-LNCH-3") if ln.startswith("overridden-by:")]
     assert "overrides: DEF-LNCH-2, DEF-LNCH-4" in sub_lines(defects, "DEF-LNCH-1")
-    assert "overridden-by: DEF-LNCH-3" in sub_lines(defects, "DEF-LNCH-1")
-    assert "overridden-by: DEF-LNCH-1" in sub_lines(defects, "DEF-LNCH-4")
+    assert "overridden-by: DEF-LNCH-3-TEST" in sub_lines(defects, "DEF-LNCH-1")
+    assert "overridden-by: DEF-LNCH-1-TEST" in sub_lines(defects, "DEF-LNCH-4")
     capsys.readouterr()
     run("check", str(defects))
     assert "ERROR" not in capsys.readouterr().out
@@ -1703,12 +2367,17 @@ def test_relate_again_writes_only_the_missing_side(defects: Path, capsys):
     relate(defects, "DEF-LNCH-1", overridden="DEF-LNCH-2")
     assert defects.read_text(encoding="utf-8") == whole, "a repeat adds nothing"
 
-    defects.write_text(whole.replace("  - overridden-by: DEF-LNCH-2\n", ""), encoding="utf-8")
+    defects.write_text(whole.replace("  - overridden-by: DEF-LNCH-2-TEST\n", ""), encoding="utf-8")
     capsys.readouterr()
     assert run("check", str(defects)) != 0
     out = capsys.readouterr().out
-    assert "overrides DEF-LNCH-1, but DEF-LNCH-1 has no `overridden-by: DEF-LNCH-2` line" in out
-    assert f"run: pm-tools relate {defects} --id DEF-LNCH-2 --overrides DEF-LNCH-1" in out
+    assert (
+        "overrides DEF-LNCH-1-TEST, but DEF-LNCH-1-TEST has no "
+        "`overridden-by: DEF-LNCH-2-TEST` line" in out
+    )
+    assert (
+        f"run: pm-tools relate {defects} --id DEF-LNCH-2-TEST --overrides DEF-LNCH-1-TEST" in out
+    )
     relate(defects, "DEF-LNCH-2", overrides="DEF-LNCH-1")
     assert defects.read_text(encoding="utf-8") == whole
 
@@ -1723,7 +2392,10 @@ def test_check_errors_on_an_override_cycle_left_by_hand(defects: Path, capsys):
     assert run("check", str(defects)) != 0
     out = capsys.readouterr().out
     assert out.count("override cycle") == 1
-    assert "override cycle: DEF-LNCH-1 -> DEF-LNCH-2 -> DEF-LNCH-1; run relate again" in out
+    assert (
+        "override cycle: DEF-LNCH-1-TEST -> DEF-LNCH-2-TEST -> DEF-LNCH-1-TEST; "
+        "run relate again" in out
+    )
     # the documented repair: name the link that holds
     relate(defects, "DEF-LNCH-1", overrides="DEF-LNCH-2", author="@kj")
     capsys.readouterr()
@@ -1738,12 +2410,12 @@ def test_override_fields_pivot_and_json(defects: Path, capsys):
     capsys.readouterr()
     run("pivot", str(defects), "--rows", "overridden-by", "--values", "ids", "--status", "all")
     rows = table_rows(capsys.readouterr().out)
-    assert rows[1] == ["`DEF-LNCH-3`", "`DEF-LNCH-1`, `DEF-LNCH-2`"]
+    assert rows[1] == ["`DEF-LNCH-3-TEST`", "`DEF-LNCH-1-TEST`, `DEF-LNCH-2-TEST`"]
     assert rows[2][0] == "not overridden"
     run("list", str(defects), "--json", "--status", "all")
     doc = {d["id"]: d for d in json.loads(capsys.readouterr().out)}
-    assert doc["DEF-LNCH-3"]["overrides"] == ["DEF-LNCH-1", "DEF-LNCH-2"]
-    assert doc["DEF-LNCH-1"]["overridden-by"] == ["DEF-LNCH-3"]
+    assert doc["DEF-LNCH-3-TEST"]["overrides"] == ["DEF-LNCH-1-TEST", "DEF-LNCH-2-TEST"]
+    assert doc["DEF-LNCH-1-TEST"]["overridden-by"] == ["DEF-LNCH-3-TEST"]
 
 
 def unrelate(f: Path, item: str, *flags: str) -> int:
@@ -1760,7 +2432,7 @@ def test_unrelate_removes_a_link_and_logs_the_line_it_read(defects: Path, capsys
     assert "related: DEF-LNCH-3" in subs
     assert not any(s.startswith("related: DEF-LNCH-2") for s in subs)
     assert subs[-1].endswith(
-        'related DEF-LNCH-2 removed, line read "DEF-LNCH-2 - same boot path" - cause known'
+        'related DEF-LNCH-2-TEST removed, line read "DEF-LNCH-2 - same boot path" - cause known'
     )
 
 
@@ -1773,8 +2445,10 @@ def test_unrelate_removes_an_override_from_both_items_across_files(
     assert unrelate(criteria, "ACC-AUTH-1", "--overridden-by", "DEF-LNCH-1") == 0
     assert not any(s.startswith("overrides") for s in sub_lines(defects, "DEF-LNCH-1"))
     assert not any(s.startswith("overridden-by") for s in sub_lines(criteria, "ACC-AUTH-1"))
-    assert sub_lines(defects, "DEF-LNCH-1")[-1].endswith("overrides ACC-AUTH-1 removed")
-    assert sub_lines(criteria, "ACC-AUTH-1")[-1].endswith("overridden-by DEF-LNCH-1 removed")
+    assert sub_lines(defects, "DEF-LNCH-1")[-1].endswith(
+        'overrides ACC-AUTH-1-TEST removed, line read "ACC-AUTH-1"'
+    )
+    assert sub_lines(criteria, "ACC-AUTH-1")[-1].endswith("overridden-by DEF-LNCH-1-TEST removed")
     capsys.readouterr()
     assert run("check", str(defects.parent)) == 0
 
@@ -1787,15 +2461,13 @@ def test_unrelate_removes_a_dangling_link_that_check_errors_on(defects: Path, ca
     assert run("check", str(defects)) == 0
 
 
-def test_unrelate_refuses_a_link_the_item_does_not_carry_and_writes_nothing(
-    defects: Path, capsys
-):
+def test_unrelate_refuses_a_link_the_item_does_not_carry_and_writes_nothing(defects: Path, capsys):
     three_defects(defects, capsys)
     relate(defects, "DEF-LNCH-1", related="DEF-LNCH-2")
     before = defects.read_text(encoding="utf-8")
     with pytest.raises(SystemExit) as e:
         unrelate(defects, "DEF-LNCH-1", "--related", "DEF-LNCH-2", "--blocked-by", "DEF-LNCH-3")
-    assert "has no `blocked-by: DEF-LNCH-3` line" in str(e.value)
+    assert "has no `blocked-by: DEF-LNCH-3-TEST` line" in str(e.value)
     assert defects.read_text(encoding="utf-8") == before
 
 
@@ -1809,7 +2481,7 @@ def test_describe_text_file_replaces_the_whole_prose_block(defects: Path, tmp_pa
     assert run("describe", str(defects), "--category", "LNCH", "--text-file", str(block)) == 0
     text = defects.read_text(encoding="utf-8")
     assert "Cold start and the first turn" not in text
-    assert "- `POST launch` -> `{name}`\n\n- [ ] `DEF-LNCH-1`" in text
+    assert "- `POST launch` -> `{name}`\n\n- [ ] `DEF-LNCH-1-TEST`" in text
     block.write_text("Routes of the launch service.\n\n- `GET status` -> `{root}`\n")
     run("describe", str(defects), "--category", "LNCH", "--text-file", str(block))
     text = defects.read_text(encoding="utf-8")
@@ -1853,7 +2525,7 @@ def test_check_warns_when_an_open_item_is_blocked_by_a_finished_one(defects: Pat
     relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2")
     capsys.readouterr()
     assert run("check", str(defects)) == 0
-    assert "warn  blocked-by DEF-LNCH-2 is closed; the block no longer holds" in (
+    assert "warn  blocked-by DEF-LNCH-2-TEST is closed; the block no longer holds" in (
         capsys.readouterr().out
     )
     assert run("check", str(defects), "--strict") != 0
@@ -1872,7 +2544,8 @@ def test_check_warns_when_an_open_item_is_blocked_by_a_finished_one(defects: Pat
     capsys.readouterr()
     run("check", str(defects))
     assert (
-        "blocked-by DEF-LNCH-3 is rejected; the block no longer holds" in capsys.readouterr().out
+        "blocked-by DEF-LNCH-3-TEST is rejected; the block no longer holds"
+        in capsys.readouterr().out
     )
     close_with(defects, "DEF-LNCH-1", "fixed on 413")
     capsys.readouterr()
@@ -1969,12 +2642,48 @@ def test_check_errors_on_an_id_duplicated_across_files(tmp_path: Path, capsys):
     assert run("check", str(a)) == 0
 
 
+def coded_defect_file(f: Path, ident: str, title: str) -> None:
+    """Write one coded defect with the sub-lines check demands."""
+    f.write_text(
+        DEFECTS_HEADER
+        + "\n## Authors\n\n- `@kj` Konrad\n\n## Ladder `LAD`\n\nladder\n\n"
+        + f"- [ ] `{ident}` **{title}** - MAJOR; step\n"
+        + "  - repro: r\n  - test-tags: unit\n"
+        + "  - log: 2026-08-01T10:00:00Z @kj filed\n",
+        encoding="utf-8",
+    )
+
+
+def test_check_errors_on_two_roots_sharing_a_base_id_across_files(tmp_path: Path, capsys):
+    """A base id names one family; a second root claiming it makes links ambiguous."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    a, b = docs / "defects-a.md", docs / "defects-b.md"
+    coded_defect_file(a, "DEF-LAD-1-ALPHA", "step 1")
+    coded_defect_file(b, "DEF-LAD-1-BETA", "step 1 elsewhere")
+    assert run("check", str(docs)) == 1
+    out = capsys.readouterr().out
+    assert "duplicate base id DEF-LAD-1" in out
+    assert "DEF-LAD-1-ALPHA" in out and "DEF-LAD-1-BETA" in out
+    assert str(a) in out and str(b) in out
+
+
+def test_check_passes_a_root_and_its_regression_in_two_files(tmp_path: Path, capsys):
+    """A regression shares its root's base; it is not a second root."""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    a, b = docs / "defects-a.md", docs / "defects-b.md"
+    coded_defect_file(a, "DEF-LAD-1-ALPHA", "step 1")
+    coded_defect_file(b, "DEF-LAD-1-ALPHA-1", "step 1 again")
+    assert run("check", str(docs)) == 0, capsys.readouterr().out
+
+
 def test_search_takes_its_query_after_an_option_and_never_a_path(defects: Path, capsys):
     three_defects(defects, capsys)
     assert run("search", str(defects), "--top", "1", "splash") == 0
-    assert table_rows(capsys.readouterr().out)[1][1] == "`DEF-LNCH-2`"
+    assert table_rows(capsys.readouterr().out)[1][1] == "`DEF-LNCH-2-TEST`"
     assert run("search", str(defects), "--json", "token race") == 0
-    assert '"id": "DEF-LNCH-1"' in capsys.readouterr().out
+    assert '"id": "DEF-LNCH-1-TEST"' in capsys.readouterr().out
     with pytest.raises(SystemExit) as ex:
         run("search", str(defects), "--top", "1", "splash", "--bogus")
     assert ex.value.code == 2
@@ -1994,6 +2703,8 @@ def test_add_refuses_an_unrated_criterion(criteria: Path):
             str(criteria),
             "--category",
             "AUTH",
+            "--code",
+            "TEST",
             "--name",
             "Authentication",
             "--author",
@@ -2015,6 +2726,8 @@ def test_importance_is_refused_on_a_defect(defects: Path):
             str(defects),
             "--category",
             "LNCH",
+            "--code",
+            "TEST",
             "--name",
             "Launch",
             "--author",
@@ -2227,7 +2940,7 @@ def test_tags_are_written_upper_case_and_filtered_in_any_case(defects: Path, cap
     capsys.readouterr()
     run("list", str(defects), "--tag", "functional")
     out = capsys.readouterr().out
-    assert "`DEF-LNCH-1`" in out and "(tag FUNCTIONAL)" in out, "--tag reads in any case"
+    assert "`DEF-LNCH-1-TEST`" in out and "(tag FUNCTIONAL)" in out, "--tag reads in any case"
 
 
 def test_a_legacy_lower_case_tag_line_still_parses(defects: Path, capsys):
@@ -2237,7 +2950,7 @@ def test_a_legacy_lower_case_tag_line_still_parses(defects: Path, capsys):
     capsys.readouterr()
     run("list", str(defects), "--tag", "INTEGRATION", "--columns", "id,tags")
     rows = table_rows(capsys.readouterr().out)
-    assert rows[1] == ["`DEF-LNCH-1`", "INTEGRATION"], "read in any case, printed upper-case"
+    assert rows[1] == ["`DEF-LNCH-1-TEST`", "INTEGRATION"], "read in any case, printed upper-case"
 
 
 def test_coverage_is_a_grid_of_categories_by_tags_with_no_test_last(
@@ -2429,6 +3142,8 @@ def test_upgrade_nested_item_hint_command_is_accepted_by_add(tmp_path: Path, cap
             str(f),
             "--category",
             "LNCH",
+            "--code",
+            "TEST",
             "--name",
             "Launch",
             "--title",
@@ -2572,7 +3287,7 @@ def test_a_foreign_lock_warns_once_and_every_write_lands_unchanged(defects: Path
         assert run(argv[0], str(defects), "--id", "DEF-LNCH-1", *argv[1:]) == 0
         err = capsys.readouterr().err
         assert err.count("\n") == 1, f"{argv[0]}: exactly one warning line"
-        assert f"DEF-LNCH-1 locked by @xy until {until}" in err
+        assert f"DEF-LNCH-1-TEST locked by @xy until {until}" in err
     body = defects.read_text(encoding="utf-8")
     assert "@kj attempted: retry - did NOT work" in body
     assert "**token race on relaunch**" in body
@@ -2605,7 +3320,7 @@ def test_close_reject_reopen_and_remove_warn_and_proceed_on_a_foreign_lock(defec
     )
     assert "locked by @xy" in capsys.readouterr().err
     body = defects.read_text(encoding="utf-8")
-    assert "- [x] `DEF-LNCH-1`" in body and "- [-] `DEF-LNCH-2`" in body
+    assert "- [x] `DEF-LNCH-1-TEST`" in body and "- [-] `DEF-LNCH-2-TEST`" in body
     assert lock_lines(defects) == [], "close and reject clear the lock, active or not"
     assert not any("lock" in ln for ln in log_lines(defects)), "clearing is not logged"
     # reopen, then remove, on a fresh foreign lock
@@ -2615,10 +3330,10 @@ def test_close_reject_reopen_and_remove_warn_and_proceed_on_a_foreign_lock(defec
     # reopen on an already-open item still runs the shared warn, and leaves the lock
     assert run("reopen", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj") == 0
     err = capsys.readouterr().err
-    assert err.count("\n") == 1 and "DEF-LNCH-2 locked by @xy" in err
+    assert err.count("\n") == 1 and "DEF-LNCH-2-TEST locked by @xy" in err
     assert len(lock_lines(defects)) == 1, "only close and reject clear the lock"
     assert run("remove", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj") == 0
-    assert "DEF-LNCH-2 locked by @xy" in capsys.readouterr().err
+    assert "DEF-LNCH-2-TEST locked by @xy" in capsys.readouterr().err
     assert "DEF-LNCH-2" not in defects.read_text(encoding="utf-8")
 
 
@@ -2658,7 +3373,7 @@ def test_check_errors_on_a_malformed_or_duplicate_lock_and_warns_on_a_finished_i
         1,
     )
     # a hand-written lock on the closed item
-    at = body.index("- [x] `DEF-LNCH-2`")
+    at = body.index("- [x] `DEF-LNCH-2-TEST`")
     at = body.index("  - log: ", at)
     body = body[:at] + f"  - lock: {future} @xy\n" + body[at:]
     defects.write_text(body, encoding="utf-8")
@@ -2692,7 +3407,7 @@ def test_unlock_clears_one_every_or_only_the_expired_locks(defects: Path, capsys
     assert [ln.split()[3] for ln in lock_lines(defects)] == ["@xy"]
     assert run("unlock", str(defects), "--author", "@kj", "--all") == 0
     err = capsys.readouterr().err
-    assert err.count("\n") == 1 and "DEF-LNCH-2 was locked by @xy" in err, (
+    assert err.count("\n") == 1 and "DEF-LNCH-2-TEST was locked by @xy" in err, (
         "warned once, cleared anyway"
     )
     assert lock_lines(defects) == []
@@ -2714,9 +3429,9 @@ def test_lock_is_a_field_and_an_expired_one_reads_as_a_dash(defects: Path, capsy
     rows = table_rows(capsys.readouterr().out)
     assert rows[0] == ["Id", "Lock"]
     assert rows[1:] == [
-        ["`DEF-LNCH-2`", f"@xy until {xy}"],
-        ["`DEF-LNCH-1`", f"@kj until {kj}"],
-        ["`DEF-LNCH-3`", "-"],
+        ["`DEF-LNCH-2-TEST`", f"@xy until {xy}"],
+        ["`DEF-LNCH-1-TEST`", f"@kj until {kj}"],
+        ["`DEF-LNCH-3-TEST`", "-"],
     ], "soonest expiry first, the expired lock is no lock"
     run("pivot", str(defects), "--rows", "lock", "--cols", "status")
     rows = table_rows(capsys.readouterr().out)
@@ -2735,11 +3450,13 @@ def test_locked_and_locked_by_narrow_every_query(defects: Path, capsys):
     capsys.readouterr()
     run("list", str(defects), "--locked")
     out = capsys.readouterr().out
-    assert ids_of(table_rows(out)) == ["DEF-LNCH-1", "DEF-LNCH-2"], "expired is not active"
+    assert ids_of(table_rows(out)) == ["DEF-LNCH-1-TEST", "DEF-LNCH-2-TEST"], (
+        "expired is not active"
+    )
     assert "(locked)" in out
     run("list", str(defects), "--locked-by", "@xy")
     out = capsys.readouterr().out
-    assert ids_of(table_rows(out)) == ["DEF-LNCH-2"] and "(locked by @xy)" in out
+    assert ids_of(table_rows(out)) == ["DEF-LNCH-2-TEST"] and "(locked by @xy)" in out
     run("report", str(defects), "--locked-by", "@kj", "--plain")
     assert "1 open / 0 closed / 0 rejected" in capsys.readouterr().out
     run("pivot", str(defects), "--rows", "severity", "--locked")
@@ -2771,10 +3488,10 @@ def test_report_marks_wip_rows_and_counts_them_in_a_worked_on_column(defects: Pa
     assert "| Launch `UI` | 1 | 0 | 0 | 0 | 1 |" in out, "an expired lock counts nothing"
     assert "| **Total** | 3 | 1 | 0 | 0 | 3 |" in out
     rows = table_rows(out)
-    assert rows[-1][0] == "`DEF-UI-3`" and rows[-1][-1] == "-"
-    (wip,) = [r for r in rows if r[0] == "`DEF-LNCH-1`"]
+    assert rows[-1][0] == "`DEF-UI-3-TEST`" and rows[-1][-1] == "-"
+    (wip,) = [r for r in rows if r[0] == "`DEF-LNCH-1-TEST`"]
     assert wip[-1] == f"wip @kj until {until}"
-    (other,) = [r for r in rows if r[0] == "`DEF-LNCH-2`"]
+    (other,) = [r for r in rows if r[0] == "`DEF-LNCH-2-TEST`"]
     assert other[-1] == "-"
     run("report", str(defects), "--detail", "--category", "LNCH")
     assert f"- lock: {until} @kj" in capsys.readouterr().out, "detail prints the sub-line"
@@ -2791,8 +3508,8 @@ def test_json_carries_the_lock_as_a_record_or_null(defects: Path, capsys):
     capsys.readouterr()
     run("list", str(defects), "--json")
     recs = {r["id"]: r for r in json.loads(capsys.readouterr().out)}
-    assert recs["DEF-LNCH-1"]["lock"] == {"by": "@kj", "until": until, "note": "bisecting"}
-    assert recs["DEF-LNCH-2"]["lock"] is None, "expired is null"
+    assert recs["DEF-LNCH-1-TEST"]["lock"] == {"by": "@kj", "until": until, "note": "bisecting"}
+    assert recs["DEF-LNCH-2-TEST"]["lock"] is None, "expired is null"
     run("report", str(defects), "--json")
     (doc,) = json.loads(capsys.readouterr().out)
     assert doc["summary"]["rows"][0]["worked_on"] == 1
@@ -2820,7 +3537,7 @@ def test_a_read_announces_the_items_someone_is_working_on(defects: Path, capsys)
     run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy", "--note", "bisecting")
     until = lock_lines(defects)[0].split()[2]
     capsys.readouterr()
-    notice = f"1 item(s) currently worked on: DEF-LNCH-1 by @xy until {until}\n"
+    notice = f"1 item(s) currently worked on: DEF-LNCH-1-TEST by @xy until {until}\n"
     reads = [
         ["report", str(defects)],
         ["list", str(defects)],
@@ -2852,7 +3569,7 @@ def test_the_pick_up_notice_names_ten_items_at_most(defects: Path, capsys):
     capsys.readouterr()
     run("list", str(defects))
     err = capsys.readouterr().err
-    assert err.startswith("12 item(s) currently worked on: DEF-LNCH-1 by @xy until ")
+    assert err.startswith("12 item(s) currently worked on: DEF-LNCH-1-TEST by @xy until ")
     assert err.count("DEF-LNCH-") == 10, "ten ids at most"
     assert err.rstrip().endswith(", +2 more") and "DEF-LNCH-11" not in err
 
@@ -2866,7 +3583,8 @@ def test_taking_another_authors_lock_over_is_named_a_transfer(defects: Path, cap
     capsys.readouterr()
     assert run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy") == 0, "never refused"
     assert capsys.readouterr().err == (
-        f"TRANSFER: DEF-LNCH-1 was locked by @kj until {until} - you are taking it over; ask @kj\n"
+        f"TRANSFER: DEF-LNCH-1-TEST was locked by @kj until {until} - "
+        f"you are taking it over; ask @kj\n"
     )
     (line,) = lock_lines(defects)
     assert line.endswith(" @xy taken over from @kj"), "the previous holder stays on the item"
@@ -2877,7 +3595,7 @@ def test_taking_another_authors_lock_over_is_named_a_transfer(defects: Path, cap
         run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--note", "mine now")
         == 0
     )
-    assert f"TRANSFER: DEF-LNCH-1 was locked by @xy until {until}" in capsys.readouterr().err
+    assert f"TRANSFER: DEF-LNCH-1-TEST was locked by @xy until {until}" in capsys.readouterr().err
     assert lock_lines(defects)[0].endswith(" @kj mine now")
 
 
@@ -2893,12 +3611,14 @@ def test_clearing_another_authors_lock_is_named_a_transfer(defects: Path, capsys
     capsys.readouterr()
     assert run("unlock", str(defects), "--author", "@kj", "--id", "DEF-LNCH-1") == 0
     assert capsys.readouterr().err == (
-        f"TRANSFER: DEF-LNCH-1 was locked by @xy until {one} - you are clearing it; ask @xy\n"
+        f"TRANSFER: DEF-LNCH-1-TEST was locked by @xy until {one} - you are clearing it; ask @xy\n"
     )
     assert run("unlock", str(defects), "--author", "@kj", "--all") == 0
     err = capsys.readouterr().err
     assert err.count("\n") == 1, "one line per foreign active lock, none for your own"
-    assert f"TRANSFER: DEF-LNCH-3 was locked by @xy until {three} - you are clearing it" in err
+    assert (
+        f"TRANSFER: DEF-LNCH-3-TEST was locked by @xy until {three} - you are clearing it" in err
+    )
     assert lock_lines(defects) == []
 
 
@@ -2913,7 +3633,7 @@ def test_amend_keeps_every_earlier_wording_in_the_log(defects: Path, capsys):
             run("amend", str(defects), "--id", "DEF-LNCH-1", "--title", name, "--author", "@kj")
             == 0
         )
-        assert "DEF-LNCH-1 amended title" in capsys.readouterr().out
+        assert "DEF-LNCH-1-TEST amended title" in capsys.readouterr().out
     run(
         "amend",
         str(defects),
@@ -2940,7 +3660,7 @@ def test_amend_keeps_every_earlier_wording_in_the_log(defects: Path, capsys):
     capsys.readouterr()
     assert run("search", str(defects), "token refresh race") == 0
     out = capsys.readouterr().out
-    assert table_rows(out)[1][1] == "`DEF-LNCH-1`" and "title" in table_rows(out)[1][4]
+    assert table_rows(out)[1][1] == "`DEF-LNCH-1-TEST`" and "title" in table_rows(out)[1][4]
     capsys.readouterr()
     assert run("search", str(defects), "login hangs") == 0
     assert table_rows(capsys.readouterr().out)[1][4] == "log", (
@@ -2960,6 +3680,8 @@ def test_a_line_break_in_free_text_is_written_as_backslash_n(defects: Path, caps
             str(defects),
             "--category",
             "LNCH",
+            "--code",
+            "TEST",
             "--name",
             "Launch",
             "--author",
@@ -2986,7 +3708,7 @@ def test_a_line_break_in_free_text_is_written_as_backslash_n(defects: Path, caps
     assert run("check", str(defects)) == 0
     capsys.readouterr()
     assert run("list", str(defects), "--columns", "id,title,body,hint") == 0
-    assert ["`DEF-LNCH-1`", "first\\nsecond", "x\\ny", "step 1\\nstep 2"] == table_rows(
+    assert ["`DEF-LNCH-1-TEST`", "first\\nsecond", "x\\ny", "step 1\\nstep 2"] == table_rows(
         capsys.readouterr().out
     )[1][:4]
 
@@ -3021,8 +3743,8 @@ def test_attach_records_checksum_and_edit_stamp_and_check_reports_drift(
         == 0
     )
     out = capsys.readouterr().out
-    assert "DEF-LNCH-1 attached shots/login screen.png sha256:" in out
-    assert "DEF-LNCH-1 attached notes.md sha256:" in out
+    assert "DEF-LNCH-1-TEST attached shots/login screen.png sha256:" in out
+    assert "DEF-LNCH-1-TEST attached notes.md sha256:" in out
     body = defects.read_text(encoding="utf-8")
     att = [ln.strip() for ln in body.splitlines() if ln.strip().startswith("- attachment:")]
     assert len(att) == 2 and att[0].startswith("- attachment: shots/login screen.png sha256:")
@@ -3125,7 +3847,19 @@ def test_a_writeup_over_50_words_is_refused_without_a_reason(defects: Path):
     add_defect(defects, "login hangs")
     before = defects.read_text(encoding="utf-8")
     writes = [
-        ["add", "--category", "LNCH", "--severity", "MINOR", "--title", "t", "--text", LONG],
+        [
+            "add",
+            "--category",
+            "LNCH",
+            "--code",
+            "TEST",
+            "--severity",
+            "MINOR",
+            "--title",
+            "t",
+            "--text",
+            LONG,
+        ],
         ["log", "--id", "DEF-LNCH-1", "--event", LONG],
         ["edit", "--id", "DEF-LNCH-1", "--text", LONG],
         ["amend", "--id", "DEF-LNCH-1", "--title", LONG],
@@ -3219,27 +3953,31 @@ def test_add_does_not_double_a_level_word_the_text_opens_with(defects: Path, cri
     """DEF-PMGT-39. add prefixed the level to a text that already opened with it."""
     assert add_defect(defects, "token race") == 0
     run(
-        "add", str(defects), "--category", "LNCH", "--author", "@kj", "--severity", "MAJOR",
+        "add", str(defects), "--category", "LNCH", "--code", "TEST", "--author", "@kj",
+        "--severity", "MAJOR",
         "--title", "splash hang", "--text", "MAJOR; splash never dismissed",
     )  # fmt: skip
     assert "**splash hang** - MAJOR; splash never dismissed\n" in defects.read_text(
         encoding="utf-8"
     )
     run(
-        "add", str(criteria), "--category", "AUTH", "--name", "Auth", "--author", "@kj",
+        "add", str(criteria), "--category", "AUTH", "--code", "TEST", "--name", "Auth",
+        "--author", "@kj",
         "--importance", "HIGH", "--title", "login", "--text", "high; the login form submits",
     )  # fmt: skip
     assert "**login** - HIGH; the login form submits\n" in criteria.read_text(encoding="utf-8")
     # a different level word opening the text is prose, and stays
     run(
-        "add", str(defects), "--category", "LNCH", "--author", "@kj", "--severity", "MAJOR",
+        "add", str(defects), "--category", "LNCH", "--code", "TEST", "--author", "@kj",
+        "--severity", "MAJOR",
         "--title", "resume", "--text", "Normal, degraded mode drops frames on resume",
     )  # fmt: skip
     assert "- MAJOR; Normal, degraded mode drops frames on resume\n" in defects.read_text(
         encoding="utf-8"
     )
     run(
-        "add", str(criteria), "--category", "AUTH", "--author", "@kj", "--importance", "HIGH",
+        "add", str(criteria), "--category", "AUTH", "--code", "TEST", "--author", "@kj",
+        "--importance", "HIGH",
         "--title", "badges", "--text", "Low, medium and high tiers each render their own badge",
     )  # fmt: skip
     assert "- HIGH; Low, medium and high tiers each render their own badge\n" in (
@@ -3248,7 +3986,8 @@ def test_add_does_not_double_a_level_word_the_text_opens_with(defects: Path, cri
     # a `LEVEL;` heading of another level or an alias is a heading, and the flag replaces it
     for opening in ("MINOR; frames drop", "SEV2; frames drop"):
         run(
-            "add", str(defects), "--category", "LNCH", "--author", "@kj", "--severity", "MAJOR",
+            "add", str(defects), "--category", "LNCH", "--code", "TEST", "--author", "@kj",
+            "--severity", "MAJOR",
             "--title", opening[:4], "--text", opening,
         )  # fmt: skip
         assert f"**{opening[:4]}** - MAJOR; frames drop\n" in defects.read_text(encoding="utf-8")
@@ -3283,7 +4022,8 @@ def test_edit_keeps_an_opening_prose_word_under_a_level_flag(defects: Path, crit
     run("edit", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--severity", "MAJOR")
     assert "- MAJOR; frames drop on resume\n" in defects.read_text(encoding="utf-8")
     run(
-        "add", str(criteria), "--category", "AUTH", "--name", "Auth", "--author", "@kj",
+        "add", str(criteria), "--category", "AUTH", "--code", "TEST", "--name", "Auth",
+        "--author", "@kj",
         "--importance", "HIGH", "--title", "badges", "--text", "each tier has a badge",
     )  # fmt: skip
     run(

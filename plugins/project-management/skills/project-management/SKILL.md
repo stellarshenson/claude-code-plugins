@@ -27,11 +27,11 @@ Both branches exit non-zero and neither is advisory: an absent library (`FATAL`)
 
 ## Disciplines - load only the one in play
 
-| Discipline          | Load                                | Store               | Ids                   |
-|---------------------|-------------------------------------|---------------------|-----------------------|
-| Acceptance criteria | `references/acceptance-criteria.md` | `docs/acc-crit*.md` | `ACC-<CAT>-<N>`       |
-| Defects             | `references/defect-tracking.md`     | `docs/defects*.md`  | `DEF-<CAT>-<N>`       |
-| Legacy doc upgrade  | `references/upgrade.md`             | either              | assigned by `upgrade` |
+| Discipline          | Load                                | Store               | Ids                        |
+|---------------------|-------------------------------------|---------------------|----------------------------|
+| Acceptance criteria | `references/acceptance-criteria.md` | `docs/acc-crit*.md` | `ACC-<CAT>-<N>-<CODE>`     |
+| Defects             | `references/defect-tracking.md`     | `docs/defects*.md`  | `DEF-<CAT>-<N>-<CODE>`     |
+| Legacy doc upgrade  | `references/upgrade.md`             | either              | assigned by `upgrade`      |
 | Merge conflicts     | `references/conflicts.md`           | either              | resolved, never renumbered |
 
 Everything below is shared. Read one discipline file, not both. `references/reports.md` carries the report shapes, loaded when a report is asked for.
@@ -42,7 +42,7 @@ Nothing is recorded in two places, so nothing drifts. The item's text, its check
 
 | Derived fact           | Computed by                |
 |------------------------|----------------------------|
-| Next free number       | highest id in the file, plus one |
+| Next free number       | one past the highest in the file or in a sibling tracker for the same prefix and category |
 | Backlinks, outbound links, blocker chain | `pm-tools refs --id` |
 | Index, contents, counts| `pm-tools list-categories` |
 | Test coverage per tag  | `pm-tools coverage`        |
@@ -57,13 +57,17 @@ Consequences, stated once:
 
 ## Ids
 
-`ACC-AUTH-102`, `DEF-LNCH-3`. Type prefix, category code, number.
+`ACC-SVG-1-CONSTRUCT`, `DEF-LNCH-3-PARSER`. Type prefix, category code, number, then the item code.
 
 - **Type prefix** - `ACC` criterion, `DEF` defect; fixed by the discipline
 - **Category code** - uppercase mnemonic, declared once as inline code at the end of the `##` heading, never re-derived per item. Three to five letters, six the ceiling; it must read as a word, so lengthen the tool's proposal whenever a letter or two spells the actual thing - `FRONT` over `FRON`, `GUARD` over `GUAR` - and never shrink it to bare initials
-- **Number** - unique across the whole document, not per category; `add` takes the highest in the file plus one
-- **Permanent once assigned** - an item that moves category keeps its id. The category segment records where it was born; the `##` section it sits under is the live truth. `check` deliberately does not compare the two
+- **Number** - unique across the whole document, not per category; `add` takes one past the highest in the file or in a sibling tracker for the same prefix and category
+- **Item code** - one or two hyphen-separated uppercase segments naming what the item is about (`PARSER`, `RETRY-LOOP`), required on `add --code` and read from the id everywhere. It names the item's subject at the id, and it is what `--code`, the `code` column and `pivot --rows code` read
+- **Permanent once assigned** - an item that moves category keeps its id, and `edit` / `amend` never drop the code. The category segment records where it was born; the `##` section it sits under is the live truth. `check` deliberately does not compare the two
 - **Never reused** - no renumbering, no recycling from a closed item
+- **Resolution by base id** - a link or `--id` may name `DEF-LNCH-3` without the code; every reader resolves it to the item, and the full id always wins when both shapes exist. `check` warns on an item whose id carries no code
+- **One root per base id** - a base id names one family: its root and every regression. Two roots claiming the same base with different full ids make a base-id link ambiguous, so `check` errors and names both files and ids; a regression shares its root's base and is not a second root
+- **Migration and correction** - an existing document gains codes with `migrate-codes`; a wrong code is corrected with `rename-code`, which rewrites every relation line that names the old full id. Mapping format, order of operations and checks: `references/codes.md`
 
 ## Line format
 
@@ -135,7 +139,7 @@ Four things those show: everyday words for the behaviour, exact numbers and sett
 
 `reject` demands a reason and writes it to the log. `check` warns on a rejected item with no reason; `report` puts every reason in its own table. `reopen` returns a rejected item to open.
 
-Reopening a **closed defect** does not reverse the closure - it files a regression. `reopen DEF-LNCH-3` leaves the parent closed with its evidence intact and opens `DEF-LNCH-3-1`, carrying the same title and severity; the next time, `-2`. Ordinals are flat, so reopening `DEF-LNCH-3-1` gives `DEF-LNCH-3-2`, never `-1-1`, and the highest ordinal is the number of times that defect has come back. `report` prints the total above the SUMMARY grid, which is how the file answers how regression-prone the system is. A rejected defect reopens normally - nothing was fixed, so nothing regressed - and criteria are unaffected.
+Reopening a **closed defect** does not reverse the closure - it files a regression. `reopen DEF-LNCH-3-PARSER` leaves the parent closed with its evidence intact and opens `DEF-LNCH-3-PARSER-1`, carrying the same title and severity; the next time, `-2`. Ordinals are flat, so reopening `DEF-LNCH-3-PARSER-1` gives `DEF-LNCH-3-PARSER-2`, never `-1-1`, and the highest ordinal is the number of times that defect has come back. `report` prints the total above the SUMMARY grid, which is how the file answers how regression-prone the system is. A rejected defect reopens normally - nothing was fixed, so nothing regressed - and criteria are unaffected.
 
 ## Category
 
@@ -190,7 +194,7 @@ Every entry is authored. The handle sits on the log line between the stamp and t
 
 Four line kinds: `related`, `blocked-by`, and the pair `overrides` / `overridden-by`.
 
-- **Free text is welcome around the ids** - the parser anchors on the id shape `(ACC|DEF)-[A-Z]{2,6}-<N>`, so `- related: DEF-LNCH-3 - the race this covers` reads as both a link and a sentence
+- **Free text is welcome around the ids** - the parser anchors on the id shape `(ACC|DEF)-[A-Z]{2,6}-<N>[-<CODE>]`, so `- related: DEF-LNCH-3 - the race this covers` reads as both a link and a sentence; a base id resolves to the coded item
 - **Cross-type** - a criterion may cite a defect and the other way round
 - **One line per `relate` call** - lines are never merged, because a merge would bury a new id inside the previous line's prose; `check` and `refs` union them
 - **Links, not mentions** - only a relation line is a link; an id in a log line is prose. `refs`, `--related-to` and `--blocked` read links; `--grep` and `search` read prose
@@ -254,13 +258,13 @@ Read:
 | `refs --id ID` | what points at `ID`, what `ID` points at, and its blocker chain |
 | `check` | conformity gate; non-zero exit on errors, `--strict` also fails on warnings |
 
-`--json` on any of the first seven returns the same facts as data. The filters `--category`, `--severity`, `--importance`, `--status`, `--author`, `--tag` (any case), `--regressions`, `--grep`, `--blocked`, `--related-to`, `--locked`, `--locked-by` and the `--dates` / `--since` / `--until` window are the same on `report`, `coverage`, `list`, `pivot` and `search`.
+`--json` on any of the first seven returns the same facts as data. The filters `--category`, `--code`, `--severity`, `--importance`, `--status`, `--author`, `--tag` (any case), `--regressions`, `--grep`, `--blocked`, `--related-to`, `--locked`, `--locked-by` and the `--dates` / `--since` / `--until` window are the same on `report`, `coverage`, `list`, `pivot` and `search`.
 
 Write - one file per call, and `--author` on every one of them. `relate` and `unrelate` alone may write a second tracker beside the first: the other line of an override, or the older link of a cycle `relate` breaks:
 
 | Command | Does |
 |---------|------|
-| `add` | next id, appended under the category; creates the category when named; `--severity` mandatory on a defect, `--importance` mandatory on a criterion, each refused on the other |
+| `add` | next id, appended under the category; `--category` names the section, `--code` is required and becomes the last segment of the id; creates the category when named; `--severity` mandatory on a defect, `--importance` mandatory on a criterion, each refused on the other |
 | `edit` | correct title, body, severity, importance, hint, tags or evidence; the log line keeps each value it replaced (`edited severity "MAJOR" -> "CRITICAL"`) |
 | `amend` | reword title or body; the log line keeps the old wording (`amended title "old" -> "new"`), so an item renamed three times shows three lines under the current one; report, list and search read the current wording |
 | `author` | add or update a roster entry; required before that handle can write |
@@ -276,6 +280,8 @@ Write - one file per call, and `--author` on every one of them. `relate` and `un
 | `lock` / `unlock` | write or remove the `lock:` line; `lock` refuses only on a closed or rejected item, neither is logged |
 | `ack` | a hand edit of a tracker: without `--token`, print the token for the file as it is now; with it, log the reason in `pm-hand-edits.md` beside the file, which the guard hook reads |
 | `upgrade` | rebuild a legacy doc to this schema, dry run first; `--apply` always applies the safe rewrites, exits 0, and prints one `HINT` with the exact command per content problem; `references/upgrade.md` |
+| `migrate-codes` | append the code each `BASE-ID CODE` mapping line names to that item's id, before any regression ordinal, logging one `coded CODE` line per changed item; idempotent; reports uncovered items, mapping ids that match no item and items carrying a different code; `references/codes.md` |
+| `rename-code` | replace an item's code and rewrite every `related`, `blocked-by`, `overrides` and `overridden-by` line in the scanned trackers that names the old full id; `references/codes.md` |
 
 Every free-text argument is one line of the file; a real line break inside one is written as the two characters `\n`, never dropped.
 

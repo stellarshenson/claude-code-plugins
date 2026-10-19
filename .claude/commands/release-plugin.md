@@ -1,4 +1,4 @@
-# Release
+# Release Plugin
 
 Full release pipeline: lint + format, publish the library, sync plugins to its version, journal, commit, push. Use when shipping a finished session's work as a marketplace release.
 
