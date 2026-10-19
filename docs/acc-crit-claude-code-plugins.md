@@ -701,8 +701,8 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-29T15:57:37Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded INVARIANTS
 - [x] `ACC-REVIEW-62-PROMPT-DATA` **Method in the agent files, data in the script prompts** - HIGH; agents/adjudicator.md owns materiality triage, revert-before-refine, the change budget and the anti-machinery rule; agents/adversarial-reviewer.md owns the materiality question and the remedy discipline; the workflow script's prompts pass only the bar, the findings, the prior record, the closures, the delta and the computed numbers - no method text is stated in both places; every guardrail assertion that pinned method prose in the script is relocated to the file that now carries it, never deleted
+  - related: ACC-REVIEW-72-INSTRUMENTS
   - evidence: Ownership half verified by an independent verifier: rewording eleven method phrases in agents/adjudicator.md fails five tests, and rewording them in agents/adversarial-reviewer.md fails three - the relocations are real, not vacuous. Duplication half now guarded by test_method_is_not_stated_in_both_the_script_and_an_agent_file, proven non-vacuous against the verifier's own insertion of adjudicator method into the script prompt. Both plain-prose duplications removed from the script ('Critique only - never modify any file', the graphBlock fallback sentence), safe because the script sets agentType for both roles so the agent files load; the never-edits assertion was relocated to both agent files, never deleted. Residual and deliberately accepted: the material and remedy FINDINGS_SCHEMA field descriptions restate the reviewer's rule - they are the structured-output data contract the script must carry to validate returns, and removing them would leave the schema undocumented at the point of use
-  - related: ACC-REVIEW-72
   - test: test_adversarial_workflow_script.py guardrails relocated to the agent files; control-flow assertions unchanged
   - test-tags: UNIT
   - log: 2026-08-29T11:50:35Z @kj added
@@ -712,6 +712,7 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-29T15:49:02Z @kj reopened: RETRACTED on an independent verifier: PARTIAL. The ownership half holds and is genuinely guarded (breaking eleven method phrases in the agent files fails five tests). The 'no method text in both places' half was UNGUARDED - the verifier inserted eight lines of the adjudicator's method into the script prompt and the whole suite stayed green - and four live duplication sites existed. Now: guardrail added (test_method_is_not_stated_in_both_the_script_and_an_agent_file, proven to fail on that same insertion), and the two plain-prose duplications removed from the script ('Critique only - never modify any file' at the reviewer prompt, the graph fallback sentence in graphBlock), with the never-edits assertion relocated to both agent files rather than deleted. Confirmed the removal is safe: the script sets agentType for both roles, so the agent files do load; evidence retired: verified 2026-08-29 after wf_182b59db-622; suite 1051 passed, ruff clean; the adjudicator prompt block is 13 lines carrying data only (role sentence, bar, prior record, findings, closures, CHANGE BUDGET: N); materiality triage, REVERT CANDIDATE and contested-semantics rules live in agents/adjudicator.md; git diff shows no schema or control-flow change in the script
   - log: 2026-08-29T15:57:37Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded PROMPT-DATA
+  - log: 2026-10-19T14:47:54Z @kj related ACC-REVIEW-72-INSTRUMENTS removed, line read "ACC-REVIEW-72" - recode: base-id link rewritten to the full coded id ACC-REVIEW-72-INSTRUMENTS
 - [x] `ACC-REVIEW-63-SKILL-SIZE` **SKILL.md as a lightweight guide under 2200 words** - MEDIUM; The manual rounds protocol and Remedy discipline move to references/; capitalised MUST/NEVER emphasis is dropped where the sentence already states the rule; the toolchain-gate section stays byte-identical; every moved section is pointed to from where it stood; SKILL.md body is under 2200 words
   - evidence: verified 2026-08-29 after wf_182b59db-622; suite 1051 passed, ruff clean; SKILL.md 3793 -> 2196 words, manual rounds and remedy discipline moved to references/manual-rounds.md and references/remedy-discipline.md with pointers at their former positions, toolchain gate byte-identical
   - test: wc -w on SKILL.md; test_toolchain_gate pin unchanged; references exist at the pointed paths
@@ -1607,4 +1608,16 @@ Code after the id number, part of the id
   - test-tags: UNIT
   - log: 2026-10-18T15:21:21Z @kj added
   - log: 2026-10-18T15:21:48Z @kj closed
+- [x] `ACC-PMCODE-205-BASE-HINT` **check names the full id** - MEDIUM; a base-id mention of a tracker item outside `log:` and `attachment:` lines warns and names the full id
+  - evidence: tests/test_pm_tools.py::test_check_names_the_full_id_for_a_base_id_mention, ::test_check_is_silent_on_ids_that_are_not_base_id_mentions and tests/test_pm_tools_functional.py::test_check_names_the_full_id_for_a_base_id_typed_into_an_item pass; uv run --extra dev pytest -q 1559 passed, 2 skipped
+  - test: base ids in body, evidence, relation, log and attachment lines; run check; assert a full-id warning on each scanned line, none on log or attachment
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-19T15:26:59Z @kj added
+  - log: 2026-10-19T15:27:07Z @kj closed: verified
+- [x] `ACC-PMCODE-206-RELATE-FULL` **relate writes the full id** - HIGH; `relate` given a base id writes the full id and prints the added code
+  - evidence: tests/test_pm_tools.py::test_relate_writes_the_full_id_a_base_id_names (4 cases), ::test_relate_keeps_a_full_id_and_the_text_around_the_ids and tests/test_pm_tools_functional.py::test_relate_writes_the_full_id_for_every_link_kind pass; uv run --extra dev pytest -q 1559 passed, 2 skipped
+  - test: relate each link kind with a base id; assert the line holds the full id and stdout prints `added code`
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-19T15:27:00Z @kj added
+  - log: 2026-10-19T15:27:07Z @kj closed: verified
 

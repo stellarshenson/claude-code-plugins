@@ -1535,7 +1535,7 @@ def test_an_override_runs_across_both_trackers_and_the_newest_link_holds(
     out = ok(
         "relate", defects, "--id", "DEF-LNCH-1", "--overrides", "ACC-AUTH-1 - 30 min kills uploads"
     )
-    assert "DEF-LNCH-1-TEST overrides: ACC-AUTH-1 - 30 min kills uploads" in out
+    assert "DEF-LNCH-1-TEST overrides: ACC-AUTH-1-TEST - 30 min kills uploads" in out
     assert "ACC-AUTH-1-TEST overridden-by: DEF-LNCH-1-TEST" in out, (
         "the other tracker got its line"
     )
@@ -1558,7 +1558,7 @@ def test_an_override_runs_across_both_trackers_and_the_newest_link_holds(
     assert "- overrides: ACC-AUTH-1" not in body
     assert re.search(
         r"- log: \S+ @kj overrides ACC-AUTH-1-TEST removed, line read "
-        r'"ACC-AUTH-1 - 30 min kills uploads" - cycle with newer link '
+        r'"ACC-AUTH-1-TEST - 30 min kills uploads" - cycle with newer link '
         r"ACC-AUTH-1-TEST overrides DEF-LNCH-1-TEST",
         body,
     ), "the removed link and its wording survive in the log"
@@ -1607,3 +1607,100 @@ def test_no_plugin_skill_file_is_named_like_a_tracker():
     plugins = Path(__file__).parent.parent / "plugins"
     named = [p for g in ("acc-crit*.md", "defects*.md") for p in plugins.glob(f"*/skills/**/{g}")]
     assert named == []
+
+
+# --- Item codes: a base id is written in full --------------------------------------
+
+
+def line_of(f: Path, text: str) -> int:
+    """The 1-based number of the first line of f holding text."""
+    return next(
+        n for n, ln in enumerate(f.read_text(encoding="utf-8").splitlines(), 1) if text in ln
+    )
+
+
+def test_check_names_the_full_id_for_a_base_id_typed_into_an_item(
+    docs: Path, defects: Path, criteria: Path
+):
+    """The ids an agent types through add, log, attach and close: a base id in a
+    criterion body and in an evidence line is named in full; one in a log event, in an
+    attachment path or in a path in the text is not, nor is an id naming no item. The
+    warnings leave the gate passing."""
+    file_a_defect(defects, "token race on relaunch", code="TOKEN")  # DEF-LNCH-1-TOKEN
+    file_a_defect(defects, "splash hang", code="SPLASH")  # DEF-LNCH-2-SPLASH
+    write_a_criterion(
+        criteria, "Session timeout", "expires after 30 idle minutes; DEF-LNCH-1 broke it"
+    )
+    ok("log", defects, "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "races DEF-LNCH-1")
+    shot = docs / "shots" / "DEF-LNCH-1-crash.png"
+    shot.parent.mkdir()
+    shot.write_bytes(b"png")
+    ok("attach", defects, "--id", "DEF-LNCH-2", "--path", shot, "--author", "@kj")
+    evidence = "DEF-LNCH-1 repro passes; docs/defects/DEF-LNCH-1-notes.md; DEF-NOPE-999 aside"
+    ok("close", defects, "--id", "DEF-LNCH-2", "--author", "@kj", "--evidence", evidence)
+
+    r = pm("check", docs)
+    assert r.returncode == 0, r.stdout
+    hint = "warn  DEF-LNCH-1 has no code; write DEF-LNCH-1-TOKEN"
+    assert re.findall(r"^\S+:\d+: warn  \S+ has no code; .*$", r.stdout, re.M) == [
+        f"{criteria}:{line_of(criteria, 'DEF-LNCH-1 broke it')}: {hint}",
+        f"{defects}:{line_of(defects, '- evidence:')}: {hint}",
+    ]
+    assert pm("check", docs, "--strict").returncode != 0
+
+
+def test_relate_writes_the_full_id_for_every_link_kind(docs: Path, defects: Path, criteria: Path):
+    """relate given a base id writes the full id it names and says which code it added,
+    across both trackers; a full id is written as typed and the mirror line of an
+    override is the full id. check then has nothing to name."""
+    file_a_defect(defects, "token race on relaunch", code="TOKEN")  # DEF-LNCH-1-TOKEN
+    file_a_defect(defects, "splash hang", code="SPLASH")  # DEF-LNCH-2-SPLASH
+    write_a_criterion(criteria, "Session timeout", "expires after 30 idle min", code="IDLE")
+    write_a_criterion(criteria, "Password length", "16 characters", code="LENGTH")
+    for f, item, kind, value, written, added in (
+        (
+            defects,
+            "DEF-LNCH-1",
+            "related",
+            "DEF-LNCH-2 - same boot path",
+            "DEF-LNCH-2-SPLASH - same boot path",
+            "DEF-LNCH-2 -> DEF-LNCH-2-SPLASH, added code SPLASH",
+        ),
+        (
+            defects,
+            "DEF-LNCH-1",
+            "blocked-by",
+            "ACC-AUTH-1",
+            "ACC-AUTH-1-IDLE",
+            "ACC-AUTH-1 -> ACC-AUTH-1-IDLE, added code IDLE",
+        ),
+        (
+            defects,
+            "DEF-LNCH-2",
+            "overrides",
+            "ACC-AUTH-2 - 20 chars since 2.0",
+            "ACC-AUTH-2-LENGTH - 20 chars since 2.0",
+            "ACC-AUTH-2 -> ACC-AUTH-2-LENGTH, added code LENGTH",
+        ),
+        (
+            criteria,
+            "ACC-AUTH-1",
+            "overridden-by",
+            "DEF-LNCH-2",
+            "DEF-LNCH-2-SPLASH",
+            "DEF-LNCH-2 -> DEF-LNCH-2-SPLASH, added code SPLASH",
+        ),
+    ):
+        out = ok("relate", f, "--id", item, f"--{kind}", value)
+        assert f"- {kind}: {written}\n" in f.read_text(encoding="utf-8"), kind
+        assert f"{kind}: {added}" in out, kind
+    # ACC-AUTH-2 carries the mirror of the overrides call, DEF-LNCH-2 that of overridden-by
+    assert criteria.read_text(encoding="utf-8").count("- overridden-by: DEF-LNCH-2-SPLASH\n") == 2
+    assert "- overrides: ACC-AUTH-1-IDLE\n" in defects.read_text(encoding="utf-8")
+
+    out = ok("relate", criteria, "--id", "ACC-AUTH-2", "--related", "DEF-LNCH-1-TOKEN - in full")
+    assert "- related: DEF-LNCH-1-TOKEN - in full\n" in criteria.read_text(encoding="utf-8")
+    assert "added code" not in out
+    r = pm("check", docs)
+    assert r.returncode == 0, r.stdout
+    assert "has no code" not in r.stdout

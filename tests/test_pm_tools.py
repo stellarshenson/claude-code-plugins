@@ -486,6 +486,151 @@ def test_check_errors_on_a_malformed_code(tmp_path: Path, capsys):
     assert "item has no" not in out, "the code is named, not the whole id called missing"
 
 
+MENTIONS = (
+    "# Defects - Mentions\n\nMentions.\n\n## Launch `LNCH`\n\nCold start\n\n"
+    "- [x] `DEF-LNCH-1-PARSER` **parser** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - evidence: green; DEF-LNCH-2 no longer races\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "  - log: 2026-08-28T08:22:11Z @kj closed: fixed\n"
+    "- [ ] `DEF-LNCH-1-PARSER-1` **parser again** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "- [ ] `DEF-LNCH-2-TOKEN` **token** - MAJOR; races DEF-LNCH-1 on relaunch\n"
+    "  - repro: relaunch until DEF-LNCH-1-1 fires\n  - test-tags: UNIT\n"
+    "  - related: DEF-LNCH-1 - same parser\n"
+    "  - log: 2026-08-28T08:22:11Z @kj added\n"
+    "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+)
+
+
+def code_hints(f: Path, out: str) -> list[tuple[str, str]]:
+    """(source line, warning) for every `has no code` warning check printed on f."""
+    lines = f.read_text(encoding="utf-8").splitlines()
+    hits = re.findall(
+        rf"^{re.escape(str(f))}:(\d+): warn  (\S+ has no code; write \S+)$", out, re.M
+    )
+    return [(lines[int(n) - 1].strip(), msg) for n, msg in hits]
+
+
+def test_check_names_the_full_id_for_a_base_id_mention(tmp_path: Path, capsys):
+    """A base id in an item's line, its evidence, its hint or a relation line still
+    resolves, but the reader has to look the code up; check names the full id. A base
+    id plus ordinal names the coded regression. Warnings only: the gate stays 0."""
+    f = coded_file(tmp_path, "defects-mentions", MENTIONS)
+    assert run("check", str(f)) == 0, "a base-id mention is a warning, never an error"
+    out = capsys.readouterr().out
+    assert code_hints(f, out) == [
+        (
+            "- evidence: green; DEF-LNCH-2 no longer races",
+            "DEF-LNCH-2 has no code; write DEF-LNCH-2-TOKEN",
+        ),
+        (
+            "- [ ] `DEF-LNCH-2-TOKEN` **token** - MAJOR; races DEF-LNCH-1 on relaunch",
+            "DEF-LNCH-1 has no code; write DEF-LNCH-1-PARSER",
+        ),
+        (
+            "- repro: relaunch until DEF-LNCH-1-1 fires",
+            "DEF-LNCH-1-1 has no code; write DEF-LNCH-1-PARSER-1",
+        ),
+        ("- related: DEF-LNCH-1 - same parser", "DEF-LNCH-1 has no code; write DEF-LNCH-1-PARSER"),
+    ]
+    assert "0 error(s), 4 warning(s)" in out
+    assert run("check", str(f), "--strict") == 1
+
+
+def test_check_is_silent_on_ids_that_are_not_base_id_mentions(tmp_path: Path, capsys):
+    """A log line is append-only history, an attachment line and a path in text name
+    files, a full id needs nothing and an id naming no item is an example. One base
+    id stays in the file as the control, so the test fails when check never warns."""
+    body = (
+        "# Defects - Silent\n\nSilent.\n\n## Launch `LNCH`\n\nCold start\n\n"
+        "- [ ] `DEF-LNCH-1-PARSER` **parser** - MAJOR; notes in docs/defects/DEF-LNCH-2-x.md\n"
+        "  - repro: compare with DEF-LNCH-2-notes.md and DEF-NOPE-999\n  - test-tags: UNIT\n"
+        "  - attachment: shots/DEF-LNCH-2-crash.png sha256:0123456789abcdef "
+        "edited:2026-08-28T08:22:11Z\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added; same race as DEF-LNCH-2\n"
+        "- [ ] `DEF-LNCH-2-TOKEN` **token** - MAJOR; DEF-LNCH-1-PARSER, not DEF-LNCH-9; DEF-LNCH-1\n"
+        "  - repro: b\n  - test-tags: UNIT\n"
+        "  - related: DEF-LNCH-1-PARSER - written in full\n"
+        "  - log: 2026-08-28T08:22:11Z @kj added\n"
+        "\n## Authors\n\n- `@kj` Konrad Jelen\n"
+    )
+    f = coded_file(tmp_path, "defects-silent", body)
+    assert run("check", str(f)) == 0
+    assert code_hints(f, capsys.readouterr().out) == [
+        (
+            "- [ ] `DEF-LNCH-2-TOKEN` **token** - MAJOR; DEF-LNCH-1-PARSER, not DEF-LNCH-9; DEF-LNCH-1",
+            "DEF-LNCH-1 has no code; write DEF-LNCH-1-PARSER",
+        )
+    ], "the base id at the end of the line is the control"
+
+
+def four_coded_defects(defects: Path, capsys) -> None:
+    for title, code in (
+        ("token", "TOKEN"),
+        ("splash", "SPLASH"),
+        ("button", "BUTTON"),
+        ("crash", "CRASH"),
+    ):
+        add_defect(defects, title, code=code)  # DEF-LNCH-1-TOKEN .. DEF-LNCH-4-CRASH
+    capsys.readouterr()
+
+
+@pytest.mark.parametrize(
+    "item, kind, value, line, code",
+    [
+        (
+            "DEF-LNCH-1",
+            "related",
+            "DEF-LNCH-2 - same boot path",
+            "DEF-LNCH-2-SPLASH - same boot path",
+            "SPLASH",
+        ),
+        ("DEF-LNCH-1", "blocked-by", "DEF-LNCH-3", "DEF-LNCH-3-BUTTON", "BUTTON"),
+        (
+            "DEF-LNCH-4",
+            "overrides",
+            "DEF-LNCH-2 - the fix changed it",
+            "DEF-LNCH-2-SPLASH - the fix changed it",
+            "SPLASH",
+        ),
+        ("DEF-LNCH-4", "overridden-by", "DEF-LNCH-1", "DEF-LNCH-1-TOKEN", "TOKEN"),
+    ],
+)
+def test_relate_writes_the_full_id_a_base_id_names(
+    defects: Path, capsys, item, kind, value, line, code
+):
+    """Every link kind: the base id typed is written as the full id, the text around
+    it as typed, and the call says which code it added. The mirror line of an
+    override carries the full id as before."""
+    four_coded_defects(defects, capsys)
+    assert run("relate", str(defects), "--id", item, f"--{kind}", value) == 0
+    out = capsys.readouterr().out
+    me = pm_tools.ident(pm_tools.find_id(pm_tools.parse(defects)[0], item))
+    assert f"{kind}: {line}" in sub_lines(defects, item)
+    typed = value.split()[0]
+    assert f"{me} {kind}: {typed} -> {typed}-{code}, added code {code}" in out
+    if kind in pm_tools.MIRROR:
+        assert f"{pm_tools.MIRROR[kind]}: {me}" in sub_lines(defects, typed)
+
+
+def test_relate_keeps_a_full_id_and_the_text_around_the_ids(defects: Path, capsys):
+    """Only the base id is rewritten: a full id, an id inside a path, an id naming no
+    item and the prose around them are written as typed."""
+    four_coded_defects(defects, capsys)
+    value = (
+        "DEF-LNCH-2-SPLASH, see DEF-LNCH-3 (docs/defects/DEF-LNCH-4-notes.md); DEF-NOPE-9 later"
+    )
+    relate(defects, "DEF-LNCH-1", related=value)
+    out = capsys.readouterr().out
+    assert (
+        "related: DEF-LNCH-2-SPLASH, see DEF-LNCH-3-BUTTON (docs/defects/DEF-LNCH-4-notes.md); "
+        "DEF-NOPE-9 later"
+    ) in sub_lines(defects, "DEF-LNCH-1")
+    assert out.count("added code") == 1 and "added code BUTTON" in out
+
+
 # --- Coded ids - migration -------------------------------------------------
 
 
@@ -2179,9 +2324,9 @@ def test_refs_on_a_removed_id_still_lists_what_points_at_it(defects: Path, capsy
     relate(defects, "DEF-LNCH-1", related="DEF-LNCH-2")
     run("remove", str(defects), "--id", "DEF-LNCH-2", "--force")
     capsys.readouterr()
-    assert run("refs", str(defects), "--id", "DEF-LNCH-2") == 0
+    assert run("refs", str(defects), "--id", "DEF-LNCH-2-TEST") == 0
     out = capsys.readouterr().out
-    assert "DEF-LNCH-1-TEST related -> DEF-LNCH-2" in out
+    assert "DEF-LNCH-1-TEST related -> DEF-LNCH-2-TEST" in out
     assert "1 inbound, 0 outbound reference(s); 0 open blocker(s)" in out
 
 
@@ -2241,13 +2386,13 @@ def test_a_blocked_by_cycle_is_broken_and_the_newest_link_holds(defects: Path, c
 
     relate(defects, "DEF-LNCH-3", blocked="DEF-LNCH-1", author="@kj")
     # the link into DEF-LNCH-3 on the cycle goes; the rest of the chain stays
-    assert "blocked-by: DEF-LNCH-1" in sub_lines(defects, "DEF-LNCH-3")
-    assert "blocked-by: DEF-LNCH-2" in sub_lines(defects, "DEF-LNCH-1")
+    assert "blocked-by: DEF-LNCH-1-TEST" in sub_lines(defects, "DEF-LNCH-3")
+    assert "blocked-by: DEF-LNCH-2-TEST" in sub_lines(defects, "DEF-LNCH-1")
     two = sub_lines(defects, "DEF-LNCH-2")
     assert not [ln for ln in two if ln.startswith("blocked-by:")]
     assert re.search(
-        r'log: \S+ @kj blocked-by DEF-LNCH-3-TEST removed, line read "DEF-LNCH-3 - needs the '
-        r"fix first\" - cycle with newer link DEF-LNCH-3-TEST blocked-by DEF-LNCH-1-TEST",
+        r'log: \S+ @kj blocked-by DEF-LNCH-3-TEST removed, line read "DEF-LNCH-3-TEST - needs '
+        r"the fix first\" - cycle with newer link DEF-LNCH-3-TEST blocked-by DEF-LNCH-1-TEST",
         two[-1],
     )
     capsys.readouterr()
@@ -2258,17 +2403,19 @@ def test_cutting_one_id_keeps_the_others_on_the_line(defects: Path, capsys):
     three_defects(defects, capsys)
     relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2, DEF-LNCH-3 - both first")
     relate(defects, "DEF-LNCH-2", blocked="DEF-LNCH-1", author="@kj")
-    assert "blocked-by: DEF-LNCH-3 - both first" in sub_lines(defects, "DEF-LNCH-1")
+    assert "blocked-by: DEF-LNCH-3-TEST - both first" in sub_lines(defects, "DEF-LNCH-1")
 
 
 def test_an_override_is_written_on_both_items(defects: Path, capsys):
     three_defects(defects, capsys)
     relate(defects, "DEF-LNCH-3", overrides="DEF-LNCH-1 - the fix changed the rule")
     relate(defects, "DEF-LNCH-2", overridden="DEF-LNCH-3")
-    assert "overrides: DEF-LNCH-1 - the fix changed the rule" in sub_lines(defects, "DEF-LNCH-3")
+    assert "overrides: DEF-LNCH-1-TEST - the fix changed the rule" in sub_lines(
+        defects, "DEF-LNCH-3"
+    )
     assert "overrides: DEF-LNCH-2-TEST" in sub_lines(defects, "DEF-LNCH-3")
     assert "overridden-by: DEF-LNCH-3-TEST" in sub_lines(defects, "DEF-LNCH-1")
-    assert "overridden-by: DEF-LNCH-3" in sub_lines(defects, "DEF-LNCH-2")
+    assert "overridden-by: DEF-LNCH-3-TEST" in sub_lines(defects, "DEF-LNCH-2")
     capsys.readouterr()
     run("list", str(defects), "--columns", "id,overrides,overridden-by", "--status", "all")
     rows = table_rows(capsys.readouterr().out)
@@ -2297,7 +2444,7 @@ def test_a_defect_overrides_a_criterion_and_back_across_files(
     relate(criteria, "ACC-AUTH-2", overrides="DEF-LNCH-1")
     assert "overridden-by: DEF-LNCH-1-TEST" in sub_lines(criteria, "ACC-AUTH-1")
     assert sub_lines(defects, "DEF-LNCH-1")[:2] == [
-        "overrides: ACC-AUTH-1",
+        "overrides: ACC-AUTH-1-TEST",
         "overridden-by: ACC-AUTH-2-TEST",
     ]
     capsys.readouterr()
@@ -2329,13 +2476,11 @@ def test_a_reversed_override_replaces_the_old_pair(defects: Path, criteria: Path
 
     relate(criteria, "ACC-AUTH-1", overrides="DEF-LNCH-1", author="@kj")
     acc, dfc = sub_lines(criteria, "ACC-AUTH-1"), sub_lines(defects, "DEF-LNCH-1")
-    assert "overrides: DEF-LNCH-1" in acc and "overridden-by: DEF-LNCH-1" not in acc
-    assert "overridden-by: ACC-AUTH-1-TEST" in dfc and "overrides: ACC-AUTH-1" not in dfc
+    assert "overrides: DEF-LNCH-1-TEST" in acc and "overridden-by: DEF-LNCH-1" not in acc
+    assert "overridden-by: ACC-AUTH-1-TEST" in dfc and "overrides: ACC-AUTH-1-TEST" not in dfc
     why = "cycle with newer link ACC-AUTH-1-TEST overrides DEF-LNCH-1-TEST"
     assert acc[-1].endswith(f"@kj overridden-by DEF-LNCH-1-TEST removed - {why}")
-    assert dfc[-1].endswith(
-        f'@kj overrides ACC-AUTH-1-TEST removed, line read "ACC-AUTH-1" - {why}'
-    )
+    assert dfc[-1].endswith(f"@kj overrides ACC-AUTH-1-TEST removed - {why}")
     capsys.readouterr()
     run("check", str(defects.parent))
     assert "ERROR" not in capsys.readouterr().out
@@ -2350,7 +2495,7 @@ def test_many_overrides_stay_and_only_the_cycle_is_cut(defects: Path, capsys):
     # 3 took the newest link, so the one link into 3 on the cycle is gone
     assert not [ln for ln in sub_lines(defects, "DEF-LNCH-2") if ln.startswith("overrides:")]
     assert not [ln for ln in sub_lines(defects, "DEF-LNCH-3") if ln.startswith("overridden-by:")]
-    assert "overrides: DEF-LNCH-2, DEF-LNCH-4" in sub_lines(defects, "DEF-LNCH-1")
+    assert "overrides: DEF-LNCH-2-TEST, DEF-LNCH-4-TEST" in sub_lines(defects, "DEF-LNCH-1")
     assert "overridden-by: DEF-LNCH-3-TEST" in sub_lines(defects, "DEF-LNCH-1")
     assert "overridden-by: DEF-LNCH-1-TEST" in sub_lines(defects, "DEF-LNCH-4")
     capsys.readouterr()
@@ -2401,7 +2546,7 @@ def test_check_errors_on_an_override_cycle_left_by_hand(defects: Path, capsys):
     capsys.readouterr()
     run("check", str(defects))
     assert "ERROR" not in capsys.readouterr().out
-    assert "overrides: DEF-LNCH-1" not in sub_lines(defects, "DEF-LNCH-2")
+    assert "overrides: DEF-LNCH-1-TEST" not in sub_lines(defects, "DEF-LNCH-2")
 
 
 def test_override_fields_pivot_and_json(defects: Path, capsys):
@@ -2429,10 +2574,10 @@ def test_unrelate_removes_a_link_and_logs_the_line_it_read(defects: Path, capsys
     why = ("--event", "cause known")
     assert unrelate(defects, "DEF-LNCH-1", "--related", "DEF-LNCH-2", *why) == 0
     subs = sub_lines(defects, "DEF-LNCH-1")
-    assert "related: DEF-LNCH-3" in subs
+    assert "related: DEF-LNCH-3-TEST" in subs
     assert not any(s.startswith("related: DEF-LNCH-2") for s in subs)
     assert subs[-1].endswith(
-        'related DEF-LNCH-2-TEST removed, line read "DEF-LNCH-2 - same boot path" - cause known'
+        'related DEF-LNCH-2-TEST removed, line read "DEF-LNCH-2-TEST - same boot path" - cause known'
     )
 
 
@@ -2445,9 +2590,7 @@ def test_unrelate_removes_an_override_from_both_items_across_files(
     assert unrelate(criteria, "ACC-AUTH-1", "--overridden-by", "DEF-LNCH-1") == 0
     assert not any(s.startswith("overrides") for s in sub_lines(defects, "DEF-LNCH-1"))
     assert not any(s.startswith("overridden-by") for s in sub_lines(criteria, "ACC-AUTH-1"))
-    assert sub_lines(defects, "DEF-LNCH-1")[-1].endswith(
-        'overrides ACC-AUTH-1-TEST removed, line read "ACC-AUTH-1"'
-    )
+    assert sub_lines(defects, "DEF-LNCH-1")[-1].endswith("overrides ACC-AUTH-1-TEST removed")
     assert sub_lines(criteria, "ACC-AUTH-1")[-1].endswith("overridden-by DEF-LNCH-1-TEST removed")
     capsys.readouterr()
     assert run("check", str(defects.parent)) == 0
@@ -3291,7 +3434,7 @@ def test_a_foreign_lock_warns_once_and_every_write_lands_unchanged(defects: Path
     body = defects.read_text(encoding="utf-8")
     assert "@kj attempted: retry - did NOT work" in body
     assert "**token race on relaunch**" in body
-    assert "- related: DEF-LNCH-2 - same boot path" in body
+    assert "- related: DEF-LNCH-2-TEST - same boot path" in body
     assert lock_lines(defects) == [f"- lock: {until} @xy"], "the lock itself is untouched"
     # the holder writes in silence
     assert (

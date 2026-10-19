@@ -24,7 +24,9 @@ regression instead and the closure keeps its proof. check
 fails on a relation to an id that is not in the scanned files, on a blocked-by or
 override cycle and on an override written on one item only, and warns when an open
 item is blocked by one that is closed or rejected, or is overridden; scan the
-directory, not one file, so cross-file links resolve.
+directory, not one file, so cross-file links resolve. It also warns on a base id
+written on an item's line or a sub-line other than log: and attachment:, naming the
+full id to write: `DEF-LNCH-3 has no code; write DEF-LNCH-3-PARSER`.
 
 Each discipline registers one explanation, and it stacks: `- mechanism: <stamp> @xx
 <text>` on a criterion says how it is meant to work, `- root-cause: <stamp> @xx <text>`
@@ -161,7 +163,9 @@ prose, never a level.
           item may override, or be overridden by, many. A new blocked-by or override
           link that closes a cycle wins: every older link into the item taking the
           new one, from the item it now points at or anything that item leads to, is
-          removed and logged where it stood, which needs --author
+          removed and logged where it stood, which needs --author. A base id in TEXT
+          is written as the full id it names, the text around it as typed, and the
+          code it added is printed
   unrelate FILE --id ID [--related ID] [--blocked-by ID] [--overrides ID]
               [--overridden-by ID] --author @xx [--event E]
           remove a link and log the line it read; an override goes from both items.
@@ -248,6 +252,8 @@ IDBAD = re.compile(r"^`(?P<tok>(?:ACC|DEF)-[A-Z]{2,6}-\d+(?:-[^`]*))`")
 # the item code grammar, and the base id a mapping file names
 CODE = re.compile(r"[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?")
 BASEID = re.compile(r"(?:ACC|DEF)-[A-Z]{2,6}-\d+")
+# what follows an id that sits inside a file path: `DEF-LNCH-3-slug.md`, `DEF-LNCH-3/notes`
+PATHTAIL = re.compile(r"[\w-]*(?:[/\\]|\.[A-Za-z])")
 CATCODE = re.compile(r"^(.*?)\s*`([A-Z]{2,6})`$")
 BOLD = re.compile(r"\*\*([^*]+)\*\*")
 # any all-caps token used as a severity, so upgrade can name what it cannot map
@@ -962,6 +968,30 @@ def resolve_ref(index, rid):
     if rid in index:
         return rid
     return next((i for i in index if root_of(index[i]) == rid and not index[i]["regr"]), rid)
+
+
+def coded_ref(index, m):
+    """The full id an IDREF match names when it carries no code and is not itself an
+    item's id: a base id names its coded root, a base id plus ordinal (`DEF-LNCH-3-1`)
+    the coded regression. None for a full id, an uncoded item's own id, an id that
+    names no item and an id inside a file path."""
+    if m["code"] or m[0] in index:
+        return None
+    s, at = m.string, m.start()
+    if s[at - 1 : at] in ("/", "\\") or PATHTAIL.match(s, m.end()):
+        return None
+    if not m["regr"]:
+        full = resolve_ref(index, m[0])
+        return full if full != m[0] else None
+    base = f"{m['prefix']}-{m['cat']}-{m['num']}"
+    return next(
+        (
+            i
+            for i, b in index.items()
+            if root_of(b) == base and b["regr"] == int(m["regr"]) and b["code"]
+        ),
+        None,
+    )
 
 
 def is_blocked(b, index):
@@ -2232,6 +2262,7 @@ def cmd_check(files, strict):
         ):
             e.append((1, "no H1 title"))
 
+        in_item = False  # between an item line and the next heading, as parse reads it
         for lineno, ln in non_fenced(lines):
             for ch in ln:
                 cp = ord(ch)
@@ -2271,6 +2302,16 @@ def cmd_check(files, strict):
             dm = DATED.match(ln)
             if dm and not LOGLINE.match(ln):
                 e.append((lineno, "dated note missing the `log:` marker"))
+            # a base id in an item's line or sub-lines: name the full id to write. A
+            # log: line is append-only history and an attachment: line holds a path
+            in_item = bool(ITEM.match(ln)) or (in_item and not h)
+            if in_item and (ITEM.match(ln) or SUB.match(ln)) and not (lm or ATTANY.match(ln)):
+                said = set()
+                for m in IDREF.finditer(ln):
+                    full = coded_ref(index, m)
+                    if full and m[0] not in said:
+                        said.add(m[0])
+                        w.append((lineno, f"{m[0]} has no code; write {full}"))
 
         for s in sections:
             if not s["code"]:
@@ -3072,6 +3113,26 @@ def cmd_relate(file, wanted, related, blocked, overrides=None, overridden=None, 
     def ids(value):
         return list(dict.fromkeys(r[0] for r in IDREF.finditer(value or "")))
 
+    # a base id is written as the full id it names; the text around the ids stays as typed
+    added = {}
+
+    def coded(kind, value):
+        def full(m):
+            rid = coded_ref(index, m)
+            if rid:
+                added.setdefault(kind, []).append((m[0], rid))
+            return rid or m[0]
+
+        return IDREF.sub(full, value) if value else value
+
+    related, blocked = coded("related", related), coded("blocked-by", blocked)
+    overrides, overridden = coded("overrides", overrides), coded("overridden-by", overridden)
+
+    def write(kind, value):
+        put_rel(file, me, kind, value)
+        for typed, rid in dict.fromkeys(added.get(kind, [])):
+            print(f"{file}: {me} {kind}: {typed} -> {rid}, added code {index[rid]['code']}")
+
     for kind, value in (("overrides", overrides), ("overridden-by", overridden)):
         if value and not ids(value):
             raise SystemExit(f"--{kind} names no id")
@@ -3145,14 +3206,14 @@ def cmd_relate(file, wanted, related, blocked, overrides=None, overridden=None, 
         if not value:
             continue
         if kind not in MIRROR:
-            put_rel(file, me, kind, value)
+            write(kind, value)
             continue
         # run again on a pair that lost one line: the missing line alone is written
         recorded = {resolve_ref(index, r) for r in targets(find_id(parse(file)[0], me), kind)}
         if all(resolve_ref(index, t) in recorded for t in ids(value)):
             print(f"{file}: {me} {kind}: {value} is already recorded")
         else:
-            put_rel(file, me, kind, value)
+            write(kind, value)
         for t in ids(value):
             t = resolve_ref(index, t)
             other = find_id(parse(where[t])[0], t)

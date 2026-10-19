@@ -52,10 +52,12 @@ DEF-UI-7 LAYOUT
 - a second `migrate-codes` run with the same mapping on a clean tracker reports `0 item(s) coded` and leaves the file byte-identical
 - after a rename, `check` reports no dangling relation and `refs --id ID` shows the links
 - `check` errors on a malformed code and warns, not errors, on a missing one
+- `check` warns on a base id written on an item's line or a sub-line other than `log:` and `attachment:`, naming the full id: `DEF-LNCH-2 has no code; write DEF-LNCH-2-RENDER`; a base id plus ordinal (`DEF-LNCH-2-1`) names the coded regression
 
 ## Rules
 
 - **Never hand-edit a tracker to add a code.** `migrate-codes` writes the id and its log line together; a hand edit writes the id with no record of why it changed
+- **Link by the full id.** `relate` writes a base id as the full id it names, keeps the text around it as typed and prints the code it added
 - **Never renumber to make a code fit.** The code is appended to the existing id; the number never moves
 - **A code is not a category.** `DEF-LNCH-3-PARSER` may sit under any `##` section; the category segment records where the item was born
 - **One root per base id.** A second root claiming an already-used base with a different full id makes every base-id link ambiguous, so `check` errors and names both files and ids; a regression shares its root's base and is not a second root

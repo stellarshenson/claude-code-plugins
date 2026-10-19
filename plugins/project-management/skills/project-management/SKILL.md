@@ -66,6 +66,7 @@ Consequences, stated once:
 - **Permanent once assigned** - an item that moves category keeps its id, and `edit` / `amend` never drop the code. The category segment records where it was born; the `##` section it sits under is the live truth. `check` deliberately does not compare the two
 - **Never reused** - no renumbering, no recycling from a closed item
 - **Resolution by base id** - a link or `--id` may name `DEF-LNCH-3` without the code; every reader resolves it to the item, and the full id always wins when both shapes exist. `check` warns on an item whose id carries no code
+- **Write the full id** - `check` warns on a base id written on an item's line or any sub-line except `log:` and `attachment:`, naming the full id: `DEF-LNCH-3 has no code; write DEF-LNCH-3-PARSER`. A base id plus ordinal (`DEF-LNCH-3-1`) names the coded regression; an id inside a file path or naming no item is not flagged
 - **One root per base id** - a base id names one family: its root and every regression. Two roots claiming the same base with different full ids make a base-id link ambiguous, so `check` errors and names both files and ids; a regression shares its root's base and is not a second root
 - **Migration and correction** - an existing document gains codes with `migrate-codes`; a wrong code is corrected with `rename-code`, which rewrites every relation line that names the old full id. Mapping format, order of operations and checks: `references/codes.md`
 
@@ -195,6 +196,7 @@ Every entry is authored. The handle sits on the log line between the stamp and t
 Four line kinds: `related`, `blocked-by`, and the pair `overrides` / `overridden-by`.
 
 - **Free text is welcome around the ids** - the parser anchors on the id shape `(ACC|DEF)-[A-Z]{2,6}-<N>[-<CODE>]`, so `- related: DEF-LNCH-3 - the race this covers` reads as both a link and a sentence; a base id resolves to the coded item
+- **`relate` writes the full id** - a base id in the value is written as the full id it names and the call prints the code it added (`DEF-LNCH-3 -> DEF-LNCH-3-PARSER, added code PARSER`); a full id and the text around the ids are written as typed
 - **Cross-type** - a criterion may cite a defect and the other way round
 - **One line per `relate` call** - lines are never merged, because a merge would bury a new id inside the previous line's prose; `check` and `refs` union them
 - **Links, not mentions** - only a relation line is a link; an id in a log line is prose. `refs`, `--related-to` and `--blocked` read links; `--grep` and `search` read prose
