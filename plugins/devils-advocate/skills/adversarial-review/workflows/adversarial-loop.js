@@ -61,6 +61,12 @@ export const meta = {
 //              practices, paradigms and patterns only: a reviewer requests it,
 //              the adjudicator approves it, the main session researches between
 //              invocations and passes the updated `used` back here
+//   findings   optional, on any invocation - rows from a source outside the
+//              lens panel (another review tool, the owner), each with the
+//              reviewer finding fields plus a free-text `source`. They reach
+//              this invocation's adjudicator with the panel's findings, under
+//              the same materiality cap and settled record; the reviewers never
+//              see them and `state` does not carry them
 // args - re-invocation after applying a PLAN:
 //   state         the `state` object from the previous PLAN return, verbatim;
 //                 refused when its `contract` is not this script's LOOP_CONTRACT
@@ -151,6 +157,19 @@ const FINDINGS_SCHEMA = {
     notes: { type: 'string' },
   },
 }
+
+// args.findings is checked here, after the schema it is checked against, and
+// before any agent spawns: a refused row names its index and its field.
+const ROW = FINDINGS_SCHEMA.properties.findings.items
+const ROWS = args.findings === undefined ? [] : args.findings
+if (!Array.isArray(ROWS)) throw new Error('args.findings must be an array of rows, each with source plus the panel finding fields')
+ROWS.forEach((f, i) => {
+  const field =
+    ['source', ...ROW.required].find((k) => typeof (f || {})[k] !== (k === 'source' ? 'string' : ROW.properties[k].type) || f[k] === '') ||
+    Object.keys(ROW.properties).find((k) => f[k] !== undefined && (ROW.properties[k].type === 'integer' ? !Number.isInteger(f[k]) : typeof f[k] !== ROW.properties[k].type))
+  if (field) throw new Error(`args.findings[${i}] has no valid ${field} - every row carries source plus ${ROW.required.join(', ')}`)
+  if (!ROW.properties.severity.enum.includes(f.severity)) throw new Error(`args.findings[${i}] severity ${f.severity} is not one of ${ROW.properties.severity.enum.join(', ')}`)
+})
 
 const ADJUDICATION_SCHEMA = {
   type: 'object',
@@ -265,6 +284,20 @@ const mergeFindings = (perLens) => {
     })
   })
   return capImmaterial(rows)
+}
+
+// Rows from args.findings join after the pin filter, so a confirming round
+// keeps a row outside the applied delta. A row merges whole into a lens
+// finding of the same title under `also`; the lens finding's own fields stay
+// primary.
+const addRows = (rows) => {
+  const panel = rows.slice()
+  capImmaterial(ROWS.map((f) => Object.assign({}, f))).forEach((f) => {
+    const hit = panel.find((r) => sameSite(r, f))
+    if (!hit) return rows.push(f)
+    ;(hit.also = hit.also || []).push(f)
+  })
+  return rows
 }
 
 const barBlock = [
@@ -438,16 +471,16 @@ round += 1
 if (!closures.length) {
   phase('Discover')
   log(`round ${round} discovery (loop contract ${LOOP_CONTRACT}): ${LENSES.join(', ')} over ${TARGET}`)
-  findings = settledFilter(mergeFindings(
+  findings = settledFilter(addRows(mergeFindings(
     await runPanelChecked(
       'Discover',
       `This is a discovery round: the full scope against the bar.`
     )
-  ))
+  )))
   history.push({ round, kind: 'discover', findings: findings.length, severities: severityTally(findings) })
 } else {
   log(`round ${round} confirming (loop contract ${LOOP_CONTRACT}): pinned to ${closures.length} closure(s), ${newDelta.length} new`)
-  findings = settledFilter(pinFilter(mergeFindings(await runPanelChecked('Confirm', confirmBody()))))
+  findings = settledFilter(addRows(pinFilter(mergeFindings(await runPanelChecked('Confirm', confirmBody())))))
   history.push({ round, kind: 'confirm', findings: findings.length, severities: severityTally(findings) })
 }
 
@@ -463,7 +496,7 @@ if (findings.length) {
       graphBlock,
       researchBlock,
       priorRecord(),
-      `FINDINGS (round ${round}, ${findings.length}: ${severityTally(findings)}; findings carrying cappedFrom were reduced by the script for material=false):`,
+      `FINDINGS (round ${round}, ${findings.length}: ${severityTally(findings)}; findings carrying cappedFrom were reduced by the script for material=false${ROWS.length ? '; a finding carrying source, or an also entry with source, came from outside the lens panel (another review tool, the owner) and is judged against the same bar' : ''}):`,
       JSON.stringify(findings, null, 2),
       `CHANGES APPLIED IN PREVIOUS ROUNDS (the revert candidates; fanoutTraced counts against these):`,
       closures.length ? closures.map((c) => `round ${c.round} ${c.site}: ${c.summary}`).join('\n') : '(none - round 1)',

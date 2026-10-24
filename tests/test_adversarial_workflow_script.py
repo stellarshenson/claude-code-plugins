@@ -507,7 +507,7 @@ def test_a_ruled_finding_stays_ruled_while_its_site_is_unchanged():
     and each went back to the adjudicator. The settled record keeps the site of
     every finding ruled without a change; its filter runs after pinFilter."""
     t = text()
-    assert "settledFilter(pinFilter(mergeFindings(" in t
+    assert "settledFilter(addRows(pinFilter(mergeFindings(" in t
     assert "touchedSince" in t and "settled-filter" in t
 
 
@@ -720,7 +720,13 @@ def test_a_shipped_review_runs_one_confirmation_round_only_on_request(tmp_path):
     assert again["result"]["status"] == "SHIP" and again["result"]["rounds"] == 2
     assert any(line.startswith("round 2 discovery") for line in again["logs"])
 
-    closure = {"round": 1, "site": "src/a.py", "summary": "fixed a", "files": ["src/a.py"], "patch": "/tmp/r1.patch"}
+    closure = {
+        "round": 1,
+        "site": "src/a.py",
+        "summary": "fixed a",
+        "files": ["src/a.py"],
+        "patch": "/tmp/r1.patch",
+    }
     shipped = {**clean["state"], "round": 2, "closures": [closure]}
     confirm = _invoke(tmp_path, {**base, "state": shipped}, {"confirm": [{"findings": []}]})
     assert confirm["result"]["status"] == "SHIP" and confirm["result"]["rounds"] == 3
@@ -911,3 +917,284 @@ def test_a_panel_that_returned_nothing_ends_panel_died_not_ship(tmp_path):
     base = {"target": "src", "bar": BAR, "lenses": ["architect", "bug-hunter"]}
     result = _invoke(tmp_path, base, {"discover": [None, None]})["result"]
     assert result["status"] == "PANEL_DIED"
+
+
+def _row(title: str, file: str, line: int, source: str = "the owner") -> dict:
+    return {**_finding(title, file, line), "source": source}
+
+
+def _adjudication(out: dict) -> str:
+    return next(p for p in out["prompts"] if p.startswith("You adjudicate"))
+
+
+def test_extra_rows_are_an_optional_arg_checked_against_the_finding_schema():
+    """ACC-REVIEW-259, ACC-REVIEW-260: args.findings is documented with the
+    other args, checked against the panel's own finding schema plus `source`
+    before any agent spawns, and never written into `state`."""
+    t = text()
+    comment = t[t.index("// args - first invocation") : t.index("if (!args")]
+    assert "findings   optional, on any invocation" in comment and "`source`" in comment
+    assert "['source', ...ROW.required]" in t and "ROW.properties.severity.enum" in t
+    assert t.index("ROWS.forEach((f, i)") < t.index("const runPanel =")
+    state = t[t.index("const stateOut = () => ({") :]
+    assert "ROWS" not in state[: state.index("})")]
+
+
+def test_rows_join_after_the_pin_filter_and_never_reach_a_reviewer():
+    """ACC-REVIEW-261, ACC-REVIEW-262: rows join both panels' findings after
+    the pin filter and before the settled filter, merge by title, pass the
+    materiality cap, and the reviewer prompt does not read them."""
+    t = text()
+    assert "settledFilter(addRows(mergeFindings(" in t
+    assert "settledFilter(addRows(pinFilter(mergeFindings(" in t
+    rows = t[t.index("const addRows = ") : t.index("const barBlock")]
+    assert "sameSite(r, f)" in rows and "capImmaterial(ROWS.map(" in rows
+    reviewer = t[t.index("const reviewerPrompt = ") : t.index("const runPanel =")]
+    assert "ROWS" not in reviewer
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_a_malformed_row_is_refused_by_index_and_field(tmp_path):
+    """ACC-REVIEW-260: a malformed args.findings throws before any spawn,
+    naming the row index and the field."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    good = _row("a breaks", "src/a.py", 10)
+    no_source = {k: v for k, v in good.items() if k != "source"}
+    no_evidence = {k: v for k, v in good.items() if k != "evidence"}
+    cases = [
+        ("a string", "args.findings must be an array"),
+        ([good, no_source], "args.findings[1] has no valid source"),
+        ([no_evidence], "args.findings[0] has no valid evidence"),
+        ([{**good, "source": ""}], "args.findings[0] has no valid source"),
+        ([{**good, "material": "false"}], "args.findings[0] has no valid material"),
+        ([{**good, "severity": "MEDIUM"}], "args.findings[0] severity MEDIUM"),
+        ([{**good, "closure": 5}], "args.findings[0] has no valid closure"),
+    ]
+    for rows, message in cases:
+        out = _invoke(tmp_path, {**base, "findings": rows}, {})
+        assert message in out.get("error", ""), (rows, out)
+        assert out["prompts"] == []
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_rows_reach_the_adjudicator_with_their_source_and_merge_by_title(tmp_path):
+    """ACC-REVIEW-259, ACC-REVIEW-261: a row with a lens finding's title merges
+    into it under `also` with its source, another row reaches the adjudicator
+    with its own source, no reviewer prompt names a row, and a re-invocation
+    without args.findings carries none."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    rows = [
+        {
+            **_row("Leaks the socket ", "src/a.py", 12, "another review tool"),
+            "evidence": "tool saw it",
+            "severity": "CRITICAL",
+        },
+        {**_row("drops the retry budget", "src/b.py", 30), "evidence": "owner saw it"},
+    ]
+    out = _invoke(
+        tmp_path,
+        {**base, "findings": rows},
+        {
+            "discover": [{"findings": [_finding("leaks the socket", "src/a.py", 10)]}],
+            "adjudicate": [_ruling()],
+        },
+    )
+    found = out["result"]["openFindings"]
+    assert [f["title"] for f in found] == ["leaks the socket", "drops the retry budget"]
+    also = found[0]["also"][0]
+    assert also["source"] == "another review tool" and also["severity"] == "CRITICAL"
+    assert found[0]["severity"] == "MINOR" and found[1]["source"] == "the owner"
+    adjudication = _adjudication(out)
+    assert "owner saw it" in adjudication and "tool saw it" in adjudication
+    assert "came from outside the lens panel" in adjudication
+    reviewer = out["prompts"][0]
+    assert "drops the retry budget" not in reviewer and "the owner" not in reviewer
+    assert "findings" not in out["result"]["state"]
+    again = _invoke(
+        tmp_path, {**base, "state": out["result"]["state"]}, {"discover": [{"findings": []}]}
+    )
+    assert again["result"]["status"] == "SHIP" and len(again["prompts"]) == 1
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_rows_merge_only_into_a_lens_finding_and_are_capped_before_the_merge(tmp_path):
+    """Two rows with one title at two files reach the adjudicator and the
+    settled record as two findings; an immaterial CRITICAL row merged into a
+    material lens finding is capped inside `also` and leaves the lens
+    severity unchanged."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    rows = [_row("leaks the socket", "src/a.py", 12), _row("leaks the socket", "src/b.py", 30)]
+    out = _invoke(
+        tmp_path,
+        {**base, "findings": rows},
+        {"discover": [{"findings": []}], "adjudicate": [_ruling()]},
+    )["result"]
+    assert [f["file"] for f in out["openFindings"]] == ["src/a.py", "src/b.py"]
+    assert [s["file"] for s in out["state"]["settled"]] == ["src/a.py", "src/b.py"]
+
+    immaterial = {
+        **_row("leaks the socket", "src/a.py", 12),
+        "severity": "CRITICAL",
+        "material": False,
+    }
+    merged = _invoke(
+        tmp_path,
+        {**base, "findings": [immaterial]},
+        {
+            "discover": [{"findings": [_finding("leaks the socket", "src/a.py", 10)]}],
+            "adjudicate": [_ruling()],
+        },
+    )["result"]["openFindings"]
+    assert merged[0]["severity"] == "MINOR" and merged[0]["also"][0]["cappedFrom"] == "CRITICAL"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_rows_pass_the_materiality_cap_and_the_settled_record_but_not_the_pin_filter(tmp_path):
+    """ACC-REVIEW-262: an immaterial row is capped to MINOR/outOfBar; in a
+    confirming round a row at a ruled site no fix touched is dropped, and a
+    row outside the applied delta is kept where a lens finding there is not."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    immaterial = {
+        **_row("misreads a fax header", "src/a.py", 5),
+        "severity": "MAJOR",
+        "material": False,
+    }
+    capped = _invoke(
+        tmp_path,
+        {**base, "findings": [immaterial]},
+        {"discover": [{"findings": []}], "adjudicate": [_ruling()]},
+    )["result"]["openFindings"]
+    assert capped[0]["severity"] == "MINOR" and capped[0]["outOfBar"] is True
+    assert capped[0]["cappedFrom"] == "MAJOR"
+
+    state = {
+        "contract": 4,
+        "round": 1,
+        "history": [],
+        "deferred": [],
+        "refuted": [],
+        "rulings": [],
+        "closures": [],
+        "settled": [{"round": 1, "file": "src/a.py", "line": 40, "title": "a stale name"}],
+        "research": None,
+    }
+    fix = {
+        "site": "src/b.py",
+        "summary": "fixed b",
+        "files": ["src/b.py"],
+        "patch": "/tmp/r1.patch",
+    }
+    rows = [_row("a stale name", "src/a.py", 41), _row("row outside the delta", "src/zeta.py", 9)]
+    out = _invoke(
+        tmp_path,
+        {**base, "state": state, "appliedFixes": [fix], "findings": rows},
+        {
+            "confirm": [
+                {"findings": [_finding("lens finding outside the delta", "src/zeta.py", 9)]}
+            ],
+            "adjudicate": [_ruling()],
+        },
+    )
+    assert [f["title"] for f in out["result"]["openFindings"]] == ["row outside the delta"]
+    assert any(line.startswith("confirm filter: 1") for line in out["logs"])
+    assert any(line.startswith("settled filter: 1") for line in out["logs"])
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_a_clean_panel_with_a_row_runs_the_adjudicator(tmp_path):
+    """ACC-REVIEW-263: a panel with 0 findings and 1 row adjudicates; an empty
+    plan ships and a plan with a change exits PLAN."""
+    base = {
+        "target": "src",
+        "bar": BAR,
+        "lenses": ["architect"],
+        "findings": [_row("a breaks", "src/a.py", 10)],
+    }
+    clean = _invoke(tmp_path, base, {"discover": [{"findings": []}], "adjudicate": [_ruling()]})
+    assert clean["result"]["status"] == "SHIP" and len(clean["prompts"]) == 2
+    assert "a breaks" in _adjudication(clean)
+    planned = _invoke(
+        tmp_path, base, {"discover": [{"findings": []}], "adjudicate": [_ruling("a breaks")]}
+    )
+    assert planned["result"]["status"] == "PLAN"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_rows_are_accepted_after_a_plan_and_on_the_ship_confirmation_round(tmp_path):
+    """ACC-REVIEW-264: a contract 4 state in the shape written before
+    args.findings existed is accepted with rows after a PLAN and on both kinds
+    of confirmation round after SHIP; every return keeps contract 4."""
+    base = {
+        "target": "src",
+        "bar": BAR,
+        "lenses": ["architect"],
+        "findings": [_row("b row", "src/z.py", 3)],
+    }
+    planned = {
+        "contract": 4,
+        "round": 1,
+        "history": [
+            {
+                "round": 1,
+                "kind": "discover",
+                "findings": 1,
+                "severities": "CRITICAL:0 MAJOR:0 MINOR:1",
+            }
+        ],
+        "deferred": [],
+        "refuted": [],
+        "rulings": [
+            {
+                "round": 1,
+                "ruling": "PROCEED",
+                "changes": 1,
+                "reverts": 0,
+                "fanout": "0/1",
+                "trajectory": "converging",
+            }
+        ],
+        "closures": [],
+        "settled": [],
+        "research": None,
+    }
+    fix = {
+        "site": "src/a.py",
+        "summary": "fixed a",
+        "files": ["src/a.py"],
+        "patch": "/tmp/r1.patch",
+    }
+    closure = {"round": 1, **fix}
+    for state, extra, stage in (
+        (planned, {"appliedFixes": [fix]}, "confirm"),
+        ({**planned, "shipped": True}, {}, "discover"),
+        ({**planned, "closures": [closure], "shipped": True}, {}, "confirm"),
+    ):
+        out = _invoke(
+            tmp_path,
+            {**base, "state": state, **extra},
+            {stage: [{"findings": []}], "adjudicate": [_ruling()]},
+        )
+        assert out["result"]["status"] == "SHIP", out
+        assert out["result"]["state"]["contract"] == 4
+        assert "b row" in _adjudication(out)
+
+
+def test_the_findings_arg_is_documented_once_and_names_no_tool():
+    """ACC-REVIEW-265: the spec's args contract, the skill's Workflow execution
+    section and the changelog's unreleased section each name args.findings
+    once, and no plugin file names a specific other review tool."""
+    spec = SPEC.read_text(encoding="utf-8")
+    assert spec.count("args.findings") == 1 and spec.count("| `findings` |") == 1
+    skill = (PLUGIN / "skills/adversarial-review/SKILL.md").read_text(encoding="utf-8")
+    section = skill[skill.index("## Workflow execution") :]
+    section = section[: section.index("\n## ")]
+    assert skill.count("args.findings") == 1 and "args.findings" in section
+    changelog = (PLUGIN.parents[1] / "CHANGELOG.md").read_text(encoding="utf-8")
+    unreleased = changelog[changelog.index("## [Unreleased]") :]
+    assert unreleased[: unreleased.index("\n## [")].count("args.findings") == 1
+    named = [
+        str(p.relative_to(PLUGIN))
+        for p in PLUGIN.rglob("*")
+        if p.is_file() and "ponytail" in p.read_text(encoding="utf-8", errors="ignore").lower()
+    ]
+    assert not named, named

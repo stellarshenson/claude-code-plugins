@@ -825,6 +825,52 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-10-16T18:21:14Z @kj added
   - log: 2026-10-16T18:21:14Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded ONE-CLEAN
+- [x] `ACC-REVIEW-259-EXTRA-ROWS` **args.findings carries rows from outside the panel** - HIGH; optional args.findings: rows from any source outside the lens panel (another review tool, the owner); each row has the reviewer finding fields plus a free-text source; rows apply to the invocation that carries them
+  - evidence: test_extra_rows_are_an_optional_arg_checked_against_the_finding_schema, test_rows_reach_the_adjudicator_with_their_source_and_merge_by_title green; tests/test_adversarial_workflow_script.py 46 passed; fails on the pre-change script
+  - test: stub-agent invocation with two rows; assert both reach that invocation's adjudicator prompt and a re-invocation without args.findings carries none
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T02:39:57Z @kj added
+  - log: 2026-10-24T02:48:18Z @kj closed: met
+- [x] `ACC-REVIEW-260-ROW-CHECK` **a malformed row throws** - HIGH; args.findings not an array, or a row missing source or a field the panel's finding schema requires, or with a severity outside CRITICAL, MAJOR, MINOR: the script throws and names the row index and the field
+  - evidence: test_a_malformed_row_is_refused_by_index_and_field, test_extra_rows_are_an_optional_arg_checked_against_the_finding_schema green; tests/test_adversarial_workflow_script.py 46 passed; fails on the pre-change script
+  - test: invoke with args.findings a string, a row without source, a row without evidence, a row with severity MEDIUM; assert each throws naming the row index and the field
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T02:39:57Z @kj added
+  - log: 2026-10-24T02:48:18Z @kj closed: met
+- [x] `ACC-REVIEW-261-ROW-MERGE` **rows reach the adjudicator, never the lens reviewers** - HIGH; rows reach the adjudicator in the round's FINDINGS list, each with its source; a row whose title matches a lens finding merges into that finding (also); the lens reviewers do not see the rows
+  - evidence: test_rows_reach_the_adjudicator_with_their_source_and_merge_by_title, test_rows_join_after_the_pin_filter_and_never_reach_a_reviewer green; tests/test_adversarial_workflow_script.py 46 passed; fails on the pre-change script
+  - related: ACC-REVIEW-259-EXTRA-ROWS
+  - test: stub panel returns finding T, rows carry T and U; assert the adjudicator FINDINGS list holds T with also and U with its source, and no reviewer prompt names U
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T02:39:57Z @kj added
+  - log: 2026-10-24T02:48:18Z @kj closed: met
+- [x] `ACC-REVIEW-262-ROW-FILTERS` **rows pass the materiality cap and the settled record** - HIGH; rows pass the materiality cap (material false caps to MINOR, outOfBar) and the settled record (dropped at a ruled site no fix touched since); the confirming round's pin filter does not drop them
+  - evidence: test_rows_pass_the_materiality_cap_and_the_settled_record_but_not_the_pin_filter, test_rows_join_after_the_pin_filter_and_never_reach_a_reviewer green; tests/test_adversarial_workflow_script.py 46 passed; fails on the pre-change script
+  - related: ACC-REVIEW-259-EXTRA-ROWS
+  - test: assert a row with material false reaches the adjudicator as MINOR outOfBar, a row at a ruled untouched site is dropped, and an unpinned row in a confirming round is kept
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T02:39:57Z @kj added
+  - log: 2026-10-24T02:48:18Z @kj closed: met
+- [x] `ACC-REVIEW-263-ROW-ONLY` **a clean panel with rows still runs the adjudicator** - HIGH; a round whose panel returns 0 findings and that carries 1 or more rows runs the adjudicator; the round ships only on the adjudicator's ruling
+  - evidence: test_a_clean_panel_with_a_row_runs_the_adjudicator green; tests/test_adversarial_workflow_script.py 46 passed; fails on the pre-change script
+  - related: ACC-REVIEW-259-EXTRA-ROWS
+  - test: stub panel returns 0 findings, one row; assert the adjudicator is spawned, an empty plan ships and a plan with a change exits PLAN
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T02:39:57Z @kj added
+  - log: 2026-10-24T02:48:18Z @kj closed: met
+- [x] `ACC-REVIEW-264-ROW-INVOKE` **rows accepted on every invocation kind** - HIGH; rows are accepted on the first invocation, on a re-invocation after a PLAN and on the confirmation round after SHIP; LOOP_CONTRACT stays 4 and a contract 4 state written before this change is accepted
+  - evidence: test_rows_are_accepted_after_a_plan_and_on_the_ship_confirmation_round, test_state_carries_the_loop_contract green; tests/test_adversarial_workflow_script.py 46 passed; fails on the pre-change script
+  - related: ACC-REVIEW-259-EXTRA-ROWS
+  - test: rows on a first invocation, a re-invocation after PLAN and a confirmation round after SHIP each reach the adjudicator; assert state.contract 4 and a pre-change contract 4 state is accepted
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T02:39:57Z @kj added
+  - log: 2026-10-24T02:48:18Z @kj closed: met
+- [x] `ACC-REVIEW-265-ROW-DOCS` **the field is documented once** - MEDIUM; references/loop-spec.md (args contract), the adversarial-review SKILL.md Workflow execution section and CHANGELOG.md state the field once; the plugin names no specific external tool
+  - evidence: test_the_findings_arg_is_documented_once_and_names_no_tool green; tests/test_adversarial_workflow_script.py 46 passed; fails on the pre-change script
+  - test: assert each of the three files names args.findings once and no file under plugins/devils-advocate names another review tool as a row source
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T02:39:57Z @kj added
+  - log: 2026-10-24T02:48:18Z @kj closed: met
 
 ## pm-tools soft lock `PMLOCK`
 
