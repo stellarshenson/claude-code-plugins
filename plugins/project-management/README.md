@@ -110,12 +110,12 @@ Cold start, splash screen and the first turn after a fork
   - log: 2026-06-22T11:02:55Z @kj attempted: 200ms pre-turn delay - did NOT work
 ```
 
-- **Permanent ids** - `ACC-<CAT>-<N>-<CODE>` and `DEF-<CAT>-<N>-<CODE>` (`ACC-AUTH-102-LOGIN`, `DEF-LNCH-3-TOKEN`), unique across the document, never renumbered and never recycled. The item code is required on `add --code`, sits at the end of the id and is what `--code`, the `code` column and `pivot --rows code` read; a base id without it still resolves in every link and `--id`, and `check` warns on an item that carries none and on a base id written in an item's text, naming the full id to write; `relate` writes a base id as the full id and prints the code it added. An item that moves category keeps the code it was born with. An existing document gains codes with `migrate-codes`, which appends one code per `BASE-ID CODE` mapping line, logs each item it changes and is idempotent; `rename-code` replaces a wrong code and rewrites every relation line that names the old full id; `references/codes.md` carries the mapping format, the order of operations and the checks
+- **Permanent ids** - `ACC-<CAT>-<N>-<CODE>` and `DEF-<CAT>-<N>-<CODE>` (`ACC-AUTH-102-LOGIN`, `DEF-LNCH-3-TOKEN`), unique across the document, never renumbered and never recycled. The item code is required on `add --code`, sits at the end of the id and is what `--code`, the `code` column and `pivot --rows code` read; a base id without it still resolves in every link and `--id`, and `check` warns on an item that carries none and on a base id written in an item's text, naming the full id to write; `relate` writes a base id as the full id and prints the code it added. An item that moves category keeps the code it was born with. An existing document gains codes with `migrate-codes`, which appends one code per `BASE-ID CODE` mapping line, logs each item it changes and is idempotent; `rename-code` replaces a wrong code and rewrites every relation line that names the old full id; `references/codes.md` carries the mapping format, the order of operations and the checks. `rename-category` renames a category code in its headings, its ids and the mentions of them across the trackers outside file paths and attachment lines, the one change to an id once assigned
 - **Three states** - `[ ]` open, `[x]` closed, `[-]` rejected. Rejected is for a report that was never a defect (never reproduced, the feature is gone, or a statistical or heuristic component's miss - a failure mode measured as a rate, unless it crashes, regresses against HEAD or breaks a stated guarantee); a real defect nobody will fix is a close with the reason
 - **One registered explanation, and it keeps its history** - `mechanism:` on a criterion says how it is meant to work, `root-cause:` on a defect says why it happens. Writing a second one puts it above the first and keeps the first, so on a hunt that runs for days the theory that was disproved on Tuesday is still readable on Friday; `--update` rewords the newest record instead of stacking. The top record is the current one
 - **Evidence at closure** - `close` refuses to run without `--evidence`, one line proving the item is done: the regression test that passes, the build it was verified on. Fixed stops being a claim
 - **Regressions are counted, not overwritten** - reopening a closed defect files `DEF-LNCH-3-TOKEN-1`, then `-2`, and leaves the original closed with its proof; the report totals them, so the file says how often fixes come back
-- **Authored log lines** - ISO 8601 UTC, then the handle, then the event. Append-only, and the attempts that FAILED are the reason the file is worth keeping
+- **Authored log lines** - ISO 8601 UTC, then the handle, then the event. Append-only, and the attempts that FAILED are the reason the file is worth keeping. A change to a whole category or file is one record, the same line without indent, under the category description or in the preamble above the first `##` heading
 - **Attachments with a fingerprint** - `attach` writes one `attachment:` line per screenshot or document with the artefact's sha256 prefix and last-edit stamp; `check` recomputes both and warns when the artefact changed or is missing, and a re-attach logs the old checksum next to the new one
 - **Mandatory triage** - every defect carries a severity (`CRITICAL` / `MAJOR` / `MEDIUM` / `MINOR`) and every criterion an importance (`CRITICAL` / `HIGH` / `MEDIUM` / `LOW`), assigned by the agent as the item is filed. There is no unset: `add` refuses one and `check` errors on one
 
@@ -128,6 +128,7 @@ Deterministic parsing, linting, editing and reporting - no generative step anywh
 ```bash
 # Query
 pm-tools report docs                          # the tables the user reads
+pm-tools report docs --category AUTH          # the category report: its notes and category log above the tables
 pm-tools report docs --category AUTH --detail # one block per item, whole log
 pm-tools report docs --severity CRITICAL      # also --category, --code, --importance, --status, --author, --tag, --regressions, --grep, --blocked, --related-to
 pm-tools report docs --dates closed --since 2026-08-01
@@ -155,7 +156,9 @@ pm-tools amend docs/defects-app.md --id DEF-LNCH-1-TOKEN --author @kj --title "t
 pm-tools attach docs/defects-app.md --id DEF-LNCH-1-TOKEN --author @kj --path shots/relaunch.png --path notes.md   # checksum and edit stamp; check warns on drift
 pm-tools log   docs/defects-app.md --id DEF-LNCH-1-TOKEN --author @kj --event "attempted: ... did NOT work"
 pm-tools unrelate docs/defects-app.md --id DEF-LNCH-1-TOKEN --related DEF-LNCH-4-RETRY --author @kj   # the line it read goes to the log
-pm-tools describe docs/defects-app.md --category LNCH --text-file - < lnch-prose.md   # the whole prose block under the heading
+pm-tools describe docs/defects-app.md --category LNCH --author @kj --text-file - < lnch-prose.md   # the prose block under the heading; the category log stays
+pm-tools describe docs/defects-app.md --category LNCH --author @kj --append "splash timing owned by the UI team"   # a note after the last one
+pm-tools describe docs/defects-app.md --category LNCH --author @kj --note 2 --remove   # also --note 2 --text "..." to change it
 pm-tools close docs/defects-app.md --id DEF-LNCH-1-TOKEN --author @kj --event "fixed: ..." \
     --evidence "the repro no longer fires on build 412; 79 pytest green"
 
@@ -166,6 +169,7 @@ pm-tools upgrade docs/acceptance-criteria.md --code "Authentication=AUTH" --auth
 # Migrate ids to codes (mapping format and order in references/codes.md)
 pm-tools migrate-codes docs/defects-app.md --map defects.map --author @kj   # idempotent; reports gaps
 pm-tools rename-code docs/defects-app.md --id DEF-LNCH-1 --code TOKEN --author @kj   # rewrites the links
+pm-tools rename-category docs/defects-app.md --category LNCH --to LAUNCH --author @kj   # headings, ids and every mention in the store
 ```
 
 `check` is the only gate and it is a gate, not a reporter: non-zero exit on errors (a duplicate id, a malformed item code, an untriaged defect, an unrated criterion, a hand-kept contents table, the wrong hint line for the discipline, a dangling relation, a blocked-by or override cycle, an override on one item only), and `--strict` also fails on warnings (an id with no code, a base id where the full id belongs, a missing repro, an undescribed category, an open item blocked by a finished one or overridden). `relate` keeps both dependency graphs free of cycles as it writes: a new link that closes a cycle holds, and the older links into the item that takes it are removed and logged. Run it on the directory, so a link into the file beside resolves.

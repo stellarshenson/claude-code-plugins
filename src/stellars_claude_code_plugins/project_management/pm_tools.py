@@ -38,6 +38,13 @@ never logged; it carries its own stamp and author.
 
 Three states: `- [ ]` open, `- [x]` closed, `- [-]` rejected (reason in the log line).
 Log lines read `- log: 2026-08-27T15:59:12Z @kj <event>` - ISO 8601 UTC, then the author.
+The same line without indent records a change wider than one item: a tracker record in
+the preamble, above the first `##` heading, or a category record under the category
+description, above its first item. add writes a category record when it creates the
+category, describe on every change; migrate-codes writes a tracker record when it codes
+an item, upgrade --apply when it changes the file and --author is on the roster;
+rename-category writes both. A command that changes nothing writes no record. check
+validates them as item log lines, and a log line is never the description.
 
 An open item may carry one `- lock: 2026-08-30T10:11:29Z @kj <note>` line: @kj is likely
 working on it until the stamp. The lock is a courtesy signal, never a gate - a write by
@@ -73,7 +80,10 @@ Query - every table is markdown, paste-ready; --json gives the same facts as dat
          item lacks a level. Every filter narrows the whole
          report except --status, which narrows ITEMS alone. --plain prints the grids
          and the ITEMS queue without the icons or the categories table; --summary
-         stops at the SUMMARY grid, listing no items.
+         stops at the SUMMARY grid, listing no items. --category CODE is the
+         category report: under the category's name and description it prints the
+         numbered notes, then the category log lines; --json carries notes and log
+         on every category.
   list [paths] [FILTERS] [--columns F,F,..] [--sort=F,-F,..] [--json]
          one table per file, the columns and the order chosen by the caller; a `-`
          prefix on a sort field descends (write --sort=-age, the `=` keeps argparse
@@ -150,10 +160,16 @@ prose, never a level.
           a new record above the previous one by default, which is kept; --update
           rewrites the newest record in place. Refused on the other discipline
   author FILE --handle @xx --name "Full Name"      add or update a roster entry
-  describe FILE --category CODE (--text D | --text-file F)
+  describe FILE --category CODE (--text D | --text-file F) --author @xx
+  describe FILE --category CODE (--append T | --note N (--text T | --remove)) --author @xx
           --text sets the description, the one line under the heading; --text-file
-          replaces the whole prose block from the heading down to the first item,
-          read from F or, with -, from stdin
+          replaces the prose block from the heading down to the first item, read
+          from F or, with -, from stdin, and refuses a `- log:` line. Every non-blank
+          prose line after the description is a note, numbered from 1 past blank,
+          fenced and log lines: --append adds the last note after the last prose
+          line, --note N --text changes note N, --note N --remove removes it. A note
+          is one line of prose, never a heading, a checklist item or a `- log:` line.
+          Every write keeps the category log
   relate FILE --id ID [--related TEXT] [--blocked-by TEXT] [--overrides TEXT]
               [--overridden-by TEXT] [--author @xx]
           related and blocked-by are written on this item only. An override is
@@ -213,6 +229,25 @@ prose, never a level.
           and overridden-by line in the scanned files that names an old full id,
           and log the rename on each item. A base-id link is left alone - it still
           resolves; references/codes.md
+  rename-category FILE --category OLD --to NEW [--name NAME] --author @xx
+          rename a category code across FILE and every tracker beside it, the one
+          change to an id once assigned. In each tracker of FILE's prefix, every `##`
+          heading with code OLD gets NEW (and NAME), and every id with FILE's prefix
+          and segment OLD gets NEW, keeping number, code and ordinal. Every mention
+          of a renamed id in every tracker is rewritten in its own shape, full or
+          base; an id naming no item stays. An id inside a file path outside a
+          relation line and every attachment: line stay as written and are listed
+          on stderr as file:line.
+          Logs the rename on each item, a category record on each heading and a
+          tracker record in each tracker written. A rerun after a git merge
+          finishes the rename: when no heading of FILE's prefix carries OLD, items
+          still do and FILE's NEW heading holds the earlier rename's record, it
+          renames those items, refused when an id one would take exists, and
+          rewrites each OLD mention of an id now carrying NEW. Refused, with
+          nothing written: OLD not a category in FILE; NEW not 2-6 uppercase
+          letters, equal to OLD, a category code in a tracker of FILE's prefix, or
+          the segment of an id with that prefix anywhere in the store; two renamed
+          roots sharing a base id; a handle off the roster of a tracker it writes
 
 Query paths are files or dirs (a dir is scanned for acc-crit*.md and defects*.md);
 no path means ./docs when it exists, else . Stdlib only.
@@ -259,6 +294,9 @@ BOLD = re.compile(r"\*\*([^*]+)\*\*")
 # any all-caps token used as a severity, so upgrade can name what it cannot map
 SEVWORD = re.compile(r"^([A-Z][A-Z0-9-]{0,11})\s*[;:,]")
 LOGLINE = re.compile(r"^(\s+)- log:\s*(\S*)(.*)$")
+# a tracker or category log line: the item log form without the indent, the same groups.
+# Only a line with an @handle after its first word is one; any other `- log:` bullet is prose
+WIDELOG = re.compile(r"^()- log:\s*(\S*)(\s+@\S.*)$")
 DATED = re.compile(r"^(\s+)- (\d{4}-\d{2}-\d{2})\b(.*)$")
 RELLINE = re.compile(r"^(\s+)- (related|blocked-by|overrides|overridden-by):\s*(.*)$")
 # an override is written on both items; each kind names the line the other item carries
@@ -372,7 +410,26 @@ def load(path):
     return open(path, encoding="utf-8").read().splitlines()
 
 
+def unglyph(text):
+    """`text` with each FORBIDDEN glyph written as its U+XXXX escape."""
+    return "".join(
+        f"U+{ord(ch):04X}" if any(lo <= ord(ch) <= hi for lo, hi, _ in FORBIDDEN) else ch
+        for ch in text
+    )
+
+
 def save(path, lines):
+    # a log line is append-only: one this write adds or changes gets each FORBIDDEN glyph
+    # as U+XXXX, so text a record copies from the file, which oneline never saw, cannot
+    # fail check on a line no command can fix
+    had = set(load(path)) if os.path.exists(path) else set()
+    unfenced = {n for n, _ in non_fenced(lines)}
+    lines = [
+        unglyph(ln)
+        if n in unfenced and ln not in had and (LOGLINE.match(ln) or WIDELOG.match(ln))
+        else ln
+        for n, ln in enumerate(lines, 1)
+    ]
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
 
@@ -385,8 +442,17 @@ def now():
 def oneline(text):
     """argparse type for every free-text argument: an item and each of its sub-lines
     is one line of the file, so a real line break inside the text is written as the
-    two characters `\\n` - nothing is lost, and the reader sees where the break was."""
-    return text.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "\\n")
+    two characters `\\n` - nothing is lost, and the reader sees where the break was.
+    A FORBIDDEN glyph is refused here: log lines copy the text and are append-only, so
+    once written, check fails on a line no command can fix."""
+    for ch in text:
+        for lo, hi, name in FORBIDDEN:
+            if lo <= ord(ch) <= hi:
+                raise argparse.ArgumentTypeError(
+                    f"forbidden glyph {name} U+{ord(ch):04X} {ch!r}; "
+                    "use ASCII instead (- for a dash, -> for an arrow)"
+                )
+    return re.sub("\r\n|[\n\r\x0b\x0c\x1c-\x1e\x85\u2028\u2029]", r"\\n", text)
 
 
 # a writeup past this many words is explaining itself; --reason must say why it needs the length
@@ -499,18 +565,34 @@ def roster_of(path):
     return out
 
 
+def tracker_log(lines):
+    """The tracker log: (line number, line) for each WIDELOG line of the preamble,
+    above the first `##` heading, in file order."""
+    out = []
+    for lineno, ln in non_fenced(lines):
+        h = HEADING.match(ln)
+        if h and len(h.group(1)) == 2:
+            break
+        if WIDELOG.match(ln):
+            out.append((lineno, ln))
+    return out
+
+
 def parse(path):
-    """Return (blocks, sections). A block is one item plus its indented sub-lines."""
+    """Return (blocks, sections). A block is one item plus its indented sub-lines. A
+    section carries its category log as `log_lines` and its notes, the prose lines
+    after the description, as `notes`: (line number, line) pairs."""
     name = pathlib.Path(path).name
     docp = "ACC" if name.startswith("acc-crit") else "DEF" if name.startswith("defects") else None
     blocks, sections, cur, sec = [], [], None, None
-    in_authors = False
+    in_authors = in_prose = False  # in_prose: under a `##` heading, above its first item
     for lineno, ln in non_fenced(load(path)):
         if in_authors and not HEADING.match(ln):
             continue
         h = HEADING.match(ln)
         if h:
             in_authors = False
+            in_prose = len(h.group(1)) == 2
             if len(h.group(1)) == 2 and h.group(2).strip().lower() == "authors":
                 in_authors, sec, cur = True, None, None
                 continue
@@ -522,12 +604,15 @@ def parse(path):
                     code=m.group(2) if m else None,
                     raw=h.group(2).strip(),
                     desc=None,
+                    log_lines=[],
+                    notes=[],
                 )
                 sections.append(sec)
             cur = None
             continue
         m = ITEM.match(ln)
         if m:
+            in_prose = False
             indent, state, text = len(m.group(1)), m.group(2), m.group(3)
             idm = IDTOK.match(text)
             badid = IDBAD.match(text)
@@ -654,9 +739,15 @@ def parse(path):
             elif ATTANY.match(ln):
                 cur["att_bad"] = True
             continue
-        # the first prose line under a `##` heading, before any item, is the description
+        if in_prose and WIDELOG.match(ln):
+            sec["log_lines"].append((lineno, ln))
+            continue
+        # the first prose line under a `##` heading, before any item and not a log line,
+        # is the description
         if cur is None and sec is not None and sec["desc"] is None and ln.strip():
             sec["desc"] = ln.strip()
+        elif in_prose and ln.strip():
+            sec["notes"].append((lineno, ln.strip()))
     return blocks, sections
 
 
@@ -1582,6 +1673,8 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
                             code=sec["code"],
                             name=sec["name"],
                             description=sec["desc"],
+                            notes=[t for _, t in sec["notes"]],
+                            log=[ln for _, ln in sec["log_lines"]],
                             **tally([b for b in scope if b["section"] is sec]),
                         )
                         for sec in shown
@@ -1613,6 +1706,13 @@ def cmd_report(files, fl, detail, plain, summary, as_json):
                 + (f" - {solo['desc']}" if solo["desc"] else "")
                 + "\n"
             )
+        if solo and cat:  # the category report: its notes, then its category log
+            for part in (
+                [f"{k}. {t}" for k, (_, t) in enumerate(solo["notes"], 1)],
+                [ln for _, ln in solo["log_lines"]],
+            ):
+                if part:
+                    print("\n".join(part) + "\n")
 
         if scope:
             cols = grid["cols"]
@@ -2256,6 +2356,9 @@ def cmd_check(files, strict):
         want_hint = HINT_FOR[prefix]
         known_authors = roster_of(f)
         e, w, codes = [], [], {}
+        # tracker and category log lines are validated as item log lines are
+        wide = {n for n, _ in tracker_log(lines)}
+        wide |= {n for s in sections for n, _ in s["log_lines"]}
 
         if not any(
             len(m.group(1)) == 1 for _, ln in non_fenced(lines) if (m := HEADING.match(ln))
@@ -2284,7 +2387,7 @@ def cmd_check(files, strict):
                             "delete it and derive the index with list-categories",
                         )
                     )
-            lm = LOGLINE.match(ln)
+            lm = LOGLINE.match(ln) or (WIDELOG.match(ln) if lineno in wide else None)
             if lm and not (STAMP.match(lm.group(2)) and _valid_stamp(lm.group(2))):
                 bad = "date only; run upgrade" if DATEONLY.match(lm.group(2)) else "malformed"
                 e.append((lineno, f"log: stamp is {bad}; use ISO 8601 UTC, YYYY-MM-DDTHH:MM:SSZ"))
@@ -2696,6 +2799,50 @@ def need_author(file, handle):
     return h
 
 
+def put_record(lines, head, record):
+    """Insert a wide log line into `lines`: under the `##` heading at 0-based index
+    `head`, or in the preamble with head None. It goes after the log's last line, else
+    at the end of the prose there, a blank line between it and any prose or item."""
+    start = 0 if head is None else head + 1
+    stop, last = len(lines), None
+    for lineno, ln in non_fenced(lines):
+        i = lineno - 1
+        if i < start:
+            continue
+        h = HEADING.match(ln)
+        if (h and (head is not None or len(h.group(1)) == 2)) or (
+            head is not None and ITEM.match(ln)
+        ):
+            stop = i
+            break
+        if WIDELOG.match(ln):
+            last = i
+    if last is not None:
+        lines.insert(last + 1, record)
+        return
+    at = stop
+    while at > start and not lines[at - 1].strip():
+        at -= 1
+    block = [record]
+    if at > 0 and lines[at - 1].strip():
+        block.insert(0, "")
+    if at < len(lines) and lines[at].strip():
+        block.append("")
+    lines[at:at] = block
+
+
+def tracker_record(file, lines, author, event):
+    """Append a tracker record, a tracker-wide change, to the preamble of `lines` (the
+    content of FILE) in place: `- log: <stamp> @xx <event>`."""
+    put_record(lines, None, f"- log: {now()} {need_author(file, author)} {event}")
+
+
+def category_record(file, lines, head, author, event):
+    """Append a category record, a category-wide change, to the category log under the
+    `##` heading at 0-based index `head` of `lines` (the content of FILE) in place."""
+    put_record(lines, head, f"- log: {now()} {need_author(file, author)} {event}")
+
+
 def cmd_author(file, handle, name):
     h = handle if handle.startswith("@") else "@" + handle
     if not HANDLE.fullmatch(h):
@@ -2782,6 +2929,8 @@ def cmd_add(
         )
     code = norm_code(code)
     sec, lines = section_for(sections, cat, name, desc, lines)
+    if all(s is not sec for s in sections):
+        category_record(file, lines, sec["line"] - 1, who, "category created")
     beside = [
         b
         for f in siblings(file)[1:]
@@ -2966,10 +3115,17 @@ def cmd_amend(file, wanted, title, text, author, reason=None):
     return 0
 
 
-def cmd_describe(file, code, text, block=None):
-    """--text sets the description line; `block` replaces every line from the heading
-    down to the first item or heading, so a list or note under the description has a
-    write command too."""
+def cmd_describe(file, code, text, author, block=None, append=None, note=None, remove=False):
+    """--text sets the description line, or note N when `note` is given; `block` replaces
+    every line from the heading down to the first item or heading, so a list or note under
+    the description has a write command too; `append` adds a note after the last prose
+    line and `remove` drops note N. Each keeps the category log lines and appends a
+    category record."""
+    if remove and note is None:
+        raise SystemExit("--remove needs --note N")
+    if note is not None and text is None and not remove:
+        raise SystemExit("--note N needs --text or --remove")
+    who = need_author(file, author)
     expire_locks(file)
     lines = load(file)
     _, sections = parse(file)
@@ -2978,34 +3134,92 @@ def cmd_describe(file, code, text, block=None):
     if sec is None:
         have = ", ".join(s["code"] or "?" for s in sections) or "(none)"
         raise SystemExit(f"unknown category code {code}; have: {have}")
+    new = None  # the prose lines to write; a note's text is a block of one line
     if block is not None:
-        new = [ln.rstrip() for ln in block.splitlines()]
+        flag, new = "--text-file", [ln.rstrip() for ln in block.splitlines()]
+    elif append is not None:
+        flag, new = "--append", [append.strip()]
+    elif note is not None and not remove:
+        flag, new = "--text", [text.strip()]
+    if new is not None:
         while new and not new[-1]:
             new.pop()
         while new and not new[0]:
             new.pop(0)
         if not new:
-            raise SystemExit("--text-file is empty; the prose block needs at least one line")
+            raise SystemExit(f"{flag} is empty; the prose block needs at least one line")
         fences = sum(1 for ln in new if re.match(r"^\s*```", ln))
-        if fences % 2 or any(HEADING.match(ln) or ITEM.match(ln) for _, ln in non_fenced(new)):
+        if fences % 2 or any(
+            HEADING.match(ln) or CBOX.match(ln) or re.match(r"^\s*- log:", ln)
+            for _, ln in non_fenced(new)
+        ):
             raise SystemExit(
-                "--text-file holds a heading, a checklist item or an unclosed code fence; "
-                "the prose block takes prose only"
+                f"{flag} holds a heading, a checklist item, a `- log:` line or an "
+                "unclosed code fence; the prose block takes prose only"
             )
-        start = end = sec["line"]  # 0-based index of the line after the heading
-        fence = False
-        while end < len(lines):
-            if re.match(r"^\s*```", lines[end]):
-                fence = not fence
-            elif not fence and (HEADING.match(lines[end]) or ITEM.match(lines[end])):
-                break
-            end += 1
-        lines[start:end] = ["", *new, *([""] if end < len(lines) else [])]
+    start = end = sec["line"]  # 0-based index of the line after the heading
+    fence, at = False, [n - 1 for n, _ in sec["log_lines"]]  # at: the category log lines
+    while end < len(lines):
+        if re.match(r"^\s*```", lines[end]):
+            fence = not fence
+        elif not fence and (HEADING.match(lines[end]) or ITEM.match(lines[end])):
+            break
+        end += 1
+    if append is not None or note is not None:
+        notes = sec["notes"]
+        if append is not None:
+            # the last prose line, a closing fence included, so the note follows it
+            prose = [j for j in range(start, end) if j not in at and lines[j].strip()]
+            if sec["desc"] is None or not prose:
+                raise SystemExit(
+                    f"category {code} has no description line, which an appended note would "
+                    f'become; set one first: pm-tools describe {file} --category {code} --text "..." --author @xx'
+                )
+            lines[prose[-1] + 1 : prose[-1] + 1] = ["", new[0]]
+            note, event, what = len(notes) + 1, f'added note "{new[0]}"', f'added "{new[0]}"'
+        else:
+            if not 1 <= note <= len(notes):
+                raise SystemExit(f"no note {note} in {code}; it has {len(notes)} note(s)")
+            n, old = notes[note - 1]
+            if remove:
+                del lines[n - 1]
+                event, what = f'removed note {note} "{old}"', f'removed "{old}"'
+            elif new[0] == old:
+                print(f"{file}:{sec['line']}: {code} note {note} unchanged")
+                return 0
+            else:
+                s = lines[n - 1]
+                lines[n - 1] = s[: len(s) - len(s.lstrip())] + new[0]
+                event = f'changed note {note} "{old}" -> "{new[0]}"'
+                what = f'changed "{old}" -> "{new[0]}"'
+        category_record(file, lines, sec["line"] - 1, who, event)
+        save(file, lines)
+        print(f"{file}:{sec['line']}: {code} note {note} {what}")
+        return 0
+    if block is not None:
+        logs = [lines[j] for j in at]
+        old = [lines[j].rstrip() for j in range(start, end) if j not in at]
+        while old and not old[-1]:
+            old.pop()
+        while old and not old[0]:
+            old.pop(0)
+        if old == new:
+            print(f"{file}:{sec['line']}: {code} prose block unchanged")
+            return 0
+        tail = ["", *logs] if logs else []
+        lines[start:end] = ["", *new, *tail, *([""] if end < len(lines) else [])]
+        category_record(
+            file,
+            lines,
+            sec["line"] - 1,
+            who,
+            f"prose block replaced, {len(old)} line(s) -> {len(new)} line(s)",
+        )
         save(file, lines)
         print(f"{file}:{sec['line']}: {code} prose block replaced, {len(new)} lines")
         return 0
     i = sec["line"]  # 0-based index of the line after the heading
-    while i < len(lines) and not lines[i].strip():
+    while i < len(lines) and (not lines[i].strip() or WIDELOG.match(lines[i])):
         i += 1
     prose = (
         i < len(lines)
@@ -3014,6 +3228,10 @@ def cmd_describe(file, code, text, block=None):
         and not ITEM.match(lines[i])
         and not SUB.match(lines[i])
     )
+    old = lines[i].strip() if prose else None
+    if old == text:
+        print(f"{file}:{sec['line']}: {code} description unchanged")
+        return 0
     if prose:
         lines[i] = text
         what = "replaced"
@@ -3023,6 +3241,7 @@ def cmd_describe(file, code, text, block=None):
             ins.append("")
         lines[sec["line"] : sec["line"]] = ins
         what = "added"
+    category_record(file, lines, sec["line"] - 1, who, changed("description", old, text))
     save(file, lines)
     print(f"{file}:{sec['line']}: {code} description {what}")
     return 0
@@ -3612,7 +3831,7 @@ def cmd_upgrade(file, overrides, apply, author):
         if not s["desc"]:
             hints.append(
                 f"line {s['line']}: category '{s['name']}' has no description; run: "
-                f'pm-tools describe {file} --category {code} --text "<one line>"'
+                f'pm-tools describe {file} --category {code} --text "<one line>" --author @xx'
             )
 
     # numbers already carried by the doc win, new-style or legacy `DEF-N`; the rest
@@ -3673,12 +3892,12 @@ def cmd_upgrade(file, overrides, apply, author):
             why = f"carries an unmapped severity word {odd.group(1)!r}" if odd else "not triaged"
             hints.append(
                 f"line {b['line']}: {new} {why}; run: "
-                f"pm-tools edit {file} --id {new} --severity {'|'.join(SEVS)}"
+                f"pm-tools edit {file} --id {new} --severity {'|'.join(SEVS)} --author @xx"
             )
         if prefix == "ACC" and not b["importance"]:
             hints.append(
                 f"line {b['line']}: {new} not rated; run: "
-                f"pm-tools edit {file} --id {new} --importance {'|'.join(IMPS)}"
+                f"pm-tools edit {file} --id {new} --importance {'|'.join(IMPS)} --author @xx"
             )
         if not b["hint"]:
             want = HINT_FOR[prefix]
@@ -3793,6 +4012,9 @@ def cmd_upgrade(file, overrides, apply, author):
     if not apply:
         print(f"\ndry run: {len(plan)} change(s), {len(hints)} hint(s). Re-run with --apply")
         return 0
+    if stamp and out != lines:
+        # the record needs a handle on the roster; without one the hints say how to get it
+        tracker_record(file, out, stamp, "upgraded")
     save(file, out)
     edited = sum(
         max(i2 - i1, j2 - j1)
@@ -3886,6 +4108,9 @@ def cmd_migrate_codes(file, mapping, author):
             if at is not None:
                 b, code = at
                 out.append(f"{sub_indent(lines, b)}- log: {now()} {who} coded {code}")
+        tracker_record(
+            file, out, who, f"coded {len(plan)} item(s) from {pathlib.Path(mapping).name}"
+        )
         save(file, out)
         files = siblings(file)
         for f in files:
@@ -4016,6 +4241,158 @@ def cmd_rename_code(file, wanted, code, author):
     return 0
 
 
+def left_alone(m):
+    """Why a rename leaves an IDREF match as written, or None: an attachment line holds
+    an artefact's path, and an id inside a file path (the rule coded_ref reads) names a
+    file the rename does not move."""
+    s, at = m.string, m.start()
+    if ATTANY.match(s):
+        return "an attachment line"
+    if RELLINE.match(s):
+        return None  # parse reads every id on a relation line as a link
+    if s[at - 1 : at] in ("/", "\\") or PATHTAIL.match(s, m.end()):
+        return "a file path"
+    return None
+
+
+def rename_plan(file, old, new, name, who):
+    """Validate a category rename and compute, writing nothing, the new content of every
+    store file it changes. Returns ({file: (lines, renamed items, mentions rewritten)},
+    [(file, line, id, why)] for each mention left as written). A refusal raises."""
+    if not re.fullmatch(r"[A-Z]{2,6}", new):
+        raise SystemExit(f"category code {new!r} must be 2-6 uppercase letters")
+    if new == old:
+        raise SystemExit(f"--to {new} is the code the category already carries")
+    store = siblings(file)
+    parsed = {f: (load(f), *parse(f)) for f in store}
+    prefix = doc_prefix(file, parsed[file][1])
+    same = [f for f in store if doc_prefix(f, parsed[f][1]) == prefix]
+    renamed = {
+        f: [b for b in parsed[f][1] if b["prefix"] == prefix and b["cat"] == old] for f in same
+    }
+    event = f'renamed category "{old}" -> "{new}"'
+    record = re.compile(rf"- log: \S+ @\S+ {re.escape(event)}(,|\s*$)")
+    # a rerun finishes a rename a git merge left half done: no heading carries OLD any
+    # more, the other branch's items still do, and FILE's NEW heading holds the record
+    rerun = (
+        all(s["code"] != old for f in same for s in parsed[f][2])
+        and any(renamed.values())
+        and any(
+            s["code"] == new and any(record.match(ln) for _, ln in s["log_lines"])
+            for s in parsed[file][2]
+        )
+    )
+    if not rerun and all(s["code"] != old for s in parsed[file][2]):
+        have = ", ".join(s["code"] or "?" for s in parsed[file][2]) or "(none)"
+        raise SystemExit(f"unknown category code {old}; have: {have}")
+    stale = []  # on a rerun, the earlier run's items, which the other branch names by OLD
+    if rerun:
+        name = None  # the earlier run renamed the headings
+        stale = [
+            b for f in store for b in parsed[f][1] if b["prefix"] == prefix and b["cat"] == new
+        ]
+        idx = {ident(b): b for b in stale}
+        for f, items in renamed.items():
+            for b in items:
+                moved = dict(b, cat=new)
+                nid = ident(moved)
+                hit = nid if nid in idx or b["regr"] else resolve_ref(idx, root_of(moved))
+                if hit in idx:
+                    raise SystemExit(
+                        f"{f}:{b['line']}: {ident(b)} would become {nid}, which collides "
+                        f"with {hit}; fix it before the rerun"
+                    )
+    else:
+        for f in same:
+            if any(s["code"] == new for s in parsed[f][2]):
+                raise SystemExit(f"{f}: {new} is already a category code; pick another")
+        for f in store:
+            for b in parsed[f][1]:
+                if b["prefix"] == prefix and b["cat"] == new:
+                    raise SystemExit(f"{f}:{b['line']}: {ident(b)} already exists; pick another")
+    roots, names = {}, set()  # names: the full, base and base-plus-ordinal ids of the items
+    for b in [dict(b, cat=old) for b in stale] + [b for items in renamed.values() for b in items]:
+        names |= {ident(b), root_of(b)} | ({f"{root_of(b)}-{b['regr']}"} if b["regr"] else set())
+    for f, items in renamed.items():
+        for b in items:
+            if b["regr"]:
+                continue
+            prev = roots.setdefault(root_of(b), (f, b["line"], ident(b)))
+            if prev[2] != ident(b):
+                raise SystemExit(
+                    f"duplicate base id {root_of(b)}: roots {prev[2]} ({prev[0]}:{prev[1]}) "
+                    f"and {ident(b)} ({f}:{b['line']}); fix it before the rename"
+                )
+    wide = f'finished renaming category "{old}" -> "{new}"' if rerun else event
+    stamp = now()
+    plan, kept = {}, []
+    for f in store:
+        lines, _, sections = parsed[f]
+        mine = renamed.get(f, [])
+        heads = [s for s in sections if f in renamed and s["code"] == old]
+        for s in heads:
+            lines[s["line"] - 1] = f"## {name or s['name']} `{new}`"
+        if rerun and mine:
+            heads = [s for s in sections if s["code"] == new]  # they get the finishing record
+        hits = 0
+        for i, ln in enumerate(lines):
+            spans = [
+                m.span("cat") for m in IDREF.finditer(ln) if m[0] in names and not left_alone(m)
+            ]
+            for a, z in reversed(spans):
+                ln = ln[:a] + new + ln[z:]
+            lines[i], hits = ln, hits + len(spans)
+        mentions = hits - len(mine)  # each renamed item's own id is one of the hits
+        if mine or heads or mentions:
+            # bottom up, so each insert leaves the positions above it valid. On a tie the
+            # heading's record goes first: it lands below the heading, the item log above
+            ops = [(block_end(lines, b), 0, b) for b in mine]
+            ops += [(s["line"] - 1, 1, s) for s in heads]
+            for at, head, x in sorted(ops, key=lambda op: op[:2], reverse=True):
+                if not head:
+                    lines.insert(at, f"{sub_indent(lines, x)}- log: {stamp} {who} {event}")
+                    continue
+                renamed_to = (
+                    f', name "{x["name"]}" -> "{name}"' if name and name != x["name"] else ""
+                )
+                category_record(f, lines, at, who, wide + renamed_to)
+            count = f"{len(mine)} item(s)" if mine or heads else f"{mentions} mention(s) rewritten"
+            tracker_record(f, lines, who, f"{wide}, {count}")
+            plan[f] = (lines, mine, mentions)
+        kept += [
+            (f, n, m[0], why)
+            for n, ln in enumerate(lines, start=1)
+            for m in IDREF.finditer(ln)
+            if m[0] in names and (why := left_alone(m))
+        ]
+    return plan, kept
+
+
+def cmd_rename_category(file, old, new, name, author):
+    """Rename a category code across the store: the `##` headings and the item ids with
+    FILE's prefix and code OLD in every tracker of that prefix, and every mention of
+    those ids in every tracker beside FILE. Every check runs before the first write."""
+    who = need_author(file, author)
+    old = old.upper()
+    for f in rename_plan(file, old, new, name, who)[0]:
+        expire_locks(f)
+    plan, kept = rename_plan(file, old, new, name, who)  # again, past the dropped locks
+    for f, (_, mine, _) in plan.items():
+        for b in mine:
+            warn_lock(f, b, who)
+    for f, (lines, _, _) in plan.items():
+        save(f, lines)
+    for f, (_, mine, mentions) in plan.items():
+        at = link_index([f])
+        for b in mine:
+            nid = ident(dict(b, cat=new))
+            print(f"{f}:{at[nid]['line']}: {ident(b)} -> {nid}")
+        print(f"{f}: {mentions} mention(s) rewritten")
+    for f, n, rid, why in kept:
+        print(f"{f}:{n}: {rid} left as written in {why}", file=sys.stderr)
+    return 0
+
+
 # -------------------------------------------------------------------------- cli
 
 
@@ -4029,7 +4406,12 @@ def main(argv: list[str] | None = None) -> int:
 
     def add_filters(sp, on_report):
         whole = " - narrows the whole report" if on_report else ""
-        sp.add_argument("--category", help="one category code" + whole)
+        sp.add_argument(
+            "--category",
+            help="one category code"
+            + whole
+            + ("; also prints its notes and category log" if on_report else ""),
+        )
         sp.add_argument(
             "--code",
             type=str.upper,
@@ -4253,24 +4635,42 @@ def main(argv: list[str] | None = None) -> int:
     sd = sub.add_parser("describe")
     sd.add_argument("file")
     sd.add_argument("--category", required=True)
+    sd.add_argument("--author", required=True, metavar="@xx", help="signs the category record")
     sdw = sd.add_mutually_exclusive_group(required=True)
-    sdw.add_argument("--text", type=oneline, help="the description, one line")
+    sdw.add_argument("--text", type=oneline, help="the description, one line; with --note, note N")
     sdw.add_argument(
         "--text-file",
         dest="block",
         metavar="F",
         help="the whole prose block under the heading; - reads stdin",
     )
+    sdw.add_argument(
+        "--append",
+        type=oneline,
+        metavar="TEXT",
+        help="add TEXT as the last note, after the last prose line",
+    )
+    sdw.add_argument("--remove", action="store_true", help="with --note, remove note N")
+    sd.add_argument(
+        "--note",
+        type=int,
+        metavar="N",
+        help="note N, the Nth non-blank prose line after the description; blank, fenced "
+        "and log lines are not counted",
+    )
 
     sr = sub.add_parser("relate")
     sr.add_argument("file")
     sr.add_argument("--id", required=True)
-    sr.add_argument("--related")
-    sr.add_argument("--blocked-by", dest="blocked")
-    sr.add_argument("--overrides", help="this item overrides ID; both items get a line")
+    sr.add_argument("--related", type=oneline)
+    sr.add_argument("--blocked-by", dest="blocked", type=oneline)
+    sr.add_argument(
+        "--overrides", type=oneline, help="this item overrides ID; both items get a line"
+    )
     sr.add_argument(
         "--overridden-by",
         dest="overridden",
+        type=oneline,
         help="ID overrides this item; both items get a line",
     )
     sr.add_argument(
@@ -4385,6 +4785,15 @@ def main(argv: list[str] | None = None) -> int:
     src.add_argument("--id", required=True)
     src.add_argument("--code", required=True, metavar="NEW")
     src.add_argument("--author", required=True, metavar="@xx")
+
+    srn = sub.add_parser("rename-category")
+    srn.add_argument("file")
+    srn.add_argument("--category", required=True, metavar="OLD", help="the code to rename")
+    srn.add_argument(
+        "--to", required=True, metavar="NEW", help="the new code, 2-6 uppercase letters"
+    )
+    srn.add_argument("--name", type=oneline, help="a new name for every renamed heading")
+    srn.add_argument("--author", required=True, metavar="@xx", help="signs every log line written")
 
     a, extra = ap.parse_known_args(argv[1:])
     if extra and (a.cmd != "search" or any(x.startswith("-") for x in extra)):
@@ -4523,7 +4932,9 @@ def main(argv: list[str] | None = None) -> int:
             if not pathlib.Path(a.block).is_file():
                 raise SystemExit(f"--text-file not found: {a.block}")
             block = pathlib.Path(a.block).read_text(encoding="utf-8")
-        return cmd_describe(a.file, a.category, a.text, block)
+        return cmd_describe(
+            a.file, a.category, a.text, a.author, block, a.append, a.note, a.remove
+        )
     if a.cmd == "relate":
         return cmd_relate(a.file, a.id, a.related, a.blocked, a.overrides, a.overridden, a.author)
     if a.cmd == "unrelate":
@@ -4560,6 +4971,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_migrate_codes(a.file, a.map, a.author)
     if a.cmd == "rename-code":
         return cmd_rename_code(a.file, a.id, a.code, a.author)
+    if a.cmd == "rename-category":
+        return cmd_rename_category(a.file, a.category, a.to, a.name, a.author)
 
 
 if __name__ == "__main__":

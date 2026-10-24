@@ -1100,7 +1100,7 @@ def test_the_log_is_append_only_and_keeps_failed_attempts(defects: Path):
         "--evidence",
         "unit suite green",
     )
-    logs = [ln for ln in defects.read_text(encoding="utf-8").splitlines() if "- log:" in ln]
+    logs = log_lines(defects)
     assert len(logs) == 3, "add, attempt and close each leave their own line"
     assert any("did NOT work" in ln for ln in logs), "a failed attempt is logged, never erased"
 
@@ -2617,19 +2617,29 @@ def test_unrelate_refuses_a_link_the_item_does_not_carry_and_writes_nothing(defe
 ROUTES = "Launch routes.\n\n- `GET status` -> `{root}`\n- `POST launch` -> `{name}`\n"
 
 
+def describe(f: Path, *argv: str) -> int:
+    return run("describe", str(f), "--category", "LNCH", "--author", "@kj", *argv)
+
+
 def test_describe_text_file_replaces_the_whole_prose_block(defects: Path, tmp_path: Path, capsys):
     add_defect(defects, "token race")
     block = tmp_path / "prose.md"
     block.write_text(ROUTES, encoding="utf-8")
-    assert run("describe", str(defects), "--category", "LNCH", "--text-file", str(block)) == 0
+    assert describe(defects, "--text-file", str(block)) == 0
     text = defects.read_text(encoding="utf-8")
     assert "Cold start and the first turn" not in text
-    assert "- `POST launch` -> `{name}`\n\n- [ ] `DEF-LNCH-1-TEST`" in text
+    assert re.search(
+        r"- `POST launch` -> `\{name\}`\n\n"
+        r"- log: \S+ @kj category created\n"
+        r"- log: \S+ @kj prose block replaced, 1 line\(s\) -> 4 line\(s\)\n\n"
+        r"- \[ \] `DEF-LNCH-1-TEST`",
+        text,
+    ), "the new prose, then the category log, then the items"
     block.write_text("Routes of the launch service.\n\n- `GET status` -> `{root}`\n")
-    run("describe", str(defects), "--category", "LNCH", "--text-file", str(block))
+    describe(defects, "--text-file", str(block))
     text = defects.read_text(encoding="utf-8")
     assert "POST launch" not in text and "- `GET status` -> `{root}`" in text
-    run("describe", str(defects), "--category", "LNCH", "--text", "Launch routes")
+    describe(defects, "--text", "Launch routes")
     text = defects.read_text(encoding="utf-8")
     assert "Launch routes\n\n- `GET status`" in text, "--text keeps the lines below"
     assert run("check", str(defects)) == 0
@@ -2642,14 +2652,20 @@ def test_describe_text_file_replaces_the_whole_prose_block(defects: Path, tmp_pa
 def test_describe_text_file_reads_stdin(defects: Path, monkeypatch):
     add_defect(defects, "token race")
     monkeypatch.setattr("sys.stdin", io.StringIO(ROUTES))
-    assert run("describe", str(defects), "--category", "LNCH", "--text-file", "-") == 0
+    assert describe(defects, "--text-file", "-") == 0
     assert "- `GET status` -> `{root}`" in defects.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize(
     "block",
-    ["", "Routes\n\n## Other `OTH`\n", "Routes\n- [ ] `DEF-LNCH-9` **stray**\n", "Routes\n```\n"],
-    ids=["empty", "heading", "item", "open-fence"],
+    [
+        "",
+        "Routes\n\n## Other `OTH`\n",
+        "Routes\n- [ ] `DEF-LNCH-9` **stray**\n",
+        "Routes\n```\n",
+        "Routes\n\n- log: 2026-10-23T05:16:55Z @kj forged\n",
+    ],
+    ids=["empty", "heading", "item", "open-fence", "log-line"],
 )
 def test_describe_text_file_takes_prose_only(defects: Path, tmp_path: Path, block: str):
     add_defect(defects, "token race")
@@ -2657,7 +2673,7 @@ def test_describe_text_file_takes_prose_only(defects: Path, tmp_path: Path, bloc
     f = tmp_path / "prose.md"
     f.write_text(block, encoding="utf-8")
     with pytest.raises(SystemExit) as e:
-        run("describe", str(defects), "--category", "LNCH", "--text-file", str(f))
+        describe(defects, "--text-file", str(f))
     assert str(e.value).startswith("--text-file ")
     assert defects.read_text(encoding="utf-8") == before
 
@@ -3314,6 +3330,45 @@ def test_upgrade_nested_item_hint_command_is_accepted_by_add(tmp_path: Path, cap
     assert "--importance CRITICAL|HIGH|MEDIUM|LOW" in hint
 
 
+@pytest.mark.parametrize(
+    "name, header, why, levels, level",
+    [
+        (
+            "defects-legacy.md",
+            "# Defects - Legacy",
+            "not triaged",
+            "CRITICAL|MAJOR|MEDIUM|MINOR",
+            "MAJOR",
+        ),
+        (
+            "acc-crit-legacy.md",
+            "# Acceptance Criteria - Legacy",
+            "not rated",
+            "CRITICAL|HIGH|MEDIUM|LOW",
+            "HIGH",
+        ),
+    ],
+)
+def test_upgrade_level_hint_command_is_accepted_by_edit(
+    tmp_path: Path, capsys, name, header, why, levels, level
+):
+    """DEF-PMGT-85-HINT-AUTHOR: the docs call the HINT the exact command, so the
+    'not triaged' and 'not rated' edit hints carry the --author edit requires."""
+    f = tmp_path / name
+    f.write_text(
+        f"{header}\n\n## Launch\n\nCold start\n\n"
+        "- [ ] **token race** - symptom\n"
+        "  - log: 2026-06-12T00:00:00Z @kj filed\n\n"
+        "## Authors\n\n- `@kj` Konrad Jelen\n",
+        encoding="utf-8",
+    )
+    assert run("upgrade", str(f), "--author", "@kj", "--apply") == 0
+    (hint,) = [ln for ln in capsys.readouterr().err.splitlines() if why in ln]
+    cmd = hint.split("run: pm-tools ", 1)[1]
+    assert run(*cmd.replace(levels, level).replace("@xx", "@kj").split()) == 0
+    assert f"**token race** - {level}; symptom" in f.read_text(encoding="utf-8")
+
+
 # --- Soft lock (ACC-PMLOCK-64..71) ------------------------------------------
 
 
@@ -3330,7 +3385,9 @@ def lock_lines(f: Path) -> list[str]:
 
 
 def log_lines(f: Path) -> list[str]:
-    return [ln.strip() for ln in f.read_text(encoding="utf-8").splitlines() if "- log:" in ln]
+    """The item log lines; a category record is not an item's history."""
+    lines = f.read_text(encoding="utf-8").splitlines()
+    return [ln.strip() for ln in lines if ln.startswith("  - log:")]
 
 
 def two_authors_two_defects(defects: Path, capsys) -> None:
@@ -3352,7 +3409,7 @@ def test_lock_writes_one_line_24h_ahead_before_the_log_and_never_logs(defects: P
     assert m, line
     assert stamp(23.99) <= m.group(1) <= stamp(24.01), "24 hours from now by default"
     body = defects.read_text(encoding="utf-8")
-    assert body.index("- lock:") < body.index("- log:"), "the lock sits before the history"
+    assert body.index("- lock:") < body.index("  - log:"), "the lock sits before the history"
     assert body.index("- test-tags:") < body.index("- lock:"), "and after the other sub-lines"
     assert len(log_lines(defects)) == 2, "locking is never logged"
     assert capsys.readouterr().err == "", "own lock, fresh item: nothing to warn about"
@@ -3854,6 +3911,7 @@ def test_a_line_break_in_free_text_is_written_as_backslash_n(defects: Path, caps
     assert ["`DEF-LNCH-1-TEST`", "first\\nsecond", "x\\ny", "step 1\\nstep 2"] == table_rows(
         capsys.readouterr().out
     )[1][:4]
+    assert pm_tools.oneline("a\x0cb\u2028c\r\nd") == "a\\nb\\nc\\nd"
 
 
 def test_attach_records_checksum_and_edit_stamp_and_check_reports_drift(
@@ -3925,7 +3983,7 @@ def test_attach_records_checksum_and_edit_stamp_and_check_reports_drift(
         == 0
     )
     assert "notes.md unchanged" in capsys.readouterr().out
-    assert defects.read_text(encoding="utf-8").count("- log:") == 4, (
+    assert defects.read_text(encoding="utf-8").count("  - log:") == 4, (
         "added, attached, attached, refreshed - an unchanged artefact is not logged"
     )
 
@@ -4014,8 +4072,8 @@ def test_a_writeup_over_50_words_is_refused_without_a_reason(defects: Path):
             run(argv[0], str(defects), "--author", "@kj", *argv[1:])
         assert "is 51 words" in str(e.value) and "--reason" in str(e.value), argv[0]
     with pytest.raises(SystemExit) as e:
-        run("describe", str(defects), "--category", "LNCH", "--text", LONG)
-    assert "is 51 words" in str(e.value), "a command with no log line takes no reason"
+        describe(defects, "--text", LONG)
+    assert "is 51 words" in str(e.value), "describe takes no reason"
     assert defects.read_text(encoding="utf-8") == before, "nothing is written"
     fifty = " ".join(["word"] * 50)
     assert run("log", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", fifty) == 0
@@ -4190,3 +4248,816 @@ def test_edit_keeps_an_opening_prose_word_under_a_level_flag(defects: Path, crit
     assert "- HIGH; Low, medium and high tiers each render their own badge\n" in (
         criteria.read_text(encoding="utf-8")
     )
+
+
+# --- Tracker and category logs (ACC-PMLOG) ---------------------------------
+
+
+WIDE = (
+    "# Defects - Wide\n\nDefects for the app.\n\n"
+    "- log: 2026-10-01T10:00:00Z @kj upgraded\n"
+    "- log: 2026-10-02T10:00:00Z @kj coded 2 item(s) from codes.map\n\n"
+    "## Authors\n\n- `@kj` Konrad Jelen\n\n"
+    "## Launch `LNCH`\n\nCold start\n\n"
+    "- log: 2026-10-01T10:00:00Z @kj category created\n"
+    '- log: 2026-10-02T10:00:00Z @kj description added "Cold start"\n\n'
+    "- [ ] `DEF-LNCH-1-TEST` **token race** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-10-01T10:00:00Z @kj added\n"
+)
+TRACKER_LOG = [
+    "- log: 2026-10-01T10:00:00Z @kj upgraded",
+    "- log: 2026-10-02T10:00:00Z @kj coded 2 item(s) from codes.map",
+]
+CATEGORY_LOG = [
+    "- log: 2026-10-01T10:00:00Z @kj category created",
+    '- log: 2026-10-02T10:00:00Z @kj description added "Cold start"',
+]
+RECORD = r"- log: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z @kj "
+
+
+def wide_file(tmp_path: Path, body: str = WIDE) -> Path:
+    return coded_file(tmp_path, "defects-wide", body)
+
+
+def lnch(f: Path) -> dict:
+    return next(s for s in pm_tools.parse(str(f))[1] if s["code"] == "LNCH")
+
+
+def test_the_tracker_log_is_read_off_the_preamble_in_file_order(tmp_path: Path):
+    """ACC-PMLOG-207"""
+    f = wide_file(tmp_path)
+    lines = pm_tools.load(str(f))
+    got = pm_tools.tracker_log(lines)
+    assert [ln for _, ln in got] == TRACKER_LOG
+    assert all(lines[n - 1] == ln for n, ln in got), "each carries its own line number"
+    assert run("check", str(f)) == 0
+
+
+def test_the_category_log_parses_onto_its_section(tmp_path: Path):
+    """ACC-PMLOG-208. parse keeps its (blocks, sections) shape; the section carries it."""
+    f = wide_file(tmp_path)
+    blocks, _ = pm_tools.parse(str(f))
+    sec = lnch(f)
+    assert [ln for _, ln in sec["log_lines"]] == CATEGORY_LOG
+    lines = pm_tools.load(str(f))
+    assert all(lines[n - 1] == ln for n, ln in sec["log_lines"])
+    assert [pm_tools.ident(b) for b in blocks] == ["DEF-LNCH-1-TEST"]
+    assert blocks[0]["logs"] == ["added"], "a category record is not an item's history"
+
+
+def test_a_log_line_is_never_the_description(tmp_path: Path, capsys):
+    """ACC-PMLOG-209. Prose under the log lines is the description; log lines alone
+    leave the category without one."""
+    f = wide_file(tmp_path, WIDE.replace("Cold start\n\n- log:", "- log:", 1))
+    assert lnch(f)["desc"] is None and len(lnch(f)["log_lines"]) == 2
+    run("check", str(f))
+    assert "category LNCH has no description line" in capsys.readouterr().out
+    f.write_text(WIDE.replace("Cold start\n\n- log:", "- log:", 1).replace(
+        '"Cold start"\n\n', '"Cold start"\n\nCold start, after the log\n\n'
+    ), encoding="utf-8")  # fmt: skip
+    assert lnch(f)["desc"] == "Cold start, after the log"
+
+
+@pytest.mark.parametrize(
+    "old, new, error",
+    [
+        ("2026-10-01T10:00:00Z @kj upgraded", "2026-10-01 @kj upgraded", "stamp is date only"),
+        ("2026-10-01T10:00:00Z @kj category", "yesterday @kj category", "stamp is malformed"),
+        ("2026-10-01T10:00:00Z @kj upgraded", "2026-10-01T10:00:00Z @zz upgraded", "@zz is not"),
+        ("2026-10-01T10:00:00Z @kj category", "2026-10-01T10:00:00Z @zz category", "@zz is not"),
+    ],
+    ids=["tracker-stamp", "category-stamp", "tracker-handle", "category-handle"],
+)
+def test_check_validates_a_wide_log_line_as_an_item_log_line(
+    tmp_path: Path, capsys, old: str, new: str, error: str
+):
+    """ACC-PMLOG-210, ACC-PMLOG-211. The error is worded as the item log one is."""
+    f = wide_file(tmp_path, WIDE.replace(old, new, 1))
+    lines = f.read_text(encoding="utf-8").splitlines()
+    at = next(n for n, ln in enumerate(lines, 1) if ln.startswith(f"- log: {new}"))
+    assert run("check", str(f)) == 1
+    errors = [ln for ln in capsys.readouterr().out.splitlines() if " ERROR " in ln]
+    assert len(errors) == 1 and errors[0].startswith(f"{f}:{at}: ERROR ") and error in errors[0]
+
+
+def test_a_log_bullet_with_no_handle_after_its_first_word_is_prose(tmp_path: Path, capsys):
+    """DEF-PMGT-83-PROSE-LOG. A `- log:` prose bullet in the preamble or a category note,
+    which 1.8.24 check accepted, is in neither log and check passes."""
+    note = "- log: lines are append-only and authored"
+    f = wide_file(
+        tmp_path,
+        WIDE.replace("Defects for the app.\n", f"Defects for the app.\n\n{note}\n", 1).replace(
+            "Cold start\n\n- log:", f"Cold start\n\n{note}\n\n- log:", 1
+        ),
+    )
+    assert [ln for _, ln in pm_tools.tracker_log(pm_tools.load(str(f)))] == TRACKER_LOG
+    assert [ln for _, ln in lnch(f)["log_lines"]] == CATEGORY_LOG
+    assert run("check", str(f)) == 0
+    assert " ERROR " not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["describe", "--category", "LNCH", "--text", "Cold – start"],
+        ["rename-category", "--category", "LNCH", "--to", "BOOT", "--name", "Boot — up"],
+        ["edit", "--id", "DEF-LNCH-1", "--title", "token → race"],
+    ],
+    ids=["describe-text", "rename-category-name", "edit-title"],
+)
+def test_a_forbidden_glyph_in_free_text_is_refused_before_any_write(
+    tmp_path: Path, capsys, argv: list
+):
+    """DEF-PMGT-84-RECORD-GLYPH. The record copies the text and is append-only, so a
+    glyph check forbids is refused at parse time, named, and nothing is written."""
+    f = wide_file(tmp_path)
+    before = f.read_text(encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        run(argv[0], str(f), *argv[1:], "--author", "@kj")
+    assert e.value.code == 2
+    glyph = next(ch for ch in argv[-1] if ord(ch) > 0x7F)
+    err = capsys.readouterr().err
+    assert f"argument {argv[-2]}: forbidden glyph " in err and f"U+{ord(glyph):04X}" in err
+    assert f.read_text(encoding="utf-8") == before
+    assert run("check", str(f)) == 0
+
+
+def test_relate_refuses_a_forbidden_glyph_and_unrelate_escapes_one_it_copies(
+    tmp_path: Path, capsys
+):
+    """DEF-PMGT-84-RECORD-GLYPH-1. relate reads its four relation arguments through
+    oneline, so a typed glyph is refused with nothing written; a glyph a relation line
+    already holds is written as U+XXXX in the record unrelate copies the line into."""
+    f = wide_file(tmp_path)
+    add_defect(f, "peer", code="PEER")
+    before = f.read_text(encoding="utf-8")
+    for flag in ("--related", "--blocked-by", "--overrides", "--overridden-by"):
+        capsys.readouterr()
+        with pytest.raises(SystemExit) as e:
+            run("relate", str(f), "--id", "DEF-LNCH-1", flag, "DEF-LNCH-2 – flaky")
+        assert e.value.code == 2
+        assert f"argument {flag}: forbidden glyph en/em dash U+2013" in capsys.readouterr().err
+        assert f.read_text(encoding="utf-8") == before
+    hand_line(f, "DEF-LNCH-1-TEST", "related: DEF-LNCH-2-PEER – flaky")
+    assert unrelate(f, "DEF-LNCH-1", "--related", "DEF-LNCH-2") == 0
+    body = f.read_text(encoding="utf-8")
+    assert "–" not in body
+    assert re.search(
+        RECORD + r'related DEF-LNCH-2-PEER removed, line read "DEF-LNCH-2-PEER U\+2013 flaky"',
+        body,
+    )
+    assert run("check", str(f)) == 0
+
+
+@pytest.mark.parametrize(
+    "old, new, argv, record",
+    [
+        (
+            "Cold start\n\n- log:",
+            "Cold – start\n\n- log:",
+            ["describe", "--category", "LNCH", "--text", "Cold start"],
+            r'- log: \S+ @kj description "Cold U\+2013 start" -> "Cold start"',
+        ),
+        (
+            "**token race**",
+            "**token – race**",
+            ["edit", "--id", "DEF-LNCH-1", "--title", "token race"],
+            r'  - log: \S+ @kj edited title "token U\+2013 race" -> "token race"',
+        ),
+        (
+            "## Launch `LNCH`",
+            "## Launch – app `LNCH`",
+            ["rename-category", "--category", "LNCH", "--to", "BOOT", "--name", "Boot"],
+            r'- log: \S+ @kj renamed category "LNCH" -> "BOOT", name "Launch U\+2013 app" '
+            r'-> "Boot"',
+        ),
+    ],
+    ids=["describe", "edit", "rename-category-name"],
+)
+def test_an_old_value_a_record_copies_has_each_forbidden_glyph_escaped(
+    tmp_path: Path, old: str, new: str, argv: list, record: str
+):
+    """DEF-PMGT-84-RECORD-GLYPH-1. The old value describe, edit and rename-category
+    --name copy into their append-only record never passed oneline; its glyph is
+    written as U+XXXX, so the command that clears the glyph error leaves check clean."""
+    f = wide_file(tmp_path, WIDE.replace(old, new, 1))
+    assert run("check", str(f)) == 1
+    assert run(argv[0], str(f), *argv[1:], "--author", "@kj") == 0
+    body = f.read_text(encoding="utf-8")
+    assert "–" not in body
+    assert re.search(rf"^{record}$", body, re.M), body
+    assert run("check", str(f)) == 0
+
+
+def test_describe_text_replaces_the_description_and_keeps_the_category_log(tmp_path: Path):
+    """ACC-PMLOG-212, ACC-PMLOG-219"""
+    f = wide_file(tmp_path)
+    assert describe(f, "--text", "Cold start and resume") == 0
+    sec = lnch(f)
+    assert sec["desc"] == "Cold start and resume"
+    logs = [ln for _, ln in sec["log_lines"]]
+    assert logs[:2] == CATEGORY_LOG and len(logs) == 3
+    assert re.fullmatch(RECORD + r'description "Cold start" -> "Cold start and resume"', logs[2])
+    assert "Cold start and resume\n\n" + "\n".join(CATEGORY_LOG) in f.read_text(encoding="utf-8")
+
+
+def test_describe_text_adds_a_description_above_a_log_with_none(tmp_path: Path):
+    """ACC-PMLOG-209, ACC-PMLOG-212. With log lines only, --text adds the description
+    above them rather than overwriting the first log line."""
+    f = wide_file(tmp_path, WIDE.replace("Cold start\n\n- log:", "- log:", 1))
+    assert describe(f, "--text", "Cold start") == 0
+    body = f.read_text(encoding="utf-8")
+    assert "## Launch `LNCH`\n\nCold start\n\n" + "\n".join(CATEGORY_LOG) + "\n- log:" in body
+    assert re.search(RECORD + r'description added "Cold start"\n\n- \[ \]', body)
+
+
+def test_describe_text_file_replaces_the_prose_above_the_category_log(tmp_path: Path):
+    """ACC-PMLOG-213, ACC-PMLOG-219"""
+    f = wide_file(tmp_path)
+    prose = tmp_path / "prose.md"
+    prose.write_text("Launch routes.\n\n- `GET status` -> `{root}`\n", encoding="utf-8")
+    assert describe(f, "--text-file", str(prose)) == 0
+    body = f.read_text(encoding="utf-8")
+    assert "Cold start\n" not in body.split("## Launch")[1].split("- log:")[0]
+    assert re.search(
+        r"## Launch `LNCH`\n\nLaunch routes.\n\n- `GET status` -> `\{root\}`\n\n"
+        + re.escape("\n".join(CATEGORY_LOG))
+        + "\n"
+        + RECORD
+        + r"prose block replaced, 1 line\(s\) -> 3 line\(s\)\n\n- \[ \] `DEF-LNCH-1-TEST`",
+        body,
+    )
+    assert lnch(f)["desc"] == "Launch routes."
+    assert run("check", str(f)) == 0
+
+
+def test_describe_with_unchanged_text_writes_no_record(tmp_path: Path, capsys):
+    """A command that changes nothing writes no record."""
+    f = wide_file(tmp_path)
+    before = f.read_text(encoding="utf-8")
+    assert describe(f, "--text", "Cold start") == 0
+    prose = tmp_path / "prose.md"
+    prose.write_text("Cold start\n", encoding="utf-8")
+    assert describe(f, "--text-file", str(prose)) == 0
+    assert f.read_text(encoding="utf-8") == before
+    out = capsys.readouterr().out.splitlines()
+    assert [ln.split(": ", 1)[1] for ln in out] == [
+        "LNCH description unchanged",
+        "LNCH prose block unchanged",
+    ]
+
+
+def test_describe_requires_an_author_on_the_roster(tmp_path: Path):
+    """ACC-PMLOG-215"""
+    f = wide_file(tmp_path)
+    before = f.read_text(encoding="utf-8")
+    with pytest.raises(SystemExit) as e:
+        run("describe", str(f), "--category", "LNCH", "--text", "x")
+    assert e.value.code == 2, "argparse refuses the missing --author"
+    with pytest.raises(SystemExit) as e:
+        run("describe", str(f), "--category", "LNCH", "--author", "@zz", "--text", "x")
+    assert "@zz is not on the authors roster" in str(e.value)
+    assert f.read_text(encoding="utf-8") == before
+
+
+def test_the_record_helpers_write_the_wide_log_form_newest_last(tmp_path: Path):
+    """ACC-PMLOG-216. Two records into each log: unindented, stamped and signed, each
+    after the last one, the tracker log above the first `##` and the category log
+    between the description and the first item."""
+    f = wide_file(tmp_path, WIDE.replace("\n".join(TRACKER_LOG) + "\n\n", "").replace(
+        "\n".join(CATEGORY_LOG) + "\n\n", ""
+    ))  # fmt: skip
+    lines = pm_tools.load(str(f))
+    for event in ("first", "second"):
+        pm_tools.tracker_record(str(f), lines, "@kj", event)
+    head = lines.index("## Launch `LNCH`")
+    for event in ("first", "second"):
+        pm_tools.category_record(str(f), lines, head, "kj", event)
+    with pytest.raises(SystemExit):
+        pm_tools.tracker_record(str(f), lines, "@zz", "third")
+    pm_tools.save(str(f), lines)
+    body = f.read_text(encoding="utf-8")
+    two = RECORD + r"first\n" + RECORD + r"second\n\n"
+    assert re.search(r"Defects for the app\.\n\n" + two + "## Authors", body)
+    assert re.search(r"Cold start\n\n" + two + r"- \[ \] `DEF-LNCH-1-TEST`", body)
+    assert [ln[-6:] for _, ln in pm_tools.tracker_log(pm_tools.load(str(f)))] == [
+        " first",
+        "second",
+    ]
+    assert [ln[-6:] for _, ln in lnch(f)["log_lines"]] == [" first", "second"]
+    assert run("check", str(f)) == 0
+
+
+def test_migrate_codes_writes_one_tracker_record_and_none_on_a_rerun(tmp_path: Path):
+    """ACC-PMLOG-217, ACC-PMLOG-221"""
+    f = coded_file(tmp_path, "defects-migration", MIGRATION_UNCODED)
+    m = migration_map(tmp_path, "DEF-LNCH-1 TOKEN\nDEF-LNCH-2 RENDER\n")
+    assert run("migrate-codes", str(f), "--map", str(m), "--author", "@kj") == 0
+    once = f.read_text(encoding="utf-8")
+    assert re.search(
+        r"Migration\.\n\n" + RECORD + r"coded 3 item\(s\) from codes\.map\n\n## ", once
+    )
+    assert [ln for _, ln in pm_tools.tracker_log(pm_tools.load(str(f)))] == [
+        ln for ln in once.splitlines() if ln.startswith("- log:")
+    ]
+    assert once.count(" @kj coded TOKEN") == 2 and once.count(" @kj coded RENDER") == 1
+    assert run("migrate-codes", str(f), "--map", str(m), "--author", "@kj") == 0
+    assert f.read_text(encoding="utf-8") == once, "nothing coded, nothing recorded"
+    assert run("check", str(f)) == 0
+
+
+LEGACY_SIGNED = (
+    "# Defects - Legacy\n\nLegacy.\n\n## Launch\n\nCold start\n\n"
+    "- [ ] **token race** - MAJOR; symptom\n"
+    "  - repro: a\n"
+    "  - log: 2026-06-12 filed\n\n" + ROSTER
+)
+
+
+def test_upgrade_apply_writes_one_tracker_record_and_none_on_a_current_file(tmp_path: Path):
+    """ACC-PMLOG-218, ACC-PMLOG-221"""
+    f = coded_file(tmp_path, "defects-legacy", LEGACY_SIGNED)
+    assert run("upgrade", str(f), "--author", "@kj", "--apply") == 0
+    once = f.read_text(encoding="utf-8")
+    assert re.search(r"Legacy\.\n\n" + RECORD + r"upgraded\n\n## Launch `LAUNCH`", once)
+    assert len(pm_tools.tracker_log(pm_tools.load(str(f)))) == 1
+    assert run("upgrade", str(f), "--author", "@kj", "--apply") == 0
+    assert f.read_text(encoding="utf-8") == once, "a current file gains no record"
+
+
+def test_upgrade_without_a_rostered_author_writes_no_record(tmp_path: Path):
+    """A record is signed; with no handle on the roster the hints carry the re-run."""
+    f = coded_file(tmp_path, "defects-legacy", LEGACY_SIGNED)
+    assert run("upgrade", str(f), "--apply") == 0
+    assert "`DEF-LAUNCH-1`" in f.read_text(encoding="utf-8"), "the rewrite still applied"
+    assert pm_tools.tracker_log(pm_tools.load(str(f))) == []
+
+
+def test_add_records_the_category_it_creates_and_only_that(defects: Path):
+    """ACC-PMLOG-220"""
+    add_defect(defects, "token race")
+    add_defect(defects, "splash hang")
+    body = defects.read_text(encoding="utf-8")
+    assert body.count("category created") == 1
+    assert re.search(
+        r"## Launch `LNCH`\n\nCold start and the first turn\n\n"
+        + RECORD
+        + r"category created\n\n- \[ \] `DEF-LNCH-1-TEST`",
+        body,
+    )
+    assert run("check", str(defects)) == 0
+
+
+# --- Category rename (ACC-PMCAT) -------------------------------------------
+
+
+STAMP_RX = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
+
+
+def matches_with_stamps(expected: str, body: str) -> bool:
+    """body equals expected, where each {S} in expected stands for one ISO 8601 stamp."""
+    return bool(re.fullmatch(re.escape(expected).replace(r"\{S\}", STAMP_RX), body))
+
+
+@pytest.mark.parametrize(
+    "line, why",
+    [
+        (
+            "  - attachment: shots/ACC-OLD-5-X.png sha256:0123456789abcdef edited:x",
+            "an attachment line",
+        ),
+        ("  - log: 2026-10-01T10:00:00Z @kj see docs/ACC-OLD-5-X", "a file path"),
+        ("see ACC-OLD-5-X.md for notes", "a file path"),
+        ("see ACC-OLD-5-X-notes.md", "a file path"),
+        ("see ACC-OLD-5-X. Then more", None),
+        ("  - related: ACC-OLD-5-X, ACC-OLD-6", None),
+        ("  - related: see docs/ACC-OLD-5-X.md", None),
+    ],
+    ids=[
+        "attachment",
+        "after-slash",
+        "extension",
+        "slug",
+        "full-stop",
+        "relation",
+        "relation-path",
+    ],
+)
+def test_left_alone_names_an_attachment_line_and_a_file_path(line: str, why):
+    """ACC-PMCAT-232, ACC-PMCAT-233, ACC-PMCAT-246. The path rule is the one coded_ref reads."""
+    assert pm_tools.left_alone(pm_tools.IDREF.search(line)) == why
+
+
+STORE_ACC = (
+    "# Acceptance Criteria - Store\n\nStore.\n\n## Authors\n\n- `@kj` Konrad Jelen\n\n"
+    "## Parser `OLD`\n\nParsing\n\n```\n- related: ACC-OLD-1-A\n```\n\n"
+    "- [ ] `ACC-OLD-1-A` **a** - HIGH; x\n"
+    "  - test: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-10-01T10:00:00Z @kj added\n"
+)
+STORE_DEF = (
+    "# Defects - Store\n\nStore.\n\n## Authors\n\n- `@kj` Konrad Jelen\n\n"
+    "## Parser `OLD`\n\nParsing faults\n\n"
+    "- [x] `DEF-OLD-5-PARSER` **crash** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n  - evidence: fixed\n"
+    "  - related: ACC-OLD-1-A\n"
+    "  - log: 2026-10-01T10:00:00Z @kj added\n"
+    "  - log: 2026-10-02T10:00:00Z @kj closed\n"
+    "- [ ] `DEF-OLD-5-PARSER-1` **crash again** - MAJOR; DEF-OLD-5-1, DEF-OLD-5-2,"
+    " DEF-OLD-5-PARSER-2, DEF-OLD-6\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-10-03T10:00:00Z @kj added\n"
+)
+
+
+def store_files(tmp_path: Path) -> tuple[Path, Path]:
+    return coded_file(tmp_path, "acc-crit-store", STORE_ACC), coded_file(
+        tmp_path, "defects-store", STORE_DEF
+    )
+
+
+def test_rename_plan_computes_every_file_and_writes_nothing(tmp_path: Path):
+    """The plan holds each changed file's new content; the disk is untouched until the
+    command saves, so a refusal found late still writes nothing."""
+    acc, dfx = store_files(tmp_path)
+    before = [acc.read_text(encoding="utf-8"), dfx.read_text(encoding="utf-8")]
+    plan, kept = pm_tools.rename_plan(str(dfx), "OLD", "NEW", None, "@kj")
+    assert [acc.read_text(encoding="utf-8"), dfx.read_text(encoding="utf-8")] == before
+    assert list(plan) == [str(dfx)], "the criteria tracker names no renamed DEF id"
+    lines, mine, mentions = plan[str(dfx)]
+    assert [pm_tools.ident(b) for b in mine] == ["DEF-OLD-5-PARSER", "DEF-OLD-5-PARSER-1"]
+    assert mentions == 1 and kept == []
+    assert any(ln.startswith("- [ ] `DEF-NEW-5-PARSER-1` **crash again**") for ln in lines)
+
+
+def test_rename_category_rewrites_only_the_ids_that_name_an_item(tmp_path: Path, capsys):
+    """ACC-PMCAT-224, 230, 231. A base id plus ordinal names the regression and keeps its
+    shape; an ordinal or a regression that does not exist, and a number with no item,
+    name nothing and stay. The OLD category of the other prefix is not renamed, and a
+    fenced example naming a renamed id follows it."""
+    acc, dfx = store_files(tmp_path)
+    assert (
+        run("rename-category", str(dfx), "--category", "OLD", "--to", "NEW", "--author", "@kj")
+        == 0
+    )
+    body = dfx.read_text(encoding="utf-8")
+    assert "- [x] `DEF-NEW-5-PARSER` **crash**" in body
+    assert (
+        "- [ ] `DEF-NEW-5-PARSER-1` **crash again** - MAJOR; DEF-NEW-5-1, DEF-OLD-5-2,"
+        " DEF-OLD-5-PARSER-2, DEF-OLD-6\n"
+    ) in body
+    assert "  - related: ACC-OLD-1-A\n" in body
+    assert acc.read_text(encoding="utf-8") == STORE_ACC
+    out = capsys.readouterr().out
+    assert f"{dfx}: 1 mention(s) rewritten" in out
+    acc_plan, _ = pm_tools.rename_plan(str(acc), "OLD", "NEW", None, "@kj")
+    assert "- related: ACC-NEW-1-A" in acc_plan[str(acc)][0], "a fenced example follows"
+    assert str(dfx) in acc_plan, "the defects tracker cites ACC-OLD-1-A"
+
+
+def test_rename_category_takes_the_old_code_in_any_case(tmp_path: Path):
+    """--category reads OLD in any case, as every other --category does; NEW must be
+    written in the code grammar."""
+    acc, _ = store_files(tmp_path)
+    assert (
+        run("rename-category", str(acc), "--category", "old", "--to", "NEW", "--author", "@kj")
+        == 0
+    )
+    assert "## Parser `NEW`" in acc.read_text(encoding="utf-8")
+
+
+TIE = (
+    "# Acceptance Criteria - Tie\n\nTie.\n\n## Authors\n\n- `@kj` Konrad Jelen\n\n"
+    "## Render `RND`\n\nRendering\n\n"
+    "- [ ] `ACC-OLD-1-MOVED` **moved** - HIGH; x\n"
+    "  - test: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-10-01T10:00:00Z @kj added\n"
+    "## Parser `OLD`\n\nParsing\n\n"
+    "- [ ] `ACC-OLD-2-PARSE` **parse** - HIGH; after ACC-OLD-1-MOVED\n"
+    "  - test: b\n  - test-tags: UNIT\n"
+    "  - log: 2026-10-01T10:00:00Z @kj added\n"
+)
+
+
+def test_rename_category_writes_every_record_in_its_place(tmp_path: Path):
+    """ACC-PMCAT-241, 242, 243. The item above the OLD heading ends on the heading's own
+    line, so its log line and the heading's record both land at that index: the log
+    stays under its item, the record under the heading."""
+    f = coded_file(tmp_path, "acc-crit-tie", TIE)
+    assert (
+        run("rename-category", str(f), "--category", "OLD", "--to", "NEW", "--author", "@kj") == 0
+    )
+    event = 'renamed category "OLD" -> "NEW"'
+    assert matches_with_stamps(
+        "# Acceptance Criteria - Tie\n\nTie.\n\n"
+        f"- log: {{S}} @kj {event}, 2 item(s)\n\n"
+        "## Authors\n\n- `@kj` Konrad Jelen\n\n"
+        "## Render `RND`\n\nRendering\n\n"
+        "- [ ] `ACC-NEW-1-MOVED` **moved** - HIGH; x\n"
+        "  - test: a\n  - test-tags: UNIT\n"
+        "  - log: 2026-10-01T10:00:00Z @kj added\n"
+        f"  - log: {{S}} @kj {event}\n"
+        "## Parser `NEW`\n\nParsing\n\n"
+        f"- log: {{S}} @kj {event}\n\n"
+        "- [ ] `ACC-NEW-2-PARSE` **parse** - HIGH; after ACC-NEW-1-MOVED\n"
+        "  - test: b\n  - test-tags: UNIT\n"
+        "  - log: 2026-10-01T10:00:00Z @kj added\n"
+        f"  - log: {{S}} @kj {event}\n",
+        f.read_text(encoding="utf-8"),
+    ), f.read_text(encoding="utf-8")
+    assert run("check", str(f)) == 0
+
+
+def test_rename_category_refuses_a_tracker_whose_roster_lacks_the_author(tmp_path: Path):
+    """ACC-PMCAT-240. Every tracker the rename writes gets a record signed by --author,
+    so a written tracker without the handle on its roster refuses the whole rename
+    before the first write."""
+    acc, dfx = store_files(tmp_path)
+    dfx.write_text(STORE_DEF.replace("- `@kj` Konrad Jelen", "- `@yy` Yan Yu"), encoding="utf-8")
+    before = [acc.read_text(encoding="utf-8"), dfx.read_text(encoding="utf-8")]
+    with pytest.raises(SystemExit) as e:
+        run("rename-category", str(acc), "--category", "OLD", "--to", "NEW", "--author", "@kj")
+    assert f"@kj is not on the authors roster of {dfx}" in str(e.value)
+    assert [acc.read_text(encoding="utf-8"), dfx.read_text(encoding="utf-8")] == before
+
+
+MERGED = (
+    "# Defects - Merged\n\nMerged.\n\n"
+    '- log: 2026-10-05T10:00:00Z @kj renamed category "OLD" -> "NEW", 1 item(s)\n\n'
+    "## Authors\n\n- `@kj` Konrad Jelen\n\n"
+    "## Parser `NEW`\n\nParsing faults\n\n"
+    '- log: 2026-10-05T10:00:00Z @kj renamed category "OLD" -> "NEW"\n\n'
+    "- [ ] `DEF-NEW-5-PARSER` **crash** - MAJOR; x\n"
+    "  - repro: a\n  - test-tags: UNIT\n"
+    "  - log: 2026-10-01T10:00:00Z @kj added\n"
+    '  - log: 2026-10-05T10:00:00Z @kj renamed category "OLD" -> "NEW"\n'
+    "- [ ] `DEF-OLD-6-HANG` **hang** - MAJOR; after DEF-OLD-5-PARSER, see DEF-OLD-5\n"
+    "  - repro: b\n  - test-tags: UNIT\n"
+    "  - related: DEF-OLD-5-PARSER\n"
+    "  - log: 2026-10-04T10:00:00Z @kj added\n"
+)
+
+
+def test_a_rerun_finishes_a_rename_a_merge_left_half_done(tmp_path: Path, capsys):
+    """ACC-PMCAT-250, DEF-PMGT-86-MERGE-RENAME. The other branch's item still carries OLD
+    and its links name the renamed item by its old id; the rerun renames the item and
+    rewrites each link in its own shape, and the category and tracker records say the
+    rename was finished."""
+    f = coded_file(tmp_path, "defects-merged", MERGED)
+    assert (
+        run("rename-category", str(f), "--category", "OLD", "--to", "NEW", "--author", "@kj") == 0
+    )
+    event = 'renamed category "OLD" -> "NEW"'
+    done = 'finished renaming category "OLD" -> "NEW"'
+    assert matches_with_stamps(
+        "# Defects - Merged\n\nMerged.\n\n"
+        f"- log: 2026-10-05T10:00:00Z @kj {event}, 1 item(s)\n"
+        f"- log: {{S}} @kj {done}, 1 item(s)\n\n"
+        "## Authors\n\n- `@kj` Konrad Jelen\n\n"
+        "## Parser `NEW`\n\nParsing faults\n\n"
+        f"- log: 2026-10-05T10:00:00Z @kj {event}\n"
+        f"- log: {{S}} @kj {done}\n\n"
+        "- [ ] `DEF-NEW-5-PARSER` **crash** - MAJOR; x\n"
+        "  - repro: a\n  - test-tags: UNIT\n"
+        "  - log: 2026-10-01T10:00:00Z @kj added\n"
+        f"  - log: 2026-10-05T10:00:00Z @kj {event}\n"
+        "- [ ] `DEF-NEW-6-HANG` **hang** - MAJOR; after DEF-NEW-5-PARSER, see DEF-NEW-5\n"
+        "  - repro: b\n  - test-tags: UNIT\n"
+        "  - related: DEF-NEW-5-PARSER\n"
+        "  - log: 2026-10-04T10:00:00Z @kj added\n"
+        f"  - log: {{S}} @kj {event}\n",
+        f.read_text(encoding="utf-8"),
+    ), f.read_text(encoding="utf-8")
+    out = capsys.readouterr().out
+    assert "DEF-OLD-6-HANG -> DEF-NEW-6-HANG" in out and "3 mention(s) rewritten" in out
+    assert run("check", str(f)) == 0
+
+
+@pytest.mark.parametrize(
+    "broken, sibling",
+    [
+        (
+            MERGED.replace(
+                '- log: 2026-10-05T10:00:00Z @kj renamed category "OLD" -> "NEW"\n\n', ""
+            ),
+            None,
+        ),
+        (MERGED.replace('"OLD" -> "NEW"\n\n- [ ]', '"OLX" -> "NEW"\n\n- [ ]'), None),
+        (
+            MERGED,
+            "# Defects - More\n\nMore.\n\n## Authors\n\n- `@kj` Konrad Jelen\n\n## Old `OLD`\n",
+        ),
+    ],
+    ids=["no-record", "other-record", "old-heading"],
+)
+def test_a_rerun_is_refused_unless_the_earlier_rename_is_on_record(
+    tmp_path: Path, broken, sibling
+):
+    """ACC-PMCAT-250. Without the category record the earlier rename wrote under FILE's
+    NEW heading, or with a heading of FILE's prefix still carrying OLD, the existing
+    refusal stands and nothing is written; the intact merged store is accepted."""
+    f = coded_file(tmp_path, "defects-merged", broken)
+    more = coded_file(tmp_path, "defects-more", sibling) if sibling else None
+    with pytest.raises(SystemExit) as e:
+        run("rename-category", str(f), "--category", "OLD", "--to", "NEW", "--author", "@kj")
+    assert "unknown category code OLD" in str(e.value)
+    assert f.read_text(encoding="utf-8") == broken
+    if more:
+        assert more.read_text(encoding="utf-8") == sibling
+        more.unlink()
+    f.write_text(MERGED, encoding="utf-8")
+    assert (
+        run("rename-category", str(f), "--category", "OLD", "--to", "NEW", "--author", "@kj") == 0
+    )
+
+
+@pytest.mark.parametrize(
+    "straggler, hit",
+    [("DEF-OLD-5-PARSER", "DEF-NEW-5-PARSER"), ("DEF-OLD-5-OTHER", "DEF-NEW-5-PARSER")],
+    ids=["full-id", "base-id"],
+)
+def test_a_rerun_refuses_a_straggler_whose_new_id_is_taken(tmp_path: Path, straggler, hit):
+    """ACC-PMCAT-250. Both branches took the same number: the straggler's new full id, or
+    its new base id, already names an item. The refusal names both ids, nothing written."""
+    body = MERGED.replace("`DEF-OLD-6-HANG`", f"`{straggler}`")
+    f = coded_file(tmp_path, "defects-merged", body)
+    with pytest.raises(SystemExit) as e:
+        run("rename-category", str(f), "--category", "OLD", "--to", "NEW", "--author", "@kj")
+    nid = straggler.replace("-OLD-", "-NEW-")
+    assert f"{straggler} would become {nid}, which collides with {hit}" in str(e.value)
+    assert f.read_text(encoding="utf-8") == body
+
+
+# --- Category notes and the category report (ACC-PMCAT-251..258) ----------------
+
+
+NOTES = WIDE.replace(
+    "Cold start\n\n- log:",
+    "Cold start\n\nfirst note\n\n```\nfenced line\n```\nsecond note\n\n- log:",
+    1,
+)
+NO_DESC = WIDE.replace("Cold start\n\n- log:", "- log:", 1)
+
+
+def test_describe_append_adds_the_last_note_above_the_category_log(tmp_path: Path, capsys):
+    """ACC-PMCAT-251-NOTE-APPEND"""
+    f = wide_file(tmp_path, NOTES)
+    assert describe(f, "--append", "third note") == 0
+    body = f.read_text(encoding="utf-8")
+    assert "```\nfenced line\n```\nsecond note\n\nthird note\n\n" + "\n".join(CATEGORY_LOG) in body
+    assert re.search(RECORD + r'added note "third note"\n\n- \[ \] `DEF-LNCH-1-TEST`', body)
+    assert [t for _, t in lnch(f)["notes"]] == ["first note", "second note", "third note"]
+    assert capsys.readouterr().out.rstrip().endswith('LNCH note 3 added "third note"')
+    assert run("check", str(f)) == 0
+
+
+def test_describe_append_follows_a_fenced_block_that_ends_the_prose(tmp_path: Path):
+    """ACC-PMCAT-251-NOTE-APPEND. The closing fence is the last prose line; the fenced
+    lines stay as written and are not notes."""
+    f = wide_file(
+        tmp_path, WIDE.replace("Cold start\n\n", "Cold start\n\n```\nfenced\n```\n\n", 1)
+    )
+    assert describe(f, "--append", "after the fence") == 0
+    body = f.read_text(encoding="utf-8")
+    assert "Cold start\n\n```\nfenced\n```\n\nafter the fence\n\n- log:" in body
+    assert [t for _, t in lnch(f)["notes"]] == ["after the fence"]
+    assert run("check", str(f)) == 0
+
+
+def test_describe_note_text_changes_that_note_only(tmp_path: Path, capsys):
+    """ACC-PMCAT-252-NOTE-CHANGE"""
+    f = wide_file(tmp_path, NOTES)
+    assert describe(f, "--note", "2", "--text", "second, reworded") == 0
+    body = f.read_text(encoding="utf-8")
+    record = RECORD + r'changed note 2 "second note" -> "second, reworded"\n'
+    assert len(re.findall(record, body)) == 1
+    assert re.sub(record, "", body) == NOTES.replace("\nsecond note\n", "\nsecond, reworded\n")
+    assert (
+        capsys.readouterr()
+        .out.rstrip()
+        .endswith('LNCH note 2 changed "second note" -> "second, reworded"')
+    )
+    assert run("check", str(f)) == 0
+
+
+def test_describe_note_text_keeps_the_indentation_of_the_line_it_replaces(tmp_path: Path):
+    """DEF-PMGT-87-NOTE-INDENT"""
+    f = wide_file(tmp_path, NOTES.replace("\nsecond note\n", "\n  - second note\n"))
+    assert describe(f, "--note", "2", "--text", "- second, reworded") == 0
+    assert "\n  - second, reworded\n" in f.read_text(encoding="utf-8")
+    assert run("check", str(f)) == 0
+
+
+def test_describe_note_remove_drops_that_line_only(tmp_path: Path, capsys):
+    """ACC-PMCAT-253-NOTE-REMOVE. The blank lines around it and the fence stay."""
+    f = wide_file(tmp_path, NOTES)
+    assert describe(f, "--note", "1", "--remove") == 0
+    body = f.read_text(encoding="utf-8")
+    record = RECORD + r'removed note 1 "first note"\n'
+    assert len(re.findall(record, body)) == 1
+    assert re.sub(record, "", body) == NOTES.replace("first note\n", "", 1)
+    assert [t for _, t in lnch(f)["notes"]] == ["second note"]
+    assert capsys.readouterr().out.rstrip().endswith('LNCH note 1 removed "first note"')
+    assert run("check", str(f)) == 0
+
+
+def test_a_note_write_sent_with_a_stale_number_names_the_line_it_hit(tmp_path: Path, capsys):
+    """DEF-PMGT-88-NOTE-ECHO. The second --note 1 --remove, numbered before the first
+    one ran, prints the text of the line it removed."""
+    f = wide_file(tmp_path, NOTES)
+    assert describe(f, "--note", "1", "--remove") == 0
+    assert describe(f, "--note", "1", "--remove") == 0
+    assert capsys.readouterr().out.rstrip().endswith('LNCH note 1 removed "second note"')
+
+
+def test_notes_are_numbered_past_blank_fenced_and_log_lines(tmp_path: Path, capsys):
+    """ACC-PMCAT-254-NOTE-NUMBER. A note below the category log is still note 2."""
+    body = NOTES.replace("second note\n\n", "", 1).replace(
+        '"Cold start"\n\n', '"Cold start"\n\nsecond note\n\n', 1
+    )
+    f = wide_file(tmp_path, body)
+    assert [t for _, t in lnch(f)["notes"]] == ["first note", "second note"]
+    assert describe(f, "--note", "2", "--text", "second, below the log") == 0
+    text = f.read_text(encoding="utf-8")
+    assert "fenced line" in text and "\nsecond, below the log\n\n- [ ]" in text
+    capsys.readouterr()
+    run("report", str(f), "--category", "LNCH")
+    assert "1. first note\n2. second, below the log\n" in capsys.readouterr().out
+    assert run("check", str(f)) == 0
+
+
+def test_describe_note_with_its_own_text_writes_nothing(tmp_path: Path, capsys):
+    """ACC-PMCAT-255-NOTE-SAME"""
+    f = wide_file(tmp_path, NOTES)
+    assert describe(f, "--note", "1", "--text", "first note") == 0
+    assert f.read_text(encoding="utf-8") == NOTES
+    assert capsys.readouterr().out.rstrip().endswith("LNCH note 1 unchanged")
+
+
+LNCH_ARGS = ["--category", "LNCH", "--author", "@kj"]
+
+
+@pytest.mark.parametrize(
+    "body, argv, cause",
+    [
+        (NOTES, ["--category", "NOPE", "--author", "@kj", "--append", "x"], "unknown category"),
+        (NO_DESC, [*LNCH_ARGS, "--append", "x"], "describe"),
+        (NOTES, [*LNCH_ARGS, "--note", "0", "--text", "x"], "it has 2 note(s)"),
+        (NOTES, [*LNCH_ARGS, "--note", "3", "--remove"], "it has 2 note(s)"),
+        (NOTES, [*LNCH_ARGS, "--append", "## Other `OTH`"], "holds a heading"),
+        (NOTES, [*LNCH_ARGS, "--append", "- [ ] `DEF-LNCH-9` **x**"], "holds a heading"),
+        (NOTES, [*LNCH_ARGS, "--append", "- [] x"], "holds a heading"),
+        (NOTES, [*LNCH_ARGS, "--note", "1", "--text", "- log: 2026-10-01T10:00:00Z @kj x"],
+         "holds a heading"),
+        (NOTES, [*LNCH_ARGS, "--append", "Cold – start"], "forbidden glyph"),
+        (NOTES, [*LNCH_ARGS, "--append", LONG], "is 51 words"),
+        (NOTES, [*LNCH_ARGS, "--append", "x", "--text", "y"], "not allowed with"),
+        (NOTES, [*LNCH_ARGS, "--note", "1", "--append", "x"], "--note N needs --text or --remove"),
+        (NOTES, [*LNCH_ARGS, "--remove"], "--remove needs --note N"),
+        (NOTES, ["--category", "LNCH", "--append", "x"], "--author"),
+        (NOTES, ["--category", "LNCH", "--author", "@zz", "--append", "x"], "not on the authors"),
+    ],
+    ids=[
+        "unknown-category", "no-description", "note-0", "note-over-count", "heading",
+        "item", "malformed-box", "log-line", "glyph", "over-50-words", "two-writes", "note-without-text",
+        "remove-without-note", "no-author", "author-off-roster",
+    ],
+)  # fmt: skip
+def test_a_refused_note_write_changes_nothing(tmp_path: Path, capsys, body, argv, cause):
+    """ACC-PMCAT-256-NOTE-REFUSE"""
+    f = wide_file(tmp_path, body)
+    with pytest.raises(SystemExit) as e:
+        run("describe", str(f), *argv)
+    assert e.value.code != 0
+    assert cause in f"{e.value} {capsys.readouterr().err}"
+    assert f.read_text(encoding="utf-8") == body
+
+
+def test_report_category_prints_the_notes_then_the_category_log(tmp_path: Path, capsys):
+    """ACC-PMCAT-257-REPORT-NOTES. A report not narrowed by --category prints neither,
+    even when the file holds one category."""
+    f = wide_file(tmp_path, NOTES)
+    run("report", str(f), "--category", "LNCH")
+    out = capsys.readouterr().out
+    assert (
+        "**Launch** `LNCH` - Cold start\n\n1. first note\n2. second note\n\n"
+        + "\n".join(CATEGORY_LOG)
+        + "\n\n"
+    ) in out
+    run("report", str(f))
+    out = capsys.readouterr().out
+    assert "1. first note" not in out and CATEGORY_LOG[0] not in out
+    run("report", str(wide_file(tmp_path, WIDE.replace("\n".join(CATEGORY_LOG) + "\n\n", ""))),
+        "--category", "LNCH")  # fmt: skip
+    assert "**Launch** `LNCH` - Cold start\n\n## " in capsys.readouterr().out, "nothing for none"
+
+
+def test_report_json_carries_each_categorys_notes_and_log(tmp_path: Path, capsys):
+    """ACC-PMCAT-258-REPORT-JSON"""
+    f = wide_file(tmp_path, NOTES + "\n## Boot `BOOT`\n\nBoot path\n")
+    run("report", str(f), "--json")
+    cats = {c["code"]: c for c in json.loads(capsys.readouterr().out)[0]["categories"]}
+    assert cats["LNCH"]["notes"] == ["first note", "second note"]
+    assert cats["LNCH"]["log"] == CATEGORY_LOG
+    assert cats["BOOT"]["notes"] == [] and cats["BOOT"]["log"] == []

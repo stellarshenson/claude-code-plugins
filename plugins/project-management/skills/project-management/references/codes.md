@@ -35,7 +35,7 @@ DEF-UI-7 LAYOUT
 2. **Write the mapping.** Name each item for what it is about, not for its number. Two items sharing a number and category differ by code
 3. **Migrate.** `pm-tools migrate-codes FILE --map MAPPING --author @xx`
    - appends the code to every item id the mapping names, before any regression ordinal
-   - writes one `- log: <stamp> @xx coded CODE` line per changed item
+   - writes one `- log: <stamp> @xx coded CODE` line per changed item, and one tracker record `coded N item(s) from MAPPING` when it codes at least one
    - is idempotent: an item already carrying the mapped code is left alone with no second log line, so a re-run writes nothing
    - reports the items that carry no code and are not named by the mapping, the mapping ids that match no item, and the items already carrying a different code; the exit code is 1 while any remain
 4. **Correct a wrong code with a rename.** `pm-tools rename-code FILE --id ID --code NEW --author @xx`

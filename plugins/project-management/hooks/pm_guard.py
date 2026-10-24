@@ -52,7 +52,8 @@ HAND_EDITS = "pm-hand-edits.md"  # beside the tracker; pm-tools ack writes it
 def way(path: Path) -> str:
     return (
         "Use pm-tools instead (add, edit, amend, log, close, reject, reopen, relate, "
-        "unrelate, describe, mechanism, root-cause), as the project-management skill "
+        "unrelate, describe, rename-category, mechanism, root-cause), as the "
+        "project-management skill "
         "describes: a hand edit "
         "loses the id assignment and the authored log line. If a hand edit is really needed "
         f"- a repair pm-tools cannot make - run `pm-tools ack {path}`, which prints a token "

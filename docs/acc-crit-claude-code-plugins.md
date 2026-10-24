@@ -1521,34 +1521,300 @@ the project-management plugin hooks that keep pm-tools the only writer of a trac
 
 Writing the prose under a category heading
 
-- [x] `ACC-PMCAT-187-TEXT-FILE` **describe --text-file replaces the prose block** - HIGH; every line between the category heading and the first item is replaced by the file's text; the items stay
-  - evidence: tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block passes
+- [x] `ACC-PMCAT-187-TEXT-FILE` **describe --text-file replaces the prose block** - HIGH; the prose lines between the category heading and the first item are replaced by the file's text; the category log lines and the items stay
+  - evidence: tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block passes; tests/test_pm_tools_functional.py::test_describe_text_file_replaces_the_prose_block_and_the_items_stay passes
   - test: replace a block twice, read the file and run check
-  - test-tags: UNIT
+  - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-16T15:12:45Z @kj added
   - log: 2026-10-16T15:12:45Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded TEXT-FILE
+  - log: 2026-10-23T10:30:12Z @kj edited test-tags "UNIT" -> "UNIT, FUNCTIONAL"; evidence "tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block passes" -> "tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block passes; tests/test_pm_tools_functional.py::test_describe_text_file_replaces_the_prose_block_and_the_items_stay passes"
+  - log: 2026-10-23T10:54:04Z @kj amended text "every line between the category heading and the first item is replaced by the file's text; the items stay" -> "the prose lines between the category heading and the first item are replaced by the file's text; the category log lines and the items stay"; reason: assertion audit: the code keeps the category log lines (ACC-PMLOG-213)
 - [x] `ACC-PMCAT-188-STDIN` **--text-file - reads stdin** - MEDIUM; describe --text-file - < prose.md reads the block from stdin
-  - evidence: tests/test_pm_tools.py::test_describe_text_file_reads_stdin passes
+  - evidence: tests/test_pm_tools.py::test_describe_text_file_reads_stdin passes; tests/test_pm_tools_functional.py::test_describe_text_file_dash_reads_the_prose_block_from_stdin passes
   - test: pass the block on stdin, read the file
-  - test-tags: UNIT
+  - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-16T15:12:45Z @kj added
   - log: 2026-10-16T15:12:45Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded STDIN
+  - log: 2026-10-23T10:30:12Z @kj edited test-tags "UNIT" -> "UNIT, FUNCTIONAL"; evidence "tests/test_pm_tools.py::test_describe_text_file_reads_stdin passes" -> "tests/test_pm_tools.py::test_describe_text_file_reads_stdin passes; tests/test_pm_tools_functional.py::test_describe_text_file_dash_reads_the_prose_block_from_stdin passes"
 - [x] `ACC-PMCAT-189-EDGE-PROSE` **Edge: the prose block takes prose only** - HIGH; an empty text, a heading, a checklist item or an unclosed code fence is refused; nothing is written
-  - evidence: tests/test_pm_tools.py::test_describe_text_file_takes_prose_only passes for empty, heading, item and open-fence
+  - evidence: tests/test_pm_tools.py::test_describe_text_file_takes_prose_only passes for empty, heading, item and open-fence; tests/test_pm_tools_functional.py::test_describe_text_file_refuses_anything_but_prose_and_writes_nothing passes
   - test: one case per refusal, compare the file
-  - test-tags: UNIT
+  - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-16T15:12:45Z @kj added
   - log: 2026-10-16T15:12:45Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded EDGE-PROSE
+  - log: 2026-10-23T10:30:12Z @kj edited test-tags "UNIT" -> "UNIT, FUNCTIONAL"; evidence "tests/test_pm_tools.py::test_describe_text_file_takes_prose_only passes for empty, heading, item and open-fence" -> "tests/test_pm_tools.py::test_describe_text_file_takes_prose_only passes for empty, heading, item and open-fence; tests/test_pm_tools_functional.py::test_describe_text_file_refuses_anything_but_prose_and_writes_nothing passes"
 - [x] `ACC-PMCAT-190-KEEP-LINES` **describe --text keeps the lines below** - MEDIUM; describe --text replaces the description line only; a list under it stays
-  - evidence: tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block asserts the list stays after --text
+  - evidence: tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block asserts the list stays after --text; tests/test_pm_tools_functional.py::test_describe_text_replaces_the_description_line_and_the_list_under_it_stays passes
   - test: write a block, then --text, read the file
-  - test-tags: UNIT
+  - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-16T15:12:45Z @kj added
   - log: 2026-10-16T15:12:45Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded KEEP-LINES
+  - log: 2026-10-23T10:30:12Z @kj edited test-tags "UNIT" -> "UNIT, FUNCTIONAL"; evidence "tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block asserts the list stays after --text" -> "tests/test_pm_tools.py::test_describe_text_file_replaces_the_whole_prose_block asserts the list stays after --text; tests/test_pm_tools_functional.py::test_describe_text_replaces_the_description_line_and_the_list_under_it_stays passes"
+- [x] `ACC-PMCAT-222-RENAME-HEADING` **rename-category renames the heading code** - HIGH; every `##` heading with code OLD in each tracker with the FILE prefix gets code NEW; without `--name` its name stays
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: OLD heading in two acc-crit trackers; rename; assert both headings carry NEW and the old name
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-223-RENAME-NAME` **--name renames the heading** - MEDIUM; with `--name NAME` every renamed heading also gets name NAME
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_with_a_name_renames_every_heading pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: rename with --name; assert each renamed heading holds NAME and code NEW
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_with_a_name_renames_every_heading pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_with_a_name_renames_every_heading pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-224-RENAME-IDS` **rename-category renames the item ids** - CRITICAL; every item in a tracker with the FILE prefix whose id has segment OLD becomes `PREFIX-NEW-N[-CODE][-REGR]`; number, item code and regression ordinal are kept
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_in_defects_keeps_number_code_and_ordinal (codeless DEF-NEW-7, sibling-tracker DEF-NEW-6-LEXER), unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: defect root and its regression in OLD; rename; assert `DEF-NEW-5-PARSER` and `DEF-NEW-5-PARSER-1`
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T10:54:04Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_in_defects_keeps_number_code_and_ordinal, unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_in_defects_keeps_number_code_and_ordinal (codeless DEF-NEW-7, sibling-tracker DEF-NEW-6-LEXER), unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1613 passed, 2 skipped"
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_in_defects_keeps_number_code_and_ordinal (codeless DEF-NEW-7, sibling-tracker DEF-NEW-6-LEXER), unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_in_defects_keeps_number_code_and_ordinal (codeless DEF-NEW-7, sibling-tracker DEF-NEW-6-LEXER), unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-225-MOVED-ITEM` **Edge: OLD item under another heading** - HIGH; an item whose id has segment OLD is renamed under whichever heading it sits now
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: OLD-born item under another category; rename; assert its id has NEW and it stays under that heading
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-226-OTHER-PREFIX` **Edge: the other prefix keeps OLD** - HIGH; headings and item ids with code OLD in trackers of the other prefix are not renamed
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix, unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: OLD category in acc-crit and in defects; rename in acc-crit; assert the defects heading and DEF ids unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix, unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix, unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-227-MENTION-REL` **Relation lines follow the rename** - CRITICAL; every `related`, `blocked-by`, `overrides` and `overridden-by` line naming a renamed id names the new id
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: one link of each kind to a renamed id; rename; assert each line names the new id
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-228-MENTION-TEXT` **Item text follows the rename** - HIGH; a renamed id on an item line or any sub-line, `log:` lines included, is rewritten to the new id
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: renamed id in a title, a body, an evidence line and a log line; rename; assert each names the new id
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-229-MENTION-STORE` **Mentions in the other prefix follow** - HIGH; mentions of a renamed id in every tracker beside FILE, of either prefix, are rewritten
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: defects tracker citing a renamed ACC id in a relation and a log line; rename in acc-crit; assert both name the new id
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-230-ID-SHAPE` **A mention keeps its shape** - HIGH; a full-id mention becomes the new full id; a base-id mention becomes the new base id
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store, unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: full and base mention of one renamed id; rename; assert `ACC-NEW-5-PARSER` and `ACC-NEW-5`
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store, unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store, unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-231-EXAMPLE-ID` **Edge: an id naming no item stays** - MEDIUM; a mention with segment OLD that names no item in FILE or a tracker beside it, such as an example id, stays as written
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store, unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: mention `ACC-OLD-999` with no such item; rename; assert it is unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store, unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_rewrites_every_mention_across_the_store, unit tests/test_pm_tools.py::test_rename_category_rewrites_only_the_ids_that_name_an_item pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-232-PATH-SKIP` **Edge: a path mention stays and is listed** - HIGH; a renamed id inside a file path outside a relation line, by the `PATHTAIL` rule, stays as written and is listed on stderr as `file:line`
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_leaves_path_and_attachment_mentions_and_lists_them, unit tests/test_pm_tools.py::test_left_alone_names_an_attachment_line_and_a_file_path pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: body naming `docs/acc/ACC-OLD-5-PARSER.md`; rename; assert the path unchanged and its file:line on stderr
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T07:24:43Z @kj amended text "a renamed id inside a file path, by the `PATHTAIL` rule, stays as written and is listed on stderr as `file:line`" -> "a renamed id inside a file path outside a relation line, by the `PATHTAIL` rule, stays as written and is listed on stderr as `file:line`"
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_leaves_path_and_attachment_mentions_and_lists_them, unit tests/test_pm_tools.py::test_left_alone_names_an_attachment_line_and_a_file_path pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_leaves_path_and_attachment_mentions_and_lists_them, unit tests/test_pm_tools.py::test_left_alone_names_an_attachment_line_and_a_file_path pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-233-ATTACH-SKIP` **Edge: attachment lines stay and are listed** - HIGH; an `attachment:` line naming a renamed id stays as written and is listed on stderr as `file:line`
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_leaves_path_and_attachment_mentions_and_lists_them, unit tests/test_pm_tools.py::test_left_alone_names_an_attachment_line_and_a_file_path pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: attachment path holding the renamed id; rename; assert the line unchanged and its file:line on stderr
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_leaves_path_and_attachment_mentions_and_lists_them, unit tests/test_pm_tools.py::test_left_alone_names_an_attachment_line_and_a_file_path pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_leaves_path_and_attachment_mentions_and_lists_them, unit tests/test_pm_tools.py::test_left_alone_names_an_attachment_line_and_a_file_path pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-234-REFUSE-OLD` **Refuse: OLD not a category in FILE** - HIGH; OLD that is not a category code in FILE is refused; no tracker is written
+  - evidence: functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[old], [old-beside] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: rename an absent code; assert non-zero exit and every tracker unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T11:16:49Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[old] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[old], [old-beside] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped"
+  - log: 2026-10-23T11:31:20Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[old], [old-beside] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[old], [old-beside] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-235-REFUSE-GRAMMAR` **Refuse: NEW outside the code grammar** - HIGH; NEW that is not two to six uppercase letters is refused; no tracker is written
+  - evidence: functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[lower], [short], [long] and [digit] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: NEW `ab`, `A` and `ABCDEFG`; assert refusal and every tracker unchanged each time
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T11:16:49Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[lower], [short] and [long] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[lower], [short], [long] and [digit] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped"
+  - log: 2026-10-23T11:31:20Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[lower], [short], [long] and [digit] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[lower], [short], [long] and [digit] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-236-REFUSE-SAME` **Refuse: NEW equals OLD** - MEDIUM; NEW equal to OLD is refused; no tracker is written
+  - evidence: functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[same] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: rename OLD to OLD; assert refusal and every tracker unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[same] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[same] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-237-REFUSE-TAKEN` **Refuse: NEW already a category** - HIGH; NEW that is a category code in any tracker with the FILE prefix is refused; no tracker is written
+  - evidence: functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[taken], [taken-file] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: NEW heading in a sibling acc-crit tracker; rename; assert refusal and every tracker unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T11:16:49Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[taken] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[taken], [taken-file] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped"
+  - log: 2026-10-23T11:31:21Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[taken], [taken-file] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[taken], [taken-file] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-238-REFUSE-ID` **Refuse: an id with segment NEW exists** - HIGH; the rename is refused when an item id with the FILE prefix and segment NEW exists in FILE or a tracker beside it; no tracker is written
+  - evidence: functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[id], tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[id-beside] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: item `ACC-NEW-3-X` under another heading; rename; assert refusal and every tracker unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T10:54:04Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[id] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[id], tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[id-beside] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped"
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[id], tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[id-beside] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[id], tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[id-beside] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-239-REFUSE-ROOTS` **Refuse: two renamed roots share a base id** - HIGH; the rename is refused when two roots among the renamed items share a base id; no tracker is written
+  - evidence: functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[roots] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: `ACC-OLD-5-A` in one tracker, `ACC-OLD-5-B` in a sibling; rename; assert refusal and both trackers unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[roots] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[roots] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-240-REFUSE-AUTHOR` **rename-category requires --author** - HIGH; without `--author`, or with a handle not on the roster, the rename is refused; no tracker is written
+  - evidence: functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[author] and [handle], unit tests/test_pm_tools.py::test_rename_category_refuses_a_tracker_whose_roster_lacks_the_author pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: rename without --author, then with an unrostered handle; assert refusal and every tracker unchanged each time
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[author] and [handle], unit tests/test_pm_tools.py::test_rename_category_refuses_a_tracker_whose_roster_lacks_the_author pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_category_rename_writes_nothing[author] and [handle], unit tests/test_pm_tools.py::test_rename_category_refuses_a_tracker_whose_roster_lacks_the_author pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-241-ITEM-LOG` **Each renamed item logs the rename** - HIGH; every renamed item gets one log line `renamed category "OLD" -> "NEW"`
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix, unit tests/test_pm_tools.py::test_rename_category_writes_every_record_in_its_place pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: rename two items; assert that line once on each
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:27Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix, unit tests/test_pm_tools.py::test_rename_category_writes_every_record_in_its_place pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_renames_the_headings_and_ids_of_its_prefix, unit tests/test_pm_tools.py::test_rename_category_writes_every_record_in_its_place pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-242-CAT-RECORD` **Each renamed heading logs the rename** - MEDIUM; every renamed heading gets one category record naming the rename
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_writes_the_category_and_tracker_records, unit tests/test_pm_tools.py::test_rename_category_writes_every_record_in_its_place pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: OLD headings in two trackers; rename; assert one category record under each
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:28Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_writes_the_category_and_tracker_records, unit tests/test_pm_tools.py::test_rename_category_writes_every_record_in_its_place pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_writes_the_category_and_tracker_records, unit tests/test_pm_tools.py::test_rename_category_writes_every_record_in_its_place pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-243-TRACKER-RECORD` **A holding tracker logs the rename** - MEDIUM; each tracker holding renamed items gets one tracker record naming the rename and its item count
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_writes_the_category_and_tracker_records, unit tests/test_pm_tools.py::test_rename_category_writes_every_record_in_its_place pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: rename 3 items in FILE; assert one tracker record naming OLD, NEW and 3
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:28Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_writes_the_category_and_tracker_records, unit tests/test_pm_tools.py::test_rename_category_writes_every_record_in_its_place pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_writes_the_category_and_tracker_records, unit tests/test_pm_tools.py::test_rename_category_writes_every_record_in_its_place pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-244-MENTION-RECORD` **A mention-only tracker logs its rewrites** - MEDIUM; a tracker written only for mentions gets one tracker record naming the rename and its mention count; a tracker not written gets none
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_writes_the_category_and_tracker_records pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: defects tracker with 2 mentions, a third tracker with none; rename; assert one record naming 2, none in the third
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:58Z @kj added
+  - log: 2026-10-23T06:37:28Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_writes_the_category_and_tracker_records pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_writes_the_category_and_tracker_records pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-245-RENAME-REPORT` **rename-category reports the change** - MEDIUM; stdout lists each renamed id as `file:line: OLD-ID -> NEW-ID` and the mention count per file
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_reports_each_renamed_id_and_the_mention_counts pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: rename; assert one stdout line per renamed id and a count per written file
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:59Z @kj added
+  - log: 2026-10-23T06:37:28Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_reports_each_renamed_id_and_the_mention_counts pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_reports_each_renamed_id_and_the_mention_counts pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-246-LINKS-RESOLVE` **Every link resolves after a rename** - CRITICAL; after a rename every relation link in FILE and the trackers beside it resolves; `check` exits 0
+  - evidence: functional tests/test_pm_tools_functional.py::test_every_link_resolves_after_a_category_rename pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: rename in a store with cross-tracker links; run check on the directory; assert exit 0 and no not-found error
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:59Z @kj added
+  - log: 2026-10-23T06:37:28Z @kj closed
+  - log: 2026-10-23T11:40:51Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_every_link_resolves_after_a_category_rename pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_every_link_resolves_after_a_category_rename pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-247-OLD-GONE` **No old id remains** - HIGH; after a rename no mention of an old renamed id remains outside the listed path and attachment mentions
+  - evidence: functional tests/test_pm_tools_functional.py::test_rename_category_leaves_path_and_attachment_mentions_and_lists_them pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: rename; grep every tracker for each old id; assert only the listed file:line hits remain
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:59Z @kj added
+  - log: 2026-10-23T06:37:28Z @kj closed
+  - log: 2026-10-23T11:40:52Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_rename_category_leaves_path_and_attachment_mentions_and_lists_them pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_rename_category_leaves_path_and_attachment_mentions_and_lists_them pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-248-LOCK-EXPIRE` **Expired locks clear before a rename write** - MEDIUM; each tracker the rename writes has its expired locks removed first
+  - evidence: functional tests/test_pm_tools_functional.py::test_a_category_rename_clears_expired_locks_and_warns_on_a_held_one pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: expired lock in FILE and in a mention-only tracker; rename; assert both lock lines gone
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:59Z @kj added
+  - log: 2026-10-23T06:37:28Z @kj closed
+  - log: 2026-10-23T11:40:53Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_category_rename_clears_expired_locks_and_warns_on_a_held_one pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_category_rename_clears_expired_locks_and_warns_on_a_held_one pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-249-LOCK-WARN` **Another lock warns, the rename proceeds** - MEDIUM; a renamed item locked by another handle prints one stderr warning naming the holder and the expiry; the rename proceeds
+  - evidence: functional tests/test_pm_tools_functional.py::test_a_category_rename_clears_expired_locks_and_warns_on_a_held_one pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: item locked by @yy; rename as @kj; assert one warning naming @yy and the item renamed
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:59Z @kj added
+  - log: 2026-10-23T06:37:28Z @kj closed
+  - log: 2026-10-23T11:40:53Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_category_rename_clears_expired_locks_and_warns_on_a_held_one pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_category_rename_clears_expired_locks_and_warns_on_a_held_one pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMCAT-250-RERUN` **A rerun finishes a merged rename** - HIGH; after a git merge leaves OLD items and no OLD heading, the same rename-category renames the items and rewrites the links to old ids; refused, nothing written, without the earlier rename record or on a colliding id
+  - evidence: tests/test_pm_tools.py::test_a_rerun_finishes_a_rename_a_merge_left_half_done, ::test_a_rerun_is_refused_unless_the_earlier_rename_is_on_record (3), ::test_a_rerun_refuses_a_straggler_whose_new_id_is_taken (2) and tests/test_pm_tools_functional.py::test_a_rerun_of_rename_category_finishes_the_rename_after_a_merge, ::test_a_rerun_without_the_earlier_rename_record_writes_nothing, ::test_a_rerun_refuses_a_straggler_whose_number_the_other_branch_took pass; all 9 fail on the old code; 350 passed; check docs 0 errors
+  - test: merge a renamed copy with one that added an OLD item and an old link; rerun; check
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T08:26:43Z @kj added
+  - log: 2026-10-23T08:30:03Z @kj closed
+  - log: 2026-10-23T08:51:23Z @kj amended text "after a git merge leaves OLD items or links to old ids, the same rename-category renames the items and rewrites the links; refused, nothing written, without the earlier rename record or on a colliding id" -> "HIGH; after a git merge leaves OLD items, the same rename-category renames the items and rewrites the links to old ids; refused, nothing written, without the earlier rename record or on a colliding id"
+  - log: 2026-10-23T09:20:40Z @kj amended text "after a git merge leaves OLD items, the same rename-category renames the items and rewrites the links to old ids; refused, nothing written, without the earlier rename record or on a colliding id" -> "HIGH; after a git merge leaves OLD items and no OLD heading, the same rename-category renames the items and rewrites the links to old ids; refused, nothing written, without the earlier rename record or on a colliding id"
+- [x] `ACC-PMCAT-251-NOTE-APPEND` **describe --append adds a note** - HIGH; `describe --append TEXT` makes TEXT the last note, after the last prose line and above the category log; blank lines and fenced blocks stay; category record `added note "TEXT"`
+  - evidence: functional tests/test_pm_tools_functional.py::test_describe_append_adds_the_last_note_above_the_category_log, unit tests/test_pm_tools.py::test_describe_append_adds_the_last_note_above_the_category_log and tests/test_pm_tools.py::test_describe_append_follows_a_fenced_block_that_ends_the_prose pass; uv run --extra dev pytest -q 1700 passed, 2 skipped
+  - test: two notes, a fenced block and a log; append; assert TEXT is the line above the log, fence unchanged, record written, check exit 0
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T21:41:34Z @kj added
+  - log: 2026-10-23T22:23:46Z @kj closed
+- [x] `ACC-PMCAT-252-NOTE-CHANGE` **describe --note N --text changes a note** - HIGH; `describe --note N --text TEXT` replaces note N with TEXT; every other line stays; category record `changed note N "OLD" -> "NEW"`
+  - evidence: functional tests/test_pm_tools_functional.py::test_describe_note_text_changes_that_note_only, unit tests/test_pm_tools.py::test_describe_note_text_changes_that_note_only pass; uv run --extra dev pytest -q 1700 passed, 2 skipped
+  - test: three notes; change note 2; assert note 2 is TEXT, notes 1 and 3 unchanged, record written, check exit 0
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T21:41:34Z @kj added
+  - log: 2026-10-23T22:23:46Z @kj closed
+- [x] `ACC-PMCAT-253-NOTE-REMOVE` **describe --note N --remove removes a note** - HIGH; `describe --note N --remove` deletes note N's line only; blank lines, fenced blocks and the other notes stay; category record `removed note N "OLD"`
+  - evidence: functional tests/test_pm_tools_functional.py::test_describe_note_remove_drops_that_line_only, unit tests/test_pm_tools.py::test_describe_note_remove_drops_that_line_only pass; uv run --extra dev pytest -q 1700 passed, 2 skipped
+  - test: notes around a blank line and a fence; remove note 2; assert only that line gone, record written, check exit 0
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T21:41:34Z @kj added
+  - log: 2026-10-23T22:23:46Z @kj closed
+- [x] `ACC-PMCAT-254-NOTE-NUMBER` **Notes are numbered in file order** - HIGH; notes are the non-blank prose lines after the description line, numbered from 1 in file order; blank lines, category log lines and lines inside or on a code fence are not notes; `--note N` and `report` use the same numbers
+  - evidence: functional tests/test_pm_tools_functional.py::test_notes_are_numbered_in_file_order_past_blank_fenced_and_log_lines, unit tests/test_pm_tools.py::test_notes_are_numbered_past_blank_fenced_and_log_lines pass; uv run --extra dev pytest -q 1700 passed, 2 skipped
+  - test: a fenced block between notes 1 and 2, the category log between notes 2 and 3; change note 3; assert the line below the log changed and report numbers it 3
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T21:41:34Z @kj added
+  - log: 2026-10-23T22:23:46Z @kj closed
+  - log: 2026-10-24T00:55:09Z @kj edited test "blank, fenced and log lines between notes; change note 2; assert the second plain line changed and report numbers it 2" -> "a fenced block between notes 1 and 2, the category log between notes 2 and 3; change note 3; assert the line below the log changed and report numbers it 3"
+- [x] `ACC-PMCAT-255-NOTE-SAME` **Edge: changing a note to its own text** - MEDIUM; when note N already reads TEXT, `describe --note N --text TEXT` leaves the file bytes unchanged, writes no record and prints `note N unchanged`
+  - evidence: functional tests/test_pm_tools_functional.py::test_describe_note_with_its_own_text_writes_nothing, unit tests/test_pm_tools.py::test_describe_note_with_its_own_text_writes_nothing pass; uv run --extra dev pytest -q 1700 passed, 2 skipped
+  - test: change note 1 to its own text; assert file bytes unchanged and `note 1 unchanged` printed
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T21:41:34Z @kj added
+  - log: 2026-10-23T22:23:46Z @kj closed
+- [x] `ACC-PMCAT-256-NOTE-REFUSE` **Edge: a refused note write changes nothing** - HIGH; exit non-zero, file bytes unchanged, message names the cause: unknown category code; `--append` with no description line (names `describe --text`); `--note N` below 1 or above the note count (gives the count); TEXT that is a heading, a checklist item or a `- log:` line, holds a FORBIDDEN glyph or is over 50 words; two of `--text`, `--text-file`, `--append` and `--remove` in one call; `--note` without exactly one of `--text` or `--remove`; `--author` missing or not on the roster
+  - evidence: functional tests/test_pm_tools_functional.py::test_a_refused_note_write_changes_nothing (25 cases), unit tests/test_pm_tools.py::test_a_refused_note_write_changes_nothing (15 cases) pass; uv run --extra dev pytest -q 1704 passed, 2 skipped
+  - test: one parametrised case per refusal; assert non-zero exit, the cause in the message, file bytes unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T21:41:35Z @kj added; reason: names every refusal case so one parametrised test covers them all
+  - log: 2026-10-23T22:23:46Z @kj closed
+  - log: 2026-10-23T23:46:22Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_note_write_changes_nothing (22 cases), unit tests/test_pm_tools.py::test_a_refused_note_write_changes_nothing (14 cases) pass; uv run --extra dev pytest -q 1700 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_note_write_changes_nothing (25 cases), unit tests/test_pm_tools.py::test_a_refused_note_write_changes_nothing (15 cases) pass; uv run --extra dev pytest -q 1700 passed, 2 skipped"
+  - log: 2026-10-24T00:11:29Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_a_refused_note_write_changes_nothing (25 cases), unit tests/test_pm_tools.py::test_a_refused_note_write_changes_nothing (15 cases) pass; uv run --extra dev pytest -q 1700 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_a_refused_note_write_changes_nothing (25 cases), unit tests/test_pm_tools.py::test_a_refused_note_write_changes_nothing (15 cases) pass; uv run --extra dev pytest -q 1704 passed, 2 skipped"
+- [x] `ACC-PMCAT-257-REPORT-NOTES` **report --category prints notes and the log** - HIGH; `report FILE --category CODE` prints each note as `N. <note>` under the category's name and description line, then the category log lines; an empty list prints nothing; a report not narrowed to one category prints neither
+  - evidence: functional tests/test_pm_tools_functional.py::test_report_category_prints_the_notes_then_the_category_log, unit tests/test_pm_tools.py::test_report_category_prints_the_notes_then_the_category_log pass; uv run --extra dev pytest -q 1700 passed, 2 skipped
+  - test: two notes and a log; report --category; assert `1.` and `2.` lines then the log lines; plain report shows neither
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T21:41:35Z @kj added
+  - log: 2026-10-23T22:23:47Z @kj closed
+- [x] `ACC-PMCAT-258-REPORT-JSON` **report --json carries notes and log** - MEDIUM; every category object in `report --json` has `notes`, the notes as strings in note order, and `log`, the category log lines; each is an empty list when the category has none
+  - evidence: functional tests/test_pm_tools_functional.py::test_report_json_carries_each_categorys_notes_and_log, unit tests/test_pm_tools.py::test_report_json_carries_each_categorys_notes_and_log pass; uv run --extra dev pytest -q 1700 passed, 2 skipped
+  - test: two categories, one with notes and a log; report --json; assert both lists in order there, empty on the other
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T21:41:35Z @kj added
+  - log: 2026-10-23T22:23:47Z @kj closed
 
 ## pm-tools coded ids `PMCODE`
 
@@ -1620,4 +1886,121 @@ Code after the id number, part of the id
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-19T15:27:00Z @kj added
   - log: 2026-10-19T15:27:07Z @kj closed: verified
+
+## pm-tools tracker and category logs `PMLOG`
+
+Log lines recording tracker-wide and category-wide changes
+
+- [x] `ACC-PMLOG-207-TRACKER-PARSE` **Tracker log parses** - HIGH; `- log: <word> @xx ...` lines in the preamble, after the `# Title` line and its prose and before the first `##` heading, are read as the tracker log in file order; a `- log:` line without an `@handle` after its first word is prose
+  - evidence: functional tests/test_pm_tools_functional.py::test_the_preamble_log_lines_are_the_tracker_log_in_file_order, tests/test_pm_tools_functional.py::test_check_passes_a_log_prose_bullet_and_still_fails_a_bad_record, unit tests/test_pm_tools.py::test_the_tracker_log_is_read_off_the_preamble_in_file_order pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: preamble with two log lines; read the tracker log; assert both, in file order
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:55Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T08:02:52Z @kj amended text "`- log:` lines in the preamble, after the `# Title` line and its prose and before the first `##` heading, are read as the tracker log in file order" -> "`- log: <word> @xx ...` lines in the preamble, after the `# Title` line and its prose and before the first `##` heading, are read as the tracker log in file order; a `- log:` line without an `@handle` after its first word is prose"; reason: DEF-PMGT-83-PROSE-LOG: a log bullet with no handle after its first word is prose
+  - log: 2026-10-23T10:54:04Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_the_preamble_log_lines_are_the_tracker_log_in_file_order, unit tests/test_pm_tools.py::test_the_tracker_log_is_read_off_the_preamble_in_file_order pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_the_preamble_log_lines_are_the_tracker_log_in_file_order, tests/test_pm_tools_functional.py::test_check_passes_a_log_prose_bullet_and_still_fails_a_bad_record, unit tests/test_pm_tools.py::test_the_tracker_log_is_read_off_the_preamble_in_file_order pass; uv run --extra dev pytest -q 1613 passed, 2 skipped"
+  - log: 2026-10-23T11:40:49Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_the_preamble_log_lines_are_the_tracker_log_in_file_order, tests/test_pm_tools_functional.py::test_check_passes_a_log_prose_bullet_and_still_fails_a_bad_record, unit tests/test_pm_tools.py::test_the_tracker_log_is_read_off_the_preamble_in_file_order pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_the_preamble_log_lines_are_the_tracker_log_in_file_order, tests/test_pm_tools_functional.py::test_check_passes_a_log_prose_bullet_and_still_fails_a_bad_record, unit tests/test_pm_tools.py::test_the_tracker_log_is_read_off_the_preamble_in_file_order pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-208-CAT-PARSE` **Category log parses** - HIGH; `- log: <word> @xx ...` lines after a category description line and before its first item are read as that category log in file order; a `- log:` line without an `@handle` after its first word is prose
+  - evidence: functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, tests/test_pm_tools_functional.py::test_check_passes_a_log_prose_bullet_and_still_fails_a_bad_record, unit tests/test_pm_tools.py::test_the_category_log_parses_onto_its_section pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: category with two log lines under the description; parse; assert the section holds both, in file order
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T08:02:53Z @kj amended text "`- log:` lines after a category description line and before its first item are read as that category log in file order" -> "`- log: <word> @xx ...` lines after a category description line and before its first item are read as that category log in file order; a `- log:` line without an `@handle` after its first word is prose"; reason: DEF-PMGT-83-PROSE-LOG: a log bullet with no handle after its first word is prose
+  - log: 2026-10-23T10:54:04Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_the_category_log_parses_onto_its_section pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, tests/test_pm_tools_functional.py::test_check_passes_a_log_prose_bullet_and_still_fails_a_bad_record, unit tests/test_pm_tools.py::test_the_category_log_parses_onto_its_section pass; uv run --extra dev pytest -q 1613 passed, 2 skipped"
+  - log: 2026-10-23T11:40:49Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, tests/test_pm_tools_functional.py::test_check_passes_a_log_prose_bullet_and_still_fails_a_bad_record, unit tests/test_pm_tools.py::test_the_category_log_parses_onto_its_section pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, tests/test_pm_tools_functional.py::test_check_passes_a_log_prose_bullet_and_still_fails_a_bad_record, unit tests/test_pm_tools.py::test_the_category_log_parses_onto_its_section pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-209-NOT-DESC` **Edge: a log line is never the description** - HIGH; the description is the first prose line under the heading that is not a category log line; a category with log lines only has no description
+  - evidence: functional tests/test_pm_tools_functional.py::test_describe_text_keeps_the_category_log_and_a_log_line_is_never_the_description, unit tests/test_pm_tools.py::test_a_log_line_is_never_the_description pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: log lines with and without a prose line under the heading; assert the prose line is the description, then no description
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T08:02:53Z @kj amended text "the description is the first prose line under the heading that is not a `- log:` line; a category with log lines only has no description" -> "the description is the first prose line under the heading that is not a category log line; a category with log lines only has no description"; reason: DEF-PMGT-83-PROSE-LOG: a log bullet with no handle after its first word is prose
+  - log: 2026-10-23T11:40:49Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_describe_text_keeps_the_category_log_and_a_log_line_is_never_the_description, unit tests/test_pm_tools.py::test_a_log_line_is_never_the_description pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_describe_text_keeps_the_category_log_and_a_log_line_is_never_the_description, unit tests/test_pm_tools.py::test_a_log_line_is_never_the_description pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-210-CHECK-STAMP` **check errors on a bad wide-log stamp** - MEDIUM; a tracker or category log line without a valid ISO 8601 UTC stamp is a `check` error worded like the item log one
+  - evidence: functional tests/test_pm_tools_functional.py::test_check_fails_on_a_malformed_tracker_or_category_log_line, unit tests/test_pm_tools.py::test_check_validates_a_wide_log_line_as_an_item_log_line pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: bad stamp on a tracker and on a category log line; run check; assert one error each and non-zero exit
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_check_fails_on_a_malformed_tracker_or_category_log_line, unit tests/test_pm_tools.py::test_check_validates_a_wide_log_line_as_an_item_log_line pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_check_fails_on_a_malformed_tracker_or_category_log_line, unit tests/test_pm_tools.py::test_check_validates_a_wide_log_line_as_an_item_log_line pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-211-CHECK-HANDLE` **check errors on an unknown wide-log handle** - MEDIUM; a tracker or category log line whose handle is not on the roster is a `check` error worded like the item log one
+  - evidence: functional tests/test_pm_tools_functional.py::test_check_fails_on_a_malformed_tracker_or_category_log_line, unit tests/test_pm_tools.py::test_check_validates_a_wide_log_line_as_an_item_log_line pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: unrostered handle on a tracker and on a category log line; run check; assert one error each and non-zero exit
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_check_fails_on_a_malformed_tracker_or_category_log_line, unit tests/test_pm_tools.py::test_check_validates_a_wide_log_line_as_an_item_log_line pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_check_fails_on_a_malformed_tracker_or_category_log_line, unit tests/test_pm_tools.py::test_check_validates_a_wide_log_line_as_an_item_log_line pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-212-TEXT-KEEP` **describe --text keeps the category log** - HIGH; `describe --text` replaces the description line only; the category log lines stay
+  - evidence: functional tests/test_pm_tools_functional.py::test_describe_text_keeps_the_category_log_and_a_log_line_is_never_the_description, unit tests/test_pm_tools.py::test_describe_text_replaces_the_description_and_keeps_the_category_log pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: category with a description and two log lines; describe --text; assert the new description and both log lines
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T11:40:49Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_describe_text_keeps_the_category_log_and_a_log_line_is_never_the_description, unit tests/test_pm_tools.py::test_describe_text_replaces_the_description_and_keeps_the_category_log pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_describe_text_keeps_the_category_log_and_a_log_line_is_never_the_description, unit tests/test_pm_tools.py::test_describe_text_replaces_the_description_and_keeps_the_category_log pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-213-FILE-KEEP` **describe --text-file keeps the category log** - HIGH; `describe --text-file` replaces the prose above the category log lines; the log lines stay
+  - evidence: functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_text_file_replaces_the_prose_above_the_category_log pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: category with a prose block and two log lines; describe --text-file; assert the new prose above both log lines
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_text_file_replaces_the_prose_above_the_category_log pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_text_file_replaces_the_prose_above_the_category_log pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-214-FILE-LOG` **Edge: --text-file text holding a log line** - MEDIUM; a `describe --text-file` text holding a `- log:` line is refused; nothing is written
+  - evidence: functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_text_file_takes_prose_only[log-line] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: text file with a `- log:` line; describe --text-file; assert refusal and an unchanged file
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_text_file_takes_prose_only[log-line] pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_text_file_takes_prose_only[log-line] pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-215-DESC-AUTHOR` **describe requires --author** - HIGH; `describe` without `--author`, or with a handle not on the roster, is refused; nothing is written
+  - evidence: functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_requires_an_author_on_the_roster pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: describe without --author, then with an unrostered handle; assert refusal and an unchanged file each time
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_requires_an_author_on_the_roster pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_requires_an_author_on_the_roster pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-216-RECORD-FORM` **Wide record form** - MEDIUM; a tracker or category record is `- log: <ISO 8601 UTC stamp> @xx <event>` without indent, appended after the last record of its log
+  - evidence: functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it and ::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_the_record_helpers_write_the_wide_log_form_newest_last pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: write two records into each log; assert unindented lines, a stamp and handle on each, newest last
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it and ::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_the_record_helpers_write_the_wide_log_form_newest_last pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it and ::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_the_record_helpers_write_the_wide_log_form_newest_last pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-217-MIGRATE-RECORD` **migrate-codes writes a tracker record** - MEDIUM; `migrate-codes` that codes at least one item appends a tracker record naming the count and the mapping file name; each item keeps its `coded CODE` log line
+  - evidence: functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_migrate_codes_writes_one_tracker_record_and_none_on_a_rerun pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: map two ids, one with a regression; migrate-codes; assert one tracker record naming 3 and the mapping file name, and a coded line on each item
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:25Z @kj closed
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_migrate_codes_writes_one_tracker_record_and_none_on_a_rerun pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_migrate_codes_writes_one_tracker_record_and_none_on_a_rerun pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+  - log: 2026-10-23T13:29:38Z @kj edited test "map two items; migrate-codes; assert one tracker record naming 2 and the mapping file name, and a coded line on each item" -> "map two ids, one with a regression; migrate-codes; assert one tracker record naming 3 and the mapping file name, and a coded line on each item"
+- [x] `ACC-PMLOG-218-UPGRADE-RECORD` **upgrade --apply writes a tracker record** - MEDIUM; `upgrade --apply` that changes the file with `--author` on the roster appends a tracker record that the file was upgraded
+  - evidence: functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_upgrade_apply_writes_one_tracker_record_and_none_on_a_current_file pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: upgrade --apply on a legacy doc; assert one tracker record naming the upgrade
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T07:27:22Z @kj amended text "`upgrade --apply` that changes the file appends a tracker record that the file was upgraded" -> "`upgrade --apply` that changes the file with `--author` on the roster appends a tracker record that the file was upgraded"
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_upgrade_apply_writes_one_tracker_record_and_none_on_a_current_file pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_upgrade_apply_writes_one_tracker_record_and_none_on_a_current_file pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-219-DESC-RECORD` **describe writes a category record** - MEDIUM; `describe --text` and `describe --text-file` each append a category record naming what was replaced
+  - evidence: functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_text_replaces_the_description_and_keeps_the_category_log and ::test_describe_text_file_replaces_the_prose_above_the_category_log pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: describe --text, then --text-file; assert one category record per call naming what it replaced
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:56Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_text_replaces_the_description_and_keeps_the_category_log and ::test_describe_text_file_replaces_the_prose_above_the_category_log pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_describe_text_replaces_the_description_and_keeps_the_category_log and ::test_describe_text_file_replaces_the_prose_above_the_category_log pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-220-ADD-RECORD` **add writes a category-created record** - MEDIUM; `add` that creates a category appends a category record that the category was created; `add` into an existing category appends none
+  - evidence: functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_add_records_the_category_it_creates_and_only_that pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: add into a new category, then into it again; assert exactly one category record, saying created
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_add_records_the_category_it_creates_and_only_that pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_category_changes_land_in_the_category_log_and_describe_keeps_it, unit tests/test_pm_tools.py::test_add_records_the_category_it_creates_and_only_that pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
+- [x] `ACC-PMLOG-221-NO-CHANGE` **Edge: no change, no record** - MEDIUM; a writer that changes nothing writes no tracker or category record: `migrate-codes` that codes nothing, `upgrade --apply` on a current file
+  - evidence: functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_migrate_codes_writes_one_tracker_record_and_none_on_a_rerun and ::test_upgrade_apply_writes_one_tracker_record_and_none_on_a_current_file pass; uv run --extra dev pytest -q 1649 passed, 2 skipped
+  - test: rerun migrate-codes; upgrade --apply on a current file; assert each file byte-identical
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-23T05:16:57Z @kj added
+  - log: 2026-10-23T06:37:26Z @kj closed
+  - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_migrate_codes_writes_one_tracker_record_and_none_on_a_rerun and ::test_upgrade_apply_writes_one_tracker_record_and_none_on_a_current_file pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_migrate_codes_writes_one_tracker_record_and_none_on_a_rerun and ::test_upgrade_apply_writes_one_tracker_record_and_none_on_a_current_file pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
 

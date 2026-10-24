@@ -324,6 +324,65 @@ pm-tools parser, edit, upgrade and reports
   - log: 2026-10-06T11:34:01Z @kj edited test-tags added "UNIT"
   - log: 2026-10-06T11:34:01Z @kj closed: fixed: reject retires the evidence line into the log, as reopen does on a criterion
   - log: 2026-10-18T15:14:46Z @kj coded REJECT-EVIDENCE
+- [x] `DEF-PMGT-83-PROSE-LOG` **prose bullet starting with - log: in a preamble fails check** - MEDIUM; an unindented `- log:` prose bullet in a preamble or category note, accepted at 1.8.24, now fails check with 2 errors; no pm-tools command removes it, so the user must ack and indent or reword it by hand; fix: the check error says so; `pm_tools.py` WIDELOG
+  - evidence: unit tests/test_pm_tools.py::test_a_log_bullet_with_no_handle_after_its_first_word_is_prose and functional tests/test_pm_tools_functional.py::test_check_passes_a_log_prose_bullet_and_still_fails_a_bad_record pass and fail without the fix; uv run --extra dev pytest -q tests/test_pm_tools.py tests/test_pm_tools_functional.py 333 passed; pm-tools check docs 0 errors
+  - repro: preamble bullet '- log: lines are append-only and authored'; pm-tools check: 2 errors on that line
+  - test-tags: UNIT, FUNCTIONAL
+  - root-cause: 2026-10-23T07:56:45Z @kj WIDELOG reads every unindented `- log:` line of a preamble or category note as a record (ACC-PMLOG-210-CHECK-STAMP), so check validates its stamp and handle
+  - log: 2026-10-23T07:56:45Z @kj added
+  - log: 2026-10-23T08:03:11Z @kj closed
+- [x] `DEF-PMGT-84-RECORD-GLYPH` **forbidden glyph in describe or rename-category text fails check for good** - MEDIUM; an en or em dash typed into describe --text or rename-category --name is copied into an append-only record, and check fails until the user runs ack and edits the line by hand; edit's item log lines fail the same way at HEAD; fix: oneline refuses a FORBIDDEN glyph; `pm_tools.py` oneline
+  - evidence: unit tests/test_pm_tools.py::test_a_forbidden_glyph_in_free_text_is_refused_before_any_write and functional tests/test_pm_tools_functional.py::test_a_forbidden_glyph_in_describe_or_rename_category_text_is_refused pass and fail without the fix; uv run --extra dev pytest -q tests/test_pm_tools.py tests/test_pm_tools_functional.py 337 passed; pm-tools check docs 0 errors
+  - repro: describe --text with U+2013, then again with a hyphen; check: 'forbidden glyph en/em dash U+2013' on both log lines
+  - test-tags: UNIT, FUNCTIONAL
+  - root-cause: 2026-10-23T07:56:50Z @kj oneline accepts a FORBIDDEN glyph, and cmd_describe copies the old and new text into the category record through changed()
+  - log: 2026-10-23T07:56:50Z @kj added
+  - log: 2026-10-23T08:08:47Z @kj closed
+  - log: 2026-10-23T08:59:15Z @kj regressed as DEF-PMGT-84-RECORD-GLYPH-1
+- [x] `DEF-PMGT-84-RECORD-GLYPH-1` **forbidden glyph in describe or rename-category text fails check for good** - MEDIUM; an en or em dash typed into describe --text or rename-category --name is copied into an append-only record, and check fails until the user runs ack and edits the line by hand; edit's item log lines fail the same way at HEAD; fix: save() writes each FORBIDDEN glyph in a log line it adds or changes as U+XXXX, relate's four relation arguments use oneline; `pm_tools.py` save, relate
+  - evidence: save() writes each FORBIDDEN glyph in a log line it adds or changes as U+XXXX, relate's four relation arguments use oneline; unit test_relate_refuses_a_forbidden_glyph_and_unrelate_escapes_one_it_copies, test_an_old_value_a_record_copies_has_each_forbidden_glyph_escaped (3) and functional test_relate_refuses_a_glyph_and_unrelate_writes_one_it_copies_as_an_escape, test_the_command_that_clears_a_glyph_error_leaves_check_clean (3) pass, all 8 fail without the fix; pytest 358 passed; check docs 0 errors
+  - root-cause: 2026-10-23T09:02:57Z @kj oneline was the only guard: relate's four relation arguments had no type=oneline, and a record copies file text oneline never sees - the old value describe, edit and rename-category --name copy, and the relation line unrelate copies; save() wrote those log lines unchanged
+  - log: 2026-10-23T08:59:15Z @kj regression of DEF-PMGT-84-RECORD-GLYPH: fix incomplete, review round 2: relate's four relation arguments are not read through oneline, so unrelate's 'line read' record copies a glyph later; an old value describe, edit and rename-category --name copy into their record never passes oneline
+  - log: 2026-10-23T09:02:57Z @kj closed
+  - log: 2026-10-23T09:22:43Z @kj amended text "an en or em dash typed into describe --text or rename-category --name is copied into an append-only record, and check fails until the user runs ack and edits the line by hand; edit's item log lines fail the same way at HEAD; fix: oneline refuses a FORBIDDEN glyph; `pm_tools.py` oneline" -> "MEDIUM; an en or em dash typed into describe --text or rename-category --name is copied into an append-only record, and check fails until the user runs ack and edits the line by hand; edit's item log lines fail the same way at HEAD; fix: save() writes each FORBIDDEN glyph in a log line it adds or changes as U+XXXX, relate's four relation arguments use oneline; `pm_tools.py` save, relate"; reason: the item text keeps every clause and replaces only the fix clause
+- [x] `DEF-PMGT-85-HINT-AUTHOR` **upgrade edit hints omit the required --author** - MINOR; the 'not triaged' and 'not rated' HINT lines, which the docs call the exact command, print pm-tools edit with --severity or --importance and no --author; edit then fails with an argparse error naming --author; fix: append ' --author @xx' to both f-strings and to references/upgrade.md:16; `pm_tools.py` cmd_upgrade
+  - evidence: both upgrade level hints end with --author @xx, upgrade.md:16 shows it; test_upgrade_level_hint_command_is_accepted_by_edit (unit) and test_the_upgrade_level_hint_runs_as_printed (functional) run the hint as printed and fail on the old code with argparse exit 2 naming --author; pytest 341 passed; check 0 errors
+  - repro: pm-tools upgrade on a legacy defects file with an untriaged item; run the HINT command as printed: argparse error naming --author
+  - test-tags: UNIT, FUNCTIONAL
+  - root-cause: 2026-10-23T07:56:54Z @kj the edit --severity and edit --importance hint f-strings in cmd_upgrade (pm_tools.py:3798-3806) end without --author; HEAD prints the same two hints
+  - log: 2026-10-23T07:56:54Z @kj added
+  - log: 2026-10-23T08:13:46Z @kj closed
+- [x] `DEF-PMGT-86-MERGE-RENAME` **conflicts reference says ids never change; a merge after rename-category has no rule** - MINOR; conflicts.md:10 says ids are permanent, while SKILL.md:66 names rename-category as the exception; a merge where the other branch added an item with the old segment leaves it under the renamed heading, and check exits 0; the merge rule and the tool fix are owner decisions; `references/conflicts.md`
+  - evidence: tests/test_pm_tools.py::test_a_rerun_finishes_a_rename_a_merge_left_half_done, ::test_a_rerun_is_refused_unless_the_earlier_rename_is_on_record (3), ::test_a_rerun_refuses_a_straggler_whose_new_id_is_taken (2) and tests/test_pm_tools_functional.py::test_a_rerun_of_rename_category_finishes_the_rename_after_a_merge, ::test_a_rerun_without_the_earlier_rename_record_writes_nothing, ::test_a_rerun_refuses_a_straggler_whose_number_the_other_branch_took pass; all 9 fail on the old code; 350 passed; check docs 0 errors
+  - repro: branch A: rename-category LNCH to BOOT; branch B: add under LNCH; merge keeping the BOOT heading: the new LNCH id sits under BOOT, check exits 0
+  - test-tags: UNIT, FUNCTIONAL
+  - root-cause: 2026-10-23T07:56:59Z @kj conflicts.md predates rename-category, and rename_plan refuses OLD once no heading in FILE carries it ('unknown category code')
+  - log: 2026-10-23T07:56:59Z @kj added
+  - log: 2026-10-23T08:30:03Z @kj closed
+- [x] `DEF-PMGT-87-NOTE-INDENT` **describe --note N --text drops the note indentation** - MINOR; rewording an indented note line, such as a sub-bullet, writes TEXT at column 0; no text is lost and check passes; cause `lines[n - 1] = new[0]` drops the old line's leading whitespace; keeping it is an owner decision; `pm_tools.py:3191`
+  - evidence: unit tests/test_pm_tools.py::test_describe_note_text_keeps_the_indentation_of_the_line_it_replaces and functional tests/test_pm_tools_functional.py::test_describe_note_text_keeps_the_indentation_of_the_line_it_replaces pass, both fail on a scratch copy without the fix; uv run --extra dev pytest -q tests/test_pm_tools.py tests/test_pm_tools_functional.py 423 passed; ruff format --check and ruff check clean
+  - root-cause: 2026-10-24T00:50:00Z @kj cmd_describe wrote `lines[n - 1] = new[0]`: the stripped TEXT replaced the whole line, so the old line's leading whitespace was lost; fix prefixes the old line's leading whitespace, the idiom sub_indent uses; `pm_tools.py:3191`
+  - related: ACC-PMCAT-252-NOTE-CHANGE - the write that drops the indentation
+  - repro: note line `  - sub-bullet`; describe --category C --note N --text "x"; the line is now `x` at column 0
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T00:33:50Z @kj added
+  - log: 2026-10-24T00:50:00Z @kj closed: fixed: describe --note N --text keeps the leading whitespace of the line it replaces
+- [x] `DEF-PMGT-88-NOTE-ECHO` **a note write prints the note number, not the note text** - MINOR; describe --append, --note N --text and --note N --remove print `CODE note N changed` and no text, so an agent acting on numbers read before an earlier write cannot see which line changed; `pm_tools.py:3195`; stdout asserted at `tests/test_pm_tools_functional.py:2846,2857,2867`
+  - evidence: unit tests/test_pm_tools.py::test_a_note_write_sent_with_a_stale_number_names_the_line_it_hit and functional tests/test_pm_tools_functional.py::test_a_note_write_sent_with_a_stale_number_names_the_line_it_hit pass, with the append, change and remove stdout asserts of both suites; all 8 fail on a scratch copy without the fix; uv run --extra dev pytest -q tests/test_pm_tools.py tests/test_pm_tools_functional.py 425 passed; ruff format --check and ruff check clean
+  - root-cause: 2026-10-24T00:53:52Z @kj cmd_describe set `what` to the bare verb (added, removed, changed) and printed `CODE note N what`, so the note text went only into the category record; fix puts the text in `what` in the record quoting, `"OLD" -> "NEW"` on a change as the edit message at pm_tools.py:2989 does; `pm_tools.py:3179,3186,3194`
+  - related: ACC-PMCAT-251-NOTE-APPEND, ACC-PMCAT-252-NOTE-CHANGE, ACC-PMCAT-253-NOTE-REMOVE - the writes whose stdout omits the text
+  - repro: describe --category C --note 2 --remove; stdout ends `C note 2 removed` with no note text
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T00:33:50Z @kj added
+  - log: 2026-10-24T00:53:52Z @kj closed: fixed: each note write prints the note text beside the note number
+- [x] `DEF-PMGT-89-TEST-HINT` **ACC-PMCAT-254-NOTE-NUMBER test: hint does not describe its functional test** - MINOR; the hint says change note 2, which matches the unit test at `tests/test_pm_tools.py:4953-4966`; the functional test at `tests/test_pm_tools_functional.py:2872` changes note 3 below the category log; no CLI behaviour depends on it; fix: edit --test on the criterion
+  - evidence: hint matches tests/test_pm_tools_functional.py::test_notes_are_numbered_in_file_order_past_blank_fenced_and_log_lines (fenced block, log between notes 2 and 3, change note 3, report numbers it 3); no code or test change; uv run --extra dev pytest -q tests/test_pm_tools.py tests/test_pm_tools_functional.py 425 passed
+  - root-cause: 2026-10-24T00:56:08Z @kj the test: hint was written from the unit test, which changes note 2 below the category log; the functional test has a third note and changes note 3
+  - related: ACC-PMCAT-254-NOTE-NUMBER - the criterion whose hint is wrong
+  - repro: compare the test: line of ACC-PMCAT-254-NOTE-NUMBER with `tests/test_pm_tools_functional.py:2872`
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T00:33:50Z @kj added
+  - log: 2026-10-24T00:56:08Z @kj closed: fixed: edit --test on ACC-PMCAT-254-NOTE-NUMBER now describes the functional test
 
 ## hypothesis-tools `HYPO`
 

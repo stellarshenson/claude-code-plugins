@@ -7,7 +7,7 @@ One markdown file per discipline means two people editing the same tracker will 
 - **Items never move** - status lives in the checkbox, so closing something is a one-character edit in place, never a section move
 - **Logs are append-only** - two people appending to the same item produce two lines, and both are correct
 - **Every log line names its author** - `- log: 2026-08-27 @kj closed: ...`, so "whose line is this" is never a guess
-- **Ids are permanent and never reused** - the same id on both sides is the same item
+- **Ids are never reused, and only `rename-category` changes one** - the same id on both sides is the same item; after a merge across a `rename-category`, SKILL.md, Rerun after a merge, says when a rerun finishes it
 
 Hand edits pass while the file holds conflict markers; after the last marker is gone a hand edit needs `pm-tools ack` (SKILL.md, Rules).
 

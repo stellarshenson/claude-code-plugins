@@ -63,7 +63,7 @@ Consequences, stated once:
 - **Category code** - uppercase mnemonic, declared once as inline code at the end of the `##` heading, never re-derived per item. Three to five letters, six the ceiling; it must read as a word, so lengthen the tool's proposal whenever a letter or two spells the actual thing - `FRONT` over `FRON`, `GUARD` over `GUAR` - and never shrink it to bare initials
 - **Number** - unique across the whole document, not per category; `add` takes one past the highest in the file or in a sibling tracker for the same prefix and category
 - **Item code** - one or two hyphen-separated uppercase segments naming what the item is about (`PARSER`, `RETRY-LOOP`), required on `add --code` and read from the id everywhere. It names the item's subject at the id, and it is what `--code`, the `code` column and `pivot --rows code` read
-- **Permanent once assigned** - an item that moves category keeps its id, and `edit` / `amend` never drop the code. The category segment records where it was born; the `##` section it sits under is the live truth. `check` deliberately does not compare the two
+- **Permanent once assigned** - an item that moves category keeps its id, and `edit` / `amend` never drop the code. The category segment records where it was born; the `##` section it sits under is the live truth. `check` deliberately does not compare the two. The one exception is `rename-category`, which renames a category code in every id that carries it (Category)
 - **Never reused** - no renumbering, no recycling from a closed item
 - **Resolution by base id** - a link or `--id` may name `DEF-LNCH-3` without the code; every reader resolves it to the item, and the full id always wins when both shapes exist. `check` warns on an item whose id carries no code
 - **Write the full id** - `check` warns on a base id written on an item's line or any sub-line except `log:` and `attachment:`, naming the full id: `DEF-LNCH-3 has no code; write DEF-LNCH-3-PARSER`. A base id plus ordinal (`DEF-LNCH-3-1`) names the coded regression; an id inside a file path or naming no item is not flagged
@@ -78,6 +78,8 @@ One item is one top-level checklist line plus indented sub-lines. No sub-checkbo
 ## <Category name> `<CODE>`
 
 <one-line category description>
+
+- log: 2026-08-26T08:40:12Z @kj category created
 
 - [ ] `<ID>` **<title>** - <body>
   - <hint>: <the discipline's one-line hint>
@@ -94,6 +96,7 @@ One item is one top-level checklist line plus indented sub-lines. No sub-checkbo
 
 - Id first as inline code, then the `**bold title**`, then ` - ` and the body
 - **Log every event** - `- log: <stamp> <@handle> <event>`; append, never rewrite or delete. A failed attempt is logged, not erased
+- **Tracker and category logs** - the same line without indent records a change wider than one item. The tracker log sits in the preamble, after the `# Title` line and its prose, before the first `##` heading; a category log sits after the description line, before the first item. `add` creating a category and `describe` write a category record; `migrate-codes` coding an item and `upgrade --apply` changing the file with `--author` on the roster write a tracker record; `rename-category` writes both. A command that changes nothing writes no record. `check` validates the stamp and the handle as on an item log line, and a log line is never the description
 - **Stamps are ISO 8601 UTC** - `2026-08-27T15:59:12Z`, always Zulu, never local and never a bare date: one unambiguous instant across zones, and it sorts as plain text
 - Terse and factual; no emojis, no em-dashes, no unicode arrows (`-` and `->` are ASCII and legal), no trailing full stop
 - **Details doc is the exception** - most items never need one. Where an item genuinely carries a root-cause study or a design argument, put it in `docs/<discipline>/<ID>-<slug>.md` and link it from the body
@@ -102,13 +105,13 @@ A filled-in item, and what belongs in its body, is in the discipline's own refer
 
 ## Writing the text
 
-Every free-text field is written in plain language: title, body, the `repro:` / `test:` hint, `evidence:`, `root-cause:` / `mechanism:`, the log event, the category description. The bar is laconic: the shortest wording a reader who was not there acts on correctly, first read, and nothing past it.
+Every free-text field is written in plain language: title, body, the `repro:` / `test:` hint, `evidence:`, `root-cause:` / `mechanism:`, the log event, the category description and its notes. The bar is laconic: the shortest wording a reader who was not there acts on correctly, first read, and nothing past it.
 
 - **Everyday words** - `stops`, not `terminates`; `two tokens issued`, not `duplicate credential emission`. Call each thing what the code calls it, so the reader can search for it
 - **One reading only** - a sentence with a second possible meaning is rewritten, not clarified later. `refresh fails after logout` says neither which refresh nor whose logout
 - **Compression is welcome** - drop articles and filler, fragments are fine: `auth token sometimes empty on first turn after fork` is a whole body. This store is the exception to the rule that ticket text is written in full prose; it sits next to the code and is read by whoever works the code, agent or person
 - **Nothing past the minimum** - a clause earns its place by naming a mechanism, a site, a number or the harm. Everything else goes: the reasoning behind the item, what the title already said, why it matters, how the fix was arrived at. Delete it, do not shorten it. Past roughly 40 words a body is usually explaining itself - run the test again on each clause
-- **Short is the default; stop once it is enough** - a title is a few words, a body one or two sentences, a log event one line. `pm-tools` refuses a free-text argument over 50 words unless `--reason` says why it needs the length; the reason is kept on the item's log line. `describe --text`, `lock` and `author` take no `--reason` and refuse a text over 50 words; `describe --text-file` writes a prose block and has no word limit. A long writeup almost always needs deleting, not a reason
+- **Short is the default; stop once it is enough** - a title is a few words, a body one or two sentences, a log event one line. `pm-tools` refuses a free-text argument over 50 words unless `--reason` says why it needs the length; the reason is kept on the item's log line. `describe --text`, `describe --append`, `lock` and `author` take no `--reason` and refuse a text over 50 words; `describe --text-file` writes a prose block and has no word limit. A long writeup almost always needs deleting, not a reason
 - **Compression never touches meaning** - `not`, `never`, `only`, `except`, `sometimes` stay whatever they cost. Numbers, units, ids, paths, symbol names and quoted error strings are copied exactly: never paraphrased, never rounded, never shortened
 - **Compression that does not compress is not compression** - invented short forms (`cfg`, `impl`, `req`) and mangled grammar cost the same as the plain words and make the reader decode; well-known acronyms (`API`, `HTTP`, `UUID`) are already plain. Where the plain phrasing is already the shortest, that is the wording
 
@@ -144,7 +147,24 @@ Reopening a **closed defect** does not reverse the closure - it files a regressi
 
 ## Category
 
-The `##` heading carries the full name and the code (`## Authentication \`AUTH\``); the line under it carries the description. Reports expand the code to the full name, so `AUTH` never has to be decoded by the reader. `describe --text` sets or replaces that line; `describe --text-file F` replaces every line from the heading down to the first item, for a list or a note under the description, read from F or with `-` from stdin. `check` warns when a category has no description.
+The `##` heading carries the full name and the code (`## Authentication \`AUTH\``); the line under it carries the description. Reports expand the code to the full name, so `AUTH` never has to be decoded by the reader. `describe --text` sets or replaces that line; `describe --text-file F` replaces the prose from the heading down to the first item, for a list or notes under the description, read from F or with `-` from stdin, and refuses a text holding a `- log:` line. Every `describe` write keeps the category log. `check` warns when a category has no description.
+
+Every non-blank prose line after the description is one note, numbered from 1 in file order. Blank lines, category log lines and fenced code are not notes and keep their place. One `describe` call writes one note:
+
+- **`--append TEXT`** - adds TEXT as the last note, after the last prose line; records `added note "TEXT"`
+- **`--note N --text TEXT`** - replaces note N, keeping the leading whitespace of its line; records `changed note N "OLD" -> "NEW"`. TEXT equal to note N writes nothing and prints `note N unchanged`
+- **`--note N --remove`** - removes the line of note N alone; records `removed note N "OLD"`
+- **Refusals write nothing** - an unknown category code, `--append` on a category with no description line, N outside 1 to the note count, and a TEXT that is a heading, a checklist item or a `- log:` line
+- **The category report** - `report --category CODE` prints the numbered notes, then the category log lines, under the category's name and description; `references/reports.md`
+
+`rename-category FILE --category OLD --to NEW [--name NAME] --author @xx` renames a category code across the store: FILE and every tracker beside it.
+
+- **Headings and ids** - in every tracker with FILE's prefix, each `##` heading with code OLD gets NEW, and NAME with `--name`; each id with FILE's prefix and segment OLD becomes `PREFIX-NEW-N[-CODE][-REGR]` under whichever heading it sits. Number, item code and ordinal are kept
+- **Mentions** - every mention of a renamed id in every tracker of the store is rewritten, relation, item, sub-line and log lines alike; a full id stays a full id, a base id a base id. An id that names no item stays as written
+- **Left as written, listed on stderr as `file:line`** - an id inside a file path outside a relation line and every `attachment:` line
+- **Logs** - each renamed item logs `renamed category "OLD" -> "NEW"`, each renamed heading gets a category record, and each tracker written gets a tracker record with the item count, or the mention count where it holds no renamed heading or item
+- **Rerun after a merge** - when no heading of FILE's prefix carries OLD, items still do and FILE's NEW heading holds the earlier rename's record, the same command finishes the rename: it renames those items, refused when an id one would take exists, rewrites every OLD mention of an id now carrying NEW, and words its category and tracker records `finished renaming category "OLD" -> "NEW"`. When the other branch created an OLD heading in a second tracker of the same prefix, no `pm-tools` command merges the two categories and a rerun is refused; run `pm-tools ack` on that tracker, change that heading's code from OLD to NEW by hand, rerun the same `rename-category`, then run `pm-tools check`
+- **Refusals write nothing** - every check runs before the first write: OLD not a category code in FILE, NEW outside the code grammar or equal to OLD, NEW already a category code in a tracker of FILE's prefix, an id with FILE's prefix and segment NEW anywhere in the store, two renamed roots sharing a base id, and an `--author` missing from the roster of a tracker it would write
 
 ## Hint, tags and evidence
 
@@ -262,7 +282,7 @@ Read:
 
 `--json` on any of the first seven returns the same facts as data. The filters `--category`, `--code`, `--severity`, `--importance`, `--status`, `--author`, `--tag` (any case), `--regressions`, `--grep`, `--blocked`, `--related-to`, `--locked`, `--locked-by` and the `--dates` / `--since` / `--until` window are the same on `report`, `coverage`, `list`, `pivot` and `search`.
 
-Write - one file per call, and `--author` on every one of them. `relate` and `unrelate` alone may write a second tracker beside the first: the other line of an override, or the older link of a cycle `relate` breaks:
+Write - `--author` on every one of them. Each writes FILE alone, except: `relate` and `unrelate` write the other line of an override, or the older link of a cycle `relate` breaks, in the tracker beside; `migrate-codes` and `rename-code` rewrite links in the trackers beside; `rename-category` writes every tracker it renames or rewrites a mention in:
 
 | Command | Does |
 |---------|------|
@@ -270,7 +290,7 @@ Write - one file per call, and `--author` on every one of them. `relate` and `un
 | `edit` | correct title, body, severity, importance, hint, tags or evidence; the log line keeps each value it replaced (`edited severity "MAJOR" -> "CRITICAL"`) |
 | `amend` | reword title or body; the log line keeps the old wording (`amended title "old" -> "new"`), so an item renamed three times shows three lines under the current one; report, list and search read the current wording |
 | `author` | add or update a roster entry; required before that handle can write |
-| `describe` | `--text` sets or replaces the category description line; `--text-file` replaces the whole prose block under the heading |
+| `describe` | `--text` sets or replaces the category description line; `--text-file` replaces the prose block under the heading; `--append`, `--note N --text` and `--note N --remove` add, change and remove one note; each keeps the category log and writes a category record; Category |
 | `relate` | add one `related:` or `blocked-by:` line, or an override on both items (`--overrides`, `--overridden-by`); breaks the cycle a new link closes |
 | `unrelate` | remove a link and log the line it read; an override from both items |
 | `attach` | one `attachment:` line per artefact with its checksum and last-edit stamp; the same path again refreshes the line and the log keeps the old checksum; `check` warns when an artefact changed or is missing |
@@ -284,6 +304,7 @@ Write - one file per call, and `--author` on every one of them. `relate` and `un
 | `upgrade` | rebuild a legacy doc to this schema, dry run first; `--apply` always applies the safe rewrites, exits 0, and prints one `HINT` with the exact command per content problem; `references/upgrade.md` |
 | `migrate-codes` | append the code each `BASE-ID CODE` mapping line names to that item's id, before any regression ordinal, logging one `coded CODE` line per changed item; idempotent; reports uncovered items, mapping ids that match no item and items carrying a different code; `references/codes.md` |
 | `rename-code` | replace an item's code and rewrite every `related`, `blocked-by`, `overrides` and `overridden-by` line in the scanned trackers that names the old full id; `references/codes.md` |
+| `rename-category` | rename a category code in its headings and ids across the trackers of FILE's prefix, and every mention of a renamed id in the store; Category |
 
 Every free-text argument is one line of the file; a real line break inside one is written as the two characters `\n`, never dropped.
 

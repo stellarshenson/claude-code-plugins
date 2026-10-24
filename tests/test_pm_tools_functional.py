@@ -665,7 +665,7 @@ def test_defect_lifecycle_from_report_to_fix(defects: Path):
     body = defects.read_text(encoding="utf-8")
     assert "- [x] `DEF-LNCH-1-TEST`" in body
     assert "MAJOR;" in body, "severity survives the lifecycle as the first word of the body"
-    assert body.count("- log:") == 4, "two adds, the failed attempt, and the close"
+    assert body.count("  - log:") == 4, "two adds, the failed attempt, and the close"
     assert "did NOT work" in body, "the ruled-out attempt is the reason the file exists"
     assert body.index("attempted") < body.index("fixed:"), "log lines append in order"
     assert pm("check", defects).returncode == 0
@@ -1333,6 +1333,46 @@ def test_upgrade_names_the_closed_items_that_carry_no_evidence(docs: Path):
     assert "1 closed item(s) carry no evidence" in r.stderr
 
 
+@pytest.mark.parametrize(
+    "name, header, why, levels, level",
+    [
+        (
+            "defects-legacy.md",
+            "# Defects - Legacy",
+            "not triaged",
+            "CRITICAL|MAJOR|MEDIUM|MINOR",
+            "MAJOR",
+        ),
+        (
+            "acc-crit-legacy.md",
+            "# Acceptance Criteria - Legacy",
+            "not rated",
+            "CRITICAL|HIGH|MEDIUM|LOW",
+            "HIGH",
+        ),
+    ],
+)
+def test_the_upgrade_level_hint_runs_as_printed(docs: Path, name, header, why, levels, level):
+    """DEF-PMGT-85-HINT-AUTHOR: an agent runs the 'not triaged' / 'not rated' HINT as
+    printed, with only the placeholders filled; edit must accept it, --author included."""
+    f = docs / name
+    f.write_text(
+        f"{header}\n\n## Launch\n\nCold start\n\n"
+        "- [ ] **token race** - symptom\n"
+        "  - log: 2026-06-12T00:00:00Z @kj filed\n\n"
+        "## Authors\n\n- `@kj` Konrad Jelen\n",
+        encoding="utf-8",
+    )
+    r = pm("upgrade", f, "--author", "@kj", "--apply")
+    assert r.returncode == 0, r.stderr
+    (hint,) = [ln for ln in r.stderr.splitlines() if why in ln]
+    cmd = hint.split("run: pm-tools ", 1)[1].replace(levels, level).replace("@xx", "@kj")
+    r = pm(*cmd.split())
+    assert r.returncode == 0, r.stderr
+    assert f"**token race** - {level}; symptom" in f.read_text(encoding="utf-8")
+    assert pm("check", f).returncode == 0, "the hinted command clears the check error"
+
+
 def test_list_categories_is_the_derived_index(defects: Path):
     file_a_defect(defects, "token race", category="LNCH")
     ok(
@@ -1438,7 +1478,7 @@ def test_a_soft_lock_signals_who_is_working_and_never_blocks_anyone(defects: Pat
     ok("lock", defects, "--id", "DEF-LNCH-1", "--author", "@kj", "--note", "bisecting the fork")
     body = defects.read_text(encoding="utf-8")
     (until,) = re.findall(r"- lock: (\S+) @kj bisecting the fork", body)
-    assert body.count("- log:") == 3, "locking is not an event"
+    assert body.count("  - log:") == 3, "locking is not an event"
     out = ok("report", defects, "--plain")
     assert f"wip @kj until {until}" in out and "| Worked on |" in out
     assert "| **Total** | 3 | 1 | 0 | 0 | 3 |" in out
@@ -1479,7 +1519,7 @@ def test_a_soft_lock_signals_who_is_working_and_never_blocks_anyone(defects: Pat
     assert r.returncode == 0 and "2 lock(s) cleared" in r.stdout
     assert r.stderr.count("\n") == 1 and "DEF-LNCH-2-TEST was locked by @xy" in r.stderr
     body = defects.read_text(encoding="utf-8")
-    assert "- lock:" not in body and body.count("- log:") == 6
+    assert "- lock:" not in body and body.count("  - log:") == 6
     assert "Worked on" not in ok("report", defects, "--plain")
     assert pm("check", defects).returncode == 0
 
@@ -1513,7 +1553,7 @@ def test_a_second_agent_is_told_who_is_on_what_and_takes_the_item_over(defects: 
     )
     body = defects.read_text(encoding="utf-8")
     assert re.search(r"- lock: \S+ @xy taken over from @kj", body)
-    assert body.count("- log:") == 2, "neither the lock nor the transfer is an event"
+    assert body.count("  - log:") == 2, "neither the lock nor the transfer is an event"
 
     # @kj reads the same queue later and finds @xy on it
     r = pm("list", defects, "--columns", "id,lock")
@@ -1704,3 +1744,1274 @@ def test_relate_writes_the_full_id_for_every_link_kind(docs: Path, defects: Path
     r = pm("check", docs)
     assert r.returncode == 0, r.stdout
     assert "has no code" not in r.stdout
+
+
+# --- Workflow: tracker and category logs (ACC-PMLOG) ----------------------
+
+
+RECORD = r"- log: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z @kj "
+
+
+def test_category_changes_land_in_the_category_log_and_describe_keeps_it(
+    criteria: Path, tmp_path: Path
+):
+    """ACC-PMLOG-208, 209, 212-216, 219, 220: add records the category it creates, each
+    describe records what it replaced, a refused describe writes nothing, and the
+    prose above the category log is the description."""
+    write_a_criterion(criteria, "idle timeout", "session expires after 30 idle minutes")
+    write_a_criterion(criteria, "lockout", "five failures lock the account")
+    assert criteria.read_text(encoding="utf-8").count("category created") == 1
+    ok("describe", criteria, "--category", "AUTH", "--author", "@kj", "--text", "Login")
+    before = criteria.read_text(encoding="utf-8")
+    forged = tmp_path / "forged.md"
+    forged.write_text("Login.\n\n- log: 2026-10-23T05:16:55Z @kj forged\n", encoding="utf-8")
+    for args in (
+        ("--text", "x"),
+        ("--author", "@zz", "--text", "x"),
+        ("--author", "@kj", "--text-file", forged),
+    ):
+        r = pm("describe", criteria, "--category", "AUTH", *args)
+        assert r.returncode != 0, args
+        assert criteria.read_text(encoding="utf-8") == before, args
+    prose = tmp_path / "prose.md"
+    prose.write_text("Login and sessions.\n\nPasswords are out of scope.\n", encoding="utf-8")
+    ok("describe", criteria, "--category", "AUTH", "--author", "@kj", "--text-file", prose)
+    body = criteria.read_text(encoding="utf-8")
+    assert re.search(
+        r"## Authentication `AUTH`\n\nLogin and sessions\.\n\nPasswords are out of scope\.\n\n"
+        + RECORD
+        + r"category created\n"
+        + RECORD
+        + r'description "Login, session lifetime and password handling" -> "Login"\n'
+        + RECORD
+        + r"prose block replaced, 1 line\(s\) -> 3 line\(s\)\n\n"
+        + r"- \[ \] `ACC-AUTH-1-TEST`",
+        body,
+    ), body
+    doc = json.loads(ok("list-categories", criteria, "--json"))
+    assert doc[0]["categories"][0]["description"] == "Login and sessions."
+    assert pm("check", criteria).returncode == 0
+
+
+LEGACY_UNCODED = textwrap.dedent("""\
+    # Defects - Legacy App
+
+    Defects inherited from the old tracker.
+
+    ## Launch
+
+    Cold start
+
+    - [ ] **token race** - MAJOR; auth token empty on the first turn
+      - repro: fork under load
+      - test-tags: unit
+      - 2026-06-12 filed
+    - [ ] **splash hang** - MINOR; splash never clears
+      - repro: cold cache
+      - test-tags: unit
+      - 2026-06-13 filed
+    """)
+
+
+def test_tracker_wide_changes_land_in_the_tracker_log_once(docs: Path):
+    """ACC-PMLOG-207, 217, 218, 221: upgrade and migrate-codes each append one tracker
+    record in time order, and a rerun that changes nothing writes nothing."""
+    f = docs / "defects-legacy.md"
+    f.write_text(LEGACY_UNCODED, encoding="utf-8")
+    ok("author", f, "--handle", "@kj", "--name", "Konrad Jelen")
+    ok("upgrade", f, "--author", "@kj", "--apply")
+    once = f.read_text(encoding="utf-8")
+    ok("upgrade", f, "--author", "@kj", "--apply")
+    assert f.read_text(encoding="utf-8") == once, "a current file gains no record"
+    mapping = docs / "codes.map"
+    mapping.write_text("DEF-LAUNCH-1 TOKEN\nDEF-LAUNCH-2 SPLASH\n", encoding="utf-8")
+    ok("migrate-codes", f, "--map", mapping, "--author", "@kj")
+    coded = f.read_text(encoding="utf-8")
+    ok("migrate-codes", f, "--map", mapping, "--author", "@kj")
+    assert f.read_text(encoding="utf-8") == coded, "nothing coded, nothing recorded"
+    assert re.search(
+        r"Defects inherited from the old tracker\.\n\n"
+        + RECORD
+        + r"upgraded\n"
+        + RECORD
+        + r"coded 2 item\(s\) from codes\.map\n\n## Authors",
+        coded,
+    ), coded
+    assert coded.count("@kj coded TOKEN") == 1 and coded.count("@kj coded SPLASH") == 1
+    assert pm("check", docs).returncode == 0
+
+
+def test_check_fails_on_a_malformed_tracker_or_category_log_line(defects: Path):
+    """ACC-PMLOG-209, 210, 211: a bad stamp or an unrostered handle on a tracker or a
+    category log line is the error an item log line gets; log lines are never the
+    description."""
+    file_a_defect(defects, "token race")
+    body = defects.read_text(encoding="utf-8")
+    body = body.replace(
+        "Defects for the app.\n",
+        "Defects for the app.\n\n"
+        "- log: 2026-10-23 @kj upgraded\n"
+        "- log: 2026-10-23T05:16:55Z @zz upgraded\n",
+        1,
+    )
+    body = body.replace(
+        "Cold start and the first turn after a fork\n\n",
+        "- log: soon @kj described\n- log: 2026-10-23T05:16:55Z @zz described\n",
+        1,
+    )
+    defects.write_text(body, encoding="utf-8")
+    r = pm("check", defects)
+    assert r.returncode == 1
+    errors = [ln.split(": ERROR ", 1)[1] for ln in r.stdout.splitlines() if ": ERROR " in ln]
+    assert sorted(errors) == sorted(
+        [
+            "log: stamp is date only; run upgrade; use ISO 8601 UTC, YYYY-MM-DDTHH:MM:SSZ",
+            "log: stamp is malformed; use ISO 8601 UTC, YYYY-MM-DDTHH:MM:SSZ",
+            "@zz is not on the ## Authors roster",
+            "@zz is not on the ## Authors roster",
+        ]
+    ), r.stdout
+    assert "category LNCH has no description line" in r.stdout
+
+
+def test_check_passes_a_log_prose_bullet_and_still_fails_a_bad_record(defects: Path):
+    """DEF-PMGT-83-PROSE-LOG: a `- log:` prose bullet in the preamble and in a category
+    note, which 1.8.24 check accepted, passes; a record with a bad stamp beside it is
+    still the error (ACC-PMLOG-210)."""
+    file_a_defect(defects, "token race")
+    note = "- log: lines are append-only and authored"
+    body = defects.read_text(encoding="utf-8")
+    body = body.replace("Defects for the app.\n", f"Defects for the app.\n\n{note}\n", 1)
+    desc = "Cold start and the first turn after a fork\n\n"
+    body = body.replace(desc, f"{desc}{note}\n\n", 1)
+    defects.write_text(body, encoding="utf-8")
+    r = pm("check", defects)
+    assert r.returncode == 0 and ": ERROR " not in r.stdout, r.stdout
+    bad = "- log: soon @kj upgraded"
+    defects.write_text(body.replace(f"{note}\n", f"{note}\n{bad}\n", 1), encoding="utf-8")
+    r = pm("check", defects)
+    assert r.returncode == 1
+    assert [ln for ln in r.stdout.splitlines() if ": ERROR " in ln] == [
+        f"{defects}:{line_of(defects, bad)}: ERROR "
+        "log: stamp is malformed; use ISO 8601 UTC, YYYY-MM-DDTHH:MM:SSZ"
+    ], r.stdout
+
+
+def test_a_forbidden_glyph_in_describe_or_rename_category_text_is_refused(defects: Path):
+    """DEF-PMGT-84-RECORD-GLYPH: an en or em dash in describe --text or rename-category
+    --name would be copied into an append-only record; the CLI refuses it, names the
+    glyph, writes nothing, and check still passes."""
+    file_a_defect(defects, "token race")
+    before = defects.read_text(encoding="utf-8")
+    for argv, flag, cp in [
+        (["describe", "--category", "LNCH", "--text", "Launch – faults"], "--text", 0x2013),
+        (
+            ["rename-category", "--category", "LNCH", "--to", "BOOT", "--name", "Boot — up"],
+            "--name",
+            0x2014,
+        ),
+    ]:
+        r = pm(argv[0], defects, *argv[1:], "--author", "@kj")
+        assert r.returncode == 2, (r.stdout, r.stderr)
+        assert f"argument {flag}: forbidden glyph en/em dash U+{cp:04X}" in r.stderr, r.stderr
+        assert defects.read_text(encoding="utf-8") == before
+    r = pm("check", defects)
+    assert r.returncode == 0 and ": ERROR " not in r.stdout, r.stdout
+
+
+def test_relate_refuses_a_glyph_and_unrelate_writes_one_it_copies_as_an_escape(defects: Path):
+    """DEF-PMGT-84-RECORD-GLYPH-1: a glyph typed into any of relate's four relation
+    arguments is refused, named, with nothing written; a relation line that already
+    holds one is copied into unrelate's record as U+XXXX, and check passes."""
+    file_a_defect(defects, "token race")
+    file_a_defect(defects, "peer race", code="PEER")
+    before = defects.read_text(encoding="utf-8")
+    for flag in ("--related", "--blocked-by", "--overrides", "--overridden-by"):
+        r = pm("relate", defects, "--id", "DEF-LNCH-1", flag, "DEF-LNCH-2 — flaky")
+        assert r.returncode == 2, (r.stdout, r.stderr)
+        assert f"argument {flag}: forbidden glyph en/em dash U+2014" in r.stderr, r.stderr
+        assert defects.read_text(encoding="utf-8") == before
+    hand = before.replace("  - repro:", "  - related: DEF-LNCH-2-PEER — flaky\n  - repro:", 1)
+    defects.write_text(hand, encoding="utf-8")
+    ok("unrelate", defects, "--id", "DEF-LNCH-1", "--related", "DEF-LNCH-2", "--author", "@kj")
+    body = defects.read_text(encoding="utf-8")
+    assert "—" not in body
+    assert 'removed, line read "DEF-LNCH-2-PEER U+2014 flaky"' in body, body
+    r = pm("check", defects)
+    assert r.returncode == 0 and ": ERROR " not in r.stdout, r.stdout
+
+
+@pytest.mark.parametrize(
+    "old, new, argv, record",
+    [
+        (
+            "Cold start and the first turn after a fork",
+            "Cold start – the first turn after a fork",
+            ["describe", "--category", "LNCH", "--text", "Cold start"],
+            'description "Cold start U+2013 the first turn after a fork" -> "Cold start"',
+        ),
+        (
+            "**token race**",
+            "**token – race**",
+            ["edit", "--id", "DEF-LNCH-1", "--title", "token race"],
+            'edited title "token U+2013 race" -> "token race"',
+        ),
+        (
+            "## Launch `LNCH`",
+            "## Launch – app `LNCH`",
+            ["rename-category", "--category", "LNCH", "--to", "BOOT", "--name", "Boot"],
+            'renamed category "LNCH" -> "BOOT", name "Launch U+2013 app" -> "Boot"',
+        ),
+    ],
+    ids=["describe", "edit", "rename-category-name"],
+)
+def test_the_command_that_clears_a_glyph_error_leaves_check_clean(
+    defects: Path, old: str, new: str, argv: list, record: str
+):
+    """DEF-PMGT-84-RECORD-GLYPH-1: describe, edit and rename-category --name copy the
+    old value, which no oneline refused, into an append-only record; the CLI writes its
+    glyph as U+XXXX, so clearing the glyph error leaves check at exit 0."""
+    file_a_defect(defects, "token race")
+    defects.write_text(defects.read_text(encoding="utf-8").replace(old, new, 1), encoding="utf-8")
+    assert pm("check", defects).returncode == 1
+    ok(argv[0], defects, *argv[1:], "--author", "@kj")
+    body = defects.read_text(encoding="utf-8")
+    assert "–" not in body and record in body, body
+    r = pm("check", defects)
+    assert r.returncode == 0 and ": ERROR " not in r.stdout, r.stdout
+
+
+def test_the_preamble_log_lines_are_the_tracker_log_in_file_order(defects: Path):
+    """ACC-PMLOG-207: hand-written log lines between the title prose and the first `##`
+    heading are the tracker log: check validates each at its own line, in file order,
+    and the next tracker record goes after the last of them."""
+    file_a_defect(defects, "token race")
+    first = "- log: 2026-10-01T10:00:00Z @zz upgraded"
+    second = "- log: 2026-10-02T10:00:00Z @yy coded 1 item(s) from codes.map"
+    body = defects.read_text(encoding="utf-8")
+    body = body.replace(
+        "Defects for the app.\n", f"Defects for the app.\n\n{first}\n{second}\n", 1
+    )
+    defects.write_text(body, encoding="utf-8")
+    r = pm("check", defects)
+    assert r.returncode == 1
+    assert [ln for ln in r.stdout.splitlines() if ": ERROR " in ln] == [
+        f"{defects}:{line_of(defects, first)}: ERROR @zz is not on the ## Authors roster",
+        f"{defects}:{line_of(defects, second)}: ERROR @yy is not on the ## Authors roster",
+    ], r.stdout
+    ok("author", defects, "--handle", "@zz", "--name", "Zoe Zan")
+    ok("author", defects, "--handle", "@yy", "--name", "Yan Yu")
+    assert pm("check", defects).returncode == 0
+    ok("rename-category", defects, "--category", "LNCH", "--to", "LAUNCH", "--author", "@kj")
+    body = defects.read_text(encoding="utf-8")
+    assert re.search(
+        r"Defects for the app\.\n\n"
+        + re.escape(f"{first}\n{second}\n")
+        + RECORD
+        + r'renamed category "LNCH" -> "LAUNCH", 1 item\(s\)\n\n## Authors',
+        body,
+    ), body
+
+
+def test_describe_text_keeps_the_category_log_and_a_log_line_is_never_the_description(
+    defects: Path,
+):
+    """ACC-PMLOG-209, 212: describe --text replaces the description line and keeps the
+    two log lines under it in order; moved above the prose, the log lines are skipped
+    and the prose line is still the description; with no prose line there is none."""
+    file_a_defect(defects, "token race")
+    ok("describe", defects, "--category", "LNCH", "--author", "@kj", "--text", "Launch")
+    two = category_log(defects.read_text(encoding="utf-8"))
+    assert len(two) == 2, two
+    ok("describe", defects, "--category", "LNCH", "--author", "@kj", "--text", "Launch faults")
+    body = defects.read_text(encoding="utf-8")
+    assert re.search(
+        r"## Launch `LNCH`\n\nLaunch faults\n\n"
+        + re.escape("\n".join(two) + "\n")
+        + RECORD
+        + r'description "Launch" -> "Launch faults"\n\n- \[ \] `DEF-LNCH-1-TEST`',
+        body,
+    ), body
+
+    def description():
+        doc = json.loads(ok("list-categories", defects, "--json"))
+        return doc[0]["categories"][0]["description"]
+
+    log = "".join(ln for ln in body.splitlines(True) if ln.startswith("- log:"))
+    above = body.replace(f"Launch faults\n\n{log}", f"{log}\nLaunch faults\n")
+    none = body.replace("Launch faults\n\n", "", 1)
+    assert body != above and body != none
+    defects.write_text(above, encoding="utf-8")
+    assert description() == "Launch faults"
+    defects.write_text(none, encoding="utf-8")
+    assert description() is None
+
+
+# --- Workflow: replace a category's prose block (ACC-PMCAT-187 to 190) -----
+
+
+ROUTES = "Launch routes.\n\n- `GET status` -> `{root}`\n- `POST launch` -> `{name}`\n"
+
+
+def test_describe_text_file_replaces_the_prose_block_and_the_items_stay(
+    defects: Path, tmp_path: Path
+):
+    """ACC-PMCAT-187: --text-file replaces every line between the heading and the first
+    item, twice in a row; the category log and the item stay and check passes."""
+    file_a_defect(defects, "token race")
+    prose = tmp_path / "prose.md"
+    prose.write_text(ROUTES, encoding="utf-8")
+    ok("describe", defects, "--category", "LNCH", "--author", "@kj", "--text-file", prose)
+    prose.write_text("Launch service.\n\n- `GET status` -> `{root}`\n", encoding="utf-8")
+    ok("describe", defects, "--category", "LNCH", "--author", "@kj", "--text-file", prose)
+    body = defects.read_text(encoding="utf-8")
+    assert "Cold start and the first turn" not in body and "POST launch" not in body, body
+    assert re.search(
+        r"## Launch `LNCH`\n\nLaunch service\.\n\n- `GET status` -> `\{root\}`\n\n"
+        + RECORD
+        + r"category created\n"
+        + RECORD
+        + r"prose block replaced, 1 line\(s\) -> 4 line\(s\)\n"
+        + RECORD
+        + r"prose block replaced, 4 line\(s\) -> 3 line\(s\)\n\n"
+        + r"- \[ \] `DEF-LNCH-1-TEST` \*\*token race\*\*",
+        body,
+    ), body
+    assert pm("check", defects).returncode == 0
+
+
+def test_describe_text_file_dash_reads_the_prose_block_from_stdin(defects: Path):
+    """ACC-PMCAT-188: describe --text-file - reads the block from stdin."""
+    file_a_defect(defects, "token race")
+    r = subprocess.run(
+        CLI
+        + ["describe", str(defects), "--category", "LNCH", "--author", "@kj", "--text-file", "-"],
+        input=ROUTES,
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stderr
+    body = defects.read_text(encoding="utf-8")
+    assert "## Launch `LNCH`\n\n" + ROUTES + "\n- log:" in body, body
+
+
+def test_describe_text_file_refuses_anything_but_prose_and_writes_nothing(
+    defects: Path, tmp_path: Path
+):
+    """ACC-PMCAT-189: an empty text, a heading, a checklist item or an unclosed code fence
+    exits non-zero with a --text-file reason and leaves the file byte-identical."""
+    file_a_defect(defects, "token race")
+    before = defects.read_text(encoding="utf-8")
+    prose = tmp_path / "prose.md"
+    for block in (
+        "",
+        "Routes\n\n## Other `OTH`\n",
+        "Routes\n- [ ] `DEF-LNCH-9` **stray**\n",
+        "Routes\n```\n",
+    ):
+        prose.write_text(block, encoding="utf-8")
+        r = pm("describe", defects, "--category", "LNCH", "--author", "@kj", "--text-file", prose)
+        assert r.returncode != 0 and r.stderr.startswith("--text-file "), (block, r.stderr)
+        assert defects.read_text(encoding="utf-8") == before, block
+
+
+def test_describe_text_replaces_the_description_line_and_the_list_under_it_stays(
+    defects: Path, tmp_path: Path
+):
+    """ACC-PMCAT-190: after a prose block with a list, describe --text replaces the
+    description line only; the list under it stays."""
+    file_a_defect(defects, "token race")
+    prose = tmp_path / "prose.md"
+    prose.write_text(ROUTES, encoding="utf-8")
+    ok("describe", defects, "--category", "LNCH", "--author", "@kj", "--text-file", prose)
+    ok("describe", defects, "--category", "LNCH", "--author", "@kj", "--text", "Launch service")
+    body = defects.read_text(encoding="utf-8")
+    assert "## Launch `LNCH`\n\nLaunch service\n\n" + ROUTES.split("\n\n", 1)[1] in body, body
+    doc = json.loads(ok("list-categories", defects, "--json"))
+    assert doc[0]["categories"][0]["description"] == "Launch service"
+
+
+# --- Workflow: rename a category across the store (ACC-PMCAT) --------------
+
+
+RENAME_APP = textwrap.dedent("""\
+    # Acceptance Criteria - App
+
+    Criteria for the app.
+
+    ## Authors
+
+    - `@kj` Konrad Jelen
+    - `@yy` Yan Yu
+
+    ## Parser `OLD`
+
+    Parsing the input
+
+    - [ ] `ACC-OLD-5-PARSER` **parse** - HIGH; reads ACC-OLD-6-LEXER output; ACC-OLD-999 is an example
+      - test: parse a file
+      - test-tags: UNIT
+      - overridden-by: ACC-OLD-7-MOVED
+      - log: 2026-10-01T10:00:00Z @kj added
+    - [x] `ACC-OLD-6-LEXER` **lex for ACC-OLD-5-PARSER** - HIGH; notes in docs/acc/ACC-OLD-5-PARSER.md
+      - test: lex a file
+      - test-tags: UNIT
+      - related: ACC-OLD-5-PARSER
+      - blocked-by: ACC-OLD-5 - the base id
+      - evidence: ACC-OLD-5-PARSER passes first
+      - log: 2026-10-01T10:00:00Z @kj added
+      - log: 2026-10-02T10:00:00Z @kj closed: split from ACC-OLD-5-PARSER
+
+    ## Render `RND`
+
+    Rendering the output
+
+    - [ ] `ACC-OLD-7-MOVED` **moved** - MEDIUM; filed under OLD, sits under RND now
+      - test: render a file
+      - test-tags: UNIT
+      - overrides: ACC-OLD-5-PARSER
+      - log: 2026-10-01T10:00:00Z @kj added
+    """)
+
+RENAME_EXTRA = textwrap.dedent("""\
+    # Acceptance Criteria - Extra
+
+    Extra criteria.
+
+    ## Authors
+
+    - `@kj` Konrad Jelen
+
+    ## Parser extras `OLD`
+
+    More parsing
+
+    - [ ] `ACC-OLD-8-STREAM` **stream** - LOW; streams the input after ACC-OLD-5-PARSER
+      - test: stream a file
+      - test-tags: UNIT
+      - log: 2026-10-01T10:00:00Z @kj added
+    """)
+
+RENAME_DEFECTS = textwrap.dedent("""\
+    # Defects - App
+
+    Defects for the app.
+
+    ## Authors
+
+    - `@kj` Konrad Jelen
+
+    ## Parser `OLD`
+
+    Parsing faults
+
+    - [ ] `DEF-OLD-1-CRASH` **crash** - MAJOR; crashes on empty input
+      - repro: parse an empty file
+      - test-tags: UNIT
+      - related: ACC-OLD-5-PARSER
+      - log: 2026-10-01T10:00:00Z @kj added
+      - log: 2026-10-02T10:00:00Z @kj traced to ACC-OLD-6-LEXER
+    """)
+
+RENAME_OPS = textwrap.dedent("""\
+    # Defects - Ops
+
+    Operations defects.
+
+    ## Authors
+
+    - `@kj` Konrad Jelen
+
+    ## Deploy `DPL`
+
+    Deploy faults
+
+    - [ ] `DEF-DPL-1-SLOW` **slow** - MINOR; deploy takes ten minutes
+      - repro: deploy
+      - test-tags: UNIT
+      - log: 2026-10-01T10:00:00Z @kj added
+    """)
+
+RENAMED = r'renamed category "OLD" -> "NEW"'
+
+
+@pytest.fixture
+def store(docs: Path) -> tuple[Path, Path, Path, Path]:
+    """FILE holds three OLD items, one of them under the RND heading; a sibling criteria
+    tracker holds a fourth under its own OLD heading; a defects tracker keeps an OLD
+    category of its own and cites two renamed ids; a third tracker cites none. The
+    attachment goes in through the CLI, so its line and log line are the real ones."""
+    out = []
+    for name, body in (
+        ("acc-crit-app.md", RENAME_APP),
+        ("acc-crit-extra.md", RENAME_EXTRA),
+        ("defects-app.md", RENAME_DEFECTS),
+        ("defects-ops.md", RENAME_OPS),
+    ):
+        out.append(docs / name)
+        out[-1].write_text(body, encoding="utf-8")
+    shot = docs / "shots" / "ACC-OLD-5-PARSER.png"
+    shot.parent.mkdir()
+    shot.write_bytes(b"png")
+    ok("attach", out[0], "--id", "ACC-OLD-5-PARSER", "--path", shot, "--author", "@kj")
+    assert pm("check", docs).returncode == 0
+    return tuple(out)
+
+
+def rename(f: Path, *args) -> subprocess.CompletedProcess:
+    return pm("rename-category", f, "--category", "OLD", "--to", "NEW", "--author", "@kj", *args)
+
+
+def read(*files: Path) -> list[str]:
+    return [f.read_text(encoding="utf-8") for f in files]
+
+
+def item_logs(f: Path, ident: str) -> list[str]:
+    """The log lines of the item whose id is ident."""
+    lines = f.read_text(encoding="utf-8").splitlines()
+    at = next(n for n, ln in enumerate(lines) if ln.startswith("- [") and f"`{ident}`" in ln)
+    out = []
+    for ln in lines[at + 1 :]:
+        if not ln.startswith("  "):
+            break
+        out += [ln] if ln.startswith("  - log:") else []
+    return out
+
+
+def test_rename_category_renames_the_headings_and_ids_of_its_prefix(store):
+    """ACC-PMCAT-222, 225, 226, 241: every OLD heading in both criteria trackers carries
+    NEW and keeps its name; every ACC-OLD id is renamed, the one under RND staying
+    there; the defects tracker keeps its OLD heading and ids; each renamed item logs
+    the rename once."""
+    app, extra, dapp, _ = store
+    r = rename(app)
+    assert r.returncode == 0, r.stderr
+    a, x, d = read(app, extra, dapp)
+    assert "## Parser `NEW`\n" in a and "## Parser extras `NEW`\n" in x
+    assert "`OLD`" not in a + x
+    ids = [ln.split("`")[1] for ln in (a + x).splitlines() if ln.startswith("- [")]
+    assert ids == ["ACC-NEW-5-PARSER", "ACC-NEW-6-LEXER", "ACC-NEW-7-MOVED", "ACC-NEW-8-STREAM"]
+    assert re.search(
+        r"## Render `RND`\n\nRendering the output\n\n- \[ \] `ACC-NEW-7-MOVED` \*\*moved\*\*", a
+    ), "the moved item is renamed where it sits"
+    assert "## Parser `OLD`\n" in d and "- [ ] `DEF-OLD-1-CRASH` **crash**" in d
+    for f, ident in (
+        (app, "ACC-NEW-5-PARSER"),
+        (app, "ACC-NEW-6-LEXER"),
+        (app, "ACC-NEW-7-MOVED"),
+        (extra, "ACC-NEW-8-STREAM"),
+    ):
+        logs = item_logs(f, ident)
+        assert [ln for ln in logs if "renamed category" in ln] == [logs[-1]], ident
+        assert re.fullmatch("  " + RECORD + RENAMED, logs[-1]), logs[-1]
+    assert "renamed category" not in "".join(item_logs(dapp, "DEF-OLD-1-CRASH"))
+
+
+def test_rename_category_rewrites_every_mention_across_the_store(store):
+    """ACC-PMCAT-227, 228, 229, 230, 231: all four relation kinds, a title, a body, an
+    evidence line and log lines name the new id, in the criteria trackers and in the
+    defects tracker; a base id stays a base id; an id naming no item stays."""
+    app, extra, dapp, _ = store
+    assert rename(app).returncode == 0
+    a, x, d = read(app, extra, dapp)
+    for line in (
+        "  - related: ACC-NEW-5-PARSER\n",
+        "  - blocked-by: ACC-NEW-5 - the base id\n",
+        "  - overrides: ACC-NEW-5-PARSER\n",
+        "  - overridden-by: ACC-NEW-7-MOVED\n",
+        "**lex for ACC-NEW-5-PARSER**",
+        "reads ACC-NEW-6-LEXER output",
+        "  - evidence: ACC-NEW-5-PARSER passes first\n",
+        "@kj closed: split from ACC-NEW-5-PARSER\n",
+    ):
+        assert line in a, line
+    assert "streams the input after ACC-NEW-5-PARSER\n" in x
+    assert "  - related: ACC-NEW-5-PARSER\n" in d
+    assert "@kj traced to ACC-NEW-6-LEXER\n" in d
+    assert "ACC-OLD-999 is an example" in a
+
+
+def test_rename_category_leaves_path_and_attachment_mentions_and_lists_them(store):
+    """ACC-PMCAT-232, 233, 247: an id inside a file path and the attachment line stay
+    as written and are listed as file:line on stderr; a grep of every tracker for the
+    old ids finds those listed lines and nothing else."""
+    app, extra, dapp, ops = store
+    att = next(ln for ln in app.read_text(encoding="utf-8").splitlines() if "attachment:" in ln)
+    r = rename(app)
+    assert r.returncode == 0, r.stderr
+    a = app.read_text(encoding="utf-8")
+    assert att + "\n" in a, "the attachment line is unchanged"
+    assert "notes in docs/acc/ACC-OLD-5-PARSER.md\n" in a
+    assert "@kj attached shots/ACC-OLD-5-PARSER.png sha256:" in a
+    listed = re.findall(r"^(\S+):(\d+): (\S+) left as written in (.+)$", r.stderr, re.M)
+    assert listed == [
+        (str(app), str(line_of(app, att)), "ACC-OLD-5-PARSER", "an attachment line"),
+        (str(app), str(line_of(app, "@kj attached shots/")), "ACC-OLD-5-PARSER", "a file path"),
+        (str(app), str(line_of(app, "docs/acc/ACC-OLD-")), "ACC-OLD-5-PARSER", "a file path"),
+    ], r.stderr
+    grep = {
+        (str(f), str(n))
+        for f in (app, extra, dapp, ops)
+        for n, ln in enumerate(f.read_text(encoding="utf-8").splitlines(), 1)
+        if re.search(r"\bACC-OLD-[5-8]\b", ln)
+    }
+    assert grep == {(f, n) for f, n, _, _ in listed}
+
+
+def test_rename_category_writes_the_category_and_tracker_records(store):
+    """ACC-PMCAT-242, 243, 244: one category record under each renamed heading, one
+    tracker record naming the item count in each tracker holding renamed items, one
+    naming the mention count in the tracker written only for mentions, and nothing in
+    the tracker the rename did not write."""
+    app, extra, dapp, ops = store
+    before_ops = ops.read_text(encoding="utf-8")
+    assert rename(app).returncode == 0
+    a, x, d = read(app, extra, dapp)
+    assert re.search(
+        r"## Parser `NEW`\n\nParsing the input\n\n" + RECORD + RENAMED + r"\n\n- \[ \] `ACC-NEW-5",
+        a,
+    ), a
+    assert re.search(
+        r"## Parser extras `NEW`\n\nMore parsing\n\n"
+        + RECORD
+        + RENAMED
+        + r"\n\n- \[ \] `ACC-NEW-8",
+        x,
+    ), x
+    assert re.search(
+        r"Criteria for the app\.\n\n" + RECORD + RENAMED + r", 3 item\(s\)\n\n## Authors", a
+    ), a
+    assert re.search(
+        r"Extra criteria\.\n\n" + RECORD + RENAMED + r", 1 item\(s\)\n\n## Authors", x
+    )
+    assert re.search(
+        r"Defects for the app\.\n\n" + RECORD + RENAMED + r", 2 mention\(s\) rewritten\n\n## ", d
+    ), d
+    assert a.count("@kj renamed category") == 5, "3 item logs, 1 category and 1 tracker record"
+    assert x.count("@kj renamed category") == 3
+    assert d.count("@kj renamed category") == 1, "no category record on the other prefix"
+    assert ops.read_text(encoding="utf-8") == before_ops
+
+
+def test_rename_category_reports_each_renamed_id_and_the_mention_counts(store):
+    """ACC-PMCAT-245: one stdout line per renamed id at its line after the write, and
+    the mention count of every file written."""
+    app, extra, dapp, _ = store
+    r = rename(app)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.splitlines() == [
+        f"{app}:{line_of(app, '`ACC-NEW-5-PARSER`')}: ACC-OLD-5-PARSER -> ACC-NEW-5-PARSER",
+        f"{app}:{line_of(app, '`ACC-NEW-6-LEXER`')}: ACC-OLD-6-LEXER -> ACC-NEW-6-LEXER",
+        f"{app}:{line_of(app, '`ACC-NEW-7-MOVED`')}: ACC-OLD-7-MOVED -> ACC-NEW-7-MOVED",
+        f"{app}: 8 mention(s) rewritten",
+        f"{extra}:{line_of(extra, '`ACC-NEW-8-STREAM`')}: ACC-OLD-8-STREAM -> ACC-NEW-8-STREAM",
+        f"{extra}: 1 mention(s) rewritten",
+        f"{dapp}: 2 mention(s) rewritten",
+    ]
+
+
+def test_every_link_resolves_after_a_category_rename(docs: Path, store):
+    """ACC-PMCAT-246: check on the directory passes with no not-found link, and refs
+    finds every link into the renamed item, the defects tracker's included."""
+    app, *_ = store
+    assert rename(app).returncode == 0
+    r = pm("check", docs)
+    assert r.returncode == 0, r.stdout
+    assert "0 error(s)" in r.stdout and "not found" not in r.stdout
+    refs = ok("refs", docs, "--id", "ACC-NEW-5-PARSER")
+    assert "4 inbound, 1 outbound reference(s)" in refs, refs
+    for link in (
+        "ACC-NEW-6-LEXER related -> ACC-NEW-5-PARSER",
+        "ACC-NEW-6-LEXER blocked-by -> ACC-NEW-5-PARSER",
+        "ACC-NEW-7-MOVED overrides -> ACC-NEW-5-PARSER",
+        "DEF-OLD-1-CRASH related -> ACC-NEW-5-PARSER",
+        "ACC-NEW-5-PARSER overridden-by -> ACC-NEW-7-MOVED",
+    ):
+        assert link in refs, link
+
+
+def test_rename_category_with_a_name_renames_every_heading(store):
+    """ACC-PMCAT-223: --name gives each renamed heading the new name and code, and the
+    category record names both changes."""
+    app, extra, dapp, _ = store
+    assert rename(app, "--name", "Parsing").returncode == 0
+    a, x, d = read(app, extra, dapp)
+    assert "## Parsing `NEW`\n" in a and "## Parsing `NEW`\n" in x
+    assert "## Parser `" not in a and "## Parser extras" not in x
+    assert RENAMED + ', name "Parser" -> "Parsing"\n' in a
+    assert RENAMED + ', name "Parser extras" -> "Parsing"\n' in x
+    assert "## Parser `OLD`\n" in d
+
+
+RENAME_CORE = textwrap.dedent("""\
+    # Defects - Core
+
+    Core defects.
+
+    ## Authors
+
+    - `@kj` Konrad Jelen
+
+    ## Parser `OLD`
+
+    Parsing faults
+
+    - [x] `DEF-OLD-5-PARSER` **crash** - MAJOR; crashes on empty input
+      - repro: parse an empty file
+      - test-tags: UNIT
+      - evidence: fixed in 1.2
+      - log: 2026-10-01T10:00:00Z @kj added
+      - log: 2026-10-02T10:00:00Z @kj closed
+    - [ ] `DEF-OLD-5-PARSER-1` **crash again** - MAJOR; DEF-OLD-5-1 crashes again
+      - repro: parse an empty file
+      - test-tags: UNIT
+      - log: 2026-10-03T10:00:00Z @kj added
+    - [ ] `DEF-OLD-7` **hang** - MINOR; filed before item codes
+      - repro: parse a large file
+      - test-tags: UNIT
+      - log: 2026-10-04T10:00:00Z @kj added
+    """)
+
+RENAME_CORE_EXTRA = textwrap.dedent("""\
+    # Defects - Core extra
+
+    More core defects.
+
+    ## Authors
+
+    - `@kj` Konrad Jelen
+
+    ## Parser extras `OLD`
+
+    More parsing faults
+
+    - [ ] `DEF-OLD-6-LEXER` **lex** - MINOR; lexes slowly
+      - repro: lex a large file
+      - test-tags: UNIT
+      - log: 2026-10-01T10:00:00Z @kj added
+    """)
+
+RENAME_CORE_CRITERIA = textwrap.dedent("""\
+    # Acceptance Criteria - Core
+
+    Core criteria.
+
+    ## Authors
+
+    - `@kj` Konrad Jelen
+
+    ## Parser `OLD`
+
+    Parsing the input
+
+    - [ ] `ACC-OLD-2-EMPTY` **empty input** - HIGH; an empty file parses
+      - test: parse an empty file
+      - test-tags: UNIT
+      - related: DEF-OLD-5-PARSER-1
+      - log: 2026-10-01T10:00:00Z @kj added
+    """)
+
+
+def test_rename_category_in_defects_keeps_number_code_and_ordinal(docs: Path):
+    """ACC-PMCAT-224: the root and its regression keep their number, code and ordinal;
+    an id with no code stays without one; the item in a sibling defects tracker is
+    renamed; a base id plus ordinal keeps its shape; the criteria tracker keeps its
+    own OLD."""
+    core, crit = docs / "defects-core.md", docs / "acc-crit-core.md"
+    extra = docs / "defects-core-extra.md"
+    core.write_text(RENAME_CORE, encoding="utf-8")
+    crit.write_text(RENAME_CORE_CRITERIA, encoding="utf-8")
+    extra.write_text(RENAME_CORE_EXTRA, encoding="utf-8")
+    r = rename(core)
+    assert r.returncode == 0, r.stderr
+    d, c, e = read(core, crit, extra)
+    assert "- [x] `DEF-NEW-5-PARSER` **crash**" in d
+    assert "- [ ] `DEF-NEW-5-PARSER-1` **crash again** - MAJOR; DEF-NEW-5-1 crashes again" in d
+    assert "- [ ] `DEF-NEW-7` **hang**" in d
+    assert "- [ ] `DEF-NEW-6-LEXER` **lex**" in e
+    assert "  - related: DEF-NEW-5-PARSER-1\n" in c
+    assert "## Parser `OLD`\n" in c and "`ACC-OLD-2-EMPTY`" in c
+    assert r.stdout.splitlines()[:2] == [
+        f"{core}:{line_of(core, '`DEF-NEW-5-PARSER`')}: DEF-OLD-5-PARSER -> DEF-NEW-5-PARSER",
+        f"{core}:{line_of(core, '`DEF-NEW-5-PARSER-1`')}: DEF-OLD-5-PARSER-1 -> DEF-NEW-5-PARSER-1",
+    ]
+    assert pm("check", docs).returncode == 0
+
+
+NEW_ITEM = (
+    "- [ ] `ACC-NEW-3-X` **x** - LOW; x\n"
+    "  - test: x\n  - test-tags: UNIT\n  - log: 2026-10-01T10:00:00Z @kj added\n"
+)
+
+
+OLD_NEW = ("--category", "OLD", "--to", "NEW")
+KJ = ("--author", "@kj")
+
+
+@pytest.mark.parametrize(
+    "args, tracker, appended, said",
+    [
+        (("--category", "ABC", "--to", "NEW", *KJ), None, "", "unknown category code ABC"),
+        (
+            ("--category", "STR", "--to", "NEW", *KJ),
+            "acc-crit-extra.md",
+            "\n## Streams `STR`\n\nStreaming\n",
+            "unknown category code STR",
+        ),
+        (("--category", "OLD", "--to", "ab", *KJ), None, "", "'ab' must be 2-6 uppercase"),
+        (("--category", "OLD", "--to", "A", *KJ), None, "", "'A' must be 2-6 uppercase"),
+        (("--category", "OLD", "--to", "ABCDEFG", *KJ), None, "", "'ABCDEFG' must be 2-6"),
+        (("--category", "OLD", "--to", "A1", *KJ), None, "", "'A1' must be 2-6 uppercase"),
+        (("--category", "OLD", "--to", "OLD", *KJ), None, "", "--to OLD is the code the"),
+        (
+            (*OLD_NEW, *KJ),
+            "acc-crit-extra.md",
+            "\n## New things `NEW`\n\nNew things\n",
+            "NEW is already a category code",
+        ),
+        (
+            (*OLD_NEW, *KJ),
+            "acc-crit-app.md",
+            "\n## New things `NEW`\n\nNew things\n",
+            "NEW is already a category code",
+        ),
+        ((*OLD_NEW, *KJ), "acc-crit-app.md", NEW_ITEM, "ACC-NEW-3-X already exists"),
+        ((*OLD_NEW, *KJ), "acc-crit-extra.md", NEW_ITEM, "ACC-NEW-3-X already exists"),
+        (
+            (*OLD_NEW, *KJ),
+            "acc-crit-extra.md",
+            NEW_ITEM.replace("ACC-NEW-3-X", "ACC-OLD-5-OTHER"),
+            "duplicate base id ACC-OLD-5: roots ACC-OLD-5-PARSER",
+        ),
+        ((*OLD_NEW, "--author", "@zz"), None, "", "@zz is not on the authors roster"),
+        (OLD_NEW, None, "", "the following arguments are required: --author"),
+    ],
+    ids=[
+        "old",
+        "old-beside",
+        "lower",
+        "short",
+        "long",
+        "digit",
+        "same",
+        "taken",
+        "taken-file",
+        "id",
+        "id-beside",
+        "roots",
+        "handle",
+        "author",
+    ],
+)
+def test_a_refused_category_rename_writes_nothing(
+    docs: Path, store, args, tracker, appended, said
+):
+    """ACC-PMCAT-234 to 240: each refusal exits non-zero, says why, and leaves every
+    tracker in the store byte for byte as it was."""
+    if tracker:
+        with open(docs / tracker, "a", encoding="utf-8") as fh:
+            fh.write(appended)
+    before = read(*store)
+    r = pm("rename-category", store[0], *args)
+    assert r.returncode != 0
+    assert said in r.stderr, r.stderr
+    assert read(*store) == before
+
+
+def test_a_category_rename_clears_expired_locks_and_warns_on_a_held_one(store):
+    """ACC-PMCAT-248, 249: an expired lock goes from FILE and from the tracker written
+    only for mentions; a tracker the rename does not write keeps its own. A lock held
+    by another handle prints one warning naming the holder and the expiry, and the
+    item is renamed with its lock."""
+    app, _, dapp, ops = store
+    out = ok("lock", app, "--id", "ACC-OLD-7-MOVED", "--author", "@yy", "--hours", "2")
+    until = re.search(r"until (\S+)", out)[1]
+    past = "  - lock: 2026-01-01T00:00:00Z @kj parsing\n"
+    for f, under in (
+        (app, "  - test: parse a file\n"),
+        (dapp, "  - repro: parse an empty file\n"),
+        (ops, "  - repro: deploy\n"),
+    ):
+        f.write_text(
+            f.read_text(encoding="utf-8").replace(under, under + past, 1), encoding="utf-8"
+        )
+    before_ops = ops.read_text(encoding="utf-8")
+    r = rename(app)
+    assert r.returncode == 0, r.stderr
+    a, d = read(app, dapp)
+    assert "2026-01-01T00:00:00Z" not in a and "2026-01-01T00:00:00Z" not in d
+    assert ops.read_text(encoding="utf-8") == before_ops
+    warns = [ln for ln in r.stderr.splitlines() if "locked by" in ln]
+    assert len(warns) == 1, r.stderr
+    assert re.fullmatch(
+        re.escape(str(app))
+        + r":\d+: ACC-OLD-7-MOVED locked by @yy until "
+        + re.escape(until)
+        + " - someone is likely working on it; ask before continuing",
+        warns[0],
+    ), warns[0]
+    assert "- [ ] `ACC-NEW-7-MOVED` **moved**" in a and f"  - lock: {until} @yy" in a
+
+
+def test_the_category_rename_and_the_wide_logs_are_documented_where_the_agent_reads_them():
+    """--help is the reference an agent reads at run time, the skill the one it reads
+    first. A command or a record absent from both is one nobody uses, and the rename
+    breaks the id permanence the skill states, so the skill names the exception."""
+    out = ok("--help")
+    assert "rename-category FILE --category OLD --to NEW [--name NAME] --author @xx" in out
+    assert "describe FILE --category CODE (--text D | --text-file F) --author @xx" in out
+    assert "The same line without indent records a change wider than one item" in out
+    plugin = Path(__file__).parent.parent / "plugins/project-management"
+    skill = (plugin / "skills/project-management/SKILL.md").read_text(encoding="utf-8")
+    assert "The one exception is `rename-category`" in skill
+    assert "| `rename-category` |" in skill
+    assert "**Tracker and category logs**" in skill
+    assert "pm-tools rename-category" in (plugin / "README.md").read_text(encoding="utf-8")
+
+
+# --- Workflow: finish a category rename after a git merge (ACC-PMCAT-250) ---
+
+
+MERGE_DEFECTS = textwrap.dedent("""\
+    # Defects - App
+
+    Defects for the app.
+
+    ## Authors
+
+    - `@kj` Konrad Jelen
+
+    ## Parser `OLD`
+
+    Parsing faults
+
+    - [ ] `DEF-OLD-1-CRASH` **crash** - MAJOR; crashes on empty input
+      - repro: parse an empty file
+      - test-tags: UNIT
+      - log: 2026-10-01T10:00:00Z @kj added
+    """)
+
+MERGE_CRITERIA = textwrap.dedent("""\
+    # Acceptance Criteria - App
+
+    Criteria for the app.
+
+    ## Authors
+
+    - `@kj` Konrad Jelen
+
+    ## Input `INP`
+
+    Reading input
+
+    - [ ] `ACC-INP-1-EMPTY` **empty input** - HIGH; an empty file parses
+      - test: parse an empty file
+      - test-tags: UNIT
+      - log: 2026-10-01T10:00:00Z @kj added
+    """)
+
+FINISHED = r'finished renaming category "OLD" -> "NEW"'
+
+
+def merged_store(tmp_path: Path, renamed_side_files: bool = False) -> Path:
+    """Branch a renames OLD to NEW, and with renamed_side_files files DEF-NEW-2-OTHER
+    after it; branch b files DEF-OLD-2-HANG under OLD and links a criterion to
+    DEF-OLD-1-CRASH. Each tracker is merged from base, a and b by `git merge-file
+    --union`, the union resolution of references/conflicts.md."""
+    trees = {k: tmp_path / k for k in ("base", "a", "b", "docs")}
+    for k in ("base", "a", "b"):
+        trees[k].mkdir()
+        (trees[k] / "defects-app.md").write_text(MERGE_DEFECTS, encoding="utf-8")
+        (trees[k] / "acc-crit-app.md").write_text(MERGE_CRITERIA, encoding="utf-8")
+    a, b = trees["a"] / "defects-app.md", trees["b"] / "defects-app.md"
+    assert rename(a).returncode == 0
+    fault = ("--severity", "MAJOR", "--repro", "x", "--test-tags", "UNIT", *KJ)
+    if renamed_side_files:
+        ok("add", a, "--category", "NEW", "--code", "OTHER", "--title", "o", "--text", "o", *fault)
+    ok("add", b, "--category", "OLD", "--code", "HANG", "--title", "hang", "--text", "h", *fault)
+    crit = trees["b"] / "acc-crit-app.md"
+    ok("relate", crit, "--id", "ACC-INP-1-EMPTY", "--related", "DEF-OLD-1-CRASH", *KJ)
+    trees["docs"].mkdir()
+    for name in ("defects-app.md", "acc-crit-app.md"):
+        r = subprocess.run(
+            ["git", "merge-file", "-p", "--union"]
+            + [str(trees[k] / name) for k in ("a", "base", "b")],
+            capture_output=True,
+            text=True,
+        )
+        assert r.returncode == 0 and "<<<<<<<" not in r.stdout, r.stderr
+        (trees["docs"] / name).write_text(r.stdout, encoding="utf-8")
+    return trees["docs"]
+
+
+def test_a_rerun_of_rename_category_finishes_the_rename_after_a_merge(tmp_path: Path):
+    """ACC-PMCAT-250, DEF-PMGT-86-MERGE-RENAME: the merge keeps the NEW heading with b's
+    OLD item under it and b's link to the old id, which check fails on. The same
+    rename-category renames the item, rewrites the link, logs the rename on the item and
+    writes the finishing category and tracker records; check then exits 0."""
+    docs = merged_store(tmp_path)
+    dfx, acc = docs / "defects-app.md", docs / "acc-crit-app.md"
+    assert "## Parser `NEW`" in dfx.read_text(encoding="utf-8")
+    assert "- [ ] `DEF-OLD-2-HANG` **hang**" in dfx.read_text(encoding="utf-8")
+    assert pm("check", docs).returncode != 0, "b's link names DEF-OLD-1-CRASH"
+    r = rename(dfx)
+    assert r.returncode == 0, r.stderr
+    d, a = read(dfx, acc)
+    assert "- [ ] `DEF-NEW-2-HANG` **hang**" in d
+    assert "  - related: DEF-NEW-1-CRASH\n" in a
+    assert "DEF-OLD" not in d + a
+    assert pm("check", docs).returncode == 0
+    assert re.fullmatch("  " + RECORD + RENAMED, item_logs(dfx, "DEF-NEW-2-HANG")[-1])
+    assert re.search(
+        r"## Parser `NEW`\n\nParsing faults\n\n"
+        + f"{RECORD}{RENAMED}\n{RECORD}{FINISHED}"
+        + r"\n\n- \[ \]",
+        d,
+    ), d
+    assert re.search("^" + RECORD + FINISHED + r", 1 item\(s\)$", d, re.M), d
+    assert re.search("^" + RECORD + FINISHED + r", 1 mention\(s\) rewritten$", a, re.M), a
+
+
+def test_a_rerun_without_the_earlier_rename_record_writes_nothing(tmp_path: Path):
+    """ACC-PMCAT-250: with the category record of the earlier rename gone from the NEW
+    heading, the rerun is refused as before and no byte is written; the same store with
+    the record is finished."""
+    docs = merged_store(tmp_path)
+    dfx = docs / "defects-app.md"
+    merged = dfx.read_text(encoding="utf-8")
+    record = re.search("^" + RECORD + RENAMED + "\n", merged, re.M)[0]
+    dfx.write_text(merged.replace(record, "", 1), encoding="utf-8")
+    before = read(*sorted(docs.iterdir()))
+    r = rename(dfx)
+    assert r.returncode != 0
+    assert "unknown category code OLD" in r.stderr, r.stderr
+    assert read(*sorted(docs.iterdir())) == before
+    dfx.write_text(merged, encoding="utf-8")
+    assert rename(dfx).returncode == 0
+
+
+def test_a_rerun_refuses_a_straggler_whose_number_the_other_branch_took(tmp_path: Path):
+    """ACC-PMCAT-250: both branches took number 2, so DEF-OLD-2-HANG would share the base
+    id DEF-NEW-2 with DEF-NEW-2-OTHER. The rerun names both ids and writes nothing."""
+    docs = merged_store(tmp_path, renamed_side_files=True)
+    before = read(*sorted(docs.iterdir()))
+    r = rename(docs / "defects-app.md")
+    assert r.returncode != 0
+    assert (
+        "DEF-OLD-2-HANG would become DEF-NEW-2-HANG, which collides with DEF-NEW-2-OTHER"
+        in r.stderr
+    ), r.stderr
+    assert read(*sorted(docs.iterdir())) == before
+
+
+# --- Workflow: category notes and the category report (ACC-PMCAT-251 to 258) ---
+
+
+NOTED = "Cold start.\n\nfirst note\n\n```\nfenced line\n```\n\nsecond note\n\nthird note\n"
+BOOT = "\n## Boot `BOOT`\n\nBoot path\n"
+LNCH = ("--category", "LNCH", *KJ)
+
+
+@pytest.fixture
+def noted(defects: Path, tmp_path: Path) -> Path:
+    """LNCH: a description, three notes with a fenced block between notes 1 and 2, the
+    category log, then one item."""
+    file_a_defect(defects, "token race")
+    prose = tmp_path / "prose.md"
+    prose.write_text(NOTED, encoding="utf-8")
+    ok("describe", defects, *LNCH, "--text-file", prose)
+    return defects
+
+
+def category_log(text: str) -> list[str]:
+    return [ln for ln in text.splitlines() if ln.startswith("- log:")]
+
+
+def assert_wrote(f: Path, before: str, event: str, after: str) -> None:
+    """The write turned `before` into `after` plus one category record `event`, placed
+    after the last category log line; check exits 0."""
+    body = f.read_text(encoding="utf-8")
+    record = RECORD + re.escape(event) + "\n"
+    assert len(re.findall(record, body)) == 1, body
+    assert re.search(re.escape(category_log(before)[-1]) + "\n" + record, body), body
+    assert re.sub(record, "", body) == after, body
+    assert pm("check", f).returncode == 0
+
+
+def test_describe_append_adds_the_last_note_above_the_category_log(noted: Path):
+    """ACC-PMCAT-251-NOTE-APPEND: TEXT follows the last prose line and sits above the
+    category log; the blank lines and the fenced block stay."""
+    before = noted.read_text(encoding="utf-8")
+    out = ok("describe", noted, *LNCH, "--append", "fourth note")
+    assert out.rstrip().endswith('LNCH note 4 added "fourth note"'), out
+    after = before.replace("\nthird note\n\n- log:", "\nthird note\n\nfourth note\n\n- log:")
+    assert after != before
+    assert_wrote(noted, before, 'added note "fourth note"', after)
+
+
+def test_describe_note_text_changes_that_note_only(noted: Path):
+    """ACC-PMCAT-252-NOTE-CHANGE: note 2 becomes TEXT; notes 1 and 3 and every other line
+    stay."""
+    before = noted.read_text(encoding="utf-8")
+    out = ok("describe", noted, *LNCH, "--note", "2", "--text", "second, reworded")
+    assert out.rstrip().endswith('LNCH note 2 changed "second note" -> "second, reworded"'), out
+    after = before.replace("\nsecond note\n", "\nsecond, reworded\n")
+    assert_wrote(noted, before, 'changed note 2 "second note" -> "second, reworded"', after)
+
+
+def test_describe_note_text_keeps_the_indentation_of_the_line_it_replaces(noted: Path):
+    """DEF-PMGT-87-NOTE-INDENT: an indented note, such as a sub-bullet, keeps its leading
+    whitespace when TEXT replaces it."""
+    indented = noted.read_text(encoding="utf-8").replace("\nsecond note\n", "\n  - second note\n")
+    noted.write_text(indented, encoding="utf-8")
+    ok("describe", noted, *LNCH, "--note", "2", "--text", "- second, reworded")
+    after = indented.replace("\n  - second note\n", "\n  - second, reworded\n")
+    assert_wrote(noted, indented, 'changed note 2 "- second note" -> "- second, reworded"', after)
+
+
+def test_describe_note_remove_drops_that_line_only(noted: Path):
+    """ACC-PMCAT-253-NOTE-REMOVE: only note 2's line goes; the blank lines around it, the
+    fenced block and notes 1 and 3 stay."""
+    before = noted.read_text(encoding="utf-8")
+    out = ok("describe", noted, *LNCH, "--note", "2", "--remove")
+    assert out.rstrip().endswith('LNCH note 2 removed "second note"'), out
+    after = before.replace("\nsecond note\n", "\n", 1)
+    assert_wrote(noted, before, 'removed note 2 "second note"', after)
+
+
+def test_a_note_write_sent_with_a_stale_number_names_the_line_it_hit(noted: Path):
+    """DEF-PMGT-88-NOTE-ECHO: the second --note 1 --remove, numbered before the first one
+    ran, prints the text of the line it removed."""
+    ok("describe", noted, *LNCH, "--note", "1", "--remove")
+    out = ok("describe", noted, *LNCH, "--note", "1", "--remove")
+    assert out.rstrip().endswith('LNCH note 1 removed "second note"'), out
+
+
+def test_notes_are_numbered_in_file_order_past_blank_fenced_and_log_lines(noted: Path):
+    """ACC-PMCAT-254-NOTE-NUMBER: with the fenced block between notes 1 and 2 and the
+    category log between notes 2 and 3, the line under the log is note 3 for --note and
+    for report."""
+    body = noted.read_text(encoding="utf-8")
+    log = "".join(ln + "\n" for ln in category_log(body))
+    moved = body.replace(f"third note\n\n{log}", f"{log}\nthird note\n")
+    assert moved != body
+    noted.write_text(moved, encoding="utf-8")
+    ok("describe", noted, *LNCH, "--note", "3", "--text", "third, below the log")
+    after = moved.replace("\nthird note\n", "\nthird, below the log\n")
+    assert_wrote(noted, moved, 'changed note 3 "third note" -> "third, below the log"', after)
+    out = ok("report", noted, "--category", "LNCH")
+    assert "1. first note\n2. second note\n3. third, below the log\n" in out, out
+
+
+def test_describe_note_with_its_own_text_writes_nothing(noted: Path):
+    """ACC-PMCAT-255-NOTE-SAME: no byte changes, so no record either."""
+    before = noted.read_bytes()
+    out = ok("describe", noted, *LNCH, "--note", "1", "--text", "first note")
+    assert out.rstrip().endswith("LNCH note 1 unchanged"), out
+    assert noted.read_bytes() == before
+
+
+PROSE_ONLY = "holds a heading, a checklist item, a `- log:` line or an unclosed code fence"
+
+
+@pytest.mark.parametrize(
+    "args, edit, said",
+    [
+        (("--category", "NOPE", *KJ, "--append", "x"), "", "unknown category code NOPE"),
+        ((*LNCH, "--append", "x"), (NOTED + "\n", ""),
+         "category LNCH has no description line, which an appended note would become; "
+         'set one first: pm-tools describe FILE --category LNCH --text "..." --author @xx'),
+        ((*LNCH, "--append", "x"), (NOTED, "```\nfenced line\n```\n"),
+         "category LNCH has no description line"),
+        ((*LNCH, "--append", "x"), ("Cold start.\n", "### Detail\n\nCold start.\n"),
+         "category LNCH has no description line"),
+        ((*LNCH, "--note", "0", "--text", "x"), "", "no note 0 in LNCH; it has 3 note(s)"),
+        ((*LNCH, "--note", "4", "--remove"), "", "no note 4 in LNCH; it has 3 note(s)"),
+        ((*LNCH, "--append", "## Other `OTH`"), "", "--append " + PROSE_ONLY),
+        ((*LNCH, "--append", "- [ ] `DEF-LNCH-9-X` **stray**"), "", "--append " + PROSE_ONLY),
+        ((*LNCH, "--append", "- log: 2026-10-01T10:00:00Z @kj x"), "", "--append " + PROSE_ONLY),
+        ((*LNCH, "--append", "- [] x"), "", "--append " + PROSE_ONLY),
+        ((*LNCH, "--note", "1", "--text", "## Other `OTH`"), "", "--text " + PROSE_ONLY),
+        ((*LNCH, "--note", "1", "--text", "- [ ] `DEF-LNCH-9-X` **x**"), "", "--text " + PROSE_ONLY),
+        ((*LNCH, "--note", "1", "--text", "- log: 2026-10-01T10:00:00Z @kj x"), "",
+         "--text " + PROSE_ONLY),
+        ((*LNCH, "--append", "Cold – start"), "", "argument --append: forbidden glyph"),
+        ((*LNCH, "--append", " ".join(["word"] * 51)), "", "--append is 51 words; the limit is 50"),
+        ((*LNCH, "--text", "x", "--text-file", "p"), "",
+         "argument --text-file: not allowed with argument --text"),
+        ((*LNCH, "--text", "x", "--append", "y"), "",
+         "argument --append: not allowed with argument --text"),
+        ((*LNCH, "--note", "1", "--text", "x", "--remove"), "",
+         "argument --remove: not allowed with argument --text"),
+        ((*LNCH, "--text-file", "p", "--append", "y"), "",
+         "argument --append: not allowed with argument --text-file"),
+        ((*LNCH, "--text-file", "p", "--remove"), "",
+         "argument --remove: not allowed with argument --text-file"),
+        ((*LNCH, "--append", "y", "--remove"), "",
+         "argument --remove: not allowed with argument --append"),
+        ((*LNCH, "--note", "1"), "",
+         "one of the arguments --text --text-file --append --remove is required"),
+        ((*LNCH, "--note", "1", "--append", "y"), "", "--note N needs --text or --remove"),
+        (("--category", "LNCH", "--append", "x"), "",
+         "the following arguments are required: --author"),
+        (("--category", "LNCH", "--author", "@zz", "--append", "x"), "",
+         "@zz is not on the authors roster"),
+    ],
+    ids=[
+        "unknown-category", "no-description", "fence-only", "prose-under-h3", "note-0",
+        "note-over-count", "append-heading",
+        "append-item", "append-log", "append-malformed-box", "note-heading", "note-item", "note-log", "glyph",
+        "over-50-words", "text-and-text-file", "text-and-append", "text-and-remove",
+        "text-file-and-append", "text-file-and-remove", "append-and-remove", "note-alone",
+        "note-with-append", "no-author", "author-off-roster",
+    ],
+)  # fmt: skip
+def test_a_refused_note_write_changes_nothing(noted: Path, args, edit, said):
+    """ACC-PMCAT-256-NOTE-REFUSE: each refusal exits non-zero, names its cause and leaves
+    the file byte for byte as it was. `edit` is an (old, new) replacement made before the
+    call: no-description drops the whole prose block, so the category has a log and no
+    prose line; fence-only leaves a fenced block and no description line; prose-under-h3
+    puts the prose under a `###` heading, so no prose line sits above the category log."""
+    if edit:
+        text = noted.read_text(encoding="utf-8")
+        assert edit[0] in text
+        noted.write_text(text.replace(*edit, 1), encoding="utf-8")
+    before = noted.read_bytes()
+    r = pm("describe", noted, *args)
+    assert r.returncode != 0
+    assert said.replace("FILE", str(noted)) in r.stderr, r.stderr
+    assert noted.read_bytes() == before
+
+
+def test_report_category_prints_the_notes_then_the_category_log(noted: Path):
+    """ACC-PMCAT-257-REPORT-NOTES: `N. <note>` lines under the name and description line,
+    then the category log lines; a report without --category prints neither, though the
+    file holds one category; a category with no notes and no log prints nothing for them."""
+    log = "\n".join(category_log(noted.read_text(encoding="utf-8")))
+    out = ok("report", noted, "--category", "LNCH")
+    assert (
+        "**Launch** `LNCH` - Cold start.\n\n1. first note\n2. second note\n3. third note\n\n"
+        + log
+        + "\n\n"
+    ) in out, out
+    out = ok("report", noted)
+    assert "**Launch** `LNCH`" in out, out
+    assert "1. first note" not in out and "- log:" not in out, out
+    with open(noted, "a", encoding="utf-8") as fh:
+        fh.write(BOOT)
+    out = ok("report", noted, "--category", "BOOT")
+    assert re.search(r"\*\*Boot\*\* `BOOT` - Boot path\n\s*## ", out), out
+
+
+def test_report_json_carries_each_categorys_notes_and_log(noted: Path):
+    """ACC-PMCAT-258-REPORT-JSON: notes in note order, log lines as written, and empty
+    lists on a category with neither."""
+    with open(noted, "a", encoding="utf-8") as fh:
+        fh.write(BOOT)
+    log = category_log(noted.read_text(encoding="utf-8"))
+    assert len(log) == 2
+    doc = json.loads(ok("report", noted, "--json"))
+    cats = {c["code"]: c for c in doc[0]["categories"]}
+    assert cats["LNCH"]["notes"] == ["first note", "second note", "third note"]
+    assert cats["LNCH"]["log"] == log
+    assert cats["BOOT"]["notes"] == [] and cats["BOOT"]["log"] == []
