@@ -1,4 +1,4 @@
-"""Deterministic journal operations: parse, check, archive, sort, standardize.
+"""Deterministic journal operations: parse, check, archive, sort, layout, standardize.
 
 Pure string parsing, validation, and file manipulation. The `standardize`
 subcommand additionally drives an ACP subprocess (a fresh `claude -p` call)
@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 
@@ -441,7 +442,9 @@ def archive_journal(
     """
     journal_path = Path(journal_path)
     if archive_path is None:
-        archive_path = journal_path.parent / "JOURNAL_ARCHIVE.md"
+        # beside the real file of a linked journal, where the note's relative archive link points
+        real = journal_path.resolve() if journal_path.is_symlink() else journal_path
+        archive_path = real.parent / "JOURNAL_ARCHIVE.md"
     else:
         archive_path = Path(archive_path)
 
@@ -481,6 +484,96 @@ def archive_journal(
         remaining_count=len(to_keep),
         archive_path=str(archive_path),
     )
+
+
+# ---------------------------------------------------------------------------
+# Layout - the real journal in .agents/, a relative link in .claude/
+# ---------------------------------------------------------------------------
+
+
+class LayoutConflict(Exception):
+    """The `.claude/` and `.agents/` sides of a journal disagree; nothing was changed."""
+
+
+def adopt_layout(journal_path: str | Path) -> list[str]:
+    """Keep a journal whose parent directory is named `.claude` in the sibling
+    `.agents` directory, reached through the link `.claude/<name> -> ../.agents/<name>`.
+
+    Covers the journal and JOURNAL_ARCHIVE.md. A real file in `.claude/` is moved,
+    bytes unchanged, and replaced by the link; a file in `.agents/` without the link
+    gets it; a journal that does not exist yet gets the link, so it is written in
+    `.agents/`. A real file on both sides, or a `.claude/` link that points anywhere
+    else, raises LayoutConflict before anything is changed. A journal at any other
+    path is left as it is. Returns one line per change.
+    """
+    journal_path = Path(journal_path)
+    claude = journal_path.parent
+    if claude.name != ".claude":
+        return []
+    agents = claude.parent / ".agents"
+    todo = []
+    for name in dict.fromkeys((journal_path.name, "JOURNAL_ARCHIVE.md")):
+        src, dst = claude / name, agents / name
+        if src.is_symlink():
+            if os.path.realpath(src) != os.path.realpath(dst):
+                raise LayoutConflict(
+                    f"{src} links to {os.readlink(src)}, not to {dst}; nothing changed"
+                )
+        elif os.path.lexists(src):
+            if os.path.lexists(dst):
+                raise LayoutConflict(f"{src} and {dst} both exist; nothing changed")
+            todo.append((src, dst, True))
+        elif os.path.lexists(dst) or name == journal_path.name:
+            todo.append((src, dst, False))
+    done = []
+    for src, dst, move in todo:
+        claude.mkdir(exist_ok=True)
+        agents.mkdir(exist_ok=True)
+        link = os.path.join("..", ".agents", dst.name)
+        if move:
+            _move_to_agents(src, dst, link)
+            done.append(f"moved {src} to {dst}, linked {src} -> {link}")
+        else:
+            os.symlink(link, src)
+            done.append(f"linked {src} -> {link}")
+    return done
+
+
+def _move_to_agents(src: Path, dst: Path, link: str) -> None:
+    """Copy src to dst, compare the bytes, then replace src by the link in one rename.
+
+    src stays a readable real file until that rename; a failure before it removes
+    what this call created and leaves src as it was.
+    """
+    tmp_dst = dst.with_name(f".{dst.name}.layout-tmp")
+    tmp_link = src.with_name(f".{src.name}.layout-link")
+    try:
+        os.symlink(link, tmp_link)
+        shutil.copy2(src, tmp_dst)
+        with open(tmp_dst, "rb") as f:
+            os.fsync(f.fileno())
+        if tmp_dst.read_bytes() != src.read_bytes():
+            raise OSError(f"the copy of {src} differs from the original")
+        os.replace(tmp_dst, dst)
+        os.replace(tmp_link, src)
+    except BaseException:
+        for p in (tmp_link, tmp_dst):
+            p.unlink(missing_ok=True)
+        # the original is still in place, so a copy left in .agents/ would only block a rerun
+        if src.is_file() and not src.is_symlink():
+            dst.unlink(missing_ok=True)
+        raise
+
+
+def _run_layout(path: Path) -> int:
+    """adopt_layout for the CLI: print each change; on a refusal print it and return 1."""
+    try:
+        for line in adopt_layout(path):
+            print(line)
+    except (LayoutConflict, OSError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    return 0
 
 
 # ---------------------------------------------------------------------------
@@ -990,7 +1083,7 @@ def write_standardize_clean_footer(
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI entry point: ``journal-tools check|archive|sort|standardize <path>``."""
+    """CLI entry point: ``journal-tools check|archive|sort|layout|standardize <path>``."""
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -1042,6 +1135,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Print corrected output without writing",
     )
+
+    # layout - also run first by every command that writes the journal
+    p_layout = sub.add_parser(
+        "layout", help="Move a .claude/ journal to .agents/ and link it back from .claude/."
+    )
+    p_layout.add_argument("path", help="Path to JOURNAL.md")
 
     # standardize - identify and repair oversized / mis-marked entries via ACP
     p_std = sub.add_parser(
@@ -1114,6 +1213,19 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     path = Path(args.path)
+    if args.command == "layout":
+        return _run_layout(path)
+
+    writes = (
+        args.command == "archive"
+        or (args.command == "sort" and not args.dry_run)
+        or (args.command == "standardize" and (args.all_mode or args.apply is not None))
+    )
+    agents_path = path.parent.parent / ".agents" / path.name
+    found = path.exists() or (path.parent.name == ".claude" and agents_path.exists())
+    # a missing journal skips the layout step, so "not found" below leaves no directory or link
+    if writes and found and _run_layout(path):
+        return 1
     if not path.exists():
         print(f"ERROR: {path} not found", file=sys.stderr)
         return 1
@@ -1153,7 +1265,7 @@ def main(argv: list[str] | None = None) -> int:
             f"Archived {result.moved_count} entries to {result.archive_path}, "
             f"{result.remaining_count} remaining in {path}."
         )
-        return 0
+        return _run_layout(path)  # links an archive this run created in .agents/
 
     elif args.command == "sort":
         if not entries:

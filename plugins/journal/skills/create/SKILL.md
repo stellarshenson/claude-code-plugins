@@ -11,23 +11,13 @@ allowed-tools: [Read, Write, Bash, Glob]
 
 **Init-only.** Scaffolds a new `.claude/JOURNAL.md` and backfills entries from the current conversation.
 
-If `.claude/JOURNAL.md` already exists, stop and tell the user to use `/journal:update` instead. Never overwrite.
+If `.claude/JOURNAL.md` or `.agents/JOURNAL.md` already exists, stop and tell the user to use `/journal:update` instead. Never overwrite.
 
 ## Steps
 
-1. Check the file does not exist. If it does, refuse and redirect to `/journal:update`.
+1. Check that neither file exists. If one does, refuse and redirect to `/journal:update`.
 2. Scan the current conversation for substantive work units (feature, refactor, bug fix, doc set, design decision). Skip git ops, trivial cleanup, conversational queries.
-3. Write the header:
-   ```
-   # Claude Code Journal
-
-   This journal tracks substantive work on documents, diagrams, and documentation content.
-
-   ---
-   ```
-4. Append one entry per work unit, numbered from `1`, in chronological order. Use **Standard format** (50-150 words, see example below).
-5. Version tag per entry if the project is versioned (`pyproject.toml` / `package.json` / `Cargo.toml`).
-6. **Pre-flight install (MANDATORY, no asking)**:
+3. **Pre-flight install (MANDATORY, no asking)**:
 
    ```bash
    python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
@@ -42,7 +32,18 @@ If `.claude/JOURNAL.md` already exists, stop and tell the user to use `/journal:
 
    The upgrade always runs - a stale-but-importable install is exactly the failure this gate prevents, and the reinstall also repairs a stale shim on PATH whose package is uninstalled in the active Python.
 
-7. **MUST run `journal-tools check .claude/JOURNAL.md`**. Exit 0 = clean. Any error → fix and re-run. Not optional.
+4. Run `journal-tools layout .claude/JOURNAL.md` before writing (Layout in `skills/journal/SKILL.md`). On a refusal, ask the user how to proceed and show them its message; write nothing until they answer.
+5. Write the header into `.agents/JOURNAL.md`:
+   ```
+   # Claude Code Journal
+
+   This journal tracks substantive work on documents, diagrams, and documentation content.
+
+   ---
+   ```
+6. Append one entry per work unit, numbered from `1`, in chronological order. Use **Standard format** (50-150 words, see example below).
+7. Version tag per entry if the project is versioned (`pyproject.toml` / `package.json` / `Cargo.toml`).
+8. **MUST run `journal-tools check .claude/JOURNAL.md`**. Exit 0 = clean. Any error → fix and re-run. Not optional.
 
 ## Format
 

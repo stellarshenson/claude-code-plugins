@@ -23,7 +23,7 @@ echo "toolkit $LIB"
 
 **Run the CLI without touching the caller's project.** The gate above puts it on PATH, so the bare command name is the whole invocation. `uv run` instead resolves whatever project the working directory sits in and writes `uv.lock` and `.venv` into it, so if you reach for uv pass `--no-project` (`uv run --no-project <cli> ...`) - it skips project discovery, leaves the tree untouched and still finds the same PATH binary. `--no-sync` and `--frozen` are not substitutes; both still create `.venv`.
 
-Ships `journal-tools` CLI (`check`, `sort`, `archive`, `standardize`). Verify: `journal-tools --help`. Never skip this step. Never ask the user whether to install - just run the line.
+Ships `journal-tools` CLI (`check`, `sort`, `archive`, `layout`, `standardize`). Verify: `journal-tools --help`. Never skip this step. Never ask the user whether to install - just run the line.
 
 ## Commands
 
@@ -36,6 +36,14 @@ Ships `journal-tools` CLI (`check`, `sort`, `archive`, `standardize`). Verify: `
 | `/journal:article` | EXTRACT. For entries over the Extended max (>400 words), pull the depth into a standalone article under `docs/` and condense the entry to a Standard-tier summary linking to the article. Asks the user for title / location / scope / summary length via AskUserQuestion. |
 
 No ambiguity. `create` = scaffold once. `update` = every write after. `standardize` = repair word-count drift via an ACP subprocess driven by the shipped `prompts/standardize.yaml`. `article` = extract over-max depth into a `docs/` article and slim the entry.
+
+## Layout
+
+The real journal is `.agents/JOURNAL.md`; `.claude/JOURNAL.md` is the relative link `../.agents/JOURNAL.md`. `JOURNAL_ARCHIVE.md` follows the same pattern once it exists. This holds in every directory whose `.claude/` holds the journal, the home directory included (`~/.claude/JOURNAL.md` → `~/.agents/JOURNAL.md`); a journal at any other path stays where it is.
+
+`journal-tools layout .claude/JOURNAL.md` makes the layout. It moves a real `.claude/JOURNAL.md` and `.claude/JOURNAL_ARCHIVE.md` to `.agents/` byte for byte and leaves the links, adds the link for an `.agents/` file that has none, and for a journal not yet created makes the link, so the journal is written in `.agents/`. `archive`, `sort`, `standardize --all` and `standardize --apply` run it before they write; `check`, `sort --dry-run`, `standardize --list` and `standardize --prompt` move nothing. A real file on both sides, or a `.claude/` link that points anywhere else, is refused: exit 1, both paths named, nothing changed. Ask the user how to resolve a refusal; never delete, merge or move either file yourself.
+
+Write and edit the real file `.agents/JOURNAL.md`, never the link: an editor that saves by replacing the file turns the link into a second real file, and the next run refuses.
 
 ## Append-only
 
@@ -175,7 +183,7 @@ Flags: `--standard-target N` (default 150), `--extended-max N` (default 400). Sa
 
 Trigger: >40 entries OR user requests. Prefer `journal-tools archive`.
 
-1. Move older entries to `.claude/JOURNAL_ARCHIVE.md`
+1. Move older entries to `JOURNAL_ARCHIVE.md` beside the real journal file (`.agents/JOURNAL_ARCHIVE.md` in the Layout above)
 2. Keep last 20 in main
 3. Add link at top: `**Note**: Entries 1-N archived to JOURNAL_ARCHIVE.md`
 4. Maintain continuous numbering. NEVER reset.

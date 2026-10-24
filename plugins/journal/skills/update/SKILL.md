@@ -11,7 +11,7 @@ allowed-tools: [Read, Edit, Write, Bash, Glob]
 
 Two modes: **append** (default) or **update the last entry in place** (narrow case).
 
-If `.claude/JOURNAL.md` does not exist, stop and tell the user to run `/journal:create` first.
+If neither `.claude/JOURNAL.md` nor `.agents/JOURNAL.md` exists, stop and tell the user to run `/journal:create` first.
 
 ## Mode decision
 
@@ -68,11 +68,7 @@ Full worked examples in `journal/skills/journal/references/examples.md`.
 
 ## Steps
 
-1. Read the last entry. Note its number and task.
-2. Pick mode (append vs update) per the rule above.
-3. Write the entry in Standard format. Match the user's own summary length; never inflate.
-4. Version tag if the project is versioned (`pyproject.toml` / `package.json` / `Cargo.toml`).
-5. **Pre-flight install (MANDATORY, no asking)**: before invoking `journal-tools`, always run:
+1. **Pre-flight install (MANDATORY, no asking)**: before invoking `journal-tools`, always run:
 
    ```bash
    python3 -m pip install --user --upgrade stellars-claude-code-plugins 2>&1 | tail -1
@@ -87,8 +83,13 @@ Full worked examples in `journal/skills/journal/references/examples.md`.
 
    The upgrade always runs - a stale-but-importable install is exactly the failure this gate prevents, and the reinstall also repairs a stale shim on PATH whose package is uninstalled in the active Python. Never skip. Never ask the user.
 
-6. **MUST run `journal-tools check .claude/JOURNAL.md`** after writing. Exit 0 = clean. Any error → fix and re-run. This step is not optional.
-6. Verify by reading the last 10 lines.
+2. Run `journal-tools layout .claude/JOURNAL.md` before writing (Layout in `skills/journal/SKILL.md`). On a refusal, ask the user how to proceed and show them its message; write nothing until they answer.
+3. Read the last entry. Note its number and task.
+4. Pick mode (append vs update) per the rule above.
+5. Write the entry into `.agents/JOURNAL.md` in Standard format. Match the user's own summary length; never inflate.
+6. Version tag if the project is versioned (`pyproject.toml` / `package.json` / `Cargo.toml`).
+7. **MUST run `journal-tools check .claude/JOURNAL.md`** after writing. Exit 0 = clean. Any error → fix and re-run. This step is not optional.
+8. Verify by reading the last 10 lines.
 
 ## CLI tools (mandatory)
 

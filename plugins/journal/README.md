@@ -40,7 +40,7 @@ All five commands auto-run `journal-tools check` after writing and refuse to pro
 
 ## CLI tools
 
-Deterministic validation, archiving, sorting, and word-count repair - the three pure-string subcommands run with no generative AI in the loop; `standardize` orchestrates a focused `claude -p` subprocess per offender for the edit step itself.
+Deterministic validation, archiving, sorting, layout, and word-count repair - the four pure-string subcommands run with no generative AI in the loop; `standardize` orchestrates a focused `claude -p` subprocess per offender for the edit step itself.
 
 ```bash
 # Validate format, numbering, and word counts
@@ -51,6 +51,10 @@ journal-tools archive .claude/JOURNAL.md
 
 # Re-number entries sequentially (fix gaps/ordering)
 journal-tools sort .claude/JOURNAL.md --dry-run
+
+# Move a .claude/ journal and its archive to .agents/ and link them back
+# (Layout in skills/journal/SKILL.md; every writing subcommand runs it first)
+journal-tools layout .claude/JOURNAL.md
 
 # Repair word-count drift on entries `check` warned on.
 # Three-mode invocation: list offenders, render the per-entry ACP prompt,

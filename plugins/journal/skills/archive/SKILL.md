@@ -35,13 +35,13 @@ Default: threshold 40, keep last 20. Flags: `--keep-last N`, `--threshold N`, `-
 
 After run:
 1. Read `.claude/JOURNAL.md` last 5 lines — confirm last 20 entries remain, note at top links to archive
-2. Read `.claude/JOURNAL_ARCHIVE.md` last 5 lines — confirm entries appended, numbering continuous
+2. Read `JOURNAL_ARCHIVE.md` beside the real journal file (`.agents/JOURNAL_ARCHIVE.md`, Layout in `skills/journal/SKILL.md`) last 5 lines — confirm entries appended, numbering continuous
 3. Run `journal-tools check .claude/JOURNAL.md` — exit 0 = clean
 
 ## Fallback (manual, only if CLI unavailable)
 
 1. Read `.claude/JOURNAL.md`, count entries
-2. If count > 40, move all except last 20 to `.claude/JOURNAL_ARCHIVE.md` (create or append)
+2. If count > 40, move all except last 20 to `JOURNAL_ARCHIVE.md` beside the real journal file (create or append)
 3. Keep main journal starting at entry `N-19` (not reset to 1)
 4. Add top line: `**Note**: Entries 1-M have been archived to [JOURNAL_ARCHIVE.md](JOURNAL_ARCHIVE.md).`
 5. Verify both files after — no entries lost, numbering continuous across archive + main

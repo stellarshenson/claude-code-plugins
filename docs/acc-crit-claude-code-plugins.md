@@ -2050,3 +2050,61 @@ Log lines recording tracker-wide and category-wide changes
   - log: 2026-10-23T06:37:26Z @kj closed
   - log: 2026-10-23T11:40:50Z @kj edited evidence "functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_migrate_codes_writes_one_tracker_record_and_none_on_a_rerun and ::test_upgrade_apply_writes_one_tracker_record_and_none_on_a_current_file pass; uv run --extra dev pytest -q 1613 passed, 2 skipped" -> "functional tests/test_pm_tools_functional.py::test_tracker_wide_changes_land_in_the_tracker_log_once, unit tests/test_pm_tools.py::test_migrate_codes_writes_one_tracker_record_and_none_on_a_rerun and ::test_upgrade_apply_writes_one_tracker_record_and_none_on_a_current_file pass; uv run --extra dev pytest -q 1649 passed, 2 skipped"
 
+## journal-tools `JRNL`
+
+journal parser, standardize, sort and archive
+
+- log: 2026-10-24T16:42:56Z @kj category created
+
+- [x] `ACC-JRNL-266-ARCHIVE-LINK` **Archive beside the real journal** - HIGH; archive on a journal path that is a link writes JOURNAL_ARCHIVE.md next to the real journal file: .agents/JOURNAL_ARCHIVE.md for .claude/JOURNAL.md -> ../.agents/JOURNAL.md; the journal's JOURNAL_ARCHIVE.md link opens it
+  - evidence: TestLinkedJournal::test_archive_writes_the_archive_beside_the_real_journal and ::test_cli_archive_on_a_linked_journal pass, both fail on the pre-change module; tests/test_journal_tools.py 70 passed
+  - test: tmp project, .claude/JOURNAL.md -> ../.agents/JOURNAL.md, over 20 entries; run archive; assert .agents/JOURNAL_ARCHIVE.md exists, .claude/ holds no real JOURNAL_ARCHIVE.md
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T16:42:56Z @kj added
+  - log: 2026-10-24T16:49:59Z @kj closed: archive path from the resolved link
+  - log: 2026-10-24T17:11:55Z @kj edited test "tmp project, .claude/JOURNAL.md -> ../.agents/JOURNAL.md, over 20 entries; run archive; assert .agents/JOURNAL_ARCHIVE.md exists, .claude/ holds no JOURNAL_ARCHIVE.md" -> "tmp project, .claude/JOURNAL.md -> ../.agents/JOURNAL.md, over 20 entries; run archive; assert .agents/JOURNAL_ARCHIVE.md exists, .claude/ holds no real JOURNAL_ARCHIVE.md"
+- [x] `ACC-JRNL-267-LINK-KEPT` **Writers keep a linked journal a link** - HIGH; archive, sort, standardize and every other journal-tools command that writes the journal write through a linked journal path: the link stays a link, the real file receives the text
+  - evidence: TestLinkedJournal archive, sort, standardize --apply and standardize --all tests assert the link stays and .agents/JOURNAL.md gets the text, all pass; tests/test_journal_tools.py 70 passed
+  - test: per writing command, on .claude/JOURNAL.md -> ../.agents/JOURNAL.md: run it; assert .claude/JOURNAL.md is still a link and .agents/JOURNAL.md holds the new text
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T16:43:01Z @kj added
+  - log: 2026-10-24T16:49:59Z @kj closed: writers already write through the link; tests added
+- [x] `ACC-JRNL-268-LAYOUT-NEW` **New journal lives in .agents** - HIGH; creating a journal writes .agents/JOURNAL.md and makes .claude/JOURNAL.md a relative link ../.agents/JOURNAL.md; an archive that journal-tools archive creates for a linked journal also gets the link .claude/JOURNAL_ARCHIVE.md -> ../.agents/JOURNAL_ARCHIVE.md
+  - evidence: TestJournalLayout::test_new_journal_is_created_in_agents (unit) and ::test_cli_new_journal_and_its_archive (functional) pass, both fail on the pre-change tree; tests/test_journal_tools.py 101 passed
+  - related: ACC-JRNL-266-ARCHIVE-LINK, ACC-JRNL-267-LINK-KEPT - archive and writers on the linked journal this creates
+  - test: tmp dir, no journal: create one as /journal:create does; assert .agents/JOURNAL.md is a file and .claude/JOURNAL.md a link reading ../.agents/JOURNAL.md; archive over 20 entries; assert .claude/JOURNAL_ARCHIVE.md is a link reading ../.agents/JOURNAL_ARCHIVE.md
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T16:57:19Z @kj added
+  - log: 2026-10-24T17:12:04Z @kj closed
+- [x] `ACC-JRNL-269-LAYOUT-MOVE` **Old journal moves to .agents** - CRITICAL; the next journal write on a real .claude/JOURNAL.md first moves it, and a real .claude/JOURNAL_ARCHIVE.md, to .agents/ with relative links back in .claude/; contents byte for byte, before anything else is written
+  - evidence: TestJournalLayout::test_move_keeps_every_byte and ::test_failed_move_leaves_the_original (unit), ::test_cli_write_moves_first (functional) pass, all fail on the pre-change tree; tests/test_journal_tools.py 101 passed
+  - related: ACC-JRNL-266-ARCHIVE-LINK, ACC-JRNL-267-LINK-KEPT - archive and writers on the linked journal this move leaves
+  - test: tmp dir, real .claude/JOURNAL.md and JOURNAL_ARCHIVE.md: run the layout step; assert both are links to ../.agents/<name> and each .agents/ file has the old sha256; repeat with a writing command, assert its text lands in .agents/JOURNAL.md
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T16:57:29Z @kj added
+  - log: 2026-10-24T17:12:04Z @kj closed
+- [x] `ACC-JRNL-270-LAYOUT-CONFLICT` **Layout conflict refused** - HIGH; a real file in both .claude/ and .agents/, or a .claude/ link that points anywhere else: the step exits non-zero, names both paths and changes nothing; the create and update skills then ask the user
+  - evidence: TestJournalLayout::test_conflict_changes_nothing (unit) and ::test_cli_conflict_changes_nothing (functional, layout and sort), 3 cases each, pass, all fail on the pre-change tree; skills ask: ::test_docs_state_the_layout_once
+  - test: tmp dir per case, real file on both sides and a link to another path: run the step; assert non-zero exit, both paths in the message, file types and sha256 unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T16:57:29Z @kj added
+  - log: 2026-10-24T17:12:05Z @kj closed
+- [x] `ACC-JRNL-271-LAYOUT-STEP` **One layout step before every write** - HIGH; one layout step, also a journal-tools subcommand the create and update skills run before they write; every journal-tools command that writes the journal runs it first; commands that only read (check and the rest) move nothing
+  - evidence: TestJournalLayout::test_every_writing_command_moves_first, ::test_read_only_commands_move_nothing (unit), ::test_cli_every_writing_command_moves_first, ::test_cli_read_only_commands_move_nothing (functional), 4 commands each, pass, all fail on the pre-change tree
+  - test: old-layout tmp dir per command: run each writing command, assert the journal moved first; run check and each read-only command, assert the tree is unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T16:57:29Z @kj added
+  - log: 2026-10-24T17:12:05Z @kj closed
+- [x] `ACC-JRNL-272-LAYOUT-ANYDIR` **Any .claude directory, no other path** - HIGH; the step applies to any journal whose parent directory is named .claude, the home directory included (~/.claude/JOURNAL.md -> ~/.agents/JOURNAL.md); a journal at any other path is left as it is
+  - evidence: TestJournalLayout::test_any_claude_directory_moves_another_path_stays (unit) and ::test_cli_home_journal_moves_another_path_stays (functional, HOME and ~ through the shell) pass, both fail on the pre-change tree
+  - test: tmp HOME and tmp project, each with .claude/JOURNAL.md, plus docs/JOURNAL.md: run the step on each; assert both .claude journals moved and docs/JOURNAL.md is unchanged
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T16:57:30Z @kj added
+  - log: 2026-10-24T17:12:05Z @kj closed
+- [x] `ACC-JRNL-273-LAYOUT-DOCS` **Layout documented** - MEDIUM; the journal plugin states the layout once; its create and update skills run the step before writing and ask the user on a refusal; CHANGELOG.md names the change
+  - evidence: TestJournalLayout::test_docs_state_the_layout_once (unit) and ::test_documented_layout_command_runs (functional) pass, both fail on the pre-change docs
+  - test: grep plugins/journal: the layout stated in one file, create and update SKILL.md run the step and ask on a refusal; grep CHANGELOG.md for the change
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-10-24T16:57:30Z @kj added
+  - log: 2026-10-24T17:12:05Z @kj closed
+

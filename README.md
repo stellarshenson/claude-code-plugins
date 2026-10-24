@@ -226,7 +226,7 @@ See [plugins/datascience/README.md](plugins/datascience/) for the full list of s
 
 <img alt="journal append-only timeline with archive and continuous numbering" src=".resources/svg/07_journal_audit.svg" width="100%">
 
-Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers on journal-related phrases (see below) or after substantive work, maintaining a consistent audit trail in `.claude/JOURNAL.md`. Includes a deterministic `journal-tools` CLI for validation, sorting, and word-count enforcement — the three pure-string subcommands run with no generative AI in the loop, and `standardize` orchestrates a focused `claude -p` subprocess per offender to repair word-count drift on entries `check` warned on.
+Project journal management with append-only entry format, continuous numbering, and automatic archiving. Auto-triggers on journal-related phrases (see below) or after substantive work, maintaining a consistent audit trail in `.claude/JOURNAL.md`. Includes a deterministic `journal-tools` CLI for validation, sorting, layout, and word-count enforcement — the four pure-string subcommands run with no generative AI in the loop, and `standardize` orchestrates a focused `claude -p` subprocess per offender to repair word-count drift on entries `check` warned on.
 
 **Skill**: `journal` (auto-triggered by the phrases below or after finishing substantive work)
 
@@ -351,7 +351,7 @@ Provides these binaries:
 |--------|---------|
 | `svg-infographics` | `svg-infographics`, `devils-advocate` (visuals) |
 | `render-png` | `svg-infographics` (Playwright-based SVG → PNG) |
-| `journal-tools` | `journal` (check / sort / archive / standardize) |
+| `journal-tools` | `journal` (check / sort / archive / layout / standardize) |
 | `pm-tools` | `project-management` (report / list / pivot / search / refs / check / add / edit / close / reject / reopen / relate / ack / upgrade) |
 | `hypothesis-tools` | `datascience` (`hypothesis` - experiments log ids, results, verdicts, check) |
 | `review-tools` | `devils-advocate` (`adversarial-review` - dossier / findings / cost / research / prompt) |
