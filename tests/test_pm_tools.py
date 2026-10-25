@@ -2712,6 +2712,17 @@ def test_check_warns_when_an_open_item_is_blocked_by_a_finished_one(defects: Pat
     assert "no longer holds" not in capsys.readouterr().out
 
 
+def test_check_warns_when_an_open_item_is_blocked_by_a_still_open_one(defects: Path, capsys):
+    three_defects(defects, capsys)
+    relate(defects, "DEF-LNCH-1", blocked="DEF-LNCH-2")
+    capsys.readouterr()
+    assert run("check", str(defects)) == 0
+    out = capsys.readouterr().out
+    assert "warn  blocked-by DEF-LNCH-2-TEST is open; the block still holds" in out
+    assert "ERROR" not in out
+    assert close_with(defects, "DEF-LNCH-1", "fixed on 414") == 0
+
+
 def test_a_cross_file_blocker_resolves_only_when_the_directory_is_scanned(tmp_path: Path, capsys):
     docs = tmp_path / "docs"
     docs.mkdir()

@@ -172,7 +172,7 @@ pm-tools rename-code docs/defects-app.md --id DEF-LNCH-1 --code TOKEN --author @
 pm-tools rename-category docs/defects-app.md --category LNCH --to LAUNCH --author @kj   # headings, ids and every mention in the store
 ```
 
-`check` is the only gate and it is a gate, not a reporter: non-zero exit on errors (a duplicate id, a malformed item code, an untriaged defect, an unrated criterion, a hand-kept contents table, the wrong hint line for the discipline, a dangling relation, a blocked-by or override cycle, an override on one item only), and `--strict` also fails on warnings (an id with no code, a base id where the full id belongs, a missing repro, an undescribed category, an open item blocked by a finished one or overridden). `relate` keeps both dependency graphs free of cycles as it writes: a new link that closes a cycle holds, and the older links into the item that takes it are removed and logged. Run it on the directory, so a link into the file beside resolves.
+`check` is the only gate and it is a gate, not a reporter: non-zero exit on errors (a duplicate id, a malformed item code, an untriaged defect, an unrated criterion, a hand-kept contents table, the wrong hint line for the discipline, a dangling relation, a blocked-by or override cycle, an override on one item only), and `--strict` also fails on warnings (an id with no code, a base id where the full id belongs, a missing repro, an undescribed category, an open item blocked by a finished or still-open one, or overridden). `relate` keeps both dependency graphs free of cycles as it writes: a new link that closes a cycle holds, and the older links into the item that takes it are removed and logged. Run it on the directory, so a link into the file beside resolves.
 
 ## Reports
 

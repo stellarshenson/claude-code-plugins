@@ -118,7 +118,7 @@ pm-tools report docs/acc-crit-app.md
 pm-tools check docs --strict
 ```
 
-`check docs` resolves the `blocked-by: DEF-LNCH-3-PARSER` line against the defects file beside; `check docs/acc-crit-app.md` alone reports it as not found, and a closed or rejected blocker on an open criterion is a warning.
+`check docs` resolves the `blocked-by: DEF-LNCH-3-PARSER` line against the defects file beside; `check docs/acc-crit-app.md` alone reports it as not found, and a blocker on an open criterion is a warning whether the blocker is open, closed or rejected.
 
 A criterion that a later criterion or defect replaces is not edited to say the new thing: file the new item and `relate` it with `--overrides`. Both items get a line, and the old criterion keeps its text, its evidence and its log. Reject it if it was still open (SKILL.md, Relations).
 

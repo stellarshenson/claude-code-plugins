@@ -2623,18 +2623,22 @@ def cmd_check(files, strict):
                 if tgt not in index:
                     e.append((lineno, f"{kind} points at {rid}, not found in the scanned files"))
                     continue
-                if (
-                    kind == "blocked-by"
-                    and status_of(b) == "open"
-                    and status_of(index[tgt]) in ("closed", "rejected")
-                ):
-                    w.append(
-                        (
-                            lineno,
-                            f"blocked-by {tgt} is {status_of(index[tgt])}; "
-                            "the block no longer holds",
+                if kind == "blocked-by" and status_of(b) == "open":
+                    state = status_of(index[tgt])
+                    if state in ("closed", "rejected"):
+                        w.append(
+                            (
+                                lineno,
+                                f"blocked-by {tgt} is {state}; the block no longer holds",
+                            )
                         )
-                    )
+                    else:
+                        w.append(
+                            (
+                                lineno,
+                                f"blocked-by {tgt} is {state}; the block still holds",
+                            )
+                        )
                 if kind in MIRROR and not any(
                     resolve_ref(index, r) == ident(b) for r in targets(index[tgt], MIRROR[kind])
                 ):
