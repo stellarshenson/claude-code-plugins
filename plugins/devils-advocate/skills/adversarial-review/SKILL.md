@@ -81,6 +81,7 @@ The rules a remedy must satisfy and why oversized remedies multiply defects: `re
 Findings are input to a decision, not a work order. Spawn `devils-advocate:adjudicator` with every lens's findings → one change plan: verified, grouped by root cause, smallest change per group, radius, what each could break, what is deferred. It plans, never edits.
 
 - **It triages materiality first and rules reverts before refinements** - pass the bar so it can test materiality; the plan flags `newMechanism` and stays inside the per-round budget (default 3)
+- **Common sense holds for every triage** - an edge case counts only when it can and will reasonably occur; the reviewer and adjudicator agent files state the rule, and a caller triaging a single lens by hand applies it too
 - **Always for a panel** (three lenses reporting one defect is one item) **and past round 3** (the findings are usually the previous round's fixes; its `STOP` ruling is the honest outcome). Skip for a single lens with findings you can verify yourself
 - **Merge reports first** - `review-tools findings <lens>.md ... [--full]` merges VERDICT lines and severity bullets into one table keyed by `file:line`; `--full` keeps the original bullets
 - **Pass what you know** - graph, blast radius, locked decisions, previous round's findings and fixes. Supplied context outranks its inference

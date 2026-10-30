@@ -74,7 +74,7 @@ The file IS the plugin - drop a new `adversaries/<name>.md` and it works, no reg
 
 **The panel caps at 3** unless you ask for more: triage, not the spawn, is the bottleneck, and five lenses buy a backlog you abandon rather than five times the signal. If you do not name an adversary, the skill asks before spawning - the wrong lens returns a fluent review of a risk your target does not have.
 
-A panel's findings go through `devils-advocate:adjudicator` before any fix - it returns one change plan grouped by root cause, and it does not edit.
+A panel's findings go through `devils-advocate:adjudicator` before any fix - it returns one change plan grouped by root cause, and it does not edit. Reviewers and the adjudicator apply a common-sense rule: an exotic edge case is immaterial even when it reproduces, and only a case that can and will reasonably occur counts.
 
 **Multi-round reviews run as a workflow** - with the dynamic Workflow capability, construct the workflow from the spec and pass it inline; without it, run the shipped `adversarial-loop.js` as the supplied protocol. The loop's nine invariants live in the script's control flow, never in session memory, so the protocol cannot drift with a long session's context; `plugins/devils-advocate/skills/adversarial-review/references/loop-spec.md` is the one full statement of the contract - invariants, args, statuses, execution paths and the incidents behind each rule.
 

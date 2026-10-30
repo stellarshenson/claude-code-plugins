@@ -78,6 +78,19 @@ def test_materiality_before_severity():
     assert "EDIT" in rev and "DEFER" in rev and "NEW MECHANISM" in rev
 
 
+def test_common_sense_reaches_the_prompt_templates_and_the_skill():
+    """ACC-REVIEW-276-SENSE-TEMPLATES: an exotic edge case is immaterial even
+    when it reproduces. A claude -p reviewer built from a template never loads
+    the agent file that owns the rule, so each template states it too."""
+    skill = SCRIPT.parents[1]
+    for template in ("mode1-diff-prompt.txt", "mode2-audit-prompt.txt"):
+        prompt = (skill / "examples" / template).read_text(encoding="utf-8")
+        assert "reasonably occur" in prompt and "material=false too" in prompt, template
+    assert "Common sense holds for every triage" in (skill / "SKILL.md").read_text(
+        encoding="utf-8"
+    )
+
+
 def test_new_mechanism_flag_and_change_budget():
     """DEF-ADVR-41: every planned change says whether it adds review surface;
     the plan is budgeted and mechanisms are surfaced in the PLAN payload."""
@@ -449,10 +462,12 @@ def test_method_is_not_stated_in_both_the_script_and_an_agent_file():
             "REVERT CANDIDATE",
             "contested semantics",
             "Technical truth is not materiality",
+            "Common sense",
         ),
         "adversarial-reviewer": (
             "Materiality before severity",
             "who alone decides what blocks",
+            "Common sense",
         ),
     }
     offenders = []

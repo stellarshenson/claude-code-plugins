@@ -16,6 +16,10 @@ OUT OF SCOPE (explicitly): <optional - delete the line>
 DEGRADE GRACEFULLY COVERS: <optional - delete the line>
 A finding nobody on the primary path can hit is material=false: MINOR, outOfBar, whatever
 the reproduction shows.
+An edge case counts only when it can and will reasonably occur: someone using the product for
+its purpose meets it sooner or later, or an attacker reaches it on a surface the product exposes.
+An exotic case - a contrived sequence, a coincidence of unrelated failures, a state only a test
+can build - is material=false too.
 
 <2-5 sentences of context: what the change is meant to do, the invariants it must hold>
 

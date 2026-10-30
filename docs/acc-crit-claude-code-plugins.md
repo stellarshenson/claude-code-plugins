@@ -871,6 +871,24 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-24T02:39:57Z @kj added
   - log: 2026-10-24T02:48:18Z @kj closed: met
+- [x] `ACC-REVIEW-274-SENSE-REVIEWER` **reviewers skip exotic edge cases** - HIGH; reviewer reports an edge case only when it can and will reasonably occur; an exotic one is material=false even when it reproduces; an attack on an exposed surface is not exotic
+  - evidence: test_adversarial_workflow_script.py test_method_is_not_stated_in_both_the_script_and_an_agent_file names the rule in adversarial-reviewer.md; sample check ruled 7 of 7 findings as expected on the reviewer text; suite 1766 passed, 2 skipped, 0 failed
+  - test: tests/test_adversarial_workflow_script.py
+  - test-tags: UNIT
+  - log: 2026-10-30T23:21:14Z @kj added
+  - log: 2026-10-30T23:31:59Z @kj closed
+- [x] `ACC-REVIEW-275-SENSE-ADJUDICATOR` **adjudicator refutes exotic edge cases** - HIGH; adjudicator refutes an exotic edge case as immaterial even when it reproduces; an edge case that will reasonably occur stays material
+  - evidence: test_adversarial_workflow_script.py test_method_is_not_stated_in_both_the_script_and_an_agent_file names the rule in adjudicator.md; sample check ruled 7 of 7 findings as expected on the adjudicator text; suite 1766 passed, 2 skipped, 0 failed
+  - test: tests/test_adversarial_workflow_script.py
+  - test-tags: UNIT
+  - log: 2026-10-30T23:21:14Z @kj added
+  - log: 2026-10-30T23:31:59Z @kj closed
+- [x] `ACC-REVIEW-276-SENSE-TEMPLATES` **prompt templates carry the rule** - HIGH; mode 1 and mode 2 prompt templates state the rule, because a claude -p reviewer loads no agent file; the skill tells a caller triaging by hand to apply it
+  - evidence: test_adversarial_workflow_script.py test_common_sense_reaches_the_prompt_templates_and_the_skill names the rule in both templates and SKILL.md; sample check ruled 7 of 7 findings as expected on the reviewer and adjudicator text; suite 1766 passed, 2 skipped, 0 failed
+  - test: tests/test_adversarial_workflow_script.py
+  - test-tags: UNIT
+  - log: 2026-10-30T23:21:14Z @kj added
+  - log: 2026-10-30T23:31:59Z @kj closed
 
 ## pm-tools soft lock `PMLOCK`
 
