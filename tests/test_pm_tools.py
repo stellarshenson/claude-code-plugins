@@ -3304,7 +3304,12 @@ def test_upgrade_nested_item_hint_command_is_accepted_by_add(tmp_path: Path, cap
     capsys.readouterr()
     assert run("upgrade", str(f), "--author", "@kj", "--apply") == 0
     cap = capsys.readouterr()
-    (hint,) = [ln for ln in cap.err.splitlines() if "nested checklist item" in ln]
+    # the check summary after upgrade names the same item; the HINT line is the command
+    (hint,) = [
+        ln
+        for ln in cap.err.splitlines()
+        if ln.startswith("HINT") and "nested checklist item" in ln
+    ]
     assert "--severity CRITICAL|MAJOR|MEDIUM|MINOR" in hint, "the mandatory flag is in the hint"
     assert (
         run(
@@ -3337,7 +3342,11 @@ def test_upgrade_nested_item_hint_command_is_accepted_by_add(tmp_path: Path, cap
     )
     capsys.readouterr()
     assert run("upgrade", str(g)) == 0
-    (hint,) = [ln for ln in capsys.readouterr().err.splitlines() if "nested checklist item" in ln]
+    (hint,) = [
+        ln
+        for ln in capsys.readouterr().err.splitlines()
+        if ln.startswith("HINT") and "nested checklist item" in ln
+    ]
     assert "--importance CRITICAL|HIGH|MEDIUM|LOW" in hint
 
 
@@ -3374,7 +3383,9 @@ def test_upgrade_level_hint_command_is_accepted_by_edit(
         encoding="utf-8",
     )
     assert run("upgrade", str(f), "--author", "@kj", "--apply") == 0
-    (hint,) = [ln for ln in capsys.readouterr().err.splitlines() if why in ln]
+    (hint,) = [
+        ln for ln in capsys.readouterr().err.splitlines() if ln.startswith("HINT") and why in ln
+    ]
     cmd = hint.split("run: pm-tools ", 1)[1]
     assert run(*cmd.replace(levels, level).replace("@xx", "@kj").split()) == 0
     assert f"**token race** - {level}; symptom" in f.read_text(encoding="utf-8")
@@ -3560,12 +3571,16 @@ def test_an_expired_lock_is_cleared_by_the_next_write_silently(defects: Path, ca
     run("list", str(defects))
     assert lock_lines(defects) == [f"- lock: {past} @xy"]
     assert run("check", str(defects)) == 0
-    assert "expired lock, cleared on the next write" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert f"lock by @xy expired {past} without closure, cleared on the next write" in out
     assert lock_lines(defects) == [f"- lock: {past} @xy"], "check is read-only"
-    # a write on ANOTHER item sweeps it, with no warning and no log line
+    # a write on ANOTHER item sweeps it, named once before it runs, with no log line
     before = len(log_lines(defects))
     assert run("log", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "x") == 0
-    assert capsys.readouterr().err == ""
+    assert capsys.readouterr().err == (
+        f"{defects}:{item_line(defects, 'DEF-LNCH-1')}: "
+        f"DEF-LNCH-1-TEST lock by @xy expired {past} without closure\n"
+    )
     assert lock_lines(defects) == []
     assert len(log_lines(defects)) == before + 1, "only the event itself was logged"
 
@@ -3611,7 +3626,10 @@ def test_unlock_clears_one_every_or_only_the_expired_locks(defects: Path, capsys
     with pytest.raises(SystemExit):
         run("unlock", str(defects), "--author", "@kj", "--all", "--expired")
     assert run("unlock", str(defects), "--author", "@kj", "--expired") == 0
-    assert capsys.readouterr().err == ""
+    err = capsys.readouterr().err.splitlines()
+    assert len(err) == 3 and all("DEF-LNCH-3-TEST lock by @xy expired" in ln for ln in err), (
+        "each of the three calls names the expired lock before it runs, and nothing else"
+    )
     assert [ln.split()[3] for ln in lock_lines(defects)] == ["@kj", "@xy"]
     assert run("unlock", str(defects), "--author", "@kj", "--id", "DEF-LNCH-1") == 0
     assert capsys.readouterr().err == "", "your own lock goes quietly"
@@ -3766,7 +3784,9 @@ def test_a_read_announces_the_items_someone_is_working_on(defects: Path, capsys)
     run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy", "--until", stamp(-1))
     capsys.readouterr()
     run("report", str(defects))
-    assert capsys.readouterr().err == "", "an expired lock is nobody working on anything"
+    err = capsys.readouterr().err
+    assert "currently worked on" not in err, "an expired lock is nobody working on anything"
+    assert "DEF-LNCH-1-TEST lock by @xy expired" in err, "it is named as expired instead"
 
 
 def test_the_pick_up_notice_names_ten_items_at_most(defects: Path, capsys):
@@ -5072,3 +5092,170 @@ def test_report_json_carries_each_categorys_notes_and_log(tmp_path: Path, capsys
     assert cats["LNCH"]["notes"] == ["first note", "second note"]
     assert cats["LNCH"]["log"] == CATEGORY_LOG
     assert cats["BOOT"]["notes"] == [] and cats["BOOT"]["log"] == []
+
+
+# --- Every command reports (ACC-PMLOCK-277, ACC-PMREL-278) -------------------
+
+
+def item_line(f: Path, item: str) -> int:
+    """The line pm-tools prints for the item: 1-based, the item's own line."""
+    lines = f.read_text(encoding="utf-8").splitlines()
+    return next(n for n, ln in enumerate(lines, 1) if f"`{item}`" in ln or f"`{item}-" in ln)
+
+
+def test_every_command_names_an_expired_lock_and_a_read_leaves_it(defects: Path, capsys):
+    """ACC-PMLOCK-277-EXPIRY-REPORT. Without the change a read prints no lock line and
+    check says only `expired lock`, so the first assertion fails."""
+    two_authors_two_defects(defects, capsys)
+    past = stamp(-1)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy", "--until", past)
+    body = defects.read_text(encoding="utf-8")
+    at = f"{defects}:{item_line(defects, 'DEF-LNCH-1')}:"
+    capsys.readouterr()
+    assert run("list", str(defects)) == 0
+    err = capsys.readouterr().err
+    assert err.startswith(f"{at} DEF-LNCH-1-TEST lock by @xy expired {past} without closure\n")
+    assert defects.read_text(encoding="utf-8") == body, "a read removes nothing"
+    assert run("check", str(defects)) == 0
+    out = capsys.readouterr().out
+    assert (
+        f"{at} warn  lock by @xy expired {past} without closure, cleared on the next write\n"
+        in (out)
+    )
+
+
+def test_a_write_names_the_expired_lock_once_and_removes_it(defects: Path, capsys):
+    """ACC-PMLOCK-277-EXPIRY-REPORT. Without the change the write prints nothing."""
+    two_authors_two_defects(defects, capsys)
+    past = stamp(-1)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy", "--until", past)
+    at = f"{defects}:{item_line(defects, 'DEF-LNCH-1')}:"
+    capsys.readouterr()
+    assert run("log", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "x") == 0
+    assert capsys.readouterr().err == (
+        f"{at} DEF-LNCH-1-TEST lock by @xy expired {past} without closure\n"
+    ), "named once, and the tracker is clean once it is gone"
+    assert lock_lines(defects) == []
+    assert run("list", str(defects)) == 0
+    assert capsys.readouterr().err == "", "the next command names nothing"
+
+
+def test_an_expired_lock_on_a_closed_item_is_named_without_closure_words(defects: Path, capsys):
+    """ACC-PMLOCK-277-EXPIRY-REPORT. A rejected item is not closed, so its lock still
+    expired without closure. Without the change stderr carries no lock line."""
+    two_authors_two_defects(defects, capsys)
+    run("close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--evidence", "ok")
+    run("reject", str(defects), "--id", "DEF-LNCH-2", "--author", "@kj", "--event", "dup")
+    past = stamp(-1)
+    hand_line(defects, "DEF-LNCH-1", f"lock: {past} @xy")
+    hand_line(defects, "DEF-LNCH-2", f"lock: {past} @xy")
+    one = f"{defects}:{item_line(defects, 'DEF-LNCH-1')}:"
+    two = f"{defects}:{item_line(defects, 'DEF-LNCH-2')}:"
+    capsys.readouterr()
+    assert run("report", str(defects)) == 0
+    err = capsys.readouterr().err
+    assert f"{one} DEF-LNCH-1-TEST lock by @xy expired {past}\n" in err
+    assert f"{two} DEF-LNCH-2-TEST lock by @xy expired {past} without closure\n" in err
+    run("check", str(defects))
+    out = capsys.readouterr().out
+    assert f"{one} warn  lock by @xy expired {past}, cleared on the next write\n" in out
+
+
+def test_every_command_prints_the_check_errors_and_the_count_after_it_runs(defects: Path, capsys):
+    """ACC-PMREL-278-CHECK-ALWAYS. Without the change stderr is empty."""
+    two_authors_two_defects(defects, capsys)
+    defects.write_text(defects.read_text(encoding="utf-8") + "- [?] stray\n", encoding="utf-8")
+
+    def summary() -> str:
+        n = len(defects.read_text(encoding="utf-8").splitlines())
+        return (
+            f"{defects}:{n}: ERROR malformed checkbox (use [ ], [x] or [-])\n"
+            f"check: 1 error(s), 0 warning(s) - run pm-tools check {defects.parent}\n"
+        )
+
+    assert run("list", str(defects)) == 0
+    out, err = capsys.readouterr()
+    assert err == summary() and "ERROR" not in out, "stdout is the table alone"
+    assert run("log", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "x") == 0
+    out, err = capsys.readouterr()
+    assert err == summary(), "a write reports the file as it left it"
+    assert out.startswith(f"{defects}:") and "check:" not in out
+    with pytest.raises(SystemExit):
+        run("log", str(defects), "--id", "DEF-LNCH-9", "--author", "@kj", "--event", "x")
+    assert run("check", str(defects)) == 1
+    assert "check:" not in capsys.readouterr().err, "check is the check"
+
+
+def test_warnings_are_counted_not_listed_and_a_clean_tracker_prints_no_check_line(
+    defects: Path, capsys
+):
+    """ACC-PMREL-278-CHECK-ALWAYS. Without the change stderr is empty and the count line
+    assertion fails."""
+    two_authors_two_defects(defects, capsys)
+    hand_line(defects, "DEF-LNCH-1", "evidence: the relaunch test passes")
+    assert run("list", str(defects)) == 0
+    assert capsys.readouterr().err == (
+        f"check: 0 error(s), 1 warning(s) - run pm-tools check {defects.parent}\n"
+    )
+    assert (
+        run("close", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--evidence", "ok")
+        == 0
+    )
+    assert capsys.readouterr().err == "", "clean after the close, so no check line"
+
+
+def test_the_check_summary_lists_ten_errors_then_the_rest_as_a_count(defects: Path, capsys):
+    """ACC-PMREL-278-CHECK-ALWAYS. Without the change stderr is empty."""
+    two_authors_two_defects(defects, capsys)
+    body = defects.read_text(encoding="utf-8")
+    defects.write_text(body + "- [?] stray\n" * 12, encoding="utf-8")
+    assert run("list", str(defects)) == 0
+    err = capsys.readouterr().err.splitlines()
+    assert len(err) == 12
+    assert all(" ERROR malformed checkbox" in ln for ln in err[:10])
+    assert err[10:] == [
+        "+2 more",
+        f"check: 12 error(s), 0 warning(s) - run pm-tools check {defects.parent}",
+    ]
+
+
+def test_json_stdout_stays_pure_while_the_notices_go_to_stderr(defects: Path, capsys):
+    """ACC-PMLOCK-277-EXPIRY-REPORT, ACC-PMREL-278-CHECK-ALWAYS. Without the change
+    stderr is empty."""
+    two_authors_two_defects(defects, capsys)
+    run("lock", str(defects), "--id", "DEF-LNCH-1", "--author", "@xy", "--until", stamp(-1))
+    defects.write_text(defects.read_text(encoding="utf-8") + "- [?] stray\n", encoding="utf-8")
+    capsys.readouterr()
+    for argv in (["list", str(defects)], ["report", str(defects)], ["refs", str(defects),
+                 "--id", "DEF-LNCH-1"]):  # fmt: skip
+        assert run(*argv, "--json") == 0
+        out, err = capsys.readouterr()
+        json.loads(out)
+        assert "lock by @xy expired" in err, argv[0]
+        assert "check: 1 error(s), 1 warning(s)" in err, argv[0]
+
+
+def test_a_link_into_the_sibling_tracker_resolves_when_one_file_is_named(
+    defects: Path, criteria: Path, capsys
+):
+    """ACC-PMREL-278-CHECK-ALWAYS. `check FILE` alone reports the link into the sibling
+    as not found; the summary scans the directory. Without the change stderr is empty."""
+    two_authors_two_defects(defects, capsys)
+    add_criterion(criteria, "password policy")  # ACC-AUTH-1
+    relate(defects, "DEF-LNCH-1", related="ACC-AUTH-1")
+    relate(defects, "DEF-LNCH-2", related="ACC-AUTH-99")  # the one dangling link
+    capsys.readouterr()
+    assert run("list", str(defects)) == 0
+    err = capsys.readouterr().err
+    assert err.count("not found in the scanned files") == 1 and "ACC-AUTH-99" in err
+    assert "ACC-AUTH-1-TEST" not in err
+    assert f"check: 1 error(s), 0 warning(s) - run pm-tools check {defects.parent}\n" in err
+
+
+def test_an_unreadable_sibling_tracker_adds_no_failure(defects: Path, capsys):
+    """ACC-PMREL-278-CHECK-ALWAYS. The notices read every tracker beside FILE; one that
+    is not UTF-8 is check's to report, never this command's failure."""
+    two_authors_two_defects(defects, capsys)
+    (defects.parent / "acc-crit-bin.md").write_bytes(b"\xff\xfe\x00")
+    assert run("log", str(defects), "--id", "DEF-LNCH-1", "--author", "@kj", "--event", "x") == 0
+    assert run("list", str(defects)) == 0

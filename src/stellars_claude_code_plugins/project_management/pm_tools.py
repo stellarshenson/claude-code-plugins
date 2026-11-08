@@ -28,6 +28,13 @@ directory, not one file, so cross-file links resolve. It also warns on a base id
 written on an item's line or a sub-line other than log: and attachment:, naming the
 full id to write: `DEF-LNCH-3 has no code; write DEF-LNCH-3-PARSER`.
 
+Every command reads the trackers beside the file it names, or in the directory it
+names. Before it runs, it prints one line per expired lock in them (the lock line is
+described below); after it runs, every command but check prints check's errors in them,
+ten at most and then `+N more`, and one line `check: E error(s), W warning(s) - run
+pm-tools check <dir>`, nothing when both are 0. Both go to stderr only: the exit code,
+stdout and the file written are what the command gives without them.
+
 Each discipline registers one explanation, and it stacks: `- mechanism: <stamp> @xx
 <text>` on a criterion says how it is meant to work, `- root-cause: <stamp> @xx <text>`
 on a defect says why it happens. A second write puts a new record ABOVE the old one and
@@ -50,11 +57,13 @@ An open item may carry one `- lock: 2026-08-30T10:11:29Z @kj <note>` line: @kj i
 working on it until the stamp. The lock is a courtesy signal, never a gate - a write by
 another author warns once on stderr and proceeds, exit code and file result unchanged.
 Every write command except `upgrade` first removes every lock whose stamp is past,
-silently; close and reject remove the item's lock whatever its expiry. Locking is never
-logged. report, list, search and refs open with `N item(s) currently worked on: DEF-X by
-@xx until <stamp>` on stderr whenever an item they show holds an active lock, ten ids at
-most and then `+M more` - the write-time warning is late, the read is when the item is
-chosen; --json carries no notice.
+unlogged; close and reject remove the item's lock whatever its expiry. Locking is never
+logged. The expired-lock line every command prints first reads `<file>:<line>: DEF-X lock
+by @xx expired <stamp> without closure`, with `without closure` only when the item is
+open or rejected; a read leaves the lock line in place. report, list, search and refs open
+with `N item(s) currently worked on: DEF-X by @xx until <stamp>` on stderr whenever an
+item they show holds an active lock, ten ids at most and then `+M more` - the write-time
+warning is late, the read is when the item is chosen; --json leaves that line out.
 
 An item may carry any number of `- attachment: <path> sha256:<16 hex> edited:<stamp>`
 lines - a screenshot, a document - the path relative to the tracker's directory, the
@@ -819,7 +828,8 @@ def lock_active(b):
 def expire_locks(file):
     """Drop every lock line whose stamp is past - the first step of every write but
     `upgrade`, which leaves lock lines untouched.
-    Silent and unlogged: an expired lock is a courtesy that ran out, not an event.
+    Unlogged: an expired lock is a courtesy that ran out, not an event. main names each
+    one on stderr before the command runs, so nothing is printed here.
     Returns how many were dropped."""
     lines = load(file)
     at = now()
@@ -864,6 +874,47 @@ def notice_locked(items):
     named = [f"{ident(b)} by {k['by']} until {k['until']}" for b, k in held[:10]]
     more = f", +{len(held) - 10} more" if len(held) > 10 else ""
     print(f"{len(held)} item(s) currently worked on: {', '.join(named)}{more}", file=sys.stderr)
+
+
+def expired_lock(b):
+    """`lock by @xx expired <stamp>`, then `without closure` while the item is not
+    closed: the holder stopped before the work was done."""
+    k = b["lock"]
+    closed = status_of(b) == "closed"
+    return f"lock by {k['by']} expired {k['until']}" + ("" if closed else " without closure")
+
+
+def notice_expired(files):
+    """Before every command: one stderr line per expired lock in `files`. A read leaves
+    the lock line in place; a write removes it afterwards, in expire_locks."""
+    try:
+        for f in files:
+            for b in parse(f)[0]:
+                if b["lock"] and not lock_active(b):
+                    print(f"{f}:{b['line']}: {ident(b)} {expired_lock(b)}", file=sys.stderr)
+    except (OSError, UnicodeDecodeError):
+        pass  # an unreadable tracker is check's to report, never this command's failure
+
+
+def notice_check(files, dirs):
+    """After every command but check: check's errors on stderr, ten at most, then one
+    count line; nothing when the trackers are clean. Warnings are counted, not listed."""
+    try:
+        found = check_findings(files)
+    except (OSError, UnicodeDecodeError):
+        return  # an unreadable tracker is check's to report, never this command's failure
+    errs = [f"{f}:{n}: ERROR {msg}" for f, e, _ in found for n, msg in e]
+    warns = sum(len(w) for _, _, w in found)
+    if not errs and not warns:
+        return
+    for ln in errs[:10]:
+        print(ln, file=sys.stderr)
+    if len(errs) > 10:
+        print(f"+{len(errs) - 10} more", file=sys.stderr)
+    print(
+        f"check: {len(errs)} error(s), {warns} warning(s) - run pm-tools check {' '.join(dirs)}",
+        file=sys.stderr,
+    )
 
 
 def warn_transfer(b, k, doing):
@@ -2338,14 +2389,16 @@ def _valid_stamp(s):
         return False
 
 
-def cmd_check(files, strict):
+def check_findings(files):
+    """(file, errors, warnings) per file, each a sorted list of (line, message) - what
+    check prints, and what every other command sums up on stderr after it runs."""
     index = link_index(files)
     cycles = {}  # smallest id -> the (kind, cycle) pairs reported on it
     for kind in ("blocked-by", "overrides"):
         for loop in cycles_in(graph(index, kind)):
             cycles.setdefault(loop[0], []).append((kind, loop))
 
-    errors = warns = 0
+    found = []
     seen = {}  # ident -> (file, line); an id is unique across the scanned files
     roots = {}  # base id -> (file, line, ident); one root family per base, store-wide
     root_bases = {root_of(b) for b in index.values() if not b["regr"]}
@@ -2582,7 +2635,7 @@ def cmd_check(files, strict):
                     )
                 )
             if b["lock"] and not lock_active(b):
-                w.append((b["line"], "expired lock, cleared on the next write"))
+                w.append((b["line"], f"{expired_lock(b)}, cleared on the next write"))
             elif b["lock"] and status_of(b) != "open":
                 w.append((b["line"], f"lock on a {status_of(b)} item; run unlock"))
             if b["att_bad"]:
@@ -2678,9 +2731,16 @@ def cmd_check(files, strict):
                     )
                 )
 
-        for lineno, msg in sorted(e):
+        found.append((f, sorted(e), sorted(w)))
+    return found
+
+
+def cmd_check(files, strict):
+    errors = warns = 0
+    for f, e, w in check_findings(files):
+        for lineno, msg in e:
             print(f"{f}:{lineno}: ERROR {msg}")
-        for lineno, msg in sorted(w):
+        for lineno, msg in w:
             print(f"{f}:{lineno}: warn  {msg}")
         errors += len(e)
         warns += len(w)
@@ -4811,6 +4871,21 @@ def main(argv: list[str] | None = None) -> int:
         ap.print_help()
         return 0
 
+    # every command reports on the trackers beside the files it names, so a link into a
+    # sibling resolves; on stderr only - exit code, stdout and file stay the command's
+    named = [a.file] if "file" in a else a.paths or resolve([])
+    dirs = sorted(
+        {str(q if q.is_dir() else q.parent) for q in map(pathlib.Path, named) if q.exists()}
+    )
+    scanned = resolve(dirs) if dirs else []
+    notice_expired(scanned)
+    rc = dispatch(a, sub, queries)
+    if a.cmd != "check":
+        notice_check(scanned, dirs)
+    return rc
+
+
+def dispatch(a, sub, queries):
     if a.cmd in queries:
         if a.cmd == "search":
             if a.top < 1:

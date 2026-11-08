@@ -1365,7 +1365,8 @@ def test_the_upgrade_level_hint_runs_as_printed(docs: Path, name, header, why, l
     )
     r = pm("upgrade", f, "--author", "@kj", "--apply")
     assert r.returncode == 0, r.stderr
-    (hint,) = [ln for ln in r.stderr.splitlines() if why in ln]
+    # the check summary after upgrade names the same item; the HINT line is the command
+    (hint,) = [ln for ln in r.stderr.splitlines() if ln.startswith("HINT") and why in ln]
     cmd = hint.split("run: pm-tools ", 1)[1].replace(levels, level).replace("@xx", "@kj")
     r = pm(*cmd.split())
     assert r.returncode == 0, r.stderr
@@ -1497,11 +1498,13 @@ def test_a_soft_lock_signals_who_is_working_and_never_blocks_anyone(defects: Pat
     )
     ok("lock", defects, "--id", "DEF-LNCH-2", "--author", "@xy", "--until", past)
     r = pm("check", defects)
-    assert r.returncode == 0 and "expired lock, cleared on the next write" in r.stdout
+    assert r.returncode == 0
+    assert f"lock by @xy expired {past} without closure, cleared on the next write" in r.stdout
     assert f"- lock: {past} @xy" in defects.read_text(encoding="utf-8"), "check is read-only"
     assert "`DEF-LNCH-2-TEST`" not in ok("list", defects, "--locked"), "expired is not active"
     r = pm("log", defects, "--id", "DEF-LNCH-3", "--author", "@kj", "--event", "looked")
-    assert r.returncode == 0 and r.stderr == ""
+    assert r.returncode == 0 and r.stderr.count("\n") == 1, "named once, before the write"
+    assert f"DEF-LNCH-2-TEST lock by @xy expired {past} without closure" in r.stderr
     assert f"- lock: {past}" not in defects.read_text(encoding="utf-8")
 
     # close clears the lock it finds, whoever holds it

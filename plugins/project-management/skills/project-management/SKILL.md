@@ -239,7 +239,7 @@ An open item may carry one `- lock: <stamp> @xx [note]` sub-line: @xx is likely 
 - **The call** - `pm-tools lock FILE --id ID --author @xx`, 24 hours by default; `--hours N` or `--until STAMP` sets another span, locking again as the same author extends it
 - **Ask before working on an item locked by someone else** - a lock held by another handle is a person mid-change; ask them before continuing
 - **The lock never blocks a write** - a write on an item locked by another author prints one warning on stderr naming the holder and the expiry, then proceeds; exit code and file result are those of the unlocked case. A lock is refused only on a closed or rejected item
-- **Expired locks clear themselves on the next write** - any write command but `upgrade` first removes every lock whose stamp is past, silently and unlogged; `close` and `reject` clear the item's lock whatever its expiry. `check` is read-only and reports an expired lock as a warning
+- **Every command names an expired lock, and the next write removes it** - before any command runs, stderr carries one line per expired lock in the trackers beside the file it names or in the directory it names, `<file>:<line>: DEF-X lock by @xx expired <stamp> without closure`, with `without closure` only when the item is open or rejected; a read leaves the lock line in place. Any write command but `upgrade` then removes every lock whose stamp is past, unlogged; `close` and `reject` clear the item's lock whatever its expiry. `check` is read-only and reports an expired lock as a warning naming the holder and the stamp
 - **Unlock at will** - `pm-tools unlock FILE --author @xx --id ID`, or `--all`, or `--expired`; clearing another author's active lock warns once and proceeds
 - **Taking or clearing someone else's active lock is a transfer** - `lock` and `unlock` say so on stderr, `TRANSFER: DEF-X was locked by @yy until <stamp> - you are taking it over; ask @yy`, and proceed; a takeover with no `--note` records `taken over from @yy` on the new lock line, so the previous holder stays visible on the item
 
@@ -309,7 +309,7 @@ Write - `--author` on every one of them. Each writes FILE alone, except: `relate
 
 Every free-text argument is one line of the file; a real line break inside one is written as the two characters `\n`, never dropped.
 
-Run `check` after every edit session. It is the only gate.
+Run `check` after every edit session. It is the only gate. Every other command runs the same check after it runs, over the trackers beside the file it names or in the directory it names, and prints on stderr each error (ten at most, then `+N more`) and one line `check: E error(s), W warning(s) - run pm-tools check <dir>`; nothing when both are 0. That summary never changes the command's exit code, stdout or the file it writes.
 
 ## Rules
 

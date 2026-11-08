@@ -24,95 +24,134 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
 | Label/number truth against source content | - | owns |
 
 - [x] `ACC-SVG-1-CONSTRUCT` **CLI: document construction** - HIGH; parseable XML, canvas/viewBox read, per-tag geometry sane
+  - evidence: tests/test_svg_tools.py TestFinalize::test_malformed_xml_hard_fail, TestScaffold::test_validate_accepts_svg_flag and tests/test_svg_functional.py TestRound5CascadeFollowups::test_geometry_that_is_not_a_number_is_skipped_not_crashed_on pass at v1.8.29
+  - test: tests/test_svg_tools.py: TestFinalize::test_malformed_xml_hard_fail; tests/test_svg_functional.py: test_a_percentage_sized_plate_resolves_against_the_viewbox, test_geometry_that_is_not_a_number_is_skipped_not_crashed_on
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj in place (v1.6.45)
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:11:40Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded CONSTRUCT
+  - log: 2026-11-07T16:44:17Z @kj edited test added "tests/test_svg_tools.py: TestFinalize::test_malformed_xml_hard_fail; tests/test_svg_functional.py: test_a_percentage_sized_plate_resolves_against_the_viewbox, test_geometry_that_is_not_a_number_is_skipped_not_crashed_on"; evidence added "tests/test_svg_tools.py TestFinalize::test_malformed_xml_hard_fail, TestScaffold::test_validate_accepts_svg_flag and tests/test_svg_functional.py TestRound5CascadeFollowups::test_geometry_that_is_not_a_number_is_skipped_not_crashed_on pass at v1.8.29"
 - [x] `ACC-SVG-2-CONNECTOR` **CLI: connector construction** - HIGH; stem attaches to card edge, arrowhead aligned to stem and sized from it, zero-length stems flagged
+  - evidence: tests/test_svg_tools.py TestCheckConnectors::test_cli_basic_and_zero_length, TestStemHeadRatio (3); tests/test_svg_functional.py TestArrivalValidatorFunctional (11), TestArrowheadAxisFunctional (7); tests/test_connector_backplate.py TestEdgeSnapNoBackplateFalsePositives (3) pass at v1.8.29
+  - test: tests/test_svg_tools.py: TestCheckConnectors::test_cli_basic_and_zero_length, TestStemHeadRatio::test_warns_on_stubby_arrow; tests/test_svg_functional.py: test_gate_flags_a_head_rotated_off_its_line; tests/test_connector_backplate.py: TestEdgeSnapNoBackplateFalsePositives
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj in place (v1.6.45)
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:40Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded CONNECTOR
+  - log: 2026-11-07T16:44:18Z @kj edited test added "tests/test_svg_tools.py: TestCheckConnectors::test_cli_basic_and_zero_length, TestStemHeadRatio::test_warns_on_stubby_arrow; tests/test_svg_functional.py: test_gate_flags_a_head_rotated_off_its_line; tests/test_connector_backplate.py: TestEdgeSnapNoBackplateFalsePositives"; evidence added "tests/test_svg_tools.py TestCheckConnectors::test_cli_basic_and_zero_length, TestStemHeadRatio (3); tests/test_svg_functional.py TestArrivalValidatorFunctional (11), TestArrowheadAxisFunctional (7); tests/test_connector_backplate.py TestEdgeSnapNoBackplateFalsePositives (3) pass at v1.8.29"
 - [x] `ACC-SVG-3-OVERLAP` **CLI: overlap geometry** - HIGH; rendered boxes of visible elements do not overlap; hidden subtrees excluded via one shared `is_display_none` predicate across colour scan, connector walk and overlaps model
+  - evidence: tests/test_check_ink.py test_planted_overlaps_are_hard, test_finalize_reports_ink_findings; tests/test_svg_functional.py TestRound7Followups::test_important_display_none_hides_from_the_colour_scan, ::test_important_display_none_hides_from_the_connector_walk, TestRound8Followups::test_display_none_important_hides_from_the_overlaps_model, ::test_border_display_none_stays_in_the_overlaps_model pass at v1.8.29
+  - test: tests/test_check_ink.py: test_planted_overlaps_are_hard, test_clean_cases_are_silent; tests/test_svg_functional.py: test_display_none_important_hides_from_the_overlaps_model, test_important_display_none_hides_from_the_colour_scan, test_important_display_none_hides_from_the_connector_walk
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj predicate unified across the three layers (round-8 fix)
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:11:40Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded OVERLAP
+  - log: 2026-11-07T16:44:18Z @kj edited test added "tests/test_check_ink.py: test_planted_overlaps_are_hard, test_clean_cases_are_silent; tests/test_svg_functional.py: test_display_none_important_hides_from_the_overlaps_model, test_important_display_none_hides_from_the_colour_scan, test_important_display_none_hides_from_the_connector_walk"; evidence added "tests/test_check_ink.py test_planted_overlaps_are_hard, test_finalize_reports_ink_findings; tests/test_svg_functional.py TestRound7Followups::test_important_display_none_hides_from_the_colour_scan, ::test_important_display_none_hides_from_the_connector_walk, TestRound8Followups::test_display_none_important_hides_from_the_overlaps_model, ::test_border_display_none_stays_in_the_overlaps_model pass at v1.8.29"
 - [x] `ACC-SVG-4-COLOUR` **CLI: colour arithmetic** - HIGH; WCAG contrast ratios in both themes against the elected background; unreadable paint is reported UNMEASURABLE, never silently passed
+  - evidence: tests/test_svg_tools.py TestCheckContrast::test_cli_smoke, TestFinalize::test_contrast_failure_is_hard, TestRound8ContrastCascade::test_the_dark_row_uses_the_plate_dark_value, ::test_unmeasurable_text_reaches_the_gate; tests/test_svg_functional.py TestRound6PlateElection (2), TestRound5CascadeFollowups::test_dark_var_on_text_is_unmeasurable_not_silence pass at v1.8.29
+  - test: tests/test_svg_tools.py: TestFinalize::test_contrast_failure_is_hard, TestRound8ContrastCascade::test_the_dark_row_uses_the_plate_dark_value, TestRound8ContrastCascade::test_unmeasurable_text_reaches_the_gate
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj in place (v1.6.45)
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:11:40Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded COLOUR
+  - log: 2026-11-07T16:44:18Z @kj edited test added "tests/test_svg_tools.py: TestFinalize::test_contrast_failure_is_hard, TestRound8ContrastCascade::test_the_dark_row_uses_the_plate_dark_value, TestRound8ContrastCascade::test_unmeasurable_text_reaches_the_gate"; evidence added "tests/test_svg_tools.py TestCheckContrast::test_cli_smoke, TestFinalize::test_contrast_failure_is_hard, TestRound8ContrastCascade::test_the_dark_row_uses_the_plate_dark_value, ::test_unmeasurable_text_reaches_the_gate; tests/test_svg_functional.py TestRound6PlateElection (2), TestRound5CascadeFollowups::test_dark_var_on_text_is_unmeasurable_not_silence pass at v1.8.29"
 - [x] `ACC-SVG-5-CSS` **CLI: CSS discipline** - MEDIUM; class-based paint, no forbidden colours, dark-mode declarations where light ones exist
+  - evidence: tests/test_svg_tools.py TestCheckCSS::test_violation_rules (inline_fill, forbidden_color, text_opacity, missing_dark), ::test_cli_pass_and_fail, ::test_dark_block_parses_all_classes, TestFinalize::test_css_findings_are_soft_not_hard pass at v1.8.29
+  - test: tests/test_svg_tools.py: TestCheckCSS::test_violation_rules, cases inline_fill, forbidden_color and missing_dark
   - test-tags: UNIT
   - log: 2026-08-13T00:00:00Z @kj in place (v1.6.45)
   - log: 2026-08-28T09:11:39Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded CSS
+  - log: 2026-11-07T16:44:18Z @kj edited test added "tests/test_svg_tools.py: TestCheckCSS::test_violation_rules, cases inline_fill, forbidden_color and missing_dark"; evidence added "tests/test_svg_tools.py TestCheckCSS::test_violation_rules (inline_fill, forbidden_color, text_opacity, missing_dark), ::test_cli_pass_and_fail, ::test_dark_block_parses_all_classes, TestFinalize::test_css_findings_are_soft_not_hard pass at v1.8.29"
 - [x] `ACC-SVG-6-ROSTER` **CLI: roster honesty** - HIGH; every aspect reports PASS/FAIL/NA/SKIP; an unasked SKIP flips the verdict to NOT VERIFIED plus exit 1 on every branch, HARD path included; `--json` carries the per-file `skipped` map and `totals`
-  - test-tags: UNIT
+  - evidence: tests/test_svg_functional.py TestChecklistRoster (8), TestRound5CleanVerdict::test_unasked_skips_flip_the_verdict_and_the_exit_code, TestRound6RosterVerdicts::test_acked_soft_findings_do_not_ship_over_unjudged_aspects, TestRound7Followups::test_clean_branch_json_carries_totals, ::test_hard_path_json_carries_the_real_skipped_map, TestRound8Followups::test_hard_path_names_the_unjudged_aspects_at_planning_time pass at v1.8.29
+  - test: tests/test_svg_functional.py: test_unrun_layer_reports_skip_not_pass, test_unasked_skips_flip_the_verdict_and_the_exit_code, test_hard_path_names_the_unjudged_aspects_at_planning_time, test_hard_path_json_carries_the_real_skipped_map, test_clean_branch_json_carries_totals
+  - test-tags: FUNCTIONAL
   - log: 2026-08-13T00:00:00Z @kj HARD-path stderr gap closed (round-8 fix)
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded ROSTER
+  - log: 2026-11-07T16:44:19Z @kj edited test added "tests/test_svg_functional.py: test_unrun_layer_reports_skip_not_pass, test_unasked_skips_flip_the_verdict_and_the_exit_code, test_hard_path_names_the_unjudged_aspects_at_planning_time, test_hard_path_json_carries_the_real_skipped_map, test_clean_branch_json_carries_totals"; test-tags "UNIT" -> "FUNCTIONAL"; evidence added "tests/test_svg_functional.py TestChecklistRoster (8), TestRound5CleanVerdict::test_unasked_skips_flip_the_verdict_and_the_exit_code, TestRound6RosterVerdicts::test_acked_soft_findings_do_not_ship_over_unjudged_aspects, TestRound7Followups::test_clean_branch_json_carries_totals, ::test_hard_path_json_carries_the_real_skipped_map, TestRound8Followups::test_hard_path_names_the_unjudged_aspects_at_planning_time pass at v1.8.29"
 - [x] `ACC-SVG-7-GEN-EVAL` **CLI: no generative evals** - HIGH; the CLI never attempts readability, semantic or aesthetic judgment; checks stay deterministic (construction, geometry, colour arithmetic)
+  - evidence: grep -rniE 'anthropic|openai|claude -p' src/stellars_claude_code_plugins/svg_tools: 0 lines at v1.8.29, no model call; plugins/svg-infographics/skills/svg-infographics/references/validation.md:5 limits the CLI to construction, geometry, colour arithmetic, roster honesty (commit a2e3b62, journal entry 314)
+  - test: grep src/stellars_claude_code_plugins/svg_tools/ for anthropic, openai and claude -p: no hit; every finalize roster row names a construction, geometry, colour or CSS check
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj doctrine set by the Star Colonel
   - log: 2026-08-28T09:11:38Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded GEN-EVAL
+  - log: 2026-11-07T16:44:19Z @kj edited test added "grep src/stellars_claude_code_plugins/svg_tools/ for anthropic, openai and claude -p: no hit; every finalize roster row names a construction, geometry, colour or CSS check"; evidence added "grep -rniE 'anthropic|openai|claude -p' src/stellars_claude_code_plugins/svg_tools: 0 lines at v1.8.29, no model call; plugins/svg-infographics/skills/svg-infographics/references/validation.md:5 limits the CLI to construction, geometry, colour arithmetic, roster honesty (commit a2e3b62, journal entry 314)"
 - [ ] `ACC-SVG-8-VERDICT` **CLI: verdict names the floor** - MEDIUM; verdict lines assert what was checked, never overall quality
+  - test: finalize a clean SVG; the verdict line on stderr names the checks run and does not say shippable
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added - the current "OK - shippable" wording predates the split; reword decision pending the Star Colonel
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded VERDICT
-- [x] `ACC-SVG-9-HYPOTHESIS` **Process: hypothesis first** - HIGH; every graphic states its rationale before any wireframing; the CLI cannot check this
+  - log: 2026-11-07T16:44:19Z @kj edited test added "finalize a clean SVG; the verdict line on stderr names the checks run and does not say shippable"
+- [ ] `ACC-SVG-9-HYPOTHESIS` **Process: hypothesis first** - HIGH; every graphic states its rationale before any wireframing; the CLI cannot check this
+  - test: on a new graphic, the rationale or hypothesis is written before the first wireframe
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj in place (standing directive)
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded HYPOTHESIS
+  - log: 2026-11-07T16:44:43Z @kj reopened: the rationale-before-wireframing step is stated in no shipped svg-infographics file; it lives only in agent memory
+  - log: 2026-11-07T16:44:45Z @kj edited test added "on a new graphic, the rationale or hypothesis is written before the first wireframe"
 - [ ] `ACC-SVG-10-LEGIBILITY` **Process: legibility at ship size** - HIGH; generative review of the rendered PNG; no deterministic proxy exists
+  - test: render-png --mode both; a model reads each PNG at ship size and names every label it cannot read
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded LEGIBILITY
+  - log: 2026-11-07T16:44:20Z @kj edited test added "render-png --mode both; a model reads each PNG at ship size and names every label it cannot read"
 - [ ] `ACC-SVG-11-SEMANTIC` **Process: semantic fit** - HIGH; the graphic says what the hypothesis claims; metaphor and flow fit the content
+  - test: a model reads the rendered PNG beside the stated hypothesis and names each claim the graphic does not show
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded SEMANTIC
+  - log: 2026-11-07T16:44:20Z @kj edited test added "a model reads the rendered PNG beside the stated hypothesis and names each claim the graphic does not show"
 - [ ] `ACC-SVG-12-EXAMPLES` **Process: examples bar** - HIGH; side-by-side against `plugins/svg-infographics/examples/` production references; "readable infographic" is a generative judgment
+  - test: render the graphic and the closest plugins/svg-infographics/examples/ reference; a model compares them side by side and names each gap
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded EXAMPLES
+  - log: 2026-11-07T16:44:20Z @kj edited test added "render the graphic and the closest plugins/svg-infographics/examples/ reference; a model compares them side by side and names each gap"
 - [ ] `ACC-SVG-13-LABEL` **Process: label truth** - CRITICAL; labels and numbers match the source content the graphic summarizes
+  - test: list every text element of the SVG; check each label and number against the source content
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded LABEL
+  - log: 2026-11-07T16:44:21Z @kj edited test added "list every text element of the SVG; check each label and number against the source content"
 - [ ] `ACC-SVG-14-AMBIGUITY` **Process: ambiguity adjudication** - MEDIUM; intentional layering vs overlap defect, decorative density vs clutter: judged by the model, never the CLI
+  - test: for each finalize overlap finding, a model reads the PNG and rules it intended layering or a defect; the same for decoration against clutter
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded AMBIGUITY
+  - log: 2026-11-07T16:44:21Z @kj edited test added "for each finalize overlap finding, a model reads the PNG and rules it intended layering or a defect; the same for decoration against clutter"
 - [x] `ACC-SVG-15-SHIP` **Ship = floor AND judgment** - CRITICAL; a graphic ships when the CLI floor passes AND the generative review accepts; a CLI PASS alone is never a ship decision
+  - evidence: plugins/svg-infographics/skills/svg-infographics/references/validation.md:5: a CLI PASS alone is never a ship decision (commit a2e3b62, journal entry 314); plugins/svg-infographics/skills/svg-infographics/references/workflow.md Phase 6 step 6 reads the rendered PNG after finalize passes, before delivery
+  - test: read plugins/svg-infographics/skills/svg-infographics/references/workflow.md Phase 6: a finalize pass is followed by the PNG readback before the graphic ships
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj doctrine set by the Star Colonel
   - log: 2026-08-28T09:11:37Z @kj edited importance
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded SHIP
+  - log: 2026-11-07T16:44:21Z @kj edited test added "read plugins/svg-infographics/skills/svg-infographics/references/workflow.md Phase 6: a finalize pass is followed by the PNG readback before the graphic ships"; evidence added "plugins/svg-infographics/skills/svg-infographics/references/validation.md:5: a CLI PASS alone is never a ship decision (commit a2e3b62, journal entry 314); plugins/svg-infographics/skills/svg-infographics/references/workflow.md Phase 6 step 6 reads the rendered PNG after finalize passes, before delivery"
 - [x] `ACC-SVG-164-PARTIAL-OVERLAP` **Partial shape overlap is HARD** - HIGH; Two shapes whose painted fills partly overlap give a HARD finding; a shape fully inside another gives none.
   - evidence: tests/test_check_ink.py::test_planted_overlaps_are_hard passes; pass-chip inside pass-card gives no finding
   - test-tags: UNIT
@@ -494,6 +533,12 @@ related/blocked-by links in every query surface, an exact --grep filter, a ranke
   - log: 2026-10-16T15:12:46Z @kj added
   - log: 2026-10-16T15:12:46Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded REPAIR-DANGLING
+- [x] `ACC-PMREL-278-CHECK-ALWAYS` **every command runs the consistency check** - HIGH; every pm-tools command but check runs check over the trackers it scans: each error on stderr, 10 at most then +N more, then one count line; silent at 0 errors and 0 warnings; exit code and file unchanged
+  - evidence: tests/test_pm_tools.py::test_every_command_prints_the_check_errors_and_the_count_after_it_runs, test_warnings_are_counted_not_listed_and_a_clean_tracker_prints_no_check_line, test_the_check_summary_lists_ten_errors_then_the_rest_as_a_count, test_json_stdout_stays_pure_while_the_notices_go_to_stderr, test_a_link_into_the_sibling_tracker_resolves_when_one_file_is_named, test_an_unreadable_sibling_tracker_adds_no_failure pass; suite 1775 passed, 2 skipped (2026-11-07)
+  - test: tests/test_pm_tools.py
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-11-07T14:01:53Z @kj added
+  - log: 2026-11-07T14:26:44Z @kj closed
 
 ## adversarial review tooling `REVIEW`
 
@@ -596,7 +641,7 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-28T12:11:56Z @kj added
   - log: 2026-08-28T12:20:46Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded CONFIRM-PIN
-- [x] `ACC-REVIEW-49-TRAJECTORY` **trajectory stop** - HIGH; FANOUT_STOP fires when the adjudicator judges two of the last three rounds spiralling while each still ordered changes or reverts - a window, not a streak (DEF-ADVR-74); trajectory and trajectoryReason are required fields; a clean round ships before it counts (DEF-ADVR-46); the fanout ratio is evidence, never the gate (DEF-ADVR-50)
+- [x] `ACC-REVIEW-49-TRAJECTORY` **trajectory stop** - HIGH; FANOUT_STOP fires when the adjudicator judges two of the last three rounds spiralling while each still ordered changes or reverts - a window, not a streak (DEF-ADVR-74-SPIRAL-STOP); trajectory and trajectoryReason are required fields; a clean round ships before it counts (DEF-ADVR-46-FANOUT-STOP); the fanout ratio is evidence, never the gate (DEF-ADVR-50-FANOUT-CONVERGE)
   - evidence: test_the_spiral_stop_counts_two_of_the_last_three_rounds: S,C,S stops, S,C,C,S plans, S,S stops, S,S,C plans after the stop; test_gates_present pins the window; suite 1442 passed 2 skipped; review wf_db2a3efc-cce SHIP
   - test: test_the_spiral_stop_counts_two_of_the_last_three_rounds drives spiralling, converging, spiralling to FANOUT_STOP and a spiralling round two back plus converging ones to PLAN; test_gates_present asserts the rulings window and no spiralStreak
   - test-tags: UNIT
@@ -611,6 +656,7 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-09-26T19:23:30Z @kj reopened: the stop became a window of two of the last three rounds (DEF-ADVR-74); the closing evidence names the old streak; evidence retired: tests/test_adversarial_workflow_script.py::test_gates_present asserts spiralStreak >= 2, adj.trajectory === 'spiralling' && refining, the required 'trajectory', 'trajectoryReason' fields and the absence of highFanoutStreak; 23 passed in the file; full suite 1267 passed 2 skipped, ruff clean
   - log: 2026-09-26T19:23:35Z @kj closed: window stop verified
   - log: 2026-10-18T15:14:44Z @kj coded TRAJECTORY
+  - log: 2026-11-07T16:44:13Z @kj amended text "FANOUT_STOP fires when the adjudicator judges two of the last three rounds spiralling while each still ordered changes or reverts - a window, not a streak (DEF-ADVR-74); trajectory and trajectoryReason are required fields; a clean round ships before it counts (DEF-ADVR-46); the fanout ratio is evidence, never the gate (DEF-ADVR-50)" -> "FANOUT_STOP fires when the adjudicator judges two of the last three rounds spiralling while each still ordered changes or reverts - a window, not a streak (DEF-ADVR-74-SPIRAL-STOP); trajectory and trajectoryReason are required fields; a clean round ships before it counts (DEF-ADVR-46-FANOUT-STOP); the fanout ratio is evidence, never the gate (DEF-ADVR-50-FANOUT-CONVERGE)"
 - [x] `ACC-REVIEW-50-ROUND-CAP` **round cap returns history** - MEDIUM; hitting maxRounds (default 6) ends the loop with ROUND_CAP and the full round history rather than looping on
   - evidence: ROUND_CAP status returns full history at maxRounds; test_gates_present
   - test: guardrail test asserts the cap path
@@ -653,14 +699,15 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-28T13:21:19Z @kj added
   - log: 2026-08-28T13:21:19Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded LOOP-ECONOMY
-- [x] `ACC-REVIEW-56-BAR-PURPOSE` **Bar names purpose, input universe and primary path; materiality before severity** - HIGH; The workflow script throws on a bar missing purpose, inputs or primaryPath; every finding carries material + materiality; material=false is capped by the script at MINOR/outOfBar; the adjudicator's step 0 refutes immaterial findings before verification (DEF-ADVR-40)
+- [x] `ACC-REVIEW-56-BAR-PURPOSE` **Bar names purpose, input universe and primary path; materiality before severity** - HIGH; The workflow script throws on a bar missing purpose, inputs or primaryPath; every finding carries material + materiality; material=false is capped by the script at MINOR/outOfBar; the adjudicator's step 0 refutes immaterial findings before verification (DEF-ADVR-40-MATERIALITY)
   - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
   - test: test_bar_must_name_purpose_inputs_and_primary_path, test_materiality_before_severity
   - test-tags: UNIT
   - log: 2026-08-29T09:22:05Z @kj added
   - log: 2026-08-29T09:22:06Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded BAR-PURPOSE
-- [x] `ACC-REVIEW-57-NEW-MECHANISM` **Plan changes flag newMechanism inside a per-round budget** - HIGH; Every adjudicated change carries newMechanism; every change flagged newMechanism is returned under mechanisms and logged, for the main session to veto unless it answers a material CRITICAL/MAJOR; the plan is ranked by materiality within maxChanges (default 3); PLAN logs an over-budget plan (DEF-ADVR-41)
+  - log: 2026-11-07T16:44:13Z @kj amended text "The workflow script throws on a bar missing purpose, inputs or primaryPath; every finding carries material + materiality; material=false is capped by the script at MINOR/outOfBar; the adjudicator's step 0 refutes immaterial findings before verification (DEF-ADVR-40)" -> "The workflow script throws on a bar missing purpose, inputs or primaryPath; every finding carries material + materiality; material=false is capped by the script at MINOR/outOfBar; the adjudicator's step 0 refutes immaterial findings before verification (DEF-ADVR-40-MATERIALITY)"
+- [x] `ACC-REVIEW-57-NEW-MECHANISM` **Plan changes flag newMechanism inside a per-round budget** - HIGH; Every adjudicated change carries newMechanism; every change flagged newMechanism is returned under mechanisms and logged, for the main session to veto unless it answers a material CRITICAL/MAJOR; the plan is ranked by materiality within maxChanges (default 3); PLAN logs an over-budget plan (DEF-ADVR-41-NEW-MECHANISM)
   - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
   - test: test_new_mechanism_flag_and_change_budget
   - test-tags: UNIT
@@ -668,20 +715,23 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-29T09:22:06Z @kj closed
   - log: 2026-08-29T09:46:14Z @kj edited text
   - log: 2026-10-18T15:14:44Z @kj coded NEW-MECHANISM
-- [x] `ACC-REVIEW-58-REVERT` **Revert before refine - reverts in adjudication, PLAN, STOP and FANOUT_STOP** - HIGH; Findings on loop-introduced code are ruled as reverts (mechanism, site, dissolved findings, deferred originals) unless the original was material; contested semantics always revert; PLAN, STOP and FANOUT_STOP carry reverts, falling back to every applied change; fanout above 0.5 with no revert is logged (DEF-ADVR-42)
+  - log: 2026-11-07T16:44:13Z @kj amended text "Every adjudicated change carries newMechanism; every change flagged newMechanism is returned under mechanisms and logged, for the main session to veto unless it answers a material CRITICAL/MAJOR; the plan is ranked by materiality within maxChanges (default 3); PLAN logs an over-budget plan (DEF-ADVR-41)" -> "Every adjudicated change carries newMechanism; every change flagged newMechanism is returned under mechanisms and logged, for the main session to veto unless it answers a material CRITICAL/MAJOR; the plan is ranked by materiality within maxChanges (default 3); PLAN logs an over-budget plan (DEF-ADVR-41-NEW-MECHANISM)"
+- [x] `ACC-REVIEW-58-REVERT` **Revert before refine - reverts in adjudication, PLAN, STOP and FANOUT_STOP** - HIGH; Findings on loop-introduced code are ruled as reverts (mechanism, site, dissolved findings, deferred originals) unless the original was material; contested semantics always revert; PLAN, STOP and FANOUT_STOP carry reverts, falling back to every applied change; fanout above 0.5 with no revert is logged (DEF-ADVR-42-REVERT)
   - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
   - test: test_revert_before_refine
   - test-tags: UNIT
   - log: 2026-08-29T09:22:05Z @kj added
   - log: 2026-08-29T09:22:06Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded REVERT
-- [x] `ACC-REVIEW-59-CONFIRM-FILTER` **Confirm-round filter enforced by the script** - MEDIUM; A confirming finding survives only if it names a failing closure or sits in a file the applied delta touched (appliedFixes.files or the closure site), and is not taste; dropped findings are logged by title and recorded in history; the confirm prompt carries a turn budget (DEF-ADVR-43)
+  - log: 2026-11-07T16:44:14Z @kj amended text "Findings on loop-introduced code are ruled as reverts (mechanism, site, dissolved findings, deferred originals) unless the original was material; contested semantics always revert; PLAN, STOP and FANOUT_STOP carry reverts, falling back to every applied change; fanout above 0.5 with no revert is logged (DEF-ADVR-42)" -> "Findings on loop-introduced code are ruled as reverts (mechanism, site, dissolved findings, deferred originals) unless the original was material; contested semantics always revert; PLAN, STOP and FANOUT_STOP carry reverts, falling back to every applied change; fanout above 0.5 with no revert is logged (DEF-ADVR-42-REVERT)"
+- [x] `ACC-REVIEW-59-CONFIRM-FILTER` **Confirm-round filter enforced by the script** - MEDIUM; A confirming finding survives only if it names a failing closure or sits in a file the applied delta touched (appliedFixes.files or the closure site), and is not taste; dropped findings are logged by title and recorded in history; the confirm prompt carries a turn budget (DEF-ADVR-43-CONFIRM-SWEEP)
   - evidence: tests/test_adversarial_workflow_script.py 17 passed; full suite 1035 passed, ruff clean
   - test: test_confirm_round_filter_is_script_enforced
   - test-tags: UNIT
   - log: 2026-08-29T09:22:06Z @kj added
   - log: 2026-08-29T09:22:06Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded CONFIRM-FILTER
+  - log: 2026-11-07T16:44:14Z @kj amended text "A confirming finding survives only if it names a failing closure or sits in a file the applied delta touched (appliedFixes.files or the closure site), and is not taste; dropped findings are logged by title and recorded in history; the confirm prompt carries a turn budget (DEF-ADVR-43)" -> "A confirming finding survives only if it names a failing closure or sits in a file the applied delta touched (appliedFixes.files or the closure site), and is not taste; dropped findings are logged by title and recorded in history; the confirm prompt carries a turn budget (DEF-ADVR-43-CONFIRM-SWEEP)"
 - [x] `ACC-REVIEW-60-ROUTING` **Routing: dynamic capability constructs from the spec, shipped script only as fallback** - CRITICAL; Every routing surface (SKILL.md, commands/adversarial-review.md, references/loop-spec.md, README.md) states: a harness with the dynamic Workflow capability constructs the workflow from the spec; a harness without it executes the shipped adversarial-loop.js as the supplied protocol; the shipped script is named worked example and fallback, never the default. Live check: a review run under Claude Code passes the constructed script inline (Workflow script=...), never scriptPath to the shipped file
   - evidence: test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback passes; live constructed run wf_67c56c05-595 (script passed inline, pipeline per lens + materiality refutation votes + adjudication) returned SHIP on the ADVR delta - 9 agents, 512k tokens
   - test: test_routing_dynamic_constructs_from_spec_shipped_script_is_fallback; live run wf_ record in the journal
@@ -762,13 +812,14 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-08-29T15:02:02Z @kj closed
   - log: 2026-08-29T15:02:02Z @kj premise correction from the run: graphify is NOT a stellarshenson project - 0.8.18 METADATA carries 'Copyright (c) 2026 Safi Shamsi' and the homepage redirects to github.com/Graphify-Labs/graphify. I had briefed the workflow with the wrong upstream; the skill now cites the real one. Also recorded: PyPI is at 0.9.51 while this box runs 0.8.18, and 0.9.51's paths.py names issue #1423 as fixing the GRAPHIFY_OUT override defect - the skill documents 0.8.18, which is what is installed
   - log: 2026-10-18T15:14:44Z @kj coded GRAPH-HOME
-- [x] `ACC-REVIEW-80-DEAD-PANEL` **a round that reviewed nothing is never clean** - CRITICAL; a null agent return means the reviewer died, not that it reviewed and found nothing: a round in which the whole panel dies reaches a distinct terminal status carrying full history, never the clean path, because ACC-REVIEW-45's empty plan and ACC-REVIEW-46's forced adjudication are both satisfied vacuously when no findings exist to adjudicate
+- [x] `ACC-REVIEW-80-DEAD-PANEL` **a round that reviewed nothing is never clean** - CRITICAL; a null agent return means the reviewer died, not that it reviewed and found nothing: a round in which the whole panel dies reaches a distinct terminal status carrying full history, never the clean path, because ACC-REVIEW-45-ADJUDICATOR's empty plan and ACC-REVIEW-46-CONTROL-FLOW's forced adjudication are both satisfied vacuously when no findings exist to adjudicate
   - evidence: Discovered live, not by inspection: wf_00afc000-19a returned status SHIP in 82ms with 0 findings because all three lens agents died on an unresolvable agentType, and the loop read three nulls as a clean review. Fixed in adversarial-loop.js with panelDied, the runPanelChecked wrapper routing all four panel calls, and a PANEL_DIED terminal status carrying full history per invariant 7. Pinned by test_a_dead_panel_is_never_a_clean_round, proven non-vacuous by restoring one raw runPanel call and watching it fail with '2 raw runPanel calls'. Suite 1189 passed
   - test: tests/test_adversarial_workflow_script.py::test_a_dead_panel_is_never_a_clean_round - asserts panelDied/PANEL_DIED exist, that exactly one raw runPanel call remains so every panel routes through the checked wrapper, that the death check precedes the loop, and that PANEL_DIED carries history/closures/deferred/refuted/state
   - test-tags: UNIT
   - log: 2026-08-29T18:30:30Z @kj added
   - log: 2026-08-29T18:30:38Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded DEAD-PANEL
+  - log: 2026-11-07T16:44:14Z @kj amended text "a null agent return means the reviewer died, not that it reviewed and found nothing: a round in which the whole panel dies reaches a distinct terminal status carrying full history, never the clean path, because ACC-REVIEW-45's empty plan and ACC-REVIEW-46's forced adjudication are both satisfied vacuously when no findings exist to adjudicate" -> "a null agent return means the reviewer died, not that it reviewed and found nothing: a round in which the whole panel dies reaches a distinct terminal status carrying full history, never the clean path, because ACC-REVIEW-45-ADJUDICATOR's empty plan and ACC-REVIEW-46-CONTROL-FLOW's forced adjudication are both satisfied vacuously when no findings exist to adjudicate"; reason: existing text kept word for word; only the ids gain their codes
 - [x] `ACC-REVIEW-150-PROMPT-CLI` **review-tools prompt prints the script's reviewer prompt for one lens** - HIGH; review-tools prompt ARGS.json --lens NAME prints, from the workflow args object, the prompt adversarial-loop.js sends: lens line, TARGET, SCOPE, BAR, INSTRUMENT AVAILABLE when graph is set, RESEARCH denial, the discovery or confirming body with CLOSURES and NEWEST DELTA, and a prose output contract naming every FINDINGS_SCHEMA field; the same refusals as the script (missing bar field, stale loop contract, appliedFixes without patch) exit 2
   - evidence: tests/test_review_tools.py::test_prompt_equals_the_script_prompt_up_to_the_output_line (discover, confirm), ::test_prompt_blocks_are_verbatim_from_the_script_and_name_every_finding_field, ::test_prompt_cli_refuses_the_script_refusals pass
   - test: parity test runs the script under node and compares every block but the last; a node-free test checks each static sentence is in the script source
@@ -794,7 +845,7 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-09-21T09:40:54Z @kj amended title "every spawn is labelled stage and lens so the round can be measured" -> "spawn label is `<stage>:<lens>`, the ledger key"; text "the loop script labels each reviewer <stage>:<lens> and each adjudicator <stage>:r<round>, the skill's spawn path and the command's step 9 require the same of a hand spawn, and the spec names the label as the one name a constructed loop may not rename - the harness records it beside the transcript and it is what makes the ledger read per adversary" -> "script labels reviewers `<stage>:<lens>`, adjudicators `adjudicate:r<round>`; SKILL.md, command step 9 and loop-spec bind hand spawns and constructed loops to it - the harness stores the label beside the transcript"
   - log: 2026-09-21T09:40:54Z @kj edited test (replaced) and evidence (replaced)
   - log: 2026-10-18T15:14:44Z @kj coded SPAWN-LABEL
-- [x] `ACC-REVIEW-159-HEURISTIC-RATE` **a heuristic's miss is a rate** - HIGH; the bar may name its heuristic components under heuristics, rendered in every reviewer and adjudicator prompt; reviewer and adjudicator treat one input such a component misreads as a sample of an error rate, immaterial unless it crashes, regresses against HEAD or breaks a stated guarantee (DEF-ADVR-71)
+- [x] `ACC-REVIEW-159-HEURISTIC-RATE` **a heuristic's miss is a rate** - HIGH; the bar may name its heuristic components under heuristics, rendered in every reviewer and adjudicator prompt; reviewer and adjudicator treat one input such a component misreads as a sample of an error rate, immaterial unless it crashes, regresses against HEAD or breaks a stated guarantee (DEF-ADVR-71-HEURISTIC-MISS)
   - evidence: adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with new adjudicator text plus heuristics bar line, 0/6 with neither (factors not separated), outcome coded after reading; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism
   - test: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism; test_prompt_equals_the_script_prompt_up_to_the_output_line with heuristics in the bar
   - test-tags: UNIT
@@ -804,20 +855,23 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - log: 2026-09-28T07:19:13Z @kj edited evidence "adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with the heuristics bar line, 0/6 without; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism" -> "adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with the heuristics bar line, 0/6 without, outcome coded after reading; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism"
   - log: 2026-09-28T07:34:14Z @kj edited evidence "adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with the heuristics bar line, 0/6 without, outcome coded after reading; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism" -> "adjudicator half: replay wf_aa37307f-f3c, 3 runs per arm (docs/experiments/adjudicator-replay/report.md), F11, F17 refuted as rate failure modes 6/6 with new adjudicator text plus heuristics bar line, 0/6 with neither (factors not separated), outcome coded after reading; reviewer half: prompt text only, test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism"
   - log: 2026-10-18T15:14:44Z @kj coded HEURISTIC-RATE
-- [x] `ACC-REVIEW-160-OVERFIT-RULE` **a rule fitted to its own counterexample is overfitting** - HIGH; the data-scientist lens flags a rule, arm, word or threshold added for one counterexample and checked on it as overfitting, and names a held-out measurement against a pre-registered bar as the only evidence for a rule change (DEF-ADVR-72)
+  - log: 2026-11-07T16:44:15Z @kj amended text "the bar may name its heuristic components under heuristics, rendered in every reviewer and adjudicator prompt; reviewer and adjudicator treat one input such a component misreads as a sample of an error rate, immaterial unless it crashes, regresses against HEAD or breaks a stated guarantee (DEF-ADVR-71)" -> "the bar may name its heuristic components under heuristics, rendered in every reviewer and adjudicator prompt; reviewer and adjudicator treat one input such a component misreads as a sample of an error rate, immaterial unless it crashes, regresses against HEAD or breaks a stated guarantee (DEF-ADVR-71-HEURISTIC-MISS)"
+- [x] `ACC-REVIEW-160-OVERFIT-RULE` **a rule fitted to its own counterexample is overfitting** - HIGH; the data-scientist lens flags a rule, arm, word or threshold added for one counterexample and checked on it as overfitting, and names a held-out measurement against a pre-registered bar as the only evidence for a rule change (DEF-ADVR-72-LENS-DATA)
   - evidence: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism reads axis 9 (own fold, held-out measurement); review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
   - test: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism reads axis 9 of adversaries/data-scientist.md
   - test-tags: UNIT
   - log: 2026-09-26T18:45:29Z @kj added
   - log: 2026-09-26T19:24:18Z @kj closed: met
   - log: 2026-10-18T15:14:44Z @kj coded OVERFIT-RULE
-- [x] `ACC-REVIEW-161-SPECIAL-CASE` **a special case for one input is a new mechanism** - HIGH; every statement of the newMechanism list names a special case for one input (a regex arm, word-list entry or threshold); a deferred failure mode of a heuristic component carries no defect id (DEF-ADVR-73)
+  - log: 2026-11-07T16:44:15Z @kj amended text "the data-scientist lens flags a rule, arm, word or threshold added for one counterexample and checked on it as overfitting, and names a held-out measurement against a pre-registered bar as the only evidence for a rule change (DEF-ADVR-72)" -> "the data-scientist lens flags a rule, arm, word or threshold added for one counterexample and checked on it as overfitting, and names a held-out measurement against a pre-registered bar as the only evidence for a rule change (DEF-ADVR-72-LENS-DATA)"
+- [x] `ACC-REVIEW-161-SPECIAL-CASE` **a special case for one input is a new mechanism** - HIGH; every statement of the newMechanism list names a special case for one input (a regex arm, word-list entry or threshold); a deferred failure mode of a heuristic component carries no defect id (DEF-ADVR-73-DEFER-RULE)
   - evidence: same test checks the mechanism list in the adjudicator, reviewer, remedy-discipline.md, loop-spec.md and twice in the script, and 'carries none'; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
   - test: test_a_heuristic_miss_is_a_rate_and_a_fix_for_one_input_is_a_mechanism checks the list in the adjudicator, the reviewer, remedy-discipline.md, loop-spec.md and twice in the script
   - test-tags: UNIT
   - log: 2026-09-26T18:45:29Z @kj added
   - log: 2026-09-26T19:24:18Z @kj closed: met
   - log: 2026-10-18T15:14:44Z @kj coded SPECIAL-CASE
+  - log: 2026-11-07T16:44:15Z @kj amended text "every statement of the newMechanism list names a special case for one input (a regex arm, word-list entry or threshold); a deferred failure mode of a heuristic component carries no defect id (DEF-ADVR-73)" -> "every statement of the newMechanism list names a special case for one input (a regex arm, word-list entry or threshold); a deferred failure mode of a heuristic component carries no defect id (DEF-ADVR-73-DEFER-RULE)"
 - [x] `ACC-REVIEW-195-ONE-CLEAN` **One clean round ships; the user decides on a confirmation round** - HIGH; SHIP ends the review and tells the main session to ask the user, with a recommendation from the campaign's complexity; a re-invocation with the SHIP state and no applied fixes runs one confirmation round; a PLAN state without applied fixes is refused
   - evidence: tests/test_adversarial_workflow_script.py::test_a_shipped_review_runs_one_confirmation_round_only_on_request and the SHIP parity cases in tests/test_review_tools.py pass; suite 1515 passed 2 skipped
   - test: ship on round 1, re-invoke without fixes, re-invoke a shipped state with closures, re-invoke a PLAN state without fixes
@@ -958,12 +1012,18 @@ work-in-progress soft locks on acceptance criteria and defects
   - log: 2026-08-29T21:10:27Z @kj added
   - log: 2026-08-29T21:10:31Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded LOCK-DEFAULT
+- [x] `ACC-PMLOCK-277-EXPIRY-REPORT` **every command reports expired locks** - HIGH; every pm-tools command names each expired lock in the trackers it scans on stderr: id, holder, stamp; an item that is not closed reads `without closure`; a read leaves the line, a write still removes it; nothing is logged
+  - evidence: tests/test_pm_tools.py::test_every_command_names_an_expired_lock_and_a_read_leaves_it, test_a_write_names_the_expired_lock_once_and_removes_it, test_an_expired_lock_on_a_closed_item_is_named_without_closure_words pass; suite 1775 passed, 2 skipped (2026-11-07)
+  - test: tests/test_pm_tools.py
+  - test-tags: UNIT, FUNCTIONAL
+  - log: 2026-11-07T14:01:51Z @kj added
+  - log: 2026-11-07T14:26:44Z @kj closed
 
 ## command and skill parity `SKILLC`
 
 every plugin command procedure is also reachable as a callable skill, so an agent can invoke what a human can type
 
-- [x] `ACC-SKILLC-77-PARITY` **Parity: every command has a same-named skill** - HIGH; each of the 42 plugin commands has a skills/<name>/SKILL.md beside it that owns its procedure; the Skill tool resolves the shared name to the command, so the command points at the file (ACC-SKILLC-78)
+- [x] `ACC-SKILLC-77-PARITY` **Parity: every command has a same-named skill** - HIGH; each of the 42 plugin commands has a skills/<name>/SKILL.md beside it that owns its procedure; the Skill tool resolves the shared name to the command, so the command points at the file (ACC-SKILLC-78-ROUTING)
   - evidence: tests/test_command_skill_parity.py 128 passed over 42 commands; suite 1444 passed, 2 skipped (2026-09-26)
   - test: tests/test_command_skill_parity.py::test_command_has_a_same_named_skill, parametrized over every commands/*.md
   - test-tags: UNIT
@@ -972,7 +1032,8 @@ every plugin command procedure is also reachable as a callable skill, so an agen
   - log: 2026-09-26T19:53:20Z @kj amended text "each of the 42 plugin commands has a skills/<name>/SKILL.md beside it, so the Skill tool can resolve every procedure a slash command exposes" -> "each of the 42 plugin commands has a skills/<name>/SKILL.md beside it that owns its procedure; the Skill tool resolves the shared name to the command, so the command points at the file (ACC-SKILLC-78)"
   - log: 2026-09-26T20:13:42Z @kj edited evidence "tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure" -> "tests/test_command_skill_parity.py 128 passed over 42 commands; suite 1444 passed, 2 skipped (2026-09-26)"
   - log: 2026-10-18T15:14:44Z @kj coded PARITY
-- [x] `ACC-SKILLC-78-ROUTING` **Skill owns the procedure, the command routes into it** - HIGH; a converted command's body moved into its skill byte-for-byte, and the command names its skill's file, 'this plugin's skill file skills/<name>/SKILL.md', never the plugin:name it shares with the command (DEF-SKILLC-76), so one procedure exists rather than two that drift
+  - log: 2026-11-07T16:44:16Z @kj amended text "each of the 42 plugin commands has a skills/<name>/SKILL.md beside it that owns its procedure; the Skill tool resolves the shared name to the command, so the command points at the file (ACC-SKILLC-78)" -> "each of the 42 plugin commands has a skills/<name>/SKILL.md beside it that owns its procedure; the Skill tool resolves the shared name to the command, so the command points at the file (ACC-SKILLC-78-ROUTING)"
+- [x] `ACC-SKILLC-78-ROUTING` **Skill owns the procedure, the command routes into it** - HIGH; a converted command's body moved into its skill byte-for-byte, and the command names its skill's file, 'this plugin's skill file skills/<name>/SKILL.md', never the plugin:name it shares with the command (DEF-SKILLC-76-SKILL-ROUTE), so one procedure exists rather than two that drift
   - evidence: test_command_points_at_its_skill passes on all 42; break test: journal:update restored to 'Invoke the journal:update skill' in a scratch copy fails it (1 failed, 127 passed); suite 1444 passed
   - test: tests/test_command_skill_parity.py::test_command_points_at_its_skill requires the file wording and refuses a pointer by the shared name, over every commands/*.md
   - test-tags: UNIT
@@ -983,6 +1044,7 @@ every plugin command procedure is also reachable as a callable skill, so an agen
   - log: 2026-09-26T19:53:20Z @kj edited test "tests/test_command_skill_parity.py::test_command_points_at_its_skill; conversion verified by diffing each new SKILL.md body against the command body at the parent commit" -> "tests/test_command_skill_parity.py::test_command_points_at_its_skill requires the file wording and refuses a pointer by the shared name, over every commands/*.md"
   - log: 2026-09-26T20:13:42Z @kj edited evidence "tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure" -> "test_command_points_at_its_skill passes on all 42; break test: journal:update restored to 'Invoke the journal:update skill' in a scratch copy fails it (1 failed, 127 passed); suite 1444 passed"
   - log: 2026-10-18T15:14:44Z @kj coded ROUTING
+  - log: 2026-11-07T16:44:16Z @kj amended text "a converted command's body moved into its skill byte-for-byte, and the command names its skill's file, 'this plugin's skill file skills/<name>/SKILL.md', never the plugin:name it shares with the command (DEF-SKILLC-76), so one procedure exists rather than two that drift" -> "a converted command's body moved into its skill byte-for-byte, and the command names its skill's file, 'this plugin's skill file skills/<name>/SKILL.md', never the plugin:name it shares with the command (DEF-SKILLC-76-SKILL-ROUTE), so one procedure exists rather than two that drift"
 - [x] `ACC-SKILLC-79-GATES` **Gate sites follow the procedure, never a pinned path** - MEDIUM; the toolchain-gate test finds a shipped gate block rather than reading one named file, and the CLI-name scan reads the body not the frontmatter description, so a router that only names a CLI in its menu text is not asked to carry a pip upgrade
   - evidence: tests/test_command_skill_parity.py 127 tests pass; suite 1185 passed 1 skipped; guardrail proven non-vacuous by removing plugins/journal/skills/update and observing the failure
   - test: tests/test_toolchain_gate.py::test_every_cli_entry_point_is_gated and the five behavioural gate tests
@@ -1530,7 +1592,7 @@ how an acceptance criterion or defect is worded
   - log: 2026-09-24T13:26:04Z @kj added
   - log: 2026-09-24T13:30:31Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded REASON
-- [x] `ACC-PMTXT-162-STAT-MISS` **a statistical component's miss is rejected, not filed** - HIGH; the defects reference, the defect skill and the README state that a statistical or heuristic component's miss on one input, or a score below target, is a failure mode measured as a rate, and a third reject case (DEF-PMGT-75)
+- [x] `ACC-PMTXT-162-STAT-MISS` **a statistical component's miss is rejected, not filed** - HIGH; the defects reference, the defect skill and the README state that a statistical or heuristic component's miss on one input, or a score below target, is a failure mode measured as a rate, and a third reject case (DEF-PMGT-75-STAT-MISS)
   - evidence: test_a_statistical_components_miss_is_rejected_not_filed; review wf_f8a9076f-305 to wf_d5623294-275 SHIP, 14/6/1/0 findings; suite 1442 passed 2 skipped
   - test: test_a_statistical_components_miss_is_rejected_not_filed
   - test-tags: UNIT
@@ -1538,12 +1600,13 @@ how an acceptance criterion or defect is worded
   - log: 2026-09-26T19:24:18Z @kj edited test-tags "FUNCTIONAL" -> "UNIT"
   - log: 2026-09-26T19:24:18Z @kj closed: met
   - log: 2026-10-18T15:14:44Z @kj coded STAT-MISS
+  - log: 2026-11-07T16:44:16Z @kj amended text "the defects reference, the defect skill and the README state that a statistical or heuristic component's miss on one input, or a score below target, is a failure mode measured as a rate, and a third reject case (DEF-PMGT-75)" -> "the defects reference, the defect skill and the README state that a statistical or heuristic component's miss on one input, or a score below target, is a failure mode measured as a rate, and a third reject case (DEF-PMGT-75-STAT-MISS)"
 
 ## pm-tools guard hooks `PMGRD`
 
 the project-management plugin hooks that keep pm-tools the only writer of a tracker
 
-- [x] `ACC-PMGRD-156-ACK` **a hand edit of an existing tracker needs a logged reason** - HIGH; an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.md holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77); reads and pm-tools commands pass
+- [x] `ACC-PMGRD-156-ACK` **a hand edit of an existing tracker needs a logged reason** - HIGH; an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.md holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77-HAND-EDIT); reads and pm-tools commands pass
   - evidence: tests/test_pm_guard.py 30 passed: the repeat denied, passed after ack, denied again once the file changes; suite 1444 passed, 2 skipped
   - test: tests/test_pm_guard.py: Edit/Write/MultiEdit and shell writes denied, the repeat denied, passed after ack, denied again once the file changes; reads and pm-tools pass
   - test-tags: UNIT
@@ -1556,6 +1619,7 @@ the project-management plugin hooks that keep pm-tools the only writer of a trac
   - log: 2026-09-26T19:39:14Z @kj edited evidence "tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped" -> "tests/test_pm_guard.py 30 passed: the repeat denied, passed after ack, denied again once the file changes; suite 1444 passed, 2 skipped"
   - log: 2026-09-26T20:49:14Z @kj amended text "an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.log holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77); reads and pm-tools commands pass" -> "an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.md holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77); reads and pm-tools commands pass"
   - log: 2026-10-18T15:14:44Z @kj coded ACK
+  - log: 2026-11-07T16:44:17Z @kj amended text "an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.md holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77); reads and pm-tools commands pass" -> "an Edit, Write, MultiEdit or in-place shell write on acc-crit*.md or defects*.md is denied, naming pm-tools ack; it passes once pm-hand-edits.md holds a line pm-tools ack wrote for the file as it is now, and the repeat alone never passes (DEF-PMGT-77-HAND-EDIT); reads and pm-tools commands pass"
 - [x] `ACC-PMGRD-157-PASS-THROUGH` **a new tracker, a merge conflict and the user override pass** - MEDIUM; the guard lets through a tracker that does not exist yet, one holding git conflict markers, and any edit when PM_TOOLS_HAND_EDIT=1 is in Claude Code's environment
   - evidence: tests/test_pm_guard.py 26 passed; suite 1436 passed, 2 skipped
   - test: tests/test_pm_guard.py: Write of a new tracker, Edit during a conflict and Edit with the override get no deny
@@ -1570,7 +1634,7 @@ the project-management plugin hooks that keep pm-tools the only writer of a trac
   - log: 2026-09-24T16:59:58Z @kj added
   - log: 2026-09-24T17:00:03Z @kj closed
   - log: 2026-10-18T15:14:44Z @kj coded PROMPT-HINT
-- [x] `ACC-PMGRD-163-ACK-TOKEN` **pm-tools ack gives the token and logs the reason** - HIGH; pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.md, which git keeps (DEF-PMGT-77)
+- [x] `ACC-PMGRD-163-ACK-TOKEN` **pm-tools ack gives the token and logs the reason** - HIGH; pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.md, which git keeps (DEF-PMGT-77-HAND-EDIT)
   - evidence: tests/test_pm_guard.py 30 passed; scratch run: deny, repeat deny, wrong token refused, ack, pass, deny after the file changed; review wf_899a5d01-536 to wf_b873ef4c-0da SHIP, 10/3/0 findings; suite 1444 passed 2 skipped
   - test: tests/test_pm_guard.py::test_an_acknowledged_hand_edit_passes_for_that_state_of_the_file, ::test_ack_refuses_what_it_cannot_log and ::test_ack_works_when_the_roster_is_unreadable
   - test-tags: UNIT
@@ -1580,6 +1644,7 @@ the project-management plugin hooks that keep pm-tools the only writer of a trac
   - log: 2026-09-26T19:50:13Z @kj closed: met
   - log: 2026-09-26T20:49:14Z @kj amended text "pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.log (DEF-PMGT-77)" -> "pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.md, which git keeps (DEF-PMGT-77)"
   - log: 2026-10-18T15:14:44Z @kj coded ACK-TOKEN
+  - log: 2026-11-07T16:44:17Z @kj amended text "pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.md, which git keeps (DEF-PMGT-77)" -> "pm-tools ack FILE prints a token derived from the tracker's content and writes nothing; with --token it refuses a stale token, a malformed author handle, a missing or over-50-word reason and a non-tracker, else appends the reason and the content digest to pm-hand-edits.md, which git keeps (DEF-PMGT-77-HAND-EDIT)"
 
 ## pm-tools category prose `PMCAT`
 
