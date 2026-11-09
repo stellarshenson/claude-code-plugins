@@ -99,7 +99,7 @@ Backing tools: `svg-infographics charts`.
 
 ### 6. Validation
 
-Mandatory pre-delivery gate with five checkers plus a pairwise connector collision detector. Nothing ships without a clean pass.
+Mandatory pre-delivery gate with five checkers plus a pairwise connector collision detector. A clean pass is the deterministic floor; the Phase 6 readback is still owed before delivery.
 
 - **Overlap** detection draws the file in headless Chromium and reports where painted pixels collide - text on text, an edge across text, text half outside its shape, shapes partly overlapping - plus near-misses under 3 px. It also checks spacing rhythm and font-size floors, and surfaces a `CALLOUT CROSS-COLLISIONS` block that checks leader-vs-text, leader-vs-leader, and text-vs-text across every `<g id="callout-*">` group.
 - **Contrast** enforces WCAG 2.1 AA/AAA for text AND object-vs-background in both light and dark mode.

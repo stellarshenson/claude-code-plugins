@@ -783,31 +783,39 @@ Adversarial-review loop: reviewer, adjudicator, workflow script, spec
   - log: 2026-10-18T15:14:46Z @kj coded MERGE-WINDOW
   - log: 2026-10-18T17:55:16Z @kj closed
   - log: 2026-11-07T16:44:28Z @kj edited test-tags added "UNIT"
-- [ ] `DEF-ADVR-90-CAP-ROWS` **ROUND_CAP drops passed rows unnamed** - MINOR; rows passed in args.findings on an invocation that returns ROUND_CAP are never judged, and neither the log nor the return names them; the return carries findings []; `adversarial-loop.js:465`
+- [x] `DEF-ADVR-90-CAP-ROWS` **ROUND_CAP drops passed rows unnamed** - MINOR; rows passed in args.findings on an invocation that returns ROUND_CAP are never judged, and neither the log nor the return names them; the return carries findings []; `adversarial-loop.js:465`
+  - evidence: tests/test_adversarial_workflow_script.py::test_round_cap_names_the_rows_it_never_judged PASSED; repro (round 6, maxRounds 6, 1 args.findings row) -> ROUND_CAP, findings [], rows ['a breaks'], log names the row; fix adversarial-loop.js:473-474, one log line plus rows field on the return
   - root-cause: 2026-10-24T15:59:56Z @kj the ROUND_CAP return at adversarial-loop.js:465 fires before a round runs and returns findings [] with no log line, so ROWS never reach addRows or the adjudicator
   - repro: args.state at round 6 (maxRounds 6) plus one args.findings row; the return is ROUND_CAP with findings [] and logs []
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-24T15:59:35Z @kj added
   - log: 2026-10-24T15:59:57Z @kj owner ruled deferred 2026-10-24 (adversarial review of args.findings, round 2 SHIP)
-- [ ] `DEF-ADVR-91-CRIT-MERGE` **Immaterial CRITICAL lifts a merged lens finding past the cap** - MINOR; mergeFindings promotes a lens finding to CRITICAL on another lens's CRITICAL of the same title even when that lens marked it material=false, so the row passes the materiality cap as CRITICAL; present before the args.findings change; `adversarial-loop.js:280`
+  - log: 2026-11-09T07:10:13Z @kj closed
+- [x] `DEF-ADVR-91-CRIT-MERGE` **Immaterial CRITICAL lifts a merged lens finding past the cap** - MINOR; mergeFindings promotes a lens finding to CRITICAL on another lens's CRITICAL of the same title even when that lens marked it material=false, so the row passes the materiality cap as CRITICAL; present before the args.findings change; `adversarial-loop.js:280`
+  - evidence: tests/test_adversarial_workflow_script.py::test_an_immaterial_critical_does_not_lift_a_merged_row PASSED; tracker repro (lens architect MAJOR material=true + lens bug-hunter CRITICAL material=false, same title) -> merged row severity MAJOR, no cappedFrom, lenses ['architect', 'bug-hunter']; fix is adversarial-loop.js:282, one material !== false condition on promotion
   - root-cause: 2026-10-24T15:59:56Z @kj mergeFindings at adversarial-loop.js:280 copies a merged finding's CRITICAL onto the row without reading that finding's material flag; capImmaterial at :286 then reads only the row's own material=true
   - repro: lens A reports title T MAJOR material=true, lens B reports T CRITICAL material=false; the merged row is CRITICAL with no cappedFrom
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-24T15:59:40Z @kj added
   - log: 2026-10-24T15:59:57Z @kj owner ruled deferred 2026-10-24 (adversarial review of args.findings, round 2 SHIP)
-- [ ] `DEF-ADVR-92-SETTLED-TITLE` **Settled filter drops a finding at a file never ruled** - MINOR; settledFilter matches settled entries by title only, so a later finding with a settled title at a file never ruled is discarded while the ruled file stays untouched; present before the args.findings change; `adversarial-loop.js:453`
+  - log: 2026-11-09T07:10:09Z @kj closed
+- [x] `DEF-ADVR-92-SETTLED-TITLE` **Settled filter drops a finding at a file never ruled** - MINOR; settledFilter matches settled entries by title only, so a later finding with a settled title at a file never ruled is discarded while the ruled file stays untouched; present before the args.findings change; `adversarial-loop.js:453`
+  - evidence: tests/test_adversarial_workflow_script.py::test_a_settled_title_at_another_file_is_still_judged PASSED; tracker repro (settled title T at src/a.py, next round reports T at src/b.py) -> status SHIP, openFindings file ['src/b.py'], adjudication prompt names it, no 'settled filter:' log; fix is adversarial-loop.js:458, one sameFile(s.file, f.file) condition on the settled match
   - root-cause: 2026-10-24T15:59:56Z @kj settledFilter at adversarial-loop.js:453 matches settled entries through sameSite (:267), which compares titles only; the finding's file is never compared with the ruled file
   - repro: rule title T at src/a.py without a change; next round a reviewer reports T at src/b.py; the settled filter discards it
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-24T15:59:44Z @kj added
   - log: 2026-10-24T15:59:57Z @kj owner ruled deferred 2026-10-24 (adversarial review of args.findings, round 2 SHIP)
-- [ ] `DEF-ADVR-93-SETTLED-REASON` **Settled filter drops a finding at a touched file under a false reason** - MINOR; with one settled entry per file for one title, a finding at a file a fix has touched since is discarded, and the log reason 'at a site no fix has touched since' is false; same cause as DEF-ADVR-92-SETTLED-TITLE; `adversarial-loop.js:453`
+  - log: 2026-11-09T07:10:09Z @kj closed
+- [x] `DEF-ADVR-93-SETTLED-REASON` **Settled filter drops a finding at a touched file under a false reason** - MINOR; with one settled entry per file for one title, a finding at a file a fix has touched since is discarded, and the log reason 'at a site no fix has touched since' is false; same cause as DEF-ADVR-92-SETTLED-TITLE; `adversarial-loop.js:453`
+  - evidence: tests/test_adversarial_workflow_script.py::test_a_settled_title_at_a_file_a_fix_touched_is_judged PASSED; tracker repro (settled T at src/a.py and src/b.py, fix touches only src/a.py, report T at src/a.py) -> status SHIP, openFindings file ['src/a.py'], no 'settled filter:' log; same adversarial-loop.js:458 condition makes touchedSince read the finding's own file, so the false reason is not emitted
   - root-cause: 2026-10-24T15:59:56Z @kj settledFilter at adversarial-loop.js:453 drops a finding when any settled entry of its title is untouched; sameSite (:267) compares titles only and touchedSince (:448) checks the entry's file, not the finding's
   - related: DEF-ADVR-92-SETTLED-TITLE - same cause: title-only settled match
   - repro: settle T at src/a.py and T at src/b.py, apply a fix touching only src/a.py, report T at src/a.py; it is discarded as 'already ruled at a site no fix has touched since'
   - test-tags: UNIT, FUNCTIONAL
   - log: 2026-10-24T15:59:48Z @kj added
   - log: 2026-10-24T15:59:57Z @kj owner ruled deferred 2026-10-24 (adversarial review of args.findings, round 2 SHIP)
+  - log: 2026-11-09T07:10:09Z @kj closed
 
 ## command and skill parity `SKILLC`
 

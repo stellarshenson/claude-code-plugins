@@ -1198,7 +1198,7 @@ def cmd_research_search(args: argparse.Namespace) -> int:
 # The shape of `state` and `appliedFixes` the workflow script reads; the same
 # number as the script's LOOP_CONTRACT, so a state from another version is
 # refused here as it is there.
-LOOP_CONTRACT = 4
+LOOP_CONTRACT = 5
 
 # The finding fields of the script's FINDINGS_SCHEMA, in its order. A hand
 # spawn has no structured-output tool, so the prompt ends by naming them.
@@ -1332,7 +1332,7 @@ def reviewer_prompt(args: dict, lens: str) -> str:
         else f"TARGET: {args['target']}",
         f"SCOPE: {args.get('scope') or 'the named target only'}",
         bar_block(args["bar"]),
-        f"INSTRUMENT AVAILABLE - a refreshed code graph matching HEAD at {graph}. It answers callers, dependents and whether two sites share one cause faster than grepping. Use it as your method sees fit and point it at that path."
+        f"INSTRUMENT AVAILABLE - a refreshed code graph matching HEAD at {graph}. It answers callers, dependents and whether two sites share one cause faster than grepping. It covers symbols, files and call edges; it does NOT cover CSS rules and rendered geometry, lint config, test bodies, the accessibility tree, browser behaviour or rendered layout. Use it as your method sees fit and point it at that path."
         if graph
         else None,
         "RESEARCH: denied by the user for this review - no research request is acted on."

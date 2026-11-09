@@ -86,7 +86,8 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded GEN-EVAL
   - log: 2026-11-07T16:44:19Z @kj edited test added "grep src/stellars_claude_code_plugins/svg_tools/ for anthropic, openai and claude -p: no hit; every finalize roster row names a construction, geometry, colour or CSS check"; evidence added "grep -rniE 'anthropic|openai|claude -p' src/stellars_claude_code_plugins/svg_tools: 0 lines at v1.8.29, no model call; plugins/svg-infographics/skills/svg-infographics/references/validation.md:5 limits the CLI to construction, geometry, colour arithmetic, roster honesty (commit a2e3b62, journal entry 314)"
-- [ ] `ACC-SVG-8-VERDICT` **CLI: verdict names the floor** - MEDIUM; verdict lines assert what was checked, never overall quality
+- [x] `ACC-SVG-8-VERDICT` **CLI: verdict names the floor** - MEDIUM; verdict lines assert what was checked, never overall quality
+  - evidence: ACC-SVG-8-VERDICT: src/stellars_claude_code_plugins/svg_tools/finalize.py:983-985, :892-893, :992-996 and :1090-1091 print floor statements ending 'Not a quality verdict.' in every branch (cli.py:38 and finalize.py:1,:752 match); observed three CLI runs above exiting 0 with the new lines, and `pytest` 701 passed
   - test: finalize a clean SVG; the verdict line on stderr names the checks run and does not say shippable
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added - the current "OK - shippable" wording predates the split; reword decision pending the Star Colonel
@@ -94,7 +95,9 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded VERDICT
   - log: 2026-11-07T16:44:19Z @kj edited test added "finalize a clean SVG; the verdict line on stderr names the checks run and does not say shippable"
-- [ ] `ACC-SVG-9-HYPOTHESIS` **Process: hypothesis first** - HIGH; every graphic states its rationale before any wireframing; the CLI cannot check this
+  - log: 2026-11-09T07:19:16Z @kj closed
+- [x] `ACC-SVG-9-HYPOTHESIS` **Process: hypothesis first** - HIGH; every graphic states its rationale before any wireframing; the CLI cannot check this
+  - evidence: ACC-SVG-9-HYPOTHESIS: plugins/svg-infographics/skills/svg-infographics/references/workflow.md:34 requires the hypothesis in the Phase 1 gate before the Phase 2 scaffold ('No hypothesis, no scaffold'); MANUAL - observed by grep at the stated line
   - test: on a new graphic, the rationale or hypothesis is written before the first wireframe
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj in place (standing directive)
@@ -103,7 +106,9 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-10-18T15:14:44Z @kj coded HYPOTHESIS
   - log: 2026-11-07T16:44:43Z @kj reopened: the rationale-before-wireframing step is stated in no shipped svg-infographics file; it lives only in agent memory
   - log: 2026-11-07T16:44:45Z @kj edited test added "on a new graphic, the rationale or hypothesis is written before the first wireframe"
-- [ ] `ACC-SVG-10-LEGIBILITY` **Process: legibility at ship size** - HIGH; generative review of the rendered PNG; no deterministic proxy exists
+  - log: 2026-11-09T07:19:03Z @kj closed
+- [x] `ACC-SVG-10-LEGIBILITY` **Process: legibility at ship size** - HIGH; generative review of the rendered PNG; no deterministic proxy exists
+  - evidence: ACC-SVG-10-LEGIBILITY: plugins/svg-infographics/skills/svg-infographics/references/workflow.md:110 requires reading both PNGs at ship width and naming every unreadable label (line 108 now reads both PNGs); MANUAL - observed by grep, no deterministic proxy by design (validation.md:5)
   - test: render-png --mode both; a model reads each PNG at ship size and names every label it cannot read
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
@@ -111,7 +116,9 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded LEGIBILITY
   - log: 2026-11-07T16:44:20Z @kj edited test added "render-png --mode both; a model reads each PNG at ship size and names every label it cannot read"
-- [ ] `ACC-SVG-11-SEMANTIC` **Process: semantic fit** - HIGH; the graphic says what the hypothesis claims; metaphor and flow fit the content
+  - log: 2026-11-09T07:19:13Z @kj closed
+- [x] `ACC-SVG-11-SEMANTIC` **Process: semantic fit** - HIGH; the graphic says what the hypothesis claims; metaphor and flow fit the content
+  - evidence: ACC-SVG-11-SEMANTIC: plugins/svg-infographics/skills/svg-infographics/references/workflow.md:111 requires comparing the render to the Phase 1 hypothesis and naming every claim not shown; MANUAL - observed by grep at the stated line
   - test: a model reads the rendered PNG beside the stated hypothesis and names each claim the graphic does not show
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
@@ -119,7 +126,9 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded SEMANTIC
   - log: 2026-11-07T16:44:20Z @kj edited test added "a model reads the rendered PNG beside the stated hypothesis and names each claim the graphic does not show"
-- [ ] `ACC-SVG-12-EXAMPLES` **Process: examples bar** - HIGH; side-by-side against `plugins/svg-infographics/examples/` production references; "readable infographic" is a generative judgment
+  - log: 2026-11-09T07:19:13Z @kj closed
+- [x] `ACC-SVG-12-EXAMPLES` **Process: examples bar** - HIGH; side-by-side against `plugins/svg-infographics/examples/` production references; "readable infographic" is a generative judgment
+  - evidence: ACC-SVG-12-EXAMPLES: plugins/svg-infographics/skills/svg-infographics/references/workflow.md:112 requires a same-width side-by-side against the closest plugins/svg-infographics/examples/ reference with each gap named; MANUAL - observed by grep at the stated line
   - test: render the graphic and the closest plugins/svg-infographics/examples/ reference; a model compares them side by side and names each gap
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
@@ -127,7 +136,9 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded EXAMPLES
   - log: 2026-11-07T16:44:20Z @kj edited test added "render the graphic and the closest plugins/svg-infographics/examples/ reference; a model compares them side by side and names each gap"
-- [ ] `ACC-SVG-13-LABEL` **Process: label truth** - CRITICAL; labels and numbers match the source content the graphic summarizes
+  - log: 2026-11-09T07:19:16Z @kj closed
+- [x] `ACC-SVG-13-LABEL` **Process: label truth** - CRITICAL; labels and numbers match the source content the graphic summarizes
+  - evidence: ACC-SVG-13-LABEL: plugins/svg-infographics/skills/svg-infographics/references/workflow.md:109 states the label/number truth rule against the concept draft's data source (draft required by plugins/svg-infographics/skills/create/SKILL.md:48); MANUAL - verified by reading the Phase 6 readback block with grep, no CLI proxy exists
   - test: list every text element of the SVG; check each label and number against the source content
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
@@ -135,7 +146,9 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded LABEL
   - log: 2026-11-07T16:44:21Z @kj edited test added "list every text element of the SVG; check each label and number against the source content"
-- [ ] `ACC-SVG-14-AMBIGUITY` **Process: ambiguity adjudication** - MEDIUM; intentional layering vs overlap defect, decorative density vs clutter: judged by the model, never the CLI
+  - log: 2026-11-09T07:19:12Z @kj closed
+- [x] `ACC-SVG-14-AMBIGUITY` **Process: ambiguity adjudication** - MEDIUM; intentional layering vs overlap defect, decorative density vs clutter: judged by the model, never the CLI
+  - evidence: ACC-SVG-14-AMBIGUITY: plugins/svg-infographics/skills/svg-infographics/references/validation.md:146 requires rule on the PNG for every overlap finding (intended layering vs defect) and for decoration (decoration vs clutter), CLI reports geometry only; MANUAL - observed by grep at the stated line
   - test: for each finalize overlap finding, a model reads the PNG and rules it intended layering or a defect; the same for decoration against clutter
   - test-tags: MANUAL
   - log: 2026-08-13T00:00:00Z @kj criterion added
@@ -143,6 +156,7 @@ Validation of a generated SVG is two things, not one: a deterministic CLI floor 
   - log: 2026-08-28T09:11:41Z @kj edited test-tags (added)
   - log: 2026-10-18T15:14:44Z @kj coded AMBIGUITY
   - log: 2026-11-07T16:44:21Z @kj edited test added "for each finalize overlap finding, a model reads the PNG and rules it intended layering or a defect; the same for decoration against clutter"
+  - log: 2026-11-09T07:19:16Z @kj closed
 - [x] `ACC-SVG-15-SHIP` **Ship = floor AND judgment** - CRITICAL; a graphic ships when the CLI floor passes AND the generative review accepts; a CLI PASS alone is never a ship decision
   - evidence: plugins/svg-infographics/skills/svg-infographics/references/validation.md:5: a CLI PASS alone is never a ship decision (commit a2e3b62, journal entry 314); plugins/svg-infographics/skills/svg-infographics/references/workflow.md Phase 6 step 6 reads the rendered PNG after finalize passes, before delivery
   - test: read plugins/svg-infographics/skills/svg-infographics/references/workflow.md Phase 6: a finalize pass is followed by the PNG readback before the graphic ships
@@ -943,6 +957,54 @@ review-tools CLI, graphify wiring in the devils-advocate reviewer and the measur
   - test-tags: UNIT
   - log: 2026-10-30T23:21:14Z @kj added
   - log: 2026-10-30T23:31:59Z @kj closed
+- [x] `ACC-REVIEW-279-BAR-GUARANTEE` **a fix that changes a bar guarantee carries its replacement** - HIGH; a fix that changes a clause the bar states passes the replacement text as barGuarantee on its appliedFixes row; the script refuses the re-invocation unless args.bar.guarantees already states that text, keeps the field on the closure, renders it in the prior record, and builds barBlock from the updated bar
+  - test: tests/test_adversarial_workflow_script.py::test_a_fix_that_changes_a_bar_guarantee_must_carry_it_into_the_bar
+  - evidence: test_a_fix_that_changes_a_bar_guarantee_must_carry_it_into_the_bar passes on the tree (81 passed in 03-verify.json); refusal at adversarial-loop.js:109-110, closure stored :404, priorRecord :453-454, barBlock :348-360; rule loop-spec.md:17,55
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-11-09T07:40:50Z @kj refuses when args.bar.guarantees lacks the named replacement, so a bar still carrying the superseded clause cannot pass with the fix that superseded it; acceptance check: a stub invocation with the updated bar renders the new clause in both prompts and records barGuarantee on the closure, an unchanged bar throws
+  - log: 2026-11-09T07:40:50Z @kj added
+  - log: 2026-11-09T07:54:32Z @kj closed
+  - log: 2026-11-09T07:56:07Z @kj edited test added "tests/test_adversarial_workflow_script.py::test_a_fix_that_changes_a_bar_guarantee_must_carry_it_into_the_bar"
+- [x] `ACC-REVIEW-280-CLIP-MECH` **a clip or hide rule is a new mechanism** - HIGH; the newMechanism definition and remedy description include any rule that hides, clips or makes content unreachable (overflow and clip pairing, clip-path, visibility hidden, aria-hidden), and the change names what becomes unreachable and the finding that justifies it
+  - test: tests/test_adversarial_workflow_script.py::test_a_clip_is_a_new_mechanism
+  - evidence: test_a_clip_is_a_new_mechanism passes on the tree (81 passed in 03-verify.json); clip class and unreachable-naming at adversarial-loop.js:167,207, adjudicator.md:24, loop-spec.md:25; no numeric threshold added
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-11-09T07:40:56Z @kj extended in the findings schema remedy, the adjudication newMechanism description, adjudicator step 5 and loop-spec INV-9; a clip is priced as new review surface that must answer a material CRITICAL or MAJOR; acceptance check: guardrail asserts the clip class in all four statements and no threshold is added
+  - log: 2026-11-09T07:40:56Z @kj added
+  - log: 2026-11-09T07:54:33Z @kj closed
+  - log: 2026-11-09T07:56:10Z @kj edited test added "tests/test_adversarial_workflow_script.py::test_a_clip_is_a_new_mechanism"
+- [x] `ACC-REVIEW-281-OWNER-DECISION` **a deferral carries the open owner decision** - HIGH; each deferred entry is {finding, reason, ownerDecision}; ownerDecision names the design question and the decision that must answer it, and is empty when no decision is open; the adjudicator may not plan a change whose cause depends on an open decision
+  - test: tests/test_adversarial_workflow_script.py::test_deferred_entries_carry_the_open_owner_decision
+  - evidence: test_deferred_entries_carry_the_open_owner_decision passes on the tree (81 passed in 03-verify.json); objects {finding,reason,ownerDecision} at adversarial-loop.js:238-250, OWNER DECISION OPEN render :449, contract 5 refusal :96-99; adjudicator.md:23,26; loop-spec.md:19
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-11-09T07:41:00Z @kj the deferred schema becomes objects, priorRecord and every return render the open decision, and adjudicator steps 4 and 7 forbid planning a change that depends on one; acceptance check: object entries round-trip through the state and priorRecord names the open decision, a contract 4 state is refused
+  - log: 2026-11-09T07:41:00Z @kj added
+  - log: 2026-11-09T07:54:35Z @kj closed
+  - log: 2026-11-09T07:56:13Z @kj edited test added "tests/test_adversarial_workflow_script.py::test_deferred_entries_carry_the_open_owner_decision"
+- [x] `ACC-REVIEW-282-FIX-VERDICT` **every closure carries a keep, revert or refine verdict** - HIGH; fixVerdicts records a keep, revert or refine verdict with a reason for every applied closure; a revert verdict enters the plan's reverts, and every verdict is persisted in rulings and rendered in priorRecord; refine only when the original finding was material CRITICAL or MAJOR and smaller than removal
+  - test: tests/test_adversarial_workflow_script.py::test_a_verdict_on_every_closure
+  - evidence: test_a_verdict_on_every_closure passes on the tree (81 passed in 03-verify.json); fixVerdicts required at adversarial-loop.js:193, schema :225-237, revert folding :584-592, rulings :601, priorRecord :457-460; adjudicator.md:23; loop-spec.md:25
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-11-09T07:41:06Z @kj the adjudication schema gains fixVerdicts, the script folds revert verdicts into the plan's reverts and records all verdicts in rulings, adjudicator step 4 states the keep, revert and refine rules, and loop-spec INV-9 carries them; acceptance check: a revert verdict appears in PLAN reverts and the rulings entry
+  - log: 2026-11-09T07:41:06Z @kj added
+  - log: 2026-11-09T07:54:36Z @kj closed
+  - log: 2026-11-09T07:56:15Z @kj edited test added "tests/test_adversarial_workflow_script.py::test_a_verdict_on_every_closure"
+- [x] `ACC-REVIEW-283-TRAJECTORY-DELTA` **trajectory is judged over the applied delta** - HIGH; trajectory is judged over all applied changes, planned and owner-applied: a finding in a mechanism the invocation's appliedFixes introduced, with a plan that leaves it in place, is spiralling with the mechanism named; trajectoryReason and the applied delta count are persisted in rulings and rendered in priorRecord
+  - test: tests/test_adversarial_workflow_script.py::test_the_trajectory_window_counts_an_applied_delta
+  - evidence: test_the_trajectory_window_counts_an_applied_delta passes on the tree (FANOUT_STOP, appliedDelta [0,1]; 81 passed in 03-verify.json); appliedDelta window at adversarial-loop.js:616-617, rulings :601, priorRecord :443; adjudicator.md:27; loop-spec.md:21
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-11-09T07:41:10Z @kj the trajectory definition covers the applied delta, rulings persist trajectoryReason and appliedDelta, priorRecord renders the reason, and the existing two-of-three window counts a spiralling round with a non-empty applied delta even when its plan is empty; acceptance check: two such rounds reach FANOUT_STOP
+  - log: 2026-11-09T07:41:10Z @kj added
+  - log: 2026-11-09T07:54:38Z @kj closed
+  - log: 2026-11-09T07:56:17Z @kj edited test added "tests/test_adversarial_workflow_script.py::test_the_trajectory_window_counts_an_applied_delta"
+- [x] `ACC-REVIEW-284-GRAPH-GAP` **the adjudicator names the layer the graph did not cover** - MEDIUM; graphGap names the layer the graph did not cover for the adjudicated findings - CSS rule and geometry, lint config, test body, accessibility tree, browser behaviour, rendered layout - and is empty only when the graph held a node for every adjudicated finding's file and symbol
+  - test: tests/test_adversarial_workflow_script.py::test_the_graph_gap_is_named
+  - evidence: test_the_graph_gap_is_named passes on the tree (81 passed in 03-verify.json); coverage sentence adversarial-loop.js:134-136, graphGapBlock :140-142, schema :256, rulings :601; adjudicator.md:21-22; loop-spec.md:19,53; review_tools.py:1335 parity
+  - test-tags: UNIT, FUNCTIONAL
+  - mechanism: 2026-11-09T07:41:15Z @kj graphBlock states what the graph covers and does not, the adjudication schema adds graphGap, adjudicator steps 2 and 3 require the radius source and the uncovered layer, and rulings record it; acceptance check: a graph invocation prompt names the uncovered layers and the ruling carries graphGap
+  - log: 2026-11-09T07:41:15Z @kj added
+  - log: 2026-11-09T07:54:39Z @kj closed
+  - log: 2026-11-09T07:56:20Z @kj edited test added "tests/test_adversarial_workflow_script.py::test_the_graph_gap_is_named"
 
 ## pm-tools soft lock `PMLOCK`
 

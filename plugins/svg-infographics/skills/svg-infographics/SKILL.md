@@ -1,6 +1,6 @@
 ---
 name: svg-infographics
-description: Grid-first SVG design workflow producing validated infographics - diagrams, banners, timelines, flowcharts, card grids, charts. Use when creating, fixing or validating any SVG graphic - scaffold a standard format, compute every coordinate via CLI tools, route connectors with direction gates, ship only on a clean finalize. Triggers - "create svg", "make svg", "create graphics", "svg infographic", "diagram", "banner", "timeline", "flowchart", "validate svg", "fix svg", "design svg". Fork context - invoke via `Skill(skill="svg-infographics:svg-infographics")` or `/svg-infographics:create`.
+description: Grid-first SVG design workflow producing validated infographics - diagrams, banners, timelines, flowcharts, card grids, charts. Use when creating, fixing or validating any SVG graphic - scaffold a standard format, compute every coordinate via CLI tools, route connectors with direction gates, ship only on a clean finalize plus the Phase 6 readback. Triggers - "create svg", "make svg", "create graphics", "svg infographic", "diagram", "banner", "timeline", "flowchart", "validate svg", "fix svg", "design svg". Fork context - invoke via `Skill(skill="svg-infographics:svg-infographics")` or `/svg-infographics:create`.
 context: fork
 agent: svg-infographics:svg-builder
 model: sonnet
@@ -13,7 +13,7 @@ Design app for AI agents. Agent = designer, CLI = drawing surface. Every coordin
 
 ## Workflow (mandatory, every build)
 
-Preflight → scaffold → author → check → finalize. Skipping a phase is the #1 failure mode - hasty `<rect>`s cost more redo time than the phases themselves. Dual-theme always ships (no flag - just do it).
+Preflight → scaffold → author → check → finalize → readback. Skipping a phase is the #1 failure mode - hasty `<rect>`s cost more redo time than the phases themselves. Dual-theme always ships (no flag - just do it).
 
 **Output path** - write every `--out` file into the exact directory named in your args, verbatim (`<output-dir>/<NN-name>.svg`). When given an absolute `<output-dir>`, use it as-is - never prepend the working directory, `cd` into a subdir first, or repeat the directory's own relative path inside itself (that nests `.../slug/slug/images_slug`).
 
@@ -31,7 +31,9 @@ Preflight → scaffold → author → check → finalize. Skipping a phase is th
 
 3. **Author** following the rule bundle. Every tool call passes explicit direction / geometry flags (`rules/connector.md`). Run `svg-infographics map --svg <file>` before placing anything new.
 
-4. **Check + finalize.** `svg-infographics check --svg <file>` with the SAME preflight flags (component counts, dark mode, layer discipline, free-floating primitives), then `svg-infographics finalize <file>` - ship gate, exit 1 on any HARD finding.
+4. **Check + finalize.** `svg-infographics check --svg <file>` with the SAME preflight flags (component counts, dark mode, layer discipline, free-floating primitives), then `svg-infographics finalize <file>` - the deterministic floor, exit 1 on any HARD finding. The floor alone is not the delivery gate.
+
+5. **Readback - the delivery gate.** Render both PNGs at the concept draft's canvas width (`render-png <file> out.png --mode both --width <width>`), then run the four generative checks in `references/workflow.md`: data-source match, legibility, hypothesis fit, example comparison. Report the findings. Deliver only after.
 
 Resuming or unsure what remains? `svg-infographics workflow --svg <file>` infers the phase from the file and prints unmet gates + next actions - never redo a gate it reports as met.
 
@@ -106,7 +108,7 @@ Context is the budget - mandatory reads only:
 8. **Five named layers** - `background`, `nodes`, `connectors`, `content`, `callouts`; document order = render order
 9. **Transparent backplate**; contrast via theme - no `#000000`, no `#ffffff`
 10. **Unicode glyphs in `<text>`** - `→` not `->`, `←` not `<-`, `↔` not `<->`, `…` not `...`, `—` not `--`, `×` not `x`, `•` not `*`. ASCII arrow in any text node = FAIL
-11. **Validate before delivery** - `finalize` runs every checker. No run = no ship
+11. **Validate before delivery** - `finalize` runs every checker, and the Phase 6 readback is still owed. No finalize run and no readback = no ship
 12. **MS Word scaling compat** - every SVG renders cleanly inserted + scaled in Word: common fonts only (Segoe UI / Arial / Calibri); stroke-width ≥ 0.5; no `filter` / `mask` / `foreignObject` / animation in the Word-targeted variant; light-mode fills stand alone (Word ignores dark `@media`); explicit `viewBox` + `preserveAspectRatio="xMidYMid meet"`; no textPath or >4-stop gradients. Exception: shader effects ship via the print-strip workflow - `<file>+_print.svg` (filters stripped) for Word, `<file>+.svg` for web (`rules/shaders.md`)
 
 ## Connector checklist (quick)

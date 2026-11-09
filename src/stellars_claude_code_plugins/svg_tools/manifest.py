@@ -864,7 +864,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
         )
     else:
         print(
-            "next: run `svg-infographics finalize <file>.svg` for the ship-ready structural gate.",
+            "next: run `svg-infographics finalize <file>.svg` for the floor structural gate.",
             file=sys.stderr,
         )
     return 1 if report.failed else 0

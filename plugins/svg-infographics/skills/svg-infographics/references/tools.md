@@ -139,7 +139,7 @@ svg-infographics
  |
  |-- preflight                   GATE 1: declare the build via flags -> matching rule bundle + warnings. Before any <rect>
  |-- check                       GATE 2: does the SVG match its declaration? Exit 1 on component drift / missing dark mode
- |-- finalize                    GATE 3: ship-ready. XML + overlap + connector validators in one call; exit 1 on any HARD finding
+ |-- finalize                    GATE 3: floor gate. XML + overlap + connector validators in one call; exit 1 on any HARD finding
  |   '-- --checklist             The pre-delivery roster - every row PASS / NA / FAIL / SKIP
  |
  |-- place                       Position an element (icon, text bbox, badge) inside a named container -> top-left (x, y)

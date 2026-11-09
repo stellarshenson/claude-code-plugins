@@ -107,7 +107,7 @@ Gating several files at once adds a final `deck` block for the cross-file consis
 
 A `SKIP` you did not ask for is not a pass and not a clean bill - it is the absence of a verdict, and on a file that should have exercised that layer it is the first thing to chase. An `other <layer> findings` row catches anything no named row claims, so the roster can never be quieter than the findings printed beneath it.
 
-The gate's verdict line answers to the roster on every branch. Zero findings or only-acked SOFT findings beside an unasked SKIP prints `NOT VERIFIED - ... N not judged (<count> <cause>)` and exits 1; the HARD path prints the same NOT VERIFIED lines after the batch-fix protocol, so the editing pass is planned against the unjudged aspects too instead of meeting them a re-run later. A fully judged file on an acked run prints `OK - findings acked, all aspects judged.` - uniform and mixed runs alike. A SKIP the operator asked for (`--no-visual`) stays shippable with exit 0. `--json` carries the per-file `skipped` map of aspect to cause plus `totals` on both branches; a cause starting with `--` names an asked-for skip, and `totals` of `{"hard": 0, "soft": 0}` with exit 1 is a reachable state (findings clean, aspects unjudged), so a consumer reads the exit code, not totals alone.
+The gate's verdict line answers to the roster on every branch. Zero findings or only-acked SOFT findings beside an unasked SKIP prints `NOT VERIFIED - ... N not judged (<count> <cause>)` and exits 1; the HARD path prints the same NOT VERIFIED lines after the batch-fix protocol, so the editing pass is planned against the unjudged aspects too instead of meeting them a re-run later. A fully judged file on an acked run prints `deterministic floor complete - findings acked, all aspects judged. Not a quality verdict.` - uniform and mixed runs alike. A SKIP the operator asked for (`--no-visual`) prints `deterministic floor clean` and exits 0; the same asked SKIP on an acked run prints `deterministic floor complete - findings acked, N not judged (<causes>). Not a quality verdict.` and still exits 0. `--json` carries the per-file `skipped` map of aspect to cause plus `totals` on both branches; a cause starting with `--` names an asked-for skip, and `totals` of `{"hard": 0, "soft": 0}` with exit 1 is a reachable state (findings clean, aspects unjudged), so a consumer reads the exit code, not totals alone.
 
 ## Failure severity ladder
 
@@ -142,6 +142,8 @@ Intentional hard fail? Add XML comment adjacent documenting reason:
 ```
 
 No justification = no ship.
+
+Adjudicate on the render, not on the finding text: for every overlap finding read the PNG and rule it intended layering or a defect; read decoration the same way and rule it decoration or clutter. The CLI reports geometry; the model rules intent.
 
 ## Default-Bad rule (HARD findings only)
 

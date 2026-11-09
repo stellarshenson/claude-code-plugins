@@ -1,4 +1,4 @@
-"""Single-gate "is this file shippable?" check.
+"""Floor gate: runs every deterministic checker on one or more SVGs; a pass is not a quality verdict.
 
 Runs ALL validators in one call, aggregates findings into HARD / SOFT
 tiers, and exits 0 when every HARD category is clean / 1 otherwise. One
@@ -749,9 +749,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="svg-infographics finalize",
         description=(
-            "Ship-ready gate: run ALL validators on one or more SVGs in a "
-            "single call, aggregate findings into HARD/SOFT tiers, exit 0 "
-            "when every HARD category is clean."
+            "Floor gate: runs every deterministic checker on one or more SVGs; "
+            "a pass is not a quality verdict."
         ),
     )
     parser.add_argument("svg", nargs="+", help="Path(s) to SVG(s) to audit")
@@ -887,10 +886,19 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
 
-    def _print_ok(paths) -> None:
+    def _print_ok(paths, skips) -> None:
         for p in paths:
+            s = skips.get(str(p), {})
+            if s:
+                print(
+                    f"finalize {p}: deterministic floor complete - findings acked, "
+                    f"{len(s)} not judged ({_cause_summary(s)}). Not a quality verdict.",
+                    file=sys.stderr,
+                )
+                continue
             print(
-                f"finalize {p}: OK - findings acked, all aspects judged.",
+                f"finalize {p}: deterministic floor complete - findings acked, "
+                "all aspects judged. Not a quality verdict.",
                 file=sys.stderr,
             )
 
@@ -979,15 +987,21 @@ def main(argv: list[str] | None = None) -> int:
         for svg_path in svg_paths:
             unjudged = skipped[str(svg_path)]
             if not unjudged:
-                print(f"finalize {svg_path}: OK - shippable.", file=sys.stderr)
+                print(
+                    f"finalize {svg_path}: deterministic floor clean - "
+                    "construction, geometry, colour arithmetic and roster "
+                    "honesty judged. Not a quality verdict.",
+                    file=sys.stderr,
+                )
                 continue
             unasked = any(not note.startswith("--") for note in unjudged.values())
             if unasked:
                 ship = 1
-            verdict = "NOT VERIFIED" if unasked else "OK - shippable"
+            verdict = "NOT VERIFIED" if unasked else "deterministic floor clean"
             print(
                 f"finalize {svg_path}: {verdict} - findings clean, "
-                f"{len(unjudged)} not judged ({_cause_summary(unjudged)})",
+                f"{len(unjudged)} not judged ({_cause_summary(unjudged)}). "
+                "Not a quality verdict.",
                 file=sys.stderr,
             )
         if args.json:
@@ -1075,15 +1089,16 @@ def main(argv: list[str] | None = None) -> int:
         _print_unverified(unverified)
         # A mixed run owes the healthy files a verdict too - silence read as
         # "also unverified", which is the inference the roster exists to kill.
-        _print_ok([p for p in svg_paths if str(p) not in unverified])
+        _print_ok([p for p in svg_paths if str(p) not in unverified], roster_skips)
     else:
         # The uniform acked path gets the same per-file verdict - one
         # vocabulary on every branch the gate passed.
-        _print_ok(svg_paths)
+        _print_ok(svg_paths, roster_skips)
         print(
-            "next: soft findings are stylistic nudges; shippable if you "
-            "accept the tradeoffs. Otherwise fix all of them in one pass "
-            "and re-run finalize once.",
+            "next: the floor is not a quality verdict; delivery needs the "
+            "Phase 6 generative review. Soft findings are stylistic nudges - "
+            "accept them, or fix all of them in one pass and re-run finalize "
+            "once.",
             file=sys.stderr,
         )
     return 1 if (all_hard or unverified) else 0

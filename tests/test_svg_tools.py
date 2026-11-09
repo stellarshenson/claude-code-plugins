@@ -6129,7 +6129,7 @@ class TestStemHeadRatio:
 
 
 class TestFinalize:
-    """WI#5: the shippable gate."""
+    """WI#5: the floor gate."""
 
     def test_clean_svg_returns_no_hard_findings(self, tmp_path):
         from stellars_claude_code_plugins.svg_tools.finalize import finalize

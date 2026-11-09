@@ -265,7 +265,11 @@ def main(argv=None) -> int:
     print(f"    info: {conn} connector path(s) in connectors layer")
     print(f"PHASE: {report['phase']}")
     if report["phase"] == "ship":
-        print("Ready: render PNG readback (`render-png <file> out.png --mode both`), deliver.")
+        print(
+            "Readback still owed before delivery: render both PNGs "
+            "(`render-png <file> out.png --mode both --width <canvas width>`), "
+            "read them, report the generative findings."
+        )
     return 0
 
 

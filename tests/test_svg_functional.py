@@ -2919,8 +2919,9 @@ class TestRound5CleanVerdict:
 
     def test_unasked_skips_flip_the_verdict_and_the_exit_code(self, tmp_path, monkeypatch, capsys):
         """Zero findings beside unjudged aspects is not a ship decision: the
-        roster nagged `these are not passes` and the verdict printed
-        `OK - shippable` over it, exit 0, with --json carrying no trace."""
+        roster nagged `these are not passes` and the clean verdict printed
+        `deterministic floor clean` over it, exit 0, with --json carrying no
+        trace."""
         import json
 
         from stellars_claude_code_plugins.svg_tools import finalize as fin
@@ -2946,7 +2947,7 @@ class TestRound5CleanVerdict:
         f.write_text(self.S + self.CLEAN)
         rc = fin.main([str(f), "--no-visual"])
         assert rc == 0
-        assert "OK - shippable" in capsys.readouterr().err
+        assert "deterministic floor clean" in capsys.readouterr().err
 
 
 class TestRound6TieBreakSpaces:
@@ -3356,8 +3357,11 @@ class TestRound7Followups:
         err = capsys.readouterr().err
         assert rc == 1
         assert f"finalize {bad}: NOT VERIFIED" in err
-        assert f"finalize {good}: OK - findings acked, all aspects judged." in err
-        assert err.index("NOT VERIFIED") < err.index("OK - findings acked")
+        assert (
+            f"finalize {good}: deterministic floor complete - findings acked, "
+            "1 not judged (1 --no-visual). Not a quality verdict."
+        ) in err
+        assert err.index("NOT VERIFIED") < err.index("deterministic floor complete")
 
 
 class TestRound8Followups:
@@ -3449,4 +3453,7 @@ class TestRound8Followups:
         rc = fin.main([str(f), "--no-visual", *acks])
         err = capsys.readouterr().err
         assert rc == 0
-        assert "OK - findings acked, all aspects judged." in err
+        assert (
+            "deterministic floor complete - findings acked, "
+            "1 not judged (1 --no-visual). Not a quality verdict."
+        ) in err

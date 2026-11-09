@@ -158,8 +158,8 @@ def test_gates_present():
         "highFanoutStreak" not in t and "fanout > 0.5" not in t
     )  # no ratio gate or ratio log left
     assert (
-        "r.trajectory === 'spiralling' && (r.changes > 0 || r.reverts > 0)" in t
-    )  # a spiralling round counts only while it still orders changes or reverts
+        "r.trajectory === 'spiralling' && (r.changes > 0 || r.reverts > 0 || r.appliedDelta > 0)" in t
+    )  # a spiralling round counts while it orders changes or reverts, or carries an applied delta
     assert "devils-advocate:adjudicator" in t and "devils-advocate:adversarial-reviewer" in t
 
 
@@ -546,7 +546,7 @@ def test_state_carries_the_loop_contract():
     block = t[t.index("const stateOut = () => ({") :]
     keys = re.findall(r"^\s+(\w+)[,:]", block[: block.index("})")], re.M)
     assert (contract, keys) == (
-        4,
+        5,
         [
             "contract",
             "round",
@@ -606,6 +606,7 @@ def _ruling(*answers: str) -> dict:
         "ruling": "PROCEED",
         "changes": changes,
         "reverts": [],
+        "fixVerdicts": [],
         "deferred": [],
         "refuted": [],
         "fanoutTraced": 0,
@@ -631,6 +632,160 @@ def _invoke(tmp_path: Path, args: dict, replies: dict) -> dict:
     return json.loads(r.stdout)
 
 
+def _state(**overrides) -> dict:
+    """A contract 5 loop state as stateOut writes it, for re-invocation tests."""
+    return {
+        "contract": 5,
+        "round": 1,
+        "history": [],
+        "deferred": [],
+        "refuted": [],
+        "rulings": [],
+        "closures": [],
+        "settled": [],
+        "research": None,
+        **overrides,
+    }
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_round_cap_names_the_rows_it_never_judged(tmp_path):
+    """DEF-ADVR-90. ROUND_CAP fires before a round runs, so args.findings rows
+    reached no adjudicator and nothing said so; the log names the count and
+    titles and the return carries the rows for the next invocation."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    rows = [_row("a breaks", "src/a.py", 10), _row("b leaks", "src/b.py", 20)]
+    out = _invoke(
+        tmp_path,
+        {**base, "state": _state(round=2, shipped=True), "maxRounds": 2, "findings": rows},
+        {},
+    )
+    result = out["result"]
+    assert result["status"] == "ROUND_CAP" and out["prompts"] == []
+    assert result["findings"] == []
+    assert [r["title"] for r in result["rows"]] == ["a breaks", "b leaks"]
+    assert any(
+        line.startswith("round cap: 2") and "a breaks" in line and "b leaks" in line
+        for line in out["logs"]
+    )
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_an_immaterial_critical_does_not_lift_a_merged_row(tmp_path):
+    """DEF-ADVR-91. The materiality cap reads the primary row's `material`
+    alone, so a CRITICAL from a lens that marked the finding immaterial lifted
+    the merged row past the cap; promotion now skips material=false."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect", "bug-hunter"]}
+    primary = {**_finding("leaks the socket on error", "src/a.py", 10), "severity": "MAJOR"}
+    immaterial = {
+        **_finding("leaks the socket on error", "src/a.py", 40),
+        "severity": "CRITICAL",
+        "material": False,
+    }
+    out = _invoke(
+        tmp_path,
+        base,
+        {
+            "discover": [{"findings": [primary]}, {"findings": [immaterial]}],
+            "adjudicate": [_ruling()],
+        },
+    )
+    row = out["result"]["openFindings"][0]
+    assert row["severity"] == "MAJOR" and "cappedFrom" not in row
+    assert row["lenses"] == ["architect", "bug-hunter"]  # the merge still happened
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_a_material_lens_uncaps_an_immaterial_primary_row_in_either_order(tmp_path):
+    """A material lens's scope claim and identity replace an immaterial
+    primary's, so the lens order cannot cap a finding the panel rates material
+    or flip the merged row's file, line or severity."""
+    material = {
+        **_finding("leaks the socket on error", "src/a.py", 10),
+        "severity": "CRITICAL",
+        "materiality": "a paying user loses the connection on the primary path",
+    }
+    immaterial = {
+        **_finding("leaks the socket on error", "src/a.py", 40),
+        "severity": "CRITICAL",
+        "material": False,
+        "materiality": "NONE - only the dev harness reaches it",
+    }
+    for other in (
+        material,  # the original pair at one file
+        dict(material, file="src/b.py"),  # different files: identity follows material
+        dict(material, severity="MINOR"),  # divergent severity: material's MINOR wins
+    ):
+        rows = []
+        for reports in ([immaterial, other], [other, immaterial]):
+            out = _invoke(
+                tmp_path,
+                {"target": "src", "bar": BAR, "lenses": ["architect", "bug-hunter"]},
+                {
+                    "discover": [{"findings": [report]} for report in reports],
+                    "adjudicate": [_ruling()],
+                },
+            )
+            rows.append(out["result"]["openFindings"][0])
+        assert [row["severity"] for row in rows] == [other["severity"]] * 2
+        assert [(row["file"], row["line"]) for row in rows] == [(other["file"], other["line"])] * 2
+        assert [row["materiality"] for row in rows] == [other["materiality"]] * 2
+        assert all(row["material"] is True and not row.get("outOfBar") for row in rows)
+        assert all("cappedFrom" not in row for row in rows)
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_a_settled_title_at_another_file_is_still_judged(tmp_path):
+    """DEF-ADVR-92. The settled record matched by title only, so a title ruled
+    at src/a.py silenced the same title at src/b.py; the settled entry must
+    name the finding's file."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    state = _state(
+        shipped=True,
+        settled=[{"round": 1, "file": "src/a.py", "line": 40, "title": "a stale name"}],
+    )
+    out = _invoke(
+        tmp_path,
+        {**base, "state": state},
+        {
+            "discover": [{"findings": [_finding("a stale name", "src/b.py", 40)]}],
+            "adjudicate": [_ruling()],
+        },
+    )
+    assert out["result"]["status"] == "SHIP"
+    assert [f["file"] for f in out["result"]["openFindings"]] == ["src/b.py"]
+    assert "a stale name" in _adjudication(out)
+    assert not any(line.startswith("settled filter:") for line in out["logs"])
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_a_settled_title_at_a_file_a_fix_touched_is_judged(tmp_path):
+    """DEF-ADVR-93. With two settled files for one title, an untouched entry
+    discarded a finding at the other file under the false reason 'at a site no
+    fix has touched since'; the matched entry must be at the finding's file, so
+    a file the fix touched is judged again and the reason stays true."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    state = _state(
+        settled=[
+            {"round": 1, "file": "src/a.py", "line": 40, "title": "a stale name"},
+            {"round": 1, "file": "src/b.py", "line": 40, "title": "a stale name"},
+        ]
+    )
+    fix = {"site": "src/a.py", "summary": "fixed a", "files": ["src/a.py"], "patch": "/tmp/r1.patch"}
+    out = _invoke(
+        tmp_path,
+        {**base, "state": state, "appliedFixes": [fix]},
+        {
+            "confirm": [{"findings": [_finding("a stale name", "src/a.py", 45)]}],
+            "adjudicate": [_ruling()],
+        },
+    )
+    assert out["result"]["status"] == "SHIP"
+    assert [f["file"] for f in out["result"]["openFindings"]] == ["src/a.py"]
+    assert "a stale name" in _adjudication(out)
+    assert not any(line.startswith("settled filter:") for line in out["logs"])
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
 def test_invocations_read_patches_skip_ruled_sites_and_ship_on_a_clean_round(tmp_path):
     """DEF-ADVR-63..66 end to end. Discovery exits PLAN; a confirm reads the
@@ -646,7 +801,7 @@ def test_invocations_read_patches_skip_ruled_sites_and_ship_on_a_clean_round(tmp
             "adjudicate": [_ruling("a breaks")],
         },
     )
-    assert one["result"]["status"] == "PLAN" and one["result"]["state"]["contract"] == 4
+    assert one["result"]["status"] == "PLAN" and one["result"]["state"]["contract"] == 5
 
     fix_a = [
         {
@@ -1083,7 +1238,7 @@ def test_rows_pass_the_materiality_cap_and_the_settled_record_but_not_the_pin_fi
     assert capped[0]["cappedFrom"] == "MAJOR"
 
     state = {
-        "contract": 4,
+        "contract": 5,
         "round": 1,
         "history": [],
         "deferred": [],
@@ -1136,9 +1291,9 @@ def test_a_clean_panel_with_a_row_runs_the_adjudicator(tmp_path):
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
 def test_rows_are_accepted_after_a_plan_and_on_the_ship_confirmation_round(tmp_path):
-    """ACC-REVIEW-264: a contract 4 state in the shape written before
+    """ACC-REVIEW-264: a contract 5 state in the shape written before
     args.findings existed is accepted with rows after a PLAN and on both kinds
-    of confirmation round after SHIP; every return keeps contract 4."""
+    of confirmation round after SHIP; every return keeps contract 5."""
     base = {
         "target": "src",
         "bar": BAR,
@@ -1146,7 +1301,7 @@ def test_rows_are_accepted_after_a_plan_and_on_the_ship_confirmation_round(tmp_p
         "findings": [_row("b row", "src/z.py", 3)],
     }
     planned = {
-        "contract": 4,
+        "contract": 5,
         "round": 1,
         "history": [
             {
@@ -1190,7 +1345,7 @@ def test_rows_are_accepted_after_a_plan_and_on_the_ship_confirmation_round(tmp_p
             {stage: [{"findings": []}], "adjudicate": [_ruling()]},
         )
         assert out["result"]["status"] == "SHIP", out
-        assert out["result"]["state"]["contract"] == 4
+        assert out["result"]["state"]["contract"] == 5
         assert "b row" in _adjudication(out)
 
 
@@ -1213,3 +1368,358 @@ def test_the_findings_arg_is_documented_once_and_names_no_tool():
         if p.is_file() and "ponytail" in p.read_text(encoding="utf-8", errors="ignore").lower()
     ]
     assert not named, named
+
+
+# ---------------------------------------------------------------------------
+# Adjudicator convergence (forensics section 5, A1-A6)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_a_fix_that_changes_a_bar_guarantee_must_carry_it_into_the_bar(tmp_path):
+    """ACC-REVIEW-279-BAR-GUARANTEE: a fix that changes a guarantee the bar
+    states passes the replacement text with the applied fix; the confirm and
+    the prior record carry the replacement, and a text the unchanged bar does
+    not state is refused before any agent spawns."""
+    replacement = "every label stays inside its tile"
+    old = "labels may overhang their tile"
+    base = {"target": "src", "lenses": ["architect"]}
+    fix = {
+        "site": "src/a.css",
+        "summary": "clipped the overflowing label",
+        "files": ["src/a.css"],
+        "patch": "/tmp/r1.patch",
+        "barGuarantee": replacement,
+    }
+    updated_bar = {**BAR, "guarantees": f"{old}; {replacement}"}
+    out = _invoke(
+        tmp_path,
+        {**base, "bar": updated_bar, "state": _state(), "appliedFixes": [fix]},
+        {
+            "confirm": [{"findings": [_finding("labels still overhang", "src/a.css", 5)]}],
+            "adjudicate": [_ruling()],
+        },
+    )
+    assert out["result"]["status"] == "SHIP"
+    assert out["result"]["state"]["closures"][0]["barGuarantee"] == replacement
+    assert replacement in out["prompts"][0]  # the confirm reviews the updated bar
+    assert replacement in _adjudication(out)  # priorRecord carries the persisted change
+
+    unchanged = _invoke(
+        tmp_path, {**base, "bar": {**BAR, "guarantees": old}, "state": _state(), "appliedFixes": [fix]}, {}
+    )
+    assert "args.appliedFixes[0]" in unchanged["error"] and "barGuarantee" in unchanged["error"]
+    assert unchanged["prompts"] == []
+
+    non_string = _invoke(
+        tmp_path,
+        {**base, "bar": updated_bar, "state": _state(), "appliedFixes": [{**fix, "barGuarantee": 7}]},
+        {},
+    )
+    assert "barGuarantee" in non_string["error"] and non_string["prompts"] == []
+
+    list_bar = {**BAR, "guarantees": [old, replacement]}
+    carried = _invoke(
+        tmp_path,
+        {**base, "bar": list_bar, "state": _state(), "appliedFixes": [fix]},
+        {"confirm": [{"findings": []}]},
+    )
+    assert carried["result"]["status"] == "SHIP"
+    absent = _invoke(
+        tmp_path,
+        {**base, "bar": {**BAR, "guarantees": [old]}, "state": _state(), "appliedFixes": [fix]},
+        {},
+    )
+    assert "barGuarantee" in absent["error"] and absent["prompts"] == []
+
+
+def test_a_clip_is_a_new_mechanism():
+    """ACC-REVIEW-280-CLIP-MECH: an overflow/clip pairing, clip-path, hidden
+    visibility or aria-hidden is new review surface, and the change names what
+    becomes unreachable - in both script descriptions, the adjudicator's step 5
+    and INV-9 - with no numeric threshold added."""
+    t = text()
+    assert "makes content unreachable" in t and t.count("clip-path") == 2  # remedy + newMechanism
+    assert "what becomes unreachable and the finding that justifies it" in t
+    adj = agent("adjudicator")
+    assert "clip-path" in adj and "what becomes unreachable" in adj
+    inv9 = next(
+        ln for ln in SPEC.read_text(encoding="utf-8").splitlines() if ln.startswith("9. ")
+    )
+    assert "clip-path" in inv9 and "what becomes unreachable" in inv9
+    # a class of change, never a numeric threshold on it
+    assert not re.search(r"clip[^'\n]*\d", t)
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_deferred_entries_carry_the_open_owner_decision(tmp_path):
+    """ACC-REVIEW-281-OWNER-DECISION: a deferral is {finding, reason,
+    ownerDecision}; the round ships with zero changes, the next adjudication
+    renders the decision as blocking, and a contract 4 state is refused."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    deferred = {
+        "finding": "the tile truncates its digit group",
+        "reason": "the type scale competes with the value width",
+        "ownerDecision": "narrow the tile or drop tabular figures",
+    }
+    first = _invoke(
+        tmp_path,
+        base,
+        {
+            "discover": [
+                {"findings": [_finding("the tile truncates its digit group", "src/tile.css", 10)]}
+            ],
+            "adjudicate": [{**_ruling(), "deferred": [deferred]}],
+        },
+    )["result"]
+    assert first["status"] == "SHIP"
+    assert first["deferred"] == [deferred] and first["state"]["deferred"] == [deferred]
+
+    second = _invoke(
+        tmp_path,
+        {**base, "state": first["state"]},
+        {
+            "discover": [
+                {"findings": [_finding("the header strip scrolls sideways", "src/header.css", 20)]}
+            ],
+            "adjudicate": [_ruling("the header strip scrolls sideways")],
+        },
+    )
+    assert second["result"]["status"] == "PLAN"
+    prompt = _adjudication(second)
+    for part in ("OWNER DECISION OPEN", deferred["ownerDecision"], deferred["finding"], deferred["reason"]):
+        assert part in prompt, part
+
+    stale = {**first["state"], "contract": 4}
+    assert "loop contract 4" in _invoke(tmp_path, {**base, "state": stale}, {})["error"]
+
+    t = text()
+    assert "required: ['finding', 'reason']" in t and "ownerDecision" in t
+    adj = agent("adjudicator")
+    assert "Every deferral is `{finding, reason, ownerDecision}`" in adj
+    assert "A change whose cause depends on an open `ownerDecision` is not planned" in adj
+    inv3 = next(
+        ln for ln in SPEC.read_text(encoding="utf-8").splitlines() if ln.startswith("3. ")
+    )
+    assert "open owner decision" in inv3 and "graphGap" in inv3
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_a_verdict_on_every_closure(tmp_path):
+    """ACC-REVIEW-282-FIX-VERDICT: every applied change carries a keep,
+    revert or refine verdict; a revert verdict becomes a plan revert in the
+    closure's shape, is persisted in rulings, and reaches the next
+    adjudication's prior record."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    closure = {
+        "round": 1,
+        "site": "src/tile.css",
+        "summary": "clipped the tile label",
+        "files": ["src/tile.css"],
+        "patch": "/tmp/r1.patch",
+    }
+    verdict = {"fix": "src/tile.css", "verdict": "revert", "reason": "it caused this round's finding"}
+    first = _invoke(
+        tmp_path,
+        {**base, "state": _state(round=1, closures=[closure], shipped=True)},
+        {
+            "confirm": [{"findings": [_finding("the clip hides the unit", "src/tile.css", 7)]}],
+            "adjudicate": [{**_ruling(), "fixVerdicts": [verdict]}],
+        },
+    )["result"]
+    assert first["status"] == "PLAN"
+    assert first["reverts"] == [
+        {
+            "mechanism": "clipped the tile label",
+            "site": "src/tile.css",
+            "dissolves": [],
+            "defers": [],
+        }
+    ]
+    assert first["state"]["rulings"][0]["fixVerdicts"] == [verdict]
+
+    revert_fix = {
+        "site": "src/tile.css",
+        "summary": "reverted: clipped the tile label",
+        "files": ["src/tile.css"],
+        "patch": "/tmp/r2.patch",
+    }
+    second = _invoke(
+        tmp_path,
+        {**base, "state": first["state"], "appliedFixes": [revert_fix]},
+        {
+            "confirm": [{"findings": [_finding("the unit is readable again", "src/tile.css", 7)]}],
+            "adjudicate": [_ruling()],
+        },
+    )
+    assert second["result"]["status"] == "SHIP"
+    assert "src/tile.css: revert - it caused this round's finding" in _adjudication(second)
+
+    two_closures = [
+        closure,
+        {
+            "round": 2,
+            "site": "src/tile.css",
+            "summary": "narrowed the tile",
+            "files": ["src/tile.css"],
+            "patch": "/tmp/r2.patch",
+        },
+    ]
+    same_site = _state(round=2, closures=two_closures, shipped=True)
+    finding = {"findings": [_finding("the unit is unreadable", "src/tile.css", 7)]}
+    named = _invoke(
+        tmp_path,
+        {**base, "state": same_site},
+        {
+            "confirm": [finding],
+            "adjudicate": [
+                {
+                    **_ruling("the unit is unreadable"),
+                    "fixVerdicts": [
+                        {
+                            "fix": "round 2 src/tile.css: narrowed the tile",
+                            "verdict": "revert",
+                            "reason": "the narrowing hides the unit",
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    assert named["result"]["status"] == "PLAN"
+    assert named["result"]["reverts"] == [
+        {"mechanism": "narrowed the tile", "site": "src/tile.css", "dissolves": [], "defers": []}
+    ]
+
+    ambiguous = _invoke(
+        tmp_path,
+        {**base, "state": same_site},
+        {
+            "confirm": [finding],
+            "adjudicate": [
+                {
+                    **_ruling("the unit is unreadable"),
+                    "fixVerdicts": [
+                        {"fix": "src/tile.css", "verdict": "revert", "reason": "it hides the unit"}
+                    ],
+                }
+            ],
+        },
+    )
+    assert ambiguous["result"]["status"] == "PLAN"
+    assert ambiguous["result"]["reverts"] == []  # two closures share the site - nothing synthesized
+    assert any(
+        "revert verdict" in line and "src/tile.css" in line and "2" in line
+        for line in ambiguous["logs"]
+    )
+    assert all(
+        r["site"].startswith("src/")
+        for result in (named["result"], ambiguous["result"])
+        for r in result["reverts"]
+    )
+
+    assert "'fixVerdicts'" in text() and "required: ['fix', 'verdict', 'reason']" in text()
+    adj = agent("adjudicator")
+    assert "a fix that answered a finding the prior record refuted" in adj
+    assert "every applied change in `fixVerdicts`" in adj
+    inv9 = next(
+        ln for ln in SPEC.read_text(encoding="utf-8").splitlines() if ln.startswith("9. ")
+    )
+    assert "keep, revert or refine verdict" in inv9 and "`fixVerdicts`" in inv9
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_the_trajectory_window_counts_an_applied_delta(tmp_path):
+    """ACC-REVIEW-283-TRAJECTORY-DELTA: a spiralling round whose plan is empty
+    but whose invocation applied a fix still fills the two-of-three window, and
+    the persisted reason reaches the next adjudication."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    first = _invoke(
+        tmp_path,
+        base,
+        {
+            "discover": [{"findings": [_finding("the tile overflows", "src/tile.css", 10)]}],
+            "adjudicate": [
+                {
+                    **_ruling("the tile overflows"),
+                    "trajectory": "spiralling",
+                    "trajectoryReason": "one mechanism added",
+                }
+            ],
+        },
+    )["result"]
+    assert first["status"] == "PLAN"
+
+    fix = {
+        "site": "src/tile.css",
+        "summary": "added an overflow guard",
+        "files": ["src/tile.css"],
+        "patch": "/tmp/r1.patch",
+    }
+    second = _invoke(
+        tmp_path,
+        {**base, "state": first["state"], "appliedFixes": [fix]},
+        {
+            "confirm": [
+                {"findings": [_finding("the guard hides the second row", "src/tile.css", 12)]}
+            ],
+            "adjudicate": [
+                {
+                    **_ruling(),
+                    "trajectory": "spiralling",
+                    "trajectoryReason": "the finding sits in the applied guard",
+                }
+            ],
+        },
+    )
+    result = second["result"]
+    assert result["status"] == "FANOUT_STOP"
+    assert [r["appliedDelta"] for r in result["state"]["rulings"]] == [0, 1]
+    assert result["state"]["rulings"][1]["trajectoryReason"] == "the finding sits in the applied guard"
+    assert "one mechanism added" in _adjudication(second)
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH")
+def test_the_graph_gap_is_named(tmp_path):
+    """ACC-REVIEW-284-GRAPH-GAP: the graph block states what the graph covers
+    and does not, the adjudicator records the uncovered layer, and a review
+    without an instrument says so instead of staying silent."""
+    base = {"target": "src", "bar": BAR, "lenses": ["architect"]}
+    out = _invoke(
+        tmp_path,
+        {**base, "graph": "tmp/graph.json"},
+        {
+            "discover": [{"findings": [_finding("the strip clips its arrow", "src/header.css", 10)]}],
+            "adjudicate": [
+                {**_ruling(), "graphGap": "rendered geometry - the graph holds no CSS nodes"}
+            ],
+        },
+    )
+    reviewer, adjudication = out["prompts"]
+    for prompt in (reviewer, adjudication):
+        assert "covers symbols, files and call edges" in prompt
+        assert "does NOT cover CSS rules and rendered geometry" in prompt
+    assert "GRAPH GAP" in adjudication
+    assert (
+        out["result"]["state"]["rulings"][0]["graphGap"]
+        == "rendered geometry - the graph holds no CSS nodes"
+    )
+
+    no_graph = _invoke(
+        tmp_path,
+        base,
+        {
+            "discover": [{"findings": [_finding("the strip clips its arrow", "src/header.css", 10)]}],
+            "adjudicate": [{**_ruling(), "graphGap": "no instrument was supplied"}],
+        },
+    )
+    assert "no instrument was supplied" in _adjudication(no_graph)
+
+    adj = agent("adjudicator")
+    assert "A code graph covers symbols, files and call edges" in adj
+    assert "Name in `graphGap` the uncovered layer" in adj
+    spec = SPEC.read_text(encoding="utf-8")
+    graph_row = next(ln for ln in spec.splitlines() if ln.startswith("| `graph` |"))
+    assert "symbols, files and call edges" in graph_row and "`graphGap`" in graph_row
+    inv3 = next(ln for ln in spec.splitlines() if ln.startswith("3. "))
+    assert "`graphGap`" in inv3

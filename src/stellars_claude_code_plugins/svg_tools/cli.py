@@ -35,7 +35,7 @@ SUBCOMMANDS = {
     ),
     "finalize": (
         "finalize",
-        "FINALIZE: ship-ready gate. Runs XML + overlap + connector validators and returns exit 1 on any HARD finding. One answer: is this file shippable?",
+        "FINALIZE: floor gate. Runs every deterministic checker on one or more SVGs; a pass is not a quality verdict.",
     ),
     "scaffold": (
         "scaffold",
@@ -157,7 +157,7 @@ SUBCOMMANDS = {
 CAVEMAN_DESCRIPTIONS: dict[str, str] = {
     "preflight": "say what you build. tool give rules",
     "check": "did build match what you said?",
-    "finalize": "ship gate. fail if bad",
+    "finalize": "floor gate. fail if bad",
     "scaffold": "skeleton for format: grid + layers + placeholders",
     "workflow": "where am I? what next? file says",
     "overlaps": "find text + shape bumps. spacing too",

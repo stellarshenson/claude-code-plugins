@@ -70,11 +70,14 @@ export const meta = {
 // args - re-invocation after applying a PLAN:
 //   state         the `state` object from the previous PLAN return, verbatim;
 //                 refused when its `contract` is not this script's LOOP_CONTRACT
-//   appliedFixes  [{site, summary, files, patch}] - what the main session
-//                 actually applied (reverts included, as "reverted: <mechanism>");
-//                 `files` lists the touched paths, `patch` is the path of a file
-//                 holding the diff of exactly that change - the confirming
-//                 reviewers read it instead of the whole delta (DEF-ADVR-63)
+//   appliedFixes  [{site, summary, files, patch, barGuarantee?}] - what the main
+//                 session actually applied (reverts included, as "reverted:
+//                 <mechanism>"); `files` lists the touched paths, `patch` is the
+//                 path of a file holding the diff of exactly that change - the
+//                 confirming reviewers read it instead of the whole delta
+//                 (DEF-ADVR-63); `barGuarantee` is the replacement text when the
+//                 fix changes a guarantee the bar states, and the same
+//                 invocation's args.bar.guarantees must carry it
 // args - re-invocation after SHIP, when the user asked for a confirmation round:
 //   state         the `state` object from the SHIP return, verbatim, and no
 //                 appliedFixes - the round attacks every closure, or repeats
@@ -90,7 +93,7 @@ if (typeof args.bar !== 'object' || !args.bar.purpose || !args.bar.inputs || !ar
 // The shape of `state` and `appliedFixes` this script reads. Bump it whenever
 // either changes, so a state written by another version - or this script run
 // from a stale copy - is refused instead of misread (DEF-ADVR-66).
-const LOOP_CONTRACT = 4
+const LOOP_CONTRACT = 5
 if (args.state) {
   if (args.state.contract !== LOOP_CONTRACT) {
     throw new Error(`args.state was written under loop contract ${args.state.contract} and this script reads contract ${LOOP_CONTRACT} - the state and the script come from different versions; run the installed adversarial-loop.js and start the review again`)
@@ -99,6 +102,14 @@ if (args.state) {
   const confirmation = args.state.shipped && !fixes
   if (!confirmation && (!Array.isArray(fixes) || !fixes.length || fixes.some((f) => !f.site || !f.summary || !f.patch || !Array.isArray(f.files) || !f.files.length))) {
     throw new Error('args.appliedFixes must list every applied change as {site, summary, files, patch} - files the change touched, patch the path of a file holding the diff of exactly that change; without them a confirming reviewer re-reads the whole delta. Only a confirmation round after SHIP omits them')
+  }
+  if (!confirmation) {
+    const guarantees = Array.isArray(args.bar.guarantees) ? args.bar.guarantees.join('; ') : typeof args.bar.guarantees === 'string' ? args.bar.guarantees : ''
+    fixes.forEach((f, i) => {
+      if (f.barGuarantee !== undefined && (typeof f.barGuarantee !== 'string' || !f.barGuarantee || !guarantees.includes(f.barGuarantee))) {
+        throw new Error(`args.appliedFixes[${i}].barGuarantee must be a non-empty string contained in args.bar.guarantees - a fix that changes a bar guarantee passes the replacement text and the updated bar in the same invocation, or the confirm reviews a clause the code no longer claims`)
+      }
+    })
   }
 }
 // Research permission - the user's answer to the one research question per
@@ -121,8 +132,14 @@ const MAX_CHANGES = args.maxChanges || 3
 // causes - but a hardcoded tool overfits to the problems it was written for and
 // misclassifies the rest, and any one tool drifts on its own timeline.
 const graphBlock = GRAPH
-  ? `INSTRUMENT AVAILABLE - a refreshed code graph matching HEAD at ${GRAPH}. It answers callers, dependents and whether two sites share one cause faster than grepping. Use it as your method sees fit and point it at that path.`
+  ? `INSTRUMENT AVAILABLE - a refreshed code graph matching HEAD at ${GRAPH}. It answers callers, dependents and whether two sites share one cause faster than grepping. It covers symbols, files and call edges; it does NOT cover CSS rules and rendered geometry, lint config, test bodies, the accessibility tree, browser behaviour or rendered layout. Use it as your method sees fit and point it at that path.`
   : null
+
+// A6: the adjudicator names the layer its instrument did not reach, so a
+// finding priced from a graph's silence is visible as such.
+const graphGapBlock = GRAPH
+  ? `GRAPH GAP: name in \`graphGap\` the layer the graph did not cover that the adjudicated findings turn on - CSS rules and rendered geometry, lint config, test bodies, the accessibility tree, browser behaviour, rendered layout - empty only when the graph held a node for every adjudicated finding's file and symbol.`
+  : `GRAPH GAP: no instrument was supplied - say so in \`graphGap\`, and name there the layer the adjudicated findings turn on; never leave it silent.`
 
 // A denied permission reaches both prompts as data, so no turn goes into a
 // request nobody will act on.
@@ -147,7 +164,7 @@ const FINDINGS_SCHEMA = {
           evidence: { type: 'string', description: 'what was observed or reproduced, with the exact input' },
           material: { type: 'boolean', description: 'true ONLY when a user on the primary path, with an input inside the input universe, is harmed; false for a technically true defect on an input the product is not for' },
           materiality: { type: 'string', description: 'who is harmed, doing what the product is for, on which input - or NONE and why' },
-          remedy: { type: 'string', description: 'smallest EDIT that removes the cause, or DEFER; a remedy that would add a pass, plugin, branch, helper, guard, data shape, or a special case for one input (a regex arm, word-list entry or threshold) opens with NEW MECHANISM' },
+          remedy: { type: 'string', description: 'smallest EDIT that removes the cause, or DEFER; a remedy that would add a pass, plugin, branch, helper, guard, data shape, or a special case for one input (a regex arm, word-list entry or threshold) - or any rule that hides, clips or makes content unreachable (an overflow/clip pairing, clip-path, visibility: hidden, aria-hidden) - opens with NEW MECHANISM, and the clip or hide must name what becomes unreachable and the finding that justifies it' },
           outOfBar: { type: 'boolean', description: 'true when the input class sits outside the stated bar' },
           research: { type: 'string', description: 'one-line best-practice, paradigm or pattern question this finding rests on that no research file carries; empty otherwise' },
           closure: { type: 'string', description: 'confirming rounds only: the closure this finding fails, quoted from the closure list - a closure that is NOT closed, or the closure whose change caused a regression elsewhere (a broken caller or test in a file the change did not touch); empty only for a regression inside the closure\'s own files' },
@@ -173,7 +190,7 @@ ROWS.forEach((f, i) => {
 
 const ADJUDICATION_SCHEMA = {
   type: 'object',
-  required: ['ruling', 'changes', 'reverts', 'fanoutTraced', 'fanoutTotal', 'trajectory', 'trajectoryReason'],
+  required: ['ruling', 'changes', 'reverts', 'fixVerdicts', 'fanoutTraced', 'fanoutTotal', 'trajectory', 'trajectoryReason', 'graphGap'],
   properties: {
     ruling: { type: 'string', enum: ['PROCEED', 'PROCEED_WITH_DEFERRALS', 'STOP'] },
     changes: {
@@ -187,7 +204,7 @@ const ADJUDICATION_SCHEMA = {
           site: { type: 'string' },
           change: { type: 'string' },
           radius: { type: 'string', description: 'what it stays inside and what it could break' },
-          newMechanism: { type: 'boolean', description: 'true when the change adds a pass, plugin, branch, helper, guard, data shape, or a special case for one input (a regex arm, word-list entry or threshold) that did not exist - new review surface' },
+          newMechanism: { type: 'boolean', description: 'true when the change adds a pass, plugin, branch, helper, guard, data shape, or a special case for one input (a regex arm, word-list entry or threshold) that did not exist - new review surface; also true for any rule that hides, clips or makes content unreachable (an overflow/clip pairing, clip-path, visibility: hidden, aria-hidden), whose change must name what becomes unreachable and the finding that justifies it' },
         },
       },
     },
@@ -205,12 +222,38 @@ const ADJUDICATION_SCHEMA = {
         },
       },
     },
-    deferred: { type: 'array', items: { type: 'string' }, description: 'confirmed-but-deferred, each with its reason' },
+    fixVerdicts: {
+      type: 'array',
+      description: 'one keep, revert or refine verdict with its reason for every applied change listed under CHANGES APPLIED; a revert verdict removes that mechanism through reverts; EMPTY only when no change was applied',
+      items: {
+        type: 'object',
+        required: ['fix', 'verdict', 'reason'],
+        properties: {
+          fix: { type: 'string', description: 'the applied change this verdict judges, as listed under CHANGES APPLIED' },
+          verdict: { type: 'string', enum: ['keep', 'revert', 'refine'] },
+          reason: { type: 'string', description: 'the evidence weighed - a finding the prior record refuted, this round\'s finding, or the owner\'s new evidence' },
+        },
+      },
+    },
+    deferred: {
+      type: 'array',
+      description: 'confirmed-but-deferred, each with its reason and the owner decision it waits on',
+      items: {
+        type: 'object',
+        required: ['finding', 'reason'],
+        properties: {
+          finding: { type: 'string', description: 'the finding title deferred' },
+          reason: { type: 'string', description: 'why it is deferred and what stays live' },
+          ownerDecision: { type: 'string', description: 'the design question and the decision that must answer it; empty only when no owner decision is open - a change whose cause depends on it is not planned' },
+        },
+      },
+    },
     refuted: { type: 'array', items: { type: 'string' }, description: 'findings refuted, each with the evidence - immaterial findings land here' },
     fanoutTraced: { type: 'integer', description: 'how many of this round\'s findings sit in code a previous plan\'s applied fix introduced' },
     fanoutTotal: { type: 'integer' },
-    trajectory: { type: 'string', enum: ['converging', 'spiralling'], description: 'your judgment of the loop from the prior rulings and this round: converging when the delta shrinks, the worst severity falls and the plan edits what exists; spiralling when findings sit in mechanisms a previous plan added and the plan enlarges or refines them, or severity holds or rises across rounds' },
-    trajectoryReason: { type: 'string', description: 'one line saying why - the evidence weighed, fanoutTraced/fanoutTotal included' },
+    trajectory: { type: 'string', enum: ['converging', 'spiralling'], description: 'your judgment of the loop from the prior rulings and this round: converging when the delta shrinks, the worst severity falls and the plan edits what exists; spiralling when findings sit in mechanisms a previous plan added and the plan enlarges or refines them, or severity holds or rises across rounds; the judgment covers the plan and the invocation\'s applied delta, and the reason is persisted in the ruling' },
+    trajectoryReason: { type: 'string', description: 'one line saying why - the evidence weighed, fanoutTraced/fanoutTotal and this invocation\'s appliedFixes included' },
+    graphGap: { type: 'string', description: 'the layer the graph did not cover that the adjudicated findings turn on (CSS rules and rendered geometry, lint config, test bodies, the accessibility tree, browser behaviour, rendered layout); empty only when the graph held a node for every adjudicated finding\'s file and symbol; "no instrument was supplied" when no graph was given' },
     research: {
       type: 'array',
       description: 'the reviewer research requests you approve; EMPTY when none is approved',
@@ -277,7 +320,12 @@ const mergeFindings = (perLens) => {
         // kept in `also`, so the adjudicator sees all of it (DEF-ADVR-80).
         ;(hit.also = hit.also || []).push({ lens: LENSES[i], evidence: f.evidence, remedy: f.remedy })
         hit.lenses.push(LENSES[i])
-        if (f.severity === 'CRITICAL' && hit.severity !== 'CRITICAL') Object.assign(hit, { severity: 'CRITICAL' })
+        // A CRITICAL from a lens that marked the finding immaterial never lifts
+        // the row - the cap reads only the primary row's material (DEF-ADVR-91).
+        if (f.severity === 'CRITICAL' && f.material !== false && hit.severity !== 'CRITICAL') Object.assign(hit, { severity: 'CRITICAL' })
+        // A material lens's scope claim replaces an immaterial primary's, so
+        // the lens order cannot cap a finding the panel rates material.
+        if (f.material !== false && hit.material === false) Object.assign(hit, { material: true, materiality: f.materiality, outOfBar: false, severity: f.severity, file: f.file, line: f.line })
       } else {
         rows.push(Object.assign({}, f, { lenses: [LENSES[i]] }))
       }
@@ -356,7 +404,7 @@ const settled = S ? S.settled : []
 let round = S ? S.round : 0
 
 const newDelta = (S && args.appliedFixes) || []
-newDelta.forEach((f) => closures.push({ round, site: f.site, summary: f.summary, files: f.files, patch: f.patch }))
+newDelta.forEach((f) => closures.push({ round, site: f.site, summary: f.summary, files: f.files, patch: f.patch, barGuarantee: f.barGuarantee }))
 
 const stateOut = () => ({
   contract: LOOP_CONTRACT,
@@ -395,11 +443,26 @@ const routeResearch = (approved) => {
 const priorRecord = () =>
   [
     `PRIOR ADJUDICATIONS (you start fresh each round - this record is your own continuity; do not re-litigate what it settled unless this round brings NEW evidence):`,
-    `Rulings: ${rulings.length ? rulings.map((r) => `round ${r.round} ${r.ruling} (${r.changes} changes, ${r.reverts} reverts, fanout ${r.fanout}, ${r.trajectory})`).join('; ') : '(none - first adjudication)'}`,
+    `Rulings: ${rulings.length ? rulings.map((r) => `round ${r.round} ${r.ruling} (${r.changes} changes, ${r.reverts} reverts, ${r.appliedDelta || 0} applied, fanout ${r.fanout}, ${r.trajectory} - ${r.trajectoryReason})`).join('; ') : '(none - first adjudication)'}`,
     `Refuted (stay refuted absent new evidence):`,
     allRefuted.length ? allRefuted.map((r) => `- ${r}`).join('\n') : '(none)',
     `Deferred (stay deferred absent new evidence; do not silently promote):`,
-    allDeferred.length ? allDeferred.map((d) => `- ${d}`).join('\n') : '(none)',
+    allDeferred.length
+      ? allDeferred
+          .map((d) => `- ${d.finding}: ${d.reason}${d.ownerDecision ? ` [OWNER DECISION OPEN: ${d.ownerDecision} - a change whose cause depends on it is not planned]` : ''}`)
+          .join('\n')
+      : '(none)',
+    `Bar guarantees changed by applied fixes (the bar states the replacement):`,
+    closures.filter((c) => c.barGuarantee).length
+      ? closures.filter((c) => c.barGuarantee).map((c) => `- ${c.site}: ${c.barGuarantee}`).join('\n')
+      : '(none)',
+    `Fix verdicts on applied changes:`,
+    rulings.some((r) => (r.fixVerdicts || []).length)
+      ? rulings
+          .filter((r) => (r.fixVerdicts || []).length)
+          .map((r) => r.fixVerdicts.map((v) => `round ${r.round} ${v.fix}: ${v.verdict} - ${v.reason}`).join('; '))
+          .join('; ')
+      : '(none)',
   ].join('\n')
 
 // A confirm runs only on a re-invocation. After a PLAN the contract check
@@ -444,13 +507,16 @@ const pinFilter = (findings) => {
 // Settled record - SCOPE, not blocking. A finding the adjudicator ruled
 // without a change stays ruled while no fix applied since that ruling has
 // touched its file; a later finding at that site is discarded unless it names
-// a closure it fails (DEF-ADVR-64).
+// a closure it fails (DEF-ADVR-64). The site is the title AND the file: a
+// title ruled at one file does not silence the same title at another
+// (DEF-ADVR-92), and the finding's own file decides touchedSince, so a file a
+// fix touched since the ruling is judged again (DEF-ADVR-93).
 const touchedSince = (s) => closures.some((c) => c.round >= s.round && c.files.some((p) => sameFile(p, s.file)))
 const settledFilter = (findings) => {
   const kept = []
   const dropped = []
   findings.forEach((f) => {
-    const ruled = !(f.closure && f.closure.trim()) && settled.some((s) => sameSite(s, f) && !touchedSince(s))
+    const ruled = !(f.closure && f.closure.trim()) && settled.some((s) => sameSite(s, f) && sameFile(s.file, f.file) && !touchedSince(s))
     ;(ruled ? dropped : kept).push(f)
   })
   if (dropped.length) {
@@ -461,8 +527,13 @@ const settledFilter = (findings) => {
 }
 
 // --- The one panel of this invocation -------------------------------------
-if (S && round >= MAX_ROUNDS)
-  return { status: 'ROUND_CAP', reason: `${round} reviewer rounds reached maxRounds ${MAX_ROUNDS} - the last applied delta is unconfirmed; put it to the user`, rounds: round, history, findings: [], closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
+if (S && round >= MAX_ROUNDS) {
+  // No adjudicator runs here, so the rows would vanish silently; name them in
+  // the log and carry them back so the main session can judge them later
+  // (DEF-ADVR-90).
+  if (ROWS.length) log(`round cap: ${ROWS.length} finding row(s) from args.findings never judged: ${ROWS.map((f) => f.title).join(' | ')}`)
+  return { status: 'ROUND_CAP', reason: `${round} reviewer rounds reached maxRounds ${MAX_ROUNDS} - the last applied delta is unconfirmed; put it to the user`, rounds: round, history, findings: [], rows: ROWS, closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
+}
 
 let findings
 round += 1
@@ -494,11 +565,12 @@ if (findings.length) {
       `You adjudicate adversarial-review findings for ${TARGET}.`,
       barBlock,
       graphBlock,
+      graphGapBlock,
       researchBlock,
       priorRecord(),
       `FINDINGS (round ${round}, ${findings.length}: ${severityTally(findings)}; findings carrying cappedFrom were reduced by the script for material=false${ROWS.length ? '; a finding carrying source, or an also entry with source, came from outside the lens panel (another review tool, the owner) and is judged against the same bar' : ''}):`,
       JSON.stringify(findings, null, 2),
-      `CHANGES APPLIED IN PREVIOUS ROUNDS (the revert candidates; fanoutTraced counts against these):`,
+      `CHANGES APPLIED IN PREVIOUS ROUNDS (the revert candidates; fanoutTraced counts against these; rule one keep, revert or refine verdict with its reason on each, under fixVerdicts):`,
       closures.length ? closures.map((c) => `round ${c.round} ${c.site}: ${c.summary}`).join('\n') : '(none - round 1)',
       `CHANGE BUDGET: ${MAX_CHANGES}`,
       `TRAJECTORY: judge it - converging or spiralling - and say why; two of the last three refining rounds you judge spiralling stop the loop.`,
@@ -510,7 +582,22 @@ if (findings.length) {
   if (!adj)
     return { status: 'ADJUDICATOR_DIED', round, history, findings, closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
   routeResearch(adj.research)
-  const reverts = adj.reverts || []
+  // A4: every closure carries a keep, revert or refine verdict; a revert
+  // verdict enters the plan's reverts through the one closure it names. The
+  // listed line, the summary and the site are one match set; an ambiguous or
+  // unmatched verdict is logged and fabricates no revert.
+  const fixVerdicts = adj.fixVerdicts || []
+  const reverts = (adj.reverts || []).slice()
+  fixVerdicts.forEach((v) => {
+    if (v.verdict !== 'revert') return
+    const matches = closures.filter((c) => c.site === v.fix || c.summary === v.fix || `round ${c.round} ${c.site}: ${c.summary}` === v.fix)
+    if (matches.length !== 1) {
+      log(`round ${round} revert verdict: "${v.fix}" matches ${matches.length} applied change(s) - no revert pushed`)
+      return
+    }
+    const closure = matches[0]
+    if (!reverts.some((r) => r.site === closure.site && r.mechanism === closure.summary)) reverts.push({ mechanism: closure.summary, site: closure.site, dissolves: [], defers: [] })
+  })
   allDeferred.push(...(adj.deferred || []))
   allRefuted.push(...(adj.refuted || []))
   // Every finding no planned change answers is now ruled - refuted, deferred
@@ -519,7 +606,7 @@ if (findings.length) {
   findings
     .filter((f) => !answered.has(f.title.toLowerCase().trim()))
     .forEach((f) => settled.push({ round, file: f.file, line: f.line, title: f.title }))
-  rulings.push({ round, ruling: adj.ruling, changes: adj.changes.length, reverts: reverts.length, fanout: `${adj.fanoutTraced}/${adj.fanoutTotal}`, trajectory: adj.trajectory })
+  rulings.push({ round, ruling: adj.ruling, changes: adj.changes.length, reverts: reverts.length, fixVerdicts, fanout: `${adj.fanoutTraced}/${adj.fanoutTotal}`, trajectory: adj.trajectory, trajectoryReason: adj.trajectoryReason, appliedDelta: newDelta.length, graphGap: adj.graphGap })
   log(`round ${round} adjudicated: ${adj.ruling}, ${adj.changes.length} changes, ${reverts.length} reverts, fanout ${adj.fanoutTraced}/${adj.fanoutTotal}, ${adj.trajectory} - ${adj.trajectoryReason}`)
   const mechanisms = adj.changes.filter((c) => c.newMechanism)
   if (mechanisms.length) log(`round ${round}: ${mechanisms.length} change(s) add a NEW MECHANISM - veto at PLAN unless each answers a material CRITICAL/MAJOR: ${mechanisms.map((m) => m.site).join(' | ')}`)
@@ -528,13 +615,14 @@ if (findings.length) {
     return { status: 'STOP', reason: 'adjudicator: the loop is generating its own work - re-model instead of another round - `reverts` is the adjudicator\'s list ({mechanism, site, dissolves, defers}); when the adjudicator ruled none it is every applied change in closure shape ({site, summary, files}) - revert each whose summary does not start "reverted:" (those are reverts already applied, not mechanisms), defer what it answered', round, history, findings, reverts: reverts.length ? reverts : closures, closures, deferred: allDeferred, refuted: allRefuted, research, state: stateOut() }
   }
   // The stop is the adjudicator's judgment, not a ratio: two of the last
-  // three rounds it calls spiralling while still ordering changes or reverts.
-  // A window, not a streak - one converging round between two spiralling ones
+  // three rounds it calls spiralling while still ordering changes or reverts,
+  // or while this invocation applied a delta the plan leaves in place. A
+  // window, not a streak - one converging round between two spiralling ones
   // reset a streak and the stop never fired (DEF-ADVR-74). A clean round ships
   // before it can count (DEF-ADVR-46); the fanout ratio is evidence the
   // adjudicator cites, never the gate (DEF-ADVR-50).
-  const spiralling = rulings.slice(-3).filter((r) => r.trajectory === 'spiralling' && (r.changes > 0 || r.reverts > 0))
-  if (adj.trajectory === 'spiralling' && (adj.changes.length > 0 || reverts.length > 0) && spiralling.length >= 2) {
+  const spiralling = rulings.slice(-3).filter((r) => r.trajectory === 'spiralling' && (r.changes > 0 || r.reverts > 0 || r.appliedDelta > 0))
+  if (adj.trajectory === 'spiralling' && (adj.changes.length > 0 || reverts.length > 0 || newDelta.length > 0) && spiralling.length >= 2) {
     // Revert candidates: what the adjudicator ruled ({mechanism, site,
     // dissolves, defers}), else every applied change in closure shape
     // ({site, summary, files}) - the findings live in the loop's own fixes

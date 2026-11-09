@@ -598,7 +598,7 @@ REVIEW_ARGS = {
 CONFIRM_ARGS = {
     **REVIEW_ARGS,
     "state": {
-        "contract": 4,
+        "contract": 5,
         "round": 1,
         "history": [],
         "deferred": [],

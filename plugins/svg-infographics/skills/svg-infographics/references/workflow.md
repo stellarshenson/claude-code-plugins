@@ -31,6 +31,8 @@ Before creating any SVG:
 
 **GATE**: write summary to user — image type, examples consulted, dimensions, colour classes. Do NOT proceed until shared.
 
+State the graphic's hypothesis in the same gate: one sentence naming the claim the graphic must show and why this visual form carries it. No hypothesis, no scaffold.
+
 ## Phase 2 — Grid + Skeleton (via the scaffold tool)
 
 `svg-infographics scaffold --format <preset> --cols C --rows R --cards N [--title "..."] --out <file>` generates the whole Phase-2 deliverable in ONE call:
@@ -103,9 +105,13 @@ and tiers findings HARD / SOFT. See `validation.md` for tool specifics.
 3. Re-run `finalize` ONCE
 4. Hard cap: 3 finalize iterations. Still failing after 3 → render the PNG, report the residual findings to the user, stop
 5. Classification: HARD findings defended individually (Fixed / Accepted / Checker limitation); SOFT findings may be acknowledged per layer with `--ack-class SOFT-<LAYER>=reason`
-6. **One readback, not a render loop**: after finalize passes, `render-png <file> out.png --mode both`, Read the light PNG ONCE against this checklist - (a) layout balanced, no dead band; (b) same-role elements consistent across cards and sibling files; (c) no text touching icons/bars; (d) centred things actually centred; (e) connector shapes match semantics (fork = manifold, not N strokes); (f) dark render legible. Fix anything caught, finalize once more, done. Do NOT iterate render-inspect-fix beyond this single pass - finalize's visual layer already measures element geometry deterministically; the PNG readback is for what only eyes catch
+6. **One readback, not a render loop**: after finalize passes, `render-png <file> out.png --mode both --width <canvas width from the concept draft>`, Read both PNGs ONCE against this checklist - (a) layout balanced, no dead band; (b) same-role elements consistent across cards and sibling files; (c) no text touching icons/bars; (d) centred things actually centred; (e) connector shapes match semantics (fork = manifold, not N strokes); (f) dark render legible. Fix anything caught, finalize once more, done. Do NOT iterate render-inspect-fix beyond this single pass - finalize's visual layer already measures element geometry deterministically; the PNG readback is for what only eyes catch
+   - List every `<text>` element and check each label and number against the concept draft's stated data source; name each mismatch and fix it
+   - Read BOTH the light and dark PNGs at that width, and list every label you cannot read in either mode; fix each one or report it
+   - Read the render beside the Phase 1 hypothesis and name every claim the graphic does not show; fix the graphic; when the hypothesis no longer fits, report the mismatch to the user for re-approval instead of editing the approved draft
+   - Render the closest examples/ reference at that width and compare it side by side with the graphic; name each gap between them
 
-**GATE**: paste the final `finalize` summary. Tool not run = phase incomplete.
+**GATE**: paste the final `finalize` summary and the readback findings. Finalize summary alone = phase incomplete.
 
 ## Per-image checklist (required groups)
 
